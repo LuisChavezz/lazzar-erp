@@ -37,7 +37,7 @@ export const sidebarItems: SidebarSection[] = [
     items: [
       {
         label: "Dashboard",
-        href: "#",
+        href: "/dashboard",
         icon: DashboardIcon,
       },
     ],

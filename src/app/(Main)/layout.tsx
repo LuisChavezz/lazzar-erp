@@ -1,12 +1,12 @@
-import { DashboardHeader } from "@/src/components/Header";
+import { Header } from "@/src/components/Header";
 import Sidebar from "@/src/components/Sidebar";
 
 export const metadata = {
-  title: "Dashboard",
-  description: "Dashboard of the application",
+  title: "ERP NextJS",
+  description: "ERP NextJS is a modern ERP system built with Next.js",
 };
 
-export default function DashboardLayout({
+export default function MainLayout({
   children,
 }: {
   children: React.ReactNode;
@@ -21,7 +21,7 @@ export default function DashboardLayout({
       {/* MAIN CONTENT WRAPPER */}
       <div className="flex-1 flex flex-col relative overflow-hidden h-full">
         {/* DESKTOP HEADER (Search + Notifs) */}
-        <DashboardHeader />
+        <Header />
 
         {/* PAGE CONTENT */}
         <main className="flex-1 w-full overflow-y-auto px-6 pb-6 md:px-8 md:pb-8 pt-20 md:pt-0">

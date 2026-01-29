@@ -1,18 +1,27 @@
+"use client";
+
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { type SidebarItem as SidebarItemType } from "../constants/sidebarItems";
 
 interface SidebarItemProps {
   item: SidebarItemType;
   variant?: "desktop" | "mobile";
-  isActive?: boolean;
 }
 
 export default function SidebarItem({
   item,
   variant = "desktop",
-  isActive = false,
 }: SidebarItemProps) {
-  
+  const pathname = usePathname();
+
+  // Determine if the item is active based on the current path
+  // We handle the root path "/" specifically to avoid matching everything
+  const isActive =
+    (item.href === "/")
+      ? pathname === "/"
+      : pathname === item.href || pathname.startsWith(`${item.href}/`);
+
   if (variant === "mobile") {
     return (
       <Link

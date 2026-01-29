@@ -1,3 +1,5 @@
+"use client";
+
 import Link from "next/link";
 import MobileSidebar from "./MobileSidebar";
 import { sidebarItems } from "../constants/sidebarItems";
@@ -37,7 +39,6 @@ export default function Sidebar() {
                   key={itemIndex}
                   item={item}
                   variant="desktop"
-                  isActive={item.label === "Dashboard"}
                 />
               ))}
             </div>

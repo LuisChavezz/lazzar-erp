@@ -67,7 +67,6 @@ export default function MobileSidebar() {
                     key={itemIndex}
                     item={item}
                     variant="mobile"
-                    isActive={item.label === "Dashboard"}
                   />
                 ))}
               </div>
