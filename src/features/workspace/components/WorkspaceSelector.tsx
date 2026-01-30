@@ -140,7 +140,7 @@ export default function WorkspaceSelector2() {
             <div className="flex flex-col gap-8">
               <button 
                 onClick={handleBack}
-                className="self-start flex items-center gap-2 text-slate-500 hover:text-brand-500 transition-colors px-4 py-2 rounded-full hover:bg-slate-100 dark:hover:bg-white/5"
+                className="self-start flex items-center gap-2 cursor-pointer text-slate-500 hover:text-brand-500 transition-colors px-4 py-2 rounded-full hover:bg-slate-100 dark:hover:bg-white/5"
               >
                 <ArrowLeftIcon className="w-4 h-4" />
                 <span className="text-sm font-medium">Volver a empresas</span>
