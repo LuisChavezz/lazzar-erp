@@ -7,11 +7,13 @@ import { type SidebarItem as SidebarItemType } from "../constants/sidebarItems";
 interface SidebarItemProps {
   item: SidebarItemType;
   variant?: "desktop" | "mobile";
+  setIsMobileOpen?: (isOpen: boolean) => void;
 }
 
 export default function SidebarItem({
   item,
   variant = "desktop",
+  setIsMobileOpen,
 }: SidebarItemProps) {
   const pathname = usePathname();
 
@@ -31,6 +33,7 @@ export default function SidebarItem({
             ? "bg-sky-50 dark:bg-sky-500/10 text-sky-600 dark:text-sky-300"
             : "text-slate-600 dark:text-white hover:bg-sky-50 dark:hover:bg-white/5"
         }`}
+        onClick={() => setIsMobileOpen?.(false)}
       >
         {item.label}
       </Link>

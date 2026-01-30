@@ -67,6 +67,7 @@ export default function MobileSidebar() {
                     key={itemIndex}
                     item={item}
                     variant="mobile"
+                    setIsMobileOpen={setIsMobileOpen}
                   />
                 ))}
               </div>
@@ -76,6 +77,7 @@ export default function MobileSidebar() {
             <Link
               href="#"
               className="block w-full text-center px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 font-semibold text-sm mb-3"
+              onClick={() => setIsMobileOpen(false)}
             >
               Configuración
             </Link>
