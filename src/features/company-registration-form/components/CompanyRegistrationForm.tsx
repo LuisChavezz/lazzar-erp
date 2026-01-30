@@ -20,32 +20,32 @@ export const CompanyRegistrationForm = () => {
   } = useForm<CompanyFormValues>({
     resolver: zodResolver(CompanyFormSchema),
     defaultValues: {
-      // codigo: "",
-      // razon_social: "",
-      // nombre_comercial: "",
-      // rfc: "",
-      // email_contacto: "",
-      // telefono: "",
-      // sitio_web: "",
-      // moneda_base: "MXN",
-      // timezone: "America/Mexico_City",
-      // idioma: "es-MX",
-      // estatus: "activo",
-      // logo_url: "",
+      codigo: "",
+      razon_social: "",
+      nombre_comercial: "",
+      rfc: "",
+      email_contacto: "",
+      telefono: "",
+      sitio_web: "",
+      moneda_base: "MXN",
+      timezone: "America/Mexico_City",
+      idioma: "es-MX",
+      estatus: "activo",
+      logo_url: "",
 
       // ? Filled fields
-      codigo: "ABC123",
-      razon_social: "Empresa XYZ",
-      nombre_comercial: "Empresa XYZ",
-      rfc: "XAXX010101000",
-      email_contacto: "contacto@empresaxyz.com",
-      telefono: "5551234567",
-      sitio_web: "https://www.empresaxyz.com",
-      moneda_base: "MXN",
-      timezone: "America/New_York",
-      idioma: "en-US",
-      estatus: "activo",
-      logo_url: "https://www.empresaxyz.com/logo.png",
+      // codigo: "ABC123",
+      // razon_social: "Empresa XYZ",
+      // nombre_comercial: "Empresa XYZ",
+      // rfc: "XAXX010101000",
+      // email_contacto: "contacto@empresaxyz.com",
+      // telefono: "5551234567",
+      // sitio_web: "https://www.empresaxyz.com",
+      // moneda_base: "MXN",
+      // timezone: "America/New_York",
+      // idioma: "en-US",
+      // estatus: "activo",
+      // logo_url: "https://www.empresaxyz.com/logo.png",
     },
   });
 
@@ -260,12 +260,12 @@ export const CompanyRegistrationForm = () => {
                     Moneda Base
                   </label>
                   <select
-                    className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 transition-all"
+                    className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 transition-all dark:text-white"
                     {...register("moneda_base")}
                   >
-                    <option value="MXN">Peso Mexicano (MXN)</option>
-                    <option value="USD">Dólar Estadounidense (USD)</option>
-                    <option value="EUR">Euro (EUR)</option>
+                    <option value="MXN" className="text-slate-900 dark:text-white bg-white dark:bg-zinc-900">Peso Mexicano (MXN)</option>
+                    <option value="USD" className="text-slate-900 dark:text-white bg-white dark:bg-zinc-900">Dólar Estadounidense (USD)</option>
+                    <option value="EUR" className="text-slate-900 dark:text-white bg-white dark:bg-zinc-900">Euro (EUR)</option>
                   </select>
                   {errors.moneda_base && (
                     <p className="text-xs text-red-600 mt-1">{errors.moneda_base.message}</p>
@@ -276,12 +276,12 @@ export const CompanyRegistrationForm = () => {
                     Zona Horaria
                   </label>
                   <select
-                    className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 transition-all"
+                    className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 transition-all dark:text-white"
                     {...register("timezone")}
                   >
-                    <option value="America/Mexico_City">Ciudad de México (GMT-6)</option>
-                    <option value="America/New_York">Nueva York (GMT-5)</option>
-                    <option value="Europe/Madrid">Madrid (GMT+1)</option>
+                    <option value="America/Mexico_City" className="text-slate-900 dark:text-white bg-white dark:bg-zinc-900">Ciudad de México (GMT-6)</option>
+                    <option value="America/New_York" className="text-slate-900 dark:text-white bg-white dark:bg-zinc-900">Nueva York (GMT-5)</option>
+                    <option value="Europe/Madrid" className="text-slate-900 dark:text-white bg-white dark:bg-zinc-900">Madrid (GMT+1)</option>
                   </select>
                   {errors.timezone && (
                     <p className="text-xs text-red-600 mt-1">{errors.timezone.message}</p>
@@ -292,12 +292,12 @@ export const CompanyRegistrationForm = () => {
                     Idioma
                   </label>
                   <select
-                    className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 transition-all"
+                    className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 transition-all dark:text-white"
                     {...register("idioma")}
                   >
-                    <option value="es-MX">Español (México)</option>
-                    <option value="en-US">English (US)</option>
-                    <option value="es-ES">Español (España)</option>
+                    <option value="es-MX" className="text-slate-900 dark:text-white bg-white dark:bg-zinc-900">Español (México)</option>
+                    <option value="en-US" className="text-slate-900 dark:text-white bg-white dark:bg-zinc-900">English (US)</option>
+                    <option value="es-ES" className="text-slate-900 dark:text-white bg-white dark:bg-zinc-900">Español (España)</option>
                   </select>
                   {errors.idioma && (
                     <p className="text-xs text-red-600 mt-1">{errors.idioma.message}</p>
@@ -308,11 +308,11 @@ export const CompanyRegistrationForm = () => {
                     Estatus
                   </label>
                   <select
-                    className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 transition-all"
+                    className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 transition-all dark:text-white"
                     {...register("estatus")}
                   >
-                    <option value="activo">Activo</option>
-                    <option value="suspendido">Suspendido</option>
+                    <option value="activo" className="text-slate-900 dark:text-white bg-white dark:bg-zinc-900">Activo</option>
+                    <option value="suspendido" className="text-slate-900 dark:text-white bg-white dark:bg-zinc-900">Suspendido</option>
                   </select>
                   {errors.estatus && (
                     <p className="text-xs text-red-600 mt-1">{errors.estatus.message}</p>
