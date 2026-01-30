@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { signOut } from "next-auth/react";
 import Link from "next/link";
 import { CloseIcon, LogoIcon, MenuIcon } from "./Icons";
 import { sidebarItems } from "../constants/sidebarItems";
@@ -81,7 +82,10 @@ export default function MobileSidebar() {
             >
               Configuración
             </Link>
-            <button className="block w-full text-center px-4 py-3 rounded-xl bg-black dark:bg-white text-white dark:text-black font-bold text-sm shadow-lg">
+            <button 
+              onClick={() => signOut({ callbackUrl: "/auth/login" })}
+              className="block w-full text-center px-4 py-3 rounded-xl bg-black dark:bg-white text-white dark:text-black font-bold text-sm shadow-lg"
+            >
               Cerrar sesión
             </button>
           </div>

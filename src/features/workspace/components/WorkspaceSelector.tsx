@@ -68,7 +68,7 @@ export default function WorkspaceSelector2() {
       branch: { id: branchId, name: branchName } 
     });
     
-    router.push("/dashboard");
+    router.push("/");
   };
 
   const handleBack = () => {

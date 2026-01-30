@@ -1,5 +1,6 @@
 "use client";
 
+import { signOut } from "next-auth/react";
 import Link from "next/link";
 import MobileSidebar from "./MobileSidebar";
 import { sidebarItems } from "../constants/sidebarItems";
@@ -60,7 +61,10 @@ export default function Sidebar() {
           </Link>
 
           {/* Cerrar sesión */}
-          <button className="w-full mt-2 flex items-center justify-start gap-4 px-3 py-3 rounded-xl cursor-pointer text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors group relative overflow-hidden">
+          <button 
+            onClick={() => signOut({ callbackUrl: "/auth/login" })}
+            className="w-full mt-2 flex items-center justify-start gap-4 px-3 py-3 rounded-xl cursor-pointer text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors group relative overflow-hidden"
+          >
             <LogoutIcon className="w-6 h-6 shrink-0" />
             <span className="font-medium text-sm whitespace-nowrap opacity-0 group-hover/sidebar:opacity-100 transition-opacity duration-200 absolute left-14">
               Cerrar sesión
