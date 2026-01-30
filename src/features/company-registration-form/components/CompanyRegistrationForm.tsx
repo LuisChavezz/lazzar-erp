@@ -5,12 +5,11 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { CompanyFormSchema, CompanyFormValues } from "../schemas/companiesFormSchema";
 import { PhotoIcon, BuildingIcon, SettingsIcon } from "../../../components/Icons";
 import { useRegisterCompany } from "../hooks/useRegisterCompany";
+import { FormInput } from "../../../components/FormInput";
 
 export const CompanyRegistrationForm = () => {
 
-
   const { mutate: registerCompany, isPending } = useRegisterCompany();
-
 
   const {
     register,
@@ -109,33 +108,21 @@ export const CompanyRegistrationForm = () => {
               </div>
 
               <div className="group/field">
-                <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider ml-1 mb-1 block transition-colors group-focus-within/field:text-brand-500">
-                  Código
-                </label>
-                <input
-                  type="text"
-                  className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm font-medium text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 focus:bg-white dark:focus:bg-black/40 transition-all placeholder-slate-400"
+                <FormInput
+                  label="Código"
                   placeholder="Código"
                   {...register("codigo")}
+                  error={errors.codigo}
                 />
-                {errors.codigo && (
-                  <p className="text-xs text-red-600 mt-1">{errors.codigo.message}</p>
-                )}
               </div>
 
               <div className="md:col-span-2 lg:col-span-3 group/field">
-                <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider ml-1 mb-1 block transition-colors group-focus-within/field:text-brand-500">
-                  Nombre Comercial
-                </label>
-                <input
-                  type="text"
-                  className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm font-medium text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 focus:bg-white dark:focus:bg-black/40 transition-all placeholder-slate-400"
+                <FormInput
+                  label="Nombre Comercial"
                   placeholder="Mi Empresa"
                   {...register("nombre_comercial")}
+                  error={errors.nombre_comercial}
                 />
-                {errors.nombre_comercial && (
-                  <p className="text-xs text-red-600 mt-1">{errors.nombre_comercial.message}</p>
-                )}
               </div>
             </div>
           </div>
@@ -169,18 +156,13 @@ export const CompanyRegistrationForm = () => {
                   </h4>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="group">
-                      <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider ml-1 mb-1 block transition-colors group-focus-within:text-brand-500">
-                        RFC
-                      </label>
-                      <input
-                        type="text"
-                        className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm font-mono uppercase outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 transition-all placeholder-slate-300"
+                      <FormInput
+                        label="RFC"
                         placeholder="XAXX010101000"
+                        className="font-mono uppercase"
                         {...register("rfc")}
+                        error={errors.rfc}
                       />
-                      {errors.rfc && (
-                        <p className="text-xs text-red-600 mt-1">{errors.rfc.message}</p>
-                      )}
                     </div>
                   </div>
                 </div>
@@ -195,44 +177,30 @@ export const CompanyRegistrationForm = () => {
                   </h4>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="group">
-                      <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider ml-1 mb-1 block transition-colors group-focus-within:text-brand-500">
-                        Email de Contacto
-                      </label>
-                      <input
+                      <FormInput
+                        label="Email de Contacto"
                         type="email"
-                        className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 transition-all"
+                        placeholder="contacto@empresa.com" // Inferido, el original no tenía placeholder explícito pero es buena práctica
                         {...register("email_contacto")}
+                        error={errors.email_contacto}
                       />
-                      {errors.email_contacto && (
-                        <p className="text-xs text-red-600 mt-1">{errors.email_contacto.message}</p>
-                      )}
                     </div>
                     <div className="group">
-                      <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider ml-1 mb-1 block transition-colors group-focus-within:text-brand-500">
-                        Teléfono
-                      </label>
-                      <input
+                      <FormInput
+                        label="Teléfono"
                         type="tel"
-                        className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 transition-all"
                         {...register("telefono")}
+                        error={errors.telefono}
                       />
-                      {errors.telefono && (
-                        <p className="text-xs text-red-600 mt-1">{errors.telefono.message}</p>
-                      )}
                     </div>
                     <div className="md:col-span-2 group">
-                      <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider ml-1 mb-1 block transition-colors group-focus-within:text-brand-500">
-                        Sitio Web
-                      </label>
-                      <input
+                      <FormInput
+                        label="Sitio Web"
                         type="url"
-                        className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 transition-all"
                         placeholder="https://..."
                         {...register("sitio_web")}
+                        error={errors.sitio_web}
                       />
-                      {errors.sitio_web && (
-                        <p className="text-xs text-red-600 mt-1">{errors.sitio_web.message}</p>
-                      )}
                     </div>
                   </div>
                 </div>
