@@ -4,6 +4,7 @@ import { useState } from "react";
 import { signOut } from "next-auth/react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { ConfirmDialog } from "./ConfirmDialog";
 import { CloseIcon, LogoIcon, MenuIcon } from "./Icons";
 import { sidebarItems } from "../constants/sidebarItems";
 import SidebarItem from "./SidebarItem";
@@ -89,12 +90,19 @@ export default function MobileSidebar() {
             >
               Configuración
             </Link>
-            <button 
-              onClick={() => signOut({ callbackUrl: "/auth/login" })}
-              className="block w-full text-center px-4 py-3 rounded-xl bg-black dark:bg-white text-white dark:text-black font-bold text-sm shadow-lg"
-            >
-              Cerrar sesión
-            </button>
+            <ConfirmDialog
+              title="Cerrar sesión"
+              description="¿Estás seguro de que deseas cerrar sesión?"
+              onConfirm={() => signOut({ callbackUrl: "/auth/login" })}
+              confirmText="Cerrar sesión"
+              trigger={
+                <button 
+                  className="block w-full text-center px-4 py-3 rounded-xl bg-black dark:bg-white text-white dark:text-black font-bold text-sm shadow-lg"
+                >
+                  Cerrar sesión
+                </button>
+              }
+            />
           </div>
         </div>
       </div>

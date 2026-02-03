@@ -77,3 +77,13 @@ input:-webkit-autofill:active {
   }
 }
 
+/* Radix UI Dialog Overlay Override to make it darker */
+.rt-DialogOverlay {
+  background-color: rgba(0, 0, 0, 0.4) !important;
+  backdrop-filter: blur(2px);
+}
+
+/* Radix UI Button Override */
+.rt-Button {
+  cursor: pointer !important;
+}

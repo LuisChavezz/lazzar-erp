@@ -5,6 +5,7 @@ import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { Toaster } from "react-hot-toast";
 import { SessionProvider } from "next-auth/react";
 import { Session } from "next-auth";
+import { Theme } from "@radix-ui/themes";
 
 // Create a QueryClient instance
 const queryClient = new QueryClient({
@@ -22,9 +23,11 @@ export const Provider = ({ children, session }: { children: React.ReactNode, ses
   return (
     <SessionProvider session={session}>
       <QueryClientProvider client={queryClient}>
-        {children}
-        <ReactQueryDevtools initialIsOpen={ false } />
-        <Toaster position="top-right" />
+        <Theme>
+          {children}
+          <ReactQueryDevtools initialIsOpen={ false } />
+          <Toaster position="top-right" />
+        </Theme>
       </QueryClientProvider>
     </SessionProvider>
   )
