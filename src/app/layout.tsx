@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter, Poppins } from "next/font/google";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../lib/auth";
+import "@radix-ui/themes/styles.css";
 import "./globals.css";
 import { Provider } from "./Provider";
 
