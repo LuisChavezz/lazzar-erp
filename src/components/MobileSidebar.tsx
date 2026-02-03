@@ -3,12 +3,15 @@
 import { useState } from "react";
 import { signOut } from "next-auth/react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { CloseIcon, LogoIcon, MenuIcon } from "./Icons";
 import { sidebarItems } from "../constants/sidebarItems";
 import SidebarItem from "./SidebarItem";
 
 export default function MobileSidebar() {
   const [isMobileOpen, setIsMobileOpen] = useState(false);
+  const pathname = usePathname();
+  const isConfigActive = pathname === "/config" || pathname.startsWith("/config/");
 
   return (
     <>
@@ -76,8 +79,12 @@ export default function MobileSidebar() {
           </div>
           <div className="p-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-black/20">
             <Link
-              href="#"
-              className="block w-full text-center px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 font-semibold text-sm mb-3"
+              href="/config"
+              className={`block w-full text-center px-4 py-3 rounded-xl border font-semibold text-sm mb-3 ${
+                isConfigActive
+                  ? "bg-sky-50 dark:bg-sky-500/10 text-sky-600 dark:text-sky-300 border-sky-100 dark:border-sky-500/20"
+                  : "border-slate-200 dark:border-slate-700 text-slate-600 dark:text-white hover:bg-slate-50 dark:hover:bg-slate-800"
+              }`}
               onClick={() => setIsMobileOpen(false)}
             >
               Configuración

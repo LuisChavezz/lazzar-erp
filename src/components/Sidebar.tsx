@@ -2,12 +2,16 @@
 
 import { signOut } from "next-auth/react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import MobileSidebar from "./MobileSidebar";
 import { sidebarItems } from "../constants/sidebarItems";
 import SidebarItem from "./SidebarItem";
 import { LogoIcon, LogoutIcon, SettingsIcon } from "./Icons";
 
 export default function Sidebar() {
+  const pathname = usePathname();
+  const isConfigActive = pathname === "/config" || pathname.startsWith("/config/");
+
   return (
     <>
       {/* SIDEBAR (Desktop) */}
@@ -51,8 +55,12 @@ export default function Sidebar() {
 
           {/* Configuración */}
           <Link
-            href="#"
-            className="flex items-center gap-4 px-3 py-3 rounded-xl hover:bg-sky-50 dark:hover:bg-sky-500/10 text-slate-500 dark:text-white hover:text-sky-600 dark:hover:text-sky-300 transition-colors group relative"
+            href="/config"
+            className={`flex items-center gap-4 px-3 py-3 rounded-xl transition-colors group relative ${
+              isConfigActive
+                ? "bg-sky-50 dark:bg-sky-500/10 text-sky-600 dark:text-sky-300"
+                : "hover:bg-sky-50 dark:hover:bg-sky-500/10 text-slate-500 dark:text-white hover:text-sky-600 dark:hover:text-sky-300"
+            }`}
           >
             <SettingsIcon className="w-6 h-6 shrink-0" />
             <span className="font-medium text-sm whitespace-nowrap opacity-0 group-hover/sidebar:opacity-100 transition-opacity duration-200 absolute left-14">
