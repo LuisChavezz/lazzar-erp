@@ -10,6 +10,7 @@ import {
   getFilteredRowModel,
   SortingState,
   VisibilityState,
+  ColumnOrderState,
 } from "@tanstack/react-table";
 import { SearchIcon, SettingsIcon, CheckCircleIcon } from "./Icons";
 
@@ -34,6 +35,23 @@ export function DataTable<TData, TValue>({
   const [sorting, setSorting] = useState<SortingState>([]);
   const [globalFilter, setGlobalFilter] = useState("");
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
+  const [columnOrder, setColumnOrder] = useState<ColumnOrderState>([]);
+  const [draggedColumnId, setDraggedColumnId] = useState<string | null>(null);
+  const [dragOverColumnId, setDragOverColumnId] = useState<string | null>(null);
+
+  // Function to handle column reordering
+  const moveColumn = (draggedId: string, targetId: string) => {
+    const newColumnOrder = [...table.getAllLeafColumns().map((c) => c.id)];
+    const draggedIndex = newColumnOrder.indexOf(draggedId);
+    const targetIndex = newColumnOrder.indexOf(targetId);
+
+    if (draggedIndex === -1 || targetIndex === -1) return;
+
+    newColumnOrder.splice(draggedIndex, 1);
+    newColumnOrder.splice(targetIndex, 0, draggedId);
+
+    setColumnOrder(newColumnOrder);
+  };
 
   // State for columns dropdown
   const [isColumnsOpen, setIsColumnsOpen] = useState(false);
@@ -71,10 +89,12 @@ export function DataTable<TData, TValue>({
       sorting,
       globalFilter,
       columnVisibility,
+      columnOrder,
     },
     onSortingChange: setSorting,
     onGlobalFilterChange: setGlobalFilter,
     onColumnVisibilityChange: setColumnVisibility,
+    onColumnOrderChange: setColumnOrder,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
@@ -172,10 +192,40 @@ export function DataTable<TData, TValue>({
                 {headerGroup.headers.map((header) => (
                   <th
                     key={header.id}
-                    className={`px-6 py-4 font-semibold ${
+                    draggable={!header.isPlaceholder}
+                    onDragStart={(e) => {
+                      setDraggedColumnId(header.column.id);
+                      e.dataTransfer.setData("columnId", header.column.id);
+                      e.dataTransfer.effectAllowed = "move";
+                    }}
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      if (header.column.id !== draggedColumnId) {
+                        setDragOverColumnId(header.column.id);
+                      }
+                    }}
+                    onDragLeave={() => {
+                      setDragOverColumnId(null);
+                    }}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      setDraggedColumnId(null);
+                      setDragOverColumnId(null);
+                      const draggedId = e.dataTransfer.getData("columnId");
+                      if (draggedId && draggedId !== header.column.id) {
+                        moveColumn(draggedId, header.column.id);
+                      }
+                    }}
+                    className={`px-6 py-4 font-semibold transition-colors ${
                       header.column.getCanSort()
                         ? "cursor-pointer select-none hover:text-slate-700 dark:hover:text-slate-300"
                         : ""
+                    } ${
+                      dragOverColumnId === header.column.id
+                        ? "border-2 border-sky-500 bg-slate-100 dark:bg-white/10"
+                        : ""
+                    } ${
+                      draggedColumnId === header.column.id ? "opacity-50" : ""
                     }`}
                     onClick={header.column.getToggleSortingHandler()}
                   >
