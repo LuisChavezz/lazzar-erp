@@ -1,4 +1,4 @@
-import { CompanyRegistrationForm } from "@/src/features/company-registration-form/components/CompanyRegistrationForm";
+import { CompanyRegistrationForm } from "@/src/features/companies/components/CompanyRegistrationForm";
 
 export default function CompanyRegistrationPage() {
   return <CompanyRegistrationForm />;

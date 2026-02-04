@@ -13,6 +13,7 @@ export const config = {
     "/",
     "/dashboard/:path*", 
     "/select-branch/:path*",
-    "/company-registration/:path*"
+    "/company-registration/:path*",
+    "/config/:path*"
   ],
 };

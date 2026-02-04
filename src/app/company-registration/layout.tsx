@@ -1,7 +1,7 @@
 import React from "react";
 import Link from "next/link";
 import { ArrowLeftIcon } from "../../components/Icons";
-import { SaveButton } from "@/src/features/company-registration-form/components/SaveButton";
+import { SaveButton } from "@/src/features/companies/components/SaveButton";
 
 
 export const metadata = {
