@@ -4,8 +4,13 @@ import { useState } from "react";
 import { BuildingIcon, MapPinIcon, InfoIcon, ArrowLeftIcon } from "@/src/components/Icons";
 import { ConfigCard } from "./ConfigCard";
 import WarehouseList from "@/src/features/warehouses/components/WarehouseList";
+import { useWarehouseStore } from "../../warehouses/stores/warehouse.store";
 
 export function ConfigContent() {
+
+  // Obtener la cantidad de almacenes del store
+  const warehousesCount = useWarehouseStore((state) => state.warehouses.length);
+
   const [selectedView, setSelectedView] = useState<string | null>(null);
 
   const handleCardClick = (view: string) => {
@@ -34,7 +39,7 @@ export function ConfigContent() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             <ConfigCard 
               title="Almacenes" 
-              count={3} 
+              count={warehousesCount} 
               icon={BuildingIcon}
               onClick={() => handleCardClick("warehouses")}
             />

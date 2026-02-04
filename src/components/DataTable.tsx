@@ -12,7 +12,13 @@ import {
   VisibilityState,
   ColumnOrderState,
 } from "@tanstack/react-table";
-import { SearchIcon, SettingsIcon, CheckCircleIcon } from "./Icons";
+import {
+  SearchIcon,
+  SettingsIcon,
+  CheckCircleIcon,
+  ChevronUpIcon,
+  ChevronDownIcon,
+} from "./Icons";
 
 // DataTable component props
 interface DataTableProps<TData, TValue> {
@@ -238,36 +244,8 @@ export function DataTable<TData, TValue>({
                           )}
 
                       {{
-                        asc: (
-                          <svg
-                            className="w-3 h-3"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M5 15l7-7 7 7"
-                            />
-                          </svg>
-                        ),
-                        desc: (
-                          <svg
-                            className="w-3 h-3"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M19 9l-7 7-7-7"
-                            />
-                          </svg>
-                        ),
+                        asc: <ChevronUpIcon className="w-3 h-3" />,
+                        desc: <ChevronDownIcon className="w-3 h-3" />,
                       }[header.column.getIsSorted() as string] ?? null}
                     </div>
                   </th>

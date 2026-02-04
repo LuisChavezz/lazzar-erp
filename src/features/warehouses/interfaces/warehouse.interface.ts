@@ -3,7 +3,7 @@ export interface Warehouse {
   name: string;
   location: string;
   manager: string;
-  capacity: string;
+  capacity: number;
   status: "Activo" | "Inactivo" | "Mantenimiento";
   type: string;
 }

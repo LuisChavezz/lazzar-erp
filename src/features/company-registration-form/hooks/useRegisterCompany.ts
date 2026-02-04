@@ -1,6 +1,6 @@
 import { useMutation } from "@tanstack/react-query";
 import { registerCompany } from "../services/actions";
-import { CompanyFormValues } from "../schemas/companiesFormSchema";
+import { CompanyFormValues } from "../schemas/companies.schema";
 import toast from "react-hot-toast";
 import { AxiosError } from "axios";
 

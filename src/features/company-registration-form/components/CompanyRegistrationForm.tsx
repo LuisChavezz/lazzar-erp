@@ -2,7 +2,7 @@
 
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { CompanyFormSchema, CompanyFormValues } from "../schemas/companiesFormSchema";
+import { CompanyFormSchema, CompanyFormValues } from "../schemas/companies.schema";
 import { PhotoIcon, BuildingIcon, SettingsIcon } from "../../../components/Icons";
 import { useRegisterCompany } from "../hooks/useRegisterCompany";
 import { FormInput } from "../../../components/FormInput";
