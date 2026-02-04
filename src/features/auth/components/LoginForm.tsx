@@ -1,55 +1,10 @@
 "use client";
 
-import { useState } from "react";
-import { signIn, useSession } from "next-auth/react";
-import { useRouter } from "next/navigation";
-import toast from "react-hot-toast";
 import { EmailIcon, LockIcon, LoadingSpinnerIcon } from "../../../components/Icons";
+import { useLogin } from "../hooks/useLogin";
 
 export default function LoginForm() {
-  const router = useRouter();
-  const { update } = useSession();
-  const [loading, setLoading] = useState(false);
-  const [formData, setFormData] = useState({
-    email: "",
-    password: "",
-  });
-
-  // Gestión del estado del formulario
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData({
-      ...formData,
-      [e.target.type]: e.target.value,
-    });
-  };
-
-  // Manejo del envío del formulario
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    
-    try {
-      const result = await signIn("credentials", {
-        email: formData.email,
-        password: formData.password,
-        redirect: false,
-      });
-
-      if (result?.error) {
-        toast.error("Credenciales inválidas. Intenta: demo@example.com / 123456");
-        setLoading(false);
-
-      } else {
-        // Actualizar sesión y navegar usando métodos nativos de Next.js
-        await update();
-        router.refresh();
-        router.push("/select-branch");
-      }
-    } catch {
-      toast.error("Error de conexión");
-      setLoading(false);
-    }
-  };
+  const { formData, loading, handleChange, handleSubmit } = useLogin();
 
   return (
     <form onSubmit={handleSubmit} className="md:w-96 w-80 flex flex-col items-center justify-center">
@@ -64,6 +19,7 @@ export default function LoginForm() {
         <EmailIcon className="fill-slate-500 dark:fill-slate-400 transition-colors" width="16" height="11" />
         <input
           type="email"
+          name="email"
           value={formData.email}
           onChange={handleChange}
           placeholder="Correo electrónico"
@@ -77,6 +33,7 @@ export default function LoginForm() {
         <LockIcon className="fill-slate-500 dark:fill-slate-400 transition-colors" width="13" height="17" />
         <input
           type="password"
+          name="password"
           value={formData.password}
           onChange={handleChange}
           placeholder="Contraseña"
@@ -114,13 +71,6 @@ export default function LoginForm() {
           "Iniciar sesión"
         )}
       </button>
-
-      {/* Helper text for demo */}
-      <div className="mt-8 p-4 bg-slate-100 dark:bg-white/5 rounded-xl w-full text-xs text-slate-500 text-center">
-        <p className="font-semibold mb-1">Credenciales de prueba:</p>
-        <p>Email: demo@example.com</p>
-        <p>Password: 123456</p>
-      </div>
 
       {/* <p className="text-slate-500/90 dark:text-slate-400 text-sm mt-4 transition-colors">
         ¿No tienes una cuenta?{" "}

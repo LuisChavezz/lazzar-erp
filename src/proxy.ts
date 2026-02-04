@@ -7,8 +7,6 @@ export default withAuth({
 });
 
 export const config = {
-  // Matcher optimizado para excluir explícitamente API y estáticos,
-  // pero proteger dashboard, select-branch, home y company-registration
   matcher: [
     "/",
     "/dashboard/:path*", 

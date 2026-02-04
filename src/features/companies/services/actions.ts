@@ -4,6 +4,6 @@ import { v1_api } from "@/src/api/v1.api";
 
 export const registerCompany = async (values: CompanyFormValues) => {
 
-  const response = await v1_api.post("/empresas/", values);
+  const response = await v1_api.post("/api/v1/nucleo/empresas/", values);  
   return response.data;
 };

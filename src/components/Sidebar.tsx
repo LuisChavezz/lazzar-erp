@@ -1,6 +1,6 @@
 "use client";
 
-import { signOut } from "next-auth/react";
+import { useLogout } from "../features/auth/hooks/useLogout";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import MobileSidebar from "./MobileSidebar";
@@ -11,6 +11,7 @@ import { LogoIcon, LogoutIcon, SettingsIcon } from "./Icons";
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const { handleLogout } = useLogout();
   const isConfigActive = pathname === "/config" || pathname.startsWith("/config/");
 
   return (
@@ -73,7 +74,7 @@ export default function Sidebar() {
           <ConfirmDialog
             title="Cerrar sesión"
             description="¿Estás seguro de que deseas cerrar sesión?"
-            onConfirm={() => signOut({ callbackUrl: "/auth/login" })}
+            onConfirm={handleLogout}
             confirmText="Cerrar sesión"
             trigger={
               <button 

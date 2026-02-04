@@ -1,5 +1,6 @@
 import { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
+import { login } from "@/src/features/auth/services/actions";
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -14,35 +15,32 @@ export const authOptions: NextAuthOptions = {
           return null;
         }
 
-        // Simulación de validación directa (sin fetch a API interna)
+        // Llamar al servicio de autenticación
         try {
-          const { email, password } = credentials;
+          const data = await login(credentials.email, credentials.password);
 
-          // Simular delay de base de datos
-          await new Promise((resolve) => setTimeout(resolve, 500));
-
-          // Validación hardcodeada
-          if (email === "demo@example.com" && password === "123456") {
+          // Verificar si la autenticación fue exitosa
+          if (data && data.token) {
             return {
-              id: "1",
-              name: "Usuario Demo",
-              email: "demo@example.com",
-              role: "admin",
-              token: "mock_jwt_token_123456",
+              id: data.user_id.toString(),
+              name: data.nombre_completo,
+              email: data.email,
+              role: data.es_admin ? "admin" : "user",
+              token: data.token,
             };
           }
 
           return null;
-        } catch (error) {
+
+        } catch (error) { // Manejar errores de autenticación
           console.error("Error en autenticación:", error);
           return null;
         }
       },
     }),
   ],
-  pages: {
+  pages: { // Personalizar páginas de autenticación
     signIn: "/auth/login",
-    // error: '/auth/error',
   },
   callbacks: {
     async jwt({ token, user }) {

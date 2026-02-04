@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { signOut } from "next-auth/react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useLogout } from "../features/auth/hooks/useLogout";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { CloseIcon, LogoIcon, MenuIcon } from "./Icons";
 import { sidebarItems } from "../constants/sidebarItems";
@@ -12,6 +12,7 @@ import SidebarItem from "./SidebarItem";
 export default function MobileSidebar() {
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const pathname = usePathname();
+  const { handleLogout } = useLogout();
   const isConfigActive = pathname === "/config" || pathname.startsWith("/config/");
 
   return (
@@ -93,7 +94,7 @@ export default function MobileSidebar() {
             <ConfirmDialog
               title="Cerrar sesión"
               description="¿Estás seguro de que deseas cerrar sesión?"
-              onConfirm={() => signOut({ callbackUrl: "/auth/login" })}
+              onConfirm={handleLogout}
               confirmText="Cerrar sesión"
               trigger={
                 <button 
