@@ -5,17 +5,23 @@ import { BuildingIcon, MapPinIcon, InfoIcon, ArrowLeftIcon } from "@/src/compone
 import { ConfigCard } from "./ConfigCard";
 import WarehouseList from "@/src/features/warehouses/components/WarehouseList";
 import { useWarehouseStore } from "../../warehouses/stores/warehouse.store";
+import LocationList from "@/src/features/locations/components/LocationList";
+import { useLocationStore } from "../../locations/stores/location.store";
 
 export function ConfigContent() {
 
   // Obtener la cantidad de almacenes del store
   const warehousesCount = useWarehouseStore((state) => state.warehouses.length);
+  // Obtener la cantidad de ubicaciones del store
+  const locationsCount = useLocationStore((state) => state.locations.length);
 
   const [selectedView, setSelectedView] = useState<string | null>(null);
 
   const handleCardClick = (view: string) => {
     if (view === "warehouses") {
       setSelectedView("warehouses");
+    } else if (view === "locations") {
+      setSelectedView("locations");
     }
   };
 
@@ -45,8 +51,9 @@ export function ConfigContent() {
             />
             <ConfigCard 
               title="Ubicaciones" 
-              count={12} 
-              icon={MapPinIcon} 
+              count={locationsCount} 
+              icon={MapPinIcon}
+              onClick={() => handleCardClick("locations")}
             />
             <ConfigCard 
               title="Información Fiscal" 
@@ -76,6 +83,20 @@ export function ConfigContent() {
               </button>
               
               <WarehouseList />
+            </div>
+          )}
+
+          {selectedView === "locations" && (
+            <div className="flex flex-col gap-6">
+              <button 
+                onClick={handleBack}
+                className="self-start flex items-center gap-2 cursor-pointer text-slate-500 hover:text-sky-500 transition-colors px-4 py-2 rounded-full hover:bg-slate-100 dark:hover:bg-white/5"
+              >
+                <ArrowLeftIcon className="w-4 h-4" />
+                <span className="text-sm font-medium">Volver a configuración</span>
+              </button>
+              
+              <LocationList />
             </div>
           )}
         </div>
