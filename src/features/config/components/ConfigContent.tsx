@@ -7,6 +7,7 @@ import WarehouseList from "@/src/features/warehouses/components/WarehouseList";
 import { useWarehouseStore } from "../../warehouses/stores/warehouse.store";
 import LocationList from "@/src/features/locations/components/LocationList";
 import { useLocationStore } from "../../locations/stores/location.store";
+import { SatInfo } from "@/src/features/sat/components/SatInfo";
 
 export function ConfigContent() {
 
@@ -22,6 +23,8 @@ export function ConfigContent() {
       setSelectedView("warehouses");
     } else if (view === "locations") {
       setSelectedView("locations");
+    } else if (view === "sat") {
+      setSelectedView("sat");
     }
   };
 
@@ -58,6 +61,7 @@ export function ConfigContent() {
             <ConfigCard 
               title="Información Fiscal" 
               icon={InfoIcon} 
+              onClick={() => handleCardClick("sat")}
             />
           </div>
         </div>
@@ -97,6 +101,20 @@ export function ConfigContent() {
               </button>
               
               <LocationList />
+            </div>
+          )}
+
+          {selectedView === "sat" && (
+            <div className="flex flex-col gap-6">
+              <button 
+                onClick={handleBack}
+                className="self-start flex items-center gap-2 cursor-pointer text-slate-500 hover:text-sky-500 transition-colors px-4 py-2 rounded-full hover:bg-slate-100 dark:hover:bg-white/5"
+              >
+                <ArrowLeftIcon className="w-4 h-4" />
+                <span className="text-sm font-medium">Volver a configuración</span>
+              </button>
+              
+              <SatInfo />
             </div>
           )}
         </div>
