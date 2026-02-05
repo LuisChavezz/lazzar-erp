@@ -11,11 +11,11 @@ import { CheckCircleIcon } from "@/src/components/Icons";
 // Helper para renderizar booleanos
 const BooleanCell = ({ value }: { value: boolean }) => {
   return value ? (
-    <div className="flex pl-8">
+    <div className="flex justify-center">
       <CheckCircleIcon className="w-5 h-5 text-green-500" />
     </div>
   ) : (
-    <div className="flex pl-10">
+    <div className="flex justify-center">
       <span className="text-slate-300">-</span>
     </div>
   );
