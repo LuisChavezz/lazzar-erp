@@ -2,7 +2,7 @@ import axios from "axios";
 import { getSession, signOut } from "next-auth/react";
 
 const v1_api = axios.create({
-  baseURL: "http://192.168.0.104:8001",
+  baseURL: "http://192.168.0.15:8003/api/v1",
   headers: {
     "Content-Type": "application/json",
   },
