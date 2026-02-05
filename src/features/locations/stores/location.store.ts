@@ -46,6 +46,9 @@ export const useLocationStore = create<LocationState>()(
       {
         name: 'location-storage',
       }
-    )
+    ),
+    {
+      name: 'location-store',
+    }
   )
 );

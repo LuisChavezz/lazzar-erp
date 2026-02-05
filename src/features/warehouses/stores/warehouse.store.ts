@@ -46,6 +46,9 @@ export const useWarehouseStore = create<WarehouseState>()(
       {
         name: 'warehouse-storage',
       }
-    )
+    ),
+    {
+      name: 'warehouse-store',
+    }
   )
 );

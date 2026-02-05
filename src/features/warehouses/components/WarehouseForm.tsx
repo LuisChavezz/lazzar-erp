@@ -78,7 +78,7 @@ export default function WarehouseForm({ onSuccess }: WarehouseFormProps) {
         toast.success("Almacén actualizado exitosamente");
       } else {
         addWarehouse({
-          id: crypto.randomUUID(),
+          id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).substring(2),
           ...values,
         });
         toast.success("Almacén registrado exitosamente");
