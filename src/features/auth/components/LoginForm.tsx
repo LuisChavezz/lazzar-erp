@@ -16,28 +16,28 @@ export default function LoginForm() {
       </p>
       
       <div className="flex items-center mt-8 w-full bg-transparent border border-slate-300/60 dark:border-white/10 h-12 rounded-full overflow-hidden pl-6 gap-2 focus-within:border-sky-500 dark:focus-within:border-sky-500 transition-colors">
-        <EmailIcon className="fill-slate-500 dark:fill-slate-400 transition-colors" width="16" height="11" />
+        <EmailIcon className="fill-slate-500 dark:fill-slate-300 transition-colors" width="16" height="11" />
         <input
           type="email"
           name="email"
           value={formData.email}
           onChange={handleChange}
           placeholder="Correo electrónico"
-          className="bg-transparent text-slate-500/80 dark:text-slate-200 placeholder-slate-500/80 dark:placeholder-slate-500 outline-none text-sm w-full h-full transition-colors"
+          className="bg-transparent text-slate-500/80 dark:text-slate-200 placeholder-slate-500/80 dark:placeholder-slate-500 outline-none text-sm w-full h-full transition-colors [&:-webkit-autofill]:bg-transparent! [&:-webkit-autofill]:shadow-[0_0_0_1000px_transparent_inset]!"
           required
           disabled={loading}
         />
       </div>
 
       <div className="flex items-center mt-6 w-full bg-transparent border border-slate-300/60 dark:border-white/10 h-12 rounded-full overflow-hidden pl-6 gap-2 focus-within:border-sky-500 dark:focus-within:border-sky-500 transition-colors">
-        <LockIcon className="fill-slate-500 dark:fill-slate-400 transition-colors" width="13" height="17" />
+        <LockIcon className="fill-slate-500 dark:fill-slate-300 transition-colors" width="13" height="17" />
         <input
           type="password"
           name="password"
           value={formData.password}
           onChange={handleChange}
           placeholder="Contraseña"
-          className="bg-transparent text-slate-500/80 dark:text-slate-200 placeholder-slate-500/80 dark:placeholder-slate-500 outline-none text-sm w-full h-full transition-colors"
+          className="bg-transparent text-slate-500/80 dark:text-slate-200 placeholder-slate-500/80 dark:placeholder-slate-500 outline-none text-sm w-full h-full transition-colors [&:-webkit-autofill]:bg-transparent! [&:-webkit-autofill]:shadow-[0_0_0_1000px_transparent_inset]!"
           required
           disabled={loading}
         />
