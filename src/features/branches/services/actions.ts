@@ -1,4 +1,5 @@
 import { Branch } from "../interfaces/branch.interface";
+import { BranchFormValues } from "../schemas/branch.schema";
 import { v1_api } from "@/src/api/v1.api";
 
 
@@ -10,6 +11,12 @@ export const getBranches = async (): Promise<Branch[]> => {
 
 export const getCompanyBranches = async (companyId: number): Promise<Branch[]> => {
   const response = await v1_api.get(`/nucleo/mis-sucursales/?empresa_id=${companyId}`);
+
+  return response.data;
+};
+
+export const createBranch = async (branch: BranchFormValues & { empresa: number }): Promise<Branch> => {
+  const response = await v1_api.post("/nucleo/sucursales/", branch);
 
   return response.data;
 };
