@@ -11,7 +11,10 @@ const v1_api = axios.create({
 // Interceptor para inyectar el token en cada petición
 v1_api.interceptors.request.use(async (config) => {
   // Omitir inyección de token en endpoint de login
-  if (config.url?.includes("/login/")) {
+  if (
+    config.url?.includes("/login/") || 
+    config.url?.includes("/register/")
+  ){
     return config;
   }
 

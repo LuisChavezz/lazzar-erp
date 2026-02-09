@@ -2,11 +2,6 @@ import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 import { authOptions } from "@/src/lib/auth";
 
-export const metadata = {
-  title: "Login",
-  description: "Login to your account",
-};
-
 export default async function AuthLayout({
   children,
 }: Readonly<{

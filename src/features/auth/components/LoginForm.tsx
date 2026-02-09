@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { EmailIcon, LockIcon, LoadingSpinnerIcon } from "../../../components/Icons";
 import { useLogin } from "../hooks/useLogin";
 
@@ -72,12 +73,12 @@ export default function LoginForm() {
         )}
       </button>
 
-      {/* <p className="text-slate-500/90 dark:text-slate-400 text-sm mt-4 transition-colors">
+      <p className="text-slate-500/90 dark:text-slate-400 text-sm mt-4 transition-colors">
         ¿No tienes una cuenta?{" "}
-        <a className="text-sky-400 hover:underline" href="#">
+        <Link className="text-sky-400 hover:underline" href="/auth/register">
           Regístrate
-        </a>
-      </p> */}
+        </Link>
+      </p>
     </form>
   );
 }

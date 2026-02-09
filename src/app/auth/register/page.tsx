@@ -1,13 +1,13 @@
-import LoginForm from "@/src/features/auth/components/LoginForm";
+import RegisterForm from "@/src/features/auth/components/RegisterForm";
 import Image from "next/image";
 import { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Iniciar Sesión",
-  description: "Ingresa a tu cuenta para continuar",
+  title: "Registro",
+  description: "Crea una nueva cuenta para empezar",
 };
 
-export default function LoginPage() {
+export default function RegisterPage() {
   return (
     <div className="relative z-10 flex h-175 w-full max-w-300 bg-white/80 dark:bg-black/60 backdrop-blur-2xl border border-slate-200 dark:border-white/5 shadow-2xl rounded-2xl overflow-hidden transition-all duration-300">
       <div className="relative hidden md:block w-full h-full">
@@ -22,7 +22,7 @@ export default function LoginPage() {
         />
       </div>
       <div className="w-full flex flex-col items-center justify-center p-8">
-        <LoginForm />
+        <RegisterForm />
       </div>
     </div>
   );
