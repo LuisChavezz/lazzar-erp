@@ -5,6 +5,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { getCompanies } from "@/src/features/companies/services/actions";
 import { getBranches } from "@/src/features/branches/services/actions";
 import { getCurrencies } from "@/src/features/currency/services/actions";
+import { getRoles } from "@/src/features/roles/services/actions";
 import { 
   BuildingIcon, 
   MapPinIcon, 
@@ -23,6 +24,7 @@ import { SatInfo } from "@/src/features/sat/components/SatInfo";
 import CompanyList from "@/src/features/companies/components/CompanyList";
 import BranchList from "@/src/features/branches/components/BranchList";
 import CurrencyList from "@/src/features/currency/components/CurrencyList";
+import RoleList from "@/src/features/roles/components/RoleList";
 
 export function ConfigContent() {
   const queryClient = useQueryClient();
@@ -107,6 +109,12 @@ export function ConfigContent() {
               description="Configuración de roles y permisos"
               icon={LockIcon}
               onClick={() => handleCardClick("roles")}
+              onMouseEnter={() => {
+                queryClient.prefetchQuery({
+                  queryKey: ["roles"],
+                  queryFn: getRoles,
+                });
+              }}
             />
             <ConfigCard 
               title="Monedas" 
@@ -187,10 +195,7 @@ export function ConfigContent() {
           {selectedView === "roles" && (
             <div className="flex flex-col gap-6">
               {renderBackButton()}
-              <div className="p-6 bg-white dark:bg-zinc-900/50 rounded-3xl border border-slate-200 dark:border-white/10">
-                <h2 className="text-xl font-semibold mb-4">Gestión de Roles</h2>
-                <p className="text-slate-500">Próximamente: Contenido de roles.</p>
-              </div>
+              <RoleList />
             </div>
           )}
 
