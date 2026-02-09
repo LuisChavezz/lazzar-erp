@@ -1,8 +1,4 @@
-export interface Branch {
-  id: number;
-  nombre: string;
-  codigo: string;
-}
+import { Branch } from "../../branches/interfaces/branch.interface";
 
 export interface Company {
   id: number;

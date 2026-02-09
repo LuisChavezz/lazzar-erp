@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useWorkspaceStore } from "../store/workspace.store";
 import { useMyCompanies } from "@/src/features/companies/hooks/useMyCompanies";
-import { useBranches } from "@/src/features/companies/hooks/useBranches";
+import { useBranches } from "@/src/features/branches/hooks/useBranches";
 
 export const useWorkspace = () => {
   const router = useRouter();

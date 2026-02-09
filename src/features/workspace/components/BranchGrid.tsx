@@ -1,6 +1,6 @@
 import { ArrowLeftIcon, MapPinIcon } from "@/src/components/Icons";
 import { Loader } from "@/src/components/Loader";
-import { Branch } from "@/src/features/companies/interfaces/company.interface";
+import { Branch } from "@/src/features/branches/interfaces/branch.interface";
 import NoBranchesState from "./NoBranchesState";
 
 interface BranchGridProps {

@@ -1,4 +1,5 @@
-import { Branch, Company } from "../interfaces/company.interface";
+import { Company } from "../interfaces/company.interface";
+import { Branch } from "../../branches/interfaces/branch.interface";
 import { CompanyFormValues } from "../schemas/companies.schema";
 import { v1_api } from "@/src/api/v1.api";
 
@@ -17,12 +18,6 @@ export const getCompanies = async (): Promise<Company[]> => {
 
 export const getMyCompanies = async (): Promise<Company[]> => {
   const response = await v1_api.get("/nucleo/mis-empresas/");
-
-  return response.data;
-};
-
-export const getCompanyBranches = async (companyId: number): Promise<Branch[]> => {
-  const response = await v1_api.get(`/nucleo/mis-sucursales/?empresa_id=${companyId}`);
 
   return response.data;
 };

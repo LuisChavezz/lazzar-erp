@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { devtools, persist } from "zustand/middleware";
-import { Branch, Company } from "../../companies/interfaces/company.interface";
+import { Company } from "../../companies/interfaces/company.interface";
+import { Branch } from "../../branches/interfaces/branch.interface";
 
 
 interface WorkspaceState {
