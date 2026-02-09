@@ -22,7 +22,7 @@ export const roleColumns: ColumnDef<Role>[] = [
           {row.getValue("nombre")}
         </span>
         {row.original.descripcion && (
-          <span className="text-xs text-slate-500 truncate max-w-[300px]">
+          <span className="text-xs text-slate-500 truncate max-w-75">
             {row.original.descripcion}
           </span>
         )}

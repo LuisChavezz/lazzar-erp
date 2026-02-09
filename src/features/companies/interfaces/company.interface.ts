@@ -17,3 +17,12 @@ export interface Company {
   logo_url: string;
   sucursales?: Branch[]; 
 }
+
+export interface RegisterCompanyResponseErrors {
+  codigo?: string[];
+  razon_social?: string[];
+  moneda_base?: string[];
+  timezone?: string[];
+  idioma?: string[];
+  estatus?: string[];
+}

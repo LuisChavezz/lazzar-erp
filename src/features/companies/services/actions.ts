@@ -1,5 +1,4 @@
 import { Company } from "../interfaces/company.interface";
-import { Branch } from "../../branches/interfaces/branch.interface";
 import { CompanyFormValues } from "../schemas/companies.schema";
 import { v1_api } from "@/src/api/v1.api";
 

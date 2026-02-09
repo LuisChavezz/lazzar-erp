@@ -2,6 +2,47 @@
 
 import { ColumnDef } from "@tanstack/react-table";
 import { Company } from "../interfaces/company.interface";
+import { EditIcon, DeleteIcon } from "../../../components/Icons";
+import { ConfirmDialog } from "../../../components/ConfirmDialog";
+
+// Componente para renderizar las acciones de editar y eliminar (sin funcionalidad por ahora)
+const ActionsCell = ({ company }: { company: Company }) => {
+  const handleEdit = () => {
+    // TODO: Implement edit functionality
+    console.log("Edit company", company);
+  };
+
+  const handleDelete = () => {
+    // TODO: Implement delete functionality
+    console.log("Delete company", company);
+  };
+
+  return (
+    <div className="flex items-center justify-center gap-2">
+      <button
+        className="p-1 cursor-pointer text-slate-400 hover:text-blue-600 transition-colors"
+        title="Editar"
+        onClick={handleEdit}
+      >
+        <EditIcon className="w-5 h-5" />
+      </button>
+      <ConfirmDialog
+        title="Eliminar Empresa"
+        description="¿Estás seguro de que deseas eliminar esta empresa? Esta acción no se puede deshacer."
+        onConfirm={handleDelete}
+        confirmColor="red"
+        trigger={
+          <button
+            className="p-1 cursor-pointer text-slate-400 hover:text-red-600 transition-colors"
+            title="Eliminar"
+          >
+            <DeleteIcon className="w-5 h-5" />
+          </button>
+        }
+      />
+    </div>
+  );
+};
 
 export const companyColumns: ColumnDef<Company>[] = [
   {
@@ -71,5 +112,10 @@ export const companyColumns: ColumnDef<Company>[] = [
         </span>
       );
     },
+  },
+  {
+    id: "actions",
+    header: () => <div className="text-center">Acciones</div>,
+    cell: ({ row }) => <ActionsCell company={row.original} />,
   },
 ];
