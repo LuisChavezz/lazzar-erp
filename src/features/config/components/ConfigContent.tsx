@@ -6,6 +6,7 @@ import { getCompanies } from "@/src/features/companies/services/actions";
 import { getBranches } from "@/src/features/branches/services/actions";
 import { getCurrencies } from "@/src/features/currency/services/actions";
 import { getRoles } from "@/src/features/roles/services/actions";
+import { getUsers } from "@/src/features/users/services/actions";
 import { 
   BuildingIcon, 
   MapPinIcon, 
@@ -25,6 +26,7 @@ import CompanyList from "@/src/features/companies/components/CompanyList";
 import BranchList from "@/src/features/branches/components/BranchList";
 import CurrencyList from "@/src/features/currency/components/CurrencyList";
 import RoleList from "@/src/features/roles/components/RoleList";
+import UserList from "@/src/features/users/components/UserList";
 
 export function ConfigContent() {
   const queryClient = useQueryClient();
@@ -103,6 +105,12 @@ export function ConfigContent() {
               description="Administración de usuarios y accesos"
               icon={CapitalHumanoIcon}
               onClick={() => handleCardClick("users")}
+              onMouseEnter={() => {
+                queryClient.prefetchQuery({
+                  queryKey: ["users"],
+                  queryFn: getUsers,
+                });
+              }}
             />
             <ConfigCard 
               title="Roles" 
@@ -185,10 +193,7 @@ export function ConfigContent() {
           {selectedView === "users" && (
             <div className="flex flex-col gap-6">
               {renderBackButton()}
-              <div className="p-6 bg-white dark:bg-zinc-900/50 rounded-3xl border border-slate-200 dark:border-white/10">
-                <h2 className="text-xl font-semibold mb-4">Gestión de Usuarios</h2>
-                <p className="text-slate-500">Próximamente: Contenido de usuarios.</p>
-              </div>
+              <UserList />
             </div>
           )}
 
