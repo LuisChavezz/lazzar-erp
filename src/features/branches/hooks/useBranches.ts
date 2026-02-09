@@ -1,16 +1,15 @@
 import { useQuery } from "@tanstack/react-query";
-import { getCompanyBranches } from "../services/actions";
+import { getBranches } from "../services/actions";
 
-export const useBranches = (companyId: number | null | undefined) => {
+export const useBranches = () => {
   const {
     data: branches = [],
     isLoading,
     isError,
     error,
   } = useQuery({
-    queryKey: ["branches", companyId],
-    queryFn: () => getCompanyBranches(companyId!),
-    enabled: !!companyId,
+    queryKey: ["branches"],
+    queryFn: getBranches,
   });
 
   return {

@@ -4,7 +4,8 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useWorkspaceStore } from "../store/workspace.store";
 import { useMyCompanies } from "@/src/features/companies/hooks/useMyCompanies";
-import { useBranches } from "@/src/features/branches/hooks/useBranches";
+import { useCompanyBranches } from "../../branches/hooks/useCompanyBranches";
+
 
 export const useWorkspace = () => {
   const router = useRouter();
@@ -14,7 +15,7 @@ export const useWorkspace = () => {
   const [isLoading, setIsLoading] = useState(false); // Indicador de carga para la selección de sucursal
 
   // Fetch branches based on selected company (custom hook)
-  const { branches: availableBranches, isLoading: branchesLoading } = useBranches(selectedCompanyId);
+  const { branches: availableBranches, isLoading: branchesLoading } = useCompanyBranches(selectedCompanyId);
 
   // Handle company selection
   const handleCompanySelect = (companyId: number) => {

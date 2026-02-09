@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { getCompanies } from "@/src/features/companies/services/actions";
+import { getBranches } from "@/src/features/branches/services/actions";
 import { 
   BuildingIcon, 
   MapPinIcon, 
@@ -19,6 +20,7 @@ import WarehouseList from "@/src/features/warehouses/components/WarehouseList";
 import LocationList from "@/src/features/locations/components/LocationList";
 import { SatInfo } from "@/src/features/sat/components/SatInfo";
 import CompanyList from "@/src/features/companies/components/CompanyList";
+import BranchList from "@/src/features/branches/components/BranchList";
 
 export function ConfigContent() {
   const queryClient = useQueryClient();
@@ -73,6 +75,12 @@ export function ConfigContent() {
               description="Gestión de sucursales operativas"
               icon={BuildingIcon}
               onClick={() => handleCardClick("branches")}
+              onMouseEnter={() => {
+                queryClient.prefetchQuery({
+                  queryKey: ["branches"],
+                  queryFn: getBranches,
+                });
+              }}
             />
             <ConfigCard 
               title="Almacenes" 
@@ -154,10 +162,7 @@ export function ConfigContent() {
           {selectedView === "branches" && (
             <div className="flex flex-col gap-6">
               {renderBackButton()}
-              <div className="p-6 bg-white dark:bg-zinc-900/50 rounded-3xl border border-slate-200 dark:border-white/10">
-                <h2 className="text-xl font-semibold mb-4">Gestión de Sucursales</h2>
-                <p className="text-slate-500">Próximamente: Contenido de sucursales.</p>
-              </div>
+              <BranchList />
             </div>
           )}
 
