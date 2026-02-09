@@ -108,15 +108,15 @@ export function DataTable<TData, TValue>({
 
   return (
     <div>
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-8">
         {title && (
           <h2 className="text-2xl font-bold text-slate-900 dark:text-white">
             {title}
           </h2>
         )}
 
-        <div className="flex items-center gap-4 w-full md:w-auto">
-          <div className="relative flex-1 md:w-64">
+        <div className="flex flex-col sm:flex-row gap-4 w-full lg:w-auto">
+          <div className="relative w-full sm:w-64">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
               <SearchIcon className="h-5 w-5" />
             </div>
@@ -129,7 +129,8 @@ export function DataTable<TData, TValue>({
             />
           </div>
 
-          <div className="relative">
+          <div className="flex items-center justify-end gap-4 w-full sm:w-auto">
+            <div className="relative">
             <button
               ref={columnsBtnRef}
               onClick={() => setIsColumnsOpen(!isColumnsOpen)}
@@ -183,7 +184,8 @@ export function DataTable<TData, TValue>({
             )}
           </div>
 
-          {actionButton}
+            {actionButton}
+          </div>
         </div>
       </div>
 
