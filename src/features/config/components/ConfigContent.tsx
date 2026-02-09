@@ -1,36 +1,46 @@
 "use client";
 
 import { useState } from "react";
-import { BuildingIcon, MapPinIcon, InfoIcon, ArrowLeftIcon } from "@/src/components/Icons";
+import { useQueryClient } from "@tanstack/react-query";
+import { getCompanies } from "@/src/features/companies/services/actions";
+import { 
+  BuildingIcon, 
+  MapPinIcon, 
+  InfoIcon, 
+  ArrowLeftIcon,
+  BancosIcon,
+  CapitalHumanoIcon,
+  LockIcon,
+  ListaPreciosIcon,
+  InventariosIcon
+} from "@/src/components/Icons";
 import { ConfigCard } from "./ConfigCard";
 import WarehouseList from "@/src/features/warehouses/components/WarehouseList";
-import { useWarehouseStore } from "../../warehouses/stores/warehouse.store";
 import LocationList from "@/src/features/locations/components/LocationList";
-import { useLocationStore } from "../../locations/stores/location.store";
 import { SatInfo } from "@/src/features/sat/components/SatInfo";
+import CompanyList from "@/src/features/companies/components/CompanyList";
 
 export function ConfigContent() {
-
-  // Obtener la cantidad de almacenes del store
-  const warehousesCount = useWarehouseStore((state) => state.warehouses.length);
-  // Obtener la cantidad de ubicaciones del store
-  const locationsCount = useLocationStore((state) => state.locations.length);
-
+  const queryClient = useQueryClient();
   const [selectedView, setSelectedView] = useState<string | null>(null);
 
   const handleCardClick = (view: string) => {
-    if (view === "warehouses") {
-      setSelectedView("warehouses");
-    } else if (view === "locations") {
-      setSelectedView("locations");
-    } else if (view === "sat") {
-      setSelectedView("sat");
-    }
+    setSelectedView(view);
   };
 
   const handleBack = () => {
     setSelectedView(null);
   };
+
+  const renderBackButton = () => (
+    <button 
+      onClick={handleBack}
+      className="self-start flex items-center gap-2 cursor-pointer text-slate-500 hover:text-sky-500 transition-colors px-4 py-2 rounded-full hover:bg-slate-100 dark:hover:bg-white/5"
+    >
+      <ArrowLeftIcon className="w-4 h-4" />
+      <span className="text-sm font-medium">Volver a configuración</span>
+    </button>
+  );
 
   return (
     <>
@@ -47,16 +57,52 @@ export function ConfigContent() {
         >
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             <ConfigCard 
-              title="Almacenes" 
-              count={warehousesCount} 
+              title="Empresas" 
+              description="Gestión de empresas del sistema"
+              icon={BancosIcon}
+              onClick={() => handleCardClick("companies")}
+              onMouseEnter={() => {
+                queryClient.prefetchQuery({
+                  queryKey: ["companies"],
+                  queryFn: getCompanies,
+                });
+              }}
+            />
+            <ConfigCard 
+              title="Sucursales" 
+              description="Gestión de sucursales operativas"
               icon={BuildingIcon}
+              onClick={() => handleCardClick("branches")}
+            />
+            <ConfigCard 
+              title="Almacenes" 
+              description="Gestión de almacenes e inventarios" 
+              icon={InventariosIcon}
               onClick={() => handleCardClick("warehouses")}
             />
             <ConfigCard 
               title="Ubicaciones" 
-              count={locationsCount} 
+              description="Gestión de ubicaciones físicas" 
               icon={MapPinIcon}
               onClick={() => handleCardClick("locations")}
+            />
+            <ConfigCard 
+              title="Usuarios" 
+              description="Administración de usuarios y accesos"
+              icon={CapitalHumanoIcon}
+              onClick={() => handleCardClick("users")}
+            />
+            <ConfigCard 
+              title="Roles" 
+              description="Configuración de roles y permisos"
+              icon={LockIcon}
+              onClick={() => handleCardClick("roles")}
+            />
+            <ConfigCard 
+              title="Monedas" 
+              description="Catálogo de monedas y tipos de cambio"
+              icon={ListaPreciosIcon}
+              onClick={() => handleCardClick("currencies")}
             />
             <ConfigCard 
               title="Información Fiscal" 
@@ -78,45 +124,73 @@ export function ConfigContent() {
         >
           {selectedView === "warehouses" && (
             <div className="flex flex-col gap-6">
-              <button 
-                onClick={handleBack}
-                className="self-start flex items-center gap-2 cursor-pointer text-slate-500 hover:text-sky-500 transition-colors px-4 py-2 rounded-full hover:bg-slate-100 dark:hover:bg-white/5"
-              >
-                <ArrowLeftIcon className="w-4 h-4" />
-                <span className="text-sm font-medium">Volver a configuración</span>
-              </button>
-              
+              {renderBackButton()}
               <WarehouseList />
             </div>
           )}
 
           {selectedView === "locations" && (
             <div className="flex flex-col gap-6">
-              <button 
-                onClick={handleBack}
-                className="self-start flex items-center gap-2 cursor-pointer text-slate-500 hover:text-sky-500 transition-colors px-4 py-2 rounded-full hover:bg-slate-100 dark:hover:bg-white/5"
-              >
-                <ArrowLeftIcon className="w-4 h-4" />
-                <span className="text-sm font-medium">Volver a configuración</span>
-              </button>
-              
+              {renderBackButton()}
               <LocationList />
             </div>
           )}
 
           {selectedView === "sat" && (
             <div className="flex flex-col gap-6">
-              <button 
-                onClick={handleBack}
-                className="self-start flex items-center gap-2 cursor-pointer text-slate-500 hover:text-sky-500 transition-colors px-4 py-2 rounded-full hover:bg-slate-100 dark:hover:bg-white/5"
-              >
-                <ArrowLeftIcon className="w-4 h-4" />
-                <span className="text-sm font-medium">Volver a configuración</span>
-              </button>
-              
+              {renderBackButton()}
               <SatInfo />
             </div>
           )}
+
+          {/* New Views Placeholders */}
+          {selectedView === "companies" && (
+            <div className="flex flex-col gap-6">
+              {renderBackButton()}
+              <CompanyList />
+            </div>
+          )}
+
+          {selectedView === "branches" && (
+            <div className="flex flex-col gap-6">
+              {renderBackButton()}
+              <div className="p-6 bg-white dark:bg-zinc-900/50 rounded-3xl border border-slate-200 dark:border-white/10">
+                <h2 className="text-xl font-semibold mb-4">Gestión de Sucursales</h2>
+                <p className="text-slate-500">Próximamente: Contenido de sucursales.</p>
+              </div>
+            </div>
+          )}
+
+          {selectedView === "users" && (
+            <div className="flex flex-col gap-6">
+              {renderBackButton()}
+              <div className="p-6 bg-white dark:bg-zinc-900/50 rounded-3xl border border-slate-200 dark:border-white/10">
+                <h2 className="text-xl font-semibold mb-4">Gestión de Usuarios</h2>
+                <p className="text-slate-500">Próximamente: Contenido de usuarios.</p>
+              </div>
+            </div>
+          )}
+
+          {selectedView === "roles" && (
+            <div className="flex flex-col gap-6">
+              {renderBackButton()}
+              <div className="p-6 bg-white dark:bg-zinc-900/50 rounded-3xl border border-slate-200 dark:border-white/10">
+                <h2 className="text-xl font-semibold mb-4">Gestión de Roles</h2>
+                <p className="text-slate-500">Próximamente: Contenido de roles.</p>
+              </div>
+            </div>
+          )}
+
+          {selectedView === "currencies" && (
+            <div className="flex flex-col gap-6">
+              {renderBackButton()}
+              <div className="p-6 bg-white dark:bg-zinc-900/50 rounded-3xl border border-slate-200 dark:border-white/10">
+                <h2 className="text-xl font-semibold mb-4">Gestión de Monedas</h2>
+                <p className="text-slate-500">Próximamente: Contenido de monedas.</p>
+              </div>
+            </div>
+          )}
+
         </div>
       </div>
     </>

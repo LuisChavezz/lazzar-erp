@@ -9,6 +9,12 @@ export const registerCompany = async (values: CompanyFormValues) => {
   return response.data;
 };
 
+export const getCompanies = async (): Promise<Company[]> => {
+  const response = await v1_api.get("/nucleo/empresas/");
+
+  return response.data;
+};
+
 export const getMyCompanies = async (): Promise<Company[]> => {
   const response = await v1_api.get("/nucleo/mis-empresas/");
 
