@@ -2,6 +2,68 @@
 
 import { ColumnDef } from "@tanstack/react-table";
 import { Branch } from "../interfaces/branch.interface";
+import { EditIcon, DeleteIcon, ViewIcon } from "../../../components/Icons";
+import { MainDialog } from "@/src/components/MainDialog";
+import { BranchDetails } from "./BranchDetails";
+import { useState } from "react";
+
+const ActionsCell = ({ branch }: { branch: Branch }) => {
+  const [isViewOpen, setIsViewOpen] = useState(false);
+
+  return (
+    <div className="flex items-center justify-center gap-2">
+      <MainDialog
+        open={isViewOpen}
+        onOpenChange={setIsViewOpen}
+        maxWidth="1000px"
+        title={
+          <div className="flex items-center gap-4 pb-4 border-b border-slate-200 dark:border-white/10 mb-4">
+            <div>
+              <h1 className="text-xl font-bold text-slate-900 dark:text-white font-display tracking-tight">
+                Detalles de Sucursal
+              </h1>
+              <div className="flex items-center gap-2">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-500"></span>
+                </span>
+                <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                  Información Completa
+                </p>
+              </div>
+            </div>
+          </div>
+        }
+        trigger={
+          <button
+            className="p-1 cursor-pointer text-slate-400 hover:text-indigo-600 transition-colors"
+            title="Ver Detalles"
+          >
+            <ViewIcon className="w-5 h-5" />
+          </button>
+        }
+      >
+        <BranchDetails branch={branch} />
+      </MainDialog>
+
+      <button
+        className="p-1 cursor-pointer text-slate-400 hover:text-blue-600 transition-colors"
+        title="Editar (Próximamente)"
+        onClick={() => console.log("Edit branch", branch)}
+      >
+        <EditIcon className="w-5 h-5" />
+      </button>
+
+      <button
+        className="p-1 cursor-pointer text-slate-400 hover:text-red-600 transition-colors"
+        title="Eliminar (Próximamente)"
+        onClick={() => console.log("Delete branch", branch)}
+      >
+        <DeleteIcon className="w-5 h-5" />
+      </button>
+    </div>
+  );
+};
 
 export const branchColumns: ColumnDef<Branch>[] = [
   {
@@ -69,5 +131,10 @@ export const branchColumns: ColumnDef<Branch>[] = [
         </span>
       );
     },
+  },
+  {
+    id: "actions",
+    header: () => <div className="text-center">Acciones</div>,
+    cell: ({ row }) => <ActionsCell branch={row.original} />,
   },
 ];
