@@ -27,7 +27,7 @@ export const useWorkspace = () => {
     setIsLoading(true);
     
     // Guardar selección en el store
-    const selectedCompany = companies.find(c => c.id === selectedCompanyId);
+    const selectedCompany = companies.find(c => c.id_empresa === selectedCompanyId);
     const selectedBranch = availableBranches.find(b => b.id === branchId);
     
     // Guardar en el store y redirigir si ambos están disponibles
@@ -51,7 +51,7 @@ export const useWorkspace = () => {
   const handleContinueWithoutBranch = () => {
      setIsLoading(true);
      
-     const selectedCompany = companies.find(c => c.id === selectedCompanyId);
+     const selectedCompany = companies.find(c => c.id_empresa === selectedCompanyId);
 
      // Guardar en el store y redirigir si la empresa está disponible
      if (selectedCompany) {
