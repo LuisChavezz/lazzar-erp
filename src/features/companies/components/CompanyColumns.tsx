@@ -2,14 +2,16 @@
 
 import { ColumnDef } from "@tanstack/react-table";
 import { Company } from "../interfaces/company.interface";
-import { EditIcon, DeleteIcon } from "../../../components/Icons";
+import { EditIcon, DeleteIcon, ViewIcon } from "../../../components/Icons";
 import { ConfirmDialog } from "../../../components/ConfirmDialog";
 import { MainDialog } from "@/src/components/MainDialog";
 import CompanyForm from "./CompanyForm";
+import { CompanyDetails } from "./CompanyDetails";
 import { useState } from "react";
 
 // Componente para renderizar las acciones de editar y eliminar
 const ActionsCell = ({ company }: { company: Company }) => {
+  const [isViewOpen, setIsViewOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
 
   const handleDelete = () => {
@@ -19,6 +21,40 @@ const ActionsCell = ({ company }: { company: Company }) => {
 
   return (
     <div className="flex items-center justify-center gap-2">
+      <MainDialog
+        open={isViewOpen}
+        onOpenChange={setIsViewOpen}
+        maxWidth="1000px"
+        title={
+          <div className="flex items-center gap-4 pb-4 border-b border-slate-200 dark:border-white/10 mb-4">
+            <div>
+              <h1 className="text-xl font-bold text-slate-900 dark:text-white font-display tracking-tight">
+                Detalles de Empresa
+              </h1>
+              <div className="flex items-center gap-2">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-500"></span>
+                </span>
+                <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                  Información Completa
+                </p>
+              </div>
+            </div>
+          </div>
+        }
+        trigger={
+          <button
+            className="p-1 cursor-pointer text-slate-400 hover:text-indigo-600 transition-colors"
+            title="Ver Detalles"
+          >
+            <ViewIcon className="w-5 h-5" />
+          </button>
+        }
+      >
+        <CompanyDetails company={company} />
+      </MainDialog>
+
       <MainDialog
         open={isEditOpen}
         onOpenChange={setIsEditOpen}
