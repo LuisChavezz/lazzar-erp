@@ -1,4 +1,5 @@
 import { Company } from "../interfaces/company.interface";
+import Image from "next/image";
 
 interface CompanyDetailsProps {
   company: Company;
@@ -10,11 +11,13 @@ export const CompanyDetails = ({ company }: CompanyDetailsProps) => {
       {/* Header Section with Logo and Basic Info */}
       <div className="flex flex-col md:flex-row gap-6 items-start">
         {company.logo_url && (
-          <div className="w-32 h-32 flex-shrink-0 rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden bg-white flex items-center justify-center p-2">
-            <img
+          <div className="relative w-32 h-32 shrink-0 rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden bg-white">
+            <Image
               src={company.logo_url}
               alt={`Logo de ${company.razon_social}`}
-              className="max-w-full max-h-full object-contain"
+              fill
+              className="object-contain p-2"
+              sizes="(max-width: 768px) 100vw, 128px"
             />
           </div>
         )}
