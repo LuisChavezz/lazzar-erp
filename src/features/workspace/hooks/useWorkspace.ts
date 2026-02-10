@@ -33,6 +33,7 @@ export const useWorkspace = () => {
     // Guardar en el store y redirigir si ambos están disponibles
     if (selectedCompany && selectedBranch) {  
       setWorkspace(selectedCompany, selectedBranch);
+      document.cookie = "erp_workspace_id=true; path=/; max-age=86400; SameSite=Lax";
     }
 
     // Redirigir a dashboard después de 1 segundo para consistencia visual
@@ -55,6 +56,7 @@ export const useWorkspace = () => {
      // Guardar en el store y redirigir si la empresa está disponible
      if (selectedCompany) {
        setWorkspace(selectedCompany);
+       document.cookie = "erp_workspace_id=true; path=/; max-age=86400; SameSite=Lax";
      }
      
      // Redirigir a dashboard después de 1 segundo para consistencia visual
