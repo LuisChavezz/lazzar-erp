@@ -27,12 +27,15 @@ export const useWorkspace = () => {
     setIsLoading(true);
     
     // Guardar selección en el store
-    const selectedCompany = companies.find(c => c.id_empresa === selectedCompanyId);
+    const selectedCompany = companies.find(c => c.id === selectedCompanyId);
     const selectedBranch = availableBranches.find(b => b.id === branchId);
     
     // Guardar en el store y redirigir si ambos están disponibles
     if (selectedCompany && selectedBranch) {  
       setWorkspace(selectedCompany, selectedBranch);
+    }
+
+    if (selectedCompany) {
       document.cookie = "erp_workspace_id=true; path=/; max-age=86400; SameSite=Lax";
     }
 
@@ -49,18 +52,22 @@ export const useWorkspace = () => {
 
   // Handle continue without branch selection
   const handleContinueWithoutBranch = () => {
-     setIsLoading(true);
-     
-     const selectedCompany = companies.find(c => c.id_empresa === selectedCompanyId);
+     const selectedCompany = companies.find(c => c.id === selectedCompanyId);
 
-     // Guardar en el store y redirigir si la empresa está disponible
-     if (selectedCompany) {
-       setWorkspace(selectedCompany);
-       document.cookie = "erp_workspace_id=true; path=/; max-age=86400; SameSite=Lax";
+     if (!selectedCompany) {
+       console.error("Selected company not found");
+       return;
      }
+
+     setIsLoading(true);
+
+     // Guardar en el store y establecer cookie
+     setWorkspace(selectedCompany);
+     document.cookie = "erp_workspace_id=true; path=/; max-age=86400; SameSite=Lax";
      
      // Redirigir a dashboard después de 1 segundo para consistencia visual
      setTimeout(() => {
+       router.refresh();
        router.push("/dashboard");
      }, 800);
   };

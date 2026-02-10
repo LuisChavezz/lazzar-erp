@@ -28,7 +28,7 @@ export default function CompanyGrid({
       {companies.map((company) => (
         <button
           key={company.id}
-          onClick={() => onSelect(company.id)}
+          onClick={() => onSelect(company.id!)}
           className="group relative cursor-pointer bg-white dark:bg-zinc-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 hover:border-sky-500 dark:hover:border-sky-500 hover:shadow-xl hover:shadow-sky-500/10 transition-all duration-300 text-left"
         >
           <div className="flex items-start justify-between mb-4">

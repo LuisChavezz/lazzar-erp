@@ -24,7 +24,6 @@ export const config = {
     "/",
     "/dashboard/:path*", 
     "/select-branch/:path*",
-    "/company-registration/:path*", // ! Eliminar page
     "/config/:path*"
   ],
 };

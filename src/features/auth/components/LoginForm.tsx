@@ -23,7 +23,7 @@ export default function LoginForm() {
           value={formData.email}
           onChange={handleChange}
           placeholder="Correo electrónico"
-          className="bg-transparent text-slate-500/80 dark:text-slate-200 placeholder-slate-500/80 dark:placeholder-slate-500 outline-none text-sm w-full h-full transition-colors"
+          className="bg-transparent text-slate-500/80 dark:text-slate-200 placeholder-slate-500/80 dark:placeholder-slate-500 outline-none text-sm w-full h-full transition-colors [--input-current-color:var(--color-slate-900)] dark:[--input-current-color:white]"
           required
           disabled={loading}
         />
