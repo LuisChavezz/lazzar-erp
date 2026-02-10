@@ -50,15 +50,13 @@ h3,
   scrollbar-width: none; /* Firefox */
 }
 
-/* Override WebKit Autofill style */
 input:-webkit-autofill,
 input:-webkit-autofill:hover,
 input:-webkit-autofill:focus,
 input:-webkit-autofill:active {
-  -webkit-text-fill-color: var(--foreground) !important;
-  /* Use box-shadow to override background color */
-  -webkit-box-shadow: 0 0 0 1000px var(--input-bg, #ffffff) inset !important;
-  /* Keep transition as fallback */
+  -webkit-text-fill-color: var(--input-current-color, currentColor) !important;
+  caret-color: var(--input-current-color, currentColor) !important;
+  -webkit-box-shadow: 0 0 0 1000px transparent inset !important;
   transition: background-color 5000s ease-in-out 0s !important;
   background-color: transparent !important;
 }

@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { EmailIcon, LockIcon, LoadingSpinnerIcon } from "../../../components/Icons";
 import { useLogin } from "../hooks/useLogin";
 
@@ -24,7 +23,7 @@ export default function LoginForm() {
           value={formData.email}
           onChange={handleChange}
           placeholder="Correo electrónico"
-          className="bg-transparent text-slate-500/80 dark:text-slate-200 placeholder-slate-500/80 dark:placeholder-slate-500 outline-none text-sm w-full h-full transition-colors [&:-webkit-autofill]:bg-transparent! [&:-webkit-autofill]:shadow-[0_0_0_1000px_transparent_inset]!"
+          className="bg-transparent text-slate-500/80 dark:text-slate-200 placeholder-slate-500/80 dark:placeholder-slate-500 outline-none text-sm w-full h-full transition-colors"
           required
           disabled={loading}
         />
@@ -38,7 +37,7 @@ export default function LoginForm() {
           value={formData.password}
           onChange={handleChange}
           placeholder="Contraseña"
-          className="bg-transparent text-slate-500/80 dark:text-slate-200 placeholder-slate-500/80 dark:placeholder-slate-500 outline-none text-sm w-full h-full transition-colors [&:-webkit-autofill]:bg-transparent! [&:-webkit-autofill]:shadow-[0_0_0_1000px_transparent_inset]!"
+          className="bg-transparent text-slate-500/80 dark:text-slate-200 placeholder-slate-500/80 dark:placeholder-slate-500 outline-none text-sm w-full h-full transition-colors"
           required
           disabled={loading}
         />

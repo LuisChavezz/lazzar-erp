@@ -5,13 +5,16 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { CompanyFormSchema, CompanyFormValues } from "../schemas/companies.schema";
 import { PhotoIcon, BuildingIcon, SettingsIcon } from "../../../components/Icons";
 import { useRegisterCompany } from "../hooks/useRegisterCompany";
+import { useUpdateCompany } from "../hooks/useUpdateCompany";
 import { FormInput } from "../../../components/FormInput";
+import { Company } from "../interfaces/company.interface";
 
 interface CompanyFormProps {
   onSuccess: () => void;
+  initialData?: Company; // Prop para datos iniciales en modo edición
 }
 
-export default function CompanyForm({ onSuccess }: CompanyFormProps) {
+export default function CompanyForm({ onSuccess, initialData }: CompanyFormProps) {
   const {
     register,
     handleSubmit,
@@ -20,40 +23,62 @@ export default function CompanyForm({ onSuccess }: CompanyFormProps) {
     formState: { errors },
   } = useForm<CompanyFormValues>({
     resolver: zodResolver(CompanyFormSchema),
-    defaultValues: {
-      codigo: "",
-      razon_social: "",
-      nombre_comercial: "",
-      rfc: "",
-      email_contacto: "",
-      telefono: "",
-      sitio_web: "",
-      moneda_base: "MXN",
-      timezone: "America/Mexico_City",
-      idioma: "es-MX",
-      estatus: "activo",
-      logo_url: "",
-      
-      // filled fields 
-      // codigo: "CODEX",
-      // razon_social: "Empresa XYZ",
-      // nombre_comercial: "Empresa XYZ",
-      // rfc: "XAXX010101000",
-      // email_contacto: "contacto@empresaxyz.com",
-      // telefono: "555-123-4567",
-      // sitio_web: "https://www.empresaxyz.com",
-    },
+    defaultValues: initialData
+      ? {
+          codigo: initialData.codigo,
+          razon_social: initialData.razon_social,
+          nombre_comercial: initialData.nombre_comercial,
+          rfc: initialData.rfc,
+          email_contacto: initialData.email_contacto,
+          telefono: initialData.telefono,
+          sitio_web: initialData.sitio_web,
+          moneda_base: initialData.moneda_base,
+          timezone: initialData.timezone,
+          idioma: initialData.idioma,
+          estatus: initialData.estatus,
+          logo_url: initialData.logo_url,
+        } as CompanyFormValues
+      : {
+          codigo: "",
+          razon_social: "",
+          nombre_comercial: "",
+          rfc: "",
+          email_contacto: "",
+          telefono: "",
+          sitio_web: "",
+          moneda_base: "MXN",
+          timezone: "America/Mexico_City",
+          idioma: "es-MX",
+          estatus: "activo",
+          logo_url: "",
+        },
   });
 
-  const { mutate: registerCompany, isPending } = useRegisterCompany(setError);
+  const { mutate: registerCompany, isPending: isRegisterPending } = useRegisterCompany(setError);
+  const { mutate: updateCompany, isPending: isUpdatePending } = useUpdateCompany(setError);
+
+  const isPending = isRegisterPending || isUpdatePending;
 
   const onSubmit = (values: CompanyFormValues) => {
-    registerCompany(values, {
-      onSuccess: () => {
-        reset();
-        onSuccess();
-      },
-    });
+    if (initialData) {
+      // Modo Edición
+      updateCompany(
+        { id: initialData.id_empresa, values },
+        {
+          onSuccess: () => {
+            onSuccess(); // No reseteamos el formulario aquí para no borrar los datos mientras se cierra el modal
+          },
+        }
+      );
+    } else {
+      // Modo Creación
+      registerCompany(values, {
+        onSuccess: () => {
+          reset();
+          onSuccess();
+        },
+      });
+    }
   };
 
   return (
@@ -92,20 +117,13 @@ export default function CompanyForm({ onSuccess }: CompanyFormProps) {
 
             {/* Inputs Principales */}
             <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6 w-full">
-              <div className="md:col-span-2 group/field">
-                <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider ml-1 mb-1 block transition-colors group-focus-within/field:text-sky-500">
-                  Razón Social
-                </label>
-                <input
-                  type="text"
-                  className="w-full bg-transparent border-b-2 border-slate-200 dark:border-slate-800 focus:border-sky-500 dark:focus:border-sky-500 px-1 py-2 text-2xl font-bold text-slate-900 dark:text-white placeholder-slate-300 dark:placeholder-slate-700 outline-none transition-colors"
-                  placeholder="Empresa S.A. de C.V."
-                  {...register("razon_social")}
-                />
-                {errors.razon_social && (
-                  <p className="text-xs text-red-600 mt-1">{errors.razon_social.message}</p>
-                )}
-              </div>
+              <FormInput
+                label="Razón Social"
+                placeholder="Empresa S.A. de C.V."
+                variant="ghost"
+                {...register("razon_social")}
+                error={errors.razon_social}
+              />
 
               <div className="group/field">
                 <FormInput
@@ -307,7 +325,7 @@ export default function CompanyForm({ onSuccess }: CompanyFormProps) {
               isPending ? "opacity-50 cursor-not-allowed" : ""
             }`}
           >
-            {isPending ? "Registrando..." : "Registrar Empresa"}
+            {isPending ? (initialData ? "Actualizando..." : "Registrando...") : (initialData ? "Actualizar Empresa" : "Registrar Empresa")}
           </button>
         </div>
       </fieldset>

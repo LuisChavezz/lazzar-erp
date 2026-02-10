@@ -4,13 +4,13 @@ import { ColumnDef } from "@tanstack/react-table";
 import { Company } from "../interfaces/company.interface";
 import { EditIcon, DeleteIcon } from "../../../components/Icons";
 import { ConfirmDialog } from "../../../components/ConfirmDialog";
+import { MainDialog } from "@/src/components/MainDialog";
+import CompanyForm from "./CompanyForm";
+import { useState } from "react";
 
-// Componente para renderizar las acciones de editar y eliminar (sin funcionalidad por ahora)
+// Componente para renderizar las acciones de editar y eliminar
 const ActionsCell = ({ company }: { company: Company }) => {
-  const handleEdit = () => {
-    // TODO: Implement edit functionality
-    console.log("Edit company", company);
-  };
+  const [isEditOpen, setIsEditOpen] = useState(false);
 
   const handleDelete = () => {
     // TODO: Implement delete functionality
@@ -19,13 +19,43 @@ const ActionsCell = ({ company }: { company: Company }) => {
 
   return (
     <div className="flex items-center justify-center gap-2">
-      <button
-        className="p-1 cursor-pointer text-slate-400 hover:text-blue-600 transition-colors"
-        title="Editar"
-        onClick={handleEdit}
+      <MainDialog
+        open={isEditOpen}
+        onOpenChange={setIsEditOpen}
+        maxWidth="1000px"
+        title={
+          <div className="flex items-center gap-4 pb-4 border-b border-slate-200 dark:border-white/10 mb-4">
+            <div>
+              <h1 className="text-xl font-bold text-slate-900 dark:text-white font-display tracking-tight">
+                Edición de Empresa
+              </h1>
+              <div className="flex items-center gap-2">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-sky-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-sky-500"></span>
+                </span>
+                <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                  Modificar Registro
+                </p>
+              </div>
+            </div>
+          </div>
+        }
+        trigger={
+          <button
+            className="p-1 cursor-pointer text-slate-400 hover:text-blue-600 transition-colors"
+            title="Editar"
+          >
+            <EditIcon className="w-5 h-5" />
+          </button>
+        }
       >
-        <EditIcon className="w-5 h-5" />
-      </button>
+        <CompanyForm 
+          onSuccess={() => setIsEditOpen(false)} 
+          initialData={company}
+        />
+      </MainDialog>
+
       <ConfirmDialog
         title="Eliminar Empresa"
         description="¿Estás seguro de que deseas eliminar esta empresa? Esta acción no se puede deshacer."

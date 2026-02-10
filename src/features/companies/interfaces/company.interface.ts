@@ -1,7 +1,7 @@
 import { Branch } from "../../branches/interfaces/branch.interface";
 
 export interface Company {
-  id: number;
+  id_empresa: number;
   codigo: string;
   razon_social: string;
   nombre_comercial: string;
