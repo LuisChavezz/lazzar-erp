@@ -44,8 +44,8 @@ export default function LoginForm() {
         />
       </div>
 
-      <div className="w-full flex items-center justify-between mt-8 text-slate-500/80 dark:text-slate-400 transition-colors">
-        <div className="flex items-center gap-2">
+      <div className="w-full flex items-center justify-center mt-8 text-slate-500/80 dark:text-slate-400 transition-colors">
+        {/* <div className="flex items-center gap-2">
           <input
             className="h-5 w-5 text-sky-500 focus:ring-sky-400 border-slate-300 dark:border-white/10 rounded bg-transparent"
             type="checkbox"
@@ -55,10 +55,10 @@ export default function LoginForm() {
           <label className="text-sm cursor-pointer" htmlFor="checkbox">
             Recuérdame
           </label>
-        </div>
-        {/* <a className="text-sm underline hover:text-sky-500" href="#">
+        </div> */}
+        <a className="text-sm underline hover:text-sky-500" href="#">
           ¿Olvidaste tu contraseña?
-        </a> */}
+        </a>
       </div>
 
       <button
@@ -72,13 +72,6 @@ export default function LoginForm() {
           "Iniciar sesión"
         )}
       </button>
-
-      <p className="text-slate-500/90 dark:text-slate-400 text-sm mt-4 transition-colors">
-        ¿No tienes una cuenta?{" "}
-        <Link className="text-sky-400 hover:underline" href="/auth/register">
-          Regístrate
-        </Link>
-      </p>
     </form>
   );
 }

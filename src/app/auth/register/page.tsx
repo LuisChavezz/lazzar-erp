@@ -1,11 +1,16 @@
 import RegisterForm from "@/src/features/auth/components/RegisterForm";
 import Image from "next/image";
 import { Metadata } from "next";
+import { redirect } from "next/navigation";
 
 export const metadata: Metadata = {
   title: "Registro",
   description: "Crea una nueva cuenta para empezar",
 };
+
+// redirect to dashboard always
+redirect("/dashboard");
+
 
 export default function RegisterPage() {
   return (

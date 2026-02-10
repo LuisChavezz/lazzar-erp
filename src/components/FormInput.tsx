@@ -17,9 +17,24 @@ export const FormInput = forwardRef<HTMLInputElement, FormInputProps>(
         )}
         <input
           ref={ref}
-          className={`w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm font-medium text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 focus:bg-white dark:focus:bg-black/40 transition-all placeholder-slate-400 disabled:opacity-50 disabled:cursor-not-allowed ${
-            error ? "border-red-500 focus:border-red-500 focus:ring-red-500/20" : ""
-          } ${className}`}
+          className={`w-full bg-slate-50 dark:bg-black/20
+            border border-slate-200 dark:border-slate-700
+            rounded-xl px-4 py-3 text-sm font-medium
+            text-slate-900 dark:text-white
+            outline-none transition-all
+            placeholder-slate-400
+            focus:ring-2 focus:ring-brand-500/20
+            focus:border-brand-500
+            focus:bg-white dark:focus:bg-black/40
+            disabled:opacity-50 disabled:cursor-not-allowed
+
+            [&:-webkit-autofill]:bg-transparent!
+            [&:-webkit-autofill]:shadow-[0_0_0_1000px_transparent_inset]!
+            [&:-webkit-autofill]:-webkit-text-fill-color:inherit!
+
+            ${error ? "border-red-500 focus:border-red-500 focus:ring-red-500/20" : ""}
+            ${className}
+          `}
           {...props}
         />
         {error && (
