@@ -1,21 +1,5 @@
 export interface SatCatalogsResponse {
   regimenes_fiscales: RegimenesFiscale[];
-  usos_cfdi:          RegimenesFiscale[];
-  metodos_pago:       MetodosPago[];
-  formas_pago:        FormasPago[];
-}
-
-export interface FormasPago {
-  id_sat_forma_pago: number;
-  codigo:            string;
-  descripcion:       string;
-  bancarizado:       boolean;
-}
-
-export interface MetodosPago {
-  id_sat_metodo_pago: number;
-  codigo:             string;
-  descripcion:        string;
 }
 
 export interface RegimenesFiscale {
