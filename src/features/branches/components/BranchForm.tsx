@@ -6,6 +6,7 @@ import { BranchFormSchema, BranchFormValues } from "../schemas/branch.schema";
 import { useRegisterBranch } from "../hooks/useRegisterBranch";
 import { MapPinIcon, SettingsIcon } from "../../../components/Icons";
 import { FormInput } from "../../../components/FormInput";
+import { FormCancelButton, FormSubmitButton } from "../../../components/FormButtons";
 
 interface BranchFormProps {
   onSuccess: () => void;
@@ -62,6 +63,7 @@ export default function BranchForm({ onSuccess }: BranchFormProps) {
                 <FormInput
                   label="Nombre de la Sucursal"
                   placeholder="Nombre de la sucursal"
+                  variant="ghost"
                   {...register("nombre")}
                   error={errors.nombre}
                 />
@@ -217,25 +219,10 @@ export default function BranchForm({ onSuccess }: BranchFormProps) {
         </div>
 
         <div className="flex justify-end gap-3 pb-8">
-          <button
-            type="button"
-            disabled={isPending}
-            className={`rounded-xl border border-zinc-300 px-6 py-2.5 text-sm font-medium cursor-pointer text-zinc-800 shadow-sm hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-100 dark:hover:bg-zinc-900 ${
-              isPending ? "opacity-50 cursor-not-allowed" : ""
-            }`}
-            onClick={() => reset()}
-          >
-            Limpiar
-          </button>
-          <button
-            type="submit"
-            disabled={isPending}
-            className={`rounded-xl bg-sky-600 px-6 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2 cursor-pointer ${
-              isPending ? "opacity-50 cursor-not-allowed" : ""
-            }`}
-          >
-            {isPending ? "Guardando..." : "Guardar Sucursal"}
-          </button>
+          <FormCancelButton onClick={() => reset()} disabled={isPending} />
+          <FormSubmitButton isPending={isPending} loadingLabel="Guardando...">
+            Guardar Sucursal
+          </FormSubmitButton>
         </div>
       </fieldset>
     </form>

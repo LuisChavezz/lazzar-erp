@@ -7,7 +7,9 @@ import { PhotoIcon, BuildingIcon, SettingsIcon } from "../../../components/Icons
 import { useRegisterCompany } from "../hooks/useRegisterCompany";
 import { useUpdateCompany } from "../hooks/useUpdateCompany";
 import { FormInput } from "../../../components/FormInput";
+import { FormCancelButton, FormSubmitButton } from "../../../components/FormButtons";
 import { Company } from "../interfaces/company.interface";
+import { useCurrencies } from "../../currency/hooks/useCurrencies";
 
 interface CompanyFormProps {
   onSuccess: () => void;
@@ -56,6 +58,7 @@ export default function CompanyForm({ onSuccess, initialData }: CompanyFormProps
 
   const { mutate: registerCompany, isPending: isRegisterPending } = useRegisterCompany(setError);
   const { mutate: updateCompany, isPending: isUpdatePending } = useUpdateCompany(setError);
+  const { data: currencies, isLoading: isLoadingCurrencies } = useCurrencies();
 
   const isPending = isRegisterPending || isUpdatePending;
 
@@ -63,7 +66,7 @@ export default function CompanyForm({ onSuccess, initialData }: CompanyFormProps
     if (initialData) {
       // Modo Edición
       updateCompany(
-        { id: initialData.id_empresa, values },
+        { id: initialData.id_empresa!, values },
         {
           onSuccess: () => {
             onSuccess(); // No reseteamos el formulario aquí para no borrar los datos mientras se cierra el modal
@@ -246,10 +249,21 @@ export default function CompanyForm({ onSuccess, initialData }: CompanyFormProps
                   <select
                     className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 transition-all dark:text-white"
                     {...register("moneda_base")}
+                    disabled={isLoadingCurrencies}
                   >
-                    <option value="MXN" className="text-slate-900 dark:text-white bg-white dark:bg-zinc-900">Peso Mexicano (MXN)</option>
-                    <option value="USD" className="text-slate-900 dark:text-white bg-white dark:bg-zinc-900">Dólar Estadounidense (USD)</option>
-                    <option value="EUR" className="text-slate-900 dark:text-white bg-white dark:bg-zinc-900">Euro (EUR)</option>
+                    {isLoadingCurrencies ? (
+                      <option>Cargando monedas...</option>
+                    ) : (
+                      currencies?.map((currency) => (
+                        <option 
+                          key={currency.id} 
+                          value={currency.codigo_iso}
+                          className="text-slate-900 dark:text-white bg-white dark:bg-zinc-900"
+                        >
+                          {currency.nombre} ({currency.codigo_iso})
+                        </option>
+                      ))
+                    )}
                   </select>
                   {errors.moneda_base && (
                     <p className="text-xs text-red-600 mt-1">{errors.moneda_base.message}</p>
@@ -308,25 +322,13 @@ export default function CompanyForm({ onSuccess, initialData }: CompanyFormProps
         </div>
 
         <div className="flex justify-end gap-3 pb-8">
-          <button
-            type="button"
-            disabled={isPending}
-            className={`rounded-xl border border-zinc-300 px-6 py-2.5 text-sm font-medium cursor-pointer text-zinc-800 shadow-sm hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-100 dark:hover:bg-zinc-900 ${
-              isPending ? "opacity-50 cursor-not-allowed" : ""
-            }`}
-            onClick={() => reset()}
+          <FormCancelButton onClick={() => reset()} disabled={isPending} />
+          <FormSubmitButton
+            isPending={isPending}
+            loadingLabel={initialData ? "Actualizando..." : "Registrando..."}
           >
-            Limpiar
-          </button>
-          <button
-            type="submit"
-            disabled={isPending}
-            className={`rounded-xl bg-sky-600 px-6 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2 cursor-pointer ${
-              isPending ? "opacity-50 cursor-not-allowed" : ""
-            }`}
-          >
-            {isPending ? (initialData ? "Actualizando..." : "Registrando...") : (initialData ? "Actualizar Empresa" : "Registrar Empresa")}
-          </button>
+            {initialData ? "Actualizar Empresa" : "Registrar Empresa"}
+          </FormSubmitButton>
         </div>
       </fieldset>
     </form>

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { getCompanies } from "@/src/features/companies/services/actions";
+// import { getCompanies } from "@/src/features/companies/services/actions";
 import { getBranches } from "@/src/features/branches/services/actions";
 import { getCurrencies } from "@/src/features/currency/services/actions";
 import { getRoles } from "@/src/features/roles/services/actions";
@@ -11,7 +11,7 @@ import {
   BuildingIcon, 
   MapPinIcon, 
   InfoIcon, 
-  BancosIcon,
+  // BancosIcon,
   CapitalHumanoIcon,
   LockIcon,
   ListaPreciosIcon,
@@ -54,7 +54,7 @@ export function ConfigContent() {
           `}
         >
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <ConfigCard 
+            {/* <ConfigCard 
               title="Empresas" 
               description="Gestión de empresas del sistema"
               icon={BancosIcon}
@@ -65,7 +65,7 @@ export function ConfigContent() {
                   queryFn: getCompanies,
                 });
               }}
-            />
+            /> */}
             <ConfigCard 
               title="Sucursales" 
               description="Gestión de sucursales operativas"

@@ -5,6 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { LocationFormSchema, LocationFormValues } from "../schemas/location.schema";
 import { useLocationStore } from "../stores/location.store";
 import { FormInput } from "../../../components/FormInput";
+import { FormCancelButton, FormSubmitButton } from "../../../components/FormButtons";
 import { MapPinIcon, BuildingIcon } from "../../../components/Icons";
 import toast from "react-hot-toast";
 import { useEffect } from "react";
@@ -99,18 +100,14 @@ export default function LocationForm({ onSuccess }: LocationFormProps) {
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <div className="group/field">
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 group-focus-within/field:text-sky-600 transition-colors">
-                  Nombre de la Ubicación
-                </label>
-                <input 
-                  type="text" 
-                  className="w-full bg-transparent border-b-2 border-slate-200 dark:border-slate-800 focus:border-sky-500 dark:focus:border-sky-500 px-1 py-2 text-3xl font-bold text-slate-900 dark:text-white placeholder-slate-300 dark:placeholder-slate-700 outline-none transition-colors"
+                <FormInput
+                  label="Nombre de la Ubicación"
                   placeholder="Ej. Pasillo A"
+                  variant="ghost"
+                  className="text-3xl font-bold"
                   {...register("name")}
+                  error={errors.name}
                 />
-                {errors.name && (
-                  <p className="text-xs text-red-600 mt-1">{errors.name.message}</p>
-                )}
               </div>
 
               <div className="md:col-span-2 group/field">
@@ -197,25 +194,13 @@ export default function LocationForm({ onSuccess }: LocationFormProps) {
         </div>
 
         <div className="flex justify-end gap-3 pb-8 mt-8">
-          <button
-            type="button"
-            disabled={isLoading}
-            className={`rounded-xl border border-zinc-300 px-6 py-2.5 text-sm font-medium cursor-pointer text-zinc-800 shadow-sm hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-100 dark:hover:bg-zinc-900 ${
-              isLoading ? "opacity-50 cursor-not-allowed" : ""
-            }`}
-            onClick={() => reset()}
+          <FormCancelButton onClick={() => reset()} disabled={isLoading} />
+          <FormSubmitButton
+            isPending={isLoading}
+            loadingLabel="Guardando..."
           >
-            Limpiar
-          </button>
-          <button
-            type="submit"
-            disabled={isLoading}
-            className={`rounded-xl bg-sky-600 px-6 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2 cursor-pointer ${
-              isLoading ? "opacity-50 cursor-not-allowed" : ""
-            }`}
-          >
-            {isLoading ? "Guardando..." : selectedLocation ? "Actualizar Ubicación" : "Registrar Ubicación"}
-          </button>
+            {selectedLocation ? "Actualizar Ubicación" : "Registrar Ubicación"}
+          </FormSubmitButton>
         </div>
       </fieldset>
     </form>
