@@ -1,27 +1,37 @@
 "use client";
 
-import { useForm } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { CurrencyFormSchema, CurrencyFormValues } from "../schemas/currency.schema";
 import { useCreateCurrency } from "../hooks/useCreateCurrency";
+import { useUpdateCurrency } from "../hooks/useUpdateCurrency";
 import { FormInput } from "../../../components/FormInput";
 import { FormCancelButton, FormSubmitButton } from "../../../components/FormButtons";
 import { SettingsIcon } from "../../../components/Icons";
+import { Currency } from "../interfaces/currency.interface";
 
 interface CurrencyFormProps {
   onSuccess: () => void;
+  currencyToEdit?: Currency;
 }
 
-export default function CurrencyForm({ onSuccess }: CurrencyFormProps) {
+export default function CurrencyForm({ onSuccess, currencyToEdit }: CurrencyFormProps) {
   const {
     register,
     handleSubmit,
     reset,
     setError,
+    control,
     formState: { errors },
   } = useForm<CurrencyFormValues>({
     resolver: zodResolver(CurrencyFormSchema),
-    defaultValues: {
+    defaultValues: currencyToEdit ? {
+      nombre: currencyToEdit.nombre,
+      codigo_iso: currencyToEdit.codigo_iso,
+      simbolo: currencyToEdit.simbolo,
+      decimales: currencyToEdit.decimales,
+      estatus: currencyToEdit.estatus,
+    } : {
       nombre: "",
       codigo_iso: "",
       simbolo: "$",
@@ -30,15 +40,26 @@ export default function CurrencyForm({ onSuccess }: CurrencyFormProps) {
     },
   });
 
-  const { mutate: createCurrency, isPending } = useCreateCurrency(setError);
+  const { mutate: createCurrency, isPending: isCreating } = useCreateCurrency(setError);
+  const { mutate: updateCurrency, isPending: isUpdating } = useUpdateCurrency(setError);
+
+  const isPending = isCreating || isUpdating;
 
   const onSubmit = (values: CurrencyFormValues) => {
-    createCurrency(values, {
-      onSuccess: () => {
-        reset();
-        onSuccess();
-      },
-    });
+    if (currencyToEdit) {
+      updateCurrency({ ...currencyToEdit, ...values }, {
+        onSuccess: () => {
+          onSuccess();
+        },
+      });
+    } else {
+      createCurrency(values, {
+        onSuccess: () => {
+          reset();
+          onSuccess();
+        },
+      });
+    }
   };
 
   return (
@@ -127,16 +148,21 @@ export default function CurrencyForm({ onSuccess }: CurrencyFormProps) {
                       <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider ml-1 mb-1 block transition-colors group-focus-within:text-sky-500">
                         Estado
                       </label>
-                      <select
-                        className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 transition-all dark:text-white"
-                        {...register("estatus", { 
-                          setValueAs: (value) => value === "true" 
-                        })}
-                        defaultValue="true"
-                      >
-                        <option value="true" className="text-slate-900 dark:text-white bg-white dark:bg-zinc-900">Activo</option>
-                        <option value="false" className="text-slate-900 dark:text-white bg-white dark:bg-zinc-900">Inactivo</option>
-                      </select>
+                      <Controller
+                        control={control}
+                        name="estatus"
+                        render={({ field: { onChange, value, ...field } }) => (
+                          <select
+                            className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 transition-all dark:text-white"
+                            {...field}
+                            value={value ? "true" : "false"}
+                            onChange={(e) => onChange(e.target.value === "true")}
+                          >
+                            <option value="true" className="text-slate-900 dark:text-white bg-white dark:bg-zinc-900">Activo</option>
+                            <option value="false" className="text-slate-900 dark:text-white bg-white dark:bg-zinc-900">Inactivo</option>
+                          </select>
+                        )}
+                      />
                       {errors.estatus && (
                         <p className="text-xs text-red-600 mt-1">{errors.estatus.message}</p>
                       )}
@@ -152,9 +178,9 @@ export default function CurrencyForm({ onSuccess }: CurrencyFormProps) {
           <FormCancelButton onClick={() => reset()} disabled={isPending} />
           <FormSubmitButton
             isPending={isPending}
-            loadingLabel="Guardando..."
+            loadingLabel={currencyToEdit ? "Actualizando..." : "Guardando..."}
           >
-            Registrar Moneda
+            {currencyToEdit ? "Actualizar Moneda" : "Registrar Moneda"}
           </FormSubmitButton>
         </div>
       </fieldset>

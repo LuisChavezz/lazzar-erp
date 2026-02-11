@@ -1,16 +1,21 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useCurrencies } from "../hooks/useCurrencies";
 import { DataTable } from "@/src/components/DataTable";
-import { currencyColumns } from "./CurrencyColumns";
+import { getCurrencyColumns } from "./CurrencyColumns";
 import { MainDialog } from "@/src/components/MainDialog";
 import CurrencyForm from "./CurrencyForm";
 import { PlusIcon } from "@/src/components/Icons";
+import { useSession } from "next-auth/react";
 
 export default function CurrencyList() {
   const { data: currencies, isLoading, isError, error } = useCurrencies();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const { data: session } = useSession();
+
+  const isAdmin = session?.user?.role === "admin";
+  const columns = useMemo(() => getCurrencyColumns(isAdmin), [isAdmin]);
 
   if (isLoading) {
     return (
@@ -61,18 +66,20 @@ export default function CurrencyList() {
       </MainDialog>
 
       <DataTable
-        columns={currencyColumns}
+        columns={columns}
         data={currencies}
         title="Monedas"
         searchPlaceholder="Buscar moneda..."
         actionButton={
-          <button
-            onClick={() => setIsCreateOpen(true)}
-            className="cursor-pointer bg-sky-600 hover:bg-sky-700 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors flex items-center gap-2 shadow-sm shadow-sky-600/20"
-          >
-            <PlusIcon className="w-5 h-5" />
-            Nueva Moneda
-          </button>
+          isAdmin ? (
+            <button
+              onClick={() => setIsCreateOpen(true)}
+              className="cursor-pointer bg-sky-600 hover:bg-sky-700 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors flex items-center gap-2 shadow-sm shadow-sky-600/20"
+            >
+              <PlusIcon className="w-5 h-5" />
+              Nueva Moneda
+            </button>
+          ) : null
         }
       />
     </>

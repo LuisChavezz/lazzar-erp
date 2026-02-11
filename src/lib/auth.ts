@@ -25,8 +25,7 @@ export const authOptions: NextAuthOptions = {
               id: data.user_id.toString(),
               name: data.nombre_completo,
               email: data.email,
-              role: data.es_admin ? "admin" : "user",
-              isSuperUser: Boolean(data.is_superuser),
+              role: data.is_admin_empresa ? "admin" : "user",
               token: data.token,
             };
           }
@@ -48,7 +47,6 @@ export const authOptions: NextAuthOptions = {
       if (user) {
         token.role = (user as { role?: string }).role;
         token.accessToken = (user as { token?: string }).token;
-        token.isSuperUser = (user as { isSuperUser?: boolean }).isSuperUser;
       }
       return token;
     },
@@ -56,7 +54,6 @@ export const authOptions: NextAuthOptions = {
       if (session.user) {
         (session.user as { role?: string }).role = token.role as string;
         (session.user as { accessToken?: string }).accessToken = token.accessToken as string;
-        (session.user as { isSuperUser?: boolean }).isSuperUser = token.isSuperUser as boolean;
       }
       return session;
     },

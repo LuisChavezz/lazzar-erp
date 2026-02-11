@@ -14,3 +14,15 @@ export const createCurrency = async (currency: Partial<Currency>) => {
 
   return response.data;
 };
+
+export const updateCurrency = async (currency: Partial<Currency>) => {
+  const response = await v1_api.put(`/nucleo/monedas/${currency.codigo_iso}/`, currency);
+
+  return response.data;
+};
+
+export const deleteCurrency = async (currencyIso: string) => {
+  const response = await v1_api.delete(`/nucleo/monedas/${currencyIso}/`);
+
+  return response.data;
+};
