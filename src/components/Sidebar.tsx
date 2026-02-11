@@ -3,6 +3,7 @@
 import { useLogout } from "../features/auth/hooks/useLogout";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useSession } from "next-auth/react";
 import MobileSidebar from "./MobileSidebar";
 import { sidebarItems } from "../constants/sidebarItems";
 import SidebarItem from "./SidebarItem";
@@ -11,8 +12,10 @@ import { LogoIcon, LogoutIcon, SettingsIcon } from "./Icons";
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const { data: session } = useSession();
   const { handleLogout } = useLogout();
   const isConfigActive = pathname === "/config" || pathname.startsWith("/config/");
+  const isAdmin = session?.user?.role === "admin";
 
   return (
     <>
@@ -56,19 +59,21 @@ export default function Sidebar() {
         <div className="p-4 border-t border-slate-200 dark:border-slate-800">
 
           {/* Configuración */}
-          <Link
-            href="/config"
-            className={`flex items-center gap-4 px-3 py-3 rounded-xl transition-colors group relative ${
-              isConfigActive
-                ? "bg-sky-50 dark:bg-sky-500/10 text-sky-600 dark:text-sky-300"
-                : "hover:bg-sky-50 dark:hover:bg-sky-500/10 text-slate-500 dark:text-white hover:text-sky-600 dark:hover:text-sky-300"
-            }`}
-          >
-            <SettingsIcon className="w-6 h-6 shrink-0" />
-            <span className="font-medium text-sm whitespace-nowrap opacity-0 group-hover/sidebar:opacity-100 transition-opacity duration-200 absolute left-14">
-              Configuración
-            </span>
-          </Link>
+          {isAdmin && (
+            <Link
+              href="/config"
+              className={`flex items-center gap-4 px-3 py-3 rounded-xl transition-colors group relative ${
+                isConfigActive
+                  ? "bg-sky-50 dark:bg-sky-500/10 text-sky-600 dark:text-sky-300"
+                  : "hover:bg-sky-50 dark:hover:bg-sky-500/10 text-slate-500 dark:text-white hover:text-sky-600 dark:hover:text-sky-300"
+              }`}
+            >
+              <SettingsIcon className="w-6 h-6 shrink-0" />
+              <span className="font-medium text-sm whitespace-nowrap opacity-0 group-hover/sidebar:opacity-100 transition-opacity duration-200 absolute left-14">
+                Configuración
+              </span>
+            </Link>
+          )}
 
           {/* Cerrar sesión */}
           <ConfirmDialog

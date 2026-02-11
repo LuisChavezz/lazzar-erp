@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { useLogout } from "../features/auth/hooks/useLogout";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { CloseIcon, LogoIcon, MenuIcon } from "./Icons";
@@ -12,8 +13,10 @@ import SidebarItem from "./SidebarItem";
 export default function MobileSidebar() {
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const pathname = usePathname();
+  const { data: session } = useSession();
   const { handleLogout } = useLogout();
   const isConfigActive = pathname === "/config" || pathname.startsWith("/config/");
+  const isAdmin = session?.user?.role === "admin";
 
   return (
     <>
@@ -80,17 +83,19 @@ export default function MobileSidebar() {
             ))}
           </div>
           <div className="p-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-black/20">
-            <Link
-              href="/config"
-              className={`block w-full text-center px-4 py-3 rounded-xl border font-semibold text-sm mb-3 ${
-                isConfigActive
-                  ? "bg-sky-50 dark:bg-sky-500/10 text-sky-600 dark:text-sky-300 border-sky-100 dark:border-sky-500/20"
-                  : "border-slate-200 dark:border-slate-700 text-slate-600 dark:text-white hover:bg-slate-50 dark:hover:bg-slate-800"
-              }`}
-              onClick={() => setIsMobileOpen(false)}
-            >
-              Configuración
-            </Link>
+            {isAdmin && (
+              <Link
+                href="/config"
+                className={`block w-full text-center px-4 py-3 rounded-xl border font-semibold text-sm mb-3 ${
+                  isConfigActive
+                    ? "bg-sky-50 dark:bg-sky-500/10 text-sky-600 dark:text-sky-300 border-sky-100 dark:border-sky-500/20"
+                    : "border-slate-200 dark:border-slate-700 text-slate-600 dark:text-white hover:bg-slate-50 dark:hover:bg-slate-800"
+                }`}
+                onClick={() => setIsMobileOpen(false)}
+              >
+                Configuración
+              </Link>
+            )}
             <ConfirmDialog
               title="Cerrar sesión"
               description="¿Estás seguro de que deseas cerrar sesión?"

@@ -1,9 +1,14 @@
 import { StatsCards } from "@/src/features/dashboard/components/StatsCards";
 import { OrdersTable } from "@/src/features/dashboard/components/OrdersTable";
 import Link from "next/link";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/src/lib/auth";
 
 
-export default function DashboardPage() {
+export default async function DashboardPage() {
+  const session = await getServerSession(authOptions);
+  const isAdmin = session?.user?.role === "admin";
+
   return (
     <div className="w-full">
 
@@ -14,9 +19,11 @@ export default function DashboardPage() {
         <button className="px-6 py-3 rounded-full cursor-pointer bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-semibold transition transform active:scale-95">
           Ver Reportes
         </button>
-        <Link href="/config" className="px-6 py-3 rounded-full cursor-pointer bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-semibold transition transform active:scale-95">
-          Configuración
-        </Link>
+        {isAdmin && (
+          <Link href="/config" className="px-6 py-3 rounded-full cursor-pointer bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-semibold transition transform active:scale-95">
+            Configuración
+          </Link>
+        )}
       </div>
       
       <StatsCards />
