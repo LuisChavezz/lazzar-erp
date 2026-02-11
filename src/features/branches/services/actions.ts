@@ -20,3 +20,9 @@ export const createBranch = async (branch: BranchFormValues & { empresa: number 
 
   return response.data;
 };
+
+export const updateBranch = async (branch: BranchFormValues & { empresa: number}): Promise<Branch> => {
+  const response = await v1_api.put(`/nucleo/sucursales/${branch.codigo}/`, branch);
+
+  return response.data;
+};

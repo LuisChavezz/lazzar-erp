@@ -10,6 +10,7 @@ interface WorkspaceState {
   availableBranches: Branch[];
   setWorkspace: (company: Partial<Company>, branch?: Branch) => void;
   setAvailableBranches: (branches: Branch[]) => void;
+  updateBranch: (branch: Branch) => void;
   clearWorkspace: () => void;
 }
 
@@ -26,6 +27,18 @@ export const useWorkspaceStore = create<WorkspaceState>()(
         
         setAvailableBranches: (branches) =>
           set({ availableBranches: branches }),
+
+        updateBranch: (updatedBranch) => {
+          set((state) => ({
+            availableBranches: state.availableBranches.map((b) =>
+              b.id == updatedBranch.id ? updatedBranch : b
+            ),
+            selectedBranch:
+              state.selectedBranch?.id == updatedBranch.id
+                ? updatedBranch
+                : state.selectedBranch,
+          }));
+        },
         
         clearWorkspace: () => 
           set({ selectedCompany: {}, selectedBranch: null, availableBranches: [] }),

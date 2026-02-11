@@ -6,12 +6,10 @@ import { DropdownMenu } from "@radix-ui/themes";
 import { Branch } from "../features/branches/interfaces/branch.interface";
 
 export const WorkspaceInfo = () => {
-  const { 
-    selectedCompany, 
-    selectedBranch, 
-    availableBranches, 
-    setWorkspace 
-  } = useWorkspaceStore();
+  const selectedCompany = useWorkspaceStore((state) => state.selectedCompany);
+  const selectedBranch = useWorkspaceStore((state) => state.selectedBranch);
+  const availableBranches = useWorkspaceStore((state) => state.availableBranches);
+  const setWorkspace = useWorkspaceStore((state) => state.setWorkspace);
 
   if (!selectedCompany?.id) {
     return null;

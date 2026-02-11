@@ -4,15 +4,18 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { BranchFormSchema, BranchFormValues } from "../schemas/branch.schema";
 import { useRegisterBranch } from "../hooks/useRegisterBranch";
+import { useUpdateBranch } from "../hooks/useUpdateBranch";
 import { MapPinIcon, SettingsIcon } from "../../../components/Icons";
 import { FormInput } from "../../../components/FormInput";
 import { FormCancelButton, FormSubmitButton } from "../../../components/FormButtons";
+import { Branch } from "../interfaces/branch.interface";
 
 interface BranchFormProps {
   onSuccess: () => void;
+  defaultValues?: Branch;
 }
 
-export default function BranchForm({ onSuccess }: BranchFormProps) {
+export default function BranchForm({ onSuccess, defaultValues }: BranchFormProps) {
   const {
     register,
     handleSubmit,
@@ -21,7 +24,7 @@ export default function BranchForm({ onSuccess }: BranchFormProps) {
     formState: { errors },
   } = useForm<BranchFormValues>({
     resolver: zodResolver(BranchFormSchema),
-    defaultValues: {
+    defaultValues: defaultValues as BranchFormValues || {
       nombre: "",
       codigo: "",
       telefono: "",
@@ -36,15 +39,27 @@ export default function BranchForm({ onSuccess }: BranchFormProps) {
     },
   });
 
-  const { mutate: registerBranch, isPending } = useRegisterBranch(setError);
+  const { mutate: registerBranch, isPending: isRegisterPending } = useRegisterBranch(setError);
+  const { mutate: updateBranch, isPending: isUpdatePending } = useUpdateBranch(setError);
+
+  const isPending = isRegisterPending || isUpdatePending;
 
   const onSubmit = (values: BranchFormValues) => {
-    registerBranch(values, {
-      onSuccess: () => {
-        reset();
-        onSuccess();
-      },
-    });
+    if (defaultValues) {
+      updateBranch(values, {
+        onSuccess: () => {
+          reset();
+          onSuccess();
+        },
+      });
+    } else {
+      registerBranch(values, {
+        onSuccess: () => {
+          reset();
+          onSuccess();
+        },
+      });
+    }
   };
 
   return (
@@ -221,7 +236,7 @@ export default function BranchForm({ onSuccess }: BranchFormProps) {
         <div className="flex justify-end gap-3 pb-8">
           <FormCancelButton onClick={() => reset()} disabled={isPending} />
           <FormSubmitButton isPending={isPending} loadingLabel="Guardando...">
-            Guardar Sucursal
+            {defaultValues ? "Actualizar Sucursal" : "Guardar Sucursal"}
           </FormSubmitButton>
         </div>
       </fieldset>

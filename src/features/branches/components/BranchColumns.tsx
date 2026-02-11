@@ -2,13 +2,15 @@
 
 import { ColumnDef } from "@tanstack/react-table";
 import { Branch } from "../interfaces/branch.interface";
-import { ViewIcon } from "../../../components/Icons";
+import { EditIcon, ViewIcon } from "../../../components/Icons";
 import { MainDialog } from "@/src/components/MainDialog";
 import { BranchDetails } from "./BranchDetails";
 import { useState } from "react";
+import BranchForm from "./BranchForm";
 
 const ActionsCell = ({ branch }: { branch: Branch }) => {
   const [isViewOpen, setIsViewOpen] = useState(false);
+  const [isEditOpen, setIsEditOpen] = useState(false);
 
   return (
     <div className="flex items-center justify-center gap-2">
@@ -44,6 +46,43 @@ const ActionsCell = ({ branch }: { branch: Branch }) => {
         }
       >
         <BranchDetails branch={branch} />
+      </MainDialog>
+
+      <MainDialog
+        open={isEditOpen}
+        onOpenChange={setIsEditOpen}
+        maxWidth="1000px"
+        title={
+          <div className="flex items-center gap-4 pb-4 border-b border-slate-200 dark:border-white/10 mb-4">
+            <div>
+              <h1 className="text-xl font-bold text-slate-900 dark:text-white font-display tracking-tight">
+                Editar Sucursal
+              </h1>
+              <div className="flex items-center gap-2">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                </span>
+                <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                  Actualizar Información
+                </p>
+              </div>
+            </div>
+          </div>
+        }
+        trigger={
+          <button
+            className="p-1 cursor-pointer text-slate-400 hover:text-orange-600 transition-colors"
+            title="Editar"
+          >
+            <EditIcon className="w-5 h-5" />
+          </button>
+        }
+      >
+        <BranchForm 
+          onSuccess={() => setIsEditOpen(false)} 
+          defaultValues={branch}
+        />
       </MainDialog>
     </div>
   );
