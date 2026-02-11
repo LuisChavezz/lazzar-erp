@@ -8,7 +8,6 @@ import { FormInput } from "../../../components/FormInput";
 import { FormCancelButton, FormSubmitButton } from "../../../components/FormButtons";
 import { MapPinIcon, BuildingIcon } from "../../../components/Icons";
 import toast from "react-hot-toast";
-import { useEffect } from "react";
 
 interface LocationFormProps {
   onSuccess: () => void;
@@ -28,7 +27,6 @@ export default function LocationForm({ onSuccess }: LocationFormProps) {
     register,
     handleSubmit,
     reset,
-    setValue,
     formState: { errors },
   } = useForm<LocationFormValues>({ // Configurar el formulario con Hook Form
     resolver: zodResolver(LocationFormSchema), // Usar el esquema de validación
@@ -39,26 +37,8 @@ export default function LocationForm({ onSuccess }: LocationFormProps) {
       status: "Disponible",
       type: "",
     },
+    values: selectedLocation || undefined,
   });
-
-  // Effect to load selected location data
-  useEffect(() => {
-    if (selectedLocation) {
-      setValue("name", selectedLocation.name);
-      setValue("code", selectedLocation.code);
-      setValue("warehouse", selectedLocation.warehouse);
-      setValue("status", selectedLocation.status);
-      setValue("type", selectedLocation.type);
-    } else {
-      reset({
-        name: "",
-        code: "",
-        warehouse: "",
-        status: "Disponible",
-        type: "",
-      });
-    }
-  }, [selectedLocation, setValue, reset]);
 
   // Manejar el envío del formulario
   const onSubmit = async (data: LocationFormValues) => {

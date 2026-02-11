@@ -9,7 +9,6 @@ import { FormCancelButton, FormSubmitButton } from "../../../components/FormButt
 import { MapPinIcon, SettingsIcon } from "../../../components/Icons";
 import toast from "react-hot-toast";
 import { Slider, Flex, Text } from "@radix-ui/themes";
-import { useEffect } from "react";
 
 interface WarehouseFormProps {
   onSuccess: () => void;
@@ -29,7 +28,6 @@ export default function WarehouseForm({ onSuccess }: WarehouseFormProps) {
     register,
     handleSubmit,
     reset,
-    setValue,
     control,
     formState: { errors },
   } = useForm<WarehouseFormValues>({ // Configurar el formulario con Hook Form
@@ -42,28 +40,8 @@ export default function WarehouseForm({ onSuccess }: WarehouseFormProps) {
       status: "Activo",
       type: "",
     },
+    values: selectedWarehouse || undefined,
   });
-
-  // Effect to load selected warehouse data
-  useEffect(() => {
-    if (selectedWarehouse) {
-      setValue("name", selectedWarehouse.name);
-      setValue("location", selectedWarehouse.location);
-      setValue("manager", selectedWarehouse.manager);
-      setValue("capacity", selectedWarehouse.capacity);
-      setValue("status", selectedWarehouse.status);
-      setValue("type", selectedWarehouse.type);
-    } else {
-      reset({
-        name: "",
-        location: "",
-        manager: "",
-        capacity: 0,
-        status: "Activo",
-        type: "",
-      });
-    }
-  }, [selectedWarehouse, setValue, reset]);
 
   // Manejar el envío del formulario
   const onSubmit = async (values: WarehouseFormValues) => {
