@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useWorkspaceStore } from "../store/workspace.store";
 import { useMyCompanies } from "@/src/features/companies/hooks/useMyCompanies";
@@ -10,12 +10,18 @@ import { useCompanyBranches } from "../../branches/hooks/useCompanyBranches";
 export const useWorkspace = () => {
   const router = useRouter();
   const { companies, loading: companiesLoading } = useMyCompanies(); // Obtener las empresas del usuario
-  const { setWorkspace } = useWorkspaceStore(); // Guardar el workspace en el store
+  const setWorkspace = useWorkspaceStore((state) => state.setWorkspace);
+  const setAvailableBranches = useWorkspaceStore((state) => state.setAvailableBranches);
   const [selectedCompanyId, setSelectedCompanyId] = useState<number | null>(null); // ID de la empresa seleccionada
   const [isLoading, setIsLoading] = useState(false); // Indicador de carga para la selección de sucursal
 
   // Fetch branches based on selected company (custom hook)
   const { branches: availableBranches, isLoading: branchesLoading } = useCompanyBranches(selectedCompanyId);
+
+  // Sync available branches to store
+  useEffect(() => {
+    setAvailableBranches(availableBranches);
+  }, [availableBranches, setAvailableBranches]);
 
   // Handle company selection
   const handleCompanySelect = (companyId: number) => {

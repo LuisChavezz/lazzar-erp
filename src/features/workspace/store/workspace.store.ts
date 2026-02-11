@@ -7,7 +7,9 @@ import { Branch } from "../../branches/interfaces/branch.interface";
 interface WorkspaceState {
   selectedCompany: Partial<Company>;
   selectedBranch: Branch | null;
+  availableBranches: Branch[];
   setWorkspace: (company: Partial<Company>, branch?: Branch) => void;
+  setAvailableBranches: (branches: Branch[]) => void;
   clearWorkspace: () => void;
 }
 
@@ -17,12 +19,16 @@ export const useWorkspaceStore = create<WorkspaceState>()(
       (set) => ({
         selectedCompany: {},
         selectedBranch: null,
+        availableBranches: [],
 
         setWorkspace: (company, branch) => 
           set({ selectedCompany: company, selectedBranch: branch || null }),
         
+        setAvailableBranches: (branches) =>
+          set({ availableBranches: branches }),
+        
         clearWorkspace: () => 
-          set({ selectedCompany: {}, selectedBranch: null }),
+          set({ selectedCompany: {}, selectedBranch: null, availableBranches: [] }),
       }),
       { // Nombre del storage para persistencia
         name: "workspace-storage",
