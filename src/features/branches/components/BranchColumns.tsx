@@ -2,7 +2,7 @@
 
 import { ColumnDef } from "@tanstack/react-table";
 import { Branch } from "../interfaces/branch.interface";
-import { EditIcon, DeleteIcon, ViewIcon } from "../../../components/Icons";
+import { ViewIcon } from "../../../components/Icons";
 import { MainDialog } from "@/src/components/MainDialog";
 import { BranchDetails } from "./BranchDetails";
 import { useState } from "react";
@@ -45,22 +45,6 @@ const ActionsCell = ({ branch }: { branch: Branch }) => {
       >
         <BranchDetails branch={branch} />
       </MainDialog>
-
-      <button
-        className="p-1 cursor-pointer text-slate-400 hover:text-blue-600 transition-colors"
-        title="Editar (Próximamente)"
-        onClick={() => console.log("Edit branch", branch)}
-      >
-        <EditIcon className="w-5 h-5" />
-      </button>
-
-      <button
-        className="p-1 cursor-pointer text-slate-400 hover:text-red-600 transition-colors"
-        title="Eliminar (Próximamente)"
-        onClick={() => console.log("Delete branch", branch)}
-      >
-        <DeleteIcon className="w-5 h-5" />
-      </button>
     </div>
   );
 };

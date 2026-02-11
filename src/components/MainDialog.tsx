@@ -4,7 +4,7 @@ import { Dialog, Flex, Button } from '@radix-ui/themes';
 import React from 'react';
 
 interface MainDialogProps {
-  trigger: React.ReactNode; // El botón o elemento que abre el modal
+  trigger?: React.ReactNode; // El botón o elemento que abre el modal
   title: React.ReactNode | string;
   description?: string;
   children: React.ReactNode; // El contenido dinámico (form, lista, etc.)
@@ -26,9 +26,11 @@ export function MainDialog({
 }: MainDialogProps) {
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
-      <Dialog.Trigger>
-        {trigger}
-      </Dialog.Trigger>
+      {trigger && (
+        <Dialog.Trigger>
+          {trigger}
+        </Dialog.Trigger>
+      )}
 
       <Dialog.Content maxWidth={maxWidth} className="bg-white! dark:bg-zinc-900! dark:text-white!">
         <Dialog.Title>{title}</Dialog.Title>

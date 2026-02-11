@@ -8,3 +8,9 @@ export const getCurrencies = async (): Promise<Currency[]> => {
 
   return response.data;
 };
+
+export const createCurrency = async (currency: Partial<Currency>) => {
+  const response = await v1_api.post("/nucleo/monedas/", currency);
+
+  return response.data;
+};
