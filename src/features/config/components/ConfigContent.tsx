@@ -90,7 +90,7 @@ export function ConfigContent() {
               icon={MapPinIcon}
               onClick={() => handleCardClick("locations")}
             />
-            <ConfigCard 
+            {/* <ConfigCard 
               title="Usuarios" 
               description="Administración de usuarios y accesos"
               icon={CapitalHumanoIcon}
@@ -101,8 +101,8 @@ export function ConfigContent() {
                   queryFn: getUsers,
                 });
               }}
-            />
-            <ConfigCard 
+            /> */}
+            {/* <ConfigCard 
               title="Roles" 
               description="Configuración de roles y permisos"
               icon={LockIcon}
@@ -113,7 +113,7 @@ export function ConfigContent() {
                   queryFn: getRoles,
                 });
               }}
-            />
+            /> */}
             <ConfigCard 
               title="Monedas" 
               description="Catálogo de monedas y tipos de cambio"

@@ -2,7 +2,7 @@
 
 import { ColumnDef } from "@tanstack/react-table";
 import { User } from "../interfaces/user.interface";
-import { EditIcon, DeleteIcon, ViewIcon } from "../../../components/Icons";
+import { ViewIcon } from "../../../components/Icons";
 import { MainDialog } from "@/src/components/MainDialog";
 import { UserDetails } from "./UserDetails";
 import { useState } from "react";
@@ -45,22 +45,6 @@ const ActionsCell = ({ user }: { user: User }) => {
       >
         <UserDetails user={user} />
       </MainDialog>
-
-      <button
-        className="p-1 cursor-pointer text-slate-400 hover:text-blue-600 transition-colors"
-        title="Editar (Próximamente)"
-        onClick={() => console.log("Edit user", user)}
-      >
-        <EditIcon className="w-5 h-5" />
-      </button>
-
-      <button
-        className="p-1 cursor-pointer text-slate-400 hover:text-red-600 transition-colors"
-        title="Eliminar (Próximamente)"
-        onClick={() => console.log("Delete user", user)}
-      >
-        <DeleteIcon className="w-5 h-5" />
-      </button>
     </div>
   );
 };

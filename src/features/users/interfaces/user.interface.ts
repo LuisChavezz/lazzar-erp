@@ -16,3 +16,10 @@ export interface User {
   date_joined: string;
   last_login: string | null;
 }
+
+export interface RegisterUserResponseErrors {
+  username?: string[];
+  email?: string[];
+  empresa?: string[];
+  sucursal_default?: string[];
+}

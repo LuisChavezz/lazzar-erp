@@ -5,10 +5,14 @@ import { MainDialog } from "@/src/components/MainDialog";
 import FiscalAddressForm from "./FiscalAddressForm";
 import { useState } from "react";
 import { MapPinIcon, EditIcon } from "@/src/components/Icons";
+import { useSession } from "next-auth/react";
 
 export const FiscalAddressDetails = () => {
   const { fiscalAddress } = useSatStore();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const { data: session } = useSession();
+
+  const isAdmin = session?.user?.role === "admin";
 
   return (
     <div className="space-y-6">
@@ -23,7 +27,8 @@ export const FiscalAddressDetails = () => {
           </p>
         </div>
 
-        <MainDialog
+        {isAdmin && (
+          <MainDialog
           title={
             <div className="flex items-center gap-4 pb-4 border-b border-slate-200 dark:border-white/10 mb-4">
               <div>
@@ -56,6 +61,7 @@ export const FiscalAddressDetails = () => {
         >
           <FiscalAddressForm onSuccess={() => setIsDialogOpen(false)} />
         </MainDialog>
+        )}
       </div>
 
       {!fiscalAddress ? (
