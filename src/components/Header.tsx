@@ -1,6 +1,7 @@
 import { SearchBar } from "./SearchBar";
 import { Notifications } from "./Notifications";
 import { HeaderTitle } from "./HeaderTitle";
+import { WorkspaceInfo } from "./WorkspaceInfo";
 
 export const Header = () => {
   return (
@@ -9,6 +10,9 @@ export const Header = () => {
         <HeaderTitle />
       </div>
       <div className="flex items-center gap-6">
+        {/* Workspace Info */}
+        <WorkspaceInfo />
+        
         {/* Search Bar (Hover Expand) */}
         <SearchBar />
 
