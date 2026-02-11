@@ -26,7 +26,7 @@ export const WorkspaceInfo = () => {
           <span className="text-xs font-semibold text-slate-700 dark:text-slate-200">
             {companyName}
           </span>
-          <BancosIcon className="w-4 h-4 text-indigo-500 dark:text-indigo-400" />
+          <BancosIcon className="w-4 h-4 text-sky-500 dark:text-sky-400" />
         </div>
 
         {/* Separator */}
@@ -39,7 +39,7 @@ export const WorkspaceInfo = () => {
               <span className="text-xs font-medium text-slate-600 dark:text-slate-300">
                 {selectedBranch.nombre}
               </span>
-              <BuildingIcon className="w-4 h-4 text-indigo-500 dark:text-indigo-400" />
+              <BuildingIcon className="w-4 h-4 text-sky-500 dark:text-sky-400" />
             </>
           ) : (
             <span className="text-xs text-slate-400 italic">

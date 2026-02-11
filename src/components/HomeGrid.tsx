@@ -101,9 +101,9 @@ export const HomedGrid = () => {
       </TiltCard>
 
       {/* Manufactura */}
-      <TiltCard className="cursor-pointer rounded-2xl bg-white dark:bg-black border border-slate-200 dark:border-white/10 shadow-sm hover:shadow-xl dark:shadow-none dark:hover:shadow-indigo-500/25 p-8 h-full group">
+      <TiltCard className="cursor-pointer rounded-2xl bg-white dark:bg-black border border-slate-200 dark:border-white/10 shadow-sm hover:shadow-xl dark:shadow-none dark:hover:shadow-sky-500/25 p-8 h-full group">
         <div className="flex flex-col h-full">
-          <div className="mb-6 w-14 h-14 rounded-full bg-indigo-50 dark:bg-indigo-500/10 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
+          <div className="mb-6 w-14 h-14 rounded-full bg-sky-50 dark:bg-sky-500/10 flex items-center justify-center text-sky-600 dark:text-sky-400">
             <SettingsIcon className="w-7 h-7" />
           </div>
           <div>
@@ -114,7 +114,7 @@ export const HomedGrid = () => {
               BOM, rutas, órdenes de producción, avances y consumos de material.
             </p>
           </div>
-          <div className="mt-auto pt-8 flex items-center text-indigo-600 dark:text-indigo-400 text-sm font-medium opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-y-2 group-hover:translate-y-0">
+          <div className="mt-auto pt-8 flex items-center text-sky-600 dark:text-sky-400 text-sm font-medium opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-y-2 group-hover:translate-y-0">
             <span>Ver planta productiva</span>
             <ChevronRightIcon className="w-4 h-4 ml-1 transition-transform group-hover:translate-x-1" />
           </div>

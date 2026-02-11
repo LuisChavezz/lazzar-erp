@@ -33,8 +33,8 @@ const ActionsCell = ({ company }: { company: Company }) => {
               </h1>
               <div className="flex items-center gap-2">
                 <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-500"></span>
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-sky-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-sky-500"></span>
                 </span>
                 <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
                   Información Completa
@@ -45,7 +45,7 @@ const ActionsCell = ({ company }: { company: Company }) => {
         }
         trigger={
           <button
-            className="p-1 cursor-pointer text-slate-400 hover:text-indigo-600 transition-colors"
+            className="p-1 cursor-pointer text-slate-400 hover:text-sky-600 transition-colors"
             title="Ver Detalles"
           >
             <ViewIcon className="w-5 h-5" />

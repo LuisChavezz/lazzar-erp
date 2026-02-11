@@ -1,5 +1,4 @@
 
-
 import { Dialog, Flex, Button } from '@radix-ui/themes';
 import React from 'react';
 
@@ -11,7 +10,7 @@ interface ConfirmDialogProps {
   confirmText?: string;
   cancelText?: string;
   maxWidth?: string;
-  confirmColor?: "red" | "blue" | "green" | "gray" | "orange" | "amber" | "yellow" | "lime" | "cyan" | "indigo" | "violet" | "purple" | "pink" | "crimson" | "plum" | "tomato" | "teal" | "gold" | "bronze" | "brown" | "grass" | "mint" | "sky" | "jade" | "iris" | "ruby";
+  confirmColor?: "red" | "blue" | "green" | "gray" | "orange" | "amber" | "yellow" | "lime" | "cyan" | "violet" | "purple" | "pink" | "crimson" | "plum" | "tomato" | "teal" | "gold" | "bronze" | "brown" | "grass" | "mint" | "sky" | "jade" | "iris" | "ruby";
 }
 
 export function ConfirmDialog({

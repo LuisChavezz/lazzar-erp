@@ -11,7 +11,7 @@ const orders: Order[] = [
     client: {
       name: "Acme Corp",
       initials: "AC",
-      colorClass: "bg-indigo-100 text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-400",
+      colorClass: "bg-sky-100 text-sky-600 dark:bg-sky-500/20 dark:text-sky-400",
     },
     pieces: 500,
     seller: "Juan Pérez",
