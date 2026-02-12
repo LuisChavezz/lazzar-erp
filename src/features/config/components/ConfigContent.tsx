@@ -5,15 +5,13 @@ import { useQueryClient } from "@tanstack/react-query";
 // import { getCompanies } from "@/src/features/companies/services/actions";
 import { getBranches } from "@/src/features/branches/services/actions";
 import { getCurrencies } from "@/src/features/currency/services/actions";
-import { getRoles } from "@/src/features/roles/services/actions";
 import { getUsers } from "@/src/features/users/services/actions";
-import { 
-  BuildingIcon, 
-  MapPinIcon, 
-  InfoIcon, 
+import {
+  BuildingIcon,
+  MapPinIcon,
+  InfoIcon,
   // BancosIcon,
   CapitalHumanoIcon,
-  LockIcon,
   ListaPreciosIcon,
   InventariosIcon
 } from "@/src/components/Icons";
@@ -43,11 +41,11 @@ export function ConfigContent() {
     <>
       <div className="w-full grid grid-cols-1">
         {/* Grid View */}
-        <div 
+        <div
           className={`
             col-start-1 row-start-1 w-full transition-all duration-500 ease-in-out
-            ${selectedView 
-              ? "opacity-0 -translate-y-20 pointer-events-none scale-95" 
+            ${selectedView
+              ? "opacity-0 -translate-y-20 pointer-events-none scale-95"
               : "opacity-100 translate-y-0 scale-100"
             }
             ${!isGridVisible ? "hidden" : ""}
@@ -66,8 +64,8 @@ export function ConfigContent() {
                 });
               }}
             /> */}
-            <ConfigCard 
-              title="Sucursales" 
+            <ConfigCard
+              title="Sucursales"
               description="Gestión de sucursales operativas"
               icon={BuildingIcon}
               onClick={() => handleCardClick("branches")}
@@ -78,30 +76,18 @@ export function ConfigContent() {
                 });
               }}
             />
-            <ConfigCard 
-              title="Almacenes" 
-              description="Gestión de almacenes e inventarios" 
+            <ConfigCard
+              title="Almacenes"
+              description="Gestión de almacenes e inventarios"
               icon={InventariosIcon}
               onClick={() => handleCardClick("warehouses")}
             />
-            <ConfigCard 
-              title="Ubicaciones" 
-              description="Gestión de ubicaciones físicas" 
+            <ConfigCard
+              title="Ubicaciones"
+              description="Gestión de ubicaciones físicas"
               icon={MapPinIcon}
               onClick={() => handleCardClick("locations")}
             />
-            {/* <ConfigCard 
-              title="Usuarios" 
-              description="Administración de usuarios y accesos"
-              icon={CapitalHumanoIcon}
-              onClick={() => handleCardClick("users")}
-              onMouseEnter={() => {
-                queryClient.prefetchQuery({
-                  queryKey: ["users"],
-                  queryFn: getUsers,
-                });
-              }}
-            /> */}
             {/* <ConfigCard 
               title="Roles" 
               description="Configuración de roles y permisos"
@@ -111,11 +97,11 @@ export function ConfigContent() {
                 queryClient.prefetchQuery({
                   queryKey: ["roles"],
                   queryFn: getRoles,
-                });
-              }}
-            /> */}
-            <ConfigCard 
-              title="Monedas" 
+                  });
+                  }}
+                  /> */}
+            <ConfigCard
+              title="Monedas"
               description="Catálogo de monedas y tipos de cambio"
               icon={ListaPreciosIcon}
               onClick={() => handleCardClick("currencies")}
@@ -126,9 +112,21 @@ export function ConfigContent() {
                 });
               }}
             />
-            <ConfigCard 
-              title="Información Fiscal" 
-              icon={InfoIcon} 
+            <ConfigCard
+              title="Usuarios"
+              description="Administración de usuarios y accesos"
+              icon={CapitalHumanoIcon}
+              onClick={() => handleCardClick("users")}
+              onMouseEnter={() => {
+                queryClient.prefetchQuery({
+                  queryKey: ["users"],
+                  queryFn: getUsers,
+                });
+              }}
+            />
+            <ConfigCard
+              title="Información Fiscal"
+              icon={InfoIcon}
               onClick={() => handleCardClick("sat")}
             />
           </div>

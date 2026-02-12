@@ -23,3 +23,15 @@ export interface RegisterUserResponseErrors {
   empresa?: string[];
   sucursal_default?: string[];
 }
+
+export interface RegisterUser {
+  username: string;
+  email: string;
+  password: string;
+  first_name: string;
+  last_name: string;
+  sucursal_default: number;
+  sucursales: number[];
+  is_active: boolean;
+  empresa: number;
+}
