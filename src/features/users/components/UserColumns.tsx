@@ -10,19 +10,10 @@ import { useState } from "react";
 import UserForm from "./UserForm";
 import { useDeleteUser } from "../hooks/useDeleteUser";
 
-const ActionsCell = ({ user, onDeleteStateChange }: { user: User; onDeleteStateChange?: (id: number, isLoading: boolean) => void }) => {
+const ActionsCell = ({ user }: { user: User }) => {
   const [isViewOpen, setIsViewOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
-  const { mutateAsync: deleteUser } = useDeleteUser();
-
-  const handleDelete = async () => {
-    if (onDeleteStateChange) onDeleteStateChange(user.id, true);
-    try {
-      await deleteUser(user.id);
-    } catch (error) {
-      if (onDeleteStateChange) onDeleteStateChange(user.id, false);
-    }
-  };
+  const { mutate: deleteUser } = useDeleteUser();
 
   return (
     <div className="flex items-center justify-center gap-2">
@@ -97,7 +88,7 @@ const ActionsCell = ({ user, onDeleteStateChange }: { user: User; onDeleteStateC
       <ConfirmDialog
         title="Eliminar Usuario"
         description={`¿Estás seguro de que deseas eliminar al usuario "${user.username}"? Esta acción no se puede deshacer.`}
-        onConfirm={handleDelete}
+        onConfirm={() => deleteUser(user.id)}
         confirmText="Eliminar"
         confirmColor="red"
         trigger={
@@ -113,7 +104,7 @@ const ActionsCell = ({ user, onDeleteStateChange }: { user: User; onDeleteStateC
   );
 };
 
-export const getUserColumns = (onDeleteStateChange?: (id: number, isLoading: boolean) => void): ColumnDef<User>[] => [
+export const userColumns: ColumnDef<User>[] = [
   {
     accessorKey: "username",
     header: "Usuario",
@@ -200,8 +191,6 @@ export const getUserColumns = (onDeleteStateChange?: (id: number, isLoading: boo
   {
     id: "actions",
     header: () => <div className="text-center">Acciones</div>,
-    cell: ({ row }) => <ActionsCell user={row.original} onDeleteStateChange={onDeleteStateChange} />,
+    cell: ({ row }) => <ActionsCell user={row.original} />,
   },
 ];
-
-export const userColumns = getUserColumns();
