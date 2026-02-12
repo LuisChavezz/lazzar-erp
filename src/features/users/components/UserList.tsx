@@ -1,15 +1,27 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { useUsers } from "../hooks/useUsers";
 import { DataTable } from "@/src/components/DataTable";
-import { userColumns } from "./UserColumns";
+import { getUserColumns } from "./UserColumns";
 import { MainDialog } from "@/src/components/MainDialog";
 import UserForm from "./UserForm";
 
 export default function UserList() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [deletingIds, setDeletingIds] = useState<number[]>([]);
   const { data: users, isLoading, isError, error } = useUsers();
+
+  const handleDeleteStateChange = useCallback((id: number, isLoading: boolean) => {
+    setDeletingIds((prev) =>
+      isLoading ? [...prev, id] : prev.filter((prevId) => prevId !== id)
+    );
+  }, []);
+
+  const columns = useMemo(
+    () => getUserColumns(handleDeleteStateChange),
+    [handleDeleteStateChange]
+  );
 
   if (isLoading) {
     return (
@@ -33,10 +45,11 @@ export default function UserList() {
 
   return (
     <DataTable
-      columns={userColumns}
+      columns={columns}
       data={users}
       title="Usuarios"
       searchPlaceholder="Buscar usuario..."
+      loadingRowIds={deletingIds}
       actionButton={
         <MainDialog
           open={isDialogOpen}

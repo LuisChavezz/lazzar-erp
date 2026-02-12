@@ -19,6 +19,7 @@ import {
   ChevronUpIcon,
   ChevronDownIcon,
 } from "./Icons";
+import { User } from "../features/users/interfaces/user.interface";
 
 // DataTable component props
 interface DataTableProps<TData, TValue> {
@@ -27,6 +28,7 @@ interface DataTableProps<TData, TValue> {
   title?: string;
   searchPlaceholder?: string;
   actionButton?: React.ReactNode;
+  loadingRowIds?: (string | number)[];
 }
 
 export function DataTable<TData, TValue>({
@@ -35,6 +37,7 @@ export function DataTable<TData, TValue>({
   title,
   searchPlaceholder = "Buscar...",
   actionButton,
+  loadingRowIds = [],
 }: DataTableProps<TData, TValue>) {
 
   // State for sorting, filtering, and column visibility
@@ -256,18 +259,38 @@ export function DataTable<TData, TValue>({
             ))}
           </thead>
           <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-sm">
-            {table.getRowModel().rows.map((row) => (
+            {table.getRowModel().rows.map((row) => {
+            const isLoading = loadingRowIds.includes((row.original as User).id);
+            return (
               <tr
                 key={row.id}
-                className="hover:bg-slate-50/50 dark:hover:bg-white/5 transition-colors"
+                className={`transition-colors relative ${
+                  isLoading
+                    ? "bg-slate-50 dark:bg-slate-800/50"
+                    : "hover:bg-slate-50/50 dark:hover:bg-white/5"
+                }`}
               >
+                {isLoading && (
+                  <td className="absolute inset-0 z-10 flex items-center justify-center bg-white/50 dark:bg-slate-900/50 backdrop-blur-[1px]">
+                    <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white dark:bg-slate-800 shadow-sm border border-slate-200 dark:border-slate-700">
+                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-slate-200 border-t-red-500"></div>
+                      <span className="text-xs font-medium text-red-600 dark:text-red-400">
+                        Eliminando...
+                      </span>
+                    </div>
+                  </td>
+                )}
                 {row.getVisibleCells().map((cell) => (
-                  <td key={cell.id} className="px-6 py-4">
+                  <td
+                    key={cell.id}
+                    className={`px-6 py-4 ${isLoading ? "opacity-50 blur-[0.5px]" : ""}`}
+                  >
                     {flexRender(cell.column.columnDef.cell, cell.getContext())}
                   </td>
                 ))}
               </tr>
-            ))}
+            );
+          })}
           </tbody>
         </table>
       </div>

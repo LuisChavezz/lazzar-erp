@@ -2,15 +2,27 @@
 
 import { ColumnDef } from "@tanstack/react-table";
 import { User } from "../interfaces/user.interface";
-import { ViewIcon, EditIcon } from "../../../components/Icons";
+import { ViewIcon, EditIcon, DeleteIcon } from "../../../components/Icons";
 import { MainDialog } from "@/src/components/MainDialog";
+import { ConfirmDialog } from "@/src/components/ConfirmDialog";
 import { UserDetails } from "./UserDetails";
 import { useState } from "react";
 import UserForm from "./UserForm";
+import { useDeleteUser } from "../hooks/useDeleteUser";
 
-const ActionsCell = ({ user }: { user: User }) => {
+const ActionsCell = ({ user, onDeleteStateChange }: { user: User; onDeleteStateChange?: (id: number, isLoading: boolean) => void }) => {
   const [isViewOpen, setIsViewOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
+  const { mutateAsync: deleteUser } = useDeleteUser();
+
+  const handleDelete = async () => {
+    if (onDeleteStateChange) onDeleteStateChange(user.id, true);
+    try {
+      await deleteUser(user.id);
+    } catch (error) {
+      if (onDeleteStateChange) onDeleteStateChange(user.id, false);
+    }
+  };
 
   return (
     <div className="flex items-center justify-center gap-2">
@@ -81,11 +93,27 @@ const ActionsCell = ({ user }: { user: User }) => {
       >
         <UserForm onSuccess={() => setIsEditOpen(false)} defaultValues={user} />
       </MainDialog>
+
+      <ConfirmDialog
+        title="Eliminar Usuario"
+        description={`¿Estás seguro de que deseas eliminar al usuario "${user.username}"? Esta acción no se puede deshacer.`}
+        onConfirm={handleDelete}
+        confirmText="Eliminar"
+        confirmColor="red"
+        trigger={
+          <button
+            className="p-1 cursor-pointer text-slate-400 hover:text-red-600 transition-colors"
+            title="Eliminar"
+          >
+            <DeleteIcon className="w-5 h-5" />
+          </button>
+        }
+      />
     </div>
   );
 };
 
-export const userColumns: ColumnDef<User>[] = [
+export const getUserColumns = (onDeleteStateChange?: (id: number, isLoading: boolean) => void): ColumnDef<User>[] => [
   {
     accessorKey: "username",
     header: "Usuario",
@@ -172,6 +200,8 @@ export const userColumns: ColumnDef<User>[] = [
   {
     id: "actions",
     header: () => <div className="text-center">Acciones</div>,
-    cell: ({ row }) => <ActionsCell user={row.original} />,
+    cell: ({ row }) => <ActionsCell user={row.original} onDeleteStateChange={onDeleteStateChange} />,
   },
 ];
+
+export const userColumns = getUserColumns();

@@ -19,3 +19,7 @@ export const updateUser = async (id: number, values: RegisterUser): Promise<User
 
   return response.data;
 };
+
+export const deleteUser = async (id: number): Promise<void> => {
+  await v1_api.delete(`/usuarios/${id}/`);
+};
