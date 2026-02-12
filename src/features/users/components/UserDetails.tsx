@@ -103,12 +103,7 @@ export const UserDetails = ({ user }: UserDetailsProps) => {
                 {new Date(user.date_joined).toLocaleDateString()}
               </p>
             </div>
-            <div>
-              <label className="text-xs text-slate-500 dark:text-slate-400">Último Acceso</label>
-              <p className="text-sm text-slate-700 dark:text-slate-300">
-                {user.last_login ? new Date(user.last_login).toLocaleDateString() : "-"}
-              </p>
-            </div>
+
             <div>
               <label className="text-xs text-slate-500 dark:text-slate-400">ID Usuario</label>
               <p className="text-sm font-mono text-slate-700 dark:text-slate-300">#{user.id}</p>

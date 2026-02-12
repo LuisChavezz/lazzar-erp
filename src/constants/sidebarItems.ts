@@ -8,7 +8,6 @@ import {
   DashboardIcon,
   EmbarquesIcon,
   ExistenciasIcon,
-  ExistenciasTelaIcon,
   FacturacionIcon,
   InventariosIcon,
   ListaPreciosIcon,
@@ -129,11 +128,6 @@ export const sidebarItems: SidebarSection[] = [
         label: "Embarques",
         href: "#",
         icon: EmbarquesIcon,
-      },
-      {
-        label: "Existencias de tela",
-        href: "#",
-        icon: ExistenciasTelaIcon,
       },
       {
         label: "Reportes",
