@@ -2,13 +2,15 @@
 
 import { ColumnDef } from "@tanstack/react-table";
 import { User } from "../interfaces/user.interface";
-import { ViewIcon } from "../../../components/Icons";
+import { ViewIcon, EditIcon } from "../../../components/Icons";
 import { MainDialog } from "@/src/components/MainDialog";
 import { UserDetails } from "./UserDetails";
 import { useState } from "react";
+import UserForm from "./UserForm";
 
 const ActionsCell = ({ user }: { user: User }) => {
   const [isViewOpen, setIsViewOpen] = useState(false);
+  const [isEditOpen, setIsEditOpen] = useState(false);
 
   return (
     <div className="flex items-center justify-center gap-2">
@@ -44,6 +46,40 @@ const ActionsCell = ({ user }: { user: User }) => {
         }
       >
         <UserDetails user={user} />
+      </MainDialog>
+
+      <MainDialog
+        open={isEditOpen}
+        onOpenChange={setIsEditOpen}
+        maxWidth="1000px"
+        title={
+          <div className="flex items-center gap-4 pb-4 border-b border-slate-200 dark:border-white/10 mb-4">
+            <div>
+              <h1 className="text-xl font-bold text-slate-900 dark:text-white font-display tracking-tight">
+                Editar Usuario
+              </h1>
+              <div className="flex items-center gap-2">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                </span>
+                <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                  Actualizar información
+                </p>
+              </div>
+            </div>
+          </div>
+        }
+        trigger={
+          <button
+            className="p-1 cursor-pointer text-slate-400 hover:text-sky-600 transition-colors"
+            title="Editar"
+          >
+            <EditIcon className="w-5 h-5" />
+          </button>
+        }
+      >
+        <UserForm onSuccess={() => setIsEditOpen(false)} defaultValues={user} />
       </MainDialog>
     </div>
   );

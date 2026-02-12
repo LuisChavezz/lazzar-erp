@@ -72,7 +72,7 @@ const ActionsCell = ({ branch }: { branch: Branch }) => {
         }
         trigger={
           <button
-            className="p-1 cursor-pointer text-slate-400 hover:text-orange-600 transition-colors"
+            className="p-1 cursor-pointer text-slate-400 hover:text-sky-600 transition-colors"
             title="Editar"
           >
             <EditIcon className="w-5 h-5" />

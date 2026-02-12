@@ -13,3 +13,9 @@ export const registerUser = async (values: RegisterUser): Promise<User | Registe
 
   return response.data;
 };
+
+export const updateUser = async (id: number, values: RegisterUser): Promise<User | RegisterUserResponseErrors> => {
+  const response = await v1_api.put(`/usuarios/${id}/`, values);
+
+  return response.data;
+};

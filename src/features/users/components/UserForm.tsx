@@ -4,21 +4,52 @@ import { useForm, Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { UserFormSchema, UserFormValues } from "../schemas/user.schema";
 import { useRegisterUser } from "../hooks/useRegisterUser";
+import { useUpdateUser } from "../hooks/useUpdateUser";
 import { FormInput } from "../../../components/FormInput";
 import { FormSelect } from "../../../components/FormSelect";
 import { FormCancelButton, FormSubmitButton } from "../../../components/FormButtons";
 import { useWorkspaceStore } from "../../workspace/store/workspace.store";
 import { useCompanyBranches } from "../../branches/hooks/useCompanyBranches";
 import { UserIcon, MapPinIcon } from "../../../components/Icons";
+import { User } from "../interfaces/user.interface";
 
 interface UserFormProps {
   onSuccess: () => void;
+  defaultValues?: User;
 }
 
-export default function UserForm({ onSuccess }: UserFormProps) {
+export default function UserForm({ onSuccess, defaultValues }: UserFormProps) {
   const companyId = useWorkspaceStore((state) => state.selectedCompany.id);
   const selectedBranchId = useWorkspaceStore((state) => state.selectedBranch!.id);
   const { branches, isLoading: isLoadingBranches } = useCompanyBranches(companyId);
+
+  const isEditMode = !!defaultValues;
+
+  const initialValues = isEditMode
+    ? {
+        username: defaultValues.username,
+        email: defaultValues.email,
+        password: "",
+        first_name: defaultValues.first_name,
+        last_name: defaultValues.last_name,
+        sucursal_default: defaultValues.sucursal_default,
+        sucursales: Array.isArray(defaultValues.sucursales)
+          ? defaultValues.sucursales.map((id) => id.toString())
+          : defaultValues.sucursales
+          ? [String(defaultValues.sucursales as unknown as number)]
+          : [],
+        is_active: defaultValues.is_active,
+      }
+    : {
+        username: "",
+        email: "",
+        password: "",
+        first_name: "",
+        last_name: "",
+        sucursal_default: selectedBranchId,
+        sucursales: [] as string[],
+        is_active: true,
+      };
 
   const {
     register,
@@ -28,27 +59,33 @@ export default function UserForm({ onSuccess }: UserFormProps) {
     formState: { errors },
   } = useForm<UserFormValues>({
     resolver: zodResolver(UserFormSchema) as Resolver<UserFormValues>,
-    defaultValues: {
-      username: "",
-      email: "",
-      password: "",
-      first_name: "",
-      last_name: "",
-      sucursal_default: selectedBranchId,
-      sucursales: [],
-      is_active: true,
-    },
+    defaultValues: initialValues as unknown as UserFormValues,
   });
 
-  const { mutate: registerUser, isPending } = useRegisterUser(setError);
+  const { mutate: registerUser, isPending: isRegisterPending } = useRegisterUser(setError);
+  const { mutate: updateUserMutation, isPending: isUpdatePending } = useUpdateUser(setError);
+
+  const isPending = isRegisterPending || isUpdatePending;
 
   const onSubmit = (values: UserFormValues) => {
-    registerUser(values, {
-      onSuccess: () => {
-        reset();
-        onSuccess();
-      },
-    });
+    if (isEditMode && defaultValues) {
+      updateUserMutation(
+        { id: defaultValues.id, values },
+        {
+          onSuccess: () => {
+            reset(initialValues as unknown as UserFormValues);
+            onSuccess();
+          },
+        }
+      );
+    } else {
+      registerUser(values, {
+        onSuccess: () => {
+          reset(initialValues as unknown as UserFormValues);
+          onSuccess();
+        },
+      });
+    }
   };
 
   return (
@@ -156,9 +193,7 @@ export default function UserForm({ onSuccess }: UserFormProps) {
                         <input
                           type="checkbox"
                           value={branch.id}
-                          {...register("sucursales", {
-                            valueAsNumber: true,
-                          })}
+                          {...register("sucursales")}
                           className="w-4 h-4 text-sky-600 rounded border-slate-300 focus:ring-sky-500"
                         />
                         <span className="text-sm text-slate-700 dark:text-slate-300">
@@ -189,12 +224,12 @@ export default function UserForm({ onSuccess }: UserFormProps) {
         </section>
 
         <div className="flex justify-end gap-3 pt-4">
-          <FormCancelButton onClick={onSuccess} disabled={isPending} />
+          <FormCancelButton onClick={() => reset(initialValues as unknown as UserFormValues)} disabled={isPending} />
           <FormSubmitButton
             isPending={isPending}
-            loadingLabel="Registrando..."
+            loadingLabel={isEditMode ? "Actualizando..." : "Registrando..."}
           >
-            Registrar Usuario
+            {isEditMode ? "Actualizar Usuario" : "Registrar Usuario"}
           </FormSubmitButton>
         </div>
       </fieldset>
