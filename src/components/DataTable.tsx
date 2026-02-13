@@ -97,6 +97,7 @@ export function DataTable<TData, TValue>({
       columnVisibility,
       columnOrder,
     },
+    columnResizeMode: "onChange",
     onSortingChange: setSorting,
     onGlobalFilterChange: setGlobalFilter,
     onColumnVisibilityChange: setColumnVisibility,
@@ -190,7 +191,7 @@ export function DataTable<TData, TValue>({
       </div>
 
       <div className="w-full overflow-x-auto rounded-4xl border border-slate-200 dark:border-white/20 shadow-sm">
-        <table className="w-full text-left border-collapse bg-white dark:bg-black">
+        <table className="w-full text-left border-collapse bg-white dark:bg-black table-fixed">
           <thead>
             {table.getHeaderGroups().map((headerGroup) => (
               <tr
@@ -200,8 +201,12 @@ export function DataTable<TData, TValue>({
                 {headerGroup.headers.map((header) => (
                   <th
                     key={header.id}
-                    draggable={!header.isPlaceholder}
+                    draggable={!header.isPlaceholder && !header.column.getIsResizing()}
                     onDragStart={(e) => {
+                      if (header.column.getIsResizing()) {
+                        e.preventDefault();
+                        return;
+                      }
                       setDraggedColumnId(header.column.id);
                       e.dataTransfer.setData("columnId", header.column.id);
                       e.dataTransfer.effectAllowed = "move";
@@ -224,7 +229,7 @@ export function DataTable<TData, TValue>({
                         moveColumn(draggedId, header.column.id);
                       }
                     }}
-                    className={`px-6 py-4 font-semibold transition-colors ${
+                    className={`px-6 py-4 font-semibold transition-colors relative group/th ${
                       header.column.getCanSort()
                         ? "cursor-pointer select-none hover:text-slate-700 dark:hover:text-slate-300"
                         : ""
@@ -236,6 +241,7 @@ export function DataTable<TData, TValue>({
                       draggedColumnId === header.column.id ? "opacity-50" : ""
                     }`}
                     onClick={header.column.getToggleSortingHandler()}
+                    style={{ width: header.getSize() }}
                   >
                     <div className="flex items-center gap-2">
                       {header.isPlaceholder
@@ -250,6 +256,30 @@ export function DataTable<TData, TValue>({
                         desc: <ChevronDownIcon className="w-3 h-3" />,
                       }[header.column.getIsSorted() as string] ?? null}
                     </div>
+                    
+                    {/* Column Resizer */}
+                    <div
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        header.getResizeHandler()(e);
+                        e.stopPropagation();
+                      }}
+                      onTouchStart={(e) => {
+                        e.preventDefault();
+                        header.getResizeHandler()(e);
+                        e.stopPropagation();
+                      }}
+                      onClick={(e) => e.stopPropagation()}
+                      className={`absolute right-0 top-0 h-full w-2 rounded cursor-col-resize touch-none select-none z-10 ${
+                        header.column.getIsResizing()
+                          ? "bg-sky-500 opacity-100 w-0.5 right-0"
+                          : table.getState().columnSizingInfo.isResizingColumn
+                          ? "opacity-0 pointer-events-none"
+                          : "opacity-0 hover:opacity-100 group-hover/th:opacity-100"
+                      }`}
+                    >
+                        <div className={`h-full w-0.5 mx-auto rounded bg-sky-500/50 ${header.column.getIsResizing() ? "bg-sky-500" : ""}`} />
+                    </div>
                   </th>
                 ))}
               </tr>
@@ -262,7 +292,11 @@ export function DataTable<TData, TValue>({
                 className="hover:bg-slate-50/50 dark:hover:bg-white/5 transition-colors"
               >
                 {row.getVisibleCells().map((cell) => (
-                  <td key={cell.id} className="px-6 py-4">
+                  <td 
+                    key={cell.id} 
+                    className="px-6 py-4"
+                    style={{ width: cell.column.getSize() }}
+                  >
                     {flexRender(cell.column.columnDef.cell, cell.getContext())}
                   </td>
                 ))}
