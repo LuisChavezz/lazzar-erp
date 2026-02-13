@@ -3,6 +3,8 @@ import { Notifications } from "./Notifications";
 import { HeaderTitle } from "./HeaderTitle";
 import { WorkspaceInfo } from "./WorkspaceInfo";
 
+import { UserMenu } from "./UserMenu";
+
 export const Header = () => {
   return (
     <header className="hidden md:flex h-20 items-center justify-between px-8 bg-transparent shrink-0 z-30">
@@ -19,7 +21,7 @@ export const Header = () => {
         {/* Notifications */}
         <Notifications />
 
-        <div className="w-8 h-8 rounded-full bg-linear-to-tr from-sky-500 to-cyan-500 ring-2 ring-white dark:ring-slate-800 cursor-pointer shadow-lg shadow-sky-500/20"></div>
+        <UserMenu />
       </div>
     </header>
   );
