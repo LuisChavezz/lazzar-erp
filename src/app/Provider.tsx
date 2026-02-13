@@ -6,20 +6,19 @@ import { Toaster } from "react-hot-toast";
 import { SessionProvider } from "next-auth/react";
 import { Session } from "next-auth";
 import { Theme } from "@radix-ui/themes";
-
-// Create a QueryClient instance
-const queryClient = new QueryClient({
-  defaultOptions: { // Set default options for queries
-    queries: {
-      retry: 1,
-      staleTime: 15 * 60 * 1000, // 15 minutes
-      refetchOnWindowFocus: false,
-    },
-  },
-})
-
+import { useState } from "react";
 
 export const Provider = ({ children, session }: { children: React.ReactNode, session?: Session | null }) => {
+  const [queryClient] = useState(() => new QueryClient({
+    defaultOptions: { // Set default options for queries
+      queries: {
+        retry: 1,
+        staleTime: 15 * 60 * 1000, // 15 minutes
+        refetchOnWindowFocus: false,
+      },
+    },
+  }));
+
   return (
     <SessionProvider session={session}>
       <QueryClientProvider client={queryClient}>

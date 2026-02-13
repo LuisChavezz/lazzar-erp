@@ -5,9 +5,10 @@ import { Company } from "../interfaces/company.interface";
 import { EditIcon, DeleteIcon, ViewIcon } from "../../../components/Icons";
 import { ConfirmDialog } from "../../../components/ConfirmDialog";
 import { MainDialog } from "@/src/components/MainDialog";
+import { DialogHeader } from "@/src/components/DialogHeader";
+import { useState } from "react";
 import CompanyForm from "./CompanyForm";
 import { CompanyDetails } from "./CompanyDetails";
-import { useState } from "react";
 
 // Componente para renderizar las acciones de editar y eliminar
 const ActionsCell = ({ company }: { company: Company }) => {
@@ -16,7 +17,6 @@ const ActionsCell = ({ company }: { company: Company }) => {
 
   const handleDelete = () => {
     // TODO: Implement delete functionality
-    console.log("Delete company", company);
   };
 
   return (
@@ -26,22 +26,11 @@ const ActionsCell = ({ company }: { company: Company }) => {
         onOpenChange={setIsViewOpen}
         maxWidth="1000px"
         title={
-          <div className="flex items-center gap-4 pb-4 border-b border-slate-200 dark:border-white/10 mb-4">
-            <div>
-              <h1 className="text-xl font-bold text-slate-900 dark:text-white font-display tracking-tight">
-                Detalles de Empresa
-              </h1>
-              <div className="flex items-center gap-2">
-                <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-sky-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-sky-500"></span>
-                </span>
-                <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
-                  Información Completa
-                </p>
-              </div>
-            </div>
-          </div>
+          <DialogHeader
+            title="Detalles de Empresa"
+            subtitle="Información Completa"
+            statusColor="sky"
+          />
         }
         trigger={
           <button
@@ -60,22 +49,11 @@ const ActionsCell = ({ company }: { company: Company }) => {
         onOpenChange={setIsEditOpen}
         maxWidth="1000px"
         title={
-          <div className="flex items-center gap-4 pb-4 border-b border-slate-200 dark:border-white/10 mb-4">
-            <div>
-              <h1 className="text-xl font-bold text-slate-900 dark:text-white font-display tracking-tight">
-                Edición de Empresa
-              </h1>
-              <div className="flex items-center gap-2">
-                <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-sky-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-sky-500"></span>
-                </span>
-                <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
-                  Modificar Registro
-                </p>
-              </div>
-            </div>
-          </div>
+          <DialogHeader
+            title="Edición de Empresa"
+            subtitle="Modificar Registro"
+            statusColor="sky"
+          />
         }
         trigger={
           <button

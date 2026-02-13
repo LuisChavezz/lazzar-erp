@@ -3,9 +3,10 @@ import { DataTable } from "../../../components/DataTable";
 import { useLocationStore } from "../stores/location.store";
 import { getColumns } from "./LocationColumns";
 import { MainDialog } from "../../../components/MainDialog";
-import LocationForm from "./LocationForm";
+import { DialogHeader } from "@/src/components/DialogHeader";
 import { Location } from "../interfaces/location.interface";
 import { useSession } from "next-auth/react";
+import LocationForm from "./LocationForm";
 
 export default function LocationList() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -37,22 +38,11 @@ export default function LocationList() {
         isAdmin ? (
           <MainDialog
             title={
-              <div className="flex items-center gap-4 pb-4 border-b border-slate-200 dark:border-white/10 mb-4">
-                <div>
-                  <h1 className="text-xl font-bold text-slate-900 dark:text-white font-display tracking-tight">
-                    {selectedLocation ? "Editar Ubicación" : "Alta de Ubicación"}
-                  </h1>
-                  <div className="flex items-center gap-2">
-                    <span className="relative flex h-2 w-2">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                      <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-                    </span>
-                    <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
-                      {selectedLocation ? "Edición de registro" : "Registro Nuevo"}
-                    </p>
-                  </div>
-                </div>
-              </div>
+              <DialogHeader
+                title={selectedLocation ? "Editar Ubicación" : "Alta de Ubicación"}
+                subtitle={selectedLocation ? "Edición de registro" : "Registro Nuevo"}
+                statusColor="emerald"
+              />
             }
             open={isDialogOpen}
             onOpenChange={setIsDialogOpen}

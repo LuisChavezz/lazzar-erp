@@ -1,12 +1,31 @@
 import { ArrowLeftIcon } from "@/src/components/Icons";
-import WarehouseList from "@/src/features/warehouses/components/WarehouseList";
-import LocationList from "@/src/features/locations/components/LocationList";
-import { SatInfo } from "@/src/features/sat/components/SatInfo";
-import CompanyList from "@/src/features/companies/components/CompanyList";
-import BranchList from "@/src/features/branches/components/BranchList";
-import CurrencyList from "@/src/features/currency/components/CurrencyList";
-import RoleList from "@/src/features/roles/components/RoleList";
-import UserList from "@/src/features/users/components/UserList";
+import dynamic from "next/dynamic";
+import { LoadingSkeleton } from "@/src/components/LoadingSkeleton";
+
+const WarehouseList = dynamic(() => import("@/src/features/warehouses/components/WarehouseList"), {
+  loading: () => <LoadingSkeleton />,
+});
+const LocationList = dynamic(() => import("@/src/features/locations/components/LocationList"), {
+  loading: () => <LoadingSkeleton />,
+});
+const SatInfo = dynamic(() => import("@/src/features/sat/components/SatInfo").then(mod => mod.SatInfo), {
+  loading: () => <LoadingSkeleton />,
+});
+const CompanyList = dynamic(() => import("@/src/features/companies/components/CompanyList"), {
+  loading: () => <LoadingSkeleton />,
+});
+const BranchList = dynamic(() => import("@/src/features/branches/components/BranchList"), {
+  loading: () => <LoadingSkeleton />,
+});
+const CurrencyList = dynamic(() => import("@/src/features/currency/components/CurrencyList"), {
+  loading: () => <LoadingSkeleton />,
+});
+const RoleList = dynamic(() => import("@/src/features/roles/components/RoleList"), {
+  loading: () => <LoadingSkeleton />,
+});
+const UserList = dynamic(() => import("@/src/features/users/components/UserList"), {
+  loading: () => <LoadingSkeleton />,
+});
 
 interface ConfigDetailViewProps {
   selectedView: string | null;
