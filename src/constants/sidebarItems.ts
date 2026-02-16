@@ -86,7 +86,7 @@ export const sidebarItems: SidebarSection[] = [
       },
       {
         label: "CxC (Cobrar)",
-        href: "#",
+        href: "/accounts-receivable",
         icon: CxcIcon,
       },
       {
