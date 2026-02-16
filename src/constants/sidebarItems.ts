@@ -61,7 +61,7 @@ export const sidebarItems: SidebarSection[] = [
       },
       {
         label: "Órdenes",
-        href: "#",
+        href: "/purchase-orders",
         icon: OrdenesIcon,
       },
       {

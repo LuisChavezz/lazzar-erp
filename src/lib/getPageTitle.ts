@@ -5,6 +5,7 @@ const ROUTE_TITLES: Record<string, string> = {
   "/orders": "Órdenes",
   "/production": "Producción",
   "/inventories": "Inventarios",
+  "/purchase-orders": "Órdenes de Compra",
   "/receipts": "Recepciones",
   "/invoicing": "Facturación",
 };
