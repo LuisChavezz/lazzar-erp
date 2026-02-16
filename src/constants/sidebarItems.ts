@@ -96,7 +96,7 @@ export const sidebarItems: SidebarSection[] = [
       },
       {
         label: "Contabilidad",
-        href: "#",
+        href: "/accounting",
         icon: ContabilidadIcon,
       },
     ],
