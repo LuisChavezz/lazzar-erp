@@ -1,8 +1,7 @@
 import { Order } from "../../dashboard/interfaces/order.interface";
 import { DataTable } from "@/src/components/DataTable";
-import { ordersColumns } from "./OrdersColumns";
+import { orderColumns } from "./OrderColumns";
 
-// ! Remove this comment when the data is fetched from the server
 const orders: Order[] = [
   {
     id: "1",
@@ -82,12 +81,11 @@ const orders: Order[] = [
   },
 ];
 
-
-export const OrdersList = () => {
+export const OrderList = () => {
   return (
     <div className="mt-12">
       <DataTable
-        columns={ordersColumns}
+        columns={orderColumns}
         data={orders}
         title="Últimos Pedidos"
         searchPlaceholder="Buscar pedido..."

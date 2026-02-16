@@ -4,7 +4,7 @@ import { ColumnDef } from "@tanstack/react-table";
 import { Order } from "../../dashboard/interfaces/order.interface";
 import { getStatusStyles } from "../../dashboard/utils/getStatusStyle";
 
-export const ordersColumns: ColumnDef<Order>[] = [
+export const orderColumns: ColumnDef<Order>[] = [
   {
     accessorKey: "status",
     header: "Estado",

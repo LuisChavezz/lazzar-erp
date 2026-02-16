@@ -1,5 +1,5 @@
-import { OrdersStats } from "@/src/features/orders/components/OrdersStats";
-import { OrdersList } from "@/src/features/dashboard/components/OrdersList";
+import { OrderList } from "@/src/features/orders/components/OrderList";
+import { OrderStats } from "@/src/features/orders/components/OrderStats";
 
 export default function OrdersPage() {
   return (
@@ -12,11 +12,11 @@ export default function OrdersPage() {
       </div>
 
       {/* Stats */}
-      <OrdersStats />
+      <OrderStats />
 
       {/* Content */}
       <div className="space-y-6">
-        <OrdersList />
+        <OrderList />
       </div>
     </div>
   );

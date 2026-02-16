@@ -1,6 +1,6 @@
 import { TrendingUpIcon, PedidosIcon, ClockIcon, OrdenesIcon } from "../../../components/Icons";
 
-export const OrdersStats = () => {
+export const OrderStats = () => {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
       {/* Stat 1 */}
