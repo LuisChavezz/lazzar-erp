@@ -4,7 +4,7 @@ import { useSatStore } from "../stores/sat.store";
 import { MainDialog } from "@/src/components/MainDialog";
 import FiscalAddressForm from "./FiscalAddressForm";
 import { useState } from "react";
-import { MapPinIcon, EditIcon } from "@/src/components/Icons";
+import { MapPinIcon, EditIcon, BuildingIcon } from "@/src/components/Icons";
 import { useSession } from "next-auth/react";
 
 export const FiscalAddressDetails = () => {
@@ -141,9 +141,7 @@ export const FiscalAddressDetails = () => {
             <div className="p-6 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-white/5">
               <h4 className="font-semibold text-slate-900 dark:text-white flex items-center gap-2">
                 <span className="w-8 h-8 rounded-lg bg-sky-100 dark:bg-sky-500/10 flex items-center justify-center text-sky-600 dark:text-sky-400">
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h1.5m-1.5 3h1.5m-1.5 3h1.5m3-6H15m-1.5 3H15m-1.5 3H15M9 21v-3.375c0-.621.504-1.125 1.125-1.125h3.75c.621 0 1.125.504 1.125 1.125V21" />
-                  </svg>
+                  <BuildingIcon className="w-4 h-4" />
                 </span>
                 Región
               </h4>

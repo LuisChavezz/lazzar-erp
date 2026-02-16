@@ -1,16 +1,4 @@
-import { TrendingUpIcon, ClockIcon } from "../../../components/Icons";
-
-const CheckCircleIcon = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg {...props} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-  </svg>
-);
-
-const PackageIcon = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg {...props} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-  </svg>
-);
+import { TrendingUpIcon, ClockIcon, CheckCircleIcon, InventariosIcon } from "../../../components/Icons";
 
 export const ReceiptStats = () => {
   return (
@@ -19,7 +7,7 @@ export const ReceiptStats = () => {
       <div className="p-8 rounded-4xl bg-white dark:bg-black border border-slate-100 dark:border-white/20 shadow-xl shadow-slate-200/50 dark:shadow-black/50">
         <div className="flex items-start justify-between mb-4">
           <div className="p-3 rounded-2xl bg-blue-50 dark:bg-blue-500/10 text-blue-500">
-            <PackageIcon className="w-6 h-6" />
+            <InventariosIcon className="w-6 h-6" />
           </div>
           <span className="text-xs font-semibold text-emerald-500 bg-emerald-50 dark:bg-emerald-500/10 px-2 py-1 rounded-lg">
             +5.2%
