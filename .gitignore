@@ -22,6 +22,9 @@
 
 # misc
 .DS_Store
+Thumbs.db
+.vscode/
+.idea/
 *.pem
 
 # debug
@@ -40,7 +43,3 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
-
-# ignored folders
-frontend-erp-ideas/
-
