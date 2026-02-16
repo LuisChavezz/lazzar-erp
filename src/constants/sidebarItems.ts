@@ -91,7 +91,7 @@ export const sidebarItems: SidebarSection[] = [
       },
       {
         label: "Bancos",
-        href: "#",
+        href: "/bank-accounts",
         icon: BancosIcon,
       },
       {

@@ -1,5 +1,3 @@
-"use client";
-
 import { DataTable } from "@/src/components/DataTable";
 import { accountsPayableColumns } from "./AccountsPayableColumns";
 import { AccountsPayable } from "../interfaces/accounts-payable.interface";

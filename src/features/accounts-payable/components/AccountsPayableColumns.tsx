@@ -1,3 +1,5 @@
+"use client";
+
 import { ColumnDef, createColumnHelper } from "@tanstack/react-table";
 import { AccountsPayable } from "../interfaces/accounts-payable.interface";
 

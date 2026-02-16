@@ -10,6 +10,7 @@ const ROUTE_TITLES: Record<string, string> = {
   "/invoicing": "Facturación",
   "/accounts-payable": "CxP (Pagar)",
   "/accounts-receivable": "CxC (Cobrar)",
+  "/bank-accounts": "Bancos",
 };
 
 export function getPageTitle(path: string | undefined | null): string {
