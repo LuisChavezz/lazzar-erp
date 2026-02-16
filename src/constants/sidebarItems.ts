@@ -81,7 +81,7 @@ export const sidebarItems: SidebarSection[] = [
       },
       {
         label: "CxP (Pagar)",
-        href: "#",
+        href: "/accounts-payable",
         icon: CxpIcon,
       },
       {
