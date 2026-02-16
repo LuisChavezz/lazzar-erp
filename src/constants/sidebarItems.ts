@@ -46,17 +46,17 @@ export const sidebarItems: SidebarSection[] = [
     items: [
       {
         label: "Pedidos",
-        href: "#",
+        href: "/orders",
         icon: PedidosIcon,
       },
       {
         label: "Producción",
-        href: "#",
+        href: "/production",
         icon: ProduccionIcon,
       },
       {
         label: "Inventarios",
-        href: "#",
+        href: "/inventory",
         icon: InventariosIcon,
       },
       {
@@ -66,7 +66,7 @@ export const sidebarItems: SidebarSection[] = [
       },
       {
         label: "Recepciones",
-        href: "#",
+        href: "/receipts",
         icon: RecepcionesIcon,
       },
     ],
