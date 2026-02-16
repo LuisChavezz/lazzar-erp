@@ -1,5 +1,5 @@
-import { ReceiptStats } from "@/src/features/receipt/components/ReceiptStats";
-import { ReceiptsList } from "@/src/features/receipt/components/ReceiptList";
+import { ReceiptStats } from "@/src/features/receipts/components/ReceiptStats";
+import { ReceiptsList } from "@/src/features/receipts/components/ReceiptList";
 
 
 

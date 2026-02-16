@@ -2,6 +2,11 @@ const ROUTE_TITLES: Record<string, string> = {
   "/": "Inicio",
   "/dashboard": "Dashboard",
   "/config": "Configuración",
+  "/orders": "Órdenes",
+  "/production": "Producción",
+  "/inventories": "Inventarios",
+  "/receipts": "Recepciones",
+  "/invoicing": "Facturación",
 };
 
 export function getPageTitle(path: string | undefined | null): string {
