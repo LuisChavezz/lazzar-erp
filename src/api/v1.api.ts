@@ -6,6 +6,7 @@ const v1_api = axios.create({
   headers: {
     "Content-Type": "application/json",
   },
+  proxy: false,
 });
 
 // Interceptor para inyectar el token en cada petición

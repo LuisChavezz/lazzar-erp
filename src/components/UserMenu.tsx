@@ -14,9 +14,13 @@ export const UserMenu = () => {
   return (
     <DropdownMenu.Root>
       <DropdownMenu.Trigger>
-        <div className="w-8 h-8 rounded-full bg-linear-to-tr from-sky-500 to-cyan-500 ring-2 ring-white dark:ring-slate-800 cursor-pointer shadow-lg shadow-sky-500/20 flex items-center justify-center text-white font-bold text-sm select-none hover:opacity-90 transition-opacity">
+        <button
+          type="button"
+          aria-label="Abrir menú de usuario"
+          className="w-8 h-8 rounded-full cursor-pointer bg-linear-to-tr from-sky-500 to-cyan-500 ring-2 ring-white dark:ring-slate-800 shadow-lg shadow-sky-500/20 flex items-center justify-center text-white font-bold text-sm select-none hover:opacity-90 transition-opacity"
+        >
           {userInitial}
-        </div>
+        </button>
       </DropdownMenu.Trigger>
       
       <DropdownMenu.Content align="end" className="bg-white! dark:bg-zinc-900! min-w-55 rounded-xl shadow-xl border border-slate-100 dark:border-slate-800 z-50">

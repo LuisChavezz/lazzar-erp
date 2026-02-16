@@ -44,24 +44,28 @@ export const WorkspaceInfo = () => {
         {/* Branch */}
         <DropdownMenu.Root>
           <DropdownMenu.Trigger>
-            <div className="flex items-center gap-1.5 cursor-pointer hover:opacity-80 transition-opacity">
+            <button
+              type="button"
+              aria-label={selectedBranch ? `Sucursal: ${selectedBranch.nombre}` : "Seleccionar sucursal"}
+              className="flex items-center gap-1.5 cursor-pointer hover:opacity-80 transition-opacity"
+            >
               {selectedBranch ? (
                 <>
                   <span className="text-xs font-medium text-slate-600 dark:text-slate-300">
                     {selectedBranch.nombre}
                   </span>
-                  <BuildingIcon className="w-4 h-4 text-sky-500 dark:text-sky-400" />
-                  <ChevronDownIcon className="w-3 h-3 text-slate-400" />
+                  <BuildingIcon className="w-4 h-4 text-sky-500 dark:text-sky-400" aria-hidden="true" />
+                  <ChevronDownIcon className="w-3 h-3 text-slate-400" aria-hidden="true" />
                 </>
               ) : (
                 <>
                   <span className="text-xs text-slate-400 italic">
                     Sin sucursal
                   </span>
-                  <ChevronDownIcon className="w-3 h-3 text-slate-400" />
+                  <ChevronDownIcon className="w-3 h-3 text-slate-400" aria-hidden="true" />
                 </>
               )}
-            </div>
+            </button>
           </DropdownMenu.Trigger>
           
           <DropdownMenu.Content align="end" className="bg-white! dark:bg-zinc-900! dark:text-white!">

@@ -29,10 +29,12 @@ export default function MobileSidebar() {
           </span>
         </div>
         <button
+          type="button"
+          aria-label="Abrir menú"
           onClick={() => setIsMobileOpen(true)}
           className="p-2 text-slate-600 dark:text-slate-300"
         >
-          <MenuIcon className="w-6 h-6" />
+          <MenuIcon className="w-6 h-6" aria-hidden="true" />
         </button>
       </header>
 
@@ -44,6 +46,8 @@ export default function MobileSidebar() {
       >
         {/* Overlay */}
         <div
+          aria-hidden="true"
+          role="presentation"
           className={`absolute inset-0 bg-black/50 backdrop-blur-sm transition-opacity duration-300 ${
             isMobileOpen ? "opacity-100" : "opacity-0 pointer-events-none"
           }`}
@@ -55,10 +59,12 @@ export default function MobileSidebar() {
           <div className="h-16 flex items-center justify-between px-6 border-b border-slate-100 dark:border-slate-800">
             <span className="brand-font font-bold text-lg">Menú</span>
             <button
+              type="button"
+              aria-label="Cerrar menú"
               onClick={() => setIsMobileOpen(false)}
               className="p-2 text-slate-500 hover:text-slate-800 dark:hover:text-white"
             >
-              <CloseIcon className="w-6 h-6" />
+              <CloseIcon className="w-6 h-6" aria-hidden="true" />
             </button>
           </div>
           <div className="flex-1 overflow-y-auto p-4 space-y-1">
@@ -103,6 +109,7 @@ export default function MobileSidebar() {
               confirmText="Cerrar sesión"
               trigger={
                 <button 
+                  type="button"
                   className="block w-full text-center px-4 py-3 rounded-xl bg-black dark:bg-white text-white dark:text-black font-bold text-sm shadow-lg"
                 >
                   Cerrar sesión

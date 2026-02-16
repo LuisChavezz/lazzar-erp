@@ -43,13 +43,14 @@ export default function SidebarItem({
   return (
     <Link
       href={item.href}
+      aria-label={item.label}
       className={`flex items-center gap-4 px-3 py-3 rounded-xl transition-colors group relative ${
         isActive
           ? "bg-sky-50 dark:bg-sky-500/10 text-sky-600 dark:text-sky-300"
           : "hover:bg-sky-50 dark:hover:bg-sky-500/10 text-slate-500 dark:text-white hover:text-sky-600 dark:hover:text-sky-300"
       }`}
     >
-      <item.icon className="w-6 h-6 shrink-0" />
+      <item.icon className="w-6 h-6 shrink-0" aria-hidden="true" />
       <span className="font-medium text-sm whitespace-nowrap opacity-0 group-hover/sidebar:opacity-100 transition-opacity duration-200 absolute left-14">
         {item.label}
       </span>

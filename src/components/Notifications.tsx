@@ -32,11 +32,14 @@ export const Notifications = () => {
     <div className="relative">
       <button
         ref={btnRef}
+        type="button"
+        aria-label="Abrir notificaciones"
+        title="Notificaciones"
         onClick={() => setIsNotifOpen(!isNotifOpen)}
-        className="p-2 text-slate-400 hover:text-sky-600 transition relative outline-none cursor-pointer"
+        className="p-2 text-slate-400 hover:text-sky-600 transition relative outline-none"
       >
-        <BellIcon className="w-5 h-5" />
-        <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-slate-50 dark:border-black animate-pulse"></span>
+        <BellIcon className="w-5 h-5" aria-hidden="true" />
+        <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full cursor-pointer border-2 border-slate-50 dark:border-black animate-pulse" aria-hidden="true" role="presentation"></span>
       </button>
 
       {/* Notifications Dropdown */}
@@ -49,16 +52,16 @@ export const Notifications = () => {
             <h3 className="font-bold text-slate-800 dark:text-white">
               Notificaciones
             </h3>
-            <span className="text-xs font-medium text-sky-500 cursor-pointer hover:underline">
+            <button type="button" aria-label="Marcar todas las notificaciones como leídas" className="text-xs font-medium text-sky-500 hover:underline bg-transparent">
               Marcar leídas
-            </span>
+            </button>
           </div>
           <div className="max-h-96 overflow-y-auto custom-scrollbar">
 
             {/* Error Notification */}
             <div className="p-4 border-b border-slate-50 dark:border-slate-800/50 hover:bg-slate-50 dark:hover:bg-white/5 transition-colors cursor-pointer flex gap-3 relative group">
               <div className="shrink-0 w-8 h-8 rounded-full bg-red-100 text-red-500 dark:bg-red-500/20 flex items-center justify-center">
-                <ErrorIcon className="w-4 h-4" />
+                <ErrorIcon className="w-4 h-4" aria-hidden="true" />
               </div>
               <div>
                 <p className="text-sm font-semibold text-slate-800 dark:text-white">
@@ -72,13 +75,13 @@ export const Notifications = () => {
                   Hace 5 min
                 </span>
               </div>
-              <div className="absolute right-2 top-2 w-2 h-2 bg-red-500 rounded-full"></div>
+              <div className="absolute right-2 top-2 w-2 h-2 bg-red-500 rounded-full" aria-hidden="true" role="presentation"></div>
             </div>
 
             {/* Success Notification */}
             <div className="p-4 border-b border-slate-50 dark:border-slate-800/50 hover:bg-slate-50 dark:hover:bg-white/5 transition-colors cursor-pointer flex gap-3">
               <div className="shrink-0 w-8 h-8 rounded-full bg-emerald-100 text-emerald-500 dark:bg-emerald-500/20 flex items-center justify-center">
-                <CheckCircleIcon className="w-4 h-4" />
+                <CheckCircleIcon className="w-4 h-4" aria-hidden="true" />
               </div>
               <div>
                 <p className="text-sm font-semibold text-slate-800 dark:text-white">
@@ -100,7 +103,7 @@ export const Notifications = () => {
             {/* Info Notification */}
             <div className="p-4 hover:bg-slate-50 dark:hover:bg-white/5 transition-colors cursor-pointer flex gap-3">
               <div className="shrink-0 w-8 h-8 rounded-full bg-sky-100 text-sky-500 dark:bg-sky-500/20 flex items-center justify-center">
-                <InfoIcon className="w-4 h-4" />
+                <InfoIcon className="w-4 h-4" aria-hidden="true" />
               </div>
               <div>
                 <p className="text-sm font-semibold text-slate-800 dark:text-white">

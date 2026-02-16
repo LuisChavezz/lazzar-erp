@@ -24,8 +24,8 @@ export default function Sidebar() {
         {/* Logo Section */}
         <div className="h-20 flex items-center px-6 shrink-0 overflow-hidden relative border-b border-slate-100 dark:border-slate-800/50">
           <div className="flex items-center gap-4 min-w-max">
-            <Link href="#" className="shrink-0 text-sky-600 dark:text-sky-400">
-              <LogoIcon width="32" height="32" className="fill-current opacity-80" />
+            <Link href="#" aria-label="Ir al inicio" className="shrink-0 text-sky-600 dark:text-sky-400">
+              <LogoIcon width="32" height="32" className="fill-current opacity-80" aria-hidden="true" />
             </Link>
             <span className="brand-font font-bold text-xl tracking-tight opacity-0 group-hover/sidebar:opacity-100 transition-opacity duration-300 delay-100 whitespace-nowrap">
               ERP System
@@ -62,13 +62,14 @@ export default function Sidebar() {
           {isAdmin && (
             <Link
               href="/config"
+              aria-label="Configuración"
               className={`flex items-center gap-4 px-3 py-3 rounded-xl transition-colors group relative ${
                 isConfigActive
                   ? "bg-sky-50 dark:bg-sky-500/10 text-sky-600 dark:text-sky-300"
                   : "hover:bg-sky-50 dark:hover:bg-sky-500/10 text-slate-500 dark:text-white hover:text-sky-600 dark:hover:text-sky-300"
               }`}
             >
-              <SettingsIcon className="w-6 h-6 shrink-0" />
+              <SettingsIcon className="w-6 h-6 shrink-0" aria-hidden="true" />
               <span className="font-medium text-sm whitespace-nowrap opacity-0 group-hover/sidebar:opacity-100 transition-opacity duration-200 absolute left-14">
                 Configuración
               </span>
@@ -83,9 +84,11 @@ export default function Sidebar() {
             confirmText="Cerrar sesión"
             trigger={
               <button 
-                className="w-full mt-2 flex items-center justify-start gap-4 px-3 py-3 rounded-xl cursor-pointer text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors group relative overflow-hidden"
+                type="button"
+                aria-label="Cerrar sesión"
+                className="w-full mt-2 flex items-center justify-start gap-4 px-3 py-3 rounded-xl text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors group relative overflow-hidden"
               >
-                <LogoutIcon className="w-6 h-6 shrink-0" />
+                <LogoutIcon className="w-6 h-6 shrink-0" aria-hidden="true" />
                 <span className="font-medium text-sm whitespace-nowrap opacity-0 group-hover/sidebar:opacity-100 transition-opacity duration-200 absolute left-14">
                   Cerrar sesión
                 </span>
