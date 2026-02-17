@@ -9,6 +9,7 @@ import { ConfirmDialog } from "./ConfirmDialog";
 import { CloseIcon, LogoIcon, MenuIcon } from "./Icons";
 import { sidebarItems } from "../constants/sidebarItems";
 import SidebarItem from "./SidebarItem";
+import { Notifications } from "../features/notifications/components/Notifications";
 
 export default function MobileSidebar() {
   const [isMobileOpen, setIsMobileOpen] = useState(false);
@@ -28,14 +29,22 @@ export default function MobileSidebar() {
             ERP
           </span>
         </div>
-        <button
-          type="button"
-          aria-label="Abrir menú"
-          onClick={() => setIsMobileOpen(true)}
-          className="p-2 text-slate-600 dark:text-slate-300"
-        >
-          <MenuIcon className="w-6 h-6" aria-hidden="true" />
-        </button>
+
+        {/* Right Side */}
+        <div className="flex items-center gap-2">
+          {/* Notifications */}
+          <Notifications />
+
+          {/* Menu Button */}
+          <button
+            type="button"
+            aria-label="Abrir menú"
+            onClick={() => setIsMobileOpen(true)}
+            className="p-2 text-slate-600 dark:text-slate-300"
+          >
+            <MenuIcon className="w-6 h-6" aria-hidden="true" />
+          </button>
+        </div>
       </header>
 
       {/* MOBILE DRAWER */}
