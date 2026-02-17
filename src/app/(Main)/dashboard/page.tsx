@@ -12,9 +12,12 @@ export default async function DashboardPage() {
     <div className="w-full">
 
       <div className="mt-4 flex flex-wrap gap-4 ">
-        <button className="px-6 py-3 rounded-full cursor-pointer bg-sky-600 hover:bg-sky-700 text-white font-semibold shadow-lg shadow-sky-500/30 hover:shadow-sky-500/40 transition transform active:scale-95">
+        <Link
+          href="/orders/new"
+          className="px-6 py-3 rounded-full cursor-pointer bg-sky-600 hover:bg-sky-700 text-white font-semibold shadow-lg shadow-sky-500/30 hover:shadow-sky-500/40 transition transform active:scale-95"
+        >
           Nuevo Pedido
-        </button>
+        </Link>
         {/* <button className="px-6 py-3 rounded-full cursor-pointer bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-semibold transition transform active:scale-95">
           Ver Reportes
         </button> */}
