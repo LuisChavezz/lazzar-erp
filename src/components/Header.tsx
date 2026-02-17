@@ -1,5 +1,5 @@
 import { SearchBar } from "./SearchBar";
-import { Notifications } from "./Notifications";
+import { Notifications } from "../features/notifications/components/Notifications";
 import { HeaderTitle } from "./HeaderTitle";
 import { WorkspaceInfo } from "./WorkspaceInfo";
 
