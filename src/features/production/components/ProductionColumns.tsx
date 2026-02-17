@@ -2,6 +2,7 @@
 
 import { ColumnDef } from "@tanstack/react-table";
 import { ProductionOrder } from "../interfaces/production.interface";
+import { EditIcon, ViewIcon } from "../../../components/Icons";
 
 const StatusBadge = ({ status }: { status: ProductionOrder["status"] }) => {
   const styles = {
@@ -84,6 +85,26 @@ export const productionColumns: ColumnDef<ProductionOrder>[] = [
           <span className="text-slate-500">{row.getValue("progress")}%</span>
         </div>
         <ProgressBar progress={row.getValue("progress")} />
+      </div>
+    ),
+  },
+  {
+    id: "actions",
+    header: () => <div className="text-center">Acciones</div>,
+    cell: () => (
+      <div className="flex items-center justify-center gap-2">
+        <button
+          className="p-1 cursor-pointer text-slate-400 hover:text-sky-600 transition-colors"
+          title="Ver Detalles"
+        >
+          <ViewIcon className="w-5 h-5" />
+        </button>
+        <button
+          className="p-1 cursor-pointer text-slate-400 hover:text-sky-600 transition-colors"
+          title="Editar"
+        >
+          <EditIcon className="w-5 h-5" />
+        </button>
       </div>
     ),
   },

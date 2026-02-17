@@ -2,6 +2,7 @@
 
 import { ColumnDef } from "@tanstack/react-table";
 import { Invoice } from "../interfaces/invoice.interface";
+import { EditIcon, ViewIcon } from "../../../components/Icons";
 
 const StatusBadge = ({ status }: { status: Invoice["status"] }) => {
   const styles = {
@@ -73,5 +74,25 @@ export const invoiceColumns: ColumnDef<Invoice>[] = [
     accessorKey: "status",
     header: "Estado",
     cell: ({ row }) => <StatusBadge status={row.getValue("status")} />,
+  },
+  {
+    id: "actions",
+    header: () => <div className="text-center">Acciones</div>,
+    cell: () => (
+      <div className="flex items-center justify-center gap-2">
+        <button
+          className="p-1 cursor-pointer text-slate-400 hover:text-sky-600 transition-colors"
+          title="Ver Detalles"
+        >
+          <ViewIcon className="w-5 h-5" />
+        </button>
+        <button
+          className="p-1 cursor-pointer text-slate-400 hover:text-sky-600 transition-colors"
+          title="Editar"
+        >
+          <EditIcon className="w-5 h-5" />
+        </button>
+      </div>
+    ),
   },
 ];
