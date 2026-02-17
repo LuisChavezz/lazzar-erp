@@ -1,5 +1,6 @@
 import { Header } from "@/src/components/Header";
 import Sidebar from "@/src/components/Sidebar";
+import BranchChangeLoader from "@/src/components/BranchChangeLoader";
 
 export const metadata = {
   title: "ERP NextJS",
@@ -25,7 +26,7 @@ export default function MainLayout({
 
         {/* PAGE CONTENT */}
         <main className="flex-1 w-full overflow-y-auto px-6 pb-6 md:px-12 md:pb-12 pt-20 md:pt-0">
-          {children}
+          <BranchChangeLoader>{children}</BranchChangeLoader>
         </main>
       </div>
     </div>
