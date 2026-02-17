@@ -8,6 +8,7 @@ interface WorkspaceState {
   selectedCompany: Partial<Company>;
   selectedBranch: Branch | null;
   availableBranches: Branch[];
+  branchSwitching: boolean;
   setWorkspace: (company: Partial<Company>, branch?: Branch) => void;
   setAvailableBranches: (branches: Branch[]) => void;
   updateBranch: (branch: Branch) => void;
@@ -17,13 +18,23 @@ interface WorkspaceState {
 export const useWorkspaceStore = create<WorkspaceState>()(
   devtools(
     persist(
-      (set) => ({
+      (set, get) => ({
         selectedCompany: {},
         selectedBranch: null,
         availableBranches: [],
+        branchSwitching: false,
 
-        setWorkspace: (company, branch) => 
-          set({ selectedCompany: company, selectedBranch: branch || null }),
+        setWorkspace: (company, branch) => {
+          const prevBranchId = get().selectedBranch?.id;
+          const nextBranchId = branch?.id;
+          const branchChanged = (!!prevBranchId && !!nextBranchId && (prevBranchId !== nextBranchId)); 
+
+          set({ selectedCompany: company, selectedBranch: branch || null });
+          if (branchChanged) {
+            set({ branchSwitching: true });
+            setTimeout(() => set({ branchSwitching: false }), 1800);
+          }
+        },
         
         setAvailableBranches: (branches) =>
           set({ availableBranches: branches }),
@@ -40,8 +51,8 @@ export const useWorkspaceStore = create<WorkspaceState>()(
           }));
         },
         
-        clearWorkspace: () => 
-          set({ selectedCompany: {}, selectedBranch: null, availableBranches: [] }),
+        clearWorkspace: () =>
+          set({ selectedCompany: {}, selectedBranch: null, availableBranches: [], branchSwitching: false }),
       }),
       { // Nombre del storage para persistencia
         name: "workspace-storage",

@@ -4,12 +4,14 @@ import { useWorkspaceStore } from "@/src/features/workspace/store/workspace.stor
 import { BancosIcon, BuildingIcon, CheckCircleIcon, ChevronDownIcon } from "./Icons";
 import { DropdownMenu } from "@radix-ui/themes";
 import { Branch } from "../features/branches/interfaces/branch.interface";
+import { LoadingSpinnerIcon } from "./Icons";
 
 export const WorkspaceInfo = () => {
   const selectedCompany = useWorkspaceStore((state) => state.selectedCompany);
   const selectedBranch = useWorkspaceStore((state) => state.selectedBranch);
   const availableBranches = useWorkspaceStore((state) => state.availableBranches);
   const setWorkspace = useWorkspaceStore((state) => state.setWorkspace);
+  const branchSwitching = useWorkspaceStore((state) => state.branchSwitching);
 
   if (!selectedCompany?.id) {
     return null;
@@ -18,6 +20,7 @@ export const WorkspaceInfo = () => {
   const companyName = selectedCompany.nombre_comercial || selectedCompany.razon_social;
 
   const handleBranchSelect = (branch: Branch) => {
+    if (branchSwitching) return;
     setWorkspace(selectedCompany, branch);
   };
 
@@ -47,22 +50,35 @@ export const WorkspaceInfo = () => {
             <button
               type="button"
               aria-label={selectedBranch ? `Sucursal: ${selectedBranch.nombre}` : "Seleccionar sucursal"}
-              className="flex items-center gap-1.5 cursor-pointer hover:opacity-80 transition-opacity"
+              disabled={branchSwitching}
+              className={`flex items-center gap-1.5 transition-opacity ${
+                branchSwitching ? "opacity-60 cursor-not-allowed" : "cursor-pointer hover:opacity-80"
+              }`}
             >
               {selectedBranch ? (
                 <>
                   <span className="text-xs font-medium text-slate-600 dark:text-slate-300">
                     {selectedBranch.nombre}
                   </span>
-                  <BuildingIcon className="w-4 h-4 text-sky-500 dark:text-sky-400" aria-hidden="true" />
-                  <ChevronDownIcon className="w-3 h-3 text-slate-400" aria-hidden="true" />
+                  {branchSwitching ? (
+                    <LoadingSpinnerIcon className="w-4 h-4 text-slate-400 animate-spin" aria-hidden="true" />
+                  ) : (
+                    <>
+                      <BuildingIcon className="w-4 h-4 text-sky-500 dark:text-sky-400" aria-hidden="true" />
+                      <ChevronDownIcon className="w-3 h-3 text-slate-400" aria-hidden="true" />
+                    </>
+                  )}
                 </>
               ) : (
                 <>
                   <span className="text-xs text-slate-400 italic">
                     Sin sucursal
                   </span>
-                  <ChevronDownIcon className="w-3 h-3 text-slate-400" aria-hidden="true" />
+                  {branchSwitching ? (
+                    <LoadingSpinnerIcon className="w-3 h-3 text-slate-400 animate-spin" aria-hidden="true" />
+                  ) : (
+                    <ChevronDownIcon className="w-3 h-3 text-slate-400" aria-hidden="true" />
+                  )}
                 </>
               )}
             </button>
@@ -73,6 +89,7 @@ export const WorkspaceInfo = () => {
               availableBranches.map((branch) => (
                 <DropdownMenu.Item 
                   key={branch.id}
+                  disabled={branchSwitching}
                   onClick={() => handleBranchSelect(branch)}
                   className="flex items-center justify-between gap-3 min-w-30 cursor-pointer!"
                 >
