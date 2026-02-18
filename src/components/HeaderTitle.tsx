@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { getPageTitle } from "../lib/getPageTitle";
+import { getPageTitle } from "../utils/getPageTitle";
 
 
 export const HeaderTitle = () => {

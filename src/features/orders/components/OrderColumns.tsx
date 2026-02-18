@@ -2,22 +2,31 @@
 
 import { ColumnDef } from "@tanstack/react-table";
 import { Order } from "../../dashboard/interfaces/order.interface";
-import { getStatusStyles } from "../../dashboard/utils/getStatusStyle";
+import { getStatusStyles } from "../utils/getStatusStyle";
 import { EditIcon, ViewIcon } from "../../../components/Icons";
+import { formatCurrency } from "../../../utils/formatCurrency";
+
+const statusLabels: Record<Order["estatusPedido"], string> = {
+  capturado: "Capturado",
+  autorizado: "Autorizado",
+  surtido: "Surtido",
+  facturado: "Facturado",
+  cancelado: "Cancelado",
+};
 
 export const orderColumns: ColumnDef<Order>[] = [
   {
-    accessorKey: "status",
+    accessorKey: "estatusPedido",
     header: "Estado",
     cell: ({ row }) => {
-      const status = row.getValue("status") as Order["status"];
+      const status = row.getValue("estatusPedido") as Order["estatusPedido"];
       return (
         <span
           className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusStyles(
             status
           )}`}
         >
-          {status}
+          {statusLabels[status]}
         </span>
       );
     },
@@ -32,102 +41,98 @@ export const orderColumns: ColumnDef<Order>[] = [
     ),
   },
   {
-    accessorKey: "client",
+    accessorKey: "clienteNombre",
     header: "Razón Social",
-    cell: ({ row }) => {
-      const client = row.original.client;
-      return (
-        <div className="flex items-center gap-3">
-          <div
-            className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs ${client.colorClass}`}
-          >
-            {client.initials}
-          </div>
-          <span className="text-slate-600 dark:text-slate-300">
-            {client.name}
-          </span>
-        </div>
-      );
-    },
-  },
-  {
-    accessorKey: "pieces",
-    header: "Piezas",
     cell: ({ row }) => (
-      <div className="text-center text-slate-500 dark:text-slate-400">
-        {row.original.pieces.toLocaleString("es-MX")}
-      </div>
+      <span className="text-slate-600 dark:text-slate-300">
+        {row.getValue("clienteNombre")}
+      </span>
     ),
   },
   {
-    accessorKey: "seller",
-    header: "Vendedor",
+    accessorKey: "agente",
+    header: "Agente",
     cell: ({ row }) => (
-      <div className="text-slate-500 dark:text-slate-400">
-        {row.getValue("seller")}
-      </div>
+      <span className="text-slate-500 dark:text-slate-400">
+        {row.getValue("agente")}
+      </span>
     ),
   },
   {
-    accessorKey: "date",
+    accessorKey: "fecha",
     header: "Fecha",
     cell: ({ row }) => (
-      <div className="text-slate-500 dark:text-slate-400">
-        {row.getValue("date")}
-      </div>
+      <span className="text-slate-500 dark:text-slate-400">
+        {row.getValue("fecha")}
+      </span>
     ),
   },
   {
-    accessorKey: "classification",
-    header: "Clasificación",
+    accessorKey: "fechaVence",
+    header: "Fecha Vence",
     cell: ({ row }) => (
-      <div className="text-slate-500 dark:text-slate-400">
-        {row.getValue("classification")}
-      </div>
+      <span className="text-slate-500 dark:text-slate-400">
+        {row.getValue("fechaVence")}
+      </span>
     ),
   },
   {
-    accessorKey: "amount",
-    header: "Importe sin IVA",
+    id: "piezas",
+    header: "Piezas",
+    cell: ({ row }) => {
+      const pieces = row.getValue("piezas") as number;
+      return (
+        <span className="text-slate-500 dark:text-slate-400">
+          {pieces.toLocaleString("es-MX")}
+        </span>
+      );
+    },
+    accessorFn: (row) =>
+      row.items.reduce((total, item) => total + item.cantidad, 0),
+    sortingFn: "basic",
+  },
+  {
+    accessorKey: "totals.subtotal",
+    header: "Subtotal",
     cell: ({ row }) => (
       <div className="text-right font-medium text-slate-700 dark:text-slate-200">
-        {row.getValue("amount")}
+        {formatCurrency(row.original.totals.subtotal)}
       </div>
     ),
   },
   {
-    accessorKey: "partiality",
-    header: "Parcialidad",
+    accessorKey: "totals.descuentoTotal",
+    header: "Descuento",
     cell: ({ row }) => (
-      <div className="text-center text-slate-500 dark:text-slate-400">
-        {row.getValue("partiality")}
+      <div className="text-right font-medium text-rose-500">
+        -{formatCurrency(row.original.totals.descuentoTotal)}
       </div>
     ),
   },
   {
-    accessorKey: "deliveryDate",
-    header: "F. entrega",
+    accessorKey: "totals.ivaAmount",
+    header: "IVA",
     cell: ({ row }) => (
-      <div className="text-slate-500 dark:text-slate-400">
-        {row.getValue("deliveryDate")}
+      <div className="text-right font-medium text-slate-700 dark:text-slate-200">
+        {formatCurrency(row.original.totals.ivaAmount)}
       </div>
     ),
   },
   {
-    accessorKey: "newDate",
-    header: "Nueva fecha",
+    accessorKey: "totals.granTotal",
+    header: "Total",
     cell: ({ row }) => (
-      <div className="text-slate-500 dark:text-slate-400">
-        {row.getValue("newDate")}
+      <div className="text-right font-semibold text-slate-800 dark:text-slate-100">
+        {formatCurrency(row.original.totals.granTotal)}
       </div>
     ),
   },
   {
-    accessorKey: "zip",
-    header: "C.P.",
+    accessorKey: "totals.saldoPendiente",
+    header: "Saldo",
     cell: ({ row }) => (
-      <div className="text-slate-500 dark:text-slate-400">
-        {row.getValue("zip")}
+      <div className="text-right text-slate-500 dark:text-slate-400">
+        {formatCurrency(row.original.totals.saldoPendiente)}
       </div>
     ),
   },

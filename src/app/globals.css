@@ -61,6 +61,28 @@ input:-webkit-autofill:active {
   background-color: transparent !important;
 }
 
+input[type="date"] {
+  color-scheme: light;
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  background-size: 1rem 1rem;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator {
+  opacity: 0;
+}
+
+/* Light mode calendar icon */
+html:not(.dark) input[type="date"] {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%236b7280'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='1.8' d='M8 7V4m8 3V4m-9 8h10M5 21h14a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2z'/%3E%3C/svg%3E");
+}
+
+/* Dark mode calendar icon */
+.dark input[type="date"] {
+  color-scheme: dark;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23e5e7eb'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='1.8' d='M8 7V4m8 3V4m-9 8h10M5 21h14a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2z'/%3E%3C/svg%3E");
+}
+
 /* Light mode overrides */
 @media (prefers-color-scheme: light) {
   input:-webkit-autofill {

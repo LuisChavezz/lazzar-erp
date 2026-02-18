@@ -32,6 +32,16 @@ export const config = {
     "/",
     "/dashboard/:path*", 
     "/select-branch/:path*",
-    "/config/:path*"
+    "/config/:path*",
+    "/orders/:path*",
+    "/production/:path*",
+    "/inventories/:path*",
+    "/purchase-orders/:path*",
+    "/receipts/:path*",
+    "/invoicing/:path*",
+    "/accounts-payable/:path*",
+    "/accounts-receivable/:path*",
+    "/bank-accounts/:path*",
+    "/accounting/:path*",
   ],
 };
