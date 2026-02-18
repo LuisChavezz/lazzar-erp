@@ -52,6 +52,7 @@ export const FormInput = forwardRef<HTMLInputElement, FormInputProps>(
             ${className}
           `}
           {...props}
+          autoComplete="off"
         />
         {error && (
           <p className="text-xs text-red-600 mt-1 font-medium animate-in slide-in-from-top-1 fade-in duration-200">

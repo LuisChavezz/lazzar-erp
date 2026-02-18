@@ -26,6 +26,12 @@ const RoleList = dynamic(() => import("@/src/features/roles/components/RoleList"
 const UserList = dynamic(() => import("@/src/features/users/components/UserList"), {
   loading: () => <LoadingSkeleton />,
 });
+const ProductCategoryList = dynamic(
+  () => import("@/src/features/product-categories/components/ProductCategoryList"),
+  {
+    loading: () => <LoadingSkeleton />,
+  }
+);
 
 interface ConfigDetailViewProps {
   selectedView: string | null;
@@ -108,6 +114,13 @@ export function ConfigDetailView({ selectedView, onBack }: ConfigDetailViewProps
         <div className="flex flex-col gap-6">
           {renderBackButton()}
           <CurrencyList />
+        </div>
+      )}
+
+      {selectedView === "product-categories" && (
+        <div className="flex flex-col gap-6">
+          {renderBackButton()}
+          <ProductCategoryList />
         </div>
       )}
     </div>
