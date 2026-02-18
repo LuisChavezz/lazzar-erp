@@ -21,11 +21,9 @@ export default async function DashboardPage() {
         {/* <button className="px-6 py-3 rounded-full cursor-pointer bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-semibold transition transform active:scale-95">
           Ver Reportes
         </button> */}
-        {isAdmin && (
-          <Link href="/config" className="px-6 py-3 rounded-full cursor-pointer bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-semibold transition transform active:scale-95">
-            Configuración
-          </Link>
-        )}
+        <Link href="/config" className="px-6 py-3 rounded-full cursor-pointer bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-semibold transition transform active:scale-95">
+          Configuración
+        </Link>
       </div>
       
       <StatsCards />
