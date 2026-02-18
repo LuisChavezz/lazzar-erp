@@ -16,7 +16,7 @@ export default function LoginForm() {
       </p>
       
       <div className="flex items-center mt-8 w-full bg-transparent border border-slate-300/60 dark:border-white/10 h-12 rounded-full overflow-hidden pl-6 gap-2 focus-within:border-sky-500 dark:focus-within:border-sky-500 transition-colors">
-        <EmailIcon className="fill-slate-500 dark:fill-slate-300 transition-colors" width="16" height="11" />
+        <EmailIcon className="text-slate-500 dark:text-slate-300 transition-colors" width="16" height="11" />
         <input
           type="email"
           name="email"
@@ -30,7 +30,7 @@ export default function LoginForm() {
       </div>
 
       <div className="flex items-center mt-6 w-full bg-transparent border border-slate-300/60 dark:border-white/10 h-12 rounded-full overflow-hidden pl-6 gap-2 focus-within:border-sky-500 dark:focus-within:border-sky-500 transition-colors">
-        <LockIcon className="fill-slate-500 dark:fill-slate-300 transition-colors" width="13" height="17" />
+        <LockIcon className="text-slate-500 dark:text-slate-300 transition-colors" width="13" height="17" />
         <input
           type="password"
           name="password"

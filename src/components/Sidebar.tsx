@@ -59,22 +59,20 @@ export default function Sidebar() {
         <div className="p-4 border-t border-slate-200 dark:border-slate-800">
 
           {/* Configuración */}
-          {isAdmin && (
-            <Link
-              href="/config"
-              aria-label="Configuración"
-              className={`flex items-center gap-4 px-3 py-3 rounded-xl transition-colors group relative ${
-                isConfigActive
-                  ? "bg-sky-50 dark:bg-sky-500/10 text-sky-600 dark:text-sky-300"
-                  : "hover:bg-sky-50 dark:hover:bg-sky-500/10 text-slate-500 dark:text-white hover:text-sky-600 dark:hover:text-sky-300"
-              }`}
-            >
-              <SettingsIcon className="w-6 h-6 shrink-0" aria-hidden="true" />
-              <span className="font-medium text-sm whitespace-nowrap opacity-0 group-hover/sidebar:opacity-100 transition-opacity duration-200 absolute left-14">
-                Configuración
-              </span>
-            </Link>
-          )}
+          <Link
+            href="/config"
+            aria-label="Configuración"
+            className={`flex items-center gap-4 px-3 py-3 rounded-xl transition-colors group relative ${
+              isConfigActive
+                ? "bg-sky-50 dark:bg-sky-500/10 text-sky-600 dark:text-sky-300"
+                : "hover:bg-sky-50 dark:hover:bg-sky-500/10 text-slate-500 dark:text-white hover:text-sky-600 dark:hover:text-sky-300"
+            }`}
+          >
+            <SettingsIcon className="w-6 h-6 shrink-0" aria-hidden="true" />
+            <span className="font-medium text-sm whitespace-nowrap opacity-0 group-hover/sidebar:opacity-100 transition-opacity duration-200 absolute left-14">
+              Configuración
+            </span>
+          </Link>
 
           {/* Cerrar sesión */}
           <ConfirmDialog
