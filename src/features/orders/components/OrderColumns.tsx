@@ -1,7 +1,7 @@
 "use client";
 
 import { ColumnDef } from "@tanstack/react-table";
-import { Order } from "../../dashboard/interfaces/order.interface";
+import { Order } from "../interfaces/order.interface";
 import { getStatusStyles } from "../utils/getStatusStyle";
 import { EditIcon, ViewIcon } from "../../../components/Icons";
 import { formatCurrency } from "../../../utils/formatCurrency";

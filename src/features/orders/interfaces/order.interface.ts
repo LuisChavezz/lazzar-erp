@@ -47,6 +47,7 @@ export interface Order {
   estatusPedido: OrderStatus;
   docRelacionado: string;
   observaciones?: string;
+  capturadoPor: string;
   items: OrderItem[];
   totals: OrderTotals;
 }
