@@ -1,102 +1,27 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import Link from "next/link";
 import { CloseIcon } from "@/src/components/Icons";
-import { Order } from "../../dashboard/interfaces/order.interface";
 import { DataTable } from "@/src/components/DataTable";
 import { orderColumns } from "./OrderColumns";
-
-const orders: Order[] = [
-  {
-    id: "1",
-    status: "Completado",
-    folio: "#ORD-7829",
-    client: {
-      name: "Acme Corp",
-      initials: "AC",
-      colorClass: "bg-sky-100 text-sky-600 dark:bg-sky-500/20 dark:text-sky-400",
-    },
-    pieces: 500,
-    seller: "Juan Pérez",
-    date: "12 Ene 2026",
-    classification: "A",
-    amount: "$10,732.76",
-    partiality: "1/1",
-    deliveryDate: "25 Ene 2026",
-    newDate: "-",
-    zip: "12345",
-  },
-  {
-    id: "2",
-    status: "En Proceso",
-    folio: "#ORD-7830",
-    client: {
-      name: "Global Logistics",
-      initials: "GL",
-      colorClass: "bg-pink-100 text-pink-600 dark:bg-pink-500/20 dark:text-pink-400",
-    },
-    pieces: 1200,
-    seller: "Ana García",
-    date: "14 Ene 2026",
-    classification: "B",
-    amount: "$38,965.52",
-    partiality: "1/2",
-    deliveryDate: "01 Feb 2026",
-    newDate: "-",
-    zip: "54321",
-  },
-  {
-    id: "3",
-    status: "Pendiente Pago",
-    folio: "#ORD-7831",
-    client: {
-      name: "Tech Industries",
-      initials: "TI",
-      colorClass: "bg-orange-100 text-orange-600 dark:bg-orange-500/20 dark:text-orange-400",
-    },
-    pieces: 150,
-    seller: "Carlos López",
-    date: "15 Ene 2026",
-    classification: "C",
-    amount: "$7,672.41",
-    partiality: "1/1",
-    deliveryDate: "15 Ene 2026",
-    newDate: "-",
-    zip: "67890",
-  },
-  {
-    id: "4",
-    status: "Retrasado",
-    folio: "#ORD-7832",
-    client: {
-      name: "Star Traders",
-      initials: "ST",
-      colorClass: "bg-purple-100 text-purple-600 dark:bg-purple-500/20 dark:text-purple-400",
-    },
-    pieces: 300,
-    seller: "Sofía Ruiz",
-    date: "16 Ene 2026",
-    classification: "A",
-    amount: "$27,715.52",
-    partiality: "2/3",
-    deliveryDate: "28 Ene 2026",
-    newDate: "30 Ene 2026",
-    zip: "98765",
-  },
-];
+import { useOrderStore } from "../stores/order.store";
 
 export const OrderList = () => {
   const [quickFilter, setQuickFilter] = useState<"all" | "activos" | "vencidos">("all");
+  const { orders } = useOrderStore((state) => state);
 
   const filteredOrders = useMemo(() => {
     if (quickFilter === "activos") {
-      return orders.filter((o) => o.status === "En Proceso" || o.status === "Pendiente Pago");
+      return orders.filter(
+        (o) => o.estatusPedido === "capturado" || o.estatusPedido === "autorizado" || o.estatusPedido === "surtido"
+      );
     }
     if (quickFilter === "vencidos") {
-      return orders.filter((o) => o.status === "Retrasado");
+      return orders.filter((o) => o.estatusPedido === "cancelado" || o.estatusPedido === "facturado");
     }
     return orders;
-  }, [quickFilter]);
+  }, [quickFilter, orders]);
 
   return (
     <div className="mt-12">
@@ -107,6 +32,12 @@ export const OrderList = () => {
         searchPlaceholder="Buscar pedido..."
         actionButton={
           <div className="flex items-center gap-2">
+            <Link
+              href="/orders/new"
+              className="px-4 py-2 cursor-pointer bg-sky-600 hover:bg-sky-700 text-white text-sm font-semibold rounded-full shadow-lg shadow-sky-500/30 transition-all hover:scale-105 active:scale-95 whitespace-nowrap"
+            >
+              + Nuevo Pedido
+            </Link>
             <button
               onClick={() => setQuickFilter("activos")}
               className={`px-3 py-1 text-xs rounded-lg border transition-colors ${

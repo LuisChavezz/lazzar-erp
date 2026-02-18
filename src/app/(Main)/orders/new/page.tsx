@@ -1,9 +1,11 @@
 
 
-export default function OrdersPage() {
+import OrderForm from "@/src/features/orders/components/OrderForm";
+
+export default function OrdersNewPage() {
   return (
-    <div className="w-full space-y-8">
-      <h1>Orders Form</h1>
+    <div className="w-full space-y-6 pt-2">
+      <OrderForm />
     </div>
   );
 }
