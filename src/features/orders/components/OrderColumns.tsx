@@ -1,6 +1,7 @@
 "use client";
 
 import { ColumnDef } from "@tanstack/react-table";
+import Link from "next/link";
 import { Order } from "../interfaces/order.interface";
 import { getStatusStyles } from "../utils/getStatusStyle";
 import { EditIcon, ViewIcon } from "../../../components/Icons";
@@ -138,21 +139,29 @@ export const orderColumns: ColumnDef<Order>[] = [
   },
   {
     id: "actions",
-    header: () => <div className="text-center">Acciones</div>,
-    cell: () => (
+    header: () => (
+      <div className="text-center" aria-label="Acciones de pedido">
+        Acciones
+      </div>
+    ),
+    cell: ({ row }) => (
       <div className="flex items-center justify-center gap-2">
         <button
           className="p-1 cursor-pointer text-slate-400 hover:text-sky-600 transition-colors"
-          title="Ver Detalles"
+          title="Ver detalles del pedido"
+          aria-label="Ver detalles del pedido"
+          type="button"
         >
           <ViewIcon className="w-5 h-5" />
         </button>
-        <button
+        <Link
+          href={`/orders/edit/${row.original.id}`}
           className="p-1 cursor-pointer text-slate-400 hover:text-sky-600 transition-colors"
-          title="Editar"
+          title="Editar pedido"
+          aria-label="Editar pedido"
         >
           <EditIcon className="w-5 h-5" />
-        </button>
+        </Link>
       </div>
     ),
   },

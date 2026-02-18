@@ -1,15 +1,12 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo } from "react";
 import { useSession } from "next-auth/react";
 import { useForm, useFieldArray, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { FormInput } from "@/src/components/FormInput";
 import { FormSelect } from "@/src/components/FormSelect";
-import {
-  FormCancelButton,
-  FormSubmitButton,
-} from "@/src/components/FormButtons";
+import { FormSubmitButton } from "@/src/components/FormButtons";
 import { PedidosIcon } from "@/src/components/Icons";
 import {
   orderFormSchema,
@@ -22,6 +19,7 @@ import { useOrderStore } from "../stores/order.store";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import { Order } from "../interfaces/order.interface";
+import { Loader } from "@/src/components/Loader";
 
 
 // Default item values
@@ -35,32 +33,33 @@ const defaultItem: OrderFormInput["items"][number] = {
   importe: 0,
 };
 
-export default function OrderForm() {
+interface OrderFormProps {
+  orderId?: string;
+}
+
+export default function OrderForm({ orderId }: OrderFormProps) {
 
   // Obtener el nombre del usuario de la sesión
   const { data: session } = useSession();
   const userName = session?.user?.name || "Usuario";
   const userId = session!.user.id;
+  const isEdit = Boolean(orderId);
 
   // Obtener la fecha actual en formato "YYYY-MM-DD"
   const todayStr = new Date().toISOString().split("T")[0];
   const addOrder = useOrderStore((s) => s.addOrder);
+  const updateOrder = useOrderStore((s) => s.updateOrder);
+  const orderToEdit = useOrderStore((s) =>
+    orderId ? s.orders.find((o) => o.id === orderId) : undefined
+  );
   const router = useRouter();
 
-  const {
-    register,
-    handleSubmit,
-    reset,
-    control,
-    setValue,
-    formState: { errors, isSubmitting },
-  } = useForm<OrderFormInput, unknown, OrderFormValues>({
-    resolver: zodResolver(orderFormSchema),
-    defaultValues: {
+  const baseDefaultValues = useMemo<OrderFormInput>(
+    () => ({
       clienteId: "",
       clienteNombre: "",
       pedidoCliente: "",
-      fecha: "",
+      fecha: todayStr,
       fechaVence: "",
       agente: "",
       comision: 0,
@@ -79,35 +78,58 @@ export default function OrderForm() {
       anticipo: 0,
       iva: 0.16,
       items: [defaultItem],
-    },
+    }),
+    [todayStr]
+  );
+
+  const editValues = useMemo<OrderFormInput | undefined>(() => {
+    if (!orderToEdit) return undefined;
+    return {
+      clienteId: orderToEdit.clienteId,
+      clienteNombre: orderToEdit.clienteNombre,
+      pedidoCliente: orderToEdit.pedidoCliente,
+      fecha: orderToEdit.fecha,
+      fechaVence: orderToEdit.fechaVence,
+      agente: orderToEdit.agente,
+      comision: orderToEdit.comision,
+      plazo: orderToEdit.plazo,
+      sucursal: orderToEdit.sucursal,
+      almacen: orderToEdit.almacen,
+      canal: orderToEdit.canal,
+      puntos: orderToEdit.puntos,
+      anticipoReq: orderToEdit.anticipoReq,
+      pedidoInicial: orderToEdit.pedidoInicial,
+      estatusPedido: orderToEdit.estatusPedido,
+      docRelacionado: orderToEdit.docRelacionado,
+      observaciones: orderToEdit.observaciones ?? "",
+      flete: orderToEdit.totals.flete,
+      seguro: orderToEdit.totals.seguro,
+      anticipo: orderToEdit.totals.anticipo,
+      iva: orderToEdit.totals.ivaRate,
+      items: orderToEdit.items.map((i) => ({ ...i })),
+    };
+  }, [orderToEdit]);
+
+  const {
+    register,
+    handleSubmit,
+    control,
+    setValue,
+    formState: { errors, isSubmitting },
+  } = useForm<OrderFormInput, unknown, OrderFormValues>({
+    resolver: zodResolver(orderFormSchema),
+    defaultValues: baseDefaultValues,
+    values: isEdit ? editValues : undefined,
   });
-
-
-  const todayRef = useRef("");
-
-  // Establecer la fecha actual como valor predeterminado para el campo "fecha"
-  useEffect(() => {
-    const today = new Date().toISOString().split("T")[0];
-    todayRef.current = today;
-    setValue("fecha", today, { shouldValidate: true, shouldDirty: false });
-  }, [setValue]);
-
-  // Restablecer el formulario a sus valores predeterminados
-  const handleReset = () => {
-    reset();
-    if (todayRef.current) {
-      setValue("fecha", todayRef.current, {
-        shouldValidate: false,
-        shouldDirty: false,
-      });
-    }
-  };
 
   // Obtener el array de productos (items) del formulario
   const { fields, append, remove } = useFieldArray({
     control,
     name: "items",
   });
+
+
+  // Se elimina la lógica de limpiar/resetear el formulario
 
   // Observar los cambios en los campos "items", "flete", "seguro", "anticipo" y "iva" 
   // para recalcular los importes de los productos y el total generalo
@@ -119,6 +141,61 @@ export default function OrderForm() {
 
   // Manejar la submisión del formulario
   const onSubmit = (values: OrderFormValues) => {
+    if (isEdit) {
+      if (!orderToEdit) {
+        toast.error("No se encontró el pedido para editar");
+        return;
+      }
+
+      const items = (values.items || []).map((item) => {
+        const cantidad = Number(item.cantidad) || 0;
+        const precio = Number(item.precio) || 0;
+        const descuento = Number(item.descuento) || 0;
+        const amount = cantidad * precio;
+        const descuentoAmount = amount * (descuento / 100);
+        const importe = Number((amount - descuentoAmount).toFixed(2));
+        return { ...item, importe };
+      });
+
+      const updatedOrder: Order = {
+        ...orderToEdit,
+        clienteId: values.clienteId,
+        clienteNombre: values.clienteNombre,
+        pedidoCliente: values.pedidoCliente,
+        fecha: values.fecha,
+        fechaVence: values.fechaVence,
+        agente: values.agente,
+        comision: values.comision,
+        plazo: values.plazo,
+        sucursal: values.sucursal,
+        almacen: values.almacen,
+        canal: values.canal,
+        puntos: values.puntos,
+        anticipoReq: values.anticipoReq,
+        pedidoInicial: values.pedidoInicial,
+        estatusPedido: values.estatusPedido as Order["estatusPedido"],
+        docRelacionado: values.docRelacionado,
+        observaciones: values.observaciones,
+        items,
+        totals: {
+          subtotal,
+          descuentoTotal,
+          ivaAmount,
+          granTotal,
+          saldoPendiente,
+          flete: Number(watchedFlete) || 0,
+          seguro: Number(watchedSeguro) || 0,
+          anticipo: Number(watchedAnticipo) || 0,
+          ivaRate: Number(watchedIva) || 0,
+        },
+      };
+
+      updateOrder(updatedOrder);
+      toast.success("Pedido actualizado correctamente");
+      router.replace("/orders");
+      return;
+    }
+
     const id = crypto.randomUUID();
 
     const items = (values.items || []).map((item) => {
@@ -236,8 +313,22 @@ export default function OrderForm() {
     });
   }, [setValue, watchedItems]);
 
+  const showForm = !isEdit || !!editValues;
+  if (!showForm) {
+    return (
+      <div className="w-full pt-2" role="status" aria-live="polite">
+        <div className="rounded-3xl border border-slate-200 dark:border-white/5 bg-white dark:bg-zinc-900 p-10 text-center">
+          <Loader aria-hidden="true" />
+          <p className="text-sm mt-2 text-slate-500 dark:text-slate-400">
+            Cargando pedido...
+          </p>
+        </div>
+      </div>
+    );
+  }
+  const formKey = isEdit ? `${orderId}-ready` : "new";
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+    <form key={formKey} onSubmit={handleSubmit(onSubmit)} className="space-y-6">
 
       {/* Detalle de Comercialización */}
       <section className="relative overflow-hidden bg-white dark:bg-zinc-900 rounded-3xl p-6 md:p-8 border border-slate-200 dark:border-white/5 shadow-sm dark:shadow-none">
@@ -444,6 +535,8 @@ export default function OrderForm() {
               type="button"
               onClick={() => append(defaultItem)}
               className="inline-flex items-center px-3 py-1.5 bg-sky-50 dark:bg-sky-500/10 text-sky-600 dark:text-sky-400 rounded-lg text-xs font-bold uppercase tracking-wide hover:bg-sky-100 dark:hover:bg-sky-500/20 transition-colors cursor-pointer"
+              title="Agregar producto al pedido"
+              aria-label="Agregar producto al pedido"
             >
               Agregar Producto
             </button>
@@ -505,6 +598,7 @@ export default function OrderForm() {
                         <input
                           type="text"
                           placeholder="SKU"
+                          autoComplete="off"
                           className={`w-full bg-transparent border-b border-transparent focus:ring-0 p-1.5 text-xs text-slate-700 dark:text-slate-200 focus:border-sky-500 ${skuError ? "border-rose-500 text-rose-600 dark:text-rose-400" : ""}`}
                           {...register(`items.${index}.sku`)}
                         />
@@ -520,6 +614,7 @@ export default function OrderForm() {
                         <input
                           type="text"
                           placeholder="Descripción del producto"
+                          autoComplete="off"
                           className={`w-full bg-transparent border-b border-transparent focus:ring-0 p-1.5 text-xs text-slate-700 dark:text-slate-200 focus:border-sky-500 ${descripcionError ? "border-rose-500 text-rose-600 dark:text-rose-400" : ""}`}
                           {...register(`items.${index}.descripcion`)}
                         />
@@ -535,6 +630,7 @@ export default function OrderForm() {
                         <input
                           type="text"
                           placeholder="PZA"
+                          autoComplete="off"
                           className={`w-full bg-transparent border-b border-transparent focus:ring-0 p-1.5 text-xs text-center uppercase text-slate-700 dark:text-slate-200 focus:border-sky-500 ${unidadError ? "border-rose-500 text-rose-600 dark:text-rose-400" : ""}`}
                           {...register(`items.${index}.unidad`)}
                         />
@@ -550,6 +646,7 @@ export default function OrderForm() {
                         <input
                           type="number"
                           placeholder="0"
+                          autoComplete="off"
                           className={`w-full bg-transparent border-b border-transparent focus:ring-0 p-1.5 text-xs text-right text-slate-800 dark:text-white focus:border-sky-500 ${cantidadError ? "border-rose-500 text-rose-600 dark:text-rose-400" : ""}`}
                           {...register(`items.${index}.cantidad`, {
                             valueAsNumber: true,
@@ -663,7 +760,7 @@ export default function OrderForm() {
               Capturado por
             </p>
             <p className="text-xs font-medium text-slate-700 dark:text-slate-200">
-              {userName}
+              {isEdit ? (orderToEdit?.capturadoPor ?? userName) : userName}
             </p>
           </div>
 
@@ -814,10 +911,6 @@ export default function OrderForm() {
 
       {/* Botones de Acción */}
       <div className="flex justify-end gap-3 pb-8">
-        <FormCancelButton
-          onClick={handleReset}
-          disabled={isSubmitting}
-        />
         <FormSubmitButton
           isPending={isSubmitting}
           loadingLabel="Guardando Pedido..."
