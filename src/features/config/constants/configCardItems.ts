@@ -7,7 +7,8 @@ import {
   InfoIcon,
   CapitalHumanoIcon,
   ListaPreciosIcon,
-  InventariosIcon
+  InventariosIcon,
+  ProductCategoriesIcon
 } from "@/src/components/Icons";
 
 
@@ -67,6 +68,13 @@ export const configCards: ConfigCardItem[] = [
     title: "Información Fiscal",
     icon: InfoIcon,
     view: "sat",
-    adminOnly: false,
+    adminOnly: true,
   },
+  {
+    title: "Categorías de Producto",
+    description: "Administración de categorías de productos",
+    icon: ProductCategoriesIcon,
+    view: "product-categories",
+    adminOnly: true,
+  }
 ];

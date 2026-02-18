@@ -782,3 +782,26 @@ export const HelpIcon = (props: React.SVGProps<SVGSVGElement>) => (
     />
   </svg>
 );
+
+export const ProductCategoriesIcon = (
+  props: React.SVGProps<SVGSVGElement>
+) => (
+  <svg
+    {...props}
+    fill="none"
+    stroke="currentColor"
+    viewBox="0 0 24 24"
+  >
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="2"
+      d="
+        M3 4h7v7H3V4z
+        M14 4h7v7h-7V4z
+        M3 15h7v5H3v-5z
+        M14 15h7v5h-7v-5z
+      "
+    />
+  </svg>
+);
