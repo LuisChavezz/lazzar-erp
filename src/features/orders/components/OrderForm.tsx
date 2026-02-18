@@ -18,6 +18,10 @@ import {
 } from "../schema/order.schema";
 import { getFieldError } from "../../../utils/getFieldError";
 import { formatCurrency } from "../../../utils/formatCurrency";
+import { useOrderStore } from "../stores/order.store";
+import { useRouter } from "next/navigation";
+import toast from "react-hot-toast";
+import { Order } from "../interfaces/order.interface";
 
 
 // Default item values
@@ -36,9 +40,12 @@ export default function OrderForm() {
   // Obtener el nombre del usuario de la sesión
   const { data: session } = useSession();
   const userName = session?.user?.name || "Usuario";
+  const userId = session!.user.id;
 
   // Obtener la fecha actual en formato "YYYY-MM-DD"
   const todayStr = new Date().toISOString().split("T")[0];
+  const addOrder = useOrderStore((s) => s.addOrder);
+  const router = useRouter();
 
   const {
     register,
@@ -112,13 +119,63 @@ export default function OrderForm() {
 
   // Manejar la submisión del formulario
   const onSubmit = (values: OrderFormValues) => {
-    console.log("Order form submitted", values);
+    const id = crypto.randomUUID();
+
+    const items = (values.items || []).map((item) => {
+      const cantidad = Number(item.cantidad) || 0;
+      const precio = Number(item.precio) || 0;
+      const descuento = Number(item.descuento) || 0;
+      const amount = cantidad * precio;
+      const descuentoAmount = amount * (descuento / 100);
+      const importe = Number((amount - descuentoAmount).toFixed(2));
+      return { ...item, importe };
+    });
+
+    const newOrder: Order = {
+      id,
+      folio: `#ORD-${id.split("-")[0].toUpperCase()}`,
+      clienteId: values.clienteId,
+      clienteNombre: values.clienteNombre,
+      pedidoCliente: values.pedidoCliente,
+      fecha: values.fecha,
+      fechaVence: values.fechaVence,
+      agente: values.agente,
+      comision: values.comision,
+      plazo: values.plazo,
+      sucursal: values.sucursal,
+      almacen: values.almacen,
+      canal: values.canal,
+      puntos: values.puntos,
+      anticipoReq: values.anticipoReq,
+      pedidoInicial: values.pedidoInicial,
+      estatusPedido: values.estatusPedido as Order["estatusPedido"],
+      docRelacionado: values.docRelacionado,
+      observaciones: values.observaciones,
+      capturadoPor: userId,
+      items,
+      totals: {
+        subtotal,
+        descuentoTotal,
+        ivaAmount,
+        granTotal,
+        saldoPendiente,
+        flete: Number(watchedFlete) || 0,
+        seguro: Number(watchedSeguro) || 0,
+        anticipo: Number(watchedAnticipo) || 0,
+        ivaRate: Number(watchedIva) || 0,
+      },
+    };
+
+    addOrder(newOrder);
+    toast.success("Pedido registrado correctamente");
+    router.replace("/orders");
   };
 
   // Obtener el error del campo "items" cuando no hay productos agregados
   const itemsError = getFieldError(
     errors.items?.root ?? (errors.items as unknown)
   );
+  const docRelacionadoError = getFieldError(errors.docRelacionado);
 
   const {
     subtotal,
@@ -617,9 +674,14 @@ export default function OrderForm() {
             <input
               type="text"
               placeholder="Cotización / OC"
-              className="w-full bg-transparent border-b border-slate-200 dark:border-slate-700 text-xs py-1 focus:outline-none"
+              className={`w-full bg-transparent border-b text-xs py-1 focus:outline-none border-slate-200 dark:border-slate-700 ${docRelacionadoError ? "border-rose-500 text-rose-600 dark:text-rose-400" : ""}`}
               {...register("docRelacionado")}
             />
+            {docRelacionadoError && (
+              <p className="text-[10px] text-rose-600 dark:text-rose-400">
+                {docRelacionadoError.message}
+              </p>
+            )}
           </div>
 
           <div className="space-y-1 pt-2">

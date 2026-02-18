@@ -1,4 +1,4 @@
-import { Order } from "../../dashboard/interfaces/order.interface";
+import { Order } from "../interfaces/order.interface";
 
 export const getStatusStyles = (status: Order["estatusPedido"]) => {
   switch (status) {

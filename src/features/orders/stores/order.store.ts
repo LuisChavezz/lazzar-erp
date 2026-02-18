@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { Order } from "../../dashboard/interfaces/order.interface";
+import { Order } from "../interfaces/order.interface";
 import { devtools, persist } from "zustand/middleware";
 
 
