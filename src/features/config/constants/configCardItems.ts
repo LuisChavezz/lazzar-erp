@@ -10,7 +10,8 @@ import {
   InventariosIcon,
   ProductCategoriesIcon,
   ProductTypesIcon,
-  ColorsIcon
+  ColorsIcon,
+  SizesIcon
 } from "@/src/components/Icons";
 
 
@@ -92,5 +93,12 @@ export const configCards: ConfigCardItem[] = [
     icon: ColorsIcon,
     view: "colors",
     adminOnly: true,
-  }
+  },
+  {
+    title: "Tallas",
+    description: "Administración de tallas",
+    icon: SizesIcon,
+    view: "sizes",
+    adminOnly: true,
+  },
 ];

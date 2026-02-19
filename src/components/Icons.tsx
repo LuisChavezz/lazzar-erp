@@ -836,3 +836,21 @@ export const ColorsIcon = (
     />
   </svg>
 );
+
+export const SizesIcon = (
+  props: React.SVGProps<SVGSVGElement>
+) => (
+  <svg
+    {...props}
+    fill="none"
+    stroke="currentColor"
+    viewBox="0 0 24 24"
+  >
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="2"
+      d="M8 4l2 2h4l2-2 3 3-3 3v10H8V10L5 7l3-3zM12 10v8"
+    />
+  </svg>
+);
