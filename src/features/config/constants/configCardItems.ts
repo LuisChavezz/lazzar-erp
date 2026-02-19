@@ -13,7 +13,8 @@ import {
   ColorsIcon,
   SizesIcon,
   UnitsIcon,
-  TaxIcon
+  TaxIcon,
+  SatProdServIcon
 } from "@/src/components/Icons";
 
 
@@ -117,4 +118,11 @@ export const configCards: ConfigCardItem[] = [
     view: "taxes",
     adminOnly: true,
   },
+  {
+    title: "SAT - claves de productos y servicios",
+    description: "Administración de claves de productos y servicios",
+    icon: SatProdServIcon,
+    view: "sat-prod-serv",
+    adminOnly: true,
+  }
 ];
