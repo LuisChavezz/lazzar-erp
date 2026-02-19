@@ -796,12 +796,43 @@ export const ProductCategoriesIcon = (
       strokeLinecap="round"
       strokeLinejoin="round"
       strokeWidth="2"
-      d="
-        M3 4h7v7H3V4z
-        M14 4h7v7h-7V4z
-        M3 15h7v5H3v-5z
-        M14 15h7v5h-7v-5z
-      "
+      d="M3 4h7v7H3V4z M14 4h7v7h-7V4z M3 15h7v5H3v-5z M14 15h7v5h-7v-5z"
+    />
+  </svg>
+);
+
+export const ProductTypesIcon = (
+  props: React.SVGProps<SVGSVGElement>
+) => (
+  <svg
+    {...props}
+    fill="none"
+    stroke="currentColor"
+    viewBox="0 0 24 24"
+  >
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="2"
+      d="M7 7h6l5 5-6 6-5-5V7z M7 7l5 5 M3 11V5a2 2 0 012-2h6"
+    />
+  </svg>
+);
+
+export const ColorsIcon = (
+  props: React.SVGProps<SVGSVGElement>
+) => (
+  <svg
+    {...props}
+    fill="none"
+    stroke="currentColor"
+    viewBox="0 0 24 24"
+  >
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="2"
+      d="M12 3a9 9 0 100 18c1.5 0 2-1 2-2 0-1-1-2-1-3s1-2 2-2h1a4 4 0 004-4 7 7 0 00-8-7zM7 11h.01M10 8h.01M14 8h.01"
     />
   </svg>
 );

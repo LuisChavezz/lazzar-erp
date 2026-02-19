@@ -32,6 +32,18 @@ const ProductCategoryList = dynamic(
     loading: () => <LoadingSkeleton />,
   }
 );
+const ProductTypeList = dynamic(
+  () => import("@/src/features/product-types/components/ProductTypeList"),
+  {
+    loading: () => <LoadingSkeleton />,
+  }
+);
+const ColorList = dynamic(
+  () => import("@/src/features/colors/components/ColorList"),
+  {
+    loading: () => <LoadingSkeleton />,
+  }
+);
 
 interface ConfigDetailViewProps {
   selectedView: string | null;
@@ -121,6 +133,20 @@ export function ConfigDetailView({ selectedView, onBack }: ConfigDetailViewProps
         <div className="flex flex-col gap-6">
           {renderBackButton()}
           <ProductCategoryList />
+        </div>
+      )}
+
+      {selectedView === "product-types" && (
+        <div className="flex flex-col gap-6">
+          {renderBackButton()}
+          <ProductTypeList />
+        </div>
+      )}
+
+      {selectedView === "colors" && (
+        <div className="flex flex-col gap-6">
+          {renderBackButton()}
+          <ColorList />
         </div>
       )}
     </div>
