@@ -872,3 +872,22 @@ export const UnitsIcon = (
     />
   </svg>
 );
+
+export const TaxIcon = (
+  props: React.SVGProps<SVGSVGElement>
+) => (
+  <svg
+    {...props}
+    fill="none"
+    stroke="currentColor"
+    viewBox="0 0 24 24"
+  >
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="2"
+      d="M7 3h7l5 5v13H7V3zM14 3v5h5M10 13l4-4M9 17h.01M15 11h.01"
+    />
+  </svg>
+);
+

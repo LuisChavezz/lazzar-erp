@@ -12,7 +12,8 @@ import {
   ProductTypesIcon,
   ColorsIcon,
   SizesIcon,
-  UnitsIcon
+  UnitsIcon,
+  TaxIcon
 } from "@/src/components/Icons";
 
 
@@ -108,5 +109,12 @@ export const configCards: ConfigCardItem[] = [
     icon: UnitsIcon,
     view: "units",
     adminOnly: true,
-  }
+  },
+  {
+    title: "Impuestos",
+    description: "Administración de impuestos",
+    icon: TaxIcon,
+    view: "taxes",
+    adminOnly: true,
+  },
 ];

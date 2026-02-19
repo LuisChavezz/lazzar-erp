@@ -56,6 +56,12 @@ const UnitOfMeasureList = dynamic(
     loading: () => <LoadingSkeleton />,
   }
 );
+const TaxList = dynamic(
+  () => import("@/src/features/taxes/components/TaxList"),
+  {
+    loading: () => <LoadingSkeleton />,
+  }
+);
 
 
 interface ConfigDetailViewProps {
@@ -174,6 +180,13 @@ export function ConfigDetailView({ selectedView, onBack }: ConfigDetailViewProps
         <div className="flex flex-col gap-6">
           {renderBackButton()}
           <UnitOfMeasureList />
+        </div>
+      )}
+
+      {selectedView === "taxes" && (
+        <div className="flex flex-col gap-6">
+          {renderBackButton()}
+          <TaxList />
         </div>
       )}
     </div>
