@@ -854,3 +854,21 @@ export const SizesIcon = (
     />
   </svg>
 );
+
+export const UnitsIcon = (
+  props: React.SVGProps<SVGSVGElement>
+) => (
+  <svg
+    {...props}
+    fill="none"
+    stroke="currentColor"
+    viewBox="0 0 24 24"
+  >
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="2"
+      d="M4 7h16v10H4V7zM8 7v4M12 7v2M16 7v4M8 17v-4M12 17v-2M16 17v-4"
+    />
+  </svg>
+);

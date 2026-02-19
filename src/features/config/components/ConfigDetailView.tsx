@@ -50,6 +50,12 @@ const SizeList = dynamic(
     loading: () => <LoadingSkeleton />,
   }
 );
+const UnitOfMeasureList = dynamic(
+  () => import("@/src/features/units-of-measure/components/UnitOfMeasureList"),
+  {
+    loading: () => <LoadingSkeleton />,
+  }
+);
 
 
 interface ConfigDetailViewProps {
@@ -161,6 +167,13 @@ export function ConfigDetailView({ selectedView, onBack }: ConfigDetailViewProps
         <div className="flex flex-col gap-6">
           {renderBackButton()}
           <SizeList />
+        </div>
+      )}
+      
+      {selectedView === "units" && (
+        <div className="flex flex-col gap-6">
+          {renderBackButton()}
+          <UnitOfMeasureList />
         </div>
       )}
     </div>
