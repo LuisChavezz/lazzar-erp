@@ -45,6 +45,7 @@ const ColorList = dynamic(
   }
 );
 
+
 interface ConfigDetailViewProps {
   selectedView: string | null;
   onBack: () => void;

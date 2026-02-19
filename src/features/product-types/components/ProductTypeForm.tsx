@@ -6,7 +6,7 @@ import { useProductTypeStore } from "../stores/product-type.store";
 import { ProductTypeFormSchema, ProductTypeFormValues } from "../schemas/product-type.schema";
 import { FormInput } from "../../../components/FormInput";
 import { FormCancelButton, FormSubmitButton } from "../../../components/FormButtons";
-import { ProductTypesIcon, SettingsIcon } from "../../../components/Icons";
+import { ProductTypesIcon } from "../../../components/Icons";
 import toast from "react-hot-toast";
 
 interface ProductTypeFormProps {
