@@ -8,7 +8,9 @@ import {
   CapitalHumanoIcon,
   ListaPreciosIcon,
   InventariosIcon,
-  ProductCategoriesIcon
+  ProductCategoriesIcon,
+  ProductTypesIcon,
+  ColorsIcon
 } from "@/src/components/Icons";
 
 
@@ -75,6 +77,20 @@ export const configCards: ConfigCardItem[] = [
     description: "Administración de categorías de productos",
     icon: ProductCategoriesIcon,
     view: "product-categories",
+    adminOnly: true,
+  },
+  {
+    title: "Tipos de Producto",
+    description: "Administración de tipos de productos",
+    icon: ProductTypesIcon,
+    view: "product-types",
+    adminOnly: true,
+  },
+  {
+    title: "Colores",
+    description: "Administración de colores",
+    icon: ColorsIcon,
+    view: "colors",
     adminOnly: true,
   }
 ];
