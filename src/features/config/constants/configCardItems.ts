@@ -11,7 +11,8 @@ import {
   ProductCategoriesIcon,
   ProductTypesIcon,
   ColorsIcon,
-  SizesIcon
+  SizesIcon,
+  UnitsIcon
 } from "@/src/components/Icons";
 
 
@@ -101,4 +102,11 @@ export const configCards: ConfigCardItem[] = [
     view: "sizes",
     adminOnly: true,
   },
+  {
+    title: "Unidades de Medida",
+    description: "Administración de unidades de medida",
+    icon: UnitsIcon,
+    view: "units",
+    adminOnly: true,
+  }
 ];
