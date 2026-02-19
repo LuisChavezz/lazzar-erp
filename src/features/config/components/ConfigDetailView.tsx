@@ -44,6 +44,12 @@ const ColorList = dynamic(
     loading: () => <LoadingSkeleton />,
   }
 );
+const SizeList = dynamic(
+  () => import("@/src/features/sizes/components/SizeList"),
+  {
+    loading: () => <LoadingSkeleton />,
+  }
+);
 
 
 interface ConfigDetailViewProps {
@@ -148,6 +154,13 @@ export function ConfigDetailView({ selectedView, onBack }: ConfigDetailViewProps
         <div className="flex flex-col gap-6">
           {renderBackButton()}
           <ColorList />
+        </div>
+      )}
+      
+      {selectedView === "sizes" && (
+        <div className="flex flex-col gap-6">
+          {renderBackButton()}
+          <SizeList />
         </div>
       )}
     </div>
