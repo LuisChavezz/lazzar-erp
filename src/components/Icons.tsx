@@ -908,3 +908,21 @@ export const SatProdServIcon = (
     />
   </svg>
 );
+
+export const SatUnitCodesIcon = (
+  props: React.SVGProps<SVGSVGElement>
+) => (
+  <svg
+    {...props}
+    fill="none"
+    stroke="currentColor"
+    viewBox="0 0 24 24"
+  >
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="2"
+      d="M7 3h7l5 5v13H7V3zM14 3v5h5M9 13h6M9 17h4M10 9h4M15 14v4M13 16h4M13 18h4"
+    />
+  </svg>
+);

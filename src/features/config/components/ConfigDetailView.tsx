@@ -47,6 +47,9 @@ const TaxList = dynamic(() => import("@/src/features/taxes/components/TaxList"),
 const SatProdservCodeList = dynamic(() => import("@/src/features/sat-prodserv-codes/components/SatProdservCodeList"), {
     loading: () => <LoadingSkeleton />,
 });
+const SatUnitCodeList = dynamic(() => import("@/src/features/sat-unit-codes/components/SatUnitCodeList"), {
+    loading: () => <LoadingSkeleton />,
+});
 
 
 interface ConfigDetailViewProps {
@@ -179,6 +182,13 @@ export function ConfigDetailView({ selectedView, onBack }: ConfigDetailViewProps
         <div className="flex flex-col gap-6">
           {renderBackButton()}
           <SatProdservCodeList />
+        </div>
+      )}
+
+      {selectedView === "sat-unit-codes" && (
+        <div className="flex flex-col gap-6">
+          {renderBackButton()}
+          <SatUnitCodeList />
         </div>
       )}
     </div>

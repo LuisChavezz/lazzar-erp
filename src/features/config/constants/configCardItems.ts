@@ -14,7 +14,8 @@ import {
   SizesIcon,
   UnitsIcon,
   TaxIcon,
-  SatProdServIcon
+  SatProdServIcon,
+  SatUnitCodesIcon
 } from "@/src/components/Icons";
 
 
@@ -123,6 +124,13 @@ export const configCards: ConfigCardItem[] = [
     description: "Administración de claves de productos y servicios",
     icon: SatProdServIcon,
     view: "sat-prod-serv",
+    adminOnly: true,
+  },
+  {
+    title: "SAT - claves de unidades",
+    description: "Administración de claves de unidades",
+    icon: SatUnitCodesIcon,
+    view: "sat-unit-codes",
     adminOnly: true,
   }
 ];
