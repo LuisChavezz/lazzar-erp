@@ -891,3 +891,20 @@ export const TaxIcon = (
   </svg>
 );
 
+export const SatProdServIcon = (
+  props: React.SVGProps<SVGSVGElement>
+) => (
+  <svg
+    {...props}
+    fill="none"
+    stroke="currentColor"
+    viewBox="0 0 24 24"
+  >
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="2"
+      d="M7 3h7l5 5v13H7V3zM14 3v5h5M9 13h6M9 17h4M10 9h4M9 15l2 2 4-4"
+    />
+  </svg>
+);

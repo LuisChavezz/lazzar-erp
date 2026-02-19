@@ -26,42 +26,27 @@ const RoleList = dynamic(() => import("@/src/features/roles/components/RoleList"
 const UserList = dynamic(() => import("@/src/features/users/components/UserList"), {
   loading: () => <LoadingSkeleton />,
 });
-const ProductCategoryList = dynamic(
-  () => import("@/src/features/product-categories/components/ProductCategoryList"),
-  {
+const ProductCategoryList = dynamic(() => import("@/src/features/product-categories/components/ProductCategoryList"), {
     loading: () => <LoadingSkeleton />,
-  }
-);
-const ProductTypeList = dynamic(
-  () => import("@/src/features/product-types/components/ProductTypeList"),
-  {
+});
+const ProductTypeList = dynamic(() => import("@/src/features/product-types/components/ProductTypeList"), {
     loading: () => <LoadingSkeleton />,
-  }
-);
-const ColorList = dynamic(
-  () => import("@/src/features/colors/components/ColorList"),
-  {
+});
+const ColorList = dynamic(() => import("@/src/features/colors/components/ColorList"), {
     loading: () => <LoadingSkeleton />,
-  }
-);
-const SizeList = dynamic(
-  () => import("@/src/features/sizes/components/SizeList"),
-  {
+});
+const SizeList = dynamic(() => import("@/src/features/sizes/components/SizeList"), {
     loading: () => <LoadingSkeleton />,
-  }
-);
-const UnitOfMeasureList = dynamic(
-  () => import("@/src/features/units-of-measure/components/UnitOfMeasureList"),
-  {
+});
+const UnitOfMeasureList = dynamic(() => import("@/src/features/units-of-measure/components/UnitOfMeasureList"), {
     loading: () => <LoadingSkeleton />,
-  }
-);
-const TaxList = dynamic(
-  () => import("@/src/features/taxes/components/TaxList"),
-  {
+});
+const TaxList = dynamic(() => import("@/src/features/taxes/components/TaxList"), {
     loading: () => <LoadingSkeleton />,
-  }
-);
+});
+const SatProdservCodeList = dynamic(() => import("@/src/features/sat-prodserv-codes/components/SatProdservCodeList"), {
+    loading: () => <LoadingSkeleton />,
+});
 
 
 interface ConfigDetailViewProps {
@@ -187,6 +172,13 @@ export function ConfigDetailView({ selectedView, onBack }: ConfigDetailViewProps
         <div className="flex flex-col gap-6">
           {renderBackButton()}
           <TaxList />
+        </div>
+      )}
+
+      {selectedView === "sat-prod-serv" && (
+        <div className="flex flex-col gap-6">
+          {renderBackButton()}
+          <SatProdservCodeList />
         </div>
       )}
     </div>
