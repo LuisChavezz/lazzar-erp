@@ -944,3 +944,21 @@ export const ProductIcon = (
     />
   </svg>
 );
+
+export const ProductVariantsIcon = (
+  props: React.SVGProps<SVGSVGElement>
+) => (
+  <svg
+    {...props}
+    fill="none"
+    stroke="currentColor"
+    viewBox="0 0 24 24"
+  >
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="2"
+      d="M12 3l7 3-7 3-7-3 7-3zM5 6v5l7 3 7-3V6M3 15l4-2 4 2-4 2-4-2zM13 17l4-2 4 2-4 2-4-2z"
+    />
+  </svg>
+);

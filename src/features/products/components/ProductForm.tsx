@@ -169,8 +169,9 @@ export default function ProductForm({ onSuccess }: ProductFormProps) {
               <div className="group/field md:col-span-2">
                 <FormInput
                   label="Nombre"
-                  placeholder="Ej. Laptop empresarial"
+                  placeholder="Ej. Playera básica"
                   className="text-2xl font-bold"
+                  variant="ghost"
                   {...register("nombre")}
                   error={errors.nombre}
                 />

@@ -16,7 +16,8 @@ import {
   TaxIcon,
   SatProdServIcon,
   SatUnitCodesIcon,
-  ProductIcon
+  ProductIcon,
+  ProductVariantsIcon
 } from "@/src/components/Icons";
 
 
@@ -139,6 +140,13 @@ export const configCards: ConfigCardItem[] = [
     description: "Administración de productos",
     icon: ProductIcon,
     view: "products",
+    adminOnly: true,
+  },
+  {
+    title: "Variantes de Producto",
+    description: "Administración de variantes de productos",
+    icon: ProductVariantsIcon,
+    view: "product-variants",
     adminOnly: true,
   }
 ];
