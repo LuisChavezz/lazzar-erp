@@ -104,7 +104,6 @@ export default function UnitOfMeasureForm({ onSuccess }: UnitOfMeasureFormProps)
                 <FormInput
                   label="Nombre"
                   placeholder="Ej. Kilogramo"
-                  variant="ghost"
                   className="text-2xl font-bold"
                   {...register("nombre")}
                   error={errors.nombre}
