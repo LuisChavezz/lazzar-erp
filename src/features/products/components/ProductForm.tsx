@@ -23,13 +23,18 @@ interface ProductFormProps {
 }
 
 export default function ProductForm({ onSuccess }: ProductFormProps) {
+
+  // Obtener funciones y estado del store de productos
   const addProduct = useProductStore((state) => state.addProduct);
   const updateProduct = useProductStore((state) => state.updateProduct);
   const selectedProduct = useProductStore((state) => state.selectedProduct);
   const isLoading = useProductStore((state) => state.isLoading);
   const setIsLoading = useProductStore((state) => state.setIsLoading);
 
+  // Obtener la empresa seleccionada del store de espacios de trabajo
   const selectedCompany = useWorkspaceStore((state) => state.selectedCompany);
+
+  // Obtener categorías, unidades, impuestos, claves SAT y tipos de producto de los stores correspondientes
   const { categories } = useProductCategoryStore((state) => state);
   const { units } = useUnitOfMeasureStore((state) => state);
   const { taxes } = useTaxStore((state) => state);
@@ -37,6 +42,7 @@ export default function ProductForm({ onSuccess }: ProductFormProps) {
   const { satUnitCodes } = useSatUnitCodeStore((state) => state);
   const { productTypes } = useProductTypeStore((state) => state);
 
+  // Filtrar categorías, unidades, impuestos, claves SAT y tipos de producto activos
   const activeCategories = categories.filter((category) => category.activo);
   const activeUnits = units.filter((unit) => unit.estatus);
   const activeTaxes = taxes.filter((tax) => tax.estatus);
@@ -47,6 +53,7 @@ export default function ProductForm({ onSuccess }: ProductFormProps) {
     (code) => (code.estatus || "").toLowerCase() === "activo"
   );
 
+  // Comprobar si faltan productos, colores, tallas, categorías, unidades, impuestos, claves SAT Prod/Serv, claves SAT Unidad o tipos de producto activos
   const missingItems = [
     activeCategories.length === 0 ? "Categorías de producto" : null,
     productTypes.length === 0 ? "Tipos de producto" : null,
@@ -56,8 +63,8 @@ export default function ProductForm({ onSuccess }: ProductFormProps) {
     activeSatUnitCodes.length === 0 ? "Claves SAT Unidad" : null,
   ].filter((item): item is string => Boolean(item));
 
-  const isEditing = Boolean(selectedProduct?.id);
-  const emptyValues: ProductFormValues = {
+  const isEditing = Boolean(selectedProduct?.id); // Comprobar si se está editando un producto existente
+  const emptyValues: ProductFormValues = { // Valores por defecto para el formulario
     nombre: "",
     descripcion: "",
     tipo: 0,
@@ -69,6 +76,7 @@ export default function ProductForm({ onSuccess }: ProductFormProps) {
     activo: true,
   };
 
+  // Comprobar si el producto seleccionado tiene categorías, tipos, unidades, impuestos, claves SAT Prod/Serv y claves SAT Unidad activos
   const hasCategory = activeCategories.some(
     (category) => category.id === selectedProduct?.categoria_producto_id
   );
@@ -82,7 +90,7 @@ export default function ProductForm({ onSuccess }: ProductFormProps) {
     (code) => code.id_sat_unidad === selectedProduct?.sat_unidad_id
   );
 
-  const editValues: ProductFormValues = selectedProduct
+  const editValues: ProductFormValues = selectedProduct // Valores para editar un producto existente
     ? {
         nombre: selectedProduct.nombre,
         descripcion: selectedProduct.descripcion,
@@ -96,6 +104,7 @@ export default function ProductForm({ onSuccess }: ProductFormProps) {
       }
     : emptyValues;
 
+  // Configurar el formulario con valores por defecto y valores para editar si es necesario
   const {
     register,
     handleSubmit,
@@ -108,23 +117,24 @@ export default function ProductForm({ onSuccess }: ProductFormProps) {
     values: isEditing ? editValues : undefined,
   });
 
-  const isActive = watch("activo");
+  const isActive = watch("activo"); // Obtener el valor del campo activo del formulario
 
+  // Manejar la submisión del formulario
   const onSubmit = async (data: ProductFormValues) => {
     setIsLoading(true);
     try {
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      await new Promise((resolve) => setTimeout(resolve, 500)); // Simular una demora en la submisión
 
-      const now = new Date().toISOString();
+      const now = new Date().toISOString(); // Obtener la fecha y hora actual en formato ISO
 
-      if (selectedProduct) {
+      if (selectedProduct) { // Actualizar un producto existente
         updateProduct({
           ...selectedProduct,
           ...data,
           updated_at: now,
         });
         toast.success("Producto actualizado correctamente");
-      } else {
+      } else { // Registrar un nuevo producto
         addProduct({
           id: Date.now(),
           empresa_id: selectedCompany.id!,
@@ -151,6 +161,7 @@ export default function ProductForm({ onSuccess }: ProductFormProps) {
     }
   };
 
+  // Comprobar si hay elementos faltantes en el formulario
   if (missingItems.length > 0) {
     return <MissingPrerequisites items={missingItems} />;
   }
