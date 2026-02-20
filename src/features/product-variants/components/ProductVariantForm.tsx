@@ -20,29 +20,36 @@ interface ProductVariantFormProps {
 }
 
 export default function ProductVariantForm({ onSuccess }: ProductVariantFormProps) {
+
+  // Store de Product Variants para su gestión
   const addProductVariant = useProductVariantStore((state) => state.addProductVariant);
   const updateProductVariant = useProductVariantStore((state) => state.updateProductVariant);
   const selectedProductVariant = useProductVariantStore((state) => state.selectedProductVariant);
   const isLoading = useProductVariantStore((state) => state.isLoading);
   const setIsLoading = useProductVariantStore((state) => state.setIsLoading);
 
+  // Store de Workspace para obtener la compañía seleccionada
   const selectedCompany = useWorkspaceStore((state) => state.selectedCompany);
+
+  // Stores de Products, Colors, y Sizes para obtener los datos necesarios
   const { products } = useProductStore((state) => state);
   const { colors } = useColorStore((state) => state);
   const { sizes } = useSizeStore((state) => state);
 
+  // Filtrar productos, colores y tallas activos
   const activeProducts = products.filter((product) => product.activo);
   const activeColors = colors.filter((color) => color.activo);
   const activeSizes = sizes.filter((size) => size.activo);
 
+  // Verificar si hay productos, colores y tallas activos
   const missingItems = [
     activeProducts.length === 0 ? "Productos" : null,
     activeColors.length === 0 ? "Colores" : null,
     activeSizes.length === 0 ? "Tallas" : null,
   ].filter((item): item is string => Boolean(item));
 
-  const isEditing = Boolean(selectedProductVariant?.id);
-  const emptyValues: ProductVariantFormValues = {
+  const isEditing = Boolean(selectedProductVariant?.id); // Verificar si hay una variante seleccionada para editar
+  const emptyValues: ProductVariantFormValues = { // Valores vacíos para el formulario
     producto_id: 0,
     color_id: 0,
     talla_id: 0,
@@ -51,12 +58,12 @@ export default function ProductVariantForm({ onSuccess }: ProductVariantFormProp
     activo: true,
   };
 
-  const hasProduct = activeProducts.some(
-    (product) => product.id === selectedProductVariant?.producto_id
-  );
+  // Verificar si la variante seleccionada tiene un producto, color y talla activos
+  const hasProduct = activeProducts.some((product) => product.id === selectedProductVariant?.producto_id);
   const hasColor = activeColors.some((color) => color.id === selectedProductVariant?.color_id);
   const hasSize = activeSizes.some((size) => size.id === selectedProductVariant?.talla_id);
 
+  // Preparar valores para editar si la variante tiene un producto, color y talla activos
   const editValues: ProductVariantFormValues = selectedProductVariant
     ? {
         producto_id: hasProduct ? selectedProductVariant.producto_id : 0,
@@ -68,6 +75,7 @@ export default function ProductVariantForm({ onSuccess }: ProductVariantFormProp
       }
     : emptyValues;
 
+  // Configurar el formulario con react-hook-form
   const {
     register,
     handleSubmit,
@@ -80,20 +88,21 @@ export default function ProductVariantForm({ onSuccess }: ProductVariantFormProp
     values: isEditing ? editValues : undefined,
   });
 
-  const isActive = watch("activo");
+  const isActive = watch("activo"); // Observar el estado de activo en el formulario
 
+  // Manejar la submisión del formulario
   const onSubmit = async (data: ProductVariantFormValues) => {
     setIsLoading(true);
     try {
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      await new Promise((resolve) => setTimeout(resolve, 500)); // Simular una demora en la submisión
 
-      if (selectedProductVariant) {
+      if (selectedProductVariant) { // Actualizar la variante si existe
         updateProductVariant({
-          ...selectedProductVariant,
-          ...data,
+          ...selectedProductVariant, // Mantener el ID de la variante existente
+          ...data, // Actualizar los demás campos con los nuevos valores
         });
         toast.success("Variante actualizada correctamente");
-      } else {
+      } else { // Registrar una nueva variante si no existe
         addProductVariant({
           id: Date.now(),
           empresa_id: selectedCompany.id!,
@@ -107,6 +116,7 @@ export default function ProductVariantForm({ onSuccess }: ProductVariantFormProp
         toast.success("Variante registrada correctamente");
       }
       onSuccess();
+
     } catch (error) {
       console.error(error);
       toast.error("Ocurrió un error al guardar la variante");
@@ -115,6 +125,7 @@ export default function ProductVariantForm({ onSuccess }: ProductVariantFormProp
     }
   };
 
+  // Mostrar un mensaje si faltan productos, colores o tallas activos
   if (missingItems.length > 0) {
     return <MissingPrerequisites items={missingItems} />;
   }
