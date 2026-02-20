@@ -53,6 +53,9 @@ const SatUnitCodeList = dynamic(() => import("@/src/features/sat-unit-codes/comp
 const ProductList = dynamic(() => import("@/src/features/products/components/ProductList"), {
     loading: () => <LoadingSkeleton />,
 });
+const ProductVariantList = dynamic(() => import("@/src/features/product-variants/components/ProductVariantList"), {
+    loading: () => <LoadingSkeleton />,
+});
 
 
 interface ConfigDetailViewProps {
@@ -199,6 +202,13 @@ export function ConfigDetailView({ selectedView, onBack }: ConfigDetailViewProps
         <div className="flex flex-col gap-6">
           {renderBackButton()}
           <ProductList />
+        </div>
+      )}
+
+      {selectedView === "product-variants" && (
+        <div className="flex flex-col gap-6">
+          {renderBackButton()}
+          <ProductVariantList />
         </div>
       )}
     </div>

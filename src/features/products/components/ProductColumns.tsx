@@ -83,54 +83,79 @@ export const getColumns = (
         <span className="text-slate-600 dark:text-slate-300 font-medium">{info.getValue()}</span>
       ),
     }),
-    columnHelper.accessor("tipo", {
-      header: "Tipo",
-      cell: (info) => (
-        <span className="text-slate-500 dark:text-slate-400">
-          {lookups.productTypes.get(info.getValue()) ?? info.getValue()}
-        </span>
-      ),
-    }),
-    columnHelper.accessor("categoria_producto_id", {
-      header: "Categoría",
-      cell: (info) => (
-        <span className="text-slate-500 dark:text-slate-400">
-          {lookups.categories.get(info.getValue()) ?? `#${info.getValue()}`}
-        </span>
-      ),
-    }),
-    columnHelper.accessor("unidad_medida_id", {
-      header: "Unidad",
-      cell: (info) => (
-        <span className="text-slate-500 dark:text-slate-400">
-          {lookups.units.get(info.getValue()) ?? `#${info.getValue()}`}
-        </span>
-      ),
-    }),
-    columnHelper.accessor("impuesto_id", {
-      header: "Impuesto",
-      cell: (info) => (
-        <span className="text-slate-500 dark:text-slate-400">
-          {lookups.taxes.get(info.getValue()) ?? `#${info.getValue()}`}
-        </span>
-      ),
-    }),
-    columnHelper.accessor("sat_prodserv_id", {
-      header: "SAT Prod/Serv",
-      cell: (info) => (
-        <span className="text-slate-500 dark:text-slate-400">
-          {lookups.satProdserv.get(info.getValue()) ?? `#${info.getValue()}`}
-        </span>
-      ),
-    }),
-    columnHelper.accessor("sat_unidad_id", {
-      header: "SAT Unidad",
-      cell: (info) => (
-        <span className="text-slate-500 dark:text-slate-400">
-          {lookups.satUnit.get(info.getValue()) ?? `#${info.getValue()}`}
-        </span>
-      ),
-    }),
+    columnHelper.accessor(
+      (row) => lookups.productTypes.get(row.tipo) ?? "",
+      {
+        id: "tipo",
+        header: "Tipo",
+        cell: ({ row }) => (
+          <span className="text-slate-500 dark:text-slate-400">
+            {lookups.productTypes.get(row.original.tipo) ?? row.original.tipo}
+          </span>
+        ),
+      }
+    ),
+    columnHelper.accessor(
+      (row) => lookups.categories.get(row.categoria_producto_id) ?? "",
+      {
+        id: "categoria_producto_id",
+        header: "Categoría",
+        cell: ({ row }) => (
+          <span className="text-slate-500 dark:text-slate-400">
+            {lookups.categories.get(row.original.categoria_producto_id) ??
+              `#${row.original.categoria_producto_id}`}
+          </span>
+        ),
+      }
+    ),
+    columnHelper.accessor(
+      (row) => lookups.units.get(row.unidad_medida_id) ?? "",
+      {
+        id: "unidad_medida_id",
+        header: "Unidad",
+        cell: ({ row }) => (
+          <span className="text-slate-500 dark:text-slate-400">
+            {lookups.units.get(row.original.unidad_medida_id) ?? `#${row.original.unidad_medida_id}`}
+          </span>
+        ),
+      }
+    ),
+    columnHelper.accessor(
+      (row) => lookups.taxes.get(row.impuesto_id) ?? "",
+      {
+        id: "impuesto_id",
+        header: "Impuesto",
+        cell: ({ row }) => (
+          <span className="text-slate-500 dark:text-slate-400">
+            {lookups.taxes.get(row.original.impuesto_id) ?? `#${row.original.impuesto_id}`}
+          </span>
+        ),
+      }
+    ),
+    columnHelper.accessor(
+      (row) => lookups.satProdserv.get(row.sat_prodserv_id) ?? "",
+      {
+        id: "sat_prodserv_id",
+        header: "SAT Prod/Serv",
+        cell: ({ row }) => (
+          <span className="text-slate-500 dark:text-slate-400">
+            {lookups.satProdserv.get(row.original.sat_prodserv_id) ?? `#${row.original.sat_prodserv_id}`}
+          </span>
+        ),
+      }
+    ),
+    columnHelper.accessor(
+      (row) => lookups.satUnit.get(row.sat_unidad_id) ?? "",
+      {
+        id: "sat_unidad_id",
+        header: "SAT Unidad",
+        cell: ({ row }) => (
+          <span className="text-slate-500 dark:text-slate-400">
+            {lookups.satUnit.get(row.original.sat_unidad_id) ?? `#${row.original.sat_unidad_id}`}
+          </span>
+        ),
+      }
+    ),
   ] as ColumnDef<Product>[];
 
   if (isAdmin) {
