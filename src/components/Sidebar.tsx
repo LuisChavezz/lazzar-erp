@@ -3,7 +3,6 @@
 import { useLogout } from "../features/auth/hooks/useLogout";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useSession } from "next-auth/react";
 import MobileSidebar from "./MobileSidebar";
 import { sidebarItems } from "../constants/sidebarItems";
 import SidebarItem from "./SidebarItem";
@@ -12,10 +11,8 @@ import { LogoIcon, LogoutIcon, SettingsIcon } from "./Icons";
 
 export default function Sidebar() {
   const pathname = usePathname();
-  const { data: session } = useSession();
   const { handleLogout } = useLogout();
   const isConfigActive = pathname === "/config" || pathname.startsWith("/config/");
-  const isAdmin = session?.user?.role === "admin";
 
   return (
     <>

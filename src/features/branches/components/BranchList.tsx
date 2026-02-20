@@ -3,13 +3,19 @@
 // import { useState } from "react";
 import { useBranches } from "../hooks/useBranches";
 import { DataTable } from "@/src/components/DataTable";
-import { branchColumns } from "./BranchColumns";
+import { getBranchColumns } from "./BranchColumns";
+import { useSession } from "next-auth/react";
 // import { MainDialog } from "@/src/components/MainDialog";
 // import BranchForm from "./BranchForm";
 
 export default function BranchList() {
   // const [isDialogOpen, setIsDialogOpen] = useState(false);
   const { branches, isLoading, isError, error } = useBranches();
+  const { data: session } = useSession();
+  const isAdmin = session?.user?.role === "admin";
+  const permissions = session?.user?.permissions ?? [];
+  const canReadConfig = isAdmin || permissions.includes("R-CONF");
+  const canEditConfig = isAdmin || permissions.includes("E-CONF");
 
   // const handleNew = () => {
   //   setIsDialogOpen(true);
@@ -35,7 +41,7 @@ export default function BranchList() {
 
   return (
     <DataTable
-      columns={branchColumns}
+      columns={getBranchColumns({ canRead: canReadConfig, canEdit: canEditConfig })}
       data={branches}
       title="Sucursales"
       searchPlaceholder="Buscar sucursal..."

@@ -16,7 +16,13 @@ export default function CurrencyList() {
   const { data: session } = useSession();
 
   const isAdmin = session?.user?.role === "admin";
-  const columns = useMemo(() => getCurrencyColumns(isAdmin), [isAdmin]);
+  const permissions = session?.user?.permissions ?? [];
+  const canEditConfig = isAdmin || permissions.includes("E-CONF");
+  const canDeleteConfig = isAdmin || permissions.includes("D-CONF");
+  const columns = useMemo(
+    () => getCurrencyColumns({ canEdit: canEditConfig, canDelete: canDeleteConfig }),
+    [canEditConfig, canDeleteConfig]
+  );
 
   if (isLoading) {
     return (
@@ -61,7 +67,7 @@ export default function CurrencyList() {
         title="Monedas"
         searchPlaceholder="Buscar moneda..."
         actionButton={
-          isAdmin ? (
+          canEditConfig ? (
             <button
               onClick={() => setIsCreateOpen(true)}
               className="cursor-pointer bg-sky-600 hover:bg-sky-700 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors flex items-center gap-2 shadow-sm shadow-sky-600/20"

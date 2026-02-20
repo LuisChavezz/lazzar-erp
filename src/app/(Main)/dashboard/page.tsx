@@ -1,12 +1,8 @@
 import { StatsCards } from "@/src/features/dashboard/components/StatsCards";
 import Link from "next/link";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/src/lib/auth";
 
 
 export default async function DashboardPage() {
-  const session = await getServerSession(authOptions);
-  const isAdmin = session?.user?.role === "admin";
 
   return (
     <div className="w-full">

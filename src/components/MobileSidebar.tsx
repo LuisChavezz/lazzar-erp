@@ -3,7 +3,6 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useSession } from "next-auth/react";
 import { useLogout } from "../features/auth/hooks/useLogout";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { CloseIcon, LogoIcon, MenuIcon } from "./Icons";
@@ -14,10 +13,8 @@ import { Notifications } from "../features/notifications/components/Notification
 export default function MobileSidebar() {
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const pathname = usePathname();
-  const { data: session } = useSession();
   const { handleLogout } = useLogout();
   const isConfigActive = pathname === "/config" || pathname.startsWith("/config/");
-  const isAdmin = session?.user?.role === "admin";
 
   return (
     <>
