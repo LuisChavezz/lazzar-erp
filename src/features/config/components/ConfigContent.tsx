@@ -6,15 +6,20 @@ import { useSession } from "next-auth/react";
 import { ConfigCard } from "./ConfigCard";
 import { ConfigDetailView } from "./ConfigDetailView";
 import { configCards } from "../constants/configCardItems";
+import { CloseIcon, SearchIcon } from "@/src/components/Icons";
 
 
 export function ConfigContent() {
   const { data: session } = useSession();
   const isAdmin = session?.user?.role === "admin";
 
+  // Obtener el cliente de consulta para hacer prefetch de datos
   const queryClient = useQueryClient();
+
+  // Estados para controlar la visibilidad del grid y la búsqueda
   const [selectedView, setSelectedView] = useState<string | null>(null);
   const [isGridVisible, setIsGridVisible] = useState(true);
+  const [searchTerm, setSearchTerm] = useState("");
 
   // Manejar clic en tarjeta para mostrar vista detallada
   const handleCardClick = (view: string) => {
@@ -32,8 +37,15 @@ export function ConfigContent() {
     });
   };
 
-  // Validar si la tarjeta es visible para el usuario actual
-  const visibleCards = configCards.filter((card) => ( (card.adminOnly) ? isAdmin : true) );
+  const visibleCards = configCards.filter((card) => (card.adminOnly ? isAdmin : true)); // Validar si la tarjeta es visible para el usuario actual
+  const normalizedQuery = searchTerm.trim().toLowerCase(); // Normalizar el término de búsqueda para comparación insensible a mayúsculas y minúsculas
+  const filteredCards = normalizedQuery
+    ? visibleCards.filter((card) => { // Filtrar tarjetas basadas en el término de búsqueda
+        const titleMatch = card.title.toLowerCase().includes(normalizedQuery);
+        const descriptionMatch = card.description?.toLowerCase().includes(normalizedQuery);
+        return titleMatch || descriptionMatch;
+      })
+    : visibleCards; // Si no hay término de búsqueda, mostrar todas las tarjetas visibles
 
   return (
     <>
@@ -49,8 +61,35 @@ export function ConfigContent() {
             ${!isGridVisible ? "hidden" : ""}
           `}
         >
+          {/* Search Bar */}
+          <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="relative w-full sm:w-80">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                <SearchIcon className="h-5 w-5" />
+              </div>
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(event) => setSearchTerm(event.target.value)}
+                className="block w-full pl-10 pr-10 py-2 border border-slate-200 dark:border-white/10 rounded-xl leading-5 bg-white dark:bg-white/5 text-slate-900 dark:text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-sky-500/50 focus:border-sky-500 sm:text-sm transition-shadow"
+                placeholder="Buscar configuración..."
+              />
+              {searchTerm.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setSearchTerm("")}
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
+                  aria-label="Limpiar búsqueda"
+                >
+                  <CloseIcon className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Config Card Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {visibleCards.map((card) => (
+            {filteredCards.map((card) => (
               <ConfigCard
                 key={card.view}
                 title={card.title}
