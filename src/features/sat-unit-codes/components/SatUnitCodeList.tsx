@@ -15,6 +15,9 @@ export default function SatUnitCodeList() {
   );
   const { data: session } = useSession();
   const isAdmin = session?.user?.role === "admin";
+  const permissions = session?.user?.permissions ?? [];
+  const canEditConfig = isAdmin || permissions.includes("E-CONF");
+  const canDeleteConfig = isAdmin || permissions.includes("D-CONF");
 
   const handleEdit = useCallback(
     (code: SatUnitCode) => {
@@ -29,7 +32,10 @@ export default function SatUnitCodeList() {
     setIsDialogOpen(true);
   };
 
-  const columns = useMemo(() => getColumns(handleEdit, isAdmin), [handleEdit, isAdmin]);
+  const columns = useMemo(
+    () => getColumns(handleEdit, { canEdit: canEditConfig, canDelete: canDeleteConfig }),
+    [handleEdit, canEditConfig, canDeleteConfig]
+  );
 
   return (
     <DataTable
@@ -38,7 +44,7 @@ export default function SatUnitCodeList() {
       title="Claves SAT Unidades"
       searchPlaceholder="Buscar clave..."
       actionButton={
-        isAdmin ? (
+        canEditConfig ? (
           <MainDialog
             title={
               <DialogHeader

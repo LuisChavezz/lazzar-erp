@@ -27,6 +27,7 @@ export const authOptions: NextAuthOptions = {
               email: data.email,
               role: data.is_admin_empresa ? "admin" : "user",
               token: data.token,
+              permissions: data.permisos,
             };
           }
 
@@ -47,6 +48,7 @@ export const authOptions: NextAuthOptions = {
       if (user) {
         token.role = (user as { role?: string }).role;
         token.accessToken = (user as { token?: string }).token;
+        token.permissions = (user as { permissions?: string[] }).permissions;
         token.sub = (user as { id?: string }).id || token.sub;
       }
       return token;
@@ -55,6 +57,7 @@ export const authOptions: NextAuthOptions = {
       if (session.user) {
         (session.user as { role?: string }).role = token.role as string;
         (session.user as { accessToken?: string }).accessToken = token.accessToken as string;
+        (session.user as { permissions?: string[] }).permissions = token.permissions as string[];
         (session.user as { id: string }).id = (token.sub as string);
       }
       return session;

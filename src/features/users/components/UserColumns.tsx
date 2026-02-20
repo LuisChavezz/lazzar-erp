@@ -10,101 +10,126 @@ import { useState } from "react";
 import UserForm from "./UserForm";
 import { useDeleteUser } from "../hooks/useDeleteUser";
 
-const ActionsCell = ({ user }: { user: User }) => {
+const ActionsCell = ({
+  user,
+  canView,
+  canEdit,
+  canDelete,
+}: {
+  user: User;
+  canView: boolean;
+  canEdit: boolean;
+  canDelete: boolean;
+}) => {
   const [isViewOpen, setIsViewOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const { mutate: deleteUser } = useDeleteUser();
 
   return (
     <div className="flex items-center justify-center gap-2">
-      <MainDialog
-        open={isViewOpen}
-        onOpenChange={setIsViewOpen}
-        maxWidth="1000px"
-        title={
-          <div className="flex items-center gap-4 pb-4 border-b border-slate-200 dark:border-white/10 mb-4">
-            <div>
-              <h1 className="text-xl font-bold text-slate-900 dark:text-white font-display tracking-tight">
-                Detalles de Usuario
-              </h1>
-              <div className="flex items-center gap-2">
-                <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-sky-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-sky-500"></span>
-                </span>
-                <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
-                  Información Completa
-                </p>
+      {canView ? (
+        <MainDialog
+          open={isViewOpen}
+          onOpenChange={setIsViewOpen}
+          maxWidth="1000px"
+          title={
+            <div className="flex items-center gap-4 pb-4 border-b border-slate-200 dark:border-white/10 mb-4">
+              <div>
+                <h1 className="text-xl font-bold text-slate-900 dark:text-white font-display tracking-tight">
+                  Detalles de Usuario
+                </h1>
+                <div className="flex items-center gap-2">
+                  <span className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-sky-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-sky-500"></span>
+                  </span>
+                  <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                    Información Completa
+                  </p>
+                </div>
               </div>
             </div>
-          </div>
-        }
-        trigger={
-          <button
-            className="p-1 cursor-pointer text-slate-400 hover:text-sky-600 transition-colors"
-            title="Ver Detalles"
-          >
-            <ViewIcon className="w-5 h-5" />
-          </button>
-        }
-      >
-        <UserDetails user={user} />
-      </MainDialog>
+          }
+          trigger={
+            <button
+              className="p-1 cursor-pointer text-slate-400 hover:text-sky-600 transition-colors"
+              title="Ver Detalles"
+            >
+              <ViewIcon className="w-5 h-5" />
+            </button>
+          }
+        >
+          <UserDetails user={user} />
+        </MainDialog>
+      ) : null}
 
-      <MainDialog
-        open={isEditOpen}
-        onOpenChange={setIsEditOpen}
-        maxWidth="1000px"
-        title={
-          <div className="flex items-center gap-4 pb-4 border-b border-slate-200 dark:border-white/10 mb-4">
-            <div>
-              <h1 className="text-xl font-bold text-slate-900 dark:text-white font-display tracking-tight">
-                Editar Usuario
-              </h1>
-              <div className="flex items-center gap-2">
-                <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-                </span>
-                <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
-                  Actualizar información
-                </p>
+      {canEdit ? (
+        <MainDialog
+          open={isEditOpen}
+          onOpenChange={setIsEditOpen}
+          maxWidth="1000px"
+          title={
+            <div className="flex items-center gap-4 pb-4 border-b border-slate-200 dark:border-white/10 mb-4">
+              <div>
+                <h1 className="text-xl font-bold text-slate-900 dark:text-white font-display tracking-tight">
+                  Editar Usuario
+                </h1>
+                <div className="flex items-center gap-2">
+                  <span className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                  </span>
+                  <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                    Actualizar información
+                  </p>
+                </div>
               </div>
             </div>
-          </div>
-        }
-        trigger={
-          <button
-            className="p-1 cursor-pointer text-slate-400 hover:text-sky-600 transition-colors"
-            title="Editar"
-          >
-            <EditIcon className="w-5 h-5" />
-          </button>
-        }
-      >
-        <UserForm onSuccess={() => setIsEditOpen(false)} defaultValues={user} />
-      </MainDialog>
+          }
+          trigger={
+            <button
+              className="p-1 cursor-pointer text-slate-400 hover:text-sky-600 transition-colors"
+              title="Editar"
+            >
+              <EditIcon className="w-5 h-5" />
+            </button>
+          }
+        >
+          <UserForm onSuccess={() => setIsEditOpen(false)} defaultValues={user} />
+        </MainDialog>
+      ) : null}
 
-      <ConfirmDialog
-        title="Eliminar Usuario"
-        description={`¿Estás seguro de que deseas eliminar al usuario "${user.username}"? Esta acción no se puede deshacer.`}
-        onConfirm={() => deleteUser(user.id)}
-        confirmText="Eliminar"
-        confirmColor="red"
-        trigger={
-          <button
-            className="p-1 cursor-pointer text-slate-400 hover:text-red-600 transition-colors"
-            title="Eliminar"
-          >
-            <DeleteIcon className="w-5 h-5" />
-          </button>
-        }
-      />
+      {canDelete ? (
+        <ConfirmDialog
+          title="Eliminar Usuario"
+          description={`¿Estás seguro de que deseas eliminar al usuario "${user.username}"? Esta acción no se puede deshacer.`}
+          onConfirm={() => deleteUser(user.id)}
+          confirmText="Eliminar"
+          confirmColor="red"
+          trigger={
+            <button
+              className="p-1 cursor-pointer text-slate-400 hover:text-red-600 transition-colors"
+              title="Eliminar"
+            >
+              <DeleteIcon className="w-5 h-5" />
+            </button>
+          }
+        />
+      ) : null}
     </div>
   );
 };
 
-export const userColumns: ColumnDef<User>[] = [
+export const getUserColumns = ({
+  canRead,
+  canEdit,
+  canDelete,
+}: {
+  canRead: boolean;
+  canEdit: boolean;
+  canDelete: boolean;
+}): ColumnDef<User>[] => {
+  const columns: ColumnDef<User>[] = [
   {
     accessorKey: "username",
     header: "Usuario",
@@ -188,9 +213,22 @@ export const userColumns: ColumnDef<User>[] = [
       );
     },
   },
-  {
-    id: "actions",
-    header: () => <div className="text-center">Acciones</div>,
-    cell: ({ row }) => <ActionsCell user={row.original} />,
-  },
-];
+  ];
+
+  if (canRead || canEdit || canDelete) {
+    columns.push({
+      id: "actions",
+      header: () => <div className="text-center">Acciones</div>,
+      cell: ({ row }) => (
+        <ActionsCell
+          user={row.original}
+          canView={canRead}
+          canEdit={canEdit}
+          canDelete={canDelete}
+        />
+      ),
+    });
+  }
+
+  return columns;
+};

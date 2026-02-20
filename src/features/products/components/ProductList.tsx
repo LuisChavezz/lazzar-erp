@@ -17,6 +17,9 @@ import { useProductTypeStore } from "../../product-types/stores/product-type.sto
 export default function ProductList() {
   const { data: session } = useSession();
   const isAdmin = session?.user?.role === "admin";
+  const permissions = session?.user?.permissions ?? [];
+  const canEditConfig = isAdmin || permissions.includes("E-CONF");
+  const canDeleteConfig = isAdmin || permissions.includes("D-CONF");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   const { products, selectedProduct, setSelectedProduct } = useProductStore((state) => state);
@@ -59,7 +62,10 @@ export default function ProductList() {
     [categories, units, taxes, satProdservCodes, satUnitCodes, productTypes]
   );
 
-  const columns = useMemo(() => getColumns(handleEdit, isAdmin, lookups), [handleEdit, isAdmin, lookups]);
+  const columns = useMemo(
+    () => getColumns(handleEdit, { canEdit: canEditConfig, canDelete: canDeleteConfig }, lookups),
+    [handleEdit, canEditConfig, canDeleteConfig, lookups]
+  );
 
   const isEditing = Boolean(selectedProduct?.id);
 
@@ -70,7 +76,7 @@ export default function ProductList() {
       title="Productos"
       searchPlaceholder="Buscar producto..."
       actionButton={
-        isAdmin ? (
+        canEditConfig ? (
           <MainDialog
             title={
               <DialogHeader

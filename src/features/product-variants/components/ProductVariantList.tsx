@@ -14,6 +14,9 @@ import { useSizeStore } from "../../sizes/stores/size.store";
 export default function ProductVariantList() {
   const { data: session } = useSession();
   const isAdmin = session?.user?.role === "admin";
+  const permissions = session?.user?.permissions ?? [];
+  const canEditConfig = isAdmin || permissions.includes("E-CONF");
+  const canDeleteConfig = isAdmin || permissions.includes("D-CONF");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   const { productVariants, selectedProductVariant, setSelectedProductVariant } =
@@ -44,7 +47,10 @@ export default function ProductVariantList() {
     [products, colors, sizes]
   );
 
-  const columns = useMemo(() => getColumns(handleEdit, isAdmin, lookups), [handleEdit, isAdmin, lookups]);
+  const columns = useMemo(
+    () => getColumns(handleEdit, { canEdit: canEditConfig, canDelete: canDeleteConfig }, lookups),
+    [handleEdit, canEditConfig, canDeleteConfig, lookups]
+  );
   const isEditing = Boolean(selectedProductVariant?.id);
 
   return (
@@ -54,7 +60,7 @@ export default function ProductVariantList() {
       title="Variantes de Producto"
       searchPlaceholder="Buscar variante..."
       actionButton={
-        isAdmin ? (
+        canEditConfig ? (
           <MainDialog
             title={
               <DialogHeader

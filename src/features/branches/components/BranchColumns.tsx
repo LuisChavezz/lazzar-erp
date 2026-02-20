@@ -8,87 +8,106 @@ import { BranchDetails } from "./BranchDetails";
 import { useState } from "react";
 import BranchForm from "./BranchForm";
 
-const ActionsCell = ({ branch }: { branch: Branch }) => {
+const ActionsCell = ({
+  branch,
+  canView,
+  canEdit,
+}: {
+  branch: Branch;
+  canView: boolean;
+  canEdit: boolean;
+}) => {
   const [isViewOpen, setIsViewOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
 
   return (
     <div className="flex items-center justify-center gap-2">
-      <MainDialog
-        open={isViewOpen}
-        onOpenChange={setIsViewOpen}
-        maxWidth="1000px"
-        title={
-          <div className="flex items-center gap-4 pb-4 border-b border-slate-200 dark:border-white/10 mb-4">
-            <div>
-              <h1 className="text-xl font-bold text-slate-900 dark:text-white font-display tracking-tight">
-                Detalles de Sucursal
-              </h1>
-              <div className="flex items-center gap-2">
-                <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-sky-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-sky-500"></span>
-                </span>
-                <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
-                  Información Completa
-                </p>
+      {canView ? (
+        <MainDialog
+          open={isViewOpen}
+          onOpenChange={setIsViewOpen}
+          maxWidth="1000px"
+          title={
+            <div className="flex items-center gap-4 pb-4 border-b border-slate-200 dark:border-white/10 mb-4">
+              <div>
+                <h1 className="text-xl font-bold text-slate-900 dark:text-white font-display tracking-tight">
+                  Detalles de Sucursal
+                </h1>
+                <div className="flex items-center gap-2">
+                  <span className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-sky-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-sky-500"></span>
+                  </span>
+                  <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                    Información Completa
+                  </p>
+                </div>
               </div>
             </div>
-          </div>
-        }
-        trigger={
-          <button
-            className="p-1 cursor-pointer text-slate-400 hover:text-sky-600 transition-colors"
-            title="Ver Detalles"
-          >
-            <ViewIcon className="w-5 h-5" />
-          </button>
-        }
-      >
-        <BranchDetails branch={branch} />
-      </MainDialog>
+          }
+          trigger={
+            <button
+              className="p-1 cursor-pointer text-slate-400 hover:text-sky-600 transition-colors"
+              title="Ver Detalles"
+            >
+              <ViewIcon className="w-5 h-5" />
+            </button>
+          }
+        >
+          <BranchDetails branch={branch} />
+        </MainDialog>
+      ) : null}
 
-      <MainDialog
-        open={isEditOpen}
-        onOpenChange={setIsEditOpen}
-        maxWidth="1000px"
-        title={
-          <div className="flex items-center gap-4 pb-4 border-b border-slate-200 dark:border-white/10 mb-4">
-            <div>
-              <h1 className="text-xl font-bold text-slate-900 dark:text-white font-display tracking-tight">
-                Editar Sucursal
-              </h1>
-              <div className="flex items-center gap-2">
-                <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-                </span>
-                <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
-                  Actualizar Información
-                </p>
+      {canEdit ? (
+        <MainDialog
+          open={isEditOpen}
+          onOpenChange={setIsEditOpen}
+          maxWidth="1000px"
+          title={
+            <div className="flex items-center gap-4 pb-4 border-b border-slate-200 dark:border-white/10 mb-4">
+              <div>
+                <h1 className="text-xl font-bold text-slate-900 dark:text-white font-display tracking-tight">
+                  Editar Sucursal
+                </h1>
+                <div className="flex items-center gap-2">
+                  <span className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                  </span>
+                  <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                    Actualizar Información
+                  </p>
+                </div>
               </div>
             </div>
-          </div>
-        }
-        trigger={
-          <button
-            className="p-1 cursor-pointer text-slate-400 hover:text-sky-600 transition-colors"
-            title="Editar"
-          >
-            <EditIcon className="w-5 h-5" />
-          </button>
-        }
-      >
-        <BranchForm 
-          onSuccess={() => setIsEditOpen(false)} 
-          defaultValues={branch}
-        />
-      </MainDialog>
+          }
+          trigger={
+            <button
+              className="p-1 cursor-pointer text-slate-400 hover:text-sky-600 transition-colors"
+              title="Editar"
+            >
+              <EditIcon className="w-5 h-5" />
+            </button>
+          }
+        >
+          <BranchForm 
+            onSuccess={() => setIsEditOpen(false)} 
+            defaultValues={branch}
+          />
+        </MainDialog>
+      ) : null}
     </div>
   );
 };
 
-export const branchColumns: ColumnDef<Branch>[] = [
+export const getBranchColumns = ({
+  canRead,
+  canEdit,
+}: {
+  canRead: boolean;
+  canEdit: boolean;
+}): ColumnDef<Branch>[] => {
+  const columns: ColumnDef<Branch>[] = [
   {
     accessorKey: "codigo",
     header: "Código",
@@ -155,9 +174,17 @@ export const branchColumns: ColumnDef<Branch>[] = [
       );
     },
   },
-  {
-    id: "actions",
-    header: () => <div className="text-center">Acciones</div>,
-    cell: ({ row }) => <ActionsCell branch={row.original} />,
-  },
-];
+  ];
+
+  if (canRead || canEdit) {
+    columns.push({
+      id: "actions",
+      header: () => <div className="text-center">Acciones</div>,
+      cell: ({ row }) => (
+        <ActionsCell branch={row.original} canView={canRead} canEdit={canEdit} />
+      ),
+    });
+  }
+
+  return columns;
+};

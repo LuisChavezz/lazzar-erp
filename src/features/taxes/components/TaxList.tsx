@@ -13,6 +13,9 @@ export default function TaxList() {
   const { taxes, setSelectedTax, selectedTax } = useTaxStore((state) => state);
   const { data: session } = useSession();
   const isAdmin = session?.user?.role === "admin";
+  const permissions = session?.user?.permissions ?? [];
+  const canEditConfig = isAdmin || permissions.includes("E-CONF");
+  const canDeleteConfig = isAdmin || permissions.includes("D-CONF");
 
   const handleEdit = useCallback(
     (tax: Tax) => {
@@ -27,7 +30,10 @@ export default function TaxList() {
     setIsDialogOpen(true);
   };
 
-  const columns = useMemo(() => getColumns(handleEdit, isAdmin), [handleEdit, isAdmin]);
+  const columns = useMemo(
+    () => getColumns(handleEdit, { canEdit: canEditConfig, canDelete: canDeleteConfig }),
+    [handleEdit, canEditConfig, canDeleteConfig]
+  );
 
   return (
     <DataTable
@@ -36,7 +42,7 @@ export default function TaxList() {
       title="Impuestos"
       searchPlaceholder="Buscar impuesto..."
       actionButton={
-        isAdmin ? (
+        canEditConfig ? (
           <MainDialog
             title={
               <DialogHeader

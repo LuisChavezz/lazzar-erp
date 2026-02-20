@@ -10,8 +10,17 @@ import { useState } from "react";
 import CompanyForm from "./CompanyForm";
 import { CompanyDetails } from "./CompanyDetails";
 
-// Componente para renderizar las acciones de editar y eliminar
-const ActionsCell = ({ company }: { company: Company }) => {
+const ActionsCell = ({
+  company,
+  canView,
+  canEdit,
+  canDelete,
+}: {
+  company: Company;
+  canView: boolean;
+  canEdit: boolean;
+  canDelete: boolean;
+}) => {
   const [isViewOpen, setIsViewOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
 
@@ -21,74 +30,89 @@ const ActionsCell = ({ company }: { company: Company }) => {
 
   return (
     <div className="flex items-center justify-center gap-2">
-      <MainDialog
-        open={isViewOpen}
-        onOpenChange={setIsViewOpen}
-        maxWidth="1000px"
-        title={
-          <DialogHeader
-            title="Detalles de Empresa"
-            subtitle="Información Completa"
-            statusColor="sky"
-          />
-        }
-        trigger={
-          <button
-            className="p-1 cursor-pointer text-slate-400 hover:text-sky-600 transition-colors"
-            title="Ver Detalles"
-          >
-            <ViewIcon className="w-5 h-5" />
-          </button>
-        }
-      >
-        <CompanyDetails company={company} />
-      </MainDialog>
+      {canView ? (
+        <MainDialog
+          open={isViewOpen}
+          onOpenChange={setIsViewOpen}
+          maxWidth="1000px"
+          title={
+            <DialogHeader
+              title="Detalles de Empresa"
+              subtitle="Información Completa"
+              statusColor="sky"
+            />
+          }
+          trigger={
+            <button
+              className="p-1 cursor-pointer text-slate-400 hover:text-sky-600 transition-colors"
+              title="Ver Detalles"
+            >
+              <ViewIcon className="w-5 h-5" />
+            </button>
+          }
+        >
+          <CompanyDetails company={company} />
+        </MainDialog>
+      ) : null}
 
-      <MainDialog
-        open={isEditOpen}
-        onOpenChange={setIsEditOpen}
-        maxWidth="1000px"
-        title={
-          <DialogHeader
-            title="Edición de Empresa"
-            subtitle="Modificar Registro"
-            statusColor="sky"
+      {canEdit ? (
+        <MainDialog
+          open={isEditOpen}
+          onOpenChange={setIsEditOpen}
+          maxWidth="1000px"
+          title={
+            <DialogHeader
+              title="Edición de Empresa"
+              subtitle="Modificar Registro"
+              statusColor="sky"
+            />
+          }
+          trigger={
+            <button
+              className="p-1 cursor-pointer text-slate-400 hover:text-blue-600 transition-colors"
+              title="Editar"
+            >
+              <EditIcon className="w-5 h-5" />
+            </button>
+          }
+        >
+          <CompanyForm 
+            onSuccess={() => setIsEditOpen(false)} 
+            initialData={company}
           />
-        }
-        trigger={
-          <button
-            className="p-1 cursor-pointer text-slate-400 hover:text-blue-600 transition-colors"
-            title="Editar"
-          >
-            <EditIcon className="w-5 h-5" />
-          </button>
-        }
-      >
-        <CompanyForm 
-          onSuccess={() => setIsEditOpen(false)} 
-          initialData={company}
+        </MainDialog>
+      ) : null}
+
+      {canDelete ? (
+        <ConfirmDialog
+          title="Eliminar Empresa"
+          description="¿Estás seguro de que deseas eliminar esta empresa? Esta acción no se puede deshacer."
+          onConfirm={handleDelete}
+          confirmColor="red"
+          trigger={
+            <button
+              className="p-1 cursor-pointer text-slate-400 hover:text-red-600 transition-colors"
+              title="Eliminar"
+            >
+              <DeleteIcon className="w-5 h-5" />
+            </button>
+          }
         />
-      </MainDialog>
-
-      <ConfirmDialog
-        title="Eliminar Empresa"
-        description="¿Estás seguro de que deseas eliminar esta empresa? Esta acción no se puede deshacer."
-        onConfirm={handleDelete}
-        confirmColor="red"
-        trigger={
-          <button
-            className="p-1 cursor-pointer text-slate-400 hover:text-red-600 transition-colors"
-            title="Eliminar"
-          >
-            <DeleteIcon className="w-5 h-5" />
-          </button>
-        }
-      />
+      ) : null}
     </div>
   );
 };
 
-export const companyColumns: ColumnDef<Company>[] = [
+export const getCompanyColumns = ({
+  canRead,
+  canEdit,
+  canDelete,
+}: {
+  canRead: boolean;
+  canEdit: boolean;
+  canDelete: boolean;
+}): ColumnDef<Company>[] => {
+  const columns: ColumnDef<Company>[] = [
   {
     accessorKey: "codigo",
     header: "Código",
@@ -157,9 +181,22 @@ export const companyColumns: ColumnDef<Company>[] = [
       );
     },
   },
-  {
-    id: "actions",
-    header: () => <div className="text-center">Acciones</div>,
-    cell: ({ row }) => <ActionsCell company={row.original} />,
-  },
-];
+  ];
+
+  if (canRead || canEdit || canDelete) {
+    columns.push({
+      id: "actions",
+      header: () => <div className="text-center">Acciones</div>,
+      cell: ({ row }) => (
+        <ActionsCell
+          company={row.original}
+          canView={canRead}
+          canEdit={canEdit}
+          canDelete={canDelete}
+        />
+      ),
+    });
+  }
+
+  return columns;
+};

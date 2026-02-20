@@ -14,6 +14,9 @@ export default function SatProdservCodeList() {
     useSatProdservCodeStore((state) => state);
   const { data: session } = useSession();
   const isAdmin = session?.user?.role === "admin";
+  const permissions = session?.user?.permissions ?? [];
+  const canEditConfig = isAdmin || permissions.includes("E-CONF");
+  const canDeleteConfig = isAdmin || permissions.includes("D-CONF");
 
   const handleEdit = useCallback(
     (code: SatProdservCode) => {
@@ -28,7 +31,10 @@ export default function SatProdservCodeList() {
     setIsDialogOpen(true);
   };
 
-  const columns = useMemo(() => getColumns(handleEdit, isAdmin), [handleEdit, isAdmin]);
+  const columns = useMemo(
+    () => getColumns(handleEdit, { canEdit: canEditConfig, canDelete: canDeleteConfig }),
+    [handleEdit, canEditConfig, canDeleteConfig]
+  );
 
   return (
     <DataTable
@@ -37,7 +43,7 @@ export default function SatProdservCodeList() {
       title="Claves SAT Prod/Serv"
       searchPlaceholder="Buscar clave..."
       actionButton={
-        isAdmin ? (
+        canEditConfig ? (
           <MainDialog
             title={
               <DialogHeader

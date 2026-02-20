@@ -9,70 +9,88 @@ import { useDeleteCurrency } from "../hooks/useDeleteCurrency";
 import CurrencyForm from "./CurrencyForm";
 import { useState } from "react";
 
-const ActionsCell = ({ currency }: { currency: Currency }) => {
+const ActionsCell = ({
+  currency,
+  canEdit,
+  canDelete,
+}: {
+  currency: Currency;
+  canEdit: boolean;
+  canDelete: boolean;
+}) => {
   const [open, setOpen] = useState(false);
   const { mutate: deleteCurrency, isPending: isDeleting } = useDeleteCurrency();
 
   return (
     <div className="flex justify-center gap-2">
-      <MainDialog
-        open={open}
-        onOpenChange={setOpen}
-        maxWidth="1000px"
-        title={
-          <div className="flex items-center gap-4 pb-4 border-b border-slate-200 dark:border-white/10 mb-4">
-            <div>
-              <h1 className="text-xl font-bold text-slate-900 dark:text-white font-display tracking-tight">
-                Editar Moneda
-              </h1>
-              <div className="flex items-center gap-2">
-                <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-sky-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-sky-500"></span>
-                </span>
-                <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
-                  Información General
-                </p>
+      {canEdit ? (
+        <MainDialog
+          open={open}
+          onOpenChange={setOpen}
+          maxWidth="1000px"
+          title={
+            <div className="flex items-center gap-4 pb-4 border-b border-slate-200 dark:border-white/10 mb-4">
+              <div>
+                <h1 className="text-xl font-bold text-slate-900 dark:text-white font-display tracking-tight">
+                  Editar Moneda
+                </h1>
+                <div className="flex items-center gap-2">
+                  <span className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-sky-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-sky-500"></span>
+                  </span>
+                  <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                    Información General
+                  </p>
+                </div>
               </div>
             </div>
-          </div>
-        }
-        trigger={
-          <button
-            className="p-1 cursor-pointer text-slate-400 hover:text-blue-600 transition-colors"
-            title="Editar"
-          >
-            <EditIcon className="w-5 h-5" />
-          </button>
-        }
-      >
-        <CurrencyForm
-          currencyToEdit={currency}
-          onSuccess={() => setOpen(false)}
-        />
-      </MainDialog>
+          }
+          trigger={
+            <button
+              className="p-1 cursor-pointer text-slate-400 hover:text-blue-600 transition-colors"
+              title="Editar"
+            >
+              <EditIcon className="w-5 h-5" />
+            </button>
+          }
+        >
+          <CurrencyForm
+            currencyToEdit={currency}
+            onSuccess={() => setOpen(false)}
+          />
+        </MainDialog>
+      ) : null}
 
-      <ConfirmDialog
-        trigger={
-          <button
-            className="p-1 cursor-pointer text-slate-400 hover:text-red-600 transition-colors"
-            title="Eliminar"
-            disabled={isDeleting}
-          >
-            <DeleteIcon className="w-5 h-5" />
-          </button>
-        }
-        title="Eliminar Moneda"
-        description={`¿Estás seguro de que deseas eliminar la moneda "${currency.nombre}"? Esta acción no se puede deshacer.`}
-        confirmText={isDeleting ? "Eliminando..." : "Eliminar"}
-        confirmColor="red"
-        onConfirm={() => deleteCurrency(currency.codigo_iso)}
-      />
+      {canDelete ? (
+        <ConfirmDialog
+          trigger={
+            <button
+              className="p-1 cursor-pointer text-slate-400 hover:text-red-600 transition-colors"
+              title="Eliminar"
+              disabled={isDeleting}
+            >
+              <DeleteIcon className="w-5 h-5" />
+            </button>
+          }
+          title="Eliminar Moneda"
+          description={`¿Estás seguro de que deseas eliminar la moneda "${currency.nombre}"? Esta acción no se puede deshacer.`}
+          confirmText={isDeleting ? "Eliminando..." : "Eliminar"}
+          confirmColor="red"
+          onConfirm={() => deleteCurrency(currency.codigo_iso)}
+        />
+      ) : null}
     </div>
   );
 };
 
-export const getCurrencyColumns = (isAdmin: boolean): ColumnDef<Currency>[] => {
+export const getCurrencyColumns = ({
+  canEdit,
+  canDelete,
+}: {
+  canEdit: boolean;
+  canDelete: boolean;
+}): ColumnDef<Currency>[] => {
   const columns: ColumnDef<Currency>[] = [
     {
       accessorKey: "codigo_iso",
@@ -120,11 +138,13 @@ export const getCurrencyColumns = (isAdmin: boolean): ColumnDef<Currency>[] => {
     },
   ];
 
-  if (isAdmin) {
+  if (canEdit || canDelete) {
     columns.push({
       id: "actions",
       header: "Acciones",
-      cell: ({ row }) => <ActionsCell currency={row.original} />,
+      cell: ({ row }) => (
+        <ActionsCell currency={row.original} canEdit={canEdit} canDelete={canDelete} />
+      ),
     });
   }
 
