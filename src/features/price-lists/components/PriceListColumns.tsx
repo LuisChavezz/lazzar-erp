@@ -1,15 +1,14 @@
 "use client";
 
 import { ColumnDef } from "@tanstack/react-table";
-import { StockItem } from "../interfaces/stock.interface";
+import { PriceListItem } from "../interfaces/price-list.interface";
 import { EditIcon, ViewIcon } from "../../../components/Icons";
 
-const StockStatusBadge = ({ status }: { status: StockItem["status"] }) => {
-  const styles = {
-    Saludable: "bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400",
-    Riesgo: "bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400",
-    Crítico: "bg-red-50 text-red-600 dark:bg-red-500/10 dark:text-red-400",
-    Sobrestock: "bg-sky-50 text-sky-600 dark:bg-sky-500/10 dark:text-sky-400",
+const PriceListStatusBadge = ({ status }: { status: PriceListItem["status"] }) => {
+  const styles: Record<PriceListItem["status"], string> = {
+    Activa: "bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400",
+    Borrador: "bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400",
+    Archivada: "bg-slate-100 text-slate-600 dark:bg-white/10 dark:text-slate-300",
   };
 
   return (
@@ -19,68 +18,59 @@ const StockStatusBadge = ({ status }: { status: StockItem["status"] }) => {
   );
 };
 
-export const stockColumns: ColumnDef<StockItem>[] = [
+export const priceListColumns: ColumnDef<PriceListItem>[] = [
   {
-    accessorKey: "sku",
-    header: "SKU",
+    accessorKey: "code",
+    header: "Código",
     cell: ({ row }) => (
       <span className="font-medium text-slate-700 dark:text-slate-200">
-        {row.getValue("sku")}
+        {row.getValue("code")}
       </span>
     ),
   },
   {
-    accessorKey: "product",
-    header: "Producto",
+    accessorKey: "name",
+    header: "Lista",
     cell: ({ row }) => (
       <div className="flex flex-col">
         <span className="text-slate-700 dark:text-slate-200 font-medium">
-          {row.getValue("product")}
+          {row.getValue("name")}
         </span>
         <span className="text-xs text-slate-500 dark:text-slate-400">
-          {row.original.warehouse}
+          {row.original.currency}
         </span>
       </div>
     ),
   },
   {
-    accessorKey: "available",
-    header: "Disponible",
-    cell: ({ row }) => (
-      <div className="font-semibold text-slate-700 dark:text-slate-200">
-        {row.original.available.toLocaleString("es-MX")}
-      </div>
-    ),
-  },
-  {
-    accessorKey: "reserved",
-    header: "Reservado",
+    accessorKey: "itemsCount",
+    header: "Ítems",
     cell: ({ row }) => (
       <span className="text-slate-600 dark:text-slate-300">
-        {row.original.reserved.toLocaleString("es-MX")}
+        {row.original.itemsCount.toLocaleString("es-MX")}
       </span>
     ),
   },
   {
-    accessorKey: "incoming",
-    header: "En tránsito",
+    accessorKey: "margin",
+    header: "Margen",
     cell: ({ row }) => (
       <span className="text-slate-600 dark:text-slate-300">
-        {row.original.incoming.toLocaleString("es-MX")}
+        {row.original.margin.toFixed(1)}%
       </span>
     ),
   },
   {
     accessorKey: "status",
     header: "Estado",
-    cell: ({ row }) => <StockStatusBadge status={row.getValue("status")} />,
+    cell: ({ row }) => <PriceListStatusBadge status={row.getValue("status")} />,
   },
   {
-    accessorKey: "lastMovement",
-    header: "Último movimiento",
+    accessorKey: "lastUpdate",
+    header: "Última actualización",
     cell: ({ row }) => (
       <span className="text-slate-500 dark:text-slate-400">
-        {row.getValue("lastMovement")}
+        {row.getValue("lastUpdate")}
       </span>
     ),
   },
