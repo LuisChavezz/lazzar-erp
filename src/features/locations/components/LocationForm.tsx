@@ -9,17 +9,17 @@ import { FormSelect } from "../../../components/FormSelect";
 import { FormCancelButton, FormSubmitButton } from "../../../components/FormButtons";
 import { BuildingIcon, MapPinIcon, SettingsIcon } from "../../../components/Icons";
 import MissingPrerequisites from "../../products/components/MissingPrerequisites";
-import { useLocationStore } from "../stores/location.store";
 import { useCreateLocation } from "../hooks/useCreateLocation";
 import { useUpdateLocation } from "../hooks/useUpdateLocation";
 import { useWarehouses } from "../../warehouses/hooks/useWarehouses";
+import { Location } from "../interfaces/location.interface";
 
 interface LocationFormProps {
   onSuccess: () => void;
+  locationToEdit?: Location | null;
 }
 
-export default function LocationForm({ onSuccess }: LocationFormProps) {
-  const selectedLocation = useLocationStore((state) => state.selectedLocation);
+export default function LocationForm({ onSuccess, locationToEdit }: LocationFormProps) {
   const { data: warehouses = [], isLoading: isLoadingWarehouses } = useWarehouses();
 
   const activeWarehouses = warehouses.filter((warehouse) => warehouse.estatus === "Activo" || warehouse.estatus === "Mantenimiento");
@@ -27,7 +27,7 @@ export default function LocationForm({ onSuccess }: LocationFormProps) {
     activeWarehouses.length === 0 ? "Almacenes activos o en mantenimiento" : null,
   ].filter((item): item is string => Boolean(item));
 
-  const isEditing = Boolean(selectedLocation?.id_ubicacion);
+  const isEditing = Boolean(locationToEdit?.id_ubicacion);
   const emptyValues: LocationFormValues = {
     almacen: 0,
     codigo: "",
@@ -36,15 +36,15 @@ export default function LocationForm({ onSuccess }: LocationFormProps) {
   };
 
   const hasWarehouse = activeWarehouses.some(
-    (warehouse) => warehouse.id_almacen === selectedLocation?.almacen
+    (warehouse) => warehouse.id_almacen === locationToEdit?.almacen
   );
 
-  const editValues: LocationFormValues = selectedLocation
+  const editValues: LocationFormValues = locationToEdit
     ? {
-        almacen: hasWarehouse ? selectedLocation.almacen : 0,
-        codigo: selectedLocation.codigo,
-        nombre: selectedLocation.nombre,
-        estatus: selectedLocation.estatus as LocationFormValues["estatus"],
+        almacen: hasWarehouse ? locationToEdit.almacen : 0,
+        codigo: locationToEdit.codigo,
+        nombre: locationToEdit.nombre,
+        estatus: locationToEdit.estatus as LocationFormValues["estatus"],
       }
     : emptyValues;
 
@@ -69,8 +69,8 @@ export default function LocationForm({ onSuccess }: LocationFormProps) {
   const onSubmit = async (values: LocationFormValues) => {
     setIsLoading(true);
     try {
-      if (isEditing && selectedLocation) {
-        await updateLocation({ id_ubicacion: selectedLocation.id_ubicacion, ...values });
+      if (isEditing && locationToEdit) {
+        await updateLocation({ id_ubicacion: locationToEdit.id_ubicacion, ...values });
         reset(editValues);
       } else {
         await createLocation(values);

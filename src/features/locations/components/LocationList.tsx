@@ -1,6 +1,5 @@
 import { useMemo, useState, useCallback } from "react";
 import { DataTable } from "../../../components/DataTable";
-import { useLocationStore } from "../stores/location.store";
 import { getColumns } from "./LocationColumns";
 import { MainDialog } from "../../../components/MainDialog";
 import { DialogHeader } from "@/src/components/DialogHeader";
@@ -12,9 +11,7 @@ import { useWarehouses } from "../../warehouses/hooks/useWarehouses";
 
 export default function LocationList() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const { locations, setSelectedLocation, selectedLocation } = useLocationStore(
-    (state) => state
-  );
+  const [selectedLocation, setSelectedLocation] = useState<Location | null>(null);
   const {
     data: locationsData,
     isLoading,
@@ -43,7 +40,7 @@ export default function LocationList() {
       getColumns(handleEdit, { canEdit: canEditConfig, canDelete: canDeleteConfig }, warehouses),
     [handleEdit, canEditConfig, canDeleteConfig, warehouses]
   );
-  const tableData = locationsData ?? locations;
+  const tableData = locationsData ?? [];
 
   if (isLoading) {
     return (
@@ -91,7 +88,10 @@ export default function LocationList() {
               </button>
             }
           >
-            <LocationForm onSuccess={() => setIsDialogOpen(false)} />
+            <LocationForm
+              onSuccess={() => setIsDialogOpen(false)}
+              locationToEdit={selectedLocation}
+            />
           </MainDialog>
         ) : null
       }
