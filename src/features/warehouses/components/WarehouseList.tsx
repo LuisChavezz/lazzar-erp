@@ -1,18 +1,19 @@
 import { useMemo, useState, useCallback } from "react";
 import { DataTable } from "../../../components/DataTable";
-import { useWarehouseStore } from "../stores/warehouse.store";
 import { getColumns } from "./WarehouseColumns";
 import { MainDialog } from "../../../components/MainDialog";
 import { DialogHeader } from "@/src/components/DialogHeader";
 import { Warehouse } from "../interfaces/warehouse.interface";
 import { useSession } from "next-auth/react";
 import WarehouseForm from "./WarehouseForm";
+import { useWarehouses } from "../hooks/useWarehouses";
+import { useWorkspaceStore } from "../../workspace/store/workspace.store";
 
 export default function WarehouseList() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const { warehouses, setSelectedWarehouse, selectedWarehouse } = useWarehouseStore(
-    (state) => state
-  );
+  const [selectedWarehouse, setSelectedWarehouse] = useState<Warehouse | null>(null);
+  const { data: warehouses, isLoading, isError, error } = useWarehouses();
+  const availableBranches = useWorkspaceStore((state) => state.availableBranches);
   const { data: session } = useSession();
   const isAdmin = session?.user?.role === "admin";
   const permissions = session?.user?.permissions ?? [];
@@ -22,7 +23,7 @@ export default function WarehouseList() {
   const handleEdit = useCallback((warehouse: Warehouse) => {
     setSelectedWarehouse(warehouse);
     setIsDialogOpen(true);
-  }, [setSelectedWarehouse]);
+  }, [setSelectedWarehouse, setIsDialogOpen]);
 
   const handleNew = () => {
     setSelectedWarehouse(null);
@@ -30,9 +31,29 @@ export default function WarehouseList() {
   };
 
   const columns = useMemo(
-    () => getColumns(handleEdit, { canEdit: canEditConfig, canDelete: canDeleteConfig }),
-    [handleEdit, canEditConfig, canDeleteConfig]
+    () => getColumns(handleEdit, { canEdit: canEditConfig, canDelete: canDeleteConfig }, availableBranches),
+    [handleEdit, canEditConfig, canDeleteConfig, availableBranches]
   );
+
+  if (isLoading) {
+    return (
+      <div className="p-8 flex justify-center items-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-sky-600"></div>
+        <span className="ml-3 text-slate-500">Cargando almacenes...</span>
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="p-4 rounded-lg border border-red-200 bg-red-50 text-red-600">
+        <p className="font-medium">Error al cargar almacenes</p>
+        <p className="text-sm opacity-80">{(error as Error).message}</p>
+      </div>
+    );
+  }
+
+  if (!warehouses) return null;
 
   return (
     <DataTable
@@ -62,7 +83,10 @@ export default function WarehouseList() {
               </button>
             }
           >
-            <WarehouseForm onSuccess={() => setIsDialogOpen(false)} />
+            <WarehouseForm
+              onSuccess={() => setIsDialogOpen(false)}
+              warehouseToEdit={selectedWarehouse}
+            />
           </MainDialog>
         ) : null
       }

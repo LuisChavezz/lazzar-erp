@@ -1,121 +1,154 @@
 "use client";
 
-import { useForm, Controller } from "react-hook-form";
+import { useState } from "react";
+import { useForm, Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { WarehouseFormSchema, WarehouseFormValues } from "../schemas/warehouse.schema";
-import { useWarehouseStore } from "../stores/warehouse.store";
 import { FormInput } from "../../../components/FormInput";
+import { FormSelect } from "../../../components/FormSelect";
 import { FormCancelButton, FormSubmitButton } from "../../../components/FormButtons";
-import { MapPinIcon, SettingsIcon } from "../../../components/Icons";
-import toast from "react-hot-toast";
-import { Slider, Flex, Text } from "@radix-ui/themes";
+import { BuildingIcon, MapPinIcon, SettingsIcon } from "../../../components/Icons";
+import { useWorkspaceStore } from "../../workspace/store/workspace.store";
+import { useCompanyBranches } from "../../branches/hooks/useCompanyBranches";
+import { useCreateWarehouse } from "../hooks/useCreateWarehouse";
+import { useUpdateWarehouse } from "../hooks/useUpdateWarehouse";
+import { Warehouse } from "../interfaces/warehouse.interface";
 
 interface WarehouseFormProps {
   onSuccess: () => void;
+  warehouseToEdit?: Warehouse | null;
 }
 
-export default function WarehouseForm({ onSuccess }: WarehouseFormProps) {
+export default function WarehouseForm({ onSuccess, warehouseToEdit }: WarehouseFormProps) {
 
-  // Manejar la adición de un almacén
-  const addWarehouse = useWarehouseStore((state) => state.addWarehouse);
-  const updateWarehouse = useWarehouseStore((state) => state.updateWarehouse);
-  const selectedWarehouse = useWarehouseStore((state) => state.selectedWarehouse);
-  const isLoading = useWarehouseStore((state) => state.isLoading);
-  const setIsLoading = useWarehouseStore((state) => state.setIsLoading);
+  // Obtener las sucursales y el ID de la compañía seleccionada
+  const companyId = useWorkspaceStore((state) => state.selectedCompany.id);
+  const { branches, isLoading: isLoadingBranches } = useCompanyBranches(companyId);
 
-  // Manejar la validación del formulario
+  const isEditing = Boolean(warehouseToEdit?.id_almacen); // Verificar si se está editando un almacén
+  const emptyValues: WarehouseFormValues = { // Valores por defecto para el formulario
+    sucursal: 0,
+    codigo: "",
+    nombre: "",
+    estatus: "Activo",
+  };
+
+  // Verificar si la sucursal del almacén a editar existe en las sucursales de la compañía
+  const hasBranch = branches.some((branch) => branch.id === warehouseToEdit?.sucursal);
+
+  const editValues: WarehouseFormValues = warehouseToEdit // Valores para editar un almacén
+    ? { 
+        sucursal: hasBranch ? warehouseToEdit.sucursal : 0,
+        codigo: warehouseToEdit.codigo,
+        nombre: warehouseToEdit.nombre,
+        estatus: warehouseToEdit.estatus as WarehouseFormValues["estatus"],
+      }
+    : emptyValues;
+
+  // Configurar el formulario con los valores por defecto y los valores de edición si es necesario
   const {
     register,
     handleSubmit,
     reset,
-    control,
+    setError,
     formState: { errors },
-  } = useForm<WarehouseFormValues>({ // Configurar el formulario con Hook Form
-    resolver: zodResolver(WarehouseFormSchema), // Usar el esquema de validación
-    defaultValues: { // Valores por defecto para el formulario
-      name: "",
-      location: "",
-      manager: "",
-      capacity: 0,
-      status: "Activo",
-      type: "",
-    },
-    values: selectedWarehouse || undefined,
+  } = useForm<WarehouseFormValues>({
+    resolver: zodResolver(WarehouseFormSchema) as Resolver<WarehouseFormValues>,
+    defaultValues: emptyValues,
+    values: isEditing ? editValues : undefined,
   });
+
+  // Manejar la creación y actualización de almacenes
+  const { mutateAsync: createWarehouse, isPending: isCreating } = useCreateWarehouse(setError);
+  const { mutateAsync: updateWarehouse, isPending: isUpdating } = useUpdateWarehouse(setError);
+
+  const [isLoading, setIsLoading] = useState(false); // Estado para controlar la carga
+
+  // Combinar los diferentes estados de carga en uno solo
+  const isPending = isCreating || isUpdating || isLoading;
 
   // Manejar el envío del formulario
   const onSubmit = async (values: WarehouseFormValues) => {
-    if (isLoading) return;
     setIsLoading(true);
-
     try {
-      // Simular una operación asíncrona
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      
-      if (selectedWarehouse) {
-        updateWarehouse(selectedWarehouse.id, values);
-        toast.success("Almacén actualizado exitosamente");
+      if (isEditing && warehouseToEdit) {
+        await updateWarehouse({ id_almacen: warehouseToEdit.id_almacen, ...values });
+        reset(editValues);
       } else {
-        addWarehouse({
-          id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).substring(2),
-          ...values,
-        });
-        toast.success("Almacén registrado exitosamente");
+        await createWarehouse(values);
+        reset(emptyValues);
       }
-      
-      reset();
       onSuccess();
-
-    } catch (error) {
-      console.error(error);
-      toast.error(selectedWarehouse ? "Error al actualizar el almacén" : "Error al registrar el almacén");
-
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)}>
-      <fieldset disabled={isLoading} className={`space-y-8 transition-opacity duration-200 ${isLoading ? "opacity-60" : ""}`}>
-        {/* 1. Encabezado e Información Principal */}
-        <section className="relative overflow-hidden bg-white dark:bg-zinc-900 rounded-3xl p-6 md:p-8 border border-slate-200 dark:border-white/5 shadow-sm dark:shadow-none group hover:border-sky-200 dark:hover:border-sky-900 transition-colors duration-300">
-          {/* Elementos decorativos de fondo */}
-          <div className="absolute top-0 right-0 w-96 h-96 bg-sky-500/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none"></div>
-          <div className="absolute bottom-0 left-0 w-64 h-64 bg-sky-500/5 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2 pointer-events-none"></div>
+    <form onSubmit={handleSubmit(onSubmit)} className="w-full">
+      <fieldset disabled={isPending} className="group-disabled:opacity-50">
+        <section className="mb-8">
+          <div className="bg-slate-50 dark:bg-white/5 rounded-3xl p-8 border border-slate-100 dark:border-white/5">
+            <h2 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-6 flex items-center gap-2">
+              <BuildingIcon className="w-4 h-4" />
+              Información General
+            </h2>
 
-          <div className="flex flex-col lg:flex-row gap-8 items-start relative z-10">
-            {/* Inputs Principales */}
-            <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6 w-full">
-              <div className="md:col-span-2 group/field">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div className="group/field md:col-span-2">
                 <FormInput
-                  label="Nombre del Almacén"
+                  label="Nombre"
                   placeholder="Ej. Almacén Central"
+                  className="text-2xl font-bold"
                   variant="ghost"
-                  className="text-3xl font-bold"
-                  {...register("name")}
-                  error={errors.name}
+                  {...register("nombre")}
+                  error={errors.nombre}
                 />
               </div>
 
-              <div className="md:col-span-2 group/field">
-                <div className="relative">
-                  <MapPinIcon className="absolute left-3 top-9 w-5 h-5 text-slate-400" />
-                  <FormInput
-                    label="Ubicación"
-                    placeholder="Ej. Ciudad de México, CDMX"
-                    className="pl-10"
-                    {...register("location")}
-                    error={errors.location}
-                  />
-                </div>
+              <div className="group/field">
+                <FormInput
+                  label="Código"
+                  placeholder="ALM-001"
+                  {...register("codigo")}
+                  error={errors.codigo}
+                />
               </div>
             </div>
           </div>
         </section>
 
+        <section className="mb-8">
+          <div className="bg-slate-50 dark:bg-white/5 rounded-3xl p-8 border border-slate-100 dark:border-white/5">
+            <h2 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-6 flex items-center gap-2">
+              <MapPinIcon className="w-4 h-4" />
+              Sucursal
+            </h2>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <FormSelect
+                label="Sucursal"
+                {...register("sucursal", { valueAsNumber: true })}
+                error={errors.sucursal}
+              >
+                <option value="0" disabled>
+                  {isLoadingBranches ? "Cargando sucursales..." : "Seleccionar..."}
+                </option>
+                {branches.map((branch) => (
+                  <option
+                    key={branch.id}
+                    value={branch.id}
+                    className="bg-white dark:bg-zinc-900 text-slate-900 dark:text-white"
+                  >
+                    {branch.codigo} - {branch.nombre}
+                  </option>
+                ))}
+              </FormSelect>
+            </div>
+          </div>
+        </section>
+
         <div className="w-full">
-          {/* Columna Izquierda: Información Operativa */}
           <div className="w-full space-y-8">
             <div className="bg-white dark:bg-zinc-900 rounded-3xl border border-slate-200 dark:border-white/5 shadow-sm dark:shadow-none overflow-hidden hover:shadow-lg transition-shadow duration-300">
               <div className="px-8 py-5 border-b border-slate-100 dark:border-white/5 flex items-center gap-3 bg-slate-50/50 dark:bg-white/2">
@@ -124,98 +157,38 @@ export default function WarehouseForm({ onSuccess }: WarehouseFormProps) {
                 </div>
                 <div>
                   <h3 className="font-display font-semibold text-slate-900 dark:text-white text-lg">
-                    Detalles Operativos
+                    Estado
                   </h3>
-                  <p className="text-xs text-slate-500">Información de gestión y capacidad</p>
+                  <p className="text-xs text-slate-500">Disponibilidad del almacén</p>
                 </div>
               </div>
 
-              <div className="p-8 space-y-8">
+              <div className="p-8 space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="group">
-                    <FormInput
-                      label="Responsable (Manager)"
-                      placeholder="Nombre del encargado"
-                      {...register("manager")}
-                      error={errors.manager}
-                    />
-                  </div>
-                  <div className="group">
-                    <FormInput
-                      label="Tipo de Almacén"
-                      placeholder="Ej. Distribución, Regional"
-                      {...register("type")}
-                      error={errors.type}
-                    />
-                  </div>
-                </div>
-
-                <div className="h-px bg-slate-100 dark:bg-white/5"></div>
-
-                <div>
-                   <h4 className="text-[11px] font-bold text-sky-500 uppercase tracking-wider mb-5 flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full border border-sky-500"></span>
-                    Capacidad y Estado
-                  </h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="group">
-                    <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider ml-1 mb-3 block transition-colors group-focus-within:text-sky-500">
-                      Capacidad / Ocupación Actual
-                    </label>
-                    <Controller
-                      name="capacity"
-                      control={control}
-                      render={({ field }) => (
-                        <Flex align="center" gap="4" className="px-1 h-10.5">
-                          <Slider
-                            defaultValue={[0]}
-                            value={[Number(field.value) || 0]}
-                            onValueChange={(vals) => field.onChange(vals[0])}
-                            max={100}
-                            step={1}
-                            className="flex-1 cursor-pointer"
-                          />
-                          <Text size="2" weight="bold" className="text-sky-600 dark:text-sky-400 w-12 text-right">
-                            {field.value || 0}%
-                          </Text>
-                        </Flex>
-                      )}
-                    />
-                    {errors.capacity && (
-                      <p className="text-xs text-red-600 mt-1">{errors.capacity.message}</p>
-                    )}
-                  </div>
-                    
-                    <div className="group">
-                      <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider ml-1 mb-1 block transition-colors group-focus-within:text-sky-500">
-                        Estado
-                      </label>
-                      <select
-                        className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 transition-all dark:text-white"
-                        {...register("status")}
-                      >
-                        <option value="Activo" className="text-slate-900 dark:text-white bg-white dark:bg-zinc-900">Activo</option>
-                        <option value="Inactivo" className="text-slate-900 dark:text-white bg-white dark:bg-zinc-900">Inactivo</option>
-                        <option value="Mantenimiento" className="text-slate-900 dark:text-white bg-white dark:bg-zinc-900">Mantenimiento</option>
-                      </select>
-                      {errors.status && (
-                        <p className="text-xs text-red-600 mt-1">{errors.status.message}</p>
-                      )}
-                    </div>
-                  </div>
+                  <FormSelect label="Estatus del almacén" {...register("estatus")} error={errors.estatus}>
+                    <option value="Activo" className="bg-white dark:bg-zinc-900 text-slate-900 dark:text-white">
+                      Activo
+                    </option>
+                    <option value="Inactivo" className="bg-white dark:bg-zinc-900 text-slate-900 dark:text-white">
+                      Inactivo
+                    </option>
+                    <option value="Mantenimiento" className="bg-white dark:bg-zinc-900 text-slate-900 dark:text-white">
+                      Mantenimiento
+                    </option>
+                  </FormSelect>
                 </div>
               </div>
             </div>
           </div>
         </div>
 
-        <div className="flex justify-end gap-3 pb-8">
-          <FormCancelButton onClick={() => reset()} disabled={isLoading} />
-          <FormSubmitButton
-            isPending={isLoading}
-            loadingLabel="Guardando..."
-          >
-            {selectedWarehouse ? "Actualizar Almacén" : "Registrar Almacén"}
+        <div className="flex justify-end gap-3 pb-8 mt-8">
+          <FormCancelButton
+            onClick={() => reset(isEditing ? editValues : emptyValues)}
+            disabled={isPending}
+          />
+          <FormSubmitButton isPending={isPending} loadingLabel={isEditing ? "Actualizando..." : "Guardando..."}>
+            {isEditing ? "Actualizar Almacén" : "Registrar Almacén"}
           </FormSubmitButton>
         </div>
       </fieldset>

@@ -1,6 +1,7 @@
 import { getBranches } from "@/src/features/branches/services/actions";
 import { getCurrencies } from "@/src/features/currency/services/actions";
 import { getUsers } from "@/src/features/users/services/actions";
+import { getWarehouses } from "@/src/features/warehouses/services/actions";
 import {
   BuildingIcon,
   MapPinIcon,
@@ -47,6 +48,8 @@ export const configCards: ConfigCardItem[] = [
     icon: InventariosIcon,
     view: "warehouses",
     adminOnly: true,
+    prefetchKey: ["warehouses"],
+    prefetchFn: getWarehouses,
   },
   {
     title: "Ubicaciones",
