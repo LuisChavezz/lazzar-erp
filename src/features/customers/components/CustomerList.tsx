@@ -1,6 +1,6 @@
 import { DataTable } from "@/src/components/DataTable";
-import { customersColumns } from "./CustomersColumns";
-import { CustomerItem } from "../interfaces/customers.interface";
+import { customerColumns } from "./CustomerColumns";
+import { CustomerItem } from "../interfaces/customer.interface";
 
 const CUSTOMERS_DATA: CustomerItem[] = [
   {
@@ -55,11 +55,11 @@ const CUSTOMERS_DATA: CustomerItem[] = [
   },
 ];
 
-export const CustomersList = () => {
+export const CustomerList = () => {
   return (
     <div className="mt-12">
       <DataTable
-        columns={customersColumns}
+        columns={customerColumns}
         data={CUSTOMERS_DATA}
         title="Clientes"
         searchPlaceholder="Buscar por cliente, segmento o ciudad..."

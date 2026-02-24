@@ -1,5 +1,5 @@
-import { ShipmentsStats } from "@/src/features/shipments/components/ShipmentsStats";
-import { ShipmentsList } from "@/src/features/shipments/components/ShipmentsList";
+import { ShipmentStats } from "@/src/features/shipments/components/ShipmentStats";
+import { ShipmentList } from "@/src/features/shipments/components/ShipmentList";
 
 export default function ShipmentsPage() {
   return (
@@ -10,10 +10,10 @@ export default function ShipmentsPage() {
         </p>
       </div>
 
-      <ShipmentsStats />
+      <ShipmentStats />
 
       <div className="space-y-6">
-        <ShipmentsList />
+        <ShipmentList />
       </div>
     </div>
   );

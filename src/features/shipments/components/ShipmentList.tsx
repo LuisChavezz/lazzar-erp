@@ -1,6 +1,6 @@
 import { DataTable } from "@/src/components/DataTable";
-import { shipmentsColumns } from "./ShipmentsColumns";
-import { ShipmentItem } from "../interfaces/shipments.interface";
+import { shipmentColumns } from "./ShipmentColumns";
+import { ShipmentItem } from "../interfaces/shipment.interface";
 
 const SHIPMENTS_DATA: ShipmentItem[] = [
   {
@@ -60,11 +60,11 @@ const SHIPMENTS_DATA: ShipmentItem[] = [
   },
 ];
 
-export const ShipmentsList = () => {
+export const ShipmentList = () => {
   return (
     <div className="mt-12">
       <DataTable
-        columns={shipmentsColumns}
+        columns={shipmentColumns}
         data={SHIPMENTS_DATA}
         title="Embarques"
         searchPlaceholder="Buscar por embarque, orden o ruta..."

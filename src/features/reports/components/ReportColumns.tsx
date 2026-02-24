@@ -1,7 +1,7 @@
 "use client";
 
 import { ColumnDef } from "@tanstack/react-table";
-import { ReportItem } from "../interfaces/reports.interface";
+import { ReportItem } from "../interfaces/report.interface";
 import { EditIcon, ViewIcon } from "../../../components/Icons";
 
 const ReportStatusBadge = ({ status }: { status: ReportItem["status"] }) => {
@@ -19,7 +19,7 @@ const ReportStatusBadge = ({ status }: { status: ReportItem["status"] }) => {
   );
 };
 
-export const reportsColumns: ColumnDef<ReportItem>[] = [
+export const reportColumns: ColumnDef<ReportItem>[] = [
   {
     accessorKey: "name",
     header: "Reporte",
