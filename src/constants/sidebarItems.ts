@@ -116,7 +116,7 @@ export const sidebarItems: SidebarSection[] = [
       },
       {
         label: "Rastrear Guías",
-        href: "#",
+        href: "/shipment-tracking",
         icon: RastrearGuiasIcon,
       },
       {
