@@ -1,6 +1,6 @@
 import { DataTable } from "@/src/components/DataTable";
 import { stockColumns } from "./StockColumns";
-import { StockItem } from "../stock.interface";
+import { StockItem } from "../interfaces/stock.interface";
 
 const STOCK_DATA: StockItem[] = [
   {

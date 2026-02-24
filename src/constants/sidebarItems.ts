@@ -111,7 +111,7 @@ export const sidebarItems: SidebarSection[] = [
       },
       {
         label: "Lista de Precios",
-        href: "#",
+        href: "/price-lists",
         icon: ListaPreciosIcon,
       },
       {
