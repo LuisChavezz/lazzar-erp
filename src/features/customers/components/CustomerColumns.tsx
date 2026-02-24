@@ -1,7 +1,7 @@
 "use client";
 
 import { ColumnDef } from "@tanstack/react-table";
-import { CustomerItem } from "../interfaces/customers.interface";
+import { CustomerItem } from "../interfaces/customer.interface";
 import { EditIcon, ViewIcon } from "../../../components/Icons";
 
 const CustomerStatusBadge = ({ status }: { status: CustomerItem["status"] }) => {
@@ -19,7 +19,7 @@ const CustomerStatusBadge = ({ status }: { status: CustomerItem["status"] }) => 
   );
 };
 
-export const customersColumns: ColumnDef<CustomerItem>[] = [
+export const customerColumns: ColumnDef<CustomerItem>[] = [
   {
     accessorKey: "code",
     header: "Cliente",

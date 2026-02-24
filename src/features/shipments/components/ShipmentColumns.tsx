@@ -1,7 +1,7 @@
 "use client";
 
 import { ColumnDef } from "@tanstack/react-table";
-import { ShipmentItem } from "../interfaces/shipments.interface";
+import { ShipmentItem } from "../interfaces/shipment.interface";
 import { EditIcon, ViewIcon } from "../../../components/Icons";
 
 const ShipmentStatusBadge = ({ status }: { status: ShipmentItem["status"] }) => {
@@ -19,7 +19,7 @@ const ShipmentStatusBadge = ({ status }: { status: ShipmentItem["status"] }) => 
   );
 };
 
-export const shipmentsColumns: ColumnDef<ShipmentItem>[] = [
+export const shipmentColumns: ColumnDef<ShipmentItem>[] = [
   {
     accessorKey: "shipmentId",
     header: "Embarque",

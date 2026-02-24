@@ -1,5 +1,5 @@
-import { CustomersStats } from "@/src/features/customers/components/CustomersStats";
-import { CustomersList } from "@/src/features/customers/components/CustomersList";
+import { CustomerStats } from "@/src/features/customers/components/CustomerStats";
+import { CustomerList } from "@/src/features/customers/components/CustomerList";
 
 export default function CustomersPage() {
   return (
@@ -10,10 +10,10 @@ export default function CustomersPage() {
         </p>
       </div>
 
-      <CustomersStats />
+      <CustomerStats />
 
       <div className="space-y-6">
-        <CustomersList />
+        <CustomerList />
       </div>
     </div>
   );

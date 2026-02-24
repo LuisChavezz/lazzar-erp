@@ -1,6 +1,6 @@
 import { DataTable } from "@/src/components/DataTable";
-import { reportsColumns } from "./ReportsColumns";
-import { ReportItem } from "../interfaces/reports.interface";
+import { reportColumns } from "./ReportColumns";
+import { ReportItem } from "../interfaces/report.interface";
 
 const REPORTS_DATA: ReportItem[] = [
   {
@@ -50,11 +50,11 @@ const REPORTS_DATA: ReportItem[] = [
   },
 ];
 
-export const ReportsList = () => {
+export const ReportList = () => {
   return (
     <div className="mt-12">
       <DataTable
-        columns={reportsColumns}
+        columns={reportColumns}
         data={REPORTS_DATA}
         title="Reportes"
         searchPlaceholder="Buscar por reporte, categoría o responsable..."

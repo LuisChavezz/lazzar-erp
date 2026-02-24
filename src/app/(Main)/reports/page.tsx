@@ -1,5 +1,5 @@
-import { ReportsStats } from "@/src/features/reports/components/ReportsStats";
-import { ReportsList } from "@/src/features/reports/components/ReportsList";
+import { ReportStats } from "@/src/features/reports/components/ReportStats";
+import { ReportList } from "@/src/features/reports/components/ReportList";
 
 export default function ReportsPage() {
   return (
@@ -10,10 +10,10 @@ export default function ReportsPage() {
         </p>
       </div>
 
-      <ReportsStats />
+      <ReportStats />
 
       <div className="space-y-6">
-        <ReportsList />
+        <ReportList />
       </div>
     </div>
   );
