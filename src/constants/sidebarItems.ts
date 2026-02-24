@@ -121,17 +121,17 @@ export const sidebarItems: SidebarSection[] = [
       },
       {
         label: "Clientes",
-        href: "#",
+        href: "/customers",
         icon: ClientesIcon,
       },
       {
         label: "Embarques",
-        href: "#",
+        href: "/shipments",
         icon: EmbarquesIcon,
       },
       {
         label: "Reportes",
-        href: "#",
+        href: "/reports",
         icon: ReportesIcon,
       },
     ],

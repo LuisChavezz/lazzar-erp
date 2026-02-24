@@ -16,6 +16,9 @@ const ROUTE_TITLES: Record<string, string> = {
   "/stock": "Existencias",
   "/price-lists": "Lista de Precios",
   "/shipment-tracking": "Rastrear Guías",
+  "/customers": "Clientes",
+  "/shipments": "Embarques",
+  "/reports": "Reportes",
 };
 
 export function getPageTitle(path: string | undefined | null): string {
