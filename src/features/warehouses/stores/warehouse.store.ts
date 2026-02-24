@@ -34,13 +34,13 @@ export const useWarehouseStore = create<WarehouseState>()(
         updateWarehouse: (id, updatedWarehouse) =>
           set((state) => ({
             warehouses: state.warehouses.map((w) =>
-              w.id === id ? { ...w, ...updatedWarehouse } : w
+              Number(w.id_almacen) === Number(id) ? { ...w, ...updatedWarehouse } : w
             ),
           })),
           
         deleteWarehouse: (id) =>
           set((state) => ({
-            warehouses: state.warehouses.filter((w) => w.id !== id),
+            warehouses: state.warehouses.filter((w) => Number(w.id_almacen) !== Number(id)),
           })),
       }),
       {
