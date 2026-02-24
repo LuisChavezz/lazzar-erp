@@ -1,9 +1,9 @@
 import { ColumnDef, createColumnHelper, Row } from "@tanstack/react-table";
 import { EditIcon, DeleteIcon } from "../../../components/Icons";
 import { Location } from "../interfaces/location.interface";
-import { useLocationStore } from "../stores/location.store";
+import { Warehouse } from "../../warehouses/interfaces/warehouse.interface";
 import { ConfirmDialog } from "../../../components/ConfirmDialog";
-import toast from "react-hot-toast";
+import { useDeleteLocation } from "../hooks/useDeleteLocation";
 
 const columnHelper = createColumnHelper<Location>();
 
@@ -20,14 +20,7 @@ const ActionsCell = ({
   canDelete: boolean;
 }) => {
   
-  // Obtener la función para eliminar una ubicación del store
-  const deleteLocation = useLocationStore((state) => state.deleteLocation);
-
-  // Manejar la eliminación de la ubicación
-  const handleDelete = () => {
-    deleteLocation(row.original.id);
-    toast.success("Ubicación eliminada correctamente");
-  };
+  const { mutate: deleteLocation, isPending } = useDeleteLocation();
 
   return (
     <div className="flex items-center justify-center gap-2">
@@ -44,12 +37,14 @@ const ActionsCell = ({
         <ConfirmDialog
           title="Eliminar Ubicación"
           description="¿Estás seguro de que deseas eliminar esta ubicación? Esta acción no se puede deshacer."
-          onConfirm={handleDelete}
+          onConfirm={() => deleteLocation(row.original.id_ubicacion)}
+          confirmText={isPending ? "Eliminando..." : "Eliminar"}
           confirmColor="red"
           trigger={
             <button
               className="p-1 cursor-pointer text-slate-400 hover:text-red-600 transition-colors"
               title="Eliminar"
+              disabled={isPending}
             >
               <DeleteIcon className="w-5 h-5" />
             </button>
@@ -62,19 +57,23 @@ const ActionsCell = ({
 
 export const getColumns = (
   onEdit: (location: Location) => void,
-  permissions: { canEdit: boolean; canDelete: boolean }
+  permissions: { canEdit: boolean; canDelete: boolean },
+  warehouses: Warehouse[]
 ) => {
+  const warehouseNameById = new Map(
+    warehouses.map((warehouse) => [warehouse.id_almacen, warehouse.nombre])
+  );
   const columns = [
-    columnHelper.accessor("status", {
+    columnHelper.accessor("estatus", {
       header: "Estado",
       cell: (info) => {
         const status = info.getValue();
         const styles =
-          status === "Disponible"
+          status === "Activo"
             ? "bg-emerald-100 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400"
             : status === "Mantenimiento"
             ? "bg-amber-100 text-amber-600 dark:bg-amber-500/20 dark:text-amber-400"
-            : "bg-slate-100 text-slate-600 dark:bg-slate-500/20 dark:text-slate-400"; // Ocupado
+            : "bg-slate-100 text-slate-600 dark:bg-slate-500/20 dark:text-slate-400";
         return (
           <span
             className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${styles}`}
@@ -84,7 +83,7 @@ export const getColumns = (
         );
       },
     }),
-    columnHelper.accessor("code", {
+    columnHelper.accessor("codigo", {
       header: "Código",
       cell: (info) => (
         <span className="font-medium text-slate-700 dark:text-slate-200">
@@ -92,7 +91,7 @@ export const getColumns = (
         </span>
       ),
     }),
-    columnHelper.accessor("name", {
+    columnHelper.accessor("nombre", {
       header: "Nombre",
       cell: (info) => (
         <span className="text-slate-600 dark:text-slate-300 font-medium">
@@ -100,22 +99,18 @@ export const getColumns = (
         </span>
       ),
     }),
-    columnHelper.accessor("warehouse", {
-      header: "Almacén",
-      cell: (info) => (
-        <span className="text-slate-500 dark:text-slate-400">
-          {info.getValue()}
-        </span>
-      ),
-    }),
-    columnHelper.accessor("type", {
-      header: "Tipo",
-      cell: (info) => (
-        <span className="text-slate-500 dark:text-slate-400">
-          {info.getValue()}
-        </span>
-      ),
-    }),
+    columnHelper.accessor(
+      (row) => warehouseNameById.get(row.almacen) ?? String(row.almacen),
+      {
+        id: "almacen",
+        header: "Almacén",
+        cell: (info) => (
+          <span className="text-slate-500 dark:text-slate-400">
+            {info.getValue()}
+          </span>
+        ),
+      }
+    ),
   ] as ColumnDef<Location>[];
 
   if (permissions.canEdit || permissions.canDelete) {

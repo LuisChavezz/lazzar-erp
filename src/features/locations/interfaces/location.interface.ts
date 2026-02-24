@@ -1,8 +1,23 @@
+import { Branch } from "../../branches/interfaces/branch.interface"
+import { Company } from "../../companies/interfaces/company.interface"
+import { Warehouse } from "../../warehouses/interfaces/warehouse.interface";
+
+
 export interface Location {
-  id: string;
-  name: string;
-  code: string;
-  warehouse: string; // ID or Name of the warehouse it belongs to
-  status: "Disponible" | "Ocupado" | "Mantenimiento";
-  type: string; // e.g., "Rack", "Piso", "Zona"
+  id_ubicacion: number;
+  empresa: Company["id"];
+  sucursal: Branch["id"];
+  almacen: Warehouse["id_almacen"];
+  codigo: string;
+  nombre: string;
+  estatus: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface LocationCreate {
+  almacen: Warehouse["id_almacen"];
+  codigo: string;
+  nombre: string;
+  estatus: string;
 }

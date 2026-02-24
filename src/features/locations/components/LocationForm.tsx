@@ -1,172 +1,183 @@
 "use client";
 
-import { useForm } from "react-hook-form";
+import { useState } from "react";
+import { useForm, Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { LocationFormSchema, LocationFormValues } from "../schemas/location.schema";
-import { useLocationStore } from "../stores/location.store";
 import { FormInput } from "../../../components/FormInput";
+import { FormSelect } from "../../../components/FormSelect";
 import { FormCancelButton, FormSubmitButton } from "../../../components/FormButtons";
-import { MapPinIcon, BuildingIcon } from "../../../components/Icons";
-import toast from "react-hot-toast";
+import { BuildingIcon, MapPinIcon, SettingsIcon } from "../../../components/Icons";
+import MissingPrerequisites from "../../products/components/MissingPrerequisites";
+import { useLocationStore } from "../stores/location.store";
+import { useCreateLocation } from "../hooks/useCreateLocation";
+import { useUpdateLocation } from "../hooks/useUpdateLocation";
+import { useWarehouses } from "../../warehouses/hooks/useWarehouses";
 
 interface LocationFormProps {
   onSuccess: () => void;
 }
 
 export default function LocationForm({ onSuccess }: LocationFormProps) {
-
-  // Manejar la adición de una ubicación
-  const addLocation = useLocationStore((state) => state.addLocation);
-  const updateLocation = useLocationStore((state) => state.updateLocation);
   const selectedLocation = useLocationStore((state) => state.selectedLocation);
-  const isLoading = useLocationStore((state) => state.isLoading);
-  const setIsLoading = useLocationStore((state) => state.setIsLoading);
+  const { data: warehouses = [], isLoading: isLoadingWarehouses } = useWarehouses();
 
-  // Manejar la validación del formulario
+  const activeWarehouses = warehouses.filter((warehouse) => warehouse.estatus === "Activo" || warehouse.estatus === "Mantenimiento");
+  const missingItems = [
+    activeWarehouses.length === 0 ? "Almacenes activos o en mantenimiento" : null,
+  ].filter((item): item is string => Boolean(item));
+
+  const isEditing = Boolean(selectedLocation?.id_ubicacion);
+  const emptyValues: LocationFormValues = {
+    almacen: 0,
+    codigo: "",
+    nombre: "",
+    estatus: "Activo",
+  };
+
+  const hasWarehouse = activeWarehouses.some(
+    (warehouse) => warehouse.id_almacen === selectedLocation?.almacen
+  );
+
+  const editValues: LocationFormValues = selectedLocation
+    ? {
+        almacen: hasWarehouse ? selectedLocation.almacen : 0,
+        codigo: selectedLocation.codigo,
+        nombre: selectedLocation.nombre,
+        estatus: selectedLocation.estatus as LocationFormValues["estatus"],
+      }
+    : emptyValues;
+
   const {
     register,
     handleSubmit,
     reset,
+    setError,
     formState: { errors },
-  } = useForm<LocationFormValues>({ // Configurar el formulario con Hook Form
-    resolver: zodResolver(LocationFormSchema), // Usar el esquema de validación
-    defaultValues: { // Valores por defecto para el formulario
-      name: "",
-      code: "",
-      warehouse: "",
-      status: "Disponible",
-      type: "",
-    },
-    values: selectedLocation || undefined,
+  } = useForm<LocationFormValues>({
+    resolver: zodResolver(LocationFormSchema) as Resolver<LocationFormValues>,
+    defaultValues: emptyValues,
+    values: isEditing ? editValues : undefined,
   });
 
-  // Manejar el envío del formulario
-  const onSubmit = async (data: LocationFormValues) => {
+  const { mutateAsync: createLocation, isPending: isCreating } = useCreateLocation(setError);
+  const { mutateAsync: updateLocation, isPending: isUpdating } = useUpdateLocation(setError);
+
+  const [isLoading, setIsLoading] = useState(false);
+  const isPending = isCreating || isUpdating || isLoading;
+
+  const onSubmit = async (values: LocationFormValues) => {
     setIsLoading(true);
     try {
-      // Simular una petición a la API
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
-      if (selectedLocation) {
-        updateLocation(selectedLocation.id, data);
-        toast.success("Ubicación actualizada correctamente");
+      if (isEditing && selectedLocation) {
+        await updateLocation({ id_ubicacion: selectedLocation.id_ubicacion, ...values });
+        reset(editValues);
       } else {
-        addLocation({
-          id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2) + Date.now().toString(36),
-          ...data,
-        });
-        toast.success("Ubicación registrada correctamente");
+        await createLocation(values);
+        reset(emptyValues);
       }
       onSuccess();
-    } catch (error) {
-      console.error(error);
-      toast.error("Ocurrió un error al guardar la ubicación");
     } finally {
       setIsLoading(false);
     }
   };
 
+  if (missingItems.length > 0) {
+    return <MissingPrerequisites items={missingItems} />;
+  }
+
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="w-full">
-      <fieldset disabled={isLoading} className="group-disabled:opacity-50">
-        
-        {/* Sección Principal: Nombre y Código */}
+      <fieldset disabled={isPending} className="group-disabled:opacity-50">
         <section className="mb-8">
           <div className="bg-slate-50 dark:bg-white/5 rounded-3xl p-8 border border-slate-100 dark:border-white/5">
             <h2 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-6 flex items-center gap-2">
               <MapPinIcon className="w-4 h-4" />
               Información General
             </h2>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              <div className="group/field">
+              <div className="group/field md:col-span-2">
                 <FormInput
                   label="Nombre de la Ubicación"
                   placeholder="Ej. Pasillo A"
+                  className="text-2xl font-bold"
                   variant="ghost"
-                  className="text-3xl font-bold"
-                  {...register("name")}
-                  error={errors.name}
+                  {...register("nombre")}
+                  error={errors.nombre}
                 />
               </div>
 
-              <div className="md:col-span-2 group/field">
-                <div className="relative">
-                  <div className="absolute left-3 top-9 text-slate-400 font-mono text-sm">#</div>
-                  <FormInput
-                    label="Código"
-                    placeholder="Ej. A-01-01"
-                    className="pl-8 font-mono"
-                    {...register("code")}
-                    error={errors.code}
-                  />
-                </div>
+              <div className="group/field">
+                <FormInput
+                  label="Código"
+                  placeholder="UBI-001"
+                  {...register("codigo")}
+                  error={errors.codigo}
+                />
               </div>
             </div>
           </div>
         </section>
 
+        <section className="mb-8">
+          <div className="bg-slate-50 dark:bg-white/5 rounded-3xl p-8 border border-slate-100 dark:border-white/5">
+            <h2 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-6 flex items-center gap-2">
+              <BuildingIcon className="w-4 h-4" />
+              Almacén
+            </h2>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <FormSelect
+                label="Almacén"
+                {...register("almacen", { valueAsNumber: true })}
+                error={errors.almacen}
+              >
+                <option value="0" disabled>
+                  {isLoadingWarehouses ? "Cargando almacenes..." : "Seleccionar..."}
+                </option>
+                {activeWarehouses.map((warehouse) => (
+                  <option
+                    key={warehouse.id_almacen}
+                    value={warehouse.id_almacen}
+                    className="bg-white dark:bg-zinc-900 text-slate-900 dark:text-white"
+                  >
+                    {warehouse.codigo} - {warehouse.nombre}
+                  </option>
+                ))}
+              </FormSelect>
+            </div>
+          </div>
+        </section>
+
         <div className="w-full">
-          {/* Columna Izquierda: Información Operativa */}
           <div className="w-full space-y-8">
             <div className="bg-white dark:bg-zinc-900 rounded-3xl border border-slate-200 dark:border-white/5 shadow-sm dark:shadow-none overflow-hidden hover:shadow-lg transition-shadow duration-300">
               <div className="px-8 py-5 border-b border-slate-100 dark:border-white/5 flex items-center gap-3 bg-slate-50/50 dark:bg-white/2">
-                <div className="w-8 h-8 rounded-full bg-sky-100 dark:bg-sky-500/20 flex items-center justify-center text-sky-600 dark:text-sky-400">
-                  <BuildingIcon className="w-4 h-4" />
+                <div className="w-10 h-10 rounded-xl bg-sky-50 dark:bg-sky-500/10 flex items-center justify-center text-sky-600 dark:text-sky-400 shadow-sm">
+                  <SettingsIcon className="w-5 h-5" />
                 </div>
                 <div>
                   <h3 className="font-display font-semibold text-slate-900 dark:text-white text-lg">
-                    Detalles Operativos
+                    Estado
                   </h3>
-                  <p className="text-xs text-slate-500">Asignación y estado</p>
+                  <p className="text-xs text-slate-500">Disponibilidad de la ubicación</p>
                 </div>
               </div>
 
-              <div className="p-8 space-y-8">
+              <div className="p-8 space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="group">
-                    <FormInput
-                      label="Almacén"
-                      placeholder="Ej. Almacén Central"
-                      {...register("warehouse")}
-                      error={errors.warehouse}
-                    />
-                  </div>
-                  <div className="group">
-                    <FormInput
-                      label="Tipo de Ubicación"
-                      placeholder="Ej. Rack, Piso, Zona"
-                      {...register("type")}
-                      error={errors.type}
-                    />
-                  </div>
-                </div>
-
-                <div className="h-px bg-slate-100 dark:bg-white/5"></div>
-
-                <div>
-                   <h4 className="text-[11px] font-bold text-sky-500 uppercase tracking-wider mb-5 flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full border border-sky-500"></span>
-                    Estado
-                  </h4>
-                  <div className="grid grid-cols-1 gap-6">
-                    <div className="group">
-                      <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider ml-1 mb-1 block transition-colors group-focus-within:text-sky-500">
-                        Estado
-                      </label>
-                      <select
-                        className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 transition-all dark:text-white"
-                        {...register("status")}
-                      >
-                        <option value="Disponible" className="text-slate-900 dark:text-white bg-white dark:bg-zinc-900">Disponible</option>
-                        <option value="Ocupado" className="text-slate-900 dark:text-white bg-white dark:bg-zinc-900">Ocupado</option>
-                        <option value="Mantenimiento" className="text-slate-900 dark:text-white bg-white dark:bg-zinc-900">Mantenimiento</option>
-                      </select>
-                      {errors.status && (
-                        <p className="text-xs text-red-600 mt-1">{errors.status.message}</p>
-                      )}
-                    </div>
-                  </div>
+                  <FormSelect label="Estatus de la ubicación" {...register("estatus")} error={errors.estatus}>
+                    <option value="Activo" className="bg-white dark:bg-zinc-900 text-slate-900 dark:text-white">
+                      Activo
+                    </option>
+                    <option value="Inactivo" className="bg-white dark:bg-zinc-900 text-slate-900 dark:text-white">
+                      Inactivo
+                    </option>
+                    <option value="Mantenimiento" className="bg-white dark:bg-zinc-900 text-slate-900 dark:text-white">
+                      Mantenimiento
+                    </option>
+                  </FormSelect>
                 </div>
               </div>
             </div>
@@ -174,12 +185,12 @@ export default function LocationForm({ onSuccess }: LocationFormProps) {
         </div>
 
         <div className="flex justify-end gap-3 pb-8 mt-8">
-          <FormCancelButton onClick={() => reset()} disabled={isLoading} />
-          <FormSubmitButton
-            isPending={isLoading}
-            loadingLabel="Guardando..."
-          >
-            {selectedLocation ? "Actualizar Ubicación" : "Registrar Ubicación"}
+          <FormCancelButton
+            onClick={() => reset(isEditing ? editValues : emptyValues)}
+            disabled={isPending}
+          />
+          <FormSubmitButton isPending={isPending} loadingLabel={isEditing ? "Actualizando..." : "Guardando..."}>
+            {isEditing ? "Actualizar Ubicación" : "Registrar Ubicación"}
           </FormSubmitButton>
         </div>
       </fieldset>
