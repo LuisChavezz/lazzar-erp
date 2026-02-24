@@ -12,8 +12,8 @@ interface LocationState {
   setSelectedLocation: (location: Location | null) => void;
   setIsLoading: (isLoading: boolean) => void;
   addLocation: (location: Location) => void;
-  updateLocation: (id: string, location: Partial<Location>) => void;
-  deleteLocation: (id: string) => void;
+  updateLocation: (id: number, location: Partial<Location>) => void;
+  deleteLocation: (id: number) => void;
 }
 
 export const useLocationStore = create<LocationState>()(
@@ -34,13 +34,13 @@ export const useLocationStore = create<LocationState>()(
         updateLocation: (id, updatedLocation) =>
           set((state) => ({
             locations: state.locations.map((l) =>
-              l.id === id ? { ...l, ...updatedLocation } : l
+              l.id_ubicacion === id ? { ...l, ...updatedLocation } : l
             ),
           })),
           
         deleteLocation: (id) =>
           set((state) => ({
-            locations: state.locations.filter((l) => l.id !== id),
+            locations: state.locations.filter((l) => l.id_ubicacion !== id),
           })),
       }),
       {

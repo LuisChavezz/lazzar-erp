@@ -7,12 +7,21 @@ import { DialogHeader } from "@/src/components/DialogHeader";
 import { Location } from "../interfaces/location.interface";
 import { useSession } from "next-auth/react";
 import LocationForm from "./LocationForm";
+import { useLocations } from "../hooks/useLocations";
+import { useWarehouses } from "../../warehouses/hooks/useWarehouses";
 
 export default function LocationList() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const { locations, setSelectedLocation, selectedLocation } = useLocationStore(
     (state) => state
   );
+  const {
+    data: locationsData,
+    isLoading,
+    isError,
+    error,
+  } = useLocations();
+  const { data: warehouses = [] } = useWarehouses();
   const { data: session } = useSession();
   const isAdmin = session?.user?.role === "admin";
   const permissions = session?.user?.permissions ?? [];
@@ -30,14 +39,34 @@ export default function LocationList() {
   };
 
   const columns = useMemo(
-    () => getColumns(handleEdit, { canEdit: canEditConfig, canDelete: canDeleteConfig }),
-    [handleEdit, canEditConfig, canDeleteConfig]
+    () =>
+      getColumns(handleEdit, { canEdit: canEditConfig, canDelete: canDeleteConfig }, warehouses),
+    [handleEdit, canEditConfig, canDeleteConfig, warehouses]
   );
+  const tableData = locationsData ?? locations;
+
+  if (isLoading) {
+    return (
+      <div className="p-8 flex justify-center items-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-sky-600"></div>
+        <span className="ml-3 text-slate-500">Cargando ubicaciones...</span>
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="p-4 rounded-lg border border-red-200 bg-red-50 text-red-600">
+        <p className="font-medium">Error al cargar ubicaciones</p>
+        <p className="text-sm opacity-80">{(error as Error).message}</p>
+      </div>
+    );
+  }
 
   return (
     <DataTable
       columns={columns}
-      data={locations}
+      data={tableData}
       title="Ubicaciones"
       searchPlaceholder="Buscar ubicación..."
       actionButton={
