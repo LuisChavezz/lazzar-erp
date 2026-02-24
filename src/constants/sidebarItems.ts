@@ -106,7 +106,7 @@ export const sidebarItems: SidebarSection[] = [
     items: [
       {
         label: "Existencias",
-        href: "#",
+        href: "/stock",
         icon: ExistenciasIcon,
       },
       {
