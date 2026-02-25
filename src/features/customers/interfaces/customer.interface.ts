@@ -1,10 +1,9 @@
 export interface CustomerItem {
-  id: string;
-  code: string;
-  name: string;
-  segment: string;
-  city: string;
-  status: "Activo" | "Inactivo" | "En riesgo" | "Prospecto";
-  lastOrder: string;
-  totalSales: string;
+  razonSocial: string;
+  contacto: string;
+  telefono: string;
+  correo: string;
+  ultimaCompra: string;
+  ultimoPedido: string;
+  vendedor: string;
 }
