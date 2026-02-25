@@ -9,7 +9,9 @@ interface FormInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
 
 export const FormInput = forwardRef<HTMLInputElement, FormInputProps>(
   ({ label, error, className = "", variant = "default", ...props }, ref) => {
-    
+    const inputId =
+      props.id ?? (typeof props.name === "string" ? props.name : undefined);
+
     const baseInputStyles = "w-full outline-none transition-all placeholder-slate-400 disabled:opacity-50 disabled:cursor-not-allowed";
     
     const variants = {
@@ -40,12 +42,16 @@ export const FormInput = forwardRef<HTMLInputElement, FormInputProps>(
     return (
       <div className={`group/field w-full ${variant === "ghost" ? "md:col-span-2" : ""}`}>
         {label && (
-          <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider ml-1 mb-1 block transition-colors group-focus-within/field:text-brand-500">
+          <label
+            htmlFor={inputId}
+            className="text-[11px] font-bold text-slate-400 uppercase tracking-wider ml-1 mb-1 block transition-colors group-focus-within/field:text-brand-500"
+          >
             {label}
           </label>
         )}
         <input
           ref={ref}
+          id={inputId}
           className={`
             ${baseInputStyles}
             ${variants[variant]}
