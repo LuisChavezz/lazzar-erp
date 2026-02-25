@@ -537,6 +537,7 @@ export default function OrderForm({ orderId }: OrderFormProps) {
                         <input
                           type="text"
                           placeholder="SKU"
+                          aria-label="Código del producto"
                           autoComplete="off"
                           className={`w-full bg-transparent border-b border-transparent focus:ring-0 p-1.5 text-xs text-slate-700 dark:text-slate-200 focus:border-sky-500 ${skuError ? "border-rose-500 text-rose-600 dark:text-rose-400" : ""}`}
                           {...register(`items.${index}.sku`)}
@@ -553,6 +554,7 @@ export default function OrderForm({ orderId }: OrderFormProps) {
                         <input
                           type="text"
                           placeholder="Descripción del producto"
+                          aria-label="Descripción del producto"
                           autoComplete="off"
                           className={`w-full bg-transparent border-b border-transparent focus:ring-0 p-1.5 text-xs text-slate-700 dark:text-slate-200 focus:border-sky-500 ${descripcionError ? "border-rose-500 text-rose-600 dark:text-rose-400" : ""}`}
                           {...register(`items.${index}.descripcion`)}
@@ -569,6 +571,7 @@ export default function OrderForm({ orderId }: OrderFormProps) {
                         <input
                           type="text"
                           placeholder="PZA"
+                          aria-label="Unidad de medida"
                           autoComplete="off"
                           className={`w-full bg-transparent border-b border-transparent focus:ring-0 p-1.5 text-xs text-center uppercase text-slate-700 dark:text-slate-200 focus:border-sky-500 ${unidadError ? "border-rose-500 text-rose-600 dark:text-rose-400" : ""}`}
                           {...register(`items.${index}.unidad`)}
@@ -585,6 +588,7 @@ export default function OrderForm({ orderId }: OrderFormProps) {
                         <input
                           type="number"
                           placeholder="0"
+                          aria-label="Cantidad"
                           autoComplete="off"
                           className={`w-full bg-transparent border-b border-transparent focus:ring-0 p-1.5 text-xs text-right text-slate-800 dark:text-white focus:border-sky-500 ${cantidadError ? "border-rose-500 text-rose-600 dark:text-rose-400" : ""}`}
                           {...register(`items.${index}.cantidad`, {
@@ -604,6 +608,7 @@ export default function OrderForm({ orderId }: OrderFormProps) {
                           type="number"
                           placeholder="0.00"
                           step="0.01"
+                          aria-label="Precio"
                           className={`w-full bg-transparent border-b border-transparent focus:ring-0 p-1.5 text-xs text-right text-slate-700 dark:text-slate-200 focus:border-sky-500 ${precioError ? "border-rose-500 text-rose-600 dark:text-rose-400" : ""}`}
                           {...register(`items.${index}.precio`, {
                             valueAsNumber: true,
@@ -621,6 +626,7 @@ export default function OrderForm({ orderId }: OrderFormProps) {
                         <input
                           type="number"
                           placeholder="0"
+                          aria-label="Descuento porcentaje"
                           className={`w-full bg-transparent border-b border-transparent focus:ring-0 p-1.5 text-xs text-right text-slate-700 dark:text-slate-200 focus:border-sky-500 ${descuentoError ? "border-rose-500 text-rose-600 dark:text-rose-400" : ""}`}
                           {...register(`items.${index}.descuento`, {
                             valueAsNumber: true,
@@ -640,6 +646,7 @@ export default function OrderForm({ orderId }: OrderFormProps) {
                           placeholder="0.00"
                           readOnly
                           value={calculatedImporte}
+                          aria-label="Importe"
                           className={`w-full bg-transparent border-b border-transparent focus:ring-0 p-1.5 text-xs text-right text-slate-700 dark:text-slate-200 focus:border-sky-500 ${importeError ? "border-rose-500 text-rose-600 dark:text-rose-400" : ""}`}
                         />
                         {importeError && (
@@ -653,6 +660,7 @@ export default function OrderForm({ orderId }: OrderFormProps) {
                       <button
                         type="button"
                         onClick={() => remove(index)}
+                        aria-label="Eliminar partida"
                         className="text-slate-400 hover:text-rose-500 transition-colors cursor-pointer p-1"
                       >
                         ✕
@@ -704,6 +712,7 @@ export default function OrderForm({ orderId }: OrderFormProps) {
             <input
               type="text"
               placeholder="Cotización / OC"
+              aria-label="Documento relacionado"
               autoComplete="off"
               className={`w-full bg-transparent border-b text-xs py-1 focus:outline-none border-slate-200 dark:border-slate-700 ${docRelacionadoError ? "border-rose-500 text-rose-600 dark:text-rose-400" : ""}`}
               {...register("docRelacionado")}
@@ -722,6 +731,7 @@ export default function OrderForm({ orderId }: OrderFormProps) {
             <textarea
               rows={3}
               placeholder="Notas del pedido..."
+              aria-label="Observaciones"
               className="w-full bg-white dark:bg-black/20 border border-slate-200 dark:border-slate-700 rounded-lg p-2 text-xs resize-none focus:outline-none"
               {...register("observaciones")}
             />
@@ -745,6 +755,7 @@ export default function OrderForm({ orderId }: OrderFormProps) {
                     </span>
                     <input
                       type="number"
+                      aria-label="Flete"
                       className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-slate-800 rounded-lg pl-5 pr-2 py-1.5 text-sm text-right focus:outline-none focus:ring-1 focus:ring-sky-500"
                       {...register("flete", { valueAsNumber: true })}
                     />
@@ -760,6 +771,7 @@ export default function OrderForm({ orderId }: OrderFormProps) {
                     </span>
                     <input
                       type="number"
+                      aria-label="Seguros"
                       className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-slate-800 rounded-lg pl-5 pr-2 py-1.5 text-sm text-right focus:outline-none focus:ring-1 focus:ring-sky-500"
                       {...register("seguro", { valueAsNumber: true })}
                     />
@@ -775,6 +787,7 @@ export default function OrderForm({ orderId }: OrderFormProps) {
                     </span>
                     <input
                       type="number"
+                      aria-label="Anticipo"
                       className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-slate-800 rounded-lg pl-5 pr-2 py-1.5 text-sm text-right focus:outline-none focus:ring-1 focus:ring-sky-500 text-rose-500 font-medium"
                       {...register("anticipo", { valueAsNumber: true })}
                     />
@@ -808,6 +821,7 @@ export default function OrderForm({ orderId }: OrderFormProps) {
                   <div className="w-20">
                     <FormSelect
                       className="px-2 py-1.5 text-xs bg-slate-100 dark:bg-white/10 rounded-lg"
+                      aria-label="Tasa de IVA"
                       options={[
                         { value: 0.16, label: "16%" },
                         { value: 0.08, label: "8%" },

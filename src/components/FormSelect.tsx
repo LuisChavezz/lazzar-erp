@@ -11,17 +11,23 @@ interface FormSelectProps extends React.SelectHTMLAttributes<HTMLSelectElement> 
 
 export const FormSelect = forwardRef<HTMLSelectElement, FormSelectProps>(
   ({ label, error, className = "", options, children, ...props }, ref) => {
-    
+    const selectId =
+      props.id ?? (typeof props.name === "string" ? props.name : undefined);
+
     return (
       <div className="group/field w-full">
         {label && (
-          <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider ml-1 mb-1 block transition-colors group-focus-within/field:text-brand-500">
+          <label
+            htmlFor={selectId}
+            className="text-[11px] font-bold text-slate-400 uppercase tracking-wider ml-1 mb-1 block transition-colors group-focus-within/field:text-brand-500"
+          >
             {label}
           </label>
         )}
         <div className="relative">
           <select
             ref={ref}
+            id={selectId}
             className={`
               w-full appearance-none
               bg-slate-50 dark:bg-black/20
