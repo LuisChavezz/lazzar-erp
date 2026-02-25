@@ -1,8 +1,14 @@
 export interface ProductionOrder {
-  id: string;
-  product: string;
-  quantity: number;
-  startDate: string;
-  status: "En Producción" | "Planificado" | "Control Calidad" | "Terminado";
-  progress: number;
+  estatusOp: "En Proceso" | "Planificado" | "Control Calidad" | "Terminado";
+  pedido: string;
+  fechaIngreso: string;
+  fechaEntrega: string;
+  op: string;
+  fechaOp: string;
+  modelo: string;
+  producto: string;
+  color: string;
+  categoria: string;
+  cantidad: number;
+  centroConfeccion: string;
 }
