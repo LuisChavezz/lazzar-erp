@@ -15,7 +15,10 @@ import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import { Order } from "../interfaces/order.interface";
 import { Loader } from "@/src/components/Loader";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useWarehouses } from "../../warehouses/hooks/useWarehouses";
+import { useWorkspaceStore } from "../../workspace/store/workspace.store";
+import { useCompanyBranches } from "../../branches/hooks/useCompanyBranches";
 
 const defaultItem: OrderFormValues["items"][number] = {
   sku: "",
@@ -44,6 +47,24 @@ export default function OrderForm({ orderId }: OrderFormProps) {
     orderId ? s.orders.find((o) => o.id === orderId) : undefined
   );
   const router = useRouter();
+  const companyId = useWorkspaceStore((s) => s.selectedCompany.id);
+  const { branches: availableBranches, isLoading: isLoadingBranches } =
+    useCompanyBranches(companyId);
+  const { data: warehouses = [], isLoading: isLoadingWarehouses } = useWarehouses();
+  const activeWarehouses = warehouses.filter(
+    (warehouse) => warehouse.estatus === "Activo" || warehouse.estatus === "Mantenimiento"
+  );
+
+  const hasBranch = availableBranches.some(
+    (branch) => branch.id === orderToEdit?.sucursal
+  );
+  const hasWarehouse = activeWarehouses.some(
+    (warehouse) =>
+      warehouse.id_almacen === orderToEdit?.almacen &&
+      warehouse.sucursal === orderToEdit?.sucursal
+  );
+  const savedSucursalId = orderToEdit?.sucursal ?? 0;
+  const savedAlmacenId = orderToEdit?.almacen ?? 0;
 
   const emptyValues: OrderFormValues = {
     clienteId: "",
@@ -54,8 +75,8 @@ export default function OrderForm({ orderId }: OrderFormProps) {
     agente: "",
     comision: 0,
     plazo: 30,
-    sucursal: "matriz",
-    almacen: "general",
+    sucursal: 0,
+    almacen: 0,
     canal: "mayorista",
     puntos: 0,
     anticipoReq: 0,
@@ -80,8 +101,8 @@ export default function OrderForm({ orderId }: OrderFormProps) {
         agente: orderToEdit.agente,
         comision: orderToEdit.comision,
         plazo: orderToEdit.plazo,
-        sucursal: orderToEdit.sucursal,
-        almacen: orderToEdit.almacen,
+        sucursal: hasBranch ? orderToEdit.sucursal : 0,
+        almacen: hasBranch && hasWarehouse ? orderToEdit.almacen : 0,
         canal: orderToEdit.canal,
         puntos: orderToEdit.puntos,
         anticipoReq: orderToEdit.anticipoReq,
@@ -102,6 +123,8 @@ export default function OrderForm({ orderId }: OrderFormProps) {
     handleSubmit,
     control,
     reset,
+    setValue,
+    getValues,
     formState: { errors, isSubmitting },
   } = useForm<OrderFormValues>({
     resolver: zodResolver(orderFormSchema) as Resolver<OrderFormValues>,
@@ -119,6 +142,22 @@ export default function OrderForm({ orderId }: OrderFormProps) {
   const watchedSeguro = useWatch({ control, name: "seguro" });
   const watchedAnticipo = useWatch({ control, name: "anticipo" });
   const watchedIva = useWatch({ control, name: "iva" });
+  const watchedSucursal = useWatch({ control, name: "sucursal" });
+  const selectedSucursalId = Number(watchedSucursal) || 0;
+  const warehousesByBranch = useMemo(
+    () =>
+      selectedSucursalId
+        ? activeWarehouses.filter((warehouse) => warehouse.sucursal === selectedSucursalId)
+        : [],
+    [activeWarehouses, selectedSucursalId]
+  );
+  const warehousePlaceholder = isLoadingWarehouses
+    ? "Cargando almacenes..."
+    : selectedSucursalId === 0
+    ? "Selecciona una sucursal..."
+    : warehousesByBranch.length === 0
+    ? "Sin almacenes disponibles"
+    : "Seleccionar...";
 
   const {
     subtotal,
@@ -162,6 +201,51 @@ export default function OrderForm({ orderId }: OrderFormProps) {
 
   const [isLoading, setIsLoading] = useState(false);
   const isPending = isSubmitting || isLoading;
+
+  useEffect(() => {
+    if (isLoadingWarehouses) {
+      return;
+    }
+    const currentAlmacen = Number(getValues("almacen")) || 0;
+    if (
+      isEditing &&
+      savedSucursalId !== 0 &&
+      selectedSucursalId === savedSucursalId &&
+      currentAlmacen === 0
+    ) {
+      const existsInBranch = warehousesByBranch.some(
+        (warehouse) => warehouse.id_almacen === savedAlmacenId
+      );
+      if (existsInBranch) {
+        setValue("almacen", savedAlmacenId, {
+          shouldValidate: true,
+          shouldDirty: false,
+        });
+        return;
+      }
+    }
+    if (selectedSucursalId === 0) {
+      if (currentAlmacen !== 0) {
+        setValue("almacen", 0, { shouldValidate: true, shouldDirty: true });
+      }
+      return;
+    }
+    const isValid = warehousesByBranch.some(
+      (warehouse) => warehouse.id_almacen === currentAlmacen
+    );
+    if (!isValid && currentAlmacen !== 0) {
+      setValue("almacen", 0, { shouldValidate: true, shouldDirty: true });
+    }
+  }, [
+    getValues,
+    isEditing,
+    isLoadingWarehouses,
+    savedAlmacenId,
+    savedSucursalId,
+    selectedSucursalId,
+    setValue,
+    warehousesByBranch,
+  ]);
 
   const computeItemsFrom = (items: OrderFormValues["items"]) =>
     (items || []).map((item) => {
@@ -387,22 +471,48 @@ export default function OrderForm({ orderId }: OrderFormProps) {
           <div className="md:col-span-1">
             <FormSelect
               label="Sucursal"
-              options={[
-                { value: "matriz", label: "Matriz" },
-                { value: "norte", label: "Sucursal Norte" },
-              ]}
-              {...register("sucursal")}
-            />
+              {...register("sucursal", { valueAsNumber: true })}
+              error={getFieldError(errors.sucursal)}
+              disabled={isLoadingBranches}
+            >
+              <option value={0} disabled>
+                {isLoadingBranches
+                  ? "Cargando sucursales..."
+                  : availableBranches.length === 0
+                  ? "No hay sucursales disponibles"
+                  : "Seleccionar..."}
+              </option>
+              {availableBranches.map((branch) => (
+                <option
+                  key={branch.id}
+                  value={branch.id}
+                  className="bg-white dark:bg-zinc-900 text-slate-900 dark:text-white"
+                >
+                  {branch.codigo} - {branch.nombre}
+                </option>
+              ))}
+            </FormSelect>
           </div>
           <div className="md:col-span-1">
             <FormSelect
               label="Almacén"
-              options={[
-                { value: "general", label: "General" },
-                { value: "pt", label: "Producto Terminado" },
-              ]}
-              {...register("almacen")}
-            />
+              {...register("almacen", { valueAsNumber: true })}
+              error={getFieldError(errors.almacen)}
+              disabled={isLoadingWarehouses || selectedSucursalId === 0}
+            >
+              <option value={0} disabled>
+                {warehousePlaceholder}
+              </option>
+              {warehousesByBranch.map((warehouse) => (
+                <option
+                  key={warehouse.id_almacen}
+                  value={warehouse.id_almacen}
+                  className="bg-white dark:bg-zinc-900 text-slate-900 dark:text-white"
+                >
+                  {warehouse.codigo} - {warehouse.nombre}
+                </option>
+              ))}
+            </FormSelect>
           </div>
           <div className="md:col-span-1">
             <FormSelect

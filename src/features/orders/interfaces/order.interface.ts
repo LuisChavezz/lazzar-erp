@@ -1,3 +1,6 @@
+import { Branch } from "../../branches/interfaces/branch.interface";
+import { Warehouse } from "../../warehouses/interfaces/warehouse.interface";
+
 export type OrderStatus =
   | "capturado"
   | "autorizado"
@@ -38,8 +41,8 @@ export interface Order {
   agente: string;
   comision: number;
   plazo: number;
-  sucursal: string;
-  almacen: string;
+  sucursal: Branch["id"];
+  almacen: Warehouse["id_almacen"];
   canal: string;
   puntos: number;
   anticipoReq: number;
