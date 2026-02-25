@@ -34,7 +34,7 @@ export const useOrderStore = create<OrderState>()(
           })),
       }),
       {
-        name: "orderStore",
+        name: "order-storage",
       }
     )
   )
