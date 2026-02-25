@@ -1,18 +1,13 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
 import { useSession } from "next-auth/react";
-import { useForm, useFieldArray, useWatch } from "react-hook-form";
+import { useForm, useFieldArray, useWatch, Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { FormInput } from "@/src/components/FormInput";
 import { FormSelect } from "@/src/components/FormSelect";
-import { FormSubmitButton } from "@/src/components/FormButtons";
+import { FormCancelButton, FormSubmitButton } from "@/src/components/FormButtons";
 import { PedidosIcon } from "@/src/components/Icons";
-import {
-  orderFormSchema,
-  OrderFormInput,
-  OrderFormValues,
-} from "../schema/order.schema";
+import { orderFormSchema, OrderFormValues } from "../schema/order.schema";
 import { getFieldError } from "../../../utils/getFieldError";
 import { formatCurrency } from "../../../utils/formatCurrency";
 import { useOrderStore } from "../stores/order.store";
@@ -20,10 +15,9 @@ import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import { Order } from "../interfaces/order.interface";
 import { Loader } from "@/src/components/Loader";
+import { useState } from "react";
 
-
-// Default item values
-const defaultItem: OrderFormInput["items"][number] = {
+const defaultItem: OrderFormValues["items"][number] = {
   sku: "",
   descripcion: "",
   unidad: "PZA",
@@ -38,14 +32,11 @@ interface OrderFormProps {
 }
 
 export default function OrderForm({ orderId }: OrderFormProps) {
-
-  // Obtener el nombre del usuario de la sesión
   const { data: session } = useSession();
   const userName = session?.user?.name || "Usuario";
-  const userId = session!.user.id;
-  const isEdit = Boolean(orderId);
+  const userId = session?.user?.id ?? "";
+  const isEditing = Boolean(orderId);
 
-  // Obtener la fecha actual en formato "YYYY-MM-DD"
   const todayStr = new Date().toISOString().split("T")[0];
   const addOrder = useOrderStore((s) => s.addOrder);
   const updateOrder = useOrderStore((s) => s.updateOrder);
@@ -54,205 +45,80 @@ export default function OrderForm({ orderId }: OrderFormProps) {
   );
   const router = useRouter();
 
-  const baseDefaultValues = useMemo<OrderFormInput>(
-    () => ({
-      clienteId: "",
-      clienteNombre: "",
-      pedidoCliente: "",
-      fecha: todayStr,
-      fechaVence: "",
-      agente: "",
-      comision: 0,
-      plazo: 30,
-      sucursal: "matriz",
-      almacen: "general",
-      canal: "mayorista",
-      puntos: 0,
-      anticipoReq: 0,
-      pedidoInicial: false,
-      estatusPedido: "capturado",
-      docRelacionado: "",
-      observaciones: "",
-      flete: 0,
-      seguro: 0,
-      anticipo: 0,
-      iva: 0.16,
-      items: [defaultItem],
-    }),
-    [todayStr]
-  );
+  const emptyValues: OrderFormValues = {
+    clienteId: "",
+    clienteNombre: "",
+    pedidoCliente: "",
+    fecha: todayStr,
+    fechaVence: "",
+    agente: "",
+    comision: 0,
+    plazo: 30,
+    sucursal: "matriz",
+    almacen: "general",
+    canal: "mayorista",
+    puntos: 0,
+    anticipoReq: 0,
+    pedidoInicial: false,
+    estatusPedido: "capturado",
+    docRelacionado: "",
+    observaciones: "",
+    flete: 0,
+    seguro: 0,
+    anticipo: 0,
+    iva: 0.16,
+    items: [defaultItem],
+  };
 
-  const editValues = useMemo<OrderFormInput | undefined>(() => {
-    if (!orderToEdit) return undefined;
-    return {
-      clienteId: orderToEdit.clienteId,
-      clienteNombre: orderToEdit.clienteNombre,
-      pedidoCliente: orderToEdit.pedidoCliente,
-      fecha: orderToEdit.fecha,
-      fechaVence: orderToEdit.fechaVence,
-      agente: orderToEdit.agente,
-      comision: orderToEdit.comision,
-      plazo: orderToEdit.plazo,
-      sucursal: orderToEdit.sucursal,
-      almacen: orderToEdit.almacen,
-      canal: orderToEdit.canal,
-      puntos: orderToEdit.puntos,
-      anticipoReq: orderToEdit.anticipoReq,
-      pedidoInicial: orderToEdit.pedidoInicial,
-      estatusPedido: orderToEdit.estatusPedido,
-      docRelacionado: orderToEdit.docRelacionado,
-      observaciones: orderToEdit.observaciones ?? "",
-      flete: orderToEdit.totals.flete,
-      seguro: orderToEdit.totals.seguro,
-      anticipo: orderToEdit.totals.anticipo,
-      iva: orderToEdit.totals.ivaRate,
-      items: orderToEdit.items.map((i) => ({ ...i })),
-    };
-  }, [orderToEdit]);
+  const editValues: OrderFormValues = orderToEdit
+    ? {
+        clienteId: orderToEdit.clienteId,
+        clienteNombre: orderToEdit.clienteNombre,
+        pedidoCliente: orderToEdit.pedidoCliente,
+        fecha: orderToEdit.fecha,
+        fechaVence: orderToEdit.fechaVence,
+        agente: orderToEdit.agente,
+        comision: orderToEdit.comision,
+        plazo: orderToEdit.plazo,
+        sucursal: orderToEdit.sucursal,
+        almacen: orderToEdit.almacen,
+        canal: orderToEdit.canal,
+        puntos: orderToEdit.puntos,
+        anticipoReq: orderToEdit.anticipoReq,
+        pedidoInicial: orderToEdit.pedidoInicial,
+        estatusPedido: orderToEdit.estatusPedido,
+        docRelacionado: orderToEdit.docRelacionado,
+        observaciones: orderToEdit.observaciones ?? "",
+        flete: orderToEdit.totals.flete,
+        seguro: orderToEdit.totals.seguro,
+        anticipo: orderToEdit.totals.anticipo,
+        iva: orderToEdit.totals.ivaRate,
+        items: orderToEdit.items.map((i) => ({ ...i })),
+      }
+    : emptyValues;
 
   const {
     register,
     handleSubmit,
     control,
-    setValue,
+    reset,
     formState: { errors, isSubmitting },
-  } = useForm<OrderFormInput, unknown, OrderFormValues>({
-    resolver: zodResolver(orderFormSchema),
-    defaultValues: baseDefaultValues,
-    values: isEdit ? editValues : undefined,
+  } = useForm<OrderFormValues>({
+    resolver: zodResolver(orderFormSchema) as Resolver<OrderFormValues>,
+    defaultValues: emptyValues,
+    values: isEditing ? editValues : undefined,
   });
 
-  // Obtener el array de productos (items) del formulario
   const { fields, append, remove } = useFieldArray({
     control,
     name: "items",
   });
 
-
-  // Se elimina la lógica de limpiar/resetear el formulario
-
-  // Observar los cambios en los campos "items", "flete", "seguro", "anticipo" y "iva" 
-  // para recalcular los importes de los productos y el total generalo
   const watchedItems = useWatch({ control, name: "items" });
   const watchedFlete = useWatch({ control, name: "flete" });
   const watchedSeguro = useWatch({ control, name: "seguro" });
   const watchedAnticipo = useWatch({ control, name: "anticipo" });
   const watchedIva = useWatch({ control, name: "iva" });
-
-  // Manejar la submisión del formulario
-  const onSubmit = (values: OrderFormValues) => {
-    if (isEdit) {
-      if (!orderToEdit) {
-        toast.error("No se encontró el pedido para editar");
-        return;
-      }
-
-      const items = (values.items || []).map((item) => {
-        const cantidad = Number(item.cantidad) || 0;
-        const precio = Number(item.precio) || 0;
-        const descuento = Number(item.descuento) || 0;
-        const amount = cantidad * precio;
-        const descuentoAmount = amount * (descuento / 100);
-        const importe = Number((amount - descuentoAmount).toFixed(2));
-        return { ...item, importe };
-      });
-
-      const updatedOrder: Order = {
-        ...orderToEdit,
-        clienteId: values.clienteId,
-        clienteNombre: values.clienteNombre,
-        pedidoCliente: values.pedidoCliente,
-        fecha: values.fecha,
-        fechaVence: values.fechaVence,
-        agente: values.agente,
-        comision: values.comision,
-        plazo: values.plazo,
-        sucursal: values.sucursal,
-        almacen: values.almacen,
-        canal: values.canal,
-        puntos: values.puntos,
-        anticipoReq: values.anticipoReq,
-        pedidoInicial: values.pedidoInicial,
-        estatusPedido: values.estatusPedido as Order["estatusPedido"],
-        docRelacionado: values.docRelacionado,
-        observaciones: values.observaciones,
-        items,
-        totals: {
-          subtotal,
-          descuentoTotal,
-          ivaAmount,
-          granTotal,
-          saldoPendiente,
-          flete: Number(watchedFlete) || 0,
-          seguro: Number(watchedSeguro) || 0,
-          anticipo: Number(watchedAnticipo) || 0,
-          ivaRate: Number(watchedIva) || 0,
-        },
-      };
-
-      updateOrder(updatedOrder);
-      toast.success("Pedido actualizado correctamente");
-      router.replace("/orders");
-      return;
-    }
-
-    const id = crypto.randomUUID();
-
-    const items = (values.items || []).map((item) => {
-      const cantidad = Number(item.cantidad) || 0;
-      const precio = Number(item.precio) || 0;
-      const descuento = Number(item.descuento) || 0;
-      const amount = cantidad * precio;
-      const descuentoAmount = amount * (descuento / 100);
-      const importe = Number((amount - descuentoAmount).toFixed(2));
-      return { ...item, importe };
-    });
-
-    const newOrder: Order = {
-      id,
-      folio: `#ORD-${id.split("-")[0].toUpperCase()}`,
-      clienteId: values.clienteId,
-      clienteNombre: values.clienteNombre,
-      pedidoCliente: values.pedidoCliente,
-      fecha: values.fecha,
-      fechaVence: values.fechaVence,
-      agente: values.agente,
-      comision: values.comision,
-      plazo: values.plazo,
-      sucursal: values.sucursal,
-      almacen: values.almacen,
-      canal: values.canal,
-      puntos: values.puntos,
-      anticipoReq: values.anticipoReq,
-      pedidoInicial: values.pedidoInicial,
-      estatusPedido: values.estatusPedido as Order["estatusPedido"],
-      docRelacionado: values.docRelacionado,
-      observaciones: values.observaciones,
-      capturadoPor: userId,
-      items,
-      totals: {
-        subtotal,
-        descuentoTotal,
-        ivaAmount,
-        granTotal,
-        saldoPendiente,
-        flete: Number(watchedFlete) || 0,
-        seguro: Number(watchedSeguro) || 0,
-        anticipo: Number(watchedAnticipo) || 0,
-        ivaRate: Number(watchedIva) || 0,
-      },
-    };
-
-    addOrder(newOrder);
-    toast.success("Pedido registrado correctamente");
-    router.replace("/orders");
-  };
-
-  // Obtener el error del campo "items" cuando no hay productos agregados
-  const itemsError = getFieldError(
-    errors.items?.root ?? (errors.items as unknown)
-  );
-  const docRelacionadoError = getFieldError(errors.docRelacionado);
 
   const {
     subtotal,
@@ -294,26 +160,103 @@ export default function OrderForm({ orderId }: OrderFormProps) {
     };
   })();
 
-  useEffect(() => {
-    const items = watchedItems || [];
-    items.forEach((item, index) => {
-      const cantidad = Number(item?.cantidad) || 0;
-      const precio = Number(item?.precio) || 0;
-      const descuento = Number(item?.descuento) || 0;
+  const [isLoading, setIsLoading] = useState(false);
+  const isPending = isSubmitting || isLoading;
+
+  const computeItemsFrom = (items: OrderFormValues["items"]) =>
+    (items || []).map((item) => {
+      const cantidad = Number(item.cantidad) || 0;
+      const precio = Number(item.precio) || 0;
+      const descuento = Number(item.descuento) || 0;
       const amount = cantidad * precio;
       const descuentoAmount = amount * (descuento / 100);
       const importe = Number((amount - descuentoAmount).toFixed(2));
-      const currentImporte = Number(item?.importe) || 0;
-      if (importe !== currentImporte) {
-        setValue(`items.${index}.importe`, importe, {
-          shouldDirty: false,
-          shouldValidate: false,
-        });
-      }
+      return { ...item, importe };
     });
-  }, [setValue, watchedItems]);
 
-  const showForm = !isEdit || !!editValues;
+  const computeTotalsFrom = (values: OrderFormValues) => {
+    const items = values.items || [];
+    let subtotalValue = 0;
+    let descuentoValue = 0;
+    items.forEach((item) => {
+      const cantidad = Number(item.cantidad) || 0;
+      const precio = Number(item.precio) || 0;
+      const descuento = Number(item.descuento) || 0;
+      const amount = cantidad * precio;
+      const descuentoAmount = amount * (descuento / 100);
+      subtotalValue += amount;
+      descuentoValue += descuentoAmount;
+    });
+    const fleteValue = Number(values.flete) || 0;
+    const seguroValue = Number(values.seguro) || 0;
+    const anticipoValue = Number(values.anticipo) || 0;
+    const ivaRate = Number(values.iva) || 0;
+    const baseImponible = subtotalValue - descuentoValue + fleteValue + seguroValue;
+    const ivaValue = baseImponible * ivaRate;
+    const totalValue = baseImponible + ivaValue;
+    const saldoValue = totalValue - anticipoValue;
+    return {
+      subtotal: subtotalValue,
+      descuentoTotal: descuentoValue,
+      ivaAmount: ivaValue,
+      granTotal: totalValue,
+      saldoPendiente: saldoValue,
+      flete: fleteValue,
+      seguro: seguroValue,
+      anticipo: anticipoValue,
+      ivaRate,
+    };
+  };
+
+  const makeUpdatedOrder = (values: OrderFormValues): Order => ({
+    ...orderToEdit!,
+    ...values,
+    estatusPedido: values.estatusPedido as Order["estatusPedido"],
+    items: computeItemsFrom(values.items),
+    totals: computeTotalsFrom(values),
+  });
+
+  const makeNewOrder = (values: OrderFormValues): Order => {
+    const id = crypto.randomUUID();
+    return {
+      id,
+      folio: `#ORD-${id.split("-")[0].toUpperCase()}`,
+      capturadoPor: userId,
+      ...values,
+      estatusPedido: values.estatusPedido as Order["estatusPedido"],
+      items: computeItemsFrom(values.items),
+      totals: computeTotalsFrom(values),
+    };
+  };
+
+  const onSubmit = async (values: OrderFormValues) => {
+    setIsLoading(true);
+    try {
+      if (isEditing && orderToEdit) {
+        const updatedOrder = makeUpdatedOrder(values);
+        await updateOrder(updatedOrder);
+        reset(editValues);
+        toast.success("Pedido actualizado correctamente");
+      } else {
+        const newOrder = makeNewOrder(values);
+        await addOrder(newOrder);
+        reset(emptyValues);
+        toast.success("Pedido registrado correctamente");
+      }
+      router.replace("/orders");
+    } catch {
+      toast.error("No se pudo guardar el pedido");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const itemsError = getFieldError(
+    errors.items?.root ?? (errors.items as unknown)
+  );
+  const docRelacionadoError = getFieldError(errors.docRelacionado);
+
+  const showForm = !isEditing || !!orderToEdit;
   if (!showForm) {
     return (
       <div className="w-full pt-2" role="status" aria-live="polite">
@@ -326,11 +269,11 @@ export default function OrderForm({ orderId }: OrderFormProps) {
       </div>
     );
   }
-  const formKey = isEdit ? `${orderId}-ready` : "new";
+
+  const formKey = isEditing ? `${orderId}-ready` : "new";
+
   return (
     <form key={formKey} onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-
-      {/* Detalle de Comercialización */}
       <section className="relative overflow-hidden bg-white dark:bg-zinc-900 rounded-3xl p-6 md:p-8 border border-slate-200 dark:border-white/5 shadow-sm dark:shadow-none">
         <div className="absolute top-0 right-0 w-96 h-96 bg-sky-500/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none" />
         <div className="absolute bottom-0 left-0 w-64 h-64 bg-sky-500/5 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2 pointer-events-none" />
@@ -350,12 +293,6 @@ export default function OrderForm({ orderId }: OrderFormProps) {
             </div>
           </div>
           <div className="flex items-center gap-4">
-            {/* <div className="hidden md:flex items-center gap-2 text-sm font-medium">
-              <span className="text-slate-400">Estatus:</span>
-              <span className="px-2.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
-                Borrador
-              </span>
-            </div> */}
             <div className="text-right">
               <p className="text-[10px] uppercase font-bold text-slate-400">
                 Total Pedido
@@ -514,7 +451,6 @@ export default function OrderForm({ orderId }: OrderFormProps) {
         </div>
       </section>
 
-      {/* Detalle de Productos */}
       <section className="bg-white dark:bg-zinc-900 rounded-3xl p-6 border border-slate-200 dark:border-white/5 shadow-sm flex flex-col h-125">
         {itemsError && (
           <p className="text-xs text-rose-600 dark:text-rose-400 font-medium mb-2">
@@ -526,11 +462,6 @@ export default function OrderForm({ orderId }: OrderFormProps) {
             Detalle de Productos
           </h2>
           <div className="flex gap-2">
-            {/* <div className="bg-slate-100 dark:bg-white/5 rounded-lg px-3 py-1 text-xs text-slate-500 flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-emerald-500" /> Disp
-              <span className="w-2 h-2 rounded-full bg-amber-500 ml-1" /> Asig
-              <span className="w-2 h-2 rounded-full bg-sky-500 ml-1" /> Surt
-            </div> */}
             <button
               type="button"
               onClick={() => append(defaultItem)}
@@ -584,6 +515,14 @@ export default function OrderForm({ orderId }: OrderFormProps) {
                 const precioError = getFieldError(itemErrors?.precio);
                 const descuentoError = getFieldError(itemErrors?.descuento);
                 const importeError = getFieldError(itemErrors?.importe);
+
+                const currentItem = watchedItems?.[index];
+                const cantidad = Number(currentItem?.cantidad) || 0;
+                const precio = Number(currentItem?.precio) || 0;
+                const descuento = Number(currentItem?.descuento) || 0;
+                const amount = cantidad * precio;
+                const descuentoAmount = amount * (descuento / 100);
+                const calculatedImporte = Number((amount - descuentoAmount).toFixed(2));
 
                 return (
                   <tr
@@ -700,10 +639,8 @@ export default function OrderForm({ orderId }: OrderFormProps) {
                           type="number"
                           placeholder="0.00"
                           readOnly
+                          value={calculatedImporte}
                           className={`w-full bg-transparent border-b border-transparent focus:ring-0 p-1.5 text-xs text-right text-slate-700 dark:text-slate-200 focus:border-sky-500 ${importeError ? "border-rose-500 text-rose-600 dark:text-rose-400" : ""}`}
-                          {...register(`items.${index}.importe`, {
-                            valueAsNumber: true,
-                          })}
                         />
                         {importeError && (
                           <p className="text-[10px] text-rose-600 dark:text-rose-400 text-right">
@@ -729,15 +666,11 @@ export default function OrderForm({ orderId }: OrderFormProps) {
         </div>
 
         <div className="mt-2 pt-2 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs">
-          <div className="text-slate-400">
-            {fields.length} partidas
-          </div>
+          <div className="text-slate-400">{fields.length} partidas</div>
         </div>
       </section>
 
-      {/* Detalle de Control del Sistema */}
       <section className="grid grid-cols-1 lg:grid-cols-4 gap-6 items-start">
-        {/* Estatus Pedido */}
         <div className="lg:col-span-1 bg-slate-50/80 dark:bg-white/5 backdrop-blur-md rounded-3xl p-6 border border-slate-200 dark:border-white/5 shadow-inner space-y-4">
           <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">
             Control del Sistema
@@ -760,7 +693,7 @@ export default function OrderForm({ orderId }: OrderFormProps) {
               Capturado por
             </p>
             <p className="text-xs font-medium text-slate-700 dark:text-slate-200">
-              {isEdit ? (orderToEdit?.capturadoPor ?? userName) : userName}
+              {isEditing ? (orderToEdit?.capturadoPor ?? userName) : userName}
             </p>
           </div>
 
@@ -771,6 +704,7 @@ export default function OrderForm({ orderId }: OrderFormProps) {
             <input
               type="text"
               placeholder="Cotización / OC"
+              autoComplete="off"
               className={`w-full bg-transparent border-b text-xs py-1 focus:outline-none border-slate-200 dark:border-slate-700 ${docRelacionadoError ? "border-rose-500 text-rose-600 dark:text-rose-400" : ""}`}
               {...register("docRelacionado")}
             />
@@ -794,7 +728,6 @@ export default function OrderForm({ orderId }: OrderFormProps) {
           </div>
         </div>
 
-        {/* Cargos Adicionales */}
         <div className="lg:col-span-3 bg-white dark:bg-zinc-900 rounded-3xl p-6 border border-slate-200 dark:border-white/5 shadow-sm">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             <div className="space-y-4">
@@ -909,13 +842,16 @@ export default function OrderForm({ orderId }: OrderFormProps) {
         </div>
       </section>
 
-      {/* Botones de Acción */}
       <div className="flex justify-end gap-3 pb-8">
+        <FormCancelButton
+          onClick={() => reset(isEditing ? editValues : emptyValues)}
+          disabled={isPending}
+        />
         <FormSubmitButton
-          isPending={isSubmitting}
-          loadingLabel="Guardando Pedido..."
+          isPending={isPending}
+          loadingLabel={isEditing ? "Actualizando..." : "Guardando..."}
         >
-          Guardar Pedido
+          {isEditing ? "Actualizar Pedido" : "Guardar Pedido"}
         </FormSubmitButton>
       </div>
     </form>
