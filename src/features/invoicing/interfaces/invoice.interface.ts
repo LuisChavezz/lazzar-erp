@@ -1,9 +1,10 @@
 export interface Invoice {
-  folio: string;
-  client: string;
-  rfc: string;
+  pedido: string;
+  factura: string;
+  total: number;
+  cliente: string;
+  vendedor: string;
+  paqueteria: string;
+  guias: string;
   date: string;
-  dueDate: string;
-  amount: number;
-  status: "Pagada" | "Pendiente" | "Vencida" | "Cancelada";
 }
