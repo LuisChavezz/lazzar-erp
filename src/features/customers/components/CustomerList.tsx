@@ -4,54 +4,49 @@ import { CustomerItem } from "../interfaces/customer.interface";
 
 const CUSTOMERS_DATA: CustomerItem[] = [
   {
-    id: "CUS-001",
-    code: "CLI-1001",
-    name: "Grupo Comercial Alfa",
-    segment: "Retail",
-    city: "Monterrey, NL",
-    status: "Activo",
-    lastOrder: "22 Feb 2026",
-    totalSales: "$1,240,500",
+    razonSocial: "Grupo Comercial Alfa",
+    contacto: "María González",
+    telefono: "+52 81 4455 1200",
+    correo: "maria.gonzalez@alfa.com.mx",
+    ultimaCompra: "18 Feb 2026",
+    ultimoPedido: "PED-2408",
+    vendedor: "Laura Pérez",
   },
   {
-    id: "CUS-002",
-    code: "CLI-1024",
-    name: "Industrias del Bajío",
-    segment: "Industrial",
-    city: "León, GTO",
-    status: "En riesgo",
-    lastOrder: "10 Feb 2026",
-    totalSales: "$642,120",
+    razonSocial: "Industrias del Bajío",
+    contacto: "Carlos Rivas",
+    telefono: "+52 477 331 7788",
+    correo: "crivas@bajio.mx",
+    ultimaCompra: "10 Feb 2026",
+    ultimoPedido: "PED-2399",
+    vendedor: "Diana Ortega",
   },
   {
-    id: "CUS-003",
-    code: "CLI-1088",
-    name: "Distribuciones Pacífico",
-    segment: "Mayoreo",
-    city: "Tijuana, BC",
-    status: "Prospecto",
-    lastOrder: "18 Feb 2026",
-    totalSales: "$124,800",
+    razonSocial: "Distribuciones Pacífico",
+    contacto: "Ricardo Salas",
+    telefono: "+52 664 812 3344",
+    correo: "rsalas@pacifico.mx",
+    ultimaCompra: "18 Feb 2026",
+    ultimoPedido: "PED-2402",
+    vendedor: "Mario Silva",
   },
   {
-    id: "CUS-004",
-    code: "CLI-1112",
-    name: "Servicios Nova",
-    segment: "Servicios",
-    city: "CDMX",
-    status: "Activo",
-    lastOrder: "24 Feb 2026",
-    totalSales: "$980,450",
+    razonSocial: "Servicios Nova",
+    contacto: "Andrea Soto",
+    telefono: "+52 55 2788 4411",
+    correo: "andrea.soto@nova.com",
+    ultimaCompra: "24 Feb 2026",
+    ultimoPedido: "PED-2412",
+    vendedor: "Andrea Soto",
   },
   {
-    id: "CUS-005",
-    code: "CLI-1166",
-    name: "Tecnología Andina",
-    segment: "Tecnología",
-    city: "Querétaro, QRO",
-    status: "Inactivo",
-    lastOrder: "29 Ene 2026",
-    totalSales: "$412,900",
+    razonSocial: "Tecnología Andina",
+    contacto: "Luis Herrera",
+    telefono: "+52 442 901 2200",
+    correo: "luis.herrera@andina.mx",
+    ultimaCompra: "29 Ene 2026",
+    ultimoPedido: "PED-2378",
+    vendedor: "Carlos Rivas",
   },
 ];
 
@@ -62,7 +57,7 @@ export const CustomerList = () => {
         columns={customerColumns}
         data={CUSTOMERS_DATA}
         title="Clientes"
-        searchPlaceholder="Buscar por cliente, segmento o ciudad..."
+        searchPlaceholder="Buscar por razón social, contacto o vendedor..."
       />
     </div>
   );

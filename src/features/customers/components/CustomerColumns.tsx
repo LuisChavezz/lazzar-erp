@@ -4,74 +4,67 @@ import { ColumnDef } from "@tanstack/react-table";
 import { CustomerItem } from "../interfaces/customer.interface";
 import { EditIcon, ViewIcon } from "../../../components/Icons";
 
-const CustomerStatusBadge = ({ status }: { status: CustomerItem["status"] }) => {
-  const styles: Record<CustomerItem["status"], string> = {
-    Activo: "bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400",
-    Prospecto: "bg-sky-50 text-sky-600 dark:bg-sky-500/10 dark:text-sky-400",
-    "En riesgo": "bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400",
-    Inactivo: "bg-slate-100 text-slate-600 dark:bg-slate-500/20 dark:text-slate-400",
-  };
-
-  return (
-    <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${styles[status]}`}>
-      {status}
-    </span>
-  );
-};
-
 export const customerColumns: ColumnDef<CustomerItem>[] = [
   {
-    accessorKey: "code",
-    header: "Cliente",
+    accessorKey: "razonSocial",
+    header: "Razón social",
     cell: ({ row }) => (
-      <div className="flex flex-col">
-        <span className="font-medium text-slate-700 dark:text-slate-200">
-          {row.getValue("code")}
-        </span>
-        <span className="text-xs text-slate-500 dark:text-slate-400">
-          {row.original.name}
-        </span>
-      </div>
+      <span className="font-medium text-slate-700 dark:text-slate-200">
+        {row.getValue("razonSocial")}
+      </span>
     ),
   },
   {
-    accessorKey: "segment",
-    header: "Segmento",
+    accessorKey: "contacto",
+    header: "Contacto",
     cell: ({ row }) => (
       <span className="text-slate-600 dark:text-slate-300">
-        {row.getValue("segment")}
+        {row.getValue("contacto")}
       </span>
     ),
   },
   {
-    accessorKey: "city",
-    header: "Ciudad",
+    accessorKey: "telefono",
+    header: "Teléfono",
     cell: ({ row }) => (
       <span className="text-slate-600 dark:text-slate-300">
-        {row.getValue("city")}
+        {row.getValue("telefono")}
       </span>
     ),
   },
   {
-    accessorKey: "totalSales",
-    header: "Ventas",
+    accessorKey: "correo",
+    header: "Correo",
     cell: ({ row }) => (
-      <span className="font-semibold text-slate-700 dark:text-slate-200">
-        {row.getValue("totalSales")}
+      <span className="text-slate-600 dark:text-slate-300">
+        {row.getValue("correo")}
       </span>
     ),
   },
   {
-    accessorKey: "status",
-    header: "Estado",
-    cell: ({ row }) => <CustomerStatusBadge status={row.getValue("status")} />,
-  },
-  {
-    accessorKey: "lastOrder",
-    header: "Última orden",
+    accessorKey: "ultimaCompra",
+    header: "Última compra",
     cell: ({ row }) => (
       <span className="text-slate-500 dark:text-slate-400">
-        {row.getValue("lastOrder")}
+        {row.getValue("ultimaCompra")}
+      </span>
+    ),
+  },
+  {
+    accessorKey: "ultimoPedido",
+    header: "Último pedido",
+    cell: ({ row }) => (
+      <span className="text-slate-500 dark:text-slate-400">
+        {row.getValue("ultimoPedido")}
+      </span>
+    ),
+  },
+  {
+    accessorKey: "vendedor",
+    header: "Vendedor",
+    cell: ({ row }) => (
+      <span className="text-slate-600 dark:text-slate-300">
+        {row.getValue("vendedor")}
       </span>
     ),
   },
