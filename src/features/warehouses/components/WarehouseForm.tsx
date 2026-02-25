@@ -30,7 +30,7 @@ export default function WarehouseForm({ onSuccess, warehouseToEdit }: WarehouseF
     sucursal: 0,
     codigo: "",
     nombre: "",
-    estatus: "Activo",
+    estatus: "ACTIVO",
   };
 
   // Verificar si la sucursal del almacén a editar existe en las sucursales de la compañía
@@ -166,14 +166,11 @@ export default function WarehouseForm({ onSuccess, warehouseToEdit }: WarehouseF
               <div className="p-8 space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <FormSelect label="Estatus del almacén" {...register("estatus")} error={errors.estatus}>
-                    <option value="Activo" className="bg-white dark:bg-zinc-900 text-slate-900 dark:text-white">
+                    <option value="ACTIVO" className="bg-white dark:bg-zinc-900 text-slate-900 dark:text-white">
                       Activo
                     </option>
-                    <option value="Inactivo" className="bg-white dark:bg-zinc-900 text-slate-900 dark:text-white">
+                    <option value="INACTIVO" className="bg-white dark:bg-zinc-900 text-slate-900 dark:text-white">
                       Inactivo
-                    </option>
-                    <option value="Mantenimiento" className="bg-white dark:bg-zinc-900 text-slate-900 dark:text-white">
-                      Mantenimiento
                     </option>
                   </FormSelect>
                 </div>
