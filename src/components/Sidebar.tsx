@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
 import MobileSidebar from "./MobileSidebar";
-import { sidebarItems } from "../constants/sidebarItems";
+import { getSidebarItems } from "@/src/utils/getSidebarItems";
 import SidebarItem from "./SidebarItem";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { LogoIcon, LogoutIcon, SettingsIcon } from "./Icons";
@@ -17,6 +17,7 @@ export default function Sidebar() {
   const { data: session } = useSession();
   const isConfigActive = pathname === "/config" || pathname.startsWith("/config/");
   const canReadConfig = hasPermission("R-CONF", session?.user);
+  const availableSections = getSidebarItems(session?.user);
 
   return (
     <>
@@ -36,7 +37,7 @@ export default function Sidebar() {
 
         {/* Navigation Items */}
         <nav className="flex-1 overflow-y-auto no-scrollbar py-6 px-3 space-y-1">
-          {sidebarItems.map((section, index) => (
+          {availableSections.map((section, index) => (
             <div key={index} className={index > 0 ? "mt-6" : ""}>
               {section.title && (
                 <div className="px-3 mb-2 opacity-0 group-hover/sidebar:opacity-100 transition-opacity duration-300 delay-100">

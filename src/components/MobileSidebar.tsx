@@ -7,7 +7,7 @@ import { useSession } from "next-auth/react";
 import { useLogout } from "../features/auth/hooks/useLogout";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { CloseIcon, LogoIcon, MenuIcon } from "./Icons";
-import { sidebarItems } from "../constants/sidebarItems";
+import { getSidebarItems } from "@/src/utils/getSidebarItems";
 import SidebarItem from "./SidebarItem";
 import { Notifications } from "../features/notifications/components/Notifications";
 import { hasPermission } from "@/src/utils/permissions";
@@ -19,6 +19,7 @@ export default function MobileSidebar() {
   const { data: session } = useSession();
   const isConfigActive = pathname === "/config" || pathname.startsWith("/config/");
   const canReadConfig = hasPermission("R-CONF", session?.user);
+  const availableSections = getSidebarItems(session?.user);
 
   return (
     <>
@@ -78,7 +79,7 @@ export default function MobileSidebar() {
             </button>
           </div>
           <div className="flex-1 overflow-y-auto p-4 space-y-1">
-            {sidebarItems.map((section, index) => (
+            {availableSections.map((section, index) => (
               <div key={index}>
                 {section.title && (
                   <div className={`px-4 mb-2 ${index === 0 ? "mt-2" : "mt-4"}`}>

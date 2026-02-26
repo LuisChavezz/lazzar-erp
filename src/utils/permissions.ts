@@ -1,7 +1,5 @@
-export interface PermissionContext {
-  role?: string;
-  permissions?: string[];
-}
+import { PermissionContext } from "../interfaces/permission-context.interface";
+
 
 export function hasPermission(requiredPermission: string, context?: PermissionContext | null) {
   if (!requiredPermission) {
