@@ -3,6 +3,7 @@
 import { useState, useMemo } from "react";
 import { useCurrencies } from "../hooks/useCurrencies";
 import { DataTable } from "@/src/components/DataTable";
+import { ErrorState } from "@/src/components/ErrorState";
 import { getCurrencyColumns } from "./CurrencyColumns";
 import { MainDialog } from "@/src/components/MainDialog";
 import { DialogHeader } from "@/src/components/DialogHeader";
@@ -35,10 +36,7 @@ export default function CurrencyList() {
 
   if (isError) {
     return (
-      <div className="p-4 rounded-lg border border-red-200 bg-red-50 text-red-600">
-        <p className="font-medium">Error al cargar monedas</p>
-        <p className="text-sm opacity-80">{(error as Error).message}</p>
-      </div>
+      <ErrorState title="Error al cargar monedas" message={(error as Error).message} />
     );
   }
 

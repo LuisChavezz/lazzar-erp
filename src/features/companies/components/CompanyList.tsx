@@ -3,6 +3,7 @@
 import { useState, useMemo } from "react";
 import { useCompanies } from "../hooks/useCompanies";
 import { DataTable } from "@/src/components/DataTable";
+import { ErrorState } from "@/src/components/ErrorState";
 import { getCompanyColumns } from "./CompanyColumns";
 import { MainDialog } from "@/src/components/MainDialog";
 import CompanyForm from "./CompanyForm";
@@ -37,10 +38,7 @@ export default function CompanyList() {
 
   if (isError) {
     return (
-      <div className="p-4 rounded-lg border border-red-200 bg-red-50 text-red-600">
-        <p className="font-medium">Error al cargar empresas</p>
-        <p className="text-sm opacity-80">{(error as Error).message}</p>
-      </div>
+      <ErrorState title="Error al cargar empresas" message={(error as Error).message} />
     );
   }
 

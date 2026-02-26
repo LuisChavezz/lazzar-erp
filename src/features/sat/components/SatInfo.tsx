@@ -2,6 +2,7 @@
 
 import { useSatInfo } from "../hooks/useSatInfo";
 import { DataTable } from "@/src/components/DataTable";
+import { ErrorState } from "@/src/components/ErrorState";
 import { regimenesFiscalesColumns } from "./SatInfoColumns";
 import { Tabs } from "@radix-ui/themes";
 import { FiscalAddressDetails } from "./FiscalAddressDetails";
@@ -38,10 +39,7 @@ export const SatInfo = () => {
                 <span className="ml-3 text-slate-500">Cargando catálogos del SAT...</span>
               </div>
             ) : isError ? (
-              <div className="p-4 rounded-lg border border-red-200 bg-red-50 text-red-600">
-                <p className="font-medium">Error al cargar información</p>
-                <p className="text-sm opacity-80">{(error as Error).message}</p>
-              </div>
+              <ErrorState title="Error al cargar información" message={(error as Error).message} />
             ) : data ? (
               <DataTable
                 columns={regimenesFiscalesColumns}

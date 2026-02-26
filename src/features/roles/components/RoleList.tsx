@@ -2,6 +2,7 @@
 
 import { useRoles } from "../hooks/useRoles";
 import { DataTable } from "@/src/components/DataTable";
+import { ErrorState } from "@/src/components/ErrorState";
 import { roleColumns } from "./RoleColumns";
 
 export default function RoleList() {
@@ -18,10 +19,7 @@ export default function RoleList() {
 
   if (isError) {
     return (
-      <div className="p-4 rounded-lg border border-red-200 bg-red-50 text-red-600">
-        <p className="font-medium">Error al cargar roles</p>
-        <p className="text-sm opacity-80">{(error as Error).message}</p>
-      </div>
+      <ErrorState title="Error al cargar roles" message={(error as Error).message} />
     );
   }
 
