@@ -3,6 +3,7 @@
 // import { useState } from "react";
 import { useBranches } from "../hooks/useBranches";
 import { DataTable } from "@/src/components/DataTable";
+import { ErrorState } from "@/src/components/ErrorState";
 import { getBranchColumns } from "./BranchColumns";
 import { useSession } from "next-auth/react";
 // import { MainDialog } from "@/src/components/MainDialog";
@@ -32,10 +33,7 @@ export default function BranchList() {
 
   if (isError) {
     return (
-      <div className="p-4 rounded-lg border border-red-200 bg-red-50 text-red-600">
-        <p className="font-medium">Error al cargar sucursales</p>
-        <p className="text-sm opacity-80">{(error as Error).message}</p>
-      </div>
+      <ErrorState title="Error al cargar sucursales" message={(error as Error).message} />
     );
   }
 

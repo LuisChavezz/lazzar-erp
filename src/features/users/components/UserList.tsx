@@ -3,6 +3,7 @@
 import { useState, useMemo } from "react";
 import { useUsers } from "../hooks/useUsers";
 import { DataTable } from "@/src/components/DataTable";
+import { ErrorState } from "@/src/components/ErrorState";
 import { getUserColumns } from "./UserColumns";
 import { MainDialog } from "@/src/components/MainDialog";
 import { DialogHeader } from "@/src/components/DialogHeader";
@@ -34,10 +35,7 @@ export default function UserList() {
 
   if (isError) {
     return (
-      <div className="p-4 rounded-lg border border-red-200 bg-red-50 text-red-600">
-        <p className="font-medium">Error al cargar usuarios</p>
-        <p className="text-sm opacity-80">{(error as Error).message}</p>
-      </div>
+      <ErrorState title="Error al cargar usuarios" message={(error as Error).message} />
     );
   }
 

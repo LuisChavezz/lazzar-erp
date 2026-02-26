@@ -1,5 +1,6 @@
 import { useMemo, useState, useCallback } from "react";
 import { DataTable } from "../../../components/DataTable";
+import { ErrorState } from "../../../components/ErrorState";
 import { getColumns } from "./WarehouseColumns";
 import { MainDialog } from "../../../components/MainDialog";
 import { DialogHeader } from "@/src/components/DialogHeader";
@@ -46,10 +47,7 @@ export default function WarehouseList() {
 
   if (isError) {
     return (
-      <div className="p-4 rounded-lg border border-red-200 bg-red-50 text-red-600">
-        <p className="font-medium">Error al cargar almacenes</p>
-        <p className="text-sm opacity-80">{(error as Error).message}</p>
-      </div>
+      <ErrorState title="Error al cargar almacenes" message={(error as Error).message} />
     );
   }
 
