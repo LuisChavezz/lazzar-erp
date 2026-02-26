@@ -4,9 +4,20 @@ export const orderItemSchema = z.object({
   sku: z.string().min(1, "Requerido"),
   descripcion: z.string().min(1, "Requerido"),
   unidad: z.string().min(1, "Requerido"),
-  cantidad: z.coerce.number().min(1, "Debe ser positivo"),
+  cantidad: z
+    .coerce.number({
+      message: "Debe ser un número válido",
+    })
+    .int("Debe ser un número entero")
+    .min(1, "Debe ser mayor o igual a 1"),
   precio: z.coerce.number().gt(0, "Debe ser positivo"),
-  descuento: z.coerce.number().min(0, "No puede ser negativo"),
+  descuento: z
+    .coerce.number({
+      message: "Debe ser un número válido",
+    })
+    .int("Debe ser un número entero")
+    .min(0, "No puede ser menor a 0")
+    .max(100, "No puede ser mayor a 100"),
   importe: z.coerce.number().min(0, "No puede ser negativo"),
 });
 

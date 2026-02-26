@@ -43,7 +43,7 @@ export default function OrderForm({ orderId }: OrderFormProps) {
     useCompanyBranches(companyId);
   const { data: warehouses = [], isLoading: isLoadingWarehouses } = useWarehouses();
   const activeWarehouses = warehouses.filter(
-    (warehouse) => warehouse.estatus === "Activo" || warehouse.estatus === "Mantenimiento"
+    (warehouse) => warehouse.estatus === "ACTIVO"
   );
 
   const hasBranch = availableBranches.some(
