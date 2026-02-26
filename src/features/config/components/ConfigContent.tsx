@@ -7,13 +7,12 @@ import { ConfigCard } from "./ConfigCard";
 import { ConfigDetailView } from "./ConfigDetailView";
 import { configCards } from "../constants/configCardItems";
 import { CloseIcon, SearchIcon } from "@/src/components/Icons";
+import { hasPermission } from "@/src/utils/permissions";
 
 
 export function ConfigContent() {
   const { data: session } = useSession();
-  const isAdmin = session?.user?.role === "admin";
-  const permissions = session?.user?.permissions ?? [];
-  const canReadConfig = isAdmin || permissions.includes("R-CONF");
+  const canReadConfig = hasPermission("R-CONF", session?.user);
 
   // Obtener el cliente de consulta para hacer prefetch de datos
   const queryClient = useQueryClient();
@@ -51,19 +50,6 @@ export function ConfigContent() {
 
   return (
     <>
-      {!canReadConfig ? (
-        <div className="w-full flex flex-col items-center justify-center py-16 px-6 rounded-3xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 border-dashed">
-          <div className="p-4 rounded-full bg-slate-100 dark:bg-slate-800 mb-4">
-            <CloseIcon className="w-8 h-8 text-slate-400" />
-          </div>
-          <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-1">
-            Acceso restringido
-          </h3>
-          <p className="text-slate-500 dark:text-slate-400 text-center max-w-sm">
-            No tienes permisos suficientes para ver la configuración.
-          </p>
-        </div>
-      ) : (
       <div className="w-full grid grid-cols-1">
         {/* Grid View */}
         <div
@@ -129,7 +115,6 @@ export function ConfigContent() {
         {/* Detail View */}
         <ConfigDetailView selectedView={selectedView} onBack={handleBack} />
       </div>
-      )}
     </>
   );
 }
