@@ -19,16 +19,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useWarehouses } from "../../warehouses/hooks/useWarehouses";
 import { useWorkspaceStore } from "../../workspace/store/workspace.store";
 import { useCompanyBranches } from "../../branches/hooks/useCompanyBranches";
-
-const defaultItem: OrderFormValues["items"][number] = {
-  sku: "",
-  descripcion: "",
-  unidad: "PZA",
-  cantidad: 1,
-  precio: 0,
-  descuento: 0,
-  importe: 0,
-};
+import { AddProductsDialog } from "./AddProductsDialog";
 
 interface OrderFormProps {
   orderId?: string;
@@ -88,7 +79,7 @@ export default function OrderForm({ orderId }: OrderFormProps) {
     seguro: 0,
     anticipo: 0,
     iva: 0.16,
-    items: [defaultItem],
+    items: [],
   };
 
   const editValues: OrderFormValues = orderToEdit
@@ -201,6 +192,16 @@ export default function OrderForm({ orderId }: OrderFormProps) {
 
   const [isLoading, setIsLoading] = useState(false);
   const isPending = isSubmitting || isLoading;
+  const [isAddProductsOpen, setIsAddProductsOpen] = useState(false);
+
+  const existingSkus = useMemo(() => {
+    const set = new Set<string>();
+    (watchedItems || []).forEach((item) => {
+      const sku = String(item?.sku ?? "").trim();
+      if (sku) set.add(sku);
+    });
+    return set;
+  }, [watchedItems]);
 
   useEffect(() => {
     if (isLoadingWarehouses) {
@@ -574,7 +575,7 @@ export default function OrderForm({ orderId }: OrderFormProps) {
           <div className="flex gap-2">
             <button
               type="button"
-              onClick={() => append(defaultItem)}
+              onClick={() => setIsAddProductsOpen(true)}
               className="inline-flex items-center px-3 py-1.5 bg-sky-50 dark:bg-sky-500/10 text-sky-600 dark:text-sky-400 rounded-lg text-xs font-bold uppercase tracking-wide hover:bg-sky-100 dark:hover:bg-sky-500/20 transition-colors cursor-pointer"
               title="Agregar producto al pedido"
               aria-label="Agregar producto al pedido"
@@ -583,6 +584,13 @@ export default function OrderForm({ orderId }: OrderFormProps) {
             </button>
           </div>
         </div>
+
+        <AddProductsDialog
+          open={isAddProductsOpen}
+          onOpenChange={setIsAddProductsOpen}
+          existingSkus={existingSkus}
+          onAddItems={(items) => append(items)}
+        />
 
         <div className="flex-1 overflow-auto -mx-6 px-6 pb-2 border-b border-slate-200 dark:border-slate-800">
           <table className="w-full min-w-300 border-collapse text-left">
@@ -616,7 +624,17 @@ export default function OrderForm({ orderId }: OrderFormProps) {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-white/5">
-              {fields.map((field, index) => {
+              {fields.length === 0 ? (
+                <tr>
+                  <td
+                    colSpan={9}
+                    className="p-6 text-center text-sm text-slate-500 dark:text-slate-400"
+                  >
+                    No hay productos agregados.
+                  </td>
+                </tr>
+              ) : (
+                fields.map((field, index) => {
                 const itemErrors = errors.items?.[index];
                 const skuError = getFieldError(itemErrors?.sku);
                 const descripcionError = getFieldError(itemErrors?.descripcion);
@@ -649,7 +667,9 @@ export default function OrderForm({ orderId }: OrderFormProps) {
                           placeholder="SKU"
                           aria-label="Código del producto"
                           autoComplete="off"
-                          className={`w-full bg-transparent border-b border-transparent focus:ring-0 p-1.5 text-xs text-slate-700 dark:text-slate-200 focus:border-sky-500 ${skuError ? "border-rose-500 text-rose-600 dark:text-rose-400" : ""}`}
+                          readOnly
+                          tabIndex={-1}
+                          className={`w-full cursor-not-allowed bg-slate-100/80 dark:bg-zinc-800/60 border-b border-transparent focus:ring-0 p-1.5 text-xs text-slate-500 dark:text-slate-400 focus:border-transparent ${skuError ? "border-rose-500 text-rose-600 dark:text-rose-400" : ""}`}
                           {...register(`items.${index}.sku`)}
                         />
                         {skuError && (
@@ -666,7 +686,9 @@ export default function OrderForm({ orderId }: OrderFormProps) {
                           placeholder="Descripción del producto"
                           aria-label="Descripción del producto"
                           autoComplete="off"
-                          className={`w-full bg-transparent border-b border-transparent focus:ring-0 p-1.5 text-xs text-slate-700 dark:text-slate-200 focus:border-sky-500 ${descripcionError ? "border-rose-500 text-rose-600 dark:text-rose-400" : ""}`}
+                          readOnly
+                          tabIndex={-1}
+                          className={`w-full cursor-not-allowed bg-slate-100/80 dark:bg-zinc-800/60 border-b border-transparent focus:ring-0 p-1.5 text-xs text-slate-500 dark:text-slate-400 focus:border-transparent ${descripcionError ? "border-rose-500 text-rose-600 dark:text-rose-400" : ""}`}
                           {...register(`items.${index}.descripcion`)}
                         />
                         {descripcionError && (
@@ -683,7 +705,9 @@ export default function OrderForm({ orderId }: OrderFormProps) {
                           placeholder="PZA"
                           aria-label="Unidad de medida"
                           autoComplete="off"
-                          className={`w-full bg-transparent border-b border-transparent focus:ring-0 p-1.5 text-xs text-center uppercase text-slate-700 dark:text-slate-200 focus:border-sky-500 ${unidadError ? "border-rose-500 text-rose-600 dark:text-rose-400" : ""}`}
+                          readOnly
+                          tabIndex={-1}
+                          className={`w-full cursor-not-allowed bg-slate-100/80 dark:bg-zinc-800/60 border-b border-transparent focus:ring-0 p-1.5 text-xs text-center uppercase text-slate-500 dark:text-slate-400 focus:border-transparent ${unidadError ? "border-rose-500 text-rose-600 dark:text-rose-400" : ""}`}
                           {...register(`items.${index}.unidad`)}
                         />
                         {unidadError && (
@@ -719,7 +743,9 @@ export default function OrderForm({ orderId }: OrderFormProps) {
                           placeholder="0.00"
                           step="0.01"
                           aria-label="Precio"
-                          className={`w-full bg-transparent border-b border-transparent focus:ring-0 p-1.5 text-xs text-right text-slate-700 dark:text-slate-200 focus:border-sky-500 ${precioError ? "border-rose-500 text-rose-600 dark:text-rose-400" : ""}`}
+                          readOnly
+                          tabIndex={-1}
+                          className={`w-full cursor-not-allowed bg-slate-100/80 dark:bg-zinc-800/60 border-b border-transparent focus:ring-0 p-1.5 text-xs text-right text-slate-500 dark:text-slate-400 focus:border-transparent ${precioError ? "border-rose-500 text-rose-600 dark:text-rose-400" : ""}`}
                           {...register(`items.${index}.precio`, {
                             valueAsNumber: true,
                           })}
@@ -757,7 +783,8 @@ export default function OrderForm({ orderId }: OrderFormProps) {
                           readOnly
                           value={calculatedImporte}
                           aria-label="Importe"
-                          className={`w-full bg-transparent border-b border-transparent focus:ring-0 p-1.5 text-xs text-right text-slate-700 dark:text-slate-200 focus:border-sky-500 ${importeError ? "border-rose-500 text-rose-600 dark:text-rose-400" : ""}`}
+                          tabIndex={-1}
+                          className={`w-full cursor-not-allowed bg-slate-100/80 dark:bg-zinc-800/60 border-b border-transparent focus:ring-0 p-1.5 text-xs text-right text-slate-500 dark:text-slate-400 focus:border-transparent ${importeError ? "border-rose-500 text-rose-600 dark:text-rose-400" : ""}`}
                         />
                         {importeError && (
                           <p className="text-[10px] text-rose-600 dark:text-rose-400 text-right">
@@ -778,7 +805,8 @@ export default function OrderForm({ orderId }: OrderFormProps) {
                     </td>
                   </tr>
                 );
-              })}
+              })
+              )}
             </tbody>
           </table>
         </div>
