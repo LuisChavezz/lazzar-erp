@@ -8,11 +8,10 @@ import { EditIcon, ViewIcon } from "../../../components/Icons";
 import { formatCurrency } from "../../../utils/formatCurrency";
 
 const statusLabels: Record<Order["estatusPedido"], string> = {
-  capturado: "Capturado",
-  autorizado: "Autorizado",
-  surtido: "Surtido",
-  facturado: "Facturado",
-  cancelado: "Cancelado",
+  Pendiente: "Pendiente",
+  Parcial: "Parcial",
+  Completo: "Completo",
+  Cancelado: "Cancelado",
 };
 
 export const orderColumns: ColumnDef<Order>[] = [

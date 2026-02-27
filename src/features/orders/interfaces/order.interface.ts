@@ -2,11 +2,10 @@ import { Branch } from "../../branches/interfaces/branch.interface";
 import { Warehouse } from "../../warehouses/interfaces/warehouse.interface";
 
 export type OrderStatus =
-  | "capturado"
-  | "autorizado"
-  | "surtido"
-  | "facturado"
-  | "cancelado";
+  | "Pendiente"
+  | "Parcial"
+  | "Completo"
+  | "Cancelado";
 
 export interface OrderItem {
   sku: string;

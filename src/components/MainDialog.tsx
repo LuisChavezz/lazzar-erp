@@ -10,6 +10,7 @@ interface MainDialogProps {
   children: React.ReactNode; // El contenido dinámico (form, lista, etc.)
   maxWidth?: string;
   actionButton?: React.ReactNode; // Botón de acción principal opcional (ej: Guardar)
+  actionButtonClose?: boolean;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
   hideCloseButton?: boolean;
@@ -22,6 +23,7 @@ export function MainDialog({
   children,
   maxWidth = "450px",
   actionButton,
+  actionButtonClose = true,
   open,
   onOpenChange,
   hideCloseButton = false,
@@ -55,14 +57,12 @@ export function MainDialog({
             </Dialog.Close>
           )}
           
-          {actionButton && (
-            <Dialog.Close>
-               {/* Nota: Para formularios reales que requieren validación, 
-                   se necesitaría manejar el estado 'open' externamente.
-                   Para este demo y acciones simples, esto funciona bien. */}
-               {actionButton}
-            </Dialog.Close>
-          )}
+          {actionButton &&
+            (actionButtonClose ? (
+              <Dialog.Close>{actionButton}</Dialog.Close>
+            ) : (
+              actionButton
+            ))}
         </Flex>
       </Dialog.Content>
     </Dialog.Root>

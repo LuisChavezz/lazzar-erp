@@ -5,11 +5,10 @@ import { formatCurrency } from "@/src/utils/formatCurrency";
 import { DataTableVisibleColumn } from "@/src/components/DataTable";
 
 const statusLabels: Record<Order["estatusPedido"], string> = {
-  capturado: "Capturado",
-  autorizado: "Autorizado",
-  surtido: "Surtido",
-  facturado: "Facturado",
-  cancelado: "Cancelado",
+  Pendiente: "Pendiente",
+  Parcial: "Parcial",
+  Completo: "Completo",
+  Cancelado: "Cancelado",
 };
 
 const styles = StyleSheet.create({
@@ -176,7 +175,7 @@ const OrdersPdfDocument = ({
   );
 };
 
-export const useOrdersPdfExport = (orders: Order[], columns: DataTableVisibleColumn<Order>[]) => {
+export const useOrderPdfExport = (orders: Order[], columns: DataTableVisibleColumn<Order>[]) => {
   const exportToPdf = useCallback(async () => {
     const exportColumns = columns.filter((column) => column.id !== "actions");
     if (exportColumns.length === 0) return;

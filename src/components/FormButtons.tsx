@@ -1,4 +1,5 @@
 import React from "react";
+import { HeartFilledIcon, HeartIcon } from "./Icons";
 
 interface FormCancelButtonProps {
   onClick: () => void;
@@ -48,6 +49,45 @@ export function FormSubmitButton({
       {...props}
     >
       {isPending ? loadingLabel : children}
+    </button>
+  );
+}
+
+interface FilterSaveToggleButtonProps
+  extends Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, "children"> {
+  isActive: boolean;
+  activeLabel?: string;
+  inactiveLabel?: string;
+  activeTitle?: string;
+  inactiveTitle?: string;
+}
+
+export function FilterSaveToggleButton({
+  isActive,
+  activeLabel = "Limpiar filtros guardados",
+  inactiveLabel = "Guardar configuración de filtros",
+  activeTitle = "Limpiar filtros guardados",
+  inactiveTitle = "Guardar filtros",
+  className,
+  ...props
+}: FilterSaveToggleButtonProps) {
+  const label = isActive ? activeLabel : inactiveLabel;
+  const title = isActive ? activeTitle : inactiveTitle;
+  const baseClass = isActive
+    ? "border-rose-200 dark:border-rose-500/40 bg-rose-50 dark:bg-rose-500/10 text-rose-600"
+    : "border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 text-slate-500 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/10";
+  return (
+    <button
+      type="button"
+      aria-pressed={isActive}
+      aria-label={label}
+      title={title}
+      className={`h-10 w-10 rounded-xl border cursor-pointer transition-colors inline-flex items-center justify-center ${baseClass} ${
+        className || ""
+      }`}
+      {...props}
+    >
+      {isActive ? <HeartFilledIcon className="w-5 h-5" /> : <HeartIcon className="w-5 h-5" />}
     </button>
   );
 }

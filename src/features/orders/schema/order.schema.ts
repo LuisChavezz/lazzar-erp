@@ -36,7 +36,9 @@ export const orderFormSchema = z.object({
   puntos: z.coerce.number().min(0, "No puede ser negativo"),
   anticipoReq: z.coerce.number().min(0, "No puede ser negativo"),
   pedidoInicial: z.boolean(),
-  estatusPedido: z.string().min(1, "Requerido"),
+  estatusPedido: z.enum(["Pendiente", "Parcial", "Completo", "Cancelado"], {
+    message: "Requerido",
+  }),
   docRelacionado: z.string().min(1, "Requerido"),
   observaciones: z.string().optional(),
   flete: z.coerce.number().min(0, "No puede ser negativo"),

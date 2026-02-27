@@ -72,7 +72,7 @@ export default function OrderForm({ orderId }: OrderFormProps) {
     puntos: 0,
     anticipoReq: 0,
     pedidoInicial: false,
-    estatusPedido: "capturado",
+    estatusPedido: "Pendiente",
     docRelacionado: "",
     observaciones: "",
     flete: 0,
@@ -824,11 +824,10 @@ export default function OrderForm({ orderId }: OrderFormProps) {
           <FormSelect
             label="Estatus Pedido"
             options={[
-              { value: "capturado", label: "Capturado" },
-              { value: "autorizado", label: "Autorizado" },
-              { value: "surtido", label: "Surtido" },
-              { value: "facturado", label: "Facturado" },
-              { value: "cancelado", label: "Cancelado" },
+              { value: "Pendiente", label: "Pendiente" },
+              { value: "Parcial", label: "Parcial" },
+              { value: "Completo", label: "Completo" },
+              { value: "Cancelado", label: "Cancelado" },
             ]}
             error={getFieldError(errors.estatusPedido)}
             {...register("estatusPedido")}

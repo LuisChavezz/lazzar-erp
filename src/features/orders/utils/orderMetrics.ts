@@ -32,7 +32,8 @@ const endOfDay = (value: Date) => {
   return date;
 };
 
-const isActiveOrder = (order: Order) => order.estatusPedido !== "cancelado";
+const isActiveOrder = (order: Order) =>
+  order.estatusPedido === "Pendiente" || order.estatusPedido === "Parcial";
 
 export const getOrdersDueSoonCount = (
   orders: Order[],
