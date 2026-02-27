@@ -12,6 +12,7 @@ interface MainDialogProps {
   actionButton?: React.ReactNode; // Botón de acción principal opcional (ej: Guardar)
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
+  hideCloseButton?: boolean;
 }
 
 export function MainDialog({ 
@@ -22,7 +23,8 @@ export function MainDialog({
   maxWidth = "450px",
   actionButton,
   open,
-  onOpenChange
+  onOpenChange,
+  hideCloseButton = false,
 }: MainDialogProps) {
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
@@ -45,11 +47,13 @@ export function MainDialog({
         {children}
 
         <Flex gap="3" mt="4" justify="end">
-          <Dialog.Close>
-            <Button variant="soft" color="gray" className=" dark:bg-zinc-800! dark:text-white!">
-              Cerrar
-            </Button>
-          </Dialog.Close>
+          {!hideCloseButton && (
+            <Dialog.Close>
+              <Button variant="soft" color="gray" className=" dark:bg-zinc-800! dark:text-white!">
+                Cerrar
+              </Button>
+            </Dialog.Close>
+          )}
           
           {actionButton && (
             <Dialog.Close>
