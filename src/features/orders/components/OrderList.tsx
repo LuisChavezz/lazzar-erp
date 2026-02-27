@@ -1,44 +1,53 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { DataTable, DataTableVisibleColumn } from "@/src/components/DataTable";
 import { orderColumns } from "./OrderColumns";
 import { OrdersFiltersDialog } from "./OrdersFiltersDialog";
 import { useOrderStore } from "../stores/order.store";
-import { useOrdersCsvExport } from "../hooks/useOrdersCsvExport";
-import { useOrdersPdfExport } from "../hooks/useOrdersPdfExport";
+import { useOrderCsvExport } from "../hooks/useOrderCsvExport";
+import { useOrderPdfExport } from "../hooks/useOrderPdfExport";
 import { Order } from "../interfaces/order.interface";
+import { useOrderFilters } from "../hooks/useOrderFilters";
+import { OrdersFiltersValue, useOrderFiltersStore } from "../stores/order-filters.store";
+import { LoadingSkeleton } from "@/src/components/LoadingSkeleton";
 
 export const OrderList = () => {
-  const [quickFilter, setQuickFilter] = useState<"all" | "activos" | "vencidos">("all");
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
   const { orders } = useOrderStore((state) => state);
+  const ordersHydrated = useOrderStore((state) => state.hasHydrated);
+  const filtersHydrated = useOrderFiltersStore((state) => state.hasHydrated);
   const [visibleOrders, setVisibleOrders] = useState<Order[]>([]);
   const [visibleColumns, setVisibleColumns] = useState<DataTableVisibleColumn<Order>[]>([]);
+  const {
+    filters,
+    filteredOrders,
+    hasActiveFilters,
+    applyFilters,
+    clearFilters,
+    savedFilters,
+    saveFilters,
+    clearSavedFilters,
+  } = useOrderFilters(orders);
 
-  const filteredOrders = useMemo(() => {
-    if (quickFilter === "activos") {
-      return orders.filter(
-        (o) => o.estatusPedido === "capturado" || o.estatusPedido === "autorizado" || o.estatusPedido === "surtido"
-      );
-    }
-    if (quickFilter === "vencidos") {
-      return orders.filter((o) => o.estatusPedido === "cancelado" || o.estatusPedido === "facturado");
-    }
-    return orders;
-  }, [quickFilter, orders]);
-
-  useOrdersCsvExport(visibleOrders, visibleColumns);
-  useOrdersPdfExport(visibleOrders, visibleColumns);
-  const hasActiveFilters = quickFilter !== "all";
-  const handleApplyFilters = (value: "all" | "activos" | "vencidos") => {
-    setQuickFilter(value);
+  useOrderCsvExport(visibleOrders, visibleColumns);
+  useOrderPdfExport(visibleOrders, visibleColumns);
+  const handleApplyFilters = (value: OrdersFiltersValue) => {
+    applyFilters(value);
     setIsFiltersOpen(false);
   };
   const handleClearFilters = () => {
-    setQuickFilter("all");
+    clearFilters();
   };
+
+  if (!ordersHydrated || !filtersHydrated) {
+    return (
+      <div className="mt-12" role="status" aria-live="polite" aria-label="Cargando pedidos">
+        <LoadingSkeleton className="h-96 rounded-3xl" />
+      </div>
+    );
+  }
 
   return (
     <div className="mt-12">
@@ -46,7 +55,6 @@ export const OrderList = () => {
         columns={orderColumns}
         data={filteredOrders}
         baseDataCount={orders.length}
-        title="Últimos Pedidos"
         searchPlaceholder="Buscar pedido..."
         onFiltersClick={() => setIsFiltersOpen(true)}
         isFiltersActive={hasActiveFilters}
@@ -67,8 +75,11 @@ export const OrderList = () => {
       <OrdersFiltersDialog
         open={isFiltersOpen}
         onOpenChange={setIsFiltersOpen}
-        value={quickFilter}
+        value={filters}
         onApply={handleApplyFilters}
+        onSave={saveFilters}
+        onClearSaved={clearSavedFilters}
+        savedValue={savedFilters}
       />
     </div>
   );

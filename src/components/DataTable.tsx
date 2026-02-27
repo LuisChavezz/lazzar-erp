@@ -48,6 +48,7 @@ export function DataTable<TData, TValue>({
   columns,
   data,
   baseDataCount,
+  title,
   searchPlaceholder = "Buscar...",
   actionButton,
   onFiltersClick,
@@ -188,7 +189,12 @@ export function DataTable<TData, TValue>({
 
   return (
     <div>
-      <div className="flex flex-col lg:flex-row lg:items-center justify-end gap-4 mb-8">
+      <div className={`flex flex-col lg:flex-row lg:items-center ${title ? "justify-between" : "justify-end"} gap-4 mb-8 `}>
+      {title ? (
+        <h1 className="text-xl font-semibold text-slate-800 dark:text-white">
+          {title}
+        </h1>
+      ) : null}
         <div className="flex flex-col sm:flex-row gap-4 w-full lg:w-auto">
           {hasBaseData && (
             <>

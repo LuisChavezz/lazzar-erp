@@ -4,11 +4,10 @@ import { formatCurrency } from "@/src/utils/formatCurrency";
 import { DataTableVisibleColumn } from "@/src/components/DataTable";
 
 const statusLabels: Record<Order["estatusPedido"], string> = {
-  capturado: "Capturado",
-  autorizado: "Autorizado",
-  surtido: "Surtido",
-  facturado: "Facturado",
-  cancelado: "Cancelado",
+  Pendiente: "Pendiente",
+  Parcial: "Parcial",
+  Completo: "Completo",
+  Cancelado: "Cancelado",
 };
 
 const escapeCsv = (value: string | number | boolean | null | undefined) => {
@@ -74,7 +73,7 @@ const buildCsv = (orders: Order[], columns: DataTableVisibleColumn<Order>[]) => 
     .join("\n");
 };
 
-export const useOrdersCsvExport = (orders: Order[], columns: DataTableVisibleColumn<Order>[]) => {
+export const useOrderCsvExport = (orders: Order[], columns: DataTableVisibleColumn<Order>[]) => {
   const exportToCsv = useCallback(() => {
     const exportColumns = columns.filter((column) => column.id !== "actions");
     if (exportColumns.length === 0) return;

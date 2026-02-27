@@ -2,6 +2,7 @@
 
 import { useMemo } from "react";
 import { TrendingUpIcon, ClockIcon, OrdenesIcon } from "../../../components/Icons";
+import { LoadingSkeleton } from "@/src/components/LoadingSkeleton";
 import { useOrderStore } from "../stores/order.store";
 import { formatCurrency } from "@/src/utils/formatCurrency";
 import {
@@ -13,6 +14,7 @@ import {
 
 export const OrderStats = () => {
   const orders = useOrderStore((state) => state.orders);
+  const hasHydrated = useOrderStore((state) => state.hasHydrated);
 
   const { dueSoonCount, receivableBalance, receivableCount, criticalCount } = useMemo(
     () => ({
@@ -23,6 +25,21 @@ export const OrderStats = () => {
     }),
     [orders]
   );
+
+  if (!hasHydrated) {
+    return (
+      <div
+        className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+        role="status"
+        aria-live="polite"
+        aria-label="Cargando estadísticas de pedidos"
+      >
+        <LoadingSkeleton className="h-36 rounded-4xl" />
+        <LoadingSkeleton className="h-36 rounded-4xl" />
+        <LoadingSkeleton className="h-36 rounded-4xl" />
+      </div>
+    );
+  }
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

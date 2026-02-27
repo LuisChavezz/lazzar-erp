@@ -5,11 +5,13 @@ import { devtools, persist } from "zustand/middleware";
 
 interface OrderState {
   orders: Order[];
+  hasHydrated: boolean;
 
   // Actions
   addOrder: (order: Order) => void;
   updateOrder: (order: Order) => void;
   deleteOrder: (orderId: string) => void;
+  setHasHydrated: (value: boolean) => void;
 }
 
 export const useOrderStore = create<OrderState>()(
@@ -17,6 +19,7 @@ export const useOrderStore = create<OrderState>()(
     persist(
       (set) => ({
         orders: [],
+        hasHydrated: false,
 
         addOrder: (order) =>
           set((state) => ({
@@ -32,9 +35,13 @@ export const useOrderStore = create<OrderState>()(
           set((state) => ({
             orders: state.orders.filter((o) => o.id !== orderId),
           })),
+        setHasHydrated: (value) => set({ hasHydrated: value }),
       }),
       {
         name: "order-storage",
+        onRehydrateStorage: () => (state) => {
+          state?.setHasHydrated(true);
+        },
       }
     )
   )
