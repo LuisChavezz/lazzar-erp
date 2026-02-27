@@ -452,7 +452,7 @@ export function DataTable<TData, TValue>({
                 onChange={(e) => table.setPageSize(Number(e.target.value))}
                 className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-zinc-900 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-sky-500/50 focus:border-sky-500"
               >
-                {[5, 10, 20].map((size) => (
+                {[5, 10, 100].map((size) => (
                   <option
                     key={size}
                     value={size}

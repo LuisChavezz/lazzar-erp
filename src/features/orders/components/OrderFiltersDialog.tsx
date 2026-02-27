@@ -6,19 +6,19 @@ import { FilterSaveToggleButton } from "@/src/components/FormButtons";
 import { FormInput } from "@/src/components/FormInput";
 import { FormSelect } from "@/src/components/FormSelect";
 import { Order } from "../interfaces/order.interface";
-import { orderFiltersDefault, OrdersFiltersValue } from "../stores/order-filters.store";
+import { orderFiltersDefault, OrderFiltersValue } from "../stores/order-filters.store";
 
-interface OrdersFiltersDialogProps {
+interface OrderFiltersDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  value: OrdersFiltersValue;
-  onApply: (value: OrdersFiltersValue) => void;
-  onSave: (value: OrdersFiltersValue) => void;
+  value: OrderFiltersValue;
+  onApply: (value: OrderFiltersValue) => void;
+  onSave: (value: OrderFiltersValue) => void;
   onClearSaved: () => void;
-  savedValue: OrdersFiltersValue;
+  savedValue: OrderFiltersValue;
 }
 
-export const OrdersFiltersDialog = ({
+export const OrderFiltersDialog = ({
   open,
   onOpenChange,
   value,
@@ -26,8 +26,8 @@ export const OrdersFiltersDialog = ({
   onSave,
   onClearSaved,
   savedValue,
-}: OrdersFiltersDialogProps) => {
-  const [localValue, setLocalValue] = useState<OrdersFiltersValue>(value);
+}: OrderFiltersDialogProps) => {
+  const [localValue, setLocalValue] = useState<OrderFiltersValue>(value);
 
   const handleOpenChange = (nextOpen: boolean) => {
     if (nextOpen) {
@@ -58,7 +58,7 @@ export const OrdersFiltersDialog = ({
     });
   };
 
-  const isFiltersEqual = (first: OrdersFiltersValue, second: OrdersFiltersValue) => {
+  const isFiltersEqual = (first: OrderFiltersValue, second: OrderFiltersValue) => {
     if (first.agente !== second.agente) return false;
     if (first.dateFrom !== second.dateFrom) return false;
     if (first.dateTo !== second.dateTo) return false;
