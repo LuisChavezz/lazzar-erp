@@ -4,13 +4,13 @@ import { useState } from "react";
 import Link from "next/link";
 import { DataTable, DataTableVisibleColumn } from "@/src/components/DataTable";
 import { orderColumns } from "./OrderColumns";
-import { OrdersFiltersDialog } from "./OrdersFiltersDialog";
+import { OrderFiltersDialog } from "./OrderFiltersDialog";
 import { useOrderStore } from "../stores/order.store";
 import { useOrderCsvExport } from "../hooks/useOrderCsvExport";
 import { useOrderPdfExport } from "../hooks/useOrderPdfExport";
 import { Order } from "../interfaces/order.interface";
 import { useOrderFilters } from "../hooks/useOrderFilters";
-import { OrdersFiltersValue, useOrderFiltersStore } from "../stores/order-filters.store";
+import { OrderFiltersValue, useOrderFiltersStore } from "../stores/order-filters.store";
 import { LoadingSkeleton } from "@/src/components/LoadingSkeleton";
 
 export const OrderList = () => {
@@ -33,7 +33,7 @@ export const OrderList = () => {
 
   useOrderCsvExport(visibleOrders, visibleColumns);
   useOrderPdfExport(visibleOrders, visibleColumns);
-  const handleApplyFilters = (value: OrdersFiltersValue) => {
+  const handleApplyFilters = (value: OrderFiltersValue) => {
     applyFilters(value);
     setIsFiltersOpen(false);
   };
@@ -72,7 +72,7 @@ export const OrderList = () => {
           </div>
         }
       />
-      <OrdersFiltersDialog
+      <OrderFiltersDialog
         open={isFiltersOpen}
         onOpenChange={setIsFiltersOpen}
         value={filters}

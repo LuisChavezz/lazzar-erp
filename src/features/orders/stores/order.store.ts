@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { Order } from "../interfaces/order.interface";
+import { Order, OrderStatus } from "../interfaces/order.interface";
 import { devtools, persist } from "zustand/middleware";
 
 
@@ -11,6 +11,7 @@ interface OrderState {
   addOrder: (order: Order) => void;
   updateOrder: (order: Order) => void;
   deleteOrder: (orderId: string) => void;
+  updateOrdersStatus: (status: OrderStatus, orderIds: string[]) => void;
   setHasHydrated: (value: boolean) => void;
 }
 
@@ -35,6 +36,18 @@ export const useOrderStore = create<OrderState>()(
           set((state) => ({
             orders: state.orders.filter((o) => o.id !== orderId),
           })),
+        updateOrdersStatus: (status, orderIds) =>
+          set((state) => {
+            const ids = new Set(orderIds);
+            if (ids.size === 0) {
+              return state;
+            }
+            return {
+              orders: state.orders.map((order) =>
+                ids.has(order.id) ? { ...order, estatusPedido: status } : order
+              ),
+            };
+          }),
         setHasHydrated: (value) => set({ hasHydrated: value }),
       }),
       {

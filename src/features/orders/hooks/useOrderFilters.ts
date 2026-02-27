@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { Order } from "../interfaces/order.interface";
 import {
-  OrdersFiltersValue,
+  OrderFiltersValue,
   useOrderFiltersStore,
 } from "../stores/order-filters.store";
 
@@ -79,7 +79,7 @@ export const useOrderFilters = (orders: Order[]) => {
     appliedFilters.minAmount.length > 0 ||
     appliedFilters.maxAmount.length > 0;
 
-  const applyFilters = (value: OrdersFiltersValue) => {
+  const applyFilters = (value: OrderFiltersValue) => {
     setAppliedFilters(value);
   };
 

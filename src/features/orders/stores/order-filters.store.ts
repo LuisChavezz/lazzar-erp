@@ -5,7 +5,7 @@ import { create } from "zustand";
 import { devtools, persist } from "zustand/middleware";
 import { Order } from "../interfaces/order.interface";
 
-export type OrdersFiltersValue = {
+export type OrderFiltersValue = {
   statuses: Order["estatusPedido"][];
   agente: string;
   dateFrom: string;
@@ -14,7 +14,7 @@ export type OrdersFiltersValue = {
   maxAmount: string;
 };
 
-export const orderFiltersDefault: OrdersFiltersValue = {
+export const orderFiltersDefault: OrderFiltersValue = {
   statuses: [],
   agente: "",
   dateFrom: "",
@@ -24,13 +24,13 @@ export const orderFiltersDefault: OrdersFiltersValue = {
 };
 
 interface OrderFiltersState {
-  filters: OrdersFiltersValue;
-  appliedFilters: OrdersFiltersValue;
+  filters: OrderFiltersValue;
+  appliedFilters: OrderFiltersValue;
   hasHydrated: boolean;
   
-  setFilters: (filters: OrdersFiltersValue) => void;
+  setFilters: (filters: OrderFiltersValue) => void;
   clearFilters: () => void;
-  setAppliedFilters: (filters: OrdersFiltersValue) => void;
+  setAppliedFilters: (filters: OrderFiltersValue) => void;
   clearAppliedFilters: () => void;
   setHasHydrated: (value: boolean) => void;
 }
