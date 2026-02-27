@@ -2,14 +2,20 @@
 
 import { useState, useMemo } from "react";
 import Link from "next/link";
-import { CloseIcon } from "@/src/components/Icons";
-import { DataTable } from "@/src/components/DataTable";
+import { DataTable, DataTableVisibleColumn } from "@/src/components/DataTable";
 import { orderColumns } from "./OrderColumns";
+import { OrdersFiltersDialog } from "./OrdersFiltersDialog";
 import { useOrderStore } from "../stores/order.store";
+import { useOrdersCsvExport } from "../hooks/useOrdersCsvExport";
+import { useOrdersPdfExport } from "../hooks/useOrdersPdfExport";
+import { Order } from "../interfaces/order.interface";
 
 export const OrderList = () => {
   const [quickFilter, setQuickFilter] = useState<"all" | "activos" | "vencidos">("all");
+  const [isFiltersOpen, setIsFiltersOpen] = useState(false);
   const { orders } = useOrderStore((state) => state);
+  const [visibleOrders, setVisibleOrders] = useState<Order[]>([]);
+  const [visibleColumns, setVisibleColumns] = useState<DataTableVisibleColumn<Order>[]>([]);
 
   const filteredOrders = useMemo(() => {
     if (quickFilter === "activos") {
@@ -23,13 +29,30 @@ export const OrderList = () => {
     return orders;
   }, [quickFilter, orders]);
 
+  useOrdersCsvExport(visibleOrders, visibleColumns);
+  useOrdersPdfExport(visibleOrders, visibleColumns);
+  const hasActiveFilters = quickFilter !== "all";
+  const handleApplyFilters = (value: "all" | "activos" | "vencidos") => {
+    setQuickFilter(value);
+    setIsFiltersOpen(false);
+  };
+  const handleClearFilters = () => {
+    setQuickFilter("all");
+  };
+
   return (
     <div className="mt-12">
       <DataTable
         columns={orderColumns}
         data={filteredOrders}
+        baseDataCount={orders.length}
         title="Últimos Pedidos"
         searchPlaceholder="Buscar pedido..."
+        onFiltersClick={() => setIsFiltersOpen(true)}
+        isFiltersActive={hasActiveFilters}
+        onClearFilters={handleClearFilters}
+        onVisibleRowsChange={setVisibleOrders}
+        onVisibleColumnsChange={setVisibleColumns}
         actionButton={
           <div className="flex items-center gap-2">
             <Link
@@ -38,37 +61,14 @@ export const OrderList = () => {
             >
               + Nuevo Pedido
             </Link>
-            <button
-              onClick={() => setQuickFilter("activos")}
-              className={`px-3 py-1 text-xs rounded-lg border transition-colors ${
-                quickFilter === "activos"
-                  ? "bg-sky-100 dark:bg-sky-500/20 border-sky-300 dark:border-sky-500 text-sky-800 dark:text-sky-200 cursor-pointer"
-                  : "bg-slate-50 dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10 border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300 cursor-pointer"
-              }`}
-            >
-              Ver Activos
-            </button>
-            <button
-              onClick={() => setQuickFilter("vencidos")}
-              className={`px-3 py-1 text-xs rounded-lg border transition-colors ${
-                quickFilter === "vencidos"
-                  ? "bg-rose-100 dark:bg-rose-500/20 border-rose-300 dark:border-rose-500 text-rose-800 dark:text-rose-100 cursor-pointer"
-                  : "bg-slate-50 dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10 border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300 cursor-pointer"
-              }`}
-            >
-              Ver Vencidos
-            </button>
-            {quickFilter !== "all" && (
-              <button
-                onClick={() => setQuickFilter("all")}
-                className="inline-flex items-center justify-center w-7 h-7 rounded-full border bg-white dark:bg-white/5 hover:bg-slate-50 dark:hover:bg-white/10 border-slate-200 dark:border-white/20 text-slate-400 hover:text-slate-600 dark:text-slate-300 dark:hover:text-slate-100 cursor-pointer"
-                aria-label="Limpiar filtros rápidos"
-              >
-                <CloseIcon className="w-3 h-3" />
-              </button>
-            )}
           </div>
         }
+      />
+      <OrdersFiltersDialog
+        open={isFiltersOpen}
+        onOpenChange={setIsFiltersOpen}
+        value={quickFilter}
+        onApply={handleApplyFilters}
       />
     </div>
   );
