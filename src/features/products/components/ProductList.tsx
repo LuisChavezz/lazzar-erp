@@ -12,7 +12,7 @@ import { useUnitOfMeasureStore } from "../../units-of-measure/stores/unit-of-mea
 import { useTaxStore } from "../../taxes/stores/tax.store";
 import { useSatProdservCodeStore } from "../../sat-prodserv-codes/stores/sat-prodserv-code.store";
 import { useSatUnitCodeStore } from "../../sat-unit-codes/stores/sat-unit-code.store";
-import { useProductTypeStore } from "../../product-types/stores/product-type.store";
+import { useProductTypes } from "../../product-types/hooks/useProductTypes";
 
 export default function ProductList() {
   const { data: session } = useSession();
@@ -29,7 +29,7 @@ export default function ProductList() {
   const { taxes } = useTaxStore((state) => state);
   const { satProdservCodes } = useSatProdservCodeStore((state) => state);
   const { satUnitCodes } = useSatUnitCodeStore((state) => state);
-  const { productTypes } = useProductTypeStore((state) => state);
+  const { productTypes } = useProductTypes();
 
   const handleEdit = useCallback(
     (product: Product) => {
@@ -55,9 +55,7 @@ export default function ProductList() {
       satUnit: new Map(
         satUnitCodes.map((code) => [code.id_sat_unidad, `${code.codigo} - ${code.descripcion}`])
       ),
-      productTypes: new Map(
-        productTypes.map((type) => [type.id, type.descripcion || type.codigo])
-      ),
+      productTypes: new Map(productTypes.map((type) => [type.id, type.codigo])),
     }),
     [categories, units, taxes, satProdservCodes, satUnitCodes, productTypes]
   );

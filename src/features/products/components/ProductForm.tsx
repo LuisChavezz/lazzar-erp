@@ -14,7 +14,7 @@ import { useUnitOfMeasureStore } from "../../units-of-measure/stores/unit-of-mea
 import { useTaxStore } from "../../taxes/stores/tax.store";
 import { useSatProdservCodeStore } from "../../sat-prodserv-codes/stores/sat-prodserv-code.store";
 import { useSatUnitCodeStore } from "../../sat-unit-codes/stores/sat-unit-code.store";
-import { useProductTypeStore } from "../../product-types/stores/product-type.store";
+import { useProductTypes } from "../../product-types/hooks/useProductTypes";
 import { useWorkspaceStore } from "../../workspace/store/workspace.store";
 import MissingPrerequisites from "./MissingPrerequisites";
 
@@ -40,7 +40,7 @@ export default function ProductForm({ onSuccess }: ProductFormProps) {
   const { taxes } = useTaxStore((state) => state);
   const { satProdservCodes } = useSatProdservCodeStore((state) => state);
   const { satUnitCodes } = useSatUnitCodeStore((state) => state);
-  const { productTypes } = useProductTypeStore((state) => state);
+  const { productTypes, isLoading: isLoadingProductTypes } = useProductTypes();
 
   // Filtrar categorías, unidades, impuestos, claves SAT y tipos de producto activos
   const activeCategories = categories.filter((category) => category.activo);
@@ -56,7 +56,7 @@ export default function ProductForm({ onSuccess }: ProductFormProps) {
   // Comprobar si faltan productos, colores, tallas, categorías, unidades, impuestos, claves SAT Prod/Serv, claves SAT Unidad o tipos de producto activos
   const missingItems = [
     activeCategories.length === 0 ? "Categorías de producto" : null,
-    productTypes.length === 0 ? "Tipos de producto" : null,
+    productTypes.length === 0 && !isLoadingProductTypes ? "Tipos de producto" : null,
     activeUnits.length === 0 ? "Unidades de medida" : null,
     activeTaxes.length === 0 ? "Impuestos" : null,
     activeSatProdservCodes.length === 0 ? "Claves SAT Prod/Serv" : null,
