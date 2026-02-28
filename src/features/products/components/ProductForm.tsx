@@ -9,7 +9,7 @@ import { FormSelect } from "../../../components/FormSelect";
 import { FormCancelButton, FormSubmitButton } from "../../../components/FormButtons";
 import { InfoIcon, ProductIcon, SettingsIcon } from "../../../components/Icons";
 import toast from "react-hot-toast";
-import { useProductCategoryStore } from "../../product-categories/stores/product-category.store";
+import { useProductCategories } from "../../product-categories/hooks/useProductCategories";
 import { useUnitOfMeasureStore } from "../../units-of-measure/stores/unit-of-measure.store";
 import { useTaxStore } from "../../taxes/stores/tax.store";
 import { useSatProdservCodeStore } from "../../sat-prodserv-codes/stores/sat-prodserv-code.store";
@@ -35,7 +35,7 @@ export default function ProductForm({ onSuccess }: ProductFormProps) {
   const selectedCompany = useWorkspaceStore((state) => state.selectedCompany);
 
   // Obtener categorías, unidades, impuestos, claves SAT y tipos de producto de los stores correspondientes
-  const { categories } = useProductCategoryStore((state) => state);
+  const { categories, isLoading: isLoadingProductCategories } = useProductCategories();
   const { units } = useUnitOfMeasureStore((state) => state);
   const { taxes } = useTaxStore((state) => state);
   const { satProdservCodes } = useSatProdservCodeStore((state) => state);
@@ -43,7 +43,7 @@ export default function ProductForm({ onSuccess }: ProductFormProps) {
   const { productTypes, isLoading: isLoadingProductTypes } = useProductTypes();
 
   // Filtrar categorías, unidades, impuestos, claves SAT y tipos de producto activos
-  const activeCategories = categories.filter((category) => category.activo);
+  const activeCategories = categories;
   const activeUnits = units.filter((unit) => unit.estatus);
   const activeTaxes = taxes.filter((tax) => tax.estatus);
   const activeSatProdservCodes = satProdservCodes.filter(
@@ -55,7 +55,7 @@ export default function ProductForm({ onSuccess }: ProductFormProps) {
 
   // Comprobar si faltan productos, colores, tallas, categorías, unidades, impuestos, claves SAT Prod/Serv, claves SAT Unidad o tipos de producto activos
   const missingItems = [
-    activeCategories.length === 0 ? "Categorías de producto" : null,
+    activeCategories.length === 0 && !isLoadingProductCategories ? "Categorías de producto" : null,
     productTypes.length === 0 && !isLoadingProductTypes ? "Tipos de producto" : null,
     activeUnits.length === 0 ? "Unidades de medida" : null,
     activeTaxes.length === 0 ? "Impuestos" : null,

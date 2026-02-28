@@ -7,7 +7,7 @@ import { useProductStore } from "../stores/product.store";
 import { getColumns } from "./ProductColumns";
 import { useSession } from "next-auth/react";
 import ProductForm from "./ProductForm";
-import { useProductCategoryStore } from "../../product-categories/stores/product-category.store";
+import { useProductCategories } from "../../product-categories/hooks/useProductCategories";
 import { useUnitOfMeasureStore } from "../../units-of-measure/stores/unit-of-measure.store";
 import { useTaxStore } from "../../taxes/stores/tax.store";
 import { useSatProdservCodeStore } from "../../sat-prodserv-codes/stores/sat-prodserv-code.store";
@@ -24,7 +24,7 @@ export default function ProductList() {
 
   const { products, selectedProduct, setSelectedProduct } = useProductStore((state) => state);
 
-  const { categories } = useProductCategoryStore((state) => state);
+  const { categories } = useProductCategories();
   const { units } = useUnitOfMeasureStore((state) => state);
   const { taxes } = useTaxStore((state) => state);
   const { satProdservCodes } = useSatProdservCodeStore((state) => state);
