@@ -1,16 +1,18 @@
 import { useMemo, useState, useCallback } from "react";
 import { DataTable } from "../../../components/DataTable";
-import { useSizeStore } from "../stores/size.store";
+import { ErrorState } from "../../../components/ErrorState";
 import { getColumns } from "./SizeColumns";
 import { MainDialog } from "../../../components/MainDialog";
 import { DialogHeader } from "@/src/components/DialogHeader";
 import { Size } from "../interfaces/size.interface";
 import { useSession } from "next-auth/react";
 import SizeForm from "./SizeForm";
+import { useSizes } from "../hooks/useSizes";
 
 export default function SizeList() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const { sizes, setSelectedSize, selectedSize } = useSizeStore((state) => state);
+  const [selectedSize, setSelectedSize] = useState<Size | null>(null);
+  const { sizes, isLoading, isError, error } = useSizes();
   const { data: session } = useSession();
   const isAdmin = session?.user?.role === "admin";
   const permissions = session?.user?.permissions ?? [];
@@ -22,7 +24,7 @@ export default function SizeList() {
       setSelectedSize(size);
       setIsDialogOpen(true);
     },
-    [setSelectedSize]
+    [setSelectedSize, setIsDialogOpen]
   );
 
   const handleNew = () => {
@@ -34,6 +36,24 @@ export default function SizeList() {
     () => getColumns(handleEdit, { canEdit: canEditConfig, canDelete: canDeleteConfig }),
     [handleEdit, canEditConfig, canDeleteConfig]
   );
+
+  if (isLoading) {
+    return (
+      <div className="p-8 flex justify-center items-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-sky-600"></div>
+        <span className="ml-3 text-slate-500">Cargando tallas...</span>
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <ErrorState
+        title="Error al cargar tallas"
+        message={(error as Error).message}
+      />
+    );
+  }
 
   return (
     <DataTable
@@ -63,7 +83,10 @@ export default function SizeList() {
               </button>
             }
           >
-            <SizeForm onSuccess={() => setIsDialogOpen(false)} />
+            <SizeForm
+              onSuccess={() => setIsDialogOpen(false)}
+              sizeToEdit={selectedSize}
+            />
           </MainDialog>
         ) : null
       }

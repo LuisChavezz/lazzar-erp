@@ -6,7 +6,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { ColorFormSchema, ColorFormValues } from "../schemas/color.schema";
 import { FormInput } from "../../../components/FormInput";
 import { FormCancelButton, FormSubmitButton } from "../../../components/FormButtons";
-import { SettingsIcon } from "../../../components/Icons";
 import { useCreateColor } from "../hooks/useCreateColor";
 import { useUpdateColor } from "../hooks/useUpdateColor";
 import { Color } from "../interfaces/color.interface";

@@ -9,7 +9,7 @@ import ProductVariantForm from "./ProductVariantForm";
 import { ProductVariant } from "../interfaces/product-variant.interface";
 import { useProductStore } from "../../products/stores/product.store";
 import { useColors } from "../../colors/hooks/useColors";
-import { useSizeStore } from "../../sizes/stores/size.store";
+import { useSizes } from "../../sizes/hooks/useSizes";
 
 export default function ProductVariantList() {
   const { data: session } = useSession();
@@ -23,7 +23,7 @@ export default function ProductVariantList() {
     useProductVariantStore((state) => state);
   const { products } = useProductStore((state) => state);
   const { colors } = useColors();
-  const { sizes } = useSizeStore((state) => state);
+  const { sizes } = useSizes();
 
   const handleEdit = useCallback(
     (variant: ProductVariant) => {
