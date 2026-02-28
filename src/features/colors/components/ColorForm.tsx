@@ -1,75 +1,66 @@
 "use client";
 
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useColorStore } from "../stores/color.store";
 import { ColorFormSchema, ColorFormValues } from "../schemas/color.schema";
 import { FormInput } from "../../../components/FormInput";
 import { FormCancelButton, FormSubmitButton } from "../../../components/FormButtons";
 import { SettingsIcon } from "../../../components/Icons";
-import toast from "react-hot-toast";
+import { useCreateColor } from "../hooks/useCreateColor";
+import { useUpdateColor } from "../hooks/useUpdateColor";
+import { Color } from "../interfaces/color.interface";
 
 interface ColorFormProps {
   onSuccess: () => void;
+  colorToEdit?: Color | null;
 }
 
-export default function ColorForm({ onSuccess }: ColorFormProps) {
-  const addColor = useColorStore((state) => state.addColor);
-  const updateColor = useColorStore((state) => state.updateColor);
-  const selectedColor = useColorStore((state) => state.selectedColor);
-  const isLoading = useColorStore((state) => state.isLoading);
-  const setIsLoading = useColorStore((state) => state.setIsLoading);
+export default function ColorForm({ onSuccess, colorToEdit }: ColorFormProps) {
+  const isEditing = Boolean(colorToEdit?.id);
+  const emptyValues: ColorFormValues = {
+    nombre: "",
+    codigo_hex: "FAFAFA",
+  };
+  const editValues: ColorFormValues = colorToEdit
+    ? {
+        nombre: colorToEdit.nombre,
+        codigo_hex: colorToEdit.codigo_hex,
+      }
+    : emptyValues;
 
   const {
     register,
     handleSubmit,
     reset,
+    setError,
     watch,
     formState: { errors },
   } = useForm<ColorFormValues>({
     resolver: zodResolver(ColorFormSchema),
-    defaultValues: {
-      nombre: "",
-      codigo_hex: "#000000",
-      activo: true,
-    },
-    values: selectedColor
-      ? {
-          nombre: selectedColor.nombre,
-          codigo_hex: selectedColor.codigo_hex,
-          activo: selectedColor.activo,
-        }
-      : undefined,
+    defaultValues: emptyValues,
+    values: isEditing ? editValues : undefined,
   });
 
   const selectedHex = watch("codigo_hex");
-  const isActive = watch("activo");
+  const { mutateAsync: createColor, isPending: isCreating } = useCreateColor(setError);
+  const { mutateAsync: updateColor, isPending: isUpdating } = useUpdateColor(setError);
+  const [isLoading, setIsLoading] = useState(false);
+  const isPending = isCreating || isUpdating || isLoading;
 
   const onSubmit = async (data: ColorFormValues) => {
     setIsLoading(true);
     try {
-      await new Promise((resolve) => setTimeout(resolve, 500));
-
-      if (selectedColor) {
-        updateColor({
-          ...selectedColor,
-          ...data,
-          codigo_hex: data.codigo_hex.toUpperCase(),
-        });
-        toast.success("Color actualizado correctamente");
+      const payload = {
+        nombre: data.nombre,
+        codigo_hex: data.codigo_hex.toUpperCase(),
+      };
+      if (isEditing && colorToEdit) {
+        await updateColor({ id: colorToEdit.id, ...payload });
       } else {
-        addColor({
-          id: Date.now(),
-          nombre: data.nombre,
-          codigo_hex: data.codigo_hex.toUpperCase(),
-          activo: data.activo,
-        });
-        toast.success("Color registrado correctamente");
+        await createColor(payload);
       }
       onSuccess();
-    } catch (error) {
-      console.error(error);
-      toast.error("Ocurrió un error al guardar el color");
     } finally {
       setIsLoading(false);
     }
@@ -77,7 +68,7 @@ export default function ColorForm({ onSuccess }: ColorFormProps) {
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="w-full">
-      <fieldset disabled={isLoading} className="group-disabled:opacity-50">
+      <fieldset disabled={isPending} className="group-disabled:opacity-50">
         <section className="mb-8">
           <div className="bg-slate-50 dark:bg-white/5 rounded-3xl p-8 border border-slate-100 dark:border-white/5">
             <h2 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-6 flex items-center gap-2">
@@ -103,9 +94,9 @@ export default function ColorForm({ onSuccess }: ColorFormProps) {
               <div className="group/field">
                 <FormInput
                   label="Código HEX"
-                  placeholder="#FF0000"
+                  placeholder="FF0000"
                   className="font-mono uppercase"
-                  maxLength={7}
+                  maxLength={6}
                   {...register("codigo_hex")}
                   error={errors.codigo_hex}
                 />
@@ -118,10 +109,10 @@ export default function ColorForm({ onSuccess }: ColorFormProps) {
                 <div className="w-full h-12 rounded-xl border border-slate-200 dark:border-slate-700 bg-white/40 dark:bg-black/20 flex items-center px-3 gap-3">
                   <span
                     className="w-6 h-6 rounded-full border border-slate-200 dark:border-slate-600"
-                    style={{ backgroundColor: selectedHex }}
+                    style={{ backgroundColor: `#${selectedHex}` }}
                   />
                   <span className="text-xs font-mono text-slate-500 dark:text-slate-400">
-                    {selectedHex}
+                    {selectedHex.toUpperCase()}
                   </span>
                 </div>
               </div>
@@ -129,46 +120,10 @@ export default function ColorForm({ onSuccess }: ColorFormProps) {
           </div>
         </section>
 
-        <div className="w-full">
-          <div className="w-full space-y-8">
-            <div className="bg-white dark:bg-zinc-900 rounded-3xl border border-slate-200 dark:border-white/5 shadow-sm dark:shadow-none overflow-hidden hover:shadow-lg transition-shadow duration-300">
-              <div className="px-8 py-5 border-b border-slate-100 dark:border-white/5 flex items-center gap-3 bg-slate-50/50 dark:bg-white/2">
-                <div className="w-10 h-10 rounded-xl bg-sky-50 dark:bg-sky-500/10 flex items-center justify-center text-sky-600 dark:text-sky-400 shadow-sm">
-                  <SettingsIcon className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="font-display font-semibold text-slate-900 dark:text-white text-lg">
-                    Estado
-                  </h3>
-                  <p className="text-xs text-slate-500">Control de disponibilidad</p>
-                </div>
-              </div>
-
-              <div className="p-8 space-y-6">
-                <div className="flex items-center gap-4 rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50/50 dark:bg-white/5 px-4 py-3">
-                  <input
-                    type="checkbox"
-                    className="w-4 h-4 text-sky-600 rounded border-slate-300 focus:ring-sky-500"
-                    {...register("activo")}
-                  />
-                  <div>
-                    <p className="text-sm font-medium text-slate-700 dark:text-slate-200">
-                      {isActive ? "Color activo" : "Color inactivo"}
-                    </p>
-                    <p className="text-xs text-slate-500">
-                      {isActive ? "Disponible para catálogos" : "No disponible para selección"}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
         <div className="flex justify-end gap-3 pb-8 mt-8">
-          <FormCancelButton onClick={() => reset()} disabled={isLoading} />
-          <FormSubmitButton isPending={isLoading} loadingLabel="Guardando...">
-            {selectedColor ? "Actualizar Color" : "Registrar Color"}
+          <FormCancelButton onClick={() => reset()} disabled={isPending} />
+          <FormSubmitButton isPending={isPending} loadingLabel="Guardando...">
+            {colorToEdit ? "Actualizar Color" : "Registrar Color"}
           </FormSubmitButton>
         </div>
       </fieldset>

@@ -11,7 +11,7 @@ import { InfoIcon, ProductVariantsIcon, SettingsIcon } from "../../../components
 import toast from "react-hot-toast";
 import { useWorkspaceStore } from "../../workspace/store/workspace.store";
 import { useProductStore } from "../../products/stores/product.store";
-import { useColorStore } from "../../colors/stores/color.store";
+import { useColors } from "../../colors/hooks/useColors";
 import { useSizeStore } from "../../sizes/stores/size.store";
 import MissingPrerequisites from "../../products/components/MissingPrerequisites";
 
@@ -33,12 +33,12 @@ export default function ProductVariantForm({ onSuccess }: ProductVariantFormProp
 
   // Stores de Products, Colors, y Sizes para obtener los datos necesarios
   const { products } = useProductStore((state) => state);
-  const { colors } = useColorStore((state) => state);
+  const { colors } = useColors();
   const { sizes } = useSizeStore((state) => state);
 
   // Filtrar productos, colores y tallas activos
   const activeProducts = products.filter((product) => product.activo);
-  const activeColors = colors.filter((color) => color.activo);
+  const activeColors = colors;
   const activeSizes = sizes.filter((size) => size.activo);
 
   // Verificar si hay productos, colores y tallas activos

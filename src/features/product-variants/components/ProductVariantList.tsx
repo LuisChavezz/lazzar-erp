@@ -8,7 +8,7 @@ import { useSession } from "next-auth/react";
 import ProductVariantForm from "./ProductVariantForm";
 import { ProductVariant } from "../interfaces/product-variant.interface";
 import { useProductStore } from "../../products/stores/product.store";
-import { useColorStore } from "../../colors/stores/color.store";
+import { useColors } from "../../colors/hooks/useColors";
 import { useSizeStore } from "../../sizes/stores/size.store";
 
 export default function ProductVariantList() {
@@ -22,7 +22,7 @@ export default function ProductVariantList() {
   const { productVariants, selectedProductVariant, setSelectedProductVariant } =
     useProductVariantStore((state) => state);
   const { products } = useProductStore((state) => state);
-  const { colors } = useColorStore((state) => state);
+  const { colors } = useColors();
   const { sizes } = useSizeStore((state) => state);
 
   const handleEdit = useCallback(
