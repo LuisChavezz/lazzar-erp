@@ -1,6 +1,7 @@
 import { getBranches } from "@/src/features/branches/services/actions";
 import { getCurrencies } from "@/src/features/currency/services/actions";
 import { getColors } from "@/src/features/colors/services/actions";
+import { getSizes } from "@/src/features/sizes/services/actions";
 import { getProductCategories } from "@/src/features/product-categories/services/actions";
 import { getProductTypes } from "@/src/features/product-types/services/actions";
 import { getUsers } from "@/src/features/users/services/actions";
@@ -118,6 +119,8 @@ export const configCards: ConfigCardItem[] = [
     icon: SizesIcon,
     view: "sizes",
     adminOnly: true,
+    prefetchKey: ["sizes"],
+    prefetchFn: getSizes,
   },
   {
     title: "Unidades de Medida",
