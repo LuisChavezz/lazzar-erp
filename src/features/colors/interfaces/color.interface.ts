@@ -2,5 +2,9 @@ export interface Color {
   id: number;
   nombre: string;
   codigo_hex: string;
-  activo: boolean;
+}
+
+export interface ColorCreate {
+  nombre: string;
+  codigo_hex: string;
 }

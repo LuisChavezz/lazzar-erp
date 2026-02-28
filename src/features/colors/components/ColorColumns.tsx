@@ -1,9 +1,8 @@
 import { ColumnDef, createColumnHelper, Row } from "@tanstack/react-table";
 import { EditIcon, DeleteIcon } from "../../../components/Icons";
 import { Color } from "../interfaces/color.interface";
-import { useColorStore } from "../stores/color.store";
 import { ConfirmDialog } from "../../../components/ConfirmDialog";
-import toast from "react-hot-toast";
+import { useDeleteColor } from "../hooks/useDeleteColor";
 
 const columnHelper = createColumnHelper<Color>();
 
@@ -18,12 +17,7 @@ const ActionsCell = ({
   canEdit: boolean;
   canDelete: boolean;
 }) => {
-  const deleteColor = useColorStore((state) => state.deleteColor);
-
-  const handleDelete = () => {
-    deleteColor(row.original.id);
-    toast.success("Color eliminado correctamente");
-  };
+  const { mutate: deleteColor, isPending } = useDeleteColor();
 
   return (
     <div className="flex items-center justify-center gap-2">
@@ -40,12 +34,14 @@ const ActionsCell = ({
         <ConfirmDialog
           title="Eliminar Color"
           description="¿Estás seguro de que deseas eliminar este color? Esta acción no se puede deshacer."
-          onConfirm={handleDelete}
+          confirmText={isPending ? "Eliminando..." : "Eliminar"}
+          onConfirm={() => deleteColor(row.original.id)}
           confirmColor="red"
           trigger={
             <button
               className="p-1 cursor-pointer text-slate-400 hover:text-red-600 transition-colors"
               title="Eliminar"
+              disabled={isPending}
             >
               <DeleteIcon className="w-5 h-5" />
             </button>
@@ -61,20 +57,6 @@ export const getColumns = (
   permissions: { canEdit: boolean; canDelete: boolean }
 ) => {
   const columns = [
-    columnHelper.accessor("activo", {
-      header: "Estado",
-      cell: (info) => {
-        const isActive = info.getValue();
-        const styles = isActive
-          ? "bg-emerald-100 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400"
-          : "bg-slate-100 text-slate-600 dark:bg-slate-500/20 dark:text-slate-400";
-        return (
-          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${styles}`}>
-            {isActive ? "Activo" : "Inactivo"}
-          </span>
-        );
-      },
-    }),
     columnHelper.accessor("nombre", {
       header: "Nombre",
       cell: (info) => (
@@ -89,10 +71,10 @@ export const getColumns = (
         <div className="flex items-center gap-2">
           <span
             className="w-3 h-3 rounded-full border border-slate-200 dark:border-slate-600"
-            style={{ backgroundColor: info.getValue() }}
+            style={{ backgroundColor: `#${info.getValue()}` }}
           />
           <span className="font-mono text-slate-600 dark:text-slate-300">
-            {info.getValue()}
+            #{info.getValue()}
           </span>
         </div>
       ),
