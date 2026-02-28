@@ -1,11 +1,17 @@
+import { Company } from "../../companies/interfaces/company.interface";
+
 
 export interface ProductCategory {
   id: number;
-  empresa_id: number;
+  empresa: Company["id"];
   nombre: string;
   codigo: string;
-  descripcion?: string;
-  activo: boolean;
-  created_at: string;
-  updated_at: string;
+  descripcion: string;
+}
+
+export interface ProductCategoryCreate {
+  empresa: Company["id"];
+  nombre: string;
+  codigo: string;
+  descripcion: string;
 }

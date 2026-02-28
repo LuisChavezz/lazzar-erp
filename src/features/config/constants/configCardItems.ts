@@ -1,5 +1,6 @@
 import { getBranches } from "@/src/features/branches/services/actions";
 import { getCurrencies } from "@/src/features/currency/services/actions";
+import { getProductCategories } from "@/src/features/product-categories/services/actions";
 import { getProductTypes } from "@/src/features/product-types/services/actions";
 import { getUsers } from "@/src/features/users/services/actions";
 import { getWarehouses } from "@/src/features/warehouses/services/actions";
@@ -89,6 +90,8 @@ export const configCards: ConfigCardItem[] = [
     icon: ProductCategoriesIcon,
     view: "product-categories",
     adminOnly: true,
+    prefetchKey: ["product-categories"],
+    prefetchFn: getProductCategories,
   },
   {
     title: "Tipos de Producto",

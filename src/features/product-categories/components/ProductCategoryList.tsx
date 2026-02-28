@@ -1,28 +1,31 @@
 import { useMemo, useState, useCallback } from "react";
 import { DataTable } from "../../../components/DataTable";
-import { useProductCategoryStore } from "../stores/product-category.store";
+import { ErrorState } from "../../../components/ErrorState";
 import { getColumns } from "./ProductCategoryColumns";
 import { MainDialog } from "../../../components/MainDialog";
 import { DialogHeader } from "@/src/components/DialogHeader";
 import { ProductCategory } from "../interfaces/product-category.interface";
 import { useSession } from "next-auth/react";
 import ProductCategoryForm from "./ProductCategoryForm";
+import { useProductCategories } from "../hooks/useProductCategories";
 
 export default function ProductCategoryList() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const { categories, setSelectedCategory, selectedCategory } = useProductCategoryStore(
-    (state) => state
-  );
+  const [selectedCategory, setSelectedCategory] = useState<ProductCategory | null>(null);
+  const { categories, isLoading, isError, error } = useProductCategories();
   const { data: session } = useSession();
   const isAdmin = session?.user?.role === "admin";
   const permissions = session?.user?.permissions ?? [];
   const canEditConfig = isAdmin || permissions.includes("E-CONF");
   const canDeleteConfig = isAdmin || permissions.includes("D-CONF");
 
-  const handleEdit = useCallback((category: ProductCategory) => {
-    setSelectedCategory(category);
-    setIsDialogOpen(true);
-  }, [setSelectedCategory]);
+  const handleEdit = useCallback(
+    (category: ProductCategory) => {
+      setSelectedCategory(category);
+      setIsDialogOpen(true);
+    },
+    [setSelectedCategory, setIsDialogOpen]
+  );
 
   const handleNew = () => {
     setSelectedCategory(null);
@@ -33,6 +36,24 @@ export default function ProductCategoryList() {
     () => getColumns(handleEdit, { canEdit: canEditConfig, canDelete: canDeleteConfig }),
     [handleEdit, canEditConfig, canDeleteConfig]
   );
+
+  if (isLoading) {
+    return (
+      <div className="p-8 flex justify-center items-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-sky-600"></div>
+        <span className="ml-3 text-slate-500">Cargando categorías...</span>
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <ErrorState
+        title="Error al cargar categorías"
+        message={(error as Error).message}
+      />
+    );
+  }
 
   return (
     <DataTable
@@ -62,7 +83,10 @@ export default function ProductCategoryList() {
               </button>
             }
           >
-            <ProductCategoryForm onSuccess={() => setIsDialogOpen(false)} />
+            <ProductCategoryForm
+              onSuccess={() => setIsDialogOpen(false)}
+              categoryToEdit={selectedCategory}
+            />
           </MainDialog>
         ) : null
       }
