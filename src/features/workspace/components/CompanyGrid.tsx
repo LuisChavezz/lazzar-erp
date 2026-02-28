@@ -17,11 +17,11 @@ export default function CompanyGrid({
   return (
     <div
       className={`
-        grid gap-6 transition-all duration-500 ease-in-out w-full
+        grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 transition-all duration-500 ease-in-out w-full
         ${
           selectedCompanyId
-            ? "grid-cols-1 opacity-0 pointer-events-none absolute top-0 left-0"
-            : "grid-cols-1 md:grid-cols-2 lg:grid-cols-3 opacity-100 relative"
+            ? "opacity-0 pointer-events-none absolute inset-0"
+            : "opacity-100 relative"
         }
       `}
     >

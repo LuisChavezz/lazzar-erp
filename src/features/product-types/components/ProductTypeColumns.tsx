@@ -1,9 +1,8 @@
 import { ColumnDef, createColumnHelper, Row } from "@tanstack/react-table";
 import { EditIcon, DeleteIcon } from "../../../components/Icons";
 import { ProductType } from "../interfaces/product-type.interface";
-import { useProductTypeStore } from "../stores/product-type.store";
 import { ConfirmDialog } from "../../../components/ConfirmDialog";
-import toast from "react-hot-toast";
+import { useDeleteProductType } from "../hooks/useDeleteProductType";
 
 const columnHelper = createColumnHelper<ProductType>();
 
@@ -18,12 +17,7 @@ const ActionsCell = ({
   canEdit: boolean;
   canDelete: boolean;
 }) => {
-  const deleteProductType = useProductTypeStore((state) => state.deleteProductType);
-
-  const handleDelete = () => {
-    deleteProductType(row.original);
-    toast.success("Tipo de producto eliminado correctamente");
-  };
+  const { mutate: deleteProductType, isPending } = useDeleteProductType();
 
   return (
     <div className="flex items-center justify-center gap-2">
@@ -40,12 +34,14 @@ const ActionsCell = ({
         <ConfirmDialog
           title="Eliminar Tipo de Producto"
           description="¿Estás seguro de que deseas eliminar este tipo de producto? Esta acción no se puede deshacer."
-          onConfirm={handleDelete}
+          confirmText={isPending ? "Eliminando..." : "Eliminar"}
+          onConfirm={() => deleteProductType(row.original.id)}
           confirmColor="red"
           trigger={
             <button
               className="p-1 cursor-pointer text-slate-400 hover:text-red-600 transition-colors"
               title="Eliminar"
+              disabled={isPending}
             >
               <DeleteIcon className="w-5 h-5" />
             </button>
@@ -66,14 +62,6 @@ export const getColumns = (
       cell: (info) => (
         <span className="font-medium text-slate-700 dark:text-slate-200">
           {info.getValue()}
-        </span>
-      ),
-    }),
-    columnHelper.accessor("descripcion", {
-      header: "Descripción",
-      cell: (info) => (
-        <span className="text-slate-500 dark:text-slate-400">
-          {info.getValue() || "Sin descripción"}
         </span>
       ),
     }),

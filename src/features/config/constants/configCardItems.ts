@@ -1,5 +1,6 @@
 import { getBranches } from "@/src/features/branches/services/actions";
 import { getCurrencies } from "@/src/features/currency/services/actions";
+import { getProductTypes } from "@/src/features/product-types/services/actions";
 import { getUsers } from "@/src/features/users/services/actions";
 import { getWarehouses } from "@/src/features/warehouses/services/actions";
 import {
@@ -95,6 +96,8 @@ export const configCards: ConfigCardItem[] = [
     icon: ProductTypesIcon,
     view: "product-types",
     adminOnly: true,
+    prefetchKey: ["product-types"],
+    prefetchFn: getProductTypes,
   },
   {
     title: "Colores",
