@@ -4,7 +4,13 @@ import { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
 import { Order } from "../interfaces/order.interface";
 import { getStatusStyles } from "../utils/getStatusStyle";
-import { EditIcon, ViewIcon } from "../../../components/Icons";
+import {
+  CloseIcon,
+  EditIcon,
+  EmbarquesIcon,
+  FacturacionIcon,
+  ViewIcon,
+} from "../../../components/Icons";
 import { formatCurrency } from "../../../utils/formatCurrency";
 
 const statusLabels: Record<Order["estatusPedido"], string> = {
@@ -143,6 +149,7 @@ export const orderColumns: ColumnDef<Order>[] = [
         Acciones
       </div>
     ),
+    size: 200,
     cell: ({ row }) => (
       <div className="flex items-center justify-center gap-2">
         <button
@@ -161,6 +168,30 @@ export const orderColumns: ColumnDef<Order>[] = [
         >
           <EditIcon className="w-5 h-5" />
         </Link>
+        <button
+          className="p-1 cursor-pointer text-slate-400 hover:text-sky-600 transition-colors"
+          title="Facturar"
+          aria-label="Facturar pedido"
+          type="button"
+        >
+          <FacturacionIcon className="w-5 h-5" />
+        </button>
+        <button
+          className="p-1 cursor-pointer text-slate-400 hover:text-sky-600 transition-colors"
+          title="Marcar como enviado"
+          aria-label="Marcar pedido como enviado"
+          type="button"
+        >
+          <EmbarquesIcon className="w-5 h-5" />
+        </button>
+        <button
+          className="p-1 cursor-pointer text-slate-400 hover:text-rose-500 transition-colors"
+          title="Cancelar"
+          aria-label="Cancelar pedido"
+          type="button"
+        >
+          <CloseIcon className="w-5 h-5" />
+        </button>
       </div>
     ),
   },

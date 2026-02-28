@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { DataTable, DataTableVisibleColumn } from "@/src/components/DataTable";
 import { orderColumns } from "./OrderColumns";
 import { OrderFiltersDialog } from "./OrderFiltersDialog";
@@ -15,11 +16,41 @@ import { LoadingSkeleton } from "@/src/components/LoadingSkeleton";
 
 export const OrderList = () => {
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
+  const searchParams = useSearchParams();
   const { orders } = useOrderStore((state) => state);
   const ordersHydrated = useOrderStore((state) => state.hasHydrated);
   const filtersHydrated = useOrderFiltersStore((state) => state.hasHydrated);
   const [visibleOrders, setVisibleOrders] = useState<Order[]>([]);
   const [visibleColumns, setVisibleColumns] = useState<DataTableVisibleColumn<Order>[]>([]);
+  const isOverdueActive = searchParams.get("overdue") === "1";
+  const baseOrders = useMemo(() => {
+    if (!isOverdueActive) {
+      return orders;
+    }
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const parseOrderDate = (value: string) => {
+      if (!value) return null;
+      if (value.includes("/")) {
+        const [day, month, year] = value.split("/").map((part) => Number(part));
+        if (!day || !month || !year) return null;
+        const date = new Date(year, month - 1, day);
+        return Number.isNaN(date.getTime()) ? null : date;
+      }
+      if (value.includes("-")) {
+        const [year, month, day] = value.split("-").map((part) => Number(part));
+        if (!day || !month || !year) return null;
+        const date = new Date(year, month - 1, day);
+        return Number.isNaN(date.getTime()) ? null : date;
+      }
+      const date = new Date(value);
+      return Number.isNaN(date.getTime()) ? null : date;
+    };
+    return orders.filter((order) => {
+      const dueDate = parseOrderDate(order.fechaVence);
+      return dueDate ? dueDate < today : false;
+    });
+  }, [isOverdueActive, orders]);
   const {
     filters,
     filteredOrders,
@@ -29,7 +60,7 @@ export const OrderList = () => {
     savedFilters,
     saveFilters,
     clearSavedFilters,
-  } = useOrderFilters(orders);
+  } = useOrderFilters(baseOrders);
 
   useOrderCsvExport(visibleOrders, visibleColumns);
   useOrderPdfExport(visibleOrders, visibleColumns);
@@ -54,7 +85,8 @@ export const OrderList = () => {
       <DataTable
         columns={orderColumns}
         data={filteredOrders}
-        baseDataCount={orders.length}
+        baseDataCount={baseOrders.length}
+        title={isOverdueActive ? "Vencidos" : ""}
         searchPlaceholder="Buscar pedido..."
         onFiltersClick={() => setIsFiltersOpen(true)}
         isFiltersActive={hasActiveFilters}
