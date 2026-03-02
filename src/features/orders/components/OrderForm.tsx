@@ -19,7 +19,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useWarehouses } from "../../warehouses/hooks/useWarehouses";
 import { useWorkspaceStore } from "../../workspace/store/workspace.store";
 import { useCompanyBranches } from "../../branches/hooks/useCompanyBranches";
-import { AddProductsDialog } from "./AddProductsDialog";
+import { AddProductDialog } from "./AddProductDialog";
 
 interface OrderFormProps {
   orderId?: string;
@@ -123,7 +123,7 @@ export default function OrderForm({ orderId }: OrderFormProps) {
     values: isEditing ? editValues : undefined,
   });
 
-  const { fields, append, remove } = useFieldArray({
+  const { fields, append, remove, update } = useFieldArray({
     control,
     name: "items",
   });
@@ -193,6 +193,7 @@ export default function OrderForm({ orderId }: OrderFormProps) {
   const [isLoading, setIsLoading] = useState(false);
   const isPending = isSubmitting || isLoading;
   const [isAddProductsOpen, setIsAddProductsOpen] = useState(false);
+  const [editIndex, setEditIndex] = useState<number | null>(null);
 
   const existingSkus = useMemo(() => {
     const set = new Set<string>();
@@ -575,7 +576,10 @@ export default function OrderForm({ orderId }: OrderFormProps) {
           <div className="flex gap-2">
             <button
               type="button"
-              onClick={() => setIsAddProductsOpen(true)}
+              onClick={() => {
+                setEditIndex(null);
+                setIsAddProductsOpen(true);
+              }}
               className="inline-flex items-center px-3 py-1.5 bg-sky-50 dark:bg-sky-500/10 text-sky-600 dark:text-sky-400 rounded-lg text-xs font-bold uppercase tracking-wide hover:bg-sky-100 dark:hover:bg-sky-500/20 transition-colors cursor-pointer"
               title="Agregar producto al pedido"
               aria-label="Agregar producto al pedido"
@@ -585,13 +589,29 @@ export default function OrderForm({ orderId }: OrderFormProps) {
           </div>
         </div>
 
-        <AddProductsDialog
+        <AddProductDialog
+          key={editIndex ?? "new"}
           open={isAddProductsOpen}
-          onOpenChange={setIsAddProductsOpen}
+          onOpenChange={(nextOpen) => {
+            if (!nextOpen) {
+              setEditIndex(null);
+            }
+            setIsAddProductsOpen(nextOpen);
+          }}
           existingSkus={existingSkus}
-          onAddItems={(items) => append(items)}
+          onAddItem={(item) => append(item)}
+          onUpdateItem={
+            editIndex !== null
+              ? (item) => {
+                  update(editIndex, item);
+                }
+              : undefined
+          }
+          initialItem={editIndex !== null ? watchedItems?.[editIndex] : null}
+          startStep={editIndex !== null ? "sizes" : "select"}
         />
 
+        {/* Detalle de productos */}
         <div className="flex-1 overflow-auto -mx-6 px-6 pb-2 border-b border-slate-200 dark:border-slate-800">
           <table className="w-full min-w-300 border-collapse text-left">
             <thead className="sticky top-0 z-10 bg-slate-50/95 dark:bg-zinc-900/95 backdrop-blur shadow-sm">
@@ -607,6 +627,12 @@ export default function OrderForm({ orderId }: OrderFormProps) {
                 </th>
                 <th className="p-2 text-[10px] font-bold text-slate-400 uppercase tracking-wider w-20 text-center">
                   UM
+                </th>
+                <th className="p-2 text-[10px] font-bold text-slate-400 uppercase tracking-wider w-40">
+                  Tallas
+                </th>
+                <th className="p-2 text-[10px] font-bold text-slate-400 uppercase tracking-wider w-20 text-center">
+                  Bordado
                 </th>
                 <th className="p-2 text-[10px] font-bold text-slate-400 uppercase tracking-wider w-24 text-right">
                   Cantidad
@@ -627,7 +653,7 @@ export default function OrderForm({ orderId }: OrderFormProps) {
               {fields.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={9}
+                    colSpan={11}
                     className="p-6 text-center text-sm text-slate-500 dark:text-slate-400"
                   >
                     No hay productos agregados.
@@ -645,6 +671,13 @@ export default function OrderForm({ orderId }: OrderFormProps) {
                 const importeError = getFieldError(itemErrors?.importe);
 
                 const currentItem = watchedItems?.[index];
+                const tallasLabel =
+                  currentItem?.tallas && currentItem.tallas.length > 0
+                    ? currentItem.tallas
+                        .map((talla) => `${talla.nombre} (${talla.cantidad})`)
+                        .join(", ")
+                    : "—";
+                const bordadoLabel = currentItem?.bordados?.activo ? "Sí" : "No";
                 const cantidad = Number(currentItem?.cantidad) || 0;
                 const precio = Number(currentItem?.precio) || 0;
                 const descuento = Number(currentItem?.descuento) || 0;
@@ -719,12 +752,40 @@ export default function OrderForm({ orderId }: OrderFormProps) {
                     </td>
                     <td className="p-1">
                       <div className="space-y-1">
+                        <div
+                          className="w-full max-w-40 overflow-x-auto custom-scrollbar"
+                          role="presentation"
+                        >
+                          <div
+                            className="min-w-max cursor-default bg-slate-100/80 dark:bg-zinc-800/60 border-b border-transparent p-1.5 text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap"
+                            aria-label="Tallas del producto"
+                          >
+                            {tallasLabel}
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="p-1">
+                      <div className="space-y-1">
+                        <input
+                          type="text"
+                          readOnly
+                          tabIndex={-1}
+                          value={bordadoLabel}
+                          className="w-full cursor-not-allowed bg-slate-100/80 dark:bg-zinc-800/60 border-b border-transparent focus:ring-0 p-1.5 text-xs text-center text-slate-500 dark:text-slate-400 focus:border-transparent"
+                        />
+                      </div>
+                    </td>
+                    <td className="p-1">
+                      <div className="space-y-1">
                         <input
                           type="number"
                           placeholder="0"
                           aria-label="Cantidad"
                           autoComplete="off"
-                          className={`w-full bg-transparent border-b border-transparent focus:ring-0 p-1.5 text-xs text-right text-slate-800 dark:text-white focus:border-sky-500 ${cantidadError ? "border-rose-500 text-rose-600 dark:text-rose-400" : ""}`}
+                          readOnly
+                          tabIndex={-1}
+                          className={`w-full cursor-not-allowed bg-slate-100/80 dark:bg-zinc-800/60 border-b border-transparent focus:ring-0 p-1.5 text-xs text-right text-slate-500 dark:text-slate-400 focus:border-transparent ${cantidadError ? "border-rose-500 text-rose-600 dark:text-rose-400" : ""}`}
                           {...register(`items.${index}.cantidad`, {
                             valueAsNumber: true,
                           })}
@@ -794,14 +855,27 @@ export default function OrderForm({ orderId }: OrderFormProps) {
                       </div>
                     </td>
                     <td className="p-2 text-center">
-                      <button
-                        type="button"
-                        onClick={() => remove(index)}
-                        aria-label="Eliminar partida"
-                        className="text-slate-400 hover:text-rose-500 transition-colors cursor-pointer p-1"
-                      >
-                        ✕
-                      </button>
+                      <div className="flex items-center justify-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditIndex(index);
+                            setIsAddProductsOpen(true);
+                          }}
+                          aria-label="Editar partida"
+                          className="text-slate-400 hover:text-sky-500 transition-colors cursor-pointer p-1"
+                        >
+                          ✎
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => remove(index)}
+                          aria-label="Eliminar partida"
+                          className="text-slate-400 hover:text-rose-500 transition-colors cursor-pointer p-1"
+                        >
+                          ✕
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 );

@@ -15,6 +15,23 @@ export interface OrderItem {
   precio: number;
   descuento: number;
   importe: number;
+  tallas?: {
+    tallaId: number;
+    nombre: string;
+    cantidad: number;
+  }[];
+  bordados?: {
+    activo: boolean;
+    nuevoPonchado: boolean;
+    observaciones?: string;
+    especificaciones: {
+      posicionCodigo: string;
+      posicionNombre: string;
+      ancho: number;
+      alto: number;
+      colorHilo: string;
+    }[];
+  };
 }
 
 export interface OrderTotals {

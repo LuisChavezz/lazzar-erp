@@ -17,11 +17,8 @@ export default function OrdersPage() {
 
       {/* Actions Row */}
       <OrderActions />
-      
-      
-      
 
-      {/* Content */}
+      {/* List */}
       <div className="space-y-6">
         <OrderList />
       </div>

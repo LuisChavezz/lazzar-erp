@@ -52,6 +52,13 @@ export function AddProductsSelectableItem({
             {row.sku} · {row.unidad}
             {row.descripcion ? ` · ${row.descripcion}` : ""}
           </p>
+          <div className="flex items-center gap-2 text-[11px] text-slate-500 dark:text-slate-400 mt-2">
+            <span
+              className="w-2.5 h-2.5 rounded-full border border-slate-200 dark:border-slate-600"
+              style={{ backgroundColor: `#${row.colorHex}` }}
+            />
+            <span>{row.colorNombre}</span>
+          </div>
         </div>
         <div className="flex items-end flex-col gap-1">
           {isAlreadyAdded ? (

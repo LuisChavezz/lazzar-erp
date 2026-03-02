@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { useProductStore } from "../../products/stores/product.store";
 import { useProductVariantStore } from "../../product-variants/stores/product-variant.store";
 import { useUnitOfMeasureStore } from "../../units-of-measure/stores/unit-of-measure.store";
+import { useColors } from "../../colors/hooks/useColors";
 import { OrderFormValues } from "../schema/order.schema";
 
 type OrderItem = OrderFormValues["items"][number];
@@ -16,6 +17,8 @@ export interface CatalogRow {
   unidad: string;
   precio: number;
   isActive: boolean;
+  colorNombre: string;
+  colorHex: string;
 }
 
 interface UseAddProductsDialogParams {
@@ -34,6 +37,7 @@ export function useAddProductsDialog({
   const products = useProductStore((s) => s.products);
   const productVariants = useProductVariantStore((s) => s.productVariants);
   const units = useUnitOfMeasureStore((s) => s.units);
+  const { colors } = useColors();
 
   const [search, setSearch] = useState("");
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
@@ -49,6 +53,7 @@ export function useAddProductsDialog({
   const rows = useMemo<CatalogRow[]>(() => {
     const productsById = new Map(products.map((p) => [p.id, p]));
     const unitsById = new Map(units.map((u) => [u.id, u]));
+    const colorsById = new Map(colors.map((c) => [c.id, c]));
 
     return (productVariants || [])
       .map((variant) => {
@@ -56,6 +61,7 @@ export function useAddProductsDialog({
         if (!product) return null;
         const unit = unitsById.get(product.unidad_medida_id);
         const precio = Number(variant.precio_base);
+        const color = colorsById.get(variant.color_id);
         return {
           id: variant.id,
           sku: variant.sku ?? "",
@@ -64,12 +70,14 @@ export function useAddProductsDialog({
           unidad: unit?.clave ?? "PZA",
           precio: Number.isFinite(precio) ? precio : 0,
           isActive: Boolean(variant.activo) && Boolean(product.activo),
+          colorNombre: color?.nombre ?? "Sin color",
+          colorHex: color?.codigo_hex ?? "FFFFFF",
         } satisfies CatalogRow;
       })
       .filter((r): r is CatalogRow => Boolean(r))
       .filter((r) => r.isActive)
       .sort((a, b) => a.sku.localeCompare(b.sku, "es"));
-  }, [productVariants, products, units]);
+  }, [productVariants, products, units, colors]);
 
   const filteredRows = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -139,4 +147,3 @@ export function useAddProductsDialog({
     isAlreadyAdded,
   };
 }
-
