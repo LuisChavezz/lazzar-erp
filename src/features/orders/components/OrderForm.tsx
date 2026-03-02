@@ -85,6 +85,21 @@ export default function OrderForm({ orderId }: OrderFormProps) {
     agente: userName,
     tipoDocumento: "pedido",
     origen: [],
+    destinatario: "",
+    empresaEnvio: "",
+    telefonoEnvio: "",
+    celularEnvio: "",
+    direccionEnvio: "",
+    coloniaEnvio: "",
+    codigoPostalEnvio: "",
+    ciudadEnvio: "",
+    estadoEnvio: "",
+    referenciasEnvio: "",
+    enviarDomicilioFiscal: false,
+    embarcarConOtrosPedidos: false,
+    empaqueEcologico: false,
+    embarqueParcial: false,
+    comentariosParcialidad: "",
     comision: 0,
     plazo: 30,
     sucursal: 0,
@@ -113,6 +128,21 @@ export default function OrderForm({ orderId }: OrderFormProps) {
         agente: orderToEdit.agente ?? userName,
         tipoDocumento: orderToEdit.tipoDocumento ?? "pedido",
         origen: orderToEdit.origen ?? [],
+        destinatario: orderToEdit.destinatario ?? "",
+        empresaEnvio: orderToEdit.empresaEnvio ?? "",
+        telefonoEnvio: orderToEdit.telefonoEnvio ?? "",
+        celularEnvio: orderToEdit.celularEnvio ?? "",
+        direccionEnvio: orderToEdit.direccionEnvio ?? "",
+        coloniaEnvio: orderToEdit.coloniaEnvio ?? "",
+        codigoPostalEnvio: orderToEdit.codigoPostalEnvio ?? "",
+        ciudadEnvio: orderToEdit.ciudadEnvio ?? "",
+        estadoEnvio: orderToEdit.estadoEnvio ?? "",
+        referenciasEnvio: orderToEdit.referenciasEnvio ?? "",
+        enviarDomicilioFiscal: orderToEdit.enviarDomicilioFiscal ?? false,
+        embarcarConOtrosPedidos: orderToEdit.embarcarConOtrosPedidos ?? false,
+        empaqueEcologico: orderToEdit.empaqueEcologico ?? false,
+        embarqueParcial: orderToEdit.embarqueParcial ?? false,
+        comentariosParcialidad: orderToEdit.comentariosParcialidad ?? "",
         comision: orderToEdit.comision,
         plazo: orderToEdit.plazo,
         sucursal: hasBranch ? orderToEdit.sucursal : 0,
@@ -471,7 +501,7 @@ export default function OrderForm({ orderId }: OrderFormProps) {
             </div>
           </div>
 
-          <div className="flex-1 self-start grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
+          <div className="flex-1 self-start w-full grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
             <div className="md:col-span-1 lg:col-span-1">
               <FormInput
                 label="Cliente ID"
@@ -617,6 +647,149 @@ export default function OrderForm({ orderId }: OrderFormProps) {
                 </span>
               </label>
             </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="bg-white dark:bg-zinc-900 rounded-3xl p-6 border border-slate-200 dark:border-white/5 shadow-sm">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-6">
+          <div>
+            <h2 className="text-lg font-semibold text-slate-800 dark:text-white">
+              Datos de Envío
+            </h2>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Información para entrega y condiciones de envío.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-3">
+            <label className="inline-flex items-center gap-2 text-xs font-medium text-slate-600 dark:text-slate-300">
+              <input
+                type="checkbox"
+                className="w-4 h-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
+                {...register("enviarDomicilioFiscal")}
+              />
+              Enviar al domicilio fiscal
+            </label>
+            <label className="inline-flex items-center gap-2 text-xs font-medium text-slate-600 dark:text-slate-300">
+              <input
+                type="checkbox"
+                className="w-4 h-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
+                {...register("embarcarConOtrosPedidos")}
+              />
+              Embarcar con otros pedidos
+            </label>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="lg:col-span-1">
+            <FormInput
+              label="Destinatario"
+              placeholder="Nombre completo"
+              {...register("destinatario")}
+              error={errors.destinatario}
+            />
+          </div>
+          <div className="lg:col-span-1">
+            <FormInput
+              label="Empresa"
+              placeholder="Razón Social"
+              {...register("empresaEnvio")}
+              error={errors.empresaEnvio}
+            />
+          </div>
+          <div className="lg:col-span-1">
+            <FormInput
+              label="Teléfono"
+              placeholder="Teléfono"
+              {...register("telefonoEnvio")}
+              error={errors.telefonoEnvio}
+            />
+          </div>
+          <div className="lg:col-span-1">
+            <FormInput
+              label="Celular"
+              placeholder="Celular"
+              {...register("celularEnvio")}
+              error={errors.celularEnvio}
+            />
+          </div>
+          <div className="md:col-span-2 lg:col-span-2">
+            <FormInput
+              label="Dirección"
+              placeholder="Calle y número"
+              {...register("direccionEnvio")}
+              error={errors.direccionEnvio}
+            />
+          </div>
+          <div className="lg:col-span-1">
+            <FormInput
+              label="Colonia"
+              placeholder="Colonia"
+              {...register("coloniaEnvio")}
+              error={errors.coloniaEnvio}
+            />
+          </div>
+          <div className="lg:col-span-1">
+            <FormInput
+              label="Código Postal"
+              placeholder="C.P."
+              {...register("codigoPostalEnvio")}
+              error={errors.codigoPostalEnvio}
+            />
+          </div>
+          <div className="lg:col-span-1">
+            <FormInput
+              label="Ciudad"
+              placeholder="Ciudad"
+              {...register("ciudadEnvio")}
+              error={errors.ciudadEnvio}
+            />
+          </div>
+          <div className="lg:col-span-1">
+            <FormInput
+              label="Estado"
+              placeholder="Estado"
+              {...register("estadoEnvio")}
+              error={errors.estadoEnvio}
+            />
+          </div>
+          <div className="md:col-span-2 lg:col-span-2">
+            <FormInput
+              label="Referencias adicionales"
+              placeholder="Entre calles, etc."
+              {...register("referenciasEnvio")}
+              error={errors.referenciasEnvio}
+            />
+          </div>
+        </div>
+
+        <div className="mt-5 grid grid-cols-1 gap-4">
+          <label className="flex items-start gap-3 rounded-2xl border border-emerald-100 dark:border-emerald-500/20 bg-emerald-50/60 dark:bg-emerald-500/10 p-4 text-xs text-emerald-700 dark:text-emerald-300">
+            <input
+              type="checkbox"
+              className="mt-0.5 w-4 h-4 rounded border-emerald-300 text-emerald-600 focus:ring-emerald-500"
+              {...register("empaqueEcologico")}
+            />
+            <span>
+              Empaque ecológico, sin bolsas de plástico
+            </span>
+          </label>
+          <div className="space-y-3 rounded-2xl border border-amber-100 dark:border-amber-500/20 bg-amber-50/60 dark:bg-amber-500/10 p-4">
+            <label className="flex items-start gap-3 text-xs text-amber-700 dark:text-amber-300">
+              <input
+                type="checkbox"
+                className="mt-0.5 w-4 h-4 rounded border-amber-300 text-amber-600 focus:ring-amber-500"
+                {...register("embarqueParcial")}
+              />
+              <span>Embarque parcial</span>
+            </label>
+            <FormInput
+              label="Comentarios parcialidad"
+              placeholder="Especificaciones para el envío parcial..."
+              {...register("comentariosParcialidad")}
+              error={errors.comentariosParcialidad}
+            />
           </div>
         </div>
       </section>

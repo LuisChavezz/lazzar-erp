@@ -88,6 +88,21 @@ export const orderFormSchema = z.object({
   agente: z.string().trim().min(1, "Requerido"),
   tipoDocumento: z.string().min(1, "Requerido"),
   origen: z.array(z.string().min(1, "Requerido")).min(1, "Selecciona al menos un origen"),
+  destinatario: z.string().min(1, "Requerido"),
+  empresaEnvio: z.string().min(1, "Requerido"),
+  telefonoEnvio: z.string().min(1, "Requerido"),
+  celularEnvio: z.string().min(1, "Requerido"),
+  direccionEnvio: z.string().min(1, "Requerido"),
+  coloniaEnvio: z.string().min(1, "Requerido"),
+  codigoPostalEnvio: z.string().min(1, "Requerido"),
+  ciudadEnvio: z.string().min(1, "Requerido"),
+  estadoEnvio: z.string().min(1, "Requerido"),
+  referenciasEnvio: z.string().optional(),
+  enviarDomicilioFiscal: z.boolean(),
+  embarcarConOtrosPedidos: z.boolean(),
+  empaqueEcologico: z.boolean(),
+  embarqueParcial: z.boolean(),
+  comentariosParcialidad: z.string().optional(),
   comision: z.coerce.number().min(0, "No puede ser negativo"),
   plazo: z.coerce.number().min(0, "No puede ser negativo"),
   sucursal: z.coerce.number().min(1, "Requerido"),
@@ -118,6 +133,13 @@ export const orderFormSchema = z.object({
       code: z.ZodIssueCode.custom,
       path: ["fechaVence"],
       message: "La fecha de vencimiento no puede ser menor a la fecha actual",
+    });
+  }
+  if (data.embarqueParcial && !data.comentariosParcialidad?.trim()) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["comentariosParcialidad"],
+      message: "Agrega los comentarios de parcialidad",
     });
   }
 });
