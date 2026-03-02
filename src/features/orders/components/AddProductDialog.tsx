@@ -377,6 +377,7 @@ export function AddProductDialog({
           ? "Seleccionar tallas"
           : "Configuración de bordado"
       }
+      description="Selecciona el producto, define tallas y agrega bordado si aplica."
       open={open}
       onOpenChange={handleOpenChange}
       actionButtonClose={false}

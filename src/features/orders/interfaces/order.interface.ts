@@ -55,6 +55,8 @@ export interface Order {
   fecha: string;
   fechaVence: string;
   agente: string;
+  tipoDocumento: string;
+  origen: string[];
   comision: number;
   plazo: number;
   sucursal: Branch["id"];

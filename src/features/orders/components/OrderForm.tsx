@@ -32,6 +32,25 @@ export default function OrderForm({ orderId }: OrderFormProps) {
   const isEditing = Boolean(orderId);
 
   const todayStr = new Date().toISOString().split("T")[0];
+  const sellerName = userName;
+  const documentTypeOptions = [
+    { value: "pedido", label: "Pedido de Venta" },
+    { value: "muestra", label: "Muestra" },
+  ];
+  const originOptions = [
+    "Recompra",
+    "Google",
+    "Chat Online",
+    "Publicidad",
+    "Pedido Online",
+    "Mercado Libre",
+    "Prospección",
+    "Redes Sociales",
+    "Recomendación",
+    "Otro",
+    "Amazon",
+    "Mailing",
+  ];
   const addOrder = useOrderStore((s) => s.addOrder);
   const updateOrder = useOrderStore((s) => s.updateOrder);
   const orderToEdit = useOrderStore((s) =>
@@ -63,7 +82,9 @@ export default function OrderForm({ orderId }: OrderFormProps) {
     pedidoCliente: "",
     fecha: todayStr,
     fechaVence: "",
-    agente: "",
+    agente: userName,
+    tipoDocumento: "pedido",
+    origen: [],
     comision: 0,
     plazo: 30,
     sucursal: 0,
@@ -89,7 +110,9 @@ export default function OrderForm({ orderId }: OrderFormProps) {
         pedidoCliente: orderToEdit.pedidoCliente,
         fecha: orderToEdit.fecha,
         fechaVence: orderToEdit.fechaVence,
-        agente: orderToEdit.agente,
+        agente: orderToEdit.agente ?? userName,
+        tipoDocumento: orderToEdit.tipoDocumento ?? "pedido",
+        origen: orderToEdit.origen ?? [],
         comision: orderToEdit.comision,
         plazo: orderToEdit.plazo,
         sucursal: hasBranch ? orderToEdit.sucursal : 0,
@@ -341,6 +364,8 @@ export default function OrderForm({ orderId }: OrderFormProps) {
     errors.items?.root ?? (errors.items as unknown)
   );
   const docRelacionadoError = getFieldError(errors.docRelacionado);
+  const tipoDocumentoError = getFieldError(errors.tipoDocumento);
+  const origenError = getFieldError(errors.origen);
 
   const showForm = !isEditing || !!orderToEdit;
   if (!showForm) {
@@ -390,175 +415,208 @@ export default function OrderForm({ orderId }: OrderFormProps) {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4 relative z-10">
-          <div className="md:col-span-1 lg:col-span-1">
-            <FormInput
-              label="Cliente ID"
-              placeholder="ID"
-              {...register("clienteId")}
-              error={errors.clienteId}
-            />
-          </div>
-          <div className="md:col-span-2 lg:col-span-3">
-            <FormInput
-              label="Nombre del Cliente"
-              placeholder="Razón Social"
-              {...register("clienteNombre")}
-              error={errors.clienteNombre}
-            />
-          </div>
-          <div className="md:col-span-1 lg:col-span-2">
-            <FormInput
-              label="Pedido del Cliente (OC)"
-              placeholder="Ref. Cliente"
-              {...register("pedidoCliente")}
-              error={errors.pedidoCliente}
-            />
-          </div>
-
-          <div className="md:col-span-1">
-            <FormInput
-              label="Fecha"
-              type="date"
-              readOnly
-              tabIndex={-1}
-              className="cursor-not-allowed bg-slate-100 text-slate-500 dark:bg-zinc-800 dark:text-slate-400 focus:bg-slate-100 dark:focus:bg-zinc-800 focus:ring-0 focus:border-slate-200 dark:focus:border-zinc-700"
-              {...register("fecha")}
-              error={errors.fecha}
-            />
-          </div>
-          <div className="md:col-span-1">
-            <FormInput
-              label="Fecha Vence"
-              type="date"
-              min={todayStr}
-              {...register("fechaVence")}
-              error={errors.fechaVence}
-            />
-          </div>
-          <div className="md:col-span-1 lg:col-span-2">
-            <FormSelect
-              label="Agente / Vendedor"
-              error={getFieldError(errors.agente)}
-              {...register("agente")}
-            >
-              <option value="" disabled>
-                Seleccionar...
-              </option>
-              <option value="1">Vendedor 1</option>
-              <option value="2">Vendedor 2</option>
-            </FormSelect>
-          </div>
-          <div className="md:col-span-1">
-            <FormInput
-              label="Comisión %"
-              type="number"
-              placeholder="0%"
-              className="text-right"
-              {...register("comision", { valueAsNumber: true })}
-              error={getFieldError(errors.comision)}
-            />
-          </div>
-          <div className="md:col-span-1">
-            <FormInput
-              label="Plazo (Días)"
-              type="number"
-              placeholder="30"
-              className="text-right"
-              {...register("plazo", { valueAsNumber: true })}
-              error={getFieldError(errors.plazo)}
-            />
-          </div>
-
-          <div className="md:col-span-1">
-            <FormSelect
-              label="Sucursal"
-              {...register("sucursal", { valueAsNumber: true })}
-              error={getFieldError(errors.sucursal)}
-              disabled={isLoadingBranches}
-            >
-              <option value={0} disabled>
-                {isLoadingBranches
-                  ? "Cargando sucursales..."
-                  : availableBranches.length === 0
-                  ? "No hay sucursales disponibles"
-                  : "Seleccionar..."}
-              </option>
-              {availableBranches.map((branch) => (
-                <option
-                  key={branch.id}
-                  value={branch.id}
-                  className="bg-white dark:bg-zinc-900 text-slate-900 dark:text-white"
-                >
-                  {branch.codigo} - {branch.nombre}
-                </option>
-              ))}
-            </FormSelect>
-          </div>
-          <div className="md:col-span-1">
-            <FormSelect
-              label="Almacén"
-              {...register("almacen", { valueAsNumber: true })}
-              error={getFieldError(errors.almacen)}
-              disabled={isLoadingWarehouses || selectedSucursalId === 0}
-            >
-              <option value={0} disabled>
-                {warehousePlaceholder}
-              </option>
-              {warehousesByBranch.map((warehouse) => (
-                <option
-                  key={warehouse.id_almacen}
-                  value={warehouse.id_almacen}
-                  className="bg-white dark:bg-zinc-900 text-slate-900 dark:text-white"
-                >
-                  {warehouse.codigo} - {warehouse.nombre}
-                </option>
-              ))}
-            </FormSelect>
-          </div>
-          <div className="md:col-span-1">
-            <FormSelect
-              label="Canal"
-              options={[
-                { value: "mayorista", label: "Mayorista" },
-                { value: "retail", label: "Retail" },
-                { value: "ecommerce", label: "E-Commerce" },
-              ]}
-              {...register("canal")}
-            />
-          </div>
-          <div className="md:col-span-1">
-            <FormInput
-              label="Puntos Cliente"
-              type="number"
-              placeholder="0"
-              className="text-right"
-              {...register("puntos", { valueAsNumber: true })}
-              error={getFieldError(errors.puntos)}
-            />
-          </div>
-          <div className="md:col-span-1">
-            <FormInput
-              label="Anticipo Req."
-              type="number"
-              placeholder="$0.00"
-              className="text-right"
-              {...register("anticipoReq", { valueAsNumber: true })}
-              error={getFieldError(errors.anticipoReq)}
-            />
-          </div>
-          <div className="md:col-span-1 flex items-center pt-6">
-            <label className="inline-flex items-center cursor-pointer">
-              <input
-                type="checkbox"
-                className="sr-only peer"
-                {...register("pedidoInicial")}
-              />
-              <div className="relative w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:start-0.5 after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-sky-600" />
-              <span className="ml-2 text-xs font-medium text-slate-600 dark:text-slate-400">
-                Pedido Inicial
+        <div className="flex flex-col xl:flex-row items-start gap-8 relative z-10">
+          <div className="shrink-0 w-full xl:w-80 bg-slate-50 dark:bg-black/20 rounded-3xl p-6 border border-slate-100 dark:border-white/5">
+            <div className="flex items-center justify-between mb-4">
+              <span className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">
+                Vendedor
               </span>
-            </label>
+            </div>
+            <div className="text-3xl font-bold text-slate-900 dark:text-white font-mono mb-6">
+              {sellerName}
+            </div>
+            <input type="hidden" {...register("agente")} />
+            <div className="space-y-4">
+              <FormSelect
+                label="Tipo Documento"
+                options={documentTypeOptions}
+                error={tipoDocumentoError}
+                {...register("tipoDocumento")}
+              />
+              <FormInput
+                label="Fecha"
+                type="date"
+                readOnly
+                tabIndex={-1}
+                className="cursor-not-allowed bg-slate-100 text-slate-500 dark:bg-zinc-800 dark:text-slate-400 focus:bg-slate-100 dark:focus:bg-zinc-800 focus:ring-0 focus:border-slate-200 dark:focus:border-zinc-700"
+                {...register("fecha")}
+                error={errors.fecha}
+              />
+              <div className="space-y-2">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider ml-1">
+                  Origen
+                </p>
+                <div className="grid grid-cols-2 gap-y-2 gap-x-2">
+                  {originOptions.map((origin) => (
+                    <label
+                      key={origin}
+                      className="flex items-center gap-2 text-[10px] font-medium text-slate-600 dark:text-slate-300 leading-tight"
+                    >
+                      <input
+                        type="checkbox"
+                        value={origin}
+                        className="w-4 h-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
+                        {...register("origen")}
+                      />
+                      <span>{origin}</span>
+                    </label>
+                  ))}
+                </div>
+                {origenError && (
+                  <p className="text-[10px] text-rose-600 dark:text-rose-400">
+                    {origenError.message}
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="flex-1 self-start grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            <div className="md:col-span-1 lg:col-span-1">
+              <FormInput
+                label="Cliente ID"
+                placeholder="ID"
+                {...register("clienteId")}
+                error={errors.clienteId}
+              />
+            </div>
+            <div className="md:col-span-2 lg:col-span-3">
+              <FormInput
+                label="Nombre del Cliente"
+                placeholder="Razón Social"
+                {...register("clienteNombre")}
+                error={errors.clienteNombre}
+              />
+            </div>
+            <div className="md:col-span-1 lg:col-span-2">
+              <FormInput
+                label="Pedido del Cliente (OC)"
+                placeholder="Ref. Cliente"
+                {...register("pedidoCliente")}
+                error={errors.pedidoCliente}
+              />
+            </div>
+
+            <div className="md:col-span-1">
+              <FormInput
+                label="Fecha Vence"
+                type="date"
+                min={todayStr}
+                {...register("fechaVence")}
+                error={errors.fechaVence}
+              />
+            </div>
+            <div className="md:col-span-1">
+              <FormInput
+                label="Comisión %"
+                type="number"
+                placeholder="0%"
+                className="text-right"
+                {...register("comision", { valueAsNumber: true })}
+                error={getFieldError(errors.comision)}
+              />
+            </div>
+            <div className="md:col-span-1">
+              <FormInput
+                label="Plazo (Días)"
+                type="number"
+                placeholder="30"
+                className="text-right"
+                {...register("plazo", { valueAsNumber: true })}
+                error={getFieldError(errors.plazo)}
+              />
+            </div>
+
+            <div className="md:col-span-1">
+              <FormSelect
+                label="Sucursal"
+                {...register("sucursal", { valueAsNumber: true })}
+                error={getFieldError(errors.sucursal)}
+                disabled={isLoadingBranches}
+              >
+                <option value={0} disabled>
+                  {isLoadingBranches
+                    ? "Cargando sucursales..."
+                    : availableBranches.length === 0
+                    ? "No hay sucursales disponibles"
+                    : "Seleccionar..."}
+                </option>
+                {availableBranches.map((branch) => (
+                  <option
+                    key={branch.id}
+                    value={branch.id}
+                    className="bg-white dark:bg-zinc-900 text-slate-900 dark:text-white"
+                  >
+                    {branch.codigo} - {branch.nombre}
+                  </option>
+                ))}
+              </FormSelect>
+            </div>
+            <div className="md:col-span-1">
+              <FormSelect
+                label="Almacén"
+                {...register("almacen", { valueAsNumber: true })}
+                error={getFieldError(errors.almacen)}
+                disabled={isLoadingWarehouses || selectedSucursalId === 0}
+              >
+                <option value={0} disabled>
+                  {warehousePlaceholder}
+                </option>
+                {warehousesByBranch.map((warehouse) => (
+                  <option
+                    key={warehouse.id_almacen}
+                    value={warehouse.id_almacen}
+                    className="bg-white dark:bg-zinc-900 text-slate-900 dark:text-white"
+                  >
+                    {warehouse.codigo} - {warehouse.nombre}
+                  </option>
+                ))}
+              </FormSelect>
+            </div>
+            <div className="md:col-span-1">
+              <FormSelect
+                label="Canal"
+                options={[
+                  { value: "mayorista", label: "Mayorista" },
+                  { value: "retail", label: "Retail" },
+                  { value: "ecommerce", label: "E-Commerce" },
+                ]}
+                {...register("canal")}
+              />
+            </div>
+            <div className="md:col-span-1">
+              <FormInput
+                label="Puntos Cliente"
+                type="number"
+                placeholder="0"
+                className="text-right"
+                {...register("puntos", { valueAsNumber: true })}
+                error={getFieldError(errors.puntos)}
+              />
+            </div>
+            <div className="md:col-span-1">
+              <FormInput
+                label="Anticipo Req."
+                type="number"
+                placeholder="$0.00"
+                className="text-right"
+                {...register("anticipoReq", { valueAsNumber: true })}
+                error={getFieldError(errors.anticipoReq)}
+              />
+            </div>
+            <div className="md:col-span-1 flex items-center pt-6">
+              <label className="inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  className="sr-only peer"
+                  {...register("pedidoInicial")}
+                />
+                <div className="relative w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:start-0.5 after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-sky-600" />
+                <span className="ml-2 text-xs font-medium text-slate-600 dark:text-slate-400">
+                  Pedido Inicial
+                </span>
+              </label>
+            </div>
           </div>
         </div>
       </section>

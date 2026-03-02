@@ -86,6 +86,8 @@ export const orderFormSchema = z.object({
   fecha: z.string().min(1, "Requerido"),
   fechaVence: z.string().min(1, "Requerido"),
   agente: z.string().trim().min(1, "Requerido"),
+  tipoDocumento: z.string().min(1, "Requerido"),
+  origen: z.array(z.string().min(1, "Requerido")).min(1, "Selecciona al menos un origen"),
   comision: z.coerce.number().min(0, "No puede ser negativo"),
   plazo: z.coerce.number().min(0, "No puede ser negativo"),
   sucursal: z.coerce.number().min(1, "Requerido"),
