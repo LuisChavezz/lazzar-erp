@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { FormInput } from "@/src/components/FormInput";
 import { FormSelect } from "@/src/components/FormSelect";
 
@@ -51,19 +52,27 @@ export function StepEmbroidery({
           Ubicaciones
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div
-            className="h-24 rounded-2xl border border-dashed border-slate-200 dark:border-white/10 bg-slate-50/60 dark:bg-white/5 flex items-center justify-center text-xs text-slate-400"
-            role="img"
-            aria-label="Referencia de ubicación de bordado 1"
-          >
-            Imagen
+          <div className="relative h-32 rounded-2xl border border-dashed border-slate-200 dark:border-white/10 bg-white/70 dark:bg-white/5 overflow-hidden">
+            <Image
+              src="/images/bordado-front.jpg"
+              alt="Referencia de ubicación de bordado frontal"
+              fill
+              sizes="(min-width: 640px) 50vw, 100vw"
+              className="object-contain"
+              quality={90}
+              priority
+            />
           </div>
-          <div
-            className="h-24 rounded-2xl border border-dashed border-slate-200 dark:border-white/10 bg-slate-50/60 dark:bg-white/5 flex items-center justify-center text-xs text-slate-400"
-            role="img"
-            aria-label="Referencia de ubicación de bordado 2"
-          >
-            Imagen
+          <div className="relative h-32 rounded-2xl border border-dashed border-slate-200 dark:border-white/10 bg-white/70 dark:bg-white/5 overflow-hidden">
+            <Image
+              src="/images/bordado-back.jpg"
+              alt="Referencia de ubicación de bordado posterior"
+              fill
+              sizes="(min-width: 640px) 50vw, 100vw"
+              className="object-contain"
+              quality={90}
+              priority
+            />
           </div>
         </div>
       </div>
@@ -72,24 +81,28 @@ export function StepEmbroidery({
         Usa este formulario para definir las posiciones, medidas y colores del bordado.
       </div>
 
-      <div className="space-y-3">
+      <div className="flex">
+      <label
+        className="flex items-center gap-2 text-xs font-semibold text-slate-600 dark:text-slate-300"
+        htmlFor="add-product-nuevo-ponchado"
+      >
+        <input
+          id="add-product-nuevo-ponchado"
+          type="checkbox"
+          checked={nuevoPonchado}
+          onChange={(event) => onNuevoPonchadoChange(event.target.checked)}
+          className="w-4 h-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
+        />
+        Nuevo ponchado
+      </label>
+      </div>
+
+      {/* <div className="space-y-3">
         <div className="flex items-center justify-between">
           <p className="text-xs font-bold uppercase tracking-wider text-slate-400">
             Catálogo de colores de hilo
           </p>
-          <label
-            className="flex items-center gap-2 text-xs font-semibold text-slate-600 dark:text-slate-300"
-            htmlFor="add-product-nuevo-ponchado"
-          >
-            <input
-              id="add-product-nuevo-ponchado"
-              type="checkbox"
-              checked={nuevoPonchado}
-              onChange={(event) => onNuevoPonchadoChange(event.target.checked)}
-              className="w-4 h-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
-            />
-            Nuevo ponchado
-          </label>
+
         </div>
         <div
           className="h-24 rounded-2xl border border-dashed border-slate-200 dark:border-white/10 bg-slate-50/60 dark:bg-white/5 flex items-center justify-center text-xs text-slate-400"
@@ -98,9 +111,9 @@ export function StepEmbroidery({
         >
           Catálogo de colores
         </div>
-      </div>
+      </div> */}
 
-      <div className="space-y-3">
+      <div className="space-y-3 pb-4">
         <div className="flex items-center justify-between">
           <p className="text-xs font-bold uppercase tracking-wider text-slate-400">
             Especificaciones por ubicación
@@ -124,6 +137,11 @@ export function StepEmbroidery({
           </p>
         )}
         <div className="space-y-3">
+          {embroiderySpecs.length === 0 && (
+            <div className="rounded-2xl border border-dashed border-slate-200 dark:border-white/10 bg-slate-50/60 dark:bg-white/5 px-4 py-6 text-xs text-slate-500 dark:text-slate-300 text-center">
+              Aún no hay especificaciones por ubicación. Usa “Agregar” para crear la primera.
+            </div>
+          )}
           {embroiderySpecs.map((spec) => {
             const specError = specErrors[spec.id] ?? {};
             const positionName =
