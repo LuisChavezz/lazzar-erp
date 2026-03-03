@@ -10,7 +10,7 @@ import ProductForm from "./ProductForm";
 import { useProductCategories } from "../../product-categories/hooks/useProductCategories";
 import { useUnitOfMeasureStore } from "../../units-of-measure/stores/unit-of-measure.store";
 import { useTaxStore } from "../../taxes/stores/tax.store";
-import { useSatUnitCodeStore } from "../../sat-unit-codes/stores/sat-unit-code.store";
+import { useSatUnitCodes } from "../../sat-unit-codes/hooks/useSatUnitCodes";
 import { useProductTypes } from "../../product-types/hooks/useProductTypes";
 import { useSatProdServCodes } from "../../sat-prodserv-codes/hooks/useSatProdServCodes";
 
@@ -28,7 +28,7 @@ export default function ProductList() {
   const { units } = useUnitOfMeasureStore((state) => state);
   const { taxes } = useTaxStore((state) => state);
   const { satProdservCodes } = useSatProdServCodes();
-  const { satUnitCodes } = useSatUnitCodeStore((state) => state);
+  const { satUnitCodes } = useSatUnitCodes();
   const { productTypes } = useProductTypes();
 
   const handleEdit = useCallback(
@@ -96,7 +96,6 @@ export default function ProductList() {
             }
           >
             <ProductForm onSuccess={() => setIsDialogOpen(false)} />
-            {/* <ProductFormTest onSuccess={() => setIsDialogOpen(false)} /> */}
           </MainDialog>
         ) : null
       }

@@ -1,41 +1,31 @@
-import { useMemo, useState, useCallback } from "react";
+import { useMemo } from "react";
 import { DataTable } from "../../../components/DataTable";
-import { useSatUnitCodeStore } from "../stores/sat-unit-code.store";
 import { getColumns } from "./SatUnitCodeColumns";
-import { MainDialog } from "../../../components/MainDialog";
-import { DialogHeader } from "@/src/components/DialogHeader";
-import { SatUnitCode } from "../interfaces/sat-unit-code.interface";
-import { useSession } from "next-auth/react";
-import SatUnitCodeForm from "./SatUnitCodeForm";
+import { useSatUnitCodes } from "../hooks/useSatUnitCodes";
+import { ErrorState } from "../../../components/ErrorState";
 
 export default function SatUnitCodeList() {
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const { satUnitCodes, setSelectedSatUnitCode, selectedSatUnitCode } = useSatUnitCodeStore(
-    (state) => state
-  );
-  const { data: session } = useSession();
-  const isAdmin = session?.user?.role === "admin";
-  const permissions = session?.user?.permissions ?? [];
-  const canEditConfig = isAdmin || permissions.includes("E-CONF");
-  const canDeleteConfig = isAdmin || permissions.includes("D-CONF");
+  const { satUnitCodes, isLoading, isError, error } = useSatUnitCodes();
 
-  const handleEdit = useCallback(
-    (code: SatUnitCode) => {
-      setSelectedSatUnitCode(code);
-      setIsDialogOpen(true);
-    },
-    [setSelectedSatUnitCode]
-  );
+  const columns = useMemo(() => getColumns(), []);
 
-  const handleNew = () => {
-    setSelectedSatUnitCode(null);
-    setIsDialogOpen(true);
-  };
+  if (isLoading) {
+    return (
+      <div className="p-8 flex justify-center items-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-sky-600"></div>
+        <span className="ml-3 text-slate-500">Cargando claves SAT...</span>
+      </div>
+    );
+  }
 
-  const columns = useMemo(
-    () => getColumns(handleEdit, { canEdit: canEditConfig, canDelete: canDeleteConfig }),
-    [handleEdit, canEditConfig, canDeleteConfig]
-  );
+  if (isError) {
+    return (
+      <ErrorState
+        title="Error al cargar claves SAT"
+        message={(error as Error).message}
+      />
+    );
+  }
 
   return (
     <DataTable
@@ -43,32 +33,6 @@ export default function SatUnitCodeList() {
       data={satUnitCodes}
       title="Claves SAT Unidades"
       searchPlaceholder="Buscar clave..."
-      actionButton={
-        canEditConfig ? (
-          <MainDialog
-            title={
-              <DialogHeader
-                title={selectedSatUnitCode ? "Editar Clave SAT" : "Alta de Clave SAT"}
-                subtitle={selectedSatUnitCode ? "Edición de registro" : "Registro Nuevo"}
-                statusColor="emerald"
-              />
-            }
-            open={isDialogOpen}
-            onOpenChange={setIsDialogOpen}
-            maxWidth="1000px"
-            trigger={
-              <button
-                onClick={handleNew}
-                className="px-4 py-2 cursor-pointer bg-sky-600 hover:bg-sky-700 text-white text-sm font-semibold rounded-full shadow-lg shadow-sky-500/30 transition-all hover:scale-105 active:scale-95 whitespace-nowrap"
-              >
-                + Nueva Clave
-              </button>
-            }
-          >
-            <SatUnitCodeForm onSuccess={() => setIsDialogOpen(false)} />
-          </MainDialog>
-        ) : null
-      }
     />
   );
 }

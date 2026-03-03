@@ -1,65 +1,9 @@
-import { ColumnDef, createColumnHelper, Row } from "@tanstack/react-table";
-import { EditIcon, DeleteIcon } from "../../../components/Icons";
+import { ColumnDef, createColumnHelper } from "@tanstack/react-table";
 import { SatUnitCode } from "../interfaces/sat-unit-code.interface";
-import { useSatUnitCodeStore } from "../stores/sat-unit-code.store";
-import { ConfirmDialog } from "../../../components/ConfirmDialog";
-import toast from "react-hot-toast";
 
 const columnHelper = createColumnHelper<SatUnitCode>();
 
-const ActionsCell = ({
-  row,
-  onEdit,
-  canEdit,
-  canDelete,
-}: {
-  row: Row<SatUnitCode>;
-  onEdit: (code: SatUnitCode) => void;
-  canEdit: boolean;
-  canDelete: boolean;
-}) => {
-  const deleteSatUnitCode = useSatUnitCodeStore((state) => state.deleteSatUnitCode);
-
-  const handleDelete = () => {
-    deleteSatUnitCode(row.original.id_sat_unidad);
-    toast.success("Clave eliminada correctamente");
-  };
-
-  return (
-    <div className="flex items-center justify-center gap-2">
-      {canEdit ? (
-        <button
-          className="p-1 cursor-pointer text-slate-400 hover:text-blue-600 transition-colors"
-          title="Editar"
-          onClick={() => onEdit(row.original)}
-        >
-          <EditIcon className="w-5 h-5" />
-        </button>
-      ) : null}
-      {canDelete ? (
-        <ConfirmDialog
-          title="Eliminar Clave SAT"
-          description="¿Estás seguro de que deseas eliminar esta clave? Esta acción no se puede deshacer."
-          onConfirm={handleDelete}
-          confirmColor="red"
-          trigger={
-            <button
-              className="p-1 cursor-pointer text-slate-400 hover:text-red-600 transition-colors"
-              title="Eliminar"
-            >
-              <DeleteIcon className="w-5 h-5" />
-            </button>
-          }
-        />
-      ) : null}
-    </div>
-  );
-};
-
-export const getColumns = (
-  onEdit: (code: SatUnitCode) => void,
-  permissions: { canEdit: boolean; canDelete: boolean }
-) => {
+export const getColumns = () => {
   const columns = [
     columnHelper.accessor("estatus", {
       header: "Estado",
@@ -89,23 +33,6 @@ export const getColumns = (
       ),
     }),
   ] as ColumnDef<SatUnitCode>[];
-
-  if (permissions.canEdit || permissions.canDelete) {
-    columns.push(
-      columnHelper.display({
-        id: "actions",
-        header: () => <div className="text-center">Acciones</div>,
-        cell: ({ row }) => (
-          <ActionsCell
-            row={row}
-            onEdit={onEdit}
-            canEdit={permissions.canEdit}
-            canDelete={permissions.canDelete}
-          />
-        ),
-      }) as ColumnDef<SatUnitCode>
-    );
-  }
 
   return columns;
 };
