@@ -15,30 +15,56 @@ export default function TiltCard({
   onClick,
   href,
 }: TiltCardProps) {
+  // Referencias para animación sin recalcular en cada render
   const cardRef = useRef<HTMLDivElement & HTMLAnchorElement>(null);
+  const rectRef = useRef<DOMRect | null>(null);
+  const frameRef = useRef<number | null>(null);
+  const lastEventRef = useRef<MouseEvent | null>(null);
 
   useEffect(() => {
     const card = cardRef.current;
     if (!card) return;
+    // Solo activar en dispositivos con puntero fino
+    if (!window.matchMedia?.("(pointer: fine)")?.matches) return;
 
     const threshold = 15;
 
     const handleMouseMove = (e: MouseEvent) => {
-      const rect = card.getBoundingClientRect();
-      const x = (e.clientX - rect.left) / rect.width - 0.5;
-      const y = (e.clientY - rect.top) / rect.height - 0.5;
+      // Guardar último evento y sincronizar con RAF
+      lastEventRef.current = e;
+      if (frameRef.current !== null) return;
+      frameRef.current = window.requestAnimationFrame(() => {
+        const rect = rectRef.current;
+        const event = lastEventRef.current;
+        if (!rect || !event) {
+          frameRef.current = null;
+          return;
+        }
+        const x = (event.clientX - rect.left) / rect.width - 0.5;
+        const y = (event.clientY - rect.top) / rect.height - 0.5;
 
-      const rotateX = y * -threshold;
-      const rotateY = x * threshold;
+        const rotateX = y * -threshold;
+        const rotateY = x * threshold;
 
-      card.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale3d(1.02, 1.02, 1.02)`;
+        card.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale3d(1.02, 1.02, 1.02)`;
+        frameRef.current = null;
+      });
     };
 
     const handleMouseEnter = () => {
+      // Capturar rect una sola vez al entrar
+      rectRef.current = card.getBoundingClientRect();
       card.style.transition = "none";
     };
 
     const handleMouseLeave = () => {
+      // Limpiar estado y resetear transformación
+      if (frameRef.current !== null) {
+        window.cancelAnimationFrame(frameRef.current);
+        frameRef.current = null;
+      }
+      rectRef.current = null;
+      lastEventRef.current = null;
       card.style.transition = "transform 0.5s ease";
       card.style.transform =
         "perspective(1000px) rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)";
@@ -52,6 +78,10 @@ export default function TiltCard({
       card.removeEventListener("mousemove", handleMouseMove);
       card.removeEventListener("mouseenter", handleMouseEnter);
       card.removeEventListener("mouseleave", handleMouseLeave);
+      if (frameRef.current !== null) {
+        window.cancelAnimationFrame(frameRef.current);
+        frameRef.current = null;
+      }
     };
   }, []);
 
@@ -63,7 +93,7 @@ export default function TiltCard({
       href={href}
       onClick={onClick}
       className={`block relative transition-all duration-300 ${className}`}
-      style={{ transformStyle: "preserve-3d" }}
+      style={{ transformStyle: "preserve-3d", willChange: "transform" }}
     >
       <div className="h-full" style={{ transform: "translateZ(20px)" }}>
         {children}

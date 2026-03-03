@@ -31,10 +31,78 @@ interface ConfigCardItem {
   description?: string;
   icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
   view: string;
+  group: string;
   adminOnly?: boolean;
   prefetchKey?: (string | number)[];
   prefetchFn?: () => Promise<unknown>;
 }
+
+interface ConfigGroupItem {
+  group: string;
+  title: string;
+  description: string;
+  icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
+  accentClass: string;
+  accentBgClass: string;
+  actionLabel: string;
+}
+
+export const configGroups: ConfigGroupItem[] = [
+  {
+    group: "Organización",
+    title: "Organización",
+    description: "Sucursales, almacenes y ubicaciones operativas.",
+    icon: BuildingIcon,
+    accentClass: "text-sky-600 dark:text-sky-400",
+    accentBgClass: "bg-sky-50 dark:bg-sky-500/10",
+    actionLabel: "Ver estructura",
+  },
+  {
+    group: "Usuarios y Accesos",
+    title: "Usuarios y Accesos",
+    description: "Usuarios y control de accesos del sistema.",
+    icon: CapitalHumanoIcon,
+    accentClass: "text-rose-600 dark:text-rose-400",
+    accentBgClass: "bg-rose-50 dark:bg-rose-500/10",
+    actionLabel: "Gestionar usuarios",
+  },
+  {
+    group: "Información Fiscal",
+    title: "Información Fiscal",
+    description: "Impuestos, monedas e información fiscal.",
+    icon: InfoIcon,
+    accentClass: "text-amber-600 dark:text-amber-400",
+    accentBgClass: "bg-amber-50 dark:bg-amber-500/10",
+    actionLabel: "Configurar fiscal",
+  },
+  {
+    group: "Catálogo de Productos",
+    title: "Catálogo de Productos",
+    description: "Categorías, tipos, colores, tallas y unidades.",
+    icon: ProductCategoriesIcon,
+    accentClass: "text-blue-600 dark:text-blue-400",
+    accentBgClass: "bg-blue-50 dark:bg-blue-500/10",
+    actionLabel: "Ver catálogo",
+  },
+  {
+    group: "SAT y CFDI",
+    title: "SAT y CFDI",
+    description: "Claves SAT de productos, servicios y unidades.",
+    icon: SatProdServIcon,
+    accentClass: "text-emerald-600 dark:text-emerald-400",
+    accentBgClass: "bg-emerald-50 dark:bg-emerald-500/10",
+    actionLabel: "Ver claves SAT",
+  },
+  {
+    group: "Productos",
+    title: "Productos",
+    description: "Productos y variantes comerciales.",
+    icon: ProductIcon,
+    accentClass: "text-violet-600 dark:text-violet-400",
+    accentBgClass: "bg-violet-50 dark:bg-violet-500/10",
+    actionLabel: "Gestionar productos",
+  },
+];
 
 export const configCards: ConfigCardItem[] = [
   {
@@ -42,6 +110,7 @@ export const configCards: ConfigCardItem[] = [
     description: "Gestión de sucursales operativas",
     icon: BuildingIcon,
     view: "branches",
+    group: "Organización",
     adminOnly: true,
     prefetchKey: ["branches"],
     prefetchFn: getBranches,
@@ -51,6 +120,7 @@ export const configCards: ConfigCardItem[] = [
     description: "Gestión de almacenes e inventarios",
     icon: InventariosIcon,
     view: "warehouses",
+    group: "Organización",
     adminOnly: true,
     prefetchKey: ["warehouses"],
     prefetchFn: getWarehouses,
@@ -60,6 +130,7 @@ export const configCards: ConfigCardItem[] = [
     description: "Gestión de ubicaciones físicas",
     icon: MapPinIcon,
     view: "locations",
+    group: "Organización",
     adminOnly: true,
   },
   {
@@ -67,6 +138,7 @@ export const configCards: ConfigCardItem[] = [
     description: "Catálogo de monedas y tipos de cambio",
     icon: ListaPreciosIcon,
     view: "currencies",
+    group: "Información Fiscal",
     adminOnly: true,
     prefetchKey: ["currencies"],
     prefetchFn: getCurrencies,
@@ -76,14 +148,16 @@ export const configCards: ConfigCardItem[] = [
     description: "Administración de usuarios y accesos",
     icon: CapitalHumanoIcon,
     view: "users",
+    group: "Usuarios y Accesos",
     adminOnly: true,
     prefetchKey: ["users"],
     prefetchFn: getUsers,
   },
   {
-    title: "Información Fiscal",
+    title: "Información fiscal",
     icon: InfoIcon,
     view: "sat",
+    group: "Información Fiscal",
     adminOnly: true,
   },
   {
@@ -91,6 +165,7 @@ export const configCards: ConfigCardItem[] = [
     description: "Administración de categorías de productos",
     icon: ProductCategoriesIcon,
     view: "product-categories",
+    group: "Catálogo de Productos",
     adminOnly: true,
     prefetchKey: ["product-categories"],
     prefetchFn: getProductCategories,
@@ -100,6 +175,7 @@ export const configCards: ConfigCardItem[] = [
     description: "Administración de tipos de productos",
     icon: ProductTypesIcon,
     view: "product-types",
+    group: "Catálogo de Productos",
     adminOnly: true,
     prefetchKey: ["product-types"],
     prefetchFn: getProductTypes,
@@ -109,6 +185,7 @@ export const configCards: ConfigCardItem[] = [
     description: "Administración de colores",
     icon: ColorsIcon,
     view: "colors",
+    group: "Catálogo de Productos",
     adminOnly: true,
     prefetchKey: ["colors"],
     prefetchFn: getColors,
@@ -118,6 +195,7 @@ export const configCards: ConfigCardItem[] = [
     description: "Administración de tallas",
     icon: SizesIcon,
     view: "sizes",
+    group: "Catálogo de Productos",
     adminOnly: true,
     prefetchKey: ["sizes"],
     prefetchFn: getSizes,
@@ -127,6 +205,7 @@ export const configCards: ConfigCardItem[] = [
     description: "Administración de unidades de medida",
     icon: UnitsIcon,
     view: "units",
+    group: "Catálogo de Productos",
     adminOnly: true,
   },
   {
@@ -134,6 +213,7 @@ export const configCards: ConfigCardItem[] = [
     description: "Administración de impuestos",
     icon: TaxIcon,
     view: "taxes",
+    group: "Información Fiscal",
     adminOnly: true,
   },
   {
@@ -141,6 +221,7 @@ export const configCards: ConfigCardItem[] = [
     description: "Administración de claves de productos y servicios",
     icon: SatProdServIcon,
     view: "sat-prod-serv",
+    group: "SAT y CFDI",
     adminOnly: true,
   },
   {
@@ -148,6 +229,7 @@ export const configCards: ConfigCardItem[] = [
     description: "Administración de claves de unidades",
     icon: SatUnitCodesIcon,
     view: "sat-unit-codes",
+    group: "SAT y CFDI",
     adminOnly: true,
   },
   {
@@ -155,6 +237,7 @@ export const configCards: ConfigCardItem[] = [
     description: "Administración de productos",
     icon: ProductIcon,
     view: "products",
+    group: "Productos",
     adminOnly: true,
   },
   {
@@ -162,6 +245,7 @@ export const configCards: ConfigCardItem[] = [
     description: "Administración de variantes de productos",
     icon: ProductVariantsIcon,
     view: "product-variants",
+    group: "Productos",
     adminOnly: true,
   }
 ];
