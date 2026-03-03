@@ -5,7 +5,7 @@ import { MainDialog } from "@/src/components/MainDialog";
 import { OrderFormValues } from "../schema/order.schema";
 import { useProductStore } from "../../products/stores/product.store";
 import { useProductVariantStore } from "../../product-variants/stores/product-variant.store";
-import { useUnitOfMeasureStore } from "../../units-of-measure/stores/unit-of-measure.store";
+import { useUnitsOfMeasure } from "../../units-of-measure/hooks/useUnitsOfMeasure";
 import { useColors } from "../../colors/hooks/useColors";
 import { useSizes } from "../../sizes/hooks/useSizes";
 import { StepSelectProduct } from "./StepSelectProduct";
@@ -60,7 +60,7 @@ export function AddProductDialog({
 }: AddProductDialogProps) {
   const products = useProductStore((s) => s.products);
   const productVariants = useProductVariantStore((s) => s.productVariants);
-  const units = useUnitOfMeasureStore((s) => s.units);
+  const { units } = useUnitsOfMeasure();
   const { colors } = useColors();
   const { sizes, isLoading: isLoadingSizes } = useSizes();
 
