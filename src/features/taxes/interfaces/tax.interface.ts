@@ -5,6 +5,4 @@ export interface Tax {
   tasa: string;
   tipo: string;
   estatus: boolean;
-  created_at: string;
-  updated_at: string;
 }
