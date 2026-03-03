@@ -59,14 +59,11 @@ export default function UnitOfMeasureForm({ onSuccess }: UnitOfMeasureFormProps)
         });
         toast.success("Unidad de medida actualizada correctamente");
       } else {
-        const now = new Date().toISOString();
         addUnit({
           id: Date.now(),
           clave,
           nombre: data.nombre,
           estatus: data.estatus,
-          created_at: now,
-          updated_at: now,
         });
         toast.success("Unidad de medida registrada correctamente");
       }

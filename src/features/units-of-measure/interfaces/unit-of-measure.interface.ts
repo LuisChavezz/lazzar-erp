@@ -3,6 +3,4 @@ export interface UnitOfMeasure {
   clave: string;
   nombre: string;
   estatus: boolean;
-  created_at: string;
-  updated_at: string;
 }
