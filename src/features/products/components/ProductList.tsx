@@ -10,9 +10,9 @@ import ProductForm from "./ProductForm";
 import { useProductCategories } from "../../product-categories/hooks/useProductCategories";
 import { useUnitOfMeasureStore } from "../../units-of-measure/stores/unit-of-measure.store";
 import { useTaxStore } from "../../taxes/stores/tax.store";
-import { useSatProdservCodeStore } from "../../sat-prodserv-codes/stores/sat-prodserv-code.store";
 import { useSatUnitCodeStore } from "../../sat-unit-codes/stores/sat-unit-code.store";
 import { useProductTypes } from "../../product-types/hooks/useProductTypes";
+import { useSatProdServCodes } from "../../sat-prodserv-codes/hooks/useSatProdServCodes";
 
 export default function ProductList() {
   const { data: session } = useSession();
@@ -27,7 +27,7 @@ export default function ProductList() {
   const { categories } = useProductCategories();
   const { units } = useUnitOfMeasureStore((state) => state);
   const { taxes } = useTaxStore((state) => state);
-  const { satProdservCodes } = useSatProdservCodeStore((state) => state);
+  const { satProdservCodes } = useSatProdServCodes();
   const { satUnitCodes } = useSatUnitCodeStore((state) => state);
   const { productTypes } = useProductTypes();
 

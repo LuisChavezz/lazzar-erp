@@ -12,11 +12,11 @@ import toast from "react-hot-toast";
 import { useProductCategories } from "../../product-categories/hooks/useProductCategories";
 import { useUnitOfMeasureStore } from "../../units-of-measure/stores/unit-of-measure.store";
 import { useTaxStore } from "../../taxes/stores/tax.store";
-import { useSatProdservCodeStore } from "../../sat-prodserv-codes/stores/sat-prodserv-code.store";
 import { useSatUnitCodeStore } from "../../sat-unit-codes/stores/sat-unit-code.store";
 import { useProductTypes } from "../../product-types/hooks/useProductTypes";
 import { useWorkspaceStore } from "../../workspace/store/workspace.store";
 import MissingPrerequisites from "./MissingPrerequisites";
+import { useSatProdServCodes } from "../../sat-prodserv-codes/hooks/useSatProdServCodes";
 
 interface ProductFormProps {
   onSuccess: () => void;
@@ -38,7 +38,7 @@ export default function ProductForm({ onSuccess }: ProductFormProps) {
   const { categories, isLoading: isLoadingProductCategories } = useProductCategories();
   const { units } = useUnitOfMeasureStore((state) => state);
   const { taxes } = useTaxStore((state) => state);
-  const { satProdservCodes } = useSatProdservCodeStore((state) => state);
+  const { satProdservCodes, isLoading: isLoadingSatProdservCodes } = useSatProdServCodes();
   const { satUnitCodes } = useSatUnitCodeStore((state) => state);
   const { productTypes, isLoading: isLoadingProductTypes } = useProductTypes();
 
@@ -59,7 +59,9 @@ export default function ProductForm({ onSuccess }: ProductFormProps) {
     productTypes.length === 0 && !isLoadingProductTypes ? "Tipos de producto" : null,
     activeUnits.length === 0 ? "Unidades de medida" : null,
     activeTaxes.length === 0 ? "Impuestos" : null,
-    activeSatProdservCodes.length === 0 ? "Claves SAT Prod/Serv" : null,
+    activeSatProdservCodes.length === 0 && !isLoadingSatProdservCodes
+      ? "Claves SAT Prod/Serv"
+      : null,
     activeSatUnitCodes.length === 0 ? "Claves SAT Unidad" : null,
   ].filter((item): item is string => Boolean(item));
 
