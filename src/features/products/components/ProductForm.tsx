@@ -11,7 +11,7 @@ import { InfoIcon, ProductIcon, SettingsIcon } from "../../../components/Icons";
 import toast from "react-hot-toast";
 import { useProductCategories } from "../../product-categories/hooks/useProductCategories";
 import { useUnitOfMeasureStore } from "../../units-of-measure/stores/unit-of-measure.store";
-import { useTaxStore } from "../../taxes/stores/tax.store";
+import { useTaxes } from "../../taxes/hooks/useTaxes";
 import { useSatUnitCodes } from "../../sat-unit-codes/hooks/useSatUnitCodes";
 import { useProductTypes } from "../../product-types/hooks/useProductTypes";
 import { useWorkspaceStore } from "../../workspace/store/workspace.store";
@@ -37,7 +37,7 @@ export default function ProductForm({ onSuccess }: ProductFormProps) {
   // Obtener categorías, unidades, impuestos, claves SAT y tipos de producto de los stores correspondientes
   const { categories, isLoading: isLoadingProductCategories } = useProductCategories();
   const { units } = useUnitOfMeasureStore((state) => state);
-  const { taxes } = useTaxStore((state) => state);
+  const { taxes, isLoading: isLoadingTaxes } = useTaxes();
   const { satProdservCodes, isLoading: isLoadingSatProdservCodes } = useSatProdServCodes();
   const { satUnitCodes, isLoading: isLoadingSatUnitCodes } = useSatUnitCodes();
   const { productTypes, isLoading: isLoadingProductTypes } = useProductTypes();
@@ -58,7 +58,7 @@ export default function ProductForm({ onSuccess }: ProductFormProps) {
     activeCategories.length === 0 && !isLoadingProductCategories ? "Categorías de producto" : null,
     productTypes.length === 0 && !isLoadingProductTypes ? "Tipos de producto" : null,
     activeUnits.length === 0 ? "Unidades de medida" : null,
-    activeTaxes.length === 0 ? "Impuestos" : null,
+    activeTaxes.length === 0 && !isLoadingTaxes ? "Impuestos" : null,
     activeSatProdservCodes.length === 0 && !isLoadingSatProdservCodes
       ? "Claves SAT Prod/Serv"
       : null,
