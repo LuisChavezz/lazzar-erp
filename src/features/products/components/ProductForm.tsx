@@ -12,7 +12,7 @@ import toast from "react-hot-toast";
 import { useProductCategories } from "../../product-categories/hooks/useProductCategories";
 import { useUnitOfMeasureStore } from "../../units-of-measure/stores/unit-of-measure.store";
 import { useTaxStore } from "../../taxes/stores/tax.store";
-import { useSatUnitCodeStore } from "../../sat-unit-codes/stores/sat-unit-code.store";
+import { useSatUnitCodes } from "../../sat-unit-codes/hooks/useSatUnitCodes";
 import { useProductTypes } from "../../product-types/hooks/useProductTypes";
 import { useWorkspaceStore } from "../../workspace/store/workspace.store";
 import MissingPrerequisites from "./MissingPrerequisites";
@@ -39,7 +39,7 @@ export default function ProductForm({ onSuccess }: ProductFormProps) {
   const { units } = useUnitOfMeasureStore((state) => state);
   const { taxes } = useTaxStore((state) => state);
   const { satProdservCodes, isLoading: isLoadingSatProdservCodes } = useSatProdServCodes();
-  const { satUnitCodes } = useSatUnitCodeStore((state) => state);
+  const { satUnitCodes, isLoading: isLoadingSatUnitCodes } = useSatUnitCodes();
   const { productTypes, isLoading: isLoadingProductTypes } = useProductTypes();
 
   // Filtrar categorías, unidades, impuestos, claves SAT y tipos de producto activos
@@ -62,7 +62,7 @@ export default function ProductForm({ onSuccess }: ProductFormProps) {
     activeSatProdservCodes.length === 0 && !isLoadingSatProdservCodes
       ? "Claves SAT Prod/Serv"
       : null,
-    activeSatUnitCodes.length === 0 ? "Claves SAT Unidad" : null,
+    activeSatUnitCodes.length === 0 && !isLoadingSatUnitCodes ? "Claves SAT Unidad" : null,
   ].filter((item): item is string => Boolean(item));
 
   const isEditing = Boolean(selectedProduct?.id); // Comprobar si se está editando un producto existente
