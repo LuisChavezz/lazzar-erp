@@ -4,6 +4,7 @@ import { Location } from "../interfaces/location.interface";
 import { Warehouse } from "../../warehouses/interfaces/warehouse.interface";
 import { ConfirmDialog } from "../../../components/ConfirmDialog";
 import { useDeleteLocation } from "../hooks/useDeleteLocation";
+import { capitalize } from "@/src/utils/capitalize";
 
 const columnHelper = createColumnHelper<Location>();
 
@@ -69,30 +70,28 @@ export const getColumns = (
       cell: (info) => {
         const status = info.getValue();
         const styles =
-          status === "Activo"
+          status === "ACTIVO"
             ? "bg-emerald-100 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400"
-            : status === "Mantenimiento"
-            ? "bg-amber-100 text-amber-600 dark:bg-amber-500/20 dark:text-amber-400"
             : "bg-slate-100 text-slate-600 dark:bg-slate-500/20 dark:text-slate-400";
         return (
           <span
             className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${styles}`}
           >
-            {status}
+            {capitalize(status)}
           </span>
         );
       },
     }),
-    columnHelper.accessor("codigo", {
-      header: "Código",
+    columnHelper.accessor("rack", {
+      header: "Rack",
       cell: (info) => (
         <span className="font-medium text-slate-700 dark:text-slate-200">
           {info.getValue()}
         </span>
       ),
     }),
-    columnHelper.accessor("nombre", {
-      header: "Nombre",
+    columnHelper.accessor("pasillo", {
+      header: "Pasillo",
       cell: (info) => (
         <span className="text-slate-600 dark:text-slate-300 font-medium">
           {info.getValue()}

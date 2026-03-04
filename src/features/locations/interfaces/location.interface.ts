@@ -8,16 +8,18 @@ export interface Location {
   empresa: Company["id"];
   sucursal: Branch["id"];
   almacen: Warehouse["id_almacen"];
-  codigo: string;
-  nombre: string;
-  estatus: string;
+  pasillo: string;
+  rack: string;
+  estatus: LocationStatus;
   created_at: string;
   updated_at: string;
 }
 
 export interface LocationCreate {
   almacen: Warehouse["id_almacen"];
-  codigo: string;
-  nombre: string;
-  estatus: string;
+  pasillo: string;
+  rack: string;
+  estatus: LocationStatus;
 }
+
+type LocationStatus = "ACTIVO" | "INACTIVO"

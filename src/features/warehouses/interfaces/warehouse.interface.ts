@@ -8,7 +8,7 @@ export interface Warehouse {
   sucursal: Branch["id"];
   codigo: string;
   nombre: string;
-  estatus: string;
+  estatus: WarehouseStatus;
   created_at: string;
   updated_at: string;
 }
@@ -17,5 +17,7 @@ export interface WarehouseCreate {
   sucursal: Branch["id"];
   codigo: string;
   nombre: string;
-  estatus: string;
+  estatus: WarehouseStatus;
 }
+
+type WarehouseStatus = "ACTIVO" | "INACTIVO"

@@ -22,17 +22,17 @@ interface LocationFormProps {
 export default function LocationForm({ onSuccess, locationToEdit }: LocationFormProps) {
   const { data: warehouses = [], isLoading: isLoadingWarehouses } = useWarehouses();
 
-  const activeWarehouses = warehouses.filter((warehouse) => warehouse.estatus === "Activo" || warehouse.estatus === "Mantenimiento");
+  const activeWarehouses = warehouses.filter((warehouse) => warehouse.estatus === "ACTIVO");
   const missingItems = [
-    activeWarehouses.length === 0 ? "Almacenes activos o en mantenimiento" : null,
+    activeWarehouses.length === 0 ? "Almacenes activos" : null,
   ].filter((item): item is string => Boolean(item));
 
   const isEditing = Boolean(locationToEdit?.id_ubicacion);
   const emptyValues: LocationFormValues = {
     almacen: 0,
-    codigo: "",
-    nombre: "",
-    estatus: "Activo",
+    pasillo: "",
+    rack: "",
+    estatus: "ACTIVO",
   };
 
   const hasWarehouse = activeWarehouses.some(
@@ -42,8 +42,8 @@ export default function LocationForm({ onSuccess, locationToEdit }: LocationForm
   const editValues: LocationFormValues = locationToEdit
     ? {
         almacen: hasWarehouse ? locationToEdit.almacen : 0,
-        codigo: locationToEdit.codigo,
-        nombre: locationToEdit.nombre,
+        pasillo: locationToEdit.pasillo,
+        rack: locationToEdit.rack,
         estatus: locationToEdit.estatus as LocationFormValues["estatus"],
       }
     : emptyValues;
@@ -99,21 +99,21 @@ export default function LocationForm({ onSuccess, locationToEdit }: LocationForm
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <div className="group/field md:col-span-2">
                 <FormInput
-                  label="Nombre de la Ubicación"
+                  label="Pasillo"
                   placeholder="Ej. Pasillo A"
                   className="text-2xl font-bold"
                   variant="ghost"
-                  {...register("nombre")}
-                  error={errors.nombre}
+                  {...register("pasillo")}
+                  error={errors.pasillo}
                 />
               </div>
 
               <div className="group/field">
                 <FormInput
-                  label="Código"
-                  placeholder="UBI-001"
-                  {...register("codigo")}
-                  error={errors.codigo}
+                  label="Rack"
+                  placeholder="RACK-01"
+                  {...register("rack")}
+                  error={errors.rack}
                 />
               </div>
             </div>
@@ -168,14 +168,11 @@ export default function LocationForm({ onSuccess, locationToEdit }: LocationForm
               <div className="p-8 space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <FormSelect label="Estatus de la ubicación" {...register("estatus")} error={errors.estatus}>
-                    <option value="Activo" className="bg-white dark:bg-zinc-900 text-slate-900 dark:text-white">
+                    <option value="ACTIVO" className="bg-white dark:bg-zinc-900 text-slate-900 dark:text-white">
                       Activo
                     </option>
-                    <option value="Inactivo" className="bg-white dark:bg-zinc-900 text-slate-900 dark:text-white">
+                    <option value="INACTIVO" className="bg-white dark:bg-zinc-900 text-slate-900 dark:text-white">
                       Inactivo
-                    </option>
-                    <option value="Mantenimiento" className="bg-white dark:bg-zinc-900 text-slate-900 dark:text-white">
-                      Mantenimiento
                     </option>
                   </FormSelect>
                 </div>
