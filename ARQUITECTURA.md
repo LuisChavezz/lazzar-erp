@@ -14,7 +14,11 @@ Este documento describe la arquitectura técnica del proyecto **erp-nextjs-v1**,
   - TailwindCSS 4 (clases utilitarias en los componentes, configuración vía `@tailwindcss/postcss`).
 - **Estado y datos**:
   - **TanStack Query** (`@tanstack/react-query`) para fetch, cache y sincronización de datos de la API.
-  - **Zustand** para stores de UI/estado de dominio (ej. `warehouse.store.ts`, `workspace.store.ts`).
+  - **React Query Devtools** para inspeccionar el cache en desarrollo.
+  - **Zustand** para stores de UI/estado de dominio (ej. `workspace.store.ts`).
+- **Tablas y UI avanzada**:
+  - **TanStack Table** como base de `DataTable`.
+  - `react-hot-toast` para notificaciones.
 - **Formularios y validación**:
   - `react-hook-form` para el manejo de formularios.
   - `zod` para validación declarativa de esquemas.
@@ -48,18 +52,24 @@ Ruta base del proyecto:
     - UI genérica: `FormInput`, `FormSelect`, `FormButtons`, `MainDialog`, `ConfirmDialog`, `DataTable`, `Loader`, `LoadingSkeleton`, `TiltCard`.
     - Íconos: `Icons.tsx`.
 - `src/constants/`
-  - Constantes compartidas (ej. `sidebarItems.ts` para navegación principal).
+  - Constantes compartidas (ej. `sidebarItems.ts` y `routePermissions.ts`).
 - `src/lib/`
-  - Utilidades y configuración de infraestructura:
+  - Configuración de infraestructura:
     - `auth.ts` – configuración de NextAuth (providers, callbacks, páginas).
-    - `getPageTitle.ts` – utilidades de título de páginas.
+- `src/utils/`
+  - Utilidades comunes:
+    - `getPageTitle.ts` – título de páginas según ruta.
+    - `permissions.ts` – helper de permisos.
+    - `getSidebarItems.ts` – filtrado de navegación por permisos.
 - `src/api/`
   - Clientes HTTP configurados:
-    - `v1.api.ts` – instancia de axios con baseURL y interceptores.
+    - `v1.api.ts` – instancia de axios con baseURL e interceptores.
 - `src/types/`
-  - Tipos globales, ej. `next-auth.d.ts` para extender el tipo `Session`/`User`.
+  - Tipos globales, ej. `next-auth.d.ts` para extender `Session`/`User`.
+- `src/interfaces/`
+  - Tipos de soporte transversal (ej. `permission-context.interface.ts`).
 - `src/proxy.ts`
-  - Proxy de Next.js usado para resolver CORS y enrutar requests desde el cliente hacia la API backend (bajo un prefijo `/api/...`).
+  - Middleware de autenticación y permisos (selección de workspace, control de acceso por ruta).
 
 ---
 
@@ -84,15 +94,22 @@ Ruta base del proyecto:
   - Área central de contenido (`main`) con scroll vertical.
 - Este layout aplica a páginas como:
   - `/dashboard`
+  - `/orders` y subrutas (`/orders/new`, `/orders/edit/[id]`)
+  - `/orders-menu`
+  - `/production`
   - `/inventories`
+  - `/stock`
+  - `/price-lists`
+  - `/shipments`
+  - `/shipment-tracking`
+  - `/customers`
+  - `/receipts`
   - `/invoicing`
   - `/accounts-payable`
   - `/accounts-receivable`
-  - `/production`
-  - `/orders`
-  - `/receipts`
   - `/bank-accounts`
   - `/accounting`
+  - `/reports`
   - `/config`
 
 ### 3.3 Layout de autenticación (`src/app/auth/layout.tsx`)
@@ -101,10 +118,11 @@ Ruta base del proyecto:
   - `/auth/login`
 - Suele mostrar un fondo centrado, con el formulario dentro de una tarjeta (`card`) visualmente destacada.
 
-### 3.4 Layout de selección de sucursal (`src/app/select-branch/layout.tsx`)
+### 3.4 Página de selección de sucursal (`src/app/select-branch/page.tsx`)
 
-- Layout para la ruta `/select-branch`:
-  - Orientado a presentar las empresas y sucursales disponibles, usando componentes como `WorkspaceSelector`, `CompanyGrid` y `BranchGrid`.
+- Página que carga `WorkspaceSelector`:
+  - Presenta empresas disponibles y, al seleccionar una, las sucursales asociadas.
+  - Al confirmar, guarda el contexto en el store de workspace y redirige al dashboard.
 
 ---
 
@@ -123,16 +141,24 @@ Ruta base del proyecto:
     - Copia `role` y `token` al `token` de NextAuth (`token.role`, `token.accessToken`).
   - **session**:
     - Inyecta `role` y `accessToken` en `session.user`.
+- Tipos extendidos:
+  - `src/types/next-auth.d.ts` agrega `role`, `accessToken` y `permissions` a `User`/`Session`.
 - Páginas personalizadas:
   - `signIn: "/auth/login"`.
 - Estrategia de sesión:
   - `strategy: "jwt"`.
 
-### 4.2 Protección de rutas
+### 4.2 Protección de rutas y permisos
 
-- Las páginas del grupo `(main)` y otras rutas protegidas obtienen la sesión con:
-  - `getServerSession(authOptions)` en Server Components.
-- Si la sesión no existe o no es válida, el flujo de protección se configura a nivel de middleware/proxy (`src/proxy.ts`) o a nivel de página (redirecciones a `/auth/login`).
+- La autenticación y el control de permisos se ejecutan en `src/proxy.ts` usando `withAuth` de NextAuth.
+- `routePermissions.ts` define el permiso mínimo por prefijo de ruta (`/orders`, `/config`, etc.).
+- Si no hay permiso, el middleware redirige a `/dashboard`.
+
+### 4.3 Workspace y selección de sucursal
+
+- Antes de acceder a rutas protegidas, `proxy.ts` valida la cookie `erp_workspace_id`.
+- Si no existe, redirige a `/select-branch` para elegir empresa y sucursal.
+- La selección se guarda en `workspace.store.ts` con persistencia local y se refleja en `WorkspaceInfo`.
 
 ---
 
@@ -228,10 +254,10 @@ Cada componente se apoya en:
   - `NEXTAUTH_SECRET`: secreto para firmar JWT de NextAuth.
   - `NEXT_PUBLIC_API_URL`: base URL de la API v1 (ej. `https://nucleo-erp.vercel.app/api/v1`).
 - **next.config.ts**:
-  - `reactCompiler: true` y configuración del compilador de React para optimizaciones.
+  - `reactCompiler: true` y `removeConsole` en producción.
   - Configuración de dominios permitidos para imágenes (`images.unsplash.com`, `raw.githubusercontent.com`).
 - **proxy.ts**:
-  - Archivo específico del proyecto para manejar proxys en Next.js 16, evitando renombrarlo a `middleware.ts`.
+  - Middleware de NextAuth con matcher para rutas protegidas y validación del workspace.
 
 ---
 
@@ -269,4 +295,3 @@ La arquitectura facilita la extensión del ERP:
   3. Ajustar columnas de las tablas si se deben visualizar.
 
 Con este diseño, el proyecto mantiene una separación clara entre capas y módulos, permitiendo que equipos distintos trabajen de forma relativamente independiente (backend, frontend de cada módulo, diseño de UI) sin perder coherencia general.
-

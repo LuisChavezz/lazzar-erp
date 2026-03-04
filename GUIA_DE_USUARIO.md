@@ -24,19 +24,20 @@ Si ya estás autenticado e intentas entrar a `/auth/login`, el sistema te rediri
 
 ## 2. Selección de empresa y sucursal
 
-Tras el login, el sistema utiliza un **selector de espacio de trabajo** (empresas y sucursales) para que el usuario elija sobre qué contexto trabajar.
+Tras el login, el sistema utiliza un **selector de espacio de trabajo** (empresas y sucursales) para que el usuario elija el contexto de operación.
 
-- Pantalla principal de selección:
-  - **Listado de empresas** (`CompanyGrid`).
-  - Para cada empresa se muestra nombre, información básica y número de sucursales.
-- Al seleccionar una empresa:
-  - Se muestran sus **sucursales** (`BranchGrid` o listados similares).
-  - El usuario elige la sucursal activa con la que operará.
+- Pantalla de selección:
+  - **Listado de empresas** disponibles.
+  - Al seleccionar una empresa, se muestran sus **sucursales**.
+- El usuario puede:
+  - Elegir una sucursal activa.
+  - Continuar sin seleccionar sucursal si no aplica.
 
-La información seleccionada se guarda en el **store de workspace** (`workspace.store.ts`), de modo que:
+La selección se guarda en el **store de workspace** y en una cookie (`erp_workspace_id`), de modo que:
 
-- El encabezado de la aplicación (`Header` y `WorkspaceInfo`) siempre muestra la empresa y sucursal activa.
-- Los módulos (inventarios, facturación, etc.) trabajan con ese contexto.
+- El encabezado (`WorkspaceInfo`) muestra la empresa y sucursal activa.
+- El sistema recuerda el contexto al navegar.
+- Se puede cambiar de sucursal desde el header cuando hay más de una disponible.
 
 ---
 
@@ -45,24 +46,16 @@ La información seleccionada se guarda en el **store de workspace** (`workspace.
 Una vez dentro del sistema, la interfaz se organiza en:
 
 - **Sidebar lateral** (`Sidebar`):
-  - Navegación entre módulos principales:
-    - Dashboard
-    - Inventarios
-    - Facturación (Invoicing)
-    - Cuentas por pagar
-    - Cuentas por cobrar
-    - Producción
-    - Órdenes / Pedidos
-    - Recepciones
-    - Bancos / Cuentas bancarias
-    - Contabilidad
-    - Configuración
-  - La definición de los ítems se encuentra en `sidebarItems.ts`.
+  - **Principal**: Dashboard.
+  - **Operación**: Pedidos, Producción, Inventarios, Órdenes, Recepciones.
+  - **Finanzas**: Facturación, CxP (Pagar), CxC (Cobrar), Bancos, Contabilidad.
+  - **Reportes**: Existencias, Lista de Precios, Rastrear Guías, Clientes, Embarques, Reportes.
+  - Cada ítem se muestra según permisos del usuario.
 - **Header superior** (`Header`):
   - Buscador rápido (`SearchBar`).
   - Notificaciones (`Notifications`).
   - Información de workspace (`WorkspaceInfo`).
-  - Menú de usuario (`UserMenu`) con opciones como cerrar sesión.
+  - Menú de usuario (`UserMenu`).
 - **Contenido principal**:
   - Zona central donde se cargan las páginas del módulo seleccionado.
 
@@ -78,7 +71,7 @@ El Dashboard muestra una visión general del sistema:
 
 - **Acciones rápidas**:
   - Botón **“Nuevo Pedido”** para iniciar rápidamente la captura de un pedido.
-  - Si el usuario es administrador (`role === "admin"`), un botón para ir a **Configuración**.
+  - Botón de **Configuración** si el usuario tiene permiso.
 - **Tarjetas de métricas** (`StatsCards`):
   - Resumen de ventas, órdenes, inventario, etc. (datos de ejemplo que pueden conectarse a métricas reales).
 
@@ -90,16 +83,16 @@ Este módulo está pensado como punto de partida diario para ver el estado gener
 
 Ruta: `/config`
 
-La sección de Configuración es el “panel de control” del ERP. Desde aquí se administran los **catálogos base**:
+La sección de Configuración es el “panel de control” del ERP. Desde aquí se administran los **catálogos base** organizados por grupos:
 
-- **Sucursales** (`BranchList`, `BranchForm`, `BranchDetails`).
-- **Almacenes** (`WarehouseList`, `WarehouseForm`).
-- **Ubicaciones** (`LocationList`, `LocationForm`).
-- **Usuarios** (`UserList`, `UserForm`, `UserDetails`).
-- **Monedas** (`CurrencyList`, `CurrencyForm`).
-- **Información fiscal SAT** (`SatInfo`, `FiscalAddressForm`).
+- **Organización**: Sucursales, Almacenes, Ubicaciones.
+- **Usuarios y Accesos**: Usuarios.
+- **Información Fiscal**: Monedas, Información fiscal, Impuestos.
+- **Catálogo de Productos**: Categorías, Tipos, Colores, Tallas, Unidades de Medida.
+- **SAT y CFDI**: Claves SAT de productos y servicios, claves SAT de unidades.
+- **Productos**: Productos, Variantes de Producto.
 
-La vista se organiza con tarjetas (`ConfigCard`) y un detalle dinámico (`ConfigDetailView`) que carga el módulo seleccionado, utilizando **carga dinámica** para mejorar el rendimiento.
+La vista se organiza con tarjetas (`ConfigCard`) y un detalle dinámico (`ConfigDetailView`) que carga el módulo seleccionado. El acceso a estas tarjetas es administrativo.
 
 ### 5.1 Operaciones típicas en catálogos
 
@@ -121,22 +114,28 @@ Los catálogos se comunican con la API backend mediante hooks como `useCompanies
 
 ## 6. Módulos operativos
 
-Aunque algunos módulos aún manejan datos de ejemplo (dummy data), la estructura está preparada para conectarse a la API:
+Los módulos operativos y financieros se organizan por rutas:
 
-- **Inventarios** (`/inventories`):
-  - Listado de productos (`InventoryList`, `InventoryColumns`, `InventoryStats`).
-  - Enfoque en existencias, rotación y estado del inventario.
-- **Facturación** (`/invoicing`):
-  - Listado de facturas (`InvoiceList`, `InvoiceColumns`, `InvoiceStats`).
-  - Columnas para folio, cliente, fecha, estatus, importe, etc.
-- **Cuentas por Cobrar** (`/accounts-receivable`):
-  - Enfoque en facturas abiertas, vencidas y cobradas.
-- **Cuentas por Pagar** (`/accounts-payable`).
+- **Pedidos** (`/orders`):
+  - Lista de pedidos y estados.
+  - Alta de pedido en `/orders/new` y edición en `/orders/edit/[id]`.
+- **Órdenes** (`/orders-menu`):
+  - Catálogo de órdenes y navegación por tarjetas.
 - **Producción** (`/production`).
-- **Pedidos / Órdenes** (`/orders`).
+- **Inventarios** (`/inventories`).
 - **Recepciones** (`/receipts`).
-- **Cuentas Bancarias** (`/bank-accounts`).
+- **Facturación** (`/invoicing`).
+- **CxP (Pagar)** (`/accounts-payable`).
+- **CxC (Cobrar)** (`/accounts-receivable`).
+- **Bancos** (`/bank-accounts`).
 - **Contabilidad** (`/accounting`).
+- **Reportes**:
+  - **Existencias** (`/stock`).
+  - **Lista de Precios** (`/price-lists`).
+  - **Rastrear Guías** (`/shipment-tracking`).
+  - **Clientes** (`/customers`).
+  - **Embarques** (`/shipments`).
+  - **Reportes** (`/reports`).
 
 Cada módulo sigue el patrón:
 
@@ -156,7 +155,8 @@ El sistema utiliza **NextAuth** con estrategia de **JWT**:
 Para cerrar sesión:
 
 - Utiliza la opción de **Cerrar sesión** en el menú de usuario (`UserMenu`).
-- En caso de que el token expire o la API responda con **401**, el sistema cierra sesión y redirige a `/auth/login`.
+- El sistema limpia el workspace y su cookie.
+- En caso de que el token expire o la API responda con **401**, se cierra sesión y se redirige a `/auth/login`.
 
 ---
 
@@ -172,14 +172,15 @@ Para cerrar sesión:
 ## 9. Mejores prácticas de uso
 
 - Completa primero la sección de **Configuración**:
-  - Registra tu empresa y sucursales.
-  - Configura monedas y usuarios.
-  - Define tus almacenes y ubicaciones.
+  - Registra sucursales, almacenes y ubicaciones.
+  - Configura usuarios, monedas e información fiscal.
+  - Define catálogos de productos, colores, tallas y unidades.
 - Después utiliza:
-  - **Inventarios** para controlar existencias.
-  - **Facturación** y **Cuentas por Cobrar/Pagar** para el flujo financiero.
-  - **Producción** y **Órdenes** para el flujo operativo.
-- Mantén tus datos fiscales SAT actualizados para emitir documentos correctamente.
+  - **Pedidos** para la captura operativa.
+  - **Inventarios** para control de existencias.
+  - **Facturación** y **CxC/CxP** para el flujo financiero.
+  - **Producción** y **Recepciones** para el flujo operativo.
+- Mantén tus datos fiscales y claves SAT actualizados para emitir documentos correctamente.
 
 ---
 
@@ -189,4 +190,3 @@ Para cualquier duda funcional:
 
 - Revisa primero esta guía y las descripciones dentro de cada módulo.
 - Si el problema está relacionado con acceso o permisos, consulta con el **administrador del sistema**.
-
