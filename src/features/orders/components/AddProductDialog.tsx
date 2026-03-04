@@ -4,7 +4,6 @@ import { useMemo, useState } from "react";
 import { MainDialog } from "@/src/components/MainDialog";
 import { OrderFormValues } from "../schema/order.schema";
 import { useProducts } from "../../products/hooks/useProducts";
-import { useProductVariantStore } from "../../product-variants/stores/product-variant.store";
 import { useUnitsOfMeasure } from "../../units-of-measure/hooks/useUnitsOfMeasure";
 import { useColors } from "../../colors/hooks/useColors";
 import { useSizes } from "../../sizes/hooks/useSizes";
@@ -12,6 +11,7 @@ import { StepSelectProduct } from "./StepSelectProduct";
 import { StepSizes } from "./StepSizes";
 import { StepEmbroidery, type EmbroiderySpecForm } from "./StepEmbroidery";
 import type { CatalogRow as BaseCatalogRow } from "../hooks/useAddProductsDialog";
+import { useProductVariants } from "../../product-variants/hooks/useProductVariants";
 
 type OrderItem = OrderFormValues["items"][number];
 
@@ -59,7 +59,7 @@ export function AddProductDialog({
   startStep = "select",
 }: AddProductDialogProps) {
   const { products } = useProducts();
-  const productVariants = useProductVariantStore((s) => s.productVariants);
+  const { productVariants } = useProductVariants();
   const { units } = useUnitsOfMeasure();
   const { colors } = useColors();
   const { sizes, isLoading: isLoadingSizes } = useSizes();
@@ -123,11 +123,11 @@ export function AddProductDialog({
 
     return (productVariants || [])
       .map((variant) => {
-        const product = productsById.get(variant.producto_id);
+        const product = productsById.get(variant.producto);
         if (!product) return null;
         const unit = unitsById.get(product.unidad_medida);
         const precio = Number(variant.precio_base);
-        const color = colorsById.get(variant.color_id);
+        const color = colorsById.get(variant.color);
         return {
           id: variant.id,
           sku: variant.sku ?? "",
@@ -138,8 +138,8 @@ export function AddProductDialog({
           isActive: Boolean(variant.activo) && Boolean(product.activo),
           colorNombre: color?.nombre ?? "Sin color",
           colorHex: color?.codigo_hex ?? "FFFFFF",
-          colorId: variant.color_id,
-          productoId: variant.producto_id,
+          colorId: variant.color,
+          productoId: variant.producto,
         } satisfies CatalogRow;
       })
       .filter((r): r is CatalogRow => Boolean(r))

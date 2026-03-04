@@ -5,7 +5,11 @@ import { useForm, useFieldArray, useWatch, Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { FormInput } from "@/src/components/FormInput";
 import { FormSelect } from "@/src/components/FormSelect";
-import { FormCancelButton, FormSubmitButton } from "@/src/components/FormButtons";
+import {
+  FormCancelButton,
+  FormSecondaryButton,
+  FormSubmitButton,
+} from "@/src/components/FormButtons";
 import { PedidosIcon } from "@/src/components/Icons";
 import { orderFormSchema, OrderFormValues } from "../schema/order.schema";
 import { getFieldError } from "../../../utils/getFieldError";
@@ -120,46 +124,46 @@ export default function OrderForm({ orderId }: OrderFormProps) {
 
   const editValues: OrderFormValues = orderToEdit
     ? {
-        clienteId: orderToEdit.clienteId,
-        clienteNombre: orderToEdit.clienteNombre,
-        pedidoCliente: orderToEdit.pedidoCliente,
-        fecha: orderToEdit.fecha,
-        fechaVence: orderToEdit.fechaVence,
-        agente: orderToEdit.agente ?? userName,
-        tipoDocumento: orderToEdit.tipoDocumento ?? "pedido",
-        origen: orderToEdit.origen ?? [],
-        destinatario: orderToEdit.destinatario ?? "",
-        empresaEnvio: orderToEdit.empresaEnvio ?? "",
-        telefonoEnvio: orderToEdit.telefonoEnvio ?? "",
-        celularEnvio: orderToEdit.celularEnvio ?? "",
-        direccionEnvio: orderToEdit.direccionEnvio ?? "",
-        coloniaEnvio: orderToEdit.coloniaEnvio ?? "",
-        codigoPostalEnvio: orderToEdit.codigoPostalEnvio ?? "",
-        ciudadEnvio: orderToEdit.ciudadEnvio ?? "",
-        estadoEnvio: orderToEdit.estadoEnvio ?? "",
-        referenciasEnvio: orderToEdit.referenciasEnvio ?? "",
-        enviarDomicilioFiscal: orderToEdit.enviarDomicilioFiscal ?? false,
-        embarcarConOtrosPedidos: orderToEdit.embarcarConOtrosPedidos ?? false,
-        empaqueEcologico: orderToEdit.empaqueEcologico ?? false,
-        embarqueParcial: orderToEdit.embarqueParcial ?? false,
-        comentariosParcialidad: orderToEdit.comentariosParcialidad ?? "",
-        comision: orderToEdit.comision,
-        plazo: orderToEdit.plazo,
-        sucursal: hasBranch ? orderToEdit.sucursal : 0,
-        almacen: hasBranch && hasWarehouse ? orderToEdit.almacen : 0,
-        canal: orderToEdit.canal,
-        puntos: orderToEdit.puntos,
-        anticipoReq: orderToEdit.anticipoReq,
-        pedidoInicial: orderToEdit.pedidoInicial,
-        estatusPedido: orderToEdit.estatusPedido,
-        docRelacionado: orderToEdit.docRelacionado,
-        observaciones: orderToEdit.observaciones ?? "",
-        flete: orderToEdit.totals.flete,
-        seguro: orderToEdit.totals.seguro,
-        anticipo: orderToEdit.totals.anticipo,
-        iva: orderToEdit.totals.ivaRate,
-        items: orderToEdit.items.map((i) => ({ ...i })),
-      }
+      clienteId: orderToEdit.clienteId,
+      clienteNombre: orderToEdit.clienteNombre,
+      pedidoCliente: orderToEdit.pedidoCliente,
+      fecha: orderToEdit.fecha,
+      fechaVence: orderToEdit.fechaVence,
+      agente: orderToEdit.agente ?? userName,
+      tipoDocumento: orderToEdit.tipoDocumento ?? "pedido",
+      origen: orderToEdit.origen ?? [],
+      destinatario: orderToEdit.destinatario ?? "",
+      empresaEnvio: orderToEdit.empresaEnvio ?? "",
+      telefonoEnvio: orderToEdit.telefonoEnvio ?? "",
+      celularEnvio: orderToEdit.celularEnvio ?? "",
+      direccionEnvio: orderToEdit.direccionEnvio ?? "",
+      coloniaEnvio: orderToEdit.coloniaEnvio ?? "",
+      codigoPostalEnvio: orderToEdit.codigoPostalEnvio ?? "",
+      ciudadEnvio: orderToEdit.ciudadEnvio ?? "",
+      estadoEnvio: orderToEdit.estadoEnvio ?? "",
+      referenciasEnvio: orderToEdit.referenciasEnvio ?? "",
+      enviarDomicilioFiscal: orderToEdit.enviarDomicilioFiscal ?? false,
+      embarcarConOtrosPedidos: orderToEdit.embarcarConOtrosPedidos ?? false,
+      empaqueEcologico: orderToEdit.empaqueEcologico ?? false,
+      embarqueParcial: orderToEdit.embarqueParcial ?? false,
+      comentariosParcialidad: orderToEdit.comentariosParcialidad ?? "",
+      comision: orderToEdit.comision,
+      plazo: orderToEdit.plazo,
+      sucursal: hasBranch ? orderToEdit.sucursal : 0,
+      almacen: hasBranch && hasWarehouse ? orderToEdit.almacen : 0,
+      canal: orderToEdit.canal,
+      puntos: orderToEdit.puntos,
+      anticipoReq: orderToEdit.anticipoReq,
+      pedidoInicial: orderToEdit.pedidoInicial,
+      estatusPedido: orderToEdit.estatusPedido,
+      docRelacionado: orderToEdit.docRelacionado,
+      observaciones: orderToEdit.observaciones ?? "",
+      flete: orderToEdit.totals.flete,
+      seguro: orderToEdit.totals.seguro,
+      anticipo: orderToEdit.totals.anticipo,
+      iva: orderToEdit.totals.ivaRate,
+      items: orderToEdit.items.map((i) => ({ ...i })),
+    }
     : emptyValues;
 
   const {
@@ -198,10 +202,10 @@ export default function OrderForm({ orderId }: OrderFormProps) {
   const warehousePlaceholder = isLoadingWarehouses
     ? "Cargando almacenes..."
     : selectedSucursalId === 0
-    ? "Selecciona una sucursal..."
-    : warehousesByBranch.length === 0
-    ? "Sin almacenes disponibles"
-    : "Seleccionar...";
+      ? "Selecciona una sucursal..."
+      : warehousesByBranch.length === 0
+        ? "Sin almacenes disponibles"
+        : "Seleccionar...";
 
   const {
     subtotal,
@@ -568,8 +572,8 @@ export default function OrderForm({ orderId }: OrderFormProps) {
                   {isLoadingBranches
                     ? "Cargando sucursales..."
                     : availableBranches.length === 0
-                    ? "No hay sucursales disponibles"
-                    : "Seleccionar..."}
+                      ? "No hay sucursales disponibles"
+                      : "Seleccionar..."}
                 </option>
                 {availableBranches.map((branch) => (
                   <option
@@ -834,8 +838,8 @@ export default function OrderForm({ orderId }: OrderFormProps) {
           onUpdateItem={
             editIndex !== null
               ? (item) => {
-                  update(editIndex, item);
-                }
+                update(editIndex, item);
+              }
               : undefined
           }
           initialItem={editIndex !== null ? watchedItems?.[editIndex] : null}
@@ -892,225 +896,225 @@ export default function OrderForm({ orderId }: OrderFormProps) {
                 </tr>
               ) : (
                 fields.map((field, index) => {
-                const itemErrors = errors.items?.[index];
-                const skuError = getFieldError(itemErrors?.sku);
-                const descripcionError = getFieldError(itemErrors?.descripcion);
-                const unidadError = getFieldError(itemErrors?.unidad);
-                const cantidadError = getFieldError(itemErrors?.cantidad);
-                const precioError = getFieldError(itemErrors?.precio);
-                const descuentoError = getFieldError(itemErrors?.descuento);
-                const importeError = getFieldError(itemErrors?.importe);
+                  const itemErrors = errors.items?.[index];
+                  const skuError = getFieldError(itemErrors?.sku);
+                  const descripcionError = getFieldError(itemErrors?.descripcion);
+                  const unidadError = getFieldError(itemErrors?.unidad);
+                  const cantidadError = getFieldError(itemErrors?.cantidad);
+                  const precioError = getFieldError(itemErrors?.precio);
+                  const descuentoError = getFieldError(itemErrors?.descuento);
+                  const importeError = getFieldError(itemErrors?.importe);
 
-                const currentItem = watchedItems?.[index];
-                const tallasLabel =
-                  currentItem?.tallas && currentItem.tallas.length > 0
-                    ? currentItem.tallas
+                  const currentItem = watchedItems?.[index];
+                  const tallasLabel =
+                    currentItem?.tallas && currentItem.tallas.length > 0
+                      ? currentItem.tallas
                         .map((talla) => `${talla.nombre} (${talla.cantidad})`)
                         .join(", ")
-                    : "—";
-                const bordadoLabel = currentItem?.bordados?.activo ? "Sí" : "No";
-                const cantidad = Number(currentItem?.cantidad) || 0;
-                const precio = Number(currentItem?.precio) || 0;
-                const descuento = Number(currentItem?.descuento) || 0;
-                const amount = cantidad * precio;
-                const descuentoAmount = amount * (descuento / 100);
-                const calculatedImporte = Number((amount - descuentoAmount).toFixed(2));
+                      : "—";
+                  const bordadoLabel = currentItem?.bordados?.activo ? "Sí" : "No";
+                  const cantidad = Number(currentItem?.cantidad) || 0;
+                  const precio = Number(currentItem?.precio) || 0;
+                  const descuento = Number(currentItem?.descuento) || 0;
+                  const amount = cantidad * precio;
+                  const descuentoAmount = amount * (descuento / 100);
+                  const calculatedImporte = Number((amount - descuentoAmount).toFixed(2));
 
-                return (
-                  <tr
-                    key={field.id}
-                    className="group hover:bg-slate-50 dark:hover:bg-white/5 transition-colors"
-                  >
-                    <td className="p-2 text-center text-xs text-slate-400 select-none">
-                      {index + 1}
-                    </td>
-                    <td className="p-1">
-                      <div className="space-y-1">
-                        <input
-                          type="text"
-                          placeholder="SKU"
-                          aria-label="Código del producto"
-                          autoComplete="off"
-                          readOnly
-                          tabIndex={-1}
-                          className={`w-full cursor-not-allowed bg-slate-100/80 dark:bg-zinc-800/60 border-b border-transparent focus:ring-0 p-1.5 text-xs text-slate-500 dark:text-slate-400 focus:border-transparent ${skuError ? "border-rose-500 text-rose-600 dark:text-rose-400" : ""}`}
-                          {...register(`items.${index}.sku`)}
-                        />
-                        {skuError && (
-                          <p className="text-[10px] text-rose-600 dark:text-rose-400">
-                            {skuError.message}
-                          </p>
-                        )}
-                      </div>
-                    </td>
-                    <td className="p-1">
-                      <div className="space-y-1">
-                        <input
-                          type="text"
-                          placeholder="Descripción del producto"
-                          aria-label="Descripción del producto"
-                          autoComplete="off"
-                          readOnly
-                          tabIndex={-1}
-                          className={`w-full cursor-not-allowed bg-slate-100/80 dark:bg-zinc-800/60 border-b border-transparent focus:ring-0 p-1.5 text-xs text-slate-500 dark:text-slate-400 focus:border-transparent ${descripcionError ? "border-rose-500 text-rose-600 dark:text-rose-400" : ""}`}
-                          {...register(`items.${index}.descripcion`)}
-                        />
-                        {descripcionError && (
-                          <p className="text-[10px] text-rose-600 dark:text-rose-400">
-                            {descripcionError.message}
-                          </p>
-                        )}
-                      </div>
-                    </td>
-                    <td className="p-1">
-                      <div className="space-y-1">
-                        <input
-                          type="text"
-                          placeholder="PZA"
-                          aria-label="Unidad de medida"
-                          autoComplete="off"
-                          readOnly
-                          tabIndex={-1}
-                          className={`w-full cursor-not-allowed bg-slate-100/80 dark:bg-zinc-800/60 border-b border-transparent focus:ring-0 p-1.5 text-xs text-center uppercase text-slate-500 dark:text-slate-400 focus:border-transparent ${unidadError ? "border-rose-500 text-rose-600 dark:text-rose-400" : ""}`}
-                          {...register(`items.${index}.unidad`)}
-                        />
-                        {unidadError && (
-                          <p className="text-[10px] text-rose-600 dark:text-rose-400">
-                            {unidadError.message}
-                          </p>
-                        )}
-                      </div>
-                    </td>
-                    <td className="p-1">
-                      <div className="space-y-1">
-                        <div
-                          className="w-full max-w-40 overflow-x-auto custom-scrollbar"
-                          role="presentation"
-                        >
+                  return (
+                    <tr
+                      key={field.id}
+                      className="group hover:bg-slate-50 dark:hover:bg-white/5 transition-colors"
+                    >
+                      <td className="p-2 text-center text-xs text-slate-400 select-none">
+                        {index + 1}
+                      </td>
+                      <td className="p-1">
+                        <div className="space-y-1">
+                          <input
+                            type="text"
+                            placeholder="SKU"
+                            aria-label="Código del producto"
+                            autoComplete="off"
+                            readOnly
+                            tabIndex={-1}
+                            className={`w-full cursor-not-allowed bg-slate-100/80 dark:bg-zinc-800/60 border-b border-transparent focus:ring-0 p-1.5 text-xs text-slate-500 dark:text-slate-400 focus:border-transparent ${skuError ? "border-rose-500 text-rose-600 dark:text-rose-400" : ""}`}
+                            {...register(`items.${index}.sku`)}
+                          />
+                          {skuError && (
+                            <p className="text-[10px] text-rose-600 dark:text-rose-400">
+                              {skuError.message}
+                            </p>
+                          )}
+                        </div>
+                      </td>
+                      <td className="p-1">
+                        <div className="space-y-1">
+                          <input
+                            type="text"
+                            placeholder="Descripción del producto"
+                            aria-label="Descripción del producto"
+                            autoComplete="off"
+                            readOnly
+                            tabIndex={-1}
+                            className={`w-full cursor-not-allowed bg-slate-100/80 dark:bg-zinc-800/60 border-b border-transparent focus:ring-0 p-1.5 text-xs text-slate-500 dark:text-slate-400 focus:border-transparent ${descripcionError ? "border-rose-500 text-rose-600 dark:text-rose-400" : ""}`}
+                            {...register(`items.${index}.descripcion`)}
+                          />
+                          {descripcionError && (
+                            <p className="text-[10px] text-rose-600 dark:text-rose-400">
+                              {descripcionError.message}
+                            </p>
+                          )}
+                        </div>
+                      </td>
+                      <td className="p-1">
+                        <div className="space-y-1">
+                          <input
+                            type="text"
+                            placeholder="PZA"
+                            aria-label="Unidad de medida"
+                            autoComplete="off"
+                            readOnly
+                            tabIndex={-1}
+                            className={`w-full cursor-not-allowed bg-slate-100/80 dark:bg-zinc-800/60 border-b border-transparent focus:ring-0 p-1.5 text-xs text-center uppercase text-slate-500 dark:text-slate-400 focus:border-transparent ${unidadError ? "border-rose-500 text-rose-600 dark:text-rose-400" : ""}`}
+                            {...register(`items.${index}.unidad`)}
+                          />
+                          {unidadError && (
+                            <p className="text-[10px] text-rose-600 dark:text-rose-400">
+                              {unidadError.message}
+                            </p>
+                          )}
+                        </div>
+                      </td>
+                      <td className="p-1">
+                        <div className="space-y-1">
                           <div
-                            className="min-w-max cursor-default bg-slate-100/80 dark:bg-zinc-800/60 border-b border-transparent p-1.5 text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap"
-                            aria-label="Tallas del producto"
+                            className="w-full max-w-40 overflow-x-auto custom-scrollbar"
+                            role="presentation"
                           >
-                            {tallasLabel}
+                            <div
+                              className="min-w-max cursor-default bg-slate-100/80 dark:bg-zinc-800/60 border-b border-transparent p-1.5 text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap"
+                              aria-label="Tallas del producto"
+                            >
+                              {tallasLabel}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    </td>
-                    <td className="p-1">
-                      <div className="space-y-1">
-                        <input
-                          type="text"
-                          readOnly
-                          tabIndex={-1}
-                          value={bordadoLabel}
-                          className="w-full cursor-not-allowed bg-slate-100/80 dark:bg-zinc-800/60 border-b border-transparent focus:ring-0 p-1.5 text-xs text-center text-slate-500 dark:text-slate-400 focus:border-transparent"
-                        />
-                      </div>
-                    </td>
-                    <td className="p-1">
-                      <div className="space-y-1">
-                        <input
-                          type="number"
-                          placeholder="0"
-                          aria-label="Cantidad"
-                          autoComplete="off"
-                          readOnly
-                          tabIndex={-1}
-                          className={`w-full cursor-not-allowed bg-slate-100/80 dark:bg-zinc-800/60 border-b border-transparent focus:ring-0 p-1.5 text-xs text-right text-slate-500 dark:text-slate-400 focus:border-transparent ${cantidadError ? "border-rose-500 text-rose-600 dark:text-rose-400" : ""}`}
-                          {...register(`items.${index}.cantidad`, {
-                            valueAsNumber: true,
-                          })}
-                        />
-                        {cantidadError && (
-                          <p className="text-[10px] text-rose-600 dark:text-rose-400 text-right">
-                            {cantidadError.message}
-                          </p>
-                        )}
-                      </div>
-                    </td>
-                    <td className="p-1">
-                      <div className="space-y-1">
-                        <input
-                          type="number"
-                          placeholder="0.00"
-                          step="0.01"
-                          aria-label="Precio"
-                          readOnly
-                          tabIndex={-1}
-                          className={`w-full cursor-not-allowed bg-slate-100/80 dark:bg-zinc-800/60 border-b border-transparent focus:ring-0 p-1.5 text-xs text-right text-slate-500 dark:text-slate-400 focus:border-transparent ${precioError ? "border-rose-500 text-rose-600 dark:text-rose-400" : ""}`}
-                          {...register(`items.${index}.precio`, {
-                            valueAsNumber: true,
-                          })}
-                        />
-                        {precioError && (
-                          <p className="text-[10px] text-rose-600 dark:text-rose-400 text-right">
-                            {precioError.message}
-                          </p>
-                        )}
-                      </div>
-                    </td>
-                    <td className="p-1">
-                      <div className="space-y-1">
-                        <input
-                          type="number"
-                          placeholder="0"
-                          aria-label="Descuento porcentaje"
-                          className={`w-full bg-transparent border-b border-transparent focus:ring-0 p-1.5 text-xs text-right text-slate-700 dark:text-slate-200 focus:border-sky-500 ${descuentoError ? "border-rose-500 text-rose-600 dark:text-rose-400" : ""}`}
-                          {...register(`items.${index}.descuento`, {
-                            valueAsNumber: true,
-                          })}
-                        />
-                        {descuentoError && (
-                          <p className="text-[10px] text-rose-600 dark:text-rose-400 text-right">
-                            {descuentoError.message}
-                          </p>
-                        )}
-                      </div>
-                    </td>
-                    <td className="p-1">
-                      <div className="space-y-1">
-                        <input
-                          type="number"
-                          placeholder="0.00"
-                          readOnly
-                          value={calculatedImporte}
-                          aria-label="Importe"
-                          tabIndex={-1}
-                          className={`w-full cursor-not-allowed bg-slate-100/80 dark:bg-zinc-800/60 border-b border-transparent focus:ring-0 p-1.5 text-xs text-right text-slate-500 dark:text-slate-400 focus:border-transparent ${importeError ? "border-rose-500 text-rose-600 dark:text-rose-400" : ""}`}
-                        />
-                        {importeError && (
-                          <p className="text-[10px] text-rose-600 dark:text-rose-400 text-right">
-                            {importeError.message}
-                          </p>
-                        )}
-                      </div>
-                    </td>
-                    <td className="p-2 text-center">
-                      <div className="flex items-center justify-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setEditIndex(index);
-                            setIsAddProductsOpen(true);
-                          }}
-                          aria-label="Editar partida"
-                          className="text-slate-400 hover:text-sky-500 transition-colors cursor-pointer p-1"
-                        >
-                          ✎
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => remove(index)}
-                          aria-label="Eliminar partida"
-                          className="text-slate-400 hover:text-rose-500 transition-colors cursor-pointer p-1"
-                        >
-                          ✕
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })
+                      </td>
+                      <td className="p-1">
+                        <div className="space-y-1">
+                          <input
+                            type="text"
+                            readOnly
+                            tabIndex={-1}
+                            value={bordadoLabel}
+                            className="w-full cursor-not-allowed bg-slate-100/80 dark:bg-zinc-800/60 border-b border-transparent focus:ring-0 p-1.5 text-xs text-center text-slate-500 dark:text-slate-400 focus:border-transparent"
+                          />
+                        </div>
+                      </td>
+                      <td className="p-1">
+                        <div className="space-y-1">
+                          <input
+                            type="number"
+                            placeholder="0"
+                            aria-label="Cantidad"
+                            autoComplete="off"
+                            readOnly
+                            tabIndex={-1}
+                            className={`w-full cursor-not-allowed bg-slate-100/80 dark:bg-zinc-800/60 border-b border-transparent focus:ring-0 p-1.5 text-xs text-right text-slate-500 dark:text-slate-400 focus:border-transparent ${cantidadError ? "border-rose-500 text-rose-600 dark:text-rose-400" : ""}`}
+                            {...register(`items.${index}.cantidad`, {
+                              valueAsNumber: true,
+                            })}
+                          />
+                          {cantidadError && (
+                            <p className="text-[10px] text-rose-600 dark:text-rose-400 text-right">
+                              {cantidadError.message}
+                            </p>
+                          )}
+                        </div>
+                      </td>
+                      <td className="p-1">
+                        <div className="space-y-1">
+                          <input
+                            type="number"
+                            placeholder="0.00"
+                            step="0.01"
+                            aria-label="Precio"
+                            readOnly
+                            tabIndex={-1}
+                            className={`w-full cursor-not-allowed bg-slate-100/80 dark:bg-zinc-800/60 border-b border-transparent focus:ring-0 p-1.5 text-xs text-right text-slate-500 dark:text-slate-400 focus:border-transparent ${precioError ? "border-rose-500 text-rose-600 dark:text-rose-400" : ""}`}
+                            {...register(`items.${index}.precio`, {
+                              valueAsNumber: true,
+                            })}
+                          />
+                          {precioError && (
+                            <p className="text-[10px] text-rose-600 dark:text-rose-400 text-right">
+                              {precioError.message}
+                            </p>
+                          )}
+                        </div>
+                      </td>
+                      <td className="p-1">
+                        <div className="space-y-1">
+                          <input
+                            type="number"
+                            placeholder="0"
+                            aria-label="Descuento porcentaje"
+                            className={`w-full bg-transparent border-b border-transparent focus:ring-0 p-1.5 text-xs text-right text-slate-700 dark:text-slate-200 focus:border-sky-500 ${descuentoError ? "border-rose-500 text-rose-600 dark:text-rose-400" : ""}`}
+                            {...register(`items.${index}.descuento`, {
+                              valueAsNumber: true,
+                            })}
+                          />
+                          {descuentoError && (
+                            <p className="text-[10px] text-rose-600 dark:text-rose-400 text-right">
+                              {descuentoError.message}
+                            </p>
+                          )}
+                        </div>
+                      </td>
+                      <td className="p-1">
+                        <div className="space-y-1">
+                          <input
+                            type="number"
+                            placeholder="0.00"
+                            readOnly
+                            value={calculatedImporte}
+                            aria-label="Importe"
+                            tabIndex={-1}
+                            className={`w-full cursor-not-allowed bg-slate-100/80 dark:bg-zinc-800/60 border-b border-transparent focus:ring-0 p-1.5 text-xs text-right text-slate-500 dark:text-slate-400 focus:border-transparent ${importeError ? "border-rose-500 text-rose-600 dark:text-rose-400" : ""}`}
+                          />
+                          {importeError && (
+                            <p className="text-[10px] text-rose-600 dark:text-rose-400 text-right">
+                              {importeError.message}
+                            </p>
+                          )}
+                        </div>
+                      </td>
+                      <td className="p-2 text-center">
+                        <div className="flex items-center justify-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditIndex(index);
+                              setIsAddProductsOpen(true);
+                            }}
+                            aria-label="Editar partida"
+                            className="text-slate-400 hover:text-sky-500 transition-colors cursor-pointer p-1"
+                          >
+                            ✎
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => remove(index)}
+                            aria-label="Eliminar partida"
+                            className="text-slate-400 hover:text-rose-500 transition-colors cursor-pointer p-1"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
@@ -1298,26 +1302,18 @@ export default function OrderForm({ orderId }: OrderFormProps) {
         </div>
       </section>
 
-      <div className="flex items-center justify-between gap-3 pb-8">
-        <button
-          type="button"
-          onClick={() => router.back()}
-          className="px-4 py-2 rounded-xl cursor-pointer border border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300 text-xs font-bold uppercase tracking-wide hover:bg-slate-50 dark:hover:bg-white/10 transition-colors"
+      <div className="flex justify-end gap-3 pb-8">
+        <FormSecondaryButton label="Regresar" onClick={() => router.back()} />
+        <FormCancelButton
+          onClick={() => reset(isEditing ? editValues : emptyValues)}
+          disabled={isPending}
+        />
+        <FormSubmitButton
+          isPending={isPending}
+          loadingLabel={isEditing ? "Actualizando..." : "Guardando..."}
         >
-          Regresar
-        </button>
-        <div className="flex items-center gap-3">
-          <FormCancelButton
-            onClick={() => reset(isEditing ? editValues : emptyValues)}
-            disabled={isPending}
-          />
-          <FormSubmitButton
-            isPending={isPending}
-            loadingLabel={isEditing ? "Actualizando..." : "Guardando..."}
-          >
-            {isEditing ? "Actualizar Pedido" : "Guardar Pedido"}
-          </FormSubmitButton>
-        </div>
+          {isEditing ? "Actualizar Pedido" : "Guardar Pedido"}
+        </FormSubmitButton>
       </div>
     </form>
   );

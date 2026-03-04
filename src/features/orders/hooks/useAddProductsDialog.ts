@@ -2,10 +2,10 @@
 
 import { useMemo, useState } from "react";
 import { useProducts } from "../../products/hooks/useProducts";
-import { useProductVariantStore } from "../../product-variants/stores/product-variant.store";
 import { useUnitsOfMeasure } from "../../units-of-measure/hooks/useUnitsOfMeasure";
 import { useColors } from "../../colors/hooks/useColors";
 import { OrderFormValues } from "../schema/order.schema";
+import { useProductVariants } from "../../product-variants/hooks/useProductVariants";
 
 type OrderItem = OrderFormValues["items"][number];
 
@@ -35,7 +35,7 @@ export function useAddProductsDialog({
   onAddItems,
 }: UseAddProductsDialogParams) {
   const { products } = useProducts();
-  const productVariants = useProductVariantStore((s) => s.productVariants);
+  const { productVariants } = useProductVariants();
   const { units } = useUnitsOfMeasure();
   const { colors } = useColors();
 
@@ -57,11 +57,11 @@ export function useAddProductsDialog({
 
     return (productVariants || [])
       .map((variant) => {
-        const product = productsById.get(variant.producto_id);
+        const product = productsById.get(variant.producto);
         if (!product) return null;
         const unit = unitsById.get(product.unidad_medida);
         const precio = Number(variant.precio_base);
-        const color = colorsById.get(variant.color_id);
+        const color = colorsById.get(variant.color);
         return {
           id: variant.id,
           sku: variant.sku ?? "",

@@ -2,39 +2,36 @@
 
 import { useForm, Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useProductVariantStore } from "../stores/product-variant.store";
 import { ProductVariantFormSchema, ProductVariantFormValues } from "../schemas/product-variant.schema";
 import { FormInput } from "../../../components/FormInput";
 import { FormSelect } from "../../../components/FormSelect";
 import { FormCancelButton, FormSubmitButton } from "../../../components/FormButtons";
 import { InfoIcon, ProductVariantsIcon, SettingsIcon } from "../../../components/Icons";
-import toast from "react-hot-toast";
 import { useWorkspaceStore } from "../../workspace/store/workspace.store";
 import { useProducts } from "../../products/hooks/useProducts";
 import { useColors } from "../../colors/hooks/useColors";
 import { useSizes } from "../../sizes/hooks/useSizes";
 import MissingPrerequisites from "../../products/components/MissingPrerequisites";
+import { useCreateProductVariant } from "../hooks/useCreateProductVariant";
+import { useUpdateProductVariant } from "../hooks/useUpdateProductVariant";
+import { ProductVariant } from "../interfaces/product-variant.interface";
 
 interface ProductVariantFormProps {
   onSuccess: () => void;
+  productVariantToEdit?: ProductVariant | null;
 }
 
-export default function ProductVariantForm({ onSuccess }: ProductVariantFormProps) {
-
-  // Store de Product Variants para su gestión
-  const addProductVariant = useProductVariantStore((state) => state.addProductVariant);
-  const updateProductVariant = useProductVariantStore((state) => state.updateProductVariant);
-  const selectedProductVariant = useProductVariantStore((state) => state.selectedProductVariant);
-  const isLoading = useProductVariantStore((state) => state.isLoading);
-  const setIsLoading = useProductVariantStore((state) => state.setIsLoading);
-
+export default function ProductVariantForm({
+  onSuccess,
+  productVariantToEdit,
+}: ProductVariantFormProps) {
   // Store de Workspace para obtener la compañía seleccionada
   const selectedCompany = useWorkspaceStore((state) => state.selectedCompany);
 
   // Stores de Products, Colors, y Sizes para obtener los datos necesarios
-  const { products } = useProducts();
-  const { colors } = useColors();
-  const { sizes } = useSizes();
+  const { products, isLoading: isLoadingProducts } = useProducts();
+  const { colors, isLoading: isLoadingColors } = useColors();
+  const { sizes, isLoading: isLoadingSizes } = useSizes();
 
   // Filtrar productos, colores y tallas activos
   const activeProducts = products.filter((product) => product.activo);
@@ -43,35 +40,37 @@ export default function ProductVariantForm({ onSuccess }: ProductVariantFormProp
 
   // Verificar si hay productos, colores y tallas activos
   const missingItems = [
-    activeProducts.length === 0 ? "Productos" : null,
-    activeColors.length === 0 ? "Colores" : null,
-    activeSizes.length === 0 ? "Tallas" : null,
+    activeProducts.length === 0 && !isLoadingProducts ? "Productos" : null,
+    activeColors.length === 0 && !isLoadingColors ? "Colores" : null,
+    activeSizes.length === 0 && !isLoadingSizes ? "Tallas" : null,
   ].filter((item): item is string => Boolean(item));
 
-  const isEditing = Boolean(selectedProductVariant?.id); // Verificar si hay una variante seleccionada para editar
+  const isEditing = Boolean(productVariantToEdit?.id); // Verificar si hay una variante seleccionada para editar
   const emptyValues: ProductVariantFormValues = { // Valores vacíos para el formulario
-    producto_id: 0,
-    color_id: 0,
-    talla_id: 0,
+    producto: 0,
+    color: 0,
+    talla: 0,
     sku: "",
     precio_base: "",
     activo: true,
   };
 
   // Verificar si la variante seleccionada tiene un producto, color y talla activos
-  const hasProduct = activeProducts.some((product) => product.id === selectedProductVariant?.producto_id);
-  const hasColor = activeColors.some((color) => color.id === selectedProductVariant?.color_id);
-  const hasSize = activeSizes.some((size) => size.id === selectedProductVariant?.talla_id);
+  const hasProduct = activeProducts.some(
+    (product) => product.id === productVariantToEdit?.producto
+  );
+  const hasColor = activeColors.some((color) => color.id === productVariantToEdit?.color);
+  const hasSize = activeSizes.some((size) => size.id === productVariantToEdit?.talla);
 
   // Preparar valores para editar si la variante tiene un producto, color y talla activos
-  const editValues: ProductVariantFormValues = selectedProductVariant
+  const editValues: ProductVariantFormValues = productVariantToEdit
     ? {
-        producto_id: hasProduct ? selectedProductVariant.producto_id : 0,
-        color_id: hasColor ? selectedProductVariant.color_id : 0,
-        talla_id: hasSize ? selectedProductVariant.talla_id : 0,
-        sku: selectedProductVariant.sku,
-        precio_base: selectedProductVariant.precio_base,
-        activo: selectedProductVariant.activo,
+        producto: hasProduct ? productVariantToEdit.producto : 0,
+        color: hasColor ? productVariantToEdit.color : 0,
+        talla: hasSize ? productVariantToEdit.talla : 0,
+        sku: productVariantToEdit.sku,
+        precio_base: productVariantToEdit.precio_base,
+        activo: productVariantToEdit.activo,
       }
     : emptyValues;
 
@@ -81,6 +80,7 @@ export default function ProductVariantForm({ onSuccess }: ProductVariantFormProp
     handleSubmit,
     reset,
     watch,
+    setError,
     formState: { errors },
   } = useForm<ProductVariantFormValues>({
     resolver: zodResolver(ProductVariantFormSchema) as Resolver<ProductVariantFormValues>,
@@ -89,39 +89,32 @@ export default function ProductVariantForm({ onSuccess }: ProductVariantFormProp
   });
 
   const isActive = watch("activo"); // Observar el estado de activo en el formulario
+  const { mutateAsync: createProductVariant, isPending: isCreating } =
+    useCreateProductVariant(setError);
+  const { mutateAsync: updateProductVariant, isPending: isUpdating } =
+    useUpdateProductVariant(setError);
+  const isPending = isCreating || isUpdating;
 
   // Manejar la submisión del formulario
   const onSubmit = async (data: ProductVariantFormValues) => {
-    setIsLoading(true);
     try {
-      await new Promise((resolve) => setTimeout(resolve, 500)); // Simular una demora en la submisión
-
-      if (selectedProductVariant) { // Actualizar la variante si existe
-        updateProductVariant({
-          ...selectedProductVariant, // Mantener el ID de la variante existente
-          ...data, // Actualizar los demás campos con los nuevos valores
+      if (isEditing && productVariantToEdit) { // Actualizar la variante si existe
+        await updateProductVariant({
+          id: productVariantToEdit.id,
+          empresa: productVariantToEdit.empresa ?? selectedCompany.id!,
+          ...data,
         });
-        toast.success("Variante actualizada correctamente");
+        reset(editValues);
       } else { // Registrar una nueva variante si no existe
-        addProductVariant({
-          id: Date.now(),
-          empresa_id: selectedCompany.id!,
-          producto_id: data.producto_id,
-          color_id: data.color_id,
-          talla_id: data.talla_id,
-          sku: data.sku,
-          precio_base: data.precio_base,
-          activo: data.activo,
+        await createProductVariant({
+          empresa: selectedCompany.id!,
+          ...data,
         });
-        toast.success("Variante registrada correctamente");
+        reset(emptyValues);
       }
       onSuccess();
-
     } catch (error) {
       console.error(error);
-      toast.error("Ocurrió un error al guardar la variante");
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -132,7 +125,7 @@ export default function ProductVariantForm({ onSuccess }: ProductVariantFormProp
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="w-full">
-      <fieldset disabled={isLoading} className="group-disabled:opacity-50">
+      <fieldset disabled={isPending} className="group-disabled:opacity-50">
         <section className="mb-8">
           <div className="bg-slate-50 dark:bg-white/5 rounded-3xl p-8 border border-slate-100 dark:border-white/5">
             <h2 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-6 flex items-center gap-2">
@@ -144,7 +137,7 @@ export default function ProductVariantForm({ onSuccess }: ProductVariantFormProp
               <div className="group/field md:col-span-2">
                 <FormInput
                   label="SKU"
-                  placeholder="Ej. SKU-0001"
+                  placeholder="Ej. SKU-001"
                   className="text-2xl font-bold"
                   variant="ghost"
                   {...register("sku")}
@@ -155,8 +148,8 @@ export default function ProductVariantForm({ onSuccess }: ProductVariantFormProp
               <div className="group/field">
                 <FormSelect
                   label="Producto"
-                  {...register("producto_id", { valueAsNumber: true })}
-                  error={errors.producto_id}
+                  {...register("producto", { valueAsNumber: true })}
+                  error={errors.producto}
                 >
                   <option value="0" disabled>
                     Seleccionar...
@@ -176,8 +169,8 @@ export default function ProductVariantForm({ onSuccess }: ProductVariantFormProp
               <div className="group/field">
                 <FormSelect
                   label="Color"
-                  {...register("color_id", { valueAsNumber: true })}
-                  error={errors.color_id}
+                  {...register("color", { valueAsNumber: true })}
+                  error={errors.color}
                 >
                   <option value="0" disabled>
                     Seleccionar...
@@ -197,8 +190,8 @@ export default function ProductVariantForm({ onSuccess }: ProductVariantFormProp
               <div className="group/field">
                 <FormSelect
                   label="Talla"
-                  {...register("talla_id", { valueAsNumber: true })}
-                  error={errors.talla_id}
+                  {...register("talla", { valueAsNumber: true })}
+                  error={errors.talla}
                 >
                   <option value="0" disabled>
                     Seleccionar...
@@ -285,9 +278,9 @@ export default function ProductVariantForm({ onSuccess }: ProductVariantFormProp
         <div className="flex justify-end gap-3 pb-8 mt-8">
           <FormCancelButton
             onClick={() => reset(isEditing ? editValues : emptyValues)}
-            disabled={isLoading}
+            disabled={isPending}
           />
-          <FormSubmitButton isPending={isLoading} loadingLabel="Guardando...">
+          <FormSubmitButton isPending={isPending} loadingLabel="Guardando...">
             {isEditing ? "Actualizar Variante" : "Registrar Variante"}
           </FormSubmitButton>
         </div>

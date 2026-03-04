@@ -3,9 +3,8 @@
 import { ColumnDef, createColumnHelper, Row } from "@tanstack/react-table";
 import { EditIcon, DeleteIcon } from "../../../components/Icons";
 import { ProductVariant } from "../interfaces/product-variant.interface";
-import { useProductVariantStore } from "../stores/product-variant.store";
 import { ConfirmDialog } from "../../../components/ConfirmDialog";
-import toast from "react-hot-toast";
+import { useDeleteProductVariant } from "../hooks/useDeleteProductVariant";
 
 const columnHelper = createColumnHelper<ProductVariant>();
 
@@ -26,12 +25,8 @@ const ActionsCell = ({
   canEdit: boolean;
   canDelete: boolean;
 }) => {
-  const deleteProductVariant = useProductVariantStore((state) => state.deleteProductVariant);
-
-  const handleDelete = () => {
-    deleteProductVariant(row.original.id);
-    toast.success("Variante eliminada correctamente");
-  };
+  const { mutate: deleteProductVariant } = useDeleteProductVariant();
+  const handleDelete = () => deleteProductVariant(row.original.id);
 
   return (
     <div className="flex items-center justify-center gap-2">
@@ -91,37 +86,37 @@ export const getColumns = (
       ),
     }),
     columnHelper.accessor(
-      (row) => lookups.products.get(row.producto_id) ?? "",
+      (row) => lookups.products.get(row.producto) ?? "",
       {
-        id: "producto_id",
+        id: "producto",
         header: "Producto",
         cell: ({ row }) => (
           <span className="text-slate-500 dark:text-slate-400">
-            {lookups.products.get(row.original.producto_id) ?? `#${row.original.producto_id}`}
+            {lookups.products.get(row.original.producto) ?? `#${row.original.producto}`}
           </span>
         ),
       }
     ),
     columnHelper.accessor(
-      (row) => lookups.colors.get(row.color_id) ?? "",
+      (row) => lookups.colors.get(row.color) ?? "",
       {
-        id: "color_id",
+        id: "color",
         header: "Color",
         cell: ({ row }) => (
           <span className="text-slate-500 dark:text-slate-400">
-            {lookups.colors.get(row.original.color_id) ?? `#${row.original.color_id}`}
+            {lookups.colors.get(row.original.color) ?? `#${row.original.color}`}
           </span>
         ),
       }
     ),
     columnHelper.accessor(
-      (row) => lookups.sizes.get(row.talla_id) ?? "",
+      (row) => lookups.sizes.get(row.talla) ?? "",
       {
-        id: "talla_id",
+        id: "talla",
         header: "Talla",
         cell: ({ row }) => (
           <span className="text-slate-500 dark:text-slate-400">
-            {lookups.sizes.get(row.original.talla_id) ?? `#${row.original.talla_id}`}
+            {lookups.sizes.get(row.original.talla) ?? `#${row.original.talla}`}
           </span>
         ),
       }

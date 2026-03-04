@@ -1,9 +1,9 @@
 import { z } from "zod";
 
 export const ProductVariantFormSchema = z.object({
-  producto_id: z.coerce.number().min(1, "El producto es requerido"),
-  color_id: z.coerce.number().min(1, "El color es requerido"),
-  talla_id: z.coerce.number().min(1, "La talla es requerida"),
+  producto: z.coerce.number().min(1, "El producto es requerido"),
+  color: z.coerce.number().min(1, "El color es requerido"),
+  talla: z.coerce.number().min(1, "La talla es requerida"),
   sku: z.string().min(1, "El SKU es requerido"),
   precio_base: z
     .string()
