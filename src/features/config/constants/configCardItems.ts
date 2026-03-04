@@ -24,6 +24,13 @@ import {
   ProductIcon,
   ProductVariantsIcon
 } from "@/src/components/Icons";
+import { getSatInfo } from "../../sat/services/actions";
+import { getTaxes } from "../../taxes/services/actions";
+import { getUnitsOfMeasure } from "../../units-of-measure/services/actions";
+import { getSatProdservCodes } from "../../sat-prodserv-codes/services/actions";
+import { getSatUnitCodes } from "../../sat-unit-codes/services/actions";
+import { getProducts } from "../../products/services/actions";
+import { getProductVariants } from "../../product-variants/services/actions";
 
 
 interface ConfigCardItem {
@@ -159,6 +166,8 @@ export const configCards: ConfigCardItem[] = [
     view: "sat",
     group: "Información Fiscal",
     adminOnly: true,
+    prefetchKey: ["sat-info"],
+    prefetchFn: getSatInfo,
   },
   {
     title: "Categorías de Producto",
@@ -207,6 +216,8 @@ export const configCards: ConfigCardItem[] = [
     view: "units",
     group: "Catálogo de Productos",
     adminOnly: true,
+    prefetchKey: ["units-of-measure"],
+    prefetchFn: getUnitsOfMeasure,
   },
   {
     title: "Impuestos",
@@ -215,6 +226,8 @@ export const configCards: ConfigCardItem[] = [
     view: "taxes",
     group: "Información Fiscal",
     adminOnly: true,
+    prefetchKey: ["taxes"],
+    prefetchFn: getTaxes,
   },
   {
     title: "SAT - claves de productos y servicios",
@@ -223,6 +236,8 @@ export const configCards: ConfigCardItem[] = [
     view: "sat-prod-serv",
     group: "SAT y CFDI",
     adminOnly: true,
+    prefetchKey: ["sat-prodserv-codes"],
+    prefetchFn: getSatProdservCodes,
   },
   {
     title: "SAT - claves de unidades",
@@ -231,6 +246,8 @@ export const configCards: ConfigCardItem[] = [
     view: "sat-unit-codes",
     group: "SAT y CFDI",
     adminOnly: true,
+    prefetchKey: ["sat-unit-codes"],
+    prefetchFn: getSatUnitCodes,
   },
   {
     title: "Productos",
@@ -239,6 +256,8 @@ export const configCards: ConfigCardItem[] = [
     view: "products",
     group: "Productos",
     adminOnly: true,
+    prefetchKey: ["products"],
+    prefetchFn: getProducts,
   },
   {
     title: "Variantes de Producto",
@@ -247,5 +266,7 @@ export const configCards: ConfigCardItem[] = [
     view: "product-variants",
     group: "Productos",
     adminOnly: true,
-  }
+    prefetchKey: ["product-variants"],
+    prefetchFn: getProductVariants,
+  },
 ];
