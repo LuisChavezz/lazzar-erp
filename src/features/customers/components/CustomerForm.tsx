@@ -14,7 +14,6 @@ import toast from "react-hot-toast";
 
 interface CustomerFormProps {
   onCreated: (customer: CustomerItem) => void;
-  onCancel: () => void;
   sellerName: string;
 }
 
@@ -50,11 +49,7 @@ const formatDate = (value: Date) =>
     year: "numeric",
   });
 
-export default function CustomerForm({
-  onCreated,
-  onCancel,
-  sellerName,
-}: CustomerFormProps) {
+export default function CustomerForm({ onCreated, sellerName }: CustomerFormProps) {
   const addCustomer = useCustomerStore((state) => state.addCustomer);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -286,7 +281,7 @@ export default function CustomerForm({
         </section>
 
         <div className="flex justify-end gap-3 pb-8 mt-8">
-          <FormCancelButton onClick={onCancel} disabled={isLoading} />
+          <FormCancelButton onClick={() => reset(defaultValues)} disabled={isLoading} />
           <FormSubmitButton isPending={isLoading} loadingLabel="Guardando...">
             Guardar Cliente
           </FormSubmitButton>

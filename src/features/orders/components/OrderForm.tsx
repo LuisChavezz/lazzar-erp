@@ -677,7 +677,6 @@ export default function OrderForm({ orderId }: OrderFormProps) {
                 >
                   <CustomerForm
                     sellerName={userName}
-                    onCancel={() => setIsCustomerDialogOpen(false)}
                     onCreated={handleCustomerCreated}
                   />
                 </MainDialog>
