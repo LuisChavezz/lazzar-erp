@@ -11,6 +11,7 @@ import {
   FormSubmitButton,
 } from "@/src/components/FormButtons";
 import { EmbarquesIcon, PedidosIcon, PlusIcon } from "@/src/components/Icons";
+import { MainDialog } from "@/src/components/MainDialog";
 import { orderFormSchema, OrderFormValues } from "../schema/order.schema";
 import { getFieldError } from "../../../utils/getFieldError";
 import { formatCurrency } from "../../../utils/formatCurrency";
@@ -23,7 +24,9 @@ import { Loader } from "@/src/components/Loader";
 import { useRef, useState } from "react";
 import { AddProductDialog } from "./AddProductDialog";
 import { CustomerSearchDropdown } from "./CustomerSearchDropdown";
+import CustomerForm from "../../customers/components/CustomerForm";
 import type { CustomerItem } from "@/src/features/customers/interfaces/customer.interface";
+import { DialogHeader } from "@/src/components/DialogHeader";
 
 interface OrderFormProps {
   orderId?: string;
@@ -315,6 +318,12 @@ export default function OrderForm({ orderId }: OrderFormProps) {
     isEditing ? editValues.clienteBusqueda ?? "" : ""
   );
   const formRef = useRef<HTMLFormElement>(null);
+  const [isCustomerDialogOpen, setIsCustomerDialogOpen] = useState(false);
+
+  const handleCustomerCreated = (customer: CustomerItem) => {
+    handleSelectCustomer(customer);
+    setIsCustomerDialogOpen(false);
+  };
 
   const handleSelectCustomer = (customer: CustomerItem) => {
     const profile = customer.orderProfile;
@@ -648,10 +657,30 @@ export default function OrderForm({ orderId }: OrderFormProps) {
                 <button
                   type="button"
                   className="inline-flex items-center gap-2 text-xs font-semibold cursor-pointer text-sky-600 hover:text-sky-700"
+                  onClick={() => setIsCustomerDialogOpen(true)}
                 >
                   <PlusIcon className="w-4 h-4" />
-                  Añadir nuevo cliente
+                  Agregar nuevo cliente
                 </button>
+                <MainDialog
+                  title={
+                    <DialogHeader
+                      title={isEditing ? "Editar Cliente" : "Alta de Cliente"}
+                      subtitle={isEditing ? "Edita los datos del cliente" : "Registra un nuevo cliente"}
+                      statusColor="emerald"
+                    />
+                  }
+                  open={isCustomerDialogOpen}
+                  onOpenChange={setIsCustomerDialogOpen}
+                  maxWidth="900px"
+                  hideCloseButton={true}
+                >
+                  <CustomerForm
+                    sellerName={userName}
+                    onCancel={() => setIsCustomerDialogOpen(false)}
+                    onCreated={handleCustomerCreated}
+                  />
+                </MainDialog>
               </div>
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <CustomerSearchDropdown
