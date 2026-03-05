@@ -80,11 +80,35 @@ export const orderItemSchema = z
   });
 
 export const orderFormSchema = z.object({
-  clienteId: z.string().min(1, "Requerido"),
+  clienteBusqueda: z.string().min(1, "Selecciona un cliente"),
   clienteNombre: z.string().min(1, "Requerido"),
-  pedidoCliente: z.string().min(1, "Requerido"),
+  razonSocial: z.string().min(1, "Requerido"),
+  rfc: z.string().min(1, "Requerido"),
+  regimenFiscal: z.enum(["601", "603", "605"], {
+    message: "Requerido",
+  }),
+  direccionFiscal: z.string().min(1, "Requerido"),
+  coloniaFiscal: z.string().min(1, "Requerido"),
+  codigoPostalFiscal: z.string().min(1, "Requerido"),
+  ciudadFiscal: z.string().min(1, "Requerido"),
+  estadoFiscal: z.string().min(1, "Requerido"),
+  giroEmpresa: z.string().min(1, "Requerido"),
+  personaPagos: z.string().min(1, "Requerido"),
+  correoFacturas: z.string().email("Correo inválido"),
+  telefonoPagos: z.string().min(1, "Requerido"),
+  ordenCompra: z.string().optional(),
+  formaPago: z.enum(["01", "03", "04"], { message: "Requerido" }),
+  metodoPago: z.enum(["PUE", "PPD", "NA"], { message: "Requerido" }),
+  usoCfdi: z.enum(["G03", "G01", "I01"], { message: "Requerido" }),
+  referenciarOcFactura: z.boolean(),
+  condicionPago100Anticipo: z.boolean(),
+  condicionPago50Anticipo: z.boolean(),
+  condicionPagoVendedorAutoriza: z.boolean(),
+  condicionPagoPagoAntesEmbarque: z.boolean(),
+  condicionPagoPorConfirmar: z.boolean(),
+  condicionPagoOtraCantidad: z.boolean(),
+  condicionPagoMonto: z.coerce.number().min(0, "No puede ser negativo"),
   fecha: z.string().min(1, "Requerido"),
-  fechaVence: z.string().min(1, "Requerido"),
   agente: z.string().trim().min(1, "Requerido"),
   tipoDocumento: z.string().min(1, "Requerido"),
   origen: z.array(z.string().min(1, "Requerido")).min(1, "Selecciona al menos un origen"),
@@ -103,14 +127,13 @@ export const orderFormSchema = z.object({
   empaqueEcologico: z.boolean(),
   embarqueParcial: z.boolean(),
   comentariosParcialidad: z.string().optional(),
-  comision: z.coerce.number().min(0, "No puede ser negativo"),
-  plazo: z.coerce.number().min(0, "No puede ser negativo"),
-  sucursal: z.coerce.number().min(1, "Requerido"),
-  almacen: z.coerce.number().min(1, "Requerido"),
-  canal: z.string().min(1, "Requerido"),
-  puntos: z.coerce.number().min(0, "No puede ser negativo"),
-  anticipoReq: z.coerce.number().min(0, "No puede ser negativo"),
-  pedidoInicial: z.boolean(),
+  servicioEnvioActivo: z.boolean(),
+  servicioEnvioMonto: z.coerce.number().min(0, "No puede ser negativo"),
+  programaBordadosActivo: z.boolean(),
+  programaBordadosMonto: z.coerce.number().min(0, "No puede ser negativo"),
+  bordadoPantalonesExtrasActivo: z.boolean(),
+  bordadoPantalonesExtrasMonto: z.coerce.number().min(0, "No puede ser negativo"),
+  bordadoLogotipoIncluido: z.boolean(),
   estatusPedido: z.enum(["Pendiente", "Parcial", "Completo", "Cancelado"], {
     message: "Requerido",
   }),
@@ -122,17 +145,11 @@ export const orderFormSchema = z.object({
   iva: z.coerce.number().min(0, "No puede ser negativo"),
   items: z.array(orderItemSchema).min(1, "Agrega al menos un producto"),
 }).superRefine((data, ctx) => {
-  const parseDate = (s: string) => {
-    const d = new Date(s);
-    return isNaN(d.getTime()) ? null : d;
-  };
-  const fecha = parseDate(data.fecha) ?? new Date(new Date().toISOString().split("T")[0]);
-  const fechaVence = parseDate(data.fechaVence);
-  if (!fechaVence || fechaVence < fecha) {
+  if (data.condicionPagoOtraCantidad && data.condicionPagoMonto <= 0) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
-      path: ["fechaVence"],
-      message: "La fecha de vencimiento no puede ser menor a la fecha actual",
+      path: ["condicionPagoMonto"],
+      message: "Especifica un monto válido",
     });
   }
   if (data.embarqueParcial && !data.comentariosParcialidad?.trim()) {

@@ -44,7 +44,7 @@ export const getOrdersDueSoonCount = (
   const end = endOfDay(new Date(start.getFullYear(), start.getMonth(), start.getDate() + days));
   return orders.filter((order) => {
     if (!isActiveOrder(order)) return false;
-    const dueDate = parseOrderDate(order.fechaVence);
+    const dueDate = parseOrderDate(order.fecha);
     if (!dueDate) return false;
     return dueDate >= start && dueDate <= end;
   }).length;
@@ -67,7 +67,7 @@ export const getCriticalOrdersCount = (orders: Order[], now = new Date()) => {
   const today = startOfDay(now);
   return orders.filter((order) => {
     if (!isActiveOrder(order)) return false;
-    const dueDate = parseOrderDate(order.fechaVence);
+    const dueDate = parseOrderDate(order.fecha);
     const total = order.totals?.granTotal ?? 0;
     const isOverdue = dueDate ? dueDate < today : false;
     const isHighAmount = total >= HIGH_AMOUNT_THRESHOLD;

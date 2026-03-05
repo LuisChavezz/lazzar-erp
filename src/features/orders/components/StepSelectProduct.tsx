@@ -8,7 +8,6 @@ interface StepSelectProductProps {
   rows: CatalogRow[];
   filteredRows: CatalogRow[];
   selectedRowId: number | null;
-  existingSkus: Set<string>;
   onSelectRow: (row: CatalogRow) => void;
 }
 
@@ -18,7 +17,6 @@ export function StepSelectProduct({
   rows,
   filteredRows,
   selectedRowId,
-  existingSkus,
   onSelectRow,
 }: StepSelectProductProps) {
   return (
@@ -57,7 +55,7 @@ export function StepSelectProduct({
               key={row.id}
               row={row}
               isSelected={selectedRowId === row.id}
-              isAlreadyAdded={existingSkus.has(row.sku)}
+              isAlreadyAdded={false}
               onToggle={onSelectRow}
             />
           ))

@@ -1,6 +1,3 @@
-import { Branch } from "../../branches/interfaces/branch.interface";
-import { Warehouse } from "../../warehouses/interfaces/warehouse.interface";
-
 export type OrderStatus =
   | "Pendiente"
   | "Parcial"
@@ -49,11 +46,33 @@ export interface OrderTotals {
 export interface Order {
   id: string;
   folio: string;
-  clienteId: string;
+  clienteBusqueda?: string;
   clienteNombre: string;
-  pedidoCliente: string;
+  razonSocial: string;
+  rfc: string;
+  regimenFiscal: string;
+  direccionFiscal: string;
+  coloniaFiscal: string;
+  codigoPostalFiscal: string;
+  ciudadFiscal: string;
+  estadoFiscal: string;
+  giroEmpresa: string;
+  personaPagos: string;
+  correoFacturas: string;
+  telefonoPagos: string;
+  ordenCompra: string;
+  formaPago: string;
+  metodoPago: string;
+  usoCfdi: string;
+  referenciarOcFactura: boolean;
+  condicionPago100Anticipo: boolean;
+  condicionPago50Anticipo: boolean;
+  condicionPagoVendedorAutoriza: boolean;
+  condicionPagoPagoAntesEmbarque: boolean;
+  condicionPagoPorConfirmar: boolean;
+  condicionPagoOtraCantidad: boolean;
+  condicionPagoMonto: number;
   fecha: string;
-  fechaVence: string;
   agente: string;
   tipoDocumento: string;
   origen: string[];
@@ -72,14 +91,13 @@ export interface Order {
   empaqueEcologico: boolean;
   embarqueParcial: boolean;
   comentariosParcialidad?: string;
-  comision: number;
-  plazo: number;
-  sucursal: Branch["id"];
-  almacen: Warehouse["id_almacen"];
-  canal: string;
-  puntos: number;
-  anticipoReq: number;
-  pedidoInicial: boolean;
+  servicioEnvioActivo: boolean;
+  servicioEnvioMonto: number;
+  programaBordadosActivo: boolean;
+  programaBordadosMonto: number;
+  bordadoPantalonesExtrasActivo: boolean;
+  bordadoPantalonesExtrasMonto: number;
+  bordadoLogotipoIncluido: boolean;
   estatusPedido: OrderStatus;
   docRelacionado: string;
   observaciones?: string;

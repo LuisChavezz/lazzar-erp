@@ -10,20 +10,20 @@ import {
   FormSecondaryButton,
   FormSubmitButton,
 } from "@/src/components/FormButtons";
-import { PedidosIcon } from "@/src/components/Icons";
+import { EmbarquesIcon, PedidosIcon, PlusIcon } from "@/src/components/Icons";
 import { orderFormSchema, OrderFormValues } from "../schema/order.schema";
 import { getFieldError } from "../../../utils/getFieldError";
 import { formatCurrency } from "../../../utils/formatCurrency";
 import { useOrderStore } from "../stores/order.store";
+import { useCustomerStore } from "../../customers/stores/customer.store";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import { Order } from "../interfaces/order.interface";
 import { Loader } from "@/src/components/Loader";
-import { useEffect, useMemo, useState } from "react";
-import { useWarehouses } from "../../warehouses/hooks/useWarehouses";
-import { useWorkspaceStore } from "../../workspace/store/workspace.store";
-import { useCompanyBranches } from "../../branches/hooks/useCompanyBranches";
+import { useRef, useState } from "react";
 import { AddProductDialog } from "./AddProductDialog";
+import { CustomerSearchDropdown } from "./CustomerSearchDropdown";
+import type { CustomerItem } from "@/src/features/customers/interfaces/customer.interface";
 
 interface OrderFormProps {
   orderId?: string;
@@ -55,37 +55,51 @@ export default function OrderForm({ orderId }: OrderFormProps) {
     "Amazon",
     "Mailing",
   ];
+  const normalizeRegimenFiscal = (
+    value?: string
+  ): OrderFormValues["regimenFiscal"] =>
+    value === "601" || value === "603" || value === "605" ? value : "601";
+  const normalizeFormaPago = (value?: string): OrderFormValues["formaPago"] =>
+    value === "01" || value === "03" || value === "04" ? value : "03";
+  const normalizeMetodoPago = (value?: string): OrderFormValues["metodoPago"] =>
+    value === "PUE" || value === "PPD" || value === "NA" ? value : "PUE";
+  const normalizeUsoCfdi = (value?: string): OrderFormValues["usoCfdi"] =>
+    value === "G03" || value === "G01" || value === "I01" ? value : "G03";
   const addOrder = useOrderStore((s) => s.addOrder);
   const updateOrder = useOrderStore((s) => s.updateOrder);
   const orderToEdit = useOrderStore((s) =>
     orderId ? s.orders.find((o) => o.id === orderId) : undefined
   );
+  const customers = useCustomerStore((s) => s.customers);
   const router = useRouter();
-  const companyId = useWorkspaceStore((s) => s.selectedCompany.id);
-  const { branches: availableBranches, isLoading: isLoadingBranches } =
-    useCompanyBranches(companyId);
-  const { data: warehouses = [], isLoading: isLoadingWarehouses } = useWarehouses();
-  const activeWarehouses = warehouses.filter(
-    (warehouse) => warehouse.estatus === "ACTIVO"
-  );
-
-  const hasBranch = availableBranches.some(
-    (branch) => branch.id === orderToEdit?.sucursal
-  );
-  const hasWarehouse = activeWarehouses.some(
-    (warehouse) =>
-      warehouse.id_almacen === orderToEdit?.almacen &&
-      warehouse.sucursal === orderToEdit?.sucursal
-  );
-  const savedSucursalId = orderToEdit?.sucursal ?? 0;
-  const savedAlmacenId = orderToEdit?.almacen ?? 0;
-
   const emptyValues: OrderFormValues = {
-    clienteId: "",
+    clienteBusqueda: "",
     clienteNombre: "",
-    pedidoCliente: "",
+    razonSocial: "",
+    rfc: "",
+    regimenFiscal: "601",
+    direccionFiscal: "",
+    coloniaFiscal: "",
+    codigoPostalFiscal: "",
+    ciudadFiscal: "",
+    estadoFiscal: "",
+    giroEmpresa: "",
+    personaPagos: "",
+    correoFacturas: "",
+    telefonoPagos: "",
+    ordenCompra: "",
+    formaPago: "03",
+    metodoPago: "PUE",
+    usoCfdi: "G03",
+    referenciarOcFactura: false,
+    condicionPago100Anticipo: true,
+    condicionPago50Anticipo: false,
+    condicionPagoVendedorAutoriza: false,
+    condicionPagoPagoAntesEmbarque: false,
+    condicionPagoPorConfirmar: false,
+    condicionPagoOtraCantidad: false,
+    condicionPagoMonto: 0,
     fecha: todayStr,
-    fechaVence: "",
     agente: userName,
     tipoDocumento: "pedido",
     origen: [],
@@ -104,14 +118,13 @@ export default function OrderForm({ orderId }: OrderFormProps) {
     empaqueEcologico: false,
     embarqueParcial: false,
     comentariosParcialidad: "",
-    comision: 0,
-    plazo: 30,
-    sucursal: 0,
-    almacen: 0,
-    canal: "mayorista",
-    puntos: 0,
-    anticipoReq: 0,
-    pedidoInicial: false,
+    servicioEnvioActivo: false,
+    servicioEnvioMonto: 0,
+    programaBordadosActivo: false,
+    programaBordadosMonto: 0,
+    bordadoPantalonesExtrasActivo: false,
+    bordadoPantalonesExtrasMonto: 0,
+    bordadoLogotipoIncluido: true,
     estatusPedido: "Pendiente",
     docRelacionado: "",
     observaciones: "",
@@ -124,11 +137,33 @@ export default function OrderForm({ orderId }: OrderFormProps) {
 
   const editValues: OrderFormValues = orderToEdit
     ? {
-      clienteId: orderToEdit.clienteId,
+      clienteBusqueda: orderToEdit.clienteBusqueda ?? "",
       clienteNombre: orderToEdit.clienteNombre,
-      pedidoCliente: orderToEdit.pedidoCliente,
+      razonSocial: orderToEdit.razonSocial ?? "",
+      rfc: orderToEdit.rfc ?? "",
+      regimenFiscal: normalizeRegimenFiscal(orderToEdit.regimenFiscal),
+      direccionFiscal: orderToEdit.direccionFiscal ?? "",
+      coloniaFiscal: orderToEdit.coloniaFiscal ?? "",
+      codigoPostalFiscal: orderToEdit.codigoPostalFiscal ?? "",
+      ciudadFiscal: orderToEdit.ciudadFiscal ?? "",
+      estadoFiscal: orderToEdit.estadoFiscal ?? "",
+      giroEmpresa: orderToEdit.giroEmpresa ?? "",
+      personaPagos: orderToEdit.personaPagos ?? "",
+      correoFacturas: orderToEdit.correoFacturas ?? "",
+      telefonoPagos: orderToEdit.telefonoPagos ?? "",
+      ordenCompra: orderToEdit.ordenCompra ?? "",
+      formaPago: normalizeFormaPago(orderToEdit.formaPago),
+      metodoPago: normalizeMetodoPago(orderToEdit.metodoPago),
+      usoCfdi: normalizeUsoCfdi(orderToEdit.usoCfdi),
+      referenciarOcFactura: orderToEdit.referenciarOcFactura ?? false,
+      condicionPago100Anticipo: orderToEdit.condicionPago100Anticipo ?? false,
+      condicionPago50Anticipo: orderToEdit.condicionPago50Anticipo ?? false,
+      condicionPagoVendedorAutoriza: orderToEdit.condicionPagoVendedorAutoriza ?? false,
+      condicionPagoPagoAntesEmbarque: orderToEdit.condicionPagoPagoAntesEmbarque ?? false,
+      condicionPagoPorConfirmar: orderToEdit.condicionPagoPorConfirmar ?? false,
+      condicionPagoOtraCantidad: orderToEdit.condicionPagoOtraCantidad ?? false,
+      condicionPagoMonto: orderToEdit.condicionPagoMonto ?? 0,
       fecha: orderToEdit.fecha,
-      fechaVence: orderToEdit.fechaVence,
       agente: orderToEdit.agente ?? userName,
       tipoDocumento: orderToEdit.tipoDocumento ?? "pedido",
       origen: orderToEdit.origen ?? [],
@@ -147,14 +182,15 @@ export default function OrderForm({ orderId }: OrderFormProps) {
       empaqueEcologico: orderToEdit.empaqueEcologico ?? false,
       embarqueParcial: orderToEdit.embarqueParcial ?? false,
       comentariosParcialidad: orderToEdit.comentariosParcialidad ?? "",
-      comision: orderToEdit.comision,
-      plazo: orderToEdit.plazo,
-      sucursal: hasBranch ? orderToEdit.sucursal : 0,
-      almacen: hasBranch && hasWarehouse ? orderToEdit.almacen : 0,
-      canal: orderToEdit.canal,
-      puntos: orderToEdit.puntos,
-      anticipoReq: orderToEdit.anticipoReq,
-      pedidoInicial: orderToEdit.pedidoInicial,
+      servicioEnvioActivo: orderToEdit.servicioEnvioActivo ?? false,
+      servicioEnvioMonto: orderToEdit.servicioEnvioMonto ?? 0,
+      programaBordadosActivo: orderToEdit.programaBordadosActivo ?? false,
+      programaBordadosMonto: orderToEdit.programaBordadosMonto ?? 0,
+      bordadoPantalonesExtrasActivo:
+        orderToEdit.bordadoPantalonesExtrasActivo ?? false,
+      bordadoPantalonesExtrasMonto:
+        orderToEdit.bordadoPantalonesExtrasMonto ?? 0,
+      bordadoLogotipoIncluido: orderToEdit.bordadoLogotipoIncluido ?? true,
       estatusPedido: orderToEdit.estatusPedido,
       docRelacionado: orderToEdit.docRelacionado,
       observaciones: orderToEdit.observaciones ?? "",
@@ -172,7 +208,6 @@ export default function OrderForm({ orderId }: OrderFormProps) {
     control,
     reset,
     setValue,
-    getValues,
     formState: { errors, isSubmitting },
   } = useForm<OrderFormValues>({
     resolver: zodResolver(orderFormSchema) as Resolver<OrderFormValues>,
@@ -190,22 +225,35 @@ export default function OrderForm({ orderId }: OrderFormProps) {
   const watchedSeguro = useWatch({ control, name: "seguro" });
   const watchedAnticipo = useWatch({ control, name: "anticipo" });
   const watchedIva = useWatch({ control, name: "iva" });
-  const watchedSucursal = useWatch({ control, name: "sucursal" });
-  const selectedSucursalId = Number(watchedSucursal) || 0;
-  const warehousesByBranch = useMemo(
-    () =>
-      selectedSucursalId
-        ? activeWarehouses.filter((warehouse) => warehouse.sucursal === selectedSucursalId)
-        : [],
-    [activeWarehouses, selectedSucursalId]
-  );
-  const warehousePlaceholder = isLoadingWarehouses
-    ? "Cargando almacenes..."
-    : selectedSucursalId === 0
-      ? "Selecciona una sucursal..."
-      : warehousesByBranch.length === 0
-        ? "Sin almacenes disponibles"
-        : "Seleccionar...";
+  const watchedServicioEnvioActivo = useWatch({
+    control,
+    name: "servicioEnvioActivo",
+  });
+  const watchedServicioEnvioMonto = useWatch({
+    control,
+    name: "servicioEnvioMonto",
+  });
+  const watchedProgramaBordadosActivo = useWatch({
+    control,
+    name: "programaBordadosActivo",
+  });
+  const watchedProgramaBordadosMonto = useWatch({
+    control,
+    name: "programaBordadosMonto",
+  });
+  const watchedBordadoPantalonesExtrasActivo = useWatch({
+    control,
+    name: "bordadoPantalonesExtrasActivo",
+  });
+  const watchedBordadoPantalonesExtrasMonto = useWatch({
+    control,
+    name: "bordadoPantalonesExtrasMonto",
+  });
+  const watchedFecha = useWatch({ control, name: "fecha" });
+  const watchedEnviarDomicilioFiscal = useWatch({
+    control,
+    name: "enviarDomicilioFiscal",
+  });
 
   const {
     subtotal,
@@ -232,8 +280,20 @@ export default function OrderForm({ orderId }: OrderFormProps) {
     const seguroValue = Number(watchedSeguro) || 0;
     const anticipoValue = Number(watchedAnticipo) || 0;
     const ivaRate = Number(watchedIva) || 0;
+    const servicioEnvioValue = watchedServicioEnvioActivo
+      ? Number(watchedServicioEnvioMonto) || 0
+      : 0;
+    const programaBordadosValue = watchedProgramaBordadosActivo
+      ? Number(watchedProgramaBordadosMonto) || 0
+      : 0;
+    const bordadoPantalonesExtrasValue = watchedBordadoPantalonesExtrasActivo
+      ? Number(watchedBordadoPantalonesExtrasMonto) || 0
+      : 0;
+    const extrasValue =
+      servicioEnvioValue + programaBordadosValue + bordadoPantalonesExtrasValue;
 
-    const baseImponible = subtotalValue - descuentoValue + fleteValue + seguroValue;
+    const baseImponible =
+      subtotalValue - descuentoValue + fleteValue + seguroValue + extrasValue;
     const ivaValue = baseImponible * ivaRate;
     const totalValue = baseImponible + ivaValue;
     const saldoValue = totalValue - anticipoValue;
@@ -251,60 +311,100 @@ export default function OrderForm({ orderId }: OrderFormProps) {
   const isPending = isSubmitting || isLoading;
   const [isAddProductsOpen, setIsAddProductsOpen] = useState(false);
   const [editIndex, setEditIndex] = useState<number | null>(null);
+  const [clienteSearchTerm, setClienteSearchTerm] = useState(
+    isEditing ? editValues.clienteBusqueda ?? "" : ""
+  );
+  const formRef = useRef<HTMLFormElement>(null);
 
-  const existingSkus = useMemo(() => {
-    const set = new Set<string>();
-    (watchedItems || []).forEach((item) => {
-      const sku = String(item?.sku ?? "").trim();
-      if (sku) set.add(sku);
+  const handleSelectCustomer = (customer: CustomerItem) => {
+    const profile = customer.orderProfile;
+    setValue("clienteBusqueda", customer.razonSocial, {
+      shouldDirty: true,
+      shouldValidate: true,
     });
-    return set;
-  }, [watchedItems]);
-
-  useEffect(() => {
-    if (isLoadingWarehouses) {
-      return;
-    }
-    const currentAlmacen = Number(getValues("almacen")) || 0;
-    if (
-      isEditing &&
-      savedSucursalId !== 0 &&
-      selectedSucursalId === savedSucursalId &&
-      currentAlmacen === 0
-    ) {
-      const existsInBranch = warehousesByBranch.some(
-        (warehouse) => warehouse.id_almacen === savedAlmacenId
-      );
-      if (existsInBranch) {
-        setValue("almacen", savedAlmacenId, {
-          shouldValidate: true,
-          shouldDirty: false,
-        });
-        return;
-      }
-    }
-    if (selectedSucursalId === 0) {
-      if (currentAlmacen !== 0) {
-        setValue("almacen", 0, { shouldValidate: true, shouldDirty: true });
-      }
-      return;
-    }
-    const isValid = warehousesByBranch.some(
-      (warehouse) => warehouse.id_almacen === currentAlmacen
-    );
-    if (!isValid && currentAlmacen !== 0) {
-      setValue("almacen", 0, { shouldValidate: true, shouldDirty: true });
-    }
-  }, [
-    getValues,
-    isEditing,
-    isLoadingWarehouses,
-    savedAlmacenId,
-    savedSucursalId,
-    selectedSucursalId,
-    setValue,
-    warehousesByBranch,
-  ]);
+    setClienteSearchTerm(customer.razonSocial);
+    setValue("clienteNombre", profile.clienteNombre || customer.contacto, {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
+    setValue("razonSocial", profile.razonSocial, {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
+    setValue("rfc", profile.rfc, { shouldDirty: true, shouldValidate: true });
+    setValue("regimenFiscal", profile.regimenFiscal, {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
+    setValue("direccionFiscal", profile.direccionFiscal, {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
+    setValue("coloniaFiscal", profile.coloniaFiscal, {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
+    setValue("codigoPostalFiscal", profile.codigoPostalFiscal, {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
+    setValue("ciudadFiscal", profile.ciudadFiscal, {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
+    setValue("estadoFiscal", profile.estadoFiscal, {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
+    setValue("giroEmpresa", profile.giroEmpresa, {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
+    setValue("destinatario", profile.destinatario, {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
+    setValue("empresaEnvio", profile.empresaEnvio, {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
+    setValue("telefonoEnvio", profile.telefonoEnvio, {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
+    setValue("celularEnvio", profile.celularEnvio, {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
+    setValue("direccionEnvio", profile.direccionEnvio, {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
+    setValue("coloniaEnvio", profile.coloniaEnvio, {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
+    setValue("codigoPostalEnvio", profile.codigoPostalEnvio, {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
+    setValue("ciudadEnvio", profile.ciudadEnvio, {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
+    setValue("estadoEnvio", profile.estadoEnvio, {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
+    setValue("referenciasEnvio", profile.referenciasEnvio ?? "", {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
+    setValue("enviarDomicilioFiscal", true, {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
+  };
 
   const computeItemsFrom = (items: OrderFormValues["items"]) =>
     (items || []).map((item) => {
@@ -334,7 +434,19 @@ export default function OrderForm({ orderId }: OrderFormProps) {
     const seguroValue = Number(values.seguro) || 0;
     const anticipoValue = Number(values.anticipo) || 0;
     const ivaRate = Number(values.iva) || 0;
-    const baseImponible = subtotalValue - descuentoValue + fleteValue + seguroValue;
+    const servicioEnvioValue = values.servicioEnvioActivo
+      ? Number(values.servicioEnvioMonto) || 0
+      : 0;
+    const programaBordadosValue = values.programaBordadosActivo
+      ? Number(values.programaBordadosMonto) || 0
+      : 0;
+    const bordadoPantalonesExtrasValue = values.bordadoPantalonesExtrasActivo
+      ? Number(values.bordadoPantalonesExtrasMonto) || 0
+      : 0;
+    const extrasValue =
+      servicioEnvioValue + programaBordadosValue + bordadoPantalonesExtrasValue;
+    const baseImponible =
+      subtotalValue - descuentoValue + fleteValue + seguroValue + extrasValue;
     const ivaValue = baseImponible * ivaRate;
     const totalValue = baseImponible + ivaValue;
     const saldoValue = totalValue - anticipoValue;
@@ -354,6 +466,7 @@ export default function OrderForm({ orderId }: OrderFormProps) {
   const makeUpdatedOrder = (values: OrderFormValues): Order => ({
     ...orderToEdit!,
     ...values,
+    ordenCompra: values.ordenCompra ?? "",
     estatusPedido: values.estatusPedido as Order["estatusPedido"],
     items: computeItemsFrom(values.items),
     totals: computeTotalsFrom(values),
@@ -366,6 +479,7 @@ export default function OrderForm({ orderId }: OrderFormProps) {
       folio: `#ORD-${id.split("-")[0].toUpperCase()}`,
       capturadoPor: userId,
       ...values,
+      ordenCompra: values.ordenCompra ?? "",
       estatusPedido: values.estatusPedido as Order["estatusPedido"],
       items: computeItemsFrom(values.items),
       totals: computeTotalsFrom(values),
@@ -379,11 +493,13 @@ export default function OrderForm({ orderId }: OrderFormProps) {
         const updatedOrder = makeUpdatedOrder(values);
         await updateOrder(updatedOrder);
         reset(editValues);
+        setClienteSearchTerm(editValues.clienteBusqueda ?? "");
         toast.success("Pedido actualizado correctamente");
       } else {
         const newOrder = makeNewOrder(values);
         await addOrder(newOrder);
         reset(emptyValues);
+        setClienteSearchTerm("");
         toast.success("Pedido registrado correctamente");
       }
       router.replace("/orders");
@@ -392,6 +508,17 @@ export default function OrderForm({ orderId }: OrderFormProps) {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleReset = () => {
+    reset(isEditing ? editValues : emptyValues);
+    setClienteSearchTerm(isEditing ? editValues.clienteBusqueda ?? "" : "");
+    toast.success(
+      isEditing ? "Pedido restablecido correctamente" : "Formulario limpiado correctamente"
+    );
+    setTimeout(() => {
+      formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 0);
   };
 
   const itemsError = getFieldError(
@@ -418,7 +545,12 @@ export default function OrderForm({ orderId }: OrderFormProps) {
   const formKey = isEditing ? `${orderId}-ready` : "new";
 
   return (
-    <form key={formKey} onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+    <form
+      ref={formRef}
+      key={formKey}
+      onSubmit={handleSubmit(onSubmit)}
+      className="space-y-6"
+    >
       <section className="relative overflow-hidden bg-white dark:bg-zinc-900 rounded-3xl p-6 md:p-8 border border-slate-200 dark:border-white/5 shadow-sm dark:shadow-none">
         <div className="absolute top-0 right-0 w-96 h-96 bg-sky-500/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none" />
         <div className="absolute bottom-0 left-0 w-64 h-64 bg-sky-500/5 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2 pointer-events-none" />
@@ -438,14 +570,16 @@ export default function OrderForm({ orderId }: OrderFormProps) {
             </div>
           </div>
           <div className="flex items-center gap-4">
-            <div className="text-right">
+            {/* <div className="text-right">
               <p className="text-[10px] uppercase font-bold text-slate-400">
                 Total Pedido
               </p>
               <p className="text-2xl font-bold text-slate-800 dark:text-white font-mono">
                 {formatCurrency(granTotal)}
               </p>
-            </div>
+            </div> */}
+            
+            <FormSecondaryButton label="Regresar" onClick={() => router.back()} />
           </div>
         </div>
 
@@ -505,151 +639,250 @@ export default function OrderForm({ orderId }: OrderFormProps) {
             </div>
           </div>
 
-          <div className="flex-1 self-start w-full grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
-            <div className="md:col-span-1 lg:col-span-1">
-              <FormInput
-                label="Cliente ID"
-                placeholder="ID"
-                {...register("clienteId")}
-                error={errors.clienteId}
-              />
-            </div>
-            <div className="md:col-span-2 lg:col-span-3">
-              <FormInput
-                label="Nombre del Cliente"
-                placeholder="Razón Social"
-                {...register("clienteNombre")}
-                error={errors.clienteNombre}
-              />
-            </div>
-            <div className="md:col-span-1 lg:col-span-2">
-              <FormInput
-                label="Pedido del Cliente (OC)"
-                placeholder="Ref. Cliente"
-                {...register("pedidoCliente")}
-                error={errors.pedidoCliente}
-              />
+          <div className="flex-1 self-start w-full space-y-6">
+            <div className="bg-slate-50 dark:bg-black/20 rounded-3xl p-6 border border-slate-100 dark:border-white/5">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
+                <span className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">
+                  Datos de Facturación
+                </span>
+                <button
+                  type="button"
+                  className="inline-flex items-center gap-2 text-xs font-semibold cursor-pointer text-sky-600 hover:text-sky-700"
+                >
+                  <PlusIcon className="w-4 h-4" />
+                  Añadir nuevo cliente
+                </button>
+              </div>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <CustomerSearchDropdown
+                  label="Cliente"
+                  placeholder="Buscar Cliente..."
+                  value={clienteSearchTerm}
+                  onValueChange={setClienteSearchTerm}
+                  customers={customers}
+                  onSelect={handleSelectCustomer}
+                  error={errors.clienteBusqueda}
+                />
+                <FormInput
+                  label="Nombre del Cliente"
+                  placeholder="Nombre"
+                  disabled
+                  {...register("clienteNombre")}
+                  error={errors.clienteNombre}
+                />
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
+                <FormInput
+                  label="Razón Social"
+                  placeholder="Razón Social"
+                  disabled
+                  {...register("razonSocial")}
+                  error={errors.razonSocial}
+                />
+                <FormInput
+                  label="RFC"
+                  placeholder="RFC"
+                  disabled
+                  {...register("rfc")}
+                  error={errors.rfc}
+                />
+                <FormSelect
+                  label="Régimen Fiscal"
+                  options={[
+                    { value: "601", label: "601 - General de Ley" },
+                    { value: "603", label: "603 - Personas Morales" },
+                    { value: "605", label: "605 - Sueldos" },
+                  ]}
+                  disabled
+                  {...register("regimenFiscal")}
+                  error={errors.regimenFiscal}
+                />
+              </div>
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
+                <FormInput
+                  label="Dirección Fiscal"
+                  placeholder="Dirección Fiscal"
+                  disabled
+                  {...register("direccionFiscal")}
+                  error={errors.direccionFiscal}
+                />
+                <FormInput
+                  label="Colonia"
+                  placeholder="Colonia"
+                  disabled
+                  {...register("coloniaFiscal")}
+                  error={errors.coloniaFiscal}
+                />
+                <FormInput
+                  label="C.P."
+                  placeholder="C.P."
+                  disabled
+                  {...register("codigoPostalFiscal")}
+                  error={errors.codigoPostalFiscal}
+                />
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
+                <FormInput
+                  label="Ciudad"
+                  placeholder="Ciudad"
+                  disabled
+                  {...register("ciudadFiscal")}
+                  error={errors.ciudadFiscal}
+                />
+                <FormInput
+                  label="Estado"
+                  placeholder="Estado"
+                  disabled
+                  {...register("estadoFiscal")}
+                  error={errors.estadoFiscal}
+                />
+                <FormInput
+                  label="Giro de la empresa"
+                  placeholder="Giro de la empresa"
+                  disabled
+                  {...register("giroEmpresa")}
+                  error={errors.giroEmpresa}
+                />
+              </div>
             </div>
 
-            <div className="md:col-span-1">
-              <FormInput
-                label="Fecha Vence"
-                type="date"
-                min={todayStr}
-                {...register("fechaVence")}
-                error={errors.fechaVence}
-              />
-            </div>
-            <div className="md:col-span-1">
-              <FormInput
-                label="Comisión %"
-                type="number"
-                placeholder="0%"
-                className="text-right"
-                {...register("comision", { valueAsNumber: true })}
-                error={getFieldError(errors.comision)}
-              />
-            </div>
-            <div className="md:col-span-1">
-              <FormInput
-                label="Plazo (Días)"
-                type="number"
-                placeholder="30"
-                className="text-right"
-                {...register("plazo", { valueAsNumber: true })}
-                error={getFieldError(errors.plazo)}
-              />
-            </div>
+          </div>
+        </div>
 
-            <div className="md:col-span-1">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6 items-start">
+          <div className="bg-slate-50 dark:bg-black/20 rounded-3xl p-6 border border-slate-100 dark:border-white/5 shadow-sm">
+            <h3 className="text-sm font-semibold text-slate-800 dark:text-white mb-4">
+              Forma de pago y contacto para envío de facturas
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <FormInput
+                label="Persona Pagos"
+                placeholder="Persona Pagos"
+                {...register("personaPagos")}
+                error={errors.personaPagos}
+              />
+              <FormInput
+                label="Correo Facturas"
+                placeholder="correo@empresa.com"
+                {...register("correoFacturas")}
+                error={errors.correoFacturas}
+              />
+              <FormInput
+                label="Teléfono Pagos"
+                placeholder="Teléfono"
+                {...register("telefonoPagos")}
+                error={errors.telefonoPagos}
+              />
+              <FormInput
+                label="O.C."
+                placeholder="Orden de compra"
+                {...register("ordenCompra")}
+                error={errors.ordenCompra}
+              />
               <FormSelect
-                label="Sucursal"
-                {...register("sucursal", { valueAsNumber: true })}
-                error={getFieldError(errors.sucursal)}
-                disabled={isLoadingBranches}
-              >
-                <option value={0} disabled>
-                  {isLoadingBranches
-                    ? "Cargando sucursales..."
-                    : availableBranches.length === 0
-                      ? "No hay sucursales disponibles"
-                      : "Seleccionar..."}
-                </option>
-                {availableBranches.map((branch) => (
-                  <option
-                    key={branch.id}
-                    value={branch.id}
-                    className="bg-white dark:bg-zinc-900 text-slate-900 dark:text-white"
-                  >
-                    {branch.codigo} - {branch.nombre}
-                  </option>
-                ))}
-              </FormSelect>
-            </div>
-            <div className="md:col-span-1">
-              <FormSelect
-                label="Almacén"
-                {...register("almacen", { valueAsNumber: true })}
-                error={getFieldError(errors.almacen)}
-                disabled={isLoadingWarehouses || selectedSucursalId === 0}
-              >
-                <option value={0} disabled>
-                  {warehousePlaceholder}
-                </option>
-                {warehousesByBranch.map((warehouse) => (
-                  <option
-                    key={warehouse.id_almacen}
-                    value={warehouse.id_almacen}
-                    className="bg-white dark:bg-zinc-900 text-slate-900 dark:text-white"
-                  >
-                    {warehouse.codigo} - {warehouse.nombre}
-                  </option>
-                ))}
-              </FormSelect>
-            </div>
-            <div className="md:col-span-1">
-              <FormSelect
-                label="Canal"
+                label="Forma de Pago"
                 options={[
-                  { value: "mayorista", label: "Mayorista" },
-                  { value: "retail", label: "Retail" },
-                  { value: "ecommerce", label: "E-Commerce" },
+                  { value: "01", label: "01 - Efectivo" },
+                  { value: "03", label: "03 - Transferencia" },
+                  { value: "04", label: "04 - Tarjeta" },
                 ]}
-                {...register("canal")}
+                {...register("formaPago")}
+                error={errors.formaPago}
               />
-            </div>
-            <div className="md:col-span-1">
-              <FormInput
-                label="Puntos Cliente"
-                type="number"
-                placeholder="0"
-                className="text-right"
-                {...register("puntos", { valueAsNumber: true })}
-                error={getFieldError(errors.puntos)}
+              <FormSelect
+                label="Método de Pago"
+                options={[
+                  { value: "PUE", label: "PUE - Pago en una sola exhibición" },
+                  { value: "PPD", label: "PPD - Pago en parcialidades" },
+                  { value: "NA", label: "N/A" },
+                ]}
+                {...register("metodoPago")}
+                error={errors.metodoPago}
               />
+              <FormSelect
+                label="Uso de CFDI"
+                options={[
+                  { value: "G03", label: "G03 - Gastos en general" },
+                  { value: "G01", label: "G01 - Adquisición de mercancías" },
+                  { value: "I01", label: "I01 - Construcciones" },
+                ]}
+                {...register("usoCfdi")}
+                error={errors.usoCfdi}
+              />
+              <label className="inline-flex items-center gap-2 text-xs font-medium text-slate-600 dark:text-slate-300">
+                <input
+                  type="checkbox"
+                  className="w-4 h-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
+                  {...register("referenciarOcFactura")}
+                />
+                Referenciar OC en factura
+              </label>
             </div>
-            <div className="md:col-span-1">
+          </div>
+
+          <div className="bg-slate-50 dark:bg-black/20 rounded-3xl p-6 border border-slate-100 dark:border-white/5 shadow-sm h-fit">
+            <h3 className="text-sm font-semibold text-slate-800 dark:text-white mb-4">
+              Condiciones de pago
+            </h3>
+            <div className="grid grid-cols-2 gap-3">
+              <label className="inline-flex items-center gap-2 text-xs font-medium text-slate-600 dark:text-slate-300">
+                <input
+                  type="checkbox"
+                  className="w-4 h-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
+                  {...register("condicionPago100Anticipo")}
+                />
+                100% Anticipo
+              </label>
+              <label className="inline-flex items-center gap-2 text-xs font-medium text-slate-600 dark:text-slate-300">
+                <input
+                  type="checkbox"
+                  className="w-4 h-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
+                  {...register("condicionPago50Anticipo")}
+                />
+                50% Anticipo
+              </label>
+              <label className="inline-flex items-center gap-2 text-xs font-medium text-slate-600 dark:text-slate-300">
+                <input
+                  type="checkbox"
+                  className="w-4 h-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
+                  {...register("condicionPagoVendedorAutoriza")}
+                />
+                Vendedor autoriza
+              </label>
+              <label className="inline-flex items-center gap-2 text-xs font-medium text-slate-600 dark:text-slate-300">
+                <input
+                  type="checkbox"
+                  className="w-4 h-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
+                  {...register("condicionPagoPagoAntesEmbarque")}
+                />
+                Pago antes de embarque
+              </label>
+              <label className="inline-flex items-center gap-2 text-xs font-medium text-slate-600 dark:text-slate-300">
+                <input
+                  type="checkbox"
+                  className="w-4 h-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
+                  {...register("condicionPagoPorConfirmar")}
+                />
+                Por confirmar
+              </label>
+              <label className="inline-flex items-center gap-2 text-xs font-medium text-slate-600 dark:text-slate-300">
+                <input
+                  type="checkbox"
+                  className="w-4 h-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
+                  {...register("condicionPagoOtraCantidad")}
+                />
+                Otra cantidad
+              </label>
+            </div>
+            <div className="mt-6">
               <FormInput
-                label="Anticipo Req."
+                label="Especificar monto"
                 type="number"
                 placeholder="$0.00"
                 className="text-right"
-                {...register("anticipoReq", { valueAsNumber: true })}
-                error={getFieldError(errors.anticipoReq)}
+                {...register("condicionPagoMonto", { valueAsNumber: true })}
+                error={getFieldError(errors.condicionPagoMonto)}
               />
-            </div>
-            <div className="md:col-span-1 flex items-center pt-6">
-              <label className="inline-flex items-center cursor-pointer">
-                <input
-                  type="checkbox"
-                  className="sr-only peer"
-                  {...register("pedidoInicial")}
-                />
-                <div className="relative w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:start-0.5 after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-sky-600" />
-                <span className="ml-2 text-xs font-medium text-slate-600 dark:text-slate-400">
-                  Pedido Inicial
-                </span>
-              </label>
             </div>
           </div>
         </div>
@@ -657,13 +890,18 @@ export default function OrderForm({ orderId }: OrderFormProps) {
 
       <section className="bg-white dark:bg-zinc-900 rounded-3xl p-6 border border-slate-200 dark:border-white/5 shadow-sm">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-6">
-          <div>
-            <h2 className="text-lg font-semibold text-slate-800 dark:text-white">
-              Datos de Envío
-            </h2>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              Información para entrega y condiciones de envío.
-            </p>
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-sky-50 dark:bg-sky-500/10 flex items-center justify-center text-sky-600 dark:text-sky-400 shadow-sm">
+              <EmbarquesIcon className="w-6 h-6" />
+            </div>
+            <div>
+              <h2 className="text-lg font-semibold text-slate-800 dark:text-white">
+                Datos de Envío
+              </h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Información para entrega y condiciones de envío.
+              </p>
+            </div>
           </div>
           <div className="flex flex-wrap gap-3">
             <label className="inline-flex items-center gap-2 text-xs font-medium text-slate-600 dark:text-slate-300">
@@ -690,6 +928,7 @@ export default function OrderForm({ orderId }: OrderFormProps) {
             <FormInput
               label="Destinatario"
               placeholder="Nombre completo"
+              disabled={Boolean(watchedEnviarDomicilioFiscal)}
               {...register("destinatario")}
               error={errors.destinatario}
             />
@@ -698,6 +937,7 @@ export default function OrderForm({ orderId }: OrderFormProps) {
             <FormInput
               label="Empresa"
               placeholder="Razón Social"
+              disabled={Boolean(watchedEnviarDomicilioFiscal)}
               {...register("empresaEnvio")}
               error={errors.empresaEnvio}
             />
@@ -706,6 +946,7 @@ export default function OrderForm({ orderId }: OrderFormProps) {
             <FormInput
               label="Teléfono"
               placeholder="Teléfono"
+              disabled={Boolean(watchedEnviarDomicilioFiscal)}
               {...register("telefonoEnvio")}
               error={errors.telefonoEnvio}
             />
@@ -714,6 +955,7 @@ export default function OrderForm({ orderId }: OrderFormProps) {
             <FormInput
               label="Celular"
               placeholder="Celular"
+              disabled={Boolean(watchedEnviarDomicilioFiscal)}
               {...register("celularEnvio")}
               error={errors.celularEnvio}
             />
@@ -722,6 +964,7 @@ export default function OrderForm({ orderId }: OrderFormProps) {
             <FormInput
               label="Dirección"
               placeholder="Calle y número"
+              disabled={Boolean(watchedEnviarDomicilioFiscal)}
               {...register("direccionEnvio")}
               error={errors.direccionEnvio}
             />
@@ -730,6 +973,7 @@ export default function OrderForm({ orderId }: OrderFormProps) {
             <FormInput
               label="Colonia"
               placeholder="Colonia"
+              disabled={Boolean(watchedEnviarDomicilioFiscal)}
               {...register("coloniaEnvio")}
               error={errors.coloniaEnvio}
             />
@@ -738,6 +982,7 @@ export default function OrderForm({ orderId }: OrderFormProps) {
             <FormInput
               label="Código Postal"
               placeholder="C.P."
+              disabled={Boolean(watchedEnviarDomicilioFiscal)}
               {...register("codigoPostalEnvio")}
               error={errors.codigoPostalEnvio}
             />
@@ -746,6 +991,7 @@ export default function OrderForm({ orderId }: OrderFormProps) {
             <FormInput
               label="Ciudad"
               placeholder="Ciudad"
+              disabled={Boolean(watchedEnviarDomicilioFiscal)}
               {...register("ciudadEnvio")}
               error={errors.ciudadEnvio}
             />
@@ -754,6 +1000,7 @@ export default function OrderForm({ orderId }: OrderFormProps) {
             <FormInput
               label="Estado"
               placeholder="Estado"
+              disabled={Boolean(watchedEnviarDomicilioFiscal)}
               {...register("estadoEnvio")}
               error={errors.estadoEnvio}
             />
@@ -762,39 +1009,50 @@ export default function OrderForm({ orderId }: OrderFormProps) {
             <FormInput
               label="Referencias adicionales"
               placeholder="Entre calles, etc."
+              disabled={Boolean(watchedEnviarDomicilioFiscal)}
               {...register("referenciasEnvio")}
               error={errors.referenciasEnvio}
             />
           </div>
         </div>
 
-        <div className="mt-5 grid grid-cols-1 gap-4">
-          <label className="flex items-start gap-3 rounded-2xl border border-emerald-100 dark:border-emerald-500/20 bg-emerald-50/60 dark:bg-emerald-500/10 p-4 text-xs text-emerald-700 dark:text-emerald-300">
+        <div className="mt-5 space-y-4">
+          <label className="flex items-start gap-3 rounded-2xl cursor-pointer border border-emerald-100 dark:border-emerald-500/20 bg-emerald-50/60 dark:bg-emerald-500/10 p-4">
             <input
               type="checkbox"
               className="mt-0.5 w-4 h-4 rounded border-emerald-300 text-emerald-600 focus:ring-emerald-500"
               {...register("empaqueEcologico")}
             />
-            <span>
-              Empaque ecológico, sin bolsas de plástico
-            </span>
+            <div className="space-y-1">
+              <p className="text-xs font-semibold uppercase text-emerald-700 dark:text-emerald-300">
+                Empaque ecológico, sin bolsas de plástico
+              </p>
+              <p className="text-[11px] text-emerald-600/80 dark:text-emerald-300/80">
+                ¡Gracias por ayudarnos a cuidar el medio ambiente!
+              </p>
+            </div>
           </label>
-          <div className="space-y-3 rounded-2xl border border-amber-100 dark:border-amber-500/20 bg-amber-50/60 dark:bg-amber-500/10 p-4">
-            <label className="flex items-start gap-3 text-xs text-amber-700 dark:text-amber-300">
-              <input
-                type="checkbox"
-                className="mt-0.5 w-4 h-4 rounded border-amber-300 text-amber-600 focus:ring-amber-500"
-                {...register("embarqueParcial")}
-              />
-              <span>Embarque parcial</span>
-            </label>
-            <FormInput
-              label="Comentarios parcialidad"
-              placeholder="Especificaciones para el envío parcial..."
-              {...register("comentariosParcialidad")}
-              error={errors.comentariosParcialidad}
+          <label className="flex items-start gap-3 rounded-2xl cursor-pointer border border-amber-100 dark:border-amber-500/20 bg-amber-50/60 dark:bg-amber-500/10 p-4">
+            <input
+              type="checkbox"
+              className="mt-0.5 w-4 h-4 rounded border-amber-300 text-amber-600 focus:ring-amber-500"
+              {...register("embarqueParcial")}
             />
-          </div>
+            <div className="space-y-1">
+              <p className="text-xs font-semibold uppercase text-amber-700 dark:text-amber-300">
+                Embarque parcial
+              </p>
+              <p className="text-[11px] text-amber-600/80 dark:text-amber-300/80">
+                Es posible embarcar parcialidad facturada de lo disponible en inventario.
+              </p>
+            </div>
+          </label>
+          <FormInput
+            label="Comentarios parcialidad"
+            placeholder="Especificaciones para el envío parcial..."
+            {...register("comentariosParcialidad")}
+            error={errors.comentariosParcialidad}
+          />
         </div>
       </section>
 
@@ -815,7 +1073,7 @@ export default function OrderForm({ orderId }: OrderFormProps) {
                 setEditIndex(null);
                 setIsAddProductsOpen(true);
               }}
-              className="inline-flex items-center px-3 py-1.5 bg-sky-50 dark:bg-sky-500/10 text-sky-600 dark:text-sky-400 rounded-lg text-xs font-bold uppercase tracking-wide hover:bg-sky-100 dark:hover:bg-sky-500/20 transition-colors cursor-pointer"
+              className="inline-flex items-center px-3 py-1.5 bg-sky-50 dark:bg-sky-500/10 text-sky-600 dark:text-sky-400 rounded-lg text-xs font-bold tracking-wide hover:bg-sky-100 dark:hover:bg-sky-500/20 transition-colors cursor-pointer"
               title="Agregar producto al pedido"
               aria-label="Agregar producto al pedido"
             >
@@ -833,7 +1091,6 @@ export default function OrderForm({ orderId }: OrderFormProps) {
             }
             setIsAddProductsOpen(nextOpen);
           }}
-          existingSkus={existingSkus}
           onAddItem={(item) => append(item)}
           onUpdateItem={
             editIndex !== null
@@ -854,16 +1111,16 @@ export default function OrderForm({ orderId }: OrderFormProps) {
                 <th className="p-2 text-[10px] font-bold text-slate-400 uppercase tracking-wider w-10 text-center">
                   #
                 </th>
-                <th className="p-2 text-[10px] font-bold text-slate-400 uppercase tracking-wider w-32">
+                <th className="p-2 text-[10px] font-bold text-slate-400 uppercase tracking-wider w-24">
                   Código
                 </th>
-                <th className="p-2 text-[10px] font-bold text-slate-400 uppercase tracking-wider min-w-50">
+                <th className="p-2 text-[10px] font-bold text-slate-400 uppercase tracking-wider min-w-40">
                   Descripción
                 </th>
-                <th className="p-2 text-[10px] font-bold text-slate-400 uppercase tracking-wider w-20 text-center">
+                <th className="p-2 text-[10px] font-bold text-slate-400 uppercase tracking-wider w-16 text-center">
                   UM
                 </th>
-                <th className="p-2 text-[10px] font-bold text-slate-400 uppercase tracking-wider w-40">
+                <th className="p-2 text-[10px] font-bold text-slate-400 uppercase tracking-wider w-56">
                   Tallas
                 </th>
                 <th className="p-2 text-[10px] font-bold text-slate-400 uppercase tracking-wider w-20 text-center">
@@ -928,18 +1185,14 @@ export default function OrderForm({ orderId }: OrderFormProps) {
                       <td className="p-2 text-center text-xs text-slate-400 select-none">
                         {index + 1}
                       </td>
-                      <td className="p-1">
+                      <td className="p-2">
                         <div className="space-y-1">
-                          <input
-                            type="text"
-                            placeholder="SKU"
-                            aria-label="Código del producto"
-                            autoComplete="off"
-                            readOnly
-                            tabIndex={-1}
-                            className={`w-full cursor-not-allowed bg-slate-100/80 dark:bg-zinc-800/60 border-b border-transparent focus:ring-0 p-1.5 text-xs text-slate-500 dark:text-slate-400 focus:border-transparent ${skuError ? "border-rose-500 text-rose-600 dark:text-rose-400" : ""}`}
-                            {...register(`items.${index}.sku`)}
-                          />
+                          <div
+                            className={`text-xs font-medium text-slate-700 dark:text-slate-200 ${skuError ? "text-rose-600 dark:text-rose-400" : ""}`}
+                          >
+                            {currentItem?.sku || "—"}
+                          </div>
+                          <input type="hidden" {...register(`items.${index}.sku`)} />
                           {skuError && (
                             <p className="text-[10px] text-rose-600 dark:text-rose-400">
                               {skuError.message}
@@ -947,16 +1200,15 @@ export default function OrderForm({ orderId }: OrderFormProps) {
                           )}
                         </div>
                       </td>
-                      <td className="p-1">
+                      <td className="p-2">
                         <div className="space-y-1">
+                          <div
+                            className={`text-xs text-slate-600 dark:text-slate-300 ${descripcionError ? "text-rose-600 dark:text-rose-400" : ""}`}
+                          >
+                            {currentItem?.descripcion || "—"}
+                          </div>
                           <input
-                            type="text"
-                            placeholder="Descripción del producto"
-                            aria-label="Descripción del producto"
-                            autoComplete="off"
-                            readOnly
-                            tabIndex={-1}
-                            className={`w-full cursor-not-allowed bg-slate-100/80 dark:bg-zinc-800/60 border-b border-transparent focus:ring-0 p-1.5 text-xs text-slate-500 dark:text-slate-400 focus:border-transparent ${descripcionError ? "border-rose-500 text-rose-600 dark:text-rose-400" : ""}`}
+                            type="hidden"
                             {...register(`items.${index}.descripcion`)}
                           />
                           {descripcionError && (
@@ -966,18 +1218,14 @@ export default function OrderForm({ orderId }: OrderFormProps) {
                           )}
                         </div>
                       </td>
-                      <td className="p-1">
+                      <td className="p-2">
                         <div className="space-y-1">
-                          <input
-                            type="text"
-                            placeholder="PZA"
-                            aria-label="Unidad de medida"
-                            autoComplete="off"
-                            readOnly
-                            tabIndex={-1}
-                            className={`w-full cursor-not-allowed bg-slate-100/80 dark:bg-zinc-800/60 border-b border-transparent focus:ring-0 p-1.5 text-xs text-center uppercase text-slate-500 dark:text-slate-400 focus:border-transparent ${unidadError ? "border-rose-500 text-rose-600 dark:text-rose-400" : ""}`}
-                            {...register(`items.${index}.unidad`)}
-                          />
+                          <div
+                            className={`text-xs text-center uppercase text-slate-600 dark:text-slate-300 ${unidadError ? "text-rose-600 dark:text-rose-400" : ""}`}
+                          >
+                            {currentItem?.unidad || "—"}
+                          </div>
+                          <input type="hidden" {...register(`items.${index}.unidad`)} />
                           {unidadError && (
                             <p className="text-[10px] text-rose-600 dark:text-rose-400">
                               {unidadError.message}
@@ -985,42 +1233,32 @@ export default function OrderForm({ orderId }: OrderFormProps) {
                           )}
                         </div>
                       </td>
-                      <td className="p-1">
+                      <td className="p-2">
                         <div className="space-y-1">
                           <div
-                            className="w-full max-w-40 overflow-x-auto custom-scrollbar"
-                            role="presentation"
+                            className="text-xs text-slate-500 dark:text-slate-400 whitespace-normal wrap-break-word"
+                            aria-label="Tallas del producto"
                           >
-                            <div
-                              className="min-w-max cursor-default bg-slate-100/80 dark:bg-zinc-800/60 border-b border-transparent p-1.5 text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap"
-                              aria-label="Tallas del producto"
-                            >
-                              {tallasLabel}
-                            </div>
+                            {tallasLabel}
                           </div>
                         </div>
                       </td>
-                      <td className="p-1">
+                      <td className="p-2">
                         <div className="space-y-1">
-                          <input
-                            type="text"
-                            readOnly
-                            tabIndex={-1}
-                            value={bordadoLabel}
-                            className="w-full cursor-not-allowed bg-slate-100/80 dark:bg-zinc-800/60 border-b border-transparent focus:ring-0 p-1.5 text-xs text-center text-slate-500 dark:text-slate-400 focus:border-transparent"
-                          />
+                          <div className="text-xs text-center text-slate-500 dark:text-slate-400">
+                            {bordadoLabel}
+                          </div>
                         </div>
                       </td>
-                      <td className="p-1">
+                      <td className="p-2">
                         <div className="space-y-1">
+                          <div
+                            className={`text-xs text-right text-slate-600 dark:text-slate-300 ${cantidadError ? "text-rose-600 dark:text-rose-400" : ""}`}
+                          >
+                            {cantidad || 0}
+                          </div>
                           <input
-                            type="number"
-                            placeholder="0"
-                            aria-label="Cantidad"
-                            autoComplete="off"
-                            readOnly
-                            tabIndex={-1}
-                            className={`w-full cursor-not-allowed bg-slate-100/80 dark:bg-zinc-800/60 border-b border-transparent focus:ring-0 p-1.5 text-xs text-right text-slate-500 dark:text-slate-400 focus:border-transparent ${cantidadError ? "border-rose-500 text-rose-600 dark:text-rose-400" : ""}`}
+                            type="hidden"
                             {...register(`items.${index}.cantidad`, {
                               valueAsNumber: true,
                             })}
@@ -1032,16 +1270,15 @@ export default function OrderForm({ orderId }: OrderFormProps) {
                           )}
                         </div>
                       </td>
-                      <td className="p-1">
+                      <td className="p-2">
                         <div className="space-y-1">
+                          <div
+                            className={`text-xs text-right text-slate-600 dark:text-slate-300 ${precioError ? "text-rose-600 dark:text-rose-400" : ""}`}
+                          >
+                            {precio.toFixed(2)}
+                          </div>
                           <input
-                            type="number"
-                            placeholder="0.00"
-                            step="0.01"
-                            aria-label="Precio"
-                            readOnly
-                            tabIndex={-1}
-                            className={`w-full cursor-not-allowed bg-slate-100/80 dark:bg-zinc-800/60 border-b border-transparent focus:ring-0 p-1.5 text-xs text-right text-slate-500 dark:text-slate-400 focus:border-transparent ${precioError ? "border-rose-500 text-rose-600 dark:text-rose-400" : ""}`}
+                            type="hidden"
                             {...register(`items.${index}.precio`, {
                               valueAsNumber: true,
                             })}
@@ -1053,13 +1290,15 @@ export default function OrderForm({ orderId }: OrderFormProps) {
                           )}
                         </div>
                       </td>
-                      <td className="p-1">
+                      <td className="p-2">
                         <div className="space-y-1">
+                          <div
+                            className={`text-xs text-right text-slate-600 dark:text-slate-300 ${descuentoError ? "text-rose-600 dark:text-rose-400" : ""}`}
+                          >
+                            {descuento}
+                          </div>
                           <input
-                            type="number"
-                            placeholder="0"
-                            aria-label="Descuento porcentaje"
-                            className={`w-full bg-transparent border-b border-transparent focus:ring-0 p-1.5 text-xs text-right text-slate-700 dark:text-slate-200 focus:border-sky-500 ${descuentoError ? "border-rose-500 text-rose-600 dark:text-rose-400" : ""}`}
+                            type="hidden"
                             {...register(`items.${index}.descuento`, {
                               valueAsNumber: true,
                             })}
@@ -1071,17 +1310,13 @@ export default function OrderForm({ orderId }: OrderFormProps) {
                           )}
                         </div>
                       </td>
-                      <td className="p-1">
+                      <td className="p-2">
                         <div className="space-y-1">
-                          <input
-                            type="number"
-                            placeholder="0.00"
-                            readOnly
-                            value={calculatedImporte}
-                            aria-label="Importe"
-                            tabIndex={-1}
-                            className={`w-full cursor-not-allowed bg-slate-100/80 dark:bg-zinc-800/60 border-b border-transparent focus:ring-0 p-1.5 text-xs text-right text-slate-500 dark:text-slate-400 focus:border-transparent ${importeError ? "border-rose-500 text-rose-600 dark:text-rose-400" : ""}`}
-                          />
+                          <div
+                            className={`text-xs text-right text-slate-600 dark:text-slate-300 ${importeError ? "text-rose-600 dark:text-rose-400" : ""}`}
+                          >
+                            {calculatedImporte.toFixed(2)}
+                          </div>
                           {importeError && (
                             <p className="text-[10px] text-rose-600 dark:text-rose-400 text-right">
                               {importeError.message}
@@ -1126,61 +1361,151 @@ export default function OrderForm({ orderId }: OrderFormProps) {
       </section>
 
       <section className="grid grid-cols-1 lg:grid-cols-4 gap-6 items-start">
-        <div className="lg:col-span-1 bg-slate-50/80 dark:bg-white/5 backdrop-blur-md rounded-3xl p-6 border border-slate-200 dark:border-white/5 shadow-inner space-y-4">
-          <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">
-            Control del Sistema
-          </h3>
-          <FormSelect
-            label="Estatus Pedido"
-            options={[
-              { value: "Pendiente", label: "Pendiente" },
-              { value: "Parcial", label: "Parcial" },
-              { value: "Completo", label: "Completo" },
-              { value: "Cancelado", label: "Cancelado" },
-            ]}
-            error={getFieldError(errors.estatusPedido)}
-            {...register("estatusPedido")}
-          />
-
-          <div className="space-y-1 pt-2 border-t border-slate-200 dark:border-slate-700">
-            <p className="text-[10px] uppercase font-bold text-slate-400">
-              Capturado por
-            </p>
-            <p className="text-xs font-medium text-slate-700 dark:text-slate-200">
-              {isEditing ? (orderToEdit?.capturadoPor ?? userName) : userName}
-            </p>
+        <div className="lg:col-span-1 bg-white dark:bg-zinc-900 rounded-3xl p-6 border border-slate-200 dark:border-white/5 shadow-sm space-y-6">
+          <div className="space-y-3">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+              Servicios Extras
+            </h3>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between gap-3 text-xs text-slate-600 dark:text-slate-300">
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    className="w-4 h-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
+                    {...register("servicioEnvioActivo")}
+                  />
+                  <span>Envío</span>
+                </label>
+                <div className="relative">
+                  <span className="absolute left-2 top-1.5 text-xs text-slate-400">
+                    $
+                  </span>
+                  <input
+                    type="number"
+                    aria-label="Envío"
+                    className="w-24 bg-transparent border border-slate-300 dark:border-slate-700 rounded-full pl-5 pr-3 py-1 text-xs text-right text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-sky-500"
+                    {...register("servicioEnvioMonto", { valueAsNumber: true })}
+                  />
+                </div>
+              </div>
+              <div className="flex items-center justify-between gap-3 text-xs text-slate-600 dark:text-slate-300">
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    className="w-4 h-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
+                    {...register("programaBordadosActivo")}
+                  />
+                  <span>Programa de Bordados</span>
+                </label>
+                <div className="relative">
+                  <span className="absolute left-2 top-1.5 text-xs text-slate-400">
+                    $
+                  </span>
+                  <input
+                    type="number"
+                    aria-label="Programa de Bordados"
+                    className="w-24 bg-transparent border border-slate-300 dark:border-slate-700 rounded-full pl-5 pr-3 py-1 text-xs text-right text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-sky-500"
+                    {...register("programaBordadosMonto", { valueAsNumber: true })}
+                  />
+                </div>
+              </div>
+              <div className="flex items-center justify-between gap-3 text-xs text-slate-600 dark:text-slate-300">
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    className="w-4 h-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
+                    {...register("bordadoPantalonesExtrasActivo")}
+                  />
+                  <span>Bordado Pantalones Extras</span>
+                </label>
+                <div className="relative">
+                  <span className="absolute left-2 top-1.5 text-xs text-slate-400">
+                    $
+                  </span>
+                  <input
+                    type="number"
+                    aria-label="Bordado Pantalones Extras"
+                    className="w-24 bg-transparent border border-slate-300 dark:border-slate-700 rounded-full pl-5 pr-3 py-1 text-xs text-right text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-sky-500"
+                    {...register("bordadoPantalonesExtrasMonto", {
+                      valueAsNumber: true,
+                    })}
+                  />
+                </div>
+              </div>
+              <div className="flex items-center justify-between gap-3 text-xs text-slate-500 dark:text-slate-400">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked
+                    readOnly
+                    className="w-4 h-4 rounded border-slate-300 text-slate-400"
+                  />
+                  <span>Bordado Logotipo (Incluido)</span>
+                </div>
+                <span className="px-2 py-1 rounded-full text-[10px] font-semibold tracking-wide bg-slate-200/70 dark:bg-white/10 text-slate-500 dark:text-slate-300">
+                  GRATIS
+                </span>
+                <input
+                  type="hidden"
+                  value="true"
+                  {...register("bordadoLogotipoIncluido", {
+                    setValueAs: (value) => value === "true",
+                  })}
+                />
+              </div>
+            </div>
           </div>
 
-          <div className="space-y-1">
-            <p className="text-[10px] uppercase font-bold text-slate-400">
-              Doc. Relacionado
-            </p>
-            <input
-              type="text"
-              placeholder="Cotización / OC"
-              aria-label="Documento relacionado"
-              autoComplete="off"
-              className={`w-full bg-transparent border-b text-xs py-1 focus:outline-none border-slate-200 dark:border-slate-700 ${docRelacionadoError ? "border-rose-500 text-rose-600 dark:text-rose-400" : ""}`}
-              {...register("docRelacionado")}
-            />
-            {docRelacionadoError && (
-              <p className="text-[10px] text-rose-600 dark:text-rose-400">
-                {docRelacionadoError.message}
+          <div className="space-y-4 pt-4 border-t border-slate-200 dark:border-slate-700">
+            <div className="space-y-1">
+              <p className="text-[10px] uppercase font-bold text-slate-400">
+                Documento Relacionado
               </p>
-            )}
-          </div>
+              <input
+                type="text"
+                placeholder="Cotización / OC"
+                aria-label="Documento relacionado"
+                autoComplete="off"
+                className={`w-full bg-transparent border-b text-xs py-1 focus:outline-none border-slate-200 dark:border-slate-700 ${docRelacionadoError ? "border-rose-500 text-rose-600 dark:text-rose-400" : ""}`}
+                {...register("docRelacionado")}
+              />
+              {docRelacionadoError && (
+                <p className="text-[10px] text-rose-600 dark:text-rose-400">
+                  {docRelacionadoError.message}
+                </p>
+              )}
+            </div>
 
-          <div className="space-y-1 pt-2">
-            <p className="text-[10px] uppercase font-bold text-slate-400">
-              Observaciones
-            </p>
-            <textarea
-              rows={3}
-              placeholder="Notas del pedido..."
-              aria-label="Observaciones"
-              className="w-full bg-white dark:bg-black/20 border border-slate-200 dark:border-slate-700 rounded-lg p-2 text-xs resize-none focus:outline-none"
-              {...register("observaciones")}
-            />
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-[10px] uppercase font-bold text-slate-400">
+                Usuario Captura
+              </span>
+              <span className="text-xs font-medium text-slate-700 dark:text-slate-200">
+                {isEditing ? (orderToEdit?.capturadoPor ?? userName) : userName}
+              </span>
+            </div>
+
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-[10px] uppercase font-bold text-slate-400">
+                Fecha Captura
+              </span>
+              <span className="text-xs font-medium text-slate-700 dark:text-slate-200">
+                {watchedFecha || todayStr}
+              </span>
+            </div>
+
+            <div className="space-y-1">
+              <p className="text-[10px] uppercase font-bold text-slate-400">
+                Observaciones
+              </p>
+              <textarea
+                rows={3}
+                placeholder="Notas del pedido..."
+                aria-label="Observaciones"
+                className="w-full bg-white dark:bg-black/20 border border-slate-200 dark:border-slate-700 rounded-lg p-2 text-xs resize-none focus:outline-none"
+                {...register("observaciones")}
+              />
+            </div>
           </div>
         </div>
 
@@ -1303,9 +1628,8 @@ export default function OrderForm({ orderId }: OrderFormProps) {
       </section>
 
       <div className="flex justify-end gap-3 pb-8">
-        <FormSecondaryButton label="Regresar" onClick={() => router.back()} />
         <FormCancelButton
-          onClick={() => reset(isEditing ? editValues : emptyValues)}
+          onClick={handleReset}
           disabled={isPending}
         />
         <FormSubmitButton

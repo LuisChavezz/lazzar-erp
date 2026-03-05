@@ -23,7 +23,6 @@ interface CatalogRow extends BaseCatalogRow {
 interface AddProductDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  existingSkus: Set<string>;
   onAddItem: (item: OrderItem) => void;
   onUpdateItem?: (item: OrderItem) => void;
   initialItem?: OrderItem | null;
@@ -52,7 +51,6 @@ const THREAD_COLOR_OPTIONS = ["1002", "1004", "1174", "1256", "1176"];
 export function AddProductDialog({
   open,
   onOpenChange,
-  existingSkus,
   onAddItem,
   onUpdateItem,
   initialItem,
@@ -162,7 +160,6 @@ export function AddProductDialog({
   );
 
   const handleSelectRow = (row: BaseCatalogRow) => {
-    if (existingSkus.has(row.sku)) return;
     const fullRow = rows.find((item) => item.id === row.id);
     if (!fullRow) return;
     setSelectedRowId(fullRow.id);
@@ -362,7 +359,7 @@ export function AddProductDialog({
   };
 
   const selectedColor = selectedRow ? colorLookup.get(selectedRow.colorId) ?? null : null;
-  const canProceed = Boolean(selectedRow) && !existingSkus.has(selectedRow?.sku ?? "");
+  const canProceed = Boolean(selectedRow);
   const canAdd = totalCantidad > 0;
   const isEditing = Boolean(onUpdateItem && initialItem);
   const canGoEmbroidery = canAdd;
@@ -387,7 +384,7 @@ export function AddProductDialog({
             type="button"
             onClick={handleNext}
             disabled={!canProceed}
-            className="px-4 py-2 rounded-xl cursor-pointer bg-sky-600 text-white text-xs font-bold uppercase tracking-wide hover:bg-sky-700 transition-colors disabled:opacity-50 disabled:cursor-default"
+            className="px-4 py-2 rounded-xl cursor-pointer bg-sky-600 text-white text-xs font-bold  tracking-wide hover:bg-sky-700 transition-colors disabled:opacity-50 disabled:cursor-default"
           >
             Siguiente
           </button>
@@ -397,7 +394,7 @@ export function AddProductDialog({
               <button
                 type="button"
                 onClick={handleBack}
-                className="px-4 py-2 rounded-xl cursor-pointer border border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300 text-xs font-bold uppercase tracking-wide hover:bg-slate-50 dark:hover:bg-white/10 transition-colors"
+                className="px-4 py-2 rounded-xl cursor-pointer border border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300 text-xs font-bold  tracking-wide hover:bg-slate-50 dark:hover:bg-white/10 transition-colors"
               >
                 Regresar
               </button>
@@ -407,7 +404,7 @@ export function AddProductDialog({
                 type="button"
                 onClick={() => setStep("embroidery")}
                 disabled={!canGoEmbroidery}
-                className="px-4 py-2 rounded-xl cursor-pointer bg-sky-600 text-white text-xs font-bold uppercase tracking-wide hover:bg-sky-700 transition-colors disabled:opacity-50 disabled:cursor-default"
+                className="px-4 py-2 rounded-xl cursor-pointer bg-sky-600 text-white text-xs font-bold  tracking-wide hover:bg-sky-700 transition-colors disabled:opacity-50 disabled:cursor-default"
               >
                 Siguiente
               </button>
@@ -416,7 +413,7 @@ export function AddProductDialog({
                 type="button"
                 onClick={handleSaveItem}
                 disabled={!canAdd}
-                className="px-4 py-2 rounded-xl cursor-pointer bg-sky-600 text-white text-xs font-bold uppercase tracking-wide hover:bg-sky-700 transition-colors disabled:opacity-50 disabled:cursor-default"
+                className="px-4 py-2 rounded-xl cursor-pointer bg-sky-600 text-white text-xs font-bold  tracking-wide hover:bg-sky-700 transition-colors disabled:opacity-50 disabled:cursor-default"
               >
                 Agregar
               </button>
@@ -427,7 +424,7 @@ export function AddProductDialog({
             <button
               type="button"
               onClick={handleBack}
-              className="px-4 py-2 rounded-xl cursor-pointer border border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300 text-xs font-bold uppercase tracking-wide hover:bg-slate-50 dark:hover:bg-white/10 transition-colors"
+              className="px-4 py-2 rounded-xl cursor-pointer border border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300 text-xs font-bold  tracking-wide hover:bg-slate-50 dark:hover:bg-white/10 transition-colors"
             >
               Regresar
             </button>
@@ -435,7 +432,7 @@ export function AddProductDialog({
               type="button"
               onClick={handleSaveItem}
               disabled={!canAdd}
-              className="px-4 py-2 rounded-xl cursor-pointer bg-sky-600 text-white text-xs font-bold uppercase tracking-wide hover:bg-sky-700 transition-colors disabled:opacity-50 disabled:cursor-default"
+              className="px-4 py-2 rounded-xl cursor-pointer bg-sky-600 text-white text-xs font-bold  tracking-wide hover:bg-sky-700 transition-colors disabled:opacity-50 disabled:cursor-default"
             >
               Agregar el pedido
             </button>
@@ -450,7 +447,6 @@ export function AddProductDialog({
           rows={rows}
           filteredRows={filteredRows}
           selectedRowId={selectedRow?.id ?? null}
-          existingSkus={existingSkus}
           onSelectRow={handleSelectRow}
         />
       ) : step === "sizes" ? (

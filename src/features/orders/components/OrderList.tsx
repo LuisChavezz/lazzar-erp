@@ -47,7 +47,7 @@ export const OrderList = () => {
       return Number.isNaN(date.getTime()) ? null : date;
     };
     return orders.filter((order) => {
-      const dueDate = parseOrderDate(order.fechaVence);
+      const dueDate = parseOrderDate(order.fecha);
       return dueDate ? dueDate < today : false;
     });
   }, [isOverdueActive, orders]);

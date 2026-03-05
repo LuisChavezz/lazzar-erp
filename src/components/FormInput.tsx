@@ -1,10 +1,11 @@
 import { forwardRef } from "react";
+import { SearchIcon } from "./Icons";
 import { FieldError } from "react-hook-form";
 
 interface FormInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label?: string;
   error?: FieldError;
-  variant?: "default" | "ghost";
+  variant?: "default" | "ghost" | "ghostSearch";
 }
 
 export const FormInput = forwardRef<HTMLInputElement, FormInputProps>(
@@ -36,6 +37,16 @@ export const FormInput = forwardRef<HTMLInputElement, FormInputProps>(
         [--input-current-color:var(--color-slate-900)] 
         dark:[--input-current-color:white]
         ${error ? "border-red-500 focus:border-red-500" : ""}
+      `,
+      ghostSearch: `
+        bg-transparent border-b-2 border-slate-200 dark:border-slate-800
+        focus:border-sky-500 dark:focus:border-sky-500
+        px-1 py-2 pr-8 text-xl font-bold
+        text-slate-900 dark:text-white
+        placeholder-slate-300 dark:placeholder-slate-700
+        [--input-current-color:var(--color-slate-900)] 
+        dark:[--input-current-color:white]
+        ${error ? "border-red-500 focus:border-red-500" : ""}
       `
     };
 
@@ -49,17 +60,24 @@ export const FormInput = forwardRef<HTMLInputElement, FormInputProps>(
             {label}
           </label>
         )}
-        <input
-          ref={ref}
-          id={inputId}
-          className={`
-            ${baseInputStyles}
-            ${variants[variant]}
-            ${className}
-          `}
-          {...props}
-          autoComplete="off"
-        />
+        <div className={variant === "ghostSearch" ? "relative" : ""}>
+          <input
+            ref={ref}
+            id={inputId}
+            className={`
+              ${baseInputStyles}
+              ${variants[variant]}
+              ${className}
+            `}
+            {...props}
+            autoComplete="off"
+          />
+          {variant === "ghostSearch" && (
+            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center">
+              <SearchIcon className="w-4 h-4 text-slate-400" />
+            </div>
+          )}
+        </div>
         {error && (
           <p className="text-xs text-red-600 mt-1 font-medium animate-in slide-in-from-top-1 fade-in duration-200">
             {error.message}

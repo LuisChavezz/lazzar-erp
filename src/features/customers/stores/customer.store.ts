@@ -1,8 +1,15 @@
-import { DataTable } from "@/src/components/DataTable";
-import { customerColumns } from "./CustomerColumns";
+import { create } from "zustand";
+import { devtools, persist } from "zustand/middleware";
 import { CustomerItem } from "../interfaces/customer.interface";
 
-const CUSTOMERS_DATA: CustomerItem[] = [
+interface CustomerState {
+  customers: CustomerItem[];
+  setCustomers: (customers: CustomerItem[]) => void;
+  addCustomer: (customer: CustomerItem) => void;
+  updateCustomer: (customer: CustomerItem) => void;
+}
+
+const initialCustomers: CustomerItem[] = [
   {
     razonSocial: "Grupo Comercial Alfa",
     contacto: "María González",
@@ -96,79 +103,29 @@ const CUSTOMERS_DATA: CustomerItem[] = [
       referenciasEnvio: "Acceso por Puerta Norte",
     },
   },
-  {
-    razonSocial: "Servicios Nova",
-    contacto: "Andrea Soto",
-    telefono: "+52 55 2788 4411",
-    correo: "andrea.soto@nova.com",
-    ultimaCompra: "24 Feb 2026",
-    ultimoPedido: "PED-2412",
-    vendedor: "Andrea Soto",
-    orderProfile: {
-      clienteNombre: "Andrea Soto",
-      razonSocial: "Servicios Nova",
-      rfc: "SNO930303DD4",
-      regimenFiscal: "601",
-      direccionFiscal: "Av. Insurgentes 550",
-      coloniaFiscal: "Roma Norte",
-      codigoPostalFiscal: "06700",
-      ciudadFiscal: "Ciudad de México",
-      estadoFiscal: "CDMX",
-      giroEmpresa: "Servicios corporativos",
-      destinatario: "Oficinas Nova",
-      empresaEnvio: "Servicios Nova",
-      telefonoEnvio: "+52 55 2788 4411",
-      celularEnvio: "+52 55 9910 1122",
-      direccionEnvio: "Av. Insurgentes 550, Piso 3",
-      coloniaEnvio: "Roma Norte",
-      codigoPostalEnvio: "06700",
-      ciudadEnvio: "Ciudad de México",
-      estadoEnvio: "CDMX",
-      referenciasEnvio: "Recepción principal",
-    },
-  },
-  {
-    razonSocial: "Tecnología Andina",
-    contacto: "Luis Herrera",
-    telefono: "+52 442 901 2200",
-    correo: "luis.herrera@andina.mx",
-    ultimaCompra: "29 Ene 2026",
-    ultimoPedido: "PED-2378",
-    vendedor: "Carlos Rivas",
-    orderProfile: {
-      clienteNombre: "Luis Herrera",
-      razonSocial: "Tecnología Andina",
-      rfc: "TAN880808EE5",
-      regimenFiscal: "603",
-      direccionFiscal: "Av. Universidad 230",
-      coloniaFiscal: "Centro Sur",
-      codigoPostalFiscal: "76090",
-      ciudadFiscal: "Querétaro",
-      estadoFiscal: "Querétaro",
-      giroEmpresa: "Tecnología",
-      destinatario: "Recepción Andina",
-      empresaEnvio: "Tecnología Andina",
-      telefonoEnvio: "+52 442 901 2200",
-      celularEnvio: "+52 442 445 2200",
-      direccionEnvio: "Av. Universidad 230, Piso 2",
-      coloniaEnvio: "Centro Sur",
-      codigoPostalEnvio: "76090",
-      ciudadEnvio: "Querétaro",
-      estadoEnvio: "Querétaro",
-      referenciasEnvio: "Acceso por estacionamiento",
-    },
-  },
 ];
 
-export const CustomerList = () => {
-  return (
-    <div className="mt-12">
-      <DataTable
-        columns={customerColumns}
-        data={CUSTOMERS_DATA}
-        title="Clientes"
-        searchPlaceholder="Buscar por razón social, contacto o vendedor..."
-      />
-    </div>
-  );
-};
+export const useCustomerStore = create<CustomerState>()(
+  devtools(
+    persist(
+      (set) => ({
+        customers: initialCustomers,
+        setCustomers: (customers) => set({ customers }),
+        addCustomer: (customer) =>
+          set((state) => ({ customers: [customer, ...state.customers] })),
+        updateCustomer: (customer) =>
+          set((state) => ({
+            customers: state.customers.map((item) =>
+              item.razonSocial === customer.razonSocial ? customer : item
+            ),
+          })),
+      }),
+      {
+        name: "customer-store",
+      }
+    ),
+    {
+      name: "customer-store",
+    }
+  )
+);

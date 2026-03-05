@@ -74,15 +74,6 @@ export const orderColumns: ColumnDef<Order>[] = [
     ),
   },
   {
-    accessorKey: "fechaVence",
-    header: "Fecha Vence",
-    cell: ({ row }) => (
-      <span className="text-slate-500 dark:text-slate-400">
-        {row.getValue("fechaVence")}
-      </span>
-    ),
-  },
-  {
     id: "piezas",
     header: "Piezas",
     cell: ({ row }) => {
