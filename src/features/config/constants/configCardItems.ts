@@ -22,7 +22,8 @@ import {
   SatProdServIcon,
   SatUnitCodesIcon,
   ProductIcon,
-  ProductVariantsIcon
+  ProductVariantsIcon,
+  FolioIcon
 } from "@/src/components/Icons";
 import { getSatInfo } from "../../sat/services/actions";
 import { getTaxes } from "../../taxes/services/actions";
@@ -31,6 +32,7 @@ import { getSatProdservCodes } from "../../sat-prodserv-codes/services/actions";
 import { getSatUnitCodes } from "../../sat-unit-codes/services/actions";
 import { getProducts } from "../../products/services/actions";
 import { getProductVariants } from "../../product-variants/services/actions";
+import { getSerieFolios } from "../../series-folios/services/actions";
 
 
 interface ConfigCardItem {
@@ -149,6 +151,16 @@ export const configCards: ConfigCardItem[] = [
     adminOnly: true,
     prefetchKey: ["currencies"],
     prefetchFn: getCurrencies,
+  },
+  {
+    title: "Series y Folios",
+    description: "Configuración de folios por documento",
+    icon: FolioIcon,
+    view: "series-folios",
+    group: "Información Fiscal",
+    adminOnly: true,
+    prefetchKey: ["series-folios"],
+    prefetchFn: getSerieFolios,
   },
   {
     title: "Usuarios",

@@ -20,6 +20,9 @@ const BranchList = dynamic(() => import("@/src/features/branches/components/Bran
 const CurrencyList = dynamic(() => import("@/src/features/currency/components/CurrencyList"), {
   loading: () => <LoadingSkeleton />,
 });
+const SerieFolioList = dynamic(() => import("@/src/features/series-folios/components/SerieFolioList"), {
+  loading: () => <LoadingSkeleton />,
+});
 const RoleList = dynamic(() => import("@/src/features/roles/components/RoleList"), {
   loading: () => <LoadingSkeleton />,
 });
@@ -139,6 +142,13 @@ export function ConfigDetailView({ selectedView, onBack }: ConfigDetailViewProps
         <div className="flex flex-col gap-6">
           {renderBackButton()}
           <CurrencyList />
+        </div>
+      )}
+
+      {selectedView === "series-folios" && (
+        <div className="flex flex-col gap-6">
+          {renderBackButton()}
+          <SerieFolioList />
         </div>
       )}
 
