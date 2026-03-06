@@ -21,6 +21,8 @@ import {
   CheckCircleIcon,
   ChevronUpIcon,
   ChevronDownIcon,
+  ArrowLeftIcon,
+  ChevronRightIcon,
 } from "./Icons";
 
 export type DataTableVisibleColumn<TData> = {
@@ -138,6 +140,41 @@ export function DataTable<TData, TValue>({
   const visibleRows = table.getRowModel().rows;
   const visibleColumns = table.getVisibleLeafColumns();
   const hasBaseData = baseDataCount !== undefined ? baseDataCount > 0 : data.length > 0;
+  const totalRows = table.getFilteredRowModel().rows.length;
+  const startRow = totalRows === 0 ? 0 : pagination.pageIndex * pagination.pageSize + 1;
+  const endRow = totalRows === 0 ? 0 : Math.min(totalRows, (pagination.pageIndex + 1) * pagination.pageSize);
+  const pageCount = table.getPageCount();
+  const currentPage = pagination.pageIndex + 1;
+
+  const getPaginationItems = (current: number, total: number) => {
+    const items: Array<number | "ellipsis"> = [];
+    if (total <= 7) {
+      for (let i = 1; i <= total; i += 1) {
+        items.push(i);
+      }
+      return items;
+    }
+
+    const start = Math.max(2, current - 1);
+    const end = Math.min(total - 1, current + 1);
+
+    items.push(1);
+
+    if (start > 2) {
+      items.push("ellipsis");
+    }
+
+    for (let i = start; i <= end; i += 1) {
+      items.push(i);
+    }
+
+    if (end < total - 1) {
+      items.push("ellipsis");
+    }
+
+    items.push(total);
+    return items;
+  };
 
   // Update visible rows when state changes
   useEffect(() => {
@@ -306,8 +343,9 @@ export function DataTable<TData, TValue>({
       </div>
 
       {visibleRows.length > 0 ? (
-        <div className="w-full overflow-x-auto rounded-4xl border border-slate-200 dark:border-white/20 shadow-sm">
-          <table className="w-full text-left border-collapse bg-white dark:bg-black table-fixed">
+        <div className="w-full overflow-x-auto rounded-2xl border border-slate-200 dark:border-white/20 shadow-sm">
+          <div className="h-90 overflow-y-auto">
+            <table className="w-full text-left border-collapse bg-white dark:bg-black table-fixed">
             <thead>
               {table.getHeaderGroups().map((headerGroup) => (
                 <tr
@@ -345,7 +383,7 @@ export function DataTable<TData, TValue>({
                           moveColumn(draggedId, header.column.id);
                         }
                       }}
-                      className={`px-6 py-4 font-semibold transition-colors relative group/th ${
+                      className={`px-6 py-4 font-semibold transition-colors group/th sticky top-0 z-10 bg-slate-50 dark:bg-zinc-900 ${
                         header.column.getCanSort()
                           ? "cursor-pointer select-none hover:text-slate-700 dark:hover:text-slate-300"
                           : ""
@@ -401,25 +439,26 @@ export function DataTable<TData, TValue>({
                 </tr>
               ))}
             </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-sm">
-              {visibleRows.map((row) => (
-                <tr
-                  key={row.id}
-                  className="hover:bg-slate-50/50 dark:hover:bg-white/5 transition-colors"
-                >
-                  {row.getVisibleCells().map((cell) => (
-                    <td 
-                      key={cell.id} 
-                      className="px-6 py-4"
-                      style={{ width: cell.column.getSize() }}
-                    >
-                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                    </td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-sm">
+                {visibleRows.map((row) => (
+                  <tr
+                    key={row.id}
+                    className="hover:bg-slate-50/50 dark:hover:bg-white/5 transition-colors"
+                  >
+                    {row.getVisibleCells().map((cell) => (
+                      <td 
+                        key={cell.id} 
+                        className="px-6 py-4"
+                        style={{ width: cell.column.getSize() }}
+                      >
+                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       ) : null}
 
@@ -442,7 +481,7 @@ export function DataTable<TData, TValue>({
       {hasBaseData && (
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6">
           <div className="text-sm text-slate-500 dark:text-slate-400">
-            Mostrando {visibleRows.length} de {table.getFilteredRowModel().rows.length}
+            Mostrando {startRow}-{endRow} de {totalRows}
           </div>
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
@@ -468,25 +507,49 @@ export function DataTable<TData, TValue>({
                 type="button"
                 onClick={() => table.previousPage()}
                 disabled={!table.getCanPreviousPage()}
-                className={`px-4 py-2 rounded-xl text-sm font-semibold border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 text-slate-700 dark:text-slate-200 transition-colors ${
+                className={`p-2 rounded-xl text-sm font-semibold border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 text-slate-700 dark:text-slate-200 transition-colors ${
                   table.getCanPreviousPage()
                     ? "hover:bg-slate-50 dark:hover:bg-white/10 cursor-pointer"
                     : "opacity-50 cursor-not-allowed"
                 }`}
+                aria-label="Página anterior"
               >
-                Anterior
+                <ArrowLeftIcon className="w-4 h-4" />
               </button>
+              <div className="flex items-center gap-2">
+                {getPaginationItems(currentPage, pageCount).map((item, index) =>
+                  item === "ellipsis" ? (
+                    <span key={`ellipsis-${index}`} className="px-2 text-slate-400">
+                      ...
+                    </span>
+                  ) : (
+                    <button
+                      key={item}
+                      type="button"
+                      onClick={() => table.setPageIndex(item - 1)}
+                      className={`h-9 w-9 rounded-xl text-sm font-semibold border transition-colors cursor-pointer ${
+                        item === currentPage
+                          ? "bg-sky-600 text-white border-sky-600"
+                          : "border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-white/10"
+                      }`}
+                    >
+                      {item}
+                    </button>
+                  )
+                )}
+              </div>
               <button
                 type="button"
                 onClick={() => table.nextPage()}
                 disabled={!table.getCanNextPage()}
-                className={`px-4 py-2 rounded-xl text-sm font-semibold border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 text-slate-700 dark:text-slate-200 transition-colors ${
+                className={`p-2 rounded-xl text-sm font-semibold border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 text-slate-700 dark:text-slate-200 transition-colors ${
                   table.getCanNextPage()
                     ? "hover:bg-slate-50 dark:hover:bg-white/10 cursor-pointer"
                     : "opacity-50 cursor-not-allowed"
                 }`}
+                aria-label="Página siguiente"
               >
-                Siguiente
+                <ChevronRightIcon className="w-4 h-4" />
               </button>
             </div>
           </div>
