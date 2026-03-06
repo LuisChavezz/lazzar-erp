@@ -66,7 +66,8 @@ export function ConfigContent() {
                     <TiltCard
                       key={group.group}
                       onClick={() => handleGroupClick(group.group)}
-                      className="cursor-pointer rounded-2xl bg-white dark:bg-black border border-slate-200 dark:border-white/10 shadow-sm dark:shadow-none p-6 sm:p-8 h-full group"
+                      shadowColorClassName={group.accentShadowClass}
+                      className="cursor-pointer rounded-2xl bg-white dark:bg-black border border-slate-200 dark:border-white/10 p-6 sm:p-8 h-full group"
                     >
                       <div className="flex flex-col h-full">
                         <div

@@ -2,6 +2,8 @@ export type ProductionOrderStatus =
   | "Pendiente"
   | "En proceso"
   | "En revisión"
+  | "Demorado"
+  | "Acción requerida"
   | "Completado";
 
 export interface ProductionOrderItem {

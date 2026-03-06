@@ -13,6 +13,8 @@ const EmbroideryStatusBadge = ({
     Pendiente: "bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400",
     "En proceso": "bg-sky-50 text-sky-600 dark:bg-sky-500/10 dark:text-sky-400",
     "En revisión": "bg-violet-50 text-violet-600 dark:bg-violet-500/10 dark:text-violet-400",
+    Demorado: "bg-rose-50 text-rose-600 dark:bg-rose-500/10 dark:text-rose-400",
+    "Acción requerida": "bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400",
     Completado: "bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400",
   };
 
