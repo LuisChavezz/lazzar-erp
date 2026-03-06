@@ -2,6 +2,8 @@ export type EmbroideryOrderStatus =
   | "Pendiente"
   | "En proceso"
   | "En revisión"
+  | "Demorado"
+  | "Acción requerida"
   | "Completado";
 
 export interface EmbroideryOrderItem {

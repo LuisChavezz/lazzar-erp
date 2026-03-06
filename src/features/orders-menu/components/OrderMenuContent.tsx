@@ -16,6 +16,11 @@ export function OrderMenuContent() {
     setTimeout(() => setIsGridVisible(false), 500);
   };
 
+  const handleNavigate = (view: string) => {
+    setSelectedView(view);
+    setIsGridVisible(false);
+  };
+
   const handleBack = () => {
     setIsGridVisible(true);
     requestAnimationFrame(() => {
@@ -26,10 +31,10 @@ export function OrderMenuContent() {
   const normalizedQuery = searchTerm.trim().toLowerCase();
   const filteredCards = normalizedQuery
     ? orderMenuCards.filter((card) => {
-        const titleMatch = card.title.toLowerCase().includes(normalizedQuery);
-        const descriptionMatch = card.description?.toLowerCase().includes(normalizedQuery);
-        return titleMatch || descriptionMatch;
-      })
+      const titleMatch = card.title.toLowerCase().includes(normalizedQuery);
+      const descriptionMatch = card.description?.toLowerCase().includes(normalizedQuery);
+      return titleMatch || descriptionMatch;
+    })
     : orderMenuCards;
 
   return (
@@ -69,20 +74,29 @@ export function OrderMenuContent() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredCards.map((card) => (
-            <OrderMenuCard
-              key={card.view}
-              title={card.title}
-              description={card.description}
-              icon={card.icon}
-              onClick={() => handleCardClick(card.view)}
-            />
-          ))}
+        <div className="w-full transition-all duration-500 ease-in-out">
+          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6 max-w-7xl mx-auto">
+            {filteredCards.map((card) => (
+              <OrderMenuCard
+                key={card.view}
+                title={card.title}
+                description={card.description}
+                icon={card.icon}
+                onClick={() => handleCardClick(card.view)}
+                accentClass={card.accentClass}
+                accentBgClass={card.accentBgClass}
+                accentShadowClass={card.accentShadowClass}
+              />
+            ))}
+          </div>
         </div>
       </div>
 
-      <OrderMenuDetailView selectedView={selectedView} onBack={handleBack} />
+      <OrderMenuDetailView
+        selectedView={selectedView}
+        onBack={handleBack}
+        onNavigate={handleNavigate}
+      />
     </div>
   );
 }

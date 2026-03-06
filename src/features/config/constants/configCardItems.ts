@@ -53,6 +53,7 @@ interface ConfigGroupItem {
   icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
   accentClass: string;
   accentBgClass: string;
+  accentShadowClass: string;
   actionLabel: string;
 }
 
@@ -64,6 +65,7 @@ export const configGroups: ConfigGroupItem[] = [
     icon: BuildingIcon,
     accentClass: "text-sky-600 dark:text-sky-400",
     accentBgClass: "bg-sky-50 dark:bg-sky-500/10",
+    accentShadowClass: "hover:shadow-sky-500/25 dark:hover:shadow-sky-500/25",
     actionLabel: "Ver estructura",
   },
   {
@@ -73,6 +75,7 @@ export const configGroups: ConfigGroupItem[] = [
     icon: CapitalHumanoIcon,
     accentClass: "text-rose-600 dark:text-rose-400",
     accentBgClass: "bg-rose-50 dark:bg-rose-500/10",
+    accentShadowClass: "hover:shadow-rose-500/25 dark:hover:shadow-rose-500/25",
     actionLabel: "Gestionar usuarios",
   },
   {
@@ -82,6 +85,7 @@ export const configGroups: ConfigGroupItem[] = [
     icon: InfoIcon,
     accentClass: "text-amber-600 dark:text-amber-400",
     accentBgClass: "bg-amber-50 dark:bg-amber-500/10",
+    accentShadowClass: "hover:shadow-amber-500/25 dark:hover:shadow-amber-500/25",
     actionLabel: "Configurar fiscal",
   },
   {
@@ -89,8 +93,9 @@ export const configGroups: ConfigGroupItem[] = [
     title: "Catálogo de Productos",
     description: "Categorías, tipos, colores, tallas y unidades.",
     icon: ProductCategoriesIcon,
-    accentClass: "text-blue-600 dark:text-blue-400",
-    accentBgClass: "bg-blue-50 dark:bg-blue-500/10",
+    accentClass: "text-blue-600 dark:text-indigo-400",
+    accentBgClass: "bg-blue-50 dark:bg-indigo-500/10",
+    accentShadowClass: "hover:shadow-indigo-500/25 dark:hover:shadow-indigo-500/25",
     actionLabel: "Ver catálogo",
   },
   {
@@ -100,6 +105,7 @@ export const configGroups: ConfigGroupItem[] = [
     icon: SatProdServIcon,
     accentClass: "text-emerald-600 dark:text-emerald-400",
     accentBgClass: "bg-emerald-50 dark:bg-emerald-500/10",
+    accentShadowClass: "hover:shadow-emerald-500/25 dark:hover:shadow-emerald-500/25",
     actionLabel: "Ver claves SAT",
   },
   {
@@ -109,6 +115,7 @@ export const configGroups: ConfigGroupItem[] = [
     icon: ProductIcon,
     accentClass: "text-violet-600 dark:text-violet-400",
     accentBgClass: "bg-violet-50 dark:bg-violet-500/10",
+    accentShadowClass: "hover:shadow-violet-500/25 dark:hover:shadow-violet-500/25",
     actionLabel: "Gestionar productos",
   },
 ];

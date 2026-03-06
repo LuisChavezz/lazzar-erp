@@ -14,7 +14,10 @@ export const HomedGrid = () => {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6 max-w-7xl mx-auto py-12">
       {/* Panel de Control (Core) */}
-      <TiltCard className="cursor-pointer rounded-2xl bg-white dark:bg-black border border-slate-200 dark:border-white/10 shadow-sm hover:shadow-xl dark:hover:shadow-sky-500/25 p-8 h-full group">
+      <TiltCard
+        shadowColorClassName="dark:hover:shadow-sky-500/25"
+        className="cursor-pointer rounded-2xl bg-white dark:bg-black border border-slate-200 dark:border-white/10 p-8 h-full group"
+      >
         <div className="flex flex-col h-full">
           <div className="mb-6 w-14 h-14 rounded-full bg-sky-50 dark:bg-sky-500/10 flex items-center justify-center text-sky-600 dark:text-sky-400">
             <DashboardIcon className="w-7 h-7" />
@@ -35,7 +38,10 @@ export const HomedGrid = () => {
       </TiltCard>
 
       {/* CRM y Ventas */}
-      <TiltCard className="cursor-pointer rounded-2xl bg-white dark:bg-black border border-slate-200 dark:border-white/10 shadow-sm hover:shadow-xl dark:hover:shadow-rose-500/25 p-8 h-full group">
+      <TiltCard
+        shadowColorClassName="dark:hover:shadow-rose-500/25"
+        className="cursor-pointer rounded-2xl bg-white dark:bg-black border border-slate-200 dark:border-white/10 p-8 h-full group"
+      >
         <div className="flex flex-col h-full">
           <div className="mb-6 w-14 h-14 rounded-full bg-rose-50 dark:bg-rose-500/10 flex items-center justify-center text-rose-600 dark:text-rose-400">
             <ClientesIcon className="w-7 h-7" />
@@ -57,7 +63,10 @@ export const HomedGrid = () => {
       </TiltCard>
 
       {/* Operaciones de Almacén (WMS) */}
-      <TiltCard className="cursor-pointer rounded-2xl bg-white dark:bg-black border border-slate-200 dark:border-white/10 shadow-sm hover:shadow-xl dark:shadow-none dark:hover:shadow-emerald-500/25 transition-all duration-300 p-8 h-full group">
+      <TiltCard
+        shadowColorClassName="dark:hover:shadow-emerald-500/25"
+        className="cursor-pointer rounded-2xl bg-white dark:bg-black border border-slate-200 dark:border-white/10 transition-all duration-300 p-8 h-full group"
+      >
         <div className="flex flex-col h-full">
           <div className="mb-6 w-14 h-14 rounded-full bg-emerald-50 dark:bg-emerald-500/10 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
             <InventariosIcon className="w-7 h-7" />
@@ -79,7 +88,10 @@ export const HomedGrid = () => {
       </TiltCard>
 
       {/* Compras y SCM */}
-      <TiltCard className="cursor-pointer rounded-2xl bg-white dark:bg-black border border-slate-200 dark:border-white/10 shadow-sm hover:shadow-xl dark:shadow-none dark:hover:shadow-amber-500/25 p-8 h-full group">
+      <TiltCard
+        shadowColorClassName="dark:hover:shadow-amber-500/25"
+        className="cursor-pointer rounded-2xl bg-white dark:bg-black border border-slate-200 dark:border-white/10 p-8 h-full group"
+      >
         <div className="flex flex-col h-full">
           <div className="mb-6 w-14 h-14 rounded-full bg-amber-50 dark:bg-amber-500/10 flex items-center justify-center text-amber-600 dark:text-amber-400">
             <ComprasIcon className="w-7 h-7" />
@@ -101,7 +113,10 @@ export const HomedGrid = () => {
       </TiltCard>
 
       {/* Manufactura */}
-      <TiltCard className="cursor-pointer rounded-2xl bg-white dark:bg-black border border-slate-200 dark:border-white/10 shadow-sm hover:shadow-xl dark:shadow-none dark:hover:shadow-sky-500/25 p-8 h-full group">
+      <TiltCard
+        shadowColorClassName="dark:hover:shadow-sky-500/25"
+        className="cursor-pointer rounded-2xl bg-white dark:bg-black border border-slate-200 dark:border-white/10 p-8 h-full group"
+      >
         <div className="flex flex-col h-full">
           <div className="mb-6 w-14 h-14 rounded-full bg-sky-50 dark:bg-sky-500/10 flex items-center justify-center text-sky-600 dark:text-sky-400">
             <SettingsIcon className="w-7 h-7" />
@@ -122,7 +137,10 @@ export const HomedGrid = () => {
       </TiltCard>
 
       {/* Finanzas y Contabilidad */}
-      <TiltCard className="cursor-pointer rounded-2xl bg-white dark:bg-black border border-slate-200 dark:border-white/10 shadow-sm hover:shadow-xl dark:shadow-none dark:hover:shadow-emerald-400/25 p-8 h-full group">
+      <TiltCard
+        shadowColorClassName="dark:hover:shadow-emerald-400/25"
+        className="cursor-pointer rounded-2xl bg-white dark:bg-black border border-slate-200 dark:border-white/10 p-8 h-full group"
+      >
         <div className="flex flex-col h-full">
           <div className="mb-6 w-14 h-14 rounded-full bg-emerald-50 dark:bg-emerald-500/10 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
             <ListaPreciosIcon className="w-7 h-7" />
@@ -143,7 +161,10 @@ export const HomedGrid = () => {
       </TiltCard>
 
       {/* Capital Humano (HR) */}
-      <TiltCard className="cursor-pointer rounded-2xl bg-white dark:bg-black border border-slate-200 dark:border-white/10 shadow-sm hover:shadow-xl dark:shadow-none dark:hover:shadow-cyan-400/25 p-8 h-full group">
+      <TiltCard
+        shadowColorClassName="dark:hover:shadow-cyan-400/25"
+        className="cursor-pointer rounded-2xl bg-white dark:bg-black border border-slate-200 dark:border-white/10 p-8 h-full group"
+      >
         <div className="flex flex-col h-full">
           <div className="mb-6 w-14 h-14 rounded-full bg-cyan-50 dark:bg-cyan-500/10 flex items-center justify-center text-cyan-600 dark:text-cyan-400">
             <CapitalHumanoIcon className="w-7 h-7" />
@@ -165,7 +186,10 @@ export const HomedGrid = () => {
       </TiltCard>
 
       {/* Otros Módulos */}
-      <TiltCard className="cursor-pointer rounded-2xl bg-white dark:bg-black border border-slate-200 dark:border-white/10 shadow-sm hover:shadow-xl dark:shadow-none dark:hover:shadow-fuchsia-400/25 p-8 h-full group">
+      <TiltCard
+        shadowColorClassName="dark:hover:shadow-fuchsia-400/25"
+        className="cursor-pointer rounded-2xl bg-white dark:bg-black border border-slate-200 dark:border-white/10 p-8 h-full group"
+      >
         <div className="flex flex-col h-full">
           <div className="mb-6 w-14 h-14 rounded-full bg-fuchsia-50 dark:bg-fuchsia-500/10 flex items-center justify-center text-fuchsia-600 dark:text-fuchsia-400">
             <DashboardIcon className="w-7 h-7" />

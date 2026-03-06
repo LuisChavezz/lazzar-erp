@@ -6,14 +6,18 @@ interface TiltCardProps {
   children: React.ReactNode;
   className?: string;
   onClick?: () => void;
+  onMouseEnter?: () => void;
   href?: string;
+  shadowColorClassName?: string;
 }
 
 export default function TiltCard({
   children,
   className = "",
   onClick,
+  onMouseEnter,
   href,
+  shadowColorClassName,
 }: TiltCardProps) {
   // Referencias para animación sin recalcular en cada render
   const cardRef = useRef<HTMLDivElement & HTMLAnchorElement>(null);
@@ -86,13 +90,17 @@ export default function TiltCard({
   }, []);
 
   const Component = href ? "a" : "div";
+  const shadowClassName = shadowColorClassName
+    ? `shadow-sm hover:shadow-xl dark:shadow-none ${shadowColorClassName}`
+    : "";
 
   return (
     <Component
       ref={cardRef}
       href={href}
       onClick={onClick}
-      className={`block relative transition-all duration-300 ${className}`}
+      onMouseEnter={onMouseEnter}
+      className={`block relative transition-all duration-300 ${shadowClassName} ${className}`}
       style={{ transformStyle: "preserve-3d", willChange: "transform" }}
     >
       <div className="h-full" style={{ transform: "translateZ(20px)" }}>
