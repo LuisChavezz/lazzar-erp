@@ -23,6 +23,7 @@ import {
   ChevronDownIcon,
   ArrowLeftIcon,
   ChevronRightIcon,
+  FilterIcon,
 } from "./Icons";
 
 export type DataTableVisibleColumn<TData> = {
@@ -268,8 +269,9 @@ export function DataTable<TData, TValue>({
                     type="button"
                     onClick={onFiltersClick}
                     className="px-4 py-2 cursor-pointer bg-white dark:bg-white/5 hover:bg-slate-50 dark:hover:bg-white/10 text-slate-700 dark:text-slate-200 text-sm font-semibold rounded-xl border border-slate-200 dark:border-white/10 shadow-sm transition-all flex items-center gap-2"
+                    aria-label="Filtrar datos"
                   >
-                    <SettingsIcon className="w-4 h-4" />
+                    <FilterIcon className="w-4 h-4" />
                     Filtros
                   </button>
                 )}

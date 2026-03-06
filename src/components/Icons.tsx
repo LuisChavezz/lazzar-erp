@@ -997,3 +997,21 @@ export const FolioIcon = (
     />
   </svg>
 );
+
+export const FilterIcon = (
+  props: React.SVGProps<SVGSVGElement>
+) => (
+  <svg
+    {...props}
+    fill="none"
+    stroke="currentColor"
+    viewBox="0 0 24 24"
+  >
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="2"
+      d="M3 5h18l-7 8v6l-4-2v-4L3 5z"
+    />
+  </svg>
+);

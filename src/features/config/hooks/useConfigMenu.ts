@@ -76,6 +76,7 @@ export function useConfigMenu(user?: PermissionContext | null) {
     handleGroupClick,
     handleGroupBack,
     availableGroups,
+    filteredCards,
     selectedGroupCards,
   };
 }
