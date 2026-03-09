@@ -1,5 +1,6 @@
 "use client";
 
+import { useRef, useState } from "react";
 import { useForm, Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ProductFormSchema, ProductFormValues } from "../schemas/product.schema";
@@ -109,6 +110,7 @@ export default function ProductForm({ onSuccess, productToEdit }: ProductFormPro
     reset,
     watch,
     setError,
+    getValues,
     formState: { errors },
   } = useForm<ProductFormValues>({
     resolver: zodResolver(ProductFormSchema) as Resolver<ProductFormValues>,
@@ -116,6 +118,10 @@ export default function ProductForm({ onSuccess, productToEdit }: ProductFormPro
     values: isEditing ? editValues : undefined,
   });
 
+  const formRef = useRef<HTMLFormElement | null>(null);
+  const [keepCreating, setKeepCreating] = useState(false);
+
+  // eslint-disable-next-line react-hooks/incompatible-library
   const isActive = watch("activo"); // Obtener el valor del campo activo del formulario
   const { mutateAsync: createProduct, isPending: isCreating } = useCreateProduct(setError);
   const { mutateAsync: updateProduct, isPending: isUpdating } = useUpdateProduct(setError);
@@ -131,11 +137,25 @@ export default function ProductForm({ onSuccess, productToEdit }: ProductFormPro
           ...data,
         });
         reset(editValues);
+        onSuccess();
+        return;
       } else { // Registrar un nuevo producto
         await createProduct({
           empresa: selectedCompany.id!,
           ...data,
         });
+        if (keepCreating) {
+          const currentValues = getValues();
+          reset({
+            ...currentValues,
+            nombre: "",
+            descripcion: "",
+          });
+          setTimeout(() => {
+            formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+          }, 0);
+          return;
+        }
         reset(emptyValues);
       }
       onSuccess();
@@ -150,7 +170,7 @@ export default function ProductForm({ onSuccess, productToEdit }: ProductFormPro
   }
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="w-full">
+    <form ref={formRef} onSubmit={handleSubmit(onSubmit)} className="w-full">
       <fieldset disabled={isPending} className="group-disabled:opacity-50">
         <section className="mb-8">
           <div className="bg-slate-50 dark:bg-white/5 rounded-3xl p-8 border border-slate-100 dark:border-white/5">
@@ -348,12 +368,27 @@ export default function ProductForm({ onSuccess, productToEdit }: ProductFormPro
           </div>
         </div>
 
-        <div className="flex justify-end gap-3 pb-8 mt-8">
+        <div className="flex flex-col gap-3 pb-8 mt-8 sm:flex-row sm:items-center sm:justify-end">
+          {!isEditing ? (
+            <label className="inline-flex items-center gap-2 rounded-xl border cursor-pointer border-slate-200 dark:border-white/10 bg-slate-50/60 dark:bg-white/5 px-3 py-2 text-xs font-semibold text-slate-600 dark:text-slate-300">
+              <input
+                type="checkbox"
+                checked={keepCreating}
+                onChange={(event) => setKeepCreating(event.target.checked)}
+                className="h-4 w-4 rounded border-slate-300 focus:ring-sky-500"
+                aria-label="Seguir registrando"
+              />
+              Seguir registrando
+            </label>
+          ) : null}
           <FormCancelButton
             onClick={() => reset(isEditing ? editValues : emptyValues)}
             disabled={isPending}
           />
-          <FormSubmitButton isPending={isPending} loadingLabel={isEditing ? "Actualizando..." : "Guardando..."}>
+          <FormSubmitButton
+            isPending={isPending}
+            loadingLabel={isEditing ? "Actualizando..." : "Guardando..."}
+          >
             {isEditing ? "Actualizar Producto" : "Registrar Producto"}
           </FormSubmitButton>
         </div>

@@ -25,8 +25,8 @@ export const Provider = ({ children, session }: { children: React.ReactNode, ses
         <Theme>
           {children}
           <ReactQueryDevtools initialIsOpen={ false } />
-          <Toaster position="top-right" />
         </Theme>
+        <Toaster position="top-right" />
       </QueryClientProvider>
     </SessionProvider>
   )
