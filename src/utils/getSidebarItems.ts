@@ -1,10 +1,13 @@
-import { sidebarItems } from "../constants/sidebarItems";
+import { getSidebarSectionsByPath } from "../constants/sidebarItems";
 import { PermissionContext } from "../interfaces/permission-context.interface";
 import { hasPermission } from "./permissions";
 
 
-export const getSidebarItems = (context?: PermissionContext | null) =>
-  sidebarItems
+export const getSidebarItems = (
+  context?: PermissionContext | null,
+  pathname: string = "/"
+) =>
+  getSidebarSectionsByPath(pathname)
     .map((section) => ({
       ...section,
       items: section.items.filter((item) =>

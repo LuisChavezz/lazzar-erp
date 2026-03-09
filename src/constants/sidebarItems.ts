@@ -1,23 +1,6 @@
-import React from "react";
-import {
-  BancosIcon,
-  ClientesIcon,
-  ContabilidadIcon,
-  CxcIcon,
-  CxpIcon,
-  DashboardIcon,
-  EmbarquesIcon,
-  ExistenciasIcon,
-  FacturacionIcon,
-  InventariosIcon,
-  ListaPreciosIcon,
-  OrdenesIcon,
-  PedidosIcon,
-  ProduccionIcon,
-  RastrearGuiasIcon,
-  RecepcionesIcon,
-  ReportesIcon,
-} from "../components/Icons";
+import type React from "react";
+import { HomeIcon } from "../components/Icons";
+import { appRouteGroups } from "./appRoutes";
 
 export interface SidebarItem {
   label: string;
@@ -31,127 +14,76 @@ export interface SidebarSection {
   items: SidebarItem[];
 }
 
-export const sidebarItems: SidebarSection[] = [
+const homeItem: SidebarItem = {
+  label: "Inicio",
+  href: "/",
+  icon: HomeIcon,
+};
+
+const getActiveGroup = (pathname: string) =>
+  appRouteGroups.find(
+    (group) =>
+      pathname === group.modulePath || pathname.startsWith(`${group.modulePath}/`)
+  );
+
+export const getSidebarItemsByPath = (pathname: string): SidebarItem[] => {
+  const normalizedPath = pathname || "/";
+  const isHome = normalizedPath === "/";
+  const isConfig = normalizedPath === "/config" || normalizedPath.startsWith("/config/");
+
+  if (isHome || isConfig) {
+    return [
+      homeItem,
+      ...appRouteGroups
+        .filter((group) => group.showInHome !== false)
+        .map((group) => ({
+          label: group.moduleLabel,
+          href: group.modulePath,
+          icon: group.moduleIcon,
+        })),
+    ];
+  }
+
+  const activeGroup = getActiveGroup(normalizedPath);
+  if (!activeGroup) {
+    return [
+      homeItem,
+      ...appRouteGroups
+        .filter((group) => group.showInHome !== false)
+        .map((group) => ({
+          label: group.moduleLabel,
+          href: group.modulePath,
+          icon: group.moduleIcon,
+        })),
+    ];
+  }
+
+  const moduleItems = activeGroup.items
+    .filter((item) => item.showInSidebar !== false)
+    .map((item) => ({
+      label: item.label,
+      href: item.path,
+      icon: item.icon,
+      permission: item.permission,
+    }));
+
+  if (moduleItems.length === 0) {
+    return [
+      homeItem,
+      {
+        label: activeGroup.moduleLabel,
+        href: activeGroup.modulePath,
+        icon: activeGroup.moduleIcon,
+      },
+    ];
+  }
+
+  return [homeItem, ...moduleItems];
+};
+
+export const getSidebarSectionsByPath = (pathname: string): SidebarSection[] => [
   {
-    title: "Principal",
-    items: [
-      {
-        label: "Dashboard",
-        href: "/dashboard",
-        icon: DashboardIcon,
-      },
-    ],
-  },
-  {
-    title: "Operación",
-    items: [
-      {
-        label: "Pedidos",
-        href: "/orders",
-        icon: PedidosIcon,
-        permission: "R-PEDID",
-      },
-      {
-        label: "Producción",
-        href: "/production",
-        icon: ProduccionIcon,
-        permission: "R-PROD",
-      },
-      {
-        label: "Inventarios",
-        href: "/inventories",
-        icon: InventariosIcon,
-        permission: "R-INVE",
-      },
-      {
-        label: "Órdenes",
-        href: "/orders-menu",
-        icon: OrdenesIcon,
-        permission: "R-ORDE",
-      },
-      {
-        label: "Recepciones",
-        href: "/receipts",
-        icon: RecepcionesIcon,
-        permission: "R-RECE",
-      },
-    ],
-  },
-  {
-    title: "Finanzas",
-    items: [
-      {
-        label: "Facturación",
-        href: "/invoicing",
-        icon: FacturacionIcon,
-        permission: "R-FACT",
-      },
-      {
-        label: "CxP (Pagar)",
-        href: "/accounts-payable",
-        icon: CxpIcon,
-        permission: "R-CUXP",
-      },
-      {
-        label: "CxC (Cobrar)",
-        href: "/accounts-receivable",
-        icon: CxcIcon,
-        permission: "R-CUXC",
-      },
-      {
-        label: "Bancos",
-        href: "/bank-accounts",
-        icon: BancosIcon,
-        permission: "R-BANC",
-      },
-      {
-        label: "Contabilidad",
-        href: "/accounting",
-        icon: ContabilidadIcon,
-        permission: "R-CONT",
-      },
-    ],
-  },
-  {
-    title: "Reportes",
-    items: [
-      {
-        label: "Existencias",
-        href: "/stock",
-        icon: ExistenciasIcon,
-        permission: "R-EXIS",
-      },
-      {
-        label: "Lista de Precios",
-        href: "/price-lists",
-        icon: ListaPreciosIcon,
-        permission: "R-PREC",
-      },
-      {
-        label: "Rastrear Guías",
-        href: "/shipment-tracking",
-        icon: RastrearGuiasIcon,
-        permission: "R-GUIA",
-      },
-      {
-        label: "Clientes",
-        href: "/customers",
-        icon: ClientesIcon,
-        permission: "R-CLIE",
-      },
-      {
-        label: "Embarques",
-        href: "/shipments",
-        icon: EmbarquesIcon,
-        permission: "R-EMBA",
-      },
-      {
-        label: "Reportes",
-        href: "/reports",
-        icon: ReportesIcon,
-        permission: "R-REPO",
-      },
-    ],
+    items: getSidebarItemsByPath(pathname),
   },
 ];
 

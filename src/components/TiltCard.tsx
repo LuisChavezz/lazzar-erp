@@ -1,9 +1,15 @@
 "use client";
 
 import { useRef, useEffect } from "react";
+import { ChevronRightIcon } from "./Icons";
 
 interface TiltCardProps {
-  children: React.ReactNode;
+  title: string;
+  description?: string;
+  footerText?: string;
+  icon: React.ComponentType<{ className?: string }>;
+  accentClass: string;
+  accentBgClass: string;
   className?: string;
   onClick?: () => void;
   onMouseEnter?: () => void;
@@ -12,7 +18,12 @@ interface TiltCardProps {
 }
 
 export default function TiltCard({
-  children,
+  title,
+  description,
+  footerText,
+  icon: Icon,
+  accentClass,
+  accentBgClass,
   className = "",
   onClick,
   onMouseEnter,
@@ -100,11 +111,31 @@ export default function TiltCard({
       href={href}
       onClick={onClick}
       onMouseEnter={onMouseEnter}
-      className={`block relative transition-all duration-300 ${shadowClassName} ${className}`}
+      className={`block relative transition-all duration-300 group ${shadowClassName} ${className}`}
       style={{ transformStyle: "preserve-3d", willChange: "transform" }}
     >
-      <div className="h-full" style={{ transform: "translateZ(20px)" }}>
-        {children}
+      <div className="h-full flex flex-col" style={{ transform: "translateZ(20px)" }}>
+        <div className={`mb-6 w-14 h-14 rounded-full ${accentBgClass} flex items-center justify-center ${accentClass}`}>
+          <Icon className="w-7 h-7" />
+        </div>
+        <div>
+          <h3 className="text-xl font-medium text-slate-800 dark:text-slate-100 mb-2 font-display">
+            {title}
+          </h3>
+          {description && (
+            <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
+              {description}
+            </p>
+          )}
+        </div>
+        {footerText && (
+          <div
+            className={`mt-auto pt-8 flex items-center ${accentClass} text-sm font-medium opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-y-2 group-hover:translate-y-0`}
+          >
+            <span>{footerText}</span>
+            <ChevronRightIcon className="w-4 h-4 ml-1 transition-transform group-hover:translate-x-1" />
+          </div>
+        )}
       </div>
     </Component>
   );

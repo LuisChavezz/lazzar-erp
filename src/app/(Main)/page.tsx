@@ -1,15 +1,10 @@
 import { HomedGrid } from "@/src/components/HomeGrid";
-import { redirect } from "next/navigation";
 
 
-export default function Home() {
-
-  // redirect to dashboard
-  redirect("/dashboard");
-
+export default async function HomePage() {
   return (
     <div className="w-full">
-      <section id="homeDashboard" className="animate-in fade-in duration-500">
+      <section id="home" className="animate-in fade-in duration-500">
         <HomedGrid />
       </section>
     </div>

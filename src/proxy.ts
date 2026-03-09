@@ -28,8 +28,8 @@ export default withAuth(
         role: token?.role as string | undefined,
         permissions: token?.permissions as string[] | undefined,
       });
-      if (!canAccess) { // Si el usuario no tiene permisos para acceder a la ruta actual redirigir al dashboard
-        return NextResponse.redirect(new URL("/dashboard", req.url));
+      if (!canAccess) { // Si el usuario no tiene permisos para acceder a la ruta actual redirigir al home
+        return NextResponse.redirect(new URL("/", req.url));
       }
     }
     
@@ -45,25 +45,15 @@ export default withAuth(
 export const config = {
   matcher: [ // Rutas protegidas por autenticación
     "/",
-    "/dashboard/:path*", 
     "/select-branch/:path*",
     "/config/:path*",
-    "/orders/:path*",
-    "/production/:path*",
-    "/inventories/:path*",
-    "/orders-menu/:path*",
-    "/purchase-orders/:path*",
-    "/receipts/:path*",
-    "/invoicing/:path*",
-    "/accounts-payable/:path*",
-    "/accounts-receivable/:path*",
-    "/bank-accounts/:path*",
-    "/accounting/:path*",
-    "/stock/:path*",
-    "/price-lists/:path*",
-    "/shipment-tracking/:path*",
-    "/customers/:path*",
-    "/shipments/:path*",
-    "/reports/:path*",
+    "/system/:path*",
+    "/sales/:path*",
+    "/wms/:path*",
+    "/procurement/:path*",
+    "/manufacturing/:path*",
+    "/finance/:path*",
+    "/hr/:path*",
+    "/other/:path*",
   ],
 };

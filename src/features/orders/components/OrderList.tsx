@@ -96,7 +96,7 @@ export const OrderList = () => {
         actionButton={
           <div className="flex items-center gap-2">
             <Link
-              href="/orders/new"
+              href="/sales/orders/new"
               className="px-4 py-2 cursor-pointer bg-sky-600 hover:bg-sky-700 text-white text-sm font-semibold rounded-full shadow-lg shadow-sky-500/30 transition-all hover:scale-105 active:scale-95 whitespace-nowrap"
             >
               + Nuevo Pedido

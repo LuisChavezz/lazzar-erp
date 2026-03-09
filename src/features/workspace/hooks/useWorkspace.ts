@@ -47,7 +47,7 @@ export const useWorkspace = () => {
 
     // Redirigir a dashboard después de 1 segundo para consistencia visual
     setTimeout(() => {
-      router.push("/dashboard");
+      router.push("/");
     }, 800);
   };
 
@@ -74,7 +74,7 @@ export const useWorkspace = () => {
      // Redirigir a dashboard después de 1 segundo para consistencia visual
      setTimeout(() => {
        router.refresh();
-       router.push("/dashboard");
+       router.push("/");
      }, 800);
   };
 

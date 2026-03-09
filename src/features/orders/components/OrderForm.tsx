@@ -511,7 +511,7 @@ export default function OrderForm({ orderId }: OrderFormProps) {
         setClienteSearchTerm("");
         toast.success("Pedido registrado correctamente");
       }
-      router.replace("/orders");
+      router.replace("/sales/orders");
     } catch {
       toast.error("No se pudo guardar el pedido");
     } finally {

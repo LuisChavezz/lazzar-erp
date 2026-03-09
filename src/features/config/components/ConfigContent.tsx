@@ -5,7 +5,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useSession } from "next-auth/react";
 import { ConfigCard } from "./ConfigCard";
 import { ConfigDetailView } from "./ConfigDetailView";
-import { ArrowLeftIcon, ChevronRightIcon, CloseIcon, SearchIcon } from "@/src/components/Icons";
+import { ArrowLeftIcon, CloseIcon, SearchIcon } from "@/src/components/Icons";
 import TiltCard from "@/src/components/TiltCard";
 import { useConfigMenu } from "../hooks/useConfigMenu";
 
@@ -115,31 +115,15 @@ export function ConfigContent() {
                       <TiltCard
                         key={group.group}
                         onClick={() => handleGroupClick(group.group)}
+                        icon={GroupIcon}
+                        title={group.title}
+                        description={group.description}
+                        footerText={group.actionLabel}
+                        accentClass={group.accentClass}
+                        accentBgClass={group.accentBgClass}
                         shadowColorClassName={group.accentShadowClass}
-                        className="cursor-pointer rounded-2xl bg-white dark:bg-black border border-slate-200 dark:border-white/10 p-6 sm:p-8 h-full group"
-                      >
-                        <div className="flex flex-col h-full">
-                          <div
-                            className={`mb-6 w-14 h-14 rounded-full ${group.accentBgClass} flex items-center justify-center ${group.accentClass}`}
-                          >
-                            <GroupIcon className="w-7 h-7" />
-                          </div>
-                          <div>
-                            <h3 className="text-xl font-medium text-slate-800 dark:text-slate-100 mb-2 font-display">
-                              {group.title}
-                            </h3>
-                            <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
-                              {group.description}
-                            </p>
-                          </div>
-                          <div
-                            className={`mt-auto pt-8 flex items-center ${group.accentClass} text-sm font-medium opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-y-2 group-hover:translate-y-0`}
-                          >
-                            <span>{group.actionLabel}</span>
-                            <ChevronRightIcon className="w-4 h-4 ml-1 transition-transform group-hover:translate-x-1" />
-                          </div>
-                        </div>
-                      </TiltCard>
+                        className="cursor-pointer rounded-2xl bg-white dark:bg-black border border-slate-200 dark:border-white/10 p-6 sm:p-8 h-full"
+                      />
                     );
                   })}
                 </div>

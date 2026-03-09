@@ -65,7 +65,7 @@ La navegación entre secciones se realiza con enlaces estándar (`Link` de Next.
 
 ## 4. Dashboard
 
-Ruta: `/dashboard`
+Ruta: `/`
 
 El Dashboard muestra una visión general del sistema:
 

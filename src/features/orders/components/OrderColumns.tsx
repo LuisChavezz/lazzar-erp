@@ -152,7 +152,7 @@ export const orderColumns: ColumnDef<Order>[] = [
           <ViewIcon className="w-5 h-5" />
         </button>
         <Link
-          href={`/orders/edit/${row.original.id}`}
+          href={`/sales/orders/edit/${row.original.id}`}
           className="p-1 cursor-pointer text-slate-400 hover:text-sky-600 transition-colors"
           title="Editar pedido"
           aria-label="Editar pedido"

@@ -93,7 +93,7 @@ Ruta base del proyecto:
   - Header superior (`Header`) con buscador, notificaciones, workspace y menú de usuario.
   - Área central de contenido (`main`) con scroll vertical.
 - Este layout aplica a páginas como:
-  - `/dashboard`
+  - `/`
   - `/orders` y subrutas (`/orders/new`, `/orders/edit/[id]`)
   - `/orders-menu`
   - `/production`
@@ -152,7 +152,7 @@ Ruta base del proyecto:
 
 - La autenticación y el control de permisos se ejecutan en `src/proxy.ts` usando `withAuth` de NextAuth.
 - `routePermissions.ts` define el permiso mínimo por prefijo de ruta (`/orders`, `/config`, etc.).
-- Si no hay permiso, el middleware redirige a `/dashboard`.
+- Si no hay permiso, el middleware redirige a `/`.
 
 ### 4.3 Workspace y selección de sucursal
 
@@ -211,7 +211,7 @@ Cada módulo de `src/features` implementa un patrón coherente:
   - `MainDialog`, `ConfirmDialog`, `DialogHeader`: construidos con **Radix UI Dialog**.
   - Se usan para formularios modales, confirmaciones y mensajes de error detallados.
 - **Otros**:
-  - `HomeGrid` (panel de módulos desde el home/dashboard).
+  - `HomeGrid` (panel de módulos desde el home).
   - `Loader`, `LoadingSkeleton`.
   - `Notifications` (integración con `react-hot-toast`).
 
