@@ -1,4 +1,5 @@
 import type { ComponentType, SVGProps } from "react";
+import { KpiTrendIcon } from "./Icons";
 
 export type KpiStatus = "positive" | "negative" | "neutral";
 
@@ -65,18 +66,7 @@ export default function KpiGrid({ items }: KpiGridProps) {
                 <span
                   className={`flex items-center text-xs font-semibold ${badge.text} ${badge.bg} px-1.5 py-0.5 rounded`}
                 >
-                  <svg className="w-3 h-3 mr-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d={
-                        status === "negative"
-                          ? "M11 17H3m0 0v-8m0 8l8-8 4 4 6-6"
-                          : "M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"
-                      }
-                    />
-                  </svg>
+                  <KpiTrendIcon className="w-3 h-3 mr-0.5" negative={status === "negative"} />
                   {item.trendLabel}
                 </span>
               ) : null}

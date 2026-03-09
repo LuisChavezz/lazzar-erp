@@ -1,3 +1,5 @@
+import { TrendDirectionalIcon, TrendingUpIcon } from "../../../components/Icons";
+
 export const MonthlyGoal = () => {
   return (
     <section className="bg-white dark:bg-black border border-slate-200 dark:border-white/10 rounded-xl p-6 shadow-sm relative overflow-hidden">
@@ -11,9 +13,7 @@ export const MonthlyGoal = () => {
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Marzo 2026</p>
           </div>
           <div className="p-2 bg-slate-100 dark:bg-white/10 rounded-lg backdrop-blur-sm">
-            <svg className="w-5 h-5 text-sky-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-            </svg>
+            <TrendingUpIcon className="w-5 h-5 text-sky-500" />
           </div>
         </div>
 
@@ -23,9 +23,7 @@ export const MonthlyGoal = () => {
             <span className="text-sm text-slate-500 dark:text-slate-400">/ $60k</span>
           </div>
           <p className="text-xs text-emerald-400 mt-1 flex items-center gap-1">
-            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 10l7-7m0 0l7 7m-7-7v18" />
-            </svg>
+            <TrendDirectionalIcon className="w-3 h-3" />
             +12% vs mes anterior
           </p>
         </div>

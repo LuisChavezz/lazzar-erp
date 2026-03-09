@@ -12,15 +12,15 @@ export const QuickActions = () => {
       </h2>
       <div className="grid grid-cols-2 gap-3">
         <Link
-          href="/sales"
-          aria-label="Crear nuevo lead"
+          href="/sales/orders/new"
+          aria-label="Crear nuevo pedido"
           className="flex flex-col items-center justify-center p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 hover:bg-sky-50 dark:hover:bg-sky-900/10 hover:text-sky-600 dark:hover:text-sky-400 border border-slate-100 dark:border-white/5 hover:border-sky-200 dark:hover:border-sky-500/20 transition-all group"
         >
           <PlusIcon className="w-6 h-6 mb-2 text-slate-400 group-hover:text-sky-500 transition-colors" aria-hidden="true" />
-          <span className="text-[10px] font-medium">Nuevo Lead</span>
+          <span className="text-[10px] font-medium">Nuevo Pedido</span>
         </Link>
         <Link
-          href="/sales/orders/new"
+          href="#"
           aria-label="Crear cotización"
           className="flex flex-col items-center justify-center p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 hover:bg-blue-50 dark:hover:bg-blue-900/10 hover:text-blue-600 dark:hover:text-blue-400 border border-slate-100 dark:border-white/5 hover:border-blue-200 dark:hover:border-blue-500/20 transition-all group"
         >
@@ -28,7 +28,7 @@ export const QuickActions = () => {
           <span className="text-[10px] font-medium">Cotización</span>
         </Link>
         <Link
-          href="/sales/orders/new"
+          href="#"
           aria-label="Crear pedido"
           className="flex flex-col items-center justify-center p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 hover:bg-amber-50 dark:hover:bg-amber-900/10 hover:text-amber-600 dark:hover:text-amber-400 border border-slate-100 dark:border-white/5 hover:border-amber-200 dark:hover:border-amber-500/20 transition-all group"
         >
@@ -36,7 +36,7 @@ export const QuickActions = () => {
           <span className="text-[10px] font-medium">Pedido</span>
         </Link>
         <Link
-          href="/sales/orders"
+          href="#"
           aria-label="Ver actividad"
           className="flex flex-col items-center justify-center p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 hover:bg-purple-50 dark:hover:bg-purple-900/10 hover:text-purple-600 dark:hover:text-purple-400 border border-slate-100 dark:border-white/5 hover:border-purple-200 dark:hover:border-purple-500/20 transition-all group"
         >

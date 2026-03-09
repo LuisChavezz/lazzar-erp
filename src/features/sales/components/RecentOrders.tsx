@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { OrderStatusPathIcon } from "../../../components/Icons";
 
 type Order = {
   folio: string;
@@ -52,9 +53,7 @@ export const RecentOrders = () => {
           >
             <div className="flex items-center gap-3">
               <div className="p-2 bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-slate-100 dark:border-white/5">
-                <svg className={`w-4 h-4 ${order.iconClassName}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d={order.iconPath} />
-                </svg>
+                <OrderStatusPathIcon className={`w-4 h-4 ${order.iconClassName}`} path={order.iconPath} />
               </div>
               <div>
                 <div className="text-xs font-bold text-slate-800 dark:text-white">{order.folio}</div>

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ChevronRightIcon, TrendingUpIcon } from "../../../components/Icons";
 
 type Opportunity = {
   initials: string;
@@ -60,21 +61,17 @@ export const RecentOpportunities = () => {
       <div className="px-6 py-5 border-b border-slate-100 dark:border-white/10 flex justify-between items-center bg-slate-50/50 dark:bg-white/2">
         <div className="flex items-center gap-3">
           <div className="p-1.5 rounded-md bg-sky-100 dark:bg-sky-500/10 text-sky-600 dark:text-sky-400">
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-            </svg>
+            <TrendingUpIcon className="w-4 h-4" />
           </div>
           <h3 className="font-bold text-slate-800 dark:text-white text-sm">Oportunidades Recientes</h3>
         </div>
         <Link
-          href="/sales/orders"
+          href="#"
           className="text-xs text-sky-600 hover:text-sky-500 font-bold uppercase tracking-wider transition-colors flex items-center gap-1 group"
           aria-label="Ver todas las oportunidades"
         >
           Ver todas
-          <svg className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
-          </svg>
+          <ChevronRightIcon className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
         </Link>
       </div>
       <div className="overflow-x-auto">

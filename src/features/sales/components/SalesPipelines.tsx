@@ -1,3 +1,5 @@
+import { DotsVerticalIcon } from "../../../components/Icons";
+
 type PipelineStage = {
   label: string;
   count: number;
@@ -43,14 +45,7 @@ export const SalesPipelines = () => {
           aria-label="Opciones de resumen de pipeline"
           className="text-slate-400 hover:text-sky-500 transition-colors"
         >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth="2"
-              d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"
-            />
-          </svg>
+          <DotsVerticalIcon className="w-4 h-4" />
         </button>
       </div>
       <div className="flex-1 space-y-5">

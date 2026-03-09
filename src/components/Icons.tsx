@@ -172,6 +172,60 @@ export const TrendingUpIcon = (props: React.SVGProps<SVGSVGElement>) => (
   </svg>
 );
 
+export const TrendDirectionalIcon = (
+  props: React.SVGProps<SVGSVGElement> & { direction?: "up" | "down" }
+) => {
+  const { direction = "up", ...svgProps } = props;
+  return (
+    <svg {...svgProps} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="2"
+        d={direction === "down" ? "M19 14l-7 7m0 0l-7-7m7 7V3" : "M5 10l7-7m0 0l7 7m-7-7v18"}
+      />
+    </svg>
+  );
+};
+
+export const KpiTrendIcon = (
+  props: React.SVGProps<SVGSVGElement> & { negative?: boolean }
+) => {
+  const { negative = false, ...svgProps } = props;
+  return (
+    <svg {...svgProps} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="2"
+        d={negative ? "M11 17H3m0 0v-8m0 8l8-8 4 4 6-6" : "M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"}
+      />
+    </svg>
+  );
+};
+
+export const DotsVerticalIcon = (props: React.SVGProps<SVGSVGElement>) => (
+  <svg {...props} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="2"
+      d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"
+    />
+  </svg>
+);
+
+export const OrderStatusPathIcon = (
+  props: React.SVGProps<SVGSVGElement> & { path: string }
+) => {
+  const { path, ...svgProps } = props;
+  return (
+    <svg {...svgProps} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d={path} />
+    </svg>
+  );
+};
+
 export const ClockIcon = (props: React.SVGProps<SVGSVGElement>) => (
   <svg
     {...props}
