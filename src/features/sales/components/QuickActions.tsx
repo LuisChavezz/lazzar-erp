@@ -1,23 +1,47 @@
 import Link from "next/link";
-import { PlusIcon } from "@/src/components/Icons";
+import { ClockIcon, OrdenesIcon, PedidosIcon, PlusIcon } from "@/src/components/Icons";
 
 export const QuickActions = () => {
   return (
     <section
       aria-label="Acciones rápidas"
-      className="rounded-4xl bg-sky-500/10 dark:bg-sky-500/15 border border-sky-500/20 shadow-xl shadow-sky-500/10 p-6"
+      className="bg-white dark:bg-black border border-slate-200 dark:border-white/10 rounded-xl shadow-sm p-5"
     >
-      <h2 className="text-base font-semibold text-slate-800 dark:text-white">
-        Acciones Rápidas
+      <h2 className="font-bold text-slate-800 dark:text-white text-xs uppercase tracking-wider mb-4">
+        Accesos Rápidos
       </h2>
-      <div className="mt-4 space-y-3">
+      <div className="grid grid-cols-2 gap-3">
+        <Link
+          href="/sales"
+          aria-label="Crear nuevo lead"
+          className="flex flex-col items-center justify-center p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 hover:bg-sky-50 dark:hover:bg-sky-900/10 hover:text-sky-600 dark:hover:text-sky-400 border border-slate-100 dark:border-white/5 hover:border-sky-200 dark:hover:border-sky-500/20 transition-all group"
+        >
+          <PlusIcon className="w-6 h-6 mb-2 text-slate-400 group-hover:text-sky-500 transition-colors" aria-hidden="true" />
+          <span className="text-[10px] font-medium">Nuevo Lead</span>
+        </Link>
         <Link
           href="/sales/orders/new"
-          aria-label="Crear nuevo pedido"
-          className="flex items-center gap-2 rounded-2xl border border-sky-500/30 bg-white/60 dark:bg-black/40 px-4 py-3 text-sm font-semibold text-sky-600 dark:text-sky-200 transition-colors hover:bg-white/80 dark:hover:bg-black/60"
+          aria-label="Crear cotización"
+          className="flex flex-col items-center justify-center p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 hover:bg-blue-50 dark:hover:bg-blue-900/10 hover:text-blue-600 dark:hover:text-blue-400 border border-slate-100 dark:border-white/5 hover:border-blue-200 dark:hover:border-blue-500/20 transition-all group"
         >
-          <PlusIcon className="h-4 w-4" aria-hidden="true" />
-          Nuevo Pedido
+          <OrdenesIcon className="w-6 h-6 mb-2 text-slate-400 group-hover:text-blue-500 transition-colors" aria-hidden="true" />
+          <span className="text-[10px] font-medium">Cotización</span>
+        </Link>
+        <Link
+          href="/sales/orders/new"
+          aria-label="Crear pedido"
+          className="flex flex-col items-center justify-center p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 hover:bg-amber-50 dark:hover:bg-amber-900/10 hover:text-amber-600 dark:hover:text-amber-400 border border-slate-100 dark:border-white/5 hover:border-amber-200 dark:hover:border-amber-500/20 transition-all group"
+        >
+          <PedidosIcon className="w-6 h-6 mb-2 text-slate-400 group-hover:text-amber-500 transition-colors" aria-hidden="true" />
+          <span className="text-[10px] font-medium">Pedido</span>
+        </Link>
+        <Link
+          href="/sales/orders"
+          aria-label="Ver actividad"
+          className="flex flex-col items-center justify-center p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 hover:bg-purple-50 dark:hover:bg-purple-900/10 hover:text-purple-600 dark:hover:text-purple-400 border border-slate-100 dark:border-white/5 hover:border-purple-200 dark:hover:border-purple-500/20 transition-all group"
+        >
+          <ClockIcon className="w-6 h-6 mb-2 text-slate-400 group-hover:text-purple-500 transition-colors" aria-hidden="true" />
+          <span className="text-[10px] font-medium">Actividad</span>
         </Link>
       </div>
     </section>

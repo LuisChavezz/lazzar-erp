@@ -10,6 +10,8 @@ export interface KpiItem {
   iconClass: string;
   trendLabel?: string;
   status?: KpiStatus;
+  subLabel?: string;
+  progress?: number;
 }
 
 interface KpiGridProps {
@@ -24,37 +26,64 @@ const statusStyles: Record<KpiStatus, { text: string; bg: string }> = {
 
 export default function KpiGrid({ items }: KpiGridProps) {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
       {items.map((item) => {
         const status = item.status ?? "neutral";
         const badge = statusStyles[status];
         const Icon = item.icon;
+        const progress =
+          item.progress ?? (status === "positive" ? 70 : status === "neutral" ? 55 : 40);
 
         return (
           <div
             key={item.label}
-            className="p-8 rounded-4xl bg-white dark:bg-black border border-slate-100 dark:border-white/20 shadow-xl shadow-slate-200/50 dark:shadow-black/50"
+            className="group relative rounded-xl bg-white dark:bg-black border border-slate-200 dark:border-white/10 p-5 shadow-sm hover:shadow-lg transition-all duration-300"
           >
-            <div className="flex items-start justify-between mb-4">
-              <div
-                className={`p-3 rounded-2xl ${item.iconBgClass} ${item.iconClass}`}
-              >
-                <Icon className="w-6 h-6" aria-hidden="true" />
+            <div
+              className={`absolute inset-x-0 top-0 h-1 bg-linear-to-r from-transparent via-current to-transparent opacity-0 group-hover:opacity-100 transition-opacity ${item.iconClass}`}
+            />
+            <div className="flex justify-between items-start mb-4">
+              <div className="flex flex-col">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                  {item.label}
+                </span>
+                {item.subLabel ? (
+                  <span className="text-xs text-slate-400 mt-1">{item.subLabel}</span>
+                ) : null}
               </div>
-              {item.trendLabel && (
+              <div
+                className={`p-2 rounded-lg ${item.iconBgClass} ${item.iconClass} shadow-[0_0_15px_rgba(15,23,42,0.08)]`}
+              >
+                <Icon className="w-5 h-5" aria-hidden="true" />
+              </div>
+            </div>
+            <div className="flex items-baseline gap-2 mb-2">
+              <h3 className="text-3xl font-bold text-slate-800 dark:text-white tracking-tight font-mono">
+                {item.value}
+              </h3>
+              {item.trendLabel ? (
                 <span
-                  className={`text-xs font-semibold ${badge.text} ${badge.bg} px-2 py-1 rounded-lg`}
+                  className={`flex items-center text-xs font-semibold ${badge.text} ${badge.bg} px-1.5 py-0.5 rounded`}
                 >
+                  <svg className="w-3 h-3 mr-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d={
+                        status === "negative"
+                          ? "M11 17H3m0 0v-8m0 8l8-8 4 4 6-6"
+                          : "M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"
+                      }
+                    />
+                  </svg>
                   {item.trendLabel}
                 </span>
-              )}
+              ) : null}
             </div>
-            <p className="text-slate-500 dark:text-slate-400 text-sm font-medium">
-              {item.label}
-            </p>
-            <h3 className="text-2xl font-bold mt-1 text-slate-800 dark:text-white">
-              {item.value}
-            </h3>
+            <div className={`h-1 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden ${item.iconClass}`}>
+              <div className="h-full bg-current rounded-full" style={{ width: `${progress}%` }} />
+            </div>
           </div>
         );
       })}

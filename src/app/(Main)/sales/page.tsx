@@ -5,7 +5,11 @@ import {
   PedidosIcon,
   OrdenesIcon,
 } from "@/src/components/Icons";
+import { MonthlyGoal } from "@/src/features/sales/components/MonthlyGoal";
+import { RecentOpportunities } from "@/src/features/sales/components/RecentOpportunities";
+import { RecentOrders } from "@/src/features/sales/components/RecentOrders";
 import { SalesPipelines } from "@/src/features/sales/components/SalesPipelines";
+import { UpcomingTasks } from "@/src/features/sales/components/UpcomingTasks";
 import { QuickActions } from "@/src/features/sales/components/QuickActions";
 
 export default function SalesPage() {
@@ -19,6 +23,8 @@ export default function SalesPage() {
       iconClass: "text-sky-500",
       trendLabel: "+6.1%",
       status: "positive",
+      subLabel: "Últimos 30 días",
+      progress: 65,
     },
     {
       label: "Nuevos este mes",
@@ -28,6 +34,8 @@ export default function SalesPage() {
       iconClass: "text-emerald-500",
       trendLabel: "+18",
       status: "positive",
+      subLabel: "Clientes nuevos",
+      progress: 45,
     },
     {
       label: "Pedidos del mes",
@@ -37,6 +45,8 @@ export default function SalesPage() {
       iconClass: "text-sky-500",
       trendLabel: "+9.4%",
       status: "positive",
+      subLabel: "Facturado",
+      progress: 78,
     },
     {
       label: "Pedidos críticos",
@@ -46,6 +56,8 @@ export default function SalesPage() {
       iconClass: "text-rose-500",
       trendLabel: "+3",
       status: "negative",
+      subLabel: "Atención inmediata",
+      progress: 20,
     },
   ]
 
@@ -53,10 +65,18 @@ export default function SalesPage() {
     <div className="w-full space-y-8">
       <KpiGrid items={items} />
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-        <div className="xl:col-span-2">
-          <SalesPipelines />
+        <div className="xl:col-span-2 space-y-6">
+          <RecentOpportunities />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <SalesPipelines />
+            <RecentOrders />
+          </div>
         </div>
-        <QuickActions />
+        <div className="space-y-6">
+          <MonthlyGoal />
+          <UpcomingTasks />
+          <QuickActions />
+        </div>
       </div>
     </div>
   );

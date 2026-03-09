@@ -1,56 +1,89 @@
 type PipelineStage = {
   label: string;
   count: number;
+  amount: string;
   colorClass: string;
+  width: number;
 };
 
 const STAGES: PipelineStage[] = [
-  { label: "Prospecto", count: 45, colorClass: "bg-sky-500" },
-  { label: "Calificado", count: 28, colorClass: "bg-purple-500" },
-  { label: "Propuesta", count: 12, colorClass: "bg-amber-500" },
-  { label: "Negociación", count: 5, colorClass: "bg-rose-500" },
+  {
+    label: "Calificados",
+    count: 28,
+    amount: "$450k",
+    colorClass: "from-sky-400 to-sky-600",
+    width: 65,
+  },
+  {
+    label: "Propuesta",
+    count: 12,
+    amount: "$180k",
+    colorClass: "from-sky-400 to-sky-600",
+    width: 45,
+  },
+  {
+    label: "Negociación",
+    count: 5,
+    amount: "$95k",
+    colorClass: "from-sky-400 to-sky-600",
+    width: 25,
+  },
 ];
 
 export const SalesPipelines = () => {
-  const maxValue = Math.max(...STAGES.map((stage) => stage.count));
-
   return (
     <section
-      aria-label="Pipeline de ventas"
-      className="rounded-4xl bg-white dark:bg-black border border-slate-100 dark:border-white/20 shadow-xl shadow-slate-200/50 dark:shadow-black/50 p-6"
+      aria-label="Resumen de pipeline"
+      className="bg-white dark:bg-black border border-slate-200 dark:border-white/10 rounded-xl shadow-sm p-6 flex flex-col h-full"
     >
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-base font-semibold text-slate-800 dark:text-white">
-          Pipeline de Ventas
-        </h2>
-        <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
-          {STAGES.reduce((acc, stage) => acc + stage.count, 0)} leads
-        </span>
+        <h2 className="font-bold text-slate-800 dark:text-white text-sm">Resumen de Pipeline</h2>
+        <button
+          type="button"
+          aria-label="Opciones de resumen de pipeline"
+          className="text-slate-400 hover:text-sky-500 transition-colors"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth="2"
+              d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"
+            />
+          </svg>
+        </button>
       </div>
-      <div className="space-y-4">
+      <div className="flex-1 space-y-5">
         {STAGES.map((stage) => {
-          const width = Math.round((stage.count / maxValue) * 100);
-
           return (
-            <div key={stage.label} className="space-y-2">
-              <div className="flex items-center justify-between text-xs font-medium text-slate-500 dark:text-slate-400">
-                <span>{stage.label}</span>
-                <span>{stage.count} leads</span>
+            <div key={stage.label} className="relative">
+              <div className="flex justify-between text-xs mb-1.5">
+                <span className="font-medium text-slate-600 dark:text-slate-300">{stage.label}</span>
+                <span className="font-bold text-slate-800 dark:text-white">{stage.count}</span>
               </div>
-              <div className="h-2 w-full rounded-full bg-slate-200/60 dark:bg-white/10 overflow-hidden">
+              <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-2 overflow-hidden">
                 <div
                   role="progressbar"
-                  aria-label={`${stage.label} ${stage.count} leads`}
+                  aria-label={`${stage.label} ${stage.count}`}
                   aria-valuenow={stage.count}
                   aria-valuemin={0}
-                  aria-valuemax={maxValue}
-                  className={`h-full rounded-full ${stage.colorClass}`}
-                  style={{ width: `${width}%` }}
+                  aria-valuemax={30}
+                  className={`h-full rounded-full bg-linear-to-r ${stage.colorClass}`}
+                  style={{ width: `${stage.width}%` }}
                 />
               </div>
+              <div className="absolute right-0 top-5 text-[10px] text-slate-400">{stage.amount}</div>
             </div>
           );
         })}
+      </div>
+      <div className="mt-6 pt-4 border-t border-slate-100 dark:border-white/5 flex items-center justify-between">
+        <div className="flex flex-col">
+          <span className="text-[10px] text-slate-400 uppercase tracking-wider font-bold">
+            Total Pipeline
+          </span>
+          <span className="text-lg font-bold text-slate-800 dark:text-white font-mono">$725,000</span>
+        </div>
       </div>
     </section>
   );
