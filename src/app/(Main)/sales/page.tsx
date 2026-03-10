@@ -8,7 +8,7 @@ import {
 import { MonthlyGoal } from "@/src/features/sales/components/MonthlyGoal";
 import { RecentOpportunities } from "@/src/features/sales/components/RecentOpportunities";
 import { RecentOrders } from "@/src/features/sales/components/RecentOrders";
-import { SalesPipelines } from "@/src/features/sales/components/SalesPipelines";
+import { SalesPipeline } from "@/src/features/sales/components/SalesPipeline";
 import { UpcomingTasks } from "@/src/features/tasks/components/UpcomingTasks";
 import { QuickActions } from "@/src/features/sales/components/QuickActions";
 
@@ -68,7 +68,7 @@ export default function SalesPage() {
         <div className="xl:col-span-2 space-y-6">
           <RecentOpportunities />
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <SalesPipelines />
+            <SalesPipeline />
             <RecentOrders />
           </div>
         </div>

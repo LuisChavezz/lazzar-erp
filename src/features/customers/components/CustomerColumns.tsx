@@ -2,7 +2,27 @@
 
 import { ColumnDef } from "@tanstack/react-table";
 import { CustomerItem } from "../interfaces/customer.interface";
+import { ActionMenu, ActionMenuItem } from "@/src/components/ActionMenu";
 import { EditIcon, ViewIcon } from "../../../components/Icons";
+
+const ActionsCell = () => {
+  const items: ActionMenuItem[] = [
+    {
+      label: "Ver Detalles",
+      icon: ViewIcon,
+    },
+    {
+      label: "Editar",
+      icon: EditIcon,
+    },
+  ];
+
+  return (
+    <div className="flex items-center justify-center">
+      <ActionMenu items={items} ariaLabel="Acciones de cliente" />
+    </div>
+  );
+};
 
 export const customerColumns: ColumnDef<CustomerItem>[] = [
   {
@@ -70,22 +90,8 @@ export const customerColumns: ColumnDef<CustomerItem>[] = [
   },
   {
     id: "actions",
-    header: () => <div className="text-center">Acciones</div>,
-    cell: () => (
-      <div className="flex items-center justify-center gap-2">
-        <button
-          className="p-1 cursor-pointer text-slate-400 hover:text-sky-600 transition-colors"
-          title="Ver Detalles"
-        >
-          <ViewIcon className="w-5 h-5" />
-        </button>
-        <button
-          className="p-1 cursor-pointer text-slate-400 hover:text-sky-600 transition-colors"
-          title="Editar"
-        >
-          <EditIcon className="w-5 h-5" />
-        </button>
-      </div>
-    ),
+    header: "",
+    size: 90,
+    cell: () => <ActionsCell />,
   },
 ];

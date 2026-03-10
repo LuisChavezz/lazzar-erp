@@ -27,7 +27,7 @@ export const ActionMenu = ({
       <button
         type="button"
         aria-label={ariaLabel}
-        className="p-1.5 rounded-lg text-slate-400 hover:text-sky-600 hover:bg-slate-50 dark:hover:bg-white/5 transition-colors"
+        className="p-1.5 rounded-lg cursor-pointer text-slate-400 hover:text-sky-600 hover:bg-slate-50 dark:hover:bg-white/5 transition-colors"
       >
         <DotsVerticalIcon className="w-5 h-5" aria-hidden="true" />
       </button>

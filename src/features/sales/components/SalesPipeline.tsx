@@ -1,4 +1,7 @@
-import { DotsVerticalIcon } from "../../../components/Icons";
+'use client'
+
+import { ActionMenu, ActionMenuItem } from "@/src/components/ActionMenu";
+import { FilterIcon, TrendingUpIcon, SaveIcon } from "../../../components/Icons";
 
 type PipelineStage = {
   label: string;
@@ -32,7 +35,22 @@ const STAGES: PipelineStage[] = [
   },
 ];
 
-export const SalesPipelines = () => {
+export const SalesPipeline = () => {
+  const items: ActionMenuItem[] = [
+    {
+      label: "Ver por etapa",
+      icon: FilterIcon,
+    },
+    {
+      label: "Comparar tendencia",
+      icon: TrendingUpIcon,
+    },
+    {
+      label: "Exportar resumen",
+      icon: SaveIcon,
+    },
+  ];
+
   return (
     <section
       aria-label="Resumen de pipeline"
@@ -40,13 +58,7 @@ export const SalesPipelines = () => {
     >
       <div className="flex items-center justify-between mb-6">
         <h2 className="font-bold text-slate-800 dark:text-white text-sm">Resumen de Pipeline</h2>
-        <button
-          type="button"
-          aria-label="Opciones de resumen de pipeline"
-          className="text-slate-400 hover:text-sky-500 transition-colors"
-        >
-          <DotsVerticalIcon className="w-4 h-4" />
-        </button>
+        <ActionMenu items={items} ariaLabel="Opciones de resumen de pipeline" align="start" />
       </div>
       <div className="flex-1 space-y-5">
         {STAGES.map((stage) => {

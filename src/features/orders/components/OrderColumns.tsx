@@ -190,7 +190,7 @@ export const orderColumns: ColumnDef<Order>[] = [
         
       </div>
     ),
-    size: 100,
+    size: 90,
     cell: ({ row }) => <ActionsCell order={row.original} />,
   },
 ];
