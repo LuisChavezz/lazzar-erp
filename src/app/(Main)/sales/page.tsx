@@ -9,7 +9,7 @@ import { MonthlyGoal } from "@/src/features/sales/components/MonthlyGoal";
 import { RecentOpportunities } from "@/src/features/sales/components/RecentOpportunities";
 import { RecentOrders } from "@/src/features/sales/components/RecentOrders";
 import { SalesPipelines } from "@/src/features/sales/components/SalesPipelines";
-import { UpcomingTasks } from "@/src/features/sales/components/UpcomingTasks";
+import { UpcomingTasks } from "@/src/features/tasks/components/UpcomingTasks";
 import { QuickActions } from "@/src/features/sales/components/QuickActions";
 
 export default function SalesPage() {

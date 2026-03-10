@@ -1,11 +1,14 @@
 "use client";
 
 import { ColumnDef } from "@tanstack/react-table";
-import Link from "next/link";
+import { useState } from "react";
 import { Order } from "../interfaces/order.interface";
 import { getStatusStyles } from "../utils/getStatusStyle";
+import { ActionMenu, ActionMenuItem } from "@/src/components/ActionMenu";
+import { MainDialog } from "@/src/components/MainDialog";
+import { DialogHeader } from "@/src/components/DialogHeader";
+import { OrderDetails } from "./OrderDetails";
 import {
-  CloseIcon,
   EditIcon,
   EmbarquesIcon,
   FacturacionIcon,
@@ -18,6 +21,62 @@ const statusLabels: Record<Order["estatusPedido"], string> = {
   Parcial: "Parcial",
   Completo: "Completo",
   Cancelado: "Cancelado",
+};
+
+const statusDialogColors: Record<Order["estatusPedido"], "sky" | "emerald" | "amber" | "rose"> = {
+  Pendiente: "amber",
+  Parcial: "sky",
+  Completo: "emerald",
+  Cancelado: "rose",
+};
+
+const ActionsCell = ({ order }: { order: Order }) => {
+  const [isViewOpen, setIsViewOpen] = useState(false);
+  const orderId = order.id;
+  const items: ActionMenuItem[] = [
+    {
+      label: "Ver detalles",
+      icon: ViewIcon,
+      onSelect: () => setIsViewOpen(true),
+    },
+    {
+      label: "Editar",
+      icon: EditIcon,
+      onSelect: () => {
+        window.location.href = `/sales/orders/edit/${orderId}`;
+      },
+    },
+    {
+      label: "Facturar",
+      icon: FacturacionIcon,
+      onSelect: () => undefined,
+    },
+    {
+      label: "Marcar como enviado",
+      icon: EmbarquesIcon,
+      onSelect: () => undefined,
+    },
+  ];
+
+  return (
+    <div className="flex items-center justify-center">
+      <ActionMenu items={items} ariaLabel="Acciones de pedido" />
+      <MainDialog
+        open={isViewOpen}
+        onOpenChange={setIsViewOpen}
+        maxWidth="1000px"
+        title={
+          <DialogHeader
+            title={`Detalles del pedido ${order.folio}`}
+            subtitle={order.clienteNombre}
+            statusColor={statusDialogColors[order.estatusPedido]}
+          />
+        }
+      >
+        <OrderDetails order={order} />
+      </MainDialog>
+    </div>
+  );
 };
 
 export const orderColumns: ColumnDef<Order>[] = [
@@ -128,53 +187,10 @@ export const orderColumns: ColumnDef<Order>[] = [
     id: "actions",
     header: () => (
       <div className="text-center" aria-label="Acciones de pedido">
-        Acciones
+        
       </div>
     ),
-    size: 200,
-    cell: ({ row }) => (
-      <div className="flex items-center justify-center gap-2">
-        <button
-          className="p-1 cursor-pointer text-slate-400 hover:text-sky-600 transition-colors"
-          title="Ver detalles del pedido"
-          aria-label="Ver detalles del pedido"
-          type="button"
-        >
-          <ViewIcon className="w-5 h-5" />
-        </button>
-        <Link
-          href={`/sales/orders/edit/${row.original.id}`}
-          className="p-1 cursor-pointer text-slate-400 hover:text-sky-600 transition-colors"
-          title="Editar pedido"
-          aria-label="Editar pedido"
-        >
-          <EditIcon className="w-5 h-5" />
-        </Link>
-        <button
-          className="p-1 cursor-pointer text-slate-400 hover:text-sky-600 transition-colors"
-          title="Facturar"
-          aria-label="Facturar pedido"
-          type="button"
-        >
-          <FacturacionIcon className="w-5 h-5" />
-        </button>
-        <button
-          className="p-1 cursor-pointer text-slate-400 hover:text-sky-600 transition-colors"
-          title="Marcar como enviado"
-          aria-label="Marcar pedido como enviado"
-          type="button"
-        >
-          <EmbarquesIcon className="w-5 h-5" />
-        </button>
-        <button
-          className="p-1 cursor-pointer text-slate-400 hover:text-rose-500 transition-colors"
-          title="Cancelar"
-          aria-label="Cancelar pedido"
-          type="button"
-        >
-          <CloseIcon className="w-5 h-5" />
-        </button>
-      </div>
-    ),
+    size: 100,
+    cell: ({ row }) => <ActionsCell order={row.original} />,
   },
 ];
