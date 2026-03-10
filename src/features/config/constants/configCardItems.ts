@@ -5,6 +5,7 @@ import { getSizes } from "@/src/features/sizes/services/actions";
 import { getProductCategories } from "@/src/features/product-categories/services/actions";
 import { getProductTypes } from "@/src/features/product-types/services/actions";
 import { getUsers } from "@/src/features/users/services/actions";
+import { getRoles } from "@/src/features/roles/services/actions";
 import { getWarehouses } from "@/src/features/warehouses/services/actions";
 import {
   BuildingIcon,
@@ -178,6 +179,16 @@ export const configCards: ConfigCardItem[] = [
     adminOnly: true,
     prefetchKey: ["users"],
     prefetchFn: getUsers,
+  },
+  {
+    title: "Roles",
+    description: "Administración de roles y permisos",
+    icon: CapitalHumanoIcon,
+    view: "roles",
+    group: "Usuarios y Accesos",
+    adminOnly: true,
+    prefetchKey: ["roles"],
+    prefetchFn: getRoles,
   },
   {
     title: "Información fiscal",

@@ -1,4 +1,5 @@
 import { Company } from "../../companies/interfaces/company.interface";
+import { Permission } from "../../permissions/interfaces/permission.interface";
 
 export interface Role {
   id: number;
@@ -12,5 +13,8 @@ export interface Role {
   created_at: string;
   updated_at: string;
   empresa: Company["id"];
-  permisos: [];
+}
+
+export interface RolePermissions {
+  permisos: Permission["id"][];
 }

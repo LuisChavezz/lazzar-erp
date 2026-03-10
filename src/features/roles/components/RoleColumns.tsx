@@ -1,7 +1,46 @@
 "use client";
 
 import { ColumnDef } from "@tanstack/react-table";
+import { useState } from "react";
 import { Role } from "../interfaces/role.interface";
+import { capitalize } from "@/src/utils/capitalize";
+import { ActionMenu, ActionMenuItem } from "@/src/components/ActionMenu";
+import { MainDialog } from "@/src/components/MainDialog";
+import { DialogHeader } from "@/src/components/DialogHeader";
+import { SettingsIcon } from "@/src/components/Icons";
+import RolePermissions from "./RolePermissions";
+
+const ActionsCell = ({ role }: { role: Role }) => {
+  const [isPermissionsOpen, setIsPermissionsOpen] = useState(false);
+
+  const items: ActionMenuItem[] = [
+    {
+      label: "Gestionar permisos",
+      icon: SettingsIcon,
+      onSelect: () => setIsPermissionsOpen(true),
+    },
+  ];
+
+  return (
+    <div className="flex items-center justify-center">
+      <ActionMenu items={items} ariaLabel={`Acciones del rol ${role.nombre}`} />
+      <MainDialog
+        open={isPermissionsOpen}
+        onOpenChange={setIsPermissionsOpen}
+        maxWidth="1000px"
+        title={
+          <DialogHeader
+            title={`Permisos del rol`}
+            subtitle={role.nombre}
+            statusColor="indigo"
+          />
+        }
+      >
+        <RolePermissions role={role} onUpdated={() => setIsPermissionsOpen(false)} />
+      </MainDialog>
+    </div>
+  );
+};
 
 export const roleColumns: ColumnDef<Role>[] = [
   {
@@ -60,9 +99,18 @@ export const roleColumns: ColumnDef<Role>[] = [
         <span
           className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${styles}`}
         >
-          {status}
+          {capitalize(status)}
         </span>
       );
     },
+  },
+  {
+    id: "actions",
+    header: () => (
+      <div className="text-center" aria-label="Acciones del rol">
+      </div>
+    ),
+    size: 90,
+    cell: ({ row }) => <ActionsCell role={row.original} />,
   },
 ];
