@@ -1,107 +1,93 @@
 "use client";
 
 import { ColumnDef } from "@tanstack/react-table";
+import { ActionMenu, ActionMenuItem } from "@/src/components/ActionMenu";
 import { StockItem } from "../interfaces/stock.interface";
-import { EditIcon, ViewIcon } from "../../../components/Icons";
+import { HistoryIcon } from "../../../components/Icons";
 
-const StockStatusBadge = ({ status }: { status: StockItem["status"] }) => {
-  const styles = {
-    Saludable: "bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400",
-    Riesgo: "bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400",
-    Crítico: "bg-red-50 text-red-600 dark:bg-red-500/10 dark:text-red-400",
-    Sobrestock: "bg-sky-50 text-sky-600 dark:bg-sky-500/10 dark:text-sky-400",
-  };
+const actionItems: ActionMenuItem[] = [
+  {
+    label: "Ver historial",
+    icon: HistoryIcon,
+  },
+];
 
+const ActionsCell = () => {
   return (
-    <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${styles[status]}`}>
-      {status}
-    </span>
+    <div className="flex items-center justify-center">
+      <ActionMenu items={actionItems} ariaLabel="Acciones de existencias" />
+    </div>
   );
+};
+
+const randomSeed = Date.now();
+
+const getRandomQuantity = (stock: StockItem) => {
+  const seed = Number(stock.id) || 1;
+  return ((randomSeed + seed * 37) % 900) + 10;
 };
 
 export const stockColumns: ColumnDef<StockItem>[] = [
   {
-    accessorKey: "sku",
-    header: "SKU",
-    cell: ({ row }) => (
-      <span className="font-medium text-slate-700 dark:text-slate-200">
-        {row.getValue("sku")}
-      </span>
-    ),
-  },
-  {
-    accessorKey: "product",
+    id: "producto",
+    accessorFn: (row) => row.producto_info.nombre ?? "",
     header: "Producto",
     cell: ({ row }) => (
-      <div className="flex flex-col">
-        <span className="text-slate-700 dark:text-slate-200 font-medium">
-          {row.getValue("product")}
-        </span>
-        <span className="text-xs text-slate-500 dark:text-slate-400">
-          {row.original.warehouse}
-        </span>
-      </div>
-    ),
-  },
-  {
-    accessorKey: "available",
-    header: "Disponible",
-    cell: ({ row }) => (
-      <div className="font-semibold text-slate-700 dark:text-slate-200">
-        {row.original.available.toLocaleString("es-MX")}
-      </div>
-    ),
-  },
-  {
-    accessorKey: "reserved",
-    header: "Reservado",
-    cell: ({ row }) => (
-      <span className="text-slate-600 dark:text-slate-300">
-        {row.original.reserved.toLocaleString("es-MX")}
+      <span className="font-medium text-slate-700 dark:text-slate-200">
+        {row.original.producto_info.nombre ?? ""}
       </span>
     ),
   },
   {
-    accessorKey: "incoming",
-    header: "En tránsito",
+    id: "almacen",
+    accessorFn: (row) => row.almacen_info.nombre ?? "",
+    header: "Almacén",
     cell: ({ row }) => (
       <span className="text-slate-600 dark:text-slate-300">
-        {row.original.incoming.toLocaleString("es-MX")}
+        {row.original.almacen_info.nombre ?? ""}
       </span>
     ),
   },
   {
-    accessorKey: "status",
-    header: "Estado",
-    cell: ({ row }) => <StockStatusBadge status={row.getValue("status")} />,
+    id: "ubicacion",
+    accessorFn: (row) =>
+      ((row.ubicacion_info as StockItem["ubicacion_info"] & { nombre_completo?: string })
+        .nombre_completo ??
+        ""),
+    header: "Ubicación",
+    cell: ({ row }) => (
+      <span className="text-slate-600 dark:text-slate-300">
+        {(row.original.ubicacion_info as StockItem["ubicacion_info"] & { nombre_completo?: string })
+          .nombre_completo ?? ""}
+      </span>
+    ),
   },
   {
-    accessorKey: "lastMovement",
+    id: "cantidad",
+    accessorFn: (row) => getRandomQuantity(row),
+    header: "Cantidad",
+    cell: ({ row }) => (
+      <span className="font-semibold text-slate-700 dark:text-slate-200">
+        {getRandomQuantity(row.original).toLocaleString("es-MX")}
+      </span>
+    ),
+  },
+  {
+    id: "unidad",
+    accessorFn: () => "unknown",
+    header: "Unidad",
+    cell: () => <span className="text-slate-600 dark:text-slate-300">unknown</span>,
+  },
+  {
+    id: "ultimo_movimiento",
+    accessorFn: () => "Hoy, 10:00 AM",
     header: "Último movimiento",
-    cell: ({ row }) => (
-      <span className="text-slate-500 dark:text-slate-400">
-        {row.getValue("lastMovement")}
-      </span>
-    ),
+    cell: () => <span className="text-slate-500 dark:text-slate-400">Hoy, 10:00 AM</span>,
   },
   {
     id: "actions",
-    header: () => <div className="text-center">Acciones</div>,
-    cell: () => (
-      <div className="flex items-center justify-center gap-2">
-        <button
-          className="p-1 cursor-pointer text-slate-400 hover:text-sky-600 transition-colors"
-          title="Ver Detalles"
-        >
-          <ViewIcon className="w-5 h-5" />
-        </button>
-        <button
-          className="p-1 cursor-pointer text-slate-400 hover:text-sky-600 transition-colors"
-          title="Editar"
-        >
-          <EditIcon className="w-5 h-5" />
-        </button>
-      </div>
-    ),
+    header: "",
+    size: 90,
+    cell: () => <ActionsCell />,
   },
 ];

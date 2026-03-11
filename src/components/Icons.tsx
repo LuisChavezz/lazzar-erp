@@ -1087,3 +1087,39 @@ export const HomeIcon = (
     />
   </svg>
 );
+
+export const SyncIcon = (
+  props: React.SVGProps<SVGSVGElement>
+) => (
+  <svg
+    {...props}
+    fill="none"
+    stroke="currentColor"
+    viewBox="0 0 24 24"
+  >
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="2"
+      d="M4 4v6h6M20 20v-6h-6M5.64 15A7 7 0 0019 12M18.36 9A7 7 0 005 12"
+    />
+  </svg>
+);
+
+export const HistoryIcon = (
+  props: React.SVGProps<SVGSVGElement>
+) => (
+  <svg
+    {...props}
+    fill="none"
+    stroke="currentColor"
+    viewBox="0 0 24 24"
+  >
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="2"
+      d="M3 12a9 9 0 109-9M3 3v6h6M12 7v5l3 3"
+    />
+  </svg>
+);

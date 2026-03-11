@@ -1,73 +1,42 @@
-import { DataTable } from "@/src/components/DataTable";
-import { stockColumns } from "./StockColumns";
-import { StockItem } from "../interfaces/stock.interface";
+"use client";
 
-const STOCK_DATA: StockItem[] = [
-  {
-    id: "STK-001",
-    sku: "SKU-4201",
-    product: "Motor Eléctrico 5HP",
-    warehouse: "Almacén Central",
-    available: 120,
-    reserved: 18,
-    incoming: 40,
-    status: "Saludable",
-    lastMovement: "12 Feb 2026",
-  },
-  {
-    id: "STK-002",
-    sku: "SKU-1884",
-    product: "Banda Transportadora 3m",
-    warehouse: "Cedis Norte",
-    available: 28,
-    reserved: 16,
-    incoming: 0,
-    status: "Riesgo",
-    lastMovement: "10 Feb 2026",
-  },
-  {
-    id: "STK-003",
-    sku: "SKU-9044",
-    product: "Caja Cartón Reforzada",
-    warehouse: "Almacén Empaque",
-    available: 6400,
-    reserved: 320,
-    incoming: 900,
-    status: "Sobrestock",
-    lastMovement: "11 Feb 2026",
-  },
-  {
-    id: "STK-004",
-    sku: "SKU-3320",
-    product: "Sensor de Proximidad",
-    warehouse: "Almacén Electrónica",
-    available: 6,
-    reserved: 12,
-    incoming: 20,
-    status: "Crítico",
-    lastMovement: "09 Feb 2026",
-  },
-  {
-    id: "STK-005",
-    sku: "SKU-6102",
-    product: "Aceite Industrial 20L",
-    warehouse: "Almacén Químicos",
-    available: 84,
-    reserved: 22,
-    incoming: 60,
-    status: "Saludable",
-    lastMovement: "13 Feb 2026",
-  },
-];
+import { DataTable } from "@/src/components/DataTable";
+import { ErrorState } from "@/src/components/ErrorState";
+import { stockColumns } from "./StockColumns";
+import { useStockItems } from "../hooks/useStockItems";
 
 export const StockList = () => {
+  const { data: stockItems = [], isLoading, isError, error, refetch, isFetching } = useStockItems();
+
+  if (isLoading) {
+    return (
+      <div className="p-8 flex justify-center items-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-sky-600"></div>
+        <span className="ml-3 text-slate-500">Cargando existencias...</span>
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <ErrorState
+        title="Error al cargar existencias"
+        message={(error as Error).message}
+      />
+    );
+  }
+
   return (
     <div className="mt-12">
       <DataTable
         columns={stockColumns}
-        data={STOCK_DATA}
+        data={stockItems}
         title="Existencias"
-        searchPlaceholder="Buscar por SKU, producto o almacén..."
+        searchPlaceholder="Buscar por producto, almacén o ubicación..."
+        onRefetch={async () => {
+          await refetch();
+        }}
+        isRefetching={isFetching}
       />
     </div>
   );

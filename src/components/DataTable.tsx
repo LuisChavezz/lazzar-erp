@@ -24,6 +24,7 @@ import {
   ArrowLeftIcon,
   ChevronRightIcon,
   FilterIcon,
+  SyncIcon,
 } from "./Icons";
 
 export type DataTableVisibleColumn<TData> = {
@@ -43,6 +44,8 @@ interface DataTableProps<TData, TValue> {
   onFiltersClick?: () => void;
   isFiltersActive?: boolean;
   onClearFilters?: () => void;
+  onRefetch?: () => void | Promise<unknown>; // ! !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  isRefetching?: boolean;
   onVisibleRowsChange?: (rows: TData[]) => void;
   onVisibleColumnsChange?: (columns: DataTableVisibleColumn<TData>[]) => void;
 }
@@ -57,6 +60,8 @@ export function DataTable<TData, TValue>({
   onFiltersClick,
   isFiltersActive,
   onClearFilters,
+  onRefetch,
+  isRefetching,
   onVisibleRowsChange,
   onVisibleColumnsChange,
 }: DataTableProps<TData, TValue>) {
@@ -72,6 +77,7 @@ export function DataTable<TData, TValue>({
   });
   const [draggedColumnId, setDraggedColumnId] = useState<string | null>(null);
   const [dragOverColumnId, setDragOverColumnId] = useState<string | null>(null);
+
 
   // Function to handle column reordering
   const moveColumn = (draggedId: string, targetId: string) => {
@@ -262,6 +268,18 @@ export function DataTable<TData, TValue>({
           )}
 
           <div className="flex items-center justify-end gap-4 w-full sm:w-auto">
+            {onRefetch && (
+              <button
+                type="button"
+                onClick={() => onRefetch()}
+                disabled={isRefetching}
+                className="px-4 py-2 cursor-pointer bg-white dark:bg-white/5 hover:bg-slate-50 dark:hover:bg-white/10 text-slate-700 dark:text-slate-200 text-sm font-semibold rounded-xl border border-slate-200 dark:border-white/10 shadow-sm transition-all flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
+                aria-label="Actualizar datos"
+              >
+                <SyncIcon className={`w-4 h-4 ${isRefetching ? "animate-spin" : ""}`} />
+                Sincronizar
+              </button>
+            )}
             {hasBaseData && (
               <>
                 {onFiltersClick && (
