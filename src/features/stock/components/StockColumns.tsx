@@ -1,21 +1,31 @@
 "use client";
 
+import { useState } from "react";
 import { ColumnDef } from "@tanstack/react-table";
 import { ActionMenu, ActionMenuItem } from "@/src/components/ActionMenu";
 import { StockItem } from "../interfaces/stock.interface";
 import { HistoryIcon } from "../../../components/Icons";
+import { WmsStockHistoryDialog } from "../../wms/components/WmsStockHistoryDialog";
 
-const actionItems: ActionMenuItem[] = [
-  {
-    label: "Ver historial",
-    icon: HistoryIcon,
-  },
-];
+const ActionsCell = ({ stock }: { stock: StockItem }) => {
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
 
-const ActionsCell = () => {
+  const actionItems: ActionMenuItem[] = [
+    {
+      label: "Ver historial",
+      icon: HistoryIcon,
+      onSelect: () => setIsHistoryOpen(true),
+    },
+  ];
+
   return (
     <div className="flex items-center justify-center">
       <ActionMenu items={actionItems} ariaLabel="Acciones de existencias" />
+      <WmsStockHistoryDialog
+        open={isHistoryOpen}
+        onOpenChange={setIsHistoryOpen}
+        stockItem={stock}
+      />
     </div>
   );
 };
@@ -88,6 +98,6 @@ export const stockColumns: ColumnDef<StockItem>[] = [
     id: "actions",
     header: "",
     size: 90,
-    cell: () => <ActionsCell />,
+    cell: ({ row }) => <ActionsCell stock={row.original} />,
   },
 ];

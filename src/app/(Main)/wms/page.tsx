@@ -5,7 +5,7 @@ import {
   EmbarquesIcon,
   SettingsIcon,
 } from "@/src/components/Icons";
-import { StockList } from "@/src/features/stock/components/StockList";
+import { WmsViews } from "@/src/features/wms/components/WmsViews";
 
 export default function WmsPage() {
   const items: KpiItem[] = [
@@ -63,9 +63,7 @@ export default function WmsPage() {
         </p>
       </div>
       <KpiGrid items={items} />
-      <div className="space-y-6">
-        <StockList />
-      </div>
+      <WmsViews />
     </div>
   );
 }
