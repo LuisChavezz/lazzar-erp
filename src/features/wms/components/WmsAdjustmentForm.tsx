@@ -8,29 +8,14 @@ import { useSession } from "next-auth/react";
 import { FormSubmitButton } from "@/src/components/FormButtons";
 import { FormInput } from "@/src/components/FormInput";
 import { FormSelect } from "@/src/components/FormSelect";
+import { useProducts } from "@/src/features/products/hooks/useProducts";
+import { useLocations } from "@/src/features/locations/hooks/useLocations";
 import {
   WmsAdjustmentFormValues,
   WmsAdjustmentSchema,
 } from "../schemas/wms-adjustment.schema";
 import { WmsAdjustmentReason } from "../interfaces/wms-adjustment.interface";
 import { useWmsAdjustmentStore } from "../stores/wms-adjustment.store";
-
-type SimulatedStockByLocation = {
-  producto: string;
-  ubicacion: string;
-  cantidad: number;
-};
-
-const simulatedStock: SimulatedStockByLocation[] = [
-  { producto: "Caja Corrugada 30x20 (BX-320)", ubicacion: "A-01-03", cantidad: 120 },
-  { producto: "Caja Corrugada 30x20 (BX-320)", ubicacion: "A-02-01", cantidad: 48 },
-  { producto: "Caja Corrugada 30x20 (BX-320)", ubicacion: "B-01-02", cantidad: 0 },
-  { producto: "Etiqueta Térmica 100x50 (ET-100)", ubicacion: "A-01-03", cantidad: 310 },
-  { producto: "Etiqueta Térmica 100x50 (ET-100)", ubicacion: "C-02-05", cantidad: 200 },
-  { producto: "Film Stretch Industrial (FS-01)", ubicacion: "B-01-02", cantidad: 26 },
-  { producto: "Film Stretch Industrial (FS-01)", ubicacion: "C-02-05", cantidad: 0 },
-  { producto: "Tarima de Madera Estándar (TM-10)", ubicacion: "A-02-01", cantidad: 12 },
-];
 
 const motivoOptions: { value: WmsAdjustmentReason; label: string }[] = [
   { value: "Conteo físico", label: "Conteo físico" },
@@ -39,43 +24,43 @@ const motivoOptions: { value: WmsAdjustmentReason; label: string }[] = [
   { value: "Producto dañado", label: "Producto dañado" },
 ];
 
-const getCurrentQuantity = (producto: string, ubicacion: string) => {
-  const row = simulatedStock.find(
-    (item) => item.producto === producto && item.ubicacion === ubicacion
-  );
-  return row?.cantidad ?? 0;
-};
-
 export const WmsAdjustmentForm = () => {
   const addAdjustment = useWmsAdjustmentStore((state) => state.addAdjustment);
   const { data: session } = useSession();
   const userName = session?.user?.name || "Usuario";
+  const { products = [], isLoading: productsLoading } = useProducts();
+  const { data: locations = [], isLoading: locationsLoading } = useLocations();
+  const isLoadingFormData = productsLoading || locationsLoading;
 
   const productoOptions = useMemo(
-    () =>
-      Array.from(new Set(simulatedStock.map((item) => item.producto))).map(
-        (producto) => ({
-          value: producto,
-          label: producto,
-        })
-      ),
-    []
+    () => {
+      if (products.length > 0) {
+        return Array.from(new Set(products.map((product) => product.nombre))).map(
+          (producto) => ({
+            value: producto,
+            label: producto,
+          })
+        );
+      }
+      return [];
+    },
+    [products]
   );
 
   const ubicacionOptions = useMemo(
     () =>
-      Array.from(new Set(simulatedStock.map((item) => item.ubicacion))).map(
-        (ubicacion) => ({
-          value: ubicacion,
-          label: ubicacion,
-        })
-      ),
-    []
+      locations
+        .filter((location) => location.estatus === "ACTIVO")
+        .map((location) => ({
+          value: String(location.id_ubicacion),
+          label: `Ubicación ${location.id_ubicacion} · P${location.pasillo} · R${location.rack}`,
+        })),
+    [locations]
   );
 
   const defaultProducto = productoOptions[0]?.value ?? "";
   const defaultUbicacion = ubicacionOptions[0]?.value ?? "";
-  const defaultCantidadActual = getCurrentQuantity(defaultProducto, defaultUbicacion);
+  const defaultCantidadActual = 0;
 
   const defaultValues: WmsAdjustmentFormValues = {
     producto: defaultProducto,
@@ -91,7 +76,6 @@ export const WmsAdjustmentForm = () => {
     handleSubmit,
     reset,
     setValue,
-    getValues,
     formState: { errors, isSubmitting },
   } = useForm<WmsAdjustmentFormValues>({
     resolver: zodResolver(WmsAdjustmentSchema) as Resolver<WmsAdjustmentFormValues>,
@@ -110,23 +94,34 @@ export const WmsAdjustmentForm = () => {
 
   const productoField = register("producto", {
     onChange: (e) => {
-      const selectedProducto = e.target.value;
-      const currentUbicacion = getValues("ubicacion");
-      const quantity = getCurrentQuantity(selectedProducto, currentUbicacion);
-      setValue("cantidadActual", quantity, { shouldValidate: true });
-      setCantidadActualView(quantity);
+      if (e.target.value) {
+        setValue("cantidadActual", 0, { shouldValidate: true });
+        setCantidadActualView(0);
+      }
     },
   });
   const ubicacionField = register("ubicacion", {
     onChange: (e) => {
-      const selectedUbicacion = e.target.value;
-      const currentProducto = getValues("producto");
-      const quantity = getCurrentQuantity(currentProducto, selectedUbicacion);
-      setValue("cantidadActual", quantity, { shouldValidate: true });
-      setCantidadActualView(quantity);
+      if (e.target.value) {
+        setValue("cantidadActual", 0, { shouldValidate: true });
+        setCantidadActualView(0);
+      }
     },
   });
   const motivoField = register("motivo");
+
+  if (isLoadingFormData) {
+    return (
+      <div className="rounded-3xl border border-slate-200 dark:border-white/10 bg-white dark:bg-black p-6">
+        <div className="flex items-center justify-center gap-3 py-12">
+          <div className="h-5 w-5 rounded-full border-2 border-slate-300 border-t-sky-600 animate-spin" />
+          <p className="text-sm text-slate-500 dark:text-slate-400">
+            Cargando productos y ubicaciones...
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="rounded-3xl border border-slate-200 dark:border-white/10 bg-white dark:bg-black p-6 space-y-6">

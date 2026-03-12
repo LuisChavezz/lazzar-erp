@@ -7,7 +7,7 @@ import toast from "react-hot-toast";
 import { FormSubmitButton } from "@/src/components/FormButtons";
 import { FormInput } from "@/src/components/FormInput";
 import { FormSelect } from "@/src/components/FormSelect";
-import { AddStockDialog } from "./AddStockDialog";
+import { AddProductDialog } from "./AddProductDialog";
 import { useWmsOutputStore } from "../stores/wms-output.store";
 import {
   WmsOutputSchema,
@@ -102,10 +102,10 @@ export const WmsOutputForm = () => {
     <div className="rounded-3xl border border-slate-200 dark:border-white/10 bg-white dark:bg-black p-6 space-y-6">
       <div className="flex flex-col gap-1">
         <h2 className="text-xl font-semibold text-slate-800 dark:text-white">
-          Entradas de inventario
+          Salidas de inventario
         </h2>
         <p className="text-sm text-slate-500 dark:text-slate-400">
-          Registrar ingreso de inventario.
+          Registrar salida de inventario.
         </p>
       </div>
 
@@ -184,7 +184,6 @@ export const WmsOutputForm = () => {
               <thead className="text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400 bg-slate-50/70 dark:bg-white/5 border-b border-slate-100 dark:border-white/10">
                 <tr>
                   <th className="px-4 py-3 font-semibold">Producto</th>
-                  <th className="px-4 py-3 font-semibold">Ubicación destino</th>
                   <th className="px-4 py-3 font-semibold text-right">Cantidad</th>
                   <th className="px-4 py-3 font-semibold text-center">Acciones</th>
                 </tr>
@@ -193,7 +192,7 @@ export const WmsOutputForm = () => {
                 {items.length === 0 ? (
                   <tr>
                     <td
-                      colSpan={4}
+                      colSpan={3}
                       className="px-4 py-6 text-center text-slate-500 dark:text-slate-400"
                     >
                       Agrega productos usando el botón de arriba.
@@ -202,14 +201,11 @@ export const WmsOutputForm = () => {
                 ) : (
                   items.map((item, index) => (
                     <tr
-                      key={`${item.stockId}-${index}`}
+                      key={`${item.productoId}-${index}`}
                       className="border-b border-slate-100 dark:border-white/10 last:border-b-0"
                     >
                       <td className="px-4 py-4 text-sm text-slate-700 dark:text-slate-200 font-medium">
                         {item.productoNombre}
-                      </td>
-                      <td className="px-4 py-4 text-sm text-slate-500 dark:text-slate-400">
-                        {item.ubicacionNombre || item.almacenNombre}
                       </td>
                       <td className="px-4 py-4 text-sm text-slate-700 dark:text-slate-200 text-right font-semibold">
                         {item.cantidad.toLocaleString("es-MX")}
@@ -246,7 +242,7 @@ export const WmsOutputForm = () => {
         </div>
       </form>
 
-      <AddStockDialog
+      <AddProductDialog
         open={isDialogOpen}
         onOpenChange={setIsDialogOpen}
         onAddItem={handleAddItem}

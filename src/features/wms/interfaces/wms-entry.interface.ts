@@ -1,8 +1,6 @@
 export interface WmsEntryItem {
-  stockId: number;
+  productoId: number;
   productoNombre: string;
-  almacenNombre: string;
-  ubicacionNombre: string;
   cantidad: number;
 }
 

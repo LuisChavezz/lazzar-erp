@@ -1,10 +1,8 @@
 import { z } from "zod";
 
 export const WmsOutputItemSchema = z.object({
-  stockId: z.number().min(1, "Requerido"),
+  productoId: z.number().min(1, "Requerido"),
   productoNombre: z.string().min(1, "Requerido"),
-  almacenNombre: z.string().min(1, "Requerido"),
-  ubicacionNombre: z.string().min(1, "Requerido"),
   cantidad: z.number().min(1, "Requerido"),
 });
 
