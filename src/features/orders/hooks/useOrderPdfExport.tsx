@@ -138,7 +138,7 @@ const OrdersPdfDocument = ({
 
   return (
     <Document>
-      <Page size="A4" style={styles.page}>
+      <Page size="A4" orientation="landscape" style={styles.page}>
         <View style={styles.header}>
           <Text style={styles.title}>Reporte de Órdenes</Text>
           <Text style={styles.subtitle}>Exportado el {today}</Text>
