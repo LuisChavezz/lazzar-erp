@@ -21,6 +21,8 @@ import {
   ReportesIcon,
   SettingsIcon,
   TasksIcon,
+  UserIcon,
+  LockIcon,
 } from "../components/Icons";
 
 export interface AppRouteItem {
@@ -278,6 +280,30 @@ export const appRouteGroups: AppRouteGroup[] = [
     moduleIcon: DashboardIcon,
     showInHome: true,
     items: [],
+  },
+  {
+    key: "settings",
+    label: "Ajustes de cuenta",
+    description: "Seguridad y perfil de usuario.",
+    moduleLabel: "Ajustes",
+    modulePath: "/settings",
+    moduleDescription: "Configuración de cuenta, seguridad y perfil.",
+    moduleIcon: SettingsIcon,
+    showInHome: true,
+    items: [
+      {
+        key: "settings-profile",
+        label: "Perfil",
+        path: "/settings/profile",
+        icon: UserIcon,
+      },
+      {
+        key: "settings-security",
+        label: "Seguridad",
+        path: "/settings/security",
+        icon: LockIcon,
+      },
+    ],
   },
   {
     key: "config",

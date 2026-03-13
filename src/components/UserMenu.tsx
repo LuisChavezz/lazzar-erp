@@ -1,11 +1,13 @@
 "use client";
 
 import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
 import { DropdownMenu } from "@radix-ui/themes";
 import { UserIcon, HelpIcon } from "./Icons";
 
 export const UserMenu = () => {
   const { data: session } = useSession();
+  const router = useRouter();
 
   const userInitial = session?.user?.name ? session.user.name.charAt(0).toUpperCase() : "U";
   const userEmail = session?.user?.email || "usuario@ejemplo.com";
@@ -29,7 +31,10 @@ export const UserMenu = () => {
           <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{userEmail}</p>
         </div>
 
-        <DropdownMenu.Item className="flex items-center gap-2 px-3 py-2 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/5 rounded-lg cursor-pointer! outline-none data-highlighted:bg-slate-50 dark:data-highlighted:bg-white/5 data-highlighted:text-sky-600 dark:data-highlighted:text-sky-400">
+        <DropdownMenu.Item
+          onSelect={() => router.push("/settings/profile")}
+          className="flex items-center gap-2 px-3 py-2 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/5 rounded-lg cursor-pointer! outline-none data-highlighted:bg-slate-50 dark:data-highlighted:bg-white/5 data-highlighted:text-sky-600 dark:data-highlighted:text-sky-400"
+        >
           <UserIcon className="w-4 h-4" />
           Perfil
         </DropdownMenu.Item>
