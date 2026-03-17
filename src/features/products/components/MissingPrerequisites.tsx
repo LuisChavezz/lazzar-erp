@@ -13,7 +13,7 @@ export default function MissingPrerequisites({ items }: { items: string[] }) {
               Faltan configuraciones para registrar productos
             </h3>
             <p className="text-sm text-slate-500 dark:text-slate-400">
-              Antes de crear un producto, registra los siguientes elementos:
+              Antes de crear un producto, verifica los siguientes elementos:
             </p>
           </div>
           <ul className="list-disc pl-5 text-sm text-amber-700 dark:text-amber-300 space-y-1">

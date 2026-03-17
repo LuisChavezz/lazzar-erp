@@ -1,15 +1,18 @@
 "use client";
 
 import { ColumnDef } from "@tanstack/react-table";
+import { useRouter } from "next/navigation";
 import { CustomerItem } from "../interfaces/customer.interface";
 import { ActionMenu, ActionMenuItem } from "@/src/components/ActionMenu";
 import { EditIcon, ViewIcon } from "../../../components/Icons";
 
-const ActionsCell = () => {
+const ActionsCell = ({ customer }: { customer: CustomerItem }) => {
+  const router = useRouter();
   const items: ActionMenuItem[] = [
     {
       label: "Ver Detalles",
       icon: ViewIcon,
+      onSelect: () => router.push(`/sales/customers/${customer.id}`),
     },
     {
       label: "Editar",
@@ -92,6 +95,6 @@ export const customerColumns: ColumnDef<CustomerItem>[] = [
     id: "actions",
     header: "",
     size: 90,
-    cell: () => <ActionsCell />,
+    cell: ({ row }) => <ActionsCell customer={row.original} />,
   },
 ];

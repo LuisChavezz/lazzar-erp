@@ -87,6 +87,15 @@ export const appRouteGroups: AppRouteGroup[] = [
         permission: "R-CLIE",
       },
       {
+        key: "sales-customer",
+        label: "Cliente",
+        path: "/sales/customers/[id]",
+        icon: ClientesIcon,
+        permission: "R-CLIE",
+        parentPath: "/sales/customers",
+        showInSidebar: false,
+      },
+      {
         key: "sales-orders",
         label: "Pedidos",
         path: "/sales/orders",

@@ -59,7 +59,7 @@ export default function KpiGrid({ items }: KpiGridProps) {
               </div>
             </div>
             <div className="flex items-baseline gap-2 mb-2">
-              <h3 className={`text-2xl font-bold text-slate-800 dark:text-white tracking-tight font-mono`}>
+              <h3 className={`text-2xl font-bold text-slate-800 dark:text-white tracking-tight font-mono truncate`}>
                 {item.value}
               </h3>
               {item.trendLabel ? (

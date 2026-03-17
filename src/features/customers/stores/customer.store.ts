@@ -1,16 +1,25 @@
 import { create } from "zustand";
 import { devtools, persist } from "zustand/middleware";
 import { CustomerItem } from "../interfaces/customer.interface";
+import { createCustomerId } from "../utils/customer-detail";
 
 interface CustomerState {
   customers: CustomerItem[];
+  hasHydrated: boolean;
   setCustomers: (customers: CustomerItem[]) => void;
+  setHasHydrated: (value: boolean) => void;
   addCustomer: (customer: CustomerItem) => void;
   updateCustomer: (customer: CustomerItem) => void;
 }
 
+const ensureCustomerId = (customer: CustomerItem): CustomerItem => ({
+  ...customer,
+  id: customer.id || createCustomerId(customer.razonSocial),
+});
+
 const initialCustomers: CustomerItem[] = [
   {
+    id: "grupo-comercial-alfa",
     razonSocial: "Grupo Comercial Alfa",
     contacto: "María González",
     telefono: "+52 81 4455 1200",
@@ -42,6 +51,7 @@ const initialCustomers: CustomerItem[] = [
     },
   },
   {
+    id: "industrias-del-bajio",
     razonSocial: "Industrias del Bajío",
     contacto: "Carlos Rivas",
     telefono: "+52 477 331 7788",
@@ -73,6 +83,7 @@ const initialCustomers: CustomerItem[] = [
     },
   },
   {
+    id: "distribuciones-pacifico",
     razonSocial: "Distribuciones Pacífico",
     contacto: "Ricardo Salas",
     telefono: "+52 664 812 3344",
@@ -110,18 +121,25 @@ export const useCustomerStore = create<CustomerState>()(
     persist(
       (set) => ({
         customers: initialCustomers,
-        setCustomers: (customers) => set({ customers }),
+        hasHydrated: false,
+        setCustomers: (customers) => set({ customers: customers.map(ensureCustomerId) }),
+        setHasHydrated: (value) => set({ hasHydrated: value }),
         addCustomer: (customer) =>
-          set((state) => ({ customers: [customer, ...state.customers] })),
+          set((state) => ({ customers: [ensureCustomerId(customer), ...state.customers] })),
         updateCustomer: (customer) =>
           set((state) => ({
             customers: state.customers.map((item) =>
-              item.razonSocial === customer.razonSocial ? customer : item
+              item.id === customer.id ? ensureCustomerId(customer) : item
             ),
           })),
       }),
       {
         name: "customer-store",
+        onRehydrateStorage: () => (state) => {
+          if (!state) return;
+          state.setCustomers(state.customers);
+          state.setHasHydrated(true);
+        },
       }
     ),
     {

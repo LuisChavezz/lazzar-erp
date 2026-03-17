@@ -22,8 +22,21 @@ export interface CustomerOrderProfile {
 }
 
 export interface CustomerItem {
+  id: string;
   razonSocial: string;
   contacto: string;
+  telefono: string;
+  correo: string;
+  ultimaCompra: string;
+  ultimoPedido: string;
+  vendedor: string;
+  orderProfile: CustomerOrderProfile;
+}
+
+export interface Customer {
+  id: string;
+  nombre: string;
+  razonSocial: string;
   telefono: string;
   correo: string;
   ultimaCompra: string;

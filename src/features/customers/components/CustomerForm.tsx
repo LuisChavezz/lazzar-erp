@@ -10,6 +10,7 @@ import { ClientesIcon, EmbarquesIcon, TaxIcon } from "@/src/components/Icons";
 import { useCustomerStore } from "../stores/customer.store";
 import { CustomerFormSchema, CustomerFormValues } from "../schemas/customer.schema";
 import { CustomerItem } from "../interfaces/customer.interface";
+import { createCustomerId } from "../utils/customer-detail";
 import toast from "react-hot-toast";
 
 interface CustomerFormProps {
@@ -67,6 +68,7 @@ export default function CustomerForm({ onCreated, sellerName }: CustomerFormProp
     setIsLoading(true);
     try {
       const createdCustomer: CustomerItem = {
+        id: createCustomerId(data.razonSocial),
         razonSocial: data.razonSocial,
         contacto: data.contacto,
         telefono: data.telefono,
