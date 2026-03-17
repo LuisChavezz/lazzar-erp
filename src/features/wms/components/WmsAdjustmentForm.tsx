@@ -8,6 +8,7 @@ import { useSession } from "next-auth/react";
 import { FormSubmitButton } from "@/src/components/FormButtons";
 import { FormInput } from "@/src/components/FormInput";
 import { FormSelect } from "@/src/components/FormSelect";
+import { Loader } from "@/src/components/Loader";
 import { useProducts } from "@/src/features/products/hooks/useProducts";
 import { useLocations } from "@/src/features/locations/hooks/useLocations";
 import {
@@ -113,12 +114,7 @@ export const WmsAdjustmentForm = () => {
   if (isLoadingFormData) {
     return (
       <div className="rounded-3xl border border-slate-200 dark:border-white/10 bg-white dark:bg-black p-6">
-        <div className="flex items-center justify-center gap-3 py-12">
-          <div className="h-5 w-5 rounded-full border-2 border-slate-300 border-t-sky-600 animate-spin" />
-          <p className="text-sm text-slate-500 dark:text-slate-400">
-            Cargando productos y ubicaciones...
-          </p>
-        </div>
+        <Loader className="py-12" title="Cargando datos" message="Cargando productos y ubicaciones..." />
       </div>
     );
   }

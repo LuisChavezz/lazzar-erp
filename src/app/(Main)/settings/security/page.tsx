@@ -1,3 +1,5 @@
+import { ChangePasswordForm } from "@/src/features/settings/components/ChangePasswordForm";
+
 export default function SettingsSecurityPage() {
   return (
     <section className="w-full space-y-4">
@@ -7,26 +9,7 @@ export default function SettingsSecurityPage() {
       </header>
 
       <div className="grid gap-4 xl:grid-cols-2 xl:items-start">
-        <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-950/70 p-6 space-y-4 h-fit">
-          <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Cambio de contraseña</h2>
-          <label className="space-y-2 text-sm block">
-            <span className="text-slate-600 dark:text-slate-300">Contraseña actual</span>
-            <input type="password" className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-slate-300 dark:focus:ring-slate-700" />
-          </label>
-          <label className="space-y-2 text-sm block">
-            <span className="text-slate-600 dark:text-slate-300">Nueva contraseña</span>
-            <input type="password" className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-slate-300 dark:focus:ring-slate-700" />
-          </label>
-          <label className="space-y-2 text-sm block">
-            <span className="text-slate-600 dark:text-slate-300">Confirmar contraseña</span>
-            <input type="password" className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-slate-300 dark:focus:ring-slate-700" />
-          </label>
-          <div className="flex w-full justify-end">
-            <button className="cursor-pointer rounded-xl bg-sky-600 text-white px-4 py-2 text-sm font-medium hover:bg-sky-500 transition-colors">
-              Actualizar contraseña
-            </button>
-          </div>
-        </div>
+        <ChangePasswordForm />
 
         <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-950/70 p-6 space-y-4 h-fit">
           <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Autenticación adicional</h2>

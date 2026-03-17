@@ -1,24 +1,14 @@
+import { settingSections } from "@/src/features/settings/constants/settingSections";
 import Link from "next/link";
 
-const settingSections = [
-  {
-    title: "Perfil",
-    description: "Información personal, datos de contacto y foto de usuario.",
-    href: "/settings/profile",
-  },
-  {
-    title: "Seguridad",
-    description: "Contraseña, sesiones activas, MFA y controles de acceso.",
-    href: "/settings/security",
-  },
-];
+
 
 export default function SettingsPage() {
   return (
     <section className="w-full space-y-6">
       <header className="rounded-2xl border border-slate-200/70 dark:border-white/10 bg-white dark:bg-slate-950 p-6">
         <p className="text-xs uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">Cuenta</p>
-        <h1 className="mt-2 text-2xl font-semibold text-slate-900 dark:text-slate-100">Settings</h1>
+        <h1 className="mt-2 text-2xl font-semibold text-slate-900 dark:text-slate-100">Ajustes</h1>
         <p className="mt-2 text-sm text-slate-600 dark:text-slate-400 max-w-2xl">
           Ajusta tu perfil y seguridad en un mismo módulo. Este es el punto de entrada para las
           configuraciones de cuenta.
