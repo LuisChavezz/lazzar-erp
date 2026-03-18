@@ -16,9 +16,9 @@ export default function UserList() {
   const { data: session } = useSession();
   const isAdmin = session?.user?.role === "admin";
   const permissions = session?.user?.permissions ?? [];
-  const canReadConfig = isAdmin || permissions.includes("R-CONF");
-  const canEditConfig = isAdmin || permissions.includes("E-CONF");
-  const canDeleteConfig = isAdmin || permissions.includes("D-CONF");
+  const canReadConfig = isAdmin || permissions.includes("R-CONFIGURACION");
+  const canEditConfig = isAdmin || permissions.includes("E-CONFIGURACION");
+  const canDeleteConfig = isAdmin || permissions.includes("D-CONFIGURACION");
   const columns = useMemo(
     () => getUserColumns({ canRead: canReadConfig, canEdit: canEditConfig, canDelete: canDeleteConfig }),
     [canReadConfig, canEditConfig, canDeleteConfig]

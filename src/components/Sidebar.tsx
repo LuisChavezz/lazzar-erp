@@ -8,16 +8,13 @@ import MobileSidebar from "./MobileSidebar";
 import { getSidebarItems } from "@/src/utils/getSidebarItems";
 import SidebarItem from "./SidebarItem";
 import { ConfirmDialog } from "./ConfirmDialog";
-import { LogoIcon, LogoutIcon, SettingsIcon } from "./Icons";
-import { hasPermission } from "@/src/utils/permissions";
+import { LogoIcon, LogoutIcon } from "./Icons";
 import { appRouteGroups } from "@/src/constants/appRoutes";
 
 export default function Sidebar() {
   const pathname = usePathname();
   const { handleLogout } = useLogout();
   const { data: session } = useSession();
-  const isConfigActive = pathname === "/config" || pathname.startsWith("/config/");
-  const canReadConfig = hasPermission("R-CONF", session?.user);
   const availableSections = getSidebarItems(session?.user, pathname);
   const activeGroup = appRouteGroups.find(
     (group) => pathname === group.modulePath || pathname.startsWith(`${group.modulePath}/`)
@@ -31,7 +28,6 @@ export default function Sidebar() {
     "finance",
     "hr",
     "other",
-    "settings",
   ]);
   const moduleLabel =
     activeGroup && mainGroupKeys.has(activeGroup.key) ? activeGroup.moduleLabel : null;
@@ -64,13 +60,7 @@ export default function Sidebar() {
         <nav className="flex-1 overflow-y-auto no-scrollbar py-6 px-3 space-y-3">
           {availableSections.map((section, index) => (
             <div key={index} className={index > 0 ? "mt-6" : ""}>
-              {section.title && (
-                <div className="px-3 mb-2 opacity-0 group-hover/sidebar:opacity-100 transition-opacity duration-300 delay-100">
-                  <span className="text-[10px] uppercase tracking-wider font-semibold text-slate-400 dark:text-slate-500 whitespace-nowrap">
-                    {section.title}
-                  </span>
-                </div>
-              )}
+              {index > 0 && <div className="h-px bg-slate-200/80 dark:bg-white/10 mx-2 my-2" />}
               {index === 0 && moduleItem ? (
                 <div className="space-y-2">
                   <div>
@@ -112,7 +102,7 @@ export default function Sidebar() {
                   {section.items.map((item, itemIndex) => (
                     <div key={itemIndex}>
                       <SidebarItem item={item} variant="desktop" />
-                      {itemIndex === 0 && (
+                      {index === 0 && itemIndex === 0 && (
                         <div className="h-px bg-slate-200/80 dark:bg-white/10 mx-2 my-2" />
                       )}
                     </div>
@@ -125,26 +115,6 @@ export default function Sidebar() {
 
         {/* Bottom Actions */}
         <div className="p-4 border-t border-slate-200 dark:border-slate-800">
-
-          {/* Configuración */}
-          {canReadConfig && (
-            <Link
-              href="/config"
-              aria-label="Configuración"
-              className={`flex items-center gap-4 px-3 py-3 rounded-xl transition-colors group relative ${
-                isConfigActive
-                  ? "bg-sky-50 dark:bg-sky-500/10 text-sky-600 dark:text-sky-300"
-                  : "hover:bg-sky-50 dark:hover:bg-sky-500/10 text-slate-500 dark:text-white hover:text-sky-600 dark:hover:text-sky-300"
-              }`}
-            >
-              <SettingsIcon className="w-6 h-6 shrink-0" aria-hidden="true" />
-              <span className="font-medium text-sm whitespace-nowrap opacity-0 group-hover/sidebar:opacity-100 transition-opacity duration-200 absolute left-14">
-                Configuración
-              </span>
-            </Link>
-          )}
-
-          {/* Cerrar sesión */}
           <ConfirmDialog
             title="Cerrar sesión"
             description="¿Estás seguro de que deseas cerrar sesión?"

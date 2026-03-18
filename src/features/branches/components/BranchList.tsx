@@ -15,8 +15,8 @@ export default function BranchList() {
   const { data: session } = useSession();
   const isAdmin = session?.user?.role === "admin";
   const permissions = session?.user?.permissions ?? [];
-  const canReadConfig = isAdmin || permissions.includes("R-CONF");
-  const canEditConfig = isAdmin || permissions.includes("E-CONF");
+  const canReadConfig = isAdmin || permissions.includes("R-CONFIGURACION");
+  const canEditConfig = isAdmin || permissions.includes("E-CONFIGURACION");
 
   // const handleNew = () => {
   //   setIsDialogOpen(true);

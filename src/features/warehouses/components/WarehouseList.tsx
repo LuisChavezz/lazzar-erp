@@ -18,8 +18,8 @@ export default function WarehouseList() {
   const { data: session } = useSession();
   const isAdmin = session?.user?.role === "admin";
   const permissions = session?.user?.permissions ?? [];
-  const canEditConfig = isAdmin || permissions.includes("E-CONF");
-  const canDeleteConfig = isAdmin || permissions.includes("D-CONF");
+  const canEditConfig = isAdmin || permissions.includes("E-CONFIGURACION");
+  const canDeleteConfig = isAdmin || permissions.includes("D-CONFIGURACION");
 
   const handleEdit = useCallback((warehouse: Warehouse) => {
     setSelectedWarehouse(warehouse);

@@ -10,7 +10,6 @@ import { CloseIcon, LogoIcon, MenuIcon } from "./Icons";
 import { getSidebarItems } from "@/src/utils/getSidebarItems";
 import SidebarItem from "./SidebarItem";
 import { Notifications } from "../features/notifications/components/Notifications";
-import { hasPermission } from "@/src/utils/permissions";
 import { appRouteGroups } from "@/src/constants/appRoutes";
 
 export default function MobileSidebar() {
@@ -18,8 +17,6 @@ export default function MobileSidebar() {
   const pathname = usePathname();
   const { handleLogout } = useLogout();
   const { data: session } = useSession();
-  const isConfigActive = pathname === "/config" || pathname.startsWith("/config/");
-  const canReadConfig = hasPermission("R-CONF", session?.user);
   const availableSections = getSidebarItems(session?.user, pathname);
   const activeGroup = appRouteGroups.find(
     (group) => pathname === group.modulePath || pathname.startsWith(`${group.modulePath}/`)
@@ -105,13 +102,7 @@ export default function MobileSidebar() {
           <div className="flex-1 overflow-y-auto p-4 space-y-3">
             {availableSections.map((section, index) => (
               <div key={index}>
-                {section.title && (
-                  <div className={`px-4 mb-2 ${index === 0 ? "mt-2" : "mt-4"}`}>
-                    <span className="text-[10px] uppercase tracking-wider font-semibold text-slate-400 dark:text-slate-500">
-                      {section.title}
-                    </span>
-                  </div>
-                )}
+                {index > 0 && <div className="h-px bg-slate-200/80 dark:bg-white/10 mx-2 my-2" />}
                 {index === 0 && moduleItem ? (
                   <div className="space-y-2">
                     <div>
@@ -167,7 +158,7 @@ export default function MobileSidebar() {
                           variant="mobile"
                           setIsMobileOpen={setIsMobileOpen}
                         />
-                        {itemIndex === 0 && (
+                        {index === 0 && itemIndex === 0 && (
                           <div className="h-px bg-slate-200/80 dark:bg-white/10 mx-2 my-2" />
                         )}
                       </div>
@@ -178,19 +169,6 @@ export default function MobileSidebar() {
             ))}
           </div>
           <div className="p-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-black/20">
-            {canReadConfig && (
-              <Link
-                href="/config"
-                className={`block w-full text-center px-4 py-3 rounded-xl border font-semibold text-sm mb-3 ${
-                  isConfigActive
-                    ? "bg-sky-50 dark:bg-sky-500/10 text-sky-600 dark:text-sky-300 border-sky-100 dark:border-sky-500/20"
-                    : "border-slate-200 dark:border-slate-700 text-slate-600 dark:text-white hover:bg-slate-50 dark:hover:bg-slate-800"
-                }`}
-                onClick={() => setIsMobileOpen(false)}
-              >
-                Configuración
-              </Link>
-            )}
             <ConfirmDialog
               title="Cerrar sesión"
               description="¿Estás seguro de que deseas cerrar sesión?"

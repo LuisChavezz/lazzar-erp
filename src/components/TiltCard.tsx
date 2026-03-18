@@ -15,6 +15,7 @@ interface TiltCardProps {
   onMouseEnter?: () => void;
   href?: string;
   shadowColorClassName?: string;
+  isVisible?: boolean;
 }
 
 export default function TiltCard({
@@ -29,8 +30,9 @@ export default function TiltCard({
   onMouseEnter,
   href,
   shadowColorClassName,
+  isVisible = true,
 }: TiltCardProps) {
-  // Referencias para animación sin recalcular en cada render
+  // Referencias persistentes para calcular tilt con REF sin gatillar renders.
   const cardRef = useRef<HTMLDivElement & HTMLAnchorElement>(null);
   const rectRef = useRef<DOMRect | null>(null);
   const frameRef = useRef<number | null>(null);
@@ -39,13 +41,13 @@ export default function TiltCard({
   useEffect(() => {
     const card = cardRef.current;
     if (!card) return;
-    // Solo activar en dispositivos con puntero fino
+    // Solo habilita el efecto en dispositivos con puntero fino.
     if (!window.matchMedia?.("(pointer: fine)")?.matches) return;
 
     const threshold = 15;
 
     const handleMouseMove = (e: MouseEvent) => {
-      // Guardar último evento y sincronizar con RAF
+      // Acumula el último evento y procesa en el próximo frame para suavidad.
       lastEventRef.current = e;
       if (frameRef.current !== null) return;
       frameRef.current = window.requestAnimationFrame(() => {
@@ -67,13 +69,13 @@ export default function TiltCard({
     };
 
     const handleMouseEnter = () => {
-      // Capturar rect una sola vez al entrar
+      // Calcula límites de la tarjeta una vez al entrar para reutilizarlos.
       rectRef.current = card.getBoundingClientRect();
       card.style.transition = "none";
     };
 
     const handleMouseLeave = () => {
-      // Limpiar estado y resetear transformación
+      // Limpia estado temporal y regresa la tarjeta al estado neutral.
       if (frameRef.current !== null) {
         window.cancelAnimationFrame(frameRef.current);
         frameRef.current = null;
@@ -104,6 +106,11 @@ export default function TiltCard({
   const shadowClassName = shadowColorClassName
     ? `shadow-sm hover:shadow-xl dark:shadow-none ${shadowColorClassName}`
     : "";
+
+  // Permite controlar visibilidad desde el caller sin duplicar condicionales de render.
+  if (!isVisible) {
+    return null;
+  }
 
   return (
     <Component

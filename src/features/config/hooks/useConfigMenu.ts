@@ -37,7 +37,7 @@ export function useConfigMenu(user?: PermissionContext | null) {
 
   // Filtrar tarjetas visibles según permisos
   const visibleCards = useMemo(() => {
-    const canReadConfig = hasPermission("R-CONF", user);
+    const canReadConfig = hasPermission("R-CONFIGURACION", user);
     return configCards.filter((card) => (card.adminOnly ? canReadConfig : true));
   }, [user]);
 

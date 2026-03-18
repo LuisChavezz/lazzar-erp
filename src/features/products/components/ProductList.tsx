@@ -19,8 +19,8 @@ export default function ProductList() {
   const { data: session } = useSession();
   const isAdmin = session?.user?.role === "admin";
   const permissions = session?.user?.permissions ?? [];
-  const canEditConfig = isAdmin || permissions.includes("E-CONF");
-  const canDeleteConfig = isAdmin || permissions.includes("D-CONF");
+  const canEditConfig = isAdmin || permissions.includes("E-CONFIGURACION");
+  const canDeleteConfig = isAdmin || permissions.includes("D-CONFIGURACION");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const { products, isLoading, isError, error } = useProducts();

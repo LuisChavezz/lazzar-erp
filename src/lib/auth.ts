@@ -21,11 +21,12 @@ export const authOptions: NextAuthOptions = {
 
           // Verificar si la autenticación fue exitosa
           if (data && data.token) {
+            const isAdminUser = data.is_admin_empresa || data.es_admin || data.is_superuser;
             return {
               id: data.user_id.toString(),
               name: data.nombre_completo,
               email: data.email,
-              role: data.is_admin_empresa ? "admin" : "user",
+              role: isAdminUser ? "admin" : "user",
               token: data.token,
               permissions: data.permisos,
             };

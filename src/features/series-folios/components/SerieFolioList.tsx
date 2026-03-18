@@ -23,8 +23,8 @@ export default function SerieFolioList() {
 
   const isAdmin = session?.user?.role === "admin";
   const permissions = session?.user?.permissions ?? [];
-  const canEditConfig = isAdmin || permissions.includes("E-CONF");
-  const canDeleteConfig = isAdmin || permissions.includes("D-CONF");
+  const canEditConfig = isAdmin || permissions.includes("E-CONFIGURACION");
+  const canDeleteConfig = isAdmin || permissions.includes("D-CONFIGURACION");
 
   const branchLookup = useMemo(
     () => new Map(branches.map((branch) => [branch.id, branch.nombre])),
