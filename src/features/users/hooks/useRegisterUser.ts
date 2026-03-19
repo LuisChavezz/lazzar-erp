@@ -3,10 +3,14 @@ import { registerUser } from "../services/actions";
 import { UserFormValues } from "../schemas/user.schema";
 import toast from "react-hot-toast";
 import { AxiosError } from "axios";
-import { UseFormSetError } from "react-hook-form";
 import { useWorkspaceStore } from "../../workspace/store/workspace.store";
 
-export const useRegisterUser = (setError?: UseFormSetError<UserFormValues>) => {
+type SetUserError = (
+  field: keyof UserFormValues,
+  error: { type?: string; message?: string }
+) => void;
+
+export const useRegisterUser = (setError?: SetUserError) => {
   const queryClient = useQueryClient();
   const companyId = useWorkspaceStore((state) => state.selectedCompany.id);
 

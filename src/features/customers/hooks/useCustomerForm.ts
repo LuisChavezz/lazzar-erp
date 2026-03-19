@@ -206,7 +206,7 @@ export function useCustomerForm({
     },
   });
 
-  const isPending = isCreating || isUpdating || form.state.isSubmitting;
+  const isPending = isCreating || isUpdating;
 
   // Limpieza/restablecimiento manual:
   // - creación: vuelve a emptyValues

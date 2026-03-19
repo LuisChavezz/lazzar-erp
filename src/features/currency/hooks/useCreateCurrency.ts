@@ -4,9 +4,13 @@ import { CreateCurrencyResponseError } from "../interfaces/currency.interface";
 import { CurrencyFormValues } from "../schemas/currency.schema";
 import toast from "react-hot-toast";
 import { AxiosError } from "axios";
-import { UseFormSetError } from "react-hook-form";
 
-export const useCreateCurrency = (setError?: UseFormSetError<CurrencyFormValues>) => {
+type SetCurrencyError = (
+  field: keyof CurrencyFormValues,
+  error: { type?: string; message?: string }
+) => void;
+
+export const useCreateCurrency = (setError?: SetCurrencyError) => {
   const queryClient = useQueryClient();
 
   return useMutation({

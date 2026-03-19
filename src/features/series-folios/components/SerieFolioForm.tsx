@@ -1,18 +1,11 @@
 "use client";
 
-import { useState } from "react";
-import { useForm, Controller } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { SerieFolioFormSchema, SerieFolioFormValues } from "../schemas/serie-folio.schema";
 import { FormInput } from "../../../components/FormInput";
 import { FormSelect } from "../../../components/FormSelect";
 import { FormCancelButton, FormSubmitButton } from "../../../components/FormButtons";
 import { InfoIcon, SettingsIcon } from "../../../components/Icons";
-import { useWorkspaceStore } from "../../workspace/store/workspace.store";
-import { useCompanyBranches } from "../../branches/hooks/useCompanyBranches";
-import { useCreateSerieFolio } from "../hooks/useCreateSerieFolio";
-import { useUpdateSerieFolio } from "../hooks/useUpdateSerieFolio";
 import { SerieFolio } from "../interfaces/serie-folio.interface";
+import { useSerieFolioForm } from "../hooks/useSerieFolioForm";
 
 interface SerieFolioFormProps {
   onSuccess: () => void;
@@ -20,79 +13,26 @@ interface SerieFolioFormProps {
 }
 
 export default function SerieFolioForm({ onSuccess, serieFolioToEdit }: SerieFolioFormProps) {
-  const selectedCompany = useWorkspaceStore((state) => state.selectedCompany);
-  const selectedBranch = useWorkspaceStore((state) => state.selectedBranch);
-  const { branches, isLoading: isLoadingBranches } = useCompanyBranches(selectedCompany.id);
-
-  const isEditing = Boolean(serieFolioToEdit?.id_serie_folio);
-  const emptyValues: SerieFolioFormValues = {
-    tipo_documento: "",
-    serie: "",
-    folio_inicial: 1,
-    folio_final: 9999,
-    prefijo: "",
-    sufijo: "",
-    relleno_ceros: 4,
-    separador: "",
-    incluir_anio: false,
-    reiniciar_anual: false,
-    estatus: "activo",
-    sucursal: selectedBranch?.id ?? 0,
-  };
-
-  const editValues: SerieFolioFormValues = serieFolioToEdit
-    ? {
-        tipo_documento: serieFolioToEdit.tipo_documento,
-        serie: serieFolioToEdit.serie,
-        folio_inicial: serieFolioToEdit.folio_inicial,
-        folio_final: serieFolioToEdit.folio_final,
-        prefijo: serieFolioToEdit.prefijo ?? "",
-        sufijo: serieFolioToEdit.sufijo ?? "",
-        relleno_ceros: serieFolioToEdit.relleno_ceros,
-        separador: serieFolioToEdit.separador ?? "",
-        incluir_anio: serieFolioToEdit.incluir_anio,
-        reiniciar_anual: serieFolioToEdit.reiniciar_anual,
-        estatus: serieFolioToEdit.estatus as SerieFolioFormValues["estatus"],
-        sucursal: serieFolioToEdit.sucursal,
-      }
-    : emptyValues;
-
   const {
-    register,
-    handleSubmit,
-    reset,
-    setError,
-    control,
-    formState: { errors },
-  } = useForm<SerieFolioFormValues>({
-    resolver: zodResolver(SerieFolioFormSchema),
-    defaultValues: emptyValues,
-    values: isEditing ? editValues : undefined,
+    form,
+    formRef,
+    formKey,
+    isEditing,
+    isPending,
+    branches,
+    isLoadingBranches,
+    getError,
+    clearFieldErrors,
+    validateField,
+    handleReset,
+    handleFormSubmit,
+  } = useSerieFolioForm({
+    onSuccess,
+    serieFolioToEdit,
   });
 
-  const { mutateAsync: createSerieFolio, isPending: isCreating } = useCreateSerieFolio(setError);
-  const { mutateAsync: updateSerieFolio, isPending: isUpdating } = useUpdateSerieFolio(setError);
-  const [isLoading, setIsLoading] = useState(false);
-  const isPending = isCreating || isUpdating || isLoading;
-
-  const onSubmit = async (values: SerieFolioFormValues) => {
-    setIsLoading(true);
-    try {
-      if (isEditing && serieFolioToEdit) {
-        await updateSerieFolio({ ...serieFolioToEdit, ...values });
-        reset(editValues);
-      } else {
-        await createSerieFolio(values);
-        reset(emptyValues);
-      }
-      onSuccess();
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="w-full">
+    <form ref={formRef} key={formKey} onSubmit={handleFormSubmit} className="w-full">
       <fieldset disabled={isPending} className="group-disabled:opacity-50">
         <section className="bg-white dark:bg-zinc-900 rounded-3xl border border-slate-200 dark:border-white/5 shadow-sm dark:shadow-none overflow-hidden hover:shadow-lg transition-shadow duration-300 mb-8">
           <div className="px-8 py-5 border-b border-slate-100 dark:border-white/5 flex items-center gap-3 bg-slate-50/50 dark:bg-white/2">
@@ -110,50 +50,115 @@ export default function SerieFolioForm({ onSuccess, serieFolioToEdit }: SerieFol
           <div className="p-8">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <div className="group/field md:col-span-2">
-                <FormInput
-                  label="Tipo de Documento"
-                  placeholder="Ej. Factura"
-                  variant="ghost"
-                  className="text-3xl font-bold"
-                  {...register("tipo_documento")}
-                  error={errors.tipo_documento}
-                />
+                <form.Field name="tipo_documento">
+                  {(field) => (
+                    <FormInput
+                      label="Tipo de Documento"
+                      placeholder="Ej. Factura"
+                      variant="ghost"
+                      className="text-3xl font-bold"
+                      name={field.name}
+                      value={field.state.value}
+                      onChange={(event) => {
+                        field.handleChange(event.target.value);
+                        clearFieldErrors("tipo_documento");
+                      }}
+                      onBlur={() => {
+                        field.handleBlur();
+                        validateField("tipo_documento", field.state.value);
+                      }}
+                      error={getError("tipo_documento")}
+                    />
+                  )}
+                </form.Field>
               </div>
 
               <div className="group/field">
-                <FormInput
-                  label="Serie"
-                  placeholder="Ej. F"
-                  {...register("serie")}
-                  error={errors.serie}
-                />
+                <form.Field name="serie">
+                  {(field) => (
+                    <FormInput
+                      label="Serie"
+                      placeholder="Ej. F"
+                      name={field.name}
+                      value={field.state.value}
+                      onChange={(event) => {
+                        field.handleChange(event.target.value);
+                        clearFieldErrors("serie");
+                      }}
+                      onBlur={() => {
+                        field.handleBlur();
+                        validateField("serie", field.state.value);
+                      }}
+                      error={getError("serie")}
+                    />
+                  )}
+                </form.Field>
               </div>
 
               <div className="group/field">
-                <FormInput
-                  label="Separador"
-                  placeholder="-"
-                  {...register("separador")}
-                  error={errors.separador}
-                />
+                <form.Field name="separador">
+                  {(field) => (
+                    <FormInput
+                      label="Separador"
+                      placeholder="-"
+                      name={field.name}
+                      value={field.state.value}
+                      onChange={(event) => {
+                        field.handleChange(event.target.value);
+                        clearFieldErrors("separador");
+                      }}
+                      onBlur={() => {
+                        field.handleBlur();
+                        validateField("separador", field.state.value);
+                      }}
+                      error={getError("separador")}
+                    />
+                  )}
+                </form.Field>
               </div>
 
               <div className="group/field">
-                <FormInput
-                  label="Prefijo"
-                  placeholder="Ej. FAC"
-                  {...register("prefijo")}
-                  error={errors.prefijo}
-                />
+                <form.Field name="prefijo">
+                  {(field) => (
+                    <FormInput
+                      label="Prefijo"
+                      placeholder="Ej. FAC"
+                      name={field.name}
+                      value={field.state.value}
+                      onChange={(event) => {
+                        field.handleChange(event.target.value);
+                        clearFieldErrors("prefijo");
+                      }}
+                      onBlur={() => {
+                        field.handleBlur();
+                        validateField("prefijo", field.state.value);
+                      }}
+                      error={getError("prefijo")}
+                    />
+                  )}
+                </form.Field>
               </div>
 
               <div className="group/field">
-                <FormInput
-                  label="Sufijo"
-                  placeholder="Ej. 2025"
-                  {...register("sufijo")}
-                  error={errors.sufijo}
-                />
+                <form.Field name="sufijo">
+                  {(field) => (
+                    <FormInput
+                      label="Sufijo"
+                      placeholder="Ej. 2025"
+                      name={field.name}
+                      value={field.state.value}
+                      onChange={(event) => {
+                        field.handleChange(event.target.value);
+                        clearFieldErrors("sufijo");
+                      }}
+                      onBlur={() => {
+                        field.handleBlur();
+                        validateField("sufijo", field.state.value);
+                      }}
+                      error={getError("sufijo")}
+                    />
+                  )}
+                </form.Field>
               </div>
             </div>
           </div>
@@ -174,24 +179,66 @@ export default function SerieFolioForm({ onSuccess, serieFolioToEdit }: SerieFol
 
           <div className="p-8">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              <FormInput
-                label="Folio Inicial"
-                type="number"
-                {...register("folio_inicial", { valueAsNumber: true })}
-                error={errors.folio_inicial}
-              />
-              <FormInput
-                label="Folio Final"
-                type="number"
-                {...register("folio_final", { valueAsNumber: true })}
-                error={errors.folio_final}
-              />
-              <FormInput
-                label="Relleno de Ceros"
-                type="number"
-                {...register("relleno_ceros", { valueAsNumber: true })}
-                error={errors.relleno_ceros}
-              />
+              <form.Field name="folio_inicial">
+                {(field) => (
+                  <FormInput
+                    label="Folio Inicial"
+                    type="number"
+                    name={field.name}
+                    value={field.state.value}
+                    onChange={(event) => {
+                      const nextValue = Number(event.target.value);
+                      field.handleChange(Number.isNaN(nextValue) ? 0 : nextValue);
+                      clearFieldErrors("folio_inicial");
+                    }}
+                    onBlur={() => {
+                      field.handleBlur();
+                      validateField("folio_inicial", field.state.value);
+                    }}
+                    error={getError("folio_inicial")}
+                  />
+                )}
+              </form.Field>
+              <form.Field name="folio_final">
+                {(field) => (
+                  <FormInput
+                    label="Folio Final"
+                    type="number"
+                    name={field.name}
+                    value={field.state.value}
+                    onChange={(event) => {
+                      const nextValue = Number(event.target.value);
+                      field.handleChange(Number.isNaN(nextValue) ? 0 : nextValue);
+                      clearFieldErrors("folio_final");
+                    }}
+                    onBlur={() => {
+                      field.handleBlur();
+                      validateField("folio_final", field.state.value);
+                    }}
+                    error={getError("folio_final")}
+                  />
+                )}
+              </form.Field>
+              <form.Field name="relleno_ceros">
+                {(field) => (
+                  <FormInput
+                    label="Relleno de Ceros"
+                    type="number"
+                    name={field.name}
+                    value={field.state.value}
+                    onChange={(event) => {
+                      const nextValue = Number(event.target.value);
+                      field.handleChange(Number.isNaN(nextValue) ? 0 : nextValue);
+                      clearFieldErrors("relleno_ceros");
+                    }}
+                    onBlur={() => {
+                      field.handleBlur();
+                      validateField("relleno_ceros", field.state.value);
+                    }}
+                    error={getError("relleno_ceros")}
+                  />
+                )}
+              </form.Field>
             </div>
           </div>
         </section>
@@ -204,7 +251,7 @@ export default function SerieFolioForm({ onSuccess, serieFolioToEdit }: SerieFol
               </div>
               <div>
                 <h3 className="font-display font-semibold text-slate-900 dark:text-white text-lg">
-                  Sucursal y Estado
+                  Sucursal y Opciones
                 </h3>
                 <p className="text-xs text-slate-500">Configuración operativa</p>
               </div>
@@ -212,33 +259,38 @@ export default function SerieFolioForm({ onSuccess, serieFolioToEdit }: SerieFol
 
             <div className="p-8 space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <FormSelect
-                  label="Sucursal"
-                  {...register("sucursal", { valueAsNumber: true })}
-                  error={errors.sucursal}
-                >
-                  <option value="0" disabled>
-                    {isLoadingBranches ? "Cargando sucursales..." : "Seleccionar..."}
-                  </option>
-                  {branches.map((branch) => (
-                    <option
-                      key={branch.id}
-                      value={branch.id}
-                      className="bg-white dark:bg-zinc-900 text-slate-900 dark:text-white"
+                <form.Field name="sucursal">
+                  {(field) => (
+                    <FormSelect
+                      label="Sucursal"
+                      name={field.name}
+                      value={field.state.value}
+                      onChange={(event) => {
+                        const nextValue = Number(event.target.value);
+                        field.handleChange(Number.isNaN(nextValue) ? 0 : nextValue);
+                        clearFieldErrors("sucursal");
+                      }}
+                      onBlur={() => {
+                        field.handleBlur();
+                        validateField("sucursal", field.state.value);
+                      }}
+                      error={getError("sucursal")}
                     >
-                      {branch.codigo} - {branch.nombre}
-                    </option>
-                  ))}
-                </FormSelect>
-
-                <FormSelect label="Estatus" {...register("estatus")} error={errors.estatus}>
-                  <option value="activo" className="bg-white dark:bg-zinc-900 text-slate-900 dark:text-white">
-                    Activo
-                  </option>
-                  <option value="inactivo" className="bg-white dark:bg-zinc-900 text-slate-900 dark:text-white">
-                    Inactivo
-                  </option>
-                </FormSelect>
+                      <option value="0" disabled>
+                        {isLoadingBranches ? "Cargando sucursales..." : "Seleccionar..."}
+                      </option>
+                      {branches.map((branch) => (
+                        <option
+                          key={branch.id}
+                          value={branch.id}
+                          className="bg-white dark:bg-zinc-900 text-slate-900 dark:text-white"
+                        >
+                          {branch.codigo} - {branch.nombre}
+                        </option>
+                      ))}
+                    </FormSelect>
+                  )}
+                </form.Field>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -246,15 +298,20 @@ export default function SerieFolioForm({ onSuccess, serieFolioToEdit }: SerieFol
                   <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider ml-1 mb-1 block transition-colors group-focus-within:text-sky-500">
                     Incluir Año
                   </label>
-                  <Controller
-                    control={control}
-                    name="incluir_anio"
-                    render={({ field: { onChange, value, ...field } }) => (
+                  <form.Field name="incluir_anio">
+                    {(field) => (
                       <select
                         className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 transition-all dark:text-white"
-                        {...field}
-                        value={value ? "true" : "false"}
-                        onChange={(event) => onChange(event.target.value === "true")}
+                        name={field.name}
+                        value={field.state.value ? "true" : "false"}
+                        onChange={(event) => {
+                          field.handleChange(event.target.value === "true");
+                          clearFieldErrors("incluir_anio");
+                        }}
+                        onBlur={() => {
+                          field.handleBlur();
+                          validateField("incluir_anio", field.state.value);
+                        }}
                       >
                         <option value="true" className="text-slate-900 dark:text-white bg-white dark:bg-zinc-900">
                           Sí
@@ -264,9 +321,9 @@ export default function SerieFolioForm({ onSuccess, serieFolioToEdit }: SerieFol
                         </option>
                       </select>
                     )}
-                  />
-                  {errors.incluir_anio && (
-                    <p className="text-xs text-red-600 mt-1">{errors.incluir_anio.message}</p>
+                  </form.Field>
+                  {getError("incluir_anio") && (
+                    <p className="text-xs text-red-600 mt-1">{getError("incluir_anio")?.message}</p>
                   )}
                 </div>
 
@@ -274,15 +331,20 @@ export default function SerieFolioForm({ onSuccess, serieFolioToEdit }: SerieFol
                   <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider ml-1 mb-1 block transition-colors group-focus-within:text-sky-500">
                     Reinicio Anual
                   </label>
-                  <Controller
-                    control={control}
-                    name="reiniciar_anual"
-                    render={({ field: { onChange, value, ...field } }) => (
+                  <form.Field name="reiniciar_anual">
+                    {(field) => (
                       <select
                         className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 transition-all dark:text-white"
-                        {...field}
-                        value={value ? "true" : "false"}
-                        onChange={(event) => onChange(event.target.value === "true")}
+                        name={field.name}
+                        value={field.state.value ? "true" : "false"}
+                        onChange={(event) => {
+                          field.handleChange(event.target.value === "true");
+                          clearFieldErrors("reiniciar_anual");
+                        }}
+                        onBlur={() => {
+                          field.handleBlur();
+                          validateField("reiniciar_anual", field.state.value);
+                        }}
                       >
                         <option value="true" className="text-slate-900 dark:text-white bg-white dark:bg-zinc-900">
                           Sí
@@ -292,9 +354,9 @@ export default function SerieFolioForm({ onSuccess, serieFolioToEdit }: SerieFol
                         </option>
                       </select>
                     )}
-                  />
-                  {errors.reiniciar_anual && (
-                    <p className="text-xs text-red-600 mt-1">{errors.reiniciar_anual.message}</p>
+                  </form.Field>
+                  {getError("reiniciar_anual") && (
+                    <p className="text-xs text-red-600 mt-1">{getError("reiniciar_anual")?.message}</p>
                   )}
                 </div>
               </div>
@@ -303,10 +365,7 @@ export default function SerieFolioForm({ onSuccess, serieFolioToEdit }: SerieFol
         </section>
 
         <div className="flex justify-end gap-3 pb-8 mt-8">
-          <FormCancelButton
-            onClick={() => reset(isEditing ? editValues : emptyValues)}
-            disabled={isPending}
-          />
+          <FormCancelButton onClick={handleReset} disabled={isPending} />
           <FormSubmitButton isPending={isPending} loadingLabel={isEditing ? "Actualizando..." : "Guardando..."}>
             {isEditing ? "Actualizar Serie y Folio" : "Registrar Serie y Folio"}
           </FormSubmitButton>

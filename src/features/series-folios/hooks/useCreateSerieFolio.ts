@@ -3,9 +3,13 @@ import { createSerieFolio } from "../services/actions";
 import { SerieFolioFormValues } from "../schemas/serie-folio.schema";
 import toast from "react-hot-toast";
 import { AxiosError } from "axios";
-import { UseFormSetError } from "react-hook-form";
 
-export const useCreateSerieFolio = (setError?: UseFormSetError<SerieFolioFormValues>) => {
+type SetSerieFolioError = (
+  field: keyof SerieFolioFormValues,
+  error: { type?: string; message?: string }
+) => void;
+
+export const useCreateSerieFolio = (setError?: SetSerieFolioError) => {
   const queryClient = useQueryClient();
 
   return useMutation({

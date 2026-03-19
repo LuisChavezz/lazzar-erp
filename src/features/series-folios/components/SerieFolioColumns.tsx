@@ -52,14 +52,14 @@ const ActionsCell = ({
   );
 };
 
-const StatusBadge = ({ status }: { status: SerieFolio["estatus"] }) => {
+const StatusBadge = ({ active }: { active: boolean }) => {
   const styles =
-    status === "ACTIVO"
+    active
       ? "bg-emerald-100 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400"
       : "bg-slate-100 text-slate-600 dark:bg-slate-500/20 dark:text-slate-400";
   return (
     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${styles}`}>
-      {status === "ACTIVO" ? "Activo" : "Inactivo"}
+      {active ? "Activo" : "Inactivo"}
     </span>
   );
 };
@@ -112,9 +112,9 @@ export const getSerieFolioColumns = (
         </span>
       ),
     }),
-    columnHelper.accessor("estatus", {
+    columnHelper.accessor("activo", {
       header: "Estatus",
-      cell: (info) => <StatusBadge status={info.getValue()} />,
+      cell: (info) => <StatusBadge active={info.getValue()} />,
     }),
   ] as ColumnDef<SerieFolio>[];
 

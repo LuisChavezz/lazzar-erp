@@ -9,6 +9,7 @@ import { UserDetails } from "./UserDetails";
 import { useState } from "react";
 import UserForm from "./UserForm";
 import { useDeleteUser } from "../hooks/useDeleteUser";
+import { capitalize } from "@/src/utils/capitalize";
 
 const ActionsCell = ({
   user,
@@ -196,7 +197,7 @@ export const getUserColumns = ({
         <span
           className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${styles}`}
         >
-          {status}
+          {capitalize(status)}
         </span>
       );
     },

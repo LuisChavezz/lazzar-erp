@@ -3,9 +3,13 @@ import { createWarehouse } from "../services/actions";
 import { WarehouseCreate } from "../interfaces/warehouse.interface";
 import toast from "react-hot-toast";
 import { AxiosError } from "axios";
-import { UseFormSetError } from "react-hook-form";
 
-export const useCreateWarehouse = (setError?: UseFormSetError<WarehouseCreate>) => {
+type SetWarehouseError = (
+  field: keyof WarehouseCreate,
+  error: { type?: string; message?: string }
+) => void;
+
+export const useCreateWarehouse = (setError?: SetWarehouseError) => {
   const queryClient = useQueryClient();
 
   return useMutation({

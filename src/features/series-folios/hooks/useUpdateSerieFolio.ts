@@ -3,9 +3,13 @@ import { updateSerieFolio } from "../services/actions";
 import { SerieFolioFormValues } from "../schemas/serie-folio.schema";
 import toast from "react-hot-toast";
 import { AxiosError } from "axios";
-import { UseFormSetError } from "react-hook-form";
 
-export const useUpdateSerieFolio = (setError?: UseFormSetError<SerieFolioFormValues>) => {
+type SetSerieFolioError = (
+  field: keyof SerieFolioFormValues,
+  error: { type?: string; message?: string }
+) => void;
+
+export const useUpdateSerieFolio = (setError?: SetSerieFolioError) => {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -33,10 +37,10 @@ export const useUpdateSerieFolio = (setError?: UseFormSetError<SerieFolioFormVal
               });
             }
           });
+          return;
         }
-      } else {
-        toast.error("Error al actualizar la serie y folio");
       }
+      toast.error("Error al actualizar la serie y folio");
     },
   });
 };

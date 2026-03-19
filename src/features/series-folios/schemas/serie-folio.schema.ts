@@ -12,7 +12,6 @@ export const SerieFolioFormSchema = z
     separador: z.string().min(1, "El separador es requerido").max(5, "El separador no puede tener más de 5 carácter"),
     incluir_anio: z.boolean(),
     reiniciar_anual: z.boolean(),
-    estatus: z.enum(["activo", "inactivo"]),
     sucursal: z.number().min(1, "La sucursal es requerida"),
   })
   .refine((data) => data.folio_final >= data.folio_inicial, {

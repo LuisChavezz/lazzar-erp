@@ -1,22 +1,13 @@
 "use client";
 
-import { useState } from "react";
-import { useForm, Resolver } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { UserFormSchema, UserFormValues } from "../schemas/user.schema";
-import { useRegisterUser } from "../hooks/useRegisterUser";
-import { useUpdateUser } from "../hooks/useUpdateUser";
 import MissingPrerequisites from "../../products/components/MissingPrerequisites";
 import { FormInput } from "../../../components/FormInput";
 import { FormSelect } from "../../../components/FormSelect";
 import { FormCancelButton, FormSubmitButton } from "../../../components/FormButtons";
-import { FormToggle } from "../../../components/FormToggle";
 import { Loader } from "../../../components/Loader";
-import { useWorkspaceStore } from "../../workspace/store/workspace.store";
-import { useCompanyBranches } from "../../branches/hooks/useCompanyBranches";
 import { UserIcon, MapPinIcon } from "../../../components/Icons";
 import { User } from "../interfaces/user.interface";
-import { useRoles } from "../../roles/hooks/useRoles";
+import { useUserForm } from "../hooks/useUserForm";
 
 interface UserFormProps {
   onSuccess: () => void;
@@ -24,90 +15,27 @@ interface UserFormProps {
 }
 
 export default function UserForm({ onSuccess, defaultValues }: UserFormProps) {
-  const companyId = useWorkspaceStore((state) => state.selectedCompany.id);
-  const selectedBranchId = useWorkspaceStore((state) => state.selectedBranch!.id);
-  const { branches, isLoading: isLoadingBranches } = useCompanyBranches(companyId);
-  const { data: roles = [], isLoading: isLoadingRoles } = useRoles();
-
-  const isEditing = Boolean(defaultValues?.id);
-  const emptyValues: UserFormValues = {
-    username: "",
-    email: "",
-    password: "",
-    first_name: "",
-    last_name: "",
-    sucursal_default: selectedBranchId,
-    sucursales: [],
-    roles: [],
-    is_active: true,
-  };
-
-  const editValues: UserFormValues = defaultValues
-    ? {
-        username: defaultValues.username,
-        email: defaultValues.email,
-        password: "",
-        first_name: defaultValues.first_name,
-        last_name: defaultValues.last_name,
-        sucursal_default: defaultValues.sucursal_default,
-        sucursales: Array.isArray(defaultValues.sucursales)
-          ? defaultValues.sucursales.map((id) => Number(id))
-          : [],
-        roles: Array.isArray(defaultValues.roles_ids)
-          ? defaultValues.roles_ids.map((id) => Number(id))
-          : [],
-        is_active: defaultValues.is_active,
-      }
-    : emptyValues;
-
-  const activeRoles = roles.filter((role) => (role.estatus || "").toLowerCase() === "activo");
-  const missingItems = [
-    branches.length === 0 && !isLoadingBranches ? "Sucursales" : null,
-    activeRoles.length === 0 && !isLoadingRoles ? "Roles activos" : null,
-  ].filter((item): item is string => Boolean(item));
-
   const {
-    register,
-    handleSubmit,
-    reset,
-    setError,
-    watch,
-    formState: { errors },
-  } = useForm<UserFormValues>({
-    resolver: zodResolver(UserFormSchema) as Resolver<UserFormValues>,
-    defaultValues: emptyValues,
-    values: isEditing ? editValues : undefined,
+    form,
+    formKey,
+    isEditing,
+    isPending,
+    isLoadingData,
+    branches,
+    activeRoles,
+    missingItems,
+    getError,
+    clearFieldErrors,
+    validateField,
+    toggleArrayValue,
+    isArrayValueChecked,
+    handleDefaultBranchChange,
+    handleReset,
+    handleFormSubmit,
+  } = useUserForm({
+    onSuccess,
+    userToEdit: defaultValues,
   });
-
-  const { mutateAsync: registerUser, isPending: isRegisterPending } = useRegisterUser(setError);
-  const { mutateAsync: updateUser, isPending: isUpdatePending } = useUpdateUser(setError);
-  const [isSaving, setIsSaving] = useState(false);
-  const isPending = isSaving || isRegisterPending || isUpdatePending;
-  const isActive = watch("is_active");
-  const isLoadingData = isLoadingBranches || isLoadingRoles;
-
-  const onSubmit = async (values: UserFormValues) => {
-    setIsSaving(true);
-    try {
-      if (isEditing && defaultValues) {
-        await updateUser({
-          id: defaultValues.id,
-          values,
-        });
-        reset(editValues);
-        onSuccess();
-        return;
-      }
-
-      await registerUser(values);
-      reset(emptyValues);
-      onSuccess();
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setIsSaving(false);
-    }
-  };
 
   if (isLoadingData) {
     return (
@@ -122,7 +50,7 @@ export default function UserForm({ onSuccess, defaultValues }: UserFormProps) {
   }
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)}>
+    <form key={formKey} onSubmit={handleFormSubmit}>
       <fieldset disabled={isPending} className={`space-y-8 transition-opacity duration-200 ${isPending ? "opacity-60" : ""}`}>
         <section className="bg-white dark:bg-zinc-900 rounded-3xl border border-slate-200 dark:border-white/5 shadow-sm dark:shadow-none overflow-hidden hover:shadow-lg transition-shadow duration-300">
           <div className="px-8 py-5 border-b border-slate-100 dark:border-white/5 flex items-center gap-3 bg-slate-50/50 dark:bg-white/2">
@@ -138,44 +66,109 @@ export default function UserForm({ onSuccess, defaultValues }: UserFormProps) {
           </div>
           <div className="p-8">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              <FormInput
-                label="Nombre de Usuario"
-                placeholder="usuario123"
-                className="text-2xl font-bold"
-                variant="ghost"
-                {...register("username")}
-                error={errors.username}
-              />
+              <form.Field name="username">
+                {(field) => (
+                  <FormInput
+                    name={field.name}
+                    value={field.state.value}
+                    onChange={(event) => {
+                      field.handleChange(event.target.value);
+                      clearFieldErrors("username");
+                    }}
+                    onBlur={() => {
+                      field.handleBlur();
+                      validateField("username", field.state.value);
+                    }}
+                    label="Nombre de Usuario"
+                    placeholder="usuario123"
+                    className="text-2xl font-bold"
+                    variant="ghost"
+                    error={getError("username")}
+                  />
+                )}
+              </form.Field>
 
-              <FormInput
-                label="Email"
-                type="email"
-                placeholder="usuario@empresa.com"
-                {...register("email")}
-                error={errors.email}
-              />
+              <form.Field name="email">
+                {(field) => (
+                  <FormInput
+                    name={field.name}
+                    value={field.state.value}
+                    onChange={(event) => {
+                      field.handleChange(event.target.value);
+                      clearFieldErrors("email");
+                    }}
+                    onBlur={() => {
+                      field.handleBlur();
+                      validateField("email", field.state.value);
+                    }}
+                    label="Email"
+                    type="email"
+                    placeholder="usuario@empresa.com"
+                    error={getError("email")}
+                  />
+                )}
+              </form.Field>
 
-              <FormInput
-                label="Nombre"
-                placeholder="Juan"
-                {...register("first_name")}
-                error={errors.first_name}
-              />
+              <form.Field name="first_name">
+                {(field) => (
+                  <FormInput
+                    name={field.name}
+                    value={field.state.value}
+                    onChange={(event) => {
+                      field.handleChange(event.target.value);
+                      clearFieldErrors("first_name");
+                    }}
+                    onBlur={() => {
+                      field.handleBlur();
+                      validateField("first_name", field.state.value);
+                    }}
+                    label="Nombre"
+                    placeholder="Juan"
+                    error={getError("first_name")}
+                  />
+                )}
+              </form.Field>
 
-              <FormInput
-                label="Apellido"
-                placeholder="Pérez"
-                {...register("last_name")}
-                error={errors.last_name}
-              />
+              <form.Field name="last_name">
+                {(field) => (
+                  <FormInput
+                    name={field.name}
+                    value={field.state.value}
+                    onChange={(event) => {
+                      field.handleChange(event.target.value);
+                      clearFieldErrors("last_name");
+                    }}
+                    onBlur={() => {
+                      field.handleBlur();
+                      validateField("last_name", field.state.value);
+                    }}
+                    label="Apellido"
+                    placeholder="Pérez"
+                    error={getError("last_name")}
+                  />
+                )}
+              </form.Field>
 
-              <FormInput
-                label="Contraseña"
-                type="password"
-                placeholder="********"
-                {...register("password")}
-                error={errors.password}
-              />
+              <form.Field name="password">
+                {(field) => (
+                  <FormInput
+                    name={field.name}
+                    value={field.state.value}
+                    onChange={(event) => {
+                      field.handleChange(event.target.value);
+                      clearFieldErrors("password");
+                    }}
+                    onBlur={() => {
+                      field.handleBlur();
+                      validateField("password", field.state.value);
+                    }}
+                    label="Contraseña"
+                    type="password"
+                    placeholder="********"
+                    error={getError("password")}
+                  />
+                )}
+              </form.Field>
             </div>
           </div>
         </section>
@@ -194,44 +187,66 @@ export default function UserForm({ onSuccess, defaultValues }: UserFormProps) {
           </div>
 
           <div className="p-8 space-y-6">
-            <FormSelect
-              label="Sucursal Principal"
-              {...register("sucursal_default")}
-              error={errors.sucursal_default}
-            >
-              {branches.map((branch) => (
-                <option key={branch.id} value={branch.id} className="bg-white dark:bg-zinc-900 text-slate-900 dark:text-white">
-                  {branch.nombre}
-                </option>
-              ))}
-            </FormSelect>
+            <form.Field name="sucursal_default">
+              {(field) => (
+                <FormSelect
+                  name={field.name}
+                  value={String(field.state.value)}
+                  onChange={(event) => {
+                    handleDefaultBranchChange(Number(event.target.value));
+                  }}
+                  onBlur={() => {
+                    field.handleBlur();
+                    validateField("sucursal_default", field.state.value);
+                  }}
+                  label="Sucursal Principal"
+                  error={getError("sucursal_default")}
+                >
+                  {branches.map((branch) => (
+                    <option key={branch.id} value={branch.id} className="bg-white dark:bg-zinc-900 text-slate-900 dark:text-white">
+                      {branch.nombre}
+                    </option>
+                  ))}
+                </FormSelect>
+              )}
+            </form.Field>
 
             <div className="space-y-3">
               <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider ml-1 block">
                 Roles
               </label>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {activeRoles.map((role) => (
-                  <label
-                    key={role.id}
-                    className="flex items-center gap-3 p-3 rounded-xl border border-slate-200 dark:border-white/10 hover:border-sky-500 dark:hover:border-sky-500 cursor-pointer transition-colors bg-slate-50/50 dark:bg-white/5"
-                  >
-                    <input
-                      type="checkbox"
-                      value={role.id}
-                      {...register("roles")}
-                      className="w-4 h-4 text-sky-600 rounded border-slate-300 focus:ring-sky-500"
-                    />
-                    <div className="space-y-0.5">
-                      <span className="text-sm text-slate-700 dark:text-slate-300">
-                        {role.nombre}
-                      </span>
-                    </div>
-                  </label>
-                ))}
-              </div>
-              {errors.roles && (
-                <p className="text-xs text-red-600 mt-1">{errors.roles.message}</p>
+              <form.Field name="roles">
+                {(field) => (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {activeRoles.map((role) => (
+                      <label
+                        key={role.id}
+                        className="flex items-center gap-3 p-3 rounded-xl border border-slate-200 dark:border-white/10 hover:border-sky-500 dark:hover:border-sky-500 cursor-pointer transition-colors bg-slate-50/50 dark:bg-white/5"
+                      >
+                        <input
+                          type="checkbox"
+                          value={role.id}
+                          checked={isArrayValueChecked(field.state.value, role.id)}
+                          onChange={(event) => {
+                            const next = toggleArrayValue(field.state.value, role.id, event.target.checked);
+                            field.handleChange(next);
+                            clearFieldErrors("roles");
+                            validateField("roles", next);
+                          }}
+                          className="w-4 h-4 text-sky-600 rounded border-slate-300 focus:ring-sky-500"
+                        />
+                        <div className="space-y-0.5">
+                          <span className="text-sm text-slate-700 dark:text-slate-300">
+                            {role.nombre}
+                          </span>
+                        </div>
+                      </label>
+                    ))}
+                  </div>
+                )}
+              </form.Field>
+              {getError("roles") && (
+                <p className="text-xs text-red-600 mt-1">{getError("roles")?.message}</p>
               )}
             </div>
 
@@ -239,50 +254,43 @@ export default function UserForm({ onSuccess, defaultValues }: UserFormProps) {
               <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider ml-1 block">
                 Acceso a Sucursales
               </label>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {branches.map((branch) => (
-                  <label
-                    key={branch.id}
-                    className="flex items-center gap-3 p-3 rounded-xl border border-slate-200 dark:border-white/10 hover:border-sky-500 dark:hover:border-sky-500 cursor-pointer transition-colors bg-slate-50/50 dark:bg-white/5"
-                  >
-                    <input
-                      type="checkbox"
-                      value={branch.id}
-                      {...register("sucursales")}
-                      className="w-4 h-4 text-sky-600 rounded border-slate-300 focus:ring-sky-500"
-                    />
-                    <span className="text-sm text-slate-700 dark:text-slate-300">
-                      {branch.nombre}
-                    </span>
-                  </label>
-                ))}
-              </div>
-              {errors.sucursales && (
-                <p className="text-xs text-red-600 mt-1">{errors.sucursales.message}</p>
+              <form.Field name="sucursales">
+                {(field) => (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {branches.map((branch) => (
+                      <label
+                        key={branch.id}
+                        className="flex items-center gap-3 p-3 rounded-xl border border-slate-200 dark:border-white/10 hover:border-sky-500 dark:hover:border-sky-500 cursor-pointer transition-colors bg-slate-50/50 dark:bg-white/5"
+                      >
+                        <input
+                          type="checkbox"
+                          value={branch.id}
+                          checked={isArrayValueChecked(field.state.value, branch.id)}
+                          onChange={(event) => {
+                            const next = toggleArrayValue(field.state.value, branch.id, event.target.checked);
+                            field.handleChange(next);
+                            clearFieldErrors("sucursales");
+                            validateField("sucursales", next);
+                          }}
+                          className="w-4 h-4 text-sky-600 rounded border-slate-300 focus:ring-sky-500"
+                        />
+                        <span className="text-sm text-slate-700 dark:text-slate-300">
+                          {branch.nombre}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                )}
+              </form.Field>
+              {getError("sucursales") && (
+                <p className="text-xs text-red-600 mt-1">{getError("sucursales")?.message}</p>
               )}
-            </div>
-
-            <div className="mt-4 w-full md:max-w-3/4 lg:max-w-1/2">
-              <FormToggle
-                label="Estado"
-                description={
-                  isActive
-                    ? "Usuario activo para operar en el sistema"
-                    : "Usuario inactivo temporalmente"
-                }
-                {...register("is_active", { setValueAs: (value) => Boolean(value) })}
-              />
             </div>
           </div>
         </section>
 
         <div className="flex justify-end gap-3 pt-4">
-          <FormCancelButton
-            onClick={() =>
-              reset((isEditing ? editValues : emptyValues) as UserFormValues)
-            }
-            disabled={isPending}
-          />
+          <FormCancelButton onClick={handleReset} disabled={isPending} />
           <FormSubmitButton
             isPending={isPending}
             loadingLabel={isEditing ? "Actualizando..." : "Registrando..."}

@@ -15,7 +15,7 @@ export interface SerieFolio {
   incluir_anio: boolean;
   reiniciar_anual: boolean;
   ultimo_anio: number;
-  estatus: string;
+  activo: boolean;
   created_at: string;
   updated_at: string;
   empresa: Company["id"];
@@ -33,6 +33,5 @@ export interface SerieFolioCreate {
   separador: string;
   incluir_anio: boolean;
   reiniciar_anual: boolean;
-  estatus: string;
   sucursal: Branch["id"];
 }

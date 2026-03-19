@@ -3,7 +3,6 @@ import { updateUser as updateUserService } from "../services/actions";
 import { UserFormValues } from "../schemas/user.schema";
 import toast from "react-hot-toast";
 import { AxiosError } from "axios";
-import { UseFormSetError } from "react-hook-form";
 import { useWorkspaceStore } from "../../workspace/store/workspace.store";
 
 interface UpdateUserVariables {
@@ -11,7 +10,12 @@ interface UpdateUserVariables {
   values: UserFormValues;
 }
 
-export const useUpdateUser = (setError?: UseFormSetError<UserFormValues>) => {
+type SetUserError = (
+  field: keyof UserFormValues,
+  error: { type?: string; message?: string }
+) => void;
+
+export const useUpdateUser = (setError?: SetUserError) => {
   const queryClient = useQueryClient();
   const companyId = useWorkspaceStore((state) => state.selectedCompany.id);
 

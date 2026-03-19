@@ -1,14 +1,10 @@
 "use client";
 
-import { useForm, Controller } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { CurrencyFormSchema, CurrencyFormValues } from "../schemas/currency.schema";
-import { useCreateCurrency } from "../hooks/useCreateCurrency";
-import { useUpdateCurrency } from "../hooks/useUpdateCurrency";
 import { FormInput } from "../../../components/FormInput";
 import { FormCancelButton, FormSubmitButton } from "../../../components/FormButtons";
 import { SettingsIcon, InfoIcon } from "../../../components/Icons";
 import { Currency } from "../interfaces/currency.interface";
+import { useCurrencyForm } from "../hooks/useCurrencyForm";
 
 interface CurrencyFormProps {
   onSuccess: () => void;
@@ -17,53 +13,22 @@ interface CurrencyFormProps {
 
 export default function CurrencyForm({ onSuccess, currencyToEdit }: CurrencyFormProps) {
   const {
-    register,
-    handleSubmit,
-    reset,
-    setError,
-    control,
-    formState: { errors },
-  } = useForm<CurrencyFormValues>({
-    resolver: zodResolver(CurrencyFormSchema),
-    defaultValues: currencyToEdit ? {
-      nombre: currencyToEdit.nombre,
-      codigo_iso: currencyToEdit.codigo_iso,
-      simbolo: currencyToEdit.simbolo,
-      decimales: currencyToEdit.decimales,
-      estatus: currencyToEdit.estatus,
-    } : {
-      nombre: "",
-      codigo_iso: "",
-      simbolo: "$",
-      decimales: 2,
-      estatus: true,
-    },
+    form,
+    formKey,
+    isEditing,
+    isPending,
+    getError,
+    clearFieldErrors,
+    validateField,
+    handleReset,
+    handleFormSubmit,
+  } = useCurrencyForm({
+    onSuccess,
+    currencyToEdit,
   });
 
-  const { mutate: createCurrency, isPending: isCreating } = useCreateCurrency(setError);
-  const { mutate: updateCurrency, isPending: isUpdating } = useUpdateCurrency(setError);
-
-  const isPending = isCreating || isUpdating;
-
-  const onSubmit = (values: CurrencyFormValues) => {
-    if (currencyToEdit) {
-      updateCurrency({ ...currencyToEdit, ...values }, {
-        onSuccess: () => {
-          onSuccess();
-        },
-      });
-    } else {
-      createCurrency(values, {
-        onSuccess: () => {
-          reset();
-          onSuccess();
-        },
-      });
-    }
-  };
-
   return (
-    <form onSubmit={handleSubmit(onSubmit)}>
+    <form key={formKey} onSubmit={handleFormSubmit}>
       <fieldset disabled={isPending} className={`space-y-8 transition-opacity duration-200 ${isPending ? "opacity-60" : ""}`}>
         <section className="bg-white dark:bg-zinc-900 rounded-3xl border border-slate-200 dark:border-white/5 shadow-sm dark:shadow-none overflow-hidden hover:shadow-lg transition-shadow duration-300">
           <div className="px-8 py-5 border-b border-slate-100 dark:border-white/5 flex items-center gap-3 bg-slate-50/50 dark:bg-white/2">
@@ -81,32 +46,57 @@ export default function CurrencyForm({ onSuccess, currencyToEdit }: CurrencyForm
           <div className="p-8">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6 w-full">
               <div className="md:col-span-2 group/field">
-                <FormInput
-                  label="Nombre de la Moneda"
-                  placeholder="Ej. Peso Mexicano"
-                  variant="ghost"
-                  className="text-3xl font-bold"
-                  {...register("nombre")}
-                  error={errors.nombre}
-                />
+                <form.Field name="nombre">
+                  {(field) => (
+                    <FormInput
+                      label="Nombre de la Moneda"
+                      placeholder="Ej. Peso Mexicano"
+                      variant="ghost"
+                      className="text-3xl font-bold"
+                      name={field.name}
+                      value={field.state.value}
+                      onChange={(event) => {
+                        field.handleChange(event.target.value);
+                        clearFieldErrors("nombre");
+                      }}
+                      onBlur={() => {
+                        field.handleBlur();
+                        validateField("nombre", field.state.value);
+                      }}
+                      error={getError("nombre")}
+                    />
+                  )}
+                </form.Field>
               </div>
 
               <div className="group/field">
-                <FormInput
-                  label="Código ISO"
-                  placeholder="MXN"
-                  className="uppercase font-mono"
-                  maxLength={3}
-                  {...register("codigo_iso")}
-                  error={errors.codigo_iso}
-                />
+                <form.Field name="codigo_iso">
+                  {(field) => (
+                    <FormInput
+                      label="Código ISO"
+                      placeholder="MXN"
+                      className="uppercase font-mono"
+                      maxLength={3}
+                      name={field.name}
+                      value={field.state.value}
+                      onChange={(event) => {
+                        field.handleChange(event.target.value);
+                        clearFieldErrors("codigo_iso");
+                      }}
+                      onBlur={() => {
+                        field.handleBlur();
+                        validateField("codigo_iso", field.state.value);
+                      }}
+                      error={getError("codigo_iso")}
+                    />
+                  )}
+                </form.Field>
               </div>
             </div>
           </div>
         </section>
 
         <div className="w-full">
-          {/* Columna Izquierda: Detalles */}
           <div className="w-full space-y-8">
             <div className="bg-white dark:bg-zinc-900 rounded-3xl border border-slate-200 dark:border-white/5 shadow-sm dark:shadow-none overflow-hidden hover:shadow-lg transition-shadow duration-300">
               <div className="px-8 py-5 border-b border-slate-100 dark:border-white/5 flex items-center gap-3 bg-slate-50/50 dark:bg-white/2">
@@ -117,62 +107,55 @@ export default function CurrencyForm({ onSuccess, currencyToEdit }: CurrencyForm
                   <h3 className="font-display font-semibold text-slate-900 dark:text-white text-lg">
                     Detalles Técnicos
                   </h3>
-                  <p className="text-xs text-slate-500">Configuración de formato y estado</p>
+                  <p className="text-xs text-slate-500">Configuración de formato</p>
                 </div>
               </div>
 
               <div className="p-8 space-y-8">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="group">
-                    <FormInput
-                      label="Símbolo"
-                      placeholder="$"
-                      {...register("simbolo")}
-                      error={errors.simbolo}
-                    />
+                    <form.Field name="simbolo">
+                      {(field) => (
+                        <FormInput
+                          label="Símbolo"
+                          placeholder="$"
+                          name={field.name}
+                          value={field.state.value}
+                          onChange={(event) => {
+                            field.handleChange(event.target.value);
+                            clearFieldErrors("simbolo");
+                          }}
+                          onBlur={() => {
+                            field.handleBlur();
+                            validateField("simbolo", field.state.value);
+                          }}
+                          error={getError("simbolo")}
+                        />
+                      )}
+                    </form.Field>
                   </div>
                   <div className="group">
-                    <FormInput
-                      label="Decimales"
-                      type="number"
-                      placeholder="2"
-                      {...register("decimales", { valueAsNumber: true })}
-                      error={errors.decimales}
-                    />
-                  </div>
-                </div>
-
-                <div className="h-px bg-slate-100 dark:bg-white/5"></div>
-
-                <div>
-                   <h4 className="text-[11px] font-bold text-sky-500 uppercase tracking-wider mb-5 flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full border border-sky-500"></span>
-                    Estado
-                  </h4>
-                  <div className="grid grid-cols-1 gap-6">
-                    <div className="group">
-                      <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider ml-1 mb-1 block transition-colors group-focus-within:text-sky-500">
-                        Estado
-                      </label>
-                      <Controller
-                        control={control}
-                        name="estatus"
-                        render={({ field: { onChange, value, ...field } }) => (
-                          <select
-                            className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 transition-all dark:text-white"
-                            {...field}
-                            value={value ? "true" : "false"}
-                            onChange={(e) => onChange(e.target.value === "true")}
-                          >
-                            <option value="true" className="text-slate-900 dark:text-white bg-white dark:bg-zinc-900">Activo</option>
-                            <option value="false" className="text-slate-900 dark:text-white bg-white dark:bg-zinc-900">Inactivo</option>
-                          </select>
-                        )}
-                      />
-                      {errors.estatus && (
-                        <p className="text-xs text-red-600 mt-1">{errors.estatus.message}</p>
+                    <form.Field name="decimales">
+                      {(field) => (
+                        <FormInput
+                          label="Decimales"
+                          type="number"
+                          placeholder="2"
+                          name={field.name}
+                          value={field.state.value}
+                          onChange={(event) => {
+                            const nextValue = Number(event.target.value);
+                            field.handleChange(Number.isNaN(nextValue) ? 0 : nextValue);
+                            clearFieldErrors("decimales");
+                          }}
+                          onBlur={() => {
+                            field.handleBlur();
+                            validateField("decimales", field.state.value);
+                          }}
+                          error={getError("decimales")}
+                        />
                       )}
-                    </div>
+                    </form.Field>
                   </div>
                 </div>
               </div>
@@ -181,12 +164,12 @@ export default function CurrencyForm({ onSuccess, currencyToEdit }: CurrencyForm
         </div>
 
         <div className="flex justify-end gap-3 pb-8">
-          <FormCancelButton onClick={() => reset()} disabled={isPending} />
+          <FormCancelButton onClick={handleReset} disabled={isPending} />
           <FormSubmitButton
             isPending={isPending}
-            loadingLabel={currencyToEdit ? "Actualizando..." : "Guardando..."}
+            loadingLabel={isEditing ? "Actualizando..." : "Guardando..."}
           >
-            {currencyToEdit ? "Actualizar Moneda" : "Registrar Moneda"}
+            {isEditing ? "Actualizar Moneda" : "Registrar Moneda"}
           </FormSubmitButton>
         </div>
       </fieldset>

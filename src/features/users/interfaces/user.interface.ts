@@ -30,7 +30,6 @@ export interface RegisterUser {
   last_name: string;
   sucursal_default: Branch["id"];
   sucursales: Branch["id"][];
-  is_active: boolean;
   empresa: Company["id"];
   roles: Role["id"][];
 }

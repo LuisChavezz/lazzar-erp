@@ -9,7 +9,6 @@ export const CurrencyFormSchema = z.object({
   nombre: z.string().min(1, "El nombre es requerido"),
   simbolo: z.string().min(1, "El símbolo es requerido"),
   decimales: z.number().min(0, "Los decimales no pueden ser negativos").max(10, "Máximo 10 decimales"),
-  estatus: z.boolean(),
 });
 
 export type CurrencyFormValues = z.infer<typeof CurrencyFormSchema>;

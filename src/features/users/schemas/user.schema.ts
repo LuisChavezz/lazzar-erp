@@ -9,7 +9,6 @@ export const UserFormSchema = z.object({
   sucursal_default: z.coerce.number().min(1, "La sucursal por defecto es requerida"),
   sucursales: z.array(z.coerce.number()).min(1, "Debe seleccionar al menos una sucursal"),
   roles: z.array(z.coerce.number()).min(1, "Debe seleccionar al menos un rol"),
-  is_active: z.boolean().default(true),
 });
 
 export type UserFormValues = z.infer<typeof UserFormSchema>;

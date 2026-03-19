@@ -17,7 +17,6 @@ export interface WarehouseCreate {
   sucursal: Branch["id"];
   codigo: string;
   nombre: string;
-  estatus: WarehouseStatus;
 }
 
 type WarehouseStatus = "ACTIVO" | "INACTIVO"

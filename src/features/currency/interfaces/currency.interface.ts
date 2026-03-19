@@ -4,7 +4,7 @@ export interface Currency {
   nombre: string;
   simbolo: string;
   decimales: number;
-  estatus: boolean;
+  activo: boolean;
   created_at: string;
   updated_at: string;
 }
