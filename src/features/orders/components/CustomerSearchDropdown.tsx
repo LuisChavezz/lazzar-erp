@@ -3,13 +3,13 @@
 import { useMemo, useState } from "react";
 import { FieldError } from "react-hook-form";
 import { FormInput } from "@/src/components/FormInput";
-import { CustomerItem } from "@/src/features/customers/interfaces/customer.interface";
+import { Customer } from "@/src/features/customers/interfaces/customer.interface";
 
 interface CustomerSearchDropdownProps {
   value: string;
   onValueChange: (value: string) => void;
-  customers: CustomerItem[];
-  onSelect: (customer: CustomerItem) => void;
+  customers: Customer[];
+  onSelect: (customer: Customer) => void;
   label?: string;
   placeholder?: string;
   error?: FieldError;
@@ -31,7 +31,7 @@ export function CustomerSearchDropdown({
     if (!query) return customers;
     return customers.filter((customer) => {
       const haystack =
-        `${customer.razonSocial} ${customer.contacto} ${customer.correo} ${customer.telefono}`.toLowerCase();
+        `${customer.razon_social} ${customer.nombre} ${customer.correo} ${customer.telefono}`.toLowerCase();
       return haystack.includes(query);
     });
   }, [customers, value]);
@@ -63,7 +63,7 @@ export function CustomerSearchDropdown({
             ) : (
               filteredCustomers.map((customer, index) => (
                 <button
-                  key={`${customer.razonSocial}-${index}`}
+                  key={`${customer.id}-${index}`}
                   type="button"
                   onMouseDown={(event) => event.preventDefault()}
                   onClick={() => {
@@ -73,10 +73,10 @@ export function CustomerSearchDropdown({
                   className="w-full text-left px-4 py-3 cursor-pointer hover:bg-slate-50 dark:hover:bg-white/10 transition-colors"
                 >
                   <div className="text-xs font-semibold text-slate-700 dark:text-slate-200">
-                    {customer.razonSocial}
+                    {customer.razon_social}
                   </div>
                   <div className="text-[11px] text-slate-500 dark:text-slate-400">
-                    {customer.contacto} · {customer.correo}
+                    {customer.nombre} · {customer.correo}
                   </div>
                 </button>
               ))

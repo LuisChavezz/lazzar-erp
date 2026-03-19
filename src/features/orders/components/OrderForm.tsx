@@ -16,7 +16,6 @@ import { orderFormSchema, OrderFormValues } from "../schema/order.schema";
 import { getFieldError } from "../../../utils/getFieldError";
 import { formatCurrency } from "../../../utils/formatCurrency";
 import { useOrderStore } from "../stores/order.store";
-import { useCustomerStore } from "../../customers/stores/customer.store";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import { Order } from "../interfaces/order.interface";
@@ -25,8 +24,10 @@ import { useRef, useState } from "react";
 import { AddProductDialog } from "./AddProductDialog";
 import { CustomerSearchDropdown } from "./CustomerSearchDropdown";
 import CustomerForm from "../../customers/components/CustomerForm";
-import type { CustomerItem } from "@/src/features/customers/interfaces/customer.interface";
+import type { Customer } from "@/src/features/customers/interfaces/customer.interface";
 import { DialogHeader } from "@/src/components/DialogHeader";
+import { useCustomers } from "../../customers/hooks/useCustomers";
+import { useSatInfo } from "../../sat/hooks/useSatInfo";
 
 interface OrderFormProps {
   orderId?: string;
@@ -58,22 +59,39 @@ export default function OrderForm({ orderId }: OrderFormProps) {
     "Amazon",
     "Mailing",
   ];
-  const normalizeRegimenFiscal = (
-    value?: string
-  ): OrderFormValues["regimenFiscal"] =>
-    value === "601" || value === "603" || value === "605" ? value : "601";
   const normalizeFormaPago = (value?: string): OrderFormValues["formaPago"] =>
     value === "01" || value === "03" || value === "04" ? value : "03";
   const normalizeMetodoPago = (value?: string): OrderFormValues["metodoPago"] =>
     value === "PUE" || value === "PPD" || value === "NA" ? value : "PUE";
-  const normalizeUsoCfdi = (value?: string): OrderFormValues["usoCfdi"] =>
-    value === "G03" || value === "G01" || value === "I01" ? value : "G03";
   const addOrder = useOrderStore((s) => s.addOrder);
   const updateOrder = useOrderStore((s) => s.updateOrder);
   const orderToEdit = useOrderStore((s) =>
     orderId ? s.orders.find((o) => o.id === orderId) : undefined
   );
-  const customers = useCustomerStore((s) => s.customers);
+  const { customers, isLoading: isCustomersLoading } = useCustomers();
+  const { data: satInfo, isLoading: isSatInfoLoading } = useSatInfo();
+  const regimenFiscalOptions =
+    satInfo?.regimenes_fiscales.map((item) => ({
+      value: item.codigo,
+      label: `${item.codigo} - ${item.descripcion}`,
+    })) ?? [];
+  const usoCfdiOptions =
+    satInfo?.usos_cfdi.map((item) => ({
+      value: item.codigo,
+      label: `${item.codigo} - ${item.descripcion}`,
+    })) ?? [];
+  const normalizeRegimenFiscal = (value?: string): OrderFormValues["regimenFiscal"] => {
+    if (value && regimenFiscalOptions.some((item) => item.value === value)) {
+      return value;
+    }
+    return regimenFiscalOptions[0]?.value ?? "601";
+  };
+  const normalizeUsoCfdi = (value?: string): OrderFormValues["usoCfdi"] => {
+    if (value && usoCfdiOptions.some((item) => item.value === value)) {
+      return value;
+    }
+    return usoCfdiOptions[0]?.value ?? "G03";
+  };
   const router = useRouter();
   const emptyValues: OrderFormValues = {
     clienteBusqueda: "",
@@ -320,92 +338,108 @@ export default function OrderForm({ orderId }: OrderFormProps) {
   const formRef = useRef<HTMLFormElement>(null);
   const [isCustomerDialogOpen, setIsCustomerDialogOpen] = useState(false);
 
-  const handleCustomerCreated = (customer: CustomerItem) => {
+  const getRegimenFiscalCode = (id: number) =>
+    satInfo?.regimenes_fiscales.find((item) => item.id_sat_regimen_fiscal === id)?.codigo;
+  const getUsoCfdiCode = (id: number) =>
+    satInfo?.usos_cfdi.find((item) => item.id_sat_uso_cfdi === id)?.codigo;
+
+  const handleCustomerCreated = (customer: Customer) => {
     handleSelectCustomer(customer);
     setIsCustomerDialogOpen(false);
   };
 
-  const handleSelectCustomer = (customer: CustomerItem) => {
-    const profile = customer.orderProfile;
-    setValue("clienteBusqueda", customer.razonSocial, {
+  const handleSelectCustomer = (customer: Customer) => {
+    setValue("clienteBusqueda", customer.razon_social, {
       shouldDirty: true,
       shouldValidate: true,
     });
-    setClienteSearchTerm(customer.razonSocial);
-    setValue("clienteNombre", profile.clienteNombre || customer.contacto, {
+    setClienteSearchTerm(customer.razon_social);
+    setValue("clienteNombre", customer.nombre, {
       shouldDirty: true,
       shouldValidate: true,
     });
-    setValue("razonSocial", profile.razonSocial, {
+    setValue("razonSocial", customer.razon_social, {
       shouldDirty: true,
       shouldValidate: true,
     });
-    setValue("rfc", profile.rfc, { shouldDirty: true, shouldValidate: true });
-    setValue("regimenFiscal", profile.regimenFiscal, {
+    setValue("rfc", customer.rfc, { shouldDirty: true, shouldValidate: true });
+    setValue("regimenFiscal", normalizeRegimenFiscal(getRegimenFiscalCode(customer.sat_regimen_fiscal)), {
       shouldDirty: true,
       shouldValidate: true,
     });
-    setValue("direccionFiscal", profile.direccionFiscal, {
+    setValue("usoCfdi", normalizeUsoCfdi(getUsoCfdiCode(customer.sat_uso_cfdi)), {
       shouldDirty: true,
       shouldValidate: true,
     });
-    setValue("coloniaFiscal", profile.coloniaFiscal, {
+    setValue("direccionFiscal", customer.direccion_fiscal, {
       shouldDirty: true,
       shouldValidate: true,
     });
-    setValue("codigoPostalFiscal", profile.codigoPostalFiscal, {
+    setValue("coloniaFiscal", customer.colonia, {
       shouldDirty: true,
       shouldValidate: true,
     });
-    setValue("ciudadFiscal", profile.ciudadFiscal, {
+    setValue("codigoPostalFiscal", customer.codigo_postal, {
       shouldDirty: true,
       shouldValidate: true,
     });
-    setValue("estadoFiscal", profile.estadoFiscal, {
+    setValue("ciudadFiscal", customer.ciudad, {
       shouldDirty: true,
       shouldValidate: true,
     });
-    setValue("giroEmpresa", profile.giroEmpresa, {
+    setValue("estadoFiscal", customer.estado, {
       shouldDirty: true,
       shouldValidate: true,
     });
-    setValue("destinatario", profile.destinatario, {
+    setValue("giroEmpresa", customer.giro_empresarial, {
       shouldDirty: true,
       shouldValidate: true,
     });
-    setValue("empresaEnvio", profile.empresaEnvio, {
+    setValue("correoFacturas", customer.correo, {
       shouldDirty: true,
       shouldValidate: true,
     });
-    setValue("telefonoEnvio", profile.telefonoEnvio, {
+    setValue("telefonoPagos", customer.telefono, {
       shouldDirty: true,
       shouldValidate: true,
     });
-    setValue("celularEnvio", profile.celularEnvio, {
+    setValue("destinatario", customer.nombre, {
       shouldDirty: true,
       shouldValidate: true,
     });
-    setValue("direccionEnvio", profile.direccionEnvio, {
+    setValue("empresaEnvio", customer.razon_social, {
       shouldDirty: true,
       shouldValidate: true,
     });
-    setValue("coloniaEnvio", profile.coloniaEnvio, {
+    setValue("telefonoEnvio", customer.telefono, {
       shouldDirty: true,
       shouldValidate: true,
     });
-    setValue("codigoPostalEnvio", profile.codigoPostalEnvio, {
+    setValue("celularEnvio", customer.telefono, {
       shouldDirty: true,
       shouldValidate: true,
     });
-    setValue("ciudadEnvio", profile.ciudadEnvio, {
+    setValue("direccionEnvio", customer.direccion_fiscal, {
       shouldDirty: true,
       shouldValidate: true,
     });
-    setValue("estadoEnvio", profile.estadoEnvio, {
+    setValue("coloniaEnvio", customer.colonia, {
       shouldDirty: true,
       shouldValidate: true,
     });
-    setValue("referenciasEnvio", profile.referenciasEnvio ?? "", {
+    setValue("codigoPostalEnvio", customer.codigo_postal, {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
+    setValue("ciudadEnvio", customer.ciudad, {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
+    setValue("estadoEnvio", customer.estado, {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
+    setValue("referenciasEnvio", "", {
       shouldDirty: true,
       shouldValidate: true,
     });
@@ -536,6 +570,14 @@ export default function OrderForm({ orderId }: OrderFormProps) {
   const docRelacionadoError = getFieldError(errors.docRelacionado);
   const tipoDocumentoError = getFieldError(errors.tipoDocumento);
   const origenError = getFieldError(errors.origen);
+
+  if (isCustomersLoading || isSatInfoLoading) {
+    return (
+      <div className="w-full pt-2">
+        <Loader title="Cargando formulario" message="Obteniendo clientes y catálogos..." />
+      </div>
+    );
+  }
 
   const showForm = !isEditing || !!orderToEdit;
   if (!showForm) {
@@ -675,10 +717,7 @@ export default function OrderForm({ orderId }: OrderFormProps) {
                   maxWidth="900px"
                   hideCloseButton={true}
                 >
-                  <CustomerForm
-                    sellerName={userName}
-                    onCreated={handleCustomerCreated}
-                  />
+                  <CustomerForm onCreated={handleCustomerCreated} />
                 </MainDialog>
               </div>
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -716,11 +755,7 @@ export default function OrderForm({ orderId }: OrderFormProps) {
                 />
                 <FormSelect
                   label="Régimen Fiscal"
-                  options={[
-                    { value: "601", label: "601 - General de Ley" },
-                    { value: "603", label: "603 - Personas Morales" },
-                    { value: "605", label: "605 - Sueldos" },
-                  ]}
+                options={regimenFiscalOptions}
                   disabled
                   {...register("regimenFiscal")}
                   error={errors.regimenFiscal}
@@ -829,11 +864,7 @@ export default function OrderForm({ orderId }: OrderFormProps) {
               />
               <FormSelect
                 label="Uso de CFDI"
-                options={[
-                  { value: "G03", label: "G03 - Gastos en general" },
-                  { value: "G01", label: "G01 - Adquisición de mercancías" },
-                  { value: "I01", label: "I01 - Construcciones" },
-                ]}
+                options={usoCfdiOptions}
                 {...register("usoCfdi")}
                 error={errors.usoCfdi}
               />

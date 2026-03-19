@@ -2,11 +2,11 @@
 
 import { ColumnDef } from "@tanstack/react-table";
 import { useRouter } from "next/navigation";
-import { CustomerItem } from "../interfaces/customer.interface";
+import { Customer } from "../interfaces/customer.interface";
 import { ActionMenu, ActionMenuItem } from "@/src/components/ActionMenu";
 import { EditIcon, ViewIcon } from "../../../components/Icons";
 
-const ActionsCell = ({ customer }: { customer: CustomerItem }) => {
+const ActionsCell = ({ customer }: { customer: Customer }) => {
   const router = useRouter();
   const items: ActionMenuItem[] = [
     {
@@ -27,22 +27,22 @@ const ActionsCell = ({ customer }: { customer: CustomerItem }) => {
   );
 };
 
-export const customerColumns: ColumnDef<CustomerItem>[] = [
+export const customerColumns: ColumnDef<Customer>[] = [
   {
-    accessorKey: "razonSocial",
+    accessorKey: "razon_social",
     header: "Razón social",
     cell: ({ row }) => (
       <span className="font-medium text-slate-700 dark:text-slate-200">
-        {row.getValue("razonSocial")}
+        {row.getValue("razon_social")}
       </span>
     ),
   },
   {
-    accessorKey: "contacto",
-    header: "Contacto",
+    accessorKey: "nombre",
+    header: "Nombre",
     cell: ({ row }) => (
       <span className="text-slate-600 dark:text-slate-300">
-        {row.getValue("contacto")}
+        {row.getValue("nombre")}
       </span>
     ),
   },
@@ -65,29 +65,11 @@ export const customerColumns: ColumnDef<CustomerItem>[] = [
     ),
   },
   {
-    accessorKey: "ultimaCompra",
-    header: "Última compra",
-    cell: ({ row }) => (
-      <span className="text-slate-500 dark:text-slate-400">
-        {row.getValue("ultimaCompra")}
-      </span>
-    ),
-  },
-  {
-    accessorKey: "ultimoPedido",
-    header: "Último pedido",
-    cell: ({ row }) => (
-      <span className="text-slate-500 dark:text-slate-400">
-        {row.getValue("ultimoPedido")}
-      </span>
-    ),
-  },
-  {
-    accessorKey: "vendedor",
-    header: "Vendedor",
+    accessorKey: "activo",
+    header: "Estatus",
     cell: ({ row }) => (
       <span className="text-slate-600 dark:text-slate-300">
-        {row.getValue("vendedor")}
+        {row.getValue("activo") ? "Activo" : "Inactivo"}
       </span>
     ),
   },

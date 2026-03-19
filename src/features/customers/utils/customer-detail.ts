@@ -5,7 +5,7 @@ import {
   PedidosIcon,
   TrendingUpIcon,
 } from "@/src/components/Icons";
-import type { Customer, CustomerItem } from "../interfaces/customer.interface";
+import type { Customer } from "../interfaces/customer.interface";
 
 // Normaliza texto para ids amigables en URL.
 export const toCustomerSlug = (value: string) =>
@@ -16,41 +16,11 @@ export const toCustomerSlug = (value: string) =>
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/(^-|-$)/g, "");
 
-// Crea un id único y legible combinando slug + sufijo aleatorio corto.
-export const createCustomerId = (name: string) => {
-  const prefix = toCustomerSlug(name) || "cliente";
-  const suffix = globalThis.crypto?.randomUUID
-    ? globalThis.crypto.randomUUID().slice(0, 8)
-    : `${Date.now()}-${Math.random().toString(16).slice(2, 6)}`;
-  return `${prefix}-${suffix}`;
-};
-
-// Adapta el modelo de store al modelo de detalle.
-export const mapCustomerItemToCustomer = (
-  item: CustomerItem,
-  index: number
-): Customer => ({
-  id: item.id || toCustomerSlug(item.razonSocial) || `customer-${index + 1}`,
-  nombre: item.contacto,
-  razonSocial: item.razonSocial,
-  telefono: item.telefono,
-  correo: item.correo,
-  ultimaCompra: item.ultimaCompra,
-  ultimoPedido: item.ultimoPedido,
-  vendedor: item.vendedor,
-  orderProfile: item.orderProfile,
-});
-
-// Busca cliente por id exacto para la ruta /customers/[id].
 export const getSelectedCustomer = (
-  customers: CustomerItem[],
+  customers: Customer[],
   requestedId: string
 ): Customer | null => {
-  if (customers.length === 0) return null;
-
-  const mappedCustomers = customers.map(mapCustomerItemToCustomer);
-
-  return mappedCustomers.find((item) => item.id === requestedId) ?? null;
+  return customers.find((item) => item.id === requestedId) ?? null;
 };
 
 // Genera los KPIs de la cabecera del detalle.

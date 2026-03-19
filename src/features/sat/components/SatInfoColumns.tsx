@@ -2,7 +2,7 @@
 
 import { ColumnDef } from "@tanstack/react-table";
 import {
-  RegimenesFiscale,
+  RegimenFiscal,
 } from "../interfaces/sat-info.interface";
 import { CheckCircleIcon } from "@/src/components/Icons";
 
@@ -19,7 +19,7 @@ const BooleanCell = ({ value }: { value: boolean }) => {
   );
 };
 
-export const regimenesFiscalesColumns: ColumnDef<RegimenesFiscale>[] = [
+export const regimenesFiscalesColumns: ColumnDef<RegimenFiscal>[] = [
   {
     accessorKey: "codigo",
     header: "Código",
