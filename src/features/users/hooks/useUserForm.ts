@@ -3,7 +3,7 @@
 import { useForm } from "@tanstack/react-form";
 import { useMemo, useState } from "react";
 import type { FormEvent } from "react";
-import type { FieldError } from "react-hook-form";
+import type { FormFieldError } from "../../../utils/getFieldError";
 import { useWorkspaceStore } from "../../workspace/store/workspace.store";
 import { useCompanyBranches } from "../../branches/hooks/useCompanyBranches";
 import { useRoles } from "../../roles/hooks/useRoles";
@@ -158,7 +158,7 @@ export function useUserForm({ onSuccess, userToEdit }: UseUserFormParams) {
   // Prioriza mensaje de servidor sobre cliente para cada control visual.
   const getError = (field: UserFormField) => {
     const message = serverErrors[field] ?? clientErrors[field];
-    return message ? ({ message } as FieldError) : undefined;
+    return message ? ({ message } as FormFieldError) : undefined;
   };
 
   // Controla estado y submit del formulario con TanStack Form.

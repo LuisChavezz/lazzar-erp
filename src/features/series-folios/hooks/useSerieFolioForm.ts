@@ -3,7 +3,7 @@
 import { useForm } from "@tanstack/react-form";
 import { useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
-import type { FieldError } from "react-hook-form";
+import type { FormFieldError } from "../../../utils/getFieldError";
 import { useWorkspaceStore } from "../../workspace/store/workspace.store";
 import { useCompanyBranches } from "../../branches/hooks/useCompanyBranches";
 import { useCreateSerieFolio } from "./useCreateSerieFolio";
@@ -147,7 +147,7 @@ export function useSerieFolioForm({ onSuccess, serieFolioToEdit }: UseSerieFolio
   // Expone un error unificado por campo priorizando backend sobre cliente.
   const getError = (field: SerieFolioFormField) => {
     const message = serverErrors[field] ?? clientErrors[field];
-    return message ? ({ message } as FieldError) : undefined;
+    return message ? ({ message } as FormFieldError) : undefined;
   };
 
   // Centraliza submit de creación/edición, limpieza y callbacks.

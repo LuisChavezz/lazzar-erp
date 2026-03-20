@@ -1,16 +1,10 @@
 "use client";
 
-import { useState } from "react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { ProductCategoryFormSchema, ProductCategoryFormValues } from "../schemas/product-category.schema";
 import { FormInput } from "../../../components/FormInput";
 import { FormCancelButton, FormSubmitButton } from "../../../components/FormButtons";
 import { ProductCategoriesIcon } from "../../../components/Icons";
-import { useWorkspaceStore } from "../../workspace/store/workspace.store";
-import { useCreateProductCategory } from "../hooks/useCreateProductCategory";
-import { useUpdateProductCategory } from "../hooks/useUpdateProductCategory";
 import { ProductCategory } from "../interfaces/product-category.interface";
+import { useProductCategoryForm } from "../hooks/useProductCategoryForm";
 
 interface ProductCategoryFormProps {
   onSuccess: () => void;
@@ -18,71 +12,24 @@ interface ProductCategoryFormProps {
 }
 
 export default function ProductCategoryForm({ onSuccess, categoryToEdit }: ProductCategoryFormProps) {
-  const selectedCompany = useWorkspaceStore((state) => state.selectedCompany);
-  const isEditing = Boolean(categoryToEdit?.id);
-  const emptyValues: ProductCategoryFormValues = {
-    nombre: "",
-    codigo: "",
-    descripcion: "",
-  };
-  const editValues: ProductCategoryFormValues = categoryToEdit
-    ? {
-        nombre: categoryToEdit.nombre,
-        codigo: categoryToEdit.codigo,
-        descripcion: categoryToEdit.descripcion ?? "",
-      }
-    : emptyValues;
-
   const {
-    register,
-    handleSubmit,
-    reset,
-    setError,
-    formState: { errors },
-  } = useForm<ProductCategoryFormValues>({
-    resolver: zodResolver(ProductCategoryFormSchema),
-    defaultValues: emptyValues,
-    values: isEditing ? editValues : undefined,
+    form,
+    formRef,
+    formKey,
+    isPending,
+    isEditing,
+    getError,
+    clearFieldErrors,
+    validateField,
+    handleReset,
+    handleFormSubmit,
+  } = useProductCategoryForm({
+    onSuccess,
+    categoryToEdit,
   });
 
-  const { mutateAsync: createCategory, isPending: isCreating } = useCreateProductCategory(setError);
-  const { mutateAsync: updateCategory, isPending: isUpdating } = useUpdateProductCategory(setError);
-  const [isLoading, setIsLoading] = useState(false);
-  const isPending = isCreating || isUpdating || isLoading;
-
-  const onSubmit = async (data: ProductCategoryFormValues) => {
-    setIsLoading(true);
-    try {
-      const descripcion = data.descripcion?.trim() ?? "";
-
-      if (isEditing && categoryToEdit) {
-        await updateCategory({
-          id: categoryToEdit.id,
-          empresa: categoryToEdit.empresa ?? selectedCompany.id!,
-          nombre: data.nombre,
-          codigo: data.codigo,
-          descripcion,
-        });
-        reset(editValues);
-      } else {
-        await createCategory({
-          empresa: selectedCompany.id!,
-          nombre: data.nombre,
-          codigo: data.codigo,
-          descripcion,
-        });
-        reset(emptyValues);
-      }
-      onSuccess();
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="w-full">
+    <form ref={formRef} key={formKey} onSubmit={handleFormSubmit} className="w-full">
       <fieldset disabled={isPending} className="group-disabled:opacity-50">
         <section className="bg-white dark:bg-zinc-900 rounded-3xl border border-slate-200 dark:border-white/5 shadow-sm dark:shadow-none overflow-hidden hover:shadow-lg transition-shadow duration-300 mb-8">
           <div className="px-8 py-5 border-b border-slate-100 dark:border-white/5 flex items-center gap-3 bg-slate-50/50 dark:bg-white/2">
@@ -100,26 +47,52 @@ export default function ProductCategoryForm({ onSuccess, categoryToEdit }: Produ
           <div className="p-8">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <div className="group/field md:col-span-2">
-                <FormInput
-                  label="Nombre de la Categoría"
-                  placeholder="Ej. Camisas"
-                  variant="ghost"
-                  className="text-3xl font-bold"
-                  {...register("nombre")}
-                  error={errors.nombre}
-                />
+                <form.Field name="nombre">
+                  {(field) => (
+                    <FormInput
+                      label="Nombre de la Categoría"
+                      placeholder="Ej. Camisas"
+                      variant="ghost"
+                      className="text-3xl font-bold"
+                      name={field.name}
+                      value={field.state.value}
+                      onChange={(event) => {
+                        field.handleChange(event.target.value);
+                        clearFieldErrors("nombre");
+                      }}
+                      onBlur={() => {
+                        field.handleBlur();
+                        validateField("nombre", field.state.value);
+                      }}
+                      error={getError("nombre")}
+                    />
+                  )}
+                </form.Field>
               </div>
 
               <div className="group/field">
                 <div className="relative">
                   <div className="absolute left-3 top-9 text-slate-400 font-mono text-sm">#</div>
-                  <FormInput
-                    label="Código"
-                    placeholder="Ej. CAT-001"
-                    className="pl-8 font-mono"
-                    {...register("codigo")}
-                    error={errors.codigo}
-                  />
+                  <form.Field name="codigo">
+                    {(field) => (
+                      <FormInput
+                        label="Código"
+                        placeholder="Ej. CAT-001"
+                        className="pl-8 font-mono"
+                        name={field.name}
+                        value={field.state.value}
+                        onChange={(event) => {
+                          field.handleChange(event.target.value);
+                          clearFieldErrors("codigo");
+                        }}
+                        onBlur={() => {
+                          field.handleBlur();
+                          validateField("codigo", field.state.value);
+                        }}
+                        error={getError("codigo")}
+                      />
+                    )}
+                  </form.Field>
                 </div>
               </div>
 
@@ -127,22 +100,39 @@ export default function ProductCategoryForm({ onSuccess, categoryToEdit }: Produ
                 <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider ml-1 mb-1 block transition-colors group-focus-within:text-sky-500">
                   Descripción
                 </label>
-                <textarea
-                  rows={3}
-                  placeholder="Describe la categoría"
-                  className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 transition-all dark:text-white resize-none"
-                  {...register("descripcion")}
-                />
-                {errors.descripcion && (
-                  <p className="text-xs text-red-600 mt-1">{errors.descripcion.message}</p>
-                )}
+                <form.Field name="descripcion">
+                  {(field) => (
+                    <>
+                      <textarea
+                        rows={3}
+                        placeholder="Describe la categoría"
+                        className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 transition-all dark:text-white resize-none"
+                        name={field.name}
+                        value={field.state.value}
+                        onChange={(event) => {
+                          field.handleChange(event.target.value);
+                          clearFieldErrors("descripcion");
+                        }}
+                        onBlur={() => {
+                          field.handleBlur();
+                          validateField("descripcion", field.state.value);
+                        }}
+                      />
+                      {getError("descripcion") && (
+                        <p className="text-xs text-red-600 mt-1">
+                          {getError("descripcion")?.message}
+                        </p>
+                      )}
+                    </>
+                  )}
+                </form.Field>
               </div>
             </div>
           </div>
         </section>
 
         <div className="flex justify-end gap-3 pb-8 mt-8">
-          <FormCancelButton onClick={() => reset(isEditing ? editValues : emptyValues)} disabled={isPending} />
+          <FormCancelButton onClick={handleReset} disabled={isPending} />
           <FormSubmitButton isPending={isPending} loadingLabel={isEditing ? "Actualizando..." : "Guardando..."}>
             {isEditing ? "Actualizar Categoría" : "Registrar Categoría"}
           </FormSubmitButton>

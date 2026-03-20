@@ -1,18 +1,12 @@
 "use client";
 
-import { useState } from "react";
-import { useForm, Resolver } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { LocationFormSchema, LocationFormValues } from "../schemas/location.schema";
 import { FormInput } from "../../../components/FormInput";
 import { FormSelect } from "../../../components/FormSelect";
 import { FormCancelButton, FormSubmitButton } from "../../../components/FormButtons";
 import { BuildingIcon, MapPinIcon, SettingsIcon } from "../../../components/Icons";
 import MissingPrerequisites from "../../products/components/MissingPrerequisites";
-import { useCreateLocation } from "../hooks/useCreateLocation";
-import { useUpdateLocation } from "../hooks/useUpdateLocation";
-import { useWarehouses } from "../../warehouses/hooks/useWarehouses";
 import { Location } from "../interfaces/location.interface";
+import { useLocationForm } from "../hooks/useLocationForm";
 
 interface LocationFormProps {
   onSuccess: () => void;
@@ -20,74 +14,31 @@ interface LocationFormProps {
 }
 
 export default function LocationForm({ onSuccess, locationToEdit }: LocationFormProps) {
-  const { data: warehouses = [], isLoading: isLoadingWarehouses } = useWarehouses();
-
-  const activeWarehouses = warehouses.filter((warehouse) => warehouse.estatus === "ACTIVO");
-  const missingItems = [
-    activeWarehouses.length === 0 ? "Almacenes activos" : null,
-  ].filter((item): item is string => Boolean(item));
-
-  const isEditing = Boolean(locationToEdit?.id_ubicacion);
-  const emptyValues: LocationFormValues = {
-    almacen: 0,
-    pasillo: "",
-    rack: "",
-    estatus: "ACTIVO",
-  };
-
-  const hasWarehouse = activeWarehouses.some(
-    (warehouse) => warehouse.id_almacen === locationToEdit?.almacen
-  );
-
-  const editValues: LocationFormValues = locationToEdit
-    ? {
-        almacen: hasWarehouse ? locationToEdit.almacen : 0,
-        pasillo: locationToEdit.pasillo,
-        rack: locationToEdit.rack,
-        estatus: locationToEdit.estatus as LocationFormValues["estatus"],
-      }
-    : emptyValues;
-
   const {
-    register,
-    handleSubmit,
-    reset,
-    setError,
-    formState: { errors },
-  } = useForm<LocationFormValues>({
-    resolver: zodResolver(LocationFormSchema) as Resolver<LocationFormValues>,
-    defaultValues: emptyValues,
-    values: isEditing ? editValues : undefined,
+    form,
+    formRef,
+    formKey,
+    isPending,
+    isEditing,
+    isLoadingWarehouses,
+    activeWarehouses,
+    missingItems,
+    getError,
+    clearFieldErrors,
+    validateField,
+    handleReset,
+    handleFormSubmit,
+  } = useLocationForm({
+    onSuccess,
+    locationToEdit,
   });
-
-  const { mutateAsync: createLocation, isPending: isCreating } = useCreateLocation(setError);
-  const { mutateAsync: updateLocation, isPending: isUpdating } = useUpdateLocation(setError);
-
-  const [isLoading, setIsLoading] = useState(false);
-  const isPending = isCreating || isUpdating || isLoading;
-
-  const onSubmit = async (values: LocationFormValues) => {
-    setIsLoading(true);
-    try {
-      if (isEditing && locationToEdit) {
-        await updateLocation({ id_ubicacion: locationToEdit.id_ubicacion, ...values });
-        reset(editValues);
-      } else {
-        await createLocation(values);
-        reset(emptyValues);
-      }
-      onSuccess();
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   if (missingItems.length > 0) {
     return <MissingPrerequisites items={missingItems} />;
   }
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="w-full">
+    <form ref={formRef} key={formKey} onSubmit={handleFormSubmit} className="w-full">
       <fieldset disabled={isPending} className="group-disabled:opacity-50">
         <section className="bg-white dark:bg-zinc-900 rounded-3xl border border-slate-200 dark:border-white/5 shadow-sm dark:shadow-none overflow-hidden hover:shadow-lg transition-shadow duration-300 mb-8">
           <div className="px-8 py-5 border-b border-slate-100 dark:border-white/5 flex items-center gap-3 bg-slate-50/50 dark:bg-white/2">
@@ -105,23 +56,49 @@ export default function LocationForm({ onSuccess, locationToEdit }: LocationForm
           <div className="p-8">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <div className="group/field md:col-span-2">
-                <FormInput
-                  label="Pasillo"
-                  placeholder="Ej. Pasillo A"
-                  className="text-2xl font-bold"
-                  variant="ghost"
-                  {...register("pasillo")}
-                  error={errors.pasillo}
-                />
+                <form.Field name="pasillo">
+                  {(field) => (
+                    <FormInput
+                      label="Pasillo"
+                      placeholder="Ej. Pasillo A"
+                      className="text-2xl font-bold"
+                      variant="ghost"
+                      name={field.name}
+                      value={field.state.value}
+                      onChange={(event) => {
+                        field.handleChange(event.target.value);
+                        clearFieldErrors("pasillo");
+                      }}
+                      onBlur={() => {
+                        field.handleBlur();
+                        validateField("pasillo", field.state.value);
+                      }}
+                      error={getError("pasillo")}
+                    />
+                  )}
+                </form.Field>
               </div>
 
               <div className="group/field">
-                <FormInput
-                  label="Rack"
-                  placeholder="RACK-01"
-                  {...register("rack")}
-                  error={errors.rack}
-                />
+                <form.Field name="rack">
+                  {(field) => (
+                    <FormInput
+                      label="Rack"
+                      placeholder="RACK-01"
+                      name={field.name}
+                      value={field.state.value}
+                      onChange={(event) => {
+                        field.handleChange(event.target.value);
+                        clearFieldErrors("rack");
+                      }}
+                      onBlur={() => {
+                        field.handleBlur();
+                        validateField("rack", field.state.value);
+                      }}
+                      error={getError("rack")}
+                    />
+                  )}
+                </form.Field>
               </div>
             </div>
           </div>
@@ -142,24 +119,38 @@ export default function LocationForm({ onSuccess, locationToEdit }: LocationForm
 
           <div className="p-8">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              <FormSelect
-                label="Almacén"
-                {...register("almacen", { valueAsNumber: true })}
-                error={errors.almacen}
-              >
-                <option value="0" disabled>
-                  {isLoadingWarehouses ? "Cargando almacenes..." : "Seleccionar..."}
-                </option>
-                {activeWarehouses.map((warehouse) => (
-                  <option
-                    key={warehouse.id_almacen}
-                    value={warehouse.id_almacen}
-                    className="bg-white dark:bg-zinc-900 text-slate-900 dark:text-white"
+              <form.Field name="almacen">
+                {(field) => (
+                  <FormSelect
+                    label="Almacén"
+                    name={field.name}
+                    value={field.state.value}
+                    onChange={(event) => {
+                      const nextValue = Number(event.target.value);
+                      field.handleChange(Number.isNaN(nextValue) ? 0 : nextValue);
+                      clearFieldErrors("almacen");
+                    }}
+                    onBlur={() => {
+                      field.handleBlur();
+                      validateField("almacen", field.state.value);
+                    }}
+                    error={getError("almacen")}
                   >
-                    {warehouse.codigo} - {warehouse.nombre}
-                  </option>
-                ))}
-              </FormSelect>
+                    <option value="0" disabled>
+                      {isLoadingWarehouses ? "Cargando almacenes..." : "Seleccionar..."}
+                    </option>
+                    {activeWarehouses.map((warehouse) => (
+                      <option
+                        key={warehouse.id_almacen}
+                        value={warehouse.id_almacen}
+                        className="bg-white dark:bg-zinc-900 text-slate-900 dark:text-white"
+                      >
+                        {warehouse.codigo} - {warehouse.nombre}
+                      </option>
+                    ))}
+                  </FormSelect>
+                )}
+              </form.Field>
             </div>
           </div>
         </section>
@@ -181,14 +172,37 @@ export default function LocationForm({ onSuccess, locationToEdit }: LocationForm
 
               <div className="p-8 space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <FormSelect label="Estatus de la ubicación" {...register("estatus")} error={errors.estatus}>
-                    <option value="ACTIVO" className="bg-white dark:bg-zinc-900 text-slate-900 dark:text-white">
-                      Activo
-                    </option>
-                    <option value="INACTIVO" className="bg-white dark:bg-zinc-900 text-slate-900 dark:text-white">
-                      Inactivo
-                    </option>
-                  </FormSelect>
+                  <form.Field name="estatus">
+                    {(field) => (
+                      <FormSelect
+                        label="Estatus de la ubicación"
+                        name={field.name}
+                        value={field.state.value}
+                        onChange={(event) => {
+                          field.handleChange(event.target.value as Location["estatus"]);
+                          clearFieldErrors("estatus");
+                        }}
+                        onBlur={() => {
+                          field.handleBlur();
+                          validateField("estatus", field.state.value);
+                        }}
+                        error={getError("estatus")}
+                      >
+                        <option
+                          value="ACTIVO"
+                          className="bg-white dark:bg-zinc-900 text-slate-900 dark:text-white"
+                        >
+                          Activo
+                        </option>
+                        <option
+                          value="INACTIVO"
+                          className="bg-white dark:bg-zinc-900 text-slate-900 dark:text-white"
+                        >
+                          Inactivo
+                        </option>
+                      </FormSelect>
+                    )}
+                  </form.Field>
                 </div>
               </div>
             </div>
@@ -196,10 +210,7 @@ export default function LocationForm({ onSuccess, locationToEdit }: LocationForm
         </div>
 
         <div className="flex justify-end gap-3 pb-8 mt-8">
-          <FormCancelButton
-            onClick={() => reset(isEditing ? editValues : emptyValues)}
-            disabled={isPending}
-          />
+          <FormCancelButton onClick={handleReset} disabled={isPending} />
           <FormSubmitButton isPending={isPending} loadingLabel={isEditing ? "Actualizando..." : "Guardando..."}>
             {isEditing ? "Actualizar Ubicación" : "Registrar Ubicación"}
           </FormSubmitButton>

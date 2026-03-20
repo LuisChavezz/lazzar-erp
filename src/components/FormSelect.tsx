@@ -1,10 +1,10 @@
 import { forwardRef } from "react";
-import { FieldError } from "react-hook-form";
 import { ChevronDownIcon } from "./Icons";
+import type { FormFieldError } from "../utils/getFieldError";
 
 interface FormSelectProps extends React.SelectHTMLAttributes<HTMLSelectElement> {
   label?: string;
-  error?: FieldError;
+  error?: FormFieldError;
   options?: { value: string | number; label: string }[];
   children?: React.ReactNode;
 }

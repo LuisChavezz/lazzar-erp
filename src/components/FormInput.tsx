@@ -1,10 +1,10 @@
 import { forwardRef } from "react";
 import { SearchIcon } from "./Icons";
-import { FieldError } from "react-hook-form";
+import type { FormFieldError } from "../utils/getFieldError";
 
 interface FormInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label?: string;
-  error?: FieldError;
+  error?: FormFieldError;
   variant?: "default" | "ghost" | "ghostSearch";
 }
 

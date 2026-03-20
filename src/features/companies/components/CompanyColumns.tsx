@@ -2,18 +2,16 @@
 
 import { ColumnDef } from "@tanstack/react-table";
 import { Company } from "../interfaces/company.interface";
-import { EditIcon, DeleteIcon, ViewIcon } from "../../../components/Icons";
+import { DeleteIcon, ViewIcon } from "../../../components/Icons";
 import { ConfirmDialog } from "../../../components/ConfirmDialog";
 import { MainDialog } from "@/src/components/MainDialog";
 import { DialogHeader } from "@/src/components/DialogHeader";
 import { useState } from "react";
-import CompanyForm from "./CompanyForm";
 import { CompanyDetails } from "./CompanyDetails";
 
 const ActionsCell = ({
   company,
   canView,
-  canEdit,
   canDelete,
 }: {
   company: Company;
@@ -22,7 +20,6 @@ const ActionsCell = ({
   canDelete: boolean;
 }) => {
   const [isViewOpen, setIsViewOpen] = useState(false);
-  const [isEditOpen, setIsEditOpen] = useState(false);
 
   const handleDelete = () => {
     // TODO: Implement delete functionality
@@ -52,34 +49,6 @@ const ActionsCell = ({
           }
         >
           <CompanyDetails company={company} />
-        </MainDialog>
-      ) : null}
-
-      {canEdit ? (
-        <MainDialog
-          open={isEditOpen}
-          onOpenChange={setIsEditOpen}
-          maxWidth="1000px"
-          title={
-            <DialogHeader
-              title="Edición de Empresa"
-              subtitle="Modificar Registro"
-              statusColor="sky"
-            />
-          }
-          trigger={
-            <button
-              className="p-1 cursor-pointer text-slate-400 hover:text-blue-600 transition-colors"
-              title="Editar"
-            >
-              <EditIcon className="w-5 h-5" />
-            </button>
-          }
-        >
-          <CompanyForm 
-            onSuccess={() => setIsEditOpen(false)} 
-            initialData={company}
-          />
         </MainDialog>
       ) : null}
 

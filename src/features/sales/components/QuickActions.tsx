@@ -13,11 +13,11 @@ export const QuickActions = () => {
       <div className="grid grid-cols-2 gap-3">
         <Link
           href="/sales/orders/new"
-          aria-label="Crear nuevo pedido"
+          aria-label="Crear nueva cotización"
           className="flex flex-col items-center justify-center p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 hover:bg-sky-50 dark:hover:bg-sky-900/10 hover:text-sky-600 dark:hover:text-sky-400 border border-slate-100 dark:border-white/5 hover:border-sky-200 dark:hover:border-sky-500/20 transition-all group"
         >
           <PlusIcon className="w-6 h-6 mb-2 text-slate-400 group-hover:text-sky-500 transition-colors" aria-hidden="true" />
-          <span className="text-[10px] font-medium">Nuevo Pedido</span>
+          <span className="text-[10px] font-medium">Nueva Cotización</span>
         </Link>
         <Link
           href="#"

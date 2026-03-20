@@ -20,9 +20,9 @@ Este documento describe la arquitectura técnica del proyecto **erp-nextjs-v1**,
   - **TanStack Table** como base de `DataTable`.
   - `react-hot-toast` para notificaciones.
 - **Formularios y validación**:
-  - `react-hook-form` para el manejo de formularios.
+  - `@tanstack/react-form` para el manejo de formularios.
   - `zod` para validación declarativa de esquemas.
-  - `@hookform/resolvers` para integrar `zod` con `react-hook-form`.
+  - Validación integrada en hooks y adaptadores de error por campo para UI.
 - **Autenticación**:
   - `next-auth` (Credentials Provider, estrategia JWT).
 - **HTTP Client**:

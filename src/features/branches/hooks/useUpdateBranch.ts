@@ -3,10 +3,14 @@ import { updateBranch } from "../services/actions";
 import { BranchFormValues } from "../schemas/branch.schema";
 import toast from "react-hot-toast";
 import { AxiosError } from "axios";
-import { UseFormSetError } from "react-hook-form";
 import { useWorkspaceStore } from "../../workspace/store/workspace.store";
 
-export const useUpdateBranch = (setError?: UseFormSetError<BranchFormValues>) => {
+type SetBranchError = (
+  field: keyof BranchFormValues,
+  error: { type?: string; message?: string }
+) => void;
+
+export const useUpdateBranch = (setError?: SetBranchError) => {
   const queryClient = useQueryClient();
 
   // Get the selected company ID and update branch method from the workspace store

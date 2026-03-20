@@ -3,7 +3,7 @@
 import { useForm } from "@tanstack/react-form";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
-import type { FieldError } from "react-hook-form";
+import type { FormFieldError } from "../../../utils/getFieldError";
 import { ProductFormSchema, ProductFormValues } from "../schemas/product.schema";
 import { useProductCategories } from "../../product-categories/hooks/useProductCategories";
 import { useUnitsOfMeasure } from "../../units-of-measure/hooks/useUnitsOfMeasure";
@@ -193,7 +193,7 @@ export function useProductForm({ onSuccess, productToEdit }: UseProductFormParam
   // Prioriza mensajes de backend y mantiene compatibilidad con componentes de error.
   const getError = (field: ProductFormField) => {
     const message = serverErrors[field] ?? clientErrors[field];
-    return message ? ({ message } as FieldError) : undefined;
+    return message ? ({ message } as FormFieldError) : undefined;
   };
 
   // Centraliza estado y flujo de submit para crear/editar manteniendo el comportamiento actual.

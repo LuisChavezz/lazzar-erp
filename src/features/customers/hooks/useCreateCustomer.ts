@@ -3,10 +3,14 @@ import { createCustomer } from "../services/actions";
 import { Customer, CustomerCreate } from "../interfaces/customer.interface";
 import toast from "react-hot-toast";
 import { AxiosError } from "axios";
-import { UseFormSetError } from "react-hook-form";
 import { CustomerFormValues } from "../schemas/customer.schema";
 
-export const useCreateCustomer = (setError?: UseFormSetError<CustomerFormValues>) => {
+type SetCustomerError = (
+  field: keyof CustomerFormValues,
+  error: { type?: string; message?: string }
+) => void;
+
+export const useCreateCustomer = (setError?: SetCustomerError) => {
   const queryClient = useQueryClient();
 
   return useMutation<Customer, unknown, CustomerCreate>({

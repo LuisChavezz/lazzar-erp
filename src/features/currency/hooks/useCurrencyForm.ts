@@ -3,7 +3,7 @@
 import { useForm } from "@tanstack/react-form";
 import { useMemo, useState } from "react";
 import type { FormEvent } from "react";
-import type { FieldError } from "react-hook-form";
+import type { FormFieldError } from "../../../utils/getFieldError";
 import { Currency } from "../interfaces/currency.interface";
 import { useCreateCurrency } from "./useCreateCurrency";
 import { useUpdateCurrency } from "./useUpdateCurrency";
@@ -124,7 +124,7 @@ export function useCurrencyForm({ onSuccess, currencyToEdit }: UseCurrencyFormPa
   // Prioriza errores de backend sobre errores de cliente en la UI.
   const getError = (field: CurrencyFormField) => {
     const message = serverErrors[field] ?? clientErrors[field];
-    return message ? ({ message } as FieldError) : undefined;
+    return message ? ({ message } as FormFieldError) : undefined;
   };
 
   // TanStack Form concentra estado y submit manteniendo flujo original crear/editar.

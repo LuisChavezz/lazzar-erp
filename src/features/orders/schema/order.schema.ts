@@ -94,22 +94,27 @@ export const orderFormSchema = z.object({
   personaPagos: z.string().min(1, "Requerido"),
   correoFacturas: z.string().email("Correo inválido"),
   telefonoPagos: z.string().min(1, "Requerido"),
-  ordenCompra: z.string().optional(),
+  ordenCompra: z.string().min(1, "Requerido"),
   formaPago: z.enum(["01", "03", "04"], { message: "Requerido" }),
   metodoPago: z.enum(["PUE", "PPD", "NA"], { message: "Requerido" }),
   usoCfdi: z.string().min(1, "Requerido"),
   referenciarOcFactura: z.boolean(),
-  condicionPago100Anticipo: z.boolean(),
-  condicionPago50Anticipo: z.boolean(),
-  condicionPagoVendedorAutoriza: z.boolean(),
-  condicionPagoPagoAntesEmbarque: z.boolean(),
-  condicionPagoPorConfirmar: z.boolean(),
-  condicionPagoOtraCantidad: z.boolean(),
+  condicionPago: z.enum(
+    [
+      "100_anticipo",
+      "50_anticipo",
+      "vendedor_autoriza",
+      "pago_antes_embarque",
+      "por_confirmar",
+      "otra_cantidad",
+    ],
+    { message: "Requerido" }
+  ),
   condicionPagoMonto: z.coerce.number().min(0, "No puede ser negativo"),
   fecha: z.string().min(1, "Requerido"),
   agente: z.string().trim().min(1, "Requerido"),
   tipoDocumento: z.string().min(1, "Requerido"),
-  origen: z.array(z.string().min(1, "Requerido")).min(1, "Selecciona al menos un origen"),
+  origen: z.string().min(1, "Selecciona un origen"),
   destinatario: z.string().min(1, "Requerido"),
   empresaEnvio: z.string().min(1, "Requerido"),
   telefonoEnvio: z.string().min(1, "Requerido"),
@@ -143,7 +148,7 @@ export const orderFormSchema = z.object({
   iva: z.coerce.number().min(0, "No puede ser negativo"),
   items: z.array(orderItemSchema).min(1, "Agrega al menos un producto"),
 }).superRefine((data, ctx) => {
-  if (data.condicionPagoOtraCantidad && data.condicionPagoMonto <= 0) {
+  if (data.condicionPago === "otra_cantidad" && data.condicionPagoMonto <= 0) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
       path: ["condicionPagoMonto"],

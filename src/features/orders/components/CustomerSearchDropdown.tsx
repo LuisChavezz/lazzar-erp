@@ -1,9 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { FieldError } from "react-hook-form";
 import { FormInput } from "@/src/components/FormInput";
 import { Customer } from "@/src/features/customers/interfaces/customer.interface";
+import type { FormFieldError } from "@/src/utils/getFieldError";
 
 interface CustomerSearchDropdownProps {
   value: string;
@@ -12,7 +12,7 @@ interface CustomerSearchDropdownProps {
   onSelect: (customer: Customer) => void;
   label?: string;
   placeholder?: string;
-  error?: FieldError;
+  error?: FormFieldError;
 }
 
 export function CustomerSearchDropdown({

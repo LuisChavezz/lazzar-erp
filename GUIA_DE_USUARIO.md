@@ -102,7 +102,7 @@ En la mayoría de los catálogos se repite el mismo patrón:
   - Se usan componentes tipo `...List` y columnas definidas en archivos `...Columns.tsx` basados en **TanStack Table**.
   - Permiten ver registros, estados, etiquetas y acciones.
 - **Altas / Edición**:
-  - Formularios basados en `react-hook-form` + `zod` (validaciones).
+  - Formularios basados en `@tanstack/react-form` + `zod` (validaciones).
   - Inputs reutilizables (`FormInput`, `FormSelect`, `FormButtons`).
   - Validaciones en tiempo real y mensajes de error claros.
 - **Detalles**:

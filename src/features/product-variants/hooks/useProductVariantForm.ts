@@ -3,7 +3,7 @@
 import { useForm } from "@tanstack/react-form";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
-import type { FieldError } from "react-hook-form";
+import type { FormFieldError } from "../../../utils/getFieldError";
 import { ProductVariantFormSchema, ProductVariantFormValues } from "../schemas/product-variant.schema";
 import { useWorkspaceStore } from "../../workspace/store/workspace.store";
 import { useProducts } from "../../products/hooks/useProducts";
@@ -177,7 +177,7 @@ export function useProductVariantForm({
   // Unifica la lectura de errores para mantener compatibilidad visual.
   const getError = (field: ProductVariantFormField) => {
     const message = serverErrors[field] ?? clientErrors[field];
-    return message ? ({ message } as FieldError) : undefined;
+    return message ? ({ message } as FormFieldError) : undefined;
   };
 
   // Centraliza el flujo submit en creación/edición manteniendo comportamiento actual.

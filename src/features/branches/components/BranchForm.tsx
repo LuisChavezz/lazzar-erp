@@ -1,14 +1,10 @@
 "use client";
 
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { BranchFormSchema, BranchFormValues } from "../schemas/branch.schema";
-import { useRegisterBranch } from "../hooks/useRegisterBranch";
-import { useUpdateBranch } from "../hooks/useUpdateBranch";
 import { MapPinIcon, SettingsIcon } from "../../../components/Icons";
 import { FormInput } from "../../../components/FormInput";
 import { FormCancelButton, FormSubmitButton } from "../../../components/FormButtons";
 import { Branch } from "../interfaces/branch.interface";
+import { useBranchForm } from "../hooks/useBranchForm";
 
 interface BranchFormProps {
   onSuccess: () => void;
@@ -17,53 +13,20 @@ interface BranchFormProps {
 
 export default function BranchForm({ onSuccess, defaultValues }: BranchFormProps) {
   const {
+    formRef,
     register,
-    handleSubmit,
-    reset,
-    setError,
-    formState: { errors },
-  } = useForm<BranchFormValues>({
-    resolver: zodResolver(BranchFormSchema),
-    defaultValues: defaultValues as BranchFormValues || {
-      nombre: "",
-      codigo: "",
-      telefono: "",
-      email: "",
-      direccion_linea1: "",
-      direccion_linea2: "",
-      ciudad: "",
-      estado: "",
-      cp: "",
-      pais: "",
-      estatus: "activo",
-    },
+    errors,
+    isPending,
+    handleFormSubmit,
+    handleReset,
+    isEditing,
+  } = useBranchForm({
+    onSuccess,
+    branchToEdit: defaultValues,
   });
 
-  const { mutate: registerBranch, isPending: isRegisterPending } = useRegisterBranch(setError);
-  const { mutate: updateBranch, isPending: isUpdatePending } = useUpdateBranch(setError);
-
-  const isPending = isRegisterPending || isUpdatePending;
-
-  const onSubmit = (values: BranchFormValues) => {
-    if (defaultValues) {
-      updateBranch(values, {
-        onSuccess: () => {
-          reset();
-          onSuccess();
-        },
-      });
-    } else {
-      registerBranch(values, {
-        onSuccess: () => {
-          reset();
-          onSuccess();
-        },
-      });
-    }
-  };
-
   return (
-    <form onSubmit={handleSubmit(onSubmit)}>
+    <form ref={formRef} onSubmit={handleFormSubmit}>
       <fieldset disabled={isPending} className={`space-y-8 transition-opacity duration-200 ${isPending ? "opacity-60" : ""}`}>
         {/* 1. Encabezado e Información Principal */}
         <section className="relative overflow-hidden bg-white dark:bg-zinc-900 rounded-3xl p-6 md:p-8 border border-slate-200 dark:border-white/5 shadow-sm dark:shadow-none group hover:border-sky-200 dark:hover:border-sky-900 transition-colors duration-300">
@@ -234,9 +197,9 @@ export default function BranchForm({ onSuccess, defaultValues }: BranchFormProps
         </div>
 
         <div className="flex justify-end gap-3 pb-8">
-          <FormCancelButton onClick={() => reset()} disabled={isPending} />
+          <FormCancelButton onClick={handleReset} disabled={isPending} />
           <FormSubmitButton isPending={isPending} loadingLabel="Guardando...">
-            {defaultValues ? "Actualizar Sucursal" : "Guardar Sucursal"}
+            {isEditing ? "Actualizar Sucursal" : "Guardar Sucursal"}
           </FormSubmitButton>
         </div>
       </fieldset>

@@ -1,11 +1,15 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createLocation } from "../services/actions";
-import { LocationCreate } from "../interfaces/location.interface";
+import { LocationFormValues } from "../schemas/location.schema";
 import toast from "react-hot-toast";
 import { AxiosError } from "axios";
-import { UseFormSetError } from "react-hook-form";
 
-export const useCreateLocation = (setError?: UseFormSetError<LocationCreate>) => {
+type SetLocationError = (
+  field: keyof LocationFormValues,
+  error: { type?: string; message?: string }
+) => void;
+
+export const useCreateLocation = (setError?: SetLocationError) => {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -23,7 +27,7 @@ export const useCreateLocation = (setError?: UseFormSetError<LocationCreate>) =>
           const validationErrors = data as Record<string, string[]>;
 
           Object.keys(validationErrors).forEach((key) => {
-            const fieldKey = key as keyof LocationCreate;
+            const fieldKey = key as keyof LocationFormValues;
             const errorMessages = validationErrors[key];
 
             if (Array.isArray(errorMessages) && errorMessages.length > 0) {

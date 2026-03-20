@@ -3,9 +3,15 @@ import { createProductCategory } from "../services/actions";
 import { ProductCategoryFormValues } from "../schemas/product-category.schema";
 import toast from "react-hot-toast";
 import { AxiosError } from "axios";
-import { UseFormSetError } from "react-hook-form";
 
-export const useCreateProductCategory = (setError?: UseFormSetError<ProductCategoryFormValues>) => {
+type SetProductCategoryError = (
+  field: keyof ProductCategoryFormValues,
+  error: { type?: string; message?: string }
+) => void;
+
+export const useCreateProductCategory = (
+  setError?: SetProductCategoryError
+) => {
   const queryClient = useQueryClient();
 
   return useMutation({

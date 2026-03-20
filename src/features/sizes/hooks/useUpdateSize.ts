@@ -3,13 +3,17 @@ import { updateSize } from "../services/actions";
 import { SizeFormValues } from "../schemas/size.schema";
 import toast from "react-hot-toast";
 import { AxiosError } from "axios";
-import { UseFormSetError } from "react-hook-form";
 
 interface UpdateSizePayload extends SizeFormValues {
   id: number;
 }
 
-export const useUpdateSize = (setError?: UseFormSetError<SizeFormValues>) => {
+type SetSizeError = (
+  field: keyof SizeFormValues,
+  error: { type?: string; message?: string }
+) => void;
+
+export const useUpdateSize = (setError?: SetSizeError) => {
   const queryClient = useQueryClient();
 
   return useMutation({

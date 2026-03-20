@@ -3,13 +3,17 @@ import { updateColor } from "../services/actions";
 import { ColorFormValues } from "../schemas/color.schema";
 import toast from "react-hot-toast";
 import { AxiosError } from "axios";
-import { UseFormSetError } from "react-hook-form";
 
 interface UpdateColorPayload extends ColorFormValues {
   id: number;
 }
 
-export const useUpdateColor = (setError?: UseFormSetError<ColorFormValues>) => {
+type SetColorError = (
+  field: keyof ColorFormValues,
+  error: { type?: string; message?: string }
+) => void;
+
+export const useUpdateColor = (setError?: SetColorError) => {
   const queryClient = useQueryClient();
 
   return useMutation({

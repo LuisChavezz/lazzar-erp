@@ -1,50 +1,28 @@
 "use client";
 
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { FiscalAddressSchema, FiscalAddressFormValues } from "../schemas/fiscal-address.schema";
-import { useSatStore } from "../stores/sat.store";
 import { FormInput } from "@/src/components/FormInput";
 import { FormCancelButton, FormSubmitButton } from "@/src/components/FormButtons";
 import { MapPinIcon } from "@/src/components/Icons";
+import { useFiscalAddressForm } from "../hooks/useFiscalAddressForm";
 
 interface FiscalAddressFormProps {
   onSuccess: () => void;
 }
 
 export default function FiscalAddressForm({ onSuccess }: FiscalAddressFormProps) {
-  const { fiscalAddress, setFiscalAddress } = useSatStore();
-
   const {
-    register,
-    handleSubmit,
-    reset,
-    formState: { errors, isSubmitting },
-  } = useForm<FiscalAddressFormValues>({
-    resolver: zodResolver(FiscalAddressSchema),
-    defaultValues: {
-      calle: "",
-      numero_exterior: "",
-      numero_interior: "",
-      colonia: "",
-      localidad: "",
-      municipio: "",
-      estado: "",
-      pais: "México",
-      codigo_postal: "",
-    },
-    values: fiscalAddress || undefined,
-  });
-
-  const onSubmit = async (data: FiscalAddressFormValues) => {
-    // Simular retraso de red
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    setFiscalAddress(data);
-    onSuccess();
-  };
+    form,
+    formRef,
+    isSubmitting,
+    getError,
+    clearFieldError,
+    validateField,
+    handleReset,
+    handleFormSubmit,
+  } = useFiscalAddressForm({ onSuccess });
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)}>
+    <form ref={formRef} onSubmit={handleFormSubmit}>
       <div className="space-y-8">
         <section className="bg-white dark:bg-zinc-900 rounded-3xl border border-slate-200 dark:border-white/5 shadow-sm dark:shadow-none overflow-hidden hover:shadow-lg transition-shadow duration-300">
           <div className="px-8 py-5 border-b border-slate-100 dark:border-white/5 flex items-center gap-3 bg-slate-50/50 dark:bg-white/2">
@@ -61,43 +39,108 @@ export default function FiscalAddressForm({ onSuccess }: FiscalAddressFormProps)
 
           <div className="p-8">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="md:col-span-2">
-              <FormInput
-                label="Calle"
-                placeholder="Ej. Av. Reforma"
-                {...register("calle")}
-                error={errors.calle}
-              />
-            </div>
-            
-            <FormInput
-              label="Número Exterior"
-              placeholder="Ej. 123"
-              {...register("numero_exterior")}
-              error={errors.numero_exterior}
-            />
+              <div className="md:col-span-2">
+                <form.Field name="calle">
+                  {(field) => (
+                    <FormInput
+                      label="Calle"
+                      placeholder="Ej. Av. Reforma"
+                      name={field.name}
+                      value={field.state.value}
+                      onChange={(event) => {
+                        field.handleChange(event.target.value);
+                        clearFieldError("calle");
+                      }}
+                      onBlur={() => {
+                        field.handleBlur();
+                        validateField("calle", field.state.value);
+                      }}
+                      error={getError("calle")}
+                    />
+                  )}
+                </form.Field>
+              </div>
 
-            <FormInput
-              label="Número Interior"
-              placeholder="Ej. Depto 4B (Opcional)"
-              {...register("numero_interior")}
-              error={errors.numero_interior}
-            />
+              <form.Field name="numero_exterior">
+                {(field) => (
+                  <FormInput
+                    label="Número Exterior"
+                    placeholder="Ej. 123"
+                    name={field.name}
+                    value={field.state.value}
+                    onChange={(event) => {
+                      field.handleChange(event.target.value);
+                      clearFieldError("numero_exterior");
+                    }}
+                    onBlur={() => {
+                      field.handleBlur();
+                      validateField("numero_exterior", field.state.value);
+                    }}
+                    error={getError("numero_exterior")}
+                  />
+                )}
+              </form.Field>
 
-            <FormInput
-              label="Colonia"
-              placeholder="Ej. Centro"
-              {...register("colonia")}
-              error={errors.colonia}
-            />
+              <form.Field name="numero_interior">
+                {(field) => (
+                  <FormInput
+                    label="Número Interior"
+                    placeholder="Ej. Depto 4B (Opcional)"
+                    name={field.name}
+                    value={field.state.value}
+                    onChange={(event) => {
+                      field.handleChange(event.target.value);
+                      clearFieldError("numero_interior");
+                    }}
+                    onBlur={() => {
+                      field.handleBlur();
+                      validateField("numero_interior", field.state.value);
+                    }}
+                    error={getError("numero_interior")}
+                  />
+                )}
+              </form.Field>
 
-            <FormInput
-              label="Código Postal"
-              placeholder="Ej. 06000"
-              maxLength={5}
-              {...register("codigo_postal")}
-              error={errors.codigo_postal}
-            />
+              <form.Field name="colonia">
+                {(field) => (
+                  <FormInput
+                    label="Colonia"
+                    placeholder="Ej. Centro"
+                    name={field.name}
+                    value={field.state.value}
+                    onChange={(event) => {
+                      field.handleChange(event.target.value);
+                      clearFieldError("colonia");
+                    }}
+                    onBlur={() => {
+                      field.handleBlur();
+                      validateField("colonia", field.state.value);
+                    }}
+                    error={getError("colonia")}
+                  />
+                )}
+              </form.Field>
+
+              <form.Field name="codigo_postal">
+                {(field) => (
+                  <FormInput
+                    label="Código Postal"
+                    placeholder="Ej. 06000"
+                    maxLength={5}
+                    name={field.name}
+                    value={field.state.value}
+                    onChange={(event) => {
+                      field.handleChange(event.target.value);
+                      clearFieldError("codigo_postal");
+                    }}
+                    onBlur={() => {
+                      field.handleBlur();
+                      validateField("codigo_postal", field.state.value);
+                    }}
+                    error={getError("codigo_postal")}
+                  />
+                )}
+              </form.Field>
             </div>
           </div>
         </section>
@@ -117,39 +160,91 @@ export default function FiscalAddressForm({ onSuccess }: FiscalAddressFormProps)
 
           <div className="p-8">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <FormInput
-              label="Localidad"
-              placeholder="Ej. Ciudad de México (Opcional)"
-              {...register("localidad")}
-              error={errors.localidad}
-            />
+              <form.Field name="localidad">
+                {(field) => (
+                  <FormInput
+                    label="Localidad"
+                    placeholder="Ej. Ciudad de México (Opcional)"
+                    name={field.name}
+                    value={field.state.value}
+                    onChange={(event) => {
+                      field.handleChange(event.target.value);
+                      clearFieldError("localidad");
+                    }}
+                    onBlur={() => {
+                      field.handleBlur();
+                      validateField("localidad", field.state.value);
+                    }}
+                    error={getError("localidad")}
+                  />
+                )}
+              </form.Field>
 
-            <FormInput
-              label="Municipio / Alcaldía"
-              placeholder="Ej. Cuauhtémoc"
-              {...register("municipio")}
-              error={errors.municipio}
-            />
+              <form.Field name="municipio">
+                {(field) => (
+                  <FormInput
+                    label="Municipio / Alcaldía"
+                    placeholder="Ej. Cuauhtémoc"
+                    name={field.name}
+                    value={field.state.value}
+                    onChange={(event) => {
+                      field.handleChange(event.target.value);
+                      clearFieldError("municipio");
+                    }}
+                    onBlur={() => {
+                      field.handleBlur();
+                      validateField("municipio", field.state.value);
+                    }}
+                    error={getError("municipio")}
+                  />
+                )}
+              </form.Field>
 
-            <FormInput
-              label="Estado"
-              placeholder="Ej. Ciudad de México"
-              {...register("estado")}
-              error={errors.estado}
-            />
+              <form.Field name="estado">
+                {(field) => (
+                  <FormInput
+                    label="Estado"
+                    placeholder="Ej. Ciudad de México"
+                    name={field.name}
+                    value={field.state.value}
+                    onChange={(event) => {
+                      field.handleChange(event.target.value);
+                      clearFieldError("estado");
+                    }}
+                    onBlur={() => {
+                      field.handleBlur();
+                      validateField("estado", field.state.value);
+                    }}
+                    error={getError("estado")}
+                  />
+                )}
+              </form.Field>
 
-            <FormInput
-              label="País"
-              placeholder="Ej. México"
-              {...register("pais")}
-              error={errors.pais}
-            />
+              <form.Field name="pais">
+                {(field) => (
+                  <FormInput
+                    label="País"
+                    placeholder="Ej. México"
+                    name={field.name}
+                    value={field.state.value}
+                    onChange={(event) => {
+                      field.handleChange(event.target.value);
+                      clearFieldError("pais");
+                    }}
+                    onBlur={() => {
+                      field.handleBlur();
+                      validateField("pais", field.state.value);
+                    }}
+                    error={getError("pais")}
+                  />
+                )}
+              </form.Field>
             </div>
           </div>
         </section>
 
         <div className="flex justify-end gap-3">
-          <FormCancelButton onClick={() => reset()} disabled={isSubmitting} />
+          <FormCancelButton onClick={handleReset} disabled={isSubmitting} />
           <FormSubmitButton
             isPending={isSubmitting}
             loadingLabel="Guardando..."

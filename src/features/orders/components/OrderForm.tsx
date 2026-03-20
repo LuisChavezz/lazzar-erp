@@ -1,8 +1,5 @@
 "use client";
 
-import { useSession } from "next-auth/react";
-import { useForm, useFieldArray, useWatch, Resolver } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
 import { FormInput } from "@/src/components/FormInput";
 import { FormSelect } from "@/src/components/FormSelect";
 import {
@@ -12,564 +9,74 @@ import {
 } from "@/src/components/FormButtons";
 import { EmbarquesIcon, PedidosIcon, PlusIcon } from "@/src/components/Icons";
 import { MainDialog } from "@/src/components/MainDialog";
-import { orderFormSchema, OrderFormValues } from "../schema/order.schema";
 import { getFieldError } from "../../../utils/getFieldError";
 import { formatCurrency } from "../../../utils/formatCurrency";
-import { useOrderStore } from "../stores/order.store";
-import { useRouter } from "next/navigation";
-import toast from "react-hot-toast";
-import { Order } from "../interfaces/order.interface";
 import { Loader } from "@/src/components/Loader";
-import { useRef, useState } from "react";
 import { AddProductDialog } from "./AddProductDialog";
 import { CustomerSearchDropdown } from "./CustomerSearchDropdown";
 import CustomerForm from "../../customers/components/CustomerForm";
-import type { Customer } from "@/src/features/customers/interfaces/customer.interface";
 import { DialogHeader } from "@/src/components/DialogHeader";
-import { useCustomers } from "../../customers/hooks/useCustomers";
-import { useSatInfo } from "../../sat/hooks/useSatInfo";
+import { useOrderForm } from "../hooks/useOrderForm";
 
 interface OrderFormProps {
   orderId?: string;
 }
 
 export default function OrderForm({ orderId }: OrderFormProps) {
-  const { data: session } = useSession();
-  const userName = session?.user?.name || "Usuario";
-  const userId = session?.user?.id ?? "";
-  const isEditing = Boolean(orderId);
-
-  const todayStr = new Date().toISOString().split("T")[0];
-  const sellerName = userName;
-  const documentTypeOptions = [
-    { value: "pedido", label: "Pedido de Venta" },
-    { value: "muestra", label: "Muestra" },
-  ];
-  const originOptions = [
-    "Recompra",
-    "Google",
-    "Chat Online",
-    "Publicidad",
-    "Pedido Online",
-    "Mercado Libre",
-    "Prospección",
-    "Redes Sociales",
-    "Recomendación",
-    "Otro",
-    "Amazon",
-    "Mailing",
-  ];
-  const normalizeFormaPago = (value?: string): OrderFormValues["formaPago"] =>
-    value === "01" || value === "03" || value === "04" ? value : "03";
-  const normalizeMetodoPago = (value?: string): OrderFormValues["metodoPago"] =>
-    value === "PUE" || value === "PPD" || value === "NA" ? value : "PUE";
-  const addOrder = useOrderStore((s) => s.addOrder);
-  const updateOrder = useOrderStore((s) => s.updateOrder);
-  const orderToEdit = useOrderStore((s) =>
-    orderId ? s.orders.find((o) => o.id === orderId) : undefined
-  );
-  const { customers, isLoading: isCustomersLoading } = useCustomers();
-  const { data: satInfo, isLoading: isSatInfoLoading } = useSatInfo();
-  const regimenFiscalOptions =
-    satInfo?.regimenes_fiscales.map((item) => ({
-      value: item.codigo,
-      label: `${item.codigo} - ${item.descripcion}`,
-    })) ?? [];
-  const usoCfdiOptions =
-    satInfo?.usos_cfdi.map((item) => ({
-      value: item.codigo,
-      label: `${item.codigo} - ${item.descripcion}`,
-    })) ?? [];
-  const normalizeRegimenFiscal = (value?: string): OrderFormValues["regimenFiscal"] => {
-    if (value && regimenFiscalOptions.some((item) => item.value === value)) {
-      return value;
-    }
-    return regimenFiscalOptions[0]?.value ?? "601";
-  };
-  const normalizeUsoCfdi = (value?: string): OrderFormValues["usoCfdi"] => {
-    if (value && usoCfdiOptions.some((item) => item.value === value)) {
-      return value;
-    }
-    return usoCfdiOptions[0]?.value ?? "G03";
-  };
-  const router = useRouter();
-  const emptyValues: OrderFormValues = {
-    clienteBusqueda: "",
-    clienteNombre: "",
-    razonSocial: "",
-    rfc: "",
-    regimenFiscal: "601",
-    direccionFiscal: "",
-    coloniaFiscal: "",
-    codigoPostalFiscal: "",
-    ciudadFiscal: "",
-    estadoFiscal: "",
-    giroEmpresa: "",
-    personaPagos: "",
-    correoFacturas: "",
-    telefonoPagos: "",
-    ordenCompra: "",
-    formaPago: "03",
-    metodoPago: "PUE",
-    usoCfdi: "G03",
-    referenciarOcFactura: false,
-    condicionPago100Anticipo: true,
-    condicionPago50Anticipo: false,
-    condicionPagoVendedorAutoriza: false,
-    condicionPagoPagoAntesEmbarque: false,
-    condicionPagoPorConfirmar: false,
-    condicionPagoOtraCantidad: false,
-    condicionPagoMonto: 0,
-    fecha: todayStr,
-    agente: userName,
-    tipoDocumento: "pedido",
-    origen: [],
-    destinatario: "",
-    empresaEnvio: "",
-    telefonoEnvio: "",
-    celularEnvio: "",
-    direccionEnvio: "",
-    coloniaEnvio: "",
-    codigoPostalEnvio: "",
-    ciudadEnvio: "",
-    estadoEnvio: "",
-    referenciasEnvio: "",
-    enviarDomicilioFiscal: false,
-    embarcarConOtrosPedidos: false,
-    empaqueEcologico: false,
-    embarqueParcial: false,
-    comentariosParcialidad: "",
-    servicioEnvioActivo: false,
-    servicioEnvioMonto: 0,
-    programaBordadosActivo: false,
-    programaBordadosMonto: 0,
-    bordadoPantalonesExtrasActivo: false,
-    bordadoPantalonesExtrasMonto: 0,
-    bordadoLogotipoIncluido: true,
-    estatusPedido: "Pendiente",
-    docRelacionado: "",
-    observaciones: "",
-    flete: 0,
-    seguro: 0,
-    anticipo: 0,
-    iva: 0.16,
-    items: [],
-  };
-
-  const editValues: OrderFormValues = orderToEdit
-    ? {
-      clienteBusqueda: orderToEdit.clienteBusqueda ?? "",
-      clienteNombre: orderToEdit.clienteNombre,
-      razonSocial: orderToEdit.razonSocial ?? "",
-      rfc: orderToEdit.rfc ?? "",
-      regimenFiscal: normalizeRegimenFiscal(orderToEdit.regimenFiscal),
-      direccionFiscal: orderToEdit.direccionFiscal ?? "",
-      coloniaFiscal: orderToEdit.coloniaFiscal ?? "",
-      codigoPostalFiscal: orderToEdit.codigoPostalFiscal ?? "",
-      ciudadFiscal: orderToEdit.ciudadFiscal ?? "",
-      estadoFiscal: orderToEdit.estadoFiscal ?? "",
-      giroEmpresa: orderToEdit.giroEmpresa ?? "",
-      personaPagos: orderToEdit.personaPagos ?? "",
-      correoFacturas: orderToEdit.correoFacturas ?? "",
-      telefonoPagos: orderToEdit.telefonoPagos ?? "",
-      ordenCompra: orderToEdit.ordenCompra ?? "",
-      formaPago: normalizeFormaPago(orderToEdit.formaPago),
-      metodoPago: normalizeMetodoPago(orderToEdit.metodoPago),
-      usoCfdi: normalizeUsoCfdi(orderToEdit.usoCfdi),
-      referenciarOcFactura: orderToEdit.referenciarOcFactura ?? false,
-      condicionPago100Anticipo: orderToEdit.condicionPago100Anticipo ?? false,
-      condicionPago50Anticipo: orderToEdit.condicionPago50Anticipo ?? false,
-      condicionPagoVendedorAutoriza: orderToEdit.condicionPagoVendedorAutoriza ?? false,
-      condicionPagoPagoAntesEmbarque: orderToEdit.condicionPagoPagoAntesEmbarque ?? false,
-      condicionPagoPorConfirmar: orderToEdit.condicionPagoPorConfirmar ?? false,
-      condicionPagoOtraCantidad: orderToEdit.condicionPagoOtraCantidad ?? false,
-      condicionPagoMonto: orderToEdit.condicionPagoMonto ?? 0,
-      fecha: orderToEdit.fecha,
-      agente: orderToEdit.agente ?? userName,
-      tipoDocumento: orderToEdit.tipoDocumento ?? "pedido",
-      origen: orderToEdit.origen ?? [],
-      destinatario: orderToEdit.destinatario ?? "",
-      empresaEnvio: orderToEdit.empresaEnvio ?? "",
-      telefonoEnvio: orderToEdit.telefonoEnvio ?? "",
-      celularEnvio: orderToEdit.celularEnvio ?? "",
-      direccionEnvio: orderToEdit.direccionEnvio ?? "",
-      coloniaEnvio: orderToEdit.coloniaEnvio ?? "",
-      codigoPostalEnvio: orderToEdit.codigoPostalEnvio ?? "",
-      ciudadEnvio: orderToEdit.ciudadEnvio ?? "",
-      estadoEnvio: orderToEdit.estadoEnvio ?? "",
-      referenciasEnvio: orderToEdit.referenciasEnvio ?? "",
-      enviarDomicilioFiscal: orderToEdit.enviarDomicilioFiscal ?? false,
-      embarcarConOtrosPedidos: orderToEdit.embarcarConOtrosPedidos ?? false,
-      empaqueEcologico: orderToEdit.empaqueEcologico ?? false,
-      embarqueParcial: orderToEdit.embarqueParcial ?? false,
-      comentariosParcialidad: orderToEdit.comentariosParcialidad ?? "",
-      servicioEnvioActivo: orderToEdit.servicioEnvioActivo ?? false,
-      servicioEnvioMonto: orderToEdit.servicioEnvioMonto ?? 0,
-      programaBordadosActivo: orderToEdit.programaBordadosActivo ?? false,
-      programaBordadosMonto: orderToEdit.programaBordadosMonto ?? 0,
-      bordadoPantalonesExtrasActivo:
-        orderToEdit.bordadoPantalonesExtrasActivo ?? false,
-      bordadoPantalonesExtrasMonto:
-        orderToEdit.bordadoPantalonesExtrasMonto ?? 0,
-      bordadoLogotipoIncluido: orderToEdit.bordadoLogotipoIncluido ?? true,
-      estatusPedido: orderToEdit.estatusPedido,
-      docRelacionado: orderToEdit.docRelacionado,
-      observaciones: orderToEdit.observaciones ?? "",
-      flete: orderToEdit.totals.flete,
-      seguro: orderToEdit.totals.seguro,
-      anticipo: orderToEdit.totals.anticipo,
-      iva: orderToEdit.totals.ivaRate,
-      items: orderToEdit.items.map((i) => ({ ...i })),
-    }
-    : emptyValues;
-
   const {
-    register,
-    handleSubmit,
-    control,
-    reset,
-    setValue,
-    formState: { errors, isSubmitting },
-  } = useForm<OrderFormValues>({
-    resolver: zodResolver(orderFormSchema) as Resolver<OrderFormValues>,
-    defaultValues: emptyValues,
-    values: isEditing ? editValues : undefined,
-  });
-
-  const { fields, append, remove, update } = useFieldArray({
-    control,
-    name: "items",
-  });
-
-  const watchedItems = useWatch({ control, name: "items" });
-  const watchedFlete = useWatch({ control, name: "flete" });
-  const watchedSeguro = useWatch({ control, name: "seguro" });
-  const watchedAnticipo = useWatch({ control, name: "anticipo" });
-  const watchedIva = useWatch({ control, name: "iva" });
-  const watchedServicioEnvioActivo = useWatch({
-    control,
-    name: "servicioEnvioActivo",
-  });
-  const watchedServicioEnvioMonto = useWatch({
-    control,
-    name: "servicioEnvioMonto",
-  });
-  const watchedProgramaBordadosActivo = useWatch({
-    control,
-    name: "programaBordadosActivo",
-  });
-  const watchedProgramaBordadosMonto = useWatch({
-    control,
-    name: "programaBordadosMonto",
-  });
-  const watchedBordadoPantalonesExtrasActivo = useWatch({
-    control,
-    name: "bordadoPantalonesExtrasActivo",
-  });
-  const watchedBordadoPantalonesExtrasMonto = useWatch({
-    control,
-    name: "bordadoPantalonesExtrasMonto",
-  });
-  const watchedFecha = useWatch({ control, name: "fecha" });
-  const watchedEnviarDomicilioFiscal = useWatch({
-    control,
-    name: "enviarDomicilioFiscal",
-  });
-
-  const {
+    form,
+    formRef,
+    formKey,
+    getError,
+    clearFieldErrors,
+    validateField,
+    isPending,
+    isEditing,
+    sellerName,
+    userName,
+    todayStr,
+    documentTypeOptions,
+    originOptions,
+    paymentConditionOptions,
+    ivaOptions,
+    regimenFiscalOptions,
+    usoCfdiOptions,
+    isCustomersLoading,
+    isSatInfoLoading,
+    showForm,
+    handleFormSubmit,
+    handleReset,
+    handleBack,
+    fields,
+    append,
+    remove,
+    update,
+    watchedItems,
+    watchedFecha,
+    watchedEnviarDomicilioFiscal,
+    watchedCondicionPago,
     subtotal,
     descuentoTotal,
     ivaAmount,
     granTotal,
     saldoPendiente,
-  } = (() => {
-    const items = watchedItems || [];
-    let subtotalValue = 0;
-    let descuentoValue = 0;
-
-    items.forEach((item) => {
-      const cantidad = Number(item?.cantidad) || 0;
-      const precio = Number(item?.precio) || 0;
-      const descuento = Number(item?.descuento) || 0;
-      const amount = cantidad * precio;
-      const descuentoAmount = amount * (descuento / 100);
-      subtotalValue += amount;
-      descuentoValue += descuentoAmount;
-    });
-
-    const fleteValue = Number(watchedFlete) || 0;
-    const seguroValue = Number(watchedSeguro) || 0;
-    const anticipoValue = Number(watchedAnticipo) || 0;
-    const ivaRate = Number(watchedIva) || 0;
-    const servicioEnvioValue = watchedServicioEnvioActivo
-      ? Number(watchedServicioEnvioMonto) || 0
-      : 0;
-    const programaBordadosValue = watchedProgramaBordadosActivo
-      ? Number(watchedProgramaBordadosMonto) || 0
-      : 0;
-    const bordadoPantalonesExtrasValue = watchedBordadoPantalonesExtrasActivo
-      ? Number(watchedBordadoPantalonesExtrasMonto) || 0
-      : 0;
-    const extrasValue =
-      servicioEnvioValue + programaBordadosValue + bordadoPantalonesExtrasValue;
-
-    const baseImponible =
-      subtotalValue - descuentoValue + fleteValue + seguroValue + extrasValue;
-    const ivaValue = baseImponible * ivaRate;
-    const totalValue = baseImponible + ivaValue;
-    const saldoValue = totalValue - anticipoValue;
-
-    return {
-      subtotal: subtotalValue,
-      descuentoTotal: descuentoValue,
-      ivaAmount: ivaValue,
-      granTotal: totalValue,
-      saldoPendiente: saldoValue,
-    };
-  })();
-
-  const [isLoading, setIsLoading] = useState(false);
-  const isPending = isSubmitting || isLoading;
-  const [isAddProductsOpen, setIsAddProductsOpen] = useState(false);
-  const [editIndex, setEditIndex] = useState<number | null>(null);
-  const [clienteSearchTerm, setClienteSearchTerm] = useState(
-    isEditing ? editValues.clienteBusqueda ?? "" : ""
-  );
-  const formRef = useRef<HTMLFormElement>(null);
-  const [isCustomerDialogOpen, setIsCustomerDialogOpen] = useState(false);
-
-  const getRegimenFiscalCode = (id: number) =>
-    satInfo?.regimenes_fiscales.find((item) => item.id_sat_regimen_fiscal === id)?.codigo;
-  const getUsoCfdiCode = (id: number) =>
-    satInfo?.usos_cfdi.find((item) => item.id_sat_uso_cfdi === id)?.codigo;
-
-  const handleCustomerCreated = (customer: Customer) => {
-    handleSelectCustomer(customer);
-    setIsCustomerDialogOpen(false);
-  };
-
-  const handleSelectCustomer = (customer: Customer) => {
-    setValue("clienteBusqueda", customer.razon_social, {
-      shouldDirty: true,
-      shouldValidate: true,
-    });
-    setClienteSearchTerm(customer.razon_social);
-    setValue("clienteNombre", customer.nombre, {
-      shouldDirty: true,
-      shouldValidate: true,
-    });
-    setValue("razonSocial", customer.razon_social, {
-      shouldDirty: true,
-      shouldValidate: true,
-    });
-    setValue("rfc", customer.rfc, { shouldDirty: true, shouldValidate: true });
-    setValue("regimenFiscal", normalizeRegimenFiscal(getRegimenFiscalCode(customer.sat_regimen_fiscal)), {
-      shouldDirty: true,
-      shouldValidate: true,
-    });
-    setValue("usoCfdi", normalizeUsoCfdi(getUsoCfdiCode(customer.sat_uso_cfdi)), {
-      shouldDirty: true,
-      shouldValidate: true,
-    });
-    setValue("direccionFiscal", customer.direccion_fiscal, {
-      shouldDirty: true,
-      shouldValidate: true,
-    });
-    setValue("coloniaFiscal", customer.colonia, {
-      shouldDirty: true,
-      shouldValidate: true,
-    });
-    setValue("codigoPostalFiscal", customer.codigo_postal, {
-      shouldDirty: true,
-      shouldValidate: true,
-    });
-    setValue("ciudadFiscal", customer.ciudad, {
-      shouldDirty: true,
-      shouldValidate: true,
-    });
-    setValue("estadoFiscal", customer.estado, {
-      shouldDirty: true,
-      shouldValidate: true,
-    });
-    setValue("giroEmpresa", customer.giro_empresarial, {
-      shouldDirty: true,
-      shouldValidate: true,
-    });
-    setValue("correoFacturas", customer.correo, {
-      shouldDirty: true,
-      shouldValidate: true,
-    });
-    setValue("telefonoPagos", customer.telefono, {
-      shouldDirty: true,
-      shouldValidate: true,
-    });
-    setValue("destinatario", customer.nombre, {
-      shouldDirty: true,
-      shouldValidate: true,
-    });
-    setValue("empresaEnvio", customer.razon_social, {
-      shouldDirty: true,
-      shouldValidate: true,
-    });
-    setValue("telefonoEnvio", customer.telefono, {
-      shouldDirty: true,
-      shouldValidate: true,
-    });
-    setValue("celularEnvio", customer.telefono, {
-      shouldDirty: true,
-      shouldValidate: true,
-    });
-    setValue("direccionEnvio", customer.direccion_fiscal, {
-      shouldDirty: true,
-      shouldValidate: true,
-    });
-    setValue("coloniaEnvio", customer.colonia, {
-      shouldDirty: true,
-      shouldValidate: true,
-    });
-    setValue("codigoPostalEnvio", customer.codigo_postal, {
-      shouldDirty: true,
-      shouldValidate: true,
-    });
-    setValue("ciudadEnvio", customer.ciudad, {
-      shouldDirty: true,
-      shouldValidate: true,
-    });
-    setValue("estadoEnvio", customer.estado, {
-      shouldDirty: true,
-      shouldValidate: true,
-    });
-    setValue("referenciasEnvio", "", {
-      shouldDirty: true,
-      shouldValidate: true,
-    });
-    setValue("enviarDomicilioFiscal", true, {
-      shouldDirty: true,
-      shouldValidate: true,
-    });
-  };
-
-  const computeItemsFrom = (items: OrderFormValues["items"]) =>
-    (items || []).map((item) => {
-      const cantidad = Number(item.cantidad) || 0;
-      const precio = Number(item.precio) || 0;
-      const descuento = Number(item.descuento) || 0;
-      const amount = cantidad * precio;
-      const descuentoAmount = amount * (descuento / 100);
-      const importe = Number((amount - descuentoAmount).toFixed(2));
-      return { ...item, importe };
-    });
-
-  const computeTotalsFrom = (values: OrderFormValues) => {
-    const items = values.items || [];
-    let subtotalValue = 0;
-    let descuentoValue = 0;
-    items.forEach((item) => {
-      const cantidad = Number(item.cantidad) || 0;
-      const precio = Number(item.precio) || 0;
-      const descuento = Number(item.descuento) || 0;
-      const amount = cantidad * precio;
-      const descuentoAmount = amount * (descuento / 100);
-      subtotalValue += amount;
-      descuentoValue += descuentoAmount;
-    });
-    const fleteValue = Number(values.flete) || 0;
-    const seguroValue = Number(values.seguro) || 0;
-    const anticipoValue = Number(values.anticipo) || 0;
-    const ivaRate = Number(values.iva) || 0;
-    const servicioEnvioValue = values.servicioEnvioActivo
-      ? Number(values.servicioEnvioMonto) || 0
-      : 0;
-    const programaBordadosValue = values.programaBordadosActivo
-      ? Number(values.programaBordadosMonto) || 0
-      : 0;
-    const bordadoPantalonesExtrasValue = values.bordadoPantalonesExtrasActivo
-      ? Number(values.bordadoPantalonesExtrasMonto) || 0
-      : 0;
-    const extrasValue =
-      servicioEnvioValue + programaBordadosValue + bordadoPantalonesExtrasValue;
-    const baseImponible =
-      subtotalValue - descuentoValue + fleteValue + seguroValue + extrasValue;
-    const ivaValue = baseImponible * ivaRate;
-    const totalValue = baseImponible + ivaValue;
-    const saldoValue = totalValue - anticipoValue;
-    return {
-      subtotal: subtotalValue,
-      descuentoTotal: descuentoValue,
-      ivaAmount: ivaValue,
-      granTotal: totalValue,
-      saldoPendiente: saldoValue,
-      flete: fleteValue,
-      seguro: seguroValue,
-      anticipo: anticipoValue,
-      ivaRate,
-    };
-  };
-
-  const makeUpdatedOrder = (values: OrderFormValues): Order => ({
-    ...orderToEdit!,
-    ...values,
-    ordenCompra: values.ordenCompra ?? "",
-    estatusPedido: values.estatusPedido as Order["estatusPedido"],
-    items: computeItemsFrom(values.items),
-    totals: computeTotalsFrom(values),
-  });
-
-  const makeNewOrder = (values: OrderFormValues): Order => {
-    const id = crypto.randomUUID();
-    return {
-      id,
-      folio: `#ORD-${id.split("-")[0].toUpperCase()}`,
-      capturadoPor: userId,
-      ...values,
-      ordenCompra: values.ordenCompra ?? "",
-      estatusPedido: values.estatusPedido as Order["estatusPedido"],
-      items: computeItemsFrom(values.items),
-      totals: computeTotalsFrom(values),
-    };
-  };
-
-  const onSubmit = async (values: OrderFormValues) => {
-    setIsLoading(true);
-    try {
-      if (isEditing && orderToEdit) {
-        const updatedOrder = makeUpdatedOrder(values);
-        await updateOrder(updatedOrder);
-        reset(editValues);
-        setClienteSearchTerm(editValues.clienteBusqueda ?? "");
-        toast.success("Pedido actualizado correctamente");
-      } else {
-        const newOrder = makeNewOrder(values);
-        await addOrder(newOrder);
-        reset(emptyValues);
-        setClienteSearchTerm("");
-        toast.success("Pedido registrado correctamente");
-      }
-      router.replace("/sales/orders");
-    } catch {
-      toast.error("No se pudo guardar el pedido");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleReset = () => {
-    reset(isEditing ? editValues : emptyValues);
-    setClienteSearchTerm(isEditing ? editValues.clienteBusqueda ?? "" : "");
-    toast.success(
-      isEditing ? "Pedido restablecido correctamente" : "Formulario limpiado correctamente"
-    );
-    setTimeout(() => {
-      formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-    }, 0);
-  };
-
-  const itemsError = getFieldError(
-    errors.items?.root ?? (errors.items as unknown)
-  );
-  const docRelacionadoError = getFieldError(errors.docRelacionado);
-  const tipoDocumentoError = getFieldError(errors.tipoDocumento);
-  const origenError = getFieldError(errors.origen);
+    itemsError,
+    docRelacionadoError,
+    tipoDocumentoError,
+    origenError,
+    isAddProductsOpen,
+    setIsAddProductsOpen,
+    editIndex,
+    setEditIndex,
+    clienteSearchTerm,
+    setClienteSearchTerm,
+    isCustomerDialogOpen,
+    setIsCustomerDialogOpen,
+    customers,
+    handleSelectCustomer,
+    handleCustomerCreated,
+    orderToEdit,
+  } = useOrderForm({ orderId });
 
   if (isCustomersLoading || isSatInfoLoading) {
     return (
@@ -579,27 +86,24 @@ export default function OrderForm({ orderId }: OrderFormProps) {
     );
   }
 
-  const showForm = !isEditing || !!orderToEdit;
   if (!showForm) {
     return (
       <div className="w-full pt-2" role="status" aria-live="polite">
         <div className="rounded-3xl border border-slate-200 dark:border-white/5 bg-white dark:bg-zinc-900 p-10 text-center">
           <Loader aria-hidden="true" />
           <p className="text-sm mt-2 text-slate-500 dark:text-slate-400">
-            Cargando pedido...
+            Cargando cotización...
           </p>
         </div>
       </div>
     );
   }
 
-  const formKey = isEditing ? `${orderId}-ready` : "new";
-
   return (
     <form
       ref={formRef}
       key={formKey}
-      onSubmit={handleSubmit(onSubmit)}
+      onSubmit={handleFormSubmit}
       className="space-y-6"
     >
       <section className="relative overflow-hidden bg-white dark:bg-zinc-900 rounded-3xl p-6 md:p-8 border border-slate-200 dark:border-white/5 shadow-sm dark:shadow-none">
@@ -616,21 +120,21 @@ export default function OrderForm({ orderId }: OrderFormProps) {
                 Información Comercial
               </h2>
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                Datos principales del pedido y configuración comercial.
+                Datos principales de la cotización y configuración comercial.
               </p>
             </div>
           </div>
           <div className="flex items-center gap-4">
             {/* <div className="text-right">
               <p className="text-[10px] uppercase font-bold text-slate-400">
-                Total Pedido
+                Total Cotización
               </p>
               <p className="text-2xl font-bold text-slate-800 dark:text-white font-mono">
                 {formatCurrency(granTotal)}
               </p>
             </div> */}
             
-            <FormSecondaryButton label="Regresar" onClick={() => router.back()} />
+            <FormSecondaryButton label="Regresar" onClick={handleBack} />
           </div>
         </div>
 
@@ -644,48 +148,74 @@ export default function OrderForm({ orderId }: OrderFormProps) {
             <div className="text-3xl font-bold text-slate-900 dark:text-white font-mono mb-6">
               {sellerName}
             </div>
-            <input type="hidden" {...register("agente")} />
+            <form.Field name="agente">
+              {(field) => <input type="hidden" name={field.name} value={field.state.value} readOnly />}
+            </form.Field>
             <div className="space-y-4">
-              <FormSelect
-                label="Tipo Documento"
-                options={documentTypeOptions}
-                error={tipoDocumentoError}
-                {...register("tipoDocumento")}
-              />
-              <FormInput
-                label="Fecha"
-                type="date"
-                readOnly
-                tabIndex={-1}
-                className="cursor-not-allowed bg-slate-100 text-slate-500 dark:bg-zinc-800 dark:text-slate-400 focus:bg-slate-100 dark:focus:bg-zinc-800 focus:ring-0 focus:border-slate-200 dark:focus:border-zinc-700"
-                {...register("fecha")}
-                error={errors.fecha}
-              />
-              <div className="space-y-2">
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider ml-1">
-                  Origen
-                </p>
-                <div className="grid grid-cols-2 gap-y-2 gap-x-2">
-                  {originOptions.map((origin) => (
-                    <label
-                      key={origin}
-                      className="flex items-center gap-2 text-[10px] font-medium text-slate-600 dark:text-slate-300 leading-tight"
-                    >
-                      <input
-                        type="checkbox"
-                        value={origin}
-                        className="w-4 h-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
-                        {...register("origen")}
-                      />
-                      <span>{origin}</span>
-                    </label>
-                  ))}
-                </div>
-                {origenError && (
-                  <p className="text-[10px] text-rose-600 dark:text-rose-400">
-                    {origenError.message}
-                  </p>
+              <form.Field name="tipoDocumento">
+                {(field) => (
+                  <FormSelect
+                    label="Tipo Documento"
+                    options={documentTypeOptions}
+                    name={field.name}
+                    value={field.state.value}
+                    onChange={(event) => {
+                      field.handleChange(event.target.value);
+                      clearFieldErrors("tipoDocumento");
+                    }}
+                    onBlur={() => {
+                      field.handleBlur();
+                      validateField("tipoDocumento", field.state.value);
+                    }}
+                    error={tipoDocumentoError}
+                  />
                 )}
+              </form.Field>
+              <form.Field name="fecha">
+                {(field) => (
+                  <FormInput
+                    label="Fecha"
+                    type="date"
+                    readOnly
+                    tabIndex={-1}
+                    className="cursor-not-allowed bg-slate-100 text-slate-500 dark:bg-zinc-800 dark:text-slate-400 focus:bg-slate-100 dark:focus:bg-zinc-800 focus:ring-0 focus:border-slate-200 dark:focus:border-zinc-700"
+                    name={field.name}
+                    value={field.state.value}
+                    onChange={(event) => {
+                      field.handleChange(event.target.value);
+                      clearFieldErrors("fecha");
+                    }}
+                    onBlur={() => {
+                      field.handleBlur();
+                      validateField("fecha", field.state.value);
+                    }}
+                    error={getError("fecha")}
+                  />
+                )}
+              </form.Field>
+              <div className="space-y-2">
+                <form.Field name="origen">
+                  {(field) => (
+                    <FormSelect
+                      label="Origen"
+                      options={[
+                        { value: "", label: "Seleccionar..." },
+                        ...originOptions.map((origin) => ({ value: origin, label: origin })),
+                      ]}
+                      name={field.name}
+                      value={field.state.value}
+                      onChange={(event) => {
+                        field.handleChange(event.target.value);
+                        clearFieldErrors("origen");
+                      }}
+                      onBlur={() => {
+                        field.handleBlur();
+                        validateField("origen", field.state.value);
+                      }}
+                      error={origenError}
+                    />
+                  )}
+                </form.Field>
               </div>
             </div>
           </div>
@@ -721,91 +251,223 @@ export default function OrderForm({ orderId }: OrderFormProps) {
                 </MainDialog>
               </div>
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <CustomerSearchDropdown
-                  label="Cliente"
-                  placeholder="Buscar Cliente..."
-                  value={clienteSearchTerm}
-                  onValueChange={setClienteSearchTerm}
-                  customers={customers}
-                  onSelect={handleSelectCustomer}
-                  error={errors.clienteBusqueda}
-                />
-                <FormInput
-                  label="Nombre del Cliente"
-                  placeholder="Nombre"
-                  disabled
-                  {...register("clienteNombre")}
-                  error={errors.clienteNombre}
-                />
+                <div data-error-anchor="clienteBusqueda">
+                  <CustomerSearchDropdown
+                    label="Cliente"
+                    placeholder="Buscar Cliente..."
+                    value={clienteSearchTerm}
+                    onValueChange={setClienteSearchTerm}
+                    customers={customers}
+                    onSelect={handleSelectCustomer}
+                    error={getError("clienteBusqueda")}
+                  />
+                </div>
+                <form.Field name="clienteNombre">
+                  {(field) => (
+                    <FormInput
+                      label="Nombre del Cliente"
+                      placeholder="Nombre"
+                      disabled
+                      name={field.name}
+                      value={field.state.value}
+                      onChange={(event) => {
+                        field.handleChange(event.target.value);
+                        clearFieldErrors("clienteNombre");
+                      }}
+                      onBlur={() => {
+                        field.handleBlur();
+                        validateField("clienteNombre", field.state.value);
+                      }}
+                      error={getError("clienteNombre")}
+                    />
+                  )}
+                </form.Field>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
-                <FormInput
-                  label="Razón Social"
-                  placeholder="Razón Social"
-                  disabled
-                  {...register("razonSocial")}
-                  error={errors.razonSocial}
-                />
-                <FormInput
-                  label="RFC"
-                  placeholder="RFC"
-                  disabled
-                  {...register("rfc")}
-                  error={errors.rfc}
-                />
-                <FormSelect
-                  label="Régimen Fiscal"
-                options={regimenFiscalOptions}
-                  disabled
-                  {...register("regimenFiscal")}
-                  error={errors.regimenFiscal}
-                />
+                <form.Field name="razonSocial">
+                  {(field) => (
+                    <FormInput
+                      label="Razón Social"
+                      placeholder="Razón Social"
+                      disabled
+                      name={field.name}
+                      value={field.state.value}
+                      onChange={(event) => {
+                        field.handleChange(event.target.value);
+                        clearFieldErrors("razonSocial");
+                      }}
+                      onBlur={() => {
+                        field.handleBlur();
+                        validateField("razonSocial", field.state.value);
+                      }}
+                      error={getError("razonSocial")}
+                    />
+                  )}
+                </form.Field>
+                <form.Field name="rfc">
+                  {(field) => (
+                    <FormInput
+                      label="RFC"
+                      placeholder="RFC"
+                      disabled
+                      name={field.name}
+                      value={field.state.value}
+                      onChange={(event) => {
+                        field.handleChange(event.target.value);
+                        clearFieldErrors("rfc");
+                      }}
+                      onBlur={() => {
+                        field.handleBlur();
+                        validateField("rfc", field.state.value);
+                      }}
+                      error={getError("rfc")}
+                    />
+                  )}
+                </form.Field>
+                <form.Field name="regimenFiscal">
+                  {(field) => (
+                    <FormSelect
+                      label="Régimen Fiscal"
+                      options={regimenFiscalOptions}
+                      disabled
+                      name={field.name}
+                      value={field.state.value}
+                      onChange={(event) => {
+                        field.handleChange(event.target.value);
+                        clearFieldErrors("regimenFiscal");
+                      }}
+                      onBlur={() => {
+                        field.handleBlur();
+                        validateField("regimenFiscal", field.state.value);
+                      }}
+                      error={getError("regimenFiscal")}
+                    />
+                  )}
+                </form.Field>
               </div>
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
-                <FormInput
-                  label="Dirección Fiscal"
-                  placeholder="Dirección Fiscal"
-                  disabled
-                  {...register("direccionFiscal")}
-                  error={errors.direccionFiscal}
-                />
-                <FormInput
-                  label="Colonia"
-                  placeholder="Colonia"
-                  disabled
-                  {...register("coloniaFiscal")}
-                  error={errors.coloniaFiscal}
-                />
-                <FormInput
-                  label="C.P."
-                  placeholder="C.P."
-                  disabled
-                  {...register("codigoPostalFiscal")}
-                  error={errors.codigoPostalFiscal}
-                />
+                <form.Field name="direccionFiscal">
+                  {(field) => (
+                    <FormInput
+                      label="Dirección Fiscal"
+                      placeholder="Dirección Fiscal"
+                      disabled
+                      name={field.name}
+                      value={field.state.value}
+                      onChange={(event) => {
+                        field.handleChange(event.target.value);
+                        clearFieldErrors("direccionFiscal");
+                      }}
+                      onBlur={() => {
+                        field.handleBlur();
+                        validateField("direccionFiscal", field.state.value);
+                      }}
+                      error={getError("direccionFiscal")}
+                    />
+                  )}
+                </form.Field>
+                <form.Field name="coloniaFiscal">
+                  {(field) => (
+                    <FormInput
+                      label="Colonia"
+                      placeholder="Colonia"
+                      disabled
+                      name={field.name}
+                      value={field.state.value}
+                      onChange={(event) => {
+                        field.handleChange(event.target.value);
+                        clearFieldErrors("coloniaFiscal");
+                      }}
+                      onBlur={() => {
+                        field.handleBlur();
+                        validateField("coloniaFiscal", field.state.value);
+                      }}
+                      error={getError("coloniaFiscal")}
+                    />
+                  )}
+                </form.Field>
+                <form.Field name="codigoPostalFiscal">
+                  {(field) => (
+                    <FormInput
+                      label="C.P."
+                      placeholder="C.P."
+                      disabled
+                      name={field.name}
+                      value={field.state.value}
+                      onChange={(event) => {
+                        field.handleChange(event.target.value);
+                        clearFieldErrors("codigoPostalFiscal");
+                      }}
+                      onBlur={() => {
+                        field.handleBlur();
+                        validateField("codigoPostalFiscal", field.state.value);
+                      }}
+                      error={getError("codigoPostalFiscal")}
+                    />
+                  )}
+                </form.Field>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
-                <FormInput
-                  label="Ciudad"
-                  placeholder="Ciudad"
-                  disabled
-                  {...register("ciudadFiscal")}
-                  error={errors.ciudadFiscal}
-                />
-                <FormInput
-                  label="Estado"
-                  placeholder="Estado"
-                  disabled
-                  {...register("estadoFiscal")}
-                  error={errors.estadoFiscal}
-                />
-                <FormInput
-                  label="Giro de la empresa"
-                  placeholder="Giro de la empresa"
-                  disabled
-                  {...register("giroEmpresa")}
-                  error={errors.giroEmpresa}
-                />
+                <form.Field name="ciudadFiscal">
+                  {(field) => (
+                    <FormInput
+                      label="Ciudad"
+                      placeholder="Ciudad"
+                      disabled
+                      name={field.name}
+                      value={field.state.value}
+                      onChange={(event) => {
+                        field.handleChange(event.target.value);
+                        clearFieldErrors("ciudadFiscal");
+                      }}
+                      onBlur={() => {
+                        field.handleBlur();
+                        validateField("ciudadFiscal", field.state.value);
+                      }}
+                      error={getError("ciudadFiscal")}
+                    />
+                  )}
+                </form.Field>
+                <form.Field name="estadoFiscal">
+                  {(field) => (
+                    <FormInput
+                      label="Estado"
+                      placeholder="Estado"
+                      disabled
+                      name={field.name}
+                      value={field.state.value}
+                      onChange={(event) => {
+                        field.handleChange(event.target.value);
+                        clearFieldErrors("estadoFiscal");
+                      }}
+                      onBlur={() => {
+                        field.handleBlur();
+                        validateField("estadoFiscal", field.state.value);
+                      }}
+                      error={getError("estadoFiscal")}
+                    />
+                  )}
+                </form.Field>
+                <form.Field name="giroEmpresa">
+                  {(field) => (
+                    <FormInput
+                      label="Giro de la empresa"
+                      placeholder="Giro de la empresa"
+                      disabled
+                      name={field.name}
+                      value={field.state.value}
+                      onChange={(event) => {
+                        field.handleChange(event.target.value);
+                        clearFieldErrors("giroEmpresa");
+                      }}
+                      onBlur={() => {
+                        field.handleBlur();
+                        validateField("giroEmpresa", field.state.value);
+                      }}
+                      error={getError("giroEmpresa")}
+                    />
+                  )}
+                </form.Field>
               </div>
             </div>
 
@@ -818,64 +480,165 @@ export default function OrderForm({ orderId }: OrderFormProps) {
               Forma de pago y contacto para envío de facturas
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <FormInput
-                label="Persona Pagos"
-                placeholder="Persona Pagos"
-                {...register("personaPagos")}
-                error={errors.personaPagos}
-              />
-              <FormInput
-                label="Correo Facturas"
-                placeholder="correo@empresa.com"
-                {...register("correoFacturas")}
-                error={errors.correoFacturas}
-              />
-              <FormInput
-                label="Teléfono Pagos"
-                placeholder="Teléfono"
-                {...register("telefonoPagos")}
-                error={errors.telefonoPagos}
-              />
-              <FormInput
-                label="O.C."
-                placeholder="Orden de compra"
-                {...register("ordenCompra")}
-                error={errors.ordenCompra}
-              />
-              <FormSelect
-                label="Forma de Pago"
-                options={[
-                  { value: "01", label: "01 - Efectivo" },
-                  { value: "03", label: "03 - Transferencia" },
-                  { value: "04", label: "04 - Tarjeta" },
-                ]}
-                {...register("formaPago")}
-                error={errors.formaPago}
-              />
-              <FormSelect
-                label="Método de Pago"
-                options={[
-                  { value: "PUE", label: "PUE - Pago en una sola exhibición" },
-                  { value: "PPD", label: "PPD - Pago en parcialidades" },
-                  { value: "NA", label: "N/A" },
-                ]}
-                {...register("metodoPago")}
-                error={errors.metodoPago}
-              />
-              <FormSelect
-                label="Uso de CFDI"
-                options={usoCfdiOptions}
-                {...register("usoCfdi")}
-                error={errors.usoCfdi}
-              />
-              <label className="inline-flex items-center gap-2 text-xs font-medium text-slate-600 dark:text-slate-300">
-                <input
-                  type="checkbox"
-                  className="w-4 h-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
-                  {...register("referenciarOcFactura")}
-                />
-                Referenciar OC en factura
-              </label>
+              <form.Field name="personaPagos">
+                {(field) => (
+                  <FormInput
+                    label="Persona Pagos"
+                    placeholder="Persona Pagos"
+                    name={field.name}
+                    value={field.state.value}
+                    onChange={(event) => {
+                      field.handleChange(event.target.value);
+                      clearFieldErrors("personaPagos");
+                    }}
+                    onBlur={() => {
+                      field.handleBlur();
+                      validateField("personaPagos", field.state.value);
+                    }}
+                    error={getError("personaPagos")}
+                  />
+                )}
+              </form.Field>
+              <form.Field name="correoFacturas">
+                {(field) => (
+                  <FormInput
+                    label="Correo Facturas"
+                    placeholder="correo@empresa.com"
+                    name={field.name}
+                    value={field.state.value}
+                    onChange={(event) => {
+                      field.handleChange(event.target.value);
+                      clearFieldErrors("correoFacturas");
+                    }}
+                    onBlur={() => {
+                      field.handleBlur();
+                      validateField("correoFacturas", field.state.value);
+                    }}
+                    error={getError("correoFacturas")}
+                  />
+                )}
+              </form.Field>
+              <form.Field name="telefonoPagos">
+                {(field) => (
+                  <FormInput
+                    label="Teléfono Pagos"
+                    placeholder="Teléfono"
+                    name={field.name}
+                    value={field.state.value}
+                    onChange={(event) => {
+                      field.handleChange(event.target.value);
+                      clearFieldErrors("telefonoPagos");
+                    }}
+                    onBlur={() => {
+                      field.handleBlur();
+                      validateField("telefonoPagos", field.state.value);
+                    }}
+                    error={getError("telefonoPagos")}
+                  />
+                )}
+              </form.Field>
+              <form.Field name="ordenCompra">
+                {(field) => (
+                  <FormInput
+                    label="O.C."
+                    placeholder="Orden de compra"
+                    name={field.name}
+                    value={field.state.value}
+                    onChange={(event) => {
+                      field.handleChange(event.target.value);
+                      clearFieldErrors("ordenCompra");
+                    }}
+                    onBlur={() => {
+                      field.handleBlur();
+                      validateField("ordenCompra", field.state.value);
+                    }}
+                    error={getError("ordenCompra")}
+                  />
+                )}
+              </form.Field>
+              <form.Field name="formaPago">
+                {(field) => (
+                  <FormSelect
+                    label="Forma de Pago"
+                    options={[
+                      { value: "01", label: "01 - Efectivo" },
+                      { value: "03", label: "03 - Transferencia" },
+                      { value: "04", label: "04 - Tarjeta" },
+                    ]}
+                    name={field.name}
+                    value={field.state.value}
+                    onChange={(event) => {
+                      field.handleChange(event.target.value as typeof field.state.value);
+                      clearFieldErrors("formaPago");
+                    }}
+                    onBlur={() => {
+                      field.handleBlur();
+                      validateField("formaPago", field.state.value);
+                    }}
+                    error={getError("formaPago")}
+                  />
+                )}
+              </form.Field>
+              <form.Field name="metodoPago">
+                {(field) => (
+                  <FormSelect
+                    label="Método de Pago"
+                    options={[
+                      { value: "PUE", label: "PUE - Pago en una sola exhibición" },
+                      { value: "PPD", label: "PPD - Pago en parcialidades" },
+                      { value: "NA", label: "N/A" },
+                    ]}
+                    name={field.name}
+                    value={field.state.value}
+                    onChange={(event) => {
+                      field.handleChange(event.target.value as typeof field.state.value);
+                      clearFieldErrors("metodoPago");
+                    }}
+                    onBlur={() => {
+                      field.handleBlur();
+                      validateField("metodoPago", field.state.value);
+                    }}
+                    error={getError("metodoPago")}
+                  />
+                )}
+              </form.Field>
+              <form.Field name="usoCfdi">
+                {(field) => (
+                  <FormSelect
+                    label="Uso de CFDI"
+                    options={usoCfdiOptions}
+                    name={field.name}
+                    value={field.state.value}
+                    onChange={(event) => {
+                      field.handleChange(event.target.value);
+                      clearFieldErrors("usoCfdi");
+                    }}
+                    onBlur={() => {
+                      field.handleBlur();
+                      validateField("usoCfdi", field.state.value);
+                    }}
+                    error={getError("usoCfdi")}
+                  />
+                )}
+              </form.Field>
+              <form.Field name="referenciarOcFactura">
+                {(field) => (
+                  <label className="inline-flex items-center gap-2 text-xs font-medium text-slate-600 dark:text-slate-300">
+                    <input
+                      type="checkbox"
+                      className="w-4 h-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
+                      name={field.name}
+                      checked={Boolean(field.state.value)}
+                      onChange={(event) => {
+                        field.handleChange(event.target.checked);
+                        clearFieldErrors("referenciarOcFactura");
+                      }}
+                      onBlur={field.handleBlur}
+                    />
+                    Referenciar OC en factura
+                  </label>
+                )}
+              </form.Field>
             </div>
           </div>
 
@@ -883,66 +646,53 @@ export default function OrderForm({ orderId }: OrderFormProps) {
             <h3 className="text-sm font-semibold text-slate-800 dark:text-white mb-4">
               Condiciones de pago
             </h3>
-            <div className="grid grid-cols-2 gap-3">
-              <label className="inline-flex items-center gap-2 text-xs font-medium text-slate-600 dark:text-slate-300">
-                <input
-                  type="checkbox"
-                  className="w-4 h-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
-                  {...register("condicionPago100Anticipo")}
+            <form.Field name="condicionPago">
+              {(field) => (
+                <FormSelect
+                  label="Condición"
+                  options={paymentConditionOptions.map((option) => ({
+                    value: option.value,
+                    label: option.label,
+                  }))}
+                  name={field.name}
+                  value={field.state.value}
+                  onChange={(event) => {
+                    field.handleChange(event.target.value as typeof field.state.value);
+                    clearFieldErrors("condicionPago");
+                  }}
+                  onBlur={() => {
+                    field.handleBlur();
+                    validateField("condicionPago", field.state.value);
+                  }}
+                  error={getError("condicionPago")}
                 />
-                100% Anticipo
-              </label>
-              <label className="inline-flex items-center gap-2 text-xs font-medium text-slate-600 dark:text-slate-300">
-                <input
-                  type="checkbox"
-                  className="w-4 h-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
-                  {...register("condicionPago50Anticipo")}
-                />
-                50% Anticipo
-              </label>
-              <label className="inline-flex items-center gap-2 text-xs font-medium text-slate-600 dark:text-slate-300">
-                <input
-                  type="checkbox"
-                  className="w-4 h-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
-                  {...register("condicionPagoVendedorAutoriza")}
-                />
-                Vendedor autoriza
-              </label>
-              <label className="inline-flex items-center gap-2 text-xs font-medium text-slate-600 dark:text-slate-300">
-                <input
-                  type="checkbox"
-                  className="w-4 h-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
-                  {...register("condicionPagoPagoAntesEmbarque")}
-                />
-                Pago antes de embarque
-              </label>
-              <label className="inline-flex items-center gap-2 text-xs font-medium text-slate-600 dark:text-slate-300">
-                <input
-                  type="checkbox"
-                  className="w-4 h-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
-                  {...register("condicionPagoPorConfirmar")}
-                />
-                Por confirmar
-              </label>
-              <label className="inline-flex items-center gap-2 text-xs font-medium text-slate-600 dark:text-slate-300">
-                <input
-                  type="checkbox"
-                  className="w-4 h-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
-                  {...register("condicionPagoOtraCantidad")}
-                />
-                Otra cantidad
-              </label>
-            </div>
-            <div className="mt-6">
-              <FormInput
-                label="Especificar monto"
-                type="number"
-                placeholder="$0.00"
-                className="text-right"
-                {...register("condicionPagoMonto", { valueAsNumber: true })}
-                error={getFieldError(errors.condicionPagoMonto)}
-              />
-            </div>
+              )}
+            </form.Field>
+            <form.Field name="condicionPagoMonto">
+              {(field) => (
+                <div className="mt-6">
+                  <FormInput
+                    label="Especificar monto"
+                    type="number"
+                    placeholder="$0.00"
+                    className="text-right"
+                    disabled={watchedCondicionPago !== "otra_cantidad"}
+                    name={field.name}
+                    value={field.state.value}
+                    onChange={(event) => {
+                      const nextValue = Number(event.target.value);
+                      field.handleChange(Number.isNaN(nextValue) ? 0 : nextValue);
+                      clearFieldErrors("condicionPagoMonto");
+                    }}
+                    onBlur={() => {
+                      field.handleBlur();
+                      validateField("condicionPagoMonto", field.state.value);
+                    }}
+                    error={getError("condicionPagoMonto")}
+                  />
+                </div>
+              )}
+            </form.Field>
           </div>
         </div>
       </section>
@@ -963,159 +713,342 @@ export default function OrderForm({ orderId }: OrderFormProps) {
             </div>
           </div>
           <div className="flex flex-wrap gap-3">
-            <label className="inline-flex items-center gap-2 text-xs font-medium text-slate-600 dark:text-slate-300">
-              <input
-                type="checkbox"
-                className="w-4 h-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
-                {...register("enviarDomicilioFiscal")}
-              />
-              Enviar al domicilio fiscal
-            </label>
-            <label className="inline-flex items-center gap-2 text-xs font-medium text-slate-600 dark:text-slate-300">
-              <input
-                type="checkbox"
-                className="w-4 h-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
-                {...register("embarcarConOtrosPedidos")}
-              />
-              Embarcar con otros pedidos
-            </label>
+            <form.Field name="enviarDomicilioFiscal">
+              {(field) => (
+                <label className="inline-flex items-center gap-2 text-xs font-medium text-slate-600 dark:text-slate-300">
+                  <input
+                    type="checkbox"
+                    className="w-4 h-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
+                    name={field.name}
+                    checked={Boolean(field.state.value)}
+                    onChange={(event) => {
+                      field.handleChange(event.target.checked);
+                      clearFieldErrors("enviarDomicilioFiscal");
+                    }}
+                    onBlur={field.handleBlur}
+                  />
+                  Enviar al domicilio fiscal
+                </label>
+              )}
+            </form.Field>
+            <form.Field name="embarcarConOtrosPedidos">
+              {(field) => (
+                <label className="inline-flex items-center gap-2 text-xs font-medium text-slate-600 dark:text-slate-300">
+                  <input
+                    type="checkbox"
+                    className="w-4 h-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
+                    name={field.name}
+                    checked={Boolean(field.state.value)}
+                    onChange={(event) => {
+                      field.handleChange(event.target.checked);
+                      clearFieldErrors("embarcarConOtrosPedidos");
+                    }}
+                    onBlur={field.handleBlur}
+                  />
+                  Embarcar con otras cotizaciones
+                </label>
+              )}
+            </form.Field>
           </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <div className="lg:col-span-1">
-            <FormInput
-              label="Destinatario"
-              placeholder="Nombre completo"
-              disabled={Boolean(watchedEnviarDomicilioFiscal)}
-              {...register("destinatario")}
-              error={errors.destinatario}
-            />
+            <form.Field name="destinatario">
+              {(field) => (
+                <FormInput
+                  label="Destinatario"
+                  placeholder="Nombre completo"
+                  disabled={Boolean(watchedEnviarDomicilioFiscal)}
+                  name={field.name}
+                  value={field.state.value}
+                  onChange={(event) => {
+                    field.handleChange(event.target.value);
+                    clearFieldErrors("destinatario");
+                  }}
+                  onBlur={() => {
+                    field.handleBlur();
+                    validateField("destinatario", field.state.value);
+                  }}
+                  error={getError("destinatario")}
+                />
+              )}
+            </form.Field>
           </div>
           <div className="lg:col-span-1">
-            <FormInput
-              label="Empresa"
-              placeholder="Razón Social"
-              disabled={Boolean(watchedEnviarDomicilioFiscal)}
-              {...register("empresaEnvio")}
-              error={errors.empresaEnvio}
-            />
+            <form.Field name="empresaEnvio">
+              {(field) => (
+                <FormInput
+                  label="Empresa"
+                  placeholder="Razón Social"
+                  disabled={Boolean(watchedEnviarDomicilioFiscal)}
+                  name={field.name}
+                  value={field.state.value}
+                  onChange={(event) => {
+                    field.handleChange(event.target.value);
+                    clearFieldErrors("empresaEnvio");
+                  }}
+                  onBlur={() => {
+                    field.handleBlur();
+                    validateField("empresaEnvio", field.state.value);
+                  }}
+                  error={getError("empresaEnvio")}
+                />
+              )}
+            </form.Field>
           </div>
           <div className="lg:col-span-1">
-            <FormInput
-              label="Teléfono"
-              placeholder="Teléfono"
-              disabled={Boolean(watchedEnviarDomicilioFiscal)}
-              {...register("telefonoEnvio")}
-              error={errors.telefonoEnvio}
-            />
+            <form.Field name="telefonoEnvio">
+              {(field) => (
+                <FormInput
+                  label="Teléfono"
+                  placeholder="Teléfono"
+                  disabled={Boolean(watchedEnviarDomicilioFiscal)}
+                  name={field.name}
+                  value={field.state.value}
+                  onChange={(event) => {
+                    field.handleChange(event.target.value);
+                    clearFieldErrors("telefonoEnvio");
+                  }}
+                  onBlur={() => {
+                    field.handleBlur();
+                    validateField("telefonoEnvio", field.state.value);
+                  }}
+                  error={getError("telefonoEnvio")}
+                />
+              )}
+            </form.Field>
           </div>
           <div className="lg:col-span-1">
-            <FormInput
-              label="Celular"
-              placeholder="Celular"
-              disabled={Boolean(watchedEnviarDomicilioFiscal)}
-              {...register("celularEnvio")}
-              error={errors.celularEnvio}
-            />
+            <form.Field name="celularEnvio">
+              {(field) => (
+                <FormInput
+                  label="Celular"
+                  placeholder="Celular"
+                  disabled={Boolean(watchedEnviarDomicilioFiscal)}
+                  name={field.name}
+                  value={field.state.value}
+                  onChange={(event) => {
+                    field.handleChange(event.target.value);
+                    clearFieldErrors("celularEnvio");
+                  }}
+                  onBlur={() => {
+                    field.handleBlur();
+                    validateField("celularEnvio", field.state.value);
+                  }}
+                  error={getError("celularEnvio")}
+                />
+              )}
+            </form.Field>
           </div>
           <div className="md:col-span-2 lg:col-span-2">
-            <FormInput
-              label="Dirección"
-              placeholder="Calle y número"
-              disabled={Boolean(watchedEnviarDomicilioFiscal)}
-              {...register("direccionEnvio")}
-              error={errors.direccionEnvio}
-            />
+            <form.Field name="direccionEnvio">
+              {(field) => (
+                <FormInput
+                  label="Dirección"
+                  placeholder="Calle y número"
+                  disabled={Boolean(watchedEnviarDomicilioFiscal)}
+                  name={field.name}
+                  value={field.state.value}
+                  onChange={(event) => {
+                    field.handleChange(event.target.value);
+                    clearFieldErrors("direccionEnvio");
+                  }}
+                  onBlur={() => {
+                    field.handleBlur();
+                    validateField("direccionEnvio", field.state.value);
+                  }}
+                  error={getError("direccionEnvio")}
+                />
+              )}
+            </form.Field>
           </div>
           <div className="lg:col-span-1">
-            <FormInput
-              label="Colonia"
-              placeholder="Colonia"
-              disabled={Boolean(watchedEnviarDomicilioFiscal)}
-              {...register("coloniaEnvio")}
-              error={errors.coloniaEnvio}
-            />
+            <form.Field name="coloniaEnvio">
+              {(field) => (
+                <FormInput
+                  label="Colonia"
+                  placeholder="Colonia"
+                  disabled={Boolean(watchedEnviarDomicilioFiscal)}
+                  name={field.name}
+                  value={field.state.value}
+                  onChange={(event) => {
+                    field.handleChange(event.target.value);
+                    clearFieldErrors("coloniaEnvio");
+                  }}
+                  onBlur={() => {
+                    field.handleBlur();
+                    validateField("coloniaEnvio", field.state.value);
+                  }}
+                  error={getError("coloniaEnvio")}
+                />
+              )}
+            </form.Field>
           </div>
           <div className="lg:col-span-1">
-            <FormInput
-              label="Código Postal"
-              placeholder="C.P."
-              disabled={Boolean(watchedEnviarDomicilioFiscal)}
-              {...register("codigoPostalEnvio")}
-              error={errors.codigoPostalEnvio}
-            />
+            <form.Field name="codigoPostalEnvio">
+              {(field) => (
+                <FormInput
+                  label="Código Postal"
+                  placeholder="C.P."
+                  disabled={Boolean(watchedEnviarDomicilioFiscal)}
+                  name={field.name}
+                  value={field.state.value}
+                  onChange={(event) => {
+                    field.handleChange(event.target.value);
+                    clearFieldErrors("codigoPostalEnvio");
+                  }}
+                  onBlur={() => {
+                    field.handleBlur();
+                    validateField("codigoPostalEnvio", field.state.value);
+                  }}
+                  error={getError("codigoPostalEnvio")}
+                />
+              )}
+            </form.Field>
           </div>
           <div className="lg:col-span-1">
-            <FormInput
-              label="Ciudad"
-              placeholder="Ciudad"
-              disabled={Boolean(watchedEnviarDomicilioFiscal)}
-              {...register("ciudadEnvio")}
-              error={errors.ciudadEnvio}
-            />
+            <form.Field name="ciudadEnvio">
+              {(field) => (
+                <FormInput
+                  label="Ciudad"
+                  placeholder="Ciudad"
+                  disabled={Boolean(watchedEnviarDomicilioFiscal)}
+                  name={field.name}
+                  value={field.state.value}
+                  onChange={(event) => {
+                    field.handleChange(event.target.value);
+                    clearFieldErrors("ciudadEnvio");
+                  }}
+                  onBlur={() => {
+                    field.handleBlur();
+                    validateField("ciudadEnvio", field.state.value);
+                  }}
+                  error={getError("ciudadEnvio")}
+                />
+              )}
+            </form.Field>
           </div>
           <div className="lg:col-span-1">
-            <FormInput
-              label="Estado"
-              placeholder="Estado"
-              disabled={Boolean(watchedEnviarDomicilioFiscal)}
-              {...register("estadoEnvio")}
-              error={errors.estadoEnvio}
-            />
+            <form.Field name="estadoEnvio">
+              {(field) => (
+                <FormInput
+                  label="Estado"
+                  placeholder="Estado"
+                  disabled={Boolean(watchedEnviarDomicilioFiscal)}
+                  name={field.name}
+                  value={field.state.value}
+                  onChange={(event) => {
+                    field.handleChange(event.target.value);
+                    clearFieldErrors("estadoEnvio");
+                  }}
+                  onBlur={() => {
+                    field.handleBlur();
+                    validateField("estadoEnvio", field.state.value);
+                  }}
+                  error={getError("estadoEnvio")}
+                />
+              )}
+            </form.Field>
           </div>
           <div className="md:col-span-2 lg:col-span-2">
-            <FormInput
-              label="Referencias adicionales"
-              placeholder="Entre calles, etc."
-              disabled={Boolean(watchedEnviarDomicilioFiscal)}
-              {...register("referenciasEnvio")}
-              error={errors.referenciasEnvio}
-            />
+            <form.Field name="referenciasEnvio">
+              {(field) => (
+                <FormInput
+                  label="Referencias adicionales"
+                  placeholder="Entre calles, etc."
+                  disabled={Boolean(watchedEnviarDomicilioFiscal)}
+                  name={field.name}
+                  value={field.state.value}
+                  onChange={(event) => {
+                    field.handleChange(event.target.value);
+                    clearFieldErrors("referenciasEnvio");
+                  }}
+                  onBlur={() => {
+                    field.handleBlur();
+                    validateField("referenciasEnvio", field.state.value);
+                  }}
+                  error={getError("referenciasEnvio")}
+                />
+              )}
+            </form.Field>
           </div>
         </div>
 
         <div className="mt-5 space-y-4">
-          <label className="flex items-start gap-3 rounded-2xl cursor-pointer border border-emerald-100 dark:border-emerald-500/20 bg-emerald-50/60 dark:bg-emerald-500/10 p-4">
-            <input
-              type="checkbox"
-              className="mt-0.5 w-4 h-4 rounded border-emerald-300 text-emerald-600 focus:ring-emerald-500"
-              {...register("empaqueEcologico")}
-            />
-            <div className="space-y-1">
-              <p className="text-xs font-semibold uppercase text-emerald-700 dark:text-emerald-300">
-                Empaque ecológico, sin bolsas de plástico
-              </p>
-              <p className="text-[11px] text-emerald-600/80 dark:text-emerald-300/80">
-                ¡Gracias por ayudarnos a cuidar el medio ambiente!
-              </p>
-            </div>
-          </label>
-          <label className="flex items-start gap-3 rounded-2xl cursor-pointer border border-amber-100 dark:border-amber-500/20 bg-amber-50/60 dark:bg-amber-500/10 p-4">
-            <input
-              type="checkbox"
-              className="mt-0.5 w-4 h-4 rounded border-amber-300 text-amber-600 focus:ring-amber-500"
-              {...register("embarqueParcial")}
-            />
-            <div className="space-y-1">
-              <p className="text-xs font-semibold uppercase text-amber-700 dark:text-amber-300">
-                Embarque parcial
-              </p>
-              <p className="text-[11px] text-amber-600/80 dark:text-amber-300/80">
-                Es posible embarcar parcialidad facturada de lo disponible en inventario.
-              </p>
-            </div>
-          </label>
-          <FormInput
-            label="Comentarios parcialidad"
-            placeholder="Especificaciones para el envío parcial..."
-            {...register("comentariosParcialidad")}
-            error={errors.comentariosParcialidad}
-          />
+          <form.Field name="empaqueEcologico">
+            {(field) => (
+              <label className="flex items-start gap-3 rounded-2xl cursor-pointer border border-emerald-100 dark:border-emerald-500/20 bg-emerald-50/60 dark:bg-emerald-500/10 p-4">
+                <input
+                  type="checkbox"
+                  className="mt-0.5 w-4 h-4 rounded border-emerald-300 text-emerald-600 focus:ring-emerald-500"
+                  name={field.name}
+                  checked={Boolean(field.state.value)}
+                  onChange={(event) => {
+                    field.handleChange(event.target.checked);
+                    clearFieldErrors("empaqueEcologico");
+                  }}
+                  onBlur={field.handleBlur}
+                />
+                <div className="space-y-1">
+                  <p className="text-xs font-semibold uppercase text-emerald-700 dark:text-emerald-300">
+                    Empaque ecológico, sin bolsas de plástico
+                  </p>
+                  <p className="text-[11px] text-emerald-600/80 dark:text-emerald-300/80">
+                    ¡Gracias por ayudarnos a cuidar el medio ambiente!
+                  </p>
+                </div>
+              </label>
+            )}
+          </form.Field>
+          <form.Field name="embarqueParcial">
+            {(field) => (
+              <label className="flex items-start gap-3 rounded-2xl cursor-pointer border border-amber-100 dark:border-amber-500/20 bg-amber-50/60 dark:bg-amber-500/10 p-4">
+                <input
+                  type="checkbox"
+                  className="mt-0.5 w-4 h-4 rounded border-amber-300 text-amber-600 focus:ring-amber-500"
+                  name={field.name}
+                  checked={Boolean(field.state.value)}
+                  onChange={(event) => {
+                    field.handleChange(event.target.checked);
+                    clearFieldErrors("embarqueParcial");
+                  }}
+                  onBlur={field.handleBlur}
+                />
+                <div className="space-y-1">
+                  <p className="text-xs font-semibold uppercase text-amber-700 dark:text-amber-300">
+                    Embarque parcial
+                  </p>
+                  <p className="text-[11px] text-amber-600/80 dark:text-amber-300/80">
+                    Es posible embarcar parcialidad facturada de lo disponible en inventario.
+                  </p>
+                </div>
+              </label>
+            )}
+          </form.Field>
+          <form.Field name="comentariosParcialidad">
+            {(field) => (
+              <FormInput
+                label="Comentarios parcialidad"
+                placeholder="Especificaciones para el envío parcial..."
+                name={field.name}
+                value={field.state.value}
+                onChange={(event) => {
+                  field.handleChange(event.target.value);
+                  clearFieldErrors("comentariosParcialidad");
+                }}
+                onBlur={() => {
+                  field.handleBlur();
+                  validateField("comentariosParcialidad", field.state.value);
+                }}
+                error={getError("comentariosParcialidad")}
+              />
+            )}
+          </form.Field>
         </div>
       </section>
 
-      <section className="bg-white dark:bg-zinc-900 rounded-3xl p-6 border border-slate-200 dark:border-white/5 shadow-sm flex flex-col h-125">
+      <section data-error-anchor="items" className="bg-white dark:bg-zinc-900 rounded-3xl p-6 border border-slate-200 dark:border-white/5 shadow-sm flex flex-col h-125">
         {itemsError && (
           <p className="text-xs text-rose-600 dark:text-rose-400 font-medium mb-2">
             {itemsError.message}
@@ -1133,8 +1066,8 @@ export default function OrderForm({ orderId }: OrderFormProps) {
                 setIsAddProductsOpen(true);
               }}
               className="inline-flex items-center px-3 py-1.5 bg-sky-50 dark:bg-sky-500/10 text-sky-600 dark:text-sky-400 rounded-lg text-xs font-bold tracking-wide hover:bg-sky-100 dark:hover:bg-sky-500/20 transition-colors cursor-pointer"
-              title="Agregar producto al pedido"
-              aria-label="Agregar producto al pedido"
+              title="Agregar producto a la cotización"
+              aria-label="Agregar producto a la cotización"
             >
               Agregar Producto
             </button>
@@ -1211,21 +1144,23 @@ export default function OrderForm({ orderId }: OrderFormProps) {
                   </td>
                 </tr>
               ) : (
-                fields.map((field, index) => {
-                  const itemErrors = errors.items?.[index];
-                  const skuError = getFieldError(itemErrors?.sku);
-                  const descripcionError = getFieldError(itemErrors?.descripcion);
-                  const unidadError = getFieldError(itemErrors?.unidad);
-                  const cantidadError = getFieldError(itemErrors?.cantidad);
-                  const precioError = getFieldError(itemErrors?.precio);
-                  const descuentoError = getFieldError(itemErrors?.descuento);
-                  const importeError = getFieldError(itemErrors?.importe);
+                fields.map((field: { id: string }, index: number) => {
+                  const skuError = getFieldError(getError(`items.${index}.sku`));
+                  const descripcionError = getFieldError(getError(`items.${index}.descripcion`));
+                  const unidadError = getFieldError(getError(`items.${index}.unidad`));
+                  const cantidadError = getFieldError(getError(`items.${index}.cantidad`));
+                  const precioError = getFieldError(getError(`items.${index}.precio`));
+                  const descuentoError = getFieldError(getError(`items.${index}.descuento`));
+                  const importeError = getFieldError(getError(`items.${index}.importe`));
 
                   const currentItem = watchedItems?.[index];
                   const tallasLabel =
                     currentItem?.tallas && currentItem.tallas.length > 0
                       ? currentItem.tallas
-                        .map((talla) => `${talla.nombre} (${talla.cantidad})`)
+                        .map(
+                          (talla: { nombre: string; cantidad: number }) =>
+                            `${talla.nombre} (${talla.cantidad})`
+                        )
                         .join(", ")
                       : "—";
                   const bordadoLabel = currentItem?.bordados?.activo ? "Sí" : "No";
@@ -1251,7 +1186,6 @@ export default function OrderForm({ orderId }: OrderFormProps) {
                           >
                             {currentItem?.sku || "—"}
                           </div>
-                          <input type="hidden" {...register(`items.${index}.sku`)} />
                           {skuError && (
                             <p className="text-[10px] text-rose-600 dark:text-rose-400">
                               {skuError.message}
@@ -1266,10 +1200,6 @@ export default function OrderForm({ orderId }: OrderFormProps) {
                           >
                             {currentItem?.descripcion || "—"}
                           </div>
-                          <input
-                            type="hidden"
-                            {...register(`items.${index}.descripcion`)}
-                          />
                           {descripcionError && (
                             <p className="text-[10px] text-rose-600 dark:text-rose-400">
                               {descripcionError.message}
@@ -1284,7 +1214,6 @@ export default function OrderForm({ orderId }: OrderFormProps) {
                           >
                             {currentItem?.unidad || "—"}
                           </div>
-                          <input type="hidden" {...register(`items.${index}.unidad`)} />
                           {unidadError && (
                             <p className="text-[10px] text-rose-600 dark:text-rose-400">
                               {unidadError.message}
@@ -1316,12 +1245,6 @@ export default function OrderForm({ orderId }: OrderFormProps) {
                           >
                             {cantidad || 0}
                           </div>
-                          <input
-                            type="hidden"
-                            {...register(`items.${index}.cantidad`, {
-                              valueAsNumber: true,
-                            })}
-                          />
                           {cantidadError && (
                             <p className="text-[10px] text-rose-600 dark:text-rose-400 text-right">
                               {cantidadError.message}
@@ -1336,12 +1259,6 @@ export default function OrderForm({ orderId }: OrderFormProps) {
                           >
                             {precio.toFixed(2)}
                           </div>
-                          <input
-                            type="hidden"
-                            {...register(`items.${index}.precio`, {
-                              valueAsNumber: true,
-                            })}
-                          />
                           {precioError && (
                             <p className="text-[10px] text-rose-600 dark:text-rose-400 text-right">
                               {precioError.message}
@@ -1356,12 +1273,6 @@ export default function OrderForm({ orderId }: OrderFormProps) {
                           >
                             {descuento}
                           </div>
-                          <input
-                            type="hidden"
-                            {...register(`items.${index}.descuento`, {
-                              valueAsNumber: true,
-                            })}
-                          />
                           {descuentoError && (
                             <p className="text-[10px] text-rose-600 dark:text-rose-400 text-right">
                               {descuentoError.message}
@@ -1426,71 +1337,141 @@ export default function OrderForm({ orderId }: OrderFormProps) {
               Servicios Extras
             </h3>
             <div className="space-y-3">
-              <div className="flex items-center justify-between gap-3 text-xs text-slate-600 dark:text-slate-300">
-                <label className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    className="w-4 h-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
-                    {...register("servicioEnvioActivo")}
-                  />
-                  <span>Envío</span>
-                </label>
-                <div className="relative">
-                  <span className="absolute left-2 top-1.5 text-xs text-slate-400">
-                    $
-                  </span>
-                  <input
-                    type="number"
-                    aria-label="Envío"
-                    className="w-24 bg-transparent border border-slate-300 dark:border-slate-700 rounded-full pl-5 pr-3 py-1 text-xs text-right text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-sky-500"
-                    {...register("servicioEnvioMonto", { valueAsNumber: true })}
-                  />
-                </div>
-              </div>
-              <div className="flex items-center justify-between gap-3 text-xs text-slate-600 dark:text-slate-300">
-                <label className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    className="w-4 h-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
-                    {...register("programaBordadosActivo")}
-                  />
-                  <span>Programa de Bordados</span>
-                </label>
-                <div className="relative">
-                  <span className="absolute left-2 top-1.5 text-xs text-slate-400">
-                    $
-                  </span>
-                  <input
-                    type="number"
-                    aria-label="Programa de Bordados"
-                    className="w-24 bg-transparent border border-slate-300 dark:border-slate-700 rounded-full pl-5 pr-3 py-1 text-xs text-right text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-sky-500"
-                    {...register("programaBordadosMonto", { valueAsNumber: true })}
-                  />
-                </div>
-              </div>
-              <div className="flex items-center justify-between gap-3 text-xs text-slate-600 dark:text-slate-300">
-                <label className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    className="w-4 h-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
-                    {...register("bordadoPantalonesExtrasActivo")}
-                  />
-                  <span>Bordado Pantalones Extras</span>
-                </label>
-                <div className="relative">
-                  <span className="absolute left-2 top-1.5 text-xs text-slate-400">
-                    $
-                  </span>
-                  <input
-                    type="number"
-                    aria-label="Bordado Pantalones Extras"
-                    className="w-24 bg-transparent border border-slate-300 dark:border-slate-700 rounded-full pl-5 pr-3 py-1 text-xs text-right text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-sky-500"
-                    {...register("bordadoPantalonesExtrasMonto", {
-                      valueAsNumber: true,
-                    })}
-                  />
-                </div>
-              </div>
+              <form.Field name="servicioEnvioActivo">
+                {(field) => (
+                  <div className="flex items-center justify-between gap-3 text-xs text-slate-600 dark:text-slate-300">
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        className="w-4 h-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
+                        name={field.name}
+                        checked={Boolean(field.state.value)}
+                        onChange={(event) => {
+                          field.handleChange(event.target.checked);
+                          clearFieldErrors("servicioEnvioActivo");
+                        }}
+                        onBlur={field.handleBlur}
+                      />
+                      <span>Envío</span>
+                    </label>
+                    <form.Field name="servicioEnvioMonto">
+                      {(amountField) => (
+                        <div className="relative">
+                          <span className="absolute left-2 top-1.5 text-xs text-slate-400">
+                            $
+                          </span>
+                          <input
+                            type="number"
+                            aria-label="Envío"
+                            className="w-24 bg-transparent border border-slate-300 dark:border-slate-700 rounded-full pl-5 pr-3 py-1 text-xs text-right text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-sky-500"
+                            name={amountField.name}
+                            value={amountField.state.value}
+                            onChange={(event) => {
+                              const nextValue = Number(event.target.value);
+                              amountField.handleChange(Number.isNaN(nextValue) ? 0 : nextValue);
+                              clearFieldErrors("servicioEnvioMonto");
+                            }}
+                            onBlur={() => {
+                              amountField.handleBlur();
+                              validateField("servicioEnvioMonto", amountField.state.value);
+                            }}
+                          />
+                        </div>
+                      )}
+                    </form.Field>
+                  </div>
+                )}
+              </form.Field>
+              <form.Field name="programaBordadosActivo">
+                {(field) => (
+                  <div className="flex items-center justify-between gap-3 text-xs text-slate-600 dark:text-slate-300">
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        className="w-4 h-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
+                        name={field.name}
+                        checked={Boolean(field.state.value)}
+                        onChange={(event) => {
+                          field.handleChange(event.target.checked);
+                          clearFieldErrors("programaBordadosActivo");
+                        }}
+                        onBlur={field.handleBlur}
+                      />
+                      <span>Programa de Bordados</span>
+                    </label>
+                    <form.Field name="programaBordadosMonto">
+                      {(amountField) => (
+                        <div className="relative">
+                          <span className="absolute left-2 top-1.5 text-xs text-slate-400">
+                            $
+                          </span>
+                          <input
+                            type="number"
+                            aria-label="Programa de Bordados"
+                            className="w-24 bg-transparent border border-slate-300 dark:border-slate-700 rounded-full pl-5 pr-3 py-1 text-xs text-right text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-sky-500"
+                            name={amountField.name}
+                            value={amountField.state.value}
+                            onChange={(event) => {
+                              const nextValue = Number(event.target.value);
+                              amountField.handleChange(Number.isNaN(nextValue) ? 0 : nextValue);
+                              clearFieldErrors("programaBordadosMonto");
+                            }}
+                            onBlur={() => {
+                              amountField.handleBlur();
+                              validateField("programaBordadosMonto", amountField.state.value);
+                            }}
+                          />
+                        </div>
+                      )}
+                    </form.Field>
+                  </div>
+                )}
+              </form.Field>
+              <form.Field name="bordadoPantalonesExtrasActivo">
+                {(field) => (
+                  <div className="flex items-center justify-between gap-3 text-xs text-slate-600 dark:text-slate-300">
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        className="w-4 h-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
+                        name={field.name}
+                        checked={Boolean(field.state.value)}
+                        onChange={(event) => {
+                          field.handleChange(event.target.checked);
+                          clearFieldErrors("bordadoPantalonesExtrasActivo");
+                        }}
+                        onBlur={field.handleBlur}
+                      />
+                      <span>Bordado Pantalones Extras</span>
+                    </label>
+                    <form.Field name="bordadoPantalonesExtrasMonto">
+                      {(amountField) => (
+                        <div className="relative">
+                          <span className="absolute left-2 top-1.5 text-xs text-slate-400">
+                            $
+                          </span>
+                          <input
+                            type="number"
+                            aria-label="Bordado Pantalones Extras"
+                            className="w-24 bg-transparent border border-slate-300 dark:border-slate-700 rounded-full pl-5 pr-3 py-1 text-xs text-right text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-sky-500"
+                            name={amountField.name}
+                            value={amountField.state.value}
+                            onChange={(event) => {
+                              const nextValue = Number(event.target.value);
+                              amountField.handleChange(Number.isNaN(nextValue) ? 0 : nextValue);
+                              clearFieldErrors("bordadoPantalonesExtrasMonto");
+                            }}
+                            onBlur={() => {
+                              amountField.handleBlur();
+                              validateField("bordadoPantalonesExtrasMonto", amountField.state.value);
+                            }}
+                          />
+                        </div>
+                      )}
+                    </form.Field>
+                  </div>
+                )}
+              </form.Field>
               <div className="flex items-center justify-between gap-3 text-xs text-slate-500 dark:text-slate-400">
                 <div className="flex items-center gap-2">
                   <input
@@ -1504,13 +1485,16 @@ export default function OrderForm({ orderId }: OrderFormProps) {
                 <span className="px-2 py-1 rounded-full text-[10px] font-semibold tracking-wide bg-slate-200/70 dark:bg-white/10 text-slate-500 dark:text-slate-300">
                   GRATIS
                 </span>
-                <input
-                  type="hidden"
-                  value="true"
-                  {...register("bordadoLogotipoIncluido", {
-                    setValueAs: (value) => value === "true",
-                  })}
-                />
+                <form.Field name="bordadoLogotipoIncluido">
+                  {(field) => (
+                    <input
+                      type="hidden"
+                      name={field.name}
+                      value={String(field.state.value)}
+                      readOnly
+                    />
+                  )}
+                </form.Field>
               </div>
             </div>
           </div>
@@ -1520,19 +1504,34 @@ export default function OrderForm({ orderId }: OrderFormProps) {
               <p className="text-[10px] uppercase font-bold text-slate-400">
                 Documento Relacionado
               </p>
-              <input
-                type="text"
-                placeholder="Cotización / OC"
-                aria-label="Documento relacionado"
-                autoComplete="off"
-                className={`w-full bg-transparent border-b text-xs py-1 focus:outline-none border-slate-200 dark:border-slate-700 ${docRelacionadoError ? "border-rose-500 text-rose-600 dark:text-rose-400" : ""}`}
-                {...register("docRelacionado")}
-              />
-              {docRelacionadoError && (
-                <p className="text-[10px] text-rose-600 dark:text-rose-400">
-                  {docRelacionadoError.message}
-                </p>
-              )}
+              <form.Field name="docRelacionado">
+                {(field) => (
+                  <>
+                    <input
+                      type="text"
+                      placeholder="Cotización / OC"
+                      aria-label="Documento relacionado"
+                      autoComplete="off"
+                      className={`w-full bg-transparent border-b text-xs py-1 focus:outline-none border-slate-200 dark:border-slate-700 ${docRelacionadoError ? "border-rose-500 text-rose-600 dark:text-rose-400" : ""}`}
+                      name={field.name}
+                      value={field.state.value}
+                      onChange={(event) => {
+                        field.handleChange(event.target.value);
+                        clearFieldErrors("docRelacionado");
+                      }}
+                      onBlur={() => {
+                        field.handleBlur();
+                        validateField("docRelacionado", field.state.value);
+                      }}
+                    />
+                    {docRelacionadoError && (
+                      <p className="text-[10px] text-rose-600 dark:text-rose-400">
+                        {docRelacionadoError.message}
+                      </p>
+                    )}
+                  </>
+                )}
+              </form.Field>
             </div>
 
             <div className="flex items-center justify-between text-xs">
@@ -1557,13 +1556,26 @@ export default function OrderForm({ orderId }: OrderFormProps) {
               <p className="text-[10px] uppercase font-bold text-slate-400">
                 Observaciones
               </p>
-              <textarea
-                rows={3}
-                placeholder="Notas del pedido..."
-                aria-label="Observaciones"
-                className="w-full bg-white dark:bg-black/20 border border-slate-200 dark:border-slate-700 rounded-lg p-2 text-xs resize-none focus:outline-none"
-                {...register("observaciones")}
-              />
+              <form.Field name="observaciones">
+                {(field) => (
+                  <textarea
+                    rows={3}
+                    placeholder="Notas de la cotización..."
+                    aria-label="Observaciones"
+                    className="w-full bg-white dark:bg-black/20 border border-slate-200 dark:border-slate-700 rounded-lg p-2 text-xs resize-none focus:outline-none"
+                    name={field.name}
+                    value={field.state.value}
+                    onChange={(event) => {
+                      field.handleChange(event.target.value);
+                      clearFieldErrors("observaciones");
+                    }}
+                    onBlur={() => {
+                      field.handleBlur();
+                      validateField("observaciones", field.state.value);
+                    }}
+                  />
+                )}
+              </form.Field>
             </div>
           </div>
         </div>
@@ -1579,49 +1591,91 @@ export default function OrderForm({ orderId }: OrderFormProps) {
                   <label className="text-[10px] uppercase font-bold text-slate-400">
                     Flete
                   </label>
-                  <div className="relative">
-                    <span className="absolute left-2 top-1.5 text-xs text-slate-400">
-                      $
-                    </span>
-                    <input
-                      type="number"
-                      aria-label="Flete"
-                      className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-slate-800 rounded-lg pl-5 pr-2 py-1.5 text-sm text-right focus:outline-none focus:ring-1 focus:ring-sky-500"
-                      {...register("flete", { valueAsNumber: true })}
-                    />
-                  </div>
+                  <form.Field name="flete">
+                    {(field) => (
+                      <div className="relative">
+                        <span className="absolute left-2 top-1.5 text-xs text-slate-400">
+                          $
+                        </span>
+                        <input
+                          type="number"
+                          aria-label="Flete"
+                          className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-slate-800 rounded-lg pl-5 pr-2 py-1.5 text-sm text-right focus:outline-none focus:ring-1 focus:ring-sky-500"
+                          name={field.name}
+                          value={field.state.value}
+                          onChange={(event) => {
+                            const nextValue = Number(event.target.value);
+                            field.handleChange(Number.isNaN(nextValue) ? 0 : nextValue);
+                            clearFieldErrors("flete");
+                          }}
+                          onBlur={() => {
+                            field.handleBlur();
+                            validateField("flete", field.state.value);
+                          }}
+                        />
+                      </div>
+                    )}
+                  </form.Field>
                 </div>
                 <div className="space-y-1">
                   <label className="text-[10px] uppercase font-bold text-slate-400">
                     Seguros
                   </label>
-                  <div className="relative">
-                    <span className="absolute left-2 top-1.5 text-xs text-slate-400">
-                      $
-                    </span>
-                    <input
-                      type="number"
-                      aria-label="Seguros"
-                      className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-slate-800 rounded-lg pl-5 pr-2 py-1.5 text-sm text-right focus:outline-none focus:ring-1 focus:ring-sky-500"
-                      {...register("seguro", { valueAsNumber: true })}
-                    />
-                  </div>
+                  <form.Field name="seguro">
+                    {(field) => (
+                      <div className="relative">
+                        <span className="absolute left-2 top-1.5 text-xs text-slate-400">
+                          $
+                        </span>
+                        <input
+                          type="number"
+                          aria-label="Seguros"
+                          className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-slate-800 rounded-lg pl-5 pr-2 py-1.5 text-sm text-right focus:outline-none focus:ring-1 focus:ring-sky-500"
+                          name={field.name}
+                          value={field.state.value}
+                          onChange={(event) => {
+                            const nextValue = Number(event.target.value);
+                            field.handleChange(Number.isNaN(nextValue) ? 0 : nextValue);
+                            clearFieldErrors("seguro");
+                          }}
+                          onBlur={() => {
+                            field.handleBlur();
+                            validateField("seguro", field.state.value);
+                          }}
+                        />
+                      </div>
+                    )}
+                  </form.Field>
                 </div>
                 <div className="space-y-1">
                   <label className="text-[10px] uppercase font-bold text-slate-400">
                     A cuenta (Anticipo)
                   </label>
-                  <div className="relative">
-                    <span className="absolute left-2 top-1.5 text-xs text-slate-400">
-                      $
-                    </span>
-                    <input
-                      type="number"
-                      aria-label="Anticipo"
-                      className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-slate-800 rounded-lg pl-5 pr-2 py-1.5 text-sm text-right focus:outline-none focus:ring-1 focus:ring-sky-500 text-rose-500 font-medium"
-                      {...register("anticipo", { valueAsNumber: true })}
-                    />
-                  </div>
+                  <form.Field name="anticipo">
+                    {(field) => (
+                      <div className="relative">
+                        <span className="absolute left-2 top-1.5 text-xs text-slate-400">
+                          $
+                        </span>
+                        <input
+                          type="number"
+                          aria-label="Anticipo"
+                          className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-slate-800 rounded-lg pl-5 pr-2 py-1.5 text-sm text-right focus:outline-none focus:ring-1 focus:ring-sky-500 text-rose-500 font-medium"
+                          name={field.name}
+                          value={field.state.value}
+                          onChange={(event) => {
+                            const nextValue = Number(event.target.value);
+                            field.handleChange(Number.isNaN(nextValue) ? 0 : nextValue);
+                            clearFieldErrors("anticipo");
+                          }}
+                          onBlur={() => {
+                            field.handleBlur();
+                            validateField("anticipo", field.state.value);
+                          }}
+                        />
+                      </div>
+                    )}
+                  </form.Field>
                 </div>
               </div>
             </div>
@@ -1649,16 +1703,29 @@ export default function OrderForm({ orderId }: OrderFormProps) {
                 <div className="flex items-center gap-2">
                   <span className="text-slate-500">IVA</span>
                   <div className="w-20">
-                    <FormSelect
-                      className="px-2 py-1.5 text-xs bg-slate-100 dark:bg-white/10 rounded-lg"
-                      aria-label="Tasa de IVA"
-                      options={[
-                        { value: 0.16, label: "16%" },
-                        { value: 0.08, label: "8%" },
-                        { value: 0, label: "0%" },
-                      ]}
-                      {...register("iva", { valueAsNumber: true })}
-                    />
+                    <form.Field name="iva">
+                      {(field) => (
+                        <FormSelect
+                          className="px-2 py-1.5 text-xs bg-slate-100 dark:bg-white/10 rounded-lg"
+                          aria-label="Tasa de IVA"
+                          options={ivaOptions.map((option) => ({
+                            value: option.value,
+                            label: option.label,
+                          }))}
+                          name={field.name}
+                          value={field.state.value}
+                          onChange={(event) => {
+                            const nextValue = Number(event.target.value);
+                            field.handleChange(Number.isNaN(nextValue) ? 0 : nextValue);
+                            clearFieldErrors("iva");
+                          }}
+                          onBlur={() => {
+                            field.handleBlur();
+                            validateField("iva", field.state.value);
+                          }}
+                        />
+                      )}
+                    </form.Field>
                   </div>
                 </div>
                 <span className="font-medium font-mono text-slate-700 dark:text-slate-200">
@@ -1695,7 +1762,7 @@ export default function OrderForm({ orderId }: OrderFormProps) {
           isPending={isPending}
           loadingLabel={isEditing ? "Actualizando..." : "Guardando..."}
         >
-          {isEditing ? "Actualizar Pedido" : "Guardar Pedido"}
+          {isEditing ? "Actualizar Cotización" : "Guardar Cotización"}
         </FormSubmitButton>
       </div>
     </form>

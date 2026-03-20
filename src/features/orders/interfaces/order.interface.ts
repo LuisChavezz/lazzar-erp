@@ -3,6 +3,13 @@ export type OrderStatus =
   | "Parcial"
   | "Completo"
   | "Cancelado";
+export type OrderPaymentCondition =
+  | "100_anticipo"
+  | "50_anticipo"
+  | "vendedor_autoriza"
+  | "pago_antes_embarque"
+  | "por_confirmar"
+  | "otra_cantidad";
 
 export interface OrderItem {
   sku: string;
@@ -65,17 +72,12 @@ export interface Order {
   metodoPago: string;
   usoCfdi: string;
   referenciarOcFactura: boolean;
-  condicionPago100Anticipo: boolean;
-  condicionPago50Anticipo: boolean;
-  condicionPagoVendedorAutoriza: boolean;
-  condicionPagoPagoAntesEmbarque: boolean;
-  condicionPagoPorConfirmar: boolean;
-  condicionPagoOtraCantidad: boolean;
+  condicionPago: OrderPaymentCondition;
   condicionPagoMonto: number;
   fecha: string;
   agente: string;
   tipoDocumento: string;
-  origen: string[];
+  origen: string;
   destinatario: string;
   empresaEnvio: string;
   telefonoEnvio: string;

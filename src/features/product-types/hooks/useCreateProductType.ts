@@ -3,9 +3,13 @@ import { createProductType } from "../services/actions";
 import { ProductTypeFormValues } from "../schemas/product-type.schema";
 import toast from "react-hot-toast";
 import { AxiosError } from "axios";
-import { UseFormSetError } from "react-hook-form";
 
-export const useCreateProductType = (setError?: UseFormSetError<ProductTypeFormValues>) => {
+type SetProductTypeError = (
+  field: keyof ProductTypeFormValues,
+  error: { type?: string; message?: string }
+) => void;
+
+export const useCreateProductType = (setError?: SetProductTypeError) => {
   const queryClient = useQueryClient();
 
   return useMutation({

@@ -3,10 +3,14 @@ import { createBranch } from "../services/actions";
 import { BranchFormValues } from "../schemas/branch.schema";
 import toast from "react-hot-toast";
 import { AxiosError } from "axios";
-import { UseFormSetError } from "react-hook-form";
 import { useWorkspaceStore } from "../../workspace/store/workspace.store";
 
-export const useRegisterBranch = (setError?: UseFormSetError<BranchFormValues>) => {
+type SetBranchError = (
+  field: keyof BranchFormValues,
+  error: { type?: string; message?: string }
+) => void;
+
+export const useRegisterBranch = (setError?: SetBranchError) => {
   const queryClient = useQueryClient();
 
   const companyId = useWorkspaceStore((state) => state.selectedCompany.id);

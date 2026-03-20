@@ -4,13 +4,17 @@ import { ProductTypeCreate } from "../interfaces/product-type.interface";
 import { ProductTypeFormValues } from "../schemas/product-type.schema";
 import toast from "react-hot-toast";
 import { AxiosError } from "axios";
-import { UseFormSetError } from "react-hook-form";
 
 interface UpdateProductTypePayload extends ProductTypeCreate {
   id: number;
 }
 
-export const useUpdateProductType = (setError?: UseFormSetError<ProductTypeFormValues>) => {
+type SetProductTypeError = (
+  field: keyof ProductTypeFormValues,
+  error: { type?: string; message?: string }
+) => void;
+
+export const useUpdateProductType = (setError?: SetProductTypeError) => {
   const queryClient = useQueryClient();
 
   return useMutation({

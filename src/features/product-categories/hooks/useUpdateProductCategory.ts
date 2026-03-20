@@ -3,14 +3,20 @@ import { updateProductCategory } from "../services/actions";
 import { ProductCategoryFormValues } from "../schemas/product-category.schema";
 import toast from "react-hot-toast";
 import { AxiosError } from "axios";
-import { UseFormSetError } from "react-hook-form";
 
 interface UpdateProductCategoryPayload extends ProductCategoryFormValues {
   id: number;
   empresa: number;
 }
 
-export const useUpdateProductCategory = (setError?: UseFormSetError<ProductCategoryFormValues>) => {
+type SetProductCategoryError = (
+  field: keyof ProductCategoryFormValues,
+  error: { type?: string; message?: string }
+) => void;
+
+export const useUpdateProductCategory = (
+  setError?: SetProductCategoryError
+) => {
   const queryClient = useQueryClient();
 
   return useMutation({

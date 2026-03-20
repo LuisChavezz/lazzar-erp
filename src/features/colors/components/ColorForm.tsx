@@ -1,15 +1,10 @@
 "use client";
 
-import { useState } from "react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { ColorFormSchema, ColorFormValues } from "../schemas/color.schema";
 import { FormInput } from "../../../components/FormInput";
 import { FormCancelButton, FormSubmitButton } from "../../../components/FormButtons";
 import { ColorsIcon } from "../../../components/Icons";
-import { useCreateColor } from "../hooks/useCreateColor";
-import { useUpdateColor } from "../hooks/useUpdateColor";
 import { Color } from "../interfaces/color.interface";
+import { useColorForm } from "../hooks/useColorForm";
 
 interface ColorFormProps {
   onSuccess: () => void;
@@ -17,57 +12,25 @@ interface ColorFormProps {
 }
 
 export default function ColorForm({ onSuccess, colorToEdit }: ColorFormProps) {
-  const isEditing = Boolean(colorToEdit?.id);
-  const emptyValues: ColorFormValues = {
-    nombre: "",
-    codigo_hex: "FAFAFA",
-  };
-  const editValues: ColorFormValues = colorToEdit
-    ? {
-        nombre: colorToEdit.nombre,
-        codigo_hex: colorToEdit.codigo_hex,
-      }
-    : emptyValues;
-
   const {
-    register,
-    handleSubmit,
-    reset,
-    setError,
-    watch,
-    formState: { errors },
-  } = useForm<ColorFormValues>({
-    resolver: zodResolver(ColorFormSchema),
-    defaultValues: emptyValues,
-    values: isEditing ? editValues : undefined,
+    form,
+    formRef,
+    formKey,
+    isPending,
+    selectedHex,
+    getError,
+    clearFieldErrors,
+    validateField,
+    updateHexValue,
+    handleReset,
+    handleFormSubmit,
+  } = useColorForm({
+    onSuccess,
+    colorToEdit,
   });
 
-  const selectedHex = watch("codigo_hex");
-  const { mutateAsync: createColor, isPending: isCreating } = useCreateColor(setError);
-  const { mutateAsync: updateColor, isPending: isUpdating } = useUpdateColor(setError);
-  const [isLoading, setIsLoading] = useState(false);
-  const isPending = isCreating || isUpdating || isLoading;
-
-  const onSubmit = async (data: ColorFormValues) => {
-    setIsLoading(true);
-    try {
-      const payload = {
-        nombre: data.nombre,
-        codigo_hex: data.codigo_hex.toUpperCase(),
-      };
-      if (isEditing && colorToEdit) {
-        await updateColor({ id: colorToEdit.id, ...payload });
-      } else {
-        await createColor(payload);
-      }
-      onSuccess();
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="w-full">
+    <form ref={formRef} key={formKey} onSubmit={handleFormSubmit} className="w-full">
       <fieldset disabled={isPending} className="group-disabled:opacity-50">
         <section className="bg-white dark:bg-zinc-900 rounded-3xl border border-slate-200 dark:border-white/5 shadow-sm dark:shadow-none overflow-hidden hover:shadow-lg transition-shadow duration-300 mb-8">
           <div className="px-8 py-5 border-b border-slate-100 dark:border-white/5 flex items-center gap-3 bg-slate-50/50 dark:bg-white/2">
@@ -85,25 +48,50 @@ export default function ColorForm({ onSuccess, colorToEdit }: ColorFormProps) {
           <div className="p-8">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <div className="group/field md:col-span-2">
-                <FormInput
-                  label="Nombre del Color"
-                  placeholder="Ej. Rojo Carmín"
-                  variant="ghost"
-                  className="text-3xl font-bold"
-                  {...register("nombre")}
-                  error={errors.nombre}
-                />
+                <form.Field name="nombre">
+                  {(field) => (
+                    <FormInput
+                      label="Nombre del Color"
+                      placeholder="Ej. Rojo Carmín"
+                      variant="ghost"
+                      className="text-3xl font-bold"
+                      name={field.name}
+                      value={field.state.value}
+                      onChange={(event) => {
+                        field.handleChange(event.target.value);
+                        clearFieldErrors("nombre");
+                      }}
+                      onBlur={() => {
+                        field.handleBlur();
+                        validateField("nombre", field.state.value);
+                      }}
+                      error={getError("nombre")}
+                    />
+                  )}
+                </form.Field>
               </div>
 
               <div className="group/field">
-                <FormInput
-                  label="Código HEX"
-                  placeholder="FF0000"
-                  className="font-mono uppercase"
-                  maxLength={6}
-                  {...register("codigo_hex")}
-                  error={errors.codigo_hex}
-                />
+                <form.Field name="codigo_hex">
+                  {(field) => (
+                    <FormInput
+                      label="Código HEX"
+                      placeholder="FF0000"
+                      className="font-mono uppercase"
+                      maxLength={6}
+                      name={field.name}
+                      value={field.state.value}
+                      onChange={(event) => {
+                        updateHexValue(event.target.value, field.handleChange);
+                      }}
+                      onBlur={() => {
+                        field.handleBlur();
+                        validateField("codigo_hex", field.state.value);
+                      }}
+                      error={getError("codigo_hex")}
+                    />
+                  )}
+                </form.Field>
               </div>
 
               <div className="group/field">
@@ -125,7 +113,7 @@ export default function ColorForm({ onSuccess, colorToEdit }: ColorFormProps) {
         </section>
 
         <div className="flex justify-end gap-3 pb-8 mt-8">
-          <FormCancelButton onClick={() => reset()} disabled={isPending} />
+          <FormCancelButton onClick={handleReset} disabled={isPending} />
           <FormSubmitButton isPending={isPending} loadingLabel="Guardando...">
             {colorToEdit ? "Actualizar Color" : "Registrar Color"}
           </FormSubmitButton>

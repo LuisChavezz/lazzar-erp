@@ -1,102 +1,27 @@
 "use client";
 
-import { useState } from "react";
-import { useForm, Resolver } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import toast from "react-hot-toast";
 import { FormSubmitButton } from "@/src/components/FormButtons";
 import { FormInput } from "@/src/components/FormInput";
 import { FormSelect } from "@/src/components/FormSelect";
 import { AddProductDialog } from "./AddProductDialog";
-import { useWmsOutputStore } from "../stores/wms-output.store";
-import {
-  WmsOutputSchema,
-  WmsOutputFormValues,
-  WmsOutputItemSchema,
-} from "../schemas/wms-output.schema";
-import { WmsOutputItem } from "../interfaces/wms-output.interface";
-import { useSession } from "next-auth/react";
-
-const movimientoOptions = [
-  { value: "Compra", label: "Compra" },
-  { value: "Transferencia", label: "Transferencia" },
-  { value: "Devolución", label: "Devolución" },
-  { value: "Ajuste", label: "Ajuste" },
-];
+import { useWmsOutputForm } from "../hooks/useWmsOutputForm";
 
 export const WmsOutputForm = () => {
-  const addOutput = useWmsOutputStore((state) => state.addOutput);
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [submitError, setSubmitError] = useState<string | null>(null);
-  const [items, setItems] = useState<WmsOutputItem[]>([]);
-  const { data: session } = useSession();
-  const userName = session?.user?.name || "Usuario";
-
-  const defaultValues: WmsOutputFormValues = {
-    tipoMovimiento: "Compra",
-    fecha: "",
-    referencia: "",
-    destino: "",
-    usuario: userName,
-    items: [],
-  };
-
   const {
-    register,
-    handleSubmit,
-    reset,
-    setValue,
-    formState: { errors, isSubmitting },
-  } = useForm<WmsOutputFormValues>({
-    resolver: zodResolver(WmsOutputSchema) as Resolver<WmsOutputFormValues>,
-    defaultValues,
-  });
-
-  const onSubmit = async (values: WmsOutputFormValues) => {
-    const parsed = WmsOutputSchema.safeParse({
-      ...values,
-      usuario: userName,
-      items,
-    });
-
-    if (!parsed.success) {
-      setSubmitError("Completa los campos requeridos.");
-      return;
-    }
-
-    addOutput(parsed.data);
-    toast.success("Salida registrada correctamente");
-    setSubmitError(null);
-    setItems([]);
-    reset({
-      ...defaultValues,
-      usuario: userName,
-      items: [],
-    });
-  };
-
-  const handleAddItem = (item: WmsOutputItem) => {
-    const parsed = WmsOutputItemSchema.safeParse(item);
-    if (!parsed.success) return;
-    setItems((currentItems) => {
-      const nextItems = [...currentItems, parsed.data];
-      setValue("items", nextItems, { shouldValidate: true });
-      return nextItems;
-    });
-  };
-
-  const handleRemoveItem = (index: number) => {
-    setItems((currentItems) => {
-      const nextItems = currentItems.filter((_, idx) => idx !== index);
-      setValue("items", nextItems, { shouldValidate: true });
-      return nextItems;
-    });
-  };
-
-  const tipoMovimientoField = register("tipoMovimiento");
-  const fechaField = register("fecha");
-  const referenciaField = register("referencia");
-  const destinoField = register("destino");
+    form,
+    isPending,
+    userName,
+    items,
+    submitError,
+    isDialogOpen,
+    movimientoOptions,
+    getError,
+    clearFieldError,
+    setIsDialogOpen,
+    handleFormSubmit,
+    handleAddItem,
+    handleRemoveItem,
+  } = useWmsOutputForm();
 
   return (
     <div className="rounded-3xl border border-slate-200 dark:border-white/10 bg-white dark:bg-black p-6 space-y-6">
@@ -109,43 +34,85 @@ export const WmsOutputForm = () => {
         </p>
       </div>
 
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-        <input type="hidden" {...register("usuario")} value={userName} readOnly />
+      <form onSubmit={handleFormSubmit} className="space-y-6">
+        <form.Field name="usuario">
+          {(field) => <input type="hidden" name={field.name} value={userName} readOnly />}
+        </form.Field>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="w-full">
-            <FormSelect
-              label="Tipo movimiento"
-              options={movimientoOptions}
-              {...tipoMovimientoField}
-              error={errors.tipoMovimiento}
-            />
+            <form.Field name="tipoMovimiento">
+              {(field) => (
+                <FormSelect
+                  label="Tipo movimiento"
+                  options={movimientoOptions}
+                  name={field.name}
+                  value={field.state.value}
+                  onChange={(event) => {
+                    field.handleChange(event.target.value as typeof field.state.value);
+                    clearFieldError("tipoMovimiento");
+                  }}
+                  onBlur={field.handleBlur}
+                  error={getError("tipoMovimiento")}
+                />
+              )}
+            </form.Field>
           </div>
 
           <div className="w-full">
-            <FormInput
-              label="Fecha"
-              type="date"
-              {...fechaField}
-              error={errors.fecha}
-            />
+            <form.Field name="fecha">
+              {(field) => (
+                <FormInput
+                  label="Fecha"
+                  type="date"
+                  name={field.name}
+                  value={field.state.value}
+                  onChange={(event) => {
+                    field.handleChange(event.target.value);
+                    clearFieldError("fecha");
+                  }}
+                  onBlur={field.handleBlur}
+                  error={getError("fecha")}
+                />
+              )}
+            </form.Field>
           </div>
 
           <div className="w-full">
-            <FormInput
-              label="Referencia"
-              placeholder="OC-000123 / Remisión / Folio"
-              {...referenciaField}
-              error={errors.referencia}
-            />
+            <form.Field name="referencia">
+              {(field) => (
+                <FormInput
+                  label="Referencia"
+                  placeholder="OC-000123 / Remisión / Folio"
+                  name={field.name}
+                  value={field.state.value}
+                  onChange={(event) => {
+                    field.handleChange(event.target.value);
+                    clearFieldError("referencia");
+                  }}
+                  onBlur={field.handleBlur}
+                  error={getError("referencia")}
+                />
+              )}
+            </form.Field>
           </div>
 
           <div className="w-full">
-            <FormInput
-              label="Destino"
-              placeholder="Cliente / Área / Alamcén destino"
-              {...destinoField}
-              error={errors.destino}
-            />
+            <form.Field name="destino">
+              {(field) => (
+                <FormInput
+                  label="Destino"
+                  placeholder="Cliente / Área / Alamcén destino"
+                  name={field.name}
+                  value={field.state.value}
+                  onChange={(event) => {
+                    field.handleChange(event.target.value);
+                    clearFieldError("destino");
+                  }}
+                  onBlur={field.handleBlur}
+                  error={getError("destino")}
+                />
+              )}
+            </form.Field>
           </div>
 
           <div className="w-full md:col-span-2">
@@ -157,9 +124,9 @@ export const WmsOutputForm = () => {
               title="El usuario se toma de tu sesión"
               disabled
             />
-            {errors.usuario && (
+            {getError("usuario") && (
               <p className="text-xs text-red-600 mt-1 font-medium animate-in slide-in-from-top-1 fade-in duration-200">
-                {errors.usuario.message}
+                {getError("usuario")?.message}
               </p>
             )}
           </div>
@@ -226,9 +193,9 @@ export const WmsOutputForm = () => {
             </table>
           </div>
 
-          {errors.items?.message && (
+          {getError("items")?.message && (
             <div className="px-4 py-3 text-xs text-red-600 font-medium border-t border-slate-100 dark:border-white/10">
-              {errors.items.message}
+              {getError("items")?.message}
             </div>
           )}
         </div>
@@ -238,7 +205,7 @@ export const WmsOutputForm = () => {
         )}
 
         <div className="flex justify-end">
-          <FormSubmitButton isPending={isSubmitting}>Guardar movimiento</FormSubmitButton>
+          <FormSubmitButton isPending={isPending}>Guardar movimiento</FormSubmitButton>
         </div>
       </form>
 

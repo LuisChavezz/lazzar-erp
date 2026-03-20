@@ -3,9 +3,13 @@ import { createSize } from "../services/actions";
 import { SizeFormValues } from "../schemas/size.schema";
 import toast from "react-hot-toast";
 import { AxiosError } from "axios";
-import { UseFormSetError } from "react-hook-form";
 
-export const useCreateSize = (setError?: UseFormSetError<SizeFormValues>) => {
+type SetSizeError = (
+  field: keyof SizeFormValues,
+  error: { type?: string; message?: string }
+) => void;
+
+export const useCreateSize = (setError?: SetSizeError) => {
   const queryClient = useQueryClient();
 
   return useMutation({

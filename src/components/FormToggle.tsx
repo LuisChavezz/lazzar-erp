@@ -1,10 +1,10 @@
 import { forwardRef } from "react";
-import { FieldError } from "react-hook-form";
+import type { FormFieldError } from "../utils/getFieldError";
 
 interface FormToggleProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label?: string;
   description?: string;
-  error?: FieldError;
+  error?: FormFieldError;
 }
 
 export const FormToggle = forwardRef<HTMLInputElement, FormToggleProps>(
