@@ -1,43 +1,37 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState, useMemo } from "react";
 import { useProducts } from "../../products/hooks/useProducts";
 import { useUnitsOfMeasure } from "../../units-of-measure/hooks/useUnitsOfMeasure";
-import { useColors } from "../../colors/hooks/useColors";
 import { OrderFormValues } from "../schema/order.schema";
-import { useProductVariants } from "../../product-variants/hooks/useProductVariants";
 
 type OrderItem = OrderFormValues["items"][number];
 
 export interface CatalogRow {
   id: number;
-  sku: string;
+  productoId: number;
   nombre: string;
   descripcion: string;
   unidad: string;
   precio: number;
   isActive: boolean;
-  colorNombre: string;
-  colorHex: string;
 }
 
 interface UseAddProductsDialogParams {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  existingSkus: Set<string>;
+  existingProductIds: Set<number>;
   onAddItems: (items: OrderItem[]) => void;
 }
 
 export function useAddProductsDialog({
   open,
   onOpenChange,
-  existingSkus,
+  existingProductIds,
   onAddItems,
 }: UseAddProductsDialogParams) {
   const { products } = useProducts();
-  const { productVariants } = useProductVariants();
   const { units } = useUnitsOfMeasure();
-  const { colors } = useColors();
 
   const [search, setSearch] = useState("");
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
@@ -51,39 +45,32 @@ export function useAddProductsDialog({
   };
 
   const rows = useMemo<CatalogRow[]>(() => {
-    const productsById = new Map(products.map((p) => [p.id, p]));
     const unitsById = new Map(units.map((u) => [u.id, u]));
-    const colorsById = new Map(colors.map((c) => [c.id, c]));
 
-    return (productVariants || [])
-      .map((variant) => {
-        const product = productsById.get(variant.producto);
-        if (!product) return null;
+    return (products || [])
+      .map((product) => {
         const unit = unitsById.get(product.unidad_medida);
-        const precio = Number(variant.precio_base);
-        const color = colorsById.get(variant.color);
+        const precio = Number(product.precio_base);
         return {
-          id: variant.id,
-          sku: variant.sku ?? "",
+          id: product.id,
+          productoId: product.id,
           nombre: product.nombre ?? "",
           descripcion: product.descripcion ?? "",
           unidad: unit?.clave ?? "PZA",
           precio: Number.isFinite(precio) ? precio : 0,
-          isActive: Boolean(variant.activo) && Boolean(product.activo),
-          colorNombre: color?.nombre ?? "Sin color",
-          colorHex: color?.codigo_hex ?? "FFFFFF",
+          isActive: Boolean(product.activo),
         } satisfies CatalogRow;
       })
       .filter((r): r is CatalogRow => Boolean(r))
       .filter((r) => r.isActive)
-      .sort((a, b) => a.sku.localeCompare(b.sku, "es"));
-  }, [productVariants, products, units, colors]);
+      .sort((a, b) => a.nombre.localeCompare(b.nombre, "es"));
+  }, [products, units]);
 
   const filteredRows = useMemo(() => {
     const query = search.trim().toLowerCase();
     if (!query) return rows;
     return rows.filter((r) => {
-      const haystack = `${r.sku} ${r.nombre} ${r.descripcion} ${r.unidad}`.toLowerCase();
+      const haystack = `${r.nombre} ${r.descripcion} ${r.unidad}`.toLowerCase();
       return haystack.includes(query);
     });
   }, [rows, search]);
@@ -93,14 +80,14 @@ export function useAddProductsDialog({
     selectedIds.forEach((id) => {
       const row = rows.find((r) => r.id === id);
       if (!row) return;
-      if (existingSkus.has(row.sku)) return;
+      if (existingProductIds.has(row.productoId)) return;
       count += 1;
     });
     return count;
-  }, [existingSkus, rows, selectedIds]);
+  }, [existingProductIds, rows, selectedIds]);
 
   const toggleRow = (row: CatalogRow) => {
-    if (existingSkus.has(row.sku)) return;
+    if (existingProductIds.has(row.productoId)) return;
     setSelectedIds((prev) => {
       const next = new Set(prev);
       if (next.has(row.id)) next.delete(row.id);
@@ -110,14 +97,14 @@ export function useAddProductsDialog({
   };
 
   const isSelected = (rowId: number) => selectedIds.has(rowId);
-  const isAlreadyAdded = (sku: string) => existingSkus.has(sku);
+  const isAlreadyAdded = (productoId: number) => existingProductIds.has(productoId);
 
   const handleAddSelected = () => {
     const itemsToAdd: OrderItem[] = rows
       .filter((r) => selectedIds.has(r.id))
-      .filter((r) => !existingSkus.has(r.sku))
+      .filter((r) => !existingProductIds.has(r.productoId))
       .map((r) => ({
-        sku: r.sku,
+        productoId: r.productoId,
         descripcion: r.nombre,
         unidad: r.unidad,
         cantidad: 1,

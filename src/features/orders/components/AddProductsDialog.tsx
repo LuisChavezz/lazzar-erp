@@ -11,14 +11,14 @@ type OrderItem = OrderFormValues["items"][number];
 interface AddProductsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  existingSkus: Set<string>;
+  existingProductIds: Set<number>;
   onAddItems: (items: OrderItem[]) => void;
 }
 
 export function AddProductsDialog({
   open,
   onOpenChange,
-  existingSkus,
+  existingProductIds,
   onAddItems,
 }: AddProductsDialogProps) {
   const {
@@ -35,7 +35,7 @@ export function AddProductsDialog({
   } = useAddProductsDialog({
     open,
     onOpenChange,
-    existingSkus,
+    existingProductIds,
     onAddItems,
   });
 
@@ -60,7 +60,7 @@ export function AddProductsDialog({
         <div className="flex flex-col md:flex-row gap-3 md:items-center">
           <div className="flex-1">
             <FormInput
-              placeholder="Buscar por SKU, nombre o descripción..."
+              placeholder="Buscar por nombre o descripción..."
               value={search}
               onChange={(event) => setSearch(event.target.value)}
             />
@@ -74,7 +74,7 @@ export function AddProductsDialog({
         >
           {rows.length === 0 ? (
             <p className="text-sm text-slate-500 dark:text-slate-400">
-              No hay productos disponibles. Revisa Configuración &gt; Productos y Variantes.
+              No hay productos disponibles. Revisa Configuración &gt; Productos.
             </p>
           ) : filteredRows.length === 0 ? (
             <p className="text-sm text-slate-500 dark:text-slate-400">
@@ -87,7 +87,7 @@ export function AddProductsDialog({
                   key={row.id}
                   row={row}
                   isSelected={isSelected(row.id)}
-                  isAlreadyAdded={isAlreadyAdded(row.sku)}
+                  isAlreadyAdded={isAlreadyAdded(row.productoId)}
                   onToggle={toggleRow}
                 />
               );

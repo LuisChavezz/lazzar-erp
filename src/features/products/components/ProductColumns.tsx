@@ -3,6 +3,8 @@ import { EditIcon, DeleteIcon } from "../../../components/Icons";
 import { Product } from "../interfaces/product.interface";
 import { ConfirmDialog } from "../../../components/ConfirmDialog";
 import { useDeleteProduct } from "../hooks/useDeleteProduct";
+import { ActionMenu, ActionMenuItem } from "../../../components/ActionMenu";
+import { useState } from "react";
 
 const columnHelper = createColumnHelper<Product>();
 
@@ -27,37 +29,50 @@ const ActionsCell = ({
   canDelete: boolean;
 }) => {
   const { mutate: deleteProduct, isPending } = useDeleteProduct();
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  const menuItems: ActionMenuItem[] = [];
+
+  if (canEdit) {
+    menuItems.push({
+      label: "Editar",
+      icon: EditIcon,
+      onSelect: () => onEdit(row.original),
+    });
+  }
+
+  if (canDelete) {
+    menuItems.push({
+      label: "Eliminar",
+      icon: DeleteIcon,
+      onSelect: () => setShowDeleteConfirm(true),
+      disabled: isPending,
+    });
+  }
+
+  if (menuItems.length === 0) return null;
 
   return (
-    <div className="flex items-center justify-center gap-2">
-      {canEdit ? (
-        <button
-          className="p-1 cursor-pointer text-slate-400 hover:text-blue-600 transition-colors"
-          title="Editar"
-          onClick={() => onEdit(row.original)}
-        >
-          <EditIcon className="w-5 h-5" />
-        </button>
-      ) : null}
-      {canDelete ? (
+    <>
+      <div className="flex items-center justify-center">
+        <ActionMenu items={menuItems} />
+      </div>
+      {showDeleteConfirm && (
         <ConfirmDialog
           title="Eliminar Producto"
           description="¿Estás seguro de que deseas eliminar este producto? Esta acción no se puede deshacer."
           confirmText={isPending ? "Eliminando..." : "Eliminar"}
-          onConfirm={() => deleteProduct(row.original.id)}
+          onConfirm={() => {
+            deleteProduct(row.original.id);
+            setShowDeleteConfirm(false);
+          }}
           confirmColor="red"
-          trigger={
-            <button
-              className="p-1 cursor-pointer text-slate-400 hover:text-red-600 transition-colors"
-              title="Eliminar"
-              disabled={isPending}
-            >
-              <DeleteIcon className="w-5 h-5" />
-            </button>
-          }
+          open={showDeleteConfirm}
+          onOpenChange={setShowDeleteConfirm}
+          trigger={null}
         />
-      ) : null}
-    </div>
+      )}
+    </>
   );
 };
 
@@ -125,42 +140,17 @@ export const getColumns = (
         ),
       }
     ),
-    columnHelper.accessor(
-      (row) => lookups.taxes.get(row.impuesto) ?? "",
-      {
-        id: "impuesto",
-        header: "Impuesto",
-        cell: ({ row }) => (
-          <span className="text-slate-500 dark:text-slate-400">
-            {lookups.taxes.get(row.original.impuesto) ?? `#${row.original.impuesto}`}
-          </span>
-        ),
-      }
-    ),
-    columnHelper.accessor(
-      (row) => lookups.satProdserv.get(row.sat_prodserv) ?? "",
-      {
-        id: "sat_prodserv",
-        header: "SAT Prod/Serv",
-        cell: ({ row }) => (
-          <span className="text-slate-500 dark:text-slate-400">
-            {lookups.satProdserv.get(row.original.sat_prodserv) ?? `#${row.original.sat_prodserv}`}
-          </span>
-        ),
-      }
-    ),
-    columnHelper.accessor(
-      (row) => lookups.satUnit.get(row.sat_unidad) ?? "",
-      {
-        id: "sat_unidad",
-        header: "SAT Unidad",
-        cell: ({ row }) => (
-          <span className="text-slate-500 dark:text-slate-400">
-            {lookups.satUnit.get(row.original.sat_unidad) ?? `#${row.original.sat_unidad}`}
-          </span>
-        ),
-      }
-    ),
+    columnHelper.accessor("precio_base", {
+      header: "Precio",
+      cell: ({ row }) => {
+        const value = row.original.precio_base;
+        const formatted = new Intl.NumberFormat("es-MX", {
+          style: "currency",
+          currency: "MXN",
+        }).format(value);
+        return <span className="text-slate-600 dark:text-slate-300 font-medium">{formatted}</span>;
+      },
+    }),
   ] as ColumnDef<Product>[];
 
   if (permissions.canEdit || permissions.canDelete) {

@@ -1,7 +1,7 @@
 "use client";
 
 import { CheckCircleIcon } from "@/src/components/Icons";
-import { CatalogRow } from "../hooks/useAddProductsDialog";
+import { CatalogRow } from "./AddProductDialog";
 
 interface AddProductsSelectableItemProps {
   row: CatalogRow;
@@ -29,7 +29,7 @@ export function AddProductsSelectableItem({
           : "border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-zinc-900 hover:bg-slate-50 dark:hover:bg-zinc-800 cursor-pointer"
       }`}
       role="listitem"
-      aria-label={`Seleccionar ${row.sku}`}
+      aria-label={`Seleccionar ${row.nombre}`}
     >
       <div className="pt-0.5">
         <span
@@ -49,16 +49,9 @@ export function AddProductsSelectableItem({
             {row.nombre}
           </p>
           <p className="text-xs text-slate-500 dark:text-slate-300 mt-1 line-clamp-2">
-            {row.sku} · {row.unidad}
+            {row.unidad}
             {row.descripcion ? ` · ${row.descripcion}` : ""}
           </p>
-          <div className="flex items-center gap-2 text-[11px] text-slate-500 dark:text-slate-400 mt-2">
-            <span
-              className="w-2.5 h-2.5 rounded-full border border-slate-200 dark:border-slate-600"
-              style={{ backgroundColor: `#${row.colorHex}` }}
-            />
-            <span>{row.colorNombre}</span>
-          </div>
         </div>
         <div className="flex items-end flex-col gap-1">
           {isAlreadyAdded ? (
@@ -67,7 +60,7 @@ export function AddProductsSelectableItem({
             </span>
           ) : (
             <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-slate-300 font-medium">
-              SKU: {row.sku}
+              ID: {row.id}
             </span>
           )}
           <span className="text-[11px] text-slate-400 whitespace-nowrap">

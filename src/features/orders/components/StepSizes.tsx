@@ -1,9 +1,8 @@
-import type { CatalogRow } from "../hooks/useAddProductsDialog";
+import type { CatalogRow } from "./AddProductDialog";
 import type { Size } from "../../sizes/interfaces/size.interface";
 
 interface StepSizesProps {
   selectedRow: CatalogRow | null;
-  selectedColor: { codigo_hex: string; nombre: string } | null;
   sizes: Size[];
   isLoadingSizes: boolean;
   mergedSizeQuantities: Record<number, number>;
@@ -15,7 +14,6 @@ interface StepSizesProps {
 
 export function StepSizes({
   selectedRow,
-  selectedColor,
   sizes,
   isLoadingSizes,
   mergedSizeQuantities,
@@ -34,7 +32,7 @@ export function StepSizes({
                 {selectedRow.nombre}
               </p>
               <p className="text-xs text-slate-500 dark:text-slate-300">
-                {selectedRow.sku} · {selectedRow.unidad}
+                {selectedRow.unidad}
               </p>
             </div>
             <div className="text-right">
@@ -44,16 +42,6 @@ export function StepSizes({
               </p>
             </div>
           </div>
-          {selectedColor ? (
-            <div className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-300">
-              <span
-                className="w-3 h-3 rounded-full border border-slate-200 dark:border-slate-600"
-                style={{ backgroundColor: `#${selectedColor.codigo_hex}` }}
-                aria-hidden="true"
-              />
-              <span>Color: {selectedColor.nombre}</span>
-            </div>
-          ) : null}
           {selectedRow.descripcion ? (
             <p className="text-xs text-slate-500 dark:text-slate-400">
               {selectedRow.descripcion}

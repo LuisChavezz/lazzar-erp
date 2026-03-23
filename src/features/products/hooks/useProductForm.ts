@@ -23,6 +23,27 @@ interface UseProductFormParams {
 
 type ProductFormField = keyof ProductFormValues;
 
+// Busca el primer campo inválido en orden visual y mueve el viewport al lugar correcto.
+const scrollToFirstValidationError = (formElement: HTMLFormElement, issuePaths: string[]) => {
+  if (issuePaths.length === 0) {
+    return;
+  }
+
+  const normalizedIssuePaths = issuePaths.filter(Boolean);
+  const controls = Array.from(formElement.querySelectorAll<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>("input, select, textarea"))
+    .filter((element) => Boolean(element.name) && !element.disabled && !(element instanceof HTMLInputElement && element.type === "hidden"));
+
+  const firstInvalidControl = controls.find((control) =>
+    normalizedIssuePaths.some((path) => path === control.name || path.startsWith(`${control.name}.`) || control.name.startsWith(`${path}.`))
+  );
+
+  if (firstInvalidControl) {
+    firstInvalidControl.scrollIntoView({ behavior: "smooth", block: "center" });
+    firstInvalidControl.focus({ preventScroll: true });
+    return;
+  }
+};
+
 export function useProductForm({ onSuccess, productToEdit }: UseProductFormParams) {
   // Obtiene la empresa activa para construir payloads de creación y edición.
   const selectedCompany = useWorkspaceStore((state) => state.selectedCompany);
@@ -57,6 +78,7 @@ export function useProductForm({ onSuccess, productToEdit }: UseProductFormParam
       impuesto: 0,
       sat_prodserv: 0,
       sat_unidad: 0,
+      precio_base: 0,
       activo: true,
     }),
     []
@@ -87,6 +109,7 @@ export function useProductForm({ onSuccess, productToEdit }: UseProductFormParam
       impuesto: hasTax ? productToEdit.impuesto : 0,
       sat_prodserv: hasSatProdserv ? productToEdit.sat_prodserv : 0,
       sat_unidad: hasSatUnit ? productToEdit.sat_unidad : 0,
+      precio_base: productToEdit.precio_base ?? 0,
       activo: productToEdit.activo,
     };
   }, [categories, emptyValues, productToEdit, productTypes, satProdservCodes, satUnitCodes, taxes, units]);
@@ -179,14 +202,25 @@ export function useProductForm({ onSuccess, productToEdit }: UseProductFormParam
     }
 
     const nextErrors: Partial<Record<ProductFormField, string>> = {};
+    const issuePaths: string[] = [];
+
     parsed.error.issues.forEach((issue) => {
       const field = issue.path[0] as ProductFormField;
+      issuePaths.push(String(field));
       if (!field || nextErrors[field]) {
         return;
       }
       nextErrors[field] = issue.message;
     });
+
     setClientErrors(nextErrors);
+
+    if (formRef.current) {
+      setTimeout(() => {
+        scrollToFirstValidationError(formRef.current!, issuePaths);
+      }, 0);
+    }
+
     return false;
   };
 

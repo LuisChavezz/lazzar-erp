@@ -281,14 +281,14 @@ export const OrderDetails = ({ order }: OrderDetailsProps) => {
         </div>
         <div className="divide-y divide-slate-100 dark:divide-white/10">
           {items.map((item, index) => (
-            <div key={`${item.sku}-${index}`} className="py-3 flex flex-col gap-2">
+            <div key={`${item.productoId}-${index}`} className="py-3 flex flex-col gap-2">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                 <div>
                   <p className="text-sm font-semibold text-slate-800 dark:text-white">
                     {item.descripcion}
                   </p>
                   <p className="text-xs text-slate-500 dark:text-slate-400 font-mono">
-                    {item.sku} · {item.unidad}
+                    ID: {item.productoId} · {item.unidad}
                   </p>
                 </div>
                 <div className="text-sm font-semibold text-slate-800 dark:text-white">

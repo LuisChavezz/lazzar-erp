@@ -10,6 +10,8 @@ import { Customer } from "../../customers/interfaces/customer.interface";
 import { useCustomers } from "../../customers/hooks/useCustomers";
 import { useSatInfo } from "../../sat/hooks/useSatInfo";
 import { useCurrencies } from "../../currency/hooks/useCurrencies";
+import { useProducts } from "../../products/hooks/useProducts";
+import { useUnitsOfMeasure } from "../../units-of-measure/hooks/useUnitsOfMeasure";
 import type { FormFieldError } from "../../../utils/getFieldError";
 import { orderFormSchema, type OrderFormValues } from "../schema/order.schema";
 import { Order, OrderCreate, OrderItem, type OrderPaymentCondition } from "../interfaces/order.interface";
@@ -17,6 +19,8 @@ import { useWorkspaceStore } from "../../workspace/store/workspace.store";
 import { useCreateOrder } from "./useCreateOrder";
 import { useOrders } from "./useOrders";
 import { useUpdateOrder } from "./useUpdateOrder";
+import { useCreateOrderProductDetail } from "./useCreateOrderProductDetail";
+import { useOrderProductDetails } from "./useOrderProductDetails";
 
 interface UseOrderFormParams {
   orderId?: string;
@@ -425,6 +429,14 @@ export function useOrderForm({ orderId }: UseOrderFormParams) {
   const selectedBranchId = useWorkspaceStore((state) => state.selectedBranch?.id ?? 0);
   const { mutateAsync: createOrderMutation, isPending: isCreatingOrder } = useCreateOrder();
   const { mutateAsync: updateOrderMutation, isPending: isUpdatingOrder } = useUpdateOrder();
+  const { mutateAsync: createOrderProductDetailMutation, isPending: isCreatingDetails } = useCreateOrderProductDetail();
+
+  const orderIdNumber = orderId ? parseInt(orderId, 10) : undefined;
+  const isEditMode = Boolean(orderIdNumber && !isNaN(orderIdNumber));
+  const { orderProductDetails, isOrderProductDetailsLoading } = useOrderProductDetails(orderIdNumber, isEditMode);
+
+  const { products } = useProducts();
+  const { units } = useUnitsOfMeasure();
 
   const userName = session?.user?.name || "Usuario";
   const sellerName = userName;
@@ -436,6 +448,7 @@ export function useOrderForm({ orderId }: UseOrderFormParams) {
   const [isCustomerDialogOpen, setIsCustomerDialogOpen] = useState(false);
   const [isSubmittingForm, setIsSubmittingForm] = useState(false);
   const [selectedCustomerId, setSelectedCustomerId] = useState(0);
+  const [hasPopulatedItems, setHasPopulatedItems] = useState(false);
 
   // Contexto de modo edición/creación y valores base.
   const orderToEdit = useMemo(
@@ -571,6 +584,8 @@ export function useOrderForm({ orderId }: UseOrderFormParams) {
         moneda: parsed.data.moneda,
       };
 
+      let orderId: number;
+
       if (isEditing && orderToEdit) {
         const updatePayload: Order = {
           ...orderToEdit,
@@ -582,10 +597,26 @@ export function useOrderForm({ orderId }: UseOrderFormParams) {
           updated_at: orderToEdit.updated_at,
           fecha_confirmacion: orderToEdit.fecha_confirmacion,
         };
-        await updateOrderMutation(updatePayload);
+        const updatedOrder = await updateOrderMutation(updatePayload);
+        orderId = updatedOrder.id;
       } else {
-        await createOrderMutation(orderCreatePayload);
+        const createdOrder = await createOrderMutation(orderCreatePayload);
+        orderId = createdOrder.id;
       }
+
+      if (orderId && parsed.data.items.length > 0) {
+        const detailPromises = parsed.data.items.map((item) => {
+          return createOrderProductDetailMutation({
+            pedido: orderId,
+            producto: item.productoId,
+            precio_unitario: String(item.precio.toFixed(2)),
+            costo_unitario: "0.00",
+            subtotal_linea: String(item.importe.toFixed(2)),
+          });
+        });
+        await Promise.allSettled(detailPromises);
+      }
+
       form.reset(emptyValues);
       router.push("/sales/orders");
     },
@@ -598,6 +629,33 @@ export function useOrderForm({ orderId }: UseOrderFormParams) {
     }
     form.reset(normalizedEditValues);
   }, [form, isEditing, normalizedEditValues]);
+
+  // Effect to populate items from orderProductDetails when in edit mode
+  useEffect(() => {
+    if (isEditing && orderProductDetails.length > 0 && products.length > 0 && units.length > 0 && !hasPopulatedItems) {
+      const unitsById = new Map(units.map((u) => [u.id, u]));
+      
+      const itemsFromDetails: OrderItem[] = orderProductDetails.map((detail) => {
+        const product = products.find((p) => p.id === detail.producto);
+        const unit = product ? unitsById.get(product.unidad_medida) : null;
+        
+        const precio = Number(detail.precio_unitario) || 0;
+        const cantidad = 0; // Por el momento mostrar 0 por defecto
+        const importe = 0; // Importe es 0 porque cantidad es 0
+        return {
+          productoId: detail.producto,
+          descripcion: product?.nombre || "Producto no encontrado",
+          unidad: unit?.clave || "PZA",
+          cantidad,
+          precio,
+          descuento: 0,
+          importe,
+        };
+      });
+      form.setFieldValue("items", itemsFromDetails);
+      setHasPopulatedItems(true);
+    }
+  }, [isEditing, orderProductDetails, products, units, form, hasPopulatedItems]);
 
   // Snapshot reactivo de valores del formulario para derivados y sincronizaciones.
   const values = useStore(form.baseStore, (state) => state.values);
@@ -708,7 +766,7 @@ export function useOrderForm({ orderId }: UseOrderFormParams) {
   const saldoPendiente = Number((granTotal - (Number(values.anticipo) || 0)).toFixed(2));
 
   const fields = watchedItems.map((item: OrderItem, index: number) => ({
-    id: `${item.sku || "item"}-${index}`,
+    id: `${item.productoId || "item"}-${index}`,
   }));
 
   // API estilo field-array para tabla de productos.
@@ -853,7 +911,7 @@ export function useOrderForm({ orderId }: UseOrderFormParams) {
     router.push("/sales/orders");
   };
 
-  const isPending = isSubmittingForm || form.state.isSubmitting || isCreatingOrder || isUpdatingOrder;
+  const isPending = isSubmittingForm || form.state.isSubmitting || isCreatingOrder || isUpdatingOrder || isCreatingDetails;
   const itemErrors = getError("items");
   const docRelacionadoError = getError("docRelacionado");
   const tipoDocumentoError = getError("tipoDocumento");
@@ -938,6 +996,7 @@ export function useOrderForm({ orderId }: UseOrderFormParams) {
     isCustomersLoading,
     isSatInfoLoading,
     isCurrenciesLoading,
+    isOrderProductDetailsLoading,
     showForm,
     handleFormSubmit,
     handleReset,

@@ -1,3 +1,5 @@
+import { Product } from "../../products/interfaces/product.interface";
+
 export type OrderStatus =
   | "Pendiente"
   | "Parcial"
@@ -12,7 +14,7 @@ export type OrderPaymentCondition =
   | "otra_cantidad";
 
 export interface OrderItem {
-  sku: string;
+  productoId: number;
   descripcion: string;
   unidad: string;
   cantidad: number;
@@ -210,4 +212,12 @@ export interface OrderCreate {
   sucursal: number;
   cliente: number;
   moneda: number;
+}
+
+export interface OrderProductDetailCreate {
+  pedido: Order["id"];
+  producto: Product["id"];
+  precio_unitario: string;
+  costo_unitario: string;
+  subtotal_linea: string;
 }

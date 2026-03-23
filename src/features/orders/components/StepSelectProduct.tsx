@@ -1,6 +1,6 @@
 import { FormInput } from "@/src/components/FormInput";
 import { AddProductsSelectableItem } from "./AddProductsSelectableItem";
-import type { CatalogRow } from "../hooks/useAddProductsDialog";
+import type { CatalogRow } from "./AddProductDialog";
 
 interface StepSelectProductProps {
   search: string;
@@ -28,7 +28,7 @@ export function StepSelectProduct({
       >
         <div className="flex-1">
           <FormInput
-            placeholder="Buscar por SKU, nombre o descripción..."
+            placeholder="Buscar por nombre o descripción..."
             value={search}
             onChange={(event) => onSearchChange(event.target.value)}
             aria-label="Buscar productos"
@@ -43,7 +43,7 @@ export function StepSelectProduct({
       >
         {rows.length === 0 ? (
           <p className="text-sm text-slate-500 dark:text-slate-400">
-            No hay productos disponibles. Revisa Configuración &gt; Productos y Variantes.
+            No hay productos disponibles. Revisa Configuración &gt; Productos.
           </p>
         ) : filteredRows.length === 0 ? (
           <p className="text-sm text-slate-500 dark:text-slate-400">

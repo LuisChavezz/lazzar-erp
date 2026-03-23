@@ -36,7 +36,7 @@ const embroiderySchema = z.object({
 
 export const orderItemSchema = z
   .object({
-  sku: z.string().min(1, "Requerido"),
+  productoId: z.coerce.number().min(1, "Requerido"),
   descripcion: z.string().min(1, "Requerido"),
   unidad: z.string().min(1, "Requerido"),
   cantidad: z

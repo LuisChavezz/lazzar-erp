@@ -17,6 +17,7 @@ export interface Product {
   nombre: string;
   descripcion: string;
   tipo: ProductType["codigo"];
+  precio_base: number;
   activo: boolean;
   created_at: string;
   updated_at: string;
@@ -32,5 +33,6 @@ export interface ProductCreate {
   nombre: string;
   descripcion: string;
   tipo: ProductType["codigo"];
+  precio_base: number;
   activo: boolean;
 }

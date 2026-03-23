@@ -153,6 +153,32 @@ export default function ProductForm({ onSuccess, productToEdit }: ProductFormPro
                 )}
               </form.Field>
 
+              <div className="group/field">
+                <form.Field name="precio_base">
+                  {(field) => (
+                    <FormInput
+                      label="Precio Base"
+                      type="number"
+                      step="0.01"
+                      placeholder="0.00"
+                      name={field.name}
+                      value={field.state.value || ""}
+                      onChange={(event) => {
+                        const value = event.target.value;
+                        field.handleChange(value === "" ? 0 : Number(value));
+                        clearFieldErrors("precio_base");
+                      }}
+                      onBlur={() => {
+                        field.handleBlur();
+                        validateField("precio_base", field.state.value);
+                      }}
+                      error={getError("precio_base")}
+                      className="dark:scheme-dark"
+                    />
+                  )}
+                </form.Field>
+              </div>
+
               <div className="md:col-span-2">
                 <form.Field name="descripcion">
                   {(field) => (

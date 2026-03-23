@@ -3,7 +3,7 @@ import { Dialog, Flex, Button } from '@radix-ui/themes';
 import React from 'react';
 
 interface ConfirmDialogProps {
-  trigger: React.ReactNode;
+  trigger?: React.ReactNode;
   title: string;
   description: string;
   onConfirm: () => void;
@@ -11,6 +11,8 @@ interface ConfirmDialogProps {
   cancelText?: string;
   maxWidth?: string;
   confirmColor?: "red" | "blue" | "green" | "gray" | "orange" | "amber" | "yellow" | "lime" | "cyan" | "violet" | "purple" | "pink" | "crimson" | "plum" | "tomato" | "teal" | "gold" | "bronze" | "brown" | "grass" | "mint" | "sky" | "jade" | "iris" | "ruby";
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
 export function ConfirmDialog({
@@ -21,13 +23,17 @@ export function ConfirmDialog({
   confirmText = "Confirmar",
   cancelText = "Cancelar",
   maxWidth = "450px",
-  confirmColor = "red"
+  confirmColor = "red",
+  open,
+  onOpenChange
 }: ConfirmDialogProps) {
   return (
-    <Dialog.Root>
-      <Dialog.Trigger>
-        {trigger}
-      </Dialog.Trigger>
+    <Dialog.Root open={open} onOpenChange={onOpenChange}>
+      {trigger && (
+        <Dialog.Trigger>
+          {trigger}
+        </Dialog.Trigger>
+      )}
 
       <Dialog.Content maxWidth={maxWidth} className="bg-white! dark:bg-zinc-900! dark:text-white!">
         <Dialog.Title>{title}</Dialog.Title>

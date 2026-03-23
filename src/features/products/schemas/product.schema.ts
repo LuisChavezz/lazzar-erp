@@ -9,6 +9,10 @@ export const ProductFormSchema = z.object({
   impuesto: z.coerce.number().min(1, "El impuesto es requerido"),
   sat_prodserv: z.coerce.number().min(1, "La clave SAT prod/serv es requerida"),
   sat_unidad: z.coerce.number().min(1, "La clave SAT unidad es requerida"),
+  precio_base: z.coerce
+    .number()
+    .positive("El precio base debe ser mayor a cero")
+    .refine((n) => /^\d+(\.\d{1,2})?$/.test(n.toString()), "Máximo 2 decimales"),
   activo: z.boolean(),
 });
 

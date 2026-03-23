@@ -45,6 +45,7 @@ export default function OrderForm({ orderId }: OrderFormProps) {
     isCustomersLoading,
     isSatInfoLoading,
     isCurrenciesLoading,
+    isOrderProductDetailsLoading,
     showForm,
     handleFormSubmit,
     handleReset,
@@ -83,7 +84,7 @@ export default function OrderForm({ orderId }: OrderFormProps) {
     "h-4 w-4 shrink-0 rounded border-slate-300 text-sky-600 focus:ring-sky-500";
 
   // Estado de carga del formulario
-  const isFormLoading = isCustomersLoading || isSatInfoLoading || isCurrenciesLoading || !showForm;
+  const isFormLoading = isCustomersLoading || isSatInfoLoading || isCurrenciesLoading || isOrderProductDetailsLoading || !showForm;
   if (isFormLoading) {
     return (
       <div className="w-full pt-2">
@@ -1100,7 +1101,7 @@ export default function OrderForm({ orderId }: OrderFormProps) {
                   #
                 </th>
                 <th className="p-2 text-[10px] font-bold text-slate-400 uppercase tracking-wider w-24">
-                  Código
+                  ID
                 </th>
                 <th className="p-2 text-[10px] font-bold text-slate-400 uppercase tracking-wider min-w-40">
                   Descripción
@@ -1141,7 +1142,7 @@ export default function OrderForm({ orderId }: OrderFormProps) {
                 </tr>
               ) : (
                 fields.map((field: { id: string }, index: number) => {
-                  const skuError = getFieldError(getError(`items.${index}.sku`));
+                  const productoIdError = getFieldError(getError(`items.${index}.productoId`));
                   const descripcionError = getFieldError(getError(`items.${index}.descripcion`));
                   const unidadError = getFieldError(getError(`items.${index}.unidad`));
                   const cantidadError = getFieldError(getError(`items.${index}.cantidad`));
@@ -1178,13 +1179,13 @@ export default function OrderForm({ orderId }: OrderFormProps) {
                       <td className="p-2">
                         <div className="space-y-1">
                           <div
-                            className={`text-xs font-medium text-slate-700 dark:text-slate-200 ${skuError ? "text-rose-600 dark:text-rose-400" : ""}`}
+                            className={`text-xs font-medium text-slate-700 dark:text-slate-200 ${productoIdError ? "text-rose-600 dark:text-rose-400" : ""}`}
                           >
-                            {currentItem?.sku || "—"}
+                            {currentItem?.productoId || "—"}
                           </div>
-                          {skuError && (
+                          {productoIdError && (
                             <p className="text-[10px] text-rose-600 dark:text-rose-400">
-                              {skuError.message}
+                              {productoIdError.message}
                             </p>
                           )}
                         </div>

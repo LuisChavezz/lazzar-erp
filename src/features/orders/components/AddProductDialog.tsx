@@ -5,18 +5,15 @@ import { MainDialog } from "@/src/components/MainDialog";
 import { OrderFormValues } from "../schema/order.schema";
 import { useProducts } from "../../products/hooks/useProducts";
 import { useUnitsOfMeasure } from "../../units-of-measure/hooks/useUnitsOfMeasure";
-import { useColors } from "../../colors/hooks/useColors";
 import { useSizes } from "../../sizes/hooks/useSizes";
 import { StepSelectProduct } from "./StepSelectProduct";
 import { StepSizes } from "./StepSizes";
 import { StepEmbroidery, type EmbroiderySpecForm } from "./StepEmbroidery";
 import type { CatalogRow as BaseCatalogRow } from "../hooks/useAddProductsDialog";
-import { useProductVariants } from "../../product-variants/hooks/useProductVariants";
 
 type OrderItem = OrderFormValues["items"][number];
 
-interface CatalogRow extends BaseCatalogRow {
-  colorId: number;
+export interface CatalogRow extends BaseCatalogRow {
   productoId: number;
 }
 
@@ -57,9 +54,7 @@ export function AddProductDialog({
   startStep = "select",
 }: AddProductDialogProps) {
   const { products } = useProducts();
-  const { productVariants } = useProductVariants();
   const { units } = useUnitsOfMeasure();
-  const { colors } = useColors();
   const { sizes, isLoading: isLoadingSizes } = useSizes();
 
   const [search, setSearch] = useState("");
@@ -115,49 +110,35 @@ export function AddProductDialog({
   };
 
   const rows = useMemo<CatalogRow[]>(() => {
-    const productsById = new Map(products.map((p) => [p.id, p]));
     const unitsById = new Map(units.map((u) => [u.id, u]));
-    const colorsById = new Map(colors.map((c) => [c.id, c]));
 
-    return (productVariants || [])
-      .map((variant) => {
-        const product = productsById.get(variant.producto);
-        if (!product) return null;
+    return (products || [])
+      .map((product) => {
         const unit = unitsById.get(product.unidad_medida);
-        const precio = Number(variant.precio_base);
-        const color = colorsById.get(variant.color);
+        const precio = Number(product.precio_base);
         return {
-          id: variant.id,
-          sku: variant.sku ?? "",
+          id: product.id,
           nombre: product.nombre ?? "",
           descripcion: product.descripcion ?? "",
           unidad: unit?.clave ?? "PZA",
           precio: Number.isFinite(precio) ? precio : 0,
-          isActive: Boolean(variant.activo) && Boolean(product.activo),
-          colorNombre: color?.nombre ?? "Sin color",
-          colorHex: color?.codigo_hex ?? "FFFFFF",
-          colorId: variant.color,
-          productoId: variant.producto,
+          isActive: Boolean(product.activo),
+          productoId: product.id,
         } satisfies CatalogRow;
       })
       .filter((r): r is CatalogRow => Boolean(r))
       .filter((r) => r.isActive)
-      .sort((a, b) => a.sku.localeCompare(b.sku, "es"));
-  }, [productVariants, products, units, colors]);
+      .sort((a, b) => a.nombre.localeCompare(b.nombre, "es"));
+  }, [products, units]);
 
   const filteredRows = useMemo(() => {
     const query = search.trim().toLowerCase();
     if (!query) return rows;
     return rows.filter((r) => {
-      const haystack = `${r.sku} ${r.nombre} ${r.descripcion} ${r.unidad}`.toLowerCase();
+      const haystack = `${r.nombre} ${r.descripcion} ${r.unidad}`.toLowerCase();
       return haystack.includes(query);
     });
   }, [rows, search]);
-
-  const colorLookup = useMemo(
-    () => new Map(colors.map((color) => [color.id, color])),
-    [colors]
-  );
 
   const handleSelectRow = (row: BaseCatalogRow) => {
     const fullRow = rows.find((item) => item.id === row.id);
@@ -252,8 +233,8 @@ export function AddProductDialog({
   const selectedRow =
     selectedRowId !== null
       ? rows.find((row) => row.id === selectedRowId) ?? null
-      : initialItem?.sku
-      ? rows.find((row) => row.sku === initialItem.sku) ?? null
+      : initialItem?.productoId
+      ? rows.find((row) => row.productoId === initialItem.productoId) ?? null
       : null;
 
   const validateEmbroidery = () => {
@@ -334,7 +315,7 @@ export function AddProductDialog({
           }
         : undefined;
     const item: OrderItem = {
-      sku: isEditing ? initialItem?.sku ?? selectedRow.sku : selectedRow.sku,
+      productoId: isEditing ? initialItem?.productoId ?? selectedRow.productoId : selectedRow.productoId,
       descripcion: isEditing
         ? initialItem?.descripcion ?? selectedRow.nombre
         : selectedRow.nombre,
@@ -358,7 +339,6 @@ export function AddProductDialog({
     handleOpenChange(false);
   };
 
-  const selectedColor = selectedRow ? colorLookup.get(selectedRow.colorId) ?? null : null;
   const canProceed = Boolean(selectedRow);
   const canAdd = totalCantidad > 0;
   const isEditing = Boolean(onUpdateItem && initialItem);
@@ -452,7 +432,6 @@ export function AddProductDialog({
       ) : step === "sizes" ? (
         <StepSizes
           selectedRow={selectedRow}
-          selectedColor={selectedColor}
           sizes={sizes}
           isLoadingSizes={isLoadingSizes}
           mergedSizeQuantities={mergedSizeQuantities}
