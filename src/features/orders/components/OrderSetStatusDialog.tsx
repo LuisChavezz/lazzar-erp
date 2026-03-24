@@ -171,6 +171,7 @@ export function OrderSetStatusDialog({
             onChange={(e) => setSearchTerm(e.target.value)}
             className="block w-full pl-10 pr-10 py-2 border border-slate-200 dark:border-white/10 rounded-xl leading-5 bg-white dark:bg-white/5 text-slate-900 dark:text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-sky-500/50 focus:border-sky-500 sm:text-sm transition-shadow"
             placeholder="Buscar por folio, cliente o fecha"
+            aria-label="Buscar pedidos por folio, cliente o fecha"
           />
           {searchTerm.length > 0 && (
             <button

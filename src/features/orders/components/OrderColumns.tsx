@@ -2,6 +2,7 @@
 
 import { ColumnDef } from "@tanstack/react-table";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Order } from "../interfaces/order.interface";
 import { ActionMenu, ActionMenuItem } from "@/src/components/ActionMenu";
 import { MainDialog } from "@/src/components/MainDialog";
@@ -24,6 +25,7 @@ const statusDialogColors: Record<number, "sky" | "emerald" | "amber" | "rose"> =
 
 const ActionsCell = ({ order }: { order: Order }) => {
   const [isViewOpen, setIsViewOpen] = useState(false);
+  const router = useRouter();
   const orderId = order.id;
   const items: ActionMenuItem[] = [
     {
@@ -35,7 +37,7 @@ const ActionsCell = ({ order }: { order: Order }) => {
       label: "Editar",
       icon: EditIcon,
       onSelect: () => {
-        window.location.href = `/sales/orders/edit/${orderId}`;
+        router.push(`/sales/orders/edit/${orderId}`);
       },
     },
     {
@@ -53,20 +55,22 @@ const ActionsCell = ({ order }: { order: Order }) => {
   return (
     <div className="flex items-center justify-center">
       <ActionMenu items={items} ariaLabel="Acciones de pedido" />
-      <MainDialog
-        open={isViewOpen}
-        onOpenChange={setIsViewOpen}
-        maxWidth="1000px"
-        title={
-          <DialogHeader
-            title={`Detalles del pedido #${order.id}`}
-            subtitle={order.persona_pagos}
-            statusColor={statusDialogColors[order.estatus] ?? "sky"}
-          />
-        }
-      >
-        <OrderDetails order={order} />
-      </MainDialog>
+      {isViewOpen && (
+        <MainDialog
+          open={isViewOpen}
+          onOpenChange={setIsViewOpen}
+          maxWidth="1000px"
+          title={
+            <DialogHeader
+              title={`Detalles del pedido #${order.id}`}
+              subtitle={order.persona_pagos}
+              statusColor={statusDialogColors[order.estatus] ?? "sky"}
+            />
+          }
+        >
+          <OrderDetails order={order} />
+        </MainDialog>
+      )}
     </div>
   );
 };

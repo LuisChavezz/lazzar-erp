@@ -128,6 +128,8 @@ export const OrderFiltersDialog = ({
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <div className="rounded-2xl border border-slate-100 dark:border-slate-800 bg-white dark:bg-white/5 p-4">
             <FormSelect
+              id="personaPagos"
+              name="personaPagos"
               label="Contacto de pago"
               value={localValue.personaPagos}
               onChange={(event) => setLocalValue((prev) => ({ ...prev, personaPagos: event.target.value }))}
@@ -139,6 +141,8 @@ export const OrderFiltersDialog = ({
             <div className="text-sm font-semibold text-slate-700 dark:text-slate-200 mb-3">Rango de fechas</div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <FormInput
+                id="dateFrom"
+                name="dateFrom"
                 label="Desde"
                 type="date"
                 value={localValue.dateFrom}
@@ -146,6 +150,8 @@ export const OrderFiltersDialog = ({
                 className="dark:scheme-dark"
               />
               <FormInput
+                id="dateTo"
+                name="dateTo"
                 label="Hasta"
                 type="date"
                 value={localValue.dateTo}
@@ -160,6 +166,8 @@ export const OrderFiltersDialog = ({
           <div className="text-sm font-semibold text-slate-700 dark:text-slate-200 mb-3">Monto total</div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <FormInput
+              id="minAmount"
+              name="minAmount"
               label="Mayor que"
               type="number"
               min="0"
@@ -168,6 +176,8 @@ export const OrderFiltersDialog = ({
               onChange={(event) => setLocalValue((prev) => ({ ...prev, minAmount: event.target.value }))}
             />
             <FormInput
+              id="maxAmount"
+              name="maxAmount"
               label="Menor que"
               type="number"
               min="0"

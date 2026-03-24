@@ -1,9 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, lazy, Suspense } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { OrdenesIcon } from "@/src/components/Icons";
-import { OrderSetStatusDialog } from "./OrderSetStatusDialog";
+
+const OrderSetStatusDialog = lazy(() =>
+  import("./OrderSetStatusDialog").then((mod) => ({ default: mod.OrderSetStatusDialog }))
+);
 
 export const OrderActions = () => {
 
@@ -74,10 +77,14 @@ export const OrderActions = () => {
         <OrdenesIcon className="w-4 h-4" />
         {isOverdueActive ? "Ver todos" : "Ver vencidos"}
       </button>
-      <OrderSetStatusDialog
-        open={isStatusDialogOpen}
-        onOpenChange={setIsStatusDialogOpen}
-      />
+      <Suspense fallback={null}>
+        {isStatusDialogOpen && (
+          <OrderSetStatusDialog
+            open={isStatusDialogOpen}
+            onOpenChange={setIsStatusDialogOpen}
+          />
+        )}
+      </Suspense>
     </div>
   );
 };
