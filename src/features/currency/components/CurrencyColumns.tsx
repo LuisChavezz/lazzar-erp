@@ -8,6 +8,7 @@ import { ConfirmDialog } from "../../../components/ConfirmDialog";
 import { useDeleteCurrency } from "../hooks/useDeleteCurrency";
 import CurrencyForm from "./CurrencyForm";
 import { useState } from "react";
+import { ActionMenu, ActionMenuItem } from "@/src/components/ActionMenu";
 
 const ActionsCell = ({
   currency,
@@ -19,11 +20,30 @@ const ActionsCell = ({
   canDelete: boolean;
 }) => {
   const [open, setOpen] = useState(false);
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const { mutate: deleteCurrency, isPending: isDeleting } = useDeleteCurrency();
 
+  const menuItems: ActionMenuItem[] = [];
+  if (canEdit) {
+    menuItems.push({
+      label: "Editar",
+      icon: EditIcon,
+      onSelect: () => setOpen(true),
+    });
+  }
+  if (canDelete) {
+    menuItems.push({
+      label: "Eliminar",
+      icon: DeleteIcon,
+      onSelect: () => setIsDeleteOpen(true),
+      disabled: isDeleting,
+    });
+  }
+
   return (
-    <div className="flex justify-center gap-2">
-      {canEdit ? (
+    <div className="flex justify-center">
+      <ActionMenu items={menuItems} />
+      {canEdit && (
         <MainDialog
           open={open}
           onOpenChange={setOpen}
@@ -46,40 +66,28 @@ const ActionsCell = ({
               </div>
             </div>
           }
-          trigger={
-            <button
-              className="p-1 cursor-pointer text-slate-400 hover:text-blue-600 transition-colors"
-              title="Editar"
-            >
-              <EditIcon className="w-5 h-5" />
-            </button>
-          }
         >
           <CurrencyForm
             currencyToEdit={currency}
             onSuccess={() => setOpen(false)}
           />
         </MainDialog>
-      ) : null}
+      )}
 
-      {canDelete ? (
+      {canDelete && (
         <ConfirmDialog
-          trigger={
-            <button
-              className="p-1 cursor-pointer text-slate-400 hover:text-red-600 transition-colors"
-              title="Eliminar"
-              disabled={isDeleting}
-            >
-              <DeleteIcon className="w-5 h-5" />
-            </button>
-          }
+          open={isDeleteOpen}
+          onOpenChange={setIsDeleteOpen}
           title="Eliminar Moneda"
           description={`¿Estás seguro de que deseas eliminar la moneda "${currency.nombre}"? Esta acción no se puede deshacer.`}
           confirmText={isDeleting ? "Eliminando..." : "Eliminar"}
           confirmColor="red"
-          onConfirm={() => deleteCurrency(currency.codigo_iso)}
+          onConfirm={() => {
+            deleteCurrency(currency.codigo_iso);
+            setIsDeleteOpen(false);
+          }}
         />
-      ) : null}
+      )}
     </div>
   );
 };

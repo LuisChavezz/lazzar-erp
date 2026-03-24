@@ -10,6 +10,7 @@ import { useState } from "react";
 import UserForm from "./UserForm";
 import { useDeleteUser } from "../hooks/useDeleteUser";
 import { capitalize } from "@/src/utils/capitalize";
+import { ActionMenu, ActionMenuItem } from "@/src/components/ActionMenu";
 
 const ActionsCell = ({
   user,
@@ -24,11 +25,36 @@ const ActionsCell = ({
 }) => {
   const [isViewOpen, setIsViewOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const { mutate: deleteUser } = useDeleteUser();
 
+  const menuItems: ActionMenuItem[] = [];
+  if (canView) {
+    menuItems.push({
+      label: "Ver Detalles",
+      icon: ViewIcon,
+      onSelect: () => setIsViewOpen(true),
+    });
+  }
+  if (canEdit) {
+    menuItems.push({
+      label: "Editar",
+      icon: EditIcon,
+      onSelect: () => setIsEditOpen(true),
+    });
+  }
+  if (canDelete) {
+    menuItems.push({
+      label: "Eliminar",
+      icon: DeleteIcon,
+      onSelect: () => setIsDeleteOpen(true),
+    });
+  }
+
   return (
-    <div className="flex items-center justify-center gap-2">
-      {canView ? (
+    <div className="flex justify-center">
+      <ActionMenu items={menuItems} />
+      {canView && (
         <MainDialog
           open={isViewOpen}
           onOpenChange={setIsViewOpen}
@@ -51,20 +77,12 @@ const ActionsCell = ({
               </div>
             </div>
           }
-          trigger={
-            <button
-              className="p-1 cursor-pointer text-slate-400 hover:text-sky-600 transition-colors"
-              title="Ver Detalles"
-            >
-              <ViewIcon className="w-5 h-5" />
-            </button>
-          }
         >
           <UserDetails user={user} />
         </MainDialog>
-      ) : null}
+      )}
 
-      {canEdit ? (
+      {canEdit && (
         <MainDialog
           open={isEditOpen}
           onOpenChange={setIsEditOpen}
@@ -87,36 +105,25 @@ const ActionsCell = ({
               </div>
             </div>
           }
-          trigger={
-            <button
-              className="p-1 cursor-pointer text-slate-400 hover:text-sky-600 transition-colors"
-              title="Editar"
-            >
-              <EditIcon className="w-5 h-5" />
-            </button>
-          }
         >
           <UserForm onSuccess={() => setIsEditOpen(false)} defaultValues={user} />
         </MainDialog>
-      ) : null}
+      )}
 
-      {canDelete ? (
+      {canDelete && (
         <ConfirmDialog
+          open={isDeleteOpen}
+          onOpenChange={setIsDeleteOpen}
           title="Eliminar Usuario"
           description={`¿Estás seguro de que deseas eliminar al usuario "${user.username}"? Esta acción no se puede deshacer.`}
-          onConfirm={() => deleteUser(user.id)}
+          onConfirm={() => {
+            deleteUser(user.id);
+            setIsDeleteOpen(false);
+          }}
           confirmText="Eliminar"
           confirmColor="red"
-          trigger={
-            <button
-              className="p-1 cursor-pointer text-slate-400 hover:text-red-600 transition-colors"
-              title="Eliminar"
-            >
-              <DeleteIcon className="w-5 h-5" />
-            </button>
-          }
         />
-      ) : null}
+      )}
     </div>
   );
 };

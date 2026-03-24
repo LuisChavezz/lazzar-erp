@@ -5,6 +5,8 @@ import { EditIcon, DeleteIcon } from "../../../components/Icons";
 import { ProductVariant } from "../interfaces/product-variant.interface";
 import { ConfirmDialog } from "../../../components/ConfirmDialog";
 import { useDeleteProductVariant } from "../hooks/useDeleteProductVariant";
+import { ActionMenu, ActionMenuItem } from "@/src/components/ActionMenu";
+import { useState } from "react";
 
 const columnHelper = createColumnHelper<ProductVariant>();
 
@@ -26,35 +28,40 @@ const ActionsCell = ({
   canDelete: boolean;
 }) => {
   const { mutate: deleteProductVariant } = useDeleteProductVariant();
-  const handleDelete = () => deleteProductVariant(row.original.id);
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+
+  const menuItems: ActionMenuItem[] = [];
+  if (canEdit) {
+    menuItems.push({
+      label: "Editar",
+      icon: EditIcon,
+      onSelect: () => onEdit(row.original),
+    });
+  }
+  if (canDelete) {
+    menuItems.push({
+      label: "Eliminar",
+      icon: DeleteIcon,
+      onSelect: () => setIsDeleteOpen(true),
+    });
+  }
 
   return (
-    <div className="flex items-center justify-center gap-2">
-      {canEdit ? (
-        <button
-          className="p-1 cursor-pointer text-slate-400 hover:text-blue-600 transition-colors"
-          title="Editar"
-          onClick={() => onEdit(row.original)}
-        >
-          <EditIcon className="w-5 h-5" />
-        </button>
-      ) : null}
-      {canDelete ? (
+    <div className="flex justify-center">
+      <ActionMenu items={menuItems} />
+      {canDelete && (
         <ConfirmDialog
+          open={isDeleteOpen}
+          onOpenChange={setIsDeleteOpen}
           title="Eliminar Variante"
           description="¿Estás seguro de que deseas eliminar esta variante? Esta acción no se puede deshacer."
-          onConfirm={handleDelete}
+          onConfirm={() => {
+            deleteProductVariant(row.original.id);
+            setIsDeleteOpen(false);
+          }}
           confirmColor="red"
-          trigger={
-            <button
-              className="p-1 cursor-pointer text-slate-400 hover:text-red-600 transition-colors"
-              title="Eliminar"
-            >
-              <DeleteIcon className="w-5 h-5" />
-            </button>
-          }
         />
-      ) : null}
+      )}
     </div>
   );
 };

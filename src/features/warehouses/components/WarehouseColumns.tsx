@@ -5,6 +5,8 @@ import { Branch } from "../../branches/interfaces/branch.interface";
 import { ConfirmDialog } from "../../../components/ConfirmDialog";
 import { useDeleteWarehouse } from "../hooks/useDeleteWarehouse";
 import { capitalize } from "@/src/utils/capitalize";
+import { ActionMenu, ActionMenuItem } from "@/src/components/ActionMenu";
+import { useState } from "react";
 
 const columnHelper = createColumnHelper<Warehouse>();
 
@@ -21,36 +23,42 @@ const ActionsCell = ({
   canDelete: boolean;
 }) => {
   const { mutate: deleteWarehouse, isPending } = useDeleteWarehouse();
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+
+  const menuItems: ActionMenuItem[] = [];
+  if (canEdit) {
+    menuItems.push({
+      label: "Editar",
+      icon: EditIcon,
+      onSelect: () => onEdit(row.original),
+    });
+  }
+  if (canDelete) {
+    menuItems.push({
+      label: "Eliminar",
+      icon: DeleteIcon,
+      onSelect: () => setIsDeleteOpen(true),
+      disabled: isPending,
+    });
+  }
 
   return (
-    <div className="flex items-center justify-center gap-2">
-      {canEdit ? (
-        <button
-          className="p-1 cursor-pointer text-slate-400 hover:text-blue-600 transition-colors"
-          title="Editar"
-          onClick={() => onEdit(row.original)}
-        >
-          <EditIcon className="w-5 h-5" />
-        </button>
-      ) : null}
-      {canDelete ? (
+    <div className="flex justify-center">
+      <ActionMenu items={menuItems} />
+      {canDelete && (
         <ConfirmDialog
+          open={isDeleteOpen}
+          onOpenChange={setIsDeleteOpen}
           title="Eliminar Almacén"
           description="¿Estás seguro de que deseas eliminar este almacén? Esta acción no se puede deshacer."
           confirmText={isPending ? "Eliminando..." : "Eliminar"}
-          onConfirm={() => deleteWarehouse(row.original.id_almacen)}
+          onConfirm={() => {
+            deleteWarehouse(row.original.id_almacen);
+            setIsDeleteOpen(false);
+          }}
           confirmColor="red"
-          trigger={
-            <button
-              className="p-1 cursor-pointer text-slate-400 hover:text-red-600 transition-colors"
-              title="Eliminar"
-              disabled={isPending}
-            >
-              <DeleteIcon className="w-5 h-5" />
-            </button>
-          }
         />
-      ) : null}
+      )}
     </div>
   );
 };

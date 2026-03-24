@@ -7,13 +7,29 @@ import { EditIcon, ViewIcon } from "../../../components/Icons";
 import { MainDialog } from "../../../components/MainDialog";
 import { DialogHeader } from "../../../components/DialogHeader";
 import { InvoiceDetails } from "./InvoiceDetails";
-
+import { ActionMenu, ActionMenuItem } from "@/src/components/ActionMenu";
 
 const ActionsCell = ({ invoice }: { invoice: Invoice }) => {
   const [isViewOpen, setIsViewOpen] = useState(false);
 
+  const menuItems: ActionMenuItem[] = [
+    {
+      label: "Ver Detalles",
+      icon: ViewIcon,
+      onSelect: () => setIsViewOpen(true),
+    },
+    {
+      label: "Editar",
+      icon: EditIcon,
+      onSelect: () => {
+        // Editar no implementado
+      },
+    },
+  ];
+
   return (
-    <div className="flex items-center justify-center gap-2">
+    <div className="flex justify-center">
+      <ActionMenu items={menuItems} />
       <MainDialog
         open={isViewOpen}
         onOpenChange={setIsViewOpen}
@@ -25,23 +41,9 @@ const ActionsCell = ({ invoice }: { invoice: Invoice }) => {
             statusColor="sky"
           />
         }
-        trigger={
-          <button
-            className="p-1 cursor-pointer text-slate-400 hover:text-sky-600 transition-colors"
-            title="Ver Detalles"
-          >
-            <ViewIcon className="w-5 h-5" />
-          </button>
-        }
       >
         <InvoiceDetails invoice={invoice} />
       </MainDialog>
-      <button
-        className="p-1 cursor-pointer text-slate-400 hover:text-sky-600 transition-colors"
-        title="Editar"
-      >
-        <EditIcon className="w-5 h-5" />
-      </button>
     </div>
   );
 };

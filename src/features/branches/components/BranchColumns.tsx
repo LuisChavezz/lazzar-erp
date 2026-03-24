@@ -8,6 +8,8 @@ import { BranchDetails } from "./BranchDetails";
 import { useState } from "react";
 import BranchForm from "./BranchForm";
 
+import { ActionMenu, ActionMenuItem } from "@/src/components/ActionMenu";
+
 const ActionsCell = ({
   branch,
   canView,
@@ -20,9 +22,26 @@ const ActionsCell = ({
   const [isViewOpen, setIsViewOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
 
+  const menuItems: ActionMenuItem[] = [];
+  if (canView) {
+    menuItems.push({
+      label: "Ver Detalles",
+      icon: ViewIcon,
+      onSelect: () => setIsViewOpen(true),
+    });
+  }
+  if (canEdit) {
+    menuItems.push({
+      label: "Editar",
+      icon: EditIcon,
+      onSelect: () => setIsEditOpen(true),
+    });
+  }
+
   return (
-    <div className="flex items-center justify-center gap-2">
-      {canView ? (
+    <div className="flex justify-center">
+      <ActionMenu items={menuItems} />
+      {canView && (
         <MainDialog
           open={isViewOpen}
           onOpenChange={setIsViewOpen}
@@ -45,20 +64,12 @@ const ActionsCell = ({
               </div>
             </div>
           }
-          trigger={
-            <button
-              className="p-1 cursor-pointer text-slate-400 hover:text-sky-600 transition-colors"
-              title="Ver Detalles"
-            >
-              <ViewIcon className="w-5 h-5" />
-            </button>
-          }
         >
           <BranchDetails branch={branch} />
         </MainDialog>
-      ) : null}
+      )}
 
-      {canEdit ? (
+      {canEdit && (
         <MainDialog
           open={isEditOpen}
           onOpenChange={setIsEditOpen}
@@ -81,21 +92,13 @@ const ActionsCell = ({
               </div>
             </div>
           }
-          trigger={
-            <button
-              className="p-1 cursor-pointer text-slate-400 hover:text-sky-600 transition-colors"
-              title="Editar"
-            >
-              <EditIcon className="w-5 h-5" />
-            </button>
-          }
         >
           <BranchForm 
             onSuccess={() => setIsEditOpen(false)} 
             defaultValues={branch}
           />
         </MainDialog>
-      ) : null}
+      )}
     </div>
   );
 };

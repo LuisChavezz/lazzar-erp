@@ -640,7 +640,7 @@ export function useOrderForm({ orderId }: UseOrderFormParams) {
         const unit = product ? unitsById.get(product.unidad_medida) : null;
         
         const precio = Number(detail.precio_unitario) || 0;
-        const cantidad = 0; // Por el momento mostrar 0 por defecto
+        const cantidad = 0; // Por defecto a 0 como se solicitó
         const importe = 0; // Importe es 0 porque cantidad es 0
         return {
           productoId: detail.producto,

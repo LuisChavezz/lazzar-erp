@@ -3,8 +3,30 @@
 import { ColumnDef, createColumnHelper } from "@tanstack/react-table";
 import { AccountsReceivable } from "../interfaces/accounts-receivable.interface";
 import { EditIcon, ViewIcon } from "../../../components/Icons";
+import { ActionMenu, ActionMenuItem } from "@/src/components/ActionMenu";
 
 const columnHelper = createColumnHelper<AccountsReceivable>();
+
+const ActionsCell = () => {
+  const menuItems: ActionMenuItem[] = [
+    {
+      label: "Ver Detalles",
+      icon: ViewIcon,
+      onSelect: () => {},
+    },
+    {
+      label: "Editar",
+      icon: EditIcon,
+      onSelect: () => {},
+    },
+  ];
+
+  return (
+    <div className="flex justify-center">
+      <ActionMenu items={menuItems} />
+    </div>
+  );
+};
 
 export const accountsReceivableColumns = [
   columnHelper.accessor("invoiceNumber", {
@@ -34,22 +56,7 @@ export const accountsReceivableColumns = [
   columnHelper.display({
     id: "actions",
     header: () => <div className="text-center">Acciones</div>,
-    cell: () => (
-      <div className="flex items-center justify-center gap-2">
-        <button
-          className="p-1 cursor-pointer text-slate-400 hover:text-sky-600 transition-colors"
-          title="Ver Detalles"
-        >
-          <ViewIcon className="w-5 h-5" />
-        </button>
-        <button
-          className="p-1 cursor-pointer text-slate-400 hover:text-sky-600 transition-colors"
-          title="Editar"
-        >
-          <EditIcon className="w-5 h-5" />
-        </button>
-      </div>
-    ),
+    cell: () => <ActionsCell />,
   }),
 ] as ColumnDef<AccountsReceivable>[];
 
