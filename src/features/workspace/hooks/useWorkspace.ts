@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { useWorkspaceStore } from "../store/workspace.store";
 import { useMyCompanies } from "@/src/features/companies/hooks/useMyCompanies";
 import { useCompanyBranches } from "../../branches/hooks/useCompanyBranches";
@@ -9,11 +10,24 @@ import { useCompanyBranches } from "../../branches/hooks/useCompanyBranches";
 
 export const useWorkspace = () => {
   const router = useRouter();
+  const { data: session } = useSession();
   const { companies, loading: companiesLoading } = useMyCompanies(); // Obtener las empresas del usuario
   const setWorkspace = useWorkspaceStore((state) => state.setWorkspace);
   const setAvailableBranches = useWorkspaceStore((state) => state.setAvailableBranches);
   const [selectedCompanyId, setSelectedCompanyId] = useState<number | null>(null); // ID de la empresa seleccionada
   const [isLoading, setIsLoading] = useState(false); // Indicador de carga para la selección de sucursal
+  const isAdmin = session?.user?.role === "admin";
+  const permissions = session?.user?.permissions ?? [];
+
+  const redirectPath =
+    permissions.includes("R-CRM") && !isAdmin ? "/sales" : "/";
+
+  const redirectAfterWorkspaceSelection = () => {
+    setTimeout(() => {
+      router.refresh();
+      router.push(redirectPath);
+    }, 800);
+  };
 
   // Fetch branches based on selected company (custom hook)
   const { branches: availableBranches, isLoading: branchesLoading } = useCompanyBranches(selectedCompanyId);
@@ -45,10 +59,7 @@ export const useWorkspace = () => {
       document.cookie = "erp_workspace_id=true; path=/; max-age=604800; SameSite=Lax"; // Expira en 1 semana
     }
 
-    // Redirigir a dashboard después de 1 segundo para consistencia visual
-    setTimeout(() => {
-      router.push("/");
-    }, 800);
+    redirectAfterWorkspaceSelection();
   };
 
   // Handle back to company selection
@@ -71,11 +82,7 @@ export const useWorkspace = () => {
      setWorkspace(selectedCompany);
      document.cookie = "erp_workspace_id=true; path=/; max-age=604800; SameSite=Lax"; // Expira en 1 semana
      
-     // Redirigir a dashboard después de 1 segundo para consistencia visual
-     setTimeout(() => {
-       router.refresh();
-       router.push("/");
-     }, 800);
+     redirectAfterWorkspaceSelection();
   };
 
   return {

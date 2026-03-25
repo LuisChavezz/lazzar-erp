@@ -310,7 +310,7 @@ export const appRouteGroups: AppRouteGroup[] = [
     modulePath: "/settings",
     moduleDescription: "Configuración de cuenta, seguridad y perfil.",
     moduleIcon: SettingsIcon,
-    showInHome: true,
+    showInHome: false,
     items: [
       {
         key: "settings-profile",
