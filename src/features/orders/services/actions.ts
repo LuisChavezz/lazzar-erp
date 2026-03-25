@@ -12,11 +12,6 @@ export const createOrder = async (order: OrderCreate): Promise<OrderCreate> => {
   return response.data;
 };
 
-export const updateOrder = async (order: Order): Promise<Order> => {
-  const response = await v1_api.put<Order>(`/ventas/pedidos/${order.id}/`, order);
-  return response.data;
-};
-
 export const getOrderOnboardingData = async (): Promise<OrderOnboardingData> => {
   const response = await v1_api.get<OrderOnboardingData>("/ventas/cotizaciones/onboarding/");
   return response.data;

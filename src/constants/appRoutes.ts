@@ -115,15 +115,6 @@ export const appRouteGroups: AppRouteGroup[] = [
         showInSidebar: false,
       },
       {
-        key: "sales-orders-edit",
-        label: "Editar Pedido",
-        path: "/sales/orders/edit/[id]",
-        icon: PedidosIcon,
-        permission: "R-CRM",
-        parentPath: "/sales/orders",
-        showInSidebar: false,
-      },
-      {
         key: "sales-tasks",
         label: "Tareas",
         path: "/sales/tasks",

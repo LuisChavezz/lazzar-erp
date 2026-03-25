@@ -2,14 +2,12 @@
 
 import { ColumnDef } from "@tanstack/react-table";
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { Order } from "../interfaces/order.interface";
 import { ActionMenu, ActionMenuItem } from "@/src/components/ActionMenu";
 import { MainDialog } from "@/src/components/MainDialog";
 import { DialogHeader } from "@/src/components/DialogHeader";
 import { OrderDetails } from "./OrderDetails";
 import {
-  EditIcon,
   EmbarquesIcon,
   FacturacionIcon,
   ViewIcon,
@@ -25,20 +23,11 @@ const statusDialogColors: Record<number, "sky" | "emerald" | "amber" | "rose"> =
 
 const ActionsCell = ({ order }: { order: Order }) => {
   const [isViewOpen, setIsViewOpen] = useState(false);
-  const router = useRouter();
-  const orderId = order.id;
   const items: ActionMenuItem[] = [
     {
       label: "Ver detalles",
       icon: ViewIcon,
       onSelect: () => setIsViewOpen(true),
-    },
-    {
-      label: "Editar",
-      icon: EditIcon,
-      onSelect: () => {
-        router.push(`/sales/orders/edit/${orderId}`);
-      },
     },
     {
       label: "Facturar",

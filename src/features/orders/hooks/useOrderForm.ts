@@ -11,7 +11,6 @@ import { useCurrencies } from "../../currency/hooks/useCurrencies";
 import type { FormFieldError } from "../../../utils/getFieldError";
 import { orderFormSchema, type OrderFormValues } from "../schema/order.schema";
 import {
-  Order,
   OrderCreate,
   OrderItem,
   OrderOnboardingData,
@@ -19,13 +18,7 @@ import {
 } from "../interfaces/order.interface";
 import { useWorkspaceStore } from "../../workspace/store/workspace.store";
 import { useCreateOrder } from "./useCreateOrder";
-import { useOrders } from "./useOrders";
-import { useUpdateOrder } from "./useUpdateOrder";
 import { useOrderOnboardingData } from "./useOrderOnboardingData";
-
-interface UseOrderFormParams {
-  orderId?: string;
-}
 
 type OrderField = keyof OrderFormValues;
 type OnboardingCustomer = OrderOnboardingData["busqueda"]["clientes"][number];
@@ -83,28 +76,6 @@ const IVA_OPTIONS = [
 ];
 
 // Guards de dominio para asegurar que los valores persistidos siempre coincidan con el esquema actual.
-const getValidPaymentForm = (value: string): string => value || "03";
-
-const getValidPaymentMethod = (value: string): string => value || "PUE";
-
-
-
-const getUsoCfdiCode = (value: string) => {
-  const normalized = value.trim();
-  if (!normalized) {
-    return "";
-  }
-  return normalized.split(" - ")[0].trim();
-};
-
-const getOrderUsoCfdiCode = (order?: Order | null) =>
-  getUsoCfdiCode(order?.uso_cfdi ?? order?.usoCfdi ?? "");
-
-const toNumber = (value: unknown) => {
-  const normalized = Number(value);
-  return Number.isFinite(normalized) ? normalized : 0;
-};
-
 const mapOrigenFlags = (origen: string) => {
   const selectedField = ORIGIN_FIELD_MAP.find((item) => item.label === origen)?.field;
   return ORIGIN_FIELD_MAP.reduce(
@@ -116,46 +87,6 @@ const mapOrigenFlags = (origen: string) => {
   );
 };
 
-const getOrderOrigin = (order: Order) => {
-  const selectedOrigin = ORIGIN_FIELD_MAP.find((item) => Boolean(order[item.field]));
-  if (selectedOrigin) {
-    return selectedOrigin.label;
-  }
-  return ORIGIN_OPTIONS.includes(order.origen ?? "") ? (order.origen ?? "") : "";
-};
-
-const toInputDate = (value?: string | null) => {
-  if (!value) {
-    return "";
-  }
-  const normalizedValue = value.trim();
-  if (!normalizedValue) {
-    return "";
-  }
-  if (/^\d{4}-\d{2}-\d{2}$/.test(normalizedValue)) {
-    return normalizedValue;
-  }
-  if (/^\d{2}\/\d{2}\/\d{4}$/.test(normalizedValue)) {
-    const [day, month, year] = normalizedValue.split("/");
-    return `${year}-${month}-${day}`;
-  }
-  const normalizedIsoValue = normalizedValue.includes(" ")
-    ? normalizedValue.replace(" ", "T")
-    : normalizedValue;
-  const normalizedTimezoneValue = /[+-]\d{2}$/.test(normalizedIsoValue)
-    ? `${normalizedIsoValue}:00`
-    : normalizedIsoValue;
-  const parsedDate = new Date(normalizedTimezoneValue);
-  if (Number.isNaN(parsedDate.getTime())) {
-    return "";
-  }
-  const year = parsedDate.getFullYear();
-  const month = String(parsedDate.getMonth() + 1).padStart(2, "0");
-  const day = String(parsedDate.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-};
-
-// Normaliza renglones de productos para mantener consistencia numérica antes de calcular totales.
 const normalizeItem = (item: OrderItem): OrderItem => {
   const cantidad = Number(item.cantidad) || 0;
   const precio = Number(item.precio) || 0;
@@ -169,79 +100,6 @@ const normalizeItem = (item: OrderItem): OrderItem => {
     precio,
     descuento,
     importe,
-  };
-};
-
-// Convierte una orden persistida al shape exacto del formulario.
-const normalizeOrderValues = (order: Order, fallbackUserName: string): OrderFormValues => {
-  const envioAmount = toNumber(order.servicioEnvioMonto ?? order.envio);
-  const programaBordadosAmount = toNumber(order.programaBordadosMonto ?? order.programa_bordados);
-  const bordadoPantalonesAmount = toNumber(
-    order.bordadoPantalonesExtrasMonto ?? order.bordado_pantalones_extras
-  );
-
-  return {
-  clienteBusqueda: order.clienteBusqueda ?? order.clienteNombre ?? "",
-  clienteNombre: order.clienteNombre ?? "",
-  razonSocial: order.razonSocial ?? "",
-  rfc: order.rfc ?? "",
-  regimenFiscal: order.regimenFiscal ?? "",
-  direccionFiscal: order.direccionFiscal ?? "",
-  coloniaFiscal: order.coloniaFiscal ?? "",
-  codigoPostalFiscal: order.codigoPostalFiscal ?? "",
-  ciudadFiscal: order.ciudadFiscal ?? "",
-  estadoFiscal: order.estadoFiscal ?? "",
-  giroEmpresa: order.giroEmpresa ?? "",
-  persona_pagos: order.persona_pagos ?? order.personaPagos ?? "",
-  correo_facturas: order.correo_facturas ?? order.correoFacturas ?? "",
-  telefono_pagos: order.telefono_pagos ?? order.telefonoPagos ?? "",
-  oc: order.oc ?? order.ordenCompra ?? "",
-  forma_pago: getValidPaymentForm(order.forma_pago ?? order.formaPago ?? ""),
-  metodo_pago: getValidPaymentMethod(order.metodo_pago ?? order.metodoPago ?? ""),
-  tipo_pedido: Number(order.tipo_pedido) || 0,
-  uso_cfdi: getUsoCfdiCode(order.uso_cfdi ?? order.usoCfdi ?? ""),
-  referenciarOcFactura: Boolean(order.referenciarOcFactura),
-  condicionPago: order.condicionPago ?? "100_anticipo",
-  condicionPagoMonto: Number(order.condicionPagoMonto) || 0,
-  fecha: toInputDate(order.fecha) || toInputDate(order.created_at),
-  agente: order.agente ?? fallbackUserName,
-  origen: getOrderOrigin(order),
-  destinatario: order.destinatario ?? "",
-  empresaEnvio: order.empresaEnvio ?? "",
-  telefonoEnvio: order.telefonoEnvio ?? "",
-  celularEnvio: order.celularEnvio ?? "",
-  direccionEnvio: order.direccionEnvio ?? "",
-  coloniaEnvio: order.coloniaEnvio ?? "",
-  codigoPostalEnvio: order.codigoPostalEnvio ?? "",
-  ciudadEnvio: order.ciudadEnvio ?? "",
-  estadoEnvio: order.estadoEnvio ?? "",
-  referenciasEnvio: order.referenciasEnvio ?? "",
-  enviarDomicilioFiscal: Boolean(order.enviarDomicilioFiscal),
-  embarcarConOtrosPedidos: Boolean(order.embarcarConOtrosPedidos),
-  empaque_ecologico: Boolean(order.empaque_ecologico ?? order.empaqueEcologico),
-  embarque_parcial: Boolean(order.embarque_parcial ?? order.embarqueParcial),
-  comentarios_parcialidad: order.comentarios_parcialidad ?? order.comentariosParcialidad ?? "",
-  servicioEnvioActivo: Boolean(order.servicioEnvioActivo) || envioAmount > 0,
-  envio: envioAmount,
-  programaBordadosActivo: Boolean(order.programaBordadosActivo) || programaBordadosAmount > 0,
-  programa_bordados: programaBordadosAmount,
-  bordadoPantalonesExtrasActivo:
-    Boolean(order.bordadoPantalonesExtrasActivo) || bordadoPantalonesAmount > 0,
-  bordado_pantalones_extras: bordadoPantalonesAmount,
-  bordado_logotipo: Boolean(
-    order.bordado_logotipo ?? order.bordadoLogotipoIncluido ?? true
-  ),
-  estatusPedido: order.estatusPedido ?? "Pendiente",
-  docRelacionado: order.docRelacionado ?? "",
-  observaciones: order.observaciones ?? "",
-  flete: Number(order.flete ?? order.totals?.flete ?? 0),
-  seguros: Number(order.seguros ?? order.totals?.seguro ?? 0),
-  anticipo: Number(order.anticipo ?? order.totals?.anticipo ?? 0),
-  iva: Number(order.iva ?? order.totals?.ivaRate ?? 0) <= 1
-    ? Number((Number(order.iva ?? order.totals?.ivaRate ?? 0) * 100).toFixed(2))
-    : Number(order.iva ?? order.totals?.ivaRate ?? 16),
-  moneda: Number(order.moneda ?? 0),
-  items: (order.items ?? []).map(normalizeItem),
   };
 };
 
@@ -405,18 +263,16 @@ const scrollToFirstValidationError = (formElement: HTMLFormElement, issuePaths: 
   }
 };
 
-export function useOrderForm({ orderId }: UseOrderFormParams) {
+export function useOrderForm() {
   // Dependencias de navegación y fuentes de datos del formulario.
   const router = useRouter();
   const { data: session } = useSession();
   const { data: currencies, isLoading: isCurrenciesLoading } = useCurrencies();
   const { data: onboardingData, isLoading: isOnboardingLoading } = useOrderOnboardingData();
-  const { orders, isLoading: isOrdersLoading } = useOrders();
   const { selectedCompany, selectedBranch } = useWorkspaceStore();
   const selectedCompanyId = selectedCompany?.id || 1; // Fallback
   const selectedBranchId = selectedBranch?.id || 1; // Fallback
   const { mutateAsync: createOrderMutation, isPending: isCreatingOrder } = useCreateOrder();
-  const { mutateAsync: updateOrderMutation, isPending: isUpdatingOrder } = useUpdateOrder();
 
   const userName = session?.user?.name || "Usuario";
   const sellerName = userName;
@@ -431,35 +287,12 @@ export function useOrderForm({ orderId }: UseOrderFormParams) {
   const [isSubmittingForm, setIsSubmittingForm] = useState(false);
   const [selectedCustomerId, setSelectedCustomerId] = useState(0);
 
-  // Contexto de modo edición/creación y valores base.
-  const orderToEdit = useMemo(
-    () => orders.find((order) => String(order.id) === orderId) ?? null,
-    [orderId, orders]
-  );
-  const isEditing = Boolean(orderToEdit?.id);
-  const editingCustomerId = Number(orderToEdit?.cliente ?? 0);
-  const showForm = !orderId || (!isOrdersLoading && Boolean(orderToEdit));
+  const showForm = true;
 
   const emptyValues = useMemo(() => createEmptyValues(todayStr, userName), [todayStr, userName]);
-  const editValues = useMemo(
-    () => (orderToEdit ? normalizeOrderValues(orderToEdit, userName) : emptyValues),
-    [emptyValues, orderToEdit, userName]
-  );
-  const normalizedEditValues = useMemo(
-    () =>
-      ORIGIN_OPTIONS.includes(editValues.origen)
-        ? editValues
-        : {
-            ...editValues,
-            origen: "",
-          },
-    [editValues]
-  );
 
-  // Configuración de TanStack Form: valores por defecto y pipeline de submit.
   const form = useForm({
-    defaultValues: isEditing ? normalizedEditValues : emptyValues,
-    // Flujo principal de submit: validar, construir payload y persistir creación/edición.
+    defaultValues: emptyValues,
     onSubmit: async ({ value }) => {
       const parsed = orderFormSchema.safeParse(value);
       if (!parsed.success) {
@@ -562,7 +395,7 @@ export function useOrderForm({ orderId }: UseOrderFormParams) {
         pedido: {
           empresa: selectedCompanyId || 1, // Fallback safe si no hay empresa en workspace
           sucursal: selectedBranchId || 1, // Fallback safe si no hay sucursal
-          cliente: selectedCustomerId || editingCustomerId || 1, // Fallback
+          cliente: selectedCustomerId || 1, // Fallback
           moneda: parsed.data.moneda || 1, // Fallback si no viene moneda
           persona_pagos: parsed.data.persona_pagos,
           correo_facturas: parsed.data.correo_facturas,
@@ -616,37 +449,12 @@ export function useOrderForm({ orderId }: UseOrderFormParams) {
         },
         detalle,
       };
-
-      if (isEditing && orderToEdit) {
-        const updatePayload: Order = {
-          ...orderToEdit,
-          ...orderCreatePayload.pedido,
-          id: orderToEdit.id,
-          empresa: orderToEdit.empresa,
-          cotizacion: orderToEdit.cotizacion,
-          created_at: orderToEdit.created_at,
-          updated_at: orderToEdit.updated_at,
-          fecha_confirmacion: orderToEdit.fecha_confirmacion,
-        };
-        await updateOrderMutation(updatePayload);
-      } else {
-        await createOrderMutation(orderCreatePayload);
-      }
-
-      // Con la nueva estructura, el detalle se envía dentro del payload de creación.
+      await createOrderMutation(orderCreatePayload);
 
       form.reset(emptyValues);
       router.push("/sales/orders");
     },
   });
-
-  // Rehidrata el formulario cuando llega la orden en modo edición.
-  useEffect(() => {
-    if (!isEditing) {
-      return;
-    }
-    form.reset(normalizedEditValues);
-  }, [form, isEditing, normalizedEditValues]);
 
   // Snapshot reactivo de valores del formulario para derivados y sincronizaciones.
   const values = useStore(form.baseStore, (state) => state.values);
@@ -785,8 +593,7 @@ export function useOrderForm({ orderId }: UseOrderFormParams) {
     clearFieldErrors(`items.${index}`);
   };
 
-  // Hidrata todos los campos dependientes al seleccionar cliente.
-  const handleSelectCustomer = useCallback((customer: OnboardingCustomer, usoCfdiOverride?: string) => {
+  const handleSelectCustomer = useCallback((customer: OnboardingCustomer) => {
     // Hidrata facturación, contacto y envío al seleccionar cliente.
     const selectedRegimen = onboardingData?.catalogos.regimenes_fiscales.find(
       (item) => item.value === String(customer.sat_regimen_fiscal_id)
@@ -795,9 +602,6 @@ export function useOrderForm({ orderId }: UseOrderFormParams) {
       selectedRegimen?.value ??
       customer.sat_regimen_fiscal__codigo ??
       String(customer.sat_regimen_fiscal_id);
-    const normalizedUsoCfdiOverride = usoCfdiOverride?.trim();
-    const resolvedUsoCfdi = normalizedUsoCfdiOverride || "";
-
     form.setFieldValue("clienteBusqueda", customer.razon_social ?? customer.nombre ?? "");
     form.setFieldValue("clienteNombre", customer.nombre ?? "");
     form.setFieldValue("razonSocial", customer.razon_social ?? "");
@@ -822,28 +626,8 @@ export function useOrderForm({ orderId }: UseOrderFormParams) {
     form.setFieldValue("codigoPostalEnvio", customer.codigo_postal ?? "");
     form.setFieldValue("ciudadEnvio", customer.ciudad ?? "");
     form.setFieldValue("estadoEnvio", customer.estado ?? "");
-    if (resolvedUsoCfdi) {
-      form.setFieldValue("uso_cfdi", resolvedUsoCfdi);
-    }
     clearFieldErrors("clienteBusqueda");
   }, [clearFieldErrors, form, onboardingData?.catalogos.regimenes_fiscales]);
-
-  const autoSelectedOrderIdRef = useRef<number | null>(null);
-  useEffect(() => {
-    if (!isEditing || !orderToEdit || editingCustomerId <= 0 || customers.length === 0) {
-      autoSelectedOrderIdRef.current = null;
-      return;
-    }
-    if (autoSelectedOrderIdRef.current === orderToEdit.id) {
-      return;
-    }
-    const matchedCustomer = customers.find((customer) => Number(customer.id) === editingCustomerId);
-    if (!matchedCustomer) {
-      return;
-    }
-    handleSelectCustomer(matchedCustomer, getOrderUsoCfdiCode(orderToEdit));
-    autoSelectedOrderIdRef.current = orderToEdit.id;
-  }, [customers, editingCustomerId, handleSelectCustomer, isEditing, orderToEdit]);
 
   // Callback de alta de cliente desde modal.
   const handleCustomerCreated = (customer?: Customer) => {
@@ -891,25 +675,11 @@ export function useOrderForm({ orderId }: UseOrderFormParams) {
     }
   };
 
-  // Restablece valores por modo (edición/creación), limpia errores y reposiciona el scroll.
   const handleReset = () => {
-    const nextValues = isEditing ? normalizedEditValues : emptyValues;
-    form.reset(nextValues);
-    let resetCustomerLabel = nextValues.clienteBusqueda || nextValues.clienteNombre;
-    if (isEditing && editingCustomerId > 0) {
-      const matchedCustomer = customers.find((customer) => Number(customer.id) === editingCustomerId);
-      if (matchedCustomer) {
-        handleSelectCustomer(matchedCustomer, getOrderUsoCfdiCode(orderToEdit));
-        resetCustomerLabel =
-          matchedCustomer.razon_social ?? matchedCustomer.nombre ?? resetCustomerLabel;
-      } else {
-        setSelectedCustomerId(editingCustomerId);
-      }
-    } else {
-      setSelectedCustomerId(0);
-    }
+    form.reset(emptyValues);
+    setSelectedCustomerId(0);
     setErrorTree({});
-    form.setFieldValue("clienteBusqueda", resetCustomerLabel);
+    form.setFieldValue("clienteBusqueda", "");
     toast.success("Formulario restablecido");
     setTimeout(() => {
       formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -921,7 +691,7 @@ export function useOrderForm({ orderId }: UseOrderFormParams) {
     router.push("/sales/orders");
   };
 
-  const isPending = isSubmittingForm || form.state.isSubmitting || isCreatingOrder || isUpdatingOrder;
+  const isPending = isSubmittingForm || form.state.isSubmitting || isCreatingOrder;
   const itemErrors = getError("items");
   const docRelacionadoError = getError("docRelacionado");
   const tipoPedidoError = getError("tipo_pedido");
@@ -997,10 +767,8 @@ export function useOrderForm({ orderId }: UseOrderFormParams) {
     }
   }, [currencyOptions, form, values.moneda]);
 
-  // Clave única para forzar remount en transición entre creación y edición.
-  const formKey = isEditing ? `order-edit-${orderToEdit?.id ?? "ready"}` : "order-new";
+  const formKey = "order-new";
 
-  // Contrato público del hook consumido por OrderForm.tsx.
   return {
     form,
     formRef,
@@ -1009,7 +777,6 @@ export function useOrderForm({ orderId }: UseOrderFormParams) {
     clearFieldErrors,
     validateField,
     isPending,
-    isEditing,
     sellerName,
     userName,
     todayStr,
@@ -1059,6 +826,5 @@ export function useOrderForm({ orderId }: UseOrderFormParams) {
     customers,
     handleSelectCustomer,
     handleCustomerCreated,
-    orderToEdit,
   };
 }

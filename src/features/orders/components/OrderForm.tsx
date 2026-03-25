@@ -17,12 +17,7 @@ import { CustomerSearchDropdown } from "./CustomerSearchDropdown";
 import CustomerForm from "../../customers/components/CustomerForm";
 import { DialogHeader } from "@/src/components/DialogHeader";
 import { useOrderForm } from "../hooks/useOrderForm";
-
-interface OrderFormProps {
-  orderId?: string;
-}
-
-export default function OrderForm({ orderId }: OrderFormProps) {
+export default function OrderForm() {
   const {
     form,
     formRef,
@@ -31,7 +26,6 @@ export default function OrderForm({ orderId }: OrderFormProps) {
     clearFieldErrors,
     validateField,
     isPending,
-    isEditing,
     sellerName,
     userName,
     todayStr,
@@ -81,8 +75,7 @@ export default function OrderForm({ orderId }: OrderFormProps) {
     customers,
     handleSelectCustomer,
     handleCustomerCreated,
-    orderToEdit,
-  } = useOrderForm({ orderId });
+  } = useOrderForm();
   const extraServiceCheckboxClass =
     "h-4 w-4 shrink-0 rounded border-slate-300 text-sky-600 focus:ring-sky-500";
 
@@ -93,7 +86,7 @@ export default function OrderForm({ orderId }: OrderFormProps) {
       <div className="w-full pt-2">
         <Loader
           title="Cargando formulario"
-          message={showForm ? "Obteniendo clientes y catálogos..." : "Obteniendo pedido..."}
+          message="Obteniendo clientes y catálogos..."
         />
       </div>
     );
@@ -237,8 +230,8 @@ export default function OrderForm({ orderId }: OrderFormProps) {
                 <MainDialog
                   title={
                     <DialogHeader
-                      title={isEditing ? "Editar Cliente" : "Alta de Cliente"}
-                      subtitle={isEditing ? "Edita los datos del cliente" : "Registra un nuevo cliente"}
+                      title="Alta de Cliente"
+                      subtitle="Registra un nuevo cliente"
                       statusColor="emerald"
                     />
                   }
@@ -1514,7 +1507,7 @@ export default function OrderForm({ orderId }: OrderFormProps) {
                 Usuario Captura
               </span>
               <span className="text-xs font-medium text-slate-700 dark:text-slate-200">
-                {isEditing ? (orderToEdit?.capturadoPor ?? userName) : userName}
+                {userName}
               </span>
             </div>
 
@@ -1764,9 +1757,9 @@ export default function OrderForm({ orderId }: OrderFormProps) {
         />
         <FormSubmitButton
           isPending={isPending}
-          loadingLabel={isEditing ? "Actualizando..." : "Guardando..."}
+          loadingLabel="Guardando..."
         >
-          {isEditing ? "Actualizar Cotización" : "Guardar Cotización"}
+          Guardar Cotización
         </FormSubmitButton>
       </div>
     </form>
