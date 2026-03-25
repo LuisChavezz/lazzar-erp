@@ -1,10 +1,12 @@
 "use client";
 
-import { EmailIcon, LockIcon, LoadingSpinnerIcon } from "../../../components/Icons";
+import { useState } from "react";
+import { EmailIcon, EyeIcon, EyeOffIcon, LockIcon, LoadingSpinnerIcon } from "../../../components/Icons";
 import { useLogin } from "../hooks/useLogin";
 
 export default function LoginForm() {
   const { formData, loading, handleChange, handleSubmit } = useLogin();
+  const [showPassword, setShowPassword] = useState(false);
 
   return (
     <form onSubmit={handleSubmit} className="md:w-96 w-80 flex flex-col items-center justify-center">
@@ -16,7 +18,7 @@ export default function LoginForm() {
       </p>
       
       <div className="flex items-center mt-8 w-full bg-transparent border border-slate-300/60 dark:border-white/10 h-12 rounded-full overflow-hidden pl-6 gap-2 focus-within:border-sky-500 dark:focus-within:border-sky-500 transition-colors">
-        <EmailIcon className="text-slate-500 dark:text-slate-300 transition-colors" width="16" height="11" />
+        <EmailIcon className="w-4 h-4 shrink-0 text-slate-500 dark:text-slate-300 transition-colors" />
         <input
           type="email"
           name="email"
@@ -29,10 +31,10 @@ export default function LoginForm() {
         />
       </div>
 
-      <div className="flex items-center mt-6 w-full bg-transparent border border-slate-300/60 dark:border-white/10 h-12 rounded-full overflow-hidden pl-6 gap-2 focus-within:border-sky-500 dark:focus-within:border-sky-500 transition-colors">
-        <LockIcon className="text-slate-500 dark:text-slate-300 transition-colors" width="13" height="17" />
+      <div className="flex items-center mt-6 w-full bg-transparent border border-slate-300/60 dark:border-white/10 h-12 rounded-full overflow-hidden pl-6 pr-4 gap-2 focus-within:border-sky-500 dark:focus-within:border-sky-500 transition-colors">
+        <LockIcon className="w-4 h-4 shrink-0 text-slate-500 dark:text-slate-300 transition-colors" />
         <input
-          type="password"
+          type={showPassword ? "text" : "password"}
           name="password"
           value={formData.password}
           onChange={handleChange}
@@ -41,20 +43,22 @@ export default function LoginForm() {
           required
           disabled={loading}
         />
+        <button
+          type="button"
+          onClick={() => setShowPassword((prev) => !prev)}
+          aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
+          className="text-slate-500 dark:text-slate-300 hover:text-slate-700 dark:hover:text-white transition-colors disabled:opacity-50"
+          disabled={loading}
+        >
+          {showPassword ? (
+            <EyeOffIcon className="w-4 h-4" />
+          ) : (
+            <EyeIcon className="w-4 h-4" />
+          )}
+        </button>
       </div>
 
       <div className="w-full flex items-center justify-center mt-8 text-slate-500/80 dark:text-slate-400 transition-colors">
-        {/* <div className="flex items-center gap-2">
-          <input
-            className="h-5 w-5 text-sky-500 focus:ring-sky-400 border-slate-300 dark:border-white/10 rounded bg-transparent"
-            type="checkbox"
-            id="checkbox"
-            disabled={loading}
-          />
-          <label className="text-sm cursor-pointer" htmlFor="checkbox">
-            Recuérdame
-          </label>
-        </div> */}
         <a className="text-sm underline hover:text-sky-500" href="#">
           ¿Olvidaste tu contraseña?
         </a>

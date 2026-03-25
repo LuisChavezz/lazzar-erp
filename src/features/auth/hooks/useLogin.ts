@@ -36,7 +36,7 @@ export const useLogin = () => {
 
       // ! Verificar si hubo un error en la autenticación
       if (result?.error) {
-        toast.error("Credenciales inválidas");
+        toast.error("Usuario o contraseña incorrectos");
         setLoading(false);
 
       } else { // Si la autenticación fue exitosa
