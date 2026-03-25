@@ -3,7 +3,6 @@ import { Document, Page, Text, View, StyleSheet, pdf } from "@react-pdf/renderer
 import { Order } from "../interfaces/order.interface";
 import { formatCurrency } from "@/src/utils/formatCurrency";
 import { DataTableVisibleColumn } from "@/src/components/DataTable";
-import { getOrderStatusLabel } from "../utils/getStatusStyle";
 
 const styles = StyleSheet.create({
   page: {
@@ -103,9 +102,6 @@ const isRightAlignedColumn = (column: DataTableVisibleColumn<Order>) => {
 
 const formatValue = (value: unknown, column: DataTableVisibleColumn<Order>) => {
   if (value === null || value === undefined) return "";
-  if (column.accessorKey === "activo" || column.id === "activo") {
-    return getOrderStatusLabel(Boolean(value));
-  }
   if (isCurrencyColumn(column)) {
     return formatCurrency(Number(value) || 0);
   }

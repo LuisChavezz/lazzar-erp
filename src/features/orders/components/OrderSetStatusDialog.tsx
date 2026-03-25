@@ -4,7 +4,6 @@ import { useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import { MainDialog } from "@/src/components/MainDialog";
 import { CloseIcon, SearchIcon } from "@/src/components/Icons";
-import { getOrderStatusLabel, getStatusStyles } from "../utils/getStatusStyle";
 import { OrderSetStatusSelectableList } from "./OrderSetStatusSelectableList";
 import { useOrders } from "../hooks/useOrders";
 
@@ -14,6 +13,12 @@ interface OrderSetStatusDialogProps {
 }
 
 const statusOptions = [true, false] as const;
+const getStatusOptionStyle = (status: boolean) =>
+  status
+    ? "bg-emerald-100 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400"
+    : "bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300";
+
+const getStatusOptionLabel = (status: boolean) => (status ? "Autorizado" : "Por autorizar");
 
 export function OrderSetStatusDialog({
   open,
@@ -31,10 +36,10 @@ export function OrderSetStatusDialog({
       return orders;
     }
     return orders.filter((order) => {
-      const folio = order.folio?.toLowerCase() ?? "";
-      const cliente = order.clienteNombre?.toLowerCase() ?? "";
-      const fecha = order.fecha?.toLowerCase() ?? "";
-      const estatus = getOrderStatusLabel(order.activo).toLowerCase();
+      const folio = order.pedido_folio?.toLowerCase() ?? "";
+      const cliente = (order.cliente_nombre || order.cliente_razon_social).toLowerCase();
+      const fecha = order.created_at?.toLowerCase() ?? "";
+      const estatus = order.estatus_label.toLowerCase();
       return (
         folio.includes(query) ||
         cliente.includes(query) ||
@@ -119,12 +124,12 @@ export function OrderSetStatusDialog({
                   onClick={() => setSelectedStatus(status)}
                   className={`px-3 py-2 text-xs rounded-xl border cursor-pointer transition-colors ${
                     isActive
-                      ? `${getStatusStyles(status)} border-transparent`
+                      ? `${getStatusOptionStyle(status)} border-transparent`
                       : "bg-white dark:bg-white/5 border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/10"
                   }`}
                   aria-pressed={isActive}
                 >
-                  {getOrderStatusLabel(status)}
+                  {getStatusOptionLabel(status)}
                 </button>
               );
             })}

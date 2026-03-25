@@ -13,6 +13,7 @@ import {
   ViewIcon,
 } from "../../../components/Icons";
 import { formatCurrency } from "../../../utils/formatCurrency";
+import { getStatusStyles } from "../utils/getStatusStyle";
 
 const statusDialogColors: Record<number, "sky" | "emerald" | "amber" | "rose"> = {
   1: "amber",
@@ -52,7 +53,7 @@ const ActionsCell = ({ order }: { order: Order }) => {
           title={
             <DialogHeader
               title={`Detalles del pedido #${order.id}`}
-              subtitle={order.persona_pagos}
+              subtitle={order.cliente_nombre || order.cliente_razon_social}
               statusColor={statusDialogColors[order.estatus] ?? "sky"}
             />
           }
@@ -66,26 +67,32 @@ const ActionsCell = ({ order }: { order: Order }) => {
 
 export const orderColumns: ColumnDef<Order>[] = [
   {
-    accessorKey: "activo",
+    accessorKey: "estatus_label",
     header: "Estado",
     cell: ({ row }) => {
-      const isActive = row.getValue("activo") as boolean;
-      const styles = isActive
-        ? "bg-emerald-100 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400"
-        : "bg-slate-100 text-slate-600 dark:bg-slate-500/20 dark:text-slate-400";
+      const styles = getStatusStyles(row.original);
       return (
         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${styles}`}>
-          {isActive ? "Activo" : "Inactivo"}
+          {row.original.estatus_label}
         </span>
       );
     },
   },
   {
-    accessorKey: "persona_pagos",
-    header: "Contacto",
+    accessorKey: "cliente_nombre",
+    header: "Cliente",
     cell: ({ row }) => (
       <span className="text-slate-600 dark:text-slate-300">
-        {row.getValue("persona_pagos")}
+        {row.original.cliente_nombre || row.original.cliente_razon_social}
+      </span>
+    ),
+  },
+  {
+    accessorKey: "cliente_razon_social",
+    header: "Razón social",
+    cell: ({ row }) => (
+      <span className="text-slate-600 dark:text-slate-300">
+        {row.original.cliente_razon_social}
       </span>
     ),
   },
@@ -111,7 +118,7 @@ export const orderColumns: ColumnDef<Order>[] = [
     accessorKey: "gran_total",
     header: "Total",
     cell: ({ row }) => (
-      <div className="text-right font-semibold text-slate-800 dark:text-slate-100">
+      <div className="text-left font-semibold text-slate-800 dark:text-slate-100">
         {formatCurrency(Number(row.original.gran_total) || 0)}
       </div>
     ),

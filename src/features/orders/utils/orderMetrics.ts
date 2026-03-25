@@ -2,19 +2,15 @@ import { Order } from "../interfaces/order.interface";
 
 const parseOrderDate = (value: string) => {
   if (!value) return null;
-  if (value.includes("/")) {
-    const [day, month, year] = value.split("/").map((part) => Number(part));
+  const normalizedValue = value.trim();
+  if (!normalizedValue) return null;
+  if (normalizedValue.includes("/")) {
+    const [day, month, year] = normalizedValue.split("/").map((part) => Number(part));
     if (!day || !month || !year) return null;
     const date = new Date(year, month - 1, day);
     return Number.isNaN(date.getTime()) ? null : date;
   }
-  if (value.includes("-")) {
-    const [year, month, day] = value.split("-").map((part) => Number(part));
-    if (!day || !month || !year) return null;
-    const date = new Date(year, month - 1, day);
-    return Number.isNaN(date.getTime()) ? null : date;
-  }
-  const date = new Date(value);
+  const date = new Date(normalizedValue);
   return Number.isNaN(date.getTime()) ? null : date;
 };
 
@@ -34,7 +30,7 @@ const isActiveOrder = (order: Order) => order.estatus === 1 || order.estatus ===
 
 const getReferenceDate = (orders: Order[], fallback = new Date()) => {
   const latest = orders.reduce<Date | null>((maxDate, order) => {
-    const parsedDate = parseOrderDate(order.fecha ?? "");
+    const parsedDate = parseOrderDate(order.created_at ?? "");
     if (!parsedDate) return maxDate;
     if (!maxDate || parsedDate > maxDate) return parsedDate;
     return maxDate;
@@ -72,7 +68,7 @@ export const getOrdersDashboardMetrics = (orders: Order[], now = new Date()) => 
   const previousMonthBounds = getMonthBounds(referenceDate, -1);
 
   const ordersWithDate = orders
-    .map((order) => ({ order, parsedDate: parseOrderDate(order.fecha ?? "") }))
+    .map((order) => ({ order, parsedDate: parseOrderDate(order.created_at ?? "") }))
     .filter((item): item is { order: Order; parsedDate: Date } => item.parsedDate !== null);
 
   const currentMonthOrders = ordersWithDate
@@ -133,7 +129,7 @@ export const getOrdersDueSoonCount = (
   const end = endOfDay(new Date(start.getFullYear(), start.getMonth(), start.getDate() + days));
   return orders.filter((order) => {
     if (!isActiveOrder(order)) return false;
-    const dueDate = parseOrderDate(order.fecha ?? "");
+    const dueDate = parseOrderDate(order.created_at ?? "");
     if (!dueDate) return false;
     return dueDate >= start && dueDate <= end;
   }).length;
@@ -152,7 +148,7 @@ export const getCriticalOrdersCount = (orders: Order[], now = new Date()) => {
   const today = startOfDay(now);
   return orders.filter((order) => {
     if (!isActiveOrder(order)) return false;
-    const dueDate = parseOrderDate(order.fecha ?? "");
+    const dueDate = parseOrderDate(order.created_at ?? "");
     const isOverdue = dueDate ? dueDate < today : false;
     const isHighAmount = getOrderAmount(order) >= 100000;
     return isOverdue || isHighAmount;

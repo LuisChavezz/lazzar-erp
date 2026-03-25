@@ -94,7 +94,7 @@ export const orderFormSchema = z.object({
   persona_pagos: z.string().min(1, "Requerido"),
   correo_facturas: z.string().email("Correo inválido"),
   telefono_pagos: z.string().min(1, "Requerido"),
-  oc: z.string().optional().default(""),
+  oc: z.string().trim().min(1, "Requerido"),
   forma_pago: z.string().min(1, "Requerido"),
   metodo_pago: z.string().min(1, "Requerido"),
   uso_cfdi: z.string().min(1, "Requerido"),

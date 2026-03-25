@@ -3,7 +3,7 @@ import { Order, OrderCreate, OrderOnboardingData } from "../interfaces/order.int
 
 
 export const getOrders = async (): Promise<Order[]> => {
-  const response = await v1_api.get<Order[]>("/ventas/pedidos/");
+  const response = await v1_api.get<Order[]>("/ventas/cotizaciones/");
   return response.data;
 };
 

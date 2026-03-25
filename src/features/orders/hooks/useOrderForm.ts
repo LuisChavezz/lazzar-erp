@@ -414,7 +414,7 @@ export function useOrderForm() {
               : 4,
           ...mapOrigenFlags(parsed.data.origen),
           ...mapCondicionPagoFlags(parsed.data.condicionPago),
-          oc: parsed.data.oc?.trim() || "",
+          oc: parsed.data.oc,
           monto: parsed.data.condicionPagoMonto ? String(parsed.data.condicionPagoMonto) : "0",
           empaque_ecologico: Boolean(parsed.data.empaque_ecologico),
           cliente_razon_social: parsed.data.razonSocial || "",

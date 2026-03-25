@@ -1,6 +1,5 @@
 "use client";
 
-import dynamic from "next/dynamic";
 import { FormInput } from "@/src/components/FormInput";
 import { FormSelect } from "@/src/components/FormSelect";
 import {
@@ -17,10 +16,7 @@ import { CustomerSearchDropdown } from "./CustomerSearchDropdown";
 import CustomerForm from "../../customers/components/CustomerForm";
 import { DialogHeader } from "@/src/components/DialogHeader";
 import { useOrderForm } from "../hooks/useOrderForm";
-
-const AddProductDialog = dynamic(
-  () => import("./AddProductDialog").then((module) => module.AddProductDialog)
-);
+import { AddProductDialog } from "./AddProductDialog";
 export default function OrderForm() {
   const {
     form,
@@ -1064,30 +1060,28 @@ export default function OrderForm() {
           </div>
         </div>
 
-        {isAddProductsOpen && (
-          <AddProductDialog
-            key={editIndex ?? "new"}
-            open={isAddProductsOpen}
-            onOpenChange={(nextOpen) => {
-              if (!nextOpen) {
-                setEditIndex(null);
-              }
-              setIsAddProductsOpen(nextOpen);
-            }}
-            onAddItem={(item) => append(item)}
-            onUpdateItem={
-              editIndex !== null
-                ? (item) => {
-                  update(editIndex, item);
-                }
-                : undefined
+        <AddProductDialog
+          key={editIndex ?? "new"}
+          open={isAddProductsOpen}
+          onOpenChange={(nextOpen) => {
+            if (!nextOpen) {
+              setEditIndex(null);
             }
-            initialItem={editIndex !== null ? watchedItems?.[editIndex] : null}
-            startStep={editIndex !== null ? "sizes" : "select"}
-            sizes={sizes}
-            products={products}
-          />
-        )}
+            setIsAddProductsOpen(nextOpen);
+          }}
+          onAddItem={(item) => append(item)}
+          onUpdateItem={
+            editIndex !== null
+              ? (item) => {
+                update(editIndex, item);
+              }
+              : undefined
+          }
+          initialItem={editIndex !== null ? watchedItems?.[editIndex] : null}
+          startStep={editIndex !== null ? "sizes" : "select"}
+          sizes={sizes}
+          products={products}
+        />
 
         {/* Detalle de productos */}
         <div className="flex-1 overflow-auto -mx-6 px-6 pb-2 border-b border-slate-200 dark:border-slate-800">

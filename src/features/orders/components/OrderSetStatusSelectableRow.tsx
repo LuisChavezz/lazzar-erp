@@ -1,6 +1,6 @@
 import { CheckCircleIcon } from "@/src/components/Icons";
 import { Order } from "../interfaces/order.interface";
-import { getOrderStatusLabel, getStatusStyles } from "../utils/getStatusStyle";
+import { getStatusStyles } from "../utils/getStatusStyle";
 import { formatCurrency } from "@/src/utils/formatCurrency";
 
 interface OrderSetStatusSelectableRowProps {
@@ -50,15 +50,15 @@ export function OrderSetStatusSelectableRow({
               #{order.id}
             </p>
             <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
-              {order.persona_pagos}
+              {order.cliente_nombre || order.cliente_razon_social}
             </p>
           </div>
           <span
             className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold ${getStatusStyles(
-              order.activo
+              order
             )}`}
           >
-            {getOrderStatusLabel(order.activo)}
+            {order.estatus_label}
           </span>
         </div>
         <div className="flex items-center justify-between text-[10px] text-slate-400 mt-1">

@@ -1,25 +1,14 @@
 "use client";
 
-import { useMemo, useState, lazy, Suspense } from "react";
+import { useMemo } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { OrdenesIcon } from "@/src/components/Icons";
 
-const OrderSetStatusDialog = lazy(() =>
-  import("./OrderSetStatusDialog").then((mod) => ({ default: mod.OrderSetStatusDialog }))
-);
-
 export const OrderActions = () => {
-
-  // Controla la visibilidad del diálogo de cambio de estado
-  const [isStatusDialogOpen, setIsStatusDialogOpen] = useState(false);
-
-  // Configuración inicial del router y parámetros de búsqueda
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const isOverdueActive = searchParams.get("overdue") === "1";
-
-  // Establece la URL de manera dinámica para manejar el estado de los pedidos vencidos
   const overdueUrl = useMemo(() => {
     const params = new URLSearchParams(searchParams.toString());
     if (isOverdueActive) {
@@ -35,10 +24,11 @@ export const OrderActions = () => {
     <div className="flex items-center gap-4">
       <button
         type="button"
-        onClick={() => setIsStatusDialogOpen(true)}
+        disabled
         className="px-4 py-2 cursor-pointer bg-white dark:bg-white/5 hover:bg-slate-50 dark:hover:bg-white/10 text-slate-700 dark:text-slate-200 text-sm font-semibold rounded-full border border-slate-200 dark:border-white/10 shadow-sm transition-all flex items-center gap-2"
         title="Actualizar estados"
         aria-label="Actualizar estados de pedidos"
+        aria-disabled="true"
       >
         <OrdenesIcon className="w-4 h-4" />
         Actualizar estados
@@ -77,14 +67,6 @@ export const OrderActions = () => {
         <OrdenesIcon className="w-4 h-4" />
         {isOverdueActive ? "Ver todos" : "Ver vencidos"}
       </button>
-      <Suspense fallback={null}>
-        {isStatusDialogOpen && (
-          <OrderSetStatusDialog
-            open={isStatusDialogOpen}
-            onOpenChange={setIsStatusDialogOpen}
-          />
-        )}
-      </Suspense>
     </div>
   );
 };

@@ -47,13 +47,14 @@ export const useOrderFilters = (orders: Order[]) => {
 
   const filteredOrders = useMemo(() => {
     return orders.filter((order) => {
-      if (appliedFilters.activo !== null && order.activo !== appliedFilters.activo) {
+      const isActive = order.estatus !== 4;
+      if (appliedFilters.activo !== null && isActive !== appliedFilters.activo) {
         return false;
       }
 
       if (
         appliedFilters.personaPagos &&
-        order.persona_pagos !== appliedFilters.personaPagos
+        order.cliente_nombre !== appliedFilters.personaPagos
       ) {
         return false;
       }
@@ -101,7 +102,7 @@ export const useOrderFilters = (orders: Order[]) => {
       ...Array.from(
         new Set(
           orders
-            .map((order) => order.persona_pagos)
+            .map((order) => order.cliente_nombre)
             .filter((value): value is string => Boolean(value))
         )
       )
