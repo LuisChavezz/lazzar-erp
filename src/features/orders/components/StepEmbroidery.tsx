@@ -1,3 +1,4 @@
+import { memo } from "react";
 import Image from "next/image";
 import { FormInput } from "@/src/components/FormInput";
 import { FormSelect } from "@/src/components/FormSelect";
@@ -30,7 +31,7 @@ interface StepEmbroideryProps {
   threadColorOptions: string[];
 }
 
-export function StepEmbroidery({
+export const StepEmbroidery = memo(function StepEmbroidery({
   nuevoPonchado,
   onNuevoPonchadoChange,
   embroideryObservaciones,
@@ -60,7 +61,6 @@ export function StepEmbroidery({
               sizes="(min-width: 640px) 50vw, 100vw"
               className="object-contain"
               quality={90}
-              priority
             />
           </div>
           <div className="relative h-32 rounded-2xl border border-dashed border-slate-200 dark:border-white/10 bg-white/70 dark:bg-white/5 overflow-hidden">
@@ -71,7 +71,6 @@ export function StepEmbroidery({
               sizes="(min-width: 640px) 50vw, 100vw"
               className="object-contain"
               quality={90}
-              priority
             />
           </div>
         </div>
@@ -271,4 +270,4 @@ export function StepEmbroidery({
       />
     </div>
   );
-}
+});

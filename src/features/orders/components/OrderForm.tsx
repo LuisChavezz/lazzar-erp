@@ -1,5 +1,6 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { FormInput } from "@/src/components/FormInput";
 import { FormSelect } from "@/src/components/FormSelect";
 import {
@@ -12,11 +13,14 @@ import { MainDialog } from "@/src/components/MainDialog";
 import { getFieldError } from "../../../utils/getFieldError";
 import { formatCurrency } from "../../../utils/formatCurrency";
 import { Loader } from "@/src/components/Loader";
-import { AddProductDialog } from "./AddProductDialog";
 import { CustomerSearchDropdown } from "./CustomerSearchDropdown";
 import CustomerForm from "../../customers/components/CustomerForm";
 import { DialogHeader } from "@/src/components/DialogHeader";
 import { useOrderForm } from "../hooks/useOrderForm";
+
+const AddProductDialog = dynamic(
+  () => import("./AddProductDialog").then((module) => module.AddProductDialog)
+);
 export default function OrderForm() {
   const {
     form,
@@ -97,6 +101,7 @@ export default function OrderForm() {
       ref={formRef}
       key={formKey}
       onSubmit={handleFormSubmit}
+      aria-busy={isPending}
       className="space-y-6"
     >
       <section className="relative overflow-hidden bg-white dark:bg-zinc-900 rounded-3xl p-6 md:p-8 border border-slate-200 dark:border-white/5 shadow-sm dark:shadow-none">
@@ -1059,32 +1064,37 @@ export default function OrderForm() {
           </div>
         </div>
 
-        <AddProductDialog
-          key={editIndex ?? "new"}
-          open={isAddProductsOpen}
-          onOpenChange={(nextOpen) => {
-            if (!nextOpen) {
-              setEditIndex(null);
-            }
-            setIsAddProductsOpen(nextOpen);
-          }}
-          onAddItem={(item) => append(item)}
-          onUpdateItem={
-            editIndex !== null
-              ? (item) => {
-                update(editIndex, item);
+        {isAddProductsOpen && (
+          <AddProductDialog
+            key={editIndex ?? "new"}
+            open={isAddProductsOpen}
+            onOpenChange={(nextOpen) => {
+              if (!nextOpen) {
+                setEditIndex(null);
               }
-              : undefined
-          }
-          initialItem={editIndex !== null ? watchedItems?.[editIndex] : null}
-          startStep={editIndex !== null ? "sizes" : "select"}
-          sizes={sizes}
-          products={products}
-        />
+              setIsAddProductsOpen(nextOpen);
+            }}
+            onAddItem={(item) => append(item)}
+            onUpdateItem={
+              editIndex !== null
+                ? (item) => {
+                  update(editIndex, item);
+                }
+                : undefined
+            }
+            initialItem={editIndex !== null ? watchedItems?.[editIndex] : null}
+            startStep={editIndex !== null ? "sizes" : "select"}
+            sizes={sizes}
+            products={products}
+          />
+        )}
 
         {/* Detalle de productos */}
         <div className="flex-1 overflow-auto -mx-6 px-6 pb-2 border-b border-slate-200 dark:border-slate-800">
           <table className="w-full min-w-300 border-collapse text-left">
+            <caption className="sr-only">
+              Tabla de partidas de la cotización con acciones para editar o eliminar
+            </caption>
             <thead className="sticky top-0 z-10 bg-slate-50/95 dark:bg-zinc-900/95 backdrop-blur shadow-sm">
               <tr>
                 <th className="p-2 text-[10px] font-bold text-slate-400 uppercase tracking-wider w-10 text-center">

@@ -1,3 +1,4 @@
+import { memo } from "react";
 import type { CatalogRow } from "./AddProductDialog";
 import type { Size } from "../../sizes/interfaces/size.interface";
 
@@ -11,7 +12,7 @@ interface StepSizesProps {
   onToggleEmbroidery: (next: boolean) => void;
 }
 
-export function StepSizes({
+export const StepSizes = memo(function StepSizes({
   selectedRow,
   sizes,
   mergedSizeQuantities,
@@ -106,4 +107,4 @@ export function StepSizes({
       </label>
     </div>
   );
-}
+});

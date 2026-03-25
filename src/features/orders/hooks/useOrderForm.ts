@@ -545,28 +545,70 @@ export function useOrderForm() {
   };
 
   // Derivados de totales para render inmediato en resumen financiero.
-  const watchedItems = values.items ?? [];
-  const subtotal = watchedItems.reduce((sum: number, item: OrderItem) => sum + (Number(item.importe) || 0), 0);
-  const descuentoTotal = watchedItems.reduce((sum: number, item: OrderItem) => {
-    const cantidad = Number(item.cantidad) || 0;
-    const precio = Number(item.precio) || 0;
-    const importe = Number(item.importe) || 0;
-    return sum + (cantidad * precio - importe);
-  }, 0);
-  const servicioEnvioTotal = values.servicioEnvioActivo ? Number(values.envio) || 0 : 0;
-  const programaBordadosTotal = values.programaBordadosActivo ? Number(values.programa_bordados) || 0 : 0;
-  const bordadoPantalonesTotal = values.bordadoPantalonesExtrasActivo
-    ? Number(values.bordado_pantalones_extras) || 0
-    : 0;
-  const extras = (Number(values.flete) || 0) + (Number(values.seguros) || 0) + servicioEnvioTotal + programaBordadosTotal + bordadoPantalonesTotal;
-  const ivaRate = Number(values.iva) || 0;
-  const ivaAmount = Number(((subtotal + extras) * (ivaRate / 100)).toFixed(2));
-  const granTotal = Number((subtotal + extras + ivaAmount).toFixed(2));
-  const saldoPendiente = Number((granTotal - (Number(values.anticipo) || 0)).toFixed(2));
+  const watchedItems = useMemo(() => values.items ?? [], [values.items]);
+  const {
+    subtotal,
+    descuentoTotal,
+    ivaAmount,
+    granTotal,
+    saldoPendiente,
+  } = useMemo(() => {
+    const nextSubtotal = watchedItems.reduce(
+      (sum: number, item: OrderItem) => sum + (Number(item.importe) || 0),
+      0
+    );
+    const nextDescuentoTotal = watchedItems.reduce((sum: number, item: OrderItem) => {
+      const cantidad = Number(item.cantidad) || 0;
+      const precio = Number(item.precio) || 0;
+      const importe = Number(item.importe) || 0;
+      return sum + (cantidad * precio - importe);
+    }, 0);
+    const servicioEnvioTotal = values.servicioEnvioActivo ? Number(values.envio) || 0 : 0;
+    const programaBordadosTotal = values.programaBordadosActivo ? Number(values.programa_bordados) || 0 : 0;
+    const bordadoPantalonesTotal = values.bordadoPantalonesExtrasActivo
+      ? Number(values.bordado_pantalones_extras) || 0
+      : 0;
+    const extras =
+      (Number(values.flete) || 0) +
+      (Number(values.seguros) || 0) +
+      servicioEnvioTotal +
+      programaBordadosTotal +
+      bordadoPantalonesTotal;
+    const ivaRate = Number(values.iva) || 0;
+    const nextIvaAmount = Number(((nextSubtotal + extras) * (ivaRate / 100)).toFixed(2));
+    const nextGranTotal = Number((nextSubtotal + extras + nextIvaAmount).toFixed(2));
+    const nextSaldoPendiente = Number(
+      (nextGranTotal - (Number(values.anticipo) || 0)).toFixed(2)
+    );
 
-  const fields = watchedItems.map((item: OrderItem, index: number) => ({
-    id: `${item.productoId || "item"}-${index}`,
-  }));
+    return {
+      subtotal: nextSubtotal,
+      descuentoTotal: nextDescuentoTotal,
+      ivaAmount: nextIvaAmount,
+      granTotal: nextGranTotal,
+      saldoPendiente: nextSaldoPendiente,
+    };
+  }, [
+    watchedItems,
+    values.anticipo,
+    values.bordadoPantalonesExtrasActivo,
+    values.bordado_pantalones_extras,
+    values.envio,
+    values.flete,
+    values.iva,
+    values.programaBordadosActivo,
+    values.programa_bordados,
+    values.seguros,
+    values.servicioEnvioActivo,
+  ]);
+
+  const fields = useMemo(
+    () =>
+      watchedItems.map((item: OrderItem, index: number) => ({
+        id: `${item.productoId || "item"}-${index}`,
+      })),
+    [watchedItems]
+  );
 
   // API estilo field-array para tabla de productos.
   const append = (item: OrderItem) => {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useDeferredValue, useMemo, useState } from "react";
 import { MainDialog } from "@/src/components/MainDialog";
 import { OrderFormValues } from "../schema/order.schema";
 import { StepSelectProduct } from "./StepSelectProduct";
@@ -58,6 +58,7 @@ export function AddProductDialog({
 }: AddProductDialogProps) {
 
   const [search, setSearch] = useState("");
+  const deferredSearch = useDeferredValue(search);
   const [selectedRowId, setSelectedRowId] = useState<number | null>(null);
   const [step, setStep] = useState<Step>(startStep);
   const [sizeQuantities, setSizeQuantities] = useState<Record<number, number>>({});
@@ -130,20 +131,20 @@ export function AddProductDialog({
   }, [products]);
 
   const filteredRows = useMemo(() => {
-    const query = search.trim().toLowerCase();
+    const query = deferredSearch.trim().toLowerCase();
     if (!query) return rows;
     return rows.filter((r) => {
       const haystack = `${r.nombre} ${r.descripcion}`.toLowerCase();
       return haystack.includes(query);
     });
-  }, [rows, search]);
+  }, [deferredSearch, rows]);
 
-  const handleSelectRow = (row: BaseCatalogRow) => {
+  const handleSelectRow = useCallback((row: BaseCatalogRow) => {
     const fullRow = rows.find((item) => item.id === row.id);
     if (!fullRow) return;
     setSelectedRowId(fullRow.id);
     setSizeQuantities({});
-  };
+  }, [rows]);
 
   const handleNext = () => {
     if (!selectedRow) return;
@@ -159,37 +160,37 @@ export function AddProductDialog({
     setSizeQuantities({});
   };
 
-  const updateSizeQuantity = (sizeId: number, value: number) => {
+  const updateSizeQuantity = useCallback((sizeId: number, value: number) => {
     const normalized = Number.isFinite(value) ? Math.max(0, Math.floor(value)) : 0;
     setSizeQuantities((prev) => ({
       ...prev,
       [sizeId]: normalized,
     }));
-  };
+  }, []);
 
   const positionMap = useMemo(
     () => new Map(POSITION_OPTIONS.map((pos) => [pos.codigo, pos.nombre])),
     []
   );
 
-  const addEmbroiderySpec = () => {
+  const addEmbroiderySpec = useCallback(() => {
     const newId = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
     setEmbroiderySpecs((prev) => [
       ...prev,
       { id: newId, posicionCodigo: "", ancho: "", alto: "", colorHilo: "" },
     ]);
-  };
+  }, []);
 
-  const removeEmbroiderySpec = (id: string) => {
+  const removeEmbroiderySpec = useCallback((id: string) => {
     setEmbroiderySpecs((prev) => prev.filter((spec) => spec.id !== id));
     setSpecErrors((prev) => {
       const next = { ...prev };
       delete next[id];
       return next;
     });
-  };
+  }, []);
 
-  const updateEmbroiderySpec = (
+  const updateEmbroiderySpec = useCallback((
     id: string,
     field: "posicionCodigo" | "ancho" | "alto" | "colorHilo",
     value: string
@@ -197,7 +198,7 @@ export function AddProductDialog({
     setEmbroiderySpecs((prev) =>
       prev.map((spec) => (spec.id === id ? { ...spec, [field]: value } : spec))
     );
-  };
+  }, []);
 
   const initialSizeQuantities = useMemo(() => {
     const map: Record<number, number> = {};

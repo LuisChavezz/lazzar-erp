@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { FormInput } from "@/src/components/FormInput";
 import { AddProductsSelectableItem } from "./AddProductsSelectableItem";
 import type { CatalogRow } from "./AddProductDialog";
@@ -11,7 +12,7 @@ interface StepSelectProductProps {
   onSelectRow: (row: CatalogRow) => void;
 }
 
-export function StepSelectProduct({
+export const StepSelectProduct = memo(function StepSelectProduct({
   search,
   onSearchChange,
   rows,
@@ -41,6 +42,9 @@ export function StepSelectProduct({
         role="list"
         aria-label="Catálogo de productos"
       >
+        <p className="sr-only" aria-live="polite">
+          {filteredRows.length} productos visibles
+        </p>
         {rows.length === 0 ? (
           <p className="text-sm text-slate-500 dark:text-slate-400">
             No hay productos disponibles. Revisa Configuración &gt; Productos.
@@ -63,4 +67,4 @@ export function StepSelectProduct({
       </div>
     </div>
   );
-}
+});
