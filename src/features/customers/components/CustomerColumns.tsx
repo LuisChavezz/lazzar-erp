@@ -7,7 +7,13 @@ import { Customer } from "../interfaces/customer.interface";
 import { ActionMenu, ActionMenuItem } from "@/src/components/ActionMenu";
 import { EditIcon, ViewIcon } from "../../../components/Icons";
 
-const ActionsCell = ({ customer }: { customer: Customer }) => {
+const ActionsCell = ({
+  customer,
+  onEdit,
+}: {
+  customer: Customer;
+  onEdit: (customer: Customer) => void;
+}) => {
   const router = useRouter();
   const queryClient = useQueryClient();
   const items: ActionMenuItem[] = [
@@ -22,6 +28,7 @@ const ActionsCell = ({ customer }: { customer: Customer }) => {
     {
       label: "Editar",
       icon: EditIcon,
+      onSelect: () => onEdit(customer),
     },
   ];
 
@@ -32,7 +39,9 @@ const ActionsCell = ({ customer }: { customer: Customer }) => {
   );
 };
 
-export const customerColumns: ColumnDef<Customer>[] = [
+export const getCustomerColumns = (
+  onEdit: (customer: Customer) => void
+): ColumnDef<Customer>[] => [
   {
     accessorKey: "razon_social",
     header: "Razón social",
@@ -82,6 +91,6 @@ export const customerColumns: ColumnDef<Customer>[] = [
     id: "actions",
     header: "",
     size: 90,
-    cell: ({ row }) => <ActionsCell customer={row.original} />,
+    cell: ({ row }) => <ActionsCell customer={row.original} onEdit={onEdit} />,
   },
 ];

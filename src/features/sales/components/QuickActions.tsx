@@ -1,7 +1,22 @@
+"use client";
+
+import { useState } from "react";
 import Link from "next/link";
-import { ClockIcon, OrdenesIcon, PedidosIcon, PlusIcon } from "@/src/components/Icons";
+import { useRouter } from "next/navigation";
+import { MainDialog } from "@/src/components/MainDialog";
+import { DialogHeader } from "@/src/components/DialogHeader";
+import CustomerForm from "@/src/features/customers/components/CustomerForm";
+import { ClockIcon, ClientesIcon, PedidosIcon, PlusIcon } from "@/src/components/Icons";
 
 export const QuickActions = () => {
+  const router = useRouter();
+  const [isCustomerDialogOpen, setIsCustomerDialogOpen] = useState(false);
+
+  const handleCustomerCreated = () => {
+    setIsCustomerDialogOpen(false);
+    router.push("/sales/customers");
+  };
+
   return (
     <section
       aria-label="Acciones rápidas"
@@ -19,14 +34,31 @@ export const QuickActions = () => {
           <PlusIcon className="w-6 h-6 mb-2 text-slate-400 group-hover:text-sky-500 transition-colors" aria-hidden="true" />
           <span className="text-[10px] font-medium">Nueva Cotización</span>
         </Link>
-        <Link
-          href="#"
-          aria-label="Crear cotización"
-          className="flex flex-col items-center justify-center p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 hover:bg-blue-50 dark:hover:bg-blue-900/10 hover:text-blue-600 dark:hover:text-blue-400 border border-slate-100 dark:border-white/5 hover:border-blue-200 dark:hover:border-blue-500/20 transition-all group"
-        >
-          <OrdenesIcon className="w-6 h-6 mb-2 text-slate-400 group-hover:text-blue-500 transition-colors" aria-hidden="true" />
-          <span className="text-[10px] font-medium">Cotización</span>
-        </Link>
+        <>
+          <button
+            type="button"
+            aria-label="Agregar cliente"
+            onClick={() => setIsCustomerDialogOpen(true)}
+            className="flex flex-col items-center justify-center p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 hover:bg-blue-50 dark:hover:bg-blue-900/10 hover:text-blue-600 dark:hover:text-blue-400 border border-slate-100 dark:border-white/5 hover:border-blue-200 dark:hover:border-blue-500/20 transition-all group cursor-pointer"
+          >
+            <ClientesIcon className="w-6 h-6 mb-2 text-slate-400 group-hover:text-blue-500 transition-colors" aria-hidden="true" />
+            <span className="text-[10px] font-medium">Agregar cliente</span>
+          </button>
+          <MainDialog
+            title={
+              <DialogHeader
+                title="Alta de Cliente"
+                subtitle="Registra un nuevo cliente"
+                statusColor="emerald"
+              />
+            }
+            open={isCustomerDialogOpen}
+            onOpenChange={setIsCustomerDialogOpen}
+            maxWidth="900px"
+          >
+            <CustomerForm onCreated={handleCustomerCreated} />
+          </MainDialog>
+        </>
         <Link
           href="/sales/orders"
           aria-label="Crear pedido"

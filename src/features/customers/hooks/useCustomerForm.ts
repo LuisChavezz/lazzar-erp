@@ -19,6 +19,40 @@ interface UseCustomerFormParams {
 
 type CustomerFormField = keyof CustomerFormValues;
 
+const scrollToFirstValidationError = (formElement: HTMLFormElement, issuePaths: string[]) => {
+  if (issuePaths.length === 0) {
+    return;
+  }
+
+  const normalizedIssuePaths = issuePaths.filter(Boolean);
+  const controls = Array.from(
+    formElement.querySelectorAll<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>(
+      "input, select, textarea"
+    )
+  ).filter(
+    (element) =>
+      Boolean(element.name) &&
+      !element.disabled &&
+      !(element instanceof HTMLInputElement && element.type === "hidden")
+  );
+
+  const firstInvalidControl = controls.find((control) =>
+    normalizedIssuePaths.some(
+      (path) =>
+        path === control.name ||
+        path.startsWith(`${control.name}.`) ||
+        control.name.startsWith(`${path}.`)
+    )
+  );
+
+  if (!firstInvalidControl) {
+    return;
+  }
+
+  firstInvalidControl.scrollIntoView({ behavior: "smooth", block: "center" });
+  firstInvalidControl.focus({ preventScroll: true });
+};
+
 // Estado base del formulario para modo creación.
 // También sirve como fallback cuando no existe cliente en edición.
 export const emptyValues: CustomerFormValues = {
@@ -143,9 +177,12 @@ export function useCustomerForm({
     const parsed = CustomerFormSchema.safeParse(values);
     if (parsed.success) {
       setClientErrors({});
-      return true;
+      return { success: true as const, issuePaths: [] as string[] };
     }
     const nextErrors: Partial<Record<CustomerFormField, string>> = {};
+    const issuePaths = parsed.error.issues
+      .map((issue) => issue.path.map((segment) => String(segment)).join("."))
+      .filter(Boolean);
     parsed.error.issues.forEach((issue) => {
       const field = issue.path[0] as CustomerFormField;
       if (!field || nextErrors[field]) {
@@ -154,7 +191,7 @@ export function useCustomerForm({
       nextErrors[field] = issue.message;
     });
     setClientErrors(nextErrors);
-    return false;
+    return { success: false as const, issuePaths };
   };
 
   const getError = (field: CustomerFormField) => {
@@ -169,7 +206,16 @@ export function useCustomerForm({
     onSubmit: async ({ value }) => {
       setServerErrors({});
 
-      if (!validateForm(value)) {
+      const validationResult = validateForm(value);
+      if (!validationResult.success) {
+        if (formRef.current) {
+          requestAnimationFrame(() => {
+            if (!formRef.current) {
+              return;
+            }
+            scrollToFirstValidationError(formRef.current, validationResult.issuePaths);
+          });
+        }
         return;
       }
 
