@@ -97,15 +97,6 @@ export const orderColumns: ColumnDef<Order>[] = [
     ),
   },
   {
-    accessorKey: "oc",
-    header: "OC",
-    cell: ({ row }) => (
-      <span className="text-slate-500 dark:text-slate-400">
-        {row.getValue("oc")}
-      </span>
-    ),
-  },
-  {
     accessorKey: "uso_cfdi",
     header: "Uso CFDI",
     cell: ({ row }) => (

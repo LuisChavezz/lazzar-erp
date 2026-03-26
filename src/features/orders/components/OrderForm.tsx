@@ -17,6 +17,7 @@ import CustomerForm from "../../customers/components/CustomerForm";
 import { DialogHeader } from "@/src/components/DialogHeader";
 import { useOrderForm } from "../hooks/useOrderForm";
 import { AddProductDialog } from "./AddProductDialog";
+import { OrderCreationSuccessMessage } from "./OrderCreationSuccessMessage";
 export default function OrderForm() {
   const {
     form,
@@ -44,6 +45,8 @@ export default function OrderForm() {
     isCurrenciesLoading,
     isOnboardingLoading,
     showForm,
+    isCreationSuccessVisible,
+    isRouteTransitioning,
     handleFormSubmit,
     handleReset,
     handleBack,
@@ -53,6 +56,7 @@ export default function OrderForm() {
     update,
     watchedItems,
     watchedFecha,
+    watchedDocRelacionado,
     watchedEnviarDomicilioFiscal,
     watchedCondicionPago,
     subtotal,
@@ -61,7 +65,6 @@ export default function OrderForm() {
     granTotal,
     saldoPendiente,
     itemsError,
-    docRelacionadoError,
     tipoPedidoError,
     origenError,
     isAddProductsOpen,
@@ -92,13 +95,25 @@ export default function OrderForm() {
     );
   }
 
+  const routeTransitionClass = `transition-all duration-300 ease-out ${
+    isRouteTransitioning ? "translate-x-12 opacity-0" : "translate-x-0 opacity-100"
+  }`;
+
+  if (isCreationSuccessVisible) {
+    return (
+      <div className={routeTransitionClass}>
+        <OrderCreationSuccessMessage />
+      </div>
+    );
+  }
+
   return (
     <form
       ref={formRef}
       key={formKey}
       onSubmit={handleFormSubmit}
       aria-busy={isPending}
-      className="space-y-6"
+      className={`space-y-6 ${routeTransitionClass}`}
     >
       <section className="relative overflow-hidden bg-white dark:bg-zinc-900 rounded-3xl p-6 md:p-8 border border-slate-200 dark:border-white/5 shadow-sm dark:shadow-none">
         <div className="absolute top-0 right-0 w-96 h-96 bg-sky-500/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none" />
@@ -1472,38 +1487,13 @@ export default function OrderForm() {
           </div>
 
           <div className="space-y-4 pt-4 border-t border-slate-200 dark:border-slate-700">
-            <div className="space-y-1">
-              <p className="text-[10px] uppercase font-bold text-slate-400">
+            <div className="flex flex-col  justify-between text-xs">
+              <span className="text-[10px] uppercase font-bold text-slate-400">
                 Documento Relacionado
-              </p>
-              <form.Field name="docRelacionado">
-                {(field) => (
-                  <>
-                    <input
-                      type="text"
-                      placeholder="Cotización / OC"
-                      aria-label="Documento relacionado"
-                      autoComplete="off"
-                      className={`w-full bg-transparent border-b text-xs py-1 focus:outline-none border-slate-200 dark:border-slate-700 ${docRelacionadoError ? "border-rose-500 text-rose-600 dark:text-rose-400" : ""}`}
-                      name={field.name}
-                      value={field.state.value}
-                      onChange={(event) => {
-                        field.handleChange(event.target.value);
-                        clearFieldErrors("docRelacionado");
-                      }}
-                      onBlur={() => {
-                        field.handleBlur();
-                        validateField("docRelacionado", field.state.value);
-                      }}
-                    />
-                    {docRelacionadoError && (
-                      <p className="text-[10px] text-rose-600 dark:text-rose-400">
-                        {docRelacionadoError.message}
-                      </p>
-                    )}
-                  </>
-                )}
-              </form.Field>
+              </span>
+              <span className="text-xs text-right font-medium text-slate-700 dark:text-slate-200">
+                {watchedDocRelacionado}
+              </span>
             </div>
 
             <div className="flex items-center justify-between text-xs">

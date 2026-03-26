@@ -74,6 +74,8 @@ const IVA_OPTIONS = [
   { value: 8, label: "8%" },
   { value: 0, label: "0%" },
 ];
+const ORDER_CREATION_EXTRA_DELAY_MS = 1800;
+const ROUTE_SLIDE_TRANSITION_MS = 320;
 
 // Guards de dominio para asegurar que los valores persistidos siempre coincidan con el esquema actual.
 const mapOrigenFlags = (origen: string) => {
@@ -285,6 +287,8 @@ export function useOrderForm() {
   const [editIndex, setEditIndex] = useState<number | null>(null);
   const [isCustomerDialogOpen, setIsCustomerDialogOpen] = useState(false);
   const [isSubmittingForm, setIsSubmittingForm] = useState(false);
+  const [isCreationSuccessVisible, setIsCreationSuccessVisible] = useState(false);
+  const [isRouteTransitioning, setIsRouteTransitioning] = useState(false);
   const [selectedCustomerId, setSelectedCustomerId] = useState(0);
 
   const showForm = true;
@@ -414,7 +418,7 @@ export function useOrderForm() {
               : 4,
           ...mapOrigenFlags(parsed.data.origen),
           ...mapCondicionPagoFlags(parsed.data.condicionPago),
-          oc: parsed.data.oc,
+          oc: parsed.data.oc?.trim() || "",
           monto: parsed.data.condicionPagoMonto ? String(parsed.data.condicionPagoMonto) : "0",
           empaque_ecologico: Boolean(parsed.data.empaque_ecologico),
           cliente_razon_social: parsed.data.razonSocial || "",
@@ -450,6 +454,14 @@ export function useOrderForm() {
         detalle,
       };
       await createOrderMutation(orderCreatePayload);
+      setIsCreationSuccessVisible(true);
+      await new Promise<void>((resolve) => {
+        setTimeout(resolve, ORDER_CREATION_EXTRA_DELAY_MS);
+      });
+      setIsRouteTransitioning(true);
+      await new Promise<void>((resolve) => {
+        setTimeout(resolve, ROUTE_SLIDE_TRANSITION_MS);
+      });
 
       form.reset(emptyValues);
       router.push("/sales/orders");
@@ -485,6 +497,18 @@ export function useOrderForm() {
     values.razonSocial,
     values.telefono_pagos,
   ]);
+
+  const watchedDocRelacionado = useMemo(
+    () => `cotización-oc${(values.oc ?? "").trim()}`,
+    [values.oc]
+  );
+
+  useEffect(() => {
+    if (values.docRelacionado === watchedDocRelacionado) {
+      return;
+    }
+    form.setFieldValue("docRelacionado", watchedDocRelacionado);
+  }, [form, values.docRelacionado, watchedDocRelacionado]);
 
   const normalizePath = (field: string) => field.replace(/\[(\d+)\]/g, ".$1");
 
@@ -733,9 +757,13 @@ export function useOrderForm() {
     router.push("/sales/orders");
   };
 
-  const isPending = isSubmittingForm || form.state.isSubmitting || isCreatingOrder;
+  const isPending =
+    isSubmittingForm ||
+    form.state.isSubmitting ||
+    isCreatingOrder ||
+    isCreationSuccessVisible ||
+    isRouteTransitioning;
   const itemErrors = getError("items");
-  const docRelacionadoError = getError("docRelacionado");
   const tipoPedidoError = getError("tipo_pedido");
   const origenError = getError("origen");
 
@@ -837,6 +865,8 @@ export function useOrderForm() {
     isCurrenciesLoading,
     isOnboardingLoading,
     showForm,
+    isCreationSuccessVisible,
+    isRouteTransitioning,
     handleFormSubmit,
     handleReset,
     handleBack,
@@ -846,6 +876,7 @@ export function useOrderForm() {
     update,
     watchedItems,
     watchedFecha: values.fecha,
+    watchedDocRelacionado,
     watchedEnviarDomicilioFiscal: values.enviarDomicilioFiscal,
     watchedCondicionPago: values.condicionPago,
     subtotal,
@@ -854,7 +885,6 @@ export function useOrderForm() {
     granTotal,
     saldoPendiente,
     itemsError: itemErrors,
-    docRelacionadoError,
     tipoPedidoError,
     origenError,
     isAddProductsOpen,
