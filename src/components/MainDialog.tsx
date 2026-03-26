@@ -13,7 +13,6 @@ interface MainDialogProps {
   actionButtonClose?: boolean;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
-  hideCloseButton?: boolean;
 }
 
 export function MainDialog({ 
@@ -26,7 +25,6 @@ export function MainDialog({
   actionButtonClose = true,
   open,
   onOpenChange,
-  hideCloseButton = false,
 }: MainDialogProps) {
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
@@ -36,7 +34,11 @@ export function MainDialog({
         </Dialog.Trigger>
       )}
 
-      <Dialog.Content maxWidth={maxWidth} className="bg-white! dark:bg-zinc-900! dark:text-white!">
+      <Dialog.Content
+        maxWidth={maxWidth}
+        onPointerDownOutside={(event) => event.preventDefault()}
+        className="bg-white! dark:bg-zinc-900! dark:text-white!"
+      >
         <Dialog.Title>{title}</Dialog.Title>
         
         {description && (
@@ -49,14 +51,15 @@ export function MainDialog({
         {children}
 
         <Flex gap="3" mt="4" justify="end">
-          {!hideCloseButton && (
-            <Dialog.Close>
-              <Button variant="soft" color="gray" className=" dark:bg-zinc-800! dark:text-white!">
-                Cerrar
-              </Button>
-            </Dialog.Close>
-          )}
-          
+          <Dialog.Close>
+            <Button
+              variant="soft"
+              className="bg-rose-50! text-rose-700! hover:bg-rose-100! dark:bg-rose-500/15! dark:text-rose-300! dark:hover:bg-rose-500/25!"
+            >
+              Cerrar
+            </Button>
+          </Dialog.Close>
+
           {actionButton &&
             (actionButtonClose ? (
               <Dialog.Close>{actionButton}</Dialog.Close>

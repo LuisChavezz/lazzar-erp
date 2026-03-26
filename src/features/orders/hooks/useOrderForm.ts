@@ -470,21 +470,37 @@ export function useOrderForm() {
 
   // Snapshot reactivo de valores del formulario para derivados y sincronizaciones.
   const values = useStore(form.baseStore, (state) => state.values);
+  const wasEnviarDomicilioFiscalRef = useRef(values.enviarDomicilioFiscal);
 
   // Sincroniza automáticamente los datos de envío cuando se usa domicilio fiscal.
   useEffect(() => {
-    if (!values.enviarDomicilioFiscal) {
+    if (values.enviarDomicilioFiscal) {
+      form.setFieldValue("destinatario", values.clienteNombre || "");
+      form.setFieldValue("empresaEnvio", values.razonSocial || "");
+      form.setFieldValue("telefonoEnvio", values.telefono_pagos || "");
+      form.setFieldValue("celularEnvio", values.telefono_pagos || "");
+      form.setFieldValue("direccionEnvio", values.direccionFiscal || "");
+      form.setFieldValue("coloniaEnvio", values.coloniaFiscal || "");
+      form.setFieldValue("codigoPostalEnvio", values.codigoPostalFiscal || "");
+      form.setFieldValue("ciudadEnvio", values.ciudadFiscal || "");
+      form.setFieldValue("estadoEnvio", values.estadoFiscal || "");
+      wasEnviarDomicilioFiscalRef.current = true;
       return;
     }
-    form.setFieldValue("destinatario", values.clienteNombre || "");
-    form.setFieldValue("empresaEnvio", values.razonSocial || "");
-    form.setFieldValue("telefonoEnvio", values.telefono_pagos || "");
-    form.setFieldValue("celularEnvio", values.telefono_pagos || "");
-    form.setFieldValue("direccionEnvio", values.direccionFiscal || "");
-    form.setFieldValue("coloniaEnvio", values.coloniaFiscal || "");
-    form.setFieldValue("codigoPostalEnvio", values.codigoPostalFiscal || "");
-    form.setFieldValue("ciudadEnvio", values.ciudadFiscal || "");
-    form.setFieldValue("estadoEnvio", values.estadoFiscal || "");
+
+    if (wasEnviarDomicilioFiscalRef.current) {
+      form.setFieldValue("destinatario", "");
+      form.setFieldValue("empresaEnvio", "");
+      form.setFieldValue("telefonoEnvio", "");
+      form.setFieldValue("celularEnvio", "");
+      form.setFieldValue("direccionEnvio", "");
+      form.setFieldValue("coloniaEnvio", "");
+      form.setFieldValue("codigoPostalEnvio", "");
+      form.setFieldValue("ciudadEnvio", "");
+      form.setFieldValue("estadoEnvio", "");
+    }
+
+    wasEnviarDomicilioFiscalRef.current = false;
   }, [
     form,
     values.ciudadFiscal,

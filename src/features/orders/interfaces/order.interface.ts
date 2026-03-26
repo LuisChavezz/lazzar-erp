@@ -4,11 +4,7 @@ import { Currency } from "../../currency/interfaces/currency.interface";
 import { Product } from '../../products/interfaces/product.interface';
 import { Size } from '../../sizes/interfaces/size.interface';
 
-export type OrderStatus =
-  | "Pendiente"
-  | "Parcial"
-  | "Completo"
-  | "Cancelado";
+
 export type OrderPaymentCondition =
   | "100_anticipo"
   | "50_anticipo"
@@ -43,19 +39,6 @@ export interface OrderItem {
     }[];
   };
 }
-
-export interface OrderTotals {
-  subtotal: number;
-  descuentoTotal: number;
-  ivaAmount: number;
-  granTotal: number;
-  saldoPendiente: number;
-  flete: number;
-  seguro: number;
-  anticipo: number;
-  ivaRate: number;
-}
-
 export interface Order {
   id: number;
   estatus: number;
@@ -73,117 +56,6 @@ export interface Order {
   pedido_id: number | null;
   pedido_folio: string | null;
 }
-
-// export interface Order {
-//   id: number;
-//   tipo_pedido: number;
-//   estatus: number;
-//   recompra: boolean;
-//   chat_online: boolean;
-//   pedido_online: boolean;
-//   prospeccion: boolean;
-//   recomendacion: boolean;
-//   amazon: boolean;
-//   google: boolean;
-//   publicidad: boolean;
-//   mercado_libre: boolean;
-//   redes_sociales: boolean;
-//   otro: boolean;
-//   mailing: boolean;
-//   persona_pagos: string;
-//   correo_facturas: string;
-//   telefono_pagos: string;
-//   oc: string;
-//   forma_pago: string;
-//   metodo_pago: string;
-//   uso_cfdi: string;
-//   anticipo_total: boolean;
-//   anticipo_parcial: boolean;
-//   vendedor_autoriza: boolean;
-//   pago_antes_embarque: boolean;
-//   por_confirmar: boolean;
-//   otra_cantidad: boolean;
-//   monto: string;
-//   empaque_ecologico: boolean;
-//   embarque_parcial: boolean;
-//   comentarios_parcialidad: string;
-//   envio: string;
-//   programa_bordados: string;
-//   bordado_pantalones_extras: string;
-//   bordado_logotipo: boolean;
-//   observaciones: string;
-//   flete: string;
-//   seguros: string;
-//   anticipo: string;
-//   subtotal: string;
-//   descuento_global: string;
-//   ieps: string;
-//   iva: number;
-//   gran_total: string;
-//   activo: boolean;
-//   empresa: number;
-//   sucursal: number;
-//   cliente: number;
-//   cotizacion: number | null;
-//   moneda: number;
-//   folio?: string;
-//   fecha?: string;
-//   agente?: string;
-//   capturadoPor?: string;
-//   tipoDocumento?: string;
-//   clienteNombre?: string;
-//   estatusPedido?: OrderStatus;
-//   items?: OrderItem[];
-//   totals?: OrderTotals;
-//   clienteBusqueda?: string;
-//   razonSocial?: string;
-//   rfc?: string;
-//   regimenFiscal?: string;
-//   direccionFiscal?: string;
-//   coloniaFiscal?: string;
-//   codigoPostalFiscal?: string;
-//   ciudadFiscal?: string;
-//   estadoFiscal?: string;
-//   giroEmpresa?: string;
-//   personaPagos?: string;
-//   correoFacturas?: string;
-//   telefonoPagos?: string;
-//   ordenCompra?: string;
-//   formaPago?: string;
-//   metodoPago?: string;
-//   usoCfdi?: string;
-//   referenciarOcFactura?: boolean;
-//   condicionPago?: OrderPaymentCondition;
-//   condicionPagoMonto?: number;
-//   origen?: string;
-//   destinatario?: string;
-//   empresaEnvio?: string;
-//   telefonoEnvio?: string;
-//   celularEnvio?: string;
-//   direccionEnvio?: string;
-//   coloniaEnvio?: string;
-//   codigoPostalEnvio?: string;
-//   ciudadEnvio?: string;
-//   estadoEnvio?: string;
-//   referenciasEnvio?: string;
-//   enviarDomicilioFiscal?: boolean;
-//   embarcarConOtrosPedidos?: boolean;
-//   empaqueEcologico?: boolean;
-//   embarqueParcial?: boolean;
-//   comentariosParcialidad?: string;
-//   servicioEnvioActivo?: boolean;
-//   servicioEnvioMonto?: number;
-//   programaBordadosActivo?: boolean;
-//   programaBordadosMonto?: number;
-//   bordadoPantalonesExtrasActivo?: boolean;
-//   bordadoPantalonesExtrasMonto?: number;
-//   bordadoLogotipoIncluido?: boolean;
-//   estatusPedidoLegacy?: OrderStatus;
-//   docRelacionado?: string;
-//   created_at: string;
-//   updated_at: string;
-//   fecha_confirmacion: string | null;
-// }
 
 export interface OrderCreate {
   pedido: {

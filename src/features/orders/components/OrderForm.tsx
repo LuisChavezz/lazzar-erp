@@ -254,7 +254,6 @@ export default function OrderForm() {
                   open={isCustomerDialogOpen}
                   onOpenChange={setIsCustomerDialogOpen}
                   maxWidth="900px"
-                  hideCloseButton={true}
                 >
                   <CustomerForm onCreated={handleCustomerCreated} invalidateOrderOnboarding />
                 </MainDialog>

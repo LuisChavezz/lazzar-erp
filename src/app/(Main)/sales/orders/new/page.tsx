@@ -1,4 +1,17 @@
+import { Metadata } from "next";
 import dynamic from "next/dynamic";
+
+export const metadata: Metadata = {
+  title: "Nueva Cotización | ERP",
+  description:
+    "Crea un nueva cotización con información de cliente, productos y montos en el ERP.",
+  openGraph: {
+    title: "Nueva Cotización | ERP",
+    description:
+      "Crea un nueva cotización con información de cliente, productos y montos en el ERP.", 
+    type: "website",
+  },
+};
 
 const OrderForm = dynamic(
   () => import("@/src/features/orders/components/OrderForm"),
