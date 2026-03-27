@@ -7,11 +7,10 @@ interface FormSelectProps extends React.SelectHTMLAttributes<HTMLSelectElement> 
   error?: FormFieldError;
   options?: { value: string | number; label: string }[];
   children?: React.ReactNode;
-  forceUppercase?: boolean;
 }
 
 export const FormSelect = forwardRef<HTMLSelectElement, FormSelectProps>(
-  ({ label, error, className = "", options, children, forceUppercase = true, onChange, ...props }, ref) => {
+  ({ label, error, className = "", options, children, onChange, ...props }, ref) => {
     const selectId =
       props.id ?? (typeof props.name === "string" ? props.name : undefined);
 
@@ -40,18 +39,11 @@ export const FormSelect = forwardRef<HTMLSelectElement, FormSelectProps>(
               focus:border-brand-500
               focus:bg-white dark:focus:bg-black/40
               disabled:opacity-50 disabled:cursor-not-allowed
-              ${forceUppercase ? "uppercase" : ""}
               ${error ? "border-red-500 focus:border-red-500 focus:ring-red-500/20" : ""}
               ${className}
             `}
             {...props}
             onChange={(event) => {
-              if (forceUppercase) {
-                const nextValue = event.currentTarget.value.toUpperCase();
-                if (event.currentTarget.value !== nextValue) {
-                  event.currentTarget.value = nextValue;
-                }
-              }
               onChange?.(event);
             }}
           >
@@ -59,14 +51,10 @@ export const FormSelect = forwardRef<HTMLSelectElement, FormSelectProps>(
               options.map((opt) => (
                 <option
                   key={opt.value}
-                  value={
-                    forceUppercase && typeof opt.value === "string"
-                      ? opt.value.toUpperCase()
-                      : opt.value
-                  }
-                  className={`bg-white dark:bg-zinc-900 text-slate-900 dark:text-white ${forceUppercase ? "uppercase" : ""}`}
+                  value={opt.value}
+                  className="bg-white dark:bg-zinc-900 text-slate-900 dark:text-white"
                 >
-                  {forceUppercase ? opt.label.toUpperCase() : opt.label}
+                  {opt.label}
                 </option>
               ))
             ) : (

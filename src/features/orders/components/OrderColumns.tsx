@@ -14,6 +14,7 @@ import {
 } from "../../../components/Icons";
 import { formatCurrency } from "../../../utils/formatCurrency";
 import { getStatusStyles } from "../utils/getStatusStyle";
+import { formatOrderDateTime } from "../utils/orderDetailsFormatters";
 
 const statusDialogColors: Record<number, "sky" | "emerald" | "amber" | "rose"> = {
   1: "amber",
@@ -58,7 +59,7 @@ const ActionsCell = ({ order }: { order: Order }) => {
             />
           }
         >
-          <OrderDetails order={order} />
+          <OrderDetails orderId={order.id} />
         </MainDialog>
       )}
     </div>
@@ -79,15 +80,6 @@ export const orderColumns: ColumnDef<Order>[] = [
     },
   },
   {
-    accessorKey: "cliente_nombre",
-    header: "Cliente",
-    cell: ({ row }) => (
-      <span className="text-slate-600 dark:text-slate-300">
-        {row.original.cliente_nombre || row.original.cliente_razon_social}
-      </span>
-    ),
-  },
-  {
     accessorKey: "cliente_razon_social",
     header: "Razón social",
     cell: ({ row }) => (
@@ -97,11 +89,30 @@ export const orderColumns: ColumnDef<Order>[] = [
     ),
   },
   {
-    accessorKey: "uso_cfdi",
-    header: "Uso CFDI",
-    cell: ({ row }) => (
+    id: "piezas",
+    header: "Piezas",
+    size: 80,
+    cell: () => (
       <span className="text-slate-500 dark:text-slate-400">
-        {row.getValue("uso_cfdi")}
+        -
+      </span>
+    ),
+  },
+  {
+    accessorKey: "created_at",
+    header: "Fecha",
+    cell: ({ row }) => (
+      <span className="text-slate-600 dark:text-slate-300">
+        {formatOrderDateTime(row.original.created_at, "d MMM yyyy, HH:mm")}
+      </span>
+    ),
+  },
+  {
+    id: "importeSinIva",
+    header: "Importe sin IVA",
+    cell: () => (
+      <span className="text-slate-500 dark:text-slate-400">
+        -
       </span>
     ),
   },

@@ -40,6 +40,7 @@ export interface OrderItem {
     }[];
   };
 }
+
 export interface Order {
   id: number;
   estatus: number;
@@ -56,6 +57,106 @@ export interface Order {
   updated_at: string;
   pedido_id: number | null;
   pedido_folio: string | null;
+}
+
+export interface OrderById {
+  id: number;
+  estatus_label: string;
+  detalles: {
+    id: number;
+    tallas: {
+      id: number;
+      cantidad: number;
+      precio_unitario: string;
+      subtotal_talla: string;
+      lleva_bordado: boolean;
+      bordado_config: {
+        notas: string;
+        ubicaciones: {
+          codigo: string;
+          ancho_cm: number;
+          alto_cm: number;
+          color_hilo: string | null;
+          imagen: string;
+        }[];
+      };
+      cotizacion_detalle: number;
+      talla: number;
+    }[];
+    precio_unitario: string;
+    costo_unitario: string | null;
+    subtotal_linea: string;
+    cotizacion: number;
+    producto: number;
+  }[];
+  cliente_nombre: string;
+  cliente_razon_social: string;
+  estatus: number;
+  autorizada_at: string | null;
+  cambios_solicitados_at: string | null;
+  aprobado_snapshot: string | null;
+  created_at: string;
+  updated_at: string;
+  recompra: boolean;
+  chat_online: boolean;
+  pedido_online: boolean;
+  prospeccion: boolean;
+  recomendacion: boolean;
+  amazon: boolean;
+  google: boolean;
+  publicidad: boolean;
+  mercado_libre: boolean;
+  redes_sociales: boolean;
+  otro: boolean;
+  mailing: boolean;
+  persona_pagos: string;
+  correo_facturas: string;
+  telefono_pagos: string;
+  oc: string;
+  forma_pago: string;
+  metodo_pago: string;
+  uso_cfdi: string;
+  anticipo_total: boolean;
+  anticipo_parcial: boolean;
+  vendedor_autoriza: boolean;
+  pago_antes_embarque: boolean;
+  por_confirmar: boolean;
+  otra_cantidad: boolean;
+  monto: string;
+  empaque_ecologico: boolean;
+  embarque_parcial: boolean;
+  comentarios_parcialidad: string;
+  destinatario: string | null;
+  empresa_envio: string | null;
+  telefono_envio: string | null;
+  celular_envio: string | null;
+  direccion_envio: string | null;
+  colonia_envio: string | null;
+  codigo_postal: string | null;
+  ciudad_envio: string | null;
+  estado_envio: string | null;
+  referencias: string | null;
+  envio: string;
+  programa_bordados: string;
+  bordado_pantalones_extras: string;
+  bordado_logotipo: boolean;
+  serigrafia: string;
+  reflejante: string;
+  observaciones: string;
+  flete: string;
+  seguros: string;
+  anticipo: string;
+  subtotal: string;
+  descuento_global: string;
+  ieps: string;
+  iva: number;
+  gran_total: string;
+  empresa: number;
+  vendedor: number;
+  sucursal: number;
+  cliente: number;
+  oportunidad: number | null;
+  moneda: number;
 }
 
 export interface OrderCreate {
