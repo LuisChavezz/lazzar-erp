@@ -1,5 +1,19 @@
 import { z } from "zod";
 
+const IMAGE_URL_EXTENSION_REGEX = /\.(png|jpe?g|gif|webp|bmp|svg|avif)(\?.*)?(#.*)?$/i;
+
+const imageUrlSchema = z.string().trim().url("URL inválida").refine(
+  (value) => {
+    try {
+      const parsed = new URL(value);
+      return IMAGE_URL_EXTENSION_REGEX.test(parsed.pathname + parsed.search + parsed.hash);
+    } catch {
+      return false;
+    }
+  },
+  "Debe incluir una extensión de imagen válida"
+);
+
 const orderItemSizeSchema = z.object({
   tallaId: z.coerce.number().int().min(1, "Requerido"),
   nombre: z.string().min(1, "Requerido"),
@@ -18,13 +32,16 @@ const embroiderySpecSchema = z.object({
     .coerce.number({
       message: "Debe ser un número válido",
     })
-    .gt(0, "Debe ser positivo"),
+    .gt(0, "Debe ser positivo")
+    .optional(),
   alto: z
     .coerce.number({
       message: "Debe ser un número válido",
     })
-    .gt(0, "Debe ser positivo"),
+    .gt(0, "Debe ser positivo")
+    .optional(),
   colorHilo: z.string().min(1, "Requerido"),
+  imagen: imageUrlSchema,
 });
 
 const embroiderySchema = z.object({

@@ -376,6 +376,7 @@ export function useOrderForm() {
                     ancho_cm: Math.max(0, Number(spec.ancho) || 0),
                     alto_cm: Math.max(0, Number(spec.alto) || 0),
                     color_hilo: spec.colorHilo ?? null,
+                    imagen: spec.imagen,
                   })) ?? [],
                 notas: item.bordados?.observaciones ?? "",
               }

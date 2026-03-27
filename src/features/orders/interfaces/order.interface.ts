@@ -33,9 +33,10 @@ export interface OrderItem {
     especificaciones: {
       posicionCodigo: string;
       posicionNombre: string;
-      ancho: number;
-      alto: number;
+      ancho?: number;
+      alto?: number;
       colorHilo: string;
+      imagen: string;
     }[];
   };
 }
@@ -135,6 +136,7 @@ interface OrderDetail {
         ancho_cm: number;
         alto_cm: number;
         color_hilo: string | null;
+        imagen: string;
       }[];
       notas: string;
     };

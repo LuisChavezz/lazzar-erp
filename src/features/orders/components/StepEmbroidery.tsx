@@ -2,6 +2,7 @@ import { memo } from "react";
 import Image from "next/image";
 import { FormInput } from "@/src/components/FormInput";
 import { FormSelect } from "@/src/components/FormSelect";
+import { DeleteIcon, EyeIcon } from "@/src/components/Icons";
 
 export type EmbroiderySpecForm = {
   id: string;
@@ -9,7 +10,25 @@ export type EmbroiderySpecForm = {
   ancho: string;
   alto: string;
   colorHilo: string;
+  imagen: string;
 };
+
+const IMAGE_URL_EXTENSION_REGEX = /\.(png|jpe?g|gif|webp|bmp|svg|avif)(\?.*)?(#.*)?$/i;
+
+const isValidImageUrl = (value: string) => {
+  const trimmedValue = value.trim();
+  if (!trimmedValue) {
+    return false;
+  }
+  try {
+    const parsed = new URL(trimmedValue);
+    return Boolean(parsed.protocol) && IMAGE_URL_EXTENSION_REGEX.test(parsed.pathname + parsed.search + parsed.hash);
+  } catch {
+    return false;
+  }
+};
+
+const externalImageLoader = ({ src }: { src: string }) => src;
 
 interface StepEmbroideryProps {
   nuevoPonchado: boolean;
@@ -21,11 +40,11 @@ interface StepEmbroideryProps {
   onRemoveSpec: (id: string) => void;
   onUpdateSpec: (
     id: string,
-    field: "posicionCodigo" | "ancho" | "alto" | "colorHilo",
+    field: "posicionCodigo" | "ancho" | "alto" | "colorHilo" | "imagen",
     value: string
   ) => void;
   embroideryError: string | null;
-  specErrors: Record<string, { posicion?: string; ancho?: string; alto?: string; color?: string }>;
+  specErrors: Record<string, { posicion?: string; ancho?: string; alto?: string; color?: string; imagen?: string }>;
   positionOptions: { codigo: string; nombre: string }[];
   positionMap: Map<string, string>;
   threadColorOptions: string[];
@@ -46,6 +65,10 @@ export const StepEmbroidery = memo(function StepEmbroidery({
   positionMap,
   threadColorOptions,
 }: StepEmbroideryProps) {
+  const openImagePreview = (src: string) => {
+    window.open(src, "_blank", "noopener,noreferrer");
+  };
+
   return (
     <div className="space-y-6 mt-2">
       <div className="space-y-3">
@@ -53,24 +76,44 @@ export const StepEmbroidery = memo(function StepEmbroidery({
           Ubicaciones
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div className="relative h-32 rounded-2xl border border-dashed border-slate-200 dark:border-white/10 bg-white/70 dark:bg-white/5 overflow-hidden">
+          <div className="group relative h-32 rounded-2xl border border-dashed border-slate-200 dark:border-white/10 bg-white/70 dark:bg-white/5 overflow-hidden">
+            <div className="absolute top-2 right-2 z-10 opacity-0 translate-y-1 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-200 ease-in-out">
+              <button
+                type="button"
+                onClick={() => openImagePreview("/images/bordado-front.jpg")}
+                className="w-8 h-8 rounded-lg cursor-pointer bg-white/95 dark:bg-zinc-900/95 border border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300 hover:text-sky-600 dark:hover:text-sky-400 flex items-center justify-center shadow-sm transition-colors"
+                aria-label="Expandir imagen frontal"
+              >
+                <EyeIcon className="w-4 h-4" />
+              </button>
+            </div>
             <Image
               src="/images/bordado-front.jpg"
               alt="Referencia de ubicación de bordado frontal"
               fill
               sizes="(min-width: 640px) 50vw, 100vw"
               className="object-contain"
-              quality={90}
+              quality={75}
             />
           </div>
-          <div className="relative h-32 rounded-2xl border border-dashed border-slate-200 dark:border-white/10 bg-white/70 dark:bg-white/5 overflow-hidden">
+          <div className="group relative h-32 rounded-2xl border border-dashed border-slate-200 dark:border-white/10 bg-white/70 dark:bg-white/5 overflow-hidden">
+            <div className="absolute top-2 right-2 z-10 opacity-0 translate-y-1 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-200 ease-in-out">
+              <button
+                type="button"
+                onClick={() => openImagePreview("/images/bordado-back.jpg")}
+                className="w-8 h-8 rounded-lg cursor-pointer bg-white/95 dark:bg-zinc-900/95 border border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300 hover:text-sky-600 dark:hover:text-sky-400 flex items-center justify-center shadow-sm transition-colors"
+                aria-label="Expandir imagen posterior"
+              >
+                <EyeIcon className="w-4 h-4" />
+              </button>
+            </div>
             <Image
               src="/images/bordado-back.jpg"
               alt="Referencia de ubicación de bordado posterior"
               fill
               sizes="(min-width: 640px) 50vw, 100vw"
               className="object-contain"
-              quality={90}
+              quality={75}
             />
           </div>
         </div>
@@ -95,22 +138,6 @@ export const StepEmbroidery = memo(function StepEmbroidery({
         Nuevo ponchado
       </label>
       </div>
-
-      {/* <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <p className="text-xs font-bold uppercase tracking-wider text-slate-400">
-            Catálogo de colores de hilo
-          </p>
-
-        </div>
-        <div
-          className="h-24 rounded-2xl border border-dashed border-slate-200 dark:border-white/10 bg-slate-50/60 dark:bg-white/5 flex items-center justify-center text-xs text-slate-400"
-          role="img"
-          aria-label="Catálogo de colores de hilo"
-        >
-          Catálogo de colores
-        </div>
-      </div> */}
 
       <div className="space-y-3 pb-4">
         <div className="flex items-center justify-between">
@@ -253,6 +280,56 @@ export const StepEmbroidery = memo(function StepEmbroidery({
                       >
                         {specError.color}
                       </p>
+                    )}
+                  </div>
+                  <div className="space-y-1 sm:col-span-3">
+                    <FormInput
+                      label="URL de imagen"
+                      placeholder="https://dominio.com/imagen.png"
+                      forceUppercase={false}
+                      value={spec.imagen}
+                      onChange={(event) =>
+                        onUpdateSpec(spec.id, "imagen", event.target.value)
+                      }
+                    />
+                    {specError.imagen && (
+                      <p
+                        className="text-xs text-rose-600 dark:text-rose-400"
+                        role="alert"
+                      >
+                        {specError.imagen}
+                      </p>
+                    )}
+                    {isValidImageUrl(spec.imagen) && (
+                      <div className="group relative rounded-xl border border-slate-200 dark:border-white/10 p-2 bg-white dark:bg-black/20">
+                        <div className="absolute top-4 right-4 z-10 flex items-center gap-2 opacity-0 translate-y-1 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-200 ease-in-out">
+                          <button
+                            type="button"
+                            onClick={() => window.open(spec.imagen.trim(), "_blank", "noopener,noreferrer")}
+                            className="w-8 h-8 rounded-lg cursor-pointer bg-white/95 dark:bg-zinc-900/95 border border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300 hover:text-sky-600 dark:hover:text-sky-400 flex items-center justify-center shadow-sm transition-colors"
+                            aria-label="Expandir imagen"
+                          >
+                            <EyeIcon className="w-4 h-4" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => onUpdateSpec(spec.id, "imagen", "")}
+                            className="w-8 h-8 rounded-lg cursor-pointer bg-white/95 dark:bg-zinc-900/95 border border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300 hover:text-rose-600 dark:hover:text-rose-400 flex items-center justify-center shadow-sm transition-colors"
+                            aria-label="Quitar imagen"
+                          >
+                            <DeleteIcon className="w-4 h-4" />
+                          </button>
+                        </div>
+                        <Image
+                          loader={externalImageLoader}
+                          unoptimized
+                          src={spec.imagen.trim()}
+                          alt={`Vista previa de bordado ${positionName}`}
+                          width={640}
+                          height={240}
+                          className="w-full h-40 object-contain rounded-lg"
+                        />
+                      </div>
                     )}
                   </div>
                 </div>
