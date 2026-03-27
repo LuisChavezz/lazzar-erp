@@ -6,10 +6,11 @@ interface FormInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label?: string;
   error?: FormFieldError;
   variant?: "default" | "ghost" | "ghostSearch";
+  forceUppercase?: boolean;
 }
 
 export const FormInput = forwardRef<HTMLInputElement, FormInputProps>(
-  ({ label, error, className = "", variant = "default", ...props }, ref) => {
+  ({ label, error, className = "", variant = "default", forceUppercase = true, onChange, ...props }, ref) => {
     const inputId =
       props.id ?? (typeof props.name === "string" ? props.name : undefined);
 
@@ -67,9 +68,19 @@ export const FormInput = forwardRef<HTMLInputElement, FormInputProps>(
             className={`
               ${baseInputStyles}
               ${variants[variant]}
+              ${forceUppercase ? "uppercase" : ""}
               ${className}
             `}
             {...props}
+            onChange={(event) => {
+              if (forceUppercase) {
+                const nextValue = event.currentTarget.value.toUpperCase();
+                if (event.currentTarget.value !== nextValue) {
+                  event.currentTarget.value = nextValue;
+                }
+              }
+              onChange?.(event);
+            }}
             autoComplete="off"
           />
           {variant === "ghostSearch" && (
