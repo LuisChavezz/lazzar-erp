@@ -109,6 +109,8 @@ export interface OrderCreate {
     envio: string;
     programa_bordados: string;
     bordado_pantalones_extras: string;
+    serigrafia: string;
+    reflejante: string;
     bordado_logotipo: boolean;
     flete: string;
     seguros: string;

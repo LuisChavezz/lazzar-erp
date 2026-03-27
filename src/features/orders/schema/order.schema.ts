@@ -153,6 +153,10 @@ export const orderFormSchema = z.object({
   programa_bordados: z.coerce.number().min(0, "No puede ser negativo"),
   bordadoPantalonesExtrasActivo: z.boolean(),
   bordado_pantalones_extras: z.coerce.number().min(0, "No puede ser negativo"),
+  serigrafiaActivo: z.boolean(),
+  serigrafia: z.coerce.number().min(0, "No puede ser negativo"),
+  reflejanteActivo: z.boolean(),
+  reflejante: z.coerce.number().min(0, "No puede ser negativo"),
   bordado_logotipo: z.boolean(),
   estatusPedido: z.enum(["Pendiente", "Parcial", "Completo", "Cancelado"], {
     message: "Requerido",

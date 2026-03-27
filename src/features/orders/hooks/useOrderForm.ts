@@ -153,6 +153,10 @@ const createEmptyValues = (todayStr: string, userName: string): OrderFormValues 
   programa_bordados: 0,
   bordadoPantalonesExtrasActivo: false,
   bordado_pantalones_extras: 0,
+  serigrafiaActivo: false,
+  serigrafia: 0,
+  reflejanteActivo: false,
+  reflejante: 0,
   bordado_logotipo: true,
   estatusPedido: "Pendiente",
   docRelacionado: "",
@@ -338,7 +342,16 @@ export function useOrderForm() {
       const bordadoPantalones = parsed.data.bordadoPantalonesExtrasActivo
         ? parsed.data.bordado_pantalones_extras
         : 0;
-      const extras = parsed.data.flete + parsed.data.seguros + servicioEnvio + programaBordados + bordadoPantalones;
+      const serigrafia = parsed.data.serigrafiaActivo ? parsed.data.serigrafia : 0;
+      const reflejante = parsed.data.reflejanteActivo ? parsed.data.reflejante : 0;
+      const extras =
+        parsed.data.flete +
+        parsed.data.seguros +
+        servicioEnvio +
+        programaBordados +
+        bordadoPantalones +
+        serigrafia +
+        reflejante;
       const ivaRateDecimal = parsed.data.iva / 100;
       const ivaAmount = Number(((subtotal + extras) * ivaRateDecimal).toFixed(2));
       const granTotal = Number((subtotal + extras + ivaAmount).toFixed(2));
@@ -440,6 +453,8 @@ export function useOrderForm() {
           envio: servicioEnvio ? String(servicioEnvio.toFixed(2)) : "0.00",
           programa_bordados: programaBordados ? String(programaBordados.toFixed(2)) : "0.00",
           bordado_pantalones_extras: bordadoPantalones ? String(bordadoPantalones.toFixed(2)) : "0.00",
+          serigrafia: serigrafia ? String(serigrafia.toFixed(2)) : "0.00",
+          reflejante: reflejante ? String(reflejante.toFixed(2)) : "0.00",
           bordado_logotipo: Boolean(parsed.data.bordado_logotipo),
           flete: parsed.data.flete ? String(parsed.data.flete.toFixed(2)) : "0.00",
           seguros: parsed.data.seguros ? String(parsed.data.seguros.toFixed(2)) : "0.00",
@@ -609,12 +624,16 @@ export function useOrderForm() {
     const bordadoPantalonesTotal = values.bordadoPantalonesExtrasActivo
       ? Number(values.bordado_pantalones_extras) || 0
       : 0;
+    const serigrafiaTotal = values.serigrafiaActivo ? Number(values.serigrafia) || 0 : 0;
+    const reflejanteTotal = values.reflejanteActivo ? Number(values.reflejante) || 0 : 0;
     const extras =
       (Number(values.flete) || 0) +
       (Number(values.seguros) || 0) +
       servicioEnvioTotal +
       programaBordadosTotal +
-      bordadoPantalonesTotal;
+      bordadoPantalonesTotal +
+      serigrafiaTotal +
+      reflejanteTotal;
     const ivaRate = Number(values.iva) || 0;
     const nextIvaAmount = Number(((nextSubtotal + extras) * (ivaRate / 100)).toFixed(2));
     const nextGranTotal = Number((nextSubtotal + extras + nextIvaAmount).toFixed(2));
@@ -639,6 +658,10 @@ export function useOrderForm() {
     values.iva,
     values.programaBordadosActivo,
     values.programa_bordados,
+    values.reflejante,
+    values.reflejanteActivo,
+    values.serigrafia,
+    values.serigrafiaActivo,
     values.seguros,
     values.servicioEnvioActivo,
   ]);

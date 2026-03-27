@@ -1459,6 +1459,96 @@ export default function OrderForm() {
                   </div>
                 )}
               </form.Field>
+              <form.Field name="serigrafiaActivo">
+                {(field) => (
+                  <div className="flex items-center justify-between gap-3 text-xs text-slate-600 dark:text-slate-300">
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        className={extraServiceCheckboxClass}
+                        name={field.name}
+                        checked={Boolean(field.state.value)}
+                        onChange={(event) => {
+                          field.handleChange(event.target.checked);
+                          clearFieldErrors("serigrafiaActivo");
+                        }}
+                        onBlur={field.handleBlur}
+                      />
+                      <span>Serigrafía</span>
+                    </label>
+                    <form.Field name="serigrafia">
+                      {(amountField) => (
+                        <div className="relative">
+                          <span className="absolute left-2 top-1.5 text-xs text-slate-400">
+                            $
+                          </span>
+                          <input
+                            type="number"
+                            aria-label="Serigrafía"
+                            className="w-24 bg-transparent border border-slate-300 dark:border-slate-700 rounded-full pl-5 pr-3 py-1 text-xs text-right text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-sky-500"
+                            name={amountField.name}
+                            value={amountField.state.value}
+                            onChange={(event) => {
+                              const nextValue = Number(event.target.value);
+                              amountField.handleChange(Number.isNaN(nextValue) ? 0 : nextValue);
+                              clearFieldErrors("serigrafia");
+                            }}
+                            onBlur={() => {
+                              amountField.handleBlur();
+                              validateField("serigrafia", amountField.state.value);
+                            }}
+                          />
+                        </div>
+                      )}
+                    </form.Field>
+                  </div>
+                )}
+              </form.Field>
+              <form.Field name="reflejanteActivo">
+                {(field) => (
+                  <div className="flex items-center justify-between gap-3 text-xs text-slate-600 dark:text-slate-300">
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        className={extraServiceCheckboxClass}
+                        name={field.name}
+                        checked={Boolean(field.state.value)}
+                        onChange={(event) => {
+                          field.handleChange(event.target.checked);
+                          clearFieldErrors("reflejanteActivo");
+                        }}
+                        onBlur={field.handleBlur}
+                      />
+                      <span>Reflejante</span>
+                    </label>
+                    <form.Field name="reflejante">
+                      {(amountField) => (
+                        <div className="relative">
+                          <span className="absolute left-2 top-1.5 text-xs text-slate-400">
+                            $
+                          </span>
+                          <input
+                            type="number"
+                            aria-label="Reflejante"
+                            className="w-24 bg-transparent border border-slate-300 dark:border-slate-700 rounded-full pl-5 pr-3 py-1 text-xs text-right text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-sky-500"
+                            name={amountField.name}
+                            value={amountField.state.value}
+                            onChange={(event) => {
+                              const nextValue = Number(event.target.value);
+                              amountField.handleChange(Number.isNaN(nextValue) ? 0 : nextValue);
+                              clearFieldErrors("reflejante");
+                            }}
+                            onBlur={() => {
+                              amountField.handleBlur();
+                              validateField("reflejante", amountField.state.value);
+                            }}
+                          />
+                        </div>
+                      )}
+                    </form.Field>
+                  </div>
+                )}
+              </form.Field>
               <form.Field name="bordado_logotipo">
                 {(field) => (
                   <div className="flex items-center justify-between gap-3 text-xs text-slate-600 dark:text-slate-300">
