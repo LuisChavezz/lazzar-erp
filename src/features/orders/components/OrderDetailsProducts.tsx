@@ -51,18 +51,22 @@ export const OrderDetailsProducts = ({ details }: OrderDetailsProductsProps) => 
                   )}
                 </div>
               </div>
-              <button
-                type="button"
-                onClick={() => setActiveEmbroideryDetailId(detalle.id)}
-                className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${
-                  isEmbroideryViewActive
-                    ? "border-sky-200 bg-sky-50 text-sky-700 dark:border-sky-400/30 dark:bg-sky-500/20 dark:text-sky-300"
-                    : "cursor-pointer border-slate-200 text-slate-600 hover:bg-slate-50 dark:border-white/10 dark:text-slate-300 dark:hover:bg-white/10"
-                }`}
-              >
-                <EyeIcon className="h-3.5 w-3.5" />
-                Ver bordados ({embroideryGroupCount})
-              </button>
+              {                
+                embroideryGroupCount > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setActiveEmbroideryDetailId(detalle.id)}
+                    className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${
+                      isEmbroideryViewActive
+                        ? "border-sky-200 bg-sky-50 text-sky-700 dark:border-sky-400/30 dark:bg-sky-500/20 dark:text-sky-300"
+                        : "cursor-pointer border-slate-200 text-slate-600 hover:bg-slate-50 dark:border-white/10 dark:text-slate-300 dark:hover:bg-white/10"
+                    }`}
+                  >
+                    <EyeIcon className="h-3.5 w-3.5" />
+                    Ver bordados ({embroideryGroupCount})
+                  </button>                  
+                )
+              }
             </div>
 
             <div className="relative">
