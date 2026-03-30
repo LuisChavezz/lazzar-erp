@@ -2,8 +2,8 @@
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
-import { AppDbContext } from "./db-context";
-import { createAppDb } from "./db";
+// import { AppDbContext } from "./db-context";
+// import { createAppDb } from "./db";
 import { Toaster } from "react-hot-toast";
 import { SessionProvider } from "next-auth/react";
 import { Session } from "next-auth";
@@ -21,12 +21,12 @@ export const Provider = ({ children, session }: { children: React.ReactNode, ses
     },
   }));
 
-  const [db] = useState(createAppDb());
+  // const [db] = useState(createAppDb());
 
   return (
     <SessionProvider session={session}>
       <QueryClientProvider client={queryClient}>
-        <AppDbContext.Provider value={db}>
+        {/* <AppDbContext.Provider value={db}> */}
 
           <Theme>
             {children}
@@ -35,7 +35,7 @@ export const Provider = ({ children, session }: { children: React.ReactNode, ses
 
           <Toaster position="top-right" />
           
-        </AppDbContext.Provider>
+        {/* </AppDbContext.Provider> */}
       </QueryClientProvider>
     </SessionProvider>
   )
