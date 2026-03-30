@@ -245,15 +245,46 @@ export const OrderDetails = ({ orderId }: OrderDetailsProps) => {
         <div className="rounded-xl border border-slate-200 dark:border-white/10 p-4 bg-white dark:bg-white/5 space-y-3">
           <p className="text-xs uppercase text-slate-400 font-semibold">Datos de envío</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <p className="text-sm text-slate-700 dark:text-slate-300">Destinatario: {toDisplayValue(order.destinatario)}</p>
-            <p className="text-sm text-slate-700 dark:text-slate-300">Empresa: {toDisplayValue(order.empresa_envio)}</p>
-            <p className="text-sm text-slate-700 dark:text-slate-300">Teléfono: {toDisplayValue(order.telefono_envio)}</p>
-            <p className="text-sm text-slate-700 dark:text-slate-300">Celular: {toDisplayValue(order.celular_envio)}</p>
-            <p className="text-sm text-slate-700 dark:text-slate-300 sm:col-span-2">Dirección: {toDisplayValue(order.direccion_envio)}</p>
-            <p className="text-sm text-slate-700 dark:text-slate-300">Colonia: {toDisplayValue(order.colonia_envio)}</p>
-            <p className="text-sm text-slate-700 dark:text-slate-300">CP: {toDisplayValue(order.codigo_postal)}</p>
-            <p className="text-sm text-slate-700 dark:text-slate-300">Ciudad: {toDisplayValue(order.ciudad_envio)}</p>
-            <p className="text-sm text-slate-700 dark:text-slate-300">Estado: {toDisplayValue(order.estado_envio)}</p>
+            <div>
+              <p className="text-xs uppercase text-slate-400 font-semibold">Destinatario</p>
+              <p className="text-sm text-slate-700 dark:text-slate-300">{toDisplayValue(order.destinatario)}</p>
+            </div>
+            <div>
+              <p className="text-xs uppercase text-slate-400 font-semibold">Empresa</p>
+              <p className="text-sm text-slate-700 dark:text-slate-300">{toDisplayValue(order.empresa_envio)}</p>
+            </div>
+            <div>
+              <p className="text-xs uppercase text-slate-400 font-semibold">Teléfono</p>
+              <p className="text-sm text-slate-700 dark:text-slate-300">{toDisplayValue(order.telefono_envio)}</p>
+            </div>
+            <div>
+              <p className="text-xs uppercase text-slate-400 font-semibold">Celular</p>
+              <p className="text-sm text-slate-700 dark:text-slate-300">{toDisplayValue(order.celular_envio)}</p>
+            </div>
+            <div>
+              <p className="text-xs uppercase text-slate-400 font-semibold">Colonia</p>
+              <p className="text-sm text-slate-700 dark:text-slate-300">{toDisplayValue(order.colonia_envio)}</p>
+            </div>
+            <div>
+              <p className="text-xs uppercase text-slate-400 font-semibold">Código postal</p>
+              <p className="text-sm text-slate-700 dark:text-slate-300">{toDisplayValue(order.codigo_postal)}</p>
+            </div>
+            <div>
+              <p className="text-xs uppercase text-slate-400 font-semibold">Ciudad</p>
+              <p className="text-sm text-slate-700 dark:text-slate-300">{toDisplayValue(order.ciudad_envio)}</p>
+            </div>
+            <div>
+              <p className="text-xs uppercase text-slate-400 font-semibold">Estado</p>
+              <p className="text-sm text-slate-700 dark:text-slate-300">{toDisplayValue(order.estado_envio)}</p>
+            </div>
+            <div className="sm:col-span-2">
+              <p className="text-xs uppercase text-slate-400 font-semibold">Dirección</p>
+              <p className="text-sm text-slate-700 dark:text-slate-300">{toDisplayValue(order.direccion_envio)}</p>
+            </div>
+            <div className="sm:col-span-3">
+              <p className="text-xs uppercase text-slate-400 font-semibold">Referencias</p>
+              <p className="text-sm text-slate-700 dark:text-slate-300">{toDisplayValue(order.referencias)}</p>
+            </div>
           </div>
         </div>
         <div className="rounded-xl border border-slate-200 dark:border-white/10 p-4 bg-white dark:bg-white/5 space-y-3">

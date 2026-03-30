@@ -445,6 +445,16 @@ export function useOrderForm() {
           cliente_ciudad: parsed.data.ciudadFiscal || "",
           cliente_estado: parsed.data.estadoFiscal || "",
           cliente_giro_empresarial: parsed.data.giroEmpresa || "",
+          destinatario: parsed.data.destinatario || "",
+          empresa_envio: parsed.data.empresaEnvio || "",
+          telefono_envio: parsed.data.telefonoEnvio || "",
+          celular_envio: parsed.data.celularEnvio || "",
+          direccion_envio: parsed.data.direccionEnvio || "",
+          colonia_envio: parsed.data.coloniaEnvio || "",
+          codigo_postal: parsed.data.codigoPostalEnvio || "",
+          ciudad_envio: parsed.data.ciudadEnvio || "",
+          estado_envio: parsed.data.estadoEnvio || "",
+          referencias: parsed.data.referenciasEnvio || "",
           embarque_parcial: Boolean(parsed.data.embarque_parcial),
           comentarios_parcialidad: parsed.data.embarque_parcial
             ? parsed.data.comentarios_parcialidad || ""

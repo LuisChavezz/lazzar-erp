@@ -207,8 +207,8 @@ export function AddProductDialog({
   const addEmbroiderySpec = useCallback(() => {
     const newId = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
     setEmbroiderySpecs((prev) => [
-      ...prev,
       { id: newId, posicionCodigo: "", ancho: "", alto: "", colorHilo: "", imagen: "" },
+      ...prev,
     ]);
   }, []);
 

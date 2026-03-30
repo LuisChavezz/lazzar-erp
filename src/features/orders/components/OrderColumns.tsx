@@ -92,9 +92,9 @@ export const orderColumns: ColumnDef<Order>[] = [
     id: "piezas",
     header: "Piezas",
     size: 80,
-    cell: () => (
+    cell: ({ row }) => (
       <span className="text-slate-500 dark:text-slate-400">
-        -
+        {row.original.piezas}
       </span>
     ),
   },
@@ -110,9 +110,9 @@ export const orderColumns: ColumnDef<Order>[] = [
   {
     id: "importeSinIva",
     header: "Importe sin IVA",
-    cell: () => (
+    cell: ({ row }) => (
       <span className="text-slate-500 dark:text-slate-400">
-        -
+        {formatCurrency(Number(row.original.importe_sin_iva) || 0)}
       </span>
     ),
   },

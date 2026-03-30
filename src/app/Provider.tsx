@@ -2,6 +2,8 @@
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
+import { AppDbContext } from "./db-context";
+import { createAppDb } from "./db";
 import { Toaster } from "react-hot-toast";
 import { SessionProvider } from "next-auth/react";
 import { Session } from "next-auth";
@@ -19,14 +21,21 @@ export const Provider = ({ children, session }: { children: React.ReactNode, ses
     },
   }));
 
+  const [db] = useState(createAppDb());
+
   return (
     <SessionProvider session={session}>
       <QueryClientProvider client={queryClient}>
-        <Theme>
-          {children}
-          <ReactQueryDevtools initialIsOpen={ false } />
-        </Theme>
-        <Toaster position="top-right" />
+        <AppDbContext.Provider value={db}>
+
+          <Theme>
+            {children}
+            <ReactQueryDevtools initialIsOpen={ false } />
+          </Theme>
+
+          <Toaster position="top-right" />
+          
+        </AppDbContext.Provider>
       </QueryClientProvider>
     </SessionProvider>
   )

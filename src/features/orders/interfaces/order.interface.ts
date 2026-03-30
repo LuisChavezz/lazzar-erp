@@ -51,6 +51,8 @@ export interface Order {
   oc: string;
   uso_cfdi: string;
   gran_total: string;
+  importe_sin_iva: string;
+  piezas: number;  
   autorizada_at: string | null;
   cambios_solicitados_at: string | null;
   created_at: string;
@@ -66,6 +68,7 @@ export interface OrderById {
     id: number;
     tallas: {
       id: number;
+      talla_nombre: string;
       cantidad: number;
       precio_unitario: string;
       subtotal_talla: string;
@@ -88,6 +91,7 @@ export interface OrderById {
     subtotal_linea: string;
     cotizacion: number;
     producto: number;
+    producto_nombre: string;
   }[];
   cliente_nombre: string;
   cliente_razon_social: string;
@@ -204,6 +208,16 @@ export interface OrderCreate {
     cliente_ciudad: string;
     cliente_estado: string;
     cliente_giro_empresarial: string;
+    destinatario: string;
+    empresa_envio: string;
+    telefono_envio: string;
+    celular_envio: string;
+    direccion_envio: string;
+    colonia_envio: string;
+    codigo_postal: string;
+    ciudad_envio: string;
+    estado_envio: string;
+    referencias: string;
     embarque_parcial: boolean;
     comentarios_parcialidad: string;
     observaciones: string;
