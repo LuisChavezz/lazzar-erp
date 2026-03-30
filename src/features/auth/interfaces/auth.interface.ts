@@ -22,4 +22,5 @@ type Permission =
     | "PRODUCCION"
     | "RH"
     | "WMS"
+    | "MESACONTROL"
   }`

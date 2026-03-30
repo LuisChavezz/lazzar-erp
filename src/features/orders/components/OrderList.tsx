@@ -3,6 +3,7 @@
 import { useMemo, useState, lazy, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import { useIsMutating } from "@tanstack/react-query";
 import { DataTable, DataTableVisibleColumn } from "@/src/components/DataTable";
 import { orderColumns } from "./OrderColumns";
 import { useOrderCsvExport } from "../hooks/useOrderCsvExport";
@@ -12,6 +13,8 @@ import { useOrderFilters } from "../hooks/useOrderFilters";
 import { OrderFiltersValue, useOrderFiltersStore } from "../stores/order-filters.store";
 import { LoadingSkeleton } from "@/src/components/LoadingSkeleton";
 import { useOrders } from "../hooks/useOrders";
+import { approveOrderMutationKey } from "../../operations/hooks/useApproveOrder";
+import { rejectOrderMutationKey } from "../../operations/hooks/useRejectOrder";
 
 const OrderFiltersDialog = lazy(() =>
   import("./OrderFiltersDialog").then((mod) => ({ default: mod.OrderFiltersDialog }))
@@ -53,6 +56,9 @@ export const OrderList = () => {
   const filtersHydrated = useOrderFiltersStore((state) => state.hasHydrated);
   const [visibleOrders, setVisibleOrders] = useState<Order[]>([]);
   const [visibleColumns, setVisibleColumns] = useState<DataTableVisibleColumn<Order>[]>([]);
+  const isAuthorizingOrder = useIsMutating({ mutationKey: approveOrderMutationKey }) > 0;
+  const isRejectingOrder = useIsMutating({ mutationKey: rejectOrderMutationKey }) > 0;
+  const isUpdatingOrderStatus = isAuthorizingOrder || isRejectingOrder;
   const isOverdueActive = searchParams.get("overdue") === "1";
   const baseOrders = useMemo(() => {
     if (!isOverdueActive) {
@@ -109,6 +115,9 @@ export const OrderList = () => {
         onClearFilters={handleClearFilters}
         onVisibleRowsChange={setVisibleOrders}
         onVisibleColumnsChange={setVisibleColumns}
+        isLoadingOverlay={isUpdatingOrderStatus}
+        loadingTitle={isRejectingOrder ? "Rechazando pedido" : "Autorizando pedido"}
+        loadingMessage="Estamos actualizando el estado de la orden."
         actionButton={
           <div className="flex items-center gap-2">
             <Link

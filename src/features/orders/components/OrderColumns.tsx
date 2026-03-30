@@ -6,15 +6,20 @@ import { Order } from "../interfaces/order.interface";
 import { ActionMenu, ActionMenuItem } from "@/src/components/ActionMenu";
 import { MainDialog } from "@/src/components/MainDialog";
 import { DialogHeader } from "@/src/components/DialogHeader";
+import { ConfirmDialog } from "@/src/components/ConfirmDialog";
 import { OrderDetails } from "./OrderDetails";
 import {
+  CheckCircleIcon,
   EmbarquesIcon,
   FacturacionIcon,
+  RejectIcon,
   ViewIcon,
 } from "../../../components/Icons";
 import { formatCurrency } from "../../../utils/formatCurrency";
 import { getStatusStyles } from "../utils/getStatusStyle";
 import { formatOrderDateTime } from "../utils/orderDetailsFormatters";
+import { useApproveOrder } from "../../operations/hooks/useApproveOrder";
+import { useRejectOrder } from "../../operations/hooks/useRejectOrder";
 
 const statusDialogColors: Record<number, "sky" | "emerald" | "amber" | "rose"> = {
   1: "amber",
@@ -25,6 +30,11 @@ const statusDialogColors: Record<number, "sky" | "emerald" | "amber" | "rose"> =
 
 const ActionsCell = ({ order }: { order: Order }) => {
   const [isViewOpen, setIsViewOpen] = useState(false);
+  const [isAuthorizeOpen, setIsAuthorizeOpen] = useState(false);
+  const [isRejectOpen, setIsRejectOpen] = useState(false);
+  const { mutate: authorizeOrder, isPending: isAuthorizingOrder } = useApproveOrder();
+  const { mutate: rejectOrder, isPending: isRejectingOrder } = useRejectOrder();
+  const canManageAuthorization = order.estatus === 2;
   const items: ActionMenuItem[] = [
     {
       label: "Ver detalles",
@@ -40,6 +50,22 @@ const ActionsCell = ({ order }: { order: Order }) => {
       label: "Marcar como enviado",
       icon: EmbarquesIcon,
       onSelect: () => undefined,
+    },
+    {
+      label: "Autorizar",
+      icon: CheckCircleIcon,
+      onSelect: () => setIsAuthorizeOpen(true),
+      disabled: isAuthorizingOrder || isRejectingOrder,
+      permission: "R-MESACONTROL",
+      visible: canManageAuthorization,
+    },
+    {
+      label: "Rechazar",
+      icon: RejectIcon,
+      onSelect: () => setIsRejectOpen(true),
+      disabled: isRejectingOrder || isAuthorizingOrder,
+      permission: "R-MESACONTROL",
+      visible: canManageAuthorization,
     },
   ];
 
@@ -62,6 +88,24 @@ const ActionsCell = ({ order }: { order: Order }) => {
           <OrderDetails orderId={order.id} />
         </MainDialog>
       )}
+      <ConfirmDialog
+        open={isAuthorizeOpen}
+        onOpenChange={setIsAuthorizeOpen}
+        title="Autorizar pedido"
+        description={`¿Deseas autorizar el pedido #${order.id}?`}
+        confirmText={isAuthorizingOrder ? "Autorizando..." : "Autorizar"}
+        confirmColor="blue"
+        onConfirm={() => authorizeOrder(order.id)}
+      />
+      <ConfirmDialog
+        open={isRejectOpen}
+        onOpenChange={setIsRejectOpen}
+        title="Rechazar pedido"
+        description={`¿Deseas rechazar el pedido #${order.id}?`}
+        confirmText={isRejectingOrder ? "Rechazando..." : "Rechazar"}
+        confirmColor="red"
+        onConfirm={() => rejectOrder(order.id)}
+      />
     </div>
   );
 };

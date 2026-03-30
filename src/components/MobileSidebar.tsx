@@ -30,6 +30,7 @@ export default function MobileSidebar() {
     "finance",
     "hr",
     "other",
+    "operations",
   ]);
   const moduleLabel =
     activeGroup && mainGroupKeys.has(activeGroup.key) ? activeGroup.moduleLabel : null;

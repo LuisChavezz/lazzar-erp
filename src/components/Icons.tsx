@@ -1196,3 +1196,57 @@ export const TasksIcon = (
     />
   </svg>
 );
+
+export const OperationsIcon = (
+  props: React.SVGProps<SVGSVGElement>
+) => (
+  <svg
+    {...props}
+    fill="none"
+    stroke="currentColor"
+    viewBox="0 0 24 24"
+  >
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="2"
+      d="M4 6h16M4 12h16M4 18h16M9 4v4M15 10v4M7 16v4"
+    />
+  </svg>
+);
+
+export const SamplesIcon = (
+  props: React.SVGProps<SVGSVGElement>
+) => (
+  <svg
+    {...props}
+    fill="none"
+    stroke="currentColor"
+    viewBox="0 0 24 24"
+  >
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="2"
+      d="M12 3l7 3-7 3-7-3 7-3zM5 6v5l7 3 7-3V6M3 16l3-1.5L9 16l-3 1.5L3 16zM11 17l3-1.5 3 1.5-3 1.5-3-1.5z"
+    />
+  </svg>
+);
+
+export const RejectIcon = (
+  props: React.SVGProps<SVGSVGElement>
+) => (
+  <svg
+    {...props}
+    fill="none"
+    stroke="currentColor"
+    viewBox="0 0 24 24"
+  >
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="2"
+      d="M6 6l12 12M18 6L6 18M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+    />
+  </svg>
+);

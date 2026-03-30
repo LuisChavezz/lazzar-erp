@@ -26,6 +26,7 @@ import {
   FilterIcon,
   SyncIcon,
 } from "./Icons";
+import { Loader } from "./Loader";
 
 export type DataTableVisibleColumn<TData> = {
   id: string;
@@ -48,6 +49,9 @@ interface DataTableProps<TData, TValue> {
   isRefetching?: boolean;
   onVisibleRowsChange?: (rows: TData[]) => void;
   onVisibleColumnsChange?: (columns: DataTableVisibleColumn<TData>[]) => void;
+  isLoadingOverlay?: boolean;
+  loadingTitle?: string;
+  loadingMessage?: string;
 }
 
 export function DataTable<TData, TValue>({
@@ -64,6 +68,9 @@ export function DataTable<TData, TValue>({
   isRefetching,
   onVisibleRowsChange,
   onVisibleColumnsChange,
+  isLoadingOverlay = false,
+  loadingTitle,
+  loadingMessage,
 }: DataTableProps<TData, TValue>) {
 
   // State for sorting, filtering, and column visibility
@@ -363,8 +370,12 @@ export function DataTable<TData, TValue>({
       </div>
 
       {visibleRows.length > 0 ? (
-        <div className="w-full rounded-2xl border border-slate-200 dark:border-white/20 shadow-sm bg-white dark:bg-black">
-          <div className="h-120 overflow-x-auto [scrollbar-gutter:stable] rounded-2xl max-w-full bg-white dark:bg-black">
+        <div className="relative w-full rounded-2xl border border-slate-200 dark:border-white/20 shadow-sm bg-white dark:bg-black">
+          <div
+            className={`h-120 overflow-x-auto [scrollbar-gutter:stable] rounded-2xl max-w-full bg-white dark:bg-black transition-all ${
+              isLoadingOverlay ? "blur-sm pointer-events-none select-none" : ""
+            }`}
+          >
             <table
               className="min-w-full text-left border-collapse bg-white dark:bg-black table-fixed"
               style={{ width: table.getTotalSize() }}
@@ -482,6 +493,15 @@ export function DataTable<TData, TValue>({
               </tbody>
             </table>
           </div>
+          {isLoadingOverlay && (
+            <div className="absolute inset-0 z-30 flex items-center justify-center rounded-2xl bg-white/35 dark:bg-black/35 backdrop-blur-sm">
+              <Loader
+                className="h-full w-full"
+                title={loadingTitle ?? "Procesando"}
+                message={loadingMessage ?? "Espera un momento..."}
+              />
+            </div>
+          )}
         </div>
       ) : null}
 

@@ -6,6 +6,7 @@ import {
   SettingsIcon,
   ListaPreciosIcon,
   CapitalHumanoIcon,
+  OperationsIcon,
 } from "../components/Icons";
 
 const defaultCardClassName =
@@ -96,16 +97,28 @@ export const homeCards = [
     permission: "R-RH",
     className: defaultCardClassName,
   },
+  // {
+  //   icon: DashboardIcon,
+  //   title: "Otros Módulos",
+  //   description: "Proyectos, e-commerce, canales digitales, marketing y campañas segmentadas.",
+  //   footerText: "Explorar módulos",
+  //   href: "/other",
+  //   accentClass: "text-fuchsia-600 dark:text-fuchsia-400",
+  //   accentBgClass: "bg-fuchsia-50 dark:bg-fuchsia-500/10",
+  //   shadowColorClassName: "hover:shadow-fuchsia-500/25 dark:hover:shadow-fuchsia-500/25",
+  //   permission: "R-OTROS-MODULOS",
+  //   className: defaultCardClassName,
+  // },
   {
-    icon: DashboardIcon,
-    title: "Otros Módulos",
-    description: "Proyectos, e-commerce, canales digitales, marketing y campañas segmentadas.",
-    footerText: "Explorar módulos",
-    href: "/other",
+    icon: OperationsIcon,
+    title: "Mesa de Control",
+    description: "Panel de control general de la organización, con visión global de las operaciones y rendimiento.",
+    footerText: "Ver control general",
+    href: "/operations",
     accentClass: "text-fuchsia-600 dark:text-fuchsia-400",
     accentBgClass: "bg-fuchsia-50 dark:bg-fuchsia-500/10",
     shadowColorClassName: "hover:shadow-fuchsia-500/25 dark:hover:shadow-fuchsia-500/25",
-    permission: "R-OTROS-MODULOS",
+    permission: "R-MESACONTROL",
     className: defaultCardClassName,
-  },
+  }
 ] as const;

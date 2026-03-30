@@ -30,6 +30,7 @@ const mainGroupKeys = new Set([
   "finance",
   "hr",
   "other",
+  "operations",
 ]);
 
 // Agrupa accesos de cuenta y configuración para mostrarlos en la sección inferior.
