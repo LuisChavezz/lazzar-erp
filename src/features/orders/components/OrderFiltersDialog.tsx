@@ -49,7 +49,7 @@ export const OrderFiltersDialog = ({
     onSave(localValue);
   };
 
-  const toggleAutorizacion = (value: boolean) => {
+  const toggleAutorizacion = (value: number) => {
     setLocalValue((prev) => {
       return {
         ...prev,
@@ -94,32 +94,45 @@ export const OrderFiltersDialog = ({
       <div className="space-y-6 mt-2">
         <div className="rounded-2xl border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-white/5 p-4">
           <div className="text-sm font-semibold text-slate-700 dark:text-slate-200 mb-3">Estado</div>
-          <div className="grid grid-cols-2 gap-2" role="group" aria-label="Estado de autorización del pedido">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2" role="group" aria-label="Estado de autorización del pedido">
             <button
               type="button"
-              onClick={() => toggleAutorizacion(true)}
+              onClick={() => toggleAutorizacion(3)}
               className={`px-3 py-2 text-xs rounded-xl border cursor-pointer transition-colors ${
-                localValue.activo === true
+                localValue.activo === 3
                   ? "bg-emerald-100 dark:bg-emerald-500/20 border-emerald-300 dark:border-emerald-500 text-emerald-800 dark:text-emerald-200"
                   : "bg-white dark:bg-white/5 hover:bg-slate-50 dark:hover:bg-white/10 border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300"
               }`}
-              aria-pressed={localValue.activo === true}
+              aria-pressed={localValue.activo === 3}
               aria-label="Filtrar por pedidos autorizados"
             >
               Autorizado
             </button>
             <button
               type="button"
-              onClick={() => toggleAutorizacion(false)}
+              onClick={() => toggleAutorizacion(2)}
               className={`px-3 py-2 text-xs rounded-xl border cursor-pointer transition-colors ${
-                localValue.activo === false
+                localValue.activo === 2
                   ? "bg-amber-100 dark:bg-amber-500/20 border-amber-300 dark:border-amber-500 text-amber-800 dark:text-amber-200"
                   : "bg-white dark:bg-white/5 hover:bg-slate-50 dark:hover:bg-white/10 border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300"
               }`}
-              aria-pressed={localValue.activo === false}
+              aria-pressed={localValue.activo === 2}
               aria-label="Filtrar por pedidos por autorizar"
             >
               Por Autorizar
+            </button>
+            <button
+              type="button"
+              onClick={() => toggleAutorizacion(4)}
+              className={`px-3 py-2 text-xs rounded-xl border cursor-pointer transition-colors ${
+                localValue.activo === 4
+                  ? "bg-rose-100 dark:bg-rose-500/20 border-rose-300 dark:border-rose-500 text-rose-800 dark:text-rose-200"
+                  : "bg-white dark:bg-white/5 hover:bg-slate-50 dark:hover:bg-white/10 border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300"
+              }`}
+              aria-pressed={localValue.activo === 4}
+              aria-label="Filtrar por pedidos rechazados"
+            >
+              Rechazado
             </button>
           </div>
         </div>

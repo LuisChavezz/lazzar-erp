@@ -5,7 +5,7 @@ import { create } from "zustand";
 import { devtools, persist } from "zustand/middleware";
 
 export type OrderFiltersValue = {
-  activo: boolean | null;
+  activo: number | null;
   personaPagos: string;
   dateFrom: string;
   dateTo: string;

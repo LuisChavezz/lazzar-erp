@@ -47,8 +47,7 @@ export const useOrderFilters = (orders: Order[]) => {
 
   const filteredOrders = useMemo(() => {
     return orders.filter((order) => {
-      const isAuthorized = Boolean(order.autorizada_at);
-      if (appliedFilters.activo !== null && isAuthorized !== appliedFilters.activo) {
+      if (appliedFilters.activo !== null && order.estatus !== appliedFilters.activo) {
         return false;
       }
 

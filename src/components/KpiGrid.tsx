@@ -1,4 +1,5 @@
 import type { ComponentType, SVGProps } from "react";
+import Link from "next/link";
 import { KpiTrendIcon } from "./Icons";
 
 export type KpiStatus = "positive" | "negative" | "neutral";
@@ -13,6 +14,8 @@ export interface KpiItem {
   status?: KpiStatus;
   subLabel?: string;
   progress?: number;
+  actionLabel?: string;
+  actionHref?: string;
 }
 
 interface KpiGridProps {
@@ -27,7 +30,7 @@ const statusStyles: Record<KpiStatus, { text: string; bg: string }> = {
 
 export default function KpiGrid({ items }: KpiGridProps) {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 items-start gap-4">
       {items.map((item) => {
         const status = item.status ?? "neutral";
         const badge = statusStyles[status];
@@ -74,6 +77,16 @@ export default function KpiGrid({ items }: KpiGridProps) {
             <div className={`h-1 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden ${item.iconClass}`}>
               <div className="h-full bg-current rounded-full" style={{ width: `${progress}%` }} />
             </div>
+            {item.actionLabel && item.actionHref ? (
+              <div className="mt-3">
+                <Link
+                  href={item.actionHref}
+                  className="inline-flex items-center justify-center px-3 py-1.5 rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 hover:bg-slate-50 dark:hover:bg-white/10 text-slate-700 dark:text-slate-200 text-xs font-semibold transition-all duration-200 ease-in-out"
+                >
+                  {item.actionLabel}
+                </Link>
+              </div>
+            ) : null}
           </div>
         );
       })}
