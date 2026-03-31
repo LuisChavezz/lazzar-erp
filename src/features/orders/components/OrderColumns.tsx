@@ -20,6 +20,7 @@ import { getStatusStyles } from "../utils/getStatusStyle";
 import { formatOrderDateTime } from "../utils/orderDetailsFormatters";
 import { useApproveOrder } from "../../operations/hooks/useApproveOrder";
 import { useRejectOrder } from "../../operations/hooks/useRejectOrder";
+import { capitalize } from "@/src/utils/capitalize";
 
 const statusDialogColors: Record<number, "sky" | "emerald" | "amber" | "rose"> = {
   1: "amber",
@@ -120,7 +121,7 @@ export const orderColumns: ColumnDef<Order>[] = [
       return (
         <div className="flex justify-center">
           <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${styles}`}>
-            {row.original.estatus_label}
+            {capitalize(row.original.estatus_label)}
           </span>
         </div>
       );

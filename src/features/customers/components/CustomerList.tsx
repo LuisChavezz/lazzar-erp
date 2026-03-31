@@ -5,6 +5,7 @@ import { DataTable } from "@/src/components/DataTable";
 import { DialogHeader } from "@/src/components/DialogHeader";
 import { Loader } from "@/src/components/Loader";
 import { MainDialog } from "@/src/components/MainDialog";
+import { Button } from "@/src/components/Button";
 import CustomerForm from "./CustomerForm";
 import { getCustomerColumns } from "./CustomerColumns";
 import { useCustomers } from "../hooks/useCustomers";
@@ -66,12 +67,12 @@ export const CustomerList = () => {
             onOpenChange={handleDialogOpenChange}
             maxWidth="900px"
             trigger={
-              <button
+              <Button
+                variant="primary"
                 onClick={handleCreateCustomer}
-                className="px-4 py-2 cursor-pointer bg-sky-600 hover:bg-sky-700 text-white text-sm font-semibold rounded-full shadow-lg shadow-sky-500/30 transition-all hover:scale-105 active:scale-95 whitespace-nowrap"
               >
                 + Nuevo Cliente
-              </button>
+              </Button>
             }
           >
             <CustomerForm

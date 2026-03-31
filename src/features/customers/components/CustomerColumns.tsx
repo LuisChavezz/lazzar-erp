@@ -1,8 +1,8 @@
 "use client";
 
 import { ColumnDef } from "@tanstack/react-table";
-import { useQueryClient } from "@tanstack/react-query";
-import { useRouter } from "next/navigation";
+// import { useQueryClient } from "@tanstack/react-query";
+// import { useRouter } from "next/navigation";
 import { Customer } from "../interfaces/customer.interface";
 import { ActionMenu, ActionMenuItem } from "@/src/components/ActionMenu";
 import { EditIcon, ViewIcon } from "../../../components/Icons";
@@ -14,15 +14,15 @@ const ActionsCell = ({
   customer: Customer;
   onEdit: (customer: Customer) => void;
 }) => {
-  const router = useRouter();
-  const queryClient = useQueryClient();
+  // const router = useRouter();
+  // const queryClient = useQueryClient();
   const items: ActionMenuItem[] = [
     {
       label: "Ver Detalles",
       icon: ViewIcon,
       onSelect: () => {
-        queryClient.setQueryData(["customer", customer.id], customer);
-        router.push(`/sales/customers/${customer.id}`);
+        // queryClient.setQueryData(["customer", customer.id], customer);
+        // router.push(`/sales/customers/${customer.id}`);
       },
     },
     {

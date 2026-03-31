@@ -14,22 +14,22 @@ type PipelineStage = {
 const STAGES: PipelineStage[] = [
   {
     label: "Calificados",
-    count: 28,
-    amount: "$450k",
+    count: 0,
+    amount: "$0.00",
     colorClass: "from-sky-400 to-sky-600",
     width: 65,
   },
   {
     label: "Propuesta",
-    count: 12,
-    amount: "$180k",
+    count: 0,
+    amount: "$0.00",
     colorClass: "from-sky-400 to-sky-600",
     width: 45,
   },
   {
     label: "Negociación",
-    count: 5,
-    amount: "$95k",
+    count: 0,
+    amount: "$0.00",
     colorClass: "from-sky-400 to-sky-600",
     width: 25,
   },
@@ -89,7 +89,7 @@ export const SalesPipeline = () => {
           <span className="text-[10px] text-slate-400 uppercase tracking-wider font-bold">
             Total Pipeline
           </span>
-          <span className="text-lg font-bold text-slate-800 dark:text-white font-mono">$725,000</span>
+          <span className="text-lg font-bold text-slate-800 dark:text-white font-mono">$0.00</span>
         </div>
       </div>
     </section>

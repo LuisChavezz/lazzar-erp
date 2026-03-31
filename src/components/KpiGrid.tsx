@@ -35,8 +35,7 @@ export default function KpiGrid({ items }: KpiGridProps) {
         const status = item.status ?? "neutral";
         const badge = statusStyles[status];
         const Icon = item.icon;
-        const progress =
-          item.progress ?? (status === "positive" ? 70 : status === "neutral" ? 55 : 40);
+        const progress = item.progress ?? 100;
 
         return (
           <div

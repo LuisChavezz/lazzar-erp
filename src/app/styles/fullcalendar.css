@@ -14,9 +14,11 @@
   border: 1px solid #d8e2f0;
   border-radius: 12px;
   color: #1e293b;
+  min-width: 0;
   padding: 0;
   --fc-border-color: #d8e2f0;
   --fc-today-bg-color: transparent;
+  width: 100%;
 }
 
 .sales-fullcalendar-theme .fc-theme-standard td,
@@ -101,6 +103,10 @@
   background: #eef4fb;
   border-color: #d8e2f0;
   padding: 5px 0;
+}
+
+.sales-fullcalendar-theme .fc-scrollgrid-section-header > * {
+  background: #eef4fb;
 }
 
 .sales-fullcalendar-theme .fc-col-header-cell-cushion {
@@ -227,6 +233,10 @@
   border-color: #1e2b49;
 }
 
+.dark .sales-fullcalendar-theme .fc-scrollgrid-section-header > * {
+  background: #0a1328;
+}
+
 .dark .sales-fullcalendar-theme .fc-col-header-cell-cushion {
   color: #8eb8ff;
 }
@@ -299,6 +309,10 @@
   .sales-fullcalendar-theme .fc-col-header-cell {
     background: #0a1328;
     border-color: #1e2b49;
+  }
+
+  .sales-fullcalendar-theme .fc-scrollgrid-section-header > * {
+    background: #0a1328;
   }
 
   .sales-fullcalendar-theme .fc-col-header-cell-cushion {
