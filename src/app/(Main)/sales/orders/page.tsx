@@ -18,7 +18,7 @@ const jsonLd = {
 
 export default function OrdersPage() {
   return (
-    <main className="w-full space-y-8" aria-label="Gestión de Órdenes de Venta">
+    <main className="w-full space-y-6 md:space-y-8" aria-label="Gestión de Órdenes de Venta">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
@@ -37,7 +37,7 @@ export default function OrdersPage() {
       </section>
 
       {/* Actions Row */}
-      <section aria-label="Acciones de Órdenes">
+      <section aria-label="Acciones de Órdenes" className="w-full">
         <OrderActions />
       </section>
 

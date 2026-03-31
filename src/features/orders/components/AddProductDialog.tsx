@@ -2,6 +2,7 @@
 
 import { useCallback, useDeferredValue, useMemo, useState } from "react";
 import { MainDialog } from "@/src/components/MainDialog";
+import { Button } from "@/src/components/Button";
 import { OrderFormValues } from "../schema/order.schema";
 import { StepSelectProduct } from "./StepSelectProduct";
 import { StepSizes } from "./StepSizes";
@@ -282,7 +283,7 @@ export function AddProductDialog({
     let hasError = false;
     const nextErrors: Record<
       string,
-      { posicion?: string; ancho?: string; alto?: string; color?: string; imagen?: string }
+      { posicion?: string; ancho?: string; alto?: string; imagen?: string }
     > = {};
     const usedPositions = new Set<string>();
 
@@ -296,7 +297,6 @@ export function AddProductDialog({
         posicion?: string;
         ancho?: string;
         alto?: string;
-        color?: string;
         imagen?: string;
       } = {};
       if (!spec.posicionCodigo) {
@@ -321,10 +321,6 @@ export function AddProductDialog({
         if (!Number.isFinite(alto) || alto <= 0) {
           specError.alto = "Positivo";
         }
-      }
-
-      if (!spec.colorHilo) {
-        specError.color = "Requerido";
       }
 
       if (!isValidImageUrl(spec.imagen)) {
@@ -358,7 +354,7 @@ export function AddProductDialog({
               posicionNombre: positionMap.get(spec.posicionCodigo) ?? "",
               ancho: spec.ancho.trim() ? Math.max(0, Number(spec.ancho) || 0) : undefined,
               alto: spec.alto.trim() ? Math.max(0, Number(spec.alto) || 0) : undefined,
-              colorHilo: spec.colorHilo,
+              colorHilo: spec.colorHilo.trim(),
               imagen: spec.imagen.trim(),
             })),
           }
@@ -411,62 +407,38 @@ export function AddProductDialog({
       actionButtonClose={false}
       actionButton={
         step === "select" ? (
-          <button
-            type="button"
-            onClick={handleNext}
-            disabled={!canProceed}
-            className="px-4 py-2 rounded-xl cursor-pointer bg-sky-600 text-white text-xs font-bold  tracking-wide hover:bg-sky-700 transition-colors disabled:opacity-50 disabled:cursor-default"
-          >
+          <Button variant="primary" onClick={handleNext} disabled={!canProceed}>
             Siguiente
-          </button>
+          </Button>
         ) : step === "sizes" ? (
           <div className="flex items-center gap-2">
             {!isEditing && (
-              <button
-                type="button"
-                onClick={handleBack}
-                className="px-4 py-2 rounded-xl cursor-pointer border border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300 text-xs font-bold  tracking-wide hover:bg-slate-50 dark:hover:bg-white/10 transition-colors"
-              >
+              <Button variant="secondary" onClick={handleBack}>
                 Regresar
-              </button>
+              </Button>
             )}
             {hasEmbroidery ? (
-              <button
-                type="button"
+              <Button
+                variant="primary"
                 onClick={() => setStep("embroidery")}
                 disabled={!canGoEmbroidery}
-                className="px-4 py-2 rounded-xl cursor-pointer bg-sky-600 text-white text-xs font-bold  tracking-wide hover:bg-sky-700 transition-colors disabled:opacity-50 disabled:cursor-default"
               >
                 Siguiente
-              </button>
+              </Button>
             ) : (
-              <button
-                type="button"
-                onClick={handleSaveItem}
-                disabled={!canAdd}
-                className="px-4 py-2 rounded-xl cursor-pointer bg-sky-600 text-white text-xs font-bold  tracking-wide hover:bg-sky-700 transition-colors disabled:opacity-50 disabled:cursor-default"
-              >
+              <Button variant="primary" onClick={handleSaveItem} disabled={!canAdd}>
                 Agregar
-              </button>
+              </Button>
             )}
           </div>
         ) : (
           <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={handleBack}
-              className="px-4 py-2 rounded-xl cursor-pointer border border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300 text-xs font-bold  tracking-wide hover:bg-slate-50 dark:hover:bg-white/10 transition-colors"
-            >
+            <Button variant="secondary" onClick={handleBack}>
               Regresar
-            </button>
-            <button
-              type="button"
-              onClick={handleSaveItem}
-              disabled={!canAdd}
-              className="px-4 py-2 rounded-xl cursor-pointer bg-sky-600 text-white text-xs font-bold  tracking-wide hover:bg-sky-700 transition-colors disabled:opacity-50 disabled:cursor-default"
-            >
+            </Button>
+            <Button variant="primary" onClick={handleSaveItem} disabled={!canAdd}>
               Agregar el pedido
-            </button>
+            </Button>
           </div>
         )
       }

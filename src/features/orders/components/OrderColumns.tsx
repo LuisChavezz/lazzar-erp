@@ -113,64 +113,73 @@ const ActionsCell = ({ order }: { order: Order }) => {
 export const orderColumns: ColumnDef<Order>[] = [
   {
     accessorKey: "estatus_label",
-    header: "Estado",
+    meta: { label: "Estado" },
+    header: () => <div className="w-full text-center">Estado</div>,
     cell: ({ row }) => {
       const styles = getStatusStyles(row.original);
       return (
-        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${styles}`}>
-          {row.original.estatus_label}
-        </span>
+        <div className="flex justify-center">
+          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${styles}`}>
+            {row.original.estatus_label}
+          </span>
+        </div>
       );
     },
   },
   {
     accessorKey: "cliente_razon_social",
-    header: "Razón social",
+    meta: { label: "Razón social" },
+    header: () => <div className="w-full text-center">Razón social</div>,
     cell: ({ row }) => (
-      <span className="text-slate-600 dark:text-slate-300">
+      <span className="block text-center text-slate-600 dark:text-slate-300">
         {row.original.cliente_razon_social}
       </span>
     ),
   },
   {
     id: "piezas",
-    header: "Piezas",
+    meta: { label: "Piezas" },
+    header: () => <div className="w-full text-center">Piezas</div>,
     size: 80,
     cell: ({ row }) => (
-      <span className="text-slate-500 dark:text-slate-400">
+      <span className="block text-center text-slate-500 dark:text-slate-400">
         {row.original.piezas}
       </span>
     ),
   },
   {
     accessorKey: "created_at",
-    header: "Fecha",
+    meta: { label: "Fecha" },
+    header: () => <div className="w-full text-center">Fecha</div>,
     cell: ({ row }) => (
-      <span className="text-slate-600 dark:text-slate-300">
+      <span className="block text-center text-slate-600 dark:text-slate-300">
         {formatOrderDateTime(row.original.created_at, "d MMM yyyy, HH:mm")}
       </span>
     ),
   },
   {
     id: "importeSinIva",
-    header: "Importe sin IVA",
+    meta: { label: "Importe sin IVA" },
+    header: () => <div className="w-full text-center">Importe sin IVA</div>,
     cell: ({ row }) => (
-      <span className="text-slate-500 dark:text-slate-400">
+      <span className="block text-center text-slate-500 dark:text-slate-400">
         {formatCurrency(Number(row.original.importe_sin_iva) || 0)}
       </span>
     ),
   },
   {
     accessorKey: "gran_total",
-    header: "Total",
+    meta: { label: "Total" },
+    header: () => <div className="w-full text-center">Total</div>,
     cell: ({ row }) => (
-      <div className="text-left font-semibold text-slate-800 dark:text-slate-100">
+      <div className="text-center font-semibold text-slate-800 dark:text-slate-100">
         {formatCurrency(Number(row.original.gran_total) || 0)}
       </div>
     ),
   },
   {
     id: "actions",
+    meta: { label: "Acciones" },
     header: () => (
       <div className="text-center" aria-label="Acciones de pedido">
         

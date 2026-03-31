@@ -68,7 +68,7 @@ export const OrderStats = () => {
   if (isLoading) {
     return (
       <div
-        className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4"
+        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"
         role="status"
         aria-live="polite"
         aria-label="Cargando estadísticas de pedidos"
@@ -81,5 +81,9 @@ export const OrderStats = () => {
     );
   }
 
-  return <KpiGrid items={items} />;
+  return (
+    <div className="w-full">
+      <KpiGrid items={items} />
+    </div>
+  );
 };

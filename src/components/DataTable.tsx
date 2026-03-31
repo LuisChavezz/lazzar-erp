@@ -26,6 +26,7 @@ import {
   FilterIcon,
   SyncIcon,
 } from "./Icons";
+import { Button } from "./Button";
 import { Loader } from "./Loader";
 
 export type DataTableVisibleColumn<TData> = {
@@ -45,7 +46,7 @@ interface DataTableProps<TData, TValue> {
   onFiltersClick?: () => void;
   isFiltersActive?: boolean;
   onClearFilters?: () => void;
-  onRefetch?: () => void | Promise<unknown>; // ! !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  onRefetch?: () => void | Promise<unknown>;
   isRefetching?: boolean;
   onVisibleRowsChange?: (rows: TData[]) => void;
   onVisibleColumnsChange?: (columns: DataTableVisibleColumn<TData>[]) => void;
@@ -190,6 +191,31 @@ export function DataTable<TData, TValue>({
     return items;
   };
 
+  const getColumnLabel = (column: (typeof visibleColumns)[number]) => {
+    const columnDef = column.columnDef as {
+      header?: unknown;
+      accessorKey?: string;
+      meta?: { label?: string };
+    };
+
+    if (typeof columnDef.meta?.label === "string" && columnDef.meta.label.trim().length > 0) {
+      return columnDef.meta.label;
+    }
+
+    if (typeof columnDef.header === "string" && columnDef.header.trim().length > 0) {
+      return columnDef.header;
+    }
+
+    const rawLabel = columnDef.accessorKey ?? column.id;
+    return rawLabel
+      .replace(/_/g, " ")
+      .replace(/([a-z])([A-Z])/g, "$1 $2")
+      .trim()
+      .split(/\s+/)
+      .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+      .join(" ");
+  };
+
   // Update visible rows when state changes
   useEffect(() => {
     if (onVisibleRowsChange) {
@@ -246,10 +272,10 @@ export function DataTable<TData, TValue>({
           {title}
         </h1>
       ) : null}
-        <div className="flex flex-col sm:flex-row gap-4 w-full lg:w-auto">
+        <div className="flex flex-col lg:flex-row lg:items-center gap-3 w-full lg:w-auto">
           {hasBaseData && (
             <>
-              <div className="relative w-full sm:w-64">
+              <div className="relative w-full sm:w-64 lg:w-72 lg:flex-none">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
                   <SearchIcon className="h-5 w-5" />
                 </div>
@@ -274,51 +300,54 @@ export function DataTable<TData, TValue>({
             </>
           )}
 
-          <div className="flex items-center justify-end gap-4 w-full sm:w-auto">
+          <div className="w-full lg:w-auto overflow-x-auto lg:overflow-visible pb-1">
+            <div className="flex items-center justify-end gap-2 min-w-max">
             {onRefetch && (
-              <button
-                type="button"
+              <Button
+                variant="secondary"
                 onClick={() => onRefetch()}
                 disabled={isRefetching}
-                className="px-4 py-2 cursor-pointer bg-white dark:bg-white/5 hover:bg-slate-50 dark:hover:bg-white/10 text-slate-700 dark:text-slate-200 text-sm font-semibold rounded-xl border border-slate-200 dark:border-white/10 shadow-sm transition-all flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
+                leftIcon={<SyncIcon className={`w-4 h-4 shrink-0 ${isRefetching ? "animate-spin" : ""}`} />}
+                className="shrink-0"
                 aria-label="Actualizar datos"
               >
-                <SyncIcon className={`w-4 h-4 ${isRefetching ? "animate-spin" : ""}`} />
                 Sincronizar
-              </button>
+              </Button>
             )}
             {hasBaseData && (
               <>
                 {onFiltersClick && (
-                  <button
-                    type="button"
+                  <Button
+                    variant="secondary"
                     onClick={onFiltersClick}
-                    className="px-4 py-2 cursor-pointer bg-white dark:bg-white/5 hover:bg-slate-50 dark:hover:bg-white/10 text-slate-700 dark:text-slate-200 text-sm font-semibold rounded-xl border border-slate-200 dark:border-white/10 shadow-sm transition-all flex items-center gap-2"
+                    leftIcon={<FilterIcon className="w-4 h-4 shrink-0" />}
+                    className="shrink-0"
                     aria-label="Filtrar datos"
                   >
-                    <FilterIcon className="w-4 h-4" />
                     Filtros
-                  </button>
+                  </Button>
                 )}
                 {onClearFilters && isFiltersActive && (
-                  <button
-                    type="button"
+                  <Button
+                    variant="secondary"
+                    size="icon"
                     onClick={onClearFilters}
-                    className="inline-flex items-center justify-center p-1.5 rounded-full border bg-white dark:bg-white/5 hover:bg-slate-50 dark:hover:bg-white/10 border-slate-200 dark:border-white/20 text-slate-400 hover:text-slate-600 dark:text-slate-300 dark:hover:text-slate-100 cursor-pointer transition-colors"
+                    className="rounded-full border-slate-200 dark:border-white/20 text-slate-400 hover:text-slate-600 dark:text-slate-300 dark:hover:text-slate-100"
                     aria-label="Limpiar filtros"
                   >
                     <CloseIcon className="w-4 h-4" />
-                  </button>
+                  </Button>
                 )}
                 <div className="relative">
-                  <button
+                  <Button
+                    variant="secondary"
                     ref={columnsBtnRef}
                     onClick={() => setIsColumnsOpen(!isColumnsOpen)}
-                    className="px-4 py-2 cursor-pointer bg-white dark:bg-white/5 hover:bg-slate-50 dark:hover:bg-white/10 text-slate-700 dark:text-slate-200 text-sm font-semibold rounded-xl border border-slate-200 dark:border-white/10 shadow-sm transition-all flex items-center gap-2"
+                    leftIcon={<SettingsIcon className="w-4 h-4 shrink-0" />}
+                    className="shrink-0"
                   >
-                    <SettingsIcon className="w-4 h-4" />
                     Columnas
-                  </button>
+                  </Button>
 
                   {isColumnsOpen && (
                     <div
@@ -350,9 +379,7 @@ export function DataTable<TData, TValue>({
                                 )}
                               </div>
                               <span className="text-sm text-slate-700 dark:text-slate-300 select-none">
-                                {typeof column.columnDef.header === "string"
-                                  ? column.columnDef.header
-                                  : column.id}
+                                {getColumnLabel(column)}
                               </span>
                             </div>
                           );
@@ -365,6 +392,7 @@ export function DataTable<TData, TValue>({
             )}
 
             {actionButton}
+            </div>
           </div>
         </div>
       </div>
@@ -526,7 +554,8 @@ export function DataTable<TData, TValue>({
           <div className="text-sm text-slate-500 dark:text-slate-400">
             Mostrando {startRow}-{endRow} de {totalRows}
           </div>
-          <div className="flex items-center gap-3">
+          <div className="w-full sm:w-auto overflow-x-auto">
+            <div className="flex items-center justify-end gap-3 min-w-max">
             <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
               <span>Filas</span>
               <select
@@ -546,19 +575,16 @@ export function DataTable<TData, TValue>({
               </select>
             </div>
             <div className="flex items-center gap-2">
-              <button
-                type="button"
+              <Button
+                variant="secondary"
+                size="icon"
                 onClick={() => table.previousPage()}
                 disabled={!table.getCanPreviousPage()}
-                className={`p-2 rounded-xl text-sm font-semibold border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 text-slate-700 dark:text-slate-200 transition-colors ${
-                  table.getCanPreviousPage()
-                    ? "hover:bg-slate-50 dark:hover:bg-white/10 cursor-pointer"
-                    : "opacity-50 cursor-not-allowed"
-                }`}
+                className="border-slate-200 dark:border-white/10"
                 aria-label="Página anterior"
               >
                 <ArrowLeftIcon className="w-4 h-4" />
-              </button>
+              </Button>
               <div className="flex items-center gap-2">
                 {getPaginationItems(currentPage, pageCount).map((item, index) =>
                   item === "ellipsis" ? (
@@ -566,34 +592,29 @@ export function DataTable<TData, TValue>({
                       ...
                     </span>
                   ) : (
-                    <button
+                    <Button
                       key={item}
-                      type="button"
+                      variant={item === currentPage ? "primary" : "secondary"}
+                      size="icon"
                       onClick={() => table.setPageIndex(item - 1)}
-                      className={`h-9 w-9 rounded-xl text-sm font-semibold border transition-colors cursor-pointer ${
-                        item === currentPage
-                          ? "bg-sky-600 text-white border-sky-600"
-                          : "border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-white/10"
-                      }`}
+                      className={`h-9 w-9 p-0 ${item === currentPage ? "" : "border-slate-200 dark:border-white/10"}`}
                     >
                       {item}
-                    </button>
+                    </Button>
                   )
                 )}
               </div>
-              <button
-                type="button"
+              <Button
+                variant="secondary"
+                size="icon"
                 onClick={() => table.nextPage()}
                 disabled={!table.getCanNextPage()}
-                className={`p-2 rounded-xl text-sm font-semibold border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 text-slate-700 dark:text-slate-200 transition-colors ${
-                  table.getCanNextPage()
-                    ? "hover:bg-slate-50 dark:hover:bg-white/10 cursor-pointer"
-                    : "opacity-50 cursor-not-allowed"
-                }`}
+                className="border-slate-200 dark:border-white/10"
                 aria-label="Página siguiente"
               >
                 <ChevronRightIcon className="w-4 h-4" />
-              </button>
+              </Button>
+            </div>
             </div>
           </div>
         </div>

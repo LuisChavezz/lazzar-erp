@@ -44,7 +44,7 @@ interface StepEmbroideryProps {
     value: string
   ) => void;
   embroideryError: string | null;
-  specErrors: Record<string, { posicion?: string; ancho?: string; alto?: string; color?: string; imagen?: string }>;
+  specErrors: Record<string, { posicion?: string; ancho?: string; alto?: string; imagen?: string }>;
   positionOptions: { codigo: string; nombre: string }[];
   positionMap: Map<string, string>;
   threadColorOptions: string[];
@@ -260,7 +260,7 @@ export const StepEmbroidery = memo(function StepEmbroidery({
                   </div>
                   <div className="space-y-1 sm:col-span-3">
                     <FormSelect
-                      label="Color de hilo"
+                      label="Color de hilo (opcional)"
                       value={spec.colorHilo}
                       onChange={(event) =>
                         onUpdateSpec(spec.id, "colorHilo", event.target.value)
@@ -273,14 +273,6 @@ export const StepEmbroidery = memo(function StepEmbroidery({
                         })),
                       ]}
                     />
-                    {specError.color && (
-                      <p
-                        className="text-xs text-rose-600 dark:text-rose-400"
-                        role="alert"
-                      >
-                        {specError.color}
-                      </p>
-                    )}
                   </div>
                   <div className="space-y-1 sm:col-span-3">
                     <FormInput

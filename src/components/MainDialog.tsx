@@ -1,7 +1,8 @@
 'use client';
 
-import { Dialog, Flex, Button } from '@radix-ui/themes';
+import { Dialog, Flex } from '@radix-ui/themes';
 import React from 'react';
+import { Button } from './Button';
 
 interface MainDialogProps {
   trigger?: React.ReactNode; // El botón o elemento que abre el modal
@@ -53,13 +54,11 @@ export function MainDialog({
         <Flex gap="3" mt="4" justify="end">
           <Dialog.Close>
             <Button
-              variant="soft"
-              className="bg-rose-50! text-rose-700! hover:bg-rose-100! dark:bg-rose-500/15! dark:text-rose-300! dark:hover:bg-rose-500/25!"
+              variant="danger"
             >
               Cerrar
             </Button>
           </Dialog.Close>
-
           {actionButton &&
             (actionButtonClose ? (
               <Dialog.Close>{actionButton}</Dialog.Close>

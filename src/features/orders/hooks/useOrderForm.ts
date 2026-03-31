@@ -74,6 +74,8 @@ const IVA_OPTIONS = [
   { value: 8, label: "8%" },
   { value: 0, label: "0%" },
 ];
+const DEFAULT_USO_CFDI_VALUE = "G03";
+const DEFAULT_USO_CFDI_LABEL = "G03 - Gastos en general";
 const ORDER_CREATION_EXTRA_DELAY_MS = 1800;
 const ROUTE_SLIDE_TRANSITION_MS = 320;
 
@@ -124,7 +126,7 @@ const createEmptyValues = (todayStr: string, userName: string): OrderFormValues 
   oc: "",
   forma_pago: "03",
   metodo_pago: "PUE",
-  uso_cfdi: "",
+  uso_cfdi: DEFAULT_USO_CFDI_VALUE,
   referenciarOcFactura: false,
   condicionPago: "100_anticipo",
   condicionPagoMonto: 0,
@@ -144,7 +146,7 @@ const createEmptyValues = (todayStr: string, userName: string): OrderFormValues 
   referenciasEnvio: "",
   enviarDomicilioFiscal: false,
   embarcarConOtrosPedidos: false,
-  empaque_ecologico: false,
+  empaque_ecologico: true,
   embarque_parcial: false,
   comentarios_parcialidad: "",
   servicioEnvioActivo: false,
@@ -850,10 +852,7 @@ export function useOrderForm() {
   );
 
   const usoCfdiOptions = useMemo(
-    () => [
-      { value: "", label: "Seleccionar..." },
-      ...(onboardingData?.catalogos.usos_cfdi ?? []),
-    ],
+    () => onboardingData?.catalogos.usos_cfdi ?? [],
     [onboardingData?.catalogos.usos_cfdi]
   );
   const currencyOptions = useMemo(
@@ -886,6 +885,24 @@ export function useOrderForm() {
       form.setFieldValue("moneda", Number(currencyOptions[1].value));
     }
   }, [currencyOptions, form, values.moneda]);
+
+  useEffect(() => {
+    if (usoCfdiOptions.length === 0) {
+      return;
+    }
+    const preferredCfdiOption = usoCfdiOptions.find(
+      (option) =>
+        option.value === DEFAULT_USO_CFDI_VALUE ||
+        option.label.trim().toLowerCase() === DEFAULT_USO_CFDI_LABEL.toLowerCase()
+    );
+    const fallbackCfdiOption = usoCfdiOptions[0];
+    const defaultCfdiValue = preferredCfdiOption?.value ?? fallbackCfdiOption.value;
+    const isCurrentValueValid = usoCfdiOptions.some((option) => option.value === values.uso_cfdi);
+
+    if (!values.uso_cfdi || !isCurrentValueValid) {
+      form.setFieldValue("uso_cfdi", defaultCfdiValue);
+    }
+  }, [form, usoCfdiOptions, values.uso_cfdi]);
 
   const formKey = "order-new";
 

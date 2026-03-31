@@ -49,9 +49,6 @@ export default function MobileSidebar() {
       <header className="md:hidden fixed top-0 left-0 w-full h-16 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-6 z-50">
         <div className="flex items-center gap-3">
           <LogoIcon width="28" height="28" className="text-sky-600 dark:text-sky-400" />
-          <span className="brand-font font-bold text-lg text-slate-900 dark:text-white">
-            ERP
-          </span>
         </div>
 
         {/* Right Side */}
