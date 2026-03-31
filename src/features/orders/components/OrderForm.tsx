@@ -99,24 +99,6 @@ export default function OrderForm() {
     isRouteTransitioning ? "translate-x-12 opacity-0" : "translate-x-0 opacity-100"
   }`;
 
-  const centerFocusableInMobile = (target: EventTarget | null) => {
-    if (
-      typeof window === "undefined" ||
-      !window.matchMedia("(max-width: 767px)").matches ||
-      !(target instanceof HTMLElement)
-    ) {
-      return;
-    }
-
-    if (!target.matches("input, select, textarea")) {
-      return;
-    }
-
-    setTimeout(() => {
-      target.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
-    }, 120);
-  };
-
   if (isCreationSuccessVisible) {
     return (
       <div className={routeTransitionClass}>
@@ -130,8 +112,6 @@ export default function OrderForm() {
       ref={formRef}
       key={formKey}
       onSubmit={handleFormSubmit}
-      onFocusCapture={(event) => centerFocusableInMobile(event.target)}
-      onClickCapture={(event) => centerFocusableInMobile(event.target)}
       aria-busy={isPending}
       className={`space-y-6 ${routeTransitionClass}`}
     >
