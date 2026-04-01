@@ -102,14 +102,14 @@ export const appRouteGroups: AppRouteGroup[] = [
       },
       {
         key: "sales-orders",
-        label: "Pedidos",
+        label: "Cotizaciones",
         path: "/sales/orders",
         icon: PedidosIcon,
         permission: "R-CRM",
       },
       {
         key: "sales-orders-new",
-        label: "Nuevo Pedido",
+        label: "Nuevo Cotización",
         path: "/sales/orders/new",
         icon: PedidosIcon,
         permission: "R-CRM",

@@ -84,10 +84,10 @@ export const RecentOrders = () => {
   return (
     <section className="bg-white dark:bg-black border border-slate-200 dark:border-white/10 rounded-xl shadow-sm p-6 flex flex-col h-full">
       <div className="flex justify-between items-center mb-6">
-        <h3 className="font-bold text-slate-800 dark:text-white text-sm">Pedidos Recientes</h3>
+        <h3 className="font-bold text-slate-800 dark:text-white text-sm">Cotizaciones Recientes</h3>
         <Link
           href="/sales/orders"
-          aria-label="Ver todos los pedidos"
+          aria-label="Ver todos los cotizaciones"
           className="text-xs text-sky-600 hover:text-sky-500 font-bold uppercase tracking-wider transition-colors"
         >
           Ver todos
@@ -104,13 +104,13 @@ export const RecentOrders = () => {
 
         {!isLoading && !isError && recentOrders.length === 0 ? (
           <div className="rounded-lg border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 p-3 text-xs text-slate-500 dark:text-slate-400">
-            No hay pedidos recientes.
+            No hay cotizaciones recientes.
           </div>
         ) : null}
 
         {!isLoading && isError ? (
           <div className="rounded-lg border border-rose-200 dark:border-rose-400/30 bg-rose-50 dark:bg-rose-500/10 p-3 text-xs text-rose-700 dark:text-rose-200">
-            No se pudieron cargar los pedidos recientes.
+            No se pudieron cargar los cotizaciones recientes.
           </div>
         ) : null}
 

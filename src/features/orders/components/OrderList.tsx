@@ -57,7 +57,7 @@ export const OrderList = () => {
 
   if (isOrdersLoading || !filtersHydrated) {
     return (
-      <div className="mt-12" role="status" aria-live="polite" aria-label="Cargando pedidos">
+      <div className="mt-12" role="status" aria-live="polite" aria-label="Cargando cotizaciones">
         <LoadingSkeleton className="h-96 rounded-3xl" />
       </div>
     );
@@ -69,24 +69,24 @@ export const OrderList = () => {
         columns={orderColumns}
         data={filteredOrders}
         baseDataCount={baseOrders.length}
-        searchPlaceholder="Buscar pedido..."
+        searchPlaceholder="Buscar cotización..."
         onFiltersClick={() => setIsFiltersOpen(true)}
         isFiltersActive={hasActiveFilters}
         onClearFilters={handleClearFilters}
         onVisibleRowsChange={setVisibleOrders}
         onVisibleColumnsChange={setVisibleColumns}
         isLoadingOverlay={isUpdatingOrderStatus}
-        loadingTitle={isRejectingOrder ? "Rechazando pedido" : "Autorizando pedido"}
+        loadingTitle={isRejectingOrder ? "Rechazando cotización" : "Autorizando cotización"}
         loadingMessage="Estamos actualizando el estado de la orden."
         actionButton={
           canCreateOrder ? (
             <div className="flex items-center gap-2 shrink-0">
               <Link
                 href="/sales/orders/new"
-                aria-label="Crear Nuevo Pedido"
+                aria-label="Crear Nuevo cotización"
                 className="inline-flex items-center justify-center px-4 py-2 bg-sky-600 hover:bg-sky-700 text-white text-sm font-semibold rounded-xl shadow-lg shadow-sky-500/30 whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2 transition-all duration-200 ease-in-out"
               >
-                + Nuevo Pedido
+                + Nuevo cotización
               </Link>
             </div>
           ) : null
