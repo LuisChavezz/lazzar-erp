@@ -8,8 +8,8 @@ import {
   OrdenesIcon,
 } from "@/src/components/Icons";
 import { useCustomers } from "@/src/features/customers/hooks/useCustomers";
-import { useOrders } from "@/src/features/orders/hooks/useOrders";
-import { Order } from "@/src/features/orders/interfaces/order.interface";
+import { useQuotes } from "@/src/features/quotes/hooks/useQuotes";
+import { Quote } from "@/src/features/quotes/interfaces/quote.interface";
 
 const parseOrderCreatedAt = (value?: string | null) => {
   if (!value) return null;
@@ -41,7 +41,7 @@ const parseOrderCreatedAt = (value?: string | null) => {
   return Number.isNaN(date.getTime()) ? null : date;
 };
 
-const getLast30DaysOrdersCount = (orders: Order[], now: Date) => {
+const getLast30DaysOrdersCount = (quotes: Quote[], now: Date) => {
   const rangeStart = new Date(now);
   rangeStart.setHours(0, 0, 0, 0);
   rangeStart.setDate(rangeStart.getDate() - 29);
@@ -49,19 +49,19 @@ const getLast30DaysOrdersCount = (orders: Order[], now: Date) => {
   const rangeEnd = new Date(now);
   rangeEnd.setHours(23, 59, 59, 999);
 
-  return orders.filter((order) => {
-    const createdAt = parseOrderCreatedAt(order.created_at);
+  return quotes.filter((quote) => {
+    const createdAt = parseOrderCreatedAt(quote.created_at);
     return createdAt ? createdAt >= rangeStart && createdAt <= rangeEnd : false;
   }).length;
 };
 
 export const SalesKpiGrid = () => {
   const { customers, isLoading: isCustomersLoading } = useCustomers();
-  const { orders, isLoading: isOrdersLoading } = useOrders();
+  const { quotes, isLoading: isOrdersLoading } = useQuotes();
 
   const now = new Date();
   const totalCustomers = customers.length;
-  const activeOrdersLast30Days = getLast30DaysOrdersCount(orders, now);
+  const activeOrdersLast30Days = getLast30DaysOrdersCount(quotes, now);
   const isLoading = isCustomersLoading || isOrdersLoading;
 
   const items: KpiItem[] = [

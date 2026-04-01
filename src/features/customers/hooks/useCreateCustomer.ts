@@ -26,7 +26,7 @@ export const useCreateCustomer = ({
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["customers"] });
       if (invalidateOrderOnboarding) {
-        queryClient.invalidateQueries({ queryKey: ["order-onboarding"] });
+        queryClient.invalidateQueries({ queryKey: ["quote-onboarding"] });
       }
       toast.success("Cliente registrado correctamente");
     },

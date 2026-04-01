@@ -27,7 +27,7 @@ export const QuickActions = () => {
       </h2>
       <div className="grid grid-cols-2 gap-3">
         <Link
-          href="/sales/orders/new"
+          href="/sales/quotes/new"
           aria-label="Crear nueva cotización"
           className="flex flex-col items-center justify-center p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 hover:bg-sky-50 dark:hover:bg-sky-900/10 hover:text-sky-600 dark:hover:text-sky-400 border border-slate-100 dark:border-white/5 hover:border-sky-200 dark:hover:border-sky-500/20 transition-all group"
         >
@@ -60,7 +60,7 @@ export const QuickActions = () => {
           </MainDialog>
         </>
         <Link
-          href="/sales/orders"
+          href="/sales/quotes"
           aria-label="Crear pedido"
           className="flex flex-col items-center justify-center p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 hover:bg-amber-50 dark:hover:bg-amber-900/10 hover:text-amber-600 dark:hover:text-amber-400 border border-slate-100 dark:border-white/5 hover:border-amber-200 dark:hover:border-amber-500/20 transition-all group"
         >

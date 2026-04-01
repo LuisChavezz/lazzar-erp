@@ -1,5 +1,5 @@
 import { Metadata } from "next";
-import { OrderStats } from "@/src/features/operations/components/OrderStats";
+import { QuoteStats } from "@/src/features/operations/components/QuoteStats";
 
 export const metadata: Metadata = {
   title: "Mesa de Control | ERP",
@@ -28,7 +28,7 @@ export default function OperationsPage() {
         </p>
       </header>
       <section aria-label="Indicadores operativos de pedidos">
-        <OrderStats />
+        <QuoteStats />
       </section>
     </main>
   );
