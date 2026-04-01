@@ -40,7 +40,7 @@ const embroiderySpecSchema = z.object({
     })
     .gt(0, "Debe ser positivo")
     .optional(),
-  colorHilo: z.string().min(1, "Requerido"),
+  colorHilo: z.string().optional(),
   imagen: imageUrlSchema,
 });
 
