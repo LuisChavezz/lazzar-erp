@@ -101,19 +101,19 @@ export const appRouteGroups: AppRouteGroup[] = [
         showInSidebar: false,
       },
       {
-        key: "sales-orders",
+        key: "sales-quotes",
         label: "Cotizaciones",
-        path: "/sales/orders",
+        path: "/sales/quotes",
         icon: PedidosIcon,
         permission: "R-CRM",
       },
       {
-        key: "sales-orders-new",
+        key: "sales-quotes-new",
         label: "Nuevo Cotización",
-        path: "/sales/orders/new",
+        path: "/sales/quotes/new",
         icon: PedidosIcon,
         permission: "R-CRM",
-        parentPath: "/sales/orders",
+        parentPath: "/sales/quotes",
         showInSidebar: false,
       },
       {
@@ -178,9 +178,9 @@ export const appRouteGroups: AppRouteGroup[] = [
     showInHome: true,
     items: [
       {
-        key: "procurement-orders-menu",
+        key: "procurement-quotes-menu",
         label: "Órdenes",
-        path: "/procurement/orders-menu",
+        path: "/procurement/quotes-menu",
         icon: OrdenesIcon,
         permission: "R-COMPRAS",
       },
@@ -304,9 +304,9 @@ export const appRouteGroups: AppRouteGroup[] = [
     showInHome: true,
     items: [
       {
-        key: "operations-orders",
+        key: "operations-quotes",
         label: "Pedidos",
-        path: "/operations/orders",
+        path: "/operations/quotes",
         icon: PedidosIcon,
         permission: "R-MESACONTROL",
       },

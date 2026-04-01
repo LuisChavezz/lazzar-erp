@@ -1,7 +1,7 @@
 import { MonthlyGoal } from "@/src/features/sales/components/MonthlyGoal";
 import { QuickActions } from "@/src/features/sales/components/QuickActions";
 import { RecentOpportunities } from "@/src/features/sales/components/RecentOpportunities";
-import { RecentOrders } from "@/src/features/sales/components/RecentOrders";
+import { RecentQuotes } from "@/src/features/sales/components/RecentQuotes";
 import { SalesKpiGrid } from "@/src/features/sales/components/SalesKpiGrid";
 import { SalesPipeline } from "@/src/features/sales/components/SalesPipeline";
 import { UpcomingTasks } from "@/src/features/tasks/components/UpcomingTasks";
@@ -15,7 +15,7 @@ export default function SalesPage() {
           <RecentOpportunities />
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <SalesPipeline />
-            <RecentOrders />
+            <RecentQuotes />
           </div>
         </div>
         <div className="space-y-6">
