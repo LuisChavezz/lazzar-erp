@@ -1,5 +1,7 @@
 "use client";
 
+import { useMemo, useState } from "react";
+import { Button } from "@/src/components/Button";
 import { FormInput } from "@/src/components/FormInput";
 import { FormSelect } from "@/src/components/FormSelect";
 import { FormCancelButton, FormSubmitButton } from "@/src/components/FormButtons";
@@ -7,6 +9,7 @@ import { ClientesIcon, TaxIcon } from "@/src/components/Icons";
 import { Loader } from "@/src/components/Loader";
 import { Customer } from "../interfaces/customer.interface";
 import { useCustomerForm } from "../hooks/useCustomerForm";
+import { useVerifyRfc } from "../hooks/useVerifyRfc";
 
 interface CustomerFormProps {
   onSuccess?: () => void;
@@ -15,12 +18,24 @@ interface CustomerFormProps {
   invalidateOrderOnboarding?: boolean;
 }
 
+const RFC_MIN_LENGTH = 12;
+
+type RfcValidationTone = "success" | "error";
+
+const normalizeRfc = (value: string) => value.trim().toUpperCase();
+
 export default function CustomerForm({
   onSuccess,
   onCreated,
   customerToEdit,
   invalidateOrderOnboarding = false,
 }: CustomerFormProps) {
+  const [isRfcVerified, setIsRfcVerified] = useState(false);
+  const [verifiedRfc, setVerifiedRfc] = useState<string | null>(null);
+  const [rfcValidationMessage, setRfcValidationMessage] = useState<string | null>(null);
+  const [rfcValidationTone, setRfcValidationTone] = useState<RfcValidationTone | null>(null);
+  const { verifyRfcAsync, isVerifyingRfc, resetVerifyRfc } = useVerifyRfc();
+
   // El custom hook concentra estado, validación Zod, submit y reset del formulario.
   const {
     form,
@@ -41,7 +56,39 @@ export default function CustomerForm({
     onCreated,
     customerToEdit,
     invalidateOrderOnboarding,
+    isRfcVerified,
   });
+
+  const rfcFeedbackClassName = useMemo(() => {
+    if (rfcValidationTone === "success") {
+      return "text-emerald-700 dark:text-emerald-300";
+    }
+    if (rfcValidationTone === "error") {
+      return "text-rose-700 dark:text-rose-300";
+    }
+    return "text-slate-500 dark:text-slate-400";
+  }, [rfcValidationTone]);
+
+  const getInvalidRfcMessage = (status: {
+    FormatoCorrecto: boolean;
+    Activo: boolean;
+    Localizado: boolean;
+  }) => {
+    const reasons: string[] = [];
+    if (!status.FormatoCorrecto) reasons.push("formato incorrecto");
+    if (!status.Activo) reasons.push("RFC inactivo");
+    if (!status.Localizado) reasons.push("RFC no localizado");
+    if (reasons.length === 0) return "No fue posible validar el RFC.";
+    return `RFC inválido: ${reasons.join(", ")}.`;
+  };
+
+  const handleResetRfcValidation = () => {
+    setIsRfcVerified(false);
+    setVerifiedRfc(null);
+    setRfcValidationMessage(null);
+    setRfcValidationTone(null);
+    resetVerifyRfc();
+  };
 
   if (isSatInfoLoading) {
     return (
@@ -188,23 +235,110 @@ export default function CustomerForm({
           <div className="p-8">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <form.Field name="rfc">
-                {(field) => (
-                  <FormInput
-                    name={field.name}
-                    value={field.state.value}
-                    onChange={(event) => {
-                      field.handleChange(event.target.value);
-                      clearFieldErrors("rfc");
-                    }}
-                    onBlur={() => {
-                      field.handleBlur();
-                      validateField("rfc", field.state.value);
-                    }}
-                    label="RFC"
-                    placeholder="RFC"
-                    error={getError("rfc")}
-                  />
-                )}
+                {(field) => {
+                  const normalizedFieldRfc = normalizeRfc(field.state.value ?? "");
+                  const canVerifyRfc =
+                    normalizedFieldRfc.length >= RFC_MIN_LENGTH && !isRfcVerified && !isPending;
+
+                  return (
+                    <div className="space-y-2">
+                      <FormInput
+                        name={field.name}
+                        value={field.state.value}
+                        disabled={isRfcVerified}
+                        onChange={(event) => {
+                          const nextRfc = normalizeRfc(event.target.value);
+                          field.handleChange(nextRfc);
+                          clearFieldErrors("rfc");
+                          resetVerifyRfc();
+                          setRfcValidationMessage(null);
+                          setRfcValidationTone(null);
+                          if (verifiedRfc && nextRfc !== verifiedRfc) {
+                            setVerifiedRfc(null);
+                            setIsRfcVerified(false);
+                          }
+                          if (!verifiedRfc) {
+                            setIsRfcVerified(false);
+                          }
+                        }}
+                        onBlur={() => {
+                          field.handleBlur();
+                          validateField("rfc", field.state.value);
+                        }}
+                        label="RFC"
+                        placeholder="RFC"
+                        error={getError("rfc")}
+                      />
+                      <div className="flex items-center gap-3">
+                        {canVerifyRfc ? (
+                          <Button
+                            variant="secondary"
+                            disabled={isVerifyingRfc}
+                            onClick={async () => {
+                              const rfcToVerify = normalizeRfc(field.state.value ?? "");
+                              if (rfcToVerify.length < RFC_MIN_LENGTH) {
+                                return;
+                              }
+
+                              try {
+                                const response = await verifyRfcAsync(rfcToVerify);
+                                const isValid =
+                                  response.FormatoCorrecto &&
+                                  response.Activo &&
+                                  response.Localizado;
+
+                                if (isValid) {
+                                  setIsRfcVerified(true);
+                                  setVerifiedRfc(rfcToVerify);
+                                  setRfcValidationTone("success");
+                                  setRfcValidationMessage(
+                                    "RFC validado correctamente ante el servicio fiscal. Puedes continuar."
+                                  );
+                                  clearFieldErrors("rfc");
+                                  return;
+                                }
+
+                                setIsRfcVerified(false);
+                                setVerifiedRfc(null);
+                                setRfcValidationTone("error");
+                                setRfcValidationMessage(getInvalidRfcMessage(response));
+                              } catch {
+                                setIsRfcVerified(false);
+                                setVerifiedRfc(null);
+                                setRfcValidationTone("error");
+                                setRfcValidationMessage(
+                                  "No se pudo validar el RFC en este momento. Intenta nuevamente."
+                                );
+                              }
+                            }}
+                          >
+                            {isVerifyingRfc ? "Verificando RFC..." : "Verificar RFC"}
+                          </Button>
+                        ) : null}
+                        {isRfcVerified ? (
+                          <Button
+                            variant="secondary"
+                            onClick={() => {
+                              setIsRfcVerified(false);
+                              setVerifiedRfc(null);
+                              setRfcValidationTone(null);
+                              setRfcValidationMessage(null);
+                              resetVerifyRfc();
+                              clearFieldErrors("rfc");
+                            }}
+                          >
+                            Cambiar RFC
+                          </Button>
+                        ) : null}
+                      </div>
+                      {rfcValidationMessage ? (
+                        <p className={`text-xs font-medium ${rfcFeedbackClassName}`}>
+                          {rfcValidationMessage}
+                        </p>
+                      ) : null}
+                    </div>
+                  );
+                }}
               </form.Field>
               <form.Field name="sat_regimen_fiscal">
                 {(field) => (
@@ -368,7 +502,13 @@ export default function CustomerForm({
         </section>
 
         <div className="flex justify-end gap-3 pb-8">
-          <FormCancelButton onClick={handleReset} disabled={isPending} />
+          <FormCancelButton
+            onClick={() => {
+              handleReset();
+              handleResetRfcValidation();
+            }}
+            disabled={isPending}
+          />
           <FormSubmitButton
             isPending={isPending}
             loadingLabel={isEditing ? "Actualizando..." : "Guardando..."}

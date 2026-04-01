@@ -35,7 +35,7 @@ export interface OrderItem {
       posicionNombre: string;
       ancho?: number;
       alto?: number;
-      colorHilo: string;
+      colorHilo?: string;
       imagen: string;
     }[];
   };

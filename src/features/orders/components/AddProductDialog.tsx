@@ -99,7 +99,7 @@ export function AddProductDialog({
         posicionCodigo: spec.posicionCodigo,
         ancho: spec.ancho && spec.ancho > 0 ? String(spec.ancho) : "",
         alto: spec.alto && spec.alto > 0 ? String(spec.alto) : "",
-        colorHilo: spec.colorHilo,
+        colorHilo: spec.colorHilo ?? "",
         imagen: spec.imagen ?? "",
       })) ?? []
   );
@@ -124,7 +124,7 @@ export function AddProductDialog({
           posicionCodigo: spec.posicionCodigo,
           ancho: spec.ancho && spec.ancho > 0 ? String(spec.ancho) : "",
           alto: spec.alto && spec.alto > 0 ? String(spec.alto) : "",
-          colorHilo: spec.colorHilo,
+          colorHilo: spec.colorHilo ?? "",
           imagen: spec.imagen ?? "",
         })) ?? []
       );

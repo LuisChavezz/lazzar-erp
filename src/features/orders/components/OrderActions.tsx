@@ -9,17 +9,6 @@ export const OrderActions = () => {
       <div className="flex items-center gap-2 min-w-max">
       <Button
         variant="secondary"
-        disabled
-        leftIcon={<OrdenesIcon className="w-4 h-4 shrink-0" />}
-        className="shrink-0 rounded-full"
-        title="Actualizar estados"
-        aria-label="Actualizar estados de pedidos"
-        aria-disabled="true"
-      >
-        Actualizar estados
-      </Button>
-      <Button
-        variant="secondary"
         onClick={() => {
           document.dispatchEvent(new CustomEvent("orders:exportCSV"));
         }}

@@ -4,7 +4,7 @@ import { useForm } from "@tanstack/react-form";
 import { useMemo, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import { CustomerFormSchema, CustomerFormValues } from "../schemas/customer.schema";
-import { Customer } from "../interfaces/customer.interface";
+import { Customer, CustomerCreate } from "../interfaces/customer.interface";
 import { useCreateCustomer } from "./useCreateCustomer";
 import { useUpdateCustomer } from "./useUpdateCustomer";
 import { useWorkspaceStore } from "../../workspace/store/workspace.store";
@@ -15,9 +15,28 @@ interface UseCustomerFormParams {
   onCreated?: (customer: Customer) => void;
   customerToEdit?: Customer | null;
   invalidateOrderOnboarding?: boolean;
+  isRfcVerified?: boolean;
 }
 
 type CustomerFormField = keyof CustomerFormValues;
+
+type NormalizedCustomerFormValues = Omit<
+  CustomerFormValues,
+  "telefono" | "correo" | "giro_empresarial"
+> & {
+  telefono: string;
+  correo: string;
+  giro_empresarial: string;
+};
+
+const normalizeOptionalCustomerFields = (
+  values: CustomerFormValues
+): NormalizedCustomerFormValues => ({
+  ...values,
+  telefono: values.telefono ?? "",
+  correo: values.correo ?? "",
+  giro_empresarial: values.giro_empresarial ?? "",
+});
 
 const scrollToFirstValidationError = (formElement: HTMLFormElement, issuePaths: string[]) => {
   if (issuePaths.length === 0) {
@@ -76,6 +95,7 @@ export function useCustomerForm({
   onCreated,
   customerToEdit,
   invalidateOrderOnboarding = false,
+  isRfcVerified = false,
 }: UseCustomerFormParams) {
   // Contexto de empresa activa y catálogos SAT requeridos por el formulario.
   const selectedCompany = useWorkspaceStore((state) => state.selectedCompany);
@@ -175,21 +195,33 @@ export function useCustomerForm({
   // Validación completa (onSubmit) con Zod para frenar envío inválido.
   const validateForm = (values: CustomerFormValues) => {
     const parsed = CustomerFormSchema.safeParse(values);
-    if (parsed.success) {
+    const nextErrors: Partial<Record<CustomerFormField, string>> = {};
+    const issuePaths: string[] = [];
+
+    if (!parsed.success) {
+      parsed.error.issues.forEach((issue) => {
+        const path = issue.path.map((segment) => String(segment)).join(".");
+        if (path) {
+          issuePaths.push(path);
+        }
+        const field = issue.path[0] as CustomerFormField;
+        if (!field || nextErrors[field]) {
+          return;
+        }
+        nextErrors[field] = issue.message;
+      });
+    }
+
+    if (!isRfcVerified) {
+      nextErrors.rfc = "Debes verificar el RFC antes de continuar";
+      issuePaths.push("rfc");
+    }
+
+    if (Object.keys(nextErrors).length === 0) {
       setClientErrors({});
       return { success: true as const, issuePaths: [] as string[] };
     }
-    const nextErrors: Partial<Record<CustomerFormField, string>> = {};
-    const issuePaths = parsed.error.issues
-      .map((issue) => issue.path.map((segment) => String(segment)).join("."))
-      .filter(Boolean);
-    parsed.error.issues.forEach((issue) => {
-      const field = issue.path[0] as CustomerFormField;
-      if (!field || nextErrors[field]) {
-        return;
-      }
-      nextErrors[field] = issue.message;
-    });
+
     setClientErrors(nextErrors);
     return { success: false as const, issuePaths };
   };
@@ -205,8 +237,9 @@ export function useCustomerForm({
     defaultValues: isEditing ? editValues : emptyValues,
     onSubmit: async ({ value }) => {
       setServerErrors({});
+      const normalizedValues = normalizeOptionalCustomerFields(value);
 
-      const validationResult = validateForm(value);
+      const validationResult = validateForm(normalizedValues);
       if (!validationResult.success) {
         if (formRef.current) {
           requestAnimationFrame(() => {
@@ -225,10 +258,14 @@ export function useCustomerForm({
       }
 
       if (isEditing && customerToEdit) {
+        const updatePayload: CustomerCreate = {
+          empresa: customerToEdit.empresa ?? selectedCompany.id,
+          ...normalizedValues,
+        };
+
         const updatedCustomer = await updateCustomer({
           id: Number(customerToEdit.id),
-          empresa: customerToEdit.empresa ?? selectedCompany.id,
-          ...value,
+          ...updatePayload,
         });
 
         if (!updatedCustomer) {
@@ -240,10 +277,12 @@ export function useCustomerForm({
         return;
       }
 
-      const createdCustomer = await createCustomer({
+      const createPayload: CustomerCreate = {
         empresa: selectedCompany.id,
-        ...value,
-      });
+        ...normalizedValues,
+      };
+
+      const createdCustomer = await createCustomer(createPayload);
 
       if (!createdCustomer) {
         return;

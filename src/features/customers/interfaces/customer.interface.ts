@@ -37,3 +37,10 @@ export interface CustomerCreate {
   sat_regimen_fiscal: RegimenFiscal["id_sat_regimen_fiscal"];
   sat_uso_cfdi: UsoCfdi["id_sat_uso_cfdi"];
 }
+
+export interface VerifyRfcResponse {
+  Rfc: string;
+  FormatoCorrecto: boolean;
+  Activo: boolean;
+  Localizado: boolean;
+}

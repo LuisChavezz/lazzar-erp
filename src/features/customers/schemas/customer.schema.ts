@@ -1,17 +1,19 @@
 import { z } from "zod";
 
+const optionalEmailSchema = z.union([z.string().email("Correo inválido"), z.literal("")]);
+
 export const CustomerFormSchema = z.object({
   razon_social: z.string().min(1, "Requerido"),
   nombre: z.string().min(1, "Requerido"),
-  telefono: z.string().min(1, "Requerido"),
-  correo: z.string().email("Correo inválido"),
+  telefono: z.string().optional(),
+  correo: optionalEmailSchema.optional(),
   rfc: z.string().min(1, "Requerido"),
   direccion_fiscal: z.string().min(1, "Requerido"),
   colonia: z.string().min(1, "Requerido"),
   codigo_postal: z.string().min(1, "Requerido"),
   ciudad: z.string().min(1, "Requerido"),
   estado: z.string().min(1, "Requerido"),
-  giro_empresarial: z.string().min(1, "Requerido"),
+  giro_empresarial: z.string().optional(),
   sat_regimen_fiscal: z.number().int().min(1, "Requerido"),
   sat_uso_cfdi: z.number().int().min(1, "Requerido"),
 });

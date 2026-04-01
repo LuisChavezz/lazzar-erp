@@ -10,8 +10,8 @@ import { ConfirmDialog } from "@/src/components/ConfirmDialog";
 import { OrderDetails } from "./OrderDetails";
 import {
   CheckCircleIcon,
-  EmbarquesIcon,
-  FacturacionIcon,
+  // EmbarquesIcon,
+  // FacturacionIcon,
   RejectIcon,
   ViewIcon,
 } from "../../../components/Icons";
@@ -42,16 +42,16 @@ const ActionsCell = ({ order }: { order: Order }) => {
       icon: ViewIcon,
       onSelect: () => setIsViewOpen(true),
     },
-    {
-      label: "Facturar",
-      icon: FacturacionIcon,
-      onSelect: () => undefined,
-    },
-    {
-      label: "Marcar como enviado",
-      icon: EmbarquesIcon,
-      onSelect: () => undefined,
-    },
+    // {
+    //   label: "Facturar",
+    //   icon: FacturacionIcon,
+    //   onSelect: () => undefined,
+    // },
+    // {
+    //   label: "Marcar como enviado",
+    //   icon: EmbarquesIcon,
+    //   onSelect: () => undefined,
+    // },
     {
       label: "Autorizar",
       icon: CheckCircleIcon,
