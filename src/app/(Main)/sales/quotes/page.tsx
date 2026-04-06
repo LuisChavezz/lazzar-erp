@@ -26,23 +26,26 @@ export default function QuotesPage() {
       {/* Header */}
       <header>
         <h1 className="sr-only">Cotizaciones de Venta</h1>
-        <p className="text-slate-500 dark:text-slate-400 mt-1" aria-hidden="false">
+        <p className="text-slate-600 dark:text-slate-300 mt-1">
           Gestiona y monitorea todas las cotizaciones de venta.
         </p>
       </header>
 
       {/* Stats */}
-      <section aria-label="Estadísticas de Cotizaciones">
+      <section aria-labelledby="quotes-stats-heading">
+        <h2 id="quotes-stats-heading" className="sr-only">Estadísticas de cotizaciones</h2>
         <QuoteStats />
       </section>
 
       {/* Actions Row */}
-      <section aria-label="Acciones de Cotizaciones" className="w-full">
+      <section aria-labelledby="quotes-actions-heading" className="w-full">
+        <h2 id="quotes-actions-heading" className="sr-only">Acciones de cotizaciones</h2>
         <QuoteActions />
       </section>
 
       {/* List */}
-      <section aria-label="Lista de Cotizaciones" className="space-y-6">
+      <section aria-labelledby="quotes-list-heading" className="space-y-6">
+        <h2 id="quotes-list-heading" className="sr-only">Listado de cotizaciones</h2>
         <QuoteList />
       </section>
     </main>

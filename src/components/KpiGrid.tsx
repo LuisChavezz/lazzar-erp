@@ -30,16 +30,20 @@ const statusStyles: Record<KpiStatus, { text: string; bg: string }> = {
 
 export default function KpiGrid({ items }: KpiGridProps) {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 items-start gap-4">
-      {items.map((item) => {
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 items-start gap-4" role="list">
+      {items.map((item, index) => {
         const status = item.status ?? "neutral";
         const badge = statusStyles[status];
         const Icon = item.icon;
         const progress = item.progress ?? 100;
+        const normalizedProgress = Number.isFinite(progress)
+          ? Math.max(0, Math.min(100, progress))
+          : 0;
 
         return (
           <div
-            key={item.label}
+            key={`${item.label}-${index}`}
+            role="listitem"
             className="group relative rounded-xl bg-white dark:bg-black border border-slate-200 dark:border-white/10 p-5 shadow-sm hover:shadow-lg transition-all duration-300"
           >
             <div
@@ -47,11 +51,11 @@ export default function KpiGrid({ items }: KpiGridProps) {
             />
             <div className="flex justify-between items-start mb-4">
               <div className="flex flex-col">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-300">
                   {item.label}
                 </span>
                 {item.subLabel ? (
-                  <span className="text-xs text-slate-400 mt-1">{item.subLabel}</span>
+                  <span className="text-xs text-slate-500 dark:text-slate-300 mt-1">{item.subLabel}</span>
                 ) : null}
               </div>
               <div
@@ -74,7 +78,7 @@ export default function KpiGrid({ items }: KpiGridProps) {
               ) : null}
             </div>
             <div className={`h-1 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden ${item.iconClass}`}>
-              <div className="h-full bg-current rounded-full" style={{ width: `${progress}%` }} />
+              <div className="h-full bg-current rounded-full" style={{ width: `${normalizedProgress}%` }} />
             </div>
             {item.actionLabel && item.actionHref ? (
               <div className="mt-3">

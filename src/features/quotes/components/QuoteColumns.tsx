@@ -2,12 +2,12 @@
 
 import { ColumnDef } from "@tanstack/react-table";
 import { useState } from "react";
+import dynamic from "next/dynamic";
 import { Quote } from "../interfaces/quote.interface";
 import { ActionMenu, ActionMenuItem } from "@/src/components/ActionMenu";
 import { MainDialog } from "@/src/components/MainDialog";
 import { DialogHeader } from "@/src/components/DialogHeader";
 import { ConfirmDialog } from "@/src/components/ConfirmDialog";
-import { QuoteDetails } from "./QuoteDetails";
 import {
   CheckCircleIcon,
   // EmbarquesIcon,
@@ -21,6 +21,19 @@ import { formatQuoteDateTime } from "../utils/quoteDetailsFormatters";
 import { useApproveQuote } from "../../operations/hooks/useApproveQuote";
 import { useRejectQuote } from "../../operations/hooks/useRejectQuote";
 import { capitalize } from "@/src/utils/capitalize";
+
+const QuoteDetails = dynamic(
+  () => import("./QuoteDetails").then((mod) => mod.QuoteDetails),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="space-y-3" role="status" aria-live="polite" aria-label="Cargando detalle de cotización">
+        <div className="h-16 rounded-xl bg-slate-200/70 dark:bg-white/10 animate-pulse" />
+        <div className="h-32 rounded-xl bg-slate-200/70 dark:bg-white/10 animate-pulse" />
+      </div>
+    ),
+  }
+);
 
 const statusDialogColors: Record<number, "sky" | "emerald" | "amber" | "rose"> = {
   1: "amber",
@@ -72,7 +85,7 @@ const ActionsCell = ({ quote }: { quote: Quote }) => {
 
   return (
     <div className="flex items-center justify-center">
-      <ActionMenu items={items} ariaLabel="Acciones de pedido" />
+      <ActionMenu items={items} ariaLabel="Acciones de cotización" />
       {isViewOpen && (
         <MainDialog
           open={isViewOpen}
@@ -181,11 +194,7 @@ export const quoteColumns: ColumnDef<Quote>[] = [
   {
     id: "actions",
     meta: { label: "Acciones" },
-    header: () => (
-      <div className="text-center" aria-label="Acciones de pedido">
-        
-      </div>
-    ),
+    header: () => <div className="text-center">Acciones</div>,
     size: 90,
     cell: ({ row }) => <ActionsCell quote={row.original} />,
   },

@@ -10,20 +10,28 @@ import { useQuotes } from "../hooks/useQuotes";
 export const QuoteStats = () => {
   const { quotes, isLoading } = useQuotes();
 
-  const totalOrdersAmount = useMemo(
-    () => quotes.reduce((sum, quote) => sum + (Number(quote.gran_total) || 0), 0),
-    [quotes]
-  );
+  const metrics = useMemo(() => {
+    let totalOrdersAmount = 0;
+    let pendingAuthorizationCount = 0;
 
-  const pendingAuthorizationCount = useMemo(
-    () => quotes.filter((quote) => quote.estatus === 2).length,
-    [quotes]
-  );
+    for (const quote of quotes) {
+      totalOrdersAmount += Number(quote.gran_total) || 0;
+      if (quote.estatus === 2) {
+        pendingAuthorizationCount += 1;
+      }
+    }
 
-  const items: KpiItem[] = [
+    return {
+      totalQuotes: quotes.length,
+      totalOrdersAmount,
+      pendingAuthorizationCount,
+    };
+  }, [quotes]);
+
+  const items: KpiItem[] = useMemo(() => [
     {
       label: "Cotizaciones",
-      value: String(quotes.length),
+      value: String(metrics.totalQuotes),
       icon: OrdenesIcon,
       iconBgClass: "bg-sky-50 dark:bg-sky-500/10",
       iconClass: "text-sky-500",
@@ -32,16 +40,16 @@ export const QuoteStats = () => {
     },
     {
       label: "Nuevos este mes",
-      value: String(quotes.length),
+      value: String(metrics.totalQuotes),
       icon: TrendingUpIcon,
       iconBgClass: "bg-emerald-50 dark:bg-emerald-500/10",
       iconClass: "text-emerald-500",
-      subLabel: "Cotizaciones nuevos",
+      subLabel: "Cotizaciones nuevas",
       status: "positive",
     },
     {
       label: "Total de cotizaciones",
-      value: formatCurrency(totalOrdersAmount),
+      value: formatCurrency(metrics.totalOrdersAmount),
       icon: FacturacionIcon,
       iconBgClass: "bg-amber-50 dark:bg-amber-500/10",
       iconClass: "text-amber-500",
@@ -50,14 +58,14 @@ export const QuoteStats = () => {
     },
     {
       label: "Por autorizar",
-      value: pendingAuthorizationCount.toLocaleString("es-MX"),
+      value: metrics.pendingAuthorizationCount.toLocaleString("es-MX"),
       icon: OrdenesIcon,
       iconBgClass: "bg-sky-50 dark:bg-sky-500/10",
       iconClass: "text-sky-500",
       subLabel: "Cotizaciones pendientes",
       status: "neutral",
     },
-  ];
+  ], [metrics.pendingAuthorizationCount, metrics.totalOrdersAmount, metrics.totalQuotes]);
 
   if (isLoading) {
     return (

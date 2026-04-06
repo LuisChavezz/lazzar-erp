@@ -15,7 +15,7 @@ export const QuoteActions = () => {
         leftIcon={<OrdenesIcon className="w-4 h-4 shrink-0" />}
         className="shrink-0 rounded-full"
         title="Exportar a CSV (Excel)"
-        aria-label="Exportar pedidos a CSV"
+        aria-label="Exportar cotizaciones a CSV"
       >
         Exportar CSV
       </Button>
@@ -27,7 +27,7 @@ export const QuoteActions = () => {
         leftIcon={<OrdenesIcon className="w-4 h-4 shrink-0" />}
         className="shrink-0 rounded-full"
         title="Exportar a PDF"
-        aria-label="Exportar pedidos a PDF"
+        aria-label="Exportar cotizaciones a PDF"
       >
         Exportar PDF
       </Button>

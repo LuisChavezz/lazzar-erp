@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { Quote } from "../interfaces/quote.interface";
 import { formatCurrency } from "@/src/utils/formatCurrency";
 import { DataTableVisibleColumn } from "@/src/components/DataTable";
@@ -61,10 +61,21 @@ const buildCsv = (quotes: Quote[], columns: DataTableVisibleColumn<Quote>[]) => 
 };
 
 export const useQuoteCsvExport = (quotes: Quote[], columns: DataTableVisibleColumn<Quote>[]) => {
+  const quotesRef = useRef(quotes);
+  const columnsRef = useRef(columns);
+
+  useEffect(() => {
+    quotesRef.current = quotes;
+  }, [quotes]);
+
+  useEffect(() => {
+    columnsRef.current = columns;
+  }, [columns]);
+
   const exportToCsv = useCallback(() => {
-    const exportColumns = columns.filter((column) => column.id !== "actions");
+    const exportColumns = columnsRef.current.filter((column) => column.id !== "actions");
     if (exportColumns.length === 0) return;
-    const csvContent = buildCsv(quotes, exportColumns);
+    const csvContent = buildCsv(quotesRef.current, exportColumns);
     const blob = new Blob([`\uFEFF${csvContent}`], {
       type: "text/csv;charset=utf-8;",
     });
@@ -77,7 +88,7 @@ export const useQuoteCsvExport = (quotes: Quote[], columns: DataTableVisibleColu
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
-  }, [quotes, columns]);
+  }, []);
 
   useEffect(() => {
     const handleExport = () => exportToCsv();

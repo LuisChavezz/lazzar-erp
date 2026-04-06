@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useId, useMemo } from "react";
 import {
   ColumnDef,
   flexRender,
@@ -73,6 +73,8 @@ export function DataTable<TData, TValue>({
   loadingTitle,
   loadingMessage,
 }: DataTableProps<TData, TValue>) {
+  const searchInputId = useId();
+  const columnsMenuId = `${searchInputId}-columns-menu`;
 
   // State for sorting, filtering, and column visibility
   const [sorting, setSorting] = useState<SortingState>([]);
@@ -105,6 +107,8 @@ export function DataTable<TData, TValue>({
   const [isColumnsOpen, setIsColumnsOpen] = useState(false);
   const columnsDropdownRef = useRef<HTMLDivElement>(null);
   const columnsBtnRef = useRef<HTMLButtonElement>(null);
+  const previousVisibleRowsSignatureRef = useRef("");
+  const previousVisibleColumnsSignatureRef = useRef("");
 
   // Close columns dropdown when clicking outside
   useEffect(() => {
@@ -160,6 +164,14 @@ export function DataTable<TData, TValue>({
   const endRow = totalRows === 0 ? 0 : Math.min(totalRows, (pagination.pageIndex + 1) * pagination.pageSize);
   const pageCount = table.getPageCount();
   const currentPage = pagination.pageIndex + 1;
+  const visibleRowsSignature = useMemo(
+    () => visibleRows.map((row) => row.id).join("|"),
+    [visibleRows]
+  );
+  const visibleColumnsSignature = useMemo(
+    () => visibleColumns.map((column) => column.id).join("|"),
+    [visibleColumns]
+  );
 
   const getPaginationItems = (current: number, total: number) => {
     const items: Array<number | "ellipsis"> = [];
@@ -216,53 +228,50 @@ export function DataTable<TData, TValue>({
       .join(" ");
   };
 
-  // Update visible rows when state changes
   useEffect(() => {
-    if (onVisibleRowsChange) {
-      onVisibleRowsChange(visibleRows.map((r) => r.original));
-    }
+    if (!onVisibleRowsChange) return;
+    if (previousVisibleRowsSignatureRef.current === visibleRowsSignature) return;
+    previousVisibleRowsSignatureRef.current = visibleRowsSignature;
+    onVisibleRowsChange(visibleRows.map((r) => r.original));
   }, [
     onVisibleRowsChange,
     visibleRows,
-    sorting,
-    globalFilter,
-    columnVisibility,
-    columnOrder,
-    pagination,
-    data,
+    visibleRowsSignature,
   ]);
 
   useEffect(() => {
-    if (onVisibleColumnsChange) {
-      const getColumnDef = (
-        column: (typeof visibleColumns)[number]
-      ): ColumnDef<TData, unknown> & {
-        accessorKey?: string;
-        accessorFn?: (originalRow: TData, index: number) => unknown;
-      } => column.columnDef as ColumnDef<TData, unknown> & {
-        accessorKey?: string;
-        accessorFn?: (originalRow: TData, index: number) => unknown;
-      };
+    if (!onVisibleColumnsChange) return;
+    if (previousVisibleColumnsSignatureRef.current === visibleColumnsSignature) return;
+    previousVisibleColumnsSignatureRef.current = visibleColumnsSignature;
 
-      const mappedColumns = visibleColumns.map((column) => ({
-        id: column.id,
-        header: typeof column.columnDef.header === "string" ? column.columnDef.header : column.id,
-        accessorKey:
-          typeof getColumnDef(column).accessorKey === "string" ? getColumnDef(column).accessorKey : undefined,
-        accessorFn: getColumnDef(column).accessorFn,
-      }));
-      onVisibleColumnsChange(mappedColumns);
-    }
+    const getColumnDef = (
+      column: (typeof visibleColumns)[number]
+    ): ColumnDef<TData, unknown> & {
+      accessorKey?: string;
+      accessorFn?: (originalRow: TData, index: number) => unknown;
+    } => column.columnDef as ColumnDef<TData, unknown> & {
+      accessorKey?: string;
+      accessorFn?: (originalRow: TData, index: number) => unknown;
+    };
+
+    const mappedColumns = visibleColumns.map((column) => ({
+      id: column.id,
+      header: typeof column.columnDef.header === "string" ? column.columnDef.header : column.id,
+      accessorKey:
+        typeof getColumnDef(column).accessorKey === "string" ? getColumnDef(column).accessorKey : undefined,
+      accessorFn: getColumnDef(column).accessorFn,
+    }));
+    onVisibleColumnsChange(mappedColumns);
   }, [
     onVisibleColumnsChange,
     visibleColumns,
-    sorting,
-    globalFilter,
-    columnVisibility,
-    columnOrder,
-    pagination,
-    data,
+    visibleColumnsSignature,
   ]);
+
+  const paginationItems = useMemo(
+    () => getPaginationItems(currentPage, pageCount),
+    [currentPage, pageCount]
+  );
 
   return (
     <div>
@@ -276,15 +285,20 @@ export function DataTable<TData, TValue>({
           {hasBaseData && (
             <>
               <div className="relative w-full sm:w-64 lg:w-72 lg:flex-none">
+                <label htmlFor={searchInputId} className="sr-only">
+                  {searchPlaceholder}
+                </label>
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
                   <SearchIcon className="h-5 w-5" />
                 </div>
                 <input
-                  type="text"
+                  id={searchInputId}
+                  type="search"
                   value={globalFilter ?? ""}
                   onChange={(e) => setGlobalFilter(e.target.value)}
                   className="block w-full pl-10 pr-10 py-2 border border-slate-200 dark:border-white/10 rounded-xl leading-5 bg-white dark:bg-white/5 text-slate-900 dark:text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-sky-500/50 focus:border-sky-500 sm:text-sm transition-shadow"
                   placeholder={searchPlaceholder}
+                  aria-label={searchPlaceholder}
                 />
                 {globalFilter.length > 0 && (
                   <button
@@ -345,14 +359,20 @@ export function DataTable<TData, TValue>({
                     onClick={() => setIsColumnsOpen(!isColumnsOpen)}
                     leftIcon={<SettingsIcon className="w-4 h-4 shrink-0" />}
                     className="shrink-0"
+                    aria-expanded={isColumnsOpen}
+                    aria-controls={columnsMenuId}
+                    aria-haspopup="menu"
                   >
                     Columnas
                   </Button>
 
                   {isColumnsOpen && (
                     <div
+                      id={columnsMenuId}
                       ref={columnsDropdownRef}
                       className="absolute right-0 mt-2 w-56 bg-white dark:bg-zinc-900 rounded-xl shadow-xl border border-slate-100 dark:border-slate-800 z-50 overflow-hidden"
+                      role="menu"
+                      aria-label="Selector de columnas"
                     >
                       <div className="p-3 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-black/20">
                         <h3 className="font-semibold text-sm text-slate-800 dark:text-white">
@@ -362,10 +382,12 @@ export function DataTable<TData, TValue>({
                       <div className="p-2 max-h-60 overflow-y-auto">
                         {table.getAllLeafColumns().map((column) => {
                           return (
-                            <div
+                            <button
+                              type="button"
                               key={column.id}
                               className="flex items-center gap-2 px-2 py-2 hover:bg-slate-50 dark:hover:bg-white/5 rounded-lg cursor-pointer"
                               onClick={() => column.toggleVisibility(!column.getIsVisible())}
+                              aria-pressed={column.getIsVisible()}
                             >
                               <div
                                 className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${
@@ -381,7 +403,7 @@ export function DataTable<TData, TValue>({
                               <span className="text-sm text-slate-700 dark:text-slate-300 select-none">
                                 {getColumnLabel(column)}
                               </span>
-                            </div>
+                            </button>
                           );
                         })}
                       </div>
@@ -414,9 +436,24 @@ export function DataTable<TData, TValue>({
                   key={headerGroup.id}
                   className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-white/5 text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400"
                 >
-                  {headerGroup.headers.map((header) => (
+                  {headerGroup.headers.map((header) => {
+                    const canSort = header.column.getCanSort();
+                    const sorted = header.column.getIsSorted();
+                    const ariaSortValue =
+                      sorted === "asc"
+                        ? "ascending"
+                        : sorted === "desc"
+                        ? "descending"
+                        : "none";
+                    const handleSortToggle = () => {
+                      if (!canSort) return;
+                      header.column.toggleSorting();
+                    };
+
+                    return (
                     <th
                       key={header.id}
+                      scope="col"
                       draggable={!header.isPlaceholder && !header.column.getIsResizing()}
                       onDragStart={(e) => {
                         if (header.column.getIsResizing()) {
@@ -446,7 +483,7 @@ export function DataTable<TData, TValue>({
                         }
                       }}
                       className={`px-6 py-4 font-semibold transition-colors group/th sticky top-0 z-10 bg-slate-50 dark:bg-zinc-900 ${
-                        header.column.getCanSort()
+                        canSort
                           ? "cursor-pointer select-none hover:text-slate-700 dark:hover:text-slate-300"
                           : ""
                       } ${
@@ -456,7 +493,16 @@ export function DataTable<TData, TValue>({
                       } ${
                         draggedColumnId === header.column.id ? "opacity-50" : ""
                       }`}
-                      onClick={header.column.getToggleSortingHandler()}
+                      onClick={handleSortToggle}
+                      onKeyDown={(event) => {
+                        if (!canSort) return;
+                        if (event.key === "Enter" || event.key === " ") {
+                          event.preventDefault();
+                          handleSortToggle();
+                        }
+                      }}
+                      tabIndex={canSort ? 0 : -1}
+                      aria-sort={canSort ? ariaSortValue : undefined}
                       style={{ width: header.getSize() }}
                     >
                       <div className="flex items-center gap-2">
@@ -497,7 +543,8 @@ export function DataTable<TData, TValue>({
                           <div className={`h-full w-0.5 mx-auto rounded bg-sky-500/50 ${header.column.getIsResizing() ? "bg-sky-500" : ""}`} />
                       </div>
                     </th>
-                  ))}
+                    );
+                  })}
                 </tr>
               ))}
             </thead>
@@ -586,7 +633,7 @@ export function DataTable<TData, TValue>({
                 <ArrowLeftIcon className="w-4 h-4" />
               </Button>
               <div className="flex items-center gap-2">
-                {getPaginationItems(currentPage, pageCount).map((item, index) =>
+                {paginationItems.map((item, index) =>
                   item === "ellipsis" ? (
                     <span key={`ellipsis-${index}`} className="px-2 text-slate-400">
                       ...
@@ -598,6 +645,8 @@ export function DataTable<TData, TValue>({
                       size="icon"
                       onClick={() => table.setPageIndex(item - 1)}
                       className={`h-9 w-9 p-0 ${item === currentPage ? "" : "border-slate-200 dark:border-white/10"}`}
+                      aria-current={item === currentPage ? "page" : undefined}
+                      aria-label={`Ir a la página ${item}`}
                     >
                       {item}
                     </Button>
