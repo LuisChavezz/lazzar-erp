@@ -1083,7 +1083,7 @@ export default function QuoteForm() {
             }
             setIsAddProductsOpen(nextOpen);
           }}
-          onAddItem={(item) => append(item)}
+          onAddItems={(items) => append(items)}
           onUpdateItem={
             editIndex !== null
               ? (item) => {

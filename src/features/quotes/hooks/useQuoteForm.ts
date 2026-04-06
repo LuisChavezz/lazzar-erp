@@ -687,9 +687,14 @@ export function useQuoteForm() {
   );
 
   // API estilo field-array para tabla de productos.
-  const append = (item: QuoteItem) => {
-    const normalized = normalizeItem(item);
-    form.setFieldValue("items", [...watchedItems, normalized]);
+  const append = (itemOrItems: QuoteItem | QuoteItem[]) => {
+    const incomingItems = Array.isArray(itemOrItems) ? itemOrItems : [itemOrItems];
+    if (incomingItems.length === 0) {
+      return;
+    }
+    const normalizedItems = incomingItems.map((item) => normalizeItem(item));
+    const currentItems = form.state.values.items ?? [];
+    form.setFieldValue("items", [...currentItems, ...normalizedItems]);
     clearFieldErrors("items");
   };
 

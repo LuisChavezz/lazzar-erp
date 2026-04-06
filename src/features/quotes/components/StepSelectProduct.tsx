@@ -8,8 +8,10 @@ interface StepSelectProductProps {
   onSearchChange: (value: string) => void;
   rows: CatalogRow[];
   filteredRows: CatalogRow[];
-  selectedRowId: number | null;
-  onSelectRow: (row: CatalogRow) => void;
+  selectedRowIds: Set<number>;
+  onToggleRow: (row: CatalogRow) => void;
+  hasEmbroidery: boolean;
+  onToggleEmbroidery: (value: boolean) => void;
 }
 
 export const StepSelectProduct = memo(function StepSelectProduct({
@@ -17,9 +19,13 @@ export const StepSelectProduct = memo(function StepSelectProduct({
   onSearchChange,
   rows,
   filteredRows,
-  selectedRowId,
-  onSelectRow,
+  selectedRowIds,
+  onToggleRow,
+  hasEmbroidery,
+  onToggleEmbroidery,
 }: StepSelectProductProps) {
+  const selectedCount = selectedRowIds.size;
+
   return (
     <div className="space-y-4 mt-2">
       <div
@@ -38,7 +44,7 @@ export const StepSelectProduct = memo(function StepSelectProduct({
       </div>
 
       <div
-        className="max-h-100 overflow-y-auto custom-scrollbar space-y-2"
+        className="max-h-88 overflow-y-auto custom-scrollbar space-y-2"
         role="list"
         aria-label="Catálogo de productos"
       >
@@ -58,11 +64,32 @@ export const StepSelectProduct = memo(function StepSelectProduct({
             <AddProductsSelectableItem
               key={row.id}
               row={row}
-              isSelected={selectedRowId === row.id}
+              isSelected={selectedRowIds.has(row.id)}
               isAlreadyAdded={false}
-              onToggle={onSelectRow}
+              onToggle={onToggleRow}
             />
           ))
+        )}
+      </div>
+
+      <div className="flex items-center justify-between pt-3 border-t border-slate-100 dark:border-white/10">
+        <label
+          className="flex items-center gap-2 text-xs font-semibold text-slate-600 dark:text-slate-300 cursor-pointer select-none"
+          htmlFor="select-product-bordados"
+        >
+          <input
+            id="select-product-bordados"
+            type="checkbox"
+            checked={hasEmbroidery}
+            onChange={(event) => onToggleEmbroidery(event.target.checked)}
+            className="w-4 h-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
+          />
+          Agregar bordado
+        </label>
+        {selectedCount > 0 && (
+          <span className="text-xs font-semibold text-sky-600 dark:text-sky-400" aria-live="polite">
+            {selectedCount} {selectedCount === 1 ? "producto seleccionado" : "productos seleccionados"}
+          </span>
         )}
       </div>
     </div>
