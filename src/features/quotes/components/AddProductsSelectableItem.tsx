@@ -1,7 +1,12 @@
 "use client";
 
+/**
+ * AddProductsSelectableItem.tsx
+ * Item de la lista de selección de productos. Es un componente simple y
+ * reutilizable que representa una fila seleccionable en el catálogo.
+ */
 import { CheckCircleIcon } from "@/src/components/Icons";
-import { CatalogRow } from "./AddProductDialog";
+import type { CatalogRow } from "../types";
 
 interface AddProductsSelectableItemProps {
   row: CatalogRow;
@@ -10,6 +15,11 @@ interface AddProductsSelectableItemProps {
   onToggle: (row: CatalogRow) => void;
 }
 
+/**
+ * `AddProductsSelectableItem`
+ * Renderiza la fila del producto con estado seleccionado/no seleccionado
+ * y la acción para alternar la selección.
+ */
 export function AddProductsSelectableItem({
   row,
   isSelected,

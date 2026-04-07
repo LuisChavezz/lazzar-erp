@@ -9,7 +9,7 @@ import toast from "react-hot-toast";
 import type { Customer } from "../../customers/interfaces/customer.interface";
 import { useCurrencies } from "../../currency/hooks/useCurrencies";
 import type { FormFieldError } from "../../../utils/getFieldError";
-import { quoteFormSchema, type QuoteFormValues } from "../schema/quote.schema";
+import { quoteFormSchema, type QuoteFormValues } from "../schemas/quote.schema";
 import {
   QuoteCreate,
   QuoteItem,

@@ -1,5 +1,10 @@
+/**
+ * StepSizes.tsx
+ * Presenta el UI para asignar cantidades por talla a cada producto seleccionado.
+ * Consume el mapa `sizeQuantitiesPerProduct` y expone inputs numéricos por talla.
+ */
 import { memo } from "react";
-import type { CatalogRow } from "./AddProductDialog";
+import type { CatalogRow } from "../types";
 import type { Size } from "../../sizes/interfaces/size.interface";
 
 interface StepSizesProps {
@@ -70,7 +75,7 @@ export const StepSizes = memo(function StepSizes({
                       ${row.precio.toFixed(2)} / pza
                     </p>
                   </div>
-                  <div className="flex items-center gap-2 flex-shrink-0 ml-2">
+                  <div className="flex items-center gap-2 shrink-0 ml-2">
                     {hasError ? (
                       <span className="text-[10px] font-semibold text-rose-500 dark:text-rose-400">
                         {sizeErrors[row.id]}
@@ -81,7 +86,7 @@ export const StepSizes = memo(function StepSizes({
                       </span>
                     ) : null}
                     <svg
-                      className={`w-4 h-4 text-slate-400 transition-transform duration-200 flex-shrink-0 ${
+                      className={`w-4 h-4 text-slate-400 transition-transform duration-200 shrink-0 ${
                         isOpen ? "rotate-180" : ""
                       }`}
                       fill="none"

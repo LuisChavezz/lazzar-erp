@@ -1,7 +1,14 @@
+/**
+ * StepSelectProduct.tsx
+ * Componente presentacional para el paso de selección de productos.
+ * - Muestra el campo de búsqueda y la lista filtrada de productos.
+ * - Expone la cuenta de seleccionados y toggles para servicios adicionales
+ *   (bordado y reflejante).
+ */
 import { memo } from "react";
 import { FormInput } from "@/src/components/FormInput";
 import { AddProductsSelectableItem } from "./AddProductsSelectableItem";
-import type { CatalogRow } from "./AddProductDialog";
+import type { CatalogRow } from "../types";
 
 interface StepSelectProductProps {
   search: string;
@@ -12,6 +19,8 @@ interface StepSelectProductProps {
   onToggleRow: (row: CatalogRow) => void;
   hasEmbroidery: boolean;
   onToggleEmbroidery: (value: boolean) => void;
+  hasReflective: boolean;
+  onToggleReflective: (value: boolean) => void;
 }
 
 export const StepSelectProduct = memo(function StepSelectProduct({
@@ -23,6 +32,8 @@ export const StepSelectProduct = memo(function StepSelectProduct({
   onToggleRow,
   hasEmbroidery,
   onToggleEmbroidery,
+  hasReflective,
+  onToggleReflective,
 }: StepSelectProductProps) {
   const selectedCount = selectedRowIds.size;
 
@@ -73,19 +84,34 @@ export const StepSelectProduct = memo(function StepSelectProduct({
       </div>
 
       <div className="flex items-center justify-between pt-3 border-t border-slate-100 dark:border-white/10">
-        <label
-          className="flex items-center gap-2 text-xs font-semibold text-slate-600 dark:text-slate-300 cursor-pointer select-none"
-          htmlFor="select-product-bordados"
-        >
-          <input
-            id="select-product-bordados"
-            type="checkbox"
-            checked={hasEmbroidery}
-            onChange={(event) => onToggleEmbroidery(event.target.checked)}
-            className="w-4 h-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
-          />
-          Agregar bordado
-        </label>
+        <div className="flex items-center gap-4 flex-wrap">
+          <label
+            className="flex items-center gap-2 text-xs font-semibold text-slate-600 dark:text-slate-300 cursor-pointer select-none"
+            htmlFor="select-product-bordados"
+          >
+            <input
+              id="select-product-bordados"
+              type="checkbox"
+              checked={hasEmbroidery}
+              onChange={(event) => onToggleEmbroidery(event.target.checked)}
+              className="w-4 h-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
+            />
+            Agregar bordado
+          </label>
+          <label
+            className="flex items-center gap-2 text-xs font-semibold text-slate-600 dark:text-slate-300 cursor-pointer select-none"
+            htmlFor="select-product-reflejante"
+          >
+            <input
+              id="select-product-reflejante"
+              type="checkbox"
+              checked={hasReflective}
+              onChange={(event) => onToggleReflective(event.target.checked)}
+              className="w-4 h-4 rounded border-slate-300 text-amber-500 focus:ring-amber-400"
+            />
+            Agregar reflejante
+          </label>
+        </div>
         {selectedCount > 0 && (
           <span className="text-xs font-semibold text-sky-600 dark:text-sky-400" aria-live="polite">
             {selectedCount} {selectedCount === 1 ? "producto seleccionado" : "productos seleccionados"}

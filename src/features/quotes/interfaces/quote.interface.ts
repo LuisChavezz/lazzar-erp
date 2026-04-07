@@ -39,6 +39,15 @@ export interface QuoteItem {
       imagen: string;
     }[];
   };
+  reflejantes?: {
+    activo: boolean;
+    observaciones?: string;
+    especificaciones: {
+      opcion: string;
+      posicion: string;
+      tipo: string;
+    }[];
+  }
 }
 
 export interface Quote {

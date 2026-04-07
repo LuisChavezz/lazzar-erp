@@ -1120,6 +1120,9 @@ export default function QuoteForm() {
                 <th className="p-2 text-[10px] font-bold text-slate-400 uppercase tracking-wider w-20 text-center">
                   Bordado
                 </th>
+                <th className="p-2 text-[10px] font-bold text-slate-400 uppercase tracking-wider w-20 text-center">
+                  Reflejante
+                </th>
                 <th className="p-2 text-[10px] font-bold text-slate-400 uppercase tracking-wider w-24 text-right">
                   Cantidad
                 </th>
@@ -1139,7 +1142,7 @@ export default function QuoteForm() {
               {fields.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={10}
+                    colSpan={11}
                     className="p-6 text-center text-sm text-slate-500 dark:text-slate-400"
                   >
                     No hay productos agregados.
@@ -1165,6 +1168,7 @@ export default function QuoteForm() {
                         .join(", ")
                       : "—";
                   const bordadoLabel = currentItem?.bordados?.activo ? "Sí" : "No";
+                  const reflejanteLabel = currentItem?.reflejantes?.activo ? "Sí" : "No";
                   const cantidad = Number(currentItem?.cantidad) || 0;
                   const precio = Number(currentItem?.precio) || 0;
                   const descuento = Number(currentItem?.descuento) || 0;
@@ -1222,6 +1226,13 @@ export default function QuoteForm() {
                         <div className="space-y-1">
                           <div className="text-xs text-center text-slate-500 dark:text-slate-400">
                             {bordadoLabel}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="p-2">
+                        <div className="space-y-1">
+                          <div className="text-xs text-center text-slate-500 dark:text-slate-400">
+                            {reflejanteLabel}
                           </div>
                         </div>
                       </td>

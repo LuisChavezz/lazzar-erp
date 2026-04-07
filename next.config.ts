@@ -6,6 +6,7 @@ const nextConfig: NextConfig = {
     removeConsole: process.env.NODE_ENV === "production",
   },
   images: {
+    qualities: [75, 80],
     remotePatterns: [
       {
         protocol: 'https',

@@ -4,7 +4,7 @@ import { MainDialog } from "@/src/components/MainDialog";
 import { FormInput } from "@/src/components/FormInput";
 import { useAddProductsDialog } from "../hooks/useAddProductsDialog";
 import { AddProductsSelectableItem } from "./AddProductsSelectableItem";
-import { QuoteFormValues } from "../schema/quote.schema";
+import { QuoteFormValues } from "../schemas/quote.schema";
 
 type QuoteItem = QuoteFormValues["items"][number];
 

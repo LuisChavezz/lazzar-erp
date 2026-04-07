@@ -3,7 +3,7 @@
 import { useState, useMemo } from "react";
 import { useProducts } from "../../products/hooks/useProducts";
 import { useUnitsOfMeasure } from "../../units-of-measure/hooks/useUnitsOfMeasure";
-import { QuoteFormValues } from "../schema/quote.schema";
+import { QuoteFormValues } from "../schemas/quote.schema";
 
 type QuoteItem = QuoteFormValues["items"][number];
 

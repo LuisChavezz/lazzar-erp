@@ -1,6 +1,13 @@
+/**
+ * Schemas principales del formulario de cotización.
+ * - `quoteItemSchema` está separado en su propio módulo y se reexporta aquí.
+ * - `quoteFormSchema` define la estructura completa del formulario de cotización
+ *   (cliente, dirección, condiciones y `items`).
+ */
 import { z } from "zod";
-import { quoteItemSchema } from "../schemas/quote-item.schema";
+import { quoteItemSchema } from "./quote-item.schema";
 
+export { quoteItemSchema } from "./quote-item.schema";
 
 export const quoteFormSchema = z.object({
   clienteBusqueda: z.string().min(1, "Selecciona un cliente"),

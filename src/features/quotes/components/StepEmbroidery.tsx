@@ -1,18 +1,20 @@
+/**
+ * StepEmbroidery.tsx
+ * Vista del paso de bordado: permite agregar especificaciones por
+ * ubicación, validarlas y previsualizar imágenes.
+ */
 import { memo } from "react";
 import Image from "next/image";
 import { FormInput } from "@/src/components/FormInput";
 import { FormSelect } from "@/src/components/FormSelect";
 import { DeleteIcon, EyeIcon } from "@/src/components/Icons";
+import type { EmbroiderySpecErrorsById, EmbroiderySpecForm } from "../types";
 
-export type EmbroiderySpecForm = {
-  id: string;
-  posicionCodigo: string;
-  ancho: string;
-  alto: string;
-  colorHilo: string;
-  imagen: string;
-};
+export type { EmbroiderySpecForm };
 
+/**
+ * Validación simple de URL para detectar extensiones de imagen válidas.
+ */
 const IMAGE_URL_EXTENSION_REGEX = /\.(png|jpe?g|gif|webp|bmp|svg|avif)(\?.*)?(#.*)?$/i;
 
 const isValidImageUrl = (value: string) => {
@@ -44,12 +46,17 @@ interface StepEmbroideryProps {
     value: string
   ) => void;
   embroideryError: string | null;
-  specErrors: Record<string, { posicion?: string; ancho?: string; alto?: string; imagen?: string }>;
+  specErrors: EmbroiderySpecErrorsById;
   positionOptions: { codigo: string; nombre: string }[];
   positionMap: Map<string, string>;
   threadColorOptions: string[];
 }
 
+/**
+ * `StepEmbroidery`
+ * Componente presentacional que renderiza el formulario de especificaciones
+ * de bordado y las utilidades de previsualización/eliminación.
+ */
 export const StepEmbroidery = memo(function StepEmbroidery({
   nuevoPonchado,
   onNuevoPonchadoChange,
