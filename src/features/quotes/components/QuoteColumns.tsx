@@ -11,6 +11,7 @@ import { ConfirmDialog } from "@/src/components/ConfirmDialog";
 import {
   CheckCircleIcon,
   // EmbarquesIcon,
+  EmailIcon,
   // FacturacionIcon,
   RejectIcon,
   ViewIcon,
@@ -20,6 +21,7 @@ import { getStatusStyles } from "../utils/getStatusStyle";
 import { formatQuoteDateTime } from "../utils/quoteDetailsFormatters";
 import { useApproveQuote } from "../../operations/hooks/useApproveQuote";
 import { useRejectQuote } from "../../operations/hooks/useRejectQuote";
+import { useSendQuoteEmail } from "../hooks/useSendQuoteEmail";
 import { capitalize } from "@/src/utils/capitalize";
 
 const QuoteDetails = dynamic(
@@ -48,12 +50,19 @@ const ActionsCell = ({ quote }: { quote: Quote }) => {
   const [isRejectOpen, setIsRejectOpen] = useState(false);
   const { mutate: authorizeOrder, isPending: isAuthorizingOrder } = useApproveQuote();
   const { mutate: rejectOrder, isPending: isRejectingOrder } = useRejectQuote();
+  const { mutate: sendQuoteEmail, isPending: isSendingQuoteEmail } = useSendQuoteEmail();
   const canManageAuthorization = quote.estatus === 2;
   const items: ActionMenuItem[] = [
     {
       label: "Ver detalles",
       icon: ViewIcon,
       onSelect: () => setIsViewOpen(true),
+    },
+    {
+      label: "Enviar correo",
+      icon: EmailIcon,
+      onSelect: () => sendQuoteEmail(quote.id),
+      disabled: isSendingQuoteEmail || isAuthorizingOrder || isRejectingOrder,
     },
     // {
     //   label: "Facturar",
@@ -146,7 +155,7 @@ export const quoteColumns: ColumnDef<Quote>[] = [
     header: () => <div className="w-full text-center">Razón social</div>,
     cell: ({ row }) => (
       <span className="block text-center text-slate-600 dark:text-slate-300">
-        {row.original.cliente_razon_social}
+        {capitalize(row.original.cliente_razon_social)}
       </span>
     ),
   },
