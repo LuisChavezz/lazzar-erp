@@ -19,6 +19,7 @@ import {
 import { useWorkspaceStore } from "../../workspace/store/workspace.store";
 import { useCreateQuote } from "./useCreateQuote";
 import { useQuoteOnboardingData } from "./useQuoteOnboardingData";
+import { useSatInfo } from "../../sat/hooks/useSatInfo";
 
 type QuoteField = keyof QuoteFormValues;
 type OnboardingCustomer = QuoteOnboardingData["busqueda"]["clientes"][number];
@@ -277,6 +278,7 @@ export function useQuoteForm() {
   const { data: session } = useSession();
   const { data: currencies, isLoading: isCurrenciesLoading } = useCurrencies();
   const { data: onboardingData, isLoading: isOnboardingLoading } = useQuoteOnboardingData();
+  const { data: satInfo } = useSatInfo();
   const { selectedCompany, selectedBranch } = useWorkspaceStore();
   const selectedCompanyId = selectedCompany?.id || 1; // Fallback
   const selectedBranchId = selectedBranch?.id || 1; // Fallback
@@ -516,18 +518,6 @@ export function useQuoteForm() {
       return;
     }
 
-    if (wasEnviarDomicilioFiscalRef.current) {
-      form.setFieldValue("destinatario", "");
-      form.setFieldValue("empresaEnvio", "");
-      form.setFieldValue("telefonoEnvio", "");
-      form.setFieldValue("celularEnvio", "");
-      form.setFieldValue("direccionEnvio", "");
-      form.setFieldValue("coloniaEnvio", "");
-      form.setFieldValue("codigoPostalEnvio", "");
-      form.setFieldValue("ciudadEnvio", "");
-      form.setFieldValue("estadoEnvio", "");
-    }
-
     wasEnviarDomicilioFiscalRef.current = false;
   }, [
     form,
@@ -758,12 +748,11 @@ export function useQuoteForm() {
     if (!customer) {
       return;
     }
-    const selectedRegimen = onboardingData?.catalogos.regimenes_fiscales.find(
-      (item) => item.value === String(customer.sat_regimen_fiscal)
+    const satRegimen = satInfo?.regimenes_fiscales.find(
+      (item) => item.id_sat_regimen_fiscal === customer.sat_regimen_fiscal
     );
-    const [regimenCodigo = "", regimenDescripcion = ""] = (selectedRegimen?.label ?? "")
-      .split(" - ")
-      .map((item) => item.trim());
+    const regimenCodigo = satRegimen?.codigo ?? "";
+    const regimenDescripcion = satRegimen?.descripcion ?? "";
     handleSelectCustomer({
       id: Number(customer.id),
       razon_social: customer.razon_social,

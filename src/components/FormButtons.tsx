@@ -16,7 +16,7 @@ export function FormCancelButton({
     <button
       type="button"
       disabled={disabled}
-      className={`rounded-xl border border-zinc-300 px-6 py-2.5 text-sm font-medium cursor-pointer text-zinc-800 shadow-sm hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-100 dark:hover:bg-zinc-900 ${
+      className={`rounded-xl border border-zinc-300 px-6 py-2.5 text-sm font-medium cursor-pointer text-zinc-800 shadow-sm hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-100 dark:hover:bg-zinc-900 transition-colors ease-in-out duration-200 ${
         disabled ? "opacity-50 cursor-not-allowed" : ""
       }`}
       onClick={onClick}
@@ -41,7 +41,7 @@ export function FormSecondaryButton({
     <button
       type={type}
       disabled={disabled}
-      className={`rounded-xl border border-zinc-300 px-6 py-2.5 text-sm font-medium cursor-pointer text-zinc-800 shadow-sm hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-100 dark:hover:bg-zinc-900 ${
+      className={`rounded-xl border border-zinc-300 px-6 py-2.5 text-sm font-medium cursor-pointer text-zinc-800 shadow-sm hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-100 dark:hover:bg-zinc-900 transition-colors ease-in-out duration-200 ${
         disabled ? "opacity-50 cursor-not-allowed" : ""
       } ${className || ""}`}
       {...props}
@@ -68,7 +68,7 @@ export function FormSubmitButton({
     <button
       type="submit"
       disabled={isPending || props.disabled}
-      className={`rounded-xl bg-sky-600 px-6 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2 cursor-pointer ${
+      className={`rounded-xl bg-sky-600 px-6 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2 cursor-pointer transition-colors ease-in-out duration-200 ${
         isPending || props.disabled ? "opacity-50 cursor-not-allowed" : ""
       } ${className || ""}`}
       {...props}

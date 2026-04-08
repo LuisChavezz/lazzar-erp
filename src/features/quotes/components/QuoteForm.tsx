@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { FormInput } from "@/src/components/FormInput";
 import { FormSelect } from "@/src/components/FormSelect";
 import {
@@ -79,8 +80,9 @@ export default function QuoteForm() {
     handleSelectCustomer,
     handleCustomerCreated,
   } = useQuoteForm();
-  const extraServiceCheckboxClass =
-    "h-4 w-4 shrink-0 rounded border-slate-300 text-sky-600 focus:ring-sky-500";
+
+  type ExtraService = { id: string; label: string; monto: number; labelError?: string; montoError?: string };
+  const [extraServices, setExtraServices] = useState<ExtraService[]>([]);
 
   // Estado de carga del formulario
   const isFormLoading = isCustomersLoading || isCurrenciesLoading || isOnboardingLoading || !showForm;
@@ -1252,11 +1254,29 @@ export default function QuoteForm() {
                       </td>
                       <td className="p-2">
                         <div className="space-y-1">
-                          <div
-                            className={`text-xs text-right text-slate-600 dark:text-slate-300 ${precioError ? "text-rose-600 dark:text-rose-400" : ""}`}
-                          >
-                            {precio.toFixed(2)}
-                          </div>
+                          <input
+                            type="number"
+                            aria-label="Precio unitario"
+                            min="0.01"
+                            step="0.01"
+                            value={precio}
+                            onChange={(event) => {
+                              const nextValue = Number(event.target.value);
+                              const nextPrecio = Number.isNaN(nextValue) ? 0 : nextValue;
+                              if (currentItem) {
+                                update(index, { ...currentItem, precio: nextPrecio });
+                              }
+                              clearFieldErrors(`items.${index}.precio`);
+                            }}
+                            onBlur={() => {
+                              validateField("items", undefined as never);
+                            }}
+                            className={`w-24 bg-transparent border rounded px-2 py-0.5 text-xs text-right text-slate-600 dark:text-slate-300 focus:outline-none focus:ring-1 focus:ring-sky-500 ${
+                              precioError
+                                ? "border-rose-400 dark:border-rose-500 text-rose-600 dark:text-rose-400"
+                                : "border-slate-300 dark:border-slate-700"
+                            }`}
+                          />
                           {precioError && (
                             <p className="text-[10px] text-rose-600 dark:text-rose-400 text-right">
                               {precioError.message}
@@ -1335,254 +1355,116 @@ export default function QuoteForm() {
               Servicios Extras
             </h3>
             <div className="space-y-3">
-              <form.Field name="servicioEnvioActivo">
-                {(field) => (
-                  <div className="flex items-center justify-between gap-3 text-xs text-slate-600 dark:text-slate-300">
-                    <label className="flex items-center gap-2">
+              {extraServices.map((service) => (
+                <div key={service.id} className="space-y-1">
+                  <div className="flex items-start gap-2">
+                    <div className="flex-1 space-y-1">
                       <input
-                        type="checkbox"
-                        className={extraServiceCheckboxClass}
-                        name={field.name}
-                        checked={Boolean(field.state.value)}
-                        onChange={(event) => {
-                          field.handleChange(event.target.checked);
-                          clearFieldErrors("servicioEnvioActivo");
+                        type="text"
+                        placeholder="Nombre del servicio"
+                        value={service.label}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setExtraServices((prev) =>
+                            prev.map((s) =>
+                              s.id === service.id
+                                ? { ...s, label: val, labelError: val.trim() ? undefined : "Requerido" }
+                                : s
+                            )
+                          );
                         }}
-                        onBlur={field.handleBlur}
+                        onBlur={() => {
+                          setExtraServices((prev) =>
+                            prev.map((s) =>
+                              s.id === service.id
+                                ? { ...s, labelError: s.label.trim() ? undefined : "Requerido" }
+                                : s
+                            )
+                          );
+                        }}
+                        className={`w-full bg-transparent border rounded-md px-2 py-1 text-xs text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-sky-500 ${
+                          service.labelError
+                            ? "border-rose-400 dark:border-rose-500"
+                            : "border-slate-300 dark:border-slate-700"
+                        }`}
                       />
-                      <span>Envío</span>
-                    </label>
-                    <form.Field name="envio">
-                      {(amountField) => (
-                        <div className="relative">
-                          <span className="absolute left-2 top-1.5 text-xs text-slate-400">
-                            $
-                          </span>
-                          <input
-                            type="number"
-                            aria-label="Envío"
-                            className="w-24 bg-transparent border border-slate-300 dark:border-slate-700 rounded-full pl-5 pr-3 py-1 text-xs text-right text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-sky-500"
-                            name={amountField.name}
-                            value={amountField.state.value}
-                            onChange={(event) => {
-                              const nextValue = Number(event.target.value);
-                              amountField.handleChange(Number.isNaN(nextValue) ? 0 : nextValue);
-                              clearFieldErrors("envio");
-                            }}
-                            onBlur={() => {
-                              amountField.handleBlur();
-                              validateField("envio", amountField.state.value);
-                            }}
-                          />
-                        </div>
+                      {service.labelError && (
+                        <p className="text-[10px] text-rose-600 dark:text-rose-400">
+                          {service.labelError}
+                        </p>
                       )}
-                    </form.Field>
-                  </div>
-                )}
-              </form.Field>
-              <form.Field name="programaBordadosActivo">
-                {(field) => (
-                  <div className="flex items-center justify-between gap-3 text-xs text-slate-600 dark:text-slate-300">
-                    <label className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        className={extraServiceCheckboxClass}
-                        name={field.name}
-                        checked={Boolean(field.state.value)}
-                        onChange={(event) => {
-                          field.handleChange(event.target.checked);
-                          clearFieldErrors("programaBordadosActivo");
-                        }}
-                        onBlur={field.handleBlur}
-                      />
-                      <span>Programa de Bordados</span>
-                    </label>
-                    <form.Field name="programa_bordados">
-                      {(amountField) => (
-                        <div className="relative">
-                          <span className="absolute left-2 top-1.5 text-xs text-slate-400">
-                            $
-                          </span>
-                          <input
-                            type="number"
-                            aria-label="Programa de Bordados"
-                            className="w-24 bg-transparent border border-slate-300 dark:border-slate-700 rounded-full pl-5 pr-3 py-1 text-xs text-right text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-sky-500"
-                            name={amountField.name}
-                            value={amountField.state.value}
-                            onChange={(event) => {
-                              const nextValue = Number(event.target.value);
-                              amountField.handleChange(Number.isNaN(nextValue) ? 0 : nextValue);
-                              clearFieldErrors("programa_bordados");
-                            }}
-                            onBlur={() => {
-                              amountField.handleBlur();
-                              validateField("programa_bordados", amountField.state.value);
-                            }}
-                          />
-                        </div>
+                    </div>
+                    <div className="shrink-0 space-y-1">
+                      <div className="relative">
+                        <span className="absolute left-2 top-1.5 text-xs text-slate-400">$</span>
+                        <input
+                          type="number"
+                          aria-label="Monto del servicio"
+                          min="0.01"
+                          step="0.01"
+                          value={service.monto}
+                          onChange={(e) => {
+                            const v = Number(e.target.value);
+                            setExtraServices((prev) =>
+                              prev.map((s) =>
+                                s.id === service.id
+                                  ? {
+                                      ...s,
+                                      monto: Number.isNaN(v) ? 0 : v,
+                                      montoError: v > 0 ? undefined : "Debe ser positivo",
+                                    }
+                                  : s
+                              )
+                            );
+                          }}
+                          onBlur={() => {
+                            setExtraServices((prev) =>
+                              prev.map((s) =>
+                                s.id === service.id
+                                  ? { ...s, montoError: s.monto > 0 ? undefined : "Debe ser positivo" }
+                                  : s
+                              )
+                            );
+                          }}
+                          className={`w-24 bg-transparent border rounded-md pl-5 pr-3 py-1 text-xs text-right text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-sky-500 ${
+                            service.montoError
+                              ? "border-rose-400 dark:border-rose-500"
+                              : "border-slate-300 dark:border-slate-700"
+                          }`}
+                        />
+                      </div>
+                      {service.montoError && (
+                        <p className="text-[10px] text-rose-600 dark:text-rose-400 text-right">
+                          {service.montoError}
+                        </p>
                       )}
-                    </form.Field>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setExtraServices((prev) => prev.filter((s) => s.id !== service.id))
+                      }
+                      aria-label="Eliminar servicio"
+                      className="mt-0.5 text-slate-400 hover:text-rose-500 transition-colors cursor-pointer shrink-0"
+                    >
+                      ✕
+                    </button>
                   </div>
-                )}
-              </form.Field>
-              <form.Field name="bordadoPantalonesExtrasActivo">
-                {(field) => (
-                  <div className="flex items-center justify-between gap-3 text-xs text-slate-600 dark:text-slate-300">
-                    <label className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        className={extraServiceCheckboxClass}
-                        name={field.name}
-                        checked={Boolean(field.state.value)}
-                        onChange={(event) => {
-                          field.handleChange(event.target.checked);
-                          clearFieldErrors("bordadoPantalonesExtrasActivo");
-                        }}
-                        onBlur={field.handleBlur}
-                      />
-                      <span>Bordado Pantalones Extras</span>
-                    </label>
-                    <form.Field name="bordado_pantalones_extras">
-                      {(amountField) => (
-                        <div className="relative">
-                          <span className="absolute left-2 top-1.5 text-xs text-slate-400">
-                            $
-                          </span>
-                          <input
-                            type="number"
-                            aria-label="Bordado Pantalones Extras"
-                            className="w-24 bg-transparent border border-slate-300 dark:border-slate-700 rounded-full pl-5 pr-3 py-1 text-xs text-right text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-sky-500"
-                            name={amountField.name}
-                            value={amountField.state.value}
-                            onChange={(event) => {
-                              const nextValue = Number(event.target.value);
-                              amountField.handleChange(Number.isNaN(nextValue) ? 0 : nextValue);
-                              clearFieldErrors("bordado_pantalones_extras");
-                            }}
-                            onBlur={() => {
-                              amountField.handleBlur();
-                              validateField("bordado_pantalones_extras", amountField.state.value);
-                            }}
-                          />
-                        </div>
-                      )}
-                    </form.Field>
-                  </div>
-                )}
-              </form.Field>
-              <form.Field name="serigrafiaActivo">
-                {(field) => (
-                  <div className="flex items-center justify-between gap-3 text-xs text-slate-600 dark:text-slate-300">
-                    <label className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        className={extraServiceCheckboxClass}
-                        name={field.name}
-                        checked={Boolean(field.state.value)}
-                        onChange={(event) => {
-                          field.handleChange(event.target.checked);
-                          clearFieldErrors("serigrafiaActivo");
-                        }}
-                        onBlur={field.handleBlur}
-                      />
-                      <span>Serigrafía</span>
-                    </label>
-                    <form.Field name="serigrafia">
-                      {(amountField) => (
-                        <div className="relative">
-                          <span className="absolute left-2 top-1.5 text-xs text-slate-400">
-                            $
-                          </span>
-                          <input
-                            type="number"
-                            aria-label="Serigrafía"
-                            className="w-24 bg-transparent border border-slate-300 dark:border-slate-700 rounded-full pl-5 pr-3 py-1 text-xs text-right text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-sky-500"
-                            name={amountField.name}
-                            value={amountField.state.value}
-                            onChange={(event) => {
-                              const nextValue = Number(event.target.value);
-                              amountField.handleChange(Number.isNaN(nextValue) ? 0 : nextValue);
-                              clearFieldErrors("serigrafia");
-                            }}
-                            onBlur={() => {
-                              amountField.handleBlur();
-                              validateField("serigrafia", amountField.state.value);
-                            }}
-                          />
-                        </div>
-                      )}
-                    </form.Field>
-                  </div>
-                )}
-              </form.Field>
-              <form.Field name="reflejanteActivo">
-                {(field) => (
-                  <div className="flex items-center justify-between gap-3 text-xs text-slate-600 dark:text-slate-300">
-                    <label className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        className={extraServiceCheckboxClass}
-                        name={field.name}
-                        checked={Boolean(field.state.value)}
-                        onChange={(event) => {
-                          field.handleChange(event.target.checked);
-                          clearFieldErrors("reflejanteActivo");
-                        }}
-                        onBlur={field.handleBlur}
-                      />
-                      <span>Reflejante</span>
-                    </label>
-                    <form.Field name="reflejante">
-                      {(amountField) => (
-                        <div className="relative">
-                          <span className="absolute left-2 top-1.5 text-xs text-slate-400">
-                            $
-                          </span>
-                          <input
-                            type="number"
-                            aria-label="Reflejante"
-                            className="w-24 bg-transparent border border-slate-300 dark:border-slate-700 rounded-full pl-5 pr-3 py-1 text-xs text-right text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-sky-500"
-                            name={amountField.name}
-                            value={amountField.state.value}
-                            onChange={(event) => {
-                              const nextValue = Number(event.target.value);
-                              amountField.handleChange(Number.isNaN(nextValue) ? 0 : nextValue);
-                              clearFieldErrors("reflejante");
-                            }}
-                            onBlur={() => {
-                              amountField.handleBlur();
-                              validateField("reflejante", amountField.state.value);
-                            }}
-                          />
-                        </div>
-                      )}
-                    </form.Field>
-                  </div>
-                )}
-              </form.Field>
-              <form.Field name="bordado_logotipo">
-                {(field) => (
-                  <div className="flex items-center justify-between gap-3 text-xs text-slate-600 dark:text-slate-300">
-                    <label className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        className={extraServiceCheckboxClass}
-                        name={field.name}
-                        checked={Boolean(field.state.value)}
-                        onChange={(event) => {
-                          field.handleChange(event.target.checked);
-                          clearFieldErrors("bordado_logotipo");
-                        }}
-                        onBlur={field.handleBlur}
-                      />
-                      <span>Bordado Logotipo (Incluido)</span>
-                    </label>
-                    <span className="px-2 py-1 rounded-full text-[10px] font-semibold tracking-wide bg-slate-200/70 dark:bg-white/10 text-slate-500 dark:text-slate-300">
-                      GRATIS
-                    </span>
-                  </div>
-                )}
-              </form.Field>
+                </div>
+              ))}
+              <button
+                type="button"
+                onClick={() =>
+                  setExtraServices((prev) => [
+                    ...prev,
+                    { id: crypto.randomUUID(), label: "", monto: 0 },
+                  ])
+                }
+                className="inline-flex items-center gap-1.5 text-xs font-semibold text-sky-600 hover:text-sky-700 cursor-pointer transition-colors ease-in-out duration-200"
+              >
+                <PlusIcon className="w-3.5 h-3.5" />
+                Agregar Servicio
+              </button>
             </div>
           </div>
 
