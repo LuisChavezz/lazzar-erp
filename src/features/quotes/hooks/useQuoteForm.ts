@@ -27,6 +27,14 @@ type ErrorNode = {
   [key: string]: ErrorNode | FormFieldError | ErrorNode[] | undefined;
 };
 
+export interface ExtraService {
+  id: string;
+  label: string;
+  monto: number;
+  labelError?: string;
+  montoError?: string;
+}
+
 // Catálogos estáticos usados para renderizar selects y normalizar valores de entrada.
 type OriginFlagKey =
   | "recompra"
@@ -298,6 +306,7 @@ export function useQuoteForm() {
   const [isCreationSuccessVisible, setIsCreationSuccessVisible] = useState(false);
   const [isRouteTransitioning, setIsRouteTransitioning] = useState(false);
   const [selectedCustomerId, setSelectedCustomerId] = useState(0);
+  const [extraServices, setExtraServices] = useState<ExtraService[]>([]);
 
   const showForm = true;
 
@@ -394,6 +403,11 @@ export function useQuoteForm() {
                     alto_cm: Math.max(0, Number(spec.alto) || 0),
                     color_hilo: spec.colorHilo ?? null,
                     imagen: spec.imagen,
+                    nuevo_ponchado: spec.nuevoPonchado,
+                    serigrafia: spec.serigrafia,
+                    sublimado: spec.sublimado,
+                    dtf: spec.dtf,
+                    revelado: spec.revelado,
                   })) ?? [],
                 notas: item.bordados?.observaciones ?? "",
               }
@@ -628,6 +642,10 @@ export function useQuoteForm() {
       : 0;
     const serigrafiaTotal = values.serigrafiaActivo ? Number(values.serigrafia) || 0 : 0;
     const reflejanteTotal = values.reflejanteActivo ? Number(values.reflejante) || 0 : 0;
+    const extraServicesTotal = extraServices.reduce(
+      (sum, service) => sum + (Number(service.monto) || 0),
+      0
+    );
     const extras =
       (Number(values.flete) || 0) +
       (Number(values.seguros) || 0) +
@@ -635,7 +653,8 @@ export function useQuoteForm() {
       programaBordadosTotal +
       bordadoPantalonesTotal +
       serigrafiaTotal +
-      reflejanteTotal;
+      reflejanteTotal +
+      extraServicesTotal;
     const ivaRate = Number(values.iva) || 0;
     const nextIvaAmount = Number(((nextSubtotal + extras) * (ivaRate / 100)).toFixed(2));
     const nextGranTotal = Number((nextSubtotal + extras + nextIvaAmount).toFixed(2));
@@ -666,6 +685,7 @@ export function useQuoteForm() {
     values.serigrafiaActivo,
     values.seguros,
     values.servicioEnvioActivo,
+    extraServices,
   ]);
 
   const fields = useMemo(
@@ -959,5 +979,7 @@ export function useQuoteForm() {
     customers,
     handleSelectCustomer,
     handleCustomerCreated,
+    extraServices,
+    setExtraServices,
   };
 }

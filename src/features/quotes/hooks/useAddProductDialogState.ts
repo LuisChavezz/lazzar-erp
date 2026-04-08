@@ -273,8 +273,6 @@ export function useAddProductDialogState({
       onToggleReflective: (next: boolean) => reflectiveState.setHasReflective(next),
     },
     embroideryStepProps: {
-      nuevoPonchado: embroideryState.nuevoPonchado,
-      onNuevoPonchadoChange: (next: boolean) => embroideryState.setNuevoPonchado(next),
       embroideryObservaciones: embroideryState.embroideryObservaciones,
       onObservacionesChange: (value: string) =>
         embroideryState.setEmbroideryObservaciones(value),
@@ -282,6 +280,7 @@ export function useAddProductDialogState({
       onAddSpec: embroideryState.addEmbroiderySpec,
       onRemoveSpec: embroideryState.removeEmbroiderySpec,
       onUpdateSpec: embroideryState.updateEmbroiderySpec,
+      onToggleSpecBoolean: embroideryState.toggleEmbroiderySpecBoolean,
       embroideryError: embroideryState.embroideryError,
       specErrors: embroideryState.specErrors,
       positionOptions: POSITION_OPTIONS,

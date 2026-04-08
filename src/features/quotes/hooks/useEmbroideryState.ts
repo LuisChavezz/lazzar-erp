@@ -10,6 +10,7 @@
 import { useCallback, useMemo, useState } from "react";
 import {
   POSITION_OPTIONS,
+  type EmbroiderySpecBooleanField,
   type EmbroiderySpecErrorsById,
   type EmbroiderySpecFieldErrors,
   type EmbroiderySpecForm,
@@ -57,6 +58,11 @@ const buildInitialEmbroiderySpecs = (
     alto: spec.alto && spec.alto > 0 ? String(spec.alto) : "",
     colorHilo: spec.colorHilo ?? "",
     imagen: spec.imagen ?? "",
+    nuevoPonchado: spec.nuevoPonchado ?? false,
+    serigrafia: spec.serigrafia ?? false,
+    sublimado: spec.sublimado ?? false,
+    dtf: spec.dtf ?? false,
+    revelado: spec.revelado ?? false,
   })) ?? [];
 
 /**
@@ -67,9 +73,6 @@ const buildInitialEmbroiderySpecs = (
 export function useEmbroideryState(initialItem?: QuoteItem | null) {
   const [hasEmbroidery, setHasEmbroidery] = useState(
     Boolean(initialItem?.bordados?.activo)
-  );
-  const [nuevoPonchado, setNuevoPonchado] = useState(
-    Boolean(initialItem?.bordados?.nuevoPonchado)
   );
   const [embroideryObservaciones, setEmbroideryObservaciones] = useState(
     initialItem?.bordados?.observaciones ?? ""
@@ -95,6 +98,11 @@ export function useEmbroideryState(initialItem?: QuoteItem | null) {
         alto: "",
         colorHilo: "",
         imagen: "",
+        nuevoPonchado: false,
+        serigrafia: false,
+        sublimado: false,
+        dtf: false,
+        revelado: false,
       },
       ...prev,
     ]);
@@ -115,6 +123,15 @@ export function useEmbroideryState(initialItem?: QuoteItem | null) {
       field: "posicionCodigo" | "ancho" | "alto" | "colorHilo" | "imagen",
       value: string
     ) => {
+      setEmbroiderySpecs((prev) =>
+        prev.map((spec) => (spec.id === id ? { ...spec, [field]: value } : spec))
+      );
+    },
+    []
+  );
+
+  const toggleEmbroiderySpecBoolean = useCallback(
+    (id: string, field: EmbroiderySpecBooleanField, value: boolean) => {
       setEmbroiderySpecs((prev) =>
         prev.map((spec) => (spec.id === id ? { ...spec, [field]: value } : spec))
       );
@@ -188,7 +205,6 @@ export function useEmbroideryState(initialItem?: QuoteItem | null) {
 
     return {
       activo: true,
-      nuevoPonchado,
       observaciones: embroideryObservaciones.trim() || undefined,
       especificaciones: embroiderySpecs.map((spec) => ({
         posicionCodigo: spec.posicionCodigo,
@@ -197,19 +213,22 @@ export function useEmbroideryState(initialItem?: QuoteItem | null) {
         alto: spec.alto.trim() ? Math.max(0, Number(spec.alto) || 0) : undefined,
         colorHilo: spec.colorHilo.trim(),
         imagen: spec.imagen.trim(),
+        nuevoPonchado: spec.nuevoPonchado,
+        serigrafia: spec.serigrafia,
+        sublimado: spec.sublimado,
+        dtf: spec.dtf,
+        revelado: spec.revelado,
       })),
     };
   }, [
     embroideryObservaciones,
     embroiderySpecs,
     hasEmbroidery,
-    nuevoPonchado,
     positionMap,
   ]);
 
   const reset = useCallback((item?: QuoteItem | null) => {
     setHasEmbroidery(Boolean(item?.bordados?.activo));
-    setNuevoPonchado(Boolean(item?.bordados?.nuevoPonchado));
     setEmbroideryObservaciones(item?.bordados?.observaciones ?? "");
     setEmbroiderySpecs(buildInitialEmbroiderySpecs(item));
     setEmbroideryError(null);
@@ -219,8 +238,6 @@ export function useEmbroideryState(initialItem?: QuoteItem | null) {
   return {
     hasEmbroidery,
     setHasEmbroidery,
-    nuevoPonchado,
-    setNuevoPonchado,
     embroideryObservaciones,
     setEmbroideryObservaciones,
     embroiderySpecs,
@@ -230,6 +247,7 @@ export function useEmbroideryState(initialItem?: QuoteItem | null) {
     addEmbroiderySpec,
     removeEmbroiderySpec,
     updateEmbroiderySpec,
+    toggleEmbroiderySpecBoolean,
     validateEmbroidery,
     buildPayload,
     reset,

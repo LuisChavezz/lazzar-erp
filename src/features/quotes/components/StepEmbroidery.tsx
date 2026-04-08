@@ -8,7 +8,7 @@ import Image from "next/image";
 import { FormInput } from "@/src/components/FormInput";
 import { FormSelect } from "@/src/components/FormSelect";
 import { DeleteIcon, EyeIcon } from "@/src/components/Icons";
-import type { EmbroiderySpecErrorsById, EmbroiderySpecForm } from "../types";
+import type { EmbroiderySpecBooleanField, EmbroiderySpecErrorsById, EmbroiderySpecForm } from "../types";
 
 export type { EmbroiderySpecForm };
 
@@ -33,8 +33,6 @@ const isValidImageUrl = (value: string) => {
 const externalImageLoader = ({ src }: { src: string }) => src;
 
 interface StepEmbroideryProps {
-  nuevoPonchado: boolean;
-  onNuevoPonchadoChange: (next: boolean) => void;
   embroideryObservaciones: string;
   onObservacionesChange: (value: string) => void;
   embroiderySpecs: EmbroiderySpecForm[];
@@ -44,6 +42,11 @@ interface StepEmbroideryProps {
     id: string,
     field: "posicionCodigo" | "ancho" | "alto" | "colorHilo" | "imagen",
     value: string
+  ) => void;
+  onToggleSpecBoolean: (
+    id: string,
+    field: EmbroiderySpecBooleanField,
+    value: boolean
   ) => void;
   embroideryError: string | null;
   specErrors: EmbroiderySpecErrorsById;
@@ -58,14 +61,13 @@ interface StepEmbroideryProps {
  * de bordado y las utilidades de previsualización/eliminación.
  */
 export const StepEmbroidery = memo(function StepEmbroidery({
-  nuevoPonchado,
-  onNuevoPonchadoChange,
   embroideryObservaciones,
   onObservacionesChange,
   embroiderySpecs,
   onAddSpec,
   onRemoveSpec,
   onUpdateSpec,
+  onToggleSpecBoolean,
   embroideryError,
   specErrors,
   positionOptions,
@@ -128,22 +130,6 @@ export const StepEmbroidery = memo(function StepEmbroidery({
 
       <div className="rounded-2xl border border-dashed border-slate-200 dark:border-white/10 bg-slate-50/60 dark:bg-white/5 p-4 text-xs text-slate-500 dark:text-slate-300">
         Usa este formulario para definir las posiciones, medidas y colores del bordado.
-      </div>
-
-      <div className="flex">
-      <label
-        className="flex items-center gap-2 text-xs font-semibold text-slate-600 dark:text-slate-300"
-        htmlFor="add-product-nuevo-ponchado"
-      >
-        <input
-          id="add-product-nuevo-ponchado"
-          type="checkbox"
-          checked={nuevoPonchado}
-          onChange={(event) => onNuevoPonchadoChange(event.target.checked)}
-          className="w-4 h-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
-        />
-        Nuevo ponchado
-      </label>
       </div>
 
       <div className="space-y-3 pb-4">
@@ -330,6 +316,37 @@ export const StepEmbroidery = memo(function StepEmbroidery({
                         />
                       </div>
                     )}
+                  </div>
+                  <div className="sm:col-span-3">
+                    <p className="text-xs font-bold uppercase tracking-wider text-slate-400 my-2">
+                      Servicios
+                    </p>
+                    <div className="flex flex-wrap gap-4">
+                      {(
+                        [
+                          { field: "nuevoPonchado", label: "Nuevo ponchado" },
+                          { field: "serigrafia", label: "Serigrafía" },
+                          { field: "sublimado", label: "Sublimado" },
+                          { field: "dtf", label: "DTF" },
+                          { field: "revelado", label: "Revelado" },
+                        ] as const
+                      ).map(({ field, label }) => (
+                        <label
+                          key={field}
+                          className="flex items-center gap-2 text-xs font-semibold text-slate-600 dark:text-slate-300 cursor-pointer"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={spec[field]}
+                            onChange={(event) =>
+                              onToggleSpecBoolean(spec.id, field, event.target.checked)
+                            }
+                            className="w-4 h-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
+                          />
+                          {label}
+                        </label>
+                      ))}
+                    </div>
                   </div>
                 </div>
               </div>

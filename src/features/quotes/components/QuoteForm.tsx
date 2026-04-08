@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { FormInput } from "@/src/components/FormInput";
 import { FormSelect } from "@/src/components/FormSelect";
 import {
@@ -79,10 +78,9 @@ export default function QuoteForm() {
     customers,
     handleSelectCustomer,
     handleCustomerCreated,
+    extraServices,
+    setExtraServices,
   } = useQuoteForm();
-
-  type ExtraService = { id: string; label: string; monto: number; labelError?: string; montoError?: string };
-  const [extraServices, setExtraServices] = useState<ExtraService[]>([]);
 
   // Estado de carga del formulario
   const isFormLoading = isCustomersLoading || isCurrenciesLoading || isOnboardingLoading || !showForm;
@@ -1269,7 +1267,9 @@ export default function QuoteForm() {
                               clearFieldErrors(`items.${index}.precio`);
                             }}
                             onBlur={() => {
-                              validateField("items", undefined as never);
+                              if (currentItem) {
+                                update(index, { ...currentItem });
+                              }
                             }}
                             className={`w-24 bg-transparent border rounded px-2 py-0.5 text-xs text-right text-slate-600 dark:text-slate-300 focus:outline-none focus:ring-1 focus:ring-sky-500 ${
                               precioError

@@ -22,4 +22,9 @@ export const embroiderySpecSchema = z.object({
     .optional(),
   colorHilo: z.string().optional(),
   imagen: imageUrlSchema,
+  nuevoPonchado: z.boolean(),
+  serigrafia: z.boolean(),
+  sublimado: z.boolean(),
+  dtf: z.boolean(),
+  revelado: z.boolean(),
 });

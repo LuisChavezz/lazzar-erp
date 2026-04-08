@@ -96,7 +96,7 @@ export const StepSelectProduct = memo(function StepSelectProduct({
               onChange={(event) => onToggleEmbroidery(event.target.checked)}
               className="w-4 h-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
             />
-            Agregar bordado
+            Agregar Bordado
           </label>
           <label
             className="flex items-center gap-2 text-xs font-semibold text-slate-600 dark:text-slate-300 cursor-pointer select-none"
@@ -109,7 +109,7 @@ export const StepSelectProduct = memo(function StepSelectProduct({
               onChange={(event) => onToggleReflective(event.target.checked)}
               className="w-4 h-4 rounded border-slate-300 text-amber-500 focus:ring-amber-400"
             />
-            Agregar reflejante
+            Agregar Reflejante
           </label>
         </div>
         {selectedCount > 0 && (

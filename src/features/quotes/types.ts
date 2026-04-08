@@ -32,6 +32,16 @@ export interface CatalogRow {
 }
 
 /**
+ * Campos booleanos editables dentro de cada especificación de bordado.
+ */
+export type EmbroiderySpecBooleanField =
+  | "nuevoPonchado"
+  | "serigrafia"
+  | "sublimado"
+  | "dtf"
+  | "revelado";
+
+/**
  * Representación editable de una especificación de bordado en el formulario.
  */
 export interface EmbroiderySpecForm {
@@ -41,6 +51,11 @@ export interface EmbroiderySpecForm {
   alto: string;
   colorHilo: string;
   imagen: string;
+  nuevoPonchado: boolean;
+  serigrafia: boolean;
+  sublimado: boolean;
+  dtf: boolean;
+  revelado: boolean;
 }
 
 /**

@@ -28,7 +28,6 @@ export interface QuoteItem {
   }[];
   bordados?: {
     activo: boolean;
-    nuevoPonchado: boolean;
     observaciones?: string;
     especificaciones: {
       posicionCodigo: string;
@@ -37,6 +36,11 @@ export interface QuoteItem {
       alto?: number;
       colorHilo?: string;
       imagen: string;
+      nuevoPonchado: boolean;
+      serigrafia: boolean;
+      sublimado: boolean;
+      dtf: boolean;
+      revelado: boolean;
     }[];
   };
   reflejantes?: {
@@ -263,6 +267,11 @@ interface QuoteDetail {
         alto_cm: number;
         color_hilo: string | null;
         imagen: string;
+        nuevo_ponchado: boolean;
+        serigrafia: boolean;
+        sublimado: boolean;
+        dtf: boolean;
+        revelado: boolean;
       }[];
       notas: string;
     };
