@@ -10,6 +10,7 @@ import { DialogHeader } from "@/src/components/DialogHeader";
 import { ConfirmDialog } from "@/src/components/ConfirmDialog";
 import {
   CheckCircleIcon,
+  DownloadIcon,
   // EmbarquesIcon,
   EmailIcon,
   // FacturacionIcon,
@@ -22,6 +23,7 @@ import { formatQuoteDateTime } from "../utils/quoteDetailsFormatters";
 import { useApproveQuote } from "../../operations/hooks/useApproveQuote";
 import { useRejectQuote } from "../../operations/hooks/useRejectQuote";
 import { useSendQuoteEmail } from "../hooks/useSendQuoteEmail";
+import { useDownloadQuotePdf } from "../hooks/useDownloadQuotePdf";
 import { capitalize } from "@/src/utils/capitalize";
 
 const QuoteDetails = dynamic(
@@ -51,6 +53,7 @@ const ActionsCell = ({ quote }: { quote: Quote }) => {
   const { mutate: authorizeOrder, isPending: isAuthorizingOrder } = useApproveQuote();
   const { mutate: rejectOrder, isPending: isRejectingOrder } = useRejectQuote();
   const { mutate: sendQuoteEmail, isPending: isSendingQuoteEmail } = useSendQuoteEmail();
+  const { mutate: downloadPdf, isPending: isDownloadingPdf } = useDownloadQuotePdf();
   const canManageAuthorization = quote.estatus === 2;
   const items: ActionMenuItem[] = [
     {
@@ -64,16 +67,12 @@ const ActionsCell = ({ quote }: { quote: Quote }) => {
       onSelect: () => sendQuoteEmail(quote.id),
       disabled: isSendingQuoteEmail || isAuthorizingOrder || isRejectingOrder,
     },
-    // {
-    //   label: "Facturar",
-    //   icon: FacturacionIcon,
-    //   onSelect: () => undefined,
-    // },
-    // {
-    //   label: "Marcar como enviado",
-    //   icon: EmbarquesIcon,
-    //   onSelect: () => undefined,
-    // },
+    {
+      label: isDownloadingPdf ? "Generando PDF..." : "Descargar PDF",
+      icon: DownloadIcon,
+      onSelect: () => downloadPdf(quote.id),
+      disabled: isDownloadingPdf,
+    },
     {
       label: "Autorizar",
       icon: CheckCircleIcon,
