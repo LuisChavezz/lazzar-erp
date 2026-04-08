@@ -57,7 +57,7 @@ export async function GET(_request: Request, { params }: RouteContext) {
       accessToken: session.user.accessToken,
     });
 
-    return new NextResponse(pdfBuffer, {
+    return new NextResponse(new Uint8Array(pdfBuffer), {
       status: 200,
       headers: {
         "Content-Type": "application/pdf",
