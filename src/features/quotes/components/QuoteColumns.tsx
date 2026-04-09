@@ -181,6 +181,7 @@ export const quoteColumns: ColumnDef<Quote>[] = [
   },
   {
     id: "importeSinIva",
+    accessorKey: "importe_sin_iva",
     meta: { label: "Importe sin IVA" },
     header: () => <div className="w-full text-center">Importe sin IVA</div>,
     cell: ({ row }) => (

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, useId, useMemo } from "react";
+import { useState, useRef, useEffect, useId, useMemo, useCallback } from "react";
 import {
   ColumnDef,
   flexRender,
@@ -203,7 +203,7 @@ export function DataTable<TData, TValue>({
     return items;
   };
 
-  const getColumnLabel = (column: (typeof visibleColumns)[number]) => {
+  const getColumnLabel = useCallback((column: (typeof visibleColumns)[number]) => {
     const columnDef = column.columnDef as {
       header?: unknown;
       accessorKey?: string;
@@ -226,7 +226,7 @@ export function DataTable<TData, TValue>({
       .split(/\s+/)
       .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
       .join(" ");
-  };
+  }, []);
 
   useEffect(() => {
     if (!onVisibleRowsChange) return;
@@ -256,7 +256,7 @@ export function DataTable<TData, TValue>({
 
     const mappedColumns = visibleColumns.map((column) => ({
       id: column.id,
-      header: typeof column.columnDef.header === "string" ? column.columnDef.header : column.id,
+      header: getColumnLabel(column),
       accessorKey:
         typeof getColumnDef(column).accessorKey === "string" ? getColumnDef(column).accessorKey : undefined,
       accessorFn: getColumnDef(column).accessorFn,
@@ -266,6 +266,7 @@ export function DataTable<TData, TValue>({
     onVisibleColumnsChange,
     visibleColumns,
     visibleColumnsSignature,
+    getColumnLabel,
   ]);
 
   const paginationItems = useMemo(

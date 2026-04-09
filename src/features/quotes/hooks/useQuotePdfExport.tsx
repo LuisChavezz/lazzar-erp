@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useRef } from "react";
+import { format, parseISO, isValid } from "date-fns";
+import { es } from "date-fns/locale";
 import { Quote } from "../interfaces/quote.interface";
 import { formatCurrency } from "@/src/utils/formatCurrency";
 import { DataTableVisibleColumn } from "@/src/components/DataTable";
@@ -26,22 +28,56 @@ const getColumnValue = (
   return (quote as unknown as Record<string, unknown>)[column.id];
 };
 
-const isCurrencyColumn = (column: DataTableVisibleColumn<Quote>) => {
+const CURRENCY_FIELD_KEYS = new Set([
+  "gran_total",
+  "importe_sin_iva",
+  "subtotal",
+  "descuento",
+  "anticipo",
+  "flete",
+  "seguros",
+]);
+
+const DATE_FIELD_SUFFIXES = ["_at", "_date", "_fecha"];
+
+const isCurrencyColumn = (column: DataTableVisibleColumn<Quote>): boolean => {
   const key = column.accessorKey ?? column.id;
-  return key.startsWith("totals.") || ["Subtotal", "Descuento", "IVA", "Total", "Saldo"].includes(column.header);
+  return key.startsWith("totals.") || CURRENCY_FIELD_KEYS.has(key);
 };
 
-const isRightAlignedColumn = (column: DataTableVisibleColumn<Quote>) => {
+const isDateColumn = (column: DataTableVisibleColumn<Quote>): boolean => {
+  const key = column.accessorKey ?? column.id;
+  return DATE_FIELD_SUFFIXES.some((suffix) => key.endsWith(suffix));
+};
+
+const isRightAlignedColumn = (column: DataTableVisibleColumn<Quote>): boolean => {
   const key = column.accessorKey ?? column.id;
   return key === "piezas" || isCurrencyColumn(column);
 };
 
-const formatValue = (value: unknown, column: DataTableVisibleColumn<Quote>) => {
-  if (value === null || value === undefined) return "";
+const formatValue = (value: unknown, column: DataTableVisibleColumn<Quote>): string => {
+  if (value === null || value === undefined || value === "") return "—";
   if (isCurrencyColumn(column)) {
     return formatCurrency(Number(value) || 0);
   }
+  if (isDateColumn(column)) {
+    try {
+      const date = typeof value === "string" ? parseISO(value) : new Date(String(value));
+      if (isValid(date)) return format(date, "dd/MM/yyyy HH:mm", { locale: es });
+    } catch {
+      // fallback a string crudo
+    }
+  }
   return String(value);
+};
+
+const getColumnWeight = (column: DataTableVisibleColumn<Quote>): number => {
+  const key = column.accessorKey ?? column.id;
+  if (["cliente_razon_social", "cliente_nombre"].includes(key)) return 2.4;
+  if (isDateColumn(column)) return 1.8;
+  if (key === "piezas") return 0.7;
+  if (isCurrencyColumn(column)) return 1.4;
+  return 1.2;
 };
 
 const createQuotesPdfDocument = (
@@ -53,110 +89,250 @@ const createQuotesPdfDocument = (
   columns: DataTableVisibleColumn<Quote>[]
 ) => {
   const { Document, Page, Text, View, StyleSheet } = renderer;
+
+  const totalWeight = columns.reduce((sum, col) => sum + getColumnWeight(col), 0);
+  const columnWidths = columns.map(
+    (col) => `${((getColumnWeight(col) / totalWeight) * 100).toFixed(1)}%`
+  );
+
+  const grandTotal = quotes.reduce((sum, q) => sum + (Number(q.gran_total) || 0), 0);
+
   const styles = StyleSheet.create({
     page: {
-      padding: 32,
-      fontSize: 10,
+      paddingTop: 28,
+      paddingBottom: 44,
+      paddingHorizontal: 28,
+      fontSize: 9,
       color: "#0f172a",
       backgroundColor: "#ffffff",
     },
-    header: {
-      marginBottom: 16,
+    headerSection: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "flex-start",
+      marginBottom: 18,
+      paddingBottom: 14,
+      borderBottomWidth: 1,
+      borderBottomColor: "#cbd5e1",
+    },
+    brand: {
+      fontSize: 7,
+      color: "#0ea5e9",
+      marginBottom: 4,
     },
     title: {
       fontSize: 18,
-      fontWeight: 700,
+      fontWeight: "bold",
       color: "#0f172a",
     },
-    subtitle: {
-      marginTop: 4,
-      fontSize: 10,
-      color: "#64748b",
+    metaGroup: {
+      alignItems: "flex-end",
     },
-    summary: {
-      marginTop: 8,
-      fontSize: 10,
-      color: "#0f172a",
+    metaRow: {
+      flexDirection: "row",
+      marginTop: 3,
+    },
+    metaLabel: {
+      fontSize: 7.5,
+      color: "#94a3b8",
+      marginRight: 4,
+    },
+    metaValue: {
+      fontSize: 7.5,
+      fontWeight: "bold",
+      color: "#475569",
     },
     table: {
-      marginTop: 16,
-      borderWidth: 1,
-      borderColor: "#e2e8f0",
-      borderRadius: 8,
-      overflow: "hidden",
+      marginTop: 4,
     },
     row: {
       flexDirection: "row",
       borderBottomWidth: 1,
       borderBottomColor: "#e2e8f0",
       paddingVertical: 6,
-      paddingHorizontal: 8,
+      paddingHorizontal: 4,
+      minHeight: 22,
     },
     headerRow: {
+      backgroundColor: "#1e293b",
+      borderBottomWidth: 0,
+      paddingVertical: 8,
+      borderRadius: 4,
+    },
+    rowOdd: {
       backgroundColor: "#f8fafc",
     },
-    cell: {
-      fontSize: 9,
-      color: "#0f172a",
+    rowLast: {
+      borderBottomWidth: 0,
     },
     headerCell: {
-      fontSize: 9,
-      color: "#64748b",
-      fontWeight: 600,
+      fontSize: 7,
+      fontWeight: "bold",
+      color: "#94a3b8",
+      paddingHorizontal: 5,
     },
-    cellBase: {
-      flexGrow: 1,
-      flexBasis: 0,
+    cell: {
+      fontSize: 8,
+      color: "#334155",
+      paddingHorizontal: 5,
     },
     cellRight: {
       textAlign: "right",
     },
-    muted: {
-      color: "#64748b",
+    cellCurrency: {
+      fontWeight: "bold",
+      color: "#0f172a",
+    },
+    totalRow: {
+      flexDirection: "row",
+      borderTopWidth: 2,
+      borderTopColor: "#1e293b",
+      paddingVertical: 7,
+      paddingHorizontal: 4,
+      marginTop: 2,
+    },
+    totalLabel: {
+      fontSize: 8,
+      fontWeight: "bold",
+      color: "#0f172a",
+      paddingHorizontal: 5,
+      flexGrow: 1,
+    },
+    totalValue: {
+      fontSize: 9,
+      fontWeight: "bold",
+      color: "#0f172a",
+      paddingHorizontal: 5,
+      textAlign: "right",
+    },
+    footer: {
+      position: "absolute",
+      bottom: 18,
+      left: 28,
+      right: 28,
+      flexDirection: "row",
+      justifyContent: "space-between",
+      paddingTop: 6,
+      borderTopWidth: 1,
+      borderTopColor: "#e2e8f0",
+    },
+    footerText: {
+      fontSize: 7,
+      color: "#94a3b8",
     },
   });
 
-  const today = new Date().toLocaleDateString("es-MX");
-  const getHeaderStyle = (column: DataTableVisibleColumn<Quote>) =>
-    isRightAlignedColumn(column)
-      ? [styles.headerCell, styles.cellBase, styles.cellRight]
-      : [styles.headerCell, styles.cellBase];
-  const getCellStyle = (column: DataTableVisibleColumn<Quote>) =>
-    isRightAlignedColumn(column) ? [styles.cell, styles.cellBase, styles.cellRight] : [styles.cell, styles.cellBase];
+  const today = new Date().toLocaleDateString("es-MX", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+
+  const grandTotalColIndex = columns.findIndex(
+    (col) => (col.accessorKey ?? col.id) === "gran_total"
+  );
 
   return (
     <Document>
       <Page size="A4" orientation="landscape" style={styles.page}>
-        <View style={styles.header}>
-          <Text style={styles.title}>Reporte de Órdenes</Text>
-          <Text style={styles.subtitle}>Exportado el {today}</Text>
-          <Text style={styles.summary}>Registros: {quotes.length}</Text>
+        {/* Encabezado */}
+        <View style={styles.headerSection}>
+          <View>
+            <Text style={styles.brand}>ERP LAZZAR</Text>
+            <Text style={styles.title}>Reporte de Cotizaciones</Text>
+          </View>
+          <View style={styles.metaGroup}>
+            <View style={styles.metaRow}>
+              <Text style={styles.metaLabel}>Exportado:</Text>
+              <Text style={styles.metaValue}>{today}</Text>
+            </View>
+            <View style={styles.metaRow}>
+              <Text style={styles.metaLabel}>Registros:</Text>
+              <Text style={styles.metaValue}>{quotes.length}</Text>
+            </View>
+            <View style={styles.metaRow}>
+              <Text style={styles.metaLabel}>Total general:</Text>
+              <Text style={styles.metaValue}>{formatCurrency(grandTotal)}</Text>
+            </View>
+          </View>
         </View>
 
+        {/* Tabla */}
         <View style={styles.table}>
+          {/* Fila de cabeceras */}
           <View style={[styles.row, styles.headerRow]}>
-            {columns.map((col) => (
+            {columns.map((col, i) => (
               <Text
                 key={col.id}
-                style={getHeaderStyle(col)}
+                style={[
+                  styles.headerCell,
+                  { width: columnWidths[i] },
+                  isRightAlignedColumn(col) ? styles.cellRight : {},
+                ]}
               >
                 {col.header}
               </Text>
             ))}
           </View>
 
-          {quotes.map((quote, index) => (
-            <View key={`${quote.id}-${index}`} style={styles.row}>
-              {columns.map((column) => (
+          {/* Filas de datos */}
+          {quotes.map((quote, rowIndex) => (
+            <View
+              key={`${quote.id}-${rowIndex}`}
+              style={[
+                styles.row,
+                rowIndex % 2 !== 0 ? styles.rowOdd : {},
+                rowIndex === quotes.length - 1 ? styles.rowLast : {},
+              ]}
+            >
+              {columns.map((column, colIndex) => (
                 <Text
-                  key={`${quote.id}-${column.id}-${index}`}
-                  style={getCellStyle(column)}
+                  key={`${quote.id}-${column.id}`}
+                  style={[
+                    styles.cell,
+                    { width: columnWidths[colIndex] },
+                    isRightAlignedColumn(column) ? styles.cellRight : {},
+                    isCurrencyColumn(column) ? styles.cellCurrency : {},
+                  ]}
                 >
-                  {formatValue(getColumnValue(quote, column, index), column)}
+                  {formatValue(getColumnValue(quote, column, rowIndex), column)}
                 </Text>
               ))}
             </View>
           ))}
+
+          {/* Fila de totales */}
+          {grandTotalColIndex >= 0 && (
+            <View style={styles.totalRow}>
+              <Text style={[styles.totalLabel, { width: columnWidths.slice(0, grandTotalColIndex).join("") }]}>
+                Total
+              </Text>
+              {columns.map((col, i) => (
+                <Text
+                  key={`total-${col.id}`}
+                  style={[
+                    styles.totalValue,
+                    { width: columnWidths[i] },
+                  ]}
+                >
+                  {i === grandTotalColIndex ? formatCurrency(grandTotal) : ""}
+                </Text>
+              ))}
+            </View>
+          )}
+        </View>
+
+        {/* Pie de página fijo en todas las páginas */}
+        <View style={styles.footer} fixed>
+          <Text style={styles.footerText}>
+            {quotes.length} registro{quotes.length !== 1 ? "s" : ""} — Generado con ERP Lazzar
+          </Text>
+          <Text
+            style={styles.footerText}
+            render={({ pageNumber, totalPages }: { pageNumber: number; totalPages: number }) =>
+              `Página ${pageNumber} de ${totalPages}`
+            }
+          />
         </View>
       </Page>
     </Document>
