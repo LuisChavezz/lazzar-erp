@@ -99,5 +99,17 @@ export const quoteFormSchema = z.object({
   }
 });
 
+export const quoteExtraServiceSchema = z.object({
+  id: z.string().min(1),
+  nombre: z.string().trim().min(1, "Requerido"),
+  monto: z.coerce.number().positive("Debe ser positivo"),
+});
+
+export const quoteSubmitSchema = quoteFormSchema.and(
+  z.object({
+    servicios_extras: z.array(quoteExtraServiceSchema),
+  })
+);
+
 export type QuoteFormInput = z.input<typeof quoteFormSchema>;
 export type QuoteFormValues = z.output<typeof quoteFormSchema>;

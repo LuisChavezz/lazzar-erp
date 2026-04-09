@@ -9,7 +9,11 @@ import toast from "react-hot-toast";
 import type { Customer } from "../../customers/interfaces/customer.interface";
 import { useCurrencies } from "../../currency/hooks/useCurrencies";
 import type { FormFieldError } from "../../../utils/getFieldError";
-import { quoteFormSchema, type QuoteFormValues } from "../schemas/quote.schema";
+import {
+  quoteFormSchema,
+  quoteSubmitSchema,
+  type QuoteFormValues,
+} from "../schemas/quote.schema";
 import {
   QuoteCreate,
   QuoteItem,
@@ -29,10 +33,8 @@ type ErrorNode = {
 
 export interface ExtraService {
   id: string;
-  label: string;
+  nombre: string;
   monto: number;
-  labelError?: string;
-  montoError?: string;
 }
 
 // Catálogos estáticos usados para renderizar selects y normalizar valores de entrada.
@@ -198,16 +200,11 @@ const setErrorByPath = (target: ErrorNode, path: (string | number)[], message: s
         current[safeIndex] = {};
       }
       if (isLast) {
-        (current[safeIndex] as ErrorNode)[segment] = { message };
+        (current[safeIndex] as ErrorNode).message = message as unknown as ErrorNode;
         return;
       }
-      const nextSegment = String(path[index + 1]);
-      const nextIsIndex = Number.isFinite(Number(nextSegment));
-      const nextValue = (current[safeIndex] as ErrorNode)[segment];
-      if (!nextValue || typeof nextValue !== "object") {
-        (current[safeIndex] as ErrorNode)[segment] = nextIsIndex ? [] : {};
-      }
-      current = (current[safeIndex] as ErrorNode)[segment] as ErrorNode | ErrorNode[];
+      // Avanza al elemento del array sin agregar una clave extra con el índice.
+      current = current[safeIndex] as ErrorNode;
       return;
     }
 
@@ -267,10 +264,17 @@ const scrollToFirstValidationError = (formElement: HTMLFormElement, issuePaths: 
 
   const hasItemsError = normalizedIssuePaths.some((path) => path === "items" || path.startsWith("items."));
   const hasCustomerError = normalizedIssuePaths.some((path) => path === "clienteBusqueda" || path.startsWith("clienteBusqueda."));
+  const hasExtraServicesError = normalizedIssuePaths.some((path) => path === "servicios_extras" || path.startsWith("servicios_extras."));
 
   if (hasCustomerError) {
     const customerAnchor = formElement.querySelector<HTMLElement>('[data-error-anchor="clienteBusqueda"]');
     customerAnchor?.scrollIntoView({ behavior: "smooth", block: "center" });
+    return;
+  }
+
+  if (hasExtraServicesError) {
+    const extraServicesAnchor = formElement.querySelector<HTMLElement>('[data-error-anchor="servicios_extras"]');
+    extraServicesAnchor?.scrollIntoView({ behavior: "smooth", block: "center" });
     return;
   }
 
@@ -315,7 +319,10 @@ export function useQuoteForm() {
   const form = useForm({
     defaultValues: emptyValues,
     onSubmit: async ({ value }) => {
-      const parsed = quoteFormSchema.safeParse(value);
+      const parsed = quoteSubmitSchema.safeParse({
+        ...value,
+        servicios_extras: extraServices,
+      });
       if (!parsed.success) {
         const nextErrors: ErrorNode = {};
         const issuePaths = parsed.error.issues
@@ -357,6 +364,10 @@ export function useQuoteForm() {
         : 0;
       const serigrafia = parsed.data.serigrafiaActivo ? parsed.data.serigrafia : 0;
       const reflejante = parsed.data.reflejanteActivo ? parsed.data.reflejante : 0;
+      const extraServicesTotal = parsed.data.servicios_extras.reduce(
+        (sum, service) => sum + service.monto,
+        0
+      );
       const extras =
         parsed.data.flete +
         parsed.data.seguros +
@@ -364,7 +375,8 @@ export function useQuoteForm() {
         programaBordados +
         bordadoPantalones +
         serigrafia +
-        reflejante;
+        reflejante +
+        extraServicesTotal;
       const ivaRateDecimal = parsed.data.iva / 100;
       const ivaAmount = Number(((subtotal + extras) * ivaRateDecimal).toFixed(2));
       const granTotal = Number((subtotal + extras + ivaAmount).toFixed(2));
@@ -396,25 +408,25 @@ export function useQuoteForm() {
         const bordadoConfig =
           llevaBordado
             ? {
-                ubicaciones:
-                  item.bordados?.especificaciones?.map((spec) => ({
-                    codigo: spec.posicionCodigo,
-                    ancho_cm: Math.max(0, Number(spec.ancho) || 0),
-                    alto_cm: Math.max(0, Number(spec.alto) || 0),
-                    color_hilo: spec.colorHilo ?? null,
-                    imagen: spec.imagen,
-                    nuevo_ponchado: spec.nuevoPonchado,
-                    serigrafia: spec.serigrafia,
-                    sublimado: spec.sublimado,
-                    dtf: spec.dtf,
-                    revelado: spec.revelado,
-                  })) ?? [],
-                notas: item.bordados?.observaciones ?? "",
-              }
+              ubicaciones:
+                item.bordados?.especificaciones?.map((spec) => ({
+                  codigo: spec.posicionCodigo,
+                  ancho_cm: Math.max(0, Number(spec.ancho) || 0),
+                  alto_cm: Math.max(0, Number(spec.alto) || 0),
+                  color_hilo: spec.colorHilo ?? null,
+                  imagen: spec.imagen,
+                  nuevo_ponchado: spec.nuevoPonchado,
+                  serigrafia: spec.serigrafia,
+                  sublimado: spec.sublimado,
+                  dtf: spec.dtf,
+                  revelado: spec.revelado,
+                })) ?? [],
+              notas: item.bordados?.observaciones ?? "",
+            }
             : {
-                ubicaciones: [],
-                notas: "",
-              };
+              ubicaciones: [],
+              notas: "",
+            };
         return {
           producto: item.productoId,
           tallas:
@@ -444,10 +456,10 @@ export function useQuoteForm() {
             parsed.data.estatusPedido === "Pendiente"
               ? 1
               : parsed.data.estatusPedido === "Parcial"
-              ? 2
-              : parsed.data.estatusPedido === "Completo"
-              ? 3
-              : 4,
+                ? 2
+                : parsed.data.estatusPedido === "Completo"
+                  ? 3
+                  : 4,
           ...mapOrigenFlags(parsed.data.origen),
           ...mapCondicionPagoFlags(parsed.data.condicionPago),
           oc: parsed.data.oc?.trim() || "",
@@ -493,9 +505,13 @@ export function useQuoteForm() {
           iva: parsed.data.iva || 0,
           gran_total: totals.granTotal ? String(totals.granTotal.toFixed(2)) : "0.00",
           activo: true,
-          cotización: { id: 1 },
+          cotizacion: { id: 1 },
         },
         detalle,
+        servicios_extras: parsed.data.servicios_extras.map((service) => ({
+          nombre: service.nombre,
+          monto: String(service.monto.toFixed(2)),
+        })),
       };
       await createQuoteMutation(quoteCreatePayload);
       setIsCreationSuccessVisible(true);
@@ -508,6 +524,7 @@ export function useQuoteForm() {
       });
 
       form.reset(emptyValues);
+      setExtraServices([]);
       router.push("/sales/quotes");
     },
   });
@@ -809,6 +826,7 @@ export function useQuoteForm() {
 
   const handleReset = () => {
     form.reset(emptyValues);
+    setExtraServices([]);
     setSelectedCustomerId(0);
     setErrorTree({});
     form.setFieldValue("clienteBusqueda", "");

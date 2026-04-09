@@ -249,9 +249,10 @@ export interface QuoteCreate {
     iva: number;
     gran_total: string;
     activo: boolean;
-    cotización: { id: number }
+    cotizacion: { id: number }
   },
-  detalle: QuoteDetail[]
+  detalle: QuoteDetail[],
+  servicios_extras: QuoteExtraService[];
 }
 
 interface QuoteDetail {
@@ -276,6 +277,11 @@ interface QuoteDetail {
       notas: string;
     };
   }[];
+}
+
+interface QuoteExtraService {
+  nombre: string;
+  monto: string;
 }
 
 export interface QuoteOnboardingData {
