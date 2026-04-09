@@ -1,33 +1,26 @@
 /**
- * Cliente HTTP para descargar el PDF de una cotizacion y guardarlo en el dispositivo.
+ * Genera el PDF de una cotizacion en el cliente usando react-pdf y activa la descarga.
  *
  * Responsabilidades:
- * - Llamar al endpoint interno de Next.js.
- * - Convertir la respuesta a un Blob y disparar la descarga nativa del navegador.
- * - Normalizar errores para que hooks y UI reciban un `Error` consistente.
+ * - Obtener los datos de la cotizacion via el cliente API.
+ * - Renderizar el documento react-pdf y convertirlo a Blob.
+ * - Disparar la descarga nativa del navegador.
  */
+import { getQuoteById } from "./actions";
+import { generateQuotePdfBlob } from "./pdf/quotePdfBlob";
 
 /**
- * Solicita el PDF de la cotizacion indicada y activa la descarga en el navegador.
- * Libera la URL de objeto una vez que el navegador la ha procesado.
+ * Descarga el PDF de la cotizacion indicada directamente desde el cliente.
+ * No requiere API route ni funciones de servidor.
  */
 export const downloadQuotePdf = async (quoteId: number): Promise<void> => {
-  const response = await fetch(`/api/quotes/${quoteId}/pdf`, {
-    method: "GET",
-  });
+  const quote = await getQuoteById(quoteId);
+  const blob = await generateQuotePdfBlob(quote);
 
-  if (!response.ok) {
-    const data = (await response.json().catch(() => null)) as { error?: string } | null;
-    throw new Error(data?.error || "No se pudo generar el PDF de la cotizacion.");
-  }
-
-  const blob = await response.blob();
   const objectUrl = URL.createObjectURL(blob);
-
   const link = document.createElement("a");
   link.href = objectUrl;
   link.download = `cotizacion-${quoteId}.pdf`;
   link.click();
-
   URL.revokeObjectURL(objectUrl);
 };
