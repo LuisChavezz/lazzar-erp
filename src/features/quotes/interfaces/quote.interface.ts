@@ -257,6 +257,7 @@ export interface QuoteCreate {
 
 interface QuoteDetail {
   producto: Product["id"];
+  precio_unitario: string;
   tallas: {
     talla: Size["id"];
     cantidad: number;
