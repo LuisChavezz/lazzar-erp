@@ -57,6 +57,7 @@ export function useAddProductDialogState({
 }: AddProductDialogProps) {
   const isEditing = Boolean(onUpdateItem && initialItem);
   const [step, setStep] = useState<Step>(startStep);
+  const [hasSleevecut, setHasSleevecut] = useState(false);
 
   const productSelection = useProductSelection({ products, initialItem });
   const sizesState = useSizesState({ initialItem });
@@ -78,6 +79,7 @@ export function useAddProductDialogState({
   const handleOpenChange = useCallback((nextOpen: boolean) => {
     if (!nextOpen) {
       setStep(startStep);
+      setHasSleevecut(false);
       productSelection.reset(initialItem);
       sizesState.reset(initialItem);
       embroideryState.reset(initialItem);
@@ -271,6 +273,8 @@ export function useAddProductDialogState({
       onToggleEmbroidery: (next: boolean) => embroideryState.setHasEmbroidery(next),
       hasReflective: reflectiveState.hasReflective,
       onToggleReflective: (next: boolean) => reflectiveState.setHasReflective(next),
+      hasSleevecut,
+      onToggleSleevecut: setHasSleevecut,
     },
     embroideryStepProps: {
       embroideryObservaciones: embroideryState.embroideryObservaciones,

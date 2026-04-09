@@ -21,6 +21,8 @@ interface StepSelectProductProps {
   onToggleEmbroidery: (value: boolean) => void;
   hasReflective: boolean;
   onToggleReflective: (value: boolean) => void;
+  hasSleevecut: boolean;
+  onToggleSleevecut: (value: boolean) => void;
 }
 
 export const StepSelectProduct = memo(function StepSelectProduct({
@@ -34,6 +36,8 @@ export const StepSelectProduct = memo(function StepSelectProduct({
   onToggleEmbroidery,
   hasReflective,
   onToggleReflective,
+  hasSleevecut,
+  onToggleSleevecut,
 }: StepSelectProductProps) {
   const selectedCount = selectedRowIds.size;
 
@@ -94,7 +98,7 @@ export const StepSelectProduct = memo(function StepSelectProduct({
               type="checkbox"
               checked={hasEmbroidery}
               onChange={(event) => onToggleEmbroidery(event.target.checked)}
-              className="w-4 h-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
+              className="w-4 h-4 rounded border-slate-300"
             />
             Agregar Bordado
           </label>
@@ -107,9 +111,22 @@ export const StepSelectProduct = memo(function StepSelectProduct({
               type="checkbox"
               checked={hasReflective}
               onChange={(event) => onToggleReflective(event.target.checked)}
-              className="w-4 h-4 rounded border-slate-300 text-amber-500 focus:ring-amber-400"
+              className="w-4 h-4 rounded border-slate-300"
             />
             Agregar Reflejante
+          </label>
+          <label
+            className="flex items-center gap-2 text-xs font-semibold text-slate-600 dark:text-slate-300 cursor-pointer select-none"
+            htmlFor="select-product-corte-manga"
+          >
+            <input
+              id="select-product-corte-manga"
+              type="checkbox"
+              checked={hasSleevecut}
+              onChange={(event) => onToggleSleevecut(event.target.checked)}
+              className="w-4 h-4 rounded border-slate-300"
+            />
+            Corte de manga
           </label>
         </div>
         {selectedCount > 0 && (
