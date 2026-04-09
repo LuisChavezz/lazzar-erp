@@ -133,7 +133,20 @@ export function useEmbroideryState(initialItem?: QuoteItem | null) {
   const toggleEmbroiderySpecBoolean = useCallback(
     (id: string, field: EmbroiderySpecBooleanField, value: boolean) => {
       setEmbroiderySpecs((prev) =>
-        prev.map((spec) => (spec.id === id ? { ...spec, [field]: value } : spec))
+        prev.map((spec) => {
+          if (spec.id !== id) return spec;
+          if (!value) return { ...spec, [field]: false };
+          // Only one service can be active per spec — deselect all others first.
+          return {
+            ...spec,
+            nuevoPonchado: false,
+            serigrafia: false,
+            sublimado: false,
+            dtf: false,
+            revelado: false,
+            [field]: true,
+          };
+        })
       );
     },
     []
