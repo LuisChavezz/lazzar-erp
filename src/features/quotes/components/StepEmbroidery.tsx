@@ -3,13 +3,13 @@
  * Vista del paso de bordado: permite agregar especificaciones por
  * ubicación, validarlas y previsualizar imágenes.
  */
-import { memo } from "react";
+import { memo, useCallback, useState } from "react";
 import Image from "next/image";
 import { FormInput } from "@/src/components/FormInput";
 import { FormSelect } from "@/src/components/FormSelect";
 import { DeleteIcon, EyeIcon } from "@/src/components/Icons";
 import type { EmbroiderySpecBooleanField, EmbroiderySpecErrorsById, EmbroiderySpecForm } from "../types";
-import { EmbroiderySpecUploadArea } from "./EmbroiderySpecUploadArea";
+import { EmbroideryImageSelector } from "./EmbroideryImageSelector";
 
 export type { EmbroiderySpecForm };
 
@@ -75,6 +75,33 @@ export const StepEmbroidery = memo(function StepEmbroidery({
   positionMap,
   threadColorOptions,
 }: StepEmbroideryProps) {
+  /**
+   * IDs de especificaciones cuya imagen fue bloqueada via CARGA al servidor.
+   * La selección desde galería NO bloquea — solo la subida de archivo.
+   */
+  const [uploadLockedIds, setUploadLockedIds] = useState<Set<string>>(() => new Set());
+
+  const handleImageUploaded = useCallback(
+    (specId: string, url: string) => {
+      onUpdateSpec(specId, "imagen", url);
+      setUploadLockedIds((prev) => new Set(prev).add(specId));
+    },
+    [onUpdateSpec]
+  );
+
+  /** Limpia la imagen y revoca el bloqueo de upload para esta spec. */
+  const handleClearImage = useCallback(
+    (specId: string) => {
+      onUpdateSpec(specId, "imagen", "");
+      setUploadLockedIds((prev) => {
+        const next = new Set(prev);
+        next.delete(specId);
+        return next;
+      });
+    },
+    [onUpdateSpec]
+  );
+
   const openImagePreview = (src: string) => {
     window.open(src, "_blank", "noopener,noreferrer");
   };
@@ -174,7 +201,7 @@ export const StepEmbroidery = memo(function StepEmbroidery({
               spec.sublimado ||
               spec.dtf ||
               spec.revelado;
-            const isImageLocked = !!spec.imagen.trim();
+            const isImageLocked = uploadLockedIds.has(spec.id);
             return (
               <div
                 key={spec.id}
@@ -196,7 +223,7 @@ export const StepEmbroidery = memo(function StepEmbroidery({
                     ✕
                   </button>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
                   <div className="space-y-1">
                     <FormSelect
                       label="Ubicación"
@@ -308,21 +335,14 @@ export const StepEmbroidery = memo(function StepEmbroidery({
                         </label>
                       ))}
                     </div>
+                  </div>
+                  <div className="sm:col-span-3 space-y-3">
                     {!isImageLocked && (
-                      <EmbroiderySpecUploadArea
+                      <EmbroideryImageSelector
                         spec={spec}
-                        onImageUploaded={(url) => onUpdateSpec(spec.id, "imagen", url)}
+                        onImageUploaded={(url) => handleImageUploaded(spec.id, url)}
+                        onImageFromGallery={(url) => onUpdateSpec(spec.id, "imagen", url)}
                       />
-                    )}
-                    {hasActiveService && !spec.imagen.trim() && (
-                      <p
-                        className="text-[11px] font-medium text-amber-600 dark:text-amber-400 flex items-center gap-1.5"
-                        role="alert"
-                        aria-live="polite"
-                      >
-                        <span aria-hidden="true">⚠</span>
-                        Es necesario cargar una imagen para el servicio seleccionado.
-                      </p>
                     )}
                     {isValidImageUrl(spec.imagen) && (
                       <div className="group relative rounded-xl border border-slate-200 dark:border-white/10 p-2 bg-white dark:bg-black/20">
@@ -337,7 +357,7 @@ export const StepEmbroidery = memo(function StepEmbroidery({
                           </button>
                           <button
                             type="button"
-                            onClick={() => onUpdateSpec(spec.id, "imagen", "")}
+                            onClick={() => handleClearImage(spec.id)}
                             className="w-8 h-8 rounded-lg cursor-pointer bg-white/95 dark:bg-zinc-900/95 border border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300 hover:text-rose-600 dark:hover:text-rose-400 flex items-center justify-center shadow-sm transition-colors"
                             aria-label="Quitar imagen"
                           >

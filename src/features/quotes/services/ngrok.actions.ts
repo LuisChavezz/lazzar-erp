@@ -28,6 +28,44 @@ export interface UploadEmbroideryImagePayload {
   currentPath: string;
 }
 
+/** Representa un ítem de imagen almacenado en el servidor ngrok. */
+export interface NgrokImageItem {
+  /** Nombre del archivo (ej. "ALA02_GGU.jpg"). */
+  nombre: string;
+  /** Ruta relativa de la imagen en el servidor (ej. "/files/Bordados/..."). */
+  url: string;
+  /** Ruta UNC completa en el servidor de archivos compartidos. */
+  sharePath: string;
+}
+
+/** Respuesta del endpoint GET /api/vendedor/imagenes. */
+export interface NgrokImagesResponse {
+  ok: boolean;
+  vendedor: string;
+  count: number;
+  imagenes: NgrokImageItem[];
+}
+
+export interface FetchEmbroideryImagesPayload {
+  /** Correo electrónico del vendedor cuyas imágenes se desean obtener. */
+  email: string;
+}
+
+/**
+ * Obtiene la galería de imágenes disponibles en el servidor para un vendedor.
+ *
+ * @param payload - Email del vendedor.
+ * @returns Respuesta con la lista de imágenes del vendedor.
+ */
+export const fetchEmbroideryImages = async (
+  payload: FetchEmbroideryImagesPayload
+): Promise<NgrokImagesResponse> => {
+  const { data } = await ngrok_api.get<NgrokImagesResponse>("/api/vendedor/imagenes", {
+    params: { email: payload.email },
+  });
+  return data;
+};
+
 /**
  * Sube una imagen al servidor externo via multipart/form-data.
  * El tipo de respuesta es `unknown` hasta que se conozca el contrato de la API.

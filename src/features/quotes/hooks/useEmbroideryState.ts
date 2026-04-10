@@ -196,7 +196,7 @@ export function useEmbroideryState(initialItem?: QuoteItem | null) {
       }
 
       if (!isValidImageUrl(spec.imagen)) {
-        specError.imagen = "URL de imagen inválida";
+        specError.imagen = "Imagen del bordado inválida o faltante";
       }
 
       if (Object.keys(specError).length > 0) {

@@ -20,7 +20,7 @@ export const quoteFormSchema = z.object({
   codigoPostalFiscal: z.string().min(1, "Requerido"),
   ciudadFiscal: z.string().min(1, "Requerido"),
   estadoFiscal: z.string().min(1, "Requerido"),
-  giroEmpresa: z.string().min(1, "Requerido"),
+  giroEmpresa: z.string().optional(),
   persona_pagos: z.string().min(1, "Requerido"),
   correo_facturas: z.string().email("Correo inválido"),
   telefono_pagos: z.string().min(1, "Requerido"),
