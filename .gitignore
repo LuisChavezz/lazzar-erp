@@ -46,4 +46,4 @@ yarn-error.log*
 next-env.d.ts
 
 # GitHub Copilot workspace instructions
-copilot-instructions.md
+.github/

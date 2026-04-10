@@ -9,6 +9,7 @@ import { FormInput } from "@/src/components/FormInput";
 import { FormSelect } from "@/src/components/FormSelect";
 import { DeleteIcon, EyeIcon } from "@/src/components/Icons";
 import type { EmbroiderySpecBooleanField, EmbroiderySpecErrorsById, EmbroiderySpecForm } from "../types";
+import { EmbroiderySpecUploadArea } from "./EmbroiderySpecUploadArea";
 
 export type { EmbroiderySpecForm };
 
@@ -167,6 +168,13 @@ export const StepEmbroidery = memo(function StepEmbroidery({
               spec.posicionCodigo && positionMap.get(spec.posicionCodigo)
                 ? positionMap.get(spec.posicionCodigo)
                 : "Selecciona ubicación";
+            const hasActiveService =
+              spec.nuevoPonchado ||
+              spec.serigrafia ||
+              spec.sublimado ||
+              spec.dtf ||
+              spec.revelado;
+            const isImageLocked = !!spec.imagen.trim();
             return (
               <div
                 key={spec.id}
@@ -267,22 +275,53 @@ export const StepEmbroidery = memo(function StepEmbroidery({
                       ]}
                     />
                   </div>
-                  <div className="space-y-1 sm:col-span-3">
-                    <FormInput
-                      label="URL de imagen"
-                      placeholder="https://dominio.com/imagen.png"
-                      forceUppercase={false}
-                      value={spec.imagen}
-                      onChange={(event) =>
-                        onUpdateSpec(spec.id, "imagen", event.target.value)
-                      }
-                    />
-                    {specError.imagen && (
+                  <div className="sm:col-span-3 space-y-3">
+                    <p className="text-xs font-bold uppercase tracking-wider text-slate-400 mt-1">
+                      Servicios
+                    </p>
+                    <div className="flex flex-wrap gap-4">
+                      {(
+                        [
+                          { field: "nuevoPonchado", label: "Nuevo ponchado" },
+                          { field: "serigrafia", label: "Serigrafía" },
+                          { field: "sublimado", label: "Sublimado" },
+                          { field: "dtf", label: "DTF" },
+                          { field: "revelado", label: "Revelado" },
+                        ] as const
+                      ).map(({ field, label }) => (
+                        <label
+                          key={field}
+                          className={`flex items-center gap-2 text-xs font-semibold text-slate-600 dark:text-slate-300 transition-opacity ${
+                            isImageLocked ? "opacity-50 cursor-not-allowed" : "cursor-pointer"
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={spec[field]}
+                            disabled={isImageLocked}
+                            onChange={(event) =>
+                              onToggleSpecBoolean(spec.id, field, event.target.checked)
+                            }
+                            className="w-4 h-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500 disabled:cursor-not-allowed"
+                          />
+                          {label}
+                        </label>
+                      ))}
+                    </div>
+                    {!isImageLocked && (
+                      <EmbroiderySpecUploadArea
+                        spec={spec}
+                        onImageUploaded={(url) => onUpdateSpec(spec.id, "imagen", url)}
+                      />
+                    )}
+                    {hasActiveService && !spec.imagen.trim() && (
                       <p
-                        className="text-xs text-rose-600 dark:text-rose-400"
+                        className="text-[11px] font-medium text-amber-600 dark:text-amber-400 flex items-center gap-1.5"
                         role="alert"
+                        aria-live="polite"
                       >
-                        {specError.imagen}
+                        <span aria-hidden="true">⚠</span>
+                        Es necesario cargar una imagen para el servicio seleccionado.
                       </p>
                     )}
                     {isValidImageUrl(spec.imagen) && (
@@ -292,7 +331,7 @@ export const StepEmbroidery = memo(function StepEmbroidery({
                             type="button"
                             onClick={() => window.open(spec.imagen.trim(), "_blank", "noopener,noreferrer")}
                             className="w-8 h-8 rounded-lg cursor-pointer bg-white/95 dark:bg-zinc-900/95 border border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300 hover:text-sky-600 dark:hover:text-sky-400 flex items-center justify-center shadow-sm transition-colors"
-                            aria-label="Expandir imagen"
+                            aria-label="Abrir imagen en nueva pestaña"
                           >
                             <EyeIcon className="w-4 h-4" />
                           </button>
@@ -316,37 +355,11 @@ export const StepEmbroidery = memo(function StepEmbroidery({
                         />
                       </div>
                     )}
-                  </div>
-                  <div className="sm:col-span-3">
-                    <p className="text-xs font-bold uppercase tracking-wider text-slate-400 my-2">
-                      Servicios
-                    </p>
-                    <div className="flex flex-wrap gap-4">
-                      {(
-                        [
-                          { field: "nuevoPonchado", label: "Nuevo ponchado" },
-                          { field: "serigrafia", label: "Serigrafía" },
-                          { field: "sublimado", label: "Sublimado" },
-                          { field: "dtf", label: "DTF" },
-                          { field: "revelado", label: "Revelado" },
-                        ] as const
-                      ).map(({ field, label }) => (
-                        <label
-                          key={field}
-                          className="flex items-center gap-2 text-xs font-semibold text-slate-600 dark:text-slate-300 cursor-pointer"
-                        >
-                          <input
-                            type="checkbox"
-                            checked={spec[field]}
-                            onChange={(event) =>
-                              onToggleSpecBoolean(spec.id, field, event.target.checked)
-                            }
-                            className="w-4 h-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
-                          />
-                          {label}
-                        </label>
-                      ))}
-                    </div>
+                    {specError.imagen && (
+                      <p className="text-xs text-rose-600 dark:text-rose-400" role="alert">
+                        {specError.imagen}
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>
