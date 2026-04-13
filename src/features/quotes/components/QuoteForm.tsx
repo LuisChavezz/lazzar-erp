@@ -59,6 +59,7 @@ export default function QuoteForm() {
     watchedDocRelacionado,
     watchedEnviarDomicilioFiscal,
     watchedCondicionPago,
+    hasCustomerSelected,
     subtotal,
     descuentoTotal,
     ivaAmount,
@@ -716,12 +717,17 @@ export default function QuoteForm() {
           <div className="flex flex-wrap gap-3">
             <form.Field name="enviarDomicilioFiscal">
               {(field) => (
-                <label className="inline-flex items-center gap-2 text-xs font-medium text-slate-600 dark:text-slate-300">
+                <label className={`inline-flex items-center gap-2 text-xs font-medium transition-opacity ${
+                  !hasCustomerSelected
+                    ? "text-slate-400 dark:text-slate-600 opacity-50 cursor-not-allowed"
+                    : "text-slate-600 dark:text-slate-300 cursor-pointer"
+                }`}>
                   <input
                     type="checkbox"
-                    className="w-4 h-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
+                    className="w-4 h-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500 disabled:cursor-not-allowed"
                     name={field.name}
                     checked={Boolean(field.state.value)}
+                    disabled={!hasCustomerSelected}
                     onChange={(event) => {
                       field.handleChange(event.target.checked);
                       clearFieldErrors("enviarDomicilioFiscal");
@@ -734,7 +740,7 @@ export default function QuoteForm() {
             </form.Field>
             <form.Field name="embarcarConOtrosPedidos">
               {(field) => (
-                <label className="inline-flex items-center gap-2 text-xs font-medium text-slate-600 dark:text-slate-300">
+                <label className="inline-flex items-center gap-2 text-xs font-medium cursor-pointer text-slate-600 dark:text-slate-300">
                   <input
                     type="checkbox"
                     className="w-4 h-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"

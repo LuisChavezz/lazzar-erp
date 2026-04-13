@@ -21,18 +21,9 @@ export const quoteFormSchema = z.object({
   ciudadFiscal: z.string().optional(),
   estadoFiscal: z.string().optional(),
   giroEmpresa: z.string().optional(),
-  persona_pagos: z.string().optional(),
-  correo_facturas: z.string().refine(
-    (val) => {
-      // Permitir campo vacío
-      if (!val || val.trim() === '') return true;
-      // Validar que sea email válido si tiene valor
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      return emailRegex.test(val);
-    },
-    { message: "Correo inválido" }
-  ),
-  telefono_pagos: z.string().optional(),
+  persona_pagos: z.string().min(1, "Requerido"),
+  correo_facturas: z.string().email("Correo inválido"),
+  telefono_pagos: z.string().min(1, "Requerido"),
   oc: z.string().trim().optional(),
   forma_pago: z.string().min(1, "Requerido"),
   metodo_pago: z.string().min(1, "Requerido"),
