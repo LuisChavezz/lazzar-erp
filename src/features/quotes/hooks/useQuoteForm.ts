@@ -446,9 +446,9 @@ export function useQuoteForm() {
           sucursal: selectedBranchId || 1, // Fallback safe si no hay sucursal
           cliente: selectedCustomerId || 1, // Fallback
           moneda: parsed.data.moneda || 1, // Fallback si no viene moneda
-          persona_pagos: parsed.data.persona_pagos,
-          correo_facturas: parsed.data.correo_facturas,
-          telefono_pagos: parsed.data.telefono_pagos,
+          persona_pagos: parsed.data.persona_pagos || "",
+          correo_facturas: parsed.data.correo_facturas || "",
+          telefono_pagos: parsed.data.telefono_pagos || "",
           forma_pago: parsed.data.forma_pago,
           metodo_pago: parsed.data.metodo_pago,
           uso_cfdi: parsed.data.uso_cfdi,

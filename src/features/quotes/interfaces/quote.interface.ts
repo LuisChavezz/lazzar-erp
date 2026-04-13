@@ -182,9 +182,9 @@ export interface QuoteCreate {
     sucursal: Branch["id"];
     cliente: number;
     moneda: Currency["id"];
-    persona_pagos: string;
-    correo_facturas: string;
-    telefono_pagos: string;
+    persona_pagos: string | undefined;
+    correo_facturas: string | undefined;
+    telefono_pagos: string | undefined;
     forma_pago: string;
     metodo_pago: string;
     uso_cfdi: string;

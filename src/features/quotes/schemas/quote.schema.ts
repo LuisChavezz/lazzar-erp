@@ -10,20 +10,29 @@ import { quoteItemSchema } from "./quote-item.schema";
 export { quoteItemSchema } from "./quote-item.schema";
 
 export const quoteFormSchema = z.object({
-  clienteBusqueda: z.string().min(1, "Selecciona un cliente"),
-  clienteNombre: z.string().min(1, "Requerido"),
-  razonSocial: z.string().min(1, "Requerido"),
-  rfc: z.string().min(1, "Requerido"),
-  regimenFiscal: z.string().min(1, "Requerido"),
-  direccionFiscal: z.string().min(1, "Requerido"),
-  coloniaFiscal: z.string().min(1, "Requerido"),
-  codigoPostalFiscal: z.string().min(1, "Requerido"),
-  ciudadFiscal: z.string().min(1, "Requerido"),
-  estadoFiscal: z.string().min(1, "Requerido"),
+  clienteBusqueda: z.string().optional(),
+  clienteNombre: z.string().optional(),
+  razonSocial: z.string().optional(),
+  rfc: z.string().optional(),
+  regimenFiscal: z.string().optional(),
+  direccionFiscal: z.string().optional(),
+  coloniaFiscal: z.string().optional(),
+  codigoPostalFiscal: z.string().optional(),
+  ciudadFiscal: z.string().optional(),
+  estadoFiscal: z.string().optional(),
   giroEmpresa: z.string().optional(),
-  persona_pagos: z.string().min(1, "Requerido"),
-  correo_facturas: z.string().email("Correo inválido"),
-  telefono_pagos: z.string().min(1, "Requerido"),
+  persona_pagos: z.string().optional(),
+  correo_facturas: z.string().refine(
+    (val) => {
+      // Permitir campo vacío
+      if (!val || val.trim() === '') return true;
+      // Validar que sea email válido si tiene valor
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      return emailRegex.test(val);
+    },
+    { message: "Correo inválido" }
+  ),
+  telefono_pagos: z.string().optional(),
   oc: z.string().trim().optional(),
   forma_pago: z.string().min(1, "Requerido"),
   metodo_pago: z.string().min(1, "Requerido"),
@@ -47,7 +56,7 @@ export const quoteFormSchema = z.object({
   origen: z.string().min(1, "Selecciona un origen"),
   destinatario: z.string().min(1, "Requerido"),
   empresaEnvio: z.string().min(1, "Requerido"),
-  telefonoEnvio: z.string().min(1, "Requerido"),
+  telefonoEnvio: z.string().optional(),
   celularEnvio: z.string().min(1, "Requerido"),
   direccionEnvio: z.string().min(1, "Requerido"),
   coloniaEnvio: z.string().min(1, "Requerido"),
