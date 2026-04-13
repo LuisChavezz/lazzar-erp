@@ -3,12 +3,15 @@
  * Vista del paso de bordado: permite agregar especificaciones por
  * ubicación, validarlas y previsualizar imágenes.
  */
-import { memo, useCallback, useState } from "react";
+import { memo, useCallback, useEffect, useState } from "react";
+import { useSession } from "next-auth/react";
 import Image from "next/image";
+import toast from "react-hot-toast";
 import { FormInput } from "@/src/components/FormInput";
 import { FormSelect } from "@/src/components/FormSelect";
 import { DeleteIcon, EyeIcon } from "@/src/components/Icons";
 import type { EmbroiderySpecBooleanField, EmbroiderySpecErrorsById, EmbroiderySpecForm } from "../types";
+import { useFetchEmbroideryImages } from "../hooks/useFetchEmbroideryImages";
 import { EmbroideryImageSelector } from "./EmbroideryImageSelector";
 
 export type { EmbroiderySpecForm };
@@ -80,6 +83,25 @@ export const StepEmbroidery = memo(function StepEmbroidery({
    * La selección desde galería NO bloquea — solo la subida de archivo.
    */
   const [uploadLockedIds, setUploadLockedIds] = useState<Set<string>>(() => new Set());
+
+  /* ── Galería de imágenes (hook único para todas las specs) ───── */
+  const { data: session } = useSession();
+  const email = session?.user?.email;
+  const {
+    data: galleryData,
+    isPending: isFetchingGallery,
+    isError: isGalleryError,
+    refetch: refetchGallery,
+  } = useFetchEmbroideryImages(email);
+
+  // Toast de error centralizado; sólo se muestra una vez aunque haya múltiples specs
+  useEffect(() => {
+    if (isGalleryError) {
+      toast.error("No se pudieron cargar las imágenes del servidor.");
+    }
+  }, [isGalleryError]);
+
+  const galleryImages = galleryData?.imagenes ?? [];
 
   const handleImageUploaded = useCallback(
     (specId: string, url: string) => {
@@ -195,12 +217,6 @@ export const StepEmbroidery = memo(function StepEmbroidery({
               spec.posicionCodigo && positionMap.get(spec.posicionCodigo)
                 ? positionMap.get(spec.posicionCodigo)
                 : "Selecciona ubicación";
-            const hasActiveService =
-              spec.nuevoPonchado ||
-              spec.serigrafia ||
-              spec.sublimado ||
-              spec.dtf ||
-              spec.revelado;
             const isImageLocked = uploadLockedIds.has(spec.id);
             return (
               <div
@@ -340,6 +356,10 @@ export const StepEmbroidery = memo(function StepEmbroidery({
                     {!isImageLocked && (
                       <EmbroideryImageSelector
                         spec={spec}
+                        galleryImages={galleryImages}
+                        isFetchingGallery={isFetchingGallery}
+                        isGalleryError={isGalleryError}
+                        onRetryGallery={refetchGallery}
                         onImageUploaded={(url) => handleImageUploaded(spec.id, url)}
                         onImageFromGallery={(url) => onUpdateSpec(spec.id, "imagen", url)}
                       />
