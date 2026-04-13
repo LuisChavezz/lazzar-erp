@@ -174,6 +174,15 @@ export interface QuoteById {
   cliente: number;
   oportunidad: number | null;
   moneda: number;
+  servicios_extras: {
+    id: number;
+    nombre: string;
+    monto: string;
+    cotizacion: number;
+    visible_en_factura: boolean;
+    created_at: string;
+    updated_at: string;
+  }[];
 }
 
 export interface QuoteCreate {

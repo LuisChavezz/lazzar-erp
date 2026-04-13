@@ -1,5 +1,6 @@
 "use client";
 
+import React from "react";
 import { getStatusStyles } from "../utils/getStatusStyle";
 import { useQuote } from "../hooks/useQuote";
 import { QuoteDetailsProducts } from "./QuoteDetailsProducts";
@@ -289,22 +290,18 @@ export const QuoteDetails = ({ quoteId }: QuoteDetailsProps) => {
         </div>
         <div className="rounded-xl border border-slate-200 dark:border-white/10 p-4 bg-white dark:bg-white/5 space-y-3">
           <p className="text-xs uppercase text-slate-400 font-semibold">Servicios y cargos</p>
-          <div className="grid grid-cols-2 gap-3 text-sm">
-            <p className="text-slate-700 dark:text-slate-300">Envío</p>
-            <p className="text-right text-slate-800 dark:text-slate-100 font-medium">{toCurrencyOrDash(quote.envio)}</p>
-            <p className="text-slate-700 dark:text-slate-300">Programa bordados</p>
-            <p className="text-right text-slate-800 dark:text-slate-100 font-medium">{toCurrencyOrDash(quote.programa_bordados)}</p>
-            <p className="text-slate-700 dark:text-slate-300">Bordado pantalones extras</p>
-            <p className="text-right text-slate-800 dark:text-slate-100 font-medium">{toCurrencyOrDash(quote.bordado_pantalones_extras)}</p>
-            <p className="text-slate-700 dark:text-slate-300">Serigrafía</p>
-            <p className="text-right text-slate-800 dark:text-slate-100 font-medium">{toCurrencyOrDash(quote.serigrafia)}</p>
-            <p className="text-slate-700 dark:text-slate-300">Reflejante</p>
-            <p className="text-right text-slate-800 dark:text-slate-100 font-medium">{toCurrencyOrDash(quote.reflejante)}</p>
-            <p className="text-slate-700 dark:text-slate-300">Flete</p>
-            <p className="text-right text-slate-800 dark:text-slate-100 font-medium">{toCurrencyOrDash(quote.flete)}</p>
-            <p className="text-slate-700 dark:text-slate-300">Seguros</p>
-            <p className="text-right text-slate-800 dark:text-slate-100 font-medium">{toCurrencyOrDash(quote.seguros)}</p>
-          </div>
+          {quote.servicios_extras.length > 0 ? (
+            <div className="grid grid-cols-2 gap-3 text-sm">
+              {quote.servicios_extras.map((servicio) => (
+                <React.Fragment key={servicio.id}>
+                  <p className="text-slate-700 dark:text-slate-300">{servicio.nombre}</p>
+                  <p className="text-right text-slate-800 dark:text-slate-100 font-medium">{toCurrencyOrDash(servicio.monto)}</p>
+                </React.Fragment>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-slate-400 dark:text-slate-500">Sin servicios extras</p>
+          )}
         </div>
       </div>
 
