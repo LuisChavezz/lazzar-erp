@@ -13,17 +13,34 @@ type TaskDetailsProps = {
   onTaskDeleted?: () => void;
 };
 
-// Genera el texto de fecha del detalle con el formato:
-// "<día de la semana> <día> de <mes> · <hora>".
-const formatTaskDetailDate = (dueDate: string) => {
-  const parsedDate = parseISO(dueDate);
-  if (!isValid(parsedDate)) {
-    return "Fecha inválida";
+// Genera el rango de fecha legible del detalle según sea todo-el-día o con hora.
+// allDay=true  → "Lunes 15 de enero · Todo el día" o rango multi-día.
+// allDay=false → "Lunes 15 de enero · 09:00–10:00".
+const formatTaskDateRange = (startDate: string, endDate: string, allDay?: boolean) => {
+  const start = parseISO(startDate);
+  const end = parseISO(endDate);
+  if (!isValid(start)) return "Fecha inválida";
+
+  const dayStr = format(start, "EEEE d 'de' MMMM", { locale: es });
+  const startLabel = dayStr.charAt(0).toUpperCase() + dayStr.slice(1);
+
+  if (allDay) {
+    // Compara el día del ISO directamente (primer segmento antes de T) para evitar
+    // conversiones de zona horaria al comparar solo fechas.
+    const startPart = startDate.slice(0, 10);
+    const endPart = endDate.slice(0, 10);
+    if (!isValid(end) || startPart === endPart) {
+      return `${startLabel} · Todo el día`;
+    }
+    const endDayStr = format(end, "EEEE d 'de' MMMM", { locale: es });
+    const endLabel = endDayStr.charAt(0).toUpperCase() + endDayStr.slice(1);
+    return `${startLabel} – ${endLabel} · Todo el día`;
   }
-  const readableDate = format(parsedDate, "EEEE d 'de' MMMM", { locale: es });
-  const capitalizedDate = readableDate.charAt(0).toUpperCase() + readableDate.slice(1);
-  const hour = format(parsedDate, "HH:mm");
-  return `${capitalizedDate} · ${hour}`;
+
+  const startTime = format(start, "HH:mm");
+  if (!isValid(end)) return `${startLabel} · ${startTime}`;
+  const endTime = format(end, "HH:mm");
+  return `${startLabel} · ${startTime}–${endTime}`;
 };
 
 export const TaskDetails = ({ task, onTaskDeleted }: TaskDetailsProps) => {
@@ -34,8 +51,8 @@ export const TaskDetails = ({ task, onTaskDeleted }: TaskDetailsProps) => {
   // Si no hay tarea seleccionada, no se muestra panel de detalle.
   if (!task) return null;
 
-  // Se muestra una fecha descriptiva y legible con día, fecha y hora.
-  const dueDateLabel = formatTaskDetailDate(task.dueDate);
+  // Se muestra un rango de fecha y hora legible segun el tipo de evento.
+  const dueDateLabel = formatTaskDateRange(task.startDate, task.endDate, task.allDay);
 
   // Al confirmar eliminación se limpia la tarea y se notifica al contenedor para cerrar el detalle.
   const handleDeleteTask = () => {

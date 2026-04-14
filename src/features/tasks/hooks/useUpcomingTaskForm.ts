@@ -4,8 +4,6 @@ import { useForm } from "@tanstack/react-form";
 import { useEffect, useMemo, useState } from "react";
 import type { FormEvent } from "react";
 import type { FormFieldError } from "@/src/utils/getFieldError";
-import { normalizeDate } from "@/src/utils/normalizeDate";
-import { toInputDateTime } from "@/src/utils/toInputDateTime";
 import { UpcomingTaskFormSchema, type UpcomingTaskFormValues } from "../schemas/upcoming-task.schema";
 import { useUpcomingTasksStore } from "../stores/upcoming-tasks.store";
 import type { UpcomingTask } from "../interfaces/upcoming-task.interface";
@@ -19,14 +17,61 @@ interface UseUpcomingTaskFormParams {
 
 type UpcomingTaskField = keyof UpcomingTaskFormValues;
 
-const buildDefaultDueDate = (defaultCalendarDate: Date | null | undefined) => {
+// Formatea un Date a YYYY-MM-DD usando la hora local del navegador.
+const dateToInputDate = (date: Date): string => {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+};
+
+// Formatea un Date a HH:MM usando la hora local del navegador.
+const dateToInputTime = (date: Date): string => {
+  const h = String(date.getHours()).padStart(2, "0");
+  const min = String(date.getMinutes()).padStart(2, "0");
+  return `${h}:${min}`;
+};
+
+// Extrae la parte YYYY-MM-DD de una ISO con offset (-06:00).
+// Los primeros 10 caracteres son siempre la fecha en la zona del offset almacenado.
+const isoToDatePart = (iso: string): string => {
+  if (!iso) return "";
+  const match = iso.match(/^(\d{4}-\d{2}-\d{2})/);
+  return match ? match[1] : "";
+};
+
+// Extrae la parte HH:MM de una ISO con offset (-06:00).
+const isoToTimePart = (iso: string): string => {
+  if (!iso) return "";
+  const match = iso.match(/T(\d{2}:\d{2})/);
+  return match ? match[1] : "";
+};
+
+// Construye ISO de inicio de día en GMT-6: YYYY-MM-DDT00:00:00-06:00.
+const toStartOfDayIso = (date: string): string => `${date}T00:00:00-06:00`;
+
+// Construye ISO de fin de día en GMT-6: YYYY-MM-DDT23:59:59-06:00.
+const toEndOfDayIso = (date: string): string => `${date}T23:59:59-06:00`;
+
+// Construye ISO de una fecha+hora en GMT-6: YYYY-MM-DDTHH:MM:00-06:00.
+const toTimedIso = (date: string, time: string): string => `${date}T${time}:00-06:00`;
+
+const buildEmptyValues = (defaultCalendarDate?: Date | null): UpcomingTaskFormValues => {
   const now = new Date();
-  if (defaultCalendarDate) {
-    const calendarDateWithCurrentHour = new Date(defaultCalendarDate);
-    calendarDateWithCurrentHour.setHours(now.getHours(), now.getMinutes(), 0, 0);
-    return toInputDateTime(calendarDateWithCurrentHour.toISOString());
-  }
-  return toInputDateTime(now.toISOString());
+  const baseDate = defaultCalendarDate ?? now;
+  const startTime = dateToInputTime(now);
+  const endTime = dateToInputTime(new Date(now.getTime() + 60 * 60 * 1000));
+  return {
+    title: "",
+    shortDescription: "",
+    comments: "",
+    allDay: false,
+    startDate: "",
+    endDate: "",
+    date: dateToInputDate(baseDate),
+    startTime,
+    endTime,
+  };
 };
 
 export function useUpcomingTaskForm({
@@ -35,102 +80,104 @@ export function useUpcomingTaskForm({
   defaultCalendarDate,
   dialogOpen = false,
 }: UseUpcomingTaskFormParams) {
-  // Conecta acciones del store para crear y actualizar tareas.
   const addTask = useUpcomingTasksStore((state) => state.addTask);
   const updateTask = useUpcomingTasksStore((state) => state.updateTask);
 
-  // Determina modo edición para conservar el flujo original de submit y reset.
   const isEditing = Boolean(taskToEdit?.id);
-  const currentDateTime = useMemo(() => buildDefaultDueDate(defaultCalendarDate), [defaultCalendarDate]);
-  const emptyValues: UpcomingTaskFormValues = useMemo(
-    () => ({
-      title: "",
-      shortDescription: "",
-      comments: "",
-      dueDate: currentDateTime,
-    }),
-    [currentDateTime]
+
+  const emptyValues = useMemo(
+    () => buildEmptyValues(defaultCalendarDate),
+    [defaultCalendarDate]
   );
 
-  // Calcula valores de edición para hidratar el formulario cuando existe una tarea.
-  const editValues: UpcomingTaskFormValues = useMemo(
-    () =>
-      taskToEdit
-        ? {
-            title: taskToEdit.title,
-            shortDescription: taskToEdit.shortDescription,
-            comments: taskToEdit.comments ?? "",
-            dueDate: toInputDateTime(taskToEdit.dueDate),
-          }
-        : emptyValues,
-    [emptyValues, taskToEdit]
-  );
+  // Hidrata el formulario con los valores persistidos de la tarea a editar.
+  const editValues: UpcomingTaskFormValues = useMemo(() => {
+    if (!taskToEdit) return emptyValues;
+    if (taskToEdit.allDay) {
+      return {
+        title: taskToEdit.title,
+        shortDescription: taskToEdit.shortDescription,
+        comments: taskToEdit.comments ?? "",
+        allDay: true,
+        startDate: isoToDatePart(taskToEdit.startDate),
+        endDate: isoToDatePart(taskToEdit.endDate),
+        date: "",
+        startTime: "",
+        endTime: "",
+      };
+    }
+    return {
+      title: taskToEdit.title,
+      shortDescription: taskToEdit.shortDescription,
+      comments: taskToEdit.comments ?? "",
+      allDay: false,
+      startDate: "",
+      endDate: "",
+      date: isoToDatePart(taskToEdit.startDate),
+      startTime: isoToTimePart(taskToEdit.startDate),
+      endTime: isoToTimePart(taskToEdit.endDate),
+    };
+  }, [emptyValues, taskToEdit]);
 
-  // Mantiene errores por campo para mapearlos al contrato de FormInput/FormTextarea.
   const [errors, setErrors] = useState<Partial<Record<UpcomingTaskField, string>>>({});
-
-  // Controla el estado de envío para bloquear doble submit.
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Expone error de campo compatible con los componentes de formulario del proyecto.
   const getError = (field: UpcomingTaskField): FormFieldError | undefined => {
     const message = errors[field];
     return message ? { message } : undefined;
   };
 
-  // Limpia error puntual cuando el usuario corrige un campo.
   const clearFieldError = (field: UpcomingTaskField) => {
     setErrors((prev) => {
-      if (!(field in prev)) {
-        return prev;
-      }
+      if (!(field in prev)) return prev;
       const next = { ...prev };
       delete next[field];
       return next;
     });
   };
 
-  // Ejecuta validación Zod completa y genera errores por campo.
   const validateForm = (values: UpcomingTaskFormValues) => {
     const parsed = UpcomingTaskFormSchema.safeParse(values);
     if (parsed.success) {
       setErrors({});
       return true;
     }
-
     const nextErrors: Partial<Record<UpcomingTaskField, string>> = {};
     parsed.error.issues.forEach((issue) => {
       const field = issue.path[0] as UpcomingTaskField;
-      if (!field || nextErrors[field]) {
-        return;
-      }
+      if (!field || nextErrors[field]) return;
       nextErrors[field] = issue.message;
     });
-
     setErrors(nextErrors);
     return false;
   };
 
-  // Inicializa TanStack Form y centraliza el flujo de guardar/actualizar.
   const form = useForm({
     defaultValues: emptyValues,
     onSubmit: async ({ value }) => {
-      if (!validateForm(value)) {
-        return;
-      }
+      if (!validateForm(value)) return;
 
-      const payload = {
-        title: value.title.trim(),
-        shortDescription: value.shortDescription.trim(),
-        comments: value.comments?.trim() || undefined,
-        dueDate: normalizeDate(value.dueDate),
-      };
+      // Construye el payload con las ISO correctas según el modo del evento.
+      const payload = value.allDay
+        ? {
+            title: value.title.trim(),
+            shortDescription: value.shortDescription.trim(),
+            comments: value.comments?.trim() || undefined,
+            allDay: true as const,
+            startDate: toStartOfDayIso(value.startDate),
+            endDate: toEndOfDayIso(value.endDate),
+          }
+        : {
+            title: value.title.trim(),
+            shortDescription: value.shortDescription.trim(),
+            comments: value.comments?.trim() || undefined,
+            allDay: false as const,
+            startDate: toTimedIso(value.date, value.startTime),
+            endDate: toTimedIso(value.date, value.endTime),
+          };
 
       if (isEditing && taskToEdit) {
-        updateTask({
-          id: taskToEdit.id,
-          ...payload,
-        });
+        updateTask({ id: taskToEdit.id, ...payload });
         form.reset(editValues);
         onSuccess();
         return;
@@ -142,31 +189,58 @@ export function useUpcomingTaskForm({
     },
   });
 
-  // Replica sincronización de modo edición cuando cambia la tarea seleccionada.
-  useEffect(() => {
-    if (!isEditing) {
-      return;
+  // Alterna entre modo todo-el-día y modo con hora, convirtiendo los valores actuales.
+  const handleAllDayToggle = (nextAllDay: boolean) => {
+    const values = form.state.values;
+    form.setFieldValue("allDay", nextAllDay);
+
+    if (nextAllDay) {
+      // Toma la fecha seleccionada en modo hora como punto de partida.
+      const dateStr = values.date || dateToInputDate(new Date());
+      form.setFieldValue("startDate", dateStr);
+      form.setFieldValue("endDate", dateStr);
+      form.setFieldValue("date", "");
+      form.setFieldValue("startTime", "");
+      form.setFieldValue("endTime", "");
+    } else {
+      // Toma la fecha de inicio del modo todo-el-día como punto de partida.
+      const dateStr = values.startDate || dateToInputDate(new Date());
+      const now = new Date();
+      form.setFieldValue("date", dateStr);
+      form.setFieldValue("startTime", dateToInputTime(now));
+      form.setFieldValue("endTime", dateToInputTime(new Date(now.getTime() + 3600000)));
+      form.setFieldValue("startDate", "");
+      form.setFieldValue("endDate", "");
     }
+
+    // Limpia errores de todos los campos de fecha/hora al cambiar de modo.
+    setErrors((prev) => {
+      const next = { ...prev };
+      delete next.startDate;
+      delete next.endDate;
+      delete next.date;
+      delete next.startTime;
+      delete next.endTime;
+      return next;
+    });
+  };
+
+  useEffect(() => {
+    if (!isEditing) return;
     form.reset(editValues);
     setErrors({});
   }, [editValues, form, isEditing]);
 
-  // Replica limpieza al abrir diálogo en modo creación.
   useEffect(() => {
-    if (isEditing || !dialogOpen) {
-      return;
-    }
+    if (isEditing || !dialogOpen) return;
     form.reset(emptyValues);
     setErrors({});
   }, [dialogOpen, emptyValues, form, isEditing]);
 
-  // Encapsula submit DOM para delegarlo en TanStack Form.
   const handleFormSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     event.stopPropagation();
-    if (isSubmitting) {
-      return;
-    }
+    if (isSubmitting) return;
     setIsSubmitting(true);
     try {
       await Promise.resolve(form.handleSubmit());
@@ -175,7 +249,6 @@ export function useUpcomingTaskForm({
     }
   };
 
-  // Limpia formulario según contexto y desplaza la vista al inicio suavemente.
   const handleClear = () => {
     form.reset(isEditing ? editValues : emptyValues);
     setErrors({});
@@ -184,10 +257,8 @@ export function useUpcomingTaskForm({
     }
   };
 
-  // Estado de bloqueo visual para controles y botón submit.
   const isPending = isSubmitting || form.state.isSubmitting;
 
-  // Contrato público del hook para mantener el componente enfocado en presentación.
   return {
     form,
     isPending,
@@ -196,5 +267,6 @@ export function useUpcomingTaskForm({
     clearFieldError,
     handleFormSubmit,
     handleClear,
+    handleAllDayToggle,
   };
 }

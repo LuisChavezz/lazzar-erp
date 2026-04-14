@@ -4,6 +4,7 @@
  * Consume el mapa `sizeQuantitiesPerProduct` y expone inputs numéricos por talla.
  */
 import { memo } from "react";
+import { ChevronDownIcon } from "@/src/components/Icons";
 import type { CatalogRow } from "../types";
 import type { Size } from "../../sizes/interfaces/size.interface";
 
@@ -85,22 +86,12 @@ export const StepSizes = memo(function StepSizes({
                         {totalQty} pzas
                       </span>
                     ) : null}
-                    <svg
+                    <ChevronDownIcon
                       className={`w-4 h-4 text-slate-400 transition-transform duration-200 shrink-0 ${
                         isOpen ? "rotate-180" : ""
                       }`}
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
                       aria-hidden="true"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M19 9l-7 7-7-7"
-                      />
-                    </svg>
+                    />
                   </div>
                 </button>
 

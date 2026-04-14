@@ -1,8 +1,10 @@
 "use client";
 
+import { useStore } from "@tanstack/react-form";
 import { FormInput } from "../../../components/FormInput";
 import { FormTextarea } from "../../../components/FormTextarea";
 import { FormCancelButton, FormSubmitButton } from "../../../components/FormButtons";
+import { FormToggle } from "../../../components/FormToggle";
 import { ClockIcon } from "../../../components/Icons";
 import { UpcomingTask } from "../interfaces/upcoming-task.interface";
 import { useUpcomingTaskForm } from "../hooks/useUpcomingTaskForm";
@@ -28,7 +30,11 @@ export default function UpcomingTaskForm({
     clearFieldError,
     handleFormSubmit,
     handleClear,
+    handleAllDayToggle,
   } = useUpcomingTaskForm({ onSuccess, taskToEdit, defaultCalendarDate, dialogOpen });
+
+  // Suscripción reactiva al valor de allDay para alternar los campos de fecha/hora.
+  const isAllDay = useStore(form.baseStore, (s) => s.values.allDay);
 
   return (
     <form onSubmit={handleFormSubmit} className="w-full">
@@ -107,25 +113,135 @@ export default function UpcomingTaskForm({
                 )}
               </form.Field>
 
-              <form.Field name="dueDate">
-                {(field) => (
-                  <div className="md:col-span-2">
-                    <FormInput
-                      label="Fecha y hora (GMT-6)"
-                      type="datetime-local"
-                      className="dark:scheme-dark"
+              {/* Toggle: determina si el evento ocupa todo el día o tiene hora específica */}
+              <div className="md:col-span-2">
+                <form.Field name="allDay">
+                  {(field) => (
+                    <FormToggle
                       name={field.name}
-                      value={field.state.value}
-                      onChange={(event) => {
-                        field.handleChange(event.target.value);
-                        clearFieldError("dueDate");
-                      }}
-                      onBlur={field.handleBlur}
-                      error={getError("dueDate")}
+                      checked={field.state.value}
+                      onChange={(e) => handleAllDayToggle(e.target.checked)}
+                      label="Programación"
+                      description="Evento de todo el día"
                     />
-                  </div>
-                )}
-              </form.Field>
+                  )}
+                </form.Field>
+              </div>
+
+              {isAllDay ? (
+                // Modo todo el día: dos selectores de fecha (inicio y fin), sin hora.
+                // La hora se asigna automáticamente: 00:00:00 y 23:59:59 en GMT-6.
+                <>
+                  <form.Field name="startDate">
+                    {(field) => (
+                      <div>
+                        <FormInput
+                          label="Fecha de inicio"
+                          type="date"
+                          className="dark:scheme-dark cursor-pointer"
+                          onClick={(e) => { try { e.currentTarget.showPicker?.(); } catch { /* noop */ } }}
+                          name={field.name}
+                          value={field.state.value}
+                          onChange={(event) => {
+                            field.handleChange(event.target.value);
+                            clearFieldError("startDate");
+                          }}
+                          onBlur={field.handleBlur}
+                          error={getError("startDate")}
+                        />
+                      </div>
+                    )}
+                  </form.Field>
+
+                  <form.Field name="endDate">
+                    {(field) => (
+                      <div>
+                        <FormInput
+                          label="Fecha de fin"
+                          type="date"
+                          className="dark:scheme-dark cursor-pointer"
+                          onClick={(e) => { try { e.currentTarget.showPicker?.(); } catch { /* noop */ } }}
+                          name={field.name}
+                          value={field.state.value}
+                          onChange={(event) => {
+                            field.handleChange(event.target.value);
+                            clearFieldError("endDate");
+                          }}
+                          onBlur={field.handleBlur}
+                          error={getError("endDate")}
+                        />
+                      </div>
+                    )}
+                  </form.Field>
+                </>
+              ) : (
+                // Modo con hora: un selector de fecha y dos de hora (inicio y fin).
+                // La fecha de inicio y fin es la misma; solo varía la hora.
+                <>
+                  <form.Field name="date">
+                    {(field) => (
+                      <div className="md:col-span-2">
+                        <FormInput
+                          label="Fecha (GMT-6)"
+                          type="date"
+                          className="dark:scheme-dark cursor-pointer"
+                          onClick={(e) => { try { e.currentTarget.showPicker?.(); } catch { /* noop */ } }}
+                          name={field.name}
+                          value={field.state.value}
+                          onChange={(event) => {
+                            field.handleChange(event.target.value);
+                            clearFieldError("date");
+                          }}
+                          onBlur={field.handleBlur}
+                          error={getError("date")}
+                        />
+                      </div>
+                    )}
+                  </form.Field>
+
+                  <form.Field name="startTime">
+                    {(field) => (
+                      <div>
+                        <FormInput
+                          label="Hora de inicio (GMT-6)"
+                          type="time"
+                          className="dark:scheme-dark cursor-pointer"
+                          onClick={(e) => { try { e.currentTarget.showPicker?.(); } catch { /* noop */ } }}
+                          name={field.name}
+                          value={field.state.value}
+                          onChange={(event) => {
+                            field.handleChange(event.target.value);
+                            clearFieldError("startTime");
+                          }}
+                          onBlur={field.handleBlur}
+                          error={getError("startTime")}
+                        />
+                      </div>
+                    )}
+                  </form.Field>
+
+                  <form.Field name="endTime">
+                    {(field) => (
+                      <div>
+                        <FormInput
+                          label="Hora de fin (GMT-6)"
+                          type="time"
+                          className="dark:scheme-dark cursor-pointer"
+                          onClick={(e) => { try { e.currentTarget.showPicker?.(); } catch { /* noop */ } }}
+                          name={field.name}
+                          value={field.state.value}
+                          onChange={(event) => {
+                            field.handleChange(event.target.value);
+                            clearFieldError("endTime");
+                          }}
+                          onBlur={field.handleBlur}
+                          error={getError("endTime")}
+                        />
+                      </div>
+                    )}
+                  </form.Field>
+                </>
+              )}
             </div>
           </div>
         </section>

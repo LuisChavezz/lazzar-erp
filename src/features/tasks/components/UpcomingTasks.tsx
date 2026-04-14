@@ -55,7 +55,7 @@ export const UpcomingTasks = ({
     const now = new Date();
     const filteredTasks = tasks
       .map((task) => {
-        const parsed = parseISO(task.dueDate);
+        const parsed = parseISO(task.startDate);
         return { task, parsed };
       })
       .filter((item) => {
@@ -106,7 +106,7 @@ export const UpcomingTasks = ({
                 />
                 <div className="flex flex-col">
                   <span className={`text-xs font-semibold mb-0.5 ${styles.accentClassName}`}>
-                    {formatTaskTime(parsed)}
+                    {formatTaskTime(parsed, { allDay: task.allDay })}
                   </span>
                   <h4 className={`text-sm transition-colors cursor-pointer ${styles.titleClassName}`}>
                     {task.title}

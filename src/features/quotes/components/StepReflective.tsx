@@ -10,7 +10,7 @@
  */
 import { memo, useEffect, useRef, useState } from "react";
 import Image from "next/image";
-import { DeleteIcon, EyeIcon } from "@/src/components/Icons";
+import { CheckIcon, ChevronRightIcon, DeleteIcon, EyeIcon } from "@/src/components/Icons";
 import {
   createReflectiveConfigForm,
   type ReflectiveConfigFieldErrors,
@@ -334,18 +334,7 @@ export const StepReflective = memo(function StepReflective({
                         </span>
                         {isSelected && (
                           <span className="absolute top-3 right-3 w-4 h-4 rounded-full bg-sky-500 flex items-center justify-center">
-                            <svg
-                              className="w-2.5 h-2.5"
-                              fill="none"
-                              viewBox="0 0 10 10"
-                              stroke="white"
-                              strokeWidth="2"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              aria-hidden="true"
-                            >
-                              <path d="M2 5l2 2 4-4" />
-                            </svg>
+                            <CheckIcon className="h-2.5 w-2.5 text-white" aria-hidden="true" />
                           </span>
                         )}
                       </button>
@@ -424,7 +413,7 @@ export const StepReflective = memo(function StepReflective({
                           className="w-full flex items-center gap-3 px-4 py-3 text-left cursor-pointer"
                         >
                           {/* Chevron */}
-                          <svg
+                          <ChevronRightIcon
                             className={`w-3.5 h-3.5 shrink-0 transition-transform duration-200 ${
                               isCatOpen ? "rotate-90" : "rotate-0"
                             } ${
@@ -432,16 +421,8 @@ export const StepReflective = memo(function StepReflective({
                                 ? "text-sky-500 dark:text-sky-400"
                                 : "text-slate-400 dark:text-slate-500"
                             }`}
-                            fill="none"
-                            viewBox="0 0 6 10"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
                             aria-hidden="true"
-                          >
-                            <path d="M1 1l4 4-4 4" />
-                          </svg>
+                          />
 
                           {/* Título + subtítulo + badge */}
                           <div className="flex-1 min-w-0">

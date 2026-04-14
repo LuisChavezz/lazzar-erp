@@ -3,5 +3,7 @@ export interface UpcomingTask {
   title: string;
   shortDescription: string;
   comments?: string;
-  dueDate: string;
+  allDay: boolean;
+  startDate: string;
+  endDate: string;
 }
