@@ -57,6 +57,7 @@ const buildInitialEmbroiderySpecs = (
     ancho: spec.ancho && spec.ancho > 0 ? String(spec.ancho) : "",
     alto: spec.alto && spec.alto > 0 ? String(spec.alto) : "",
     colorHilo: spec.colorHilo ?? "",
+    pantones: spec.pantones ?? "",
     imagen: spec.imagen ?? "",
     nuevoPonchado: spec.nuevoPonchado ?? false,
     serigrafia: spec.serigrafia ?? false,
@@ -97,6 +98,7 @@ export function useEmbroideryState(initialItem?: QuoteItem | null) {
         ancho: "",
         alto: "",
         colorHilo: "",
+        pantones: "",
         imagen: "",
         nuevoPonchado: false,
         serigrafia: false,
@@ -120,7 +122,7 @@ export function useEmbroideryState(initialItem?: QuoteItem | null) {
   const updateEmbroiderySpec = useCallback(
     (
       id: string,
-      field: "posicionCodigo" | "ancho" | "alto" | "colorHilo" | "imagen",
+      field: "posicionCodigo" | "ancho" | "alto" | "colorHilo" | "pantones" | "imagen",
       value: string
     ) => {
       setEmbroiderySpecs((prev) =>
@@ -225,6 +227,7 @@ export function useEmbroideryState(initialItem?: QuoteItem | null) {
         ancho: spec.ancho.trim() ? Math.max(0, Number(spec.ancho) || 0) : undefined,
         alto: spec.alto.trim() ? Math.max(0, Number(spec.alto) || 0) : undefined,
         colorHilo: spec.colorHilo.trim(),
+        pantones: spec.pantones.trim(),
         imagen: spec.imagen.trim(),
         nuevoPonchado: spec.nuevoPonchado,
         serigrafia: spec.serigrafia,

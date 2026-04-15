@@ -5,12 +5,13 @@ import type { FormFieldError } from "../utils/getFieldError";
 interface FormInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label?: string;
   error?: FormFieldError;
-  variant?: "default" | "ghost" | "ghostSearch";
+  variant?: "default" | "ghost" | "ghostSearch" | "compact";
   forceUppercase?: boolean;
+  leading?: React.ReactNode;
 }
 
 export const FormInput = forwardRef<HTMLInputElement, FormInputProps>(
-  ({ label, error, className = "", variant = "default", forceUppercase = true, onChange, ...props }, ref) => {
+  ({ label, error, className = "", variant = "default", forceUppercase = true, leading, onChange, ...props }, ref) => {
     const inputId =
       props.id ?? (typeof props.name === "string" ? props.name : undefined);
 
@@ -48,6 +49,17 @@ export const FormInput = forwardRef<HTMLInputElement, FormInputProps>(
         [--input-current-color:var(--color-slate-900)] 
         dark:[--input-current-color:white]
         ${error ? "border-red-500 focus:border-red-500" : ""}
+      `,
+      compact: `
+        bg-transparent
+        border border-slate-300 dark:border-slate-700
+        rounded-md py-1.5 text-xs font-medium
+        text-slate-700 dark:text-slate-200
+        focus:ring-1 focus:ring-sky-500
+        focus:border-sky-500
+        [--input-current-color:var(--color-slate-700)]
+        dark:[--input-current-color:var(--color-slate-200)]
+        ${error ? "border-rose-400 dark:border-rose-500" : ""}
       `
     };
 
@@ -61,13 +73,19 @@ export const FormInput = forwardRef<HTMLInputElement, FormInputProps>(
             {label}
           </label>
         )}
-        <div className={variant === "ghostSearch" ? "relative" : ""}>
+        <div className={variant === "ghostSearch" || !!leading ? "relative" : ""}>
+          {leading && (
+            <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-2 text-xs text-slate-400">
+              {leading}
+            </span>
+          )}
           <input
             ref={ref}
             id={inputId}
             className={`
               ${baseInputStyles}
               ${variants[variant]}
+              ${variant === "compact" ? (leading ? "pl-5 pr-2" : "px-2") : ""}
               ${forceUppercase ? "uppercase" : ""}
               ${className}
             `}
@@ -90,7 +108,7 @@ export const FormInput = forwardRef<HTMLInputElement, FormInputProps>(
           )}
         </div>
         {error && (
-          <p className="text-xs text-red-600 mt-1 font-medium animate-in slide-in-from-top-1 fade-in duration-200">
+          <p className={variant === "compact" ? "text-[10px] text-rose-600 dark:text-rose-400 mt-0.5" : "text-xs text-red-600 mt-1 font-medium animate-in slide-in-from-top-1 fade-in duration-200"}>
             {error.message}
           </p>
         )}

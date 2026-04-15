@@ -50,6 +50,7 @@ export interface EmbroiderySpecForm {
   ancho: string;
   alto: string;
   colorHilo: string;
+  pantones: string;
   imagen: string;
   nuevoPonchado: boolean;
   serigrafia: boolean;

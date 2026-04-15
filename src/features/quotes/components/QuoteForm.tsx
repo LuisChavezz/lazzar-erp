@@ -1357,120 +1357,7 @@ export default function QuoteForm() {
 
       <section className="grid grid-cols-1 lg:grid-cols-4 gap-6 items-start">
         <div className="lg:col-span-1 bg-white dark:bg-zinc-900 rounded-3xl p-6 border border-slate-200 dark:border-white/5 shadow-sm space-y-6">
-          <div className="space-y-3">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-              Servicios Extras
-            </h3>
-            <div className="space-y-3" data-error-anchor="servicios_extras">
-              {extraServices.map((service, index) => {
-                const nombreError = getFieldError(getError(`servicios_extras.${index}.nombre`));
-                const montoError = getFieldError(getError(`servicios_extras.${index}.monto`));
-
-                return (
-                  <div key={service.id} className="space-y-1">
-                    <div className="flex items-start gap-2">
-                      <div className="flex-1 space-y-1">
-                        <input
-                          type="text"
-                          name={`servicios_extras.${index}.nombre`}
-                          placeholder="Nombre del servicio"
-                          value={service.nombre}
-                          onChange={(e) => {
-                            const value = e.target.value;
-                            setExtraServices((prev) =>
-                              prev.map((current) =>
-                                current.id === service.id
-                                  ? { ...current, nombre: value }
-                                  : current
-                              )
-                            );
-                            clearFieldErrors(`servicios_extras.${index}.nombre`);
-                          }}
-                          aria-invalid={Boolean(nombreError)}
-                          className={`w-full bg-transparent border rounded-md px-2 py-1 text-xs text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-sky-500 ${
-                            nombreError
-                              ? "border-rose-400 dark:border-rose-500"
-                              : "border-slate-300 dark:border-slate-700"
-                          }`}
-                        />
-                        {nombreError && (
-                          <p className="text-[10px] text-rose-600 dark:text-rose-400">
-                            {nombreError.message}
-                          </p>
-                        )}
-                      </div>
-                      <div className="shrink-0 space-y-1">
-                        <div className="relative">
-                          <span className="absolute left-2 top-1.5 text-xs text-slate-400">$</span>
-                          <input
-                            type="number"
-                            inputMode="decimal"
-                            name={`servicios_extras.${index}.monto`}
-                            aria-label="Monto del servicio"
-                            step="0.01"
-                            value={service.monto}
-                            onChange={(e) => {
-                              const rawValue = e.target.value;
-                              const nextValue = rawValue === "" ? 0 : Number(rawValue);
-                              setExtraServices((prev) =>
-                                prev.map((current) =>
-                                  current.id === service.id
-                                    ? {
-                                        ...current,
-                                        monto: Number.isNaN(nextValue) ? 0 : nextValue,
-                                      }
-                                    : current
-                                )
-                              );
-                              clearFieldErrors(`servicios_extras.${index}.monto`);
-                            }}
-                            aria-invalid={Boolean(montoError)}
-                            className={`w-24 bg-transparent border rounded-md pl-5 pr-3 py-1 text-xs text-right text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-sky-500 ${
-                              montoError
-                                ? "border-rose-400 dark:border-rose-500"
-                                : "border-slate-300 dark:border-slate-700"
-                            }`}
-                          />
-                        </div>
-                        {montoError && (
-                          <p className="text-[10px] text-rose-600 dark:text-rose-400 text-right">
-                            {montoError.message}
-                          </p>
-                        )}
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setExtraServices((prev) => prev.filter((s) => s.id !== service.id));
-                          clearFieldErrors("servicios_extras");
-                        }}
-                        aria-label="Eliminar servicio"
-                        className="mt-0.5 text-slate-400 hover:text-rose-500 transition-colors cursor-pointer shrink-0"
-                      >
-                        ✕
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-              <button
-                type="button"
-                onClick={() => {
-                  setExtraServices((prev) => [
-                    ...prev,
-                    { id: crypto.randomUUID(), nombre: "", monto: 0 },
-                  ]);
-                  clearFieldErrors("servicios_extras");
-                }}
-                className="inline-flex items-center gap-1.5 text-xs font-semibold text-sky-600 hover:text-sky-700 cursor-pointer transition-colors ease-in-out duration-200"
-              >
-                <PlusIcon className="w-3.5 h-3.5" />
-                Agregar Servicio
-              </button>
-            </div>
-          </div>
-
-          <div className="space-y-4 pt-4 border-t border-slate-200 dark:border-slate-700">
+          <div className="space-y-4">
             <div className="flex flex-col  justify-between text-xs">
               <span className="text-[10px] uppercase font-bold text-slate-400">
                 Documento Relacionado
@@ -1623,6 +1510,137 @@ export default function QuoteForm() {
                     )}
                   </form.Field>
                 </div>
+              </div>
+
+              <hr className="border-slate-200 dark:border-slate-700" />
+
+              <h3 className="text-sm font-semibold text-slate-800 dark:text-white">
+                Servicios Extras
+              </h3>
+              <div className="space-y-3" data-error-anchor="servicios_extras">
+                {extraServices.map((service, index) => {
+                  const nombreError = getFieldError(getError(`servicios_extras.${index}.nombre`));
+                  const montoError = getFieldError(getError(`servicios_extras.${index}.monto`));
+                  const quantityError = getFieldError(getError(`servicios_extras.${index}.quantity`));
+
+                  return (
+                    <div key={service.id} className="flex items-start gap-2">
+                      <div className="min-w-0 flex-1">
+                        <FormInput
+                          variant="compact"
+                          type="text"
+                          name={`servicios_extras.${index}.nombre`}
+                          placeholder="Nombre del servicio"
+                          value={service.nombre}
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            setExtraServices((prev) =>
+                              prev.map((current) =>
+                                current.id === service.id
+                                  ? { ...current, nombre: value }
+                                  : current
+                              )
+                            );
+                            clearFieldErrors(`servicios_extras.${index}.nombre`);
+                          }}
+                          aria-invalid={Boolean(nombreError)}
+                          error={nombreError}
+                          forceUppercase={false}
+                        />
+                      </div>
+                      <div className="shrink-0 w-24">
+                        <FormInput
+                          variant="compact"
+                          type="number"
+                          inputMode="decimal"
+                          name={`servicios_extras.${index}.monto`}
+                          aria-label="Monto del servicio"
+                          step="0.01"
+                          value={service.monto}
+                          onChange={(e) => {
+                            const rawValue = e.target.value;
+                            const nextValue = rawValue === "" ? 0 : Number(rawValue);
+                            setExtraServices((prev) =>
+                              prev.map((current) =>
+                                current.id === service.id
+                                  ? {
+                                      ...current,
+                                      monto: Number.isNaN(nextValue) ? 0 : nextValue,
+                                    }
+                                  : current
+                              )
+                            );
+                            clearFieldErrors(`servicios_extras.${index}.monto`);
+                          }}
+                          aria-invalid={Boolean(montoError)}
+                          error={montoError}
+                          forceUppercase={false}
+                          leading="$"
+                          className="text-right"
+                        />
+                      </div>
+                      <div className="shrink-0 w-16">
+                        <FormInput
+                          variant="compact"
+                          type="number"
+                          inputMode="numeric"
+                          min={1}
+                          step={1}
+                          name={`servicios_extras.${index}.quantity`}
+                          aria-label="Cantidad del servicio"
+                          placeholder="Cant."
+                          value={service.quantity}
+                          onChange={(e) => {
+                            const rawValue = e.target.value;
+                            const nextValue = rawValue === "" ? 0 : Number(rawValue);
+                            setExtraServices((prev) =>
+                              prev.map((current) =>
+                                current.id === service.id
+                                  ? {
+                                      ...current,
+                                      quantity: Number.isNaN(nextValue)
+                                        ? 0
+                                        : Math.trunc(nextValue),
+                                    }
+                                  : current
+                              )
+                            );
+                            clearFieldErrors(`servicios_extras.${index}.quantity`);
+                          }}
+                          aria-invalid={Boolean(quantityError)}
+                          error={quantityError}
+                          forceUppercase={false}
+                          className="text-right"
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setExtraServices((prev) => prev.filter((s) => s.id !== service.id));
+                          clearFieldErrors("servicios_extras");
+                        }}
+                        aria-label="Eliminar servicio"
+                        className="mt-0.5 text-slate-400 hover:text-rose-500 transition-colors cursor-pointer shrink-0"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  );
+                })}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setExtraServices((prev) => [
+                      ...prev,
+                      { id: crypto.randomUUID(), nombre: "", monto: 0, quantity: 1 },
+                    ]);
+                    clearFieldErrors("servicios_extras");
+                  }}
+                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-sky-600 hover:text-sky-700 cursor-pointer transition-colors ease-in-out duration-200"
+                >
+                  <PlusIcon className="w-3.5 h-3.5" />
+                  Agregar Servicio
+                </button>
               </div>
             </div>
 

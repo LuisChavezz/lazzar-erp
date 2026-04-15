@@ -182,11 +182,11 @@ export function EmbroideryImageSelector({
           <button
             type="button"
             onClick={handleOpenGallery}
-            className="group flex flex-col items-center justify-center gap-2 px-3 py-5 rounded-2xl border border-dashed border-slate-300 dark:border-white/10 bg-white/60 dark:bg-white/5 hover:bg-violet-50/60 dark:hover:bg-violet-500/5 hover:border-violet-400 dark:hover:border-violet-500/40 transition-all duration-200 cursor-pointer"
+            className="group flex flex-col items-center justify-center gap-2 px-3 py-5 rounded-2xl border border-dashed border-slate-300 dark:border-white/10 bg-white/60 dark:bg-white/5 hover:bg-sky-50/60 dark:hover:bg-sky-500/5 hover:border-sky-400 dark:hover:border-sky-500/40 transition-all duration-200 cursor-pointer"
             aria-label="Seleccionar imagen de la galería del servidor"
           >
-            <PhotoIcon className="w-5 h-5 text-slate-400 dark:text-slate-500 group-hover:text-violet-500 transition-colors" />
-            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 group-hover:text-violet-600 dark:group-hover:text-violet-400 transition-colors">
+            <PhotoIcon className="w-5 h-5 text-slate-400 dark:text-slate-500 group-hover:text-sky-500 transition-colors" />
+            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 group-hover:text-sky-600 dark:group-hover:text-sky-400 transition-colors">
               Galería del servidor
             </span>
           </button>

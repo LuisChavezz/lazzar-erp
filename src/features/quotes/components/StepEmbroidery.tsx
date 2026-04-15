@@ -9,7 +9,7 @@ import Image from "next/image";
 import toast from "react-hot-toast";
 import { FormInput } from "@/src/components/FormInput";
 import { FormSelect } from "@/src/components/FormSelect";
-import { DeleteIcon, EyeIcon } from "@/src/components/Icons";
+import { ChevronDownIcon, ChevronUpIcon, DeleteIcon, EyeIcon } from "@/src/components/Icons";
 import type { EmbroiderySpecBooleanField, EmbroiderySpecErrorsById, EmbroiderySpecForm } from "../types";
 import { useFetchEmbroideryImages } from "../hooks/useFetchEmbroideryImages";
 import { EmbroideryImageSelector } from "./EmbroideryImageSelector";
@@ -44,7 +44,7 @@ interface StepEmbroideryProps {
   onRemoveSpec: (id: string) => void;
   onUpdateSpec: (
     id: string,
-    field: "posicionCodigo" | "ancho" | "alto" | "colorHilo" | "imagen",
+    field: "posicionCodigo" | "ancho" | "alto" | "colorHilo" | "pantones" | "imagen",
     value: string
   ) => void;
   onToggleSpecBoolean: (
@@ -56,7 +56,6 @@ interface StepEmbroideryProps {
   specErrors: EmbroiderySpecErrorsById;
   positionOptions: { codigo: string; nombre: string }[];
   positionMap: Map<string, string>;
-  threadColorOptions: string[];
 }
 
 /**
@@ -76,13 +75,27 @@ export const StepEmbroidery = memo(function StepEmbroidery({
   specErrors,
   positionOptions,
   positionMap,
-  threadColorOptions,
 }: StepEmbroideryProps) {
   /**
    * IDs de especificaciones cuya imagen fue bloqueada via CARGA al servidor.
    * La selección desde galería NO bloquea — solo la subida de archivo.
    */
   const [uploadLockedIds, setUploadLockedIds] = useState<Set<string>>(() => new Set());
+
+  /** IDs de specs donde el usuario expandió la imagen de referencia de colores de hilo. */
+  const [showHiloIds, setShowHiloIds] = useState<Set<string>>(() => new Set());
+
+  const toggleHiloImage = useCallback((specId: string) => {
+    setShowHiloIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(specId)) {
+        next.delete(specId);
+      } else {
+        next.add(specId);
+      }
+      return next;
+    });
+  }, []);
 
   /* ── Galería de imágenes (hook único para todas las specs) ───── */
   const { data: session } = useSession();
@@ -190,7 +203,7 @@ export const StepEmbroidery = memo(function StepEmbroidery({
           <button
             type="button"
             onClick={onAddSpec}
-            className="inline-flex items-center gap-1 text-xs cursor-pointer font-semibold text-sky-600 hover:text-sky-700"
+            className="inline-flex items-center gap-1 text-xs cursor-pointer font-semibold text-sky-600 hover:text-sky-700 transition-colors ease-in-out"
             aria-label="Agregar especificación por ubicación"
           >
             + Agregar
@@ -302,22 +315,79 @@ export const StepEmbroidery = memo(function StepEmbroidery({
                       </p>
                     )}
                   </div>
-                  <div className="space-y-1 sm:col-span-3">
-                    <FormSelect
-                      label="Color de hilo (opcional)"
+                  {/* ── Color de hilo: visible para todos los servicios EXCEPTO DTF y Serigrafía ── */}
+                  {!spec.dtf && !spec.serigrafia && (
+                  <div className="space-y-2 sm:col-span-3">
+                    {/* Label + botón de referencia de colores */}
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+                        Color de hilo (opcional)
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => toggleHiloImage(spec.id)}
+                        className="inline-flex items-center gap-1 text-[10px] font-semibold text-sky-600 hover:text-sky-700 dark:hover:text-sky-500 transition-colors cursor-pointer"
+                        aria-label={showHiloIds.has(spec.id) ? "Ocultar referencia de colores" : "Ver referencia de colores"}
+                      >
+                        {showHiloIds.has(spec.id) ? (
+                          <>
+                            <ChevronUpIcon className="w-3 h-3" />
+                            Ocultar referencia
+                          </>
+                        ) : (
+                          <>
+                            <ChevronDownIcon className="w-3 h-3" />
+                            Ver referencia
+                          </>
+                        )}
+                      </button>
+                    </div>
+
+                    {/* Imagen de referencia de colores — expandible */}
+                    {showHiloIds.has(spec.id) && (
+                      <div className="rounded-xl overflow-hidden border border-slate-200 dark:border-white/10 bg-white dark:bg-black/20">
+                        <Image
+                          src="/images/hilo.png"
+                          alt="Carta de colores de hilo"
+                          width={800}
+                          height={400}
+                          className="w-full h-auto object-contain"
+                          quality={85}
+                        />
+                      </div>
+                    )}
+
+                    <FormInput
+                      label=""
+                      type="text"
+                      placeholder="Ej: Rojo, Azul marino, 3865 blanco"
                       value={spec.colorHilo}
                       onChange={(event) =>
                         onUpdateSpec(spec.id, "colorHilo", event.target.value)
                       }
-                      options={[
-                        { value: "", label: "Seleccionar..." },
-                        ...threadColorOptions.map((code) => ({
-                          value: code,
-                          label: code,
-                        })),
-                      ]}
+                      forceUppercase={false}
                     />
                   </div>
+                  )}
+
+                  {/* ── Pantones: visible solo para DTF y Serigrafía ── */}
+                  {(spec.dtf || spec.serigrafia) && (
+                  <div className="space-y-2 sm:col-span-3">
+                    <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+                      Pantones (opcional)
+                    </span>
+                    <FormInput
+                      label=""
+                      type="text"
+                      placeholder="Ej: 485C, 286C, Negro"
+                      value={spec.pantones}
+                      onChange={(event) =>
+                        onUpdateSpec(spec.id, "pantones", event.target.value)
+                      }
+                      forceUppercase={false}
+                    />
+                  </div>
+                  )}
                   <div className="sm:col-span-3 space-y-3">
                     <p className="text-xs font-bold uppercase tracking-wider text-slate-400 mt-1">
                       Servicios

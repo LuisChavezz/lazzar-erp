@@ -35,6 +35,7 @@ export interface QuoteItem {
       ancho?: number;
       alto?: number;
       colorHilo?: string;
+      pantones?: string;
       imagen: string;
       nuevoPonchado: boolean;
       serigrafia: boolean;
@@ -51,7 +52,8 @@ export interface QuoteItem {
       posicion: string;
       tipo: string;
     }[];
-  }
+  };
+  lleva_corte_manga?: boolean;
 }
 
 export interface Quote {
@@ -178,6 +180,7 @@ export interface QuoteById {
     id: number;
     nombre: string;
     monto: string;
+    quantity: number;
     cotizacion: number;
     visible_en_factura: boolean;
     created_at: string;
@@ -277,6 +280,7 @@ interface QuoteDetail {
         ancho_cm: number;
         alto_cm: number;
         color_hilo: string | null;
+        pantones: string | null;
         imagen: string;
         nuevo_ponchado: boolean;
         serigrafia: boolean;
@@ -286,12 +290,23 @@ interface QuoteDetail {
       }[];
       notas: string;
     };
+    lleva_reflejante: boolean;
+    reflejante_config: {
+      opcion: string;
+      posicion: string;
+      tipo: string;
+    }[];
+    lleva_corte_manga: boolean;
+    corte_manga_config: {
+      tipo: string;
+    } | null;
   }[];
 }
 
 interface QuoteExtraService {
   nombre: string;
   monto: string;
+  quantity: number;
 }
 
 export interface QuoteOnboardingData {

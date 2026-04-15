@@ -35,6 +35,7 @@ export interface ExtraService {
   id: string;
   nombre: string;
   monto: number;
+  quantity: number;
 }
 
 // Catálogos estáticos usados para renderizar selects y normalizar valores de entrada.
@@ -365,7 +366,7 @@ export function useQuoteForm() {
       const serigrafia = parsed.data.serigrafiaActivo ? parsed.data.serigrafia : 0;
       const reflejante = parsed.data.reflejanteActivo ? parsed.data.reflejante : 0;
       const extraServicesTotal = parsed.data.servicios_extras.reduce(
-        (sum, service) => sum + service.monto,
+        (sum, service) => sum + service.monto * service.quantity,
         0
       );
       const extras =
@@ -414,6 +415,7 @@ export function useQuoteForm() {
                   ancho_cm: Math.max(0, Number(spec.ancho) || 0),
                   alto_cm: Math.max(0, Number(spec.alto) || 0),
                   color_hilo: spec.colorHilo ?? null,
+                  pantones: spec.pantones ?? null,
                   imagen: spec.imagen,
                   nuevo_ponchado: spec.nuevoPonchado,
                   serigrafia: spec.serigrafia,
@@ -427,6 +429,17 @@ export function useQuoteForm() {
               ubicaciones: [],
               notas: "",
             };
+        const llevaReflejante = Boolean(item.reflejantes?.activo);
+        const reflejanteConfig =
+          llevaReflejante
+            ? item.reflejantes?.especificaciones?.map((spec) => ({
+              opcion: spec.opcion,
+              posicion: spec.posicion,
+              tipo: spec.tipo,
+            })) ?? []
+            : [];
+        const llevaCorteManga = Boolean(item.lleva_corte_manga);
+        const corteMangaConfig = llevaCorteManga ? { tipo: "1" } : null;
         return {
           producto: item.productoId,
           precio_unitario: String(Number(item.precio).toFixed(2)),
@@ -436,6 +449,10 @@ export function useQuoteForm() {
               cantidad: Math.max(0, Number(t.cantidad) || 0),
               lleva_bordado: llevaBordado,
               bordado_config: bordadoConfig,
+              lleva_reflejante: llevaReflejante,
+              reflejante_config: reflejanteConfig,
+              lleva_corte_manga: llevaCorteManga,
+              corte_manga_config: corteMangaConfig,
             })) ?? [],
         };
       });
@@ -512,6 +529,7 @@ export function useQuoteForm() {
         servicios_extras: parsed.data.servicios_extras.map((service) => ({
           nombre: service.nombre,
           monto: String(service.monto.toFixed(2)),
+          quantity: service.quantity,
         })),
       };
       await createQuoteMutation(quoteCreatePayload);
@@ -661,7 +679,7 @@ export function useQuoteForm() {
     const serigrafiaTotal = values.serigrafiaActivo ? Number(values.serigrafia) || 0 : 0;
     const reflejanteTotal = values.reflejanteActivo ? Number(values.reflejante) || 0 : 0;
     const extraServicesTotal = extraServices.reduce(
-      (sum, service) => sum + (Number(service.monto) || 0),
+      (sum, service) => sum + (Number(service.monto) || 0) * (Number(service.quantity) || 0),
       0
     );
     const extras =

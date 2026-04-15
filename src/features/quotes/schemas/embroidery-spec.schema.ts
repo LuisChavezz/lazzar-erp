@@ -21,6 +21,7 @@ export const embroiderySpecSchema = z.object({
     .gt(0, "Debe ser positivo")
     .optional(),
   colorHilo: z.string().optional(),
+  pantones: z.string().optional(),
   imagen: imageUrlSchema,
   nuevoPonchado: z.boolean(),
   serigrafia: z.boolean(),

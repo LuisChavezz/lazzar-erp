@@ -11,7 +11,7 @@
  * (`onStepNext`, `onStepBack`), `onSaveItem` y props específicas para cada step
  * que son consumidas por la vista presentacional.
  */
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { POSITION_OPTIONS, THREAD_COLOR_OPTIONS, type AddProductDialogProps, type QuoteItem, type Step } from "../types";
 import { useEmbroideryState } from "./useEmbroideryState";
 import { useProductSelection } from "./useProductSelection";
@@ -57,7 +57,7 @@ export function useAddProductDialogState({
 }: AddProductDialogProps) {
   const isEditing = Boolean(onUpdateItem && initialItem);
   const [step, setStep] = useState<Step>(startStep);
-  const [hasSleevecut, setHasSleevecut] = useState(false);
+  const [hasSleevecut, setHasSleevecut] = useState(Boolean(initialItem?.lleva_corte_manga));
 
   const productSelection = useProductSelection({ products, initialItem });
   const sizesState = useSizesState({ initialItem });
@@ -75,6 +75,14 @@ export function useAddProductDialogState({
     steps.push("sizes");
     return steps;
   }, [embroideryState.hasEmbroidery, reflectiveState.hasReflective]);
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    setHasSleevecut(Boolean(initialItem?.lleva_corte_manga));
+  }, [initialItem?.lleva_corte_manga, open]);
 
   const handleOpenChange = useCallback((nextOpen: boolean) => {
     if (!nextOpen) {
@@ -179,6 +187,7 @@ export function useAddProductDialogState({
         precio: initialItem.precio ?? row.precio,
         descuento: initialItem.descuento ?? 0,
         importe: 0,
+        lleva_corte_manga: hasSleevecut,
         tallas: itemSizes.map((size) => ({
           tallaId: size.id,
           nombre: size.nombre,
@@ -203,6 +212,7 @@ export function useAddProductDialogState({
         precio: row.precio,
         descuento: 0,
         importe: 0,
+        lleva_corte_manga: hasSleevecut,
         tallas: itemSizes.map((size) => ({
           tallaId: size.id,
           nombre: size.nombre,
@@ -289,7 +299,6 @@ export function useAddProductDialogState({
       specErrors: embroideryState.specErrors,
       positionOptions: POSITION_OPTIONS,
       positionMap: embroideryState.positionMap,
-      threadColorOptions: [...THREAD_COLOR_OPTIONS],
     },
     reflectiveStepProps: {
       configs: reflectiveState.configs,

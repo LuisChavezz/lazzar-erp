@@ -31,6 +31,7 @@ export const quoteItemSchema = z
     tallas: z.array(quoteItemSizeSchema).optional(),
     bordados: embroiderySchema.optional(),
     reflejantes: reflectiveSchema.optional(),
+    lleva_corte_manga: z.boolean().optional(),
   })
   .superRefine((data, ctx) => {
     if (!data.bordados?.activo) return;

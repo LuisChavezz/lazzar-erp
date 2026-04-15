@@ -103,6 +103,10 @@ export const quoteExtraServiceSchema = z.object({
   id: z.string().min(1),
   nombre: z.string().trim().min(1, "Requerido"),
   monto: z.coerce.number().positive("Debe ser positivo"),
+  quantity: z.coerce
+    .number()
+    .int("Debe ser un numero entero")
+    .positive("Debe ser mayor a 0"),
 });
 
 export const quoteSubmitSchema = quoteFormSchema.and(
