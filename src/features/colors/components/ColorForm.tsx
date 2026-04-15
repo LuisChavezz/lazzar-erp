@@ -1,5 +1,7 @@
 "use client";
 
+import { ColorPicker, useColor, type IColor } from "react-color-palette";
+
 import { FormInput } from "../../../components/FormInput";
 import { FormCancelButton, FormSubmitButton } from "../../../components/FormButtons";
 import { ColorsIcon } from "../../../components/Icons";
@@ -11,17 +13,42 @@ interface ColorFormProps {
   colorToEdit?: Color | null;
 }
 
+interface ColorPickerFieldProps {
+  initialHex: string;
+  onChange: (hex: string) => void;
+  disabled?: boolean;
+}
+
+function ColorPickerField({ initialHex, onChange, disabled }: ColorPickerFieldProps) {
+  const [color, setColor] = useColor(`#${initialHex}`);
+
+  const handleChangeComplete = (newColor: IColor) => {
+    const hex = newColor.hex.replace("#", "").toUpperCase();
+    onChange(hex);
+  };
+
+  return (
+    <ColorPicker
+      color={color}
+      onChange={setColor}
+      onChangeComplete={handleChangeComplete}
+      hideAlpha
+      hideInput={["rgb", "hsv"]}
+      disabled={disabled}
+    />
+  );
+}
+
 export default function ColorForm({ onSuccess, colorToEdit }: ColorFormProps) {
   const {
     form,
     formRef,
     formKey,
+    pickerKey,
     isPending,
-    selectedHex,
     getError,
     clearFieldErrors,
     validateField,
-    updateHexValue,
     handleReset,
     handleFormSubmit,
   } = useColorForm({
@@ -71,42 +98,23 @@ export default function ColorForm({ onSuccess, colorToEdit }: ColorFormProps) {
                 </form.Field>
               </div>
 
-              <div className="group/field">
+              <div className="group/field md:col-span-2">
                 <form.Field name="codigo_hex">
                   {(field) => (
-                    <FormInput
-                      label="Código HEX"
-                      placeholder="FF0000"
-                      className="font-mono uppercase"
-                      maxLength={6}
-                      name={field.name}
-                      value={field.state.value}
-                      onChange={(event) => {
-                        updateHexValue(event.target.value, field.handleChange);
+                    <ColorPickerField
+                      key={pickerKey}
+                      initialHex={field.state.value}
+                      onChange={(hex) => {
+                        field.handleChange(hex);
+                        clearFieldErrors("codigo_hex");
                       }}
-                      onBlur={() => {
-                        field.handleBlur();
-                        validateField("codigo_hex", field.state.value);
-                      }}
-                      error={getError("codigo_hex")}
+                      disabled={isPending}
                     />
                   )}
                 </form.Field>
-              </div>
-
-              <div className="group/field">
-                <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider ml-1 mb-1 block transition-colors group-focus-within:text-sky-500">
-                  Vista previa
-                </label>
-                <div className="w-full h-12 rounded-xl border border-slate-200 dark:border-slate-700 bg-white/40 dark:bg-black/20 flex items-center px-3 gap-3">
-                  <span
-                    className="w-6 h-6 rounded-full border border-slate-200 dark:border-slate-600"
-                    style={{ backgroundColor: `#${selectedHex}` }}
-                  />
-                  <span className="text-xs font-mono text-slate-500 dark:text-slate-400">
-                    {selectedHex.toUpperCase()}
-                  </span>
-                </div>
+                {getError("codigo_hex") && (
+                  <p className="mt-1 text-xs text-red-500">{getError("codigo_hex")?.message}</p>
+                )}
               </div>
             </div>
           </div>

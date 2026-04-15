@@ -3,6 +3,7 @@ import { Inter, Poppins } from "next/font/google";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../lib/auth";
 import "@radix-ui/themes/styles.css";
+import "react-color-palette/css";
 import "./globals.css";
 import "./styles/fullcalendar.css";
 import { Provider } from "./Provider";

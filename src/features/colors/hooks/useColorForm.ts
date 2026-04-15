@@ -51,8 +51,8 @@ export function useColorForm({ onSuccess, colorToEdit }: UseColorFormParams) {
     [colorToEdit, emptyValues]
   );
 
-  // Mantiene valor para vista previa del color.
-  const [selectedHex, setSelectedHex] = useState(isEditing ? editValues.codigo_hex : emptyValues.codigo_hex);
+  // Clave para forzar remount del picker al resetear manualmente.
+  const [resetCounter, setResetCounter] = useState(0);
 
   // Recibe errores de mutaciones y los asigna al estado de servidor.
   const setHookError = (field: ColorFormField, error: { message?: string }) => {
@@ -164,30 +164,22 @@ export function useColorForm({ onSuccess, colorToEdit }: UseColorFormParams) {
     },
   });
 
-  // Sincroniza valores y vista previa cuando cambia la entidad en edición.
+  // Sincroniza valores cuando cambia la entidad en edición.
   useEffect(() => {
     const nextValues = isEditing ? editValues : emptyValues;
     form.reset(nextValues);
-    setSelectedHex(nextValues.codigo_hex);
   }, [editValues, emptyValues, form, isEditing]);
 
   // Expone estado combinado de carga/mutación.
   const isPending = isCreating || isUpdating || isLoading;
 
-  // Actualiza el valor HEX y la vista previa al escribir.
-  const updateHexValue = (value: string, handleChange: (value: string) => void) => {
-    handleChange(value);
-    setSelectedHex(value);
-    clearFieldErrors("codigo_hex");
-  };
-
-  // Limpia estado y hace scroll superior suave.
+  // Limpia estado, reinicia picker y hace scroll superior suave.
   const handleReset = () => {
     const nextValues = isEditing ? editValues : emptyValues;
     form.reset(nextValues);
     setClientErrors({});
     setServerErrors({});
-    setSelectedHex(nextValues.codigo_hex);
+    setResetCounter((prev) => prev + 1);
     setTimeout(() => {
       formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     }, 0);
@@ -203,17 +195,19 @@ export function useColorForm({ onSuccess, colorToEdit }: UseColorFormParams) {
   // Mantiene key estable para remount entre crear y editar.
   const formKey = isEditing ? `color-edit-${colorToEdit?.id ?? "ready"}` : "color-new";
 
+  // Combina el formKey con el resetCounter para el picker.
+  const pickerKey = `${formKey}-${resetCounter}`;
+
   return {
     form,
     formRef,
     formKey,
+    pickerKey,
     isPending,
     isEditing,
-    selectedHex,
     getError,
     clearFieldErrors,
     validateField,
-    updateHexValue,
     handleReset,
     handleFormSubmit,
   };
