@@ -16,20 +16,26 @@ import {
 } from "../schemas/quote.schema";
 import {
   QuoteCreate,
+  QuoteById,
   QuoteItem,
   QuoteOnboardingData,
   type QuotePaymentCondition,
 } from "../interfaces/quote.interface";
 import { useWorkspaceStore } from "../../workspace/store/workspace.store";
 import { useCreateQuote } from "./useCreateQuote";
-import { useQuoteOnboardingData } from "./useQuoteOnboardingData";
 import { useSatInfo } from "../../sat/hooks/useSatInfo";
+import { POSITION_OPTIONS } from "../types";
 
 type QuoteField = keyof QuoteFormValues;
 type OnboardingCustomer = QuoteOnboardingData["busqueda"]["clientes"][number];
 type ErrorNode = {
   [key: string]: ErrorNode | FormFieldError | ErrorNode[] | undefined;
 };
+
+interface UseQuoteFormOptions {
+  onboardingData: QuoteOnboardingData;
+  quoteToEdit?: QuoteById | null;
+}
 
 export interface ExtraService {
   id: string;
@@ -90,6 +96,11 @@ const DEFAULT_USO_CFDI_VALUE = "G03";
 const DEFAULT_USO_CFDI_LABEL = "G03 - Gastos en general";
 const ORDER_CREATION_EXTRA_DELAY_MS = 1800;
 const ROUTE_SLIDE_TRANSITION_MS = 320;
+const POSITION_NAME_BY_CODE = new Map(
+  POSITION_OPTIONS.map((position) => [position.codigo, position.nombre])
+);
+
+type QuoteFormStatus = QuoteFormValues["estatusPedido"];
 
 // Guards de dominio para asegurar que los valores persistidos siempre coincidan con el esquema actual.
 const mapOrigenFlags = (origen: string) => {
@@ -118,6 +129,261 @@ const normalizeItem = (item: QuoteItem): QuoteItem => {
     importe,
   };
 };
+
+const toDateInputValue = (value?: string | null) => {
+  if (!value) {
+    return "";
+  }
+
+  const parsedDate = new Date(value);
+  if (Number.isNaN(parsedDate.getTime())) {
+    return "";
+  }
+
+  return parsedDate.toISOString().slice(0, 10);
+};
+
+const normalizeComparableValue = (value?: string | null) =>
+  (value ?? "").trim().toLowerCase();
+
+const getQuoteOriginLabel = (quote: QuoteById) =>
+  ORIGIN_FIELD_MAP.find((item) => Boolean(quote[item.field]))?.label ?? "";
+
+const getQuotePaymentCondition = (quote: QuoteById): QuotePaymentCondition => {
+  if (quote.anticipo_total) {
+    return "100_anticipo";
+  }
+  if (quote.anticipo_parcial) {
+    return "50_anticipo";
+  }
+  if (quote.vendedor_autoriza) {
+    return "vendedor_autoriza";
+  }
+  if (quote.pago_antes_embarque) {
+    return "pago_antes_embarque";
+  }
+  if (quote.por_confirmar) {
+    return "por_confirmar";
+  }
+
+  return "otra_cantidad";
+};
+
+const getQuoteStatusValue = (status: number): QuoteFormStatus => {
+  if (status === 4) {
+    return "Cancelado";
+  }
+  if (status === 3) {
+    return "Completo";
+  }
+
+  return "Pendiente";
+};
+
+const resolveCustomerRegimenValue = (
+  customer: QuoteOnboardingData["busqueda"]["clientes"][number] | undefined,
+  onboardingData: QuoteOnboardingData
+) => {
+  if (!customer) {
+    return "";
+  }
+
+  return (
+    onboardingData.catalogos.regimenes_fiscales.find(
+      (item) => item.value === String(customer.sat_regimen_fiscal_id)
+    )?.value ?? String(customer.sat_regimen_fiscal_id)
+  );
+};
+
+const isUsingCustomerFiscalAddress = (
+  quote: QuoteById,
+  customer: QuoteOnboardingData["busqueda"]["clientes"][number] | undefined
+) => {
+  if (!customer) {
+    return false;
+  }
+
+  return (
+    normalizeComparableValue(quote.destinatario) ===
+      normalizeComparableValue(customer.nombre) &&
+    normalizeComparableValue(quote.empresa_envio) ===
+      normalizeComparableValue(customer.razon_social) &&
+    normalizeComparableValue(quote.telefono_envio) ===
+      normalizeComparableValue(customer.telefono) &&
+    normalizeComparableValue(quote.celular_envio) ===
+      normalizeComparableValue(customer.telefono) &&
+    normalizeComparableValue(quote.direccion_envio) ===
+      normalizeComparableValue(customer.direccion_fiscal) &&
+    normalizeComparableValue(quote.colonia_envio) ===
+      normalizeComparableValue(customer.colonia) &&
+    normalizeComparableValue(quote.codigo_postal) ===
+      normalizeComparableValue(customer.codigo_postal) &&
+    normalizeComparableValue(quote.ciudad_envio) ===
+      normalizeComparableValue(customer.ciudad) &&
+    normalizeComparableValue(quote.estado_envio) ===
+      normalizeComparableValue(customer.estado)
+  );
+};
+
+const buildQuoteEditItem = (
+  detail: QuoteById["detalles"][number],
+  products: QuoteOnboardingData["busqueda"]["productos"]
+): QuoteItem => {
+  const catalogProduct = products.find((product) => Number(product.id) === Number(detail.producto));
+  const itemSizes = detail.tallas
+    .map((size) => ({
+      tallaId: size.talla,
+      nombre: size.talla_nombre,
+      cantidad: Number(size.cantidad) || 0,
+    }))
+    .filter((size) => size.cantidad > 0);
+  const totalQuantity = itemSizes.reduce((sum, size) => sum + size.cantidad, 0);
+  const embroideredSize = detail.tallas.find(
+    (size) => size.lleva_bordado && size.bordado_config
+  );
+  const reflectiveSpecs = detail.tallas.flatMap((size) =>
+    size.lleva_reflejante ? size.reflejante_config : []
+  );
+  const hasReflective = detail.tallas.some((size) => size.lleva_reflejante);
+
+  return {
+    productoId: detail.producto,
+    descripcion: catalogProduct?.nombre ?? detail.producto_nombre,
+    unidad: "PZA",
+    cantidad: totalQuantity,
+    precio: Number(detail.precio_unitario) || 0,
+    descuento: 0,
+    importe: Number((totalQuantity * (Number(detail.precio_unitario) || 0)).toFixed(2)),
+    tallas: itemSizes,
+    bordados: embroideredSize?.bordado_config
+      ? {
+          activo: true,
+          observaciones: embroideredSize.bordado_config.notas || undefined,
+          especificaciones: embroideredSize.bordado_config.ubicaciones.map((location) => ({
+            posicionCodigo: location.codigo,
+            posicionNombre:
+              POSITION_NAME_BY_CODE.get(location.codigo) ?? location.codigo,
+            ancho: location.ancho_cm > 0 ? location.ancho_cm : undefined,
+            alto: location.alto_cm > 0 ? location.alto_cm : undefined,
+            colorHilo: location.color_hilo ?? undefined,
+            pantones: location.pantones ?? undefined,
+            imagen: location.imagen,
+            nuevoPonchado: location.nuevo_ponchado,
+            serigrafia: location.serigrafia,
+            sublimado: location.sublimado,
+            dtf: location.dtf,
+            revelado: location.revelado,
+          })),
+        }
+      : undefined,
+    reflejantes: hasReflective
+      ? {
+          activo: true,
+          especificaciones: reflectiveSpecs.map((config) => ({
+            opcion: config.opcion,
+            posicion: config.posicion,
+            tipo: config.tipo,
+          })),
+        }
+      : undefined,
+    lleva_corte_manga: detail.tallas.some((size) => size.lleva_corte_manga),
+  };
+};
+
+const buildQuoteEditValues = ({
+  onboardingData,
+  quote,
+  todayStr,
+  userName,
+}: {
+  onboardingData: QuoteOnboardingData;
+  quote: QuoteById;
+  todayStr: string;
+  userName: string;
+}): QuoteFormValues => {
+  const customer = onboardingData.busqueda.clientes.find(
+    (item) => Number(item.id) === Number(quote.cliente)
+  );
+  const fallbackTipoPedido =
+    onboardingData.catalogos.tipos_pedido.length === 1
+      ? onboardingData.catalogos.tipos_pedido[0].value
+      : 0;
+
+  return {
+    clienteBusqueda:
+      customer?.razon_social ?? quote.cliente_razon_social ?? quote.cliente_nombre ?? "",
+    clienteNombre: customer?.nombre ?? quote.cliente_nombre ?? "",
+    razonSocial: customer?.razon_social ?? quote.cliente_razon_social ?? "",
+    rfc: customer?.rfc ?? "",
+    regimenFiscal: resolveCustomerRegimenValue(customer, onboardingData),
+    direccionFiscal: customer?.direccion_fiscal ?? "",
+    coloniaFiscal: customer?.colonia ?? "",
+    codigoPostalFiscal: customer?.codigo_postal ?? "",
+    ciudadFiscal: customer?.ciudad ?? "",
+    estadoFiscal: customer?.estado ?? "",
+    giroEmpresa: customer?.giro_empresarial ?? "",
+    persona_pagos: quote.persona_pagos ?? "",
+    correo_facturas: quote.correo_facturas ?? "",
+    telefono_pagos: quote.telefono_pagos ?? "",
+    oc: quote.oc ?? "",
+    forma_pago: quote.forma_pago ?? "",
+    metodo_pago: quote.metodo_pago ?? "",
+    uso_cfdi: quote.uso_cfdi ?? DEFAULT_USO_CFDI_VALUE,
+    referenciarOcFactura: Boolean(quote.oc?.trim()),
+    condicionPago: getQuotePaymentCondition(quote),
+    condicionPagoMonto: Number(quote.monto) || 0,
+    fecha: toDateInputValue(quote.created_at) || todayStr,
+    agente: userName,
+    tipo_pedido: fallbackTipoPedido,
+    origen: getQuoteOriginLabel(quote),
+    destinatario: quote.destinatario ?? "",
+    empresaEnvio: quote.empresa_envio ?? "",
+    telefonoEnvio: quote.telefono_envio ?? "",
+    celularEnvio: quote.celular_envio ?? "",
+    direccionEnvio: quote.direccion_envio ?? "",
+    coloniaEnvio: quote.colonia_envio ?? "",
+    codigoPostalEnvio: quote.codigo_postal ?? "",
+    ciudadEnvio: quote.ciudad_envio ?? "",
+    estadoEnvio: quote.estado_envio ?? "",
+    referenciasEnvio: quote.referencias ?? "",
+    enviarDomicilioFiscal: isUsingCustomerFiscalAddress(quote, customer),
+    embarcarConOtrosPedidos: false,
+    empaque_ecologico: Boolean(quote.empaque_ecologico),
+    embarque_parcial: Boolean(quote.embarque_parcial),
+    comentarios_parcialidad: quote.comentarios_parcialidad ?? "",
+    servicioEnvioActivo: (Number(quote.envio) || 0) > 0,
+    envio: Number(quote.envio) || 0,
+    programaBordadosActivo: (Number(quote.programa_bordados) || 0) > 0,
+    programa_bordados: Number(quote.programa_bordados) || 0,
+    bordadoPantalonesExtrasActivo:
+      (Number(quote.bordado_pantalones_extras) || 0) > 0,
+    bordado_pantalones_extras: Number(quote.bordado_pantalones_extras) || 0,
+    serigrafiaActivo: (Number(quote.serigrafia) || 0) > 0,
+    serigrafia: Number(quote.serigrafia) || 0,
+    reflejanteActivo: (Number(quote.reflejante) || 0) > 0,
+    reflejante: Number(quote.reflejante) || 0,
+    bordado_logotipo: Boolean(quote.bordado_logotipo),
+    estatusPedido: getQuoteStatusValue(quote.estatus),
+    docRelacionado: quote.oc?.trim() ? `cotización-oc${quote.oc.trim()}` : "",
+    observaciones: quote.observaciones ?? "",
+    flete: Number(quote.flete) || 0,
+    seguros: Number(quote.seguros) || 0,
+    anticipo: Number(quote.anticipo) || 0,
+    iva: Number(quote.iva) || 0,
+    moneda: Number(quote.moneda) || 0,
+    items: quote.detalles.map((detail) =>
+      buildQuoteEditItem(detail, onboardingData.busqueda.productos)
+    ),
+  };
+};
+
+const buildQuoteEditExtraServices = (quote: QuoteById): ExtraService[] =>
+  quote.servicios_extras.map((service) => ({
+    id: String(service.id),
+    nombre: service.nombre,
+    monto: Number(service.monto) || 0,
+    quantity: Number(service.quantity) > 0 ? Number(service.quantity) : 1,
+  }));
 
 // Estado inicial para flujo de creación.
 const createEmptyValues = (todayStr: string, userName: string): QuoteFormValues => ({
@@ -285,12 +551,11 @@ const scrollToFirstValidationError = (formElement: HTMLFormElement, issuePaths: 
   }
 };
 
-export function useQuoteForm() {
+export function useQuoteForm({ onboardingData, quoteToEdit }: UseQuoteFormOptions) {
   // Dependencias de navegación y fuentes de datos del formulario.
   const router = useRouter();
   const { data: session } = useSession();
   const { data: currencies, isLoading: isCurrenciesLoading } = useCurrencies();
-  const { data: onboardingData, isLoading: isOnboardingLoading } = useQuoteOnboardingData();
   const { data: satInfo } = useSatInfo();
   const { selectedCompany, selectedBranch } = useWorkspaceStore();
   const selectedCompanyId = selectedCompany?.id || 1; // Fallback
@@ -300,9 +565,12 @@ export function useQuoteForm() {
   const userName = session?.user?.name || "Usuario";
   const sellerName = userName;
   const todayStr = new Date().toISOString().slice(0, 10);
+  const isEditing = Boolean(quoteToEdit?.id);
   const formRef = useRef<HTMLFormElement | null>(null);
-  const customers = useMemo(() => onboardingData?.busqueda.clientes ?? [], [onboardingData?.busqueda.clientes]);
-  const isCustomersLoading = isOnboardingLoading;
+  const customers = useMemo(
+    () => onboardingData.busqueda.clientes ?? [],
+    [onboardingData.busqueda.clientes]
+  );
   const [errorTree, setErrorTree] = useState<ErrorNode>({});
   const [isAddProductsOpen, setIsAddProductsOpen] = useState(false);
   const [editIndex, setEditIndex] = useState<number | null>(null);
@@ -310,15 +578,29 @@ export function useQuoteForm() {
   const [isSubmittingForm, setIsSubmittingForm] = useState(false);
   const [isCreationSuccessVisible, setIsCreationSuccessVisible] = useState(false);
   const [isRouteTransitioning, setIsRouteTransitioning] = useState(false);
-  const [selectedCustomerId, setSelectedCustomerId] = useState(0);
-  const [extraServices, setExtraServices] = useState<ExtraService[]>([]);
-
-  const showForm = true;
 
   const emptyValues = useMemo(() => createEmptyValues(todayStr, userName), [todayStr, userName]);
+  const editValues = useMemo(
+    () =>
+      isEditing && quoteToEdit
+        ? buildQuoteEditValues({
+            onboardingData,
+            quote: quoteToEdit,
+            todayStr,
+            userName,
+          })
+        : emptyValues,
+    [emptyValues, isEditing, onboardingData, quoteToEdit, todayStr, userName]
+  );
+  const [selectedCustomerId, setSelectedCustomerId] = useState(() =>
+    isEditing && quoteToEdit ? Number(quoteToEdit.cliente) || 0 : 0
+  );
+  const [extraServices, setExtraServices] = useState<ExtraService[]>(() =>
+    isEditing && quoteToEdit ? buildQuoteEditExtraServices(quoteToEdit) : []
+  );
 
   const form = useForm({
-    defaultValues: emptyValues,
+    defaultValues: isEditing ? editValues : emptyValues,
     onSubmit: async ({ value }) => {
       const parsed = quoteSubmitSchema.safeParse({
         ...value,
@@ -523,7 +805,7 @@ export function useQuoteForm() {
           iva: parsed.data.iva || 0,
           gran_total: totals.granTotal ? String(totals.granTotal.toFixed(2)) : "0.00",
           activo: true,
-          cotizacion: { id: 1 },
+          cotizacion: { id: isEditing && quoteToEdit ? quoteToEdit.id : 1 },
         },
         detalle,
         servicios_extras: parsed.data.servicios_extras.map((service) => ({
@@ -532,6 +814,13 @@ export function useQuoteForm() {
           quantity: service.quantity,
         })),
       };
+
+      if (isEditing) {
+        console.log(quoteCreatePayload);
+        toast.success("Payload de edición enviado a consola");
+        return;
+      }
+
       await createQuoteMutation(quoteCreatePayload);
       setIsCreationSuccessVisible(true);
       await new Promise<void>((resolve) => {
@@ -844,12 +1133,13 @@ export function useQuoteForm() {
   };
 
   const handleReset = () => {
-    form.reset(emptyValues);
-    setExtraServices([]);
-    setSelectedCustomerId(0);
+    form.reset(isEditing ? editValues : emptyValues);
+    setExtraServices(isEditing && quoteToEdit ? buildQuoteEditExtraServices(quoteToEdit) : []);
+    setSelectedCustomerId(isEditing && quoteToEdit ? Number(quoteToEdit.cliente) || 0 : 0);
     setErrorTree({});
-    form.setFieldValue("clienteBusqueda", "");
-    toast.success("Formulario restablecido");
+    toast.success(
+      isEditing ? "Cotización restablecida" : "Formulario restablecido"
+    );
     setTimeout(() => {
       formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     }, 0);
@@ -955,12 +1245,15 @@ export function useQuoteForm() {
     }
   }, [form, usoCfdiOptions, values.uso_cfdi]);
 
-  const formKey = "quote-new";
+  const formKey = isEditing
+    ? `quote-edit-${quoteToEdit?.id ?? "ready"}`
+    : "quote-new";
 
   return {
     form,
     formRef,
     formKey,
+    isEditing,
     getError,
     clearFieldErrors,
     validateField,
@@ -977,12 +1270,9 @@ export function useQuoteForm() {
     currencyOptions,
     formasPagoOptions,
     metodosPagoOptions,
-    sizes: onboardingData?.catalogos.tallas ?? [],
-    products: onboardingData?.busqueda.productos ?? [],
-    isCustomersLoading,
+    sizes: onboardingData.catalogos.tallas ?? [],
+    products: onboardingData.busqueda.productos ?? [],
     isCurrenciesLoading,
-    isOnboardingLoading,
-    showForm,
     isCreationSuccessVisible,
     isRouteTransitioning,
     handleFormSubmit,

@@ -46,6 +46,7 @@ export const buildEmbroideryGroups = (sizes: QuoteDetailSize[]): EmbroideryGroup
   sizes.forEach((size) => { // Iterate over each size
     const key = getEmbroideryKey(size);
     const hasEmbroidery = key !== WITHOUT_EMBROIDERY_KEY;
+    const embroideryConfig = size.bordado_config;
     const currentGroup = groups.get(key);
 
     if (currentGroup) { // If group already exists
@@ -53,7 +54,7 @@ export const buildEmbroideryGroups = (sizes: QuoteDetailSize[]): EmbroideryGroup
       return;
     }
 
-    if (!hasEmbroidery) { // If no embroidery
+    if (!hasEmbroidery || !embroideryConfig) { // If no embroidery
       groups.set(key, {
         key,
         label: "Sin bordado",
@@ -71,10 +72,10 @@ export const buildEmbroideryGroups = (sizes: QuoteDetailSize[]): EmbroideryGroup
     groups.set(key, {
       key,
       label: `Bordado ${embroideryCounter}`,
-      notes: size.bordado_config.notas?.trim() ?? "",
+      notes: embroideryConfig.notas?.trim() ?? "",
       hasEmbroidery: true,
       sizes: [size],
-      locations: size.bordado_config.ubicaciones,
+      locations: embroideryConfig.ubicaciones,
     });
   });
 
