@@ -1,65 +1,58 @@
 import { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
-import { login } from "@/src/features/auth/services/actions";
+import type { MfaLoginUser } from "@/src/features/auth/interfaces/auth.interface";
 
 export const authOptions: NextAuthOptions = {
   providers: [
     CredentialsProvider({
       name: "Credentials",
       credentials: {
-        email: { label: "Email", type: "email" },
-        password: { label: "Password", type: "password" },
+        /* Recibe el objeto usuario serializado como JSON desde el cliente
+         * tras un login exitoso (con o sin MFA). No se realiza ninguna
+         * llamada adicional al backend ya que la autenticación fue completada
+         * y las cookies de sesión ya quedaron establecidas. */
+        userData: { label: "User Data", type: "text" },
       },
       async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) {
-          return null;
-        }
+        if (!credentials?.userData) return null;
 
-        // Llamar al servicio de autenticación
         try {
-          const data = await login(credentials.email, credentials.password);
+          const user = JSON.parse(credentials.userData) as MfaLoginUser;
+          const fullName =
+            [user.first_name, user.last_name].filter(Boolean).join(" ") ||
+            user.username;
 
-          // Verificar si la autenticación fue exitosa
-          if (data && data.token) {
-            const isAdminUser = data.is_admin_empresa || data.es_admin || data.is_superuser;
-            return {
-              id: data.user_id.toString(),
-              name: data.nombre_completo,
-              email: data.email,
-              role: isAdminUser ? "admin" : "user",
-              token: data.token,
-              permissions: data.permisos,
-            };
-          }
-
-          return null;
-
-        } catch (error) { // Manejar errores de autenticación
-          console.error("Error en autenticación:", error);
+          return {
+            id: String(user.id),
+            name: fullName,
+            email: user.email,
+            /* Los permisos se implementarán en una iteración futura */
+            role: "admin",
+            permissions: [] as string[],
+          };
+        } catch {
           return null;
         }
       },
     }),
   ],
-  pages: { // Personalizar páginas de autenticación
+  pages: {
     signIn: "/auth/login",
   },
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
-        token.role = (user as { role?: string }).role;
-        token.accessToken = (user as { token?: string }).token;
-        token.permissions = (user as { permissions?: string[] }).permissions;
-        token.sub = (user as { id?: string }).id || token.sub;
+        token.role = user.role;
+        token.permissions = user.permissions;
+        token.sub = user.id || token.sub;
       }
       return token;
     },
     async session({ session, token }) {
       if (session.user) {
-        (session.user as { role?: string }).role = token.role as string;
-        (session.user as { accessToken?: string }).accessToken = token.accessToken as string;
-        (session.user as { permissions?: string[] }).permissions = token.permissions as string[];
-        (session.user as { id: string }).id = (token.sub as string);
+        session.user.id = token.sub as string;
+        session.user.role = token.role;
+        session.user.permissions = token.permissions;
       }
       return session;
     },
