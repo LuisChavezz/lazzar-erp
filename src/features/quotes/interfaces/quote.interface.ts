@@ -76,9 +76,36 @@ export interface Quote {
   pedido_folio: string | null;
 }
 
+type QuoteByIdEmbroideryLocation = {
+  codigo: string;
+  ancho_cm: number;
+  alto_cm: number;
+  color_hilo: string | null;
+  imagen: string;
+  pantones: string | null;
+  nuevo_ponchado: boolean;
+  serigrafia: boolean;
+  sublimado: boolean;
+  dtf: boolean;
+  revelado: boolean;
+};
+
+type QuoteByIdEmbroideryConfig = {
+  notas: string;
+  ubicaciones: QuoteByIdEmbroideryLocation[];
+};
+
+type QuoteByIdReflectiveConfig = {
+  opcion: string;
+  posicion: string;
+  tipo: string;
+};
+
 export interface QuoteById {
   id: number;
   estatus_label: string;
+  piezas: number;
+  importe_sin_iva: number;
   detalles: {
     id: number;
     tallas: {
@@ -88,19 +115,19 @@ export interface QuoteById {
       precio_unitario: string;
       subtotal_talla: string;
       lleva_bordado: boolean;
-      bordado_config: {
-        notas: string;
-        ubicaciones: {
-          codigo: string;
-          ancho_cm: number;
-          alto_cm: number;
-          color_hilo: string | null;
-          imagen: string;
-        }[];
-      };
+      bordado_config: QuoteByIdEmbroideryConfig | null;
+      lleva_reflejante: boolean;
+      reflejante_config: QuoteByIdReflectiveConfig[];
+      lleva_corte_manga: boolean;
+      corte_manga_config: {
+        tipo: string;
+      } | null;
+      lleva_cambio_talla: boolean;
+      cambio_talla_config: Record<string, unknown> | null;
       cotizacion_detalle: number;
       talla: number;
     }[];
+    precio_lista: string;
     precio_unitario: string;
     costo_unitario: string | null;
     subtotal_linea: string;
@@ -180,7 +207,7 @@ export interface QuoteById {
     id: number;
     nombre: string;
     monto: string;
-    quantity: number;
+    quantity?: number;
     cotizacion: number;
     visible_en_factura: boolean;
     created_at: string;

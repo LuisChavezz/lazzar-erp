@@ -12,17 +12,32 @@ import { MainDialog } from "@/src/components/MainDialog";
 import { getFieldError } from "../../../utils/getFieldError";
 import { formatCurrency } from "../../../utils/formatCurrency";
 import { Loader } from "@/src/components/Loader";
+import { ErrorState } from "@/src/components/ErrorState";
 import { CustomerSearchDropdown } from "./CustomerSearchDropdown";
 import CustomerForm from "../../customers/components/CustomerForm";
 import { DialogHeader } from "@/src/components/DialogHeader";
 import { useQuoteForm } from "../hooks/useQuoteForm";
+import { useQuote } from "../hooks/useQuote";
+import { useQuoteOnboardingData } from "../hooks/useQuoteOnboardingData";
 import { AddProductDialog } from "./AddProductDialog";
 import { QuoteCreationSuccessMessage } from "./QuoteCreationSuccessMessage";
-export default function QuoteForm() {
+import type { QuoteById, QuoteOnboardingData } from "../interfaces/quote.interface";
+
+interface QuoteFormProps {
+  quoteId?: number;
+}
+
+interface QuoteFormContentProps {
+  onboardingData: QuoteOnboardingData;
+  quoteToEdit?: QuoteById | null;
+}
+
+function QuoteFormContent({ onboardingData, quoteToEdit }: QuoteFormContentProps) {
   const {
     form,
     formRef,
     formKey,
+    isEditing,
     getError,
     clearFieldErrors,
     validateField,
@@ -41,10 +56,7 @@ export default function QuoteForm() {
     metodosPagoOptions,
     sizes,
     products,
-    isCustomersLoading,
     isCurrenciesLoading,
-    isOnboardingLoading,
-    showForm,
     isCreationSuccessVisible,
     isRouteTransitioning,
     handleFormSubmit,
@@ -81,16 +93,16 @@ export default function QuoteForm() {
     handleCustomerCreated,
     extraServices,
     setExtraServices,
-  } = useQuoteForm();
+  } = useQuoteForm({ onboardingData, quoteToEdit });
 
   // Estado de carga del formulario
-  const isFormLoading = isCustomersLoading || isCurrenciesLoading || isOnboardingLoading || !showForm;
+  const isFormLoading = isCurrenciesLoading;
   if (isFormLoading) {
     return (
       <div className="w-full pt-2">
         <Loader
           title="Cargando formulario"
-          message="Obteniendo clientes y catálogos..."
+          message="Obteniendo monedas y catálogos complementarios..."
         />
       </div>
     );
@@ -1753,11 +1765,69 @@ export default function QuoteForm() {
         />
         <FormSubmitButton
           isPending={isPending}
-          loadingLabel="Guardando..."
+          loadingLabel={isEditing ? "Guardando cambios..." : "Guardando..."}
         >
-          Guardar Cotización
+          {isEditing ? "Guardar cambios" : "Guardar Cotización"}
         </FormSubmitButton>
       </div>
     </form>
+  );
+}
+
+export default function QuoteForm({ quoteId }: QuoteFormProps) {
+  const normalizedQuoteId = Number(quoteId);
+  const isEditing = Number.isFinite(normalizedQuoteId) && normalizedQuoteId > 0;
+  const {
+    data: onboardingData,
+    isLoading: isOnboardingLoading,
+    isError: isOnboardingError,
+  } = useQuoteOnboardingData();
+  const {
+    data: quote,
+    isLoading: isQuoteLoading,
+    isError: isQuoteError,
+  } = useQuote(isEditing ? normalizedQuoteId : null);
+
+  const isInitialLoading = isOnboardingLoading || (isEditing && isQuoteLoading);
+
+  if (isInitialLoading) {
+    return (
+      <div className="w-full pt-2">
+        <Loader
+          title={isEditing ? "Cargando cotización" : "Cargando formulario"}
+          message={
+            isEditing
+              ? "Obteniendo detalle de la cotización y catálogos..."
+              : "Obteniendo clientes y catálogos..."
+          }
+        />
+      </div>
+    );
+  }
+
+  if (isOnboardingError || !onboardingData) {
+    return (
+      <ErrorState
+        title="No se pudo cargar el formulario de cotización"
+        message="No fue posible obtener los catálogos necesarios para inicializar la edición."
+      />
+    );
+  }
+
+  if (isEditing && (isQuoteError || !quote)) {
+    return (
+      <ErrorState
+        title="No se pudo cargar la cotización"
+        message="No fue posible obtener el detalle de la cotización que intentas editar."
+      />
+    );
+  }
+
+  return (
+    <QuoteFormContent
+      key={isEditing ? `quote-edit-${quote?.id ?? normalizedQuoteId}` : "quote-new"}
+      onboardingData={onboardingData}
+      quoteToEdit={isEditing ? quote ?? null : null}
+    />
   );
 }

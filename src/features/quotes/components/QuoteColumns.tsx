@@ -3,6 +3,7 @@
 import { ColumnDef } from "@tanstack/react-table";
 import { useState } from "react";
 import dynamic from "next/dynamic";
+import { useRouter } from "next/navigation";
 import { Quote } from "../interfaces/quote.interface";
 import { ActionMenu, ActionMenuItem } from "@/src/components/ActionMenu";
 import { MainDialog } from "@/src/components/MainDialog";
@@ -11,6 +12,7 @@ import { ConfirmDialog } from "@/src/components/ConfirmDialog";
 import {
   CheckCircleIcon,
   DownloadIcon,
+  EditIcon,
   // EmbarquesIcon,
   EmailIcon,
   // FacturacionIcon,
@@ -47,6 +49,7 @@ const statusDialogColors: Record<number, "sky" | "emerald" | "amber" | "rose"> =
 };
 
 const ActionsCell = ({ quote }: { quote: Quote }) => {
+  const router = useRouter();
   const [isViewOpen, setIsViewOpen] = useState(false);
   const [isAuthorizeOpen, setIsAuthorizeOpen] = useState(false);
   const [isRejectOpen, setIsRejectOpen] = useState(false);
@@ -60,6 +63,11 @@ const ActionsCell = ({ quote }: { quote: Quote }) => {
       label: "Ver detalles",
       icon: ViewIcon,
       onSelect: () => setIsViewOpen(true),
+    },
+    {
+      label: "Editar",
+      icon: EditIcon,
+      onSelect: () => router.push(`/sales/quotes/${quote.id}`),
     },
     {
       label: "Enviar correo",

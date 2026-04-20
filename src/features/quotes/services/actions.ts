@@ -17,6 +17,11 @@ export const createQuote = async (quote: QuoteCreate): Promise<QuoteCreate> => {
   return response.data;
 };
 
+export const updateQuote = async (id: number, quote: QuoteCreate): Promise<QuoteCreate> => {
+  const response = await v1_api.put<QuoteCreate>(`/ventas/cotizaciones/onboarding/${id}/`, quote);
+  return response.data;
+};
+
 export const getQuoteOnboardingData = async (): Promise<QuoteOnboardingData> => {
   const response = await v1_api.get<QuoteOnboardingData>("/ventas/cotizaciones/onboarding/");
   return response.data;
