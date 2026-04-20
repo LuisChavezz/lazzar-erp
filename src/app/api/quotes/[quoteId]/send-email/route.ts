@@ -41,7 +41,7 @@ export async function POST(request: Request, { params }: RouteContext) {
     // Paso 1: asegurar que el usuario tenga una sesion valida antes de usar servicios protegidos.
     const session = await getServerSession(authOptions);
 
-    if (!session?.user?.accessToken) {
+    if (!session?.user) {
       return NextResponse.json({ error: "No autorizado." }, { status: 401 });
     }
 
@@ -54,10 +54,11 @@ export async function POST(request: Request, { params }: RouteContext) {
     }
 
     // Paso 3: el body se interpreta en una capa separada y luego se delega el envio completo.
+    // Las cookies del request se reenvian al backend para autenticacion server-to-server.
     const payload = await parseSendQuoteEmailRequest(request);
     const result = await sendQuoteEmail({
       quoteId,
-      accessToken: session.user.accessToken,
+      cookieHeader: request.headers.get("cookie") ?? "",
       requestedRecipient: payload.to,
     });
 

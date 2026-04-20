@@ -1312,3 +1312,38 @@ export const UploadIcon = (props: React.SVGProps<SVGSVGElement>) => (
     />
   </svg>
 );
+
+export const ShieldCheckIcon = (props: React.SVGProps<SVGSVGElement>) => (
+  <svg
+    {...props}
+    fill="none"
+    stroke="currentColor"
+    viewBox="0 0 24 24"
+  >
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="2"
+      d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
+    />
+  </svg>
+);
+
+export const QrCodeIcon = (props: React.SVGProps<SVGSVGElement>) => (
+  <svg
+    {...props}
+    fill="none"
+    stroke="currentColor"
+    viewBox="0 0 24 24"
+  >
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="2"
+      d="M12 4H8a4 4 0 00-4 4v.01M4 12v4a4 4 0 004 4h.01M20 12v4a4 4 0 01-4 4h-4M20 4h-4a4 4 0 00-4 4v4m8-8V4m0 4h-4"
+    />
+    <rect x="6" y="6" width="4" height="4" rx="0.5" strokeWidth="2" />
+    <rect x="14" y="14" width="4" height="4" rx="0.5" strokeWidth="2" />
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 6h4v4h-4V6zM6 14h4v4H6v-4z" />
+  </svg>
+);

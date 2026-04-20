@@ -38,14 +38,14 @@ const getErrorMessage = async (response: Response) => {
 };
 
 /**
- * Recupera el detalle completo de una cotizacion usando el access token del usuario actual.
+ * Recupera el detalle completo de una cotizacion reenviando las cookies de sesion del cliente.
  * El resultado se usa despues para construir el correo y resolver destinatarios.
  */
-export const getQuoteByIdServer = async (quoteId: number, accessToken: string) => {
+export const getQuoteByIdServer = async (quoteId: number, cookieHeader: string) => {
   const response = await fetch(`${getApiBaseUrl()}/ventas/cotizaciones/${quoteId}/`, {
     method: "GET",
     headers: {
-      Authorization: `Bearer ${accessToken}`,
+      Cookie: cookieHeader,
       "Content-Type": "application/json",
     },
     cache: "no-store",

@@ -16,7 +16,8 @@ import { buildQuoteEmailContent, buildQuoteEmailSubject } from "./quoteEmailCont
 /** Parametros minimos para ejecutar el envio del correo. */
 type SendQuoteEmailParams = {
   quoteId: number;
-  accessToken: string;
+  /** Cabecera Cookie del request original; se reenvía al backend para autenticación server-to-server */
+  cookieHeader: string;
   requestedRecipient?: string;
 };
 
@@ -43,11 +44,11 @@ const getQuoteReplyTo = (quote: QuoteById) => getFirstValidEmail([quote.correo_f
 
 export const sendQuoteEmail = async ({
   quoteId,
-  accessToken,
+  cookieHeader,
   requestedRecipient,
 }: SendQuoteEmailParams): Promise<SendQuoteEmailResult> => {
   // Paso 1: cargar la informacion completa de la cotizacion desde el backend principal.
-  const quote = await getQuoteByIdServer(quoteId, accessToken);
+  const quote = await getQuoteByIdServer(quoteId, cookieHeader);
 
   // Paso 2: resolver el destinatario final segun la politica definida del dominio.
   const recipient = getQuoteRecipient(quote, requestedRecipient);

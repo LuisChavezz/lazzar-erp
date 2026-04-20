@@ -15,7 +15,7 @@ import { appRouteGroups } from "@/src/constants/appRoutes";
 export default function MobileSidebar() {
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const pathname = usePathname();
-  const { handleLogout } = useLogout();
+  const { handleLogout, isPending: isLoggingOut } = useLogout();
   const { data: session } = useSession();
   const availableSections = getSidebarItems(session?.user, pathname);
   const activeGroup = appRouteGroups.find(
@@ -175,9 +175,10 @@ export default function MobileSidebar() {
               trigger={
                 <button 
                   type="button"
-                  className="block w-full text-center px-4 py-3 rounded-xl bg-black dark:bg-white text-white dark:text-black font-bold text-sm shadow-lg"
+                  disabled={isLoggingOut}
+                  className="block w-full text-center px-4 py-3 rounded-xl bg-black dark:bg-white text-white dark:text-black font-bold text-sm shadow-lg disabled:opacity-50 disabled:pointer-events-none"
                 >
-                  Cerrar sesión
+                  {isLoggingOut ? "Cerrando..." : "Cerrar sesión"}
                 </button>
               }
             />

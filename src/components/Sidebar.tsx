@@ -13,7 +13,7 @@ import { appRouteGroups } from "@/src/constants/appRoutes";
 
 export default function Sidebar() {
   const pathname = usePathname();
-  const { handleLogout } = useLogout();
+  const { handleLogout, isPending: isLoggingOut } = useLogout();
   const { data: session } = useSession();
   const availableSections = getSidebarItems(session?.user, pathname);
   const activeGroup = appRouteGroups.find(
@@ -125,11 +125,12 @@ export default function Sidebar() {
               <button 
                 type="button"
                 aria-label="Cerrar sesión"
-                className="w-full mt-2 flex items-center justify-start gap-4 px-3 py-3 rounded-xl cursor-pointer text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors group relative overflow-hidden"
+                disabled={isLoggingOut}
+                className="w-full mt-2 flex items-center justify-start gap-4 px-3 py-3 rounded-xl cursor-pointer text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors group relative overflow-hidden disabled:opacity-50 disabled:pointer-events-none"
               >
                 <LogoutIcon className="w-6 h-6 shrink-0" aria-hidden="true" />
                 <span className="font-medium text-sm whitespace-nowrap opacity-0 group-hover/sidebar:opacity-100 transition-opacity duration-200 absolute left-14">
-                  Cerrar sesión
+                  {isLoggingOut ? "Cerrando..." : "Cerrar sesión"}
                 </span>
               </button>
             }

@@ -56,5 +56,6 @@ export const config = {
     "/hr/:path*",
     "/other/:path*",
     "/operations/:path*",
+    "/settings/:path*",
   ],
 };

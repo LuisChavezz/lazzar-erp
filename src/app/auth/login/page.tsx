@@ -1,4 +1,4 @@
-import LoginForm from "@/src/features/auth/components/LoginForm";
+import LoginStepManager from "@/src/features/auth/components/LoginStepManager";
 import Image from "next/image";
 import { Metadata } from "next";
 import { redirect } from "next/navigation";
@@ -34,7 +34,7 @@ export default async function LoginPage() {
         />
       </div>
       <div className="w-full flex flex-col items-center justify-center p-8">
-        <LoginForm />
+        <LoginStepManager />
       </div>
     </div>
   );
