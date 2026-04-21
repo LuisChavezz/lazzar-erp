@@ -6,7 +6,7 @@ import { useAddProductsDialog } from "../hooks/useAddProductsDialog";
 import { AddProductsSelectableItem } from "./AddProductsSelectableItem";
 import { QuoteFormValues } from "../schemas/quote.schema";
 
-type QuoteItem = QuoteFormValues["items"][number];
+type QuoteItem = NonNullable<QuoteFormValues["items"]>[number];
 
 interface AddProductsDialogProps {
   open: boolean;

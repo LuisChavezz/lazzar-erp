@@ -11,7 +11,7 @@ import type { QuoteFormValues } from "./schemas/quote.schema";
 /**
  * `QuoteItem` — alias al tipo generado por el schema `quote.schema`.
  */
-export type QuoteItem = QuoteFormValues["items"][number];
+export type QuoteItem = NonNullable<QuoteFormValues["items"]>[number];
 
 /**
  * Pasos del diálogo de agregar producto.

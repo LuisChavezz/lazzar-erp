@@ -349,39 +349,39 @@ export function useQuoteForm() {
       }
 
       setErrorTree({});
-      const normalizedItems = parsed.data.items.map(normalizeItem);
+      const normalizedItems = (parsed.data.items ?? []).map(normalizeItem)
       const subtotal = normalizedItems.reduce((sum, item) => sum + item.importe, 0);
       const descuentoTotal = normalizedItems.reduce((sum, item) => {
         const rawAmount = (Number(item.cantidad) || 0) * (Number(item.precio) || 0);
         return sum + (rawAmount - item.importe);
       }, 0);
 
-      const servicioEnvio = parsed.data.servicioEnvioActivo ? parsed.data.envio : 0;
+      const servicioEnvio = parsed.data.servicioEnvioActivo ? (parsed.data.envio ?? 0) : 0;
       const programaBordados = parsed.data.programaBordadosActivo
-        ? parsed.data.programa_bordados
+        ? (parsed.data.programa_bordados ?? 0)
         : 0;
       const bordadoPantalones = parsed.data.bordadoPantalonesExtrasActivo
-        ? parsed.data.bordado_pantalones_extras
+        ? (parsed.data.bordado_pantalones_extras ?? 0)
         : 0;
-      const serigrafia = parsed.data.serigrafiaActivo ? parsed.data.serigrafia : 0;
-      const reflejante = parsed.data.reflejanteActivo ? parsed.data.reflejante : 0;
+      const serigrafia = parsed.data.serigrafiaActivo ? (parsed.data.serigrafia ?? 0) : 0;
+      const reflejante = parsed.data.reflejanteActivo ? (parsed.data.reflejante ?? 0) : 0;
       const extraServicesTotal = parsed.data.servicios_extras.reduce(
-        (sum, service) => sum + service.monto * service.quantity,
+        (sum, service) => sum + (service.monto ?? 0) * (service.quantity ?? 0),
         0
       );
       const extras =
-        parsed.data.flete +
-        parsed.data.seguros +
+        (parsed.data.flete ?? 0) +
+        (parsed.data.seguros ?? 0) +
         servicioEnvio +
         programaBordados +
         bordadoPantalones +
         serigrafia +
         reflejante +
         extraServicesTotal;
-      const ivaRateDecimal = parsed.data.iva / 100;
+      const ivaRateDecimal = (parsed.data.iva ?? 0) / 100;
       const ivaAmount = Number(((subtotal + extras) * ivaRateDecimal).toFixed(2));
       const granTotal = Number((subtotal + extras + ivaAmount).toFixed(2));
-      const saldoPendiente = Number((granTotal - parsed.data.anticipo).toFixed(2));
+      const saldoPendiente = Number((granTotal - (parsed.data.anticipo ?? 0)).toFixed(2));
 
       const totals = {
         subtotal: Number(subtotal.toFixed(2)),
@@ -389,9 +389,9 @@ export function useQuoteForm() {
         ivaAmount,
         granTotal,
         saldoPendiente,
-        flete: Number(parsed.data.flete.toFixed(2)),
-        seguro: Number(parsed.data.seguros.toFixed(2)),
-        anticipo: Number(parsed.data.anticipo.toFixed(2)),
+        flete: Number((parsed.data.flete ?? 0).toFixed(2)),
+        seguro: Number((parsed.data.seguros ?? 0).toFixed(2)),
+        anticipo: Number((parsed.data.anticipo ?? 0).toFixed(2)),
         ivaRate: ivaRateDecimal,
       };
 
@@ -404,7 +404,7 @@ export function useQuoteForm() {
         otra_cantidad: condicion === "otra_cantidad",
       });
 
-      const detalle = parsed.data.items.map((item) => {
+      const detalle = (parsed.data.items ?? []).map((item) => {
         const llevaBordado = Boolean(item.bordados?.activo);
         const bordadoConfig =
           llevaBordado
@@ -463,13 +463,13 @@ export function useQuoteForm() {
           sucursal: selectedBranchId || 1, // Fallback safe si no hay sucursal
           cliente: selectedCustomerId || 1, // Fallback
           moneda: parsed.data.moneda || 1, // Fallback si no viene moneda
-          persona_pagos: parsed.data.persona_pagos,
-          correo_facturas: parsed.data.correo_facturas,
-          telefono_pagos: parsed.data.telefono_pagos,
-          forma_pago: parsed.data.forma_pago,
-          metodo_pago: parsed.data.metodo_pago,
-          uso_cfdi: parsed.data.uso_cfdi,
-          tipo_pedido: parsed.data.tipo_pedido,
+          persona_pagos: parsed.data.persona_pagos ?? "",
+          correo_facturas: parsed.data.correo_facturas ?? "",
+          telefono_pagos: parsed.data.telefono_pagos ?? "",
+          forma_pago: parsed.data.forma_pago ?? "",
+          metodo_pago: parsed.data.metodo_pago ?? "",
+          uso_cfdi: parsed.data.uso_cfdi ?? "",
+          tipo_pedido: parsed.data.tipo_pedido ?? 0,
           estatus:
             parsed.data.estatusPedido === "Pendiente"
               ? 1
@@ -478,8 +478,8 @@ export function useQuoteForm() {
                 : parsed.data.estatusPedido === "Completo"
                   ? 3
                   : 4,
-          ...mapOrigenFlags(parsed.data.origen),
-          ...mapCondicionPagoFlags(parsed.data.condicionPago),
+          ...mapOrigenFlags(parsed.data.origen ?? ""),
+          ...mapCondicionPagoFlags(parsed.data.condicionPago ?? "100_anticipo"),
           oc: parsed.data.oc?.trim() || "",
           monto: parsed.data.condicionPagoMonto ? String(parsed.data.condicionPagoMonto) : "0",
           empaque_ecologico: Boolean(parsed.data.empaque_ecologico),
@@ -527,9 +527,9 @@ export function useQuoteForm() {
         },
         detalle,
         servicios_extras: parsed.data.servicios_extras.map((service) => ({
-          nombre: service.nombre,
-          monto: String(service.monto.toFixed(2)),
-          quantity: service.quantity,
+          nombre: service.nombre ?? "",
+          monto: String((service.monto ?? 0).toFixed(2)),
+          quantity: service.quantity ?? 0,
         })),
       };
       await createQuoteMutation(quoteCreatePayload);

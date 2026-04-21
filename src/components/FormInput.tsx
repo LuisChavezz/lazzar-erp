@@ -11,7 +11,7 @@ interface FormInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
 }
 
 export const FormInput = forwardRef<HTMLInputElement, FormInputProps>(
-  ({ label, error, className = "", variant = "default", forceUppercase = true, leading, onChange, ...props }, ref) => {
+  ({ label, error, className = "", variant = "default", forceUppercase = false, leading, onChange, ...props }, ref) => {
     const inputId =
       props.id ?? (typeof props.name === "string" ? props.name : undefined);
 

@@ -76,19 +76,19 @@ export const isLoginSuccessResponse = (
   return typeof response["mfa_enabled"] === "boolean";
 };
 
-// type Permission =
-//   `${"R" | "C" | "E" | "D"}-${
-//     | "COMPRAS"
-//     | "CONFIGURACION"
-//     | "CONTABILIDAD"
-//     | "CORE"
-//     | "CRM"
-//     | "OTROS-MODULOS"
-//     | "PRODUCCION"
-//     | "RH"
-//     | "WMS"
-//     | "MESACONTROL"
-//   }`
+type Permission =
+  `${"R" | "C" | "E" | "D"}-${
+    | "COMPRAS"
+    | "CONFIGURACION"
+    | "CONTABILIDAD"
+    | "CORE"
+    | "CRM"
+    | "OTROS-MODULOS"
+    | "PRODUCCION"
+    | "RH"
+    | "WMS"
+    | "MESACONTROL"
+  }`;
 
 /** Datos del usuario incluidos en la respuesta de `/auth/login/verify/` */
 export interface MfaLoginUser {
@@ -102,7 +102,19 @@ export interface MfaLoginUser {
   empresa: number;
   sucursal_default: number;
   sucursales: number[];
+  departamentos: number[];
+  telefono: string;
+  avatar_url: string | null;
   is_admin_empresa: boolean;
+  is_superuser: boolean;
+  is_staff: boolean;
+  empresa_id: number;
+  nombre_completo: string;
+  es_admin: boolean;
+  permisos: Permission[];
+  roles_ids: number[];
+  date_joined: string;
+  last_login: string | null;
 }
 
 /** Respuesta completa de `/auth/login/verify/` cuando el login con MFA es exitoso */
