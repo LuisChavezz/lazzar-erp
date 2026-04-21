@@ -187,6 +187,7 @@ export default function QuoteForm() {
                   <FormInput
                     label="Fecha"
                     type="date"
+                    forceUppercase={false}
                     readOnly
                     tabIndex={-1}
                     className="cursor-not-allowed bg-slate-100 text-slate-500 dark:bg-zinc-800 dark:text-slate-400 focus:bg-slate-100 dark:focus:bg-zinc-800 focus:ring-0 focus:border-slate-200 dark:focus:border-zinc-700"
@@ -277,6 +278,7 @@ export default function QuoteForm() {
                     <FormInput
                       label="Nombre del Cliente"
                       placeholder="Nombre"
+                      forceUppercase={false}
                       disabled
                       name={field.name}
                       value={field.state.value}
@@ -299,6 +301,7 @@ export default function QuoteForm() {
                     <FormInput
                       label="Razón Social"
                       placeholder="Razón Social"
+                      forceUppercase={false}
                       disabled
                       name={field.name}
                       value={field.state.value}
@@ -319,6 +322,7 @@ export default function QuoteForm() {
                     <FormInput
                       label="RFC"
                       placeholder="RFC"
+                      forceUppercase={false}
                       disabled
                       name={field.name}
                       value={field.state.value}
@@ -361,6 +365,7 @@ export default function QuoteForm() {
                     <FormInput
                       label="Dirección Fiscal"
                       placeholder="Dirección Fiscal"
+                      forceUppercase={false}
                       disabled
                       name={field.name}
                       value={field.state.value}
@@ -381,6 +386,7 @@ export default function QuoteForm() {
                     <FormInput
                       label="Colonia"
                       placeholder="Colonia"
+                      forceUppercase={false}
                       disabled
                       name={field.name}
                       value={field.state.value}
@@ -401,6 +407,7 @@ export default function QuoteForm() {
                     <FormInput
                       label="C.P."
                       placeholder="C.P."
+                      forceUppercase={false}
                       disabled
                       name={field.name}
                       value={field.state.value}
@@ -423,6 +430,7 @@ export default function QuoteForm() {
                     <FormInput
                       label="Ciudad"
                       placeholder="Ciudad"
+                      forceUppercase={false}
                       disabled
                       name={field.name}
                       value={field.state.value}
@@ -443,6 +451,7 @@ export default function QuoteForm() {
                     <FormInput
                       label="Estado"
                       placeholder="Estado"
+                      forceUppercase={false}
                       disabled
                       name={field.name}
                       value={field.state.value}
@@ -463,6 +472,7 @@ export default function QuoteForm() {
                     <FormInput
                       label="Giro de la empresa"
                       placeholder="Giro de la empresa"
+                      forceUppercase={false}
                       disabled
                       name={field.name}
                       value={field.state.value}
@@ -495,6 +505,7 @@ export default function QuoteForm() {
                   <FormInput
                     label="Persona Pagos"
                     placeholder="Persona Pagos"
+                    forceUppercase
                     name={field.name}
                     value={field.state.value}
                     onChange={(event) => {
@@ -514,6 +525,7 @@ export default function QuoteForm() {
                   <FormInput
                     label="Correo Facturas"
                     placeholder="correo@empresa.com"
+                    forceUppercase={false}
                     name={field.name}
                     value={field.state.value}
                     onChange={(event) => {
@@ -533,6 +545,7 @@ export default function QuoteForm() {
                   <FormInput
                     label="Teléfono Pagos"
                     placeholder="Teléfono"
+                    forceUppercase={false}
                     name={field.name}
                     value={field.state.value}
                     onChange={(event) => {
@@ -552,6 +565,7 @@ export default function QuoteForm() {
                   <FormInput
                     label="O.C."
                     placeholder="Orden de compra"
+                    forceUppercase
                     name={field.name}
                     value={field.state.value ?? ""}
                     onChange={(event) => {
@@ -678,6 +692,7 @@ export default function QuoteForm() {
                     type="number"
                     placeholder="$0.00"
                     className="text-right"
+                    forceUppercase={false}
                     disabled={watchedCondicionPago !== "otra_cantidad"}
                     name={field.name}
                     value={field.state.value}
@@ -766,6 +781,7 @@ export default function QuoteForm() {
                 <FormInput
                   label="Destinatario"
                   placeholder="Nombre completo"
+                  forceUppercase
                   disabled={Boolean(watchedEnviarDomicilioFiscal)}
                   name={field.name}
                   value={field.state.value}
@@ -788,6 +804,7 @@ export default function QuoteForm() {
                 <FormInput
                   label="Empresa"
                   placeholder="Razón Social"
+                  forceUppercase
                   disabled={Boolean(watchedEnviarDomicilioFiscal)}
                   name={field.name}
                   value={field.state.value}
@@ -810,6 +827,7 @@ export default function QuoteForm() {
                 <FormInput
                   label="Teléfono"
                   placeholder="Teléfono"
+                  forceUppercase={false}
                   disabled={Boolean(watchedEnviarDomicilioFiscal)}
                   name={field.name}
                   value={field.state.value}
@@ -832,6 +850,7 @@ export default function QuoteForm() {
                 <FormInput
                   label="Celular"
                   placeholder="Celular"
+                  forceUppercase={false}
                   disabled={Boolean(watchedEnviarDomicilioFiscal)}
                   name={field.name}
                   value={field.state.value}
@@ -854,6 +873,7 @@ export default function QuoteForm() {
                 <FormInput
                   label="Dirección"
                   placeholder="Calle y número"
+                  forceUppercase
                   disabled={Boolean(watchedEnviarDomicilioFiscal)}
                   name={field.name}
                   value={field.state.value}
@@ -876,6 +896,7 @@ export default function QuoteForm() {
                 <FormInput
                   label="Colonia"
                   placeholder="Colonia"
+                  forceUppercase
                   disabled={Boolean(watchedEnviarDomicilioFiscal)}
                   name={field.name}
                   value={field.state.value}
@@ -898,6 +919,7 @@ export default function QuoteForm() {
                 <FormInput
                   label="Código Postal"
                   placeholder="C.P."
+                  forceUppercase={false}
                   disabled={Boolean(watchedEnviarDomicilioFiscal)}
                   name={field.name}
                   value={field.state.value}
@@ -920,6 +942,7 @@ export default function QuoteForm() {
                 <FormInput
                   label="Ciudad"
                   placeholder="Ciudad"
+                  forceUppercase
                   disabled={Boolean(watchedEnviarDomicilioFiscal)}
                   name={field.name}
                   value={field.state.value}
@@ -942,6 +965,7 @@ export default function QuoteForm() {
                 <FormInput
                   label="Estado"
                   placeholder="Estado"
+                  forceUppercase
                   disabled={Boolean(watchedEnviarDomicilioFiscal)}
                   name={field.name}
                   value={field.state.value}
@@ -964,6 +988,7 @@ export default function QuoteForm() {
                 <FormInput
                   label="Referencias adicionales"
                   placeholder="Entre calles, etc."
+                  forceUppercase
                   disabled={Boolean(watchedEnviarDomicilioFiscal)}
                   name={field.name}
                   value={field.state.value}
@@ -1038,6 +1063,7 @@ export default function QuoteForm() {
               <FormInput
                 label="Comentarios parcialidad"
                 placeholder="Especificaciones para el envío parcial..."
+                forceUppercase
                 name={field.name}
                 value={field.state.value}
                 onChange={(event) => {

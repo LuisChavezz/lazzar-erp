@@ -1,6 +1,6 @@
 import { useMutation } from "@tanstack/react-query";
 import { signOut } from "next-auth/react";
-import toast from "react-hot-toast";
+// import toast from "react-hot-toast";
 import { logout } from "../services/actions";
 import { useWorkspaceStore } from "@/src/features/workspace/store/workspace.store";
 
@@ -22,7 +22,7 @@ export const useLogout = () => {
     onError: async () => {
       /* Si la petición al servidor falla, cerramos la sesión local de todos modos
        * para evitar dejar al usuario en un estado inconsistente */
-      toast.error("Hubo un problema al cerrar sesión en el servidor. Cerrando sesión localmente.");
+      // toast.error("Hubo un problema al cerrar sesión en el servidor. Cerrando sesión localmente.");
       await signOut({ callbackUrl: "/auth/login" });
     },
   });

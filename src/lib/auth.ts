@@ -18,6 +18,7 @@ export const authOptions: NextAuthOptions = {
 
         try {
           const user = JSON.parse(credentials.userData) as MfaLoginUser;
+          const isAdminUser = user.is_admin_empresa || user.es_admin || user.is_superuser;
           const fullName =
             [user.first_name, user.last_name].filter(Boolean).join(" ") ||
             user.username;
@@ -26,9 +27,8 @@ export const authOptions: NextAuthOptions = {
             id: String(user.id),
             name: fullName,
             email: user.email,
-            /* Los permisos se implementarán en una iteración futura */
-            role: "admin",
-            permissions: [] as string[],
+            role: isAdminUser ? "admin" : "user",
+            permissions: user.permisos
           };
         } catch {
           return null;
