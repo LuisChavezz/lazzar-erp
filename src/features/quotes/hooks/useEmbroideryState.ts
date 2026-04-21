@@ -51,7 +51,7 @@ const isValidImageUrl = (value: string) => {
 const buildInitialEmbroiderySpecs = (
   item?: QuoteItem | null
 ): EmbroiderySpecForm[] =>
-  item?.bordados?.especificaciones?.map((spec, index) => ({
+  item?.bordados?.especificaciones?.map((spec: NonNullable<QuoteItem["bordados"]>["especificaciones"][number], index: number) => ({
     id: `${spec.posicionCodigo}-${index}`,
     posicionCodigo: spec.posicionCodigo,
     ancho: spec.ancho && spec.ancho > 0 ? String(spec.ancho) : "",

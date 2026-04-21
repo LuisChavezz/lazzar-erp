@@ -8,7 +8,7 @@
 import type { QuoteFormValues } from "../schemas/quote.schema";
 
 type ReflectiveSpec = NonNullable<
-  NonNullable<QuoteFormValues["items"][number]["reflejantes"]>["especificaciones"]
+  NonNullable<NonNullable<QuoteFormValues["items"]>[number]["reflejantes"]>["especificaciones"]
 >[number];
 
 /**

@@ -5,7 +5,7 @@ import { useProducts } from "../../products/hooks/useProducts";
 import { useUnitsOfMeasure } from "../../units-of-measure/hooks/useUnitsOfMeasure";
 import { QuoteFormValues } from "../schemas/quote.schema";
 
-type QuoteItem = QuoteFormValues["items"][number];
+type QuoteItem = NonNullable<QuoteFormValues["items"]>[number];
 
 export interface CatalogRow {
   id: number;
