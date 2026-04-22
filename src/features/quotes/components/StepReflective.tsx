@@ -57,7 +57,7 @@ const TIPO_CATEGORIES = [
     value: "reflejante-cat-1",
     label: "Cinta Costurable",
     subtitle: "LAZZAR-RT",
-    image: "/images/reflejante-cat-1.png",
+    image: "/images/reflejante-cat-costurable.png",
     opciones: [
       { value: "costurable-plata-1", label: 'PLATA 1 PULGADA' },
       { value: "costurable-plata-1.5", label: 'PLATA 1 1/2 PULGADAS' },
@@ -72,7 +72,7 @@ const TIPO_CATEGORIES = [
     value: "reflejante-cat-2",
     label: "Cinta Ignífuga",
     subtitle: "3M",
-    image: "/images/reflejante-cat-2.png",
+    image: "/images/reflejante-cat-ignifuga.png",
     opciones: [
       { value: "ignifuga-plata-1", label: 'PLATA 1 PULGADA IGNÍFUGO' },
       { value: "ignifuga-plata-2", label: 'PLATA 2 PULGADAS IGNÍFUGO' },
@@ -84,7 +84,7 @@ const TIPO_CATEGORIES = [
     value: "reflejante-cat-3",
     label: "Termofijable (Planchadas)",
     subtitle: "3M",
-    image: "/images/reflejante-cat-3.png",
+    image: "/images/reflejante-cat-planchada.png",
     opciones: [
       { value: "termofijable-h510c-1", label: 'H510C SEGMENTADA PLATA 1"' },
       { value: "termofijable-h510c-2", label: 'H510C SEGMENTADA PLATA 2"' },
