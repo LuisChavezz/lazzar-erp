@@ -318,6 +318,9 @@ export function useQuoteForm() {
   // Estado del diálogo de edición de reflejante por partida.
   const [reflectiveEditIndex, setReflectiveEditIndex] = useState<number | null>(null);
   const [isReflectiveEditOpen, setIsReflectiveEditOpen] = useState(false);
+  // Estado del diálogo de edición de tallas por partida.
+  const [sizesEditIndex, setSizesEditIndex] = useState<number | null>(null);
+  const [isSizesEditOpen, setIsSizesEditOpen] = useState(false);
 
   const showForm = true;
 
@@ -820,6 +823,32 @@ export function useQuoteForm() {
     }
   }, []);
 
+  // Abre el diálogo de edición de tallas para la partida en `index`.
+  const openSizesEdit = useCallback((index: number) => {
+    setSizesEditIndex(index);
+    setIsSizesEditOpen(true);
+  }, []);
+
+  // Persiste los cambios de tallas y cierra el diálogo.
+  const handleSizesEditSave = useCallback(
+    (updatedItem: QuoteItem) => {
+      if (sizesEditIndex === null) return;
+      update(sizesEditIndex, updatedItem);
+      setIsSizesEditOpen(false);
+      setSizesEditIndex(null);
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [sizesEditIndex]
+  );
+
+  // Controla la apertura/cierre del diálogo de edición de tallas.
+  const handleSizesEditOpenChange = useCallback((nextOpen: boolean) => {
+    setIsSizesEditOpen(nextOpen);
+    if (!nextOpen) {
+      setSizesEditIndex(null);
+    }
+  }, []);
+
   const handleSelectCustomer = useCallback((customer: OnboardingCustomer) => {
     // Hidrata facturación, contacto y envío al seleccionar cliente.
     const selectedRegimen = onboardingData?.catalogos.regimenes_fiscales.find(
@@ -1087,5 +1116,10 @@ export function useQuoteForm() {
     openReflectiveEdit,
     handleReflectiveEditSave,
     handleReflectiveEditOpenChange,
+    sizesEditIndex,
+    isSizesEditOpen,
+    openSizesEdit,
+    handleSizesEditSave,
+    handleSizesEditOpenChange,
   };
 }

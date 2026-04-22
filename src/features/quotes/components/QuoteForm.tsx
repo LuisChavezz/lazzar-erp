@@ -19,6 +19,7 @@ import { useQuoteForm } from "../hooks/useQuoteForm";
 import { AddProductDialog } from "./AddProductDialog";
 import { EditEmbroideryDialog } from "./EditEmbroideryDialog";
 import { EditReflectiveDialog } from "./EditReflectiveDialog";
+import { EditSizesDialog } from "./EditSizesDialog";
 import { QuoteCreationSuccessMessage } from "./QuoteCreationSuccessMessage";
 export default function QuoteForm() {
   const {
@@ -93,6 +94,11 @@ export default function QuoteForm() {
     openReflectiveEdit,
     handleReflectiveEditSave,
     handleReflectiveEditOpenChange,
+    sizesEditIndex,
+    isSizesEditOpen,
+    openSizesEdit,
+    handleSizesEditSave,
+    handleSizesEditOpenChange,
   } = useQuoteForm();
 
   // Estado de carga del formulario
@@ -1139,6 +1145,17 @@ export default function QuoteForm() {
           onSave={handleReflectiveEditSave}
         />
 
+        {/* Diálogo de edición de tallas por partida. La `key` fuerza el remount al
+            cambiar de partida, garantizando estado limpio sin reset manual. */}
+        <EditSizesDialog
+          key={sizesEditIndex ?? 'sizes-edit'}
+          open={isSizesEditOpen}
+          onOpenChange={handleSizesEditOpenChange}
+          item={sizesEditIndex !== null ? (watchedItems?.[sizesEditIndex] ?? null) : null}
+          sizes={sizes}
+          onSave={handleSizesEditSave}
+        />
+
         <AddProductDialog
           key={editIndex ?? "new"}
           open={isAddProductsOpen}
@@ -1278,13 +1295,22 @@ export default function QuoteForm() {
                         </div>
                       </td>
                       <td className="p-2">
-                        <div className="space-y-1">
-                          <div
+                        <div className="flex items-start gap-1">
+                          <span
                             className="text-xs text-slate-500 dark:text-slate-400 whitespace-normal wrap-break-word"
                             aria-label="Tallas del producto"
                           >
                             {tallasLabel}
-                          </div>
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => openSizesEdit(index)}
+                            aria-label="Editar tallas del producto"
+                            title="Editar tallas"
+                            className="shrink-0 text-slate-300 hover:text-sky-500 dark:text-slate-600 dark:hover:text-sky-400 transition-colors cursor-pointer p-0.5 rounded mt-px"
+                          >
+                            <EditIcon className="w-3.5 h-3.5" aria-hidden="true" />
+                          </button>
                         </div>
                       </td>
                       <td className="p-2">
@@ -1395,17 +1421,6 @@ export default function QuoteForm() {
                       </td>
                       <td className="p-2 text-center">
                         <div className="flex items-center justify-center gap-2">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setEditIndex(index);
-                              setIsAddProductsOpen(true);
-                            }}
-                            aria-label="Editar partida"
-                            className="text-slate-400 hover:text-sky-500 transition-colors cursor-pointer p-1"
-                          >
-                            ✎
-                          </button>
                           <button
                             type="button"
                             onClick={() => remove(index)}
