@@ -1,6 +1,14 @@
 @import "tailwindcss";
 @tailwind utilities;
 
+/*
+ * Cambia el variant 'dark:' de Tailwind a estrategia basada en clase.
+ * En lugar de @media (prefers-color-scheme: dark), Tailwind activará
+ * las utilidades dark: cuando el elemento o un ancestro tenga la clase .dark.
+ * El script de inicialización en layout.tsx aplica/quita la clase en <html>.
+ */
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
   --background: #ffffff;
   --foreground: #171717;
@@ -20,8 +28,23 @@
   --shadow-glow: 0 0 15px rgba(14, 165, 233, 0.3);
 }
 
+/*
+ * Variables para tema oscuro controlado por clase .dark en <html>.
+ * El script anti-FOUC en layout.tsx aplica esta clase antes de la hidratación.
+ */
+html.dark {
+  color-scheme: dark;
+  --background: #0a0a0a;
+  --foreground: #ededed;
+}
+
+/*
+ * Fallback de variables CSS para cuando el sistema es dark y el script JS
+ * todavía no ha aplicado la clase .dark (fracción de segundo pre-hidratación).
+ * No afecta las utilidades dark: de Tailwind, que requieren la clase .dark.
+ */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not(.dark):not(.light) {
     --background: #0a0a0a;
     --foreground: #ededed;
   }

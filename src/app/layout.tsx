@@ -34,7 +34,26 @@ export default async function RootLayout({
   const session = await getServerSession(authOptions);
 
   return (
-    <html lang="en">
+    /*
+     * suppressHydrationWarning es necesario porque el script de inicialización
+     * de tema puede añadir la clase 'dark' al elemento <html> antes de que React
+     * hidrate, lo que causaría un mismatch detectado por el hydration checker.
+     */
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        {/*
+         * Script anti-FOUC (Flash Of Unstyled Content) de tema.
+         * Se ejecuta de forma síncrona ANTES de que el navegador pinte el primer
+         * frame, aplicando la clase 'dark' en <html> según la preferencia guardada
+         * en localStorage o la preferencia del sistema operativo.
+         * Estrategia: light → sin clase | dark → clase 'dark' | system/null → matchMedia
+         */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var t=localStorage.getItem('theme');if(t==='dark'){document.documentElement.classList.add('dark')}else if(t==='light'){document.documentElement.classList.remove('dark')}else{if(window.matchMedia('(prefers-color-scheme:dark)').matches){document.documentElement.classList.add('dark')}}}catch(e){}})();`,
+          }}
+        />
+      </head>
       <body
         className={`${inter.variable} ${poppins.variable} antialiased`}
       >
