@@ -18,6 +18,7 @@ import { DialogHeader } from "@/src/components/DialogHeader";
 import { useQuoteForm } from "../hooks/useQuoteForm";
 import { AddProductDialog } from "./AddProductDialog";
 import { EditEmbroideryDialog } from "./EditEmbroideryDialog";
+import { EditReflectiveDialog } from "./EditReflectiveDialog";
 import { QuoteCreationSuccessMessage } from "./QuoteCreationSuccessMessage";
 export default function QuoteForm() {
   const {
@@ -87,6 +88,11 @@ export default function QuoteForm() {
     openEmbroideryEdit,
     handleEmbroideryEditSave,
     handleEmbroideryEditOpenChange,
+    reflectiveEditIndex,
+    isReflectiveEditOpen,
+    openReflectiveEdit,
+    handleReflectiveEditSave,
+    handleReflectiveEditOpenChange,
   } = useQuoteForm();
 
   // Estado de carga del formulario
@@ -1123,6 +1129,16 @@ export default function QuoteForm() {
           onSave={handleEmbroideryEditSave}
         />
 
+        {/* Diálogo de edición de reflejante por partida. La `key` fuerza el remount al
+            cambiar de partida, garantizando estado limpio sin reset manual. */}
+        <EditReflectiveDialog
+          key={reflectiveEditIndex ?? 'reflective-edit'}
+          open={isReflectiveEditOpen}
+          onOpenChange={handleReflectiveEditOpenChange}
+          item={reflectiveEditIndex !== null ? (watchedItems?.[reflectiveEditIndex] ?? null) : null}
+          onSave={handleReflectiveEditSave}
+        />
+
         <AddProductDialog
           key={editIndex ?? "new"}
           open={isAddProductsOpen}
@@ -1288,10 +1304,17 @@ export default function QuoteForm() {
                         </div>
                       </td>
                       <td className="p-2">
-                        <div className="space-y-1">
-                          <div className="text-xs text-center text-slate-500 dark:text-slate-400">
-                            {reflejanteLabel}
-                          </div>
+                        <div className="flex items-center justify-center gap-1">
+                          <span className="text-xs text-slate-500 dark:text-slate-400">{reflejanteLabel}</span>
+                          <button
+                            type="button"
+                            onClick={() => openReflectiveEdit(index)}
+                            aria-label="Editar configuración de reflejante"
+                            title="Editar reflejante"
+                            className="text-slate-300 hover:text-sky-500 dark:text-slate-600 dark:hover:text-sky-400 transition-colors cursor-pointer p-0.5 rounded"
+                          >
+                            <EditIcon className="w-3.5 h-3.5" aria-hidden="true" />
+                          </button>
                         </div>
                       </td>
                       <td className="p-2">

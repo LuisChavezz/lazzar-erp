@@ -315,6 +315,9 @@ export function useQuoteForm() {
   // Estado del diálogo de edición de bordado por partida.
   const [embroideryEditIndex, setEmbroideryEditIndex] = useState<number | null>(null);
   const [isEmbroideryEditOpen, setIsEmbroideryEditOpen] = useState(false);
+  // Estado del diálogo de edición de reflejante por partida.
+  const [reflectiveEditIndex, setReflectiveEditIndex] = useState<number | null>(null);
+  const [isReflectiveEditOpen, setIsReflectiveEditOpen] = useState(false);
 
   const showForm = true;
 
@@ -791,6 +794,32 @@ export function useQuoteForm() {
     }
   }, []);
 
+  // Abre el diálogo de edición de reflejante para la partida en `index`.
+  const openReflectiveEdit = useCallback((index: number) => {
+    setReflectiveEditIndex(index);
+    setIsReflectiveEditOpen(true);
+  }, []);
+
+  // Persiste los cambios de reflejante y cierra el diálogo.
+  const handleReflectiveEditSave = useCallback(
+    (updatedItem: QuoteItem) => {
+      if (reflectiveEditIndex === null) return;
+      update(reflectiveEditIndex, updatedItem);
+      setIsReflectiveEditOpen(false);
+      setReflectiveEditIndex(null);
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [reflectiveEditIndex]
+  );
+
+  // Controla la apertura/cierre del diálogo de edición de reflejante.
+  const handleReflectiveEditOpenChange = useCallback((nextOpen: boolean) => {
+    setIsReflectiveEditOpen(nextOpen);
+    if (!nextOpen) {
+      setReflectiveEditIndex(null);
+    }
+  }, []);
+
   const handleSelectCustomer = useCallback((customer: OnboardingCustomer) => {
     // Hidrata facturación, contacto y envío al seleccionar cliente.
     const selectedRegimen = onboardingData?.catalogos.regimenes_fiscales.find(
@@ -1053,5 +1082,10 @@ export function useQuoteForm() {
     openEmbroideryEdit,
     handleEmbroideryEditSave,
     handleEmbroideryEditOpenChange,
+    reflectiveEditIndex,
+    isReflectiveEditOpen,
+    openReflectiveEdit,
+    handleReflectiveEditSave,
+    handleReflectiveEditOpenChange,
   };
 }
