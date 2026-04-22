@@ -78,6 +78,26 @@ html:not(.dark) input[type="date"] {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%236b7280'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='1.8' d='M8 7V4m8 3V4m-9 8h10M5 21h14a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2z'/%3E%3C/svg%3E");
 }
 
+/*
+ * Previene el zoom automático en iOS Safari (y navegadores Android) al
+ * hacer focus en campos de formulario.
+ *
+ * Causa: iOS hace zoom cuando el font-size del input es < 16px.
+ * Solución: forzar font-size mínimo de 1rem (16px) en dispositivos táctiles
+ * usando la media query (hover: none) and (pointer: coarse), que identifica
+ * con precisión pantallas sin hover real (táctiles), sin afectar el diseño
+ * en escritorio donde los inputs conservan su tamaño original (text-sm/text-xs).
+ *
+ * Se excluyen: checkbox, radio, range y color (no requieren font-size legible).
+ */
+@media (hover: none) and (pointer: coarse) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]),
+  select,
+  textarea {
+    font-size: 1rem !important;
+  }
+}
+
 /* Dark mode calendar icon */
 .dark input[type="date"] {
   color-scheme: dark;
