@@ -312,6 +312,15 @@ export function useQuoteForm() {
   const [isRouteTransitioning, setIsRouteTransitioning] = useState(false);
   const [selectedCustomerId, setSelectedCustomerId] = useState(0);
   const [extraServices, setExtraServices] = useState<ExtraService[]>([]);
+  // Estado del diálogo de edición de bordado por partida.
+  const [embroideryEditIndex, setEmbroideryEditIndex] = useState<number | null>(null);
+  const [isEmbroideryEditOpen, setIsEmbroideryEditOpen] = useState(false);
+  // Estado del diálogo de edición de reflejante por partida.
+  const [reflectiveEditIndex, setReflectiveEditIndex] = useState<number | null>(null);
+  const [isReflectiveEditOpen, setIsReflectiveEditOpen] = useState(false);
+  // Estado del diálogo de edición de tallas por partida.
+  const [sizesEditIndex, setSizesEditIndex] = useState<number | null>(null);
+  const [isSizesEditOpen, setIsSizesEditOpen] = useState(false);
 
   const showForm = true;
 
@@ -762,6 +771,84 @@ export function useQuoteForm() {
     clearFieldErrors(`items.${index}`);
   };
 
+  // Abre el diálogo de edición de bordado para la partida en `index`.
+  const openEmbroideryEdit = useCallback((index: number) => {
+    setEmbroideryEditIndex(index);
+    setIsEmbroideryEditOpen(true);
+  }, []);
+
+  // Persiste los cambios de bordado y cierra el diálogo.
+  const handleEmbroideryEditSave = useCallback(
+    (updatedItem: QuoteItem) => {
+      if (embroideryEditIndex === null) return;
+      update(embroideryEditIndex, updatedItem);
+      setIsEmbroideryEditOpen(false);
+      setEmbroideryEditIndex(null);
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [embroideryEditIndex]
+  );
+
+  // Controla la apertura/cierre del diálogo de edición de bordado.
+  const handleEmbroideryEditOpenChange = useCallback((nextOpen: boolean) => {
+    setIsEmbroideryEditOpen(nextOpen);
+    if (!nextOpen) {
+      setEmbroideryEditIndex(null);
+    }
+  }, []);
+
+  // Abre el diálogo de edición de reflejante para la partida en `index`.
+  const openReflectiveEdit = useCallback((index: number) => {
+    setReflectiveEditIndex(index);
+    setIsReflectiveEditOpen(true);
+  }, []);
+
+  // Persiste los cambios de reflejante y cierra el diálogo.
+  const handleReflectiveEditSave = useCallback(
+    (updatedItem: QuoteItem) => {
+      if (reflectiveEditIndex === null) return;
+      update(reflectiveEditIndex, updatedItem);
+      setIsReflectiveEditOpen(false);
+      setReflectiveEditIndex(null);
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [reflectiveEditIndex]
+  );
+
+  // Controla la apertura/cierre del diálogo de edición de reflejante.
+  const handleReflectiveEditOpenChange = useCallback((nextOpen: boolean) => {
+    setIsReflectiveEditOpen(nextOpen);
+    if (!nextOpen) {
+      setReflectiveEditIndex(null);
+    }
+  }, []);
+
+  // Abre el diálogo de edición de tallas para la partida en `index`.
+  const openSizesEdit = useCallback((index: number) => {
+    setSizesEditIndex(index);
+    setIsSizesEditOpen(true);
+  }, []);
+
+  // Persiste los cambios de tallas y cierra el diálogo.
+  const handleSizesEditSave = useCallback(
+    (updatedItem: QuoteItem) => {
+      if (sizesEditIndex === null) return;
+      update(sizesEditIndex, updatedItem);
+      setIsSizesEditOpen(false);
+      setSizesEditIndex(null);
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [sizesEditIndex]
+  );
+
+  // Controla la apertura/cierre del diálogo de edición de tallas.
+  const handleSizesEditOpenChange = useCallback((nextOpen: boolean) => {
+    setIsSizesEditOpen(nextOpen);
+    if (!nextOpen) {
+      setSizesEditIndex(null);
+    }
+  }, []);
+
   const handleSelectCustomer = useCallback((customer: OnboardingCustomer) => {
     // Hidrata facturación, contacto y envío al seleccionar cliente.
     const selectedRegimen = onboardingData?.catalogos.regimenes_fiscales.find(
@@ -1019,5 +1106,20 @@ export function useQuoteForm() {
     handleCustomerCreated,
     extraServices,
     setExtraServices,
+    embroideryEditIndex,
+    isEmbroideryEditOpen,
+    openEmbroideryEdit,
+    handleEmbroideryEditSave,
+    handleEmbroideryEditOpenChange,
+    reflectiveEditIndex,
+    isReflectiveEditOpen,
+    openReflectiveEdit,
+    handleReflectiveEditSave,
+    handleReflectiveEditOpenChange,
+    sizesEditIndex,
+    isSizesEditOpen,
+    openSizesEdit,
+    handleSizesEditSave,
+    handleSizesEditOpenChange,
   };
 }
