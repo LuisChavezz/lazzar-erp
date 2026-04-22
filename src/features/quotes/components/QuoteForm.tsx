@@ -7,7 +7,7 @@ import {
   FormSecondaryButton,
   FormSubmitButton,
 } from "@/src/components/FormButtons";
-import { EmbarquesIcon, PedidosIcon, PlusIcon } from "@/src/components/Icons";
+import { EditIcon, EmbarquesIcon, PedidosIcon, PlusIcon } from "@/src/components/Icons";
 import { MainDialog } from "@/src/components/MainDialog";
 import { getFieldError } from "../../../utils/getFieldError";
 import { formatCurrency } from "../../../utils/formatCurrency";
@@ -17,6 +17,7 @@ import CustomerForm from "../../customers/components/CustomerForm";
 import { DialogHeader } from "@/src/components/DialogHeader";
 import { useQuoteForm } from "../hooks/useQuoteForm";
 import { AddProductDialog } from "./AddProductDialog";
+import { EditEmbroideryDialog } from "./EditEmbroideryDialog";
 import { QuoteCreationSuccessMessage } from "./QuoteCreationSuccessMessage";
 export default function QuoteForm() {
   const {
@@ -81,6 +82,11 @@ export default function QuoteForm() {
     handleCustomerCreated,
     extraServices,
     setExtraServices,
+    embroideryEditIndex,
+    isEmbroideryEditOpen,
+    openEmbroideryEdit,
+    handleEmbroideryEditSave,
+    handleEmbroideryEditOpenChange,
   } = useQuoteForm();
 
   // Estado de carga del formulario
@@ -1107,6 +1113,16 @@ export default function QuoteForm() {
           </div>
         </div>
 
+        {/* Diálogo de edición de bordado por partida. La `key` fuerza el remount al
+            cambiar de partida, garantizando estado limpio sin reset manual. */}
+        <EditEmbroideryDialog
+          key={embroideryEditIndex ?? 'embroidery-edit'}
+          open={isEmbroideryEditOpen}
+          onOpenChange={handleEmbroideryEditOpenChange}
+          item={embroideryEditIndex !== null ? (watchedItems?.[embroideryEditIndex] ?? null) : null}
+          onSave={handleEmbroideryEditSave}
+        />
+
         <AddProductDialog
           key={editIndex ?? "new"}
           open={isAddProductsOpen}
@@ -1256,10 +1272,19 @@ export default function QuoteForm() {
                         </div>
                       </td>
                       <td className="p-2">
-                        <div className="space-y-1">
-                          <div className="text-xs text-center text-slate-500 dark:text-slate-400">
+                        <div className="flex items-center justify-center gap-1">
+                          <span className="text-xs text-slate-500 dark:text-slate-400">
                             {bordadoLabel}
-                          </div>
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => openEmbroideryEdit(index)}
+                            aria-label="Editar configuración de bordado"
+                            title="Editar bordado"
+                            className="text-slate-300 hover:text-sky-500 dark:text-slate-600 dark:hover:text-sky-400 transition-colors cursor-pointer p-0.5 rounded"
+                          >
+                            <EditIcon className="w-3.5 h-3.5" aria-hidden="true" />
+                          </button>
                         </div>
                       </td>
                       <td className="p-2">

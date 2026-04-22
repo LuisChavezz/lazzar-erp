@@ -312,6 +312,9 @@ export function useQuoteForm() {
   const [isRouteTransitioning, setIsRouteTransitioning] = useState(false);
   const [selectedCustomerId, setSelectedCustomerId] = useState(0);
   const [extraServices, setExtraServices] = useState<ExtraService[]>([]);
+  // Estado del diálogo de edición de bordado por partida.
+  const [embroideryEditIndex, setEmbroideryEditIndex] = useState<number | null>(null);
+  const [isEmbroideryEditOpen, setIsEmbroideryEditOpen] = useState(false);
 
   const showForm = true;
 
@@ -762,6 +765,32 @@ export function useQuoteForm() {
     clearFieldErrors(`items.${index}`);
   };
 
+  // Abre el diálogo de edición de bordado para la partida en `index`.
+  const openEmbroideryEdit = useCallback((index: number) => {
+    setEmbroideryEditIndex(index);
+    setIsEmbroideryEditOpen(true);
+  }, []);
+
+  // Persiste los cambios de bordado y cierra el diálogo.
+  const handleEmbroideryEditSave = useCallback(
+    (updatedItem: QuoteItem) => {
+      if (embroideryEditIndex === null) return;
+      update(embroideryEditIndex, updatedItem);
+      setIsEmbroideryEditOpen(false);
+      setEmbroideryEditIndex(null);
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [embroideryEditIndex]
+  );
+
+  // Controla la apertura/cierre del diálogo de edición de bordado.
+  const handleEmbroideryEditOpenChange = useCallback((nextOpen: boolean) => {
+    setIsEmbroideryEditOpen(nextOpen);
+    if (!nextOpen) {
+      setEmbroideryEditIndex(null);
+    }
+  }, []);
+
   const handleSelectCustomer = useCallback((customer: OnboardingCustomer) => {
     // Hidrata facturación, contacto y envío al seleccionar cliente.
     const selectedRegimen = onboardingData?.catalogos.regimenes_fiscales.find(
@@ -1019,5 +1048,10 @@ export function useQuoteForm() {
     handleCustomerCreated,
     extraServices,
     setExtraServices,
+    embroideryEditIndex,
+    isEmbroideryEditOpen,
+    openEmbroideryEdit,
+    handleEmbroideryEditSave,
+    handleEmbroideryEditOpenChange,
   };
 }
