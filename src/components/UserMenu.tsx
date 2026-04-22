@@ -3,7 +3,8 @@
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { DropdownMenu } from "@radix-ui/themes";
-import { UserIcon, HelpIcon } from "./Icons";
+import { UserIcon } from "./Icons";
+import { ThemeToggle } from "./ThemeToggle";
 
 export const UserMenu = () => {
   const { data: session } = useSession();
@@ -39,15 +40,14 @@ export const UserMenu = () => {
           Perfil
         </DropdownMenu.Item>
         
-        {/* <DropdownMenu.Item className="flex items-center gap-2 px-3 py-2 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/5 rounded-lg cursor-pointer! outline-none data-highlighted:bg-slate-50 dark:data-highlighted:bg-white/5 data-highlighted:text-sky-600 dark:data-highlighted:text-sky-400">
-          <SettingsIcon className="w-4 h-4" />
-          Configuración
-        </DropdownMenu.Item> */}
-        
-        <DropdownMenu.Item className="flex items-center gap-2 px-3 py-2 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/5 rounded-lg cursor-pointer! outline-none data-highlighted:bg-slate-50 dark:data-highlighted:bg-white/5 data-highlighted:text-sky-600 dark:data-highlighted:text-sky-400">
-          <HelpIcon className="w-4 h-4" />
-          Ayuda
-        </DropdownMenu.Item>
+
+        {/* Sección de apariencia */}
+        <div className="px-3 pt-2 pb-1.5">
+          <p className="text-xs font-medium text-slate-400 dark:text-slate-500 mb-1.5 select-none">
+            Tema
+          </p>
+          <ThemeToggle />
+        </div>
 
         <DropdownMenu.Separator className="h-px bg-slate-100 dark:bg-slate-800 my-1" />
       </DropdownMenu.Content>

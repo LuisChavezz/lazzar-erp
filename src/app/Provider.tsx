@@ -5,15 +5,15 @@ import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { Toaster } from "react-hot-toast";
 import { SessionProvider } from "next-auth/react";
 import { Session } from "next-auth";
-import { Theme } from "@radix-ui/themes";
 import { useState } from "react";
+import { RadixThemeWrapper } from "@/src/components/RadixThemeWrapper";
 
 export const Provider = ({ children, session }: { children: React.ReactNode, session?: Session | null }) => {
   const [queryClient] = useState(() => new QueryClient({
-    defaultOptions: { // Set default options for queries
+    defaultOptions: { // Opciones por defecto para las queries
       queries: {
         retry: 1,
-        staleTime: 15 * 60 * 1000, // 15 minutes
+        staleTime: 15 * 60 * 1000, // 15 minutos
         refetchOnWindowFocus: false,
       },
     },
@@ -22,13 +22,13 @@ export const Provider = ({ children, session }: { children: React.ReactNode, ses
   return (
     <SessionProvider session={session}>
       <QueryClientProvider client={queryClient}>
-          <Theme>
-            {children}
-            <ReactQueryDevtools initialIsOpen={ false } />
-          </Theme>
+        <RadixThemeWrapper>
+          {children}
+          <ReactQueryDevtools initialIsOpen={false} />
+        </RadixThemeWrapper>
 
-          <Toaster position="top-right" />
+        <Toaster position="top-right" />
       </QueryClientProvider>
     </SessionProvider>
-  )
-}
+  );
+};
