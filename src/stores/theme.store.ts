@@ -15,6 +15,13 @@ interface ThemeState {
   setTheme: (theme: Theme, isSystemDark?: boolean) => void;
   /** Actualiza resolvedTheme cuando cambia la preferencia del sistema operativo */
   syncSystemTheme: (isSystemDark: boolean) => void;
+  /**
+   * Rehidrata resolvedTheme y la clase .dark al montar el cliente.
+   * Lee state.theme desde el estado actual del store (no desde un closure),
+   * por lo que es seguro llamarlo sin riesgo de sobrescribir la preferencia
+   * persistida con un valor obsoleto del closure.
+   */
+  hydrate: (isSystemDark: boolean) => void;
 }
 
 // ─── Utilidad: aplica/quita .dark en <html> ───────────────────────────────────
@@ -55,6 +62,20 @@ export const useThemeStore = create<ThemeState>()(
             },
             false,
             "syncSystemTheme",
+          );
+        },
+
+        hydrate: (isSystemDark) => {
+          set(
+            (state) => {
+              // Lee theme desde el estado actual del store, nunca del closure del componente.
+              // Así evita sobrescribir la preferencia persistida con un valor obsoleto.
+              const resolved = resolveTheme(state.theme, isSystemDark);
+              applyDarkClass(resolved === "dark");
+              return { resolvedTheme: resolved };
+            },
+            false,
+            "hydrate",
           );
         },
       }),

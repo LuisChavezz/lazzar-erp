@@ -18,17 +18,18 @@ import { useThemeStore } from '@/src/stores/theme.store';
 export function RadixThemeWrapper({ children }: { children: React.ReactNode }) {
   const resolvedTheme = useThemeStore((s) => s.resolvedTheme);
   const syncSystemTheme = useThemeStore((s) => s.syncSystemTheme);
-  const theme = useThemeStore((s) => s.theme);
-  const setTheme = useThemeStore((s) => s.setTheme);
+  const hydrate = useThemeStore((s) => s.hydrate);
 
-  // Sincronizar clase .dark y resolvedTheme al montar y cuando cambia el tema
+  /*
+   * Al montar el cliente, rehidrata resolvedTheme con la preferencia real del
+   * sistema operativo. Se usa `hydrate` (no `setTheme`) porque lee state.theme
+   * desde el estado actual del store — evita sobrescribir la preferencia
+   * persistida con un valor obsoleto capturado en el closure.
+   */
   useEffect(() => {
     const isSystemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-
-    // Re-hidratar el resolvedTheme con la preferencia real del sistema en el cliente
-    setTheme(theme, isSystemDark);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    hydrate(isSystemDark);
+  }, [hydrate]);
 
   // Suscripción a cambios de preferencia del sistema operativo
   useEffect(() => {
