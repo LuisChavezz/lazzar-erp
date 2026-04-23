@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { DropdownMenu } from "@radix-ui/themes";
 import { UserIcon } from "./Icons";
 import { ThemeToggle } from "./ThemeToggle";
+import { GoogleMenuOption } from "@/src/features/google/components/GoogleMenuOption";
 
 export const UserMenu = () => {
   const { data: session } = useSession();
@@ -25,21 +26,26 @@ export const UserMenu = () => {
           {userInitial}
         </button>
       </DropdownMenu.Trigger>
+
       
-      <DropdownMenu.Content align="end" className="bg-white! dark:bg-zinc-900! min-w-55 rounded-xl shadow-xl border border-slate-100 dark:border-slate-800 z-50">
-        <div className="px-3 py-2 border-b border-slate-100 dark:border-slate-800 mb-1">
+      <DropdownMenu.Content align="end" className="bg-white! dark:bg-zinc-900! min-w-55 rounded-xl shadow-xl  z-50">
+        <div className="px-3 py-2 border-b border-slate-200 dark:border-slate-700 mb-1">
           <p className="text-sm font-semibold text-slate-800 dark:text-white">{userName}</p>
           <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{userEmail}</p>
         </div>
 
         <DropdownMenu.Item
           onSelect={() => router.push("/settings/profile")}
-          className="flex items-center gap-2 px-3 py-2 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/5 rounded-lg cursor-pointer! outline-none data-highlighted:bg-slate-50 dark:data-highlighted:bg-white/5 data-highlighted:text-sky-600 dark:data-highlighted:text-sky-400"
+          className="flex items-center gap-2 px-3 py-2 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/5 rounded-lg cursor-pointer! outline-none data-highlighted:bg-slate-50 dark:data-highlighted:bg-white/5 data-highlighted:text-sky-600 dark:data-highlighted:text-sky-400 transition-colors ease-in-out"
         >
           <UserIcon className="w-4 h-4" />
           Perfil
         </DropdownMenu.Item>
-        
+
+        {/* Opción dinámica de Google (skeleton / conectar / conectado) */}
+        <GoogleMenuOption />
+
+        <DropdownMenu.Separator className="h-px bg-slate-100 dark:bg-slate-800" />
 
         {/* Sección de apariencia */}
         <div className="px-3 pt-2 pb-1.5">
@@ -49,7 +55,6 @@ export const UserMenu = () => {
           <ThemeToggle />
         </div>
 
-        <DropdownMenu.Separator className="h-px bg-slate-100 dark:bg-slate-800 my-1" />
       </DropdownMenu.Content>
     </DropdownMenu.Root>
   );
