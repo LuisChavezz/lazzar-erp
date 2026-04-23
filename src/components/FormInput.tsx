@@ -20,7 +20,7 @@ export const FormInput = forwardRef<HTMLInputElement, FormInputProps>(
     const variants = {
       default: `
         bg-slate-50 dark:bg-black/20
-        border border-slate-200 dark:border-slate-700
+        border border-slate-300 dark:border-slate-700
         rounded-xl px-4 py-3 text-sm font-medium
         text-slate-900 dark:text-white
         focus:ring-2 focus:ring-brand-500/20
@@ -31,7 +31,7 @@ export const FormInput = forwardRef<HTMLInputElement, FormInputProps>(
         ${error ? "border-red-500 focus:border-red-500 focus:ring-red-500/20" : ""}
       `,
       ghost: `
-        bg-transparent border-b-2 border-slate-200 dark:border-slate-800
+        bg-transparent border-b-2 border-slate-300 dark:border-slate-800
         focus:border-sky-500 dark:focus:border-sky-500
         px-1 py-2 text-2xl font-bold
         text-slate-900 dark:text-white
@@ -41,7 +41,7 @@ export const FormInput = forwardRef<HTMLInputElement, FormInputProps>(
         ${error ? "border-red-500 focus:border-red-500" : ""}
       `,
       ghostSearch: `
-        bg-transparent border-b-2 border-slate-200 dark:border-slate-800
+        bg-transparent border-b-2 border-slate-300 dark:border-slate-800
         focus:border-sky-500 dark:focus:border-sky-500
         px-1 py-2 pr-8 text-xl font-bold
         text-slate-900 dark:text-white

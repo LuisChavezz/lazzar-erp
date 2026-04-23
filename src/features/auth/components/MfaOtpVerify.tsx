@@ -184,10 +184,10 @@ export default function MfaOtpVerify({
               onPaste={handlePaste}
               onFocus={(e) => e.target.select()}
               aria-label={`Dígito ${index + 1} de ${OTP_LENGTH}`}
-              className={`h-12 w-12 rounded-2xl border text-center font-mono text-lg font-semibold text-slate-800 outline-none transition-all dark:text-white ${
+              className={`h-12 w-12 rounded-2xl border text-center font-mono text-lg font-semibold text-slate-800 caret-sky-500 outline-none transition-all dark:text-white ${
                 digit
-                  ? "border-sky-400 bg-sky-50/60 dark:border-sky-500/60 dark:bg-sky-500/10"
-                  : "border-slate-200/80 bg-white dark:border-white/10 dark:bg-white/5"
+                  ? "border-sky-400 bg-sky-50 shadow-sm shadow-sky-200/60 dark:border-sky-500/60 dark:bg-sky-500/10 dark:shadow-none"
+                  : "border-slate-300 bg-white shadow-sm shadow-slate-200/80 dark:border-white/10 dark:bg-white/5 dark:shadow-none"
               } focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20`}
             />
           ))}

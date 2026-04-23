@@ -31,7 +31,7 @@ export const FormSelect = forwardRef<HTMLSelectElement, FormSelectProps>(
             className={`
               w-full appearance-none
               bg-slate-50 dark:bg-black/20
-              border border-slate-200 dark:border-slate-700
+              border border-slate-300 dark:border-slate-700
               rounded-xl px-4 py-3 pr-10 text-sm font-medium
               text-slate-900 dark:text-white
               outline-none transition-all
