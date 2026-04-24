@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useCallback } from "react";
-import { ArrowLeftIcon } from "@/src/components/Icons";
+import { ArrowLeftIcon, ExternalLinkIcon } from "@/src/components/Icons";
 import { LoadingSkeleton } from "@/src/components/LoadingSkeleton";
 import { formatDetailDate } from "./email.utils";
 import { buildEmailDocument } from "./buildEmailDocument";
@@ -48,7 +48,7 @@ export const EmailDetail = ({ message, onBack }: EmailDetailProps) => {
 
   return (
     <div className="flex flex-col bg-white dark:bg-slate-900">
-      {/* Barra superior con botón de volver */}
+      {/* Barra superior: botón de volver + enlace a Gmail */}
       <div className="flex items-center gap-3 px-4 py-3 border-b border-slate-200 dark:border-slate-700 sticky top-0 z-10 bg-white dark:bg-slate-900">
         <button
           type="button"
@@ -59,6 +59,22 @@ export const EmailDetail = ({ message, onBack }: EmailDetailProps) => {
           <ArrowLeftIcon className="w-4 h-4" aria-hidden="true" />
           Volver
         </button>
+
+        {/*
+         * Enlace directo al mensaje en la interfaz web de Gmail.
+         * El ID del mensaje de la API de Gmail coincide con el hash de la URL.
+         * target="_blank" + rel="noopener noreferrer" protege contra tab-napping.
+         */}
+        <a
+          href={`https://mail.google.com/mail/u/0/#all/${message.id}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="Abrir este correo en Gmail"
+          className="ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-700 dark:hover:text-slate-200 transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
+        >
+          <ExternalLinkIcon className="w-3.5 h-3.5" aria-hidden="true" />
+          Abrir en Gmail
+        </a>
       </div>
 
       {/* Contenido del mensaje */}
@@ -124,4 +140,3 @@ export const EmailDetail = ({ message, onBack }: EmailDetailProps) => {
     </div>
   );
 };
-
