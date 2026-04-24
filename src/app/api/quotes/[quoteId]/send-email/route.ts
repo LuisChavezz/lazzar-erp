@@ -1,81 +1,67 @@
 /**
- * Endpoint HTTP para enviar una cotizacion por correo.
+ * API Route de renderizado de correo — responsabilidad unica: generar HTML.
  *
- * Flujo general:
- * 1. Valida que exista una sesion autenticada.
- * 2. Valida y normaliza el `quoteId` recibido por la ruta.
- * 3. Delega el parseo del body y la logica de envio al servicio.
- * 4. Traduce errores de validacion a HTTP 400 y errores inesperados a HTTP 500.
+ * El cliente (useGoogleSendEmail) obtiene la cotizacion via v1_api (con cookies
+ * y refresh interceptor), la envia en el body de este endpoint, y aqui solo se
+ * ejecuta el renderizado server-side de QuoteEmail con react-email.
+ *
+ * No realiza ninguna llamada al backend externo, por lo que no depende de las
+ * cookies auth-jwt / auth-refresh-jwt que solo el browser puede enviar a ese dominio.
  */
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
-import { parseSendQuoteEmailRequest } from "@/src/features/quotes/services/email/parseSendQuoteEmailRequest.server";
-import { sendQuoteEmail } from "@/src/features/quotes/services/email/sendQuoteEmail.server";
 import { authOptions } from "@/src/lib/auth";
-import { isEmailValidationError } from "@/src/utils/email/emailAddress";
+import {
+  buildQuoteEmailContent,
+  buildQuoteEmailSubject,
+} from "@/src/features/quotes/services/email/quoteEmailContent.server";
+import type { QuoteById } from "@/src/features/quotes/interfaces/quote.interface";
 
 export const runtime = "nodejs";
 
-type RouteContext = {
-  params: Promise<{
-    quoteId: string;
-  }>;
-};
+export async function POST(request: Request) {
+  // Verificar sesion activa — usa cookies de NextAuth (localhost), no del backend Django.
+  const session = await getServerSession(authOptions);
 
-/**
- * Convierte el parametro dinamico de la ruta a un entero positivo.
- * Devuelve `undefined` cuando el valor no puede tratarse como identificador valido.
- */
-const parseQuoteId = (quoteIdParam: string) => {
-  const quoteId = Number(quoteIdParam);
-
-  if (!Number.isInteger(quoteId) || quoteId <= 0) {
-    return undefined;
+  if (!session?.user) {
+    return NextResponse.json({ error: "No autorizado." }, { status: 401 });
   }
 
-  return quoteId;
-};
+  let quote: QuoteById;
 
-export async function POST(request: Request, { params }: RouteContext) {
   try {
-    // Paso 1: asegurar que el usuario tenga una sesion valida antes de usar servicios protegidos.
-    const session = await getServerSession(authOptions);
-
-    if (!session?.user) {
-      return NextResponse.json({ error: "No autorizado." }, { status: 401 });
+    const body = (await request.json()) as { quote?: QuoteById };
+    if (!body?.quote) {
+      return NextResponse.json({ error: "El campo quote es requerido." }, { status: 400 });
     }
+    quote = body.quote;
+  } catch {
+    return NextResponse.json({ error: "Payload invalido." }, { status: 400 });
+  }
 
-    // Paso 2: validar el identificador recibido en la URL.
-    const { quoteId: quoteIdParam } = await params;
-    const quoteId = parseQuoteId(quoteIdParam);
+  if (!quote.correo_facturas) {
+    return NextResponse.json(
+      { error: "El cliente no tiene correo de facturación registrado." },
+      { status: 422 }
+    );
+  }
 
-    if (!quoteId) {
-      return NextResponse.json({ error: "El identificador de la cotizacion no es valido." }, { status: 400 });
-    }
-
-    // Paso 3: el body se interpreta en una capa separada y luego se delega el envio completo.
-    // Las cookies del request se reenvian al backend para autenticacion server-to-server.
-    const payload = await parseSendQuoteEmailRequest(request);
-    const result = await sendQuoteEmail({
-      quoteId,
-      cookieHeader: request.headers.get("cookie") ?? "",
-      requestedRecipient: payload.to,
-    });
+  try {
+    // Unica responsabilidad: renderizar el template con react-email en Node.js.
+    const subject = buildQuoteEmailSubject(quote);
+    const { html, text } = await buildQuoteEmailContent(quote);
 
     return NextResponse.json({
-      ok: true,
-      ...result,
+      to: quote.correo_facturas,
+      subject,
+      body: text,
+      html,
     });
   } catch (error) {
-    // Los errores de validacion conocidos se devuelven como 400 para mantener una API explicita.
-    if (isEmailValidationError(error)) {
-      return NextResponse.json({ error: error.message }, { status: 400 });
-    }
+    const message =
+      error instanceof Error ? error.message : "No se pudo renderizar el correo.";
 
-    // Todo lo demas se trata como error interno del flujo de envio.
-    const message = error instanceof Error ? error.message : "No se pudo enviar el correo de la cotizacion.";
-
-    console.error("Error al enviar correo de cotizacion:", error);
+    console.error("Error al renderizar correo de cotizacion:", error);
 
     return NextResponse.json({ error: message }, { status: 500 });
   }

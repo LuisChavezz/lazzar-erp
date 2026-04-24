@@ -16,3 +16,18 @@ export interface GoogleStatusResponse {
   has_refresh_token?: boolean;
   scope?: string;
 }
+
+export interface GoogleSendEmailResponse {
+  ok: boolean;
+  message: {
+    id: string;
+    threadId: string;
+  };
+}
+
+export interface GoogleEmailPayload {
+  to: string;
+  subject: string;
+  body: string;
+  html?: string;
+}
