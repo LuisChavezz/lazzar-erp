@@ -35,11 +35,18 @@ export interface useGoogleMessagesReturn {
   goToPreviousPage: () => void;
 }
 
+// --- Params del hook ---
+
+interface UseGoogleMessagesParams {
+  /** Filtro de carpeta que se envía como parámetro `q` a la API de Gmail.
+   * Ej: `in:inbox`, `in:sent`, `is:starred`, `in:drafts`, `in:spam`. */
+  query: string;
+}
+
 // --- Params base ---
 
 const BASE_PARAMS: Record<string, string> = {
   maxResults: "20",
-  q: "in:inbox",
 };
 
 // --- Hook ---
@@ -55,23 +62,34 @@ const BASE_PARAMS: Record<string, string> = {
  * - `pageTokenHistory[i]` es el token usado para obtener la página i+1.
  * - Cambiar el historial cambia la queryKey y dispara una nueva petición.
  */
-export const useGoogleMessages = (): useGoogleMessagesReturn => {
+export const useGoogleMessages = ({ query }: UseGoogleMessagesParams): useGoogleMessagesReturn => {
   /**
-   * Historial de pageTokens usados para llegar a cada página.
-   * - El índice 0 es siempre `undefined` (primera página, sin token).
-   * - Agregar un elemento = avanzar a la siguiente página.
-   * - Quitar el último = retroceder a la página anterior.
+   * `prevQuery` habilita el patrón React de "Storing previous props or state":
+   * detecta cambios del parámetro `query` **durante el render**, antes de que
+   * React confirme el output al DOM.
+   *
+   * React descarta el JSX actual y re-renderiza inmediatamente con el nuevo
+   * estado — sin efecto secundario ni ciclo asíncrono.
+   *
+   * Ref: https://react.dev/learn/you-might-not-need-an-effect#adjusting-some-state-when-a-prop-changes
    */
+  const [prevQuery, setPrevQuery] = useState(query);
   const [pageTokenHistory, setPageTokenHistory] = useState<Array<string | undefined>>([
     undefined,
   ]);
 
+  // Al cambiar de carpeta/búsqueda, reinicia la paginación a la primera página.
+  if (prevQuery !== query) {
+    setPrevQuery(query);
+    setPageTokenHistory([undefined]);
+  }
+
   const currentToken = pageTokenHistory[pageTokenHistory.length - 1];
 
   const { data, isPending, isFetching, isError, error, refetch } = useQuery<GoogleEmailMessagesResponse>({
-    queryKey: ["google", "email-messages", currentToken ?? "first"],
+    queryKey: ["google", "email-messages", query, currentToken ?? "first"],
     queryFn: () => {
-      const params: Record<string, string> = { ...BASE_PARAMS };
+      const params: Record<string, string> = { ...BASE_PARAMS, q: query };
       if (currentToken) params.pageToken = currentToken;
       return googleGetEmailMessages(params);
     },

@@ -308,6 +308,28 @@ export const ClockIcon = (props: React.SVGProps<SVGSVGElement>) => (
   </svg>
 );
 
+export const HistoryIcon = (props: React.SVGProps<SVGSVGElement>) => (
+  <svg
+    {...props}
+    fill="none"
+    stroke="currentColor"
+    viewBox="0 0 24 24"
+  >
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="2"
+      d="M3 12a9 9 0 101.857-5.4M3 4v4h4"
+    />
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="2"
+      d="M12 7v5l3 2"
+    />
+  </svg>
+);
+
 export const BellIcon = (props: React.SVGProps<SVGSVGElement>) => (
   <svg
     {...props}
@@ -1240,20 +1262,57 @@ export const SyncIcon = (
   </svg>
 );
 
-export const HistoryIcon = (
-  props: React.SVGProps<SVGSVGElement>
-) => (
-  <svg
-    {...props}
-    fill="none"
-    stroke="currentColor"
-    viewBox="0 0 24 24"
-  >
+export const InboxIcon = (props: React.SVGProps<SVGSVGElement>) => (
+  <svg {...props} fill="none" stroke="currentColor" viewBox="0 0 24 24">
     <path
       strokeLinecap="round"
       strokeLinejoin="round"
       strokeWidth="2"
-      d="M3 12a9 9 0 109-9M3 3v6h6M12 7v5l3 3"
+      d="M5 4h14a2 2 0 012 2v3H3V6a2 2 0 012-2zM3 9h18v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9zm4 5h10"
+    />
+  </svg>
+);
+
+export const PaperPlaneIcon = (props: React.SVGProps<SVGSVGElement>) => (
+  <svg {...props} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="2"
+      d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"
+    />
+  </svg>
+);
+
+export const StarIcon = (props: React.SVGProps<SVGSVGElement>) => (
+  <svg {...props} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="2"
+      d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"
+    />
+  </svg>
+);
+
+export const PencilSquareIcon = (props: React.SVGProps<SVGSVGElement>) => (
+  <svg {...props} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="2"
+      d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+    />
+  </svg>
+);
+
+export const ExclamationTriangleIcon = (props: React.SVGProps<SVGSVGElement>) => (
+  <svg {...props} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="2"
+      d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0zM12 9v4M12 17h.01"
     />
   </svg>
 );
@@ -1291,6 +1350,23 @@ export const OperationsIcon = (
       strokeWidth="2"
       d="M4 6h16M4 12h16M4 18h16M9 4v4M15 10v4M7 16v4"
     />
+  </svg>
+);
+
+export const ExternalLinkIcon = (props: React.SVGProps<SVGSVGElement>) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={2}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    {...props}
+  >
+    <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6" />
+    <polyline points="15 3 21 3 21 9" />
+    <line x1="10" y1="14" x2="21" y2="3" />
   </svg>
 );
 
