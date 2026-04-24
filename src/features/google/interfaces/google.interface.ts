@@ -31,3 +31,32 @@ export interface GoogleEmailPayload {
   body: string;
   html?: string;
 }
+
+export interface GoogleEmailMessagesResponse {
+  ok: boolean;
+  messages: Array<GoogleEmailMessage>;
+  nextPageToken?: string;
+  resultSizeEstimate: number;
+}
+
+export interface GoogleEmailMessage {
+  id: string;
+  threadId: string;
+  snippet: string;
+  subject: string;
+  from: string;
+  from_full: string;
+  to: string;
+  date: string;
+}
+
+export interface GoogleEmailMessageDetailResponse {
+  ok: boolean;
+  email: GoogleEmailMessageDetail;
+}
+
+export interface GoogleEmailMessageDetail extends GoogleEmailMessage {
+  labelIds: string[];
+  body_text: string;
+  body_html: string;
+}
