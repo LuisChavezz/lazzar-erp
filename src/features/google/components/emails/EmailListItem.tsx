@@ -18,6 +18,8 @@ interface EmailListItemProps {
   message: GoogleEmailMessage;
   isSelected: boolean;
   onSelect: (message: GoogleEmailMessage) => void;
+  /** Cuando es true, desactiva el click y el prefetch del detalle (ej. durante refetch). */
+  disabled?: boolean;
 }
 
 // --- Componente ---
@@ -30,7 +32,7 @@ interface EmailListItemProps {
  * Si los datos ya están en caché (staleTime no expirado), no realiza ninguna petición.
  * Esto permite que abrir el detalle sea instantáneo en la mayoría de los casos.
  */
-export const EmailListItem = ({ message, isSelected, onSelect }: EmailListItemProps) => {
+export const EmailListItem = ({ message, isSelected, onSelect, disabled = false }: EmailListItemProps) => {
   const queryClient = useQueryClient();
   const senderName = parseSenderName(message.from_full || message.from);
   const initials = getSenderInitials(senderName);
@@ -41,20 +43,23 @@ export const EmailListItem = ({ message, isSelected, onSelect }: EmailListItemPr
    * Pre-carga el detalle del mensaje al pasar el cursor.
    * Comparte la misma queryKey y staleTime que `useGoogleMessage`,
    * por lo que el caché es reutilizado al abrir el detalle.
+   * No hace nada si el ítem está deshabilitado (durante refetch).
    */
   const handleMouseEnter = useCallback(() => {
+    if (disabled) return;
     queryClient.prefetchQuery({
       queryKey: googleMessageQueryKey(message.id),
       queryFn: () => googleGetEmailMessageById(message.id),
       staleTime: 5 * 60 * 1000,
     });
-  }, [queryClient, message.id]);
+  }, [queryClient, message.id, disabled]);
 
   return (
     <button
       type="button"
-      onClick={() => onSelect(message)}
+      onClick={() => { if (!disabled) onSelect(message); }}
       onMouseEnter={handleMouseEnter}
+      disabled={disabled}
       aria-current={isSelected ? true : undefined}
       aria-label={`Correo de ${senderName}: ${message.subject}`}
       className={[
@@ -62,6 +67,7 @@ export const EmailListItem = ({ message, isSelected, onSelect }: EmailListItemPr
         "border-b border-slate-100 dark:border-slate-800",
         "transition-colors duration-150 cursor-pointer",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-inset",
+        "disabled:opacity-50 disabled:cursor-not-allowed",
         isSelected
           ? "bg-brand-50 dark:bg-brand-700/20"
           : "hover:bg-slate-50 dark:hover:bg-slate-800/60",

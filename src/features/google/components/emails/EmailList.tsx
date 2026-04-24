@@ -1,9 +1,11 @@
 "use client";
 
+import { useState } from "react";
 import { EmailListItem } from "./EmailListItem";
 import { EmailListSkeleton } from "./EmailListSkeleton";
 import { EmailEmptyState } from "./EmailEmptyState";
-import { ChevronLeftIcon, ChevronRightIcon, EmailIcon, RefreshIcon } from "@/src/components/Icons";
+import { ComposeEmailForm } from "./ComposeEmailForm";
+import { ChevronLeftIcon, ChevronRightIcon, EmailIcon, PlusIcon, RefreshIcon } from "@/src/components/Icons";
 import type { GoogleEmailMessage } from "../../interfaces/google.interface";
 import type { useGoogleMessagesReturn } from "../../hooks/useGoogleMessages";
 
@@ -23,6 +25,11 @@ interface EmailListProps {
  * Solicita la primera página al montarse.
  */
 export const EmailList = ({ hook, selectedMessageId, onSelectMessage }: EmailListProps) => {
+  const [
+    isComposeOpen,
+    setIsComposeOpen,
+  ] = useState(false);
+
   const {
     messages,
     isPending,
@@ -37,6 +44,12 @@ export const EmailList = ({ hook, selectedMessageId, onSelectMessage }: EmailLis
 
   return (
     <div className="flex flex-col h-full">
+      {/* Diálogo de redacción — gestionado desde la lista */}
+      <ComposeEmailForm
+        open={isComposeOpen}
+        onOpenChange={setIsComposeOpen}
+      />
+
       {/* Cabecera de la lista */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 sticky top-0 z-10">
         <div className="flex items-center gap-2">
@@ -53,6 +66,17 @@ export const EmailList = ({ hook, selectedMessageId, onSelectMessage }: EmailLis
               Pág. {currentPage}
             </span>
           )}
+
+          {/* Botón de redactar nuevo correo */}
+          <button
+            type="button"
+            onClick={() => setIsComposeOpen(true)}
+            disabled={isFetching}
+            aria-label="Redactar nuevo correo"
+            className="flex items-center justify-center w-7 h-7 rounded-lg text-slate-400 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-600 dark:hover:text-slate-300 disabled:opacity-40 disabled:cursor-not-allowed transition-colors duration-150 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
+          >
+            <PlusIcon className="w-3.5 h-3.5" aria-hidden="true" />
+          </button>
 
           {/* Botón de actualizar — fuerza re-fetch de la página actual */}
           <button
@@ -84,6 +108,7 @@ export const EmailList = ({ hook, selectedMessageId, onSelectMessage }: EmailLis
                   message={message}
                   isSelected={selectedMessageId === message.id}
                   onSelect={onSelectMessage}
+                  disabled={isFetching}
                 />
               </li>
             ))}
@@ -120,10 +145,10 @@ export const EmailList = ({ hook, selectedMessageId, onSelectMessage }: EmailLis
             disabled={!hasNextPage}
             aria-label="Página siguiente"
             className={[
-              "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer",
+              "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium",
               "transition-colors duration-150",
               hasNextPage
-                ? "text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
+                ? "text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
                 : "text-slate-300 dark:text-slate-600 cursor-not-allowed",
             ].join(" ")}
           >
