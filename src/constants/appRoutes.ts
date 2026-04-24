@@ -25,6 +25,7 @@ import {
   LockIcon,
   OperationsIcon,
   SamplesIcon,
+  EmailIcon,
 } from "../components/Icons";
 
 export interface AppRouteItem {
@@ -117,12 +118,19 @@ export const appRouteGroups: AppRouteGroup[] = [
         showInSidebar: false,
       },
       {
+        key: "sales-emails",
+        label: "Correos",
+        path: "/sales/emails",
+        icon: EmailIcon,
+        permission: "R-CRM",
+      },
+      {
         key: "sales-tasks",
         label: "Tareas",
         path: "/sales/tasks",
         icon: TasksIcon,
         permission: "R-CRM",
-      }
+      },
     ],
   },
   {
