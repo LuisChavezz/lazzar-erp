@@ -1,5 +1,5 @@
 import { v1_api } from "@/src/api/v1.api";
-import { GoogleConnectResponse, GoogleStatusResponse } from "../interfaces/google.interface";
+import { GoogleConnectResponse, GoogleEmailPayload, GoogleSendEmailResponse, GoogleStatusResponse } from "../interfaces/google.interface";
 
 
 export const googleConnect = async (redirect_url: string): Promise<GoogleConnectResponse> => {
@@ -16,5 +16,10 @@ export const googleStatus = async (): Promise<GoogleStatusResponse> => {
 
 export const googleDisconnect = async (): Promise<{ok: boolean}> => {
   const response = await v1_api.post<{ok: boolean}>("/ai/google/oauth/disconnect/");
+  return response.data;
+}
+
+export const googleSendEmail = async (payload: GoogleEmailPayload): Promise<GoogleSendEmailResponse> => {
+  const response = await v1_api.post<GoogleSendEmailResponse>("/ai/google/gmail/send/", payload);
   return response.data;
 }

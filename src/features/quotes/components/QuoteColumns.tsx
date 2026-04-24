@@ -22,7 +22,7 @@ import { getStatusStyles } from "../utils/getStatusStyle";
 import { formatQuoteDateTime } from "../utils/quoteDetailsFormatters";
 import { useApproveQuote } from "../../operations/hooks/useApproveQuote";
 import { useRejectQuote } from "../../operations/hooks/useRejectQuote";
-import { useSendQuoteEmail } from "../hooks/useSendQuoteEmail";
+import { useGoogleSendEmail } from "@/src/features/google/hooks/useGoogleSendEmail";
 import { useDownloadQuotePdf } from "../hooks/useDownloadQuotePdf";
 import { capitalize } from "@/src/utils/capitalize";
 
@@ -52,7 +52,7 @@ const ActionsCell = ({ quote }: { quote: Quote }) => {
   const [isRejectOpen, setIsRejectOpen] = useState(false);
   const { mutate: authorizeOrder, isPending: isAuthorizingOrder } = useApproveQuote();
   const { mutate: rejectOrder, isPending: isRejectingOrder } = useRejectQuote();
-  const { mutate: sendQuoteEmail, isPending: isSendingQuoteEmail } = useSendQuoteEmail();
+  const { mutate: sendQuoteEmail, isPending: isSendingQuoteEmail } = useGoogleSendEmail();
   const { mutate: downloadPdf, isPending: isDownloadingPdf } = useDownloadQuotePdf();
   const canManageAuthorization = quote.estatus === 2;
   const items: ActionMenuItem[] = [
