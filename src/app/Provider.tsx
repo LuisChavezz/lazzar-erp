@@ -7,6 +7,7 @@ import { SessionProvider } from "next-auth/react";
 import { Session } from "next-auth";
 import { useState } from "react";
 import { RadixThemeWrapper } from "@/src/components/RadixThemeWrapper";
+import { SpeedInsights } from '@vercel/speed-insights/next';
 
 export const Provider = ({ children, session }: { children: React.ReactNode, session?: Session | null }) => {
   const [queryClient] = useState(() => new QueryClient({
@@ -22,12 +23,16 @@ export const Provider = ({ children, session }: { children: React.ReactNode, ses
   return (
     <SessionProvider session={session}>
       <QueryClientProvider client={queryClient}>
+
+        <SpeedInsights />
+
         <RadixThemeWrapper>
           {children}
           <ReactQueryDevtools initialIsOpen={false} />
         </RadixThemeWrapper>
 
         <Toaster position="top-right" />
+        
       </QueryClientProvider>
     </SessionProvider>
   );
