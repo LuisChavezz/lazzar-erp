@@ -1,37 +1,29 @@
 "use client";
 
 import { useStore } from "@tanstack/react-form";
-import { FormInput } from "../../../components/FormInput";
-import { FormTextarea } from "../../../components/FormTextarea";
-import { FormCancelButton, FormSubmitButton } from "../../../components/FormButtons";
-import { FormToggle } from "../../../components/FormToggle";
-import { ClockIcon } from "../../../components/Icons";
-import { UpcomingTask } from "../interfaces/upcoming-task.interface";
-import { useUpcomingTaskForm } from "../hooks/useUpcomingTaskForm";
+import { FormInput } from "@/src/components/FormInput";
+import { FormTextarea } from "@/src/components/FormTextarea";
+import { FormCancelButton, FormSubmitButton } from "@/src/components/FormButtons";
+import { FormToggle } from "@/src/components/FormToggle";
+import { GoogleCalendarIcon } from "@/src/components/Icons";
+import { useGoogleCalendarEventForm } from "../hooks/useGoogleCalendarEventForm";
 
-interface UpcomingTaskFormProps {
+interface GoogleCalendarEventFormProps {
   onSuccess: () => void;
-  taskToEdit?: UpcomingTask | null;
-  defaultCalendarDate?: Date | null;
-  dialogOpen?: boolean;
+  /** Fecha inicial (YYYY-MM-DD) preseleccionada desde el clic en el calendario. */
+  initialDate?: string;
 }
 
-export default function UpcomingTaskForm({
-  onSuccess,
-  taskToEdit,
-  defaultCalendarDate,
-  dialogOpen = false,
-}: UpcomingTaskFormProps) {
+export default function GoogleCalendarEventForm({ onSuccess, initialDate }: GoogleCalendarEventFormProps) {
   const {
     form,
     isPending,
-    isEditing,
     getError,
     clearFieldError,
-    handleFormSubmit,
-    handleClear,
     handleAllDayToggle,
-  } = useUpcomingTaskForm({ onSuccess, taskToEdit, defaultCalendarDate, dialogOpen });
+    handleReset,
+    handleFormSubmit,
+  } = useGoogleCalendarEventForm({ onSuccess, initialDate });
 
   // Suscripción reactiva al valor de allDay para alternar los campos de fecha/hora.
   const isAllDay = useStore(form.baseStore, (s) => s.values.allDay);
@@ -42,78 +34,61 @@ export default function UpcomingTaskForm({
         <section className="bg-white dark:bg-zinc-900 rounded-3xl border border-slate-200 dark:border-white/5 shadow-sm dark:shadow-none overflow-hidden hover:shadow-lg transition-shadow duration-300 mb-8">
           <div className="px-8 py-5 border-b border-slate-100 dark:border-white/5 flex items-center gap-3 bg-slate-50/50 dark:bg-white/2">
             <div className="w-10 h-10 rounded-xl bg-sky-50 dark:bg-sky-500/10 flex items-center justify-center text-sky-600 dark:text-sky-400 shadow-sm">
-              <ClockIcon className="w-5 h-5" />
+              <GoogleCalendarIcon className="w-5 h-5" />
             </div>
             <div>
               <h3 className="font-display font-semibold text-slate-900 dark:text-white text-lg">
-                Información de la tarea
+                Nuevo evento
               </h3>
-              <p className="text-xs text-slate-500">Datos de seguimiento y programación</p>
+              <p className="text-xs text-slate-500">Programa un evento en tu Google Calendar</p>
             </div>
           </div>
           <div className="p-8">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              <form.Field name="title">
+              {/* Título del evento */}
+              <form.Field name="summary">
                 {(field) => (
                   <div className="group/field md:col-span-2">
                     <FormInput
-                      label="Título"
-                      placeholder="Ej. Llamada con cliente X"
+                      label="Título del evento"
+                      placeholder="Ej. Reunión con cliente"
                       className="text-2xl font-bold"
                       variant="ghost"
                       name={field.name}
                       value={field.state.value}
-                      onChange={(event) => {
-                        field.handleChange(event.target.value);
-                        clearFieldError("title");
+                      onChange={(e) => {
+                        field.handleChange(e.target.value);
+                        clearFieldError("summary");
                       }}
                       onBlur={field.handleBlur}
-                      error={getError("title")}
+                      error={getError("summary")}
                     />
                   </div>
                 )}
               </form.Field>
 
-              <form.Field name="shortDescription">
-                {(field) => (
-                  <div className="md:col-span-2">
-                    <FormInput
-                      label="Descripción corta"
-                      placeholder="Resumen breve de la tarea"
-                      name={field.name}
-                      value={field.state.value}
-                      onChange={(event) => {
-                        field.handleChange(event.target.value);
-                        clearFieldError("shortDescription");
-                      }}
-                      onBlur={field.handleBlur}
-                      error={getError("shortDescription")}
-                    />
-                  </div>
-                )}
-              </form.Field>
-
-              <form.Field name="comments">
+              {/* Descripción */}
+              <form.Field name="description">
                 {(field) => (
                   <div className="md:col-span-2">
                     <FormTextarea
-                      label="Comentarios"
+                      label="Descripción"
                       rows={3}
-                      placeholder="Detalles adicionales"
+                      placeholder="Detalles del evento (opcional)"
                       name={field.name}
-                      value={field.state.value}
-                      onChange={(event) => {
-                        field.handleChange(event.target.value);
-                        clearFieldError("comments");
+                      value={field.state.value ?? ""}
+                      onChange={(e) => {
+                        field.handleChange(e.target.value);
+                        clearFieldError("description");
                       }}
                       onBlur={field.handleBlur}
-                      error={getError("comments")}
+                      error={getError("description")}
                     />
                   </div>
                 )}
               </form.Field>
 
-              {/* Toggle: determina si el evento ocupa todo el día o tiene hora específica */}
+              {/* Toggle: evento de todo el día o con hora específica */}
               <div className="md:col-span-2">
                 <form.Field name="allDay">
                   {(field) => (
@@ -129,10 +104,9 @@ export default function UpcomingTaskForm({
               </div>
 
               {isAllDay ? (
-                // Modo todo el día: dos selectores de fecha (inicio y fin), sin hora.
-                // La hora se asigna automáticamente: 00:00:00 y 23:59:59 en GMT-6.
+                // Modo todo el día: solo fechas, sin hora.
                 <>
-                  <form.Field name="startDate">
+                  <form.Field name="start_date">
                     {(field) => (
                       <div>
                         <FormInput
@@ -142,100 +116,99 @@ export default function UpcomingTaskForm({
                           onClick={(e) => { try { e.currentTarget.showPicker?.(); } catch { /* noop */ } }}
                           name={field.name}
                           value={field.state.value}
-                          onChange={(event) => {
-                            field.handleChange(event.target.value);
-                            clearFieldError("startDate");
+                          onChange={(e) => {
+                            field.handleChange(e.target.value);
+                            clearFieldError("start_date");
                           }}
                           onBlur={field.handleBlur}
-                          error={getError("startDate")}
+                          error={getError("start_date")}
                         />
                       </div>
                     )}
                   </form.Field>
 
-                  <form.Field name="endDate">
+                  <form.Field name="end_date">
                     {(field) => (
                       <div>
                         <FormInput
-                          label="Fecha de fin"
+                          label="Fecha de fin (opcional)"
                           type="date"
                           className="dark:scheme-dark cursor-pointer"
                           onClick={(e) => { try { e.currentTarget.showPicker?.(); } catch { /* noop */ } }}
                           name={field.name}
-                          value={field.state.value}
-                          onChange={(event) => {
-                            field.handleChange(event.target.value);
-                            clearFieldError("endDate");
+                          value={field.state.value ?? ""}
+                          onChange={(e) => {
+                            field.handleChange(e.target.value);
+                            clearFieldError("end_date");
                           }}
                           onBlur={field.handleBlur}
-                          error={getError("endDate")}
+                          error={getError("end_date")}
                         />
                       </div>
                     )}
                   </form.Field>
                 </>
               ) : (
-                // Modo con hora: un selector de fecha y dos de hora (inicio y fin).
-                // La fecha de inicio y fin es la misma; solo varía la hora.
+                // Modo con hora: fecha + hora inicio y hora fin opcionales.
                 <>
-                  <form.Field name="date">
+                  <form.Field name="start_date">
                     {(field) => (
                       <div className="md:col-span-2">
                         <FormInput
-                          label="Fecha (GMT-6)"
+                          label="Fecha"
                           type="date"
                           className="dark:scheme-dark cursor-pointer"
                           onClick={(e) => { try { e.currentTarget.showPicker?.(); } catch { /* noop */ } }}
                           name={field.name}
                           value={field.state.value}
-                          onChange={(event) => {
-                            field.handleChange(event.target.value);
-                            clearFieldError("date");
+                          onChange={(e) => {
+                            field.handleChange(e.target.value);
+                            clearFieldError("start_date");
                           }}
                           onBlur={field.handleBlur}
-                          error={getError("date")}
+                          error={getError("start_date")}
                         />
                       </div>
                     )}
                   </form.Field>
 
-                  <form.Field name="startTime">
+                  <form.Field name="start_time">
                     {(field) => (
                       <div>
                         <FormInput
-                          label="Hora de inicio (GMT-6)"
+                          label="Hora de inicio"
                           type="time"
                           className="dark:scheme-dark cursor-pointer"
                           onClick={(e) => { try { e.currentTarget.showPicker?.(); } catch { /* noop */ } }}
                           name={field.name}
-                          value={field.state.value}
-                          onChange={(event) => {
-                            field.handleChange(event.target.value);
-                            clearFieldError("startTime");
+                          value={field.state.value ?? ""}
+                          onChange={(e) => {
+                            field.handleChange(e.target.value);
+                            clearFieldError("start_time");
                           }}
                           onBlur={field.handleBlur}
-                          error={getError("startTime")}
+                          error={getError("start_time")}
                         />
                       </div>
                     )}
                   </form.Field>
 
-                  <form.Field name="endTime">
+                  <form.Field name="end_time">
                     {(field) => (
                       <div>
                         <FormInput
-                          label="Hora de fin (GMT-6)"
+                          label="Hora de fin (opcional)"
                           type="time"
                           className="dark:scheme-dark cursor-pointer"
                           onClick={(e) => { try { e.currentTarget.showPicker?.(); } catch { /* noop */ } }}
                           name={field.name}
-                          value={field.state.value}
-                          onChange={(event) => {
-                            field.handleChange(event.target.value);
-                            clearFieldError("endTime");
+                          value={field.state.value ?? ""}
+                          onChange={(e) => {
+                            field.handleChange(e.target.value);
+                            clearFieldError("end_time");
                           }}
                           onBlur={field.handleBlur}
-                          error={getError("endTime")}
+                          error={getError("end_time")}
                         />
                       </div>
                     )}
@@ -247,15 +220,9 @@ export default function UpcomingTaskForm({
         </section>
 
         <div className="flex flex-col gap-3 pb-4 sm:flex-row sm:items-center sm:justify-end">
-          <FormCancelButton
-            onClick={handleClear}
-            disabled={isPending}
-          />
-          <FormSubmitButton
-            isPending={isPending}
-            loadingLabel={isEditing ? "Actualizando..." : "Guardando..."}
-          >
-            {isEditing ? "Actualizar Tarea" : "Registrar Tarea"}
+          <FormCancelButton onClick={handleReset} disabled={isPending} />
+          <FormSubmitButton isPending={isPending} loadingLabel="Creando evento...">
+            Crear evento
           </FormSubmitButton>
         </div>
       </fieldset>

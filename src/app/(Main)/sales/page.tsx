@@ -4,7 +4,7 @@ import { RecentOpportunities } from "@/src/features/sales/components/RecentOppor
 import { RecentQuotes } from "@/src/features/sales/components/RecentQuotes";
 import { SalesKpiGrid } from "@/src/features/sales/components/SalesKpiGrid";
 import { SalesPipeline } from "@/src/features/sales/components/SalesPipeline";
-import { UpcomingTasks } from "@/src/features/tasks/components/UpcomingTasks";
+import { GoogleUpcomingEvents } from "@/src/features/google/components/GoogleUpcomingEvents";
 
 export default function SalesPage() {
   return (
@@ -20,7 +20,7 @@ export default function SalesPage() {
         </div>
         <div className="space-y-6">
           <QuickActions />
-          <UpcomingTasks />
+          <GoogleUpcomingEvents />
           <MonthlyGoal />
         </div>
       </div>
