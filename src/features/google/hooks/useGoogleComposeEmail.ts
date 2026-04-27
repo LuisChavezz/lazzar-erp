@@ -4,7 +4,7 @@ import { useMutation } from "@tanstack/react-query";
 import type { AxiosError } from "axios";
 import toast from "react-hot-toast";
 import { googleSendEmail } from "../services/actions";
-import type { ComposeEmailFormValues } from "../schemas/googleEmail.schema";
+import type { ComposeEmailFormValues } from "../schemas/google-email.schema";
 import type { GoogleSendEmailResponse } from "../interfaces/google.interface";
 
 // --- Utilidad para extraer el mensaje de error ---

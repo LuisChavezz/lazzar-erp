@@ -60,3 +60,31 @@ export interface GoogleEmailMessageDetail extends GoogleEmailMessage {
   body_text: string;
   body_html: string;
 }
+
+export interface GoogleEventsResponse {
+  ok: boolean;
+  events: GoogleCalendarEvent[];
+  nextPageToken?: string;
+}
+
+export interface GoogleCalendarEvent {
+  id: string;
+  summary: string;
+  description: string;
+  htmlLink: string;
+  start: string; // ISO string
+  status: "confirmed" | "tentative" | "cancelled";
+  creator: string;
+  end: string;   // ISO string
+  updated: string; // ISO string
+  location: string;
+}
+
+export interface GoogleCalendarEventCreate {
+  summary: string;
+  start_date: string;
+  description?: string;
+  start_time?: string;
+  end_time?: string;
+  end_date?: string;
+}

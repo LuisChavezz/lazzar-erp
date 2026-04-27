@@ -125,9 +125,9 @@ export const appRouteGroups: AppRouteGroup[] = [
         permission: "R-CRM",
       },
       {
-        key: "sales-tasks",
-        label: "Tareas",
-        path: "/sales/tasks",
+        key: "sales-calendar",
+        label: "Calendario",
+        path: "/sales/calendar",
         icon: TasksIcon,
         permission: "R-CRM",
       },

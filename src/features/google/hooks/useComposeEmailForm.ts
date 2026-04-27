@@ -7,7 +7,7 @@ import type { FormFieldError } from "../../../utils/getFieldError";
 import {
   ComposeEmailFormSchema,
   type ComposeEmailFormValues,
-} from "../schemas/googleEmail.schema";
+} from "../schemas/google-email.schema";
 import { useGoogleComposeEmail } from "./useGoogleComposeEmail";
 
 // --- Tipos ---

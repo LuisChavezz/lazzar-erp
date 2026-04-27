@@ -9,6 +9,22 @@
   border-color: #1e2b49;
 }
 
+/* Animación de entrada para el panel de detalle del evento de Google Calendar */
+.google-event-details-enter {
+  animation: googleEventDetailsIn 220ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes googleEventDetailsIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .sales-fullcalendar-theme .fc {
   background: linear-gradient(180deg, #fbfdff 0%, #f4f7fc 100%);
   border: 1px solid #d8e2f0;
@@ -288,6 +304,11 @@
   background: linear-gradient(180deg, #38bdf8 0%, #0284c7 100%);
 }
 
+/* Evento tentativo de Google Calendar — tono ámbar */
+.sales-fullcalendar-theme .event-amber {
+  background: linear-gradient(180deg, #fbbf24 0%, #d97706 100%);
+}
+
 .dark .sales-fullcalendar-theme .fc {
   background: linear-gradient(180deg, #071126 0%, #030c1d 65%, #020817 100%);
   border-color: #1e2b49;
@@ -374,99 +395,6 @@
   border: none !important;
 }
 
-@media (prefers-color-scheme: dark) {
-  .sales-fullcalendar-loading {
-    background: linear-gradient(180deg, #071126 0%, #030c1d 65%, #020817 100%);
-    border-color: #1e2b49;
-  }
-
-  .sales-fullcalendar-theme .fc {
-    background: linear-gradient(180deg, #071126 0%, #030c1d 65%, #020817 100%);
-    border-color: #1e2b49;
-    color: #e2ecff;
-    --fc-border-color: #1e2b49;
-    --fc-today-bg-color: transparent;
-  }
-
-  .sales-fullcalendar-theme .fc-theme-standard td,
-  .sales-fullcalendar-theme .fc-theme-standard th {
-    border-color: #1e2b49 !important;
-  }
-
-  .sales-fullcalendar-theme .fc-header-toolbar {
-    border-bottom-color: #1a2742;
-  }
-
-  .sales-fullcalendar-theme .fc-toolbar-title {
-    color: #dbeafe;
-  }
-
-  .sales-fullcalendar-theme .fc-button {
-    background: #0d1a33 !important;
-    border-color: #1f3356 !important;
-    color: #cfe2ff !important;
-  }
-
-  .sales-fullcalendar-theme .fc-button:hover {
-    background: #10244a !important;
-  }
-
-  .sales-fullcalendar-theme .fc-button-active {
-    background: #0ea5e9 !important;
-    border-color: #0284c7 !important;
-  }
-
-  .sales-fullcalendar-theme .fc-scrollgrid,
-  .sales-fullcalendar-theme .fc-scrollgrid table {
-    border-color: #1e2b49;
-  }
-
-  .sales-fullcalendar-theme .fc-col-header-cell {
-    background: #0a1328;
-    border-color: #1e2b49;
-  }
-
-  .sales-fullcalendar-theme .fc-scrollgrid-section-header > * {
-    background: #0a1328;
-  }
-
-  .sales-fullcalendar-theme .fc-col-header-cell-cushion {
-    color: #8eb8ff;
-  }
-
-  .sales-fullcalendar-theme .fc-daygrid-day {
-    background: linear-gradient(180deg, #0a1328 0%, #081125 100%);
-  }
-
-  .sales-fullcalendar-theme .fc-daygrid-day-number {
-    color: #eff6ff;
-  }
-
-  .sales-fullcalendar-theme .fc-day-other .fc-daygrid-day-number {
-    color: #5c6d8d;
-  }
-
-  .sales-fullcalendar-theme .fc-day-today {
-    background: transparent !important;
-    background-color: transparent !important;
-    box-shadow: none;
-  }
-
-  .sales-fullcalendar-theme .fc-daygrid-dot-event .fc-event-time {
-    color: #7da4cc;
-  }
-
-  .sales-fullcalendar-theme .fc-daygrid-dot-event .fc-event-title {
-    color: #eff6ff;
-  }
-
-  .sales-fullcalendar-theme .fc-daygrid-dot-event .fc-daygrid-event-dot,
-  .sales-fullcalendar-theme .fc-daygrid-dot-event .fc-event-dot {
-    background-color: #38bdf8;
-    border: none !important;
-  }
-}
-
 @media (max-width: 768px) {
   .sales-fullcalendar-theme .fc-header-toolbar {
     align-items: stretch;
@@ -513,20 +441,7 @@
   }
 }
 
-@keyframes task-details-enter {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
 
-.task-details-enter {
-  animation: task-details-enter 220ms ease-out;
-}
 
 /* ── Time Grid (Día view) ─────────────────────────────────────── */
 
@@ -583,21 +498,4 @@
   background: linear-gradient(180deg, #0a1328 0%, #081125 100%);
 }
 
-@media (prefers-color-scheme: dark) {
-  .sales-fullcalendar-theme .fc-timegrid-axis-cushion,
-  .sales-fullcalendar-theme .fc-timegrid-slot-label-cushion {
-    color: #4a6080;
-  }
 
-  .sales-fullcalendar-theme .fc-timegrid-slot {
-    border-color: #1e2b49;
-  }
-
-  .sales-fullcalendar-theme .fc-timegrid-slot-minor {
-    border-color: #131f36;
-  }
-
-  .sales-fullcalendar-theme .fc-timegrid-col {
-    background: linear-gradient(180deg, #0a1328 0%, #081125 100%);
-  }
-}
