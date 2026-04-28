@@ -98,6 +98,16 @@ export interface QuoteById {
           imagen: string;
         }[];
       };
+      lleva_reflejante: boolean;
+      reflejante_config: {
+        opcion: string;
+        posicion: string;
+        tipo: string;
+      }[];
+      lleva_corte_manga: boolean;
+      corte_manga_config: {
+        tipo: string;
+      } | null;
       cotizacion_detalle: number;
       talla: number;
     }[];
@@ -192,7 +202,7 @@ export interface QuoteCreate {
   pedido: {
     empresa: Company["id"];
     sucursal: Branch["id"];
-    cliente: number;
+    cliente: number | null;
     moneda: Currency["id"];
     persona_pagos: string;
     correo_facturas: string;
