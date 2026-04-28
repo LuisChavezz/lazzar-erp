@@ -1,288 +1,238 @@
+/**
+ * Fachada de íconos — todos los íconos reutilizables de la aplicación.
+ *
+ * La mayoría provienen de lucide-react (v1.11+).
+ * Se conservan como SVG inline únicamente:
+ *  - LogoIcon          → logo del producto (4 círculos)
+ *  - GoogleIcon        → logo "G" multicolor de Google
+ *  - GoogleDriveIcon   → logo tricolor de Google Drive
+ *  - GmailIcon         → logo de Gmail
+ *  - GoogleCalendarIcon → logo de Google Calendar
+ *  - OrderStatusPathIcon → path SVG dinámico, sin equivalente en Lucide
+ */
+
 import React from "react";
+import {
+  AlignLeft,
+  AlertTriangle,
+  ArrowLeft,
+  ArrowLeftRight,
+  BarChart2,
+  Bell,
+  Building2,
+  Calculator,
+  CalendarCheck,
+  Check,
+  CheckCircle,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  ChevronUp,
+  ClipboardList,
+  Clock,
+  DollarSign,
+  Download,
+  Eye,
+  EyeOff,
+  ExternalLink,
+  FileCheck,
+  FileCode2,
+  FileSearch,
+  FileText,
+  Filter,
+  FlaskConical,
+  FolderOpen,
+  Heart,
+  HelpCircle,
+  History,
+  Home,
+  Image as LucideImage,
+  Inbox,
+  Info,
+  Landmark,
+  LayoutDashboard,
+  LayoutGrid,
+  Layers,
+  Layers2,
+  Loader2,
+  Lock,
+  LogOut,
+  Mail,
+  Map,
+  MapPin,
+  Menu,
+  MinusCircle,
+  Monitor,
+  Moon,
+  MoreVertical,
+  Package,
+  PackageOpen,
+  Palette,
+  Pencil,
+  PenSquare,
+  Plus,
+  PlusCircle,
+  QrCode,
+  RefreshCw,
+  Ruler,
+  Save,
+  Search,
+  Send,
+  Settings,
+  ShieldCheck,
+  ShoppingBag,
+  ShoppingCart,
+  Star,
+  Sun,
+  Tag,
+  Trash2,
+  TrendingDown,
+  TrendingUp,
+  Truck,
+  Upload,
+  User,
+  UserCog,
+  Users,
+  X,
+  XCircle,
+} from "lucide-react";
 
-export const PlusIcon = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg
-    {...props}
-    fill="none"
-    stroke="currentColor"
-    viewBox="0 0 24 24"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth="2"
-      d="M12 4v16m8-8H4"
-    />
-  </svg>
+// ─── Tipos comunes ────────────────────────────────────────────────────────────
+
+type SvgProps = React.SVGProps<SVGSVGElement>;
+type LucideProps = React.ComponentProps<typeof Plus>;
+
+// ─── Íconos generales ─────────────────────────────────────────────────────────
+
+export const PlusIcon = (props: LucideProps) => <Plus {...props} />;
+export const DashboardIcon = (props: LucideProps) => <LayoutDashboard {...props} />;
+export const SettingsIcon = (props: LucideProps) => <Settings {...props} />;
+export const LogoutIcon = (props: LucideProps) => <LogOut {...props} />;
+export const MenuIcon = (props: LucideProps) => <Menu {...props} />;
+export const CloseIcon = (props: LucideProps) => <X {...props} />;
+export const EditIcon = (props: LucideProps) => <Pencil {...props} />;
+export const XIcon = (props: LucideProps) => <X {...props} />;
+export const DeleteIcon = (props: LucideProps) => <Trash2 {...props} />;
+export const ViewIcon = (props: LucideProps) => <Eye {...props} />;
+export const EyeIcon = (props: LucideProps) => <Eye {...props} />;
+export const EyeOffIcon = (props: LucideProps) => <EyeOff {...props} />;
+export const TrendingUpIcon = (props: LucideProps) => <TrendingUp {...props} />;
+export const DotsVerticalIcon = (props: LucideProps) => <MoreVertical {...props} />;
+export const ClockIcon = (props: LucideProps) => <Clock {...props} />;
+export const HistoryIcon = (props: LucideProps) => <History {...props} />;
+export const BellIcon = (props: LucideProps) => <Bell {...props} />;
+export const ErrorIcon = (props: LucideProps) => <AlertTriangle {...props} />;
+export const CheckIcon = (props: LucideProps) => <Check {...props} />;
+export const CheckCircleIcon = (props: LucideProps) => <CheckCircle {...props} />;
+export const InfoIcon = (props: LucideProps) => <Info {...props} />;
+export const SearchIcon = (props: LucideProps) => <Search {...props} />;
+export const EmailIcon = (props: LucideProps) => <Mail {...props} />;
+export const LockIcon = (props: LucideProps) => <Lock {...props} />;
+export const ArrowLeftIcon = (props: LucideProps) => <ArrowLeft {...props} />;
+export const SaveIcon = (props: LucideProps) => <Save {...props} />;
+export const HeartIcon = (props: LucideProps) => <Heart {...props} />;
+export const PhotoIcon = (props: LucideProps) => <LucideImage {...props} />;
+export const BuildingIcon = (props: LucideProps) => <Building2 {...props} />;
+export const ChevronRightIcon = (props: LucideProps) => <ChevronRight {...props} />;
+export const ChevronLeftIcon = (props: LucideProps) => <ChevronLeft {...props} />;
+export const ChevronUpIcon = (props: LucideProps) => <ChevronUp {...props} />;
+export const ChevronDownIcon = (props: LucideProps) => <ChevronDown {...props} />;
+export const MapPinIcon = (props: LucideProps) => <MapPin {...props} />;
+export const LoadingSpinnerIcon = (props: LucideProps) => <Loader2 {...props} />;
+export const RefreshIcon = (props: LucideProps) => <RefreshCw {...props} />;
+export const UserIcon = (props: LucideProps) => <User {...props} />;
+export const HelpIcon = (props: LucideProps) => <HelpCircle {...props} />;
+export const FilterIcon = (props: LucideProps) => <Filter {...props} />;
+export const HomeIcon = (props: LucideProps) => <Home {...props} />;
+export const SyncIcon = (props: LucideProps) => <RefreshCw {...props} />;
+export const InboxIcon = (props: LucideProps) => <Inbox {...props} />;
+export const PaperPlaneIcon = (props: LucideProps) => <Send {...props} />;
+export const StarIcon = (props: LucideProps) => <Star {...props} />;
+export const PencilSquareIcon = (props: LucideProps) => <PenSquare {...props} />;
+export const ExclamationTriangleIcon = (props: LucideProps) => <AlertTriangle {...props} />;
+export const TasksIcon = (props: LucideProps) => <CalendarCheck {...props} />;
+export const OperationsIcon = (props: LucideProps) => <AlignLeft {...props} />;
+export const ExternalLinkIcon = (props: LucideProps) => <ExternalLink {...props} />;
+export const RejectIcon = (props: LucideProps) => <XCircle {...props} />;
+export const DownloadIcon = (props: LucideProps) => <Download {...props} />;
+export const UploadIcon = (props: LucideProps) => <Upload {...props} />;
+export const ShieldCheckIcon = (props: LucideProps) => <ShieldCheck {...props} />;
+export const QrCodeIcon = (props: LucideProps) => <QrCode {...props} />;
+export const SunIcon = (props: LucideProps) => <Sun {...props} />;
+export const MoonIcon = (props: LucideProps) => <Moon {...props} />;
+export const MonitorIcon = (props: LucideProps) => <Monitor {...props} />;
+
+// ─── Íconos de módulos ERP ────────────────────────────────────────────────────
+
+export const PedidosIcon = (props: LucideProps) => <ShoppingBag {...props} />;
+export const ProduccionIcon = (props: LucideProps) => <FlaskConical {...props} />;
+export const InventariosIcon = (props: LucideProps) => <Package {...props} />;
+export const OrdenesIcon = (props: LucideProps) => <ClipboardList {...props} />;
+export const RecepcionesIcon = (props: LucideProps) => <ArrowLeftRight {...props} />;
+export const FacturacionIcon = (props: LucideProps) => <FileText {...props} />;
+export const CxpIcon = (props: LucideProps) => <MinusCircle {...props} />;
+export const CxcIcon = (props: LucideProps) => <PlusCircle {...props} />;
+export const BancosIcon = (props: LucideProps) => <Landmark {...props} />;
+export const ContabilidadIcon = (props: LucideProps) => <Calculator {...props} />;
+export const ExistenciasIcon = (props: LucideProps) => <ClipboardList {...props} />;
+export const ListaPreciosIcon = (props: LucideProps) => <DollarSign {...props} />;
+export const RastrearGuiasIcon = (props: LucideProps) => <Map {...props} />;
+export const ClientesIcon = (props: LucideProps) => <Users {...props} />;
+export const EmbarquesIcon = (props: LucideProps) => <Truck {...props} />;
+export const ReportesIcon = (props: LucideProps) => <BarChart2 {...props} />;
+export const ComprasIcon = (props: LucideProps) => <ShoppingCart {...props} />;
+export const CapitalHumanoIcon = (props: LucideProps) => <UserCog {...props} />;
+
+// ─── Íconos de configuración de productos ────────────────────────────────────
+
+export const ProductCategoriesIcon = (props: LucideProps) => <LayoutGrid {...props} />;
+export const ProductTypesIcon = (props: LucideProps) => <Tag {...props} />;
+export const ColorsIcon = (props: LucideProps) => <Palette {...props} />;
+export const SizesIcon = (props: LucideProps) => <Ruler {...props} />;
+export const UnitsIcon = (props: LucideProps) => <Layers {...props} />;
+export const TaxIcon = (props: LucideProps) => <FileCheck {...props} />;
+export const SatProdServIcon = (props: LucideProps) => <FileSearch {...props} />;
+export const SatUnitCodesIcon = (props: LucideProps) => <FileCode2 {...props} />;
+export const ProductIcon = (props: LucideProps) => <Package {...props} />;
+export const ProductVariantsIcon = (props: LucideProps) => <PackageOpen {...props} />;
+export const FolioIcon = (props: LucideProps) => <FolderOpen {...props} />;
+export const SamplesIcon = (props: LucideProps) => <Layers2 {...props} />;
+
+// ─── Íconos con relleno (filled) ─────────────────────────────────────────────
+
+/** Ícono de advertencia relleno — AlertTriangle con fill */
+export const WarningFilledIcon = (props: LucideProps) => (
+  <AlertTriangle fill="currentColor" {...props} />
 );
 
-export const DashboardIcon = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg
-    {...props}
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth="2"
-      d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"
-    />
-  </svg>
+/** Corazón relleno */
+export const HeartFilledIcon = (props: LucideProps) => (
+  <Heart fill="currentColor" {...props} />
 );
 
-export const SettingsIcon = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg
-    {...props}
-    fill="none"
-    stroke="currentColor"
-    viewBox="0 0 24 24"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth="2"
-      d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
-    />
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth="2"
-      d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-    />
-  </svg>
-);
+// ─── Íconos parametrizados ────────────────────────────────────────────────────
 
-export const LogoutIcon = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg
-    {...props}
-    fill="none"
-    stroke="currentColor"
-    viewBox="0 0 24 24"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth="2"
-      d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
-    />
-  </svg>
-);
-
-export const MenuIcon = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg
-    {...props}
-    fill="none"
-    stroke="currentColor"
-    viewBox="0 0 24 24"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth="2"
-      d="M4 6h16M4 12h16M4 18h16"
-    />
-  </svg>
-);
-
-export const CloseIcon = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg
-    {...props}
-    fill="none"
-    stroke="currentColor"
-    viewBox="0 0 24 24"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth="2"
-      d="M6 18L18 6M6 6l12 12"
-    />
-  </svg>
-);
-
-export const EditIcon = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg
-    {...props}
-    fill="none"
-    stroke="currentColor"
-    viewBox="0 0 24 24"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth="2"
-      d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-    />
-  </svg>
-);
-
-export const XIcon = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg
-    {...props}
-    fill="none"
-    stroke="currentColor"
-    viewBox="0 0 24 24"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth="2"
-      d="M6 18L18 6M6 6l12 12"
-    />
-  </svg>
-);
-
-export const DeleteIcon = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg
-    {...props}
-    fill="none"
-    stroke="currentColor"
-    viewBox="0 0 24 24"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth="2"
-      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-    />
-  </svg>
-);
-
-export const ViewIcon = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg
-    {...props}
-    fill="none"
-    stroke="currentColor"
-    viewBox="0 0 24 24"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth="2"
-      d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-    />
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth="2"
-      d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
-    />
-  </svg>
-);
-
-export const EyeIcon = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg
-    {...props}
-    fill="none"
-    stroke="currentColor"
-    viewBox="0 0 24 24"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth="2"
-      d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-    />
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth="2"
-      d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
-    />
-  </svg>
-);
-
-export const EyeOffIcon = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg
-    {...props}
-    fill="none"
-    stroke="currentColor"
-    viewBox="0 0 24 24"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth="2"
-      d="M3 3l18 18"
-    />
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth="2"
-      d="M10.584 10.587a2 2 0 102.829 2.828"
-    />
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth="2"
-      d="M9.88 5.09A10.66 10.66 0 0112 5c4.478 0 8.268 2.943 9.542 7a10.516 10.516 0 01-4.132 5.411M6.228 6.228A10.45 10.45 0 002.458 12c1.274 4.057 5.065 7 9.542 7a10.66 10.66 0 004.773-1.09"
-    />
-  </svg>
-);
-
-export const TrendingUpIcon = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg
-    {...props}
-    fill="none"
-    stroke="currentColor"
-    viewBox="0 0 24 24"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth="2"
-      d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"
-    />
-  </svg>
-);
-
+/** Flecha de tendencia direccional: "up" (defecto) o "down" */
 export const TrendDirectionalIcon = (
-  props: React.SVGProps<SVGSVGElement> & { direction?: "up" | "down" }
+  props: LucideProps & { direction?: "up" | "down" }
 ) => {
-  const { direction = "up", ...svgProps } = props;
-  return (
-    <svg {...svgProps} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="2"
-        d={direction === "down" ? "M19 14l-7 7m0 0l-7-7m7 7V3" : "M5 10l7-7m0 0l7 7m-7-7v18"}
-      />
-    </svg>
-  );
+  const { direction = "up", ...rest } = props;
+  return direction === "down" ? <TrendingDown {...rest} /> : <TrendingUp {...rest} />;
 };
 
+/** Ícono de tendencia para KPI: negativo muestra TrendingDown */
 export const KpiTrendIcon = (
-  props: React.SVGProps<SVGSVGElement> & { negative?: boolean }
+  props: LucideProps & { negative?: boolean }
 ) => {
-  const { negative = false, ...svgProps } = props;
-  return (
-    <svg {...svgProps} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="2"
-        d={negative ? "M11 17H3m0 0v-8m0 8l8-8 4 4 6-6" : "M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"}
-      />
-    </svg>
-  );
+  const { negative = false, ...rest } = props;
+  return negative ? <TrendingDown {...rest} /> : <TrendingUp {...rest} />;
 };
 
-export const DotsVerticalIcon = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg {...props} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth="2"
-      d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"
-    />
-  </svg>
-);
-
+/**
+ * Ícono de estado de orden con path SVG dinámico.
+ */
 export const OrderStatusPathIcon = (
-  props: React.SVGProps<SVGSVGElement> & { path: string }
+  props: SvgProps & { path: string }
 ) => {
   const { path, ...svgProps } = props;
   return (
@@ -292,1269 +242,32 @@ export const OrderStatusPathIcon = (
   );
 };
 
-export const ClockIcon = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg
-    {...props}
-    fill="none"
-    stroke="currentColor"
-    viewBox="0 0 24 24"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth="2"
-      d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-    />
-  </svg>
-);
-
-export const HistoryIcon = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg
-    {...props}
-    fill="none"
-    stroke="currentColor"
-    viewBox="0 0 24 24"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth="2"
-      d="M3 12a9 9 0 101.857-5.4M3 4v4h4"
-    />
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth="2"
-      d="M12 7v5l3 2"
-    />
-  </svg>
-);
-
-export const BellIcon = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg
-    {...props}
-    fill="none"
-    stroke="currentColor"
-    viewBox="0 0 24 24"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth="2"
-      d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
-    />
-  </svg>
-);
-
-export const ErrorIcon = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg
-    {...props}
-    fill="none"
-    stroke="currentColor"
-    viewBox="0 0 24 24"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth="2"
-      d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-    />
-  </svg>
-);
-
-export const WarningFilledIcon = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg
-    {...props}
-    fill="currentColor"
-    viewBox="0 0 20 20"
-  >
-    <path
-      fillRule="evenodd"
-      clipRule="evenodd"
-      d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
-    />
-  </svg>
-);
-
-export const CheckIcon = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg
-    {...props}
-    fill="none"
-    stroke="currentColor"
-    viewBox="0 0 10 10"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth="2"
-      d="M2 5l2 2 4-4"
-    />
-  </svg>
-);
-
-export const CheckCircleIcon = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg
-    {...props}
-    fill="none"
-    stroke="currentColor"
-    viewBox="0 0 24 24"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth="2"
-      d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-    />
-  </svg>
-);
-
-export const InfoIcon = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg
-    {...props}
-    fill="none"
-    stroke="currentColor"
-    viewBox="0 0 24 24"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth="2"
-      d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-    />
-  </svg>
-);
-
-export const SearchIcon = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg
-    {...props}
-    fill="none"
-    stroke="currentColor"
-    viewBox="0 0 24 24"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth="2"
-      d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-    />
-  </svg>
-);
-
-export const EmailIcon = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg
-    {...props}
-    viewBox="0 0 16 11"
-    fill="none"
-  >
-    <path
-      fillRule="evenodd"
-      clipRule="evenodd"
-      d="M0 .55.571 0H15.43l.57.55v9.9l-.571.55H.57L0 10.45zm1.143 1.138V9.9h13.714V1.69l-6.503 4.8h-.697zM13.749 1.1H2.25L8 5.356z"
-      className="fill-current"
-    />
-  </svg>
-);
-
-export const LockIcon = (
-  props: React.SVGProps<SVGSVGElement>
-) => (
-  <svg
-    {...props}
-    fill="none"
-    stroke="currentColor"
-    viewBox="0 0 24 24"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth="2"
-      d="M7 10V7a5 5 0 0110 0v3M5 10h14v10H5V10z"
-    />
-  </svg>
-);
-
-export const PedidosIcon = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg
-    {...props}
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth="2"
-      d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"
-    />
-  </svg>
-);
-
-export const ProduccionIcon = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg
-    {...props}
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth="2"
-      d="M19.428 15.428a2 2 0 00-1.022-.547l-2.384-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"
-    />
-  </svg>
-);
-
-export const InventariosIcon = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg
-    {...props}
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth="2"
-      d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
-    />
-  </svg>
-);
-
-export const OrdenesIcon = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg
-    {...props}
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth="2"
-      d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"
-    />
-  </svg>
-);
-
-export const RecepcionesIcon = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg
-    {...props}
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth="2"
-      d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"
-    />
-  </svg>
-);
-
-export const FacturacionIcon = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg
-    {...props}
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth="2"
-      d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-    />
-  </svg>
-);
-
-export const CxpIcon = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg
-    {...props}
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth="2"
-      d="M15 12H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"
-    />
-  </svg>
-);
-
-export const CxcIcon = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg
-    {...props}
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth="2"
-      d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"
-    />
-  </svg>
-);
-
-export const BancosIcon = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg
-    {...props}
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth="2"
-      d="M8 14v3m4-3v3m4-3v3M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10z"
-    />
-  </svg>
-);
-
-export const ContabilidadIcon = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg
-    {...props}
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth="2"
-      d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"
-    />
-  </svg>
-);
-
-export const ExistenciasIcon = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg
-    {...props}
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth="2"
-      d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"
-    />
-  </svg>
-);
-
-export const ListaPreciosIcon = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg
-    {...props}
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth="2"
-      d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-    />
-  </svg>
-);
-
-export const RastrearGuiasIcon = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg
-    {...props}
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth="2"
-      d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0121 18.382V7.618a1 1 0 01-.553-.894L15 4m0 13V4m0 0L9 7"
-    />
-  </svg>
-);
-
-export const ClientesIcon = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg
-    {...props}
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth="2"
-      d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
-    />
-  </svg>
-);
-
-export const EmbarquesIcon = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg
-    {...props}
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-  >
-    <path d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z"></path>
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth="2"
-      d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h2.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1m-6-1a1 1 0 001 1h1"
-    />
-  </svg>
-);
-
-export const ReportesIcon = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg
-    {...props}
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth="2"
-      d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-    />
-  </svg>
-);
-
-export const LogoIcon = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg
-    viewBox="0 0 32 32"
-    fill="none"
-    xmlns="http://www.w3.org/2000/svg"
-    {...props}
-  >
-    <circle
-      cx="4.706"
-      cy="16"
-      r="4.706"
-      fill="currentColor"
-    />
-    <circle
-      cx="16.001"
-      cy="4.706"
-      r="4.706"
-      fill="currentColor"
-    />
-    <circle
-      cx="16.001"
-      cy="27.294"
-      r="4.706"
-      fill="currentColor"
-    />
-    <circle
-      cx="27.294"
-      cy="16"
-      r="4.706"
-      fill="currentColor"
-    />
-  </svg>
-);
-
-export const ArrowLeftIcon = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg {...props} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth="2"
-      d="M15 19l-7-7 7-7"
-    />
-  </svg>
-);
-
-export const SaveIcon = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg {...props} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth="2"
-      d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"
-    />
-  </svg>
-);
-
-export const HeartIcon = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg {...props} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth="2"
-      d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
-    />
-  </svg>
-);
-
-export const HeartFilledIcon = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg {...props} viewBox="0 0 24 24" fill="currentColor">
-    <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
-  </svg>
-);
-
-export const PhotoIcon = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg {...props} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth="1.5"
-      d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-    />
-  </svg>
-);
-
-export const BuildingIcon = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg {...props} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth="2"
-      d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
-    />
-  </svg>
-);
-
-export const ComprasIcon = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg
-    {...props}
-    fill="none"
-    stroke="currentColor"
-    viewBox="0 0 24 24"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth="2"
-      d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"
-    />
-  </svg>
-);
-
-export const CapitalHumanoIcon = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg
-    {...props}
-    fill="none"
-    stroke="currentColor"
-    viewBox="0 0 24 24"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth="2"
-      d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"
-    />
-  </svg>
-);
-
-export const ChevronRightIcon = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg
-    {...props}
-    fill="none"
-    stroke="currentColor"
-    viewBox="0 0 24 24"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth="2"
-      d="M9 5l7 7-7 7"
-    />
-  </svg>
-);
-
-export const ChevronLeftIcon = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg
-    {...props}
-    fill="none"
-    stroke="currentColor"
-    viewBox="0 0 24 24"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth="2"
-      d="M15 19l-7-7 7-7"
-    />
-  </svg>
-);
-
-export const ChevronUpIcon = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg
-    {...props}
-    fill="none"
-    stroke="currentColor"
-    viewBox="0 0 24 24"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth="2"
-      d="M5 15l7-7 7 7"
-    />
-  </svg>
-);
-
-export const ChevronDownIcon = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg
-    {...props}
-    fill="none"
-    stroke="currentColor"
-    viewBox="0 0 24 24"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth="2"
-      d="M19 9l-7 7-7-7"
-    />
-  </svg>
-);
-
-export const MapPinIcon = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg {...props} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth="2"
-      d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
-    />
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth="2"
-      d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
-    />
-  </svg>
-);
-
-export const LoadingSpinnerIcon = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg
-    {...props}
-    xmlns="http://www.w3.org/2000/svg"
-    fill="none"
-    viewBox="0 0 24 24"
-  >
-    <circle
-      className="opacity-25"
-      cx="12"
-      cy="12"
-      r="10"
-      stroke="currentColor"
-      strokeWidth="4"
-    ></circle>
-    <path
-      className="opacity-75"
-      fill="currentColor"
-      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-    ></path>
-  </svg>
-);
-
-export const RefreshIcon = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg
-    {...props}
-    fill="none"
-    stroke="currentColor"
-    viewBox="0 0 24 24"
-    xmlns="http://www.w3.org/2000/svg"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth="2"
-      d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-    />
-  </svg>
-);
-
-export const UserIcon = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg
-    {...props}
-    fill="none"
-    stroke="currentColor"
-    viewBox="0 0 24 24"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth="2"
-      d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-    />
-  </svg>
-);
-
-export const HelpIcon = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg
-    {...props}
-    fill="none"
-    stroke="currentColor"
-    viewBox="0 0 24 24"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth="2"
-      d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-    />
-  </svg>
-);
-
-export const ProductCategoriesIcon = (
-  props: React.SVGProps<SVGSVGElement>
-) => (
-  <svg
-    {...props}
-    fill="none"
-    stroke="currentColor"
-    viewBox="0 0 24 24"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth="2"
-      d="M3 4h7v7H3V4z M14 4h7v7h-7V4z M3 15h7v5H3v-5z M14 15h7v5h-7v-5z"
-    />
-  </svg>
-);
-
-export const ProductTypesIcon = (
-  props: React.SVGProps<SVGSVGElement>
-) => (
-  <svg
-    {...props}
-    fill="none"
-    stroke="currentColor"
-    viewBox="0 0 24 24"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth="2"
-      d="M7 7h6l5 5-6 6-5-5V7z M7 7l5 5 M3 11V5a2 2 0 012-2h6"
-    />
-  </svg>
-);
-
-export const ColorsIcon = (
-  props: React.SVGProps<SVGSVGElement>
-) => (
-  <svg
-    {...props}
-    fill="none"
-    stroke="currentColor"
-    viewBox="0 0 24 24"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth="2"
-      d="M12 3a9 9 0 100 18c1.5 0 2-1 2-2 0-1-1-2-1-3s1-2 2-2h1a4 4 0 004-4 7 7 0 00-8-7zM7 11h.01M10 8h.01M14 8h.01"
-    />
-  </svg>
-);
-
-export const SizesIcon = (
-  props: React.SVGProps<SVGSVGElement>
-) => (
-  <svg
-    {...props}
-    fill="none"
-    stroke="currentColor"
-    viewBox="0 0 24 24"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth="2"
-      d="M8 4l2 2h4l2-2 3 3-3 3v10H8V10L5 7l3-3zM12 10v8"
-    />
-  </svg>
-);
-
-export const UnitsIcon = (
-  props: React.SVGProps<SVGSVGElement>
-) => (
-  <svg
-    {...props}
-    fill="none"
-    stroke="currentColor"
-    viewBox="0 0 24 24"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth="2"
-      d="M4 7h16v10H4V7zM8 7v4M12 7v2M16 7v4M8 17v-4M12 17v-2M16 17v-4"
-    />
-  </svg>
-);
-
-export const TaxIcon = (
-  props: React.SVGProps<SVGSVGElement>
-) => (
-  <svg
-    {...props}
-    fill="none"
-    stroke="currentColor"
-    viewBox="0 0 24 24"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth="2"
-      d="M7 3h7l5 5v13H7V3zM14 3v5h5M10 13l4-4M9 17h.01M15 11h.01"
-    />
-  </svg>
-);
-
-export const SatProdServIcon = (
-  props: React.SVGProps<SVGSVGElement>
-) => (
-  <svg
-    {...props}
-    fill="none"
-    stroke="currentColor"
-    viewBox="0 0 24 24"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth="2"
-      d="M7 3h7l5 5v13H7V3zM14 3v5h5M9 13h6M9 17h4M10 9h4M9 15l2 2 4-4"
-    />
-  </svg>
-);
-
-export const SatUnitCodesIcon = (
-  props: React.SVGProps<SVGSVGElement>
-) => (
-  <svg
-    {...props}
-    fill="none"
-    stroke="currentColor"
-    viewBox="0 0 24 24"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth="2"
-      d="M7 3h7l5 5v13H7V3zM14 3v5h5M9 13h6M9 17h4M10 9h4M15 14v4M13 16h4M13 18h4"
-    />
-  </svg>
-);
-
-export const ProductIcon = (
-  props: React.SVGProps<SVGSVGElement>
-) => (
-  <svg
-    {...props}
-    fill="none"
-    stroke="currentColor"
-    viewBox="0 0 24 24"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth="2"
-      d="M3 7l9-4 9 4-9 4-9-4zM3 7v10l9 4 9-4V7M12 11v10"
-    />
-  </svg>
-);
-
-export const ProductVariantsIcon = (
-  props: React.SVGProps<SVGSVGElement>
-) => (
-  <svg
-    {...props}
-    fill="none"
-    stroke="currentColor"
-    viewBox="0 0 24 24"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth="2"
-      d="M12 3l7 3-7 3-7-3 7-3zM5 6v5l7 3 7-3V6M3 15l4-2 4 2-4 2-4-2zM13 17l4-2 4 2-4 2-4-2z"
-    />
-  </svg>
-);
-
-export const FolioIcon = (
-  props: React.SVGProps<SVGSVGElement>
-) => (
-  <svg
-    {...props}
-    fill="none"
-    stroke="currentColor"
-    viewBox="0 0 24 24"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth="2"
-      d="M3 7h6l2 2h10v10a2 2 0 01-2 2H3V7zM7 13h10M7 17h6"
-    />
-  </svg>
-);
-
-export const FilterIcon = (
-  props: React.SVGProps<SVGSVGElement>
-) => (
-  <svg
-    {...props}
-    fill="none"
-    stroke="currentColor"
-    viewBox="0 0 24 24"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth="2"
-      d="M3 5h18l-7 8v6l-4-2v-4L3 5z"
-    />
-  </svg>
-);
-
-export const HomeIcon = (
-  props: React.SVGProps<SVGSVGElement>
-) => (
-  <svg
-    {...props}
-    fill="none"
-    stroke="currentColor"
-    viewBox="0 0 24 24"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth="2"
-      d="M3 10l9-7 9 7M5 10v10h14V10M9 20v-6h6v6"
-    />
-  </svg>
-);
-
-export const SyncIcon = (
-  props: React.SVGProps<SVGSVGElement>
-) => (
-  <svg
-    {...props}
-    fill="none"
-    stroke="currentColor"
-    viewBox="0 0 24 24"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth="2"
-      d="M4 4v6h6M20 20v-6h-6M5.64 15A7 7 0 0019 12M18.36 9A7 7 0 005 12"
-    />
-  </svg>
-);
-
-export const InboxIcon = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg {...props} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth="2"
-      d="M5 4h14a2 2 0 012 2v3H3V6a2 2 0 012-2zM3 9h18v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9zm4 5h10"
-    />
-  </svg>
-);
-
-export const PaperPlaneIcon = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg {...props} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth="2"
-      d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"
-    />
-  </svg>
-);
-
-export const StarIcon = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg {...props} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth="2"
-      d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"
-    />
-  </svg>
-);
-
-export const PencilSquareIcon = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg {...props} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth="2"
-      d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-    />
-  </svg>
-);
-
-export const ExclamationTriangleIcon = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg {...props} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth="2"
-      d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0zM12 9v4M12 17h.01"
-    />
-  </svg>
-);
-
-export const TasksIcon = (
-  props: React.SVGProps<SVGSVGElement>
-) => (
-  <svg
-    {...props}
-    fill="none"
-    stroke="currentColor"
-    viewBox="0 0 24 24"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth="2"
-      d="M7 3v4M17 3v4M3 9h18M5 5h14a2 2 0 012 2v12H3V7a2 2 0 012-2zM9 15l2 2 4-4"
-    />
-  </svg>
-);
-
-export const OperationsIcon = (
-  props: React.SVGProps<SVGSVGElement>
-) => (
-  <svg
-    {...props}
-    fill="none"
-    stroke="currentColor"
-    viewBox="0 0 24 24"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth="2"
-      d="M4 6h16M4 12h16M4 18h16M9 4v4M15 10v4M7 16v4"
-    />
-  </svg>
-);
-
-export const ExternalLinkIcon = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth={2}
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    {...props}
-  >
-    <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6" />
-    <polyline points="15 3 21 3 21 9" />
-    <line x1="10" y1="14" x2="21" y2="3" />
-  </svg>
-);
-
-export const SamplesIcon = (
-  props: React.SVGProps<SVGSVGElement>
-) => (
-  <svg
-    {...props}
-    fill="none"
-    stroke="currentColor"
-    viewBox="0 0 24 24"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth="2"
-      d="M12 3l7 3-7 3-7-3 7-3zM5 6v5l7 3 7-3V6M3 16l3-1.5L9 16l-3 1.5L3 16zM11 17l3-1.5 3 1.5-3 1.5-3-1.5z"
-    />
-  </svg>
-);
-
-export const RejectIcon = (
-  props: React.SVGProps<SVGSVGElement>
-) => (
-  <svg
-    {...props}
-    fill="none"
-    stroke="currentColor"
-    viewBox="0 0 24 24"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth="2"
-      d="M6 6l12 12M18 6L6 18M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-    />
-  </svg>
-);
-
-export const DownloadIcon = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg
-    {...props}
-    fill="none"
-    stroke="currentColor"
-    viewBox="0 0 24 24"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth="2"
-      d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5 5-5M12 15V3"
-    />
-  </svg>
-);
-
-export const UploadIcon = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg
-    {...props}
-    fill="none"
-    stroke="currentColor"
-    viewBox="0 0 24 24"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth="2"
-      d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"
-    />
-  </svg>
-);
-
-/* Ícono oficial de Google (logo "G" multicolor) */
-export const GoogleIcon = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg
-    {...props}
-    viewBox="0 0 24 24"
-    xmlns="http://www.w3.org/2000/svg"
-  >
-    <path
-      d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-      fill="#4285F4"
-    />
-    <path
-      d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-      fill="#34A853"
-    />
-    <path
-      d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"
-      fill="#FBBC05"
-    />
-    <path
-      d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
-      fill="#EA4335"
-    />
-  </svg>
-);
-
-export const ShieldCheckIcon = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg
-    {...props}
-    fill="none"
-    stroke="currentColor"
-    viewBox="0 0 24 24"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth="2"
-      d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
-    />
-  </svg>
-);
-
-export const QrCodeIcon = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg
-    {...props}
-    fill="none"
-    stroke="currentColor"
-    viewBox="0 0 24 24"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth="2"
-      d="M12 4H8a4 4 0 00-4 4v.01M4 12v4a4 4 0 004 4h.01M20 12v4a4 4 0 01-4 4h-4M20 4h-4a4 4 0 00-4 4v4m8-8V4m0 4h-4"
-    />
-    <rect x="6" y="6" width="4" height="4" rx="0.5" strokeWidth="2" />
-    <rect x="14" y="14" width="4" height="4" rx="0.5" strokeWidth="2" />
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 6h4v4h-4V6zM6 14h4v4H6v-4z" />
-  </svg>
-);
+// ─── Logo del producto ────────────────────────────────────────────────────────
 
-// ─── Iconos de tema (claro / oscuro / sistema) ────────────────────────────────
-
-export const SunIcon = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg
-    {...props}
-    fill="none"
-    stroke="currentColor"
-    viewBox="0 0 24 24"
-  >
-    <circle cx="12" cy="12" r="4" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth="2"
-      d="M12 2v2M12 20v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M2 12h2M20 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"
-    />
+/** Logo principal de la aplicación (4 círculos) — se conserva como SVG inline */
+export const LogoIcon = (props: SvgProps) => (
+  <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
+    <circle cx="4.706" cy="16" r="4.706" fill="currentColor" />
+    <circle cx="16.001" cy="4.706" r="4.706" fill="currentColor" />
+    <circle cx="16.001" cy="27.294" r="4.706" fill="currentColor" />
+    <circle cx="27.294" cy="16" r="4.706" fill="currentColor" />
   </svg>
 );
 
-export const MoonIcon = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg
-    {...props}
-    fill="none"
-    stroke="currentColor"
-    viewBox="0 0 24 24"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth="2"
-      d="M21 12.79A9 9 0 1111.21 3a7 7 0 009.79 9.79z"
-    />
-  </svg>
-);
+// ─── Íconos de servicios de Google (logos de marca) ──────────────────────────
 
-export const MonitorIcon = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg
-    {...props}
-    fill="none"
-    stroke="currentColor"
-    viewBox="0 0 24 24"
-  >
-    <rect x="2" y="3" width="20" height="14" rx="2" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth="2"
-      d="M8 21h8M12 17v4"
-    />
+/** Logo oficial de Google ("G" multicolor) — se conserva como SVG inline */
+export const GoogleIcon = (props: SvgProps) => (
+  <svg {...props} viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+    <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
+    <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
+    <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05" />
+    <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
   </svg>
 );
-
-// ─── Íconos de servicios de Google ────────────────────────────────────────────
 
-/* Ícono oficial de Google Drive (triángulo tricolor) */
-export const GoogleDriveIcon = (props: React.SVGProps<SVGSVGElement>) => (
+/** Logo oficial de Google Drive (triángulo tricolor) — se conserva como SVG inline */
+export const GoogleDriveIcon = (props: SvgProps) => (
   <svg {...props} viewBox="0 0 87.3 78" xmlns="http://www.w3.org/2000/svg">
     <path d="m6.6 66.85 3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3l13.75-23.8h-27.5c0 1.55.4 3.1 1.2 4.5z" fill="#0066da" />
     <path d="m43.65 25-13.75-23.8c-1.35.8-2.5 1.9-3.3 3.3l-25.4 44a9.06 9.06 0 0 0-1.2 4.5h27.5z" fill="#00ac47" />
@@ -1565,8 +278,8 @@ export const GoogleDriveIcon = (props: React.SVGProps<SVGSVGElement>) => (
   </svg>
 );
 
-/* Ícono de Gmail (sobre con la forma "M" característica) */
-export const GmailIcon = (props: React.SVGProps<SVGSVGElement>) => (
+/** Logo de Gmail (sobre con forma "M" característica) — se conserva como SVG inline */
+export const GmailIcon = (props: SvgProps) => (
   <svg {...props} viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
     <path d="M20 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z" fill="#ffffff" />
     <path d="M4 4l8 7 8-7H4z" fill="#EA4335" />
@@ -1575,8 +288,8 @@ export const GmailIcon = (props: React.SVGProps<SVGSVGElement>) => (
   </svg>
 );
 
-/* Ícono de Google Calendar (calendario con cabecera azul) */
-export const GoogleCalendarIcon = (props: React.SVGProps<SVGSVGElement>) => (
+/** Logo de Google Calendar (calendario con cabecera azul) — se conserva como SVG inline */
+export const GoogleCalendarIcon = (props: SvgProps) => (
   <svg {...props} viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
     <rect x="3" y="4" width="18" height="17" rx="2" fill="#ffffff" />
     <rect x="3" y="4" width="18" height="5" rx="2" fill="#4285F4" />
