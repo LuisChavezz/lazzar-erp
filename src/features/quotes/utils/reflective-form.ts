@@ -44,7 +44,7 @@ export const createReflectiveConfigForm = (
   initial?: Partial<Omit<ReflectiveConfigForm, "id">>
 ): ReflectiveConfigForm => ({
   id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
-  opcion: initial?.opcion ?? "",
+  opcion: initial?.opcion ?? "catalogo",
   posiciones: initial?.posiciones ?? [],
   tipo: initial?.tipo ?? "",
 });

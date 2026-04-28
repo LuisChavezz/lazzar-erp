@@ -1,3 +1,4 @@
+import { Fragment } from "react";
 import {
   Body,
   Container,
@@ -5,6 +6,7 @@ import {
   Heading,
   Hr,
   Html,
+  Img,
   Preview,
   Section,
   Tailwind,
@@ -17,13 +19,14 @@ import {
   toDisplayValue,
 } from "@/src/features/quotes/utils/quoteDetailsFormatters";
 import { buildQuoteEmailTemplateModel, getQuoteDetailSizesSummary } from "@/src/features/quotes/utils/quoteEmailTemplateHelpers";
+import { OPCION_LABEL, POSICION_LABEL, TIPO_LABEL } from "@/src/features/quotes/utils/reflective-labels";
 
 type QuoteEmailProps = {
   quote: QuoteById;
 };
 
 export const QuoteEmail = ({ quote }: QuoteEmailProps) => {
-  const { customerName, totalPieces, shippingAddress, detailRows, computedSubtotal } =
+  const { customerName, totalPieces, shippingAddress, detailRows, computedSubtotal, detailAddons } =
     buildQuoteEmailTemplateModel(quote);
 
   return (
@@ -101,27 +104,176 @@ export const QuoteEmail = ({ quote }: QuoteEmailProps) => {
                 </thead>
                 <tbody>
                   {detailRows.map(({ detail, quantity, lineSubtotal }, detailIndex) => {
-                    const rowClassName =
-                      detailIndex < detailRows.length - 1 ? "border-b border-slate-100" : "";
+                    const addons = detailAddons[detailIndex];
+                    const hasEmbroidery = addons.embroideryGroups.length > 0;
+                    const hasReflective = addons.reflectiveGroups.length > 0;
+                    const hasAddons = hasEmbroidery || hasReflective || addons.hasSleeveCut;
+                    const isNotLast = detailIndex < detailRows.length - 1;
+                    const dividerClass = isNotLast ? "border-b border-slate-100" : "";
 
                     return (
-                      <tr key={detail.id} className={rowClassName}>
-                        <td className="py-4 pr-3 align-top text-slate-900">
-                          <Text className="m-0 text-sm font-semibold text-slate-900">
-                            {detail.producto_nombre}
-                          </Text>
-                        </td>
-                        <td className="py-4 pr-3 align-top text-slate-600">
-                          {getQuoteDetailSizesSummary(detail)}
-                        </td>
-                        <td className="py-4 pr-3 text-right align-top text-slate-900">{quantity}</td>
-                        <td className="py-4 pr-3 text-right align-top text-slate-900">
-                          {toCurrencyOrDash(detail.precio_unitario)}
-                        </td>
-                        <td className="py-4 text-right align-top font-semibold text-slate-900">
-                          {toCurrencyOrDash(lineSubtotal)}
-                        </td>
-                      </tr>
+                      <Fragment key={detail.id}>
+                        <tr className={hasAddons ? "" : dividerClass}>
+                          <td className="py-4 pr-3 align-top text-slate-900">
+                            <Text className="m-0 text-sm font-semibold text-slate-900">
+                              {detail.producto_nombre}
+                            </Text>
+                          </td>
+                          <td className="py-4 pr-3 align-top text-slate-600">
+                            {getQuoteDetailSizesSummary(detail)}
+                          </td>
+                          <td className="py-4 pr-3 text-right align-top text-slate-900">{quantity}</td>
+                          <td className="py-4 pr-3 text-right align-top text-slate-900">
+                            {toCurrencyOrDash(detail.precio_unitario)}
+                          </td>
+                          <td className="py-4 text-right align-top font-semibold text-slate-900">
+                            {toCurrencyOrDash(lineSubtotal)}
+                          </td>
+                        </tr>
+
+                        {hasAddons && (
+                          <tr className={dividerClass}>
+                            <td colSpan={5} className="px-0 pb-4 pt-1">
+
+                              {/* ── Bordados ── */}
+                              {hasEmbroidery && (
+                                <table
+                                  width="100%"
+                                  style={{ borderCollapse: "collapse", marginBottom: 6 }}
+                                >
+                                  <thead>
+                                    <tr>
+                                      <td
+                                        colSpan={2}
+                                        className="bg-indigo-950 px-4 py-2.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-indigo-200"
+                                      >
+                                        Bordados del producto
+                                      </td>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {addons.embroideryGroups.map((group, gi) => (
+                                      <Fragment key={gi}>
+                                        <tr>
+                                          <td
+                                            colSpan={2}
+                                            className="border-t border-indigo-100 bg-indigo-50 px-4 py-2.5"
+                                          >
+                                            <Text className="m-0 text-[11px] font-semibold text-indigo-900">
+                                              {group.label}
+                                            </Text>
+                                            <Text className="m-0 text-[10px] text-indigo-600">
+                                              Tallas: {group.sizeNames.join(", ")}
+                                            </Text>
+                                            {group.notes ? (
+                                              <Text className="m-0 text-[10px] italic text-indigo-500">
+                                                {group.notes}
+                                              </Text>
+                                            ) : null}
+                                          </td>
+                                        </tr>
+                                        {group.locations.map((loc, li) => (
+                                          <tr key={li} className="border-t border-indigo-100 bg-white">
+                                            <td className="px-4 py-3 align-top">
+                                              <Text className="m-0 text-[11px] font-semibold text-slate-800">
+                                                Ubicación {loc.codigo}
+                                              </Text>
+                                              <Text className="m-0 text-[10px] text-slate-500">
+                                                {loc.ancho_cm} × {loc.alto_cm} cm
+                                                {loc.color_hilo ? ` · Hilo: ${loc.color_hilo}` : ""}
+                                              </Text>
+                                            </td>
+                                            <td
+                                              className="px-4 py-3 text-right align-top"
+                                              style={{ width: 64 }}
+                                            >
+                                              {loc.imagen ? (
+                                                <Img
+                                                  src={loc.imagen}
+                                                  alt={`Imagen bordado ${loc.codigo}`}
+                                                  width="48"
+                                                  height="48"
+                                                  style={{ marginLeft: "auto", borderRadius: 6 }}
+                                                />
+                                              ) : (
+                                                <Text className="m-0 text-[10px] text-slate-400">
+                                                  Sin imagen
+                                                </Text>
+                                              )}
+                                            </td>
+                                          </tr>
+                                        ))}
+                                      </Fragment>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              )}
+
+                              {/* ── Reflejantes ── */}
+                              {hasReflective && (
+                                <table
+                                  width="100%"
+                                  style={{ borderCollapse: "collapse", marginBottom: 6 }}
+                                >
+                                  <thead>
+                                    <tr>
+                                      <td className="bg-amber-900 px-4 py-2.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-amber-100">
+                                        Reflejantes del producto
+                                      </td>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {addons.reflectiveGroups.map((group, gi) => (
+                                      <Fragment key={gi}>
+                                        <tr>
+                                          <td className="border-t border-amber-100 bg-amber-50 px-4 py-2.5">
+                                            <Text className="m-0 text-[11px] font-semibold text-amber-900">
+                                              Configuración {gi + 1}
+                                            </Text>
+                                            <Text className="m-0 text-[10px] text-amber-700">
+                                              Tallas: {group.sizeNames.join(", ")}
+                                            </Text>
+                                          </td>
+                                        </tr>
+                                        {group.specs.map((spec, si) => (
+                                          <tr key={si} className="border-t border-amber-100 bg-white">
+                                            <td className="px-4 py-2.5 text-[11px] text-slate-700">
+                                              <Text className="m-0">
+                                                <span style={{ fontWeight: 600, color: "#92400e" }}>Opción:</span>{" "}
+                                                {OPCION_LABEL[spec.opcion] ?? spec.opcion}
+                                                {" · "}
+                                                <span style={{ fontWeight: 600, color: "#92400e" }}>Posición:</span>{" "}
+                                                {POSICION_LABEL[spec.posicion] ?? spec.posicion}
+                                                {" · "}
+                                                <span style={{ fontWeight: 600, color: "#92400e" }}>Tipo:</span>{" "}
+                                                {TIPO_LABEL[spec.tipo] ?? spec.tipo}
+                                              </Text>
+                                            </td>
+                                          </tr>
+                                        ))}
+                                      </Fragment>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              )}
+
+                              {/* ── Corte de manga ── */}
+                              {addons.hasSleeveCut && (
+                                <table width="100%" style={{ borderCollapse: "collapse" }}>
+                                  <tbody>
+                                    <tr>
+                                      <td className="border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-[11px] font-semibold text-emerald-800">
+                                        Incluye corte de manga
+                                      </td>
+                                    </tr>
+                                  </tbody>
+                                </table>
+                              )}
+
+                            </td>
+                          </tr>
+                        )}
+                      </Fragment>
                     );
                   })}
                 </tbody>

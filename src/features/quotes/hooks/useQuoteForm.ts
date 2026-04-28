@@ -470,7 +470,7 @@ export function useQuoteForm() {
         pedido: {
           empresa: selectedCompanyId || 1, // Fallback safe si no hay empresa en workspace
           sucursal: selectedBranchId || 1, // Fallback safe si no hay sucursal
-          cliente: selectedCustomerId || 1, // Fallback
+          cliente: selectedCustomerId > 0 ? selectedCustomerId : null,
           moneda: parsed.data.moneda || 1, // Fallback si no viene moneda
           persona_pagos: parsed.data.persona_pagos ?? "",
           correo_facturas: parsed.data.correo_facturas ?? "",
