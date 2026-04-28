@@ -1,288 +1,16 @@
-/**
+﻿/**
  * Documento PDF de cotizacion individual.
  * Responsabilidad: estructura visual del documento, solo presentacional.
  * Usa la API de @react-pdf/renderer exclusivamente.
+ *
+ * Estilos → QuotePdfStyles.ts
+ * Colores → QuotePdfColors.ts
  */
-import { Document, Page, Text, View, StyleSheet } from "@react-pdf/renderer";
+import { Document, Page, Text, View, Image } from "@react-pdf/renderer";
 import type { QuoteById } from "@/src/features/quotes/interfaces/quote.interface";
-import { QuotePdfModel } from "../features/quotes/utils/quotePdfTemplateHelpers";
-
-const COLORS = {
-  brand: "#0f172a",
-  accent: "#0ea5e9",
-  accentDark: "#0369a1",
-  white: "#ffffff",
-  textPrimary: "#0f172a",
-  textSecondary: "#475569",
-  textMuted: "#94a3b8",
-  border: "#e2e8f0",
-  borderLight: "#f1f5f9",
-  rowAlt: "#f8fafc",
-  success: "#059669",
-  badge: "#f0f9ff",
-  badgeBorder: "#bae6fd",
-  badgeText: "#0369a1",
-};
-
-const styles = StyleSheet.create({
-  page: {
-    paddingTop: 40,
-    paddingBottom: 48,
-    paddingHorizontal: 36,
-    fontFamily: "Helvetica",
-    fontSize: 9,
-    color: COLORS.textPrimary,
-    backgroundColor: COLORS.white,
-  },
-
-  /* ── Encabezado ──────────────────────────────── */
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    marginBottom: 24,
-    paddingBottom: 20,
-    borderBottomWidth: 2,
-    borderBottomColor: COLORS.brand,
-  },
-  headerLeft: {
-    flex: 1,
-  },
-  brandLabel: {
-    fontSize: 7,
-    fontFamily: "Helvetica-Bold",
-    color: COLORS.accent,
-    letterSpacing: 2,
-    marginBottom: 4,
-  },
-  docTitle: {
-    fontSize: 22,
-    fontFamily: "Helvetica-Bold",
-    color: COLORS.brand,
-    marginBottom: 2,
-  },
-  docSubtitle: {
-    fontSize: 9,
-    color: COLORS.textSecondary,
-  },
-  headerRight: {
-    alignItems: "flex-end",
-  },
-  quoteIdBadge: {
-    backgroundColor: COLORS.brand,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 4,
-    marginBottom: 8,
-  },
-  quoteIdText: {
-    fontSize: 14,
-    fontFamily: "Helvetica-Bold",
-    color: COLORS.white,
-  },
-  statusBadge: {
-    backgroundColor: COLORS.badge,
-    borderWidth: 1,
-    borderColor: COLORS.badgeBorder,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 12,
-  },
-  statusText: {
-    fontSize: 7.5,
-    fontFamily: "Helvetica-Bold",
-    color: COLORS.badgeText,
-  },
-
-  /* ── Info general (2 columnas) ──────────────── */
-  twoCol: {
-    flexDirection: "row",
-    gap: 12,
-    marginBottom: 14,
-  },
-  card: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    borderRadius: 6,
-    padding: 12,
-  },
-  cardTitle: {
-    fontSize: 7,
-    fontFamily: "Helvetica-Bold",
-    color: COLORS.textMuted,
-    letterSpacing: 1,
-    marginBottom: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.borderLight,
-    paddingBottom: 5,
-  },
-  infoRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 4,
-  },
-  infoLabel: {
-    fontSize: 8,
-    color: COLORS.textMuted,
-    flex: 1,
-  },
-  infoValue: {
-    fontSize: 8,
-    color: COLORS.textPrimary,
-    fontFamily: "Helvetica-Bold",
-    flex: 2,
-    textAlign: "right",
-  },
-  shippingCard: {
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    borderRadius: 6,
-    padding: 12,
-    marginBottom: 16,
-  },
-  shippingField: {
-    marginBottom: 8,
-  },
-  shippingFieldLast: {
-    marginBottom: 0,
-  },
-  shippingLabel: {
-    fontSize: 8,
-    color: COLORS.textMuted,
-    marginBottom: 3,
-  },
-  shippingValue: {
-    fontSize: 8.5,
-    color: COLORS.textPrimary,
-    fontFamily: "Helvetica-Bold",
-    lineHeight: 1.35,
-  },
-
-  /* ── Sección de productos ───────────────────── */
-  sectionTitle: {
-    fontSize: 9,
-    fontFamily: "Helvetica-Bold",
-    color: COLORS.brand,
-    marginBottom: 6,
-    letterSpacing: 0.5,
-  },
-  tableHeader: {
-    flexDirection: "row",
-    backgroundColor: COLORS.brand,
-    paddingVertical: 7,
-    paddingHorizontal: 8,
-    borderRadius: 4,
-    marginBottom: 0,
-  },
-  tableHeaderCell: {
-    fontSize: 7,
-    fontFamily: "Helvetica-Bold",
-    color: COLORS.textMuted,
-  },
-  tableRow: {
-    flexDirection: "row",
-    paddingVertical: 6,
-    paddingHorizontal: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.borderLight,
-  },
-  tableRowAlt: {
-    backgroundColor: COLORS.rowAlt,
-  },
-  tableCell: {
-    fontSize: 8,
-    color: COLORS.textSecondary,
-  },
-  tableCellBold: {
-    fontSize: 8,
-    fontFamily: "Helvetica-Bold",
-    color: COLORS.textPrimary,
-  },
-  colProduct: { flex: 3 },
-  colSizes: { flex: 3 },
-  colQty: { flex: 1, textAlign: "right" },
-  colPrice: { flex: 1.5, textAlign: "right" },
-  colSubtotal: { flex: 1.5, textAlign: "right" },
-
-  /* ── Totales ─────────────────────────────────── */
-  totalsSection: {
-    marginTop: 10,
-    alignItems: "flex-end",
-  },
-  totalsCard: {
-    width: "42%",
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    borderRadius: 6,
-    overflow: "hidden",
-  },
-  totalsRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    paddingVertical: 5,
-    paddingHorizontal: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.borderLight,
-  },
-  totalsRowFinal: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    paddingVertical: 8,
-    paddingHorizontal: 10,
-    backgroundColor: COLORS.brand,
-  },
-  totalsLabel: {
-    fontSize: 8,
-    color: COLORS.textSecondary,
-  },
-  totalsValue: {
-    fontSize: 8,
-    fontFamily: "Helvetica-Bold",
-    color: COLORS.textPrimary,
-  },
-  totalsFinalLabel: {
-    fontSize: 9,
-    fontFamily: "Helvetica-Bold",
-    color: COLORS.textMuted,
-  },
-  totalsFinalValue: {
-    fontSize: 11,
-    fontFamily: "Helvetica-Bold",
-    color: COLORS.white,
-  },
-
-  /* ── Observaciones ───────────────────────────── */
-  obsCard: {
-    marginTop: 12,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    borderRadius: 6,
-    padding: 12,
-  },
-  obsText: {
-    fontSize: 8,
-    color: COLORS.textSecondary,
-    lineHeight: 1.5,
-  },
-
-  /* ── Pie de página ───────────────────────────── */
-  footer: {
-    position: "absolute",
-    bottom: 20,
-    left: 36,
-    right: 36,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    paddingTop: 6,
-    borderTopWidth: 1,
-    borderTopColor: COLORS.border,
-  },
-  footerText: {
-    fontSize: 7,
-    color: COLORS.textMuted,
-  },
-});
+import type { QuotePdfModel } from "../features/quotes/utils/quotePdfTemplateHelpers";
+import { OPCION_LABEL, POSICION_LABEL, TIPO_LABEL } from "../features/quotes/utils/reflective-labels";
+import { pdfStyles as s } from "./QuotePdfStyles";
 
 type QuotePdfDocumentProps = {
   quote: QuoteById;
@@ -290,149 +18,269 @@ type QuotePdfDocumentProps = {
 };
 
 export const QuotePdfDocument = ({ quote, model }: QuotePdfDocumentProps) => {
-  const { customerName, totalPieces, shippingAddress, detailRows, computedSubtotal } = model;
+  const { customerName, totalPieces, shippingAddress, detailRows, computedSubtotal, detailAddons } = model;
 
   return (
     <Document>
-      <Page size="A4" style={styles.page}>
+      <Page size="A4" style={s.page}>
         {/* ── Encabezado ── */}
-        <View style={styles.header}>
-          <View style={styles.headerLeft}>
-            <Text style={styles.brandLabel}>ERP LAZZAR</Text>
-            <Text style={styles.docTitle}>Cotización</Text>
-            <Text style={styles.docSubtitle}>{customerName}</Text>
+        <View style={s.header} wrap={false}>
+          <View style={s.headerLeft}>
+            <Text style={s.brandLabel}>ERP LAZZAR</Text>
+            <Text style={s.docTitle}>Cotización</Text>
+            <Text style={s.docSubtitle}>{customerName}</Text>
           </View>
-          <View style={styles.headerRight}>
-            <View style={styles.quoteIdBadge}>
-              <Text style={styles.quoteIdText}>#{quote.id}</Text>
+          <View style={s.headerRight}>
+            <View style={s.quoteIdBadge}>
+              <Text style={s.quoteIdText}>#{quote.id}</Text>
             </View>
-            <View style={styles.statusBadge}>
-              <Text style={styles.statusText}>{quote.estatus_label?.toUpperCase()}</Text>
+            <View style={s.statusBadge}>
+              <Text style={s.statusText}>{quote.estatus_label?.toUpperCase()}</Text>
             </View>
           </View>
         </View>
 
         {/* ── Info general ── */}
-        <View style={styles.twoCol}>
+        <View style={s.twoCol} wrap={false}>
           {/* Cliente */}
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>DATOS DEL CLIENTE</Text>
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Razón social</Text>
-              <Text style={styles.infoValue}>{quote.cliente_razon_social || "-"}</Text>
+          <View style={s.card}>
+            <Text style={s.cardTitle}>DATOS DEL CLIENTE</Text>
+            <View style={s.infoRow}>
+              <Text style={s.infoLabel}>Razón social</Text>
+              <Text style={s.infoValue}>{quote.cliente_razon_social || "-"}</Text>
             </View>
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Contacto</Text>
-              <Text style={styles.infoValue}>{quote.cliente_nombre || "-"}</Text>
+            <View style={s.infoRow}>
+              <Text style={s.infoLabel}>Contacto</Text>
+              <Text style={s.infoValue}>{quote.cliente_nombre || "-"}</Text>
             </View>
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Correo</Text>
-              <Text style={styles.infoValue}>{quote.correo_facturas || "-"}</Text>
+            <View style={s.infoRow}>
+              <Text style={s.infoLabel}>Correo</Text>
+              <Text style={s.infoValue}>{quote.correo_facturas || "-"}</Text>
             </View>
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Persona de pagos</Text>
-              <Text style={styles.infoValue}>{quote.persona_pagos || "-"}</Text>
+            <View style={s.infoRow}>
+              <Text style={s.infoLabel}>Persona de pagos</Text>
+              <Text style={s.infoValue}>{quote.persona_pagos || "-"}</Text>
             </View>
           </View>
 
           {/* Pedido */}
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>DATOS DEL PEDIDO</Text>
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Fecha</Text>
-              <Text style={styles.infoValue}>{model.formattedDate}</Text>
+          <View style={s.card}>
+            <Text style={s.cardTitle}>DATOS DEL PEDIDO</Text>
+            <View style={s.infoRow}>
+              <Text style={s.infoLabel}>Fecha</Text>
+              <Text style={s.infoValue}>{model.formattedDate}</Text>
             </View>
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>OC</Text>
-              <Text style={styles.infoValue}>{quote.oc || "-"}</Text>
+            <View style={s.infoRow}>
+              <Text style={s.infoLabel}>OC</Text>
+              <Text style={s.infoValue}>{quote.oc || "-"}</Text>
             </View>
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Forma de pago</Text>
-              <Text style={styles.infoValue}>{quote.forma_pago || "-"}</Text>
+            <View style={s.infoRow}>
+              <Text style={s.infoLabel}>Forma de pago</Text>
+              <Text style={s.infoValue}>{quote.forma_pago || "-"}</Text>
             </View>
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Uso CFDI</Text>
-              <Text style={styles.infoValue}>{quote.uso_cfdi || "-"}</Text>
+            <View style={s.infoRow}>
+              <Text style={s.infoLabel}>Uso CFDI</Text>
+              <Text style={s.infoValue}>{quote.uso_cfdi || "-"}</Text>
             </View>
           </View>
         </View>
 
-        {/* Envío */}
+        {/* ── Envío ── */}
         {shippingAddress !== "-" && (
-          <View style={styles.shippingCard}>
-            <Text style={styles.cardTitle}>DIRECCIÓN DE ENVÍO</Text>
-            <View style={styles.shippingField}>
-              <Text style={styles.shippingLabel}>Destinatario</Text>
-              <Text style={styles.shippingValue}>{quote.destinatario || "-"}</Text>
+          <View style={s.shippingCard} wrap={false}>
+            <Text style={s.cardTitle}>DIRECCIÓN DE ENVÍO</Text>
+            <View style={s.shippingField}>
+              <Text style={s.shippingLabel}>Destinatario</Text>
+              <Text style={s.shippingValue}>{quote.destinatario || "-"}</Text>
             </View>
-            <View style={[styles.shippingField, styles.shippingFieldLast]}>
-              <Text style={styles.shippingLabel}>Dirección</Text>
-              <Text style={styles.shippingValue}>{shippingAddress}</Text>
+            <View style={[s.shippingField, s.shippingFieldLast]}>
+              <Text style={s.shippingLabel}>Dirección</Text>
+              <Text style={s.shippingValue}>{shippingAddress}</Text>
             </View>
           </View>
         )}
 
         {/* ── Tabla de productos ── */}
-        <Text style={styles.sectionTitle}>PRODUCTOS COTIZADOS</Text>
+        <Text style={s.sectionTitle}>PRODUCTOS COTIZADOS</Text>
         <View>
-          <View style={styles.tableHeader}>
-            <Text style={[styles.tableHeaderCell, styles.colProduct]}>Producto</Text>
-            <Text style={[styles.tableHeaderCell, styles.colSizes]}>Tallas</Text>
-            <Text style={[styles.tableHeaderCell, styles.colQty]}>Pzas.</Text>
-            <Text style={[styles.tableHeaderCell, styles.colPrice]}>Precio u.</Text>
-            <Text style={[styles.tableHeaderCell, styles.colSubtotal]}>Subtotal</Text>
+          {/* Encabezado de la tabla — se repite en cada página */}
+          <View style={s.tableHeader} fixed>
+            <Text style={[s.tableHeaderCell, s.colProduct]}>Producto</Text>
+            <Text style={[s.tableHeaderCell, s.colSizes]}>Tallas</Text>
+            <Text style={[s.tableHeaderCell, s.colQty]}>Pzas.</Text>
+            <Text style={[s.tableHeaderCell, s.colPrice]}>Precio u.</Text>
+            <Text style={[s.tableHeaderCell, s.colSubtotal]}>Subtotal</Text>
           </View>
 
-          {detailRows.map(({ detail, quantity, lineSubtotal }, i) => (
-            <View
-              key={detail.id}
-              style={[styles.tableRow, i % 2 !== 0 ? styles.tableRowAlt : {}]}
-            >
-              <Text style={[styles.tableCellBold, styles.colProduct]}>
-                {detail.producto_nombre}
-              </Text>
-              <Text style={[styles.tableCell, styles.colSizes]}>
-                {model.sizesSummaries[i]}
-              </Text>
-              <Text style={[styles.tableCell, styles.colQty]}>{quantity}</Text>
-              <Text style={[styles.tableCell, styles.colPrice]}>
-                {model.formatMoney(Number(detail.precio_unitario))}
-              </Text>
-              <Text style={[styles.tableCellBold, styles.colSubtotal]}>
-                {model.formatMoney(lineSubtotal)}
-              </Text>
-            </View>
-          ))}
+          {detailRows.map(({ detail, quantity, lineSubtotal }, i) => {
+            const addons = detailAddons[i];
+            const hasEmbroidery = addons.embroideryGroups.length > 0;
+            const hasReflective = addons.reflectiveGroups.length > 0;
+
+            return (
+              <View key={detail.id}>
+                {/* Fila principal del producto */}
+                <View style={[s.tableRow, i % 2 !== 0 ? s.tableRowAlt : {}]} wrap={false}>
+                  <Text style={[s.tableCellBold, s.colProduct]}>{detail.producto_nombre}</Text>
+                  <Text style={[s.tableCell, s.colSizes]}>{model.sizesSummaries[i]}</Text>
+                  <Text style={[s.tableCell, s.colQty]}>{quantity}</Text>
+                  <Text style={[s.tableCell, s.colPrice]}>
+                    {model.formatMoney(Number(detail.precio_unitario))}
+                  </Text>
+                  <Text style={[s.tableCellBold, s.colSubtotal]}>
+                    {model.formatMoney(lineSubtotal)}
+                  </Text>
+                </View>
+
+                {/* ── Sección de bordados ── */}
+                {hasEmbroidery && (
+                  <View style={s.addonSection} wrap={false}>
+                    <View style={s.addonSectionHeaderEmbroidery}>
+                      <Text style={s.addonSectionHeaderTextEmbroidery}>
+                        BORDADOS DEL PRODUCTO
+                      </Text>
+                    </View>
+
+                    <View style={s.addonBody}>
+                      {addons.embroideryGroups.map((group, gi) => (
+                        <View key={gi} wrap={false}>
+                          {/* Header del grupo */}
+                          <View style={s.embGroupHeader}>
+                            <Text style={s.embGroupLabel}>{group.label}</Text>
+                            <Text style={s.embGroupSizes}>
+                              Tallas: {group.sizeNames.join(", ")}
+                            </Text>
+                          </View>
+
+                          {/* Notas */}
+                          {group.notes ? (
+                            <Text style={s.embGroupNotes}>Notas: {group.notes}</Text>
+                          ) : null}
+
+                          {/* Tarjetas de ubicaciones — grid 2 columnas */}
+                          <View style={s.embLocationsGrid}>
+                            {group.locations.map((loc, li) => (
+                              <View key={li} style={s.embLocationCard} wrap={false}>
+                                <View style={s.embLocationInfo}>
+                                  <Text style={s.embLocationTitle}>
+                                    Ubicación {loc.codigo}
+                                  </Text>
+                                  <Text style={s.embLocationDetail}>
+                                    Medidas: {loc.ancho_cm} x {loc.alto_cm} cm
+                                  </Text>
+                                  <Text style={s.embLocationDetail}>
+                                    Hilo: {loc.color_hilo || "Sin especificar"}
+                                  </Text>
+                                </View>
+                                <View style={s.embLocationImageBox}>
+                                  {loc.imagen ? (
+                                    // eslint-disable-next-line jsx-a11y/alt-text -- @react-pdf/renderer no tiene prop alt; imagen decorativa en PDF
+                                    <Image
+                                      src={loc.imagen}
+                                      style={s.embLocationImage}
+                                    />
+                                  ) : (
+                                    <View style={s.embLocationImagePlaceholder}>
+                                      <Text style={s.embLocationImagePlaceholderText}>
+                                        Sin imagen
+                                      </Text>
+                                    </View>
+                                  )}
+                                </View>
+                              </View>
+                            ))}
+                          </View>
+                        </View>
+                      ))}
+                    </View>
+                  </View>
+                )}
+
+                {/* ── Sección de reflejantes ── */}
+                {hasReflective && (
+                  <View style={s.addonSection} wrap={false}>
+                    <View style={s.addonSectionHeaderReflective}>
+                      <Text style={s.addonSectionHeaderTextReflective}>
+                        REFLEJANTES DEL PRODUCTO
+                      </Text>
+                    </View>
+                    <View style={[s.addonBody, { paddingBottom: 6 }]}>
+                      {addons.reflectiveGroups.map((group, gi) => (
+                        <View key={gi} style={s.reflGroupWrapper} wrap={false}>
+                          <View style={s.reflGroupHeader}>
+                            <Text style={s.reflGroupHeaderLabel}>
+                              Configuración {gi + 1}
+                            </Text>
+                            <Text style={s.reflGroupSizes}>
+                              Tallas: {group.sizeNames.join(", ")}
+                            </Text>
+                          </View>
+                          <View style={s.reflSpecsRow}>
+                            {group.specs.map((spec, si) => (
+                              <View key={si} style={s.reflSpecBadge}>
+                                <Text style={s.reflSpecLabel}>OPCIÓN</Text>
+                                <Text style={s.reflSpecValue}>
+                                  {OPCION_LABEL[spec.opcion] ?? spec.opcion}
+                                </Text>
+                                <Text style={[s.reflSpecLabel, { marginTop: 3 }]}>POSICIÓN</Text>
+                                <Text style={s.reflSpecValue}>
+                                  {POSICION_LABEL[spec.posicion] ?? spec.posicion}
+                                </Text>
+                                <Text style={[s.reflSpecLabel, { marginTop: 3 }]}>TIPO</Text>
+                                <Text style={s.reflSpecValue}>
+                                  {TIPO_LABEL[spec.tipo] ?? spec.tipo}
+                                </Text>
+                              </View>
+                            ))}
+                          </View>
+                        </View>
+                      ))}
+                    </View>
+                  </View>
+                )}
+
+                {/* ── Indicador de corte de manga ── */}
+                {addons.hasSleeveCut && (
+                  <View style={[s.addonSection, s.addonSectionHeaderSleeve]} wrap={false}>
+                    <View style={s.sleeveBadge}>
+                      <View style={s.sleeveBadgeDot} />
+                      <Text style={s.sleeveBadgeText}>INCLUYE CORTE DE MANGA</Text>
+                    </View>
+                  </View>
+                )}
+              </View>
+            );
+          })}
         </View>
 
         {/* ── Totales ── */}
-        <View style={styles.totalsSection}>
-          <View style={styles.totalsCard}>
-            <View style={styles.totalsRow}>
-              <Text style={styles.totalsLabel}>Piezas totales</Text>
-              <Text style={styles.totalsValue}>{totalPieces}</Text>
+        <View style={s.totalsSection} wrap={false}>
+          <View style={s.totalsCard}>
+            <View style={s.totalsRow}>
+              <Text style={s.totalsLabel}>Piezas totales</Text>
+              <Text style={s.totalsValue}>{totalPieces}</Text>
             </View>
-            <View style={styles.totalsRow}>
-              <Text style={styles.totalsLabel}>Subtotal</Text>
-              <Text style={styles.totalsValue}>{model.formatMoney(computedSubtotal)}</Text>
+            <View style={s.totalsRow}>
+              <Text style={s.totalsLabel}>Subtotal</Text>
+              <Text style={s.totalsValue}>{model.formatMoney(computedSubtotal)}</Text>
             </View>
-            <View style={styles.totalsRow}>
-              <Text style={styles.totalsLabel}>IVA ({quote.iva}%)</Text>
-              <Text style={styles.totalsValue}>
+            <View style={s.totalsRow}>
+              <Text style={s.totalsLabel}>IVA ({quote.iva}%)</Text>
+              <Text style={s.totalsValue}>
                 {model.formatMoney((computedSubtotal * quote.iva) / 100)}
               </Text>
             </View>
             {Number(quote.anticipo) > 0 && (
-              <View style={styles.totalsRow}>
-                <Text style={styles.totalsLabel}>Anticipo</Text>
-                <Text style={styles.totalsValue}>
+              <View style={s.totalsRow}>
+                <Text style={s.totalsLabel}>Anticipo</Text>
+                <Text style={s.totalsValue}>
                   {model.formatMoney(Number(quote.anticipo))}
                 </Text>
               </View>
             )}
-            <View style={styles.totalsRowFinal}>
-              <Text style={styles.totalsFinalLabel}>TOTAL</Text>
-              <Text style={styles.totalsFinalValue}>
+            <View style={s.totalsRowFinal}>
+              <Text style={s.totalsFinalLabel}>TOTAL</Text>
+              <Text style={s.totalsFinalValue}>
                 {model.formatMoney(Number(quote.gran_total))}
               </Text>
             </View>
@@ -441,19 +289,19 @@ export const QuotePdfDocument = ({ quote, model }: QuotePdfDocumentProps) => {
 
         {/* ── Observaciones ── */}
         {quote.observaciones ? (
-          <View style={styles.obsCard}>
-            <Text style={styles.cardTitle}>OBSERVACIONES</Text>
-            <Text style={styles.obsText}>{quote.observaciones}</Text>
+          <View style={s.obsCard} wrap={false}>
+            <Text style={s.cardTitle}>OBSERVACIONES</Text>
+            <Text style={s.obsText}>{quote.observaciones}</Text>
           </View>
         ) : null}
 
         {/* ── Pie de página ── */}
-        <View style={styles.footer} fixed>
-          <Text style={styles.footerText}>
+        <View style={s.footer} fixed>
+          <Text style={s.footerText}>
             Cotización #{quote.id} — {customerName}
           </Text>
           <Text
-            style={styles.footerText}
+            style={s.footerText}
             render={({ pageNumber, totalPages }) =>
               `Página ${pageNumber} de ${totalPages}`
             }
