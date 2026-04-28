@@ -15,18 +15,17 @@ import {
   PaginationState,
 } from "@tanstack/react-table";
 import {
-  CloseIcon,
-  SearchIcon,
   SettingsIcon,
   CheckCircleIcon,
   ChevronUpIcon,
   ChevronDownIcon,
   ArrowLeftIcon,
   ChevronRightIcon,
-  FilterIcon,
   SyncIcon,
 } from "./Icons";
 import { Button } from "./Button";
+import { SearchInput } from "./SearchInput";
+import { FiltersButton } from "./FiltersButton";
 import { Loader } from "./Loader";
 
 export type DataTableVisibleColumn<TData> = {
@@ -284,35 +283,13 @@ export function DataTable<TData, TValue>({
       ) : null}
         <div className="flex flex-col lg:flex-row lg:items-center gap-3 w-full lg:w-auto">
           {hasBaseData && (
-            <>
-              <div className="relative w-full sm:w-64 lg:w-72 lg:flex-none">
-                <label htmlFor={searchInputId} className="sr-only">
-                  {searchPlaceholder}
-                </label>
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
-                  <SearchIcon className="h-5 w-5" />
-                </div>
-                <input
-                  id={searchInputId}
-                  type="search"
-                  value={globalFilter ?? ""}
-                  onChange={(e) => setGlobalFilter(e.target.value)}
-                  className="block w-full pl-10 pr-10 py-2 border border-slate-200 dark:border-white/10 rounded-xl leading-5 bg-white dark:bg-white/5 text-slate-900 dark:text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-sky-500/50 focus:border-sky-500 sm:text-sm transition-shadow"
-                  placeholder={searchPlaceholder}
-                  aria-label={searchPlaceholder}
-                />
-                {globalFilter.length > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => setGlobalFilter("")}
-                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
-                    aria-label="Limpiar búsqueda"
-                  >
-                    <CloseIcon className="h-4 w-4" />
-                  </button>
-                )}
-              </div>
-            </>
+            <SearchInput
+              id={searchInputId}
+              value={globalFilter ?? ""}
+              onChange={setGlobalFilter}
+              placeholder={searchPlaceholder}
+              className="w-full sm:w-64 lg:w-72 lg:flex-none"
+            />
           )}
 
           <div className="w-full lg:w-auto overflow-x-auto lg:overflow-visible pb-1">
@@ -332,26 +309,11 @@ export function DataTable<TData, TValue>({
             {hasBaseData && (
               <>
                 {onFiltersClick && (
-                  <Button
-                    variant="secondary"
-                    onClick={onFiltersClick}
-                    leftIcon={<FilterIcon className="w-4 h-4 shrink-0" />}
-                    className="shrink-0"
-                    aria-label="Filtrar datos"
-                  >
-                    Filtros
-                  </Button>
-                )}
-                {onClearFilters && isFiltersActive && (
-                  <Button
-                    variant="secondary"
-                    size="icon"
-                    onClick={onClearFilters}
-                    className="rounded-full border-slate-200 dark:border-white/20 text-slate-400 hover:text-slate-600 dark:text-slate-300 dark:hover:text-slate-100"
-                    aria-label="Limpiar filtros"
-                  >
-                    <CloseIcon className="w-4 h-4" />
-                  </Button>
+                  <FiltersButton
+                    onFiltersClick={onFiltersClick}
+                    isFiltersActive={isFiltersActive}
+                    onClearFilters={onClearFilters}
+                  />
                 )}
                 <div className="relative">
                   <Button

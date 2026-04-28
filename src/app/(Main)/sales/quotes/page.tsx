@@ -1,7 +1,7 @@
 import { Metadata } from "next";
-import { QuoteList } from "@/src/features/quotes/components/QuoteList";
 import { QuoteStats } from "@/src/features/quotes/components/QuoteStats";
 import { QuoteActions } from "@/src/features/quotes/components/QuoteActions";
+import { QuoteViewSwitcher } from "@/src/features/quotes/components/QuoteViewSwitcher";
 
 export const metadata: Metadata = {
   title: "Cotizaciones | ERP",
@@ -43,11 +43,12 @@ export default function QuotesPage() {
         <QuoteActions />
       </section>
 
-      {/* List */}
-      <section aria-labelledby="quotes-list-heading" className="space-y-6">
-        <h2 id="quotes-list-heading" className="sr-only">Listado de cotizaciones</h2>
-        <QuoteList />
+      {/* Listado / Tablero Kanban — con selector de vista */}
+      <section aria-labelledby="quotes-view-heading" className="space-y-4">
+        <h2 id="quotes-view-heading" className="sr-only">Cotizaciones</h2>
+        <QuoteViewSwitcher />
       </section>
+
     </main>
   );
 }

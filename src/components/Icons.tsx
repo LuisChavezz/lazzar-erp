@@ -95,6 +95,8 @@ import {
   Users,
   X,
   XCircle,
+  List,
+  Kanban,
 } from "lucide-react";
 
 // ─── Tipos comunes ────────────────────────────────────────────────────────────
@@ -161,6 +163,8 @@ export const QrCodeIcon = (props: LucideProps) => <QrCode {...props} />;
 export const SunIcon = (props: LucideProps) => <Sun {...props} />;
 export const MoonIcon = (props: LucideProps) => <Moon {...props} />;
 export const MonitorIcon = (props: LucideProps) => <Monitor {...props} />;
+export const ListIcon = (props: LucideProps) => <List {...props} />;
+export const KanbanBoardIcon = (props: LucideProps) => <Kanban {...props} />;
 
 // ─── Íconos de módulos ERP ────────────────────────────────────────────────────
 
