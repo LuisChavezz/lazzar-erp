@@ -11,7 +11,8 @@ import { useQuoteFiltersStore, QuoteFiltersValue } from "../stores/quote-filters
 import { Quote } from "../interfaces/quote.interface";
 import { LoadingSkeleton } from "@/src/components/LoadingSkeleton";
 import { KanbanToolbar } from "@/src/components/KanbanToolbar";
-import { QuoteKanbanColumn, KANBAN_COLUMNS } from "./QuoteKanbanColumn";
+import { QuoteKanbanColumn } from "./QuoteKanbanColumn";
+import { KANBAN_COLUMNS } from "../constants/kanbanColumns";
 import { QuoteKanbanCard } from "./QuoteKanbanCard";
 import { hasPermission } from "@/src/utils/permissions";
 

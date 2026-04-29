@@ -5,6 +5,15 @@ import { Quote } from "../interfaces/quote.interface";
 import { formatCurrency } from "@/src/utils/formatCurrency";
 import { formatQuoteDateTime } from "../utils/quoteDetailsFormatters";
 import { QuoteCardActions } from "./QuoteCardActions";
+import { KANBAN_COLUMNS, KanbanColumnConfig } from "../constants/kanbanColumns";
+
+// ─── Lookup estatus → configuración de columna ───────────────────────────────
+const CONFIG_BY_ESTATUS = Object.fromEntries(
+  KANBAN_COLUMNS.map((c) => [c.estatus, c])
+) as Record<number, KanbanColumnConfig>;
+
+// Fallback para estatus desconocido
+const DEFAULT_CONFIG = KANBAN_COLUMNS[0];
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 interface QuoteKanbanCardProps {
@@ -13,25 +22,9 @@ interface QuoteKanbanCardProps {
   isOverlay?: boolean;
 }
 
-// ─── Paleta por estatus ───────────────────────────────────────────────────────
-const statusAccent: Record<number, string> = {
-  1: "from-sky-500/20 to-sky-400/5 border-sky-400/30",
-  2: "from-amber-500/20 to-amber-400/5 border-amber-400/30",
-  3: "from-emerald-500/20 to-emerald-400/5 border-emerald-400/30",
-  4: "from-rose-500/20 to-rose-400/5 border-rose-400/30",
-};
-
-const statusDot: Record<number, string> = {
-  1: "bg-sky-400",
-  2: "bg-amber-400",
-  3: "bg-emerald-400",
-  4: "bg-rose-400",
-};
-
-// ─── Componente interno: contenido del card ───────────────────────────────────
+// ─── Contenido del card ───────────────────────────────────────────────────────
 function CardContent({ quote, isOverlay }: { quote: Quote; isOverlay: boolean }) {
-  const accentClass = statusAccent[quote.estatus] ?? statusAccent[1];
-  const dotClass = statusDot[quote.estatus] ?? statusDot[1];
+  const cfg = CONFIG_BY_ESTATUS[quote.estatus] ?? DEFAULT_CONFIG;
 
   const gran_total = formatCurrency(Number(quote.gran_total) || 0);
   const fecha = formatQuoteDateTime(quote.created_at, "d MMM yyyy");
@@ -39,36 +32,31 @@ function CardContent({ quote, isOverlay }: { quote: Quote; isOverlay: boolean })
   return (
     <div
       className={[
-        "group relative rounded-2xl border bg-linear-to-br p-4 shadow-sm",
-        "transition-all duration-200 ease-out",
-        "hover:shadow-lg hover:-translate-y-0.5",
-        "dark:bg-slate-800/60 dark:shadow-black/30",
-        "bg-white",
-        accentClass,
+        "group relative rounded-2xl border overflow-hidden bg-white dark:bg-slate-900",
+        "border-slate-200 dark:border-white/10",
+        "shadow-sm transition-all duration-200 ease-out",
+        "hover:shadow-xl hover:-translate-y-0.5",
+        cfg.cardShadowHover,
+        "p-4",
       ].join(" ")}
     >
+      {/* Franja de color izquierda — elemento real, independiente de la cascada de bordes */}
+      <span
+        className={["absolute left-0 top-0 bottom-0 w-[3px]", cfg.accentDot].join(" ")}
+        aria-hidden="true"
+      />
+
       {/* Fila superior: id + menú de acciones */}
-      <div className="flex items-start justify-between gap-1 mb-1">
+      <div className="flex items-start justify-between gap-2 mb-3">
         <p className="text-xs font-semibold tracking-widest text-slate-400 dark:text-slate-500 uppercase pt-0.5">
           #{String(quote.id).padStart(5, "0")}
         </p>
-        {/* El ActionMenu no activa el drag porque su pointerdown hace stopPropagation implícito en Radix */}
+
+        {/* Menú de acciones — stopPropagation evita conflicto con DnD */}
         {!isOverlay && (
-          <div
-            className="-mr-1.5 -mt-1"
-            onPointerDown={(e) => e.stopPropagation()}
-          >
+          <div className="-mr-1.5 -mt-1" onPointerDown={(e) => e.stopPropagation()}>
             <QuoteCardActions quote={quote} align="end" />
           </div>
-        )}
-        {isOverlay && (
-          <span
-            className={[
-              "size-2 rounded-full ring-2 ring-white/60 dark:ring-slate-700 mt-1",
-              dotClass,
-            ].join(" ")}
-            aria-hidden="true"
-          />
         )}
       </div>
 
@@ -81,20 +69,21 @@ function CardContent({ quote, isOverlay }: { quote: Quote; isOverlay: boolean })
       </h3>
 
       {/* Razón social */}
-      {quote.cliente_razon_social && quote.cliente_razon_social !== quote.cliente_nombre && (
-        <p
-          className="text-xs text-slate-500 dark:text-slate-400 truncate mb-3"
-          title={quote.cliente_razon_social}
-        >
-          {quote.cliente_razon_social}
-        </p>
-      )}
+      {quote.cliente_razon_social &&
+        quote.cliente_razon_social !== quote.cliente_nombre && (
+          <p
+            className="text-xs text-slate-500 dark:text-slate-400 truncate mb-2"
+            title={quote.cliente_razon_social}
+          >
+            {quote.cliente_razon_social}
+          </p>
+        )}
 
       {/* Divider */}
-      <div className="my-2.5 h-px bg-slate-100 dark:bg-slate-700/60" />
+      <div className="my-2.5 h-px bg-slate-100 dark:bg-slate-700/40" />
 
       {/* Footer: total + piezas */}
-      <div className="flex items-end justify-between gap-2 mt-auto">
+      <div className="flex items-end justify-between gap-2">
         <div>
           <p className="text-[10px] text-slate-400 dark:text-slate-500 leading-none mb-0.5">
             Total
@@ -114,22 +103,14 @@ function CardContent({ quote, isOverlay }: { quote: Quote; isOverlay: boolean })
       </div>
 
       {/* Fecha */}
-      <p className="mt-2 text-[10px] text-slate-400 dark:text-slate-500">
-        {fecha}
-      </p>
+      <p className="mt-2 text-[10px] text-slate-400 dark:text-slate-500">{fecha}</p>
 
       {/* OC si tiene */}
       {quote.oc && (
-        <p className="mt-1 text-[10px] text-slate-400 dark:text-slate-500 truncate">
+        <p className="mt-0.5 text-[10px] text-slate-400 dark:text-slate-500 truncate">
           OC: {quote.oc}
         </p>
       )}
-
-      {/* Gradiente de hover sutil */}
-      <div
-        className="pointer-events-none absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-linear-to-br from-white/10 to-transparent"
-        aria-hidden="true"
-      />
     </div>
   );
 }
