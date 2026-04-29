@@ -24,7 +24,8 @@ export const Provider = ({ children, session }: { children: React.ReactNode, ses
     <SessionProvider session={session}>
       <QueryClientProvider client={queryClient}>
 
-        <SpeedInsights />
+        {/* Speed Insights sólo envía datos en producción; debug desactivado en desarrollo */}
+        <SpeedInsights debug={false} />
 
         <RadixThemeWrapper>
           {children}
