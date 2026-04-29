@@ -42,7 +42,7 @@ function CardContent({ quote, isOverlay }: { quote: Quote; isOverlay: boolean })
     >
       {/* Franja de color izquierda — elemento real, independiente de la cascada de bordes */}
       <span
-        className={["absolute left-0 top-0 bottom-0 w-[3px]", cfg.accentDot].join(" ")}
+        className={["absolute left-0 top-0 bottom-0 w-0.75", cfg.accentDot].join(" ")}
         aria-hidden="true"
       />
 

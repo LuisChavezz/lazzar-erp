@@ -11,8 +11,8 @@
  * (`onStepNext`, `onStepBack`), `onSaveItem` y props específicas para cada step
  * que son consumidas por la vista presentacional.
  */
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { POSITION_OPTIONS, THREAD_COLOR_OPTIONS, type AddProductDialogProps, type QuoteItem, type Step } from "../types";
+import { useCallback, useMemo, useState } from "react";
+import { POSITION_OPTIONS, type AddProductDialogProps, type QuoteItem, type Step } from "../types";
 import { useEmbroideryState } from "./useEmbroideryState";
 import { useProductSelection } from "./useProductSelection";
 import { useReflectiveState } from "./useReflectiveState";
@@ -57,6 +57,7 @@ export function useAddProductDialogState({
 }: AddProductDialogProps) {
   const isEditing = Boolean(onUpdateItem && initialItem);
   const [step, setStep] = useState<Step>(startStep);
+  // Estado editable por el usuario — se inicializa desde initialItem y se resetea al cerrar el diálogo
   const [hasSleevecut, setHasSleevecut] = useState(Boolean(initialItem?.lleva_corte_manga));
 
   const productSelection = useProductSelection({ products, initialItem });
@@ -76,18 +77,11 @@ export function useAddProductDialogState({
     return steps;
   }, [embroideryState.hasEmbroidery, reflectiveState.hasReflective]);
 
-  useEffect(() => {
-    if (!open) {
-      return;
-    }
-
-    setHasSleevecut(Boolean(initialItem?.lleva_corte_manga));
-  }, [initialItem?.lleva_corte_manga, open]);
-
   const handleOpenChange = useCallback((nextOpen: boolean) => {
     if (!nextOpen) {
       setStep(startStep);
-      setHasSleevecut(false);
+      // Resetea al valor del item en edición, o false en modo creación
+      setHasSleevecut(Boolean(initialItem?.lleva_corte_manga));
       productSelection.reset(initialItem);
       sizesState.reset(initialItem);
       embroideryState.reset(initialItem);
@@ -235,6 +229,7 @@ export function useAddProductDialogState({
   }, [
     embroideryState,
     handleOpenChange,
+    hasSleevecut,
     initialItem,
     isEditing,
     onAddItem,

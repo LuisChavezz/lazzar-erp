@@ -56,7 +56,7 @@ export function QuoteKanbanColumn({ config, quotes }: QuoteKanbanColumnProps) {
       >
         {/* Franja de color izquierda */}
         <span
-          className={["absolute left-0 top-0 bottom-0 w-[3px]", config.accentDot].join(" ")}
+          className={["absolute left-0 top-0 bottom-0 w-0.75", config.accentDot].join(" ")}
           aria-hidden="true"
         />
         {/* Círculo de acento + etiqueta */}
