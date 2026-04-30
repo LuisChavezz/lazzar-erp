@@ -1,6 +1,7 @@
 import axios from "axios";
 import { v1_api } from "@/src/api/v1.api";
 import { Customer, CustomerCreate, VerifyRfcResponse } from "../interfaces/customer.interface";
+import { CustomerAddress, CustomerAddressCreate } from "../interfaces/customer-address.interface";
 
 
 export const getCustomers = async (): Promise<Customer[]> => {
@@ -47,4 +48,19 @@ export const verifyRfc = async (rfc: string): Promise<VerifyRfcResponse> => {
 
     throw error;
   }
+}
+
+export const getCustomerAddresses = async (): Promise<CustomerAddress[]> => {
+  const response = await v1_api.get<CustomerAddress[]>(`/terceros/direcciones-clientes/`);
+  return response.data;
+}
+
+export const createCustomerAddress = async (address: CustomerAddressCreate): Promise<CustomerAddressCreate> => {
+  const response = await v1_api.post<CustomerAddressCreate>(`/terceros/direcciones-clientes/`, address);
+  return response.data;
+}
+
+export const updateCustomerAddress = async (id: number, address: CustomerAddressCreate): Promise<CustomerAddressCreate> => {
+  const response = await v1_api.patch<CustomerAddressCreate>(`/terceros/direcciones-clientes/${id}/`, address);
+  return response.data;
 }

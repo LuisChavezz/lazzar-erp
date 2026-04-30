@@ -5,14 +5,18 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { Customer } from "../interfaces/customer.interface";
 import { ActionMenu, ActionMenuItem } from "@/src/components/ActionMenu";
-import { EditIcon, ViewIcon } from "../../../components/Icons";
+import { DireccionesIcon, EditIcon, MapPinIcon, ViewIcon } from "../../../components/Icons";
 
 const ActionsCell = ({
   customer,
   onEdit,
+  onAddAddress,
+  onViewAddresses,
 }: {
   customer: Customer;
   onEdit: (customer: Customer) => void;
+  onAddAddress: (customer: Customer) => void;
+  onViewAddresses: (customer: Customer) => void;
 }) => {
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -30,6 +34,16 @@ const ActionsCell = ({
       icon: EditIcon,
       onSelect: () => onEdit(customer),
     },
+    {
+      label: "Direcciones",
+      icon: DireccionesIcon,
+      onSelect: () => onViewAddresses(customer),
+    },
+    {
+      label: "Agregar Dirección",
+      icon: MapPinIcon,
+      onSelect: () => onAddAddress(customer),
+    },
   ];
 
   return (
@@ -40,7 +54,9 @@ const ActionsCell = ({
 };
 
 export const getCustomerColumns = (
-  onEdit: (customer: Customer) => void
+  onEdit: (customer: Customer) => void,
+  onAddAddress: (customer: Customer) => void,
+  onViewAddresses: (customer: Customer) => void
 ): ColumnDef<Customer>[] => [
   {
     accessorKey: "razon_social",
@@ -91,6 +107,6 @@ export const getCustomerColumns = (
     id: "actions",
     header: "",
     size: 90,
-    cell: ({ row }) => <ActionsCell customer={row.original} onEdit={onEdit} />,
+    cell: ({ row }) => <ActionsCell customer={row.original} onEdit={onEdit} onAddAddress={onAddAddress} onViewAddresses={onViewAddresses} />,
   },
 ];
