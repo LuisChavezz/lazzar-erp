@@ -1,5 +1,5 @@
 import { Metadata } from "next";
-import { QuoteList } from "@/src/features/quotes/components/QuoteList";
+import { QuoteViewSwitcher } from "@/src/features/quotes/components/QuoteViewSwitcher";
 // import { QuoteActions } from "@/src/features/quotes/components/QuoteActions";
 
 export const metadata: Metadata = {
@@ -28,11 +28,8 @@ export default function OperationsOrdersPage() {
           Supervisa y administra todos los pedidos desde la Mesa de Control.
         </p>
       </header>
-      {/* <section aria-label="Acciones de Pedidos">
-        <QuoteActions />
-      </section> */}
-      <section aria-label="Lista de Pedidos" className="space-y-6">
-        <QuoteList />
+      <section aria-label="Vista de Pedidos" className="space-y-6">
+        <QuoteViewSwitcher />
       </section>
     </main>
   );
