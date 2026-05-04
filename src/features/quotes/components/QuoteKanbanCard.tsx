@@ -19,11 +19,19 @@ const DEFAULT_CONFIG = KANBAN_COLUMNS[0];
 interface QuoteKanbanCardProps {
   quote: Quote;
   /** Cuando se renderiza como overlay de arrastre, el card no registra drag */
-  isOverlay?: boolean;
-}
+  isOverlay?: boolean;  /** Mutación de estatus en curso para este card */
+  isPending?: boolean;}
 
 // ─── Contenido del card ───────────────────────────────────────────────────────
-function CardContent({ quote, isOverlay }: { quote: Quote; isOverlay: boolean }) {
+function CardContent({
+  quote,
+  isOverlay,
+  isPending,
+}: {
+  quote: Quote;
+  isOverlay: boolean;
+  isPending: boolean;
+}) {
   const cfg = CONFIG_BY_ESTATUS[quote.estatus] ?? DEFAULT_CONFIG;
 
   const gran_total = formatCurrency(Number(quote.gran_total) || 0);
@@ -40,6 +48,24 @@ function CardContent({ quote, isOverlay }: { quote: Quote; isOverlay: boolean })
         "p-4",
       ].join(" ")}
     >
+      {/* Overlay de carga — frosted glass + spinner cuando la mutación está en curso */}
+      {isPending && (
+        <div
+          className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-2 rounded-2xl overflow-hidden"
+          aria-label="Guardando cambio de estatus"
+          aria-live="polite"
+        >
+          {/* Fondo difuminado */}
+          <div className="absolute inset-0 bg-white/80 dark:bg-slate-900/80 backdrop-blur-[3px]" />
+          {/* Spinner + texto */}
+          <div className="relative flex flex-col items-center gap-1.5">
+            <div className="w-6 h-6 rounded-full border-2 border-slate-200 dark:border-slate-700 border-t-violet-500 dark:border-t-violet-400 animate-spin" />
+            <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 tracking-wide">
+              Guardando…
+            </span>
+          </div>
+        </div>
+      )}
       {/* Franja de color izquierda — elemento real, independiente de la cascada de bordes */}
       <span
         className={["absolute left-0 top-0 bottom-0 w-0.75", cfg.accentDot].join(" ")}
@@ -116,7 +142,7 @@ function CardContent({ quote, isOverlay }: { quote: Quote; isOverlay: boolean })
 }
 
 // ─── Card draggable ───────────────────────────────────────────────────────────
-export function QuoteKanbanCard({ quote, isOverlay = false }: QuoteKanbanCardProps) {
+export function QuoteKanbanCard({ quote, isOverlay = false, isPending = false }: QuoteKanbanCardProps) {
   const { ref, isDragging } = useDraggable({
     id: String(quote.id),
     data: { quote },
@@ -134,7 +160,7 @@ export function QuoteKanbanCard({ quote, isOverlay = false }: QuoteKanbanCardPro
         transition: isDragging ? "none" : "opacity 150ms ease, transform 150ms ease",
       }}
     >
-      <CardContent quote={quote} isOverlay={isOverlay} />
+      <CardContent quote={quote} isOverlay={isOverlay} isPending={isPending} />
     </div>
   );
 }

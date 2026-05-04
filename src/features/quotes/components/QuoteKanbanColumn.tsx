@@ -17,11 +17,11 @@ const PAGE_SIZE = 4;
 // ─── Props ────────────────────────────────────────────────────────────────────
 interface QuoteKanbanColumnProps {
   config: KanbanColumnConfig;
-  quotes: Quote[];
-}
+  quotes: Quote[];  /** IDs de cotizaciones con mutación pendiente (actualización de estatus en curso) */
+  pendingIds?: Set<number>;}
 
 // ─── Componente ───────────────────────────────────────────────────────────────
-export function QuoteKanbanColumn({ config, quotes }: QuoteKanbanColumnProps) {
+export function QuoteKanbanColumn({ config, quotes, pendingIds }: QuoteKanbanColumnProps) {
   const { ref, isDropTarget } = useDroppable({ id: config.id });
   const [page, setPage] = useState(0);
 
@@ -122,7 +122,11 @@ export function QuoteKanbanColumn({ config, quotes }: QuoteKanbanColumnProps) {
           </div>
         ) : (
           pageSlice.map((quote) => (
-            <QuoteKanbanCard key={quote.id} quote={quote} />
+            <QuoteKanbanCard
+              key={quote.id}
+              quote={quote}
+              isPending={pendingIds?.has(quote.id) ?? false}
+            />
           ))
         )}
       </div>

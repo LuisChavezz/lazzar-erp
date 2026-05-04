@@ -7,6 +7,7 @@ import type { DragEndEvent, DragStartEvent } from "@dnd-kit/dom";
 import { useSession } from "next-auth/react";
 import { useQuotes } from "../hooks/useQuotes";
 import { useQuoteFilters } from "../hooks/useQuoteFilters";
+import { useUpdateQuoteStatus } from "../hooks/useUpdateQuoteStatus";
 import { useQuoteFiltersStore, QuoteFiltersValue } from "../stores/quote-filters.store";
 import { Quote } from "../interfaces/quote.interface";
 import { LoadingSkeleton } from "@/src/components/LoadingSkeleton";
@@ -26,7 +27,7 @@ type ColumnMap = Record<number, Quote[]>;
 
 // ─── Inicializa el mapa de columnas desde el array plano de cotizaciones ───────
 function buildColumnMap(quotes: Quote[]): ColumnMap {
-  const map: ColumnMap = { 1: [], 2: [], 3: [], 4: [] };
+  const map: ColumnMap = { 1: [], 2: [], 3: [], 4: [], 5: [] };
   for (const quote of quotes) {
     const key = quote.estatus in map ? quote.estatus : 1;
     map[key].push(quote);
@@ -53,9 +54,13 @@ export function QuoteKanbanBoard() {
     personaPagosOptions,
   } = useQuoteFilters(quotes);
 
+  // ─── Mutación de estatus ──────────────────────────────────────────────────
+  const updateStatus = useUpdateQuoteStatus();
+
   // ─── Estado local del tablero ─────────────────────────────────────────────
   const [columnMap, setColumnMap] = useState<ColumnMap | null>(null);
   const [activeQuote, setActiveQuote] = useState<Quote | null>(null);
+  const [pendingIds, setPendingIds] = useState<Set<number>>(new Set());
   const [searchQuery, setSearchQuery] = useState("");
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
   const [, startTransition] = useTransition();
@@ -75,7 +80,7 @@ export function QuoteKanbanBoard() {
     const base = columnMap ?? buildColumnMap(quotes);
     const q = searchQuery.trim().toLowerCase();
 
-    const result: ColumnMap = { 1: [], 2: [], 3: [], 4: [] };
+    const result: ColumnMap = { 1: [], 2: [], 3: [], 4: [], 5: [] };
     for (const [key, cards] of Object.entries(base)) {
       result[Number(key)] = cards.filter(
         (c) =>
@@ -136,42 +141,66 @@ export function QuoteKanbanBoard() {
       const targetCol = KANBAN_COLUMNS.find((c) => c.id === String(targetId));
       if (!targetCol) return;
 
-      startTransition(() => {
-        setColumnMap((prev) => {
-          const current = prev ?? buildColumnMap(quotes);
+      // Calcular el movimiento de forma síncrona para poder capturar el estado previo
+      const currentMap = columnMap ?? buildColumnMap(quotes);
 
-          let movedQuote: Quote | undefined;
-          let sourceColEstatus: number | undefined;
-          for (const [estatusKey, cards] of Object.entries(current)) {
-            const found = cards.find((q) => String(q.id) === String(sourceId));
-            if (found) {
-              movedQuote = found;
-              sourceColEstatus = Number(estatusKey);
-              break;
-            }
-          }
+      let movedQuote: Quote | undefined;
+      let sourceColEstatus: number | undefined;
+      for (const [estatusKey, cards] of Object.entries(currentMap)) {
+        const found = cards.find((q) => String(q.id) === String(sourceId));
+        if (found) {
+          movedQuote = found;
+          sourceColEstatus = Number(estatusKey);
+          break;
+        }
+      }
 
-          if (!movedQuote || sourceColEstatus === undefined) return current;
-          if (sourceColEstatus === targetCol.estatus) return current;
+      if (!movedQuote || sourceColEstatus === undefined) return;
+      if (sourceColEstatus === targetCol.estatus) return;
 
-          return {
-            ...current,
-            [sourceColEstatus]: current[sourceColEstatus].filter(
-              (q) => q.id !== movedQuote!.id
-            ),
-            [targetCol.estatus]: [
-              ...current[targetCol.estatus],
-              {
-                ...movedQuote,
-                estatus: targetCol.estatus,
-                estatus_label: targetCol.label,
-              },
-            ],
-          };
-        });
-      });
+      const quoteId = movedQuote.id;
+      const prevMap = currentMap;
+
+      const nextMap: ColumnMap = {
+        ...currentMap,
+        [sourceColEstatus]: currentMap[sourceColEstatus].filter(
+          (q) => q.id !== movedQuote!.id
+        ),
+        [targetCol.estatus]: [
+          ...currentMap[targetCol.estatus],
+          { ...movedQuote, estatus: targetCol.estatus, estatus_label: targetCol.label },
+        ],
+      };
+
+      // Aplicar actualización optimista
+      startTransition(() => setColumnMap(nextMap));
+
+      // Marcar cotización como pendiente y disparar mutación
+      setPendingIds((prev) => new Set(prev).add(quoteId));
+
+      updateStatus.mutate(
+        { id: quoteId, estatus: targetCol.estatus },
+        {
+          onSuccess: () => {
+            setPendingIds((prev) => {
+              const next = new Set(prev);
+              next.delete(quoteId);
+              return next;
+            });
+          },
+          onError: () => {
+            // Revertir al estado anterior en caso de error
+            setColumnMap(prevMap);
+            setPendingIds((prev) => {
+              const next = new Set(prev);
+              next.delete(quoteId);
+              return next;
+            });
+          },
+        }
+      );
     },
-    [quotes]
+    [quotes, columnMap, updateStatus]
   );
 
   // ─── Estado de carga ───────────────────────────────────────────────────────
@@ -180,7 +209,7 @@ export function QuoteKanbanBoard() {
       <div className="flex flex-col gap-4 mt-6">
         <div className="h-10 w-full max-w-sm rounded-xl bg-slate-200/70 dark:bg-white/5 animate-pulse" />
         <div
-          className="grid grid-cols-2 gap-4 lg:grid-cols-4"
+          className="grid grid-cols-2 gap-4 lg:grid-cols-5"
           role="status"
           aria-live="polite"
           aria-label="Cargando tablero"
@@ -232,11 +261,14 @@ export function QuoteKanbanBoard() {
               totales
             </span>
           )}
-          {" "}— arrastra las cards entre columnas para cambiar el estado de forma local
+          {" "}— arrastra las cards entre columnas para persistir el cambio de estatus
         </p>
-        <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 font-medium ml-auto">
-          Solo lectura · Cambios no persistentes
-        </span>
+        {pendingIds.size > 0 && (
+          <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-300 font-medium ml-auto flex items-center gap-1.5 animate-pulse">
+            <span className="w-1.5 h-1.5 rounded-full bg-amber-500 dark:bg-amber-400" />
+            Guardando {pendingIds.size} {pendingIds.size === 1 ? "cambio" : "cambios"}…
+          </span>
+        )}
       </div>
 
       {/* Proveedor DnD */}
@@ -252,6 +284,7 @@ export function QuoteKanbanBoard() {
               <QuoteKanbanColumn
                 config={col}
                 quotes={resolvedMap[col.estatus] ?? []}
+                pendingIds={pendingIds}
               />
             </div>
           ))}

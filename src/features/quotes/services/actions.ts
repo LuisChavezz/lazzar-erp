@@ -21,3 +21,8 @@ export const getQuoteOnboardingData = async (): Promise<QuoteOnboardingData> => 
   const response = await v1_api.get<QuoteOnboardingData>("/ventas/cotizaciones/onboarding/");
   return response.data;
 };
+
+export const updateQuoteStatus = async (id: number, estatus: number): Promise<QuoteById> => {
+  const response = await v1_api.patch<QuoteById>(`/ventas/cotizaciones/${id}/`, { estatus });
+  return response.data;
+};
