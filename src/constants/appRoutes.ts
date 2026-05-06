@@ -186,13 +186,6 @@ export const appRouteGroups: AppRouteGroup[] = [
     showInHome: true,
     items: [
       {
-        key: "procurement-quotes-menu",
-        label: "Órdenes",
-        path: "/procurement/quotes-menu",
-        icon: OrdenesIcon,
-        permission: "R-COMPRAS",
-      },
-      {
         key: "procurement-receipts",
         label: "Recepciones",
         path: "/procurement/receipts",
