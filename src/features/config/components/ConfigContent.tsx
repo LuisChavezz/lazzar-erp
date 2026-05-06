@@ -8,9 +8,10 @@ import { ConfigDetailView } from "./ConfigDetailView";
 import { ArrowLeftIcon, CloseIcon, SearchIcon } from "@/src/components/Icons";
 import TiltCard from "@/src/components/TiltCard";
 import { useConfigMenu } from "../hooks/useConfigMenu";
+import { configGroups } from "../constants/configCardItems";
 
 export function ConfigContent() {
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
 
   // Obtener el cliente de consulta para hacer prefetch de datos
   const queryClient = useQueryClient();
@@ -44,6 +45,37 @@ export function ConfigContent() {
     const frame = window.requestAnimationFrame(scrollToTop);
     return () => window.cancelAnimationFrame(frame);
   }, [selectedGroup]);
+
+  /**
+   * Durante la carga de sesión, renderiza placeholders con las mismas dimensiones
+   * que las TiltCards de grupos para reservar el espacio en la grilla.
+   * Esto evita el salto de layout (CLS) cuando los permisos resuelven y los
+   * grupos pasan de 0 a N elementos.
+   *
+   * Todos los hooks deben llamarse antes de este return condicional.
+   */
+  if (status === "loading") {
+    return (
+      <div className="w-full grid grid-cols-1">
+        <div className="col-start-1 row-start-1 w-full">
+          {/* Esqueleto de la barra de búsqueda */}
+          <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="relative w-full sm:w-80 h-10 rounded-xl bg-slate-100 dark:bg-white/5 animate-pulse" />
+          </div>
+          {/* Esqueleto del grid de grupos — reserva el espacio exacto */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 max-w-7xl mx-auto">
+            {configGroups.map((group) => (
+              <div
+                key={group.group}
+                className="cursor-pointer rounded-2xl bg-white dark:bg-black border border-slate-200 dark:border-white/10 p-6 sm:p-8 min-h-56"
+                aria-hidden="true"
+              />
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <>

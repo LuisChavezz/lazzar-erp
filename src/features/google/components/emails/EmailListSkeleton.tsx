@@ -2,6 +2,8 @@
 
 import { LoadingSkeleton } from "@/src/components/LoadingSkeleton";
 
+const SKELETON_INDICES = Array.from({ length: 8 }, (_, i) => i);
+
 /**
  * Esqueleto de carga para la lista de correos.
  * Muestra 8 filas con animación pulse mientras se obtienen los mensajes.
@@ -12,7 +14,7 @@ export const EmailListSkeleton = () => (
     aria-busy="true"
     aria-label="Cargando correos"
   >
-    {Array.from({ length: 8 }).map((_, i) => (
+    {SKELETON_INDICES.map((i) => (
       <div key={i} className="flex items-start gap-3 px-4 py-3">
         <LoadingSkeleton className="w-9 h-9 rounded-full shrink-0" />
         <div className="flex-1 space-y-2">
