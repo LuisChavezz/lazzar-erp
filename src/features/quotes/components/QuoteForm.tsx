@@ -107,7 +107,7 @@ export default function QuoteForm() {
   const isFormLoading = isCustomersLoading || isCurrenciesLoading || isOnboardingLoading || !showForm;
   if (isFormLoading) {
     return (
-      <div className="w-full pt-2">
+      <div className="w-full pt-2 min-h-200">
         <Loader
           title="Cargando formulario"
           message="Obteniendo clientes y catálogos..."

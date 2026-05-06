@@ -57,14 +57,19 @@ export const QuoteList = () => {
 
   if (isOrdersLoading || !filtersHydrated) {
     return (
-      <div className="mt-12" role="status" aria-live="polite" aria-label="Cargando cotizaciones">
+      <div
+        className="mt-12 min-h-165"
+        role="status"
+        aria-live="polite"
+        aria-label="Cargando cotizaciones"
+      >
         <LoadingSkeleton className="h-96 rounded-3xl" />
       </div>
     );
   }
 
   return (
-    <div className="mt-12">
+    <div className="mt-12 min-h-165">
       <DataTable
         columns={quoteColumns}
         data={filteredOrders}

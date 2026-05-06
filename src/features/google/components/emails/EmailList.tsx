@@ -1,10 +1,14 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, lazy, Suspense } from "react";
 import { EmailListItem } from "./EmailListItem";
 import { EmailListSkeleton } from "./EmailListSkeleton";
 import { EmailEmptyState } from "./EmailEmptyState";
-import { ComposeEmailForm } from "./ComposeEmailForm";
+
+// Carga diferida del formulario de redacción — solo se descarga al primer click
+const ComposeEmailForm = lazy(() =>
+  import("./ComposeEmailForm").then((mod) => ({ default: mod.ComposeEmailForm }))
+);
 import {
   ChevronLeftIcon,
   ChevronRightIcon,
@@ -93,8 +97,12 @@ export const EmailList = ({
 
   return (
     <div className="flex flex-col h-full">
-      {/* Diálogo de redacción — gestionado desde la lista */}
-      <ComposeEmailForm open={isComposeOpen} onOpenChange={setIsComposeOpen} />
+      {/* Diálogo de redacción — carga diferida, se descarga al primer click */}
+      <Suspense fallback={null}>
+        {isComposeOpen && (
+          <ComposeEmailForm open={isComposeOpen} onOpenChange={setIsComposeOpen} />
+        )}
+      </Suspense>
 
       {/* Cabecera principal */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 sticky top-0 z-10">

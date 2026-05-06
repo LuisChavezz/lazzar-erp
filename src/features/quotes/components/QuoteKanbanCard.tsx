@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import { useDraggable } from "@dnd-kit/react";
 import { Quote } from "../interfaces/quote.interface";
 import { formatCurrency } from "@/src/utils/formatCurrency";
@@ -22,8 +23,8 @@ interface QuoteKanbanCardProps {
   isOverlay?: boolean;  /** Mutación de estatus en curso para este card */
   isPending?: boolean;}
 
-// ─── Contenido del card ───────────────────────────────────────────────────────
-function CardContent({
+// ─── Contenido del card (memoizado para evitar re-renders por cambios en el tablero) ──────
+const CardContent = memo(function CardContent({
   quote,
   isOverlay,
   isPending,
@@ -139,10 +140,10 @@ function CardContent({
       )}
     </div>
   );
-}
+});
 
-// ─── Card draggable ───────────────────────────────────────────────────────────
-export function QuoteKanbanCard({ quote, isOverlay = false, isPending = false }: QuoteKanbanCardProps) {
+// ─── Card draggable ────────────────────────────────────────────────────────────────────
+export const QuoteKanbanCard = memo(function QuoteKanbanCard({ quote, isOverlay = false, isPending = false }: QuoteKanbanCardProps) {
   const { ref, isDragging } = useDraggable({
     id: String(quote.id),
     data: { quote },
@@ -163,4 +164,4 @@ export function QuoteKanbanCard({ quote, isOverlay = false, isPending = false }:
       <CardContent quote={quote} isOverlay={isOverlay} isPending={isPending} />
     </div>
   );
-}
+});

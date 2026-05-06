@@ -16,19 +16,37 @@ const VIEW_OPTIONS: { value: QuoteView; label: string; Icon: typeof ListIcon }[]
 
 /**
  * Envuelve el listado y el tablero Kanban de cotizaciones.
- * Gestiona el cambio de vista con CSS (hidden/block) en lugar de desmontaje,
- * para que ambas vistas conserven su estado interno (filtros, posiciones DnD,
- * búsqueda, paginación) sin ningún re-render innecesario al hacer el switch.
  *
- * useTransition marca el cambio de vista como no urgente: si el componente
- * recién revelado tarda en pintar, React no bloquea la UI.
+ * Estrategia de montaje diferido (lazy mount):
+ * - La vista de listado se monta inmediatamente (vista inicial).
+ * - El tablero Kanban se monta solo cuando el usuario lo activa por primera vez.
+ * - Una vez montado, ambos paneles permanecen en el DOM ocultos con CSS para
+ *   preservar su estado interno (filtros, posiciones DnD, búsqueda, paginación).
+ *
+ * Esto elimina el costo de inicialización del tablero (DnD setup, cómputo de
+ * filtros, suscripción adicional a useQuotes) del render inicial de la página.
+ *
+ * useTransition marca el cambio de vista como no urgente para no bloquear la UI.
  */
 export function QuoteViewSwitcher() {
   const [view, setView] = useState<QuoteView>("list");
   const [isPending, startTransition] = useTransition();
 
+  /**
+   * Bandera de montaje diferido del tablero Kanban.
+   * Se activa la primera vez que el usuario selecciona la vista de tablero.
+   * A partir de ese momento el panel queda montado en el DOM y solo se oculta
+   * con CSS, preservando su estado interno (DnD, filtros, búsqueda).
+   *
+   * Usar estado (no ref) para que React pueda incluir el tablero en el mismo
+   * commit de render cuando el usuario cambia de vista por primera vez.
+   */
+  const [hasBoardMounted, setHasBoardMounted] = useState(false);
+
   const handleSwitch = (next: QuoteView) => {
     if (next === view) return;
+    // Marcar el tablero como montado antes de la transición
+    if (next === "board") setHasBoardMounted(true);
     startTransition(() => setView(next));
   };
 
@@ -74,8 +92,8 @@ export function QuoteViewSwitcher() {
       </div>
 
       {/*
-       * Ambos paneles permanecen montados para preservar estado interno.
-       * Solo se ocultan con CSS — cero desmontajes, cero pérdida de estado.
+       * Cada panel se renderiza solo si su vista ya fue activada al menos una vez.
+       * Una vez montado se oculta con CSS — cero desmontajes, cero pérdida de estado.
        */}
       <div
         id="quote-view-panel-list"
@@ -92,7 +110,7 @@ export function QuoteViewSwitcher() {
         aria-label="Vista de tablero kanban"
         className={view === "board" ? "block" : "hidden"}
       >
-        <QuoteKanbanBoard />
+        {hasBoardMounted && <QuoteKanbanBoard />}
       </div>
     </div>
   );

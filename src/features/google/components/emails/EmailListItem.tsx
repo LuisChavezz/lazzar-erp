@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback } from "react";
+import { memo, useCallback } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   parseSenderName,
@@ -32,7 +32,7 @@ interface EmailListItemProps {
  * Si los datos ya están en caché (staleTime no expirado), no realiza ninguna petición.
  * Esto permite que abrir el detalle sea instantáneo en la mayoría de los casos.
  */
-export const EmailListItem = ({ message, isSelected, onSelect, disabled = false }: EmailListItemProps) => {
+export const EmailListItem = memo(function EmailListItem({ message, isSelected, onSelect, disabled = false }: EmailListItemProps) {
   const queryClient = useQueryClient();
   const senderName = parseSenderName(message.from_full || message.from);
   const initials = getSenderInitials(senderName);
@@ -102,5 +102,5 @@ export const EmailListItem = ({ message, isSelected, onSelect, disabled = false 
       </span>
     </button>
   );
-};
+});
 
