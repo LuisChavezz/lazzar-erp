@@ -313,7 +313,7 @@ interface QuoteDetail {
   }[];
 }
 
-interface QuoteExtraService {
+export interface QuoteExtraService {
   nombre: string;
   monto: string;
   quantity: number;
