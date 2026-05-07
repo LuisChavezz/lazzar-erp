@@ -1,15 +1,20 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { DataTable } from "@/src/components/DataTable";
 import { getColumns } from "./PurchaseOrderColumns";
 import { usePurchaseOrders } from "../hooks/usePurchaseOrders";
 import { ErrorState } from "@/src/components/ErrorState";
+import { MainDialog } from "@/src/components/MainDialog";
+import { DialogHeader } from "@/src/components/DialogHeader";
+import { Button } from "@/src/components/Button";
+import { PurchaseOrderForm } from "./PurchaseOrderForm";
 
 export function PurchaseOrderList() {
   const { purchaseOrders, isLoading, isError, error, refetch, isFetching } =
     usePurchaseOrders();
 
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
   const columns = useMemo(() => getColumns(), []);
 
   if (isLoading) {
@@ -38,6 +43,32 @@ export function PurchaseOrderList() {
       searchPlaceholder="Buscar orden..."
       onRefetch={refetch}
       isRefetching={isFetching}
+      actionButton={
+        <MainDialog
+          title={
+            <DialogHeader
+              title="Nueva Orden de Compra"
+              subtitle="Registro Nuevo"
+              statusColor="sky"
+            />
+          }
+          open={isDialogOpen}
+          onOpenChange={setIsDialogOpen}
+          maxWidth="640px"
+          trigger={
+            <Button
+              variant="primary"
+              rounded="full"
+              onClick={() => setIsDialogOpen(true)}
+            >
+              + Nueva Orden
+            </Button>
+          }
+        >
+          <PurchaseOrderForm onSuccess={() => setIsDialogOpen(false)} />
+        </MainDialog>
+      }
     />
   );
 }
+
