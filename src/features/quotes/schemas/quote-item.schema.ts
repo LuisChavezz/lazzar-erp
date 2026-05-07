@@ -28,6 +28,7 @@ export const quoteItemSchema = z
       .min(0, "No puede ser menor a 0")
       .max(100, "No puede ser mayor a 100"),
     importe: z.coerce.number().min(0, "No puede ser negativo"),
+    colorId: z.coerce.number().int().min(1).optional(),
     tallas: z.array(quoteItemSizeSchema).optional(),
     bordados: embroiderySchema.optional(),
     reflejantes: reflectiveSchema.optional(),

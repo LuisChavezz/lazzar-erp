@@ -1,4 +1,5 @@
 import { Branch } from "../../branches/interfaces/branch.interface";
+import { Color } from "../../colors/interfaces/color.interface";
 import { Company } from "../../companies/interfaces/company.interface";
 import { Currency } from "../../currency/interfaces/currency.interface";
 import { Product } from '../../products/interfaces/product.interface';
@@ -280,6 +281,7 @@ export interface QuoteCreate {
 interface QuoteDetail {
   producto: Product["id"];
   precio_unitario: string;
+  color_id: Color["id"] | null;
   tallas: {
     talla: Size["id"];
     cantidad: number;
@@ -367,6 +369,8 @@ export interface QuoteOnboardingData {
       sat_regimen_fiscal__codigo: string;
       sat_regimen_fiscal__descripcion: string;
     }[];
-    productos: Partial<Product>[]
+    productos: (Partial<Product> & {
+      colores: Color[];
+    })[];
   }
 }

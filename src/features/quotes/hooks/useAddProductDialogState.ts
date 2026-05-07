@@ -5,6 +5,7 @@
  * - `useProductSelection` (selección)
  * - `useEmbroideryState` (bordados)
  * - `useReflectiveState` (reflejantes)
+ * - `useColorsState` (colores)
  * - `useSizesState` (tallas)
  *
  * Este hook expone el estado del paso actual, funciones de navegación
@@ -12,7 +13,9 @@
  * que son consumidas por la vista presentacional.
  */
 import { useCallback, useMemo, useState } from "react";
+import type { Color } from "../../colors/interfaces/color.interface";
 import { POSITION_OPTIONS, type AddProductDialogProps, type QuoteItem, type Step } from "../types";
+import { useColorsState } from "./useColorsState";
 import { useEmbroideryState } from "./useEmbroideryState";
 import { useProductSelection } from "./useProductSelection";
 import { useReflectiveState } from "./useReflectiveState";
@@ -33,6 +36,10 @@ const getDialogTitle = (step: Step, isEditing: boolean) => {
 
   if (step === "reflective") {
     return "Configuración de reflejante";
+  }
+
+  if (step === "colors") {
+    return "Selección de color";
   }
 
   return "Seleccionar tallas";
@@ -64,6 +71,18 @@ export function useAddProductDialogState({
   const sizesState = useSizesState({ initialItem });
   const embroideryState = useEmbroideryState(initialItem);
   const reflectiveState = useReflectiveState(initialItem);
+  const colorsState = useColorsState(initialItem);
+
+  // Mapa de productId → colores disponibles, construido desde la prop `products`
+  const productColorsById = useMemo<Record<number, Color[]>>(() => {
+    const map: Record<number, Color[]> = {};
+    for (const product of products) {
+      if (product.id) {
+        map[product.id] = product.colores ?? [];
+      }
+    }
+    return map;
+  }, [products]);
 
   const orderedSteps = useMemo<Step[]>(() => {
     const steps: Step[] = ["select"];
@@ -73,6 +92,7 @@ export function useAddProductDialogState({
     if (reflectiveState.hasReflective) {
       steps.push("reflective");
     }
+    steps.push("colors");
     steps.push("sizes");
     return steps;
   }, [embroideryState.hasEmbroidery, reflectiveState.hasReflective]);
@@ -86,6 +106,7 @@ export function useAddProductDialogState({
       sizesState.reset(initialItem);
       embroideryState.reset(initialItem);
       reflectiveState.reset(initialItem);
+      colorsState.reset(initialItem);
     }
 
     onOpenChange(nextOpen);
@@ -95,6 +116,7 @@ export function useAddProductDialogState({
     onOpenChange,
     productSelection,
     reflectiveState,
+    colorsState,
     sizesState,
     startStep,
   ]);
@@ -113,13 +135,17 @@ export function useAddProductDialogState({
       return;
     }
 
+    if (step === "colors" && !colorsState.validateColors(productSelection.selectedRows, productColorsById)) {
+      return;
+    }
+
     const currentIndex = orderedSteps.indexOf(step);
     const nextStep = orderedSteps[currentIndex + 1];
     if (!nextStep) {
       return;
     }
 
-    if (nextStep === "sizes") {
+    if (nextStep === "colors" || nextStep === "sizes") {
       productSelection.openFirstSelectedProduct();
     }
 
@@ -128,7 +154,9 @@ export function useAddProductDialogState({
     embroideryState,
     orderedSteps,
     productSelection,
+    productColorsById,
     reflectiveState,
+    colorsState,
     step,
   ]);
 
@@ -181,6 +209,7 @@ export function useAddProductDialogState({
         precio: initialItem.precio ?? row.precio,
         descuento: initialItem.descuento ?? 0,
         importe: 0,
+        colorId: colorsState.selectedColorPerProduct[row.id] ?? initialItem.colorId ?? undefined,
         lleva_corte_manga: hasSleevecut,
         tallas: itemSizes.map((size) => ({
           tallaId: size.id,
@@ -206,6 +235,7 @@ export function useAddProductDialogState({
         precio: row.precio,
         descuento: 0,
         importe: 0,
+        colorId: colorsState.selectedColorPerProduct[row.id] ?? undefined,
         lleva_corte_manga: hasSleevecut,
         tallas: itemSizes.map((size) => ({
           tallaId: size.id,
@@ -227,6 +257,7 @@ export function useAddProductDialogState({
 
     handleOpenChange(false);
   }, [
+    colorsState,
     embroideryState,
     handleOpenChange,
     hasSleevecut,
@@ -317,6 +348,15 @@ export function useAddProductDialogState({
       openProductId: productSelection.openProductId,
       onToggleProduct: productSelection.toggleProduct,
       sizeErrors: sizesState.sizeErrors,
+    },
+    colorsStepProps: {
+      selectedRows: productSelection.selectedRows,
+      productColorsById,
+      selectedColorPerProduct: colorsState.selectedColorPerProduct,
+      onSelectColor: colorsState.selectColor,
+      openProductId: productSelection.openProductId,
+      onToggleProduct: productSelection.toggleProduct,
+      colorErrors: colorsState.colorErrors,
     },
   };
 }

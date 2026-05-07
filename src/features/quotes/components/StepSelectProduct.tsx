@@ -1,11 +1,13 @@
 /**
  * StepSelectProduct.tsx
  * Componente presentacional para el paso de selección de productos.
- * - Muestra el campo de búsqueda y la lista filtrada de productos.
+ * - Muestra el campo de búsqueda y la lista filtrada de productos virtualizada
+ *   con `@tanstack/react-virtual` para manejar catálogos grandes con eficiencia.
  * - Expone la cuenta de seleccionados y toggles para servicios adicionales
  *   (bordado y reflejante).
  */
-import { memo } from "react";
+import { memo, useRef } from "react";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import { FormInput } from "@/src/components/FormInput";
 import { AddProductsSelectableItem } from "./AddProductsSelectableItem";
 import type { CatalogRow } from "../types";
@@ -39,7 +41,29 @@ export const StepSelectProduct = memo(function StepSelectProduct({
   hasSleevecut,
   onToggleSleevecut,
 }: StepSelectProductProps) {
+  // Opt-out del React Compiler: `useVirtualizer` retorna funciones internas
+  // que el compilador no puede memoizar de forma segura. `memo()` manual sigue
+  // siendo el límite de optimización.
+  "use no memo";
+
   const selectedCount = selectedRowIds.size;
+
+  // Ref al contenedor de scroll que usa el virtualizador
+  const parentRef = useRef<HTMLDivElement>(null);
+
+  /**
+   * Virtualizador de lista. Usa `measureElement` (ResizeObserver) para
+   * medir alturas reales, ya que cada ítem puede o no tener descripción.
+   * `gap: 8` equivale al espacio-y-2 anterior entre ítems.
+   */
+  // eslint-disable-next-line react-hooks/incompatible-library
+  const virtualizer = useVirtualizer({
+    count: filteredRows.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => 72,
+    overscan: 5,
+    gap: 8,
+  });
 
   return (
     <div className="space-y-4 mt-2">
@@ -59,7 +83,8 @@ export const StepSelectProduct = memo(function StepSelectProduct({
       </div>
 
       <div
-        className="max-h-88 overflow-y-auto custom-scrollbar space-y-2"
+        ref={parentRef}
+        className="max-h-88 overflow-y-auto custom-scrollbar"
         role="list"
         aria-label="Catálogo de productos"
       >
@@ -75,15 +100,36 @@ export const StepSelectProduct = memo(function StepSelectProduct({
             No se encontraron productos.
           </p>
         ) : (
-          filteredRows.map((row) => (
-            <AddProductsSelectableItem
-              key={row.id}
-              row={row}
-              isSelected={selectedRowIds.has(row.id)}
-              isAlreadyAdded={false}
-              onToggle={onToggleRow}
-            />
-          ))
+          /* Contenedor con altura total virtual para que el scroll sea correcto */
+          <div
+            style={{
+              height: `${virtualizer.getTotalSize()}px`,
+              width: "100%",
+              position: "relative",
+            }}
+          >
+            {virtualizer.getVirtualItems().map((virtualItem) => (
+              <div
+                key={virtualItem.key}
+                data-index={virtualItem.index}
+                ref={virtualizer.measureElement}
+                style={{
+                  position: "absolute",
+                  top: 0,
+                  left: 0,
+                  width: "100%",
+                  transform: `translateY(${virtualItem.start}px)`,
+                }}
+              >
+                <AddProductsSelectableItem
+                  row={filteredRows[virtualItem.index]}
+                  isSelected={selectedRowIds.has(filteredRows[virtualItem.index].id)}
+                  isAlreadyAdded={false}
+                  onToggle={onToggleRow}
+                />
+              </div>
+            ))}
+          </div>
         )}
       </div>
 

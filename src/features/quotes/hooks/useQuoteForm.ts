@@ -462,6 +462,7 @@ export function useQuoteForm() {
         return {
           producto: item.productoId,
           precio_unitario: String(Number(item.precio).toFixed(2)),
+          color_id: item.colorId ?? null,
           tallas:
             item.tallas?.map((t) => ({
               talla: t.tallaId,
