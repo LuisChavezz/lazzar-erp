@@ -44,6 +44,16 @@ export function useEditSizesDialog({
   sizes,
   onOpenChange,
 }: UseEditSizesDialogOptions) {
+  // Usa las tallas guardadas en el item (filtradas por variante al momento de la creación).
+  // Si no existen (items guardados antes de esta mejora), cae al catálogo global.
+  const effectiveSizes: Size[] = useMemo(
+    () =>
+      item?.availableSizes && item.availableSizes.length > 0
+        ? (item.availableSizes as Size[])
+        : sizes,
+    [item?.availableSizes, sizes]
+  );
+
   // El `key` del componente EditSizesDialog cambia con el índice del item,
   // forzando el remount y la reinicialización limpia de useSizesState.
   const sizesState = useSizesState({ initialItem: item });
@@ -81,12 +91,10 @@ export function useEditSizesDialog({
     (onSave: (updatedItem: QuoteItem) => void) => {
       if (!item || !selectedRow) return;
 
-      // validateSelectedRows marca errores en sizeErrors y devuelve false
-      // si algún producto no tiene al menos una talla > 0.
       const isValid = sizesState.validateSelectedRows([selectedRow]);
       if (!isValid) return;
 
-      const updatedSizes = sizesState.getItemSizes(item.productoId, sizes);
+      const updatedSizes = sizesState.getItemSizes(item.productoId, effectiveSizes);
       const tallas = updatedSizes.map((size) => ({
         tallaId: size.id,
         nombre: size.nombre,
@@ -121,7 +129,9 @@ export function useEditSizesDialog({
   const sizesStepProps = useMemo(
     () => ({
       selectedRows: selectedRow ? [selectedRow] : [],
-      sizes,
+      sizesPerProduct: selectedRow
+        ? { [selectedRow.id]: effectiveSizes }
+        : {} as Record<number, import('../../sizes/interfaces/size.interface').Size[]>,
       sizeQuantitiesPerProduct: sizesState.sizeQuantitiesPerProduct,
       updateSizeQuantity: sizesState.updateSizeQuantity,
       openProductId,
@@ -130,7 +140,7 @@ export function useEditSizesDialog({
     }),
     [
       selectedRow,
-      sizes,
+      effectiveSizes,
       sizesState.sizeQuantitiesPerProduct,
       sizesState.updateSizeQuantity,
       openProductId,

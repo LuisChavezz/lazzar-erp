@@ -4,9 +4,9 @@
  * diálogo de agregar productos. Centralizar tipos evita imports cíclicos
  * y facilita la composición de hooks y vistas.
  */
-import type { Color } from "../colors/interfaces/color.interface";
 import type { Product } from "../products/interfaces/product.interface";
 import type { Size } from "../sizes/interfaces/size.interface";
+import type { QuoteOnboardingDataVariantProduct } from "./interfaces/quote.interface";
 import type { QuoteFormValues } from "./schemas/quote.schema";
 
 /**
@@ -20,9 +20,9 @@ export type QuoteItem = NonNullable<QuoteFormValues["items"]>[number];
 export type Step = "select" | "embroidery" | "reflective" | "colors" | "sizes";
 
 /**
- * Producto del catálogo con sus colores disponibles (tal como lo retorna el onboarding).
+ * Producto del catálogo con sus variantes disponibles (tal como lo retorna el onboarding).
  */
-export type ProductWithColors = Partial<Product> & { colores: Color[] };
+export type ProductWithColors = Partial<Product> & { variantes: QuoteOnboardingDataVariantProduct[] };
 
 /**
  * Fila simplificada del catálogo usada en las vistas de selección.

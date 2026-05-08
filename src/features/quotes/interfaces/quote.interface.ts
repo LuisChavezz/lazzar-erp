@@ -22,6 +22,10 @@ export interface QuoteItem {
   precio: number;
   descuento: number;
   importe: number;
+  availableSizes?: {
+    id: number;
+    nombre: string;
+  }[];
   tallas?: {
     tallaId: number;
     nombre: string;
@@ -373,7 +377,13 @@ export interface QuoteOnboardingData {
       sat_regimen_fiscal__descripcion: string;
     }[];
     productos: (Partial<Product> & {
-      colores: Color[];
+      variantes: QuoteOnboardingDataVariantProduct[];
     })[];
   }
+}
+
+export interface QuoteOnboardingDataVariantProduct {
+  sku: string;
+  color: Color;
+  talla: Size;
 }

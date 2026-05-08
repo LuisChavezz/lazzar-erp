@@ -10,7 +10,7 @@ import type { Size } from "../../sizes/interfaces/size.interface";
 
 interface StepSizesProps {
   selectedRows: CatalogRow[];
-  sizes: Size[];
+  sizesPerProduct: Record<number, Size[]>;
   sizeQuantitiesPerProduct: Record<number, Record<number, number>>;
   updateSizeQuantity: (productId: number, sizeId: number, value: number) => void;
   openProductId: number | null;
@@ -20,7 +20,7 @@ interface StepSizesProps {
 
 export const StepSizes = memo(function StepSizes({
   selectedRows,
-  sizes,
+  sizesPerProduct,
   sizeQuantitiesPerProduct,
   updateSizeQuantity,
   openProductId,
@@ -48,7 +48,8 @@ export const StepSizes = memo(function StepSizes({
         <div className="space-y-2">
           {selectedRows.map((row) => {
             const quantities = sizeQuantitiesPerProduct[row.id] ?? {};
-            const totalQty = Object.values(quantities).reduce((s, q) => s + q, 0);
+            const sizesForProduct = sizesPerProduct[row.id] ?? [];
+            const totalQty = sizesForProduct.reduce((s, size) => s + (quantities[size.id] ?? 0), 0);
             const isOpen = openProductId === row.id;
             const hasError = Boolean(sizeErrors[row.id]);
 
@@ -103,13 +104,13 @@ export const StepSizes = memo(function StepSizes({
                   <div className="overflow-hidden">
                     <div className="px-4 pb-4 border-t border-slate-200 dark:border-white/10">
                       <div className="pt-3 space-y-3">
-                        {sizes.length === 0 ? (
+                        {sizesForProduct.length === 0 ? (
                           <p className="text-sm text-slate-500 dark:text-slate-400">
                             No hay tallas disponibles.
                           </p>
                         ) : (
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            {sizes.map((size) => (
+                            {sizesForProduct.map((size) => (
                               <div
                                 key={size.id}
                                 className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 dark:border-white/10 bg-white/70 dark:bg-zinc-900/40 px-3 py-2"

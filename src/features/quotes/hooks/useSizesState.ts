@@ -68,11 +68,33 @@ export function useSizesState({ initialItem }: UseSizesStateParams) {
     []
   );
 
-  const validateSelectedRows = useCallback((selectedRows: CatalogRow[]) => {
+  const clearProductSizes = useCallback((productId: number) => {
+    setSizeQuantitiesPerProduct((prev) => {
+      const next = { ...prev };
+      delete next[productId];
+      return next;
+    });
+    setSizeErrors((prev) => {
+      if (!prev[productId]) return prev;
+      const next = { ...prev };
+      delete next[productId];
+      return next;
+    });
+  }, []);
+
+  const validateSelectedRows = useCallback((
+    selectedRows: CatalogRow[],
+    availableSizesPerProduct?: Record<number, Size[]>
+  ) => {
     let hasSizeErrors = false;
     const nextErrors: Record<number, string> = {};
 
     for (const row of selectedRows) {
+      // Si no hay tallas disponibles para el producto, se omite la validación
+      const availableSizes = availableSizesPerProduct?.[row.id];
+      if (availableSizes !== undefined && availableSizes.length === 0) {
+        continue;
+      }
       const quantities = sizeQuantitiesPerProduct[row.id] ?? {};
       const total = Object.values(quantities).reduce((sum, qty) => sum + qty, 0);
       if (total <= 0) {
@@ -101,6 +123,7 @@ export function useSizesState({ initialItem }: UseSizesStateParams) {
     sizeQuantitiesPerProduct,
     sizeErrors,
     updateSizeQuantity,
+    clearProductSizes,
     validateSelectedRows,
     getItemSizes,
     reset,

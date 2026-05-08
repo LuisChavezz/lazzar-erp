@@ -29,6 +29,11 @@ export const quoteItemSchema = z
       .max(100, "No puede ser mayor a 100"),
     importe: z.coerce.number().min(0, "No puede ser negativo"),
     colorId: z.coerce.number().int().min(1).optional(),
+    // Persistencia client-side de las tallas disponibles según la variante seleccionada.
+    // Zod las conserva (passthrough implícito vía optional) pero no se validan ni envían al API.
+    availableSizes: z
+      .array(z.object({ id: z.number(), nombre: z.string() }))
+      .optional(),
     tallas: z.array(quoteItemSizeSchema).optional(),
     bordados: embroiderySchema.optional(),
     reflejantes: reflectiveSchema.optional(),

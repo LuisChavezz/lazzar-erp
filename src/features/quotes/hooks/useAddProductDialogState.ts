@@ -14,6 +14,7 @@
  */
 import { useCallback, useMemo, useState } from "react";
 import type { Color } from "../../colors/interfaces/color.interface";
+import type { Size } from "../../sizes/interfaces/size.interface";
 import { POSITION_OPTIONS, type AddProductDialogProps, type QuoteItem, type Step } from "../types";
 import { useColorsState } from "./useColorsState";
 import { useEmbroideryState } from "./useEmbroideryState";
@@ -73,16 +74,71 @@ export function useAddProductDialogState({
   const reflectiveState = useReflectiveState(initialItem);
   const colorsState = useColorsState(initialItem);
 
-  // Mapa de productId → colores disponibles, construido desde la prop `products`
+  // Mapa de productId → colores únicos, derivado de las variantes del producto
   const productColorsById = useMemo<Record<number, Color[]>>(() => {
     const map: Record<number, Color[]> = {};
     for (const product of products) {
-      if (product.id) {
-        map[product.id] = product.colores ?? [];
+      if (!product.id) continue;
+      const seen = new Set<number>();
+      const colors: Color[] = [];
+      for (const variant of product.variantes ?? []) {
+        if (!seen.has(variant.color.id)) {
+          seen.add(variant.color.id);
+          colors.push(variant.color);
+        }
       }
+      map[product.id] = colors;
     }
     return map;
   }, [products]);
+
+  // Mapa de productId → colorId → tallas disponibles para esa combinación de variante
+  const productSizesByProductAndColor = useMemo<Record<number, Record<number, Size[]>>>(() => {
+    const map: Record<number, Record<number, Size[]>> = {};
+    for (const product of products) {
+      if (!product.id) continue;
+      const byColor: Record<number, Size[]> = {};
+      for (const variant of product.variantes ?? []) {
+        const colorId = variant.color.id;
+        if (!byColor[colorId]) byColor[colorId] = [];
+        const alreadyAdded = byColor[colorId].some((s) => s.id === variant.talla.id);
+        if (!alreadyAdded) byColor[colorId].push(variant.talla);
+      }
+      map[product.id] = byColor;
+    }
+    return map;
+  }, [products]);
+
+  // Tallas disponibles por producto según el color seleccionado actualmente
+  const sizesPerProduct = useMemo<Record<number, Size[]>>(() => {
+    const map: Record<number, Size[]> = {};
+    for (const row of productSelection.selectedRows) {
+      const selectedColorId = colorsState.selectedColorPerProduct[row.id];
+      const byColor = productSizesByProductAndColor[row.id];
+      if (!byColor) {
+        // Sin variantes → catálogo global de tallas como fallback
+        map[row.id] = sizes;
+        continue;
+      }
+      if (selectedColorId != null) {
+        map[row.id] = byColor[selectedColorId] ?? [];
+      } else {
+        // Sin color seleccionado → todas las tallas únicas de todas las variantes
+        const seen = new Set<number>();
+        const all: Size[] = [];
+        for (const sizesArr of Object.values(byColor)) {
+          for (const s of sizesArr) {
+            if (!seen.has(s.id)) {
+              seen.add(s.id);
+              all.push(s);
+            }
+          }
+        }
+        map[row.id] = all.length > 0 ? all : sizes;
+      }
+    }
+    return map;
+  }, [productSelection.selectedRows, colorsState.selectedColorPerProduct, productSizesByProductAndColor, sizes]);
 
   const orderedSteps = useMemo<Step[]>(() => {
     const steps: Step[] = ["select"];
@@ -168,8 +224,17 @@ export function useAddProductDialogState({
     }
   }, [orderedSteps, step]);
 
+  // Al cambiar el color de un producto, reinicia sus tallas para evitar cantidades incoherentes
+  const handleSelectColor = useCallback(
+    (productId: number, colorId: number) => {
+      colorsState.selectColor(productId, colorId);
+      sizesState.clearProductSizes(productId);
+    },
+    [colorsState, sizesState],
+  );
+
   const handleSaveItem = useCallback(() => {
-    const hasValidSizes = sizesState.validateSelectedRows(productSelection.selectedRows);
+    const hasValidSizes = sizesState.validateSelectedRows(productSelection.selectedRows, sizesPerProduct);
     if (!hasValidSizes) {
       return;
     }
@@ -200,7 +265,7 @@ export function useAddProductDialogState({
         return;
       }
 
-      const itemSizes = sizesState.getItemSizes(row.id, sizes);
+      const itemSizes = sizesState.getItemSizes(row.id, sizesPerProduct[row.id] ?? sizes);
       const item: QuoteItem = {
         productoId: initialItem.productoId ?? row.productoId,
         descripcion: initialItem.descripcion ?? row.nombre,
@@ -210,6 +275,7 @@ export function useAddProductDialogState({
         descuento: initialItem.descuento ?? 0,
         importe: 0,
         colorId: colorsState.selectedColorPerProduct[row.id] ?? initialItem.colorId ?? undefined,
+        availableSizes: sizesPerProduct[row.id] ?? sizes,
         lleva_corte_manga: hasSleevecut,
         tallas: itemSizes.map((size) => ({
           tallaId: size.id,
@@ -226,7 +292,7 @@ export function useAddProductDialogState({
     }
 
     const itemsToAdd: QuoteItem[] = productSelection.selectedRows.map((row) => {
-      const itemSizes = sizesState.getItemSizes(row.id, sizes);
+      const itemSizes = sizesState.getItemSizes(row.id, sizesPerProduct[row.id] ?? sizes);
       return {
         productoId: row.productoId,
         descripcion: row.nombre,
@@ -236,6 +302,7 @@ export function useAddProductDialogState({
         descuento: 0,
         importe: 0,
         colorId: colorsState.selectedColorPerProduct[row.id] ?? undefined,
+        availableSizes: sizesPerProduct[row.id] ?? sizes,
         lleva_corte_manga: hasSleevecut,
         tallas: itemSizes.map((size) => ({
           tallaId: size.id,
@@ -269,6 +336,7 @@ export function useAddProductDialogState({
     productSelection.selectedRows,
     reflectiveState,
     sizes,
+    sizesPerProduct,
     sizesState,
   ]);
 
@@ -342,7 +410,7 @@ export function useAddProductDialogState({
     },
     sizesStepProps: {
       selectedRows: productSelection.selectedRows,
-      sizes,
+      sizesPerProduct,
       sizeQuantitiesPerProduct: sizesState.sizeQuantitiesPerProduct,
       updateSizeQuantity: sizesState.updateSizeQuantity,
       openProductId: productSelection.openProductId,
@@ -353,7 +421,7 @@ export function useAddProductDialogState({
       selectedRows: productSelection.selectedRows,
       productColorsById,
       selectedColorPerProduct: colorsState.selectedColorPerProduct,
-      onSelectColor: colorsState.selectColor,
+      onSelectColor: handleSelectColor,
       openProductId: productSelection.openProductId,
       onToggleProduct: productSelection.toggleProduct,
       colorErrors: colorsState.colorErrors,
