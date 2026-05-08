@@ -9,6 +9,7 @@
 import { memo, useRef } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { FormInput } from "@/src/components/FormInput";
+import { RejectIcon } from "@/src/components/Icons";
 import { AddProductsSelectableItem } from "./AddProductsSelectableItem";
 import type { CatalogRow } from "../types";
 
@@ -25,6 +26,7 @@ interface StepSelectProductProps {
   onToggleReflective: (value: boolean) => void;
   hasSleevecut: boolean;
   onToggleSleevecut: (value: boolean) => void;
+  onClearSelection: () => void;
 }
 
 export const StepSelectProduct = memo(function StepSelectProduct({
@@ -40,6 +42,7 @@ export const StepSelectProduct = memo(function StepSelectProduct({
   onToggleReflective,
   hasSleevecut,
   onToggleSleevecut,
+  onClearSelection,
 }: StepSelectProductProps) {
   // Opt-out del React Compiler: `useVirtualizer` retorna funciones internas
   // que el compilador no puede memoizar de forma segura. `memo()` manual sigue
@@ -176,9 +179,20 @@ export const StepSelectProduct = memo(function StepSelectProduct({
           </label>
         </div>
         {selectedCount > 0 && (
-          <span className="text-xs font-semibold text-sky-600 dark:text-sky-400" aria-live="polite">
-            {selectedCount} {selectedCount === 1 ? "producto seleccionado" : "productos seleccionados"}
-          </span>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={onClearSelection}
+              aria-label="Quitar selección de todos los productos"
+              title="Quitar selección"
+              className="flex items-center justify-center w-6 h-6 rounded-full text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 dark:hover:text-rose-400 transition-colors cursor-pointer"
+            >
+              <RejectIcon className="w-4 h-4" aria-hidden="true" />
+            </button>
+            <span className="text-xs font-semibold text-sky-600 dark:text-sky-400" aria-live="polite">
+              {selectedCount} {selectedCount === 1 ? "producto seleccionado" : "productos seleccionados"}
+            </span>
+          </div>
         )}
       </div>
     </div>

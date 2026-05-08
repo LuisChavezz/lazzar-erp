@@ -1229,6 +1229,9 @@ export default function QuoteForm() {
                 <th className="p-2 text-[10px] font-bold text-slate-400 uppercase tracking-wider min-w-40">
                   Descripción
                 </th>
+                <th className="p-2 text-[10px] font-bold text-slate-400 uppercase tracking-wider w-32">
+                  Color
+                </th>
                 <th className="p-2 text-[10px] font-bold text-slate-400 uppercase tracking-wider w-56">
                   Tallas
                 </th>
@@ -1257,7 +1260,7 @@ export default function QuoteForm() {
               {fields.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={11}
+                    colSpan={12}
                     className="p-6 text-center text-sm text-slate-500 dark:text-slate-400"
                   >
                     No hay productos agregados.
@@ -1326,6 +1329,23 @@ export default function QuoteForm() {
                             </p>
                           )}
                         </div>
+                      </td>
+                      {/* Columna Color */}
+                      <td className="p-2">
+                        {currentItem?.colorNombre ? (
+                          <div className="inline-flex items-center gap-1.5">
+                            <span
+                              className="shrink-0 w-3.5 h-3.5 rounded-full border border-black/10 dark:border-white/10 shadow-sm"
+                              style={{ backgroundColor: currentItem.colorHex ?? "#e5e7eb" }}
+                              aria-hidden="true"
+                            />
+                            <span className="text-xs text-slate-600 dark:text-slate-300 truncate max-w-24">
+                              {currentItem.colorNombre}
+                            </span>
+                          </div>
+                        ) : (
+                          <span className="text-xs text-slate-400 dark:text-slate-600">—</span>
+                        )}
                       </td>
                       <td className="p-2">
                         <div className="flex items-start gap-1">

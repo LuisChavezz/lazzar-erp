@@ -266,6 +266,11 @@ export function useAddProductDialogState({
       }
 
       const itemSizes = sizesState.getItemSizes(row.id, sizesPerProduct[row.id] ?? sizes);
+      const resolvedColorIdEdit =
+        colorsState.selectedColorPerProduct[row.id] ?? initialItem.colorId ?? undefined;
+      const resolvedColorEdit = resolvedColorIdEdit
+        ? (productColorsById[row.id] ?? []).find((c) => c.id === resolvedColorIdEdit)
+        : undefined;
       const item: QuoteItem = {
         productoId: initialItem.productoId ?? row.productoId,
         descripcion: initialItem.descripcion ?? row.nombre,
@@ -274,7 +279,9 @@ export function useAddProductDialogState({
         precio: initialItem.precio ?? row.precio,
         descuento: initialItem.descuento ?? 0,
         importe: 0,
-        colorId: colorsState.selectedColorPerProduct[row.id] ?? initialItem.colorId ?? undefined,
+        colorId: resolvedColorIdEdit,
+        colorNombre: resolvedColorEdit?.nombre ?? initialItem.colorNombre,
+        colorHex: resolvedColorEdit?.codigo_hex ?? initialItem.colorHex,
         availableSizes: sizesPerProduct[row.id] ?? sizes,
         lleva_corte_manga: hasSleevecut,
         tallas: itemSizes.map((size) => ({
@@ -293,6 +300,10 @@ export function useAddProductDialogState({
 
     const itemsToAdd: QuoteItem[] = productSelection.selectedRows.map((row) => {
       const itemSizes = sizesState.getItemSizes(row.id, sizesPerProduct[row.id] ?? sizes);
+      const resolvedColorId = colorsState.selectedColorPerProduct[row.id] ?? undefined;
+      const resolvedColor = resolvedColorId
+        ? (productColorsById[row.id] ?? []).find((c) => c.id === resolvedColorId)
+        : undefined;
       return {
         productoId: row.productoId,
         descripcion: row.nombre,
@@ -301,7 +312,9 @@ export function useAddProductDialogState({
         precio: row.precio,
         descuento: 0,
         importe: 0,
-        colorId: colorsState.selectedColorPerProduct[row.id] ?? undefined,
+        colorId: resolvedColorId,
+        colorNombre: resolvedColor?.nombre,
+        colorHex: resolvedColor?.codigo_hex,
         availableSizes: sizesPerProduct[row.id] ?? sizes,
         lleva_corte_manga: hasSleevecut,
         tallas: itemSizes.map((size) => ({
@@ -333,6 +346,7 @@ export function useAddProductDialogState({
     onAddItem,
     onAddItems,
     onUpdateItem,
+    productColorsById,
     productSelection.selectedRows,
     reflectiveState,
     sizes,
@@ -379,6 +393,7 @@ export function useAddProductDialogState({
       onToggleReflective: (next: boolean) => reflectiveState.setHasReflective(next),
       hasSleevecut,
       onToggleSleevecut: setHasSleevecut,
+      onClearSelection: productSelection.clearSelection,
     },
     embroideryStepProps: {
       embroideryObservaciones: embroideryState.embroideryObservaciones,

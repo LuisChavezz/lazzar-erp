@@ -101,6 +101,11 @@ export function useProductSelection({
     setOpenProductId(item?.productoId ?? null);
   }, []);
 
+  const clearSelection = useCallback(() => {
+    setSelectedRowIds(new Set<number>());
+    setOpenProductId(null);
+  }, []);
+
   return {
     search,
     setSearch,
@@ -113,6 +118,7 @@ export function useProductSelection({
     toggleRow,
     toggleProduct,
     openFirstSelectedProduct,
+    clearSelection,
     reset,
   };
 }
