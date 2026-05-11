@@ -103,7 +103,7 @@ export const quoteExtraServiceSchema = z.object({
   id: z.string().optional(),
   nombre: z.string().trim().optional(),
   monto: z.coerce.number().optional(),
-  quantity: z.coerce.number().optional(),
+  cantidad: z.coerce.number().optional(),
 });
 
 export const quoteSubmitSchema = quoteFormSchema.and(

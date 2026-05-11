@@ -198,7 +198,7 @@ export interface QuoteById {
     id: number;
     nombre: string;
     monto: string;
-    quantity: number;
+    cantidad: number;
     cotizacion: number;
     visible_en_factura: boolean;
     created_at: string;
@@ -325,7 +325,7 @@ interface QuoteDetail {
 export interface QuoteExtraService {
   nombre: string;
   monto: string;
-  quantity: number;
+  cantidad: number;
 }
 
 export interface QuoteOnboardingData {

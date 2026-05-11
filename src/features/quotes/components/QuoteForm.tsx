@@ -1663,7 +1663,7 @@ export default function QuoteForm() {
                 {extraServices.map((service, index) => {
                   const nombreError = getFieldError(getError(`servicios_extras.${index}.nombre`));
                   const montoError = getFieldError(getError(`servicios_extras.${index}.monto`));
-                  const quantityError = getFieldError(getError(`servicios_extras.${index}.quantity`));
+                  const quantityError = getFieldError(getError(`servicios_extras.${index}.cantidad`));
 
                   return (
                     <div key={service.id} className="flex items-start gap-2">
@@ -1728,10 +1728,10 @@ export default function QuoteForm() {
                           inputMode="numeric"
                           min={1}
                           step={1}
-                          name={`servicios_extras.${index}.quantity`}
+                          name={`servicios_extras.${index}.cantidad`}
                           aria-label="Cantidad del servicio"
                           placeholder="Cant."
-                          value={service.quantity}
+                          value={service.cantidad}
                           onChange={(e) => {
                             const rawValue = e.target.value;
                             const nextValue = rawValue === "" ? 0 : Number(rawValue);
@@ -1740,14 +1740,14 @@ export default function QuoteForm() {
                                 current.id === service.id
                                   ? {
                                       ...current,
-                                      quantity: Number.isNaN(nextValue)
+                                      cantidad: Number.isNaN(nextValue)
                                         ? 0
                                         : Math.trunc(nextValue),
                                     }
                                   : current
                               )
                             );
-                            clearFieldErrors(`servicios_extras.${index}.quantity`);
+                            clearFieldErrors(`servicios_extras.${index}.cantidad`);
                           }}
                           aria-invalid={Boolean(quantityError)}
                           error={quantityError}
@@ -1774,7 +1774,7 @@ export default function QuoteForm() {
                   onClick={() => {
                     setExtraServices((prev) => [
                       ...prev,
-                      { id: crypto.randomUUID(), nombre: "", monto: 0, quantity: 1 },
+                      { id: crypto.randomUUID(), nombre: "", monto: 0, cantidad: 1 },
                     ]);
                     clearFieldErrors("servicios_extras");
                   }}
