@@ -1,5 +1,4 @@
-import { StockStats } from "@/src/features/stock/components/StockStats";
-import { StockList } from "@/src/features/stock/components/StockList";
+import { StockMockView } from "@/src/features/stock/components/StockMockView";
 
 export default function StockPage() {
   return (
@@ -10,11 +9,7 @@ export default function StockPage() {
         </p>
       </div>
 
-      <StockStats />
-
-      <div className="space-y-6">
-        <StockList />
-      </div>
+      <StockMockView />
     </div>
   );
 }
