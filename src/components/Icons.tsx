@@ -66,7 +66,9 @@ import {
   Moon,
   MoreVertical,
   Package,
+  PackageCheck,
   PackageOpen,
+  PackageX,
   Palette,
   Pencil,
   PenSquare,
@@ -93,11 +95,14 @@ import {
   User,
   UserCog,
   Users,
+  Warehouse,
   X,
   XCircle,
   List,
   Kanban,
+  Factory,
   BookUser,
+  ArrowUpDown,
 } from "lucide-react";
 
 // ─── Tipos comunes ────────────────────────────────────────────────────────────
@@ -188,6 +193,14 @@ export const EmbarquesIcon = (props: LucideProps) => <Truck {...props} />;
 export const ReportesIcon = (props: LucideProps) => <BarChart2 {...props} />;
 export const ComprasIcon = (props: LucideProps) => <ShoppingCart {...props} />;
 export const CapitalHumanoIcon = (props: LucideProps) => <UserCog {...props} />;
+
+// ─── Íconos de Mesa de Control ────────────────────────────────────────────────
+
+export const WarehouseIcon = (props: LucideProps) => <Warehouse {...props} />;
+export const FactoryIcon = (props: LucideProps) => <Factory {...props} />;
+export const PackageCheckIcon = (props: LucideProps) => <PackageCheck {...props} />;
+export const PackageXIcon = (props: LucideProps) => <PackageX {...props} />;
+export const SortIcon = (props: LucideProps) => <ArrowUpDown {...props} />;
 
 // ─── Íconos de configuración de productos ────────────────────────────────────
 
