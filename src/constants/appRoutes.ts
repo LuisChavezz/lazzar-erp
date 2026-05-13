@@ -313,8 +313,15 @@ export const appRouteGroups: AppRouteGroup[] = [
     items: [
       {
         key: "operations-quotes",
-        label: "Pedidos",
+        label: "Cotizaciones",
         path: "/operations/quotes",
+        icon: PedidosIcon,
+        permission: "R-MESACONTROL",
+      },
+      {
+        key: "operations-orders",
+        label: "Pedidos",
+        path: "/operations/orders",
         icon: PedidosIcon,
         permission: "R-MESACONTROL",
       },
