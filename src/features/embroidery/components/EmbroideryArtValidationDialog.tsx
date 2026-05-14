@@ -169,8 +169,6 @@ export function EmbroideryArtValidationDialog({
       : ''
   );
 
-  const tecnicaInfo = TECNICA_INFO[order.tecnica_impresion];
-
   // El arte no puede validarse si la orden ya inició producción
   const puedeActuar =
     order.estatus_hoja === 'sin_liberar' || order.estatus_hoja === 'liberada';
