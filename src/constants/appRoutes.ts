@@ -26,6 +26,7 @@ import {
   OperationsIcon,
   SamplesIcon,
   EmailIcon,
+  ScissorsIcon,
 } from "../components/Icons";
 
 export interface AppRouteItem {
@@ -213,10 +214,10 @@ export const appRouteGroups: AppRouteGroup[] = [
     showInHome: true,
     items: [
       {
-        key: "manufacturing-production",
-        label: "Producción",
-        path: "/manufacturing/production",
-        icon: ProduccionIcon,
+        key: "manufacturing-embroidery",
+        label: "Órdenes de Bordado",
+        path: "/manufacturing/embroidery",
+        icon: ScissorsIcon,
         permission: "R-PRODUCCION",
       },
     ],

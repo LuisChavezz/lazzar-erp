@@ -55,7 +55,7 @@ export function PurchaseOrderMockForm({ onSuccess }: PurchaseOrderMockFormProps)
     <form onSubmit={handleSubmit} className="space-y-5">
       {/* ── Sección: Proveedor y fechas ───────────────────────────────────── */}
       <section className="rounded-2xl border border-slate-200 dark:border-white/10 overflow-hidden">
-        <div className="px-5 py-4 border-b border-slate-100 dark:border-white/5 flex items-center gap-3 bg-slate-50/50 dark:bg-white/[0.02]">
+        <div className="px-5 py-4 border-b border-slate-100 dark:border-white/5 flex items-center gap-3 bg-slate-50/50 dark:bg-white/2">
           <div className="w-9 h-9 rounded-xl bg-sky-50 dark:bg-sky-500/10 flex items-center justify-center text-sky-600 dark:text-sky-400 shrink-0">
             <ComprasIcon className="w-4 h-4" />
           </div>
@@ -122,7 +122,7 @@ export function PurchaseOrderMockForm({ onSuccess }: PurchaseOrderMockFormProps)
 
       {/* ── Sección: Materiales a comprar ─────────────────────────────────── */}
       <section className="rounded-2xl border border-slate-200 dark:border-white/10 overflow-hidden">
-        <div className="px-5 py-4 border-b border-slate-100 dark:border-white/5 flex items-center gap-3 bg-slate-50/50 dark:bg-white/[0.02]">
+        <div className="px-5 py-4 border-b border-slate-100 dark:border-white/5 flex items-center gap-3 bg-slate-50/50 dark:bg-white/2">
           <div className="w-9 h-9 rounded-xl bg-sky-50 dark:bg-sky-500/10 flex items-center justify-center text-sky-600 dark:text-sky-400 shrink-0">
             <ScissorsIcon className="w-4 h-4" />
           </div>

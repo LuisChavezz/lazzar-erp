@@ -106,6 +106,7 @@ import {
   Scissors,
   Route,
   Receipt,
+  Printer,
 } from "lucide-react";
 
 // ─── Tipos comunes ────────────────────────────────────────────────────────────
@@ -207,6 +208,10 @@ export const SortIcon = (props: LucideProps) => <ArrowUpDown {...props} />;
 export const ScissorsIcon = (props: LucideProps) => <Scissors {...props} />;
 export const RouteIcon = (props: LucideProps) => <Route {...props} />;
 export const ReceiptIcon = (props: LucideProps) => <Receipt {...props} />;
+export const PrinterIcon = (props: LucideProps) => <Printer {...props} />;
+export const ClipboardListIcon = (props: LucideProps) => <ClipboardList {...props} />;
+export const LayersIcon = (props: LucideProps) => <Layers {...props} />;
+export const FileCode2Icon = (props: LucideProps) => <FileCode2 {...props} />;
 
 // ─── Íconos de configuración de productos ────────────────────────────────────
 
