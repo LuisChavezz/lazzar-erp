@@ -92,7 +92,7 @@ function generateOrder(seq: number, forceFullStock: boolean): OrderControl {
   const precioUnitario = faker.number.float({ min: 150, max: 850, fractionDigits: 2 });
   const granTotal = (piezas * precioUnitario).toFixed(2);
   const createdAt = faker.date.between({ from: '2025-02-01', to: '2025-05-10' }).toISOString();
-  const folio = `COT-${String(2400 + seq).padStart(4, '0')}`;
+  const folio = `ORD-${String(2400 + seq).padStart(4, '0')}`;
   const controlStatus: OrderControlStatus =
     seq <= 2
       ? 'liberado'

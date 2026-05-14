@@ -103,6 +103,9 @@ import {
   Factory,
   BookUser,
   ArrowUpDown,
+  Scissors,
+  Route,
+  Receipt,
 } from "lucide-react";
 
 // ─── Tipos comunes ────────────────────────────────────────────────────────────
@@ -201,6 +204,9 @@ export const FactoryIcon = (props: LucideProps) => <Factory {...props} />;
 export const PackageCheckIcon = (props: LucideProps) => <PackageCheck {...props} />;
 export const PackageXIcon = (props: LucideProps) => <PackageX {...props} />;
 export const SortIcon = (props: LucideProps) => <ArrowUpDown {...props} />;
+export const ScissorsIcon = (props: LucideProps) => <Scissors {...props} />;
+export const RouteIcon = (props: LucideProps) => <Route {...props} />;
+export const ReceiptIcon = (props: LucideProps) => <Receipt {...props} />;
 
 // ─── Íconos de configuración de productos ────────────────────────────────────
 
