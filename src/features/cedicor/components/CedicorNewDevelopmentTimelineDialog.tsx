@@ -3,13 +3,13 @@
 import { CheckIcon, HistoryIcon, ClipboardListIcon } from "@/src/components/Icons";
 import { MainDialog } from "@/src/components/MainDialog";
 import { DialogHeader } from "@/src/components/DialogHeader";
-import type { NuevoDesarrollo, EstatusFlujo, HistorialEvento } from "../interfaces/product-development-order.interface";
-import { STEPS_FLUJO, ESTATUS_FLUJO_LABELS } from "../interfaces/product-development-order.interface";
+import type { NewDevelopment, FlowStatus, FlowEventRecord } from "../interfaces/cedicor-new-development.interface";
+import { FLOW_STEPS, FLOW_STATUS_LABELS } from "../interfaces/cedicor-new-development.interface";
 
 // ── Configuración visual por estatus del flujo ────────────────────────────────
 
 const ESTATUS_CFG: Record<
-  EstatusFlujo,
+  FlowStatus,
   { badgeCls: string; dotCls: string }
 > = {
   solicitud_recibida:    { badgeCls: 'bg-slate-100 text-slate-600 dark:bg-slate-500/10 dark:text-slate-400',        dotCls: 'bg-slate-400' },
@@ -32,25 +32,25 @@ interface TimelineStep {
   /** Número de paso canónico (1-10) */
   paso: number;
   /** Estatus que aplica en este punto del flujo */
-  estatus: EstatusFlujo;
+  estatus: FlowStatus;
   /** El paso ya fue completado */
   completado: boolean;
   /** Es el paso activo actual */
   esCurrent: boolean;
   /** Datos del evento si existe en historial */
-  evento?: HistorialEvento;
+  evento?: FlowEventRecord;
 }
 
 /**
  * Construye la lista de pasos del timeline combinando los 10 pasos
  * canónicos con los eventos reales del historial.
  */
-function buildTimelineSteps(order: NuevoDesarrollo): TimelineStep[] {
+function buildTimelineSteps(order: NewDevelopment): TimelineStep[] {
   const { historial, paso_actual, estatus } = order;
   const esCancelado = estatus === 'cancelado';
   const esBloqueado = estatus === 'material_faltante';
 
-  return STEPS_FLUJO.map((stepKey, idx) => {
+  return FLOW_STEPS.map((stepKey, idx) => {
     const numeroPaso = idx + 1;
     const eventoReal = historial.find((e) => e.paso === numeroPaso);
 
@@ -58,7 +58,7 @@ function buildTimelineSteps(order: NuevoDesarrollo): TimelineStep[] {
     const esCurrent  = numeroPaso === paso_actual;
 
     // Para pasos completados antes del actual se usa el estatus canónico del flujo
-    const estatusPaso: EstatusFlujo =
+    const estatusPaso: FlowStatus =
       eventoReal?.estatus ??
       (esCurrent && (esCancelado || esBloqueado) ? estatus : stepKey);
 
@@ -123,7 +123,7 @@ function TimelineItem({ step, isLast }: TimelineItemProps) {
                 className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium ${cfg.badgeCls}`}
               >
                 <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${cfg.dotCls}`} aria-hidden="true" />
-                {ESTATUS_FLUJO_LABELS[step.estatus]}
+                {FLOW_STATUS_LABELS[step.estatus]}
               </span>
             </div>
 
@@ -173,17 +173,17 @@ function TimelineItem({ step, isLast }: TimelineItemProps) {
 
 // ── Componente principal ──────────────────────────────────────────────────────
 
-interface ProductDevelopmentOrderTimelineDialogProps {
-  order: NuevoDesarrollo;
+interface CedicorNewDevelopmentTimelineDialogProps {
+  order: NewDevelopment;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
-export function ProductDevelopmentOrderTimelineDialog({
+export function CedicorNewDevelopmentTimelineDialog({
   order,
   open,
   onOpenChange,
-}: ProductDevelopmentOrderTimelineDialogProps) {
+}: CedicorNewDevelopmentTimelineDialogProps) {
   const steps     = buildTimelineSteps(order);
   const estatusCfg = ESTATUS_CFG[order.estatus];
   const esCancelado = order.estatus === 'cancelado';
@@ -223,7 +223,7 @@ export function ProductDevelopmentOrderTimelineDialog({
               className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium mt-0.5 ${estatusCfg.badgeCls}`}
             >
               <span className={`w-1.5 h-1.5 rounded-full ${estatusCfg.dotCls}`} aria-hidden="true" />
-              {ESTATUS_FLUJO_LABELS[order.estatus]}
+              {FLOW_STATUS_LABELS[order.estatus]}
             </span>
           </div>
           <div className="text-right shrink-0">
@@ -241,7 +241,7 @@ export function ProductDevelopmentOrderTimelineDialog({
               Progreso
             </p>
             <p className="text-xs font-semibold text-slate-700 dark:text-slate-200 leading-tight tabular-nums">
-              {esCompleto ? '10 / 10' : `${order.paso_actual} / ${STEPS_FLUJO.length}`}
+              {esCompleto ? '10 / 10' : `${order.paso_actual} / ${FLOW_STEPS.length}`}
             </p>
             <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">pasos</p>
           </div>

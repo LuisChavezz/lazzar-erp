@@ -2,39 +2,37 @@
 
 import { useMemo, useState } from "react";
 import { DataTable } from "@/src/components/DataTable";
-import { Button } from "@/src/components/Button";
-import { PlusIcon } from "@/src/components/Icons";
-import { getProductDevelopmentOrderColumns } from "./ProductDevelopmentOrderColumns";
-import { MOCK_PRODUCT_DEVELOPMENT_ORDERS } from "../mocks/product-development-order.mock";
+import { getCedicorProductionOrderColumns } from "./CedicorProductionOrderColumns";
+import { MOCK_CEDICOR_PRODUCTION_ORDERS } from "../mocks/cedicor-production-order.mock";
 import {
-  STEPS_FLUJO,
-  ESTATUS_FLUJO_LABELS,
-  type EstatusFlujo,
-} from "../interfaces/product-development-order.interface";
+  PRODUCTION_ORDER_STEPS,
+  PRODUCTION_ORDER_STATUS_LABELS,
+  type ProductionOrderStatus,
+} from "../interfaces/cedicor-production-order.interface";
 
-// Tipo ampliado para el valor del filtro
-type FiltroEstatus = EstatusFlujo | 'todas';
+// Tipo ampliado para el valor del filtro de pestañas
+type ProductionOrderFilterValue = ProductionOrderStatus | 'todas';
 
 // Pestañas de filtro — "Todas", cada paso del flujo, material_faltante y cancelados
-const FILTROS: { value: FiltroEstatus; label: string }[] = [
-  { value: 'todas',             label: 'Todas' },
-  ...STEPS_FLUJO.map((s, i) => ({
-    value: s as EstatusFlujo,
-    label: `${i + 1}. ${ESTATUS_FLUJO_LABELS[s]}`,
+const FILTROS: { value: ProductionOrderFilterValue; label: string }[] = [
+  { value: 'todas', label: 'Todas' },
+  ...PRODUCTION_ORDER_STEPS.map((s, i) => ({
+    value: s as ProductionOrderStatus,
+    label: `${i + 1}. ${PRODUCTION_ORDER_STATUS_LABELS[s]}`,
   })),
   { value: 'material_faltante', label: 'Material Faltante' },
   { value: 'cancelado',         label: 'Cancelados' },
 ];
 
-/** Lista principal de órdenes de Nuevo Desarrollo de Producto */
-export function ProductDevelopmentOrderList() {
-  const [filtroEstatus, setFiltroEstatus] = useState<FiltroEstatus>('todas');
+/** Lista principal de órdenes de producción (resurtido / stock) */
+export function CedicorProductionOrderList() {
+  const [filtroEstatus, setFiltroEstatus] = useState<ProductionOrderFilterValue>('todas');
 
-  const columns = useMemo(() => getProductDevelopmentOrderColumns(), []);
+  const columns = useMemo(() => getCedicorProductionOrderColumns(), []);
 
   const ordenesFiltradas = useMemo(() => {
-    if (filtroEstatus === 'todas') return MOCK_PRODUCT_DEVELOPMENT_ORDERS;
-    return MOCK_PRODUCT_DEVELOPMENT_ORDERS.filter((o) => o.estatus === filtroEstatus);
+    if (filtroEstatus === 'todas') return MOCK_CEDICOR_PRODUCTION_ORDERS;
+    return MOCK_CEDICOR_PRODUCTION_ORDERS.filter((o) => o.estatus === filtroEstatus);
   }, [filtroEstatus]);
 
   return (
@@ -43,17 +41,17 @@ export function ProductDevelopmentOrderList() {
       {/* ── Encabezado con conteo global ─────────────────────────────── */}
       <div className="flex flex-col gap-1">
         <p className="text-sm text-slate-500 dark:text-slate-400">
-          {MOCK_PRODUCT_DEVELOPMENT_ORDERS.length} órdenes registradas · {' '}
+          {MOCK_CEDICOR_PRODUCTION_ORDERS.length} órdenes registradas · {' '}
           <span className="text-emerald-600 dark:text-emerald-400 font-medium">
-            {MOCK_PRODUCT_DEVELOPMENT_ORDERS.filter((o) => o.estatus === 'despachado_confeccion').length} completadas
+            {MOCK_CEDICOR_PRODUCTION_ORDERS.filter((o) => o.estatus === 'despachado_confeccion').length} completadas
           </span>
           {' · '}
           <span className="text-orange-600 dark:text-orange-400 font-medium">
-            {MOCK_PRODUCT_DEVELOPMENT_ORDERS.filter((o) => o.estatus === 'material_faltante').length} con material faltante
+            {MOCK_CEDICOR_PRODUCTION_ORDERS.filter((o) => o.estatus === 'material_faltante').length} con material faltante
           </span>
           {' · '}
           <span className="text-red-500 dark:text-red-400 font-medium">
-            {MOCK_PRODUCT_DEVELOPMENT_ORDERS.filter((o) => o.estatus === 'cancelado').length} canceladas
+            {MOCK_CEDICOR_PRODUCTION_ORDERS.filter((o) => o.estatus === 'cancelado').length} canceladas
           </span>
         </p>
       </div>
@@ -67,8 +65,8 @@ export function ProductDevelopmentOrderList() {
         {FILTROS.map((f) => {
           const count =
             f.value === 'todas'
-              ? MOCK_PRODUCT_DEVELOPMENT_ORDERS.length
-              : MOCK_PRODUCT_DEVELOPMENT_ORDERS.filter((o) => o.estatus === f.value).length;
+              ? MOCK_CEDICOR_PRODUCTION_ORDERS.length
+              : MOCK_CEDICOR_PRODUCTION_ORDERS.filter((o) => o.estatus === f.value).length;
           const isActive = filtroEstatus === f.value;
 
           if (count === 0 && f.value !== 'todas') return null;
@@ -104,11 +102,9 @@ export function ProductDevelopmentOrderList() {
       <DataTable
         columns={columns}
         data={ordenesFiltradas}
-        baseDataCount={MOCK_PRODUCT_DEVELOPMENT_ORDERS.length}
+        baseDataCount={MOCK_CEDICOR_PRODUCTION_ORDERS.length}
         searchPlaceholder="Buscar folio, cliente, producto…"
       />
     </div>
   );
 }
-
-

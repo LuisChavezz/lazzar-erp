@@ -1,11 +1,11 @@
 import { faker } from '@faker-js/faker';
 import {
-  STEPS_FLUJO,
-  type NuevoDesarrollo,
-  type EstatusFlujo,
-  type HistorialEvento,
-  type EstatusVerificacionMateriales,
-} from '../interfaces/product-development-order.interface';
+  FLOW_STEPS,
+  type NewDevelopment,
+  type FlowStatus,
+  type FlowEventRecord,
+  type MaterialVerificationStatus,
+} from '../interfaces/cedicor-new-development.interface';
 
 // Semilla fija para datos deterministas
 faker.seed(3001);
@@ -70,10 +70,10 @@ const RESPONSABLES_DISENO    = ['Daniela Flores', 'Emilio Castro', 'Valeria Reye
  *  - material_faltante se posiciona en el paso 7 (bloqueado antes de material_liberado)
  *  - cancelado devuelve un paso aleatorio entre 1 y 6
  */
-function getPasoActual(estatus: EstatusFlujo): number {
+function getPasoActual(estatus: FlowStatus): number {
   if (estatus === 'material_faltante') return 7;
   if (estatus === 'cancelado') return faker.number.int({ min: 1, max: 6 });
-  return STEPS_FLUJO.indexOf(estatus) + 1;
+  return FLOW_STEPS.indexOf(estatus) + 1;
 }
 
 /**
@@ -101,14 +101,14 @@ const RESPONSABLE_POR_PASO_KEY = [
  */
 function generarHistorial(
   pasoActual: number,
-  estatus: EstatusFlujo,
+  estatus: FlowStatus,
   responsables: Pick<
-    NuevoDesarrollo,
+    NewDevelopment,
     'responsable_desarrollo' | 'responsable_produccion' | 'responsable_almacen' | 'responsable_diseno'
   >,
   fechaBase: Date
-): HistorialEvento[] {
-  const historial: HistorialEvento[] = [];
+): FlowEventRecord[] {
+  const historial: FlowEventRecord[] = [];
   let fechaEvento = new Date(fechaBase);
 
   for (let paso = 1; paso <= pasoActual; paso++) {
@@ -116,13 +116,13 @@ function generarHistorial(
     fechaEvento = new Date(fechaEvento.getTime() + faker.number.int({ min: 1, max: 3 }) * 86_400_000);
 
     // Determina el estatus del evento en este paso
-    let estatusPaso: EstatusFlujo;
+    let estatusPaso: FlowStatus;
     if (paso === pasoActual && estatus === 'cancelado') {
       estatusPaso = 'cancelado';
     } else if (paso === pasoActual && estatus === 'material_faltante') {
       estatusPaso = 'material_faltante';
     } else {
-      estatusPaso = STEPS_FLUJO[paso - 1];
+      estatusPaso = FLOW_STEPS[paso - 1];
     }
 
     const responsableKey = RESPONSABLE_POR_PASO_KEY[paso - 1];
@@ -149,7 +149,7 @@ function generarHistorial(
 function getResponsableActual(
   paso: number,
   responsables: Pick<
-    NuevoDesarrollo,
+    NewDevelopment,
     'responsable_desarrollo' | 'responsable_produccion' | 'responsable_almacen' | 'responsable_diseno'
   >
 ): string {
@@ -163,8 +163,8 @@ function getResponsableActual(
  */
 function getVerificacionMateriales(
   paso: number,
-  estatus: EstatusFlujo
-): EstatusVerificacionMateriales {
+  estatus: FlowStatus
+): MaterialVerificationStatus {
   if (estatus === 'cancelado')         return faker.helpers.arrayElement(['faltante', 'parcial', 'sin_verificar']);
   if (estatus === 'material_faltante') return 'faltante';
   if (paso <= 3)                        return 'sin_verificar';
@@ -180,10 +180,10 @@ function getVerificacionMateriales(
  * representados: ~3 registros por cada uno de los 10 pasos, ~3 con
  * material_faltante y ~4 cancelados.
  */
-const ESTATUS_POOL: EstatusFlujo[] = [
-  ...STEPS_FLUJO,          // 10 items — una vez cada paso
-  ...STEPS_FLUJO,          // 10 items — segunda ronda
-  ...STEPS_FLUJO,          // 10 items — tercera ronda
+const ESTATUS_POOL: FlowStatus[] = [
+  ...FLOW_STEPS,          // 10 items — una vez cada paso
+  ...FLOW_STEPS,          // 10 items — segunda ronda
+  ...FLOW_STEPS,          // 10 items — tercera ronda
   'material_faltante',     // casos de material bloqueado
   'material_faltante',
   'material_faltante',
@@ -196,7 +196,7 @@ const ESTATUS_POOL: EstatusFlujo[] = [
 
 // ── Generador principal ───────────────────────────────────────────────────────
 
-function generarNuevoDesarrollo(index: number): NuevoDesarrollo {
+function generarNewDevelopment(index: number): NewDevelopment {
   const estatus = ESTATUS_POOL[index % ESTATUS_POOL.length];
   const paso    = getPasoActual(estatus);
 
@@ -253,9 +253,9 @@ function generarNuevoDesarrollo(index: number): NuevoDesarrollo {
 // ── Exportación ───────────────────────────────────────────────────────────────
 
 /** Colección de 40 órdenes de nuevo desarrollo de producto con datos deterministas */
-export const MOCK_PRODUCT_DEVELOPMENT_ORDERS: NuevoDesarrollo[] = Array.from(
+export const MOCK_CEDICOR_NEW_DEVELOPMENT: NewDevelopment[] = Array.from(
   { length: 40 },
-  (_, i) => generarNuevoDesarrollo(i)
+  (_, i) => generarNewDevelopment(i)
 );
 
 

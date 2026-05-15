@@ -17,7 +17,7 @@
  *  8     → DISEÑO / CORTE (trazo de producción + corte de tela)
  *  9-10  → ALMACÉN (recepción, consumo y despacho a confección)
  */
-export const STEPS_FLUJO = [
+export const FLOW_STEPS = [
   'solicitud_recibida',    // 1 — Desarrollo recibe solicitud y captura specs en Drive
   'ordenes_generadas',     // 2 — Producción genera orden de corte (OC) y orden de producción (OP)
   'op_enviada_areas',      // 3 — Producción envía OP a todas las áreas por correo
@@ -36,10 +36,10 @@ export const STEPS_FLUJO = [
  *    faltantes y genera órdenes de compra. Se resuelve al recibir el material.
  *  - cancelado: estado terminal; conserva el último paso alcanzado.
  */
-export type EstatusFlujo = (typeof STEPS_FLUJO)[number] | 'material_faltante' | 'cancelado';
+export type FlowStatus = (typeof FLOW_STEPS)[number] | 'material_faltante' | 'cancelado';
 
 /** Etiquetas legibles por humano para cada estatus del flujo */
-export const ESTATUS_FLUJO_LABELS: Record<EstatusFlujo, string> = {
+export const FLOW_STATUS_LABELS: Record<FlowStatus, string> = {
   solicitud_recibida:    'Solicitud Recibida',
   ordenes_generadas:     'Órdenes Generadas',
   op_enviada_areas:      'OP Enviada a Áreas',
@@ -55,19 +55,19 @@ export const ESTATUS_FLUJO_LABELS: Record<EstatusFlujo, string> = {
 };
 
 /** Resultado de la verificación de materiales por parte de almacén */
-export type EstatusVerificacionMateriales = 'sin_verificar' | 'disponible' | 'faltante' | 'parcial';
+export type MaterialVerificationStatus = 'sin_verificar' | 'disponible' | 'faltante' | 'parcial';
 
 /** Registro de un evento en el historial de trazabilidad del desarrollo */
-export interface HistorialEvento {
+export interface FlowEventRecord {
   paso: number;
-  estatus: EstatusFlujo;
+  estatus: FlowStatus;
   fecha: string;
   responsable: string;
   notas: string;
 }
 
 /** Entidad principal que representa un orden de nuevo desarrollo de producto */
-export interface NuevoDesarrollo {
+export interface NewDevelopment {
   id: string;
   /** Folio único, ej: ND-2025-001 */
   folio: string;
@@ -85,7 +85,7 @@ export interface NuevoDesarrollo {
   colores: string[];
   tallas: string[];
   cantidad_total: number;
-  estatus: EstatusFlujo;
+  estatus: FlowStatus;
   /** Número de paso activo (1-10); para cancelado/material_faltante se conserva el último paso alcanzado */
   paso_actual: number;
   /** Área o persona responsable en el paso actual */
@@ -96,7 +96,7 @@ export interface NuevoDesarrollo {
   responsable_diseno: string;
   /** Si el flujo incluye la variante con muestra (siempre true para nuevo desarrollo) */
   tiene_muestra: boolean;
-  verificacion_materiales: EstatusVerificacionMateriales;
+  verificacion_materiales: MaterialVerificationStatus;
   observaciones: string;
-  historial: HistorialEvento[];
+  historial: FlowEventRecord[];
 }
