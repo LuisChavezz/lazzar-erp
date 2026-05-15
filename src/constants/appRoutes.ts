@@ -15,7 +15,6 @@ import {
   ListaPreciosIcon,
   OrdenesIcon,
   PedidosIcon,
-  ProduccionIcon,
   RastrearGuiasIcon,
   RecepcionesIcon,
   ReportesIcon,
@@ -27,6 +26,7 @@ import {
   SamplesIcon,
   EmailIcon,
   ScissorsIcon,
+  FactoryIcon,
 } from "../components/Icons";
 
 export interface AppRouteItem {
@@ -218,6 +218,14 @@ export const appRouteGroups: AppRouteGroup[] = [
         label: "Órdenes de Bordado",
         path: "/manufacturing/embroidery",
         icon: ScissorsIcon,
+        permission: "R-PRODUCCION",
+      },
+      {
+        key: "manufacturing-product-development-orders",
+        label: "Nuevo Desarrollo",
+        path: "/manufacturing/product-development-orders",
+        icon: FactoryIcon,
+        description: "Seguimiento del flujo de producción para nuevos desarrollos de producto.",
         permission: "R-PRODUCCION",
       },
     ],
