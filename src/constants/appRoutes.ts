@@ -195,6 +195,14 @@ export const appRouteGroups: AppRouteGroup[] = [
         permission: "R-COMPRAS",
       },
       {
+        key: "procurement-order-reviews",
+        label: "Revisión de Pedidos",
+        path: "/procurement/order-reviews",
+        icon: ComprasIcon,
+        description: "Seguimiento del flujo completo de revisión de pedidos: desde la solicitud hasta el cierre con CxP.",
+        permission: "R-COMPRAS",
+      },
+      {
         key: "procurement-receipts",
         label: "Recepciones",
         path: "/procurement/receipts",
