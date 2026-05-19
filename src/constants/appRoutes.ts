@@ -211,6 +211,14 @@ export const appRouteGroups: AppRouteGroup[] = [
         permission: "R-COMPRAS",
       },
       {
+        key: "procurement-pq-orders",
+        label: "Pedidos P.Q.",
+        path: "/procurement/pq-orders",
+        icon: PedidosIcon,
+        description: "Seguimiento de pedidos de quincena vinculados a órdenes de compra: desde la generación hasta el surtido.",
+        permission: "R-COMPRAS",
+      },
+      {
         key: "procurement-receipts",
         label: "Recepciones",
         path: "/procurement/receipts",
