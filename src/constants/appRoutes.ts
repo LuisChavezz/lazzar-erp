@@ -203,6 +203,14 @@ export const appRouteGroups: AppRouteGroup[] = [
         permission: "R-COMPRAS",
       },
       {
+        key: "procurement-expense-requests",
+        label: "Solicitudes de Gastos",
+        path: "/procurement/expense-requests",
+        icon: CxpIcon,
+        description: "Gestión de solicitudes de compras de gastos: desde el requerimiento hasta el cierre con Cobranza.",
+        permission: "R-COMPRAS",
+      },
+      {
         key: "procurement-receipts",
         label: "Recepciones",
         path: "/procurement/receipts",
