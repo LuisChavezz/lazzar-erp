@@ -23,8 +23,6 @@ import {
   CheckCircleIcon,
   RejectIcon,
   RefreshIcon,
-  ComprasIcon,
-  ErrorIcon,
   EmailIcon,
   TasksIcon,
   CxpIcon,
