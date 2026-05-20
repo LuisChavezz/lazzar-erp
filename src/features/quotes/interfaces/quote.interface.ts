@@ -59,6 +59,9 @@ export interface QuoteItem {
     }[];
   };
   lleva_corte_manga?: boolean;
+  colorId?: number;
+  colorNombre?: string;
+  colorHex?: string;
 }
 
 export interface Quote {

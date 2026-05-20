@@ -22,7 +22,8 @@ export const embroiderySpecSchema = z.object({
     .optional(),
   colorHilo: z.string().optional(),
   pantones: z.string().optional(),
-  imagen: imageUrlSchema,
+  // Acepta URL de imagen válida o cadena vacía (productos precargados sin imagen asignada)
+  imagen: z.union([imageUrlSchema, z.literal("")]),
   nuevoPonchado: z.boolean(),
   serigrafia: z.boolean(),
   sublimado: z.boolean(),

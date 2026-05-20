@@ -164,7 +164,7 @@ export const QuoteDetailsProducts = ({ details }: QuoteDetailsProductsProps) => 
                             <span
                               className={`inline-flex items-center rounded-full px-2 py-0.5 font-medium ${
                                 talla.lleva_reflejante
-                                  ? "bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300"
+                                  ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300"
                                   : "bg-slate-200 text-slate-600 dark:bg-white/10 dark:text-slate-300"
                               }`}
                             >
@@ -175,7 +175,7 @@ export const QuoteDetailsProducts = ({ details }: QuoteDetailsProductsProps) => 
                             <span
                               className={`inline-flex items-center rounded-full px-2 py-0.5 font-medium ${
                                 talla.lleva_corte_manga
-                                  ? "bg-violet-100 text-violet-700 dark:bg-violet-500/20 dark:text-violet-300"
+                                  ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300"
                                   : "bg-slate-200 text-slate-600 dark:bg-white/10 dark:text-slate-300"
                               }`}
                             >

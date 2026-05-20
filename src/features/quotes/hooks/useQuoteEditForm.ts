@@ -1,11 +1,11 @@
 "use client";
 
 import { useForm, useStore } from "@tanstack/react-form";
+import { AxiosError } from "axios";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { FormEventHandler } from "react";
-import { AxiosError } from "axios";
 import toast from "react-hot-toast";
 import type { Customer } from "../../customers/interfaces/customer.interface";
 import { useCurrencies } from "../../currency/hooks/useCurrencies";
@@ -18,30 +18,21 @@ import {
   type QuoteFormValues,
 } from "../schemas/quote.schema";
 import {
-  QuoteCreate,
-  QuoteItem,
-  QuoteOnboardingData,
+  type QuoteById,
+  type QuoteCreate,
+  type QuoteItem,
+  type QuoteOnboardingData,
   type QuotePaymentCondition,
 } from "../interfaces/quote.interface";
-import { useWorkspaceStore } from "../../workspace/store/workspace.store";
-import { useCreateQuote, type QuoteValidationIssue } from "./useCreateQuote";
 import { useQuoteOnboardingData } from "./useQuoteOnboardingData";
 import { useSatInfo } from "../../sat/hooks/useSatInfo";
+import { useQuote } from "./useQuote";
+import { createEmptyValues, type ExtraService } from "./useQuoteForm";
+import { useUpdateQuote } from "./useUpdateQuote";
+import type { QuoteValidationIssue } from "../utils/quoteValidationErrors";
 
-type QuoteField = keyof QuoteFormValues;
-type OnboardingCustomer = QuoteOnboardingData["busqueda"]["clientes"][number];
-type ErrorNode = {
-  [key: string]: ErrorNode | FormFieldError | ErrorNode[] | undefined;
-};
+// ─── Catálogos y constantes compartidas ────────────────────────────────────────
 
-export interface ExtraService {
-  id: string;
-  nombre: string;
-  monto: number;
-  cantidad: number;
-}
-
-// Catálogos estáticos usados para renderizar selects y normalizar valores de entrada.
 type OriginFlagKey =
   | "recompra"
   | "chat_online"
@@ -73,8 +64,6 @@ const ORIGIN_FIELD_MAP: { label: string; field: OriginFlagKey }[] = [
 
 const ORIGIN_OPTIONS = ORIGIN_FIELD_MAP.map((item) => item.label);
 
-
-
 const PAYMENT_CONDITION_OPTIONS: { value: QuotePaymentCondition; label: string }[] = [
   { value: "100_anticipo", label: "100% Anticipo" },
   { value: "50_anticipo", label: "50% Anticipo" },
@@ -89,11 +78,22 @@ const IVA_OPTIONS = [
   { value: 8, label: "8%" },
   { value: 0, label: "0%" },
 ];
+
 const DEFAULT_USO_CFDI_VALUE = "G03";
 const DEFAULT_USO_CFDI_LABEL = "G03 - Gastos en general";
 
-// Guards de dominio para asegurar que los valores persistidos siempre coincidan con el esquema actual.
-const mapOrigenFlags = (origen: string) => {
+type OnboardingCustomer = QuoteOnboardingData["busqueda"]["clientes"][number];
+
+// ─── Utilidades de mapeo ───────────────────────────────────────────────────────
+
+// Convierte las banderas booleanas de origen de la cotización al valor de string del select
+const reverseMapOrigenFlags = (quote: QuoteById): string => {
+  const match = ORIGIN_FIELD_MAP.find((item) => quote[item.field as keyof QuoteById] === true);
+  return match?.label ?? "";
+};
+
+// Convierte el label de origen seleccionado en el formulario a las banderas booleanas del payload
+const mapOrigenFlags = (origen: string): Record<OriginFlagKey, boolean> => {
   const selectedField = ORIGIN_FIELD_MAP.find((item) => item.label === origen)?.field;
   return ORIGIN_FIELD_MAP.reduce(
     (accumulator, item) => ({
@@ -104,91 +104,205 @@ const mapOrigenFlags = (origen: string) => {
   );
 };
 
-const normalizeItem = (item: QuoteItem): QuoteItem => {
-  const cantidad = Number(item.cantidad) || 0;
-  const precio = Number(item.precio) || 0;
-  const descuento = Number(item.descuento) || 0;
-  const amount = cantidad * precio;
-  const descuentoAmount = amount * (descuento / 100);
-  const importe = Number((amount - descuentoAmount).toFixed(2));
+// Convierte las banderas booleanas de condición de pago al enum QuotePaymentCondition
+const reverseMapCondicionPago = (quote: QuoteById): QuotePaymentCondition => {
+  if (quote.anticipo_total) return "100_anticipo";
+  if (quote.anticipo_parcial) return "50_anticipo";
+  if (quote.vendedor_autoriza) return "vendedor_autoriza";
+  if (quote.pago_antes_embarque) return "pago_antes_embarque";
+  if (quote.por_confirmar) return "por_confirmar";
+  if (quote.otra_cantidad) return "otra_cantidad";
+  return "100_anticipo";
+};
+
+// Tipo alias para los productos del catálogo de onboarding
+type OnboardingProduct = QuoteOnboardingData["busqueda"]["productos"][number];
+
+// Normaliza cada talla de un detalle para construir el QuoteItem del formulario.
+// Recibe el catálogo de productos para derivar las tallas disponibles por variante.
+const mapDetalleToQuoteItem = (
+  detalle: QuoteById["detalles"][number],
+  products?: OnboardingProduct[]
+): QuoteItem => {
+  const primeraTalla = detalle.tallas[0];
+  const llevaBordado = primeraTalla?.lleva_bordado ?? false;
+  const llevaReflejante = primeraTalla?.lleva_reflejante ?? false;
+  const llevaCorteManga = primeraTalla?.lleva_corte_manga ?? false;
+
+  const cantidadTotal = detalle.tallas.reduce((sum, t) => sum + t.cantidad, 0);
+  const precio = Number(detalle.precio_unitario) || 0;
+  const importe = Number(detalle.subtotal_linea) || 0;
+
   return {
-    ...item,
-    cantidad,
+    productoId: detalle.producto,
+    descripcion: detalle.producto_nombre,
+    unidad: "PZA",
+    cantidad: cantidadTotal,
     precio,
-    descuento,
+    descuento: 0,
     importe,
+    colorId: detalle.color ?? undefined,
+    colorNombre: detalle.color_nombre ?? undefined,
+    colorHex: detalle.color_codigo_hex ?? undefined,
+    // Derivar las tallas disponibles desde las variantes del producto en el catálogo.
+    // Si no se encuentran variantes para ese producto/color, queda undefined
+    // y useEditSizesDialog usará el catálogo global como fallback.
+    availableSizes: (() => {
+      if (!products?.length) return undefined;
+      const product = products.find((p) => p.id === detalle.producto);
+      if (!product?.variantes?.length) return undefined;
+      const colorId = detalle.color ?? null;
+      const seen = new Set<number>();
+      const sizesList: Array<{ id: number; nombre: string }> = [];
+      for (const variant of product.variantes) {
+        if (colorId !== null && variant.color.id !== colorId) continue;
+        if (!seen.has(variant.talla.id)) {
+          seen.add(variant.talla.id);
+          sizesList.push(variant.talla);
+        }
+      }
+      return sizesList.length > 0 ? sizesList : undefined;
+    })(),
+    tallas: detalle.tallas.map((t) => ({
+      tallaId: t.talla,
+      nombre: t.talla_nombre,
+      cantidad: t.cantidad,
+    })),
+    bordados: llevaBordado
+      ? {
+          activo: true,
+          observaciones: primeraTalla?.bordado_config?.notas ?? "",
+          especificaciones: (primeraTalla?.bordado_config?.ubicaciones ?? []).map((u) => ({
+            posicionCodigo: u.codigo,
+            posicionNombre: u.codigo,
+            // Convertir null/cero a undefined para que Zod los omita en .optional()
+            ancho: Number(u.ancho_cm) > 0 ? u.ancho_cm : undefined,
+            alto: Number(u.alto_cm) > 0 ? u.alto_cm : undefined,
+            colorHilo: u.color_hilo ?? undefined,
+            pantones: undefined,
+            imagen: u.imagen ?? "",
+            nuevoPonchado: false,
+            serigrafia: false,
+            sublimado: false,
+            dtf: false,
+            revelado: false,
+          })),
+        }
+      : { activo: false, observaciones: "", especificaciones: [] },
+    reflejantes: llevaReflejante
+      ? {
+          activo: true,
+          observaciones: "",
+          especificaciones: (Array.isArray(primeraTalla?.reflejante_config)
+            ? primeraTalla.reflejante_config
+            : []
+          ).map((r) => ({
+            // Normalizar posibles null del backend a cadena vacía
+            opcion: r.opcion || "",
+            posicion: r.posicion || "",
+            tipo: r.tipo || "",
+          })),
+        }
+      : { activo: false, observaciones: "", especificaciones: [] },
+    lleva_corte_manga: llevaCorteManga,
   };
 };
 
-// Estado inicial para flujo de creación.
-export const createEmptyValues = (todayStr: string, userName: string): QuoteFormValues => ({
-  clienteBusqueda: "",
-  clienteNombre: "",
-  razonSocial: "",
-  rfc: "",
-  regimenFiscal: "",
-  direccionFiscal: "",
-  coloniaFiscal: "",
-  codigoPostalFiscal: "",
-  ciudadFiscal: "",
-  estadoFiscal: "",
-  giroEmpresa: "",
-  persona_pagos: "",
-  correo_facturas: "",
-  telefono_pagos: "",
-  oc: "",
-  forma_pago: "03",
-  metodo_pago: "PUE",
-  uso_cfdi: DEFAULT_USO_CFDI_VALUE,
-  referenciarOcFactura: false,
-  condicionPago: "100_anticipo",
-  condicionPagoMonto: 0,
-  fecha: todayStr,
-  agente: userName,
-  tipo_pedido: 0,
-  origen: "",
-  destinatario: "",
-  empresaEnvio: "",
-  telefonoEnvio: "",
-  celularEnvio: "",
-  direccionEnvio: "",
-  coloniaEnvio: "",
-  codigoPostalEnvio: "",
-  ciudadEnvio: "",
-  estadoEnvio: "",
-  referenciasEnvio: "",
-  enviarDomicilioFiscal: false,
-  embarcarConOtrosPedidos: false,
-  empaque_ecologico: true,
-  embarque_parcial: false,
-  comentarios_parcialidad: "",
-  servicioEnvioActivo: false,
-  envio: 0,
-  programaBordadosActivo: false,
-  programa_bordados: 0,
-  bordadoPantalonesExtrasActivo: false,
-  bordado_pantalones_extras: 0,
-  serigrafiaActivo: false,
-  serigrafia: 0,
-  reflejanteActivo: false,
-  reflejante: 0,
-  bordado_logotipo: true,
-  estatusPedido: "Pendiente",
-  docRelacionado: "",
-  observaciones: "",
-  flete: 0,
-  seguros: 0,
-  anticipo: 0,
-  iva: 16,
-  moneda: 0,
-  items: [],
-});
+// Construye los valores iniciales del formulario a partir de una cotización existente
+const mapQuoteByIdToFormValues = (
+  quote: QuoteById,
+  todayStr: string,
+  userName: string,
+  customer?: OnboardingCustomer,
+  regimenesFiscales?: { value: string; label: string }[],
+  products?: OnboardingProduct[]
+): QuoteFormValues => {
+  const oc = quote.oc ?? "";
+  const docRelacionado = `cotización-oc${oc.trim()}`;
 
-// Traduce rutas de error de Zod a un árbol de errores consumible por los campos del formulario.
+  // Resuelve el código de régimen fiscal desde los catálogos
+  const regimenFiscal = (() => {
+    if (!customer) return "";
+    const regimen = regimenesFiscales?.find(
+      (r) => r.value === String(customer.sat_regimen_fiscal_id)
+    );
+    return regimen?.value ?? customer.sat_regimen_fiscal__codigo ?? "";
+  })();
+
+  return {
+    clienteBusqueda: quote.cliente_razon_social || quote.cliente_nombre || "",
+    clienteNombre: quote.cliente_nombre || "",
+    razonSocial: quote.cliente_razon_social || "",
+    // Los campos de facturación fiscal se obtienen del cliente registrado en los catálogos.
+    rfc: customer?.rfc ?? "",
+    regimenFiscal,
+    direccionFiscal: customer?.direccion_fiscal ?? "",
+    coloniaFiscal: customer?.colonia ?? "",
+    codigoPostalFiscal: customer?.codigo_postal ?? "",
+    ciudadFiscal: customer?.ciudad ?? "",
+    estadoFiscal: customer?.estado ?? "",
+    giroEmpresa: customer?.giro_empresarial ?? "",
+    persona_pagos: quote.persona_pagos || "",
+    correo_facturas: quote.correo_facturas || "",
+    telefono_pagos: quote.telefono_pagos || "",
+    oc,
+    forma_pago: quote.forma_pago || "03",
+    metodo_pago: quote.metodo_pago || "PUE",
+    uso_cfdi: quote.uso_cfdi || DEFAULT_USO_CFDI_VALUE,
+    referenciarOcFactura: false,
+    condicionPago: reverseMapCondicionPago(quote),
+    condicionPagoMonto: Number(quote.monto) || 0,
+    fecha: todayStr,
+    agente: userName,
+    tipo_pedido: 0,
+    origen: reverseMapOrigenFlags(quote),
+    destinatario: quote.destinatario || "",
+    empresaEnvio: quote.empresa_envio || "",
+    telefonoEnvio: quote.telefono_envio || "",
+    celularEnvio: quote.celular_envio || "",
+    direccionEnvio: quote.direccion_envio || "",
+    coloniaEnvio: quote.colonia_envio || "",
+    codigoPostalEnvio: quote.codigo_postal || "",
+    ciudadEnvio: quote.ciudad_envio || "",
+    estadoEnvio: quote.estado_envio || "",
+    referenciasEnvio: quote.referencias || "",
+    enviarDomicilioFiscal: false,
+    embarcarConOtrosPedidos: false,
+    empaque_ecologico: Boolean(quote.empaque_ecologico),
+    embarque_parcial: Boolean(quote.embarque_parcial),
+    comentarios_parcialidad: quote.comentarios_parcialidad || "",
+    servicioEnvioActivo: Number(quote.envio) > 0,
+    envio: Number(quote.envio) || 0,
+    programaBordadosActivo: Number(quote.programa_bordados) > 0,
+    programa_bordados: Number(quote.programa_bordados) || 0,
+    bordadoPantalonesExtrasActivo: Number(quote.bordado_pantalones_extras) > 0,
+    bordado_pantalones_extras: Number(quote.bordado_pantalones_extras) || 0,
+    serigrafiaActivo: Number(quote.serigrafia) > 0,
+    serigrafia: Number(quote.serigrafia) || 0,
+    reflejanteActivo: Number(quote.reflejante) > 0,
+    reflejante: Number(quote.reflejante) || 0,
+    bordado_logotipo: Boolean(quote.bordado_logotipo),
+    estatusPedido: "Pendiente",
+    docRelacionado,
+    observaciones: quote.observaciones || "",
+    flete: Number(quote.flete) || 0,
+    seguros: Number(quote.seguros) || 0,
+    anticipo: Number(quote.anticipo) || 0,
+    iva: quote.iva ?? 16,
+    moneda: quote.moneda || 0,
+    items: (quote.detalles ?? []).map((d) => mapDetalleToQuoteItem(d, products)),
+  };
+};
+
+// ─── Utilidades de validación y scroll (idénticas a useQuoteForm) ──────────────
+
+type QuoteField = keyof QuoteFormValues;
+type ErrorNode = {
+  [key: string]: ErrorNode | FormFieldError | ErrorNode[] | undefined;
+};
+
 const setErrorByPath = (target: ErrorNode, path: (string | number)[], message: string) => {
-  if (path.length === 0) {
-    return;
-  }
+  if (path.length === 0) return;
 
   let current: ErrorNode | ErrorNode[] = target;
   path.forEach((rawSegment, index) => {
@@ -198,14 +312,11 @@ const setErrorByPath = (target: ErrorNode, path: (string | number)[], message: s
     if (Array.isArray(current)) {
       const numeric = Number(segment);
       const safeIndex = Number.isFinite(numeric) ? numeric : 0;
-      if (!current[safeIndex]) {
-        current[safeIndex] = {};
-      }
+      if (!current[safeIndex]) current[safeIndex] = {};
       if (isLast) {
         (current[safeIndex] as ErrorNode).message = message as unknown as ErrorNode;
         return;
       }
-      // Avanza al elemento del array sin agregar una clave extra con el índice.
       current = current[safeIndex] as ErrorNode;
       return;
     }
@@ -225,37 +336,39 @@ const setErrorByPath = (target: ErrorNode, path: (string | number)[], message: s
   });
 };
 
-// Obtiene un valor anidado por ruta dinámica (dot notation), usado para extraer errores por campo.
 const getPathValue = (source: unknown, path: string) => {
-  if (!source || typeof source !== "object") {
-    return undefined;
-  }
-  const tokens = path
-    .replace(/\[(\d+)\]/g, ".$1")
-    .split(".")
-    .filter(Boolean);
+  if (!source || typeof source !== "object") return undefined;
+  const tokens = path.replace(/\[(\d+)\]/g, ".$1").split(".").filter(Boolean);
   let current: unknown = source;
   for (const token of tokens) {
-    if (!current || typeof current !== "object") {
-      return undefined;
-    }
+    if (!current || typeof current !== "object") return undefined;
     current = (current as Record<string, unknown>)[token];
   }
   return current;
 };
 
-// Busca el primer campo inválido en orden visual y mueve el viewport al lugar correcto.
 const scrollToFirstValidationError = (formElement: HTMLFormElement, issuePaths: string[]) => {
-  if (issuePaths.length === 0) {
-    return;
-  }
+  if (issuePaths.length === 0) return;
 
   const normalizedIssuePaths = issuePaths.filter(Boolean);
-  const controls = Array.from(formElement.querySelectorAll<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>("input, select, textarea"))
-    .filter((element) => Boolean(element.name) && !element.disabled && !(element instanceof HTMLInputElement && element.type === "hidden"));
+  const controls = Array.from(
+    formElement.querySelectorAll<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>(
+      "input, select, textarea"
+    )
+  ).filter(
+    (el) =>
+      Boolean(el.name) &&
+      !el.disabled &&
+      !(el instanceof HTMLInputElement && el.type === "hidden")
+  );
 
   const firstInvalidControl = controls.find((control) =>
-    normalizedIssuePaths.some((path) => path === control.name || path.startsWith(`${control.name}.`) || control.name.startsWith(`${path}.`))
+    normalizedIssuePaths.some(
+      (path) =>
+        path === control.name ||
+        path.startsWith(`${control.name}.`) ||
+        control.name.startsWith(`${path}.`)
+    )
   );
 
   if (firstInvalidControl) {
@@ -264,135 +377,184 @@ const scrollToFirstValidationError = (formElement: HTMLFormElement, issuePaths: 
     return;
   }
 
-  const hasItemsError = normalizedIssuePaths.some((path) => path === "items" || path.startsWith("items."));
-  const hasCustomerError = normalizedIssuePaths.some((path) => path === "clienteBusqueda" || path.startsWith("clienteBusqueda."));
-  const hasExtraServicesError = normalizedIssuePaths.some((path) => path === "servicios_extras" || path.startsWith("servicios_extras."));
+  const hasItemsError = normalizedIssuePaths.some(
+    (path) => path === "items" || path.startsWith("items.")
+  );
+  const hasCustomerError = normalizedIssuePaths.some(
+    (path) => path === "clienteBusqueda" || path.startsWith("clienteBusqueda.")
+  );
+  const hasExtraServicesError = normalizedIssuePaths.some(
+    (path) => path === "servicios_extras" || path.startsWith("servicios_extras.")
+  );
 
   if (hasCustomerError) {
-    const customerAnchor = formElement.querySelector<HTMLElement>('[data-error-anchor="clienteBusqueda"]');
-    customerAnchor?.scrollIntoView({ behavior: "smooth", block: "center" });
+    const anchor = formElement.querySelector<HTMLElement>('[data-error-anchor="clienteBusqueda"]');
+    anchor?.scrollIntoView({ behavior: "smooth", block: "center" });
     return;
   }
-
   if (hasExtraServicesError) {
-    const extraServicesAnchor = formElement.querySelector<HTMLElement>('[data-error-anchor="servicios_extras"]');
-    extraServicesAnchor?.scrollIntoView({ behavior: "smooth", block: "center" });
+    const anchor = formElement.querySelector<HTMLElement>(
+      '[data-error-anchor="servicios_extras"]'
+    );
+    anchor?.scrollIntoView({ behavior: "smooth", block: "center" });
     return;
   }
-
   if (hasItemsError) {
-    const itemsAnchor = formElement.querySelector<HTMLElement>('[data-error-anchor="items"]');
-    itemsAnchor?.scrollIntoView({ behavior: "smooth", block: "center" });
+    const anchor = formElement.querySelector<HTMLElement>('[data-error-anchor="items"]');
+    anchor?.scrollIntoView({ behavior: "smooth", block: "center" });
   }
 };
 
-export function useQuoteForm() {
-  // Dependencias de navegación y fuentes de datos del formulario.
+const normalizeItem = (item: QuoteItem): QuoteItem => {
+  const cantidad = Number(item.cantidad) || 0;
+  const precio = Number(item.precio) || 0;
+  const descuento = Number(item.descuento) || 0;
+  const amount = cantidad * precio;
+  const descuentoAmount = amount * (descuento / 100);
+  const importe = Number((amount - descuentoAmount).toFixed(2));
+  return { ...item, cantidad, precio, descuento, importe };
+};
+
+// ─── Hook principal ────────────────────────────────────────────────────────────
+
+export function useQuoteEditForm(quoteId: number) {
   const router = useRouter();
   const { data: session } = useSession();
   const { data: currencies, isLoading: isCurrenciesLoading } = useCurrencies();
   const { data: onboardingData, isLoading: isOnboardingLoading } = useQuoteOnboardingData();
   const { data: satInfo } = useSatInfo();
-  const { selectedCompany, selectedBranch } = useWorkspaceStore();
-  const selectedCompanyId = selectedCompany?.id || 1; // Fallback
-  const selectedBranchId = selectedBranch?.id || 1; // Fallback
+
+  // Consulta de la cotización a editar
+  const { data: quoteData, isLoading: isQuoteLoading } = useQuote(quoteId);
 
   const userName = session?.user?.name || "Usuario";
   const sellerName = userName;
   const todayStr = new Date().toISOString().slice(0, 10);
   const formRef = useRef<HTMLFormElement | null>(null);
-  const applyServerValidationIssues = useCallback((issues: QuoteValidationIssue[]) => {
-    const nextErrors: ErrorNode = {};
-    const issuePaths: string[] = [];
+  const emptyValues = useMemo(() => createEmptyValues(todayStr, userName), [todayStr, userName]);
 
-    issues.forEach((issue) => {
-      const normalizedPath = issue.path.replace(/\[(\d+)\]/g, ".$1");
-      const pathSegments = normalizedPath.split(".").filter(Boolean);
-
-      if (pathSegments.length === 0) {
-        return;
-      }
-
-      setErrorByPath(nextErrors, pathSegments, issue.message);
-      issuePaths.push(normalizedPath);
-    });
-
-    if (issuePaths.length === 0) {
-      return;
-    }
-
-    setErrorTree(nextErrors);
-    if (formRef.current) {
-      requestAnimationFrame(() => {
-        if (!formRef.current) {
-          return;
-        }
-        scrollToFirstValidationError(formRef.current, issuePaths);
-      });
-    }
-  }, []);
-  const customers = useMemo(() => onboardingData?.busqueda.clientes ?? [], [onboardingData?.busqueda.clientes]);
+  const customers = useMemo(
+    () => onboardingData?.busqueda.clientes ?? [],
+    [onboardingData?.busqueda.clientes]
+  );
   const isCustomersLoading = isOnboardingLoading;
+
   const [errorTree, setErrorTree] = useState<ErrorNode>({});
   const [isAddProductsOpen, setIsAddProductsOpen] = useState(false);
   const [editIndex, setEditIndex] = useState<number | null>(null);
   const [isCustomerDialogOpen, setIsCustomerDialogOpen] = useState(false);
   const [isSubmittingForm, setIsSubmittingForm] = useState(false);
-  const [isCreationSuccessVisible, setIsCreationSuccessVisible] = useState(false);
+  const [isEditSuccessVisible, setIsEditSuccessVisible] = useState(false);
   const [isRouteTransitioning, setIsRouteTransitioning] = useState(false);
   const [selectedCustomerId, setSelectedCustomerId] = useState(0);
-  // Indica si el cliente fue seleccionado mediante el buscador (no mediante creación).
   const [customerSelectedFromSearch, setCustomerSelectedFromSearch] = useState(false);
   const [extraServices, setExtraServices] = useState<ExtraService[]>([]);
-  // Estado del diálogo de edición de bordado por partida.
+
+  // Estado de diálogos de edición por partida
   const [embroideryEditIndex, setEmbroideryEditIndex] = useState<number | null>(null);
   const [isEmbroideryEditOpen, setIsEmbroideryEditOpen] = useState(false);
-  // Estado del diálogo de edición de reflejante por partida.
   const [reflectiveEditIndex, setReflectiveEditIndex] = useState<number | null>(null);
   const [isReflectiveEditOpen, setIsReflectiveEditOpen] = useState(false);
-  // Estado del diálogo de edición de tallas por partida.
   const [sizesEditIndex, setSizesEditIndex] = useState<number | null>(null);
   const [isSizesEditOpen, setIsSizesEditOpen] = useState(false);
 
-  // Obtiene las direcciones de envío del cliente seleccionado (solo si fue buscado, no creado).
+  // Inicializa los servicios extras cuando se carga la cotización
+  const [extraServicesInitialized, setExtraServicesInitialized] = useState(false);
+
+  // Valores derivados de la cotización cargada para usarlos como defaultValues.
+  // Depende de onboardingData para hidratar los campos de facturación desde el cliente.
+  const initialFormValues = useMemo(() => {
+    if (!quoteData || !onboardingData) return null;
+    const matchedCustomer = onboardingData.busqueda.clientes.find(
+      (c) => c.id === quoteData.cliente
+    );
+    return mapQuoteByIdToFormValues(
+      quoteData,
+      todayStr,
+      userName,
+      matchedCustomer,
+      onboardingData.catalogos.regimenes_fiscales,
+      onboardingData.busqueda.productos
+    );
+  }, [quoteData, todayStr, userName, onboardingData]);
+
+  // Inicializa el cliente seleccionado y los servicios extras una sola vez al cargar la cotización.
+  // Hacerlo dentro del render provoca rerenders extra justo cuando el formulario intenta hidratarse.
+  useEffect(() => {
+    if (!quoteData || !initialFormValues || extraServicesInitialized) return;
+
+    setSelectedCustomerId(quoteData.cliente || 0);
+    setCustomerSelectedFromSearch(quoteData.cliente > 0);
+    setExtraServices(
+      (quoteData.servicios_extras ?? []).map((s) => ({
+        id: String(s.id),
+        nombre: s.nombre,
+        monto: Number(s.monto) || 0,
+        cantidad: s.cantidad,
+      }))
+    );
+    setExtraServicesInitialized(true);
+  }, [extraServicesInitialized, initialFormValues, quoteData]);
+
   const { addresses: customerAddresses } = useCustomerAddresses({
     customerId: selectedCustomerId,
     enabled: customerSelectedFromSearch && selectedCustomerId > 0,
   });
 
-  const showForm = true;
+  // showForm espera a que la cotización, los catálogos y la bootstrap inicial del modo edición estén listos.
+  const showForm =
+    Boolean(initialFormValues) &&
+    extraServicesInitialized &&
+    !isOnboardingLoading &&
+    !isCurrenciesLoading;
 
-  const emptyValues = useMemo(() => createEmptyValues(todayStr, userName), [todayStr, userName]);
+  // Aplica los errores de validación del servidor al árbol de errores del formulario
+  const applyServerValidationIssues = useCallback((issues: QuoteValidationIssue[]) => {
+    const nextErrors: ErrorNode = {};
+    issues.forEach((issue) => {
+      setErrorByPath(
+        nextErrors,
+        issue.path.split(".").filter(Boolean),
+        issue.message
+      );
+    });
+    setErrorTree((prev) => ({ ...prev, ...nextErrors }));
+    const issuePaths = issues.map((issue) => issue.path).filter(Boolean);
+    if (formRef.current) {
+      requestAnimationFrame(() => {
+        if (!formRef.current) return;
+        scrollToFirstValidationError(formRef.current, issuePaths);
+      });
+    }
+  }, []);
 
-  const { mutateAsync: createQuoteMutation, isPending: isCreatingQuote } = useCreateQuote({
+  const { mutateAsync: updateQuoteMutation, isPending: isUpdatingQuote } = useUpdateQuote({
     onValidationError: applyServerValidationIssues,
   });
 
+  // TanStack Form inicializado con valores vacíos bien tipados para mantener inputs siempre controlados.
+  // Se hidrata con la cotización real mediante form.reset() en el useEffect de inicialización.
   const form = useForm({
-    defaultValues: emptyValues,
+    defaultValues: initialFormValues ?? emptyValues,
     onSubmit: async ({ value }) => {
       const parsed = quoteSubmitSchema.safeParse({
         ...value,
         servicios_extras: extraServices,
       });
+
       if (!parsed.success) {
         const nextErrors: ErrorNode = {};
         const issuePaths = parsed.error.issues
           .map((issue) => issue.path.map((segment) => String(segment)).join("."))
           .filter(Boolean);
         parsed.error.issues.forEach((issue) => {
-          if (issue.path.length === 0) {
-            return;
-          }
+          if (issue.path.length === 0) return;
           setErrorByPath(nextErrors, issue.path as (string | number)[], issue.message);
         });
         setErrorTree(nextErrors);
-        // Si hay errores, hace scroll al primer campo para acelerar corrección del usuario.
         if (formRef.current) {
           requestAnimationFrame(() => {
-            if (!formRef.current) {
-              return;
-            }
+            if (!formRef.current) return;
             scrollToFirstValidationError(formRef.current, issuePaths);
           });
         }
@@ -400,7 +562,7 @@ export function useQuoteForm() {
       }
 
       setErrorTree({});
-      const normalizedItems = (parsed.data.items ?? []).map(normalizeItem)
+      const normalizedItems = (parsed.data.items ?? []).map(normalizeItem);
       const subtotal = normalizedItems.reduce((sum, item) => sum + item.importe, 0);
       const descuentoTotal = normalizedItems.reduce((sum, item) => {
         const rawAmount = (Number(item.cantidad) || 0) * (Number(item.precio) || 0);
@@ -457,9 +619,8 @@ export function useQuoteForm() {
 
       const detalle = (parsed.data.items ?? []).map((item) => {
         const llevaBordado = Boolean(item.bordados?.activo);
-        const bordadoConfig =
-          llevaBordado
-            ? {
+        const bordadoConfig = llevaBordado
+          ? {
               ubicaciones:
                 item.bordados?.especificaciones?.map((spec) => ({
                   codigo: spec.posicionCodigo,
@@ -476,19 +637,15 @@ export function useQuoteForm() {
                 })) ?? [],
               notas: item.bordados?.observaciones ?? "",
             }
-            : {
-              ubicaciones: [],
-              notas: "",
-            };
+          : { ubicaciones: [], notas: "" };
         const llevaReflejante = Boolean(item.reflejantes?.activo);
-        const reflejanteConfig =
-          llevaReflejante
-            ? item.reflejantes?.especificaciones?.map((spec) => ({
+        const reflejanteConfig = llevaReflejante
+          ? item.reflejantes?.especificaciones?.map((spec) => ({
               opcion: spec.opcion,
               posicion: spec.posicion,
               tipo: spec.tipo,
             })) ?? []
-            : [];
+          : [];
         const llevaCorteManga = Boolean(item.lleva_corte_manga);
         const corteMangaConfig = llevaCorteManga ? { tipo: "1" } : null;
         return {
@@ -509,12 +666,12 @@ export function useQuoteForm() {
         };
       });
 
-      const quoteCreatePayload: QuoteCreate = {
+      const quoteUpdatePayload: QuoteCreate = {
         pedido: {
-          empresa: selectedCompanyId || 1, // Fallback safe si no hay empresa en workspace
-          sucursal: selectedBranchId || 1, // Fallback safe si no hay sucursal
+          empresa: quoteData?.empresa ?? 1,
+          sucursal: quoteData?.sucursal ?? 1,
           cliente: selectedCustomerId > 0 ? selectedCustomerId : null,
-          moneda: parsed.data.moneda || 1, // Fallback si no viene moneda
+          moneda: parsed.data.moneda || 1,
           persona_pagos: parsed.data.persona_pagos ?? "",
           correo_facturas: parsed.data.correo_facturas ?? "",
           telefono_pagos: parsed.data.telefono_pagos ?? "",
@@ -538,7 +695,9 @@ export function useQuoteForm() {
           cliente_razon_social: parsed.data.razonSocial || "",
           cliente_nombre: parsed.data.clienteNombre || "",
           cliente_rfc: parsed.data.rfc || "",
-          cliente_regimen_fiscal: parsed.data.regimenFiscal ? Number(parsed.data.regimenFiscal) : 1, // o el default que manejen
+          cliente_regimen_fiscal: parsed.data.regimenFiscal
+            ? Number(parsed.data.regimenFiscal)
+            : 1,
           cliente_direccion_fiscal: parsed.data.direccionFiscal || "",
           cliente_colonia: parsed.data.coloniaFiscal || "",
           cliente_codigo_postal: parsed.data.codigoPostalFiscal || "",
@@ -562,7 +721,9 @@ export function useQuoteForm() {
           observaciones: parsed.data.observaciones || "",
           envio: servicioEnvio ? String(servicioEnvio.toFixed(2)) : "0.00",
           programa_bordados: programaBordados ? String(programaBordados.toFixed(2)) : "0.00",
-          bordado_pantalones_extras: bordadoPantalones ? String(bordadoPantalones.toFixed(2)) : "0.00",
+          bordado_pantalones_extras: bordadoPantalones
+            ? String(bordadoPantalones.toFixed(2))
+            : "0.00",
           serigrafia: serigrafia ? String(serigrafia.toFixed(2)) : "0.00",
           reflejante: reflejante ? String(reflejante.toFixed(2)) : "0.00",
           bordado_logotipo: Boolean(parsed.data.bordado_logotipo),
@@ -570,12 +731,14 @@ export function useQuoteForm() {
           seguros: parsed.data.seguros ? String(parsed.data.seguros.toFixed(2)) : "0.00",
           anticipo: parsed.data.anticipo ? String(parsed.data.anticipo.toFixed(2)) : "0.00",
           subtotal: totals.subtotal ? String(totals.subtotal.toFixed(2)) : "0.00",
-          descuento_global: totals.descuentoTotal ? String(totals.descuentoTotal.toFixed(2)) : "0.00",
+          descuento_global: totals.descuentoTotal
+            ? String(totals.descuentoTotal.toFixed(2))
+            : "0.00",
           ieps: "0.00",
           iva: parsed.data.iva || 0,
           gran_total: totals.granTotal ? String(totals.granTotal.toFixed(2)) : "0.00",
           activo: true,
-          cotizacion: { id: 1 },
+          cotizacion: { id: quoteId },
         },
         detalle,
         servicios_extras: parsed.data.servicios_extras.map((service) => ({
@@ -584,30 +747,37 @@ export function useQuoteForm() {
           cantidad: service.cantidad ?? 0,
         })),
       };
+
       try {
-        await createQuoteMutation(quoteCreatePayload);
+        await updateQuoteMutation({ quoteId, payload: quoteUpdatePayload });
       } catch (error) {
         if (error instanceof AxiosError && error.response?.status === 400) {
           return;
         }
-
         return;
       }
 
-      setIsCreationSuccessVisible(true);
+      setIsEditSuccessVisible(true);
       setIsRouteTransitioning(true);
-
-      form.reset(emptyValues);
-      setExtraServices([]);
       router.push("/sales/quotes");
     },
   });
 
-  // Snapshot reactivo de valores del formulario para derivados y sincronizaciones.
+  // Hidrata el formulario con los valores de la cotización en cuanto están disponibles.
+  // Se ejecuta una sola vez gracias al ref de guardia.
+  const wasInitializedRef = useRef(false);
+  useEffect(() => {
+    if (initialFormValues && !wasInitializedRef.current) {
+      wasInitializedRef.current = true;
+      form.reset(initialFormValues);
+    }
+  }, [form, initialFormValues]);
+
+  // Snapshot reactivo de valores del formulario
   const values = useStore(form.baseStore, (state) => state.values);
   const wasEnviarDomicilioFiscalRef = useRef(values.enviarDomicilioFiscal);
 
-  // Sincroniza automáticamente los datos de envío cuando se usa domicilio fiscal.
+  // Sincroniza datos de envío cuando se usa domicilio fiscal
   useEffect(() => {
     if (values.enviarDomicilioFiscal) {
       form.setFieldValue("destinatario", values.clienteNombre || "");
@@ -622,7 +792,6 @@ export function useQuoteForm() {
       wasEnviarDomicilioFiscalRef.current = true;
       return;
     }
-
     wasEnviarDomicilioFiscalRef.current = false;
   }, [
     form,
@@ -643,28 +812,21 @@ export function useQuoteForm() {
   );
 
   useEffect(() => {
-    if (values.docRelacionado === watchedDocRelacionado) {
-      return;
-    }
+    if (values.docRelacionado === watchedDocRelacionado) return;
     form.setFieldValue("docRelacionado", watchedDocRelacionado);
   }, [form, values.docRelacionado, watchedDocRelacionado]);
 
   const normalizePath = (field: string) => field.replace(/\[(\d+)\]/g, ".$1");
 
-  // Limpia el error de un campo puntual después de una corrección del usuario.
   const clearFieldErrors = useCallback((field: string) => {
     const path = field.replace(/\[(\d+)\]/g, ".$1").split(".");
     setErrorTree((prev) => {
-      if (!prev || typeof prev !== "object") {
-        return prev;
-      }
+      if (!prev || typeof prev !== "object") return prev;
       const next = structuredClone(prev) as ErrorNode;
       let current: unknown = next;
       for (let index = 0; index < path.length - 1; index += 1) {
         const key = path[index];
-        if (!current || typeof current !== "object") {
-          return next;
-        }
+        if (!current || typeof current !== "object") return next;
         current = (current as Record<string, unknown>)[key];
       }
       if (current && typeof current === "object") {
@@ -676,13 +838,11 @@ export function useQuoteForm() {
 
   const clienteSearchTerm = values.clienteBusqueda ?? "";
 
-  // Controla el input de búsqueda de cliente, manteniendo sincronía con el estado del form.
   const setClienteSearchTerm = (value: string) => {
     form.setFieldValue("clienteBusqueda", value);
     clearFieldErrors("clienteBusqueda");
   };
 
-  // Valida campo individual en blur para feedback inmediato.
   const validateField = (field: QuoteField, value: QuoteFormValues[QuoteField]) => {
     const fieldSchema = quoteFormSchema.shape[field];
     const parsed = fieldSchema.safeParse(value);
@@ -698,7 +858,6 @@ export function useQuoteForm() {
     return false;
   };
 
-  // Expone un error por ruta para componentes que renderizan errores con paths dinámicos.
   const getError = (field: string): FormFieldError | undefined => {
     const value = getPathValue(errorTree, normalizePath(field));
     if (value && typeof value === "object" && "message" in value) {
@@ -707,15 +866,9 @@ export function useQuoteForm() {
     return undefined;
   };
 
-  // Derivados de totales para render inmediato en resumen financiero.
+  // Derivados de totales
   const watchedItems = useMemo(() => values.items ?? [], [values.items]);
-  const {
-    subtotal,
-    descuentoTotal,
-    ivaAmount,
-    granTotal,
-    saldoPendiente,
-  } = useMemo(() => {
+  const { subtotal, descuentoTotal, ivaAmount, granTotal, saldoPendiente } = useMemo(() => {
     const nextSubtotal = watchedItems.reduce(
       (sum: number, item: QuoteItem) => sum + (Number(item.importe) || 0),
       0
@@ -727,7 +880,9 @@ export function useQuoteForm() {
       return sum + (cantidad * precio - importe);
     }, 0);
     const servicioEnvioTotal = values.servicioEnvioActivo ? Number(values.envio) || 0 : 0;
-    const programaBordadosTotal = values.programaBordadosActivo ? Number(values.programa_bordados) || 0 : 0;
+    const programaBordadosTotal = values.programaBordadosActivo
+      ? Number(values.programa_bordados) || 0
+      : 0;
     const bordadoPantalonesTotal = values.bordadoPantalonesExtrasActivo
       ? Number(values.bordado_pantalones_extras) || 0
       : 0;
@@ -752,7 +907,6 @@ export function useQuoteForm() {
     const nextSaldoPendiente = Number(
       (nextGranTotal - (Number(values.anticipo) || 0)).toFixed(2)
     );
-
     return {
       subtotal: nextSubtotal,
       descuentoTotal: nextDescuentoTotal,
@@ -787,13 +941,11 @@ export function useQuoteForm() {
     [watchedItems]
   );
 
-  // API estilo field-array para tabla de productos.
+  // API estilo field-array para tabla de productos
   const append = (itemOrItems: QuoteItem | QuoteItem[]) => {
     const incomingItems = Array.isArray(itemOrItems) ? itemOrItems : [itemOrItems];
-    if (incomingItems.length === 0) {
-      return;
-    }
-    const normalizedItems = incomingItems.map((item) => normalizeItem(item));
+    if (incomingItems.length === 0) return;
+    const normalizedItems = incomingItems.map(normalizeItem);
     const currentItems = form.state.values.items ?? [];
     form.setFieldValue("items", [...currentItems, ...normalizedItems]);
     clearFieldErrors("items");
@@ -817,13 +969,11 @@ export function useQuoteForm() {
     clearFieldErrors(`items.${index}`);
   };
 
-  // Abre el diálogo de edición de bordado para la partida en `index`.
   const openEmbroideryEdit = useCallback((index: number) => {
     setEmbroideryEditIndex(index);
     setIsEmbroideryEditOpen(true);
   }, []);
 
-  // Persiste los cambios de bordado y cierra el diálogo.
   const handleEmbroideryEditSave = useCallback(
     (updatedItem: QuoteItem) => {
       if (embroideryEditIndex === null) return;
@@ -835,21 +985,16 @@ export function useQuoteForm() {
     [embroideryEditIndex]
   );
 
-  // Controla la apertura/cierre del diálogo de edición de bordado.
   const handleEmbroideryEditOpenChange = useCallback((nextOpen: boolean) => {
     setIsEmbroideryEditOpen(nextOpen);
-    if (!nextOpen) {
-      setEmbroideryEditIndex(null);
-    }
+    if (!nextOpen) setEmbroideryEditIndex(null);
   }, []);
 
-  // Abre el diálogo de edición de reflejante para la partida en `index`.
   const openReflectiveEdit = useCallback((index: number) => {
     setReflectiveEditIndex(index);
     setIsReflectiveEditOpen(true);
   }, []);
 
-  // Persiste los cambios de reflejante y cierra el diálogo.
   const handleReflectiveEditSave = useCallback(
     (updatedItem: QuoteItem) => {
       if (reflectiveEditIndex === null) return;
@@ -861,21 +1006,16 @@ export function useQuoteForm() {
     [reflectiveEditIndex]
   );
 
-  // Controla la apertura/cierre del diálogo de edición de reflejante.
   const handleReflectiveEditOpenChange = useCallback((nextOpen: boolean) => {
     setIsReflectiveEditOpen(nextOpen);
-    if (!nextOpen) {
-      setReflectiveEditIndex(null);
-    }
+    if (!nextOpen) setReflectiveEditIndex(null);
   }, []);
 
-  // Abre el diálogo de edición de tallas para la partida en `index`.
   const openSizesEdit = useCallback((index: number) => {
     setSizesEditIndex(index);
     setIsSizesEditOpen(true);
   }, []);
 
-  // Persiste los cambios de tallas y cierra el diálogo.
   const handleSizesEditSave = useCallback(
     (updatedItem: QuoteItem) => {
       if (sizesEditIndex === null) return;
@@ -887,103 +1027,100 @@ export function useQuoteForm() {
     [sizesEditIndex]
   );
 
-  // Controla la apertura/cierre del diálogo de edición de tallas.
   const handleSizesEditOpenChange = useCallback((nextOpen: boolean) => {
     setIsSizesEditOpen(nextOpen);
-    if (!nextOpen) {
-      setSizesEditIndex(null);
-    }
+    if (!nextOpen) setSizesEditIndex(null);
   }, []);
 
-  // Autocompleta los campos de envío a partir de una dirección guardada del cliente.
-  const handleSelectShippingAddress = useCallback((address: CustomerAddress) => {
-    form.setFieldValue("destinatario", address.destinatario ?? "");
-    form.setFieldValue("empresaEnvio", address.empresa_envio ?? "");
-    form.setFieldValue("telefonoEnvio", address.telefono_envio ?? "");
-    form.setFieldValue("celularEnvio", address.celular_envio ?? "");
-    form.setFieldValue("direccionEnvio", address.direccion_envio ?? "");
-    form.setFieldValue("coloniaEnvio", address.colonia_envio ?? "");
-    form.setFieldValue("codigoPostalEnvio", address.codigo_postal ?? "");
-    form.setFieldValue("ciudadEnvio", address.ciudad_envio ?? "");
-    form.setFieldValue("estadoEnvio", address.estado_envio ?? "");
-    form.setFieldValue("referenciasEnvio", address.referencias ?? "");
-  }, [form]);
+  const handleSelectShippingAddress = useCallback(
+    (address: CustomerAddress) => {
+      form.setFieldValue("destinatario", address.destinatario ?? "");
+      form.setFieldValue("empresaEnvio", address.empresa_envio ?? "");
+      form.setFieldValue("telefonoEnvio", address.telefono_envio ?? "");
+      form.setFieldValue("celularEnvio", address.celular_envio ?? "");
+      form.setFieldValue("direccionEnvio", address.direccion_envio ?? "");
+      form.setFieldValue("coloniaEnvio", address.colonia_envio ?? "");
+      form.setFieldValue("codigoPostalEnvio", address.codigo_postal ?? "");
+      form.setFieldValue("ciudadEnvio", address.ciudad_envio ?? "");
+      form.setFieldValue("estadoEnvio", address.estado_envio ?? "");
+      form.setFieldValue("referenciasEnvio", address.referencias ?? "");
+    },
+    [form]
+  );
 
-  const handleSelectCustomer = useCallback((customer: OnboardingCustomer, fromSearch = true) => {
-    // Hidrata facturación, contacto y envío al seleccionar cliente.
-    const selectedRegimen = onboardingData?.catalogos.regimenes_fiscales.find(
-      (item) => item.value === String(customer.sat_regimen_fiscal_id)
-    );
-    const regimenValue =
-      selectedRegimen?.value ??
-      customer.sat_regimen_fiscal__codigo ??
-      String(customer.sat_regimen_fiscal_id);
-    form.setFieldValue("clienteBusqueda", customer.razon_social ?? customer.nombre ?? "");
-    form.setFieldValue("clienteNombre", customer.nombre ?? "");
-    form.setFieldValue("razonSocial", customer.razon_social ?? "");
-    form.setFieldValue("rfc", customer.rfc ?? "");
-    form.setFieldValue("regimenFiscal", regimenValue);
-    form.setFieldValue("direccionFiscal", customer.direccion_fiscal ?? "");
-    form.setFieldValue("coloniaFiscal", customer.colonia ?? "");
-    form.setFieldValue("codigoPostalFiscal", customer.codigo_postal ?? "");
-    form.setFieldValue("ciudadFiscal", customer.ciudad ?? "");
-    form.setFieldValue("estadoFiscal", customer.estado ?? "");
-    form.setFieldValue("giroEmpresa", customer.giro_empresarial ?? "");
-    setSelectedCustomerId(Number(customer.id) || 0);
-    setCustomerSelectedFromSearch(fromSearch);
-    form.setFieldValue("telefono_pagos", customer.telefono ?? "");
-    form.setFieldValue("correo_facturas", customer.correo ?? "");
-    form.setFieldValue("enviarDomicilioFiscal", true);
-    form.setFieldValue("destinatario", customer.nombre ?? "");
-    form.setFieldValue("empresaEnvio", customer.razon_social ?? "");
-    form.setFieldValue("telefonoEnvio", customer.telefono ?? "");
-    form.setFieldValue("celularEnvio", customer.telefono ?? "");
-    form.setFieldValue("direccionEnvio", customer.direccion_fiscal ?? "");
-    form.setFieldValue("coloniaEnvio", customer.colonia ?? "");
-    form.setFieldValue("codigoPostalEnvio", customer.codigo_postal ?? "");
-    form.setFieldValue("ciudadEnvio", customer.ciudad ?? "");
-    form.setFieldValue("estadoEnvio", customer.estado ?? "");
-    clearFieldErrors("clienteBusqueda");
-  }, [clearFieldErrors, form, onboardingData?.catalogos.regimenes_fiscales, setCustomerSelectedFromSearch]);
+  const handleSelectCustomer = useCallback(
+    (customer: OnboardingCustomer, fromSearch = true) => {
+      const selectedRegimen = onboardingData?.catalogos.regimenes_fiscales.find(
+        (item) => item.value === String(customer.sat_regimen_fiscal_id)
+      );
+      const regimenValue =
+        selectedRegimen?.value ??
+        customer.sat_regimen_fiscal__codigo ??
+        String(customer.sat_regimen_fiscal_id);
+      form.setFieldValue("clienteBusqueda", customer.razon_social ?? customer.nombre ?? "");
+      form.setFieldValue("clienteNombre", customer.nombre ?? "");
+      form.setFieldValue("razonSocial", customer.razon_social ?? "");
+      form.setFieldValue("rfc", customer.rfc ?? "");
+      form.setFieldValue("regimenFiscal", regimenValue);
+      form.setFieldValue("direccionFiscal", customer.direccion_fiscal ?? "");
+      form.setFieldValue("coloniaFiscal", customer.colonia ?? "");
+      form.setFieldValue("codigoPostalFiscal", customer.codigo_postal ?? "");
+      form.setFieldValue("ciudadFiscal", customer.ciudad ?? "");
+      form.setFieldValue("estadoFiscal", customer.estado ?? "");
+      form.setFieldValue("giroEmpresa", customer.giro_empresarial ?? "");
+      setSelectedCustomerId(Number(customer.id) || 0);
+      setCustomerSelectedFromSearch(fromSearch);
+      form.setFieldValue("telefono_pagos", customer.telefono ?? "");
+      form.setFieldValue("correo_facturas", customer.correo ?? "");
+      form.setFieldValue("enviarDomicilioFiscal", true);
+      form.setFieldValue("destinatario", customer.nombre ?? "");
+      form.setFieldValue("empresaEnvio", customer.razon_social ?? "");
+      form.setFieldValue("telefonoEnvio", customer.telefono ?? "");
+      form.setFieldValue("celularEnvio", customer.telefono ?? "");
+      form.setFieldValue("direccionEnvio", customer.direccion_fiscal ?? "");
+      form.setFieldValue("coloniaEnvio", customer.colonia ?? "");
+      form.setFieldValue("codigoPostalEnvio", customer.codigo_postal ?? "");
+      form.setFieldValue("ciudadEnvio", customer.ciudad ?? "");
+      form.setFieldValue("estadoEnvio", customer.estado ?? "");
+      clearFieldErrors("clienteBusqueda");
+    },
+    [clearFieldErrors, form, onboardingData?.catalogos.regimenes_fiscales]
+  );
 
-  // Callback de alta de cliente desde modal.
   const handleCustomerCreated = (customer?: Customer) => {
     setIsCustomerDialogOpen(false);
-    if (!customer) {
-      return;
-    }
+    if (!customer) return;
     const satRegimen = satInfo?.regimenes_fiscales.find(
       (item) => item.id_sat_regimen_fiscal === customer.sat_regimen_fiscal
     );
     const regimenCodigo = satRegimen?.codigo ?? "";
     const regimenDescripcion = satRegimen?.descripcion ?? "";
-    handleSelectCustomer({
-      id: Number(customer.id),
-      // fromSearch: false — cliente recién creado, sin direcciones guardadas
-      razon_social: customer.razon_social,
-      nombre: customer.nombre,
-      rfc: customer.rfc,
-      correo: customer.correo,
-      telefono: customer.telefono,
-      direccion_fiscal: customer.direccion_fiscal,
-      colonia: customer.colonia,
-      codigo_postal: customer.codigo_postal,
-      ciudad: customer.ciudad,
-      estado: customer.estado,
-      giro_empresarial: customer.giro_empresarial,
-      sat_regimen_fiscal_id: Number(customer.sat_regimen_fiscal),
-      sat_regimen_fiscal__codigo: regimenCodigo,
-      sat_regimen_fiscal__descripcion: regimenDescripcion,
-    }, false);
+    handleSelectCustomer(
+      {
+        id: Number(customer.id),
+        razon_social: customer.razon_social,
+        nombre: customer.nombre,
+        rfc: customer.rfc,
+        correo: customer.correo,
+        telefono: customer.telefono,
+        direccion_fiscal: customer.direccion_fiscal,
+        colonia: customer.colonia,
+        codigo_postal: customer.codigo_postal,
+        ciudad: customer.ciudad,
+        estado: customer.estado,
+        giro_empresarial: customer.giro_empresarial,
+        sat_regimen_fiscal_id: Number(customer.sat_regimen_fiscal),
+        sat_regimen_fiscal__codigo: regimenCodigo,
+        sat_regimen_fiscal__descripcion: regimenDescripcion,
+      },
+      false
+    );
   };
 
-  // Submit controlado para evitar dobles envíos y estados pendientes colgados.
   const handleFormSubmit: FormEventHandler<HTMLFormElement> = async (event) => {
     event.preventDefault();
     event.stopPropagation();
-    if (isSubmittingForm) {
-      return;
-    }
+    if (isSubmittingForm) return;
     setIsSubmittingForm(true);
     try {
       await Promise.resolve(form.handleSubmit());
@@ -992,35 +1129,39 @@ export function useQuoteForm() {
     }
   };
 
+  // Al limpiar se restablece al estado inicial de la cotización cargada (no a valores vacíos)
   const handleReset = () => {
-    form.reset(emptyValues);
-    setExtraServices([]);
-    setSelectedCustomerId(0);
-    setCustomerSelectedFromSearch(false);
+    if (initialFormValues) {
+      form.reset(initialFormValues);
+      setExtraServices(
+        (quoteData?.servicios_extras ?? []).map((s) => ({
+          id: String(s.id),
+          nombre: s.nombre,
+          monto: Number(s.monto) || 0,
+          cantidad: s.cantidad,
+        }))
+      );
+      setSelectedCustomerId(quoteData?.cliente || 0);
+      setCustomerSelectedFromSearch((quoteData?.cliente ?? 0) > 0);
+    }
     setErrorTree({});
-    form.setFieldValue("clienteBusqueda", "");
-    toast.success("Formulario restablecido");
+    toast.success("Formulario restablecido a los datos originales de la cotización");
     setTimeout(() => {
       formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     }, 0);
   };
 
-  // Navegación de salida del formulario.
   const handleBack = () => {
     router.push("/sales/quotes");
   };
 
-  const isPending =
-    isSubmittingForm ||
-    form.state.isSubmitting ||
-    isCreatingQuote ||
-    isCreationSuccessVisible ||
-    isRouteTransitioning;
+  const isPending = isSubmittingForm || form.state.isSubmitting || isUpdatingQuote || isEditSuccessVisible || isRouteTransitioning;
+
   const itemErrors = getError("items");
   const tipoPedidoError = getError("tipo_pedido");
   const origenError = getError("origen");
 
-  // Opciones desde onboarding y SAT.
+  // Opciones desde onboarding y catálogos
   const tiposPedidoOptions = useMemo(
     () => [
       { value: 0, label: "Seleccionar..." },
@@ -1028,6 +1169,7 @@ export function useQuoteForm() {
     ],
     [onboardingData?.catalogos.tipos_pedido]
   );
+
   const formasPagoOptions = useMemo(
     () => [
       { value: "", label: "Seleccionar..." },
@@ -1056,30 +1198,26 @@ export function useQuoteForm() {
     () => onboardingData?.catalogos.usos_cfdi ?? [],
     [onboardingData?.catalogos.usos_cfdi]
   );
-  const currencyOptions = useMemo(
-    () => {
-      const preferredCodes = ["MXN", "USD", "EUR"];
-      const activeCurrencies = (currencies ?? []).filter((item) => item.activo);
-      const sortedCurrencies = activeCurrencies.sort((left, right) => {
-        const leftIndex = preferredCodes.indexOf(left.codigo_iso);
-        const rightIndex = preferredCodes.indexOf(right.codigo_iso);
-        const leftPriority = leftIndex === -1 ? Number.MAX_SAFE_INTEGER : leftIndex;
-        const rightPriority = rightIndex === -1 ? Number.MAX_SAFE_INTEGER : rightIndex;
-        if (leftPriority !== rightPriority) {
-          return leftPriority - rightPriority;
-        }
-        return left.nombre.localeCompare(right.nombre);
-      });
-      return [
-        { value: 0, label: "Seleccionar..." },
-        ...sortedCurrencies.map((item) => ({
-          value: item.id,
-          label: `${item.codigo_iso} - ${item.nombre}`,
-        })),
-      ];
-    },
-    [currencies]
-  );
+
+  const currencyOptions = useMemo(() => {
+    const preferredCodes = ["MXN", "USD", "EUR"];
+    const activeCurrencies = (currencies ?? []).filter((item) => item.activo);
+    const sortedCurrencies = activeCurrencies.sort((left, right) => {
+      const leftIndex = preferredCodes.indexOf(left.codigo_iso);
+      const rightIndex = preferredCodes.indexOf(right.codigo_iso);
+      const leftPriority = leftIndex === -1 ? Number.MAX_SAFE_INTEGER : leftIndex;
+      const rightPriority = rightIndex === -1 ? Number.MAX_SAFE_INTEGER : rightIndex;
+      if (leftPriority !== rightPriority) return leftPriority - rightPriority;
+      return left.nombre.localeCompare(right.nombre);
+    });
+    return [
+      { value: 0, label: "Seleccionar..." },
+      ...sortedCurrencies.map((item) => ({
+        value: item.id,
+        label: `${item.codigo_iso} - ${item.nombre}`,
+      })),
+    ];
+  }, [currencies]);
 
   useEffect(() => {
     if (!values.moneda && currencyOptions.length > 1) {
@@ -1088,9 +1226,7 @@ export function useQuoteForm() {
   }, [currencyOptions, form, values.moneda]);
 
   useEffect(() => {
-    if (usoCfdiOptions.length === 0) {
-      return;
-    }
+    if (usoCfdiOptions.length === 0) return;
     const preferredCfdiOption = usoCfdiOptions.find(
       (option) =>
         option.value === DEFAULT_USO_CFDI_VALUE ||
@@ -1099,18 +1235,15 @@ export function useQuoteForm() {
     const fallbackCfdiOption = usoCfdiOptions[0];
     const defaultCfdiValue = preferredCfdiOption?.value ?? fallbackCfdiOption.value;
     const isCurrentValueValid = usoCfdiOptions.some((option) => option.value === values.uso_cfdi);
-
     if (!values.uso_cfdi || !isCurrentValueValid) {
       form.setFieldValue("uso_cfdi", defaultCfdiValue);
     }
   }, [form, usoCfdiOptions, values.uso_cfdi]);
 
-  const formKey = "quote-new";
-
   return {
     form,
     formRef,
-    formKey,
+    formKey: `quote-edit-${quoteId}`,
     getError,
     clearFieldErrors,
     validateField,
@@ -1131,9 +1264,9 @@ export function useQuoteForm() {
     products: onboardingData?.busqueda.productos ?? [],
     isCustomersLoading,
     isCurrenciesLoading,
-    isOnboardingLoading,
+    isOnboardingLoading: isOnboardingLoading || isQuoteLoading,
     showForm,
-    isCreationSuccessVisible,
+    isCreationSuccessVisible: isEditSuccessVisible,
     isRouteTransitioning,
     handleFormSubmit,
     handleReset,
