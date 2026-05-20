@@ -3,11 +3,11 @@ import { Quote } from "../../quotes/interfaces/quote.interface";
 
 
 export const approveOrder = async (id: number): Promise<Quote> => {
-  const response = await v1_api.post<Quote>(`/ventas/cotizaciones/${id}/autorizar/`);
+  const response = await v1_api.post<Quote>(`/ventas/mesa-control/${id}/autorizar/`);
   return response.data;
 };
 
 export const rejectOrder = async (id: number): Promise<Quote> => {
-  const response = await v1_api.post<Quote>(`/ventas/cotizaciones/${id}/rechazar/`);
+  const response = await v1_api.post<Quote>(`/ventas/mesa-control/${id}/rechazar/`);
   return response.data;
 };

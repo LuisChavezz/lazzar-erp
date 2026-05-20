@@ -20,8 +20,12 @@ const DEFAULT_CONFIG = KANBAN_COLUMNS[0];
 interface QuoteKanbanCardProps {
   quote: Quote;
   /** Cuando se renderiza como overlay de arrastre, el card no registra drag */
-  isOverlay?: boolean;  /** Mutación de estatus en curso para este card */
-  isPending?: boolean;}
+  isOverlay?: boolean;
+  /** Mutación de estatus en curso para este card */
+  isPending?: boolean;
+  /** Anima el borde del card cuando se cancela un arrastre y vuelve a su columna */
+  isReturning?: boolean;
+}
 
 // ─── Contenido del card (memoizado para evitar re-renders por cambios en el tablero) ──────
 const CardContent = memo(function CardContent({
@@ -143,20 +147,31 @@ const CardContent = memo(function CardContent({
 });
 
 // ─── Card draggable ────────────────────────────────────────────────────────────────────
-export const QuoteKanbanCard = memo(function QuoteKanbanCard({ quote, isOverlay = false, isPending = false }: QuoteKanbanCardProps) {
+export const QuoteKanbanCard = memo(function QuoteKanbanCard({
+  quote,
+  isOverlay = false,
+  isPending = false,
+  isReturning = false,
+}: QuoteKanbanCardProps) {
   const { ref, isDragging } = useDraggable({
     id: String(quote.id),
     data: { quote },
-    disabled: isOverlay,
+    // Solo las cotizaciones en Borrador (estatus 1) pueden arrastrarse
+    disabled: isOverlay || quote.estatus !== 1,
   });
 
   return (
     <div
       ref={ref}
       aria-label={`Cotización #${quote.id} — ${quote.cliente_nombre}`}
+      className={
+        isReturning
+          ? "rounded-2xl ring-2 ring-amber-400 dark:ring-amber-500 transition-shadow duration-300"
+          : undefined
+      }
       style={{
         opacity: isDragging ? 0.35 : 1,
-        cursor: isOverlay ? "grabbing" : "grab",
+        cursor: isOverlay ? "grabbing" : quote.estatus === 1 ? "grab" : "default",
         transform: isDragging ? "scale(0.96)" : undefined,
         transition: isDragging ? "none" : "opacity 150ms ease, transform 150ms ease",
       }}

@@ -30,6 +30,7 @@ import { useQuote } from "./useQuote";
 import { createEmptyValues, type ExtraService } from "./useQuoteForm";
 import { useUpdateQuote } from "./useUpdateQuote";
 import type { QuoteValidationIssue } from "../utils/quoteValidationErrors";
+import { canEditQuote } from "../utils/quoteStatusRules";
 
 // ─── Catálogos y constantes compartidas ────────────────────────────────────────
 
@@ -426,6 +427,8 @@ export function useQuoteEditForm(quoteId: number) {
 
   // Consulta de la cotización a editar
   const { data: quoteData, isLoading: isQuoteLoading } = useQuote(quoteId);
+  const isEditableQuoteStatus = canEditQuote(quoteData?.estatus);
+  const shouldRedirectToQuotesList = Boolean(quoteData) && !isEditableQuoteStatus;
 
   const userName = session?.user?.name || "Usuario";
   const sellerName = userName;
@@ -464,7 +467,7 @@ export function useQuoteEditForm(quoteId: number) {
   // Valores derivados de la cotización cargada para usarlos como defaultValues.
   // Depende de onboardingData para hidratar los campos de facturación desde el cliente.
   const initialFormValues = useMemo(() => {
-    if (!quoteData || !onboardingData) return null;
+    if (!quoteData || !onboardingData || shouldRedirectToQuotesList) return null;
     const matchedCustomer = onboardingData.busqueda.clientes.find(
       (c) => c.id === quoteData.cliente
     );
@@ -476,12 +479,20 @@ export function useQuoteEditForm(quoteId: number) {
       onboardingData.catalogos.regimenes_fiscales,
       onboardingData.busqueda.productos
     );
-  }, [quoteData, todayStr, userName, onboardingData]);
+  }, [quoteData, todayStr, userName, onboardingData, shouldRedirectToQuotesList]);
+
+  // Redirige inmediatamente si la cotización no es editable para evitar acceso directo por URL.
+  useEffect(() => {
+    if (!shouldRedirectToQuotesList) return;
+    router.replace("/sales/quotes");
+  }, [shouldRedirectToQuotesList, router]);
 
   // Inicializa el cliente seleccionado y los servicios extras una sola vez al cargar la cotización.
   // Hacerlo dentro del render provoca rerenders extra justo cuando el formulario intenta hidratarse.
   useEffect(() => {
-    if (!quoteData || !initialFormValues || extraServicesInitialized) return;
+    if (!quoteData || !initialFormValues || extraServicesInitialized || shouldRedirectToQuotesList) {
+      return;
+    }
 
     setSelectedCustomerId(quoteData.cliente || 0);
     setCustomerSelectedFromSearch(quoteData.cliente > 0);
@@ -494,7 +505,7 @@ export function useQuoteEditForm(quoteId: number) {
       }))
     );
     setExtraServicesInitialized(true);
-  }, [extraServicesInitialized, initialFormValues, quoteData]);
+  }, [extraServicesInitialized, initialFormValues, quoteData, shouldRedirectToQuotesList]);
 
   const { addresses: customerAddresses } = useCustomerAddresses({
     customerId: selectedCustomerId,

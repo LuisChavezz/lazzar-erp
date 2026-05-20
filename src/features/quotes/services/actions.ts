@@ -30,4 +30,10 @@ export const updateQuoteStatus = async (id: number, estatus: number): Promise<Qu
 export const updateQuote = async (cotizacion_id: number, quote: Partial<QuoteCreate>): Promise<QuoteById> => {
   const response = await v1_api.post<QuoteById>(`/ventas/cotizaciones/onboarding/`, { ...quote, cotizacion_id });
   return response.data;
-}
+};
+
+// ─── Envía la cotización a revisión (Borrador → Por Autorizar) ─────────────────
+export const submitQuoteForReview = async (id: number): Promise<Quote> => {
+  const response = await v1_api.post<Quote>(`/ventas/cotizaciones/${id}/enviar-revision/`);
+  return response.data;
+};

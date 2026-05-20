@@ -1,19 +1,20 @@
 "use client";
 
-import { useState, useMemo, useTransition, useCallback, lazy, Suspense } from "react";
+import { useState, useMemo, useTransition, useCallback, useRef, useEffect, lazy, Suspense } from "react";
 import Link from "next/link";
 import { DragDropProvider, DragOverlay } from "@dnd-kit/react";
 import type { DragEndEvent, DragStartEvent } from "@dnd-kit/dom";
 import { useSession } from "next-auth/react";
 import { useQuotes } from "../hooks/useQuotes";
 import { useQuoteFilters } from "../hooks/useQuoteFilters";
-import { useUpdateQuoteStatus } from "../hooks/useUpdateQuoteStatus";
+import { useSubmitQuoteForReview } from "../hooks/useSubmitQuoteForReview";
 import { useQuoteFiltersStore, QuoteFiltersValue } from "../stores/quote-filters.store";
 import { Quote } from "../interfaces/quote.interface";
 import { LoadingSkeleton } from "@/src/components/LoadingSkeleton";
 import { KanbanToolbar } from "@/src/components/KanbanToolbar";
+import { ConfirmDialog } from "@/src/components/ConfirmDialog";
 import { QuoteKanbanColumn } from "./QuoteKanbanColumn";
-import { KANBAN_COLUMNS } from "../constants/kanbanColumns";
+import { KANBAN_COLUMNS, KanbanColumnConfig } from "../constants/kanbanColumns";
 import { QuoteKanbanCard } from "./QuoteKanbanCard";
 import { hasPermission } from "@/src/utils/permissions";
 
@@ -24,7 +25,14 @@ const QuoteFiltersDialog = lazy(() =>
 
 // ─── Tipos locales ────────────────────────────────────────────────────────────
 type ColumnMap = Record<number, Quote[]>;
-
+/** Datos del arrastre pendiente de confirmación */
+interface PendingDrop {
+  quote: Quote;
+  sourceEstatus: number;
+  targetEstatus: number;
+  targetLabel: string;
+  targetConfig: KanbanColumnConfig;
+}
 // ─── Inicializa el mapa de columnas desde el array plano de cotizaciones ───────
 function buildColumnMap(quotes: Quote[]): ColumnMap {
   const map: ColumnMap = { 1: [], 2: [], 3: [], 4: [], 5: [] };
@@ -54,16 +62,29 @@ export function QuoteKanbanBoard() {
     personaPagosOptions,
   } = useQuoteFilters(quotes);
 
-  // ─── Mutación de estatus ──────────────────────────────────────────────────
-  const updateStatus = useUpdateQuoteStatus();
+  // ─── Mutación de envío a revisión ────────────────────────────────────────
+  const submitQuoteForReviewMutation = useSubmitQuoteForReview();
 
   // ─── Estado local del tablero ─────────────────────────────────────────────
   const [columnMap, setColumnMap] = useState<ColumnMap | null>(null);
   const [activeQuote, setActiveQuote] = useState<Quote | null>(null);
   const [pendingIds, setPendingIds] = useState<Set<number>>(new Set());
+  const [pendingDrop, setPendingDrop] = useState<PendingDrop | null>(null);
+  const [returningId, setReturningId] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
   const [, startTransition] = useTransition();
+
+  // Refs para controlar el diálogo de confirmación sin race conditions
+  const dropConfirmedRef = useRef(false);
+  const returningTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Limpieza del timer al desmontar el componente
+  useEffect(() => {
+    return () => {
+      if (returningTimerRef.current) clearTimeout(returningTimerRef.current);
+    };
+  }, []);
 
   // Permisos
   const canCreateOrder = hasPermission("R-CRM", session?.user);
@@ -138,14 +159,16 @@ export function QuoteKanbanBoard() {
       const targetId = event.operation.target?.id;
       if (!sourceId || !targetId) return;
 
-      const targetCol = KANBAN_COLUMNS.find((c) => c.id === String(targetId));
+      // Solo se permite soltar en la columna "Por Autorizar" (estatus 2)
+      const targetCol = KANBAN_COLUMNS.find(
+        (c) => c.id === String(targetId) && c.estatus === 2
+      );
       if (!targetCol) return;
 
-      // Calcular el movimiento de forma síncrona para poder capturar el estado previo
       const currentMap = columnMap ?? buildColumnMap(quotes);
-
       let movedQuote: Quote | undefined;
       let sourceColEstatus: number | undefined;
+
       for (const [estatusKey, cards] of Object.entries(currentMap)) {
         const found = cards.find((q) => String(q.id) === String(sourceId));
         if (found) {
@@ -157,50 +180,78 @@ export function QuoteKanbanBoard() {
 
       if (!movedQuote || sourceColEstatus === undefined) return;
       if (sourceColEstatus === targetCol.estatus) return;
+      // Solo las cotizaciones en Borrador (estatus 1) pueden moverse
+      if (sourceColEstatus !== 1) return;
 
-      const quoteId = movedQuote.id;
-      const prevMap = currentMap;
-
-      const nextMap: ColumnMap = {
-        ...currentMap,
-        [sourceColEstatus]: currentMap[sourceColEstatus].filter(
-          (q) => q.id !== movedQuote!.id
-        ),
-        [targetCol.estatus]: [
-          ...currentMap[targetCol.estatus],
-          { ...movedQuote, estatus: targetCol.estatus, estatus_label: targetCol.label },
-        ],
-      };
-
-      // Aplicar actualización optimista
-      startTransition(() => setColumnMap(nextMap));
-
-      // Marcar cotización como pendiente y disparar mutación
-      setPendingIds((prev) => new Set(prev).add(quoteId));
-
-      updateStatus.mutate(
-        { id: quoteId, estatus: targetCol.estatus },
-        {
-          onSuccess: () => {
-            setPendingIds((prev) => {
-              const next = new Set(prev);
-              next.delete(quoteId);
-              return next;
-            });
-          },
-          onError: () => {
-            // Revertir al estado anterior en caso de error
-            setColumnMap(prevMap);
-            setPendingIds((prev) => {
-              const next = new Set(prev);
-              next.delete(quoteId);
-              return next;
-            });
-          },
-        }
-      );
+      // Mostrar diálogo de confirmación antes de aplicar el cambio
+      setPendingDrop({
+        quote: movedQuote,
+        sourceEstatus: sourceColEstatus,
+        targetEstatus: targetCol.estatus,
+        targetLabel: targetCol.label,
+        targetConfig: targetCol,
+      });
     },
-    [quotes, columnMap, updateStatus]
+    [quotes, columnMap]
+  );
+
+  // ─── Confirmar el arrastre: actualización optimista + mutación ────────────
+  const handleDropConfirm = useCallback(() => {
+    if (!pendingDrop) return;
+    dropConfirmedRef.current = true;
+
+    const { quote: movedQuote, sourceEstatus, targetEstatus, targetLabel } = pendingDrop;
+    const currentMap = columnMap ?? buildColumnMap(quotes);
+
+    const nextMap: ColumnMap = {
+      ...currentMap,
+      [sourceEstatus]: currentMap[sourceEstatus].filter((q) => q.id !== movedQuote.id),
+      [targetEstatus]: [
+        ...currentMap[targetEstatus],
+        { ...movedQuote, estatus: targetEstatus, estatus_label: targetLabel },
+      ],
+    };
+
+    startTransition(() => setColumnMap(nextMap));
+    setPendingIds((prev) => new Set(prev).add(movedQuote.id));
+    setPendingDrop(null);
+
+    submitQuoteForReviewMutation.mutate(movedQuote.id, {
+      onSuccess: () => {
+        setPendingIds((prev) => {
+          const next = new Set(prev);
+          next.delete(movedQuote.id);
+          return next;
+        });
+      },
+      onError: () => {
+        // Revertir al mapa anterior en caso de error
+        setColumnMap(currentMap);
+        setPendingIds((prev) => {
+          const next = new Set(prev);
+          next.delete(movedQuote.id);
+          return next;
+        });
+      },
+    });
+  }, [pendingDrop, columnMap, quotes, submitQuoteForReviewMutation]);
+
+  // ─── Cancelar el arrastre: animar la tarjeta de regreso a su columna ──────
+  const handleDropDialogOpenChange = useCallback(
+    (open: boolean) => {
+      if (!open) {
+        if (!dropConfirmedRef.current && pendingDrop) {
+          // El usuario canceló — activar la animación de retorno
+          const quoteId = pendingDrop.quote.id;
+          setPendingDrop(null);
+          setReturningId(quoteId);
+          if (returningTimerRef.current) clearTimeout(returningTimerRef.current);
+          returningTimerRef.current = setTimeout(() => setReturningId(null), 800);
+        }
+        dropConfirmedRef.current = false;
+      }
+    },
+    [pendingDrop]
   );
 
   // ─── Estado de carga ───────────────────────────────────────────────────────
@@ -261,7 +312,7 @@ export function QuoteKanbanBoard() {
               totales
             </span>
           )}
-          {" "}— arrastra las cards entre columnas para persistir el cambio de estatus
+          {" "}— arrastra las cotizaciones en <strong>Borrador</strong> a <strong>Por Autorizar</strong> para enviar a revisión
         </p>
         {pendingIds.size > 0 && (
           <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-300 font-medium ml-auto flex items-center gap-1.5 animate-pulse">
@@ -285,6 +336,7 @@ export function QuoteKanbanBoard() {
                 config={col}
                 quotes={resolvedMap[col.estatus] ?? []}
                 pendingIds={pendingIds}
+                returningId={returningId}
               />
             </div>
           ))}
@@ -299,6 +351,22 @@ export function QuoteKanbanBoard() {
           ) : null}
         </DragOverlay>
       </DragDropProvider>
+
+      {/* Diálogo de confirmación para arrastre col-1 → col-2 */}
+      <ConfirmDialog
+        open={!!pendingDrop}
+        onOpenChange={handleDropDialogOpenChange}
+        title="Enviar a revisión"
+        description={
+          pendingDrop
+            ? `La cotización #${pendingDrop.quote.id} pasará a "${pendingDrop.targetLabel}". Mientras esté en ese estado no podrá editarse. ¿Deseas continuar?`
+            : ""
+        }
+        confirmText="Enviar a revisión"
+        cancelText="Cancelar"
+        confirmColor="blue"
+        onConfirm={handleDropConfirm}
+      />
 
       {/* Diálogo de filtros (carga diferida) */}
       <Suspense fallback={null}>

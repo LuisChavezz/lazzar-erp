@@ -17,12 +17,17 @@ const PAGE_SIZE = 4;
 // ─── Props ────────────────────────────────────────────────────────────────────
 interface QuoteKanbanColumnProps {
   config: KanbanColumnConfig;
-  quotes: Quote[];  /** IDs de cotizaciones con mutación pendiente (actualización de estatus en curso) */
-  pendingIds?: Set<number>;}
+  quotes: Quote[];
+  /** IDs de cotizaciones con mutación pendiente (actualización de estatus en curso) */
+  pendingIds?: Set<number>;
+  /** ID de la cotización que regresa a la columna tras cancelar un arrastre */
+  returningId?: number | null;
+}
 
 // ─── Componente ───────────────────────────────────────────────────────────────
-export function QuoteKanbanColumn({ config, quotes, pendingIds }: QuoteKanbanColumnProps) {
-  const { ref, isDropTarget } = useDroppable({ id: config.id });
+export function QuoteKanbanColumn({ config, quotes, pendingIds, returningId }: QuoteKanbanColumnProps) {
+  // Solo la columna "Por Autorizar" (estatus 2) acepta drops
+  const { ref, isDropTarget } = useDroppable({ id: config.id, disabled: config.estatus !== 2 });
   const [page, setPage] = useState(0);
 
   const totalPages = Math.max(1, Math.ceil(quotes.length / PAGE_SIZE));
@@ -126,6 +131,7 @@ export function QuoteKanbanColumn({ config, quotes, pendingIds }: QuoteKanbanCol
               key={quote.id}
               quote={quote}
               isPending={pendingIds?.has(quote.id) ?? false}
+              isReturning={returningId === quote.id}
             />
           ))
         )}

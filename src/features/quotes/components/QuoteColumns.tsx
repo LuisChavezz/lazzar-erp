@@ -16,6 +16,7 @@ import {
   EditIcon,
   EmailIcon,
   // FacturacionIcon,
+  PaperPlaneIcon,
   RejectIcon,
   ViewIcon,
 } from "../../../components/Icons";
@@ -26,7 +27,13 @@ import { useApproveQuote } from "../../operations/hooks/useApproveQuote";
 import { useRejectQuote } from "../../operations/hooks/useRejectQuote";
 import { useGoogleSendEmail } from "@/src/features/google/hooks/useGoogleSendEmail";
 import { useDownloadQuotePdf } from "../hooks/useDownloadQuotePdf";
+import { useSubmitQuoteForReview } from "../hooks/useSubmitQuoteForReview";
 import { capitalize } from "@/src/utils/capitalize";
+import {
+  canEditQuote,
+  canManageQuoteAuthorization,
+  canSubmitQuoteForReview,
+} from "../utils/quoteStatusRules";
 
 const QuoteDetails = dynamic(
   () => import("./QuoteDetails").then((mod) => mod.QuoteDetails),
@@ -53,11 +60,39 @@ const ActionsCell = ({ quote }: { quote: Quote }) => {
   const [isViewOpen, setIsViewOpen] = useState(false);
   const [isAuthorizeOpen, setIsAuthorizeOpen] = useState(false);
   const [isRejectOpen, setIsRejectOpen] = useState(false);
+  const [isSubmitForReviewOpen, setIsSubmitForReviewOpen] = useState(false);
   const { mutate: authorizeOrder, isPending: isAuthorizingOrder } = useApproveQuote();
   const { mutate: rejectOrder, isPending: isRejectingOrder } = useRejectQuote();
   const { mutate: sendQuoteEmail, isPending: isSendingQuoteEmail } = useGoogleSendEmail();
   const { mutate: downloadPdf, isPending: isDownloadingPdf } = useDownloadQuotePdf();
-  const canManageAuthorization = quote.estatus === 2;
+  const { mutate: submitQuoteForReview, isPending: isSubmittingForReview } =
+    useSubmitQuoteForReview();
+
+  // ─── Permisos de acción por estatus ───────────────────────────────────────
+  const canEdit = canEditQuote(quote.estatus);
+  const canSendToReview = canSubmitQuoteForReview(quote.estatus);
+  const canManageAuthorization = canManageQuoteAuthorization(quote.estatus);
+
+  const handleOpenAuthorizeDialog = () => {
+    if (!canManageAuthorization) return;
+    setIsAuthorizeOpen(true);
+  };
+
+  const handleOpenRejectDialog = () => {
+    if (!canManageAuthorization) return;
+    setIsRejectOpen(true);
+  };
+
+  const handleAuthorize = () => {
+    if (!canManageAuthorization) return;
+    authorizeOrder(quote.id);
+  };
+
+  const handleReject = () => {
+    if (!canManageAuthorization) return;
+    rejectOrder(quote.id);
+  };
+
   const items: ActionMenuItem[] = [
     {
       label: "Ver detalles",
@@ -68,6 +103,14 @@ const ActionsCell = ({ quote }: { quote: Quote }) => {
       label: "Editar",
       icon: EditIcon,
       onSelect: () => router.push(`/sales/quotes/${quote.id}/edit`),
+      visible: canEdit,
+    },
+    {
+      label: "Enviar a revisión",
+      icon: PaperPlaneIcon,
+      onSelect: () => setIsSubmitForReviewOpen(true),
+      disabled: isSubmittingForReview,
+      visible: canSendToReview,
     },
     {
       label: "Enviar correo",
@@ -84,7 +127,7 @@ const ActionsCell = ({ quote }: { quote: Quote }) => {
     {
       label: "Autorizar",
       icon: CheckCircleIcon,
-      onSelect: () => setIsAuthorizeOpen(true),
+      onSelect: handleOpenAuthorizeDialog,
       disabled: isAuthorizingOrder || isRejectingOrder,
       permission: "R-MESACONTROL",
       visible: canManageAuthorization,
@@ -92,7 +135,7 @@ const ActionsCell = ({ quote }: { quote: Quote }) => {
     {
       label: "Rechazar",
       icon: RejectIcon,
-      onSelect: () => setIsRejectOpen(true),
+      onSelect: handleOpenRejectDialog,
       disabled: isRejectingOrder || isAuthorizingOrder,
       permission: "R-MESACONTROL",
       visible: canManageAuthorization,
@@ -119,22 +162,31 @@ const ActionsCell = ({ quote }: { quote: Quote }) => {
         </MainDialog>
       )}
       <ConfirmDialog
-        open={isAuthorizeOpen}
+        open={isAuthorizeOpen && canManageAuthorization}
         onOpenChange={setIsAuthorizeOpen}
         title="Autorizar pedido"
         description={`¿Deseas autorizar el pedido #${quote.id}?`}
         confirmText={isAuthorizingOrder ? "Autorizando..." : "Autorizar"}
         confirmColor="blue"
-        onConfirm={() => authorizeOrder(quote.id)}
+        onConfirm={handleAuthorize}
       />
       <ConfirmDialog
-        open={isRejectOpen}
+        open={isRejectOpen && canManageAuthorization}
         onOpenChange={setIsRejectOpen}
         title="Rechazar pedido"
         description={`¿Deseas rechazar el pedido #${quote.id}?`}
         confirmText={isRejectingOrder ? "Rechazando..." : "Rechazar"}
         confirmColor="red"
-        onConfirm={() => rejectOrder(quote.id)}
+        onConfirm={handleReject}
+      />
+      <ConfirmDialog
+        open={isSubmitForReviewOpen}
+        onOpenChange={setIsSubmitForReviewOpen}
+        title="Enviar a revisión"
+        description={`Mientras la cotización #${quote.id} esté en revisión no podrá editarse. ¿Deseas continuar?`}
+        confirmText={isSubmittingForReview ? "Enviando..." : "Enviar a revisión"}
+        confirmColor="blue"
+        onConfirm={() => submitQuoteForReview(quote.id)}
       />
     </div>
   );

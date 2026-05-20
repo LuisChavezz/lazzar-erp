@@ -1,5 +1,6 @@
 import { Metadata } from "next";
 import dynamic from "next/dynamic";
+import { redirectIfQuoteCannotBeEdited } from "@/src/features/quotes/services/quoteEditAccess.server";
 
 export const metadata: Metadata = {
   title: "Editar Cotización | ERP",
@@ -31,6 +32,8 @@ interface QuoteEditPageProps {
 export default async function QuoteEditPage({ params }: QuoteEditPageProps) {
   const { id } = await params;
   const quoteId = Number(id);
+
+  await redirectIfQuoteCannotBeEdited(quoteId);
 
   return (
     <div className="w-full space-y-6 pt-2">
