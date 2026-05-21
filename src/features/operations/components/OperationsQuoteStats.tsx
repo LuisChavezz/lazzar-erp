@@ -4,25 +4,30 @@ import { useMemo } from "react";
 import KpiGrid, { KpiItem } from "@/src/components/KpiGrid";
 import { LoadingSkeleton } from "@/src/components/LoadingSkeleton";
 import { PedidosIcon, RejectIcon } from "@/src/components/Icons";
-import { useQuotes } from "@/src/features/quotes/hooks/useQuotes";
+import { useOperationsQuotes } from "../hooks/useOperationsQuotes";
 
-export const QuoteStats = () => {
-  const { quotes, isLoading } = useQuotes();
+export const OperationsQuoteStats = () => {
+  const { operationsQuotes, isLoading } = useOperationsQuotes();
 
   const pendingApprovalCount = useMemo(
-    () => quotes.filter((quote) => quote.estatus === 2).length,
-    [quotes]
+    () =>
+      operationsQuotes.filter((operationsQuote) => operationsQuote.estatus === 2)
+        .length,
+    [operationsQuotes]
   );
   const rejectedCount = useMemo(
-    () => quotes.filter((quote) => quote.estatus === 4).length,
-    [quotes]
+    () =>
+      operationsQuotes.filter((operationsQuote) => operationsQuote.estatus === 4)
+        .length,
+    [operationsQuotes]
   );
   const rejectedRatio = useMemo(() => {
-    if (quotes.length === 0) {
+    if (operationsQuotes.length === 0) {
       return 0;
     }
-    return Math.round((rejectedCount / quotes.length) * 100);
-  }, [quotes.length, rejectedCount]);
+
+    return Math.round((rejectedCount / operationsQuotes.length) * 100);
+  }, [operationsQuotes.length, rejectedCount]);
 
   const items: KpiItem[] = [
     {

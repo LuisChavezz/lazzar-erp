@@ -1,7 +1,7 @@
 import { Metadata } from "next";
 import { OperationsKpiGrid } from "@/src/features/operations/components/OperationsKpiGrid";
 import { PendingApprovalQueue } from "@/src/features/operations/components/PendingApprovalQueue";
-import { QuotesStatusBreakdown } from "@/src/features/operations/components/QuotesStatusBreakdown";
+import { OperationsQuotesStatusBreakdown } from "@/src/features/operations/components/OperationsQuotesStatusBreakdown";
 import { RecentActivityFeed } from "@/src/features/operations/components/RecentActivityFeed";
 import { OperationsQuickActions } from "@/src/features/operations/components/OperationsQuickActions";
 
@@ -48,7 +48,7 @@ export default function OperationsPage() {
         {/* Panel lateral */}
         <div className="space-y-6">
           <OperationsQuickActions />
-          <QuotesStatusBreakdown />
+          <OperationsQuotesStatusBreakdown />
         </div>
       </div>
 

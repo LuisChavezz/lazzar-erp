@@ -1,16 +1,12 @@
 "use client";
 
 import { useMemo } from "react";
-import { useQuotes } from "@/src/features/quotes/hooks/useQuotes";
-import { formatCurrency } from "@/src/utils/formatCurrency";
 import { LoadingSkeleton } from "@/src/components/LoadingSkeleton";
-import { KANBAN_COLUMNS } from "@/src/features/quotes/constants/kanbanColumns";
+import { KANBAN_COLUMNS as OPERATIONS_QUOTES_STATUS_COLUMNS } from "@/src/features/quotes/constants/kanbanColumns";
+import { formatCurrency } from "@/src/utils/formatCurrency";
+import { useOperationsQuotes } from "../hooks/useOperationsQuotes";
 
-// ─── Mapa de colores por estatus ──────────────────────────────────────────────
-const COLOR_MAP: Record<
-  number,
-  { dot: string; bar: string; text: string }
-> = {
+const COLOR_MAP: Record<number, { dot: string; bar: string; text: string }> = {
   1: {
     dot: "bg-slate-400",
     bar: "bg-slate-400",
@@ -32,39 +28,48 @@ const COLOR_MAP: Record<
     text: "text-rose-700 dark:text-rose-300",
   },
   5: {
-    dot: "bg-violet-400",
-    bar: "bg-violet-400",
-    text: "text-violet-700 dark:text-violet-300",
+    dot: "bg-orange-400",
+    bar: "bg-orange-400",
+    text: "text-orange-700 dark:text-orange-300",
   },
 };
 
-// ─── Componente ───────────────────────────────────────────────────────────────
-export const QuotesStatusBreakdown = () => {
-  const { quotes, isLoading } = useQuotes();
+export const OperationsQuotesStatusBreakdown = () => {
+  const { operationsQuotes, isLoading } = useOperationsQuotes();
 
   const rows = useMemo(() => {
-    const total = quotes.length;
-    return KANBAN_COLUMNS.map((col) => {
-      const group = quotes.filter((q) => q.estatus === col.estatus);
-      const count = group.length;
-      const amount = group.reduce(
-        (sum, q) => sum + (Number(q.gran_total) || 0),
+    const total = operationsQuotes.length;
+
+    return OPERATIONS_QUOTES_STATUS_COLUMNS.map((operationsQuoteStatusColumn) => {
+      const groupedOperationsQuotes = operationsQuotes.filter(
+        (operationsQuote) =>
+          operationsQuote.estatus === operationsQuoteStatusColumn.estatus
+      );
+      const count = groupedOperationsQuotes.length;
+      const amount = groupedOperationsQuotes.reduce(
+        (sum, operationsQuote) =>
+          sum + (Number(operationsQuote.gran_total) || 0),
         0
       );
       const pct = total > 0 ? Math.round((count / total) * 100) : 0;
-      return { ...col, count, amount, pct };
+
+      return { ...operationsQuoteStatusColumn, count, amount, pct };
     });
-  }, [quotes]);
+  }, [operationsQuotes]);
 
   const totalAmount = useMemo(
-    () => quotes.reduce((sum, q) => sum + (Number(q.gran_total) || 0), 0),
-    [quotes]
+    () =>
+      operationsQuotes.reduce(
+        (sum, operationsQuote) => sum + (Number(operationsQuote.gran_total) || 0),
+        0
+      ),
+    [operationsQuotes]
   );
 
   return (
     <section
       className="bg-white dark:bg-black border border-slate-200 dark:border-white/10 rounded-xl shadow-sm p-6 flex flex-col"
-      aria-label="Distribución de cotizaciones por estatus"
+      aria-label="Distribución de cotizaciones operativas por estatus"
     >
       <h3 className="font-bold text-slate-800 dark:text-white text-sm mb-5">
         Distribución por Estatus
@@ -72,17 +77,17 @@ export const QuotesStatusBreakdown = () => {
 
       {isLoading ? (
         <div className="space-y-3.5">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <LoadingSkeleton key={i} className="h-9 rounded-lg" />
+          {Array.from({ length: 5 }).map((_, index) => (
+            <LoadingSkeleton key={index} className="h-9 rounded-lg" />
           ))}
         </div>
       ) : (
         <div className="space-y-3.5">
           {rows.map((row) => {
             const colors = COLOR_MAP[row.estatus] ?? COLOR_MAP[1];
+
             return (
               <div key={row.id}>
-                {/* Etiqueta + valores */}
                 <div className="flex items-center justify-between text-xs mb-1.5">
                   <div className="flex items-center gap-2">
                     <span
@@ -102,7 +107,6 @@ export const QuotesStatusBreakdown = () => {
                   </div>
                 </div>
 
-                {/* Barra de progreso */}
                 <div className="w-full h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
                   <div
                     role="progressbar"
@@ -120,7 +124,6 @@ export const QuotesStatusBreakdown = () => {
         </div>
       )}
 
-      {/* Totales */}
       {!isLoading && (
         <div className="mt-5 pt-4 border-t border-slate-100 dark:border-white/6 space-y-1">
           <div className="flex items-center justify-between">
@@ -128,7 +131,7 @@ export const QuotesStatusBreakdown = () => {
               Total cotizaciones
             </span>
             <span className="text-sm font-bold tabular-nums text-slate-800 dark:text-white">
-              {quotes.length}
+              {operationsQuotes.length}
             </span>
           </div>
           <div className="flex items-center justify-between">

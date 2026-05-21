@@ -9,21 +9,35 @@ import {
   TrendingUpIcon,
   ClockIcon,
 } from "@/src/components/Icons";
-import { useQuotes } from "@/src/features/quotes/hooks/useQuotes";
 import { formatCurrency } from "@/src/utils/formatCurrency";
+import { useOperationsQuotes } from "../hooks/useOperationsQuotes";
 
 // ─── Componente ───────────────────────────────────────────────────────────────
 export const OperationsKpiGrid = () => {
-  const { quotes, isLoading } = useQuotes();
+  const { operationsQuotes, isLoading } = useOperationsQuotes();
 
   const stats = useMemo(() => {
-    const pending = quotes.filter((q) => q.estatus === 2).length;
-    const approved = quotes.filter((q) => q.estatus === 3).length;
-    const totalApprovedAmount = quotes
-      .filter((q) => q.estatus === 3)
-      .reduce((sum, q) => sum + (Number(q.gran_total) || 0), 0);
-    return { total: quotes.length, pending, approved, totalApprovedAmount };
-  }, [quotes]);
+    const pending = operationsQuotes.filter(
+      (operationsQuote) => operationsQuote.estatus === 2
+    ).length;
+    const approved = operationsQuotes.filter(
+      (operationsQuote) => operationsQuote.estatus === 3
+    ).length;
+    const totalApprovedAmount = operationsQuotes
+      .filter((operationsQuote) => operationsQuote.estatus === 3)
+      .reduce(
+        (sum, operationsQuote) =>
+          sum + (Number(operationsQuote.gran_total) || 0),
+        0
+      );
+
+    return {
+      total: operationsQuotes.length,
+      pending,
+      approved,
+      totalApprovedAmount,
+    };
+  }, [operationsQuotes]);
 
   const items: KpiItem[] = [
     {

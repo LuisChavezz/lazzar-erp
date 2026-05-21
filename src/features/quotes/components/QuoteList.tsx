@@ -13,8 +13,8 @@ import { useQuoteFilters } from "../hooks/useQuoteFilters";
 import { QuoteFiltersValue, useQuoteFiltersStore } from "../stores/quote-filters.store";
 import { LoadingSkeleton } from "@/src/components/LoadingSkeleton";
 import { useQuotes } from "../hooks/useQuotes";
-import { approveOrderMutationKey } from "../../operations/hooks/useApproveQuote";
-import { rejectOrderMutationKey } from "../../operations/hooks/useRejectQuote";
+import { approveOperationsQuoteMutationKey } from "../../operations/hooks/useApproveOperationsQuote";
+import { rejectOperationsQuoteMutationKey } from "../../operations/hooks/useRejectOperationsQuote";
 import { hasPermission } from "@/src/utils/permissions";
 
 const QuoteFiltersDialog = lazy(() =>
@@ -28,8 +28,10 @@ export const QuoteList = () => {
   const filtersHydrated = useQuoteFiltersStore((state) => state.hasHydrated);
   const [visibleOrders, setVisibleOrders] = useState<Quote[]>([]);
   const [visibleColumns, setVisibleColumns] = useState<DataTableVisibleColumn<Quote>[]>([]);
-  const isAuthorizingOrder = useIsMutating({ mutationKey: approveOrderMutationKey }) > 0;
-  const isRejectingOrder = useIsMutating({ mutationKey: rejectOrderMutationKey }) > 0;
+  const isAuthorizingOrder =
+    useIsMutating({ mutationKey: approveOperationsQuoteMutationKey }) > 0;
+  const isRejectingOrder =
+    useIsMutating({ mutationKey: rejectOperationsQuoteMutationKey }) > 0;
   const isUpdatingOrderStatus = isAuthorizingOrder || isRejectingOrder;
   const canCreateOrder = hasPermission("R-CRM", session?.user);
   const baseOrders = quotes;
