@@ -16,8 +16,8 @@ import {
   RejectIcon,
   ViewIcon,
 } from "@/src/components/Icons";
-import { useApproveQuote } from "../../operations/hooks/useApproveQuote";
-import { useRejectQuote } from "../../operations/hooks/useRejectQuote";
+import { useApproveOperationsQuote } from "../../operations/hooks/useApproveOperationsQuote";
+import { useRejectOperationsQuote } from "../../operations/hooks/useRejectOperationsQuote";
 import { useGoogleSendEmail } from "../../google/hooks/useGoogleSendEmail";
 import { useDownloadQuotePdf } from "../hooks/useDownloadQuotePdf";
 import { useSubmitQuoteForReview } from "../hooks/useSubmitQuoteForReview";
@@ -72,8 +72,12 @@ export function QuoteCardActions({ quote, align = "end" }: QuoteCardActionsProps
   const [isRejectOpen, setIsRejectOpen] = useState(false);
   const [isSubmitForReviewOpen, setIsSubmitForReviewOpen] = useState(false);
 
-  const { mutate: authorizeOrder, isPending: isAuthorizingOrder } = useApproveQuote();
-  const { mutate: rejectOrder, isPending: isRejectingOrder } = useRejectQuote();
+  const {
+    mutate: authorizeOrder,
+    isPending: isAuthorizingOrder,
+  } = useApproveOperationsQuote();
+  const { mutate: rejectOrder, isPending: isRejectingOrder } =
+    useRejectOperationsQuote();
   const { mutate: sendQuoteEmail, isPending: isSendingQuoteEmail } = useGoogleSendEmail();
   const { mutate: downloadPdf, isPending: isDownloadingPdf } = useDownloadQuotePdf();
   const { mutate: submitQuoteForReview, isPending: isSubmittingForReview } =

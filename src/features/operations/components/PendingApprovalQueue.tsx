@@ -3,11 +3,10 @@
 import { useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { useQuotes } from "@/src/features/quotes/hooks/useQuotes";
-import { useApproveQuote } from "@/src/features/operations/hooks/useApproveQuote";
-import { useRejectQuote } from "@/src/features/operations/hooks/useRejectQuote";
 import { formatCurrency } from "@/src/utils/formatCurrency";
-import { formatQuoteDateTime } from "@/src/features/quotes/utils/quoteDetailsFormatters";
+import {
+  formatQuoteDateTime as formatOperationsQuoteDateTime,
+} from "@/src/features/quotes/utils/quoteDetailsFormatters";
 import {
   CheckCircleIcon,
   RejectIcon,
@@ -19,10 +18,12 @@ import { LoadingSkeleton } from "@/src/components/LoadingSkeleton";
 import { ConfirmDialog } from "@/src/components/ConfirmDialog";
 import { MainDialog } from "@/src/components/MainDialog";
 import { DialogHeader } from "@/src/components/DialogHeader";
-import type { Quote } from "@/src/features/quotes/interfaces/quote.interface";
+import { useApproveOperationsQuote } from "@/src/features/operations/hooks/useApproveOperationsQuote";
+import { useRejectOperationsQuote } from "@/src/features/operations/hooks/useRejectOperationsQuote";
+import { useOperationsQuotes } from "@/src/features/operations/hooks/useOperationsQuotes";
+import type { OperationsQuote } from "@/src/features/operations/interfaces/operations-quote.interface";
 
-// ─── Carga diferida del detalle de cotización ─────────────────────────────────
-const QuoteDetails = dynamic(
+const OperationsQuoteDetails = dynamic(
   () =>
     import("@/src/features/quotes/components/QuoteDetails").then((mod) => ({
       default: mod.QuoteDetails,
@@ -44,90 +45,92 @@ const QuoteDetails = dynamic(
   }
 );
 
-// ─── Colores del header del diálogo por estatus ───────────────────────────────
-const STATUS_DIALOG_COLORS: Record<number, "sky" | "emerald" | "amber" | "rose"> = {
+const OPERATIONS_QUOTE_DIALOG_COLORS: Record<
+  number,
+  "sky" | "emerald" | "amber" | "rose"
+> = {
   1: "amber",
   2: "sky",
   3: "emerald",
   4: "rose",
 };
 
-// ─── Máximo de ítems visibles sin scroll ─────────────────────────────────────
 const MAX_VISIBLE = 6;
 
-// ─── Componente ───────────────────────────────────────────────────────────────
 export const PendingApprovalQueue = () => {
-  const { quotes, isLoading } = useQuotes();
-  const approveQuote = useApproveQuote();
-  const rejectQuote = useRejectQuote();
+  const { operationsQuotes, isLoading } = useOperationsQuotes();
+  const approveOperationsQuote = useApproveOperationsQuote();
+  const rejectOperationsQuote = useRejectOperationsQuote();
 
-  // IDs de cotizaciones con mutación en vuelo
-  const [processingIds, setProcessingIds] = useState<Set<number>>(new Set());
-  // Cotización activa en el modal de detalle
-  const [viewQuote, setViewQuote] = useState<Quote | null>(null);
-  // Acción de confirmación pendiente
-  const [confirmAction, setConfirmAction] = useState<{
-    type: "approve" | "reject";
-    quote: Quote;
-  } | null>(null);
+  const [processingOperationsQuoteIds, setProcessingOperationsQuoteIds] =
+    useState<Set<number>>(new Set());
+  const [activeOperationsQuote, setActiveOperationsQuote] =
+    useState<OperationsQuote | null>(null);
+  const [pendingOperationsQuoteAction, setPendingOperationsQuoteAction] =
+    useState<{
+      type: "approve" | "reject";
+      operationsQuote: OperationsQuote;
+    } | null>(null);
 
-  // ─── Cotizaciones filtradas: estatus 2, ordenadas por fecha (más antiguas primero) ──
-  const pendingQuotes = useMemo(
+  const pendingOperationsQuotes = useMemo(
     () =>
-      quotes
-        .filter((q) => q.estatus === 2)
+      operationsQuotes
+        .filter((operationsQuote) => operationsQuote.estatus === 2)
         .sort(
-          (a, b) =>
-            new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+          (firstOperationsQuote, secondOperationsQuote) =>
+            new Date(firstOperationsQuote.created_at).getTime() -
+            new Date(secondOperationsQuote.created_at).getTime()
         ),
-    [quotes]
+    [operationsQuotes]
   );
 
-  const visible = pendingQuotes.slice(0, MAX_VISIBLE);
-  const remaining = pendingQuotes.length - MAX_VISIBLE;
+  const visibleOperationsQuotes = pendingOperationsQuotes.slice(0, MAX_VISIBLE);
+  const remainingOperationsQuotes =
+    pendingOperationsQuotes.length - MAX_VISIBLE;
 
-  // ─── Helpers de estado de procesamiento ──────────────────────────────────
   const markProcessing = (id: number) =>
-    setProcessingIds((prev) => new Set(prev).add(id));
+    setProcessingOperationsQuoteIds((prev) => new Set(prev).add(id));
 
   const unmarkProcessing = (id: number) =>
-    setProcessingIds((prev) => {
+    setProcessingOperationsQuoteIds((prev) => {
       const next = new Set(prev);
       next.delete(id);
       return next;
     });
 
-  // ─── Solicitar acción: cierra el modal de detalle y abre el confirm ───────
-  const handleRequestAction = (type: "approve" | "reject", quote: Quote) => {
-    setViewQuote(null);
-    setConfirmAction({ type, quote });
+  const handleRequestAction = (
+    type: "approve" | "reject",
+    operationsQuote: OperationsQuote
+  ) => {
+    setActiveOperationsQuote(null);
+    setPendingOperationsQuoteAction({ type, operationsQuote });
   };
 
-  // ─── Confirmar acción ────────────────────────────────────────────────────
   const handleConfirm = () => {
-    if (!confirmAction) return;
-    const { type, quote } = confirmAction;
-    markProcessing(quote.id);
-    setConfirmAction(null);
+    if (!pendingOperationsQuoteAction) return;
+
+    const { type, operationsQuote } = pendingOperationsQuoteAction;
+    markProcessing(operationsQuote.id);
+    setPendingOperationsQuoteAction(null);
 
     if (type === "approve") {
-      approveQuote.mutate(quote.id, {
-        onSettled: () => unmarkProcessing(quote.id),
+      approveOperationsQuote.mutate(operationsQuote.id, {
+        onSettled: () => unmarkProcessing(operationsQuote.id),
       });
-    } else {
-      rejectQuote.mutate(quote.id, {
-        onSettled: () => unmarkProcessing(quote.id),
-      });
+      return;
     }
+
+    rejectOperationsQuote.mutate(operationsQuote.id, {
+      onSettled: () => unmarkProcessing(operationsQuote.id),
+    });
   };
 
   return (
     <>
       <section
         className="bg-white dark:bg-black border border-slate-200 dark:border-white/10 rounded-xl shadow-sm overflow-hidden flex flex-col h-full"
-        aria-label="Cola de cotizaciones pendientes de autorización"
+        aria-label="Cola de cotizaciones operativas pendientes de autorización"
       >
-        {/* ── Encabezado ────────────────────────────────────────────────── */}
         <div className="px-6 py-5 border-b border-slate-100 dark:border-white/10 flex items-center justify-between bg-slate-50/50 dark:bg-white/2 shrink-0">
           <div className="flex items-center gap-3">
             <div className="p-1.5 rounded-md bg-amber-100 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400">
@@ -139,32 +142,29 @@ export const PendingApprovalQueue = () => {
               </h3>
               {!isLoading && (
                 <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-                  {pendingQuotes.length === 0
+                  {pendingOperationsQuotes.length === 0
                     ? "Sin pendientes · todo al día"
-                    : `${pendingQuotes.length} cotización${pendingQuotes.length !== 1 ? "es" : ""} esperando revisión`}
+                    : `${pendingOperationsQuotes.length} cotización${pendingOperationsQuotes.length !== 1 ? "es" : ""} esperando revisión`}
                 </p>
               )}
             </div>
           </div>
 
-          {/* Badge con conteo de urgencia */}
-          {pendingQuotes.length > 0 && (
+          {pendingOperationsQuotes.length > 0 && (
             <span className="flex items-center justify-center min-w-6 h-6 rounded-full text-[11px] font-bold bg-amber-500 text-white px-1.5 animate-pulse">
-              {pendingQuotes.length}
+              {pendingOperationsQuotes.length}
             </span>
           )}
         </div>
 
-        {/* ── Lista ─────────────────────────────────────────────────────── */}
         <div className="flex-1 min-h-0">
           {isLoading ? (
             <div className="p-4 space-y-3">
-              {Array.from({ length: 3 }).map((_, i) => (
-                <LoadingSkeleton key={i} className="h-16 rounded-lg" />
+              {Array.from({ length: 3 }).map((_, index) => (
+                <LoadingSkeleton key={index} className="h-16 rounded-lg" />
               ))}
             </div>
-          ) : visible.length === 0 ? (
-            /* Estado vacío */
+          ) : visibleOperationsQuotes.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-14 gap-3">
               <div className="p-3 rounded-full bg-emerald-50 dark:bg-emerald-500/10">
                 <InboxIcon className="w-6 h-6 text-emerald-500" />
@@ -178,19 +178,27 @@ export const PendingApprovalQueue = () => {
             </div>
           ) : (
             <div className="divide-y divide-slate-100 dark:divide-white/6">
-              {visible.map((quote) => {
-                const isProcessing = processingIds.has(quote.id);
+              {visibleOperationsQuotes.map((operationsQuote) => {
+                const isProcessing = processingOperationsQuoteIds.has(
+                  operationsQuote.id
+                );
 
                 return (
                   <div
-                    key={quote.id}
+                    key={operationsQuote.id}
                     role="button"
                     tabIndex={isProcessing ? -1 : 0}
-                    aria-label={`Ver detalles de cotización #${String(quote.id).padStart(5, "0")} de ${quote.cliente_nombre}`}
-                    onClick={() => !isProcessing && setViewQuote(quote)}
-                    onKeyDown={(e) =>
-                      e.key === "Enter" && !isProcessing && setViewQuote(quote)
+                    aria-label={`Ver detalles de cotización #${String(operationsQuote.id).padStart(5, "0")} de ${operationsQuote.cliente_nombre}`}
+                    onClick={() =>
+                      !isProcessing && setActiveOperationsQuote(operationsQuote)
                     }
+                    onKeyDown={(event) => {
+                      if (event.key !== "Enter" || isProcessing) {
+                        return;
+                      }
+
+                      setActiveOperationsQuote(operationsQuote);
+                    }}
                     className={[
                       "flex items-center gap-4 px-6 py-3.5 transition-colors",
                       isProcessing
@@ -198,45 +206,45 @@ export const PendingApprovalQueue = () => {
                         : "hover:bg-slate-50/60 dark:hover:bg-white/2 cursor-pointer",
                     ].join(" ")}
                   >
-                    {/* ID + cliente */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-0.5">
                         <span className="text-[10px] font-bold tracking-widest text-slate-400 dark:text-slate-500 uppercase">
-                          #{String(quote.id).padStart(5, "0")}
+                          #{String(operationsQuote.id).padStart(5, "0")}
                         </span>
                         <span className="text-[10px] text-slate-300 dark:text-slate-600">
                           ·
                         </span>
                         <span className="text-[10px] text-slate-400 dark:text-slate-500">
-                          {formatQuoteDateTime(quote.created_at, "d MMM yyyy")}
+                          {formatOperationsQuoteDateTime(
+                            operationsQuote.created_at,
+                            "d MMM yyyy"
+                          )}
                         </span>
                       </div>
                       <p className="text-sm font-semibold text-slate-800 dark:text-slate-100 truncate">
-                        {quote.cliente_nombre}
+                        {operationsQuote.cliente_nombre}
                       </p>
-                      {quote.oc && (
+                      {operationsQuote.oc && (
                         <p className="text-[11px] text-slate-400 dark:text-slate-500 truncate">
-                          OC: {quote.oc}
+                          OC: {operationsQuote.oc}
                         </p>
                       )}
                     </div>
 
-                    {/* Monto + piezas */}
                     <div className="text-right shrink-0">
                       <p className="text-sm font-bold font-mono text-slate-700 dark:text-slate-200">
-                        {formatCurrency(Number(quote.gran_total) || 0)}
+                        {formatCurrency(Number(operationsQuote.gran_total) || 0)}
                       </p>
-                      {quote.piezas != null && (
+                      {operationsQuote.piezas != null && (
                         <p className="text-[11px] text-slate-400 dark:text-slate-500">
-                          {quote.piezas} pzs
+                          {operationsQuote.piezas} pzs
                         </p>
                       )}
                     </div>
 
-                    {/* Acciones o spinner — stopPropagation para no abrir el modal */}
                     <div
                       className="flex items-center gap-1 shrink-0"
-                      onClick={(e) => e.stopPropagation()}
+                      onClick={(event) => event.stopPropagation()}
                     >
                       {isProcessing ? (
                         <div className="w-5 h-5 rounded-full border-2 border-slate-200 dark:border-slate-700 border-t-amber-500 animate-spin" />
@@ -244,16 +252,20 @@ export const PendingApprovalQueue = () => {
                         <>
                           <button
                             type="button"
-                            aria-label={`Autorizar cotización #${String(quote.id).padStart(5, "0")}`}
-                            onClick={() => handleRequestAction("approve", quote)}
+                            aria-label={`Autorizar cotización #${String(operationsQuote.id).padStart(5, "0")}`}
+                            onClick={() =>
+                              handleRequestAction("approve", operationsQuote)
+                            }
                             className="p-1.5 rounded-lg text-slate-300 dark:text-slate-600 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 dark:hover:text-emerald-400 transition-all cursor-pointer"
                           >
                             <CheckCircleIcon className="w-5 h-5" />
                           </button>
                           <button
                             type="button"
-                            aria-label={`Rechazar cotización #${String(quote.id).padStart(5, "0")}`}
-                            onClick={() => handleRequestAction("reject", quote)}
+                            aria-label={`Rechazar cotización #${String(operationsQuote.id).padStart(5, "0")}`}
+                            onClick={() =>
+                              handleRequestAction("reject", operationsQuote)
+                            }
                             className="p-1.5 rounded-lg text-slate-300 dark:text-slate-600 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-500/10 dark:hover:text-rose-400 transition-all cursor-pointer"
                           >
                             <RejectIcon className="w-5 h-5" />
@@ -268,65 +280,77 @@ export const PendingApprovalQueue = () => {
           )}
         </div>
 
-        {/* ── Footer "Ver más" ──────────────────────────────────────────── */}
-        {remaining > 0 && (
+        {remainingOperationsQuotes > 0 && (
           <div className="px-6 py-3 border-t border-slate-100 dark:border-white/6 bg-slate-50/50 dark:bg-white/2 shrink-0">
             <Link
               href="/operations/quotes"
               className="flex items-center justify-center gap-1.5 text-xs font-semibold text-amber-600 dark:text-amber-400 hover:text-amber-700 dark:hover:text-amber-300 transition-colors"
             >
-              Ver {remaining} más
+              Ver {remainingOperationsQuotes} más
               <ChevronRightIcon className="w-3.5 h-3.5" />
             </Link>
           </div>
         )}
       </section>
 
-      {/* ── Modal de detalle de cotización ──────────────────────────────── */}
-      {viewQuote && (
+      {activeOperationsQuote && (
         <MainDialog
-          open={!!viewQuote}
+          open={!!activeOperationsQuote}
           onOpenChange={(open) => {
-            if (!open) setViewQuote(null);
+            if (!open) setActiveOperationsQuote(null);
           }}
           maxWidth="1000px"
           title={
             <DialogHeader
-              title={`Detalles del pedido #${viewQuote.id}`}
-              subtitle={viewQuote.cliente_nombre || viewQuote.cliente_razon_social}
-              statusColor={STATUS_DIALOG_COLORS[viewQuote.estatus] ?? "sky"}
+              title={`Detalles del pedido #${activeOperationsQuote.id}`}
+              subtitle={
+                activeOperationsQuote.cliente_nombre ||
+                activeOperationsQuote.cliente_razon_social
+              }
+              statusColor={
+                OPERATIONS_QUOTE_DIALOG_COLORS[activeOperationsQuote.estatus] ??
+                "sky"
+              }
             />
           }
         >
-          <QuoteDetails quoteId={viewQuote.id} />
-
+          <OperationsQuoteDetails quoteId={activeOperationsQuote.id} />
         </MainDialog>
       )}
 
-      {/* ── Diálogo de confirmación ──────────────────────────────────────── */}
       <ConfirmDialog
-        open={!!confirmAction}
+        open={!!pendingOperationsQuoteAction}
         onOpenChange={(open) => {
-          if (!open) setConfirmAction(null);
+          if (!open) setPendingOperationsQuoteAction(null);
         }}
         title={
-          confirmAction?.type === "approve"
-            ? "Autorizar cotización"
-            : "Rechazar cotización"
+          pendingOperationsQuoteAction?.type === "approve"
+            ? "Autorizar cotización operativa"
+            : "Rechazar cotización operativa"
         }
         description={
-          confirmAction
+          pendingOperationsQuoteAction
             ? `¿Confirmas ${
-                confirmAction.type === "approve" ? "autorizar" : "rechazar"
-              } la cotización #${String(confirmAction.quote.id).padStart(5, "0")} de ${confirmAction.quote.cliente_nombre}?`
+                pendingOperationsQuoteAction.type === "approve"
+                  ? "autorizar"
+                  : "rechazar"
+              } la cotización #${String(
+                pendingOperationsQuoteAction.operationsQuote.id
+              ).padStart(5, "0")} de ${
+                pendingOperationsQuoteAction.operationsQuote.cliente_nombre
+              }?`
             : ""
         }
         onConfirm={handleConfirm}
         confirmText={
-          confirmAction?.type === "approve" ? "Autorizar" : "Rechazar"
+          pendingOperationsQuoteAction?.type === "approve"
+            ? "Autorizar"
+            : "Rechazar"
         }
         cancelText="Cancelar"
-        confirmColor={confirmAction?.type === "approve" ? "green" : "red"}
+        confirmColor={
+          pendingOperationsQuoteAction?.type === "approve" ? "green" : "red"
+        }
       />
     </>
   );

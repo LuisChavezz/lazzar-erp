@@ -1,4 +1,23 @@
-import type { Quote } from '@/src/features/quotes/interfaces/quote.interface';
+import type { OperationsQuote } from "../interfaces/operations-quote.interface";
+
+type OrderControlQuoteSlice = Pick<
+  OperationsQuote,
+  | "id"
+  | "estatus"
+  | "estatus_label"
+  | "cliente"
+  | "cliente_nombre"
+  | "cliente_razon_social"
+  | "oc"
+  | "uso_cfdi"
+  | "gran_total"
+  | "importe_sin_iva"
+  | "piezas"
+  | "autorizada_at"
+  | "cambios_solicitados_at"
+  | "created_at"
+  | "updated_at"
+>;
 
 /** Estado de stock del pedido en la Mesa de Control */
 export type OrderStockStatus = 'disponible' | 'parcial' | 'produccion';
@@ -23,7 +42,7 @@ export interface OrderControlItem {
 }
 
 /** Cotización/Pedido enriquecido con datos de stock para la Mesa de Control */
-export interface OrderControl extends Quote {
+export interface OrderControl extends OrderControlQuoteSlice {
   folio: string;
   items: OrderControlItem[];
   stockStatus: OrderStockStatus;

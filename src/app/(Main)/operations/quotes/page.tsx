@@ -1,6 +1,5 @@
 import { Metadata } from "next";
-import { QuoteViewSwitcher } from "@/src/features/quotes/components/QuoteViewSwitcher";
-// import { QuoteActions } from "@/src/features/quotes/components/QuoteActions";
+import { OperationsQuoteList } from "@/src/features/operations/components/OperationsQuoteList";
 
 export const metadata: Metadata = {
   title: "Cotizaciones | Mesa de Control | ERP",
@@ -29,7 +28,7 @@ export default function OperationsOrdersPage() {
         </p>
       </header>
       <section aria-label="Vista de Cotizaciones" className="space-y-6">
-        <QuoteViewSwitcher />
+        <OperationsQuoteList />
       </section>
     </main>
   );

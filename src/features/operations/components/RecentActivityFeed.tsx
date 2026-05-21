@@ -2,13 +2,17 @@
 
 import { useMemo } from "react";
 import Link from "next/link";
-import { useQuotes } from "@/src/features/quotes/hooks/useQuotes";
-import { formatQuoteDateTime } from "@/src/features/quotes/utils/quoteDetailsFormatters";
 import { formatCurrency } from "@/src/utils/formatCurrency";
-import { getStatusStyles } from "@/src/features/quotes/utils/getStatusStyle";
 import { capitalize } from "@/src/utils/capitalize";
 import { LoadingSkeleton } from "@/src/components/LoadingSkeleton";
 import { HistoryIcon, ChevronRightIcon } from "@/src/components/Icons";
+import {
+  formatQuoteDateTime as formatOperationsQuoteDateTime,
+} from "@/src/features/quotes/utils/quoteDetailsFormatters";
+import {
+  getStatusStyles as getOperationsQuoteStatusStyles,
+} from "@/src/features/quotes/utils/getStatusStyle";
+import { useOperationsQuotes } from "../hooks/useOperationsQuotes";
 
 // ─── Máximo de ítems en el feed ───────────────────────────────────────────────
 const MAX_ITEMS = 8;
@@ -19,29 +23,33 @@ const dotClass: Record<number, string> = {
   2: "bg-amber-400 animate-pulse",
   3: "bg-emerald-400",
   4: "bg-rose-400",
-  5: "bg-violet-400",
+  5: "bg-orange-400",
 };
 
 // ─── Componente ───────────────────────────────────────────────────────────────
 export const RecentActivityFeed = () => {
-  const { quotes, isLoading } = useQuotes();
+  const { operationsQuotes, isLoading } = useOperationsQuotes();
 
-  const recent = useMemo(
+  const recentOperationsQuotes = useMemo(
     () =>
-      [...quotes]
-        .sort((a, b) => {
-          const aTime = new Date(a.updated_at ?? a.created_at).getTime();
-          const bTime = new Date(b.updated_at ?? b.created_at).getTime();
-          return bTime - aTime;
+      [...operationsQuotes]
+        .sort((firstOperationsQuote, secondOperationsQuote) => {
+          const firstTime = new Date(
+            firstOperationsQuote.updated_at ?? firstOperationsQuote.created_at
+          ).getTime();
+          const secondTime = new Date(
+            secondOperationsQuote.updated_at ?? secondOperationsQuote.created_at
+          ).getTime();
+          return secondTime - firstTime;
         })
         .slice(0, MAX_ITEMS),
-    [quotes]
+    [operationsQuotes]
   );
 
   return (
     <section
       className="bg-white dark:bg-black border border-slate-200 dark:border-white/10 rounded-xl shadow-sm overflow-hidden flex flex-col"
-      aria-label="Actividad reciente de cotizaciones"
+      aria-label="Actividad reciente de cotizaciones operativas"
     >
       {/* ── Encabezado ──────────────────────────────────────────────────── */}
       <div className="px-6 py-5 border-b border-slate-100 dark:border-white/10 flex items-center justify-between bg-slate-50/50 dark:bg-white/2 shrink-0">
@@ -54,9 +62,9 @@ export const RecentActivityFeed = () => {
           </h3>
         </div>
         <Link
-          href="/sales/quotes"
+          href="/operations/quotes"
           className="text-xs text-sky-600 hover:text-sky-500 font-bold uppercase tracking-wider transition-colors flex items-center gap-1 group"
-          aria-label="Ver todas las cotizaciones"
+          aria-label="Ver todas las cotizaciones operativas"
         >
           Ver todas
           <ChevronRightIcon className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
@@ -83,13 +91,15 @@ export const RecentActivityFeed = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-white/6">
-              {recent.map((quote) => {
-                const statusClass = getStatusStyles(quote);
-                const dot = dotClass[quote.estatus] ?? dotClass[1];
+              {recentOperationsQuotes.map((operationsQuote) => {
+                const statusClass = getOperationsQuoteStatusStyles(
+                  operationsQuote
+                );
+                const dot = dotClass[operationsQuote.estatus] ?? dotClass[1];
 
                 return (
                   <tr
-                    key={quote.id}
+                    key={operationsQuote.id}
                     className="group hover:bg-slate-50/60 dark:hover:bg-white/2 transition-colors"
                   >
                     {/* ID */}
@@ -97,7 +107,7 @@ export const RecentActivityFeed = () => {
                       <div className="flex items-center gap-2.5">
                         <span className={`w-2 h-2 rounded-full shrink-0 ${dot}`} />
                         <span className="text-xs font-bold tracking-widest text-slate-500 dark:text-slate-400 uppercase">
-                          #{String(quote.id).padStart(5, "0")}
+                          #{String(operationsQuote.id).padStart(5, "0")}
                         </span>
                       </div>
                     </td>
@@ -105,11 +115,11 @@ export const RecentActivityFeed = () => {
                     {/* Cliente */}
                     <td className="px-6 py-3.5 max-w-48">
                       <p className="text-xs font-semibold text-slate-800 dark:text-slate-100 truncate group-hover:text-sky-600 dark:group-hover:text-sky-400 transition-colors">
-                        {quote.cliente_nombre}
+                        {operationsQuote.cliente_nombre}
                       </p>
-                      {quote.oc && (
+                      {operationsQuote.oc && (
                         <p className="text-[10px] text-slate-400 dark:text-slate-500 truncate">
-                          OC: {quote.oc}
+                          OC: {operationsQuote.oc}
                         </p>
                       )}
                     </td>
@@ -119,22 +129,22 @@ export const RecentActivityFeed = () => {
                       <span
                         className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold ${statusClass}`}
                       >
-                        {capitalize(quote.estatus_label)}
+                        {capitalize(operationsQuote.estatus_label)}
                       </span>
                     </td>
 
                     {/* Importe */}
                     <td className="px-6 py-3.5 text-right">
                       <span className="text-xs font-bold font-mono text-slate-700 dark:text-slate-200">
-                        {formatCurrency(Number(quote.gran_total) || 0)}
+                        {formatCurrency(Number(operationsQuote.gran_total) || 0)}
                       </span>
                     </td>
 
                     {/* Fecha */}
                     <td className="px-6 py-3.5 text-right">
                       <span className="text-[10px] text-slate-400 dark:text-slate-500 whitespace-nowrap">
-                        {formatQuoteDateTime(
-                          quote.updated_at ?? quote.created_at,
+                        {formatOperationsQuoteDateTime(
+                          operationsQuote.updated_at ?? operationsQuote.created_at,
                           "d MMM HH:mm"
                         )}
                       </span>
