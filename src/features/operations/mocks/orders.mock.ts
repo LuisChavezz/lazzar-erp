@@ -2,7 +2,6 @@ import { faker } from '@faker-js/faker';
 import type {
   OrderControl,
   OrderControlItem,
-  OrderStockStatus,
   OrderControlStatus,
 } from '../types/order-control.types';
 
@@ -37,57 +36,25 @@ const CLIENTES = [
   { id: 10, nombre: 'Laura Vega', razon_social: 'Servicios Logísticos Express S.A.' },
 ];
 
-function resolveStockStatus(items: OrderControlItem[]): OrderStockStatus {
-  if (items.every((i) => i.stockDisponible >= i.cantidadSolicitada)) return 'disponible';
-  if (items.every((i) => i.stockDisponible === 0)) return 'produccion';
-  return 'parcial';
-}
-
-function generateItems(forceFullStock: boolean): OrderControlItem[] {
+function generateItems(): OrderControlItem[] {
   const count = faker.number.int({ min: 2, max: 5 });
   const productos = faker.helpers.arrayElements(PRODUCTOS_CATALOGO, count);
 
-  const items = productos.map((p, idx) => {
+  return productos.map((p) => {
     const cantidadSolicitada = faker.number.int({ min: 10, max: 80 });
-    let stockDisponible: number;
-
-    if (forceFullStock) {
-      // Stock igual o mayor al solicitado
-      stockDisponible = cantidadSolicitada + faker.number.int({ min: 0, max: 30 });
-    } else if (idx === 0) {
-      // Primer producto siempre con stock parcial para garantizar status 'parcial'
-      stockDisponible = Math.floor(cantidadSolicitada * faker.number.float({ min: 0.1, max: 0.85 }));
-    } else {
-      const rand = faker.number.float({ min: 0, max: 1 });
-      if (rand < 0.35) {
-        // Poco o nulo stock
-        stockDisponible = Math.floor(cantidadSolicitada * faker.number.float({ min: 0, max: 0.4 }));
-      } else if (rand < 0.80) {
-        // Stock parcial
-        stockDisponible = Math.floor(cantidadSolicitada * faker.number.float({ min: 0.4, max: 0.9 }));
-      } else {
-        // Este producto específico tiene stock suficiente
-        stockDisponible = cantidadSolicitada + faker.number.int({ min: 0, max: 15 });
-      }
-    }
 
     return {
       productoId: p.id,
       descripcion: p.nombre,
       unidad: p.unidad,
       cantidadSolicitada,
-      stockDisponible,
-      requiereProduccion: false,
     };
   });
-
-  return items;
 }
 
-function generateOrder(seq: number, forceFullStock: boolean): OrderControl {
+function generateOrder(seq: number): OrderControl {
   const cliente = faker.helpers.arrayElement(CLIENTES);
-  const items = generateItems(forceFullStock);
-  const stockStatus = resolveStockStatus(items);
+  const items = generateItems();
   const piezas = items.reduce((s, i) => s + i.cantidadSolicitada, 0);
   const precioUnitario = faker.number.float({ min: 150, max: 850, fractionDigits: 2 });
   const granTotal = (piezas * precioUnitario).toFixed(2);
@@ -96,13 +63,9 @@ function generateOrder(seq: number, forceFullStock: boolean): OrderControl {
   const controlStatus: OrderControlStatus =
     seq <= 2
       ? 'liberado'
-      : forceFullStock && seq <= 4
+      : seq <= 4
         ? 'listo_para_liberar'
-        : forceFullStock && seq <= 7
-          ? 'confirmado'
-          : forceFullStock
-            ? 'stock_disponible'
-            : 'pendiente';
+        : 'confirmado';
 
   const ocRaw = faker.helpers.maybe(
     () => `OC-${faker.string.alphanumeric({ length: 6, casing: 'upper' })}`,
@@ -127,20 +90,18 @@ function generateOrder(seq: number, forceFullStock: boolean): OrderControl {
     created_at: createdAt,
     updated_at: createdAt,
     items,
-    stockStatus,
     controlStatus,
     deliveryDate: null,
   };
 }
 
 function buildMockOrders(): OrderControl[] {
-  // distribución: 2 liberado + 2 listo_para_liberar + 3 confirmado + 5 stock_disponible + 18 parcial = 30
+  // distribución: 2 liberado + 2 listo_para_liberar + 26 confirmado = 30
   const total = 30;
-  const fullStockCount = 12; // seq 3-12 tendrán stock completo
   const orders: OrderControl[] = [];
 
   for (let i = 1; i <= total; i++) {
-    orders.push(generateOrder(i, i <= fullStockCount));
+    orders.push(generateOrder(i));
   }
 
   return faker.helpers.shuffle(orders);

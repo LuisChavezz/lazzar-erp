@@ -1,5 +1,5 @@
 import { Metadata } from 'next';
-import { OrdersControlPanel } from '@/src/features/operations/components/OrdersControlPanel';
+import { OperationsOrderPanel } from '@/src/features/operations/components/OperationsOrderPanel';
 
 export const metadata: Metadata = {
   title: 'Pedidos | Mesa de Control | ERP',
@@ -24,15 +24,12 @@ export default function OperationsOrdersPage() {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
       <header>
-        <h1 className="text-xl font-bold text-slate-800 dark:text-white">
-          Pedidos
-        </h1>
         <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
           Revisa inventario, clasifica stock y programa producción para cada pedido autorizado.
         </p>
       </header>
       <section aria-label="Panel de pedidos">
-        <OrdersControlPanel />
+        <OperationsOrderPanel />
       </section>
     </main>
   );
