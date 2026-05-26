@@ -77,12 +77,13 @@ export const QuoteProductEmbroideryView = ({ detail, onBack }: QuoteProductEmbro
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-2">
                     {group.locations.map((location, index) => (
                       <div
-                        key={`${location.codigo}-${location.ancho_cm}-${location.alto_cm}-${index}`}
+                        key={`${location.codigo}-${location.descripcion_posicion ?? ""}-${location.ancho_cm}-${location.alto_cm}-${index}`}
                         className="rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 p-3 grid grid-cols-1 sm:grid-cols-[1fr_148px] gap-3 items-start"
                       >
                         <div className="space-y-1.5">
                           <p className="text-xs font-semibold text-slate-700 dark:text-slate-200">
                             Ubicación {location.codigo}
+                            {location.descripcion_posicion ? ` · ${location.descripcion_posicion}` : ""}
                           </p>
                           <p className="text-xs text-slate-600 dark:text-slate-300">
                             Medidas: {location.ancho_cm} x {location.alto_cm} cm

@@ -175,7 +175,8 @@ const mapDetalleToQuoteItem = (
           observaciones: primeraTalla?.bordado_config?.notas ?? "",
           especificaciones: (primeraTalla?.bordado_config?.ubicaciones ?? []).map((u) => ({
             posicionCodigo: u.codigo,
-            posicionNombre: u.codigo,
+            posicionNombre: u.descripcion_posicion?.trim() || u.codigo,
+            posicionPersonalizada: u.descripcion_posicion ?? "",
             // Convertir null/cero a undefined para que Zod los omita en .optional()
             ancho: Number(u.ancho_cm) > 0 ? u.ancho_cm : undefined,
             alto: Number(u.alto_cm) > 0 ? u.alto_cm : undefined,
@@ -635,6 +636,7 @@ export function useQuoteEditForm(quoteId: number) {
               ubicaciones:
                 item.bordados?.especificaciones?.map((spec) => ({
                   codigo: spec.posicionCodigo,
+                  descripcion_posicion: spec.posicionPersonalizada?.trim() || null,
                   ancho_cm: Math.max(0, Number(spec.ancho) || 0),
                   alto_cm: Math.max(0, Number(spec.alto) || 0),
                   color_hilo: spec.colorHilo ?? null,

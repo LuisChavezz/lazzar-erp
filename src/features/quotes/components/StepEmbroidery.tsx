@@ -10,6 +10,10 @@ import toast from "react-hot-toast";
 import { FormInput } from "@/src/components/FormInput";
 import { FormSelect } from "@/src/components/FormSelect";
 import { ChevronDownIcon, ChevronUpIcon, DeleteIcon, EyeIcon } from "@/src/components/Icons";
+import {
+  CUSTOM_EMBROIDERY_POSITION_NAME,
+  isCustomEmbroideryPosition,
+} from "../constants/embroideryPositions";
 import type { EmbroiderySpecBooleanField, EmbroiderySpecErrorsById, EmbroiderySpecForm } from "../types";
 import { useFetchEmbroideryImages } from "../hooks/useFetchEmbroideryImages";
 import { EmbroideryImageSelector } from "./EmbroideryImageSelector";
@@ -44,7 +48,14 @@ interface StepEmbroideryProps {
   onRemoveSpec: (id: string) => void;
   onUpdateSpec: (
     id: string,
-    field: "posicionCodigo" | "ancho" | "alto" | "colorHilo" | "pantones" | "imagen",
+    field:
+      | "posicionCodigo"
+      | "posicionPersonalizada"
+      | "ancho"
+      | "alto"
+      | "colorHilo"
+      | "pantones"
+      | "imagen",
     value: string
   ) => void;
   onToggleSpecBoolean: (
@@ -226,8 +237,10 @@ export const StepEmbroidery = memo(function StepEmbroidery({
           )}
           {embroiderySpecs.map((spec) => {
             const specError = specErrors[spec.id] ?? {};
-            const positionName =
-              spec.posicionCodigo && positionMap.get(spec.posicionCodigo)
+            const isCustomPosition = isCustomEmbroideryPosition(spec.posicionCodigo);
+            const positionName = isCustomPosition
+              ? spec.posicionPersonalizada.trim() || CUSTOM_EMBROIDERY_POSITION_NAME
+              : spec.posicionCodigo && positionMap.get(spec.posicionCodigo)
                 ? positionMap.get(spec.posicionCodigo)
                 : "Selecciona ubicación";
             const isImageLocked = uploadLockedIds.has(spec.id);
@@ -315,6 +328,33 @@ export const StepEmbroidery = memo(function StepEmbroidery({
                       </p>
                     )}
                   </div>
+                  {/* ── Descripción de ubicación personalizada (Otra) ── */}
+                  {isCustomPosition && (
+                      <div className="sm:col-span-3 rounded-xl space-y-2">
+                        <FormInput
+                          label="Descripción de la ubicación"
+                          type="text"
+                          placeholder="Ej: Costado inferior del bolsillo, manga derecha baja"
+                          value={spec.posicionPersonalizada}
+                          onChange={(event) =>
+                            onUpdateSpec(
+                              spec.id,
+                              "posicionPersonalizada",
+                              event.target.value
+                            )
+                          }
+                          forceUppercase={false}
+                        />
+                        {specError.posicionPersonalizada && (
+                          <p
+                            className="text-xs text-rose-600 dark:text-rose-400"
+                            role="alert"
+                          >
+                            {specError.posicionPersonalizada}
+                          </p>
+                        )}
+                      </div>
+                  )}
                   {/* ── Color de hilo: visible para todos los servicios EXCEPTO DTF y Serigrafía ── */}
                   {!spec.dtf && !spec.serigrafia && (
                   <div className="space-y-2 sm:col-span-3">

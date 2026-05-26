@@ -4,6 +4,7 @@
  * - incluye refinamientos para validar ubicaciones duplicadas en bordados
  */
 import { z } from "zod";
+import { isCustomEmbroideryPosition } from "../constants/embroideryPositions";
 import { embroiderySchema } from "./embroidery.schema";
 import { quoteItemSizeSchema } from "./quote-item-size.schema";
 import { reflectiveSchema } from "./reflective.schema";
@@ -54,6 +55,9 @@ export const quoteItemSchema = z
     }
     const used = new Set<string>();
     data.bordados.especificaciones.forEach((spec, index) => {
+      if (!spec.posicionCodigo || isCustomEmbroideryPosition(spec.posicionCodigo)) {
+        return;
+      }
       if (used.has(spec.posicionCodigo)) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,

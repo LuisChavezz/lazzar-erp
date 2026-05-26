@@ -37,6 +37,7 @@ export interface QuoteItem {
     especificaciones: {
       posicionCodigo: string;
       posicionNombre: string;
+      posicionPersonalizada?: string;
       ancho?: number;
       alto?: number;
       colorHilo?: string;
@@ -101,6 +102,7 @@ export interface QuoteById {
         notas: string;
         ubicaciones: {
           codigo: string;
+          descripcion_posicion?: string | null;
           ancho_cm: number;
           alto_cm: number;
           color_hilo: string | null;
@@ -300,6 +302,7 @@ interface QuoteDetail {
     bordado_config: {
       ubicaciones: {
         codigo: string;
+        descripcion_posicion?: string | null;
         ancho_cm: number;
         alto_cm: number;
         color_hilo: string | null;
