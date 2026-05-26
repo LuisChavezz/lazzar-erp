@@ -6,6 +6,10 @@
  */
 import type { Product } from "../products/interfaces/product.interface";
 import type { Size } from "../sizes/interfaces/size.interface";
+import {
+  CUSTOM_EMBROIDERY_POSITION_CODE,
+  CUSTOM_EMBROIDERY_POSITION_NAME,
+} from "./constants/embroideryPositions";
 import type { QuoteOnboardingDataVariantProduct } from "./interfaces/quote.interface";
 import type { QuoteFormValues } from "./schemas/quote.schema";
 
@@ -53,6 +57,7 @@ export type EmbroiderySpecBooleanField =
 export interface EmbroiderySpecForm {
   id: string;
   posicionCodigo: string;
+  posicionPersonalizada: string;
   ancho: string;
   alto: string;
   colorHilo: string;
@@ -70,6 +75,7 @@ export interface EmbroiderySpecForm {
  */
 export interface EmbroiderySpecFieldErrors {
   posicion?: string;
+  posicionPersonalizada?: string;
   ancho?: string;
   alto?: string;
   color?: string;
@@ -120,6 +126,7 @@ export const POSITION_OPTIONS: { codigo: string; nombre: string }[] = [
   { codigo: "J", nombre: "Sobre la bolsa del pantalon Derecha" },
   { codigo: "K", nombre: "Pierna Izquierda" },
   { codigo: "L", nombre: "Pierna Derecha" },
+  { codigo: CUSTOM_EMBROIDERY_POSITION_CODE, nombre: CUSTOM_EMBROIDERY_POSITION_NAME },
 ];
 
 /**

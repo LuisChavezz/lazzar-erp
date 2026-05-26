@@ -9,6 +9,10 @@
  */
 import { useCallback, useMemo, useState } from "react";
 import {
+  CUSTOM_EMBROIDERY_POSITION_NAME,
+  isCustomEmbroideryPosition,
+} from "../constants/embroideryPositions";
+import {
   POSITION_OPTIONS,
   type EmbroiderySpecBooleanField,
   type EmbroiderySpecErrorsById,
@@ -54,6 +58,13 @@ const buildInitialEmbroiderySpecs = (
   item?.bordados?.especificaciones?.map((spec: NonNullable<QuoteItem["bordados"]>["especificaciones"][number], index: number) => ({
     id: `${spec.posicionCodigo}-${index}`,
     posicionCodigo: spec.posicionCodigo,
+    posicionPersonalizada:
+      spec.posicionPersonalizada ??
+      (isCustomEmbroideryPosition(spec.posicionCodigo) &&
+      spec.posicionNombre !== CUSTOM_EMBROIDERY_POSITION_NAME &&
+      spec.posicionNombre !== spec.posicionCodigo
+        ? spec.posicionNombre
+        : ""),
     ancho: spec.ancho && spec.ancho > 0 ? String(spec.ancho) : "",
     alto: spec.alto && spec.alto > 0 ? String(spec.alto) : "",
     colorHilo: spec.colorHilo ?? "",
@@ -95,6 +106,7 @@ export function useEmbroideryState(initialItem?: QuoteItem | null) {
       {
         id: newId,
         posicionCodigo: "",
+        posicionPersonalizada: "",
         ancho: "",
         alto: "",
         colorHilo: "",
@@ -122,11 +134,32 @@ export function useEmbroideryState(initialItem?: QuoteItem | null) {
   const updateEmbroiderySpec = useCallback(
     (
       id: string,
-      field: "posicionCodigo" | "ancho" | "alto" | "colorHilo" | "pantones" | "imagen",
+      field:
+        | "posicionCodigo"
+        | "posicionPersonalizada"
+        | "ancho"
+        | "alto"
+        | "colorHilo"
+        | "pantones"
+        | "imagen",
       value: string
     ) => {
       setEmbroiderySpecs((prev) =>
-        prev.map((spec) => (spec.id === id ? { ...spec, [field]: value } : spec))
+        prev.map((spec) => {
+          if (spec.id !== id) {
+            return spec;
+          }
+          if (field === "posicionCodigo") {
+            return {
+              ...spec,
+              posicionCodigo: value,
+              posicionPersonalizada: isCustomEmbroideryPosition(value)
+                ? spec.posicionPersonalizada
+                : "",
+            };
+          }
+          return { ...spec, [field]: value };
+        })
       );
     },
     []
@@ -175,10 +208,20 @@ export function useEmbroideryState(initialItem?: QuoteItem | null) {
 
       if (!spec.posicionCodigo) {
         specError.posicion = "Requerido";
-      } else if (usedPositions.has(spec.posicionCodigo)) {
+      } else if (
+        !isCustomEmbroideryPosition(spec.posicionCodigo) &&
+        usedPositions.has(spec.posicionCodigo)
+      ) {
         specError.posicion = "Duplicado";
-      } else {
+      } else if (!isCustomEmbroideryPosition(spec.posicionCodigo)) {
         usedPositions.add(spec.posicionCodigo);
+      }
+
+      if (
+        isCustomEmbroideryPosition(spec.posicionCodigo) &&
+        !spec.posicionPersonalizada.trim()
+      ) {
+        specError.posicionPersonalizada = "Describe la ubicación";
       }
 
       const normalizedAncho = spec.ancho.trim();
@@ -223,7 +266,10 @@ export function useEmbroideryState(initialItem?: QuoteItem | null) {
       observaciones: embroideryObservaciones.trim() || undefined,
       especificaciones: embroiderySpecs.map((spec) => ({
         posicionCodigo: spec.posicionCodigo,
-        posicionNombre: positionMap.get(spec.posicionCodigo) ?? "",
+        posicionNombre: isCustomEmbroideryPosition(spec.posicionCodigo)
+          ? spec.posicionPersonalizada.trim() || CUSTOM_EMBROIDERY_POSITION_NAME
+          : positionMap.get(spec.posicionCodigo) ?? "",
+        posicionPersonalizada: spec.posicionPersonalizada.trim(),
         ancho: spec.ancho.trim() ? Math.max(0, Number(spec.ancho) || 0) : undefined,
         alto: spec.alto.trim() ? Math.max(0, Number(spec.alto) || 0) : undefined,
         colorHilo: spec.colorHilo.trim(),

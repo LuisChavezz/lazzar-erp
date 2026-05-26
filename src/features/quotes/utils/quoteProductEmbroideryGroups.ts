@@ -11,6 +11,7 @@ export interface EmbroideryGroup {
   sizes: QuoteDetailSize[];
   locations: {
     codigo: string;
+    descripcion_posicion?: string | null;
     ancho_cm: number;
     alto_cm: number;
     color_hilo: string | null;
@@ -31,6 +32,7 @@ const getEmbroideryKey = (size: QuoteDetailSize) => {
     notas: size.bordado_config.notas?.trim() ?? "",
     ubicaciones: size.bordado_config.ubicaciones.map((location) => ({
       codigo: location.codigo,
+      descripcion_posicion: location.descripcion_posicion ?? "",
       ancho_cm: Number(location.ancho_cm),
       alto_cm: Number(location.alto_cm),
       color_hilo: location.color_hilo ?? "",
