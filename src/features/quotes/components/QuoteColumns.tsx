@@ -35,6 +35,9 @@ import {
   canManageQuoteAuthorization,
   canSubmitQuoteForReview,
 } from "../utils/quoteStatusRules";
+import { type QuoteReviewValidationError } from "../utils/validateQuoteForReview";
+import { QuoteReviewValidationDialog } from "./QuoteReviewValidationDialog";
+import { useValidateQuoteForReview } from "../hooks/useValidateQuoteForReview";
 
 const QuoteDetails = dynamic(
   () => import("./QuoteDetails").then((mod) => mod.QuoteDetails),
@@ -59,6 +62,8 @@ const ActionsCell = ({ quote }: { quote: Quote }) => {
   const [isAuthorizeOpen, setIsAuthorizeOpen] = useState(false);
   const [isRejectOpen, setIsRejectOpen] = useState(false);
   const [isSubmitForReviewOpen, setIsSubmitForReviewOpen] = useState(false);
+  const [reviewValidationErrors, setReviewValidationErrors] = useState<QuoteReviewValidationError[]>([]);
+  const [isReviewValidationDialogOpen, setIsReviewValidationDialogOpen] = useState(false);
   const {
     mutate: authorizeOrder,
     isPending: isAuthorizingOrder,
@@ -69,6 +74,10 @@ const ActionsCell = ({ quote }: { quote: Quote }) => {
   const { mutate: downloadPdf, isPending: isDownloadingPdf } = useDownloadQuotePdf();
   const { mutate: submitQuoteForReview, isPending: isSubmittingForReview } =
     useSubmitQuoteForReview();
+  const {
+    mutateAsync: validateQuoteBeforeReview,
+    isPending: isValidatingReview,
+  } = useValidateQuoteForReview();
 
   // ─── Permisos de acción por estatus ───────────────────────────────────────
   const canEdit = canEditQuote(quote.estatus);
@@ -95,6 +104,23 @@ const ActionsCell = ({ quote }: { quote: Quote }) => {
     rejectOrder(quote.id);
   };
 
+  // ─── Validación previa al envío a revisión ────────────────────────────────
+  const handleSubmitForReviewClick = async () => {
+    try {
+      setReviewValidationErrors([]);
+      setIsReviewValidationDialogOpen(false);
+      const errores = await validateQuoteBeforeReview(quote.id);
+      if (errores.length > 0) {
+        setReviewValidationErrors(errores);
+        setIsReviewValidationDialogOpen(true);
+      } else {
+        setIsSubmitForReviewOpen(true);
+      }
+    } catch {
+      return;
+    }
+  };
+
   const items: ActionMenuItem[] = [
     {
       label: "Ver detalles",
@@ -108,10 +134,10 @@ const ActionsCell = ({ quote }: { quote: Quote }) => {
       visible: canEdit,
     },
     {
-      label: "Enviar a revisión",
+      label: isValidatingReview ? "Verificando..." : "Enviar a revisión",
       icon: PaperPlaneIcon,
-      onSelect: () => setIsSubmitForReviewOpen(true),
-      disabled: isSubmittingForReview,
+      onSelect: handleSubmitForReviewClick,
+      disabled: isSubmittingForReview || isValidatingReview,
       visible: canSendToReview,
     },
     {
@@ -189,6 +215,12 @@ const ActionsCell = ({ quote }: { quote: Quote }) => {
         confirmText={isSubmittingForReview ? "Enviando..." : "Enviar a revisión"}
         confirmColor="blue"
         onConfirm={() => submitQuoteForReview(quote.id)}
+      />
+      <QuoteReviewValidationDialog
+        open={isReviewValidationDialogOpen}
+        onOpenChange={setIsReviewValidationDialogOpen}
+        quoteId={quote.id}
+        errors={reviewValidationErrors}
       />
     </div>
   );

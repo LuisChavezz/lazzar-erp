@@ -16,6 +16,7 @@ import { useQuotes } from "../hooks/useQuotes";
 import { approveOperationsQuoteMutationKey } from "../../operations/hooks/useApproveOperationsQuote";
 import { rejectOperationsQuoteMutationKey } from "../../operations/hooks/useRejectOperationsQuote";
 import { hasPermission } from "@/src/utils/permissions";
+import { validateQuoteForReviewMutationKey } from "../hooks/useValidateQuoteForReview";
 
 const QuoteFiltersDialog = lazy(() =>
   import("./QuoteFiltersDialog").then((mod) => ({ default: mod.QuoteFiltersDialog }))
@@ -32,7 +33,10 @@ export const QuoteList = () => {
     useIsMutating({ mutationKey: approveOperationsQuoteMutationKey }) > 0;
   const isRejectingOrder =
     useIsMutating({ mutationKey: rejectOperationsQuoteMutationKey }) > 0;
+  const isValidatingReview =
+    useIsMutating({ mutationKey: validateQuoteForReviewMutationKey }) > 0;
   const isUpdatingOrderStatus = isAuthorizingOrder || isRejectingOrder;
+  const isTableBusy = isUpdatingOrderStatus || isValidatingReview;
   const isSessionLoading = sessionStatus === "loading";
   const canCreateOrder = hasPermission("R-CRM", session?.user);
   const baseOrders = quotes;
@@ -83,9 +87,19 @@ export const QuoteList = () => {
         onClearFilters={handleClearFilters}
         onVisibleRowsChange={setVisibleOrders}
         onVisibleColumnsChange={setVisibleColumns}
-        isLoadingOverlay={isUpdatingOrderStatus}
-        loadingTitle={isRejectingOrder ? "Rechazando cotización" : "Autorizando cotización"}
-        loadingMessage="Estamos actualizando el estado de la orden."
+        isLoadingOverlay={isTableBusy}
+        loadingTitle={
+          isValidatingReview
+            ? "Validando cotización"
+            : isRejectingOrder
+              ? "Rechazando cotización"
+              : "Autorizando cotización"
+        }
+        loadingMessage={
+          isValidatingReview
+            ? "Estamos validando la cotización antes de enviarla a revisión. Espera un momento."
+            : "Estamos actualizando el estado de la orden."
+        }
         actionButton={
           isSessionLoading ? (
             <div className="w-44 shrink-0" aria-hidden="true">
