@@ -22,11 +22,10 @@ type CustomerFormField = keyof CustomerFormValues;
 
 type NormalizedCustomerFormValues = Omit<
   CustomerFormValues,
-  "telefono" | "correo" | "giro_empresarial"
+  "telefono" | "correo"
 > & {
   telefono: string;
   correo: string;
-  giro_empresarial: string;
 };
 
 const normalizeOptionalCustomerFields = (
@@ -35,7 +34,6 @@ const normalizeOptionalCustomerFields = (
   ...values,
   telefono: values.telefono ?? "",
   correo: values.correo ?? "",
-  giro_empresarial: values.giro_empresarial ?? "",
 });
 
 const scrollToFirstValidationError = (formElement: HTMLFormElement, issuePaths: string[]) => {
@@ -85,7 +83,6 @@ export const emptyValues: CustomerFormValues = {
   codigo_postal: "",
   ciudad: "",
   estado: "",
-  giro_empresarial: "",
   sat_regimen_fiscal: 0,
   sat_uso_cfdi: 0,
 };
@@ -132,7 +129,6 @@ export function useCustomerForm({
       codigo_postal: customerToEdit.codigo_postal,
       ciudad: customerToEdit.ciudad,
       estado: customerToEdit.estado,
-      giro_empresarial: customerToEdit.giro_empresarial,
       sat_regimen_fiscal: hasRegimen ? customerToEdit.sat_regimen_fiscal : 0,
       sat_uso_cfdi: hasUsoCfdi ? customerToEdit.sat_uso_cfdi : 0,
     };

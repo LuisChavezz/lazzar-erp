@@ -1,6 +1,5 @@
 "use client";
 
-import React from "react";
 import { getStatusStyles } from "../utils/getStatusStyle";
 import { useQuote } from "../hooks/useQuote";
 import { QuoteDetailsProducts } from "./QuoteDetailsProducts";
@@ -41,20 +40,6 @@ export const QuoteDetails = ({ quoteId }: QuoteDetailsProps) => {
     (total, detalle) => total + detalle.tallas.reduce((sum, talla) => sum + (Number(talla.cantidad) || 0), 0),
     0
   );
-  const canales = getEnabledOptionLabels([
-    { label: "Recompra", active: quote.recompra },
-    { label: "Chat online", active: quote.chat_online },
-    { label: "Pedido online", active: quote.pedido_online },
-    { label: "Prospección", active: quote.prospeccion },
-    { label: "Recomendación", active: quote.recomendacion },
-    { label: "Amazon", active: quote.amazon },
-    { label: "Google", active: quote.google },
-    { label: "Publicidad", active: quote.publicidad },
-    { label: "Mercado Libre", active: quote.mercado_libre },
-    { label: "Redes sociales", active: quote.redes_sociales },
-    { label: "Otro", active: quote.otro },
-    { label: "Mailing", active: quote.mailing },
-  ]);
   const condiciones = getEnabledOptionLabels([
     { label: "Anticipo total", active: quote.anticipo_total },
     { label: "Anticipo parcial", active: quote.anticipo_parcial },
@@ -212,19 +197,6 @@ export const QuoteDetails = ({ quoteId }: QuoteDetailsProps) => {
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
         <div className="rounded-xl border border-slate-200 dark:border-white/10 p-4 bg-white dark:bg-white/5">
-          <p className="text-xs uppercase text-slate-400 font-semibold mb-3">Origen del pedido</p>
-          <div className="flex flex-wrap gap-2">
-            {canales.map((canal) => (
-              <span
-                key={canal}
-                className="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium bg-slate-200/70 text-slate-700 dark:bg-white/10 dark:text-slate-200"
-              >
-                {canal}
-              </span>
-            ))}
-          </div>
-        </div>
-        <div className="rounded-xl border border-slate-200 dark:border-white/10 p-4 bg-white dark:bg-white/5">
           <p className="text-xs uppercase text-slate-400 font-semibold mb-3">Condición de pago</p>
           <div className="flex flex-wrap gap-2">
             {condiciones.map((condicion) => (
@@ -239,7 +211,7 @@ export const QuoteDetails = ({ quoteId }: QuoteDetailsProps) => {
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-3">
             Monto: <span className="font-medium text-slate-700 dark:text-slate-300">{toCurrencyOrDash(quote.monto)}</span>
           </p>
-      </div>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">

@@ -34,37 +34,6 @@ import { canEditQuote } from "../utils/quoteStatusRules";
 
 // ─── Catálogos y constantes compartidas ────────────────────────────────────────
 
-type OriginFlagKey =
-  | "recompra"
-  | "chat_online"
-  | "pedido_online"
-  | "prospeccion"
-  | "recomendacion"
-  | "amazon"
-  | "google"
-  | "publicidad"
-  | "mercado_libre"
-  | "redes_sociales"
-  | "otro"
-  | "mailing";
-
-const ORIGIN_FIELD_MAP: { label: string; field: OriginFlagKey }[] = [
-  { label: "Recompra", field: "recompra" },
-  { label: "Chat Online", field: "chat_online" },
-  { label: "Pedido Online", field: "pedido_online" },
-  { label: "Prospección", field: "prospeccion" },
-  { label: "Recomendación", field: "recomendacion" },
-  { label: "Amazon", field: "amazon" },
-  { label: "Google", field: "google" },
-  { label: "Publicidad", field: "publicidad" },
-  { label: "Mercado Libre", field: "mercado_libre" },
-  { label: "Redes Sociales", field: "redes_sociales" },
-  { label: "Otro", field: "otro" },
-  { label: "Mailing", field: "mailing" },
-];
-
-const ORIGIN_OPTIONS = ORIGIN_FIELD_MAP.map((item) => item.label);
-
 const PAYMENT_CONDITION_OPTIONS: { value: QuotePaymentCondition; label: string }[] = [
   { value: "100_anticipo", label: "100% Anticipo" },
   { value: "50_anticipo", label: "50% Anticipo" },
@@ -86,24 +55,6 @@ const DEFAULT_USO_CFDI_LABEL = "G03 - Gastos en general";
 type OnboardingCustomer = QuoteOnboardingData["busqueda"]["clientes"][number];
 
 // ─── Utilidades de mapeo ───────────────────────────────────────────────────────
-
-// Convierte las banderas booleanas de origen de la cotización al valor de string del select
-const reverseMapOrigenFlags = (quote: QuoteById): string => {
-  const match = ORIGIN_FIELD_MAP.find((item) => quote[item.field as keyof QuoteById] === true);
-  return match?.label ?? "";
-};
-
-// Convierte el label de origen seleccionado en el formulario a las banderas booleanas del payload
-const mapOrigenFlags = (origen: string): Record<OriginFlagKey, boolean> => {
-  const selectedField = ORIGIN_FIELD_MAP.find((item) => item.label === origen)?.field;
-  return ORIGIN_FIELD_MAP.reduce(
-    (accumulator, item) => ({
-      ...accumulator,
-      [item.field]: item.field === selectedField,
-    }),
-    {} as Record<OriginFlagKey, boolean>
-  );
-};
 
 // Convierte las banderas booleanas de condición de pago al enum QuotePaymentCondition
 const reverseMapCondicionPago = (quote: QuoteById): QuotePaymentCondition => {
@@ -243,7 +194,6 @@ const mapQuoteByIdToFormValues = (
     codigoPostalFiscal: customer?.codigo_postal ?? "",
     ciudadFiscal: customer?.ciudad ?? "",
     estadoFiscal: customer?.estado ?? "",
-    giroEmpresa: customer?.giro_empresarial ?? "",
     persona_pagos: quote.persona_pagos || "",
     correo_facturas: quote.correo_facturas || "",
     telefono_pagos: quote.telefono_pagos || "",
@@ -257,7 +207,6 @@ const mapQuoteByIdToFormValues = (
     fecha: todayStr,
     agente: userName,
     tipo_pedido: 0,
-    origen: reverseMapOrigenFlags(quote),
     destinatario: quote.destinatario || "",
     empresaEnvio: quote.empresa_envio || "",
     telefonoEnvio: quote.telefono_envio || "",
@@ -270,7 +219,6 @@ const mapQuoteByIdToFormValues = (
     referenciasEnvio: quote.referencias || "",
     enviarDomicilioFiscal: false,
     embarcarConOtrosPedidos: false,
-    empaque_ecologico: Boolean(quote.empaque_ecologico),
     embarque_parcial: Boolean(quote.embarque_parcial),
     comentarios_parcialidad: quote.comentarios_parcialidad || "",
     servicioEnvioActivo: Number(quote.envio) > 0,
@@ -700,11 +648,9 @@ export function useQuoteEditForm(quoteId: number) {
                 : parsed.data.estatusPedido === "Completo"
                   ? 3
                   : 4,
-          ...mapOrigenFlags(parsed.data.origen ?? ""),
           ...mapCondicionPagoFlags(parsed.data.condicionPago ?? "100_anticipo"),
           oc: parsed.data.oc?.trim() || "",
           monto: parsed.data.condicionPagoMonto ? String(parsed.data.condicionPagoMonto) : "0",
-          empaque_ecologico: Boolean(parsed.data.empaque_ecologico),
           cliente_razon_social: parsed.data.razonSocial || "",
           cliente_nombre: parsed.data.clienteNombre || "",
           cliente_rfc: parsed.data.rfc || "",
@@ -716,7 +662,6 @@ export function useQuoteEditForm(quoteId: number) {
           cliente_codigo_postal: parsed.data.codigoPostalFiscal || "",
           cliente_ciudad: parsed.data.ciudadFiscal || "",
           cliente_estado: parsed.data.estadoFiscal || "",
-          cliente_giro_empresarial: parsed.data.giroEmpresa || "",
           destinatario: parsed.data.destinatario || "",
           empresa_envio: parsed.data.empresaEnvio || "",
           telefono_envio: parsed.data.telefonoEnvio || "",
@@ -1080,7 +1025,6 @@ export function useQuoteEditForm(quoteId: number) {
       form.setFieldValue("codigoPostalFiscal", customer.codigo_postal ?? "");
       form.setFieldValue("ciudadFiscal", customer.ciudad ?? "");
       form.setFieldValue("estadoFiscal", customer.estado ?? "");
-      form.setFieldValue("giroEmpresa", customer.giro_empresarial ?? "");
       setSelectedCustomerId(Number(customer.id) || 0);
       setCustomerSelectedFromSearch(fromSearch);
       form.setFieldValue("telefono_pagos", customer.telefono ?? "");
@@ -1121,7 +1065,6 @@ export function useQuoteEditForm(quoteId: number) {
         codigo_postal: customer.codigo_postal,
         ciudad: customer.ciudad,
         estado: customer.estado,
-        giro_empresarial: customer.giro_empresarial,
         sat_regimen_fiscal_id: Number(customer.sat_regimen_fiscal),
         sat_regimen_fiscal__codigo: regimenCodigo,
         sat_regimen_fiscal__descripcion: regimenDescripcion,
@@ -1172,7 +1115,6 @@ export function useQuoteEditForm(quoteId: number) {
 
   const itemErrors = getError("items");
   const tipoPedidoError = getError("tipo_pedido");
-  const origenError = getError("origen");
 
   // Opciones desde onboarding y catálogos
   const tiposPedidoOptions = useMemo(
@@ -1265,7 +1207,6 @@ export function useQuoteEditForm(quoteId: number) {
     userName,
     todayStr,
     tiposPedidoOptions,
-    originOptions: ORIGIN_OPTIONS,
     paymentConditionOptions: PAYMENT_CONDITION_OPTIONS,
     ivaOptions: IVA_OPTIONS,
     regimenFiscalOptions,
@@ -1301,7 +1242,6 @@ export function useQuoteEditForm(quoteId: number) {
     saldoPendiente,
     itemsError: itemErrors,
     tipoPedidoError,
-    origenError,
     isAddProductsOpen,
     setIsAddProductsOpen,
     editIndex,

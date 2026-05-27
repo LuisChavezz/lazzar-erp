@@ -197,25 +197,6 @@ export default function CustomerForm({
                   />
                 )}
               </form.Field>
-              <form.Field name="giro_empresarial">
-                {(field) => (
-                  <FormInput
-                    name={field.name}
-                    value={field.state.value}
-                    onChange={(event) => {
-                      field.handleChange(event.target.value);
-                      clearFieldErrors("giro_empresarial");
-                    }}
-                    onBlur={() => {
-                      field.handleBlur();
-                      validateField("giro_empresarial", field.state.value);
-                    }}
-                    label="Giro empresarial"
-                    placeholder="Giro de la empresa"
-                    error={getError("giro_empresarial")}
-                  />
-                )}
-              </form.Field>
             </div>
           </div>
         </section>

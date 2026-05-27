@@ -13,7 +13,6 @@ export const CustomerFormSchema = z.object({
   codigo_postal: z.string().min(1, "Requerido"),
   ciudad: z.string().min(1, "Requerido"),
   estado: z.string().min(1, "Requerido"),
-  giro_empresarial: z.string().optional(),
   sat_regimen_fiscal: z.number().int().min(1, "Requerido"),
   sat_uso_cfdi: z.number().int().min(1, "Requerido"),
 });

@@ -92,18 +92,6 @@ export interface OperationsQuote {
   aprobado_snapshot: string | null;
   created_at: string;
   updated_at: string;
-  recompra: boolean;
-  chat_online: boolean;
-  pedido_online: boolean;
-  prospeccion: boolean;
-  recomendacion: boolean;
-  amazon: boolean;
-  google: boolean;
-  publicidad: boolean;
-  mercado_libre: boolean;
-  redes_sociales: boolean;
-  otro: boolean;
-  mailing: boolean;
   persona_pagos: string;
   correo_facturas: string;
   telefono_pagos: string;
@@ -118,7 +106,6 @@ export interface OperationsQuote {
   por_confirmar: boolean;
   otra_cantidad: boolean;
   monto: string;
-  empaque_ecologico: boolean;
   embarque_parcial: boolean;
   comentarios_parcialidad: string;
   destinatario: string | null;

@@ -15,7 +15,6 @@ export interface Customer {
   codigo_postal: string;
   ciudad: string;
   estado: string;
-  giro_empresarial: string;
   activo: boolean;
   sat_regimen_fiscal: RegimenFiscal["id_sat_regimen_fiscal"];
   sat_uso_cfdi: UsoCfdi["id_sat_uso_cfdi"];
@@ -33,7 +32,6 @@ export interface CustomerCreate {
   codigo_postal: string;
   ciudad: string;
   estado: string;
-  giro_empresarial: string;
   sat_regimen_fiscal: RegimenFiscal["id_sat_regimen_fiscal"];
   sat_uso_cfdi: UsoCfdi["id_sat_uso_cfdi"];
 }

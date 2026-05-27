@@ -23,35 +23,10 @@ type QuoteReviewValidationInput = Omit<QuoteFormValues, "items"> & {
   cliente: number;
   items: QuoteItem[];
 };
-
-type OriginFieldKey =
-  | "recompra"
-  | "chat_online"
-  | "pedido_online"
-  | "prospeccion"
-  | "recomendacion"
-  | "amazon"
-  | "google"
-  | "publicidad"
-  | "mercado_libre"
-  | "redes_sociales"
-  | "otro"
-  | "mailing";
-
-const ORIGIN_FIELD_MAP: { label: string; field: OriginFieldKey }[] = [
-  { label: "Recompra", field: "recompra" },
-  { label: "Chat Online", field: "chat_online" },
-  { label: "Pedido Online", field: "pedido_online" },
-  { label: "Prospección", field: "prospeccion" },
-  { label: "Recomendación", field: "recomendacion" },
-  { label: "Amazon", field: "amazon" },
-  { label: "Google", field: "google" },
-  { label: "Publicidad", field: "publicidad" },
-  { label: "Mercado Libre", field: "mercado_libre" },
-  { label: "Redes Sociales", field: "redes_sociales" },
-  { label: "Otro", field: "otro" },
-  { label: "Mailing", field: "mailing" },
-];
+type QuoteReviewValidationIssue = {
+  path: Array<string | number>;
+  message: string;
+};
 
 // ─── Tipos exportados ─────────────────────────────────────────────────────────
 
@@ -76,10 +51,20 @@ export function validateQuoteForReview(
   onboardingData: QuoteOnboardingData
 ): QuoteReviewValidationError[] {
   const reviewInput = mapQuoteToReviewValidationInput(quote, onboardingData);
-  const schemaErrors = getSchemaValidationErrors(reviewInput);
-  const catalogErrors = getCatalogValidationErrors(quote, reviewInput, onboardingData);
+  const schemaIssues = getSchemaValidationIssues(reviewInput);
+  const schemaIssuePaths = new Set(
+    schemaIssues.map((issue) => getValidationPathKey(issue.path))
+  );
+  const catalogIssues = getCatalogValidationErrors(
+    quote,
+    reviewInput,
+    onboardingData,
+    schemaIssuePaths
+  );
 
-  return dedupeValidationErrors([...schemaErrors, ...catalogErrors]);
+  return mapValidationIssuesToErrors(
+    dedupeValidationErrors([...schemaIssues, ...catalogIssues])
+  );
 }
 
 // ─── Proyección a valores de validación ───────────────────────────────────────
@@ -92,11 +77,6 @@ const reverseMapCondicionPago = (quote: QuoteById): QuotePaymentCondition => {
   if (quote.por_confirmar) return "por_confirmar";
   if (quote.otra_cantidad) return "otra_cantidad";
   return "100_anticipo";
-};
-
-const reverseMapOrigenFlags = (quote: QuoteById): string => {
-  const match = ORIGIN_FIELD_MAP.find((item) => quote[item.field] === true);
-  return match?.label ?? "";
 };
 
 const readOptionalNumberProperty = (source: object, key: string): number => {
@@ -234,7 +214,6 @@ const mapQuoteToReviewValidationInput = (
     codigoPostalFiscal: customer?.codigo_postal ?? "",
     ciudadFiscal: customer?.ciudad ?? "",
     estadoFiscal: customer?.estado ?? "",
-    giroEmpresa: customer?.giro_empresarial ?? "",
     persona_pagos: quote.persona_pagos || "",
     correo_facturas: quote.correo_facturas || "",
     telefono_pagos: quote.telefono_pagos || "",
@@ -248,7 +227,6 @@ const mapQuoteToReviewValidationInput = (
     fecha: quote.created_at ? quote.created_at.slice(0, 10) : "",
     agente: onboardingData.vendedor.username || "",
     tipo_pedido: readOptionalNumberProperty(quote, "tipo_pedido"),
-    origen: reverseMapOrigenFlags(quote),
     destinatario: quote.destinatario || "",
     empresaEnvio: quote.empresa_envio || "",
     telefonoEnvio: quote.telefono_envio || "",
@@ -261,7 +239,6 @@ const mapQuoteToReviewValidationInput = (
     referenciasEnvio: quote.referencias || "",
     enviarDomicilioFiscal: false,
     embarcarConOtrosPedidos: false,
-    empaque_ecologico: Boolean(quote.empaque_ecologico),
     embarque_parcial: Boolean(quote.embarque_parcial),
     comentarios_parcialidad: quote.comentarios_parcialidad || "",
     servicioEnvioActivo: Number(quote.envio) > 0,
@@ -291,16 +268,16 @@ const mapQuoteToReviewValidationInput = (
 
 // ─── Validación del schema y catálogos ───────────────────────────────────────
 
-const getSchemaValidationErrors = (
+const getSchemaValidationIssues = (
   reviewInput: QuoteReviewValidationInput
-): QuoteReviewValidationError[] => {
+): QuoteReviewValidationIssue[] => {
   const result = quoteReviewSchema.safeParse(reviewInput);
   if (result.success) {
     return [];
   }
 
   return result.error.issues.map((issue) => ({
-    field: buildFieldLabel(normalizeIssuePath(issue.path)),
+    path: normalizeIssuePath(issue.path),
     message: issue.message,
   }));
 };
@@ -308,16 +285,20 @@ const getSchemaValidationErrors = (
 const getCatalogValidationErrors = (
   quote: QuoteById,
   reviewInput: QuoteReviewValidationInput,
-  onboardingData: QuoteOnboardingData
-): QuoteReviewValidationError[] => {
-  const errors: QuoteReviewValidationError[] = [];
+  onboardingData: QuoteOnboardingData,
+  schemaIssuePaths: ReadonlySet<string>
+): QuoteReviewValidationIssue[] => {
+  const errors: QuoteReviewValidationIssue[] = [];
   const customerExists = onboardingData.busqueda.clientes.some(
     (customer) => customer.id === quote.cliente
   );
 
   if (!customerExists) {
-    errors.push(
-      createValidationError(["cliente"], "Selecciona un cliente válido")
+    pushCatalogValidationIssue(
+      errors,
+      schemaIssuePaths,
+      ["cliente"],
+      "Selecciona un cliente válido"
     );
   }
 
@@ -326,28 +307,32 @@ const getCatalogValidationErrors = (
     onboardingData.catalogos.formas_pago.map((item) => item.value),
     ["forma_pago"],
     "Selecciona una forma de pago válida",
-    errors
+    errors,
+    schemaIssuePaths
   );
   validateCatalogSelection(
     reviewInput.metodo_pago,
     onboardingData.catalogos.metodos_pago.map((item) => item.value),
     ["metodo_pago"],
     "Selecciona un método de pago válido",
-    errors
+    errors,
+    schemaIssuePaths
   );
   validateCatalogSelection(
     reviewInput.uso_cfdi,
     onboardingData.catalogos.usos_cfdi.map((item) => item.value),
     ["uso_cfdi"],
     "Selecciona un uso de CFDI válido",
-    errors
+    errors,
+    schemaIssuePaths
   );
   validateCatalogSelection(
     reviewInput.regimenFiscal,
     onboardingData.catalogos.regimenes_fiscales.map((item) => item.value),
     ["regimenFiscal"],
     "Selecciona un régimen fiscal válido",
-    errors
+    errors,
+    schemaIssuePaths
   );
 
   if (
@@ -357,21 +342,11 @@ const getCatalogValidationErrors = (
       (item) => item.value === reviewInput.tipo_pedido
     )
   ) {
-    errors.push(
-      createValidationError(
-        ["tipo_pedido"],
-        "Selecciona un tipo de pedido válido"
-      )
-    );
-  }
-
-  if (
-    typeof reviewInput.origen === "string" &&
-    reviewInput.origen &&
-    !ORIGIN_FIELD_MAP.some((item) => item.label === reviewInput.origen)
-  ) {
-    errors.push(
-      createValidationError(["origen"], "Selecciona un origen válido")
+    pushCatalogValidationIssue(
+      errors,
+      schemaIssuePaths,
+      ["tipo_pedido"],
+      "Selecciona un tipo de pedido válido"
     );
   }
 
@@ -382,11 +357,11 @@ const getCatalogValidationErrors = (
     );
 
     if (!product) {
-      errors.push(
-        createValidationError(
-          ["items", itemIndex, "productoId"],
-          "Selecciona un producto válido"
-        )
+      pushCatalogValidationIssue(
+        errors,
+        schemaIssuePaths,
+        ["items", itemIndex, "productoId"],
+        "Selecciona un producto válido"
       );
       return;
     }
@@ -395,11 +370,11 @@ const getCatalogValidationErrors = (
     const hasColor = product.variantes.some((variant) => variant.color.id === colorId);
 
     if (!hasColor) {
-      errors.push(
-        createValidationError(
-          ["items", itemIndex, "colorId"],
-          "Selecciona un color válido para el producto"
-        )
+      pushCatalogValidationIssue(
+        errors,
+        schemaIssuePaths,
+        ["items", itemIndex, "colorId"],
+        "Selecciona un color válido para el producto"
       );
     }
 
@@ -411,11 +386,11 @@ const getCatalogValidationErrors = (
 
     (item.tallas ?? []).forEach((size, sizeIndex) => {
       if (!availableSizeIds.has(size.tallaId)) {
-        errors.push(
-          createValidationError(
-            ["items", itemIndex, "tallas", sizeIndex, "tallaId"],
-            "Selecciona una talla válida para el color elegido"
-          )
+        pushCatalogValidationIssue(
+          errors,
+          schemaIssuePaths,
+          ["items", itemIndex, "tallas", sizeIndex, "tallaId"],
+          "Selecciona una talla válida para el color elegido"
         );
       }
     });
@@ -425,11 +400,11 @@ const getCatalogValidationErrors = (
         (size) => size.lleva_corte_manga && !size.corte_manga_config?.tipo?.trim()
       )
     ) {
-      errors.push(
-        createValidationError(
-          ["items", itemIndex, "lleva_corte_manga"],
-          "Configura el tipo de corte de manga"
-        )
+      pushCatalogValidationIssue(
+        errors,
+        schemaIssuePaths,
+        ["items", itemIndex, "lleva_corte_manga"],
+        "Configura el tipo de corte de manga"
       );
     }
   });
@@ -442,26 +417,27 @@ const validateCatalogSelection = (
   allowedValues: string[],
   path: (string | number)[],
   message: string,
-  target: QuoteReviewValidationError[]
+  target: QuoteReviewValidationIssue[],
+  schemaIssuePaths: ReadonlySet<string>
 ) => {
   if (typeof selectedValue !== "string" || !selectedValue.trim()) {
     return;
   }
 
   if (!allowedValues.includes(selectedValue)) {
-    target.push(createValidationError(path, message));
+    pushCatalogValidationIssue(target, schemaIssuePaths, path, message);
   }
 };
 
 // ─── Utilidades de formato ───────────────────────────────────────────────────
 
 const dedupeValidationErrors = (
-  errors: QuoteReviewValidationError[]
-): QuoteReviewValidationError[] => {
+  errors: QuoteReviewValidationIssue[]
+): QuoteReviewValidationIssue[] => {
   const seen = new Set<string>();
 
-  return errors.filter(({ field, message }) => {
-    const key = `${field}:${message}`;
+  return errors.filter(({ path, message }) => {
+    const key = `${getValidationPathKey(path)}:${message}`;
     if (seen.has(key)) {
       return false;
     }
@@ -471,13 +447,38 @@ const dedupeValidationErrors = (
   });
 };
 
-const createValidationError = (
+const mapValidationIssuesToErrors = (
+  issues: QuoteReviewValidationIssue[]
+): QuoteReviewValidationError[] => {
+  return issues.map(({ path, message }) => ({
+    field: buildFieldLabel(path),
+    message,
+  }));
+};
+
+const createValidationIssue = (
   path: (string | number)[],
   message: string
-): QuoteReviewValidationError => ({
-  field: buildFieldLabel(path),
+): QuoteReviewValidationIssue => ({
+  path: [...path],
   message,
 });
+
+const getValidationPathKey = (path: readonly (string | number)[]): string =>
+  path.map(String).join(".");
+
+const pushCatalogValidationIssue = (
+  target: QuoteReviewValidationIssue[],
+  schemaIssuePaths: ReadonlySet<string>,
+  path: (string | number)[],
+  message: string
+) => {
+  if (schemaIssuePaths.has(getValidationPathKey(path))) {
+    return;
+  }
+
+  target.push(createValidationIssue(path, message));
+};
 
 const normalizeIssuePath = (
   path: readonly PropertyKey[]

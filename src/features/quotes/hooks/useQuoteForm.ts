@@ -41,40 +41,6 @@ export interface ExtraService {
   cantidad: number;
 }
 
-// Catálogos estáticos usados para renderizar selects y normalizar valores de entrada.
-type OriginFlagKey =
-  | "recompra"
-  | "chat_online"
-  | "pedido_online"
-  | "prospeccion"
-  | "recomendacion"
-  | "amazon"
-  | "google"
-  | "publicidad"
-  | "mercado_libre"
-  | "redes_sociales"
-  | "otro"
-  | "mailing";
-
-const ORIGIN_FIELD_MAP: { label: string; field: OriginFlagKey }[] = [
-  { label: "Recompra", field: "recompra" },
-  { label: "Chat Online", field: "chat_online" },
-  { label: "Pedido Online", field: "pedido_online" },
-  { label: "Prospección", field: "prospeccion" },
-  { label: "Recomendación", field: "recomendacion" },
-  { label: "Amazon", field: "amazon" },
-  { label: "Google", field: "google" },
-  { label: "Publicidad", field: "publicidad" },
-  { label: "Mercado Libre", field: "mercado_libre" },
-  { label: "Redes Sociales", field: "redes_sociales" },
-  { label: "Otro", field: "otro" },
-  { label: "Mailing", field: "mailing" },
-];
-
-const ORIGIN_OPTIONS = ORIGIN_FIELD_MAP.map((item) => item.label);
-
-
-
 const PAYMENT_CONDITION_OPTIONS: { value: QuotePaymentCondition; label: string }[] = [
   { value: "100_anticipo", label: "100% Anticipo" },
   { value: "50_anticipo", label: "50% Anticipo" },
@@ -91,18 +57,6 @@ const IVA_OPTIONS = [
 ];
 const DEFAULT_USO_CFDI_VALUE = "G03";
 const DEFAULT_USO_CFDI_LABEL = "G03 - Gastos en general";
-
-// Guards de dominio para asegurar que los valores persistidos siempre coincidan con el esquema actual.
-const mapOrigenFlags = (origen: string) => {
-  const selectedField = ORIGIN_FIELD_MAP.find((item) => item.label === origen)?.field;
-  return ORIGIN_FIELD_MAP.reduce(
-    (accumulator, item) => ({
-      ...accumulator,
-      [item.field]: item.field === selectedField,
-    }),
-    {} as Record<OriginFlagKey, boolean>
-  );
-};
 
 const normalizeItem = (item: QuoteItem): QuoteItem => {
   const cantidad = Number(item.cantidad) || 0;
@@ -132,7 +86,6 @@ export const createEmptyValues = (todayStr: string, userName: string): QuoteForm
   codigoPostalFiscal: "",
   ciudadFiscal: "",
   estadoFiscal: "",
-  giroEmpresa: "",
   persona_pagos: "",
   correo_facturas: "",
   telefono_pagos: "",
@@ -146,7 +99,6 @@ export const createEmptyValues = (todayStr: string, userName: string): QuoteForm
   fecha: todayStr,
   agente: userName,
   tipo_pedido: 0,
-  origen: "",
   destinatario: "",
   empresaEnvio: "",
   telefonoEnvio: "",
@@ -159,7 +111,6 @@ export const createEmptyValues = (todayStr: string, userName: string): QuoteForm
   referenciasEnvio: "",
   enviarDomicilioFiscal: false,
   embarcarConOtrosPedidos: false,
-  empaque_ecologico: true,
   embarque_parcial: false,
   comentarios_parcialidad: "",
   servicioEnvioActivo: false,
@@ -531,11 +482,9 @@ export function useQuoteForm() {
                 : parsed.data.estatusPedido === "Completo"
                   ? 3
                   : 4,
-          ...mapOrigenFlags(parsed.data.origen ?? ""),
           ...mapCondicionPagoFlags(parsed.data.condicionPago ?? "100_anticipo"),
           oc: parsed.data.oc?.trim() || "",
           monto: parsed.data.condicionPagoMonto ? String(parsed.data.condicionPagoMonto) : "0",
-          empaque_ecologico: Boolean(parsed.data.empaque_ecologico),
           cliente_razon_social: parsed.data.razonSocial || "",
           cliente_nombre: parsed.data.clienteNombre || "",
           cliente_rfc: parsed.data.rfc || "",
@@ -545,7 +494,6 @@ export function useQuoteForm() {
           cliente_codigo_postal: parsed.data.codigoPostalFiscal || "",
           cliente_ciudad: parsed.data.ciudadFiscal || "",
           cliente_estado: parsed.data.estadoFiscal || "",
-          cliente_giro_empresarial: parsed.data.giroEmpresa || "",
           destinatario: parsed.data.destinatario || "",
           empresa_envio: parsed.data.empresaEnvio || "",
           telefono_envio: parsed.data.telefonoEnvio || "",
@@ -929,7 +877,6 @@ export function useQuoteForm() {
     form.setFieldValue("codigoPostalFiscal", customer.codigo_postal ?? "");
     form.setFieldValue("ciudadFiscal", customer.ciudad ?? "");
     form.setFieldValue("estadoFiscal", customer.estado ?? "");
-    form.setFieldValue("giroEmpresa", customer.giro_empresarial ?? "");
     setSelectedCustomerId(Number(customer.id) || 0);
     setCustomerSelectedFromSearch(fromSearch);
     form.setFieldValue("telefono_pagos", customer.telefono ?? "");
@@ -971,7 +918,6 @@ export function useQuoteForm() {
       codigo_postal: customer.codigo_postal,
       ciudad: customer.ciudad,
       estado: customer.estado,
-      giro_empresarial: customer.giro_empresarial,
       sat_regimen_fiscal_id: Number(customer.sat_regimen_fiscal),
       sat_regimen_fiscal__codigo: regimenCodigo,
       sat_regimen_fiscal__descripcion: regimenDescripcion,
@@ -1019,7 +965,6 @@ export function useQuoteForm() {
     isRouteTransitioning;
   const itemErrors = getError("items");
   const tipoPedidoError = getError("tipo_pedido");
-  const origenError = getError("origen");
 
   // Opciones desde onboarding y SAT.
   const tiposPedidoOptions = useMemo(
@@ -1120,7 +1065,6 @@ export function useQuoteForm() {
     userName,
     todayStr,
     tiposPedidoOptions,
-    originOptions: ORIGIN_OPTIONS,
     paymentConditionOptions: PAYMENT_CONDITION_OPTIONS,
     ivaOptions: IVA_OPTIONS,
     regimenFiscalOptions,
@@ -1156,7 +1100,6 @@ export function useQuoteForm() {
     saldoPendiente,
     itemsError: itemErrors,
     tipoPedidoError,
-    origenError,
     isAddProductsOpen,
     setIsAddProductsOpen,
     editIndex,

@@ -40,7 +40,6 @@ export function QuoteFormContent({
   userName,
   todayStr,
   tiposPedidoOptions,
-  originOptions,
   paymentConditionOptions,
   ivaOptions,
   regimenFiscalOptions,
@@ -76,7 +75,6 @@ export function QuoteFormContent({
   saldoPendiente,
   itemsError,
   tipoPedidoError,
-  origenError,
   isAddProductsOpen,
   setIsAddProductsOpen,
   editIndex,
@@ -232,30 +230,6 @@ export function QuoteFormContent({
                   />
                 )}
               </form.Field>
-              <div className="space-y-2">
-                <form.Field name="origen">
-                  {(field) => (
-                    <FormSelect
-                      label="Origen"
-                      options={[
-                        { value: "", label: "Seleccionar..." },
-                        ...originOptions.map((origin) => ({ value: origin, label: origin })),
-                      ]}
-                      name={field.name}
-                      value={field.state.value}
-                      onChange={(event) => {
-                        field.handleChange(event.target.value);
-                        clearFieldErrors("origen");
-                      }}
-                      onBlur={() => {
-                        field.handleBlur();
-                        validateField("origen", field.state.value);
-                      }}
-                      error={origenError}
-                    />
-                  )}
-                </form.Field>
-              </div>
             </div>
           </div>
 
@@ -491,27 +465,6 @@ export function QuoteFormContent({
                         validateField("estadoFiscal", field.state.value);
                       }}
                       error={getError("estadoFiscal")}
-                    />
-                  )}
-                </form.Field>
-                <form.Field name="giroEmpresa">
-                  {(field) => (
-                    <FormInput
-                      label="Giro de la empresa"
-                      placeholder="Giro de la empresa"
-                      forceUppercase={false}
-                      disabled
-                      name={field.name}
-                      value={field.state.value}
-                      onChange={(event) => {
-                        field.handleChange(event.target.value);
-                        clearFieldErrors("giroEmpresa");
-                      }}
-                      onBlur={() => {
-                        field.handleBlur();
-                        validateField("giroEmpresa", field.state.value);
-                      }}
-                      error={getError("giroEmpresa")}
                     />
                   )}
                 </form.Field>
@@ -1066,31 +1019,6 @@ export function QuoteFormContent({
         </div>
 
         <div className="mt-5 space-y-4">
-          <form.Field name="empaque_ecologico">
-            {(field) => (
-              <label className="flex items-start gap-3 rounded-2xl cursor-pointer border border-emerald-100 dark:border-emerald-500/20 bg-emerald-50/60 dark:bg-emerald-500/10 p-4">
-                <input
-                  type="checkbox"
-                  className="mt-0.5 w-4 h-4 rounded border-emerald-300 text-emerald-600 focus:ring-emerald-500"
-                  name={field.name}
-                  checked={Boolean(field.state.value)}
-                  onChange={(event) => {
-                    field.handleChange(event.target.checked);
-                    clearFieldErrors("empaque_ecologico");
-                  }}
-                  onBlur={field.handleBlur}
-                />
-                <div className="space-y-1">
-                  <p className="text-xs font-semibold uppercase text-emerald-700 dark:text-emerald-300">
-                    Empaque ecológico, sin bolsas de plástico
-                  </p>
-                  <p className="text-[11px] text-emerald-600/80 dark:text-emerald-300/80">
-                    ¡Gracias por ayudarnos a cuidar el medio ambiente!
-                  </p>
-                </div>
-              </label>
-            )}
-          </form.Field>
           <form.Field name="embarque_parcial">
             {(field) => (
               <label className="flex items-start gap-3 rounded-2xl cursor-pointer border border-amber-100 dark:border-amber-500/20 bg-amber-50/60 dark:bg-amber-500/10 p-4">

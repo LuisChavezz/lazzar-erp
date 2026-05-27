@@ -35,7 +35,6 @@ const QUOTE_SERVER_FIELD_PATH_MAP: Record<string, string> = {
   cliente_codigo_postal: "codigoPostalFiscal",
   cliente_ciudad: "ciudadFiscal",
   cliente_estado: "estadoFiscal",
-  cliente_giro_empresarial: "giroEmpresa",
   empresa_envio: "empresaEnvio",
   telefono_envio: "telefonoEnvio",
   celular_envio: "celularEnvio",

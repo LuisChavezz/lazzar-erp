@@ -128,7 +128,6 @@ export const QUOTE_REVIEW_FIELD_LABELS: Record<string, string> = {
   codigoPostalFiscal: "Código postal fiscal",
   ciudadFiscal: "Ciudad fiscal",
   estadoFiscal: "Estado fiscal",
-  giroEmpresa: "Giro de la empresa",
   persona_pagos: "Persona de pagos",
   correo_facturas: "Correo de facturas",
   telefono_pagos: "Teléfono de pagos",
@@ -141,7 +140,6 @@ export const QUOTE_REVIEW_FIELD_LABELS: Record<string, string> = {
   fecha: "Fecha",
   agente: "Agente",
   tipo_pedido: "Tipo de pedido",
-  origen: "Origen",
   destinatario: "Destinatario",
   empresaEnvio: "Empresa de envío",
   telefonoEnvio: "Teléfono de envío",
@@ -183,7 +181,6 @@ const quoteReviewBaseSchema = z.object({
   codigoPostalFiscal: requiredText("El código postal fiscal es requerido"),
   ciudadFiscal: requiredText("La ciudad fiscal es requerida"),
   estadoFiscal: requiredText("El estado fiscal es requerido"),
-  giroEmpresa: requiredText("El giro de la empresa es requerido"),
   persona_pagos: requiredText("La persona de pagos es requerida"),
   correo_facturas: requiredEmail(
     "El correo de facturas es requerido",
@@ -198,7 +195,6 @@ const quoteReviewBaseSchema = z.object({
   fecha: requiredText("La fecha es requerida"),
   agente: requiredText("El agente es requerido"),
   tipo_pedido: requiredPositiveNumber("Selecciona un tipo de pedido"),
-  origen: requiredText("Selecciona el origen"),
   destinatario: requiredText("El destinatario es requerido"),
   empresaEnvio: requiredText("La empresa de envío es requerida"),
   telefonoEnvio: requiredText("El teléfono de envío es requerido"),
@@ -223,25 +219,6 @@ export const quoteReviewSchema = quoteFormSchema
         code: z.ZodIssueCode.custom,
         path: ["clienteNombre"],
         message: "El nombre o razón social del cliente es requerido",
-      });
-    }
-
-    if (
-      data.condicionPago === "otra_cantidad" &&
-      (data.condicionPagoMonto == null || Number(data.condicionPagoMonto) <= 0)
-    ) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["condicionPagoMonto"],
-        message: "Especifica un monto válido",
-      });
-    }
-
-    if (data.embarque_parcial && !normalizeTextValue(data.comentarios_parcialidad)) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["comentarios_parcialidad"],
-        message: "Agrega los comentarios de parcialidad",
       });
     }
   });
