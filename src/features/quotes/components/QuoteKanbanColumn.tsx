@@ -22,12 +22,23 @@ interface QuoteKanbanColumnProps {
   pendingIds?: Set<number>;
   /** ID de la cotización que regresa a la columna tras cancelar un arrastre */
   returningId?: number | null;
+  /** Bloquea interacciones mientras se valida el envío a revisión */
+  isInteractionDisabled?: boolean;
 }
 
 // ─── Componente ───────────────────────────────────────────────────────────────
-export function QuoteKanbanColumn({ config, quotes, pendingIds, returningId }: QuoteKanbanColumnProps) {
+export function QuoteKanbanColumn({
+  config,
+  quotes,
+  pendingIds,
+  returningId,
+  isInteractionDisabled = false,
+}: QuoteKanbanColumnProps) {
   // Solo la columna "Por Autorizar" (estatus 2) acepta drops
-  const { ref, isDropTarget } = useDroppable({ id: config.id, disabled: config.estatus !== 2 });
+  const { ref, isDropTarget } = useDroppable({
+    id: config.id,
+    disabled: isInteractionDisabled || config.estatus !== 2,
+  });
   const [page, setPage] = useState(0);
 
   const totalPages = Math.max(1, Math.ceil(quotes.length / PAGE_SIZE));
@@ -132,6 +143,7 @@ export function QuoteKanbanColumn({ config, quotes, pendingIds, returningId }: Q
               quote={quote}
               isPending={pendingIds?.has(quote.id) ?? false}
               isReturning={returningId === quote.id}
+              isInteractionDisabled={isInteractionDisabled}
             />
           ))
         )}

@@ -25,6 +25,8 @@ interface QuoteKanbanCardProps {
   isPending?: boolean;
   /** Anima el borde del card cuando se cancela un arrastre y vuelve a su columna */
   isReturning?: boolean;
+  /** Bloquea interacciones mientras se valida el envío a revisión */
+  isInteractionDisabled?: boolean;
 }
 
 // ─── Contenido del card (memoizado para evitar re-renders por cambios en el tablero) ──────
@@ -152,12 +154,13 @@ export const QuoteKanbanCard = memo(function QuoteKanbanCard({
   isOverlay = false,
   isPending = false,
   isReturning = false,
+  isInteractionDisabled = false,
 }: QuoteKanbanCardProps) {
   const { ref, isDragging } = useDraggable({
     id: String(quote.id),
     data: { quote },
     // Solo las cotizaciones en Borrador (estatus 1) pueden arrastrarse
-    disabled: isOverlay || quote.estatus !== 1,
+    disabled: isOverlay || isPending || isInteractionDisabled || quote.estatus !== 1,
   });
 
   return (

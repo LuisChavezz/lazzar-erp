@@ -4,10 +4,14 @@ import { useState, useMemo, useTransition, useCallback, useRef, useEffect, lazy,
 import Link from "next/link";
 import { DragDropProvider, DragOverlay } from "@dnd-kit/react";
 import type { DragEndEvent, DragStartEvent } from "@dnd-kit/dom";
+import { useIsMutating } from "@tanstack/react-query";
 import { useSession } from "next-auth/react";
+import { Loader } from "@/src/components/Loader";
 import { useQuotes } from "../hooks/useQuotes";
 import { useQuoteFilters } from "../hooks/useQuoteFilters";
 import { useSubmitQuoteForReview } from "../hooks/useSubmitQuoteForReview";
+import { validateQuoteForReviewMutationKey } from "../hooks/useValidateQuoteForReview";
+import { useQuoteReviewValidationFlow } from "../hooks/useQuoteReviewValidationFlow";
 import { useQuoteFiltersStore, QuoteFiltersValue } from "../stores/quote-filters.store";
 import { Quote } from "../interfaces/quote.interface";
 import { LoadingSkeleton } from "@/src/components/LoadingSkeleton";
@@ -16,6 +20,7 @@ import { ConfirmDialog } from "@/src/components/ConfirmDialog";
 import { QuoteKanbanColumn } from "./QuoteKanbanColumn";
 import { KANBAN_COLUMNS, KanbanColumnConfig } from "../constants/kanbanColumns";
 import { QuoteKanbanCard } from "./QuoteKanbanCard";
+import { QuoteReviewValidationDialog } from "./QuoteReviewValidationDialog";
 import { hasPermission } from "@/src/utils/permissions";
 
 // ─── Carga diferida del diálogo de filtros ────────────────────────────────────
@@ -64,6 +69,15 @@ export function QuoteKanbanBoard() {
 
   // ─── Mutación de envío a revisión ────────────────────────────────────────
   const submitQuoteForReviewMutation = useSubmitQuoteForReview();
+  const {
+    reviewValidationErrors,
+    isReviewValidationDialogOpen,
+    setIsReviewValidationDialogOpen,
+    validationQuoteId,
+    validateBeforeSendToReview,
+  } = useQuoteReviewValidationFlow();
+  const isValidatingReview =
+    useIsMutating({ mutationKey: validateQuoteForReviewMutationKey }) > 0;
 
   // ─── Estado local del tablero ─────────────────────────────────────────────
   const [columnMap, setColumnMap] = useState<ColumnMap | null>(null);
@@ -84,6 +98,12 @@ export function QuoteKanbanBoard() {
     return () => {
       if (returningTimerRef.current) clearTimeout(returningTimerRef.current);
     };
+  }, []);
+
+  const triggerReturnAnimation = useCallback((quoteId: number) => {
+    setReturningId(quoteId);
+    if (returningTimerRef.current) clearTimeout(returningTimerRef.current);
+    returningTimerRef.current = setTimeout(() => setReturningId(null), 800);
   }, []);
 
   // Permisos
@@ -141,19 +161,21 @@ export function QuoteKanbanBoard() {
   // ─── Handler: inicio de arrastre ─────────────────────────────────────────
   const handleDragStart = useCallback(
     (event: DragStartEvent) => {
+      if (isValidatingReview) return;
       const sourceId = event.operation.source?.id;
       if (!sourceId) return;
       const found = quotes.find((q) => String(q.id) === String(sourceId)) ?? null;
       setActiveQuote(found);
     },
-    [quotes]
+    [isValidatingReview, quotes]
   );
 
   // ─── Handler: fin de arrastre ─────────────────────────────────────────────
   const handleDragEnd = useCallback(
-    (event: DragEndEvent) => {
+    async (event: DragEndEvent) => {
       setActiveQuote(null);
       if (event.canceled) return;
+      if (isValidatingReview) return;
 
       const sourceId = event.operation.source?.id;
       const targetId = event.operation.target?.id;
@@ -183,6 +205,12 @@ export function QuoteKanbanBoard() {
       // Solo las cotizaciones en Borrador (estatus 1) pueden moverse
       if (sourceColEstatus !== 1) return;
 
+      const validationStatus = await validateBeforeSendToReview(movedQuote.id);
+      if (validationStatus !== "valid") {
+        triggerReturnAnimation(movedQuote.id);
+        return;
+      }
+
       // Mostrar diálogo de confirmación antes de aplicar el cambio
       setPendingDrop({
         quote: movedQuote,
@@ -192,7 +220,7 @@ export function QuoteKanbanBoard() {
         targetConfig: targetCol,
       });
     },
-    [quotes, columnMap]
+    [columnMap, isValidatingReview, quotes, triggerReturnAnimation, validateBeforeSendToReview]
   );
 
   // ─── Confirmar el arrastre: actualización optimista + mutación ────────────
@@ -244,14 +272,12 @@ export function QuoteKanbanBoard() {
           // El usuario canceló — activar la animación de retorno
           const quoteId = pendingDrop.quote.id;
           setPendingDrop(null);
-          setReturningId(quoteId);
-          if (returningTimerRef.current) clearTimeout(returningTimerRef.current);
-          returningTimerRef.current = setTimeout(() => setReturningId(null), 800);
+          triggerReturnAnimation(quoteId);
         }
         dropConfirmedRef.current = false;
       }
     },
-    [pendingDrop]
+    [pendingDrop, triggerReturnAnimation]
   );
 
   // ─── Estado de carga ───────────────────────────────────────────────────────
@@ -274,7 +300,11 @@ export function QuoteKanbanBoard() {
   }
 
   return (
-    <div className="mt-6 flex flex-col gap-4" aria-label="Tablero de cotizaciones">
+    <div
+      className="mt-6 flex flex-col gap-4"
+      aria-label="Tablero de cotizaciones"
+      aria-busy={isValidatingReview}
+    >
       {/* Barra de herramientas */}
       <KanbanToolbar
         searchValue={searchQuery}
@@ -322,7 +352,8 @@ export function QuoteKanbanBoard() {
         )}
       </div>
 
-      {/* Proveedor DnD */}
+      {/* Proveedor DnD — el wrapper relativo acota el overlay de validación a esta sección */}
+      <div className="relative">
       <DragDropProvider onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
         {/* Columnas horizontales con scroll — items-stretch iguala la altura a la columna más larga */}
         <div
@@ -337,6 +368,7 @@ export function QuoteKanbanBoard() {
                 quotes={resolvedMap[col.estatus] ?? []}
                 pendingIds={pendingIds}
                 returningId={returningId}
+                isInteractionDisabled={isValidatingReview}
               />
             </div>
           ))}
@@ -346,11 +378,21 @@ export function QuoteKanbanBoard() {
         <DragOverlay dropAnimation={null}>
           {activeQuote ? (
             <div className="rotate-1 scale-105 shadow-2xl shadow-black/20 rounded-2xl">
-              <QuoteKanbanCard quote={activeQuote} isOverlay />
+              <QuoteKanbanCard quote={activeQuote} isOverlay isInteractionDisabled={isValidatingReview} />
             </div>
           ) : null}
         </DragOverlay>
       </DragDropProvider>
+
+      {isValidatingReview && (
+        <div className="absolute inset-0 z-30 flex items-center justify-center rounded-3xl bg-slate-50/80 dark:bg-black/70 backdrop-blur-[2px]">
+          <Loader
+            title="Validando cotización"
+            message="Estamos validando la cotización antes de enviarla a revisión."
+          />
+        </div>
+      )}
+      </div>
 
       {/* Diálogo de confirmación para arrastre col-1 → col-2 */}
       <ConfirmDialog
@@ -366,6 +408,12 @@ export function QuoteKanbanBoard() {
         cancelText="Cancelar"
         confirmColor="blue"
         onConfirm={handleDropConfirm}
+      />
+      <QuoteReviewValidationDialog
+        open={isReviewValidationDialogOpen}
+        onOpenChange={setIsReviewValidationDialogOpen}
+        quoteId={validationQuoteId ?? pendingDrop?.quote.id ?? 0}
+        errors={reviewValidationErrors}
       />
 
       {/* Diálogo de filtros (carga diferida) */}

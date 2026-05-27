@@ -22,12 +22,14 @@ import { useRejectOperationsQuote } from "../../operations/hooks/useRejectOperat
 import { useGoogleSendEmail } from "../../google/hooks/useGoogleSendEmail";
 import { useDownloadQuotePdf } from "../hooks/useDownloadQuotePdf";
 import { useSubmitQuoteForReview } from "../hooks/useSubmitQuoteForReview";
+import { useQuoteReviewValidationFlow } from "../hooks/useQuoteReviewValidationFlow";
 import { Quote } from "../interfaces/quote.interface";
 import {
   canEditQuote,
   canManageQuoteAuthorization,
   canSubmitQuoteForReview,
 } from "../utils/quoteStatusRules";
+import { QuoteReviewValidationDialog } from "./QuoteReviewValidationDialog";
 
 // ─── Carga diferida del panel de detalles ─────────────────────────────────────
 const QuoteDetails = dynamic(
@@ -75,6 +77,14 @@ export function QuoteCardActions({ quote, align = "end" }: QuoteCardActionsProps
   const { mutate: downloadPdf, isPending: isDownloadingPdf } = useDownloadQuotePdf();
   const { mutate: submitQuoteForReview, isPending: isSubmittingForReview } =
     useSubmitQuoteForReview();
+  const {
+    reviewValidationErrors,
+    isReviewValidationDialogOpen,
+    setIsReviewValidationDialogOpen,
+    validationQuoteId,
+    isValidatingReview,
+    validateBeforeSendToReview,
+  } = useQuoteReviewValidationFlow();
 
   // ─── Permisos de acción por estatus ───────────────────────────────────────
   const canEdit = canEditQuote(quote.estatus);
@@ -101,6 +111,13 @@ export function QuoteCardActions({ quote, align = "end" }: QuoteCardActionsProps
     rejectOrder(quote.id);
   };
 
+  const handleSubmitForReviewClick = async () => {
+    const validationStatus = await validateBeforeSendToReview(quote.id);
+    if (validationStatus === "valid") {
+      setIsSubmitForReviewOpen(true);
+    }
+  };
+
   const items: ActionMenuItem[] = [
     {
       label: "Ver detalles",
@@ -114,10 +131,10 @@ export function QuoteCardActions({ quote, align = "end" }: QuoteCardActionsProps
       visible: canEdit,
     },
     {
-      label: "Enviar a revisión",
+      label: isValidatingReview ? "Verificando..." : "Enviar a revisión",
       icon: PaperPlaneIcon,
-      onSelect: () => setIsSubmitForReviewOpen(true),
-      disabled: isSubmittingForReview,
+      onSelect: handleSubmitForReviewClick,
+      disabled: isSubmittingForReview || isValidatingReview,
       visible: canSendToReview,
     },
     {
@@ -197,6 +214,12 @@ export function QuoteCardActions({ quote, align = "end" }: QuoteCardActionsProps
         confirmText={isSubmittingForReview ? "Enviando..." : "Enviar a revisión"}
         confirmColor="blue"
         onConfirm={() => submitQuoteForReview(quote.id)}
+      />
+      <QuoteReviewValidationDialog
+        open={isReviewValidationDialogOpen}
+        onOpenChange={setIsReviewValidationDialogOpen}
+        quoteId={validationQuoteId ?? quote.id}
+        errors={reviewValidationErrors}
       />
     </>
   );
