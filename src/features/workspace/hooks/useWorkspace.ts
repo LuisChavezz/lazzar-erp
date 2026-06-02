@@ -6,7 +6,7 @@ import { useSession } from "next-auth/react";
 import { useWorkspaceStore } from "../store/workspace.store";
 import { useMyCompanies } from "@/src/features/companies/hooks/useMyCompanies";
 import { useCompanyBranches } from "../../branches/hooks/useCompanyBranches";
-
+import { loginRedirects } from "@/src/constants/routePermissions";
 
 export const useWorkspace = () => {
   const router = useRouter();
@@ -19,8 +19,11 @@ export const useWorkspace = () => {
   const isAdmin = session?.user?.role === "admin";
   const permissions = session?.user?.permissions ?? [];
 
-  const redirectPath =
-    permissions.includes("R-CRM") && !isAdmin ? "/sales" : "/";
+  // Determinar la ruta de redirección según los permisos del usuario (ordenado por prioridad)
+  // Los administradores siempre van al dashboard principal
+  const redirectPath = isAdmin
+    ? "/"
+    : loginRedirects.find((r) => permissions.includes(r.permission))?.path ?? "/";
 
   const redirectAfterWorkspaceSelection = () => {
     setTimeout(() => {
