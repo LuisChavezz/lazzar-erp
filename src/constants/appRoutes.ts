@@ -147,13 +147,6 @@ export const appRouteGroups: AppRouteGroup[] = [
     showInHome: true,
     items: [
       {
-        key: "wms-inventories",
-        label: "Inventarios",
-        path: "/wms/inventories",
-        icon: InventariosIcon,
-        permission: "R-WMS",
-      },
-      {
         key: "wms-stock",
         label: "Existencias",
         path: "/wms/stock",

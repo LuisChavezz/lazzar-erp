@@ -17,7 +17,6 @@ const ROUTE_TITLES: Record<string, string> = {
   "/procurement/quotes-menu": "Órdenes",
   "/procurement/receipts": "Recepciones",
   "/manufacturing/production": "Producción",
-  "/wms/inventories": "Inventarios",
   "/wms/stock": "Existencias",
   "/wms/shipments": "Embarques",
   "/wms/shipment-tracking": "Rastrear Guías",
