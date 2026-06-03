@@ -83,7 +83,10 @@ const mapDetalleToQuoteItem = (
 
   const cantidadTotal = detalle.tallas.reduce((sum, t) => sum + t.cantidad, 0);
   const precio = Number(detalle.precio_unitario) || 0;
-  const importe = Number(detalle.subtotal_linea) || 0;
+  // Calcular el importe localmente en lugar de depender de subtotal_linea del API,
+  // que puede venir como "0.00" y provocar que los totales sean incorrectos
+  // en la carga inicial del formulario de edición.
+  const importe = Number((cantidadTotal * precio).toFixed(2));
 
   return {
     productoId: detalle.producto,
