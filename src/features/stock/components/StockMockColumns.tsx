@@ -13,15 +13,9 @@ export const CATEGORY_STYLES: Record<
   string,
   { badge: string; dot: string }
 > = {
-  Telas:      { badge: "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300",     dot: "bg-indigo-500"  },
-  Botones:    { badge: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300", dot: "bg-emerald-500" },
-  Cierres:    { badge: "bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300",                dot: "bg-sky-500"     },
-  Hilos:      { badge: "bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300",    dot: "bg-violet-500"  },
-  Elásticos:  { badge: "bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300",    dot: "bg-orange-500"  },
-  Entretelas: { badge: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300",        dot: "bg-amber-500"   },
-  Ribetes:    { badge: "bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300",            dot: "bg-rose-500"    },
-  Forros:     { badge: "bg-teal-100 text-teal-700 dark:bg-teal-900/40 dark:text-teal-300",            dot: "bg-teal-500"    },
-  Accesorios: { badge: "bg-slate-100 text-slate-600 dark:bg-white/10 dark:text-slate-300",            dot: "bg-slate-400"   },
+  Telas:     { badge: "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300",   dot: "bg-indigo-500"  },
+  Avíos:     { badge: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300",      dot: "bg-amber-500"   },
+  Terminado: { badge: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300", dot: "bg-emerald-500" },
 };
 
 export const WAREHOUSE_STYLES: Record<string, string> = {
@@ -147,10 +141,6 @@ function StockRing({ total, apartado, max, status }: StockRingProps) {
           {percentage}%
         </text>
       </svg>
-
-      <span className="text-[9px] font-semibold text-slate-400 dark:text-slate-500 tracking-widest uppercase">
-        stock
-      </span>
     </div>
   );
 }
@@ -166,23 +156,25 @@ const columnHelper = createColumnHelper<MockStockItem>();
  */
 export function getStockColumns(): ColumnDef<MockStockItem>[] {
   return [
-  columnHelper.accessor((row) => `${row.nombre} ${row.sku}`, {
-    id: "producto",
-    header: "Producto",
-    meta: { label: "Producto" } as const,
-    cell: (info) => {
-      const item = info.row.original;
-      return (
-        <div className="min-w-0">
-          <p className="text-sm font-semibold text-slate-800 dark:text-slate-100 leading-snug line-clamp-2">
-            {item.nombre}
-          </p>
-          <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5 font-mono tracking-wider">
-            {item.sku}
-          </p>
-        </div>
-      );
-    },
+  columnHelper.accessor("sku", {
+    id: "sku",
+    header: "SKU",
+    meta: { label: "SKU" } as const,
+    cell: (info) => (
+      <span className="text-xs font-mono font-semibold text-slate-500 dark:text-slate-400 tracking-wider">
+        {info.getValue()}
+      </span>
+    ),
+  }),
+  columnHelper.accessor("nombre", {
+    id: "descripcion",
+    header: "Descripción",
+    meta: { label: "Descripción" } as const,
+    cell: (info) => (
+      <span className="text-sm font-semibold text-slate-800 dark:text-slate-100 leading-snug line-clamp-2">
+        {info.getValue()}
+      </span>
+    ),
   }),
   columnHelper.accessor("categoria", {
     id: "categoria",
@@ -190,7 +182,7 @@ export function getStockColumns(): ColumnDef<MockStockItem>[] {
     meta: { label: "Categoría" } as const,
     cell: (info) => {
       const cat = info.getValue();
-      const style = CATEGORY_STYLES[cat] ?? CATEGORY_STYLES["Accesorios"];
+      const style = CATEGORY_STYLES[cat] ?? CATEGORY_STYLES["Telas"];
       return (
         <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full leading-none ${style.badge}`}>
           {cat}

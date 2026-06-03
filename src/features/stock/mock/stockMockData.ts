@@ -47,14 +47,8 @@ export const WAREHOUSES: MockWarehouse[] = [
 
 export const CATEGORIES = [
   "Telas",
-  "Botones",
-  "Cierres",
-  "Hilos",
-  "Elásticos",
-  "Entretelas",
-  "Ribetes",
-  "Forros",
-  "Accesorios",
+  "Avíos",
+  "Terminado",
 ] as const;
 
 export type StockCategory = (typeof CATEGORIES)[number];
@@ -62,15 +56,9 @@ export type StockCategory = (typeof CATEGORIES)[number];
 // ─── Prefijos SKU por categoría ───────────────────────────────────────────────
 
 const SKU_PREFIX: Record<StockCategory, string> = {
-  Telas:      "TEL",
-  Botones:    "BOT",
-  Cierres:    "CIE",
-  Hilos:      "HIL",
-  Elásticos:  "ELA",
-  Entretelas: "ENT",
-  Ribetes:    "RIB",
-  Forros:     "FOR",
-  Accesorios: "ACC",
+  Telas:     "TEL",
+  Avíos:     "AVI",
+  Terminado: "TER",
 };
 
 // ─── Productos textiles ───────────────────────────────────────────────────────
@@ -81,32 +69,34 @@ const TEXTILE_PRODUCTS: Array<{
   unidad: string;
   max: number;
 }> = [
-  { nombre: "Tela Denim 12oz Índigo",           categoria: "Telas",      unidad: "m",      max: 2000  },
-  { nombre: "Tela Popelina Blanca 45\"",         categoria: "Telas",      unidad: "m",      max: 1500  },
-  { nombre: "Tela Jersey Gris Melange",          categoria: "Telas",      unidad: "m",      max: 1800  },
-  { nombre: "Tela Terciopelo Negro 150cm",       categoria: "Telas",      unidad: "m",      max: 800   },
-  { nombre: "Tela Lino Natural 140cm",           categoria: "Telas",      unidad: "m",      max: 1200  },
-  { nombre: "Tela Gabardina Beige 60\"",         categoria: "Telas",      unidad: "m",      max: 1600  },
-  { nombre: "Botones Concha 20mm Nácar",         categoria: "Botones",    unidad: "pzas",   max: 5000  },
-  { nombre: "Botones Metálicos Dorados 18mm",    categoria: "Botones",    unidad: "pzas",   max: 8000  },
-  { nombre: "Botones Resina Negros 15mm",        categoria: "Botones",    unidad: "pzas",   max: 12000 },
-  { nombre: "Cierre YKK Invisible 20cm",         categoria: "Cierres",    unidad: "pzas",   max: 3000  },
-  { nombre: "Cierre Metálico #5 Dorado",         categoria: "Cierres",    unidad: "pzas",   max: 2500  },
-  { nombre: "Cierre Plástico #3 Negro",          categoria: "Cierres",    unidad: "pzas",   max: 4000  },
-  { nombre: "Hilo Poliéster Blanco 100g",        categoria: "Hilos",      unidad: "rollos", max: 500   },
-  { nombre: "Hilo Overlock Crema 5000m",         categoria: "Hilos",      unidad: "rollos", max: 400   },
-  { nombre: "Hilo Metálico Dorado 200m",         categoria: "Hilos",      unidad: "rollos", max: 200   },
-  { nombre: "Elástico Tejido 2.5cm Blanco",      categoria: "Elásticos",  unidad: "m",      max: 3000  },
-  { nombre: "Elástico Liso 1cm Negro",           categoria: "Elásticos",  unidad: "m",      max: 5000  },
-  { nombre: "Entretela Fusionable Media 90cm",   categoria: "Entretelas", unidad: "m",      max: 1000  },
-  { nombre: "Entretela Rígida Blanca 100cm",     categoria: "Entretelas", unidad: "m",      max: 800   },
-  { nombre: "Ribete Satinado Negro 2cm",         categoria: "Ribetes",    unidad: "m",      max: 2000  },
-  { nombre: "Encaje Algodón Blanco 3cm",         categoria: "Ribetes",    unidad: "m",      max: 1500  },
-  { nombre: "Forro Acetate Negro 140cm",         categoria: "Forros",     unidad: "m",      max: 1200  },
-  { nombre: "Forro Viscosa Crema 140cm",         categoria: "Forros",     unidad: "m",      max: 1000  },
-  { nombre: "Remache Dorado #8 Industrial",      categoria: "Accesorios", unidad: "pzas",   max: 20000 },
-  { nombre: "Velcro Adhesivo Blanco 2cm",        categoria: "Accesorios", unidad: "m",      max: 2000  },
-  { nombre: "Cinta Sesgada Blanca 1.5cm",        categoria: "Accesorios", unidad: "m",      max: 3000  },
+  // ── Telas ─────────────────────────────────────────────────────────────────
+  { nombre: "Tela Oxford Azul",                 categoria: "Telas",     unidad: "m",      max: 2000  },
+  { nombre: "Tela Denim 12oz Índigo",           categoria: "Telas",     unidad: "m",      max: 1800  },
+  { nombre: "Tela Popelina Blanca 45\"",         categoria: "Telas",     unidad: "m",      max: 1500  },
+  { nombre: "Tela Jersey Gris Melange",          categoria: "Telas",     unidad: "m",      max: 1600  },
+  { nombre: "Tela Terciopelo Negro 150cm",       categoria: "Telas",     unidad: "m",      max: 900   },
+  { nombre: "Tela Lino Natural 140cm",           categoria: "Telas",     unidad: "m",      max: 1200  },
+  { nombre: "Tela Gabardina Beige 60\"",         categoria: "Telas",     unidad: "m",      max: 1400  },
+  { nombre: "Tela Sarga Algodón Verde",          categoria: "Telas",     unidad: "m",      max: 1100  },
+  // ── Avíos (insumos y accesorios) ──────────────────────────────────────────
+  { nombre: "Cierre YKK Invisible 20cm",        categoria: "Avíos",     unidad: "pzas",   max: 3000  },
+  { nombre: "Botones Concha 20mm Nácar",        categoria: "Avíos",     unidad: "pzas",   max: 5000  },
+  { nombre: "Hilo Poliéster Blanco 100g",       categoria: "Avíos",     unidad: "rollos", max: 500   },
+  { nombre: "Elástico Tejido 2.5cm Blanco",     categoria: "Avíos",     unidad: "m",      max: 3000  },
+  { nombre: "Entretela Fusionable Media 90cm",  categoria: "Avíos",     unidad: "m",      max: 1000  },
+  { nombre: "Ribete Satinado Negro 2cm",        categoria: "Avíos",     unidad: "m",      max: 2000  },
+  { nombre: "Remache Dorado #8 Industrial",     categoria: "Avíos",     unidad: "pzas",   max: 20000 },
+  { nombre: "Velcro Adhesivo Blanco 2cm",       categoria: "Avíos",     unidad: "m",      max: 2000  },
+  { nombre: "Cinta Sesgada Blanca 1.5cm",       categoria: "Avíos",     unidad: "m",      max: 2500  },
+  // ── Terminado (productos confeccionados) ──────────────────────────────────
+  { nombre: "Camisa Oxford Azul M",             categoria: "Terminado", unidad: "pzas",   max: 300   },
+  { nombre: "Pantalón Denim Recto 34",          categoria: "Terminado", unidad: "pzas",   max: 250   },
+  { nombre: "Vestido Jersey Gris Talla Única",  categoria: "Terminado", unidad: "pzas",   max: 150   },
+  { nombre: "Chaqueta Terciopelo Negra M",      categoria: "Terminado", unidad: "pzas",   max: 120   },
+  { nombre: "Blusa Lino Natural Talla Única",   categoria: "Terminado", unidad: "pzas",   max: 200   },
+  { nombre: "Gabardina Beige 60\"",             categoria: "Terminado", unidad: "pzas",   max: 180   },
+  { nombre: "Falda Sarga Verde M",              categoria: "Terminado", unidad: "pzas",   max: 160   },
+  { nombre: "Camiseta Algodón Blanca L",        categoria: "Terminado", unidad: "pzas",   max: 400   },
 ];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────

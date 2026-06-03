@@ -4,7 +4,6 @@ import { useState, useMemo, useTransition } from "react";
 import {
   CloseIcon,
   ExistenciasIcon,
-  TrendingUpIcon,
   ErrorIcon,
   ProductVariantsIcon,
 } from "@/src/components/Icons";
@@ -80,12 +79,10 @@ function StockMockStats() {
     (acc, item) => acc + item.cantidadApartada,
     0
   );
-  const totalCapacidad = MOCK_STOCK_ITEMS.reduce(
-    (acc, item) => acc + item.capacidadMaxima,
-    0
-  );
-  const criticos       = MOCK_STOCK_ITEMS.filter((i) => i.status === "critical").length;
-  const nivelServicio  = Math.round((totalDisponible / totalCapacidad) * 100);
+  const requiereStock   = MOCK_STOCK_ITEMS.filter(
+    (i) => i.status === "low" || i.status === "critical"
+  ).length;
+  const pctRequiereStock = Math.round((requiereStock / MOCK_STOCK_ITEMS.length) * 100);
 
   const kpis: KpiItem[] = [
     {
@@ -99,14 +96,14 @@ function StockMockStats() {
       progress:    100,
     },
     {
-      label:       "Unidades Disponibles",
-      value:       totalDisponible.toLocaleString("es-MX"),
-      icon:        TrendingUpIcon,
-      iconBgClass: "bg-emerald-50 dark:bg-emerald-500/10",
-      iconClass:   "text-emerald-500",
-      trendLabel:  `${nivelServicio}% de cap.`,
-      status:      "positive",
-      progress:    nivelServicio,
+      label:       "Requiere Stock",
+      value:       requiereStock.toString(),
+      icon:        ErrorIcon,
+      iconBgClass: "bg-red-50 dark:bg-red-500/10",
+      iconClass:   "text-red-500",
+      trendLabel:  `${pctRequiereStock}% del total`,
+      status:      "negative",
+      progress:    pctRequiereStock,
     },
     {
       label:       "Unidades Apartadas",
@@ -117,16 +114,6 @@ function StockMockStats() {
       trendLabel:  `${Math.round((totalApartado / (totalDisponible + totalApartado)) * 100)}% del total`,
       status:      "neutral",
       progress:    Math.round((totalApartado / (totalDisponible + totalApartado)) * 100),
-    },
-    {
-      label:       "Artículos Críticos",
-      value:       criticos.toString(),
-      icon:        ErrorIcon,
-      iconBgClass: "bg-red-50 dark:bg-red-500/10",
-      iconClass:   "text-red-500",
-      trendLabel:  `de ${MOCK_STOCK_ITEMS.length} SKUs`,
-      status:      criticos > 0 ? "negative" : "positive",
-      progress:    Math.round((criticos / MOCK_STOCK_ITEMS.length) * 100),
     },
   ];
 
