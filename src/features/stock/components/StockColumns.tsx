@@ -306,9 +306,9 @@ export function getStockColumns(maxStock?: number) {
         header: "Ubicación",
         meta: { label: "Ubicación" } as const,
         cell: (info) => (
-          <div className="flex items-center gap-1 text-[11px] text-slate-400 dark:text-slate-500">
-            <MapPinIcon className="w-3 h-3 shrink-0" />
-            <span className="truncate">{info.getValue()}</span>
+          <div className="flex items-start gap-1 text-[11px] text-slate-400 dark:text-slate-500">
+            <MapPinIcon className="w-3 h-3 shrink-0 mt-0.5" />
+            <span className="line-clamp-2">{info.getValue()}</span>
           </div>
         ),
       }

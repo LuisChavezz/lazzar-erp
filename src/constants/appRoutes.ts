@@ -28,6 +28,7 @@ import {
   FactoryIcon,
   ProduccionIcon,
   RecepcionesIcon,
+  HistoryIcon,
 } from "../components/Icons";
 
 export interface AppRouteItem {
@@ -159,6 +160,13 @@ export const appRouteGroups: AppRouteGroup[] = [
         path: "/wms/receipts",
         icon: RecepcionesIcon,
         permission: "R-WMS"
+      },
+      {
+        key: "wms-stock-movements",
+        label: "Movimientos",
+        path: "/wms/stock-movements",
+        icon: HistoryIcon,
+        permission: "R-WMS",
       },
       {
         key: "wms-shipments",
