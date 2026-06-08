@@ -1,12 +1,20 @@
 "use client";
 
+import { useMemo } from "react";
 import { DataTable } from "@/src/components/DataTable";
 import { ErrorState } from "@/src/components/ErrorState";
-import { stockColumns } from "./StockColumns";
+import { getStockColumns } from "./StockColumns";
 import { useStockItems } from "../hooks/useStockItems";
 
 export const StockList = () => {
   const { data: stockItems = [], isLoading, isError, error, refetch, isFetching } = useStockItems();
+
+  const maxStock = useMemo(
+    () => stockItems.reduce((max, item) => Math.max(max, item.stock), 0),
+    [stockItems],
+  );
+
+  const columns = useMemo(() => getStockColumns(maxStock || undefined), [maxStock]);
 
   if (isLoading) {
     return (
@@ -29,7 +37,7 @@ export const StockList = () => {
   return (
     <div className="mt-12">
       <DataTable
-        columns={stockColumns}
+        columns={columns}
         data={stockItems}
         searchPlaceholder="Buscar por producto, almacén o ubicación..."
         onRefetch={async () => {
