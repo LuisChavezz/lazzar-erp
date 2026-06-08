@@ -15,7 +15,9 @@ import {
   PaginationState,
 } from "@tanstack/react-table";
 import {
-  SettingsIcon,
+  ColumnsSettingsIcon,
+  SearchIcon,
+  CloseIcon,
   CheckCircleIcon,
   ChevronUpIcon,
   ChevronDownIcon,
@@ -24,7 +26,6 @@ import {
   SyncIcon,
 } from "./Icons";
 import { Button } from "./Button";
-import { SearchInput } from "./SearchInput";
 import { FiltersButton } from "./FiltersButton";
 import { Loader } from "./Loader";
 
@@ -86,6 +87,8 @@ export function DataTable<TData, TValue>({
   });
   const [draggedColumnId, setDraggedColumnId] = useState<string | null>(null);
   const [dragOverColumnId, setDragOverColumnId] = useState<string | null>(null);
+  const [isSearchExpanded, setIsSearchExpanded] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
 
   // Function to handle column reordering
@@ -282,18 +285,61 @@ export function DataTable<TData, TValue>({
         </h1>
       ) : null}
         <div className="flex flex-col lg:flex-row lg:items-center gap-3 w-full lg:w-auto">
-          {hasBaseData && (
-            <SearchInput
-              id={searchInputId}
-              value={globalFilter ?? ""}
-              onChange={setGlobalFilter}
-              placeholder={searchPlaceholder}
-              className="w-full sm:w-64 lg:w-72 lg:flex-none"
-            />
-          )}
-
           <div className="w-full lg:w-auto overflow-x-auto lg:overflow-visible pb-1">
             <div className="flex items-center justify-end gap-2 min-w-max">
+            {hasBaseData && (
+              <div className="flex items-center gap-0">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const willExpand = !isSearchExpanded;
+                    setIsSearchExpanded(willExpand);
+                    if (willExpand) {
+                      setTimeout(() => searchInputRef.current?.focus(), 300);
+                    }
+                  }}
+                  className={`inline-flex items-center justify-center p-2 cursor-pointer transition-all duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2 disabled:opacity-60 disabled:cursor-not-allowed border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 hover:bg-slate-50 dark:hover:bg-white/10 text-slate-700 dark:text-slate-200 shadow-sm shrink-0 ${
+                    isSearchExpanded
+                      ? "rounded-l-xl rounded-r-none border-r-0"
+                      : "rounded-xl"
+                  }`}
+                  aria-label={isSearchExpanded ? "Cerrar búsqueda" : "Buscar"}
+                >
+                  <SearchIcon className="w-4 h-4 shrink-0" />
+                </button>
+                <div
+                  className="overflow-hidden transition-all duration-300 ease-in-out"
+                  style={{
+                    width: isSearchExpanded ? "16rem" : "0px",
+                    opacity: isSearchExpanded ? 1 : 0,
+                  }}
+                >
+                  <div className="relative">
+                    <input
+                      ref={searchInputRef}
+                      id={searchInputId}
+                      type="search"
+                      value={globalFilter ?? ""}
+                      onChange={(e) => setGlobalFilter(e.target.value)}
+                      placeholder={searchPlaceholder}
+                      aria-label={searchPlaceholder}
+                      className="block w-64 py-1.5 pl-1.5 pr-9 text-sm leading-5 border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 text-slate-900 dark:text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-sky-500/50 focus:border-sky-500 transition-shadow [&::-webkit-search-cancel-button]:hidden [-moz-appearance:textfield] rounded-r-xl border-l-0"
+                    />
+                    {globalFilter && (
+                      <button
+                        type="button"
+                        onClick={() => setGlobalFilter("")}
+                        className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 transition-colors"
+                        aria-label="Limpiar búsqueda"
+                      >
+                        <CloseIcon className="h-4 w-4" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
             {onRefetch && (
               <Button
                 variant="secondary"
@@ -313,20 +359,21 @@ export function DataTable<TData, TValue>({
                     onFiltersClick={onFiltersClick}
                     isFiltersActive={isFiltersActive}
                     onClearFilters={onClearFilters}
+                    iconOnly
                   />
                 )}
                 <div className="relative">
                   <Button
                     variant="secondary"
+                    size="icon"
                     ref={columnsBtnRef}
                     onClick={() => setIsColumnsOpen(!isColumnsOpen)}
-                    leftIcon={<SettingsIcon className="w-4 h-4 shrink-0" />}
-                    className="shrink-0"
                     aria-expanded={isColumnsOpen}
                     aria-controls={columnsMenuId}
                     aria-haspopup="menu"
+                    aria-label="Configurar columnas"
                   >
-                    Columnas
+                    <ColumnsSettingsIcon className="w-4 h-4 shrink-0" />
                   </Button>
 
                   {isColumnsOpen && (
@@ -375,7 +422,6 @@ export function DataTable<TData, TValue>({
                 </div>
               </>
             )}
-
             {actionButton}
             </div>
           </div>

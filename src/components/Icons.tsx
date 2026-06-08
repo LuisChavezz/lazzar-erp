@@ -30,6 +30,7 @@ import {
   ChevronUp,
   ClipboardList,
   Clock,
+  Columns3Cog,
   DollarSign,
   Download,
   Eye,
@@ -140,6 +141,7 @@ export const BellIcon = (props: LucideProps) => <Bell {...props} />;
 export const ErrorIcon = (props: LucideProps) => <AlertTriangle {...props} />;
 export const CheckIcon = (props: LucideProps) => <Check {...props} />;
 export const CheckCircleIcon = (props: LucideProps) => <CheckCircle {...props} />;
+export const ColumnsSettingsIcon = (props: LucideProps) => <Columns3Cog {...props} />;
 export const InfoIcon = (props: LucideProps) => <Info {...props} />;
 export const SearchIcon = (props: LucideProps) => <Search {...props} />;
 export const EmailIcon = (props: LucideProps) => <Mail {...props} />;

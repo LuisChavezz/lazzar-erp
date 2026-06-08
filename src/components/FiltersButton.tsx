@@ -11,6 +11,8 @@ interface FiltersButtonProps {
   isFiltersActive?: boolean;
   /** Limpia los filtros activos (solo visible cuando isFiltersActive=true) */
   onClearFilters?: () => void;
+  /** Muestra solo el ícono, sin texto */
+  iconOnly?: boolean;
 }
 
 /**
@@ -21,17 +23,19 @@ export function FiltersButton({
   onFiltersClick,
   isFiltersActive,
   onClearFilters,
+  iconOnly,
 }: FiltersButtonProps) {
   return (
     <div className="flex items-center gap-2">
       <Button
         variant="secondary"
+        size={iconOnly ? "icon" : undefined}
         onClick={onFiltersClick}
         leftIcon={<FilterIcon className="w-4 h-4 shrink-0" aria-hidden="true" />}
         className="shrink-0"
         aria-label="Filtrar datos"
       >
-        Filtros
+        {iconOnly ? null : "Filtros"}
       </Button>
 
       {isFiltersActive && onClearFilters && (
