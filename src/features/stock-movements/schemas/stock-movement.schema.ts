@@ -13,10 +13,19 @@ export const StockMovementFormSchema = z
     cantidad: z
       .number({ message: "La cantidad es requerida" })
       .int("La cantidad debe ser un número entero")
-      .positive("La cantidad debe ser mayor a 0"),
+      .nonnegative("La cantidad no puede ser negativa"),
     observaciones: z.string().optional(),
   })
   .superRefine((data, ctx) => {
+    // Para movimientos que no son AJUSTE, la cantidad debe ser mayor a 0.
+    if (data.tipo_movimiento !== "AJUSTE" && data.cantidad === 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "La cantidad debe ser mayor a 0",
+        path: ["cantidad"],
+      });
+    }
+
     if (data.tipo_movimiento === "AJUSTE") {
       if (!data.observaciones || data.observaciones.trim() === "") {
         ctx.addIssue({

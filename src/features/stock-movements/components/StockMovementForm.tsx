@@ -28,6 +28,10 @@ function StockMovementFormContent({ onClose }: { onClose: () => void }) {
     activeLocations,
     variantOptions,
     movimientoTypeOptions,
+    availableStock,
+    isCheckingStock,
+    handleCheckStock,
+    resetStockCheck,
     getError,
     clearFieldError,
     handleFormSubmit,
@@ -210,31 +214,54 @@ function StockMovementFormContent({ onClose }: { onClose: () => void }) {
                 {/* Variante de Producto */}
                 <form.Field name="producto_variante_id">
                   {(field) => (
-                    <FormSelect
-                      label="Variante de Producto"
-                      name={field.name}
-                      value={field.state.value}
-                      onChange={(event) => {
-                        const nextValue = Number(event.target.value);
-                        field.handleChange(Number.isNaN(nextValue) ? 0 : nextValue);
-                        clearFieldError("producto_variante_id");
-                      }}
-                      onBlur={field.handleBlur}
-                      error={getError("producto_variante_id")}
-                    >
-                      <option value="0" disabled>
-                        Seleccionar variante...
-                      </option>
-                      {variantOptions.map((opt) => (
-                        <option
-                          key={opt.value}
-                          value={opt.value}
-                          className="bg-white dark:bg-zinc-900 text-slate-900 dark:text-white"
-                        >
-                          {opt.label}
+                    <div className="space-y-2">
+                      <FormSelect
+                        label="Variante de Producto"
+                        name={field.name}
+                        value={field.state.value}
+                        onChange={(event) => {
+                          const nextValue = Number(event.target.value);
+                          field.handleChange(Number.isNaN(nextValue) ? 0 : nextValue);
+                          clearFieldError("producto_variante_id");
+                          resetStockCheck();
+                        }}
+                        onBlur={field.handleBlur}
+                        error={getError("producto_variante_id")}
+                      >
+                        <option value="0" disabled>
+                          Seleccionar variante...
                         </option>
-                      ))}
-                    </FormSelect>
+                        {variantOptions.map((opt) => (
+                          <option
+                            key={opt.value}
+                            value={opt.value}
+                            className="bg-white dark:bg-zinc-900 text-slate-900 dark:text-white"
+                          >
+                            {opt.label}
+                          </option>
+                        ))}
+                      </FormSelect>
+
+                      <div className="flex items-center gap-3 flex-nowrap">
+                        <button
+                          type="button"
+                          onClick={handleCheckStock}
+                          disabled={almacenOrigenId < 1 || field.state.value < 1 || isCheckingStock}
+                          className="whitespace-nowrap px-3 py-1.5 text-xs font-semibold leading-none rounded-lg cursor-pointer border border-sky-200 text-sky-700 hover:bg-sky-50 disabled:opacity-40 disabled:cursor-not-allowed dark:border-sky-700 dark:text-sky-300 dark:hover:bg-sky-500/10 transition-colors"
+                        >
+                          {isCheckingStock ? "Consultando..." : "Consultar existencias"}
+                        </button>
+
+                        {availableStock !== null && (
+                          <span className="whitespace-nowrap text-xs font-medium text-slate-600 dark:text-slate-300">
+                            Stock disponible:{" "}
+                            <span className="font-bold text-slate-900 dark:text-white">
+                              {availableStock.toLocaleString("es-MX")}
+                            </span>
+                          </span>
+                        )}
+                      </div>
+                    </div>
                   )}
                 </form.Field>
 

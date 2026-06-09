@@ -1,12 +1,14 @@
 "use client";
 
 import { useForm } from "@tanstack/react-form";
+import { useQuery } from "@tanstack/react-query";
 import { useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import type { FormFieldError } from "@/src/utils/getFieldError";
 import { useWarehouses } from "@/src/features/warehouses/hooks/useWarehouses";
 import { useLocations } from "@/src/features/locations/hooks/useLocations";
 import { useProductVariants } from "@/src/features/product-variants/hooks/useProductVariants";
+import { getStockItems } from "@/src/features/stock/services/actions";
 import { useCreateStockMovement } from "./useCreateStockMovement";
 import {
   StockMovementFormSchema,
@@ -35,6 +37,37 @@ export function useStockMovementForm({ onSuccess }: { onSuccess?: () => void } =
 
   // Ref para evitar doble envío mientras se procesa la mutación.
   const submitInFlight = useRef(false);
+
+  // ─── Stock Check ────────────────────────────────────────────────────────
+  const [stockCheckParams, setStockCheckParams] = useState<{
+    almacen_id: number;
+    producto_variante_id: number;
+  } | null>(null);
+
+  const { data: stockCheckResult, isFetching: isCheckingStock } = useQuery({
+    queryKey: ["stock-items", "check", stockCheckParams],
+    queryFn: () => getStockItems(stockCheckParams ?? undefined),
+    enabled: stockCheckParams !== null,
+  });
+
+  /** Stock disponible para el almacén + variante seleccionados. */
+  const availableStock = stockCheckResult?.[0]?.stock ?? null;
+
+  /** Limpia el resultado de la consulta de existencias. */
+  const resetStockCheck = () => {
+    setStockCheckParams(null);
+  };
+
+  const handleCheckStock = () => {
+    const almacenId = form.getFieldValue("almacen_origen_id");
+    const varianteId = form.getFieldValue("producto_variante_id");
+
+    if (almacenId < 1 || varianteId < 1) return;
+
+    setStockCheckParams({ almacen_id: almacenId, producto_variante_id: varianteId });
+    // Limpiar error previo de stock al consultar de nuevo.
+    clearFieldError("cantidad");
+  };
 
   // ─── Opciones derivadas ─────────────────────────────────────────────────
 
@@ -117,17 +150,31 @@ export function useStockMovementForm({ onSuccess }: { onSuccess?: () => void } =
     const parsed = StockMovementFormSchema.safeParse(values);
     if (parsed.success) {
       setErrors({});
-      return true;
+    } else {
+      const nextErrors: Partial<Record<StockMovementField, string>> = {};
+      parsed.error.issues.forEach((issue) => {
+        const field = issue.path[0] as StockMovementField;
+        if (!field || nextErrors[field]) return;
+        nextErrors[field] = issue.message;
+      });
+      setErrors(nextErrors);
+      return false;
     }
 
-    const nextErrors: Partial<Record<StockMovementField, string>> = {};
-    parsed.error.issues.forEach((issue) => {
-      const field = issue.path[0] as StockMovementField;
-      if (!field || nextErrors[field]) return;
-      nextErrors[field] = issue.message;
-    });
-    setErrors(nextErrors);
-    return false;
+    // Validación extra: SALIDA no puede exceder el stock consultado.
+    if (
+      values.tipo_movimiento === "SALIDA" &&
+      availableStock !== null &&
+      values.cantidad > availableStock
+    ) {
+      setErrors((prev) => ({
+        ...prev,
+        cantidad: `El stock disponible es ${availableStock}. No puedes mover más de esa cantidad.`,
+      }));
+      return false;
+    }
+
+    return true;
   };
 
   // ─── Formulario ─────────────────────────────────────────────────────────
@@ -196,6 +243,10 @@ export function useStockMovementForm({ onSuccess }: { onSuccess?: () => void } =
     activeLocations,
     variantOptions,
     movimientoTypeOptions,
+    availableStock,
+    isCheckingStock,
+    handleCheckStock,
+    resetStockCheck,
     getError,
     clearFieldError,
     handleFormSubmit,
