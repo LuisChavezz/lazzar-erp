@@ -11,6 +11,7 @@ import { DataTable } from "@/src/components/DataTable";
 import KpiGrid, { type KpiItem } from "@/src/components/KpiGrid";
 import { useStockMovements } from "../hooks/useStockMovements";
 import { getStockMovementsColumns } from "./StockMovementsColumns";
+import { StockMovementForm } from "./StockMovementForm";
 import type { StockMovement } from "../interfaces/stock-movements.interface";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -154,6 +155,7 @@ export function StockMovementsView() {
         columns={columns}
         data={stockMovements}
         searchPlaceholder="Buscar por tipo, folio, origen o destino..."
+        actionButton={<StockMovementForm />}
       />
     </div>
   );

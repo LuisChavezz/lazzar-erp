@@ -4,6 +4,7 @@ import { Product } from "../../products/interfaces/product.interface";
 import { Size } from "../../sizes/interfaces/size.interface";
 
 export interface ProductVariant {
+  nombre: string;
   id: number;
   producto: Product["id"];
   empresa: Company["id"];
