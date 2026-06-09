@@ -206,6 +206,8 @@ export const CapitalHumanoIcon = (props: LucideProps) => <UserCog {...props} />;
 // ─── Íconos de Mesa de Control ────────────────────────────────────────────────
 
 export const WarehouseIcon = (props: LucideProps) => <Warehouse {...props} />;
+export const LayersIcon = (props: LucideProps) => <Layers {...props} />;
+export const RulerIcon = (props: LucideProps) => <Ruler {...props} />;
 export const FactoryIcon = (props: LucideProps) => <Factory {...props} />;
 export const PackageCheckIcon = (props: LucideProps) => <PackageCheck {...props} />;
 export const PackageXIcon = (props: LucideProps) => <PackageX {...props} />;
@@ -215,7 +217,6 @@ export const RouteIcon = (props: LucideProps) => <Route {...props} />;
 export const ReceiptIcon = (props: LucideProps) => <Receipt {...props} />;
 export const PrinterIcon = (props: LucideProps) => <Printer {...props} />;
 export const ClipboardListIcon = (props: LucideProps) => <ClipboardList {...props} />;
-export const LayersIcon = (props: LucideProps) => <Layers {...props} />;
 export const FileCode2Icon = (props: LucideProps) => <FileCode2 {...props} />;
 
 // ─── Íconos de configuración de productos ────────────────────────────────────

@@ -27,6 +27,7 @@ import {
   ProduccionIcon,
   RecepcionesIcon,
   HistoryIcon,
+  MapPinIcon,
 } from "../components/Icons";
 
 export interface AppRouteItem {
@@ -166,6 +167,13 @@ export const appRouteGroups: AppRouteGroup[] = [
         icon: HistoryIcon,
         permission: "R-WMS",
       },
+      {
+        key: "wms-locations",
+        label: "Ubicaciones",
+        path: "/wms/locations",
+        icon: MapPinIcon,
+        permission: "R-WMS",
+      }
     ],
   },
   {

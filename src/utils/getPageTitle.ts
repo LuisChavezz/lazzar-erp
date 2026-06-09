@@ -18,6 +18,8 @@ const ROUTE_TITLES: Record<string, string> = {
   "/manufacturing/production": "Producción",
   "/wms/stock": "Existencias",
   "/wms/receipts": "Recepciones",
+  "/wms/locations": "Ubicaciones",
+  "/wms/stock-movements": "Movimientos",
   "/finance/invoicing": "Facturación",
   "/finance/accounts-payable": "CxP (Pagar)",
   "/finance/accounts-receivable": "CxC (Cobrar)",
