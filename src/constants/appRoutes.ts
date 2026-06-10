@@ -154,18 +154,18 @@ export const appRouteGroups: AppRouteGroup[] = [
         permission: "R-WMS",
       },
       {
-        key: "wms-receipts",
-        label: "Recepciones",
-        path: "/wms/receipts",
-        icon: RecepcionesIcon,
-        permission: "R-WMS"
-      },
-      {
         key: "wms-stock-movements",
         label: "Movimientos",
         path: "/wms/stock-movements",
         icon: HistoryIcon,
         permission: "R-WMS",
+      },
+      {
+        key: "wms-receipts",
+        label: "Recepciones",
+        path: "/wms/receipts",
+        icon: RecepcionesIcon,
+        permission: "R-WMS"
       },
       {
         key: "wms-locations",

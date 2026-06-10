@@ -24,9 +24,11 @@ import {
   ArrowLeftIcon,
   ChevronRightIcon,
   SyncIcon,
+  FilterIcon,
 } from "./Icons";
 import { Button } from "./Button";
 import { Loader } from "./Loader";
+import { DropdownMenu } from "@radix-ui/themes";
 
 export type DataTableVisibleColumn<TData> = {
   id: string;
@@ -35,6 +37,24 @@ export type DataTableVisibleColumn<TData> = {
   accessorFn?: (originalRow: TData, index: number) => unknown;
 };
 
+// ─── Filter types ────────────────────────────────────────────────────────────
+
+export interface DataTableFilterOption {
+  value: string;
+  label: string;
+}
+
+export interface DataTableFilterConfig {
+  id: string;
+  label: string;
+  options: DataTableFilterOption[];
+}
+
+export interface DataTableActiveFilter {
+  configId: string;
+  value: string;
+}
+
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
   data: TData[];
@@ -42,6 +62,8 @@ interface DataTableProps<TData, TValue> {
   title?: string;
   searchPlaceholder?: string;
   actionButton?: React.ReactNode;
+  filterConfig?: DataTableFilterConfig[];
+  onActiveFiltersChange?: (filters: DataTableActiveFilter[]) => void;
   onRefetch?: () => void | Promise<unknown>;
   isRefetching?: boolean;
   onVisibleRowsChange?: (rows: TData[]) => void;
@@ -58,6 +80,8 @@ export function DataTable<TData, TValue>({
   title,
   searchPlaceholder = "Buscar...",
   actionButton,
+  filterConfig,
+  onActiveFiltersChange,
   onRefetch,
   isRefetching,
   onVisibleRowsChange,
@@ -81,7 +105,60 @@ export function DataTable<TData, TValue>({
   const [draggedColumnId, setDraggedColumnId] = useState<string | null>(null);
   const [dragOverColumnId, setDragOverColumnId] = useState<string | null>(null);
   const [isSearchExpanded, setIsSearchExpanded] = useState(false);
+  const [isFilterExpanded, setIsFilterExpanded] = useState(false);
+  const [filterContentHeight, setFilterContentHeight] = useState(0);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const filterContentRef = useRef<HTMLDivElement>(null);
+
+  // ── Filter state (Notion-style) ───────────────────────────────────────────
+  const [activeFilters, setActiveFilters] = useState<DataTableActiveFilter[]>([]);
+  const [isAddFilterOpen, setIsAddFilterOpen] = useState(false);
+  const [pendingFilterId, setPendingFilterId] = useState<string | null>(null);
+  const [isValueDropdownOpen, setIsValueDropdownOpen] = useState(false);
+  const addFilterBtnRef = useRef<HTMLButtonElement>(null);
+  const addFilterDropdownRef = useRef<HTMLDivElement>(null);
+  const valueDropdownRef = useRef<HTMLDivElement>(null);
+
+  const activeConfigIds = useMemo(
+    () => new Set(activeFilters.map((f) => f.configId)),
+    [activeFilters]
+  );
+
+  const availableFilters = useMemo(
+    () => (filterConfig ?? []).filter((fc) => !activeConfigIds.has(fc.id)),
+    [filterConfig, activeConfigIds]
+  );
+
+  const pendingConfig = useMemo(
+    () => (pendingFilterId ? filterConfig?.find((fc) => fc.id === pendingFilterId) ?? null : null),
+    [pendingFilterId, filterConfig]
+  );
+
+  const activeFilterConfigs = useMemo(
+    () =>
+      activeFilters
+        .map((af) => {
+          const config = filterConfig?.find((fc) => fc.id === af.configId);
+          if (!config) return null;
+          const option = config.options.find((o) => o.value === af.value);
+          return { ...af, label: config.label, valueLabel: option?.label ?? af.value };
+        })
+        .filter(Boolean) as (DataTableActiveFilter & { label: string; valueLabel: string })[],
+    [activeFilters, filterConfig]
+  );
+
+  const allFiltersActive = filterConfig && filterConfig.length > 0 && availableFilters.length === 0;
+
+  // ── Filter data internally ────────────────────────────────────────────────
+  const filteredData = useMemo(() => {
+    if (activeFilters.length === 0) return data;
+    return data.filter((row) =>
+      activeFilters.every((af) => {
+        const rowValue = (row as Record<string, unknown>)[af.configId];
+        return String(rowValue) === af.value;
+      })
+    );
+  }, [data, activeFilters]);
 
 
   // Function to handle column reordering
@@ -128,9 +205,34 @@ export function DataTable<TData, TValue>({
     };
   }, [isColumnsOpen]);
 
+  // Close filter dropdowns when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Node;
+
+      // Add Filter dropdown
+      if (
+        isAddFilterOpen &&
+        addFilterDropdownRef.current &&
+        !addFilterDropdownRef.current.contains(target) &&
+        addFilterBtnRef.current &&
+        !addFilterBtnRef.current.contains(target)
+      ) {
+        setIsAddFilterOpen(false);
+      }
+    };
+
+    if (isAddFilterOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isAddFilterOpen]);
+
   // eslint-disable-next-line react-hooks/incompatible-library
   const table = useReactTable({
-    data,
+    data: filteredData,
     columns,
     state: {
       sorting,
@@ -264,6 +366,18 @@ export function DataTable<TData, TValue>({
     getColumnLabel,
   ]);
 
+  // Notify parent when active filters change
+  useEffect(() => {
+    onActiveFiltersChange?.(activeFilters);
+  }, [activeFilters, onActiveFiltersChange]);
+
+  // Measure filter content height for animation
+  useEffect(() => {
+    if (filterContentRef.current) {
+      setFilterContentHeight(filterContentRef.current.scrollHeight);
+    }
+  }, [filterConfig, activeFilterConfigs, isValueDropdownOpen, pendingConfig]);
+
   const paginationItems = useMemo(
     () => getPaginationItems(currentPage, pageCount),
     [currentPage, pageCount]
@@ -271,7 +385,7 @@ export function DataTable<TData, TValue>({
 
   return (
     <div>
-      <div className={`flex flex-col lg:flex-row lg:items-center ${title ? "justify-between" : "justify-end"} gap-4 mb-8 `}>
+      <div className={"flex flex-col lg:flex-row lg:items-center " + (title ? "justify-between" : "justify-end") + " gap-4 mb-4"}>
       {title ? (
         <h1 className="text-xl font-semibold text-slate-800 dark:text-white">
           {title}
@@ -333,6 +447,22 @@ export function DataTable<TData, TValue>({
               </div>
             )}
 
+            {filterConfig && filterConfig.length > 0 && (
+              <Button
+                variant="secondary"
+                size="icon"
+                onClick={() => setIsFilterExpanded(!isFilterExpanded)}
+                aria-expanded={isFilterExpanded}
+                aria-label="Filtros"
+                className={`transition-colors shrink-0 ${
+                  isFilterExpanded
+                    ? "bg-sky-100 dark:bg-sky-500/20 border-sky-300 dark:border-sky-500/40 text-sky-600 dark:text-sky-400"
+                    : ""
+                }`}
+              >
+                <FilterIcon className="w-4 h-4 shrink-0" />
+              </Button>
+            )}
             {onRefetch && (
               <Button
                 variant="secondary"
@@ -411,6 +541,187 @@ export function DataTable<TData, TValue>({
           </div>
         </div>
       </div>
+
+      {/* ── Separator + Filters Container ───────────────────────────────────── */}
+      {filterConfig && filterConfig.length > 0 && (
+        <div
+          className="transition-all duration-300 ease-in-out"
+          style={{
+            maxHeight: isFilterExpanded ? `${filterContentHeight}px` : "0px",
+            opacity: isFilterExpanded ? 1 : 0,
+            overflow: isFilterExpanded ? "visible" : "hidden",
+            pointerEvents: isFilterExpanded ? "auto" : "none",
+          }}
+        >
+          <div ref={filterContentRef} className="mb-2">
+            <hr className="border-t border-slate-200 dark:border-white/10 mb-3" />
+            <div className="flex flex-wrap items-center gap-2">
+              {/* Active filter chips */}
+              {activeFilterConfigs.map((af) => {
+                const config = filterConfig?.find((fc) => fc.id === af.configId);
+                const options = config?.options ?? [];
+                return (
+                  <DropdownMenu.Root key={af.configId}>
+                    <DropdownMenu.Trigger>
+                      <div
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-sky-100 dark:bg-sky-500/20 text-sky-700 dark:text-sky-300 border border-sky-300 dark:border-sky-500/40 cursor-pointer hover:bg-sky-200 dark:hover:bg-sky-500/30 transition-colors group/chip"
+                        role="button"
+                        tabIndex={0}
+                      >
+                        <span className="text-[10px] font-semibold text-sky-500 dark:text-sky-400 uppercase tracking-wider">
+                          {af.label}:
+                        </span>
+                        <span>{af.valueLabel}</span>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setActiveFilters((prev) => prev.filter((f) => f.configId !== af.configId));
+                            setPendingFilterId(null);
+                            setIsValueDropdownOpen(false);
+                          }}
+                          className="ml-0.5 rounded-full p-0.5 text-sky-400 hover:text-sky-600 hover:bg-sky-200/50 dark:hover:text-sky-200 dark:hover:bg-sky-500/30 transition-colors"
+                          aria-label={`Quitar filtro ${af.label}`}
+                        >
+                          <CloseIcon className="w-3 h-3" />
+                        </button>
+                      </div>
+                    </DropdownMenu.Trigger>
+                    <DropdownMenu.Content
+                      align="start"
+                      className="bg-white! dark:bg-zinc-900! min-w-40 rounded-xl shadow-xl border border-slate-100 dark:border-slate-800 z-50 p-1"
+                    >
+                      {options.map((opt) => (
+                        <DropdownMenu.Item
+                          key={opt.value}
+                          onClick={() => {
+                            setActiveFilters((prev) =>
+                              prev.map((f) =>
+                                f.configId === af.configId ? { ...f, value: opt.value } : f
+                              )
+                            );
+                          }}
+                          className={`flex items-center px-3 py-2 text-xs rounded-lg cursor-pointer! outline-none data-highlighted:bg-slate-50 dark:data-highlighted:bg-white/5 data-highlighted:text-sky-600 dark:data-highlighted:text-sky-400 transition-colors ${
+                            opt.value === af.value
+                              ? "text-sky-600 dark:text-sky-400"
+                              : "text-slate-600 dark:text-slate-300"
+                          }`}
+                        >
+                          {opt.label}
+                        </DropdownMenu.Item>
+                      ))}
+                    </DropdownMenu.Content>
+                  </DropdownMenu.Root>
+                );
+              })}
+
+              {/* Value dropdown for pending filter */}
+              {isValueDropdownOpen && pendingConfig && (
+                <DropdownMenu.Root
+                  open={true}
+                  onOpenChange={(open) => {
+                    if (!open) {
+                      setIsValueDropdownOpen(false);
+                      setPendingFilterId(null);
+                    }
+                  }}
+                >
+                  <DropdownMenu.Trigger>
+                    <div
+                      ref={valueDropdownRef}
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-white dark:bg-zinc-800 border border-slate-300 dark:border-slate-600 shadow-sm cursor-pointer"
+                    >
+                      <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                        {pendingConfig.label}:
+                      </span>
+                      <span className="text-slate-400 dark:text-slate-500">Seleccionar...</span>
+                    </div>
+                  </DropdownMenu.Trigger>
+                  <DropdownMenu.Content
+                    align="start"
+                    className="bg-white! dark:bg-zinc-900! min-w-40 rounded-xl shadow-xl border border-slate-100 dark:border-slate-800 z-50 p-1"
+                  >
+                    {pendingConfig.options.map((opt) => (
+                      <DropdownMenu.Item
+                        key={opt.value}
+                        onClick={() => {
+                          setActiveFilters((prev) => {
+                            const existing = prev.find((f) => f.configId === pendingConfig.id);
+                            if (existing) {
+                              return prev.map((f) =>
+                                f.configId === pendingConfig.id ? { ...f, value: opt.value } : f
+                              );
+                            }
+                            return [...prev, { configId: pendingConfig.id, value: opt.value }];
+                          });
+                          setPendingFilterId(null);
+                          setIsValueDropdownOpen(false);
+                        }}
+                        className="flex items-center px-3 py-2 text-xs text-slate-600 dark:text-slate-300 rounded-lg cursor-pointer! outline-none data-highlighted:bg-slate-50 dark:data-highlighted:bg-white/5 data-highlighted:text-sky-600 dark:data-highlighted:text-sky-400 transition-colors"
+                      >
+                        {opt.label}
+                      </DropdownMenu.Item>
+                    ))}
+                  </DropdownMenu.Content>
+                </DropdownMenu.Root>
+              )}
+
+              {/* Add Filter button */}
+              {availableFilters.length > 0 && (
+                <div className="relative">
+                  <button
+                    ref={addFilterBtnRef}
+                    type="button"
+                    onClick={() => {
+                      setIsAddFilterOpen(!isAddFilterOpen);
+                      setIsValueDropdownOpen(false);
+                      setPendingFilterId(null);
+                    }}
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium text-slate-500 dark:text-slate-400 border border-dashed border-slate-300 dark:border-slate-600 hover:border-slate-400 dark:hover:border-slate-500 hover:text-slate-700 dark:hover:text-slate-300 transition-colors bg-transparent"
+                  >
+                    + Añadir filtro
+                  </button>
+
+                  {isAddFilterOpen && (
+                    <div
+                      ref={addFilterDropdownRef}
+                      className="absolute left-0 mt-1 w-52 bg-white dark:bg-zinc-900 rounded-xl shadow-xl border border-slate-100 dark:border-slate-800 z-50 overflow-hidden"
+                    >
+                      <div className="p-1 max-h-60 overflow-y-auto">
+                        {availableFilters.map((fc) => (
+                          <button
+                            key={fc.id}
+                            type="button"
+                            className="w-full text-left px-3 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-white/5 rounded-lg transition-colors"
+                            onClick={() => {
+                              setPendingFilterId(fc.id);
+                              setIsAddFilterOpen(false);
+                              setIsValueDropdownOpen(true);
+                            }}
+                          >
+                            {fc.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Disabled button when all filters active */}
+              {allFiltersActive && (
+                <button
+                  type="button"
+                  disabled
+                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium text-slate-300 dark:text-slate-600 border border-dashed border-slate-200 dark:border-slate-700 bg-transparent cursor-not-allowed"
+                >
+                  + Añadir filtro
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {visibleRows.length > 0 ? (
         <div className="relative w-full rounded-2xl border border-slate-200 dark:border-white/20 shadow-sm bg-white dark:bg-black">

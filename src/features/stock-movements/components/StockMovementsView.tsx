@@ -12,6 +12,7 @@ import KpiGrid, { type KpiItem } from "@/src/components/KpiGrid";
 import { useStockMovements } from "../hooks/useStockMovements";
 import { getStockMovementsColumns } from "./StockMovementsColumns";
 import { StockMovementForm } from "./StockMovementForm";
+import { stockMovementsFilterConfig } from "./StockMovementsFilter";
 import type { StockMovement } from "../interfaces/stock-movements.interface";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -118,9 +119,12 @@ export function StockMovementsView() {
     isLoading,
     isError,
     error,
+    refetch,
+    isFetching,
   } = useStockMovements();
 
   const columns = useMemo(() => getStockMovementsColumns(), []);
+
 
   // ── Estados de carga y error ─────────────────────────────────────────────
   if (isLoading) {
@@ -156,6 +160,9 @@ export function StockMovementsView() {
         data={stockMovements}
         searchPlaceholder="Buscar por tipo, folio, origen o destino..."
         actionButton={<StockMovementForm />}
+        filterConfig={stockMovementsFilterConfig}
+        onRefetch={async () => { await refetch(); }}
+        isRefetching={isFetching}
       />
     </div>
   );

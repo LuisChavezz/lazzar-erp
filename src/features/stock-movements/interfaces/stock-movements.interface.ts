@@ -32,6 +32,7 @@ export interface MovimientoInfo {
   cantidad_total?: number | null;
 }
 
+// Interfaz principal para un movimiento de stock, combinando datos básicos y detalles adicionales.
 export interface StockMovement {
   id: number;
   activo: boolean;

@@ -8,6 +8,8 @@ export const useStockMovements = () => {
     isLoading,
     isError,
     error,
+    refetch,
+    isFetching,
   } = useQuery<StockMovement[]>({
     queryKey: ["stockMovements"],
     queryFn: getStockMovements,
@@ -18,5 +20,7 @@ export const useStockMovements = () => {
     isLoading,
     isError,
     error,
+    refetch,
+    isFetching,
   };
 };

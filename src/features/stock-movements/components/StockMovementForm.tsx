@@ -357,7 +357,7 @@ export const StockMovementForm = () => {
       maxWidth="650px"
       showCloseButton={false}
       trigger={
-        <Button>
+        <Button variant="primary">
           <InventariosIcon className="w-4 h-4" />
           Nuevo movimiento
         </Button>
