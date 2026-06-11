@@ -35,6 +35,7 @@ import { getSatUnitCodes } from "../../sat-unit-codes/services/actions";
 import { getProducts } from "../../products/services/actions";
 import { getProductVariants } from "../../product-variants/services/actions";
 import { getSerieFolios } from "../../series-folios/services/actions";
+import { getSuppliers } from "../../suppliers/services/actions";
 
 
 interface ConfigCardItem {
@@ -158,6 +159,8 @@ export const configCards: ConfigCardItem[] = [
     view: "suppliers",
     group: "Organización",
     adminOnly: true,
+    prefetchKey: ["suppliers"],
+    prefetchFn: getSuppliers,
   },
   {
     title: "Monedas",

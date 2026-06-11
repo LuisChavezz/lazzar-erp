@@ -5,59 +5,39 @@ import { DataTable } from "@/src/components/DataTable";
 import { MainDialog } from "@/src/components/MainDialog";
 import { Button } from "@/src/components/Button";
 import { PlusIcon } from "@/src/components/Icons";
-import type { ColumnDef } from "@tanstack/react-table";
 import SupplierForm from "./SupplierForm";
-
-// ─── Interfaz mínima para el placeholder de la tabla ──────────────────────────
-interface SupplierRow {
-  id: number;
-  codigo: string;
-  nombre: string;
-  rfc: string;
-}
-
-const columns: ColumnDef<SupplierRow>[] = [
-  {
-    accessorKey: "codigo",
-    header: "Código",
-    cell: (info) => (
-      <span className="font-mono text-xs font-semibold text-sky-600 dark:text-sky-400 bg-sky-50 dark:bg-sky-500/10 px-2 py-1 rounded-lg">
-        {info.getValue<string>()}
-      </span>
-    ),
-  },
-  {
-    accessorKey: "nombre",
-    header: "Nombre",
-    cell: (info) => (
-      <span className="font-medium text-slate-900 dark:text-white">
-        {info.getValue<string>()}
-      </span>
-    ),
-  },
-  {
-    accessorKey: "rfc",
-    header: "RFC",
-    cell: (info) => (
-      <span className="font-mono text-sm text-slate-600 dark:text-slate-400">
-        {info.getValue<string>()}
-      </span>
-    ),
-  },
-];
+import { ErrorState } from "@/src/components/ErrorState";
+import { useSuppliers } from "../hooks/useSuppliers";
+import columns from "./SupplierColumns";
 
 export default function SupplierList() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const { suppliers, isLoading, isError, error } = useSuppliers();
 
   const handleSuccess = () => {
     setIsDialogOpen(false);
   };
 
+  if (isLoading) {
+    return (
+      <div className="p-8 flex justify-center items-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-sky-600"></div>
+        <span className="ml-3 text-slate-500">Cargando proveedores...</span>
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <ErrorState title="Error al cargar proveedores" message={(error as Error).message} />
+    );
+  }
+
   return (
     <>
       <DataTable
         columns={columns}
-        data={[]}
+        data={suppliers}
         title="Proveedores"
         searchPlaceholder="Buscar proveedor..."
         actionButton={
