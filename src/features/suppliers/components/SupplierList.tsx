@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
+import { useSession } from "next-auth/react";
 import { DataTable } from "@/src/components/DataTable";
 import { MainDialog } from "@/src/components/MainDialog";
 import { Button } from "@/src/components/Button";
@@ -11,10 +12,20 @@ import { useSuppliers } from "../hooks/useSuppliers";
 import { getSupplierColumns } from "./SupplierColumns";
 import { Supplier } from "../interfaces/supplier.interface";
 
-export default function SupplierList() {
+interface SupplierListProps {
+  hideTitle?: boolean;
+}
+
+export default function SupplierList({ hideTitle = false }: SupplierListProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [supplierToEdit, setSupplierToEdit] = useState<Supplier | null>(null);
   const { suppliers, isLoading, isError, error } = useSuppliers();
+  const { data: session } = useSession();
+
+  const isAdmin = session?.user?.role === "admin";
+  const permissions = session?.user?.permissions ?? [];
+  const canEdit = isAdmin || permissions.includes("E-COMPRAS");
+  const canDelete = isAdmin || permissions.includes("D-COMPRAS");
 
   const isEditing = Boolean(supplierToEdit?.id);
 
@@ -40,7 +51,7 @@ export default function SupplierList() {
     setSupplierToEdit(null);
   }, []);
 
-  const columns = getSupplierColumns(handleEdit);
+  const columns = getSupplierColumns(handleEdit, { canEdit, canDelete });
 
   if (isLoading) {
     return (
@@ -62,16 +73,18 @@ export default function SupplierList() {
       <DataTable
         columns={columns}
         data={suppliers}
-        title="Proveedores"
+        title={hideTitle ? undefined : "Proveedores"}
         searchPlaceholder="Buscar proveedor..."
         actionButton={
-          <Button
-            variant="primary"
-            leftIcon={<PlusIcon className="w-4 h-4" />}
-            onClick={handleCreate}
-          >
-            Nuevo Proveedor
-          </Button>
+          canEdit ? (
+            <Button
+              variant="primary"
+              leftIcon={<PlusIcon className="w-4 h-4" />}
+              onClick={handleCreate}
+            >
+              Nuevo Proveedor
+            </Button>
+          ) : undefined
         }
       />
 

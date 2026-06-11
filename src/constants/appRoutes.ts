@@ -195,6 +195,14 @@ export const appRouteGroups: AppRouteGroup[] = [
         permission: "R-COMPRAS",
       },
       {
+        key: "procurement-suppliers",
+        label: "Proveedores",
+        path: "/procurement/suppliers",
+        icon: ComprasIcon,
+        description: "Catálogo de proveedores registrados en el sistema.",
+        permission: "R-COMPRAS",
+      },
+      {
         key: "procurement-order-reviews",
         label: "Revisión de Pedidos",
         path: "/procurement/order-reviews",
