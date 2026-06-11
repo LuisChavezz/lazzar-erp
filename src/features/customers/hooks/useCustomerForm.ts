@@ -66,7 +66,7 @@ const scrollToFirstValidationError = (formElement: HTMLFormElement, issuePaths: 
     return;
   }
 
-  firstInvalidControl.scrollIntoView({ behavior: "smooth", block: "center" });
+  firstInvalidControl.scrollIntoView({ behavior: "smooth", block: "nearest" });
   firstInvalidControl.focus({ preventScroll: true });
 };
 

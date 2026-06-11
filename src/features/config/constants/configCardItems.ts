@@ -24,7 +24,8 @@ import {
   SatUnitCodesIcon,
   ProductIcon,
   ProductVariantsIcon,
-  FolioIcon
+  FolioIcon,
+  EmbarquesIcon,
 } from "@/src/components/Icons";
 import { getSatInfo } from "../../sat/services/actions";
 import { getTaxes } from "../../taxes/services/actions";
@@ -147,6 +148,14 @@ export const configCards: ConfigCardItem[] = [
     description: "Gestión de ubicaciones físicas",
     icon: MapPinIcon,
     view: "locations",
+    group: "Organización",
+    adminOnly: true,
+  },
+  {
+    title: "Proveedores",
+    description: "Gestión de proveedores y cuentas por pagar",
+    icon: EmbarquesIcon,
+    view: "suppliers",
     group: "Organización",
     adminOnly: true,
   },

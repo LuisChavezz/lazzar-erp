@@ -78,6 +78,9 @@ const ProductList = dynamic(() => import("@/src/features/products/components/Pro
 const ProductVariantList = dynamic(() => import("@/src/features/product-variants/components/ProductVariantList"), {
     loading: configDetailLoading,
 });
+const SupplierList = dynamic(() => import("@/src/features/suppliers/components/SupplierList"), {
+    loading: configDetailLoading,
+});
 
 
 interface ConfigDetailViewProps {
@@ -238,6 +241,13 @@ export function ConfigDetailView({ selectedView, onBack }: ConfigDetailViewProps
         <div className="flex flex-col gap-6">
           {renderBackButton()}
           <ProductVariantList />
+        </div>
+      )}
+
+      {selectedView === "suppliers" && (
+        <div className="flex flex-col gap-6">
+          {renderBackButton()}
+          <SupplierList />
         </div>
       )}
     </div>
