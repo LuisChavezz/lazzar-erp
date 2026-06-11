@@ -11,3 +11,8 @@ export const createSupplier = async (supplierData: SupplierCreate): Promise<Supp
   const response = await v1_api.post<Supplier>("/terceros/proveedores/", supplierData);
   return response.data;
 };
+
+export const updateSupplier = async (id: number, supplierData: SupplierCreate): Promise<Supplier> => {
+  const response = await v1_api.put<Supplier>(`/terceros/proveedores/${id}/`, supplierData);
+  return response.data;
+}

@@ -14,15 +14,16 @@
  * │         ▼                ▼                       ▼               │
  * │  ┌─────────────────────────────────────────────────────────┐    │
  * │  │              TanStack Form (useForm)                     │    │
- * │  │  - defaultValues: emptyValues                           │    │
- * │  │  - onSubmit: valida → useCreateSupplier → onSuccess     │    │
+ * │  │  - defaultValues: emptyValues / editValues              │    │
+ * │  │  - onSubmit: valida → create o update según modo        │    │
  * │  └─────────────────────────────────────────────────────────┘    │
  * │                                                                  │
  * │  Expone al componente:                                          │
  * │  - form (instancia TanStack Form para form.Field)               │
  * │  - getError / clearFieldErrors / validateField                  │
  * │  - regimenesFiscales / formasPago / metodosPago / currencies    │
- * │  - isLoadingCatalogs / isPending                                │
+ * │  - isLoadingCatalogs / isPending / isEditing                    │
+ * │  - formKey para forzar remount al cambiar modo                  │
  * └─────────────────────────────────────────────────────────────────┘
  */
 
@@ -31,13 +32,16 @@ import { useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import type { FormFieldError } from "../../../utils/getFieldError";
 import { SupplierFormSchema, SupplierFormValues } from "../schemas/supplier.schema";
+import { Supplier } from "../interfaces/supplier.interface";
 import { useSatInfo } from "../../sat/hooks/useSatInfo";
 import { useCurrencies } from "../../currency/hooks/useCurrencies";
 import { useWorkspaceStore } from "../../workspace/store/workspace.store";
 import { useCreateSupplier } from "./useCreateSupplier";
+import { useUpdateSupplier } from "./useUpdateSupplier";
 
 interface UseSupplierFormParams {
   onSuccess: () => void;
+  supplierToEdit?: Supplier | null;
   isRfcVerified?: boolean;
 }
 
@@ -78,7 +82,7 @@ const scrollToFirstValidationError = (formElement: HTMLFormElement, issuePaths: 
   firstInvalidControl.focus({ preventScroll: true });
 };
 
-export function useSupplierForm({ onSuccess, isRfcVerified = false }: UseSupplierFormParams) {
+export function useSupplierForm({ onSuccess, supplierToEdit, isRfcVerified = false }: UseSupplierFormParams) {
   // ── Referencia del formulario (scroll, reset) ──────────────────────────
   const formRef = useRef<HTMLFormElement | null>(null);
 
@@ -99,6 +103,9 @@ export function useSupplierForm({ onSuccess, isRfcVerified = false }: UseSupplie
   const selectedCompany = useWorkspaceStore(
     (state) => state.selectedCompany
   );
+
+  // ── Modo edición ─────────────────────────────────────────────────────────
+  const isEditing = Boolean(supplierToEdit?.id);
 
   // ── Catálogos externos ──────────────────────────────────────────────────
   //   useSatInfo → regimenes fiscales, formas de pago, métodos de pago
@@ -145,6 +152,51 @@ export function useSupplierForm({ onSuccess, isRfcVerified = false }: UseSupplie
     }),
     []
   );
+
+  // ── Valores de edición (modo edición) ───────────────────────────────────
+  // Se derivan del proveedor recibido por props y se normalizan los
+  // catálogos SAT para evitar seleccionar IDs inexistentes.
+  const editValues = useMemo<SupplierFormValues>(() => {
+    if (!supplierToEdit) {
+      return emptyValues;
+    }
+
+    const hasRegimen = regimenesFiscales.some(
+      (item) => item.id_sat_regimen_fiscal === supplierToEdit.sat_regimen_fiscal
+    );
+    const hasFormaPago = formasPago.some(
+      (item) => item.id_sat_forma_pago === supplierToEdit.sat_forma_pago
+    );
+    const hasMetodoPago = metodosPago.some(
+      (item) => item.id_sat_metodo_pago === supplierToEdit.sat_metodo_pago
+    );
+    const hasCurrency = availableCurrencies.some(
+      (item) => item.id === supplierToEdit.moneda
+    );
+
+    return {
+      codigo: supplierToEdit.codigo,
+      nombre: supplierToEdit.nombre,
+      razon_social: supplierToEdit.razon_social,
+      rfc: supplierToEdit.rfc,
+      email: supplierToEdit.email,
+      telefono: supplierToEdit.telefono,
+      contacto_principal: supplierToEdit.contacto_principal,
+      dias_credito: supplierToEdit.dias_credito,
+      limite_credito: supplierToEdit.limite_credito,
+      sat_regimen_fiscal: hasRegimen
+        ? supplierToEdit.sat_regimen_fiscal
+        : 1,
+      sat_forma_pago: hasFormaPago
+        ? supplierToEdit.sat_forma_pago
+        : 1,
+      sat_metodo_pago: hasMetodoPago
+        ? supplierToEdit.sat_metodo_pago
+        : 1,
+      moneda: hasCurrency ? supplierToEdit.moneda : 1,
+      fax: supplierToEdit.fax,
+    };
+  }, [supplierToEdit, regimenesFiscales, formasPago, metodosPago, availableCurrencies, emptyValues]);
 
   // ── Limpieza de errores por campo ───────────────────────────────────────
   // Se invoca en onChange del input para borrar el error tan pronto como
@@ -232,9 +284,10 @@ export function useSupplierForm({ onSuccess, isRfcVerified = false }: UseSupplie
     setServerErrors((prev) => ({ ...prev, [field]: error.message as string }));
   }) as never;
 
-  const { mutateAsync: saveSupplier, isPending: isSaving } = useCreateSupplier({
+  const { mutateAsync: createSupplier, isPending: isCreating } = useCreateSupplier({
     setError: setHookError,
   });
+  const { mutateAsync: updateSupplier, isPending: isUpdating } = useUpdateSupplier(setHookError);
 
   // ── Obtención de error para un campo ────────────────────────────────────
   // Server errors tienen prioridad sobre client errors (el backend
@@ -248,7 +301,7 @@ export function useSupplierForm({ onSuccess, isRfcVerified = false }: UseSupplie
 
   // ── Núcleo del formulario TanStack Form ─────────────────────────────────
   const form = useForm({
-    defaultValues: emptyValues,
+    defaultValues: isEditing ? editValues : emptyValues,
     onSubmit: async ({ value }) => {
       // 1. Limpia errores del servidor de envíos anteriores.
       setServerErrors({});
@@ -267,7 +320,7 @@ export function useSupplierForm({ onSuccess, isRfcVerified = false }: UseSupplie
         return;
       }
 
-      // 3. Construye el payload final con tipado explícito.
+      // 3. Construye el payload base con tipado explícito.
       //    "empresa" se obtiene del contexto en lugar del formulario.
       const payload = {
         codigo: value.codigo,
@@ -287,31 +340,50 @@ export function useSupplierForm({ onSuccess, isRfcVerified = false }: UseSupplie
         empresa: selectedCompany.id!,
       };
 
-      // 4. Ejecuta la mutación de creación.
-      const createdSupplier = await saveSupplier(payload);
+      // 4. Decide entre actualización o creación según el modo.
+      if (isEditing && supplierToEdit) {
+        const updatedSupplier = await updateSupplier({
+          id: Number(supplierToEdit.id),
+          ...payload,
+        });
 
-      // 5. Si la mutación falló (ej. error de red), se detiene aquí.
+        // 5. Si la mutación falló, se detiene aquí.
+        if (!updatedSupplier) {
+          return;
+        }
+
+        // 6. En edición NO se resetea el formulario; se notifica al padre.
+        onSuccess();
+        return;
+      }
+
+      // 7. Ejecuta la mutación de creación.
+      const createdSupplier = await createSupplier(payload);
+
+      // 8. Si la mutación falló, se detiene aquí.
       if (!createdSupplier) {
         return;
       }
 
-      // 6. Resetea el formulario a valores iniciales.
+      // 9. Resetea el formulario a valores iniciales (solo en creación).
       form.reset(emptyValues);
       setClientErrors({});
       setServerErrors({});
 
-      // 7. Notifica al componente padre (cierra el modal).
+      // 10. Notifica al componente padre (cierra el modal).
       onSuccess();
     },
   });
 
   // ── Estado de carga del submit ──────────────────────────────────────────
-  const isPending = isSaving;
+  const isPending = isCreating || isUpdating;
 
   // ── Reset manual ────────────────────────────────────────────────────────
   // Limpia errores, resetea valores y hace scroll suave al inicio del form.
+  // - creación: vuelve a emptyValues
+  // - edición: vuelve a los valores cargados del proveedor (editValues)
   const handleReset = () => {
-    form.reset(emptyValues);
+    form.reset(isEditing ? editValues : emptyValues);
     setClientErrors({});
     setServerErrors({});
     setTimeout(() => {
@@ -330,10 +402,20 @@ export function useSupplierForm({ onSuccess, isRfcVerified = false }: UseSupplie
     void form.handleSubmit();
   };
 
+  // ── Clave para forzar remount al cambiar entre creación/edición ─────────
+  const formKey = isEditing
+    ? `supplier-edit-${supplierToEdit?.id ?? "ready"}`
+    : "supplier-new";
+
   return {
     // Instancia de TanStack Form (para usar <form.Field> en el JSX)
     form,
     formRef,
+    formKey,
+
+    // Modo del formulario
+    isEditing,
+    supplierToEdit,
 
     // Utilidades de errores y validación
     getError,

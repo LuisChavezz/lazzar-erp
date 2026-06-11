@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { DataTable } from "@/src/components/DataTable";
 import { MainDialog } from "@/src/components/MainDialog";
 import { Button } from "@/src/components/Button";
@@ -8,15 +8,39 @@ import { PlusIcon } from "@/src/components/Icons";
 import SupplierForm from "./SupplierForm";
 import { ErrorState } from "@/src/components/ErrorState";
 import { useSuppliers } from "../hooks/useSuppliers";
-import columns from "./SupplierColumns";
+import { getSupplierColumns } from "./SupplierColumns";
+import { Supplier } from "../interfaces/supplier.interface";
 
 export default function SupplierList() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [supplierToEdit, setSupplierToEdit] = useState<Supplier | null>(null);
   const { suppliers, isLoading, isError, error } = useSuppliers();
 
-  const handleSuccess = () => {
+  const isEditing = Boolean(supplierToEdit?.id);
+
+  const handleEdit = useCallback((supplier: Supplier) => {
+    setSupplierToEdit(supplier);
+    setIsDialogOpen(true);
+  }, []);
+
+  const handleCreate = useCallback(() => {
+    setSupplierToEdit(null);
+    setIsDialogOpen(true);
+  }, []);
+
+  const handleDialogOpenChange = useCallback((open: boolean) => {
+    setIsDialogOpen(open);
+    if (!open) {
+      setSupplierToEdit(null);
+    }
+  }, []);
+
+  const handleSuccess = useCallback(() => {
     setIsDialogOpen(false);
-  };
+    setSupplierToEdit(null);
+  }, []);
+
+  const columns = getSupplierColumns(handleEdit);
 
   if (isLoading) {
     return (
@@ -44,7 +68,7 @@ export default function SupplierList() {
           <Button
             variant="primary"
             leftIcon={<PlusIcon className="w-4 h-4" />}
-            onClick={() => setIsDialogOpen(true)}
+            onClick={handleCreate}
           >
             Nuevo Proveedor
           </Button>
@@ -53,13 +77,13 @@ export default function SupplierList() {
 
       <MainDialog
         open={isDialogOpen}
-        onOpenChange={setIsDialogOpen}
+        onOpenChange={handleDialogOpenChange}
         maxWidth="1000px"
         title={
           <div className="flex items-center gap-4 pb-4 border-b border-slate-200 dark:border-white/10 mb-4">
             <div>
               <h1 className="text-xl font-bold text-slate-900 dark:text-white font-display tracking-tight">
-                Nuevo Proveedor
+                {isEditing ? "Editar Proveedor" : "Nuevo Proveedor"}
               </h1>
               <div className="flex items-center gap-2">
                 <span className="relative flex h-2 w-2">
@@ -67,14 +91,14 @@ export default function SupplierList() {
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-sky-500" />
                 </span>
                 <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
-                  Alta de proveedor
+                  {isEditing ? "Edición de proveedor" : "Alta de proveedor"}
                 </p>
               </div>
             </div>
           </div>
         }
       >
-        <SupplierForm onSuccess={handleSuccess} />
+        <SupplierForm onSuccess={handleSuccess} supplierToEdit={supplierToEdit} />
       </MainDialog>
     </>
   );

@@ -7,11 +7,13 @@ import { FormInput } from "../../../components/FormInput";
 import { FormSelect } from "../../../components/FormSelect";
 import { FormCancelButton, FormSubmitButton } from "../../../components/FormButtons";
 import { Loader } from "../../../components/Loader";
+import { Supplier } from "../interfaces/supplier.interface";
 import { useSupplierForm } from "../hooks/useSupplierForm";
 import { useVerifyRfc } from "../../facturama/hooks/useVerifyRfc";
 
 interface SupplierFormProps {
   onSuccess: () => void;
+  supplierToEdit?: Supplier | null;
 }
 
 const RFC_MIN_LENGTH = 12;
@@ -20,16 +22,25 @@ type RfcValidationTone = "success" | "error";
 
 const normalizeRfc = (value: string) => value.trim().toUpperCase();
 
-export default function SupplierForm({ onSuccess }: SupplierFormProps) {
-  const [isRfcVerified, setIsRfcVerified] = useState(false);
-  const [verifiedRfc, setVerifiedRfc] = useState<string | null>(null);
-  const [rfcValidationMessage, setRfcValidationMessage] = useState<string | null>(null);
-  const [rfcValidationTone, setRfcValidationTone] = useState<RfcValidationTone | null>(null);
+export default function SupplierForm({ onSuccess, supplierToEdit }: SupplierFormProps) {
+  const isEditMode = Boolean(supplierToEdit?.id);
+  const [isRfcVerified, setIsRfcVerified] = useState(isEditMode);
+  const [verifiedRfc, setVerifiedRfc] = useState<string | null>(
+    isEditMode && supplierToEdit?.rfc ? normalizeRfc(supplierToEdit.rfc) : null
+  );
+  const [rfcValidationMessage, setRfcValidationMessage] = useState<string | null>(
+    isEditMode ? "RFC previamente validado" : null
+  );
+  const [rfcValidationTone, setRfcValidationTone] = useState<RfcValidationTone | null>(
+    isEditMode ? "success" : null
+  );
   const { verifyRfcAsync, isVerifyingRfc, resetVerifyRfc } = useVerifyRfc();
 
   const {
     form,
     formRef,
+    formKey,
+    isEditing,
     getError,
     clearFieldErrors,
     validateField,
@@ -42,7 +53,7 @@ export default function SupplierForm({ onSuccess }: SupplierFormProps) {
     formasPago,
     metodosPago,
     availableCurrencies,
-  } = useSupplierForm({ onSuccess, isRfcVerified });
+  } = useSupplierForm({ onSuccess, supplierToEdit, isRfcVerified });
 
   const rfcFeedbackClassName = useMemo(() => {
     if (rfcValidationTone === "success") {
@@ -69,10 +80,18 @@ export default function SupplierForm({ onSuccess }: SupplierFormProps) {
 
   // Función para resetear el estado de validación del RFC al cancelar o resetear el formulario
   const handleResetRfcValidation = () => {
-    setIsRfcVerified(false);
-    setVerifiedRfc(null);
-    setRfcValidationMessage(null);
-    setRfcValidationTone(null);
+    if (isEditMode && supplierToEdit) {
+      // En edición, restaura el RFC original del proveedor.
+      setIsRfcVerified(true);
+      setVerifiedRfc(normalizeRfc(supplierToEdit.rfc));
+      setRfcValidationMessage("RFC previamente validado");
+      setRfcValidationTone("success");
+    } else {
+      setIsRfcVerified(false);
+      setVerifiedRfc(null);
+      setRfcValidationMessage(null);
+      setRfcValidationTone(null);
+    }
     resetVerifyRfc();
   };
 
@@ -89,7 +108,7 @@ export default function SupplierForm({ onSuccess }: SupplierFormProps) {
   }
 
   return (
-    <form ref={formRef} onSubmit={handleFormSubmit} className="w-full">
+    <form ref={formRef} key={formKey} onSubmit={handleFormSubmit} className="w-full">
       <fieldset disabled={isPending} className="group-disabled:opacity-50">
         {/* ─── Sección: Información General ─── */}
         <section className="relative overflow-hidden bg-white dark:bg-zinc-900 rounded-3xl p-6 md:p-8 border border-slate-200 dark:border-white/5 shadow-sm dark:shadow-none group hover:border-sky-200 dark:hover:border-sky-900 transition-colors duration-300 mb-8">
@@ -603,7 +622,9 @@ export default function SupplierForm({ onSuccess }: SupplierFormProps) {
             }}
             disabled={isPending}
           />
-          <FormSubmitButton isPending={isPending} loadingLabel="Guardando...">Guardar Proveedor</FormSubmitButton>
+          <FormSubmitButton isPending={isPending} loadingLabel="Guardando...">
+            {isEditing ? "Actualizar Proveedor" : "Guardar Proveedor"}
+          </FormSubmitButton>
         </div>
       </fieldset>
     </form>
