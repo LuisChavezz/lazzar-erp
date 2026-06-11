@@ -1,7 +1,10 @@
+import { useState } from "react";
 import { ColumnDef, createColumnHelper } from "@tanstack/react-table";
 import { EditIcon, DeleteIcon } from "@/src/components/Icons";
 import { Supplier } from "../interfaces/supplier.interface";
 import { ActionMenu, ActionMenuItem } from "@/src/components/ActionMenu";
+import { ConfirmDialog } from "@/src/components/ConfirmDialog";
+import { useDeleteSupplier } from "../hooks/useDeleteSupplier";
 
 const columnHelper = createColumnHelper<Supplier>();
 
@@ -14,6 +17,9 @@ const ActionsCell = ({
   supplier: Supplier;
   onEdit: (supplier: Supplier) => void;
 }) => {
+  const { mutate: deleteSupplier, isPending } = useDeleteSupplier();
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+
   const menuItems: ActionMenuItem[] = [
     {
       label: "Editar",
@@ -23,12 +29,26 @@ const ActionsCell = ({
     {
       label: "Eliminar",
       icon: DeleteIcon,
+      onSelect: () => setIsDeleteOpen(true),
+      disabled: isPending,
     },
   ];
 
   return (
     <div className="flex justify-center">
       <ActionMenu items={menuItems} />
+      <ConfirmDialog
+        open={isDeleteOpen}
+        onOpenChange={setIsDeleteOpen}
+        title="Eliminar Proveedor"
+        description={`¿Estás seguro de que deseas eliminar al proveedor "${supplier.nombre}"? Esta acción no se puede deshacer.`}
+        confirmText={isPending ? "Eliminando..." : "Eliminar"}
+        confirmColor="red"
+        onConfirm={() => {
+          deleteSupplier(supplier.id);
+          setIsDeleteOpen(false);
+        }}
+      />
     </div>
   );
 };

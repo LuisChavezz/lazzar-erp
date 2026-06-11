@@ -16,3 +16,7 @@ export const updateSupplier = async (id: number, supplierData: SupplierCreate): 
   const response = await v1_api.put<Supplier>(`/terceros/proveedores/${id}/`, supplierData);
   return response.data;
 }
+
+export const deleteSupplier = async (id: number): Promise<void> => {
+  await v1_api.delete(`/terceros/proveedores/${id}/`);
+}
