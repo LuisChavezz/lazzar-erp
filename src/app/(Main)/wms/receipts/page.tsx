@@ -1,5 +1,5 @@
 
-import { ReceiptStepManager } from "@/src/features/receipts/components/ReceiptStepManager";
+import { ReceiptView } from "@/src/features/receipts/components/ReceiptView";
 
 export default function Receipts() {
   return (
@@ -14,8 +14,7 @@ export default function Receipts() {
         </p>
       </div>
 
-      {/* Onboarding flow */}
-      <ReceiptStepManager />
+      <ReceiptView />
     </div>
   );
 }
