@@ -13,10 +13,10 @@ import { MainDialog } from "@/src/components/MainDialog";
 import { DialogHeader } from "@/src/components/DialogHeader";
 import { Button } from "@/src/components/Button";
 import { usePurchaseOrders } from "../hooks/usePurchaseOrders";
-import { PurchaseOrderForm } from "./PurchaseOrderForm";
 import { getColumns } from "./PurchaseOrderColumns";
 import { purchaseOrdersFilterConfig } from "./PurchaseOrdersFilter";
 import type { PurchaseOrder } from "../interfaces/purchase-order.interface";
+import { PurchaseOrderOnboardingStepManager } from "./PurchaseOrderOnboardingStepManager";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -146,7 +146,6 @@ export function PurchaseOrderView() {
       <DataTable
         columns={columns}
         data={purchaseOrders}
-        title="Órdenes de Compra"
         searchPlaceholder="Buscar orden, folio o referencia..."
         actionButton={
           <MainDialog
@@ -171,7 +170,7 @@ export function PurchaseOrderView() {
               </Button>
             }
           >
-            <PurchaseOrderForm onSuccess={() => setIsDialogOpen(false)} />
+            <PurchaseOrderOnboardingStepManager />
           </MainDialog>
         }
         filterConfig={purchaseOrdersFilterConfig}
