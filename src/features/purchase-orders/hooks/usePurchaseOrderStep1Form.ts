@@ -3,17 +3,19 @@
 import { useForm } from "@tanstack/react-form";
 import { useMemo, useState, type FormEvent } from "react";
 import type { FormFieldError } from "@/src/utils/getFieldError";
-import type { PurchaseOrderOnboardingData } from "../interfaces/purchase-order-onboarding.interface";
+import type {
+  PurchaseOrderEncabezados,
+  PurchaseOrderOnboardingData,
+} from "../interfaces/purchase-order-onboarding.interface";
 import {
   PurchaseOrderEncabezadosSchema,
   type PurchaseOrderEncabezadosFormValues,
 } from "../schemas/purchase-order-onboarding.schema";
-import { usePostPurchaseOrder } from "./usePostPurchaseOrder";
 
 interface UsePurchaseOrderStep1FormParams {
   onboardingData: PurchaseOrderOnboardingData;
-  /** Called when the POST succeeds. Receives the created orden_compra id. */
-  onSuccess: (ordenCompraId: number) => void;
+  /** Called when the form is validated and submitted. Receives the captured encabezados data. */
+  onSuccess: (data: PurchaseOrderEncabezados) => void;
 }
 
 /**
@@ -34,9 +36,6 @@ export function usePurchaseOrderStep1Form({
   onboardingData,
   onSuccess,
 }: UsePurchaseOrderStep1FormParams) {
-  const { mutateAsync: postEncabezados, isPending } =
-    usePostPurchaseOrder();
-
   const [clientErrors, setClientErrors] = useState<Step1ErrorMap>({});
   const [serverErrors, setServerErrors] = useState<Step1ErrorMap>({});
 
@@ -183,15 +182,8 @@ export function usePurchaseOrderStep1Form({
         return;
       }
 
-      try {
-        const response = await postEncabezados(parsed.data);
-        onSuccess(response.orden_compra.id);
-        // Toast is handled by the mutation hook.
-        // Do NOT close dialog, advance step, or reset form.
-      } catch {
-        // Error toast is handled by the mutation hook.
-        return;
-      }
+      // Pass validated data to the step manager and advance.
+      onSuccess(parsed.data);
     },
   });
 
@@ -205,7 +197,7 @@ export function usePurchaseOrderStep1Form({
 
   return {
     form,
-    isPending,
+    isPending: false,
     handleFormSubmit,
     sucursalOptions,
     proveedorOptions,

@@ -5,7 +5,6 @@ import type { PurchaseOrderOnboardingResponse } from "../interfaces/purchase-ord
 import { useConfirmPurchaseOrder } from "../hooks/useConfirmPurchaseOrder";
 
 interface PurchaseOrderOnboardingStep3Props {
-  ordenCompraId: number;
   /** The full response from the Step 2 POST (contains orden_compra details + detalle). */
   step2Response: PurchaseOrderOnboardingResponse;
   /** Called after confirmation succeeds. */
@@ -13,7 +12,6 @@ interface PurchaseOrderOnboardingStep3Props {
 }
 
 export function PurchaseOrderOnboardingStep3({
-  ordenCompraId,
   step2Response,
   onClose,
 }: PurchaseOrderOnboardingStep3Props) {
@@ -21,7 +19,7 @@ export function PurchaseOrderOnboardingStep3({
   const { orden_compra, detalle } = step2Response;
 
   const handleConfirm = () => {
-    void confirm(ordenCompraId).then(() => {
+    void confirm(orden_compra.id).then(() => {
       // Toast is handled by the mutation hook.
       onClose();
     });
@@ -32,7 +30,7 @@ export function PurchaseOrderOnboardingStep3({
       {/* ── Order summary ──────────────────────────────────────────────── */}
       <div className="rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 p-5 space-y-4">
         <h3 className="text-sm font-bold text-slate-800 dark:text-slate-100">
-          Resumen de la orden #{ordenCompraId}
+          Resumen de la orden #{orden_compra.id}
         </h3>
 
         {/* Key fields */}

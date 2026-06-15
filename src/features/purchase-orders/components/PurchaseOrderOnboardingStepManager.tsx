@@ -2,7 +2,10 @@
 
 import { useCallback, useState } from "react";
 import { StepProgressBar } from "@/src/components/StepProgressBar";
-import type { PurchaseOrderOnboardingResponse } from "../interfaces/purchase-order-onboarding.interface";
+import type {
+  PurchaseOrderEncabezados,
+  PurchaseOrderOnboardingResponse,
+} from "../interfaces/purchase-order-onboarding.interface";
 import { usePurchaseOrderOnboardingData } from "../hooks/usePurchaseOrderOnboardingData";
 import { PurchaseOrderOnboardingStep1 } from "./PurchaseOrderOnboardingStep1";
 import { PurchaseOrderOnboardingStep2 } from "./PurchaseOrderOnboardingStep2";
@@ -37,17 +40,21 @@ export function PurchaseOrderOnboardingStepManager({
   onClose,
 }: PurchaseOrderOnboardingStepManagerProps) {
   const [currentStep, setCurrentStep] = useState<OnboardingStep>(STEPS[0]);
-  const [ordenCompraId, setOrdenCompraId] = useState<number | null>(null);
+  const [step1Data, setStep1Data] =
+    useState<PurchaseOrderEncabezados | null>(null);
   const [step2Response, setStep2Response] =
     useState<PurchaseOrderOnboardingResponse | null>(null);
 
   const { onboardingData } = usePurchaseOrderOnboardingData();
 
-  /** Called by Step 1 after a successful POST. */
-  const handleStep1Success = useCallback((id: number) => {
-    setOrdenCompraId(id);
-    setCurrentStep("step-2");
-  }, []);
+  /** Called by Step 1 after form validation. Stores the captured encabezados and advances. */
+  const handleStep1Success = useCallback(
+    (data: PurchaseOrderEncabezados) => {
+      setStep1Data(data);
+      setCurrentStep("step-2");
+    },
+    [],
+  );
 
   /** Called by Step 2 after a successful POST. */
   const handleStep2Success = useCallback(
@@ -72,22 +79,19 @@ export function PurchaseOrderOnboardingStepManager({
             onSuccess={handleStep1Success}
           />
         )}
-        {currentStep === "step-2" && ordenCompraId !== null && (
+        {currentStep === "step-2" && step1Data !== null && (
           <PurchaseOrderOnboardingStep2
-            ordenCompraId={ordenCompraId}
+            step1Data={step1Data}
             onboardingData={onboardingData}
             onSuccess={handleStep2Success}
           />
         )}
-        {currentStep === "step-3" &&
-          ordenCompraId !== null &&
-          step2Response !== null && (
-            <PurchaseOrderOnboardingStep3
-              ordenCompraId={ordenCompraId}
-              step2Response={step2Response}
-              onClose={() => onClose?.()}
-            />
-          )}
+        {currentStep === "step-3" && step2Response !== null && (
+          <PurchaseOrderOnboardingStep3
+            step2Response={step2Response}
+            onClose={() => onClose?.()}
+          />
+        )}
       </div>
     </div>
   );

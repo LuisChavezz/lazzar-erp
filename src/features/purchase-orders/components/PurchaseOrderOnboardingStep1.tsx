@@ -3,14 +3,14 @@
 import { FormInput } from "@/src/components/FormInput";
 import { FormSelect } from "@/src/components/FormSelect";
 import { FormSubmitButton } from "@/src/components/FormButtons";
-import type { PurchaseOrderOnboardingData } from "../interfaces/purchase-order-onboarding.interface";
+import type { PurchaseOrderEncabezados, PurchaseOrderOnboardingData } from "../interfaces/purchase-order-onboarding.interface";
 import { usePurchaseOrderOnboardingData } from "../hooks/usePurchaseOrderOnboardingData";
 import { usePurchaseOrderStep1Form } from "../hooks/usePurchaseOrderStep1Form";
 
 export function PurchaseOrderOnboardingStep1({
   onSuccess,
 }: {
-  onSuccess?: (ordenCompraId: number) => void;
+  onSuccess?: (data: PurchaseOrderEncabezados) => void;
 }) {
   const { onboardingData, isLoading, isError, error } =
     usePurchaseOrderOnboardingData();
@@ -56,7 +56,7 @@ export function PurchaseOrderOnboardingStep1({
 
 interface Step1FormProps {
   onboardingData: PurchaseOrderOnboardingData;
-  onSuccess?: (ordenCompraId: number) => void;
+  onSuccess?: (data: PurchaseOrderEncabezados) => void;
 }
 
 function Step1Form({ onboardingData, onSuccess }: Step1FormProps) {

@@ -14,7 +14,7 @@ import { DialogHeader } from "@/src/components/DialogHeader";
 import { Button } from "@/src/components/Button";
 import { usePurchaseOrders } from "../hooks/usePurchaseOrders";
 import { getColumns } from "./PurchaseOrderColumns";
-import { purchaseOrdersFilterConfig } from "./PurchaseOrdersFilter";
+// import { purchaseOrdersFilterConfig } from "./PurchaseOrdersFilter";
 import type { PurchaseOrder } from "../interfaces/purchase-order.interface";
 import { PurchaseOrderOnboardingStepManager } from "./PurchaseOrderOnboardingStepManager";
 
@@ -185,7 +185,7 @@ export function PurchaseOrderView() {
             />
           </MainDialog>
         }
-        filterConfig={purchaseOrdersFilterConfig}
+        // filterConfig={purchaseOrdersFilterConfig}
         onRefetch={refetch}
         isRefetching={isFetching}
       />

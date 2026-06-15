@@ -4,18 +4,19 @@ import { useMemo, useState } from "react";
 import { SearchInput } from "@/src/components/SearchInput";
 import { CheckIcon, PlusIcon } from "@/src/components/Icons";
 import { FormSubmitButton } from "@/src/components/FormButtons";
-import type { PurchaseOrderOnboardingData, PurchaseOrderOnboardingResponse } from "../interfaces/purchase-order-onboarding.interface";
+import type { PurchaseOrderEncabezados, PurchaseOrderOnboardingData, PurchaseOrderOnboardingResponse } from "../interfaces/purchase-order-onboarding.interface";
 import { usePostPurchaseOrder } from "../hooks/usePostPurchaseOrder";
 
 interface PurchaseOrderOnboardingStep2Props {
-  ordenCompraId: number;
+  /** Captured encabezados from Step 1. */
+  step1Data: PurchaseOrderEncabezados;
   onboardingData: PurchaseOrderOnboardingData | undefined;
-  /** Called after the detalle POST succeeds. Receives the full response. */
+  /** Called after the full order POST succeeds. Receives the response. */
   onSuccess?: (response: PurchaseOrderOnboardingResponse) => void;
 }
 
 export function PurchaseOrderOnboardingStep2({
-  ordenCompraId,
+  step1Data,
   onboardingData,
   onSuccess,
 }: PurchaseOrderOnboardingStep2Props) {
@@ -77,13 +78,20 @@ export function PurchaseOrderOnboardingStep2({
       };
     });
 
-    void postDetalles({
-      orden_compra_id: ordenCompraId,
-      detalle,
-    }).then((response) => {
-      // Toast is handled by the mutation hook.
-      onSuccess?.(response);
-    });
+    // Step 2 creates the Purchase Order by first posting the encabezados,
+    // then posting the detalles with the returned orden_compra id.
+    void postDetalles(step1Data)
+      .then((createResponse) => {
+        const newOrdenCompraId = createResponse.orden_compra.id;
+        return postDetalles({
+          orden_compra_id: newOrdenCompraId,
+          detalle,
+        });
+      })
+      .then((finalResponse) => {
+        // Toast is handled by the mutation hook.
+        onSuccess?.(finalResponse);
+      });
     // Error toast is handled by the mutation hook.
   };
 
