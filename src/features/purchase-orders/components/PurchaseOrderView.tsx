@@ -13,10 +13,10 @@ import { MainDialog } from "@/src/components/MainDialog";
 import { DialogHeader } from "@/src/components/DialogHeader";
 import { Button } from "@/src/components/Button";
 import { usePurchaseOrders } from "../hooks/usePurchaseOrders";
-import { PurchaseOrderForm } from "./PurchaseOrderForm";
 import { getColumns } from "./PurchaseOrderColumns";
-import { purchaseOrdersFilterConfig } from "./PurchaseOrdersFilter";
+// import { purchaseOrdersFilterConfig } from "./PurchaseOrdersFilter";
 import type { PurchaseOrder } from "../interfaces/purchase-order.interface";
+import { PurchaseOrderOnboardingStepManager } from "./PurchaseOrderOnboardingStepManager";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -112,6 +112,16 @@ export function PurchaseOrderView() {
   const columns = useMemo(() => getColumns(), []);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
+  // ── Sort by creation date descending ────────────────────────────────────
+  const sortedOrders = useMemo(
+    () =>
+      [...purchaseOrders].sort(
+        (a, b) =>
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+      ),
+    [purchaseOrders],
+  );
+
   // ── Estados de carga y error ─────────────────────────────────────────────
   if (isLoading) {
     return (
@@ -140,13 +150,12 @@ export function PurchaseOrderView() {
   return (
     <div className="space-y-6">
       {/* ── KPIs ─────────────────────────────────────────────────────────── */}
-      <OrderStats items={purchaseOrders} />
+      <OrderStats items={sortedOrders} />
 
       {/* ── Tabla de órdenes ──────────────────────────────────────────────── */}
       <DataTable
         columns={columns}
-        data={purchaseOrders}
-        title="Órdenes de Compra"
+        data={sortedOrders}
         searchPlaceholder="Buscar orden, folio o referencia..."
         actionButton={
           <MainDialog
@@ -171,10 +180,12 @@ export function PurchaseOrderView() {
               </Button>
             }
           >
-            <PurchaseOrderForm onSuccess={() => setIsDialogOpen(false)} />
+            <PurchaseOrderOnboardingStepManager
+              onClose={() => setIsDialogOpen(false)}
+            />
           </MainDialog>
         }
-        filterConfig={purchaseOrdersFilterConfig}
+        // filterConfig={purchaseOrdersFilterConfig}
         onRefetch={refetch}
         isRefetching={isFetching}
       />
