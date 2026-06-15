@@ -28,7 +28,7 @@ export function ReceiptPurchaseOrderSelector({
           return (
             (order.folio ?? "").toLowerCase().includes(term) ||
             (order.referencia ?? "").toLowerCase().includes(term) ||
-            (order.proveedor_nombre ?? "").toLowerCase().includes(term)
+            `Proveedor #${order.proveedor}`.toLowerCase().includes(term)
           );
         });
 
@@ -114,7 +114,7 @@ export function ReceiptPurchaseOrderSelector({
                     {order.folio}
                   </span>
                   <span className="text-xs text-slate-500 dark:text-slate-400 truncate">
-                    {order.proveedor_nombre ?? `Proveedor #${order.proveedor}`}
+                    {`Proveedor #${order.proveedor}`}
                   </span>
                   {order.referencia && (
                     <span className="text-xs text-slate-400 dark:text-slate-500 truncate">
