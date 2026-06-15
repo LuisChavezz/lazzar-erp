@@ -12,6 +12,8 @@ import { usePostPurchaseOrder } from "./usePostPurchaseOrder";
 
 interface UsePurchaseOrderStep1FormParams {
   onboardingData: PurchaseOrderOnboardingData;
+  /** Called when the POST succeeds. Receives the created orden_compra id. */
+  onSuccess: (ordenCompraId: number) => void;
 }
 
 /**
@@ -30,6 +32,7 @@ type Step1ErrorMap = Partial<Record<Step1FieldPath, string>>;
 
 export function usePurchaseOrderStep1Form({
   onboardingData,
+  onSuccess,
 }: UsePurchaseOrderStep1FormParams) {
   const { mutateAsync: postEncabezados, isPending } =
     usePostPurchaseOrder();
@@ -181,8 +184,9 @@ export function usePurchaseOrderStep1Form({
       }
 
       try {
-        await postEncabezados(parsed.data);
-        // On success: toast is handled by the mutation hook.
+        const response = await postEncabezados(parsed.data);
+        onSuccess(response.orden_compra.id);
+        // Toast is handled by the mutation hook.
         // Do NOT close dialog, advance step, or reset form.
       } catch {
         // Error toast is handled by the mutation hook.

@@ -7,7 +7,11 @@ import type { PurchaseOrderOnboardingData } from "../interfaces/purchase-order-o
 import { usePurchaseOrderOnboardingData } from "../hooks/usePurchaseOrderOnboardingData";
 import { usePurchaseOrderStep1Form } from "../hooks/usePurchaseOrderStep1Form";
 
-export function PurchaseOrderOnboardingStep1() {
+export function PurchaseOrderOnboardingStep1({
+  onSuccess,
+}: {
+  onSuccess?: (ordenCompraId: number) => void;
+}) {
   const { onboardingData, isLoading, isError, error } =
     usePurchaseOrderOnboardingData();
 
@@ -43,16 +47,19 @@ export function PurchaseOrderOnboardingStep1() {
   }
 
   // Defer to the actual form once data is available.
-  return <Step1Form onboardingData={onboardingData} />;
+  return (
+    <Step1Form onboardingData={onboardingData} onSuccess={onSuccess} />
+  );
 }
 
 // ─── Inner form component (only rendered when data is ready) ──────────────
 
 interface Step1FormProps {
   onboardingData: PurchaseOrderOnboardingData;
+  onSuccess?: (ordenCompraId: number) => void;
 }
 
-function Step1Form({ onboardingData }: Step1FormProps) {
+function Step1Form({ onboardingData, onSuccess }: Step1FormProps) {
   const {
     form,
     isPending,
@@ -64,7 +71,7 @@ function Step1Form({ onboardingData }: Step1FormProps) {
     clearFieldErrors,
     validateField,
     coerceNumeric,
-  } = usePurchaseOrderStep1Form({ onboardingData });
+  } = usePurchaseOrderStep1Form({ onboardingData, onSuccess: onSuccess ?? (() => {}) });
 
   return (
     <form onSubmit={handleFormSubmit} className="space-y-6">

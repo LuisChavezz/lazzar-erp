@@ -3,6 +3,7 @@ import { PurchaseOrder } from "../interfaces/purchase-order.interface";
 import {
   PurchaseOrderOnboardingData,
   PurchaseOrderOnboardingPayload,
+  PurchaseOrderOnboardingResponse,
 } from "../interfaces/purchase-order-onboarding.interface";
 
 export const getPurchaseOrders = async (): Promise<PurchaseOrder[]> => {
@@ -15,6 +16,16 @@ export const getPurchaseOrderOnboardingData = async (): Promise<PurchaseOrderOnb
   return response.data;
 }
 
-export const postPurchaseOrder = async (data: PurchaseOrderOnboardingPayload): Promise<void> => {
-  await v1_api.post("/compras/ordenes/onboarding/", data);
+export const postPurchaseOrder = async (
+  data: PurchaseOrderOnboardingPayload,
+): Promise<PurchaseOrderOnboardingResponse> => {
+  const response = await v1_api.post<PurchaseOrderOnboardingResponse>(
+    "/compras/ordenes/onboarding/",
+    data,
+  );
+  return response.data;
+}
+
+export const confirmPurchaseOrder = async (ordenCompraId: number): Promise<void> => {
+  await v1_api.post(`/compras/ordenes/${ordenCompraId}/aceptar/`);
 }

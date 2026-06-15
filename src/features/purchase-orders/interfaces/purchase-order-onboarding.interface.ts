@@ -79,3 +79,46 @@ export interface PurchaseOrderDetalles {
 export type PurchaseOrderOnboardingPayload =
   | PurchaseOrderEncabezados
   | PurchaseOrderDetalles;
+
+// ─── Response interfaces ─────────────────────────────────────────────────
+
+/** The `orden_compra` object inside the POST response. */
+export interface PurchaseOrderOnboardingResponseOrdenCompra {
+  id: number;
+  folio: string | null;
+  referencia: string;
+  fecha_oc: string;
+  fecha_entrega_estimada: string | null;
+  fecha_autorizacion: string | null;
+  fecha_vencimiento: string | null;
+  estatus: number;
+  impuestos: string;
+  total: string;
+  tipo: string;
+  total_piezas: number;
+  subtotal: string;
+  descuento: string;
+  flete: string;
+  seguros: string;
+  porcentaje_iva: string;
+  total_iva: string;
+  gran_total: string;
+  a_cuenta: string;
+  observaciones: string | null;
+  activo: boolean;
+  created_at: string;
+  updated_at: string;
+  empresa: number;
+  sucursal: number;
+  proveedor: number;
+  solicitud_compra: number | null;
+  moneda: number;
+  usuario: number;
+  pedido: number | null;
+}
+
+/** Response returned by the POST /compras/ordenes/onboarding/ endpoint. */
+export interface PurchaseOrderOnboardingResponse {
+  orden_compra: PurchaseOrderOnboardingResponseOrdenCompra;
+  detalle: PurchaseOrderDetalleItem[];
+}

@@ -1,20 +1,19 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { postPurchaseOrder } from "../services/actions";
-import type { PurchaseOrderOnboardingPayload } from "../interfaces/purchase-order-onboarding.interface";
+import { confirmPurchaseOrder } from "../services/actions";
 import toast from "react-hot-toast";
 import { AxiosError } from "axios";
 
-export const usePostPurchaseOrder = () => {
+export const useConfirmPurchaseOrder = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (data: PurchaseOrderOnboardingPayload) =>
-      postPurchaseOrder(data),
+    mutationFn: (ordenCompraId: number) => confirmPurchaseOrder(ordenCompraId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["purchase-orders"] });
       queryClient.invalidateQueries({
         queryKey: ["purchase-order-onboarding"],
       });
+      toast.success("Orden de compra confirmada correctamente");
     },
     onError: (error) => {
       if (error instanceof AxiosError) {
@@ -30,7 +29,7 @@ export const usePostPurchaseOrder = () => {
           }
         }
       }
-      toast.error("Error al registrar la orden de compra");
+      toast.error("Error al confirmar la orden de compra");
     },
   });
 };

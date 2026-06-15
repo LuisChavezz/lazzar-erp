@@ -112,6 +112,16 @@ export function PurchaseOrderView() {
   const columns = useMemo(() => getColumns(), []);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
+  // ── Sort by creation date descending ────────────────────────────────────
+  const sortedOrders = useMemo(
+    () =>
+      [...purchaseOrders].sort(
+        (a, b) =>
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+      ),
+    [purchaseOrders],
+  );
+
   // ── Estados de carga y error ─────────────────────────────────────────────
   if (isLoading) {
     return (
@@ -140,12 +150,12 @@ export function PurchaseOrderView() {
   return (
     <div className="space-y-6">
       {/* ── KPIs ─────────────────────────────────────────────────────────── */}
-      <OrderStats items={purchaseOrders} />
+      <OrderStats items={sortedOrders} />
 
       {/* ── Tabla de órdenes ──────────────────────────────────────────────── */}
       <DataTable
         columns={columns}
-        data={purchaseOrders}
+        data={sortedOrders}
         searchPlaceholder="Buscar orden, folio o referencia..."
         actionButton={
           <MainDialog
@@ -170,7 +180,9 @@ export function PurchaseOrderView() {
               </Button>
             }
           >
-            <PurchaseOrderOnboardingStepManager />
+            <PurchaseOrderOnboardingStepManager
+              onClose={() => setIsDialogOpen(false)}
+            />
           </MainDialog>
         }
         filterConfig={purchaseOrdersFilterConfig}
