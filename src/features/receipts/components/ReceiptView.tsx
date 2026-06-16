@@ -8,7 +8,7 @@ import { DialogHeader } from "@/src/components/DialogHeader";
 import { Button } from "@/src/components/Button";
 import { ReceiptPurchaseOrderSelector } from "./ReceiptPurchaseOrderSelector";
 import ReceiptForm from "./ReceiptForm";
-import type { PurchaseOrder } from "@/src/features/purchase-orders/interfaces/purchase-order.interface";
+import type { ReceiptOnboardingPurchaseOrder } from "../interfaces/receipt-onboarding.interface";
 
 // ─── Types ─────────────────────────────────────────────────────────────────
 
@@ -78,7 +78,7 @@ const columns = [
 
 export function ReceiptView() {
   const [dialogView, setDialogView] = useState<DialogView>("closed");
-  const [selectedPurchaseOrder, setSelectedPurchaseOrder] = useState<PurchaseOrder | null>(null);
+  const [selectedPurchaseOrder, setSelectedPurchaseOrder] = useState<ReceiptOnboardingPurchaseOrder | null>(null);
 
   const isSelectorOpen = dialogView === "selector";
   const isFormOpen = dialogView === "form";

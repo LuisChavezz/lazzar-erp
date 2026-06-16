@@ -9,11 +9,11 @@ import { ReceiptFormSchema, type ReceiptFormValues } from "../schemas/receipt.sc
 import { useSuppliers } from "../../suppliers/hooks/useSuppliers";
 import { useWarehouses } from "../../warehouses/hooks/useWarehouses";
 import { useWorkspaceStore } from "../../workspace/store/workspace.store";
-import type { PurchaseOrder } from "../../purchase-orders/interfaces/purchase-order.interface";
+import type { ReceiptOnboardingPurchaseOrder } from "../interfaces/receipt-onboarding.interface";
 
 interface UseReceiptFormParams {
   onSuccess: () => void;
-  purchaseOrder: PurchaseOrder;
+  purchaseOrder: ReceiptOnboardingPurchaseOrder;
 }
 
 type ReceiptFormField = keyof ReceiptFormValues;
@@ -76,11 +76,11 @@ export function useReceiptForm({ onSuccess, purchaseOrder }: UseReceiptFormParam
       remision: "",
       factura_referencia: "",
       transportista: "",
-      proveedor: purchaseOrder.proveedor,
+      proveedor: purchaseOrder.proveedor_id,
       almacen: 0,
       observaciones: "",
     }),
-    [purchaseOrder.proveedor],
+    [purchaseOrder.proveedor_id],
   );
 
   // ── Limpia error de un campo ──────────────────────────────────────────

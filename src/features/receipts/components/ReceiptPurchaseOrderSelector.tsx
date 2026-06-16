@@ -1,20 +1,27 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { usePurchaseOrders } from "@/src/features/purchase-orders/hooks/usePurchaseOrders";
+import { useReceiptOnboardingData } from "../hooks/useReceiptOnboardingData";
 import { SearchInput } from "@/src/components/SearchInput";
-import type { PurchaseOrder } from "@/src/features/purchase-orders/interfaces/purchase-order.interface";
+import { Loader } from "@/src/components/Loader";
+import type { ReceiptOnboardingPurchaseOrder } from "../interfaces/receipt-onboarding.interface";
 
 interface ReceiptPurchaseOrderSelectorProps {
   selectedOrderId: number | null;
-  onSelect: (order: PurchaseOrder | null) => void;
+  onSelect: (order: ReceiptOnboardingPurchaseOrder | null) => void;
 }
 
 export function ReceiptPurchaseOrderSelector({
   selectedOrderId,
   onSelect,
 }: ReceiptPurchaseOrderSelectorProps) {
-  const { purchaseOrders = [], isLoading, isError } = usePurchaseOrders();
+  const { onboardingData, isLoading, isError } = useReceiptOnboardingData();
+
+  // Stabilise the reference so downstream useMemo doesn't recalculate on every render
+  const purchaseOrders = useMemo(
+    () => onboardingData?.busqueda.ordenes_compra ?? [],
+    [onboardingData?.busqueda.ordenes_compra],
+  );
   const [search, setSearch] = useState("");
 
   // Build the display list: filter by search, then pin selected PO at top
@@ -27,8 +34,8 @@ export function ReceiptPurchaseOrderSelector({
       : purchaseOrders.filter((order) => {
           return (
             (order.folio ?? "").toLowerCase().includes(term) ||
-            (order.referencia ?? "").toLowerCase().includes(term) ||
-            `Proveedor #${order.proveedor}`.toLowerCase().includes(term)
+            (order.proveedor_nombre ?? "").toLowerCase().includes(term) ||
+            `Proveedor #${order.proveedor_id}`.toLowerCase().includes(term)
           );
         });
 
@@ -49,10 +56,10 @@ export function ReceiptPurchaseOrderSelector({
   // ── Loading state ─────────────────────────────────────────────────────
   if (isLoading) {
     return (
-      <div className="flex items-center gap-2 p-4 text-slate-500 text-sm">
-        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-sky-600" />
-        <span>Cargando órdenes de compra...</span>
-      </div>
+      <Loader
+        title="Cargando órdenes de compra"
+        message="Obteniendo lista de órdenes..."
+      />
     );
   }
 
@@ -80,7 +87,7 @@ export function ReceiptPurchaseOrderSelector({
       <SearchInput
         value={search}
         onChange={setSearch}
-        placeholder="Buscar por folio, referencia o proveedor..."
+        placeholder="Buscar por folio o proveedor..."
       />
 
       {/* Scrollable list */}
@@ -114,21 +121,10 @@ export function ReceiptPurchaseOrderSelector({
                     {order.folio}
                   </span>
                   <span className="text-xs text-slate-500 dark:text-slate-400 truncate">
-                    {`Proveedor #${order.proveedor}`}
+                    {order.proveedor_nombre}
                   </span>
-                  {order.referencia && (
-                    <span className="text-xs text-slate-400 dark:text-slate-500 truncate">
-                      Ref: {order.referencia}
-                    </span>
-                  )}
                 </div>
                 <div className="flex flex-col items-end gap-0.5 shrink-0">
-                  <span className="text-sm font-semibold text-slate-800 dark:text-white tabular-nums">
-                    {Number(order.total).toLocaleString("es-MX", {
-                      style: "currency",
-                      currency: "MXN",
-                    })}
-                  </span>
                   {isSelected && (
                     <span className="text-[10px] font-bold text-sky-600 dark:text-sky-400 uppercase tracking-wide">
                       Seleccionado

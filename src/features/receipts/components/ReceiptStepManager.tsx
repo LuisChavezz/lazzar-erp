@@ -13,8 +13,8 @@
 "use client";
 
 import { ArrowRight } from "lucide-react";
-import { useReceiptStepper, STEP_LABELS } from "../hooks/useReceiptStepper";
-import { ReceiptStepIndicator } from "./ReceiptStepIndicator";
+import { StepProgressBar } from "@/src/components/StepProgressBar";
+import { useReceiptStepper, RECEIPT_STEPS, STEP_LABELS } from "../hooks/useReceiptStepper";
 import { ReceiptUploadDocument } from "./ReceiptUploadDocument";
 import { OrderDetails } from "./OrderDetails";
 
@@ -25,8 +25,12 @@ export function ReceiptStepManager() {
 
   return (
     <div className="w-full space-y-6">
-      {/* Step indicator */}
-      <ReceiptStepIndicator currentStep={currentStep} />
+      {/* Step progress bar */}
+      <StepProgressBar
+        steps={RECEIPT_STEPS}
+        currentStep={currentStep}
+        labels={STEP_LABELS}
+      />
 
       {/* Step content */}
       <div className="space-y-6">

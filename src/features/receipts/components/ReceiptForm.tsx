@@ -9,11 +9,11 @@ import {
 } from "@/src/components/FormButtons";
 import { PackageCheckIcon } from "@/src/components/Icons";
 import { useReceiptForm } from "../hooks/useReceiptForm";
-import type { PurchaseOrder } from "../../purchase-orders/interfaces/purchase-order.interface";
+import type { ReceiptOnboardingPurchaseOrder } from "../interfaces/receipt-onboarding.interface";
 
 interface ReceiptFormProps {
   onSuccess: () => void;
-  purchaseOrder: PurchaseOrder;
+  purchaseOrder: ReceiptOnboardingPurchaseOrder;
 }
 
 export default function ReceiptForm({
