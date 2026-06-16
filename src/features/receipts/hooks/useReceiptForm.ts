@@ -1,15 +1,17 @@
 "use client";
 
 import { useForm } from "@tanstack/react-form";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
-import { useSession } from "next-auth/react";
 import type { FormFieldError } from "@/src/utils/getFieldError";
 import { ReceiptFormSchema, type ReceiptFormValues } from "../schemas/receipt.schema";
-import { useSuppliers } from "../../suppliers/hooks/useSuppliers";
-import { useWarehouses } from "../../warehouses/hooks/useWarehouses";
-import { useWorkspaceStore } from "../../workspace/store/workspace.store";
-import type { ReceiptOnboardingPurchaseOrder } from "../interfaces/receipt-onboarding.interface";
+import { useReceiptOnboardingData } from "./useReceiptOnboardingData";
+import { useCreateReceipt } from "./useCreateReceipt";
+import type {
+  ReceiptOnboardingPurchaseOrder,
+  ReceiptCreatePayload,
+  ReceiptCreateDetalle,
+} from "../interfaces/receipt-onboarding.interface";
 
 interface UseReceiptFormParams {
   onSuccess: () => void;
@@ -52,15 +54,12 @@ const scrollToFirstValidationError = (
 };
 
 export function useReceiptForm({ onSuccess, purchaseOrder }: UseReceiptFormParams) {
-  // ── Catálogos ─────────────────────────────────────────────────────────
-  const { suppliers } = useSuppliers();
-  const warehousesQuery = useWarehouses();
-  const warehouses = warehousesQuery.data ?? [];
+  // ── Catálogos desde onboarding ────────────────────────────────────────
+  const { onboardingData } = useReceiptOnboardingData();
+  const warehouses = onboardingData?.catalogos.almacenes ?? [];
 
-  // ── Workspace y sesión ────────────────────────────────────────────────
-  const selectedCompany = useWorkspaceStore((state) => state.selectedCompany);
-  const selectedBranch = useWorkspaceStore((state) => state.selectedBranch);
-  const { data: session } = useSession();
+  // ── Mutación ──────────────────────────────────────────────────────────
+  const createReceiptMutation = useCreateReceipt();
 
   // ── Referencia del formulario ─────────────────────────────────────────
   const formRef = useRef<HTMLFormElement | null>(null);
@@ -73,14 +72,14 @@ export function useReceiptForm({ onSuccess, purchaseOrder }: UseReceiptFormParam
   // ── Valores por defecto ───────────────────────────────────────────────
   const defaultValues = useMemo<ReceiptFormValues>(
     () => ({
+      almacen: 0,
+      serie_codigo: "",
       remision: "",
       factura_referencia: "",
-      transportista: "",
-      proveedor: purchaseOrder.proveedor_id,
-      almacen: 0,
       observaciones: "",
+      cantidades: {},
     }),
-    [purchaseOrder.proveedor_id],
+    [],
   );
 
   // ── Limpia error de un campo ──────────────────────────────────────────
@@ -156,47 +155,50 @@ export function useReceiptForm({ onSuccess, purchaseOrder }: UseReceiptFormParam
     onSubmit: async ({ value }) => {
       if (!validateForm(value)) return;
 
-      const payload = {
-        // Campos del formulario
-        remision: value.remision,
-        factura_referencia: value.factura_referencia,
-        transportista: value.transportista,
-        observaciones: value.observaciones,
-        // Selectores dinámicos
-        proveedor: value.proveedor,
-        almacen: value.almacen,
-        // Automáticos
-        estatus: 1,
-        activo: true,
-        fecha_recepcion: new Date().toISOString(),
-        orden_compra: purchaseOrder.id,
-        empresa: selectedCompany.id!,
-        sucursal: selectedBranch?.id,
-        usuario: Number(session?.user?.id) ?? 0,
-        // Detail por defecto
-        detail: [
-          {
-            orden_compra_detalle: 1,
-            producto: 1,
-            ubicacion: 1,
-          },
-        ],
+      // Build detalle array — use reduce to narrow cantidad through the guard clause
+      const detalle = purchaseOrder.detalle.reduce<ReceiptCreateDetalle[]>(
+        (acc, d) => {
+          const cantidad = value.cantidades[String(d.id)];
+          if (
+            cantidad === undefined ||
+            cantidad.trim() === "" ||
+            Number(cantidad) <= 0
+          ) {
+            return acc;
+          }
+          acc.push({
+            orden_compra_detalle: d.id,
+            cantidad_recibida: cantidad,
+            ubicacion: null,
+            producto_variante: null,
+          });
+          return acc;
+        },
+        [],
+      );
+
+      const payload: ReceiptCreatePayload = {
+        recepcion: {
+          orden_compra: purchaseOrder.id,
+          almacen: value.almacen,
+          serie_codigo: value.serie_codigo,
+          fecha_recepcion: new Date().toISOString(),
+          remision: value.remision,
+          factura_referencia: value.factura_referencia,
+          observaciones: value.observaciones,
+          transportista: null,
+        },
+        detalle,
       };
 
-      console.log("[ReceiptForm] Payload:", payload);
-
-      form.reset(defaultValues);
-      onSuccess();
+      createReceiptMutation.mutate(payload, {
+        onSuccess: () => {
+          form.reset(defaultValues);
+          onSuccess();
+        },
+      });
     },
   });
-
-  // ── Sincroniza reset ante cambios de valores por defecto ──────────────
-  useEffect(() => {
-    form.reset(defaultValues);
-  }, [defaultValues, form]);
-
-  // ── Estado de submit ──────────────────────────────────────────────────
-  const isPending = false; // Sin API calls aún
 
   // ── Reset manual ──────────────────────────────────────────────────────
   const handleReset = () => {
@@ -218,9 +220,9 @@ export function useReceiptForm({ onSuccess, purchaseOrder }: UseReceiptFormParam
     form,
     formRef,
     formKey,
-    isPending,
-    suppliers,
+    isPending: createReceiptMutation.isPending,
     warehouses,
+    purchaseOrder,
     getError,
     clearFieldErrors,
     validateField,

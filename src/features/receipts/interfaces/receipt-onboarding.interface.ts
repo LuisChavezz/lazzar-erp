@@ -34,6 +34,26 @@ export interface ReceiptOnboardingCatalogs {
   series_recepcion: ReceiptOnboardingSerieRecepcion[];
 }
 
+export interface ReceiptOnboardingPurchaseOrderVariante {
+  id: number;
+  sku: string;
+  nombre: string;
+  color_id: number;
+  talla_id: number;
+  producto_id: number;
+}
+
+export interface ReceiptOnboardingPurchaseOrderDetalle {
+  id: number;
+  producto_id: number;
+  producto_nombre: string;
+  cantidad_ordenada: string;
+  cantidad_recibida: string;
+  cantidad_pendiente: string;
+  descripcion: string;
+  variantes: ReceiptOnboardingPurchaseOrderVariante[];
+}
+
 export interface ReceiptOnboardingPurchaseOrder {
   id: number;
   folio: string;
@@ -42,6 +62,7 @@ export interface ReceiptOnboardingPurchaseOrder {
   proveedor_nombre: string;
   sucursal_id: number;
   fecha_oc: string;
+  detalle: ReceiptOnboardingPurchaseOrderDetalle[];
 }
 
 export interface ReceiptOnboardingSearch {
@@ -53,7 +74,29 @@ export interface ReceiptOnboardingData {
   empresa_id: number;
   catalogos: ReceiptOnboardingCatalogs;
   busqueda: ReceiptOnboardingSearch;
-  orden_compra: unknown;
-  detalle: unknown[];
 }
 
+// ─── POST /compras/recepciones/onboarding/ body ────────────────────────────
+
+export interface ReceiptCreateRecepcion {
+  orden_compra: number;
+  almacen: number;
+  serie_codigo: string;
+  fecha_recepcion: string;
+  remision: string;
+  factura_referencia: string;
+  observaciones: string;
+  transportista: number | null;
+}
+
+export interface ReceiptCreateDetalle {
+  orden_compra_detalle: number;
+  cantidad_recibida: string;
+  ubicacion: number | null;
+  producto_variante: number | null;
+}
+
+export interface ReceiptCreatePayload {
+  recepcion: ReceiptCreateRecepcion;
+  detalle: ReceiptCreateDetalle[];
+}

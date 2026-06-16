@@ -2,24 +2,13 @@
 
 import { useState, useCallback } from "react";
 
-export type ReceiptStep = "upload-documents" | "review-receipt" | "confirm-reception";
+export type ReceiptStep = "select-po" | "fill-form";
 
-export const RECEIPT_STEPS: ReceiptStep[] = [
-  "upload-documents",
-  "review-receipt",
-  "confirm-reception",
-];
+export const RECEIPT_STEPS: ReceiptStep[] = ["select-po", "fill-form"];
 
 export const STEP_LABELS: Record<ReceiptStep, string> = {
-  "upload-documents": "Carga de OC",
-  "review-receipt": "Revisar Recepción",
-  "confirm-reception": "Confirmar Recepción",
-};
-
-export const STEP_DESCRIPTIONS: Record<ReceiptStep, string> = {
-  "upload-documents": "Carga de documentos",
-  "review-receipt": "Validación técnica",
-  "confirm-reception": "Folio y ubicación",
+  "select-po": "Seleccionar Orden",
+  "fill-form": "Registrar Recepción",
 };
 
 interface UseReceiptStepperReturn {
@@ -30,26 +19,46 @@ interface UseReceiptStepperReturn {
   canAdvance: boolean;
   /** Advance to the next step */
   goNext: () => void;
+  /** Go back to the previous step */
+  goBack: () => void;
+  /** Reset to the first step */
+  reset: () => void;
 }
 
 /**
  * useReceiptStepper
  *
- * Hook that manages the 3-step onboarding flow for goods receipt.
- * Steps 2 and 3 are placeholders — users cannot advance beyond Step 1.
+ * Hook that manages the 2-step onboarding flow for goods receipt.
+ * The caller controls whether the user can advance via `canAdvance`.
  */
-export function useReceiptStepper(): UseReceiptStepperReturn {
-  const [currentStep] = useState<ReceiptStep>("upload-documents");
+export function useReceiptStepper(canAdvance: boolean): UseReceiptStepperReturn {
+  const [currentStep, setCurrentStep] = useState<ReceiptStep>(RECEIPT_STEPS[0]);
 
   const goNext = useCallback(() => {
-    // Steps 2 and 3 are not implemented yet; block advancement.
-    // When ready, implement: setCurrentStep(prev => { ... })
+    if (!canAdvance) return;
+    const currentIndex = RECEIPT_STEPS.indexOf(currentStep);
+    if (currentIndex < RECEIPT_STEPS.length - 1) {
+      setCurrentStep(RECEIPT_STEPS[currentIndex + 1]);
+    }
+  }, [canAdvance, currentStep]);
+
+  const goBack = useCallback(() => {
+    const currentIndex = RECEIPT_STEPS.indexOf(currentStep);
+    if (currentIndex > 0) {
+      setCurrentStep(RECEIPT_STEPS[currentIndex - 1]);
+    }
+  }, [currentStep]);
+
+  const reset = useCallback(() => {
+    setCurrentStep(RECEIPT_STEPS[0]);
   }, []);
 
   return {
     currentStep,
     steps: RECEIPT_STEPS,
-    canAdvance: false,
+    canAdvance,
     goNext,
+    goBack,
+    reset,
   };
 }
