@@ -1,79 +1,97 @@
 /**
  * ReceiptStepManager.tsx
  *
- * Orchestrator component for the 3-step goods receipt onboarding flow.
+ * Orchestrator component for the 2-step goods receipt onboarding flow.
  *
- * Manages the current step state, renders the step indicator,
- * and conditionally displays the content for each step.
+ * Step 1 — Select a Purchase Order from the onboarding list.
+ * Step 2 — Fill in the receipt form.
  *
- * Steps 2 ("review-receipt") and 3 ("confirm-reception") are
- * currently placeholders — users cannot advance beyond Step 1.
+ * Owns:
+ *  - Current step state (via useReceiptStepper)
+ *  - Selected Purchase Order (persisted between steps)
  */
 
 "use client";
 
+import { useState } from "react";
 import { ArrowRight } from "lucide-react";
+import { StepProgressBar } from "@/src/components/StepProgressBar";
 import { useReceiptStepper, STEP_LABELS } from "../hooks/useReceiptStepper";
-import { ReceiptStepIndicator } from "./ReceiptStepIndicator";
-import { ReceiptUploadDocument } from "./ReceiptUploadDocument";
-import { OrderDetails } from "./OrderDetails";
+import { ReceiptPurchaseOrderSelector } from "./ReceiptPurchaseOrderSelector";
+import ReceiptForm from "./ReceiptForm";
+import type { ReceiptOnboardingPurchaseOrder } from "../interfaces/receipt-onboarding.interface";
 
-export function ReceiptStepManager() {
-  const { currentStep, canAdvance, goNext } = useReceiptStepper();
+interface ReceiptStepManagerProps {
+  /** Called when the full flow completes (form submitted successfully). */
+  onClose?: () => void;
+}
 
-  const isStep1 = currentStep === "upload-documents";
+export function ReceiptStepManager({ onClose }: ReceiptStepManagerProps) {
+  const [selectedPurchaseOrder, setSelectedPurchaseOrder] =
+    useState<ReceiptOnboardingPurchaseOrder | null>(null);
+
+  const canAdvance = selectedPurchaseOrder !== null;
+  const { currentStep, steps, goNext, goBack, reset } =
+    useReceiptStepper(canAdvance);
+
+  const handleFormSuccess = () => {
+    reset();
+    onClose?.();
+  };
 
   return (
     <div className="w-full space-y-6">
-      {/* Step indicator */}
-      <ReceiptStepIndicator currentStep={currentStep} />
+      {/* Step progress bar */}
+      <StepProgressBar
+        steps={steps}
+        currentStep={currentStep}
+        labels={STEP_LABELS}
+      />
 
       {/* Step content */}
       <div className="space-y-6">
-        {isStep1 && (
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
-            {/* Left — File upload area */}
-            <div className="lg:col-span-3">
-              <ReceiptUploadDocument />
-            </div>
-
-            {/* Right — Order details */}
-            <div className="lg:col-span-2">
-              <OrderDetails />
-            </div>
-          </div>
+        {currentStep === "select-po" && (
+          <ReceiptPurchaseOrderSelector
+            selectedOrderId={selectedPurchaseOrder?.id ?? null}
+            onSelect={setSelectedPurchaseOrder}
+          />
         )}
 
-        {/* Step 2 placeholder */}
-        {currentStep === "review-receipt" && (
-          <div className="rounded-2xl border border-dashed border-slate-300 dark:border-white/20 bg-slate-100/50 dark:bg-white/5 p-12 text-center">
-            <p className="text-sm text-slate-500 dark:text-slate-400">
-              Validación técnica — Próximamente
-            </p>
-          </div>
-        )}
+        {currentStep === "fill-form" && selectedPurchaseOrder && (
+          <div className="space-y-4">
+            {/* Back link */}
+            <button
+              type="button"
+              onClick={goBack}
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-sky-600 dark:hover:text-sky-400 transition-colors cursor-pointer bg-transparent border-none p-0"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+              Regresar a: {STEP_LABELS["select-po"]}
+            </button>
 
-        {/* Step 3 placeholder */}
-        {currentStep === "confirm-reception" && (
-          <div className="rounded-2xl border border-dashed border-slate-300 dark:border-white/20 bg-slate-100/50 dark:bg-white/5 p-12 text-center">
-            <p className="text-sm text-slate-500 dark:text-slate-400">
-              Folio y ubicación — Próximamente
-            </p>
+            <ReceiptForm
+              onSuccess={handleFormSuccess}
+              purchaseOrder={selectedPurchaseOrder}
+            />
           </div>
         )}
       </div>
 
-      {/* Action bar */}
-      {isStep1 && (
+      {/* Action bar — only visible on Step 1 */}
+      {currentStep === "select-po" && (
         <div className="flex items-center justify-end border-t border-slate-200 dark:border-white/10 pt-4">
           <button
             type="button"
             disabled={!canAdvance}
             onClick={goNext}
-            className="inline-flex cursor-not-allowed items-center gap-2 rounded-xl bg-sky-600 px-5 py-2.5 text-sm font-semibold text-white opacity-60 shadow-lg shadow-sky-500/30 transition-all"
-            aria-disabled
+            className={`inline-flex items-center gap-2 rounded-xl bg-sky-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-sky-500/30 transition-all ${
+              canAdvance
+                ? "cursor-pointer hover:bg-sky-700 active:scale-[0.97]"
+                : "cursor-not-allowed opacity-60"
+            }`}
+            aria-disabled={!canAdvance}
           >
-            Siguiente: {STEP_LABELS["review-receipt"]}
+            Siguiente: {STEP_LABELS["fill-form"]}
             <ArrowRight className="h-4 w-4" />
           </button>
         </div>

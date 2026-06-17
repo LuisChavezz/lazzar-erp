@@ -6,13 +6,9 @@ import { DataTable } from "@/src/components/DataTable";
 import { MainDialog } from "@/src/components/MainDialog";
 import { DialogHeader } from "@/src/components/DialogHeader";
 import { Button } from "@/src/components/Button";
-import { ReceiptPurchaseOrderSelector } from "./ReceiptPurchaseOrderSelector";
-import ReceiptForm from "./ReceiptForm";
-import type { PurchaseOrder } from "@/src/features/purchase-orders/interfaces/purchase-order.interface";
+import { ReceiptStepManager } from "./ReceiptStepManager";
 
 // ─── Types ─────────────────────────────────────────────────────────────────
-
-type DialogView = "closed" | "selector" | "form";
 
 /** Placeholder receipt type — will be replaced once the domain model is defined. */
 interface Receipt {
@@ -77,41 +73,7 @@ const columns = [
 // ─── View ──────────────────────────────────────────────────────────────────
 
 export function ReceiptView() {
-  const [dialogView, setDialogView] = useState<DialogView>("closed");
-  const [selectedPurchaseOrder, setSelectedPurchaseOrder] = useState<PurchaseOrder | null>(null);
-
-  const isSelectorOpen = dialogView === "selector";
-  const isFormOpen = dialogView === "form";
-
-  // ── Handlers ──────────────────────────────────────────────────────────
-
-  const handleOpenSelector = () => {
-    setSelectedPurchaseOrder(null);
-    setDialogView("selector");
-  };
-
-  const handleContinue = () => {
-    if (!selectedPurchaseOrder) return;
-    setDialogView("form");
-  };
-
-  const handleCloseSelector = (open: boolean) => {
-    if (!open && dialogView === "selector") {
-      setDialogView("closed");
-    }
-  };
-
-  const handleCloseForm = (open: boolean) => {
-    if (!open) {
-      setDialogView("closed");
-      setSelectedPurchaseOrder(null);
-    }
-  };
-
-  const handleFormSuccess = () => {
-    setDialogView("closed");
-    setSelectedPurchaseOrder(null);
-  };
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   // Empty data — no receipts available yet
   const data: Receipt[] = useMemo(() => [], []);
@@ -126,71 +88,30 @@ export function ReceiptView() {
         data={data}
         searchPlaceholder="Buscar recepción..."
         actionButton={
-          <>
-            {/* ── Dialog 1: Purchase Order Selector ──────────────────── */}
-            <MainDialog
-              title={
-                <DialogHeader
-                  title="Nueva Recepción"
-                  subtitle="Seleccionar Orden de Compra"
-                  statusColor="sky"
-                />
-              }
-              open={isSelectorOpen}
-              onOpenChange={handleCloseSelector}
-              maxWidth="640px"
-              showCloseButton={false}
-              actionButtonClose={false}
-              actionButton={
-                <Button
-                  variant="primary"
-                  rounded="xl"
-                  disabled={!selectedPurchaseOrder}
-                  onClick={handleContinue}
-                >
-                  Continuar
-                </Button>
-              }
-              trigger={
-                <Button
-                  variant="primary"
-                  rounded="full"
-                  onClick={handleOpenSelector}
-                >
-                  + Nueva Recepción
-                </Button>
-              }
-            >
-              <ReceiptPurchaseOrderSelector
-                selectedOrderId={selectedPurchaseOrder?.id ?? null}
-                onSelect={(order) => {
-                  setSelectedPurchaseOrder(order);
-                }}
+          <MainDialog
+            title={
+              <DialogHeader
+                title="Nueva Recepción"
+                subtitle="Recepcionar Orden de Compra"
+                statusColor="sky"
               />
-            </MainDialog>
-
-            {/* ── Dialog 2: Receipt Form ─────────────────────────────── */}
-            <MainDialog
-              title={
-                <DialogHeader
-                  title="Nueva Recepción"
-                  subtitle="Registrar Recepción"
-                  statusColor="sky"
-                />
-              }
-              open={isFormOpen}
-              onOpenChange={handleCloseForm}
-              maxWidth="640px"
-              showCloseButton={true}
-            >
-              {selectedPurchaseOrder && (
-                <ReceiptForm
-                  onSuccess={handleFormSuccess}
-                  purchaseOrder={selectedPurchaseOrder}
-                />
-              )}
-            </MainDialog>
-          </>
+            }
+            open={isDialogOpen}
+            onOpenChange={setIsDialogOpen}
+            maxWidth="640px"
+            showCloseButton={true}
+            trigger={
+              <Button
+                variant="primary"
+                rounded="full"
+                onClick={() => setIsDialogOpen(true)}
+              >
+                + Nueva Recepción
+              </Button>
+            }
+          >
+            <ReceiptStepManager onClose={() => setIsDialogOpen(false)} />
+          </MainDialog>
         }
       />
     </div>
