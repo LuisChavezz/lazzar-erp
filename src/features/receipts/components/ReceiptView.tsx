@@ -1,82 +1,51 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { createColumnHelper, type ColumnDef } from "@tanstack/react-table";
 import { DataTable } from "@/src/components/DataTable";
 import { MainDialog } from "@/src/components/MainDialog";
 import { DialogHeader } from "@/src/components/DialogHeader";
 import { Button } from "@/src/components/Button";
 import { ReceiptStepManager } from "./ReceiptStepManager";
-
-// ─── Types ─────────────────────────────────────────────────────────────────
-
-/** Placeholder receipt type — will be replaced once the domain model is defined. */
-interface Receipt {
-  id: number;
-  folio: string;
-  proveedor: string;
-  fecha: string;
-  total: number;
-  estatus: string;
-}
-
-// ─── Columns ───────────────────────────────────────────────────────────────
-
-const columnHelper = createColumnHelper<Receipt>();
-
-const columns = [
-  columnHelper.accessor("folio", {
-    header: "Folio",
-    cell: (info) => (
-      <span className="font-mono text-slate-700 dark:text-slate-200 font-semibold">
-        {info.getValue()}
-      </span>
-    ),
-  }),
-  columnHelper.accessor("proveedor", {
-    header: "Proveedor",
-    cell: (info) => (
-      <span className="text-slate-700 dark:text-slate-200 text-sm">
-        {info.getValue()}
-      </span>
-    ),
-  }),
-  columnHelper.accessor("fecha", {
-    header: "Fecha",
-    cell: (info) => (
-      <span className="text-slate-600 dark:text-slate-300 tabular-nums">
-        {info.getValue() ? new Date(info.getValue()).toLocaleDateString("es-MX") : "—"}
-      </span>
-    ),
-  }),
-  columnHelper.accessor("total", {
-    header: "Total",
-    cell: (info) => (
-      <span className="text-slate-800 dark:text-white font-semibold tabular-nums">
-        {Number(info.getValue()).toLocaleString("es-MX", {
-          style: "currency",
-          currency: "MXN",
-        })}
-      </span>
-    ),
-  }),
-  columnHelper.accessor("estatus", {
-    header: "Estatus",
-    cell: (info) => (
-      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-600 dark:bg-slate-500/10 dark:text-slate-400">
-        {info.getValue()}
-      </span>
-    ),
-  }),
-] as ColumnDef<Receipt>[];
+import { useReceipts } from "../hooks/useReceipts";
+import { receiptColumns } from "./ReceiptColumns";
+import { Loader } from "@/src/components/Loader";
+import { ErrorDisplay } from "@/src/components/ui/ErrorDisplay";
 
 // ─── View ──────────────────────────────────────────────────────────────────
 
 export function ReceiptView() {
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const {
+    data: receipts = [],
+    isLoading,
+    isError,
+    error,
+    refetch,
+    isFetching,
+  } = useReceipts();
 
-  // Empty data — no receipts available yet
-  const data: Receipt[] = useMemo(() => [], []);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const columns = useMemo(() => receiptColumns, []);
+
+  // ── Loading state ───────────────────────────────────────────────────────
+  if (isLoading) {
+    return (
+      <Loader
+        title="Cargando recepciones..."
+        className="py-20"
+      />
+    );
+  }
+
+  // ── Error state ─────────────────────────────────────────────────────────
+  if (isError) {
+    return (
+      <ErrorDisplay
+        title="Error al cargar recepciones"
+        error={error instanceof Error ? error : undefined}
+        onRetry={refetch}
+      />
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -85,8 +54,10 @@ export function ReceiptView() {
       {/* ── Table ──────────────────────────────────────────────────────── */}
       <DataTable
         columns={columns}
-        data={data}
+        data={receipts}
         searchPlaceholder="Buscar recepción..."
+        onRefetch={refetch}
+        isRefetching={isFetching}
         actionButton={
           <MainDialog
             title={
