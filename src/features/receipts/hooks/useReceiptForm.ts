@@ -156,7 +156,9 @@ export function useReceiptForm({ onSuccess, purchaseOrder }: UseReceiptFormParam
       if (!validateForm(value)) return;
 
       // Build detalle array — use reduce to narrow cantidad through the guard clause
-      const detalle = purchaseOrder.detalle.reduce<ReceiptCreateDetalle[]>(
+      const detalle = purchaseOrder.detalle.reduce<
+        Omit<ReceiptCreateDetalle, "producto_variante" | "ubicacion">[]
+      >(
         (acc, d) => {
           const cantidad = value.cantidades[String(d.id)];
           if (
@@ -169,8 +171,6 @@ export function useReceiptForm({ onSuccess, purchaseOrder }: UseReceiptFormParam
           acc.push({
             orden_compra_detalle: d.id,
             cantidad_recibida: cantidad,
-            ubicacion: null,
-            producto_variante: null,
           });
           return acc;
         },
@@ -188,7 +188,7 @@ export function useReceiptForm({ onSuccess, purchaseOrder }: UseReceiptFormParam
           observaciones: value.observaciones,
           transportista: null,
         },
-        detalle,
+        detalle: detalle as ReceiptCreateDetalle[],
       };
 
       createReceiptMutation.mutate(payload, {

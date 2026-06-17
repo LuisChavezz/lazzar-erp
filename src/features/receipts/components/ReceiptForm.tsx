@@ -255,7 +255,7 @@ export default function ReceiptForm({
                           {d.producto_nombre}
                         </p>
                         <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                          Ordenado: {d.cantidad_ordenada} &middot; Pendiente: {d.cantidad_pendiente}
+                          Ordenado: {Number(d.cantidad_ordenada).toFixed(0)} &middot; Pendiente: {Number(d.cantidad_pendiente).toFixed(0)}
                         </p>
                       </div>
 
