@@ -37,7 +37,7 @@ export interface PurchaseOrder {
   descuento: string;
   impuestos: string;
   total: string;
-  observaciones: string;
+  observaciones: string | null;
   activo: boolean;
   created_at: string;
   updated_at: string;
@@ -51,4 +51,29 @@ export interface PurchaseOrder {
   moneda: number;
   usuario: number;
   pedido: number;
+}
+
+//
+// ─── Detalle de la orden de compra ──────────────────────────────────────────
+//
+
+/** Un renglón de producto dentro del detalle de la orden de compra */
+export interface PurchaseOrderDetalle {
+  descripcion: string;
+  cantidad: number;
+  descuento: string;
+  importe: string;
+  piezas: number;
+  precio: string;
+}
+
+/**
+ * Respuesta del endpoint GET /compras/ordenes/{id}/.
+ *
+ * Reutiliza toda la estructura base de {@link PurchaseOrder} y la extiende
+ * con el arreglo `detalles` de renglones de producto. El endpoint de retrieve
+ * (DRF) expone la relación anidada en plural, igual que `QuoteById.detalles`.
+ */
+export interface PurchaseOrderDetail extends PurchaseOrder {
+  detalles: PurchaseOrderDetalle[];
 }
