@@ -1,5 +1,8 @@
 import { v1_api } from "@/src/api/v1.api";
-import { PurchaseOrder } from "../interfaces/purchase-order.interface";
+import {
+  PurchaseOrder,
+  PurchaseOrderDetail,
+} from "../interfaces/purchase-order.interface";
 import {
   PurchaseOrderOnboardingData,
   PurchaseOrderOnboardingPayload,
@@ -8,6 +11,15 @@ import {
 
 export const getPurchaseOrders = async (): Promise<PurchaseOrder[]> => {
   const response = await v1_api.get<PurchaseOrder[]>("/compras/ordenes/");
+  return response.data;
+}
+
+export const getPurchaseOrder = async (
+  id: number,
+): Promise<PurchaseOrderDetail> => {
+  const response = await v1_api.get<PurchaseOrderDetail>(
+    `/compras/ordenes/${id}/`,
+  );
   return response.data;
 }
 

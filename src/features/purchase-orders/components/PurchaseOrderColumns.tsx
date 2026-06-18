@@ -1,7 +1,11 @@
 "use client";
 
+import { useState } from "react";
 import { ColumnDef, createColumnHelper } from "@tanstack/react-table";
+import { ActionMenu, type ActionMenuItem } from "@/src/components/ActionMenu";
+import { ViewIcon } from "@/src/components/Icons";
 import { PurchaseOrder } from "../interfaces/purchase-order.interface";
+import { PurchaseOrderDetailDialog } from "./PurchaseOrderDetailDialog";
 
 const columnHelper = createColumnHelper<PurchaseOrder>();
 
@@ -22,6 +26,32 @@ const EstatusBadge = ({ estatus, label }: { estatus: number; label: string }) =>
       <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${cfg.dot}`} aria-hidden="true" />
       {label}
     </span>
+  );
+};
+
+// ── Celda de acciones ─────────────────────────────────────────────────────────
+
+/** Gestiona el menú de acciones y el diálogo de detalle de la orden */
+const ActionsCell = ({ row }: { row: PurchaseOrder }) => {
+  const [isDetailOpen, setIsDetailOpen] = useState(false);
+
+  const menuItems: ActionMenuItem[] = [
+    {
+      label: "Ver Detalles",
+      icon: ViewIcon,
+      onSelect: () => setIsDetailOpen(true),
+    },
+  ];
+
+  return (
+    <>
+      <ActionMenu items={menuItems} ariaLabel={`Acciones de la orden ${row.folio}`} />
+      <PurchaseOrderDetailDialog
+        orderId={isDetailOpen ? row.id : null}
+        open={isDetailOpen}
+        onOpenChange={setIsDetailOpen}
+      />
+    </>
   );
 };
 
@@ -102,6 +132,15 @@ export const getColumns = () => {
             currency: "MXN",
           })}
         </span>
+      ),
+    }),
+    columnHelper.display({
+      id: "actions",
+      header: () => <div className="text-center">Acciones</div>,
+      cell: ({ row }) => (
+        <div className="text-center">
+          <ActionsCell row={row.original} />
+        </div>
       ),
     }),
   ] as ColumnDef<PurchaseOrder>[];
