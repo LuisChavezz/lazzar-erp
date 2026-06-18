@@ -47,5 +47,6 @@ next-env.d.ts
 # GitHub Copilot workspace instructions
 .github/
 
-# Agents
+# AI / Skills
 .agents/
+.claude/

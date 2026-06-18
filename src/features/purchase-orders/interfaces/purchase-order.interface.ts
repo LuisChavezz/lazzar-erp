@@ -32,6 +32,7 @@ export interface PurchaseOrder {
   fecha_entrega_estimada: string;
   fecha_autorizacion: string | null;
   estatus: number;
+  estatus_label: string;
   subtotal: string;
   descuento: string;
   impuestos: string;
@@ -43,6 +44,7 @@ export interface PurchaseOrder {
   empresa: number;
   sucursal: number;
   proveedor: number;
+  proveedor_nombre: string;
   /** Información de rastreo — disponible para órdenes en tránsito o más avanzadas */
   tracking?: TrackingInfo;
   solicitud_compra: number;
