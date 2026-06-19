@@ -14,7 +14,7 @@ import { DialogHeader } from "@/src/components/DialogHeader";
 import { Button } from "@/src/components/Button";
 import { usePurchaseOrders } from "../hooks/usePurchaseOrders";
 import { getColumns } from "./PurchaseOrderColumns";
-// import { purchaseOrdersFilterConfig } from "./PurchaseOrdersFilter";
+import { createPurchaseOrdersFilterConfig } from "./PurchaseOrdersFilter";
 import type { PurchaseOrder } from "../interfaces/purchase-order.interface";
 import { PurchaseOrderOnboardingStepManager } from "./PurchaseOrderOnboardingStepManager";
 
@@ -122,6 +122,12 @@ export function PurchaseOrderView() {
     [purchaseOrders],
   );
 
+  // ── Configuración de filtros para DataTable ─────────────────────────────
+  const purchaseOrdersFilterConfig = useMemo(
+    () => createPurchaseOrdersFilterConfig(purchaseOrders),
+    [purchaseOrders],
+  );
+
   // ── Estados de carga y error ─────────────────────────────────────────────
   if (isLoading) {
     return (
@@ -185,7 +191,7 @@ export function PurchaseOrderView() {
             />
           </MainDialog>
         }
-        // filterConfig={purchaseOrdersFilterConfig}
+        filterConfig={purchaseOrdersFilterConfig}
         onRefetch={refetch}
         isRefetching={isFetching}
       />
