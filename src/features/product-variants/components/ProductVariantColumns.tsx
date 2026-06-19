@@ -1,9 +1,12 @@
 "use client";
 
 import { ColumnDef, createColumnHelper, Row } from "@tanstack/react-table";
-import { EditIcon, DeleteIcon } from "../../../components/Icons";
+import { EditIcon, DeleteIcon, ClipboardListIcon } from "../../../components/Icons";
 import { ProductVariant } from "../interfaces/product-variant.interface";
 import { ConfirmDialog } from "../../../components/ConfirmDialog";
+import { MainDialog } from "../../../components/MainDialog";
+import { DialogHeader } from "../../../components/DialogHeader";
+import BomList from "./BomList";
 import { useDeleteProductVariant } from "../hooks/useDeleteProductVariant";
 import { ActionMenu, ActionMenuItem } from "@/src/components/ActionMenu";
 import { useState } from "react";
@@ -29,8 +32,14 @@ const ActionsCell = ({
 }) => {
   const { mutate: deleteProductVariant } = useDeleteProductVariant();
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [isBomOpen, setIsBomOpen] = useState(false);
 
   const menuItems: ActionMenuItem[] = [];
+  menuItems.push({
+    label: "Lista de Materiales",
+    icon: ClipboardListIcon,
+    onSelect: () => setIsBomOpen(true),
+  });
   if (canEdit) {
     menuItems.push({
       label: "Editar",
@@ -49,6 +58,20 @@ const ActionsCell = ({
   return (
     <div className="flex justify-center">
       <ActionMenu items={menuItems} />
+      <MainDialog
+        open={isBomOpen}
+        onOpenChange={setIsBomOpen}
+        maxWidth="760px"
+        title={
+          <DialogHeader
+            title="Lista de Materiales"
+            subtitle={row.original.sku}
+            statusColor="indigo"
+          />
+        }
+      >
+        <BomList productoVarianteId={row.original.id} />
+      </MainDialog>
       {canDelete && (
         <ConfirmDialog
           open={isDeleteOpen}
