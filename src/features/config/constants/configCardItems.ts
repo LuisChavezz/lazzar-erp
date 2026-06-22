@@ -26,6 +26,7 @@ import {
   ProductVariantsIcon,
   FolioIcon,
   EmbarquesIcon,
+  ClipboardListIcon,
 } from "@/src/components/Icons";
 import { getSatInfo } from "../../sat/services/actions";
 import { getTaxes } from "../../taxes/services/actions";
@@ -310,5 +311,15 @@ export const configCards: ConfigCardItem[] = [
     adminOnly: true,
     prefetchKey: ["product-variants"],
     prefetchFn: getProductVariants,
+  },
+  {
+    title: "Materiales",
+    description: "Administración de listas de materiales",
+    icon: ClipboardListIcon,
+    view: "bom",
+    group: "Productos",
+    adminOnly: true,
+    prefetchKey: ["products", "2"],
+    prefetchFn: () => getProducts("2"),
   },
 ];

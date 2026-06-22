@@ -10,17 +10,19 @@ export interface Product {
   id: number;
   empresa: number;
   categoria_producto: ProductCategory["id"];
-  unidad_medida: UnitOfMeasure["id"];
-  impuesto: Tax["id"];
-  sat_prodserv: SatProdservCode["id_sat_prodserv"];
-  sat_unidad: SatUnitCode["id_sat_unidad"];
+  unidad_medida: UnitOfMeasure["id"] | null;
+  impuesto: Tax["id"] | null;
+  sat_prodserv: SatProdservCode["id_sat_prodserv"] | null;
+  sat_unidad: SatUnitCode["id_sat_unidad"] | null;
   nombre: string;
-  descripcion: string;
+  descripcion: string | null;
   tipo: ProductType["codigo"];
-  precio_base: number;
+  precio_base: string;
+  cod_proscai: string;
+  codigo: string;
   activo: boolean;
   created_at: string;
-  updated_at: string;
+  updated_at: string | null;
 }
 
 export interface ProductCreate {

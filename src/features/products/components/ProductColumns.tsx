@@ -85,6 +85,7 @@ export const getColumns = (
     columnHelper.accessor((row) => (row.activo), {
       id: "activo",
       header: "Estado",
+      size: 100,
       cell: ({ row }) => {
         const isActive = row.original.activo;
         const styles = isActive
@@ -99,22 +100,23 @@ export const getColumns = (
     }),
     columnHelper.accessor("nombre", {
       header: "Nombre",
+      size: 200,
       cell: (info) => (
         <span className="text-slate-600 dark:text-slate-300 font-medium">{info.getValue()}</span>
       ),
     }),
-    columnHelper.accessor(
-      (row) => lookups.productTypes.get(row.tipo) ?? "",
-      {
-        id: "tipo",
-        header: "Tipo",
-        cell: ({ row }) => (
-          <span className="text-slate-500 dark:text-slate-400">
-            {lookups.productTypes.get(row.original.tipo) ?? row.original.tipo}
-          </span>
-        ),
-      }
-    ),
+    columnHelper.accessor("codigo", {
+      header: "Código",
+      cell: (info) => (
+        <span className="text-slate-500 dark:text-slate-400">{info.getValue()}</span>
+      ),
+    }),
+    columnHelper.accessor("cod_proscai", {
+      header: "Cód. Proscai",
+      cell: (info) => (
+        <span className="text-slate-500 dark:text-slate-400">{info.getValue()}</span>
+      ),
+    }),
     columnHelper.accessor(
       (row) => lookups.categories.get(row.categoria_producto) ?? "",
       {
@@ -128,18 +130,6 @@ export const getColumns = (
         ),
       }
     ),
-    columnHelper.accessor(
-      (row) => lookups.units.get(row.unidad_medida) ?? "",
-      {
-        id: "unidad_medida",
-        header: "Unidad",
-        cell: ({ row }) => (
-          <span className="text-slate-500 dark:text-slate-400">
-            {lookups.units.get(row.original.unidad_medida) ?? `#${row.original.unidad_medida}`}
-          </span>
-        ),
-      }
-    ),
     columnHelper.accessor("precio_base", {
       header: "Precio",
       cell: ({ row }) => {
@@ -147,7 +137,7 @@ export const getColumns = (
         const formatted = new Intl.NumberFormat("es-MX", {
           style: "currency",
           currency: "MXN",
-        }).format(value);
+        }).format(parseFloat(value));
         return <span className="text-slate-600 dark:text-slate-300 font-medium">{formatted}</span>;
       },
     }),

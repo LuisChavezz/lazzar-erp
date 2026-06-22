@@ -17,7 +17,7 @@ export const FormToggle = forwardRef<HTMLInputElement, FormToggleProps>(
         {label && (
           <label
             htmlFor={inputId}
-            className="text-[11px] font-bold text-slate-400 uppercase tracking-wider ml-1 mb-2 block transition-colors group-focus-within/field:text-brand-500"
+            className="text-[11px] font-bold text-slate-400 uppercase tracking-wider ml-1 mb-1 block transition-colors group-focus-within/field:text-brand-500"
           >
             {label}
           </label>
@@ -25,7 +25,7 @@ export const FormToggle = forwardRef<HTMLInputElement, FormToggleProps>(
         <label
           htmlFor={inputId}
           className={`
-            flex items-center justify-between gap-4 rounded-xl border px-4 py-3 cursor-pointer
+            flex items-center justify-between gap-4 rounded-xl border px-4 py-2.5 cursor-pointer
             bg-slate-50 dark:bg-black/20
             border-slate-200 dark:border-slate-700
             ${error ? "border-red-500" : ""}

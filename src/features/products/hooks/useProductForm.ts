@@ -102,14 +102,14 @@ export function useProductForm({ onSuccess, productToEdit }: UseProductFormParam
 
     return {
       nombre: productToEdit.nombre,
-      descripcion: productToEdit.descripcion,
+      descripcion: productToEdit.descripcion ?? "",
       tipo: hasType ? productTypeCode : "",
       categoria_producto: hasCategory ? productToEdit.categoria_producto : 0,
-      unidad_medida: hasUnit ? productToEdit.unidad_medida : 0,
-      impuesto: hasTax ? productToEdit.impuesto : 0,
-      sat_prodserv: hasSatProdserv ? productToEdit.sat_prodserv : 0,
-      sat_unidad: hasSatUnit ? productToEdit.sat_unidad : 0,
-      precio_base: productToEdit.precio_base ?? 0,
+      unidad_medida: hasUnit ? (productToEdit.unidad_medida ?? 0) : 0,
+      impuesto: hasTax ? (productToEdit.impuesto ?? 0) : 0,
+      sat_prodserv: hasSatProdserv ? (productToEdit.sat_prodserv ?? 0) : 0,
+      sat_unidad: hasSatUnit ? (productToEdit.sat_unidad ?? 0) : 0,
+      precio_base: parseFloat(productToEdit.precio_base) || 0,
       activo: productToEdit.activo,
     };
   }, [categories, emptyValues, productToEdit, productTypes, satProdservCodes, satUnitCodes, taxes, units]);
