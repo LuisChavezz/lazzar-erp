@@ -49,7 +49,7 @@ export function useAddProductsDialog({
 
     return (products || [])
       .map((product) => {
-        const unit = unitsById.get(product.unidad_medida);
+        const unit = product.unidad_medida != null ? unitsById.get(product.unidad_medida) : undefined;
         const precio = Number(product.precio_base);
         return {
           id: product.id,
