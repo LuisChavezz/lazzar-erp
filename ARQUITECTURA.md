@@ -26,7 +26,12 @@ Este documento describe la arquitectura técnica del proyecto **erp-nextjs-v1**,
 - **Autenticación**:
   - `next-auth` (Credentials Provider, estrategia JWT).
 - **HTTP Client**:
-  - `axios` configurado en `src/api/v1.api.ts`.
+  - `axios` configurado en `src/api/` (cuatro instancias, ver §5.1).
+- **Librerías especializadas**:
+  - **FullCalendar** (`@fullcalendar/*`) para el calendario de ventas.
+  - **@react-pdf/renderer** para generación de PDF y **@react-email** para el render de correos (cotizaciones).
+  - **@dnd-kit/react** para reordenar columnas en `DataTable`.
+  - **@tanstack/react-virtual** para virtualización de listas largas.
 
 ---
 
@@ -62,8 +67,8 @@ Ruta base del proyecto:
     - `permissions.ts` – helper de permisos.
     - `getSidebarItems.ts` – filtrado de navegación por permisos.
 - `src/api/`
-  - Clientes HTTP configurados:
-    - `v1.api.ts` – instancia de axios con baseURL e interceptores.
+  - Clientes HTTP configurados (ver §5.1):
+    - `v1.api.ts` (principal), `api.ts` (solo-auth), `facturama.api.ts` (solo-servidor) y `ngrok.api.ts` (carga de imágenes).
 - `src/types/`
   - Tipos globales, ej. `next-auth.d.ts` para extender `Session`/`User`.
 - `src/interfaces/`
@@ -92,25 +97,20 @@ Ruta base del proyecto:
   - Muestra `Sidebar` fijo a la izquierda.
   - Header superior (`Header`) con buscador, notificaciones, workspace y menú de usuario.
   - Área central de contenido (`main`) con scroll vertical.
-- Este layout aplica a páginas como:
-  - `/`
-  - `/orders` y subrutas (`/orders/new`, `/orders/edit/[id]`)
-  - `/orders-menu`
-  - `/production`
-  - `/inventories`
-  - `/stock`
-  - `/price-lists`
-  - `/shipments`
-  - `/shipment-tracking`
-  - `/customers`
-  - `/receipts`
-  - `/invoicing`
-  - `/accounts-payable`
-  - `/accounts-receivable`
-  - `/bank-accounts`
-  - `/accounting`
-  - `/reports`
-  - `/config`
+- Las rutas se agrupan por **dominio de negocio** (ya no de forma plana). Cada grupo tiene una página raíz y, en su caso, subrutas:
+  - `/` – Dashboard / inicio.
+  - `/system` – Panel de Control (Core): `/system/reports`.
+  - `/sales` – CRM y Ventas: `/sales/customers` (y `/sales/customers/[id]`), `/sales/quotes` (`/new`, `/[id]`, `/[id]/edit`), `/sales/emails`, `/sales/calendar`.
+  - `/operations` – Mesa de Control: `/operations/quotes`, `/operations/orders`, `/operations/samples`.
+  - `/wms` – Operaciones de Almacén: `/wms/stock`, `/wms/stock-movements`, `/wms/receipts`, `/wms/locations`.
+  - `/procurement` – Compras y SCM: `/procurement/purchase-orders`, `/procurement/suppliers`, `/procurement/order-reviews`, `/procurement/expense-requests`, `/procurement/pq-orders`.
+  - `/manufacturing` – Manufactura: `/manufacturing/production-orders`, `/manufacturing/embroidery`, `/manufacturing/cedicor-production-orders`, `/manufacturing/cedicor-product-development-orders`.
+  - `/finance` – Finanzas y Contabilidad: `/finance/invoicing`, `/finance/accounts-payable`, `/finance/accounts-receivable`, `/finance/bank-accounts`, `/finance/accounting`, `/finance/price-lists`.
+  - `/hr` – Capital Humano.
+  - `/config` – Configuración (catálogos maestros).
+  - `/settings` – Ajustes de cuenta: `/settings/profile`, `/settings/security`.
+
+  La definición de grupos, etiquetas de navegación e iconos vive centralizada en `src/constants/appRoutes.ts`; el mapeo prefijo→permiso y la prioridad de redirección post-login en `src/constants/routePermissions.ts`.
 
 ### 3.3 Layout de autenticación (`src/app/auth/layout.tsx`)
 
@@ -130,19 +130,19 @@ Ruta base del proyecto:
 
 ### 4.1 Configuración de NextAuth (`src/lib/auth.ts`)
 
-- Se utiliza `CredentialsProvider`:
-  - En el método `authorize` se llama al servicio `login` en `features/auth/services/actions.ts`.
-  - Si la respuesta incluye `token`, se construye el objeto `user` con:
-    - `id`, `name`, `email`.
-    - `role`: `"admin"` o `"user"` según `is_admin_empresa`.
-    - `token`: JWT devuelto por el backend.
+- Se utiliza `CredentialsProvider` con **autenticación basada en cookies**: el login (incluido el MFA opcional) lo completa el navegador directamente contra el backend, que establece las cookies de sesión. NextAuth **no vuelve a autenticar**.
+  - El método `authorize` recibe la credencial `userData` (el usuario ya serializado como JSON tras el login) y únicamente la parsea; no llama a ningún endpoint.
+  - Construye el objeto `user` con:
+    - `id`, `name` (nombre completo o `username`), `email`.
+    - `role`: `"admin"` o `"user"` según `is_admin_empresa || es_admin || is_superuser`.
+    - `permissions`: lista de permisos del usuario (`user.permisos`).
 - Callbacks:
   - **jwt**:
-    - Copia `role` y `token` al `token` de NextAuth (`token.role`, `token.accessToken`).
+    - Copia `role`, `permissions` y `sub` (id) al `token` de NextAuth.
   - **session**:
-    - Inyecta `role` y `accessToken` en `session.user`.
+    - Inyecta `id`, `role` y `permissions` en `session.user`.
 - Tipos extendidos:
-  - `src/types/next-auth.d.ts` agrega `role`, `accessToken` y `permissions` a `User`/`Session`.
+  - `src/types/next-auth.d.ts` agrega `role` y `permissions` a `User`/`Session`.
 - Páginas personalizadas:
   - `signIn: "/auth/login"`.
 - Estrategia de sesión:
@@ -164,18 +164,16 @@ Ruta base del proyecto:
 
 ## 5. Capa de datos y API
 
-### 5.1 Cliente HTTP (`src/api/v1.api.ts`)
+### 5.1 Clientes HTTP (`src/api/`)
 
-- Instancia de `axios`:
-  - `baseURL: process.env.NEXT_PUBLIC_API_URL`.
-  - `headers: { "Content-Type": "application/json" }`.
-- Interceptor de **request**:
-  - Omite inyección de token en endpoints `/login/`.
-  - Obtiene la sesión actual con `getSession()` (NextAuth en cliente).
-  - Si existe `session.user.accessToken`, añade `Authorization: Bearer <token>`.
-- Interceptor de **response**:
-  - Si el backend responde **401**:
-    - En el cliente (`typeof window !== "undefined"`), ejecuta `signOut({ callbackUrl: "/auth/login" })`.
+El proyecto usa **autenticación basada en cookies** (`withCredentials: true`); el backend gestiona los `Set-Cookie` (`auth-jwt` / `auth-refresh-jwt`), por lo que el cliente ya **no inyecta** el token en una cabecera `Authorization`. Hay cuatro instancias de `axios` con responsabilidades distintas:
+
+- **`v1.api.ts`** (`v1_api`) – cliente principal para todas las llamadas de los features.
+  - `baseURL: process.env.NEXT_PUBLIC_API_URL`, `withCredentials: true`, `proxy: false`.
+  - Interceptor de **response** con **refresh token y mutex**: ante un **401** intenta refrescar la sesión (`POST /auth/token/refresh/`) una sola vez; las solicitudes concurrentes que también reciban 401 se **encolan** y se reintentan al completarse el refresh. Si el refresh falla (o el reintento vuelve a dar 401), ejecuta `signOut({ callbackUrl: "/auth/login" })`.
+- **`api.ts`** (`api`) – cliente **solo-auth**, sin interceptores. Quita `/api/v1` de `NEXT_PUBLIC_API_URL` (`removeApiVersion`) para los endpoints de login/logout/refresh.
+- **`facturama.api.ts`** – cliente **solo-servidor** (`import "server-only"`) con Basic auth desde variables de entorno; se usa únicamente en Route Handlers.
+- **`ngrok.api.ts`** (`ngrok_api`) – cliente para el endpoint externo (ngrok) de carga de imágenes; cabeceras fijas (`Authorization: Bearer`, `ngrok-skip-browser-warning`) y variables `NEXT_PUBLIC_NGROK_*`.
 
 ### 5.2 Servicios y hooks de datos
 
@@ -190,6 +188,7 @@ Cada módulo de `src/features` implementa un patrón coherente:
     - `useMutation` para crear/actualizar/eliminar.
   - Gestionan estados `loading`, `error`, `data`.
   - Pueden disparar `toast` de feedback.
+  - Las mutaciones de borrado/edición de catálogos aplican **actualizaciones optimistas**: `onMutate` cancela queries en vuelo y guarda un snapshot del cache antes de escribir el valor optimista; `onError` revierte desde el snapshot y `onSettled` invalida (ver hooks `useDelete*`, p. ej. `useDeleteBomDetalle`).
 - **stores/** (Zustand):
   - Usados cuando se requiere estado estable en el cliente (ej. selección de almacén, workspace actual).
   - Se combinan con `persist` y `devtools` para depuración.
@@ -206,13 +205,16 @@ Cada módulo de `src/features` implementa un patrón coherente:
   - `DataTable`: componente genérico sobre **TanStack Table**.
   - Columnas definidas en archivos `...Columns.tsx` dentro de cada feature, siguiendo la convención de mantener la tabla en archivos separados.
 - **Formularios**:
-  - `FormInput`, `FormSelect`, `FormButtons`: inputs y botones reutilizables alineados con el diseño.
+  - `FormInput`, `FormSelect`, `FormTextarea`, `FormToggle`, `FormButtons`: inputs y botones reutilizables alineados con el diseño (sobre `@tanstack/react-form` + `zod`).
 - **Diálogos**:
   - `MainDialog`, `ConfirmDialog`, `DialogHeader`: construidos con **Radix UI Dialog**.
   - Se usan para formularios modales, confirmaciones y mensajes de error detallados.
+- **Asistentes (wizards)**:
+  - `StepProgressBar`: indicador de pasos para diálogos de alta multi-paso (ver §6.3).
 - **Otros**:
   - `HomeGrid` (panel de módulos desde el home).
-  - `Loader`, `LoadingSkeleton`.
+  - `Loader`, `LoadingSkeleton`, `ErrorState`.
+  - `ActionMenu`, `KpiGrid`, `Calendar`, `QuantitySelector`, `ThemeToggle`: utilidades de UI transversales.
   - `Notifications` (integración con `react-hot-toast`).
 
 ### 6.2 Componentes por módulo (`src/features/*/components`)
@@ -231,6 +233,10 @@ Cada componente se apoya en:
 - Hooks de datos (`useCompanies`, `useBranches`, etc.).
 - Esquemas de validación (`companies.schema.ts`, `branch.schema.ts`, `currency.schema.ts`, etc.).
 - Componentes compartidos (`FormInput`, `FormSelect`, `MainDialog`, `DataTable`).
+
+### 6.3 Asistentes multi-paso (wizards)
+
+Los flujos de alta complejos se modelan como **asistentes dentro de `MainDialog`**: un componente orquestador `...StepManager` mantiene el paso actual y los datos parciales, renderiza el componente de cada paso y muestra el avance con `StepProgressBar`. Ejemplos: `BomStepManager` (lista de materiales: *seleccionar* → *configurar*), `ReceiptStepManager` (recepciones) y `PurchaseOrderOnboardingStepManager` (órdenes de compra).
 
 ---
 
@@ -253,6 +259,8 @@ Cada componente se apoya en:
   - `NEXTAUTH_URL`: URL pública de la app (ej. `http://localhost:3000` en desarrollo).
   - `NEXTAUTH_SECRET`: secreto para firmar JWT de NextAuth.
   - `NEXT_PUBLIC_API_URL`: base URL de la API v1 (ej. `https://nucleo-erp.vercel.app/api/v1`).
+  - `FACTURAMA_URL`, `FACTURAMA_USER`, `FACTURAMA_PASSWORD`: credenciales **solo-servidor** para el Route Handler de Facturama.
+  - `NEXT_PUBLIC_NGROK_BASE_URL`, `NEXT_PUBLIC_NGROK_API_TOKEN`: endpoint y token del servicio externo de carga de imágenes.
 - **next.config.ts**:
   - `reactCompiler: true` y `removeConsole` en producción.
   - Configuración de dominios permitidos para imágenes (`images.unsplash.com`, `raw.githubusercontent.com`).

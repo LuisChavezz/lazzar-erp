@@ -45,12 +45,11 @@ La selección se guarda en el **store de workspace** y en una cookie (`erp_works
 
 Una vez dentro del sistema, la interfaz se organiza en:
 
-- **Sidebar lateral** (`Sidebar`):
-  - **Principal**: Dashboard.
-  - **Operación**: Pedidos, Producción, Inventarios, Órdenes, Recepciones.
-  - **Finanzas**: Facturación, CxP (Pagar), CxC (Cobrar), Bancos, Contabilidad.
-  - **Reportes**: Existencias, Lista de Precios, Rastrear Guías, Clientes, Embarques, Reportes.
-  - Cada ítem se muestra según permisos del usuario.
+- **Sidebar lateral** (`Sidebar`): la navegación está organizada por **módulos de negocio** y es **contextual** (cambia según dónde te encuentres):
+  - En **Inicio** y **Configuración** se muestran los módulos principales: **Panel de Control (Core)**, **CRM y Ventas**, **Mesa de Control**, **Operaciones de Almacén**, **Compras y SCM**, **Manufactura (Producción)**, **Finanzas y Contabilidad** y **Capital Humano**.
+  - Al entrar a un módulo, el menú muestra sus secciones internas. Por ejemplo, en **Operaciones de Almacén** verás Existencias, Movimientos, Recepciones y Ubicaciones.
+  - En la parte inferior, un bloque **Ajustes** agrupa el perfil/seguridad de la cuenta y la **Configuración** del sistema.
+  - Cada módulo y sección se muestra según los **permisos** del usuario.
 - **Header superior** (`Header`):
   - Buscador rápido (`SearchBar`).
   - Notificaciones (`Notifications`).
@@ -85,12 +84,12 @@ Ruta: `/config`
 
 La sección de Configuración es el “panel de control” del ERP. Desde aquí se administran los **catálogos base** organizados por grupos:
 
-- **Organización**: Sucursales, Almacenes, Ubicaciones.
-- **Usuarios y Accesos**: Usuarios.
-- **Información Fiscal**: Monedas, Información fiscal, Impuestos.
+- **Organización**: Sucursales, Almacenes, Ubicaciones, Proveedores.
+- **Usuarios y Accesos**: Usuarios, Roles.
+- **Información Fiscal**: Monedas, Series y Folios, Información fiscal, Impuestos.
 - **Catálogo de Productos**: Categorías, Tipos, Colores, Tallas, Unidades de Medida.
 - **SAT y CFDI**: Claves SAT de productos y servicios, claves SAT de unidades.
-- **Productos**: Productos, Variantes de Producto.
+- **Productos**: Productos, Variantes de Producto, Materiales.
 
 La vista se organiza con tarjetas (`ConfigCard`) y un detalle dinámico (`ConfigDetailView`) que carga el módulo seleccionado. El acceso a estas tarjetas es administrativo.
 
@@ -110,32 +109,34 @@ En la mayoría de los catálogos se repite el mismo patrón:
 
 Los catálogos se comunican con la API backend mediante hooks como `useCompanies`, `useBranches`, etc., que internamente llaman a servicios en `services/actions.ts`.
 
+### 5.2 Materiales (Lista de Materiales / BOM)
+
+La tarjeta **Materiales** (grupo *Productos*) administra las **listas de materiales** (BOM) de las variantes de producto: qué componentes —y en qué cantidad— se necesitan para fabricar cada variante.
+
+Para crear una lista de materiales:
+
+1. Abre el listado de **Materiales** y ubica la **variante de producto** correspondiente. La lista también puede abrirse desde el detalle de una variante de producto, con el botón **“Lista de Materiales”**.
+2. Se abre un **asistente de 2 pasos**:
+   - **Paso 1 – Seleccionar Materiales**: marca, mediante selección múltiple, los componentes (productos) que formarán parte de la lista.
+   - **Paso 2 – Configurar Materiales**: para cada componente elegido, captura **cantidad**, **unidad de medida**, **desperdicio** (merma), si es **obligatorio** y **observaciones**.
+3. Confirma para **guardar** la lista. Los componentes aparecerán en la tabla de materiales de la variante.
+
+Desde el listado de materiales puedes **eliminar** un componente cuando ya no aplique.
+
 ---
 
 ## 6. Módulos operativos
 
-Los módulos operativos y financieros se organizan por rutas:
+Los módulos operativos, comerciales y financieros se organizan por **dominio de negocio**:
 
-- **Pedidos** (`/orders`):
-  - Lista de pedidos y estados.
-  - Alta de pedido en `/orders/new` y edición en `/orders/edit/[id]`.
-- **Órdenes** (`/orders-menu`):
-  - Catálogo de órdenes y navegación por tarjetas.
-- **Producción** (`/production`).
-- **Inventarios** (`/inventories`).
-- **Recepciones** (`/receipts`).
-- **Facturación** (`/invoicing`).
-- **CxP (Pagar)** (`/accounts-payable`).
-- **CxC (Cobrar)** (`/accounts-receivable`).
-- **Bancos** (`/bank-accounts`).
-- **Contabilidad** (`/accounting`).
-- **Reportes**:
-  - **Existencias** (`/stock`).
-  - **Lista de Precios** (`/price-lists`).
-  - **Rastrear Guías** (`/shipment-tracking`).
-  - **Clientes** (`/customers`).
-  - **Embarques** (`/shipments`).
-  - **Reportes** (`/reports`).
+- **CRM y Ventas** (`/sales`): Clientes (`/sales/customers`), Cotizaciones (`/sales/quotes`, con alta en `/sales/quotes/new` y edición en `/sales/quotes/[id]/edit`), Correos (`/sales/emails`) y Calendario (`/sales/calendar`).
+- **Mesa de Control** (`/operations`): Cotizaciones (`/operations/quotes`), Pedidos (`/operations/orders`) y Muestras (`/operations/samples`).
+- **Operaciones de Almacén – WMS** (`/wms`): Existencias (`/wms/stock`), Movimientos (`/wms/stock-movements`), Recepciones (`/wms/receipts`) y Ubicaciones (`/wms/locations`).
+- **Compras y SCM** (`/procurement`): Órdenes de Compra (`/procurement/purchase-orders`), Proveedores (`/procurement/suppliers`), Revisión de Pedidos (`/procurement/order-reviews`), Solicitudes de Gastos (`/procurement/expense-requests`) y Pedidos P.Q. (`/procurement/pq-orders`).
+- **Manufactura (Producción)** (`/manufacturing`): Órdenes de Producción (`/manufacturing/production-orders`), Órdenes de Bordado (`/manufacturing/embroidery`) y los flujos Cedicor de Nuevo Desarrollo y Producción.
+- **Finanzas y Contabilidad** (`/finance`): Facturación (`/finance/invoicing`), CxP (`/finance/accounts-payable`), CxC (`/finance/accounts-receivable`), Bancos (`/finance/bank-accounts`), Contabilidad (`/finance/accounting`) y Lista de Precios (`/finance/price-lists`).
+- **Panel de Control (Core)** (`/system`): Reportes (`/system/reports`).
+- **Capital Humano** (`/hr`).
 
 Cada módulo sigue el patrón:
 
