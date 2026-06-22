@@ -313,7 +313,7 @@ export const configCards: ConfigCardItem[] = [
     prefetchFn: getProductVariants,
   },
   {
-    title: "Lista de materiales",
+    title: "Materiales",
     description: "Administración de listas de materiales",
     icon: ClipboardListIcon,
     view: "bom",

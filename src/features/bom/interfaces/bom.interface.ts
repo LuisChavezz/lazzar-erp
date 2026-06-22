@@ -48,3 +48,28 @@ export interface Bom {
   producto_variante: number;
   variante_produccion: number | null;
 }
+
+//
+// ─── Payloads de escritura (POST) ─────────────────────────────────────────────
+//
+
+/** Renglón de materia prima en el cuerpo del POST `lista-material`. */
+export interface MateriaPrimaDetalleCreate {
+  variante_produccion: number | null;
+  componente: number;
+  cantidad: number;
+  unidad: number;
+  desperdicio: number;
+  obligatorio: boolean;
+  observaciones: string;
+}
+
+/** Cuerpo completo para crear una lista de materiales (`POST /produccion/lista-material/`). */
+export interface ListaMaterialCreate {
+  empresa: number;
+  producto_variante: number;
+  variante_produccion: number | null;
+  version: number;
+  observaciones: string;
+  materia_prima_detalle: MateriaPrimaDetalleCreate[];
+}

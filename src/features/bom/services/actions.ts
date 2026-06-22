@@ -1,5 +1,5 @@
 import { v1_api } from "@/src/api/v1.api";
-import { Bom } from "../interfaces/bom.interface";
+import { Bom, ListaMaterialCreate } from "../interfaces/bom.interface";
 
 /**
  * Recupera la lista de materiales (BOM) de una variante de producto desde
@@ -14,5 +14,10 @@ export const getBom = async (productoVarianteId: number): Promise<Bom[]> => {
       producto_variante_id: productoVarianteId,
     },
   });
+  return response.data;
+};
+
+export const createListaMaterial = async (body: ListaMaterialCreate): Promise<Bom> => {
+  const response = await v1_api.post<Bom>("/produccion/lista-material/", body);
   return response.data;
 };
