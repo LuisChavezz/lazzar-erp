@@ -104,18 +104,6 @@ export const getColumns = (
       ),
     }),
     columnHelper.accessor(
-      (row) => lookups.productTypes.get(row.tipo) ?? "",
-      {
-        id: "tipo",
-        header: "Tipo",
-        cell: ({ row }) => (
-          <span className="text-slate-500 dark:text-slate-400">
-            {lookups.productTypes.get(row.original.tipo) ?? row.original.tipo}
-          </span>
-        ),
-      }
-    ),
-    columnHelper.accessor(
       (row) => lookups.categories.get(row.categoria_producto) ?? "",
       {
         id: "categoria_producto",
@@ -124,18 +112,6 @@ export const getColumns = (
           <span className="text-slate-500 dark:text-slate-400">
             {lookups.categories.get(row.original.categoria_producto) ??
               `#${row.original.categoria_producto}`}
-          </span>
-        ),
-      }
-    ),
-    columnHelper.accessor(
-      (row) => lookups.units.get(row.unidad_medida) ?? "",
-      {
-        id: "unidad_medida",
-        header: "Unidad",
-        cell: ({ row }) => (
-          <span className="text-slate-500 dark:text-slate-400">
-            {lookups.units.get(row.original.unidad_medida) ?? `#${row.original.unidad_medida}`}
           </span>
         ),
       }
