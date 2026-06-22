@@ -1,7 +1,10 @@
 "use client";
 
 import { useBom } from "@/src/features/bom/hooks/useBom";
+import { useDeleteBomDetalle } from "@/src/features/bom/hooks/useDeleteBomDetalle";
 import type { BomDetalle } from "@/src/features/bom/interfaces/bom.interface";
+import { Button } from "@/src/components/Button";
+import { DeleteIcon } from "@/src/components/Icons";
 import { ErrorState } from "../../../components/ErrorState";
 
 /** Píldora booleana con el mismo estilo que el badge "Estado" de las variantes */
@@ -26,8 +29,14 @@ const BoolBadge = ({
   );
 };
 
+interface DetalleTableProps {
+  detalles: BomDetalle[];
+  onDelete: (id: number) => void;
+  isPending: boolean;
+}
+
 /** Tabla con los renglones de materia prima de la lista de materiales */
-const DetalleTable = ({ detalles }: { detalles: BomDetalle[] }) => {
+const DetalleTable = ({ detalles, onDelete, isPending }: DetalleTableProps) => {
   if (detalles.length === 0) {
     return (
       <p className="text-sm text-slate-400 dark:text-slate-500 italic px-1 py-8 text-center">
@@ -47,6 +56,7 @@ const DetalleTable = ({ detalles }: { detalles: BomDetalle[] }) => {
             <th className="px-3 py-2 font-medium text-right">Desperdicio</th>
             <th className="px-3 py-2 font-medium text-center">Obligatorio</th>
             <th className="px-3 py-2 font-medium text-center">Activo</th>
+            <th className="px-3 py-2 font-medium text-center">Acciones</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-100 dark:divide-white/5">
@@ -73,6 +83,16 @@ const DetalleTable = ({ detalles }: { detalles: BomDetalle[] }) => {
               <td className="px-3 py-2 text-center">
                 <BoolBadge value={item.activo} trueLabel="Activo" falseLabel="Inactivo" />
               </td>
+              <td className="px-3 py-2 text-center">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => onDelete(item.bom_detalle_id)}
+                  disabled={isPending}
+                >
+                  <DeleteIcon className="w-4 h-4" />
+                </Button>
+              </td>
             </tr>
           ))}
         </tbody>
@@ -91,7 +111,9 @@ interface BomListProps {
  * producto. Pensada para usarse como contenido de `MainDialog`.
  */
 export default function BomList({ productoVarianteId }: BomListProps) {
+  const queryKey = ["bom", productoVarianteId];
   const { bom, isLoading, isError, error } = useBom(productoVarianteId);
+  const { mutate: deleteMutate, isPending } = useDeleteBomDetalle(queryKey);
 
   if (isLoading) {
     return (
@@ -116,5 +138,11 @@ export default function BomList({ productoVarianteId }: BomListProps) {
   // El endpoint devuelve un arreglo de BOM; se aplanan sus renglones de detalle.
   const detalles = bom.flatMap((b) => b.materia_prima_detalle);
 
-  return <DetalleTable detalles={detalles} />;
+  return (
+    <DetalleTable
+      detalles={detalles}
+      onDelete={deleteMutate}
+      isPending={isPending}
+    />
+  );
 }

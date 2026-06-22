@@ -21,3 +21,7 @@ export const createListaMaterial = async (body: ListaMaterialCreate): Promise<Bo
   const response = await v1_api.post<Bom>("/produccion/lista-material/", body);
   return response.data;
 };
+
+export const deleteBomDetalle = async (id: number): Promise<void> => {
+  await v1_api.delete(`/produccion/bom-detalle/${id}/`);
+};
