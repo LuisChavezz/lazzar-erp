@@ -7,6 +7,8 @@ import { ConfirmDialog } from "../../../components/ConfirmDialog";
 import { MainDialog } from "../../../components/MainDialog";
 import { DialogHeader } from "../../../components/DialogHeader";
 import BomList from "./BomList";
+import { CreateBomDialog } from "@/src/features/bom/components/CreateBomDialog";
+import { Button } from "@/src/components/Button";
 import { useDeleteProductVariant } from "../hooks/useDeleteProductVariant";
 import { ActionMenu, ActionMenuItem } from "@/src/components/ActionMenu";
 import { useState } from "react";
@@ -33,6 +35,14 @@ const ActionsCell = ({
   const { mutate: deleteProductVariant } = useDeleteProductVariant();
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [isBomOpen, setIsBomOpen] = useState(false);
+  const [bomDialogOpen, setBomDialogOpen] = useState(false);
+
+  // Tras crear la lista, cierra el asistente y reabre el diálogo de la lista
+  // (que se refresca solo: `useCreateListaMaterial` invalida la query ["bom"]).
+  const handleBomCreationSuccess = () => {
+    setBomDialogOpen(false);
+    setIsBomOpen(true);
+  };
 
   const menuItems: ActionMenuItem[] = [];
   menuItems.push({
@@ -70,8 +80,28 @@ const ActionsCell = ({
           />
         }
       >
-        <BomList productoVarianteId={row.original.id} />
+        <div className="space-y-4">
+          <div className="flex justify-end">
+            <Button
+              variant="primary"
+              rounded="full"
+              onClick={() => {
+                setIsBomOpen(false);
+                setBomDialogOpen(true);
+              }}
+            >
+              Agregar materiales
+            </Button>
+          </div>
+          <BomList productoVarianteId={row.original.id} />
+        </div>
       </MainDialog>
+      <CreateBomDialog
+        open={bomDialogOpen}
+        onOpenChange={setBomDialogOpen}
+        productoVarianteId={row.original.id}
+        onSuccess={handleBomCreationSuccess}
+      />
       {canDelete && (
         <ConfirmDialog
           open={isDeleteOpen}

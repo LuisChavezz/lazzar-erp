@@ -9,23 +9,32 @@ interface CreateBomDialogProps {
   open: boolean;
   /** Called when the dialog requests to open/close. */
   onOpenChange: (open: boolean) => void;
+  /** Variante de producto para la que se crea la lista de materiales. */
+  productoVarianteId: number;
+  /** Called after the lista de materiales is created successfully. */
+  onSuccess: () => void;
 }
 
 /**
  * CreateBomDialog
  *
  * Controlled dialog for creating a new lista de materiales (BOM). It does not
- * own its open state — the parent passes `open` / `onOpenChange`. Renders the
- * onboarding wizard (`BomStepManager`), which drives the step progress bar and
- * per-step content.
+ * own its open state — the parent passes `open` / `onOpenChange`. The product
+ * variant is fixed by the caller via `productoVarianteId`, so the wizard skips
+ * variant selection and renders the 2-step flow (`BomStepManager`).
  */
-export function CreateBomDialog({ open, onOpenChange }: CreateBomDialogProps) {
+export function CreateBomDialog({
+  open,
+  onOpenChange,
+  productoVarianteId,
+  onSuccess,
+}: CreateBomDialogProps) {
   return (
     <MainDialog
       title={
         <DialogHeader
           title="Nuevos Materiales de Producto Variante"
-          subtitle="Seleccionar variante de producto"
+          subtitle="Seleccionar y configurar materiales"
           statusColor="sky"
         />
       }
@@ -34,7 +43,11 @@ export function CreateBomDialog({ open, onOpenChange }: CreateBomDialogProps) {
       maxWidth="640px"
       showCloseButton={true}
     >
-      <BomStepManager onClose={() => onOpenChange(false)} />
+      <BomStepManager
+        productoVarianteId={productoVarianteId}
+        onClose={() => onOpenChange(false)}
+        onSuccess={onSuccess}
+      />
     </MainDialog>
   );
 }

@@ -1,72 +1,62 @@
 "use client";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Decisión de diseño (Opción B — Paso 2 + Paso 3)
+// Decisión de diseño (asistente de 2 pasos)
 //
-// Cada material requiere 5 campos (cantidad, unidad, desperdicio, obligatorio y
-// observaciones). Configurarlos en línea junto al selector (Opción A) satura la
-// pantalla al elegir varios productos. Esta app ya favorece los asistentes
-// multi-paso (la orden de compra usa 3 pasos) y separar "seleccionar" de
-// "configurar" hace la validación por ítem más clara. Por eso:
-//   Paso 1 — Seleccionar la variante de producto.
-//   Paso 2 — Selección múltiple de materiales (solo elegir qué productos).
-//   Paso 3 — Configurar los 5 campos de cada material (tarjetas apiladas).
+// La variante de producto ya se conoce al abrir el asistente (se lanza desde el
+// diálogo "Lista de Materiales" de una variante), por lo que ya no se selecciona
+// aquí. Cada material requiere 5 campos (cantidad, unidad, desperdicio,
+// obligatorio y observaciones); configurarlos en línea junto al selector satura
+// la pantalla al elegir varios productos. Por eso el flujo separa "seleccionar"
+// de "configurar":
+//   Paso 1 — Selección múltiple de materiales (solo elegir qué productos).
+//   Paso 2 — Configurar los 5 campos de cada material (tarjetas apiladas).
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { useCallback, useState } from "react";
 import { StepProgressBar } from "@/src/components/StepProgressBar";
-import type { ProductVariant } from "@/src/features/product-variants/interfaces/product-variant.interface";
-import { SelectVariantStep } from "./SelectVariantStep";
+import { BomStep1 } from "./BomStep1";
 import { BomStep2 } from "./BomStep2";
-import { BomStep3 } from "./BomStep3";
 
 /** Available onboarding steps. */
-export type BomStep =
-  | "select-variant"
-  | "select-materials"
-  | "configure-materials";
+export type BomStep = "select-materials" | "configure-materials";
 
 /** Ordered list of all steps. */
-const STEPS: readonly BomStep[] = [
-  "select-variant",
-  "select-materials",
-  "configure-materials",
-];
+const STEPS: readonly BomStep[] = ["select-materials", "configure-materials"];
 
 /** Human-readable label for each step. */
 const STEP_LABELS: Record<BomStep, string> = {
-  "select-variant": "Seleccionar Variante",
   "select-materials": "Seleccionar Materiales",
   "configure-materials": "Configurar Materiales",
 };
 
 interface BomStepManagerProps {
-  /** Called when the flow completes (lista creada) and the dialog should close. */
+  /** Variante de producto para la que se crea la lista de materiales. */
+  productoVarianteId: number;
+  /** Called when the wizard should close without completing (cancel / back). */
   onClose?: () => void;
+  /** Called after the lista de materiales is created successfully. */
+  onSuccess: () => void;
 }
 
 /**
  * BomStepManager
  *
- * Orchestrator for the BOM (lista de materiales) onboarding wizard. Holds the
- * current step, the variant chosen in Step 1, and the component ids chosen in
- * Step 2, and renders the matching step component.
+ * Orchestrator for the BOM (lista de materiales) onboarding wizard. The variant
+ * is fixed via `productoVarianteId`; this holds the current step and the
+ * component ids chosen in Step 1, and renders the matching step component.
  */
-export function BomStepManager({ onClose }: BomStepManagerProps) {
+export function BomStepManager({
+  productoVarianteId,
+  onClose,
+  onSuccess,
+}: BomStepManagerProps) {
   const [currentStep, setCurrentStep] = useState<BomStep>(STEPS[0]);
-  const [selectedVariant, setSelectedVariant] =
-    useState<ProductVariant | null>(null);
   const [selectedComponentIds, setSelectedComponentIds] = useState<number[]>(
     [],
   );
 
-  /** Step 1 → store the variant and advance to material selection. */
-  const handleVariantSelected = useCallback((variant: ProductVariant) => {
-    setSelectedVariant(variant);
-    setCurrentStep("select-materials");
-  }, []);
-
-  /** Step 2 → store the selected component ids and advance to configuration. */
+  /** Step 1 → store the selected component ids and advance to configuration. */
   const handleMaterialsSelected = useCallback((componentIds: number[]) => {
     setSelectedComponentIds(componentIds);
     setCurrentStep("configure-materials");
@@ -82,23 +72,19 @@ export function BomStepManager({ onClose }: BomStepManagerProps) {
 
       {/* Step content */}
       <div>
-        {currentStep === "select-variant" && (
-          <SelectVariantStep onNext={handleVariantSelected} />
-        )}
-
         {currentStep === "select-materials" && (
-          <BomStep2
+          <BomStep1
             onNext={handleMaterialsSelected}
-            onBack={() => setCurrentStep("select-variant")}
+            onBack={() => onClose?.()}
           />
         )}
 
-        {currentStep === "configure-materials" && selectedVariant !== null && (
-          <BomStep3
-            productoVarianteId={selectedVariant.id}
+        {currentStep === "configure-materials" && (
+          <BomStep2
+            productoVarianteId={productoVarianteId}
             componentIds={selectedComponentIds}
             onBack={() => setCurrentStep("select-materials")}
-            onSuccess={() => onClose?.()}
+            onSuccess={onSuccess}
           />
         )}
       </div>

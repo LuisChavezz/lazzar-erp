@@ -1,16 +1,12 @@
 "use client";
 
-import { useState } from "react";
 import { DataTable } from "@/src/components/DataTable";
 import { ErrorState } from "@/src/components/ErrorState";
-import { Button } from "@/src/components/Button";
 import { useProducts } from "@/src/features/products/hooks/useProducts";
 import { columns } from "./BomColumns";
-import { CreateBomDialog } from "./CreateBomDialog";
 
 export default function BomList() {
   const { products, isLoading, isError, error } = useProducts("2");
-  const [open, setOpen] = useState(false);
 
   if (isLoading) {
     return (
@@ -31,24 +27,11 @@ export default function BomList() {
   }
 
   return (
-    <>
-      <DataTable
-        columns={columns}
-        data={products}
-        title="Materiales"
-        searchPlaceholder="Buscar material..."
-        actionButton={
-          <Button
-            variant="primary"
-            rounded="full"
-            onClick={() => setOpen(true)}
-          >
-            + Agregar
-          </Button>
-        }
-      />
-
-      <CreateBomDialog open={open} onOpenChange={setOpen} />
-    </>
+    <DataTable
+      columns={columns}
+      data={products}
+      title="Materiales"
+      searchPlaceholder="Buscar material..."
+    />
   );
 }
