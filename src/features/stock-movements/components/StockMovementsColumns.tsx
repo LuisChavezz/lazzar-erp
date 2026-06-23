@@ -1,7 +1,7 @@
 "use client";
 
 import { createColumnHelper, type ColumnDef } from "@tanstack/react-table";
-import { MapPinIcon, UserIcon, ViewIcon } from "@/src/components/Icons";
+import { UserIcon, ViewIcon } from "@/src/components/Icons";
 import { ActionMenu, type ActionMenuItem } from "@/src/components/ActionMenu";
 import type { StockMovement } from "../interfaces/stock-movements.interface";
 
@@ -126,138 +126,20 @@ export function getStockMovementsColumns() {
       }
     ),
 
-    // ── Folio Referencia ───────────────────────────────────────────────────
-    columnHelper.accessor(
-      (row) => row.movimiento_info?.folio_referencia ?? null,
-      {
-        id: "folio_referencia",
-        header: "Folio Ref",
-        meta: { label: "Folio Referencia" } as const,
-        cell: (info) => {
-          const folio = info.getValue();
-          if (!folio) {
-            return (
-              <span className="text-xs text-slate-400 dark:text-slate-500">—</span>
-            );
-          }
-          return (
-            <span className="text-xs font-mono font-semibold text-slate-600 dark:text-slate-300 tracking-wider">
-              {folio}
-            </span>
-          );
-        },
-      }
-    ),
-
-    // ── Origen / Destino ───────────────────────────────────────────────────
-    columnHelper.accessor(
-      (row) => row.movimiento_info ?? null,
-      {
-        id: "origen_destino",
-        header: "Origen / Destino",
-        meta: { label: "Origen / Destino" } as const,
-        cell: (info) => {
-          const movInfo = info.getValue();
-          const origen = movInfo?.origen;
-          const destino = movInfo?.destino;
-
-          if (!origen && !destino) {
-            return (
-              <span className="text-xs text-slate-400 dark:text-slate-500">—</span>
-            );
-          }
-
-          return (
-            <div className="flex flex-col gap-0.5 min-w-0">
-              {origen && (
-                <div className="flex items-center gap-1 text-[11px] text-slate-500 dark:text-slate-400">
-                  <MapPinIcon className="w-3 h-3 shrink-0" />
-                  <span className="truncate">{origen.nombre}</span>
-                </div>
-              )}
-              {destino && (
-                <div className="flex items-center gap-1 text-[11px] text-slate-500 dark:text-slate-400">
-                  <span className="w-3 shrink-0 text-center text-[10px] text-slate-300 dark:text-slate-600">→</span>
-                  <span className="truncate">{destino.nombre}</span>
-                </div>
-              )}
-            </div>
-          );
-        },
-      }
-    ),
-
-    // ── Mutación de Stock ──────────────────────────────────────────────────
-    columnHelper.accessor(
-      (row) => row.movimiento_info?.mutaciones ?? null,
-      {
-        id: "mutacion_stock",
-        header: "Mutación Stock",
-        meta: { label: "Mutación Stock" } as const,
-        cell: (info) => {
-          const mutaciones = info.getValue();
-          if (!mutaciones || mutaciones.length === 0) {
-            return (
-              <span className="text-xs text-slate-400 dark:text-slate-500">—</span>
-            );
-          }
-
-          return (
-            <div className="flex flex-col gap-0.5 min-w-0">
-              {mutaciones.map((mut, idx) => {
-                const isPositive = mut.cantidad > 0;
-                const isNegative = mut.cantidad < 0;
-                return (
-                  <div
-                    key={idx}
-                    className="flex items-center gap-1 text-[11px]"
-                  >
-                    <span
-                      className={`font-mono font-semibold ${
-                        isPositive
-                          ? "text-emerald-600 dark:text-emerald-400"
-                          : isNegative
-                          ? "text-red-600 dark:text-red-400"
-                          : "text-slate-500 dark:text-slate-400"
-                      }`}
-                    >
-                      {isPositive ? "+" : ""}
-                      {mut.cantidad.toLocaleString("es-MX", {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2,
-                      })}
-                    </span>
-                    <span className="text-[10px] text-slate-400 dark:text-slate-500">
-                      {mut.unidad}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-          );
-        },
-      }
-    ),
-
     // ── Usuario ────────────────────────────────────────────────────────────
     columnHelper.accessor(
-      (row) => row.usuario_info ?? null,
+      (row) => row.usuario_nombre,
       {
-        id: "usuario",
+        id: "usuario_nombre",
         header: "Usuario",
         meta: { label: "Usuario" } as const,
         cell: (info) => {
-          const user = info.getValue();
-          if (!user) {
-            return (
-              <span className="text-xs text-slate-400 dark:text-slate-500">—</span>
-            );
-          }
+          const nombre = info.getValue();
           return (
             <div className="flex items-center gap-1.5">
               <UserIcon className="w-3 h-3 shrink-0 text-slate-400" />
               <span className="text-xs font-medium text-slate-600 dark:text-slate-300 truncate">
-                {user.nombre}
+                {nombre}
               </span>
             </div>
           );

@@ -1,57 +1,36 @@
-/** Información del usuario asociado al movimiento. */
-export interface UsuarioInfo {
-  id: number;
-  nombre: string;
-  email?: string | null;
+export interface StockMovementSnapshotItem {
+  delta: string;
+  producto_id: number;
+  ubicacion_id: number;
+  cantidad_after: string;
+  cantidad_before: string;
+  producto_variante_id: number;
 }
 
-/** Información de origen o destino del movimiento. */
-export interface MovementLocationInfo {
-  id: number;
-  nombre: string;
-  codigo?: string | null;
-  tipo?: string | null;
+export interface StockMovementSnapshot {
+  items: StockMovementSnapshotItem[];
+  ajuste_id: number;
+  almacen_id?: number;
+  empresa_id?: number;
+  sucursal_id?: number;
 }
 
-/** Detalle de mutación de stock (cantidad por producto/variante). */
-export interface StockMutation {
-  producto: string;
-  sku?: string | null;
-  cantidad: number;
-  unidad: string;
-  cantidad_anterior?: number | null;
-  cantidad_nueva?: number | null;
-}
-
-/** Información adicional del movimiento. */
-export interface MovimientoInfo {
-  folio_referencia?: string | null;
-  origen?: MovementLocationInfo | null;
-  destino?: MovementLocationInfo | null;
-  mutaciones?: StockMutation[];
-  cantidad_total?: number | null;
-}
-
-// Interfaz principal para un movimiento de stock, combinando datos básicos y detalles adicionales.
 export interface StockMovement {
   id: number;
-  activo: boolean;
-  tipo_movimiento: string;
-  fecha_movimiento: string;
-  observaciones: string | null;
+  id_evento: number;
   empresa: number;
-  sucursal: number;
-  pedido: number | null;
-  entrega: number | null;
-  devolucion: number | null;
-  ajuste_inventario: number | null;
   usuario: number;
-  recepcion: number | null;
-  transferencia: number | null;
-  op: number | null;
-  /** Datos adicionales del movimiento (folio, origen, destino, mutaciones). */
-  movimiento_info?: MovimientoInfo | null;
-  /** Información del usuario que realizó el movimiento. */
-  usuario_info?: UsuarioInfo | null;
+  usuario_nombre: string;
+  modulo: string;
+  accion: string;
+  tipo_movimiento: string;
+  tabla: string;
+  id_registro: string;
+  antes_json: StockMovementSnapshot;
+  despues_json: StockMovementSnapshot;
+  ip: string;
+  user_agent: string;
+  fecha: string;
+  fecha_movimiento: string;
+  created_at: string;
 }
-
