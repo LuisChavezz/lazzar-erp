@@ -50,10 +50,15 @@ export default function RootLayout({
          * frame, aplicando la clase 'dark' en <html> según la preferencia guardada
          * en localStorage o la preferencia del sistema operativo.
          * Estrategia: light → sin clase | dark → clase 'dark' | system/null → matchMedia
+         *
+         * Además, parchea performance.measure para silenciar el error dev-only
+         * "negative time stamp" de la instrumentación RSC de Next.js (issue #86060),
+         * presente en ambos bundlers. Re-lanza cualquier otro error real sin tocarlo.
+         * El guard __patched evita doble parcheo entre recargas de Fast Refresh.
          */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var s=localStorage.getItem('theme-storage');var t=s?JSON.parse(s)?.state?.theme:null;if(t==='dark'){document.documentElement.classList.add('dark')}else if(t==='light'){document.documentElement.classList.remove('dark')}else{if(window.matchMedia('(prefers-color-scheme:dark)').matches){document.documentElement.classList.add('dark')}}}catch(e){}})();`,
+            __html: `(function(){try{var s=localStorage.getItem('theme-storage');var t=s?JSON.parse(s)?.state?.theme:null;if(t==='dark'){document.documentElement.classList.add('dark')}else if(t==='light'){document.documentElement.classList.remove('dark')}else{if(window.matchMedia('(prefers-color-scheme:dark)').matches){document.documentElement.classList.add('dark')}}}catch(e){}})();(function(){try{var perf=window.performance;if(!perf||typeof perf.measure!=="function"||perf.__patched)return;var original=perf.measure.bind(perf);perf.measure=function(){try{return original.apply(perf,arguments)}catch(err){var msg=(err&&err.message)||"";var name=(err&&err.name)||"";if(msg.indexOf("negative time stamp")!==-1||name==="InvalidAccessError"||name==="SyntaxError"){return}throw err}};perf.__patched=true}catch(_){}})();`,
           }}
         />
       </head>
