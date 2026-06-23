@@ -27,13 +27,10 @@ function isToday(isoDate: string): boolean {
   );
 }
 
-/** Suma todas las cantidades de mutaciones de un movimiento. */
+/** Suma el valor absoluto de los deltas de un movimiento. */
 function sumMutations(item: StockMovement): number {
-  const mutaciones = item.movimiento_info?.mutaciones;
-  if (!mutaciones || mutaciones.length === 0) {
-    return item.movimiento_info?.cantidad_total ?? 0;
-  }
-  return mutaciones.reduce((acc, m) => acc + Math.abs(m.cantidad), 0);
+  const items = item.despues_json?.items ?? item.antes_json?.items ?? [];
+  return items.reduce((acc, i) => acc + Math.abs(parseFloat(i.delta)), 0);
 }
 
 // ─── KPIs ────────────────────────────────────────────────────────────────────
