@@ -2,8 +2,12 @@ import { v1_api } from "@/src/api/v1.api";
 import { ProductVariant, ProductVariantCreate } from "../interfaces/product-variant.interface";
 
 
-export const getProductVariants = async (): Promise<ProductVariant[]> => {
-  const response = await v1_api.get<ProductVariant[]>("/catalogo/producto-variante/");
+export const getProductVariants = async (con_bom?: boolean): Promise<ProductVariant[]> => {
+  const response = await v1_api.get<ProductVariant[]>("/catalogo/producto-variante/", {
+    params: {
+      ...(con_bom !== undefined && { con_bom }),
+    },
+  });
   return response.data;
 };
 
