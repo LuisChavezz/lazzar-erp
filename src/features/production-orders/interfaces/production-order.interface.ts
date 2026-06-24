@@ -102,6 +102,27 @@ export interface ProductionOrderOnboarding {
   productos: ProductionOrderOnboardingProducto[];
 }
 
+// ── Create onboarding ────────────────────────────────────────────────────────
+
+export interface CreateProductionOrderDetalle {
+  bom: number;
+  cantidad: number;
+  unidad: number;
+  observaciones: string;
+  producto_variante_id: number;
+}
+
+export interface CreateProductionOrderBody {
+  empresa: number;
+  sucursal: number;
+  pedido: number | null;
+  ruta_produccion: number | null;
+  estatus_op: number;
+  prioridad: number;
+  observaciones: string;
+  orden_produccion_detalle: CreateProductionOrderDetalle[];
+}
+
 /** Orden de producción genérica */
 export interface ProductionOrder {
   id: string;

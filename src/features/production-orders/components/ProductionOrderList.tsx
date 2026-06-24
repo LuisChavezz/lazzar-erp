@@ -1,8 +1,9 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { DataTable } from "@/src/components/DataTable";
 import { getProductionOrderColumns } from "./ProductionOrderColumns";
+import { CreateProductionOrderDialog } from "./CreateProductionOrderDialog";
 import { type ProductionOrder } from "../interfaces/production-order.interface";
 
 const ORDERS: ProductionOrder[] = [];
@@ -10,6 +11,7 @@ const ORDERS: ProductionOrder[] = [];
 /** Lista principal de órdenes de producción */
 export function ProductionOrderList() {
   const columns = useMemo(() => getProductionOrderColumns(), []);
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
 
   return (
     <div className="space-y-5">
@@ -18,6 +20,21 @@ export function ProductionOrderList() {
         data={ORDERS}
         baseDataCount={ORDERS.length}
         searchPlaceholder="Buscar folio, producto, área…"
+        actionButton={
+          <button
+            type="button"
+            onClick={() => setIsCreateOpen(true)}
+            className="px-4 py-2 cursor-pointer bg-sky-600 hover:bg-sky-700 text-white text-sm font-semibold rounded-full shadow-lg shadow-sky-500/30 transition-all hover:scale-105 active:scale-95 whitespace-nowrap"
+          >
+            + Nueva Orden
+          </button>
+        }
+      />
+
+      <CreateProductionOrderDialog
+        open={isCreateOpen}
+        onOpenChange={setIsCreateOpen}
+        onSuccess={() => setIsCreateOpen(false)}
       />
     </div>
   );
