@@ -58,6 +58,50 @@ export interface ProductionOrderEventRecord {
   notas: string;
 }
 
+// ── Onboarding ───────────────────────────────────────────────────────────────
+
+export interface ProductionOrderOnboardingTalla {
+  talla: string;
+  color: string;
+  cantidad: number;
+}
+
+export interface ProductionOrderOnboardingCantidades {
+  total: number;
+  tallas: ProductionOrderOnboardingTalla[];
+}
+
+export interface ProductionOrderOnboardingHabilitacion {
+  codigo: string;
+  descripcion: string;
+  unidad: string;
+  total: number;
+}
+
+export interface ProductionOrderOnboardingProducto {
+  nombre: string;
+  cantidades: ProductionOrderOnboardingCantidades;
+  habilitacion: ProductionOrderOnboardingHabilitacion[];
+}
+
+export interface ProductionOrderOnboarding {
+  op_id: number;
+  folio_op: string;
+  estatus_op: number;
+  prioridad: number;
+  fecha_inicio: string;
+  fecha_fin: string | null;
+  observaciones: string;
+  activo: boolean;
+  empresa: number;
+  sucursal: number;
+  pedido: number | null;
+  ruta_produccion: number | null;
+  usuario_asignado: number;
+  op_info: string;
+  productos: ProductionOrderOnboardingProducto[];
+}
+
 /** Orden de producción genérica */
 export interface ProductionOrder {
   id: string;
