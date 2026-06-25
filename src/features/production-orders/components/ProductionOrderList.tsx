@@ -10,7 +10,7 @@ import { useProductionOrders } from "../hooks/useProductionOrders";
 export function ProductionOrderList() {
   const columns = useMemo(() => getProductionOrderColumns(), []);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const { data, isLoading } = useProductionOrders();
+  const { data, isLoading, refetch, isRefetching } = useProductionOrders();
 
   return (
     <div className="space-y-5">
@@ -20,6 +20,8 @@ export function ProductionOrderList() {
         baseDataCount={data?.length ?? 0}
         searchPlaceholder="Buscar..."
         isLoadingOverlay={isLoading}
+        onRefetch={refetch}
+        isRefetching={isRefetching}
         actionButton={
           <button
             type="button"

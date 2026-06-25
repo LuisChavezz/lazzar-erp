@@ -1,27 +1,38 @@
 "use client";
 
+import { useState } from "react";
 import { createColumnHelper, type ColumnDef } from "@tanstack/react-table";
 import type { OrdenProduccion } from "../interfaces/production-order.interface";
 import { ActionMenu } from "@/src/components/ActionMenu";
 import type { ActionMenuItem } from "@/src/components/ActionMenu";
 import { ViewIcon } from "@/src/components/Icons";
+import { ProductionOrderDetailDialog } from "./ProductionOrderDetailDialog";
 
 const columnHelper = createColumnHelper<OrdenProduccion>();
 
 const ActionsCell = ({ row }: { row: OrdenProduccion }) => {
+  const [isDetailOpen, setIsDetailOpen] = useState(false);
+
   const menuItems: ActionMenuItem[] = [
     {
       label: 'Ver detalle',
       icon: ViewIcon,
-      onSelect: () => console.log('ver-detalle', row.op_id),
+      onSelect: () => setIsDetailOpen(true),
     },
   ];
 
   return (
-    <ActionMenu
-      items={menuItems}
-      ariaLabel={`Acciones de la orden ${row.folio_op}`}
-    />
+    <div className="flex justify-center">
+      <ActionMenu
+        items={menuItems}
+        ariaLabel={`Acciones de la orden ${row.folio_op}`}
+      />
+      <ProductionOrderDetailDialog
+        opId={isDetailOpen ? row.op_id : 0}
+        open={isDetailOpen}
+        onOpenChange={setIsDetailOpen}
+      />
+    </div>
   );
 };
 
