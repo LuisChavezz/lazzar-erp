@@ -4,22 +4,22 @@ import { useMemo, useState } from "react";
 import { DataTable } from "@/src/components/DataTable";
 import { getProductionOrderColumns } from "./ProductionOrderColumns";
 import { CreateProductionOrderDialog } from "./CreateProductionOrderDialog";
-import { type ProductionOrder } from "../interfaces/production-order.interface";
-
-const ORDERS: ProductionOrder[] = [];
+import { useProductionOrders } from "../hooks/useProductionOrders";
 
 /** Lista principal de órdenes de producción */
 export function ProductionOrderList() {
   const columns = useMemo(() => getProductionOrderColumns(), []);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const { data, isLoading } = useProductionOrders();
 
   return (
     <div className="space-y-5">
       <DataTable
         columns={columns}
-        data={ORDERS}
-        baseDataCount={ORDERS.length}
-        searchPlaceholder="Buscar folio, producto, área…"
+        data={data ?? []}
+        baseDataCount={data?.length ?? 0}
+        searchPlaceholder="Buscar..."
+        isLoadingOverlay={isLoading}
         actionButton={
           <button
             type="button"
