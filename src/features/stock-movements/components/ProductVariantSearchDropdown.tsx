@@ -5,6 +5,20 @@ import { FormInput } from "@/src/components/FormInput";
 import type { ProductVariant } from "@/src/features/product-variants/interfaces/product-variant.interface";
 import type { FormFieldError } from "@/src/utils/getFieldError";
 
+/**
+ * Debounce de un valor: difiere las recomputaciones costosas (filtrado +
+ * render de la lista de resultados) hasta que el usuario deja de teclear,
+ * sacándolas del manejador del evento de input para mejorar el INP.
+ */
+function useDebounce<T>(value: T, delay = 250): T {
+  const [debounced, setDebounced] = useState(value);
+  useEffect(() => {
+    const id = setTimeout(() => setDebounced(value), delay);
+    return () => clearTimeout(id);
+  }, [value, delay]);
+  return debounced;
+}
+
 interface ProductVariantSearchDropdownProps {
   variants: ProductVariant[];
   value: number;
@@ -45,15 +59,18 @@ export function ProductVariantSearchDropdown({
     ? `${selectedVariant.sku} - ${selectedVariant.nombre}`
     : "";
 
-  // ─── Resultados filtrados ─────────────────────────────────────────────
+  // ─── Resultados filtrados (sobre el query debounced) ─────────────────
+  // Filtrar y volver a renderizar la lista en cada pulsación bloquea el hilo
+  // principal cuando hay muchas variantes; se hace sobre el valor debounced.
+  const debouncedQuery = useDebounce(searchQuery);
   const filteredVariants = useMemo(() => {
-    const query = searchQuery.trim().toLowerCase();
+    const query = debouncedQuery.trim().toLowerCase();
     if (!query) return variants;
     return variants.filter((v) => {
       const haystack = `${v.sku} ${v.nombre}`.toLowerCase();
       return haystack.includes(query);
     });
-  }, [variants, searchQuery]);
+  }, [variants, debouncedQuery]);
 
   const showDropdown = isOpen && searchQuery.trim().length > 0;
 
@@ -111,7 +128,9 @@ export function ProductVariantSearchDropdown({
     setSearchQuery(nextValue);
     setIsOpen(true);
     setActiveIndex(-1);
-    updateDropdownPosition();
+    // No se recalcula la posición aquí: el dropdown se posiciona al enfocar
+    // (handleFocus) y el input no se desplaza mientras se escribe. Llamar a
+    // getBoundingClientRect en cada pulsación forzaría un reflow síncrono (INP).
 
     // Si el texto no coincide con el label seleccionado, limpiar la selección
     if (nextValue !== selectedLabel && value > 0) {

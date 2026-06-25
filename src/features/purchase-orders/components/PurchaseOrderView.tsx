@@ -131,7 +131,7 @@ export function PurchaseOrderView() {
   // ── Estados de carga y error ─────────────────────────────────────────────
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-20">
+      <div className="flex items-center justify-center min-h-312.5 md:min-h-230 xl:min-h-190">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-sky-600" />
         <span className="ml-3 text-sm text-slate-500">
           Cargando órdenes de compra...

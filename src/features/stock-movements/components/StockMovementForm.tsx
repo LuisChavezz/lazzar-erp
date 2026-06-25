@@ -46,6 +46,14 @@ function StockMovementFormContent({ onClose }: { onClose: () => void }) {
 
   const isAjuste = tipoMovimiento === "AJUSTE";
 
+  // ─── Variantes activas (estable entre renders) ──────────────────────────
+  // Evita recrear el arreglo filtrado en cada render y estabiliza la prop
+  // `variants` del dropdown de búsqueda (memos internos no se invalidan).
+  const activeVariants = useMemo(
+    () => productVariants.filter((v) => v.activo),
+    [productVariants],
+  );
+
   // ─── Ubicaciones filtradas por almacén ──────────────────────────────────
   const ubicacionOrigenOptions = useMemo(
     () => {
@@ -219,7 +227,7 @@ function StockMovementFormContent({ onClose }: { onClose: () => void }) {
                     <div className="space-y-2">
                       <ProductVariantSearchDropdown
                         key={resetCounter}
-                        variants={productVariants.filter((v) => v.activo)}
+                        variants={activeVariants}
                         value={field.state.value}
                         onChange={(variantId) => {
                           field.handleChange(variantId);

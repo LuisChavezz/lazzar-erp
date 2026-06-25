@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useSession } from "next-auth/react";
 import { DataTable } from "@/src/components/DataTable";
 import { MainDialog } from "@/src/components/MainDialog";
@@ -51,11 +51,14 @@ export default function SupplierList({ hideTitle = false }: SupplierListProps) {
     setSupplierToEdit(null);
   }, []);
 
-  const columns = getSupplierColumns(handleEdit, { canEdit, canDelete });
+  const columns = useMemo(
+    () => getSupplierColumns(handleEdit, { canEdit, canDelete }),
+    [handleEdit, canEdit, canDelete]
+  );
 
   if (isLoading) {
     return (
-      <div className="p-8 flex justify-center items-center">
+      <div className="min-h-150 flex justify-center items-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-sky-600"></div>
         <span className="ml-3 text-slate-500">Cargando proveedores...</span>
       </div>

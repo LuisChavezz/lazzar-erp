@@ -105,7 +105,7 @@ export const CustomerList = () => {
 
   if (isLoading) {
     return (
-      <div className="mt-12 rounded-2xl border border-slate-200 dark:border-white/5 bg-white dark:bg-zinc-900 p-8">
+      <div className="mt-12 min-h-150 flex items-center justify-center rounded-2xl border border-slate-200 dark:border-white/5 bg-white dark:bg-zinc-900 p-8">
         <Loader title="Cargando clientes" message="Obteniendo información de clientes..." />
       </div>
     );
