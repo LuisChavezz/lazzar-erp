@@ -3,9 +3,11 @@
 import { useState } from "react";
 import { ColumnDef, createColumnHelper } from "@tanstack/react-table";
 import { ActionMenu, type ActionMenuItem } from "@/src/components/ActionMenu";
-import { ViewIcon } from "@/src/components/Icons";
+import { CheckCircleIcon, ViewIcon } from "@/src/components/Icons";
 import { PurchaseOrder } from "../interfaces/purchase-order.interface";
 import { PurchaseOrderDetailDialog } from "./PurchaseOrderDetailDialog";
+import { ConfirmDialog } from "@/src/components/ConfirmDialog";
+import { useConfirmPurchaseOrder } from "../hooks/useConfirmPurchaseOrder";
 
 const columnHelper = createColumnHelper<PurchaseOrder>();
 
@@ -34,6 +36,8 @@ const EstatusBadge = ({ estatus, label }: { estatus: number; label: string }) =>
 /** Gestiona el menú de acciones y el diálogo de detalle de la orden */
 const ActionsCell = ({ row }: { row: PurchaseOrder }) => {
   const [isDetailOpen, setIsDetailOpen] = useState(false);
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+  const { mutate: confirmOrder, isPending } = useConfirmPurchaseOrder();
 
   const menuItems: ActionMenuItem[] = [
     {
@@ -43,6 +47,15 @@ const ActionsCell = ({ row }: { row: PurchaseOrder }) => {
     },
   ];
 
+  if (row.estatus === 1) {
+    menuItems.push({
+      label: "Confirmar",
+      icon: CheckCircleIcon,
+      onSelect: () => setIsConfirmOpen(true),
+      disabled: isPending,
+    });
+  }
+
   return (
     <>
       <ActionMenu items={menuItems} ariaLabel={`Acciones de la orden ${row.folio}`} />
@@ -51,6 +64,20 @@ const ActionsCell = ({ row }: { row: PurchaseOrder }) => {
         open={isDetailOpen}
         onOpenChange={setIsDetailOpen}
       />
+      {row.estatus === 1 && (
+        <ConfirmDialog
+          open={isConfirmOpen}
+          onOpenChange={setIsConfirmOpen}
+          title="Confirmar Orden de Compra"
+          description={`¿Estás seguro de que deseas confirmar la orden de compra #${row.id}? Esta acción no se puede deshacer.`}
+          confirmText={isPending ? "Confirmando..." : "Confirmar"}
+          confirmColor="blue"
+          onConfirm={() => {
+            confirmOrder(row.id);
+            setIsConfirmOpen(false);
+          }}
+        />
+      )}
     </>
   );
 };
