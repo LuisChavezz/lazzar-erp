@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import type { FormEvent } from "react";
 import { useForm } from "@tanstack/react-form";
+import toast from "react-hot-toast";
 import type { FormFieldError } from "@/src/utils/getFieldError";
 import { useWorkspaceStore } from "@/src/features/workspace/store/workspace.store";
 import { useCreateProductionOrder } from "@/src/features/production-orders/hooks/useCreateProductionOrder";
@@ -14,14 +14,24 @@ import {
 interface UseCreateProductionOrderFormParams {
   /** Prioridad seleccionada en el Paso 1. */
   prioridad: number;
-  /** Pedido de ventas asociado (opcional) seleccionado en el Paso 1. */
-  pedido: number | null;
   /** Observaciones generales capturadas en el Paso 1. */
   observaciones: string;
-  /** Variantes seleccionadas en el Paso 1 — un renglón de detalle cada una. */
-  variantIds: number[];
+  /** Variantes seleccionadas en el Paso 1 — siembran el detalle por defecto. */
+  selectedVariantIds: number[];
   /** Called after the orden de producción is created successfully. */
   onSuccess: () => void;
+}
+
+/** Construye un renglón de detalle por defecto para una variante seleccionada. */
+function buildDetalle(
+  producto_variante_id: number,
+): CreateProductionOrderFormValues["orden_produccion_detalle"][number] {
+  return {
+    producto_variante_id,
+    cantidad: 1,
+    unidad: 0, // 0 = sin seleccionar; el schema exige una unidad > 0
+    observaciones: "",
+  };
 }
 
 /**
@@ -29,22 +39,20 @@ interface UseCreateProductionOrderFormParams {
  *
  * Encapsula la lógica de TanStack Form para crear una orden de producción.
  * Sigue la convención del proyecto (ver `useCreateBomForm`): `useForm` con
- * `defaultValues`, validación Zod manual vía `safeParse` en el submit y un
- * helper `getError` que devuelve un {@link FormFieldError} para las primitivas
- * de formulario compartidas.
+ * `defaultValues` y validación Zod manual vía `safeParse` en el submit, más
+ * los helpers `getError` / `clearError` (indexados por ruta de issue,
+ * p. ej. `orden_produccion_detalle.0.unidad`) que consumen los primitivos de
+ * formulario compartidos en el Paso 2.
  *
- * Los errores de validación se indexan por la ruta del issue de Zod unida con
- * "." — p. ej. `orden_produccion_detalle.0.bom` — para que cada campo por
- * renglón localice su propio error.
- *
- * `empresa`/`sucursal` provienen del workspace activo; `estatus_op` viaja fijo
- * en `1` y `ruta_produccion` en `null` (ninguno se edita desde la UI).
+ * `empresa` / `sucursal` provienen del workspace activo; `estatus_op` viaja
+ * fijo en `1`. La cabecera (prioridad, observaciones) y el detalle por variante
+ * los inyecta el step manager al avanzar desde el Paso 1
+ * (`setFieldValue` / {@link seedDetalle}).
  */
 export function useCreateProductionOrderForm({
   prioridad,
-  pedido,
   observaciones,
-  variantIds,
+  selectedVariantIds,
   onSuccess,
 }: UseCreateProductionOrderFormParams) {
   // Empresa y sucursal activas — mismo patrón que el resto de formularios.
@@ -61,18 +69,10 @@ export function useCreateProductionOrderForm({
     defaultValues: {
       empresa: selectedCompany.id ?? 0,
       sucursal: selectedBranch?.id ?? 0,
-      pedido,
-      ruta_produccion: null,
       estatus_op: 1,
       prioridad,
       observaciones,
-      orden_produccion_detalle: variantIds.map((producto_variante_id) => ({
-        bom: 0,
-        cantidad: 1,
-        unidad: 0,
-        observaciones: "",
-        producto_variante_id,
-      })),
+      orden_produccion_detalle: selectedVariantIds.map(buildDetalle),
     } as CreateProductionOrderFormValues,
     onSubmit: async ({ value }) => {
       const parsed = CreateProductionOrderFormSchema.safeParse(value);
@@ -86,6 +86,14 @@ export function useCreateProductionOrderForm({
           }
         });
         setErrors(nextErrors);
+
+        // `empresa` / `sucursal` no tienen campo visible en el Paso 2 (vienen
+        // del workspace): si fallan, avísalo por toast para no dejar al usuario
+        // sin feedback al confirmar.
+        const headerError = nextErrors["empresa"] ?? nextErrors["sucursal"];
+        if (headerError) {
+          toast.error(headerError);
+        }
         return;
       }
 
@@ -100,8 +108,13 @@ export function useCreateProductionOrderForm({
     },
   });
 
+  /** Siembra `orden_produccion_detalle` a partir de las variantes elegidas. */
+  const seedDetalle = (ids: number[]) => {
+    form.setFieldValue("orden_produccion_detalle", ids.map(buildDetalle));
+  };
+
   // Entrega el error de un campo (por ruta) en el shape que esperan los
-  // componentes de formulario compartidos.
+  // primitivos de formulario compartidos.
   const getError = (path: string): FormFieldError | undefined =>
     errors[path] ? { message: errors[path] } : undefined;
 
@@ -117,18 +130,16 @@ export function useCreateProductionOrderForm({
     });
   };
 
-  // Delega el submit del <form> en TanStack Form.
-  const handleFormSubmit = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    event.stopPropagation();
-    void form.handleSubmit();
-  };
-
   return {
     form,
     isSubmitting: isPending,
     getError,
     clearError,
-    handleFormSubmit,
+    seedDetalle,
   };
 }
+
+/** Tipo de la instancia de TanStack Form expuesta por el hook. */
+export type CreateProductionOrderFormApi = ReturnType<
+  typeof useCreateProductionOrderForm
+>["form"];

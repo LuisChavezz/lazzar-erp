@@ -73,3 +73,30 @@ export interface ListaMaterialCreate {
   observaciones: string;
   materia_prima_detalle: MateriaPrimaDetalleCreate[];
 }
+
+//
+// ─── BOM Bulk ─────────────────────────────────────────────────────────────────
+//
+
+/** Renglón de detalle en la respuesta del endpoint bulk de listas de materiales. */
+export interface BomBulkDetalle {
+  bom_detalle_id: number;
+  componente_nombre: string;
+  unidad_clave: string;
+  cantidad: string;
+  desperdicio: string;
+  obligatorio: boolean;
+  observaciones: string;
+  activo: boolean;
+  bom: number;
+  variante_produccion: number | null;
+  componente: number;
+  unidad: number;
+}
+
+/** Respuesta por variante en el endpoint `GET /produccion/lista-material/bulk/`. */
+export interface BomBulkItem {
+  producto_variante_id: number;
+  bom_id: number;
+  detalles: BomBulkDetalle[];
+}

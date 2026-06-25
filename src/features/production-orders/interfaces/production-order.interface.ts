@@ -104,23 +104,31 @@ export interface ProductionOrderOnboarding {
 
 // ── Create onboarding ────────────────────────────────────────────────────────
 
+/** Renglón del detalle de una orden de producción (una variante a fabricar). */
 export interface CreateProductionOrderDetalle {
-  bom: number;
+  producto_variante_id: number;
   cantidad: number;
   unidad: number;
   observaciones: string;
-  producto_variante_id: number;
 }
 
+/**
+ * Cuerpo del POST de creación. El backend resuelve la lista de materiales (BOM)
+ * automáticamente a partir de cada `producto_variante_id`, por lo que ya no se
+ * envían `pedido`, `ruta_produccion` ni `producto_variante_ids`.
+ */
 export interface CreateProductionOrderBody {
   empresa: number;
   sucursal: number;
-  pedido: number | null;
-  ruta_produccion: number | null;
   estatus_op: number;
   prioridad: number;
   observaciones: string;
   orden_produccion_detalle: CreateProductionOrderDetalle[];
+}
+
+/** Respuesta del POST de creación (`201`). */
+export interface CreateProductionOrderResponse {
+  msg: string;
 }
 
 /** Orden de producción genérica */

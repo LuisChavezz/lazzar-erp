@@ -1,5 +1,5 @@
 import { v1_api } from "@/src/api/v1.api";
-import { Bom, ListaMaterialCreate } from "../interfaces/bom.interface";
+import { Bom, ListaMaterialCreate, BomBulkItem } from "../interfaces/bom.interface";
 
 /**
  * Recupera la lista de materiales (BOM) de una variante de producto desde
@@ -24,4 +24,18 @@ export const createListaMaterial = async (body: ListaMaterialCreate): Promise<Bo
 
 export const deleteBomDetalle = async (id: number): Promise<void> => {
   await v1_api.delete(`/produccion/bom-detalle/${id}/`);
+};
+
+export const getBomBulk = async (
+  productoVarianteIds: number[]
+): Promise<BomBulkItem[]> => {
+  const { data } = await v1_api.get<BomBulkItem[]>(
+    '/produccion/lista-material/bulk/',
+    {
+      params: {
+        producto_variante_ids: productoVarianteIds.join(','),
+      },
+    }
+  );
+  return data;
 };

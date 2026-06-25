@@ -8,12 +8,10 @@ import { CheckIcon } from "@/src/components/Icons";
 import { FormSelect } from "@/src/components/FormSelect";
 import { FormTextarea } from "@/src/components/FormTextarea";
 import { useProductVariants } from "@/src/features/product-variants/hooks/useProductVariants";
-import { useOrders } from "@/src/features/orders/hooks/useOrders";
 
 /** Datos de cabecera + variantes capturados en el Paso 1. */
 export interface ProductionOrderStep1Data {
   prioridad: number;
-  pedido: number | null;
   observaciones: string;
   variantIds: number[];
 }
@@ -48,7 +46,7 @@ function toNumber(raw: string): number {
  * ProductionOrderStep1
  *
  * Paso 1 del asistente de orden de producción. Captura los campos de cabecera
- * (prioridad, pedido opcional y observaciones) y una lista buscable de
+ * (prioridad y observaciones) y una lista buscable de
  * selección múltiple de variantes de producto. La configuración por renglón
  * (BOM, cantidad, unidad y observaciones) ocurre en el Paso 2. "Continuar" se
  * habilita cuando hay al menos una variante seleccionada y una prioridad
@@ -59,14 +57,10 @@ export function ProductionOrderStep1({
   onNext,
   onBack,
 }: ProductionOrderStep1Props) {
-  const { productVariants, isLoading, isError } = useProductVariants();
-  const { orders, isLoading: isLoadingOrders } = useOrders();
+  const { productVariants, isLoading, isError } = useProductVariants(true);
 
   const [prioridad, setPrioridad] = useState<number>(
     initialData?.prioridad ?? 0,
-  );
-  const [pedido, setPedido] = useState<number | null>(
-    initialData?.pedido ?? null,
   );
   const [observaciones, setObservaciones] = useState<string>(
     initialData?.observaciones ?? "",
@@ -116,58 +110,31 @@ export function ProductionOrderStep1({
 
   const handleNext = () => {
     if (!canAdvance) return;
-    onNext({ prioridad, pedido, observaciones, variantIds: selectedIds });
+    onNext({ prioridad, observaciones, variantIds: selectedIds });
   };
 
   return (
     <div className="flex flex-col gap-4">
-      {/* Campos de cabecera */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {/* Prioridad */}
-        <FormSelect
-          label="Prioridad"
-          name="prioridad"
-          value={prioridad}
-          onChange={(event) => setPrioridad(toNumber(event.target.value))}
-        >
-          <option value="0" disabled>
-            Seleccionar prioridad...
+      {/* Prioridad */}
+      <FormSelect
+        label="Prioridad"
+        name="prioridad"
+        value={prioridad}
+        onChange={(event) => setPrioridad(toNumber(event.target.value))}
+      >
+        <option value="0" disabled>
+          Seleccionar prioridad...
+        </option>
+        {PRIORIDAD_OPTIONS.map((option) => (
+          <option
+            key={option.value}
+            value={option.value}
+            className="bg-white dark:bg-zinc-900 text-slate-900 dark:text-white"
+          >
+            {option.label}
           </option>
-          {PRIORIDAD_OPTIONS.map((option) => (
-            <option
-              key={option.value}
-              value={option.value}
-              className="bg-white dark:bg-zinc-900 text-slate-900 dark:text-white"
-            >
-              {option.label}
-            </option>
-          ))}
-        </FormSelect>
-
-        {/* Pedido (opcional) */}
-        <FormSelect
-          label="Pedido (opcional)"
-          name="pedido"
-          value={pedido ?? ""}
-          disabled={isLoadingOrders}
-          onChange={(event) => {
-            const raw = event.target.value;
-            setPedido(raw === "" ? null : toNumber(raw));
-          }}
-        >
-          <option value="">Sin pedido</option>
-          {orders.map((order) => (
-            <option
-              key={order.id}
-              value={order.id}
-              className="bg-white dark:bg-zinc-900 text-slate-900 dark:text-white"
-            >
-              {order.folio}
-              {order.cliente_nombre ? ` — ${order.cliente_nombre}` : ""}
-            </option>
-          ))}
-        </FormSelect>
-      </div>
+        ))}
+      </FormSelect>
 
       {/* Observaciones generales */}
       <FormTextarea
