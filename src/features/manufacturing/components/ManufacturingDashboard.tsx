@@ -15,15 +15,18 @@ import {
   ComprasIcon,
   ChevronRightIcon,
 } from "@/src/components/Icons";
-import { MOCK_PRODUCTION_ORDERS } from "@/src/features/production-orders/mocks/production-order.mock";
 import { MOCK_EMBROIDERY_ORDERS } from "@/src/features/embroidery/mocks/embroidery-orders.mock";
 import { MOCK_CEDICOR_PRODUCTION_ORDERS } from "@/src/features/cedicor/mocks/cedicor-production-order.mock";
 import { MOCK_CEDICOR_NEW_DEVELOPMENT } from "@/src/features/cedicor/mocks/cedicor-new-development.mock";
-import { PRODUCTION_ORDER_STATUS_LABELS } from "@/src/features/production-orders/interfaces/production-order.interface";
+import {
+  PRODUCTION_ORDER_STATUS_LABELS,
+  type ProductionOrder,
+  type ProductionOrderStatus,
+} from "@/src/features/production-orders/interfaces/production-order.interface";
 
 // ── Tipos de estatus de cada sub-módulo ──────────────────────────────────────
 
-type ProdStatus = (typeof MOCK_PRODUCTION_ORDERS)[number]["estatus"];
+type ProdStatus = ProductionOrderStatus;
 type EmbrStatus = (typeof MOCK_EMBROIDERY_ORDERS)[number]["estatus_hoja"];
 type CedicorProdStatus = (typeof MOCK_CEDICOR_PRODUCTION_ORDERS)[number]["estatus"];
 type CedicorDevStatus = (typeof MOCK_CEDICOR_NEW_DEVELOPMENT)[number]["estatus"];
@@ -268,7 +271,7 @@ export function ManufacturingDashboard() {
     const hoy = new Date();
 
     // ── Órdenes de Producción (módulo principal) ─────────────────────────
-    const prod = MOCK_PRODUCTION_ORDERS;
+    const prod: ProductionOrder[] = [];
     const prodActivas   = prod.filter((o) => !["cerrada", "cancelada"].includes(o.estatus));
     const prodFabricando = prod.filter((o) => o.estatus === "en_fabricacion");
     const prodAlertas   = prod.filter((o) => ["material_faltante", "comprando_materiales"].includes(o.estatus));

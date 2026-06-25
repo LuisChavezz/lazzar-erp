@@ -1,3 +1,5 @@
+import type { BomBulkDetalle } from "@/src/features/bom/interfaces/bom.interface";
+
 // ── Pasos canónicos del flujo de órdenes de producción ────────────────────────
 // Corresponden al diagrama de flujo:
 //   1. Creada → 2. Verificando materiales → ¿Hay faltantes?
@@ -56,6 +58,129 @@ export interface ProductionOrderEventRecord {
   responsable: string;
   /** Notas adicionales del evento */
   notas: string;
+}
+
+// ── Onboarding ───────────────────────────────────────────────────────────────
+
+export interface ProductionOrderOnboardingTalla {
+  talla: string;
+  color: string;
+  cantidad: number;
+}
+
+export interface ProductionOrderOnboardingCantidades {
+  total: number;
+  tallas: ProductionOrderOnboardingTalla[];
+}
+
+export interface ProductionOrderOnboardingHabilitacion {
+  codigo: string;
+  descripcion: string;
+  unidad: string;
+  total: number;
+}
+
+export interface ProductionOrderOnboardingProducto {
+  nombre: string;
+  cantidades: ProductionOrderOnboardingCantidades;
+  habilitacion: ProductionOrderOnboardingHabilitacion[];
+}
+
+export interface ProductionOrderOnboarding {
+  op_id: number;
+  folio_op: string;
+  estatus_op: number;
+  prioridad: number;
+  fecha_inicio: string;
+  fecha_fin: string | null;
+  observaciones: string;
+  activo: boolean;
+  empresa: number;
+  sucursal: number;
+  pedido: number | null;
+  ruta_produccion: number | null;
+  usuario_asignado: number;
+  op_info: string;
+  productos: ProductionOrderOnboardingProducto[];
+}
+
+// ── Create onboarding ────────────────────────────────────────────────────────
+
+/** Renglón del detalle de una orden de producción (una variante a fabricar). */
+export interface CreateProductionOrderDetalle {
+  producto_variante_id: number;
+  cantidad: number;
+  unidad: number;
+  observaciones: string;
+}
+
+/**
+ * Cuerpo del POST de creación. El backend resuelve la lista de materiales (BOM)
+ * automáticamente a partir de cada `producto_variante_id`, por lo que ya no se
+ * envían `pedido`, `ruta_produccion` ni `producto_variante_ids`.
+ */
+export interface CreateProductionOrderBody {
+  empresa: number;
+  sucursal: number;
+  estatus_op: number;
+  prioridad: number;
+  observaciones: string;
+  orden_produccion_detalle: CreateProductionOrderDetalle[];
+}
+
+/** Respuesta del POST de creación (`201`). */
+export interface CreateProductionOrderResponse {
+  msg: string;
+}
+
+// ── GET /produccion/orden-produccion/ ────────────────────────────────────────
+
+/** Variante de producto embebida en el detalle de una OP (incluye nombres resueltos por el backend). */
+export interface OPProductoVariante {
+  id: number;
+  producto_nombre: string;
+  color_nombre: string;
+  talla_nombre: string;
+  nombre: string;
+  sku: string;
+  precio_base: string;
+  activo: boolean;
+  producto: number;
+  empresa: number;
+  color: number;
+  talla: number;
+}
+
+/** Renglón de detalle de una orden de producción (una variante a fabricar con su BOM). */
+export interface OrdenProduccionDetalle {
+  op_detalle_id: number;
+  producto_variante: OPProductoVariante;
+  bom_detalle: BomBulkDetalle[];
+  cantidad: string;
+  observaciones: string;
+  activo: boolean;
+  op: number;
+  bom: number;
+  unidad: number;
+  pedido_detalle: number | null;
+}
+
+/** Orden de producción tal como la devuelve `GET /produccion/orden-produccion/`. */
+export interface OrdenProduccion {
+  op_id: number;
+  orden_produccion_detalle: OrdenProduccionDetalle[];
+  folio_op: string;
+  estatus_op: number;
+  prioridad: number;
+  fecha_inicio: string;
+  fecha_fin: string | null;
+  observaciones: string;
+  activo: boolean;
+  empresa: number;
+  sucursal: number;
+  pedido: number | null;
+  ruta_produccion: number | null;
+  usuario_asignado: number;
 }
 
 /** Orden de producción genérica */
