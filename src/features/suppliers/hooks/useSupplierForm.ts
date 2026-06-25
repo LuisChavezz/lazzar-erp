@@ -148,7 +148,6 @@ export function useSupplierForm({ onSuccess, supplierToEdit, isRfcVerified = fal
       sat_forma_pago: 1,
       sat_metodo_pago: 1,
       moneda: 1,
-      fax: "",
     }),
     []
   );
@@ -194,7 +193,6 @@ export function useSupplierForm({ onSuccess, supplierToEdit, isRfcVerified = fal
         ? supplierToEdit.sat_metodo_pago
         : 1,
       moneda: hasCurrency ? supplierToEdit.moneda : 1,
-      fax: supplierToEdit.fax,
     };
   }, [supplierToEdit, regimenesFiscales, formasPago, metodosPago, availableCurrencies, emptyValues]);
 
@@ -336,7 +334,6 @@ export function useSupplierForm({ onSuccess, supplierToEdit, isRfcVerified = fal
         sat_forma_pago: value.sat_forma_pago,
         sat_metodo_pago: value.sat_metodo_pago,
         moneda: value.moneda,
-        fax: value.fax,
         empresa: selectedCompany.id!,
       };
 

@@ -22,7 +22,6 @@ export interface Supplier {
   sat_forma_pago: FormaPago["id_sat_forma_pago"];
   sat_metodo_pago: MetodoPago["id_sat_metodo_pago"];
   moneda: Currency["id"];
-  fax: string;
 }
 
 export interface SupplierCreate {
@@ -40,6 +39,5 @@ export interface SupplierCreate {
   sat_forma_pago: FormaPago["id_sat_forma_pago"];
   sat_metodo_pago: MetodoPago["id_sat_metodo_pago"];
   moneda: Currency["id"];
-  fax: string;
 }
 

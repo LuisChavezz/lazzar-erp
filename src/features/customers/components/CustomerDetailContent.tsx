@@ -3,7 +3,7 @@
 import { useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import KpiGrid from "@/src/components/KpiGrid";
-import { WarningFilledIcon } from "@/src/components/Icons";
+import { ArrowLeftIcon, WarningFilledIcon } from "@/src/components/Icons";
 import { Loader } from "@/src/components/Loader";
 import { CustomerViews } from "./CustomerViews";
 import { useCustomer } from "../hooks/useCustomer";
@@ -33,6 +33,17 @@ export const CustomerDetailContent = ({ customerId }: CustomerDetailContentProps
 
   return (
     <div className="w-full space-y-8">
+      <div className="sticky top-0 z-10 py-2 w-fit">
+        <button
+          type="button"
+          onClick={() => router.replace("/sales/customers")}
+          className="flex items-center gap-2 cursor-pointer text-slate-500 hover:text-sky-500 transition-colors px-4 py-2 rounded-full bg-slate-50 dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800"
+        >
+          <ArrowLeftIcon className="w-4 h-4" />
+          <span className="text-sm font-medium">Volver</span>
+        </button>
+      </div>
+
       <div className="flex items-start justify-between gap-6">
         <div className="space-y-2 flex-1">
           <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{selectedCustomer?.nombre}</h1>

@@ -20,7 +20,6 @@ export const SupplierFormSchema = z.object({
   sat_forma_pago: z.coerce.number().int(),
   sat_metodo_pago: z.coerce.number().int(),
   moneda: z.coerce.number().int(),
-  fax: z.string(),
 });
 
 export type SupplierFormValues = z.infer<typeof SupplierFormSchema>;

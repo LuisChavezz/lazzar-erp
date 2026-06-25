@@ -362,28 +362,6 @@ export default function SupplierForm({ onSuccess, supplierToEdit }: SupplierForm
                   )}
                 </form.Field>
               </div>
-
-              <div>
-                <form.Field name="fax">
-                  {(field) => (
-                    <FormInput
-                      label="Fax"
-                      placeholder="Fax"
-                      name={field.name}
-                      value={field.state.value ?? ""}
-                      onChange={(event) => {
-                        field.handleChange(event.target.value);
-                        clearFieldErrors("fax");
-                      }}
-                      onBlur={() => {
-                        field.handleBlur();
-                        validateField("fax", field.state.value);
-                      }}
-                      error={getError("fax")}
-                    />
-                  )}
-                </form.Field>
-              </div>
             </div>
           </div>
         </section>
