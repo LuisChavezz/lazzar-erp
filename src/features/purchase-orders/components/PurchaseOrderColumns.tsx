@@ -3,9 +3,10 @@
 import { useState } from "react";
 import { ColumnDef, createColumnHelper } from "@tanstack/react-table";
 import { ActionMenu, type ActionMenuItem } from "@/src/components/ActionMenu";
-import { CheckCircleIcon, ViewIcon } from "@/src/components/Icons";
+import { CheckCircleIcon, EditIcon, ViewIcon } from "@/src/components/Icons";
 import { PurchaseOrder } from "../interfaces/purchase-order.interface";
 import { PurchaseOrderDetailDialog } from "./PurchaseOrderDetailDialog";
+import { PurchaseOrderEditDialog } from "./PurchaseOrderEditDialog";
 import { ConfirmDialog } from "@/src/components/ConfirmDialog";
 import { useConfirmPurchaseOrder } from "../hooks/useConfirmPurchaseOrder";
 
@@ -36,6 +37,7 @@ const EstatusBadge = ({ estatus, label }: { estatus: number; label: string }) =>
 /** Gestiona el menú de acciones y el diálogo de detalle de la orden */
 const ActionsCell = ({ row }: { row: PurchaseOrder }) => {
   const [isDetailOpen, setIsDetailOpen] = useState(false);
+  const [isEditOpen, setIsEditOpen] = useState(false);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const { mutate: confirmOrder, isPending } = useConfirmPurchaseOrder();
 
@@ -44,6 +46,11 @@ const ActionsCell = ({ row }: { row: PurchaseOrder }) => {
       label: "Ver Detalles",
       icon: ViewIcon,
       onSelect: () => setIsDetailOpen(true),
+    },
+    {
+      label: "Editar",
+      icon: EditIcon,
+      onSelect: () => setIsEditOpen(true),
     },
   ];
 
@@ -63,6 +70,11 @@ const ActionsCell = ({ row }: { row: PurchaseOrder }) => {
         orderId={isDetailOpen ? row.id : null}
         open={isDetailOpen}
         onOpenChange={setIsDetailOpen}
+      />
+      <PurchaseOrderEditDialog
+        open={isEditOpen}
+        onOpenChange={setIsEditOpen}
+        initialData={isEditOpen ? row : undefined}
       />
       {row.estatus === 1 && (
         <ConfirmDialog

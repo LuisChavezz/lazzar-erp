@@ -1,3 +1,5 @@
+import type { PurchaseOrderDetalleItem } from "./purchase-order-onboarding.interface";
+
 //
 // ─── Información de rastreo para órdenes en tránsito ─────────────────────────
 //
@@ -59,6 +61,8 @@ export interface PurchaseOrder {
 
 /** Un renglón de producto dentro del detalle de la orden de compra */
 export interface PurchaseOrderDetalle {
+  /** Id del producto del catálogo — expuesto por `OrdenCompraDetalleReadSerializer`. */
+  producto_id: number;
   descripcion: string;
   cantidad: number;
   descuento: string;
@@ -76,4 +80,46 @@ export interface PurchaseOrderDetalle {
  */
 export interface PurchaseOrderDetail extends PurchaseOrder {
   detalles: PurchaseOrderDetalle[];
+}
+
+//
+// ─── Actualización de la orden de compra (PUT) ──────────────────────────────
+//
+
+/**
+ * Campos editables del encabezado de la orden, derivados de {@link PurchaseOrder}
+ * vía `Pick`. Se omiten los campos generados por el servidor (id, folio, estatus,
+ * totales, fechas de auditoría, etc.).
+ */
+export type UpdatePurchaseOrderHeader = Pick<
+  PurchaseOrder,
+  | "referencia"
+  | "fecha_oc"
+  | "observaciones"
+  | "sucursal"
+  | "proveedor"
+  | "moneda"
+>;
+
+/**
+ * Cuerpo de la petición `PUT /compras/ordenes/{pk}/`.
+ *
+ * Refleja la forma del alta: encabezado editable + arreglo de renglones
+ * (`detalles`), de modo que los productos se actualizan junto con el encabezado.
+ * Los items reutilizan {@link PurchaseOrderDetalleItem} (la misma forma que el
+ * detalle del POST de onboarding: `producto`, `cantidad`, `precio`,
+ * `descripcion`).
+ *
+ * No existe un `CreatePurchaseOrderBody` equivalente al que aliasar: el alta usa
+ * un POST de onboarding en dos partes (`{ orden_compra }` y `{ orden_compra_id,
+ * detalle }`), de forma anidada y distinta a este cuerpo plano.
+ */
+export type UpdatePurchaseOrderBody = UpdatePurchaseOrderHeader & {
+  detalles: PurchaseOrderDetalleItem[];
+};
+
+/** Parámetros para la acción de actualización de una orden de compra. */
+export interface UpdatePurchaseOrderParams {
+  pk: number;
+  body: UpdatePurchaseOrderBody;
 }
