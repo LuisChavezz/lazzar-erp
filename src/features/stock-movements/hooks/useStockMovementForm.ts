@@ -49,6 +49,8 @@ export function useStockMovementForm({ onSuccess }: { onSuccess?: () => void } =
     queryKey: ["stock-items", "check", stockCheckParams],
     queryFn: () => getStockItems(stockCheckParams ?? undefined),
     enabled: stockCheckParams !== null,
+    staleTime: 0,
+    gcTime: 0,
   });
 
   /** Stock disponible para el almacén + variante seleccionados. */
@@ -246,6 +248,7 @@ export function useStockMovementForm({ onSuccess }: { onSuccess?: () => void } =
     variantOptions,
     productVariants,
     movimientoTypeOptions,
+    stockCheckResult,
     availableStock,
     isCheckingStock,
     handleCheckStock,

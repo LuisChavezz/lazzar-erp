@@ -30,6 +30,7 @@ function StockMovementFormContent({ onClose }: { onClose: () => void }) {
     productVariants,
     resetCounter,
     movimientoTypeOptions,
+    stockCheckResult,
     availableStock,
     isCheckingStock,
     handleCheckStock,
@@ -249,13 +250,19 @@ function StockMovementFormContent({ onClose }: { onClose: () => void }) {
                           {isCheckingStock ? "Consultando..." : "Consultar existencias"}
                         </button>
 
-                        {availableStock !== null && (
-                          <span className="whitespace-nowrap text-xs font-medium text-slate-600 dark:text-slate-300">
-                            Stock disponible:{" "}
-                            <span className="font-bold text-slate-900 dark:text-white">
-                              {availableStock.toLocaleString("es-MX")}
+                        {stockCheckResult !== undefined && (
+                          availableStock !== null ? (
+                            <span className="whitespace-nowrap text-xs font-medium text-slate-600 dark:text-slate-300">
+                              Stock disponible:{" "}
+                              <span className="font-bold text-slate-900 dark:text-white">
+                                {availableStock.toLocaleString("es-MX")}
+                              </span>
                             </span>
-                          </span>
+                          ) : (
+                            <span className="whitespace-nowrap text-xs text-slate-500 dark:text-slate-400">
+                              Sin stock disponible para este producto.
+                            </span>
+                          )
                         )}
                       </div>
                     </div>
