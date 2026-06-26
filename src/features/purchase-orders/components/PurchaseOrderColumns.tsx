@@ -50,12 +50,15 @@ const ActionsCell = ({ row }: { row: PurchaseOrder }) => {
       icon: ViewIcon,
       onSelect: () => setIsDetailOpen(true),
     },
-    {
+  ];
+
+  if (row.estatus !== 5) {
+    menuItems.push({
       label: "Editar",
       icon: EditIcon,
       onSelect: () => setIsEditOpen(true),
-    },
-  ];
+    });
+  }
 
   if (row.estatus === 1) {
     menuItems.push({
