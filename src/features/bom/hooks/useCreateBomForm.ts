@@ -58,7 +58,6 @@ export function useCreateBomForm({
         componente,
         cantidad: 1,
         unidad: 0,
-        desperdicio: 0,
         obligatorio: false,
         observaciones: "",
       })),

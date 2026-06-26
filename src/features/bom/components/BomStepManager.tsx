@@ -5,12 +5,12 @@
 //
 // La variante de producto ya se conoce al abrir el asistente (se lanza desde el
 // diálogo "Lista de Materiales" de una variante), por lo que ya no se selecciona
-// aquí. Cada material requiere 5 campos (cantidad, unidad, desperdicio,
-// obligatorio y observaciones); configurarlos en línea junto al selector satura
+// aquí. Cada material requiere 4 campos (cantidad, unidad, obligatorio
+// y observaciones); configurarlos en línea junto al selector satura
 // la pantalla al elegir varios productos. Por eso el flujo separa "seleccionar"
 // de "configurar":
 //   Paso 1 — Selección múltiple de materiales (solo elegir qué productos).
-//   Paso 2 — Configurar los 5 campos de cada material (tarjetas apiladas).
+//   Paso 2 — Configurar los 4 campos de cada material (tarjetas apiladas).
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { useCallback, useState } from "react";
