@@ -53,3 +53,7 @@ export const updatePurchaseOrder = async ({
   );
   return response.data;
 }
+
+export const deletePurchaseOrder = async (pk: number): Promise<void> => {
+  await v1_api.delete(`/compras/ordenes/${pk}/`);
+}
