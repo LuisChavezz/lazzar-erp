@@ -52,7 +52,7 @@ const ActionsCell = ({ row }: { row: PurchaseOrder }) => {
     },
   ];
 
-  if (row.estatus !== 5) {
+  if (row.estatus !== 4 && row.estatus !== 5) {
     menuItems.push({
       label: "Editar",
       icon: EditIcon,
@@ -67,6 +67,9 @@ const ActionsCell = ({ row }: { row: PurchaseOrder }) => {
       onSelect: () => setIsConfirmOpen(true),
       disabled: isPending,
     });
+  }
+
+  if (row.estatus !== 4 && row.estatus !== 5) {
     menuItems.push({
       label: "Eliminar",
       icon: DeleteIcon,
@@ -102,7 +105,7 @@ const ActionsCell = ({ row }: { row: PurchaseOrder }) => {
           }}
         />
       )}
-      {row.estatus === 1 && (
+      {row.estatus !== 4 && row.estatus !== 5 && (
         <ConfirmDialog
           open={isDeleteOpen}
           onOpenChange={setIsDeleteOpen}
