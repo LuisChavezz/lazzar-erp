@@ -2,6 +2,7 @@ import { v1_api } from "@/src/api/v1.api";
 import {
   PurchaseOrder,
   PurchaseOrderDetail,
+  UpdatePurchaseOrderParams,
 } from "../interfaces/purchase-order.interface";
 import {
   PurchaseOrderOnboardingData,
@@ -40,4 +41,19 @@ export const postPurchaseOrder = async (
 
 export const confirmPurchaseOrder = async (ordenCompraId: number): Promise<void> => {
   await v1_api.post(`/compras/ordenes/${ordenCompraId}/aceptar/`);
+}
+
+export const updatePurchaseOrder = async ({
+  pk,
+  body,
+}: UpdatePurchaseOrderParams): Promise<PurchaseOrder> => {
+  const response = await v1_api.put<PurchaseOrder>(
+    `/compras/ordenes/${pk}/`,
+    body,
+  );
+  return response.data;
+}
+
+export const deletePurchaseOrder = async (pk: number): Promise<void> => {
+  await v1_api.delete(`/compras/ordenes/${pk}/`);
 }

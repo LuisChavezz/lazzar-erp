@@ -3,9 +3,13 @@
 import { useState } from "react";
 import { ColumnDef, createColumnHelper } from "@tanstack/react-table";
 import { ActionMenu, type ActionMenuItem } from "@/src/components/ActionMenu";
-import { ViewIcon } from "@/src/components/Icons";
+import { CheckCircleIcon, DeleteIcon, EditIcon, ViewIcon } from "@/src/components/Icons";
 import { PurchaseOrder } from "../interfaces/purchase-order.interface";
 import { PurchaseOrderDetailDialog } from "./PurchaseOrderDetailDialog";
+import { PurchaseOrderEditDialog } from "./PurchaseOrderEditDialog";
+import { ConfirmDialog } from "@/src/components/ConfirmDialog";
+import { useConfirmPurchaseOrder } from "../hooks/useConfirmPurchaseOrder";
+import { useDeletePurchaseOrder } from "../hooks/useDeletePurchaseOrder";
 
 const columnHelper = createColumnHelper<PurchaseOrder>();
 
@@ -34,6 +38,11 @@ const EstatusBadge = ({ estatus, label }: { estatus: number; label: string }) =>
 /** Gestiona el menú de acciones y el diálogo de detalle de la orden */
 const ActionsCell = ({ row }: { row: PurchaseOrder }) => {
   const [isDetailOpen, setIsDetailOpen] = useState(false);
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const { mutate: confirmOrder, isPending } = useConfirmPurchaseOrder();
+  const { mutate: deleteOrder, isPending: isDeletePending } = useDeletePurchaseOrder();
 
   const menuItems: ActionMenuItem[] = [
     {
@@ -43,6 +52,29 @@ const ActionsCell = ({ row }: { row: PurchaseOrder }) => {
     },
   ];
 
+  if (row.estatus !== 5) {
+    menuItems.push({
+      label: "Editar",
+      icon: EditIcon,
+      onSelect: () => setIsEditOpen(true),
+    });
+  }
+
+  if (row.estatus === 1) {
+    menuItems.push({
+      label: "Confirmar",
+      icon: CheckCircleIcon,
+      onSelect: () => setIsConfirmOpen(true),
+      disabled: isPending,
+    });
+    menuItems.push({
+      label: "Eliminar",
+      icon: DeleteIcon,
+      onSelect: () => setIsDeleteOpen(true),
+      disabled: isDeletePending,
+    });
+  }
+
   return (
     <>
       <ActionMenu items={menuItems} ariaLabel={`Acciones de la orden ${row.folio}`} />
@@ -51,6 +83,39 @@ const ActionsCell = ({ row }: { row: PurchaseOrder }) => {
         open={isDetailOpen}
         onOpenChange={setIsDetailOpen}
       />
+      <PurchaseOrderEditDialog
+        open={isEditOpen}
+        onOpenChange={setIsEditOpen}
+        initialData={isEditOpen ? row : undefined}
+      />
+      {row.estatus === 1 && (
+        <ConfirmDialog
+          open={isConfirmOpen}
+          onOpenChange={setIsConfirmOpen}
+          title="Confirmar Orden de Compra"
+          description={`¿Estás seguro de que deseas confirmar la orden de compra #${row.id}? Esta acción no se puede deshacer.`}
+          confirmText={isPending ? "Confirmando..." : "Confirmar"}
+          confirmColor="blue"
+          onConfirm={() => {
+            confirmOrder(row.id);
+            setIsConfirmOpen(false);
+          }}
+        />
+      )}
+      {row.estatus === 1 && (
+        <ConfirmDialog
+          open={isDeleteOpen}
+          onOpenChange={setIsDeleteOpen}
+          title="Eliminar Orden de Compra"
+          description={`¿Estás seguro de que deseas eliminar la orden de compra #${row.id}? Esta acción no se puede deshacer.`}
+          confirmText={isDeletePending ? "Eliminando..." : "Eliminar"}
+          confirmColor="red"
+          onConfirm={() => {
+            deleteOrder(row.id);
+            setIsDeleteOpen(false);
+          }}
+        />
+      )}
     </>
   );
 };
