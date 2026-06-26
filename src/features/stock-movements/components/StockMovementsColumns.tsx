@@ -1,22 +1,15 @@
 "use client";
 
+import { useState } from "react";
 import { createColumnHelper, type ColumnDef } from "@tanstack/react-table";
 import { UserIcon, ViewIcon } from "@/src/components/Icons";
 import { ActionMenu, type ActionMenuItem } from "@/src/components/ActionMenu";
 import type { StockMovement } from "../interfaces/stock-movements.interface";
+import { StockMovementDetailDialog } from "./StockMovementDetailDialog";
 
 // ─── Tipos de movimiento ─────────────────────────────────────────────────────
 
 export type MovementType = "ENTRADA" | "SALIDA" | "TRASPASO" | "AJUSTE";
-
-// ─── Constantes de acciones (evita recrear en cada render de celda) ────────
-
-const MOVEMENT_ACTION_ITEMS: ActionMenuItem[] = [
-  {
-    label: "Ver Detalles",
-    icon: ViewIcon,
-  },
-];
 
 // ─── Configuración de estilos por tipo de movimiento ────────────────────────
 
@@ -68,6 +61,33 @@ function formatTime(iso: string): string {
     minute: "2-digit",
   });
 }
+
+// ─── Celda de acciones ───────────────────────────────────────────────────────
+
+const ActionsCell = ({ row }: { row: StockMovement }) => {
+  const [isDetailOpen, setIsDetailOpen] = useState(false);
+
+  const menuItems: ActionMenuItem[] = [
+    {
+      label: "Ver detalle",
+      icon: ViewIcon,
+      onSelect: () => setIsDetailOpen(true),
+    },
+  ];
+
+  return (
+    <div className="flex items-center justify-center">
+      <ActionMenu items={menuItems} ariaLabel="Acciones de movimiento" />
+      {isDetailOpen && (
+        <StockMovementDetailDialog
+          movementId={row.id}
+          open={true}
+          onOpenChange={setIsDetailOpen}
+        />
+      )}
+    </div>
+  );
+};
 
 // ─── Columnas ────────────────────────────────────────────────────────────────
 
@@ -153,13 +173,7 @@ export function getStockMovementsColumns() {
       header: () => <div className="text-center">Acciones</div>,
       size: 90,
       meta: { label: "Acciones" } as const,
-      cell: () => {
-        return (
-          <div className="flex items-center justify-center">
-            <ActionMenu items={MOVEMENT_ACTION_ITEMS} ariaLabel="Acciones de movimiento" />
-          </div>
-        );
-      },
+      cell: ({ row }) => <ActionsCell row={row.original} />,
     }),
   ] as ColumnDef<StockMovement>[];
 }
