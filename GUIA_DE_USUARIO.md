@@ -47,7 +47,7 @@ Una vez dentro del sistema, la interfaz se organiza en:
 
 - **Sidebar lateral** (`Sidebar`): la navegación está organizada por **módulos de negocio** y es **contextual** (cambia según dónde te encuentres):
   - En **Inicio** y **Configuración** se muestran los módulos principales: **Panel de Control (Core)**, **CRM y Ventas**, **Mesa de Control**, **Operaciones de Almacén**, **Compras y SCM**, **Manufactura (Producción)**, **Finanzas y Contabilidad** y **Capital Humano**.
-  - Al entrar a un módulo, el menú muestra sus secciones internas. Por ejemplo, en **Operaciones de Almacén** verás Existencias, Movimientos, Recepciones y Ubicaciones.
+  - Al entrar a un módulo, el menú muestra sus secciones internas. Por ejemplo, en **Operaciones de Almacén** verás Existencias, Recepciones y Ubicaciones.
   - En la parte inferior, un bloque **Ajustes** agrupa el perfil/seguridad de la cuenta y la **Configuración** del sistema.
   - Cada módulo y sección se muestra según los **permisos** del usuario.
 - **Header superior** (`Header`):
@@ -84,7 +84,7 @@ Ruta: `/config`
 
 La sección de Configuración es el “panel de control” del ERP. Desde aquí se administran los **catálogos base** organizados por grupos:
 
-- **Organización**: Sucursales, Almacenes, Ubicaciones, Proveedores.
+- **Organización**: Sucursales, Almacenes, Ubicaciones, Movimientos de Inventario, Proveedores.
 - **Usuarios y Accesos**: Usuarios, Roles.
 - **Información Fiscal**: Monedas, Series y Folios, Información fiscal, Impuestos.
 - **Catálogo de Productos**: Categorías, Tipos, Colores, Tallas, Unidades de Medida.
@@ -131,7 +131,7 @@ Los módulos operativos, comerciales y financieros se organizan por **dominio de
 
 - **CRM y Ventas** (`/sales`): Clientes (`/sales/customers`), Cotizaciones (`/sales/quotes`, con alta en `/sales/quotes/new` y edición en `/sales/quotes/[id]/edit`), Correos (`/sales/emails`) y Calendario (`/sales/calendar`).
 - **Mesa de Control** (`/operations`): Cotizaciones (`/operations/quotes`), Pedidos (`/operations/orders`) y Muestras (`/operations/samples`).
-- **Operaciones de Almacén – WMS** (`/wms`): Existencias (`/wms/stock`), Movimientos (`/wms/stock-movements`), Recepciones (`/wms/receipts`) y Ubicaciones (`/wms/locations`).
+- **Operaciones de Almacén – WMS** (`/wms`): Existencias (`/wms/stock`), Recepciones (`/wms/receipts`) y Ubicaciones (`/wms/locations`). Los Movimientos de Inventario se administran desde **Configuración → Organización**.
 - **Compras y SCM** (`/procurement`): Órdenes de Compra (`/procurement/purchase-orders`), Proveedores (`/procurement/suppliers`), Revisión de Pedidos (`/procurement/order-reviews`), Solicitudes de Gastos (`/procurement/expense-requests`) y Pedidos P.Q. (`/procurement/pq-orders`).
 - **Manufactura (Producción)** (`/manufacturing`): Órdenes de Producción (`/manufacturing/production-orders`), Órdenes de Bordado (`/manufacturing/embroidery`) y los flujos Cedicor de Nuevo Desarrollo y Producción.
 - **Finanzas y Contabilidad** (`/finance`): Facturación (`/finance/invoicing`), CxP (`/finance/accounts-payable`), CxC (`/finance/accounts-receivable`), Bancos (`/finance/bank-accounts`), Contabilidad (`/finance/accounting`) y Lista de Precios (`/finance/price-lists`).

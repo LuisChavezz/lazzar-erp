@@ -27,6 +27,15 @@ const WarehouseList = dynamic(() => import("@/src/features/warehouses/components
 const LocationList = dynamic(() => import("@/src/features/locations/components/LocationList"), {
   loading: configDetailLoading,
 });
+const StockMovementsView = dynamic(
+  () =>
+    import("@/src/features/stock-movements/components/StockMovementsView").then(
+      (mod) => mod.StockMovementsView,
+    ),
+  {
+    loading: configDetailLoading,
+  },
+);
 const SatInfo = dynamic(() => import("@/src/features/sat/components/SatInfo").then(mod => mod.SatInfo), {
   loading: configDetailLoading,
 });
@@ -125,6 +134,13 @@ export function ConfigDetailView({ selectedView, onBack }: ConfigDetailViewProps
         <div className="flex flex-col gap-6">
           {renderBackButton()}
           <LocationList />
+        </div>
+      )}
+
+      {selectedView === "stock-movements" && (
+        <div className="flex flex-col gap-6">
+          {renderBackButton()}
+          <StockMovementsView />
         </div>
       )}
 

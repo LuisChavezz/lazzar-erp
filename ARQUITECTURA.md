@@ -102,7 +102,7 @@ Ruta base del proyecto:
   - `/system` – Panel de Control (Core): `/system/reports`.
   - `/sales` – CRM y Ventas: `/sales/customers` (y `/sales/customers/[id]`), `/sales/quotes` (`/new`, `/[id]`, `/[id]/edit`), `/sales/emails`, `/sales/calendar`.
   - `/operations` – Mesa de Control: `/operations/quotes`, `/operations/orders`, `/operations/samples`.
-  - `/wms` – Operaciones de Almacén: `/wms/stock`, `/wms/stock-movements`, `/wms/receipts`, `/wms/locations`.
+  - `/wms` – Operaciones de Almacén: `/wms/stock`, `/wms/receipts`, `/wms/locations`. Los movimientos de inventario se gestionan desde `/config` (grupo Organización).
   - `/procurement` – Compras y SCM: `/procurement/purchase-orders`, `/procurement/suppliers`, `/procurement/order-reviews`, `/procurement/expense-requests`, `/procurement/pq-orders`.
   - `/manufacturing` – Manufactura: `/manufacturing/production-orders`, `/manufacturing/embroidery`, `/manufacturing/cedicor-production-orders`, `/manufacturing/cedicor-product-development-orders`.
   - `/finance` – Finanzas y Contabilidad: `/finance/invoicing`, `/finance/accounts-payable`, `/finance/accounts-receivable`, `/finance/bank-accounts`, `/finance/accounting`, `/finance/price-lists`.

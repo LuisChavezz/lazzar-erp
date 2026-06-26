@@ -26,7 +26,6 @@ import {
   FactoryIcon,
   ProduccionIcon,
   RecepcionesIcon,
-  HistoryIcon,
   MapPinIcon,
 } from "../components/Icons";
 
@@ -151,13 +150,6 @@ export const appRouteGroups: AppRouteGroup[] = [
         label: "Existencias",
         path: "/wms/stock",
         icon: ExistenciasIcon,
-        permission: "R-WMS",
-      },
-      {
-        key: "wms-stock-movements",
-        label: "Movimientos",
-        path: "/wms/stock-movements",
-        icon: HistoryIcon,
         permission: "R-WMS",
       },
       {
