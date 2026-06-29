@@ -76,14 +76,13 @@ function BomMaterialsSection({
             <th className="pb-1.5 text-left font-medium">Componente</th>
             <th className="pb-1.5 text-right font-medium">Cantidad</th>
             <th className="pb-1.5 text-right font-medium">Unidad</th>
-            <th className="pb-1.5 text-right font-medium">Desperdicio</th>
             <th className="pb-1.5 text-right font-medium">Obligatorio</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-100 dark:divide-white/5">
           {detalles.map((detalle) => (
             <tr key={detalle.bom_detalle_id}>
-              <td className="max-w-[140px] truncate py-1.5 pr-3 text-slate-700 dark:text-slate-300">
+              <td className="max-w-35 truncate py-1.5 pr-3 text-slate-700 dark:text-slate-300">
                 {detalle.componente_nombre}
               </td>
               <td className="py-1.5 pr-3 text-right font-mono text-slate-600 dark:text-slate-400">
@@ -91,9 +90,6 @@ function BomMaterialsSection({
               </td>
               <td className="py-1.5 pr-3 text-right font-mono text-slate-600 dark:text-slate-400">
                 {detalle.unidad_clave}
-              </td>
-              <td className="py-1.5 pr-3 text-right font-mono text-slate-600 dark:text-slate-400">
-                {detalle.desperdicio}
               </td>
               <td className="py-1.5 text-right">
                 <span

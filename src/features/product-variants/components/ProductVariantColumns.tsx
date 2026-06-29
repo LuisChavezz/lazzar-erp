@@ -1,7 +1,12 @@
 "use client";
 
 import { ColumnDef, createColumnHelper, Row } from "@tanstack/react-table";
-import { EditIcon, DeleteIcon, ClipboardListIcon } from "../../../components/Icons";
+import {
+  EditIcon,
+  DeleteIcon,
+  ClipboardListIcon,
+  PencilSquareIcon,
+} from "../../../components/Icons";
 import { ProductVariant } from "../interfaces/product-variant.interface";
 import { ConfirmDialog } from "../../../components/ConfirmDialog";
 import { MainDialog } from "../../../components/MainDialog";
@@ -35,6 +40,7 @@ const ActionsCell = ({
   const { mutate: deleteProductVariant } = useDeleteProductVariant();
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [isBomOpen, setIsBomOpen] = useState(false);
+  const [isEditBomOpen, setIsEditBomOpen] = useState(false);
   const [bomDialogOpen, setBomDialogOpen] = useState(false);
 
   // Tras crear la lista, cierra el asistente y reabre el diálogo de la lista
@@ -49,6 +55,11 @@ const ActionsCell = ({
     label: "Lista de Materiales",
     icon: ClipboardListIcon,
     onSelect: () => setIsBomOpen(true),
+  });
+  menuItems.push({
+    label: "Editar Lista de Materiales",
+    icon: PencilSquareIcon,
+    onSelect: () => setIsEditBomOpen(true),
   });
   if (canEdit) {
     menuItems.push({
@@ -95,6 +106,24 @@ const ActionsCell = ({
           </div>
           <BomList productoVarianteId={row.original.id} />
         </div>
+      </MainDialog>
+      <MainDialog
+        open={isEditBomOpen}
+        onOpenChange={setIsEditBomOpen}
+        maxWidth="760px"
+        title={
+          <DialogHeader
+            title="Editar Lista de Materiales"
+            subtitle={row.original.sku}
+            statusColor="amber"
+          />
+        }
+      >
+        <BomList
+          productoVarianteId={row.original.id}
+          mode="edit"
+          onClose={() => setIsEditBomOpen(false)}
+        />
       </MainDialog>
       <CreateBomDialog
         open={bomDialogOpen}
