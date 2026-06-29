@@ -58,7 +58,7 @@ export function useCreateBomForm({
         componente,
         cantidad: 1,
         unidad: 0,
-        obligatorio: false,
+        obligatorio: true,
         observaciones: "",
       })),
     } as ListaMaterialFormValues,
