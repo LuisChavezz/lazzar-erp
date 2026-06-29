@@ -1,80 +1,96 @@
-import { DataTable } from "@/src/components/DataTable";
-import { accountsReceivableColumns } from "./AccountsReceivableColumns";
-import { AccountsReceivable } from "../interfaces/accounts-receivable.interface";
+"use client";
 
-const accountsReceivableData: AccountsReceivable[] = [
-  {
-    id: "1",
-    invoiceNumber: "FAC-CR-2026-001",
-    customer: {
-      name: "Cliente Principal SA de CV",
-      initials: "CP",
-      colorClass: "bg-sky-100 text-sky-600 dark:bg-sky-500/20 dark:text-sky-400",
-    },
-    status: "Pendiente",
-    issueDate: "05 Ene 2026",
-    dueDate: "20 Ene 2026",
-    amount: "$65,890.00",
-    balance: "$65,890.00",
-    daysPastDue: "0",
-  },
-  {
-    id: "2",
-    invoiceNumber: "FAC-CR-2026-014",
-    customer: {
-      name: "Corporativo Delta",
-      initials: "CD",
-      colorClass: "bg-emerald-100 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400",
-    },
-    status: "Parcial",
-    issueDate: "10 Ene 2026",
-    dueDate: "25 Ene 2026",
-    amount: "$120,300.00",
-    balance: "$40,000.00",
-    daysPastDue: "0",
-  },
-  {
-    id: "3",
-    invoiceNumber: "FAC-CR-2025-220",
-    customer: {
-      name: "Logística Express",
-      initials: "LE",
-      colorClass: "bg-amber-100 text-amber-600 dark:bg-amber-500/20 dark:text-amber-400",
-    },
-    status: "Vencido",
-    issueDate: "01 Dic 2025",
-    dueDate: "15 Dic 2025",
-    amount: "$25,750.00",
-    balance: "$25,750.00",
-    daysPastDue: "60",
-  },
-  {
-    id: "4",
-    invoiceNumber: "FAC-CR-2026-032",
-    customer: {
-      name: "Grupo Comercial Alfa",
-      initials: "GA",
-      colorClass: "bg-purple-100 text-purple-600 dark:bg-purple-500/20 dark:text-purple-400",
-    },
-    status: "Cobrado",
-    issueDate: "03 Ene 2026",
-    dueDate: "18 Ene 2026",
-    amount: "$52,450.00",
-    balance: "$0.00",
-    daysPastDue: "0",
-  },
+import { useState } from "react";
+import { DataTable } from "@/src/components/DataTable";
+import { MainDialog } from "@/src/components/MainDialog";
+import { Button } from "@/src/components/Button";
+import { WarningFilledIcon, RejectIcon } from "@/src/components/Icons";
+import { formatCurrency } from "@/src/utils/formatCurrency";
+import { accountsReceivableColumns } from "./AccountsReceivableColumns";
+import { cobrosColumns } from "./CobrosColumns";
+import { AccountsReceivableAgingSummary } from "./AccountsReceivableAgingSummary";
+import { MOCK_CXC, MOCK_COBROS, CXC_KPIS } from "../mocks/accounts-receivable.mock";
+
+const ESTATUS_FILTER = [
+  { value: "vigente", label: "Vigente" },
+  { value: "vencida", label: "Vencida" },
+  { value: "parcial", label: "Parcial" },
+  { value: "pagada", label: "Pagada" },
 ];
 
 export const AccountsReceivableList = () => {
+  const [bannerDismissed, setBannerDismissed] = useState(false);
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+
+  const showBanner = !bannerDismissed && CXC_KPIS.cuentasVencidas > 0;
+
   return (
-    <div className="mt-12">
+    <div className="space-y-6">
+      {/* Alerta de cuentas vencidas */}
+      {showBanner && (
+        <div className="flex items-start gap-3 rounded-xl border border-amber-200 dark:border-amber-800/50 bg-amber-50 dark:bg-amber-900/20 px-4 py-3">
+          <WarningFilledIcon className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" aria-hidden="true" />
+          <div className="flex-1 text-sm">
+            <p className="font-semibold text-amber-800 dark:text-amber-300">Cuentas vencidas</p>
+            <p className="text-amber-700 dark:text-amber-400">
+              Tienes {CXC_KPIS.cuentasVencidas}{" "}
+              {CXC_KPIS.cuentasVencidas === 1 ? "cuenta vencida" : "cuentas vencidas"} por un total
+              de{" "}
+              <span className="font-semibold tabular-nums">
+                {formatCurrency(CXC_KPIS.totalVencido)}
+              </span>
+              .
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setBannerDismissed(true)}
+            aria-label="Descartar alerta"
+            className="p-1 rounded-lg text-amber-500 hover:bg-amber-100 dark:hover:bg-amber-500/10 transition-colors cursor-pointer"
+          >
+            <RejectIcon className="w-4 h-4" aria-hidden="true" />
+          </button>
+        </div>
+      )}
+
+      {/* Antigüedad de saldos */}
+      <AccountsReceivableAgingSummary />
+
+      {/* Tabla principal: Cuentas por Cobrar */}
       <DataTable
         columns={accountsReceivableColumns}
-        data={accountsReceivableData}
+        data={MOCK_CXC}
         title="Cuentas por Cobrar"
-        searchPlaceholder="Buscar factura o cliente..."
+        searchPlaceholder="Buscar folio, cliente o factura..."
+        filterConfig={[{ id: "estatus", label: "Estatus", options: ESTATUS_FILTER }]}
+        onRefetch={() => {}}
+        actionButton={
+          <MainDialog
+            title="Registrar Cuenta por Cobrar"
+            open={isCreateOpen}
+            onOpenChange={setIsCreateOpen}
+            maxWidth="480px"
+            trigger={
+              <Button variant="primary" rounded="full" onClick={() => setIsCreateOpen(true)}>
+                + Registrar CxC
+              </Button>
+            }
+          >
+            <p className="text-sm text-slate-500 dark:text-slate-400">
+              Formulario de registro en construcción. Esta vista es una maqueta con datos de
+              ejemplo generados localmente.
+            </p>
+          </MainDialog>
+        }
+      />
+
+      {/* Tabla secundaria: Cobros recientes */}
+      <DataTable
+        columns={cobrosColumns}
+        data={MOCK_COBROS}
+        title="Cobros Recientes"
+        searchPlaceholder="Buscar cobro o cliente..."
       />
     </div>
   );
 };
-

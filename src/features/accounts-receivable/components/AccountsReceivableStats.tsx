@@ -1,43 +1,52 @@
-import { CxcIcon, ClockIcon, ErrorIcon, ListaPreciosIcon } from "@/src/components/Icons";
-import KpiGrid, { KpiItem } from "@/src/components/KpiGrid";
+import { CxcIcon, ClockIcon, ErrorIcon, CheckCircleIcon } from "@/src/components/Icons";
+import KpiGrid, { type KpiItem } from "@/src/components/KpiGrid";
+import { CXC_KPIS } from "../mocks/accounts-receivable.mock";
+
+// Formato compacto (sin centavos) para los valores grandes de las tarjetas KPI.
+const formatKpi = (value: number) =>
+  new Intl.NumberFormat("es-MX", {
+    style: "currency",
+    currency: "MXN",
+    maximumFractionDigits: 0,
+  }).format(value);
 
 export const AccountsReceivableStats = () => {
   const items: KpiItem[] = [
     {
-      label: "Cuentas por Cobrar",
-      value: "$412,300",
+      label: "Total por Cobrar",
+      value: formatKpi(CXC_KPIS.totalPorCobrar),
       icon: CxcIcon,
       iconBgClass: "bg-sky-50 dark:bg-sky-500/10",
       iconClass: "text-sky-500",
-      trendLabel: "+9.8%",
-      status: "positive",
-    },
-    {
-      label: "Facturas Pendientes",
-      value: "$135,750",
-      icon: ClockIcon,
-      iconBgClass: "bg-amber-50 dark:bg-amber-500/10",
-      iconClass: "text-amber-500",
-      trendLabel: "18",
+      trendLabel: "Saldo abierto",
       status: "neutral",
     },
     {
-      label: "Cobrado del Mes",
-      value: "$276,550",
-      icon: ListaPreciosIcon,
-      iconBgClass: "bg-emerald-50 dark:bg-emerald-500/10",
-      iconClass: "text-emerald-500",
-      trendLabel: "72%",
-      status: "positive",
-    },
-    {
-      label: "Vencidas",
-      value: "$29,450",
+      label: "Vencido",
+      value: formatKpi(CXC_KPIS.totalVencido),
       icon: ErrorIcon,
       iconBgClass: "bg-red-50 dark:bg-red-500/10",
       iconClass: "text-red-500",
-      trendLabel: "6",
+      trendLabel: `${CXC_KPIS.cuentasVencidas} cuentas`,
       status: "negative",
+    },
+    {
+      label: "Por Vencer (30 días)",
+      value: formatKpi(CXC_KPIS.porVencer30),
+      icon: ClockIcon,
+      iconBgClass: "bg-amber-50 dark:bg-amber-500/10",
+      iconClass: "text-amber-500",
+      trendLabel: "Próximos vencimientos",
+      status: "neutral",
+    },
+    {
+      label: "Cobrado este Mes",
+      value: formatKpi(CXC_KPIS.cobradoEsteMes),
+      icon: CheckCircleIcon,
+      iconBgClass: "bg-emerald-50 dark:bg-emerald-500/10",
+      iconClass: "text-emerald-500",
+      trendLabel: "Junio 2026",
+      status: "positive",
     },
   ];
 
