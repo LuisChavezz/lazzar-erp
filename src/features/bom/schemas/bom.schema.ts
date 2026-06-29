@@ -13,10 +13,6 @@ export const MateriaPrimaDetalleFormSchema = z.object({
   componente: z.number().int().positive("El componente es requerido"),
   cantidad: z.number().positive("La cantidad debe ser mayor a 0"),
   unidad: z.number().int().positive("La unidad es requerida"),
-  desperdicio: z
-    .number()
-    .int("El desperdicio debe ser un número entero")
-    .min(0, "El desperdicio no puede ser negativo"),
   obligatorio: z.boolean(),
   observaciones: z.string(),
 });

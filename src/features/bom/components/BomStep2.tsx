@@ -34,8 +34,8 @@ function toNumber(raw: string): number {
  * BomStep2
  *
  * Step 2 of the BOM onboarding flow. Renders one configuration card per product
- * selected in Step 1 (stacked, scrollable) with the five per-item fields:
- * cantidad, unidad, desperdicio, obligatorio y observaciones. All inputs are
+ * selected in Step 1 (stacked, scrollable) with the four per-item fields:
+ * cantidad, unidad, obligatorio y observaciones. All inputs are
  * controlled through TanStack Form (see {@link useCreateBomForm}); the final
  * button submits and validates the whole lista against the Zod schema.
  */
@@ -155,33 +155,6 @@ export function BomStep2({
                           </option>
                         ))}
                       </FormSelect>
-                    )}
-                  </form.Field>
-
-                  {/* Desperdicio */}
-                  <form.Field
-                    name={`materia_prima_detalle[${index}].desperdicio`}
-                  >
-                    {(field) => (
-                      <FormInput
-                        label="Desperdicio (%)"
-                        type="number"
-                        step="1"
-                        min={0}
-                        inputMode="numeric"
-                        placeholder="0"
-                        name={field.name}
-                        value={field.state.value}
-                        onChange={(event) => {
-                          field.handleChange(toNumber(event.target.value));
-                          clearError(
-                            `materia_prima_detalle.${index}.desperdicio`,
-                          );
-                        }}
-                        error={getError(
-                          `materia_prima_detalle.${index}.desperdicio`,
-                        )}
-                      />
                     )}
                   </form.Field>
 

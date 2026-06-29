@@ -5,16 +5,14 @@
 /**
  * Renglón de materia prima dentro de la lista de materiales.
  *
- * Corresponde a cada elemento de `materia_prima_detalle`. Los valores
- * decimales (`cantidad`, `desperdicio`) llegan como string desde el backend
+ * Corresponde a cada elemento de `materia_prima_detalle`. El valor
+ * decimal (`cantidad`) llega como string desde el backend
  * (DRF serializa los `DecimalField` como cadenas para no perder precisión).
  */
 export interface BomDetalle {
   bom_detalle_id: number;
   /** Cantidad de componente requerida — decimal como string, e.g. "1.58" */
   cantidad: string;
-  /** Merma/desperdicio estimado — decimal como string, e.g. "0.00" */
-  desperdicio: string;
   obligatorio: boolean;
   observaciones: string | null;
   activo: boolean;
@@ -59,7 +57,6 @@ export interface MateriaPrimaDetalleCreate {
   componente: number;
   cantidad: number;
   unidad: number;
-  desperdicio: number;
   obligatorio: boolean;
   observaciones: string;
 }
@@ -84,7 +81,6 @@ export interface BomBulkDetalle {
   componente_nombre: string;
   unidad_clave: string;
   cantidad: string;
-  desperdicio: string;
   obligatorio: boolean;
   observaciones: string;
   activo: boolean;
