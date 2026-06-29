@@ -43,6 +43,8 @@ src/features/<module>/
 
 Table column definitions are kept in separate `...Columns.tsx` files within each feature's `components/` directory.
 
+`services/actions.ts` files are thin async wrappers over `v1_api`: each calls a trailing-slash REST endpoint and returns `response.data` directly (no error handling — that's the hook's job). Backend endpoints are **Spanish-named** (e.g. `/inventarios/almacenes/`, `/compras/ordenes/`). The domain language throughout the codebase — API paths, many interface fields, code comments — is Spanish; match it when adding code.
+
 The `bom/` module (bill of materials) is a good template for a multi-step feature: alongside the standard structure it adds a 2-step wizard — `BomStepManager` drives `BomStep1` (select components) → `BomStep2` (configure each), rendered inside a `MainDialog` with a `StepProgressBar`. The same wizard shape recurs in `receipts/`, `purchase-orders/`, and `quotes/` (`...StepManager` + `StepProgressBar`).
 
 ### API Clients (`src/api/`)
@@ -110,3 +112,7 @@ NEXT_PUBLIC_NGROK_API_TOKEN=
 ## Tailwind
 
 Using Tailwind v4 via PostCSS plugin only — there is no `tailwind.config.*` file. Configuration lives in `postcss.config.mjs`.
+
+## React Compiler
+
+The **React Compiler is enabled** (`reactCompiler: true` in `next.config.ts`, via `babel-plugin-react-compiler`). Components are auto-memoized at build time, so manual `useMemo`/`useCallback`/`React.memo` are generally unnecessary — don't add them reflexively. This is also why `DataTable.tsx` carries the intentional `eslint-disable react-hooks/incompatible-library` comment. `next.config.ts` also strips `console.*` in production builds (`compiler.removeConsole`).
