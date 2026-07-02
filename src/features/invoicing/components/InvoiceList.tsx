@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { DataTable } from "@/src/components/DataTable";
 import { invoiceColumns } from "./InvoiceColumns";
+import { CreateInvoiceDialog } from "./CreateInvoiceDialog";
 import { useInvoices } from "../hooks/useInvoices";
 import { CloseIcon } from "@/src/components/Icons";
 import { ErrorState } from "@/src/components/ErrorState";
@@ -11,6 +12,8 @@ import { parseLocalDate } from "@/src/utils/formatDate";
 export const InvoiceList = () => {
   const { invoices, hasLoaded, isLoading, isError, error, refetch, isFetching } =
     useInvoices();
+
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
 
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
@@ -129,12 +132,28 @@ export const InvoiceList = () => {
       </div>
 
       <DataTable
+        title="Facturación"
         columns={invoiceColumns}
         data={filteredInvoices}
         baseDataCount={invoices.length}
         searchPlaceholder="Buscar por folio, cliente o estatus..."
         onRefetch={refetch}
         isRefetching={isFetching}
+        actionButton={
+          <button
+            type="button"
+            onClick={() => setIsCreateOpen(true)}
+            className="px-4 py-2 cursor-pointer bg-sky-600 hover:bg-sky-700 text-white text-sm font-semibold rounded-full shadow-lg shadow-sky-500/30 transition-all hover:scale-105 active:scale-95 whitespace-nowrap"
+          >
+            + Nueva Factura
+          </button>
+        }
+      />
+
+      <CreateInvoiceDialog
+        open={isCreateOpen}
+        onOpenChange={setIsCreateOpen}
+        onSuccess={() => setIsCreateOpen(false)}
       />
     </div>
   );

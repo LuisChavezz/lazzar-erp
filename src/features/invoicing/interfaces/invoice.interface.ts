@@ -1,4 +1,4 @@
-export interface FacturaDetalle {
+export interface InvoiceDetail {
   id: number;
   factura: number;
   pedido_detalle: number;
@@ -12,10 +12,20 @@ export interface FacturaDetalle {
   producto_nombre: string;
 }
 
-export interface Factura {
+/**
+ * Cuerpo del POST de creación de factura desde pedido
+ * (`POST /finanzas/facturas/desde-pedido/`). **Solo** viaja `pedido`: el
+ * servidor resuelve empresa, sucursal, cliente, moneda, folio, estatus y todo
+ * el `factura_detalles` a partir del pedido. No se envía ningún otro campo.
+ */
+export interface CreateInvoiceFromOrderBody {
+  pedido: number;
+}
+
+export interface Invoice {
   id: number;
   activo: boolean;
-  factura_detalles: FacturaDetalle[];
+  factura_detalles: InvoiceDetail[];
   moneda_nombre: string;
   cliente_nombre: string;
   empresa: number;

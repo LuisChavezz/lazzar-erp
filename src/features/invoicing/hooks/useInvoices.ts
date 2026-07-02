@@ -2,11 +2,11 @@ import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { getInvoices } from "../services/actions";
-import { Factura } from "../interfaces/invoice.interface";
+import { Invoice } from "../interfaces/invoice.interface";
 
 export const useInvoices = () => {
   const { data, isLoading, isError, error, refetch, isFetching } = useQuery<
-    Factura[]
+    Invoice[]
   >({
     queryKey: ["invoices"],
     queryFn: getInvoices,

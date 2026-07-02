@@ -8,19 +8,20 @@ import {
   ClockIcon,
 } from "../../../components/Icons";
 import { useInvoices } from "../hooks/useInvoices";
-import { Factura } from "../interfaces/invoice.interface";
+import { Invoice } from "../interfaces/invoice.interface";
+import { INVOICE_STATUS } from "../constants/invoiceStatus";
 import { formatCurrency, safeParseAmount } from "@/src/utils/formatCurrency";
 import { parseLocalDate } from "@/src/utils/formatDate";
 
-const isCancelled = (status: string) => status === "Cancelada";
+const isCancelled = (status: string) => status === INVOICE_STATUS.CANCELADA;
 
 /** Una factura sigue pendiente de cobro si no está pagada ni cancelada. */
 const isPending = (status: string) =>
-  status !== "Pagada" && status !== "Cancelada";
+  status !== INVOICE_STATUS.PAGADA && status !== INVOICE_STATUS.CANCELADA;
 
 /** Está vencida si su estatus lo indica o venció y sigue pendiente de cobro. */
-const isOverdue = (invoice: Factura, today: Date) => {
-  if (invoice.estatus === "Vencida") return true;
+const isOverdue = (invoice: Invoice, today: Date) => {
+  if (invoice.estatus === INVOICE_STATUS.VENCIDA) return true;
   if (!isPending(invoice.estatus)) return false;
   const dueDate = parseLocalDate(invoice.fecha_vencimiento);
   if (!dueDate) return false;
@@ -29,22 +30,14 @@ const isOverdue = (invoice: Factura, today: Date) => {
 
 type CurrencyTotals = {
   invoiced: number;
-  invoicedCount: number;
   receivable: number;
-  pendingCount: number;
   overdue: number;
-  overdueCount: number;
-  count: number;
 };
 
 const emptyTotals = (): CurrencyTotals => ({
   invoiced: 0,
-  invoicedCount: 0,
   receivable: 0,
-  pendingCount: 0,
   overdue: 0,
-  overdueCount: 0,
-  count: 0,
 });
 
 export const InvoiceStats = () => {
@@ -58,11 +51,15 @@ export const InvoiceStats = () => {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  // Una sola pasada: acumulamos importes y conteos por moneda (no tiene sentido
-  // sumar monedas distintas en un mismo total) y un conteo global de emitidas.
-  // Las canceladas se excluyen de los importes y del conteo de emitidas.
+  // Una sola pasada: acumulamos importes por moneda (no tiene sentido sumar
+  // monedas distintas en un mismo total) y conteos globales, que sí tienen
+  // sentido agregados sin importar la moneda de cada factura. Las canceladas
+  // se excluyen de los importes y del conteo de emitidas.
   const totalsByCurrency = new Map<string, CurrencyTotals>();
   let emittedCount = 0;
+  let invoicedCount = 0;
+  let pendingCount = 0;
+  let overdueCount = 0;
 
   for (const invoice of invoices) {
     const amount = safeParseAmount(invoice.total);
@@ -70,44 +67,33 @@ export const InvoiceStats = () => {
     const pending = isPending(invoice.estatus);
     const overdue = isOverdue(invoice, today);
 
-    if (!cancelled) emittedCount += 1;
+    if (!cancelled) {
+      emittedCount += 1;
+      invoicedCount += 1;
+    }
+    if (pending) pendingCount += 1;
+    if (overdue) overdueCount += 1;
 
     const bucket = totalsByCurrency.get(invoice.moneda_nombre) ?? emptyTotals();
-    bucket.count += 1;
-    if (!cancelled) {
-      bucket.invoiced += amount;
-      bucket.invoicedCount += 1;
-    }
-    if (pending) {
-      bucket.receivable += amount;
-      bucket.pendingCount += 1;
-    }
-    if (overdue) {
-      bucket.overdue += amount;
-      bucket.overdueCount += 1;
-    }
+    if (!cancelled) bucket.invoiced += amount;
+    if (pending) bucket.receivable += amount;
+    if (overdue) bucket.overdue += amount;
     totalsByCurrency.set(invoice.moneda_nombre, bucket);
   }
 
-  // Moneda dominante = la que agrupa más facturas. Importes y sus conteos
-  // asociados se muestran solo para esa moneda; si hay más de una, lo
-  // indicamos en la tarjeta para que el conteo y el importe describan la
-  // misma población.
-  let dominantCurrency = "";
-  let totals = emptyTotals();
-  for (const [currency, bucket] of totalsByCurrency) {
-    if (bucket.count > totals.count) {
-      dominantCurrency = currency;
-      totals = bucket;
-    }
-  }
-  const currencyNote =
-    totalsByCurrency.size > 1
-      ? `Solo ${dominantCurrency || "moneda principal"}`
-      : undefined;
+  const currencyEntries = Array.from(totalsByCurrency.entries());
 
-  const money = (value: number) =>
-    formatCurrency(value, { maximumFractionDigits: 0 });
+  // Cada KPI monetario muestra un total por cada moneda presente en el
+  // conjunto, separados por "·" — ninguna moneda queda oculta. Con una sola
+  // moneda esto se reduce a una sola línea, igual que antes.
+  const money = (pick: (totals: CurrencyTotals) => number) =>
+    currencyEntries.length > 0
+      ? currencyEntries
+          .map(([currency, totals]) =>
+            formatCurrency(pick(totals), { currency, maximumFractionDigits: 0 }),
+          )
+          .join(" · ")
+      : formatCurrency(0, { maximumFractionDigits: 0 });
 
   // Mientras carga mostramos un marcador en lugar de ceros que parecerían reales.
   const ph = "—";
@@ -115,32 +101,29 @@ export const InvoiceStats = () => {
   const items: KpiItem[] = [
     {
       label: "Total Facturado",
-      value: isLoading ? ph : money(totals.invoiced),
-      subLabel: isLoading ? undefined : currencyNote,
+      value: isLoading ? ph : money((t) => t.invoiced),
       icon: ListaPreciosIcon,
       iconBgClass: "bg-blue-50 dark:bg-blue-500/10",
       iconClass: "text-blue-500",
-      trendLabel: isLoading ? undefined : `${totals.invoicedCount} Facturas`,
+      trendLabel: isLoading ? undefined : `${invoicedCount} Facturas`,
       status: "positive",
     },
     {
       label: "Por Cobrar",
-      value: isLoading ? ph : money(totals.receivable),
-      subLabel: isLoading ? undefined : currencyNote,
+      value: isLoading ? ph : money((t) => t.receivable),
       icon: ClockIcon,
       iconBgClass: "bg-amber-50 dark:bg-amber-500/10",
       iconClass: "text-amber-500",
-      trendLabel: isLoading ? undefined : `${totals.pendingCount} Pendientes`,
+      trendLabel: isLoading ? undefined : `${pendingCount} Pendientes`,
       status: "neutral",
     },
     {
       label: "Vencido",
-      value: isLoading ? ph : money(totals.overdue),
-      subLabel: isLoading ? undefined : currencyNote,
+      value: isLoading ? ph : money((t) => t.overdue),
       icon: ErrorIcon,
       iconBgClass: "bg-red-50 dark:bg-red-500/10",
       iconClass: "text-red-500",
-      trendLabel: isLoading ? undefined : `${totals.overdueCount} Vencidas`,
+      trendLabel: isLoading ? undefined : `${overdueCount} Vencidas`,
       status: "negative",
     },
     {

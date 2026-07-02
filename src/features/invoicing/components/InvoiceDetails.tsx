@@ -1,4 +1,4 @@
-import { Factura } from "../interfaces/invoice.interface";
+import { Invoice } from "../interfaces/invoice.interface";
 import { formatCurrency, safeParseAmount } from "@/src/utils/formatCurrency";
 import { formatLocalDate } from "@/src/utils/formatDate";
 
@@ -11,10 +11,12 @@ const Field = ({ label, value }: { label: string; value: React.ReactNode }) => (
   </div>
 );
 
-export const InvoiceDetails = ({ invoice }: { invoice: Factura }) => {
+export const InvoiceDetails = ({ invoice }: { invoice: Invoice }) => {
   // El listado puede no hidratar los conceptos; evitamos acceder a `.length`
   // o `.map` sobre un valor ausente.
-  const detalles = invoice.factura_detalles ?? [];
+  const details = invoice.factura_detalles ?? [];
+  const money = (value: number) =>
+    formatCurrency(value, { currency: invoice.moneda_nombre });
 
   return (
     <div className="space-y-6">
@@ -34,19 +36,19 @@ export const InvoiceDetails = ({ invoice }: { invoice: Factura }) => {
         <Field label="Moneda" value={invoice.moneda_nombre} />
         <Field
           label="Subtotal"
-          value={formatCurrency(safeParseAmount(invoice.subtotal))}
+          value={money(safeParseAmount(invoice.subtotal))}
         />
         <Field
           label="Descuento"
-          value={formatCurrency(safeParseAmount(invoice.descuento))}
+          value={money(safeParseAmount(invoice.descuento))}
         />
         <Field
           label="Impuestos"
-          value={formatCurrency(safeParseAmount(invoice.impuestos))}
+          value={money(safeParseAmount(invoice.impuestos))}
         />
         <Field
           label="Total"
-          value={formatCurrency(safeParseAmount(invoice.total))}
+          value={money(safeParseAmount(invoice.total))}
         />
       </div>
 
@@ -62,7 +64,7 @@ export const InvoiceDetails = ({ invoice }: { invoice: Factura }) => {
       ) : null}
 
       {/* Detalle de conceptos */}
-      {detalles.length > 0 ? (
+      {details.length > 0 ? (
         <div className="rounded-xl border border-slate-200 dark:border-white/10 overflow-hidden">
           <div className="px-4 py-3 border-b border-slate-200 dark:border-white/10">
             <p className="text-xs uppercase text-slate-400 font-semibold">
@@ -84,7 +86,7 @@ export const InvoiceDetails = ({ invoice }: { invoice: Factura }) => {
                 </tr>
               </thead>
               <tbody>
-                {detalles.map((detail) => (
+                {details.map((detail) => (
                   <tr
                     key={detail.id}
                     className="border-t border-slate-100 dark:border-white/5"
@@ -96,16 +98,16 @@ export const InvoiceDetails = ({ invoice }: { invoice: Factura }) => {
                       {safeParseAmount(detail.cantidad).toLocaleString("es-MX")}
                     </td>
                     <td className="px-4 py-2 text-right text-slate-600 dark:text-slate-300 tabular-nums">
-                      {formatCurrency(safeParseAmount(detail.precio_unitario))}
+                      {money(safeParseAmount(detail.precio_unitario))}
                     </td>
                     <td className="px-4 py-2 text-right text-slate-600 dark:text-slate-300 tabular-nums">
-                      {formatCurrency(safeParseAmount(detail.descuento))}
+                      {money(safeParseAmount(detail.descuento))}
                     </td>
                     <td className="px-4 py-2 text-right text-slate-600 dark:text-slate-300 tabular-nums">
-                      {formatCurrency(safeParseAmount(detail.impuesto))}
+                      {money(safeParseAmount(detail.impuesto))}
                     </td>
                     <td className="px-4 py-2 text-right font-semibold text-slate-800 dark:text-white tabular-nums">
-                      {formatCurrency(safeParseAmount(detail.total))}
+                      {money(safeParseAmount(detail.total))}
                     </td>
                   </tr>
                 ))}
