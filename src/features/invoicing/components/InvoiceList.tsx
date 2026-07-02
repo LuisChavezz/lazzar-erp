@@ -3,87 +3,30 @@
 import { useMemo, useState } from "react";
 import { DataTable } from "@/src/components/DataTable";
 import { invoiceColumns } from "./InvoiceColumns";
-import { Invoice } from "../interfaces/invoice.interface";
+import { useInvoices } from "../hooks/useInvoices";
 import { CloseIcon } from "@/src/components/Icons";
-
-const MOCK_INVOICES: Invoice[] = [
-  {
-    pedido: "PED-2401",
-    factura: "FAC-2026-1201",
-    total: 25400,
-    cliente: "Tecnología Avanzada S.A. de C.V.",
-    vendedor: "Laura Pérez",
-    paqueteria: "DHL",
-    guias: "DHL-45902011",
-    date: "13/02/2026",
-  },
-  {
-    pedido: "PED-2402",
-    factura: "FAC-2026-1202",
-    total: 12850.5,
-    cliente: "Consultoría Integral MX",
-    vendedor: "Carlos Rivas",
-    paqueteria: "FedEx",
-    guias: "FDX-90122318",
-    date: "12/02/2026",
-  },
-  {
-    pedido: "PED-2399",
-    factura: "FAC-2026-1198",
-    total: 8900,
-    cliente: "Distribuidora del Norte",
-    vendedor: "Diana Ortega",
-    paqueteria: "Estafeta",
-    guias: "EST-77230012",
-    date: "10/02/2026",
-  },
-  {
-    pedido: "PED-2387",
-    factura: "FAC-2026-1182",
-    total: 4500,
-    cliente: "Servicios Profesionales Globales",
-    vendedor: "Mario Silva",
-    paqueteria: "PaqueteExpress",
-    guias: "PEX-55100987",
-    date: "01/02/2026",
-  },
-  {
-    pedido: "PED-2405",
-    factura: "FAC-2026-1205",
-    total: 156000,
-    cliente: "Grupo Constructor Elite",
-    vendedor: "Andrea Soto",
-    paqueteria: "DHL",
-    guias: "DHL-77100823",
-    date: "13/02/2026",
-  },
-];
-
-const parseDateValue = (value: string) => {
-  const [day, month, year] = value.split("/").map((part) => Number(part));
-  if (!day || !month || !year) return null;
-  return new Date(year, month - 1, day);
-};
-
-const parseInputDate = (value: string) => {
-  if (!value) return null;
-  const [year, month, day] = value.split("-").map((part) => Number(part));
-  if (!day || !month || !year) return null;
-  return new Date(year, month - 1, day);
-};
+import { ErrorState } from "@/src/components/ErrorState";
+import { parseLocalDate } from "@/src/utils/formatDate";
 
 export const InvoiceList = () => {
+  const { invoices, hasLoaded, isLoading, isError, error, refetch, isFetching } =
+    useInvoices();
+
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [appliedStartDate, setAppliedStartDate] = useState("");
   const [appliedEndDate, setAppliedEndDate] = useState("");
 
   const filteredInvoices = useMemo(() => {
-    const start = parseInputDate(appliedStartDate);
-    const end = parseInputDate(appliedEndDate);
+    const start = parseLocalDate(appliedStartDate);
+    const end = parseLocalDate(appliedEndDate);
 
-    return MOCK_INVOICES.filter((invoice) => {
-      const invoiceDate = parseDateValue(invoice.date);
+    // Sin filtro activo se muestran todas las facturas (no descartamos las
+    // que carezcan de una fecha de emisión válida).
+    if (!start && !end) return invoices;
+
+    return invoices.filter((invoice) => {
+      const invoiceDate = parseLocalDate(invoice.fecha_emision);
       if (!invoiceDate) return false;
       if (start && invoiceDate < start) return false;
       if (end) {
@@ -93,7 +36,7 @@ export const InvoiceList = () => {
       }
       return true;
     });
-  }, [appliedStartDate, appliedEndDate]);
+  }, [invoices, appliedStartDate, appliedEndDate]);
 
   const hasAppliedFilters = Boolean(appliedStartDate || appliedEndDate);
   const isApplyDisabled =
@@ -110,6 +53,28 @@ export const InvoiceList = () => {
     setAppliedStartDate("");
     setAppliedEndDate("");
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-100">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-sky-600" />
+        <span className="ml-3 text-sm text-slate-500">Cargando facturas...</span>
+      </div>
+    );
+  }
+
+  // Solo mostramos el estado de error a pantalla completa cuando la consulta
+  // nunca cargó con éxito; un error de refetch transitorio no debe descartar
+  // la tabla ya cargada (perdiendo orden, paginación, búsqueda y filtros del
+  // usuario), incluso si el conjunto cargado estaba vacío.
+  if (isError && !hasLoaded) {
+    return (
+      <ErrorState
+        title="Error al cargar las facturas"
+        message={(error as Error).message}
+      />
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -166,8 +131,10 @@ export const InvoiceList = () => {
       <DataTable
         columns={invoiceColumns}
         data={filteredInvoices}
-        title="Facturación"
-        searchPlaceholder="Buscar por pedido, factura o cliente..."
+        baseDataCount={invoices.length}
+        searchPlaceholder="Buscar por folio, cliente o estatus..."
+        onRefetch={refetch}
+        isRefetching={isFetching}
       />
     </div>
   );
