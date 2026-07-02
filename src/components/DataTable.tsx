@@ -394,11 +394,11 @@ export function DataTable<TData, TValue>({
         <div className="flex flex-col lg:flex-row lg:items-center gap-3 w-full lg:w-auto">
           <div className="w-full lg:w-auto overflow-x-auto lg:overflow-visible pb-1">
             <div className="flex items-center justify-end gap-2 min-w-max">
-            {hasBaseData && (
-              <div className="flex items-center gap-0">
-                <button
-                  type="button"
-                  onClick={() => {
+            {/* La búsqueda permanece visible aunque la tabla esté vacía. */}
+            <div className="flex items-center gap-0">
+              <button
+                type="button"
+                onClick={() => {
                     const willExpand = !isSearchExpanded;
                     setIsSearchExpanded(willExpand);
                     if (willExpand) {
@@ -445,7 +445,7 @@ export function DataTable<TData, TValue>({
                   </div>
                 </div>
               </div>
-            )}
+            {/* /búsqueda */}
 
             {filterConfig && filterConfig.length > 0 && (
               <Button
@@ -723,10 +723,13 @@ export function DataTable<TData, TValue>({
         </div>
       )}
 
-      {visibleRows.length > 0 ? (
-        <div className="relative w-full rounded-2xl border border-slate-200 dark:border-white/20 shadow-sm bg-white dark:bg-black">
+      {/* La cabecera (columnas) permanece visible aunque no haya filas; el
+          mensaje de vacío se muestra dentro del cuerpo de la tabla. */}
+      <div className="relative w-full rounded-2xl border border-slate-200 dark:border-white/20 shadow-sm bg-white dark:bg-black">
           <div
-            className={`h-120 overflow-x-auto [scrollbar-gutter:stable] rounded-2xl max-w-full bg-white dark:bg-black transition-all ${
+            className={`overflow-x-auto [scrollbar-gutter:stable] rounded-2xl max-w-full bg-white dark:bg-black transition-all ${
+              visibleRows.length > 0 || isLoadingOverlay ? "h-120" : ""
+            } ${
               isLoadingOverlay ? "blur-sm pointer-events-none select-none" : ""
             }`}
           >
@@ -853,22 +856,37 @@ export function DataTable<TData, TValue>({
               ))}
             </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-sm">
-                {visibleRows.map((row) => (
-                  <tr
-                    key={row.id}
-                    className="hover:bg-slate-50/50 dark:hover:bg-white/5 transition-colors"
-                  >
-                    {row.getVisibleCells().map((cell) => (
-                      <td 
-                        key={cell.id} 
-                        className="px-6 py-4"
-                        style={{ width: cell.column.getSize() }}
-                      >
-                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                      </td>
-                    ))}
+                {visibleRows.length > 0 ? (
+                  visibleRows.map((row) => (
+                    <tr
+                      key={row.id}
+                      className="hover:bg-slate-50/50 dark:hover:bg-white/5 transition-colors"
+                    >
+                      {row.getVisibleCells().map((cell) => (
+                        <td
+                          key={cell.id}
+                          className="px-6 py-4"
+                          style={{ width: cell.column.getSize() }}
+                        >
+                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                        </td>
+                      ))}
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td
+                      colSpan={visibleColumns.length || 1}
+                      className="px-6 py-6 text-center text-slate-500 dark:text-slate-400"
+                    >
+                      {!hasBaseData
+                        ? "No hay elementos para mostrar"
+                        : globalFilter.trim().length > 0
+                        ? `No se encontraron resultados para ${globalFilter}`
+                        : "No se encontraron resultados"}
+                    </td>
                   </tr>
-                ))}
+                )}
               </tbody>
             </table>
           </div>
@@ -882,23 +900,6 @@ export function DataTable<TData, TValue>({
             </div>
           )}
         </div>
-      ) : null}
-
-      {!hasBaseData && (
-        <div className="text-center py-12 text-slate-500 dark:text-slate-400">
-          <p>No hay elementos para mostrar</p>
-        </div>
-      )}
-
-      {hasBaseData && visibleRows.length === 0 && (
-        <div className="text-center py-12 text-slate-500 dark:text-slate-400">
-          <p>
-            {globalFilter.trim().length > 0
-              ? `No se encontraron resultados para ${globalFilter}`
-              : "No se encontraron resultados"}
-          </p>
-        </div>
-      )}
 
       {hasBaseData && (
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6">
