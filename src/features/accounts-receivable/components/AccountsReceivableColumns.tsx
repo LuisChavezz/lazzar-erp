@@ -3,6 +3,7 @@
 import { ColumnDef, createColumnHelper } from "@tanstack/react-table";
 import { ActionMenu, type ActionMenuItem } from "@/src/components/ActionMenu";
 import { ViewIcon, ReceiptIcon, ListaPreciosIcon } from "@/src/components/Icons";
+import { StatusBadge, type StatusBadgeConfigEntry } from "@/src/components/StatusBadge";
 import { formatCurrency } from "@/src/utils/formatCurrency";
 import type {
   MockCxC,
@@ -10,8 +11,10 @@ import type {
 } from "../interfaces/accounts-receivable.interface";
 
 // ── Badge de estatus ──────────────────────────────────────────────────────────
+// Dominio propio de CxC (no se comparte con el estatus de facturación):
+// solo la presentación (StatusBadge) es genérica, los valores no.
 
-const ESTATUS_CFG: Record<CxCEstatus, { label: string; cls: string; dot: string }> = {
+const ESTATUS_CFG: Record<CxCEstatus, StatusBadgeConfigEntry> = {
   vigente: {
     label: "Vigente",
     cls: "bg-sky-50 text-sky-700 dark:bg-sky-500/10 dark:text-sky-400",
@@ -34,17 +37,9 @@ const ESTATUS_CFG: Record<CxCEstatus, { label: string; cls: string; dot: string 
   },
 };
 
-const EstatusBadge = ({ estatus }: { estatus: CxCEstatus }) => {
-  const cfg = ESTATUS_CFG[estatus];
-  return (
-    <span
-      className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium whitespace-nowrap ${cfg.cls}`}
-    >
-      <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${cfg.dot}`} aria-hidden="true" />
-      {cfg.label}
-    </span>
-  );
-};
+const EstatusBadge = ({ estatus }: { estatus: CxCEstatus }) => (
+  <StatusBadge status={estatus} config={ESTATUS_CFG} />
+);
 
 // timeZone "UTC" fija el día renderizado: las fechas de la maqueta se
 // construyen a medianoche UTC, así el SSR (servidor en UTC) y la hidratación

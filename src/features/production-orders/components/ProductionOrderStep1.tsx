@@ -1,13 +1,14 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { ArrowLeft, ArrowRight } from "lucide-react";
-import { SearchInput } from "@/src/components/SearchInput";
 import { Loader } from "@/src/components/Loader";
 import { CheckIcon } from "@/src/components/Icons";
 import { FormSelect } from "@/src/components/FormSelect";
 import { FormTextarea } from "@/src/components/FormTextarea";
+import { SearchableSelectList } from "@/src/components/SearchableSelectList";
 import { useProductVariants } from "@/src/features/product-variants/hooks/useProductVariants";
+import type { ProductVariant } from "@/src/features/product-variants/interfaces/product-variant.interface";
 
 /** Datos de cabecera + variantes capturados en el Paso 1. */
 export interface ProductionOrderStep1Data {
@@ -65,20 +66,9 @@ export function ProductionOrderStep1({
   const [observaciones, setObservaciones] = useState<string>(
     initialData?.observaciones ?? "",
   );
-  const [search, setSearch] = useState("");
   const [selectedIds, setSelectedIds] = useState<number[]>(
     initialData?.variantIds ?? [],
   );
-
-  const filteredVariants = useMemo(() => {
-    const term = search.toLowerCase().trim();
-    if (!term) return productVariants;
-    return productVariants.filter(
-      (variant) =>
-        variant.nombre.toLowerCase().includes(term) ||
-        variant.sku.toLowerCase().includes(term),
-    );
-  }, [productVariants, search]);
 
   const toggleVariant = (id: number) => {
     setSelectedIds((prev) =>
@@ -146,13 +136,6 @@ export function ProductionOrderStep1({
         onChange={(event) => setObservaciones(event.target.value)}
       />
 
-      {/* Search */}
-      <SearchInput
-        value={search}
-        onChange={setSearch}
-        placeholder="Buscar variante por nombre o SKU..."
-      />
-
       {/* Selected count */}
       <p className="text-xs text-slate-500 font-medium">
         {selectedCount === 0
@@ -160,55 +143,42 @@ export function ProductionOrderStep1({
           : `${selectedCount} variante${selectedCount === 1 ? "" : "s"} seleccionada${selectedCount === 1 ? "" : "s"}`}
       </p>
 
-      {/* Scrollable multi-select list */}
-      <div className="max-h-60 overflow-y-auto space-y-1 pr-1">
-        {productVariants.length === 0 ? (
-          <p className="text-sm text-slate-400 text-center py-6">
-            No hay variantes de producto disponibles.
-          </p>
-        ) : filteredVariants.length === 0 ? (
-          <p className="text-sm text-slate-400 text-center py-6">
-            No se encontraron variantes
-          </p>
-        ) : (
-          filteredVariants.map((variant) => {
-            const selected = selectedIds.includes(variant.id);
-            return (
-              <button
-                key={variant.id}
-                type="button"
-                onClick={() => toggleVariant(variant.id)}
-                className={`w-full flex items-center gap-3 rounded-xl border px-4 py-3 text-left transition-all duration-150 cursor-pointer ${
-                  selected
-                    ? "border-sky-400 bg-sky-50 dark:border-sky-600 dark:bg-sky-900/20"
-                    : "border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 hover:bg-slate-50 dark:hover:bg-white/10"
-                }`}
-              >
-                {/* Check indicator */}
-                <span
-                  className={`shrink-0 w-5 h-5 rounded-md border-2 flex items-center justify-center transition-colors ${
-                    selected
-                      ? "border-sky-500 bg-sky-500 text-white"
-                      : "border-slate-300 dark:border-slate-600"
-                  }`}
-                >
-                  {selected && <CheckIcon className="w-3.5 h-3.5" />}
-                </span>
-
-                {/* Variant info */}
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold text-slate-800 dark:text-slate-100 truncate">
-                    {variant.nombre}
-                  </p>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 truncate font-mono">
-                    {variant.sku}
-                  </p>
-                </div>
-              </button>
-            );
-          })
+      {/* Search + scrollable multi-select list */}
+      <SearchableSelectList<ProductVariant>
+        items={productVariants}
+        searchPlaceholder="Buscar variante por nombre o SKU..."
+        filterPredicate={(variant, term) =>
+          variant.nombre.toLowerCase().includes(term) ||
+          variant.sku.toLowerCase().includes(term)
+        }
+        getKey={(variant) => variant.id}
+        isSelected={(variant) => selectedIds.includes(variant.id)}
+        onSelect={(variant) => toggleVariant(variant.id)}
+        emptyMessage="No hay variantes de producto disponibles."
+        noResultsMessage="No se encontraron variantes"
+        renderIndicator={(selected) => (
+          // Check indicator
+          <span
+            className={`shrink-0 w-5 h-5 rounded-md border-2 flex items-center justify-center transition-colors ${
+              selected
+                ? "border-sky-500 bg-sky-500 text-white"
+                : "border-slate-300 dark:border-slate-600"
+            }`}
+          >
+            {selected && <CheckIcon className="w-3.5 h-3.5" />}
+          </span>
         )}
-      </div>
+        renderContent={(variant) => (
+          <>
+            <p className="text-sm font-semibold text-slate-800 dark:text-slate-100 truncate">
+              {variant.nombre}
+            </p>
+            <p className="text-xs text-slate-500 dark:text-slate-400 truncate font-mono">
+              {variant.sku}
+            </p>
+          </>
+        )}
+      />
 
       {/* Action bar */}
       <div className="flex items-center justify-between border-t border-slate-200 dark:border-white/10 pt-4">
