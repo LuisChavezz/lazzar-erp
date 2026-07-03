@@ -1,16 +1,6 @@
 import { Suspense } from "react";
+import { Loader } from "@/src/components/Loader";
 import { StockView } from "@/src/features/stock/components/StockView";
-
-// `StockView` lee el filtro de almacén desde la URL con `useSearchParams`, que
-// en Next.js requiere un límite de Suspense en el árbol superior.
-function StockViewFallback() {
-  return (
-    <div className="flex items-center justify-center py-20">
-      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-sky-600" />
-      <span className="ml-3 text-sm text-slate-500">Cargando existencias...</span>
-    </div>
-  );
-}
 
 export default function StockPage() {
   return (
@@ -21,7 +11,9 @@ export default function StockPage() {
         </p>
       </div>
 
-      <Suspense fallback={<StockViewFallback />}>
+      {/* `StockView` lee el filtro de almacén desde la URL con `useSearchParams`,
+          que en Next.js requiere un límite de Suspense en el árbol superior. */}
+      <Suspense fallback={<Loader className="py-20" title="Cargando existencias..." />}>
         <StockView />
       </Suspense>
     </div>

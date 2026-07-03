@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   ExistenciasIcon,
@@ -8,7 +8,10 @@ import {
   ProductVariantsIcon,
 } from "@/src/components/Icons";
 import { DataTable } from "@/src/components/DataTable";
+import { ErrorState } from "@/src/components/ErrorState";
+import { Loader } from "@/src/components/Loader";
 import KpiGrid, { type KpiItem } from "@/src/components/KpiGrid";
+import { useWarehouses } from "@/src/features/warehouses/hooks/useWarehouses";
 import { useStockItems } from "../hooks/useStockItems";
 import {
   getStockColumns,
@@ -34,6 +37,9 @@ function StockStats({ items, maxStock }: { items: StockItem[]; maxStock: number 
   ).length;
   const totalStock       = items.reduce((acc, i) => acc + i.stock, 0);
 
+  const pctSkusEnExistencia = items.length > 0
+    ? Math.round((skusEnExistencia / items.length) * 100)
+    : 0;
   const pctRequiereStock = items.length > 0
     ? Math.round((requiereStock / items.length) * 100)
     : 0;
@@ -45,9 +51,9 @@ function StockStats({ items, maxStock }: { items: StockItem[]; maxStock: number 
       icon:        ExistenciasIcon,
       iconBgClass: "bg-sky-50 dark:bg-sky-500/10",
       iconClass:   "text-sky-500",
-      trendLabel:  `${Math.round((skusEnExistencia / items.length) * 100)}% del total`,
+      trendLabel:  `${pctSkusEnExistencia}% del total`,
       status:      "positive",
-      progress:    items.length > 0 ? Math.round((skusEnExistencia / items.length) * 100) : 0,
+      progress:    pctSkusEnExistencia,
     },
     {
       label:       "Requiere Stock",
@@ -95,10 +101,29 @@ export function StockView() {
     Number.isInteger(parsedAlmacen) && parsedAlmacen > 0 ? parsedAlmacen : null;
   const hasAlmacen = almacenId != null;
 
+  // ── Catálogo de almacenes: valida que el almacén de la URL exista y siga
+  // activo (no uno borrado/inactivo/inventado, p. ej. `?almacen=999`). ─────
+  const { data: warehouses, refetch: refetchWarehouses } = useWarehouses();
+  const warehousesLoaded = warehouses !== undefined;
+  const activeWarehouses = useMemo(
+    () =>
+      (warehouses ?? [])
+        .filter((w) => w.estatus === "ACTIVO")
+        .sort((a, b) => a.nombre.localeCompare(b.nombre)),
+    [warehouses],
+  );
+  // Solo se marca inválido una vez que ya sabemos qué almacenes existen; antes
+  // de eso se asume válido para no bloquear la consulta con una espera extra.
+  const isAlmacenInvalid =
+    hasAlmacen &&
+    warehousesLoaded &&
+    !activeWarehouses.some((w) => w.id_almacen === almacenId);
+
   const filters = almacenId ? { almacen_id: almacenId } : undefined;
 
-  // El fetch se activa solo cuando hay un almacén seleccionado: sin él no se
-  // consulta el backend y se muestra el estado vacío.
+  // El fetch se activa solo cuando hay un almacén seleccionado y no se sabe
+  // todavía que sea inválido: evita consultar existencias con un almacen_id
+  // que no corresponde a ningún almacén real o activo.
   const {
     data: stockItems = [],
     isLoading,
@@ -107,7 +132,7 @@ export function StockView() {
     refetch,
     isFetching,
     isPlaceholderData,
-  } = useStockItems(filters, { enabled: hasAlmacen });
+  } = useStockItems(filters, { enabled: hasAlmacen && !isAlmacenInvalid });
 
   // Cambio de almacén en curso: `keepPreviousData` sigue mostrando los datos
   // del almacén anterior mientras llega la nueva página. Distinto de
@@ -129,6 +154,17 @@ export function StockView() {
     const qs = params.toString();
     router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
   };
+
+  // Si el almacén de la URL no existe o ya no está activo, se cae en
+  // silencio al primero disponible (o se limpia el filtro si no hay ninguno)
+  // en vez de dejar una consulta inválida en curso con una etiqueta genérica
+  // de "sin selección".
+  useEffect(() => {
+    if (!isAlmacenInvalid) return;
+    const fallback = activeWarehouses[0] ?? null;
+    handleAlmacenChange(fallback ? fallback.id_almacen : null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAlmacenInvalid]);
 
   // ── Diálogo de información del SKU (renderizado fuera de la tabla; ver
   // `SkuColumnHeader` en StockColumns.tsx para el motivo) ──────────────────
@@ -166,53 +202,61 @@ export function StockView() {
       </div>
 
       {isLoading ? (
-        <div className="flex items-center justify-center py-20">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-sky-600" />
-          <span className="ml-3 text-sm text-slate-500">
-            Cargando existencias...
-          </span>
-        </div>
+        <Loader className="py-20" title="Cargando existencias..." />
       ) : isError ? (
-        <div className="rounded-xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 p-6 text-center">
-          <p className="text-sm font-semibold text-red-600 dark:text-red-400">
-            Error al cargar existencias
-          </p>
-          <p className="text-xs text-red-500 dark:text-red-300 mt-1">
-            {(error as Error).message}
-          </p>
-          <button
-            type="button"
-            onClick={() => refetch()}
-            className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-red-600 dark:text-red-400 hover:underline"
-          >
-            Reintentar
-          </button>
+        <div className="space-y-3">
+          <ErrorState
+            title="Error al cargar existencias"
+            message={(error as Error).message}
+          />
+          <div className="flex justify-center">
+            <button
+              type="button"
+              onClick={() => refetch()}
+              className="inline-flex items-center gap-1 text-xs font-medium text-red-600 dark:text-red-400 hover:underline"
+            >
+              Reintentar
+            </button>
+          </div>
         </div>
       ) : (
         // `animate-stock-reveal` da la entrada sutil al elegir un almacén.
         // El wrapper NO va keyeado por almacén, así que al cambiar entre dos
         // almacenes válidos permanece montado y la animación no se repite.
         <div className="space-y-6 animate-stock-reveal">
-          {/* ── KPIs calculados sobre los datos ya filtrados por almacén ──── */}
-          <StockStats items={stockItems} maxStock={maxStock} />
+          {/* ── KPIs calculados sobre los datos ya filtrados por almacén ────
+              Se atenúan mientras se cambia de almacén (`isSwitchingAlmacen`),
+              igual que la tabla, en vez de mostrar en silencio las cifras del
+              almacén anterior sin ningún indicador visual. */}
+          <div
+            className={
+              isSwitchingAlmacen
+                ? "blur-sm pointer-events-none select-none transition-[filter] duration-200"
+                : "transition-[filter] duration-200"
+            }
+          >
+            <StockStats items={stockItems} maxStock={maxStock} />
+          </div>
 
           {/* ── Tabla de existencias ───────────────────────────────────────
-              `key={almacenId}` remonta la tabla al cambiar de almacén, lo que
-              resetea la paginación a la página 1 (DataTable gestiona la página
-              internamente y no expone forma de resetearla desde fuera). */}
+              El componente permanece montado al cambiar de almacén: el
+              `queryKey` de `useStockItems` ya incluye el almacén y trae los
+              datos correctos sin remontar la tabla (lo que antes borraba
+              sort/búsqueda/filtros/columnas). Solo la paginación se reinicia
+              a la página 1, vía `paginationResetKey`. */}
           <DataTable
-            key={almacenId}
             columns={columns}
             data={enrichedData}
-            searchPlaceholder="Buscar por producto, SKU o almacén..."
+            searchPlaceholder="Buscar por producto o SKU..."
             filterConfig={stockFilterConfig}
             onRefetch={async () => {
-              await refetch();
+              await Promise.all([refetch(), refetchWarehouses()]);
             }}
             isRefetching={isFetching}
             isLoadingOverlay={isSwitchingAlmacen}
             loadingTitle="Actualizando existencias"
             loadingMessage="Estamos cargando las existencias del almacén seleccionado."
+            paginationResetKey={almacenId}
           />
         </div>
       )}

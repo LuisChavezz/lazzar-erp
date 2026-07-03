@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import { DropdownMenu } from "@radix-ui/themes";
 import {
   WarehouseIcon,
@@ -21,12 +22,31 @@ interface WarehouseFilterProps {
  * Replica el patrón visual del selector de sucursal del header (`WorkspaceInfo`).
  * Solo lista almacenes individuales: no existe una opción "todos los almacenes",
  * porque el negocio exige elegir siempre un almacén concreto antes de ver datos.
+ *
+ * No se extrajo un componente de dropdown compartido con `WorkspaceInfo`: al
+ * menos 10 componentes más en el proyecto (`ActionMenu`, `UserMenu`,
+ * `CustomerSearchDropdown`, etc.) también componen `DropdownMenu` de Radix
+ * directamente con su propio marcado, así que este no es un duplicado
+ * aislado sino la convención establecida. `WorkspaceInfo` además acopla
+ * lógica que este selector no tiene (hidratación del store, `branchSwitching`),
+ * por lo que forzar una abstracción común aquí arriesgaría ese componente ya
+ * en producción a cambio de un beneficio marginal.
  */
 export function WarehouseFilter({ value, onChange }: WarehouseFilterProps) {
   const { data: warehouses = [], isLoading } = useWarehouses();
 
+  // Solo almacenes activos, alfabéticos por nombre (misma convención que
+  // `useLocationForm` / `useStockMovementForm`).
+  const activeWarehouses = useMemo(
+    () =>
+      warehouses
+        .filter((w) => w.estatus === "ACTIVO")
+        .sort((a, b) => a.nombre.localeCompare(b.nombre)),
+    [warehouses],
+  );
+
   const selected =
-    value != null ? warehouses.find((w) => w.id_almacen === value) : undefined;
+    value != null ? activeWarehouses.find((w) => w.id_almacen === value) : undefined;
 
   const label = selected ? selected.nombre : "Selecciona un almacén";
 
@@ -66,29 +86,43 @@ export function WarehouseFilter({ value, onChange }: WarehouseFilterProps) {
           align="start"
           className="max-h-72 overflow-y-auto bg-white! dark:bg-zinc-900! dark:text-white!"
         >
-          {warehouses.map((w) => (
-            <DropdownMenu.Item
-              key={w.id_almacen}
-              onClick={() => onChange(w.id_almacen)}
-              className="flex min-w-52 cursor-pointer! items-center justify-between gap-3"
-            >
-              <span
-                className={`text-xs ${value === w.id_almacen ? "font-bold" : "font-medium"}`}
-              >
-                {w.nombre}
-              </span>
-              {value === w.id_almacen && (
-                <CheckCircleIcon className="h-4 w-4 text-emerald-500" />
-              )}
-            </DropdownMenu.Item>
-          ))}
-
-          {!isLoading && warehouses.length === 0 && (
+          {isLoading ? (
             <DropdownMenu.Item disabled className="text-xs">
-              <span className="text-xs font-medium text-slate-400">
-                No hay almacenes disponibles
+              <span className="flex items-center gap-2 text-xs font-medium text-slate-400">
+                <LoadingSpinnerIcon
+                  className="h-3.5 w-3.5 animate-spin"
+                  aria-hidden="true"
+                />
+                Cargando almacenes...
               </span>
             </DropdownMenu.Item>
+          ) : (
+            <>
+              {activeWarehouses.map((w) => (
+                <DropdownMenu.Item
+                  key={w.id_almacen}
+                  onClick={() => onChange(w.id_almacen)}
+                  className="flex min-w-52 cursor-pointer! items-center justify-between gap-3"
+                >
+                  <span
+                    className={`text-xs ${value === w.id_almacen ? "font-bold" : "font-medium"}`}
+                  >
+                    {w.nombre}
+                  </span>
+                  {value === w.id_almacen && (
+                    <CheckCircleIcon className="h-4 w-4 text-emerald-500" />
+                  )}
+                </DropdownMenu.Item>
+              ))}
+
+              {activeWarehouses.length === 0 && (
+                <DropdownMenu.Item disabled className="text-xs">
+                  <span className="text-xs font-medium text-slate-400">
+                    No hay almacenes disponibles
+                  </span>
+                </DropdownMenu.Item>
+              )}
+            </>
           )}
         </DropdownMenu.Content>
       </DropdownMenu.Root>
