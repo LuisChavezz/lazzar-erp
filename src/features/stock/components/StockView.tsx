@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   ExistenciasIcon,
   ErrorIcon,
@@ -14,11 +15,10 @@ import {
   getStockStatus,
 } from "./StockColumns";
 import { SkuInfoDialog } from "./SkuInfoDialog";
+import { WarehouseFilter } from "./WarehouseFilter";
+import { StockEmptyState } from "./StockEmptyState";
 import type { StockItem } from "../interfaces/stock.interface";
-import {
-  enrichStockWithStatus,
-  createStockFilterConfig,
-} from "./StockFilter";
+import { enrichStockWithStatus, stockFilterConfig } from "./StockFilter";
 
 
 
@@ -84,6 +84,21 @@ function StockStats({ items, maxStock }: { items: StockItem[]; maxStock: number 
  * El buscador interno y la paginación los gestiona `DataTable`.
  */
 export function StockView() {
+  // ── Filtro de almacén: la URL (`?almacen=<id>`) es la fuente de verdad ───
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  const almacenParam = searchParams.get("almacen");
+  const parsedAlmacen = almacenParam ? Number(almacenParam) : NaN;
+  const almacenId =
+    Number.isInteger(parsedAlmacen) && parsedAlmacen > 0 ? parsedAlmacen : null;
+  const hasAlmacen = almacenId != null;
+
+  const filters = almacenId ? { almacen_id: almacenId } : undefined;
+
+  // El fetch se activa solo cuando hay un almacén seleccionado: sin él no se
+  // consulta el backend y se muestra el estado vacío.
   const {
     data: stockItems = [],
     isLoading,
@@ -91,7 +106,29 @@ export function StockView() {
     error,
     refetch,
     isFetching,
-  } = useStockItems();
+    isPlaceholderData,
+  } = useStockItems(filters, { enabled: hasAlmacen });
+
+  // Cambio de almacén en curso: `keepPreviousData` sigue mostrando los datos
+  // del almacén anterior mientras llega la nueva página. Distinto de
+  // `isLoading` (que solo es true en la primera carga, sin datos previos que
+  // mostrar como placeholder).
+  const isSwitchingAlmacen = isFetching && isPlaceholderData;
+
+  // Cambiar de almacén es ajustar un filtro, no navegar: usamos `replace` para
+  // no ensuciar el historial (el botón "atrás" regresa a la pantalla previa en
+  // lugar de recorrer cada selección). La URL sigue siendo compartible y
+  // sobrevive al refresh / back-forward.
+  const handleAlmacenChange = (nextAlmacenId: number | null) => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (nextAlmacenId == null) {
+      params.delete("almacen");
+    } else {
+      params.set("almacen", String(nextAlmacenId));
+    }
+    const qs = params.toString();
+    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+  };
 
   // ── Diálogo de información del SKU (renderizado fuera de la tabla; ver
   // `SkuColumnHeader` en StockColumns.tsx para el motivo) ──────────────────
@@ -115,58 +152,70 @@ export function StockView() {
     [stockItems, maxStock],
   );
 
-  // ── Configuración de filtros para DataTable ─────────────────────────────
-  const stockFilterConfig = useMemo(
-    () => createStockFilterConfig(stockItems),
-    [stockItems],
-  );
-
-  // ── Estados de carga y error ─────────────────────────────────────────────
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-sky-600" />
-        <span className="ml-3 text-sm text-slate-500">Cargando existencias...</span>
-      </div>
-    );
-  }
-
-  if (isError) {
-    return (
-      <div className="rounded-xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 p-6 text-center">
-        <p className="text-sm font-semibold text-red-600 dark:text-red-400">
-          Error al cargar existencias
-        </p>
-        <p className="text-xs text-red-500 dark:text-red-300 mt-1">
-          {(error as Error).message}
-        </p>
-        <button
-          type="button"
-          onClick={() => refetch()}
-          className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-red-600 dark:text-red-400 hover:underline"
-        >
-          Reintentar
-        </button>
-      </div>
-    );
+  // ── Estado vacío: sin almacén seleccionado no se consulta ni se muestran
+  // KPIs/tabla. El selector va embebido para elegir uno desde aquí. ─────────
+  if (!hasAlmacen) {
+    return <StockEmptyState almacenId={almacenId} onSelect={handleAlmacenChange} />;
   }
 
   return (
     <div className="space-y-6">
-      {/* ── KPIs calculados sobre datos reales ───────────────────────────── */}
-      <StockStats items={stockItems} maxStock={maxStock} />
+      {/* ── Barra de filtros (siempre visible, incluso en carga/error) ───── */}
+      <div className="flex flex-wrap items-center gap-3">
+        <WarehouseFilter value={almacenId} onChange={handleAlmacenChange} />
+      </div>
 
-      {/* ── Tabla de existencias ─────────────────────────────────────────── */}
-      <DataTable
-        columns={columns}
-        data={enrichedData}
-        searchPlaceholder="Buscar por producto, SKU o almacén..."
-        filterConfig={stockFilterConfig}
-        onRefetch={async () => {
-          await refetch();
-        }}
-        isRefetching={isFetching}
-      />
+      {isLoading ? (
+        <div className="flex items-center justify-center py-20">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-sky-600" />
+          <span className="ml-3 text-sm text-slate-500">
+            Cargando existencias...
+          </span>
+        </div>
+      ) : isError ? (
+        <div className="rounded-xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 p-6 text-center">
+          <p className="text-sm font-semibold text-red-600 dark:text-red-400">
+            Error al cargar existencias
+          </p>
+          <p className="text-xs text-red-500 dark:text-red-300 mt-1">
+            {(error as Error).message}
+          </p>
+          <button
+            type="button"
+            onClick={() => refetch()}
+            className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-red-600 dark:text-red-400 hover:underline"
+          >
+            Reintentar
+          </button>
+        </div>
+      ) : (
+        // `animate-stock-reveal` da la entrada sutil al elegir un almacén.
+        // El wrapper NO va keyeado por almacén, así que al cambiar entre dos
+        // almacenes válidos permanece montado y la animación no se repite.
+        <div className="space-y-6 animate-stock-reveal">
+          {/* ── KPIs calculados sobre los datos ya filtrados por almacén ──── */}
+          <StockStats items={stockItems} maxStock={maxStock} />
+
+          {/* ── Tabla de existencias ───────────────────────────────────────
+              `key={almacenId}` remonta la tabla al cambiar de almacén, lo que
+              resetea la paginación a la página 1 (DataTable gestiona la página
+              internamente y no expone forma de resetearla desde fuera). */}
+          <DataTable
+            key={almacenId}
+            columns={columns}
+            data={enrichedData}
+            searchPlaceholder="Buscar por producto, SKU o almacén..."
+            filterConfig={stockFilterConfig}
+            onRefetch={async () => {
+              await refetch();
+            }}
+            isRefetching={isFetching}
+            isLoadingOverlay={isSwitchingAlmacen}
+            loadingTitle="Actualizando existencias"
+            loadingMessage="Estamos cargando las existencias del almacén seleccionado."
+          />
+        </div>
+      )}
 
       <SkuInfoDialog open={skuInfoOpen} onOpenChange={setSkuInfoOpen} />
     </div>
