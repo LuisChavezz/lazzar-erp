@@ -10,16 +10,19 @@ import { FormTextarea } from "@/src/components/FormTextarea";
 import { QuantitySelector } from "@/src/components/QuantitySelector";
 import { PackageCheckIcon } from "@/src/components/Icons";
 import { useReceiptForm } from "../hooks/useReceiptForm";
-import type { ReceiptOnboardingPurchaseOrder } from "../interfaces/receipt-onboarding.interface";
+import type {
+  ReceiptOrderCandidate,
+  ReceiptOnboardingPurchaseOrderDetalle,
+} from "../interfaces/receipt-onboarding.interface";
 
 interface ReceiptFormProps {
   onSuccess: () => void;
-  purchaseOrder: ReceiptOnboardingPurchaseOrder;
+  candidate: ReceiptOrderCandidate;
 }
 
 export default function ReceiptForm({
   onSuccess,
-  purchaseOrder,
+  candidate,
 }: ReceiptFormProps) {
   const {
     form,
@@ -27,13 +30,22 @@ export default function ReceiptForm({
     formKey,
     isPending,
     warehouses,
-    purchaseOrder: po,
     getError,
     clearFieldErrors,
     validateField,
     handleReset,
     handleFormSubmit,
-  } = useReceiptForm({ onSuccess, purchaseOrder });
+  } = useReceiptForm({ onSuccess, candidate });
+
+  const { order } = candidate;
+  // Ambos tipos comparten la forma base del detalle; producción sólo añade
+  // `producto_variante_id` (consumido en el submit, no en el render). Normalizar
+  // a la base permite iterar sin narrowing en el JSX.
+  const detalle: ReceiptOnboardingPurchaseOrderDetalle[] = order.detalle;
+  const headerSubtitle =
+    candidate.type === "compra"
+      ? `Orden: ${candidate.order.folio} — ${candidate.order.proveedor_nombre}`
+      : `Orden: ${candidate.order.folio}`;
 
   return (
     <form
@@ -57,7 +69,7 @@ export default function ReceiptForm({
                 Datos de Recepción
               </h3>
               <p className="text-xs text-slate-500">
-                Orden: {po.folio} — {po.proveedor_nombre}
+                {headerSubtitle}
               </p>
             </div>
           </div>
@@ -223,8 +235,8 @@ export default function ReceiptForm({
           </div>
         </section>
 
-        {/* ── Detalle de la OC ──────────────────────────────────────── */}
-        {po.detalle.length > 0 && (
+        {/* ── Detalle de la orden ───────────────────────────────────── */}
+        {detalle.length > 0 && (
           <section className="bg-white dark:bg-zinc-900 rounded-3xl border border-slate-200 dark:border-white/5 shadow-sm dark:shadow-none overflow-hidden hover:shadow-lg transition-shadow duration-300 mb-8">
             <div className="px-8 py-4 border-b border-slate-100 dark:border-white/5 flex items-center gap-3 bg-slate-50/50 dark:bg-white/2">
               <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-100 dark:bg-emerald-500/20">
@@ -235,14 +247,14 @@ export default function ReceiptForm({
                   Detalle de Productos
                 </h3>
                 <p className="text-xs text-slate-500">
-                  {po.detalle.length} producto{po.detalle.length > 1 ? "s" : ""} — Capturar cantidad recibida
+                  {detalle.length} producto{detalle.length > 1 ? "s" : ""} — Capturar cantidad recibida
                 </p>
               </div>
             </div>
 
             <div className="p-4">
               <div className="divide-y divide-slate-100 dark:divide-white/5">
-                {po.detalle.map((d) => {
+                {detalle.map((d) => {
                   const fieldName = `cantidades.${d.id}` as const;
                   return (
                     <div

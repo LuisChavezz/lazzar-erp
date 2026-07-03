@@ -8,14 +8,15 @@ import { ReceiptFormSchema, type ReceiptFormValues } from "../schemas/receipt.sc
 import { useReceiptOnboardingData } from "./useReceiptOnboardingData";
 import { useCreateReceipt } from "./useCreateReceipt";
 import type {
-  ReceiptOnboardingPurchaseOrder,
+  ReceiptOrderCandidate,
   ReceiptCreatePayload,
-  ReceiptCreateDetalle,
+  ReceiptCreatePurchaseOrderDetalle,
+  ReceiptCreateProductionOrderDetalle,
 } from "../interfaces/receipt-onboarding.interface";
 
 interface UseReceiptFormParams {
   onSuccess: () => void;
-  purchaseOrder: ReceiptOnboardingPurchaseOrder;
+  candidate: ReceiptOrderCandidate;
 }
 
 type ReceiptFormField = keyof ReceiptFormValues;
@@ -53,7 +54,7 @@ const scrollToFirstValidationError = (
   }
 };
 
-export function useReceiptForm({ onSuccess, purchaseOrder }: UseReceiptFormParams) {
+export function useReceiptForm({ onSuccess, candidate }: UseReceiptFormParams) {
   // ── Catálogos desde onboarding ────────────────────────────────────────
   const { onboardingData } = useReceiptOnboardingData();
   const warehouses = onboardingData?.catalogos.almacenes ?? [];
@@ -155,41 +156,70 @@ export function useReceiptForm({ onSuccess, purchaseOrder }: UseReceiptFormParam
     onSubmit: async ({ value }) => {
       if (!validateForm(value)) return;
 
-      // Build detalle array — use reduce to narrow cantidad through the guard clause
-      const detalle = purchaseOrder.detalle.reduce<
-        Omit<ReceiptCreateDetalle, "producto_variante" | "ubicacion">[]
-      >(
-        (acc, d) => {
-          const cantidad = value.cantidades[String(d.id)];
-          if (
-            cantidad === undefined ||
-            cantidad.trim() === "" ||
-            Number(cantidad) <= 0
-          ) {
-            return acc;
-          }
+      // Guard: keep only detail rows with a positive received quantity.
+      const hasQuantity = (id: number) => {
+        const cantidad = value.cantidades[String(id)];
+        return !(
+          cantidad === undefined ||
+          cantidad.trim() === "" ||
+          Number(cantidad) <= 0
+        );
+      };
+      const cantidadFor = (id: number) => value.cantidades[String(id)];
+
+      // Shared header fields (identical for both order types).
+      const recepcionBase = {
+        almacen: value.almacen,
+        serie_codigo: value.serie_codigo,
+        fecha_recepcion: new Date().toISOString(),
+        remision: value.remision,
+        factura_referencia: value.factura_referencia,
+        observaciones: value.observaciones,
+        transportista: null,
+      };
+
+      let payload: ReceiptCreatePayload;
+
+      if (candidate.type === "compra") {
+        const detalle = candidate.order.detalle.reduce<
+          ReceiptCreatePurchaseOrderDetalle[]
+        >((acc, d) => {
+          if (!hasQuantity(d.id)) return acc;
           acc.push({
             orden_compra_detalle: d.id,
-            cantidad_recibida: cantidad,
+            cantidad_recibida: cantidadFor(d.id),
           });
           return acc;
-        },
-        [],
-      );
+        }, []);
 
-      const payload: ReceiptCreatePayload = {
-        recepcion: {
-          orden_compra: purchaseOrder.id,
-          almacen: value.almacen,
-          serie_codigo: value.serie_codigo,
-          fecha_recepcion: new Date().toISOString(),
-          remision: value.remision,
-          factura_referencia: value.factura_referencia,
-          observaciones: value.observaciones,
-          transportista: null,
-        },
-        detalle: detalle as ReceiptCreateDetalle[],
-      };
+        payload = {
+          recepcion: {
+            orden_compra: candidate.order.id,
+            ...recepcionBase,
+          },
+          detalle,
+        };
+      } else {
+        const detalle = candidate.order.detalle.reduce<
+          ReceiptCreateProductionOrderDetalle[]
+        >((acc, d) => {
+          if (!hasQuantity(d.id)) return acc;
+          acc.push({
+            orden_produccion_detalle: d.id,
+            cantidad_recibida: cantidadFor(d.id),
+            producto_variante: d.producto_variante_id ?? null,
+          });
+          return acc;
+        }, []);
+
+        payload = {
+          recepcion: {
+            orden_produccion: candidate.order.id,
+            ...recepcionBase,
+          },
+          detalle,
+        };
+      }
 
       createReceiptMutation.mutate(payload, {
         onSuccess: () => {
@@ -214,7 +244,7 @@ export function useReceiptForm({ onSuccess, purchaseOrder }: UseReceiptFormParam
   };
 
   // ── ID único para key del formulario ──────────────────────────────────
-  const formKey = `receipt-po-${purchaseOrder.id}`;
+  const formKey = `receipt-${candidate.type}-${candidate.order.id}`;
 
   return {
     form,
@@ -222,7 +252,7 @@ export function useReceiptForm({ onSuccess, purchaseOrder }: UseReceiptFormParam
     formKey,
     isPending: createReceiptMutation.isPending,
     warehouses,
-    purchaseOrder,
+    candidate,
     getError,
     clearFieldErrors,
     validateField,

@@ -48,7 +48,7 @@ export function StockEmptyState({ almacenId, onSelect }: StockEmptyStateProps) {
 
   if (hasNoWarehouses) {
     return (
-      <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-slate-300 bg-slate-50/60 px-6 py-16 text-center dark:border-slate-700 dark:bg-white/[0.02]">
+      <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-slate-300 bg-slate-50/60 px-6 py-16 text-center dark:border-slate-700 dark:bg-white/2">
         <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-slate-100 text-slate-400 dark:bg-white/5 dark:text-slate-500">
           <WarehouseIcon className="h-8 w-8" aria-hidden="true" />
         </div>
@@ -63,7 +63,7 @@ export function StockEmptyState({ almacenId, onSelect }: StockEmptyStateProps) {
   }
 
   return (
-    <div className="flex flex-col items-center justify-center gap-5 rounded-2xl border border-dashed border-slate-300 bg-slate-50/60 px-6 py-16 text-center dark:border-slate-700 dark:bg-white/[0.02]">
+    <div className="flex flex-col items-center justify-center gap-5 rounded-2xl border border-dashed border-slate-300 bg-slate-50/60 px-6 py-16 text-center dark:border-slate-700 dark:bg-white/2">
       <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-sky-50 text-sky-500 dark:bg-sky-500/10 dark:text-sky-400">
         <WarehouseIcon className="h-8 w-8" aria-hidden="true" />
       </div>
