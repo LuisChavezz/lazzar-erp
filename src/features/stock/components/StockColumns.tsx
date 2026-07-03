@@ -2,11 +2,10 @@
 
 import { useState } from "react";
 import { createColumnHelper, type ColumnDef } from "@tanstack/react-table";
-import { ActionMenu, type ActionMenuItem } from "@/src/components/ActionMenu";
-import { MapPinIcon, HistoryIcon } from "@/src/components/Icons";
+import { InfoIcon, MapPinIcon } from "@/src/components/Icons";
 import { StockItem } from "../interfaces/stock.interface";
-import { WmsStockHistoryDialog } from "../../wms/components/WmsStockHistoryDialog";
 import { colorToHex } from "./stock-colors";
+import { SkuInfoDialog } from "./SkuInfoDialog";
 
 // ─── Tipos de estado de stock ─────────────────────────────────────────────────
 
@@ -43,27 +42,35 @@ export const STATUS_CONFIG: Record<
   critical: { label: "Crítico", dot: "bg-red-500 animate-pulse",   textClass: "text-red-600 dark:text-red-400",         pillActive: "bg-red-500 text-white shadow-red-500/30"         },
 };
 
-// ─── Componente: celda de acciones ────────────────────────────────────────────
 
-function ActionsCell({ stock }: { stock: StockItem }) {
-  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+// ─── Encabezado de columna SKU ───────────────────────────────────────────────
 
-  const actionItems: ActionMenuItem[] = [
-    {
-      label: "Ver historial",
-      icon: HistoryIcon,
-      // onSelect: () => setIsHistoryOpen(true),
-    },
-  ];
+/**
+ * Encabezado de la columna "SKU" con un ícono de información que abre un diálogo
+ * explicativo del formato del código. Es un componente autónomo (gestiona su
+ * propio estado del diálogo) para no depender del componente que renderiza la
+ * tabla. El `stopPropagation` evita que el clic en el ícono active el ordenamiento
+ * del `<th>` en DataTable.
+ */
+function SkuColumnHeader() {
+  const [skuInfoOpen, setSkuInfoOpen] = useState(false);
 
   return (
-    <div className="flex items-center justify-center">
-      <ActionMenu items={actionItems} ariaLabel="Acciones de existencias" />
-      <WmsStockHistoryDialog
-        open={isHistoryOpen}
-        onOpenChange={setIsHistoryOpen}
-        stockItem={stock}
-      />
+    <div className="flex items-center gap-1">
+      <span>SKU</span>
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          setSkuInfoOpen(true);
+        }}
+        onKeyDown={(e) => e.stopPropagation()}
+        className="rounded p-0.5 text-slate-400 hover:text-sky-500 dark:hover:text-sky-400 transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-sky-500/50"
+        aria-label="Información sobre el formato de SKU"
+      >
+        <InfoIcon className="w-3.5 h-3.5" />
+      </button>
+      <SkuInfoDialog open={skuInfoOpen} onOpenChange={setSkuInfoOpen} />
     </div>
   );
 }
@@ -90,7 +97,7 @@ export function getStockColumns(maxStock?: number) {
       (row) => row.producto_info.sku,
       {
         id: "sku",
-        header: "SKU",
+        header: () => <SkuColumnHeader />,
         meta: { label: "SKU" } as const,
         cell: (info) => {
           const sku = info.getValue();
