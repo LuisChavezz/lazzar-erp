@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import {
   ExistenciasIcon,
   ErrorIcon,
@@ -13,6 +13,7 @@ import {
   getStockColumns,
   getStockStatus,
 } from "./StockColumns";
+import { SkuInfoDialog } from "./SkuInfoDialog";
 import type { StockItem } from "../interfaces/stock.interface";
 import {
   enrichStockWithStatus,
@@ -92,6 +93,10 @@ export function StockView() {
     isFetching,
   } = useStockItems();
 
+  // ── Diálogo de información del SKU (renderizado fuera de la tabla; ver
+  // `SkuColumnHeader` en StockColumns.tsx para el motivo) ──────────────────
+  const [skuInfoOpen, setSkuInfoOpen] = useState(false);
+
   // ── Máximo stock para normalizar el anillo ───────────────────────────────
   const maxStock = useMemo(
     () => stockItems.reduce((max, item) => Math.max(max, item.stock), 0),
@@ -99,7 +104,10 @@ export function StockView() {
   );
 
   // ── Columnas con el maxStock calculado ───────────────────────────────────
-  const columns = useMemo(() => getStockColumns(maxStock || undefined), [maxStock]);
+  const columns = useMemo(
+    () => getStockColumns(maxStock || undefined, () => setSkuInfoOpen(true)),
+    [maxStock],
+  );
 
   // ── Datos enriquecidos con estado computado para filtros ─────────────────
   const enrichedData = useMemo(
@@ -159,6 +167,8 @@ export function StockView() {
         }}
         isRefetching={isFetching}
       />
+
+      <SkuInfoDialog open={skuInfoOpen} onOpenChange={setSkuInfoOpen} />
     </div>
   );
 }

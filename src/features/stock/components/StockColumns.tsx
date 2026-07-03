@@ -1,11 +1,9 @@
 "use client";
 
-import { useState } from "react";
 import { createColumnHelper, type ColumnDef } from "@tanstack/react-table";
 import { InfoIcon, MapPinIcon } from "@/src/components/Icons";
 import { StockItem } from "../interfaces/stock.interface";
 import { colorToHex } from "./stock-colors";
-import { SkuInfoDialog } from "./SkuInfoDialog";
 
 // ─── Tipos de estado de stock ─────────────────────────────────────────────────
 
@@ -46,15 +44,10 @@ export const STATUS_CONFIG: Record<
 // ─── Encabezado de columna SKU ───────────────────────────────────────────────
 
 /**
- * Encabezado de la columna "SKU" con un ícono de información que abre un diálogo
- * explicativo del formato del código. Es un componente autónomo (gestiona su
- * propio estado del diálogo) para no depender del componente que renderiza la
- * tabla. El `stopPropagation` evita que el clic en el ícono active el ordenamiento
- * del `<th>` en DataTable.
+ * Encabezado de la columna "SKU" con un ícono de información. El diálogo
+ * explicativo.
  */
-function SkuColumnHeader() {
-  const [skuInfoOpen, setSkuInfoOpen] = useState(false);
-
+function SkuColumnHeader({ onInfoClick }: { onInfoClick?: () => void }) {
   return (
     <div className="flex items-center gap-1">
       <span>SKU</span>
@@ -62,7 +55,7 @@ function SkuColumnHeader() {
         type="button"
         onClick={(e) => {
           e.stopPropagation();
-          setSkuInfoOpen(true);
+          onInfoClick?.();
         }}
         onKeyDown={(e) => e.stopPropagation()}
         className="rounded p-0.5 text-slate-400 hover:text-sky-500 dark:hover:text-sky-400 transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-sky-500/50"
@@ -70,7 +63,6 @@ function SkuColumnHeader() {
       >
         <InfoIcon className="w-3.5 h-3.5" />
       </button>
-      <SkuInfoDialog open={skuInfoOpen} onOpenChange={setSkuInfoOpen} />
     </div>
   );
 }
@@ -87,9 +79,11 @@ const DEFAULT_MAX_STOCK = 1000;
 
 /**
  * Retorna las columnas configuradas para la tabla de existencias.
- * Recibe el valor máximo de stock del conjunto de datos para escalar los anillos.
+ * Recibe el valor máximo de stock del conjunto de datos para escalar los anillos
+ * y un callback opcional que el componente padre usa para abrir el diálogo de
+ * información del SKU (ver `SkuColumnHeader` para el motivo de este diseño).
  */
-export function getStockColumns(maxStock?: number) {
+export function getStockColumns(maxStock?: number, onSkuInfoClick?: () => void) {
   const effectiveMax = maxStock ?? DEFAULT_MAX_STOCK;
 
   return [
@@ -97,7 +91,7 @@ export function getStockColumns(maxStock?: number) {
       (row) => row.producto_info.sku,
       {
         id: "sku",
-        header: () => <SkuColumnHeader />,
+        header: () => <SkuColumnHeader onInfoClick={onSkuInfoClick} />,
         meta: { label: "SKU" } as const,
         cell: (info) => {
           const sku = info.getValue();

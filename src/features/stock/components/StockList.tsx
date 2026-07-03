@@ -1,20 +1,28 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { DataTable } from "@/src/components/DataTable";
 import { ErrorState } from "@/src/components/ErrorState";
 import { getStockColumns } from "./StockColumns";
+import { SkuInfoDialog } from "./SkuInfoDialog";
 import { useStockItems } from "../hooks/useStockItems";
 
 export const StockList = () => {
   const { data: stockItems = [], isLoading, isError, error, refetch, isFetching } = useStockItems();
+
+  // ── Diálogo de información del SKU (renderizado fuera de la tabla; ver
+  // `SkuColumnHeader` en StockColumns.tsx para el motivo) ──────────────────
+  const [skuInfoOpen, setSkuInfoOpen] = useState(false);
 
   const maxStock = useMemo(
     () => stockItems.reduce((max, item) => Math.max(max, item.stock), 0),
     [stockItems],
   );
 
-  const columns = useMemo(() => getStockColumns(maxStock || undefined), [maxStock]);
+  const columns = useMemo(
+    () => getStockColumns(maxStock || undefined, () => setSkuInfoOpen(true)),
+    [maxStock],
+  );
 
   if (isLoading) {
     return (
@@ -45,6 +53,8 @@ export const StockList = () => {
         }}
         isRefetching={isFetching}
       />
+
+      <SkuInfoDialog open={skuInfoOpen} onOpenChange={setSkuInfoOpen} />
     </div>
   );
 };
