@@ -727,7 +727,7 @@ export function DataTable<TData, TValue>({
           mensaje de vacío se muestra dentro del cuerpo de la tabla. */}
       <div className="relative w-full rounded-2xl border border-slate-200 dark:border-white/20 shadow-sm bg-white dark:bg-black">
           <div
-            className={`overflow-x-auto [scrollbar-gutter:stable] rounded-2xl max-w-full bg-white dark:bg-black transition-all ${
+            className={`overflow-x-auto rounded-2xl max-w-full bg-white dark:bg-black transition-all ${
               visibleRows.length > 0 || isLoadingOverlay ? "h-120" : ""
             } ${
               isLoadingOverlay ? "blur-sm pointer-events-none select-none" : ""
