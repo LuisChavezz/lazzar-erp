@@ -167,19 +167,6 @@ export function getStockColumns(maxStock?: number, onSkuInfoClick?: () => void) 
       }
     ),
     columnHelper.accessor(
-      (row) => row.almacen_info?.nombre ?? "",
-      {
-        id: "almacen",
-        header: "Almacén",
-        meta: { label: "Almacén" } as const,
-        cell: (info) => (
-          <span className="text-xs text-slate-600 dark:text-slate-300">
-            {info.getValue()}
-          </span>
-        ),
-      }
-    ),
-    columnHelper.accessor(
       (row) => row.stock,
       {
         id: "disponible",

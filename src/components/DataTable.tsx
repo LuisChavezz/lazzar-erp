@@ -71,6 +71,8 @@ interface DataTableProps<TData, TValue> {
   isLoadingOverlay?: boolean;
   loadingTitle?: string;
   loadingMessage?: string;
+  /** Al cambiar, reinicia la paginación a la página 1 sin afectar sorting, búsqueda, filtros o columnas. */
+  paginationResetKey?: string | number;
 }
 
 export function DataTable<TData, TValue>({
@@ -89,6 +91,7 @@ export function DataTable<TData, TValue>({
   isLoadingOverlay = false,
   loadingTitle,
   loadingMessage,
+  paginationResetKey,
 }: DataTableProps<TData, TValue>) {
   const searchInputId = useId();
   const columnsMenuId = `${searchInputId}-columns-menu`;
@@ -102,6 +105,15 @@ export function DataTable<TData, TValue>({
     pageIndex: 0,
     pageSize: 10,
   });
+  
+  // Reset pagination when paginationResetKey changes
+  const previousPaginationResetKeyRef = useRef(paginationResetKey);
+  useEffect(() => {
+    if (paginationResetKey === undefined) return;
+    if (previousPaginationResetKeyRef.current === paginationResetKey) return;
+    previousPaginationResetKeyRef.current = paginationResetKey;
+    setPagination((prev) => ({ ...prev, pageIndex: 0 }));
+  }, [paginationResetKey]);
   const [draggedColumnId, setDraggedColumnId] = useState<string | null>(null);
   const [dragOverColumnId, setDragOverColumnId] = useState<string | null>(null);
   const [isSearchExpanded, setIsSearchExpanded] = useState(false);

@@ -18,50 +18,22 @@ export function enrichStockWithStatus(
   }));
 }
 
-/** Construye las opciones de almacén a partir de los items de stock. */
-function buildWarehouseOptions(
-  items: StockItem[],
-): { value: string; label: string }[] {
-  const map = new Map<number, string>();
-  for (const item of items) {
-    const id = item.almacen;
-    const nombre = item.almacen_info?.nombre;
-    if (id != null && nombre && !map.has(id)) {
-      map.set(id, nombre);
-    }
-  }
-  return Array.from(map.entries())
-    .sort(([, a], [, b]) => a.localeCompare(b))
-    .map(([id, nombre]) => ({
-      value: String(id),
-      label: nombre,
-    }));
-}
-
 // ─── Factory de configuración de filtros ─────────────────────────────────────
 
 /**
- * Crea la configuración de filtros para la tabla de existencias.
- * Debe llamarse dentro de un `useMemo` con los items como dependencia.
+ * Configuración de filtros para la tabla de existencias.
+ * El filtro de almacén vive exclusivamente en `WarehouseFilter` (selector
+ * requerido vía `?almacen=<id>`), por lo que no se expone aquí.
  */
-export function createStockFilterConfig(
-  items: StockItem[],
-): DataTableFilterConfig[] {
-  return [
-    {
-      id: "almacen",
-      label: "Almacén",
-      options: buildWarehouseOptions(items),
-    },
-    {
-      id: "estado",
-      label: "Estado",
-      options: [
-        { value: "full", label: "Óptimo" },
-        { value: "ok", label: "Normal" },
-        { value: "low", label: "Bajo" },
-        { value: "critical", label: "Crítico" },
-      ],
-    },
-  ];
-}
+export const stockFilterConfig: DataTableFilterConfig[] = [
+  {
+    id: "estado",
+    label: "Estado",
+    options: [
+      { value: "full", label: "Óptimo" },
+      { value: "ok", label: "Normal" },
+      { value: "low", label: "Bajo" },
+      { value: "critical", label: "Crítico" },
+    ],
+  },
+];
