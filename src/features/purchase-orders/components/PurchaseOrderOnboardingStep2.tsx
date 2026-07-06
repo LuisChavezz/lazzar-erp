@@ -2,10 +2,13 @@
 
 import { useMemo, useState } from "react";
 import { SearchInput } from "@/src/components/SearchInput";
-import { CheckIcon, PlusIcon } from "@/src/components/Icons";
+import { CheckIcon } from "@/src/components/Icons";
+import { QuantitySelector } from "@/src/components/QuantitySelector";
+import { PriceInput } from "@/src/components/PriceInput";
 import { FormSubmitButton } from "@/src/components/FormButtons";
 import type { PurchaseOrderEncabezados, PurchaseOrderOnboardingData, PurchaseOrderOnboardingResponse } from "../interfaces/purchase-order-onboarding.interface";
 import { usePostPurchaseOrder } from "../hooks/usePostPurchaseOrder";
+import { usePriceEntries } from "../hooks/usePriceEntries";
 
 interface PurchaseOrderOnboardingStep2Props {
   /** Captured encabezados from Step 1. */
@@ -22,6 +25,8 @@ export function PurchaseOrderOnboardingStep2({
 }: PurchaseOrderOnboardingStep2Props) {
   const [searchQuery, setSearchQuery] = useState("");
   const [quantities, setQuantities] = useState<Record<number, number>>({});
+  const { prices, setPrice, togglePrice, priceErrors, hasPriceErrors } =
+    usePriceEntries(quantities);
   const { mutateAsync: postDetalles, isPending } = usePostPurchaseOrder();
 
   const products = useMemo(
@@ -51,12 +56,13 @@ export function PurchaseOrderOnboardingStep2({
       }
       return next;
     });
+    togglePrice(id, () => {
+      const product = products.find((p) => p.id === id);
+      return (product?.precio_base ?? 0).toFixed(2);
+    });
   };
 
-  const updateQuantity = (id: number, raw: string) => {
-    // Allow only positive integers
-    const sanitized = raw.replace(/[^0-9]/g, "");
-    const qty = sanitized === "" ? 1 : Math.max(1, parseInt(sanitized, 10) || 1);
+  const updateQuantity = (id: number, qty: number) => {
     setQuantities((prev) => ({ ...prev, [id]: qty }));
   };
 
@@ -65,15 +71,16 @@ export function PurchaseOrderOnboardingStep2({
 
   // ── Submit ───────────────────────────────────────────────────────────────
   const handleSubmit = () => {
-    if (selectedCount === 0) return;
+    if (selectedCount === 0 || hasPriceErrors) return;
 
     const detalle = Object.entries(quantities).map(([productoIdStr, cantidad]) => {
       const productoId = Number(productoIdStr);
       const product = products.find((p) => p.id === productoId);
+      const precio = parseFloat(prices[productoId] ?? "").toFixed(2);
       return {
         producto: productoId,
         cantidad,
-        precio: product?.precio_base.toFixed(2) ?? "0.00",
+        precio,
         descripcion: product?.nombre ?? "",
       };
     });
@@ -155,38 +162,24 @@ export function PurchaseOrderOnboardingStep2({
                 </div>
               </button>
 
-              {/* Quantity input (only when selected) */}
+              {/* Quantity + price inputs (only when selected) */}
               {selected && (
-                <div className="shrink-0 flex items-center gap-1">
-                  <button
-                    type="button"
-                    onClick={() => updateQuantity(product.id, String(Math.max(1, qty - 1)))}
-                    className="w-7 h-7 rounded-md border border-slate-300 dark:border-slate-600 flex items-center justify-center text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/10 transition-colors cursor-pointer bg-transparent"
-                    aria-label="Reducir cantidad"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5"><path d="M5 12h14"/></svg>
-                  </button>
-                  <input
-                    type="text"
-                    inputMode="numeric"
+                <div className="shrink-0 flex items-center gap-2">
+                  <QuantitySelector
                     value={qty}
-                    onChange={(e) => updateQuantity(product.id, e.target.value)}
-                    onFocus={(e) => e.target.select()}
-                    className="w-12 text-center text-sm font-semibold bg-transparent border border-slate-300 dark:border-slate-600 rounded-md py-1 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-sky-500/50 focus:border-sky-500"
-                    aria-label={`Cantidad de ${product.nombre}`}
+                    onChange={(next) => updateQuantity(product.id, next)}
+                    label={`Cantidad de ${product.nombre}`}
                   />
-                  <button
-                    type="button"
-                    onClick={() => updateQuantity(product.id, String(qty + 1))}
-                    className="w-7 h-7 rounded-md border border-slate-300 dark:border-slate-600 flex items-center justify-center text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/10 transition-colors cursor-pointer bg-transparent"
-                    aria-label="Aumentar cantidad"
-                  >
-                    <PlusIcon className="w-3.5 h-3.5" />
-                  </button>
+                  <PriceInput
+                    value={prices[product.id] ?? ""}
+                    onChange={(next) => setPrice(product.id, next)}
+                    error={priceErrors[product.id]}
+                    label={`Precio de ${product.nombre}`}
+                  />
                 </div>
               )}
 
-              {/* Price */}
+              {/* Price (read-only, before selection) */}
               {!selected && (
                 <span className="shrink-0 text-xs font-bold text-slate-600 dark:text-slate-300">
                   ${Number(product.precio_base).toFixed(2)}
@@ -209,7 +202,7 @@ export function PurchaseOrderOnboardingStep2({
       <div className="flex justify-end pt-2">
         <FormSubmitButton
           isPending={isPending}
-          disabled={selectedCount === 0 || isPending}
+          disabled={selectedCount === 0 || isPending || hasPriceErrors}
           onClick={(e) => {
             e.preventDefault();
             handleSubmit();

@@ -20,3 +20,14 @@ export const PurchaseOrderEncabezadosSchema = z.object({
 export type PurchaseOrderEncabezadosFormValues = z.infer<
   typeof PurchaseOrderEncabezadosSchema
 >;
+
+/**
+ * Valida el precio unitario editable de un renglón de producto (Step 2 de
+ * alta). El precio viaja como string numérico (mismo formato que
+ * `PurchaseOrderDetalleItem.precio`).
+ */
+export const PurchaseOrderDetallePrecioSchema = z
+  .string()
+  .refine((v) => !Number.isNaN(parseFloat(v)) && parseFloat(v) > 0, {
+    message: "El precio debe ser mayor a 0",
+  });
