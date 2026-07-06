@@ -1,0 +1,31 @@
+export interface AccountingCustomer {
+  id: number;
+  razon_social: string;
+  correo: string;
+  telefono: string;
+  giro_empresarial: string;
+  nombre: string;
+  rfc: string;
+  direccion_fiscal: string;
+  colonia: string;
+  codigo_postal: string;
+  ciudad: string;
+  estado: string;
+  activo: boolean;
+  clave: string | null;
+  numero_exterior: string | null;
+  numero_interior: string | null;
+  delegacion: string | null;
+  contacto: string | null;
+  telefono_2: string | null;
+  pais: string | null;
+  curp: string | null;
+  pais_cel: string | null;
+  celular: string | null;
+  web: string | null;
+  empresa: number | null;
+  vendedores: number[];
+  sat_regimen_fiscal: number | null;
+  sat_uso_cfdi: number | null;
+  sucursal: number | null;
+}
