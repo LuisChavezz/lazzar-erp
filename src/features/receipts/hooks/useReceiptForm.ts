@@ -8,14 +8,15 @@ import { ReceiptFormSchema, type ReceiptFormValues } from "../schemas/receipt.sc
 import { useReceiptOnboardingData } from "./useReceiptOnboardingData";
 import { useCreateReceipt } from "./useCreateReceipt";
 import type {
-  ReceiptOnboardingPurchaseOrder,
+  ReceiptOrderCandidate,
   ReceiptCreatePayload,
-  ReceiptCreateDetalle,
+  ReceiptCreatePurchaseOrderDetalle,
+  ReceiptCreateProductionOrderDetalle,
 } from "../interfaces/receipt-onboarding.interface";
 
 interface UseReceiptFormParams {
   onSuccess: () => void;
-  purchaseOrder: ReceiptOnboardingPurchaseOrder;
+  candidate: ReceiptOrderCandidate;
 }
 
 type ReceiptFormField = keyof ReceiptFormValues;
@@ -53,7 +54,27 @@ const scrollToFirstValidationError = (
   }
 };
 
-export function useReceiptForm({ onSuccess, purchaseOrder }: UseReceiptFormParams) {
+// Recorre el detalle de la orden y construye los renglones del payload,
+// descartando los que no tengan una cantidad recibida positiva. El tipo de
+// orden sólo afecta la forma del renglón (`buildRow`), que cada rama de
+// `onSubmit` define con su propia clave de id de detalle.
+function reduceDetalle<D extends { id: number }, T>(
+  detalle: D[],
+  cantidades: ReceiptFormValues["cantidades"],
+  buildRow: (item: D, cantidadRecibida: string) => T,
+): T[] {
+  return detalle.reduce<T[]>((acc, item) => {
+    const cantidad = cantidades[String(item.id)];
+    const tieneCantidad = !(
+      cantidad === undefined || cantidad.trim() === "" || Number(cantidad) <= 0
+    );
+    if (!tieneCantidad) return acc;
+    acc.push(buildRow(item, cantidad));
+    return acc;
+  }, []);
+}
+
+export function useReceiptForm({ onSuccess, candidate }: UseReceiptFormParams) {
   // ── Catálogos desde onboarding ────────────────────────────────────────
   const { onboardingData } = useReceiptOnboardingData();
   const warehouses = onboardingData?.catalogos.almacenes ?? [];
@@ -155,41 +176,53 @@ export function useReceiptForm({ onSuccess, purchaseOrder }: UseReceiptFormParam
     onSubmit: async ({ value }) => {
       if (!validateForm(value)) return;
 
-      // Build detalle array — use reduce to narrow cantidad through the guard clause
-      const detalle = purchaseOrder.detalle.reduce<
-        Omit<ReceiptCreateDetalle, "producto_variante" | "ubicacion">[]
-      >(
-        (acc, d) => {
-          const cantidad = value.cantidades[String(d.id)];
-          if (
-            cantidad === undefined ||
-            cantidad.trim() === "" ||
-            Number(cantidad) <= 0
-          ) {
-            return acc;
-          }
-          acc.push({
-            orden_compra_detalle: d.id,
-            cantidad_recibida: cantidad,
-          });
-          return acc;
-        },
-        [],
-      );
-
-      const payload: ReceiptCreatePayload = {
-        recepcion: {
-          orden_compra: purchaseOrder.id,
-          almacen: value.almacen,
-          serie_codigo: value.serie_codigo,
-          fecha_recepcion: new Date().toISOString(),
-          remision: value.remision,
-          factura_referencia: value.factura_referencia,
-          observaciones: value.observaciones,
-          transportista: null,
-        },
-        detalle: detalle as ReceiptCreateDetalle[],
+      // Campos de cabecera compartidos (idénticos para ambos tipos de orden).
+      const recepcionBase = {
+        almacen: value.almacen,
+        serie_codigo: value.serie_codigo,
+        fecha_recepcion: new Date().toISOString(),
+        remision: value.remision,
+        factura_referencia: value.factura_referencia,
+        observaciones: value.observaciones,
+        transportista: null,
       };
+
+      let payload: ReceiptCreatePayload;
+
+      if (candidate.type === "compra") {
+        const detalle = reduceDetalle<
+          typeof candidate.order.detalle[number],
+          ReceiptCreatePurchaseOrderDetalle
+        >(candidate.order.detalle, value.cantidades, (d, cantidad_recibida) => ({
+          orden_compra_detalle: d.id,
+          cantidad_recibida,
+        }));
+
+        payload = {
+          recepcion: {
+            orden_compra: candidate.order.id,
+            ...recepcionBase,
+          },
+          detalle,
+        };
+      } else {
+        const detalle = reduceDetalle<
+          typeof candidate.order.detalle[number],
+          ReceiptCreateProductionOrderDetalle
+        >(candidate.order.detalle, value.cantidades, (d, cantidad_recibida) => ({
+          orden_produccion_detalle: d.id,
+          cantidad_recibida,
+          producto_variante: d.producto_variante_id ?? null,
+        }));
+
+        payload = {
+          recepcion: {
+            orden_produccion: candidate.order.id,
+            ...recepcionBase,
+          },
+          detalle,
+        };
+      }
 
       createReceiptMutation.mutate(payload, {
         onSuccess: () => {
@@ -214,7 +247,7 @@ export function useReceiptForm({ onSuccess, purchaseOrder }: UseReceiptFormParam
   };
 
   // ── ID único para key del formulario ──────────────────────────────────
-  const formKey = `receipt-po-${purchaseOrder.id}`;
+  const formKey = `receipt-${candidate.type}-${candidate.order.id}`;
 
   return {
     form,
@@ -222,7 +255,7 @@ export function useReceiptForm({ onSuccess, purchaseOrder }: UseReceiptFormParam
     formKey,
     isPending: createReceiptMutation.isPending,
     warehouses,
-    purchaseOrder,
+    candidate,
     getError,
     clearFieldErrors,
     validateField,

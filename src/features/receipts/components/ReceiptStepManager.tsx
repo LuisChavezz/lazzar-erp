@@ -3,12 +3,16 @@
  *
  * Orchestrator component for the 2-step goods receipt onboarding flow.
  *
- * Step 1 — Select a Purchase Order from the onboarding list.
+ * Step 1 — Select an order to receive against. The user first chooses the
+ *          order TYPE (Compra vs Producción) via a toggle inside Step 1, then
+ *          picks an order from the corresponding list. The two lists are never
+ *          merged.
  * Step 2 — Fill in the receipt form.
  *
  * Owns:
  *  - Current step state (via useReceiptStepper)
- *  - Selected Purchase Order (persisted between steps)
+ *  - Active order-type toggle (persisted between steps)
+ *  - Selected order candidate + its type (persisted between steps)
  */
 
 "use client";
@@ -17,9 +21,12 @@ import { useState } from "react";
 import { ArrowRight } from "lucide-react";
 import { StepProgressBar } from "@/src/components/StepProgressBar";
 import { useReceiptStepper, STEP_LABELS } from "../hooks/useReceiptStepper";
-import { ReceiptPurchaseOrderSelector } from "./ReceiptPurchaseOrderSelector";
+import { ReceiptOrderSelector } from "./ReceiptOrderSelector";
 import ReceiptForm from "./ReceiptForm";
-import type { ReceiptOnboardingPurchaseOrder } from "../interfaces/receipt-onboarding.interface";
+import type {
+  ReceiptOrderCandidate,
+  ReceiptOrderType,
+} from "../interfaces/receipt-onboarding.interface";
 
 interface ReceiptStepManagerProps {
   /** Called when the full flow completes (form submitted successfully). */
@@ -27,15 +34,18 @@ interface ReceiptStepManagerProps {
 }
 
 export function ReceiptStepManager({ onClose }: ReceiptStepManagerProps) {
-  const [selectedPurchaseOrder, setSelectedPurchaseOrder] =
-    useState<ReceiptOnboardingPurchaseOrder | null>(null);
+  const [orderType, setOrderType] = useState<ReceiptOrderType>("compra");
+  const [selectedOrder, setSelectedOrder] =
+    useState<ReceiptOrderCandidate | null>(null);
 
-  const canAdvance = selectedPurchaseOrder !== null;
+  const canAdvance = selectedOrder !== null;
   const { currentStep, steps, goNext, goBack, reset } =
     useReceiptStepper(canAdvance);
 
   const handleFormSuccess = () => {
     reset();
+    setSelectedOrder(null);
+    setOrderType("compra");
     onClose?.();
   };
 
@@ -51,13 +61,15 @@ export function ReceiptStepManager({ onClose }: ReceiptStepManagerProps) {
       {/* Step content */}
       <div className="space-y-6">
         {currentStep === "select-po" && (
-          <ReceiptPurchaseOrderSelector
-            selectedOrderId={selectedPurchaseOrder?.id ?? null}
-            onSelect={setSelectedPurchaseOrder}
+          <ReceiptOrderSelector
+            orderType={orderType}
+            onOrderTypeChange={setOrderType}
+            selectedOrderId={selectedOrder?.order.id ?? null}
+            onSelect={setSelectedOrder}
           />
         )}
 
-        {currentStep === "fill-form" && selectedPurchaseOrder && (
+        {currentStep === "fill-form" && selectedOrder && (
           <div className="space-y-4">
             {/* Back link */}
             <button
@@ -71,7 +83,7 @@ export function ReceiptStepManager({ onClose }: ReceiptStepManagerProps) {
 
             <ReceiptForm
               onSuccess={handleFormSuccess}
-              purchaseOrder={selectedPurchaseOrder}
+              candidate={selectedOrder}
             />
           </div>
         )}

@@ -8,18 +8,28 @@ import { FormInput } from "@/src/components/FormInput";
 import { FormSelect } from "@/src/components/FormSelect";
 import { FormTextarea } from "@/src/components/FormTextarea";
 import { QuantitySelector } from "@/src/components/QuantitySelector";
+import { SegmentedControl } from "@/src/components/SegmentedControl";
 import { PackageCheckIcon } from "@/src/components/Icons";
 import { useReceiptForm } from "../hooks/useReceiptForm";
-import type { ReceiptOnboardingPurchaseOrder } from "../interfaces/receipt-onboarding.interface";
+import type {
+  ReceiptOrderCandidate,
+  ReceiptOnboardingPurchaseOrderDetalle,
+} from "../interfaces/receipt-onboarding.interface";
 
 interface ReceiptFormProps {
   onSuccess: () => void;
-  purchaseOrder: ReceiptOnboardingPurchaseOrder;
+  candidate: ReceiptOrderCandidate;
 }
+
+const SERIE_CODIGO_OPTIONS: { value: string; label: string }[] = [
+  { value: "RC", label: "RC" },
+  { value: "RT", label: "RT" },
+  { value: "RZ", label: "RZ" },
+];
 
 export default function ReceiptForm({
   onSuccess,
-  purchaseOrder,
+  candidate,
 }: ReceiptFormProps) {
   const {
     form,
@@ -27,13 +37,22 @@ export default function ReceiptForm({
     formKey,
     isPending,
     warehouses,
-    purchaseOrder: po,
     getError,
     clearFieldErrors,
     validateField,
     handleReset,
     handleFormSubmit,
-  } = useReceiptForm({ onSuccess, purchaseOrder });
+  } = useReceiptForm({ onSuccess, candidate });
+
+  const { order } = candidate;
+  // Ambos tipos comparten la forma base del detalle; producción sólo añade
+  // `producto_variante_id` (consumido en el submit, no en el render). Normalizar
+  // a la base permite iterar sin narrowing en el JSX.
+  const detalle: ReceiptOnboardingPurchaseOrderDetalle[] = order.detalle;
+  const headerSubtitle =
+    candidate.type === "compra"
+      ? `Orden: ${candidate.order.folio} — ${candidate.order.proveedor_nombre}`
+      : `Orden: ${candidate.order.folio}`;
 
   return (
     <form
@@ -57,7 +76,7 @@ export default function ReceiptForm({
                 Datos de Recepción
               </h3>
               <p className="text-xs text-slate-500">
-                Orden: {po.folio} — {po.proveedor_nombre}
+                {headerSubtitle}
               </p>
             </div>
           </div>
@@ -147,50 +166,29 @@ export default function ReceiptForm({
 
               {/* Serie de recepción — segmented control */}
               <form.Field name="serie_codigo">
-                {(field) => {
-                  const options = ["RC", "RT", "RZ"] as const;
-                  return (
-                    <div className="group/field w-full">
-                      <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider ml-1 mb-1 block transition-colors group-focus-within/field:text-brand-500">
-                        Serie de Recepción
-                      </label>
-                      <div className="inline-flex rounded-lg border border-slate-300 dark:border-slate-600 overflow-hidden">
-                        {options.map((opt, i) => {
-                          const isSelected = field.state.value === opt;
-                          return (
-                            <button
-                              key={opt}
-                              type="button"
-                              onClick={() => {
-                                const next = isSelected ? "" : opt;
-                                field.handleChange(next);
-                                clearFieldErrors("serie_codigo");
-                                field.handleBlur();
-                                validateField("serie_codigo", next);
-                              }}
-                              className={`px-5 py-2 text-xs font-bold tracking-wide transition-all cursor-pointer ${
-                                i < options.length - 1
-                                  ? "border-r border-slate-300 dark:border-slate-600"
-                                  : ""
-                              } ${
-                                isSelected
-                                  ? "bg-sky-600 text-white shadow-inner"
-                                  : "bg-white dark:bg-zinc-900 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/10"
-                              }`}
-                            >
-                              {opt}
-                            </button>
-                          );
-                        })}
-                      </div>
-                      {getError("serie_codigo") && (
-                        <p className="text-xs text-red-600 mt-1 font-medium animate-in slide-in-from-top-1 fade-in duration-200">
-                          {getError("serie_codigo")?.message}
-                        </p>
-                      )}
-                    </div>
-                  );
-                }}
+                {(field) => (
+                  <div className="group/field w-full">
+                    <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider ml-1 mb-1 block transition-colors group-focus-within/field:text-brand-500">
+                      Serie de Recepción
+                    </label>
+                    <SegmentedControl
+                      options={SERIE_CODIGO_OPTIONS}
+                      value={field.state.value}
+                      onChange={(opt) => {
+                        const next = field.state.value === opt ? "" : opt;
+                        field.handleChange(next);
+                        clearFieldErrors("serie_codigo");
+                        field.handleBlur();
+                        validateField("serie_codigo", next);
+                      }}
+                    />
+                    {getError("serie_codigo") && (
+                      <p className="text-xs text-red-600 mt-1 font-medium animate-in slide-in-from-top-1 fade-in duration-200">
+                        {getError("serie_codigo")?.message}
+                      </p>
+                    )}
+                  </div>
+                )}
               </form.Field>
 
               {/* Observaciones */}
@@ -223,8 +221,8 @@ export default function ReceiptForm({
           </div>
         </section>
 
-        {/* ── Detalle de la OC ──────────────────────────────────────── */}
-        {po.detalle.length > 0 && (
+        {/* ── Detalle de la orden ───────────────────────────────────── */}
+        {detalle.length > 0 && (
           <section className="bg-white dark:bg-zinc-900 rounded-3xl border border-slate-200 dark:border-white/5 shadow-sm dark:shadow-none overflow-hidden hover:shadow-lg transition-shadow duration-300 mb-8">
             <div className="px-8 py-4 border-b border-slate-100 dark:border-white/5 flex items-center gap-3 bg-slate-50/50 dark:bg-white/2">
               <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-100 dark:bg-emerald-500/20">
@@ -235,14 +233,14 @@ export default function ReceiptForm({
                   Detalle de Productos
                 </h3>
                 <p className="text-xs text-slate-500">
-                  {po.detalle.length} producto{po.detalle.length > 1 ? "s" : ""} — Capturar cantidad recibida
+                  {detalle.length} producto{detalle.length > 1 ? "s" : ""} — Capturar cantidad recibida
                 </p>
               </div>
             </div>
 
             <div className="p-4">
               <div className="divide-y divide-slate-100 dark:divide-white/5">
-                {po.detalle.map((d) => {
+                {detalle.map((d) => {
                   const fieldName = `cantidades.${d.id}` as const;
                   return (
                     <div
