@@ -382,6 +382,13 @@ export const appRouteGroups: AppRouteGroup[] = [
         icon: SamplesIcon,
         permission: "R-MESACONTROL",
       },
+      {
+        key: "operations-customers",
+        label: "Clientes",
+        path: "/operations/customers",
+        icon: ClientesIcon,
+        permission: "R-MESACONTROL",
+      },
     ],
   },
   {
