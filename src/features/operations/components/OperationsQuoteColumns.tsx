@@ -17,6 +17,10 @@ import { MainDialog } from "@/src/components/MainDialog";
 import { capitalize } from "@/src/utils/capitalize";
 import { formatCurrency } from "@/src/utils/formatCurrency";
 import {
+  canAcceptQuoteChanges as canAcceptOperationsQuoteChangesStatus,
+  canManageQuoteAuthorization as canManageOperationsQuoteAuthorization,
+} from "../../quotes/utils/quoteStatusRules";
+import {
   formatQuoteDateTime as formatOperationsQuoteDateTime,
 } from "../../quotes/utils/quoteDetailsFormatters";
 import {
@@ -81,8 +85,12 @@ const ActionsCell = ({
     isPending: isRejectingChangesOperationsQuote,
   } = useRejectChangesOperationsQuote();
 
-  const canAuthorizeOperationsQuote = operationsQuote.estatus === 2;
-  const canAcceptOperationsQuoteChanges = operationsQuote.estatus === 5;
+  const canAuthorizeOperationsQuote =
+    canManageOperationsQuoteAuthorization(operationsQuote.estatus) &&
+    operationsQuote.estatus === 2;
+  const canAcceptOperationsQuoteChanges = canAcceptOperationsQuoteChangesStatus(
+    operationsQuote.estatus
+  );
 
   const handleOpenAuthorizeDialog = () => {
     if (!canAuthorizeOperationsQuote) return;

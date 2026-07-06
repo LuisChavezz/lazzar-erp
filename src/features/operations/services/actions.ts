@@ -35,6 +35,10 @@ export const rejectOperationsQuote = async (
   return response.data;
 };
 
+// Estos dos endpoints operan directamente sobre el recurso Cotizacion,
+// no sobre mesa-control, por eso usan /ventas/cotizaciones/{id}/... en
+// vez de /ventas/mesa-control/{id}/... como el resto de las funciones
+// de este archivo. Confirmado correcto — no es una inconsistencia.
 export const acceptChangesOperationsQuote = async (
   id: number
 ): Promise<OperationsQuote> => {
