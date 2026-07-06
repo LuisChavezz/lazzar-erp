@@ -2,11 +2,11 @@
 
 import { ColumnDef } from "@tanstack/react-table";
 import { ACTIVO_INACTIVO_CFG, StatusBadge } from "@/src/components/StatusBadge";
-import { AccountingCustomer } from "../interfaces/accounting-customer.interface";
+import { OperationsCustomer } from "../interfaces/operations-customer.interface";
 
 // ── Columnas ──────────────────────────────────────────────────────────────────
 
-export const accountingCustomerColumns: ColumnDef<AccountingCustomer>[] = [
+export const operationsCustomerColumns: ColumnDef<OperationsCustomer>[] = [
   {
     accessorKey: "nombre",
     header: "Nombre",
@@ -35,20 +35,20 @@ export const accountingCustomerColumns: ColumnDef<AccountingCustomer>[] = [
     ),
   },
   {
-    accessorKey: "correo",
-    header: "Correo",
-    cell: ({ row }) => (
-      <span className="text-slate-600 dark:text-slate-300">
-        {row.getValue("correo") || "—"}
-      </span>
-    ),
-  },
-  {
     id: "telefono",
     header: "Teléfono",
     cell: ({ row }) => (
       <span className="text-slate-600 dark:text-slate-300 tabular-nums">
         {row.original.telefono || row.original.celular || "—"}
+      </span>
+    ),
+  },
+  {
+    accessorKey: "contacto",
+    header: "Contacto",
+    cell: ({ row }) => (
+      <span className="text-slate-600 dark:text-slate-300">
+        {row.getValue("contacto") || "—"}
       </span>
     ),
   },
