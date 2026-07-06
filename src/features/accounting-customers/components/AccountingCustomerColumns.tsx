@@ -27,7 +27,7 @@ export const accountingCustomerColumns: ColumnDef<AccountingCustomer>[] = [
     header: "Nombre",
     cell: ({ row }) => (
       <span className="font-medium text-slate-700 dark:text-slate-200">
-        {row.getValue("nombre")}
+        {row.getValue("nombre") || "—"}
       </span>
     ),
   },

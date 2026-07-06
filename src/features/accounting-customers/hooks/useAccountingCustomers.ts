@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { useHasLoadedQuery } from "@/src/hooks/useHasLoadedQuery";
 import { getAccountingCustomers } from "../services/actions";
 import { AccountingCustomer } from "../interfaces/accounting-customer.interface";
 
@@ -10,9 +11,11 @@ export const useAccountingCustomers = () => {
     queryFn: getAccountingCustomers,
   });
 
-  // `data` solo se define tras una carga exitosa y se conserva aunque un
-  // refetch posterior falle: distingue "cargó vacío" de "nunca cargó".
-  const hasLoaded = data !== undefined;
+  const { hasLoaded } = useHasLoadedQuery({
+    data,
+    isError,
+    toastId: "accounting-customers-refetch-error",
+  });
 
   return {
     customers: data ?? [],

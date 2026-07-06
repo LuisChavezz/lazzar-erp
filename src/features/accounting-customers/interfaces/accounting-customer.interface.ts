@@ -1,31 +1,23 @@
-export interface AccountingCustomer {
+import { Customer } from "@/src/features/customers/interfaces/customer.interface";
+
+/**
+ * Campos compartidos con Customer (/terceros/clientes/) vía Pick, porque
+ * /finanzas/clientes-contabilidad/ devuelve el mismo tipo para esos campos.
+ * `id` y `celular` son propios de este recurso: aquí `id` es numérico (a
+ * diferencia del id string de Customer) y `celular` no existe en Customer.
+ */
+export interface AccountingCustomer
+  extends Pick<
+    Customer,
+    | "nombre"
+    | "razon_social"
+    | "rfc"
+    | "correo"
+    | "telefono"
+    | "ciudad"
+    | "estado"
+    | "activo"
+  > {
   id: number;
-  razon_social: string;
-  correo: string;
-  telefono: string;
-  giro_empresarial: string;
-  nombre: string;
-  rfc: string;
-  direccion_fiscal: string;
-  colonia: string;
-  codigo_postal: string;
-  ciudad: string;
-  estado: string;
-  activo: boolean;
-  clave: string | null;
-  numero_exterior: string | null;
-  numero_interior: string | null;
-  delegacion: string | null;
-  contacto: string | null;
-  telefono_2: string | null;
-  pais: string | null;
-  curp: string | null;
-  pais_cel: string | null;
   celular: string | null;
-  web: string | null;
-  empresa: number | null;
-  vendedores: number[];
-  sat_regimen_fiscal: number | null;
-  sat_uso_cfdi: number | null;
-  sucursal: number | null;
 }
