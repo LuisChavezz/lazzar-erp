@@ -311,6 +311,13 @@ export const appRouteGroups: AppRouteGroup[] = [
         permission: "R-CONTABILIDAD",
       },
       {
+        key: "finance-accounting-customers",
+        label: "Clientes",
+        path: "/finance/accounting-customers",
+        icon: ClientesIcon,
+        permission: "R-CONTABILIDAD",
+      },
+      {
         key: "finance-price-lists",
         label: "Lista de Precios",
         path: "/finance/price-lists",
