@@ -8,6 +8,7 @@ import { FormInput } from "@/src/components/FormInput";
 import { FormSelect } from "@/src/components/FormSelect";
 import { FormTextarea } from "@/src/components/FormTextarea";
 import { QuantitySelector } from "@/src/components/QuantitySelector";
+import { SegmentedControl } from "@/src/components/SegmentedControl";
 import { PackageCheckIcon } from "@/src/components/Icons";
 import { useReceiptForm } from "../hooks/useReceiptForm";
 import type {
@@ -19,6 +20,12 @@ interface ReceiptFormProps {
   onSuccess: () => void;
   candidate: ReceiptOrderCandidate;
 }
+
+const SERIE_CODIGO_OPTIONS: { value: string; label: string }[] = [
+  { value: "RC", label: "RC" },
+  { value: "RT", label: "RT" },
+  { value: "RZ", label: "RZ" },
+];
 
 export default function ReceiptForm({
   onSuccess,
@@ -159,50 +166,29 @@ export default function ReceiptForm({
 
               {/* Serie de recepción — segmented control */}
               <form.Field name="serie_codigo">
-                {(field) => {
-                  const options = ["RC", "RT", "RZ"] as const;
-                  return (
-                    <div className="group/field w-full">
-                      <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider ml-1 mb-1 block transition-colors group-focus-within/field:text-brand-500">
-                        Serie de Recepción
-                      </label>
-                      <div className="inline-flex rounded-lg border border-slate-300 dark:border-slate-600 overflow-hidden">
-                        {options.map((opt, i) => {
-                          const isSelected = field.state.value === opt;
-                          return (
-                            <button
-                              key={opt}
-                              type="button"
-                              onClick={() => {
-                                const next = isSelected ? "" : opt;
-                                field.handleChange(next);
-                                clearFieldErrors("serie_codigo");
-                                field.handleBlur();
-                                validateField("serie_codigo", next);
-                              }}
-                              className={`px-5 py-2 text-xs font-bold tracking-wide transition-all cursor-pointer ${
-                                i < options.length - 1
-                                  ? "border-r border-slate-300 dark:border-slate-600"
-                                  : ""
-                              } ${
-                                isSelected
-                                  ? "bg-sky-600 text-white shadow-inner"
-                                  : "bg-white dark:bg-zinc-900 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/10"
-                              }`}
-                            >
-                              {opt}
-                            </button>
-                          );
-                        })}
-                      </div>
-                      {getError("serie_codigo") && (
-                        <p className="text-xs text-red-600 mt-1 font-medium animate-in slide-in-from-top-1 fade-in duration-200">
-                          {getError("serie_codigo")?.message}
-                        </p>
-                      )}
-                    </div>
-                  );
-                }}
+                {(field) => (
+                  <div className="group/field w-full">
+                    <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider ml-1 mb-1 block transition-colors group-focus-within/field:text-brand-500">
+                      Serie de Recepción
+                    </label>
+                    <SegmentedControl
+                      options={SERIE_CODIGO_OPTIONS}
+                      value={field.state.value}
+                      onChange={(opt) => {
+                        const next = field.state.value === opt ? "" : opt;
+                        field.handleChange(next);
+                        clearFieldErrors("serie_codigo");
+                        field.handleBlur();
+                        validateField("serie_codigo", next);
+                      }}
+                    />
+                    {getError("serie_codigo") && (
+                      <p className="text-xs text-red-600 mt-1 font-medium animate-in slide-in-from-top-1 fade-in duration-200">
+                        {getError("serie_codigo")?.message}
+                      </p>
+                    )}
+                  </div>
+                )}
               </form.Field>
 
               {/* Observaciones */}

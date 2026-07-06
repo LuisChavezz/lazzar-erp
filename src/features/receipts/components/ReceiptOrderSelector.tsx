@@ -14,12 +14,16 @@
 
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useReceiptOnboardingData } from "../hooks/useReceiptOnboardingData";
-import { SearchInput } from "@/src/components/SearchInput";
+import { SearchableSelectList } from "@/src/components/SearchableSelectList";
+import { SegmentedControl } from "@/src/components/SegmentedControl";
 import { Loader } from "@/src/components/Loader";
+import { CheckIcon } from "@/src/components/Icons";
 import { formatLocalDate } from "@/src/utils/formatDate";
 import type {
+  ReceiptOnboardingPurchaseOrder,
+  ReceiptOnboardingProductionOrder,
   ReceiptOrderCandidate,
   ReceiptOrderType,
 } from "../interfaces/receipt-onboarding.interface";
@@ -36,6 +40,22 @@ const ORDER_TYPE_OPTIONS: { value: ReceiptOrderType; label: string }[] = [
   { value: "produccion", label: "Orden de Producción" },
 ];
 
+// Indicador circular tipo radio (selección única) — mismo patrón que
+// InvoiceOrderSelector/ProductionOrderStep1.
+function renderRadioIndicator(selected: boolean) {
+  return (
+    <span
+      className={`shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${
+        selected
+          ? "border-sky-500 bg-sky-500 text-white"
+          : "border-slate-300 dark:border-slate-600"
+      }`}
+    >
+      {selected && <CheckIcon className="w-3.5 h-3.5" />}
+    </span>
+  );
+}
+
 export function ReceiptOrderSelector({
   orderType,
   onOrderTypeChange,
@@ -44,7 +64,7 @@ export function ReceiptOrderSelector({
 }: ReceiptOrderSelectorProps) {
   const { onboardingData, isLoading, isError } = useReceiptOnboardingData();
 
-  // Stabilise references so downstream useMemo doesn't recalculate every render
+  // Stabilise references so downstream reads don't recalculate every render
   const purchaseOrders = useMemo(
     () => onboardingData?.busqueda.ordenes_compra ?? [],
     [onboardingData?.busqueda.ordenes_compra],
@@ -54,59 +74,13 @@ export function ReceiptOrderSelector({
     [onboardingData?.busqueda.ordenes_produccion],
   );
 
-  const [search, setSearch] = useState("");
-
   const isCompra = orderType === "compra";
-
-  // Build the display list for the ACTIVE order type: filter by search, then
-  // pin the selected order at the top (even if filtered out by search).
-  const displayList = useMemo<ReceiptOrderCandidate[]>(() => {
-    const term = search.toLowerCase().trim();
-
-    const candidates: ReceiptOrderCandidate[] = isCompra
-      ? purchaseOrders.map((order) => ({ type: "compra", order }))
-      : productionOrders.map((order) => ({ type: "produccion", order }));
-
-    const filtered = !term
-      ? candidates
-      : candidates.filter((c) => {
-          if (c.type === "compra") {
-            return (
-              (c.order.folio ?? "").toLowerCase().includes(term) ||
-              (c.order.proveedor_nombre ?? "").toLowerCase().includes(term) ||
-              `Proveedor #${c.order.proveedor_id}`
-                .toLowerCase()
-                .includes(term)
-            );
-          }
-          return (c.order.folio ?? "").toLowerCase().includes(term);
-        });
-
-    if (selectedOrderId !== null) {
-      const selected = candidates.find((c) => c.order.id === selectedOrderId);
-      if (selected) {
-        const withoutSelected = filtered.filter(
-          (c) => c.order.id !== selectedOrderId,
-        );
-        return [selected, ...withoutSelected];
-      }
-    }
-
-    return filtered;
-  }, [isCompra, purchaseOrders, productionOrders, search, selectedOrderId]);
-
   const activeCount = isCompra ? purchaseOrders.length : productionOrders.length;
-  const emptyLabel = isCompra
-    ? "No hay órdenes de compra disponibles."
-    : "No hay órdenes de producción disponibles.";
-  const noResultsLabel = isCompra
-    ? "No se encontraron órdenes de compra"
-    : "No se encontraron órdenes de producción";
+  const bothEmpty = purchaseOrders.length === 0 && productionOrders.length === 0;
 
   const handleTypeChange = (next: ReceiptOrderType) => {
     if (next === orderType) return;
     onSelect(null); // La selección pertenece a la otra lista — limpiar
-    setSearch("");
     onOrderTypeChange(next);
   };
 
@@ -129,100 +103,97 @@ export function ReceiptOrderSelector({
     );
   }
 
+  // ── Estado vacío total: ningún tipo de orden tiene resultados ─────────────
+  if (bothEmpty) {
+    return (
+      <p className="text-sm text-slate-400 text-center py-6">
+        No hay órdenes disponibles para recepcionar.
+      </p>
+    );
+  }
+
   return (
     <div className="flex flex-col gap-3">
       {/* Order-type toggle — las dos listas NO se mezclan */}
-      <div className="inline-flex self-start rounded-lg border border-slate-300 dark:border-slate-600 overflow-hidden">
-        {ORDER_TYPE_OPTIONS.map((opt, i) => {
-          const isSelected = orderType === opt.value;
-          return (
-            <button
-              key={opt.value}
-              type="button"
-              onClick={() => handleTypeChange(opt.value)}
-              aria-pressed={isSelected}
-              className={`px-5 py-2 text-xs font-bold tracking-wide transition-all cursor-pointer ${
-                i < ORDER_TYPE_OPTIONS.length - 1
-                  ? "border-r border-slate-300 dark:border-slate-600"
-                  : ""
-              } ${
-                isSelected
-                  ? "bg-sky-600 text-white shadow-inner"
-                  : "bg-white dark:bg-zinc-900 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/10"
-              }`}
-            >
-              {opt.label}
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Search — placeholder adaptado al tipo activo */}
-      <SearchInput
-        value={search}
-        onChange={setSearch}
-        placeholder={
-          isCompra ? "Buscar por folio o proveedor..." : "Buscar por folio..."
-        }
+      <SegmentedControl
+        options={ORDER_TYPE_OPTIONS}
+        value={orderType}
+        onChange={handleTypeChange}
+        className="self-start"
       />
 
-      {/* Scrollable list */}
-      <div className="max-h-64 overflow-y-auto rounded-xl border border-slate-200 dark:border-white/10 divide-y divide-slate-100 dark:divide-white/5">
-        {activeCount === 0 ? (
-          <p className="text-sm text-slate-400 text-center py-6">
-            {emptyLabel}
-          </p>
-        ) : displayList.length === 0 ? (
-          <p className="text-sm text-slate-400 text-center py-6">
-            {noResultsLabel}
-          </p>
-        ) : (
-          displayList.map((candidate) => {
-            const { order } = candidate;
-            const isSelected = selectedOrderId === order.id;
-            const secondaryLine =
-              candidate.type === "compra"
-                ? candidate.order.proveedor_nombre
-                : candidate.order.pedido_id !== null
-                  ? `Pedido #${candidate.order.pedido_id}`
-                  : `Inicio: ${formatLocalDate(candidate.order.fecha_inicio)}`;
-            return (
-              <button
-                key={order.id}
-                type="button"
-                onClick={() => {
-                  if (isSelected) {
-                    onSelect(null);
-                  } else {
-                    onSelect(candidate);
-                  }
-                }}
-                className={`w-full flex items-start justify-between gap-4 px-4 py-3 text-left transition-colors cursor-pointer ${
-                  isSelected
-                    ? "bg-sky-50 dark:bg-sky-500/10"
-                    : "bg-white dark:bg-zinc-900 hover:bg-slate-50 dark:hover:bg-white/5"
-                }`}
-              >
-                <div className="flex flex-col gap-0.5 min-w-0">
-                  <span className="font-mono text-sm font-semibold text-slate-800 dark:text-white truncate">
-                    {order.folio}
-                  </span>
-                  <span className="text-xs text-slate-500 dark:text-slate-400 truncate">
-                    {secondaryLine}
-                  </span>
-                </div>
-                <div className="flex flex-col items-end gap-0.5 shrink-0">
-                  {isSelected && (
-                    <span className="text-[10px] font-bold text-sky-600 dark:text-sky-400 uppercase tracking-wide">
-                      Seleccionado
-                    </span>
-                  )}
-                </div>
-              </button>
-            );
-          })
-        )}
-      </div>
+      {activeCount === 0 ? (
+        <p className="text-sm text-slate-400 text-center py-6">
+          {isCompra
+            ? "No hay órdenes de compra disponibles."
+            : "No hay órdenes de producción disponibles."}
+        </p>
+      ) : isCompra ? (
+        <SearchableSelectList<ReceiptOnboardingPurchaseOrder>
+          key="compra"
+          items={purchaseOrders}
+          searchPlaceholder="Buscar por folio o proveedor..."
+          filterPredicate={(order, term) =>
+            (order.folio ?? "").toLowerCase().includes(term) ||
+            (order.proveedor_nombre ?? "").toLowerCase().includes(term)
+          }
+          getKey={(order) => order.id}
+          isSelected={(order) => order.id === selectedOrderId}
+          onSelect={(order) =>
+            onSelect(
+              selectedOrderId === order.id
+                ? null
+                : { type: "compra", order },
+            )
+          }
+          emptyMessage="No hay órdenes de compra disponibles."
+          noResultsMessage="No se encontraron órdenes de compra"
+          renderIndicator={renderRadioIndicator}
+          renderContent={(order) => (
+            <>
+              <p className="font-mono text-sm font-semibold text-slate-800 dark:text-slate-100 truncate">
+                {order.folio}
+              </p>
+              <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
+                {order.proveedor_nombre}
+              </p>
+            </>
+          )}
+        />
+      ) : (
+        <SearchableSelectList<ReceiptOnboardingProductionOrder>
+          key="produccion"
+          items={productionOrders}
+          searchPlaceholder="Buscar por folio..."
+          filterPredicate={(order, term) =>
+            (order.folio ?? "").toLowerCase().includes(term)
+          }
+          getKey={(order) => order.id}
+          isSelected={(order) => order.id === selectedOrderId}
+          onSelect={(order) =>
+            onSelect(
+              selectedOrderId === order.id
+                ? null
+                : { type: "produccion", order },
+            )
+          }
+          emptyMessage="No hay órdenes de producción disponibles."
+          noResultsMessage="No se encontraron órdenes de producción"
+          renderIndicator={renderRadioIndicator}
+          renderContent={(order) => (
+            <>
+              <p className="font-mono text-sm font-semibold text-slate-800 dark:text-slate-100 truncate">
+                {order.folio}
+              </p>
+              <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
+                {order.pedido_id !== null
+                  ? `Pedido #${order.pedido_id}`
+                  : `Inicio: ${formatLocalDate(order.fecha_inicio)}`}
+              </p>
+            </>
+          )}
+        />
+      )}
     </div>
   );
 }

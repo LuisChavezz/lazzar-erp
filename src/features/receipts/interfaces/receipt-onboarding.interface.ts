@@ -11,6 +11,11 @@ export interface ReceiptOnboardingWarehouse {
   requiere_ubicacion: boolean;
 }
 
+// Forma mínima que devuelve el endpoint de onboarding — expone `sucursal_id`
+// (id plano) y omite los campos de numeración/formato del catálogo completo.
+// No reutiliza `SerieFolio` (features/series-folios) porque esa interfaz usa
+// `sucursal` (no `sucursal_id`) y exige campos adicionales que este endpoint
+// no devuelve — reutilizarla introduciría un desajuste de tipos.
 export interface ReceiptOnboardingSerieFolio {
   id_serie_folio: number;
   tipo_documento: string;
@@ -108,18 +113,20 @@ export interface ReceiptCreateProductionOrderRecepcion
   orden_produccion: number;
 }
 
-export interface ReceiptCreatePurchaseOrderDetalle {
-  orden_compra_detalle: number;
+interface ReceiptCreateDetalleBase {
   cantidad_recibida: string;
   ubicacion?: number | null;
   producto_variante?: number | null;
 }
 
-export interface ReceiptCreateProductionOrderDetalle {
+export interface ReceiptCreatePurchaseOrderDetalle
+  extends ReceiptCreateDetalleBase {
+  orden_compra_detalle: number;
+}
+
+export interface ReceiptCreateProductionOrderDetalle
+  extends ReceiptCreateDetalleBase {
   orden_produccion_detalle: number;
-  cantidad_recibida: string;
-  ubicacion?: number | null;
-  producto_variante?: number | null;
 }
 
 export interface ReceiptCreatePurchaseOrderPayload {
