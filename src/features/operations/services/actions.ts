@@ -34,3 +34,21 @@ export const rejectOperationsQuote = async (
   );
   return response.data;
 };
+
+export const acceptChangesOperationsQuote = async (
+  id: number
+): Promise<OperationsQuote> => {
+  const response = await v1_api.post<OperationsQuote>(
+    `/ventas/cotizaciones/${id}/aceptar-cambios/`
+  );
+  return response.data;
+};
+
+export const rejectChangesOperationsQuote = async (
+  id: number
+): Promise<OperationsQuote> => {
+  const response = await v1_api.post<OperationsQuote>(
+    `/ventas/cotizaciones/${id}/rechazar-cambios/`
+  );
+  return response.data;
+};
