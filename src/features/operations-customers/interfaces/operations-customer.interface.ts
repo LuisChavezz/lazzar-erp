@@ -1,17 +1,19 @@
+import { Customer } from "@/src/features/customers/interfaces/customer.interface";
+
 /**
- * Recurso independiente de /terceros/clientes-mesa-control/ — no comparte
- * tipo con Customer (clientes) ni con AccountingCustomer: a diferencia de
- * ambos, este endpoint incluye clientes inactivos (sin filtro `activo=True`).
+ * Campos compartidos con Customer (/terceros/clientes/) vía Pick, porque
+ * /terceros/clientes-mesa-control/ devuelve el mismo tipo para esos campos.
+ * A diferencia de Customer, este endpoint incluye clientes inactivos (sin
+ * filtro `activo=True`). `id` es numérico aquí (a diferencia del id string
+ * de Customer, igual que en AccountingCustomer); `celular` y `contacto` son
+ * propios de este recurso.
  */
-export interface OperationsCustomer {
+export interface OperationsCustomer
+  extends Pick<
+    Customer,
+    "nombre" | "razon_social" | "rfc" | "telefono" | "ciudad" | "estado" | "activo"
+  > {
   id: number;
-  nombre: string;
-  razon_social: string;
-  rfc: string;
-  telefono: string;
   celular: string | null;
   contacto: string | null;
-  ciudad: string;
-  estado: string;
-  activo: boolean;
 }

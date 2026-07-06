@@ -1,23 +1,8 @@
 "use client";
 
 import { ColumnDef } from "@tanstack/react-table";
-import { StatusBadge, type StatusBadgeConfigEntry } from "@/src/components/StatusBadge";
+import { ACTIVO_INACTIVO_CFG, StatusBadge } from "@/src/components/StatusBadge";
 import { OperationsCustomer } from "../interfaces/operations-customer.interface";
-
-// ── Badge de estatus ──────────────────────────────────────────────────────────
-
-const ESTATUS_CFG: Record<string, StatusBadgeConfigEntry> = {
-  activo: {
-    label: "Activo",
-    cls: "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400",
-    dot: "bg-emerald-500",
-  },
-  inactivo: {
-    label: "Inactivo",
-    cls: "bg-red-50 text-red-700 dark:bg-red-500/10 dark:text-red-400",
-    dot: "bg-red-500",
-  },
-};
 
 // ── Columnas ──────────────────────────────────────────────────────────────────
 
@@ -82,7 +67,7 @@ export const operationsCustomerColumns: ColumnDef<OperationsCustomer>[] = [
     accessorKey: "activo",
     header: "Estatus",
     cell: ({ row }) => (
-      <StatusBadge status={row.getValue("activo") ? "activo" : "inactivo"} config={ESTATUS_CFG} />
+      <StatusBadge status={row.getValue("activo") ? "activo" : "inactivo"} config={ACTIVO_INACTIVO_CFG} />
     ),
   },
 ];

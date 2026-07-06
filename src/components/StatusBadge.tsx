@@ -35,3 +35,22 @@ export function StatusBadge({ status, config, defaultConfig }: StatusBadgeProps)
     </span>
   );
 }
+
+/**
+ * Config compartida para el flag booleano `activo` de los catálogos de
+ * clientes (Customer, AccountingCustomer, OperationsCustomer): es el mismo
+ * concepto en los tres, no un estatus propio de un dominio distinto, así
+ * que aquí sí se comparte para que no diverja entre módulos.
+ */
+export const ACTIVO_INACTIVO_CFG: Record<"activo" | "inactivo", StatusBadgeConfigEntry> = {
+  activo: {
+    label: "Activo",
+    cls: "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400",
+    dot: "bg-emerald-500",
+  },
+  inactivo: {
+    label: "Inactivo",
+    cls: "bg-slate-50 text-slate-600 dark:bg-slate-500/10 dark:text-slate-400",
+    dot: "bg-slate-400",
+  },
+};

@@ -7,22 +7,9 @@ export const metadata: Metadata = {
     "Consulta el catálogo completo de clientes, incluidos inactivos, desde la Mesa de Control.",
 };
 
-const jsonLd = {
-  "@context": "https://schema.org",
-  "@type": "WebApplication",
-  name: "Mesa de Control de Clientes",
-  description:
-    "Consulta el catálogo completo de clientes, incluidos inactivos, desde la Mesa de Control.",
-  applicationCategory: "BusinessApplication",
-};
-
 export default function OperationsCustomersPage() {
   return (
-    <main className="w-full space-y-8" aria-label="Mesa de Control de Clientes">
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
-      />
+    <main className="w-full space-y-8">
       <header>
         <h1 className="sr-only">Clientes - Mesa de Control</h1>
         <p className="text-slate-500 dark:text-slate-400 mt-1">

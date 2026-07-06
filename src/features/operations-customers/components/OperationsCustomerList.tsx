@@ -2,6 +2,7 @@
 
 import { DataTable } from "@/src/components/DataTable";
 import { ErrorState } from "@/src/components/ErrorState";
+import { Loader } from "@/src/components/Loader";
 import { operationsCustomerColumns } from "./OperationsCustomerColumns";
 import { useOperationsCustomers } from "../hooks/useOperationsCustomers";
 
@@ -12,8 +13,7 @@ export const OperationsCustomerList = () => {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-100">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-sky-600" />
-        <span className="ml-3 text-sm text-slate-500">Cargando clientes...</span>
+        <Loader title="Cargando clientes" message="Obteniendo información de clientes..." />
       </div>
     );
   }
@@ -33,7 +33,6 @@ export const OperationsCustomerList = () => {
     <DataTable
       columns={operationsCustomerColumns}
       data={customers}
-      baseDataCount={customers.length}
       searchPlaceholder="Buscar por nombre, razón social, RFC o contacto..."
       onRefetch={refetch}
       isRefetching={isFetching}
