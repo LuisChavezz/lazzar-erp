@@ -25,11 +25,24 @@ export interface GoogleSendEmailResponse {
   };
 }
 
+export interface GoogleEmailAttachment {
+  filename: string;
+  mimeType: string;
+  /**
+   * Contenido base64, actualmente enviado CON el prefijo `data:<mime>;base64,`
+   * (ver `blobToBase64`). No confirmado contra el backend si acepta el prefijo
+   * o requiere base64 puro — pendiente de verificar con el equipo de backend
+   * antes de asumir cualquiera de los dos formatos.
+   */
+  content: string;
+}
+
 export interface GoogleEmailPayload {
   to: string;
   subject: string;
   body: string;
   html?: string;
+  attachments?: GoogleEmailAttachment[];
 }
 
 export interface GoogleEmailMessagesResponse {

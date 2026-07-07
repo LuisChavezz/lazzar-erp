@@ -20,7 +20,10 @@ export const googleDisconnect = async (): Promise<{ok: boolean}> => {
 }
 
 export const googleSendEmail = async (payload: GoogleEmailPayload): Promise<GoogleSendEmailResponse> => {
-  const response = await v1_api.post<GoogleSendEmailResponse>("/ai/google/gmail/send/", payload);
+  // Timeout propio (no global) — este endpoint puede llevar un adjunto PDF de varios MB en base64.
+  const response = await v1_api.post<GoogleSendEmailResponse>("/ai/google/gmail/send/", payload, {
+    timeout: 60000,
+  });
   return response.data;
 }
 

@@ -13,6 +13,8 @@ export type ActionMenuItem = {
   disabled?: boolean;
   permission?: string;
   visible?: boolean;
+  /** Evita que Radix cierre el menú al seleccionar — usar en acciones async cuyo label refleja un estado pendiente. */
+  keepOpenOnSelect?: boolean;
 };
 
 interface ActionMenuProps {
@@ -52,12 +54,15 @@ export const ActionMenu = ({
         align={align}
         className="bg-white! dark:bg-zinc-900! min-w-48 rounded-xl shadow-xl border border-slate-100 dark:border-slate-800 z-50 p-1"
       >
-        {visibleItems.map((item) => {
+        {visibleItems.map((item, index) => {
           const Icon = item.icon;
           return (
             <DropdownMenu.Item
-              key={item.label}
-              onClick={item.onSelect}
+              key={index}
+              onSelect={(event) => {
+                if (item.keepOpenOnSelect) event.preventDefault();
+                item.onSelect?.();
+              }}
               disabled={item.disabled}
               className="flex items-center gap-2 px-3 py-2 text-xs text-slate-600 dark:text-slate-300 rounded-lg cursor-pointer! outline-none data-highlighted:bg-slate-50 dark:data-highlighted:bg-white/5 data-highlighted:text-sky-600 dark:data-highlighted:text-sky-400 data-disabled:opacity-50 data-disabled:cursor-not-allowed transition-colors ease-in-out"
             >
