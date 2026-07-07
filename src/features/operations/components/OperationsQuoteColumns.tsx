@@ -9,6 +9,7 @@ import { DialogHeader } from "@/src/components/DialogHeader";
 import {
   CheckCircleIcon,
   RejectIcon,
+  SyncIcon,
   ViewIcon,
   WarehouseIcon,
 } from "@/src/components/Icons";
@@ -16,6 +17,7 @@ import { MainDialog } from "@/src/components/MainDialog";
 import { capitalize } from "@/src/utils/capitalize";
 import { formatCurrency } from "@/src/utils/formatCurrency";
 import {
+  canAcceptQuoteChanges as canAcceptOperationsQuoteChangesStatus,
   canManageQuoteAuthorization as canManageOperationsQuoteAuthorization,
 } from "../../quotes/utils/quoteStatusRules";
 import {
@@ -26,7 +28,9 @@ import {
 } from "../../quotes/utils/getStatusStyle";
 import { QuoteDetailsLoadingSkeleton } from "../../quotes/components/QuoteDetailsLoadingSkeleton";
 import { OperationsQuoteStockReviewDialog } from "./OperationsQuoteStockReviewDialog";
+import { useAcceptChangesOperationsQuote } from "../hooks/useAcceptChangesOperationsQuote";
 import { useApproveOperationsQuote } from "../hooks/useApproveOperationsQuote";
+import { useRejectChangesOperationsQuote } from "../hooks/useRejectChangesOperationsQuote";
 import { useRejectOperationsQuote } from "../hooks/useRejectOperationsQuote";
 import { OperationsQuote } from "../interfaces/operations-quote.interface";
 
@@ -62,6 +66,8 @@ const ActionsCell = ({
   const [isStockReviewOpen, setIsStockReviewOpen] = useState(false);
   const [isAuthorizeOpen, setIsAuthorizeOpen] = useState(false);
   const [isRejectOpen, setIsRejectOpen] = useState(false);
+  const [isAcceptChangesOpen, setIsAcceptChangesOpen] = useState(false);
+  const [isRejectChangesOpen, setIsRejectChangesOpen] = useState(false);
   const {
     mutate: authorizeOperationsQuote,
     isPending: isAuthorizingOperationsQuote,
@@ -70,28 +76,60 @@ const ActionsCell = ({
     mutate: rejectOperationsQuote,
     isPending: isRejectingOperationsQuote,
   } = useRejectOperationsQuote();
+  const {
+    mutate: acceptChangesOperationsQuote,
+    isPending: isAcceptingChangesOperationsQuote,
+  } = useAcceptChangesOperationsQuote();
+  const {
+    mutate: rejectChangesOperationsQuote,
+    isPending: isRejectingChangesOperationsQuote,
+  } = useRejectChangesOperationsQuote();
 
-  const canManageOperationsAuthorization =
-    canManageOperationsQuoteAuthorization(operationsQuote.estatus);
+  const canAuthorizeOperationsQuote =
+    canManageOperationsQuoteAuthorization(operationsQuote.estatus) &&
+    operationsQuote.estatus === 2;
+  const canAcceptOperationsQuoteChanges = canAcceptOperationsQuoteChangesStatus(
+    operationsQuote.estatus
+  );
 
   const handleOpenAuthorizeDialog = () => {
-    if (!canManageOperationsAuthorization) return;
+    if (!canAuthorizeOperationsQuote) return;
     setIsAuthorizeOpen(true);
   };
 
   const handleOpenRejectDialog = () => {
-    if (!canManageOperationsAuthorization) return;
+    if (!canAuthorizeOperationsQuote) return;
     setIsRejectOpen(true);
   };
 
+  const handleOpenAcceptChangesDialog = () => {
+    if (!canAcceptOperationsQuoteChanges) return;
+    setIsAcceptChangesOpen(true);
+  };
+
+  const handleOpenRejectChangesDialog = () => {
+    if (!canAcceptOperationsQuoteChanges) return;
+    setIsRejectChangesOpen(true);
+  };
+
   const handleAuthorize = () => {
-    if (!canManageOperationsAuthorization) return;
+    if (!canAuthorizeOperationsQuote) return;
     authorizeOperationsQuote(operationsQuote.id);
   };
 
   const handleReject = () => {
-    if (!canManageOperationsAuthorization) return;
+    if (!canAuthorizeOperationsQuote) return;
     rejectOperationsQuote(operationsQuote.id);
+  };
+
+  const handleAcceptChanges = () => {
+    if (!canAcceptOperationsQuoteChanges) return;
+    acceptChangesOperationsQuote(operationsQuote.id);
+  };
+
+  const handleRejectChanges = () => {
+    if (!canAcceptOperationsQuoteChanges) return;
+    rejectChangesOperationsQuote(operationsQuote.id);
   };
 
   const items: ActionMenuItem[] = [
@@ -112,7 +150,7 @@ const ActionsCell = ({
       onSelect: handleOpenAuthorizeDialog,
       disabled: isAuthorizingOperationsQuote || isRejectingOperationsQuote,
       permission: "R-MESACONTROL",
-      visible: canManageOperationsAuthorization,
+      visible: canAuthorizeOperationsQuote,
     },
     {
       label: "Rechazar",
@@ -120,7 +158,25 @@ const ActionsCell = ({
       onSelect: handleOpenRejectDialog,
       disabled: isRejectingOperationsQuote || isAuthorizingOperationsQuote,
       permission: "R-MESACONTROL",
-      visible: canManageOperationsAuthorization,
+      visible: canAuthorizeOperationsQuote,
+    },
+    {
+      label: "Aceptar cambios",
+      icon: SyncIcon,
+      onSelect: handleOpenAcceptChangesDialog,
+      disabled:
+        isAcceptingChangesOperationsQuote || isRejectingChangesOperationsQuote,
+      permission: "R-MESACONTROL",
+      visible: canAcceptOperationsQuoteChanges,
+    },
+    {
+      label: "Rechazar cambios",
+      icon: RejectIcon,
+      onSelect: handleOpenRejectChangesDialog,
+      disabled:
+        isRejectingChangesOperationsQuote || isAcceptingChangesOperationsQuote,
+      permission: "R-MESACONTROL",
+      visible: canAcceptOperationsQuoteChanges,
     },
   ];
 
@@ -161,7 +217,7 @@ const ActionsCell = ({
       />
 
       <ConfirmDialog
-        open={isAuthorizeOpen && canManageOperationsAuthorization}
+        open={isAuthorizeOpen && canAuthorizeOperationsQuote}
         onOpenChange={setIsAuthorizeOpen}
         title="Autorizar cotización operativa"
         description={`¿Deseas autorizar la cotización #${operationsQuote.id}?`}
@@ -172,7 +228,7 @@ const ActionsCell = ({
         onConfirm={handleAuthorize}
       />
       <ConfirmDialog
-        open={isRejectOpen && canManageOperationsAuthorization}
+        open={isRejectOpen && canAuthorizeOperationsQuote}
         onOpenChange={setIsRejectOpen}
         title="Rechazar cotización operativa"
         description={`¿Deseas rechazar la cotización #${operationsQuote.id}?`}
@@ -181,6 +237,28 @@ const ActionsCell = ({
         }
         confirmColor="red"
         onConfirm={handleReject}
+      />
+      <ConfirmDialog
+        open={isAcceptChangesOpen && canAcceptOperationsQuoteChanges}
+        onOpenChange={setIsAcceptChangesOpen}
+        title="Aceptar cambios de la cotización operativa"
+        description={`¿Deseas aceptar los cambios de la cotización #${operationsQuote.id}?`}
+        confirmText={
+          isAcceptingChangesOperationsQuote ? "Aplicando..." : "Aceptar cambios"
+        }
+        confirmColor="green"
+        onConfirm={handleAcceptChanges}
+      />
+      <ConfirmDialog
+        open={isRejectChangesOpen && canAcceptOperationsQuoteChanges}
+        onOpenChange={setIsRejectChangesOpen}
+        title="Rechazar cambios de la cotización operativa"
+        description={`¿Deseas rechazar los cambios de la cotización #${operationsQuote.id}?`}
+        confirmText={
+          isRejectingChangesOperationsQuote ? "Rechazando..." : "Rechazar cambios"
+        }
+        confirmColor="red"
+        onConfirm={handleRejectChanges}
       />
     </div>
   );
