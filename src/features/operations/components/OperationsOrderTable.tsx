@@ -2,34 +2,45 @@
 
 import { useMemo } from 'react';
 import { DataTable } from '@/src/components/DataTable';
-import type { OrderControl } from '../types/order-control.types';
+import type { Order } from '@/src/features/orders/interfaces/order.interface';
 import {
   buildOperationsOrderColumns,
   type OperationsOrderColumnCallbacks,
 } from './OperationsOrderColumns';
+import { enrichOrdersWithStatus, operationsOrderFilterConfig } from './OperationsOrderFilter';
 
 interface OperationsOrderTableProps extends OperationsOrderColumnCallbacks {
-  orders: OrderControl[];
+  orders: Order[];
+  onRefetch?: () => void | Promise<unknown>;
+  isRefetching?: boolean;
 }
 
 // Tabla de la Mesa de Control de Pedidos — usa DataTable con columnas dedicadas
 export function OperationsOrderTable({
   orders,
   onConfirmDate,
-  onRelease,
+  onRefetch,
+  isRefetching,
 }: OperationsOrderTableProps) {
-  // Los setters de estado son referencias estables; el useMemo evita recrear
-  // el array de columnas en cada render del componente padre.
+  // `onConfirmDate` es un setter de estado estable; el useMemo evita recrear el
+  // array de columnas en cada render del componente padre.
   const columns = useMemo(
-    () => buildOperationsOrderColumns({ onConfirmDate, onRelease }),
-    [onConfirmDate, onRelease],
+    () => buildOperationsOrderColumns({ onConfirmDate }),
+    [onConfirmDate],
   );
+
+  const enrichedOrders = useMemo(() => enrichOrdersWithStatus(orders), [orders]);
 
   return (
     <DataTable
       columns={columns}
-      data={orders}
+      data={enrichedOrders}
+      baseDataCount={orders.length}
       searchPlaceholder="Buscar por folio, cliente u OC..."
+      filterConfig={operationsOrderFilterConfig}
+      onRefetch={onRefetch}
+      isRefetching={isRefetching}
+      isLoadingOverlay={isRefetching}
     />
   );
 }
