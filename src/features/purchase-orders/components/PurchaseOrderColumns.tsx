@@ -52,7 +52,7 @@ const ActionsCell = ({ row }: { row: PurchaseOrder }) => {
     },
   ];
 
-  if (row.estatus !== 4 && row.estatus !== 5) {
+  if (row.estatus === 1) {
     menuItems.push({
       label: "Editar",
       icon: EditIcon,
