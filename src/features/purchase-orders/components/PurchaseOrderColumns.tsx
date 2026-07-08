@@ -163,11 +163,16 @@ export const getColumns = () => {
     }),
     columnHelper.accessor("fecha_entrega_estimada", {
       header: "Entrega Estimada",
-      cell: (info) => (
-        <span className="text-slate-600 dark:text-slate-300 tabular-nums">
-          {info.getValue() ? new Date(info.getValue()).toLocaleDateString("es-MX") : "—"}
-        </span>
-      ),
+      cell: (info) => {
+        // `fecha_entrega_estimada` puede ser null (orden sin fecha de entrega);
+        // se enlaza a una const para que TS lo estreche dentro del ternario.
+        const value = info.getValue();
+        return (
+          <span className="text-slate-600 dark:text-slate-300 tabular-nums">
+            {value ? new Date(value).toLocaleDateString("es-MX") : "—"}
+          </span>
+        );
+      },
     }),
     columnHelper.accessor("total", {
       header: "Total",

@@ -1,4 +1,5 @@
 import type { PurchaseOrderDetalleItem } from "./purchase-order-onboarding.interface";
+import type { ReceiptDetail } from "@/src/features/receipts/interfaces/receipt.interface";
 
 //
 // ─── Información de rastreo para órdenes en tránsito ─────────────────────────
@@ -31,7 +32,7 @@ export interface PurchaseOrder {
   folio: string;
   referencia: string;
   fecha_oc: string;
-  fecha_entrega_estimada: string;
+  fecha_entrega_estimada: string | null;
   fecha_autorizacion: string | null;
   estatus: number;
   estatus_label: string;
@@ -49,10 +50,10 @@ export interface PurchaseOrder {
   proveedor_nombre: string;
   /** Información de rastreo — disponible para órdenes en tránsito o más avanzadas */
   tracking?: TrackingInfo;
-  solicitud_compra: number;
+  solicitud_compra: number | null;
   moneda: number;
   usuario: number;
-  pedido: number;
+  pedido: number | null;
 }
 
 //
@@ -72,14 +73,39 @@ export interface PurchaseOrderDetalle {
 }
 
 /**
+ * Recepción embebida en la respuesta de detalle de la orden de compra
+ * (`recepciones[]` de GET /compras/ordenes/{id}/). Su forma es idéntica, campo
+ * por campo, a la respuesta del recurso dedicado GET /compras/recepciones/{id}/,
+ * por lo que se reutiliza {@link ReceiptDetail} en lugar de redefinirla — incluye
+ * el mismo arreglo anidado `detalles: ReceiptDetailLine[]` (vacío cuando la
+ * recepción aún no registra líneas).
+ */
+export type PurchaseOrderReceipt = ReceiptDetail;
+
+/**
  * Respuesta del endpoint GET /compras/ordenes/{id}/.
  *
- * Reutiliza toda la estructura base de {@link PurchaseOrder} y la extiende
- * con el arreglo `detalles` de renglones de producto. El endpoint de retrieve
- * (DRF) expone la relación anidada en plural, igual que `QuoteById.detalles`.
+ * Reutiliza toda la estructura base de {@link PurchaseOrder} y la extiende con
+ * el arreglo `detalles` de renglones de producto, el arreglo `recepciones` de
+ * recepciones asociadas, y los campos de encabezado/financieros adicionales que
+ * el serializer de retrieve expone y que no viven en la forma base del listado.
+ * El endpoint de retrieve (DRF) expone las relaciones anidadas en plural, igual
+ * que `QuoteById.detalles`.
  */
 export interface PurchaseOrderDetail extends PurchaseOrder {
   detalles: PurchaseOrderDetalle[];
+  /** Recepciones (parciales o totales) generadas contra esta orden; `[]` si no hay ninguna. */
+  recepciones: PurchaseOrderReceipt[];
+  // ── Campos adicionales confirmados en la respuesta de retrieve ──────────────
+  fecha_vencimiento: string | null;
+  tipo: string;
+  total_piezas: number;
+  flete: string;
+  seguros: string;
+  porcentaje_iva: string;
+  total_iva: string;
+  gran_total: string;
+  a_cuenta: string;
 }
 
 //
