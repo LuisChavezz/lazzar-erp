@@ -187,6 +187,14 @@ export const appRouteGroups: AppRouteGroup[] = [
         permission: "R-COMPRAS",
       },
       {
+        key: "procurement-purchase-order-receipts",
+        label: "Recepciones",
+        path: "/procurement/purchase-order-receipts",
+        icon: RecepcionesIcon,
+        description: "Recepciones generadas a partir de órdenes de compra.",
+        permission: "R-COMPRAS",
+      },
+      {
         key: "procurement-suppliers",
         label: "Proveedores",
         path: "/procurement/suppliers",

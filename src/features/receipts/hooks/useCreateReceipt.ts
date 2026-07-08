@@ -11,6 +11,7 @@ export const useCreateReceipt = () => {
     mutationFn: (payload: ReceiptCreatePayload) => createReceipt(payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["receipts"] });
+      queryClient.invalidateQueries({ queryKey: ["purchase-order-receipts"] });
       queryClient.invalidateQueries({ queryKey: ["receipt-onboarding-data"] });
       toast.success("Recepción registrada correctamente");
     },
