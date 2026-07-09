@@ -6,16 +6,17 @@ import { CheckIcon } from "@/src/components/Icons";
 import { QuantitySelector } from "@/src/components/QuantitySelector";
 import { PriceInput } from "@/src/components/PriceInput";
 import { FormSubmitButton } from "@/src/components/FormButtons";
-import type { PurchaseOrderEncabezados, PurchaseOrderOnboardingData, PurchaseOrderOnboardingResponse } from "../interfaces/purchase-order-onboarding.interface";
+import type { PurchaseOrderEncabezados, PurchaseOrderOnboardingData } from "../interfaces/purchase-order-onboarding.interface";
 import { usePostPurchaseOrder } from "../hooks/usePostPurchaseOrder";
 import { usePriceEntries } from "../hooks/usePriceEntries";
+import { buildPurchaseOrderDetalle } from "../utils/buildPurchaseOrderDetalle";
 
 interface PurchaseOrderOnboardingStep2Props {
   /** Captured encabezados from Step 1. */
   step1Data: PurchaseOrderEncabezados;
   onboardingData: PurchaseOrderOnboardingData | undefined;
-  /** Called after the full order POST succeeds. Receives the response. */
-  onSuccess?: (response: PurchaseOrderOnboardingResponse) => void;
+  /** Called after the full order POST succeeds. This is the wizard's final step. */
+  onSuccess?: () => void;
 }
 
 export function PurchaseOrderOnboardingStep2({
@@ -28,6 +29,13 @@ export function PurchaseOrderOnboardingStep2({
   const { prices, setPrice, togglePrice, priceErrors, hasPriceErrors } =
     usePriceEntries(quantities);
   const { mutateAsync: postDetalles, isPending } = usePostPurchaseOrder();
+  // Encabezado ya creado por un intento previo cuyo segundo POST (detalles)
+  // falló. Se conserva para reintentar solo ese POST en lugar de crear un
+  // encabezado duplicado.
+  const [pendingOrder, setPendingOrder] = useState<{
+    id: number;
+    folio: string | null;
+  } | null>(null);
 
   const products = useMemo(
     () => onboardingData?.busqueda.productos ?? [],
@@ -73,33 +81,42 @@ export function PurchaseOrderOnboardingStep2({
   const handleSubmit = () => {
     if (selectedCount === 0 || hasPriceErrors) return;
 
-    const detalle = Object.entries(quantities).map(([productoIdStr, cantidad]) => {
-      const productoId = Number(productoIdStr);
-      const product = products.find((p) => p.id === productoId);
-      const precio = parseFloat(prices[productoId] ?? "").toFixed(2);
-      return {
-        producto: productoId,
-        cantidad,
-        precio,
-        descripcion: product?.nombre ?? "",
-      };
-    });
+    const detalle = buildPurchaseOrderDetalle(
+      quantities,
+      prices,
+      (productoId) => products.find((p) => p.id === productoId)?.nombre ?? "",
+    );
+
+    // Adjunta los renglones a un encabezado ya existente. Si falla, se
+    // conserva su id/folio para reintentar solo este POST — evita crear un
+    // segundo encabezado duplicado en el reintento.
+    const attachDetalle = (ordenCompra: { id: number; folio: string | null }) =>
+      postDetalles({ orden_compra_id: ordenCompra.id, detalle })
+        .then(() => {
+          setPendingOrder(null);
+          // Toast is handled by the mutation hook.
+          onSuccess?.();
+        })
+        .catch(() => {
+          // Error toast is handled by the mutation hook.
+          setPendingOrder(ordenCompra);
+        });
+
+    if (pendingOrder) {
+      void attachDetalle(pendingOrder);
+      return;
+    }
 
     // Step 2 creates the Purchase Order by first posting the encabezados,
-    // then posting the detalles with the returned orden_compra id.
+    // then posting the detalles with the returned orden_compra id. If this
+    // first POST fails, no header was created — a plain retry from scratch
+    // is safe, so there's nothing to remember here (unlike attachDetalle's
+    // failure above).
     void postDetalles(step1Data)
-      .then((createResponse) => {
-        const newOrdenCompraId = createResponse.orden_compra.id;
-        return postDetalles({
-          orden_compra_id: newOrdenCompraId,
-          detalle,
-        });
-      })
-      .then((finalResponse) => {
-        // Toast is handled by the mutation hook.
-        onSuccess?.(finalResponse);
+      .then((createResponse) => attachDetalle(createResponse.orden_compra))
+      .catch(() => {
+        // Error toast is handled by the mutation hook.
       });
-    // Error toast is handled by the mutation hook.
   };
 
   return (
@@ -198,17 +215,28 @@ export function PurchaseOrderOnboardingStep2({
         )}
       </div>
 
+      {/* ── Aviso de encabezado creado sin productos adjuntos ───────────── */}
+      {pendingOrder && (
+        <p className="text-xs text-amber-600 dark:text-amber-400 font-medium">
+          La orden{pendingOrder.folio ? ` ${pendingOrder.folio}` : ""} ya fue
+          creada, pero no se pudieron agregar los productos. Vuelve a
+          intentar — se reutilizará esa misma orden, no se creará una
+          duplicada.
+        </p>
+      )}
+
       {/* ── Submit ─────────────────────────────────────────────────────── */}
       <div className="flex justify-end pt-2">
         <FormSubmitButton
           isPending={isPending}
+          loadingLabel="Creando..."
           disabled={selectedCount === 0 || isPending || hasPriceErrors}
           onClick={(e) => {
             e.preventDefault();
             handleSubmit();
           }}
         >
-          Guardar productos
+          {pendingOrder ? "Reintentar" : "Crear Orden"}
         </FormSubmitButton>
       </div>
     </div>

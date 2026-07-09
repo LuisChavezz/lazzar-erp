@@ -18,8 +18,8 @@ interface PurchaseOrderEditDialogProps {
 /**
  * Diálogo de edición de una orden de compra.
  *
- * Envuelve {@link PurchaseOrderEditStepManager} (wizard de 3 pasos: editar
- * encabezado → agregar productos → revisar y confirmar) en un {@link MainDialog}
+ * Envuelve {@link PurchaseOrderEditStepManager} (wizard de 2 pasos: editar
+ * encabezado → agregar productos y guardar) en un {@link MainDialog}
  * controlado. Reutiliza el mismo encabezado visual que el alta, con el título
  * "Editar Orden de Compra".
  */

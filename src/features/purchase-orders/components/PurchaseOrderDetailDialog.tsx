@@ -8,18 +8,14 @@ import { usePurchaseOrder } from "../hooks/usePurchaseOrder";
 import { PurchaseOrderReceiptDetailDialog } from "@/src/features/purchase-order-receipts/components/PurchaseOrderReceiptDetailDialog";
 import { RECEIPT_STATUS_CONFIG } from "@/src/features/receipts/constants/receiptStatus";
 import { formatLocalDate } from "@/src/utils/formatDate";
+import {
+  PURCHASE_ORDER_ESTATUS_CFG,
+  PURCHASE_ORDER_STATUS,
+} from "../constants/purchaseOrderStatus";
 import type {
   PurchaseOrderDetalle,
   PurchaseOrderReceipt,
 } from "../interfaces/purchase-order.interface";
-
-// ── Configuración visual por estatus ─────────────────────────────────────────
-
-const ESTATUS_CFG: Record<number, { cls: string; dot: string }> = {
-  1: { cls: "bg-slate-50 text-slate-700 dark:bg-slate-500/10 dark:text-slate-300", dot: "bg-slate-400" },
-  4: { cls: "bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400", dot: "bg-amber-400" },
-  5: { cls: "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400", dot: "bg-emerald-500" },
-};
 
 // ── Helpers de formato ────────────────────────────────────────────────────────
 
@@ -35,7 +31,9 @@ const formatDate = (value: string | null) =>
 // ── Sub-componentes ────────────────────────────────────────────────────────────
 
 const EstatusBadge = ({ estatus, label }: { estatus: number; label: string }) => {
-  const cfg = ESTATUS_CFG[estatus] ?? ESTATUS_CFG[1];
+  const cfg =
+    PURCHASE_ORDER_ESTATUS_CFG[estatus] ??
+    PURCHASE_ORDER_ESTATUS_CFG[PURCHASE_ORDER_STATUS.BORRADOR];
   return (
     <span
       className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium whitespace-nowrap ${cfg.cls}`}

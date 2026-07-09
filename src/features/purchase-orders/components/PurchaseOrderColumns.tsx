@@ -10,21 +10,20 @@ import { PurchaseOrderEditDialog } from "./PurchaseOrderEditDialog";
 import { ConfirmDialog } from "@/src/components/ConfirmDialog";
 import { useConfirmPurchaseOrder } from "../hooks/useConfirmPurchaseOrder";
 import { useDeletePurchaseOrder } from "../hooks/useDeletePurchaseOrder";
+import {
+  isPurchaseOrderEditable,
+  PURCHASE_ORDER_ESTATUS_CFG,
+  PURCHASE_ORDER_STATUS,
+} from "../constants/purchaseOrderStatus";
 
 const columnHelper = createColumnHelper<PurchaseOrder>();
-
-// ── Configuración visual por estatus ─────────────────────────────────────────
-
-const ESTATUS_CFG: Record<number, { cls: string; dot: string }> = {
-  1: { cls: 'bg-slate-50 text-slate-700 dark:bg-slate-500/10 dark:text-slate-300', dot: 'bg-slate-400' },
-  4: { cls: 'bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400', dot: 'bg-amber-400' },
-  5: { cls: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400', dot: 'bg-emerald-500' },
-};
 
 // ── Subcomponente: badge de estatus ───────────────────────────────────────────
 
 const EstatusBadge = ({ estatus, label }: { estatus: number; label: string }) => {
-  const cfg = ESTATUS_CFG[estatus] ?? ESTATUS_CFG[1];
+  const cfg =
+    PURCHASE_ORDER_ESTATUS_CFG[estatus] ??
+    PURCHASE_ORDER_ESTATUS_CFG[PURCHASE_ORDER_STATUS.BORRADOR];
   return (
     <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium whitespace-nowrap ${cfg.cls}`}>
       <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${cfg.dot}`} aria-hidden="true" />
@@ -44,6 +43,11 @@ const ActionsCell = ({ row }: { row: PurchaseOrder }) => {
   const { mutate: confirmOrder, isPending } = useConfirmPurchaseOrder();
   const { mutate: deleteOrder, isPending: isDeletePending } = useDeletePurchaseOrder();
 
+  // Borrador o pendiente: la orden aún no se autoriza, así que puede
+  // editarse, confirmarse o eliminarse. Autorizada en adelante, ninguna de
+  // las tres debe quedar disponible.
+  const editable = isPurchaseOrderEditable(row.estatus);
+
   const menuItems: ActionMenuItem[] = [
     {
       label: "Ver Detalles",
@@ -52,7 +56,7 @@ const ActionsCell = ({ row }: { row: PurchaseOrder }) => {
     },
   ];
 
-  if (row.estatus === 1) {
+  if (editable) {
     menuItems.push({
       label: "Editar",
       icon: EditIcon,
@@ -60,7 +64,7 @@ const ActionsCell = ({ row }: { row: PurchaseOrder }) => {
     });
   }
 
-  if (row.estatus === 1) {
+  if (editable) {
     menuItems.push({
       label: "Confirmar",
       icon: CheckCircleIcon,
@@ -69,7 +73,7 @@ const ActionsCell = ({ row }: { row: PurchaseOrder }) => {
     });
   }
 
-  if (row.estatus !== 4 && row.estatus !== 5) {
+  if (editable) {
     menuItems.push({
       label: "Eliminar",
       icon: DeleteIcon,
@@ -91,7 +95,7 @@ const ActionsCell = ({ row }: { row: PurchaseOrder }) => {
         onOpenChange={setIsEditOpen}
         initialData={isEditOpen ? row : undefined}
       />
-      {row.estatus === 1 && (
+      {editable && (
         <ConfirmDialog
           open={isConfirmOpen}
           onOpenChange={setIsConfirmOpen}
@@ -105,7 +109,7 @@ const ActionsCell = ({ row }: { row: PurchaseOrder }) => {
           }}
         />
       )}
-      {row.estatus !== 4 && row.estatus !== 5 && (
+      {editable && (
         <ConfirmDialog
           open={isDeleteOpen}
           onOpenChange={setIsDeleteOpen}

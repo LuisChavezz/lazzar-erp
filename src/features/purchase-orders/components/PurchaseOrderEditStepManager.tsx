@@ -8,17 +8,17 @@
  * Se optó por un flujo de edición DEDICADO en lugar de extender el wizard de
  * creación con un prop `mode`, porque las semánticas del API divergen:
  *
- *   • Creación (onboarding): 3 POST secuenciales (encabezados → detalles →
- *       aceptar). El alta real ocurre en el Step 2 y el Step 3 ACEPTA la orden.
+ *   • Creación (onboarding): 2 POST secuenciales (encabezados → detalles),
+ *       ambos dentro del Step 2. La confirmación (`aceptar`) ya no vive aquí:
+ *       ocurre después, desde la acción "Confirmar" del listado.
  *   • Edición: un `PUT /compras/ordenes/{pk}/` con encabezado + `detalles`
  *       (`UpdatePurchaseOrderBody`), reflejando la forma del alta.
  *
- * El wizard de edición tiene 3 pasos que reflejan los del alta:
+ * El wizard de edición tiene 2 pasos que reflejan los del alta:
  *   1. Datos generales (encabezado)
  *   2. Agregar productos — pre-poblado con los renglones existentes de la orden
- *      (cada `detalle` expone `producto_id`, obtenido vía GET de la orden).
- *   3. Revisión y confirmación — arma el body (encabezado + `detalles`) y lo
- *      envía en el PUT.
+ *      (cada `detalle` expone `producto_id`, obtenido vía GET de la orden) y,
+ *      al guardar, arma el body (encabezado + `detalles`) y envía el PUT.
  *
  * Reutilizar el wizard de creación habría requerido condicionales de `mode`
  * invasivos en pasos cuya semántica difiere por completo.
@@ -31,22 +31,15 @@ import { StepProgressBar } from "@/src/components/StepProgressBar";
 import type { PurchaseOrderDetalleItem } from "../interfaces/purchase-order-onboarding.interface";
 import type { PurchaseOrder } from "../interfaces/purchase-order.interface";
 import type { PurchaseOrderEditFormValues } from "../schemas/purchase-order-edit.schema";
+import {
+  PURCHASE_ORDER_WIZARD_STEPS as STEPS,
+  PURCHASE_ORDER_WIZARD_STEP_LABELS as STEP_LABELS,
+  type PurchaseOrderWizardStep as EditStep,
+} from "../constants/purchaseOrderWizardSteps";
 import { usePurchaseOrderOnboardingData } from "../hooks/usePurchaseOrderOnboardingData";
 import { usePurchaseOrder } from "../hooks/usePurchaseOrder";
 import { PurchaseOrderEditStep1 } from "./PurchaseOrderEditStep1";
 import { PurchaseOrderEditStep2 } from "./PurchaseOrderEditStep2";
-import { PurchaseOrderEditStep3 } from "./PurchaseOrderEditStep3";
-
-/** Pasos del flujo de edición. */
-type EditStep = "step-1" | "step-2" | "step-3";
-
-const STEPS: readonly EditStep[] = ["step-1", "step-2", "step-3"];
-
-const STEP_LABELS: Record<EditStep, string> = {
-  "step-1": "Datos generales",
-  "step-2": "Agregar productos",
-  "step-3": "Revisión y confirmación",
-};
 
 interface PurchaseOrderEditStepManagerProps {
   /** Orden a editar. */
@@ -61,7 +54,6 @@ export function PurchaseOrderEditStepManager({
 }: PurchaseOrderEditStepManagerProps) {
   const [currentStep, setCurrentStep] = useState<EditStep>(STEPS[0]);
   const [header, setHeader] = useState<PurchaseOrderEditFormValues | null>(null);
-  const [items, setItems] = useState<PurchaseOrderDetalleItem[] | null>(null);
 
   // Catálogos (sucursales, monedas, proveedores, productos) para los pasos.
   const {
@@ -89,30 +81,22 @@ export function PurchaseOrderEditStepManager({
     [],
   );
 
-  /** Step 2 capturó los productos: los guardamos y avanzamos a la revisión. */
-  const handleStep2Success = useCallback(
-    (detalle: PurchaseOrderDetalleItem[]) => {
-      setItems(detalle);
-      setCurrentStep("step-3");
-    },
-    [],
-  );
+  /** Step 2 guardó (PUT) exitosamente — paso final del wizard. */
+  const handleStep2Success = () => onClose?.();
 
-  // Renglones iniciales del paso de productos: si el usuario ya capturó una
-  // selección (regreso desde la revisión) se respeta; de lo contrario se siembra
-  // desde los renglones existentes de la orden, conservando `precio` y
-  // `descripcion` reales (no solo la cantidad) para una revisión fiel.
-  const initialItems = useMemo<PurchaseOrderDetalleItem[]>(() => {
-    if (items) {
-      return items;
-    }
-    return (detail?.detalles ?? []).map((d) => ({
-      producto: d.producto_id,
-      cantidad: d.cantidad,
-      precio: d.precio,
-      descripcion: d.descripcion,
-    }));
-  }, [items, detail]);
+  // Renglones iniciales del paso de productos: sembrados desde los renglones
+  // existentes de la orden, conservando `precio` y `descripcion` reales (no
+  // solo la cantidad).
+  const initialItems = useMemo<PurchaseOrderDetalleItem[]>(
+    () =>
+      (detail?.detalles ?? []).map((d) => ({
+        producto: d.producto_id,
+        cantidad: d.cantidad,
+        precio: d.precio,
+        descripcion: d.descripcion,
+      })),
+    [detail],
+  );
 
   const isLoading = isOnboardingLoading || isDetailLoading;
   const isError = isOnboardingError || isDetailError;
@@ -163,22 +147,14 @@ export function PurchaseOrderEditStepManager({
             onSuccess={handleStep1Success}
           />
         )}
-        {currentStep === "step-2" && (
+        {currentStep === "step-2" && header !== null && (
           <PurchaseOrderEditStep2
+            initialData={initialData}
+            header={header}
             onboardingData={onboardingData}
             initialItems={initialItems}
             onSuccess={handleStep2Success}
             onBack={() => setCurrentStep("step-1")}
-          />
-        )}
-        {currentStep === "step-3" && header !== null && items !== null && (
-          <PurchaseOrderEditStep3
-            initialData={initialData}
-            header={header}
-            items={items}
-            onboardingData={onboardingData}
-            onBack={() => setCurrentStep("step-2")}
-            onClose={() => onClose?.()}
           />
         )}
       </div>

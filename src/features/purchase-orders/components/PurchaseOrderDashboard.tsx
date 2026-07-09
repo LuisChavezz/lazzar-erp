@@ -8,24 +8,12 @@ import {
   CheckCircleIcon,
   EmbarquesIcon,
 } from "@/src/components/Icons";
-
-// ─── Helpers ─────────────────────────────────────────────────────────────────
-
-function isPending(status: number): boolean {
-  return status === 2;
-}
-
-function isAuthorizedOrComplete(status: number): boolean {
-  return [3, 4].includes(status);
-}
-
-function isCancelled(status: number): boolean {
-  return status === 5;
-}
-
-function isDraft(status: number): boolean {
-  return status === 1;
-}
+import {
+  isPurchaseOrderAuthorizedOrComplete,
+  isPurchaseOrderCancelled,
+  isPurchaseOrderDraft,
+  isPurchaseOrderPending,
+} from "../constants/purchaseOrderStatus";
 
 // ─── Componente principal ─────────────────────────────────────────────────────
 
@@ -39,12 +27,12 @@ export function PurchaseOrderDashboard({ orders }: PurchaseOrderDashboardProps) 
     const total = orders.length;
     const totalValue = orders.reduce((s, o) => s + Number(o.total), 0);
 
-    const pendientes = orders.filter((o) => isPending(o.estatus)).length;
+    const pendientes = orders.filter((o) => isPurchaseOrderPending(o.estatus)).length;
     const autorizadasOCompletadas = orders.filter((o) =>
-      isAuthorizedOrComplete(o.estatus),
+      isPurchaseOrderAuthorizedOrComplete(o.estatus),
     ).length;
-    const canceladas = orders.filter((o) => isCancelled(o.estatus)).length;
-    const borradores = orders.filter((o) => isDraft(o.estatus)).length;
+    const canceladas = orders.filter((o) => isPurchaseOrderCancelled(o.estatus)).length;
+    const borradores = orders.filter((o) => isPurchaseOrderDraft(o.estatus)).length;
 
     // Órdenes con tracking activo (en tránsito)
     const conTracking = orders.filter((o) => o.tracking).length;

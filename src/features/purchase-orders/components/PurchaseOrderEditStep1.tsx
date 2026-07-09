@@ -11,7 +11,7 @@ import { usePurchaseOrderEditForm } from "../hooks/usePurchaseOrderEditForm";
 interface PurchaseOrderEditStep1Props {
   /** Orden existente que se edita (pre-puebla el formulario). */
   initialData: PurchaseOrder;
-  /** Encabezado capturado previamente; preserva la edición al volver desde la revisión. */
+  /** Encabezado capturado previamente; preserva la edición al volver desde el Step 2. */
   initialHeader?: PurchaseOrderEditFormValues;
   /** Datos de onboarding (catálogos) ya cargados por el step manager. */
   onboardingData: PurchaseOrderOnboardingData;
@@ -190,7 +190,7 @@ export function PurchaseOrderEditStep1({
         </form.Field>
       </fieldset>
 
-      {/* ── Continuar a la revisión ────────────────────────────────────── */}
+      {/* ── Continuar a productos ──────────────────────────────────────── */}
       <div className="flex justify-end pt-2">
         <FormSubmitButton isPending={false}>Continuar</FormSubmitButton>
       </div>

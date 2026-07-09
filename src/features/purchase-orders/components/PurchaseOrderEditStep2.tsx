@@ -11,37 +11,47 @@ import type {
   PurchaseOrderOnboardingData,
   PurchaseOrderOnboardingProducto,
 } from "../interfaces/purchase-order-onboarding.interface";
+import type {
+  PurchaseOrder,
+  UpdatePurchaseOrderBody,
+} from "../interfaces/purchase-order.interface";
+import type { PurchaseOrderEditFormValues } from "../schemas/purchase-order-edit.schema";
 import { usePriceEntries } from "../hooks/usePriceEntries";
+import { useUpdatePurchaseOrder } from "../hooks/useUpdatePurchaseOrder";
+import { buildPurchaseOrderDetalle } from "../utils/buildPurchaseOrderDetalle";
 
 interface PurchaseOrderEditStep2Props {
+  /** Orden en edición — aporta el `pk` para el PUT. */
+  initialData: PurchaseOrder;
+  /** Encabezado capturado en el Step 1. */
+  header: PurchaseOrderEditFormValues;
   /** Catálogos (incluye los productos disponibles). */
   onboardingData: PurchaseOrderOnboardingData;
-  /**
-   * Renglones iniciales (producto, cantidad, precio, descripcion), sembrados
-   * desde los renglones existentes de la orden o desde una selección previa al
-   * volver del Step 3.
-   */
+  /** Renglones iniciales (producto, cantidad, precio, descripcion), sembrados desde los renglones existentes de la orden. */
   initialItems: PurchaseOrderDetalleItem[];
-  /** Emite el detalle seleccionado y avanza a la revisión. */
-  onSuccess: (detalle: PurchaseOrderDetalleItem[]) => void;
+  /** Llamado tras un PUT exitoso — paso final del wizard. */
+  onSuccess: () => void;
   /** Vuelve al Step 1 (encabezado). */
   onBack: () => void;
 }
 
 /**
- * Step 2 del flujo de edición: selección de productos.
+ * Step 2 del flujo de edición: selección de productos y guardado.
  *
  * Reproduce la UI del paso de productos del alta, pero pre-poblada con los
- * renglones existentes de la orden (vía `producto_id`) y SIN realizar ninguna
- * llamada al API: al continuar, emite el detalle al step manager, que lo enviará
- * en `detalles` dentro del PUT (ver Step 3).
+ * renglones existentes de la orden (vía `producto_id`). Al guardar, arma el
+ * body (encabezado del Step 1 + `detalles`) y envía el PUT vía
+ * {@link useUpdatePurchaseOrder} — este es el paso final del wizard.
  */
 export function PurchaseOrderEditStep2({
+  initialData,
+  header,
   onboardingData,
   initialItems,
   onSuccess,
   onBack,
 }: PurchaseOrderEditStep2Props) {
+  const { mutate: update, isPending } = useUpdatePurchaseOrder();
   const [searchQuery, setSearchQuery] = useState("");
   const [quantities, setQuantities] = useState<Record<number, number>>(() =>
     Object.fromEntries(initialItems.map((i) => [i.producto, i.cantidad] as const)),
@@ -50,6 +60,23 @@ export function PurchaseOrderEditStep2({
     quantities,
     () => Object.fromEntries(initialItems.map((i) => [i.producto, i.precio] as const)),
   );
+
+  // `quantities`/`prices` se siembran una sola vez al montar. `initialItems`
+  // (y por lo tanto `seedById`/`products`, ambos derivados vía `useMemo`) sí
+  // puede cambiar de referencia después del montaje si la orden se refetchea
+  // en segundo plano mientras este diálogo sigue abierto (p. ej. otra acción
+  // invalida la misma queryKey `purchase-orders`). En ese caso no
+  // sobreescribimos silenciosamente la selección del usuario — solo lo
+  // avisamos, para que decida recargar antes de guardar. Se ajusta durante
+  // el render (patrón documentado de React para detectar cambios de props
+  // respecto al render anterior) en lugar de en un efecto, para no disparar
+  // un set-state-en-efecto que el compilador de React desaconseja.
+  const [prevInitialItems, setPrevInitialItems] = useState(initialItems);
+  const [isOutOfSync, setIsOutOfSync] = useState(false);
+  if (initialItems !== prevInitialItems) {
+    setPrevInitialItems(initialItems);
+    setIsOutOfSync(true);
+  }
 
   // Datos de los renglones sembrados, indexados por id de producto. Se usan como
   // respaldo para mostrar nombre/precio reales cuando un producto de la orden no
@@ -114,29 +141,35 @@ export function PurchaseOrderEditStep2({
   const isSelected = (id: number) => id in quantities;
   const selectedCount = Object.keys(quantities).length;
 
-  // ── Continuar ─────────────────────────────────────────────────────────────
-  const handleContinue = () => {
+  // ── Guardar ───────────────────────────────────────────────────────────────
+  const handleSave = () => {
     if (selectedCount === 0 || hasPriceErrors) return;
 
-    const detalle: PurchaseOrderDetalleItem[] = Object.entries(quantities).map(
-      ([productoIdStr, cantidad]) => {
-        const productoId = Number(productoIdStr);
-        const seed = seedById.get(productoId);
-        const product = products.find((p) => p.id === productoId);
-        return {
-          producto: productoId,
-          cantidad,
-          precio: parseFloat(prices[productoId] ?? "").toFixed(2),
-          descripcion: seed?.descripcion ?? product?.nombre ?? "",
-        };
-      },
-    );
+    const detalle = buildPurchaseOrderDetalle(quantities, prices, (productoId) => {
+      const seed = seedById.get(productoId);
+      const product = products.find((p) => p.id === productoId);
+      return seed?.descripcion ?? product?.nombre ?? "";
+    });
 
-    onSuccess(detalle);
+    // El PUT refleja la forma del alta: encabezado + renglones del detalle.
+    const body: UpdatePurchaseOrderBody = { ...header, detalles: detalle };
+    update(
+      { pk: initialData.id, body },
+      { onSuccess: () => onSuccess() },
+    );
   };
 
   return (
     <div className="space-y-4">
+      {/* ── Aviso: la orden cambió mientras el diálogo seguía abierto ───── */}
+      {isOutOfSync && (
+        <div className="rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 px-3 py-2 text-xs text-amber-700 dark:text-amber-400">
+          Esta orden se actualizó en otro lugar mientras la editabas. Cierra y
+          vuelve a abrir el diálogo para partir de los datos más recientes
+          antes de guardar.
+        </div>
+      )}
+
       {/* ── Búsqueda ───────────────────────────────────────────────────── */}
       <SearchInput
         value={searchQuery}
@@ -228,16 +261,16 @@ export function PurchaseOrderEditStep2({
 
       {/* ── Acciones ────────────────────────────────────────────────────── */}
       <div className="flex justify-between pt-2">
-        <FormSecondaryButton label="Volver" onClick={onBack} />
+        <FormSecondaryButton label="Volver" onClick={onBack} disabled={isPending} />
         <FormSubmitButton
-          isPending={false}
-          disabled={selectedCount === 0 || hasPriceErrors}
+          isPending={isPending}
+          disabled={selectedCount === 0 || hasPriceErrors || isPending}
           onClick={(e) => {
             e.preventDefault();
-            handleContinue();
+            handleSave();
           }}
         >
-          Continuar
+          Guardar cambios
         </FormSubmitButton>
       </div>
     </div>

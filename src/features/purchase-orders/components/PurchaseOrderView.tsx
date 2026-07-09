@@ -17,20 +17,11 @@ import { getColumns } from "./PurchaseOrderColumns";
 import { createPurchaseOrdersFilterConfig } from "./PurchaseOrdersFilter";
 import type { PurchaseOrder } from "../interfaces/purchase-order.interface";
 import { PurchaseOrderOnboardingStepManager } from "./PurchaseOrderOnboardingStepManager";
-
-// ─── Helpers ─────────────────────────────────────────────────────────────────
-
-function isPending(status: number): boolean {
-  return status === 2;
-}
-
-function isAuthorizedOrComplete(status: number): boolean {
-  return [3, 4].includes(status);
-}
-
-function isCancelled(status: number): boolean {
-  return status === 5;
-}
+import {
+  isPurchaseOrderAuthorizedOrComplete,
+  isPurchaseOrderCancelled,
+  isPurchaseOrderPending,
+} from "../constants/purchaseOrderStatus";
 
 // ─── KPIs ────────────────────────────────────────────────────────────────────
 
@@ -38,17 +29,17 @@ const OrderStats = memo(function OrderStats({ items }: { items: PurchaseOrder[] 
   const total = items.length;
 
   const pendientes = useMemo(
-    () => items.filter((o) => isPending(o.estatus)).length,
+    () => items.filter((o) => isPurchaseOrderPending(o.estatus)).length,
     [items],
   );
 
   const autorizadas = useMemo(
-    () => items.filter((o) => isAuthorizedOrComplete(o.estatus)).length,
+    () => items.filter((o) => isPurchaseOrderAuthorizedOrComplete(o.estatus)).length,
     [items],
   );
 
   const canceladas = useMemo(
-    () => items.filter((o) => isCancelled(o.estatus)).length,
+    () => items.filter((o) => isPurchaseOrderCancelled(o.estatus)).length,
     [items],
   );
 

@@ -2,30 +2,18 @@
 
 import { useCallback, useState } from "react";
 import { StepProgressBar } from "@/src/components/StepProgressBar";
-import type {
-  PurchaseOrderEncabezados,
-  PurchaseOrderOnboardingResponse,
-} from "../interfaces/purchase-order-onboarding.interface";
+import type { PurchaseOrderEncabezados } from "../interfaces/purchase-order-onboarding.interface";
+import {
+  PURCHASE_ORDER_WIZARD_STEPS as STEPS,
+  PURCHASE_ORDER_WIZARD_STEP_LABELS as STEP_LABELS,
+  type PurchaseOrderWizardStep as OnboardingStep,
+} from "../constants/purchaseOrderWizardSteps";
 import { usePurchaseOrderOnboardingData } from "../hooks/usePurchaseOrderOnboardingData";
 import { PurchaseOrderOnboardingStep1 } from "./PurchaseOrderOnboardingStep1";
 import { PurchaseOrderOnboardingStep2 } from "./PurchaseOrderOnboardingStep2";
-import { PurchaseOrderOnboardingStep3 } from "./PurchaseOrderOnboardingStep3";
-
-/** Available onboarding steps. */
-export type OnboardingStep = "step-1" | "step-2" | "step-3";
-
-/** Ordered list of all steps. */
-const STEPS: readonly OnboardingStep[] = ["step-1", "step-2", "step-3"];
-
-/** Human-readable label for each step. */
-const STEP_LABELS: Record<OnboardingStep, string> = {
-  "step-1": "Datos generales",
-  "step-2": "Agregar productos",
-  "step-3": "Revisión y confirmación",
-};
 
 interface PurchaseOrderOnboardingStepManagerProps {
-  /** Called when the onboarding flow should close (e.g. after Step 3 confirm). */
+  /** Called when the onboarding flow should close (e.g. after Step 2 succeeds). */
   onClose?: () => void;
 }
 
@@ -33,7 +21,7 @@ interface PurchaseOrderOnboardingStepManagerProps {
  * PurchaseOrderOnboardingStepManager
  *
  * Orchestrator for the purchase order onboarding wizard.
- * Manages current step, preserves orden_compra_id and step responses,
+ * Manages current step, preserves Step 1's captured encabezados,
  * and passes shared onboarding data to child steps.
  */
 export function PurchaseOrderOnboardingStepManager({
@@ -42,8 +30,6 @@ export function PurchaseOrderOnboardingStepManager({
   const [currentStep, setCurrentStep] = useState<OnboardingStep>(STEPS[0]);
   const [step1Data, setStep1Data] =
     useState<PurchaseOrderEncabezados | null>(null);
-  const [step2Response, setStep2Response] =
-    useState<PurchaseOrderOnboardingResponse | null>(null);
 
   const { onboardingData } = usePurchaseOrderOnboardingData();
 
@@ -56,14 +42,8 @@ export function PurchaseOrderOnboardingStepManager({
     [],
   );
 
-  /** Called by Step 2 after a successful POST. */
-  const handleStep2Success = useCallback(
-    (response: PurchaseOrderOnboardingResponse) => {
-      setStep2Response(response);
-      setCurrentStep("step-3");
-    },
-    [],
-  );
+  /** Called by Step 2 after a successful POST — the wizard's final step. */
+  const handleStep2Success = () => onClose?.();
 
   return (
     <div className="w-full space-y-6">
@@ -84,12 +64,6 @@ export function PurchaseOrderOnboardingStepManager({
             step1Data={step1Data}
             onboardingData={onboardingData}
             onSuccess={handleStep2Success}
-          />
-        )}
-        {currentStep === "step-3" && step2Response !== null && (
-          <PurchaseOrderOnboardingStep3
-            step2Response={step2Response}
-            onClose={() => onClose?.()}
           />
         )}
       </div>

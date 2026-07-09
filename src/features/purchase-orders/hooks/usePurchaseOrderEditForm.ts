@@ -15,7 +15,7 @@ interface UsePurchaseOrderEditFormParams {
   initialData: PurchaseOrder;
   /**
    * Encabezado ya capturado en una visita previa al Step 1 (p. ej. tras pulsar
-   * "Volver" desde la revisión). Cuando existe, tiene prioridad sobre
+   * "Volver" desde el Step 2). Cuando existe, tiene prioridad sobre
    * `initialData` para sembrar los valores por defecto, de modo que los cambios
    * del usuario sobreviven el viaje de ida y vuelta entre pasos.
    */
@@ -53,7 +53,7 @@ export function usePurchaseOrderEditForm({
   const [serverErrors, setServerErrors] = useState<EditErrorMap>({});
 
   // ── Default values ──────────────────────────────────────────────────────
-  // Si ya hay un encabezado capturado (regreso desde la revisión), se siembra
+  // Si ya hay un encabezado capturado (regreso desde el Step 2), se siembra
   // desde él para no perder los cambios; en la primera visita, desde la orden.
   const defaultValues = useMemo<PurchaseOrderEditFormValues>(() => {
     if (initialHeader) {
@@ -203,7 +203,7 @@ export function usePurchaseOrderEditForm({
       }
 
       // El output validado son los campos del encabezado; los detalles se
-      // agregan en el Step 3 al armar el body completo del PUT.
+      // agregan después, en el Step 2, al armar el body completo del PUT.
       onSuccess(parsed.data);
     },
   });

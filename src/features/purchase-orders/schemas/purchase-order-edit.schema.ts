@@ -7,7 +7,7 @@ import { z } from "zod";
  * los campos bajo `orden_compra` porque el POST de creación recibe ese
  * envoltorio, la edición usa una forma **plana** que mapea 1:1 con
  * `UpdatePurchaseOrderHeader` (`PUT /compras/ordenes/{pk}/`). Los `detalles` se
- * agregan después, en el Step 3, al armar el body completo.
+ * agregan después, en el Step 2, al armar el body completo.
  *
  * El tipo de salida (`z.infer`) es asignable a `UpdatePurchaseOrderHeader`.
  */
