@@ -48,6 +48,14 @@ export interface PurchaseOrder {
   sucursal: number;
   proveedor: number;
   proveedor_nombre: string;
+  /**
+   * Correo del proveedor. Confirmado en la respuesta de detalle
+   * (`GET /compras/ordenes/{id}/`); en el listado puede venir ausente. Por eso
+   * es opcional aquí y se re-declara requerido en {@link PurchaseOrderDetail}.
+   * Puede ser `null` cuando no hay proveedor asignado O cuando el proveedor no
+   * tiene correo capturado — validar presencia antes de habilitar el envío.
+   */
+  proveedor_correo?: string | null;
   /** Información de rastreo — disponible para órdenes en tránsito o más avanzadas */
   tracking?: TrackingInfo;
   solicitud_compra: number | null;
@@ -97,6 +105,8 @@ export interface PurchaseOrderDetail extends PurchaseOrder {
   /** Recepciones (parciales o totales) generadas contra esta orden; `[]` si no hay ninguna. */
   recepciones: PurchaseOrderReceipt[];
   // ── Campos adicionales confirmados en la respuesta de retrieve ──────────────
+  /** Confirmado presente en el detalle; `null` si el proveedor no tiene correo. */
+  proveedor_correo: string | null;
   fecha_vencimiento: string | null;
   tipo: string;
   total_piezas: number;

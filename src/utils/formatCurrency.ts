@@ -33,3 +33,12 @@ export const safeParseAmount = (value: string | null | undefined): number => {
   const parsed = Number(value ?? "0");
   return Number.isNaN(parsed) ? 0 : parsed;
 };
+
+/**
+ * Combina `safeParseAmount` + `formatCurrency` para los campos financieros
+ * del backend, que llegan como string (o, en algunos renglones, number).
+ * Usado por los documentos PDF y las plantillas de correo (cotización y
+ * orden de compra).
+ */
+export const formatMoneyValue = (value: string | number): string =>
+  formatCurrency(safeParseAmount(String(value)));

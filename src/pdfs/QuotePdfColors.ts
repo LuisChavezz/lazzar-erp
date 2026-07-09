@@ -1,18 +1,16 @@
 /**
  * Paleta de colores del documento PDF de cotización.
  * Centralizada aquí para facilitar ajustes de marca sin tocar estilos ni componentes.
+ *
+ * Extiende `BASE_PDF_COLORS`, compartida con `PurchaseOrderPdfColors`, para
+ * que los tokens comunes a ambos documentos (marca, texto, bordes) se
+ * mantengan sincronizados estructuralmente en vez de copiados a mano.
  */
+import { BASE_PDF_COLORS } from "./shared/BasePdfColors";
+
 export const PDF_COLORS = {
-  brand: "#0f172a",
-  accent: "#0ea5e9",
+  ...BASE_PDF_COLORS,
   accentDark: "#0369a1",
-  white: "#ffffff",
-  textPrimary: "#0f172a",
-  textSecondary: "#475569",
-  textMuted: "#94a3b8",
-  border: "#e2e8f0",
-  borderLight: "#f1f5f9",
-  rowAlt: "#f8fafc",
   success: "#059669",
   badge: "#f0f9ff",
   badgeBorder: "#bae6fd",

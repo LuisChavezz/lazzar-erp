@@ -3,14 +3,24 @@
 import { useState } from "react";
 import { ColumnDef, createColumnHelper } from "@tanstack/react-table";
 import { ActionMenu, type ActionMenuItem } from "@/src/components/ActionMenu";
-import { CheckCircleIcon, DeleteIcon, EditIcon, ViewIcon } from "@/src/components/Icons";
+import {
+  CheckCircleIcon,
+  DeleteIcon,
+  DownloadIcon,
+  EditIcon,
+  EmailIcon,
+  ViewIcon,
+} from "@/src/components/Icons";
 import { PurchaseOrder } from "../interfaces/purchase-order.interface";
 import { PurchaseOrderDetailDialog } from "./PurchaseOrderDetailDialog";
 import { PurchaseOrderEditDialog } from "./PurchaseOrderEditDialog";
 import { ConfirmDialog } from "@/src/components/ConfirmDialog";
 import { useConfirmPurchaseOrder } from "../hooks/useConfirmPurchaseOrder";
 import { useDeletePurchaseOrder } from "../hooks/useDeletePurchaseOrder";
+import { useSendPurchaseOrderEmail } from "../hooks/useSendPurchaseOrderEmail";
+import { useDownloadPurchaseOrderPdf } from "../hooks/useDownloadPurchaseOrderPdf";
 import {
+  isPurchaseOrderAuthorizedOrComplete,
   isPurchaseOrderEditable,
   PURCHASE_ORDER_ESTATUS_CFG,
   PURCHASE_ORDER_STATUS,
@@ -42,11 +52,48 @@ const ActionsCell = ({ row }: { row: PurchaseOrder }) => {
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const { mutate: confirmOrder, isPending } = useConfirmPurchaseOrder();
   const { mutate: deleteOrder, isPending: isDeletePending } = useDeletePurchaseOrder();
+  const { mutate: sendEmail, isPending: isSendingEmail } = useSendPurchaseOrderEmail();
+  const { mutate: downloadPdf, isPending: isDownloadingPdf } = useDownloadPurchaseOrderPdf();
 
   // Borrador o pendiente: la orden aún no se autoriza, así que puede
   // editarse, confirmarse o eliminarse. Autorizada en adelante, ninguna de
   // las tres debe quedar disponible.
   const editable = isPurchaseOrderEditable(row.estatus);
+
+  // El envío al proveedor requiere un correo. El listado puede no traer
+  // `proveedor_correo` (solo el detalle lo confirma), así que solo se considera
+  // "sin correo" cuando el campo SÍ viene presente y vacío/null; si viene ausente
+  // (undefined) se asume que puede tenerlo y la validación autoritativa ocurre en
+  // el flujo de envío, que re-consulta el detalle y valida antes de enviar nada.
+  //
+  // Investigado (no modificado): si el serializer de listado del backend
+  // realmente OMITE este campo para TODAS las filas (no solo para
+  // proveedores sin correo — el comportamiento típico de DRF cuando un
+  // campo no está en `fields` del serializer de list), tratar `undefined`
+  // como "sin correo" ocultaría "Enviar correo" en el listado para el 100%
+  // de las órdenes, incluso las que sí tienen correo — una regresión peor
+  // que el estado actual (mostrar la acción siempre y dejar que el flujo de
+  // envío rechace con un mensaje claro). No hay forma de confirmar el
+  // comportamiento real del serializer desde este repo — requiere revisar
+  // el backend antes de cambiar esta condición.
+  const supplierHasNoEmail =
+    row.proveedor_correo === null || row.proveedor_correo === "";
+
+  // Solo se envía/descarga la orden una vez autorizada (o más avanzada): antes de
+  // eso todavía puede editarse/cancelarse, así que no debe salir un documento en
+  // firme. `estatus` sí viene siempre en el listado (alimenta la columna de
+  // estatus), por lo que el predicado explícito es la señal fiable. Cuando la
+  // condición no se cumple, la acción se OCULTA por completo (igual que
+  // Editar/Confirmar/Eliminar), no se muestra deshabilitada.
+  const isAuthorizedOrBeyond = isPurchaseOrderAuthorizedOrComplete(row.estatus);
+
+  // "Enviar correo" requiere además un correo del proveedor al que enviar.
+  const canSendEmail = isAuthorizedOrBeyond && !supplierHasNoEmail;
+
+  // "Descargar PDF" NO necesita correo del proveedor (es una acción local: el
+  // documento puede imprimirse o compartirse a mano), así que solo se condiciona
+  // a la autorización — no al correo.
+  const canDownloadPdf = isAuthorizedOrBeyond;
 
   const menuItems: ActionMenuItem[] = [
     {
@@ -69,7 +116,10 @@ const ActionsCell = ({ row }: { row: PurchaseOrder }) => {
       label: "Confirmar",
       icon: CheckCircleIcon,
       onSelect: () => setIsConfirmOpen(true),
-      disabled: isPending,
+      // Cross-guard: no permitir confirmar mientras se elimina la misma
+      // orden (y viceversa, ver "Eliminar" abajo) — ambas mutaciones no
+      // deben poder correr en paralelo sobre la misma orden.
+      disabled: isPending || isDeletePending,
     });
   }
 
@@ -78,7 +128,31 @@ const ActionsCell = ({ row }: { row: PurchaseOrder }) => {
       label: "Eliminar",
       icon: DeleteIcon,
       onSelect: () => setIsDeleteOpen(true),
-      disabled: isDeletePending,
+      disabled: isDeletePending || isPending,
+    });
+  }
+
+  if (canSendEmail) {
+    menuItems.push({
+      label: isSendingEmail ? "Enviando..." : "Enviar correo",
+      icon: EmailIcon,
+      onSelect: () => sendEmail(row.id),
+      // In-flight guard: evita doble envío o solaparse con la descarga.
+      // `keepOpenOnSelect` deja el menú abierto para ver el estado "Enviando...".
+      disabled: isSendingEmail || isDownloadingPdf,
+      keepOpenOnSelect: true,
+    });
+  }
+
+  if (canDownloadPdf) {
+    menuItems.push({
+      label: isDownloadingPdf ? "Generando PDF..." : "Descargar PDF",
+      icon: DownloadIcon,
+      onSelect: () => downloadPdf(row.id),
+      // In-flight guard: evita doble descarga o solaparse con el envío.
+      // `keepOpenOnSelect` deja el menú abierto para ver el estado "Generando PDF...".
+      disabled: isDownloadingPdf || isSendingEmail,
+      keepOpenOnSelect: true,
     });
   }
 

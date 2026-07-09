@@ -1,7 +1,6 @@
 "use client";
 
 import { useMutation } from "@tanstack/react-query";
-import type { AxiosError } from "axios";
 import toast from "react-hot-toast";
 import { googleSendEmail } from "../services/actions";
 import { getQuoteById } from "@/src/features/quotes/services/actions";
@@ -9,23 +8,13 @@ import { generateQuotePdfBlob } from "@/src/features/quotes/services/pdf/quotePd
 import { buildGoogleEmailAttachment } from "../utils/googleEmailAttachment.utils";
 import type { GoogleEmailPayload } from "../interfaces/google.interface";
 import type { QuoteById } from "@/src/features/quotes/interfaces/quote.interface";
+import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 
 // --- Tipos internos ---
 
 type RenderedEmailPayload = GoogleEmailPayload & { error?: string };
 
 type SendResult = { recipient: string; subject: string };
-
-/**
- * Extrae el mensaje de error de un error de Axios o generico.
- * El backend Django devuelve { error: string } en la respuesta JSON.
- */
-const extractErrorMessage = (error: unknown, fallback: string): string => {
-  const axiosData = (error as AxiosError<{ error?: string }>)?.response?.data;
-  if (axiosData?.error) return axiosData.error;
-  if (error instanceof Error) return error.message;
-  return fallback;
-};
 
 /**
  * Paso 2: envia el objeto quote al API Route para renderizarlo con react-email en Node.js.

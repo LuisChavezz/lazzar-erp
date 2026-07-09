@@ -3,6 +3,18 @@ import { getPurchaseOrder } from "../services/actions";
 import { PurchaseOrderDetail } from "../interfaces/purchase-order.interface";
 
 /**
+ * Opciones de query compartidas para obtener una orden de compra por id —
+ * usadas por este hook y también por mutaciones que necesitan la MISMA
+ * orden (enviar correo, descargar PDF) para reutilizar el cache de esta
+ * query en vez de re-consultar el backend cuando el detalle ya está
+ * cacheado (p. ej. porque el usuario ya abrió el diálogo de detalle).
+ */
+export const purchaseOrderQueryOptions = (id: number) => ({
+  queryKey: ["purchase-orders", id] as const,
+  queryFn: () => getPurchaseOrder(id),
+});
+
+/**
  * Recupera una orden de compra individual (incluyendo su `detalle`) desde
  * `GET /compras/ordenes/{id}/`.
  *
@@ -20,8 +32,7 @@ export const usePurchaseOrder = (id: number | null, enabled = true) => {
     refetch,
     isFetching,
   } = useQuery<PurchaseOrderDetail>({
-    queryKey: ["purchase-orders", id],
-    queryFn: () => getPurchaseOrder(id as number),
+    ...purchaseOrderQueryOptions(id as number),
     enabled: enabled && id != null,
   });
 
