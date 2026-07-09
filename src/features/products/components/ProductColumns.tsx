@@ -43,7 +43,7 @@ const ActionsCell = ({
 
   if (canDelete) {
     menuItems.push({
-      label: "Eliminar",
+      label: "Cancelar",
       icon: DeleteIcon,
       onSelect: () => setShowDeleteConfirm(true),
       disabled: isPending,

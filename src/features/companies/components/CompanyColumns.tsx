@@ -61,7 +61,7 @@ const ActionsCell = ({
           trigger={
             <button
               className="p-1 cursor-pointer text-slate-400 hover:text-red-600 transition-colors"
-              title="Eliminar"
+              title="Cancelar"
             >
               <DeleteIcon className="w-5 h-5" />
             </button>

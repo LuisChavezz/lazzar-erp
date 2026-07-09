@@ -125,7 +125,7 @@ const ActionsCell = ({ row }: { row: PurchaseOrder }) => {
 
   if (editable) {
     menuItems.push({
-      label: "Eliminar",
+      label: "Cancelar",
       icon: DeleteIcon,
       onSelect: () => setIsDeleteOpen(true),
       disabled: isDeletePending || isPending,
