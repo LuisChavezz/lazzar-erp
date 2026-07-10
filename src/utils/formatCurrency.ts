@@ -42,3 +42,13 @@ export const safeParseAmount = (value: string | null | undefined): number => {
  */
 export const formatMoneyValue = (value: string | number): string =>
   formatCurrency(safeParseAmount(String(value)));
+
+/**
+ * Formatea una CANTIDAD (no dinero) como número plano es-MX, hasta 2 decimales,
+ * sin símbolo de moneda. Para campos de existencias que llegan como string
+ * decimal del backend ("10.0000"). Comparte `safeParseAmount` con los importes.
+ */
+export const formatQuantityValue = (value: string | number): string =>
+  new Intl.NumberFormat("es-MX", { maximumFractionDigits: 2 }).format(
+    safeParseAmount(String(value)),
+  );

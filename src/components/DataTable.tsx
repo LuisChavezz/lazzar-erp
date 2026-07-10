@@ -73,6 +73,25 @@ interface DataTableProps<TData, TValue> {
   loadingMessage?: string;
   /** Al cambiar, reinicia la paginación a la página 1 sin afectar sorting, búsqueda, filtros o columnas. */
   paginationResetKey?: string | number;
+  /** Mensaje del estado vacío dentro del cuerpo de la tabla (cuando no hay datos). */
+  emptyMessage?: string;
+  /**
+   * Paginación controlada por el servidor. Cuando se proporciona, la tabla NO
+   * recorta `data` (el llamador ya pasó solo la página actual, p. ej.
+   * `response.results`) y su pager se cablea a `onPageChange` en vez de a la
+   * paginación interna en cliente. Si se omite (todos los consumidores
+   * actuales), el comportamiento es idéntico al previo: paginación 100 % en
+   * cliente sobre `data`.
+   */
+  serverPagination?: {
+    /** Total de páginas, derivado de `count`/`page_size`. */
+    pageCount: number;
+    /** Página actual, 1-indexada (misma convención que la API). */
+    currentPage: number;
+    onPageChange: (page: number) => void;
+    /** Deshabilita los controles del pager durante la transición de página. */
+    isFetching?: boolean;
+  };
 }
 
 export function DataTable<TData, TValue>({
@@ -92,6 +111,8 @@ export function DataTable<TData, TValue>({
   loadingTitle,
   loadingMessage,
   paginationResetKey,
+  emptyMessage,
+  serverPagination,
 }: DataTableProps<TData, TValue>) {
   const searchInputId = useId();
   const columnsMenuId = `${searchInputId}-columns-menu`;
@@ -242,6 +263,16 @@ export function DataTable<TData, TValue>({
     };
   }, [isAddFilterOpen]);
 
+  // ── Modo de paginación de servidor ────────────────────────────────────────
+  // En este modo `data` ya es solo la página actual (el llamador paginó en el
+  // servidor). Se anula la paginación en cliente mostrando TODAS las filas
+  // recibidas en una sola "página" interna, para no recortar dos veces; el
+  // sorting y la búsqueda siguen operando sobre la página vigente.
+  const isServerPaginated = serverPagination !== undefined;
+  const effectivePagination = isServerPaginated
+    ? { pageIndex: 0, pageSize: Math.max(data.length, 1) }
+    : pagination;
+
   // eslint-disable-next-line react-hooks/incompatible-library
   const table = useReactTable({
     data: filteredData,
@@ -251,7 +282,7 @@ export function DataTable<TData, TValue>({
       globalFilter,
       columnVisibility,
       columnOrder,
-      pagination,
+      pagination: effectivePagination,
     },
     columnResizeMode: "onChange",
     onSortingChange: setSorting,
@@ -271,8 +302,46 @@ export function DataTable<TData, TValue>({
   const totalRows = table.getFilteredRowModel().rows.length;
   const startRow = totalRows === 0 ? 0 : pagination.pageIndex * pagination.pageSize + 1;
   const endRow = totalRows === 0 ? 0 : Math.min(totalRows, (pagination.pageIndex + 1) * pagination.pageSize);
-  const pageCount = table.getPageCount();
-  const currentPage = pagination.pageIndex + 1;
+  const pageCount = isServerPaginated
+    ? Math.max(1, serverPagination.pageCount)
+    : table.getPageCount();
+  // Se acota al rango válido para nunca MOSTRAR un estado imposible (p. ej.
+  // "Página 8 de 3") si el consumidor pasa una página fuera de rango; también
+  // hace que "anterior/siguiente" partan de una base sensata. En cliente ya es
+  // válida (no-op). NO se corrige el estado del consumidor por cuenta propia
+  // (no se llama a `onPageChange` solo): eso sigue siendo su responsabilidad.
+  const currentPage = isServerPaginated
+    ? Math.min(Math.max(1, serverPagination.currentPage), pageCount)
+    : pagination.pageIndex + 1;
+
+  // El pager permanece visible en modo servidor aunque la página actual venga
+  // vacía (p. ej. tras encogerse el conjunto), para no dejar al usuario sin
+  // forma de volver a una página con datos. En cliente conserva el gate por datos.
+  const showPager = isServerPaginated || hasBaseData;
+
+  // ── Controles del pager: en modo servidor delegan en `onPageChange`; en
+  //    cliente, en la paginación interna de la tabla. ────────────────────────
+  const canPreviousPage = isServerPaginated
+    ? currentPage > 1
+    : table.getCanPreviousPage();
+  const canNextPage = isServerPaginated
+    ? currentPage < pageCount
+    : table.getCanNextPage();
+  const pagerBusy = isServerPaginated
+    ? Boolean(serverPagination.isFetching)
+    : false;
+  const goToPage = (targetPage: number) => {
+    if (isServerPaginated) serverPagination.onPageChange(targetPage);
+    else table.setPageIndex(targetPage - 1);
+  };
+  const goToPreviousPage = () =>
+    isServerPaginated
+      ? serverPagination.onPageChange(currentPage - 1)
+      : table.previousPage();
+  const goToNextPage = () =>
+    isServerPaginated
+      ? serverPagination.onPageChange(currentPage + 1)
+      : table.nextPage();
   const visibleRowsSignature = useMemo(
     () => visibleRows.map((row) => row.id).join("|"),
     [visibleRows]
@@ -406,7 +475,11 @@ export function DataTable<TData, TValue>({
         <div className="flex flex-col lg:flex-row lg:items-center gap-3 w-full lg:w-auto">
           <div className="w-full lg:w-auto overflow-x-auto lg:overflow-visible pb-1">
             <div className="flex items-center justify-end gap-2 min-w-max">
-            {/* La búsqueda permanece visible aunque la tabla esté vacía. */}
+            {/* La búsqueda se OCULTA en modo servidor: filtraría solo la página
+                actual (no la consulta completa), haciendo creer que un registro
+                de otra página "no existe". Aún no hay búsqueda server-side para
+                estos reportes. En modo cliente permanece visible como antes. */}
+            {!isServerPaginated && (
             <div className="flex items-center gap-0">
               <button
                 type="button"
@@ -457,9 +530,10 @@ export function DataTable<TData, TValue>({
                   </div>
                 </div>
               </div>
+            )}
             {/* /búsqueda */}
 
-            {filterConfig && filterConfig.length > 0 && (
+            {!isServerPaginated && filterConfig && filterConfig.length > 0 && (
               <Button
                 variant="secondary"
                 size="icon"
@@ -555,7 +629,7 @@ export function DataTable<TData, TValue>({
       </div>
 
       {/* ── Separator + Filters Container ───────────────────────────────────── */}
-      {filterConfig && filterConfig.length > 0 && (
+      {!isServerPaginated && filterConfig && filterConfig.length > 0 && (
         <div
           className="transition-all duration-300 ease-in-out"
           style={{
@@ -756,7 +830,10 @@ export function DataTable<TData, TValue>({
                   className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-white/5 text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400"
                 >
                   {headerGroup.headers.map((header) => {
-                    const canSort = header.column.getCanSort();
+                    // En modo servidor se desactiva el ordenamiento: solo
+                    // ordenaría las filas de la página actual, dando un "top"
+                    // parcial engañoso respecto al conjunto completo.
+                    const canSort = !isServerPaginated && header.column.getCanSort();
                     const sorted = header.column.getIsSorted();
                     const ariaSortValue =
                       sorted === "asc"
@@ -892,7 +969,7 @@ export function DataTable<TData, TValue>({
                       className="px-6 py-6 text-center text-slate-500 dark:text-slate-400"
                     >
                       {!hasBaseData
-                        ? "No hay elementos para mostrar"
+                        ? emptyMessage ?? "No hay elementos para mostrar"
                         : globalFilter.trim().length > 0
                         ? `No se encontraron resultados para ${globalFilter}`
                         : "No se encontraron resultados"}
@@ -913,37 +990,43 @@ export function DataTable<TData, TValue>({
           )}
         </div>
 
-      {hasBaseData && (
+      {showPager && (
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6">
           <div className="text-sm text-slate-500 dark:text-slate-400">
-            Mostrando {startRow}-{endRow} de {totalRows}
+            {isServerPaginated
+              ? `Página ${currentPage} de ${pageCount}`
+              : `Mostrando ${startRow}-${endRow} de ${totalRows}`}
           </div>
           <div className="w-full sm:w-auto overflow-x-auto">
             <div className="flex items-center justify-end gap-3 min-w-max">
-            <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
-              <span>Filas</span>
-              <select
-                value={pagination.pageSize}
-                onChange={(e) => table.setPageSize(Number(e.target.value))}
-                className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-zinc-900 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-sky-500/50 focus:border-sky-500"
-              >
-                {[10, 20, 50, 100].map((size) => (
-                  <option
-                    key={size}
-                    value={size}
-                    className="bg-white text-slate-900 dark:bg-zinc-900 dark:text-slate-100"
-                  >
-                    {size}
-                  </option>
-                ))}
-              </select>
-            </div>
+            {/* Selector de filas por página: solo en modo cliente. En modo
+                servidor el `page_size` es fijo (lo define el llamador). */}
+            {!isServerPaginated && (
+              <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
+                <span>Filas</span>
+                <select
+                  value={pagination.pageSize}
+                  onChange={(e) => table.setPageSize(Number(e.target.value))}
+                  className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-zinc-900 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-sky-500/50 focus:border-sky-500"
+                >
+                  {[10, 20, 50, 100].map((size) => (
+                    <option
+                      key={size}
+                      value={size}
+                      className="bg-white text-slate-900 dark:bg-zinc-900 dark:text-slate-100"
+                    >
+                      {size}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
             <div className="flex items-center gap-2">
               <Button
                 variant="secondary"
                 size="icon"
-                onClick={() => table.previousPage()}
-                disabled={!table.getCanPreviousPage()}
+                onClick={goToPreviousPage}
+                disabled={!canPreviousPage || pagerBusy}
                 className="border-slate-200 dark:border-white/10"
                 aria-label="Página anterior"
               >
@@ -960,7 +1043,8 @@ export function DataTable<TData, TValue>({
                       key={item}
                       variant={item === currentPage ? "primary" : "secondary"}
                       size="icon"
-                      onClick={() => table.setPageIndex(item - 1)}
+                      onClick={() => goToPage(item)}
+                      disabled={pagerBusy}
                       className={`h-9 w-9 p-0 ${item === currentPage ? "" : "border-slate-200 dark:border-white/10"}`}
                       aria-current={item === currentPage ? "page" : undefined}
                       aria-label={`Ir a la página ${item}`}
@@ -973,8 +1057,8 @@ export function DataTable<TData, TValue>({
               <Button
                 variant="secondary"
                 size="icon"
-                onClick={() => table.nextPage()}
-                disabled={!table.getCanNextPage()}
+                onClick={goToNextPage}
+                disabled={!canNextPage || pagerBusy}
                 className="border-slate-200 dark:border-white/10"
                 aria-label="Página siguiente"
               >
