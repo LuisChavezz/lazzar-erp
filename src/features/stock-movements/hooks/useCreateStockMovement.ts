@@ -3,12 +3,38 @@ import toast from "react-hot-toast";
 import { AxiosError } from "axios";
 import { createStockMovement, type CreateStockMovementPayload } from "../services/actions";
 
-export type StockMovementFieldMapping = keyof CreateStockMovementPayload | "observaciones";
+// `pedido` no es un campo del formulario (se elige aparte, ver
+// useStockMovementForm) — se excluye del mapeo genérico de errores por campo;
+// su error se obtiene por separado con `parseStockMovementPedidoError`.
+export type StockMovementFieldMapping =
+  | Exclude<keyof CreateStockMovementPayload, "pedido">
+  | "observaciones";
 
 type SetStockMovementError = (
   field: StockMovementFieldMapping,
   error: { type?: string; message?: string },
 ) => void;
+
+/**
+ * Error de `pedido` normalizado a partir del contrato del backend:
+ * `400` con `{ pedido: msg }` (pedido inexistente/inválido para el movimiento).
+ * Sigue el mismo patrón que `parseCreateInvoiceError` (invoicing) — el pedido
+ * no es un campo del formulario, así que su error no pasa por el mapeo
+ * genérico de `setError`, sino que el hook de formulario lo lee directamente
+ * a partir del error capturado en el `catch` de su envío.
+ */
+export const parseStockMovementPedidoError = (error: unknown): { message: string } | null => {
+  if (error instanceof AxiosError) {
+    const status = error.response?.status;
+    const data = error.response?.data as { pedido?: string | string[] } | undefined;
+
+    if (status === 400 && data?.pedido) {
+      const message = Array.isArray(data.pedido) ? data.pedido[0] : data.pedido;
+      if (message) return { message };
+    }
+  }
+  return null;
+};
 
 export const useCreateStockMovement = (setError?: SetStockMovementError) => {
   const queryClient = useQueryClient();
@@ -29,8 +55,10 @@ export const useCreateStockMovement = (setError?: SetStockMovementError) => {
           const fieldMessages: string[] = [];
 
           Object.entries(data as Record<string, unknown>).forEach(([key, value]) => {
-            // Establecer error por campo si hay callback.
-            if (setError) {
+            // Establecer error por campo si hay callback — `pedido` se excluye:
+            // no es un campo del formulario, se lee aparte con
+            // `parseStockMovementPedidoError` en el `catch` del envío.
+            if (setError && key !== "pedido") {
               const fieldKey = key as StockMovementFieldMapping;
               const message = Array.isArray(value) ? value[0] : value;
               if (typeof message === "string" && message.length > 0) {

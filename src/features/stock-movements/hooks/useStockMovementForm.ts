@@ -9,7 +9,7 @@ import { useWarehouses } from "@/src/features/warehouses/hooks/useWarehouses";
 import { useLocations } from "@/src/features/locations/hooks/useLocations";
 import { useProductVariants } from "@/src/features/product-variants/hooks/useProductVariants";
 import { getStockItems } from "@/src/features/stock/services/actions";
-import { useCreateStockMovement } from "./useCreateStockMovement";
+import { useCreateStockMovement, parseStockMovementPedidoError } from "./useCreateStockMovement";
 import {
   StockMovementFormSchema,
   type StockMovementFormValues,
@@ -35,6 +35,14 @@ export function useStockMovementForm({ onSuccess }: { onSuccess?: () => void } =
   const [errors, setErrors] = useState<Partial<Record<StockMovementField, string>>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [resetCounter, setResetCounter] = useState(0);
+
+  // ─── Pedido vinculado (opcional) ────────────────────────────────────────
+  // El pedido NO es un campo del formulario: se elige en un diálogo aparte y
+  // solo se envía al backend si el usuario lo vincula explícitamente.
+  const [selectedPedido, setSelectedPedido] = useState<{ id: number; label: string } | null>(null);
+  // Error específico del pedido (p. ej. `400 { pedido: "Pedido no encontrado." }`).
+  // Se muestra en línea junto al selector, no como error de un campo del form.
+  const [pedidoError, setPedidoError] = useState<string | null>(null);
 
   // Ref para evitar doble envío mientras se procesa la mutación.
   const submitInFlight = useRef(false);
@@ -112,6 +120,17 @@ export function useStockMovementForm({ onSuccess }: { onSuccess?: () => void } =
     if (variantOptions.length === 0) items.push("Variantes de producto");
     return items;
   }, [warehouseOptions.length, activeLocations.length, variantOptions.length]);
+
+  // ─── Selección de pedido ────────────────────────────────────────────────
+  const handleSelectPedido = (pedido: { id: number; label: string }) => {
+    setSelectedPedido(pedido);
+    setPedidoError(null); // Nueva selección invalida cualquier error previo.
+  };
+
+  const handleRemovePedido = () => {
+    setSelectedPedido(null);
+    setPedidoError(null);
+  };
 
   // ─── Mutación ───────────────────────────────────────────────────────────
   const setHookError = (field: string, error: { message?: string }) => {
@@ -192,8 +211,12 @@ export function useStockMovementForm({ onSuccess }: { onSuccess?: () => void } =
       submitInFlight.current = true;
       setIsSubmitting(true);
 
+      // Limpiar error de pedido de un intento anterior antes de reintentar.
+      setPedidoError(null);
+
       try {
         const operationType = value.tipo_movimiento;
+        const observaciones = value.observaciones?.trim();
 
         await createMovement({
           operationType,
@@ -206,14 +229,24 @@ export function useStockMovementForm({ onSuccess }: { onSuccess?: () => void } =
                 ubicacion: value.ubicacion_origen_id,
               },
             ],
+            // Solo se incluyen cuando tienen valor — nunca se envía cadena vacía,
+            // ni `pedido: null`/`0` como marcador (el backend lo rechazaría).
+            ...(observaciones ? { observaciones } : {}),
+            ...(selectedPedido ? { pedido: selectedPedido.id } : {}),
           },
         });
 
         form.reset(defaultValues);
         setErrors({});
+        setSelectedPedido(null);
+        setPedidoError(null);
         onSuccess?.();
-      } catch {
-        // El error ya se manejó en onError de la mutación (toast + errores de campo).
+      } catch (error) {
+        // Los errores de campo del formulario ya se manejaron en onError de la
+        // mutación (toast + errores de campo). El pedido no es un campo del
+        // formulario, así que su error se obtiene aparte del error crudo.
+        const pedido = parseStockMovementPedidoError(error);
+        if (pedido) setPedidoError(pedido.message);
         return;
       } finally {
         setIsSubmitting(false);
@@ -235,6 +268,8 @@ export function useStockMovementForm({ onSuccess }: { onSuccess?: () => void } =
   const handleReset = () => {
     form.reset(defaultValues);
     setErrors({});
+    setSelectedPedido(null);
+    setPedidoError(null);
     setResetCounter((prev) => prev + 1);
   };
 
@@ -258,5 +293,10 @@ export function useStockMovementForm({ onSuccess }: { onSuccess?: () => void } =
     clearFieldError,
     handleFormSubmit,
     handleReset,
+    // Pedido vinculado
+    selectedPedido,
+    pedidoError,
+    handleSelectPedido,
+    handleRemovePedido,
   };
 }

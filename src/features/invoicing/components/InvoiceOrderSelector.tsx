@@ -1,8 +1,8 @@
 "use client";
 
 import { Loader } from "@/src/components/Loader";
-import { CheckIcon } from "@/src/components/Icons";
 import { SearchableSelectList } from "@/src/components/SearchableSelectList";
+import { renderRadioIndicator } from "@/src/components/RadioIndicator";
 import { useOrders } from "@/src/features/orders/hooks/useOrders";
 import type { Order } from "@/src/features/orders/interfaces/order.interface";
 
@@ -57,18 +57,7 @@ export function InvoiceOrderSelector({
       onSelect={(order) => onSelect(order.id)}
       emptyMessage="No hay pedidos disponibles."
       noResultsMessage="No se encontraron pedidos"
-      renderIndicator={(selected) => (
-        // Indicador circular tipo radio (selección única)
-        <span
-          className={`shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${
-            selected
-              ? "border-sky-500 bg-sky-500 text-white"
-              : "border-slate-300 dark:border-slate-600"
-          }`}
-        >
-          {selected && <CheckIcon className="w-3.5 h-3.5" />}
-        </span>
-      )}
+      renderIndicator={renderRadioIndicator}
       renderContent={(order) => (
         <>
           <p className="text-sm font-semibold text-slate-800 dark:text-slate-100 truncate">

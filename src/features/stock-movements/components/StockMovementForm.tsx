@@ -11,8 +11,11 @@ import { Loader } from "@/src/components/Loader";
 import MissingPrerequisites from "@/src/features/products/components/MissingPrerequisites";
 import { InventariosIcon } from "@/src/components/Icons";
 import { Button } from "@/src/components/Button";
+import { XIcon } from "@/src/components/Icons";
 import { ProductVariantSearchDropdown } from "./ProductVariantSearchDropdown";
+import { StockMovementPedidoSelectorDialog } from "./StockMovementPedidoSelectorDialog";
 import { useStockMovementForm } from "../hooks/useStockMovementForm";
+import { AJUSTE_OBSERVACIONES_MAX } from "../schemas/stock-movement.schema";
 
 /**
  * Contenido del formulario — se monta solo cuando el diálogo está abierto,
@@ -39,13 +42,27 @@ function StockMovementFormContent({ onClose }: { onClose: () => void }) {
     clearFieldError,
     handleFormSubmit,
     handleReset,
+    selectedPedido,
+    pedidoError,
+    handleSelectPedido,
+    handleRemovePedido,
   } = useStockMovementForm({ onSuccess: onClose });
+
+  // Estado local del diálogo de selección de pedido (apilado sobre este form).
+  const [isPedidoSelectorOpen, setIsPedidoSelectorOpen] = useState(false);
 
   // ─── Suscripciones reactivas a campos del formulario ────────────────────
   const tipoMovimiento = useStore(form.store, (state) => state.values.tipo_movimiento);
   const almacenOrigenId = useStore(form.store, (state) => state.values.almacen_origen_id);
+  const observacionesValue = useStore(form.store, (state) => state.values.observaciones ?? "");
 
   const isAjuste = tipoMovimiento === "AJUSTE";
+  // Se cuenta sobre el valor recortado — el backend recibe `observaciones.trim()`
+  // (ver useStockMovementForm), así que el aviso debe reflejar lo que en verdad
+  // se envía y no falsear un aviso de truncado por espacios finales.
+  const observacionesTrimmedLength = observacionesValue.trim().length;
+  const ajusteObservacionesOverflow =
+    isAjuste && observacionesTrimmedLength > AJUSTE_OBSERVACIONES_MAX;
 
   // ─── Variantes activas (estable entre renders) ──────────────────────────
   // Evita recrear el arreglo filtrado en cada render y estabiliza la prop
@@ -123,11 +140,11 @@ function StockMovementFormContent({ onClose }: { onClose: () => void }) {
                         const nextValue = event.target.value as typeof field.state.value;
                         field.handleChange(nextValue);
                         clearFieldError("tipo_movimiento");
-                        // Limpiar observaciones al salir de AJUSTE
-                        if (nextValue !== "AJUSTE") {
-                          form.setFieldValue("observaciones", "");
-                          clearFieldError("observaciones");
-                        }
+                        // Las observaciones ahora son opcionales para todo tipo de
+                        // movimiento — el valor no se limpia al cambiar de tipo,
+                        // pero sí cualquier error previo, para no dejarlo huérfano
+                        // bajo la etiqueta genérica del campo.
+                        clearFieldError("observaciones");
                       }}
                       onBlur={field.handleBlur}
                       error={getError("tipo_movimiento")}
@@ -295,27 +312,32 @@ function StockMovementFormContent({ onClose }: { onClose: () => void }) {
             </div>
           </section>
 
-          {/* ── Sección: Notas (solo para AJUSTE) ─────────────────────── */}
-          {isAjuste && (
-            <section className="bg-white dark:bg-zinc-900 rounded-2xl border border-slate-200 dark:border-white/5 shadow-sm dark:shadow-none overflow-hidden">
-              <div className="px-6 py-4 border-b border-slate-100 dark:border-white/5 flex items-center gap-3 bg-amber-50/50 dark:bg-amber-500/5">
-                <div className="w-9 h-9 rounded-lg bg-amber-50 dark:bg-amber-500/10 flex items-center justify-center text-amber-600 dark:text-amber-400 shadow-sm">
-                  <InventariosIcon className="w-4 h-4" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-slate-900 dark:text-white text-sm">
-                    Notas
-                  </h3>
-                  <p className="text-[11px] text-slate-500">Observaciones obligatorias para el ajuste</p>
-                </div>
+          {/* ── Sección: Notas y Referencias ──────────────────────────── */}
+          <section className="bg-white dark:bg-zinc-900 rounded-2xl border border-slate-200 dark:border-white/5 shadow-sm dark:shadow-none overflow-hidden">
+            <div className="px-6 py-4 border-b border-slate-100 dark:border-white/5 flex items-center gap-3 bg-indigo-50/50 dark:bg-indigo-500/5">
+              <div className="w-9 h-9 rounded-lg bg-indigo-50 dark:bg-indigo-500/10 flex items-center justify-center text-indigo-600 dark:text-indigo-400 shadow-sm">
+                <InventariosIcon className="w-4 h-4" />
               </div>
+              <div>
+                <h3 className="font-semibold text-slate-900 dark:text-white text-sm">
+                  Notas y Referencias
+                </h3>
+                <p className="text-[11px] text-slate-500">
+                  Observaciones y pedido relacionado (opcionales)
+                </p>
+              </div>
+            </div>
 
-              <div className="p-6">
+            <div className="p-6 space-y-5">
+              {/* Observaciones — opcional para todo tipo de movimiento */}
+              <div>
                 <form.Field name="observaciones">
                   {(field) => (
                     <FormInput
-                      label="Observaciones"
-                      placeholder="Motivo del ajuste"
+                      label="Observaciones (opcional)"
+                      placeholder={
+                        isAjuste ? "Motivo del ajuste" : "Notas del movimiento"
+                      }
                       name={field.name}
                       value={field.state.value ?? ""}
                       onChange={(event) => {
@@ -327,9 +349,77 @@ function StockMovementFormContent({ onClose }: { onClose: () => void }) {
                     />
                   )}
                 </form.Field>
+
+                {/* Aviso suave del límite del backend para AJUSTE (no bloquea) */}
+                {isAjuste && (
+                  <p
+                    className={`mt-1.5 text-[11px] ${
+                      ajusteObservacionesOverflow
+                        ? "text-amber-600 dark:text-amber-400 font-medium"
+                        : "text-slate-500 dark:text-slate-400"
+                    }`}
+                  >
+                    {ajusteObservacionesOverflow
+                      ? `El ajuste guarda máximo ${AJUSTE_OBSERVACIONES_MAX} caracteres — el resto se truncará.`
+                      : `${observacionesTrimmedLength}/${AJUSTE_OBSERVACIONES_MAX} caracteres máximo para ajustes.`}
+                  </p>
+                )}
               </div>
-            </section>
-          )}
+
+              {/* Pedido relacionado — selección opcional vía diálogo apilado */}
+              <div className="pt-1">
+                <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider ml-1 mb-1 block">
+                  Pedido relacionado (opcional)
+                </label>
+
+                {selectedPedido ? (
+                  <div className="flex items-center justify-between gap-3 rounded-xl border border-sky-200 bg-sky-50 dark:border-sky-700/60 dark:bg-sky-900/20 px-4 py-3">
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-slate-800 dark:text-slate-100 truncate">
+                        {selectedPedido.label}
+                      </p>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                        Pedido vinculado a este movimiento
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => setIsPedidoSelectorOpen(true)}
+                        className="px-3 py-1.5 text-xs font-semibold rounded-lg cursor-pointer border border-sky-200 text-sky-700 hover:bg-sky-100 dark:border-sky-700 dark:text-sky-300 dark:hover:bg-sky-500/10 transition-colors"
+                      >
+                        Cambiar
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleRemovePedido}
+                        aria-label="Quitar pedido"
+                        className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold rounded-lg cursor-pointer border border-slate-200 text-slate-500 hover:bg-slate-100 hover:text-rose-600 dark:border-white/10 dark:text-slate-400 dark:hover:bg-white/5 transition-colors"
+                      >
+                        <XIcon className="w-4 h-4" />
+                        Quitar
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setIsPedidoSelectorOpen(true)}
+                    className="w-full rounded-xl border border-dashed border-slate-300 dark:border-white/15 px-4 py-3 text-sm font-medium text-slate-600 dark:text-slate-300 hover:border-sky-400 hover:text-sky-700 dark:hover:border-sky-600 dark:hover:text-sky-300 cursor-pointer transition-colors"
+                  >
+                    + Relacionar a un pedido
+                  </button>
+                )}
+
+                {/* Error específico del pedido (p. ej. "Pedido no encontrado.") */}
+                {pedidoError && (
+                  <p className="mt-2 text-sm font-medium text-rose-600 dark:text-rose-400">
+                    {pedidoError}
+                  </p>
+                )}
+              </div>
+            </div>
+          </section>
         </fieldset>
 
         {/* ── Botones de acción ───────────────────────────────────────── */}
@@ -340,6 +430,15 @@ function StockMovementFormContent({ onClose }: { onClose: () => void }) {
           </FormSubmitButton>
         </div>
       </form>
+
+      {/* Diálogo de selección de pedido — apilado ENCIMA del formulario, que
+          permanece montado detrás para no perder su estado. */}
+      <StockMovementPedidoSelectorDialog
+        open={isPedidoSelectorOpen}
+        onOpenChange={setIsPedidoSelectorOpen}
+        selectedPedidoId={selectedPedido?.id ?? null}
+        onSelect={handleSelectPedido}
+      />
     </>
   );
 }

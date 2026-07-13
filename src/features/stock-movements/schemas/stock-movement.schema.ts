@@ -14,6 +14,9 @@ export const StockMovementFormSchema = z
       .number({ message: "La cantidad es requerida" })
       .int("La cantidad debe ser un número entero")
       .nonnegative("La cantidad no puede ser negativa"),
+    // Observaciones: opcionales para TODO tipo de movimiento. En AJUSTE el
+    // backend trunca a 150 caracteres — eso se avisa con un indicador suave en
+    // la UI, no como error de validación (no bloqueamos el envío).
     observaciones: z.string().optional(),
   })
   .superRefine((data, ctx) => {
@@ -25,16 +28,12 @@ export const StockMovementFormSchema = z
         path: ["cantidad"],
       });
     }
-
-    if (data.tipo_movimiento === "AJUSTE") {
-      if (!data.observaciones || data.observaciones.trim() === "") {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: "Las observaciones son requeridas para ajustes",
-          path: ["observaciones"],
-        });
-      }
-    }
   });
+
+/**
+ * Límite que el backend aplica a `observaciones` en movimientos de tipo AJUSTE
+ * (trunca en el servidor). Se usa solo para un aviso suave en la UI.
+ */
+export const AJUSTE_OBSERVACIONES_MAX = 150;
 
 export type StockMovementFormValues = z.infer<typeof StockMovementFormSchema>;

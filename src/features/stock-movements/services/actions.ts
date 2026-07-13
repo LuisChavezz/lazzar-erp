@@ -8,6 +8,15 @@ export interface CreateStockMovementPayload {
     cantidad: string;
     ubicacion: number;
   }[];
+  /** Notas del movimiento. Opcional en los tres endpoints (entrada/salida/ajuste). */
+  observaciones?: string;
+  /**
+   * Pedido al que se vincula el movimiento. Opcional — se omite por completo
+   * cuando no hay pedido (nunca se envía `null` ni `0`). Un pedido inválido/
+   * inexistente hace que el backend rechace TODO el movimiento con un `400`
+   * `{ "pedido": "Pedido no encontrado." }`.
+   */
+  pedido?: number;
 }
 
 export const getStockMovements = async (): Promise<StockMovement[]> => {

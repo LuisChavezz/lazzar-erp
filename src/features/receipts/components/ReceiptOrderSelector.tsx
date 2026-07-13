@@ -19,7 +19,7 @@ import { useReceiptOnboardingData } from "../hooks/useReceiptOnboardingData";
 import { SearchableSelectList } from "@/src/components/SearchableSelectList";
 import { SegmentedControl } from "@/src/components/SegmentedControl";
 import { Loader } from "@/src/components/Loader";
-import { CheckIcon } from "@/src/components/Icons";
+import { renderRadioIndicator } from "@/src/components/RadioIndicator";
 import { formatLocalDate } from "@/src/utils/formatDate";
 import type {
   ReceiptOnboardingPurchaseOrder,
@@ -39,22 +39,6 @@ const ORDER_TYPE_OPTIONS: { value: ReceiptOrderType; label: string }[] = [
   { value: "compra", label: "Orden de Compra" },
   { value: "produccion", label: "Orden de Producción" },
 ];
-
-// Indicador circular tipo radio (selección única) — mismo patrón que
-// InvoiceOrderSelector/ProductionOrderStep1.
-function renderRadioIndicator(selected: boolean) {
-  return (
-    <span
-      className={`shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${
-        selected
-          ? "border-sky-500 bg-sky-500 text-white"
-          : "border-slate-300 dark:border-slate-600"
-      }`}
-    >
-      {selected && <CheckIcon className="w-3.5 h-3.5" />}
-    </span>
-  );
-}
 
 export function ReceiptOrderSelector({
   orderType,
