@@ -2,13 +2,12 @@
 
 import { useState } from "react";
 import { DataTable } from "@/src/components/DataTable";
-import { MainDialog } from "@/src/components/MainDialog";
-import { Button } from "@/src/components/Button";
 import { WarningFilledIcon, RejectIcon } from "@/src/components/Icons";
 import { formatCurrency } from "@/src/utils/formatCurrency";
 import { accountsReceivableColumns } from "./AccountsReceivableColumns";
 import { cobrosColumns } from "./CobrosColumns";
 import { AccountsReceivableAgingSummary } from "./AccountsReceivableAgingSummary";
+import { RegisterPendingInvoiceDialog } from "./RegisterPendingInvoiceDialog";
 import { MOCK_CXC, MOCK_COBROS, CXC_KPIS } from "../mocks/accounts-receivable.mock";
 
 const ESTATUS_FILTER = [
@@ -20,7 +19,6 @@ const ESTATUS_FILTER = [
 
 export const AccountsReceivableList = () => {
   const [bannerDismissed, setBannerDismissed] = useState(false);
-  const [isCreateOpen, setIsCreateOpen] = useState(false);
 
   const showBanner = !bannerDismissed && CXC_KPIS.cuentasVencidas > 0;
 
@@ -64,24 +62,7 @@ export const AccountsReceivableList = () => {
         searchPlaceholder="Buscar folio, cliente o factura..."
         filterConfig={[{ id: "estatus", label: "Estatus", options: ESTATUS_FILTER }]}
         onRefetch={() => {}}
-        actionButton={
-          <MainDialog
-            title="Registrar Cuenta por Cobrar"
-            open={isCreateOpen}
-            onOpenChange={setIsCreateOpen}
-            maxWidth="480px"
-            trigger={
-              <Button variant="primary" rounded="full" onClick={() => setIsCreateOpen(true)}>
-                + Registrar CxC
-              </Button>
-            }
-          >
-            <p className="text-sm text-slate-500 dark:text-slate-400">
-              Formulario de registro en construcción. Esta vista es una maqueta con datos de
-              ejemplo generados localmente.
-            </p>
-          </MainDialog>
-        }
+        actionButton={<RegisterPendingInvoiceDialog />}
       />
 
       {/* Tabla secundaria: Cobros recientes */}
