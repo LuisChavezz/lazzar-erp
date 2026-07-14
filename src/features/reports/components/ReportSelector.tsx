@@ -2,10 +2,10 @@
 
 import type { ComponentType } from "react";
 import TiltCard from "@/src/components/TiltCard";
-import { ExistenciasIcon } from "@/src/components/Icons";
+import { ExistenciasIcon, HistoryIcon } from "@/src/components/Icons";
 
 /** Identificador de cada reporte disponible. Sumar uno = una entrada más abajo. */
-export type ReportId = "existencias";
+export type ReportId = "existencias" | "movimientos";
 
 interface ReportDefinition {
   id: ReportId;
@@ -32,6 +32,18 @@ const REPORTS: ReportDefinition[] = [
     accentClass: "text-sky-600 dark:text-sky-400",
     accentBgClass: "bg-sky-50 dark:bg-sky-500/10",
     shadowColorClassName: "hover:shadow-sky-500/25 dark:hover:shadow-sky-500/25",
+  },
+  {
+    id: "movimientos",
+    label: "Reporte de Movimientos de Inventario",
+    description:
+      "Consulta entradas, salidas y ajustes registrados por periodo.",
+    footerText: "Generar reporte",
+    icon: HistoryIcon,
+    accentClass: "text-violet-600 dark:text-violet-400",
+    accentBgClass: "bg-violet-50 dark:bg-violet-500/10",
+    shadowColorClassName:
+      "hover:shadow-violet-500/25 dark:hover:shadow-violet-500/25",
   },
 ];
 

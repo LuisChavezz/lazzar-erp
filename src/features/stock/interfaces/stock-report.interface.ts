@@ -63,8 +63,10 @@ export interface StockReportResponse {
 /**
  * Parámetros de consulta. `fecha_inicio`, `fecha_final` y `almacen_id` son
  * SIEMPRE obligatorios (la UI no dispara la consulta hasta tenerlos los tres).
- * `page` por defecto `1`; `page_size` por defecto `200`, máximo `2000`
- * (si es inválido/negativo el backend cae en silencio a `200`).
+ * `page` por defecto `1`; `page_size` por defecto `200`, SIN máximo del lado
+ * del backend (confirmado mediante inspección del código del backend, fuente
+ * de DRF y verificación en tiempo de ejecución — ver `getFullStockReport`; si
+ * es inválido/negativo el backend cae en silencio a `200`).
  */
 export interface StockReportParams {
   fecha_inicio: string;

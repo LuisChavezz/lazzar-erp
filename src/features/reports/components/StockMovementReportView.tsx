@@ -6,61 +6,77 @@ import { ErrorState } from "@/src/components/ErrorState";
 import { DataTable } from "@/src/components/DataTable";
 import { Button } from "@/src/components/Button";
 import { ArrowLeftIcon, DownloadIcon } from "@/src/components/Icons";
-import { ReportSelector, type ReportId } from "@/src/features/reports/components/ReportSelector";
-import { StockMovementReportView } from "@/src/features/reports/components/StockMovementReportView";
-import { StockReportFilters } from "@/src/features/reports/components/StockReportFilters";
-import { StockReportSummary } from "@/src/features/reports/components/StockReportSummary";
-import { stockReportColumns } from "@/src/features/reports/components/StockReportColumns";
-import { useStockReport } from "@/src/features/stock/hooks/useStockReport";
-import { useExportStockReportPdf } from "@/src/features/stock/hooks/useExportStockReportPdf";
+import { StockMovementReportFilters } from "./StockMovementReportFilters";
+import { StockMovementReportSummary } from "./StockMovementReportSummary";
+import { stockMovementReportColumns } from "./StockMovementReportColumns";
+import { useStockMovementReport } from "@/src/features/stock/hooks/useStockMovementReport";
+import { useExportStockMovementReportPdf } from "@/src/features/stock/hooks/useExportStockMovementReportPdf";
+import type { StockMovementReportType } from "@/src/features/stock/interfaces/stock-movement-report.interface";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 
 // Tamaño de página del endpoint (fijo). Alimenta el cálculo de páginas totales
 // (`count / PAGE_SIZE`) que consume el pager de `DataTable`.
 const PAGE_SIZE = 100;
 
-export default function ReportsPage() {
+interface StockMovementReportViewProps {
+  /** Vuelve al menú de reportes (reinicia `selectedReport` en la página). */
+  onBack: () => void;
+}
+
+/**
+ * Flujo completo del Reporte de Movimientos: gate (tipo + rango de fechas,
+ * almacén opcional) → resumen → tabla paginada en servidor → exportación PDF del
+ * conjunto completo. Espejo estructural del flujo de existencias que vive en
+ * `page.tsx`, extraído aquí como componente autónomo para (a) mantener el diff
+ * de `page.tsx` mínimo y aditivo y (b) que el estado del gate se reinicie solo
+ * al desmontar/volver a montar (volver al selector limpia todo sin trabajo extra).
+ */
+export function StockMovementReportView({ onBack }: StockMovementReportViewProps) {
+  const [tipoMovimiento, setTipoMovimiento] =
+    useState<StockMovementReportType | null>(null);
   const [almacenId, setAlmacenId] = useState<number | null>(null);
   const [fechaInicio, setFechaInicio] = useState<string | null>(null);
   const [fechaFinal, setFechaFinal] = useState<string | null>(null);
-  // `page` se reinicia a 1 al cambiar de almacén o de rango: un contexto de
-  // consulta nuevo no debe reanudar en una página vieja.
+  // `page` se reinicia a 1 al cambiar cualquier filtro: un contexto de consulta
+  // nuevo no debe reanudar en una página vieja.
   const [page, setPage] = useState(1);
 
-  // Navegación de sub-vista por estado local (Opción A), como el flujo
-  // "elegir → entrar → volver" de `ConfigContent` (que también usa estado, no
-  // URL). Con `null` se muestra el menú de reportes; al elegir uno se entra a su
-  // flujo. Con un solo reporte hoy, cualquier valor no nulo es "existencias".
-  const [selectedReport, setSelectedReport] = useState<ReportId | null>(null);
-
+  // El almacén es OPCIONAL: NO forma parte del gate (a diferencia de existencias).
   const gateComplete =
-    almacenId !== null && fechaInicio !== null && fechaFinal !== null;
+    tipoMovimiento !== null && fechaInicio !== null && fechaFinal !== null;
 
   const { data, isLoading, isFetching, isPlaceholderData, error, refetch } =
-    useStockReport(
+    useStockMovementReport(
       gateComplete
         ? {
-            almacen_id: almacenId,
+            tipo_movimiento: tipoMovimiento,
             fecha_inicio: fechaInicio,
             fecha_final: fechaFinal,
+            almacen_id: almacenId ?? undefined,
             page,
             page_size: PAGE_SIZE,
           }
         : null,
     );
 
-  // Transición de CONTEXTO (almacén/fechas), no de página: con `keepPreviousData`
-  // se sigue viendo la respuesta del contexto anterior mientras llega la nueva.
-  // La respuesta echa el contexto al que pertenece (`filtros`/fechas), así que
-  // detectamos cuando los datos mostrados ya no corresponden al contexto elegido
-  // — a diferencia de un simple cambio de página, donde el `resumen` es idéntico
+  // Transición de CONTEXTO (tipo/almacén/fechas), no de página: con
+  // `keepPreviousData` se sigue viendo la respuesta del contexto anterior
+  // mientras llega la nueva. La respuesta echa el contexto al que pertenece, así
+  // que detectamos cuando los datos mostrados ya no corresponden al contexto
+  // elegido — a diferencia de un cambio de página, donde el `resumen` es idéntico
   // y no debe atenuarse. Se usa `?.` por si el backend omitiera `filtros`.
   const isStaleContext =
     isFetching &&
     data !== undefined &&
-    (data.filtros?.almacen_id !== almacenId ||
+    (data.tipo_movimiento !== tipoMovimiento ||
       data.fecha_inicio !== fechaInicio ||
-      data.fecha_final !== fechaFinal);
+      data.fecha_final !== fechaFinal ||
+      (data.filtros?.almacen_id ?? null) !== almacenId);
+
+  const handleTipoChange = (tipo: StockMovementReportType | null) => {
+    setTipoMovimiento(tipo);
+    setPage(1);
+  };
 
   const handleAlmacenChange = (id: number | null) => {
     setAlmacenId(id);
@@ -76,83 +92,54 @@ export default function ReportsPage() {
     setPage(1);
   };
 
-  // Volver al menú de reportes: reinicia el gate para que reentrar empiece
-  // limpio (en el gate, no a mitad de una consulta). Con el almacén en `null`,
-  // `gateComplete` es false y `useStockReport` queda deshabilitado.
-  const handleBackToSelector = () => {
-    setSelectedReport(null);
-    setAlmacenId(null);
-    setFechaInicio(null);
-    setFechaFinal(null);
-    setPage(1);
-  };
-
   // Exportación a PDF del reporte COMPLETO (todas las páginas del periodo), no
   // la página visible. Usa el contexto de filtros actual, no `data.results`.
-  const { mutate: exportPdf, isPending: isExporting } = useExportStockReportPdf();
+  const { mutate: exportPdf, isPending: isExporting } =
+    useExportStockMovementReportPdf();
   const handleExportPdf = () => {
-    // Los checks de null estrechan los tipos a `number`/`string` (equivalen a
-    // `gateComplete`, que siempre es cierto cuando este botón está visible).
-    if (almacenId === null || fechaInicio === null || fechaFinal === null) return;
+    // Los checks de null estrechan los tipos (equivalen a `gateComplete`, que
+    // siempre es cierto cuando este botón está visible).
+    if (tipoMovimiento === null || fechaInicio === null || fechaFinal === null)
+      return;
     exportPdf({
-      almacen_id: almacenId,
+      tipo_movimiento: tipoMovimiento,
       fecha_inicio: fechaInicio,
       fecha_final: fechaFinal,
+      almacen_id: almacenId ?? undefined,
     });
   };
 
-  // Menú de reportes (Opción A): antes de cualquier flujo, se elige el reporte.
-  // El early-return va DESPUÉS de todos los hooks (Reglas de Hooks intactas); con
-  // el gate incompleto, `useStockReport` ya está deshabilitado, así que el menú
-  // no dispara ninguna consulta.
-  if (selectedReport === null) {
-    return (
-      <div className="w-full space-y-8">
-        <div>
-          <p className="text-slate-500 dark:text-slate-400 mt-1">
-            Selecciona un reporte para consultarlo.
-          </p>
-        </div>
-        <ReportSelector onSelectReport={setSelectedReport} />
-      </div>
-    );
-  }
-
-  // ── Flujo del Reporte de Movimientos ────────────────────────────────────────
-  // Vista autónoma con su propio estado (tipo/almacén/fechas/página).
-  if (selectedReport === "movimientos") {
-    return <StockMovementReportView onBack={handleBackToSelector} />;
-  }
-
-  // ── Flujo del Reporte de Existencias (idéntico al previo, ahora tras el menú) ─
   return (
     <div className="w-full space-y-8">
       <div className="space-y-3">
         <button
           type="button"
-          onClick={handleBackToSelector}
+          onClick={onBack}
           className="flex w-fit items-center gap-2 cursor-pointer rounded-full bg-slate-50 px-4 py-2 text-slate-500 transition-colors hover:bg-slate-100 hover:text-sky-500 dark:bg-slate-900 dark:hover:bg-slate-800"
         >
           <ArrowLeftIcon className="w-4 h-4" />
           <span className="text-sm font-medium">Volver a reportes</span>
         </button>
         <p className="text-slate-500 dark:text-slate-400">
-          Reporte de existencias por periodo. Selecciona un almacén y un rango
-          de fechas para generarlo.
+          Reporte de movimientos por periodo. Selecciona un tipo de movimiento y
+          un rango de fechas para generarlo (el almacén es opcional).
         </p>
       </div>
 
-      <StockReportFilters
+      <StockMovementReportFilters
+        tipoMovimiento={tipoMovimiento}
         almacenId={almacenId}
         fechaInicio={fechaInicio}
         fechaFinal={fechaFinal}
+        onTipoChange={handleTipoChange}
         onAlmacenChange={handleAlmacenChange}
         onDateRangeChange={handleDateRangeChange}
       />
 
       {!gateComplete ? (
         <p className="text-sm text-slate-400 dark:text-slate-500">
-          Selecciona un almacén y un rango de fechas para ver el reporte.
+          Selecciona un tipo de movimiento y un rango de fechas para ver el
+          reporte.
         </p>
       ) : isLoading ? (
         // Solo en la primera carga: aún no hay datos previos que mostrar.
@@ -166,9 +153,9 @@ export default function ReportsPage() {
         <div className="space-y-6">
           {/* El resumen refleja el periodo completo (campo NO paginado): no
               cambia al navegar entre páginas, así que NO se atenúa en un cambio
-              de página. Pero en un cambio de CONTEXTO (almacén/fechas) los datos
-              mostrados son aún del contexto anterior, por lo que se atenúa igual
-              que la tabla hasta que llegue la respuesta nueva. */}
+              de página. Pero en un cambio de CONTEXTO los datos mostrados son aún
+              del contexto anterior, por lo que se atenúa igual que la tabla hasta
+              que llegue la respuesta nueva. */}
           <div
             className={
               isStaleContext
@@ -176,16 +163,15 @@ export default function ReportsPage() {
                 : "transition-[filter] duration-200"
             }
           >
-            <StockReportSummary summary={data.resumen} />
+            <StockMovementReportSummary summary={data.resumen} />
           </div>
 
           {/* Paginación de servidor: `data.results` ya es solo la página actual;
               `DataTable` no la recorta y cablea su pager a `setPage`. */}
           <DataTable
-            columns={stockReportColumns}
+            columns={stockMovementReportColumns}
             data={data.results}
-            searchPlaceholder="Buscar por SKU, producto o color..."
-            emptyMessage="No se encontraron existencias para el almacén y el periodo seleccionados."
+            emptyMessage="No se encontraron movimientos para el tipo, almacén y periodo seleccionados."
             actionButton={
               <Button
                 variant="secondary"
@@ -206,15 +192,13 @@ export default function ReportsPage() {
               // contexto), no en un refetch manual en el sitio.
               isFetching: isPlaceholderData,
             }}
-            // `isPlaceholderData` es cierto solo mientras se ve la respuesta
-            // previa durante una transición (cambio de página o de contexto), no
-            // en un refetch manual en el sitio: así el overlay no atenúa la tabla
-            // al refrescar. El texto distingue cambio de contexto vs. de página.
             isLoadingOverlay={isPlaceholderData}
-            loadingTitle={isStaleContext ? "Actualizando reporte" : "Actualizando página"}
+            loadingTitle={
+              isStaleContext ? "Actualizando reporte" : "Actualizando página"
+            }
             loadingMessage={
               isStaleContext
-                ? "Cargando las existencias del contexto seleccionado."
+                ? "Cargando los movimientos del contexto seleccionado."
                 : "Cargando el siguiente conjunto de resultados."
             }
             onRefetch={() => refetch()}

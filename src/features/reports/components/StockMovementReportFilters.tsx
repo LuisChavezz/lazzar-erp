@@ -2,18 +2,23 @@
 
 import { useState } from "react";
 import { FormInput } from "@/src/components/FormInput";
+import { FormSelect } from "@/src/components/FormSelect";
 // Se reutiliza el MISMO selector de almacén de existencias (StockView) en vez
 // de duplicarlo: solo depende de `useWarehouses` y ya lista únicamente
 // almacenes activos, ordenados alfabéticamente, con el estilo del proyecto.
 import { WarehouseFilter } from "@/src/features/stock/components/WarehouseFilter";
+import type { StockMovementReportType } from "@/src/features/stock/interfaces/stock-movement-report.interface";
 
-interface StockReportFiltersProps {
-  /** Almacén seleccionado, o `null` si aún no se elige. */
+interface StockMovementReportFiltersProps {
+  /** Tipo de movimiento seleccionado, o `null` si aún no se elige (obligatorio). */
+  tipoMovimiento: StockMovementReportType | null;
+  /** Almacén seleccionado, o `null` (OPCIONAL en este reporte). */
   almacenId: number | null;
   /** Inicio del rango (`YYYY-MM-DD`), o `null`. */
   fechaInicio: string | null;
   /** Fin del rango (`YYYY-MM-DD`), o `null`. */
   fechaFinal: string | null;
+  onTipoChange: (tipo: StockMovementReportType | null) => void;
   onAlmacenChange: (almacenId: number | null) => void;
   onDateRangeChange: (
     fechaInicio: string | null,
@@ -22,20 +27,23 @@ interface StockReportFiltersProps {
 }
 
 /**
- * Barra de filtros (gate) del reporte de existencias por periodo.
+ * Barra de filtros (gate) del reporte de movimientos por periodo.
  *
- * Componente controlado: el estado vive en la página, que decide qué mostrar
- * DEBAJO de este gate. La consulta no se dispara hasta que están los tres
- * valores (almacén + fecha inicio + fecha final); ese gate lo hace el padre
- * vía `gateComplete` y el `enabled` del hook.
+ * Componente controlado: el estado vive en el contenedor, que decide qué
+ * mostrar DEBAJO de este gate. La consulta no se dispara hasta que están el tipo
+ * de movimiento + fecha inicio + fecha final; ese gate lo hace el contenedor vía
+ * `gateComplete` y el `enabled` del hook. A diferencia de existencias, el
+ * ALMACÉN es OPCIONAL: no forma parte del gate (sin almacén ⇒ todos).
  */
-export function StockReportFilters({
+export function StockMovementReportFilters({
+  tipoMovimiento,
   almacenId,
   fechaInicio,
   fechaFinal,
+  onTipoChange,
   onAlmacenChange,
   onDateRangeChange,
-}: StockReportFiltersProps) {
+}: StockMovementReportFiltersProps) {
   const [dateError, setDateError] = useState<string | null>(null);
 
   // Valida el rango antes de propagarlo: un rango invertido NO debe disparar la
@@ -55,7 +63,48 @@ export function StockReportFilters({
   return (
     <div className="space-y-1">
       <div className="flex flex-wrap items-end gap-4">
-        <WarehouseFilter value={almacenId} onChange={onAlmacenChange} />
+        <div className="w-52">
+          <FormSelect
+            label="Tipo de movimiento"
+            value={tipoMovimiento ?? ""}
+            onChange={(e) =>
+              onTipoChange(
+                (e.target.value || null) as StockMovementReportType | null,
+              )
+            }
+          >
+            <option
+              value=""
+              disabled
+              className="text-slate-900 dark:text-white bg-white dark:bg-zinc-900"
+            >
+              Selecciona un tipo
+            </option>
+            <option
+              value="ENTRADA"
+              className="text-slate-900 dark:text-white bg-white dark:bg-zinc-900"
+            >
+              Entrada
+            </option>
+            <option
+              value="SALIDA"
+              className="text-slate-900 dark:text-white bg-white dark:bg-zinc-900"
+            >
+              Salida
+            </option>
+            <option
+              value="AJUSTE"
+              className="text-slate-900 dark:text-white bg-white dark:bg-zinc-900"
+            >
+              Ajuste
+            </option>
+          </FormSelect>
+        </div>
+
+        {/* Almacén: OPCIONAL. Sin selección ⇒ el reporte incluye todos.
+            `allowClear` habilita "Todos los almacenes" para volver a `null`
+            sin perder el tipo de movimiento ni el rango de fechas. */}
+        <WarehouseFilter value={almacenId} onChange={onAlmacenChange} allowClear />
 
         <div className="w-44">
           <FormInput

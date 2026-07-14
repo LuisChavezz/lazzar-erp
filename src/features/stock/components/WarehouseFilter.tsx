@@ -13,26 +13,27 @@ import { useWarehouses } from "@/src/features/warehouses/hooks/useWarehouses";
 interface WarehouseFilterProps {
   /** ID del almacén seleccionado, o `null` si aún no se ha elegido ninguno. */
   value: number | null;
-  /** Se invoca con el almacén elegido. */
-  onChange: (almacenId: number) => void;
+  /** Se invoca con el almacén elegido, o `null` al volver a "todos" (solo posible con `allowClear`). */
+  onChange: (almacenId: number | null) => void;
+  /**
+   * Habilita la opción "Todos los almacenes" para volver a `null`. Por
+   * defecto deshabilitado: el reporte de existencias exige elegir siempre un
+   * almacén concreto antes de ver datos. El reporte de movimientos, donde el
+   * almacén es un filtro opcional, lo activa explícitamente.
+   */
+  allowClear?: boolean;
 }
 
 /**
- * Selector de almacén para filtrar las existencias del lado del servidor.
+ * Selector de almacén para filtrar reportes del lado del servidor.
  * Replica el patrón visual del selector de sucursal del header (`WorkspaceInfo`).
- * Solo lista almacenes individuales: no existe una opción "todos los almacenes",
- * porque el negocio exige elegir siempre un almacén concreto antes de ver datos.
+ * Por defecto solo lista almacenes individuales (sin opción "todos"), porque el
+ * reporte de existencias exige elegir siempre un almacén concreto antes de ver
+ * datos; `allowClear` habilita esa opción para consumidores donde el almacén es
+ * un filtro opcional (reporte de movimientos).
  *
- * No se extrajo un componente de dropdown compartido con `WorkspaceInfo`: al
- * menos 10 componentes más en el proyecto (`ActionMenu`, `UserMenu`,
- * `CustomerSearchDropdown`, etc.) también componen `DropdownMenu` de Radix
- * directamente con su propio marcado, así que este no es un duplicado
- * aislado sino la convención establecida. `WorkspaceInfo` además acopla
- * lógica que este selector no tiene (hidratación del store, `branchSwitching`),
- * por lo que forzar una abstracción común aquí arriesgaría ese componente ya
- * en producción a cambio de un beneficio marginal.
  */
-export function WarehouseFilter({ value, onChange }: WarehouseFilterProps) {
+export function WarehouseFilter({ value, onChange, allowClear = false }: WarehouseFilterProps) {
   const { data: warehouses = [], isLoading } = useWarehouses();
 
   // Solo almacenes activos, alfabéticos por nombre (misma convención que
@@ -48,11 +49,15 @@ export function WarehouseFilter({ value, onChange }: WarehouseFilterProps) {
   const selected =
     value != null ? activeWarehouses.find((w) => w.id_almacen === value) : undefined;
 
-  const label = selected ? selected.nombre : "Selecciona un almacén";
+  const label = selected
+    ? selected.nombre
+    : allowClear
+      ? "Todos los almacenes"
+      : "Selecciona un almacén";
 
   return (
-    <div className="flex items-center gap-2">
-      <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+    <div className="group/field">
+      <span className="ml-1 mb-1 block text-[11px] font-bold uppercase tracking-wider text-slate-400 transition-colors group-focus-within/field:text-brand-500">
         Almacén
       </span>
 
@@ -61,7 +66,7 @@ export function WarehouseFilter({ value, onChange }: WarehouseFilterProps) {
           <button
             type="button"
             aria-label={`Almacén: ${label}`}
-            className="flex cursor-pointer items-center gap-2 rounded-xl border border-slate-300 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-700 outline-none transition-colors hover:border-brand-500 hover:bg-white dark:border-slate-700 dark:bg-black/20 dark:text-slate-200 dark:hover:bg-black/40"
+            className="flex cursor-pointer items-center gap-2 rounded-xl border border-slate-300 bg-slate-50 px-3 py-3 text-sm font-medium text-slate-700 outline-none transition-colors hover:border-brand-500 hover:bg-white dark:border-slate-700 dark:bg-black/20 dark:text-slate-200 dark:hover:bg-black/40"
           >
             <WarehouseIcon
               className="h-4 w-4 text-sky-500 dark:text-sky-400"
@@ -98,6 +103,22 @@ export function WarehouseFilter({ value, onChange }: WarehouseFilterProps) {
             </DropdownMenu.Item>
           ) : (
             <>
+              {allowClear && (
+                <DropdownMenu.Item
+                  onClick={() => onChange(null)}
+                  className="flex min-w-52 cursor-pointer! items-center justify-between gap-3"
+                >
+                  <span
+                    className={`text-xs ${value === null ? "font-bold" : "font-medium"}`}
+                  >
+                    Todos los almacenes
+                  </span>
+                  {value === null && (
+                    <CheckCircleIcon className="h-4 w-4 text-emerald-500" />
+                  )}
+                </DropdownMenu.Item>
+              )}
+
               {activeWarehouses.map((w) => (
                 <DropdownMenu.Item
                   key={w.id_almacen}

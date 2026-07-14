@@ -9,7 +9,7 @@ interface StockEmptyStateProps {
   /** Almacén actualmente seleccionado (siempre `null` en este estado). */
   almacenId: number | null;
   /** Se invoca con el almacén elegido desde el selector embebido. */
-  onSelect: (almacenId: number) => void;
+  onSelect: (almacenId: number | null) => void;
 }
 
 /**

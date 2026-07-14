@@ -49,11 +49,19 @@ export const stockReportPdfStyles = StyleSheet.create({
   },
 
   /* ── Columnas de la tabla de existencias ───────── */
-  colSku: { flex: 2 },
-  colProducto: { flex: 3.2 },
-  colColor: { flex: 1.4 },
-  colTalla: { flex: 1.2 },
-  colAlmacen: { flex: 2 },
-  colNum: { flex: 1.4, textAlign: "right" },
-  colMoney: { flex: 1.7, textAlign: "right" },
+  // `paddingRight` en CADA columna, mismo valor que
+  // `StockMovementReportPdfStyles.ts`: sin él, columnas contiguas quedan sin
+  // ningún espacio entre sus cajas y el contenido de una (p. ej. un nombre de
+  // producto largo) puede visualmente pegarse con el de la siguiente. También
+  // se redistribuye ancho: "SKU" tenía más margen del que necesita su
+  // contenido típico, y "Almacén" muy poco (nombres largos como "PRODUCTO
+  // TERMINADO" se partían a mitad de palabra, mismo problema ya corregido en
+  // el reporte de movimientos).
+  colSku: { flex: 1.6, paddingRight: 6 },
+  colProducto: { flex: 2.6, paddingRight: 6 },
+  colColor: { flex: 1.6, paddingRight: 6 },
+  colTalla: { flex: 1.4, paddingRight: 6 },
+  colAlmacen: { flex: 2.6, paddingRight: 6 },
+  colNum: { flex: 1.4, textAlign: "right", paddingRight: 6 },
+  colMoney: { flex: 1.7, textAlign: "right", paddingRight: 6 },
 });

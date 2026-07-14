@@ -4,6 +4,10 @@ import type {
   StockReportParams,
   StockReportResponse,
 } from "../interfaces/stock-report.interface";
+import type {
+  StockMovementReportParams,
+  StockMovementReportResponse,
+} from "../interfaces/stock-movement-report.interface";
 
 export interface StockItemsFilters {
   almacen_id?: number;
@@ -25,6 +29,35 @@ export const getStockItems = async (filters?: StockItemsFilters): Promise<StockI
 }
 
 /**
+ * Resuelve el reporte COMPLETO (todas las filas del periodo) para un endpoint
+ * de reporte paginado en UNA sola petición con `page_size` deliberadamente
+ * enorme. Compartido por `getFullStockReport`/`getFullStockMovementReport`:
+ * ambos endpoints tienen exactamente el mismo contrato de "sin tope de
+ * `page_size`" y la misma salvaguarda de fallar fuerte si el backend, pese a
+ * no documentar un tope, paginara y devolviera menos filas que `count` (el PDF
+ * saldría INCOMPLETO en silencio si no se detectara).
+ */
+const fetchFullPaginatedReport = async <
+  TParams,
+  TResponse extends { count: number; next: string | null; previous: string | null; results: unknown[] },
+>(
+  fetchFn: (params: TParams & { page: number; page_size: number }) => Promise<TResponse>,
+  params: TParams,
+  pageSize: number,
+): Promise<TResponse> => {
+  const response = await fetchFn({ ...params, page: 1, page_size: pageSize });
+
+  if (response.results.length < response.count) {
+    throw new Error(
+      "El servidor devolvió el reporte paginado y no se pudieron traer todas las filas. Intenta acotar el periodo y exporta de nuevo.",
+    );
+  }
+
+  // Conjunto totalmente materializado: `next`/`previous` ya no aplican.
+  return { ...response, next: null, previous: null };
+};
+
+/**
  * Reporte de existencias por periodo (paginado del lado del servidor).
  *
  * Envía todos los parámetros como query params; axios omite los `undefined`,
@@ -41,107 +74,71 @@ export const getStockReport = async (
   return data;
 };
 
-// Máximo `page_size` que acepta el backend (cae en silencio a 200 si se excede).
-const STOCK_REPORT_MAX_PAGE_SIZE = 2000;
-
-// Tope de peticiones simultáneas al traer las páginas restantes en
-// exportaciones grandes: evita lanzar decenas de requests a la vez (límites del
-// navegador/backend) sin frenar de forma notable los tamaños realistas.
-const STOCK_REPORT_MAX_CONCURRENT_REQUESTS = 5;
-
-// Ejecuta las tareas en tandas de a lo sumo `concurrency` a la vez.
-const fetchInChunks = async <T>(
-  tasks: Array<() => Promise<T>>,
-  concurrency: number,
-): Promise<T[]> => {
-  const results: T[] = [];
-  for (let i = 0; i < tasks.length; i += concurrency) {
-    const chunk = tasks.slice(i, i + concurrency);
-    results.push(...(await Promise.all(chunk.map((task) => task()))));
-  }
-  return results;
-};
+// El backend ya NO topa `page_size` en este endpoint (confirmado, misma
+// situación que movimientos). Por eso la exportación COMPLETA se resuelve en
+// UNA sola petición con un `page_size` deliberadamente enorme: sin tope no hay
+// múltiples páginas que mezclar, lo que elimina de raíz el riesgo de condición
+// de carrera (que el inventario cambie entre peticiones) y la aritmética de
+// páginas del enfoque por tandas que este endpoint usaba antes. Mismo valor
+// que `STOCK_MOVEMENT_REPORT_EXPORT_PAGE_SIZE`: ningún periodo/almacén
+// realista (incluidos los ~40,000 filas observados) se acerca a este número.
+const STOCK_REPORT_EXPORT_PAGE_SIZE = 100_000;
 
 /**
  * Reporte de existencias COMPLETO para el contexto de filtros dado: trae TODAS
- * las filas del periodo, no una sola página. Pensado para la exportación a PDF.
- *
- * Caso común (≤ 2000 filas): una sola petición con `page_size: 2000` basta.
- * Caso raro (> 2000 filas): se pide el resto de páginas en paralelo y se
- * concatenan sus `results`. Los campos NO paginados (`resumen`,
- * `resumen_por_almacen`, fechas, etc.) se toman de la primera respuesta, que ya
- * reflejan el periodo completo (no dependen de la página).
+ * las filas del periodo en una sola petición. Pensado para la exportación a
+ * PDF. Los campos NO paginados (`resumen`, `resumen_por_almacen`, fechas,
+ * etc.) ya reflejan el periodo completo (no dependen de la página).
  */
 export const getFullStockReport = async (
   params: Omit<StockReportParams, "page" | "page_size">,
-): Promise<StockReportResponse> => {
-  const first = await getStockReport({
-    ...params,
-    page: 1,
-    page_size: STOCK_REPORT_MAX_PAGE_SIZE,
-  });
+): Promise<StockReportResponse> =>
+  fetchFullPaginatedReport(getStockReport, params, STOCK_REPORT_EXPORT_PAGE_SIZE);
 
-  if (first.count <= STOCK_REPORT_MAX_PAGE_SIZE) {
-    // Todo cupo en una sola página: el conjunto ya está materializado, así que
-    // `next`/`previous` no tienen sentido (ver nota abajo).
-    return { ...first, next: null, previous: null };
-  }
+// ─── Reporte de movimientos de inventario por periodo ────────────────────────
 
-  // Hay más de MAX filas, así que la primera página DEBE traer MAX. Si trajo
-  // menos, el backend no respetó `page_size` y la aritmética de páginas de abajo
-  // (que asume MAX/página) perdería filas en silencio. Se falla en vez de
-  // generar un PDF incompleto.
-  if (first.results.length < STOCK_REPORT_MAX_PAGE_SIZE) {
-    throw new Error(
-      "El servidor no respondió con el tamaño de página esperado. No se pudo generar el reporte completo.",
-    );
-  }
-
-  const remainingPages = Math.ceil(
-    (first.count - STOCK_REPORT_MAX_PAGE_SIZE) / STOCK_REPORT_MAX_PAGE_SIZE,
+/**
+ * Reporte de movimientos por periodo (paginado del lado del servidor).
+ *
+ * Mismo contrato que `getStockReport`: envía todos los parámetros como query
+ * params (axios omite los `undefined`, así que `almacen_id`/`page`/`page_size`
+ * solo viajan cuando el llamador los define). Sin manejo de errores: de eso se
+ * encarga el hook (convención del proyecto).
+ */
+export const getStockMovementReport = async (
+  params: StockMovementReportParams,
+): Promise<StockMovementReportResponse> => {
+  const { data } = await v1_api.get<StockMovementReportResponse>(
+    "/inventarios/movimientos/reporte-movimientos-periodo/",
+    { params },
   );
-  // Concurrencia acotada (no un `Promise.all` sin límite) para no saturar con
-  // decenas de peticiones simultáneas en periodos muy grandes.
-  const additional = await fetchInChunks(
-    Array.from(
-      { length: remainingPages },
-      (_, i) => () =>
-        getStockReport({
-          ...params,
-          page: i + 2,
-          page_size: STOCK_REPORT_MAX_PAGE_SIZE,
-        }),
-    ),
-    STOCK_REPORT_MAX_CONCURRENT_REQUESTS,
-  );
-
-  const totalFetched =
-    first.results.length +
-    additional.reduce((sum, r) => sum + r.results.length, 0);
-
-  // Detección de inconsistencia: si el total de filas traídas no coincide con
-  // el `count` que prometió la primera página, el inventario cambió entre
-  // peticiones (una fila se agregó/eliminó y desplazó los límites de página).
-  //
-  // RIESGO RESIDUAL (no cerrable solo desde el cliente): un desplazamiento que
-  // conserve el mismo total podría duplicar una fila y saltarse otra sin que
-  // este chequeo lo note. Cerrarlo requeriría un snapshot consistente del lado
-  // del backend (p. ej. un token/timestamp de consulta), que el endpoint no
-  // expone hoy. Se detecta el síntoma más común y detectable (conteo distinto)
-  // y se falla con un mensaje claro en vez de exportar un PDF silenciosamente
-  // incorrecto.
-  if (totalFetched !== first.count) {
-    throw new Error(
-      "El inventario cambió mientras se generaba el reporte. Intenta exportar de nuevo.",
-    );
-  }
-
-  // Conjunto totalmente materializado: `next`/`previous` de la primera página
-  // ya no aplican (apuntarían a "más páginas" de algo que ya está completo).
-  return {
-    ...first,
-    next: null,
-    previous: null,
-    results: [...first.results, ...additional.flatMap((r) => r.results)],
-  };
+  return data;
 };
+
+// Este endpoint tampoco impone un máximo de `page_size` (mismo caso que
+// existencias — confirmado mediante inspección del código del backend, fuente
+// de DRF y verificación en tiempo de ejecución: ninguno de los dos endpoints
+// recorta page_size=100000). Por eso la exportación COMPLETA se resuelve en UNA
+// sola petición con un `page_size` deliberadamente enorme: sin tope no hay
+// múltiples páginas que mezclar, lo que elimina de raíz el riesgo de condición
+// de carrera (que el inventario cambie entre peticiones) y la aritmética de
+// páginas del enfoque por tandas. Se eligió un techo alto en lugar de "sin
+// límite" para acotar el tamaño de la respuesta a algo razonable para la
+// memoria del navegador; ningún periodo/tipo/almacén realista se acerca a este
+// número.
+const STOCK_MOVEMENT_REPORT_EXPORT_PAGE_SIZE = 100_000;
+
+/**
+ * Reporte de movimientos COMPLETO para el contexto de filtros dado: trae TODAS
+ * las filas del periodo en una sola petición. Pensado para la exportación a
+ * PDF. Los campos NO paginados (`resumen`, fechas, `tipo_movimiento`,
+ * `filtros`) ya reflejan el periodo completo (no dependen de la página).
+ */
+export const getFullStockMovementReport = async (
+  params: Omit<StockMovementReportParams, "page" | "page_size">,
+): Promise<StockMovementReportResponse> =>
+  fetchFullPaginatedReport(
+    getStockMovementReport,
+    params,
+    STOCK_MOVEMENT_REPORT_EXPORT_PAGE_SIZE,
+  );
