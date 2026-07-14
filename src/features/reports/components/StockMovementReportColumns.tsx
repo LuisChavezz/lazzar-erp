@@ -6,18 +6,10 @@ import type { StockMovementReportRow } from "@/src/features/stock/interfaces/sto
 // movimientos (badge con punto de color), en vez de re-declararlo.
 import { MOVEMENT_TYPE_CONFIG } from "@/src/features/stock-movements/components/StockMovementsColumns";
 import { formatMoneyValue, formatQuantityValue } from "@/src/utils/formatCurrency";
+import { formatShortDate } from "@/src/utils/formatDate";
 
-// Formato de fecha/hora, espejo de la tabla de movimientos (no existe un util
+// Formato de hora, espejo de la tabla de movimientos (no existe un util
 // compartido de fecha+hora en el proyecto).
-function formatDate(iso: string): string {
-  const date = new Date(iso);
-  return date.toLocaleDateString("es-MX", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
-}
-
 function formatTime(iso: string): string {
   const date = new Date(iso);
   return date.toLocaleTimeString("es-MX", {
@@ -45,7 +37,7 @@ export const stockMovementReportColumns: ColumnDef<StockMovementReportRow>[] = [
       return (
         <div className="flex flex-col leading-tight">
           <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">
-            {formatDate(raw)}
+            {formatShortDate(raw)}
           </span>
           <span className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">
             {formatTime(raw)}

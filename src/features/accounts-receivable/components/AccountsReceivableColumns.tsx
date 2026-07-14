@@ -4,36 +4,44 @@ import { ColumnDef, createColumnHelper } from "@tanstack/react-table";
 import { ActionMenu, type ActionMenuItem } from "@/src/components/ActionMenu";
 import { ViewIcon, ReceiptIcon, ListaPreciosIcon } from "@/src/components/Icons";
 import { StatusBadge, type StatusBadgeConfigEntry } from "@/src/components/StatusBadge";
-import { formatCurrency } from "@/src/utils/formatCurrency";
+import { formatMoneyValue } from "@/src/utils/formatCurrency";
+import { formatShortDate } from "@/src/utils/formatDate";
 import type {
-  MockCxC,
+  CuentaPorCobrarRow,
   CxCEstatus,
 } from "../interfaces/accounts-receivable.interface";
 
 // ── Badge de estatus ──────────────────────────────────────────────────────────
-// Dominio propio de CxC (no se comparte con el estatus de facturación):
-// solo la presentación (StatusBadge) es genérica, los valores no.
+// Dominio propio de CxC (no se comparte con el estatus de facturación): solo la
+// presentación (StatusBadge) es genérica, los valores no. Las llaves son los
+// valores exactos del backend; `StatusBadge` degrada con su estilo por defecto
+// si llegara uno no listado.
 
 const ESTATUS_CFG: Record<CxCEstatus, StatusBadgeConfigEntry> = {
-  vigente: {
-    label: "Vigente",
+  Pendiente: {
+    label: "Pendiente",
     cls: "bg-sky-50 text-sky-700 dark:bg-sky-500/10 dark:text-sky-400",
     dot: "bg-sky-400",
   },
-  vencida: {
-    label: "Vencida",
-    cls: "bg-red-50 text-red-700 dark:bg-red-500/10 dark:text-red-400",
-    dot: "bg-red-500",
+  Parcial: {
+    label: "Parcial",
+    cls: "bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400",
+    dot: "bg-amber-400",
   },
-  pagada: {
+  Pagada: {
     label: "Pagada",
     cls: "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400",
     dot: "bg-emerald-500",
   },
-  parcial: {
-    label: "Parcial",
-    cls: "bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400",
-    dot: "bg-amber-400",
+  Cancelada: {
+    label: "Cancelada",
+    cls: "bg-slate-50 text-slate-600 dark:bg-slate-500/10 dark:text-slate-400",
+    dot: "bg-slate-400",
+  },
+  Vencida: {
+    label: "Vencida",
+    cls: "bg-red-50 text-red-700 dark:bg-red-500/10 dark:text-red-400",
+    dot: "bg-red-500",
   },
 };
 
@@ -41,25 +49,15 @@ const EstatusBadge = ({ estatus }: { estatus: CxCEstatus }) => (
   <StatusBadge status={estatus} config={ESTATUS_CFG} />
 );
 
-// timeZone "UTC" fija el día renderizado: las fechas de la maqueta se
-// construyen a medianoche UTC, así el SSR (servidor en UTC) y la hidratación
-// (navegador en cualquier zona) muestran el mismo día y no hay desajustes.
-const formatDate = (value: Date) =>
-  value.toLocaleDateString("es-MX", {
-    timeZone: "UTC",
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
-
 // ── Acciones de fila ──────────────────────────────────────────────────────────
 
-const ActionsCell = ({ row }: { row: MockCxC }) => {
+const ActionsCell = ({ row }: { row: CuentaPorCobrarRow }) => {
   const menuItems: ActionMenuItem[] = [
     { label: "Ver detalle", icon: ViewIcon, onSelect: () => {} },
   ];
 
-  if (row.estatus !== "pagada") {
+  // Solo tiene sentido registrar un cobro cuando queda saldo por cobrar.
+  if (row.estatus !== "Pagada" && row.estatus !== "Cancelada") {
     menuItems.push({ label: "Registrar cobro", icon: ListaPreciosIcon, onSelect: () => {} });
   }
 
@@ -67,17 +65,17 @@ const ActionsCell = ({ row }: { row: MockCxC }) => {
 
   return (
     <div className="flex items-center justify-center">
-      <ActionMenu items={menuItems} ariaLabel={`Acciones de ${row.folio}`} />
+      <ActionMenu items={menuItems} ariaLabel={`Acciones de ${row.folio_cxc}`} />
     </div>
   );
 };
 
 // ── Columnas ──────────────────────────────────────────────────────────────────
 
-const columnHelper = createColumnHelper<MockCxC>();
+const columnHelper = createColumnHelper<CuentaPorCobrarRow>();
 
 export const accountsReceivableColumns = [
-  columnHelper.accessor("folio", {
+  columnHelper.accessor("folio_cxc", {
     header: "Folio CxC",
     cell: (info) => (
       <span className="font-mono text-slate-700 dark:text-slate-200 font-semibold">
@@ -103,14 +101,16 @@ export const accountsReceivableColumns = [
     header: "Emisión",
     cell: (info) => (
       <span className="text-slate-600 dark:text-slate-300 tabular-nums">
-        {formatDate(info.getValue())}
+        {formatShortDate(info.getValue(), { timeZone: "UTC" })}
       </span>
     ),
   }),
   columnHelper.accessor("fecha_vencimiento", {
     header: "Vencimiento",
     cell: (info) => {
-      const overdue = info.row.original.dias_vencido > 0;
+      // El resaltado de vencido usa la definición única `esta_vencida` (por
+      // fecha), la MISMA que el KPI, la antigüedad y la columna "Días venc.".
+      const overdue = info.row.original.esta_vencida;
       return (
         <span
           className={`tabular-nums ${
@@ -119,24 +119,24 @@ export const accountsReceivableColumns = [
               : "text-slate-600 dark:text-slate-300"
           }`}
         >
-          {formatDate(info.getValue())}
+          {formatShortDate(info.getValue(), { timeZone: "UTC" })}
         </span>
       );
     },
   }),
-  columnHelper.accessor("monto", {
+  columnHelper.accessor("total", {
     header: "Monto",
     cell: (info) => (
       <span className="text-slate-600 dark:text-slate-300 tabular-nums">
-        {formatCurrency(info.getValue())}
+        {formatMoneyValue(info.getValue())}
       </span>
     ),
   }),
-  columnHelper.accessor("saldo_pendiente", {
+  columnHelper.accessor("saldo", {
     header: "Saldo",
     cell: (info) => (
       <span className="text-slate-800 dark:text-white font-semibold tabular-nums">
-        {formatCurrency(info.getValue())}
+        {formatMoneyValue(info.getValue())}
       </span>
     ),
   }),
@@ -147,8 +147,14 @@ export const accountsReceivableColumns = [
   columnHelper.accessor("dias_vencido", {
     header: "Días venc.",
     cell: (info) => {
+      // Se muestran los días de atraso cuando la cuenta está vencida según la
+      // definición única `esta_vencida` (misma que el KPI "Vencido" y la
+      // antigüedad). Una cuenta que vence HOY está vencida con `dias_vencido = 0`
+      // y muestra "0" (no "—"): "—" queda reservado para las genuinamente NO
+      // vencidas (Pagada, Cancelada o de vencimiento futuro), nunca para una
+      // vencida que también suma al KPI "Vencido".
       const dias = info.getValue();
-      return dias > 0 ? (
+      return info.row.original.esta_vencida ? (
         <span className="text-red-600 dark:text-red-400 font-semibold tabular-nums">{dias}</span>
       ) : (
         <span className="text-slate-400 dark:text-slate-600">—</span>
@@ -160,4 +166,4 @@ export const accountsReceivableColumns = [
     header: () => <div className="text-center">Acciones</div>,
     cell: ({ row }) => <ActionsCell row={row.original} />,
   }),
-] as ColumnDef<MockCxC>[];
+] as ColumnDef<CuentaPorCobrarRow>[];

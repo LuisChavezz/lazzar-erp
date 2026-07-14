@@ -29,3 +29,29 @@ export const formatLocalDate = (value: string | null | undefined): string => {
   if (date) return date.toLocaleDateString("es-MX");
   return value ? value : "—";
 };
+
+/**
+ * Formatea una fecha (`Date` o string parseable por `Date`, p.ej. un ISO
+ * completo) como "14 jul 2026" (es-MX: día 2 dígitos, mes abreviado, año).
+ * Devuelve "—" para valores vacíos o que no parseen a una fecha válida.
+ *
+ * `timeZone: "UTC"` es para fechas-calendario sin componente de hora (p.ej.
+ * un `Date` construido a medianoche UTC): fija el día renderizado entre SSR
+ * e hidratación. Omítelo para timestamps reales (con hora) donde se quiere
+ * el día en la zona horaria del usuario — p.ej. junto con una hora mostrada
+ * por separado.
+ */
+export const formatShortDate = (
+  value: string | Date | null | undefined,
+  options: { timeZone?: string } = {},
+): string => {
+  if (!value) return "—";
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return "—";
+  return date.toLocaleDateString("es-MX", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    ...(options.timeZone ? { timeZone: options.timeZone } : {}),
+  });
+};

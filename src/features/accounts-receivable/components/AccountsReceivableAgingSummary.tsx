@@ -1,5 +1,6 @@
+import { LoadingSkeleton } from "@/src/components/LoadingSkeleton";
 import { formatCurrency } from "@/src/utils/formatCurrency";
-import { CXC_AGING } from "../mocks/accounts-receivable.mock";
+import type { AgingBucket } from "../interfaces/accounts-receivable.interface";
 
 const BUCKET_STYLES: Record<string, { bar: string; chip: string; dot: string }> = {
   "0-30": { bar: "bg-amber-400", chip: "text-amber-600 dark:text-amber-400", dot: "bg-amber-400" },
@@ -8,8 +9,14 @@ const BUCKET_STYLES: Record<string, { bar: string; chip: string; dot: string }> 
   "90+": { bar: "bg-red-600", chip: "text-red-700 dark:text-red-500", dot: "bg-red-600" },
 };
 
-export const AccountsReceivableAgingSummary = () => {
-  const total = CXC_AGING.reduce((acc, b) => acc + b.amount, 0);
+export const AccountsReceivableAgingSummary = ({
+  buckets,
+  isLoading = false,
+}: {
+  buckets: AgingBucket[];
+  isLoading?: boolean;
+}) => {
+  const total = buckets.reduce((acc, b) => acc + b.amount, 0);
 
   return (
     <div className="rounded-xl bg-white dark:bg-black border border-slate-200 dark:border-white/10 p-5 shadow-sm">
@@ -22,34 +29,42 @@ export const AccountsReceivableAgingSummary = () => {
             Distribución del monto vencido por días de atraso
           </p>
         </div>
-        <span className="text-sm font-bold text-red-600 dark:text-red-400 tabular-nums">
-          {formatCurrency(total)}
-        </span>
-      </div>
-
-      {/* Barra segmentada */}
-      <div className="flex h-2.5 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
-        {total > 0 ? (
-          CXC_AGING.map((bucket) => {
-            const width = (bucket.amount / total) * 100;
-            if (width <= 0) return null;
-            return (
-              <div
-                key={bucket.key}
-                className={`h-full ${BUCKET_STYLES[bucket.key].bar}`}
-                style={{ width: `${width}%` }}
-                title={`${bucket.label}: ${formatCurrency(bucket.amount)}`}
-              />
-            );
-          })
+        {isLoading ? (
+          <LoadingSkeleton className="h-4 w-20 rounded" />
         ) : (
-          <div className="h-full w-full bg-slate-200 dark:bg-slate-700" />
+          <span className="text-sm font-bold text-red-600 dark:text-red-400 tabular-nums">
+            {formatCurrency(total)}
+          </span>
         )}
       </div>
 
+      {/* Barra segmentada */}
+      {isLoading ? (
+        <LoadingSkeleton className="h-2.5 w-full rounded-full" />
+      ) : (
+        <div className="flex h-2.5 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+          {total > 0 ? (
+            buckets.map((bucket) => {
+              const width = (bucket.amount / total) * 100;
+              if (width <= 0) return null;
+              return (
+                <div
+                  key={bucket.key}
+                  className={`h-full ${BUCKET_STYLES[bucket.key].bar}`}
+                  style={{ width: `${width}%` }}
+                  title={`${bucket.label}: ${formatCurrency(bucket.amount)}`}
+                />
+              );
+            })
+          ) : (
+            <div className="h-full w-full bg-slate-200 dark:bg-slate-700" />
+          )}
+        </div>
+      )}
+
       {/* Detalle por rango */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mt-4">
-        {CXC_AGING.map((bucket) => {
+        {buckets.map((bucket) => {
           const style = BUCKET_STYLES[bucket.key];
           const pct = total > 0 ? Math.round((bucket.amount / total) * 100) : 0;
           return (
@@ -63,12 +78,21 @@ export const AccountsReceivableAgingSummary = () => {
                   {bucket.label}
                 </span>
               </div>
-              <p className="text-base font-bold text-slate-800 dark:text-white tabular-nums mt-1.5">
-                {formatCurrency(bucket.amount)}
-              </p>
-              <p className={`text-[11px] font-medium mt-0.5 ${style.chip}`}>
-                {bucket.count} {bucket.count === 1 ? "cuenta" : "cuentas"} · {pct}%
-              </p>
+              {isLoading ? (
+                <>
+                  <LoadingSkeleton className="h-5 w-20 rounded mt-1.5" />
+                  <LoadingSkeleton className="h-3 w-16 rounded mt-1" />
+                </>
+              ) : (
+                <>
+                  <p className="text-base font-bold text-slate-800 dark:text-white tabular-nums mt-1.5">
+                    {formatCurrency(bucket.amount)}
+                  </p>
+                  <p className={`text-[11px] font-medium mt-0.5 ${style.chip}`}>
+                    {bucket.count} {bucket.count === 1 ? "cuenta" : "cuentas"} · {pct}%
+                  </p>
+                </>
+              )}
             </div>
           );
         })}

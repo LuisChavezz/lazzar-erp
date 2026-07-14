@@ -18,24 +18,15 @@ import type { StockMovementReportResponse } from "@/src/features/stock/interface
 // re-declararlo aquí.
 import { MOVEMENT_TYPE_CONFIG } from "@/src/features/stock-movements/components/StockMovementsColumns";
 import { formatMoneyValue, formatQuantityValue } from "@/src/utils/formatCurrency";
-import { formatLocalDate } from "@/src/utils/formatDate";
+import { formatLocalDate, formatShortDate } from "@/src/utils/formatDate";
 import { stockMovementReportPdfStyles as s } from "./StockMovementReportPdfStyles";
 
 type StockMovementReportPdfDocumentProps = {
   report: StockMovementReportResponse;
 };
 
-// Formato de fecha/hora, espejo de `StockMovementReportColumns` (no existe un
-// util compartido de fecha+hora en el proyecto).
-function formatDate(iso: string): string {
-  const date = new Date(iso);
-  return date.toLocaleDateString("es-MX", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
-}
-
+// Formato de hora, espejo de `StockMovementReportColumns` (no existe un util
+// compartido de fecha+hora en el proyecto).
 function formatTime(iso: string): string {
   const date = new Date(iso);
   return date.toLocaleTimeString("es-MX", {
@@ -170,7 +161,7 @@ export const StockMovementReportPdfDocument = ({
               >
                 <View style={s.colFecha}>
                   <Text style={s.tableCellBold}>
-                    {formatDate(row.fecha_movimiento)}
+                    {formatShortDate(row.fecha_movimiento)}
                   </Text>
                   <Text style={s.tableCellSub}>
                     {formatTime(row.fecha_movimiento)}

@@ -4,6 +4,7 @@ import { ColumnDef, createColumnHelper } from "@tanstack/react-table";
 import { ActionMenu, type ActionMenuItem } from "@/src/components/ActionMenu";
 import { ViewIcon, EditIcon, RejectIcon } from "@/src/components/Icons";
 import { formatCurrency } from "@/src/utils/formatCurrency";
+import { formatShortDate } from "@/src/utils/formatDate";
 import type {
   MockPoliza,
   PolizaTipo,
@@ -44,15 +45,6 @@ const Pill = ({ cls, dot, children }: { cls: string; dot?: string; children: Rea
     {children}
   </span>
 );
-
-// timeZone "UTC" mantiene el día renderizado estable entre SSR e hidratación.
-const formatDate = (value: Date) =>
-  value.toLocaleDateString("es-MX", {
-    timeZone: "UTC",
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
 
 // ── Acciones de fila ──────────────────────────────────────────────────────────
 
@@ -104,7 +96,7 @@ export const polizasColumns = [
     header: "Fecha",
     cell: (info) => (
       <span className="text-slate-600 dark:text-slate-300 tabular-nums">
-        {formatDate(info.getValue())}
+        {formatShortDate(info.getValue(), { timeZone: "UTC" })}
       </span>
     ),
   }),

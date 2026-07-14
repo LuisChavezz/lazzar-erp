@@ -25,9 +25,6 @@ const formatCurrency = (value: string | number) =>
     currency: "MXN",
   });
 
-const formatDate = (value: string | null) =>
-  value ? new Date(value).toLocaleDateString("es-MX") : "—";
-
 // ── Sub-componentes ────────────────────────────────────────────────────────────
 
 const EstatusBadge = ({ estatus, label }: { estatus: number; label: string }) => {
@@ -273,12 +270,12 @@ export function PurchaseOrderDetailDialog({
               </InfoField>
               <InfoField label="Proveedor">{purchaseOrder.proveedor_nombre}</InfoField>
               <InfoField label="Referencia">{purchaseOrder.referencia || "—"}</InfoField>
-              <InfoField label="Fecha OC">{formatDate(purchaseOrder.fecha_oc)}</InfoField>
+              <InfoField label="Fecha OC">{formatLocalDate(purchaseOrder.fecha_oc)}</InfoField>
               <InfoField label="Entrega estimada">
-                {formatDate(purchaseOrder.fecha_entrega_estimada)}
+                {formatLocalDate(purchaseOrder.fecha_entrega_estimada)}
               </InfoField>
               <InfoField label="Fecha autorización">
-                {formatDate(purchaseOrder.fecha_autorizacion)}
+                {formatLocalDate(purchaseOrder.fecha_autorizacion)}
               </InfoField>
               {purchaseOrder.observaciones?.trim() && (
                 <InfoField label="Observaciones" className="col-span-2 sm:col-span-3">

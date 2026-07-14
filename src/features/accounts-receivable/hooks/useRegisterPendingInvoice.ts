@@ -42,10 +42,10 @@ export const useRegisterPendingInvoice = (
   return useMutation({
     mutationFn: registerPendingInvoice,
     onSuccess: () => {
-      // La lista de CxC aún consume datos mock, pero se invalida su llave para
-      // que quede lista cuando se conecte al endpoint real. Se crea además una
-      // factura, así que también se invalida la lista de facturas (sibling
-      // `invoicing`).
+      // Refresca la lista real de CxC (`useCuentasPorCobrar` usa una llave con
+      // prefijo `["accounts-receivable"]`, que esta invalidación cubre). Se crea
+      // además una factura, así que también se invalida la lista de facturas
+      // (sibling `invoicing`).
       queryClient.invalidateQueries({ queryKey: ["accounts-receivable"] });
       queryClient.invalidateQueries({ queryKey: ["invoices"] });
       toast.success("Factura pendiente por cobrar registrada correctamente");

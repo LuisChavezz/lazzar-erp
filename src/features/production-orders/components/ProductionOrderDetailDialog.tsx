@@ -2,17 +2,13 @@
 
 import { FactoryIcon } from "@/src/components/Icons";
 import { MainDialog } from "@/src/components/MainDialog";
+import { formatLocalDate } from "@/src/utils/formatDate";
 import { useProductionOrderOnboarding } from "@/src/features/production-orders/hooks/useProductionOrderOnboarding";
 import type {
   ProductionOrderOnboardingHabilitacion,
   ProductionOrderOnboardingProducto,
   ProductionOrderOnboardingTalla,
 } from "@/src/features/production-orders/interfaces/production-order.interface";
-
-// ── Helpers de formato ────────────────────────────────────────────────────────
-
-const formatDate = (value: string | null) =>
-  value ? new Date(value).toLocaleDateString("es-MX") : "—";
 
 // ── Sub-componentes ────────────────────────────────────────────────────────────
 
@@ -213,8 +209,8 @@ export function ProductionOrderDetailDialog({
             <InfoField label="Prioridad">
               <span className="tabular-nums">{data.prioridad}</span>
             </InfoField>
-            <InfoField label="Fecha inicio">{formatDate(data.fecha_inicio)}</InfoField>
-            <InfoField label="Fecha fin">{formatDate(data.fecha_fin)}</InfoField>
+            <InfoField label="Fecha inicio">{formatLocalDate(data.fecha_inicio)}</InfoField>
+            <InfoField label="Fecha fin">{formatLocalDate(data.fecha_fin)}</InfoField>
             <InfoField label="Observaciones" className="col-span-2 sm:col-span-3">
               <span className="leading-snug text-slate-600 dark:text-slate-300">
                 {data.observaciones?.trim() || "—"}

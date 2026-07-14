@@ -2,6 +2,7 @@
 
 import { ColumnDef, createColumnHelper } from "@tanstack/react-table";
 import { formatCurrency } from "@/src/utils/formatCurrency";
+import { formatShortDate } from "@/src/utils/formatDate";
 import type { MockPago } from "../interfaces/accounts-payable.interface";
 
 const METODO_CFG: Record<string, string> = {
@@ -10,15 +11,6 @@ const METODO_CFG: Record<string, string> = {
   Efectivo: "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400",
   "Tarjeta empresarial": "bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400",
 };
-
-// timeZone "UTC" mantiene el día renderizado estable entre SSR e hidratación.
-const formatDate = (value: Date) =>
-  value.toLocaleDateString("es-MX", {
-    timeZone: "UTC",
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
 
 const columnHelper = createColumnHelper<MockPago>();
 
@@ -41,7 +33,7 @@ export const pagosColumns = [
     header: "Fecha pago",
     cell: (info) => (
       <span className="text-slate-600 dark:text-slate-300 tabular-nums">
-        {formatDate(info.getValue())}
+        {formatShortDate(info.getValue(), { timeZone: "UTC" })}
       </span>
     ),
   }),

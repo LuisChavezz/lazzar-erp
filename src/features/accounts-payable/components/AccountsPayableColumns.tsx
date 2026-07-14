@@ -9,6 +9,7 @@ import {
   OrdenesIcon,
 } from "@/src/components/Icons";
 import { formatCurrency } from "@/src/utils/formatCurrency";
+import { formatShortDate } from "@/src/utils/formatDate";
 import type {
   MockCxP,
   CxPEstatus,
@@ -50,17 +51,6 @@ const EstatusBadge = ({ estatus }: { estatus: CxPEstatus }) => {
     </span>
   );
 };
-
-// timeZone "UTC" fija el día renderizado: las fechas de la maqueta se
-// construyen a medianoche UTC, así el SSR (servidor en UTC) y la hidratación
-// (navegador en cualquier zona) muestran el mismo día y no hay desajustes.
-const formatDate = (value: Date) =>
-  value.toLocaleDateString("es-MX", {
-    timeZone: "UTC",
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
 
 // ── Acciones de fila ──────────────────────────────────────────────────────────
 
@@ -122,7 +112,7 @@ export const accountsPayableColumns = [
     header: "Emisión",
     cell: (info) => (
       <span className="text-slate-600 dark:text-slate-300 tabular-nums">
-        {formatDate(info.getValue())}
+        {formatShortDate(info.getValue(), { timeZone: "UTC" })}
       </span>
     ),
   }),
@@ -138,7 +128,7 @@ export const accountsPayableColumns = [
               : "text-slate-600 dark:text-slate-300"
           }`}
         >
-          {formatDate(info.getValue())}
+          {formatShortDate(info.getValue(), { timeZone: "UTC" })}
         </span>
       );
     },

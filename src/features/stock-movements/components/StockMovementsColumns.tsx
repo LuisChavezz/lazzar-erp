@@ -4,6 +4,7 @@ import { useState } from "react";
 import { createColumnHelper, type ColumnDef } from "@tanstack/react-table";
 import { UserIcon, ViewIcon } from "@/src/components/Icons";
 import { ActionMenu, type ActionMenuItem } from "@/src/components/ActionMenu";
+import { formatShortDate } from "@/src/utils/formatDate";
 import type { StockMovement } from "../interfaces/stock-movements.interface";
 import { StockMovementDetailDialog } from "./StockMovementDetailDialog";
 
@@ -44,15 +45,6 @@ export const MOVEMENT_TYPE_CONFIG: Record<
 };
 
 // ─── Helpers de formato ──────────────────────────────────────────────────────
-
-function formatDate(iso: string): string {
-  const date = new Date(iso);
-  return date.toLocaleDateString("es-MX", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
-}
 
 function formatTime(iso: string): string {
   const date = new Date(iso);
@@ -108,7 +100,7 @@ export function getStockMovementsColumns() {
           return (
             <div className="flex flex-col leading-tight">
               <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">
-                {formatDate(raw)}
+                {formatShortDate(raw)}
               </span>
               <span className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">
                 {formatTime(raw)}
