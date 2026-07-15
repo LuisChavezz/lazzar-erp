@@ -9,9 +9,7 @@
  * cookies auth-jwt / auth-refresh-jwt que solo el browser puede enviar a ese dominio.
  */
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/src/lib/auth";
-import { parseRequiredJsonField } from "@/src/lib/routeHandlers";
+import { requireAuthenticatedSession, parseRequiredJsonField } from "@/src/lib/routeHandlers";
 import {
   buildQuoteEmailContent,
   buildQuoteEmailSubject,
@@ -21,11 +19,11 @@ import type { QuoteById } from "@/src/features/quotes/interfaces/quote.interface
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
-  // Verificar sesion activa — usa cookies de NextAuth (localhost), no del backend Django.
-  const session = await getServerSession(authOptions);
+  // Módulo de Ventas (CRM) — mismo permiso que protege /sales en el proxy.
+  const authResult = await requireAuthenticatedSession("R-CRM");
 
-  if (!session?.user) {
-    return NextResponse.json({ error: "No autorizado." }, { status: 401 });
+  if ("errorResponse" in authResult) {
+    return authResult.errorResponse;
   }
 
   const parsedBody = await parseRequiredJsonField(request, "quote");
