@@ -42,9 +42,8 @@ const SatInfo = dynamic(() => import("@/src/features/sat/components/SatInfo").th
 const CompanyList = dynamic(() => import("@/src/features/companies/components/CompanyList"), {
   loading: configDetailLoading,
 });
-const BranchList = dynamic(() => import("@/src/features/branches/components/BranchList"), {
-  loading: configDetailLoading,
-});
+// BranchList import intentionally removed along with the commented-out
+// "branches" case below — Sucursales is deliberately disabled (see configCardItems.ts).
 const CurrencyList = dynamic(() => import("@/src/features/currency/components/CurrencyList"), {
   loading: configDetailLoading,
 });
@@ -158,12 +157,18 @@ export function ConfigDetailView({ selectedView, onBack }: ConfigDetailViewProps
         </div>
       )}
 
-      {selectedView === "branches" && (
+      {/*
+        Sucursales is deliberately disabled (see configCardItems.ts) — the
+        "branches" view can no longer be reached from the UI since its card
+        was removed from configCards, but this case is left commented rather
+        than deleted so BranchList stays wired for a quick re-enable.
+      */}
+      {/* {selectedView === "branches" && (
         <div className="flex flex-col gap-6">
           {renderBackButton()}
           <BranchList />
         </div>
-      )}
+      )} */}
 
       {selectedView === "users" && (
         <div className="flex flex-col gap-6">
