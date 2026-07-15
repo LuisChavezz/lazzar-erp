@@ -11,6 +11,7 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/src/lib/auth";
+import { parseRequiredJsonField } from "@/src/lib/routeHandlers";
 import {
   buildQuoteEmailContent,
   buildQuoteEmailSubject,
@@ -27,17 +28,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "No autorizado." }, { status: 401 });
   }
 
-  let quote: QuoteById;
+  const parsedBody = await parseRequiredJsonField(request, "quote");
 
-  try {
-    const body = (await request.json()) as { quote?: QuoteById };
-    if (!body?.quote) {
-      return NextResponse.json({ error: "El campo quote es requerido." }, { status: 400 });
-    }
-    quote = body.quote;
-  } catch {
-    return NextResponse.json({ error: "Payload invalido." }, { status: 400 });
+  if ("errorResponse" in parsedBody) {
+    return parsedBody.errorResponse;
   }
+
+  const quote = parsedBody.value as QuoteById;
 
   if (!quote.correo_facturas) {
     return NextResponse.json(

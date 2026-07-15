@@ -28,6 +28,15 @@ export interface Invoice {
   factura_detalles: InvoiceDetail[];
   moneda_nombre: string;
   cliente_nombre: string;
+  /**
+   * Correo al que se dirige la factura, resuelto server-side y expuesto
+   * directamente por el serializer (mismo campo en el listado
+   * `GET /finanzas/facturas/` y en el detalle `GET /finanzas/facturas/{id}/`).
+   * Prioridad server-side: `pedido.correo_facturas` → `cliente.correo` → `null`.
+   * Es `null` explícito (no cadena vacía) cuando no hay ninguna fuente de correo
+   * disponible; validar presencia antes de habilitar el envío.
+   */
+  correo_facturas: string | null;
   empresa: number;
   sucursal: number;
   cliente: number;

@@ -34,3 +34,38 @@ export const INVOICE_STATUS_CONFIG: Record<string, StatusBadgeConfigEntry> = {
     dot: "bg-red-500",
   },
 };
+
+/**
+ * Estatus en los que una factura puede enviarse por correo al cliente.
+ *
+ * Cubre ÚNICAMENTE el envío, no la descarga del PDF: el riesgo es que salga
+ * hacia el cliente un comprobante cancelado presentado como vigente. Descargar
+ * el PDF de una factura cancelada es un uso interno legítimo (el documento se
+ * rotula a sí mismo con su estatus), así que esa acción no consulta esta
+ * compuerta — ver `InvoiceColumns`.
+ *
+ * A diferencia de una orden de compra —cuya compuerta de envío era "autorizada
+ * o más avanzada" porque la OC arranca en un estado editable (Borrador) del que
+ * no debe salir un documento en firme— una factura nace ya emitida: no existe
+ * un estado previo tipo borrador. El único estado inválido para enviarla es
+ * `Cancelada` (CFDI cancelado). Por eso la compuerta es "cualquier estatus
+ * reconocido excepto Cancelada".
+ *
+ * Se declara como conjunto explícito (en vez de `estatus !== "Cancelada"`) para
+ * que un estatus nuevo/desconocido del backend NO se trate como enviable por
+ * defecto: ante la duda, un comprobante fiscal no debe salir hacia el cliente.
+ */
+export const INVOICE_SENDABLE_STATUSES: readonly string[] = [
+  INVOICE_STATUS.EMITIDA,
+  INVOICE_STATUS.PAGADA,
+  INVOICE_STATUS.VENCIDA,
+];
+
+/**
+ * ¿La factura está en un estatus en el que puede enviarse por correo al
+ * cliente? Fuente única para la habilitación de la acción "Enviar correo" en
+ * `InvoiceColumns` y para la validación autoritativa del Route Handler de
+ * envío. "Descargar PDF" NO la consulta (ver arriba).
+ */
+export const isInvoiceSendable = (estatus: string | null | undefined): boolean =>
+  estatus != null && INVOICE_SENDABLE_STATUSES.includes(estatus);

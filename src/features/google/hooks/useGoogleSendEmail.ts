@@ -6,40 +6,13 @@ import { googleSendEmail } from "../services/actions";
 import { getQuoteById } from "@/src/features/quotes/services/actions";
 import { generateQuotePdfBlob } from "@/src/features/quotes/services/pdf/quotePdfBlob";
 import { buildGoogleEmailAttachment } from "../utils/googleEmailAttachment.utils";
-import type { GoogleEmailPayload } from "../interfaces/google.interface";
-import type { QuoteById } from "@/src/features/quotes/interfaces/quote.interface";
+import { renderEmailContent, type SendEmailResult } from "../utils/emailSend.utils";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
-
-// --- Tipos internos ---
-
-type RenderedEmailPayload = GoogleEmailPayload & { error?: string };
-
-type SendResult = { recipient: string; subject: string };
-
-/**
- * Paso 2: envia el objeto quote al API Route para renderizarlo con react-email en Node.js.
- * El API Route no hace llamadas al backend externo — solo renderiza HTML.
- */
-const renderEmailContent = async (quote: QuoteById): Promise<GoogleEmailPayload> => {
-  const res = await fetch(`/api/quotes/${quote.id}/send-email`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ quote }),
-  });
-
-  const data = (await res.json().catch(() => null)) as RenderedEmailPayload | null;
-
-  if (!res.ok || !data) {
-    throw new Error(data?.error || "No se pudo renderizar el correo.");
-  }
-
-  return data;
-};
 
 // --- Hook ---
 
 export const useGoogleSendEmail = () =>
-  useMutation<SendResult, unknown, number>({
+  useMutation<SendEmailResult, unknown, number>({
     mutationKey: ["google", "send-quote-email"],
     /**
      * Flujo de tres pasos — todo el acceso al backend externo ocurre client-side
@@ -57,7 +30,7 @@ export const useGoogleSendEmail = () =>
      * (generateQuotePdfBlob) a partir del MISMO snapshot de la cotización, por lo
      * que el adjunto es idéntico al documento descargable.
      */
-    mutationFn: async (quoteId: number): Promise<SendResult> => {
+    mutationFn: async (quoteId: number): Promise<SendEmailResult> => {
       const quote = await getQuoteById(quoteId);
 
       // Se dispara en paralelo con la validación de abajo (ambos solo dependen
@@ -71,7 +44,7 @@ export const useGoogleSendEmail = () =>
 
       // Valida (correo_facturas + sesión) y renderiza el HTML — su error tiene
       // prioridad sobre un fallo de generación de PDF.
-      const content = await renderEmailContent(quote);
+      const content = await renderEmailContent(`/api/quotes/${quote.id}/send-email`, { quote });
 
       // Para este punto el PDF ya se generó (o está a punto de hacerlo) en
       // paralelo con la llamada anterior, así que este await normalmente no

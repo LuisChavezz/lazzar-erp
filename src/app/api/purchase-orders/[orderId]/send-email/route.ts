@@ -25,9 +25,7 @@
  * con el payload enviado.
  */
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/src/lib/auth";
-import { hasPermission } from "@/src/utils/permissions";
+import { requireAuthenticatedSession, parseRequiredJsonField } from "@/src/lib/routeHandlers";
 import {
   buildPurchaseOrderEmailContent,
   buildPurchaseOrderEmailSubject,
@@ -41,41 +39,22 @@ export async function POST(
   request: Request,
   { params }: { params: Promise<{ orderId: string }> },
 ) {
-  // Verificar sesión activa — usa cookies de NextAuth (localhost), no del backend Django.
-  const session = await getServerSession(authOptions);
-
-  if (!session?.user) {
-    return NextResponse.json({ error: "No autorizado." }, { status: 401 });
-  }
-
   // Módulo de Compras — mismo permiso que protege /procurement en el proxy.
-  // Las rutas de `src/app/api/**` no pasan por `src/proxy.ts`, así que este
-  // handler necesita su propio chequeo explícito.
-  if (
-    !hasPermission("R-COMPRAS", {
-      role: session.user.role,
-      permissions: session.user.permissions,
-    })
-  ) {
-    return NextResponse.json(
-      { error: "No tienes permiso para realizar esta acción." },
-      { status: 403 },
-    );
+  const authResult = await requireAuthenticatedSession("R-COMPRAS");
+
+  if ("errorResponse" in authResult) {
+    return authResult.errorResponse;
   }
 
   const { orderId } = await params;
 
-  let rawOrder: unknown;
+  const parsedBody = await parseRequiredJsonField(request, "order");
 
-  try {
-    const body = (await request.json()) as { order?: unknown };
-    if (!body?.order) {
-      return NextResponse.json({ error: "El campo order es requerido." }, { status: 400 });
-    }
-    rawOrder = body.order;
-  } catch {
-    return NextResponse.json({ error: "Payload invalido." }, { status: 400 });
+  if ("errorResponse" in parsedBody) {
+    return parsedBody.errorResponse;
   }
+
+  const rawOrder = parsedBody.value;
 
   const parsedOrder = purchaseOrderEmailPayloadSchema.safeParse(rawOrder);
 

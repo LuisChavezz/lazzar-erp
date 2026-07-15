@@ -1,16 +1,6 @@
 import { Fragment } from "react";
-import {
-  Body,
-  Container,
-  Head,
-  Heading,
-  Hr,
-  Html,
-  Preview,
-  Section,
-  Tailwind,
-  Text,
-} from "@react-email/components";
+import { Text } from "@react-email/components";
+import { BaseEmailLayout, EmailCard } from "@/src/emails/shared/BaseEmailLayout";
 import type { PurchaseOrderDetail } from "@/src/features/purchase-orders/interfaces/purchase-order.interface";
 import { formatMoneyValue as money, safeParseAmount } from "@/src/utils/formatCurrency";
 import { formatLocalDate } from "@/src/utils/formatDate";
@@ -38,30 +28,19 @@ export const PurchaseOrderEmail = ({ order }: PurchaseOrderEmailProps) => {
   const seguros = safeParseAmount(order.seguros);
 
   return (
-    <Html lang="es">
-      <Tailwind>
-        <Head />
-        <Preview>{`Orden de compra ${order.folio} para ${supplierName}`}</Preview>
-        <Body className="m-0 bg-slate-100 py-8 font-sans text-slate-900">
-          <Container className="mx-auto max-w-170 rounded-3xl bg-white px-8 py-10">
-            <Section className="rounded-[20px] bg-slate-950 px-6 py-5 text-white">
-              <Text className="m-0 text-xs font-semibold uppercase tracking-[0.24em] text-sky-300">
-                ERP Lazzar
-              </Text>
-              <Heading className="m-0 mt-3 text-[28px] font-semibold leading-[1.2] text-white">
-                Orden de compra {order.folio}
-              </Heading>
-              <Text className="m-0 mt-2 text-sm leading-6 text-slate-300">
-                Estimado {supplierName}, adjuntamos en PDF la orden de compra con el detalle
-                de los productos solicitados. Agradecemos confirmar su recepción.
-              </Text>
-            </Section>
-
-            <Section className="mt-6 rounded-[20px] border border-slate-200 px-6 py-5">
-              <Heading as="h2" className="m-0 text-lg font-semibold text-slate-900">
-                Resumen
-              </Heading>
-              <table className="mt-4 w-full border-collapse text-sm">
+    <BaseEmailLayout
+      previewText={`Orden de compra ${order.folio} para ${supplierName}`}
+      headingText={`Orden de compra ${order.folio}`}
+      descriptionText={
+        <>
+          Estimado {supplierName}, adjuntamos en PDF la orden de compra con el detalle
+          de los productos solicitados. Agradecemos confirmar su recepción.
+        </>
+      }
+      footerText="Este correo fue generado automáticamente desde el módulo de compras. El detalle completo de la orden se encuentra en el PDF adjunto."
+    >
+      <EmailCard title="Resumen">
+        <table className="mt-4 w-full border-collapse text-sm">
                 <tbody>
                   <tr>
                     <td className="py-2 pr-4 text-slate-500">Folio</td>
@@ -87,12 +66,9 @@ export const PurchaseOrderEmail = ({ order }: PurchaseOrderEmailProps) => {
                   </tr>
                 </tbody>
               </table>
-            </Section>
+      </EmailCard>
 
-            <Section className="mt-6 rounded-[20px] border border-slate-200 px-6 py-5">
-              <Heading as="h2" className="m-0 text-lg font-semibold text-slate-900">
-                Productos solicitados
-              </Heading>
+      <EmailCard title="Productos solicitados">
               <table className="mt-4 w-full border-collapse overflow-hidden text-left text-sm">
                 <thead>
                   <tr className="border-b border-slate-200 text-xs uppercase tracking-[0.16em] text-slate-500">
@@ -137,12 +113,9 @@ export const PurchaseOrderEmail = ({ order }: PurchaseOrderEmailProps) => {
                   )}
                 </tbody>
               </table>
-            </Section>
+      </EmailCard>
 
-            <Section className="mt-6 rounded-[20px] border border-slate-200 px-6 py-5">
-              <Heading as="h2" className="m-0 text-lg font-semibold text-slate-900">
-                Totales
-              </Heading>
+      <EmailCard title="Totales">
               <table className="mt-4 w-full border-collapse text-sm">
                 <tbody>
                   <tr>
@@ -193,29 +166,16 @@ export const PurchaseOrderEmail = ({ order }: PurchaseOrderEmailProps) => {
                   </tr>
                 </tbody>
               </table>
-            </Section>
+      </EmailCard>
 
-            {order.observaciones?.trim() ? (
-              <Section className="mt-6 rounded-[20px] border border-slate-200 px-6 py-5">
-                <Heading as="h2" className="m-0 text-lg font-semibold text-slate-900">
-                  Observaciones
-                </Heading>
-                <Text className="m-0 mt-4 text-sm leading-6 text-slate-700">
-                  {order.observaciones}
-                </Text>
-              </Section>
-            ) : null}
-
-            <Hr className="my-8 border-slate-200" />
-
-            <Text className="m-0 text-xs leading-5 text-slate-500">
-              Este correo fue generado automáticamente desde el módulo de compras. El detalle
-              completo de la orden se encuentra en el PDF adjunto.
-            </Text>
-          </Container>
-        </Body>
-      </Tailwind>
-    </Html>
+      {order.observaciones?.trim() ? (
+        <EmailCard title="Observaciones">
+          <Text className="m-0 mt-4 text-sm leading-6 text-slate-700">
+            {order.observaciones}
+          </Text>
+        </EmailCard>
+      ) : null}
+    </BaseEmailLayout>
   );
 };
 
