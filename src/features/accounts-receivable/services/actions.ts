@@ -3,6 +3,7 @@ import type {
   CuentaPorCobrar,
   CuentaPorCobrarQueryParams,
 } from "../interfaces/accounts-receivable.interface";
+import type { CuentaPorCobrarDetailResponse } from "../interfaces/accounts-receivable-detail.interface";
 import type {
   RegisterPendingInvoiceBody,
   RegisterPendingInvoiceResponse,
@@ -21,6 +22,29 @@ export const getCuentasPorCobrar = async (
   const { data } = await v1_api.get<CuentaPorCobrar[]>(
     "/finanzas/cuentas-por-cobrar/",
     { params },
+  );
+  return data;
+};
+
+/**
+ * Consulta UNA cuenta por cobrar desde `GET /finanzas/cuentas-por-cobrar/{id}/`.
+ *
+ * No es el mismo payload del listado: además de los campos base trae
+ * `total_pagado`, la factura anidada con sus conceptos y las pólizas contables
+ * asociadas, así que no se puede sustituir leyendo la fila de la caché del
+ * listado.
+ *
+ * Tipa la respuesta como `CuentaPorCobrarDetailResponse` (no
+ * `CuentaPorCobrarDetail`): en el detalle `observaciones` SÍ puede llegar
+ * `null`, y ese tipo lo admite honestamente. `useCuentaPorCobrarDetail` la
+ * normaliza a `CuentaPorCobrarDetail` vía `select` — aquí solo se tipa el GET,
+ * no se transforma nada.
+ */
+export const getCuentaPorCobrarDetail = async (
+  id: number,
+): Promise<CuentaPorCobrarDetailResponse> => {
+  const { data } = await v1_api.get<CuentaPorCobrarDetailResponse>(
+    `/finanzas/cuentas-por-cobrar/${id}/`,
   );
   return data;
 };

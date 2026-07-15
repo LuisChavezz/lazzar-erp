@@ -1,59 +1,35 @@
 "use client";
 
+import { useState } from "react";
 import { ColumnDef, createColumnHelper } from "@tanstack/react-table";
 import { ActionMenu, type ActionMenuItem } from "@/src/components/ActionMenu";
 import { ViewIcon, ReceiptIcon, ListaPreciosIcon } from "@/src/components/Icons";
-import { StatusBadge, type StatusBadgeConfigEntry } from "@/src/components/StatusBadge";
+import { StatusBadge } from "@/src/components/StatusBadge";
 import { formatMoneyValue } from "@/src/utils/formatCurrency";
 import { formatShortDate } from "@/src/utils/formatDate";
+import { CXC_ESTATUS_CONFIG } from "../constants/cxcEstatus";
+import { AccountsReceivableDetailDialog } from "./AccountsReceivableDetailDialog";
 import type {
   CuentaPorCobrarRow,
   CxCEstatus,
 } from "../interfaces/accounts-receivable.interface";
 
 // ── Badge de estatus ──────────────────────────────────────────────────────────
-// Dominio propio de CxC (no se comparte con el estatus de facturación): solo la
-// presentación (StatusBadge) es genérica, los valores no. Las llaves son los
-// valores exactos del backend; `StatusBadge` degrada con su estilo por defecto
-// si llegara uno no listado.
-
-const ESTATUS_CFG: Record<CxCEstatus, StatusBadgeConfigEntry> = {
-  Pendiente: {
-    label: "Pendiente",
-    cls: "bg-sky-50 text-sky-700 dark:bg-sky-500/10 dark:text-sky-400",
-    dot: "bg-sky-400",
-  },
-  Parcial: {
-    label: "Parcial",
-    cls: "bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400",
-    dot: "bg-amber-400",
-  },
-  Pagada: {
-    label: "Pagada",
-    cls: "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400",
-    dot: "bg-emerald-500",
-  },
-  Cancelada: {
-    label: "Cancelada",
-    cls: "bg-slate-50 text-slate-600 dark:bg-slate-500/10 dark:text-slate-400",
-    dot: "bg-slate-400",
-  },
-  Vencida: {
-    label: "Vencida",
-    cls: "bg-red-50 text-red-700 dark:bg-red-500/10 dark:text-red-400",
-    dot: "bg-red-500",
-  },
-};
+// La config vive en `constants/cxcEstatus.ts` porque el diálogo de detalle la
+// comparte, y ese diálogo se importa desde aquí: tenerla en este archivo
+// cerraría un ciclo de imports entre ambos.
 
 const EstatusBadge = ({ estatus }: { estatus: CxCEstatus }) => (
-  <StatusBadge status={estatus} config={ESTATUS_CFG} />
+  <StatusBadge status={estatus} config={CXC_ESTATUS_CONFIG} />
 );
 
 // ── Acciones de fila ──────────────────────────────────────────────────────────
 
 const ActionsCell = ({ row }: { row: CuentaPorCobrarRow }) => {
+  const [isDetailOpen, setIsDetailOpen] = useState(false);
+
   const menuItems: ActionMenuItem[] = [
-    { label: "Ver detalle", icon: ViewIcon, onSelect: () => {} },
+    { label: "Ver detalle", icon: ViewIcon, onSelect: () => setIsDetailOpen(true) },
   ];
 
   // Solo tiene sentido registrar un cobro cuando queda saldo por cobrar.
@@ -66,6 +42,16 @@ const ActionsCell = ({ row }: { row: CuentaPorCobrarRow }) => {
   return (
     <div className="flex items-center justify-center">
       <ActionMenu items={menuItems} ariaLabel={`Acciones de ${row.folio_cxc}`} />
+      {/* Montaje condicional: el diálogo —y con él su `useCuentaPorCobrarDetail`—
+          no existe hasta abrirlo, así que renderizar la tabla no dispara ninguna
+          petición de detalle. Mismo patrón que `StockMovementsColumns`. */}
+      {isDetailOpen && (
+        <AccountsReceivableDetailDialog
+          cuentaId={row.id}
+          open={true}
+          onOpenChange={setIsDetailOpen}
+        />
+      )}
     </div>
   );
 };
