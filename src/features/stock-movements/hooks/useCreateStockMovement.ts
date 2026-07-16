@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { AxiosError } from "axios";
+import { firstDrfMessage } from "@/src/utils/firstDrfMessage";
 import { createStockMovement, type CreateStockMovementPayload } from "../services/actions";
 
 // `pedido` no es un campo del formulario (se elige aparte, ver
@@ -29,7 +30,7 @@ export const parseStockMovementPedidoError = (error: unknown): { message: string
     const data = error.response?.data as { pedido?: string | string[] } | undefined;
 
     if (status === 400 && data?.pedido) {
-      const message = Array.isArray(data.pedido) ? data.pedido[0] : data.pedido;
+      const message = firstDrfMessage(data.pedido);
       if (message) return { message };
     }
   }
@@ -55,22 +56,19 @@ export const useCreateStockMovement = (setError?: SetStockMovementError) => {
           const fieldMessages: string[] = [];
 
           Object.entries(data as Record<string, unknown>).forEach(([key, value]) => {
+            const message = firstDrfMessage(value);
+            if (!message) return;
+
             // Establecer error por campo si hay callback — `pedido` se excluye:
             // no es un campo del formulario, se lee aparte con
             // `parseStockMovementPedidoError` en el `catch` del envío.
             if (setError && key !== "pedido") {
-              const fieldKey = key as StockMovementFieldMapping;
-              const message = Array.isArray(value) ? value[0] : value;
-              if (typeof message === "string" && message.length > 0) {
-                setError(fieldKey, { type: "server", message });
-              }
+              setError(key as StockMovementFieldMapping, { type: "server", message });
             }
 
-            // Recolectar mensaje para el toast.
-            const msg = Array.isArray(value) ? value[0] : value;
-            if (typeof msg === "string" && msg.length > 0) {
-              fieldMessages.push(msg);
-            }
+            // Recolectar mensaje para el toast (incluye `pedido`, a diferencia
+            // del `setError` de arriba).
+            fieldMessages.push(message);
           });
 
           // Mostrar toast con los mensajes de validación combinados.

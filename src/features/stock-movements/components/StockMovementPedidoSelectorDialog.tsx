@@ -1,12 +1,7 @@
 "use client";
 
-import { useState } from "react";
 import { MainDialog } from "@/src/components/MainDialog";
-import { DialogHeader } from "@/src/components/DialogHeader";
-import { Loader } from "@/src/components/Loader";
-import { Button } from "@/src/components/Button";
-import { SearchableSelectList } from "@/src/components/SearchableSelectList";
-import { renderRadioIndicator } from "@/src/components/RadioIndicator";
+import { SingleSelectPickerDialogContent } from "@/src/components/SingleSelectPickerDialogContent";
 import { useOrders } from "@/src/features/orders/hooks/useOrders";
 import type { Order } from "@/src/features/orders/interfaces/order.interface";
 
@@ -26,7 +21,10 @@ interface StockMovementPedidoSelectorDialogProps {
 
 /**
  * Contenido del selector — se monta solo mientras el diálogo está abierto,
- * de modo que `useOrders()` (`/ventas/pedidos/`) se ejecuta bajo demanda.
+ * de modo que `useOrders()` (`/ventas/pedidos/`) se ejecuta bajo demanda. Este
+ * componente (con nombre propio, no una arrow function anónima) es lo que
+ * permite llamar el hook aquí y no en `SingleSelectPickerDialogContent`, que
+ * es puramente presentacional y no sabe de dónde vienen los `items`.
  */
 function PedidoSelectorContent({
   selectedPedidoId,
@@ -39,73 +37,39 @@ function PedidoSelectorContent({
 }) {
   const { orders, isLoading, isError } = useOrders();
 
-  // Selección tentativa: no se propaga al formulario hasta confirmar.
-  const [tentativeId, setTentativeId] = useState<number | null>(selectedPedidoId);
-  const isConfirmDisabled = tentativeId === null || isLoading || isError;
-
-  const handleConfirm = () => {
-    const order = orders.find((o) => o.id === tentativeId);
-    if (!order) return;
-    onConfirm({ id: order.id, label: order.folio });
-  };
-
   return (
-    <>
-      <DialogHeader
-        title="Seleccionar Pedido"
-        subtitle="Vincula el movimiento a un pedido existente"
-        statusColor="indigo"
-      />
-
-      {isLoading ? (
-        <Loader
-          title="Cargando pedidos"
-          message="Obteniendo pedidos disponibles..."
-        />
-      ) : isError ? (
-        <p className="text-sm text-red-500 p-4">Error al cargar los pedidos.</p>
-      ) : (
-        <SearchableSelectList<Order>
-          items={orders}
-          searchPlaceholder="Buscar pedido por folio o cliente..."
-          filterPredicate={(order, term) =>
-            order.folio.toLowerCase().includes(term) ||
-            order.cliente_nombre.toLowerCase().includes(term)
-          }
-          getKey={(order) => order.id}
-          isSelected={(order) => order.id === tentativeId}
-          onSelect={(order) =>
-            setTentativeId((prev) => (prev === order.id ? null : order.id))
-          }
-          emptyMessage="No hay pedidos disponibles."
-          noResultsMessage="No se encontraron pedidos"
-          renderIndicator={renderRadioIndicator}
-          renderContent={(order) => (
-            <>
-              <p className="text-sm font-semibold text-slate-800 dark:text-slate-100 truncate">
-                {order.folio}
-              </p>
-              <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
-                {order.cliente_nombre}
-              </p>
-            </>
-          )}
-        />
+    <SingleSelectPickerDialogContent<Order>
+      title="Seleccionar Pedido"
+      subtitle="Vincula el movimiento a un pedido existente"
+      statusColor="indigo"
+      items={orders}
+      isLoading={isLoading}
+      isError={isError}
+      loadingTitle="Cargando pedidos"
+      loadingMessage="Obteniendo pedidos disponibles..."
+      errorMessage="Error al cargar los pedidos."
+      searchPlaceholder="Buscar pedido por folio o cliente..."
+      filterPredicate={(order, term) =>
+        order.folio.toLowerCase().includes(term) ||
+        order.cliente_nombre.toLowerCase().includes(term)
+      }
+      getKey={(order) => order.id}
+      selectedKey={selectedPedidoId}
+      emptyMessage="No hay pedidos disponibles."
+      noResultsMessage="No se encontraron pedidos"
+      renderContent={(order) => (
+        <>
+          <p className="text-sm font-semibold text-slate-800 dark:text-slate-100 truncate">
+            {order.folio}
+          </p>
+          <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
+            {order.cliente_nombre}
+          </p>
+        </>
       )}
-
-      <div className="flex items-center justify-end gap-3 pt-5">
-        <Button variant="secondary" onClick={onCancel}>
-          Cancelar
-        </Button>
-        <Button
-          variant="primary"
-          onClick={handleConfirm}
-          disabled={isConfirmDisabled}
-        >
-          Confirmar selección
-        </Button>
-      </div>
-    </>
+      onConfirm={(order) => onConfirm({ id: order.id, label: order.folio })}
+      onCancel={onCancel}
+    />
   );
 }
 

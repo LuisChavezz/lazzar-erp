@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { isAxiosError } from "axios";
 import toast from "react-hot-toast";
+import { firstDrfMessage } from "@/src/utils/firstDrfMessage";
 import { createInvoiceFromOrder } from "../services/actions";
 import type { CreateInvoiceFromOrderBody } from "../interfaces/invoice.interface";
 
@@ -30,7 +31,7 @@ export const parseCreateInvoiceError = (error: unknown): CreateInvoiceError => {
       | undefined;
 
     if (status === 400 && data?.pedido) {
-      const message = Array.isArray(data.pedido) ? data.pedido[0] : data.pedido;
+      const message = firstDrfMessage(data.pedido);
       if (message) return { message };
     }
     if (status === 404 && data?.detail) {
