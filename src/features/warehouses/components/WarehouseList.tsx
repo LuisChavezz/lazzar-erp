@@ -1,5 +1,6 @@
 import { useMemo, useState, useCallback } from "react";
 import { DataTable } from "../../../components/DataTable";
+import { Button } from "../../../components/Button";
 import { ErrorState } from "../../../components/ErrorState";
 import { getColumns } from "./WarehouseColumns";
 import { MainDialog } from "../../../components/MainDialog";
@@ -73,12 +74,14 @@ export default function WarehouseList() {
             onOpenChange={setIsDialogOpen}
             maxWidth="1000px"
             trigger={
-              <button
+              <Button
+                variant="primary"
+                rounded="full"
                 onClick={handleNew}
-                className="px-4 py-2 cursor-pointer bg-sky-600 hover:bg-sky-700 text-white text-sm font-semibold rounded-full shadow-lg shadow-sky-500/30 transition-all hover:scale-105 active:scale-95 whitespace-nowrap"
+                className="hover:scale-105 active:scale-95"
               >
                 + Nuevo Almacén
-              </button>
+              </Button>
             }
           >
             <WarehouseForm

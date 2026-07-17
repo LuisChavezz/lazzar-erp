@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useState } from "react";
 import { DataTable } from "../../../components/DataTable";
+import { Button } from "../../../components/Button";
 import { MainDialog } from "../../../components/MainDialog";
 import { DialogHeader } from "../../../components/DialogHeader";
 import { getColumns } from "./ProductVariantColumns";
@@ -105,12 +106,14 @@ export default function ProductVariantList() {
             }}
             maxWidth="1000px"
             trigger={
-              <button
+              <Button
+                variant="primary"
+                rounded="full"
                 onClick={handleCreate}
-                className="px-4 py-2 cursor-pointer bg-sky-600 hover:bg-sky-700 text-white text-sm font-semibold rounded-full shadow-lg shadow-sky-500/30 transition-all hover:scale-105 active:scale-95 whitespace-nowrap"
+                className="hover:scale-105 active:scale-95"
               >
                 + Nueva Variante
-              </button>
+              </Button>
             }
           >
             <ProductVariantForm

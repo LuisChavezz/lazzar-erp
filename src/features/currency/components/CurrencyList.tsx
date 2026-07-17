@@ -7,6 +7,7 @@ import { ErrorState } from "@/src/components/ErrorState";
 import { getCurrencyColumns } from "./CurrencyColumns";
 import { MainDialog } from "@/src/components/MainDialog";
 import { DialogHeader } from "@/src/components/DialogHeader";
+import { Button } from "@/src/components/Button";
 import { PlusIcon } from "@/src/components/Icons";
 import { useSession } from "next-auth/react";
 import CurrencyForm from "./CurrencyForm";
@@ -66,13 +67,15 @@ export default function CurrencyList() {
         searchPlaceholder="Buscar moneda..."
         actionButton={
           canEditConfig ? (
-            <button
+            <Button
+              variant="primary"
+              rounded="xl"
               onClick={() => setIsCreateOpen(true)}
-              className="cursor-pointer bg-sky-600 hover:bg-sky-700 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors flex items-center gap-2 shadow-sm shadow-sky-600/20"
+              leftIcon={<PlusIcon className="w-5 h-5" />}
+              className="font-medium! shadow-sm! shadow-sky-600/20!"
             >
-              <PlusIcon className="w-5 h-5" />
               Nueva Moneda
-            </button>
+            </Button>
           ) : null
         }
       />

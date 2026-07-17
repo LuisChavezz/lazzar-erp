@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useIsMutating } from "@tanstack/react-query";
 import { useSession } from "next-auth/react";
 import { DataTable, DataTableVisibleColumn } from "@/src/components/DataTable";
+import { Button } from "@/src/components/Button";
 import { quoteColumns } from "./QuoteColumns";
 import { useQuoteCsvExport } from "../hooks/useQuoteCsvExport";
 import { useQuotePdfExport } from "../hooks/useQuotePdfExport";
@@ -77,13 +78,14 @@ export const QuoteList = () => {
             </div>
           ) : canCreateOrder ? (
             <div className="flex items-center gap-2 shrink-0">
-              <Link
-                href="/sales/quotes/new"
-                aria-label="Crear nueva cotización"
-                className="inline-flex items-center justify-center px-4 py-2 bg-sky-600 hover:bg-sky-700 text-white text-sm font-semibold rounded-xl shadow-lg shadow-sky-500/30 whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2 transition-all duration-200 ease-in-out"
-              >
-                + Nueva cotización
-              </Link>
+              <Button asChild variant="primary" rounded="xl">
+                <Link
+                  href="/sales/quotes/new"
+                  aria-label="Crear nueva cotización"
+                >
+                  + Nueva cotización
+                </Link>
+              </Button>
             </div>
           ) : null
         }

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { DataTable } from "@/src/components/DataTable";
+import { Button } from "@/src/components/Button";
 import { invoiceColumns } from "./InvoiceColumns";
 import { CreateInvoiceDialog } from "./CreateInvoiceDialog";
 import { useInvoices } from "../hooks/useInvoices";
@@ -46,13 +47,14 @@ export const InvoiceList = () => {
         onRefetch={refetch}
         isRefetching={isFetching}
         actionButton={
-          <button
-            type="button"
+          <Button
+            variant="primary"
+            rounded="full"
             onClick={() => setIsCreateOpen(true)}
-            className="px-4 py-2 cursor-pointer bg-sky-600 hover:bg-sky-700 text-white text-sm font-semibold rounded-full shadow-lg shadow-sky-500/30 transition-all hover:scale-105 active:scale-95 whitespace-nowrap"
+            className="hover:scale-105 active:scale-95"
           >
             + Nueva Factura
-          </button>
+          </Button>
         }
       />
 

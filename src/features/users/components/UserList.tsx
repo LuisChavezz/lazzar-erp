@@ -3,6 +3,7 @@
 import { useState, useMemo } from "react";
 import { useUsers } from "../hooks/useUsers";
 import { DataTable } from "@/src/components/DataTable";
+import { Button } from "@/src/components/Button";
 import { ErrorState } from "@/src/components/ErrorState";
 import { getUserColumns } from "./UserColumns";
 import { MainDialog } from "@/src/components/MainDialog";
@@ -54,11 +55,13 @@ export default function UserList() {
             onOpenChange={setIsDialogOpen}
             maxWidth="1000px"
             trigger={
-              <button
-                className="px-4 py-2 cursor-pointer bg-sky-600 hover:bg-sky-700 text-white text-sm font-semibold rounded-full shadow-lg shadow-sky-500/30 transition-all hover:scale-105 active:scale-95 whitespace-nowrap"
+              <Button
+                variant="primary"
+                rounded="full"
+                className="hover:scale-105 active:scale-95"
               >
                 + Nuevo Usuario
-              </button>
+              </Button>
             }
             title={
               <DialogHeader

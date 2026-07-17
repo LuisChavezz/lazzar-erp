@@ -2,8 +2,6 @@
 
 import { useState } from "react";
 import { DataTable } from "@/src/components/DataTable";
-import { LoadingSkeleton } from "@/src/components/LoadingSkeleton";
-import { ErrorState } from "@/src/components/ErrorState";
 import { WarningFilledIcon, RejectIcon } from "@/src/components/Icons";
 import { formatCurrency } from "@/src/utils/formatCurrency";
 import { accountsReceivableColumns } from "./AccountsReceivableColumns";
@@ -33,31 +31,11 @@ export const AccountsReceivableList = () => {
     useCuentasPorCobrar();
   const [bannerDismissed, setBannerDismissed] = useState(false);
 
-  // Registrar una CxC pendiente (`RegisterPendingInvoiceDialog`) es un `POST`
-  // independiente del listado (`GET`), así que se renderiza SIEMPRE — fuera
-  // del guard de error abajo — para que un `GET` fallido/lento no le quite al
-  // usuario la posibilidad de registrar una cuenta nueva.
-  const actionButton = (
-    <div className="flex justify-end">
-      <RegisterPendingInvoiceDialog />
-    </div>
-  );
-
-  // Solo se muestra el estado de error (en vez del falso "No hay cuentas...")
-  // cuando la consulta nunca cargó con éxito; un refetch fallido con datos en
-  // caché conserva la tabla y avisa por toast (ver `useCuentasPorCobrar`). Mismo
-  // patrón que `InvoiceList`/`StockList`.
-  if (isError && !hasLoaded) {
-    return (
-      <div className="space-y-6">
-        {actionButton}
-        <ErrorState
-          title="Error al cargar las cuentas por cobrar"
-          message={(error as Error).message}
-        />
-      </div>
-    );
-  }
+  // Solo se trata como error "de pantalla completa" cuando la consulta nunca
+  // cargó con éxito; un refetch fallido con datos en caché conserva la tabla y
+  // avisa por toast (ver `useCuentasPorCobrar`). Mismo patrón que
+  // `InvoiceList`/`StockList`.
+  const showError = isError && !hasLoaded;
 
   // "Hoy" se calcula UNA sola vez y se comparte entre filas, KPIs y antigüedad.
   const today = startOfTodayUTC();
@@ -65,12 +43,41 @@ export const AccountsReceivableList = () => {
   const kpis = computeCxcKpis(cuentas, today);
   const agingBuckets = computeAgingBuckets(cuentas, today);
 
-  const showBanner = !bannerDismissed && kpis.cuentasVencidas > 0;
+  const showBanner = !showError && !bannerDismissed && kpis.cuentasVencidas > 0;
+
+  // Registrar una CxC pendiente (`RegisterPendingInvoiceDialog`, un `POST`
+  // independiente del `GET` del listado) vive en el toolbar de `DataTable`
+  // —misma posición que en el resto de tablas—. `DataTable` se monta SIEMPRE
+  // (recibe `isLoading`/`isError` y alterna solo su cuerpo), así que el botón
+  // sigue disponible aunque el listado esté cargando o haya fallado.
+  const table = (
+    <DataTable
+      columns={accountsReceivableColumns}
+      data={rows}
+      title="Cuentas por Cobrar"
+      searchPlaceholder="Buscar folio, cliente o factura..."
+      filterConfig={[{ id: "estatus", label: "Estatus", options: ESTATUS_FILTER }]}
+      onRefetch={refetch}
+      isRefetching={isFetching}
+      emptyMessage="No hay cuentas por cobrar registradas."
+      actionButton={<RegisterPendingInvoiceDialog />}
+      isLoading={isLoading}
+      isError={showError}
+      errorTitle="Error al cargar las cuentas por cobrar"
+      errorMessage={error?.message}
+      loadingAriaLabel="Cargando cuentas por cobrar"
+    />
+  );
+
+  // Ante un error de carga inicial se muestra SOLO la tabla: su toolbar mantiene
+  // "Registrar CxC" disponible y su cuerpo muestra el `ErrorState`; se omiten la
+  // antigüedad y la alerta, igual que antes (no hay datos que resumir).
+  if (showError) {
+    return <div className="space-y-6">{table}</div>;
+  }
 
   return (
     <div className="space-y-6">
-      {actionButton}
-
       {/* Alerta de cuentas vencidas */}
       {showBanner && (
         <div className="flex items-start gap-3 rounded-xl border border-amber-200 dark:border-amber-800/50 bg-amber-50 dark:bg-amber-900/20 px-4 py-3">
@@ -101,28 +108,8 @@ export const AccountsReceivableList = () => {
       {/* Antigüedad de saldos */}
       <AccountsReceivableAgingSummary buckets={agingBuckets} isLoading={isLoading} />
 
-      {/* Tabla principal: Cuentas por Cobrar */}
-      {isLoading ? (
-        <div
-          className="min-h-120"
-          role="status"
-          aria-live="polite"
-          aria-label="Cargando cuentas por cobrar"
-        >
-          <LoadingSkeleton className="h-120 rounded-2xl" />
-        </div>
-      ) : (
-        <DataTable
-          columns={accountsReceivableColumns}
-          data={rows}
-          title="Cuentas por Cobrar"
-          searchPlaceholder="Buscar folio, cliente o factura..."
-          filterConfig={[{ id: "estatus", label: "Estatus", options: ESTATUS_FILTER }]}
-          onRefetch={refetch}
-          isRefetching={isFetching}
-          emptyMessage="No hay cuentas por cobrar registradas."
-        />
-      )}
+      {/* Tabla principal: Cuentas por Cobrar (maneja carga/error en su cuerpo) */}
+      {table}
     </div>
   );
 };

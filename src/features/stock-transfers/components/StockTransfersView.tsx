@@ -1,8 +1,6 @@
 "use client";
 
 import { DataTable } from "@/src/components/DataTable";
-import { LoadingSkeleton } from "@/src/components/LoadingSkeleton";
-import { ErrorState } from "@/src/components/ErrorState";
 import { StockTransferForm } from "./StockTransferForm";
 import { stockTransfersColumns } from "./StockTransfersColumns";
 import { useTransferencias } from "../hooks/useTransferencias";
@@ -12,10 +10,12 @@ import { useTransferencias } from "../hooks/useTransferencias";
  * la acción "Ver Detalles" que abre `StockTransferDetailDialog`
  * (`GET /wms/transferencias/{id}/`, ver `StockTransfersColumns`).
  *
- * La captura (`StockTransferForm`) se renderiza SIEMPRE, fuera del árbol de
- * estados del listado: registrar un traspaso (`POST /wms/transferencias/`) es
- * independiente de leer la lista (`GET`), así que un error o una carga lenta
- * del listado no debe dejar al usuario sin forma de crear uno nuevo.
+ * `DataTable` se monta SIEMPRE (no se sustituye por un skeleton/ErrorState en un
+ * ternario propio): recibe `isLoading`/`isError` y alterna internamente solo su
+ * ÁREA DE DATOS, dejando el toolbar —y por tanto la captura `StockTransferForm`
+ * (`POST /wms/transferencias/`)— visible en su posición habitual durante la
+ * carga y el error. Registrar un traspaso es independiente de leer la lista, así
+ * que un `GET` lento o fallido no debe dejar al usuario sin forma de crear uno.
  */
 export function StockTransfersView() {
   const { transferencias, isLoading, isError, error, hasLoaded, refetch, isFetching } =
@@ -23,37 +23,21 @@ export function StockTransfersView() {
 
   return (
     <div className="space-y-6">
-      {/* Acción principal: SIEMPRE disponible, independiente del estado del
-          listado (ver comentario del componente). */}
-      <div className="flex justify-end">
-        <StockTransferForm />
-      </div>
-
-      {isError && !hasLoaded ? (
-        <ErrorState
-          title="Error al cargar los traspasos"
-          message={(error as Error).message}
-        />
-      ) : isLoading ? (
-        <div
-          className="min-h-120"
-          role="status"
-          aria-live="polite"
-          aria-label="Cargando traspasos"
-        >
-          <LoadingSkeleton className="h-120 rounded-2xl" />
-        </div>
-      ) : (
-        <DataTable
-          columns={stockTransfersColumns}
-          data={transferencias}
-          searchPlaceholder="Buscar folio, almacén o usuario..."
-          getRowId={(row) => String(row.id)}
-          onRefetch={refetch}
-          isRefetching={isFetching}
-          emptyMessage="No hay traspasos registrados."
-        />
-      )}
+      <DataTable
+        columns={stockTransfersColumns}
+        data={transferencias}
+        searchPlaceholder="Buscar folio, almacén o usuario..."
+        getRowId={(row) => String(row.id)}
+        onRefetch={refetch}
+        isRefetching={isFetching}
+        emptyMessage="No hay traspasos registrados."
+        actionButton={<StockTransferForm />}
+        isLoading={isLoading}
+        isError={isError && !hasLoaded}
+        errorTitle="Error al cargar los traspasos"
+        errorMessage={error?.message}
+        loadingAriaLabel="Cargando traspasos"
+      />
     </div>
   );
 }

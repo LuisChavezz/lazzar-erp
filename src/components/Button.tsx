@@ -1,7 +1,7 @@
 "use client";
 
-import type { ButtonHTMLAttributes, ReactNode } from "react";
-import { forwardRef } from "react";
+import type { ButtonHTMLAttributes, ReactElement, ReactNode } from "react";
+import { cloneElement, forwardRef, isValidElement } from "react";
 
 type ButtonVariant = "primary" | "secondary" | "danger" | "ghost";
 type ButtonSize = "md" | "icon";
@@ -12,6 +12,15 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   size?: ButtonSize;
   rounded?: ButtonRounded;
   leftIcon?: ReactNode;
+  /**
+   * Aplica los estilos del botón sobre el ÚNICO hijo (fusionando su
+   * `className`) en vez de renderizar un `<button>`. Útil cuando el elemento
+   * debe seguir siendo otra etiqueta —p. ej. un `next/link` que necesita
+   * conservar su navegación como `<a>`—. Ignora `leftIcon` (coloca el icono
+   * dentro del hijo). Por defecto `false`: el render es idéntico al `<button>`
+   * previo, de modo que los consumidores existentes no cambian.
+   */
+  asChild?: boolean;
 }
 
 const variantClasses: Record<ButtonVariant, string> = {
@@ -41,6 +50,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
     size = "md",
     rounded = "xl",
     leftIcon,
+    asChild = false,
     className,
     children,
     type = "button",
@@ -49,12 +59,22 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
   },
   ref
 ) {
+  const classes =
+    `inline-flex items-center justify-center gap-2 whitespace-nowrap cursor-pointer transition-all duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2 disabled:opacity-60 disabled:cursor-not-allowed ${roundedClasses[rounded]} ${sizeClasses[size]} ${variantClasses[variant]} ${className ?? ""}`.trim();
+
+  if (asChild && isValidElement(children)) {
+    const child = children as ReactElement<{ className?: string }>;
+    return cloneElement(child, {
+      className: `${classes} ${child.props.className ?? ""}`.trim(),
+    });
+  }
+
   return (
     <button
       ref={ref}
       type={type}
       disabled={disabled}
-      className={`inline-flex items-center justify-center gap-2 whitespace-nowrap cursor-pointer transition-all duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2 disabled:opacity-60 disabled:cursor-not-allowed ${roundedClasses[rounded]} ${sizeClasses[size]} ${variantClasses[variant]} ${className ?? ""}`.trim()}
+      className={classes}
       {...props}
     >
       {leftIcon}

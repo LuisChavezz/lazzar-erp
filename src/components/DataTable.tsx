@@ -28,6 +28,8 @@ import {
 } from "./Icons";
 import { Button } from "./Button";
 import { Loader } from "./Loader";
+import { LoadingSkeleton } from "./LoadingSkeleton";
+import { ErrorState } from "./ErrorState";
 import { DropdownMenu } from "@radix-ui/themes";
 
 export type DataTableVisibleColumn<TData> = {
@@ -76,6 +78,28 @@ interface DataTableProps<TData, TValue> {
   /** Mensaje del estado vacío dentro del cuerpo de la tabla (cuando no hay datos). */
   emptyMessage?: string;
   /**
+   * Estado de la consulta del llamador. El TOOLBAR (búsqueda/filtro/refrescar/
+   * columnas + `actionButton`) siempre se renderiza como parte del armazón de la
+   * tabla; solo el ÁREA DE DATOS alterna entre carga (`isLoading`), error
+   * (`isError`), vacío y filas. Así el consumidor puede montar `DataTable` de
+   * forma incondicional —en vez de sustituirla por un skeleton/ErrorState en su
+   * propio ternario— y su `actionButton` (p. ej. "Nuevo traspaso"/"Registrar
+   * CxC") permanece visible y funcional durante la carga y el error. Ambos son
+   * opcionales y por defecto `false`, de modo que los consumidores que no los
+   * pasan conservan EXACTAMENTE el comportamiento previo (cuerpo = tabla).
+   * `isError` tiene prioridad sobre `isLoading`. El llamador decide qué es un
+   * error "de pantalla completa" (p. ej. `isError && !hasLoaded`, para conservar
+   * la tabla ante un refetch fallido con datos en caché).
+   */
+  isLoading?: boolean;
+  isError?: boolean;
+  /** Título del `ErrorState` que se muestra en el cuerpo cuando `isError`. */
+  errorTitle?: string;
+  /** Mensaje del `ErrorState` que se muestra en el cuerpo cuando `isError`. */
+  errorMessage?: string;
+  /** `aria-label` del contenedor de carga (skeleton) cuando `isLoading`. */
+  loadingAriaLabel?: string;
+  /**
    * Identidad estable de fila para React/TanStack. Por defecto (omitido) la
    * tabla usa el índice posicional, lo que ata el estado de React a la POSICIÓN
    * y no al dato: si la lista se reordena/refetchea, una celda con estado local
@@ -121,6 +145,11 @@ export function DataTable<TData, TValue>({
   loadingMessage,
   paginationResetKey,
   emptyMessage,
+  isLoading = false,
+  isError = false,
+  errorTitle,
+  errorMessage,
+  loadingAriaLabel,
   getRowId,
   serverPagination,
 }: DataTableProps<TData, TValue>) {
@@ -822,8 +851,29 @@ export function DataTable<TData, TValue>({
         </div>
       )}
 
-      {/* La cabecera (columnas) permanece visible aunque no haya filas; el
-          mensaje de vacío se muestra dentro del cuerpo de la tabla. */}
+      {/* ── Cuerpo: alterna entre error, carga y la tabla ──────────────────────
+          El toolbar (búsqueda/filtro/refrescar/columnas + `actionButton`) y, en
+          su caso, los chips de filtro ya se renderizaron ARRIBA de forma
+          incondicional; aquí solo cambia el ÁREA DE DATOS según el estado de la
+          consulta del llamador, para que su `actionButton` siga visible durante
+          la carga y el error. El estado VACÍO se maneja dentro del `<tbody>`. */}
+      {isError ? (
+        <ErrorState
+          title={errorTitle ?? "Error al cargar los datos"}
+          message={errorMessage}
+        />
+      ) : isLoading ? (
+        <div
+          className="min-h-120"
+          role="status"
+          aria-live="polite"
+          aria-label={loadingAriaLabel ?? "Cargando"}
+        >
+          <LoadingSkeleton className="h-120 rounded-2xl" />
+        </div>
+      ) : (
+      /* La cabecera (columnas) permanece visible aunque no haya filas; el
+         mensaje de vacío se muestra dentro del cuerpo de la tabla. */
       <div className="relative w-full rounded-2xl border border-slate-200 dark:border-white/20 shadow-sm bg-white dark:bg-black">
           <div
             className={`overflow-x-auto rounded-2xl max-w-full bg-white dark:bg-black transition-all ${
@@ -1002,8 +1052,9 @@ export function DataTable<TData, TValue>({
             </div>
           )}
         </div>
+      )}
 
-      {showPager && (
+      {showPager && !isLoading && !isError && (
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6">
           <div className="text-sm text-slate-500 dark:text-slate-400">
             {isServerPaginated
