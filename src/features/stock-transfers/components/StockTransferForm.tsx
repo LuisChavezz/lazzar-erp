@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useStore } from "@tanstack/react-form";
 import { MainDialog } from "@/src/components/MainDialog";
 import { DialogHeader } from "@/src/components/DialogHeader";
@@ -254,6 +254,7 @@ function StockTransferFormContent({ onClose }: { onClose: () => void }) {
     variantOptions,
     lineKeys,
     serverBanner,
+    bannerErrorTick,
     dismissBanner,
     getError,
     clearError,
@@ -263,6 +264,18 @@ function StockTransferFormContent({ onClose }: { onClose: () => void }) {
     handleFormSubmit,
     handleReset,
   } = useStockTransferForm({ onSuccess: onClose });
+
+  // Al rechazar el backend el traspaso, el banner de "todo o nada" aparece al
+  // inicio del formulario; si el usuario está desplazado hacia una línea
+  // posterior, el aviso queda fuera de vista. `bannerErrorTick` cambia en CADA
+  // rechazo (incluso con el mismo mensaje que el intento anterior), así que el
+  // scroll se dispara en cada envío fallido, no solo en el primero.
+  const bannerRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (bannerErrorTick > 0) {
+      bannerRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, [bannerErrorTick]);
 
   // ── Selector de producto/variante apilado ────────────────────────────────
   // Guarda qué línea (índice) y en qué modo abrió el diálogo, para escribir la
@@ -372,6 +385,7 @@ function StockTransferFormContent({ onClose }: { onClose: () => void }) {
         {/* ── Banner de "todo o nada" ──────────────────────────────────── */}
         {serverBanner && (
           <div
+            ref={bannerRef}
             role="alert"
             className="flex items-start gap-3 rounded-xl border border-rose-200 bg-rose-50 dark:border-rose-800/60 dark:bg-rose-900/20 px-4 py-3"
           >
@@ -681,42 +695,6 @@ function StockTransferFormContent({ onClose }: { onClose: () => void }) {
                                       `transferencia_detalle.${index}.ubicacion_destino`,
                                     )
                                   }
-                                />
-                              )}
-                            </form.Field>
-                          </div>
-
-                          {/* Lote / Serie (opcionales) */}
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <form.Field name={`transferencia_detalle[${index}].lote`}>
-                              {(field) => (
-                                <FormInput
-                                  label="Lote (opcional)"
-                                  placeholder="Lote"
-                                  name={field.name}
-                                  value={field.state.value}
-                                  onChange={(event) => {
-                                    field.handleChange(event.target.value);
-                                    clearError(`transferencia_detalle.${index}.lote`);
-                                  }}
-                                  onBlur={field.handleBlur}
-                                  error={getError(`transferencia_detalle.${index}.lote`)}
-                                />
-                              )}
-                            </form.Field>
-                            <form.Field name={`transferencia_detalle[${index}].serie`}>
-                              {(field) => (
-                                <FormInput
-                                  label="Serie (opcional)"
-                                  placeholder="Serie"
-                                  name={field.name}
-                                  value={field.state.value}
-                                  onChange={(event) => {
-                                    field.handleChange(event.target.value);
-                                    clearError(`transferencia_detalle.${index}.serie`);
-                                  }}
-                                  onBlur={field.handleBlur}
-                                  error={getError(`transferencia_detalle.${index}.serie`)}
                                 />
                               )}
                             </form.Field>

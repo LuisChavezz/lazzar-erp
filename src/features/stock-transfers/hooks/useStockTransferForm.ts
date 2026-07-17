@@ -74,6 +74,10 @@ export function useStockTransferForm({ onSuccess }: { onSuccess?: () => void } =
   const [errors, setErrors] = useState<Record<string, string>>({});
   // Banner de "todo o nada" cuando el backend rechaza la operación completa.
   const [serverBanner, setServerBanner] = useState<string | null>(null);
+  // Se incrementa en cada rechazo del backend (incluso si el mensaje es idéntico
+  // al anterior), para que la UI pueda disparar el scroll-to-top del diálogo en
+  // CADA intento fallido, no solo cuando `serverBanner` cambia de valor.
+  const [bannerErrorTick, setBannerErrorTick] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const submitInFlight = useRef(false);
 
@@ -200,6 +204,7 @@ export function useStockTransferForm({ onSuccess }: { onSuccess?: () => void } =
     const detail =
       parsed.formError ?? (hasFieldOrLine ? "Revisa los campos marcados." : "Intenta de nuevo.");
     setServerBanner(`No se realizó ningún traspaso. ${detail}`);
+    setBannerErrorTick((tick) => tick + 1);
   };
 
   const { mutateAsync: createTransfer, isPending: isCreating } =
@@ -300,6 +305,7 @@ export function useStockTransferForm({ onSuccess }: { onSuccess?: () => void } =
     variantOptions,
     lineKeys,
     serverBanner,
+    bannerErrorTick,
     dismissBanner: () => setServerBanner(null),
     getError,
     clearError,

@@ -66,8 +66,6 @@ export const TransferLineFormSchema = z
     // `0` = sin ubicación (opcional).
     ubicacion_origen: z.number().int().nonnegative(),
     ubicacion_destino: z.number().int().nonnegative(),
-    lote: z.string(),
-    serie: z.string(),
   })
   .superRefine((line, ctx) => {
     const hasProducto = line.producto > 0;
@@ -149,6 +147,4 @@ export const createEmptyTransferLine = (): TransferLineFormValues => ({
   cantidad: "",
   ubicacion_origen: 0,
   ubicacion_destino: 0,
-  lote: "",
-  serie: "",
 });

@@ -12,7 +12,9 @@ import type {
  * Traducción de centinelas del formulario → contrato del API:
  *  - `tipo_item` decide cuál id se envía; el inactivo viaja como `null`.
  *  - `cantidad` string decimal → normalizada a 4 posiciones (`"10.0000"`).
- *  - ubicaciones/lote/serie vacíos (`0` o `""`) → `null` (son opcionales).
+ *  - ubicaciones vacías (`0`) → `null` (son opcionales).
+ *  - `lote`/`serie` ya no se capturan en el formulario: siempre viajan como
+ *    `null`, fijo, para cumplir el contrato documentado del API.
  *  - `observaciones` vacía → se omite por completo (no se envía cadena vacía).
  *
  * Nunca incluye `empresa`, `sucursal`, `folio`, `usuario`, `status` ni `pedido`:
@@ -23,8 +25,6 @@ export function buildTransferPayload(
 ): CreateTransferenciaPayload {
   const transferencia_detalle: TransferenciaDetallePayload[] =
     values.transferencia_detalle.map((line) => {
-      const lote = line.lote.trim();
-      const serie = line.serie.trim();
       const { producto, producto_variante } = resolveItemSelection(
         line.tipo_item,
         line.producto,
@@ -38,8 +38,8 @@ export function buildTransferPayload(
         ubicacion_origen: line.ubicacion_origen > 0 ? line.ubicacion_origen : null,
         ubicacion_destino:
           line.ubicacion_destino > 0 ? line.ubicacion_destino : null,
-        lote: lote.length > 0 ? lote : null,
-        serie: serie.length > 0 ? serie : null,
+        lote: null,
+        serie: null,
       };
     });
 
