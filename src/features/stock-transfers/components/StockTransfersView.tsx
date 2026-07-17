@@ -1,57 +1,59 @@
 "use client";
 
-import { TraspasosIcon, InfoIcon } from "@/src/components/Icons";
+import { DataTable } from "@/src/components/DataTable";
+import { LoadingSkeleton } from "@/src/components/LoadingSkeleton";
+import { ErrorState } from "@/src/components/ErrorState";
 import { StockTransferForm } from "./StockTransferForm";
+import { stockTransfersColumns } from "./StockTransfersColumns";
+import { useTransferencias } from "../hooks/useTransferencias";
 
 /**
- * Vista de Traspasos.
+ * Vista de Traspasos: el listado (`GET /wms/transferencias/`) más, por fila,
+ * la acción "Ver Detalles" que abre `StockTransferDetailDialog`
+ * (`GET /wms/transferencias/{id}/`, ver `StockTransfersColumns`).
  *
- * El backend expone SOLO `create()` (`POST /wms/transferencias/`) — todavía no
- * hay `GET`/historial de traspasos, por lo que esta vista no renderiza tabla:
- * ofrece la captura y explica dónde consultar el resultado mientras llega el
- * endpoint de listado (tarea de seguimiento). El `MovimientoInventario` que
- * genera cada traspaso sí aparece en el historial general de movimientos.
+ * La captura (`StockTransferForm`) se renderiza SIEMPRE, fuera del árbol de
+ * estados del listado: registrar un traspaso (`POST /wms/transferencias/`) es
+ * independiente de leer la lista (`GET`), así que un error o una carga lenta
+ * del listado no debe dejar al usuario sin forma de crear uno nuevo.
  */
 export function StockTransfersView() {
+  const { transferencias, isLoading, isError, error, hasLoaded, refetch, isFetching } =
+    useTransferencias();
+
   return (
     <div className="space-y-6">
-      {/* Encabezado + acción principal */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="w-11 h-11 rounded-2xl bg-sky-50 dark:bg-sky-500/10 flex items-center justify-center text-sky-600 dark:text-sky-400 shadow-sm">
-            <TraspasosIcon className="w-5 h-5" />
-          </div>
-          <div>
-            <h2 className="text-lg font-bold text-slate-900 dark:text-white">
-              Traspasos entre almacenes
-            </h2>
-            <p className="text-sm text-slate-500 dark:text-slate-400">
-              Traslada existencias de un almacén de origen a uno de destino.
-            </p>
-          </div>
-        </div>
+      {/* Acción principal: SIEMPRE disponible, independiente del estado del
+          listado (ver comentario del componente). */}
+      <div className="flex justify-end">
         <StockTransferForm />
       </div>
 
-      {/* Nota informativa: aún no hay historial propio de traspasos */}
-      <div className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-zinc-900 p-6">
-        <div className="flex items-start gap-4">
-          <div className="w-10 h-10 rounded-xl bg-slate-50 dark:bg-white/5 flex items-center justify-center text-slate-500 dark:text-slate-400 shrink-0">
-            <InfoIcon className="w-5 h-5" />
-          </div>
-          <div className="space-y-1">
-            <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100">
-              El historial de traspasos estará disponible próximamente
-            </h3>
-            <p className="text-sm text-slate-500 dark:text-slate-400">
-              Cada traspaso registrado genera un movimiento de inventario que
-              puedes consultar en el historial general de movimientos. La vista
-              de listado y detalle propia de traspasos se agregará cuando el
-              backend habilite el endpoint de consulta.
-            </p>
-          </div>
+      {isError && !hasLoaded ? (
+        <ErrorState
+          title="Error al cargar los traspasos"
+          message={(error as Error).message}
+        />
+      ) : isLoading ? (
+        <div
+          className="min-h-120"
+          role="status"
+          aria-live="polite"
+          aria-label="Cargando traspasos"
+        >
+          <LoadingSkeleton className="h-120 rounded-2xl" />
         </div>
-      </div>
+      ) : (
+        <DataTable
+          columns={stockTransfersColumns}
+          data={transferencias}
+          searchPlaceholder="Buscar folio, almacén o usuario..."
+          getRowId={(row) => String(row.id)}
+          onRefetch={refetch}
+          isRefetching={isFetching}
+          emptyMessage="No hay traspasos registrados."
+        />
+      )}
     </div>
   );
 }

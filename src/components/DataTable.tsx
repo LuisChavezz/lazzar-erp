@@ -76,6 +76,15 @@ interface DataTableProps<TData, TValue> {
   /** Mensaje del estado vacío dentro del cuerpo de la tabla (cuando no hay datos). */
   emptyMessage?: string;
   /**
+   * Identidad estable de fila para React/TanStack. Por defecto (omitido) la
+   * tabla usa el índice posicional, lo que ata el estado de React a la POSICIÓN
+   * y no al dato: si la lista se reordena/refetchea, una celda con estado local
+   * (p.ej. un diálogo de detalle abierto por fila) puede quedar apuntando a
+   * otra fila. Pásalo (p.ej. `(row) => String(row.id)`) cuando las filas tengan
+   * un id propio y su estado deba seguir al dato, no a la posición.
+   */
+  getRowId?: (originalRow: TData, index: number) => string;
+  /**
    * Paginación controlada por el servidor. Cuando se proporciona, la tabla NO
    * recorta `data` (el llamador ya pasó solo la página actual, p. ej.
    * `response.results`) y su pager se cablea a `onPageChange` en vez de a la
@@ -112,6 +121,7 @@ export function DataTable<TData, TValue>({
   loadingMessage,
   paginationResetKey,
   emptyMessage,
+  getRowId,
   serverPagination,
 }: DataTableProps<TData, TValue>) {
   const searchInputId = useId();
@@ -277,6 +287,9 @@ export function DataTable<TData, TValue>({
   const table = useReactTable({
     data: filteredData,
     columns,
+    // Omitido → TanStack usa el índice posicional (comportamiento previo, no
+    // regresa para los consumidores que no lo pasan).
+    getRowId,
     state: {
       sorting,
       globalFilter,

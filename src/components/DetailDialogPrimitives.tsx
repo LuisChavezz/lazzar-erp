@@ -1,18 +1,18 @@
 "use client";
 
-// Piezas presentacionales compartidas por las secciones del diálogo de detalle
-// de CxC. Replican el patrón ya establecido en `ReceiptDetailShell` y
-// `StockMovementDetailDialog` (rejilla de campos + tabla de líneas con
-// encabezado pegajoso + estado vacío en cursiva), pero extraído UNA vez para que
-// las dos tablas del diálogo —conceptos de factura y movimientos de póliza— no
-// se conviertan en dos tablas a medida con el mismo chrome copiado.
+// Piezas presentacionales compartidas por diálogos de detalle (rejilla de
+// campos + tabla de líneas con encabezado pegajoso + estado vacío en cursiva).
+// Originadas en el detalle de CxC (dos secciones: factura y pólizas) y
+// adoptadas también por el detalle de traspasos (una sola tabla de líneas) —
+// el chrome es el mismo sin importar cuántas tablas tenga un diálogo dado, así
+// que se comparte aquí en vez de quedar duplicado por feature.
 //
 // `LineItemsTable` aporta solo el CHROME (contenedor con scroll, `<table>`,
 // `<thead>` pegajoso, separadores del `<tbody>`); cada sección declara sus
-// propias columnas como hijos. Se queda ahí a propósito: un componente de tabla
-// genérico dirigido por config sería reinventar `DataTable`, que es para tablas
-// de página (paginación, búsqueda, reordenar columnas), no para un listado corto
-// e incrustado dentro de un diálogo.
+// propias columnas como hijos. Se queda así a propósito: un componente de
+// tabla genérico dirigido por config sería reinventar `DataTable`, que es para
+// tablas de página (paginación, búsqueda, reordenar columnas), no para un
+// listado corto e incrustado dentro de un diálogo.
 
 import type React from "react";
 

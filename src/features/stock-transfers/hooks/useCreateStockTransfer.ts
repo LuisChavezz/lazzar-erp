@@ -201,10 +201,10 @@ export function parseStockTransferError(error: unknown): ParsedTransferError {
  * normalizado para que el formulario lo reparta entre el banner de "todo o
  * nada", los campos de cabecera y las líneas.
  *
- * No hay `GET /wms/transferencias/` todavía, así que no hay lista propia que
- * invalidar; se invalida la query general de movimientos (`["stockMovements"]`)
- * para que el `MovimientoInventario` resultante aparezca en el historial
- * general si el usuario navega ahí después.
+ * Invalida tanto `["transferencias"]` (la lista propia del módulo, ver
+ * `useTransferencias`) como la query general de movimientos
+ * (`["stockMovements"]`), para que el `MovimientoInventario` resultante
+ * también aparezca en el historial general si el usuario navega ahí después.
  */
 export const useCreateStockTransfer = (
   onServerError?: (parsed: ParsedTransferError) => void,
@@ -214,6 +214,7 @@ export const useCreateStockTransfer = (
   return useMutation({
     mutationFn: createTransferencia,
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["transferencias"] });
       queryClient.invalidateQueries({ queryKey: ["stockMovements"] });
       toast.success("Traspaso registrado correctamente");
     },

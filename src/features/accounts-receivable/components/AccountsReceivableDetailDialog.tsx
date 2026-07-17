@@ -21,7 +21,7 @@ import {
   InfoField,
   SectionTitle,
   textOrDash,
-} from "./AccountsReceivableDetailPrimitives";
+} from "@/src/components/DetailDialogPrimitives";
 
 interface AccountsReceivableDetailDialogProps {
   /** ID de la cuenta a consultar. `0` mantiene la consulta deshabilitada. */

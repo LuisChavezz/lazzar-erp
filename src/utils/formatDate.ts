@@ -55,3 +55,19 @@ export const formatShortDate = (
     ...(options.timeZone ? { timeZone: options.timeZone } : {}),
   });
 };
+
+/**
+ * Formatea la HORA (hh:mm, es-MX) de un timestamp real con offset propio —
+ * pareja de `formatShortDate` para cuando fecha y hora se muestran por
+ * separado (p.ej. "14 jul 2026" · "10:32"). Sin `timeZone: "UTC"`: es para
+ * timestamps con hora, no para fechas-calendario (ver nota en
+ * `formatShortDate`). Devuelve "—" para valores vacíos o que no parseen.
+ */
+export const formatShortTime = (
+  value: string | Date | null | undefined,
+): string => {
+  if (!value) return "—";
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return "—";
+  return date.toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" });
+};

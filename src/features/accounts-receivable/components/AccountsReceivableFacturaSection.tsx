@@ -8,7 +8,7 @@ import {
   LineItemsTable,
   SectionTitle,
   textOrDash,
-} from "./AccountsReceivableDetailPrimitives";
+} from "@/src/components/DetailDialogPrimitives";
 
 interface AccountsReceivableFacturaSectionProps {
   factura: CuentaPorCobrarFactura;

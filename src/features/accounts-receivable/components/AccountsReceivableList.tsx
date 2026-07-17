@@ -33,16 +33,29 @@ export const AccountsReceivableList = () => {
     useCuentasPorCobrar();
   const [bannerDismissed, setBannerDismissed] = useState(false);
 
+  // Registrar una CxC pendiente (`RegisterPendingInvoiceDialog`) es un `POST`
+  // independiente del listado (`GET`), así que se renderiza SIEMPRE — fuera
+  // del guard de error abajo — para que un `GET` fallido/lento no le quite al
+  // usuario la posibilidad de registrar una cuenta nueva.
+  const actionButton = (
+    <div className="flex justify-end">
+      <RegisterPendingInvoiceDialog />
+    </div>
+  );
+
   // Solo se muestra el estado de error (en vez del falso "No hay cuentas...")
   // cuando la consulta nunca cargó con éxito; un refetch fallido con datos en
   // caché conserva la tabla y avisa por toast (ver `useCuentasPorCobrar`). Mismo
   // patrón que `InvoiceList`/`StockList`.
   if (isError && !hasLoaded) {
     return (
-      <ErrorState
-        title="Error al cargar las cuentas por cobrar"
-        message={(error as Error).message}
-      />
+      <div className="space-y-6">
+        {actionButton}
+        <ErrorState
+          title="Error al cargar las cuentas por cobrar"
+          message={(error as Error).message}
+        />
+      </div>
     );
   }
 
@@ -56,6 +69,8 @@ export const AccountsReceivableList = () => {
 
   return (
     <div className="space-y-6">
+      {actionButton}
+
       {/* Alerta de cuentas vencidas */}
       {showBanner && (
         <div className="flex items-start gap-3 rounded-xl border border-amber-200 dark:border-amber-800/50 bg-amber-50 dark:bg-amber-900/20 px-4 py-3">
@@ -106,7 +121,6 @@ export const AccountsReceivableList = () => {
           onRefetch={refetch}
           isRefetching={isFetching}
           emptyMessage="No hay cuentas por cobrar registradas."
-          actionButton={<RegisterPendingInvoiceDialog />}
         />
       )}
     </div>

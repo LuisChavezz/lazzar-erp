@@ -52,3 +52,15 @@ export const formatQuantityValue = (value: string | number): string =>
   new Intl.NumberFormat("es-MX", { maximumFractionDigits: 2 }).format(
     safeParseAmount(String(value)),
   );
+
+/**
+ * Como `formatQuantityValue` pero conserva la PRECISIÓN COMPLETA de la cantidad
+ * (hasta 4 decimales, la resolución con que el inventario mueve existencias),
+ * recortando ceros a la derecha ("10.0000" → "10", "10.1256" → "10.1256"). Para
+ * vistas donde la cantidad EXACTA trasladada importa (p.ej. el detalle de un
+ * traspaso) y redondear a 2 decimales confundiría dos renglones distintos.
+ */
+export const formatExactQuantityValue = (value: string | number): string =>
+  new Intl.NumberFormat("es-MX", { maximumFractionDigits: 4 }).format(
+    safeParseAmount(String(value)),
+  );
