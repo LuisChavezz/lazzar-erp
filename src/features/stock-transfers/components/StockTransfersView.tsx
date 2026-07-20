@@ -1,6 +1,8 @@
 "use client";
 
 import { DataTable } from "@/src/components/DataTable";
+import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
+import { isInitialLoadError } from "@/src/utils/isInitialLoadError";
 import { StockTransferForm } from "./StockTransferForm";
 import { stockTransfersColumns } from "./StockTransfersColumns";
 import { useTransferencias } from "../hooks/useTransferencias";
@@ -33,9 +35,9 @@ export function StockTransfersView() {
         emptyMessage="No hay traspasos registrados."
         actionButton={<StockTransferForm />}
         isLoading={isLoading}
-        isError={isError && !hasLoaded}
+        isError={isInitialLoadError(isError, hasLoaded)}
         errorTitle="Error al cargar los traspasos"
-        errorMessage={error?.message}
+        errorMessage={extractErrorMessage(error, "No se pudo cargar la información.")}
         loadingAriaLabel="Cargando traspasos"
       />
     </div>

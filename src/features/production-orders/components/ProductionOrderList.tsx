@@ -2,8 +2,9 @@
 
 import { useMemo, useState } from "react";
 import { DataTable } from "@/src/components/DataTable";
+import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
+import { isInitialLoadError } from "@/src/utils/isInitialLoadError";
 import { Button } from "@/src/components/Button";
-import { LoadingSkeleton } from "@/src/components/LoadingSkeleton";
 import { getProductionOrderColumns } from "./ProductionOrderColumns";
 import { CreateProductionOrderDialog } from "./CreateProductionOrderDialog";
 import { useProductionOrders } from "../hooks/useProductionOrders";
@@ -12,20 +13,13 @@ import { useProductionOrders } from "../hooks/useProductionOrders";
 export function ProductionOrderList() {
   const columns = useMemo(() => getProductionOrderColumns(), []);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const { data, isLoading, refetch, isRefetching } = useProductionOrders();
+  const { data, hasLoaded, isLoading, isError, error, refetch, isRefetching } =
+    useProductionOrders();
 
-  if (isLoading) {
-    return (
-      <div
-        className="min-h-165"
-        role="status"
-        aria-live="polite"
-        aria-label="Cargando órdenes de producción"
-      >
-        <LoadingSkeleton className="h-96 rounded-3xl" />
-      </div>
-    );
-  }
+  // Un refetch fallido transitorio no debe descartar la tabla ya cargada
+  // (perdiendo orden/búsqueda/paginación); solo se trata como error "de
+  // pantalla completa" si nunca cargó. Mismo patrón que `PurchaseOrderReceiptList`.
+  const showError = isInitialLoadError(isError, hasLoaded);
 
   return (
     <div className="space-y-5">
@@ -37,6 +31,11 @@ export function ProductionOrderList() {
         isLoadingOverlay={isRefetching}
         onRefetch={refetch}
         isRefetching={isRefetching}
+        isLoading={isLoading}
+        isError={showError}
+        errorTitle="Error al cargar las órdenes de producción"
+        errorMessage={extractErrorMessage(error, "No se pudo cargar la información.")}
+        loadingAriaLabel="Cargando órdenes de producción"
         actionButton={
           <Button
             variant="primary"

@@ -36,19 +36,6 @@ export const QuoteList = () => {
   useQuoteCsvExport(visibleOrders, visibleColumns);
   useQuotePdfExport(visibleOrders, visibleColumns);
 
-  if (isOrdersLoading) {
-    return (
-      <div
-        className="mt-12 min-h-165"
-        role="status"
-        aria-live="polite"
-        aria-label="Cargando cotizaciones"
-      >
-        <LoadingSkeleton className="h-96 rounded-3xl" />
-      </div>
-    );
-  }
-
   return (
     <div className="mt-12 min-h-165">
       <DataTable
@@ -58,6 +45,8 @@ export const QuoteList = () => {
         searchPlaceholder="Buscar cotización..."
         onVisibleRowsChange={setVisibleOrders}
         onVisibleColumnsChange={setVisibleColumns}
+        isLoading={isOrdersLoading}
+        loadingAriaLabel="Cargando cotizaciones"
         isLoadingOverlay={isTableBusy}
         loadingTitle={
           isValidatingReview

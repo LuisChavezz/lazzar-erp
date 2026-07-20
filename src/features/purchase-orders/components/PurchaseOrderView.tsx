@@ -9,6 +9,7 @@ import {
 } from "@/src/components/Icons";
 import KpiGrid, { type KpiItem } from "@/src/components/KpiGrid";
 import { DataTable } from "@/src/components/DataTable";
+import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { MainDialog } from "@/src/components/MainDialog";
 import { DialogHeader } from "@/src/components/DialogHeader";
 import { Button } from "@/src/components/Button";
@@ -119,73 +120,69 @@ export function PurchaseOrderView() {
     [purchaseOrders],
   );
 
-  // ── Estados de carga y error ─────────────────────────────────────────────
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-312.5 md:min-h-230 xl:min-h-190">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-sky-600" />
-        <span className="ml-3 text-sm text-slate-500">
-          Cargando órdenes de compra...
-        </span>
-      </div>
-    );
-  }
+  // ── Tabla de órdenes ──────────────────────────────────────────────────────
+  // `DataTable` se monta SIEMPRE (recibe `isLoading`/`isError` y alterna solo
+  // su cuerpo), así que su toolbar y `actionButton` ("Nueva Orden") siguen
+  // disponibles durante la carga o un error. Mismo patrón que
+  // `AccountsReceivableList`.
+  const table = (
+    <DataTable
+      columns={columns}
+      data={sortedOrders}
+      searchPlaceholder="Buscar orden, folio o referencia..."
+      actionButton={
+        <MainDialog
+          title={
+            <DialogHeader
+              title="Nueva Orden de Compra"
+              subtitle="Registro Nuevo"
+              statusColor="sky"
+            />
+          }
+          open={isDialogOpen}
+          onOpenChange={setIsDialogOpen}
+          maxWidth="640px"
+          showCloseButton={false}
+          trigger={
+            <Button
+              variant="primary"
+              rounded="full"
+              onClick={() => setIsDialogOpen(true)}
+            >
+              + Nueva Orden
+            </Button>
+          }
+        >
+          <PurchaseOrderOnboardingStepManager
+            onClose={() => setIsDialogOpen(false)}
+          />
+        </MainDialog>
+      }
+      filterConfig={purchaseOrdersFilterConfig}
+      onRefetch={refetch}
+      isRefetching={isFetching}
+      isLoading={isLoading}
+      isError={isError}
+      errorTitle="Error al cargar órdenes de compra"
+      errorMessage={extractErrorMessage(error, "No se pudo cargar la información.")}
+      loadingAriaLabel="Cargando órdenes de compra"
+    />
+  );
 
-  if (isError) {
-    return (
-      <div className="rounded-xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 p-6 text-center">
-        <p className="text-sm font-semibold text-red-600 dark:text-red-400">
-          Error al cargar órdenes de compra
-        </p>
-        <p className="text-xs text-red-500 dark:text-red-300 mt-1">
-          {(error as Error).message}
-        </p>
-      </div>
-    );
-  }
-
+  // Un único `return`: la tabla se monta SIEMPRE (maneja carga/error en su
+  // cuerpo, conservando su toolbar); los KPIs se ocultan durante la carga
+  // INICIAL (`isLoading`) y ante un error de carga (`isError`) —no hay datos
+  // que resumir—. `purchaseOrders` arranca en `[]`, así que sin este gate los
+  // KPIs mostrarían ceros ("Total Órdenes: 0", etc.). En un refetch en segundo
+  // plano (`isFetching`, con datos en caché) `isLoading`/`isError` son false y
+  // los KPIs siguen visibles con los datos previos.
   return (
     <div className="space-y-6">
       {/* ── KPIs ─────────────────────────────────────────────────────────── */}
-      <OrderStats items={sortedOrders} />
+      {!isLoading && !isError && <OrderStats items={sortedOrders} />}
 
       {/* ── Tabla de órdenes ──────────────────────────────────────────────── */}
-      <DataTable
-        columns={columns}
-        data={sortedOrders}
-        searchPlaceholder="Buscar orden, folio o referencia..."
-        actionButton={
-          <MainDialog
-            title={
-              <DialogHeader
-                title="Nueva Orden de Compra"
-                subtitle="Registro Nuevo"
-                statusColor="sky"
-              />
-            }
-            open={isDialogOpen}
-            onOpenChange={setIsDialogOpen}
-            maxWidth="640px"
-            showCloseButton={false}
-            trigger={
-              <Button
-                variant="primary"
-                rounded="full"
-                onClick={() => setIsDialogOpen(true)}
-              >
-                + Nueva Orden
-              </Button>
-            }
-          >
-            <PurchaseOrderOnboardingStepManager
-              onClose={() => setIsDialogOpen(false)}
-            />
-          </MainDialog>
-        }
-        filterConfig={purchaseOrdersFilterConfig}
-        onRefetch={refetch}
-        isRefetching={isFetching}
-      />
+      {table}
     </div>
   );
 }

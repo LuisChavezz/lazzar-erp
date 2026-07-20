@@ -8,6 +8,7 @@ import {
   CheckCircleIcon,
 } from "@/src/components/Icons";
 import { DataTable } from "@/src/components/DataTable";
+import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import KpiGrid, { type KpiItem } from "@/src/components/KpiGrid";
 import { useStockMovements } from "../hooks/useStockMovements";
 import { getStockMovementsColumns } from "./StockMovementsColumns";
@@ -128,46 +129,43 @@ export function StockMovementsView() {
 
   const columns = useMemo(() => getStockMovementsColumns(), []);
 
+  // ── Tabla de movimientos ─────────────────────────────────────────────────
+  // `DataTable` se monta SIEMPRE (recibe `isLoading`/`isError` y alterna solo
+  // su cuerpo), así que su toolbar y `actionButton` siguen disponibles
+  // durante la carga o un error. Mismo patrón que `AccountsReceivableList`.
+  const table = (
+    <DataTable
+      columns={columns}
+      data={stockMovements}
+      title="Movimientos de Inventario"
+      searchPlaceholder="Buscar por tipo, folio, origen o destino..."
+      actionButton={<StockMovementForm />}
+      filterConfig={stockMovementsFilterConfig}
+      onRefetch={refetch}
+      isRefetching={isFetching}
+      isLoading={isLoading}
+      isError={isError}
+      errorTitle="Error al cargar movimientos de inventario"
+      errorMessage={extractErrorMessage(error, "No se pudo cargar la información.")}
+      loadingAriaLabel="Cargando movimientos"
+    />
+  );
 
-  // ── Estados de carga y error ─────────────────────────────────────────────
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-sky-600" />
-        <span className="ml-3 text-sm text-slate-500">Cargando movimientos...</span>
-      </div>
-    );
-  }
-
-  if (isError) {
-    return (
-      <div className="rounded-xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 p-6 text-center">
-        <p className="text-sm font-semibold text-red-600 dark:text-red-400">
-          Error al cargar movimientos de inventario
-        </p>
-        <p className="text-xs text-red-500 dark:text-red-300 mt-1">
-          {(error as Error).message}
-        </p>
-      </div>
-    );
-  }
-
+  // Un único `return`: la tabla se monta SIEMPRE (maneja carga/error en su
+  // cuerpo, conservando su toolbar); los KPIs se ocultan durante la carga
+  // INICIAL (`isLoading`) y ante un error de carga (`isError`) —no hay datos
+  // que resumir—. `stockMovements` arranca en `[]`, así que sin este gate
+  // `MovementsStats` mostraría "Precisión Auditoría: 100%" (su caso especial
+  // para 0 items) y ceros. En un refetch en segundo plano (`isFetching`, con
+  // datos en caché) `isLoading`/`isError` son false y los KPIs siguen visibles
+  // con los datos previos.
   return (
     <div className="space-y-6">
       {/* ── KPIs ─────────────────────────────────────────────────────────── */}
-      <MovementsStats items={stockMovements} />
+      {!isLoading && !isError && <MovementsStats items={stockMovements} />}
 
       {/* ── Tabla de movimientos ─────────────────────────────────────────── */}
-      <DataTable
-        columns={columns}
-        data={stockMovements}
-        title="Movimientos de Inventario"
-        searchPlaceholder="Buscar por tipo, folio, origen o destino..."
-        actionButton={<StockMovementForm />}
-        filterConfig={stockMovementsFilterConfig}
-        onRefetch={refetch}
-        isRefetching={isFetching}
-      />
+      {table}
     </div>
   );
 }

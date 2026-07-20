@@ -3,11 +3,11 @@
 import { useCallback, useMemo, useState } from "react";
 import { useSession } from "next-auth/react";
 import { DataTable } from "@/src/components/DataTable";
+import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { MainDialog } from "@/src/components/MainDialog";
 import { Button } from "@/src/components/Button";
 import { PlusIcon } from "@/src/components/Icons";
 import SupplierForm from "./SupplierForm";
-import { ErrorState } from "@/src/components/ErrorState";
 import { useSuppliers } from "../hooks/useSuppliers";
 import { getSupplierColumns } from "./SupplierColumns";
 import { Supplier } from "../interfaces/supplier.interface";
@@ -56,21 +56,6 @@ export default function SupplierList({ hideTitle = false }: SupplierListProps) {
     [handleEdit, canEdit, canDelete]
   );
 
-  if (isLoading) {
-    return (
-      <div className="min-h-150 flex justify-center items-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-sky-600"></div>
-        <span className="ml-3 text-slate-500">Cargando proveedores...</span>
-      </div>
-    );
-  }
-
-  if (isError) {
-    return (
-      <ErrorState title="Error al cargar proveedores" message={(error as Error).message} />
-    );
-  }
-
   return (
     <>
       <DataTable
@@ -89,6 +74,11 @@ export default function SupplierList({ hideTitle = false }: SupplierListProps) {
             </Button>
           ) : undefined
         }
+        isLoading={isLoading}
+        isError={isError}
+        errorTitle="Error al cargar proveedores"
+        errorMessage={extractErrorMessage(error, "No se pudo cargar la información.")}
+        loadingAriaLabel="Cargando proveedores"
       />
 
       <MainDialog

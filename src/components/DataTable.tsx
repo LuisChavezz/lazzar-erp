@@ -30,6 +30,7 @@ import { Button } from "./Button";
 import { Loader } from "./Loader";
 import { LoadingSkeleton } from "./LoadingSkeleton";
 import { ErrorState } from "./ErrorState";
+import { ErrorDisplay } from "./ui/ErrorDisplay";
 import { DropdownMenu } from "@radix-ui/themes";
 
 export type DataTableVisibleColumn<TData> = {
@@ -100,6 +101,13 @@ interface DataTableProps<TData, TValue> {
   /** `aria-label` del contenedor de carga (skeleton) cuando `isLoading`. */
   loadingAriaLabel?: string;
   /**
+   * Handler opcional de reintento. Cuando se pasa, el estado de error del
+   * cuerpo (cuando `isError`) usa `ErrorDisplay` y muestra un botón
+   * "Reintentar" que lo invoca. Si se omite, el estado de error usa
+   * `ErrorState` (sin botón), EXACTAMENTE como antes.
+   */
+  onErrorRetry?: () => void;
+  /**
    * Identidad estable de fila para React/TanStack. Por defecto (omitido) la
    * tabla usa el índice posicional, lo que ata el estado de React a la POSICIÓN
    * y no al dato: si la lista se reordena/refetchea, una celda con estado local
@@ -150,6 +158,7 @@ export function DataTable<TData, TValue>({
   errorTitle,
   errorMessage,
   loadingAriaLabel,
+  onErrorRetry,
   getRowId,
   serverPagination,
 }: DataTableProps<TData, TValue>) {
@@ -858,10 +867,18 @@ export function DataTable<TData, TValue>({
           consulta del llamador, para que su `actionButton` siga visible durante
           la carga y el error. El estado VACÍO se maneja dentro del `<tbody>`. */}
       {isError ? (
-        <ErrorState
-          title={errorTitle ?? "Error al cargar los datos"}
-          message={errorMessage}
-        />
+        onErrorRetry ? (
+          <ErrorDisplay
+            title={errorTitle ?? "Error al cargar los datos"}
+            message={errorMessage}
+            onRetry={onErrorRetry}
+          />
+        ) : (
+          <ErrorState
+            title={errorTitle ?? "Error al cargar los datos"}
+            message={errorMessage}
+          />
+        )
       ) : isLoading ? (
         <div
           className="min-h-120"

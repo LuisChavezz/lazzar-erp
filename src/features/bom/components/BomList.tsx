@@ -1,30 +1,12 @@
 "use client";
 
 import { DataTable } from "@/src/components/DataTable";
-import { ErrorState } from "@/src/components/ErrorState";
+import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { useProducts } from "@/src/features/products/hooks/useProducts";
 import { columns } from "./BomColumns";
 
 export default function BomList() {
   const { products, isLoading, isError, error } = useProducts("2");
-
-  if (isLoading) {
-    return (
-      <div className="p-8 flex justify-center items-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-sky-600"></div>
-        <span className="ml-3 text-slate-500">Cargando lista de materiales...</span>
-      </div>
-    );
-  }
-
-  if (isError) {
-    return (
-      <ErrorState
-        title="Error al cargar la lista de materiales"
-        message={(error as Error).message}
-      />
-    );
-  }
 
   return (
     <DataTable
@@ -32,6 +14,11 @@ export default function BomList() {
       data={products}
       title="Materiales"
       searchPlaceholder="Buscar material..."
+      isLoading={isLoading}
+      isError={isError}
+      errorTitle="Error al cargar la lista de materiales"
+      errorMessage={extractErrorMessage(error, "No se pudo cargar la información.")}
+      loadingAriaLabel="Cargando lista de materiales"
     />
   );
 }

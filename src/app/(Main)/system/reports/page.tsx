@@ -1,8 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { Loader } from "@/src/components/Loader";
-import { ErrorState } from "@/src/components/ErrorState";
 import { DataTable } from "@/src/components/DataTable";
 import { Button } from "@/src/components/Button";
 import { ArrowLeftIcon, DownloadIcon } from "@/src/components/Icons";
@@ -36,7 +34,7 @@ export default function ReportsPage() {
   const gateComplete =
     almacenId !== null && fechaInicio !== null && fechaFinal !== null;
 
-  const { data, isLoading, isFetching, isPlaceholderData, error, refetch } =
+  const { data, isLoading, isError, isFetching, isPlaceholderData, error, refetch } =
     useStockReport(
       gateComplete
         ? {
@@ -154,36 +152,40 @@ export default function ReportsPage() {
         <p className="text-sm text-slate-400 dark:text-slate-500">
           Selecciona un almacén y un rango de fechas para ver el reporte.
         </p>
-      ) : isLoading ? (
-        // Solo en la primera carga: aún no hay datos previos que mostrar.
-        <Loader className="py-20" title="Generando reporte..." />
-      ) : data ? (
-        // Se comprueba `data` ANTES que `isError`: si un refetch en segundo
-        // plano (cambio de página/refresco) falla pero `keepPreviousData`
-        // conserva la última respuesta buena, se mantiene esa vista en lugar de
-        // reemplazarla por la pantalla de error. `isError` solo se muestra
-        // cuando no hay ningún dato que preservar (fallo en la carga inicial).
+      ) : (
         <div className="space-y-6">
-          {/* El resumen refleja el periodo completo (campo NO paginado): no
-              cambia al navegar entre páginas, así que NO se atenúa en un cambio
-              de página. Pero en un cambio de CONTEXTO (almacén/fechas) los datos
-              mostrados son aún del contexto anterior, por lo que se atenúa igual
-              que la tabla hasta que llegue la respuesta nueva. */}
-          <div
-            className={
-              isStaleContext
-                ? "blur-sm pointer-events-none select-none transition-[filter] duration-200"
-                : "transition-[filter] duration-200"
-            }
-          >
-            <StockReportSummary summary={data.resumen} />
-          </div>
+          {/* El resumen depende de `data` (campo NO paginado, sin un "vacío"
+              natural que fabricar): solo se muestra una vez que llegó la
+              primera respuesta buena, igual que antes. No se atenúa en un
+              cambio de página; en un cambio de CONTEXTO (almacén/fechas) los
+              datos mostrados son aún del contexto anterior, por lo que se
+              atenúa igual que la tabla hasta que llegue la respuesta nueva. */}
+          {data && (
+            <div
+              className={
+                isStaleContext
+                  ? "blur-sm pointer-events-none select-none transition-[filter] duration-200"
+                  : "transition-[filter] duration-200"
+              }
+            >
+              <StockReportSummary summary={data.resumen} />
+            </div>
+          )}
 
-          {/* Paginación de servidor: `data.results` ya es solo la página actual;
-              `DataTable` no la recorta y cablea su pager a `setPage`. */}
+          {/* `DataTable` se monta SIEMPRE (recibe `isLoading`/`isError` y
+              alterna solo su cuerpo), así que su toolbar y `actionButton`
+              ("Exportar a PDF") siguen disponibles durante la carga o un
+              error. `isError` se calcula como `isError && !data`: si un
+              refetch en segundo plano (cambio de página/refresco) falla pero
+              `keepPreviousData` conserva la última respuesta buena, se
+              mantiene esa vista en lugar de reemplazarla por la pantalla de
+              error — mismo criterio que antes, expresado como guard tipo
+              `hasLoaded`. Paginación de servidor: `data.results` ya es solo
+              la página actual; `DataTable` no la recorta y cablea su pager a
+              `setPage`. */}
           <DataTable
             columns={stockReportColumns}
-            data={data.results}
+            data={data?.results ?? []}
             searchPlaceholder="Buscar por SKU, producto o color..."
             emptyMessage="No se encontraron existencias para el almacén y el periodo seleccionados."
             actionButton={
@@ -199,7 +201,7 @@ export default function ReportsPage() {
               </Button>
             }
             serverPagination={{
-              pageCount: Math.max(1, Math.ceil(data.count / PAGE_SIZE)),
+              pageCount: Math.max(1, Math.ceil((data?.count ?? 0) / PAGE_SIZE)),
               currentPage: page,
               onPageChange: setPage,
               // Solo se deshabilita en una TRANSICIÓN (cambio de página o de
@@ -219,15 +221,13 @@ export default function ReportsPage() {
             }
             onRefetch={() => refetch()}
             isRefetching={isFetching}
+            isLoading={isLoading}
+            isError={isError && !data}
+            errorTitle="Error al generar el reporte"
+            errorMessage={extractErrorMessage(error, "No se pudo generar el reporte.")}
+            loadingAriaLabel="Generando reporte"
           />
         </div>
-      ) : (
-        // Único caso restante: gate completo, sin cargar y sin datos que
-        // preservar ⇒ falló la carga inicial.
-        <ErrorState
-          title="Error al generar el reporte"
-          message={extractErrorMessage(error, "No se pudo generar el reporte.")}
-        />
       )}
     </div>
   );

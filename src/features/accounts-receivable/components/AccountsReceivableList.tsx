@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { DataTable } from "@/src/components/DataTable";
+import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
+import { isInitialLoadError } from "@/src/utils/isInitialLoadError";
 import { WarningFilledIcon, RejectIcon } from "@/src/components/Icons";
 import { formatCurrency } from "@/src/utils/formatCurrency";
 import { accountsReceivableColumns } from "./AccountsReceivableColumns";
@@ -35,7 +37,7 @@ export const AccountsReceivableList = () => {
   // cargó con éxito; un refetch fallido con datos en caché conserva la tabla y
   // avisa por toast (ver `useCuentasPorCobrar`). Mismo patrón que
   // `InvoiceList`/`StockList`.
-  const showError = isError && !hasLoaded;
+  const showError = isInitialLoadError(isError, hasLoaded);
 
   // "Hoy" se calcula UNA sola vez y se comparte entre filas, KPIs y antigüedad.
   const today = startOfTodayUTC();
@@ -64,18 +66,15 @@ export const AccountsReceivableList = () => {
       isLoading={isLoading}
       isError={showError}
       errorTitle="Error al cargar las cuentas por cobrar"
-      errorMessage={error?.message}
+      errorMessage={extractErrorMessage(error, "No se pudo cargar la información.")}
       loadingAriaLabel="Cargando cuentas por cobrar"
     />
   );
 
-  // Ante un error de carga inicial se muestra SOLO la tabla: su toolbar mantiene
-  // "Registrar CxC" disponible y su cuerpo muestra el `ErrorState`; se omiten la
-  // antigüedad y la alerta, igual que antes (no hay datos que resumir).
-  if (showError) {
-    return <div className="space-y-6">{table}</div>;
-  }
-
+  // Un único `return`: la tabla se monta SIEMPRE (su toolbar mantiene
+  // "Registrar CxC" disponible y su cuerpo muestra la carga/`ErrorState`).
+  // Ante un error de carga inicial (`showError`) se omiten la alerta y la
+  // antigüedad —igual que antes—: no hay datos que resumir.
   return (
     <div className="space-y-6">
       {/* Alerta de cuentas vencidas */}
@@ -105,8 +104,10 @@ export const AccountsReceivableList = () => {
         </div>
       )}
 
-      {/* Antigüedad de saldos */}
-      <AccountsReceivableAgingSummary buckets={agingBuckets} isLoading={isLoading} />
+      {/* Antigüedad de saldos (oculta ante un error de carga inicial) */}
+      {!showError && (
+        <AccountsReceivableAgingSummary buckets={agingBuckets} isLoading={isLoading} />
+      )}
 
       {/* Tabla principal: Cuentas por Cobrar (maneja carga/error en su cuerpo) */}
       {table}

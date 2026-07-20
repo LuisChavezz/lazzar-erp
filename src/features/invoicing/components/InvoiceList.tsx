@@ -2,11 +2,12 @@
 
 import { useState } from "react";
 import { DataTable } from "@/src/components/DataTable";
+import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
+import { isInitialLoadError } from "@/src/utils/isInitialLoadError";
 import { Button } from "@/src/components/Button";
 import { invoiceColumns } from "./InvoiceColumns";
 import { CreateInvoiceDialog } from "./CreateInvoiceDialog";
 import { useInvoices } from "../hooks/useInvoices";
-import { ErrorState } from "@/src/components/ErrorState";
 
 export const InvoiceList = () => {
   const { invoices, hasLoaded, isLoading, isError, error, refetch, isFetching } =
@@ -14,27 +15,11 @@ export const InvoiceList = () => {
 
   const [isCreateOpen, setIsCreateOpen] = useState(false);
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-100">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-sky-600" />
-        <span className="ml-3 text-sm text-slate-500">Cargando facturas...</span>
-      </div>
-    );
-  }
-
-  // Solo mostramos el estado de error a pantalla completa cuando la consulta
-  // nunca cargó con éxito; un error de refetch transitorio no debe descartar
-  // la tabla ya cargada (perdiendo orden, paginación, búsqueda y filtros del
+  // Solo se trata como error "de pantalla completa" cuando la consulta nunca
+  // cargó con éxito; un error de refetch transitorio no debe descartar la
+  // tabla ya cargada (perdiendo orden, paginación, búsqueda y filtros del
   // usuario), incluso si el conjunto cargado estaba vacío.
-  if (isError && !hasLoaded) {
-    return (
-      <ErrorState
-        title="Error al cargar las facturas"
-        message={(error as Error).message}
-      />
-    );
-  }
+  const showError = isInitialLoadError(isError, hasLoaded);
 
   return (
     <div className="space-y-6">
@@ -56,6 +41,11 @@ export const InvoiceList = () => {
             + Nueva Factura
           </Button>
         }
+        isLoading={isLoading}
+        isError={showError}
+        errorTitle="Error al cargar las facturas"
+        errorMessage={extractErrorMessage(error, "No se pudo cargar la información.")}
+        loadingAriaLabel="Cargando facturas"
       />
 
       <CreateInvoiceDialog

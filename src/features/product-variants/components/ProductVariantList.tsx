@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useState } from "react";
 import { DataTable } from "../../../components/DataTable";
+import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { Button } from "../../../components/Button";
 import { MainDialog } from "../../../components/MainDialog";
 import { DialogHeader } from "../../../components/DialogHeader";
@@ -11,7 +12,6 @@ import { useProducts } from "../../products/hooks/useProducts";
 import { useColors } from "../../colors/hooks/useColors";
 import { useSizes } from "../../sizes/hooks/useSizes";
 import { useProductVariants } from "../hooks/useProductVariants";
-import { ErrorState } from "../../../components/ErrorState";
 
 export default function ProductVariantList() {
   const { data: session } = useSession();
@@ -66,27 +66,17 @@ export default function ProductVariantList() {
   const isError = isErrorVariants || isErrorProducts || isErrorColors || isErrorSizes;
   const error = variantsError || productsError || colorsError || sizesError;
 
-  if (isLoading) {
-    return (
-      <div className="p-8 flex justify-center items-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-sky-600"></div>
-        <span className="ml-3 text-slate-500">Cargando variantes...</span>
-      </div>
-    );
-  }
-
-  if (isError) {
-    return (
-      <ErrorState title="Error al cargar variantes" message={(error as Error).message} />
-    );
-  }
-
   return (
     <DataTable
       columns={columns}
       data={productVariants}
       title="Variantes de Producto"
       searchPlaceholder="Buscar variante..."
+      isLoading={isLoading}
+      isError={isError}
+      errorTitle="Error al cargar variantes"
+      errorMessage={extractErrorMessage(error, "No se pudo cargar la información.")}
+      loadingAriaLabel="Cargando variantes"
       actionButton={
         canEditConfig ? (
           <MainDialog

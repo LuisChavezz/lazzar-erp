@@ -3,8 +3,8 @@
 import { useState, useMemo } from "react";
 import { useUsers } from "../hooks/useUsers";
 import { DataTable } from "@/src/components/DataTable";
+import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { Button } from "@/src/components/Button";
-import { ErrorState } from "@/src/components/ErrorState";
 import { getUserColumns } from "./UserColumns";
 import { MainDialog } from "@/src/components/MainDialog";
 import { DialogHeader } from "@/src/components/DialogHeader";
@@ -25,29 +25,17 @@ export default function UserList() {
     [canReadConfig, canEditConfig, canDeleteConfig]
   );
 
-  if (isLoading) {
-    return (
-      <div className="p-8 flex justify-center items-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-sky-600"></div>
-        <span className="ml-3 text-slate-500">Cargando usuarios...</span>
-      </div>
-    );
-  }
-
-  if (isError) {
-    return (
-      <ErrorState title="Error al cargar usuarios" message={(error as Error).message} />
-    );
-  }
-
-  if (!users) return null;
-
   return (
     <DataTable
       columns={columns}
-      data={users}
+      data={users ?? []}
       title="Usuarios"
       searchPlaceholder="Buscar usuario..."
+      isLoading={isLoading}
+      isError={isError}
+      errorTitle="Error al cargar usuarios"
+      errorMessage={extractErrorMessage(error, "No se pudo cargar la información.")}
+      loadingAriaLabel="Cargando usuarios"
       actionButton={
         canEditConfig ? (
           <MainDialog

@@ -2,8 +2,8 @@
 
 import { useMemo, useState, useCallback } from "react";
 import { DataTable } from "../../../components/DataTable";
+import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { Button } from "../../../components/Button";
-import { ErrorState } from "../../../components/ErrorState";
 import { MainDialog } from "../../../components/MainDialog";
 import { DialogHeader } from "@/src/components/DialogHeader";
 import { useSession } from "next-auth/react";
@@ -51,32 +51,17 @@ export default function SerieFolioList() {
     [handleEdit, canEditConfig, canDeleteConfig, branchLookup]
   );
 
-  if (isLoading) {
-    return (
-      <div className="p-8 flex justify-center items-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-sky-600"></div>
-        <span className="ml-3 text-slate-500">Cargando series y folios...</span>
-      </div>
-    );
-  }
-
-  if (isError) {
-    return (
-      <ErrorState
-        title="Error al cargar series y folios"
-        message={(error as Error).message}
-      />
-    );
-  }
-
-  if (!seriesFolios) return null;
-
   return (
     <DataTable
       columns={columns}
-      data={seriesFolios}
+      data={seriesFolios ?? []}
       title="Series y Folios"
       searchPlaceholder="Buscar serie o documento..."
+      isLoading={isLoading}
+      isError={isError}
+      errorTitle="Error al cargar series y folios"
+      errorMessage={extractErrorMessage(error, "No se pudo cargar la información.")}
+      loadingAriaLabel="Cargando series y folios"
       actionButton={
         canEditConfig ? (
           <MainDialog

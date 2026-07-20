@@ -1,7 +1,7 @@
 import { useMemo, useState, useCallback } from "react";
 import { DataTable } from "../../../components/DataTable";
+import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { Button } from "../../../components/Button";
-import { ErrorState } from "../../../components/ErrorState";
 import { getColumns } from "./ProductCategoryColumns";
 import { MainDialog } from "../../../components/MainDialog";
 import { DialogHeader } from "@/src/components/DialogHeader";
@@ -38,30 +38,17 @@ export default function ProductCategoryList() {
     [handleEdit, canEditConfig, canDeleteConfig]
   );
 
-  if (isLoading) {
-    return (
-      <div className="p-8 flex justify-center items-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-sky-600"></div>
-        <span className="ml-3 text-slate-500">Cargando categorías...</span>
-      </div>
-    );
-  }
-
-  if (isError) {
-    return (
-      <ErrorState
-        title="Error al cargar categorías"
-        message={(error as Error).message}
-      />
-    );
-  }
-
   return (
     <DataTable
       columns={columns}
       data={categories}
       title="Categorías de Producto"
       searchPlaceholder="Buscar categoría..."
+      isLoading={isLoading}
+      isError={isError}
+      errorTitle="Error al cargar categorías"
+      errorMessage={extractErrorMessage(error, "No se pudo cargar la información.")}
+      loadingAriaLabel="Cargando categorías"
       actionButton={
         canEditConfig ? (
           <MainDialog

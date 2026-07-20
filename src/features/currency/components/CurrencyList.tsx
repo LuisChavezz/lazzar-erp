@@ -3,7 +3,7 @@
 import { useState, useMemo } from "react";
 import { useCurrencies } from "../hooks/useCurrencies";
 import { DataTable } from "@/src/components/DataTable";
-import { ErrorState } from "@/src/components/ErrorState";
+import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { getCurrencyColumns } from "./CurrencyColumns";
 import { MainDialog } from "@/src/components/MainDialog";
 import { DialogHeader } from "@/src/components/DialogHeader";
@@ -26,23 +26,6 @@ export default function CurrencyList() {
     [canEditConfig, canDeleteConfig]
   );
 
-  if (isLoading) {
-    return (
-      <div className="p-8 flex justify-center items-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-sky-600"></div>
-        <span className="ml-3 text-slate-500">Cargando monedas...</span>
-      </div>
-    );
-  }
-
-  if (isError) {
-    return (
-      <ErrorState title="Error al cargar monedas" message={(error as Error).message} />
-    );
-  }
-
-  if (!currencies) return null;
-
   return (
     <>
       <MainDialog
@@ -62,9 +45,14 @@ export default function CurrencyList() {
 
       <DataTable
         columns={columns}
-        data={currencies}
+        data={currencies ?? []}
         title="Monedas"
         searchPlaceholder="Buscar moneda..."
+        isLoading={isLoading}
+        isError={isError}
+        errorTitle="Error al cargar monedas"
+        errorMessage={extractErrorMessage(error, "No se pudo cargar la información.")}
+        loadingAriaLabel="Cargando monedas"
         actionButton={
           canEditConfig ? (
             <Button

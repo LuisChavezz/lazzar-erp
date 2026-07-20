@@ -3,7 +3,7 @@
 // import { useState } from "react";
 import { useBranches } from "../hooks/useBranches";
 import { DataTable } from "@/src/components/DataTable";
-import { ErrorState } from "@/src/components/ErrorState";
+import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { getBranchColumns } from "./BranchColumns";
 import { useSession } from "next-auth/react";
 // import { MainDialog } from "@/src/components/MainDialog";
@@ -22,27 +22,17 @@ export default function BranchList() {
   //   setIsDialogOpen(true);
   // };
 
-  if (isLoading) {
-    return (
-      <div className="p-8 flex justify-center items-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-sky-600"></div>
-        <span className="ml-3 text-slate-500">Cargando sucursales...</span>
-      </div>
-    );
-  }
-
-  if (isError) {
-    return (
-      <ErrorState title="Error al cargar sucursales" message={(error as Error).message} />
-    );
-  }
-
   return (
     <DataTable
       columns={getBranchColumns({ canRead: canReadConfig, canEdit: canEditConfig })}
       data={branches}
       title="Sucursales"
       searchPlaceholder="Buscar sucursal..."
+      isLoading={isLoading}
+      isError={isError}
+      errorTitle="Error al cargar sucursales"
+      errorMessage={extractErrorMessage(error, "No se pudo cargar la información.")}
+      loadingAriaLabel="Cargando sucursales"
     />
   );
 }

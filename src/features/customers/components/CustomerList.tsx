@@ -2,8 +2,8 @@
 
 import { useCallback, useMemo, useState } from "react";
 import { DataTable } from "@/src/components/DataTable";
+import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { DialogHeader } from "@/src/components/DialogHeader";
-import { Loader } from "@/src/components/Loader";
 import { MainDialog } from "@/src/components/MainDialog";
 import { Button } from "@/src/components/Button";
 import CustomerForm from "./CustomerForm";
@@ -15,7 +15,7 @@ import { Customer } from "../interfaces/customer.interface";
 import { CustomerAddress } from "../interfaces/customer-address.interface";
 
 export const CustomerList = () => {
-  const { customers, isLoading } = useCustomers();
+  const { customers, isLoading, isError, error } = useCustomers();
   const [isCustomerDialogOpen, setIsCustomerDialogOpen] = useState(false);
   const [customerToEdit, setCustomerToEdit] = useState<Customer | null>(null);
   const [isAddressDialogOpen, setIsAddressDialogOpen] = useState(false);
@@ -103,14 +103,6 @@ export const CustomerList = () => {
     [handleEdit, handleAddAddress, handleViewAddresses]
   );
 
-  if (isLoading) {
-    return (
-      <div className="mt-12 min-h-150 flex items-center justify-center rounded-2xl border border-slate-200 dark:border-white/5 bg-white dark:bg-zinc-900 p-8">
-        <Loader title="Cargando clientes" message="Obteniendo información de clientes..." />
-      </div>
-    );
-  }
-
   return (
     <div className="mt-12">
       {/* Diálogo de creación/edición de dirección de cliente */}
@@ -163,6 +155,11 @@ export const CustomerList = () => {
         columns={columns}
         data={customers}
         searchPlaceholder="Buscar por razón social, nombre, correo o teléfono..."
+        isLoading={isLoading}
+        isError={isError}
+        errorTitle="Error al cargar los clientes"
+        errorMessage={extractErrorMessage(error, "No se pudo cargar la información.")}
+        loadingAriaLabel="Cargando clientes"
         actionButton={
           <MainDialog
             title={

@@ -9,7 +9,7 @@ import {
 } from "@/src/components/Icons";
 import { DataTable } from "@/src/components/DataTable";
 import { ErrorState } from "@/src/components/ErrorState";
-import { Loader } from "@/src/components/Loader";
+import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import KpiGrid, { type KpiItem } from "@/src/components/KpiGrid";
 import { useWarehouses } from "@/src/features/warehouses/hooks/useWarehouses";
 import { useStockItems } from "../hooks/useStockItems";
@@ -201,13 +201,17 @@ export function StockView() {
         <WarehouseFilter value={almacenId} onChange={handleAlmacenChange} />
       </div>
 
-      {isLoading ? (
-        <Loader className="py-20" title="Cargando existencias..." />
-      ) : isError ? (
+      {/* El estado de error (con botón "Reintentar") es una capacidad distinta
+          del `ErrorState` interno de `DataTable` (que no ofrece retry); se
+          conserva tal cual en vez de migrarse a las props `isError`/
+          `errorTitle` de `DataTable`. Solo el estado de carga se migra a la
+          prop `isLoading`, para que la tabla (con sus KPIs) permanezca
+          montada mientras carga en lugar de un `Loader` a pantalla completa. */}
+      {isError ? (
         <div className="space-y-3">
           <ErrorState
             title="Error al cargar existencias"
-            message={(error as Error).message}
+            message={extractErrorMessage(error, "No se pudo cargar la información.")}
           />
           <div className="flex justify-center">
             <button
@@ -225,18 +229,25 @@ export function StockView() {
         // almacenes válidos permanece montado y la animación no se repite.
         <div className="space-y-6 animate-stock-reveal">
           {/* ── KPIs calculados sobre los datos ya filtrados por almacén ────
-              Se atenúan mientras se cambia de almacén (`isSwitchingAlmacen`),
-              igual que la tabla, en vez de mostrar en silencio las cifras del
-              almacén anterior sin ningún indicador visual. */}
-          <div
-            className={
-              isSwitchingAlmacen
-                ? "blur-sm pointer-events-none select-none transition-[filter] duration-200"
-                : "transition-[filter] duration-200"
-            }
-          >
-            <StockStats items={stockItems} maxStock={maxStock} />
-          </div>
+              Ocultos durante la carga INICIAL (`isLoading`, sin datos ni
+              placeholder): antes se mostraban con existencias en cero (p. ej.
+              "Total en Inventario: 0") hasta que llegaba la respuesta. En un
+              cambio de almacén (`isSwitchingAlmacen` = `isFetching &&
+              isPlaceholderData`, con los datos del almacén anterior como
+              placeholder) `isLoading` es false, así que siguen visibles pero
+              atenuados, igual que la tabla, en vez de mostrar en silencio las
+              cifras del almacén anterior sin ningún indicador visual. */}
+          {!isLoading && (
+            <div
+              className={
+                isSwitchingAlmacen
+                  ? "blur-sm pointer-events-none select-none transition-[filter] duration-200"
+                  : "transition-[filter] duration-200"
+              }
+            >
+              <StockStats items={stockItems} maxStock={maxStock} />
+            </div>
+          )}
 
           {/* ── Tabla de existencias ───────────────────────────────────────
               El componente permanece montado al cambiar de almacén: el
@@ -257,6 +268,8 @@ export function StockView() {
             loadingTitle="Actualizando existencias"
             loadingMessage="Estamos cargando las existencias del almacén seleccionado."
             paginationResetKey={almacenId}
+            isLoading={isLoading}
+            loadingAriaLabel="Cargando existencias"
           />
         </div>
       )}

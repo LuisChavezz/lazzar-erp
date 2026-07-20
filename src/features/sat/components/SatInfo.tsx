@@ -2,7 +2,7 @@
 
 import { useSatInfo } from "../hooks/useSatInfo";
 import { DataTable } from "@/src/components/DataTable";
-import { ErrorState } from "@/src/components/ErrorState";
+import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { regimenesFiscalesColumns } from "./SatInfoColumns";
 import { Tabs } from "@radix-ui/themes";
 import { FiscalAddressDetails } from "./FiscalAddressDetails";
@@ -33,21 +33,17 @@ export const SatInfo = () => {
 
         <div className="mt-6">
           <Tabs.Content value="regimenes">
-            {isLoading ? (
-              <div className="p-8 flex justify-center items-center">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-sky-600"></div>
-                <span className="ml-3 text-slate-500">Cargando catálogos del SAT...</span>
-              </div>
-            ) : isError ? (
-              <ErrorState title="Error al cargar información" message={(error as Error).message} />
-            ) : data ? (
-              <DataTable
-                columns={regimenesFiscalesColumns}
-                data={data.regimenes_fiscales}
-                searchPlaceholder="Buscar régimen..."
-                title="Regímenes Fiscales"
-              />
-            ) : null}
+            <DataTable
+              columns={regimenesFiscalesColumns}
+              data={data?.regimenes_fiscales ?? []}
+              searchPlaceholder="Buscar régimen..."
+              title="Regímenes Fiscales"
+              isLoading={isLoading}
+              isError={isError}
+              errorTitle="Error al cargar información"
+              errorMessage={extractErrorMessage(error, "No se pudo cargar la información.")}
+              loadingAriaLabel="Cargando catálogos del SAT"
+            />
           </Tabs.Content>
 
           <Tabs.Content value="direccion">

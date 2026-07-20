@@ -2,8 +2,7 @@
 
 import { useIsMutating } from "@tanstack/react-query";
 import { DataTable } from "@/src/components/DataTable";
-import { ErrorState } from "@/src/components/ErrorState";
-import { LoadingSkeleton } from "@/src/components/LoadingSkeleton";
+import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import {
   approveOperationsQuoteMutationKey,
 } from "../hooks/useApproveOperationsQuote";
@@ -29,28 +28,6 @@ export const OperationsQuoteList = () => {
   const isUpdatingOperationsQuoteStatus =
     isAuthorizingOperationsQuote || isRejectingOperationsQuote;
 
-  if (isLoading) {
-    return (
-      <div
-        className="min-h-165"
-        role="status"
-        aria-live="polite"
-        aria-label="Cargando cotizaciones operativas"
-      >
-        <LoadingSkeleton className="h-96 rounded-3xl" />
-      </div>
-    );
-  }
-
-  if (isError) {
-    return (
-      <ErrorState
-        title="Error al cargar cotizaciones operativas"
-        message={(error as Error).message}
-      />
-    );
-  }
-
   return (
     <div className="min-h-165">
       <DataTable
@@ -67,6 +44,11 @@ export const OperationsQuoteList = () => {
             : "Autorizando cotización operativa"
         }
         loadingMessage="Estamos actualizando el estado de la cotización operativa."
+        isLoading={isLoading}
+        isError={isError}
+        errorTitle="Error al cargar cotizaciones operativas"
+        errorMessage={extractErrorMessage(error, "No se pudo cargar la información.")}
+        loadingAriaLabel="Cargando cotizaciones operativas"
       />
     </div>
   );

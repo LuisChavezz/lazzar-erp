@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useState } from "react";
 import { DataTable } from "../../../components/DataTable";
+import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { Button } from "../../../components/Button";
 import { MainDialog } from "../../../components/MainDialog";
 import { DialogHeader } from "../../../components/DialogHeader";
@@ -14,7 +15,6 @@ import { useSatUnitCodes } from "../../sat-unit-codes/hooks/useSatUnitCodes";
 import { useProductTypes } from "../../product-types/hooks/useProductTypes";
 import { useSatProdServCodes } from "../../sat-prodserv-codes/hooks/useSatProdServCodes";
 import { useProducts } from "../hooks/useProducts";
-import { ErrorState } from "../../../components/ErrorState";
 
 export default function ProductList() {
   const { data: session } = useSession();
@@ -69,25 +69,17 @@ export default function ProductList() {
 
   const isEditing = Boolean(selectedProduct?.id);
 
-  if (isLoading) {
-    return (
-      <div className="p-8 flex justify-center items-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-sky-600"></div>
-        <span className="ml-3 text-slate-500">Cargando productos...</span>
-      </div>
-    );
-  }
-
-  if (isError) {
-    return <ErrorState title="Error al cargar productos" message={(error as Error).message} />;
-  }
-
   return (
     <DataTable
       columns={columns}
       data={products}
       title="Productos"
       searchPlaceholder="Buscar producto..."
+      isLoading={isLoading}
+      isError={isError}
+      errorTitle="Error al cargar productos"
+      errorMessage={extractErrorMessage(error, "No se pudo cargar la información.")}
+      loadingAriaLabel="Cargando productos"
       actionButton={
         canEditConfig ? (
           <MainDialog
