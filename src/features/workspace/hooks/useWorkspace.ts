@@ -59,7 +59,14 @@ export const useWorkspace = () => {
     }
 
     if (selectedCompany) {
-      document.cookie = "erp_workspace_id=true; path=/; max-age=604800; SameSite=Lax"; // Expira en 1 semana
+      /* Solo UX (no es control de acceso: el backend acota los datos por la
+       * empresa/sucursal real del usuario) — `proxy.ts` únicamente comprueba
+       * su existencia. `Secure` es seguro de añadir (todos los entornos
+       * desplegados son HTTPS). No se marca `HttpOnly`: se escribe vía
+       * `document.cookie`, y esa API del navegador no puede fijar cookies
+       * `HttpOnly` en absoluto (requeriría emitirla como Set-Cookie desde el
+       * servidor), así que el atributo no aplica aquí. */
+      document.cookie = "erp_workspace_id=true; path=/; max-age=604800; SameSite=Lax; Secure"; // Expira en 1 semana
     }
 
     redirectAfterWorkspaceSelection();

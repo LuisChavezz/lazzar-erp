@@ -1,4 +1,5 @@
 import { useForm } from "@tanstack/react-form";
+import { isAxiosError } from "axios";
 import type { FormEvent } from "react";
 import { useState } from "react";
 import toast from "react-hot-toast";
@@ -111,7 +112,12 @@ export const useLoginForm = ({ onShowMfaOptIn, onMfaRequired }: UseLoginFormPara
 				/* MFA ya activo: dirigir al paso de verificación OTP */
 				onMfaRequired(result);
 			} catch (error) {
-				console.error("Login error:", error);
+				/* No se registra el error completo: `error.config.data` incluye el
+				 * body de la petición (contraseña en texto plano). Solo se deja
+				 * mensaje y status, suficientes para depurar. */
+				const status = isAxiosError(error) ? error.response?.status : undefined;
+				const message = error instanceof Error ? error.message : String(error);
+				console.error("Login error:", { message, status });
 				toast.error("Error de conexión");
 			}
 		},

@@ -24,12 +24,3 @@ declare module "next-auth/jwt" {
     permissions?: string[];
   }
 }
-
-declare module "next-auth/jwt" {
-  interface JWT {
-    role?: string;
-    accessToken?: string;
-    permissions?: string[];
-    sub?: string;
-  }
-}

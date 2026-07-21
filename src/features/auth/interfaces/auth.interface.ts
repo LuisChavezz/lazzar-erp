@@ -126,7 +126,10 @@ export interface MfaLoginUser {
 /** Respuesta completa de `/auth/login/verify/` cuando el login con MFA es exitoso */
 export interface MfaLoginSuccessResponse {
   access: string;
-  refresh: string;
+  // Siempre "": el backend la vacía a propósito (`auth_kit/views/login.py`).
+  // Se tipa como el literal `""` para que cualquier intento futuro de tratarla
+  // como un refresh token real sea un error de compilación.
+  refresh: "";
   access_expiration: string;
   refresh_expiration: string;
   user: MfaLoginUser;
