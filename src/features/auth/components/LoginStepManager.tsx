@@ -143,8 +143,14 @@ export default function LoginStepManager() {
     setIsCreatingSession(true);
 
     try {
+      // Recuperar tokens del sessionStorage que fueron guardados en login()
+      const access_token = typeof window !== "undefined" ? sessionStorage.getItem("access_token") : null;
+      const refresh_token = typeof window !== "undefined" ? sessionStorage.getItem("refresh_token") : null;
+
       const result = await signIn("credentials", {
         userData: JSON.stringify(loginUser),
+        accessToken: access_token || "",
+        refreshToken: refresh_token || "",
         redirect: false,
       });
 

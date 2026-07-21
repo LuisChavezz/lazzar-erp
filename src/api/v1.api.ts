@@ -1,5 +1,5 @@
 import axios, { InternalAxiosRequestConfig } from "axios";
-import { signOut } from "next-auth/react";
+import { signOut, getSession } from "next-auth/react";
 import { refreshToken } from "@/src/features/auth/services/actions";
 
 // Extiende la config de axios para soportar el flag de reintento y evitar bucles
@@ -29,6 +29,24 @@ const notifyQueue = (error?: Error): void => {
 };
 
 /**
+ * Interceptor de request para agregar el token Bearer a todas las peticiones
+ */
+v1_api.interceptors.request.use(
+  async (config) => {
+    try {
+      const session = await getSession();
+      if (session && (session as any).accessToken) {
+        config.headers.Authorization = `Bearer ${(session as any).accessToken}`;
+      }
+    } catch (error) {
+      console.error("Error obteniendo sesión en interceptor de request:", error);
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+
+/**
  * Interceptor de respuesta con lógica de refresh token.
  *
  * Flujo ante un 401:
@@ -38,8 +56,8 @@ const notifyQueue = (error?: Error): void => {
  *   3. Si el refresh falla (refresh token expirado), cierra la sesión con signOut.
  *   4. Si el retry también falla con 401 (_retry = true), cierra la sesión directamente.
  *
- * Al ser cookie-based (withCredentials: true), el backend gestiona los Set-Cookie:
- * el browser envía auth-refresh-jwt en la llamada refresh y recibe el nuevo auth-jwt.
+ * Al ser cookie-based (withCredentials: true) + Bearer token, el backend recibe
+ * la autorización tanto en headers como en cookies.
  */
 v1_api.interceptors.response.use(
   (response) => response,
@@ -79,20 +97,21 @@ v1_api.interceptors.response.use(
     originalRequest._retry = true;
     isRefreshing = true;
 
-    try { // Intentar refrescar el token
+    try {
+      // Intentar refrescar el token
       await refreshToken();
       notifyQueue();
       return v1_api(originalRequest);
-
-    } catch { // El refresh falló → cerrar sesión
+    } catch {
+      // El refresh falló → cerrar sesión
       notifyQueue(new Error("Refresh fallido"));
       if (typeof window !== "undefined" && !isSigningOut) {
         isSigningOut = true;
         await signOut({ callbackUrl: "/auth/login" });
       }
       return Promise.reject(error);
-
-    } finally { // Reset del estado de refresco
+    } finally {
+      // Reset del estado de refresco
       isRefreshing = false;
     }
   }

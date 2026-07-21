@@ -2,6 +2,10 @@ export interface LoginSuccessResponse {
   method?: string;
   ephemeral_token?: string;
   mfa_enabled: boolean;
+  access?: string;
+  refresh?: string;
+  access_expiration?: string;
+  refresh_expiration?: string;
   /** Presente cuando mfa_enabled = false: el backend devuelve el usuario completo junto con las cookies */
   user?: MfaLoginUser;
 }
@@ -77,7 +81,7 @@ export const isLoginSuccessResponse = (
 };
 
 type Permission =
-  `${"R" | "C" | "E" | "D"}-${
+  `${{"R" | "C" | "E" | "D"}}-${
     | "COMPRAS"
     | "CONFIGURACION"
     | "CONTABILIDAD"

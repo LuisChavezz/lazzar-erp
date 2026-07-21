@@ -2,6 +2,27 @@ import { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import type { MfaLoginUser } from "@/src/features/auth/interfaces/auth.interface";
 
+// Extender tipos de NextAuth para incluir tokens
+declare module "next-auth" {
+  interface User {
+    accessToken?: string;
+    refreshToken?: string;
+  }
+  interface Session {
+    accessToken?: string;
+    refreshToken?: string;
+  }
+}
+
+declare module "next-auth/jwt" {
+  interface JWT {
+    accessToken?: string;
+    refreshToken?: string;
+    role?: string;
+    permissions?: string[];
+  }
+}
+
 export const authOptions: NextAuthOptions = {
   providers: [
     CredentialsProvider({
@@ -12,6 +33,8 @@ export const authOptions: NextAuthOptions = {
          * llamada adicional al backend ya que la autenticación fue completada
          * y las cookies de sesión ya quedaron establecidas. */
         userData: { label: "User Data", type: "text" },
+        accessToken: { label: "Access Token", type: "text" },
+        refreshToken: { label: "Refresh Token", type: "text" },
       },
       async authorize(credentials) {
         if (!credentials?.userData) return null;
@@ -28,7 +51,9 @@ export const authOptions: NextAuthOptions = {
             name: fullName,
             email: user.email,
             role: isAdminUser ? "admin" : "user",
-            permissions: user.permisos
+            permissions: user.permisos,
+            accessToken: credentials.accessToken || "",
+            refreshToken: credentials.refreshToken || "",
           };
         } catch {
           return null;
@@ -45,15 +70,19 @@ export const authOptions: NextAuthOptions = {
         token.role = user.role;
         token.permissions = user.permissions;
         token.sub = user.id || token.sub;
+        token.accessToken = user.accessToken;
+        token.refreshToken = user.refreshToken;
       }
       return token;
     },
     async session({ session, token }) {
       if (session.user) {
         session.user.id = token.sub as string;
-        session.user.role = token.role;
-        session.user.permissions = token.permissions;
+        (session.user as any).role = token.role;
+        (session.user as any).permissions = token.permissions;
       }
+      session.accessToken = token.accessToken;
+      session.refreshToken = token.refreshToken;
       return session;
     },
   },
