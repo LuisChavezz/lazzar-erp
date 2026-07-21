@@ -60,10 +60,11 @@ export default function MfaOtpVerify({
         const data = await mfaLoginMutation.mutateAsync({ ephemeral_token: ephemeralToken, code: otp });
         resetDigits();
 
-        /* Crear sesión de NextAuth con los datos del usuario ya autenticado */
+        /* Crear sesión de NextAuth con el token ya emitido por el backend;
+         * `authorize()` lo verifica contra /auth/user/ antes de crearla */
         setIsCreatingSession(true);
         const result = await signIn("credentials", {
-          userData: JSON.stringify(data.user),
+          accessToken: data.access,
           redirect: false,
         });
 

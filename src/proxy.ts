@@ -2,6 +2,7 @@ import { withAuth } from "next-auth/middleware";
 import { NextResponse } from "next/server";
 import { hasPermission } from "./utils/permissions";
 import { routePermissions } from "./constants/routePermissions";
+import { authSecret } from "./lib/authSecret";
 
 /**
  * Proxy de autenticación y autorización (Next.js 16 — antes "middleware").
@@ -10,8 +11,11 @@ import { routePermissions } from "./constants/routePermissions";
  * misma clave que `getServerSession(authOptions)` en los Server Components.
  * Sin esto, si `NEXTAUTH_SECRET` no está definido en el entorno, el proxy
  * intenta verificar el JWT con `undefined` mientras que `getServerSession`
- * usa el fallback "secreto-super-seguro-para-desarrollo", lo que provoca un
- * ciclo infinito de redirecciones: proxy → /auth/login → layout → / → proxy.
+ * usa otro valor, lo que provoca un ciclo infinito de redirecciones:
+ * proxy → /auth/login → layout → / → proxy.
+ *
+ * La resolución del secreto vive en `./lib/authSecret` para que proxy y
+ * `authOptions` compartan exactamente la misma lógica y el mismo valor.
  */
 export default withAuth(
   function proxy(req) {
@@ -45,7 +49,7 @@ export default withAuth(
   },
   {
     // Usar el mismo secret que authOptions para evitar discrepancias en la verificación del JWT
-    secret: process.env.NEXTAUTH_SECRET || "secreto-super-seguro-para-desarrollo",
+    secret: authSecret,
     pages: {
       signIn: "/auth/login",
     },

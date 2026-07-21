@@ -4,6 +4,12 @@ export interface LoginSuccessResponse {
   mfa_enabled: boolean;
   /** Presente cuando mfa_enabled = false: el backend devuelve el usuario completo junto con las cookies */
   user?: MfaLoginUser;
+  /**
+   * Token JWT de acceso. Presente cuando mfa_enabled = false (el login se
+   * completa en un solo paso). Se usa como credencial para que `authorize()`
+   * verifique la identidad contra `/auth/user/` al crear la sesión NextAuth.
+   */
+  access?: string;
 }
 
 export interface RefreshTokenResponse {

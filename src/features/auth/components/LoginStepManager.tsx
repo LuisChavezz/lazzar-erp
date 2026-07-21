@@ -6,7 +6,7 @@ import dynamic from "next/dynamic";
 import { signIn } from "next-auth/react";
 import toast from "react-hot-toast";
 import LoginForm from "./LoginForm";
-import type { LoginSuccessResponse, MfaCreateResponse, MfaLoginUser } from "../interfaces/auth.interface";
+import type { LoginSuccessResponse, MfaCreateResponse } from "../interfaces/auth.interface";
 
 /**
  * Los pasos de MFA no forman parte de la vista inicial de credenciales: solo
@@ -89,8 +89,8 @@ export default function LoginStepManager() {
   const [mfaData, setMfaData] = useState<MfaCreateResponse | null>(null);
   /* token efímero recibido en el login cuando el usuario ya tiene MFA activo */
   const [ephemeralToken, setEphemeralToken] = useState<string | null>(null);
-  /* usuario recibido en la respuesta de login cuando mfa_enabled = false */
-  const [loginUser, setLoginUser] = useState<MfaLoginUser | null>(null);
+  /* token de acceso recibido en la respuesta de login cuando mfa_enabled = false */
+  const [loginAccessToken, setLoginAccessToken] = useState<string | null>(null);
   /* true cuando el usuario llega al OTP desde un login con MFA ya activo */
   const [mfaLoginMode, setMfaLoginMode] = useState(false);
   /* true cuando se acaba de confirmar MFA por primera vez */
@@ -120,9 +120,9 @@ export default function LoginStepManager() {
     goToStep("mfa-setup");
   };
 
-  /* Llamado desde LoginForm cuando mfa_enabled = false: guarda el usuario para usarlo en skip */
+  /* Llamado desde LoginForm cuando mfa_enabled = false: guarda el token de acceso para usarlo en skip */
   const handleShowMfaOptIn = (data: LoginSuccessResponse) => {
-    if (data.user) setLoginUser(data.user);
+    if (data.access) setLoginAccessToken(data.access);
     goToStep("mfa-opt-in");
   };
 
@@ -133,9 +133,10 @@ export default function LoginStepManager() {
     goToStep("mfa-otp");
   };
 
-  /* Flujo "Continuar sin MFA": crea la sesión NextAuth con los datos del usuario ya autenticado */
+  /* Flujo "Continuar sin MFA": crea la sesión NextAuth a partir del token ya emitido
+   * por el backend; `authorize()` lo verifica contra /auth/user/ antes de crearla */
   const handleSkipMfa = async () => {
-    if (!loginUser) {
+    if (!loginAccessToken) {
       toast.error("No se encontraron los datos del usuario. Por favor, vuelve a iniciar sesión.");
       return;
     }
@@ -144,7 +145,7 @@ export default function LoginStepManager() {
 
     try {
       const result = await signIn("credentials", {
-        userData: JSON.stringify(loginUser),
+        accessToken: loginAccessToken,
         redirect: false,
       });
 
