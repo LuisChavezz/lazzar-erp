@@ -8,6 +8,22 @@ import { useMyCompanies } from "@/src/features/companies/hooks/useMyCompanies";
 import { useCompanyBranches } from "../../branches/hooks/useCompanyBranches";
 import { loginRedirects } from "@/src/constants/routePermissions";
 
+/**
+ * Escribe la cookie de selección de workspace con atributos idénticos en todos
+ * los flujos (con o sin sucursal) — un único punto de escritura evita que el
+ * endurecimiento dependa de mantener dos cadenas sincronizadas a mano.
+ *
+ * Solo UX (no es control de acceso: el backend acota los datos por la
+ * empresa/sucursal real del usuario) — `proxy.ts` únicamente comprueba su
+ * existencia. `Secure` es seguro de añadir (todos los entornos desplegados son
+ * HTTPS). No se marca `HttpOnly`: se escribe vía `document.cookie`, y esa API
+ * del navegador no puede fijar cookies `HttpOnly` en absoluto (requeriría
+ * emitirla como Set-Cookie desde el servidor), así que el atributo no aplica.
+ */
+const setWorkspaceCookie = () => {
+  document.cookie = "erp_workspace_id=true; path=/; max-age=604800; SameSite=Lax; Secure"; // Expira en 1 semana
+};
+
 export const useWorkspace = () => {
   const router = useRouter();
   const { data: session } = useSession();
@@ -59,14 +75,7 @@ export const useWorkspace = () => {
     }
 
     if (selectedCompany) {
-      /* Solo UX (no es control de acceso: el backend acota los datos por la
-       * empresa/sucursal real del usuario) — `proxy.ts` únicamente comprueba
-       * su existencia. `Secure` es seguro de añadir (todos los entornos
-       * desplegados son HTTPS). No se marca `HttpOnly`: se escribe vía
-       * `document.cookie`, y esa API del navegador no puede fijar cookies
-       * `HttpOnly` en absoluto (requeriría emitirla como Set-Cookie desde el
-       * servidor), así que el atributo no aplica aquí. */
-      document.cookie = "erp_workspace_id=true; path=/; max-age=604800; SameSite=Lax; Secure"; // Expira en 1 semana
+      setWorkspaceCookie();
     }
 
     redirectAfterWorkspaceSelection();
@@ -90,8 +99,8 @@ export const useWorkspace = () => {
 
      // Guardar en el store y establecer cookie
      setWorkspace(selectedCompany);
-     document.cookie = "erp_workspace_id=true; path=/; max-age=604800; SameSite=Lax"; // Expira en 1 semana
-     
+     setWorkspaceCookie();
+
      redirectAfterWorkspaceSelection();
   };
 

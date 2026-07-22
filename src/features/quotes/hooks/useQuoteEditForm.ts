@@ -378,9 +378,32 @@ export function useQuoteEditForm(quoteId: number) {
   const { data: satInfo } = useSatInfo();
 
   // Consulta de la cotización a editar
-  const { data: quoteData, isLoading: isQuoteLoading } = useQuote(quoteId);
+  const {
+    data: quoteData,
+    isLoading: isQuoteLoading,
+    isFetching: isQuoteFetching,
+    error: quoteError,
+    refetch: refetchQuote,
+  } = useQuote(quoteId);
   const isEditableQuoteStatus = canEditQuote(quoteData?.estatus);
-  const shouldRedirectToQuotesList = Boolean(quoteData) && !isEditableQuoteStatus;
+  /* 404/403: denegaciones DEFINITIVAS del backend — la cotización no existe
+   * (404) o el backend autenticó la petición y la denegó explícitamente (403).
+   * Este hook es el punto AUTORITATIVO de verificación de acceso: el guard del
+   * servidor (quoteEditAccess.server) solo valida la forma del id, porque en
+   * esta topología `auth-jwt` vive en el dominio del backend y nunca llega al
+   * servidor de Next — solo el navegador tiene credenciales. Ambas denegaciones
+   * se tratan igual que un estatus no editable: redirect silencioso al listado. */
+  const quoteErrorStatus =
+    quoteError instanceof AxiosError ? quoteError.response?.status : undefined;
+  const quoteAccessDenied = quoteErrorStatus === 404 || quoteErrorStatus === 403;
+  const shouldRedirectToQuotesList =
+    (Boolean(quoteData) && !isEditableQuoteStatus) || quoteAccessDenied;
+  /* Cualquier otro fallo de la consulta (500, error de red, timeout tras los
+   * reintentos de TanStack) es un problema TÉCNICO, no una denegación:
+   * QuoteEditForm muestra un estado de error con reintento en vez de dejar el
+   * loader "Cargando formulario…" girando para siempre — misma distinción
+   * denegación/fallo-técnico que aplica el guard del servidor. */
+  const quoteLoadFailed = Boolean(quoteError) && !quoteAccessDenied;
 
   const userName = session?.user?.name || "Usuario";
   const sellerName = userName;
@@ -1199,6 +1222,12 @@ export function useQuoteEditForm(quoteId: number) {
   }, [form, usoCfdiOptions, values.uso_cfdi]);
 
   return {
+    /* Estado de fallo técnico de la consulta de la cotización — consumido por
+     * QuoteEditForm (no por QuoteFormContent) para renderizar el estado de
+     * error con reintento en lugar del formulario. */
+    quoteLoadFailed,
+    isQuoteRetrying: isQuoteFetching,
+    retryQuoteLoad: refetchQuote,
     form,
     formRef,
     formKey: `quote-edit-${quoteId}`,

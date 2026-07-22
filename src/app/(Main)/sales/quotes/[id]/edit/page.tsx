@@ -33,7 +33,10 @@ export default async function QuoteEditPage({ params }: QuoteEditPageProps) {
   const { id } = await params;
   const quoteId = Number(id);
 
-  await redirectIfQuoteCannotBeEdited(quoteId);
+  // Guard mínimo (solo forma del id). La verificación real de acceso —
+  // existencia, estatus editable, denegaciones y fallos técnicos — la hace
+  // QuoteEditForm en el cliente, el único lado con credenciales del backend.
+  redirectIfQuoteCannotBeEdited(quoteId);
 
   return (
     <div className="w-full space-y-6 pt-2">
