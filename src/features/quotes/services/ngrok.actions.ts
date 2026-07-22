@@ -1,10 +1,33 @@
 /**
  * ngrok.actions.ts
- * Servicios que consumen el endpoint de carga de archivos externos vía ngrok.
- * Cada función es responsable de un único caso de uso (SRP).
+ * Servicios de la galería y carga de arte de bordado.
+ *
+ * Estas funciones corren en el cliente y llaman a los Route Handlers internos
+ * de `/api/embroidery-images`, que son los que hablan con el servidor de
+ * archivos usando el token server-only. El cliente nunca ve ese token ni la
+ * URL del túnel para estas operaciones.
  */
-import { ngrok_api } from "@/src/api/ngrok.api";
+import axios from "axios";
 
+/** Mensaje del Route Handler, o un fallback si la respuesta no lo trae. */
+const getRouteHandlerError = (error: unknown, fallback: string) => {
+  if (axios.isAxiosError(error)) {
+    const data = error.response?.data;
+
+    if (
+      typeof data === "object" &&
+      data &&
+      "error" in data &&
+      typeof data.error === "string"
+    ) {
+      return data.error;
+    }
+
+    return fallback;
+  }
+
+  return null;
+};
 
 export interface NgrokUploadResponse {
   ok: boolean;
@@ -23,7 +46,8 @@ export interface UploadEmbroideryImagePayload {
   /** Archivo de imagen seleccionado por el usuario. */
   file: File;
   /**
-   * Ruta destino en el servidor remoto.
+   * Ruta destino en el servidor remoto. El Route Handler la valida contra el
+   * allowlist de `constants/embroideryUpload.ts`.
    */
   currentPath: string;
 }
@@ -38,7 +62,7 @@ export interface NgrokImageItem {
   sharePath: string;
 }
 
-/** Respuesta del endpoint GET /api/vendedor/imagenes. */
+/** Respuesta del endpoint GET /api/embroidery-images. */
 export interface NgrokImagesResponse {
   ok: boolean;
   vendedor: string;
@@ -46,44 +70,66 @@ export interface NgrokImagesResponse {
   imagenes: NgrokImageItem[];
 }
 
-export interface FetchEmbroideryImagesPayload {
-  /** Correo electrónico del vendedor cuyas imágenes se desean obtener. */
-  email: string;
-}
-
 /**
- * Obtiene la galería de imágenes disponibles en el servidor para un vendedor.
+ * Obtiene la galería de imágenes disponibles para el vendedor autenticado.
  *
- * @param payload - Email del vendedor.
+ * No recibe el email: el Route Handler lo deriva de la sesión. Aceptarlo como
+ * parámetro permitía consultar la galería de cualquier otro vendedor.
+ *
  * @returns Respuesta con la lista de imágenes del vendedor.
  */
-export const fetchEmbroideryImages = async (
-  payload: FetchEmbroideryImagesPayload
-): Promise<NgrokImagesResponse> => {
-  const { data } = await ngrok_api.get<NgrokImagesResponse>("/api/vendedor/imagenes", {
-    params: { email: payload.email },
-  });
-  return data;
+export const fetchEmbroideryImages = async (): Promise<NgrokImagesResponse> => {
+  try {
+    const { data } = await axios.get<NgrokImagesResponse>("/api/embroidery-images");
+    return data;
+  } catch (error) {
+    const message = getRouteHandlerError(
+      error,
+      "No se pudieron cargar las imágenes del servidor.",
+    );
+
+    if (message) {
+      throw new Error(message);
+    }
+
+    throw error;
+  }
 };
 
 /**
- * Sube una imagen al servidor externo via multipart/form-data.
- * El tipo de respuesta es `unknown` hasta que se conozca el contrato de la API.
+ * Sube una imagen al servidor de archivos a través del Route Handler interno.
  *
  * @param payload - Archivo e información de ruta destino.
- * @returns Respuesta cruda de la API.
+ * @returns Respuesta del servidor de archivos, reenviada sin alterar.
  */
 export const uploadEmbroideryImage = async (
   payload: UploadEmbroideryImagePayload
 ): Promise<NgrokUploadResponse> => {
   const formData = new FormData();
   // El orden importa: multer procesa los campos en el orden de recepción.
-  // currentPath debe llegar ANTES del archivo para que la librería lo lea correctamente.
+  // currentPath debe llegar ANTES del archivo para que la librería lo lea
+  // correctamente; el Route Handler preserva este mismo orden al reenviar.
   formData.append("currentPath", payload.currentPath);
   formData.append("image", payload.file);
 
-  // Axios detecta automáticamente el Content-Type y el boundary al recibir FormData.
-  const { data } = await ngrok_api.post<NgrokUploadResponse>("/api/external-upload", formData);
+  try {
+    // Axios detecta automáticamente el Content-Type y el boundary al recibir FormData.
+    const { data } = await axios.post<NgrokUploadResponse>(
+      "/api/embroidery-images/upload",
+      formData,
+    );
 
-  return data;
+    return data;
+  } catch (error) {
+    const message = getRouteHandlerError(
+      error,
+      "No se pudo cargar la imagen. Intenta de nuevo.",
+    );
+
+    if (message) {
+      throw new Error(message);
+    }
+
+    throw error;
+  }
 };

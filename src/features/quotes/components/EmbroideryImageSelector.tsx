@@ -14,24 +14,22 @@
  */
 import { useCallback, useDeferredValue, useMemo, useRef, useState } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
+import toast from "react-hot-toast";
 import { Loader } from "@/src/components/Loader";
 import { ArrowLeftIcon, PhotoIcon, UploadIcon } from "@/src/components/Icons";
 import { useUploadEmbroideryImage } from "../hooks/useUploadEmbroideryImage";
 import { GalleryImageItem } from "./GalleryImageItem";
+import {
+  DEFAULT_UPLOAD_PATH,
+  MAX_EMBROIDERY_IMAGE_BYTES,
+  MAX_EMBROIDERY_IMAGE_LABEL,
+  SERVICE_UPLOAD_PATHS,
+} from "../constants/embroideryUpload";
 import type { EmbroiderySpecBooleanField, EmbroiderySpecForm } from "../types";
 import type { NgrokImageItem } from "../services/ngrok.actions";
 
 /** URL base ngrok; se concatena con la ruta relativa de cada imagen. */
 const NGROK_BASE_URL = process.env.NEXT_PUBLIC_NGROK_BASE_URL ?? "";
-
-/** Rutas destino en el servidor por tipo de servicio. */
-const SERVICE_UPLOAD_PATHS: Record<EmbroiderySpecBooleanField, string> = {
-  nuevoPonchado: "Ponchados/Pendientes de aprobar",
-  serigrafia: "Serigrafia/Pendientes de aprobar",
-  sublimado: "Sublimado/Pendientes de aprobar",
-  dtf: "DTF/Pendientes de aprobar",
-  revelado: "Revelado/Pendientes de aprobar",
-};
 
 const EMBROIDERY_BOOLEAN_FIELDS: EmbroiderySpecBooleanField[] = [
   "nuevoPonchado",
@@ -129,12 +127,26 @@ export function EmbroideryImageSelector({
   const handleFileChange = useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) => {
       const file = event.target.files?.[0];
+      // Se limpia antes de cualquier salida temprana: si no, volver a elegir
+      // el mismo archivo tras un error no vuelve a disparar el onChange.
+      event.target.value = "";
       if (!file) return;
+
+      /* Guarda de tamaño previa a la red. El Route Handler aplica el mismo
+       * límite de forma autoritativa, pero fallar aquí evita subir megabytes
+       * para recibir un 413 —y da retroalimentación inmediata, que antes no
+       * existía en ningún punto del flujo. */
+      if (file.size > MAX_EMBROIDERY_IMAGE_BYTES) {
+        toast.error(
+          `La imagen supera el límite de ${MAX_EMBROIDERY_IMAGE_LABEL}. Selecciona un archivo más ligero.`
+        );
+        return;
+      }
 
       const activeService = EMBROIDERY_BOOLEAN_FIELDS.find((f) => spec[f]) ?? null;
       const currentPath = activeService
         ? SERVICE_UPLOAD_PATHS[activeService]
-        : "Bordados/Pendientes de aprobar";
+        : DEFAULT_UPLOAD_PATH;
 
       uploadImage(
         { file, currentPath },
@@ -147,7 +159,6 @@ export function EmbroideryImageSelector({
           },
         }
       );
-      event.target.value = "";
     },
     [uploadImage, spec, onImageUploaded]
   );
