@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useIsMutating } from "@tanstack/react-query";
 import { useSession } from "next-auth/react";
 import { DataTable, DataTableVisibleColumn } from "@/src/components/DataTable";
 import { Button } from "@/src/components/Button";
 import { quoteColumns } from "./QuoteColumns";
+import { createQuoteFilterConfig } from "./QuoteFilter";
 import { useQuoteCsvExport } from "../hooks/useQuoteCsvExport";
 import { useQuotePdfExport } from "../hooks/useQuotePdfExport";
 import { Quote } from "../interfaces/quote.interface";
@@ -33,6 +34,8 @@ export const QuoteList = () => {
   const isSessionLoading = sessionStatus === "loading";
   const canCreateOrder = hasPermission("R-CRM", session?.user);
 
+  const quoteFilterConfig = useMemo(() => createQuoteFilterConfig(quotes), [quotes]);
+
   useQuoteCsvExport(visibleOrders, visibleColumns);
   useQuotePdfExport(visibleOrders, visibleColumns);
 
@@ -45,6 +48,7 @@ export const QuoteList = () => {
         searchPlaceholder="Buscar cotización..."
         onVisibleRowsChange={setVisibleOrders}
         onVisibleColumnsChange={setVisibleColumns}
+        filterConfig={quoteFilterConfig}
         isLoading={isOrdersLoading}
         loadingAriaLabel="Cargando cotizaciones"
         isLoadingOverlay={isTableBusy}
