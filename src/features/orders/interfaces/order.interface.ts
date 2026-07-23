@@ -68,3 +68,63 @@ export interface Order {
   moneda: number;
   cliente_regimen_fiscal: number;
 }
+
+/**
+ * Talla de una línea del detalle de pedido (`PedidoDetalleLinea.tallas`). La
+ * VARIANTE VENDIBLE concreta vive aquí (no en la línea): cada talla trae su
+ * propia `variante`/`variante_sku` y `cantidad` — a diferencia del patrón
+ * plano producto XOR variante de `transferencia_detalle`/`picking_detalle`.
+ */
+export interface PedidoDetalleTalla {
+  id: number;
+  talla: number;
+  talla_nombre: string;
+  variante: number;
+  /** Nombre completo de la variante (producto + color + talla concatenados). */
+  variante_nombre: string;
+  variante_sku: string;
+  cantidad: number;
+}
+
+/**
+ * Línea de `PedidoDetail.detalles`: una combinación PRODUCTO + COLOR (no una
+ * variante concreta) — el desglose por talla/variante va anidado en `tallas`,
+ * y `cantidad_total` es la suma de sus cantidades (para vistas resumidas).
+ *
+ * `costo_unitario` se tipa por completitud del contrato pero NO se muestra en
+ * la UI operativa (es dato de costo/margen interno): misma convención que
+ * `QuoteById.detalles[].costo_unitario`, tipado pero nunca renderizado por
+ * `QuoteDetailsProducts` — los costos solo se exhiben en los reportes de
+ * valuación de inventario (`system/reports`).
+ */
+export interface PedidoDetalleLinea {
+  id: number;
+  producto: number;
+  producto_nombre: string;
+  color: number;
+  color_nombre: string;
+  /** Color en hex (ej. `"#000000"`) — se pinta como swatch junto al nombre. */
+  color_hex: string;
+  precio_lista: string;
+  precio_unitario: string;
+  costo_unitario: string;
+  subtotal_linea: string;
+  cantidad_total: number;
+  tallas: PedidoDetalleTalla[];
+}
+
+/**
+ * Respuesta de `GET /ventas/pedidos/{id}/`: la cabecera del pedido más
+ * `detalles` (líneas producto+color con tallas anidadas). Funciona igual con o
+ * sin cotización ligada (`cotizacion: null`) — el detalle ya no depende de ella.
+ *
+ * Extiende `Order` (en vez de redeclarar) siguiendo el precedente de
+ * `TransferenciaDetail extends TransferenciaListItem`: el detalle es asignable
+ * donde se espera un renglón del listado. Misma advertencia que allá: si el
+ * serializer de detalle llegara a divergir de `Order` en algún campo de
+ * cabecera, TypeScript NO lo señalaría, porque este tipo hereda lo que sea que
+ * declare aquel.
+ */
+export interface PedidoDetail extends Order {
+  detalles: PedidoDetalleLinea[];
+}
