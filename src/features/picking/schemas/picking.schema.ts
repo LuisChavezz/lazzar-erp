@@ -1,14 +1,20 @@
 import { z } from "zod";
 
 /**
- * Esquema del formulario de captura de picking.
+ * Esquemas del asistente de captura de picking PARCIAL.
  *
- * Valida los VALORES DEL FORMULARIO — que NO incluyen `operador`: ese campo
- * viaja en el payload de creación (`CreatePickingPayload`) pero se deriva del
- * usuario autenticado al enviar (ver `usePickingForm`), nunca capturado en el
- * formulario. `pedido`/`almacen` usan `0` como centinela de "sin seleccionar"
- * (mismo criterio que el resto de selectores del proyecto, ver
- * `StockTransferForm`).
+ * El flujo son dos pasos:
+ *  - Paso 1 (encabezado): `PickingHeaderSchema` — pedido, almacén, operador,
+ *    prioridad, tipo y observaciones. `operador` se elige de la lista que trae
+ *    el propio onboarding (ver `PickingWizardStep1`), preseleccionado con el
+ *    usuario autenticado por conveniencia cuando aparece en esa lista, pero
+ *    editable como cualquier otro selector. `pedido`/`almacen`/`operador` usan
+ *    `0` como centinela de "sin seleccionar".
+ *  - Paso 2 (tallas): las cantidades por talla se guardan como un mapa
+ *    `pedido_detalle_talla → cantidad` (string decimal) y se validan contra el
+ *    `cantidad_pendiente` real cargado del onboarding en tiempo de envío, no
+ *    solo con Zod (el máximo por línea depende de datos del servidor, que
+ *    además pueden cambiar entre carga y envío).
  */
 
 export const PICKING_PRIORIDADES = ["BAJA", "MEDIA", "ALTA"] as const;
@@ -22,24 +28,28 @@ export const PICKING_TIPOS = [
 ] as const;
 export type PickingTipoForm = (typeof PICKING_TIPOS)[number];
 
-// `prioridad`/`tipo` NO llevan `.default(...)`: `PickingFormSchema` tiene un
-// solo llamador (`usePickingForm`), que siempre parte de
-// `createEmptyPickingFormValues()` — ambos campos ya vienen poblados desde el
-// primer render, así que un default a nivel de schema nunca se activaría.
-export const PickingFormSchema = z.object({
+/** Cantidad mínima aceptada por línea en el backend (`min_value=0.0001`). */
+export const PICKING_MIN_CANTIDAD = 0.0001;
+
+// `prioridad`/`tipo` NO llevan `.default(...)`: siempre parten de
+// `createEmptyPickingHeaderValues()`, así que ya vienen poblados desde el
+// primer render y un default a nivel de schema nunca se activaría.
+export const PickingHeaderSchema = z.object({
   pedido: z.number().int().min(1, "El pedido es requerido"),
   almacen: z.number().int().min(1, "El almacén es requerido"),
+  operador: z.number().int().min(1, "El operador es requerido"),
   prioridad: z.enum(PICKING_PRIORIDADES),
   tipo: z.enum(PICKING_TIPOS),
   observaciones: z.string(),
 });
 
-export type PickingFormValues = z.infer<typeof PickingFormSchema>;
+export type PickingHeaderValues = z.infer<typeof PickingHeaderSchema>;
 
-/** Valores iniciales del formulario — sin pedido/almacén elegidos aún. */
-export const createEmptyPickingFormValues = (): PickingFormValues => ({
+/** Valores iniciales del encabezado — sin pedido/almacén/operador elegidos aún. */
+export const createEmptyPickingHeaderValues = (): PickingHeaderValues => ({
   pedido: 0,
   almacen: 0,
+  operador: 0,
   prioridad: "MEDIA",
   tipo: "ORDER_PICKING",
   observaciones: "",

@@ -67,6 +67,7 @@ const LineasTable = ({ items }: { items: PickingDetalleLine[] }) => {
       head={
         <>
           <th className="px-3 py-2 font-medium">Producto / Variante</th>
+          <th className="px-3 py-2 font-medium">Talla</th>
           <th className="px-3 py-2 font-medium text-right">Solicitada</th>
           <th className="px-3 py-2 font-medium text-right">Asignada</th>
           <th className="px-3 py-2 font-medium text-right">Surtida</th>
@@ -79,6 +80,9 @@ const LineasTable = ({ items }: { items: PickingDetalleLine[] }) => {
         <tr key={linea.id} className="hover:bg-slate-50 dark:hover:bg-white/5 transition-colors">
           <td className="px-3 py-2 text-slate-700 dark:text-slate-200">
             {lineaProductoNombre(linea)}
+          </td>
+          <td className="px-3 py-2 text-slate-600 dark:text-slate-300">
+            {linea.talla_nombre ?? "—"}
           </td>
           <td className="px-3 py-2 text-right tabular-nums font-semibold text-slate-800 dark:text-white">
             {formatExactQuantityValue(linea.cantidad_solicitada)}

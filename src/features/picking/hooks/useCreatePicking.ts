@@ -4,7 +4,7 @@ import { AxiosError } from "axios";
 import { firstDrfMessage } from "@/src/utils/firstDrfMessage";
 import { createPicking } from "../services/actions";
 
-/** Campos del formulario que el backend puede señalar en un `400`. */
+/** Campos del encabezado que el backend puede señalar en un `400`. */
 export type PickingFormErrorField =
   | "pedido"
   | "almacen"
@@ -21,34 +21,81 @@ const FORM_FIELDS: PickingFormErrorField[] = [
 ];
 
 /**
+ * Mensajes de "dato desactualizado": el pendiente por talla cambió entre que se
+ * cargó el formulario y se envió (otro operador/otra pestaña ya surtió). NO son
+ * un error fatal: el Paso 2 recarga el onboarding y deja reintentar.
+ */
+const STALE_DATA_RE = /ya no tiene cantidad pendiente|excede lo pendiente/i;
+
+/**
+ * `picking_detalle` puede llegar en una TERCERA forma que `firstDrfMessage` no
+ * cubre: si el rechazo ocurre a nivel de CAMPO del serializer anidado —p. ej.
+ * `cantidad_asignada` bajo el `min_value=0.0001` o `pedido_detalle_talla` bajo
+ * `min_value=1`, ambos validados por DRF antes de llegar al servicio—, la
+ * respuesta es la forma estándar de un `ListSerializer`: un arreglo con UN
+ * OBJETO POR LÍNEA enviada (`{}` si esa línea es válida, `{campo: ["msg"]}` si
+ * no). Se busca el primer mensaje en esa forma anidada; si no la hay, cae al
+ * comportamiento normal de `firstDrfMessage` (el string plano que arma el
+ * servicio para sus propias validaciones).
+ */
+function firstPickingDetalleMessage(value: unknown): string | undefined {
+  const flat = firstDrfMessage(value);
+  if (flat) return flat;
+  if (!Array.isArray(value)) return undefined;
+  for (const entry of value) {
+    if (!entry || typeof entry !== "object") continue;
+    for (const fieldValue of Object.values(entry as Record<string, unknown>)) {
+      const message = firstDrfMessage(fieldValue);
+      if (message) return message;
+    }
+  }
+  return undefined;
+}
+
+/**
  * Error de creación de picking, normalizado desde el contrato del backend.
  *
- * `operador` NO tiene campo visible en el formulario (se deriva de la sesión,
- * ver `usePickingForm`), así que un error de DRF sobre `operador` no puede
- * atribuirse a ningún input — se vuelca siempre a `formError`/`messages`, en
- * vez de a `fieldErrors`, para que el usuario al menos vea el motivo del
- * rechazo aunque no pueda corregirlo desde un campo.
+ * `operador` NO tiene campo visible en el formulario (se deriva de la sesión),
+ * y `picking_detalle` es un arreglo por talla sin un input único al que atribuir
+ * el error: ambos se vuelcan a `formError`/`messages` (el banner), no a
+ * `fieldErrors`, para que el usuario vea el motivo del rechazo.
+ *
+ * `staleData` marca los errores de pendiente desactualizado, que el Paso 2 trata
+ * recargando datos en lugar de mostrar un error terminal.
  */
 export interface ParsedPickingError {
   formError?: string;
   fieldErrors: Partial<Record<PickingFormErrorField, string>>;
   messages: string[];
+  staleData: boolean;
 }
 
 /**
- * Normaliza el error de `POST /wms/pickings/`. Mismo criterio que
- * `parseStockTransferError` (traspasos), simplificado: sin `transferencia_detalle`
- * porque este endpoint no recibe líneas.
+ * Normaliza el error de `POST /wms/pickings/`. Maneja las DOS formas del
+ * contrato: arreglo plano (`["mensaje"]`, p. ej. validaciones de contexto o de
+ * inventario) y objeto con clave (`{"picking_detalle": ["mensaje"]}` /
+ * `{"pedido": [...]}`).
  *
  * Siempre devuelve un objeto (nunca `null`): ante un error inesperado deja un
  * `formError` genérico para que el banner de error siempre aparezca.
  */
 export function parsePickingError(error: unknown): ParsedPickingError {
-  const result: ParsedPickingError = { fieldErrors: {}, messages: [] };
+  const result: ParsedPickingError = {
+    fieldErrors: {},
+    messages: [],
+    staleData: false,
+  };
+
+  const finalize = (): ParsedPickingError => {
+    result.staleData = result.messages.some((message) =>
+      STALE_DATA_RE.test(message),
+    );
+    return result;
+  };
 
   if (!(error instanceof AxiosError)) {
     result.formError = "Error al registrar el picking.";
-    return result;
+    return finalize();
   }
 
   const data = error.response?.data;
@@ -57,9 +104,10 @@ export function parsePickingError(error: unknown): ParsedPickingError {
   if (typeof data === "string" && data.trim().length > 0) {
     result.formError = data;
     result.messages.push(data);
-    return result;
+    return finalize();
   }
 
+  // Forma 1: arreglo plano `["mensaje"]` (validaciones de contexto/inventario).
   if (Array.isArray(data)) {
     const messages = data
       .map((entry) => firstDrfMessage(entry))
@@ -70,17 +118,18 @@ export function parsePickingError(error: unknown): ParsedPickingError {
     } else {
       result.formError = "Error al registrar el picking.";
     }
-    return result;
+    return finalize();
   }
 
   if (!data || typeof data !== "object") {
     result.formError = error.message || "Error al registrar el picking.";
-    return result;
+    return finalize();
   }
 
+  // Forma 2: objeto con clave.
   const record = data as Record<string, unknown>;
 
-  // ── Errores a nivel operación ────────────────────────────────────────────
+  // ── Errores a nivel operación (banner, sin campo atribuible) ─────────────
   const detail = firstDrfMessage(record.detail);
   if (detail) {
     result.formError = detail;
@@ -99,7 +148,18 @@ export function parsePickingError(error: unknown): ParsedPickingError {
     result.messages.push(operadorMessage);
   }
 
-  // ── Errores de campo (atribuibles a un input visible) ────────────────────
+  // `picking_detalle` es el arreglo de líneas: aquí llegan los errores de
+  // pendiente desactualizado, de línea ajena al pedido, de "al menos una
+  // línea" y (vía `firstPickingDetalleMessage`) los de campo por línea que DRF
+  // rechaza antes del servicio (cantidad/talla inválida). No hay un input
+  // único; va al banner.
+  const detalleMessage = firstPickingDetalleMessage(record.picking_detalle);
+  if (detalleMessage) {
+    result.formError = result.formError ?? detalleMessage;
+    result.messages.push(detalleMessage);
+  }
+
+  // ── Errores de campo (atribuibles a un input del encabezado) ─────────────
   for (const field of FORM_FIELDS) {
     const message = firstDrfMessage(record[field]);
     if (message) {
@@ -108,7 +168,7 @@ export function parsePickingError(error: unknown): ParsedPickingError {
     }
   }
 
-  // Fallback: cualquier otra clave desconocida contribuye al toast.
+  // Fallback: cualquier otra clave desconocida contribuye al banner/toast.
   if (result.messages.length === 0) {
     Object.values(record).forEach((value) => {
       const message = firstDrfMessage(value);
@@ -119,9 +179,8 @@ export function parsePickingError(error: unknown): ParsedPickingError {
     }
   }
 
-  // Garantía final: si no hubo error de operación ni de campo pero sí un
-  // mensaje suelto, se usa como motivo del banner (nunca se deja el motivo
-  // real solo en el toast efímero).
+  // Garantía final: si no hubo error de operación ni de campo pero sí un mensaje
+  // suelto, se usa como motivo del banner.
   if (
     !result.formError &&
     Object.keys(result.fieldErrors).length === 0 &&
@@ -130,14 +189,17 @@ export function parsePickingError(error: unknown): ParsedPickingError {
     result.formError = result.messages[0];
   }
 
-  return result;
+  return finalize();
 }
 
 /**
- * Mutación para crear un picking. `onServerError` recibe el error ya
- * normalizado para que el formulario lo reparta entre el banner y los campos.
+ * Mutación para crear un picking parcial. `onServerError` recibe el error ya
+ * normalizado para que el Paso 2 lo reparta entre el banner, los campos y —si
+ * `staleData`— dispare la recarga del onboarding.
  *
- * Invalida `["pickings"]` (la lista propia del módulo, ver `usePickings`).
+ * Para los errores de dato desactualizado se usa un toast NEUTRO (no de error):
+ * no es un fallo del usuario, solo cambiaron los pendientes. El resto sí sale
+ * como `toast.error`. Invalida `["pickings"]` (la lista del módulo).
  */
 export const useCreatePicking = (onServerError?: (parsed: ParsedPickingError) => void) => {
   const queryClient = useQueryClient();
@@ -151,6 +213,13 @@ export const useCreatePicking = (onServerError?: (parsed: ParsedPickingError) =>
     onError: (error) => {
       const parsed = parsePickingError(error);
       onServerError?.(parsed);
+
+      if (parsed.staleData) {
+        toast("Las cantidades pendientes cambiaron; se actualizaron los datos. Revisa y reintenta.", {
+          icon: "🔄",
+        });
+        return;
+      }
 
       const toastMessage =
         parsed.messages.length > 0

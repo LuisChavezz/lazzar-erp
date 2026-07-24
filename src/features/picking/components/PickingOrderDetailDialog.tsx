@@ -12,10 +12,7 @@ import {
 } from "@/src/components/DetailDialogPrimitives";
 import { formatMoneyValue } from "@/src/utils/formatCurrency";
 import { usePedidoDetail } from "@/src/features/orders/hooks/usePedidoDetail";
-import type {
-  Order,
-  PedidoDetalleLinea,
-} from "@/src/features/orders/interfaces/order.interface";
+import type { PedidoDetalleLinea } from "@/src/features/orders/interfaces/order.interface";
 
 /**
  * Líneas del pedido, agrupadas por producto + color con sus tallas anidadas.
@@ -116,20 +113,23 @@ function PedidoLineas({ detalles }: { detalles: PedidoDetalleLinea[] }) {
 }
 
 interface PickingOrderDetailDialogProps {
-  /** Renglón del listado ya en memoria — da id para el fetch y folio/cliente
-   *  para el título mientras el detalle carga. */
-  order: Order;
+  /** Forma mínima del pedido elegido (la que devuelve el onboarding): basta con
+   *  `id` para el fetch y `folio`/`cliente_nombre` para el título mientras el
+   *  detalle carga. No exige el `Order` completo del catálogo. */
+  order: { id: number; folio: string; cliente_nombre?: string | null };
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
 /**
- * Diálogo apilado de "Ver detalle" del pedido seleccionado en el formulario de
- * picking. Lee `GET /ventas/pedidos/{id}/` directamente (`usePedidoDetail`) —
- * cabecera Y líneas producto+color+tallas, con o sin cotización ligada — en
- * vez del rodeo anterior vía `QuoteDetails`/cotización.
+ * Diálogo apilado de "Ver detalle" del pedido seleccionado en el Paso 1 del
+ * asistente de picking. Lee `GET /ventas/pedidos/{id}/` directamente
+ * (`usePedidoDetail`) — cabecera Y líneas producto+color+tallas con precios,
+ * SKU y datos comerciales que el onboarding NO devuelve. Es COMPLEMENTARIO al
+ * Paso 2 (que es la fuente accionable del pendiente por talla): aquí el operador
+ * consulta el contexto descriptivo/comercial del pedido antes de surtir.
  *
- * Se monta SOLO al abrirse (ver `PickingForm`) y el hook además gatea con
+ * Se monta SOLO al abrirse (ver `PickingWizardStep1`) y el hook además gatea con
  * `enabled: id > 0`, así que la petición no existe hasta que el usuario pulsa
  * "Ver detalle del pedido" — cero fetch anticipado.
  */
@@ -148,7 +148,7 @@ export function PickingOrderDetailDialog({
       title={
         <DialogHeader
           title={`Detalles del pedido ${order.folio}`}
-          subtitle={order.cliente_nombre || order.cliente_razon_social || "Pedido"}
+          subtitle={order.cliente_nombre || "Pedido"}
           statusColor="sky"
         />
       }
