@@ -40,8 +40,15 @@ export function RadixThemeWrapper({ children }: { children: React.ReactNode }) {
     return () => mq.removeEventListener('change', handleChange);
   }, [syncSystemTheme]);
 
+  /*
+   * accentColor/grayColor se fijan explícitamente (antes eran los valores por
+   * defecto de Radix: accent "indigo", gray "auto" → que para indigo resuelve
+   * a "slate"). Fijarlos hace determinista el conjunto de escalas de color que
+   * necesita el import granular de `src/styles/radix-theme.css`: si en el
+   * futuro se cambia el accent aquí, hay que añadir su escala en ese archivo.
+   */
   return (
-    <Theme appearance={resolvedTheme}>
+    <Theme appearance={resolvedTheme} accentColor="indigo" grayColor="slate">
       {children}
     </Theme>
   );

@@ -1,10 +1,13 @@
 /**
  * Layout de autenticación — solo envuelve los hijos con el estilo visual.
  *
- * La redirección "si ya hay sesión → ir al dashboard" se maneja en cada
- * página hija (ej. login/page.tsx) para evitar el ciclo infinito:
- *   withAuth middleware → /auth/login → layout redirect("/") → middleware → ...
- * El middleware garantiza que rutas protegidas requieran sesión válida.
+ * La redirección "si ya hay sesión → ir al dashboard" vive en el proxy/
+ * middleware (`src/proxy.ts`), NO en este layout ni en la página. Hacerlo en el
+ * edge evita el ciclo infinito que causaría un redirect en el layout/página
+ * (withAuth → /auth/login → redirect("/") → withAuth → ...) y permite que
+ * `login/page.tsx` sea estática (sin `getServerSession` bloqueante). `withAuth`
+ * deja pasar a los usuarios NO autenticados en /auth/login sin redirigir, así
+ * que este layout siempre puede renderizar el formulario de login.
  */
 export default function AuthLayout({
   children,

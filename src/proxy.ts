@@ -1,5 +1,6 @@
-import { withAuth } from "next-auth/middleware";
-import { NextResponse } from "next/server";
+import { withAuth, type NextRequestWithAuth } from "next-auth/middleware";
+import { getToken } from "next-auth/jwt";
+import { NextResponse, type NextRequest, type NextFetchEvent } from "next/server";
 import { hasPermission } from "./utils/permissions";
 import { routePermissions } from "./constants/routePermissions";
 import { authSecret } from "./lib/authSecret";
@@ -7,27 +8,29 @@ import { authSecret } from "./lib/authSecret";
 /**
  * Proxy de autenticación y autorización (Next.js 16 — antes "middleware").
  *
- * Se pasa explícitamente el `secret` para garantizar que `withAuth` use la
- * misma clave que `getServerSession(authOptions)` en los Server Components.
- * Sin esto, si `NEXTAUTH_SECRET` no está definido en el entorno, el proxy
- * intenta verificar el JWT con `undefined` mientras que `getServerSession`
- * usa otro valor, lo que provoca un ciclo infinito de redirecciones:
- * proxy → /auth/login → layout → / → proxy.
+ * Se pasa explícitamente el `secret` (tanto a `withAuth` como a `getToken`) para
+ * garantizar que use la misma clave que `getServerSession(authOptions)` en los
+ * Server Components. Sin esto, si `NEXTAUTH_SECRET` no está definido, se verifica
+ * el JWT con `undefined` y se produce un ciclo infinito de redirecciones. La
+ * resolución del secreto vive en `./lib/authSecret` para compartir exactamente
+ * la misma lógica y valor.
  *
- * La resolución del secreto vive en `./lib/authSecret` para que proxy y
- * `authOptions` compartan exactamente la misma lógica y el mismo valor.
+ * `/auth/login` se maneja en el wrapper de abajo, NO dentro de `withAuth`:
+ * `withAuth` hace un bypass temprano de la página de signIn (ver
+ * next-auth/next/middleware.js) y nunca ejecuta su función interna para esa
+ * ruta, así que el redirect "ya autenticado → /" no puede vivir ahí.
  */
-export default withAuth(
-  function proxy(req) {
-
-    const hasWorkspace = req.cookies.has("erp_workspace_id"); // Verificar si hay workspace seleccionado
-    const isSelectBranchPage = req.nextUrl.pathname.startsWith("/select-branch"); // Verificar si es la página de selección de sucursal
+const authMiddleware = withAuth(
+  function onAuthorized(req) {
 
     const pathname = req.nextUrl.pathname; // Obtener la ruta actual
+
+    const hasWorkspace = req.cookies.has("erp_workspace_id"); // Verificar si hay workspace seleccionado
+    const isSelectBranchPage = pathname.startsWith("/select-branch"); // Verificar si es la página de selección de sucursal
     const rule = routePermissions.find( // Encontrar la regla de permisos que coincida con la ruta actual
       ({ prefix }) => pathname === prefix || pathname.startsWith(`${prefix}/`)
     );
-    
+
     // Redirigir a la página de selección de sucursal si no hay workspace y no es la página de selección
     if (!hasWorkspace && !isSelectBranchPage) {
       return NextResponse.redirect(new URL("/select-branch", req.url));
@@ -44,7 +47,7 @@ export default withAuth(
         return NextResponse.redirect(new URL("/", req.url));
       }
     }
-    
+
     return NextResponse.next();
   },
   {
@@ -56,9 +59,47 @@ export default withAuth(
   }
 );
 
+/**
+ * Wrapper del middleware.
+ *
+ * Para `/auth/login` resolvemos aquí el redirect "usuario ya autenticado → /"
+ * porque `withAuth` hace bypass de la página de signIn. Se usa `getToken`, que
+ * solo decodifica/verifica el JWT de la cookie de sesión en el edge (sin llamada
+ * de red ni cold start de serverless) — es la misma comprobación que `withAuth`
+ * hace internamente para el resto de rutas. Esto reemplaza el `getServerSession`
+ * bloqueante que antes vivía en `login/page.tsx`, permitiendo que esa página sea
+ * estática (prerenderizada/CDN). Los usuarios NO autenticados pasan y reciben el
+ * HTML estático del login sin bucle.
+ *
+ * El resto de rutas se delega a `withAuth` sin cambios (workspace + permisos).
+ */
+export default function proxy(req: NextRequest, event: NextFetchEvent) {
+  const { pathname } = req.nextUrl;
+
+  // Comparación exacta (no `startsWith`): el matcher de abajo solo registra la
+  // ruta exacta "/auth/login" (sin `/:path*`), así que el middleware nunca se
+  // invoca para sub-rutas — un `startsWith` aquí sugeriría falsamente que sí.
+  // Si se añade una sub-ruta bajo /auth/login que necesite este mismo redirect,
+  // hay que actualizar AMBOS: esta condición y el matcher.
+  if (pathname === "/auth/login") {
+    return getToken({ req, secret: authSecret }).then((token) =>
+      token
+        ? NextResponse.redirect(new URL("/", req.url))
+        : NextResponse.next()
+    );
+  }
+
+  // `withAuth` adjunta `req.nextauth` en runtime; el cast solo satisface el tipo
+  // `NextRequestWithAuth` que exige su firma.
+  return authMiddleware(req as NextRequestWithAuth, event);
+}
+
 export const config = {
   matcher: [ // Rutas protegidas por autenticación
     "/",
+    // /auth/login entra en el matcher para redirigir a usuarios YA autenticados
+    // hacia "/" (ver wrapper). A los NO autenticados se les sirve el login.
+    "/auth/login",
     "/select-branch/:path*",
     "/config/:path*",
     "/system/:path*",

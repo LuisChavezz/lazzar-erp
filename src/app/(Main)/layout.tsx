@@ -1,4 +1,4 @@
-import "@radix-ui/themes/styles.css";
+import "@/src/styles/radix-theme.css";
 
 import { Header } from "@/src/components/Header";
 import Sidebar from "@/src/components/Sidebar";

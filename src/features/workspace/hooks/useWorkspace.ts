@@ -42,10 +42,19 @@ export const useWorkspace = () => {
     : loginRedirects.find((r) => permissions.includes(r.permission))?.path ?? "/";
 
   const redirectAfterWorkspaceSelection = () => {
-    setTimeout(() => {
-      router.refresh();
-      router.push(redirectPath);
-    }, 800);
+    /*
+     * El workspace ya quedó escrito de forma SÍNCRONA antes de llegar aquí
+     * (store de Zustand + cookie vía `document.cookie`), así que se navega de
+     * inmediato. Se eliminó:
+     *   - un `setTimeout(…, 800)` artificial que añadía ~0.8s de stall percibido
+     *     en cada login sin compensar ninguna dependencia asíncrona real, y
+     *   - un `router.refresh()` redundante que re-renderizaba /select-branch
+     *     (la ruta que se abandona): la propia `router.push` ya atraviesa el
+     *     middleware con la cookie nueva y el destino no depende de la cookie de
+     *     workspace en el servidor (los datos por sucursal los refresca TanStack
+     *     Query en cliente), por lo que nadie consume ese refresh.
+     */
+    router.push(redirectPath);
   };
 
   // Fetch branches based on selected company (custom hook)

@@ -1,4 +1,4 @@
-import "@radix-ui/themes/styles.css";
+import "@/src/styles/radix-theme.css";
 
 import { getServerSession } from "next-auth";
 import { SessionThemeProvider } from "@/src/app/SessionThemeProvider";

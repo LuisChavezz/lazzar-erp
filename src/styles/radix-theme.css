@@ -1,0 +1,37 @@
+/*
+ * Import granular de Radix Themes (reemplaza a `@radix-ui/themes/styles.css`).
+ *
+ * `styles.css` (≈669 KB en el chunk compilado) es una concatenación plana de
+ * tres capas: tokens + components + utilities. La capa `tokens` incluye TODAS
+ * las ~30 escalas de color de Radix (light/dark/alpha/P3), de las cuales esta
+ * app solo usa unas pocas en sus componentes Radix. Aquí se sustituye la capa
+ * de tokens completa por `base.css` + únicamente las escalas realmente
+ * referenciadas en runtime, y se conservan `components.css` y `utilities.css`
+ * intactas para no arriesgar ninguna regresión visual de componentes.
+ *
+ * Escalas incluidas y por qué (inventario real vía grep de `color=`/
+ * `confirmColor=` en todo `src/`, no solo del uso "por defecto"):
+ *   - indigo → accent por defecto del <Theme> (RadixThemeWrapper lo fija).
+ *   - slate  → gray "auto" emparejado con indigo (RadixThemeWrapper lo fija).
+ *   - gray   → usos explícitos de color="gray" (p.ej. botón Cancelar en ConfirmDialog).
+ *   - red    → confirmColor="red" (valor por defecto y explícito de ConfirmDialog).
+ *   - blue   → confirmColor="blue" (OperationsQuoteColumns, PurchaseOrderColumns,
+ *              QuoteCardActions, QuoteKanbanBoard).
+ *   - green  → confirmColor="green" (OperationsQuoteColumns, PendingApprovalQueue
+ *              vía confirmColor={type === "approve" ? "green" : "red"}).
+ *
+ * IMPORTANTE: si a un componente Radix se le pasa un `color`/`accentColor`
+ * nuevo que no esté en esta lista, hay que añadir aquí su escala
+ * (`@import "@radix-ui/themes/tokens/colors/<color>.css";`) o ese componente
+ * se renderizará sin color (`--accent-9` etc. quedan sin definir). El orden
+ * (tokens → components → utilities) replica el de styles.css.
+ */
+@import "@radix-ui/themes/tokens/base.css";
+@import "@radix-ui/themes/tokens/colors/indigo.css";
+@import "@radix-ui/themes/tokens/colors/slate.css";
+@import "@radix-ui/themes/tokens/colors/gray.css";
+@import "@radix-ui/themes/tokens/colors/red.css";
+@import "@radix-ui/themes/tokens/colors/blue.css";
+@import "@radix-ui/themes/tokens/colors/green.css";
+@import "@radix-ui/themes/components.css";
+@import "@radix-ui/themes/utilities.css";
