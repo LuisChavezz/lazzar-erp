@@ -1,55 +1,52 @@
 "use client";
 
-import { PlusIcon } from "@/src/components/Icons";
+import { PlusIcon } from "./Icons";
+import { sanitizeDecimalInput } from "../utils/decimal";
 
 /**
- * Selector de cantidad a surtir por talla — versión de picking del
- * `QuantitySelector` compartido, que NO se reutiliza porque este necesita dos
- * cosas que aquel no ofrece: TECHO por línea (`max = cantidad_pendiente`, para
- * no exceder lo pendiente ni provocar el 400 del backend) y DECIMALES (el
- * contrato admite `cantidad_asignada` con hasta 4 decimales). El valor viaja
- * como string ("" = "no surtir esta talla en esta entrega").
+ * Selector de cantidad decimal con TECHO (`max`) — extraído de las copias
+ * casi idénticas que picking (`PickingTallaQuantityInput`, surtido por talla)
+ * y packing (`PackingLineQuantityInput`, empaque por línea) mantenían por
+ * separado. No se generaliza a partir de `QuantitySelector` (el stepper
+ * compartido genérico): aquel es entero, sin techo, pensado para cantidades
+ * de captura libre (p. ej. número de piezas de una orden) — este necesita
+ * DECIMALES (hasta `decimalPlaces`, 4 por contrato en ambos consumidores
+ * actuales) y un TECHO por línea (`max = lo pendiente`, para no exceder lo
+ * disponible ni provocar un 400 del backend). El valor viaja como string
+ * ("" = "no capturar esta línea en este envío").
  *
  * El backend siempre valida el pendiente, pero clampar aquí evita el ida y
- * vuelta en el caso normal. Una talla sin pendiente (`max <= 0`) se muestra
+ * vuelta en el caso normal. Una línea sin pendiente (`max <= 0`) se muestra
  * deshabilitada en lugar de ocultarse.
  */
-interface PickingTallaQuantityInputProps {
+interface DecimalQuantityInputProps {
   value: string;
-  /** Cantidad pendiente para esta talla — techo del input. */
+  /** Techo del input — lo pendiente real de la línea (nombre del campo de origen varía por consumidor). */
   max: number;
   disabled?: boolean;
   onChange: (next: string) => void;
   label?: string;
+  /** Decimales aceptados (`decimal_places` del backend). Ambos consumidores actuales usan 4. */
+  decimalPlaces?: number;
 }
 
-/**
- * Deja solo dígitos, UN punto decimal y como máximo 4 decimales (el backend usa
- * `decimal_places=4`). Ese tope de 4 decimales además impone de facto el piso
- * `min_value=0.0001`: el menor positivo representable con 4 decimales ES 0.0001,
- * así que el input nunca puede sostener un valor positivo por debajo del mínimo.
- */
-function sanitizeDecimal(raw: string): string {
-  const cleaned = raw.replace(/[^0-9.]/g, "");
-  const firstDot = cleaned.indexOf(".");
-  if (firstDot === -1) return cleaned;
-  const intPart = cleaned.slice(0, firstDot);
-  const fracPart = cleaned.slice(firstDot + 1).replace(/\./g, "").slice(0, 4);
-  return `${intPart}.${fracPart}`;
-}
-
-export function PickingTallaQuantityInput({
+export function DecimalQuantityInput({
   value,
   max,
   disabled = false,
   onChange,
-  label = "Cantidad a surtir",
-}: PickingTallaQuantityInputProps) {
+  label = "Cantidad",
+  decimalPlaces = 4,
+}: DecimalQuantityInputProps) {
   const isDisabled = disabled || max <= 0;
   const current = Number.parseFloat(value) || 0;
 
   const emit = (next: number) => {
-    const clamped = Math.min(Math.max(0, next), max);
+    // `toFixed` antes de `String`: sumar/restar 1 sobre un decimal arrastra
+    // ruido binario (`1.1 - 1` → 0.10000000000000009), que sin recortar se
+    // escribiría tal cual en el input mientras el envío sí lo redondea a
+    // `decimalPlaces` — lo MOSTRADO dejaría de coincidir con lo ENVIADO.
+    const clamped = Number(Math.min(Math.max(0, next), max).toFixed(decimalPlaces));
     onChange(clamped <= 0 ? "" : String(clamped));
   };
 
@@ -57,8 +54,8 @@ export function PickingTallaQuantityInput({
   const increment = () => emit(current + 1);
 
   const handleText = (raw: string) => {
-    const sanitized = sanitizeDecimal(raw);
-    if (sanitized === "" || sanitized === ".") {
+    const sanitized = sanitizeDecimalInput(raw, decimalPlaces);
+    if (sanitized === "") {
       onChange("");
       return;
     }

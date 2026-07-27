@@ -102,6 +102,7 @@ import {
   Kanban,
   Factory,
   BookUser,
+  Boxes,
   ArrowUpDown,
   Scissors,
   Route,
@@ -214,6 +215,10 @@ export const PackageXIcon = (props: LucideProps) => <PackageX {...props} />;
 export const SortIcon = (props: LucideProps) => <ArrowUpDown {...props} />;
 export const ScissorsIcon = (props: LucideProps) => <Scissors {...props} />;
 export const RouteIcon = (props: LucideProps) => <Route {...props} />;
+// `Boxes` (no `PackageOpen`): ese glifo ya lo exporta `ProductVariantsIcon` y
+// se usa dentro de /wms/stock, así que reutilizarlo dejaría dos destinos
+// distintos del mismo módulo WMS indistinguibles por ícono.
+export const PackingIcon = (props: LucideProps) => <Boxes {...props} />;
 export const ReceiptIcon = (props: LucideProps) => <Receipt {...props} />;
 export const PrinterIcon = (props: LucideProps) => <Printer {...props} />;
 export const ClipboardListIcon = (props: LucideProps) => <ClipboardList {...props} />;

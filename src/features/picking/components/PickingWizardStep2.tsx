@@ -6,13 +6,13 @@ import {
 } from "@/src/components/FormButtons";
 import { FormInput } from "@/src/components/FormInput";
 import { Loader } from "@/src/components/Loader";
+import { DecimalQuantityInput } from "@/src/components/DecimalQuantityInput";
 import {
   ExclamationTriangleIcon,
   InfoIcon,
   LayersIcon,
 } from "@/src/components/Icons";
 import { formatExactQuantityValue } from "@/src/utils/formatCurrency";
-import { PickingTallaQuantityInput } from "./PickingTallaQuantityInput";
 import { usePickingStep2Form } from "../hooks/usePickingStep2Form";
 import type { PickingHeaderValues } from "../schemas/picking.schema";
 import type { PickingOnboardingTalla } from "../interfaces/picking-onboarding.interface";
@@ -211,7 +211,7 @@ export function PickingWizardStep2({
                           </p>
                         </div>
 
-                        <PickingTallaQuantityInput
+                        <DecimalQuantityInput
                           value={qtyValue}
                           max={pendiente}
                           disabled={sinPendiente}

@@ -19,6 +19,7 @@ const ROUTE_TITLES: Record<string, string> = {
   "/wms/stock": "Existencias",
   "/wms/receipts": "Recepciones",
   "/wms/locations": "Ubicaciones",
+  "/wms/packing": "Packing",
   "/finance/invoicing": "Facturación",
   "/finance/accounts-payable": "CxP (Pagar)",
   "/finance/accounts-receivable": "CxC (Cobrar)",
