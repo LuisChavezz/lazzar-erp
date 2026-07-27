@@ -19,8 +19,16 @@ export default function CompanyGrid({
       className={`
         grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 transition-all duration-500 ease-in-out w-full
         ${
+          /*
+           * Al salir se posiciona con `top-0 left-0` (misma técnica que
+           * BranchGrid) y NUNCA con `inset-0`: fijar también `bottom-0`
+           * forzaría la altura del grid a la del contenedor padre —que en ese
+           * momento ya la marca BranchGrid—, estirando las filas y, con ellas,
+           * las tarjetas. Con la altura en auto conservan sus proporciones
+           * durante todo el fundido.
+           */
           selectedCompanyId
-            ? "opacity-0 pointer-events-none absolute inset-0"
+            ? "opacity-0 pointer-events-none absolute top-0 left-0"
             : "opacity-100 relative"
         }
       `}
