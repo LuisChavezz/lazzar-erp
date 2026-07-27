@@ -5,15 +5,15 @@ import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { isInitialLoadError } from "@/src/utils/isInitialLoadError";
 import { packingColumns } from "./PackingColumns";
 import { PackingForm } from "./PackingForm";
+import { PackingStats } from "./PackingStats";
 import { usePackings } from "../hooks/usePackings";
 
 /**
- * Vista de Packing: el listado (`GET /wms/packings/`) más la captura de un
- * nuevo packing (`POST /wms/packings/`, ver `PackingForm`) en el toolbar. El
- * detalle de fila vive en la columna de acciones ("Ver Detalles", ver
- * `PackingColumns`/`PackingDetailDialog`), sin fetch propio. Sin KPIs —pieza
- * de una tarea futura separada, igual que ocurrió con `PickingStats` en su
- * momento—.
+ * Vista de Packing: KPIs del listado (`PackingStats`) más el listado propio
+ * (`GET /wms/packings/`), con la captura de un nuevo packing
+ * (`POST /wms/packings/`, ver `PackingForm`) en el toolbar. El detalle de fila
+ * vive en la columna de acciones ("Ver Detalles", ver
+ * `PackingColumns`/`PackingDetailDialog`), sin fetch propio.
  *
  * `DataTable` se monta SIEMPRE (no se sustituye por un skeleton/ErrorState en
  * un ternario propio): recibe `isLoading`/`isError` y alterna internamente
@@ -26,24 +26,33 @@ export function PackingView() {
 
   // Solo se trata como error "de pantalla completa" cuando la consulta nunca
   // cargó con éxito; un refetch fallido con datos en caché conserva la tabla
-  // y avisa por toast (ver `usePackings`). Mismo criterio que `PickingView`.
+  // (y los KPIs) y avisa por toast (ver `usePackings`). Mismo criterio que
+  // `PickingView`.
   const showError = isInitialLoadError(isError, hasLoaded);
 
   return (
-    <DataTable
-      columns={packingColumns}
-      data={packings}
-      searchPlaceholder="Buscar folio, picking, pedido u operador..."
-      getRowId={(row) => String(row.id)}
-      onRefetch={refetch}
-      isRefetching={isFetching}
-      emptyMessage="No hay packings registrados."
-      actionButton={<PackingForm />}
-      isLoading={isLoading}
-      isError={showError}
-      errorTitle="Error al cargar los packings"
-      errorMessage={extractErrorMessage(error, "No se pudo cargar la información.")}
-      loadingAriaLabel="Cargando packings"
-    />
+    <div className="space-y-6">
+      {/* KPIs: ocultos durante la carga INICIAL y ante un error de carga —no
+          hay datos que resumir—, igual que `PickingStats` en `PickingView`.
+          `packings` arranca en `[]`, así que sin este gate las tarjetas
+          mostrarían ceros que se leerían como datos reales. */}
+      {!isLoading && !showError && <PackingStats items={packings} />}
+
+      <DataTable
+        columns={packingColumns}
+        data={packings}
+        searchPlaceholder="Buscar folio, picking, pedido u operador..."
+        getRowId={(row) => String(row.id)}
+        onRefetch={refetch}
+        isRefetching={isFetching}
+        emptyMessage="No hay packings registrados."
+        actionButton={<PackingForm />}
+        isLoading={isLoading}
+        isError={showError}
+        errorTitle="Error al cargar los packings"
+        errorMessage={extractErrorMessage(error, "No se pudo cargar la información.")}
+        loadingAriaLabel="Cargando packings"
+      />
+    </div>
   );
 }

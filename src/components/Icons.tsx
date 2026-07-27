@@ -110,6 +110,9 @@ import {
   Printer,
   PanelLeftClose,
   PanelLeftOpen,
+  Box,
+  Weight,
+  Container,
 } from "lucide-react";
 
 // ─── Tipos comunes ────────────────────────────────────────────────────────────
@@ -221,6 +224,9 @@ export const RouteIcon = (props: LucideProps) => <Route {...props} />;
 export const PackingIcon = (props: LucideProps) => <Boxes {...props} />;
 export const ReceiptIcon = (props: LucideProps) => <Receipt {...props} />;
 export const PrinterIcon = (props: LucideProps) => <Printer {...props} />;
+export const BoxIcon = (props: LucideProps) => <Box {...props} />;
+export const WeightIcon = (props: LucideProps) => <Weight {...props} />;
+export const VolumeIcon = (props: LucideProps) => <Container {...props} />;
 export const ClipboardListIcon = (props: LucideProps) => <ClipboardList {...props} />;
 export const FileCode2Icon = (props: LucideProps) => <FileCode2 {...props} />;
 
