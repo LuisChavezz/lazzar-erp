@@ -7,14 +7,12 @@ import { createPicking } from "../services/actions";
 /** Campos del encabezado que el backend puede señalar en un `400`. */
 export type PickingFormErrorField =
   | "pedido"
-  | "almacen"
   | "prioridad"
   | "tipo"
   | "observaciones";
 
 const FORM_FIELDS: PickingFormErrorField[] = [
   "pedido",
-  "almacen",
   "prioridad",
   "tipo",
   "observaciones",
@@ -56,8 +54,9 @@ function firstPickingDetalleMessage(value: unknown): string | undefined {
  * Error de creación de picking, normalizado desde el contrato del backend.
  *
  * `operador` NO tiene campo visible en el formulario (se deriva de la sesión),
- * y `picking_detalle` es un arreglo por talla sin un input único al que atribuir
- * el error: ambos se vuelcan a `formError`/`messages` (el banner), no a
+ * `almacen` tampoco (id fijo — ver `PRODUCTO_TERMINADO_ALMACEN_ID`), y
+ * `picking_detalle` es un arreglo por talla sin un input único al que atribuir
+ * el error: los tres se vuelcan a `formError`/`messages` (el banner), no a
  * `fieldErrors`, para que el usuario vea el motivo del rechazo.
  *
  * `staleData` marca los errores de pendiente desactualizado, que el Paso 2 trata
@@ -146,6 +145,14 @@ export function parsePickingError(error: unknown): ParsedPickingError {
   if (operadorMessage) {
     result.formError = result.formError ?? operadorMessage;
     result.messages.push(operadorMessage);
+  }
+
+  // `almacen` tampoco tiene campo en la UI (id fijo, ver
+  // `PRODUCTO_TERMINADO_ALMACEN_ID` en `usePickingStep2Form.ts`) — mismo trato.
+  const almacenMessage = firstDrfMessage(record.almacen);
+  if (almacenMessage) {
+    result.formError = result.formError ?? almacenMessage;
+    result.messages.push(almacenMessage);
   }
 
   // `picking_detalle` es el arreglo de líneas: aquí llegan los errores de

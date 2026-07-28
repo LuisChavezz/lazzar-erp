@@ -45,7 +45,6 @@ interface PickingWizardStep1Props {
 export function PickingWizardStep1({ initialValues, onNext }: PickingWizardStep1Props) {
   const { data, isLoading, isError } = usePickingOnboarding();
   const pedidos = data?.pedidos ?? [];
-  const almacenes = data?.almacenes ?? [];
   // Memoizado: sin esto, `data?.operadores ?? []` crea un arreglo nuevo en cada
   // render, lo que invalidaría la dependencia del `useEffect` de preselección de
   // abajo en cada render (aunque el `useRef` lo protege de re-ejecutarse, el
@@ -93,10 +92,9 @@ export function PickingWizardStep1({ initialValues, onNext }: PickingWizardStep1
     },
   });
 
-  // Suscripción reactiva al pedido/almacén/operador elegidos (los hooks van
-  // SIEMPRE antes de cualquier retorno temprano — Rules of Hooks).
+  // Suscripción reactiva al pedido/operador elegidos (los hooks van SIEMPRE
+  // antes de cualquier retorno temprano — Rules of Hooks).
   const selectedPedidoId = useStore(form.store, (state) => state.values.pedido);
-  const selectedAlmacenId = useStore(form.store, (state) => state.values.almacen);
   const selectedOperadorId = useStore(form.store, (state) => state.values.operador);
   const selectedPedido = pedidos.find((p) => p.id === selectedPedidoId) ?? null;
 
@@ -125,20 +123,12 @@ export function PickingWizardStep1({ initialValues, onNext }: PickingWizardStep1
     if (match) form.setFieldValue("operador", match.id);
   }, [operadores, session?.user?.id, sessionStatus, form]);
 
-  // Los almacenes se acotan a la sucursal del pedido elegido — así se evita el
-  // rechazo "el almacén no pertenece a la sucursal del pedido". El backend ya
-  // devuelve solo los almacenes de las sucursales del usuario; este filtro los
-  // reduce a los de ESTE pedido (comparación de ids de sucursal, no de códigos).
-  const almacenOptions = selectedPedido
-    ? almacenes.filter((a) => a.sucursal === selectedPedido.sucursal)
-    : [];
-
   if (isLoading) {
     return (
       <Loader
         className="py-12"
         title="Cargando datos"
-        message="Cargando pedidos y almacenes..."
+        message="Cargando pedidos y operadores..."
       />
     );
   }
@@ -158,7 +148,6 @@ export function PickingWizardStep1({ initialValues, onNext }: PickingWizardStep1
 
   const missingItems: string[] = [];
   if (pedidos.length === 0) missingItems.push("Al menos un pedido autorizado o en proceso");
-  if (almacenes.length === 0) missingItems.push("Al menos un almacén disponible");
   if (operadores.length === 0) missingItems.push("Al menos un operador disponible");
 
   if (missingItems.length > 0) {
@@ -188,7 +177,7 @@ export function PickingWizardStep1({ initialValues, onNext }: PickingWizardStep1
     );
   }
 
-  const canAdvance = selectedPedidoId > 0 && selectedAlmacenId > 0 && selectedOperadorId > 0;
+  const canAdvance = selectedPedidoId > 0 && selectedOperadorId > 0;
 
   return (
     <>
@@ -207,12 +196,12 @@ export function PickingWizardStep1({ initialValues, onNext }: PickingWizardStep1
             </div>
             <div>
               <h3 className="font-semibold text-slate-900 dark:text-white text-sm">Detalles del picking</h3>
-              <p className="text-[11px] text-slate-500">Pedido a surtir y almacén de origen</p>
+              <p className="text-[11px] text-slate-500">Pedido a surtir y operador asignado</p>
             </div>
           </div>
 
           <div className="p-6 space-y-5">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               <div>
                 <form.Field name="pedido">
                   {(field) => (
@@ -225,16 +214,6 @@ export function PickingWizardStep1({ initialValues, onNext }: PickingWizardStep1
                         const nextId = Number.isNaN(next) ? 0 : next;
                         field.handleChange(nextId);
                         clearError("pedido");
-                        // Si el almacén elegido ya no pertenece a la sucursal del
-                        // nuevo pedido, se resetea para forzar una elección válida.
-                        const pedido = pedidos.find((p) => p.id === nextId);
-                        const currentAlmacen = form.getFieldValue("almacen");
-                        if (pedido && currentAlmacen) {
-                          const almacen = almacenes.find((a) => a.id === currentAlmacen);
-                          if (!almacen || almacen.sucursal !== pedido.sucursal) {
-                            form.setFieldValue("almacen", 0);
-                          }
-                        }
                       }}
                       onBlur={field.handleBlur}
                       error={getError("pedido")}
@@ -266,37 +245,6 @@ export function PickingWizardStep1({ initialValues, onNext }: PickingWizardStep1
                   </button>
                 )}
               </div>
-
-              <form.Field name="almacen">
-                {(field) => (
-                  <FormSelect
-                    label="Almacén Origen"
-                    name={field.name}
-                    value={field.state.value}
-                    disabled={!selectedPedido}
-                    onChange={(event) => {
-                      const next = Number(event.target.value);
-                      field.handleChange(Number.isNaN(next) ? 0 : next);
-                      clearError("almacen");
-                    }}
-                    onBlur={field.handleBlur}
-                    error={getError("almacen")}
-                  >
-                    <option value="0" disabled>
-                      {selectedPedido ? "Seleccionar almacén..." : "Selecciona un pedido primero"}
-                    </option>
-                    {almacenOptions.map((a) => (
-                      <option
-                        key={a.id}
-                        value={a.id}
-                        className="bg-white dark:bg-zinc-900 text-slate-900 dark:text-white"
-                      >
-                        {a.codigo} - {a.nombre}
-                      </option>
-                    ))}
-                  </FormSelect>
-                )}
-              </form.Field>
 
               <form.Field name="operador">
                 {(field) => (

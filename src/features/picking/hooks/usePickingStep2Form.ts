@@ -10,6 +10,14 @@ import type {
 } from "../interfaces/picking.interface";
 import type { PickingOnboardingTalla } from "../interfaces/picking-onboarding.interface";
 
+/**
+ * Id del almacén "Producto Terminado" — confirmado estable en todos los
+ * ambientes (local/staging/producción). El Paso 1 ya no deja elegir almacén
+ * (ver `PickingWizardStep1`); todo picking se registra contra este almacén
+ * fijo, tanto en el payload de creación como en el resumen del Paso 2.
+ */
+const PRODUCTO_TERMINADO_ALMACEN_ID = 1;
+
 interface UsePickingStep2FormParams {
   header: PickingHeaderValues;
   onSuccess: () => void;
@@ -54,6 +62,8 @@ function normalizeCantidad(raw: string, pendiente: number): string {
 /**
  * Construye el body de creación a partir del encabezado (que YA incluye
  * `operador`, elegido en el Paso 1 — ver `PickingWizardStep1`) + las líneas.
+ * `almacen` NO viene del encabezado: siempre es el id fijo
+ * `PRODUCTO_TERMINADO_ALMACEN_ID`.
  */
 function buildPickingPayload(
   header: PickingHeaderValues,
@@ -62,7 +72,7 @@ function buildPickingPayload(
   const payload: CreatePickingPayload = {
     pedido: header.pedido,
     operador: header.operador,
-    almacen: header.almacen,
+    almacen: PRODUCTO_TERMINADO_ALMACEN_ID,
     prioridad: header.prioridad,
     tipo: header.tipo,
     picking_detalle: lines,
@@ -85,10 +95,12 @@ export function usePickingStep2Form({ header, onSuccess }: UsePickingStep2FormPa
 
   // Resumen del encabezado, resuelto desde la MISMA respuesta del onboarding del
   // pedido (que trae `pedido` y la lista de `almacenes`) — sin threading extra.
+  // El almacén ya no es una elección del Paso 1: se busca el nombre del almacén
+  // fijo (`PRODUCTO_TERMINADO_ALMACEN_ID`) solo para mostrarlo en el resumen.
   const pedido = data?.pedido ?? null;
   const almacenNombre = useMemo(
-    () => data?.almacenes.find((a) => a.id === header.almacen)?.nombre ?? "—",
-    [data, header.almacen],
+    () => data?.almacenes.find((a) => a.id === PRODUCTO_TERMINADO_ALMACEN_ID)?.nombre ?? "—",
+    [data],
   );
 
   // ─── Estado de captura ─────────────────────────────────────────────────────
