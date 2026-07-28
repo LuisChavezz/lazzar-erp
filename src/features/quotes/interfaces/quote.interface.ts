@@ -76,13 +76,35 @@ export interface Quote {
   uso_cfdi: string;
   gran_total: string;
   importe_sin_iva: string;
-  piezas: number;  
+  piezas: number;
   autorizada_at: string | null;
   cambios_solicitados_at: string | null;
   created_at: string;
   updated_at: string;
   pedido_id: number | null;
   pedido_folio: string | null;
+}
+
+/**
+ * Campos por los que `GET /ventas/cotizaciones/` acepta ordenar (whitelist del
+ * backend en `CotizacionViewSet.get_queryset`). Sin `ordering`, el backend usa
+ * `-created_at` con `-id` como desempate.
+ */
+export type QuoteOrdering =
+  | "id"
+  | "-id"
+  | "created_at"
+  | "-created_at"
+  | "updated_at"
+  | "-updated_at"
+  | "gran_total"
+  | "-gran_total"
+  | "estatus"
+  | "-estatus";
+
+/** Parámetros de consulta (todos opcionales) de `GET /ventas/cotizaciones/`. */
+export interface QuoteQueryParams {
+  ordering?: QuoteOrdering;
 }
 
 export interface QuoteById {

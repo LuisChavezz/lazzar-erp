@@ -1,9 +1,9 @@
 import { v1_api } from "@/src/api/v1.api";
-import { Quote, QuoteById, QuoteCreate, QuoteOnboardingData } from "../interfaces/quote.interface";
+import { Quote, QuoteById, QuoteCreate, QuoteOnboardingData, QuoteQueryParams } from "../interfaces/quote.interface";
 
 
-export const getQuotes = async (): Promise<Quote[]> => {
-  const response = await v1_api.get<Quote[]>("/ventas/cotizaciones/");
+export const getQuotes = async (params?: QuoteQueryParams): Promise<Quote[]> => {
+  const response = await v1_api.get<Quote[]>("/ventas/cotizaciones/", { params });
   return response.data;
 };
 
