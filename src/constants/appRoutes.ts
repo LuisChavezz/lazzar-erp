@@ -30,6 +30,7 @@ import {
   TraspasosIcon,
   RouteIcon,
   PackingIcon,
+  EmbarquesIcon,
 } from "../components/Icons";
 
 export interface AppRouteItem {
@@ -191,6 +192,14 @@ export const appRouteGroups: AppRouteGroup[] = [
         path: "/wms/packing",
         icon: PackingIcon,
         description: "Empaque de mercancía surtida por picking.",
+        permission: "R-WMS",
+      },
+      {
+        key: "wms-dispatch",
+        label: "Despacho",
+        path: "/wms/dispatch",
+        icon: EmbarquesIcon,
+        description: "Entrega de cajas empacadas al transportista para su envío.",
         permission: "R-WMS",
       },
     ],
