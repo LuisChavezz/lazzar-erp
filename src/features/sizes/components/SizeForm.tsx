@@ -51,6 +51,7 @@ export default function SizeForm({ onSuccess, sizeToEdit }: SizeFormProps) {
                     <FormInput
                       label="Nombre de la Talla"
                       placeholder="Ej. M, L, XL"
+                      forceUppercase
                       variant="ghost"
                       className="text-3xl font-bold"
                       name={field.name}

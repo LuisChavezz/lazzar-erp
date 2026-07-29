@@ -124,6 +124,7 @@ export default function UserForm({ onSuccess, defaultValues }: UserFormProps) {
                     }}
                     label="Nombre"
                     placeholder="Juan"
+                    forceUppercase
                     error={getError("first_name")}
                   />
                 )}
@@ -144,6 +145,7 @@ export default function UserForm({ onSuccess, defaultValues }: UserFormProps) {
                     }}
                     label="Apellido"
                     placeholder="Pérez"
+                    forceUppercase
                     error={getError("last_name")}
                   />
                 )}

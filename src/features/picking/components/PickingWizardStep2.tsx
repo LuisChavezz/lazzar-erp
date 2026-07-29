@@ -304,6 +304,7 @@ export function PickingWizardStep2({
                           <FormInput
                             variant="compact"
                             placeholder="Observaciones de esta línea (opcional)"
+                            forceUppercase
                             value={observaciones[key] ?? ""}
                             onChange={(event) => setObservacion(row.pedido_detalle_talla, event.target.value)}
                             aria-label={`Observaciones de ${tallaProductoNombre(row)}`}

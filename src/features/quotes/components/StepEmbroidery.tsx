@@ -521,6 +521,7 @@ export const StepEmbroidery = memo(function StepEmbroidery({
       <FormInput
         label="Observaciones adicionales"
         placeholder="Notas para el bordado (opcional)"
+        forceUppercase
         value={embroideryObservaciones}
         onChange={(event) => onObservacionesChange(event.target.value)}
       />

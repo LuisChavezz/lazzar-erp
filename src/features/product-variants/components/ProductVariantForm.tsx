@@ -68,6 +68,7 @@ export default function ProductVariantForm({
                     <FormInput
                       label="SKU"
                       placeholder="Ej. SKU-001"
+                      forceUppercase
                       className="text-2xl font-bold"
                       variant="ghost"
                       name={field.name}

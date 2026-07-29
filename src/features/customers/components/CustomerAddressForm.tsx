@@ -59,6 +59,7 @@ export default function CustomerAddressForm({
                   label="Destinatario"
                   name="destinatario"
                   placeholder="Nombre de quien recibe"
+                  forceUppercase
                   value={field.state.value}
                   onChange={(e) => {
                     field.handleChange(e.target.value);
@@ -80,6 +81,7 @@ export default function CustomerAddressForm({
                   label="Empresa de envío"
                   name="empresa_envio"
                   placeholder="Nombre de la empresa"
+                  forceUppercase
                   value={field.state.value}
                   onChange={(e) => {
                     field.handleChange(e.target.value);
@@ -165,6 +167,7 @@ export default function CustomerAddressForm({
                     label="Calle y número"
                     name="direccion_envio"
                     placeholder="Av. Reforma 100, Int. 5"
+                    forceUppercase
                     value={field.state.value}
                     onChange={(e) => {
                       field.handleChange(e.target.value);
@@ -187,6 +190,7 @@ export default function CustomerAddressForm({
                   label="Colonia"
                   name="colonia_envio"
                   placeholder="Nombre de la colonia"
+                  forceUppercase
                   value={field.state.value}
                   onChange={(e) => {
                     field.handleChange(e.target.value);
@@ -229,6 +233,7 @@ export default function CustomerAddressForm({
                   label="Ciudad"
                   name="ciudad_envio"
                   placeholder="Ciudad"
+                  forceUppercase
                   value={field.state.value}
                   onChange={(e) => {
                     field.handleChange(e.target.value);
@@ -250,6 +255,7 @@ export default function CustomerAddressForm({
                   label="Estado"
                   name="estado_envio"
                   placeholder="Estado"
+                  forceUppercase
                   value={field.state.value}
                   onChange={(e) => {
                     field.handleChange(e.target.value);
@@ -272,6 +278,7 @@ export default function CustomerAddressForm({
                     label="Referencias"
                     name="referencias"
                     placeholder="Entre calles, color de fachada, referencias adicionales..."
+                    forceUppercase
                     value={field.state.value}
                     onChange={(e) => {
                       field.handleChange(e.target.value);

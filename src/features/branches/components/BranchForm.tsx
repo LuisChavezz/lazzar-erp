@@ -41,6 +41,7 @@ export default function BranchForm({ onSuccess, defaultValues }: BranchFormProps
                 <FormInput
                   label="Nombre de la Sucursal"
                   placeholder="Nombre de la sucursal"
+                  forceUppercase
                   variant="ghost"
                   {...register("nombre")}
                   error={errors.nombre}
@@ -51,6 +52,7 @@ export default function BranchForm({ onSuccess, defaultValues }: BranchFormProps
                 <FormInput
                   label="Código"
                   placeholder="SUC-001"
+                  forceUppercase
                   {...register("codigo")}
                   error={errors.codigo}
                 />
@@ -80,6 +82,7 @@ export default function BranchForm({ onSuccess, defaultValues }: BranchFormProps
                   <FormInput
                     label="Dirección Línea 1"
                     placeholder="Calle, Número"
+                    forceUppercase
                     {...register("direccion_linea1")}
                     error={errors.direccion_linea1}
                   />
@@ -88,6 +91,7 @@ export default function BranchForm({ onSuccess, defaultValues }: BranchFormProps
                   <FormInput
                     label="Dirección Línea 2"
                     placeholder="Colonia, Interior (Opcional)"
+                    forceUppercase
                     {...register("direccion_linea2")}
                     error={errors.direccion_linea2}
                   />
@@ -97,6 +101,7 @@ export default function BranchForm({ onSuccess, defaultValues }: BranchFormProps
                     <FormInput
                       label="Ciudad"
                       placeholder="Ciudad"
+                      forceUppercase
                       {...register("ciudad")}
                       error={errors.ciudad}
                     />
@@ -105,6 +110,7 @@ export default function BranchForm({ onSuccess, defaultValues }: BranchFormProps
                     <FormInput
                       label="Estado"
                       placeholder="Estado"
+                      forceUppercase
                       {...register("estado")}
                       error={errors.estado}
                     />
@@ -123,6 +129,7 @@ export default function BranchForm({ onSuccess, defaultValues }: BranchFormProps
                     <FormInput
                       label="País"
                       placeholder="País"
+                      forceUppercase
                       {...register("pais")}
                       error={errors.pais}
                     />

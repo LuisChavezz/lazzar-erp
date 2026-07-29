@@ -86,15 +86,34 @@ export const FormInput = forwardRef<HTMLInputElement, FormInputProps>(
               ${baseInputStyles}
               ${variants[variant]}
               ${variant === "compact" ? (leading ? "pl-5 pr-2" : "px-2") : ""}
-              ${forceUppercase ? "uppercase" : ""}
+              ${forceUppercase ? "uppercase placeholder:normal-case" : ""}
               ${className}
             `}
             {...props}
             onChange={(event) => {
               if (forceUppercase) {
-                const nextValue = event.currentTarget.value.toUpperCase();
-                if (event.currentTarget.value !== nextValue) {
-                  event.currentTarget.value = nextValue;
+                const input = event.currentTarget;
+                const value = input.value;
+                const nextValue = value.toUpperCase();
+                if (value !== nextValue) {
+                  const delta = nextValue.length - value.length;
+                  const selectionStart = input.selectionStart;
+                  const selectionEnd = input.selectionEnd;
+                  input.value = nextValue;
+                  // `toUpperCase()` isn't always 1:1 in length (e.g. "ß" → "SS"), so the
+                  // cursor is shifted by the resulting delta rather than left in place.
+                  // `setSelectionRange` throws on input types without text selection
+                  // support (email, number, date) — forceUppercase only targets
+                  // free-text fields today, but this keeps the transform itself safe
+                  // regardless of the input's `type`.
+                  if (selectionStart !== null && selectionEnd !== null) {
+                    try {
+                      const clamp = (pos: number) => Math.min(Math.max(pos + delta, 0), nextValue.length);
+                      input.setSelectionRange(clamp(selectionStart), clamp(selectionEnd));
+                    } catch {
+                      // input type doesn't support selection — nothing to restore
+                    }
+                  }
                 }
               }
               onChange?.(event);

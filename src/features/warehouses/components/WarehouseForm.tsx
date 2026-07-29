@@ -64,6 +64,7 @@ export default function WarehouseForm({ onSuccess, warehouseToEdit }: WarehouseF
                       }}
                       label="Nombre"
                       placeholder="Ej. Almacén Central"
+                      forceUppercase
                       className="text-2xl font-bold"
                       variant="ghost"
                       error={getError("nombre")}
@@ -88,6 +89,7 @@ export default function WarehouseForm({ onSuccess, warehouseToEdit }: WarehouseF
                       }}
                       label="Código"
                       placeholder="ALM-001 o texto"
+                      forceUppercase
                       error={getError("codigo")}
                     />
                   )}

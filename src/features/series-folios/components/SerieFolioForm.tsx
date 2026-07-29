@@ -55,6 +55,7 @@ export default function SerieFolioForm({ onSuccess, serieFolioToEdit }: SerieFol
                     <FormInput
                       label="Tipo de Documento"
                       placeholder="Ej. Factura"
+                      forceUppercase
                       variant="ghost"
                       className="text-3xl font-bold"
                       name={field.name}
@@ -79,6 +80,7 @@ export default function SerieFolioForm({ onSuccess, serieFolioToEdit }: SerieFol
                     <FormInput
                       label="Serie"
                       placeholder="Ej. F"
+                      forceUppercase
                       name={field.name}
                       value={field.state.value}
                       onChange={(event) => {
@@ -123,6 +125,7 @@ export default function SerieFolioForm({ onSuccess, serieFolioToEdit }: SerieFol
                     <FormInput
                       label="Prefijo"
                       placeholder="Ej. FAC"
+                      forceUppercase
                       name={field.name}
                       value={field.state.value}
                       onChange={(event) => {
@@ -145,6 +148,7 @@ export default function SerieFolioForm({ onSuccess, serieFolioToEdit }: SerieFol
                     <FormInput
                       label="Sufijo"
                       placeholder="Ej. 2025"
+                      forceUppercase
                       name={field.name}
                       value={field.state.value}
                       onChange={(event) => {

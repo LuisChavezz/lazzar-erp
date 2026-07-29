@@ -154,6 +154,7 @@ export function PurchaseOrderEditStep1({
             <FormInput
               label="Referencia"
               placeholder="Compra inicial"
+              forceUppercase
               name={field.name}
               value={field.state.value}
               onChange={(event) => {
@@ -174,6 +175,7 @@ export function PurchaseOrderEditStep1({
           {(field) => (
             <FormInput
               label="Observaciones"
+              forceUppercase
               name={field.name}
               value={field.state.value}
               onChange={(event) => {

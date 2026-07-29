@@ -136,6 +136,7 @@ export default function CustomerForm({
                     }}
                     label="Razón social"
                     placeholder="Razón social"
+                    forceUppercase
                     error={getError("razon_social")}
                   />
                 )}
@@ -155,6 +156,7 @@ export default function CustomerForm({
                     }}
                     label="Nombre"
                     placeholder="Nombre de cliente"
+                    forceUppercase
                     error={getError("nombre")}
                   />
                 )}
@@ -248,6 +250,7 @@ export default function CustomerForm({
                         }}
                         label="RFC"
                         placeholder="RFC"
+                        forceUppercase
                         error={getError("rfc")}
                       />
                       <div className="flex items-center gap-3">
@@ -398,6 +401,7 @@ export default function CustomerForm({
                     }}
                     label="Dirección fiscal"
                     placeholder="Dirección fiscal"
+                    forceUppercase
                     error={getError("direccion_fiscal")}
                   />
                 )}
@@ -417,6 +421,7 @@ export default function CustomerForm({
                     }}
                     label="Colonia"
                     placeholder="Colonia"
+                    forceUppercase
                     error={getError("colonia")}
                   />
                 )}
@@ -455,6 +460,7 @@ export default function CustomerForm({
                     }}
                     label="Ciudad"
                     placeholder="Ciudad"
+                    forceUppercase
                     error={getError("ciudad")}
                   />
                 )}
@@ -474,6 +480,7 @@ export default function CustomerForm({
                     }}
                     label="Estado"
                     placeholder="Estado"
+                    forceUppercase
                     error={getError("estado")}
                   />
                 )}

@@ -54,6 +54,7 @@ export default function ProductTypeForm({ onSuccess, productTypeToEdit }: Produc
                       <FormInput
                         label="Código"
                         placeholder="Ej. TIPO-01"
+                        forceUppercase
                         className="pl-8 font-mono"
                         name={field.name}
                         value={field.state.value}

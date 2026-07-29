@@ -125,6 +125,7 @@ export default function ReceiptForm({
                   <FormInput
                     label="Remisión"
                     placeholder="Número de remisión"
+                    forceUppercase
                     name={field.name}
                     value={field.state.value}
                     onChange={(event) => {
@@ -146,6 +147,7 @@ export default function ReceiptForm({
                   <FormInput
                     label="Factura de Referencia"
                     placeholder="Folio de la factura"
+                    forceUppercase
                     name={field.name}
                     value={field.state.value}
                     onChange={(event) => {

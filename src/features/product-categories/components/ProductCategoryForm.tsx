@@ -52,6 +52,7 @@ export default function ProductCategoryForm({ onSuccess, categoryToEdit }: Produ
                     <FormInput
                       label="Nombre de la Categoría"
                       placeholder="Ej. Camisas"
+                      forceUppercase
                       variant="ghost"
                       className="text-3xl font-bold"
                       name={field.name}
@@ -78,6 +79,7 @@ export default function ProductCategoryForm({ onSuccess, categoryToEdit }: Produ
                       <FormInput
                         label="Código"
                         placeholder="Ej. CAT-001"
+                        forceUppercase
                         className="pl-8 font-mono"
                         name={field.name}
                         value={field.state.value}

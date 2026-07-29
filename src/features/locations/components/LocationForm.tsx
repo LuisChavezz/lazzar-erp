@@ -61,6 +61,7 @@ export default function LocationForm({ onSuccess, locationToEdit }: LocationForm
                     <FormInput
                       label="Pasillo"
                       placeholder="Ej. Pasillo A"
+                      forceUppercase
                       className="text-2xl font-bold"
                       variant="ghost"
                       name={field.name}
@@ -85,6 +86,7 @@ export default function LocationForm({ onSuccess, locationToEdit }: LocationForm
                     <FormInput
                       label="Rack"
                       placeholder="RACK-01"
+                      forceUppercase
                       name={field.name}
                       value={field.state.value}
                       onChange={(event) => {

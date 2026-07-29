@@ -68,6 +68,7 @@ export default function ProductForm({ onSuccess, productToEdit }: ProductFormPro
                     <FormInput
                       label="Nombre"
                       placeholder="Ej. Playera básica"
+                      forceUppercase
                       className="text-2xl font-bold"
                       variant="ghost"
                       name={field.name}

@@ -181,6 +181,7 @@ function Step1Form({ onboardingData, onSuccess }: Step1FormProps) {
             <FormInput
               label="Referencia"
               placeholder="Compra inicial"
+              forceUppercase
               name={field.name}
               value={field.state.value}
               onChange={(event) => {
@@ -201,6 +202,7 @@ function Step1Form({ onboardingData, onSuccess }: Step1FormProps) {
           {(field) => (
             <FormInput
               label="Observaciones"
+              forceUppercase
               name={field.name}
               value={field.state.value}
               onChange={(event) => {

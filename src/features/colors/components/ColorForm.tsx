@@ -82,6 +82,7 @@ export default function ColorForm({ onSuccess, colorToEdit }: ColorFormProps) {
                     <FormInput
                       label="Nombre del Color"
                       placeholder="Ej. Rojo Carmín"
+                      forceUppercase
                       variant="ghost"
                       className="text-3xl font-bold"
                       name={field.name}

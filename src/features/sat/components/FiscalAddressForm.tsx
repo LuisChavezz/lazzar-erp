@@ -45,6 +45,7 @@ export default function FiscalAddressForm({ onSuccess }: FiscalAddressFormProps)
                     <FormInput
                       label="Calle"
                       placeholder="Ej. Av. Reforma"
+                      forceUppercase
                       name={field.name}
                       value={field.state.value}
                       onChange={(event) => {
@@ -66,6 +67,7 @@ export default function FiscalAddressForm({ onSuccess }: FiscalAddressFormProps)
                   <FormInput
                     label="Número Exterior"
                     placeholder="Ej. 123"
+                    forceUppercase
                     name={field.name}
                     value={field.state.value}
                     onChange={(event) => {
@@ -86,6 +88,7 @@ export default function FiscalAddressForm({ onSuccess }: FiscalAddressFormProps)
                   <FormInput
                     label="Número Interior"
                     placeholder="Ej. Depto 4B (Opcional)"
+                    forceUppercase
                     name={field.name}
                     value={field.state.value}
                     onChange={(event) => {
@@ -106,6 +109,7 @@ export default function FiscalAddressForm({ onSuccess }: FiscalAddressFormProps)
                   <FormInput
                     label="Colonia"
                     placeholder="Ej. Centro"
+                    forceUppercase
                     name={field.name}
                     value={field.state.value}
                     onChange={(event) => {
@@ -165,6 +169,7 @@ export default function FiscalAddressForm({ onSuccess }: FiscalAddressFormProps)
                   <FormInput
                     label="Localidad"
                     placeholder="Ej. Ciudad de México (Opcional)"
+                    forceUppercase
                     name={field.name}
                     value={field.state.value}
                     onChange={(event) => {
@@ -185,6 +190,7 @@ export default function FiscalAddressForm({ onSuccess }: FiscalAddressFormProps)
                   <FormInput
                     label="Municipio / Alcaldía"
                     placeholder="Ej. Cuauhtémoc"
+                    forceUppercase
                     name={field.name}
                     value={field.state.value}
                     onChange={(event) => {
@@ -205,6 +211,7 @@ export default function FiscalAddressForm({ onSuccess }: FiscalAddressFormProps)
                   <FormInput
                     label="Estado"
                     placeholder="Ej. Ciudad de México"
+                    forceUppercase
                     name={field.name}
                     value={field.state.value}
                     onChange={(event) => {
@@ -225,6 +232,7 @@ export default function FiscalAddressForm({ onSuccess }: FiscalAddressFormProps)
                   <FormInput
                     label="País"
                     placeholder="Ej. México"
+                    forceUppercase
                     name={field.name}
                     value={field.state.value}
                     onChange={(event) => {

@@ -261,6 +261,7 @@ function RegisterPendingInvoiceForm({ onClose }: { onClose: () => void }) {
               <FormInput
                 label="Folio (opcional)"
                 placeholder="Se genera automáticamente si lo dejas vacío"
+                forceUppercase
                 name={field.name}
                 value={field.state.value}
                 onChange={(event) => {
@@ -402,6 +403,7 @@ function RegisterPendingInvoiceForm({ onClose }: { onClose: () => void }) {
             <FormInput
               label="Referencia (opcional)"
               placeholder="Ej. PENDIENTE-JULIO"
+              forceUppercase
               name={field.name}
               value={field.state.value}
               onChange={(event) => {

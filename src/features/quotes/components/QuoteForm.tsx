@@ -1634,7 +1634,7 @@ export function QuoteFormContent({
                           }}
                           aria-invalid={Boolean(nombreError)}
                           error={nombreError}
-                          forceUppercase={false}
+                          forceUppercase
                         />
                       </div>
                       <div className="shrink-0 w-24">

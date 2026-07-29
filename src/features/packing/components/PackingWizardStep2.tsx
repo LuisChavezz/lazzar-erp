@@ -344,6 +344,7 @@ export function PackingWizardStep2({ step1, onBack, onSuccess }: PackingWizardSt
                           <FormInput
                             variant="compact"
                             placeholder="Observaciones de esta línea (opcional)"
+                            forceUppercase
                             value={lineObservaciones[key] ?? ""}
                             onChange={(event) => setLineObservacion(row.picking_detalle, event.target.value)}
                             aria-label={`Observaciones de ${packingLineProductoNombre(row)}`}

@@ -123,6 +123,7 @@ export default function SupplierForm({ onSuccess, supplierToEdit }: SupplierForm
                     <FormInput
                       label="Nombre del Proveedor"
                       placeholder="Nombre comercial del proveedor"
+                      forceUppercase
                       variant="ghost"
                       className="text-2xl font-bold"
                       name={field.name}
@@ -147,6 +148,7 @@ export default function SupplierForm({ onSuccess, supplierToEdit }: SupplierForm
                     <FormInput
                       label="Código"
                       placeholder="PROV-2026-001"
+                      forceUppercase
                       name={field.name}
                       value={field.state.value}
                       onChange={(event) => {
@@ -169,6 +171,7 @@ export default function SupplierForm({ onSuccess, supplierToEdit }: SupplierForm
                     <FormInput
                       label="Razón Social"
                       placeholder="Razón social oficial"
+                      forceUppercase
                       name={field.name}
                       value={field.state.value}
                       onChange={(event) => {
@@ -347,6 +350,7 @@ export default function SupplierForm({ onSuccess, supplierToEdit }: SupplierForm
                     <FormInput
                       label="Contacto Principal"
                       placeholder="Nombre del contacto"
+                      forceUppercase
                       name={field.name}
                       value={field.state.value ?? ""}
                       onChange={(event) => {

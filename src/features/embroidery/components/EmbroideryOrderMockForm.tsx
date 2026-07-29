@@ -99,11 +99,13 @@ export function EmbroideryOrderMockForm({ onSuccess }: EmbroideryOrderMockFormPr
               label="Número de Pedido"
               name="pedido"
               placeholder="Ej: P98299"
+              forceUppercase
             />
             <FormInput
               label="Cliente"
               name="cliente"
               placeholder="Ej: LIVERPOOL S.A. DE C.V."
+              forceUppercase
             />
           </div>
 
@@ -130,6 +132,7 @@ export function EmbroideryOrderMockForm({ onSuccess }: EmbroideryOrderMockFormPr
             label="Número de Lote"
             name="lote"
             placeholder="Ej: LOTE-AB12CD"
+            forceUppercase
           />
         </div>
       </section>
@@ -221,6 +224,7 @@ export function EmbroideryOrderMockForm({ onSuccess }: EmbroideryOrderMockFormPr
               label="Clave OTB"
               name="orden_trabajo_bordado"
               placeholder="Ej: OTB-1304"
+              forceUppercase
             />
             <FormInput
               label="Fecha de OTB"

@@ -51,6 +51,7 @@ export default function CurrencyForm({ onSuccess, currencyToEdit }: CurrencyForm
                     <FormInput
                       label="Nombre de la Moneda"
                       placeholder="Ej. Peso Mexicano"
+                      forceUppercase
                       variant="ghost"
                       className="text-3xl font-bold"
                       name={field.name}
@@ -75,7 +76,8 @@ export default function CurrencyForm({ onSuccess, currencyToEdit }: CurrencyForm
                     <FormInput
                       label="Código ISO"
                       placeholder="MXN"
-                      className="uppercase font-mono"
+                      forceUppercase
+                      className="font-mono"
                       maxLength={3}
                       name={field.name}
                       value={field.state.value}

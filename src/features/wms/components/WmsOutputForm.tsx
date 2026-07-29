@@ -83,6 +83,7 @@ export const WmsOutputForm = () => {
                 <FormInput
                   label="Referencia"
                   placeholder="OC-000123 / Remisión / Folio"
+                  forceUppercase
                   name={field.name}
                   value={field.state.value}
                   onChange={(event) => {
@@ -102,6 +103,7 @@ export const WmsOutputForm = () => {
                 <FormInput
                   label="Destino"
                   placeholder="Cliente / Área / Alamcén destino"
+                  forceUppercase
                   name={field.name}
                   value={field.state.value}
                   onChange={(event) => {

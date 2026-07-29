@@ -338,6 +338,7 @@ function StockMovementFormContent({ onClose }: { onClose: () => void }) {
                       placeholder={
                         isAjuste ? "Motivo del ajuste" : "Notas del movimiento"
                       }
+                      forceUppercase
                       name={field.name}
                       value={field.state.value ?? ""}
                       onChange={(event) => {
