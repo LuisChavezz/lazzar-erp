@@ -13,18 +13,13 @@ import {
   LayersIcon,
 } from "@/src/components/Icons";
 import { formatExactQuantityValue } from "@/src/utils/formatCurrency";
-import { usePickingStep2Form } from "../hooks/usePickingStep2Form";
+import { tallaProductoNombre, usePickingStep2Form } from "../hooks/usePickingStep2Form";
 import type { PickingHeaderValues } from "../schemas/picking.schema";
-import type { PickingOnboardingTalla } from "../interfaces/picking-onboarding.interface";
 
 interface PickingWizardStep2Props {
   header: PickingHeaderValues;
   onBack: () => void;
   onSuccess: () => void;
-}
-
-function tallaProductoNombre(row: PickingOnboardingTalla): string {
-  return row.producto_variante_nombre ?? row.producto_nombre ?? "—";
 }
 
 export function PickingWizardStep2({
@@ -34,7 +29,10 @@ export function PickingWizardStep2({
 }: PickingWizardStep2Props) {
   const {
     rows,
+    limits,
+    overAllocations,
     pendingRowsCount,
+    capturableRowsCount,
     pedido,
     almacenNombre,
     isLoading,
@@ -81,6 +79,10 @@ export function PickingWizardStep2({
   }
 
   const noPending = rows.length === 0 || pendingRowsCount === 0;
+  // El pedido SÍ tiene pendientes, pero ninguna línea tiene existencia con la
+  // que surtirlos. Sin este caso la pantalla quedaría con todas las filas
+  // deshabilitadas y el botón muerto, sin decir por qué.
+  const sinExistencia = !noPending && capturableRowsCount === 0;
 
   return (
     <form
@@ -145,20 +147,48 @@ export function PickingWizardStep2({
         </div>
       )}
 
+      {/* ── Exceso sobre existencia COMPARTIDA entre tallas ─────────────── */}
+      {/* Reactivo (no espera al envío): cada fila respeta su propio techo pero
+          la suma del grupo no cabe en la existencia que comparten. Es el envío
+          que el backend rechazaría de forma determinista. */}
+      {overAllocations.length > 0 && (
+        <div
+          role="alert"
+          className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 dark:border-amber-800/60 dark:bg-amber-900/20 px-4 py-3"
+        >
+          <ExclamationTriangleIcon className="w-5 h-5 shrink-0 text-amber-600 dark:text-amber-400 mt-0.5" />
+          <div className="min-w-0 flex-1 text-sm text-amber-800 dark:text-amber-200">
+            <p className="font-semibold">Varias tallas comparten la misma existencia</p>
+            <ul className="mt-1 space-y-0.5 text-xs">
+              {overAllocations.map((over) => (
+                <li key={over.stockKey} className="tabular-nums">
+                  «{over.nombre}»: capturaste {over.solicitado}, pero solo hay{" "}
+                  {over.disponible} disponibles entre todas sus tallas.
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      )}
+
       <fieldset disabled={isPending} className="space-y-5">
-        {noPending ? (
+        {noPending || sinExistencia ? (
           <div className="rounded-2xl border border-amber-200 dark:border-amber-800/60 bg-amber-50 dark:bg-amber-900/20 p-6 flex items-start gap-4">
             <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-500/10 flex items-center justify-center text-amber-600 dark:text-amber-400 shrink-0">
               <InfoIcon className="w-5 h-5" />
             </div>
             <div>
               <h3 className="text-sm font-semibold text-amber-800 dark:text-amber-200">
-                {rows.length === 0
-                  ? "Este pedido no tiene tallas registradas"
-                  : "Este pedido ya no tiene tallas pendientes por surtir"}
+                {sinExistencia
+                  ? "No hay existencia disponible para surtir este pedido"
+                  : rows.length === 0
+                    ? "Este pedido no tiene tallas registradas"
+                    : "Este pedido ya no tiene tallas pendientes por surtir"}
               </h3>
               <p className="text-xs text-amber-700 dark:text-amber-300 mt-1">
-                Regresa para elegir otro pedido.
+                {sinExistencia
+                  ? `El pedido sigue con tallas pendientes, pero el almacén ${almacenNombre} no tiene piezas libres (la existencia está en cero o ya está reservada por otros pickings).`
+                  : "Regresa para elegir otro pedido."}
               </p>
             </div>
           </div>
@@ -171,7 +201,8 @@ export function PickingWizardStep2({
               <div>
                 <h3 className="font-semibold text-slate-900 dark:text-white text-sm">Tallas por surtir</h3>
                 <p className="text-[11px] text-slate-500">
-                  Captura la cantidad a surtir en esta entrega (máximo: lo pendiente por talla)
+                  Captura la cantidad a surtir en esta entrega (máximo: lo pendiente por talla,
+                  acotado por la existencia disponible en el almacén)
                 </p>
               </div>
             </div>
@@ -180,17 +211,35 @@ export function PickingWizardStep2({
               <div className="divide-y divide-slate-100 dark:divide-white/5">
                 {rows.map((row) => {
                   const key = String(row.pedido_detalle_talla);
-                  const pendiente = Number.parseFloat(row.cantidad_pendiente) || 0;
-                  const sinPendiente = pendiente <= 0;
+                  // Techo efectivo: el pendiente del pedido acotado por la
+                  // existencia disponible del almacén (ver `PickingLineLimits`).
+                  const { disponible, max, limitedByStock, sharedPool } = limits[key] ?? {
+                    disponible: null,
+                    max: 0,
+                    limitedByStock: false,
+                    sharedPool: false,
+                  };
+                  const sinCupo = max <= 0;
                   const qtyValue = quantities[key] ?? "";
                   const hasQty = qtyValue.trim() !== "" && Number.parseFloat(qtyValue) > 0;
 
                   return (
-                    <div key={key} className={`py-3 px-2 ${sinPendiente ? "opacity-50" : ""}`}>
+                    <div key={key} className={`py-3 px-2 ${sinCupo ? "opacity-50" : ""}`}>
                       <div className="flex items-center gap-4">
                         <div className="flex-1 min-w-0">
                           <div className="flex flex-wrap items-center gap-2">
-                            <p className="text-sm font-semibold text-slate-800 dark:text-slate-100 truncate">
+                            {/* SIN `truncate`: como flex item, `truncate`
+                                (`white-space: nowrap`) fija el min-content del
+                                `<p>` al ancho COMPLETO del texto, y flexbox no
+                                puede encogerlo por debajo de eso — el
+                                `min-w-0` del contenedor padre sí encoge, pero
+                                el hijo desbordaba igual y empujaba el input de
+                                cantidad fuera de la tarjeta (scroll horizontal
+                                en nombres largos tipo "CHAMARRA BERLIN UNISEX
+                                DESMONTABLE DOBLE VISTA..."). Con `min-w-0` +
+                                `break-words` el nombre envuelve a 2-3 líneas y
+                                la fila crece de alto en vez de a lo ancho. */}
+                            <p className="min-w-0 break-words text-sm font-semibold text-slate-800 dark:text-slate-100">
                               {tallaProductoNombre(row)}
                             </p>
                             {row.talla_nombre && (
@@ -202,19 +251,48 @@ export function PickingWizardStep2({
                               <span className="text-[11px] text-slate-500 dark:text-slate-400">{row.color_nombre}</span>
                             )}
                           </div>
+                          {/* Se resalta la restricción que MANDA: normalmente
+                              el pendiente del pedido, pero cuando la existencia
+                              es menor, es ella la que acota el input — se pinta
+                              en ámbar para que el techo no parezca arbitrario. */}
                           <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 tabular-nums">
                             Pedida: {formatExactQuantityValue(row.cantidad_pedida)} · Asignada:{" "}
                             {formatExactQuantityValue(row.cantidad_ya_asignada)} ·{" "}
-                            <span className={sinPendiente ? "" : "font-semibold text-slate-700 dark:text-slate-200"}>
+                            <span
+                              className={
+                                sinCupo || limitedByStock
+                                  ? ""
+                                  : "font-semibold text-slate-700 dark:text-slate-200"
+                              }
+                            >
                               Pendiente: {formatExactQuantityValue(row.cantidad_pendiente)}
                             </span>
+                            {disponible !== null && (
+                              <>
+                                {" · "}
+                                <span
+                                  className={
+                                    limitedByStock
+                                      ? "font-semibold text-amber-600 dark:text-amber-400"
+                                      : ""
+                                  }
+                                >
+                                  Disponible:{" "}
+                                  {formatExactQuantityValue(row.existencia_disponible)}
+                                  {/* Sin esta marca, dos filas mostrando
+                                      "Disponible: 10" se leerían como 20
+                                      piezas: es la MISMA existencia. */}
+                                  {sharedPool && " (compartido)"}
+                                </span>
+                              </>
+                            )}
                           </p>
                         </div>
 
                         <DecimalQuantityInput
                           value={qtyValue}
-                          max={pendiente}
-                          disabled={sinPendiente}
+                          max={max}
+                          disabled={sinCupo}
                           onChange={(next) => setQuantity(row.pedido_detalle_talla, next)}
                           label={`Cantidad a surtir de ${tallaProductoNombre(row)}`}
                         />
@@ -248,10 +326,12 @@ export function PickingWizardStep2({
             `{...props}` después de su `disabled` interno, así que un `disabled`
             propio lo sobrescribe — hay que "hornear" el pending aquí para que el
             botón quede realmente inhabilitado durante el envío (sin doble POST). */}
+        {/* `overAllocations` bloquea el envío: ese payload lo rechazaría el
+            backend siempre, y su rechazo no se recupera recargando. */}
         <FormSubmitButton
           isPending={isPending}
           loadingLabel="Registrando..."
-          disabled={isPending || selectedCount === 0}
+          disabled={isPending || selectedCount === 0 || overAllocations.length > 0}
         >
           Registrar picking
         </FormSubmitButton>

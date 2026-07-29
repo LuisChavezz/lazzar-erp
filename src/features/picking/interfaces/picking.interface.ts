@@ -31,6 +31,21 @@ export type PickingEstado =
   | "Cancelado";
 
 /**
+ * Valores de `prioridad`, tanto al CREAR como al LEER un picking: el backend
+ * lo declara como un solo `TextChoices` (`Picking.Prioridad`) serializado con
+ * `fields = "__all__"`, así que viaja como string plano —no como objeto
+ * `{value,label}`— en el listado y en el detalle.
+ */
+export type PickingPrioridad = "BAJA" | "MEDIA" | "ALTA";
+
+/** Valores de `tipo`. Mismo criterio que `PickingPrioridad`: string plano. */
+export type PickingTipo =
+  | "ORDER_PICKING"
+  | "BATCH_PICKING"
+  | "WAVE_PICKING"
+  | "ZONE_PICKING";
+
+/**
  * Estatus posibles de UNA LÍNEA de picking (`PickingDetalleLine.estado`) —
  * enum propio, distinto de `PickingEstado` (que es del picking completo). Hoy
  * solo se ha visto `"PENDIENTE"` en datos reales, pero los 5 valores están
@@ -83,6 +98,30 @@ export interface PickingDetalleLine {
   observaciones: string | null;
 }
 
+/** Tipos de orden de trabajo que un picking puede generar. */
+export type PickingOrdenTrabajoTipo = "BORDADO" | "REFLEJANTE" | "CORTE_MANGA";
+
+/**
+ * Vínculo entre un picking y una orden de trabajo generada al crearlo, tal
+ * cual viaja embebido en `Picking.ordenes_trabajo` (listado y detalle).
+ *
+ * Los tres pares `orden_*`/`orden_*_folio` son excluyentes: solo el que
+ * corresponde a `tipo_orden` viaja con valor, los otros dos en `null`.
+ * `tipo_orden_label` es la etiqueta humana que ya resuelve el backend
+ * (p. ej. `"Bordado"`) — el frontend no necesita su propio mapa.
+ */
+export interface PickingOrdenTrabajo {
+  id: number;
+  tipo_orden: PickingOrdenTrabajoTipo;
+  tipo_orden_label: string;
+  orden_bordado: number | null;
+  orden_bordado_folio: string | null;
+  orden_reflejante: number | null;
+  orden_reflejante_folio: string | null;
+  orden_corte_manga: number | null;
+  orden_corte_manga_folio: string | null;
+}
+
 /**
  * Renglón de `GET /wms/pickings/` (listado). Incluye `picking_detalle`
  * porque el backend lo devuelve en la misma respuesta del listado (a
@@ -99,19 +138,39 @@ export interface Picking {
   pedido_folio: string;
   operador: number;
   operador_nombre: string;
+  /** Almacén ORIGEN: de donde se recolecta la mercancía. */
   almacen: number;
   almacen_nombre: string;
+  /**
+   * Almacén DESTINO del picking, distinto del origen y COEXISTE con él: es el
+   * almacén de apartados al que se traspasa lo surtido. Cuando el `POST` omite
+   * `almacen_destino`, el backend resuelve por nombre el almacén `"APARTADOS"`
+   * de la empresa/sucursal del pedido y lo guarda
+   * (`PickingService._resolve_apartados`), por eso en la práctica
+   * `almacen_destino_nombre` casi siempre llega como `"APARTADOS"`.
+   *
+   * Nullable en el modelo (`blank=True, null=True`) aunque el flujo actual
+   * siempre lo llene: los pickings anteriores a la migración `0011` podrían
+   * traerlo vacío.
+   */
+  almacen_destino: number | null;
+  almacen_destino_nombre: string | null;
   oleada: number | null;
   oleada_nombre: string | null;
   zona_almacen: number | null;
   zona_almacen_nombre: string | null;
   lote: number | null;
   lote_nombre: string | null;
-  prioridad: string;
-  tipo: string;
+  prioridad: PickingPrioridad;
+  tipo: PickingTipo;
   estado: PickingEstado;
   fecha_inicio: string | null;
   fecha_fin: string | null;
+  /**
+   * Fecha límite de surtido. Es un `date-time` completo (no un `YYYY-MM-DD`
+   * como la `fecha_vencimiento` de CxC), así que "vencido" se compara contra el
+   * instante actual, no contra la medianoche del día — ver `isPickingVencido`.
+   */
   fecha_limite: string | null;
   // OJO: con el flujo parcial, `total_lineas`/`total_lineas_completas`
   // describen SOLO las líneas de ESTE picking (esta entrega), no el avance del
@@ -126,17 +185,27 @@ export interface Picking {
   created_at: string;
   updated_at: string;
   picking_detalle: PickingDetalleLine[];
+  /**
+   * Órdenes de trabajo (bordado / reflejante / corte de manga) generadas al
+   * crear el picking. El backend las anida y prefetchea tanto en el listado
+   * como en el detalle; llega `[]` cuando el picking no generó ninguna.
+   */
+  ordenes_trabajo: PickingOrdenTrabajo[];
 }
 
-/** Valores documentados de `prioridad` en la creación de un picking. */
-export type PickingPrioridad = "BAJA" | "MEDIA" | "ALTA";
-
-/** Valores documentados de `tipo` en la creación de un picking. */
-export type PickingTipo =
-  | "ORDER_PICKING"
-  | "BATCH_PICKING"
-  | "WAVE_PICKING"
-  | "ZONE_PICKING";
+/**
+ * Fila de la tabla de picking: el registro del backend más los campos
+ * DERIVADOS en cliente que consumen las columnas y los filtros.
+ *
+ * `esta_vencida` se deriva de `fecha_limite` porque el backend NO expone
+ * ninguna bandera de vencimiento calculada (verificado contra el schema
+ * OpenAPI del API: el componente `Picking` no declara nada equivalente).
+ * Mismo patrón que `CuentaPorCobrarRow` en cuentas por cobrar, donde el
+ * vencimiento también se deriva por fecha en el cliente.
+ */
+export interface PickingRow extends Picking {
+  esta_vencida: boolean;
+}
 
 /**
  * Una línea del `picking_detalle` a surtir en esta entrega.

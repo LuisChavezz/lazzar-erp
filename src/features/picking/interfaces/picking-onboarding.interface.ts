@@ -74,6 +74,34 @@ export interface PickingOnboardingTalla {
   cantidad_ya_asignada: string;
   cantidad_ya_surtida: string;
   cantidad_pendiente: string;
+  /**
+   * Existencia FÍSICA del par (producto, variante) en el almacén origen,
+   * sumada a través de TODAS las ubicaciones del almacén (no de un solo
+   * renglón de `Existencia`).
+   */
+  existencia_fisica: string;
+  /** Parte de la física ya apartada por reservas activas de OTROS pickings. */
+  existencia_reservada: string;
+  /**
+   * `existencia_fisica - existencia_reservada` (acotado a 0): lo que de verdad
+   * se puede tomar hoy del almacén origen. Es un concepto de STOCK FÍSICO,
+   * independiente de `cantidad_pendiente` (que es de cantidades del PEDIDO) —
+   * puede ser menor que el pendiente, y ese es justo el caso que la UI acota.
+   */
+  existencia_disponible: string;
+  /**
+   * `min(cantidad_pendiente, existencia_disponible)`, acotado a 0 — el techo
+   * que el backend ANUNCIA y que su propio `POST` vuelve a validar con el
+   * mismo helper (`ExistenciaService.get_existencia_batch`), así que los dos
+   * números son el mismo por construcción.
+   *
+   * OJO: solo es de fiar si el backend resolvió como almacén origen el MISMO
+   * que viajará en el `POST`. Sin `?almacen_origen=` el backend elige un
+   * candidato por su cuenta (el de menor pk de la sucursal, excluyendo
+   * APARTADOS), que puede no ser ese — ver `almacen_origen` en
+   * `PickingOnboardingData` y la comprobación en `usePickingStep2Form`.
+   */
+  maximo_picking_permitido: string;
 }
 
 /**
@@ -85,6 +113,17 @@ export interface PickingOnboardingData {
   pedidos: PickingOnboardingPedido[];
   operadores: PickingOnboardingOperador[];
   almacenes: PickingOnboardingAlmacen[];
+  /**
+   * Almacén ORIGEN contra el que el backend calculó `existencia_*` de cada
+   * talla. Eco del `?almacen_origen=` enviado; si no se envía (o el usuario no
+   * tiene acceso a ese almacén), el backend elige un candidato por su cuenta y
+   * lo devuelve aquí. Comparar este id contra el almacén que viajará en el
+   * `POST` es la ÚNICA forma de saber si las existencias anunciadas describen
+   * el mismo almacén que se validará al enviar.
+   */
+  almacen_origen: PickingOnboardingAlmacen | null;
+  /** Almacén DESTINO sugerido (APARTADOS) — no lo consume el wizard actual. */
+  almacen_destino: PickingOnboardingAlmacen | null;
   pedido: PickingOnboardingPedido | null;
   picking_detalle: PickingOnboardingTalla[];
 }

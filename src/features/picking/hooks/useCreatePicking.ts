@@ -19,11 +19,35 @@ const FORM_FIELDS: PickingFormErrorField[] = [
 ];
 
 /**
- * Mensajes de "dato desactualizado": el pendiente por talla cambió entre que se
- * cargó el formulario y se envió (otro operador/otra pestaña ya surtió). NO son
- * un error fatal: el Paso 2 recarga el onboarding y deja reintentar.
+ * Mensajes de "dato desactualizado": lo que se podía surtir cambió entre que se
+ * cargó el formulario y se envió. Cubre las DOS causas, ambas ajenas al usuario
+ * y ambas recuperables recargando:
+ *
+ *  - el PENDIENTE del pedido bajó (otro operador/otra pestaña ya surtió), y
+ *  - la EXISTENCIA disponible del almacén origen bajó (otra reserva o
+ *    movimiento de inventario consumió el stock), incluida la validación
+ *    agregada que el backend hace cuando varias líneas comparten el mismo par
+ *    producto/variante.
+ *
+ * NO son un error fatal: el Paso 2 recarga el onboarding y deja reintentar.
  */
-const STALE_DATA_RE = /ya no tiene cantidad pendiente|excede lo pendiente/i;
+const STALE_DATA_RE =
+  /ya no tiene cantidad pendiente|excede lo pendiente|excede la existencia disponible/i;
+
+/**
+ * Rechazo DETERMINISTA que NO debe tratarse como dato desactualizado, aunque su
+ * texto contenga la frase de arriba: el backend valida además la SUMA de las
+ * líneas que comparten el mismo par (producto, variante) contra la existencia
+ * agregada de esa clave, y ese mensaje dice "excede la existencia disponible
+ * AGREGADA".
+ *
+ * Clasificarlo como stale sería una trampa sin salida: recargar devuelve los
+ * mismos números (no cambió nada en el servidor), el usuario reenvía lo mismo y
+ * vuelve a fallar, y encima el aviso genérico de stale reemplazaría al mensaje
+ * real —el único que nombra el producto y el total excedido—. Tiene que llegar
+ * al banner tal cual, para que el usuario sepa qué bajar.
+ */
+const DETERMINISTIC_STOCK_RE = /existencia disponible agregada/i;
 
 /**
  * `picking_detalle` puede llegar en una TERCERA forma que `firstDrfMessage` no
@@ -86,9 +110,9 @@ export function parsePickingError(error: unknown): ParsedPickingError {
   };
 
   const finalize = (): ParsedPickingError => {
-    result.staleData = result.messages.some((message) =>
-      STALE_DATA_RE.test(message),
-    );
+    result.staleData =
+      result.messages.some((message) => STALE_DATA_RE.test(message)) &&
+      !result.messages.some((message) => DETERMINISTIC_STOCK_RE.test(message));
     return result;
   };
 
@@ -222,7 +246,7 @@ export const useCreatePicking = (onServerError?: (parsed: ParsedPickingError) =>
       onServerError?.(parsed);
 
       if (parsed.staleData) {
-        toast("Las cantidades pendientes cambiaron; se actualizaron los datos. Revisa y reintenta.", {
+        toast("Las cantidades disponibles cambiaron; se actualizaron los datos. Revisa y reintenta.", {
           icon: "🔄",
         });
         return;

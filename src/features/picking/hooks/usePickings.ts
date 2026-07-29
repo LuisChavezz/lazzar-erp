@@ -24,6 +24,16 @@ export const usePickings = () => {
 
   return {
     pickings: query.data ?? [],
+    /**
+     * Instante (ms) en que la lista se resolvió por última vez. Lo usa la vista
+     * como "ahora" para marcar pickings vencidos: es una lectura PURA en render
+     * (a diferencia de `Date.now()`, que el React Compiler prohíbe llamar
+     * durante el render) y además es el instante correcto conceptualmente —el
+     * vencimiento se evalúa contra el momento en que se trajo el dato, y se
+     * reevalúa solo en cada refetch, nunca a media vida de un render—.
+     * Vale 0 mientras no haya datos, cuando tampoco hay filas que marcar.
+     */
+    dataUpdatedAt: query.dataUpdatedAt,
     hasLoaded,
     isLoading: query.isLoading,
     isError: query.isError,

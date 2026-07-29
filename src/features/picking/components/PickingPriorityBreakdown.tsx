@@ -1,49 +1,20 @@
+import {
+  PICKING_PRIORIDAD_CONFIG,
+  PICKING_PRIORIDAD_ORDER,
+} from "../constants/pickingPrioridad";
 import type { PickingKpis } from "../utils/picking.utils";
 
 /**
- * Colores por prioridad de picking. `PickingColumns` pinta `prioridad` como
- * texto plano (sin badge/color) — no existe una convención de color previa
- * que reusar para este desglose, así que se define aquí con el mismo criterio
- * semántico ya usado en el resto del proyecto (rose = urgente, amber =
- * moderado, sky = bajo), análogo a como `AccountsReceivableAgingSummary`
- * colorea sus rangos de antigüedad.
+ * Desglose del listado por prioridad. Los colores salen de
+ * `PICKING_PRIORIDAD_CONFIG` —la misma fuente que el badge de la columna
+ * "Prioridad"—, así que la tabla y estas tarjetas no pueden divergir.
  */
-const PRIORIDAD_STYLES: Record<
-  keyof PickingKpis["prioridadBreakdown"],
-  { label: string; bar: string; chip: string; dot: string }
-> = {
-  ALTA: {
-    label: "Alta",
-    bar: "bg-rose-500",
-    chip: "text-rose-600 dark:text-rose-400",
-    dot: "bg-rose-500",
-  },
-  MEDIA: {
-    label: "Media",
-    bar: "bg-amber-400",
-    chip: "text-amber-600 dark:text-amber-400",
-    dot: "bg-amber-400",
-  },
-  BAJA: {
-    label: "Baja",
-    bar: "bg-sky-400",
-    chip: "text-sky-600 dark:text-sky-400",
-    dot: "bg-sky-400",
-  },
-};
-
-const PRIORIDAD_ORDER: Array<keyof PickingKpis["prioridadBreakdown"]> = [
-  "ALTA",
-  "MEDIA",
-  "BAJA",
-];
-
 export const PickingPriorityBreakdown = ({
   breakdown,
 }: {
   breakdown: PickingKpis["prioridadBreakdown"];
 }) => {
-  const total = PRIORIDAD_ORDER.reduce((acc, key) => acc + breakdown[key], 0);
+  const total = PICKING_PRIORIDAD_ORDER.reduce((acc, key) => acc + breakdown[key], 0);
 
   return (
     <div className="rounded-xl bg-white dark:bg-black border border-slate-200 dark:border-white/10 p-5 shadow-sm">
@@ -64,15 +35,15 @@ export const PickingPriorityBreakdown = ({
       {/* Barra segmentada */}
       <div className="flex h-2.5 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
         {total > 0 ? (
-          PRIORIDAD_ORDER.map((key) => {
+          PICKING_PRIORIDAD_ORDER.map((key) => {
             const width = (breakdown[key] / total) * 100;
             if (width <= 0) return null;
             return (
               <div
                 key={key}
-                className={`h-full ${PRIORIDAD_STYLES[key].bar}`}
+                className={`h-full ${PICKING_PRIORIDAD_CONFIG[key].bar}`}
                 style={{ width: `${width}%` }}
-                title={`${PRIORIDAD_STYLES[key].label}: ${breakdown[key]}`}
+                title={`${PICKING_PRIORIDAD_CONFIG[key].label}: ${breakdown[key]}`}
               />
             );
           })
@@ -83,8 +54,8 @@ export const PickingPriorityBreakdown = ({
 
       {/* Detalle por prioridad */}
       <div className="grid grid-cols-3 gap-3 mt-4">
-        {PRIORIDAD_ORDER.map((key) => {
-          const style = PRIORIDAD_STYLES[key];
+        {PICKING_PRIORIDAD_ORDER.map((key) => {
+          const style = PICKING_PRIORIDAD_CONFIG[key];
           const count = breakdown[key];
           const pct = total > 0 ? Math.round((count / total) * 100) : 0;
           return (

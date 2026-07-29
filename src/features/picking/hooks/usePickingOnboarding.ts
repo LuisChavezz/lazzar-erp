@@ -25,13 +25,20 @@ import type { PickingOnboardingData } from "../interfaces/picking-onboarding.int
  * vez que se monta el Paso 1 (al abrir el diálogo o al "Regresar" desde el
  * Paso 2) no tiene ningún beneficio de frescura y solo agrega una petición.
  */
-export const usePickingOnboarding = (pedidoId?: number | null) => {
+export const usePickingOnboarding = (
+  pedidoId?: number | null,
+  almacenOrigenId?: number | null,
+) => {
   const normalizedPedidoId = pedidoId && pedidoId > 0 ? pedidoId : null;
+  const normalizedAlmacenId =
+    almacenOrigenId && almacenOrigenId > 0 ? almacenOrigenId : null;
   const isPedidoScoped = normalizedPedidoId !== null;
 
   const query = useQuery<PickingOnboardingData>({
-    queryKey: ["picking-onboarding", normalizedPedidoId],
-    queryFn: () => getPickingOnboarding(normalizedPedidoId),
+    // El almacén forma parte de la llave: cambia las existencias por talla de
+    // la respuesta, así que dos almacenes distintos no pueden compartir caché.
+    queryKey: ["picking-onboarding", normalizedPedidoId, normalizedAlmacenId],
+    queryFn: () => getPickingOnboarding(normalizedPedidoId, normalizedAlmacenId),
     ...(isPedidoScoped
       ? { staleTime: 0, gcTime: 30_000, refetchOnMount: "always" as const }
       : {}),

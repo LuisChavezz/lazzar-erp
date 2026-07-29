@@ -1,6 +1,13 @@
 "use client";
 
-import { ChevronRightIcon, PedidosIcon, RouteIcon, WarehouseIcon } from "@/src/components/Icons";
+import type { ComponentType, SVGProps } from "react";
+import {
+  ChevronRightIcon,
+  ExclamationTriangleIcon,
+  PedidosIcon,
+  RouteIcon,
+  WarehouseIcon,
+} from "@/src/components/Icons";
 import { MainDialog } from "@/src/components/MainDialog";
 import { StatusBadge, type StatusBadgeConfigEntry } from "@/src/components/StatusBadge";
 import {
@@ -12,8 +19,10 @@ import {
 } from "@/src/components/DetailDialogPrimitives";
 import { formatExactQuantityValue } from "@/src/utils/formatCurrency";
 import { formatShortDate, formatShortTime } from "@/src/utils/formatDate";
+import { PICKING_PRIORIDAD_CONFIG } from "../constants/pickingPrioridad";
 import { PICKING_STATUS_CONFIG } from "../constants/pickingStatus";
-import type { Picking, PickingDetalleLine } from "../interfaces/picking.interface";
+import { PICKING_TIPO_LABELS } from "../constants/pickingTipo";
+import type { PickingDetalleLine, PickingRow } from "../interfaces/picking.interface";
 
 /**
  * Colores del estatus de UNA LÍNEA (`PickingDetalleLine.estado`) — enum
@@ -105,10 +114,39 @@ const LineasTable = ({ items }: { items: PickingDetalleLine[] }) => {
   );
 };
 
+/**
+ * Un eslabón de la cadena "Pedido → Origen → Destino": ícono, rótulo y valor.
+ * El rótulo existe porque origen y destino son ambos nombres de almacén y sin
+ * él no habría forma de saber cuál es cuál.
+ */
+const ChainStep = ({
+  icon: Icon,
+  label,
+  value,
+}: {
+  icon: ComponentType<SVGProps<SVGSVGElement>>;
+  label: string;
+  value: string;
+}) => (
+  <div className="flex items-center gap-2 flex-1 min-w-0">
+    <Icon className="w-4 h-4 text-slate-400 shrink-0" aria-hidden="true" />
+    <div className="min-w-0">
+      <p className="text-[10px] uppercase tracking-wide text-slate-400 dark:text-slate-500">
+        {label}
+      </p>
+      <p className="text-sm font-semibold text-slate-700 dark:text-slate-200 truncate">
+        {value}
+      </p>
+    </div>
+  </div>
+);
+
 interface PickingDetailDialogProps {
-  /** El picking ya cargado por el listado — sin fetch propio (ver
-   *  `Picking.picking_detalle`, presente tanto en listado como en detalle). */
-  picking: Picking;
+  /** La fila ya cargada por el listado — sin fetch propio (ver
+   *  `Picking.picking_detalle`, presente tanto en listado como en detalle).
+   *  Es la fila enriquecida (`PickingRow`), no el registro crudo, para que el
+   *  diálogo marque el vencimiento con la MISMA definición que la tabla. */
+  picking: PickingRow;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
@@ -140,16 +178,38 @@ export function PickingDetailDialog({ picking, open, onOpenChange }: PickingDeta
           <InfoField label="Estatus">
             <StatusBadge status={picking.estado} config={PICKING_STATUS_CONFIG} />
           </InfoField>
-          <InfoField label="Prioridad">{textOrDash(picking.prioridad)}</InfoField>
-          <InfoField label="Tipo">{textOrDash(picking.tipo)}</InfoField>
+          <InfoField label="Prioridad">
+            <StatusBadge status={picking.prioridad} config={PICKING_PRIORIDAD_CONFIG} />
+          </InfoField>
+          {/* El backend manda el código crudo (`ORDER_PICKING`), sin etiqueta
+              acompañante: se traduce con `PICKING_TIPO_LABELS`. */}
+          <InfoField label="Tipo">{textOrDash(PICKING_TIPO_LABELS[picking.tipo])}</InfoField>
           <InfoField label="Operador">{textOrDash(picking.operador_nombre)}</InfoField>
           <InfoField label="Avance">
             <span className="tabular-nums">
               {picking.total_lineas_completas}/{picking.total_lineas} líneas
             </span>
           </InfoField>
+          {/* Mismo resaltado de vencido que la columna "Fecha Límite" de la
+              tabla, derivado de la misma `esta_vencida` (`isPickingVencido`). */}
           <InfoField label="Fecha Límite">
-            {picking.fecha_limite ? formatShortDate(picking.fecha_limite) : "—"}
+            {picking.fecha_limite ? (
+              <span
+                className={
+                  picking.esta_vencida
+                    ? "inline-flex items-center gap-1.5 text-rose-600 dark:text-rose-400 font-semibold"
+                    : undefined
+                }
+              >
+                {picking.esta_vencida && (
+                  <ExclamationTriangleIcon className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+                )}
+                {formatShortDate(picking.fecha_limite)}
+                {picking.esta_vencida && <span className="sr-only">(vencido)</span>}
+              </span>
+            ) : (
+              "—"
+            )}
           </InfoField>
           {picking.fecha_inicio && (
             <InfoField label="Inicio">
@@ -172,23 +232,30 @@ export function PickingDetailDialog({ picking, open, onOpenChange }: PickingDeta
           )}
         </div>
 
-        {/* Pedido → Almacén */}
+        {/* Pedido → almacén origen → almacén destino (apartados).
+            El destino es información distinta del origen y CONVIVE con él: el
+            origen es de donde se recolecta y el destino a dónde se traspasa lo
+            surtido —normalmente el almacén "APARTADOS", que el backend resuelve
+            solo cuando el alta no lo especifica—. Sin rotularlos, dos nombres
+            de almacén seguidos serían indistinguibles, de ahí las etiquetas.
+            Se omite el tramo del destino si el registro no lo trae (pickings
+            anteriores a la migración que lo introdujo). */}
         <div>
-          <SectionTitle>Pedido y Almacén</SectionTitle>
+          <SectionTitle>Pedido y Almacenes</SectionTitle>
           <div className="flex items-center gap-3 px-4 py-3 rounded-xl border border-slate-100 dark:border-white/10">
-            <div className="flex items-center gap-2 flex-1 min-w-0">
-              <PedidosIcon className="w-4 h-4 text-slate-400 shrink-0" aria-hidden="true" />
-              <span className="text-sm font-semibold text-slate-700 dark:text-slate-200 truncate">
-                {picking.pedido_folio}
-              </span>
-            </div>
+            <ChainStep icon={PedidosIcon} label="Pedido" value={picking.pedido_folio} />
             <ChevronRightIcon className="w-4 h-4 text-sky-500 shrink-0" aria-hidden="true" />
-            <div className="flex items-center gap-2 flex-1 min-w-0">
-              <WarehouseIcon className="w-4 h-4 text-slate-400 shrink-0" aria-hidden="true" />
-              <span className="text-sm font-semibold text-slate-700 dark:text-slate-200 truncate">
-                {picking.almacen_nombre}
-              </span>
-            </div>
+            <ChainStep icon={WarehouseIcon} label="Origen" value={picking.almacen_nombre} />
+            {picking.almacen_destino_nombre && (
+              <>
+                <ChevronRightIcon className="w-4 h-4 text-sky-500 shrink-0" aria-hidden="true" />
+                <ChainStep
+                  icon={WarehouseIcon}
+                  label="Destino"
+                  value={picking.almacen_destino_nombre}
+                />
+              </>
+            )}
           </div>
         </div>
 

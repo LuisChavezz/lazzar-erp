@@ -5,14 +5,17 @@ import { createColumnHelper, type ColumnDef } from "@tanstack/react-table";
 import { UserIcon, ViewIcon } from "@/src/components/Icons";
 import { ActionMenu, type ActionMenuItem } from "@/src/components/ActionMenu";
 import { StatusBadge } from "@/src/components/StatusBadge";
-import { formatShortDate } from "@/src/utils/formatDate";
+import {
+  PICKING_PRIORIDAD_CONFIG,
+  pickingPrioridadRank,
+} from "../constants/pickingPrioridad";
 import { PICKING_STATUS_CONFIG } from "../constants/pickingStatus";
 import { PickingDetailDialog } from "./PickingDetailDialog";
-import type { Picking } from "../interfaces/picking.interface";
+import type { PickingRow } from "../interfaces/picking.interface";
 
 // ── Celda de acciones ────────────────────────────────────────────────────────
 
-const ActionsCell = ({ row }: { row: Picking }) => {
+const ActionsCell = ({ row }: { row: PickingRow }) => {
   const [isDetailOpen, setIsDetailOpen] = useState(false);
 
   const menuItems: ActionMenuItem[] = [
@@ -33,7 +36,7 @@ const ActionsCell = ({ row }: { row: Picking }) => {
   );
 };
 
-const columnHelper = createColumnHelper<Picking>();
+const columnHelper = createColumnHelper<PickingRow>();
 
 export const pickingColumns = [
   columnHelper.accessor("folio", {
@@ -52,12 +55,6 @@ export const pickingColumns = [
       </span>
     ),
   }),
-  columnHelper.accessor("almacen_nombre", {
-    header: "Almacén",
-    cell: (info) => (
-      <span className="text-sm text-slate-700 dark:text-slate-200">{info.getValue()}</span>
-    ),
-  }),
   columnHelper.accessor("operador_nombre", {
     header: "Operador",
     cell: (info) => (
@@ -73,43 +70,22 @@ export const pickingColumns = [
     header: "Estatus",
     cell: (info) => <StatusBadge status={info.getValue()} config={PICKING_STATUS_CONFIG} />,
   }),
+  // Badge de color (no texto plano) para que la urgencia se lea de un vistazo
+  // en la tabla y no solo en el desglose de KPIs — misma fuente de color que
+  // `PickingPriorityBreakdown` (`PICKING_PRIORIDAD_CONFIG`), así que "Alta" es
+  // rose en ambos lugares.
   columnHelper.accessor("prioridad", {
     header: "Prioridad",
-    cell: (info) => (
-      <span className="text-sm text-slate-700 dark:text-slate-300">{info.getValue()}</span>
-    ),
-  }),
-  // Columna con accessor DERIVADO (proporción completas/total, no el conteo
-  // crudo) para que el sort refleje el avance real: ordenar por
-  // `total_lineas_completas` a secas empataba pickings con distinto
-  // `total_lineas` (p. ej. 5/5 y 5/20 ambos ordenaban como "5"), aunque uno
-  // esté 100% surtido y el otro apenas 25%. `total_lineas > 0` siempre debería
-  // cumplirse (el backend deriva las líneas del pedido), pero se guarda contra
-  // división por cero por si acaso.
-  columnHelper.accessor(
-    (row) => (row.total_lineas > 0 ? row.total_lineas_completas / row.total_lineas : 0),
-    {
-      id: "avance",
-      header: "Avance",
-      cell: ({ row }) => (
-        <span className="text-sm tabular-nums text-slate-700 dark:text-slate-300">
-          {row.original.total_lineas_completas}/{row.original.total_lineas}
-        </span>
-      ),
-    },
-  ),
-  columnHelper.accessor("fecha_limite", {
-    header: "Fecha Límite",
-    sortingFn: "datetime",
-    cell: (info) => (
-      <span className="text-sm text-slate-700 dark:text-slate-200">
-        {formatShortDate(info.getValue())}
-      </span>
-    ),
+    // Sort por urgencia real, no alfabético sobre el string crudo (que
+    // ordenaría ALTA → BAJA → MEDIA, dejando la más urgente junto a la menos).
+    sortingFn: (a, b) =>
+      pickingPrioridadRank(a.original.prioridad) -
+      pickingPrioridadRank(b.original.prioridad),
+    cell: (info) => <StatusBadge status={info.getValue()} config={PICKING_PRIORIDAD_CONFIG} />,
   }),
   columnHelper.display({
     id: "actions",
     header: () => <div className="text-center">Acciones</div>,
     cell: ({ row }) => <ActionsCell row={row.original} />,
   }),
-] as ColumnDef<Picking>[];
+] as ColumnDef<PickingRow>[];
