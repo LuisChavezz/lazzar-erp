@@ -80,7 +80,15 @@ export interface PickingOnboardingTalla {
    * renglón de `Existencia`).
    */
   existencia_fisica: string;
-  /** Parte de la física ya apartada por reservas activas de OTROS pickings. */
+  /**
+   * Parte de la física bloqueada por reservas de inventario ACTIVAS.
+   *
+   * Ya NO crece con cada picking: crear uno dejó de generar reservas, así que
+   * hoy solo suma filas históricas (las que quedaron activas antes de ese
+   * cambio). Sigue restándose de `existencia_disponible`, por lo que no se
+   * puede ignorar, pero no debe describirse al usuario como algo que "otros
+   * pickings están apartando ahora".
+   */
   existencia_reservada: string;
   /**
    * `existencia_fisica - existencia_reservada` (acotado a 0): lo que de verdad

@@ -187,7 +187,7 @@ export function PickingWizardStep2({
               </h3>
               <p className="text-xs text-amber-700 dark:text-amber-300 mt-1">
                 {sinExistencia
-                  ? `El pedido sigue con tallas pendientes, pero el almacén ${almacenNombre} no tiene piezas libres (la existencia está en cero o ya está reservada por otros pickings).`
+                  ? `El pedido sigue con tallas pendientes, pero el almacén ${almacenNombre} no tiene piezas libres (la existencia está en cero o comprometida por reservas de inventario activas).`
                   : "Regresa para elegir otro pedido."}
               </p>
             </div>

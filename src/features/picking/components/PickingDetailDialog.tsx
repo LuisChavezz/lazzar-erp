@@ -234,12 +234,18 @@ export function PickingDetailDialog({ picking, open, onOpenChange }: PickingDeta
 
         {/* Pedido → almacén origen → almacén destino (apartados).
             El destino es información distinta del origen y CONVIVE con él: el
-            origen es de donde se recolecta y el destino a dónde se traspasa lo
-            surtido —normalmente el almacén "APARTADOS", que el backend resuelve
-            solo cuando el alta no lo especifica—. Sin rotularlos, dos nombres
-            de almacén seguidos serían indistinguibles, de ahí las etiquetas.
-            Se omite el tramo del destino si el registro no lo trae (pickings
-            anteriores a la migración que lo introdujo). */}
+            origen es de donde se recolecta y el destino a dónde está PREVISTO
+            llevar lo surtido —normalmente el almacén "APARTADOS", que el
+            backend resuelve solo cuando el alta no lo especifica—. Sin
+            rotularlos, dos nombres de almacén seguidos serían indistinguibles,
+            de ahí las etiquetas. Se omite el tramo del destino si el registro
+            no lo trae (pickings anteriores a la migración que lo introdujo).
+
+            La cadena con flechas se lee como un movimiento, y registrar el
+            picking NO mueve existencias (el backend solo guarda el documento:
+            sin transferencia, sin reserva). De ahí la aclaración al pie — es
+            más barata que quitar el destino, que sigue siendo dato real del
+            registro. */}
         <div>
           <SectionTitle>Pedido y Almacenes</SectionTitle>
           <div className="flex items-center gap-3 px-4 py-3 rounded-xl border border-slate-100 dark:border-white/10">
@@ -257,6 +263,12 @@ export function PickingDetailDialog({ picking, open, onOpenChange }: PickingDeta
               </>
             )}
           </div>
+          {picking.almacen_destino_nombre && (
+            <p className="mt-1.5 px-1 text-[11px] text-slate-500 dark:text-slate-400">
+              El destino es informativo: el picking documenta el surtido, no
+              traspasa existencias por sí mismo.
+            </p>
+          )}
         </div>
 
         {/* Líneas */}

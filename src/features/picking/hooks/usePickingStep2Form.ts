@@ -65,9 +65,9 @@ function normalizeCantidad(raw: string, techo: number): string {
  *
  *  - `pendiente` es del PEDIDO (lo que falta por asignar de esa talla).
  *  - `disponible` es del INVENTARIO (existencia física del almacén origen menos
- *    lo reservado por otros pickings). Puede ser MENOR que el pendiente: un
- *    pedido con 50 pendientes contra 30 piezas en existencia solo puede surtir
- *    30 hoy.
+ *    las reservas activas que aún la bloquean — ver `existencia_reservada`).
+ *    Puede ser MENOR que el pendiente: un pedido con 50 pendientes contra 30
+ *    piezas en existencia solo puede surtir 30 hoy.
  *
  * `disponible` es `null` cuando no es de fiar (ver `existenciaConfiable`), y en
  * ese caso el techo vuelve a ser solo el pendiente — el comportamiento previo.
@@ -371,6 +371,17 @@ export function usePickingStep2Form({ header, onSuccess }: UsePickingStep2FormPa
     useCreatePicking(handleServerError);
 
   // ─── Construcción de líneas + envío ────────────────────────────────────────
+  /**
+   * Arma `picking_detalle`. Cada línea lleva EXACTAMENTE tres campos
+   * (`pedido_detalle_talla`, `cantidad_asignada` y `observaciones` opcional):
+   * no hay estado de formulario del que se pueda colar nada más, porque las
+   * únicas fuentes son `quantities` y `observaciones`.
+   *
+   * En particular, NUNCA se emiten las banderas
+   * `generar_orden_bordado`/`generar_orden_reflejante`/`generar_orden_corte_manga`:
+   * el backend las acepta y responde 201, pero las descarta en silencio sin
+   * crear ninguna orden de trabajo. Ver `CreatePickingPayload`.
+   */
   const buildLines = (): CreatePickingDetalleLine[] => {
     const lines: CreatePickingDetalleLine[] = [];
     for (const row of rows) {

@@ -98,12 +98,14 @@ export interface PickingDetalleLine {
   observaciones: string | null;
 }
 
-/** Tipos de orden de trabajo que un picking puede generar. */
+/** Tipos de orden de trabajo que un picking PUDO generar (ver `ordenes_trabajo`). */
 export type PickingOrdenTrabajoTipo = "BORDADO" | "REFLEJANTE" | "CORTE_MANGA";
 
 /**
- * Vínculo entre un picking y una orden de trabajo generada al crearlo, tal
- * cual viaja embebido en `Picking.ordenes_trabajo` (listado y detalle).
+ * Vínculo entre un picking y una orden de trabajo, tal cual viaja embebido en
+ * `Picking.ordenes_trabajo` (listado y detalle). Solo lo traen pickings
+ * HISTÓRICOS: crear un picking ya no genera órdenes de trabajo (ver
+ * `ordenes_trabajo`).
  *
  * Los tres pares `orden_*`/`orden_*_folio` son excluyentes: solo el que
  * corresponde a `tipo_orden` viaja con valor, los otros dos en `null`.
@@ -142,11 +144,16 @@ export interface Picking {
   almacen: number;
   almacen_nombre: string;
   /**
-   * Almacén DESTINO del picking, distinto del origen y COEXISTE con él: es el
-   * almacén de apartados al que se traspasa lo surtido. Cuando el `POST` omite
-   * `almacen_destino`, el backend resuelve por nombre el almacén `"APARTADOS"`
-   * de la empresa/sucursal del pedido y lo guarda
-   * (`PickingService._resolve_apartados`), por eso en la práctica
+   * Almacén DESTINO del picking, distinto del origen y COEXISTE con él: a
+   * dónde está previsto llevar lo surtido (normalmente el de apartados).
+   *
+   * Es DECLARATIVO: se persiste, pero crear el picking NO traspasa existencias
+   * hacia él. `PickingService.handle_store` solo registra el documento —no
+   * mueve inventario, no crea transferencias y no genera reservas—; el
+   * movimiento físico vive en flujos posteriores (Traspasos). Cuando el `POST`
+   * omite `almacen_destino`, el backend resuelve por nombre el almacén
+   * `"APARTADOS"` de la empresa/sucursal del pedido y lo guarda
+   * (`resolver_apartados_obligatorio`), por eso en la práctica
    * `almacen_destino_nombre` casi siempre llega como `"APARTADOS"`.
    *
    * Nullable en el modelo (`blank=True, null=True`) aunque el flujo actual
@@ -186,9 +193,21 @@ export interface Picking {
   updated_at: string;
   picking_detalle: PickingDetalleLine[];
   /**
-   * Órdenes de trabajo (bordado / reflejante / corte de manga) generadas al
-   * crear el picking. El backend las anida y prefetchea tanto en el listado
-   * como en el detalle; llega `[]` cuando el picking no generó ninguna.
+   * Órdenes de trabajo (bordado / reflejante / corte de manga) vinculadas al
+   * picking. El backend las sigue anidando y prefetcheando en el listado y en
+   * el detalle, pero SIEMPRE llega `[]` para cualquier picking NUEVO: crear un
+   * picking ya no genera órdenes de trabajo (`PickingService.handle_store`
+   * solo registra el documento). Únicamente los pickings creados ANTES de ese
+   * cambio traen filas reales aquí.
+   *
+   * Ningún componente lo consume hoy — a propósito: una sección de "órdenes
+   * generadas" en el detalle estaría vacía para todo picking nuevo. Se tipa
+   * para no perder la forma del contrato y para que los datos históricos sigan
+   * siendo legibles si alguna vista los necesita.
+   *
+   * Las órdenes de bordado se crean ahora por su propio flujo en Producción
+   * (`/produccion/orden-bordado/onboarding/`, por pedido completo y sin vínculo
+   * con picking); reflejante y corte de manga no tienen endpoint de reemplazo.
    */
   ordenes_trabajo: PickingOrdenTrabajo[];
 }
@@ -236,6 +255,14 @@ export interface CreatePickingDetalleLine {
  * `oleada`/`zona_almacen`/`lote`/`fecha_*` son campos de cabecera opcionales
  * del contrato; el formulario actual no los captura pero se tipan por
  * completitud para futuras iteraciones.
+ *
+ * NO se declaran aquí —ni deben añadirse— las banderas por línea
+ * `generar_orden_bordado`/`generar_orden_reflejante`/`generar_orden_corte_manga`.
+ * El serializer del backend las SIGUE ACEPTANDO y responde 201, pero las
+ * DESCARTA en silencio: `PickingService.handle_store` ya no crea ninguna orden
+ * de trabajo. Mandarlas prometería al usuario algo que no ocurre —el peor
+ * modo de falla posible—, así que quedan deliberadamente fuera del contrato
+ * del frontend (ver `ordenes_trabajo` arriba para el camino de reemplazo).
  */
 export interface CreatePickingPayload {
   pedido: number;
