@@ -29,6 +29,7 @@ import {
   ChevronRight,
   ChevronUp,
   ClipboardList,
+  Copy,
   Clock,
   Columns3Cog,
   DollarSign,
@@ -87,6 +88,7 @@ import {
   Star,
   Sun,
   Tag,
+  Tags,
   Trash2,
   TrendingDown,
   TrendingUp,
@@ -224,6 +226,11 @@ export const RouteIcon = (props: LucideProps) => <Route {...props} />;
 export const PackingIcon = (props: LucideProps) => <Boxes {...props} />;
 export const ReceiptIcon = (props: LucideProps) => <Receipt {...props} />;
 export const PrinterIcon = (props: LucideProps) => <Printer {...props} />;
+// `Tags` (no `Tag`): ese glifo ya lo exporta `ProductTypesIcon` y se usa en
+// /config/product-types, así que reutilizarlo dejaría el catálogo de tipos de
+// producto y el módulo de etiquetas indistinguibles por ícono.
+export const LabelsIcon = (props: LucideProps) => <Tags {...props} />;
+export const CopyIcon = (props: LucideProps) => <Copy {...props} />;
 export const BoxIcon = (props: LucideProps) => <Box {...props} />;
 export const WeightIcon = (props: LucideProps) => <Weight {...props} />;
 export const VolumeIcon = (props: LucideProps) => <Container {...props} />;

@@ -31,6 +31,7 @@ import {
   RouteIcon,
   PackingIcon,
   EmbarquesIcon,
+  LabelsIcon,
 } from "../components/Icons";
 
 export interface AppRouteItem {
@@ -288,6 +289,14 @@ export const appRouteGroups: AppRouteGroup[] = [
         label: "Órdenes de Bordado",
         path: "/manufacturing/embroidery",
         icon: ScissorsIcon,
+        permission: "R-PRODUCCION",
+      },
+      {
+        key: "manufacturing-labels",
+        label: "Etiquetas",
+        path: "/manufacturing/labels",
+        icon: LabelsIcon,
+        description: "Consulta de etiquetas de producto: vista previa, ZPL generado y estatus de impresión.",
         permission: "R-PRODUCCION",
       },
       {
