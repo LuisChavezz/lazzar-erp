@@ -32,6 +32,7 @@ import {
   PackingIcon,
   EmbarquesIcon,
   LabelsIcon,
+  QrCodeIcon,
 } from "../components/Icons";
 
 export interface AppRouteItem {
@@ -201,6 +202,15 @@ export const appRouteGroups: AppRouteGroup[] = [
         path: "/wms/dispatch",
         icon: EmbarquesIcon,
         description: "Entrega de cajas empacadas al transportista para su envío.",
+        permission: "R-WMS",
+      },
+      {
+        key: "wms-rfid-matching",
+        label: "Encuadres RFID",
+        path: "/wms/rfid-matching",
+        icon: QrCodeIcon,
+        description:
+          "Conteo de recepción por escaneo: esperado contra leído de una orden de compra.",
         permission: "R-WMS",
       },
     ],
