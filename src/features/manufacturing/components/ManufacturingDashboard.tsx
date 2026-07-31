@@ -15,7 +15,8 @@ import {
   ComprasIcon,
   ChevronRightIcon,
 } from "@/src/components/Icons";
-import { MOCK_EMBROIDERY_ORDERS } from "@/src/features/embroidery/mocks/embroidery-orders.mock";
+import { isInitialLoadError } from "@/src/utils/isInitialLoadError";
+import { useEmbroideryOrders } from "@/src/features/embroidery/hooks/useEmbroideryOrders";
 import { MOCK_CEDICOR_PRODUCTION_ORDERS } from "@/src/features/cedicor/mocks/cedicor-production-order.mock";
 import { MOCK_CEDICOR_NEW_DEVELOPMENT } from "@/src/features/cedicor/mocks/cedicor-new-development.mock";
 import {
@@ -27,7 +28,6 @@ import {
 // ── Tipos de estatus de cada sub-módulo ──────────────────────────────────────
 
 type ProdStatus = ProductionOrderStatus;
-type EmbrStatus = (typeof MOCK_EMBROIDERY_ORDERS)[number]["estatus_hoja"];
 type CedicorProdStatus = (typeof MOCK_CEDICOR_PRODUCTION_ORDERS)[number]["estatus"];
 type CedicorDevStatus = (typeof MOCK_CEDICOR_NEW_DEVELOPMENT)[number]["estatus"];
 
@@ -125,6 +125,7 @@ function ModuleCard({
   activas,
   completas,
   alertas,
+  isUnavailable = false,
 }: {
   href: string;
   icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
@@ -135,8 +136,17 @@ function ModuleCard({
   activas: number;
   completas: number;
   alertas: number;
+  /**
+   * El módulo no pudo entregar sus cifras (cargando, o error de carga
+   * inicial). Pinta guiones en vez de ceros: un `0` aquí se lee como "no hay
+   * órdenes", que es una afirmación distinta —y falsa— frente a "no se pudo
+   * saber". Opcional y `false` por defecto, así que las tarjetas que siguen en
+   * maqueta no cambian.
+   */
+  isUnavailable?: boolean;
 }) {
   const pctCompletas = total > 0 ? Math.round((completas / total) * 100) : 0;
+  const fmt = (value: number) => (isUnavailable ? "—" : String(value));
 
   return (
     <Link
@@ -159,7 +169,7 @@ function ModuleCard({
           {title}
         </p>
         <span className={`text-2xl font-black tabular-nums tracking-tight font-mono ${iconText}`}>
-          {total}
+          {fmt(total)}
         </span>
         <span className="text-xs text-slate-400 dark:text-slate-500 ml-1">órdenes</span>
       </div>
@@ -167,16 +177,16 @@ function ModuleCard({
       {/* Mini-estadísticas */}
       <div className="grid grid-cols-3 gap-1 text-center">
         <div className="rounded-lg bg-sky-50 dark:bg-sky-500/10 px-1 py-1.5">
-          <p className="text-sm font-bold tabular-nums text-sky-600 dark:text-sky-400 leading-none">{activas}</p>
+          <p className="text-sm font-bold tabular-nums text-sky-600 dark:text-sky-400 leading-none">{fmt(activas)}</p>
           <p className="text-[9px] text-slate-400 dark:text-slate-500 mt-0.5 font-semibold uppercase tracking-wide">Activas</p>
         </div>
         <div className="rounded-lg bg-emerald-50 dark:bg-emerald-500/10 px-1 py-1.5">
-          <p className="text-sm font-bold tabular-nums text-emerald-600 dark:text-emerald-400 leading-none">{completas}</p>
+          <p className="text-sm font-bold tabular-nums text-emerald-600 dark:text-emerald-400 leading-none">{fmt(completas)}</p>
           <p className="text-[9px] text-slate-400 dark:text-slate-500 mt-0.5 font-semibold uppercase tracking-wide">Completadas</p>
         </div>
-        <div className={`rounded-lg px-1 py-1.5 ${alertas > 0 ? "bg-red-50 dark:bg-red-500/10" : "bg-slate-50 dark:bg-slate-500/10"}`}>
-          <p className={`text-sm font-bold tabular-nums leading-none ${alertas > 0 ? "text-red-600 dark:text-red-400" : "text-slate-400 dark:text-slate-500"}`}>
-            {alertas}
+        <div className={`rounded-lg px-1 py-1.5 ${!isUnavailable && alertas > 0 ? "bg-red-50 dark:bg-red-500/10" : "bg-slate-50 dark:bg-slate-500/10"}`}>
+          <p className={`text-sm font-bold tabular-nums leading-none ${!isUnavailable && alertas > 0 ? "text-red-600 dark:text-red-400" : "text-slate-400 dark:text-slate-500"}`}>
+            {fmt(alertas)}
           </p>
           <p className="text-[9px] text-slate-400 dark:text-slate-500 mt-0.5 font-semibold uppercase tracking-wide">Alertas</p>
         </div>
@@ -187,11 +197,11 @@ function ModuleCard({
         <div className="h-1 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
           <div
             className="h-full bg-emerald-500 rounded-full transition-all duration-700"
-            style={{ width: `${pctCompletas}%` }}
+            style={{ width: isUnavailable ? "0%" : `${pctCompletas}%` }}
           />
         </div>
         <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-1 font-semibold">
-          {pctCompletas}% completadas
+          {isUnavailable ? "Sin datos disponibles" : `${pctCompletas}% completadas`}
         </p>
       </div>
     </Link>
@@ -267,6 +277,35 @@ function DistBar({
 // ── Componente principal ──────────────────────────────────────────────────────
 
 export function ManufacturingDashboard() {
+  // Único dato REAL de este dashboard hoy: el resto de las tarjetas
+  // (`prod`, Cedicor) siguen en `[]`/maqueta. Misma query cacheada que ya usa
+  // `EmbroideryView` (`["embroidery-orders"]`) — sin fetch nuevo.
+  //
+  // `notifyOnRefetchError: false`: el toast de "no se pudo actualizar" de
+  // `useEmbroideryOrders` está redactado para la pantalla de bordado; aquí
+  // llegaría sin decir a cuál de las cuatro tarjetas se refiere.
+  const {
+    orders: embOrders,
+    isLoading: isLoadingEmb,
+    isError: isErrorEmb,
+    hasLoaded: hasLoadedEmb,
+  } = useEmbroideryOrders({ notifyOnRefetchError: false });
+
+  // Mientras carga, o si la carga inicial falló, NO hay cifras de bordado que
+  // mostrar. `orders` es `[]` en ambos casos, y pintar ese `0` afirmaría "no
+  // hay órdenes" cuando lo cierto es "no se pudo saber" — el mismo criterio
+  // por el que `EmbroideryView` esconde sus KPIs en vez de enseñar ceros. Un
+  // refetch fallido CON datos en caché no entra aquí: se conservan los
+  // últimos datos buenos (igual que la tabla de bordado).
+  const embUnavailable = isLoadingEmb || isInitialLoadError(isErrorEmb, hasLoadedEmb);
+
+  // Lo ÚNICO que el memo de abajo necesita de bordado. Se extrae aquí para que
+  // la dependencia del memo sea un número estable y no el arreglo, que
+  // `useEmbroideryOrders` reconstruye (spread + sort) en cada invocación: con
+  // `[embOrders]` el memo nunca acertaría y recalcularía también las
+  // estadísticas de Cedicor y de OPs en cada render.
+  const embCount = embOrders.length;
+
   const stats = useMemo(() => {
     const hoy = new Date();
 
@@ -308,10 +347,26 @@ export function ManufacturingDashboard() {
       .slice(0, 5);
 
     // ── Bordado ──────────────────────────────────────────────────────────
-    const emb = MOCK_EMBROIDERY_ORDERS;
-    const embActivas   = emb.filter((o) => ["sin_liberar", "liberada", "en_proceso"].includes(o.estatus_hoja)).length;
-    const embCompletas = emb.filter((o) => o.estatus_hoja === "terminada").length;
-    const embAlertas   = 0; // sin estatus de alerta definido en bordado
+    // Datos REALES (`GET /produccion/orden-bordado/`, vía `useEmbroideryOrders`
+    // arriba) — ya no `MOCK_EMBROIDERY_ORDERS`.
+    //
+    // `activas`/`completas` migran de un desglose por `estatus_hoja` (4
+    // valores de la MAQUETA: sin_liberar/liberada/en_proceso/terminada) que NO
+    // tiene equivalente real: el campo real, `estatus_bordado`, es SIEMPRE `1`
+    // (Pendiente) — es `read_only` en el serializer y ningún endpoint lo
+    // avanza (`PUT`/`PATCH` → 405, confirmado en los chunks de listado/alta de
+    // `embroidery`). Bajo esa realidad, toda orden real es, por definición,
+    // "no terminada": `activas = total` y `completas = 0` no son una
+    // aproximación sino la cifra exacta que produciría el mismo filtro de
+    // antes aplicado a datos donde `terminada` jamás ocurre. La tarjeta (y su
+    // barra "% completadas") leerá 0% completado permanentemente — decisión
+    // explícita, no un bug: no existe una repartición de progreso real que
+    // mostrar hasta que el backend exponga una transición de estatus.
+    // `alertas` no cambia: ya era `0` fijo, sin depender de la maqueta
+    // ("sin estatus de alerta definido en bordado").
+    const embActivas   = embCount;
+    const embCompletas = 0;
+    const embAlertas   = 0;
 
     // ── Cedicor — Producción ─────────────────────────────────────────────
     const cedProd = MOCK_CEDICOR_PRODUCTION_ORDERS;
@@ -330,11 +385,13 @@ export function ManufacturingDashboard() {
     return {
       prod, prodActivas, prodFabricando, prodAlertas, prodCompletas, prodVencidas,
       statusDist, alta, media, baja, recientes,
-      emb: { total: emb.length, activas: embActivas, completas: embCompletas, alertas: embAlertas },
+      emb: { total: embCount, activas: embActivas, completas: embCompletas, alertas: embAlertas },
       cedProd: { total: cedProd.length, activas: cedProdActivas, completas: cedProdCompletas, alertas: cedProdAlertas },
       cedDev: { total: cedDev.length, activas: cedDevActivas, completas: cedDevCompletas, alertas: cedDevAlertas },
     };
-  }, []);
+    // `embCount` (ver arriba) es la dependencia EXACTA, no una aproximación:
+    // es el único dato de bordado que este cuerpo lee.
+  }, [embCount]);
 
   const totalAlertas = stats.prodAlertas.length;
 
@@ -419,6 +476,7 @@ export function ManufacturingDashboard() {
               activas={stats.emb.activas}
               completas={stats.emb.completas}
               alertas={stats.emb.alertas}
+              isUnavailable={embUnavailable}
             />
             <ModuleCard
               href="/manufacturing/cedicor-production-orders"
@@ -611,15 +669,22 @@ export function ManufacturingDashboard() {
             </div>
           </div>
 
-          {/* Totales consolidados */}
+          {/* Totales consolidados — los dos primeros suman la aportación de
+              bordado, así que cuando esa cifra no se pudo obtener el
+              consolidado tampoco se conoce: se pinta "—" en vez de un número
+              que silenciosamente omitiría un módulo entero. "Alertas" no
+              incluye bordado (no tiene estatus de alerta), así que no se ve
+              afectado. */}
           <div className="mt-6 pt-4 border-t border-slate-100 dark:border-white/5 grid grid-cols-3 gap-3 text-center">
             {[
-              { label: "Total módulo", value: stats.prod.length + stats.emb.total + stats.cedProd.total + stats.cedDev.total, cls: "text-slate-700 dark:text-slate-200" },
-              { label: "Activas", value: stats.prodActivas.length + stats.emb.activas + stats.cedProd.activas + stats.cedDev.activas, cls: "text-sky-600 dark:text-sky-400" },
-              { label: "Alertas", value: totalAlertas + stats.cedProd.alertas + stats.cedDev.alertas, cls: totalAlertas + stats.cedProd.alertas + stats.cedDev.alertas > 0 ? "text-red-600 dark:text-red-400" : "text-slate-400" },
-            ].map(({ label, value, cls }) => (
+              { label: "Total módulo", value: stats.prod.length + stats.emb.total + stats.cedProd.total + stats.cedDev.total, cls: "text-slate-700 dark:text-slate-200", dependeDeBordado: true },
+              { label: "Activas", value: stats.prodActivas.length + stats.emb.activas + stats.cedProd.activas + stats.cedDev.activas, cls: "text-sky-600 dark:text-sky-400", dependeDeBordado: true },
+              { label: "Alertas", value: totalAlertas + stats.cedProd.alertas + stats.cedDev.alertas, cls: totalAlertas + stats.cedProd.alertas + stats.cedDev.alertas > 0 ? "text-red-600 dark:text-red-400" : "text-slate-400", dependeDeBordado: false },
+            ].map(({ label, value, cls, dependeDeBordado }) => (
               <div key={label} className="rounded-lg bg-slate-50 dark:bg-white/5 py-2 px-1">
-                <p className={`text-lg font-black tabular-nums font-mono ${cls}`}>{value}</p>
+                <p className={`text-lg font-black tabular-nums font-mono ${cls}`}>
+                  {dependeDeBordado && embUnavailable ? "—" : value}
+                </p>
                 <p className="text-[10px] text-slate-400 dark:text-slate-500 font-semibold uppercase tracking-wide mt-0.5">{label}</p>
               </div>
             ))}

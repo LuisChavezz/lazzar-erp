@@ -1,3 +1,12 @@
+/**
+ * LEGADO — tipos de la MAQUETA de bordado (`mocks/embroidery-orders.mock.ts`).
+ * Su único consumidor vivo es el KPI "Órdenes de Bordado" de
+ * `ManufacturingDashboard`; se retira cuando ese dashboard migre al endpoint
+ * real. Para código nuevo usa `interfaces/embroidery.interface.ts`, que
+ * declara el `EmbroideryOrder` del API (`/produccion/orden-bordado/`) — son
+ * formas distintas que casualmente comparten nombre, no intercambiables.
+ */
+
 // Tipo de surtido de prendas al área de bordado (reemplaza TipoRecibo)
 export type TipoSurtido = 'completa' | 'parcial';
 
