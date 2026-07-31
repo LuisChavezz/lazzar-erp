@@ -1,5 +1,5 @@
 import type { StatusBadgeConfigEntry } from "@/src/components/StatusBadge";
-import type { LabelEstado } from "../interfaces/label.interface";
+import type { RfidLabelEstado } from "../interfaces/rfid-label.interface";
 
 /**
  * Colores por estatus de impresión de una etiqueta. Set propio del dominio
@@ -7,7 +7,7 @@ import type { LabelEstado } from "../interfaces/label.interface";
  * estatus no se comparten entre dominios, solo la presentación
  * (`StatusBadge`). Ver `PACKING_STATUS_CONFIG` / `DISPATCH_LINE_STATUS_CONFIG`.
  */
-export const LABEL_ESTADO_CONFIG: Record<LabelEstado, StatusBadgeConfigEntry> = {
+export const RFID_LABEL_ESTADO_CONFIG: Record<RfidLabelEstado, StatusBadgeConfigEntry> = {
   IMPRESA: {
     label: "Impresa",
     cls: "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400",

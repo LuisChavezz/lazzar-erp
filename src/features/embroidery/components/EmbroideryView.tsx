@@ -19,10 +19,9 @@ import { useEmbroideryOrders } from "../hooks/useEmbroideryOrders";
  *
  * El diálogo de detalle se monta AQUÍ —fuera de `DataTable`, no dentro de la
  * fila que lo abrió— y se abre por `id` (`openOrderId`), no por el objeto de
- * fila. Es deliberado incluso siendo un diálogo de SOLO LECTURA (a diferencia
- * de `RfidMatchesView`, donde montar-dentro-de-la-fila se evita porque su
- * diálogo SÍ muta el `estado` filtrable del renglón — aquí no hay tal riesgo,
- * `OrdenesBordado` no tiene transición): el motivo aquí es que el 409 de
+ * fila. Es deliberado incluso siendo un diálogo de SOLO LECTURA —no hay riesgo
+ * de que el diálogo mute el estado filtrable del renglón, `OrdenesBordado` no
+ * tiene transición—: el motivo aquí es que el 409 de
  * duplicado al crear una orden trae el id de una orden existente
  * (`orden_bordado_existente.id`) que puede no corresponder a ninguna fila a la
  * vista. `setOpenOrderId` se reenvía por eso a `EmbroideryOrderForm` (el alta,
@@ -82,8 +81,7 @@ export function EmbroideryView() {
         // `useEmbroideryOrders`); sin esto, quien esté parado en la página 2 se
         // quedaría ahí y no vería la orden que acaba de crear, pese al toast
         // que le nombra el folio. `orders.length` solo cambia al aparecer o
-        // desaparecer una orden, no al reordenar. Mismo criterio que
-        // `RfidMatchesView`.
+        // desaparecer una orden, no al reordenar.
         paginationResetKey={orders.length}
         isLoading={isLoading}
         isError={showError}

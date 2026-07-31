@@ -5,13 +5,13 @@ import { createColumnHelper, type ColumnDef } from "@tanstack/react-table";
 import { ViewIcon } from "@/src/components/Icons";
 import { ActionMenu, type ActionMenuItem } from "@/src/components/ActionMenu";
 import { StatusBadge } from "@/src/components/StatusBadge";
-import { LABEL_ESTADO_CONFIG } from "../constants/labelStatus";
-import { LabelDetailDialog } from "./LabelDetailDialog";
-import type { Label } from "../interfaces/label.interface";
+import { RFID_LABEL_ESTADO_CONFIG } from "../constants/rfidLabelStatus";
+import { RfidLabelDetailDialog } from "./RfidLabelDetailDialog";
+import type { RfidLabel } from "../interfaces/rfid-label.interface";
 
 // ── Celda de acciones ────────────────────────────────────────────────────────
 
-const ActionsCell = ({ row }: { row: Label }) => {
+const ActionsCell = ({ row }: { row: RfidLabel }) => {
   const [isDetailOpen, setIsDetailOpen] = useState(false);
 
   const menuItems: ActionMenuItem[] = [
@@ -25,22 +25,22 @@ const ActionsCell = ({ row }: { row: Label }) => {
           propio — `row` YA es el registro completo (ZPL e impresora
           incluidos). Mismo patrón que `DispatchColumns`. */}
       {isDetailOpen && (
-        <LabelDetailDialog label={row} open={true} onOpenChange={setIsDetailOpen} />
+        <RfidLabelDetailDialog rfidLabel={row} open={true} onOpenChange={setIsDetailOpen} />
       )}
     </div>
   );
 };
 
-const columnHelper = createColumnHelper<Label>();
+const columnHelper = createColumnHelper<RfidLabel>();
 
 /**
- * Columnas del listado de etiquetas. Color y talla viajan como campos
- * separados (ver `label.interface.ts`) pero se presentan juntos en una sola
+ * Columnas del listado de etiquetas RFID. Color y talla viajan como campos
+ * separados (ver `rfid-label.interface.ts`) pero se presentan juntos en una sola
  * columna "Variante": en un listado identifican UNA variante, no dos datos
  * independientes que se filtren por separado. El desglose en columnas propias
  * se queda para el detalle, igual que en `DispatchDetailDialog`.
  */
-export const labelColumns = [
+export const rfidLabelColumns = [
   columnHelper.accessor("sku", {
     header: "SKU",
     cell: (info) => (
@@ -67,11 +67,11 @@ export const labelColumns = [
   columnHelper.accessor("estado", {
     header: "Última impresión",
     size: 150,
-    cell: (info) => <StatusBadge status={info.getValue()} config={LABEL_ESTADO_CONFIG} />,
+    cell: (info) => <StatusBadge status={info.getValue()} config={RFID_LABEL_ESTADO_CONFIG} />,
   }),
   columnHelper.display({
     id: "actions",
     header: () => <div className="text-center">Acciones</div>,
     cell: ({ row }) => <ActionsCell row={row.original} />,
   }),
-] as ColumnDef<Label>[];
+] as ColumnDef<RfidLabel>[];

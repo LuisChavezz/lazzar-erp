@@ -36,8 +36,7 @@ interface EmbroideryOrderCreateFormProps {
    * ruta, es la misma mecánica de estado (`openOrderId`) que ya abre el
    * detalle desde el listado, solo que alimentada con
    * `duplicate.existingOrder.id` en vez del id de una fila. El diálogo de
-   * detalle no se cierra al abrir este (mismo patrón de diálogos apilados que
-   * `RfidMatchDetailDialog` usa con su `ConfirmDialog`).
+   * detalle no se cierra al abrir este (diálogos apilados).
    */
   onViewExistingOrder: (id: number) => void;
 }

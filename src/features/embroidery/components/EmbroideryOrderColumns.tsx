@@ -41,7 +41,7 @@ const ActionsCell = ({
  * objeto de fila (ver `EmbroideryOrderDetailDialog`), para poder disparse a
  * futuro también desde el enlace del 409 de duplicado (`orden_bordado_existente.id`,
  * ver `parseEmbroideryOrderError.ts`), que no siempre tendrá la fila completa
- * a la mano. Mismo patrón `getXColumns(callback)` que `getRfidMatchColumns`.
+ * a la mano. Mismo patrón `getXColumns(callback)` del resto de los listados.
  *
  * Se omiten a propósito varios campos que sí vienen en la respuesta:
  * `empresa`/`sucursal`/`usuario_asignado` llegan como ids crudos sin nombre
@@ -57,7 +57,7 @@ const ActionsCell = ({
  *
  * Sin anotación de tipo en el retorno (el cast va al final del arreglo) para
  * evitar el mismo error de inferencia documentado en
- * `EmbroideryOrderMockForm`/`getRfidMatchColumns`: con la anotación,
+ * `EmbroideryOrderMockForm`: con la anotación,
  * TypeScript intenta unificar TODAS las columnas contra
  * `ColumnDef<EmbroideryOrder, unknown>` antes de inferir cada una, y revienta
  * en las columnas `accessor` con un tipo de valor propio (`string`,

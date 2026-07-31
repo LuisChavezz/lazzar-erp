@@ -1,5 +1,5 @@
 import { faker } from "@faker-js/faker";
-import type { Label, LabelEstado } from "../interfaces/label.interface";
+import type { RfidLabel, RfidLabelEstado } from "../interfaces/rfid-label.interface";
 
 // Semilla fija para datos deterministas, misma convención que el resto de
 // módulos maqueta (`accounts-payable`, `embroidery`, `cedicor`): el mismo
@@ -29,7 +29,7 @@ const TALLAS = ["CH", "M", "G", "XG"];
 
 /** Un estatus distinto por registro: con solo 3 renglones, repetir uno dejaría
  *  un color del badge sin representar en la maqueta. */
-const ESTADOS: LabelEstado[] = ["IMPRESA", "PENDIENTE", "REIMPRESION"];
+const ESTADOS: RfidLabelEstado[] = ["IMPRESA", "PENDIENTE", "REIMPRESION"];
 
 // ── Generador de ZPL ─────────────────────────────────────────────────────────
 
@@ -72,7 +72,7 @@ function generarZpl({ producto, sku, color, talla, codigo, epc }: ZplParams): st
 
 // ── Generador de registros ───────────────────────────────────────────────────
 
-function generarLabel(producto: (typeof PRODUCTOS)[number], index: number): Label {
+function generarRfidLabel(producto: (typeof PRODUCTOS)[number], index: number): RfidLabel {
   const color = faker.helpers.arrayElement(COLORES);
   const talla = faker.helpers.arrayElement(TALLAS);
   const consecutivo = faker.number.int({ min: 1000, max: 9999 });
@@ -102,4 +102,4 @@ function generarLabel(producto: (typeof PRODUCTOS)[number], index: number): Labe
 }
 
 /** Las 3 etiquetas de la maqueta, una por prenda del catálogo. */
-export const MOCK_LABELS: Label[] = PRODUCTOS.map(generarLabel);
+export const MOCK_RFID_LABELS: RfidLabel[] = PRODUCTOS.map(generarRfidLabel);

@@ -32,7 +32,6 @@ import {
   PackingIcon,
   EmbarquesIcon,
   LabelsIcon,
-  QrCodeIcon,
 } from "../components/Icons";
 
 export interface AppRouteItem {
@@ -205,12 +204,11 @@ export const appRouteGroups: AppRouteGroup[] = [
         permission: "R-WMS",
       },
       {
-        key: "wms-rfid-matching",
-        label: "Encuadres RFID",
-        path: "/wms/rfid-matching",
-        icon: QrCodeIcon,
-        description:
-          "Conteo de recepción por escaneo: esperado contra leído de una orden de compra.",
+        key: "wms-rfid-labels",
+        label: "Etiquetas RFID",
+        path: "/wms/rfid-labels",
+        icon: LabelsIcon,
+        description: "Consulta de etiquetas de producto: vista previa, ZPL generado y estatus de impresión.",
         permission: "R-WMS",
       },
     ],
@@ -299,14 +297,6 @@ export const appRouteGroups: AppRouteGroup[] = [
         label: "Órdenes de Bordado",
         path: "/manufacturing/embroidery",
         icon: ScissorsIcon,
-        permission: "R-PRODUCCION",
-      },
-      {
-        key: "manufacturing-labels",
-        label: "Etiquetas",
-        path: "/manufacturing/labels",
-        icon: LabelsIcon,
-        description: "Consulta de etiquetas de producto: vista previa, ZPL generado y estatus de impresión.",
         permission: "R-PRODUCCION",
       },
       {
