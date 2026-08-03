@@ -12,6 +12,10 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Assets estáticos servidos tal cual. Incluye SDKs de terceros
+    // minificados (`public/vendor/`) que no se editan aquí y no tiene sentido
+    // pasar por las reglas del proyecto.
+    "public/**",
   ]),
 ]);
 
