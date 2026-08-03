@@ -5,13 +5,15 @@ import { createColumnHelper, type ColumnDef } from "@tanstack/react-table";
 import { ViewIcon } from "@/src/components/Icons";
 import { ActionMenu, type ActionMenuItem } from "@/src/components/ActionMenu";
 import { StatusBadge } from "@/src/components/StatusBadge";
-import { RFID_LABEL_ESTADO_CONFIG } from "../constants/rfidLabelStatus";
+import { textOrDash } from "@/src/components/DetailDialogPrimitives";
+import { formatShortDate, formatShortTime } from "@/src/utils/formatDate";
+import { RFID_LABEL_STATUS_CONFIG } from "../constants/rfidLabelStatus";
 import { RfidLabelDetailDialog } from "./RfidLabelDetailDialog";
-import type { RfidLabel } from "../interfaces/rfid-label.interface";
+import type { EtiquetaRFID } from "../interfaces/rfid-label.interface";
 
 // ── Celda de acciones ────────────────────────────────────────────────────────
 
-const ActionsCell = ({ row }: { row: RfidLabel }) => {
+const ActionsCell = ({ row }: { row: EtiquetaRFID }) => {
   const [isDetailOpen, setIsDetailOpen] = useState(false);
 
   const menuItems: ActionMenuItem[] = [
@@ -20,32 +22,41 @@ const ActionsCell = ({ row }: { row: RfidLabel }) => {
 
   return (
     <div className="flex items-center justify-center">
-      <ActionMenu items={menuItems} ariaLabel={`Acciones de la etiqueta ${row.sku}`} />
+      <ActionMenu items={menuItems} ariaLabel={`Acciones de la impresión ${row.folio}`} />
       {/* Montaje condicional: el diálogo no existe hasta abrirlo. Sin fetch
-          propio — `row` YA es el registro completo (ZPL e impresora
-          incluidos). Mismo patrón que `DispatchColumns`. */}
+          propio — `row` YA es el objeto completo (listado y detalle comparten
+          `EtiquetaRFIDSerializer` en el backend, `get_serializer_class` no
+          distingue por `self.action`). Mismo patrón que `DispatchColumns`. */}
       {isDetailOpen && (
-        <RfidLabelDetailDialog rfidLabel={row} open={true} onOpenChange={setIsDetailOpen} />
+        <RfidLabelDetailDialog etiqueta={row} open={true} onOpenChange={setIsDetailOpen} />
       )}
     </div>
   );
 };
 
-const columnHelper = createColumnHelper<RfidLabel>();
+const columnHelper = createColumnHelper<EtiquetaRFID>();
 
 /**
- * Columnas del listado de etiquetas RFID. Color y talla viajan como campos
- * separados (ver `rfid-label.interface.ts`) pero se presentan juntos en una sola
- * columna "Variante": en un listado identifican UNA variante, no dos datos
- * independientes que se filtren por separado. El desglose en columnas propias
- * se queda para el detalle, igual que en `DispatchDetailDialog`.
+ * Columnas del historial de impresiones de etiquetas RFID. El grano es UN
+ * EVENTO DE IMPRESIÓN (`EtiquetaRFIDImpresion`), no una etiqueta/SKU vigente:
+ * el mismo SKU puede repetirse en varios renglones (reimpresiones), y eso es
+ * intencional — es un log, no un catálogo. Ver `rfid-label.interface.ts`.
  */
 export const rfidLabelColumns = [
-  columnHelper.accessor("sku", {
-    header: "SKU",
+  columnHelper.accessor("folio", {
+    header: "Folio",
     cell: (info) => (
       <span className="font-mono text-slate-700 dark:text-slate-200 font-semibold">
         {info.getValue()}
+      </span>
+    ),
+  }),
+  columnHelper.accessor("sku", {
+    header: "SKU",
+    // `null` cuando la impresión se registró por producto, sin variante.
+    cell: (info) => (
+      <span className="font-mono text-slate-700 dark:text-slate-200 font-semibold">
+        {textOrDash(info.getValue())}
       </span>
     ),
   }),
@@ -55,23 +66,49 @@ export const rfidLabelColumns = [
       <span className="text-sm text-slate-700 dark:text-slate-200">{info.getValue()}</span>
     ),
   }),
-  // `accessorFn` (no `display`) para que la búsqueda global de `DataTable`
-  // encuentre "Azul Marino" o "XG" en esta columna.
-  columnHelper.accessor((row) => `${row.color_nombre} / ${row.talla_nombre}`, {
-    id: "variante",
+  columnHelper.accessor("producto_variante_nombre", {
     header: "Variante",
+    // Compuesto "Producto - Color - Talla" armado por el backend — se muestra
+    // tal cual, no se separa en color/talla (no hay campos sueltos que leer).
     cell: (info) => (
-      <span className="text-sm text-slate-600 dark:text-slate-300">{info.getValue()}</span>
+      <span className="text-sm text-slate-600 dark:text-slate-300">
+        {textOrDash(info.getValue())}
+      </span>
     ),
   }),
-  columnHelper.accessor("estado", {
-    header: "Última impresión",
-    size: 150,
-    cell: (info) => <StatusBadge status={info.getValue()} config={RFID_LABEL_ESTADO_CONFIG} />,
+  columnHelper.accessor("cantidad", {
+    header: "Cantidad",
+    cell: (info) => (
+      <span className="text-sm tabular-nums text-slate-700 dark:text-slate-200">
+        {info.getValue()}
+      </span>
+    ),
+  }),
+  columnHelper.accessor("status", {
+    header: "Estatus",
+    size: 130,
+    cell: (info) => <StatusBadge status={info.getValue()} config={RFID_LABEL_STATUS_CONFIG} />,
+  }),
+  columnHelper.accessor("created_at", {
+    header: "Fecha",
+    sortingFn: "datetime",
+    cell: (info) => {
+      const raw = info.getValue();
+      return (
+        <div className="flex flex-col leading-tight">
+          <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+            {formatShortDate(raw)}
+          </span>
+          <span className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">
+            {formatShortTime(raw)}
+          </span>
+        </div>
+      );
+    },
   }),
   columnHelper.display({
     id: "actions",
     header: () => <div className="text-center">Acciones</div>,
     cell: ({ row }) => <ActionsCell row={row.original} />,
   }),
-] as ColumnDef<RfidLabel>[];
+] as ColumnDef<EtiquetaRFID>[];
