@@ -28,7 +28,37 @@ export type BrowserPrintStatus =
   | "sin-impresoras"
   | "no-detectado";
 
-interface UseBrowserPrintDevicesResult {
+/** Presentación de cada estado de la detección (punto de color + tono de
+ *  texto). Los cuatro desenlaces se muestran distintos a propósito:
+ *  "sin-impresoras" y "no-detectado" se resuelven de forma diferente
+ *  (configurar un equipo vs. instalar/arrancar el agente). Vive aquí, junto al
+ *  tipo, para que TODOS los consumidores (el botón de reimpresión del historial
+ *  y el selector de "Nueva impresión") lo compartan y no diverja. */
+export const DETECTION_TONE: Record<BrowserPrintStatus, { dot: string; text: string }> = {
+  "cargando-sdk": { dot: "bg-slate-400", text: "text-slate-500 dark:text-slate-400" },
+  detectando: { dot: "bg-sky-500 animate-pulse", text: "text-sky-700 dark:text-sky-400" },
+  detectado: { dot: "bg-emerald-500", text: "text-emerald-700 dark:text-emerald-400" },
+  "sin-impresoras": { dot: "bg-amber-500", text: "text-amber-700 dark:text-amber-400" },
+  "no-detectado": { dot: "bg-red-500", text: "text-red-700 dark:text-red-400" },
+};
+
+/** Texto del estado de detección. `count` solo se usa en `detectado`. */
+export function detectionMessage(status: BrowserPrintStatus, count: number): string {
+  switch (status) {
+    case "cargando-sdk":
+      return "Cargando Browser Print...";
+    case "detectando":
+      return "Detectando impresoras...";
+    case "detectado":
+      return `${count} impresora${count === 1 ? "" : "s"} detectada${count === 1 ? "" : "s"}`;
+    case "sin-impresoras":
+      return "Browser Print detectado, sin impresoras disponibles";
+    case "no-detectado":
+      return "Browser Print no detectado";
+  }
+}
+
+export interface UseBrowserPrintDevicesResult {
   status: BrowserPrintStatus;
   devices: BrowserPrintDevice[];
   /** `uid` (o nombre, de fallback) de la impresora elegida. */

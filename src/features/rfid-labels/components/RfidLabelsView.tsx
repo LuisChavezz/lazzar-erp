@@ -4,6 +4,7 @@ import { DataTable } from "@/src/components/DataTable";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { isInitialLoadError } from "@/src/utils/isInitialLoadError";
 import { rfidLabelColumns } from "./RfidLabelColumns";
+import { RfidLabelCreateDialog } from "./RfidLabelCreateDialog";
 import { useRfidLabels } from "../hooks/useRfidLabels";
 
 const ESTADO_FILTER = [
@@ -14,9 +15,10 @@ const ESTADO_FILTER = [
 
 /**
  * Vista de Etiquetas RFID: historial de impresión (`GET /wms/etiquetas-rfid/`),
- * de solo lectura, con "Ver Detalles" por renglón (vista previa + ZPL, ver
- * `RfidLabelDetailDialog`). Sin `actionButton`: no hay alta desde aquí — crear
- * una impresión es un flujo aparte (fuera de alcance por ahora).
+ * con "Ver Detalles" por renglón (vista previa + ZPL, ver `RfidLabelDetailDialog`)
+ * y "Nueva impresión" en el toolbar (`actionButton`), que abre el flujo de alta
+ * (buscar → imprimir lote → registrar, ver `RfidLabelCreateDialog`). El registro
+ * invalida `["etiquetas-rfid"]`, así que el nuevo evento aparece aquí solo.
  *
  * `DataTable` se monta SIEMPRE y recibe `isLoading`/`isError` en vez de
  * sustituirse por un skeleton/`ErrorState` en un ternario propio — mismo
@@ -37,6 +39,7 @@ export function RfidLabelsView() {
       getRowId={(row) => String(row.id)}
       onRefetch={refetch}
       isRefetching={isFetching}
+      actionButton={<RfidLabelCreateDialog />}
       emptyMessage="No hay impresiones registradas."
       isLoading={isLoading}
       isError={showError}

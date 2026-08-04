@@ -4,8 +4,6 @@ import { useEffect, useRef, useState } from "react";
 import Script from "next/script";
 import toast from "react-hot-toast";
 import {
-  CopyIcon,
-  FileCode2Icon,
   LabelsIcon,
   LoadingSpinnerIcon,
   PrinterIcon,
@@ -20,10 +18,13 @@ import { RFID_LABEL_STATUS_CONFIG } from "../constants/rfidLabelStatus";
 import {
   deviceKey,
   deviceLabel,
+  DETECTION_TONE,
+  detectionMessage,
   errorToText as errorDetailToText,
   useBrowserPrintDevices,
-  type BrowserPrintStatus,
 } from "../hooks/useBrowserPrintDevices";
+import { RfidLabelBarcodeGraphic } from "./RfidLabelBarcodeGraphic";
+import { RfidLabelZplBlock } from "./RfidLabelZplBlock";
 import type { EtiquetaRFID } from "../interfaces/rfid-label.interface";
 
 /** Única redacción para "este registro no trae ZPL": la comparten el estado
@@ -34,33 +35,6 @@ const SIN_ZPL_MESSAGE = "Sin ZPL registrado para esta impresión.";
 const BROWSER_PRINT_SDK_SRC = "/vendor/browser-print/BrowserPrint-3.1.250.min.js";
 const BROWSER_PRINT_ZEBRA_SDK_SRC =
   "/vendor/browser-print/BrowserPrint-Zebra-1.1.250.min.js";
-
-/** Presentación de cada estado de la detección. Los cuatro desenlaces se
- *  muestran distintos a propósito: "sin impresoras" y "no detectado" se
- *  resuelven de forma diferente (configurar un equipo vs. instalar/arrancar el
- *  agente). */
-const DETECTION_TONE: Record<BrowserPrintStatus, { dot: string; text: string }> = {
-  "cargando-sdk": { dot: "bg-slate-400", text: "text-slate-500 dark:text-slate-400" },
-  detectando: { dot: "bg-sky-500 animate-pulse", text: "text-sky-700 dark:text-sky-400" },
-  detectado: { dot: "bg-emerald-500", text: "text-emerald-700 dark:text-emerald-400" },
-  "sin-impresoras": { dot: "bg-amber-500", text: "text-amber-700 dark:text-amber-400" },
-  "no-detectado": { dot: "bg-red-500", text: "text-red-700 dark:text-red-400" },
-};
-
-function detectionMessage(status: BrowserPrintStatus, count: number): string {
-  switch (status) {
-    case "cargando-sdk":
-      return "Cargando Browser Print...";
-    case "detectando":
-      return "Detectando impresoras...";
-    case "detectado":
-      return `${count} impresora${count === 1 ? "" : "s"} detectada${count === 1 ? "" : "s"}`;
-    case "sin-impresoras":
-      return "Browser Print detectado, sin impresoras disponibles";
-    case "no-detectado":
-      return "Browser Print no detectado";
-  }
-}
 
 /**
  * Sección de impresión Zebra: detección REAL de impresoras contra el agente
@@ -321,25 +295,11 @@ function BrowserPrintSection({ zpl }: { zpl: string | null }) {
   );
 }
 
-/**
- * Anchos de barra deterministas derivados del valor codificado. Es SOLO un
- * adorno: no codifica nada en Code 128 real (eso lo hace el `^BC` del ZPL en
- * la impresora). Se deriva del valor en vez de usar `Math.random` para que el
- * mismo registro dibuje siempre el mismo patrón y no haya desajuste de
- * hidratación.
- */
-function barcodeBars(value: string): number[] {
-  return Array.from({ length: 46 }, (_, i) => {
-    const code = value.charCodeAt(i % value.length) + i * 7;
-    return (code % 3) + 1;
-  });
-}
-
 /** Vista previa de la etiqueta: los datos reales disponibles de ESTE evento de
  *  impresión, maquetados en HTML. `barcodeValue` viene de `etiquetas[0]`, que
  *  puede no existir (impresión registrada con `rfid_mode: false` no genera
- *  renglones en `etiquetas[]`) — ese caso se muestra explícito, sin inventar
- *  un valor de reemplazo. */
+ *  renglones en `etiquetas[]`) — ese caso lo muestra explícito
+ *  `RfidLabelBarcodeGraphic`, sin inventar un valor de reemplazo. */
 const RfidLabelPreview = ({ etiqueta }: { etiqueta: EtiquetaRFID }) => {
   const barcodeValue = etiqueta.etiquetas[0]?.barcode_value ?? null;
 
@@ -355,27 +315,7 @@ const RfidLabelPreview = ({ etiqueta }: { etiqueta: EtiquetaRFID }) => {
         Variante: <span className="font-medium">{textOrDash(etiqueta.producto_variante_nombre)}</span>
       </p>
 
-      {barcodeValue ? (
-        <>
-          {/* Código de barras simulado */}
-          <div className="mt-4 flex items-end gap-[2px] h-14" aria-hidden="true">
-            {barcodeBars(barcodeValue).map((width, index) => (
-              <div
-                key={index}
-                style={{ width: `${width}px` }}
-                className="h-full bg-slate-900 dark:bg-slate-100"
-              />
-            ))}
-          </div>
-          <p className="mt-1.5 text-[11px] font-mono tracking-[0.2em] text-slate-600 dark:text-slate-300">
-            {barcodeValue}
-          </p>
-        </>
-      ) : (
-        <p className="mt-4 text-xs text-slate-400 dark:text-slate-500 italic px-1 py-3 text-center rounded-lg border border-slate-100 dark:border-white/10">
-          Sin código de barras registrado (impresión sin modo RFID).
-        </p>
-      )}
+      <RfidLabelBarcodeGraphic barcodeValue={barcodeValue} />
 
       <p className="mt-3 text-sm font-bold text-slate-800 dark:text-white">
         COD: {textOrDash(etiqueta.codigo_producto)}
@@ -408,19 +348,6 @@ export function RfidLabelDetailDialog({
   open,
   onOpenChange,
 }: RfidLabelDetailDialogProps) {
-  const handleCopyZpl = async () => {
-    if (!etiqueta.zpl_enviado) return;
-    try {
-      if (!navigator.clipboard) {
-        throw new Error("Clipboard API no disponible");
-      }
-      await navigator.clipboard.writeText(etiqueta.zpl_enviado);
-      toast.success("ZPL copiado al portapapeles");
-    } catch {
-      toast.error("No se pudo copiar el ZPL. Selecciónalo y cópialo manualmente.");
-    }
-  };
-
   return (
     <MainDialog
       open={open}
@@ -467,31 +394,7 @@ export function RfidLabelDetailDialog({
         </div>
 
         {/* ZPL */}
-        <div>
-          <div className="flex items-center justify-between gap-2 mb-2">
-            <SectionTitle>ZPL generado</SectionTitle>
-            {etiqueta.zpl_enviado && (
-              <button
-                type="button"
-                onClick={handleCopyZpl}
-                className="inline-flex items-center gap-1.5 text-xs font-medium text-sky-600 dark:text-sky-400 hover:text-sky-700 dark:hover:text-sky-300 transition-colors cursor-pointer"
-              >
-                <CopyIcon className="w-3.5 h-3.5" aria-hidden="true" />
-                Copiar
-              </button>
-            )}
-          </div>
-          {etiqueta.zpl_enviado ? (
-            <pre className="max-h-56 overflow-auto rounded-xl border border-slate-100 dark:border-white/10 bg-slate-50 dark:bg-zinc-800/60 px-3 py-2.5 font-mono text-[11px] leading-relaxed text-slate-700 dark:text-slate-300">
-              {etiqueta.zpl_enviado}
-            </pre>
-          ) : (
-            <p className="flex items-center gap-1.5 rounded-xl border border-slate-100 dark:border-white/10 bg-slate-50 dark:bg-zinc-800/60 px-3 py-3 text-xs text-slate-400 dark:text-slate-500 italic">
-              <FileCode2Icon className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
-              {SIN_ZPL_MESSAGE}
-            </p>
-          )}
-        </div>
+        <RfidLabelZplBlock zpl={etiqueta.zpl_enviado} emptyMessage={SIN_ZPL_MESSAGE} />
 
         {/* Impresión Zebra. El ZPL viene del registro ya cargado por el
             listado — sin fetch adicional, misma convención que el resto del
