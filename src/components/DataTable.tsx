@@ -183,6 +183,25 @@ export function DataTable<TData, TValue>({
     previousPaginationResetKeyRef.current = paginationResetKey;
     setPagination((prev) => ({ ...prev, pageIndex: 0 }));
   }, [paginationResetKey]);
+  // `hasMounted` arranca en `false` en el servidor Y en el primer render del
+  // cliente; el efecto lo pone en `true` una sola vez, ya hidratado. Sirve para
+  // desactivar el desajuste de hidratación del botón "Actualizar datos":
+  // `isRefetching` (el `isFetching` OPTIMISTA de React Query) es un valor que el
+  // servidor y el primer render del cliente pueden calcular DISTINTO —depende del
+  // estado de la caché en ese instante—, y estaba enlazado directamente al
+  // atributo DOM `disabled` (y a la clase `animate-spin`, que también es
+  // hidratable). Al enmascararlo con `hasMounted` (ver `isButtonRefetching`),
+  // ambos lados pintan el MISMO primer frame por construcción; el estado real
+  // solo entra tras montar. No se toca la estrategia de datos (SSR/CSR) — solo el
+  // render del botón.
+  const [hasMounted, setHasMounted] = useState(false);
+  useEffect(() => {
+    setHasMounted(true);
+  }, []);
+  // Estado de refetch que ve el botón "Actualizar datos". `false` garantizado en
+  // el primer render (servidor y cliente) porque `hasMounted` lo es; el valor
+  // real de `isRefetching` solo entra tras hidratar.
+  const isButtonRefetching = hasMounted && Boolean(isRefetching);
   const [draggedColumnId, setDraggedColumnId] = useState<string | null>(null);
   const [dragOverColumnId, setDragOverColumnId] = useState<string | null>(null);
   const [isSearchExpanded, setIsSearchExpanded] = useState(false);
@@ -605,10 +624,18 @@ export function DataTable<TData, TValue>({
                 variant="secondary"
                 size="icon"
                 onClick={() => onRefetch()}
-                disabled={isRefetching}
+                // Enmascarado con `hasMounted`: en el primer render (servidor y
+                // cliente) vale `false` de forma determinista —el botón se pinta
+                // habilitado y sin girar—, y solo tras hidratar refleja el
+                // `isRefetching` real. Con esto `disabled` y `animate-spin` (ambos
+                // atributos hidratables) ya no pueden divergir entre servidor y
+                // cliente en el primer frame. Post-hidratación el comportamiento
+                // es idéntico al previo: se deshabilita y gira durante un refetch
+                // real. Ver la nota de `hasMounted`.
+                disabled={isButtonRefetching}
                 aria-label="Actualizar datos"
               >
-                <SyncIcon className={`w-4 h-4 shrink-0 ${isRefetching ? "animate-spin" : ""}`} />
+                <SyncIcon className={`w-4 h-4 shrink-0 ${isButtonRefetching ? "animate-spin" : ""}`} />
               </Button>
             )}
             {hasBaseData && (
