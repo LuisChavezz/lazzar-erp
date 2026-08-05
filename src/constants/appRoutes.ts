@@ -23,6 +23,7 @@ import {
   SamplesIcon,
   EmailIcon,
   ScissorsIcon,
+  SliceIcon,
   RulerIcon,
   FactoryIcon,
   ProduccionIcon,
@@ -306,6 +307,14 @@ export const appRouteGroups: AppRouteGroup[] = [
         path: "/manufacturing/reflective-orders",
         icon: RulerIcon,
         description: "Órdenes de trabajo para la aplicación de cinta reflejante sobre las prendas del pedido.",
+        permission: "R-PRODUCCION",
+      },
+      {
+        key: "manufacturing-corte-manga",
+        label: "Órdenes de Corte de Manga",
+        path: "/manufacturing/corte-manga",
+        icon: SliceIcon,
+        description: "Órdenes de trabajo para el corte de manga de las prendas del pedido.",
         permission: "R-PRODUCCION",
       },
       {

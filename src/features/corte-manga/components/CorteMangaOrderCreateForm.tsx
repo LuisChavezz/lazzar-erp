@@ -12,12 +12,13 @@ import {
   UserIcon,
 } from "@/src/components/Icons";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
-import { useReflectiveOrderForm } from "../hooks/useReflectiveOrderForm";
+import { useCorteMangaOrderForm } from "../hooks/useCorteMangaOrderForm";
 
 /**
  * Opciones de prioridad. El mapeo 1 = Alta, 2 = Media, 3 = Baja es EL MISMO que
- * ya usan `EmbroideryOrderCreateForm` y `ProductionOrderStep1`, y el mismo que
- * pinta `REFLECTIVE_ORDER_PRIORITY_CONFIG` en el badge del listado — de nada
+ * ya usan `ReflectiveOrderCreateForm`, `EmbroideryOrderCreateForm` y
+ * `ProductionOrderStep1`, y el mismo que pinta
+ * `CORTE_MANGA_ORDER_PRIORITY_CONFIG` en el badge del listado — de nada
  * serviría capturar "Urgente" aquí y que la tabla lo rotulara "Alta". El
  * backend declara `prioridad` como entero libre (`IntegerField(default=1)`, sin
  * `choices`), así que este conjunto cerrado es una convención del frontend, no
@@ -29,12 +30,12 @@ const PRIORIDAD_OPTIONS = [
   { value: 3, label: "Baja" },
 ];
 
-interface ReflectiveOrderCreateFormProps {
+interface CorteMangaOrderCreateFormProps {
   /** Se invoca tras crear la orden correctamente (cierra el diálogo). */
   onSuccess: () => void;
   /**
-   * Abre el diálogo de detalle (`ReflectiveOrderDetailDialog`, montado en
-   * `ReflectiveOrdersView`) para el `id` dado. Se usa desde el bloque de
+   * Abre el diálogo de detalle (`CorteMangaOrderDetailDialog`, montado en
+   * `CorteMangaOrdersView`) para el `id` dado. Se usa desde el bloque de
    * duplicado (409) para llevar al folio de la orden YA EXISTENTE — no navega a
    * ninguna ruta, es la misma mecánica de estado (`openOrderId`) que ya abre el
    * detalle desde el listado, solo que alimentada con
@@ -45,37 +46,36 @@ interface ReflectiveOrderCreateFormProps {
 }
 
 /**
- * Alta de orden de reflejante en UN SOLO PASO.
+ * Alta de orden de corte de manga en UN SOLO PASO.
  *
  * Deliberadamente NO es un asistente por pasos (a diferencia de
- * picking/packing): el cuerpo del POST es `{ pedido, prioridad?, observaciones? }`
- * y nada más — el backend deriva los renglones solo, uno por cada talla del
- * pedido con `lleva_reflejante=True`. No hay selección por línea ni cantidades
- * que capturar, así que un "Paso 1 / Paso 2" solo agregaría pantallas. Mismo
- * criterio —y mismo precedente— que `EmbroideryOrderCreateForm`.
+ * picking/packing): el cuerpo del POST es
+ * `{ pedido, prioridad?, observaciones? }` y nada más — el backend deriva los
+ * renglones solo, uno por cada talla del pedido con `lleva_corte_manga=True`.
+ * No hay selección por línea ni cantidades que capturar (la orden es SIEMPRE
+ * completa), así que un "Paso 1 / Paso 2" solo agregaría pantallas. Mismo
+ * criterio —y mismo precedente— que `ReflectiveOrderCreateForm`.
  *
  * Lo que NO se muestra, a propósito:
  *  - Un selector de operador funcional: `usuario_asignado` está en los
  *    `read_only_fields` del serializer y el service lo fija al usuario
  *    autenticado, así que se muestra en solo lectura. Un `<select>` habilitado
  *    prometería una decisión inexistente. (Los `operadores` del onboarding se
- *    usan solo para RESOLVER EL NOMBRE del usuario en sesión, ver
- *    `resolveAssignedOperator`.)
- *  - Campos para `estatus_reflejante` y `fecha_fin`: el serializer los acepta
- *    —no están en `read_only_fields`, a diferencia de bordado— pero el service
- *    los descarta. Capturarlos sería pedirle al usuario una decisión que se
- *    tira a la basura.
- *
- * Lo que SÍ se muestra y bordado no: el folio sugerido del onboarding, rotulado
- * explícitamente como APROXIMADO. Bordado lo oculta por no ser confiable; aquí
- * se prefirió enseñarlo con su salvedad a la vista, porque adelanta el formato
- * y la serie que va a consumirse. El folio definitivo sigue siendo el de la
- * respuesta del POST (el toast de `useCreateReflectiveOrder`).
+ *    usan SOLO para RESOLVER EL NOMBRE del usuario en sesión, ver
+ *    `resolveAssignedOperator`; ése es su único propósito confirmado en el
+ *    contrato actual.)
+ *  - Un campo de estatus: `estatus_corte` es `read_only` en el serializer —el
+ *    backend ni siquiera lo admite en el cuerpo— y no existe `PUT`/`PATCH` que
+ *    lo avance después (405). Se anuncia en el aviso de permanencia de abajo
+ *    en vez de fingir que se elige.
+ *  - Un campo `fecha_fin`: el serializer lo acepta pero el service lo descarta
+ *    en silencio. Capturarlo sería pedirle al usuario una decisión que se tira
+ *    a la basura.
  */
-export function ReflectiveOrderCreateForm({
+export function CorteMangaOrderCreateForm({
   onSuccess,
   onViewExistingOrder,
-}: ReflectiveOrderCreateFormProps) {
+}: CorteMangaOrderCreateFormProps) {
   const {
     form,
     pedidoOptions,
@@ -93,14 +93,14 @@ export function ReflectiveOrderCreateForm({
     getError,
     clearError,
     handleFormSubmit,
-  } = useReflectiveOrderForm({ onSuccess });
+  } = useCorteMangaOrderForm({ onSuccess });
 
   // ── Carga del catálogo ────────────────────────────────────────────────────
   if (isLoadingCatalog) {
     return (
       <Loader
         title="Cargando pedidos"
-        message="Consultando qué pedidos tienen prendas con reflejante..."
+        message="Consultando qué pedidos tienen prendas con corte de manga..."
       />
     );
   }
@@ -135,11 +135,11 @@ export function ReflectiveOrderCreateForm({
         </div>
         <div>
           <h3 className="text-sm font-semibold text-amber-800 dark:text-amber-200">
-            No hay pedidos con prendas de reflejante
+            No hay pedidos con prendas de corte de manga
           </h3>
           <p className="text-xs text-amber-700 dark:text-amber-300 mt-1">
             Solo aparecen aquí los pedidos activos de tus sucursales que tengan al menos
-            una talla marcada para reflejante.
+            una talla marcada para corte de manga.
           </p>
         </div>
       </div>
@@ -150,10 +150,10 @@ export function ReflectiveOrderCreateForm({
     <form onSubmit={handleFormSubmit} className="w-full space-y-5">
       {/* ── Bloque de duplicado (409) ─────────────────────────────────────
           Ámbar informativo, NO rojo de validación: no es un error de captura
-          del usuario, es un estado de negocio ("ya existe una OR con el 100%
+          del usuario, es un estado de negocio ("ya existe una OCM con el 100%
           de las prendas") con una salida clara ("contacte a producción").
           Reemplaza al banner rosa —son mutuamente excluyentes, ver
-          `useReflectiveOrderForm`—, nunca se muestran ambos a la vez. */}
+          `useCorteMangaOrderForm`—, nunca se muestran ambos a la vez. */}
       {duplicate && (
         <div
           role="alert"
@@ -172,7 +172,7 @@ export function ReflectiveOrderCreateForm({
                     `duplicate.existingOrder.id` es justo el `id` que ese
                     diálogo ya sabe resolver contra la lista en caché (que la
                     mutación acaba de invalidar precisamente para esto, ver
-                    `useCreateReflectiveOrder`). */}
+                    `useCreateCorteMangaOrder`). */}
                 <button
                   type="button"
                   onClick={() => onViewExistingOrder(duplicate.existingOrder.id)}
@@ -205,7 +205,12 @@ export function ReflectiveOrderCreateForm({
         </div>
       )}
 
-      {/* ── Banner de error del backend ──────────────────────────────────── */}
+      {/* ── Banner de error del backend ───────────────────────────────────────
+          Muestra el mensaje del backend VERBATIM (con un prefijo que aclara que
+          no se creó nada). Incluye el `{"err": "El usuario no tiene una
+          sucursal asignada."}` del requisito muerto de `sucursal_default`: no se
+          reescribe ni se suaviza porque es la única pista de qué hay que
+          configurarle al usuario. */}
       {serverBanner && (
         <div
           role="alert"
@@ -265,8 +270,8 @@ export function ReflectiveOrderCreateForm({
         </form.Field>
 
         <p className="-mt-3 ml-1 text-[11px] text-slate-500">
-          Las prendas a las que se aplica el reflejante se toman automáticamente del
-          pedido: se genera un renglón por cada talla marcada para reflejante.
+          Las prendas a las que se aplica el corte de manga se toman automáticamente del
+          pedido: se genera un renglón por cada talla marcada para corte de manga.
         </p>
 
         {/* ── Prioridad ──────────────────────────────────────────────────── */}
@@ -305,17 +310,18 @@ export function ReflectiveOrderCreateForm({
         </div>
 
         {/* ── Observaciones ──────────────────────────────────────────────────
-            SIN `forceUppercase`: ese prop existe solo en `FormInput` (campos de
-            clave/código de los catálogos: `BranchForm`, `ColorForm`,
-            `CurrencyForm`…), no en `FormTextarea`, y el `observaciones` de
-            bordado —el precedente directo— tampoco lo usa. Son notas en prosa,
-            no una clave normalizada. */}
+            SIN `forceUppercase`: ese prop existe solo en `FormInput` —donde lo
+            usan los campos de clave/código de los catálogos (`BranchForm`,
+            `ColorForm`, `CurrencyForm`…)— y NO en `FormTextarea`, cuyas props
+            son `label`/`error`/`variant` más las nativas del `<textarea>`.
+            Verificado además que ni reflejante ni bordado lo aplican a su
+            `observaciones`: son notas en prosa, no una clave normalizada. */}
         <form.Field name="observaciones">
           {(field) => (
             <FormTextarea
               label="Observaciones (opcional)"
               name={field.name}
-              placeholder="Notas de la orden de reflejante"
+              placeholder="Notas de la orden de corte de manga"
               rows={2}
               value={field.state.value}
               onChange={(event) => {
@@ -380,7 +386,7 @@ export function ReflectiveOrderCreateForm({
           loadingLabel="Creando..."
           disabled={isPending}
         >
-          Crear orden de reflejante
+          Crear orden de corte de manga
         </FormSubmitButton>
       </div>
     </form>

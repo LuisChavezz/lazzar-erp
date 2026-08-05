@@ -107,6 +107,7 @@ import {
   Boxes,
   ArrowUpDown,
   Scissors,
+  Slice,
   Route,
   Receipt,
   Printer,
@@ -219,6 +220,10 @@ export const PackageCheckIcon = (props: LucideProps) => <PackageCheck {...props}
 export const PackageXIcon = (props: LucideProps) => <PackageX {...props} />;
 export const SortIcon = (props: LucideProps) => <ArrowUpDown {...props} />;
 export const ScissorsIcon = (props: LucideProps) => <Scissors {...props} />;
+// Corte de Manga. Glifo PROPIO (`Slice`, una cuchilla) y no `Scissors`, que ya
+// identifica a Órdenes de Bordado en el mismo submenú de Producción: dos rutas
+// hermanas con el mismo ícono son indistinguibles en la barra lateral.
+export const SliceIcon = (props: LucideProps) => <Slice {...props} />;
 export const RouteIcon = (props: LucideProps) => <Route {...props} />;
 // `Boxes` (no `PackageOpen`): ese glifo ya lo exporta `ProductVariantsIcon` y
 // se usa dentro de /wms/stock, así que reutilizarlo dejaría dos destinos

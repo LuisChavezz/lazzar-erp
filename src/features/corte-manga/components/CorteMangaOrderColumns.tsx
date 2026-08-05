@@ -7,19 +7,19 @@ import { ViewIcon } from "@/src/components/Icons";
 import { formatQuantityValue } from "@/src/utils/formatCurrency";
 import { formatShortDate } from "@/src/utils/formatDate";
 import {
-  REFLECTIVE_ORDER_PRIORITY_CONFIG,
-  REFLECTIVE_ORDER_STATUS_CONFIG,
-  reflectiveOrderPriorityFallback,
-} from "../constants/reflectiveOrderStatus";
-import type { ReflectiveOrder } from "../interfaces/reflective-order.interface";
+  CORTE_MANGA_ORDER_PRIORITY_CONFIG,
+  CORTE_MANGA_ORDER_STATUS_CONFIG,
+  corteMangaOrderPriorityFallback,
+} from "../constants/corteMangaOrderStatus";
+import type { CorteMangaOrder } from "../interfaces/corte-manga-order.interface";
 
-const columnHelper = createColumnHelper<ReflectiveOrder>();
+const columnHelper = createColumnHelper<CorteMangaOrder>();
 
 const ActionsCell = ({
   order,
   onViewDetails,
 }: {
-  order: ReflectiveOrder;
+  order: CorteMangaOrder;
   onViewDetails: (id: number) => void;
 }) => {
   const menuItems: ActionMenuItem[] = [
@@ -27,43 +27,43 @@ const ActionsCell = ({
   ];
   return (
     <div className="flex items-center justify-center">
-      <ActionMenu items={menuItems} ariaLabel={`Acciones de ${order.folio_reflejante}`} />
+      <ActionMenu items={menuItems} ariaLabel={`Acciones de ${order.folio_ocm}`} />
     </div>
   );
 };
 
 /**
- * Columnas del listado de órdenes de reflejante
- * (`GET /produccion/orden-reflejante/`).
+ * Columnas del listado de órdenes de corte de manga
+ * (`GET /produccion/orden-corte-manga/`).
  *
  * Fábrica —no un arreglo estático— porque la columna de acciones necesita
- * `onViewDetails` para abrir el diálogo de detalle DESDE `ReflectiveOrdersView`,
+ * `onViewDetails` para abrir el diálogo de detalle DESDE `CorteMangaOrdersView`,
  * no montado aquí dentro de la fila: el diálogo se abre por `id`, no por el
- * objeto de fila (ver `ReflectiveOrderDetailDialog`), para poder dispararse
+ * objeto de fila (ver `CorteMangaOrderDetailDialog`), para poder dispararse
  * también desde el enlace del 409 de duplicado
- * (`orden_reflejante_existente.id`, ver `parseReflectiveOrderError.ts`), que no
+ * (`orden_corte_manga_existente.id`, ver `parseCorteMangaOrderError.ts`), que no
  * siempre tiene la fila completa a la mano. Mismo patrón `getXColumns(callback)`
  * del resto de los listados.
  *
  * Se omiten a propósito varios campos que sí vienen en la respuesta:
- * `empresa`/`sucursal` llegan como ids crudos sin nombre resuelto (un número
- * suelto no le dice nada al usuario), `usuario_asignado` se muestra por su
- * nombre resuelto y no por su id, `fecha_fin` siempre es `null` y `activo`
- * siempre `true` (el queryset filtra `activo=True`). El contenido de `detalles`
- * se resume en una sola columna — su desglose vive en el diálogo de detalle.
+ * `empresa`/`sucursal` se muestran por su nombre resuelto y no por su id,
+ * `usuario_asignado` igual, `fecha_fin` siempre es `null` y `activo` siempre
+ * `true` (el queryset filtra `activo=True`). El contenido de `detalles` se
+ * resume en una sola columna — su desglose vive en el diálogo de detalle.
  *
- * Sin edición ni transición de estatus: ninguna tiene endpoint (`PUT`/`PATCH`
- * → 405).
+ * Sin edición ni transición de estatus: ninguna tiene endpoint. `estatus_corte`
+ * es `read_only` en el serializer y `PUT`/`PATCH` responden 405, así que el
+ * badge es de SOLO LECTURA y pinta el valor tal cual llega.
  *
  * Sin anotación de tipo en el retorno (el cast va al final del arreglo) para
- * evitar el error de inferencia ya documentado en `EmbroideryOrderColumns`: con
- * la anotación, TypeScript intenta unificar TODAS las columnas contra
- * `ColumnDef<ReflectiveOrder, unknown>` antes de inferir cada una, y revienta
- * en las columnas `accessor` con un tipo de valor propio (`string`,
- * `string | null`).
+ * evitar el error de inferencia ya documentado en `EmbroideryOrderColumns` y
+ * `ReflectiveOrderColumns`: con la anotación, TypeScript intenta unificar TODAS
+ * las columnas contra `ColumnDef<CorteMangaOrder, unknown>` antes de inferir
+ * cada una, y revienta en las columnas `accessor` con un tipo de valor propio
+ * (`string`, `string | null`).
  */
-export const getReflectiveOrderColumns = (onViewDetails: (id: number) => void) => [
-  columnHelper.accessor("folio_reflejante", {
+export const getCorteMangaOrderColumns = (onViewDetails: (id: number) => void) => [
+  columnHelper.accessor("folio_ocm", {
     header: "Folio",
     cell: (info) => (
       <span className="font-mono text-slate-700 dark:text-slate-200 font-semibold">
@@ -95,12 +95,12 @@ export const getReflectiveOrderColumns = (onViewDetails: (id: number) => void) =
       </span>
     ),
   }),
-  columnHelper.accessor("estatus_reflejante", {
+  columnHelper.accessor("estatus_corte", {
     header: "Estatus",
     cell: (info) => (
       <StatusBadge
         status={String(info.getValue())}
-        config={REFLECTIVE_ORDER_STATUS_CONFIG}
+        config={CORTE_MANGA_ORDER_STATUS_CONFIG}
       />
     ),
   }),
@@ -109,8 +109,8 @@ export const getReflectiveOrderColumns = (onViewDetails: (id: number) => void) =
     cell: (info) => (
       <StatusBadge
         status={String(info.getValue())}
-        config={REFLECTIVE_ORDER_PRIORITY_CONFIG}
-        defaultConfig={reflectiveOrderPriorityFallback(info.getValue())}
+        config={CORTE_MANGA_ORDER_PRIORITY_CONFIG}
+        defaultConfig={corteMangaOrderPriorityFallback(info.getValue())}
       />
     ),
   }),
@@ -118,14 +118,14 @@ export const getReflectiveOrderColumns = (onViewDetails: (id: number) => void) =
   // es un float del backend (número, no el string decimal de inventario).
   //
   // Se descartan los valores no finitos con el MISMO criterio que
-  // `computeReflectiveOrderKpis`, que suma este mismo campo para la tarjeta
+  // `computeCorteMangaOrderKpis`, que suma este mismo campo para la tarjeta
   // "Total de Prendas": sin el filtro, un `cantidad` corrupto daría `NaN` aquí
   // y quedaría excluido allá, y la fila y el KPI reportarían totales distintos
   // del mismo dato.
   //
-  // NO se resumen aquí `metros` ni `tipo_reflejante`/`posicion` —los campos
-  // propios del reflejante— porque hoy llegan en `0`/`null` (ver
-  // `ReflectiveOrderLine`): una columna permanentemente vacía se lee como un
+  // NO se resumen aquí `color` ni `configuracion` porque hoy llegan `null` en
+  // todas las órdenes: la única ruta de alta viva no los escribe (ver
+  // `CorteMangaOrderLine`). Una columna permanentemente vacía se lee como un
   // dato faltante, no como una capacidad pendiente del backend.
   columnHelper.display({
     id: "detalles_resumen",
@@ -144,13 +144,29 @@ export const getReflectiveOrderColumns = (onViewDetails: (id: number) => void) =
       );
     },
   }),
-  // Columna que bordado NO puede tener: `OrdenReflejanteSerializer` resuelve el
-  // nombre del operador (`usuario_nombre`), mientras que `OrdenBordadoSerializer`
-  // solo expone el id. Llega `null` en las órdenes generadas automáticamente
-  // desde ventas, que no asignan usuario (ver `ReflectiveOrder`).
+  // Columna que el listado de reflejante NO tiene: cuando se construyó, su
+  // `sucursal_nombre` estaba en el código del backend pero todavía no
+  // desplegado, así que allá se tipó `string | undefined` y no se pintó. Aquí sí
+  // está desplegado (el esquema OpenAPI en producción lo declara `string`
+  // requerido, ver `CorteMangaOrder`), y aporta: el listado es multi-sucursal
+  // —el queryset devuelve TODAS las sucursales permitidas del usuario, no solo
+  // su `sucursal_default`—, así que sin esta columna dos órdenes de plantas
+  // distintas se ven idénticas.
+  columnHelper.accessor("sucursal_nombre", {
+    header: "Sucursal",
+    cell: (info) => (
+      <span className="text-sm text-slate-600 dark:text-slate-300">
+        {info.getValue() || "—"}
+      </span>
+    ),
+  }),
+  // `usuario_nombre` llega ya resuelto por el backend
+  // (`get_full_name()` o el email). Puede ser `null` en las filas históricas
+  // que creó la generación automática desde ventas —deshabilitada desde el
+  // 2026-07-31—, que no asignaba usuario; las altas nuevas siempre lo traen.
   // `accessorFn` con `?? ""` por el mismo motivo que `pedido_folio`: mantener
-  // la columna dentro de la búsqueda global aunque la primera fila sea una
-  // orden generada automáticamente desde ventas, que no asigna usuario.
+  // la columna dentro de la búsqueda global aunque la primera fila sea una de
+  // esas históricas sin operador.
   columnHelper.accessor((row) => row.usuario_nombre ?? "", {
     id: "usuario_nombre",
     header: "Operador",
@@ -170,7 +186,7 @@ export const getReflectiveOrderColumns = (onViewDetails: (id: number) => void) =
     // como texto `-` (0x2D) ordena antes que `.` (0x2E) — la más reciente
     // quedaría primero al revés. Mismo problema (y misma solución,
     // `Date.parse`) que ya resuelve el orden por defecto en
-    // `useReflectiveOrders`.
+    // `useCorteMangaOrders`.
     sortingFn: (rowA, rowB, columnId) => {
       const a = Date.parse(rowA.getValue(columnId));
       const b = Date.parse(rowB.getValue(columnId));
@@ -184,7 +200,7 @@ export const getReflectiveOrderColumns = (onViewDetails: (id: number) => void) =
     ),
   }),
   // `accessorFn` con `?? ""` por el mismo motivo que `pedido_folio`, y aquí es
-  // el caso MÁS probable de los tres: `buildReflectiveOrderPayload` omite
+  // el caso MÁS probable de los tres: `buildCorteMangaOrderPayload` omite
   // `observaciones` cuando queda vacío, así que el backend guarda `null` y
   // cualquier alta sin notas —lo habitual— deja la primera fila con el campo
   // nulo, sacando la columna de la búsqueda global.
@@ -207,4 +223,4 @@ export const getReflectiveOrderColumns = (onViewDetails: (id: number) => void) =
     header: () => <div className="text-center">Acciones</div>,
     cell: ({ row }) => <ActionsCell order={row.original} onViewDetails={onViewDetails} />,
   }),
-] as ColumnDef<ReflectiveOrder>[];
+] as ColumnDef<CorteMangaOrder>[];
