@@ -1,12 +1,9 @@
 import type { ComponentType, SVGProps } from "react";
 import {
-  BancosIcon,
   CapitalHumanoIcon,
   ClientesIcon,
   ComprasIcon,
-  ContabilidadIcon,
   CxcIcon,
-  CxpIcon,
   DashboardIcon,
   ExistenciasIcon,
   FacturacionIcon,
@@ -20,15 +17,12 @@ import {
   UserIcon,
   LockIcon,
   OperationsIcon,
-  SamplesIcon,
   EmailIcon,
   ScissorsIcon,
   SliceIcon,
   RulerIcon,
-  FactoryIcon,
   ProduccionIcon,
   RecepcionesIcon,
-  MapPinIcon,
   TraspasosIcon,
   RouteIcon,
   PackingIcon,
@@ -126,6 +120,15 @@ export const appRouteGroups: AppRouteGroup[] = [
         showInSidebar: false,
       },
       {
+        key: "sales-quotes-edit",
+        label: "Editar Cotización",
+        path: "/sales/quotes/[id]/edit",
+        icon: PedidosIcon,
+        permission: "R-CRM",
+        parentPath: "/sales/quotes",
+        showInSidebar: false,
+      },
+      {
         key: "sales-emails",
         label: "Correos",
         path: "/sales/emails",
@@ -166,13 +169,14 @@ export const appRouteGroups: AppRouteGroup[] = [
         icon: RecepcionesIcon,
         permission: "R-WMS"
       },
-      {
-        key: "wms-locations",
-        label: "Ubicaciones",
-        path: "/wms/locations",
-        icon: MapPinIcon,
-        permission: "R-WMS",
-      },
+      // OCULTO EN NAVEGACION: usa datos mock (src/features/locations/mocks/locations-dashboard.mock.ts:11). Restaurar cuando el backend exponga el endpoint real.
+      // {
+      //   key: "wms-locations",
+      //   label: "Ubicaciones",
+      //   path: "/wms/locations",
+      //   icon: MapPinIcon,
+      //   permission: "R-WMS",
+      // },
       {
         key: "wms-stock-transfers",
         label: "Traspasos",
@@ -249,30 +253,33 @@ export const appRouteGroups: AppRouteGroup[] = [
         description: "Catálogo de proveedores registrados en el sistema.",
         permission: "R-COMPRAS",
       },
-      {
-        key: "procurement-order-reviews",
-        label: "Revisión de Pedidos",
-        path: "/procurement/order-reviews",
-        icon: ComprasIcon,
-        description: "Seguimiento del flujo completo de revisión de pedidos: desde la solicitud hasta el cierre con CxP.",
-        permission: "R-COMPRAS",
-      },
-      {
-        key: "procurement-expense-requests",
-        label: "Solicitudes de Gastos",
-        path: "/procurement/expense-requests",
-        icon: CxpIcon,
-        description: "Gestión de solicitudes de compras de gastos: desde el requerimiento hasta el cierre con Cobranza.",
-        permission: "R-COMPRAS",
-      },
-      {
-        key: "procurement-pq-orders",
-        label: "Pedidos P.Q.",
-        path: "/procurement/pq-orders",
-        icon: PedidosIcon,
-        description: "Seguimiento de pedidos de quincena vinculados a órdenes de compra: desde la generación hasta el surtido.",
-        permission: "R-COMPRAS",
-      },
+      // OCULTO EN NAVEGACION: usa datos mock (src/features/purchase-order-reviews/mocks/purchase-order-review.mock.ts:11). Restaurar cuando el backend exponga el endpoint real.
+      // {
+      //   key: "procurement-order-reviews",
+      //   label: "Revisión de Pedidos",
+      //   path: "/procurement/order-reviews",
+      //   icon: ComprasIcon,
+      //   description: "Seguimiento del flujo completo de revisión de pedidos: desde la solicitud hasta el cierre con CxP.",
+      //   permission: "R-COMPRAS",
+      // },
+      // OCULTO EN NAVEGACION: usa datos mock (src/features/expense-purchase-requests/mocks/expense-purchase-request.mock.ts:14). Restaurar cuando el backend exponga el endpoint real.
+      // {
+      //   key: "procurement-expense-requests",
+      //   label: "Solicitudes de Gastos",
+      //   path: "/procurement/expense-requests",
+      //   icon: CxpIcon,
+      //   description: "Gestión de solicitudes de compras de gastos: desde el requerimiento hasta el cierre con Cobranza.",
+      //   permission: "R-COMPRAS",
+      // },
+      // OCULTO EN NAVEGACION: usa datos mock (src/features/pq-orders/mocks/pq-order.mock.ts:14). Restaurar cuando el backend exponga el endpoint real.
+      // {
+      //   key: "procurement-pq-orders",
+      //   label: "Pedidos P.Q.",
+      //   path: "/procurement/pq-orders",
+      //   icon: PedidosIcon,
+      //   description: "Seguimiento de pedidos de quincena vinculados a órdenes de compra: desde la generación hasta el surtido.",
+      //   permission: "R-COMPRAS",
+      // },
     ],
   },
   {
@@ -317,22 +324,24 @@ export const appRouteGroups: AppRouteGroup[] = [
         description: "Órdenes de trabajo para el corte de manga de las prendas del pedido.",
         permission: "R-PRODUCCION",
       },
-      {
-        key: "manufacturing-cedicor-product-development-orders",
-        label: "Cedicor - Nuevo Desarrollo",
-        path: "/manufacturing/cedicor-product-development-orders",
-        icon: FactoryIcon,
-        description: "Seguimiento del flujo de producción para nuevos desarrollos de producto.",
-        permission: "R-PRODUCCION",
-      },
-      {
-        key: "manufacturing-cedicor-production-orders",
-        label: "Cedicor - Producción",
-        path: "/manufacturing/cedicor-production-orders",
-        icon: FactoryIcon,
-        description: "Gestión de órdenes de producción para artículos de resurtido y stock.",
-        permission: "R-PRODUCCION",
-      },
+      // OCULTO EN NAVEGACION: usa datos mock (src/features/cedicor/mocks/cedicor-new-development.mock.ts:11). Restaurar cuando el backend exponga el endpoint real.
+      // {
+      //   key: "manufacturing-cedicor-product-development-orders",
+      //   label: "Cedicor - Nuevo Desarrollo",
+      //   path: "/manufacturing/cedicor-product-development-orders",
+      //   icon: FactoryIcon,
+      //   description: "Seguimiento del flujo de producción para nuevos desarrollos de producto.",
+      //   permission: "R-PRODUCCION",
+      // },
+      // OCULTO EN NAVEGACION: usa datos mock (src/features/cedicor/mocks/cedicor-production-order.mock.ts:11). Restaurar cuando el backend exponga el endpoint real.
+      // {
+      //   key: "manufacturing-cedicor-production-orders",
+      //   label: "Cedicor - Producción",
+      //   path: "/manufacturing/cedicor-production-orders",
+      //   icon: FactoryIcon,
+      //   description: "Gestión de órdenes de producción para artículos de resurtido y stock.",
+      //   permission: "R-PRODUCCION",
+      // },
     ],
   },
   {
@@ -353,13 +362,14 @@ export const appRouteGroups: AppRouteGroup[] = [
         icon: FacturacionIcon,
         permission: "R-CONTABILIDAD",
       },
-      {
-        key: "finance-accounts-payable",
-        label: "CxP (Pagar)",
-        path: "/finance/accounts-payable",
-        icon: CxpIcon,
-        permission: "R-CONTABILIDAD",
-      },
+      // OCULTO EN NAVEGACION: usa datos mock (src/features/accounts-payable/mocks/accounts-payable.mock.ts:15). Restaurar cuando el backend exponga el endpoint real.
+      // {
+      //   key: "finance-accounts-payable",
+      //   label: "CxP (Pagar)",
+      //   path: "/finance/accounts-payable",
+      //   icon: CxpIcon,
+      //   permission: "R-CONTABILIDAD",
+      // },
       {
         key: "finance-accounts-receivable",
         label: "CxC (Cobrar)",
@@ -367,20 +377,22 @@ export const appRouteGroups: AppRouteGroup[] = [
         icon: CxcIcon,
         permission: "R-CONTABILIDAD",
       },
-      {
-        key: "finance-bank-accounts",
-        label: "Bancos",
-        path: "/finance/bank-accounts",
-        icon: BancosIcon,
-        permission: "R-CONTABILIDAD",
-      },
-      {
-        key: "finance-accounting",
-        label: "Contabilidad",
-        path: "/finance/accounting",
-        icon: ContabilidadIcon,
-        permission: "R-CONTABILIDAD",
-      },
+      // OCULTO EN NAVEGACION: usa datos mock (src/features/bank-accounts/components/BankAccountsList.tsx:5, arreglo literal). Restaurar cuando el backend exponga el endpoint real.
+      // {
+      //   key: "finance-bank-accounts",
+      //   label: "Bancos",
+      //   path: "/finance/bank-accounts",
+      //   icon: BancosIcon,
+      //   permission: "R-CONTABILIDAD",
+      // },
+      // OCULTO EN NAVEGACION: usa datos mock (src/features/accounting/mocks/accounting.mock.ts:18). Restaurar cuando el backend exponga el endpoint real.
+      // {
+      //   key: "finance-accounting",
+      //   label: "Contabilidad",
+      //   path: "/finance/accounting",
+      //   icon: ContabilidadIcon,
+      //   permission: "R-CONTABILIDAD",
+      // },
       {
         key: "finance-accounting-customers",
         label: "Clientes",
@@ -388,13 +400,14 @@ export const appRouteGroups: AppRouteGroup[] = [
         icon: ClientesIcon,
         permission: "R-CONTABILIDAD",
       },
-      {
-        key: "finance-price-lists",
-        label: "Lista de Precios",
-        path: "/finance/price-lists",
-        icon: ListaPreciosIcon,
-        permission: "R-CONTABILIDAD",
-      },
+      // OCULTO EN NAVEGACION: usa datos mock (src/features/price-lists/components/PriceListList.tsx:5, arreglo literal). Restaurar cuando el backend exponga el endpoint real.
+      // {
+      //   key: "finance-price-lists",
+      //   label: "Lista de Precios",
+      //   path: "/finance/price-lists",
+      //   icon: ListaPreciosIcon,
+      //   permission: "R-CONTABILIDAD",
+      // },
     ],
   },
   {
@@ -409,18 +422,6 @@ export const appRouteGroups: AppRouteGroup[] = [
     showInHome: true,
     items: [],
   },
-  // {
-  //   key: "other",
-  //   label: "Otros módulos",
-  //   description: "Proyectos, marketing y e-commerce.",
-  //   permission: "R-OTROS-MODULOS",
-  //   moduleLabel: "Otros Módulos",
-  //   modulePath: "/other",
-  //   moduleDescription: "Proyectos, e-commerce, canales digitales, marketing y campañas segmentadas.",
-  //   moduleIcon: DashboardIcon,
-  //   showInHome: true,
-  //   items: [],
-  // },
   {
     key: "operations",
     label: "Mesa de Control",
@@ -446,13 +447,14 @@ export const appRouteGroups: AppRouteGroup[] = [
         icon: PedidosIcon,
         permission: "R-MESACONTROL",
       },
-      {
-        key: "operations-samples",
-        label: "Muestras",
-        path: "/operations/samples",
-        icon: SamplesIcon,
-        permission: "R-MESACONTROL",
-      },
+      // OCULTO EN NAVEGACION: pagina placeholder sin datos. Restaurar cuando tenga implementacion real.
+      // {
+      //   key: "operations-samples",
+      //   label: "Muestras",
+      //   path: "/operations/samples",
+      //   icon: SamplesIcon,
+      //   permission: "R-MESACONTROL",
+      // },
       {
         key: "operations-customers",
         label: "Clientes",

@@ -29,7 +29,6 @@ export default function Sidebar() {
     "manufacturing",
     "finance",
     "hr",
-    "other",
     "operations",
   ]);
   const moduleLabel =

@@ -109,7 +109,6 @@ export const config = {
     "/manufacturing/:path*",
     "/finance/:path*",
     "/hr/:path*",
-    "/other/:path*",
     "/operations/:path*",
     "/settings/:path*",
   ],

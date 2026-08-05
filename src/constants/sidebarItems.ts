@@ -29,7 +29,6 @@ const mainGroupKeys = new Set([
   "manufacturing",
   "finance",
   "hr",
-  "other",
   "operations",
 ]);
 

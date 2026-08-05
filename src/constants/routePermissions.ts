@@ -8,7 +8,6 @@ export const routePermissions = [
   { prefix: "/manufacturing", permission: "R-PRODUCCION" },
   { prefix: "/finance", permission: "R-CONTABILIDAD" },
   { prefix: "/hr", permission: "R-RH" },
-  { prefix: "/other", permission: "R-OTROS-MODULOS" },
 ];
 
 /**

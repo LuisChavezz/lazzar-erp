@@ -10,7 +10,6 @@ export default function WmsPage() {
         </p>
       </div>
       {/* <KpiGrid items={items} /> */}
-      {/* <WmsViews /> */}
     </div>
   );
 }
