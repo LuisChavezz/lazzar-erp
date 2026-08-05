@@ -5,12 +5,11 @@ import { ArrowLeft } from "lucide-react";
 import { Loader } from "@/src/components/Loader";
 import { useBomBulk } from "@/src/features/bom/hooks/useBomBulk";
 import type { BomBulkItem } from "@/src/features/bom/interfaces/bom.interface";
+import { ErrorState } from "@/src/components/ErrorState";
 import { FormInput } from "@/src/components/FormInput";
-import { FormSelect } from "@/src/components/FormSelect";
 import { FormTextarea } from "@/src/components/FormTextarea";
 import { FormSubmitButton } from "@/src/components/FormButtons";
 import type { FormFieldError } from "@/src/utils/getFieldError";
-import { useUnitsOfMeasure } from "@/src/features/units-of-measure/hooks/useUnitsOfMeasure";
 import type { ProductVariant } from "@/src/features/product-variants/interfaces/product-variant.interface";
 import type { CreateProductionOrderFormApi } from "@/src/features/production-orders/hooks/useCreateProductionOrderForm";
 
@@ -19,7 +18,11 @@ interface ProductionOrderStep2Props {
   selectedVariants: ProductVariant[];
   /** Instancia de TanStack Form (vive en el step manager). */
   form: CreateProductionOrderFormApi;
-  /** Devuelve el error de un campo por ruta (p. ej. `...0.unidad`). */
+  /** El catálogo de unidades (que fija la unidad del detalle) aún carga. */
+  isLoadingUnits: boolean;
+  /** El catálogo no contiene "pz — Pieza": no se puede crear el detalle. */
+  isUnidadPiezaMissing: boolean;
+  /** Devuelve el error de un campo por ruta (p. ej. `...0.cantidad`). */
   getError: (path: string) => FormFieldError | undefined;
   /** Limpia el error de un campo cuando cambia su valor. */
   clearError: (path: string) => void;
@@ -115,21 +118,22 @@ function BomMaterialsSection({
  *
  * Paso 2 del asistente de orden de producción. Renderiza una tarjeta de
  * configuración por variante elegida en el Paso 1 (apiladas, desplazables) con
- * los campos editables del detalle: cantidad, unidad de medida y observaciones.
+ * los campos editables del detalle: cantidad y observaciones. La unidad de
+ * medida no se captura — el detalle siempre viaja en "pz — Pieza".
  * Debajo de cada tarjeta se muestra la lista de materiales (BOM) de la variante,
  * obtenida con {@link useBomBulk} — sólo lectura. El submit lo dispara `onConfirm`.
  */
 export function ProductionOrderStep2({
   selectedVariants,
   form,
+  isLoadingUnits,
+  isUnidadPiezaMissing,
   getError,
   clearError,
   onBack,
   onConfirm,
   isSubmitting,
 }: ProductionOrderStep2Props) {
-  const { units, isLoading: isLoadingUnits } = useUnitsOfMeasure();
-
   // Mapa id → variante para titular cada tarjeta por su `producto_variante_id`.
   const variantById = useMemo(() => {
     const map = new Map<number, ProductVariant>();
@@ -155,12 +159,21 @@ export function ProductionOrderStep2({
 
   // ── Loading state ─────────────────────────────────────────────────────
   // Espera al catálogo de unidades antes de mostrar el formulario (y, con él,
-  // el botón "Crear Orden"), evitando un select de unidades vacío.
+  // el botón "Crear Orden"): de ahí se resuelve la unidad fija del detalle.
   if (isLoadingUnits) {
     return (
       <Loader
         title="Preparando configuración"
         message="Cargando unidades de medida..."
+      />
+    );
+  }
+
+  if (isUnidadPiezaMissing) {
+    return (
+      <ErrorState
+        title="No se encontró la unidad de medida «pz — Pieza»"
+        message="Las órdenes de producción se registran en piezas. Da de alta la unidad «pz» en el catálogo de unidades de medida para continuar."
       />
     );
   }
@@ -201,69 +214,32 @@ export function ProductionOrderStep2({
                     )}
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {/* Cantidad */}
-                    <form.Field
-                      name={`orden_produccion_detalle[${index}].cantidad`}
-                    >
-                      {(field) => (
-                        <FormInput
-                          label="Cantidad"
-                          type="number"
-                          step="any"
-                          min={1}
-                          inputMode="decimal"
-                          placeholder="0"
-                          name={field.name}
-                          value={field.state.value}
-                          onChange={(event) => {
-                            field.handleChange(toNumber(event.target.value));
-                            clearError(
-                              `orden_produccion_detalle.${index}.cantidad`,
-                            );
-                          }}
-                          error={getError(
+                  {/* Cantidad — la unidad de medida es fija ("pz — Pieza") */}
+                  <form.Field
+                    name={`orden_produccion_detalle[${index}].cantidad`}
+                  >
+                    {(field) => (
+                      <FormInput
+                        label="Cantidad"
+                        type="number"
+                        step="any"
+                        min={1}
+                        inputMode="decimal"
+                        placeholder="0"
+                        name={field.name}
+                        value={field.state.value}
+                        onChange={(event) => {
+                          field.handleChange(toNumber(event.target.value));
+                          clearError(
                             `orden_produccion_detalle.${index}.cantidad`,
-                          )}
-                        />
-                      )}
-                    </form.Field>
-
-                    {/* Unidad de medida */}
-                    <form.Field
-                      name={`orden_produccion_detalle[${index}].unidad`}
-                    >
-                      {(field) => (
-                        <FormSelect
-                          label="Unidad de medida"
-                          name={field.name}
-                          value={field.state.value}
-                          onChange={(event) => {
-                            field.handleChange(toNumber(event.target.value));
-                            clearError(
-                              `orden_produccion_detalle.${index}.unidad`,
-                            );
-                          }}
-                          error={getError(
-                            `orden_produccion_detalle.${index}.unidad`,
-                          )}
-                        >
-                          <option value="0" disabled>
-                            Seleccionar...
-                          </option>
-                          {units.map((unit) => (
-                            <option
-                              key={unit.id}
-                              value={unit.id}
-                              className="bg-white dark:bg-zinc-900 text-slate-900 dark:text-white"
-                            >
-                              {unit.clave} — {unit.nombre}
-                            </option>
-                          ))}
-                        </FormSelect>
-                      )}
-                    </form.Field>
-                  </div>
+                          );
+                        }}
+                        error={getError(
+                          `orden_produccion_detalle.${index}.cantidad`,
+                        )}
+                      />
+                    )}
+                  </form.Field>
 
                   {/* Observaciones por variante */}
                   <form.Field

@@ -4,8 +4,9 @@
 // Asistente de 2 pasos para crear una orden de producción.
 //   Paso 1 — Cabecera (prioridad y observaciones) + selección múltiple
 //            de variantes de producto.
-//   Paso 2 — Configuración por variante (cantidad, unidad y observaciones) de
-//            cada renglón del detalle, previa a confirmar la creación. El
+//   Paso 2 — Configuración por variante (cantidad y observaciones) de cada
+//            renglón del detalle, previa a confirmar la creación. La unidad de
+//            medida es fija ("pz — Pieza"), no se captura. El
 //            backend resuelve la lista de materiales (BOM) automáticamente.
 // Mismo patrón que el asistente de listas de materiales (`BomStepManager`).
 // ─────────────────────────────────────────────────────────────────────────────
@@ -70,8 +71,15 @@ export function ProductionOrderStepManager({
   // El form vive en el step manager: el Paso 2 sólo dispara su submit vía
   // `onConfirm`. La cabecera y el detalle capturados en el Paso 1 se inyectan
   // al avanzar.
-  const { form, isSubmitting, getError, clearError, seedDetalle } =
-    useCreateProductionOrderForm({
+  const {
+    form,
+    isSubmitting,
+    getError,
+    clearError,
+    seedDetalle,
+    isLoadingUnits,
+    isUnidadPiezaMissing,
+  } = useCreateProductionOrderForm({
       prioridad: step1Data?.prioridad ?? 0,
       observaciones: step1Data?.observaciones ?? "",
       selectedVariantIds: step1Data?.variantIds ?? [],
@@ -117,6 +125,8 @@ export function ProductionOrderStepManager({
           <ProductionOrderStep2
             selectedVariants={selectedVariants}
             form={form}
+            isLoadingUnits={isLoadingUnits}
+            isUnidadPiezaMissing={isUnidadPiezaMissing}
             getError={getError}
             clearError={clearError}
             onBack={() => setCurrentStep("select-products")}
