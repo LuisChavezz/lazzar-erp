@@ -104,16 +104,14 @@ export function PurchaseOrderView() {
   const columns = useMemo(() => getColumns(), []);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
-  // ── Sort by creation date descending ────────────────────────────────────
-  const sortedOrders = useMemo(
-    () =>
-      [...purchaseOrders].sort(
-        (a, b) =>
-          new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
-      ),
-    [purchaseOrders],
-  );
-
+  // ── Orden ────────────────────────────────────────────────────────────────
+  // Lo resuelve el backend: `-fecha_oc, -id`. `fecha_oc` es la fecha DE NEGOCIO
+  // de la orden (un `DateField`, sin hora), que es la que el listado debe
+  // respetar; `-id` desempata las del mismo día de forma estable y determinista
+  // al ser la PK. Aquí ya no se reordena: el `sort` que vivía en este punto lo
+  // hacía por `created_at` (el timestamp de inserción, un campo DISTINTO), así
+  // que además de redundante contradecía el orden del backend — una OC
+  // capturada hoy con fecha retroactiva salía hasta arriba.
   // ── Configuración de filtros para DataTable ─────────────────────────────
   const purchaseOrdersFilterConfig = useMemo(
     () => createPurchaseOrdersFilterConfig(purchaseOrders),
@@ -128,7 +126,7 @@ export function PurchaseOrderView() {
   const table = (
     <DataTable
       columns={columns}
-      data={sortedOrders}
+      data={purchaseOrders}
       searchPlaceholder="Buscar orden, folio o referencia..."
       actionButton={
         <MainDialog
@@ -179,7 +177,7 @@ export function PurchaseOrderView() {
   return (
     <div className="space-y-6">
       {/* ── KPIs ─────────────────────────────────────────────────────────── */}
-      {!isLoading && !isError && <OrderStats items={sortedOrders} />}
+      {!isLoading && !isError && <OrderStats items={purchaseOrders} />}
 
       {/* ── Tabla de órdenes ──────────────────────────────────────────────── */}
       {table}

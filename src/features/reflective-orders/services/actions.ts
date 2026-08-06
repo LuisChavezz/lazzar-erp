@@ -16,9 +16,9 @@ import type {
  * respuesta del listado es un `array` de `OrdenReflejante`, sin envoltorio
  * `count`/`results`).
  *
- * Igual que bordado, el `queryset` NO lleva `order_by`, así que el orden del
- * arreglo es el que devuelva la base de datos: arbitrario y no garantizado
- * entre peticiones. El orden lo impone el frontend (ver `useReflectiveOrders`).
+ * Igual que bordado, el `queryset` ordena por `-fecha_inicio, -id`, así que el
+ * arreglo llega ya en el orden de presentación (más reciente primero) y el
+ * frontend no reordena nada (ver `useReflectiveOrders`).
  */
 export const getReflectiveOrders = async (): Promise<ReflectiveOrder[]> => {
   const response = await v1_api.get<ReflectiveOrder[]>(

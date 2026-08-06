@@ -84,6 +84,19 @@ export interface OperationsQuote {
   servicios_extras: OperationsQuoteExtraService[];
   cliente_nombre: string;
   cliente_razon_social: string;
+  /**
+   * Pedido generado a partir de esta cotización, resuelto por el backend con un
+   * `Subquery` sobre `Pedido` (ver `_apply_filters` en `CotizacionViewSet`).
+   *
+   * Ambos campos son NULL-ables y en la mesa de control lo son a menudo: el
+   * listado solo trae cotizaciones en estatus 2 (EN REVISION) y 5 (CAMBIOS
+   * SOLICITADOS), y el pedido nace al autorizar. Una cotización recién enviada a
+   * revisión todavía no tiene pedido; una que fue autorizada y luego se editó
+   * dentro de la ventana permitida vuelve a estatus 5 conservando el suyo.
+   * Además `Pedido.folio` es NULL-able por sí mismo.
+   */
+  pedido_id: number | null;
+  pedido_folio: string | null;
   piezas: number;
   importe_sin_iva: number;
   estatus: number;
@@ -92,8 +105,6 @@ export interface OperationsQuote {
   aprobado_snapshot: string | null;
   created_at: string;
   updated_at: string;
-  persona_pagos: string;
-  correo_facturas: string;
   telefono_pagos: string;
   oc: string;
   forma_pago: string;

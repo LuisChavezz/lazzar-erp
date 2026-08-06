@@ -278,6 +278,25 @@ export const operationsQuoteColumns: ColumnDef<OperationsQuote>[] = [
     ),
   },
   {
+    // `accessorFn` normaliza el NULL a cadena vacía: el filtro global de
+    // `DataTable` hace `String(valor).includes(...)`, así que un `null` crudo
+    // haría que buscar "null" cazara todas las cotizaciones sin pedido.
+    id: "pedido_folio",
+    accessorFn: (operationsQuote) => operationsQuote.pedido_folio ?? "",
+    meta: { label: "Pedido" },
+    header: () => <div className="w-full text-center">Pedido</div>,
+    cell: ({ row }) =>
+      row.original.pedido_folio ? (
+        <span className="block text-center font-mono text-slate-600 dark:text-slate-300">
+          {row.original.pedido_folio}
+        </span>
+      ) : (
+        <span className="block text-center text-slate-400 dark:text-slate-500">
+          —
+        </span>
+      ),
+  },
+  {
     accessorKey: "estatus_label",
     meta: { label: "Estado" },
     header: () => <div className="w-full text-center">Estado</div>,
@@ -302,21 +321,6 @@ export const operationsQuoteColumns: ColumnDef<OperationsQuote>[] = [
       <span className="block text-center text-slate-600 dark:text-slate-300">
         {capitalize(row.original.cliente_razon_social)}
       </span>
-    ),
-  },
-  {
-    accessorKey: "persona_pagos",
-    meta: { label: "Contacto" },
-    header: () => <div className="w-full text-center">Contacto</div>,
-    cell: ({ row }) => (
-      <div className="text-center">
-        <p className="text-slate-700 dark:text-slate-200 font-medium">
-          {capitalize(row.original.persona_pagos)}
-        </p>
-        <p className="text-xs text-slate-500 dark:text-slate-400">
-          {row.original.correo_facturas}
-        </p>
-      </div>
     ),
   },
   {

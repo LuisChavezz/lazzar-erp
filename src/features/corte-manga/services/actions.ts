@@ -17,10 +17,9 @@ import type {
  * confirma: la respuesta del listado es un `array` de `OrdenesCorteManga`, sin
  * envoltorio `count`/`results`, y el endpoint no declara ningún `parameters`).
  *
- * Igual que bordado y reflejante, el `queryset` NO lleva `order_by`, así que el
- * orden del arreglo es el que devuelva la base de datos: arbitrario y no
- * garantizado entre peticiones. El orden lo impone el frontend (ver
- * `useCorteMangaOrders`).
+ * Igual que bordado y reflejante, el `queryset` ordena por `-fecha_inicio,
+ * -id`, así que el arreglo llega ya en el orden de presentación (más reciente
+ * primero) y el frontend no reordena nada (ver `useCorteMangaOrders`).
  *
  * NO existe un action de detalle (`GET /{id}/`) en este módulo, y es
  * deliberado: `retrieve` devuelve EXACTAMENTE el mismo objeto que un renglón de

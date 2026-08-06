@@ -13,10 +13,9 @@ import type {
  * despacho; fuera de alcance devuelve `200 []`). Sin parámetros de filtro ni
  * paginación: el backend devuelve el arreglo COMPLETO.
  *
- * A diferencia de packing/despacho, el `queryset` NO lleva `order_by`, así que
- * el orden del arreglo es el que devuelva la base de datos: arbitrario y no
- * garantizado entre peticiones. El orden lo impone el frontend
- * (ver `useEmbroideryOrders`).
+ * El `queryset` ordena por `-fecha_inicio, -id`, así que el arreglo llega ya en
+ * el orden de presentación (más reciente primero) y el frontend no reordena
+ * nada (ver `useEmbroideryOrders`).
  */
 export const getEmbroideryOrders = async (): Promise<EmbroideryOrder[]> => {
   const response = await v1_api.get<EmbroideryOrder[]>("/produccion/orden-bordado/");

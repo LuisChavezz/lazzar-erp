@@ -36,7 +36,7 @@ export const AccountsReceivableList = () => {
   // Solo se trata como error "de pantalla completa" cuando la consulta nunca
   // cargó con éxito; un refetch fallido con datos en caché conserva la tabla y
   // avisa por toast (ver `useCuentasPorCobrar`). Mismo patrón que
-  // `InvoiceList`/`StockList`.
+  // `InvoiceList`.
   const showError = isInitialLoadError(isError, hasLoaded);
 
   // "Hoy" se calcula UNA sola vez y se comparte entre filas, KPIs y antigüedad.
