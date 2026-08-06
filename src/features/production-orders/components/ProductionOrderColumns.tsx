@@ -86,7 +86,14 @@ export function getProductionOrderColumns(): ColumnDef<OrdenProduccion, unknown>
     }),
 
     // Fecha fin
-    columnHelper.accessor('fecha_fin', {
+    //
+    // `accessorFn` que colapsa `null` a `''` — mismo bug de
+    // `getColumnCanGlobalFilter`/`flatRows[0]` que ya documenta
+    // `CorteMangaOrderColumns.tsx`. `id` explícito conserva la
+    // visibilidad/orden de columna que guarda `DataTable`; `fecha_fin` es
+    // nula en toda orden aún no terminada.
+    columnHelper.accessor((row) => row.fecha_fin ?? '', {
+      id: 'fecha_fin',
       header: 'Fecha fin',
       size: 130,
       cell: ({ getValue }) => {

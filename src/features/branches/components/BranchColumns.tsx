@@ -129,8 +129,14 @@ export const getBranchColumns = ({
       </span>
     ),
   },
+  // `accessorFn` que colapsa `null` a `""` — mismo bug de
+  // `getColumnCanGlobalFilter`/`flatRows[0]` que ya documenta
+  // `CorteMangaOrderColumns.tsx`. `id` explícito conserva la
+  // visibilidad/orden de columna que guarda `DataTable`; en `Branch` los
+  // campos de domicilio son nullables de origen.
   {
-    accessorKey: "ciudad",
+    id: "ciudad",
+    accessorFn: (row) => row.ciudad ?? "",
     header: "Ubicación",
     cell: ({ row }) => (
       <div className="flex flex-col">
@@ -143,8 +149,12 @@ export const getBranchColumns = ({
       </div>
     ),
   },
+  // Mismo `accessorFn` y mismo motivo que `ciudad` (ver el bloque de arriba).
+  // La celda no cambia: no lee el accessor, pinta `row.original.email` y añade
+  // el teléfono solo si es truthy — `""` se comporta igual que `null` ahí.
   {
-    accessorKey: "telefono",
+    id: "telefono",
+    accessorFn: (row) => row.telefono ?? "",
     header: "Contacto",
     cell: ({ row }) => (
       <div className="flex flex-col gap-1">

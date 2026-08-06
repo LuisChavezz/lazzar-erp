@@ -2,6 +2,7 @@
 
 import { createColumnHelper, type ColumnDef } from "@tanstack/react-table";
 import { StatusBadge } from "@/src/components/StatusBadge";
+import { textOrDash } from "@/src/components/DetailDialogPrimitives";
 import { ActionMenu, type ActionMenuItem } from "@/src/components/ActionMenu";
 import { ViewIcon } from "@/src/components/Icons";
 import { formatQuantityValue } from "@/src/utils/formatCurrency";
@@ -72,11 +73,16 @@ export const getEmbroideryOrderColumns = (onViewDetails: (id: number) => void) =
       </span>
     ),
   }),
-  columnHelper.accessor("pedido_folio", {
+  // `accessorFn` que colapsa `null` a `""` — mismo bug de
+  // `getColumnCanGlobalFilter`/`flatRows[0]` que ya documenta
+  // `CorteMangaOrderColumns.tsx`/`ReflectiveOrderColumns.tsx`. `id` explícito
+  // conserva la visibilidad/orden de columna que guarda `DataTable`.
+  columnHelper.accessor((row) => row.pedido_folio ?? "", {
+    id: "pedido_folio",
     header: "Pedido",
     cell: (info) => (
       <span className="font-mono text-sm text-slate-600 dark:text-slate-300">
-        {info.getValue() ?? "—"}
+        {textOrDash(info.getValue())}
       </span>
     ),
   }),
@@ -130,14 +136,19 @@ export const getEmbroideryOrderColumns = (onViewDetails: (id: number) => void) =
       </span>
     ),
   }),
-  columnHelper.accessor("observaciones", {
+  // Mismo `accessorFn` y mismo motivo que `pedido_folio` (ver el bloque de
+  // arriba): `observaciones` es opcional al crear la orden.
+  columnHelper.accessor((row) => row.observaciones ?? "", {
+    id: "observaciones",
     header: "Observaciones",
     cell: (info) => (
       <span
         className="block max-w-64 truncate text-sm text-slate-600 dark:text-slate-300"
-        title={info.getValue() ?? undefined}
+        // `||` y no `??`: el valor ausente ahora llega como `""`, y `??` NO lo
+        // atrapa — dejaría `title=""`, un tooltip vacío en vez de ninguno.
+        title={info.getValue() || undefined}
       >
-        {info.getValue() || "—"}
+        {textOrDash(info.getValue())}
       </span>
     ),
   }),

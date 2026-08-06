@@ -5,6 +5,7 @@ import { createColumnHelper, type ColumnDef } from "@tanstack/react-table";
 import { UserIcon, ViewIcon } from "@/src/components/Icons";
 import { ActionMenu, type ActionMenuItem } from "@/src/components/ActionMenu";
 import { StatusBadge } from "@/src/components/StatusBadge";
+import { textOrDash } from "@/src/components/DetailDialogPrimitives";
 import { formatExactQuantityValue } from "@/src/utils/formatCurrency";
 import { formatShortDate } from "@/src/utils/formatDate";
 import { PACKING_STATUS_CONFIG } from "../constants/packingStatus";
@@ -54,11 +55,16 @@ export const packingColumns = [
       </span>
     ),
   }),
-  columnHelper.accessor("pedido_folio", {
+  // `accessorFn` que colapsa `null` a `""` — mismo bug de
+  // `getColumnCanGlobalFilter`/`flatRows[0]` que ya documenta
+  // `CorteMangaOrderColumns.tsx`. `id` explícito conserva la
+  // visibilidad/orden de columna que guarda `DataTable`.
+  columnHelper.accessor((row) => row.pedido_folio ?? "", {
+    id: "pedido_folio",
     header: "Pedido",
     cell: (info) => (
       <span className="font-mono text-sm text-slate-600 dark:text-slate-300">
-        {info.getValue() ?? "—"}
+        {textOrDash(info.getValue())}
       </span>
     ),
   }),

@@ -5,6 +5,7 @@ import { createColumnHelper, type ColumnDef } from "@tanstack/react-table";
 import { ChevronRightIcon, UserIcon, ViewIcon } from "@/src/components/Icons";
 import { ActionMenu, type ActionMenuItem } from "@/src/components/ActionMenu";
 import { StatusBadge } from "@/src/components/StatusBadge";
+import { textOrDash } from "@/src/components/DetailDialogPrimitives";
 import { formatShortDate, formatShortTime } from "@/src/utils/formatDate";
 import { TRANSFER_STATUS_CONFIG } from "../constants/transferStatus";
 import { StockTransferDetailDialog } from "./StockTransferDetailDialog";
@@ -96,11 +97,18 @@ export const stockTransfersColumns = [
       );
     },
   }),
-  columnHelper.accessor("observaciones", {
+  // `accessorFn` que colapsa `null` a `""` — mismo bug de
+  // `getColumnCanGlobalFilter`/`flatRows[0]` que ya documenta
+  // `CorteMangaOrderColumns.tsx` (mismo motivo que la columna `ruta` de
+  // arriba). `id` explícito conserva la visibilidad/orden de columna que
+  // guarda `DataTable`. `observaciones` es opcional al crear la transferencia,
+  // así que llega nulo con frecuencia.
+  columnHelper.accessor((row) => row.observaciones ?? "", {
+    id: "observaciones",
     header: "Observaciones",
     cell: (info) => (
       <span className="text-xs text-slate-500 dark:text-slate-400 truncate max-w-60 block">
-        {info.getValue() || "—"}
+        {textOrDash(info.getValue())}
       </span>
     ),
   }),

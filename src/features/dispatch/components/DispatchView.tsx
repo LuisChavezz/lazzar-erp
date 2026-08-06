@@ -31,7 +31,7 @@ export function DispatchView() {
     <DataTable
       columns={dispatchColumns}
       data={dispatches}
-      searchPlaceholder="Buscar packing, pedido, cliente o sucursal..."
+      searchPlaceholder="Buscar packing, pedido, cliente, sucursal, envío o transportista..."
       getRowId={(row) => String(row.id)}
       onRefetch={refetch}
       isRefetching={isFetching}

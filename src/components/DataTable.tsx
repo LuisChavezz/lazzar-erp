@@ -340,6 +340,20 @@ export function DataTable<TData, TValue>({
     ? { pageIndex: 0, pageSize: Math.max(data.length, 1) }
     : pagination;
 
+  // TRAMPA CONOCIDA — `getColumnCanGlobalFilter` de TanStack (sin configurar
+  // aquí, así que rige el default) decide si una columna participa en la
+  // búsqueda global mirando SOLO el valor de `flatRows[0]` y exigiendo
+  // `typeof value === "string" | "number"`. Como `typeof null === "object"`,
+  // una columna cuyo campo es `null` en la primera fila queda excluida de la
+  // búsqueda EN TODAS las filas, no solo en esa. Convención establecida en el
+  // proyecto para columnas sobre campos nullable: convertir de
+  // `accessorKey`/`accessor("campo")` a `accessor((row) => row.campo ?? "", {
+  // id: "campo", ... })`, colapsando el valor ausente a `""` (nunca
+  // `undefined`, que tampoco pasa el filtro) y fijando `id` explícito para
+  // conservar la visibilidad/orden de columna que guarda esta tabla. Ver
+  // `CorteMangaOrderColumns.tsx` para el caso canónico documentado. Esto se
+  // resuelve por columna, no aquí, para no arriesgar un cambio de
+  // comportamiento compartido por los 55+ módulos que usan `DataTable`.
   // eslint-disable-next-line react-hooks/incompatible-library
   const table = useReactTable({
     data: filteredData,

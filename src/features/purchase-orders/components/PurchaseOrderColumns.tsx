@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { ColumnDef, createColumnHelper } from "@tanstack/react-table";
 import { ActionMenu, type ActionMenuItem } from "@/src/components/ActionMenu";
+import { textOrDash } from "@/src/components/DetailDialogPrimitives";
 import {
   CheckCircleIcon,
   DeleteIcon,
@@ -228,7 +229,7 @@ export const getColumns = () => {
     columnHelper.accessor("referencia", {
       header: "Referencia",
       cell: (info) => (
-        <span className="text-slate-600 dark:text-slate-300">{info.getValue() || "—"}</span>
+        <span className="text-slate-600 dark:text-slate-300">{textOrDash(info.getValue())}</span>
       ),
     }),
     columnHelper.accessor("fecha_oc", {
@@ -239,11 +240,16 @@ export const getColumns = () => {
         </span>
       ),
     }),
-    columnHelper.accessor("fecha_entrega_estimada", {
+    // `accessorFn` que colapsa `null` a `""` — mismo bug de
+    // `getColumnCanGlobalFilter`/`flatRows[0]` que ya documenta
+    // `CorteMangaOrderColumns.tsx`. `id` explícito conserva la
+    // visibilidad/orden de columna que guarda `DataTable`.
+    columnHelper.accessor((row) => row.fecha_entrega_estimada ?? "", {
+      id: "fecha_entrega_estimada",
       header: "Entrega Estimada",
       cell: (info) => {
-        // `fecha_entrega_estimada` puede ser null (orden sin fecha de entrega);
-        // se enlaza a una const para que TS lo estreche dentro del ternario.
+        // Valor ya colapsado a "" por el accessorFn de arriba (nunca null);
+        // se enlaza a una const solo por legibilidad, no hay nada que estrechar.
         const value = info.getValue();
         return (
           <span className="text-slate-600 dark:text-slate-300 tabular-nums">

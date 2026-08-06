@@ -3,6 +3,7 @@
 import { ColumnDef, createColumnHelper } from "@tanstack/react-table";
 import type { Receipt } from "../interfaces/receipt.interface";
 import { StatusBadge, type StatusBadgeConfigEntry } from "@/src/components/StatusBadge";
+import { textOrDash } from "@/src/components/DetailDialogPrimitives";
 import { ReceiptDetailDialog } from "./ReceiptDetailDialog";
 import { ReceiptActionsCell } from "./ReceiptActionsCell";
 
@@ -56,11 +57,18 @@ export const receiptColumns = [
       />
     ),
   }),
-  columnHelper.accessor("proveedor_nombre", {
+  // `accessorFn` que colapsa `null` a `""` — mismo bug de
+  // `getColumnCanGlobalFilter`/`flatRows[0]` que ya documenta
+  // `CorteMangaOrderColumns.tsx`. `id` explícito conserva la
+  // visibilidad/orden de columna que guarda `DataTable`. Escenario común, no
+  // teórico: las recepciones de tipo OP no tienen proveedor, así que llegan
+  // con los tres campos de este bloque (proveedor, remisión, factura) nulos.
+  columnHelper.accessor((row) => row.proveedor_nombre ?? "", {
+    id: "proveedor_nombre",
     header: "Proveedor",
     cell: (info) => (
       <span className="text-slate-600 dark:text-slate-300">
-        {info.getValue() ?? "—"}
+        {textOrDash(info.getValue())}
       </span>
     ),
   }),
@@ -74,19 +82,24 @@ export const receiptColumns = [
       </span>
     ),
   }),
-  columnHelper.accessor("remision", {
+  // Mismo `accessorFn` y mismo motivo que `proveedor_nombre` (ver el bloque de
+  // arriba): `remision` es opcional al registrar la recepción.
+  columnHelper.accessor((row) => row.remision ?? "", {
+    id: "remision",
     header: "Remisión",
     cell: (info) => (
       <span className="text-slate-600 dark:text-slate-300">
-        {info.getValue() ?? "—"}
+        {textOrDash(info.getValue())}
       </span>
     ),
   }),
-  columnHelper.accessor("factura_referencia", {
+  // Mismo criterio que `remision`.
+  columnHelper.accessor((row) => row.factura_referencia ?? "", {
+    id: "factura_referencia",
     header: "Factura",
     cell: (info) => (
       <span className="text-slate-600 dark:text-slate-300">
-        {info.getValue() ?? "—"}
+        {textOrDash(info.getValue())}
       </span>
     ),
   }),

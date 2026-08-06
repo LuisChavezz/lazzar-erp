@@ -111,12 +111,39 @@ export const getSerieFolioColumns = (
         </span>
       ),
     }),
-    columnHelper.display({
+    // `accessor` (no `display`) con el nombre de sucursal YA resuelto, para que
+    // la columna participe en la búsqueda global. Como `display` no tiene
+    // accessor alguno, TanStack la excluía del filtro global en TODAS las filas
+    // —no es el bug de la fila 0, es ausencia total de valor buscable— y el
+    // nombre de sucursal es texto libre que el usuario sí espera poder buscar.
+    //
+    // El miss del lookup colapsa a `""` (misma convención que el resto del
+    // proyecto) y NO a `undefined`: `branchLookup` se arma con una query
+    // independiente de la del listado (`useCompanyBranches`, ver
+    // `SerieFolioList`), así que puede llegar vacío o incompleto mientras carga,
+    // si falla, si no hay empresa seleccionada, o si la serie apunta a una
+    // sucursal ajena a la empresa actual. Devolver `""` mantiene el valor como
+    // string y con ello la columna elegible para la búsqueda; `undefined` la
+    // volvería a dejar fuera. Al resolverse la query, `getSerieFolioColumns` se
+    // reconstruye (el `useMemo` depende de `branchLookup`) y el accessor pasa a
+    // devolver el nombre real.
+    columnHelper.accessor((row) => branchLookup.get(row.sucursal) ?? "", {
       id: "sucursal",
       header: "Sucursal",
-      cell: ({ row }) => (
+      // `display` nunca era ordenable (`getCanSort` exige `accessorFn`); un
+      // `accessor` sí lo es por defecto, y aquí el valor puede estar vacío
+      // mientras `branchLookup` (query independiente de `useCompanyBranches`)
+      // sigue cargando — ordenar en ese momento sería un empate sin sentido
+      // que además se reacomoda solo cuando el lookup resuelve. Se desactiva
+      // explícitamente para conservar el comportamiento de antes (columna no
+      // ordenable) y no sumar ese reacomodo inesperado.
+      enableSorting: false,
+      // Se reutiliza el valor del accessor en vez de repetir el lookup. `||` y
+      // no `??`: el valor sin resolver llega como `""`, no como `null`. El
+      // render es idéntico al anterior (nombre resuelto, o "Sin sucursal").
+      cell: (info) => (
         <span className="text-slate-500 dark:text-slate-400">
-          {branchLookup.get(row.original.sucursal) ?? "Sin sucursal"}
+          {info.getValue() || "Sin sucursal"}
         </span>
       ),
     }),

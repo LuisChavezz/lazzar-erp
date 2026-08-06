@@ -79,8 +79,15 @@ export const purchaseOrderReceiptColumns: ColumnDef<PurchaseOrderReceipt>[] = [
       />
     ),
   },
+  // `accessorFn` que colapsa `null` a `""` — mismo bug de
+  // `getColumnCanGlobalFilter`/`flatRows[0]` que ya documenta
+  // `CorteMangaOrderColumns.tsx`. `id` explícito conserva la
+  // visibilidad/orden de columna que guarda `DataTable`; `remision` es
+  // opcional al registrar la recepción, a diferencia de los campos de
+  // proveedor y OC que esta vista sí garantiza no nulos.
   {
-    accessorKey: "remision",
+    id: "remision",
+    accessorFn: (row) => row.remision ?? "",
     header: "Remisión",
     cell: ({ row }) => (
       <span className="text-slate-600 dark:text-slate-300">

@@ -50,3 +50,6 @@ next-env.d.ts
 # AI / Skills
 .agents/
 .claude/
+
+# Playwright MCP session artifacts (screenshots, console/page dumps)
+.playwright-mcp/

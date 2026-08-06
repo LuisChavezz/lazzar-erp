@@ -51,7 +51,15 @@ export const rfidLabelColumns = [
       </span>
     ),
   }),
-  columnHelper.accessor("sku", {
+  // `accessorFn` que colapsa `null` a `""` — mismo bug de
+  // `getColumnCanGlobalFilter`/`flatRows[0]` que ya documenta
+  // `CorteMangaOrderColumns.tsx`. `id` explícito conserva la
+  // visibilidad/orden de columna que guarda `DataTable`. Escenario común: el
+  // listado es un log ordenado por fecha descendente, así que la primera fila
+  // es la impresión más reciente, que bien puede ser por producto (sin
+  // variante y por tanto sin SKU).
+  columnHelper.accessor((row) => row.sku ?? "", {
+    id: "sku",
     header: "SKU",
     // `null` cuando la impresión se registró por producto, sin variante.
     cell: (info) => (
@@ -66,7 +74,10 @@ export const rfidLabelColumns = [
       <span className="text-sm text-slate-700 dark:text-slate-200">{info.getValue()}</span>
     ),
   }),
-  columnHelper.accessor("producto_variante_nombre", {
+  // Mismo `accessorFn` y mismo motivo que `sku` (ver el bloque de arriba):
+  // `producto_variante_nombre` es `null` en las impresiones por producto.
+  columnHelper.accessor((row) => row.producto_variante_nombre ?? "", {
+    id: "producto_variante_nombre",
     header: "Variante",
     // Compuesto "Producto - Color - Talla" armado por el backend — se muestra
     // tal cual, no se separa en color/talla (no hay campos sueltos que leer).

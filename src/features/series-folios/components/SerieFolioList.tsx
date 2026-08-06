@@ -56,7 +56,7 @@ export default function SerieFolioList() {
       columns={columns}
       data={seriesFolios ?? []}
       title="Series y Folios"
-      searchPlaceholder="Buscar serie o documento..."
+      searchPlaceholder="Buscar serie, documento o sucursal..."
       isLoading={isLoading}
       isError={isError}
       errorTitle="Error al cargar series y folios"

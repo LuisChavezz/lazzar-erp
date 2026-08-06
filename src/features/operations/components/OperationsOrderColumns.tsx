@@ -103,9 +103,14 @@ export function buildOperationsOrderColumns(
         </span>
       ),
     },
+    // `accessorFn` que colapsa `null` a `''` — mismo bug de
+    // `getColumnCanGlobalFilter`/`flatRows[0]` que ya documenta
+    // `CorteMangaOrderColumns.tsx`. El `id` ya estaba declarado y se conserva
+    // igual. Caso común, no teórico: la mesa de control lista pedidos por
+    // confirmar, que por definición no tienen `fecha_confirmacion`.
     {
       id: 'fecha_confirmacion',
-      accessorKey: 'fecha_confirmacion',
+      accessorFn: (order) => order.fecha_confirmacion ?? '',
       header: 'Fecha confirmada',
       cell: ({ row }) => {
         const parsedDate = parseLocalDate(row.original.fecha_confirmacion);

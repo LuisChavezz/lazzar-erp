@@ -43,8 +43,14 @@ export const operationsCustomerColumns: ColumnDef<OperationsCustomer>[] = [
       </span>
     ),
   },
+  // `accessorFn` que colapsa `null` a `""` — mismo bug de
+  // `getColumnCanGlobalFilter`/`flatRows[0]` que ya documenta
+  // `CorteMangaOrderColumns.tsx`. `id` explícito conserva la
+  // visibilidad/orden de columna que guarda `DataTable`; `contacto` es propio
+  // de este recurso y nullable (ver `OperationsCustomer`).
   {
-    accessorKey: "contacto",
+    id: "contacto",
+    accessorFn: (row) => row.contacto ?? "",
     header: "Contacto",
     cell: ({ row }) => (
       <span className="text-slate-600 dark:text-slate-300">

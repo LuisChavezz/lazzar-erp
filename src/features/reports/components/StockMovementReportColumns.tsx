@@ -102,8 +102,20 @@ export const stockMovementReportColumns: ColumnDef<StockMovementReportRow>[] = [
         <Dash />
       ),
   },
+  // `accessorFn` que colapsa `null` a `""` — mismo motivo por el que
+  // `producto_nombre` (arriba) ya lo usa; mismo bug de
+  // `getColumnCanGlobalFilter`/`flatRows[0]` que documenta
+  // `CorteMangaOrderColumns.tsx`. `id` explícito conserva la
+  // visibilidad/orden de columna que guarda `DataTable`; los movimientos sin
+  // ubicación asignada la traen nula.
+  //
+  // NOTA: esta tabla usa `serverPagination`, y `DataTable` OCULTA la búsqueda
+  // global por completo en ese modo (filtraría solo la página actual). El fix
+  // es correcto pero hoy no tiene efecto observable aquí — queda listo para
+  // cuando este reporte tenga búsqueda server-side.
   {
-    accessorKey: "ubicacion_nombre",
+    id: "ubicacion_nombre",
+    accessorFn: (row) => row.ubicacion_nombre ?? "",
     header: "Ubicación",
     meta: { label: "Ubicación" },
     cell: ({ row }) =>
