@@ -14,6 +14,12 @@ import {
 
 interface UsePurchaseOrderStep1FormParams {
   onboardingData: PurchaseOrderOnboardingData;
+  /**
+   * Encabezado ya capturado en una visita previa al Step 1 (p. ej. tras pulsar
+   * "Volver" desde el Step 2). Cuando existe, siembra los valores por defecto
+   * para que lo capturado sobreviva el viaje de ida y vuelta entre pasos.
+   */
+  initialValues?: PurchaseOrderEncabezados;
   /** Called when the form is validated and submitted. Receives the captured encabezados data. */
   onSuccess: (data: PurchaseOrderEncabezados) => void;
 }
@@ -32,26 +38,45 @@ export type Step1FieldPath =
 
 type Step1ErrorMap = Partial<Record<Step1FieldPath, string>>;
 
+/**
+ * Fecha de hoy en formato `YYYY-MM-DD` según la zona horaria LOCAL.
+ *
+ * No se usa `toISOString()` porque convierte a UTC: en México (UTC-6) a partir
+ * de las 18:00 locales devolvería la fecha de mañana y la orden nacería con un
+ * día de más.
+ */
+const getTodayDate = (): string => {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = String(now.getMonth() + 1).padStart(2, "0");
+  const d = String(now.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+};
+
 export function usePurchaseOrderStep1Form({
   onboardingData,
+  initialValues,
   onSuccess,
 }: UsePurchaseOrderStep1FormParams) {
   const [clientErrors, setClientErrors] = useState<Step1ErrorMap>({});
   const [serverErrors, setServerErrors] = useState<Step1ErrorMap>({});
 
   // ── Default values ──────────────────────────────────────────────────────
+  // Si ya hay un encabezado capturado (regreso desde el Step 2), se siembra
+  // desde él para no perder lo capturado; en la primera visita, en blanco.
   const defaultValues = useMemo<PurchaseOrderEncabezadosFormValues>(
-    () => ({
-      orden_compra: {
-        sucursal: 0,
-        proveedor: 0,
-        moneda: 0,
-        fecha_oc: new Date().toISOString().slice(0, 10),
-        referencia: "",
-        observaciones: "",
+    () =>
+      initialValues ?? {
+        orden_compra: {
+          sucursal: 0,
+          proveedor: 0,
+          moneda: 0,
+          fecha_oc: getTodayDate(),
+          referencia: "",
+          observaciones: "",
+        },
       },
-    }),
-    [],
+    [initialValues],
   );
 
   // ── Selector options derived from onboarding data ───────────────────────

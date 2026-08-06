@@ -30,6 +30,8 @@ export interface PurchaseOrderOnboardingProveedor {
 
 export interface PurchaseOrderOnboardingProducto {
   id: number;
+  codigo: string | null;
+  cod_proscai: string;
   nombre: string;
   descripcion: string | null;
   precio_base: number;

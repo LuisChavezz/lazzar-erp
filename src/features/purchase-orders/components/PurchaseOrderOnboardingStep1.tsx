@@ -8,8 +8,11 @@ import { usePurchaseOrderOnboardingData } from "../hooks/usePurchaseOrderOnboard
 import { usePurchaseOrderStep1Form } from "../hooks/usePurchaseOrderStep1Form";
 
 export function PurchaseOrderOnboardingStep1({
+  initialValues,
   onSuccess,
 }: {
+  /** Encabezado capturado previamente; preserva lo escrito al volver desde el Step 2. */
+  initialValues?: PurchaseOrderEncabezados;
   onSuccess?: (data: PurchaseOrderEncabezados) => void;
 }) {
   const { onboardingData, isLoading, isError, error } =
@@ -48,7 +51,11 @@ export function PurchaseOrderOnboardingStep1({
 
   // Defer to the actual form once data is available.
   return (
-    <Step1Form onboardingData={onboardingData} onSuccess={onSuccess} />
+    <Step1Form
+      onboardingData={onboardingData}
+      initialValues={initialValues}
+      onSuccess={onSuccess}
+    />
   );
 }
 
@@ -56,10 +63,11 @@ export function PurchaseOrderOnboardingStep1({
 
 interface Step1FormProps {
   onboardingData: PurchaseOrderOnboardingData;
+  initialValues?: PurchaseOrderEncabezados;
   onSuccess?: (data: PurchaseOrderEncabezados) => void;
 }
 
-function Step1Form({ onboardingData, onSuccess }: Step1FormProps) {
+function Step1Form({ onboardingData, initialValues, onSuccess }: Step1FormProps) {
   const {
     form,
     isPending,
@@ -71,7 +79,11 @@ function Step1Form({ onboardingData, onSuccess }: Step1FormProps) {
     clearFieldErrors,
     validateField,
     coerceNumeric,
-  } = usePurchaseOrderStep1Form({ onboardingData, onSuccess: onSuccess ?? (() => {}) });
+  } = usePurchaseOrderStep1Form({
+    onboardingData,
+    initialValues,
+    onSuccess: onSuccess ?? (() => {}),
+  });
 
   return (
     <form onSubmit={handleFormSubmit} className="space-y-6">

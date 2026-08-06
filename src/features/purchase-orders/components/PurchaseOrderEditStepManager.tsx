@@ -147,15 +147,24 @@ export function PurchaseOrderEditStepManager({
             onSuccess={handleStep1Success}
           />
         )}
-        {currentStep === "step-2" && header !== null && (
-          <PurchaseOrderEditStep2
-            initialData={initialData}
-            header={header}
-            onboardingData={onboardingData}
-            initialItems={initialItems}
-            onSuccess={handleStep2Success}
-            onBack={() => setCurrentStep("step-1")}
-          />
+        {/*
+          Una vez creado, el Step 2 se queda MONTADO y solo se oculta al volver
+          al Step 1. Al desmontarse, su `quantities` se resembraba desde
+          `initialItems` (solo corre en el inicializador del useState), así que
+          los renglones que el usuario había quitado reaparecían y los que había
+          agregado desaparecían, sin aviso y justo antes de guardar.
+        */}
+        {header !== null && (
+          <div className={currentStep === "step-2" ? undefined : "hidden"}>
+            <PurchaseOrderEditStep2
+              initialData={initialData}
+              header={header}
+              onboardingData={onboardingData}
+              initialItems={initialItems}
+              onSuccess={handleStep2Success}
+              onBack={() => setCurrentStep("step-1")}
+            />
+          </div>
         )}
       </div>
     </div>

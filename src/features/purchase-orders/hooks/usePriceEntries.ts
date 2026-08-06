@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { PurchaseOrderDetallePrecioSchema } from "../schemas/purchase-order-onboarding.schema";
 
 /**
@@ -30,14 +30,21 @@ export function usePriceEntries(
     });
   };
 
-  const priceErrors: Record<number, string> = {};
-  Object.keys(quantities).forEach((idStr) => {
-    const id = Number(idStr);
-    const parsed = PurchaseOrderDetallePrecioSchema.safeParse(prices[id] ?? "");
-    if (!parsed.success) {
-      priceErrors[id] = parsed.error.issues[0].message;
-    }
-  });
+  // Se memoiza porque valida TODOS los renglones seleccionados: con la lista
+  // virtualizada es normal llegar a cientos, y sin esto se re-ejecutarían
+  // cientos de `safeParse` en cada render (cada tecla del buscador, cada clic
+  // del stepper) antes de pintar.
+  const priceErrors = useMemo(() => {
+    const errors: Record<number, string> = {};
+    Object.keys(quantities).forEach((idStr) => {
+      const id = Number(idStr);
+      const parsed = PurchaseOrderDetallePrecioSchema.safeParse(prices[id] ?? "");
+      if (!parsed.success) {
+        errors[id] = parsed.error.issues[0].message;
+      }
+    });
+    return errors;
+  }, [quantities, prices]);
 
   const hasPriceErrors = Object.keys(priceErrors).length > 0;
 

@@ -56,15 +56,27 @@ export function PurchaseOrderOnboardingStepManager({
       <div>
         {currentStep === "step-1" && (
           <PurchaseOrderOnboardingStep1
+            initialValues={step1Data ?? undefined}
             onSuccess={handleStep1Success}
           />
         )}
-        {currentStep === "step-2" && step1Data !== null && (
-          <PurchaseOrderOnboardingStep2
-            step1Data={step1Data}
-            onboardingData={onboardingData}
-            onSuccess={handleStep2Success}
-          />
+        {/*
+          Una vez creado, el Step 2 se queda MONTADO y solo se oculta al volver
+          al Step 1. Si se desmontara, su estado local (productos elegidos,
+          cantidades y precios editados) se perdería en silencio: "Volver"
+          existe justamente para no perder lo capturado, y reelegir decenas de
+          productos en un catálogo de miles es mucho más caro que recapturar el
+          encabezado.
+        */}
+        {step1Data !== null && (
+          <div className={currentStep === "step-2" ? undefined : "hidden"}>
+            <PurchaseOrderOnboardingStep2
+              step1Data={step1Data}
+              onboardingData={onboardingData}
+              onSuccess={handleStep2Success}
+              onBack={() => setCurrentStep("step-1")}
+            />
+          </div>
         )}
       </div>
     </div>
