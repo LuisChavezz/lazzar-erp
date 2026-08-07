@@ -26,10 +26,16 @@ export const getEmbroideryOrders = async (): Promise<EmbroideryOrder[]> => {
  * Catálogos para dar de alta una orden de bordado
  * (`GET /produccion/orden-bordado/onboarding/`).
  *
- * SIN parámetros: a diferencia de picking/packing/despacho, este onboarding no
- * tiene un segundo modo con alcance al padre elegido (`?pedido=`) — el service
- * deriva los detalles solo en el POST, así que no hay nada que previsualizar
- * por pedido. Por eso basta una sola llamada y se cachea como catálogo normal.
+ * SIN parámetros: a diferencia de picking, este onboarding no tiene un segundo
+ * modo con alcance al padre elegido (`?pedido=`) — una sola llamada trae YA el
+ * detalle por talla de CADA pedido candidato (`pedidos[].detalles`), con lo
+ * pedido, lo ya programado en otras OB y el saldo
+ * (`cantidad_pedido`/`cantidad_asignada`/`cantidad_pendiente`).
+ *
+ * Ese saldo es dato vivo —otra OB del mismo pedido lo reduce— y además decide
+ * qué pedidos aparecen (el backend excluye los que ya no tienen ninguna línea
+ * pendiente), así que la respuesta NO se cachea como catálogo estable: ver
+ * `useEmbroideryOnboarding`.
  *
  * Fuera de alcance (sin empresa o sin sucursales permitidas) responde `200`
  * con los arreglos vacíos, no un error.
@@ -50,6 +56,11 @@ export const getEmbroideryOnboarding = async (): Promise<EmbroideryOnboardingDat
  *
  * La respuesta trae la orden ya creada con el mismo shape del listado — de ahí
  * sale el `folio_bordado` REAL (el único válido para mostrarle al usuario).
+ *
+ * `data.detalles_override` es opcional: presente, la orden cubre SOLO esas
+ * líneas con esas cantidades (parcial); ausente, el service programa el 100%
+ * de las tallas con bordado del pedido, que es lo que hace el alta de un solo
+ * paso actual. Ver `CreateEmbroideryOrderPayload`.
  *
  * Toda ruta de rechazo ocurre ANTES de `generate_ob_folio` y el service es
  * `@transaction.atomic`: un error no consume folio ni deja renglones sueltos.

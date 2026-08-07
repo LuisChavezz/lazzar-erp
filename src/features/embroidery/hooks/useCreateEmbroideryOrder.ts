@@ -26,10 +26,15 @@ export {
  * por defecto del usuario y puede no coincidir con la serie realmente
  * consumida (la de la sucursal del pedido).
  *
- * Invalida `["embroidery-orders"]` (el listado). NO invalida
- * `["embroidery-onboarding"]`: crear una orden no saca al pedido del catálogo
- * —el backend no excluye los pedidos que ya tienen OB— así que la respuesta
- * sería idéntica y el refetch, desperdiciado.
+ * La mutación acepta `detalles_override` sin cambio de firma: es un campo
+ * opcional de `CreateEmbroideryOrderPayload`, así que el alta de un solo paso
+ * que existe hoy sigue llamándola exactamente igual.
+ *
+ * Invalida `["embroidery-orders"]` (el listado) Y `["embroidery-onboarding"]`.
+ * Esto último ya no es desperdicio: crear una orden consume saldo del pedido
+ * (`cantidad_asignada` sube, `cantidad_pendiente` baja) y, si lo cubre al
+ * 100%, el backend saca al pedido del catálogo. Sin invalidar, el siguiente
+ * alta ofrecería líneas ya programadas.
  */
 export const useCreateEmbroideryOrder = (
   onServerError?: (parsed: ParsedEmbroideryOrderError) => void,
@@ -40,6 +45,7 @@ export const useCreateEmbroideryOrder = (
     mutationFn: createEmbroideryOrder,
     onSuccess: (order) => {
       queryClient.invalidateQueries({ queryKey: ["embroidery-orders"] });
+      queryClient.invalidateQueries({ queryKey: ["embroidery-onboarding"] });
       toast.success(`Orden de bordado ${order.folio_bordado} creada correctamente`);
     },
     onError: (error) => {
@@ -57,10 +63,24 @@ export const useCreateEmbroideryOrder = (
         queryClient.invalidateQueries({ queryKey: ["embroidery-orders"] });
       }
 
+      // El 400 de exceso significa que el saldo por línea que se le ofreció al
+      // usuario ya no es el real (otra OB del mismo pedido lo consumió entre
+      // la carga y el envío). Invalidar el onboarding es lo que hace que el
+      // reintento parta de `cantidad_pendiente` fresco en vez de repetir el
+      // mismo rechazo — mismo tratamiento que el `staleData` de picking.
+      if (parsed.excessLines) {
+        queryClient.invalidateQueries({ queryKey: ["embroidery-onboarding"] });
+      }
+
+      // UNA sola frase, nunca `messages.join("\n")`: desde que el parser
+      // reconoce `detalles_exceso`, `messages` incluye el desglose línea por
+      // línea del backend (`- talla_id=3 pedido_detalle_id=12: pedido=10.0,
+      // ya_asignado=4.0, ...`), texto de diagnóstico que en un toast efímero de
+      // esquina es ilegible. Ese desglose ya se pinta —completo y con formato—
+      // en el banner del Paso 2; aquí basta el motivo. Mismo criterio que el
+      // toast de picking.
       const toastMessage =
-        parsed.messages.length > 0
-          ? parsed.messages.join("\n")
-          : parsed.formError ?? EMBROIDERY_ORDER_GENERIC_ERROR;
+        parsed.formError ?? parsed.messages[0] ?? EMBROIDERY_ORDER_GENERIC_ERROR;
       toast.error(toastMessage);
     },
   });

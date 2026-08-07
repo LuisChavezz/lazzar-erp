@@ -5,11 +5,11 @@ import { MainDialog } from "@/src/components/MainDialog";
 import { DialogHeader } from "@/src/components/DialogHeader";
 import { Button } from "@/src/components/Button";
 import { ScissorsIcon } from "@/src/components/Icons";
-import { EmbroideryOrderCreateForm } from "./EmbroideryOrderCreateForm";
+import { EmbroideryOrderStepManager } from "./EmbroideryOrderStepManager";
 
 interface EmbroideryOrderFormProps {
-  /** Ver `EmbroideryOrderCreateFormProps.onViewExistingOrder` — solo se
-   *  reenvía, este componente no lo usa directamente. */
+  /** Ver `EmbroideryOrderStep2Props.onViewExistingOrder` — solo se reenvía,
+   *  este componente no lo usa directamente. */
   onViewExistingOrder: (id: number) => void;
   /**
    * Cierra el diálogo de detalle que este formulario pudo haber abierto desde
@@ -22,11 +22,12 @@ interface EmbroideryOrderFormProps {
 
 /**
  * Punto de entrada del alta de orden de bordado: botón del toolbar que abre el
- * formulario de un solo paso.
+ * asistente de 2 pasos (encabezado → prendas y cantidades).
  *
  * El contenido —y con él la llamada al onboarding— solo se monta cuando el
- * diálogo está abierto, y se re-monta limpio en cada apertura (sin pedido ni
- * observaciones residuales). Mismo patrón que `DispatchForm`/`PackingForm`.
+ * diálogo está abierto, y se re-monta limpio en cada apertura (sin pedido,
+ * observaciones ni selección de líneas residuales). Mismo patrón que
+ * `PickingForm`/`DispatchForm`.
  */
 export const EmbroideryOrderForm = ({
   onViewExistingOrder,
@@ -47,11 +48,14 @@ export const EmbroideryOrderForm = ({
       title={
         <DialogHeader
           title="Nueva Orden de Bordado"
-          subtitle="Genera la orden a partir de un pedido con prendas por bordar"
+          subtitle="Programa total o parcialmente las prendas por bordar de un pedido"
           statusColor="sky"
         />
       }
-      maxWidth="640px"
+      // 820px (no 640px): el Paso 2 lista una fila por talla con casilla,
+      // nombre del producto, cantidades y stepper. Mismo ancho que el asistente
+      // de picking, que muestra una tabla equivalente.
+      maxWidth="820px"
       showCloseButton={false}
       trigger={
         <Button variant="primary">
@@ -61,8 +65,8 @@ export const EmbroideryOrderForm = ({
       }
     >
       {isDialogOpen && (
-        <EmbroideryOrderCreateForm
-          onSuccess={() => setIsDialogOpen(false)}
+        <EmbroideryOrderStepManager
+          onClose={() => setIsDialogOpen(false)}
           onViewExistingOrder={onViewExistingOrder}
         />
       )}

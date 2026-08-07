@@ -25,8 +25,8 @@ import { useEmbroideryOrders } from "../hooks/useEmbroideryOrders";
  * duplicado al crear una orden trae el id de una orden existente
  * (`orden_bordado_existente.id`) que puede no corresponder a ninguna fila a la
  * vista. `setOpenOrderId` se reenvía por eso a `EmbroideryOrderForm` (el alta,
- * en el `actionButton` de abajo): el bloque ámbar de
- * `EmbroideryOrderCreateForm` abre este MISMO diálogo con ese id.
+ * en el `actionButton` de abajo): el bloque ámbar del Paso 2 del asistente
+ * (`EmbroideryOrderStep2`) abre este MISMO diálogo con ese id.
  * `EmbroideryView` es el único dueño de `openOrderId` — el alta solo recibe el
  * setter para invocarlo (y `onCloseExistingOrder` para limpiarlo al cerrarse),
  * no gestiona su propio estado de apertura.

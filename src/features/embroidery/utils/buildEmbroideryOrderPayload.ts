@@ -1,5 +1,8 @@
 import type { CreateEmbroideryOrderFormValues } from "../schemas/embroidery-order.schema";
-import type { CreateEmbroideryOrderPayload } from "../interfaces/embroidery.interface";
+import type {
+  CreateEmbroideryOrderPayload,
+  EmbroideryOrderDetalleOverride,
+} from "../interfaces/embroidery.interface";
 
 /**
  * Arma el cuerpo de `POST /produccion/orden-bordado/onboarding/` desde los
@@ -11,15 +14,24 @@ import type { CreateEmbroideryOrderPayload } from "../interfaces/embroidery.inte
  * —`empresa`, `sucursal`, `folio_bordado`, `estatus_bordado`,
  * `usuario_asignado`, `activo`, `fecha_inicio`— se cuele en la petición. El
  * backend los ignoraría en silencio, pero enviarlos sugeriría que el cliente
- * decide algo que no decide. Tampoco viaja `detalles`: el service los deriva
- * del pedido.
+ * decide algo que no decide. Tampoco viaja `detalles`: es la forma de la
+ * RESPUESTA, no del cuerpo.
  *
  * `observaciones` se omite cuando queda vacío tras recortar espacios: el
  * modelo lo declara `null=True`, así que "sin observaciones" es ausencia del
  * campo, no una cadena vacía.
+ *
+ * `detallesOverride` son las líneas elegidas en el Paso 2. El parámetro es
+ * OPCIONAL —y se omite del cuerpo si llega vacío— porque enviar
+ * `detalles_override: []` equivale a no enviarlo: el service hace
+ * `data.get("detalles_override") or []` y cae a la ruta del pedido completo.
+ * Un arreglo vacío que se cuele aquí programaría el 100% del pedido en vez de
+ * fallar, que es el peor modo de falla posible; el Paso 2 bloquea ese envío
+ * antes de llegar (ver `useEmbroideryStep2Form`).
  */
 export function buildEmbroideryOrderPayload(
   values: CreateEmbroideryOrderFormValues,
+  detallesOverride?: EmbroideryOrderDetalleOverride[],
 ): CreateEmbroideryOrderPayload {
   const payload: CreateEmbroideryOrderPayload = {
     pedido: values.pedido,
@@ -28,6 +40,10 @@ export function buildEmbroideryOrderPayload(
 
   const observaciones = values.observaciones.trim();
   if (observaciones.length > 0) payload.observaciones = observaciones;
+
+  if (detallesOverride && detallesOverride.length > 0) {
+    payload.detalles_override = detallesOverride;
+  }
 
   return payload;
 }

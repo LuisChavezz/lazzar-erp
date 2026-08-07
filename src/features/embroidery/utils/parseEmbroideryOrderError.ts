@@ -47,9 +47,42 @@ export interface ParsedEmbroideryOrderError {
     message: string;
     existingOrder: EmbroideryDuplicateExistingOrder;
   };
+  /**
+   * Diagnóstico línea por línea del `400` de exceso (`detalles_exceso`), tal
+   * cual lo arma el backend. Son STRINGS ya formateados —no objetos—, del
+   * tipo:
+   *
+   *   `  - talla_id=3 pedido_detalle_id=12: pedido=10.0, ya_asignado=4.0,
+   *      solicitado=8.0, disponible_restante=6.0`
+   *
+   * y, en el segundo corte, la variante `pedido_detalle_id=12 (total del
+   * renglón)`. Se conservan sin parsear a propósito: su formato es un texto de
+   * depuración del backend, no un contrato estructurado del que se pueda
+   * depender para reconstruir campos.
+   *
+   * Campo ADICIONAL opcional, igual que `duplicate`: su sola presencia
+   * discrimina el caso sin obligar a los consumidores existentes a bifurcar.
+   */
+  excessLines?: string[];
 }
 
 export const EMBROIDERY_ORDER_GENERIC_ERROR = "No se pudo crear la orden de bordado.";
+
+/**
+ * Lee `detalles_exceso`: un ARREGLO de strings ya formateados, uno por línea
+ * que excede su saldo. Se recorre entrada por entrada (en vez de usar
+ * `firstDrfMessage` sobre el arreglo completo, que devolvería solo la primera)
+ * porque el usuario necesita ver TODAS las líneas que tiene que bajar, no una.
+ * Devuelve `undefined` si no hay nada utilizable, para que la presencia del
+ * campo siga siendo el discriminante del caso.
+ */
+function readExcessLines(value: unknown): string[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  const lines = value
+    .map((entry) => firstDrfMessage(entry)?.trim())
+    .filter((message): message is string => Boolean(message));
+  return lines.length > 0 ? lines : undefined;
+}
 
 /**
  * Normaliza el error de `POST /produccion/orden-bordado/onboarding/`.
@@ -103,6 +136,22 @@ export const EMBROIDERY_ORDER_GENERIC_ERROR = "No se pudo crear la orden de bord
  *        este mismo módulo para `estatus_bordado === 1`.
  *      - `url_detalle` NO existe en el payload real (aunque la documentación
  *        del backend lo menciona) — no se referencia.
+ *
+ *     OJO: este 409 solo puede ocurrir en el POST SIN `detalles_override`. El
+ *     backend quitó la constraint `uq_orden_bordado_activa_por_pedido`, así
+ *     que un pedido acumula varias OB parciales; el duplicado se evalúa
+ *     únicamente cuando se pide el pedido COMPLETO y ya estaba cubierto al
+ *     100%.
+ *
+ *  E. 400 DE EXCESO POR LÍNEA — la forma B (`err` con el motivo general) MÁS
+ *     `detalles_exceso`: un arreglo de strings ya formateados, uno por cada
+ *     línea cuya `cantidad` solicitada rebasa su saldo (`cantidad_pedido -
+ *     ya_asignado`). Es la respuesta típica del POST CON `detalles_override`
+ *     cuando el saldo cambió entre que se cargó el catálogo y se envió.
+ *
+ *     Aparte, el serializer rechaza el propio `detalles_override` bajo esa
+ *     misma clave (id repetido/ajeno/sin bordado, cantidad no entera, <= 0 o
+ *     mayor a la contratada) con un string plano, no una lista.
  *
  * Siempre devuelve un objeto (nunca `null`) y garantiza que haya algo que
  * mostrar: si no se reconoce nada, deja un `formError` genérico.
@@ -188,6 +237,32 @@ export function parseEmbroideryOrderError(error: unknown): ParsedEmbroideryOrder
   if (errMessage) {
     result.formError = errMessage;
     result.messages.push(errMessage);
+  }
+
+  // ── Forma E: 400 de exceso por línea ─────────────────────────────────────
+  // Estructuralmente es la forma B (`err` con el motivo general) MÁS
+  // `detalles_exceso`, el desglose de qué líneas se pasaron del saldo. Sin
+  // este bloque, ese desglose se perdería en silencio: el fallback de "claves
+  // desconocidas" del final solo corre cuando no hubo NINGÚN mensaje, y `err`
+  // siempre viene en esta respuesta.
+  const excessLines = readExcessLines(record.detalles_exceso);
+  if (excessLines) {
+    result.excessLines = excessLines;
+    result.formError = result.formError ?? EMBROIDERY_ORDER_GENERIC_ERROR;
+    result.messages.push(...excessLines);
+  }
+
+  // ── `detalles_override`: rechazos del serializer sobre las líneas ────────
+  // Es una clave del PAYLOAD, no un input del formulario (las líneas se
+  // capturan en una tabla, no en un campo único), así que su mensaje va al
+  // banner y no a `fieldErrors` — mismo criterio que `picking_detalle` en
+  // `parsePickingError`. Aquí caen: id repetido, id ajeno al pedido, id sin
+  // `lleva_bordado`, cantidad no numérica, `cantidad <= 0`, cantidad
+  // fraccionaria y cantidad mayor a la contratada en el pedido.
+  const overrideMessage = firstDrfMessage(record.detalles_override);
+  if (overrideMessage) {
+    result.formError = result.formError ?? overrideMessage;
+    result.messages.push(overrideMessage);
   }
 
   // Claves estándar de DRF (defensivo: hoy ninguna ruta del service las
