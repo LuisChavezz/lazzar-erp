@@ -5,6 +5,7 @@ import { LayersIcon } from "@/src/components/Icons";
 import { formatExactQuantityValue } from "@/src/utils/formatCurrency";
 import { embroideryLineProductoNombre } from "../hooks/useEmbroideryStep2Form";
 import type { EmbroideryOnboardingDetalle } from "../interfaces/embroidery.interface";
+import { EmbroideryLineLocationPopover } from "./EmbroideryLineLocationPopover";
 
 interface EmbroideryOrderLinesTableProps {
   rows: EmbroideryOnboardingDetalle[];
@@ -90,14 +91,22 @@ export function EmbroideryOrderLinesTable({
             const ceiling = ceilings.get(id) ?? 0;
             const agotada = ceiling <= 0;
             const checked = checkedIds.has(id);
+            // Siempre la primera: ninguna talla real trae más de una ubicación
+            // (ver `EmbroideryOnboardingUbicacion`), así que no se construye
+            // lista. Se usa `.at(0)` y no `[0]` porque el proyecto no activa
+            // `noUncheckedIndexedAccess`: con el índice, TypeScript daría por
+            // hecho que el elemento existe y el arreglo vacío —que sí ocurre—
+            // pasaría sin que el compilador exigiera comprobarlo.
+            const ubicacion = row.ubicaciones.at(0);
 
             return (
               <div
                 key={id}
-                className={`flex items-start gap-3 py-3 px-2 rounded-lg transition-colors ${
+                className={`py-3 px-2 rounded-lg transition-colors ${
                   agotada ? "opacity-60" : "hover:bg-slate-50 dark:hover:bg-white/5"
                 }`}
               >
+                <div className="flex items-start gap-3">
                 {/* El `<label>` envuelve SOLO la casilla y el texto de la
                     línea, nunca el input de cantidad: con la fila entera como
                     `<label>`, cada clic dentro del input de cantidad se
@@ -157,11 +166,6 @@ export function EmbroideryOrderLinesTable({
                         Pendiente: {formatExactQuantityValue(row.cantidad_pendiente)}
                       </span>
                     </p>
-                    {row.posicion_sugerida && (
-                      <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5">
-                        Posición: {row.posicion_sugerida}
-                      </p>
-                    )}
                   </div>
                 </label>
 
@@ -177,6 +181,38 @@ export function EmbroideryOrderLinesTable({
                   onChange={(next) => onQuantityChange(id, next)}
                   label={`Piezas a bordar de ${embroideryLineProductoNombre(row)}`}
                 />
+                </div>
+
+                {/* Segunda línea de la fila, FUERA del `<label>` de arriba: el
+                    disparador del popover es un `<button>` y, dentro de una
+                    etiqueta, cada clic suyo se reenviaría a la casilla y
+                    desmarcaría la línea que el usuario quiere inspeccionar
+                    —exactamente el motivo por el que el stepper tampoco está
+                    ahí dentro—. El `pl-7` la alinea bajo el texto (ancho de la
+                    casilla + su `gap-3`).
+
+                    Sin ubicación capturada no hay nada que abrir: se cae a la
+                    etiqueta plana de siempre, sin botón ni popover vacío. */}
+                {(ubicacion || row.posicion_sugerida) && (
+                  <div className="mt-1 pl-7">
+                    {ubicacion ? (
+                      <EmbroideryLineLocationPopover
+                        ubicacion={ubicacion}
+                        productoNombre={embroideryLineProductoNombre(row)}
+                        // Talla y color distinguen filas que comparten producto
+                        // —lo normal en un pedido—: sin ellos, el nombre
+                        // accesible de los disparadores sería idéntico en todas.
+                        tallaNombre={row.talla_nombre}
+                        colorNombre={row.color_nombre}
+                        posicionLabel={row.posicion_sugerida}
+                      />
+                    ) : (
+                      <p className="text-[11px] text-slate-400 dark:text-slate-500">
+                        Posición: {row.posicion_sugerida}
+                      </p>
+                    )}
+                  </div>
+                )}
               </div>
             );
           })}

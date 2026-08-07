@@ -97,15 +97,40 @@ export interface EmbroideryOrder {
  * Ubicación del bordado dentro de la prenda, tal cual viene en
  * `bordado_config.ubicaciones` de la talla.
  *
- * Es JSON LIBRE del pedido: el backend lo reenvía sin normalizar y solo mira
- * `codigo`/`nombre` para derivar `posicion_sugerida`. Por eso se tipan esos
- * dos como opcionales y se deja el índice abierto en vez de inventar un shape
- * cerrado que el contrato no garantiza.
+ * Sigue siendo JSON LIBRE del pedido —el backend lo reenvía sin normalizar y
+ * solo mira `codigo`/`nombre` para derivar `posicion_sugerida`—, pero el shape
+ * está confirmado contra datos reales: 42 de 43 tallas con `lleva_bordado` traen
+ * exactamente estas 12 claves, y ninguna trae más de una ubicación. De ahí que
+ * se cierre el tipo (sin índice abierto) y que TODO campo quede opcional o
+ * nullable: es la captura de una cotización, no un contrato del serializer, así
+ * que cualquier clave puede faltar o llegar vacía y quien la pinte debe
+ * comprobarla antes.
+ *
+ * `nombre` NO aparece en ningún registro real; se conserva porque el backend lo
+ * lee como respaldo de `codigo` al calcular `posicion_sugerida`.
  */
 export interface EmbroideryOnboardingUbicacion {
   codigo?: string | null;
   nombre?: string | null;
-  [key: string]: unknown;
+  descripcion_posicion?: string | null;
+  /**
+   * URL absoluta al servidor de archivos (`NEXT_PUBLIC_NGROK_BASE_URL`).
+   * Es la ÚNICA imagen real del bordado: `EmbroideryOnboardingDetalle.foto`
+   * llega `null` en el 100% de los registros porque el extractor del backend la
+   * busca en la raíz del config, donde no está.
+   */
+  imagen?: string | null;
+  ancho_cm?: number | null;
+  alto_cm?: number | null;
+  color_hilo?: string | null;
+  pantones?: string | null;
+  // Técnicas aplicadas. Se capturan como banderas independientes: una ubicación
+  // puede combinar varias, y en los datos actuales todas llegan en `false`.
+  dtf?: boolean;
+  sublimado?: boolean;
+  serigrafia?: boolean;
+  revelado?: boolean;
+  nuevo_ponchado?: boolean;
 }
 
 /**
