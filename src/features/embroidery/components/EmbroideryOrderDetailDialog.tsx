@@ -1,8 +1,9 @@
 "use client";
 
-import { ScissorsIcon } from "@/src/components/Icons";
+import { InfoIcon, ScissorsIcon } from "@/src/components/Icons";
 import { MainDialog } from "@/src/components/MainDialog";
 import { ErrorState } from "@/src/components/ErrorState";
+import { Loader } from "@/src/components/Loader";
 import { StatusBadge } from "@/src/components/StatusBadge";
 import {
   EmptyLines,
@@ -11,33 +12,54 @@ import {
   SectionTitle,
   textOrDash,
 } from "@/src/components/DetailDialogPrimitives";
+import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { formatQuantityValue } from "@/src/utils/formatCurrency";
 import { formatShortDate, formatShortTime } from "@/src/utils/formatDate";
 import {
+  EMBROIDERY_COVERAGE_CONFIG,
   EMBROIDERY_PRIORITY_CONFIG,
   EMBROIDERY_STATUS_CONFIG,
   embroideryPriorityFallback,
 } from "../constants/embroideryStatus";
+import { useEmbroideryOrderDetail } from "../hooks/useEmbroideryOrderDetail";
 import type {
-  EmbroideryOrder,
-  EmbroideryOrderLine,
+  EmbroideryOrderCoverage,
+  EmbroideryOrderDetailLine,
+  EmbroideryOrderSibling,
 } from "../interfaces/embroidery.interface";
+import { EmbroideryLineLocationPopover } from "./EmbroideryLineLocationPopover";
+
+/** Cantidad que puede llegar `null` del backend. `null` → guion largo. */
+const quantityOrDash = (value: number | null) =>
+  value === null ? "—" : formatQuantityValue(value);
 
 /**
- * Columnas de `detalles`: SOLO las que llevan dato real hoy
- * (`producto_nombre`, `talla_nombre`, `cantidad`). `color_nombre` y
- * `posicion_bordado` son SIEMPRE `null` y `colores_hilo`/`puntadas` SIEMPRE
- * `0` en las órdenes de este módulo (nada las captura todavía) — no es un
- * valor nulo por-renglón como en Packing/Dispatch (donde SÍ se muestran con
- * `?? "—"": ahí la columna sí varía entre renglones), sino una columna
- * estructuralmente vacía para el 100% de los renglones. No hay precedente en
- * el proyecto para omitir una columna documentada por esa razón —Packing,
- * Dispatch y Picking siempre pintan el shape completo con `"—"` por
- * renglón—, así que esto es una decisión de criterio propia de este diálogo,
- * no una convención heredada: se prefiere una tabla legible con datos reales
- * sobre cuatro columnas de guiones repetidos en cada fila.
+ * Renglones de la orden.
+ *
+ * Las cuatro cantidades hablan de cosas distintas y la tabla lo dice en la
+ * cabecera, porque confundirlas es el error que este diálogo existe para
+ * evitar:
+ *  - "En esta orden" (`cantidad`) → lo que programa ESTE documento.
+ *  - "Programado" (`cantidad_asignada`) → lo que llevan TODAS las OB activas
+ *    del pedido sobre esa línea, esta incluida. Es ≥ la anterior.
+ *  - "Pedido" (`cantidad_pedido`) y "Pendiente" (`cantidad_pendiente`) → el
+ *    contrato y su saldo.
+ * La columna propia de la orden va resaltada; las otras tres, atenuadas: son
+ * contexto del pedido, no de este documento.
+ *
+ * `color_nombre` y `posicion_bordado` sí se muestran —a diferencia de cuando se
+ * escribió la versión anterior de este diálogo, hoy llegan poblados en parte de
+ * los renglones, así que ocultarlos escondería dato real—, pero NO de la misma
+ * forma:
+ *  - `color_nombre` tiene columna propia y cae a `"—"` cuando falta.
+ *  - `posicion_bordado` NO tiene columna: va dentro de la celda del producto
+ *    (ver la nota de la cabecera). Con ubicación capturada es la etiqueta del
+ *    disparador del popover, que ya resuelve por su cuenta el caso nulo
+ *    ("Detalle del bordado"); sin ubicación se pinta como texto plano y solo
+ *    si el renglón lo trae. En ningún camino aparece un `"—"`: una posición
+ *    ausente simplemente no ocupa espacio.
  */
-const LineasTable = ({ items }: { items: EmbroideryOrderLine[] }) => {
+const LineasTable = ({ items }: { items: EmbroideryOrderDetailLine[] }) => {
   if (items.length === 0) {
     return <EmptyLines>Esta orden no tiene artículos registrados.</EmptyLines>;
   }
@@ -46,64 +68,146 @@ const LineasTable = ({ items }: { items: EmbroideryOrderLine[] }) => {
     <LineItemsTable
       head={
         <>
+          {/* La posición viaja DENTRO de la celda del producto, no en columna
+              propia: son siete columnas en un diálogo de 900px y
+              `LineItemsTable` —componente compartido, no se toca— solo tiene
+              scroll vertical, así que una columna más se cobraría en celdas
+              apretadas. Además es donde la puso el Paso 2 del alta. */}
           <th className="px-3 py-2 font-medium">Producto</th>
           <th className="px-3 py-2 font-medium">Talla</th>
-          <th className="px-3 py-2 font-medium text-right">Cantidad</th>
+          <th className="px-3 py-2 font-medium">Color</th>
+          <th className="px-3 py-2 font-medium text-right">En esta orden</th>
+          <th className="px-3 py-2 font-medium text-right">Programado</th>
+          <th className="px-3 py-2 font-medium text-right">Pedido</th>
+          <th className="px-3 py-2 font-medium text-right">Pendiente</th>
         </>
       }
     >
-      {items.map((linea) => (
-        <tr key={linea.id} className="hover:bg-slate-50 dark:hover:bg-white/5 transition-colors">
-          <td className="px-3 py-2 text-slate-700 dark:text-slate-200">
-            {linea.producto_nombre ?? "—"}
-          </td>
-          <td className="px-3 py-2 text-slate-600 dark:text-slate-300">
-            {linea.talla_nombre ?? "—"}
-          </td>
-          <td className="px-3 py-2 text-right tabular-nums font-semibold text-slate-800 dark:text-white">
-            {formatQuantityValue(linea.cantidad)}
-          </td>
-        </tr>
-      ))}
+      {items.map((linea) => {
+        // Misma regla que el Paso 2 del alta: sin ubicación capturada no hay
+        // nada que abrir, así que se cae a la etiqueta plana.
+        const ubicacion = linea.ubicaciones.at(0);
+
+        return (
+          <tr
+            key={linea.id}
+            className="hover:bg-slate-50 dark:hover:bg-white/5 transition-colors"
+          >
+            <td className="px-3 py-2 text-slate-700 dark:text-slate-200">
+              <span className="block">{linea.producto_nombre ?? "—"}</span>
+              {ubicacion ? (
+                <span className="mt-1 inline-block">
+                  <EmbroideryLineLocationPopover
+                    ubicacion={ubicacion}
+                    productoNombre={linea.producto_nombre ?? `Producto #${linea.producto}`}
+                    tallaNombre={linea.talla_nombre}
+                    colorNombre={linea.color_nombre}
+                    posicionLabel={linea.posicion_bordado}
+                  />
+                </span>
+              ) : (
+                // Sin ubicación capturada no hay nada que abrir; la posición
+                // se pinta plana y solo si el renglón la trae (llega poblada
+                // en una minoría de las órdenes).
+                linea.posicion_bordado && (
+                  <span className="mt-0.5 block text-[11px] text-slate-400 dark:text-slate-500">
+                    Posición: {linea.posicion_bordado}
+                  </span>
+                )
+              )}
+            </td>
+            <td className="px-3 py-2 text-slate-600 dark:text-slate-300">
+              {linea.talla_nombre ?? "—"}
+            </td>
+            <td className="px-3 py-2 text-slate-600 dark:text-slate-300">
+              {linea.color_nombre ?? "—"}
+            </td>
+            <td className="px-3 py-2 text-right tabular-nums font-semibold text-slate-800 dark:text-white">
+              {formatQuantityValue(linea.cantidad)}
+            </td>
+            <td className="px-3 py-2 text-right tabular-nums text-slate-500 dark:text-slate-400">
+              {quantityOrDash(linea.cantidad_asignada)}
+            </td>
+            <td className="px-3 py-2 text-right tabular-nums text-slate-500 dark:text-slate-400">
+              {quantityOrDash(linea.cantidad_pedido)}
+            </td>
+            <td className="px-3 py-2 text-right tabular-nums text-slate-500 dark:text-slate-400">
+              {quantityOrDash(linea.cantidad_pendiente)}
+            </td>
+          </tr>
+        );
+      })}
     </LineItemsTable>
   );
 };
 
+/** Las otras OB activas del mismo pedido. Solo se monta si hay alguna. */
+const SiblingOrders = ({ items }: { items: EmbroideryOrderSibling[] }) => (
+  <div className="rounded-xl border border-slate-100 dark:border-white/10 px-4 py-3">
+    <ul className="space-y-1 text-xs">
+      {items.map((hermana) => (
+        <li key={hermana.id} className="flex flex-wrap items-center gap-x-3 gap-y-0.5">
+          {/* Solo folio y fecha: no hay navegación cruzada entre detalles en
+              este módulo y no se inventa una aquí. El folio identifica la
+              orden y es buscable en la tabla. */}
+          <span className="font-mono font-semibold text-slate-700 dark:text-slate-200">
+            {hermana.folio_bordado}
+          </span>
+          <span className="tabular-nums text-slate-500 dark:text-slate-400">
+            {formatShortDate(hermana.fecha_inicio)} ·{" "}
+            {formatShortTime(hermana.fecha_inicio)}
+          </span>
+        </li>
+      ))}
+    </ul>
+  </div>
+);
+
 interface EmbroideryOrderDetailDialogProps {
   /**
-   * La orden ya resuelta por el padre, o `null` si el id abierto no existe en
-   * la lista cargada.
+   * Id de la orden a consultar. `null` mantiene la consulta apagada.
    *
-   * El disparador sigue siendo un `id` (`openOrderId` en `EmbroideryView`),
-   * para poder abrirse desde puntos que solo tienen un id a la mano —el 409 de
-   * duplicado, `orden_bordado_existente.id`, ver `parseEmbroideryOrderError.ts`—
-   * y no únicamente desde una fila a la vista. Pero la BÚSQUEDA vive en el
-   * padre, que ya tiene el arreglo: si se resolviera aquí con otro
-   * `useEmbroideryOrders()`, el diálogo abriría una segunda suscripción a la
-   * misma query y volvería a copiar y ordenar la lista completa en cada
-   * render, solo para localizar un renglón que el padre ya tiene.
-   *
-   * SIN fetch propio en ninguno de los dos casos: listado y detalle comparten
-   * `OrdenBordadoSerializer` en el backend (mismo `serializer_class` a nivel de
-   * `ViewSet`, usado por `list` y `retrieve` sin `get_serializer_class` que lo
-   * desvíe, confirmado contra el checkout de `nucleo-erp`), así que la fila del
-   * listado ES el detalle completo.
+   * El diálogo se abre por id —no por el objeto de fila— para poder dispararse
+   * también desde el enlace del 409 de duplicado
+   * (`orden_bordado_existente.id`, ver `parseEmbroideryOrderError.ts`), que
+   * nombra una orden que puede no estar en la lista cargada.
    */
-  order: EmbroideryOrder | null;
+  orderId: number | null;
+  /**
+   * Cobertura de la orden sobre su pedido, tomada de la FILA DEL LISTADO.
+   *
+   * Viaja como prop —en vez de salir de la consulta por id, que es de donde
+   * viene todo lo demás— porque el backend declara `cobertura_completa`/
+   * `cantidad_cubierta`/`cantidad_contratada` únicamente en el serializer del
+   * LISTADO: el `retrieve` no los devuelve. Es opcional a propósito: cuando el
+   * diálogo se abre con un id que no está en la lista, no hay cobertura que
+   * mostrar y el bloque se omite en vez de inventar un total.
+   */
+  coverage?: EmbroideryOrderCoverage;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
 export function EmbroideryOrderDetailDialog({
-  order,
+  orderId,
+  coverage,
   open,
   onOpenChange,
 }: EmbroideryOrderDetailDialogProps) {
+  const { data: order, isLoading, isError, error } = useEmbroideryOrderDetail(orderId);
+
+  // Porcentaje solo para mostrar; `cantidad_contratada` puede ser 0 (pedido sin
+  // líneas de bordado vivas) y dividir daría "∞%".
+  const porcentaje =
+    coverage && coverage.cantidad_contratada > 0
+      ? Math.round((coverage.cantidad_cubierta / coverage.cantidad_contratada) * 100)
+      : null;
+
   return (
     <MainDialog
       open={open}
       onOpenChange={onOpenChange}
-      maxWidth="760px"
+      maxWidth="900px"
       showCloseButton={true}
       title={
         <div className="flex items-center gap-2.5 pr-8">
@@ -113,28 +217,37 @@ export function EmbroideryOrderDetailDialog({
               Detalle de Orden de Bordado
             </p>
             <p className="text-xs text-slate-500 dark:text-slate-400 font-mono font-normal mt-0.5">
-              {order ? order.folio_bordado : "No disponible"}
+              {order ? order.folio_bordado : isError ? "Error al cargar" : "Cargando…"}
             </p>
           </div>
         </div>
       }
     >
-      {/*
-       * SIN fetch propio: sin llamada de red que pueda devolver un 404 real.
-       * El equivalente aquí es que el padre no haya encontrado el id en la
-       * lista — y como el listado usa el MISMO `get_queryset()` acotado por
-       * empresa/sucursal que `retrieve` (confirmado arriba), esa ausencia
-       * cubre exactamente los dos casos que el backend fusiona en un 404
-       * real: la orden no existe, o existe pero fuera del alcance del
-       * usuario. Un solo estado genérico para ambos, igual que pide el
-       * contrato del endpoint.
-       */}
-      {!order ? (
+      {/* El armazón del diálogo NO se sustituye por el loader ni por el error:
+          se mantiene montado y solo cambia su contenido (mismo patrón que
+          `StockTransferDetailDialog`). */}
+      {isLoading && (
+        <Loader title="Cargando detalle de la orden..." className="py-16" />
+      )}
+
+      {/* `isError` sin `hasLoaded`: aquí no hay refetch en segundo plano que
+          proteger —la consulta se monta con el diálogo y muere con él, y nada
+          la invalida mientras está abierta—, así que un error siempre ES el de
+          la carga inicial. El caso "no existe o no tienes acceso" llega por
+          esta misma vía: el backend responde 404 y no 403, porque su
+          `get_queryset()` acotado por tenant no distingue un id ajeno de uno
+          inexistente. */}
+      {isError && (
         <ErrorState
-          title="Orden de bordado no encontrada"
-          message="No existe o no tienes acceso a esta orden de bordado."
+          title="No se pudo cargar la orden de bordado"
+          message={extractErrorMessage(
+            error,
+            "No existe, no tienes acceso a ella o falló la conexión.",
+          )}
         />
-      ) : (
+      )}
+
+      {!isLoading && !isError && order && (
         <div className="space-y-5">
           {/* Resumen */}
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-3 px-4 py-3 rounded-xl bg-slate-50 dark:bg-white/5 text-xs">
@@ -171,34 +284,87 @@ export function EmbroideryOrderDetailDialog({
             </InfoField>
           </div>
 
-          {/* Identificadores sin nombre resuelto — `empresa`/`sucursal`/
-              `usuario_asignado` llegan como id crudo del backend (a
-              diferencia de Picking/Packing/Dispatch, ninguno trae su
-              `*_nombre`); resolverlos es otra tarea. Se rotulan como "ID X" +
-              "#N" en vez de mostrar el número solo, mismo criterio que
-              `UserDetails` ("ID Usuario" · "#{user.id}") y
-              `DispatchDetailDialog` ("Envío #N"/"Transportista #N") para
-              dejar claro que es un identificador, no un nombre. */}
+          {/* Empresa / sucursal / usuario, con el NOMBRE resuelto que el
+              backend ya devuelve (`empresa_nombre`/`sucursal_nombre`/
+              `usuario_nombre`, vía `source=` + `select_related`). Antes este
+              bloque pintaba los ids crudos bajo el rótulo "Identificadores",
+              porque el código daba por hecho —incorrectamente— que este
+              endpoint no resolvía nombres. Sí lo hace, y desde siempre. */}
           <div>
-            <SectionTitle>Identificadores</SectionTitle>
-            <div className="grid grid-cols-3 gap-x-4 gap-y-3 px-4 py-3 rounded-xl border border-slate-100 dark:border-white/10 text-xs">
-              <InfoField label="ID Empresa">
-                <span className="font-mono">#{order.empresa}</span>
-              </InfoField>
-              <InfoField label="ID Sucursal">
-                <span className="font-mono">#{order.sucursal}</span>
-              </InfoField>
-              <InfoField label="ID Usuario Asignado">
-                <span className="font-mono">
-                  {order.usuario_asignado !== null ? `#${order.usuario_asignado}` : "—"}
-                </span>
+            <SectionTitle>Origen</SectionTitle>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-x-4 gap-y-3 px-4 py-3 rounded-xl border border-slate-100 dark:border-white/10 text-xs">
+              <InfoField label="Empresa">{textOrDash(order.empresa_nombre)}</InfoField>
+              <InfoField label="Sucursal">{textOrDash(order.sucursal_nombre)}</InfoField>
+              <InfoField label="Operador asignado">
+                {textOrDash(order.usuario_nombre)}
               </InfoField>
             </div>
           </div>
 
+          {/* Cobertura sobre el pedido — solo cuando el listado la trajo. */}
+          {coverage && (
+            <div>
+              <SectionTitle>Cobertura del pedido</SectionTitle>
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3 rounded-xl border border-slate-100 dark:border-white/10 text-xs">
+                <StatusBadge
+                  status={String(coverage.cobertura_completa)}
+                  config={EMBROIDERY_COVERAGE_CONFIG}
+                />
+                <span className="tabular-nums text-slate-700 dark:text-slate-200">
+                  <span className="font-semibold">
+                    {formatQuantityValue(coverage.cantidad_cubierta)}
+                  </span>{" "}
+                  de {formatQuantityValue(coverage.cantidad_contratada)} piezas
+                  contratadas por el pedido
+                  {porcentaje !== null && ` · ${porcentaje}%`}
+                </span>
+                {!coverage.cobertura_completa && (
+                  <span className="text-slate-500 dark:text-slate-400">
+                    El resto puede programarse en otras órdenes de bordado.
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Otras OB del mismo pedido — solo si las hay. */}
+          {order.otras_ordenes_del_pedido.length > 0 && (
+            <div>
+              <SectionTitle>Otras órdenes de este pedido</SectionTitle>
+              <SiblingOrders items={order.otras_ordenes_del_pedido} />
+            </div>
+          )}
+
+          {/* Reparto aproximado — solo cuando el backend lo marca. Hoy es
+              `false` en toda la base, así que este aviso normalmente no
+              aparece; sin el gate sería un estado vacío permanente. */}
+          {order.reparto_por_talla_aproximado && (
+            <div
+              role="note"
+              className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 dark:border-amber-800/60 dark:bg-amber-900/20 px-4 py-3"
+            >
+              <InfoIcon className="w-5 h-5 shrink-0 text-amber-600 dark:text-amber-400 mt-0.5" />
+              <p className="min-w-0 flex-1 text-xs text-amber-700 dark:text-amber-300">
+                El pedido tiene piezas programadas sin talla identificable. El total por
+                producto es exacto, pero el reparto <strong>por talla</strong> que se
+                muestra abajo es aproximado.
+              </p>
+            </div>
+          )}
+
           {/* Artículos */}
           <div>
             <SectionTitle>Artículos de la orden</SectionTitle>
+            {/* El desglose NO es el del pedido completo: el backend solo
+                itemiza las líneas que ESTA orden toca, así que las demás
+                líneas de bordado del pedido no aparecen aquí ni siquiera en
+                cero. Decirlo evita leer la suma de la columna "Pedido" como el
+                total contratado —que es el del bloque de cobertura de
+                arriba—. */}
+            <p className="-mt-1 mb-2 text-[11px] text-slate-500 dark:text-slate-400">
+              Solo las líneas que incluye esta orden. Si el pedido tiene otras prendas por
+              bordar, no se listan aquí.
+            </p>
             <LineasTable items={order.detalles} />
           </div>
         </div>

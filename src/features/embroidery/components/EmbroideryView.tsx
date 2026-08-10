@@ -93,11 +93,17 @@ export function EmbroideryView() {
 
       {openOrderId !== null && (
         <EmbroideryOrderDetailDialog
-          // La búsqueda se hace aquí, contra el arreglo que esta vista ya
-          // tiene: el diálogo no vuelve a suscribirse a la query solo para
-          // localizar un renglón. `null` (id sin correspondencia en la lista)
-          // es el caso que el diálogo pinta como "no encontrada".
-          order={orders.find((order) => order.id === openOrderId) ?? null}
+          // El diálogo trae su propio detalle por id: desde que `list` y
+          // `retrieve` dejaron de compartir serializer, la fila del listado ya
+          // NO es el detalle (le faltan la parcialidad por línea, las
+          // ubicaciones y las órdenes hermanas). Ver `useEmbroideryOrderDetail`.
+          orderId={openOrderId}
+          // Lo ÚNICO que sigue saliendo de la fila: los tres campos de
+          // cobertura, que el backend declara solo en el serializer del
+          // listado. Si el id no está en la lista —el enlace del 409 de
+          // duplicado nombra órdenes que pueden no estar cargadas— se pasa
+          // `undefined` y el diálogo omite ese bloque.
+          coverage={orders.find((order) => order.id === openOrderId)}
           open={true}
           onOpenChange={(open) => {
             if (!open) setOpenOrderId(null);

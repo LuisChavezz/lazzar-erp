@@ -8,6 +8,7 @@ import { ViewIcon } from "@/src/components/Icons";
 import { formatQuantityValue } from "@/src/utils/formatCurrency";
 import { formatShortDate } from "@/src/utils/formatDate";
 import {
+  EMBROIDERY_COVERAGE_CONFIG,
   EMBROIDERY_PRIORITY_CONFIG,
   EMBROIDERY_STATUS_CONFIG,
   embroideryPriorityFallback,
@@ -126,6 +127,30 @@ export const getEmbroideryOrderColumns = (onViewDetails: (id: number) => void) =
         </span>
       );
     },
+  }),
+  // Cobertura de la orden sobre su pedido. El backend la calcula para la
+  // página entera (2 queries agrupadas), así que esta columna no cuesta
+  // ninguna petición extra.
+  //
+  // SOLO el badge, en una línea. Antes acompañaba al badge con la fracción
+  // ("5 / 40") y el porcentaje: en una tabla donde el resto de las celdas son
+  // de una sola línea, ese bloque de tres renglones descuadraba la altura de
+  // la fila y se leía como un fallo de maquetación. Las cifras completas no se
+  // pierden — el bloque "Cobertura del pedido" del diálogo de detalle las
+  // muestra con su porcentaje, que es donde tiene sentido leerlas con calma.
+  //
+  // Se ordena por `cobertura_completa`, el MISMO valor que se pinta: ordenar
+  // por `cantidad_cubierta` —el número que ya no se ve— dejaría las filas en
+  // un orden que el usuario no podría explicar mirando la columna.
+  columnHelper.accessor((row) => row.cobertura_completa, {
+    id: "cobertura",
+    header: "Cobertura",
+    cell: ({ row }) => (
+      <StatusBadge
+        status={String(row.original.cobertura_completa)}
+        config={EMBROIDERY_COVERAGE_CONFIG}
+      />
+    ),
   }),
   columnHelper.accessor("fecha_inicio", {
     header: "Alta",

@@ -55,10 +55,14 @@ export interface EmbroideryOrderLine {
 /**
  * Renglón de `GET /produccion/orden-bordado/` (listado).
  *
- * `empresa`, `sucursal` y `usuario_asignado` viajan como ids CRUDOS, sin su
- * `_nombre` resuelto (a diferencia de picking/packing) — no se muestran en la
- * tabla. `fecha_fin` siempre llega `null` (ningún endpoint la fija) y `activo`
- * siempre `true` (el queryset filtra `activo=True`).
+ * `empresa`, `sucursal` y `usuario_asignado` viajan como ids crudos, PERO el
+ * backend acompaña cada uno con su nombre ya resuelto
+ * (`empresa_nombre`/`sucursal_nombre`/`usuario_nombre`, vía `source=` y
+ * `select_related`, sin N+1). Este archivo afirmaba lo contrario —"sin su
+ * `_nombre` resuelto (a diferencia de picking/packing)"—: era falso, los tres
+ * llegan desde que existe el endpoint. `fecha_fin` siempre llega `null`
+ * (ningún endpoint la fija) y `activo` siempre `true` (el queryset filtra
+ * `activo=True`).
  *
  * `folio_bordado` mezcla dos formatos en la misma tabla: `OB-P-00009-2026`
  * (autogenerado al autorizar una cotización) y `2026-OB-00001` (alta manual
@@ -88,7 +92,114 @@ export interface EmbroideryOrder {
   /** `Pedido.folio` es nullable: puede llegar `null`. */
   pedido_folio: string | null;
   usuario_asignado: number | null;
+  /** `Empresa` no tiene campo `nombre`: su nombre humano es `razon_social`. */
+  empresa_nombre: string | null;
+  sucursal_nombre: string | null;
+  /** `get_full_name()` y, si queda vacío, el email. `null` sin usuario. */
+  usuario_nombre: string | null;
   detalles: EmbroideryOrderLine[];
+
+  // ─── Cobertura sobre el pedido (SOLO en el listado) ───────────────────────
+  // Estos tres los declara `OrdenBordadoListSerializer`, NO el serializer del
+  // detalle: el `retrieve` por id no los devuelve. Quien necesite la cobertura
+  // en el diálogo tiene que traerla de la fila del listado (ver
+  // `EmbroideryOrderCoverage`), no de su propia consulta.
+  //
+  // El backend los resuelve para la página ENTERA en 2 queries agrupadas
+  // (`OrdenBordadoService.cobertura_por_orden`), así que no hay N+1 por fila.
+
+  /** ¿ESTA orden sola cubre el 100% de lo contratado por el pedido? */
+  cobertura_completa: boolean;
+  /** Piezas que programa ESTA orden. */
+  cantidad_cubierta: number;
+  /**
+   * Piezas de bordado que contrató el pedido, sumando TODAS sus líneas con
+   * bordado — no solo las que toca esta orden. Puede ser `0` (pedido sin
+   * líneas de bordado vivas), y en ese caso `cobertura_completa` llega
+   * `false`: quien calcule un porcentaje debe protegerse de la división.
+   */
+  cantidad_contratada: number;
+}
+
+/**
+ * Los tres campos de cobertura, aislados para poder pasarlos al diálogo de
+ * detalle.
+ *
+ * Existe porque el `retrieve` NO los devuelve (ver arriba): el diálogo se
+ * alimenta de su propia consulta por id para todo lo demás, pero la cobertura
+ * solo puede llegarle desde la fila del listado que lo abrió. Cuando el
+ * diálogo se abre por un id que no está en la lista —el enlace del 409 de
+ * duplicado— simplemente no hay cobertura que mostrar y el bloque se omite.
+ */
+export type EmbroideryOrderCoverage = Pick<
+  EmbroideryOrder,
+  "cobertura_completa" | "cantidad_cubierta" | "cantidad_contratada"
+>;
+
+// ─── Detalle por id (`GET /produccion/orden-bordado/{id}/`) ──────────────────
+
+/**
+ * Renglón del DETALLE. Es el del listado MÁS el contexto de parcialidad de su
+ * línea y las ubicaciones del bordado.
+ *
+ * El listado y el detalle dejaron de compartir serializer: el del listado es
+ * deliberadamente ligero (no declara `ubicaciones`/`foto`/`notas`/
+ * `bordado_config`, que obligaban a re-leer `PedidoDetalleTalla` una vez por
+ * renglón), y solo el detalle paga ese costo. Por eso este tipo extiende al
+ * otro en vez de sustituirlo.
+ *
+ * `foto` y `notas` NO se declaran a propósito: el backend los devuelve, pero
+ * llegan `null` en el 100% de los registros —su extractor los busca en la raíz
+ * del `bordado_config`, donde no están—. La imagen real vive en
+ * `ubicaciones[0].imagen`. Tipar campos que nunca traen dato invita a construir
+ * UI que jamás se pinta.
+ */
+export interface EmbroideryOrderDetailLine extends EmbroideryOrderLine {
+  /**
+   * Piezas contratadas por el pedido en ESTA línea.
+   *
+   * Los tres son `null` cuando el backend no encuentra la línea en su mapa de
+   * parcialidad (la clave es `(pedido_detalle, talla)`, así que un renglón sin
+   * talla o cuya talla dejó de llevar bordado no cruza). No es un caso teórico:
+   * el serializer devuelve `None` explícitamente en esa rama.
+   */
+  cantidad_pedido: number | null;
+  /** Piezas ya programadas en esta línea por TODAS las OB activas del pedido. */
+  cantidad_asignada: number | null;
+  /** Saldo de la línea: `cantidad_pedido - cantidad_asignada`. */
+  cantidad_pendiente: number | null;
+  /** Mismo shape que el onboarding. Arreglo, posiblemente vacío. */
+  ubicaciones: EmbroideryOnboardingUbicacion[];
+}
+
+/** Otra OB activa del mismo pedido, tal cual la lista el detalle. */
+export interface EmbroideryOrderSibling {
+  id: number;
+  folio_bordado: string;
+  fecha_inicio: string;
+}
+
+/**
+ * Respuesta de `GET /produccion/orden-bordado/{id}/`.
+ *
+ * OJO: el detalle NO es un superconjunto del listado. Trae MÁS por renglón
+ * (parcialidad + ubicaciones) y dos campos de encabezado propios, pero NO trae
+ * los tres campos de cobertura (`cobertura_completa`/`cantidad_cubierta`/
+ * `cantidad_contratada`), que solo declara el serializer del listado. De ahí
+ * que este tipo omita esos tres de `EmbroideryOrder` en vez de heredarlos.
+ */
+export interface EmbroideryOrderDetail
+  extends Omit<EmbroideryOrder, keyof EmbroideryOrderCoverage | "detalles"> {
+  detalles: EmbroideryOrderDetailLine[];
+  /** Las demás OB activas del mismo pedido. Vacío si esta es la única. */
+  otras_ordenes_del_pedido: EmbroideryOrderSibling[];
+  /**
+   * `true` cuando el pedido tiene piezas programadas SIN talla identificable
+   * (renglones con `talla` nula que genera el pipeline de picking). El total
+   * por `pedido_detalle` sigue siendo exacto; lo que no puede afirmarse es a
+   * qué talla concreta corresponde cada pieza. Hoy es `false` en toda la base.
+   */
+  reparto_por_talla_aproximado: boolean;
 }
 
 // ─── Onboarding / alta ───────────────────────────────────────────────────────

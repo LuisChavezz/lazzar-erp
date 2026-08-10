@@ -3,6 +3,7 @@ import type {
   CreateEmbroideryOrderPayload,
   EmbroideryOnboardingData,
   EmbroideryOrder,
+  EmbroideryOrderDetail,
 } from "../interfaces/embroidery.interface";
 
 /**
@@ -19,6 +20,32 @@ import type {
  */
 export const getEmbroideryOrders = async (): Promise<EmbroideryOrder[]> => {
   const response = await v1_api.get<EmbroideryOrder[]>("/produccion/orden-bordado/");
+  return response.data;
+};
+
+/**
+ * Detalle de UNA orden de bordado (`GET /produccion/orden-bordado/{id}/`).
+ *
+ * Hace falta una llamada propia —el diálogo ya NO se arma con la fila del
+ * listado— porque desde que el backend separó los serializers las dos
+ * respuestas dejaron de coincidir. El detalle trae, y el listado no:
+ *  - por renglón, `cantidad_pedido`/`cantidad_asignada`/`cantidad_pendiente`
+ *    (el contexto de parcialidad de la línea) y `ubicaciones`;
+ *  - `otras_ordenes_del_pedido` y `reparto_por_talla_aproximado`.
+ *
+ * Y al revés: el detalle NO trae los tres campos de cobertura del listado.
+ * Ninguna respuesta contiene a la otra.
+ *
+ * Fuera de alcance (otra empresa/sucursal) responde `404`, no `403`: el
+ * `get_queryset()` acotado por tenant es el mismo que usa el listado, así que
+ * un id ajeno no se distingue de uno inexistente.
+ */
+export const getEmbroideryOrderDetail = async (
+  id: number,
+): Promise<EmbroideryOrderDetail> => {
+  const response = await v1_api.get<EmbroideryOrderDetail>(
+    `/produccion/orden-bordado/${id}/`,
+  );
   return response.data;
 };
 

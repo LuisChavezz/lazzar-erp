@@ -30,11 +30,23 @@ export {
  * opcional de `CreateEmbroideryOrderPayload`, así que el alta de un solo paso
  * que existe hoy sigue llamándola exactamente igual.
  *
- * Invalida `["embroidery-orders"]` (el listado) Y `["embroidery-onboarding"]`.
- * Esto último ya no es desperdicio: crear una orden consume saldo del pedido
- * (`cantidad_asignada` sube, `cantidad_pendiente` baja) y, si lo cubre al
- * 100%, el backend saca al pedido del catálogo. Sin invalidar, el siguiente
- * alta ofrecería líneas ya programadas.
+ * Invalida TRES llaves, porque crear una orden cambia datos que viven en las
+ * tres respuestas:
+ *  - `["embroidery-orders"]` — el listado, donde aparece la orden nueva y se
+ *    recalcula la cobertura de su pedido.
+ *  - `["embroidery-onboarding"]` — el catálogo del alta: la orden consume saldo
+ *    del pedido (`cantidad_asignada` sube, `cantidad_pendiente` baja) y, si lo
+ *    cubre al 100%, el backend saca al pedido de la lista. Sin invalidar, el
+ *    siguiente alta ofrecería líneas ya programadas.
+ *  - `["embroidery-order-detail"]` — el detalle de las OTRAS órdenes del mismo
+ *    pedido. Su respuesta es CRUZADA: `otras_ordenes_del_pedido` gana una
+ *    hermana y el `cantidad_asignada`/`cantidad_pendiente` de cada línea se
+ *    mueve en cuanto cualquier otra OB programa piezas de esa talla. Se
+ *    invalida el prefijo (sin id), así que alcanza a todas las que haya en
+ *    caché. Sin esto, el `staleTime` global de 15 min servía el detalle
+ *    anterior sin volver a pedirlo: reabrir una orden justo después de crear
+ *    otra sobre el mismo pedido mostraba un saldo que ya no era cierto —
+ *    justo el dato que ese diálogo existe para enseñar.
  */
 export const useCreateEmbroideryOrder = (
   onServerError?: (parsed: ParsedEmbroideryOrderError) => void,
@@ -46,6 +58,10 @@ export const useCreateEmbroideryOrder = (
     onSuccess: (order) => {
       queryClient.invalidateQueries({ queryKey: ["embroidery-orders"] });
       queryClient.invalidateQueries({ queryKey: ["embroidery-onboarding"] });
+      // Prefijo sin id: alcanza el detalle de CUALQUIER orden en caché, que es
+      // justo lo que hace falta —la que cambia es la hermana, no la recién
+      // creada—. Ver el bloque de arriba.
+      queryClient.invalidateQueries({ queryKey: ["embroidery-order-detail"] });
       toast.success(`Orden de bordado ${order.folio_bordado} creada correctamente`);
     },
     onError: (error) => {

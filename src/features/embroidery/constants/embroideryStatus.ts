@@ -83,6 +83,29 @@ export const EMBROIDERY_PRIORITY_CONFIG: Record<string, StatusBadgeConfigEntry> 
   },
 };
 
+/**
+ * Etiquetas de `cobertura_completa`: ¿esta orden sola cubre el 100% de lo que
+ * el pedido contrató de bordado?
+ *
+ * Se indexa por el booleano convertido a string, no por un código, porque eso
+ * es lo que manda el backend. "Parcial" NO es un estado de error —desde que se
+ * pueden crear varias OB por pedido es el caso esperado—, así que va en un tono
+ * informativo (sky) y no en ámbar/rojo de advertencia; "Completa" reutiliza el
+ * verde que ya significa "terminado" en `EMBROIDERY_STATUS_CONFIG`.
+ */
+export const EMBROIDERY_COVERAGE_CONFIG: Record<string, StatusBadgeConfigEntry> = {
+  true: {
+    label: "Completa",
+    cls: "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400",
+    dot: "bg-emerald-500",
+  },
+  false: {
+    label: "Parcial",
+    cls: "bg-sky-50 text-sky-700 dark:bg-sky-500/10 dark:text-sky-400",
+    dot: "bg-sky-500",
+  },
+};
+
 /** Badge neutro para prioridades fuera de 1-3, rotulado con el entero crudo. */
 export const embroideryPriorityFallback = (
   prioridad: number,
