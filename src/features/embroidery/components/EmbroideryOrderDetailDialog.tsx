@@ -23,7 +23,6 @@ import {
 } from "../constants/embroideryStatus";
 import { useEmbroideryOrderDetail } from "../hooks/useEmbroideryOrderDetail";
 import type {
-  EmbroideryOrderCoverage,
   EmbroideryOrderDetailLine,
   EmbroideryOrderSibling,
 } from "../interfaces/embroidery.interface";
@@ -173,24 +172,12 @@ interface EmbroideryOrderDetailDialogProps {
    * nombra una orden que puede no estar en la lista cargada.
    */
   orderId: number | null;
-  /**
-   * Cobertura de la orden sobre su pedido, tomada de la FILA DEL LISTADO.
-   *
-   * Viaja como prop —en vez de salir de la consulta por id, que es de donde
-   * viene todo lo demás— porque el backend declara `cobertura_completa`/
-   * `cantidad_cubierta`/`cantidad_contratada` únicamente en el serializer del
-   * LISTADO: el `retrieve` no los devuelve. Es opcional a propósito: cuando el
-   * diálogo se abre con un id que no está en la lista, no hay cobertura que
-   * mostrar y el bloque se omite en vez de inventar un total.
-   */
-  coverage?: EmbroideryOrderCoverage;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
 export function EmbroideryOrderDetailDialog({
   orderId,
-  coverage,
   open,
   onOpenChange,
 }: EmbroideryOrderDetailDialogProps) {
@@ -198,9 +185,19 @@ export function EmbroideryOrderDetailDialog({
 
   // Porcentaje solo para mostrar; `cantidad_contratada` puede ser 0 (pedido sin
   // líneas de bordado vivas) y dividir daría "∞%".
+  //
+  // Sale de `order` —la consulta por id, la misma fuente que todo lo demás en
+  // este diálogo—, ya no de una prop `coverage?` aparte: el `retrieve` declara
+  // el trío de cobertura desde que `OrdenBordadoRetrieveSerializer` hereda de
+  // `OrdenBordadoListSerializer` en el backend (ver
+  // `EmbroideryOrderDetail`/`EmbroideryOrder`). Esto además resuelve sin caso
+  // especial la apertura por el enlace del 409 de duplicado (un id que puede
+  // no estar en la lista cargada): antes esa vía dejaba `coverage` en
+  // `undefined` y el bloque se omitía; ahora `order` llega de su propia
+  // petición por id sin depender de qué haya cargado la tabla.
   const porcentaje =
-    coverage && coverage.cantidad_contratada > 0
-      ? Math.round((coverage.cantidad_cubierta / coverage.cantidad_contratada) * 100)
+    order && order.cantidad_contratada > 0
+      ? Math.round((order.cantidad_cubierta / order.cantidad_contratada) * 100)
       : null;
 
   return (
@@ -301,31 +298,34 @@ export function EmbroideryOrderDetailDialog({
             </div>
           </div>
 
-          {/* Cobertura sobre el pedido — solo cuando el listado la trajo. */}
-          {coverage && (
-            <div>
-              <SectionTitle>Cobertura del pedido</SectionTitle>
-              <div className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3 rounded-xl border border-slate-100 dark:border-white/10 text-xs">
-                <StatusBadge
-                  status={String(coverage.cobertura_completa)}
-                  config={EMBROIDERY_COVERAGE_CONFIG}
-                />
-                <span className="tabular-nums text-slate-700 dark:text-slate-200">
-                  <span className="font-semibold">
-                    {formatQuantityValue(coverage.cantidad_cubierta)}
-                  </span>{" "}
-                  de {formatQuantityValue(coverage.cantidad_contratada)} piezas
-                  contratadas por el pedido
-                  {porcentaje !== null && ` · ${porcentaje}%`}
+          {/* Cobertura sobre el pedido. `order` ya está garantizado no-nulo en
+              esta rama —el bloque completo vive dentro de
+              `!isLoading && !isError && order &&`—, así que no hace falta
+              ningún gate propio: el trío llega siempre con el resto del
+              detalle, venga la orden de la tabla o del enlace del 409 de
+              duplicado. */}
+          <div>
+            <SectionTitle>Cobertura del pedido</SectionTitle>
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3 rounded-xl border border-slate-100 dark:border-white/10 text-xs">
+              <StatusBadge
+                status={String(order.cobertura_completa)}
+                config={EMBROIDERY_COVERAGE_CONFIG}
+              />
+              <span className="tabular-nums text-slate-700 dark:text-slate-200">
+                <span className="font-semibold">
+                  {formatQuantityValue(order.cantidad_cubierta)}
+                </span>{" "}
+                de {formatQuantityValue(order.cantidad_contratada)} piezas
+                contratadas por el pedido
+                {porcentaje !== null && ` · ${porcentaje}%`}
+              </span>
+              {!order.cobertura_completa && (
+                <span className="text-slate-500 dark:text-slate-400">
+                  El resto puede programarse en otras órdenes de bordado.
                 </span>
-                {!coverage.cobertura_completa && (
-                  <span className="text-slate-500 dark:text-slate-400">
-                    El resto puede programarse en otras órdenes de bordado.
-                  </span>
-                )}
-              </div>
+              )}
             </div>
-          )}
+          </div>
 
           {/* Otras OB del mismo pedido — solo si las hay. */}
           {order.otras_ordenes_del_pedido.length > 0 && (

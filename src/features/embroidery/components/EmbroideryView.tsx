@@ -15,7 +15,8 @@ import { useEmbroideryOrders } from "../hooks/useEmbroideryOrders";
  * listado de `GET /produccion/orden-bordado/`, con el alta
  * (`POST /produccion/orden-bordado/onboarding/`, ver `EmbroideryOrderForm`) en
  * el toolbar y "Ver Detalles" por renglón (ver `EmbroideryOrderDetailDialog`,
- * sin fetch propio).
+ * que trae su propio detalle vía `GET /produccion/orden-bordado/{id}/` —ya no
+ * se arma con la fila del listado, ver `useEmbroideryOrderDetail`).
  *
  * El diálogo de detalle se monta AQUÍ —fuera de `DataTable`, no dentro de la
  * fila que lo abrió— y se abre por `id` (`openOrderId`), no por el objeto de
@@ -93,17 +94,16 @@ export function EmbroideryView() {
 
       {openOrderId !== null && (
         <EmbroideryOrderDetailDialog
-          // El diálogo trae su propio detalle por id: desde que `list` y
-          // `retrieve` dejaron de compartir serializer, la fila del listado ya
-          // NO es el detalle (le faltan la parcialidad por línea, las
-          // ubicaciones y las órdenes hermanas). Ver `useEmbroideryOrderDetail`.
+          // El diálogo trae TODO su detalle por id, cobertura incluida: desde
+          // que `list` y `retrieve` dejaron de compartir serializer, la fila
+          // del listado ya no es el detalle (le faltan la parcialidad por
+          // línea, las ubicaciones y las órdenes hermanas), y desde que
+          // `OrdenBordadoRetrieveSerializer` pasó a heredar de
+          // `OrdenBordadoListSerializer` en el backend, el `retrieve` también
+          // declara `cobertura_completa`/`cantidad_cubierta`/
+          // `cantidad_contratada` — ya no hace falta sacarlos de la fila que
+          // abrió el diálogo. Ver `useEmbroideryOrderDetail`.
           orderId={openOrderId}
-          // Lo ÚNICO que sigue saliendo de la fila: los tres campos de
-          // cobertura, que el backend declara solo en el serializer del
-          // listado. Si el id no está en la lista —el enlace del 409 de
-          // duplicado nombra órdenes que pueden no estar cargadas— se pasa
-          // `undefined` y el diálogo omite ese bloque.
-          coverage={orders.find((order) => order.id === openOrderId)}
           open={true}
           onOpenChange={(open) => {
             if (!open) setOpenOrderId(null);

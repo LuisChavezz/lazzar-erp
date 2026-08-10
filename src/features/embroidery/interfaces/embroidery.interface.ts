@@ -99,14 +99,20 @@ export interface EmbroideryOrder {
   usuario_nombre: string | null;
   detalles: EmbroideryOrderLine[];
 
-  // ─── Cobertura sobre el pedido (SOLO en el listado) ───────────────────────
-  // Estos tres los declara `OrdenBordadoListSerializer`, NO el serializer del
-  // detalle: el `retrieve` por id no los devuelve. Quien necesite la cobertura
-  // en el diálogo tiene que traerla de la fila del listado (ver
-  // `EmbroideryOrderCoverage`), no de su propia consulta.
+  // ─── Cobertura sobre el pedido ─────────────────────────────────────────
+  // Antes SOLO las declaraba `OrdenBordadoListSerializer`, y el `retrieve`
+  // por id no las devolvía: el diálogo de detalle tenía que traerlas de la
+  // fila del listado que lo abrió, vía una prop `coverage?` aparte —que
+  // quedaba `undefined` cuando el id no estaba en la lista cargada (el
+  // enlace del 409 de duplicado)—. Ahora `OrdenBordadoRetrieveSerializer`
+  // HEREDA de `OrdenBordadoListSerializer` (ver el backend), así que el
+  // detalle también las declara con el mismo nombre; `EmbroideryOrderDetail`
+  // las hereda de este tipo sin re-declararlas (ver más abajo), y el diálogo
+  // las lee de su propia consulta por id, sin prop ni caso especial.
   //
-  // El backend los resuelve para la página ENTERA en 2 queries agrupadas
-  // (`OrdenBordadoService.cobertura_por_orden`), así que no hay N+1 por fila.
+  // El backend las resuelve para la página/orden ENTERA en queries
+  // agrupadas (`OrdenBordadoService.cobertura_por_orden`), así que no hay
+  // N+1 por fila ni en el listado ni en el detalle.
 
   /** ¿ESTA orden sola cubre el 100% de lo contratado por el pedido? */
   cobertura_completa: boolean;
@@ -120,21 +126,6 @@ export interface EmbroideryOrder {
    */
   cantidad_contratada: number;
 }
-
-/**
- * Los tres campos de cobertura, aislados para poder pasarlos al diálogo de
- * detalle.
- *
- * Existe porque el `retrieve` NO los devuelve (ver arriba): el diálogo se
- * alimenta de su propia consulta por id para todo lo demás, pero la cobertura
- * solo puede llegarle desde la fila del listado que lo abrió. Cuando el
- * diálogo se abre por un id que no está en la lista —el enlace del 409 de
- * duplicado— simplemente no hay cobertura que mostrar y el bloque se omite.
- */
-export type EmbroideryOrderCoverage = Pick<
-  EmbroideryOrder,
-  "cobertura_completa" | "cantidad_cubierta" | "cantidad_contratada"
->;
 
 // ─── Detalle por id (`GET /produccion/orden-bordado/{id}/`) ──────────────────
 
@@ -182,14 +173,14 @@ export interface EmbroideryOrderSibling {
 /**
  * Respuesta de `GET /produccion/orden-bordado/{id}/`.
  *
- * OJO: el detalle NO es un superconjunto del listado. Trae MÁS por renglón
- * (parcialidad + ubicaciones) y dos campos de encabezado propios, pero NO trae
- * los tres campos de cobertura (`cobertura_completa`/`cantidad_cubierta`/
- * `cantidad_contratada`), que solo declara el serializer del listado. De ahí
- * que este tipo omita esos tres de `EmbroideryOrder` en vez de heredarlos.
+ * Es efectivamente un superconjunto del listado: mismo encabezado —incluida
+ * la cobertura (`cobertura_completa`/`cantidad_cubierta`/
+ * `cantidad_contratada`), heredada de `EmbroideryOrder` sin re-declararla—,
+ * más los dos campos propios del detalle de abajo y un `detalles` más rico
+ * por renglón (parcialidad + ubicaciones, en vez del renglón ligero del
+ * listado).
  */
-export interface EmbroideryOrderDetail
-  extends Omit<EmbroideryOrder, keyof EmbroideryOrderCoverage | "detalles"> {
+export interface EmbroideryOrderDetail extends Omit<EmbroideryOrder, "detalles"> {
   detalles: EmbroideryOrderDetailLine[];
   /** Las demás OB activas del mismo pedido. Vacío si esta es la única. */
   otras_ordenes_del_pedido: EmbroideryOrderSibling[];
