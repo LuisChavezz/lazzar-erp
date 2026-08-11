@@ -159,8 +159,49 @@ export interface EmbroideryOrderDetailLine extends EmbroideryOrderLine {
   cantidad_asignada: number | null;
   /** Saldo de la línea: `cantidad_pedido - cantidad_asignada`. */
   cantidad_pendiente: number | null;
-  /** Mismo shape que el onboarding. Arreglo, posiblemente vacío. */
+  /**
+   * Ubicaciones LEÍDAS EN VIVO de la `PedidoDetalleTalla` de origen: el
+   * serializer las resuelve con `(pedido_detalle_id, talla_id)` contra
+   * `bordado_config` TAL CUAL ESTÁ HOY, no como estaba al crear la orden.
+   * Arreglo, posiblemente vacío (también cuando la talla ya no existe).
+   *
+   * Para pintar el documento se prefiere `configuracion` (ver abajo); esto es
+   * el respaldo. Ver `resolveEmbroideryLineUbicaciones`.
+   */
   ubicaciones: EmbroideryOnboardingUbicacion[];
+  /**
+   * FOTO del `bordado_config` completo al momento de crear la orden
+   * (`OrdenBordadoDetalle.configuracion`, migración `0027`).
+   *
+   * Existe porque los tres escalares del renglón —`posicion_bordado`,
+   * `colores_hilo`, `puntadas`— se derivan de `ubicaciones[0]`, así que una
+   * línea con varias ubicaciones perdía todas menos la primera. Ahora el
+   * renglón guarda el objeto íntegro y esos escalares pasan a ser el atajo, no
+   * el único registro.
+   *
+   * `null` en las órdenes anteriores a la migración: NO se hizo backfill. Por
+   * eso quien lo consuma tiene que caer a `ubicaciones` (ver
+   * `resolveEmbroideryLineUbicaciones`), nunca asumir que está poblado.
+   *
+   * El listado NO lo trae: `OrdenBordadoDetalleListSerializer` lo excluye
+   * explícitamente para no arrastrar todas las URLs de imagen por renglón.
+   */
+  configuracion: EmbroideryLineConfiguracion | null;
+}
+
+/**
+ * `bordado_config` completo, tal cual lo capturó la cotización y tal cual lo
+ * congela `OrdenBordadoDetalle.configuracion`.
+ *
+ * Es JSON LIBRE: el backend lo guarda sin normalizar y lee de él más claves de
+ * las que aquí se declaran (`posicion`, `colores_hilo`, `puntadas`, al derivar
+ * los escalares del renglón). Solo se tipan las dos que el frontend consume o
+ * ha visto pobladas en datos reales; ambas opcionales, porque cualquier clave
+ * puede faltar.
+ */
+export interface EmbroideryLineConfiguracion {
+  ubicaciones?: EmbroideryOnboardingUbicacion[] | null;
+  notas?: string | null;
 }
 
 /** Otra OB activa del mismo pedido, tal cual la lista el detalle. */

@@ -13,6 +13,7 @@ import {
   textOrDash,
 } from "@/src/components/DetailDialogPrimitives";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
+import { resolveEmbroideryLineUbicaciones } from "../utils/resolveEmbroideryLineUbicaciones";
 import { formatQuantityValue } from "@/src/utils/formatCurrency";
 import { formatShortDate, formatShortTime } from "@/src/utils/formatDate";
 import {
@@ -52,11 +53,18 @@ const quantityOrDash = (value: number | null) =>
  * forma:
  *  - `color_nombre` tiene columna propia y cae a `"—"` cuando falta.
  *  - `posicion_bordado` NO tiene columna: va dentro de la celda del producto
- *    (ver la nota de la cabecera). Con ubicación capturada es la etiqueta del
+ *    (ver la nota de la cabecera). Con ubicaciones capturadas es la etiqueta del
  *    disparador del popover, que ya resuelve por su cuenta el caso nulo
- *    ("Detalle del bordado"); sin ubicación se pinta como texto plano y solo
- *    si el renglón lo trae. En ningún camino aparece un `"—"`: una posición
- *    ausente simplemente no ocupa espacio.
+ *    ("Detalle del bordado"); sin ninguna se pinta como texto plano y solo si el
+ *    renglón lo trae. En ningún camino aparece un `"—"`: una posición ausente
+ *    simplemente no ocupa espacio.
+ *
+ * OJO con `posicion_bordado` como dato: el service lo deriva de
+ * `ubicaciones[0]`, igual que `colores_hilo` y `puntadas`. En una línea con
+ * varios bordados describe SOLO el primero, así que no puede leerse como "la
+ * posición de esta línea". Por eso, cuando hay más de una ubicación, el
+ * disparador enumera todos los códigos y la celda añade un contador — y el
+ * desglose completo, con la imagen de cada bordado, vive en el popover.
  */
 const LineasTable = ({ items }: { items: EmbroideryOrderDetailLine[] }) => {
   if (items.length === 0) {
@@ -83,9 +91,13 @@ const LineasTable = ({ items }: { items: EmbroideryOrderDetailLine[] }) => {
       }
     >
       {items.map((linea) => {
-        // Misma regla que el Paso 2 del alta: sin ubicación capturada no hay
-        // nada que abrir, así que se cae a la etiqueta plana.
-        const ubicacion = linea.ubicaciones.at(0);
+        // TODAS las ubicaciones del renglón, no `ubicaciones[0]`: hay líneas
+        // reales con dos bordados (ver `resolveEmbroideryLineUbicaciones`, que
+        // además explica por qué la fuente preferida es `configuracion` —la
+        // foto congelada al emitir la orden— y no la lectura en vivo del
+        // pedido). Misma regla que el Paso 2 del alta: sin NINGUNA ubicación
+        // capturada no hay nada que abrir y se cae a la etiqueta plana.
+        const ubicaciones = resolveEmbroideryLineUbicaciones(linea);
 
         return (
           <tr
@@ -94,15 +106,26 @@ const LineasTable = ({ items }: { items: EmbroideryOrderDetailLine[] }) => {
           >
             <td className="px-3 py-2 text-slate-700 dark:text-slate-200">
               <span className="block">{linea.producto_nombre ?? "—"}</span>
-              {ubicacion ? (
-                <span className="mt-1 inline-block">
+              {ubicaciones.length > 0 ? (
+                <span className="mt-1 flex flex-wrap items-center gap-1.5">
                   <EmbroideryLineLocationPopover
-                    ubicacion={ubicacion}
+                    ubicaciones={ubicaciones}
                     productoNombre={linea.producto_nombre ?? `Producto #${linea.producto}`}
                     tallaNombre={linea.talla_nombre}
                     colorNombre={linea.color_nombre}
                     posicionLabel={linea.posicion_bordado}
                   />
+                  {/* Mismo distintivo que el Paso 2 del alta, y por el mismo
+                      motivo: `posicion_bordado` es la columna escalar del
+                      renglón y SIEMPRE describe solo la primera ubicación (el
+                      service la deriva de `ubicaciones[0]`), así que sin este
+                      contador una línea de dos bordados se leería como de uno.
+                      Es lo único que delata la diferencia sin abrir el popover. */}
+                  {ubicaciones.length > 1 && (
+                    <span className="inline-flex items-center rounded-full bg-violet-50 dark:bg-violet-500/10 px-2 py-0.5 text-[10px] font-semibold text-violet-700 dark:text-violet-300">
+                      {ubicaciones.length} bordados
+                    </span>
+                  )}
                 </span>
               ) : (
                 // Sin ubicación capturada no hay nada que abrir; la posición

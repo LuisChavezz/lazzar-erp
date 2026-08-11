@@ -91,13 +91,23 @@ export function EmbroideryOrderLinesTable({
             const ceiling = ceilings.get(id) ?? 0;
             const agotada = ceiling <= 0;
             const checked = checkedIds.has(id);
-            // Siempre la primera: ninguna talla real trae más de una ubicación
-            // (ver `EmbroideryOnboardingUbicacion`), así que no se construye
-            // lista. Se usa `.at(0)` y no `[0]` porque el proyecto no activa
-            // `noUncheckedIndexedAccess`: con el índice, TypeScript daría por
-            // hecho que el elemento existe y el arreglo vacío —que sí ocurre—
-            // pasaría sin que el compilador exigiera comprobarlo.
-            const ubicacion = row.ubicaciones.at(0);
+            // TODAS las ubicaciones, no `ubicaciones[0]`. Este renglón se
+            // quedaba con la primera "porque ninguna talla real trae más de
+            // una": es falso. Entre las tallas CON bordado la distribución es
+            // `{0: 1, 1: 47, 2: 4}` —las cuatro de dos son de P-00027-2026,
+            // códigos `["B", "A"]` e imagen distinta cada una—, así que el
+            // corte escondía un bordado entero al programar la orden.
+            //
+            // El arreglo puede venir VACÍO (esa única talla con `{0}`), y por
+            // eso se comprueba `length` antes de abrir el popover en vez de
+            // confiar en el índice: el proyecto no activa
+            // `noUncheckedIndexedAccess`, así que TypeScript no exigiría la
+            // comprobación por su cuenta.
+            //
+            // La cardinalidad NO cambia: varias ubicaciones son varios bordados
+            // sobre la MISMA prenda, así que siguen siendo una sola fila y una
+            // sola línea de `detalles_override`.
+            const { ubicaciones } = row;
 
             return (
               <div
@@ -191,21 +201,40 @@ export function EmbroideryOrderLinesTable({
                     ahí dentro—. El `pl-7` la alinea bajo el texto (ancho de la
                     casilla + su `gap-3`).
 
-                    Sin ubicación capturada no hay nada que abrir: se cae a la
-                    etiqueta plana de siempre, sin botón ni popover vacío. */}
-                {(ubicacion || row.posicion_sugerida) && (
-                  <div className="mt-1 pl-7">
-                    {ubicacion ? (
-                      <EmbroideryLineLocationPopover
-                        ubicacion={ubicacion}
-                        productoNombre={embroideryLineProductoNombre(row)}
-                        // Talla y color distinguen filas que comparten producto
-                        // —lo normal en un pedido—: sin ellos, el nombre
-                        // accesible de los disparadores sería idéntico en todas.
-                        tallaNombre={row.talla_nombre}
-                        colorNombre={row.color_nombre}
-                        posicionLabel={row.posicion_sugerida}
-                      />
+                    Sin NINGUNA ubicación capturada no hay nada que abrir: se cae
+                    a la etiqueta plana de siempre, sin botón ni popover vacío.
+
+                    El disparador es UNO por fila aunque haya varias
+                    ubicaciones: son varios bordados de la misma prenda, no
+                    varias prendas. Su propio texto ya enumera los códigos
+                    ("Posiciones: B, A"), así que la fila comunica que hay más
+                    de uno sin abrirlo — ver `EmbroideryLineLocationPopover`. */}
+                {(ubicaciones.length > 0 || row.posicion_sugerida) && (
+                  <div className="mt-1 flex flex-wrap items-center gap-2 pl-7">
+                    {ubicaciones.length > 0 ? (
+                      <>
+                        <EmbroideryLineLocationPopover
+                          ubicaciones={ubicaciones}
+                          productoNombre={embroideryLineProductoNombre(row)}
+                          // Talla y color distinguen filas que comparten producto
+                          // —lo normal en un pedido—: sin ellos, el nombre
+                          // accesible de los disparadores sería idéntico en todas.
+                          tallaNombre={row.talla_nombre}
+                          colorNombre={row.color_nombre}
+                          posicionLabel={row.posicion_sugerida}
+                        />
+                        {/* Distintivo redundante A PROPÓSITO con el texto del
+                            disparador: al programar la orden, "esta prenda
+                            lleva 2 bordados" cambia el trabajo que se manda al
+                            taller, y no debe depender de que alguien lea una
+                            lista de códigos dentro de un botón. Solo aparece
+                            cuando de verdad hay más de una. */}
+                        {ubicaciones.length > 1 && (
+                          <span className="inline-flex items-center rounded-full bg-violet-50 dark:bg-violet-500/10 px-2 py-0.5 text-[11px] font-semibold text-violet-700 dark:text-violet-300">
+                            {ubicaciones.length} bordados
+                          </span>
+                        )}
+                      </>
                     ) : (
                       <p className="text-[11px] text-slate-400 dark:text-slate-500">
                         Posición: {row.posicion_sugerida}
