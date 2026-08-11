@@ -83,15 +83,15 @@ const LineasTable = ({ items }: { items: ReflectiveOrderDetailLine[] }) => {
       head={
         <>
           <th className="px-3 py-2 font-medium">Producto</th>
-          <th className="px-3 py-2 font-medium">Talla</th>
-          <th className="px-3 py-2 font-medium">Color</th>
-          <th className="px-3 py-2 font-medium">Tipo</th>
-          <th className="px-3 py-2 font-medium">Posición</th>
-          <th className="px-3 py-2 font-medium text-right">Metros</th>
-          <th className="px-3 py-2 font-medium text-right">En esta orden</th>
-          <th className="px-3 py-2 font-medium text-right">Programado</th>
-          <th className="px-3 py-2 font-medium text-right">Pedido</th>
-          <th className="px-3 py-2 font-medium text-right">Pendiente</th>
+          <th className="px-3 py-2 font-medium whitespace-nowrap">Talla</th>
+          <th className="px-3 py-2 font-medium whitespace-nowrap">Color</th>
+          <th className="px-3 py-2 font-medium whitespace-nowrap">Tipo</th>
+          <th className="px-3 py-2 font-medium whitespace-nowrap">Posición</th>
+          <th className="px-3 py-2 font-medium text-right whitespace-nowrap">Metros</th>
+          <th className="px-3 py-2 font-medium text-right whitespace-nowrap">En esta orden</th>
+          <th className="px-3 py-2 font-medium text-right whitespace-nowrap">Programado</th>
+          <th className="px-3 py-2 font-medium text-right whitespace-nowrap">Pedido</th>
+          <th className="px-3 py-2 font-medium text-right whitespace-nowrap">Pendiente</th>
         </>
       }
     >
