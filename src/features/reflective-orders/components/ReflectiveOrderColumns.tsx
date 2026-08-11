@@ -7,6 +7,7 @@ import { ViewIcon } from "@/src/components/Icons";
 import { formatQuantityValue } from "@/src/utils/formatCurrency";
 import { formatShortDate } from "@/src/utils/formatDate";
 import {
+  REFLECTIVE_ORDER_COVERAGE_CONFIG,
   REFLECTIVE_ORDER_PRIORITY_CONFIG,
   REFLECTIVE_ORDER_STATUS_CONFIG,
   reflectiveOrderPriorityFallback,
@@ -143,6 +144,30 @@ export const getReflectiveOrderColumns = (onViewDetails: (id: number) => void) =
         </span>
       );
     },
+  }),
+  // Cobertura de la orden sobre su pedido. El backend la calcula para la
+  // página entera (2 queries agrupadas), así que esta columna no cuesta
+  // ninguna petición extra.
+  //
+  // SOLO el badge, en una línea — misma decisión ya tomada en bordado: la
+  // fracción ("10 / 40") y el porcentaje ocupaban tres renglones en una tabla
+  // donde el resto de las celdas es de una sola línea, descuadrando la altura
+  // de la fila. Las cifras completas no se pierden: el bloque "Cobertura del
+  // pedido" del diálogo de detalle las muestra con su porcentaje, que es donde
+  // tiene sentido leerlas con calma.
+  //
+  // Se ordena por `cobertura_completa`, el MISMO valor que se pinta: ordenar
+  // por `cantidad_cubierta` —el número que no se ve— dejaría las filas en un
+  // orden que el usuario no podría explicar mirando la columna.
+  columnHelper.accessor((row) => row.cobertura_completa, {
+    id: "cobertura",
+    header: "Cobertura",
+    cell: ({ row }) => (
+      <StatusBadge
+        status={String(row.original.cobertura_completa)}
+        config={REFLECTIVE_ORDER_COVERAGE_CONFIG}
+      />
+    ),
   }),
   // Columna que bordado NO puede tener: `OrdenReflejanteSerializer` resuelve el
   // nombre del operador (`usuario_nombre`), mientras que `OrdenBordadoSerializer`

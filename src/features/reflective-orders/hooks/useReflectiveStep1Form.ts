@@ -1,28 +1,38 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import type { FormEvent } from "react";
 import { useForm } from "@tanstack/react-form";
 import { useSession } from "next-auth/react";
 import type { FormFieldError } from "@/src/utils/getFieldError";
+import { isInitialLoadError } from "@/src/utils/isInitialLoadError";
 import {
   CreateReflectiveOrderFormSchema,
   type CreateReflectiveOrderFormValues,
 } from "../schemas/reflective-order.schema";
 import { useReflectiveOnboarding } from "./useReflectiveOnboarding";
-import {
-  useCreateReflectiveOrder,
-  type ParsedReflectiveOrderError,
-} from "./useCreateReflectiveOrder";
-import { buildReflectiveOrderPayload } from "../utils/buildReflectiveOrderPayload";
 import { resolveAssignedOperator } from "../utils/resolveAssignedOperator";
 
-/** Igual a `ParsedReflectiveOrderError["duplicate"]` — conserva el mensaje del
- * backend JUNTO con la orden existente, no solo la orden. */
-type ReflectiveDuplicateState = NonNullable<ParsedReflectiveOrderError["duplicate"]>;
+interface UseReflectiveStep1FormParams {
+  /**
+   * Encabezado ya capturado, propiedad de `ReflectiveOrderStepManager`. Al
+   * "Regresar" desde el Paso 2 llega de vuelta con lo que el usuario había
+   * elegido, así que el paso se repuebla solo.
+   */
+  initialValues: CreateReflectiveOrderFormValues;
+  onNext: (values: CreateReflectiveOrderFormValues) => void;
+}
 
 /**
- * Estado del formulario de alta de orden de reflejante.
+ * Paso 1 del alta de orden de reflejante: encabezado (pedido, prioridad,
+ * observaciones). NO envía nada al backend — solo valida y entrega el
+ * encabezado al orquestador, igual que `useEmbroideryStep1Form`.
+ *
+ * De ahí que aquí ya no vivan la mutación, el banner de error del servidor ni el
+ * bloque de duplicado que tenía `useReflectiveOrderForm` (el hook del alta de un
+ * solo paso, retirado): el único punto de envío es el Paso 2, y con él se fueron
+ * el reparto de errores del backend y la guarda de doble envío (ver
+ * `useReflectiveStep2Form`).
  *
  * `prioridad` arranca en `1`, que es el default del propio backend
  * (`IntegerField(default=1)`): omitir el campo produciría exactamente el mismo
@@ -33,27 +43,34 @@ type ReflectiveDuplicateState = NonNullable<ParsedReflectiveOrderError["duplicat
  * herencia del backend (la generación automática desde ventas también escribe
  * `prioridad=1`), no una decisión de esta pantalla.
  */
-export function useReflectiveOrderForm({ onSuccess }: { onSuccess?: () => void } = {}) {
+export function useReflectiveStep1Form({
+  initialValues,
+  onNext,
+}: UseReflectiveStep1FormParams) {
   const { data: session } = useSession();
   const {
     pedidos,
     operadores,
     folioPreview,
+    hasLoaded,
     isLoading: isLoadingCatalog,
-    isError: isErrorCatalog,
+    isError,
     error: catalogError,
     refetch: refetchCatalog,
   } = useReflectiveOnboarding();
 
+  /**
+   * Solo es error "de pantalla completa" cuando el catálogo NUNCA cargó. Un
+   * refetch fallido con datos en caché conserva el formulario —y con él las
+   * observaciones ya tecleadas, que viven en el estado de TanStack Form dentro
+   * del componente— y avisa por toast desde `useReflectiveOnboarding`. Sin
+   * esto, volver del Paso 2 remonta este paso, y un fallo de red en ese refetch
+   * cambiaba el formulario por un panel de error. Mismo criterio que
+   * `ReflectiveOrdersView`.
+   */
+  const isErrorCatalog = isInitialLoadError(isError, hasLoaded);
+
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [serverBanner, setServerBanner] = useState<string | null>(null);
-  // Poblado SOLO en el 409 de duplicado (forma D del parser). Mutuamente
-  // excluyente con `serverBanner`: cuando está presente, el formulario muestra
-  // el bloque informativo de duplicado EN VEZ DEL banner rosa de validación —
-  // son el mismo rechazo, no dos avisos a la vez.
-  const [duplicate, setDuplicate] = useState<ReflectiveDuplicateState | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const submitInFlight = useRef(false);
 
   // ─── Opciones derivadas ───────────────────────────────────────────────────
   const pedidoOptions = useMemo(
@@ -88,51 +105,10 @@ export function useReflectiveOrderForm({ onSuccess }: { onSuccess?: () => void }
     });
   };
 
-  /**
-   * Reparte el error ya normalizado: los de campo (forma C) bajo su input, el
-   * duplicado (forma D) a su propio bloque informativo, y todo lo demás al
-   * banner. El banner siempre aparece en los demás casos —aun cuando el error
-   * sea atribuible a un campo— porque lo importante que comunica es que NO se
-   * creó nada: el service es atómico y rechaza antes de consumir folio.
-   */
-  const handleServerError = (parsed: ParsedReflectiveOrderError) => {
-    const next: Record<string, string> = {};
-    (Object.keys(parsed.fieldErrors) as (keyof typeof parsed.fieldErrors)[]).forEach(
-      (field) => {
-        const message = parsed.fieldErrors[field];
-        if (message) next[field] = message;
-      },
-    );
-    setErrors((prev) => ({ ...prev, ...next }));
-
-    if (parsed.duplicate) {
-      setDuplicate(parsed.duplicate);
-      setServerBanner(null);
-      return;
-    }
-    setDuplicate(null);
-
-    const hasFieldErrors = Object.keys(parsed.fieldErrors).length > 0;
-    const detail =
-      parsed.formError ?? (hasFieldErrors ? "Revisa los campos marcados." : "Intenta de nuevo.");
-    setServerBanner(`No se creó la orden de reflejante. ${detail}`);
-  };
-
-  const { mutateAsync: createOrder, isPending: isCreating } =
-    useCreateReflectiveOrder(handleServerError);
-
   // ─── Formulario ───────────────────────────────────────────────────────────
-  const defaultValues = useMemo<CreateReflectiveOrderFormValues>(
-    () => ({ pedido: 0, prioridad: 1, observaciones: "" }),
-    [],
-  );
-
   const form = useForm({
-    defaultValues,
-    onSubmit: async ({ value }) => {
-      setServerBanner(null);
-      setDuplicate(null);
-
+    defaultValues: initialValues,
+    onSubmit: ({ value }) => {
       const parsed = CreateReflectiveOrderFormSchema.safeParse(value);
       if (!parsed.success) {
         const nextErrors: Record<string, string> = {};
@@ -143,28 +119,19 @@ export function useReflectiveOrderForm({ onSuccess }: { onSuccess?: () => void }
         setErrors(nextErrors);
         return;
       }
-      setErrors({});
 
-      // Guarda contra el doble envío: crear una orden consume un folio de la
-      // serie y no existe endpoint para cancelarla.
-      if (submitInFlight.current) return;
-      submitInFlight.current = true;
-      setIsSubmitting(true);
-
-      try {
-        await createOrder(buildReflectiveOrderPayload(parsed.data));
-        form.reset(defaultValues);
-        setErrors({});
-        setServerBanner(null);
-        setDuplicate(null);
-        onSuccess?.();
-      } catch {
-        // Ya repartido por `handleServerError` (banner + campos) y notificado
-        // por toast desde la mutación.
-      } finally {
-        setIsSubmitting(false);
-        submitInFlight.current = false;
+      // El pedido tiene que seguir existiendo en el catálogo RECIÉN cargado:
+      // uno que otra orden acabó de cubrir al 100% desaparece de la respuesta
+      // del onboarding, y avanzar con él dejaría el Paso 2 sin líneas que
+      // mostrar. Mismo guard que `useEmbroideryStep1Form`.
+      const pedido = pedidos.find((option) => option.id === parsed.data.pedido);
+      if (!pedido) {
+        setErrors((prev) => ({ ...prev, pedido: "Selecciona un pedido" }));
+        return;
       }
+
+      setErrors({});
+      onNext(parsed.data);
     },
   });
 
@@ -183,11 +150,6 @@ export function useReflectiveOrderForm({ onSuccess }: { onSuccess?: () => void }
     isErrorCatalog,
     catalogError,
     refetchCatalog,
-    isPending: isSubmitting || isCreating,
-    serverBanner,
-    duplicate,
-    dismissBanner: () => setServerBanner(null),
-    dismissDuplicate: () => setDuplicate(null),
     getError,
     clearError,
     handleFormSubmit,

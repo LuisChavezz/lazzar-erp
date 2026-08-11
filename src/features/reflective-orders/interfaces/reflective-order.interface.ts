@@ -3,9 +3,12 @@
  * (`/produccion/orden-reflejante/`).
  *
  * Verificados contra el esquema OpenAPI DESPLEGADO (`/api/schema/`, componentes
- * `OrdenReflejante` / `OrdenReflejanteDetalle` / `EstatusReflejanteEnum`) y
- * contra el checkout de `nucleo-erp` (`produccion/models.py`,
- * `produccion/api/serializers.py`) — ambos coinciden.
+ * `OrdenReflejanteList` / `OrdenReflejanteRetrieve` /
+ * `OrdenReflejanteDetalleList` / `OrdenReflejanteDetalleRetrieve` /
+ * `EstatusReflejanteEnum`) y contra el checkout de `nucleo-erp`
+ * (`produccion/models.py`, `produccion/api/serializers.py`) — ambos coinciden.
+ * El onboarding NO aparece en el esquema (la vista arma su respuesta a mano,
+ * sin serializer): esa parte está verificada solo contra el código.
  *
  * Los nombres de campo se conservan en español, tal cual el contrato del API.
  *
@@ -36,10 +39,14 @@
 export type ReflectiveOrderStatus = 1 | 2 | 3 | 4 | 5 | 6 | 7;
 
 /**
- * Renglón de `detalles`, embebido en cada orden del listado (el backend usa el
- * mismo `OrdenReflejanteSerializer` para listado y detalle). Se tipa completo
- * aunque este listado solo lo resuma: el diálogo de detalle —fase siguiente—
- * lo reutiliza tal cual.
+ * Renglón de `detalles`, embebido en cada orden del LISTADO
+ * (`OrdenReflejanteDetalleListSerializer`).
+ *
+ * Listado y detalle DEJARON de compartir serializer: el del listado es
+ * deliberadamente ligero (no declara `reflejante_config`/`ubicaciones`/`foto`/
+ * `notas`, que obligaban a re-leer `PedidoDetalleTalla` una vez por renglón), y
+ * solo el detalle paga ese costo. Por eso `ReflectiveOrderDetailLine` EXTIENDE
+ * este tipo en vez de sustituirlo.
  *
  * ESTADO REAL DE LOS CAMPOS PROPIOS DEL REFLEJANTE, que depende de QUIÉN creó
  * la orden (hay dos rutas de alta, ver `ReflectiveOrder`):
@@ -141,23 +148,18 @@ export interface ReflectiveOrder {
    * tampoco nulable (`Empresa.razon_social` es `CharField` sin `null=True`) —
    * por construcción, siempre string no vacío cuando la orden existe.
    *
-   * OJO — verificado 2026-08 en el checkout de `nucleo-erp`
-   * (`ddbdae3 feat(produccion): agrega empresa_nombre/sucursal_nombre a
-   * OrdenReflejanteSerializer`), pero el esquema OpenAPI DESPLEGADO
-   * (`nucleo-erp.vercel.app/api/schema/`) todavía NO lo expone: es un cambio de
-   * backend confirmado en código pero aún no en producción. Se tipa
-   * `string | undefined` —no el `string` que el contrato final promete— para
-   * que el tipo no mienta sobre lo que el backend HOY REALMENTE envía: contra
-   * el API desplegado, el campo simplemente no viene en el JSON. Se ajusta a
-   * `string` cuando el backend despliegue el cambio. Se consume con
-   * `textOrDash` en el diálogo de detalle (que ya acepta `undefined`), nunca
-   * con acceso directo (`.trim()`, `.toUpperCase()`, etc.).
+   * Este campo se tipaba `string | undefined` porque el esquema OpenAPI
+   * DESPLEGADO todavía no lo exponía (`ddbdae3` estaba en el checkout pero no
+   * en producción). Ya se desplegó: el esquema de
+   * `nucleo-erp.vercel.app/api/schema/` lo declara en `OrdenReflejanteList`/
+   * `OrdenReflejanteRetrieve` y además lo lista como REQUERIDO. Se ajusta a
+   * `string`, tal como preveía la nota anterior.
    */
-  empresa_nombre: string | undefined;
+  empresa_nombre: string;
   sucursal: number;
   /** Nombre legible de la sucursal (`source='sucursal.nombre'`). Misma garantía
-   *  de no-nulidad y misma salvedad de despliegue que `empresa_nombre`. */
-  sucursal_nombre: string | undefined;
+   *  de no-nulidad que `empresa_nombre`, y ya desplegado igual que aquél. */
+  sucursal_nombre: string;
   pedido: number;
   /** `Pedido.folio` es nullable: puede llegar `null`. */
   pedido_folio: string | null;
@@ -171,21 +173,225 @@ export interface ReflectiveOrder {
    */
   usuario_nombre: string | null;
   detalles: ReflectiveOrderLine[];
+
+  // ─── Cobertura sobre el pedido ─────────────────────────────────────────
+  // Las declara `OrdenReflejanteListSerializer` y, por herencia,
+  // `OrdenReflejanteRetrieveSerializer` — o sea que el listado Y el detalle
+  // por id traen las tres con el mismo nombre. `ReflectiveOrderDetail` las
+  // hereda de este tipo sin re-declararlas (ver más abajo), y por eso el
+  // diálogo de detalle puede leerlas de SU PROPIA consulta por id, sin
+  // recibirlas como prop desde la fila que lo abrió (que es justo lo que se
+  // rompía al abrirlo desde el enlace del 409, con un id ausente del listado
+  // cargado).
+  //
+  // El backend las resuelve para la página/orden ENTERA en queries agrupadas
+  // (`OrdenReflejanteService.cobertura_por_orden`), así que no hay N+1 por
+  // fila ni en el listado ni en el detalle.
+  //
+  // Los dos números llegan como ENTEROS aunque `cantidad` sea `FloatField`:
+  // el service aplica `math.floor` (piso, nunca redondeo) sobre las sumas
+  // para no sobre-reportar cobertura inexistente.
+
+  /** ¿ESTA orden sola cubre el 100% de lo contratado por el pedido? */
+  cobertura_completa: boolean;
+  /**
+   * Piezas que programa ESTA orden. El backend la acota con `min(...,
+   * cantidad_contratada)`, así que nunca excede al denominador aunque el
+   * pedido se haya editado después de crear la orden.
+   */
+  cantidad_cubierta: number;
+  /**
+   * Piezas de reflejante que contrató el pedido, sumando TODAS sus líneas con
+   * `lleva_reflejante` — no solo las que toca esta orden. Puede ser `0`
+   * (pedido sin líneas de reflejante vivas), y en ese caso
+   * `cobertura_completa` llega `false`: quien calcule un porcentaje debe
+   * protegerse de la división.
+   */
+  cantidad_contratada: number;
+}
+
+// ─── Detalle por id (`GET /produccion/orden-reflejante/{id}/`) ───────────────
+
+/**
+ * Renglón del DETALLE (`OrdenReflejanteDetalleRetrieveSerializer`). Es el del
+ * listado MÁS el contexto de parcialidad de su línea y el `reflejante_config`
+ * crudo del pedido.
+ *
+ * NO se declaran `ubicaciones`, `foto` ni `notas`, que el backend SÍ devuelve:
+ * llegan vacíos (`[]`/`null`/`null`) en el 100% de los registros y por
+ * construcción, no por falta de captura. La extracción que los resuelve está
+ * copiada de bordado, donde `bordado_config` es un OBJETO; en reflejante el
+ * config es un ARREGLO (ver `ReflectiveLineConfigEntry`), así que el backend lo
+ * pasa por un guard (`_get_cfg_dict`) que devuelve `{}` y las tres claves salen
+ * vacías siempre. Tiparlas invitaría a construir UI que jamás se pinta — mismo
+ * criterio que `EmbroideryOrderDetailLine` con `foto`/`notas`.
+ */
+export interface ReflectiveOrderDetailLine extends ReflectiveOrderLine {
+  /**
+   * Piezas contratadas por el pedido en ESTA línea.
+   *
+   * Los tres son `null` solo si el backend no encuentra la línea NI por
+   * `(pedido_detalle, talla)` NI por `pedido_detalle` — el serializer cae al
+   * total del renglón cuando la talla no cruza, precisamente para que un
+   * renglón sin talla no salga con los tres campos en blanco. Aun así se tipan
+   * nullable: esa rama existe y devuelve `None` explícitamente.
+   */
+  cantidad_pedido: number | null;
+  /** Piezas ya programadas en esta línea por TODAS las OR activas del pedido. */
+  cantidad_asignada: number | null;
+  /** Saldo de la línea: `cantidad_pedido - cantidad_asignada`. */
+  cantidad_pendiente: number | null;
+  /**
+   * El `reflejante_config` CRUDO de la `PedidoDetalleTalla` de esta línea, tal
+   * cual lo guardó ventas y sin normalizar. `null` cuando la talla no cruza o
+   * el config viene vacío.
+   *
+   * Es la ÚNICA vía por la que el detalle puede enseñar la configuración del
+   * reflejante de una orden creada desde este módulo: `tipo_reflejante` y
+   * `posicion` los puebla solo la generación automática desde ventas, y
+   * `OrdenReflejanteService.save` los deja en `null` (ver `ReflectiveOrderLine`).
+   * Se tipa por fidelidad al contrato; hoy no se pinta en la UI.
+   */
+  reflejante_config: ReflectiveLineConfigEntry[] | null;
+}
+
+/**
+ * UN elemento de `reflejante_config` (un reflejante concreto: material, opción y
+ * posición). En los datos reales el campo es SIEMPRE un ARREGLO de estos
+ * elementos —nunca un objeto, a diferencia de `bordado_config`—, y ese arreglo
+ * trae de UNO A VARIOS: la distribución medida entre las tallas con
+ * `lleva_reflejante` es `{1: 49, 2: 6, 3: 4}`. Los cuatro de tres son de
+ * P-00027-2026, que mezcla DOS MATERIALES en la misma prenda (`ignifuga-plata-1`
+ * en HOMBROS y BRAZOS, `costurable-plata-1` en TIRANTES).
+ *
+ * Es captura de una cotización, no un contrato de serializer: el backend lo
+ * reenvía sin tocar, así que toda clave queda opcional/nullable y quien la
+ * pinte debe comprobarla antes.
+ *
+ * OJO — hay DOS afirmaciones distintas que no deben confundirse:
+ *  - Que el config sea UNIFORME entre las líneas de un mismo pedido (los mismos
+ *    elementos en todas sus tallas) es CIERTO hoy y verificado.
+ *  - Que por eso "no haya detalle por línea que mostrar" es FALSO: el config es
+ *    un arreglo de hasta tres reflejantes con posiciones y materiales
+ *    distintos, así que hay contenido real que enseñar; lo que no hay es
+ *    VARIACIÓN entre líneas. El Paso 2 hoy solo captura cantidades y no lo
+ *    muestra, pero es una decisión pendiente de UI, no una ausencia de dato
+ *    (mismo criterio que las N ubicaciones de bordado). No lo colapses a
+ *    `[0]`.
+ */
+export interface ReflectiveLineConfigEntry {
+  tipo?: string | null;
+  opcion?: string | null;
+  posicion?: string | null;
+}
+
+/** Otra OR activa del mismo pedido, tal cual la lista el detalle. */
+export interface ReflectiveOrderSibling {
+  id: number;
+  folio_reflejante: string;
+  fecha_inicio: string;
+}
+
+/**
+ * Respuesta de `GET /produccion/orden-reflejante/{id}/`.
+ *
+ * Es un superconjunto ESTRICTO del listado: `OrdenReflejanteRetrieveSerializer`
+ * hereda de `OrdenReflejanteListSerializer`, así que trae el mismo encabezado
+ * —cobertura incluida, heredada aquí de `ReflectiveOrder` sin re-declararla—,
+ * más los dos campos propios de abajo y un `detalles` más rico por renglón.
+ *
+ * Aun siendo superconjunto, el diálogo de detalle NO se arma con la fila del
+ * listado: la fila carece de la parcialidad por línea, del `reflejante_config`
+ * y de las órdenes hermanas, y además puede no existir (el enlace del 409 abre
+ * por un id que quizá no está en la lista cargada).
+ */
+export interface ReflectiveOrderDetail extends Omit<ReflectiveOrder, "detalles"> {
+  detalles: ReflectiveOrderDetailLine[];
+  /** Las demás OR activas del mismo pedido. Vacío si esta es la única. */
+  otras_ordenes_del_pedido: ReflectiveOrderSibling[];
+  /**
+   * `true` cuando el pedido tiene piezas programadas SIN talla identificable
+   * (renglones con `talla` nula que genera el pipeline de picking, más los
+   * renglones históricos de reflejante). El total por `pedido_detalle` sigue
+   * siendo exacto; lo que no puede afirmarse es a qué talla concreta
+   * corresponde cada pieza.
+   */
+  reparto_por_talla_aproximado: boolean;
 }
 
 // ─── Onboarding / alta ───────────────────────────────────────────────────────
+
+/**
+ * Renglón POR TALLA del pedido candidato — el "estado de la verdad" de lo que
+ * aún se puede programar a reflejante.
+ *
+ * `cantidad_asignada` es lo ya programado por las OR activas del pedido y
+ * `cantidad_pendiente = cantidad_pedido - cantidad_asignada` (acotado a 0). El
+ * backend devuelve TODAS las líneas elegibles del pedido, incluidas las que ya
+ * no tienen pendiente (`cantidad_pendiente === 0`), para que la UI pueda
+ * mostrarlas agotadas en vez de ocultarlas — mismo criterio que
+ * `EmbroideryOnboardingDetalle`.
+ *
+ * Las tres cantidades son NÚMEROS en el JSON (`float`), no el string decimal
+ * habitual de inventario: `PedidoDetalleTalla.cantidad` es un
+ * `PositiveIntegerField` y las prendas se reflejan enteras.
+ *
+ * `color_id`/`color_nombre` cuelgan del `PedidoDetalle` (no de la talla) y son
+ * nullable, igual que `talla_id`/`talla_nombre` y `producto_nombre`.
+ *
+ * Bordado, reflejante y corte de manga comparten el MISMO constructor de este
+ * payload en el backend (`_payload_pedidos_onboarding`). NO se declaran aquí las
+ * claves que ese constructor deriva del `*_config` con forma de objeto
+ * —`posicion_sugerida`, `ubicaciones`, `foto`, `notas`—: para reflejante salen
+ * siempre vacías porque el config es un ARREGLO, no un objeto (ver
+ * `ReflectiveLineConfigEntry`). El arreglo crudo SÍ viaja: el onboarding de
+ * reflejante activa `incluir_config_crudo=True`, así que cada línea trae
+ * `reflejante_config` (los reflejantes reales del pedido, hasta tres, con dos
+ * materiales en P-00027). Hoy el Paso 2 solo captura cantidades y no lo pinta,
+ * pero se declara para no descartar en silencio dato que el backend envía —
+ * mostrarlo es trabajo de UI pendiente, no una ausencia de dato.
+ */
+export interface ReflectiveOnboardingDetalle {
+  /** Id de `PedidoDetalleTalla` — el que viaja en `detalles_override`. */
+  pedido_detalle_talla_id: number;
+  pedido_detalle_id: number;
+  producto_id: number;
+  producto_nombre: string | null;
+  talla_id: number | null;
+  talla_nombre: string | null;
+  color_id: number | null;
+  color_nombre: string | null;
+  cantidad_pedido: number;
+  cantidad_asignada: number;
+  cantidad_pendiente: number;
+  /**
+   * Los reflejantes del pedido para esta línea, tal cual los guardó ventas
+   * (`incluir_config_crudo=True` en el backend). `null` cuando el config viene
+   * vacío. Es el MISMO shape que `ReflectiveOrderDetailLine.reflejante_config`
+   * del `retrieve`; hoy no se pinta en el Paso 2 (ver
+   * `ReflectiveLineConfigEntry`).
+   */
+  reflejante_config: ReflectiveLineConfigEntry[] | null;
+}
 
 /**
  * Pedido candidato del catálogo (`GET /produccion/orden-reflejante/onboarding/`).
  *
  * El backend arma este objeto a mano en la vista (no vía serializer): son
  * pedidos activos, de la empresa del usuario y de sus `sucursales_permitidas`,
- * con AL MENOS una talla marcada `lleva_reflejante=True`, ordenados
- * `-created_at, -id`.
+ * con AL MENOS una talla marcada `lleva_reflejante=True` y `cantidad > 0`,
+ * ordenados `-created_at, -id`.
  *
- * OJO: el catálogo NO excluye los pedidos que ya tienen una orden de reflejante
- * activa — se puede elegir uno y recibir el 409 de duplicado. Es justamente el
- * caso que atiende el bloque ámbar de `ReflectiveOrderCreateForm`.
+ * El catálogo se acota por SALDO, no por existencia de OR: un pedido que ya
+ * tiene órdenes de reflejante sigue apareciendo mientras alguna de sus líneas
+ * conserve `cantidad_pendiente > 0`, y desaparece por completo cuando todas
+ * quedan en 0. Este archivo afirmaba lo contrario —"el catálogo NO excluye los
+ * pedidos que ya tienen una orden de reflejante activa"—: era cierto antes de
+ * que el backend unificara los tres onboardings de órdenes de trabajo en
+ * `_payload_pedidos_onboarding`, que descarta el pedido sin ninguna línea con
+ * saldo. Y con ello el 409 de duplicado dejó de ser alcanzable por esta vía:
+ * solo se evalúa en el POST SIN `detalles_override`, que el asistente ya no
+ * emite (ver `CreateReflectiveOrderPayload`).
  *
  * `folio`, `cliente_nombre` y `sucursal_nombre` pueden ser `null`
  * (`Pedido.folio` es nullable y los nombres se leen con `getattr(..., None)`).
@@ -197,6 +403,12 @@ export interface ReflectiveOnboardingPedido {
   cliente_nombre: string | null;
   sucursal: number | null;
   sucursal_nombre: string | null;
+  /**
+   * Detalle por talla del pedido. El frontend lo IGNORABA —esta interfaz ni
+   * siquiera lo declaraba—, así que descartaba dato que el backend ya
+   * devolvía; es lo que alimenta el Paso 2 del asistente.
+   */
+  detalles: ReflectiveOnboardingDetalle[];
 }
 
 /**
@@ -235,11 +447,34 @@ export interface ReflectiveOnboardingData {
 }
 
 /**
+ * Renglón de `detalles_override` — la línea del pedido que SÍ entra en esta
+ * orden, y con cuántas piezas.
+ *
+ * `pedido_detalle_talla_id` es el `pedido_detalle_talla_id` de
+ * `ReflectiveOnboardingDetalle` (o sea, `PedidoDetalleTalla.id`), NO el
+ * `pedido_detalle_id`.
+ *
+ * `cantidad` es un ENTERO de piezas: el serializer rechaza con `400` cualquier
+ * fraccionario (`` `cantidad` debe ser un número entero de piezas ``) porque
+ * `PedidoDetalleTalla.cantidad` es un `PositiveIntegerField` y los residuos de
+ * coma flotante dejaban pendientes de 1e-15 que ninguna OR podía consumir.
+ * Viaja como número, no como string decimal.
+ *
+ * El backend rechaza además: ids repetidos, ids ajenos al `pedido` del body,
+ * ids sin `lleva_reflejante`, `cantidad <= 0` y `cantidad` mayor a la
+ * contratada en el pedido — todos como `400` bajo la clave `detalles_override`.
+ */
+export interface ReflectiveOrderDetalleOverride {
+  pedido_detalle_talla_id: number;
+  cantidad: number;
+}
+
+/**
  * Cuerpo de `POST /produccion/orden-reflejante/onboarding/`.
  *
- * SOLO estos tres campos. El backend deriva `empresa`/`sucursal` del pedido,
- * `usuario_asignado` del usuario autenticado y `folio_reflejante` de la serie
- * de folios; `activo`/`fecha_inicio` toman su default.
+ * El backend deriva `empresa`/`sucursal` del pedido, `usuario_asignado` del
+ * usuario autenticado y `folio_reflejante` de la serie de folios;
+ * `activo`/`fecha_inicio` toman su default.
  *
  * `estatus_reflejante` y `fecha_fin` SÍ son escribibles en el serializer (a
  * diferencia de bordado, que declara `estatus_bordado` como `read_only`), pero
@@ -248,11 +483,41 @@ export interface ReflectiveOnboardingData {
  * mismo — un campo de formulario para ellos prometería una decisión que el
  * backend ignora.
  *
- * `detalles` tampoco se envía: el service los deriva solo, uno por cada
- * `PedidoDetalleTalla` con `lleva_reflejante=True` del pedido elegido.
+ * `detalles_override` es OPCIONAL y estrictamente aditivo:
+ *  - AUSENTE (o vacío) → comportamiento histórico: el service deriva los
+ *    renglones solo, uno por cada `PedidoDetalleTalla` con
+ *    `lleva_reflejante=True` del pedido, al 100% de su cantidad. Sobre un
+ *    pedido ya cubierto al 100% responde `409`.
+ *  - PRESENTE → la orden incluye SOLO esas líneas, con esas cantidades. Un
+ *    mismo pedido puede acumular varias OR parciales hasta cubrirse (la
+ *    constraint `uq_orden_reflejante_activa_por_pedido` se quitó en la
+ *    migración `0025`), y por eso esta ruta NO emite el `409` de duplicado: si
+ *    algo excede el saldo, responde `400` con `detalles_exceso`.
+ *
+ * `detalles` (los renglones ya creados) sigue sin enviarse nunca: es la
+ * respuesta, no el cuerpo.
  */
 export interface CreateReflectiveOrderPayload {
   pedido: number;
   prioridad?: number;
   observaciones?: string;
+  detalles_override?: ReflectiveOrderDetalleOverride[];
 }
+
+/**
+ * Respuesta del POST de alta.
+ *
+ * NO es un `ReflectiveOrder`: el `ViewSet` serializa la orden recién creada con
+ * `OrdenReflejanteSerializer` (el BASE), no con el del listado, así que el
+ * cuerpo llega SIN los tres campos de cobertura. Tiparla como la fila del
+ * listado prometería un `cobertura_completa: boolean` que en tiempo de
+ * ejecución es `undefined`.
+ *
+ * Quien necesite la cobertura de la orden nueva la obtiene del listado que la
+ * mutación invalida, o del detalle por id — no de aquí. Hoy el único consumidor
+ * es el toast de éxito, que solo lee `folio_reflejante`.
+ */
+export type CreatedReflectiveOrder = Omit<
+  ReflectiveOrder,
+  "cobertura_completa" | "cantidad_cubierta" | "cantidad_contratada"
+>;

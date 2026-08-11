@@ -91,6 +91,34 @@ export const REFLECTIVE_ORDER_PRIORITY_CONFIG: Record<string, StatusBadgeConfigE
   },
 };
 
+/**
+ * Etiquetas de `cobertura_completa`: ¿esta orden sola cubre el 100% de lo que el
+ * pedido contrató de reflejante?
+ *
+ * Se indexa por el booleano convertido a string, no por un código, porque eso es
+ * lo que manda el backend. "Parcial" NO es un estado de error —desde que se
+ * pueden crear varias OR por pedido es el caso esperado—, así que va en un tono
+ * informativo (sky) y no en ámbar/rojo de advertencia; "Completa" reutiliza el
+ * verde que ya significa "terminado" en `REFLECTIVE_ORDER_STATUS_CONFIG`.
+ *
+ * Mismos colores y etiquetas que `EMBROIDERY_COVERAGE_CONFIG`, y a propósito:
+ * es el mismo concepto en el mismo dominio y leído por los mismos usuarios; un
+ * verde distinto para "Completa" según el módulo solo obligaría a re-aprender el
+ * código de color.
+ */
+export const REFLECTIVE_ORDER_COVERAGE_CONFIG: Record<string, StatusBadgeConfigEntry> = {
+  true: {
+    label: "Completa",
+    cls: "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400",
+    dot: "bg-emerald-500",
+  },
+  false: {
+    label: "Parcial",
+    cls: "bg-sky-50 text-sky-700 dark:bg-sky-500/10 dark:text-sky-400",
+    dot: "bg-sky-500",
+  },
+};
+
 /** Badge neutro para prioridades fuera de 1-3, rotulado con el entero crudo. */
 export const reflectiveOrderPriorityFallback = (
   prioridad: number,

@@ -15,7 +15,9 @@ import { useReflectiveOrders } from "../hooks/useReflectiveOrders";
  * el listado de `GET /produccion/orden-reflejante/`, con el alta
  * (`POST /produccion/orden-reflejante/onboarding/`, ver `ReflectiveOrderForm`)
  * en el toolbar y "Ver Detalles" por renglón (ver
- * `ReflectiveOrderDetailDialog`, sin fetch propio).
+ * `ReflectiveOrderDetailDialog`, que trae su propio detalle vía
+ * `GET /produccion/orden-reflejante/{id}/` —ya no se arma con la fila del
+ * listado, ver `useReflectiveOrderDetail`).
  *
  * El diálogo de detalle se monta AQUÍ —fuera de `DataTable`, no dentro de la
  * fila que lo abrió— y se abre por `id` (`openOrderId`), no por el objeto de
@@ -24,8 +26,8 @@ import { useReflectiveOrders } from "../hooks/useReflectiveOrders";
  * (`orden_reflejante_existente.id`) que puede no corresponder a ninguna fila a
  * la vista — puede haberla creado otro usuario, o la generación automática
  * desde ventas. `setOpenOrderId` se reenvía por eso a `ReflectiveOrderForm` (el
- * alta, en el `actionButton` de abajo): el bloque ámbar de
- * `ReflectiveOrderCreateForm` abre este MISMO diálogo con ese id.
+ * alta, en el `actionButton` de abajo): el bloque ámbar del Paso 2 del asistente
+ * (`ReflectiveOrderStep2`) abre este MISMO diálogo con ese id.
  * `ReflectiveOrdersView` es el único dueño de `openOrderId` — el alta solo
  * recibe el setter para invocarlo (y `onCloseExistingOrder` para limpiarlo al
  * cerrarse), no gestiona su propio estado de apertura.
@@ -106,11 +108,13 @@ export function ReflectiveOrdersView() {
 
       {openOrderId !== null && (
         <ReflectiveOrderDetailDialog
-          // La búsqueda se hace aquí, contra el arreglo que esta vista ya
-          // tiene: el diálogo no vuelve a suscribirse a la query solo para
-          // localizar un renglón. `null` (id sin correspondencia en la lista)
-          // es el caso que el diálogo pinta como "no encontrada".
-          order={orders.find((order) => order.id === openOrderId) ?? null}
+          // El diálogo trae TODO su detalle por id. Antes esta vista le pasaba
+          // la fila ya localizada en el listado (`orders.find(...)`), apoyada en
+          // que `list` y `retrieve` compartían serializer; dejaron de
+          // compartirlo, así que la fila ya no es el detalle —le faltan la
+          // parcialidad por línea, el `reflejante_config` y las órdenes
+          // hermanas—. Ver `useReflectiveOrderDetail`.
+          orderId={openOrderId}
           open={true}
           onOpenChange={(open) => {
             if (!open) setOpenOrderId(null);

@@ -16,7 +16,7 @@ import { useCorteMangaOrderForm } from "../hooks/useCorteMangaOrderForm";
 
 /**
  * Opciones de prioridad. El mapeo 1 = Alta, 2 = Media, 3 = Baja es EL MISMO que
- * ya usan `ReflectiveOrderCreateForm`, `EmbroideryOrderCreateForm` y
+ * ya usan `ReflectiveOrderStep1`, `EmbroideryOrderStep1` y
  * `ProductionOrderStep1`, y el mismo que pinta
  * `CORTE_MANGA_ORDER_PRIORITY_CONFIG` en el badge del listado — de nada
  * serviría capturar "Urgente" aquí y que la tabla lo rotulara "Alta". El
@@ -53,8 +53,16 @@ interface CorteMangaOrderCreateFormProps {
  * `{ pedido, prioridad?, observaciones? }` y nada más — el backend deriva los
  * renglones solo, uno por cada talla del pedido con `lleva_corte_manga=True`.
  * No hay selección por línea ni cantidades que capturar (la orden es SIEMPRE
- * completa), así que un "Paso 1 / Paso 2" solo agregaría pantallas. Mismo
- * criterio —y mismo precedente— que `ReflectiveOrderCreateForm`.
+ * completa), así que un "Paso 1 / Paso 2" solo agregaría pantallas.
+ *
+ * OJO — este módulo es hoy el ÚLTIMO de los tres con alta de un solo paso.
+ * Bordado y reflejante ya migraron a un asistente de 2 pasos porque su POST
+ * acepta `detalles_override` y sus pedidos pueden cubrirse en varias órdenes
+ * parciales. El backend de corte de manga TAMBIÉN lo acepta —los tres comparten
+ * el mismo constructor de onboarding y la misma validación de cupo—, así que la
+ * justificación de arriba describe lo que este frontend hace, no un límite del
+ * API: migrarlo es trabajo pendiente, con `ReflectiveOrderStepManager` como
+ * precedente directo.
  *
  * Lo que NO se muestra, a propósito:
  *  - Un selector de operador funcional: `usuario_asignado` está en los

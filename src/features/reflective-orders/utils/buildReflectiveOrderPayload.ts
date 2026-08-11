@@ -1,5 +1,8 @@
 import type { CreateReflectiveOrderFormValues } from "../schemas/reflective-order.schema";
-import type { CreateReflectiveOrderPayload } from "../interfaces/reflective-order.interface";
+import type {
+  CreateReflectiveOrderPayload,
+  ReflectiveOrderDetalleOverride,
+} from "../interfaces/reflective-order.interface";
 
 /**
  * Arma el cuerpo de `POST /produccion/orden-reflejante/onboarding/` desde los
@@ -12,15 +15,24 @@ import type { CreateReflectiveOrderPayload } from "../interfaces/reflective-orde
  * (`fecha_inicio`) y, particularmente en reflejante, `estatus_reflejante` y
  * `fecha_fin`, que el serializer SÍ acepta pero el service descarta. El backend
  * los ignoraría en silencio, pero enviarlos sugeriría que el cliente decide
- * algo que no decide. Tampoco viaja `detalles`: el service los deriva del
- * pedido.
+ * algo que no decide. Tampoco viaja `detalles`: es la forma de la RESPUESTA, no
+ * del cuerpo.
  *
  * `observaciones` se omite cuando queda vacío tras recortar espacios: el modelo
  * lo declara `null=True`, así que "sin observaciones" es ausencia del campo, no
  * una cadena vacía.
+ *
+ * `detallesOverride` son las líneas elegidas en el Paso 2. El parámetro es
+ * OPCIONAL —y se omite del cuerpo si llega vacío— porque enviar
+ * `detalles_override: []` equivale a no enviarlo: el service hace
+ * `data.get("detalles_override") or []` y cae a la ruta del pedido completo. Un
+ * arreglo vacío que se cuele aquí programaría el 100% del pedido en vez de
+ * fallar, que es el peor modo de falla posible; el Paso 2 bloquea ese envío
+ * antes de llegar (ver `useReflectiveStep2Form`).
  */
 export function buildReflectiveOrderPayload(
   values: CreateReflectiveOrderFormValues,
+  detallesOverride?: ReflectiveOrderDetalleOverride[],
 ): CreateReflectiveOrderPayload {
   const payload: CreateReflectiveOrderPayload = {
     pedido: values.pedido,
@@ -29,6 +41,10 @@ export function buildReflectiveOrderPayload(
 
   const observaciones = values.observaciones.trim();
   if (observaciones.length > 0) payload.observaciones = observaciones;
+
+  if (detallesOverride && detallesOverride.length > 0) {
+    payload.detalles_override = detallesOverride;
+  }
 
   return payload;
 }

@@ -5,11 +5,11 @@ import { MainDialog } from "@/src/components/MainDialog";
 import { DialogHeader } from "@/src/components/DialogHeader";
 import { Button } from "@/src/components/Button";
 import { RulerIcon } from "@/src/components/Icons";
-import { ReflectiveOrderCreateForm } from "./ReflectiveOrderCreateForm";
+import { ReflectiveOrderStepManager } from "./ReflectiveOrderStepManager";
 
 interface ReflectiveOrderFormProps {
-  /** Ver `ReflectiveOrderCreateFormProps.onViewExistingOrder` — solo se
-   *  reenvía, este componente no lo usa directamente. */
+  /** Ver `ReflectiveOrderStep2Props.onViewExistingOrder` — solo se reenvía,
+   *  este componente no lo usa directamente. */
   onViewExistingOrder: (id: number) => void;
   /**
    * Cierra el diálogo de detalle que este formulario pudo haber abierto desde
@@ -22,11 +22,12 @@ interface ReflectiveOrderFormProps {
 
 /**
  * Punto de entrada del alta de orden de reflejante: botón del toolbar que abre
- * el formulario de un solo paso.
+ * el asistente de 2 pasos (encabezado → prendas y cantidades).
  *
  * El contenido —y con él la llamada al onboarding— solo se monta cuando el
- * diálogo está abierto, y se re-monta limpio en cada apertura (sin pedido ni
- * observaciones residuales). Mismo patrón que `EmbroideryOrderForm`.
+ * diálogo está abierto, y se re-monta limpio en cada apertura (sin pedido,
+ * observaciones ni selección de líneas residuales). Mismo patrón que
+ * `EmbroideryOrderForm`/`PickingForm`.
  */
 export const ReflectiveOrderForm = ({
   onViewExistingOrder,
@@ -47,11 +48,15 @@ export const ReflectiveOrderForm = ({
       title={
         <DialogHeader
           title="Nueva Orden de Reflejante"
-          subtitle="Genera la orden a partir de un pedido con prendas por reflejar"
+          subtitle="Programa total o parcialmente las prendas por reflejar de un pedido"
           statusColor="sky"
         />
       }
-      maxWidth="640px"
+      // 820px (no los 640px del alta de un solo paso): el Paso 2 lista una fila
+      // por talla con casilla, nombre del producto, cantidades y stepper. Mismo
+      // ancho que los asistentes de bordado y picking, que muestran una tabla
+      // equivalente.
+      maxWidth="820px"
       showCloseButton={false}
       trigger={
         <Button variant="primary">
@@ -61,8 +66,8 @@ export const ReflectiveOrderForm = ({
       }
     >
       {isDialogOpen && (
-        <ReflectiveOrderCreateForm
-          onSuccess={() => setIsDialogOpen(false)}
+        <ReflectiveOrderStepManager
+          onClose={() => setIsDialogOpen(false)}
           onViewExistingOrder={onViewExistingOrder}
         />
       )}
