@@ -67,16 +67,14 @@ const sanitizeIntegerInput = (raw: string): string =>
  * Paso 2 del alta de orden de reflejante: qué líneas del pedido entran en esta
  * orden y con cuántas piezas.
  *
- * ── Qué NO tiene este paso ──────────────────────────────────────────────────
- * A diferencia del Paso 2 de bordado, aquí no hay detalle visual por línea (ni
- * popover, ni posición, ni imagen). NO es porque no haya nada que mostrar:
- * `reflejante_config` es un ARREGLO de hasta tres reflejantes con posiciones y
- * materiales distintos (P-00027 mezcla dos), igual de rico que las ubicaciones
- * de bordado. La razón es otra: ese arreglo es UNIFORME entre las líneas de un
- * mismo pedido —el mismo config en todas sus tallas, confirmado contra datos
- * reales—, así que un bloque idéntico por renglón sería ruido. Mostrarlo (una
- * vez, no por línea) es trabajo de UI pendiente; hoy la tabla solo captura lo
- * que sí varía entre líneas: producto, talla, color y cantidades.
+ * ── Config por línea ────────────────────────────────────────────────────────
+ * La tabla del Paso 2 muestra el `reflejante_config` de cada línea en un popover
+ * (ver `ReflectiveOrderLinesTable`/`ReflectiveLineConfigPopover`): un arreglo de
+ * hasta tres reflejantes con material y posición, con dos materiales en P-00027.
+ * El config es UNIFORME entre las líneas de un mismo pedido, pero el popover va
+ * por fila igual —colapsado en un trigger compacto— para que cada línea sea
+ * autoexplicativa mientras el operador captura cantidades. La captura en sí solo
+ * usa lo que varía entre líneas: producto, talla, color y cantidades.
  *
  * ── Dónde vive el estado ────────────────────────────────────────────────────
  * El ENCABEZADO vive en `ReflectiveOrderStepManager` (por eso "Regresar" lo

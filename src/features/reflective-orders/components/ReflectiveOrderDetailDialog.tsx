@@ -22,6 +22,11 @@ import {
   reflectiveOrderPriorityFallback,
 } from "../constants/reflectiveOrderStatus";
 import { useReflectiveOrderDetail } from "../hooks/useReflectiveOrderDetail";
+import { resolveReflectiveLineConfigs } from "../utils/resolveReflectiveLineConfigs";
+import {
+  ReflectiveConfigCountBadge,
+  ReflectiveLineConfigPopover,
+} from "./ReflectiveLineConfigPopover";
 import type {
   ReflectiveOrderDetailLine,
   ReflectiveOrderSibling,
@@ -90,17 +95,38 @@ const LineasTable = ({ items }: { items: ReflectiveOrderDetailLine[] }) => {
         </>
       }
     >
-      {items.map((linea) => (
-        <tr
-          key={linea.id}
-          className="hover:bg-slate-50 dark:hover:bg-white/5 transition-colors"
-        >
-          <td
-            className="px-3 py-2 text-slate-700 dark:text-slate-200 max-w-40 truncate"
-            title={linea.producto_nombre ?? undefined}
+      {items.map((linea) => {
+        // TODOS los reflejantes del renglón. Prefiere `configuracion` (la foto
+        // congelada al emitir la orden) y cae a la lectura en vivo solo cuando
+        // no la hay —órdenes anteriores a la migración—. Ver
+        // `resolveReflectiveLineConfigs`. Las columnas "Tipo"/"Posición" siguen
+        // mostrando el escalar `[0]`; el popover trae el arreglo completo.
+        const configs = resolveReflectiveLineConfigs(linea);
+
+        return (
+          <tr
+            key={linea.id}
+            className="hover:bg-slate-50 dark:hover:bg-white/5 transition-colors"
           >
-            {textOrDash(linea.producto_nombre)}
-          </td>
+            <td className="px-3 py-2 text-slate-700 dark:text-slate-200">
+              <span
+                className="block max-w-40 truncate"
+                title={linea.producto_nombre ?? undefined}
+              >
+                {textOrDash(linea.producto_nombre)}
+              </span>
+              {configs.length > 0 && (
+                <span className="mt-1 flex flex-wrap items-center gap-1.5">
+                  <ReflectiveLineConfigPopover
+                    configs={configs}
+                    productoNombre={linea.producto_nombre ?? `Producto #${linea.producto}`}
+                    tallaNombre={linea.talla_nombre}
+                    colorNombre={linea.color_nombre}
+                  />
+                  <ReflectiveConfigCountBadge configs={configs} />
+                </span>
+              )}
+            </td>
           <td className="px-3 py-2 whitespace-nowrap text-slate-600 dark:text-slate-300">
             {textOrDash(linea.talla_nombre)}
           </td>
@@ -128,8 +154,9 @@ const LineasTable = ({ items }: { items: ReflectiveOrderDetailLine[] }) => {
           <td className="px-3 py-2 whitespace-nowrap text-right tabular-nums text-slate-500 dark:text-slate-400">
             {quantityOrDash(linea.cantidad_pendiente)}
           </td>
-        </tr>
-      ))}
+          </tr>
+        );
+      })}
     </LineItemsTable>
   );
 };

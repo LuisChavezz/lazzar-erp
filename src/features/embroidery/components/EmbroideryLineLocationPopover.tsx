@@ -4,6 +4,7 @@ import { useState } from "react";
 import Image from "next/image";
 import { Popover } from "@radix-ui/themes";
 import { InfoIcon } from "@/src/components/Icons";
+import { cleanText } from "@/src/utils/cleanText";
 import type { EmbroideryOnboardingUbicacion } from "../interfaces/embroidery.interface";
 
 /**
@@ -49,12 +50,6 @@ const TECHNIQUE_LABELS: {
   { key: "revelado", label: "Revelado" },
   { key: "nuevo_ponchado", label: "Nuevo ponchado" },
 ];
-
-/** Texto presente y no vacío, ya recortado. `null` si no hay nada que pintar. */
-const cleanText = (value: string | null | undefined): string | null => {
-  const trimmed = value?.trim();
-  return trimmed ? trimmed : null;
-};
 
 /**
  * UNA ubicación del bordado. Se extrajo a su propio componente al pasar el

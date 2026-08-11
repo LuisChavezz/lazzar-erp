@@ -30,13 +30,9 @@ interface ReflectiveOrderStep2Props {
  * ya cubierto responde 409 ("ya existe una orden…") en vez del error de cupo,
  * que es el que de verdad explica qué pasa. Ver `buildReflectiveOrderPayload`.
  *
- * SIN detalle visual por línea (ni popover de ubicación como en bordado): no
- * porque el config esté vacío —`reflejante_config` es un arreglo de hasta tres
- * reflejantes, con dos materiales en P-00027— sino porque ese arreglo es
- * uniforme entre las líneas del pedido, así que nada distingue a una línea de
- * otra más allá de producto/talla/color y cantidades, que es lo que muestra la
- * tabla. Enseñar el config (una vez, no por línea) queda pendiente. Ver
- * `ReflectiveOrderLinesTable`.
+ * Cada línea muestra su `reflejante_config` en un popover (material y posición
+ * de cada reflejante, hasta tres, con dos materiales en P-00027), igual que
+ * bordado muestra sus ubicaciones. Ver `ReflectiveOrderLinesTable`.
  */
 export function ReflectiveOrderStep2({
   header,

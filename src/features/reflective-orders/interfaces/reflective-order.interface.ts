@@ -242,15 +242,29 @@ export interface ReflectiveOrderDetailLine extends ReflectiveOrderLine {
   /** Saldo de la línea: `cantidad_pedido - cantidad_asignada`. */
   cantidad_pendiente: number | null;
   /**
-   * El `reflejante_config` CRUDO de la `PedidoDetalleTalla` de esta línea, tal
-   * cual lo guardó ventas y sin normalizar. `null` cuando la talla no cruza o
-   * el config viene vacío.
+   * FOTO CONGELADA del `reflejante_config` al emitir la orden
+   * (`OrdenReflejanteDetalle.configuracion`, migración `0027`). Es el ARREGLO
+   * íntegro —no un objeto que lo envuelva, a diferencia de bordado— o `null` en
+   * las órdenes anteriores a la migración (no se hizo backfill).
    *
-   * Es la ÚNICA vía por la que el detalle puede enseñar la configuración del
-   * reflejante de una orden creada desde este módulo: `tipo_reflejante` y
-   * `posicion` los puebla solo la generación automática desde ventas, y
-   * `OrdenReflejanteService.save` los deja en `null` (ver `ReflectiveOrderLine`).
-   * Se tipa por fidelidad al contrato; hoy no se pinta en la UI.
+   * Es la fuente PREFERIDA para pintar el documento: una orden refleja lo que se
+   * mandó a producción cuando se emitió, no lo que la cotización diga después.
+   * Ver `resolveReflectiveLineConfigs`, que cae a `reflejante_config` (lectura en
+   * vivo) cuando esto es `null`. El listado NO lo trae
+   * (`OrdenReflejanteDetalleListSerializer` lo excluye).
+   */
+  configuracion: ReflectiveLineConfigEntry[] | null;
+  /**
+   * LECTURA EN VIVO del `reflejante_config` de la `PedidoDetalleTalla` de esta
+   * línea (`SerializerMethodField` que la re-lee por
+   * `(pedido_detalle_id, talla_id)`), tal cual está HOY en el pedido y sin
+   * normalizar. `null` cuando la talla no cruza o el config viene vacío.
+   *
+   * Es el RESPALDO de `configuracion` para las órdenes anteriores a la
+   * migración, que no tienen foto congelada. `tipo_reflejante`/`posicion`
+   * escalares solo describen el elemento `[0]`; el arreglo completo (con sus N
+   * materiales y posiciones) vive aquí y en `configuracion`. Ver
+   * `resolveReflectiveLineConfigs`.
    */
   reflejante_config: ReflectiveLineConfigEntry[] | null;
 }

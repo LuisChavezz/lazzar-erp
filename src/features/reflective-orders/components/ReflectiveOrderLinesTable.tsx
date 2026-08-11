@@ -5,6 +5,10 @@ import { LayersIcon } from "@/src/components/Icons";
 import { formatExactQuantityValue } from "@/src/utils/formatCurrency";
 import { reflectiveLineProductoNombre } from "../hooks/useReflectiveStep2Form";
 import type { ReflectiveOnboardingDetalle } from "../interfaces/reflective-order.interface";
+import {
+  ReflectiveConfigCountBadge,
+  ReflectiveLineConfigPopover,
+} from "./ReflectiveLineConfigPopover";
 
 interface ReflectiveOrderLinesTableProps {
   rows: ReflectiveOnboardingDetalle[];
@@ -24,14 +28,17 @@ interface ReflectiveOrderLinesTableProps {
  * Tabla de prendas del pedido elegido: una casilla POR LÍNEA más la cantidad de
  * piezas que entran en esta orden.
  *
- * Es la gemela de `EmbroideryOrderLinesTable` SIN su segunda fila de detalle
- * (el disparador del popover de ubicación). La diferencia no es que reflejante
- * no tenga config: `reflejante_config` es un arreglo de hasta tres reflejantes
- * —con dos materiales en P-00027—, tan rico como las ubicaciones de bordado. Es
- * que ese arreglo es uniforme entre las líneas del pedido (el mismo config en
- * todas sus tallas), así que un bloque idéntico por renglón sería ruido; en
- * bordado sí varía por línea, y por eso allá el popover existe. Enseñar el
- * config de reflejante (una vez, no por línea) queda pendiente.
+ * Gemela de `EmbroideryOrderLinesTable`, con su misma segunda fila: el
+ * disparador del popover de configuración (`ReflectiveLineConfigPopover`) más el
+ * distintivo de conteo cuando la línea lleva varios reflejantes. Cada elemento
+ * de `reflejante_config` es un reflejante (material + posición); el arreglo trae
+ * de uno a tres, y P-00027 mezcla dos materiales en la misma prenda.
+ *
+ * El disparador es UNO por fila aunque el config sea UNIFORME entre las líneas
+ * del pedido: sí, es el mismo dato en todas sus tallas, pero va colapsado en un
+ * trigger compacto y mantiene la fila autoexplicativa —el operador ve qué se
+ * aplica en la línea que está programando sin buscar un encabezado compartido—.
+ * La cardinalidad NO cambia: varios reflejantes son una sola línea.
  *
  * Combina los dos precedentes del proyecto en lugar de inventar un tercero: la
  * casilla por línea con "Marcar/Quitar todas" y el renglón agotado deshabilitado
@@ -98,6 +105,10 @@ export function ReflectiveOrderLinesTable({
             const ceiling = ceilings.get(id) ?? 0;
             const agotada = ceiling <= 0;
             const checked = checkedIds.has(id);
+            // Los reflejantes de la línea, del onboarding (lectura en vivo del
+            // pedido; en el alta todavía no hay orden que congelar). Puede venir
+            // `null`/vacío: la fila cae a mostrar solo cantidades, sin popover.
+            const configs = row.reflejante_config ?? [];
 
             return (
               <div
@@ -183,6 +194,26 @@ export function ReflectiveOrderLinesTable({
                     label={`Piezas a reflejar de ${reflectiveLineProductoNombre(row)}`}
                   />
                 </div>
+
+                {/* Segunda fila, FUERA del `<label>` de arriba: el disparador es
+                    un `<button>` y, dentro de una etiqueta, cada clic suyo se
+                    reenviaría a la casilla y desmarcaría la línea que el usuario
+                    quiere inspeccionar. El `pl-7` la alinea bajo el texto (ancho
+                    de la casilla + su `gap-3`). Sin config no hay nada que abrir:
+                    no se pinta ni el botón ni un popover vacío. */}
+                {configs.length > 0 && (
+                  <div className="mt-1 flex flex-wrap items-center gap-2 pl-7">
+                    <ReflectiveLineConfigPopover
+                      configs={configs}
+                      productoNombre={reflectiveLineProductoNombre(row)}
+                      // Talla y color distinguen filas que comparten producto;
+                      // sin ellos el nombre accesible sería idéntico en todas.
+                      tallaNombre={row.talla_nombre}
+                      colorNombre={row.color_nombre}
+                    />
+                    <ReflectiveConfigCountBadge configs={configs} />
+                  </div>
+                )}
               </div>
             );
           })}
