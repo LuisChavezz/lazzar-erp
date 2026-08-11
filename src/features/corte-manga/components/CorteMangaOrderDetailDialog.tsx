@@ -23,56 +23,6 @@ import type {
   CorteMangaOrderLine,
 } from "../interfaces/corte-manga-order.interface";
 
-/**
- * `configuracion` es un `JSONField` LIBRE (`unknown` en el tipo, `nullable` sin
- * `type` en el esquema OpenAPI), así que no puede pintarse a ciegas: un
- * `String(objeto)` daría "[object Object]" y un acceso directo a `.tipo`
- * reventaría si algún día llega un arreglo o un escalar.
- *
- * Se resuelve en tres ramas, de la más específica a la más defensiva:
- *  1. `null`/`undefined` → guion largo. ES EL CASO DE HOY para el 100% de los
- *     renglones: la única ruta de alta viva (`OrdenCorteMangaService.save`) no
- *     escribe este campo. No es un error ni un dato faltante — ver la nota de
- *     `CorteMangaOrderLine`.
- *  2. Objeto con un `tipo` string no vacío → ese valor. Es la ÚNICA forma que
- *     alguna vez se escribió aquí (`corte_manga_config` de ventas, hoy
- *     deshabilitada), así que solo puede aparecer en filas históricas.
- *  3. Cualquier otra forma → su JSON crudo, truncado por CSS y completo en el
- *     `title`. No se inventa un formato, pero tampoco se descarta el dato en
- *     silencio: un valor desconocido se ve, y quien lo vea sabrá que el
- *     contrato cambió.
- */
-const describeConfiguracion = (configuracion: unknown): { text: string; title?: string } => {
-  if (configuracion == null) return { text: "—" };
-
-  if (typeof configuracion === "object" && !Array.isArray(configuracion)) {
-    const tipo = (configuracion as Record<string, unknown>).tipo;
-    if (typeof tipo === "string" && tipo.trim() !== "") {
-      return { text: tipo, title: tipo };
-    }
-  }
-
-  const raw = JSON.stringify(configuracion);
-  // `JSON.stringify` devuelve `undefined` para valores no serializables
-  // (`function`, `symbol`) — imposible viniendo de JSON, pero el tipo lo admite.
-  return raw ? { text: raw, title: raw } : { text: "—" };
-};
-
-/**
- * Columnas de `detalles`. Se pinta el shape COMPLETO con `"—"` por renglón, que
- * es la convención de Packing/Dispatch/Picking y la que ya sigue el diálogo de
- * reflejante — NO la excepción de bordado, que omite las columnas
- * estructuralmente vacías.
- *
- * El criterio para elegir una u otra es si la columna está vacía por
- * CONSTRUCCIÓN o por ORIGEN de la fila. Aquí es por origen: `color` y
- * `configuracion` los poblaba la generación automática desde ventas (`color=
- * pedido_detalle.color`, `configuracion=talla.corte_manga_config`), que está
- * deshabilitada desde el 2026-07-31 pero dejó filas históricas; la ruta viva no
- * los escribe. Así que hoy se verán en `"—"` para todo lo que se cree desde
- * este módulo, y con valor en lo que quede de antes. Ese guion es un dato
- * legítimo ("esta orden no trae configuración de corte"), no un estado de error.
- */
 const LineasTable = ({ items }: { items: CorteMangaOrderLine[] }) => {
   if (items.length === 0) {
     return <EmptyLines>Esta orden no tiene artículos registrados.</EmptyLines>;
@@ -85,13 +35,11 @@ const LineasTable = ({ items }: { items: CorteMangaOrderLine[] }) => {
           <th className="px-3 py-2 font-medium">Producto</th>
           <th className="px-3 py-2 font-medium">Talla</th>
           <th className="px-3 py-2 font-medium">Color</th>
-          <th className="px-3 py-2 font-medium">Configuración</th>
           <th className="px-3 py-2 font-medium text-right">Cantidad</th>
         </>
       }
     >
       {items.map((linea) => {
-        const configuracion = describeConfiguracion(linea.configuracion);
         return (
           <tr
             key={linea.id}
@@ -108,12 +56,6 @@ const LineasTable = ({ items }: { items: CorteMangaOrderLine[] }) => {
             </td>
             <td className="px-3 py-2 whitespace-nowrap text-slate-600 dark:text-slate-300">
               {textOrDash(linea.color_nombre)}
-            </td>
-            <td
-              className="px-3 py-2 max-w-40 truncate text-slate-600 dark:text-slate-300"
-              title={configuracion.title}
-            >
-              {configuracion.text}
             </td>
             <td className="px-3 py-2 whitespace-nowrap text-right tabular-nums font-semibold text-slate-800 dark:text-white">
               {formatQuantityValue(linea.cantidad)}

@@ -43,29 +43,28 @@ export type CorteMangaOrderStatus = 1 | 2 | 3 | 4 | 5 | 6 | 7;
  * aunque este listado solo lo resuma: el diálogo de detalle —fase siguiente— lo
  * reutiliza tal cual.
  *
- * ESTADO REAL DE `color` Y `configuracion`: llegan `null` en TODAS las órdenes
- * de hoy. Las escribe quien crea la orden, y de las tres rutas de alta que
- * existen en el código solo UNA está viva:
+ * ESTADO REAL DE `color` Y `configuracion`: desde el commit `1884b69`
+ * (2026-08-05), la ÚNICA ruta de alta viva —`OrdenCorteMangaService.save`,
+ * la que atienden `POST /produccion/orden-corte-manga/` y `.../onboarding/`—
+ * copia ambos campos de `pedido_detalle`/`talla` al construir cada detalle
+ * (`color=getattr(dt.pedido_detalle, "color", None)`,
+ * `configuracion=dt.corte_manga_config` si es un dict no vacío). O sea: en
+ * filas creadas HOY, `null` en `color` refleja que el `pedido_detalle` de
+ * origen no tenía color asignado, no un hueco del backend.
  *
- *  - `OrdenCorteMangaService.save` (la ÚNICA viva; es la que atienden
- *    `POST /produccion/orden-corte-manga/` y `.../onboarding/`) construye cada
- *    detalle con `pedido_detalle`/`producto_id`/`cantidad`/`talla` y nada más:
- *    deja `color` y `configuracion` en su default `null`.
- *  - La generación automática al autorizar una cotización
- *    (`ventas/api/views.py::_generar_ordenes_corte_manga`) SÍ poblaba ambos
- *    (`color=pedido_detalle.color`, `configuracion=talla.corte_manga_config`),
- *    pero su llamada está COMENTADA desde una decisión de negocio del
- *    2026-07-31: las órdenes de trabajo se generan solo manualmente desde sus
- *    módulos. El método se conserva para cuando se habilite un endpoint
- *    dedicado.
- *  - La generación de órdenes de trabajo desde picking
- *    (`wms/services/picking_pipeline/work_orders.py::generar_ordenes`) puebla
- *    `configuracion`, pero NADIE la invoca: `PickingService` descarta los flags
- *    `generar_orden_*` y devuelve `ordenes_trabajo_generadas = []`.
+ * Antes de ese commit, `save` dejaba ambos en su default `null` sin copiarlos
+ * — de ahí que existan filas históricas (anteriores al 2026-08-05) con
+ * `color`/`configuracion` en `null` pese a que su `pedido_detalle` sí tenía
+ * el dato: eso SÍ es un hueco de datos heredado, no el comportamiento actual.
  *
- * O sea: `color`/`configuracion` en `null` NO son un defecto del frontend ni un
- * dato faltante que haya que rellenar — se muestran tal cual llegan. Solo filas
- * históricas anteriores al 2026-07-31 pueden traerlos poblados.
+ * La generación automática al autorizar una cotización
+ * (`ventas/api/views.py::_generar_ordenes_corte_manga`) también poblaba ambos,
+ * pero su llamada está COMENTADA desde una decisión de negocio del
+ * 2026-07-31: las órdenes de trabajo se generan solo manualmente desde sus
+ * módulos. La generación desde picking
+ * (`wms/services/picking_pipeline/work_orders.py::generar_ordenes`) puebla
+ * `configuracion`, pero NADIE la invoca: `PickingService` descarta los flags
+ * `generar_orden_*` y devuelve `ordenes_trabajo_generadas = []`.
  *
  * `cantidad` es un `FloatField`, o sea un NÚMERO en el JSON (no el string
  * decimal habitual de los campos de inventario).
