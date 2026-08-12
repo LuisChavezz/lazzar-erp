@@ -37,9 +37,14 @@ import type {
 
 // ── Navegación "Volver" según el módulo de origen (?from=) ───────────────────
 // La ruta es neutra, así que el destino de "Volver" lo decide quien enlazó.
-// Hoy la única lista de pedidos vive en Mesa de Control; el default cae ahí.
+// El default cae en Mesa de Control, la lista original de pedidos.
 const BACK_TARGETS: Record<string, { href: string; label: string }> = {
   operations: { href: "/operations/orders", label: "Volver a Mesa de Control" },
+  // Sin esta entrada, un usuario solo-WMS caería en /operations/orders y el
+  // proxy lo rebotaría al home por falta de R-MESACONTROL.
+  wms: { href: "/wms/orders", label: "Volver a Operaciones de Almacén" },
+  procurement: { href: "/procurement/orders", label: "Volver a Compras" },
+  sales: { href: "/sales/orders", label: "Volver a Mis Pedidos" },
 };
 const DEFAULT_BACK = { href: "/operations/orders", label: "Volver a pedidos" };
 

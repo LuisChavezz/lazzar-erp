@@ -129,6 +129,14 @@ export const appRouteGroups: AppRouteGroup[] = [
         showInSidebar: false,
       },
       {
+        key: "sales-orders",
+        label: "Mis Pedidos",
+        path: "/sales/orders",
+        icon: PedidosIcon,
+        description: "Pedidos originados en las cotizaciones que creaste.",
+        permission: "R-CRM",
+      },
+      {
         key: "sales-emails",
         label: "Correos",
         path: "/sales/emails",
@@ -155,6 +163,14 @@ export const appRouteGroups: AppRouteGroup[] = [
     moduleIcon: InventariosIcon,
     showInHome: true,
     items: [
+      {
+        key: "wms-orders",
+        label: "Pedidos",
+        path: "/wms/orders",
+        icon: PedidosIcon,
+        description: "Consulta de pedidos y su detalle para planear el surtido en almacén.",
+        permission: "R-WMS",
+      },
       {
         key: "wms-stock",
         label: "Existencias",
@@ -230,6 +246,14 @@ export const appRouteGroups: AppRouteGroup[] = [
     moduleIcon: ComprasIcon,
     showInHome: true,
     items: [
+      {
+        key: "procurement-sales-orders",
+        label: "Pedidos",
+        path: "/procurement/orders",
+        icon: PedidosIcon,
+        description: "Consulta de pedidos y su detalle para planear el abastecimiento.",
+        permission: "R-COMPRAS",
+      },
       {
         key: "procurement-orders",
         label: "Órdenes de Compra",

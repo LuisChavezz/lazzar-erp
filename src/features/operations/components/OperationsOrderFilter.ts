@@ -1,27 +1,11 @@
-import type { DataTableFilterConfig } from '@/src/components/DataTable';
-import type { Order } from '@/src/features/orders/interfaces/order.interface';
-import { isOrderConfirmed, ORDER_STATUS_FILTER_FIELD } from './OperationsOrderColumns';
+import {
+  enrichOrdersWithStatus,
+  sharedOrderFilterConfig,
+} from '@/src/features/orders/components/SharedOrderColumns';
 
-/**
- * Enriquece los pedidos con una propiedad `ORDER_STATUS_FILTER_FIELD` computada
- * para que el sistema de filtros de DataTable pueda filtrar por estado.
- */
-export function enrichOrdersWithStatus(
-  orders: Order[],
-): (Order & { [ORDER_STATUS_FILTER_FIELD]: string })[] {
-  return orders.map((order) => ({
-    ...order,
-    [ORDER_STATUS_FILTER_FIELD]: isOrderConfirmed(order) ? 'Confirmado' : 'Por confirmar',
-  }));
-}
+// El enriquecido de estado y el filtro son los mismos para los tres módulos que
+// listan pedidos; viven en `orders/components/SharedOrderColumns.tsx`. Este
+// archivo se conserva como punto de entrada de Mesa de Control.
+export { enrichOrdersWithStatus };
 
-export const operationsOrderFilterConfig: DataTableFilterConfig[] = [
-  {
-    id: ORDER_STATUS_FILTER_FIELD,
-    label: 'Estado',
-    options: [
-      { value: 'Por confirmar', label: 'Por confirmar' },
-      { value: 'Confirmado', label: 'Confirmado' },
-    ],
-  },
-];
+export const operationsOrderFilterConfig = sharedOrderFilterConfig;

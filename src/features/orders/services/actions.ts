@@ -2,8 +2,16 @@ import { v1_api } from "@/src/api/v1.api";
 import { Order, PedidoDetail } from "../interfaces/order.interface";
 
 
-export const getOrders = async (): Promise<Order[]> => {
-  const response = await v1_api.get<Order[]>("/ventas/pedidos/");
+/** Filtros de query string aceptados por `GET /ventas/pedidos/`. */
+export type OrdersQueryParams = Record<string, string>;
+
+/**
+ * Lista de pedidos. Sin `params` devuelve todos; con `{ mis_pedidos: "true" }`
+ * el backend acota a los pedidos cuya cotización de origen creó el usuario
+ * autenticado (`cotizacion.vendedor`).
+ */
+export const getOrders = async (params?: OrdersQueryParams): Promise<Order[]> => {
+  const response = await v1_api.get<Order[]>("/ventas/pedidos/", { params });
   return response.data;
 }
 
