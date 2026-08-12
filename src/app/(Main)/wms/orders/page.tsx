@@ -1,10 +1,10 @@
 import { Metadata } from 'next';
-import { WmsOrderList } from '@/src/features/orders/components/WmsOrderList';
+import { OrderListView } from '@/src/features/orders/components/OrderListView';
 
 export const metadata: Metadata = {
   title: 'Pedidos | Operaciones de Almacén | ERP',
   description:
-    'Consulta los pedidos autorizados y su detalle para planear el surtido en almacén.',
+    'Consulta los pedidos y su detalle para planear el surtido en almacén.',
 };
 
 export default function WmsOrdersPage() {
@@ -16,7 +16,7 @@ export default function WmsOrdersPage() {
         </p>
       </header>
       <section aria-label="Lista de pedidos">
-        <WmsOrderList />
+        <OrderListView from="wms" />
       </section>
     </main>
   );

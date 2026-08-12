@@ -1,5 +1,5 @@
 import { Metadata } from 'next';
-import { ProcurementOrderList } from '@/src/features/orders/components/ProcurementOrderList';
+import { OrderListView } from '@/src/features/orders/components/OrderListView';
 
 export const metadata: Metadata = {
   title: 'Pedidos | Compras y SCM | ERP',
@@ -16,7 +16,7 @@ export default function ProcurementOrdersPage() {
         </p>
       </header>
       <section aria-label="Lista de pedidos">
-        <ProcurementOrderList />
+        <OrderListView from="procurement" />
       </section>
     </main>
   );

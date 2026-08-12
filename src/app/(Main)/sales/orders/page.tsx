@@ -1,5 +1,5 @@
 import { Metadata } from 'next';
-import { SalesOrderList } from '@/src/features/orders/components/SalesOrderList';
+import { OrderListView } from '@/src/features/orders/components/OrderListView';
 
 export const metadata: Metadata = {
   title: 'Mis Pedidos | CRM y Ventas | ERP',
@@ -17,7 +17,7 @@ export default function SalesOrdersPage() {
         </p>
       </header>
       <section aria-label="Lista de pedidos">
-        <SalesOrderList />
+        <OrderListView from="sales" params={{ mis_pedidos: 'true' }} />
       </section>
     </main>
   );
