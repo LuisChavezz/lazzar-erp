@@ -1,36 +1,105 @@
-import { QuoteExtraService } from "../../quotes/interfaces/quote.interface";
+/**
+ * Configuración JSON congelada de un servicio de la talla (`bordado_config`,
+ * `reflejante_config`, `corte_manga_config`, `cambio_talla_config`). El backend
+ * los guarda como `JSONField` sin forma fija: `reflejante_config` viaja como
+ * ARRAY y `bordado`/`corte_manga` como OBJETO (ver módulos OR/OCM), así que se
+ * tipa laxo — esta vista de detalle solo necesita las banderas `lleva_*`, no
+ * desglosar el contenido. `null` cuando el servicio no aplica.
+ */
+export type ServicioConfig = Record<string, unknown> | unknown[] | null;
 
+/**
+ * Servicio extra facturable de un pedido (`PedidoServicioExtra`). NO reusa el
+ * `QuoteExtraService` de cotizaciones: aquel trae `cantidad` y este no, y este
+ * trae `visible_en_factura` que aquel no. `monto` es CONTABLE — el backend lo
+ * elimina de la respuesta para usuarios sin rol contable, por eso es opcional.
+ */
+export interface PedidoServicioExtra {
+  id: number;
+  nombre: string;
+  /** Contable: ausente para usuarios sin permiso de contabilidad. */
+  monto?: string;
+  visible_en_factura: boolean;
+}
+
+/**
+ * Cabecera de un pedido (`Pedido`), tal como la devuelve `GET /ventas/pedidos/`
+ * (listado) y, extendida con `detalles`, `GET /ventas/pedidos/{id}/` (detalle).
+ *
+ * IMPORTANTE — campos contables opcionales: el detalle (`retrieve`) pasa por
+ * `filtrar_campos_contabilidad_pedido`, que ELIMINA (no anula) ~24 campos para
+ * usuarios sin rol contable. El listado (`list`) hoy no filtra, pero se tipan
+ * igual como opcionales aquí para que un consumidor del detalle no asuma su
+ * presencia. Cada campo así marcado lleva el comentario "Contable".
+ */
 export interface Order {
   id: number;
-  folio: string;
-  folio_consecutivo: number;
-  servicios_extras: QuoteExtraService[];
+  folio: string | null;
+  folio_consecutivo: number | null;
   tipo_pedido: number;
   estatus: number;
+  // ── FKs (PKs crudas) ─────────────────────────────────────────────────────
+  empresa: number;
+  sucursal: number;
+  serie_folio: number | null;
+  cliente: number;
+  cotizacion: number | null;
+  moneda: number;
+  // ── Origen del pedido (banderas siempre presentes) ───────────────────────
+  recompra: boolean;
+  chat_online: boolean;
+  pedido_online: boolean;
+  prospeccion: boolean;
+  recomendacion: boolean;
+  amazon: boolean;
+  google: boolean;
+  publicidad: boolean;
+  mercado_libre: boolean;
+  redes_sociales: boolean;
+  otro: boolean;
+  mailing: boolean;
+  // ── Forma de pago y contacto de facturación ──────────────────────────────
   persona_pagos: string;
   correo_facturas: string;
   telefono_pagos: string;
-  oc: string;
-  forma_pago: string;
-  metodo_pago: string;
-  uso_cfdi: string;
-  cliente_razon_social: string;
-  cliente_nombre: string;
-  cliente_rfc: string;
-  cliente_direccion_fiscal: string;
-  cliente_colonia: string;
-  cliente_codigo_postal: string;
-  cliente_ciudad: string;
-  cliente_estado: string;
-  anticipo_total: boolean;
-  anticipo_parcial: boolean;
+  oc: string | null;
+  /** Contable. */
+  forma_pago?: string;
+  /** Contable. */
+  metodo_pago?: string;
+  /** Contable. */
+  uso_cfdi?: string;
+  // ── Snapshot fiscal del cliente (foto al momento del pedido) ──────────────
+  cliente_razon_social: string | null;
+  cliente_nombre: string | null;
+  cliente_rfc: string | null;
+  /** PK cruda del régimen fiscal SAT (sin etiqueta en el serializer). */
+  cliente_regimen_fiscal: number | null;
+  cliente_direccion_fiscal: string | null;
+  cliente_colonia: string | null;
+  cliente_codigo_postal: string | null;
+  cliente_ciudad: string | null;
+  cliente_estado: string | null;
+  cliente_giro_empresarial: string | null;
+  // ── Condiciones de pago ──────────────────────────────────────────────────
+  /** Contable. */
+  anticipo_total?: boolean;
+  /** Contable. */
+  anticipo_parcial?: boolean;
+  /** NO contable: sobrevive el filtro. */
   vendedor_autoriza: boolean;
-  pago_antes_embarque: boolean;
-  por_confirmar: boolean;
-  otra_cantidad: boolean;
-  monto: string;
+  /** Contable. */
+  pago_antes_embarque?: boolean;
+  /** Contable. */
+  por_confirmar?: boolean;
+  /** Contable. */
+  otra_cantidad?: boolean;
+  /** Contable. */
+  monto?: string | null;
+  // ── Envío ────────────────────────────────────────────────────────────────
+  empaque_ecologico: boolean;
   embarque_parcial: boolean;
-  comentarios_parcialidad: string;
+  comentarios_parcialidad: string | null;
   destinatario: string | null;
   empresa_envio: string | null;
   telefono_envio: string | null;
@@ -41,32 +110,43 @@ export interface Order {
   ciudad_envio: string | null;
   estado_envio: string | null;
   referencias: string | null;
-  envio: string;
-  programa_bordados: string;
-  bordado_pantalones_extras: string;
+  // ── Servicios extra (importes) ───────────────────────────────────────────
+  /** Contable. */
+  envio?: string;
+  /** Contable. */
+  programa_bordados?: string;
+  /** Contable. */
+  bordado_pantalones_extras?: string;
+  /** NO contable: sobrevive el filtro. */
   bordado_logotipo: boolean;
-  serigrafia: string;
-  reflejante: string;
-  observaciones: string;
-  flete: string;
-  seguros: string;
-  anticipo: string;
-  subtotal: string;
-  descuento_global: string;
-  ieps: string;
-  iva: number;
-  gran_total: string;
+  /** Contable. */
+  serigrafia?: string;
+  /** Contable. */
+  reflejante?: string;
+  observaciones: string | null;
+  // ── Cargos adicionales y totales ─────────────────────────────────────────
+  /** Contable. */
+  flete?: string;
+  /** Contable. */
+  seguros?: string;
+  /** Contable. */
+  anticipo?: string;
+  /** Contable. */
+  subtotal?: string;
+  /** Contable. */
+  descuento_global?: string;
+  /** Contable. */
+  ieps?: string;
+  /** Contable: porcentaje entero (p.ej. 16), NO un importe. */
+  iva?: number;
+  /** Contable. */
+  gran_total?: string;
+  // ── Metadatos ────────────────────────────────────────────────────────────
   activo: boolean;
-  created_at: string;
-  updated_at: string;
+  created_at: string | null;
+  updated_at: string | null;
   fecha_confirmacion: string | null;
-  empresa: number;
-  sucursal: number;
-  serie_folio: number;
-  cliente: number;
-  cotizacion: number | null;
-  moneda: number;
-  cliente_regimen_fiscal: number;
+  servicios_extras: PedidoServicioExtra[];
 }
 
 /**
@@ -74,16 +154,32 @@ export interface Order {
  * VARIANTE VENDIBLE concreta vive aquí (no en la línea): cada talla trae su
  * propia `variante`/`variante_sku` y `cantidad` — a diferencia del patrón
  * plano producto XOR variante de `transferencia_detalle`/`picking_detalle`.
+ *
+ * `variante` es opcional por talla (`on_delete=SET_NULL`): cuando falta,
+ * `variante`/`variante_nombre`/`variante_sku` llegan en `null`.
  */
 export interface PedidoDetalleTalla {
   id: number;
   talla: number;
   talla_nombre: string;
-  variante: number;
-  /** Nombre completo de la variante (producto + color + talla concatenados). */
-  variante_nombre: string;
-  variante_sku: string;
+  variante: number | null;
+  /** Nombre completo de la variante; cae al SKU si el nombre viene vacío. */
+  variante_nombre: string | null;
+  variante_sku: string | null;
   cantidad: number;
+  /** Contable. */
+  precio_unitario?: string | null;
+  /** Contable. */
+  subtotal_talla?: string;
+  // ── Banderas de servicios (siempre presentes) + su config congelada ──────
+  lleva_bordado: boolean;
+  bordado_config: ServicioConfig;
+  lleva_reflejante: boolean;
+  reflejante_config: ServicioConfig;
+  lleva_corte_manga: boolean;
+  corte_manga_config: ServicioConfig;
+  lleva_cambio_talla: boolean;
+  cambio_talla_config: ServicioConfig;
 }
 
 /**
@@ -95,20 +191,25 @@ export interface PedidoDetalleTalla {
  * la UI operativa (es dato de costo/margen interno): misma convención que
  * `QuoteById.detalles[].costo_unitario`, tipado pero nunca renderizado por
  * `QuoteDetailsProducts` — los costos solo se exhiben en los reportes de
- * valuación de inventario (`system/reports`).
+ * valuación de inventario (`system/reports`). Los cuatro importes de la línea
+ * son CONTABLES (el backend los elimina para usuarios sin rol contable).
  */
 export interface PedidoDetalleLinea {
   id: number;
   producto: number;
   producto_nombre: string;
-  color: number;
-  color_nombre: string;
+  color: number | null;
+  color_nombre: string | null;
   /** Color en hex (ej. `"#000000"`) — se pinta como swatch junto al nombre. */
-  color_hex: string;
-  precio_lista: string;
-  precio_unitario: string;
-  costo_unitario: string;
-  subtotal_linea: string;
+  color_codigo_hex: string | null;
+  /** Contable. */
+  precio_lista?: string | null;
+  /** Contable. */
+  precio_unitario?: string;
+  /** Contable. */
+  costo_unitario?: string | null;
+  /** Contable. */
+  subtotal_linea?: string;
   cantidad_total: number;
   tallas: PedidoDetalleTalla[];
 }

@@ -108,13 +108,22 @@ function RegisterPendingInvoiceForm({ onClose }: { onClose: () => void }) {
    * para cualquier pedido, ya que `total` siempre es `gran_total`.
    */
   const applyPedidoAmounts = (order: Order) => {
-    const deltaCents = toCents(order.gran_total) - toCents(order.subtotal);
+    // `subtotal`/`gran_total` son campos contables que el backend ELIMINA para
+    // usuarios sin permiso. Si faltan, NO se autocompleta: escribir "0.00" y
+    // limpiar los errores dejaría el formulario "limpio" pero inválido
+    // (`total` > 0 lo exige el schema), sin señal hasta el submit. Hoy el
+    // selector se alimenta del listado (que no filtra), así que en la práctica
+    // siempre vienen; el guard es defensivo ante ese contrato.
+    if (order.subtotal == null || order.gran_total == null) return;
+    const subtotal = order.subtotal;
+    const total = order.gran_total;
+    const deltaCents = toCents(total) - toCents(subtotal);
     const descuento = deltaCents < 0 ? (-deltaCents / 100).toFixed(2) : "0.00";
     const impuestos = deltaCents > 0 ? (deltaCents / 100).toFixed(2) : "0.00";
-    form.setFieldValue("subtotal", order.subtotal);
+    form.setFieldValue("subtotal", subtotal);
     form.setFieldValue("descuento", descuento);
     form.setFieldValue("impuestos", impuestos);
-    form.setFieldValue("total", order.gran_total);
+    form.setFieldValue("total", total);
     clearFieldError("subtotal");
     clearFieldError("descuento");
     clearFieldError("impuestos");

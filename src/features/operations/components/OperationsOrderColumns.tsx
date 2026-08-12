@@ -4,8 +4,8 @@ import { type ColumnDef } from '@tanstack/react-table';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { ActionMenu, type ActionMenuItem } from '@/src/components/ActionMenu';
-import { CheckCircleIcon, TasksIcon } from '@/src/components/Icons';
-import { formatCurrency, safeParseAmount } from '@/src/utils/formatCurrency';
+import { CheckCircleIcon, EyeIcon, TasksIcon } from '@/src/components/Icons';
+import { formatMoneyValueOrDash } from '@/src/utils/formatCurrency';
 import { parseLocalDate } from '@/src/utils/formatDate';
 import type { Order } from '@/src/features/orders/interfaces/order.interface';
 
@@ -35,6 +35,7 @@ function confirmationBadge(order: Order): { label: string; cls: string } {
 // Callbacks que el componente padre inyecta para acciones del flujo.
 export interface OperationsOrderColumnCallbacks {
   onConfirmDate: (order: Order) => void;
+  onViewDetail: (order: Order) => void;
 }
 
 // Fábrica de columnas para la tabla de la Mesa de Control de Pedidos.
@@ -50,9 +51,14 @@ export function buildOperationsOrderColumns(
         const order = row.original;
         return (
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="font-mono text-sm font-bold text-slate-800 dark:text-white">
+            <button
+              type="button"
+              onClick={() => callbacks.onViewDetail(order)}
+              className="font-mono text-sm font-bold text-slate-800 dark:text-white hover:text-sky-600 dark:hover:text-sky-400 hover:underline transition-colors cursor-pointer"
+              title="Ver detalle del pedido"
+            >
               {order.folio || '—'}
-            </span>
+            </button>
             {order.oc && (
               <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 dark:bg-white/10 text-slate-500 dark:text-slate-400 font-mono">
                 {order.oc}
@@ -72,7 +78,7 @@ export function buildOperationsOrderColumns(
           <div>
             <p
               className="text-sm font-medium text-slate-800 dark:text-white truncate max-w-55"
-              title={order.cliente_razon_social}
+              title={order.cliente_razon_social ?? undefined}
             >
               {order.cliente_razon_social || '—'}
             </p>
@@ -89,7 +95,7 @@ export function buildOperationsOrderColumns(
       header: 'Total',
       cell: ({ row }) => (
         <span className="tabular-nums text-sm font-semibold text-slate-700 dark:text-slate-200">
-          {formatCurrency(safeParseAmount(row.original.gran_total))}
+          {formatMoneyValueOrDash(row.original.gran_total)}
         </span>
       ),
     },
@@ -97,11 +103,14 @@ export function buildOperationsOrderColumns(
       id: 'created_at',
       accessorKey: 'created_at',
       header: 'Fecha',
-      cell: ({ row }) => (
-        <span className="text-sm text-slate-500 dark:text-slate-400 whitespace-nowrap">
-          {format(new Date(row.original.created_at), 'd MMM yyyy', { locale: es })}
-        </span>
-      ),
+      cell: ({ row }) => {
+        const createdAt = row.original.created_at;
+        return (
+          <span className="text-sm text-slate-500 dark:text-slate-400 whitespace-nowrap">
+            {createdAt ? format(new Date(createdAt), 'd MMM yyyy', { locale: es }) : '—'}
+          </span>
+        );
+      },
     },
     // `accessorFn` que colapsa `null` a `''` — mismo bug de
     // `getColumnCanGlobalFilter`/`flatRows[0]` que ya documenta
@@ -141,9 +150,14 @@ export function buildOperationsOrderColumns(
       header: 'Acciones',
       cell: ({ row }) => {
         const order = row.original;
+        const viewItem: ActionMenuItem = {
+          label: 'Ver detalle',
+          icon: EyeIcon,
+          onSelect: () => callbacks.onViewDetail(order),
+        };
         // Solo los pedidos sin fecha de confirmación pueden confirmarse; los ya
         // confirmados muestran un ítem deshabilitado como referencia visual.
-        const actionItem: ActionMenuItem = isOrderConfirmed(order)
+        const confirmItem: ActionMenuItem = isOrderConfirmed(order)
           ? {
               label: 'Fecha confirmada',
               icon: CheckCircleIcon,
@@ -157,7 +171,10 @@ export function buildOperationsOrderColumns(
 
         return (
           <div className="flex items-center justify-center">
-            <ActionMenu items={[actionItem]} ariaLabel={`Acciones del pedido ${order.folio}`} />
+            <ActionMenu
+              items={[viewItem, confirmItem]}
+              ariaLabel={`Acciones del pedido ${order.folio}`}
+            />
           </div>
         );
       },

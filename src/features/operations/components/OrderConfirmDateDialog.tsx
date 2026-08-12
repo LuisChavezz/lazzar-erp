@@ -6,7 +6,7 @@ import { Button } from '@/src/components/Button';
 import { TasksIcon, InfoIcon } from '@/src/components/Icons';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { formatCurrency, safeParseAmount } from '@/src/utils/formatCurrency';
+import { formatMoneyValueOrDash } from '@/src/utils/formatCurrency';
 import type { Order } from '@/src/features/orders/interfaces/order.interface';
 
 interface OrderConfirmDateDialogProps {
@@ -68,7 +68,7 @@ export function OrderConfirmDateDialog({
         <div className="flex items-center justify-between rounded-xl bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 px-4 py-3">
           <span className="text-xs text-slate-500 dark:text-slate-400">Total del pedido</span>
           <span className="text-sm font-semibold text-slate-700 dark:text-slate-200 tabular-nums">
-            {formatCurrency(safeParseAmount(order.gran_total))}
+            {formatMoneyValueOrDash(order.gran_total)}
           </span>
         </div>
 

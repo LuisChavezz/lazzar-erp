@@ -104,6 +104,11 @@ export const config = {
     "/config/:path*",
     "/system/:path*",
     "/sales/:path*",
+    // Ruta neutra de detalle de pedido (accesible desde varios módulos). Entra
+    // al matcher para exigir auth + workspace, pero NO tiene regla en
+    // `routePermissions`: no exige un permiso de módulo (los datos contables ya
+    // se filtran por rol en el backend). Ver `app/(main)/orders/[id]`.
+    "/orders/:path*",
     "/wms/:path*",
     "/procurement/:path*",
     "/manufacturing/:path*",

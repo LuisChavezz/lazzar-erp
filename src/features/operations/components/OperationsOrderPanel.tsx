@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useIsFetching, useQueryClient } from '@tanstack/react-query';
 import KpiGrid, { type KpiItem } from '@/src/components/KpiGrid';
 import { ErrorState } from '@/src/components/ErrorState';
@@ -22,9 +23,15 @@ import { OperationsOrderTable } from './OperationsOrderTable';
 export function OperationsOrderPanel() {
   const { orders, isLoading, isError, error } = useOrders();
   const queryClient = useQueryClient();
+  const router = useRouter();
   const isRefetching = useIsFetching({ queryKey: ['orders'] }) > 0;
 
   const [selectedOrderForDate, setSelectedOrderForDate] = useState<Order | null>(null);
+
+  // Navega al detalle 360° del pedido (ruta neutra); `?from=operations` para
+  // que el "Volver" regrese a esta Mesa de Control.
+  const handleViewDetail = (order: Order) =>
+    router.push(`/orders/${order.id}?from=operations`);
 
   const counts = useMemo(() => {
     const confirmados = orders.filter(isOrderConfirmed).length;
@@ -114,6 +121,7 @@ export function OperationsOrderPanel() {
       <OperationsOrderTable
         orders={orders}
         onConfirmDate={setSelectedOrderForDate}
+        onViewDetail={handleViewDetail}
         onRefetch={handleRefetch}
         isRefetching={isRefetching}
       />

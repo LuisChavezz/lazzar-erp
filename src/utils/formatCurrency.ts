@@ -44,6 +44,16 @@ export const formatMoneyValue = (value: string | number): string =>
   formatCurrency(safeParseAmount(String(value)));
 
 /**
+ * Como `formatMoneyValue` pero devuelve "—" cuando el valor es `null`/
+ * `undefined`, en vez de un engañoso "$0.00". Para los campos financieros que
+ * el backend ELIMINA de la respuesta (filtro de contabilidad de pedidos) según
+ * el rol del usuario: un importe ausente no es cero, es "no visible".
+ */
+export const formatMoneyValueOrDash = (
+  value: string | number | null | undefined,
+): string => (value == null ? "—" : formatMoneyValue(value));
+
+/**
  * Formatea una CANTIDAD (no dinero) como número plano es-MX, hasta 2 decimales,
  * sin símbolo de moneda. Para campos de existencias que llegan como string
  * decimal del backend ("10.0000"). Comparte `safeParseAmount` con los importes.

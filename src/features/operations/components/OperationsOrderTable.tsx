@@ -19,14 +19,15 @@ interface OperationsOrderTableProps extends OperationsOrderColumnCallbacks {
 export function OperationsOrderTable({
   orders,
   onConfirmDate,
+  onViewDetail,
   onRefetch,
   isRefetching,
 }: OperationsOrderTableProps) {
-  // `onConfirmDate` es un setter de estado estable; el useMemo evita recrear el
-  // array de columnas en cada render del componente padre.
+  // `onConfirmDate`/`onViewDetail` son callbacks estables; el useMemo evita
+  // recrear el array de columnas en cada render del componente padre.
   const columns = useMemo(
-    () => buildOperationsOrderColumns({ onConfirmDate }),
-    [onConfirmDate],
+    () => buildOperationsOrderColumns({ onConfirmDate, onViewDetail }),
+    [onConfirmDate, onViewDetail],
   );
 
   const enrichedOrders = useMemo(() => enrichOrdersWithStatus(orders), [orders]);

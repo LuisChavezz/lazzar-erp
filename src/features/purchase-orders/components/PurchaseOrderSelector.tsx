@@ -21,10 +21,10 @@ export function PurchaseOrderSelector({
   const filtered = orders.filter((order) => {
     const term = search.toLowerCase();
     return (
-      order.folio.toLowerCase().includes(term) ||
-      String(order.folio_consecutivo).includes(term) ||
-      order.cliente_nombre.toLowerCase().includes(term) ||
-      order.cliente_razon_social.toLowerCase().includes(term)
+      (order.folio ?? "").toLowerCase().includes(term) ||
+      String(order.folio_consecutivo ?? "").includes(term) ||
+      (order.cliente_nombre ?? "").toLowerCase().includes(term) ||
+      (order.cliente_razon_social ?? "").toLowerCase().includes(term)
     );
   });
 

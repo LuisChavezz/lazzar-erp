@@ -10,7 +10,12 @@ import {
   SectionTitle,
   textOrDash,
 } from "@/src/components/DetailDialogPrimitives";
-import { formatMoneyValue } from "@/src/utils/formatCurrency";
+import { formatMoneyValueOrDash } from "@/src/utils/formatCurrency";
+import {
+  getFormaPagoLabel,
+  getMetodoPagoLabel,
+  getUsoCfdiLabel,
+} from "@/src/features/orders/constants/satCatalogs";
 import { usePedidoDetail } from "@/src/features/orders/hooks/usePedidoDetail";
 import type { PedidoDetalleLinea } from "@/src/features/orders/interfaces/order.interface";
 
@@ -50,10 +55,10 @@ function PedidoLineas({ detalles }: { detalles: PedidoDetalleLinea[] }) {
                 </span>
                 {linea.color_nombre && (
                   <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 px-2.5 py-0.5 text-xs font-medium text-slate-700 dark:text-slate-300 shadow-sm">
-                    {linea.color_hex && (
+                    {linea.color_codigo_hex && (
                       <span
                         className="h-3 w-3 shrink-0 rounded-full ring-1 ring-black/10 dark:ring-white/10"
-                        style={{ backgroundColor: linea.color_hex }}
+                        style={{ backgroundColor: linea.color_codigo_hex }}
                         aria-hidden="true"
                       />
                     )}
@@ -62,8 +67,8 @@ function PedidoLineas({ detalles }: { detalles: PedidoDetalleLinea[] }) {
                 )}
               </div>
               <div className="text-xs text-slate-500 dark:text-slate-400">
-                Precio unitario: {formatMoneyValue(linea.precio_unitario)} · Subtotal:{" "}
-                {formatMoneyValue(linea.subtotal_linea)}
+                Precio unitario: {formatMoneyValueOrDash(linea.precio_unitario)} · Subtotal:{" "}
+                {formatMoneyValueOrDash(linea.subtotal_linea)}
               </div>
             </div>
             <div className="text-right shrink-0">
@@ -172,17 +177,17 @@ export function PickingOrderDetailDialog({
             <InfoField label="Cliente" className="col-span-2 sm:col-span-1">
               <span className="block truncate">{textOrDash(data.cliente_nombre)}</span>
             </InfoField>
-            <InfoField label="Forma de pago">{textOrDash(data.forma_pago)}</InfoField>
-            <InfoField label="Método de pago">{textOrDash(data.metodo_pago)}</InfoField>
-            <InfoField label="Uso CFDI">{textOrDash(data.uso_cfdi)}</InfoField>
+            <InfoField label="Forma de pago">{getFormaPagoLabel(data.forma_pago)}</InfoField>
+            <InfoField label="Método de pago">{getMetodoPagoLabel(data.metodo_pago)}</InfoField>
+            <InfoField label="Uso CFDI">{getUsoCfdiLabel(data.uso_cfdi)}</InfoField>
             <InfoField label="Destinatario">{textOrDash(data.destinatario)}</InfoField>
             <InfoField label="Ciudad envío">{textOrDash(data.ciudad_envio)}</InfoField>
             <InfoField label="Flete">
-              <span className="tabular-nums">{formatMoneyValue(data.flete)}</span>
+              <span className="tabular-nums">{formatMoneyValueOrDash(data.flete)}</span>
             </InfoField>
             <InfoField label="Gran total" className="col-span-2 sm:col-span-2">
               <span className="tabular-nums font-semibold">
-                {formatMoneyValue(data.gran_total)}
+                {formatMoneyValueOrDash(data.gran_total)}
               </span>
             </InfoField>
             {data.observaciones && (

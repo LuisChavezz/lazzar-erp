@@ -50,8 +50,8 @@ function PedidoSelectorContent({
       errorMessage="Error al cargar los pedidos."
       searchPlaceholder="Buscar pedido por folio o cliente..."
       filterPredicate={(order, term) =>
-        order.folio.toLowerCase().includes(term) ||
-        order.cliente_nombre.toLowerCase().includes(term)
+        (order.folio ?? "").toLowerCase().includes(term) ||
+        (order.cliente_nombre ?? "").toLowerCase().includes(term)
       }
       getKey={(order) => order.id}
       selectedKey={selectedPedidoId}
@@ -67,7 +67,7 @@ function PedidoSelectorContent({
           </p>
         </>
       )}
-      onConfirm={(order) => onConfirm({ id: order.id, label: order.folio })}
+      onConfirm={(order) => onConfirm({ id: order.id, label: order.folio ?? `#${order.id}` })}
       onCancel={onCancel}
     />
   );

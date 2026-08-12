@@ -49,8 +49,8 @@ export function InvoiceOrderSelector({
       items={orders}
       searchPlaceholder="Buscar pedido por folio o cliente..."
       filterPredicate={(order, term) =>
-        order.folio.toLowerCase().includes(term) ||
-        order.cliente_nombre.toLowerCase().includes(term)
+        (order.folio ?? "").toLowerCase().includes(term) ||
+        (order.cliente_nombre ?? "").toLowerCase().includes(term)
       }
       getKey={(order) => order.id}
       isSelected={(order) => order.id === selectedOrderId}
