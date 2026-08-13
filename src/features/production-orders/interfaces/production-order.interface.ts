@@ -86,6 +86,30 @@ export interface ProductionOrderOnboardingProducto {
   habilitacion: ProductionOrderOnboardingHabilitacion[];
 }
 
+/** Renglón de `detalles` de un consumo de material contra la orden. */
+export interface ProductionOrderConsumoDetalle {
+  producto: number;
+  /**
+   * Nullable: el service lo resuelve con
+   * `getattr(detalle.producto, "nombre", None)`, así que un producto sin nombre
+   * —o sin resolver— llega en `null`.
+   */
+  producto_nombre: string | null;
+  /**
+   * String decimal con 4 decimales
+   * (`DecimalField(max_digits=18, decimal_places=4)`): es la resolución con que
+   * el inventario mueve materiales, así que se formatea con
+   * `formatExactQuantityValue`, no con `formatQuantityValue`.
+   */
+  cantidad: string;
+}
+
+/** Un consumo de materiales registrado contra la orden (puede haber varios). */
+export interface ProductionOrderConsumo {
+  consumo_produccion_id: number;
+  detalles: ProductionOrderConsumoDetalle[];
+}
+
 export interface ProductionOrderOnboarding {
   op_id: number;
   folio_op: string;
@@ -95,15 +119,36 @@ export interface ProductionOrderOnboarding {
   prioridad: number;
   fecha_inicio: string;
   fecha_fin: string | null;
-  observaciones: string;
+  /** `TextField(blank=True, null=True)` en el modelo: puede llegar `null`. */
+  observaciones: string | null;
+  /** Bandera de cierre solicitado/aplicado sobre la orden. */
+  cerrar_orden: boolean;
   activo: boolean;
   empresa: number;
+  /** Nombre legible de la empresa (mismo criterio que en OB/OR/OCM). */
+  empresa_nombre: string;
   sucursal: number;
+  /** Nombre legible de la sucursal. */
+  sucursal_nombre: string;
   pedido: number | null;
+  /** `Pedido.folio`; `null` cuando la orden no tiene pedido o el folio no está asignado. */
+  pedido_folio: string | null;
   ruta_produccion: number | null;
   usuario_asignado: number;
+  /** Nombre ya resuelto del operador asignado. */
+  usuario_nombre: string | null;
+  /**
+   * `{id, folio}` del pedido madre, armado por el mismo helper compartido que
+   * ya usan bordado/reflejante/corte de manga (`armar_pedido_vinculado`).
+   * OPCIONAL: se agregó al onboarding en el mismo cambio de backend que ya
+   * llegó a los otros tres módulos, así que se tipa igual de cauto — no
+   * asumir presente sin comprobarlo. `null` cuando la orden no tiene pedido.
+   */
+  pedido_vinculado?: { id: number; folio: string } | null;
   op_info: string;
   productos: ProductionOrderOnboardingProducto[];
+  /** Consumos de material registrados contra la orden. Vacío si aún no hay ninguno. */
+  consumos: ProductionOrderConsumo[];
 }
 
 // ── Create onboarding ────────────────────────────────────────────────────────

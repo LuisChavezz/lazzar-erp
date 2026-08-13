@@ -11,7 +11,7 @@ export const getProductionOrderOnboarding = async (
   op_id: number
 ): Promise<ProductionOrderOnboarding> => {
   const response = await v1_api.get<ProductionOrderOnboarding>(
-    "/produccion/orden-produccion/onboarding",
+    "/produccion/orden-produccion/onboarding/",
     { params: { op_id } }
   );
   return response.data;

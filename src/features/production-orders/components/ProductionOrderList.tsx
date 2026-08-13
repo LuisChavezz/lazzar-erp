@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { DataTable } from "@/src/components/DataTable";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { isInitialLoadError } from "@/src/utils/isInitialLoadError";
@@ -9,9 +10,26 @@ import { getProductionOrderColumns } from "./ProductionOrderColumns";
 import { CreateProductionOrderDialog } from "./CreateProductionOrderDialog";
 import { useProductionOrders } from "../hooks/useProductionOrders";
 
-/** Lista principal de órdenes de producción */
+/**
+ * Lista principal de órdenes de producción.
+ *
+ * "Ver detalle" NAVEGA a `/manufacturing/production-orders/[id]`
+ * (`ProductionOrderPageContent`) en vez de abrir un diálogo montado por fila —
+ * mismo cambio ya hecho en bordado/reflejante/corte de manga. Sin diálogo de
+ * detalle montado aquí: a diferencia de esos tres módulos, el alta de esta
+ * orden (`CreateProductionOrderDialog`/`ProductionOrderStepManager`) no tiene
+ * un flujo de 409 de duplicado que necesite reabrir una orden existente por id,
+ * así que no hay razón para mantenerlo vivo en el padre.
+ */
 export function ProductionOrderList() {
-  const columns = useMemo(() => getProductionOrderColumns(), []);
+  const router = useRouter();
+  const columns = useMemo(
+    () =>
+      getProductionOrderColumns((id) =>
+        router.push(`/manufacturing/production-orders/${id}`),
+      ),
+    [router],
+  );
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const { data, hasLoaded, isLoading, isError, error, refetch, isRefetching } =
     useProductionOrders();

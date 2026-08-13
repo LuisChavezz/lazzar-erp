@@ -1,25 +1,31 @@
 "use client";
 
-import { useState } from "react";
 import { createColumnHelper, type ColumnDef } from "@tanstack/react-table";
 import type { ProductionOrderListItem } from "../interfaces/production-order.interface";
 import { ActionMenu } from "@/src/components/ActionMenu";
 import type { ActionMenuItem } from "@/src/components/ActionMenu";
 import { ViewIcon } from "@/src/components/Icons";
 import { StatusBadge } from "@/src/components/StatusBadge";
-import { productionOrderStatusEntry } from "../constants/productionOrderStatus";
-import { ProductionOrderDetailDialog } from "./ProductionOrderDetailDialog";
+import {
+  PRODUCTION_ORDER_PRIORITY_CONFIG,
+  productionOrderPriorityFallback,
+  productionOrderStatusEntry,
+} from "../constants/productionOrderStatus";
 
 const columnHelper = createColumnHelper<ProductionOrderListItem>();
 
-const ActionsCell = ({ row }: { row: ProductionOrderListItem }) => {
-  const [isDetailOpen, setIsDetailOpen] = useState(false);
-
+const ActionsCell = ({
+  row,
+  onViewDetails,
+}: {
+  row: ProductionOrderListItem;
+  onViewDetails: (id: number) => void;
+}) => {
   const menuItems: ActionMenuItem[] = [
     {
       label: 'Ver detalle',
       icon: ViewIcon,
-      onSelect: () => setIsDetailOpen(true),
+      onSelect: () => onViewDetails(row.op_id),
     },
   ];
 
@@ -29,16 +35,23 @@ const ActionsCell = ({ row }: { row: ProductionOrderListItem }) => {
         items={menuItems}
         ariaLabel={`Acciones de la orden ${row.folio_op}`}
       />
-      <ProductionOrderDetailDialog
-        opId={isDetailOpen ? row.op_id : 0}
-        open={isDetailOpen}
-        onOpenChange={setIsDetailOpen}
-      />
     </div>
   );
 };
 
-export function getProductionOrderColumns(): ColumnDef<ProductionOrderListItem, unknown>[] {
+/**
+ * Columnas del listado de órdenes de producción.
+ *
+ * Fábrica —no un arreglo estático— para inyectar `onViewDetails`, que NAVEGA a
+ * `/manufacturing/production-orders/[id]` en vez de abrir un diálogo montado
+ * dentro de la celda. Mismo patrón `getXColumns(onViewDetails)` que
+ * `getEmbroideryOrderColumns`/`getReflectiveOrderColumns`/
+ * `getCorteMangaOrderColumns`; aquí el callback recibe `op_id` (la PK de esta
+ * orden), no `id`.
+ */
+export function getProductionOrderColumns(
+  onViewDetails: (id: number) => void,
+): ColumnDef<ProductionOrderListItem, unknown>[] {
   return [
     // Folio OP
     columnHelper.accessor('folio_op', {
@@ -76,14 +89,23 @@ export function getProductionOrderColumns(): ColumnDef<ProductionOrderListItem, 
     }),
 
     // Prioridad
+    //
+    // Badge y no el entero crudo: el mismo dato se leía "1" aquí y "Alta" en la
+    // página de detalle. Mismo par config+fallback que ya usan las columnas de
+    // bordado/reflejante/corte de manga.
     columnHelper.accessor('prioridad', {
       header: 'Prioridad',
       size: 90,
-      cell: ({ getValue }) => (
-        <span className="text-sm tabular-nums text-slate-700 dark:text-slate-300">
-          {getValue()}
-        </span>
-      ),
+      cell: ({ getValue }) => {
+        const prioridad = getValue();
+        return (
+          <StatusBadge
+            status={String(prioridad)}
+            config={PRODUCTION_ORDER_PRIORITY_CONFIG}
+            defaultConfig={productionOrderPriorityFallback(prioridad)}
+          />
+        );
+      },
     }),
 
     // Fecha inicio
@@ -158,7 +180,7 @@ export function getProductionOrderColumns(): ColumnDef<ProductionOrderListItem, 
       id: 'acciones',
       header: () => <div className="text-center">Acciones</div>,
       size: 90,
-      cell: ({ row }) => <ActionsCell row={row.original} />,
+      cell: ({ row }) => <ActionsCell row={row.original} onViewDetails={onViewDetails} />,
     }),
   ] as ColumnDef<ProductionOrderListItem, unknown>[];
 }

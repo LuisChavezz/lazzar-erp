@@ -80,6 +80,12 @@ const BACK_TARGETS: Record<string, { href: string; label: string }> = {
     href: "/manufacturing/corte-manga",
     label: "Volver a Órdenes de Corte de Manga",
   },
+  // Igual que las tres anteriores: quien llega desde el detalle de una orden de
+  // producción (`ProductionOrderPageContent`) vuelve a SU listado.
+  "production-orders": {
+    href: "/manufacturing/production-orders",
+    label: "Volver a Órdenes de Producción",
+  },
 };
 const DEFAULT_BACK = { href: "/operations/orders", label: "Volver a pedidos" };
 
