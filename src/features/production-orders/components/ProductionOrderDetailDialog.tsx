@@ -2,7 +2,9 @@
 
 import { FactoryIcon } from "@/src/components/Icons";
 import { MainDialog } from "@/src/components/MainDialog";
+import { StatusBadge } from "@/src/components/StatusBadge";
 import { formatLocalDate } from "@/src/utils/formatDate";
+import { productionOrderStatusEntry } from "@/src/features/production-orders/constants/productionOrderStatus";
 import { useProductionOrderOnboarding } from "@/src/features/production-orders/hooks/useProductionOrderOnboarding";
 import type {
   ProductionOrderOnboardingHabilitacion,
@@ -204,7 +206,18 @@ export function ProductionOrderDetailDialog({
           {/* Información general de la orden */}
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-3 px-4 py-3 rounded-xl bg-slate-50 dark:bg-white/5 text-xs">
             <InfoField label="Estatus">
-              <span className="tabular-nums">{data.estatus_op}</span>
+              {/* Mismo patrón que `ProductionOrderColumns`: el color sale del
+                  entero `estatus_op` y la etiqueta del `estatus_op_display`
+                  que resuelve el backend. */}
+              <StatusBadge
+                status={String(data.estatus_op)}
+                config={{
+                  [data.estatus_op]: productionOrderStatusEntry(
+                    data.estatus_op,
+                    data.estatus_op_display,
+                  ),
+                }}
+              />
             </InfoField>
             <InfoField label="Prioridad">
               <span className="tabular-nums">{data.prioridad}</span>

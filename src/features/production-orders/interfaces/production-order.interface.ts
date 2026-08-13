@@ -90,6 +90,8 @@ export interface ProductionOrderOnboarding {
   op_id: number;
   folio_op: string;
   estatus_op: number;
+  /** Etiqueta ya resuelta de `estatus_op`, la misma que expone el listado. */
+  estatus_op_display: string;
   prioridad: number;
   fecha_inicio: string;
   fecha_fin: string | null;
@@ -165,7 +167,38 @@ export interface OrdenProduccionDetalle {
   pedido_detalle: number | null;
 }
 
-/** Orden de producción tal como la devuelve `GET /produccion/orden-produccion/`. */
+/**
+ * Renglón del listado `GET /produccion/orden-produccion/`.
+ *
+ * El backend sirve ese endpoint con `OrdenProduccionListSerializer`, que declara
+ * campos explícitos: NO trae `orden_produccion_detalle` ni el resto de los
+ * campos del modelo (`observaciones`, `empresa`, `ruta_produccion`,
+ * `usuario_asignado`). `pedido` y `sucursal` llegan como PK crudos.
+ *
+ * `estatus_op_display` es la etiqueta ya resuelta del entero `estatus_op`; solo
+ * existe en este serializer, no en el de retrieve.
+ *
+ * El objeto completo (con detalle) sigue disponible en
+ * `GET /produccion/orden-produccion/{id}/` → `OrdenProduccion`.
+ */
+export interface ProductionOrderListItem {
+  op_id: number;
+  folio_op: string;
+  estatus_op: number;
+  estatus_op_display: string;
+  prioridad: number;
+  fecha_inicio: string;
+  fecha_fin: string | null;
+  activo: boolean;
+  pedido: number | null;
+  sucursal: number;
+}
+
+/**
+ * Orden de producción completa, tal como la devuelve el retrieve
+ * `GET /produccion/orden-produccion/{id}/`. El listado ya NO devuelve esta
+ * forma — para eso está `ProductionOrderListItem`.
+ */
 export interface OrdenProduccion {
   op_id: number;
   orden_produccion_detalle: OrdenProduccionDetalle[];

@@ -3,7 +3,7 @@ import {
   ProductionOrderOnboarding,
   CreateProductionOrderBody,
   CreateProductionOrderResponse,
-  OrdenProduccion,
+  ProductionOrderListItem,
 } from "@/src/features/production-orders/interfaces/production-order.interface";
 
 
@@ -27,7 +27,7 @@ export const createProductionOrderOnboarding = async (
   return response.data;
 };
 
-export const getProductionOrders = async (): Promise<OrdenProduccion[]> => {
-  const response = await v1_api.get<OrdenProduccion[]>('/produccion/orden-produccion/');
+export const getProductionOrders = async (): Promise<ProductionOrderListItem[]> => {
+  const response = await v1_api.get<ProductionOrderListItem[]>('/produccion/orden-produccion/');
   return response.data;
 };

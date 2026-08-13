@@ -1,11 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
 import { useHasLoadedQuery } from "@/src/hooks/useHasLoadedQuery";
 import { getProductionOrders } from "@/src/features/production-orders/services/actions";
-import type { OrdenProduccion } from "@/src/features/production-orders/interfaces/production-order.interface";
+import type { ProductionOrderListItem } from "@/src/features/production-orders/interfaces/production-order.interface";
 
 export const useProductionOrders = () => {
   const { data, isLoading, isError, error, refetch, isRefetching } =
-    useQuery<OrdenProduccion[]>({
+    useQuery<ProductionOrderListItem[]>({
       queryKey: ["production-orders"],
       queryFn: getProductionOrders,
     });

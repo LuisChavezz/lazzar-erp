@@ -2,15 +2,17 @@
 
 import { useState } from "react";
 import { createColumnHelper, type ColumnDef } from "@tanstack/react-table";
-import type { OrdenProduccion } from "../interfaces/production-order.interface";
+import type { ProductionOrderListItem } from "../interfaces/production-order.interface";
 import { ActionMenu } from "@/src/components/ActionMenu";
 import type { ActionMenuItem } from "@/src/components/ActionMenu";
 import { ViewIcon } from "@/src/components/Icons";
+import { StatusBadge } from "@/src/components/StatusBadge";
+import { productionOrderStatusEntry } from "../constants/productionOrderStatus";
 import { ProductionOrderDetailDialog } from "./ProductionOrderDetailDialog";
 
-const columnHelper = createColumnHelper<OrdenProduccion>();
+const columnHelper = createColumnHelper<ProductionOrderListItem>();
 
-const ActionsCell = ({ row }: { row: OrdenProduccion }) => {
+const ActionsCell = ({ row }: { row: ProductionOrderListItem }) => {
   const [isDetailOpen, setIsDetailOpen] = useState(false);
 
   const menuItems: ActionMenuItem[] = [
@@ -36,7 +38,7 @@ const ActionsCell = ({ row }: { row: OrdenProduccion }) => {
   );
 };
 
-export function getProductionOrderColumns(): ColumnDef<OrdenProduccion, unknown>[] {
+export function getProductionOrderColumns(): ColumnDef<ProductionOrderListItem, unknown>[] {
   return [
     // Folio OP
     columnHelper.accessor('folio_op', {
@@ -50,13 +52,26 @@ export function getProductionOrderColumns(): ColumnDef<OrdenProduccion, unknown>
     }),
 
     // Estatus
-    columnHelper.accessor('estatus_op', {
+    //
+    // Se accede por `estatus_op_display` (la etiqueta que resuelve el backend)
+    // para que la búsqueda y el orden trabajen sobre el texto que el usuario
+    // ve, no sobre el entero; el color del badge sí sale del entero
+    // `estatus_op`. `id` explícito conserva la visibilidad/orden de columna que
+    // ya tenga guardada `DataTable`.
+    columnHelper.accessor((row) => row.estatus_op_display ?? '', {
+      id: 'estatus_op',
       header: 'Estatus',
-      size: 100,
-      cell: ({ getValue }) => (
-        <span className="text-sm tabular-nums text-slate-700 dark:text-slate-300">
-          {getValue()}
-        </span>
+      size: 130,
+      cell: ({ row }) => (
+        <StatusBadge
+          status={String(row.original.estatus_op)}
+          config={{
+            [row.original.estatus_op]: productionOrderStatusEntry(
+              row.original.estatus_op,
+              row.original.estatus_op_display,
+            ),
+          }}
+        />
       ),
     }),
 
@@ -145,5 +160,5 @@ export function getProductionOrderColumns(): ColumnDef<OrdenProduccion, unknown>
       size: 90,
       cell: ({ row }) => <ActionsCell row={row.original} />,
     }),
-  ] as ColumnDef<OrdenProduccion, unknown>[];
+  ] as ColumnDef<ProductionOrderListItem, unknown>[];
 }
