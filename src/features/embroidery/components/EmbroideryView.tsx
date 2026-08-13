@@ -15,23 +15,21 @@ import { useEmbroideryOrders } from "../hooks/useEmbroideryOrders";
  * Vista de Órdenes de Bordado: KPIs del listado (`EmbroideryStats`) más el
  * listado de `GET /produccion/orden-bordado/`, con el alta
  * (`POST /produccion/orden-bordado/onboarding/`, ver `EmbroideryOrderForm`) en
- * el toolbar y "Ver Detalles" por renglón (ver `EmbroideryOrderDetailDialog`,
- * que trae su propio detalle vía `GET /produccion/orden-bordado/{id}/` —ya no
- * se arma con la fila del listado, ver `useEmbroideryOrderDetail`).
+ * el toolbar y "Ver Detalles" por renglón, que NAVEGA a la página completa de
+ * la orden (`/manufacturing/embroidery/[id]`).
  *
- * El diálogo de detalle se monta AQUÍ —fuera de `DataTable`, no dentro de la
- * fila que lo abrió— y se abre por `id` (`openOrderId`), no por el objeto de
- * fila. Es deliberado incluso siendo un diálogo de SOLO LECTURA —no hay riesgo
- * de que el diálogo mute el estado filtrable del renglón, `OrdenesBordado` no
- * tiene transición—: el motivo aquí es que el 409 de
- * duplicado al crear una orden trae el id de una orden existente
- * (`orden_bordado_existente.id`) que puede no corresponder a ninguna fila a la
- * vista. `setOpenOrderId` se reenvía por eso a `EmbroideryOrderForm` (el alta,
- * en el `actionButton` de abajo): el bloque ámbar del Paso 2 del asistente
- * (`EmbroideryOrderStep2`) abre este MISMO diálogo con ese id.
- * `EmbroideryView` es el único dueño de `openOrderId` — el alta solo recibe el
- * setter para invocarlo (y `onCloseExistingOrder` para limpiarlo al cerrarse),
- * no gestiona su propio estado de apertura.
+ * El diálogo de detalle (`EmbroideryOrderDetailDialog`, que trae su propio
+ * detalle vía `GET /produccion/orden-bordado/{id}/`, ver
+ * `useEmbroideryOrderDetail`) sigue montado AQUÍ aunque la tabla ya no lo abra:
+ * su otro —y ahora único— disparador es el 409 de duplicado al crear una orden,
+ * que trae el id de una orden existente (`orden_bordado_existente.id`) que
+ * puede no corresponder a ninguna fila a la vista. Por eso se abre por `id`
+ * (`openOrderId`) y no por el objeto de fila, y por eso `setOpenOrderId` se
+ * reenvía a `EmbroideryOrderForm` (el alta, en el `actionButton` de abajo): el
+ * bloque ámbar del Paso 2 del asistente (`EmbroideryOrderStep2`) abre este
+ * diálogo con ese id. `EmbroideryView` es el único dueño de `openOrderId` — el
+ * alta solo recibe el setter para invocarlo (y `onCloseExistingOrder` para
+ * limpiarlo al cerrarse), no gestiona su propio estado de apertura.
  *
  * Sin edición ni transición de estatus en ningún punto: el backend no las
  * expone (`PUT`/`PATCH` → 405). Tampoco hay filtro por estatus (todas las
@@ -53,14 +51,11 @@ export function EmbroideryView() {
   // cargó con éxito; un refetch fallido con datos en caché conserva la tabla y
   // avisa por toast (ver `useEmbroideryOrders`).
   const showError = isInitialLoadError(isError, hasLoaded);
-  // "Avance" navega a la página de detalle de la orden; "Ver Detalles" abre el
-  // diálogo sobre esta misma tabla. Son la misma orden por dos vías, y conviven
-  // a propósito (ver `EmbroideryOrderDetailContent`).
+  // "Ver Detalles" navega a la página de detalle de la orden; ya no abre el
+  // diálogo sobre esta misma tabla (ver `EmbroideryOrderColumns`). El diálogo
+  // sigue montado abajo porque el alta lo usa para el 409 de duplicado.
   const columns = useMemo(
-    () =>
-      getEmbroideryOrderColumns(setOpenOrderId, (id) =>
-        router.push(`/manufacturing/embroidery/${id}`),
-      ),
+    () => getEmbroideryOrderColumns((id) => router.push(`/manufacturing/embroidery/${id}`)),
     [router],
   );
 
