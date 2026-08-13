@@ -226,6 +226,21 @@ export interface EmbroideryOrderDetail extends Omit<EmbroideryOrder, "detalles">
   /** Las demás OB activas del mismo pedido. Vacío si esta es la única. */
   otras_ordenes_del_pedido: EmbroideryOrderSibling[];
   /**
+   * El pedido madre en la forma `{id, folio}` que consume un enlace, SOLO en el
+   * detalle (`OrdenBordadoRetrieveSerializer`; el listado no lo declara).
+   *
+   * Duplica el par plano `pedido`/`pedido_folio` que ya viaja en el
+   * encabezado, y es a propósito: el backend lo agrupa así (helper compartido
+   * `armar_pedido_vinculado`) para poder añadirle claves —cliente, fecha— sin
+   * inventar campos planos nuevos. Se prefiere este objeto para NAVEGAR al
+   * pedido, porque su presencia es la única señal de que el pedido madre
+   * existe; el par plano se queda para rotular.
+   *
+   * `null` cuando la orden no tiene pedido. `folio` nunca es `null` aunque
+   * `Pedido.folio` sí lo sea: el helper cae al PK en string.
+   */
+  pedido_vinculado: { id: number; folio: string } | null;
+  /**
    * `true` cuando el pedido tiene piezas programadas SIN talla identificable
    * (renglones con `talla` nula que genera el pipeline de picking). El total
    * por `pedido_detalle` sigue siendo exacto; lo que no puede afirmarse es a

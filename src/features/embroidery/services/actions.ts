@@ -33,8 +33,17 @@ export const getEmbroideryOrders = async (): Promise<EmbroideryOrder[]> => {
  *    (el contexto de parcialidad de la línea) y `ubicaciones`;
  *  - `otras_ordenes_del_pedido` y `reparto_por_talla_aproximado`.
  *
- * Y al revés: el detalle NO trae los tres campos de cobertura del listado.
- * Ninguna respuesta contiene a la otra.
+ * El detalle SÍ trae, además, los tres campos de cobertura
+ * (`cobertura_completa`/`cantidad_cubierta`/`cantidad_contratada`): desde que
+ * `OrdenBordadoRetrieveSerializer` HEREDA de `OrdenBordadoListSerializer` los
+ * declara con el mismo nombre. Este comentario afirmaba lo contrario —"el
+ * detalle NO trae los tres campos de cobertura; ninguna respuesta contiene a la
+ * otra"—, que era cierto antes de esa herencia y hoy no: tanto el diálogo como
+ * la página de detalle los leen de ESTA respuesta, sin tocar la fila del
+ * listado. El detalle es hoy un superconjunto del renglón del listado.
+ *
+ * `pedido_vinculado` (`{id, folio}` del pedido madre) es propio del detalle: el
+ * listado no lo declara.
  *
  * Fuera de alcance (otra empresa/sucursal) responde `404`, no `403`: el
  * `get_queryset()` acotado por tenant es el mismo que usa el listado, así que

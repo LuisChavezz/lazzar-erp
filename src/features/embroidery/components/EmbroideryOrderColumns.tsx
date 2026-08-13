@@ -4,7 +4,7 @@ import { createColumnHelper, type ColumnDef } from "@tanstack/react-table";
 import { StatusBadge } from "@/src/components/StatusBadge";
 import { textOrDash } from "@/src/components/DetailDialogPrimitives";
 import { ActionMenu, type ActionMenuItem } from "@/src/components/ActionMenu";
-import { ViewIcon } from "@/src/components/Icons";
+import { ExternalLinkIcon, ViewIcon } from "@/src/components/Icons";
 import { formatQuantityValue } from "@/src/utils/formatCurrency";
 import { formatShortDate } from "@/src/utils/formatDate";
 import {
@@ -20,12 +20,31 @@ const columnHelper = createColumnHelper<EmbroideryOrder>();
 const ActionsCell = ({
   order,
   onViewDetails,
+  onViewProgress,
 }: {
   order: EmbroideryOrder;
   onViewDetails: (id: number) => void;
+  onViewProgress: (id: number) => void;
 }) => {
   const menuItems: ActionMenuItem[] = [
     { label: "Ver Detalles", icon: ViewIcon, onSelect: () => onViewDetails(order.id) },
+    // Abre la MISMA orden en su página completa
+    // (`/manufacturing/embroidery/[id]`), no otro dato: convive con "Ver
+    // Detalles" porque cada una sirve a un uso distinto —el diálogo para mirar
+    // una orden sin perder la tabla (filtros, página, scroll), la página para
+    // quedarse en ella, enlazarla o navegar a su pedido y a sus órdenes
+    // hermanas—.
+    //
+    // NO se rotula "Avance" ni lleva un icono de tendencia: en este repo
+    // "Avance" ya significa progreso MEDIDO (columna de picking/packing) y el
+    // backend tiene un endpoint propio para eso (`bordado-avances`) que esta
+    // página no consume. La etiqueta y el icono de enlace externo describen lo
+    // que la acción hace de verdad: abrir la ficha completa.
+    {
+      label: "Ver detalle completo",
+      icon: ExternalLinkIcon,
+      onSelect: () => onViewProgress(order.id),
+    },
   ];
   return (
     <div className="flex items-center justify-center">
@@ -37,8 +56,8 @@ const ActionsCell = ({
 /**
  * Columnas del listado de órdenes de bordado (`GET /produccion/orden-bordado/`).
  *
- * Fábrica —no un arreglo estático— porque la columna de acciones necesita
- * `onViewDetails` para abrir el diálogo de detalle DESDE `EmbroideryView`, no
+ * Fábrica —no un arreglo estático— porque la columna de acciones necesita sus
+ * dos callbacks (`onViewDetails`, `onViewProgress`) DESDE `EmbroideryView`, no
  * montado aquí dentro de la fila: el diálogo se abre por `id`, no por el
  * objeto de fila (ver `EmbroideryOrderDetailDialog`), para poder disparse a
  * futuro también desde el enlace del 409 de duplicado (`orden_bordado_existente.id`,
@@ -65,7 +84,10 @@ const ActionsCell = ({
  * en las columnas `accessor` con un tipo de valor propio (`string`,
  * `string | null`).
  */
-export const getEmbroideryOrderColumns = (onViewDetails: (id: number) => void) => [
+export const getEmbroideryOrderColumns = (
+  onViewDetails: (id: number) => void,
+  onViewProgress: (id: number) => void,
+) => [
   columnHelper.accessor("folio_bordado", {
     header: "Folio",
     cell: (info) => (
@@ -180,6 +202,12 @@ export const getEmbroideryOrderColumns = (onViewDetails: (id: number) => void) =
   columnHelper.display({
     id: "acciones",
     header: () => <div className="text-center">Acciones</div>,
-    cell: ({ row }) => <ActionsCell order={row.original} onViewDetails={onViewDetails} />,
+    cell: ({ row }) => (
+      <ActionsCell
+        order={row.original}
+        onViewDetails={onViewDetails}
+        onViewProgress={onViewProgress}
+      />
+    ),
   }),
 ] as ColumnDef<EmbroideryOrder>[];

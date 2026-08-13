@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { DataTable } from "@/src/components/DataTable";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { isInitialLoadError } from "@/src/utils/isInitialLoadError";
@@ -46,12 +47,22 @@ export function EmbroideryView() {
   const { orders, isLoading, isError, error, hasLoaded, refetch, isFetching } =
     useEmbroideryOrders();
   const [openOrderId, setOpenOrderId] = useState<number | null>(null);
+  const router = useRouter();
 
   // Solo se trata como error "de pantalla completa" cuando la consulta nunca
   // cargó con éxito; un refetch fallido con datos en caché conserva la tabla y
   // avisa por toast (ver `useEmbroideryOrders`).
   const showError = isInitialLoadError(isError, hasLoaded);
-  const columns = useMemo(() => getEmbroideryOrderColumns(setOpenOrderId), []);
+  // "Avance" navega a la página de detalle de la orden; "Ver Detalles" abre el
+  // diálogo sobre esta misma tabla. Son la misma orden por dos vías, y conviven
+  // a propósito (ver `EmbroideryOrderDetailContent`).
+  const columns = useMemo(
+    () =>
+      getEmbroideryOrderColumns(setOpenOrderId, (id) =>
+        router.push(`/manufacturing/embroidery/${id}`),
+      ),
+    [router],
+  );
 
   return (
     <div className="space-y-6">

@@ -57,6 +57,15 @@ const BACK_TARGETS: Record<string, { href: string; label: string }> = {
   wms: { href: "/wms/orders", label: "Volver a Operaciones de Almacén" },
   procurement: { href: "/procurement/orders", label: "Volver a Compras" },
   sales: { href: "/sales/orders", label: "Volver a Mis Pedidos" },
+  // Mismo motivo que `wms`: sin esta entrada, quien llega desde el detalle de
+  // una orden de bordado caería en /operations/orders y el proxy lo rebotaría
+  // al home por falta de R-MESACONTROL. La llave nombra el ORIGEN concreto
+  // (`embroidery`) y no el módulo (`manufacturing`), porque Producción tiene
+  // varias listas que pueden enlazar aquí y cada una vuelve a la suya.
+  embroidery: {
+    href: "/manufacturing/embroidery",
+    label: "Volver a Órdenes de Bordado",
+  },
 };
 const DEFAULT_BACK = { href: "/operations/orders", label: "Volver a pedidos" };
 
