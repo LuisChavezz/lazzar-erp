@@ -341,22 +341,6 @@ export function ProductionOrderPageContent({
               <h1 className="text-2xl font-bold text-slate-900 dark:text-white font-mono">
                 {data.folio_op || `Orden #${data.op_id}`}
               </h1>
-              {/* Mismo patrón que `ProductionOrderColumns`: el color sale del
-                  entero `estatus_op` y la etiqueta de `estatus_op_display`. */}
-              <StatusBadge
-                status={String(data.estatus_op)}
-                config={{
-                  [data.estatus_op]: productionOrderStatusEntry(
-                    data.estatus_op,
-                    data.estatus_op_display,
-                  ),
-                }}
-              />
-              <StatusBadge
-                status={String(data.prioridad)}
-                config={PRODUCTION_ORDER_PRIORITY_CONFIG}
-                defaultConfig={productionOrderPriorityFallback(data.prioridad)}
-              />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-xs shrink-0">
@@ -397,10 +381,9 @@ export function ProductionOrderPageContent({
               pedido real. El campo sigue declarado en la interfaz —el backend lo
               manda igual— por si una futura orden llega a traerlo. */}
           <InfoGrid>
-            {/* Estatus y NO un segundo badge de prioridad: la prioridad ya vive
-                en la cabecera, y repetirla aquí dejaba la sección con un dato
-                redundante y sin el estatus que las páginas hermanas sí incluyen
-                en este mismo bloque. */}
+            {/* Estatus + Prioridad, el mismo par que las páginas hermanas
+                muestran en este bloque. Ambos salieron de la cabecera, así que
+                aquí no se duplican. */}
             <InfoField label="Estatus">
               <StatusBadge
                 status={String(data.estatus_op)}
@@ -410,6 +393,13 @@ export function ProductionOrderPageContent({
                     data.estatus_op_display,
                   ),
                 }}
+              />
+            </InfoField>
+            <InfoField label="Prioridad">
+              <StatusBadge
+                status={String(data.prioridad)}
+                config={PRODUCTION_ORDER_PRIORITY_CONFIG}
+                defaultConfig={productionOrderPriorityFallback(data.prioridad)}
               />
             </InfoField>
             {/* `activo` es el flag de baja lógica y el listado le dedica una

@@ -336,22 +336,7 @@ export function ReflectiveOrderDetailContent({
               <h1 className="text-2xl font-bold text-slate-900 dark:text-white font-mono">
                 {data.folio_reflejante || `Orden #${data.id}`}
               </h1>
-              {/* `REFLECTIVE_ORDER_STATUS_CONFIG` y no el de bordado: los enums
-                  son gemelos en forma pero no en etiquetas (aquí el 3 es
-                  "Aplicando", allá "Bordando"). */}
-              <StatusBadge
-                status={String(data.estatus_reflejante)}
-                config={REFLECTIVE_ORDER_STATUS_CONFIG}
-              />
-              <StatusBadge
-                status={String(data.prioridad)}
-                config={REFLECTIVE_ORDER_PRIORITY_CONFIG}
-                defaultConfig={reflectiveOrderPriorityFallback(data.prioridad)}
-              />
             </div>
-            <p className="text-sm text-slate-500 dark:text-slate-400">
-              Pedido {textOrDash(data.pedido_folio)}
-            </p>
           </div>
           <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-xs shrink-0">
             <InfoField label="Alta">

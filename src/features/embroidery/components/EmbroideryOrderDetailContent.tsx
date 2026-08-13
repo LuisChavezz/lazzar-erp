@@ -351,19 +351,7 @@ export function EmbroideryOrderDetailContent({
               <h1 className="text-2xl font-bold text-slate-900 dark:text-white font-mono">
                 {data.folio_bordado || `Orden #${data.id}`}
               </h1>
-              <StatusBadge
-                status={String(data.estatus_bordado)}
-                config={EMBROIDERY_STATUS_CONFIG}
-              />
-              <StatusBadge
-                status={String(data.prioridad)}
-                config={EMBROIDERY_PRIORITY_CONFIG}
-                defaultConfig={embroideryPriorityFallback(data.prioridad)}
-              />
             </div>
-            <p className="text-sm text-slate-500 dark:text-slate-400">
-              Pedido {textOrDash(data.pedido_folio)}
-            </p>
           </div>
           <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-xs shrink-0">
             <InfoField label="Alta">

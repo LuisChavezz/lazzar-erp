@@ -240,23 +240,7 @@ export function CorteMangaOrderPageContent({
               <h1 className="text-2xl font-bold text-slate-900 dark:text-white font-mono">
                 {data.folio_ocm || `Orden #${data.id}`}
               </h1>
-              {/* SOLO LECTURA: `estatus_corte` es `read_only` en el serializer
-                  y no existe `PUT`/`PATCH` (405), así que el badge informa y no
-                  ofrece transición. Config propia de OCM: el `3` aquí es
-                  "Cortando" (reflejante: "Aplicando"; bordado: "Bordando"). */}
-              <StatusBadge
-                status={String(data.estatus_corte)}
-                config={CORTE_MANGA_ORDER_STATUS_CONFIG}
-              />
-              <StatusBadge
-                status={String(data.prioridad)}
-                config={CORTE_MANGA_ORDER_PRIORITY_CONFIG}
-                defaultConfig={corteMangaOrderPriorityFallback(data.prioridad)}
-              />
             </div>
-            <p className="text-sm text-slate-500 dark:text-slate-400">
-              Pedido {textOrDash(data.pedido_folio)}
-            </p>
           </div>
           {/* Sin badge de cobertura, a diferencia de bordado y reflejante: OCM
               no publica los campos que lo alimentan. */}
