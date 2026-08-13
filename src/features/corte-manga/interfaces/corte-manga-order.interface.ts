@@ -38,10 +38,16 @@
 export type CorteMangaOrderStatus = 1 | 2 | 3 | 4 | 5 | 6 | 7;
 
 /**
- * Renglón de `detalles`, embebido en cada orden del listado (el backend usa el
- * mismo `OrdenesCorteMangaSerializer` para listado y detalle). Se tipa completo
- * aunque este listado solo lo resuma: el diálogo de detalle —fase siguiente— lo
- * reutiliza tal cual.
+ * Renglón de `detalles`, embebido en cada orden del listado Y del detalle.
+ *
+ * Son DOS serializers distintos, pero este tipo describe la INTERSECCIÓN, que
+ * es lo único que el frontend consume: el del listado
+ * (`OrdenCorteMangaDetalleListSerializer`) trae exactamente estas claves, y el
+ * del detalle (`OrdenCorteMangaDetalleSerializer`) añade
+ * `corte_manga_config`/`ubicaciones`/`foto`/`notas`, que NO se declaran aquí
+ * porque hoy nada las pinta (ver `configuracion` más abajo). Tipar los cuatro
+ * invitaría a construir UI para un contenido que todavía no se ha verificado
+ * contra datos reales — mismo criterio que en OB/OR.
  *
  * ESTADO REAL DE `color` Y `configuracion`: desde el commit `1884b69`
  * (2026-08-05), la ÚNICA ruta de alta viva —`OrdenCorteMangaService.save`,
@@ -171,6 +177,30 @@ export interface CorteMangaOrder {
    */
   usuario_nombre: string | null;
   detalles: CorteMangaOrderLine[];
+  /**
+   * `{id, folio}` del pedido madre, armado por el MISMO helper compartido que
+   * ya usan bordado y reflejante (`armar_pedido_vinculado`), así que la forma es
+   * idéntica en los tres módulos.
+   *
+   * OPCIONAL —y es la única forma correcta de tiparlo— porque su presencia
+   * depende de la ACCIÓN, y este mismo tipo describe las dos: solo
+   * `OrdenesCorteMangaRetrieveSerializer` lo declara, así que llega en
+   * `GET /{id}/` y NO en el listado ni en la respuesta del alta (verificado en
+   * el esquema desplegado: está en `OrdenesCorteMangaRetrieve` y no en
+   * `OrdenesCorteMangaList`/`OrdenesCorteManga`). Quien lo consuma debe
+   * comprobarlo antes de usarlo, no asumirlo presente.
+   *
+   * Se prefiere este objeto para NAVEGAR al pedido —su presencia es la única
+   * señal de que el pedido madre existe—; el par plano `pedido`/`pedido_folio`
+   * se queda para rotular. `null` cuando la orden no tiene pedido; `folio` nunca
+   * es `null` aunque `Pedido.folio` sí lo sea, porque el helper cae al PK en
+   * string.
+   *
+   * El esquema OpenAPI lo declara `string` porque drf-spectacular no infiere el
+   * tipo de retorno de un `SerializerMethodField` — mismo caso ya documentado en
+   * `usuario_nombre`.
+   */
+  pedido_vinculado?: { id: number; folio: string } | null;
 }
 
 // ─── Onboarding / alta ───────────────────────────────────────────────────────

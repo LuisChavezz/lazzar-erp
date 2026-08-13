@@ -82,24 +82,20 @@ interface CorteMangaOrderDetailDialogProps {
    * completa en cada render, solo para localizar un renglón que el padre ya
    * tiene.
    *
-   * SIN fetch propio, y verificado para OCM en concreto (no por analogía con
-   * reflejante/bordado). `retrieve` devuelve EXACTAMENTE el mismo objeto que un
-   * renglón del listado:
-   *  - `OrdenesCorteMangaViewSet` fija `serializer_class =
-   *    OrdenesCorteMangaSerializer` una sola vez, a nivel de clase.
-   *  - No hay `get_serializer_class` en TODO `produccion/api/views.py`, así que
-   *    nada lo desvía por acción.
-   *  - El ViewSet no sobreescribe `list` ni `retrieve`: hereda
-   *    `ListModelMixin`/`RetrieveModelMixin` sin tocarlos.
-   *  - `get_queryset()` NO ramifica por `self.action`: es un solo camino, con
-   *    el mismo `select_related`/`prefetch_related` para ambas acciones, de modo
-   *    que ni siquiera los `detalles` prefetcheados pueden diferir.
-   *  - El esquema OpenAPI desplegado lo corrobora: el listado responde
-   *    `array of #/components/schemas/OrdenesCorteManga` y el detalle responde
-   *    `#/components/schemas/OrdenesCorteManga` — el MISMO componente, no dos
-   *    parecidos.
-   * Por eso la fila del listado ES el detalle completo, y el hook de detalle que
-   * la fase 1 dejó preparado (`useCorteMangaOrder`) se eliminó por innecesario.
+   * SIN fetch propio, y basta para lo que ESTE diálogo pinta. `list` y
+   * `retrieve` NO comparten serializer: `OrdenesCorteMangaViewSet.
+   * get_serializer_class` devuelve `OrdenesCorteMangaListSerializer` para el
+   * listado y `OrdenesCorteMangaRetrieveSerializer` para el detalle. El segundo
+   * es un superconjunto del primero — añade `pedido_vinculado` y devuelve los
+   * renglones completos (`corte_manga_config`/`ubicaciones`/`foto`/`notas`)—,
+   * y el esquema OpenAPI lo refleja en componentes distintos
+   * (`OrdenesCorteMangaList` vs `OrdenesCorteManga`).
+   *
+   * Nada de eso se pinta aquí: la rejilla y la tabla de 4 columnas leen solo
+   * campos que el renglón del listado SÍ trae, así que la fila en caché sigue
+   * bastando. Quien necesite los campos propios del detalle usa
+   * `getCorteMangaOrderDetail` —lo hacen `CorteMangaOrderPageContent` y
+   * `CorteMangaOrderDetailByIdDialog`, ambos vía `useCorteMangaOrderDetail`.
    */
   order: CorteMangaOrder | null;
   open: boolean;
@@ -135,7 +131,7 @@ export function CorteMangaOrderDetailDialog({
        * SIN fetch propio: sin llamada de red que pueda devolver un 404 real.
        * El equivalente aquí es que el padre no haya encontrado el id en la
        * lista — y como el listado usa el MISMO `get_queryset()` acotado por
-       * empresa/sucursal que `retrieve` (confirmado arriba), esa ausencia cubre
+       * empresa/sucursal que `retrieve` (no ramifica por `self.action`), esa ausencia cubre
        * exactamente los dos casos que el backend fusiona en un 404 real: la
        * orden no existe, o existe pero fuera del alcance del usuario. Un solo
        * estado genérico para ambos, igual que pide el contrato del endpoint.

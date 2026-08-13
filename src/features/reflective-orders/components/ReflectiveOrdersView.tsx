@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { DataTable } from "@/src/components/DataTable";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { isInitialLoadError } from "@/src/utils/isInitialLoadError";
@@ -14,15 +15,16 @@ import { useReflectiveOrders } from "../hooks/useReflectiveOrders";
  * Vista de Órdenes de Reflejante: KPIs del listado (`ReflectiveOrderStats`) más
  * el listado de `GET /produccion/orden-reflejante/`, con el alta
  * (`POST /produccion/orden-reflejante/onboarding/`, ver `ReflectiveOrderForm`)
- * en el toolbar y "Ver Detalles" por renglón (ver
- * `ReflectiveOrderDetailDialog`, que trae su propio detalle vía
- * `GET /produccion/orden-reflejante/{id}/` —ya no se arma con la fila del
- * listado, ver `useReflectiveOrderDetail`).
+ * en el toolbar y "Ver Detalles" por renglón, que NAVEGA a
+ * `/manufacturing/reflective-orders/[id]` (ver `ReflectiveOrderDetailContent`)
+ * en vez de abrir el diálogo — la página tiene el ancho que el desglose por
+ * renglón necesita y una URL que se puede compartir. Mismo cambio ya hecho en
+ * `EmbroideryView`.
  *
- * El diálogo de detalle se monta AQUÍ —fuera de `DataTable`, no dentro de la
- * fila que lo abrió— y se abre por `id` (`openOrderId`), no por el objeto de
- * fila. Es deliberado incluso siendo un diálogo de SOLO LECTURA: el motivo es
- * que el 409 de duplicado al crear una orden trae el id de una orden existente
+ * El diálogo de detalle SIGUE montado aquí —fuera de `DataTable`, no dentro de
+ * la fila— y se abre por `id` (`openOrderId`), no por el objeto de fila. Es
+ * deliberado incluso siendo un diálogo de SOLO LECTURA: el motivo es que el 409
+ * de duplicado al crear una orden trae el id de una orden existente
  * (`orden_reflejante_existente.id`) que puede no corresponder a ninguna fila a
  * la vista — puede haberla creado otro usuario, o la generación automática
  * desde ventas. `setOpenOrderId` se reenvía por eso a `ReflectiveOrderForm` (el
@@ -60,12 +62,21 @@ export function ReflectiveOrdersView() {
   const { orders, isLoading, isError, error, hasLoaded, refetch, isFetching } =
     useReflectiveOrders();
   const [openOrderId, setOpenOrderId] = useState<number | null>(null);
+  const router = useRouter();
 
   // Solo se trata como error "de pantalla completa" cuando la consulta nunca
   // cargó con éxito; un refetch fallido con datos en caché conserva la tabla y
   // avisa por toast (ver `useReflectiveOrders`).
   const showError = isInitialLoadError(isError, hasLoaded);
-  const columns = useMemo(() => getReflectiveOrderColumns(setOpenOrderId), []);
+  // "Ver Detalles" NAVEGA a la página de detalle; ya no abre el diálogo, que
+  // sigue montado abajo porque el alta lo usa para el 409 de duplicado.
+  const columns = useMemo(
+    () =>
+      getReflectiveOrderColumns((id) =>
+        router.push(`/manufacturing/reflective-orders/${id}`),
+      ),
+    [router],
+  );
 
   return (
     <div className="space-y-6">

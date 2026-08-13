@@ -324,6 +324,27 @@ export interface ReflectiveOrderDetail extends Omit<ReflectiveOrder, "detalles">
   /** Las demás OR activas del mismo pedido. Vacío si esta es la única. */
   otras_ordenes_del_pedido: ReflectiveOrderSibling[];
   /**
+   * `{id, folio}` del pedido madre. Es propio del DETALLE
+   * (`OrdenReflejanteRetrieveSerializer`; el listado no lo declara), y lo arma
+   * el MISMO helper compartido que ya usa bordado
+   * (`armar_pedido_vinculado`), así que la forma es idéntica en los dos módulos.
+   *
+   * Duplica el par plano `pedido`/`pedido_folio` que ya viaja en el encabezado,
+   * y es a propósito: el backend lo agrupa así para poder añadirle claves
+   * —cliente, fecha— sin inventar campos planos nuevos. Se prefiere este objeto
+   * para NAVEGAR al pedido, porque su presencia es la única señal de que el
+   * pedido madre existe; el par plano se queda para rotular.
+   *
+   * `null` cuando la orden no tiene pedido. `folio` nunca es `null` aunque
+   * `Pedido.folio` sí lo sea: el helper cae al PK en string.
+   *
+   * El esquema OpenAPI DESPLEGADO lo declara como `string` porque
+   * drf-spectacular no infiere el tipo de retorno de un
+   * `SerializerMethodField`; el tipo real es el de este objeto (verificado en
+   * `armar_pedido_vinculado`), mismo caso ya documentado en `usuario_nombre`.
+   */
+  pedido_vinculado: { id: number; folio: string } | null;
+  /**
    * `true` cuando el pedido tiene piezas programadas SIN talla identificable
    * (renglones con `talla` nula que genera el pipeline de picking, más los
    * renglones históricos de reflejante). El total por `pedido_detalle` sigue

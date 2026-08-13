@@ -21,10 +21,10 @@ import type {
  * -id`, así que el arreglo llega ya en el orden de presentación (más reciente
  * primero) y el frontend no reordena nada (ver `useCorteMangaOrders`).
  *
- * NO existe un action de detalle (`GET /{id}/`) en este módulo, y es
- * deliberado: `retrieve` devuelve EXACTAMENTE el mismo objeto que un renglón de
- * este listado, así que el diálogo de detalle se arma con la fila ya cargada.
- * Ver `CorteMangaOrderDetailDialog` para la verificación campo por campo.
+ * `list` usa `OrdenesCorteMangaListSerializer`: renglones LIGEROS
+ * (`OrdenCorteMangaDetalleListSerializer`, sin
+ * `corte_manga_config`/`ubicaciones`/`foto`/`notas`) y sin `pedido_vinculado`.
+ * El detalle por id trae ambas cosas — ver `getCorteMangaOrderDetail`.
  */
 export const getCorteMangaOrders = async (): Promise<CorteMangaOrder[]> => {
   const response = await v1_api.get<CorteMangaOrder[]>(
@@ -37,16 +37,17 @@ export const getCorteMangaOrders = async (): Promise<CorteMangaOrder[]> => {
  * Detalle de UNA orden de corte de manga
  * (`GET /produccion/orden-corte-manga/{id}/`).
  *
- * `retrieve` devuelve EXACTAMENTE el mismo objeto que un renglón del listado
- * (mismo `OrdenesCorteMangaSerializer`, verificado campo por campo en
- * `CorteMangaOrderDetailDialog`), por eso el tipo de retorno es `CorteMangaOrder`
- * a secas — sin un tipo de detalle aparte, a diferencia de bordado/reflejante,
- * cuyos `list` y `retrieve` sí divergieron.
+ * `retrieve` usa `OrdenesCorteMangaRetrieveSerializer`: es un superconjunto del
+ * renglón del listado —añade `pedido_vinculado` y devuelve los renglones
+ * COMPLETOS (`corte_manga_config`/`ubicaciones`/`foto`/`notas`)—, así que el
+ * tipo de retorno sigue siendo `CorteMangaOrder`, con `pedido_vinculado`
+ * declarado OPCIONAL por ser el único campo que distingue las dos acciones. No
+ * hace falta un tipo de detalle aparte como en bordado/reflejante.
  *
- * La vista de listado (`CorteMangaOrdersView`) NO usa este action: arma el
- * diálogo con la fila ya en caché. Existe para consumidores que solo tienen el
- * id a la mano y no la lista —p. ej. la sección "Documentos relacionados" del
- * detalle de pedido, vía `useCorteMangaOrderDetail`.
+ * Lo consumen la página de detalle (`CorteMangaOrderPageContent`) y el
+ * envoltorio por id del diálogo (`CorteMangaOrderDetailByIdDialog`, que usa la
+ * sección "Documentos relacionados" del detalle de pedido), ambos vía
+ * `useCorteMangaOrderDetail`.
  *
  * Fuera de alcance (otra empresa/sucursal) responde `404`, no `403`: el
  * `get_queryset()` acotado por tenant es el mismo del listado, así que un id

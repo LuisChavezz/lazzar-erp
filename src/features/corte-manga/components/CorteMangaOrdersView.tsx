@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { DataTable } from "@/src/components/DataTable";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { isInitialLoadError } from "@/src/utils/isInitialLoadError";
@@ -15,13 +16,15 @@ import { useCorteMangaOrders } from "../hooks/useCorteMangaOrders";
  * (`CorteMangaOrderStats`) más el listado de
  * `GET /produccion/orden-corte-manga/`, con el alta
  * (`POST /produccion/orden-corte-manga/onboarding/`, ver `CorteMangaOrderForm`)
- * en el toolbar y "Ver Detalles" por renglón (ver
- * `CorteMangaOrderDetailDialog`, sin fetch propio).
+ * en el toolbar y "Ver Detalles" por renglón, que NAVEGA a
+ * `/manufacturing/corte-manga/[id]` (ver `CorteMangaOrderPageContent`) en vez de
+ * abrir el diálogo — la página tiene el ancho que el desglose por renglón
+ * necesita y una URL que se puede compartir. Mismo cambio ya hecho en
+ * `EmbroideryView`/`ReflectiveOrdersView`.
  *
- * El diálogo de detalle se monta AQUÍ —fuera de `DataTable`, no dentro de la
- * fila que lo abrió— y se abre por `id` (`openOrderId`), no por el objeto de
- * fila. Es deliberado incluso siendo un diálogo de SOLO LECTURA, por dos
- * motivos:
+ * El diálogo de detalle SIGUE montado aquí —fuera de `DataTable`, no dentro de
+ * la fila— y se abre por `id` (`openOrderId`), no por el objeto de fila. Es
+ * deliberado incluso siendo un diálogo de SOLO LECTURA, por dos motivos:
  *  1. El 409 de duplicado al crear una orden trae el id de una orden existente
  *     (`orden_corte_manga_existente.id`) que puede no corresponder a ninguna
  *     fila a la vista — puede haberla creado otro usuario, o ser una fila
@@ -67,12 +70,19 @@ export function CorteMangaOrdersView() {
   const { orders, isLoading, isError, error, hasLoaded, refetch, isFetching } =
     useCorteMangaOrders();
   const [openOrderId, setOpenOrderId] = useState<number | null>(null);
+  const router = useRouter();
 
   // Solo se trata como error "de pantalla completa" cuando la consulta nunca
   // cargó con éxito; un refetch fallido con datos en caché conserva la tabla y
   // avisa por toast (ver `useCorteMangaOrders`).
   const showError = isInitialLoadError(isError, hasLoaded);
-  const columns = useMemo(() => getCorteMangaOrderColumns(setOpenOrderId), []);
+  // "Ver Detalles" NAVEGA a la página de detalle; ya no abre el diálogo, que
+  // sigue montado abajo porque el alta lo usa para el 409 de duplicado.
+  const columns = useMemo(
+    () =>
+      getCorteMangaOrderColumns((id) => router.push(`/manufacturing/corte-manga/${id}`)),
+    [router],
+  );
 
   return (
     <div className="space-y-6">

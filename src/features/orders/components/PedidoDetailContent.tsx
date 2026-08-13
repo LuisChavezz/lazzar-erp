@@ -66,6 +66,20 @@ const BACK_TARGETS: Record<string, { href: string; label: string }> = {
     href: "/manufacturing/embroidery",
     label: "Volver a Órdenes de Bordado",
   },
+  // Igual que `embroidery`, y con la misma llave por ORIGEN concreto: quien
+  // llega desde el detalle de una orden de reflejante
+  // (`ReflectiveOrderDetailContent`) vuelve a SU listado, no al de bordado ni a
+  // Mesa de Control.
+  reflective: {
+    href: "/manufacturing/reflective-orders",
+    label: "Volver a Órdenes de Reflejante",
+  },
+  // Igual que las dos anteriores: quien llega desde el detalle de una orden de
+  // corte de manga (`CorteMangaOrderPageContent`) vuelve a SU listado.
+  "corte-manga": {
+    href: "/manufacturing/corte-manga",
+    label: "Volver a Órdenes de Corte de Manga",
+  },
 };
 const DEFAULT_BACK = { href: "/operations/orders", label: "Volver a pedidos" };
 
@@ -579,7 +593,13 @@ export function PedidoDetailContent({ pedidoId, from }: PedidoDetailContentProps
   // llega como PK del FK (no como código SAT) y no se puede mapear sin él.
   const { data: satCatalogs } = useSatInfo();
 
-  const back = (from && BACK_TARGETS[from]) || DEFAULT_BACK;
+  // `Object.hasOwn` y no el indexado directo, por el mismo motivo que
+  // `CLICKABLE_DOC_TIPOS` arriba: `from` viene de la URL, así que
+  // `?from=constructor` (o `toString`, `valueOf`) resolvería a una función
+  // heredada de `Object.prototype` —truthy— y dejaría `back.href` en
+  // `undefined`, reventando el `<Link>` del "Volver".
+  const back =
+    from && Object.hasOwn(BACK_TARGETS, from) ? BACK_TARGETS[from] : DEFAULT_BACK;
 
   const BackLink = (
     <Link

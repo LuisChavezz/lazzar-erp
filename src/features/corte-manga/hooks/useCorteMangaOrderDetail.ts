@@ -11,12 +11,16 @@ import type { CorteMangaOrder } from "../interfaces/corte-manga-order.interface"
  * nullable y `enabled` que mantiene la consulta APAGADA mientras no haya una
  * orden seleccionada, de modo que un `id` nulo o inválido no dispara petición.
  *
- * DIFERENCIA con bordado/reflejante: allá el hook corrige que `list` y
- * `retrieve` dejaron de compartir serializer; aquí ambos comparten el mismo
- * `OrdenesCorteMangaSerializer`, así que el retorno es `CorteMangaOrder` (el
- * mismo tipo del listado). El hook no lo usa la vista de listado —que arma el
- * diálogo con la fila en caché—, sino consumidores que solo tienen el id, como
- * la sección "Documentos relacionados" del detalle de pedido.
+ * `list` y `retrieve` tampoco comparten serializer aquí, pero el detalle es un
+ * superconjunto ESTRICTO del renglón del listado (añade `pedido_vinculado` y
+ * los campos completos por línea), así que el retorno sigue siendo
+ * `CorteMangaOrder` —con `pedido_vinculado` opcional— y no hace falta un tipo
+ * de detalle aparte como en bordado/reflejante.
+ *
+ * Lo consumen la página de detalle (`CorteMangaOrderPageContent`) y el
+ * envoltorio por id del diálogo (`CorteMangaOrderDetailByIdDialog`, que usa la
+ * sección "Documentos relacionados" del detalle de pedido). La vista de listado
+ * NO lo usa: arma su diálogo con la fila en caché.
  */
 export const useCorteMangaOrderDetail = (id: number | null) => {
   return useQuery<CorteMangaOrder>({
