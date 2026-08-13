@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { getOrders, type OrdersQueryParams } from "../services/actions";
-import { Order } from "../interfaces/order.interface";
+import { PedidoListItem } from "../interfaces/order.interface";
 
 /**
  * Construye la queryKey de la lista de pedidos. Sin filtros conserva la clave
@@ -16,7 +16,7 @@ export const useOrders = (params?: OrdersQueryParams) => {
     isLoading,
     isError,
     error,
-  } = useQuery<Order[]>({
+  } = useQuery<PedidoListItem[]>({
     queryKey: ordersQueryKey(params),
     // Envuelto en una arrow a propósito: pasar `getOrders` pelado haría que
     // React Query le inyectara su `QueryFunctionContext` como primer argumento

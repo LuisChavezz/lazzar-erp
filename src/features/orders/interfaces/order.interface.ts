@@ -150,6 +150,35 @@ export interface Order {
 }
 
 /**
+ * Renglón del listado `GET /ventas/pedidos/` (`PedidoListSerializer`).
+ *
+ * El listado NO reusa `Order`: el backend expone un serializer minimalista de
+ * 14 campos escalares (sin `detalles`/`tallas`/`servicios_extras`/`documentos`)
+ * para que la tabla no pague el shape completo del detalle — mismo precedente
+ * que `TransferenciaListItem` vs `TransferenciaDetail`.
+ *
+ * A diferencia de `Order`, aquí `subtotal` y `gran_total` NO son opcionales: el
+ * `list` no pasa por `filtrar_campos_contabilidad_pedido`, así que ambos vienen
+ * siempre como string. El resto de campos conserva el tipo de `Order`.
+ */
+export interface PedidoListItem {
+  id: number;
+  folio: string | null;
+  folio_consecutivo: number | null;
+  oc: string | null;
+  cliente_razon_social: string | null;
+  cliente_nombre: string | null;
+  gran_total: string;
+  subtotal: string;
+  created_at: string | null;
+  fecha_confirmacion: string | null;
+  estatus: number;
+  activo: boolean;
+  cliente: number;
+  moneda: number;
+}
+
+/**
  * Talla de una línea del detalle de pedido (`PedidoDetalleLinea.tallas`). La
  * VARIANTE VENDIBLE concreta vive aquí (no en la línea): cada talla trae su
  * propia `variante`/`variante_sku` y `cantidad` — a diferencia del patrón
@@ -215,9 +244,32 @@ export interface PedidoDetalleLinea {
 }
 
 /**
+ * Documento relacionado a un pedido, tal como lo lista `documentos` en el
+ * retrieve (`GET /ventas/pedidos/{id}/`). Es una vista uniforme sobre 13 tipos
+ * distintos de documento (cotización, órdenes de trabajo, factura, picking,
+ * etc.), por eso `folio`/`fecha`/`estatus` son laxos: no todos los tipos los
+ * traen de verdad.
+ *
+ * OJO — datos crudos por tipo (el frontend los filtra al pintar): `envio`,
+ * `entrega` y `devolucion` son modelos stub y traen `folio`/`fecha` = `str(id)`
+ * (el PK disfrazado, NO una fecha real). `movimiento_inventario` trae `folio` =
+ * `str(id)` pero su `fecha` SÍ es real (`fecha_movimiento`) y su `estatus`
+ * siempre `null`. Los demás tipos traen los tres campos reales.
+ */
+export interface PedidoDocumento {
+  id: number;
+  tipo: string;
+  label: string;
+  folio: string;
+  fecha: string | null;
+  estatus: string | null;
+}
+
+/**
  * Respuesta de `GET /ventas/pedidos/{id}/`: la cabecera del pedido más
- * `detalles` (líneas producto+color con tallas anidadas). Funciona igual con o
- * sin cotización ligada (`cotizacion: null`) — el detalle ya no depende de ella.
+ * `detalles` (líneas producto+color con tallas anidadas) y `documentos` (los
+ * documentos relacionados). Funciona igual con o sin cotización ligada
+ * (`cotizacion: null`) — el detalle ya no depende de ella.
  *
  * Extiende `Order` (en vez de redeclarar) siguiendo el precedente de
  * `TransferenciaDetail extends TransferenciaListItem`: el detalle es asignable
@@ -225,7 +277,12 @@ export interface PedidoDetalleLinea {
  * serializer de detalle llegara a divergir de `Order` en algún campo de
  * cabecera, TypeScript NO lo señalaría, porque este tipo hereda lo que sea que
  * declare aquel.
+ *
+ * `documentos` es opcional: puede faltar para usuarios sin permiso de
+ * contabilidad o en casos borde, así que se tipa `?` y la UI cae al estado
+ * vacío cuando no viene.
  */
 export interface PedidoDetail extends Order {
   detalles: PedidoDetalleLinea[];
+  documentos?: PedidoDocumento[];
 }

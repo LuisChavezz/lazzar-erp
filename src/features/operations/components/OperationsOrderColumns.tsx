@@ -1,7 +1,7 @@
 'use client';
 
 import { type ColumnDef } from '@tanstack/react-table';
-import type { Order } from '@/src/features/orders/interfaces/order.interface';
+import type { PedidoListItem } from '@/src/features/orders/interfaces/order.interface';
 import {
   createOrderColumns,
   isOrderConfirmed,
@@ -16,13 +16,13 @@ export { isOrderConfirmed, ORDER_STATUS_FILTER_FIELD };
 
 // Callbacks que el componente padre inyecta para acciones del flujo.
 export interface OperationsOrderColumnCallbacks {
-  onConfirmDate: (order: Order) => void;
-  onViewDetail: (order: Order) => void;
+  onConfirmDate: (order: PedidoListItem) => void;
+  onViewDetail: (order: PedidoListItem) => void;
 }
 
 // Fábrica de columnas para la tabla de la Mesa de Control de Pedidos.
 export function buildOperationsOrderColumns(
   callbacks: OperationsOrderColumnCallbacks,
-): ColumnDef<Order, unknown>[] {
+): ColumnDef<PedidoListItem, unknown>[] {
   return createOrderColumns(callbacks);
 }

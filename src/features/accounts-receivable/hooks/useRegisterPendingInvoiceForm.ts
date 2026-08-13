@@ -7,7 +7,7 @@ import type { FormFieldError } from "@/src/utils/getFieldError";
 import { useCustomers } from "@/src/features/customers/hooks/useCustomers";
 import { useCurrencies } from "@/src/features/currency/hooks/useCurrencies";
 import { useOrders } from "@/src/features/orders/hooks/useOrders";
-import type { Order } from "@/src/features/orders/interfaces/order.interface";
+import type { PedidoListItem } from "@/src/features/orders/interfaces/order.interface";
 import {
   RegisterPendingInvoiceSchema,
   type RegisterPendingInvoiceFormValues,
@@ -95,7 +95,7 @@ export function useRegisterPendingInvoiceForm({
    * frontend —no hay enum que lo mapee—, así que el guard correcto y no
    * especulativo es la bandera booleana `activo`, no un valor mágico de estatus.
    */
-  const isSelectableOrder = (o: Order): boolean => o.activo;
+  const isSelectableOrder = (o: PedidoListItem): boolean => o.activo;
 
   /**
    * Devuelve los pedidos seleccionables que coinciden con el cliente y la moneda
@@ -107,7 +107,7 @@ export function useRegisterPendingInvoiceForm({
     if (cliente < 1 || moneda < 1) return [];
     return orders
       .filter(
-        (o: Order) =>
+        (o: PedidoListItem) =>
           isSelectableOrder(o) && o.cliente === cliente && o.moneda === moneda,
       )
       .map((o) => ({ value: o.id, label: `${o.folio} · ${o.cliente_nombre}` }));
@@ -118,8 +118,8 @@ export function useRegisterPendingInvoiceForm({
    * Aplica el mismo guard `isSelectableOrder` que `getPedidoOptions`, de modo que
    * un id obsoleto de un pedido inactivo nunca auto-llena el formulario.
    */
-  const findPedido = (pedido: number): Order | undefined =>
-    orders.find((o: Order) => o.id === pedido && isSelectableOrder(o));
+  const findPedido = (pedido: number): PedidoListItem | undefined =>
+    orders.find((o: PedidoListItem) => o.id === pedido && isSelectableOrder(o));
 
   // ─── Estado de errores ───────────────────────────────────────────────────
   const [errors, setErrors] = useState<

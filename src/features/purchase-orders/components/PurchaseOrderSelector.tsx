@@ -1,13 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { Order } from "@/src/features/orders/interfaces/order.interface";
+import { PedidoListItem } from "@/src/features/orders/interfaces/order.interface";
 import { useOrders } from "@/src/features/orders/hooks/useOrders";
 import { SearchInput } from "@/src/components/SearchInput";
 
 interface PurchaseOrderSelectorProps {
   selectedOrderId: number | null;
-  onSelect: (order: Order) => void;
+  onSelect: (order: PedidoListItem) => void;
 }
 
 export function PurchaseOrderSelector({

@@ -7,12 +7,12 @@ import { TasksIcon, InfoIcon } from '@/src/components/Icons';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { formatMoneyValueOrDash } from '@/src/utils/formatCurrency';
-import type { Order } from '@/src/features/orders/interfaces/order.interface';
+import type { PedidoListItem } from '@/src/features/orders/interfaces/order.interface';
 
 interface OrderConfirmDateDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  order: Order;
+  order: PedidoListItem;
 }
 
 export function OrderConfirmDateDialog({

@@ -14,7 +14,7 @@ import {
 } from '@/src/components/Icons';
 import { formatCurrency, safeParseAmount } from '@/src/utils/formatCurrency';
 import { useOrders } from '@/src/features/orders/hooks/useOrders';
-import type { Order } from '@/src/features/orders/interfaces/order.interface';
+import type { PedidoListItem } from '@/src/features/orders/interfaces/order.interface';
 import { isOrderConfirmed } from './OperationsOrderColumns';
 import { OrderConfirmDateDialog } from './OrderConfirmDateDialog';
 import { OperationsOrderTable } from './OperationsOrderTable';
@@ -26,11 +26,11 @@ export function OperationsOrderPanel() {
   const router = useRouter();
   const isRefetching = useIsFetching({ queryKey: ['orders'] }) > 0;
 
-  const [selectedOrderForDate, setSelectedOrderForDate] = useState<Order | null>(null);
+  const [selectedOrderForDate, setSelectedOrderForDate] = useState<PedidoListItem | null>(null);
 
   // Navega al detalle 360° del pedido (ruta neutra); `?from=operations` para
   // que el "Volver" regrese a esta Mesa de Control.
-  const handleViewDetail = (order: Order) =>
+  const handleViewDetail = (order: PedidoListItem) =>
     router.push(`/orders/${order.id}?from=operations`);
 
   const counts = useMemo(() => {

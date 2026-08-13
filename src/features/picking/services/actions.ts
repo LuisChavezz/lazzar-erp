@@ -20,6 +20,25 @@ export const getPickings = async (): Promise<Picking[]> => {
 };
 
 /**
+ * Detalle de UN picking (`GET /wms/pickings/{id}/`).
+ *
+ * `retrieve` devuelve el MISMO `PickingSerializer` que el listado (verificado en
+ * `wms/api/views.py`: `PickingViewSet` usa un `serializer_class` único, sin
+ * `get_serializer_class`), así que el retorno es `Picking` crudo — la bandera
+ * derivada `esta_vencida` (que define `PickingRow`) NO viene del backend y se
+ * calcula en cliente con `mapPickingToRow`.
+ *
+ * La vista de listado NO usa este action: arma el diálogo con la fila ya
+ * enriquecida en caché. Existe para consumidores que solo tienen el id —p. ej.
+ * la sección "Documentos relacionados" del detalle de pedido, vía
+ * `usePickingDetail`. Fuera de alcance (otro almacén/tenant) responde `404`.
+ */
+export const getPickingDetail = async (id: number): Promise<Picking> => {
+  const response = await v1_api.get<Picking>(`/wms/pickings/${id}/`);
+  return response.data;
+};
+
+/**
  * Datos de onboarding para armar un picking (`GET /wms/pickings/onboarding/`).
  *
  * Sin `pedidoId` devuelve solo los selectores (pedidos/operadores/almacenes).

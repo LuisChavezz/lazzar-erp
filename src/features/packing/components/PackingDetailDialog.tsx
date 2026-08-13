@@ -103,6 +103,18 @@ export function PackingDetailDialog({ packing, open, onOpenChange }: PackingDeta
         </div>
       }
     >
+      <PackingDetailContent packing={packing} />
+    </MainDialog>
+  );
+}
+
+/**
+ * Cuerpo del detalle de packing, extraído para que el diálogo original y el
+ * envoltorio por id (`PackingDetailByIdDialog`) compartan un ÚNICO `MainDialog`
+ * y solo intercambien el contenido (loader → cuerpo), sin remontar el modal.
+ */
+export function PackingDetailContent({ packing }: { packing: Packing }) {
+  return (
       <div className="space-y-5">
         {/* Resumen */}
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-3 px-4 py-3 rounded-xl bg-slate-50 dark:bg-white/5 text-xs">
@@ -175,6 +187,5 @@ export function PackingDetailDialog({ packing, open, onOpenChange }: PackingDeta
           <LineasTable items={packing.packing_detalle} />
         </div>
       </div>
-    </MainDialog>
   );
 }

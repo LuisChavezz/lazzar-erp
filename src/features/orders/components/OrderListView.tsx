@@ -11,7 +11,7 @@ import {
   enrichOrdersWithStatus,
   sharedOrderFilterConfig,
 } from './SharedOrderColumns';
-import type { Order } from '../interfaces/order.interface';
+import type { PedidoListItem } from '../interfaces/order.interface';
 
 interface OrderListViewProps {
   /**
@@ -45,7 +45,7 @@ export function OrderListView({ from, params }: OrderListViewProps) {
 
   // Detalle 360° del pedido en su ruta neutra; `?from` hace que el "Volver"
   // regrese a esta lista.
-  const handleViewDetail = (order: Order) =>
+  const handleViewDetail = (order: PedidoListItem) =>
     router.push(`/orders/${order.id}?from=${from}`);
 
   const handleRefetch = () =>

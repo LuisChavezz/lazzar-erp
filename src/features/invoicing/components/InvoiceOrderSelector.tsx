@@ -4,7 +4,7 @@ import { Loader } from "@/src/components/Loader";
 import { SearchableSelectList } from "@/src/components/SearchableSelectList";
 import { renderRadioIndicator } from "@/src/components/RadioIndicator";
 import { useOrders } from "@/src/features/orders/hooks/useOrders";
-import type { Order } from "@/src/features/orders/interfaces/order.interface";
+import type { PedidoListItem } from "@/src/features/orders/interfaces/order.interface";
 
 interface InvoiceOrderSelectorProps {
   /** Id del pedido seleccionado (`0` = ninguno). */
@@ -45,7 +45,7 @@ export function InvoiceOrderSelector({
   }
 
   return (
-    <SearchableSelectList<Order>
+    <SearchableSelectList<PedidoListItem>
       items={orders}
       searchPlaceholder="Buscar pedido por folio o cliente..."
       filterPredicate={(order, term) =>

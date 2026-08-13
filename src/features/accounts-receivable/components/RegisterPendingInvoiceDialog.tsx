@@ -26,7 +26,7 @@ import { FormCancelButton, FormSubmitButton } from "@/src/components/FormButtons
 import { formatCurrency } from "@/src/utils/formatCurrency";
 import { useRegisterPendingInvoiceForm } from "../hooks/useRegisterPendingInvoiceForm";
 import { MONEY_REGEX, toCents } from "../schemas/register-pending-invoice.schema";
-import type { Order } from "@/src/features/orders/interfaces/order.interface";
+import type { PedidoListItem } from "@/src/features/orders/interfaces/order.interface";
 
 function RegisterPendingInvoiceForm({ onClose }: { onClose: () => void }) {
   const {
@@ -107,14 +107,11 @@ function RegisterPendingInvoiceForm({ onClose }: { onClose: () => void }) {
    * cruzada total = subtotal − descuento + impuestos del schema se cumpla exacta
    * para cualquier pedido, ya que `total` siempre es `gran_total`.
    */
-  const applyPedidoAmounts = (order: Order) => {
-    // `subtotal`/`gran_total` son campos contables que el backend ELIMINA para
-    // usuarios sin permiso. Si faltan, NO se autocompleta: escribir "0.00" y
-    // limpiar los errores dejaría el formulario "limpio" pero inválido
-    // (`total` > 0 lo exige el schema), sin señal hasta el submit. Hoy el
-    // selector se alimenta del listado (que no filtra), así que en la práctica
-    // siempre vienen; el guard es defensivo ante ese contrato.
-    if (order.subtotal == null || order.gran_total == null) return;
+  const applyPedidoAmounts = (order: PedidoListItem) => {
+    // `PedidoListItem.subtotal`/`gran_total` son strings SIEMPRE presentes: el
+    // `PedidoListSerializer` los devuelve en sus 14 campos para cualquier usuario
+    // (a diferencia del retrieve, donde sí se filtran por rol contable). Por eso
+    // no hay guard de ausencia aquí —con el tipo actual sería código muerto—.
     const subtotal = order.subtotal;
     const total = order.gran_total;
     const deltaCents = toCents(total) - toCents(subtotal);

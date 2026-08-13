@@ -16,6 +16,24 @@ export const getPackings = async (): Promise<Packing[]> => {
 };
 
 /**
+ * Detalle de UN packing (`GET /wms/packings/{id}/`).
+ *
+ * `retrieve` devuelve el MISMO `PackingSerializer` que el listado (verificado en
+ * `wms/api/views.py`: `PackingViewSet` usa un `serializer_class` único, sin
+ * `get_serializer_class`), así que el retorno es `Packing` — sin campos
+ * derivados en cliente, a diferencia de picking (`esta_vencida`).
+ *
+ * La vista de listado NO usa este action: arma el diálogo con la fila en caché.
+ * Existe para consumidores que solo tienen el id —p. ej. la sección "Documentos
+ * relacionados" del detalle de pedido, vía `usePackingDetail`. Fuera de alcance
+ * (otro almacén/tenant) responde `404`.
+ */
+export const getPackingDetail = async (id: number): Promise<Packing> => {
+  const response = await v1_api.get<Packing>(`/wms/packings/${id}/`);
+  return response.data;
+};
+
+/**
  * Datos de onboarding para armar un packing (`GET /wms/packings/onboarding/`).
  *
  * Sin `pickingId` devuelve solo el catálogo de pickings candidatos. Con

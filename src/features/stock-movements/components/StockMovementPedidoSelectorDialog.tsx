@@ -3,7 +3,7 @@
 import { MainDialog } from "@/src/components/MainDialog";
 import { SingleSelectPickerDialogContent } from "@/src/components/SingleSelectPickerDialogContent";
 import { useOrders } from "@/src/features/orders/hooks/useOrders";
-import type { Order } from "@/src/features/orders/interfaces/order.interface";
+import type { PedidoListItem } from "@/src/features/orders/interfaces/order.interface";
 
 export interface SelectedPedido {
   id: number;
@@ -38,7 +38,7 @@ function PedidoSelectorContent({
   const { orders, isLoading, isError } = useOrders();
 
   return (
-    <SingleSelectPickerDialogContent<Order>
+    <SingleSelectPickerDialogContent<PedidoListItem>
       title="Seleccionar Pedido"
       subtitle="Vincula el movimiento a un pedido existente"
       statusColor="indigo"

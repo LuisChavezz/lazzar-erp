@@ -146,6 +146,24 @@ export function CorteMangaOrderDetailDialog({
           message="No existe o no tienes acceso a esta orden de corte de manga."
         />
       ) : (
+        <CorteMangaOrderDetailContent order={order} />
+      )}
+    </MainDialog>
+  );
+}
+
+/**
+ * Cuerpo del detalle de OCM (rama con `order` presente), extraído para que el
+ * diálogo original y el envoltorio por id (`CorteMangaOrderDetailByIdDialog`)
+ * compartan un ÚNICO `MainDialog` y solo intercambien el contenido, sin remontar
+ * el modal.
+ */
+export function CorteMangaOrderDetailContent({
+  order,
+}: {
+  order: CorteMangaOrder;
+}) {
+  return (
         <div className="space-y-5">
           {/* Resumen */}
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-3 px-4 py-3 rounded-xl bg-slate-50 dark:bg-white/5 text-xs">
@@ -204,7 +222,5 @@ export function CorteMangaOrderDetailDialog({
             <LineasTable items={order.detalles} />
           </div>
         </div>
-      )}
-    </MainDialog>
   );
 }

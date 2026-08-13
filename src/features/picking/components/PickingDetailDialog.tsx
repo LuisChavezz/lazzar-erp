@@ -172,6 +172,18 @@ export function PickingDetailDialog({ picking, open, onOpenChange }: PickingDeta
         </div>
       }
     >
+      <PickingDetailContent picking={picking} />
+    </MainDialog>
+  );
+}
+
+/**
+ * Cuerpo del detalle de picking, extraído para que el diálogo original y el
+ * envoltorio por id (`PickingDetailByIdDialog`) compartan un ÚNICO `MainDialog`
+ * y solo intercambien el contenido (loader → cuerpo), sin remontar el modal.
+ */
+export function PickingDetailContent({ picking }: { picking: PickingRow }) {
+  return (
       <div className="space-y-5">
         {/* Resumen */}
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-3 px-4 py-3 rounded-xl bg-slate-50 dark:bg-white/5 text-xs">
@@ -277,6 +289,5 @@ export function PickingDetailDialog({ picking, open, onOpenChange }: PickingDeta
           <LineasTable items={picking.picking_detalle} />
         </div>
       </div>
-    </MainDialog>
   );
 }

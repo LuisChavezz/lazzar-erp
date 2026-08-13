@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react';
 import { DataTable } from '@/src/components/DataTable';
-import type { Order } from '@/src/features/orders/interfaces/order.interface';
+import type { PedidoListItem } from '@/src/features/orders/interfaces/order.interface';
 import {
   buildOperationsOrderColumns,
   type OperationsOrderColumnCallbacks,
@@ -10,7 +10,7 @@ import {
 import { enrichOrdersWithStatus, operationsOrderFilterConfig } from './OperationsOrderFilter';
 
 interface OperationsOrderTableProps extends OperationsOrderColumnCallbacks {
-  orders: Order[];
+  orders: PedidoListItem[];
   onRefetch?: () => void | Promise<unknown>;
   isRefetching?: boolean;
 }

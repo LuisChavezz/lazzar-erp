@@ -34,6 +34,34 @@ export const getCorteMangaOrders = async (): Promise<CorteMangaOrder[]> => {
 };
 
 /**
+ * Detalle de UNA orden de corte de manga
+ * (`GET /produccion/orden-corte-manga/{id}/`).
+ *
+ * `retrieve` devuelve EXACTAMENTE el mismo objeto que un renglón del listado
+ * (mismo `OrdenesCorteMangaSerializer`, verificado campo por campo en
+ * `CorteMangaOrderDetailDialog`), por eso el tipo de retorno es `CorteMangaOrder`
+ * a secas — sin un tipo de detalle aparte, a diferencia de bordado/reflejante,
+ * cuyos `list` y `retrieve` sí divergieron.
+ *
+ * La vista de listado (`CorteMangaOrdersView`) NO usa este action: arma el
+ * diálogo con la fila ya en caché. Existe para consumidores que solo tienen el
+ * id a la mano y no la lista —p. ej. la sección "Documentos relacionados" del
+ * detalle de pedido, vía `useCorteMangaOrderDetail`.
+ *
+ * Fuera de alcance (otra empresa/sucursal) responde `404`, no `403`: el
+ * `get_queryset()` acotado por tenant es el mismo del listado, así que un id
+ * ajeno no se distingue de uno inexistente.
+ */
+export const getCorteMangaOrderDetail = async (
+  id: number,
+): Promise<CorteMangaOrder> => {
+  const response = await v1_api.get<CorteMangaOrder>(
+    `/produccion/orden-corte-manga/${id}/`,
+  );
+  return response.data;
+};
+
+/**
  * Catálogos para dar de alta una orden de corte de manga
  * (`GET /produccion/orden-corte-manga/onboarding/`).
  *

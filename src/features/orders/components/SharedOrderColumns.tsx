@@ -8,7 +8,7 @@ import { CheckCircleIcon, EyeIcon, TasksIcon } from '@/src/components/Icons';
 import type { DataTableFilterConfig } from '@/src/components/DataTable';
 import { formatMoneyValueOrDash } from '@/src/utils/formatCurrency';
 import { parseLocalDate } from '@/src/utils/formatDate';
-import type { Order } from '../interfaces/order.interface';
+import type { PedidoListItem } from '../interfaces/order.interface';
 
 /**
  * Definición ÚNICA de la tabla de pedidos (`GET /ventas/pedidos/`), compartida
@@ -23,15 +23,15 @@ import type { Order } from '../interfaces/order.interface';
 export const ORDER_STATUS_FILTER_FIELD = 'estatus_confirmacion' as const;
 
 /** Pedido enriquecido con el estado que consume el filtro de `DataTable`. */
-export type OrderWithStatus = Order & { [ORDER_STATUS_FILTER_FIELD]: string };
+export type OrderWithStatus = PedidoListItem & { [ORDER_STATUS_FILTER_FIELD]: string };
 
 // Un pedido se considera confirmado cuando ya tiene fecha de confirmación.
-export function isOrderConfirmed(order: Order): boolean {
+export function isOrderConfirmed(order: PedidoListItem): boolean {
   return Boolean(order.fecha_confirmacion);
 }
 
 // Configuración visual del badge según el estado de confirmación del pedido.
-function confirmationBadge(order: Order): { label: string; cls: string } {
+function confirmationBadge(order: PedidoListItem): { label: string; cls: string } {
   return isOrderConfirmed(order)
     ? {
         label: 'Confirmado',
@@ -48,7 +48,7 @@ function confirmationBadge(order: Order): { label: string; cls: string } {
  * no el `accessorFn` de la columna, así que hay que materializar el estado en
  * los datos.
  */
-export function enrichOrdersWithStatus(orders: Order[]): OrderWithStatus[] {
+export function enrichOrdersWithStatus(orders: PedidoListItem[]): OrderWithStatus[] {
   return orders.map((order) => ({
     ...order,
     [ORDER_STATUS_FILTER_FIELD]: isOrderConfirmed(order) ? 'Confirmado' : 'Por confirmar',
@@ -68,19 +68,19 @@ export const sharedOrderFilterConfig: DataTableFilterConfig[] = [
 
 export interface OrderColumnsOptions {
   /** Abre el detalle 360° del pedido. Cada módulo decide su `?from=`. */
-  onViewDetail: (order: Order) => void;
+  onViewDetail: (order: PedidoListItem) => void;
   /**
    * Solo Mesa de Control: al pasarlo se añade "Confirmar fecha" al menú de
    * acciones. Sin él la tabla queda de solo lectura.
    */
-  onConfirmDate?: (order: Order) => void;
+  onConfirmDate?: (order: PedidoListItem) => void;
 }
 
 // Fábrica de columnas para cualquier lista de pedidos.
 export function createOrderColumns({
   onViewDetail,
   onConfirmDate,
-}: OrderColumnsOptions): ColumnDef<Order, unknown>[] {
+}: OrderColumnsOptions): ColumnDef<PedidoListItem, unknown>[] {
   return [
     {
       id: 'folio',

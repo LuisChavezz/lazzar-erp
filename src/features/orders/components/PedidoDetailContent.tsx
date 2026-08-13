@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import type React from "react";
+import { useState } from "react";
 import { ArrowLeftIcon } from "@/src/components/Icons";
 import { Loader } from "@/src/components/Loader";
 import { ErrorState } from "@/src/components/ErrorState";
@@ -26,6 +27,16 @@ import {
   getUsoCfdiLabel,
 } from "../constants/satCatalogs";
 import { EmbroideryLineLocationPopover } from "@/src/features/embroidery/components/EmbroideryLineLocationPopover";
+import { EmbroideryOrderDetailDialog } from "@/src/features/embroidery/components/EmbroideryOrderDetailDialog";
+import { ReflectiveOrderDetailDialog } from "@/src/features/reflective-orders/components/ReflectiveOrderDetailDialog";
+import { CorteMangaOrderDetailByIdDialog } from "@/src/features/corte-manga/components/CorteMangaOrderDetailByIdDialog";
+import { ProductionOrderDetailByIdDialog } from "@/src/features/production-orders/components/ProductionOrderDetailByIdDialog";
+import { PickingDetailByIdDialog } from "@/src/features/picking/components/PickingDetailByIdDialog";
+import { PackingDetailByIdDialog } from "@/src/features/packing/components/PackingDetailByIdDialog";
+import { PurchaseOrderDetailDialog } from "@/src/features/purchase-orders/components/PurchaseOrderDetailDialog";
+import { QuoteDetailByIdDialog } from "@/src/features/quotes/components/QuoteDetailByIdDialog";
+import { InvoiceDetailByIdDialog } from "@/src/features/invoicing/components/InvoiceDetailByIdDialog";
+import { StockMovementDetailByIdDialog } from "@/src/features/stock-movements/components/StockMovementDetailByIdDialog";
 import type { EmbroideryOnboardingUbicacion } from "@/src/features/embroidery/interfaces/embroidery.interface";
 import { ReflectiveLineConfigPopover } from "@/src/features/reflective-orders/components/ReflectiveLineConfigPopover";
 import type { ReflectiveLineConfigEntry } from "@/src/features/reflective-orders/interfaces/reflective-order.interface";
@@ -33,6 +44,7 @@ import type {
   Order,
   PedidoDetalleLinea,
   PedidoDetalleTalla,
+  PedidoDocumento,
 } from "../interfaces/order.interface";
 
 // ── Navegación "Volver" según el módulo de origen (?from=) ───────────────────
@@ -361,6 +373,177 @@ function PedidoLineas({
   );
 }
 
+// ── Documentos relacionados ──────────────────────────────────────────────────
+
+/**
+ * Tipos stub: sus `folio` y `fecha` son el PK crudo (`str(id)`), no datos
+ * reales. Para estos NO se muestra folio ni fecha (parsear la "fecha" daría un
+ * "1 ene 1970" o similar). `estatus` tampoco aplica. Se define como constante
+ * en vez de inline en los condicionales.
+ */
+const STUB_DOCUMENTO_TIPOS = new Set(["envio", "entrega", "devolucion"]);
+
+// `movimiento_inventario`: sin folio real (es `str(id)`) pero con fecha real
+// (`fecha_movimiento`); su `estatus` siempre viene `null`.
+const MOVIMIENTO_INVENTARIO_TIPO = "movimiento_inventario";
+
+/**
+ * Registro de tipos de documento con detalle navegable desde aquí. La llave es
+ * el `doc.tipo`; el valor, el diálogo que lo abre. Todos los diálogos incluidos
+ * comparten hoy la MISMA firma (`{ orderId, open, onOpenChange }`) y se
+ * auto-abastecen del detalle por id puro (= `doc.id`), así que se montan de
+ * forma uniforme. Un tipo ausente del registro queda como texto estático.
+ *
+ * Si a futuro un diálogo tuviera otra firma, no encajaría en este mapa y habría
+ * que darle su propia rama — se resolverá cuando aparezca, sin sobre-diseñar el
+ * mapa ahora.
+ */
+type DocDetailDialog = React.ComponentType<{
+  orderId: number | null;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}>;
+
+const CLICKABLE_DOC_TIPOS: Record<string, DocDetailDialog> = {
+  orden_bordado: EmbroideryOrderDetailDialog,
+  orden_reflejante: ReflectiveOrderDetailDialog,
+  // Corte de manga no se auto-abastece por id de fábrica (su diálogo recibe el
+  // objeto ya resuelto); `CorteMangaOrderDetailByIdDialog` es el wrapper que le
+  // da la firma por id que este registro exige.
+  orden_corte_manga: CorteMangaOrderDetailByIdDialog,
+  // Producción sí es self-fetching, pero con prop `opId` no-nullable;
+  // `ProductionOrderDetailByIdDialog` solo adapta la firma (sin action/hook).
+  orden_produccion: ProductionOrderDetailByIdDialog,
+  // Picking recibe la fila YA enriquecida (`PickingRow`) y no acepta null;
+  // `PickingDetailByIdDialog` fetchea por id, enriquece y maneja loading/error.
+  picking: PickingDetailByIdDialog,
+  // Packing es como picking pero sin enriquecimiento; el wrapper fetchea por id
+  // y maneja loading/error (el diálogo no acepta null ni los tiene).
+  packing: PackingDetailByIdDialog,
+  // Orden de compra encaja directo: ya es self-fetching por id y su firma es
+  // exactamente la del registro (`{ orderId, open, onOpenChange }`).
+  orden_compra: PurchaseOrderDetailDialog,
+  // Cotización: `QuoteDetails` es contenido self-fetching (no un diálogo);
+  // `QuoteDetailByIdDialog` solo lo envuelve en un MainDialog (sin action/hook).
+  cotizacion: QuoteDetailByIdDialog,
+  // Factura: `InvoiceDetails` es contenido parent-injected; el wrapper fetchea
+  // por id (detalle con `factura_detalles`), lo envuelve y maneja loading/error.
+  factura: InvoiceDetailByIdDialog,
+  // Movimiento de inventario sí es self-fetching, pero con prop `movementId`
+  // no-nullable; `StockMovementDetailByIdDialog` solo adapta la firma.
+  movimiento_inventario: StockMovementDetailByIdDialog,
+};
+
+/**
+ * Timestamp para ordenar (desc, más reciente primero). Devuelve `null` cuando
+ * el documento no tiene una fecha real (tipos stub, o fecha ausente/no
+ * parseable): esos van al fondo.
+ */
+function docSortTime(doc: PedidoDocumento): number | null {
+  if (STUB_DOCUMENTO_TIPOS.has(doc.tipo) || !doc.fecha) return null;
+  const time = new Date(doc.fecha).getTime();
+  return Number.isNaN(time) ? null : time;
+}
+
+/** Badge neutro para el estatus del documento (sin mapa de color por tipo). */
+function DocEstatusBadge({ estatus }: { estatus: string }) {
+  return (
+    <span
+      className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium ${ORIGIN_BADGE_CLASS}`}
+    >
+      {estatus}
+    </span>
+  );
+}
+
+function PedidoDocumentos({
+  documentos,
+  onOpenDoc,
+}: {
+  documentos: PedidoDocumento[];
+  onOpenDoc: (doc: { tipo: string; id: number }) => void;
+}) {
+  if (documentos.length === 0) {
+    return <EmptyLines>Sin documentos relacionados.</EmptyLines>;
+  }
+
+  // Orden: fecha descendente; los que no tienen fecha real (stubs) al fondo.
+  const ordenados = [...documentos].sort((a, b) => {
+    const ta = docSortTime(a);
+    const tb = docSortTime(b);
+    if (ta === null && tb === null) return 0;
+    if (ta === null) return 1;
+    if (tb === null) return -1;
+    return tb - ta;
+  });
+
+  return (
+    <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-white/10">
+      <table className="min-w-full text-xs">
+        <thead className="bg-slate-50 dark:bg-white/5">
+          <tr className="text-slate-500 dark:text-slate-400">
+            <th className="px-3 py-2 text-left font-semibold">Tipo</th>
+            <th className="px-3 py-2 text-left font-semibold">Folio</th>
+            <th className="px-3 py-2 text-left font-semibold">Fecha</th>
+            <th className="px-3 py-2 text-left font-semibold">Estatus</th>
+          </tr>
+        </thead>
+        <tbody>
+          {ordenados.map((doc) => {
+            const isStub = STUB_DOCUMENTO_TIPOS.has(doc.tipo);
+            const isMovimiento = doc.tipo === MOVIMIENTO_INVENTARIO_TIPO;
+            // Clicable solo si su tipo tiene un diálogo de detalle registrado
+            // (por id); el resto queda como texto estático. `Object.hasOwn` en
+            // vez de `in`: `in` recorre la cadena de prototipos, así que un
+            // `tipo` llamado `constructor`/`toString`/… daría true falsamente.
+            const isClickable = Object.hasOwn(CLICKABLE_DOC_TIPOS, doc.tipo);
+            // Folio: oculto (—) para stubs y movimiento (su folio es el PK).
+            const folio = isStub || isMovimiento ? "—" : textOrDash(doc.folio);
+            // Fecha: oculta (—) para stubs (PK disfrazado); real para el resto.
+            const fecha = isStub ? "—" : formatShortDate(doc.fecha);
+            // Estatus: nunca para stubs ni movimiento; badge si viene, si no —.
+            const showEstatus = !isStub && !isMovimiento && doc.estatus;
+            return (
+              <tr
+                key={`${doc.tipo}-${doc.id}`}
+                className="border-t border-slate-100 dark:border-white/10 align-top"
+              >
+                <td className="px-3 py-2 text-slate-700 dark:text-slate-200">
+                  {isClickable ? (
+                    <button
+                      type="button"
+                      onClick={() => onOpenDoc({ tipo: doc.tipo, id: doc.id })}
+                      className="text-sky-600 dark:text-sky-400 hover:underline hover:text-sky-700 dark:hover:text-sky-300 cursor-pointer font-medium text-left transition-colors"
+                      title={`Ver detalle: ${doc.label}`}
+                    >
+                      {doc.label}
+                    </button>
+                  ) : (
+                    doc.label
+                  )}
+                </td>
+                <td className="px-3 py-2 font-mono text-slate-600 dark:text-slate-300 whitespace-nowrap">
+                  {folio}
+                </td>
+                <td className="px-3 py-2 text-slate-600 dark:text-slate-300 whitespace-nowrap">
+                  {fecha}
+                </td>
+                <td className="px-3 py-2">
+                  {showEstatus ? (
+                    <DocEstatusBadge estatus={doc.estatus as string} />
+                  ) : (
+                    <span className="text-slate-300 dark:text-slate-600">—</span>
+                  )}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 // ── Componente principal ─────────────────────────────────────────────────────
 
 interface PedidoDetailContentProps {
@@ -371,6 +554,18 @@ interface PedidoDetailContentProps {
 export function PedidoDetailContent({ pedidoId, from }: PedidoDetailContentProps) {
   const numericId = Number(pedidoId);
   const { data, isLoading, isError, error } = usePedidoDetail(numericId);
+  // Documento abierto desde "Documentos relacionados" (`null` = cerrado). Un
+  // solo estado para todos los tipos navegables; el diálogo se resuelve del
+  // registro `CLICKABLE_DOC_TIPOS` según `openDoc.tipo`.
+  const [openDoc, setOpenDoc] = useState<{ tipo: string; id: number } | null>(
+    null,
+  );
+  // `Object.hasOwn` (no indexado directo) para no resolver a una función de
+  // `Object.prototype` si `openDoc.tipo` fuera una clave heredada.
+  const OpenDocDialog =
+    openDoc && Object.hasOwn(CLICKABLE_DOC_TIPOS, openDoc.tipo)
+      ? CLICKABLE_DOC_TIPOS[openDoc.tipo]
+      : null;
   // Catálogo SAT (cacheado 24h) para resolver `cliente_regimen_fiscal`, que
   // llega como PK del FK (no como código SAT) y no se puede mapear sin él.
   const { data: satCatalogs } = useSatInfo();
@@ -533,46 +728,20 @@ export function PedidoDetailContent({ pedidoId, from }: PedidoDetailContentProps
         </Section>
       </div>
 
-      {/* ── 4 y 5. Líneas del pedido con tallas ─────────────────────────── */}
-      <Section title={`Productos del pedido (${data.detalles.length})`}>
-        <PedidoLineas detalles={data.detalles} showAccounting={showAccounting} />
-      </Section>
-
-      {/* ── 6. Servicios extra ──────────────────────────────────────────── */}
-      <Section title={`Servicios extra (${data.servicios_extras.length})`}>
-        {data.servicios_extras.length === 0 ? (
-          <EmptyLines>Este pedido no tiene servicios extra.</EmptyLines>
-        ) : (
-          <div className="divide-y divide-slate-100 dark:divide-white/5">
-            {data.servicios_extras.map((servicio) => (
-              <div
-                key={servicio.id}
-                className="flex items-center justify-between gap-3 py-2.5 text-sm"
-              >
-                <div className="flex items-center gap-2 min-w-0">
-                  <span className="text-slate-700 dark:text-slate-200 truncate">
-                    {servicio.nombre}
-                  </span>
-                  {!servicio.visible_en_factura && (
-                    <span className="inline-flex items-center rounded bg-slate-100 dark:bg-white/10 px-1.5 py-0.5 text-[10px] font-medium text-slate-500 dark:text-slate-400">
-                      No visible en factura
-                    </span>
-                  )}
-                </div>
-                {showAccounting && (
-                  <span className="tabular-nums font-semibold text-slate-800 dark:text-white shrink-0">
-                    {formatMoneyValueOrDash(servicio.monto)}
-                  </span>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-      </Section>
-
-      {/* ── 7. Envío ────────────────────────────────────────────────────── */}
-      <Section title="Envío">
-        <InfoGrid>
+      {/* ── Fila: Envío + Resumen contable (2 columnas en desktop) ──────────
+          Anchos desiguales a propósito: Envío (más campos) ~60%, Resumen ~40%.
+          Sin permiso contable el Resumen no se pinta y Envío queda full-width
+          (el wrapper pierde el grid), evitando una columna vacía. */}
+      <div
+        className={
+          showAccounting
+            ? "grid grid-cols-1 lg:grid-cols-[3fr_2fr] gap-6"
+            : ""
+        }
+      >
+        {/* ── 7. Envío ──────────────────────────────────────────────────── */}
+        <Section title="Envío">
+          <InfoGrid>
           <InfoField label="Destinatario">{textOrDash(data.destinatario)}</InfoField>
           <InfoField label="Empresa de envío">{textOrDash(data.empresa_envio)}</InfoField>
           <InfoField label="Teléfono">{textOrDash(data.telefono_envio)}</InfoField>
@@ -649,6 +818,68 @@ export function PedidoDetailContent({ pedidoId, from }: PedidoDetailContentProps
             )}
           </div>
         </Section>
+        )}
+      </div>
+
+      {/* ── Fila full-width: Productos con tallas (la tabla necesita el ancho) ── */}
+      <Section title={`Productos del pedido (${data.detalles.length})`}>
+        <PedidoLineas detalles={data.detalles} showAccounting={showAccounting} />
+      </Section>
+
+      {/* ── Fila: Servicios extra + Documentos relacionados (2 columnas) ────────
+          Anchos desiguales: Servicios (compacto) ~40%, Documentos (tabla) ~60%. */}
+      <div className="grid grid-cols-1 lg:grid-cols-[2fr_3fr] gap-6">
+        {/* ── 6. Servicios extra ──────────────────────────────────────────── */}
+        <Section title={`Servicios extra (${data.servicios_extras.length})`}>
+          {data.servicios_extras.length === 0 ? (
+            <EmptyLines>Este pedido no tiene servicios extra.</EmptyLines>
+          ) : (
+            <div className="divide-y divide-slate-100 dark:divide-white/5">
+              {data.servicios_extras.map((servicio) => (
+                <div
+                  key={servicio.id}
+                  className="flex items-center justify-between gap-3 py-2.5 text-sm"
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="text-slate-700 dark:text-slate-200 truncate">
+                      {servicio.nombre}
+                    </span>
+                    {!servicio.visible_en_factura && (
+                      <span className="inline-flex items-center rounded bg-slate-100 dark:bg-white/10 px-1.5 py-0.5 text-[10px] font-medium text-slate-500 dark:text-slate-400">
+                        No visible en factura
+                      </span>
+                    )}
+                  </div>
+                  {showAccounting && (
+                    <span className="tabular-nums font-semibold text-slate-800 dark:text-white shrink-0">
+                      {formatMoneyValueOrDash(servicio.monto)}
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </Section>
+
+        {/* ── 9. Documentos relacionados ──────────────────────────────────── */}
+        <Section title="Documentos relacionados">
+          <PedidoDocumentos
+            documentos={data.documentos ?? []}
+            onOpenDoc={setOpenDoc}
+          />
+        </Section>
+      </div>
+
+      {/* Detalle del documento (se monta solo al abrir; cada diálogo trae su
+          propio detalle por id). El componente se resuelve del registro. */}
+      {openDoc && OpenDocDialog && (
+        <OpenDocDialog
+          orderId={openDoc.id}
+          open={true}
+          onOpenChange={(open) => {
+            if (!open) setOpenDoc(null);
+          }}
+        />
       )}
 
     </div>
