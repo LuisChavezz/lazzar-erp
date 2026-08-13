@@ -142,6 +142,13 @@ export interface CorteMangaOrder {
   folio_ocm: string;
   estatus_corte: CorteMangaOrderStatus;
   /**
+   * Etiqueta ya resuelta de `estatus_corte`, que el backend devuelve en el
+   * listado y en el detalle. Se usa solo como RESPALDO de la etiqueta local
+   * (ver `corteMangaStatusEntry`): el enum de Python omite acentos, así que la
+   * de este frontend gana para los códigos conocidos.
+   */
+  estatus_corte_display: string;
+  /**
    * Entero libre: el modelo lo declara `IntegerField(default=1)` SIN `choices`,
    * así que el backend acepta cualquier entero (el esquema OpenAPI lo confirma:
    * `integer` con los límites de un `int32`, sin enum). La UI rotula 1-3

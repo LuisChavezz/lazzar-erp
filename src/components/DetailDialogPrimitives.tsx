@@ -41,6 +41,38 @@ export const SectionTitle = ({ children }: { children: React.ReactNode }) => (
   </h3>
 );
 
+/**
+ * Tarjeta de sección: el bloque contenedor de las PÁGINAS de detalle (borde
+ * redondeado, fondo, `SectionTitle` y un `action` opcional alineado a la
+ * derecha). Antes vivía duplicada en cada página de detalle; `action` viene de
+ * `PedidoDetailContent`, cuya versión era la más completa. Sin `action` el DOM
+ * es idéntico al de las páginas que no lo usan.
+ */
+export const Section = ({
+  title,
+  children,
+  action,
+}: {
+  title: string;
+  children: React.ReactNode;
+  action?: React.ReactNode;
+}) => (
+  <section className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 p-5 md:p-6">
+    <div className="flex items-center justify-between gap-3 mb-4">
+      <SectionTitle>{title}</SectionTitle>
+      {action}
+    </div>
+    {children}
+  </section>
+);
+
+/** Rejilla de campos etiqueta/valor reutilizada por las secciones de detalle. */
+export const InfoGrid = ({ children }: { children: React.ReactNode }) => (
+  <div className="grid grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-3 text-xs">
+    {children}
+  </div>
+);
+
 /** Estado vacío de una tabla de líneas (mismo tono en todas las secciones). */
 export const EmptyLines = ({ children }: { children: React.ReactNode }) => (
   <p className="text-sm text-slate-400 dark:text-slate-500 italic px-1 py-4 text-center">

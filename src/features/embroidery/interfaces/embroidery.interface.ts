@@ -74,6 +74,13 @@ export interface EmbroideryOrder {
   folio_bordado: string;
   estatus_bordado: EmbroideryOrderStatus;
   /**
+   * Etiqueta ya resuelta de `estatus_bordado`, que el backend devuelve en el
+   * listado y en el detalle. Se usa solo como RESPALDO de la etiqueta local
+   * (ver `embroideryStatusEntry`): el enum de Python omite acentos, así que la
+   * de este frontend gana para los códigos conocidos.
+   */
+  estatus_bordado_display: string;
+  /**
    * Entero libre: el modelo lo declara `IntegerField(default=1)` SIN
    * `choices`, así que el backend acepta cualquier entero. La UI rotula 1-3
    * (Alta/Media/Baja, el mismo mapeo que usa el alta de órdenes de

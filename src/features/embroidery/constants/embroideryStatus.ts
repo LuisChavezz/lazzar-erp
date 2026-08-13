@@ -57,6 +57,29 @@ const STATUS_BY_CODE = {
 export const EMBROIDERY_STATUS_CONFIG: Record<string, StatusBadgeConfigEntry> =
   STATUS_BY_CODE;
 
+/** Badge neutro para estatus fuera de 1-7, rotulado con lo que mande el backend. */
+const NEUTRAL_STATUS_CFG: StatusBadgeConfigEntry = {
+  cls: "bg-slate-100 text-slate-600 dark:bg-slate-500/10 dark:text-slate-400",
+  dot: "bg-slate-400",
+};
+
+/**
+ * Entrada de badge para un estatus concreto: el COLOR sale del mapa local
+ * (indexado por el entero `estatus_bordado`) y la ETIQUETA también cuando el
+ * código está en 1-7. `estatus_bordado_display` del backend solo entra como
+ * RESPALDO —para códigos fuera de 1-7 que este mapa no cubre—, porque el enum de
+ * Python omite acentos y preferirlo dejaría las etiquetas acentuadas de aquí
+ * como código muerto. El entero crudo es el último recurso. Mismo patrón que
+ * `productionOrderStatusEntry`.
+ */
+export const embroideryStatusEntry = (
+  estatus: number,
+  display?: string | null,
+): StatusBadgeConfigEntry => {
+  const base = EMBROIDERY_STATUS_CONFIG[String(estatus)] ?? NEUTRAL_STATUS_CFG;
+  return { ...base, label: base.label || display?.trim() || String(estatus) };
+};
+
 /**
  * Etiquetas de `prioridad`. El modelo la declara `IntegerField(default=1)` SIN
  * `choices`, así que el backend acepta cualquier entero; el mapeo 1 = Alta,

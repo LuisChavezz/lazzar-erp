@@ -8,8 +8,8 @@ import { formatQuantityValue } from "@/src/utils/formatCurrency";
 import { formatShortDate } from "@/src/utils/formatDate";
 import {
   CORTE_MANGA_ORDER_PRIORITY_CONFIG,
-  CORTE_MANGA_ORDER_STATUS_CONFIG,
   corteMangaOrderPriorityFallback,
+  corteMangaStatusEntry,
 } from "../constants/corteMangaOrderStatus";
 import type { CorteMangaOrder } from "../interfaces/corte-manga-order.interface";
 
@@ -97,10 +97,15 @@ export const getCorteMangaOrderColumns = (onViewDetails: (id: number) => void) =
   }),
   columnHelper.accessor("estatus_corte", {
     header: "Estatus",
-    cell: (info) => (
+    cell: ({ row }) => (
       <StatusBadge
-        status={String(info.getValue())}
-        config={CORTE_MANGA_ORDER_STATUS_CONFIG}
+        status={String(row.original.estatus_corte)}
+        config={{
+          [row.original.estatus_corte]: corteMangaStatusEntry(
+            row.original.estatus_corte,
+            row.original.estatus_corte_display,
+          ),
+        }}
       />
     ),
   }),

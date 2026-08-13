@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import type React from "react";
 import { ArrowLeftIcon } from "@/src/components/Icons";
 import { Loader } from "@/src/components/Loader";
 import { ErrorState } from "@/src/components/ErrorState";
@@ -9,7 +8,8 @@ import { StatusBadge } from "@/src/components/StatusBadge";
 import {
   EmptyLines,
   InfoField,
-  SectionTitle,
+  InfoGrid,
+  Section,
   textOrDash,
 } from "@/src/components/DetailDialogPrimitives";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
@@ -17,8 +17,8 @@ import { formatQuantityValue } from "@/src/utils/formatCurrency";
 import { formatShortDate, formatShortTime } from "@/src/utils/formatDate";
 import {
   CORTE_MANGA_ORDER_PRIORITY_CONFIG,
-  CORTE_MANGA_ORDER_STATUS_CONFIG,
   corteMangaOrderPriorityFallback,
+  corteMangaStatusEntry,
 } from "../constants/corteMangaOrderStatus";
 import { useCorteMangaOrderDetail } from "../hooks/useCorteMangaOrderDetail";
 import type { CorteMangaOrderLine } from "../interfaces/corte-manga-order.interface";
@@ -31,39 +31,6 @@ const BACK = {
   href: "/manufacturing/corte-manga",
   label: "Volver a Órdenes de Corte de Manga",
 };
-
-// ── Piezas presentacionales locales ──────────────────────────────────────────
-// Duplicadas de `PedidoDetailContent`/`EmbroideryOrderDetailContent`/
-// `ReflectiveOrderDetailContent` (donde también son locales). Ya son cuatro las
-// vistas que las repiten: extraerlas a `DetailDialogPrimitives` es trabajo
-// pendiente que toca esos tres archivos, fuera del alcance de esta página.
-
-/** Tarjeta de sección: el bloque que compone toda la página. */
-function Section({
-  title,
-  children,
-}: {
-  title: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <section className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 p-5 md:p-6">
-      <div className="flex items-center justify-between gap-3 mb-4">
-        <SectionTitle>{title}</SectionTitle>
-      </div>
-      {children}
-    </section>
-  );
-}
-
-/** Rejilla de campos etiqueta/valor reutilizada por varias secciones. */
-function InfoGrid({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="grid grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-3 text-xs">
-      {children}
-    </div>
-  );
-}
 
 /**
  * Piezas que programa esta orden.
@@ -296,7 +263,12 @@ export function CorteMangaOrderPageContent({
             <InfoField label="Estatus">
               <StatusBadge
                 status={String(data.estatus_corte)}
-                config={CORTE_MANGA_ORDER_STATUS_CONFIG}
+                config={{
+                  [data.estatus_corte]: corteMangaStatusEntry(
+                    data.estatus_corte,
+                    data.estatus_corte_display,
+                  ),
+                }}
               />
             </InfoField>
             <InfoField label="Prioridad">

@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import type React from "react";
 import { ArrowLeftIcon, InfoIcon } from "@/src/components/Icons";
 import { Loader } from "@/src/components/Loader";
 import { ErrorState } from "@/src/components/ErrorState";
@@ -9,6 +8,8 @@ import { StatusBadge } from "@/src/components/StatusBadge";
 import {
   EmptyLines,
   InfoField,
+  InfoGrid,
+  Section,
   SectionTitle,
   textOrDash,
 } from "@/src/components/DetailDialogPrimitives";
@@ -18,8 +19,8 @@ import { formatShortDate, formatShortTime } from "@/src/utils/formatDate";
 import {
   EMBROIDERY_COVERAGE_CONFIG,
   EMBROIDERY_PRIORITY_CONFIG,
-  EMBROIDERY_STATUS_CONFIG,
   embroideryPriorityFallback,
+  embroideryStatusEntry,
 } from "../constants/embroideryStatus";
 import { useEmbroideryOrderDetail } from "../hooks/useEmbroideryOrderDetail";
 import { resolveEmbroideryLineUbicaciones } from "../utils/resolveEmbroideryLineUbicaciones";
@@ -37,39 +38,6 @@ const BACK = {
   href: "/manufacturing/embroidery",
   label: "Volver a Órdenes de Bordado",
 };
-
-// ── Piezas presentacionales locales ──────────────────────────────────────────
-// Duplicadas de `PedidoDetailContent` (donde también son locales) en vez de
-// promoverlas a `DetailDialogPrimitives`: son el chrome de ESTA página, y las
-// dos primeras vistas de detalle 360° del proyecto no bastan para fijar un
-// contrato compartido. Se extraen cuando aparezca la tercera.
-
-/** Tarjeta de sección: el bloque que compone toda la página. */
-function Section({
-  title,
-  children,
-}: {
-  title: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <section className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 p-5 md:p-6">
-      <div className="flex items-center justify-between gap-3 mb-4">
-        <SectionTitle>{title}</SectionTitle>
-      </div>
-      {children}
-    </section>
-  );
-}
-
-/** Rejilla de campos etiqueta/valor reutilizada por varias secciones. */
-function InfoGrid({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="grid grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-3 text-xs">
-      {children}
-    </div>
-  );
-}
 
 /**
  * Cantidad que puede llegar `null` del backend → guion largo. Las tres
@@ -419,7 +387,12 @@ export function EmbroideryOrderDetailContent({
             <InfoField label="Estatus">
               <StatusBadge
                 status={String(data.estatus_bordado)}
-                config={EMBROIDERY_STATUS_CONFIG}
+                config={{
+                  [data.estatus_bordado]: embroideryStatusEntry(
+                    data.estatus_bordado,
+                    data.estatus_bordado_display,
+                  ),
+                }}
               />
             </InfoField>
             <InfoField label="Prioridad">

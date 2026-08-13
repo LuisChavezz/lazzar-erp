@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import type React from "react";
 import { ArrowLeftIcon, InfoIcon } from "@/src/components/Icons";
 import { Loader } from "@/src/components/Loader";
 import { ErrorState } from "@/src/components/ErrorState";
@@ -9,6 +8,8 @@ import { StatusBadge } from "@/src/components/StatusBadge";
 import {
   EmptyLines,
   InfoField,
+  InfoGrid,
+  Section,
   SectionTitle,
   textOrDash,
 } from "@/src/components/DetailDialogPrimitives";
@@ -18,8 +19,8 @@ import { formatShortDate, formatShortTime } from "@/src/utils/formatDate";
 import {
   REFLECTIVE_ORDER_COVERAGE_CONFIG,
   REFLECTIVE_ORDER_PRIORITY_CONFIG,
-  REFLECTIVE_ORDER_STATUS_CONFIG,
   reflectiveOrderPriorityFallback,
+  reflectiveStatusEntry,
 } from "../constants/reflectiveOrderStatus";
 import { useReflectiveOrderDetail } from "../hooks/useReflectiveOrderDetail";
 import { resolveReflectiveLineConfigs } from "../utils/resolveReflectiveLineConfigs";
@@ -40,41 +41,6 @@ const BACK = {
   href: "/manufacturing/reflective-orders",
   label: "Volver a Órdenes de Reflejante",
 };
-
-// ── Piezas presentacionales locales ──────────────────────────────────────────
-// Duplicadas de `PedidoDetailContent`/`EmbroideryOrderDetailContent` (donde
-// también son locales) en vez de promoverlas a `DetailDialogPrimitives`: son el
-// chrome de ESTA página. La regla que fijó bordado —"se extraen cuando aparezca
-// la tercera vista"— se cumple con esta, pero extraerlas ahora tocaría dos
-// archivos ajenos al alcance de esta página; queda anotado como el momento de
-// hacerlo.
-
-/** Tarjeta de sección: el bloque que compone toda la página. */
-function Section({
-  title,
-  children,
-}: {
-  title: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <section className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 p-5 md:p-6">
-      <div className="flex items-center justify-between gap-3 mb-4">
-        <SectionTitle>{title}</SectionTitle>
-      </div>
-      {children}
-    </section>
-  );
-}
-
-/** Rejilla de campos etiqueta/valor reutilizada por varias secciones. */
-function InfoGrid({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="grid grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-3 text-xs">
-      {children}
-    </div>
-  );
-}
 
 /**
  * Cantidad que puede llegar `null` del backend → guion largo. Las tres
@@ -402,7 +368,12 @@ export function ReflectiveOrderDetailContent({
             <InfoField label="Estatus">
               <StatusBadge
                 status={String(data.estatus_reflejante)}
-                config={REFLECTIVE_ORDER_STATUS_CONFIG}
+                config={{
+                  [data.estatus_reflejante]: reflectiveStatusEntry(
+                    data.estatus_reflejante,
+                    data.estatus_reflejante_display,
+                  ),
+                }}
               />
             </InfoField>
             <InfoField label="Prioridad">

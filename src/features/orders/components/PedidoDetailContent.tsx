@@ -8,7 +8,8 @@ import { Loader } from "@/src/components/Loader";
 import { ErrorState } from "@/src/components/ErrorState";
 import {
   InfoField,
-  SectionTitle,
+  InfoGrid,
+  Section,
   EmptyLines,
   textOrDash,
 } from "@/src/components/DetailDialogPrimitives";
@@ -172,35 +173,6 @@ function Chip({ children }: { children: React.ReactNode }) {
     <span className="inline-flex items-center rounded-full border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 px-2.5 py-0.5 text-xs font-medium text-slate-600 dark:text-slate-300">
       {children}
     </span>
-  );
-}
-
-function Section({
-  title,
-  children,
-  action,
-}: {
-  title: string;
-  children: React.ReactNode;
-  action?: React.ReactNode;
-}) {
-  return (
-    <section className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 p-5 md:p-6">
-      <div className="flex items-center justify-between gap-3 mb-4">
-        <SectionTitle>{title}</SectionTitle>
-        {action}
-      </div>
-      {children}
-    </section>
-  );
-}
-
-/** Rejilla de campos etiqueta/valor reutilizada por varias secciones. */
-function InfoGrid({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="grid grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-3 text-xs">
-      {children}
-    </div>
   );
 }
 

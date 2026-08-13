@@ -10,8 +10,8 @@ import { formatShortDate } from "@/src/utils/formatDate";
 import {
   EMBROIDERY_COVERAGE_CONFIG,
   EMBROIDERY_PRIORITY_CONFIG,
-  EMBROIDERY_STATUS_CONFIG,
   embroideryPriorityFallback,
+  embroideryStatusEntry,
 } from "../constants/embroideryStatus";
 import type { EmbroideryOrder } from "../interfaces/embroidery.interface";
 
@@ -95,8 +95,16 @@ export const getEmbroideryOrderColumns = (onViewDetails: (id: number) => void) =
   }),
   columnHelper.accessor("estatus_bordado", {
     header: "Estatus",
-    cell: (info) => (
-      <StatusBadge status={String(info.getValue())} config={EMBROIDERY_STATUS_CONFIG} />
+    cell: ({ row }) => (
+      <StatusBadge
+        status={String(row.original.estatus_bordado)}
+        config={{
+          [row.original.estatus_bordado]: embroideryStatusEntry(
+            row.original.estatus_bordado,
+            row.original.estatus_bordado_display,
+          ),
+        }}
+      />
     ),
   }),
   columnHelper.accessor("prioridad", {

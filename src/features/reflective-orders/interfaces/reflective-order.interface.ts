@@ -127,6 +127,13 @@ export interface ReflectiveOrder {
   folio_reflejante: string;
   estatus_reflejante: ReflectiveOrderStatus;
   /**
+   * Etiqueta ya resuelta de `estatus_reflejante`, que el backend devuelve en el
+   * listado y en el detalle. Se usa solo como RESPALDO de la etiqueta local
+   * (ver `reflectiveStatusEntry`): el enum de Python omite acentos, así que la
+   * de este frontend gana para los códigos conocidos.
+   */
+  estatus_reflejante_display: string;
+  /**
    * Entero libre: el modelo lo declara `IntegerField(default=1)` SIN `choices`,
    * así que el backend acepta cualquier entero. La UI rotula 1-3
    * (Alta/Media/Baja, el mismo mapeo del alta de órdenes de producción) y cae a

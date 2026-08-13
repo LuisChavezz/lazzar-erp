@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import type React from "react";
 import { ArrowLeftIcon } from "@/src/components/Icons";
 import { Loader } from "@/src/components/Loader";
 import { ErrorState } from "@/src/components/ErrorState";
@@ -9,7 +8,8 @@ import { StatusBadge } from "@/src/components/StatusBadge";
 import {
   EmptyLines,
   InfoField,
-  SectionTitle,
+  InfoGrid,
+  Section,
   textOrDash,
 } from "@/src/components/DetailDialogPrimitives";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
@@ -37,37 +37,6 @@ const BACK = {
   href: "/manufacturing/production-orders",
   label: "Volver a Órdenes de Producción",
 };
-
-// ── Piezas presentacionales locales ──────────────────────────────────────────
-// Duplicadas de las otras tres páginas de detalle (embroidery/reflective/
-// corte-manga), donde también son locales.
-
-/** Tarjeta de sección: el bloque que compone toda la página. */
-function Section({
-  title,
-  children,
-}: {
-  title: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <section className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 p-5 md:p-6">
-      <div className="flex items-center justify-between gap-3 mb-4">
-        <SectionTitle>{title}</SectionTitle>
-      </div>
-      {children}
-    </section>
-  );
-}
-
-/** Rejilla de campos etiqueta/valor reutilizada por varias secciones. */
-function InfoGrid({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="grid grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-3 text-xs">
-      {children}
-    </div>
-  );
-}
 
 // ── Productos ─────────────────────────────────────────────────────────────────
 

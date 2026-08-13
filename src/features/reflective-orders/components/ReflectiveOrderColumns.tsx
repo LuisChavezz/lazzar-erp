@@ -9,8 +9,8 @@ import { formatShortDate } from "@/src/utils/formatDate";
 import {
   REFLECTIVE_ORDER_COVERAGE_CONFIG,
   REFLECTIVE_ORDER_PRIORITY_CONFIG,
-  REFLECTIVE_ORDER_STATUS_CONFIG,
   reflectiveOrderPriorityFallback,
+  reflectiveStatusEntry,
 } from "../constants/reflectiveOrderStatus";
 import type { ReflectiveOrder } from "../interfaces/reflective-order.interface";
 
@@ -98,10 +98,15 @@ export const getReflectiveOrderColumns = (onViewDetails: (id: number) => void) =
   }),
   columnHelper.accessor("estatus_reflejante", {
     header: "Estatus",
-    cell: (info) => (
+    cell: ({ row }) => (
       <StatusBadge
-        status={String(info.getValue())}
-        config={REFLECTIVE_ORDER_STATUS_CONFIG}
+        status={String(row.original.estatus_reflejante)}
+        config={{
+          [row.original.estatus_reflejante]: reflectiveStatusEntry(
+            row.original.estatus_reflejante,
+            row.original.estatus_reflejante_display,
+          ),
+        }}
       />
     ),
   }),
