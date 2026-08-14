@@ -124,7 +124,7 @@ export default function Sidebar() {
                             }`}
                         >
                           <moduleItem.icon className="w-6 h-6 shrink-0" aria-hidden="true" />
-                          <span className={`font-medium text-sm whitespace-nowrap ${labelClass}`}>
+                          <span title={moduleItem.label} className={`font-medium text-sm truncate right-3 ${labelClass}`}>
                             {moduleItem.label}
                           </span>
                         </Link>

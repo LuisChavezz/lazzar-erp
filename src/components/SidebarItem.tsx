@@ -53,7 +53,10 @@ export default function SidebarItem({
       }`}
     >
       <item.icon className="w-6 h-6 shrink-0" aria-hidden="true" />
-      <span className={`font-medium text-sm whitespace-nowrap transition-opacity duration-200 absolute left-14 ${isPinned ? "opacity-100" : "opacity-0 group-hover/sidebar:opacity-100"}`}>
+      <span
+        title={item.label}
+        className={`font-medium text-sm truncate transition-opacity duration-200 absolute left-14 right-3 ${isPinned ? "opacity-100" : "opacity-0 group-hover/sidebar:opacity-100"}`}
+      >
         {item.label}
       </span>
     </Link>
