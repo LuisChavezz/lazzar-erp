@@ -74,10 +74,18 @@ const ActionsCell = ({
 export const getEmbroideryOrderColumns = (onViewDetails: (id: number) => void) => [
   columnHelper.accessor("folio_bordado", {
     header: "Folio",
-    cell: (info) => (
-      <span className="font-mono text-slate-700 dark:text-slate-200 font-semibold">
-        {info.getValue()}
-      </span>
+    // Folio clickeable: navega al detalle con el MISMO callback que la acción
+    // "Ver Detalles" (recibe `id`, la PK de esta orden). Mismo patrón que el
+    // folio del listado de pedidos (`SharedOrderColumns`).
+    cell: ({ row }) => (
+      <button
+        type="button"
+        onClick={() => onViewDetails(row.original.id)}
+        className="font-mono text-slate-700 dark:text-slate-200 font-semibold hover:text-sky-600 dark:hover:text-sky-400 hover:underline transition-colors cursor-pointer"
+        title="Ver detalle"
+      >
+        {row.original.folio_bordado}
+      </button>
     ),
   }),
   // `accessorFn` que colapsa `null` a `""` — mismo bug de

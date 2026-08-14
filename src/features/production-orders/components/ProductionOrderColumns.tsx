@@ -57,10 +57,18 @@ export function getProductionOrderColumns(
     columnHelper.accessor('folio_op', {
       header: 'Folio OP',
       size: 130,
-      cell: ({ getValue }) => (
-        <span className="font-mono text-xs font-semibold text-slate-700 dark:text-slate-200 whitespace-nowrap">
-          {getValue()}
-        </span>
+      // Folio clickeable: navega al detalle con el MISMO callback que la acción
+      // "Ver detalle" (recibe `op_id`, la PK de esta orden). Mismo patrón que el
+      // folio del listado de pedidos (`SharedOrderColumns`).
+      cell: ({ row }) => (
+        <button
+          type="button"
+          onClick={() => onViewDetails(row.original.op_id)}
+          className="font-mono text-xs font-semibold text-slate-700 dark:text-slate-200 hover:text-sky-600 dark:hover:text-sky-400 hover:underline transition-colors cursor-pointer whitespace-nowrap"
+          title="Ver detalle"
+        >
+          {row.original.folio_op}
+        </button>
       ),
     }),
 
