@@ -52,13 +52,24 @@ export default function RootLayout({
          * Estrategia: light → sin clase | dark → clase 'dark' | system/null → matchMedia
          *
          * Además, parchea performance.measure para silenciar el error dev-only
-         * "negative time stamp" de la instrumentación RSC de Next.js (issue #86060),
-         * presente en ambos bundlers. Re-lanza cualquier otro error real sin tocarlo.
+         * de la instrumentación RSC de Next.js (issue #86060), presente en ambos
+         * bundlers: al vaciar las marcas de Server Components tras una navegación
+         * (back/forward, stream abortado), React llama measure() con `end`
+         * negativo — clampea `start` pero no `end` (ver las ramas "Errored" y
+         * "Aborted" de flushComponentPerformance).
+         *
+         * Se descarta la llamada ANTES de invocar al original cuando start/end/
+         * duration son negativos, que es justo la condición que React sí valida
+         * en su rama equivalente. El pre-check es necesario porque el mensaje del
+         * error cambia por motor: Chrome dice "cannot have a negative time stamp"
+         * y Firefox "Given attribute end cannot be negative" (ambos TypeError),
+         * así que filtrar por texto dejaba pasar el de Firefox. El catch queda
+         * como red de seguridad y re-lanza cualquier otro error real.
          * El guard __patched evita doble parcheo entre recargas de Fast Refresh.
          */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var s=localStorage.getItem('theme-storage');var t=s?JSON.parse(s)?.state?.theme:null;if(t==='dark'){document.documentElement.classList.add('dark')}else if(t==='light'){document.documentElement.classList.remove('dark')}else{if(window.matchMedia('(prefers-color-scheme:dark)').matches){document.documentElement.classList.add('dark')}}}catch(e){}})();(function(){try{var perf=window.performance;if(!perf||typeof perf.measure!=="function"||perf.__patched)return;var original=perf.measure.bind(perf);perf.measure=function(){try{return original.apply(perf,arguments)}catch(err){var msg=(err&&err.message)||"";var name=(err&&err.name)||"";if(msg.indexOf("negative time stamp")!==-1||name==="InvalidAccessError"||name==="SyntaxError"){return}throw err}};perf.__patched=true}catch(_){}})();`,
+            __html: `(function(){try{var s=localStorage.getItem('theme-storage');var t=s?JSON.parse(s)?.state?.theme:null;if(t==='dark'){document.documentElement.classList.add('dark')}else if(t==='light'){document.documentElement.classList.remove('dark')}else{if(window.matchMedia('(prefers-color-scheme:dark)').matches){document.documentElement.classList.add('dark')}}}catch(e){}})();(function(){try{var perf=window.performance;if(!perf||typeof perf.measure!=="function"||perf.__patched)return;var original=perf.measure.bind(perf);var neg=function(v){return typeof v==="number"&&v<0};perf.measure=function(n,options){if(options&&typeof options==="object"&&(neg(options.start)||neg(options.end)||neg(options.duration)))return;try{return original.apply(perf,arguments)}catch(err){var msg=(err&&err.message)||"";var name=(err&&err.name)||"";if(msg.indexOf("negative time stamp")!==-1||msg.indexOf("cannot be negative")!==-1||name==="InvalidAccessError"||name==="SyntaxError"){return}throw err}};perf.__patched=true}catch(_){}})();`,
           }}
         />
       </head>

@@ -2,6 +2,9 @@ import type { ComponentType, SVGProps } from "react";
 import {
   CapitalHumanoIcon,
   ClientesIcon,
+  ClipboardListIcon,
+  LayersIcon,
+  UserIcon,
   ComprasIcon,
   CxcIcon,
   DashboardIcon,
@@ -442,7 +445,32 @@ export const appRouteGroups: AppRouteGroup[] = [
     moduleDescription: "Plantilla, asistencia, nómina y desempeño del talento de la organización.",
     moduleIcon: CapitalHumanoIcon,
     showInHome: true,
-    items: [],
+    items: [
+      {
+        key: "hr-employees",
+        label: "Empleados",
+        path: "/hr/employees",
+        icon: UserIcon,
+        description: "Plantilla de la organización.",
+        permission: "R-RH",
+      },
+      {
+        key: "hr-areas",
+        label: "Áreas",
+        path: "/hr/areas",
+        icon: LayersIcon,
+        description: "Áreas operativas de cada departamento.",
+        permission: "R-RH",
+      },
+      {
+        key: "hr-positions",
+        label: "Puestos",
+        path: "/hr/positions",
+        icon: ClipboardListIcon,
+        description: "Catálogo de puestos y su área asignada.",
+        permission: "R-RH",
+      },
+    ],
   },
   {
     key: "operations",
