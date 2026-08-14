@@ -21,14 +21,24 @@ This is a Next.js 16 App Router ERP frontend. All business data lives in an exte
 
 **The Next.js server cannot reach the backend on the user's behalf.** Auth is cookie-based on the *backend's* domain, so `auth-jwt` / `auth-refresh-jwt` are never attached to server-side fetches — only the browser can call the API authenticated. Consequence: data fetching lives in client hooks, and Route Handlers that need backend data receive it in the request body from the client rather than fetching it themselves.
 
+**Server-side page guards are UX, not a security boundary.** The real access boundary is the backend on every mutation. Never write a server-side guard that queries the backend for access — it will always receive 401 (DRF authenticates before evaluating existence or permissions) and its only reachable branch will be "allow" (structural fail-open). Real access verification lives in client-side hooks, which are the only side with credentials. Reintroducing server-side verification only makes sense if frontend and backend share a registerable domain, and must be a conscious step of that migration. See `quotes/services/quoteEditAccess.server.ts` — deliberately reduced to a local id-shape check for exactly this reason.
+
 ### Route Structure
 
-All authenticated routes live under `src/app/(main)/` (a route group). The middleware file is **`src/proxy.ts`** (not `middleware.ts`) — this is intentional for Next.js 16. It:
+All authenticated routes live under `src/app/(Main)/` (a route group — capital `M` on disk; lowercase works on Windows/macOS but breaks the Linux build). The middleware file is **`src/proxy.ts`** (not `middleware.ts`) — this is intentional for Next.js 16. It:
 1. Redirects unauthenticated users and those without an `erp_workspace_id` cookie to `/select-branch`
 2. Enforces module-level permission checks against codes stored in the NextAuth JWT. Users with `role === "admin"` bypass all checks.
 3. Wraps `withAuth` in a plain function so `/auth/login` can redirect already-authenticated users (`withAuth` early-bypasses the signIn page, so that redirect cannot live inside it). The login page stays static/prerendered as a result — don't reintroduce a blocking `getServerSession` there.
 
-Routes are grouped by business domain rather than kept flat: `system/`, `sales/`, `operations/`, `wms/`, `procurement/`, `manufacturing/`, `finance/`, `hr/`, `other/`, plus `config/` and `settings/`. Each group maps to a permission code (`R-CORE`, `R-CRM`, `R-MESACONTROL`, `R-WMS`, `R-COMPRAS`, `R-PRODUCCION`, `R-CONTABILIDAD`, `R-RH`, `R-OTROS-MODULOS`, `R-CONFIGURACION`). Group/sub-route definitions, sidebar labels, and module icons are centralized in `src/constants/appRoutes.ts`; the route-prefix → permission map and post-login redirect priority live in `src/constants/routePermissions.ts`. Adding a top-level module means touching `appRoutes.ts`, `routePermissions.ts`, **and** the `matcher` array in `src/proxy.ts`. The sidebar (`getSidebarSectionsByPath`) is context-aware — it lists the top-level modules on `/` and `/config`, and the active module's sub-routes when inside one.
+Routes are grouped by business domain rather than kept flat: `system/`, `sales/`, `orders/`, `operations/`, `wms/`, `procurement/`, `manufacturing/`, `finance/`, `hr/`, plus `config/`. Each maps to a permission code (`R-CORE`, `R-CRM`, `R-MESACONTROL`, `R-WMS`, `R-COMPRAS`, `R-PRODUCCION`, `R-CONTABILIDAD`, `R-RH`, `R-CONFIGURACION`) — except `orders/`, the neutral pedido 360° detail route (`/orders/[id]`, reached from several modules via `?from=`), which is in the `matcher` for auth + workspace but deliberately has **no** rule in `routePermissions`: the backend already filters its accounting fields by role. Group/sub-route definitions, sidebar labels, and module icons are centralized in `src/constants/appRoutes.ts`; the route-prefix → permission map and post-login redirect priority live in `src/constants/routePermissions.ts`. The sidebar (`getSidebarSectionsByPath`) is context-aware — it lists the top-level modules on `/` and `/config`, and the active module's sub-routes when inside one.
+
+Adding a top-level module means touching **five** files:
+
+1. `src/constants/appRoutes.ts` — route definitions and sidebar items
+2. `src/constants/routePermissions.ts` — permission mapping
+3. `src/proxy.ts` — the `matcher` array
+4. `src/constants/homeCards.ts` — Home page cards (Home reads from here, **not** from `appRouteGroups`)
+5. `src/constants/sidebarItems.ts` — the `mainGroupKeys` Set (a group absent from this Set won't appear in the global sidebar)
 
 ### Feature Module Structure
 
@@ -58,6 +68,12 @@ Files named `*.server.ts` inside a feature's `services/` are server-only modules
 Several feature modules are **UI-only prototypes with no backend**: they have a `mocks/` directory instead of `services/actions.ts` and generate data with `@faker-js/faker`. Currently: `accounting`, `accounts-payable`, `cedicor`, `expense-purchase-requests`, `pq-orders`, `purchase-order-reviews`, plus `locations` which mixes a real API with a mocked dashboard.
 
 Mock files call `faker.seed(<fixed number>)` at module scope and pin a literal "today" (`const HOY = new Date("...")`). Both are required: the same fixtures are consumed by a Server Component (stats) and a Client Component (list), so unseeded/relative data would produce hydration mismatches. Keep the seed and the fixed date when editing a mock.
+
+#### Backend contract gotchas
+
+**Fields accepted but silently ignored.** Several endpoints accept fields that the service layer discards (`fecha_fin` in corte-manga, `usuario_asignado` read-only, `estatus` on creation, `generar_orden_*` in picking) and still respond 200/201. Before sending a field, verify the real effect on the created/updated resource; the payload should only include what the backend actually persists — sending the rest falsely suggests the client controls that value.
+
+**Picking is documentation-only.** Creating a picking documents the allocation — it does not move inventory, create transfers, or generate reservations. Pickings are partial and repeatable per talla. The `generar_orden_bordado` / `_reflejante` / `_corte_manga` fields are accepted but no longer generate anything.
 
 ### API Clients (`src/api/`)
 
@@ -113,6 +129,9 @@ Forms use **TanStack Form** (`@tanstack/react-form`) with **Zod** schemas (each 
   - `actionButton` renders in the toolbar (which always stays mounted). Pass `isLoading` / `isError` / `errorTitle` / `errorMessage` / `onErrorRetry` and let the table render its own body states instead of swapping the whole table for a skeleton or `ErrorState`.
   - `filterConfig` and the search box filter the `data` array **in memory** — they do not send params to the server. A view that needs server-side filtering must fetch and pass the filtered data itself.
   - `serverPagination` switches the pager to caller-controlled pages (the table stops slicing `data`); `paginationResetKey` resets to page 1 without clobbering sort/search/columns; `getRowId` ties per-row state to the datum instead of its index.
+- **`*Columns.tsx` files** export a factory (`getXxxColumns(callbacks)`) — dialog state lives in the list component, **never inside a cell** (cells unmount on sort/paginate/filter). The folio renders as a `<button>` with `hover:text-sky-600 dark:hover:text-sky-400 hover:underline cursor-pointer` and `title="Ver detalle"`, invoking the same callback as the "Ver detalle" menu action.
+- **`DetailDialogPrimitives.tsx`** — presentational building blocks for detail pages and dialogs: `Section` (card with title and optional `action` prop), `InfoGrid` + `InfoField` (label/value grid), `LineItemsTable` (embedded table chrome with sticky `<thead>`), `EmptyLines`, and `textOrDash` (normalizes `null`/`""` to "—"). `LineItemsTable` provides only the chrome; each section declares its own columns as children — do not turn it into a config-driven table (that would reinvent `DataTable`). 28 consumers across the codebase.
+  - **"No extra fetch" pattern:** when the list and retrieve endpoints share the same shape, the detail dialog/page receives the already-loaded row object by props and makes **no fetch of its own** (e.g. `DispatchDetailDialog`, `PackingColumns`, `CorteMangaOrderDetailDialog`). Document in the component that the shapes are identical; if they diverge, add a dedicated hook.
 - **`MainDialog.tsx` / `ConfirmDialog.tsx`** — Radix Dialog wrappers; use these for all modals
 - **`FormInput.tsx`** and matching form primitives (`FormSelect`, `FormTextarea`, `FormToggle`, `FormButtons`) — always prefer these over raw `<input>` elements
 - **`StepProgressBar.tsx`** — Step indicator for multi-step wizard dialogs; paired with a feature-level `...StepManager` inside a `MainDialog`
