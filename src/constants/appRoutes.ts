@@ -14,8 +14,6 @@ import {
   ReportesIcon,
   SettingsIcon,
   TasksIcon,
-  UserIcon,
-  LockIcon,
   OperationsIcon,
   EmailIcon,
   ScissorsIcon,
@@ -499,29 +497,5 @@ export const appRouteGroups: AppRouteGroup[] = [
     moduleIcon: SettingsIcon,
     showInHome: false,
     items: [],
-  },
-  {
-    key: "settings",
-    label: "Ajustes de cuenta",
-    description: "Seguridad y perfil de usuario.",
-    moduleLabel: "Ajustes",
-    modulePath: "/settings",
-    moduleDescription: "Configuración de cuenta, seguridad y perfil.",
-    moduleIcon: SettingsIcon,
-    showInHome: false,
-    items: [
-      {
-        key: "settings-profile",
-        label: "Perfil",
-        path: "/settings/profile",
-        icon: UserIcon,
-      },
-      {
-        key: "settings-security",
-        label: "Seguridad",
-        path: "/settings/security",
-        icon: LockIcon,
-      },
-    ],
   },
 ];

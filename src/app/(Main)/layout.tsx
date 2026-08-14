@@ -7,6 +7,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/src/lib/auth";
 import { SessionThemeProvider } from "@/src/app/SessionThemeProvider";
 import { SidebarProvider } from "@/src/components/SidebarProvider";
+import { SettingsModalProvider } from "@/src/features/settings/components/SettingsModalProvider";
 
 export const metadata = {
   title: "ERP NextJS",
@@ -22,7 +23,8 @@ export default async function MainLayout({
 
   return (
     <SessionThemeProvider session={session}>
-      <SidebarProvider>
+      <SettingsModalProvider>
+        <SidebarProvider>
         <div className="flex h-screen bg-slate-50 dark:bg-black text-slate-900 dark:text-white overflow-hidden selection:bg-sky-500 selection:text-white">
           {/* Background Gradients */}
           <div className="pointer-events-none fixed inset-0 z-0 bg-[radial-gradient(110%_70%_at_50%_-10%,rgba(56,189,248,0.28),rgba(255,255,255,0))] dark:bg-[radial-gradient(120%_85%_at_50%_-20%,rgba(56,189,248,0.22),rgba(17,17,19,0))]"></div>
@@ -43,7 +45,8 @@ export default async function MainLayout({
             </main>
           </div>
         </div>
-      </SidebarProvider>
+        </SidebarProvider>
+      </SettingsModalProvider>
     </SessionThemeProvider>
   );
 }

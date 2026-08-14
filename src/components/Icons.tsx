@@ -73,6 +73,7 @@ import {
   Palette,
   Pencil,
   PenSquare,
+  Plug,
   Plus,
   PlusCircle,
   QrCode,
@@ -182,6 +183,7 @@ export const DownloadIcon = (props: LucideProps) => <Download {...props} />;
 export const UploadIcon = (props: LucideProps) => <Upload {...props} />;
 export const ShieldCheckIcon = (props: LucideProps) => <ShieldCheck {...props} />;
 export const QrCodeIcon = (props: LucideProps) => <QrCode {...props} />;
+export const PlugIcon = (props: LucideProps) => <Plug {...props} />;
 export const SunIcon = (props: LucideProps) => <Sun {...props} />;
 export const MoonIcon = (props: LucideProps) => <Moon {...props} />;
 export const MonitorIcon = (props: LucideProps) => <Monitor {...props} />;

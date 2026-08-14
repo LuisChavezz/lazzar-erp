@@ -1,10 +1,10 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { DropdownMenu } from "@radix-ui/themes";
 import { GoogleIcon } from "@/src/components/Icons";
 import { useGoogleConnect } from "../hooks/useGoogleConnect";
 import { useGoogleStatus } from "../hooks/useGoogleStatus";
+import { useSettingsModal } from "@/src/features/settings/hooks/useSettingsModal";
 
 /* Skeleton con las mismas dimensiones que un DropdownMenu.Item */
 function GoogleMenuItemSkeleton() {
@@ -21,12 +21,13 @@ function GoogleMenuItemSkeleton() {
  *
  * - Mientras carga el status: muestra un skeleton.
  * - Desconectado: ícono + "Conectar con Google" → inicia el flujo OAuth.
- * - Conectado: ícono + "Google" + pill verde "Conectado" → navega a /settings/security.
+ * - Conectado: ícono + "Google" + pill verde "Conectado" → abre el modal de
+ *   configuración en la pestaña de Integraciones.
  */
 export const GoogleMenuOption = () => {
   const { data: status, isLoading } = useGoogleStatus();
   const { mutate: connectGoogle, isPending: isConnecting } = useGoogleConnect();
-  const router = useRouter();
+  const { open: openSettings } = useSettingsModal();
 
   /* Estado de carga inicial */
   if (isLoading) {
@@ -37,7 +38,7 @@ export const GoogleMenuOption = () => {
   if (status?.connected) {
     return (
       <DropdownMenu.Item
-        onSelect={() => router.push("/settings/security")}
+        onSelect={() => openSettings("integrations")}
         className="flex items-center gap-2 px-3 py-2 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/5 rounded-lg cursor-pointer! outline-none data-highlighted:bg-slate-50 dark:data-highlighted:bg-white/5 data-highlighted:text-sky-600 dark:data-highlighted:text-sky-400 transition-colors ease-in-out"
       >
         <GoogleIcon className="w-4 h-4 shrink-0" />

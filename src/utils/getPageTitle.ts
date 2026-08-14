@@ -46,9 +46,6 @@ const ROUTE_TITLES: Record<string, string> = {
   "/finance/accounting-customers": "Clientes",
   "/finance/price-lists": "Lista de Precios",
   "/system/reports": "Reportes",
-  "/settings": "Ajustes",
-  "/settings/profile": "Perfil",
-  "/settings/security": "Seguridad",
 };
 
 export function getPageTitle(path: string | undefined | null): string {
