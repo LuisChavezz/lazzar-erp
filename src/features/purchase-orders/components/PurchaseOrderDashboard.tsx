@@ -8,10 +8,13 @@ import {
   CheckCircleIcon,
   EmbarquesIcon,
 } from "@/src/components/Icons";
+import { formatMoneyValueOrDash, safeParseAmount } from "@/src/utils/formatCurrency";
+import { formatLocalDate } from "@/src/utils/formatDate";
 import {
   isPurchaseOrderAuthorizedOrComplete,
   isPurchaseOrderCancelled,
   isPurchaseOrderDraft,
+  isPurchaseOrderPartiallyReceived,
   isPurchaseOrderPending,
 } from "../constants/purchaseOrderStatus";
 
@@ -25,7 +28,14 @@ export function PurchaseOrderDashboard({ orders }: PurchaseOrderDashboardProps) 
   // Agregaciones derivadas de los datos
   const stats = useMemo(() => {
     const total = orders.length;
-    const totalValue = orders.reduce((s, o) => s + Number(o.total), 0);
+    // `safeParseAmount` y no `Number()`: `total` puede venir AUSENTE de la
+    // respuesta (filtro por rol), y `Number(undefined)` contaminaría la suma
+    // entera con `NaN`. Un importe no visible cuenta como 0 en el agregado.
+    //
+    // La suma mezcla monedas —el listado puede traer órdenes en MXN y en USD—
+    // y se rotula en la moneda por defecto. Es una aproximación heredada; un
+    // total correcto exigiría tipo de cambio, que el backend no expone aquí.
+    const totalValue = orders.reduce((s, o) => s + safeParseAmount(o.total), 0);
 
     const pendientes = orders.filter((o) => isPurchaseOrderPending(o.estatus)).length;
     const autorizadasOCompletadas = orders.filter((o) =>
@@ -34,22 +44,29 @@ export function PurchaseOrderDashboard({ orders }: PurchaseOrderDashboardProps) 
     const canceladas = orders.filter((o) => isPurchaseOrderCancelled(o.estatus)).length;
     const borradores = orders.filter((o) => isPurchaseOrderDraft(o.estatus)).length;
 
-    // Órdenes con tracking activo (en tránsito)
-    const conTracking = orders.filter((o) => o.tracking).length;
+    // Órdenes en curso: autorizadas con recepciones PARCIALES, es decir, la
+    // mercancía ya está entrando pero la orden todavía no cierra.
+    //
+    // Antes este bloque contaba `o.tracking`, un campo que nunca existió en el
+    // backend: el KPI marcaba siempre 0 y el panel siempre salía vacío. El
+    // estatus 4 es el dato real equivalente.
+    const enCurso = orders.filter((o) => isPurchaseOrderPartiallyReceived(o.estatus));
 
-    // Órdenes críticas con tracking
-    const critical = orders
-      .filter((o) => o.tracking)
+    // Las 8 más próximas a entregar. Las que no tienen fecha estimada van al
+    // fondo (no se pueden priorizar) en vez de encabezar el orden alfabético.
+    const critical = [...enCurso]
       .sort((a, b) => {
-        const etaA = a.tracking?.fecha_estimada_llegada ?? "";
-        const etaB = b.tracking?.fecha_estimada_llegada ?? "";
+        const etaA = a.fecha_entrega_estimada ?? "";
+        const etaB = b.fecha_entrega_estimada ?? "";
+        if (!etaA) return etaB ? 1 : 0;
+        if (!etaB) return -1;
         return etaA.localeCompare(etaB);
       })
       .slice(0, 8);
 
-    // Top 5 por valor total
+    // Top 5 por valor total — mismo criterio que `totalValue` para el ausente.
     const topByValue = [...orders]
-      .sort((a, b) => Number(b.total) - Number(a.total))
+      .sort((a, b) => safeParseAmount(b.total) - safeParseAmount(a.total))
       .slice(0, 5);
 
     return {
@@ -59,7 +76,7 @@ export function PurchaseOrderDashboard({ orders }: PurchaseOrderDashboardProps) 
       autorizadasOCompletadas,
       canceladas,
       borradores,
-      conTracking,
+      enCurso: enCurso.length,
       critical,
       topByValue,
     };
@@ -108,7 +125,7 @@ export function PurchaseOrderDashboard({ orders }: PurchaseOrderDashboardProps) 
           </div>
         </div>
 
-        {/* En ruta / con tracking */}
+        {/* En curso: autorizadas con recepción parcial */}
         <div
           role="listitem"
           className="group relative rounded-xl bg-white dark:bg-black border border-slate-200 dark:border-white/10 p-5 shadow-sm hover:shadow-lg transition-all duration-300"
@@ -116,7 +133,7 @@ export function PurchaseOrderDashboard({ orders }: PurchaseOrderDashboardProps) 
           <div className="absolute inset-x-0 top-0 h-0.5 rounded-t-xl bg-linear-to-r from-transparent via-indigo-500 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
           <div className="flex justify-between items-start mb-4">
             <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-300">
-              En tránsito
+              En curso
             </span>
             <div className="p-2 rounded-lg bg-indigo-50 dark:bg-indigo-500/10 text-indigo-500 shadow-[0_0_15px_rgba(15,23,42,0.08)]">
               <EmbarquesIcon className="w-5 h-5" aria-hidden="true" />
@@ -124,19 +141,19 @@ export function PurchaseOrderDashboard({ orders }: PurchaseOrderDashboardProps) 
           </div>
           <div className="flex items-baseline gap-2 mb-2">
             <h3 className="text-2xl font-bold text-slate-800 dark:text-white tracking-tight font-mono">
-              {stats.conTracking}
+              {stats.enCurso}
             </h3>
             <span className="text-xs font-semibold text-indigo-500 bg-indigo-50 dark:bg-indigo-500/10 px-1.5 py-0.5 rounded">
-              Con tracking
+              Parcialmente recibidas
             </span>
           </div>
           <p className="text-xs text-slate-500 dark:text-slate-400 mb-2">
-            Órdenes con información de rastreo
+            Órdenes con recepción parcial registrada
           </p>
           <div className="h-1 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden text-indigo-500">
             <div
               className="h-full bg-current rounded-full"
-              style={{ width: `${stats.total > 0 ? (stats.conTracking / stats.total) * 100 : 0}%` }}
+              style={{ width: `${stats.total > 0 ? (stats.enCurso / stats.total) * 100 : 0}%` }}
             />
           </div>
         </div>
@@ -219,15 +236,15 @@ export function PurchaseOrderDashboard({ orders }: PurchaseOrderDashboardProps) 
       {/* ── Grid inferior ─────────────────────────────────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
 
-        {/* Órdenes con tracking activo */}
+        {/* Órdenes en curso (recepción parcial), por fecha de entrega estimada */}
         <div className="rounded-xl bg-white dark:bg-black border border-slate-200 dark:border-white/10 p-5 shadow-sm">
           <div className="flex items-center justify-between mb-3">
             <div>
               <h2 className="text-sm font-bold text-slate-800 dark:text-white">
-                Órdenes con rastreo
+                Órdenes en curso
               </h2>
               <p className="text-xs text-slate-400 mt-0.5">
-                Órdenes con información de seguimiento
+                Con recepción parcial, por entrega estimada
               </p>
             </div>
             <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-semibold bg-orange-50 dark:bg-orange-500/10 text-orange-600 dark:text-orange-400">
@@ -243,19 +260,21 @@ export function PurchaseOrderDashboard({ orders }: PurchaseOrderDashboardProps) 
                   className="flex items-center gap-3 py-2.5 border-b border-slate-100 dark:border-white/5 last:border-0"
                 >
                   <div className="flex-1 min-w-0">
+                    {/* `folio` es nullable mientras el backend no lo asigna;
+                        sin respaldo la fila quedaba sin identificador visible. */}
                     <p className="text-xs font-semibold text-slate-700 dark:text-slate-200 font-mono">
-                      {order.folio}
+                      {order.folio ?? `#${order.id}`}
                     </p>
                     <p className="text-[11px] text-slate-400 truncate">
-                      {`Proveedor #${order.proveedor}`}
+                      {order.proveedor_nombre ?? "—"}
                     </p>
                   </div>
 
-                  {order.tracking?.fecha_estimada_llegada && (
+                  {order.fecha_entrega_estimada && (
                     <div className="text-right shrink-0">
                       <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">ETA</p>
-                      <p className="text-xs font-semibold text-slate-600 dark:text-slate-300">
-                        {order.tracking.fecha_estimada_llegada}
+                      <p className="text-xs font-semibold text-slate-600 dark:text-slate-300 tabular-nums">
+                        {formatLocalDate(order.fecha_entrega_estimada)}
                       </p>
                     </div>
                   )}
@@ -263,7 +282,7 @@ export function PurchaseOrderDashboard({ orders }: PurchaseOrderDashboardProps) 
               ))
             ) : (
               <p className="text-sm text-slate-400 text-center py-6">
-                Sin órdenes con tracking activo
+                Sin órdenes con recepción parcial
               </p>
             )}
           </div>
@@ -283,10 +302,11 @@ export function PurchaseOrderDashboard({ orders }: PurchaseOrderDashboardProps) 
           </div>
           <div className="space-y-1">
             {stats.topByValue.map((order, idx) => {
-              const pct =
-                stats.topByValue[0]
-                  ? (Number(order.total) / Number(stats.topByValue[0].total)) * 100
-                  : 0;
+              // `|| 0` en el divisor: si el usuario no ve importes, todos los
+              // `total` son `undefined` → `safeParseAmount` los vuelve 0 y la
+              // división daría `NaN` en el ancho de la barra.
+              const maxValue = safeParseAmount(stats.topByValue[0]?.total);
+              const pct = maxValue > 0 ? (safeParseAmount(order.total) / maxValue) * 100 : 0;
 
               return (
                 <div key={order.id} className="flex items-center gap-3 py-2">
@@ -297,8 +317,10 @@ export function PurchaseOrderDashboard({ orders }: PurchaseOrderDashboardProps) 
                   {/* Info */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
+                      {/* Mismo respaldo que el panel de arriba: el Top 5 SÍ
+                          puede incluir una orden todavía sin folio. */}
                       <span className="text-xs font-semibold text-slate-700 dark:text-slate-200 font-mono">
-                        {order.folio}
+                        {order.folio ?? `#${order.id}`}
                       </span>
                     </div>
                     <div className="h-1 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden text-slate-400">
@@ -308,14 +330,13 @@ export function PurchaseOrderDashboard({ orders }: PurchaseOrderDashboardProps) 
                       />
                     </div>
                     <p className="text-[10px] text-slate-400 mt-0.5 truncate">
-                      {`Proveedor #${order.proveedor}`}
+                      {order.proveedor_nombre ?? "—"}
                     </p>
                   </div>
-                  {/* Valor */}
+                  {/* Valor — en la moneda de LA ORDEN, y "—" si no es visible */}
                   <span className="text-xs font-bold text-slate-700 dark:text-slate-200 tabular-nums shrink-0">
-                    {Number(order.total).toLocaleString("es-MX", {
-                      style: "currency",
-                      currency: "MXN",
+                    {formatMoneyValueOrDash(order.total, {
+                      currency: order.moneda_codigo,
                       maximumFractionDigits: 0,
                     })}
                   </span>

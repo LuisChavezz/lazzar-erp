@@ -1,3 +1,5 @@
+import type { StatusBadgeConfigEntry } from "@/src/components/StatusBadge";
+
 /**
  * Valores de `PurchaseOrder.estatus` confirmados contra el backend
  * (`OrdenCompra.estatus`). `BORRADOR` es el default del modelo Django pero
@@ -31,6 +33,14 @@ export const isPurchaseOrderAuthorizedOrComplete = (estatus: number) =>
     ] as number[]
   ).includes(estatus);
 
+/**
+ * Autorizada y con recepciones parciales registradas: la mercancía ya está
+ * entrando pero la orden todavía no se cierra. Es el estado "en curso" del
+ * ciclo de compra y lo consume el dashboard.
+ */
+export const isPurchaseOrderPartiallyReceived = (estatus: number) =>
+  estatus === PURCHASE_ORDER_STATUS.PARCIALMENTE_RECIBIDA;
+
 export const isPurchaseOrderCancelled = (estatus: number) =>
   estatus === PURCHASE_ORDER_STATUS.CANCELADA;
 
@@ -44,35 +54,73 @@ export const isPurchaseOrderEditable = (estatus: number) =>
   isPurchaseOrderDraft(estatus) || isPurchaseOrderPending(estatus);
 
 /**
- * Colores del badge de estatus, compartidos entre `PurchaseOrderColumns.tsx`
- * (listado) y `PurchaseOrderDetailDialog.tsx` (detalle) — antes duplicados
- * en ambos archivos y sin cubrir todos los valores reales (solo 1/4/5), por
- * lo que la mayoría de las órdenes (creadas en PENDIENTE) mostraban el color
- * neutro de Borrador.
+ * Colores y etiquetas por estatus, en la forma `StatusBadgeConfigEntry` que
+ * consume el `<StatusBadge>` compartido — antes era un `{ cls, dot }` suelto
+ * sin `label`, lo que obligaba a `PurchaseOrderColumns` y
+ * `PurchaseOrderDetailDialog` a reimplementar el badge a mano cada uno.
+ *
+ * El objeto intermedio con llaves numéricas obliga a TypeScript a exigir las 6
+ * entradas (`satisfies`); lo exportado se tipa `Record<string, …>` porque
+ * `StatusBadge` recibe el estatus ya convertido a string. Mismo patrón que
+ * `CORTE_MANGA_ORDER_STATUS_CONFIG` y `EMBROIDERY_STATUS_CONFIG`.
+ *
+ * `4` (Parcialmente recibida) usa naranja y no ámbar para no confundirse con
+ * `2` (Pendiente a confirmar): son dos puntos MUY distintos del ciclo y en el
+ * listado conviven en pantalla.
  */
-export const PURCHASE_ORDER_ESTATUS_CFG: Record<number, { cls: string; dot: string }> = {
+const STATUS_BY_CODE = {
   [PURCHASE_ORDER_STATUS.BORRADOR]: {
+    label: "Borrador",
     cls: "bg-slate-50 text-slate-700 dark:bg-slate-500/10 dark:text-slate-300",
     dot: "bg-slate-400",
   },
   [PURCHASE_ORDER_STATUS.PENDIENTE]: {
+    label: "Pendiente a confirmar",
+    cls: "bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400",
+    dot: "bg-amber-500",
+  },
+  [PURCHASE_ORDER_STATUS.AUTORIZADA]: {
+    label: "Autorizada",
     cls: "bg-sky-50 text-sky-700 dark:bg-sky-500/10 dark:text-sky-400",
     dot: "bg-sky-500",
   },
-  [PURCHASE_ORDER_STATUS.AUTORIZADA]: {
-    cls: "bg-blue-50 text-blue-700 dark:bg-blue-500/10 dark:text-blue-400",
-    dot: "bg-blue-500",
-  },
   [PURCHASE_ORDER_STATUS.PARCIALMENTE_RECIBIDA]: {
-    cls: "bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400",
-    dot: "bg-amber-400",
+    label: "Parcialmente recibida",
+    cls: "bg-orange-50 text-orange-700 dark:bg-orange-500/10 dark:text-orange-400",
+    dot: "bg-orange-500",
   },
   [PURCHASE_ORDER_STATUS.RECIBIDA]: {
+    label: "Recibida",
     cls: "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400",
     dot: "bg-emerald-500",
   },
   [PURCHASE_ORDER_STATUS.CANCELADA]: {
-    cls: "bg-red-50 text-red-700 dark:bg-red-500/10 dark:text-red-400",
-    dot: "bg-red-500",
+    label: "Cancelada",
+    cls: "bg-rose-50 text-rose-700 dark:bg-rose-500/10 dark:text-rose-400",
+    dot: "bg-rose-500",
   },
+} satisfies Record<number, StatusBadgeConfigEntry>;
+
+export const PURCHASE_ORDER_ESTATUS_CFG: Record<string, StatusBadgeConfigEntry> =
+  STATUS_BY_CODE;
+
+/** Badge neutro para estatus fuera de 1-6, rotulado con lo que mande el backend. */
+const NEUTRAL_STATUS_CFG: StatusBadgeConfigEntry = {
+  cls: "bg-slate-100 text-slate-600 dark:bg-slate-500/10 dark:text-slate-400",
+  dot: "bg-slate-400",
+};
+
+/**
+ * Entrada de badge para un estatus concreto: el COLOR sale del mapa local
+ * (indexado por el entero `estatus`) y la ETIQUETA también cuando el código
+ * está en 1-6. El `estatus_label` del backend entra solo como RESPALDO —para
+ * códigos fuera de 1-6 que este mapa no cubre—; el entero crudo es el último
+ * recurso. Mismo patrón que `corteMangaStatusEntry` y `productionOrderStatusEntry`.
+ */
+export const purchaseOrderStatusEntry = (
+  estatus: number,
+  display?: string | null,
+): StatusBadgeConfigEntry => {
+  const base = PURCHASE_ORDER_ESTATUS_CFG[String(estatus)] ?? NEUTRAL_STATUS_CFG;
+  return { ...base, label: base.label || display?.trim() || String(estatus) };
 };

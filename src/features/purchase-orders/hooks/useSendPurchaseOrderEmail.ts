@@ -10,7 +10,17 @@ import {
 } from "@/src/features/google/utils/emailSend.utils";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { generatePurchaseOrderPdfBlob } from "../services/pdf/purchaseOrderPdfBlob";
+import { canSeeAmounts } from "../utils/purchaseOrderFinance";
 import { purchaseOrderQueryOptions } from "./usePurchaseOrder";
+
+/**
+ * Mensaje cuando el rol del usuario no puede ver los importes de la orden.
+ * El correo lleva la orden (y su PDF) al proveedor: sin precios sería un
+ * documento roto, así que se bloquea aquí —con el detalle YA filtrado por el
+ * backend— en vez de en el listado, cuya fila no está filtrada.
+ */
+const SIN_IMPORTES_MSG =
+  "No tienes acceso a los importes de esta orden, así que no puede enviarse al proveedor.";
 
 // --- Hook ---
 
@@ -43,6 +53,13 @@ export const useSendPurchaseOrderEmail = () => {
       // Reutiliza el cache de `usePurchaseOrder` (p. ej. si el usuario ya
       // abrió el diálogo de detalle) en vez de re-consultar siempre.
       const order = await queryClient.fetchQuery(purchaseOrderQueryOptions(orderId));
+
+      // El detalle ya viene filtrado por rol: si faltan los importes, no se
+      // envía una orden sin precios al proveedor. Se corta ANTES de generar el
+      // PDF o llamar al render, para no gastar ese trabajo en vano.
+      if (!canSeeAmounts(order)) {
+        throw new Error(SIN_IMPORTES_MSG);
+      }
 
       // Dispara el PDF/adjunto en paralelo con la validación de abajo, sin
       // esperarlo todavía — ver rationale en `createEmailAttachmentPromise`.

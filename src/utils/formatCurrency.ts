@@ -39,19 +39,28 @@ export const safeParseAmount = (value: string | null | undefined): number => {
  * del backend, que llegan como string (o, en algunos renglones, number).
  * Usado por los documentos PDF y las plantillas de correo (cotización y
  * orden de compra).
+ *
+ * `options` se pasa tal cual a `formatCurrency`; su uso habitual es
+ * `{ currency: <código ISO del registro> }` cuando el importe NO está en la
+ * moneda por defecto (MXN) — p. ej. una orden de compra en USD, que expone su
+ * `moneda_codigo`. Sin `options` se comporta igual que antes.
  */
-export const formatMoneyValue = (value: string | number): string =>
-  formatCurrency(safeParseAmount(String(value)));
+export const formatMoneyValue = (
+  value: string | number,
+  options?: Intl.NumberFormatOptions,
+): string => formatCurrency(safeParseAmount(String(value)), options);
 
 /**
  * Como `formatMoneyValue` pero devuelve "—" cuando el valor es `null`/
  * `undefined`, en vez de un engañoso "$0.00". Para los campos financieros que
- * el backend ELIMINA de la respuesta (filtro de contabilidad de pedidos) según
- * el rol del usuario: un importe ausente no es cero, es "no visible".
+ * el backend ELIMINA de la respuesta (filtro de contabilidad de pedidos y de
+ * órdenes de compra) según el rol del usuario: un importe ausente no es cero,
+ * es "no visible".
  */
 export const formatMoneyValueOrDash = (
   value: string | number | null | undefined,
-): string => (value == null ? "—" : formatMoneyValue(value));
+  options?: Intl.NumberFormatOptions,
+): string => (value == null ? "—" : formatMoneyValue(value, options));
 
 /**
  * Formatea una CANTIDAD (no dinero) como número plano es-MX, hasta 2 decimales,

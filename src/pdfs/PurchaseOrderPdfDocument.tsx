@@ -22,7 +22,7 @@
  */
 import { Document, Page, Text, View } from "@react-pdf/renderer";
 import type { PurchaseOrderDetail } from "@/src/features/purchase-orders/interfaces/purchase-order.interface";
-import { formatMoneyValue as money, safeParseAmount } from "@/src/utils/formatCurrency";
+import { formatMoneyValueOrDash, safeParseAmount } from "@/src/utils/formatCurrency";
 import { formatLocalDate } from "@/src/utils/formatDate";
 import { purchaseOrderPdfStyles as s } from "./PurchaseOrderPdfStyles";
 
@@ -32,6 +32,11 @@ type PurchaseOrderPdfDocumentProps = {
 
 export const PurchaseOrderPdfDocument = ({ order }: PurchaseOrderPdfDocumentProps) => {
   const detalles = order.detalles ?? [];
+  // Importes en la MONEDA DE LA ORDEN, y "—" cuando el campo viene ausente:
+  // el backend elimina los financieros de la respuesta según el rol de quien
+  // consultó la orden, y este documento se genera a partir de esa respuesta.
+  const money = (value: string | number | null | undefined) =>
+    formatMoneyValueOrDash(value, { currency: order.moneda_codigo });
   const descuento = safeParseAmount(order.descuento);
   const flete = safeParseAmount(order.flete);
   const seguros = safeParseAmount(order.seguros);

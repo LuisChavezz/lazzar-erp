@@ -2,7 +2,7 @@ import { Fragment } from "react";
 import { Text } from "@react-email/components";
 import { BaseEmailLayout, EmailCard } from "@/src/emails/shared/BaseEmailLayout";
 import type { PurchaseOrderDetail } from "@/src/features/purchase-orders/interfaces/purchase-order.interface";
-import { formatMoneyValue as money, safeParseAmount } from "@/src/utils/formatCurrency";
+import { formatMoneyValueOrDash, safeParseAmount } from "@/src/utils/formatCurrency";
 import { formatLocalDate } from "@/src/utils/formatDate";
 
 type PurchaseOrderEmailProps = {
@@ -21,6 +21,28 @@ type PurchaseOrderEmailProps = {
 export const PurchaseOrderEmail = ({ order }: PurchaseOrderEmailProps) => {
   const supplierName = order.proveedor_nombre || "proveedor";
   const detalles = order.detalles ?? [];
+  // `folio` es nullable mientras el backend no lo asigna; sin respaldo el
+  // asunto y el encabezado del correo decían "Orden de compra null".
+  const folioLabel = order.folio ?? `#${order.id}`;
+  // Importes en la MONEDA DE LA ORDEN.
+  const money = (value: string | number | null | undefined) =>
+    formatMoneyValueOrDash(value, { currency: order.moneda_codigo });
+
+  // ── Visibilidad de importes ────────────────────────────────────────────────
+  // El backend ELIMINA los campos financieros de la respuesta cuando quien
+  // consultó la orden no tiene rol con visibilidad financiera, y este correo se
+  // renderiza a partir de esa misma respuesta. En ese caso se OMITEN las filas
+  // de importe y las columnas Precio/Importe, en vez de pintar una tabla llena
+  // de guiones: un renglón "Subtotal —" en un documento dirigido al proveedor
+  // se lee como un dato faltante de la orden, no como un permiso ausente.
+  const showAmounts =
+    order.gran_total !== undefined ||
+    order.subtotal !== undefined ||
+    order.total !== undefined;
+  const showLineAmounts = detalles.some((item) => item.precio !== undefined);
+  // Columnas de la tabla de productos: 2 fijas + las 2 de importe si se ven.
+  const productColumnCount = showLineAmounts ? 4 : 2;
+
   // Igual que en PurchaseOrderPdfDocument: Flete/Seguros solo se muestran
   // como renglón cuando aportan al total, para que ambos documentos
   // reconcilien contra el mismo `gran_total`.
@@ -29,8 +51,8 @@ export const PurchaseOrderEmail = ({ order }: PurchaseOrderEmailProps) => {
 
   return (
     <BaseEmailLayout
-      previewText={`Orden de compra ${order.folio} para ${supplierName}`}
-      headingText={`Orden de compra ${order.folio}`}
+      previewText={`Orden de compra ${folioLabel} para ${supplierName}`}
+      headingText={`Orden de compra ${folioLabel}`}
       descriptionText={
         <>
           Estimado {supplierName}, adjuntamos en PDF la orden de compra con el detalle
@@ -44,7 +66,7 @@ export const PurchaseOrderEmail = ({ order }: PurchaseOrderEmailProps) => {
                 <tbody>
                   <tr>
                     <td className="py-2 pr-4 text-slate-500">Folio</td>
-                    <td className="py-2 font-medium text-slate-900">{order.folio}</td>
+                    <td className="py-2 font-medium text-slate-900">{folioLabel}</td>
                   </tr>
                   <tr>
                     <td className="py-2 pr-4 text-slate-500">Proveedor</td>
@@ -74,14 +96,18 @@ export const PurchaseOrderEmail = ({ order }: PurchaseOrderEmailProps) => {
                   <tr className="border-b border-slate-200 text-xs uppercase tracking-[0.16em] text-slate-500">
                     <th className="py-3 pr-3 font-semibold">Descripción</th>
                     <th className="py-3 pr-3 font-semibold text-right">Cantidad</th>
-                    <th className="py-3 pr-3 font-semibold text-right">Precio</th>
-                    <th className="py-3 font-semibold text-right">Importe</th>
+                    {showLineAmounts ? (
+                      <>
+                        <th className="py-3 pr-3 font-semibold text-right">Precio</th>
+                        <th className="py-3 font-semibold text-right">Importe</th>
+                      </>
+                    ) : null}
                   </tr>
                 </thead>
                 <tbody>
                   {detalles.length === 0 ? (
                     <tr>
-                      <td colSpan={4} className="py-4 text-center text-slate-400">
+                      <td colSpan={productColumnCount} className="py-4 text-center text-slate-400">
                         Esta orden no tiene productos registrados.
                       </td>
                     </tr>
@@ -94,18 +120,23 @@ export const PurchaseOrderEmail = ({ order }: PurchaseOrderEmailProps) => {
                           <tr className={dividerClass}>
                             <td className="py-4 pr-3 align-top text-slate-900">
                               <Text className="m-0 text-sm font-semibold text-slate-900">
-                                {item.descripcion}
+                                {/* `descripcion` es nullable en el backend. */}
+                                {item.descripcion || "—"}
                               </Text>
                             </td>
                             <td className="py-4 pr-3 text-right align-top text-slate-900">
                               {item.cantidad.toLocaleString("es-MX")}
                             </td>
-                            <td className="py-4 pr-3 text-right align-top text-slate-900">
-                              {money(item.precio)}
-                            </td>
-                            <td className="py-4 text-right align-top font-semibold text-slate-900">
-                              {money(item.importe)}
-                            </td>
+                            {showLineAmounts ? (
+                              <>
+                                <td className="py-4 pr-3 text-right align-top text-slate-900">
+                                  {money(item.precio)}
+                                </td>
+                                <td className="py-4 text-right align-top font-semibold text-slate-900">
+                                  {money(item.importe)}
+                                </td>
+                              </>
+                            ) : null}
                           </tr>
                         </Fragment>
                       );
@@ -124,6 +155,8 @@ export const PurchaseOrderEmail = ({ order }: PurchaseOrderEmailProps) => {
                       {order.total_piezas?.toLocaleString("es-MX") ?? "0"}
                     </td>
                   </tr>
+                  {showAmounts ? (
+                    <>
                   <tr>
                     <td className="py-2 pr-4 text-slate-500">Subtotal</td>
                     <td className="py-2 text-right font-medium text-slate-900">
@@ -164,6 +197,8 @@ export const PurchaseOrderEmail = ({ order }: PurchaseOrderEmailProps) => {
                       {money(order.gran_total)}
                     </td>
                   </tr>
+                    </>
+                  ) : null}
                 </tbody>
               </table>
       </EmailCard>

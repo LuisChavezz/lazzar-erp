@@ -87,6 +87,16 @@ const BACK_TARGETS: Record<string, { href: string; label: string }> = {
     href: "/manufacturing/production-orders",
     label: "Volver a Órdenes de Producción",
   },
+  // Quien llega desde el detalle de una orden de COMPRA
+  // (`PurchaseOrderPageContent`, por su `pedido_vinculado`) vuelve al listado
+  // de órdenes de compra. Nótese que NO es la llave `procurement` de arriba:
+  // esa apunta a `/procurement/orders`, el listado de PEDIDOS del módulo de
+  // Compras, que es otra pantalla. Misma convención de llave por ORIGEN
+  // concreto que `embroidery`/`reflective`/`corte-manga`.
+  "purchase-orders": {
+    href: "/procurement/purchase-orders",
+    label: "Volver a Órdenes de Compra",
+  },
 };
 const DEFAULT_BACK = { href: "/operations/orders", label: "Volver a pedidos" };
 

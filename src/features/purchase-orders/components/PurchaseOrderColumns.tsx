@@ -1,9 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { ColumnDef, createColumnHelper } from "@tanstack/react-table";
+import { ColumnDef, createColumnHelper, type SortingFn } from "@tanstack/react-table";
 import { ActionMenu, type ActionMenuItem } from "@/src/components/ActionMenu";
+import { ConfirmDialog } from "@/src/components/ConfirmDialog";
 import { textOrDash } from "@/src/components/DetailDialogPrimitives";
+import { StatusBadge } from "@/src/components/StatusBadge";
 import {
   CheckCircleIcon,
   DeleteIcon,
@@ -12,10 +14,9 @@ import {
   EmailIcon,
   ViewIcon,
 } from "@/src/components/Icons";
+import { formatMoneyValueOrDash, safeParseAmount } from "@/src/utils/formatCurrency";
+import { formatLocalDate } from "@/src/utils/formatDate";
 import { PurchaseOrder } from "../interfaces/purchase-order.interface";
-import { PurchaseOrderDetailDialog } from "./PurchaseOrderDetailDialog";
-import { PurchaseOrderEditDialog } from "./PurchaseOrderEditDialog";
-import { ConfirmDialog } from "@/src/components/ConfirmDialog";
 import { useConfirmPurchaseOrder } from "../hooks/useConfirmPurchaseOrder";
 import { useDeletePurchaseOrder } from "../hooks/useDeletePurchaseOrder";
 import { useSendPurchaseOrderEmail } from "../hooks/useSendPurchaseOrderEmail";
@@ -23,32 +24,54 @@ import { useDownloadPurchaseOrderPdf } from "../hooks/useDownloadPurchaseOrderPd
 import {
   isPurchaseOrderAuthorizedOrComplete,
   isPurchaseOrderEditable,
-  PURCHASE_ORDER_ESTATUS_CFG,
-  PURCHASE_ORDER_STATUS,
+  purchaseOrderStatusEntry,
 } from "../constants/purchaseOrderStatus";
 
 const columnHelper = createColumnHelper<PurchaseOrder>();
 
-// ── Subcomponente: badge de estatus ───────────────────────────────────────────
+/**
+ * Importe en la MONEDA DE LA ORDEN (no siempre MXN) y con "—" cuando el campo
+ * viene ausente: el backend elimina los financieros de la respuesta para
+ * usuarios sin rol con visibilidad financiera, y `Number(undefined)` pintaría
+ * "$NaN" en la celda.
+ */
+const money = (value: string | undefined, monedaCodigo: string) =>
+  formatMoneyValueOrDash(value, { currency: monedaCodigo });
 
-const EstatusBadge = ({ estatus, label }: { estatus: number; label: string }) => {
-  const cfg =
-    PURCHASE_ORDER_ESTATUS_CFG[estatus] ??
-    PURCHASE_ORDER_ESTATUS_CFG[PURCHASE_ORDER_STATUS.BORRADOR];
-  return (
-    <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium whitespace-nowrap ${cfg.cls}`}>
-      <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${cfg.dot}`} aria-hidden="true" />
-      {label}
-    </span>
-  );
-};
+/**
+ * Orden NUMÉRICO para las columnas de importe. El valor de la celda es el
+ * string decimal del backend, y el comparador por defecto de TanStack ordena
+ * strings LEXICOGRÁFICAMENTE: "1000.00" quedaría antes de "9.00". Un importe
+ * ausente (filtro por rol) llega como "" y cuenta como 0 — el filtro es por
+ * usuario, no por fila, así que o se ven todos o ninguno.
+ */
+const amountSortingFn: SortingFn<PurchaseOrder> = (rowA, rowB, columnId) =>
+  safeParseAmount(rowA.getValue<string>(columnId)) -
+  safeParseAmount(rowB.getValue<string>(columnId));
 
 // ── Celda de acciones ─────────────────────────────────────────────────────────
 
-/** Gestiona el menú de acciones y el diálogo de detalle de la orden */
-const ActionsCell = ({ row }: { row: PurchaseOrder }) => {
-  const [isDetailOpen, setIsDetailOpen] = useState(false);
-  const [isEditOpen, setIsEditOpen] = useState(false);
+/**
+ * Menú de acciones de la fila.
+ *
+ * Navegación y edición se DELEGAN a la vista (`onViewDetails` / `onEdit`): sus
+ * destinos —una página de detalle y un diálogo de formulario— deben sobrevivir
+ * a que la celda se desmonte al ordenar, paginar o filtrar.
+ *
+ * Confirmar y Cancelar sí se resuelven aquí, con su `ConfirmDialog` y su hook:
+ * son mutaciones inmediatas sobre ESTA fila, no un estado que deba sobrevivirle.
+ * Mismo reparto que `AreaColumns` y el resto de los catálogos. Enviar correo y
+ * Descargar PDF no abren nada — son `mutate(id)` directos.
+ */
+const ActionsCell = ({
+  order,
+  onViewDetails,
+  onEdit,
+}: {
+  order: PurchaseOrder;
+  onViewDetails: (id: number) => void;
+  onEdit: (order: PurchaseOrder) => void;
+}) => {
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const { mutate: confirmOrder, isPending } = useConfirmPurchaseOrder();
@@ -56,51 +79,52 @@ const ActionsCell = ({ row }: { row: PurchaseOrder }) => {
   const { mutate: sendEmail, isPending: isSendingEmail } = useSendPurchaseOrderEmail();
   const { mutate: downloadPdf, isPending: isDownloadingPdf } = useDownloadPurchaseOrderPdf();
 
+  // Cómo se nombra la orden en el `aria-label` del menú y en el texto de los
+  // diálogos de confirmación. `folio` puede ser `null` —y precisamente en las
+  // órdenes EDITABLES, que son las que ven estos diálogos—, así que sin el
+  // respaldo salía literalmente "la orden de compra null".
+  const orderLabel = order.folio ?? `#${order.id}`;
+
   // Borrador o pendiente: la orden aún no se autoriza, así que puede
   // editarse, confirmarse o eliminarse. Autorizada en adelante, ninguna de
   // las tres debe quedar disponible.
-  const editable = isPurchaseOrderEditable(row.estatus);
+  const editable = isPurchaseOrderEditable(order.estatus);
 
-  // El envío al proveedor requiere un correo. El listado puede no traer
-  // `proveedor_correo` (solo el detalle lo confirma), así que solo se considera
-  // "sin correo" cuando el campo SÍ viene presente y vacío/null; si viene ausente
-  // (undefined) se asume que puede tenerlo y la validación autoritativa ocurre en
-  // el flujo de envío, que re-consulta el detalle y valida antes de enviar nada.
-  //
-  // Investigado (no modificado): si el serializer de listado del backend
-  // realmente OMITE este campo para TODAS las filas (no solo para
-  // proveedores sin correo — el comportamiento típico de DRF cuando un
-  // campo no está en `fields` del serializer de list), tratar `undefined`
-  // como "sin correo" ocultaría "Enviar correo" en el listado para el 100%
-  // de las órdenes, incluso las que sí tienen correo — una regresión peor
-  // que el estado actual (mostrar la acción siempre y dejar que el flujo de
-  // envío rechace con un mensaje claro). No hay forma de confirmar el
-  // comportamiento real del serializer desde este repo — requiere revisar
-  // el backend antes de cambiar esta condición.
-  const supplierHasNoEmail =
-    row.proveedor_correo === null || row.proveedor_correo === "";
+  // El envío al proveedor requiere un correo. `proveedor_correo` ya viene
+  // SIEMPRE en el listado (el serializer lo expone tanto en list como en
+  // retrieve), así que `null`/`""` significa literalmente "el proveedor no
+  // tiene correo capturado" y la acción se puede ocultar sin ambigüedad.
+  const supplierHasNoEmail = !order.proveedor_correo;
 
   // Solo se envía/descarga la orden una vez autorizada (o más avanzada): antes de
   // eso todavía puede editarse/cancelarse, así que no debe salir un documento en
-  // firme. `estatus` sí viene siempre en el listado (alimenta la columna de
-  // estatus), por lo que el predicado explícito es la señal fiable. Cuando la
-  // condición no se cumple, la acción se OCULTA por completo (igual que
-  // Editar/Confirmar/Eliminar), no se muestra deshabilitada.
-  const isAuthorizedOrBeyond = isPurchaseOrderAuthorizedOrComplete(row.estatus);
+  // firme. Cuando la condición no se cumple, la acción se OCULTA por completo
+  // (igual que Editar/Confirmar/Cancelar), no se muestra deshabilitada.
+  const isAuthorizedOrBeyond = isPurchaseOrderAuthorizedOrComplete(order.estatus);
+
+  // La visibilidad de importes NO se comprueba aquí, aunque correo/PDF/edición
+  // la necesiten: `order` es una fila del LISTADO, y el backend aplica su filtro
+  // de contabilidad SOLO en el retrieve (`compras/api/views.py`,
+  // `filtrar_campos_contabilidad_orden_compra` cuelga de `retrieve()`, no de
+  // `list()`), así que en el listado `gran_total` SIEMPRE viene presente. Un
+  // `order.gran_total !== undefined` aquí sería permanentemente `true` —código
+  // muerto que aparentaba proteger sin proteger—. La guarda real vive donde el
+  // detalle SÍ está filtrado: los hooks de correo/PDF (`canSeeAmounts` tras su
+  // `fetchQuery`) y el wizard de edición (`PurchaseOrderEditStepManager`).
 
   // "Enviar correo" requiere además un correo del proveedor al que enviar.
   const canSendEmail = isAuthorizedOrBeyond && !supplierHasNoEmail;
 
   // "Descargar PDF" NO necesita correo del proveedor (es una acción local: el
   // documento puede imprimirse o compartirse a mano), así que solo se condiciona
-  // a la autorización — no al correo.
+  // a la autorización.
   const canDownloadPdf = isAuthorizedOrBeyond;
 
   const menuItems: ActionMenuItem[] = [
     {
       label: "Ver Detalles",
       icon: ViewIcon,
-      onSelect: () => setIsDetailOpen(true),
+      onSelect: () => onViewDetails(order.id),
     },
   ];
 
@@ -108,23 +132,22 @@ const ActionsCell = ({ row }: { row: PurchaseOrder }) => {
     menuItems.push({
       label: "Editar",
       icon: EditIcon,
-      onSelect: () => setIsEditOpen(true),
+      onSelect: () => onEdit(order),
     });
-  }
-
-  if (editable) {
+    // "Editar" NO se restringe por importes aquí, por el mismo motivo que
+    // correo/PDF: esto es una fila de listado, sin filtrar. La pérdida de
+    // precios que podría causar un rol sin visibilidad financiera se bloquea
+    // dentro del wizard (`PurchaseOrderEditStepManager`), que sí trabaja con el
+    // detalle filtrado.
     menuItems.push({
       label: "Confirmar",
       icon: CheckCircleIcon,
       onSelect: () => setIsConfirmOpen(true),
       // Cross-guard: no permitir confirmar mientras se elimina la misma
-      // orden (y viceversa, ver "Eliminar" abajo) — ambas mutaciones no
+      // orden (y viceversa, ver "Cancelar" abajo) — ambas mutaciones no
       // deben poder correr en paralelo sobre la misma orden.
       disabled: isPending || isDeletePending,
     });
-  }
-
-  if (editable) {
     menuItems.push({
       label: "Cancelar",
       icon: DeleteIcon,
@@ -137,7 +160,7 @@ const ActionsCell = ({ row }: { row: PurchaseOrder }) => {
     menuItems.push({
       label: isSendingEmail ? "Enviando..." : "Enviar correo",
       icon: EmailIcon,
-      onSelect: () => sendEmail(row.id),
+      onSelect: () => sendEmail(order.id),
       // In-flight guard: evita doble envío o solaparse con la descarga.
       // `keepOpenOnSelect` deja el menú abierto para ver el estado "Enviando...".
       disabled: isSendingEmail || isDownloadingPdf,
@@ -149,7 +172,7 @@ const ActionsCell = ({ row }: { row: PurchaseOrder }) => {
     menuItems.push({
       label: isDownloadingPdf ? "Generando PDF..." : "Descargar PDF",
       icon: DownloadIcon,
-      onSelect: () => downloadPdf(row.id),
+      onSelect: () => downloadPdf(order.id),
       // In-flight guard: evita doble descarga o solaparse con el envío.
       // `keepOpenOnSelect` deja el menú abierto para ver el estado "Generando PDF...".
       disabled: isDownloadingPdf || isSendingEmail,
@@ -158,28 +181,18 @@ const ActionsCell = ({ row }: { row: PurchaseOrder }) => {
   }
 
   return (
-    <>
-      <ActionMenu items={menuItems} ariaLabel={`Acciones de la orden ${row.folio}`} />
-      <PurchaseOrderDetailDialog
-        orderId={isDetailOpen ? row.id : null}
-        open={isDetailOpen}
-        onOpenChange={setIsDetailOpen}
-      />
-      <PurchaseOrderEditDialog
-        open={isEditOpen}
-        onOpenChange={setIsEditOpen}
-        initialData={isEditOpen ? row : undefined}
-      />
+    <div className="flex items-center justify-center">
+      <ActionMenu items={menuItems} ariaLabel={`Acciones de la orden ${orderLabel}`} />
       {editable && (
         <ConfirmDialog
           open={isConfirmOpen}
           onOpenChange={setIsConfirmOpen}
           title="Confirmar Orden de Compra"
-          description={`¿Estás seguro de que deseas confirmar la orden de compra #${row.id}? Esta acción no se puede deshacer.`}
+          description={`¿Estás seguro de que deseas confirmar la orden de compra ${orderLabel}? Esta acción no se puede deshacer.`}
           confirmText={isPending ? "Confirmando..." : "Confirmar"}
           confirmColor="blue"
           onConfirm={() => {
-            confirmOrder(row.id);
+            confirmOrder(order.id);
             setIsConfirmOpen(false);
           }}
         />
@@ -189,40 +202,84 @@ const ActionsCell = ({ row }: { row: PurchaseOrder }) => {
           open={isDeleteOpen}
           onOpenChange={setIsDeleteOpen}
           title="Eliminar Orden de Compra"
-          description={`¿Estás seguro de que deseas eliminar la orden de compra #${row.id}? Esta acción no se puede deshacer.`}
+          description={`¿Estás seguro de que deseas eliminar la orden de compra ${orderLabel}? Esta acción no se puede deshacer.`}
           confirmText={isDeletePending ? "Eliminando..." : "Eliminar"}
           confirmColor="red"
           onConfirm={() => {
-            deleteOrder(row.id);
+            deleteOrder(order.id);
             setIsDeleteOpen(false);
           }}
         />
       )}
-    </>
+    </div>
   );
 };
 
-export const getColumns = () => {
+/**
+ * Columnas del listado de órdenes de compra (`GET /compras/ordenes/`).
+ *
+ * Fábrica —no un arreglo estático— porque el folio y la acción "Ver Detalles"
+ * navegan a la página de detalle, y "Editar" abre el diálogo de edición que
+ * vive en `PurchaseOrderView`. Mismo patrón `getXColumns(callbacks)` que
+ * `CorteMangaOrderColumns` (navegación) y `AreaColumns` (edición).
+ *
+ * Las columnas de importe muestran "—" cuando el campo viene ausente: el
+ * backend los omite por rol y NO se ocultan las columnas enteras, porque en un
+ * mismo listado la visibilidad es por usuario, no por fila —si un usuario no
+ * los ve, no los ve en ninguna—, y una columna vacía comunica eso mejor que
+ * una columna desaparecida.
+ */
+export const getColumns = (
+  onViewDetails: (id: number) => void,
+  onEdit: (order: PurchaseOrder) => void,
+) => {
   const columns = [
     columnHelper.accessor("estatus", {
       header: "Estatus",
-      cell: (info) => (
-        <EstatusBadge estatus={info.getValue()} label={info.row.original.estatus_label} />
+      cell: ({ row }) => (
+        <StatusBadge
+          status={String(row.original.estatus)}
+          config={{
+            [row.original.estatus]: purchaseOrderStatusEntry(
+              row.original.estatus,
+              row.original.estatus_label,
+            ),
+          }}
+        />
       ),
     }),
-    columnHelper.accessor("folio", {
+    // `accessorFn` con `?? ""` y no `accessor("folio")`, por el mismo motivo de
+    // búsqueda global que `fecha_entrega_estimada` abajo: `folio` es nullable y
+    // el listado viene ordenado por `-fecha_oc, -id`, así que basta con que la
+    // orden más reciente esté pendiente de folio para que la columna quede
+    // fuera de la búsqueda EN TODAS las filas.
+    columnHelper.accessor((row) => row.folio ?? "", {
+      id: "folio",
       header: "Folio",
-      cell: (info) => (
-        <span className="font-mono text-slate-700 dark:text-slate-200 font-semibold">
-          {info.getValue()}
-        </span>
+      // Folio clickeable: navega al detalle con el MISMO callback que la acción
+      // "Ver Detalles" (recibe `id`, la PK de esta orden). Mismo patrón que el
+      // folio del listado de pedidos (`SharedOrderColumns`).
+      //
+      // El respaldo `?? "—"` NO es cosmético: sin contenido el `<button>`
+      // colapsa a 0×0 px y el folio queda invisible e inclicable (verificado en
+      // producción, donde 4 de 15 órdenes traen `folio: null`). El guion da un
+      // objetivo de clic real y mantiene la fila navegable.
+      cell: ({ row }) => (
+        <button
+          type="button"
+          onClick={() => onViewDetails(row.original.id)}
+          className="font-mono text-slate-700 dark:text-slate-200 font-semibold hover:text-sky-600 dark:hover:text-sky-400 hover:underline transition-colors cursor-pointer"
+          title="Ver detalle"
+        >
+          {row.original.folio ?? "—"}
+        </button>
       ),
     }),
     columnHelper.accessor("proveedor_nombre", {
       header: "Proveedor",
       cell: (info) => (
         <span className="text-slate-700 dark:text-slate-200 text-sm">
-          {info.getValue()}
+          {textOrDash(info.getValue())}
         </span>
       ),
     }),
@@ -236,7 +293,7 @@ export const getColumns = () => {
       header: "Fecha OC",
       cell: (info) => (
         <span className="text-slate-600 dark:text-slate-300 tabular-nums">
-          {info.getValue() ? new Date(info.getValue()).toLocaleDateString("es-MX") : "—"}
+          {formatLocalDate(info.getValue())}
         </span>
       ),
     }),
@@ -247,47 +304,43 @@ export const getColumns = () => {
     columnHelper.accessor((row) => row.fecha_entrega_estimada ?? "", {
       id: "fecha_entrega_estimada",
       header: "Entrega Estimada",
-      cell: (info) => {
-        // Valor ya colapsado a "" por el accessorFn de arriba (nunca null);
-        // se enlaza a una const solo por legibilidad, no hay nada que estrechar.
-        const value = info.getValue();
-        return (
-          <span className="text-slate-600 dark:text-slate-300 tabular-nums">
-            {value ? new Date(value).toLocaleDateString("es-MX") : "—"}
-          </span>
-        );
-      },
+      cell: (info) => (
+        <span className="text-slate-600 dark:text-slate-300 tabular-nums">
+          {/* `||` y no `??`: el valor ausente ya llega como "", no como null. */}
+          {formatLocalDate(info.getValue() || null)}
+        </span>
+      ),
     }),
-    columnHelper.accessor("total", {
+    // Los tres importes usan `accessorFn` con `?? ""` por el mismo motivo que
+    // `fecha_entrega_estimada`: ahora pueden venir AUSENTES (filtro por rol) y
+    // un `undefined` en la primera fila sacaría la columna de la búsqueda global.
+    columnHelper.accessor((row) => row.total ?? "", {
+      id: "total",
       header: "Total",
-      cell: (info) => (
+      sortingFn: amountSortingFn,
+      cell: ({ row }) => (
         <span className="text-slate-800 dark:text-white font-semibold tabular-nums">
-          {Number(info.getValue()).toLocaleString("es-MX", {
-            style: "currency",
-            currency: "MXN",
-          })}
+          {money(row.original.total, row.original.moneda_codigo)}
         </span>
       ),
     }),
-    columnHelper.accessor("subtotal", {
+    columnHelper.accessor((row) => row.subtotal ?? "", {
+      id: "subtotal",
       header: "Subtotal",
-      cell: (info) => (
+      sortingFn: amountSortingFn,
+      cell: ({ row }) => (
         <span className="text-slate-600 dark:text-slate-300 tabular-nums">
-          {Number(info.getValue()).toLocaleString("es-MX", {
-            style: "currency",
-            currency: "MXN",
-          })}
+          {money(row.original.subtotal, row.original.moneda_codigo)}
         </span>
       ),
     }),
-    columnHelper.accessor("impuestos", {
+    columnHelper.accessor((row) => row.impuestos ?? "", {
+      id: "impuestos",
       header: "Impuestos",
-      cell: (info) => (
+      sortingFn: amountSortingFn,
+      cell: ({ row }) => (
         <span className="text-slate-600 dark:text-slate-300 tabular-nums">
-          {Number(info.getValue()).toLocaleString("es-MX", {
-            style: "currency",
-            currency: "MXN",
-          })}
+          {money(row.original.impuestos, row.original.moneda_codigo)}
         </span>
       ),
     }),
@@ -295,13 +348,14 @@ export const getColumns = () => {
       id: "actions",
       header: () => <div className="text-center">Acciones</div>,
       cell: ({ row }) => (
-        <div className="text-center">
-          <ActionsCell row={row.original} />
-        </div>
+        <ActionsCell
+          order={row.original}
+          onViewDetails={onViewDetails}
+          onEdit={onEdit}
+        />
       ),
     }),
   ] as ColumnDef<PurchaseOrder>[];
 
   return columns;
 };
-

@@ -1,6 +1,7 @@
 "use client";
 
 import { memo, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   ComprasIcon,
   ClockIcon,
@@ -18,6 +19,7 @@ import { getColumns } from "./PurchaseOrderColumns";
 import { createPurchaseOrdersFilterConfig } from "./PurchaseOrdersFilter";
 import type { PurchaseOrder } from "../interfaces/purchase-order.interface";
 import { PurchaseOrderOnboardingStepManager } from "./PurchaseOrderOnboardingStepManager";
+import { PurchaseOrderEditDialog } from "./PurchaseOrderEditDialog";
 import {
   isPurchaseOrderAuthorizedOrComplete,
   isPurchaseOrderCancelled,
@@ -101,8 +103,24 @@ export function PurchaseOrderView() {
     isFetching,
   } = usePurchaseOrders();
 
-  const columns = useMemo(() => getColumns(), []);
+  const router = useRouter();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+
+  // ── Edición ───────────────────────────────────────────────────────────────
+  // El diálogo de edición se monta AQUÍ y no dentro de la celda de acciones:
+  // una celda se desmonta al ordenar, paginar o filtrar la tabla, y con ella
+  // se perdería el wizard a medio llenar. La celda solo dispara `onEdit`.
+  // `null` = cerrado; el objeto de la fila alimenta `initialData`.
+  const [editingOrder, setEditingOrder] = useState<PurchaseOrder | null>(null);
+
+  const columns = useMemo(
+    () =>
+      getColumns(
+        (id) => router.push(`/procurement/purchase-orders/${id}`),
+        setEditingOrder,
+      ),
+    [router],
+  );
 
   // ── Orden ────────────────────────────────────────────────────────────────
   // Lo resuelve el backend: `-fecha_oc, -id`. `fecha_oc` es la fecha DE NEGOCIO
@@ -181,6 +199,18 @@ export function PurchaseOrderView() {
 
       {/* ── Tabla de órdenes ──────────────────────────────────────────────── */}
       {table}
+
+      {/* ── Edición ───────────────────────────────────────────────────────── */}
+      {/* Montado a nivel vista (ver `editingOrder`). `initialData` conserva la
+          orden mientras el diálogo se cierra para que el contenido no
+          desaparezca a mitad de la animación. */}
+      <PurchaseOrderEditDialog
+        open={editingOrder !== null}
+        onOpenChange={(open) => {
+          if (!open) setEditingOrder(null);
+        }}
+        initialData={editingOrder ?? undefined}
+      />
     </div>
   );
 }

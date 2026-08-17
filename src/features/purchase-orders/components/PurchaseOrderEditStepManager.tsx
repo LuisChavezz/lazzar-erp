@@ -38,6 +38,7 @@ import {
 } from "../constants/purchaseOrderWizardSteps";
 import { usePurchaseOrderOnboardingData } from "../hooks/usePurchaseOrderOnboardingData";
 import { usePurchaseOrder } from "../hooks/usePurchaseOrder";
+import { canSeeAmounts } from "../utils/purchaseOrderFinance";
 import { PurchaseOrderEditStep1 } from "./PurchaseOrderEditStep1";
 import { PurchaseOrderEditStep2 } from "./PurchaseOrderEditStep2";
 
@@ -87,12 +88,16 @@ export function PurchaseOrderEditStepManager({
   // Renglones iniciales del paso de productos: sembrados desde los renglones
   // existentes de la orden, conservando `precio` y `descripcion` reales (no
   // solo la cantidad).
+  //
+  // `d.precio` puede venir AUSENTE si el backend filtró los importes por rol,
+  // pero eso NO llega hasta aquí: la edición se bloquea antes (ver
+  // `sinAccesoImportes` abajo). El `?? ""` queda solo como salvaguarda de tipos.
   const initialItems = useMemo<PurchaseOrderDetalleItem[]>(
     () =>
       (detail?.detalles ?? []).map((d) => ({
         producto: d.producto_id,
         cantidad: d.cantidad,
-        precio: d.precio,
+        precio: d.precio ?? "",
         descripcion: d.descripcion,
       })),
     [detail],
@@ -129,6 +134,28 @@ export function PurchaseOrderEditStepManager({
 
   if (!onboardingData || !detail) {
     return null;
+  }
+
+  // Bloqueo por visibilidad de importes. El detalle (`detail`) ya viene
+  // filtrado por rol: si faltan los importes de cabecera, también faltan los
+  // `precio` de cada renglón, y dejar avanzar el wizard haría que el PUT
+  // guardara precios vacíos, PISANDO los reales. Se corta con un estado de
+  // error en vez de mostrar el formulario. (Esta es la guarda que en el
+  // listado sería código muerto: `PurchaseOrderColumns` trabaja con la fila
+  // sin filtrar.)
+  if (!canSeeAmounts(detail)) {
+    return (
+      <div className="rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 p-6 text-center">
+        <p className="text-sm font-semibold text-amber-700 dark:text-amber-300">
+          No puedes editar esta orden
+        </p>
+        <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+          No tienes acceso a los importes de la orden. Editarla sin ellos
+          borraría los precios registrados, así que la edición está
+          deshabilitada para tu rol.
+        </p>
+      </div>
+    );
   }
 
   return (

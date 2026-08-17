@@ -99,7 +99,10 @@ export function usePurchaseOrderEditForm({
     if (!hasCurrent && initialData.proveedor) {
       options.push({
         value: initialData.proveedor,
-        label: initialData.proveedor_nombre,
+        // `proveedor_nombre` puede ser `null` (FK `SET_NULL`); el respaldo evita
+        // una opción sin etiqueta. En la práctica no se da junto a un
+        // `proveedor` truthy, pero el tipo lo permite.
+        label: initialData.proveedor_nombre ?? `Proveedor #${initialData.proveedor}`,
       });
     }
     return options;

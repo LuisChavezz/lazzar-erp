@@ -16,9 +16,11 @@ const getSupplierName = (order: PurchaseOrderDetail) =>
 
 /**
  * Construye el asunto del correo a partir del folio y el nombre del proveedor.
+ * `folio` es nullable mientras el backend no lo asigna — sin el respaldo el
+ * asunto salía literalmente "Orden de compra null - <proveedor>".
  */
 export const buildPurchaseOrderEmailSubject = (order: PurchaseOrderDetail) =>
-  `Orden de compra ${order.folio} - ${getSupplierName(order)}`;
+  `Orden de compra ${order.folio ?? `#${order.id}`} - ${getSupplierName(order)}`;
 
 /**
  * Renderiza la plantilla React Email a HTML y genera su equivalente en texto
