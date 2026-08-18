@@ -25,7 +25,7 @@ const ActionsCell = ({
   onViewDetails: (id: number) => void;
 }) => {
   // Acción única: abre la orden en su página completa
-  // (`/manufacturing/embroidery/[id]`). Antes convivían dos entradas —el
+  // (`/wms/embroidery/[id]`). Antes convivían dos entradas —el
   // diálogo sobre la tabla y la página— para la MISMA orden; se dejó solo la
   // página, que además de todo el detalle permite quedarse en ella, enlazarla y
   // navegar a su pedido y a sus órdenes hermanas.

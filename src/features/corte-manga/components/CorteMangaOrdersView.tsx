@@ -17,7 +17,7 @@ import { useCorteMangaOrders } from "../hooks/useCorteMangaOrders";
  * `GET /produccion/orden-corte-manga/`, con el alta
  * (`POST /produccion/orden-corte-manga/onboarding/`, ver `CorteMangaOrderForm`)
  * en el toolbar y "Ver Detalles" por renglón, que NAVEGA a
- * `/manufacturing/corte-manga/[id]` (ver `CorteMangaOrderPageContent`) en vez de
+ * `/wms/corte-manga/[id]` (ver `CorteMangaOrderPageContent`) en vez de
  * abrir el diálogo — la página tiene el ancho que el desglose por renglón
  * necesita y una URL que se puede compartir. Mismo cambio ya hecho en
  * `EmbroideryView`/`ReflectiveOrdersView`.
@@ -80,7 +80,7 @@ export function CorteMangaOrdersView() {
   // sigue montado abajo porque el alta lo usa para el 409 de duplicado.
   const columns = useMemo(
     () =>
-      getCorteMangaOrderColumns((id) => router.push(`/manufacturing/corte-manga/${id}`)),
+      getCorteMangaOrderColumns((id) => router.push(`/wms/corte-manga/${id}`)),
     [router],
   );
 

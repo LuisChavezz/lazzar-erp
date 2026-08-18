@@ -35,7 +35,7 @@ import type {
 // `R-PRODUCCION` y hoy solo se alcanza desde el listado del propio módulo, así
 // que un mapa de orígenes tendría una sola entrada idéntica a su default.
 const BACK = {
-  href: "/manufacturing/embroidery",
+  href: "/wms/embroidery",
   label: "Volver a Órdenes de Bordado",
 };
 
@@ -218,7 +218,7 @@ const SiblingOrders = ({ items }: { items: EmbroideryOrderSibling[] }) => (
     {items.map((hermana) => (
       <li key={hermana.id} className="flex flex-wrap items-center gap-x-3 gap-y-0.5">
         <Link
-          href={`/manufacturing/embroidery/${hermana.id}`}
+          href={`/wms/embroidery/${hermana.id}`}
           className="font-mono font-semibold text-sky-600 dark:text-sky-400 hover:underline hover:text-sky-700 dark:hover:text-sky-300 transition-colors"
         >
           {hermana.folio_bordado}

@@ -1,9 +1,11 @@
 "use client";
 
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { LoadingSkeleton } from "./LoadingSkeleton";
+import { ChevronLeftIcon, ChevronRightIcon } from "./Icons";
 import { appRouteGroups } from "@/src/constants/appRoutes";
 import { hasPermission } from "@/src/utils/permissions";
 
@@ -16,6 +18,59 @@ interface ModuleNavProps {
 export default function ModuleNav({ moduleKey, modulePath, className }: ModuleNavProps) {
   const pathname = usePathname();
   const { data: session, status } = useSession();
+
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+
+  // Recalcula si hay contenido oculto a izquierda/derecha del contenedor scrollable.
+  const updateScrollState = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    setCanScrollLeft(el.scrollLeft > 1);
+    setCanScrollRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 1);
+  }, []);
+
+  const scrollBy = useCallback((direction: "left" | "right") => {
+    const el = scrollRef.current;
+    if (!el) return;
+    el.scrollBy({ left: direction === "left" ? -200 : 200, behavior: "smooth" });
+  }, []);
+
+  const isLoading = status === "loading";
+
+  // Observa cambios de tamaño del contenedor y del contenido para mostrar/ocultar flechas.
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+
+    updateScrollState();
+
+    const observer = new ResizeObserver(() => updateScrollState());
+    observer.observe(el);
+    // Observa también la fila interna: cambios en el número de tabs alteran scrollWidth.
+    const inner = el.firstElementChild;
+    if (inner) observer.observe(inner);
+
+    el.addEventListener("scroll", updateScrollState, { passive: true });
+
+    return () => {
+      observer.disconnect();
+      el.removeEventListener("scroll", updateScrollState);
+    };
+  }, [updateScrollState, isLoading]);
+
+  // Al navegar (o montar), lleva el tab activo al área visible del contenedor.
+  useEffect(() => {
+    if (isLoading) return;
+    const el = scrollRef.current;
+    if (!el) return;
+    const active = el.querySelector<HTMLElement>('[aria-current="page"]');
+    if (active) {
+      active.scrollIntoView({ inline: "nearest", block: "nearest", behavior: "smooth" });
+    }
+    updateScrollState();
+  }, [pathname, isLoading, updateScrollState]);
 
   const activeGroup = moduleKey
     ? appRouteGroups.find((group) => group.key === moduleKey)
@@ -61,12 +116,12 @@ export default function ModuleNav({ moduleKey, modulePath, className }: ModuleNa
   return (
     <nav
       aria-label="Navegación del módulo"
-      aria-busy={status === "loading"}
-      className={`w-full min-h-12 border-b border-slate-200/70 dark:border-white/10 ${className ?? ""}`}
+      aria-busy={isLoading}
+      className={`relative w-full min-h-12 border-b border-slate-200/70 dark:border-white/10 ${className ?? ""}`}
     >
-      <div className="overflow-x-auto no-scrollbar">
+      <div ref={scrollRef} className="overflow-x-auto no-scrollbar">
         <div className="flex min-h-12 items-end gap-4 sm:gap-6 flex-nowrap">
-          {status === "loading" ? (
+          {isLoading ? (
             <>
               <span className="shrink-0 pb-3 text-sm font-semibold text-sky-600 dark:text-sky-300 border-b-2 border-sky-500 dark:border-sky-400">
                 {activeGroup.moduleLabel}
@@ -100,6 +155,34 @@ export default function ModuleNav({ moduleKey, modulePath, className }: ModuleNa
           )}
         </div>
       </div>
+
+      {!isLoading && canScrollLeft && (
+        <div className="pointer-events-none absolute inset-y-0 left-0 z-10 flex items-center">
+          <div className="pointer-events-none absolute inset-y-0 left-0 w-8 bg-gradient-to-r from-slate-50 dark:from-black to-transparent" />
+          <button
+            type="button"
+            aria-label="Desplazar a la izquierda"
+            onClick={() => scrollBy("left")}
+            className="pointer-events-auto relative flex h-7 w-7 items-center justify-center rounded-full text-slate-500 dark:text-slate-400 transition-colors hover:text-sky-600 dark:hover:text-sky-300"
+          >
+            <ChevronLeftIcon className="h-5 w-5" />
+          </button>
+        </div>
+      )}
+
+      {!isLoading && canScrollRight && (
+        <div className="pointer-events-none absolute inset-y-0 right-0 z-10 flex items-center justify-end">
+          <div className="pointer-events-none absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-slate-50 dark:from-black to-transparent" />
+          <button
+            type="button"
+            aria-label="Desplazar a la derecha"
+            onClick={() => scrollBy("right")}
+            className="pointer-events-auto relative flex h-7 w-7 items-center justify-center rounded-full text-slate-500 dark:text-slate-400 transition-colors hover:text-sky-600 dark:hover:text-sky-300"
+          >
+            <ChevronRightIcon className="h-5 w-5" />
+          </button>
+        </div>
+      )}
     </nav>
   );
 }

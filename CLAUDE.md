@@ -4,14 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Commands
 
-```bash
-npm run dev        # Start development server
-npm run build      # Production build
-npm run lint       # ESLint (flat config, next/core-web-vitals + next/typescript)
-npm run typecheck  # tsc --noEmit
-```
-
-No test runner exists — there are no test files or testing frameworks in this project. `npm run lint` accepts paths (`npm run lint -- src/features/quotes`) to check a single feature.
+The standard `npm run dev` / `build` / `lint` / `typecheck` scripts are defined in `package.json`. No test runner exists — there are no test files or testing frameworks in this project. `npm run lint` accepts paths (`npm run lint -- src/features/quotes`) to check a single feature.
 
 Additional docs in the repo root: `README.md` (setup), `ARQUITECTURA.md` (folder/layout tour), `GUIA_DE_USUARIO.md` (functional walkthrough of each module). All three are in Spanish.
 
