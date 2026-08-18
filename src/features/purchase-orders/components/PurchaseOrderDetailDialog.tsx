@@ -228,6 +228,14 @@ const docSortTime = (doc: DocumentoLigado): number | null => {
 };
 
 /**
+ * Tipos cuyo `folio` es en realidad el PK del registro (el backend los declara
+ * con `folio_field: None` y su `_folio_value` cae a `str(fallback_id)`). Se
+ * muestran "—" en vez de un id interno. Duplica el mismo set de
+ * `PurchaseOrderPageContent`, igual que `docSortTime` — misma deuda conocida.
+ */
+const DOC_TIPOS_SIN_FOLIO = new Set(["movimiento_inventario", "solicitud_compra"]);
+
+/**
  * Documentos ligados a la orden. Filas NO clicables, igual que en la página:
  * el registro `CLICKABLE_DOC_TIPOS` mapea los tipos del grafo del PEDIDO, que
  * es otro. Y este diálogo, además, ES uno de esos consumidores — abrir otro
@@ -260,7 +268,7 @@ const DocumentosTable = ({ documentos }: { documentos: DocumentoLigado[] }) => {
             {textOrDash(doc.label)}
           </td>
           <td className="px-3 py-2 font-mono text-slate-600 dark:text-slate-300 whitespace-nowrap">
-            {textOrDash(doc.folio)}
+            {DOC_TIPOS_SIN_FOLIO.has(doc.tipo) ? "—" : textOrDash(doc.folio)}
           </td>
           <td className="px-3 py-2 text-slate-600 dark:text-slate-300 whitespace-nowrap">
             {/* `formatLocalDate` y NO `formatShortDate`: `doc.fecha` puede ser

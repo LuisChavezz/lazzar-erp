@@ -1,5 +1,7 @@
 "use client";
 
+import type React from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { ArrowLeftIcon } from "@/src/components/Icons";
 import { Loader } from "@/src/components/Loader";
@@ -19,6 +21,8 @@ import {
 } from "@/src/utils/formatCurrency";
 import { formatLocalDate, formatShortDate } from "@/src/utils/formatDate";
 import { RECEIPT_STATUS_CONFIG } from "@/src/features/receipts/constants/receiptStatus";
+import { ReceiptDetailByIdDialog } from "@/src/features/purchase-order-receipts/components/ReceiptDetailByIdDialog";
+import { StockMovementDetailByIdDialog } from "@/src/features/stock-movements/components/StockMovementDetailByIdDialog";
 import { purchaseOrderStatusEntry } from "../constants/purchaseOrderStatus";
 import { canSeeAmounts, formatIvaPercent } from "../utils/purchaseOrderFinance";
 import { usePurchaseOrder } from "../hooks/usePurchaseOrder";
@@ -261,16 +265,130 @@ const docSortTime = (doc: DocumentoLigado): number | null => {
 };
 
 /**
- * Documentos ligados a la orden.
- *
- * A diferencia de "Documentos relacionados" del detalle de pedido, aquí las
- * filas NO son clicables: ese registro (`CLICKABLE_DOC_TIPOS`) mapea los tipos
- * del grafo del PEDIDO, que es distinto del de la OC —`solicitud_compra` y
- * `factura_proveedor` ni siquiera tienen diálogo de detalle hoy—. Se resolverá
- * cuando exista a dónde navegar, en vez de dejar la mitad de las filas
- * clicables y la otra mitad no.
+ * Firma que exigen los diálogos de detalle abiertos por id desde el registro
+ * `OC_CLICKABLE_DOC_TIPOS` — la misma que usa `CLICKABLE_DOC_TIPOS` del detalle
+ * de pedido.
  */
-const DocumentosTable = ({ documentos }: { documentos: DocumentoLigado[] }) => {
+type DocDetailDialog = React.ComponentType<{
+  orderId: number | null;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}>;
+
+/**
+ * Tipos de documento de la OC que abren un diálogo de detalle al hacer clic.
+ *
+ * Es un registro PROPIO de la OC, no el `CLICKABLE_DOC_TIPOS` del pedido: aquel
+ * mapea los tipos del grafo del pedido, otro dominio. Solo se listan los tipos
+ * con un diálogo real hoy:
+ *   - `recepcion` → `ReceiptDetailByIdDialog` (wrapper que le da la firma por id
+ *     al diálogo de recepción de OC; el mismo diálogo que abre la versión modal
+ *     de este detalle, `PurchaseOrderDetailDialog`).
+ *   - `movimiento_inventario` → `StockMovementDetailByIdDialog` (firma idéntica,
+ *     reutilizado tal cual del registro del pedido).
+ *
+ * `pedido` NO está aquí: navega a su página 360° en vez de abrir un modal (ver
+ * `DocRow`). `solicitud_compra` y `factura_proveedor` se quedan como texto
+ * plano: no existe un diálogo de detalle por id para ellos.
+ */
+const OC_CLICKABLE_DOC_TIPOS: Record<string, DocDetailDialog> = {
+  recepcion: ReceiptDetailByIdDialog,
+  movimiento_inventario: StockMovementDetailByIdDialog,
+};
+
+/**
+ * Tipos cuyo `folio` NO es un folio real: el backend los declara con
+ * `folio_field: None` y su `_folio_value` cae al PK del registro
+ * (`str(fallback_id)`), así que pintarlo dejaría un id interno en la columna
+ * Folio como si fuera un folio de negocio. Se muestran "—" en su lugar, igual
+ * que `PedidoDetailContent` hace con `movimiento_inventario`. El `estatus` de
+ * estos tipos ya llega `null` del backend, así que `textOrDash` lo resuelve
+ * solo — aquí solo hay que tapar el folio.
+ */
+const DOC_TIPOS_SIN_FOLIO = new Set(["movimiento_inventario", "solicitud_compra"]);
+
+/** Estilo compartido por los objetivos de clic (botón de diálogo y enlace a pedido). */
+const DOC_LINK_CLASS =
+  "text-sky-600 dark:text-sky-400 hover:underline hover:text-sky-700 dark:hover:text-sky-300 cursor-pointer transition-colors text-left";
+
+/**
+ * Una fila de documento. El `label` (columna Tipo) es el objetivo de clic:
+ *   - tipo en `OC_CLICKABLE_DOC_TIPOS` → `<button>` que abre el diálogo por id;
+ *   - tipo `pedido` → `<Link>` que navega a la ruta neutra `/orders/[id]`, con
+ *     `?from=purchase-orders` para que su "Volver" regrese a esta orden (mismo
+ *     destino que el enlace `pedido_vinculado` de Información general);
+ *   - resto → texto plano.
+ */
+const DocRow = ({
+  doc,
+  onOpenDoc,
+}: {
+  doc: DocumentoLigado;
+  onOpenDoc: (doc: { tipo: string; id: number }) => void;
+}) => {
+  // `Object.hasOwn` y no el indexado directo: `doc.tipo` viene del backend, y
+  // `in`/`[tipo]` resolverían a una función heredada de `Object.prototype` si
+  // el tipo fuera "constructor"/"toString"/… Mismo criterio que el pedido.
+  const isDialogDoc = Object.hasOwn(OC_CLICKABLE_DOC_TIPOS, doc.tipo);
+  const isPedido = doc.tipo === "pedido";
+  // Ver `DOC_TIPOS_SIN_FOLIO`: para esos tipos `doc.folio` es el PK, no un
+  // folio, así que se muestra "—".
+  const folioCell = DOC_TIPOS_SIN_FOLIO.has(doc.tipo) ? "—" : textOrDash(doc.folio);
+
+  const tipoCell = isDialogDoc ? (
+    <button
+      type="button"
+      className={DOC_LINK_CLASS}
+      title={`Ver detalle: ${doc.label}`}
+      onClick={() => onOpenDoc({ tipo: doc.tipo, id: doc.id })}
+    >
+      {doc.label}
+    </button>
+  ) : isPedido ? (
+    <Link
+      href={`/orders/${doc.id}?from=purchase-orders`}
+      className={DOC_LINK_CLASS}
+      title={`Ver detalle: ${doc.label}`}
+    >
+      {doc.label}
+    </Link>
+  ) : (
+    textOrDash(doc.label)
+  );
+
+  return (
+    <tr className="border-t border-slate-100 dark:border-white/10 align-top">
+      <td className="px-3 py-2 text-slate-700 dark:text-slate-200">{tipoCell}</td>
+      <td className="px-3 py-2 font-mono text-slate-600 dark:text-slate-300 whitespace-nowrap">
+        {folioCell}
+      </td>
+      <td className="px-3 py-2 text-slate-600 dark:text-slate-300 whitespace-nowrap">
+        {/* `formatLocalDate` y NO `formatShortDate`: `doc.fecha` puede ser una
+            fecha-calendario ("2026-08-17", p. ej. la `fecha_emision` de una
+            factura), y `formatShortDate` la parsea como medianoche UTC → un día
+            antes en husos negativos. `formatLocalDate` respeta ambas formas. */}
+        {formatLocalDate(doc.fecha)}
+      </td>
+      <td className="px-3 py-2 text-slate-600 dark:text-slate-300">
+        {textOrDash(doc.estatus)}
+      </td>
+    </tr>
+  );
+};
+
+/**
+ * Documentos ligados a la orden. Las filas cuyo `tipo` tiene diálogo
+ * (`OC_CLICKABLE_DOC_TIPOS`) o es `pedido` son clicables; el resto queda como
+ * texto. El diálogo se monta una sola vez a nivel página (ver
+ * `PurchaseOrderPageContent`), no por fila.
+ */
+const DocumentosTable = ({
+  documentos,
+  onOpenDoc,
+}: {
+  documentos: DocumentoLigado[];
+  onOpenDoc: (doc: { tipo: string; id: number }) => void;
+}) => {
   const ordenados = [...documentos].sort((a, b) => {
     const ta = docSortTime(a);
     const tb = docSortTime(b);
@@ -293,28 +411,7 @@ const DocumentosTable = ({ documentos }: { documentos: DocumentoLigado[] }) => {
         </thead>
         <tbody>
           {ordenados.map((doc) => (
-            <tr
-              key={`${doc.tipo}-${doc.id}`}
-              className="border-t border-slate-100 dark:border-white/10 align-top"
-            >
-              <td className="px-3 py-2 text-slate-700 dark:text-slate-200">
-                {textOrDash(doc.label)}
-              </td>
-              <td className="px-3 py-2 font-mono text-slate-600 dark:text-slate-300 whitespace-nowrap">
-                {textOrDash(doc.folio)}
-              </td>
-              <td className="px-3 py-2 text-slate-600 dark:text-slate-300 whitespace-nowrap">
-                {/* `formatLocalDate` y NO `formatShortDate`: `doc.fecha` puede
-                    ser una fecha-calendario ("2026-08-17", p. ej. la
-                    `fecha_emision` de una factura), y `formatShortDate` la
-                    parsea como medianoche UTC → un día antes en husos negativos.
-                    `formatLocalDate` respeta ambas formas (date-only e ISO). */}
-                {formatLocalDate(doc.fecha)}
-              </td>
-              <td className="px-3 py-2 text-slate-600 dark:text-slate-300">
-                {textOrDash(doc.estatus)}
-              </td>
-            </tr>
+            <DocRow key={`${doc.tipo}-${doc.id}`} doc={doc} onOpenDoc={onOpenDoc} />
           ))}
         </tbody>
       </table>
@@ -353,6 +450,21 @@ export function PurchaseOrderPageContent({
     numericId,
     isValidId,
   );
+
+  // Documento abierto desde "Documentos relacionados" (`null` = cerrado). Un
+  // solo estado para todos los tipos con diálogo; el componente se resuelve de
+  // `OC_CLICKABLE_DOC_TIPOS` según `openDoc.tipo`. Declarado ANTES de los
+  // returns tempranos para no romper el orden de hooks. El de `pedido` no pasa
+  // por aquí: navega (ver `DocRow`).
+  const [openDoc, setOpenDoc] = useState<{ tipo: string; id: number } | null>(
+    null,
+  );
+  // `Object.hasOwn` (no indexado directo) por el mismo motivo que `DocRow`:
+  // `openDoc.tipo` viene de la URL de datos del backend.
+  const OpenDocDialog =
+    openDoc && Object.hasOwn(OC_CLICKABLE_DOC_TIPOS, openDoc.tipo)
+      ? OC_CLICKABLE_DOC_TIPOS[openDoc.tipo]
+      : null;
 
   const BackLink = (
     <Link
@@ -619,8 +731,21 @@ export function PurchaseOrderPageContent({
       {/* ── 7. Documentos relacionados ──────────────────────────────────── */}
       {data.documentos.length > 0 && (
         <Section title={`Documentos relacionados (${data.documentos.length})`}>
-          <DocumentosTable documentos={data.documentos} />
+          <DocumentosTable documentos={data.documentos} onOpenDoc={setOpenDoc} />
         </Section>
+      )}
+
+      {/* Detalle del documento abierto: se monta UNA sola vez a nivel página
+          (no por fila), y cada diálogo trae su propio detalle por id. El
+          componente se resuelve de `OC_CLICKABLE_DOC_TIPOS` según el tipo. */}
+      {openDoc && OpenDocDialog && (
+        <OpenDocDialog
+          orderId={openDoc.id}
+          open={true}
+          onOpenChange={(open) => {
+            if (!open) setOpenDoc(null);
+          }}
+        />
       )}
     </div>
   );
