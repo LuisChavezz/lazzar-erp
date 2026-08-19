@@ -68,6 +68,37 @@ const SiblingOrders = ({ items }: { items: EmbroideryOrderSibling[] }) => (
   </ul>
 );
 
+/** Un dato label-arriba/valor-abajo de la cabecera de la orden. */
+const HeaderStat = ({
+  label,
+  children,
+  bold = false,
+}: {
+  label: string;
+  children: React.ReactNode;
+  bold?: boolean;
+}) => (
+  <div className="shrink-0">
+    <span className="block text-[11px] text-slate-400 dark:text-slate-500">
+      {label}
+    </span>
+    <span
+      className={`block text-[13px] tabular-nums text-slate-700 dark:text-slate-200 ${
+        bold ? "font-medium" : "font-normal"
+      }`}
+    >
+      {children}
+    </span>
+  </div>
+);
+
+const HeaderDivider = () => (
+  <span
+    aria-hidden
+    className="hidden sm:block w-px h-6 bg-slate-200 dark:bg-white/10 shrink-0"
+  />
+);
+
 // ── Componente principal ─────────────────────────────────────────────────────
 
 interface EmbroideryOrderDetailContentProps {
@@ -161,52 +192,38 @@ export function EmbroideryOrderDetailContent({
       <div className="sticky top-0 z-10 py-2 w-fit">{BackLink}</div>
 
       {/* ── 1. Cabecera ─────────────────────────────────────────────────── */}
-      <section className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 p-5 md:p-6">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="space-y-2 min-w-0">
-            <div className="flex flex-wrap items-center gap-2">
-              <h1 className="text-2xl font-bold text-slate-900 dark:text-white font-mono">
-                {data.folio_bordado || `Orden #${data.id}`}
-              </h1>
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-xs shrink-0">
-            <InfoField label="Alta">
-              <span className="tabular-nums">
-                {formatShortDate(data.fecha_inicio)} ·{" "}
-                {formatShortTime(data.fecha_inicio)}
-              </span>
-            </InfoField>
-            {/* `fecha_fin` es SIEMPRE `null` hoy (ningún endpoint la fija) — se
-                muestra igual: `formatShortDate`/`formatShortTime` ya resuelven
-                `null` al guion largo del proyecto. */}
-            <InfoField label="Fin">
-              <span className="tabular-nums">
-                {formatShortDate(data.fecha_fin)} · {formatShortTime(data.fecha_fin)}
-              </span>
-            </InfoField>
-            {/* `cantidad_cubierta` y NO la suma cruda de `detalles[].cantidad`:
-                son el mismo concepto —piezas que programa ESTA orden— pero el
-                backend publica la suya con PISO deliberado
-                (`math.floor(cubierto + EPS_CANTIDAD)`, para no sobre-reportar
-                cobertura), y `OrdenBordadoDetalle.cantidad` es un `FloatField`
-                que el pipeline de picking puede dejar fraccionario. Sumar en
-                crudo pintaría "9.6" aquí y "9 de 10 · 90%" en el bloque de
-                cobertura de abajo: dos cifras del mismo dato en la misma
-                pantalla. Se toma la del backend, que es la única que ve el
-                cliente en el resto del módulo. */}
-            <InfoField label="Total piezas">
-              <span className="tabular-nums font-semibold">
-                {formatQuantityValue(data.cantidad_cubierta)}
-              </span>
-            </InfoField>
-            <InfoField label="Cobertura">
-              <StatusBadge
-                status={String(data.cobertura_completa)}
-                config={EMBROIDERY_COVERAGE_CONFIG}
-              />
-            </InfoField>
-          </div>
+      <section className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 px-5 py-3.5 md:px-6">
+        <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
+          <h1 className="text-[22px] font-medium text-slate-900 dark:text-white font-mono mr-auto min-w-0 truncate">
+            {data.folio_bordado || `Orden #${data.id}`}
+          </h1>
+
+          <HeaderStat label="Alta">{formatShortDate(data.fecha_inicio)}</HeaderStat>
+          <HeaderDivider />
+          {/* `fecha_fin` es SIEMPRE `null` hoy (ningún endpoint la fija) —
+              `formatShortDate` ya lo resuelve al guion largo del proyecto. */}
+          <HeaderStat label="Fin">{formatShortDate(data.fecha_fin)}</HeaderStat>
+          <HeaderDivider />
+          {/* `cantidad_cubierta` y NO la suma cruda de `detalles[].cantidad`:
+              son el mismo concepto —piezas que programa ESTA orden— pero el
+              backend publica la suya con PISO deliberado
+              (`math.floor(cubierto + EPS_CANTIDAD)`, para no sobre-reportar
+              cobertura), y `OrdenBordadoDetalle.cantidad` es un `FloatField`
+              que el pipeline de picking puede dejar fraccionario. Sumar en
+              crudo pintaría "9.6" aquí y "9 de 10 · 90%" en el bloque de
+              cobertura de abajo: dos cifras del mismo dato en la misma
+              pantalla. Se toma la del backend, que es la única que ve el
+              cliente en el resto del módulo. */}
+          <HeaderStat label="Piezas" bold>
+            {formatQuantityValue(data.cantidad_cubierta)}
+          </HeaderStat>
+          <HeaderDivider />
+          <HeaderStat label="Cobertura">
+            <StatusBadge
+              status={String(data.cobertura_completa)}
+              config={EMBROIDERY_COVERAGE_CONFIG}
+            />
+          </HeaderStat>
         </div>
       </section>
 
