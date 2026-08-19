@@ -217,7 +217,7 @@ const mapQuoteToReviewValidationInput = (
     persona_pagos: quote.persona_pagos || "",
     correo_facturas: quote.correo_facturas || "",
     telefono_pagos: quote.telefono_pagos || "",
-    oc: quote.oc || "",
+    oc: quote.oc ?? undefined,
     forma_pago: quote.forma_pago || "",
     metodo_pago: quote.metodo_pago || "",
     uso_cfdi: quote.uso_cfdi || "",

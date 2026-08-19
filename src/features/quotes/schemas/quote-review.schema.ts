@@ -131,7 +131,6 @@ export const QUOTE_REVIEW_FIELD_LABELS: Record<string, string> = {
   persona_pagos: "Persona de pagos",
   correo_facturas: "Correo de facturas",
   telefono_pagos: "Teléfono de pagos",
-  oc: "Orden de compra",
   forma_pago: "Forma de pago",
   metodo_pago: "Método de pago",
   uso_cfdi: "Uso de CFDI",
@@ -187,7 +186,9 @@ const quoteReviewBaseSchema = z.object({
     "Correo inválido"
   ),
   telefono_pagos: requiredText("El teléfono de pagos es requerido"),
-  oc: requiredText("La orden de compra es requerida"),
+  // La OC es opcional en todas las capas (modelo, serializer y formulario de
+  // alta), así que la revisión no puede exigirla.
+  oc: z.string().trim().optional(),
   forma_pago: requiredText("La forma de pago es requerida"),
   metodo_pago: requiredText("El método de pago es requerido"),
   uso_cfdi: requiredText("El uso de CFDI es requerido"),
