@@ -5,12 +5,8 @@ import type { EmbroideryOrderStatus } from "../interfaces/embroidery.interface";
  * Colores y etiquetas por estatus de una orden de bordado
  * (`OrdenesBordado.EstatusBordado`, 1-7).
  *
- * Hoy el backend SIEMPRE devuelve `1` (Pendiente): `estatus_bordado` es
- * `read_only` en el serializer y el `ViewSet` no expone transición alguna
- * (`PUT`/`PATCH` → 405). Se cubren los 7 desde ahora para que un cambio futuro
- * de backend que empiece a usarlos no requiera tocar el frontend — mismo
- * criterio que `PACKING_STATUS_CONFIG`. Por lo mismo NO se ofrece un filtro
- * por estatus en la tabla: todas las filas comparten el mismo valor.
+ * Se cubren los 7 estatus para que empezar a usarlos no requiera tocar el
+ * frontend — mismo criterio que `PACKING_STATUS_CONFIG`.
  *
  * El objeto intermedio con llaves numéricas obliga a TypeScript a exigir las 7
  * entradas (`satisfies`); lo exportado se tipa `Record<string, …>` porque

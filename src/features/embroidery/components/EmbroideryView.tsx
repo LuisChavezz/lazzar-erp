@@ -31,10 +31,7 @@ import { useEmbroideryOrders } from "../hooks/useEmbroideryOrders";
  * alta solo recibe el setter para invocarlo (y `onCloseExistingOrder` para
  * limpiarlo al cerrarse), no gestiona su propio estado de apertura.
  *
- * Sin edición ni transición de estatus en ningún punto: el backend no las
- * expone (`PUT`/`PATCH` → 405). Tampoco hay filtro por estatus (todas las
- * filas llegan en `1`/Pendiente) ni paginación (el endpoint devuelve el
- * arreglo completo).
+ * Sin paginación: el endpoint devuelve el arreglo completo.
  *
  * `DataTable` se monta SIEMPRE (no se sustituye por un skeleton/ErrorState en
  * un ternario propio): recibe `isLoading`/`isError` y alterna internamente

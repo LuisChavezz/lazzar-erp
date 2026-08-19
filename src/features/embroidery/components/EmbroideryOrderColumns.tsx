@@ -60,9 +60,6 @@ const ActionsCell = ({
  * aportaría información aquí. El contenido de `detalles` se resume en una
  * sola columna — su desglose vive en el diálogo de detalle.
  *
- * Sin edición ni transición de estatus en el menú de acciones: ninguna tiene
- * endpoint (`PUT`/`PATCH` → 405).
- *
  * Sin anotación de tipo en el retorno (el cast va al final del arreglo) para
  * evitar el mismo error de inferencia documentado en
  * `EmbroideryOrderMockForm`: con la anotación,

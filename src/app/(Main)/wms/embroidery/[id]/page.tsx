@@ -12,8 +12,8 @@ import { EmbroideryOrderDetailContent } from "@/src/features/embroidery/componen
  *
  * Convive con `EmbroideryOrderDetailDialog`, que sigue siendo la vía rápida
  * desde la tabla y desde el 409 de duplicado del alta. Esta página es la vista
- * extendida ("Avance"), de SOLO LECTURA: el backend no expone transición de
- * estatus (`PUT`/`PATCH` → 405).
+ * extendida ("Avance"), y desde aquí se editan el estatus y la máquina asignada
+ * de la orden (`PATCH /produccion/orden-bordado/{id}/`).
  */
 export default async function EmbroideryOrderDetailPage({
   params,

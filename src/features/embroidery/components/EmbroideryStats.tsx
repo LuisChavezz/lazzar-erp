@@ -21,12 +21,6 @@ import type { EmbroideryOrder } from "../interfaces/embroidery.interface";
  *
  * Lo que NO se muestra, y por qué:
  *
- *  - DESGLOSE POR ESTATUS: `estatus_bordado` es siempre `1` (Pendiente) —
- *    no existe endpoint de transición (`PUT`/`PATCH` → 405), así que seis de
- *    los siete cubos serían permanentemente cero. Misma decisión, y por la
- *    misma razón, que `PickingStats` (que documenta explícitamente por qué
- *    omite su desglose de estatus).
- *
  *  - TIEMPO DE CICLO / "días para completar": `fecha_fin` es siempre `null`,
  *    nada la fija. No hay marca de término en ningún campo.
  *

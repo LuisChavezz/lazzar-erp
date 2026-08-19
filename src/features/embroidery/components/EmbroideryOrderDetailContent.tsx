@@ -6,7 +6,6 @@ import { Loader } from "@/src/components/Loader";
 import { ErrorState } from "@/src/components/ErrorState";
 import { StatusBadge } from "@/src/components/StatusBadge";
 import {
-  EmptyLines,
   InfoField,
   InfoGrid,
   Section,
@@ -20,15 +19,18 @@ import {
   EMBROIDERY_COVERAGE_CONFIG,
   EMBROIDERY_PRIORITY_CONFIG,
   embroideryPriorityFallback,
-  embroideryStatusEntry,
 } from "../constants/embroideryStatus";
+import { getAvailableTransitions } from "../constants/embroideryStatusTransitions";
 import { useEmbroideryOrderDetail } from "../hooks/useEmbroideryOrderDetail";
-import { resolveEmbroideryLineUbicaciones } from "../utils/resolveEmbroideryLineUbicaciones";
-import { EmbroideryLineLocationPopover } from "./EmbroideryLineLocationPopover";
-import type {
-  EmbroideryOrderDetailLine,
-  EmbroideryOrderSibling,
-} from "../interfaces/embroidery.interface";
+import { useUpdateEmbroideryOrder } from "../hooks/useUpdateEmbroideryOrder";
+import { EmbroideryStatusSelect } from "./EmbroideryStatusSelect";
+import { EmbroideryMachineField } from "./EmbroideryMachineField";
+import { EmbroideryPrioritySelect } from "./EmbroideryPrioritySelect";
+import { EmbroideryObservationsField } from "./EmbroideryObservationsField";
+import { EmbroideryOperatorSelect } from "./EmbroideryOperatorSelect";
+import { EmbroideryProgressSummary } from "./EmbroideryProgressSummary";
+import { EmbroideryAvancesHistory } from "./EmbroideryAvancesHistory";
+import type { EmbroideryOrderSibling } from "../interfaces/embroidery.interface";
 
 // Destino del "Volver". Fijo —sin el mapa `?from=` de `PedidoDetailContent`—
 // porque esta ruta NO es neutra: cuelga de `/manufacturing`, exige
@@ -37,172 +39,6 @@ import type {
 const BACK = {
   href: "/wms/embroidery",
   label: "Volver a Órdenes de Bordado",
-};
-
-/**
- * Cantidad que puede llegar `null` del backend → guion largo. Las tres
- * cantidades de parcialidad por línea lo hacen cuando el renglón no cruza con
- * el mapa de parcialidad del pedido (clave `(pedido_detalle, talla)`).
- */
-const quantityOrDash = (value: number | null) =>
-  value === null ? "—" : formatQuantityValue(value);
-
-/**
- * Aviso de las celdas `colores_hilo`/`puntadas` en líneas con VARIOS bordados:
- * ambas son un escalar único del renglón y pueden no sumar el trabajo de todas
- * las ubicaciones (ver la nota de `LineasTable`). `undefined` con una sola
- * ubicación —o ninguna—, para no colgar un tooltip donde no hay ambigüedad.
- */
-const escalarPorLineaTitle = (totalUbicaciones: number) =>
-  totalUbicaciones > 1
-    ? `Valor único del renglón: puede no desglosar los ${totalUbicaciones} bordados de esta línea.`
-    : undefined;
-
-// ── Artículos de la orden ────────────────────────────────────────────────────
-
-/**
- * Renglones de la orden.
- *
- * Es una tabla propia y NO `LineItemsTable` (el chrome que usa el diálogo):
- * ese contenedor acota el alto a `max-h-72` con scroll interno, que es lo
- * correcto dentro de un diálogo y lo contrario de lo que quiere una página —
- * aquí los renglones se leen de corrido, y el único scroll es el horizontal
- * que ya usa `PedidoDetailContent` para sus tallas.
- *
- * Ese ancho extra es lo que paga las tres columnas que el diálogo NO puede
- * permitirse y pliega dentro de la celda del producto: Posición, Colores de
- * hilo y Puntadas. El resto de la semántica se conserva tal cual, porque
- * confundir las cuatro cantidades es el error que este desglose existe para
- * evitar:
- *  - "En esta orden" (`cantidad`) → lo que programa ESTE documento.
- *  - "Programado" (`cantidad_asignada`) → lo que llevan TODAS las OB activas
- *    del pedido sobre esa línea, esta incluida. Es ≥ la anterior.
- *  - "Pedido" (`cantidad_pedido`) y "Pendiente" (`cantidad_pendiente`) → el
- *    contrato y su saldo.
- * La columna propia de la orden va resaltada; las otras tres, atenuadas: son
- * contexto del pedido, no de este documento.
- *
- * OJO con los tres escalares del renglón, que NO tienen el mismo origen aunque
- * se pinten juntos (ver `crear_orden_bordado` en el backend):
- *  - `posicion_bordado` sale SIEMPRE de `ubicaciones[0]`, así que en una línea
- *    con varios bordados describe solo el primero. Por eso su celda prefiere el
- *    popover —que enumera TODAS las ubicaciones, con su imagen— y solo cae al
- *    texto plano cuando no hay ninguna capturada.
- *  - `colores_hilo` prefiere `ubicaciones[0].colores_hilo` y cae a la raíz del
- *    `bordado_config`.
- *  - `puntadas` es al revés: prefiere la RAÍZ del config —un valor de línea— y
- *    solo cae a `ubicaciones[0]`.
- * En los datos reales las dos últimas acaban viniendo de la raíz, porque
- * `EmbroideryOnboardingUbicacion` no declara ninguna de las dos claves (42 de
- * 43 tallas traen exactamente las 12 declaradas). Aun así el `bordado_config`
- * es JSON libre y la ruta por ubicación existe, así que con varios bordados
- * ambas celdas avisan por `title` de que pueden no desglosar el total: es la
- * misma ambigüedad que el contador «N bordados» señala en la posición.
- */
-const LineasTable = ({ items }: { items: EmbroideryOrderDetailLine[] }) => {
-  if (items.length === 0) {
-    return <EmptyLines>Esta orden no tiene artículos registrados.</EmptyLines>;
-  }
-
-  return (
-    <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-white/10">
-      <table className="min-w-full text-xs">
-        <thead className="bg-slate-50 dark:bg-white/5">
-          <tr className="text-slate-500 dark:text-slate-400">
-            <th className="px-3 py-2 text-left font-semibold">Producto</th>
-            <th className="px-3 py-2 text-left font-semibold">Talla</th>
-            <th className="px-3 py-2 text-left font-semibold">Color</th>
-            <th className="px-3 py-2 text-left font-semibold">Posición</th>
-            <th className="px-3 py-2 text-right font-semibold">Colores hilo</th>
-            <th className="px-3 py-2 text-right font-semibold">Puntadas</th>
-            <th className="px-3 py-2 text-right font-semibold">En esta orden</th>
-            <th className="px-3 py-2 text-right font-semibold">Programado</th>
-            <th className="px-3 py-2 text-right font-semibold">Pedido</th>
-            <th className="px-3 py-2 text-right font-semibold">Pendiente</th>
-          </tr>
-        </thead>
-        <tbody>
-          {items.map((linea) => {
-            // TODAS las ubicaciones del renglón, no `ubicaciones[0]`: hay
-            // líneas reales con dos bordados. `resolveEmbroideryLineUbicaciones`
-            // explica además por qué la fuente preferida es `configuracion` —la
-            // foto congelada al emitir la orden— y no la lectura en vivo del
-            // pedido.
-            const ubicaciones = resolveEmbroideryLineUbicaciones(linea);
-
-            return (
-              <tr
-                key={linea.id}
-                className="border-t border-slate-100 dark:border-white/10 align-top hover:bg-slate-50 dark:hover:bg-white/5 transition-colors"
-              >
-                <td className="px-3 py-2 text-slate-700 dark:text-slate-200">
-                  {linea.producto_nombre ?? "—"}
-                </td>
-                <td className="px-3 py-2 text-slate-600 dark:text-slate-300 whitespace-nowrap">
-                  {linea.talla_nombre ?? "—"}
-                </td>
-                <td className="px-3 py-2 text-slate-600 dark:text-slate-300">
-                  {linea.color_nombre ?? "—"}
-                </td>
-                <td className="px-3 py-2">
-                  {ubicaciones.length > 0 ? (
-                    <span className="flex flex-wrap items-center gap-1.5">
-                      <EmbroideryLineLocationPopover
-                        ubicaciones={ubicaciones}
-                        productoNombre={
-                          linea.producto_nombre ?? `Producto #${linea.producto}`
-                        }
-                        tallaNombre={linea.talla_nombre}
-                        colorNombre={linea.color_nombre}
-                        posicionLabel={linea.posicion_bordado}
-                      />
-                      {/* `posicion_bordado` SIEMPRE describe solo la primera
-                          ubicación, así que sin este contador una línea de dos
-                          bordados se leería como de uno. Mismo distintivo que
-                          el Paso 2 del alta y el diálogo de detalle. */}
-                      {ubicaciones.length > 1 && (
-                        <span className="inline-flex items-center rounded-full bg-violet-50 dark:bg-violet-500/10 px-2 py-0.5 text-[10px] font-semibold text-violet-700 dark:text-violet-300">
-                          {ubicaciones.length} bordados
-                        </span>
-                      )}
-                    </span>
-                  ) : (
-                    <span className="text-slate-500 dark:text-slate-400">
-                      {textOrDash(linea.posicion_bordado)}
-                    </span>
-                  )}
-                </td>
-                <td
-                  className="px-3 py-2 text-right tabular-nums text-slate-600 dark:text-slate-300"
-                  title={escalarPorLineaTitle(ubicaciones.length)}
-                >
-                  {linea.colores_hilo}
-                </td>
-                <td
-                  className="px-3 py-2 text-right tabular-nums text-slate-600 dark:text-slate-300"
-                  title={escalarPorLineaTitle(ubicaciones.length)}
-                >
-                  {formatQuantityValue(linea.puntadas)}
-                </td>
-                <td className="px-3 py-2 text-right tabular-nums font-semibold text-slate-800 dark:text-white">
-                  {formatQuantityValue(linea.cantidad)}
-                </td>
-                <td className="px-3 py-2 text-right tabular-nums text-slate-500 dark:text-slate-400">
-                  {quantityOrDash(linea.cantidad_asignada)}
-                </td>
-                <td className="px-3 py-2 text-right tabular-nums text-slate-500 dark:text-slate-400">
-                  {quantityOrDash(linea.cantidad_pedido)}
-                </td>
-                <td className="px-3 py-2 text-right tabular-nums text-slate-500 dark:text-slate-400">
-                  {quantityOrDash(linea.cantidad_pendiente)}
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-    </div>
-  );
 };
 
 /**
@@ -244,6 +80,11 @@ export function EmbroideryOrderDetailContent({
 }: EmbroideryOrderDetailContentProps) {
   const numericId = Number(orderId);
   const { data, isLoading, isError, error } = useEmbroideryOrderDetail(numericId);
+  // Mutación de edición de la ficha (estatus + máquina). El hook invalida el
+  // detalle en `onSuccess`, así que el re-fetch refleja el nuevo estado; solo
+  // se dispara desde los controles editables de abajo, nunca en los estados de
+  // carga/error (que retornan antes de renderizarlos).
+  const updateOrder = useUpdateEmbroideryOrder(numericId);
 
   const BackLink = (
     <Link
@@ -306,6 +147,14 @@ export function EmbroideryOrderDetailContent({
       ? Math.round((data.cantidad_cubierta / data.cantidad_contratada) * 100)
       : null;
 
+  // Estatus terminal: la ficha entera pasa a solo lectura y no se registran
+  // avances. Se DERIVA de `getAvailableTransitions` —"no hay a dónde moverse"—
+  // en vez de codificar `=== 5 || === 7` a mano: `EmbroideryStatusSelect` ya
+  // decide así su degradación a badge, y tener las dos reglas por separado las
+  // dejaba discrepar (añadir un estatus terminal nuevo, o recibir un código
+  // fuera de 1-7, bloqueaba el selector y dejaba editable todo lo demás).
+  const isTerminal = getAvailableTransitions(data.estatus_bordado).length === 0;
+
   return (
     <div className="w-full space-y-6">
       {/* ── Barra superior con "Volver" ─────────────────────────────────── */}
@@ -361,7 +210,11 @@ export function EmbroideryOrderDetailContent({
         </div>
       </section>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* `items-start` evita el `stretch` por defecto del grid: sin él, ambas
+          tarjetas se estiran a la altura de la más alta y "Origen" —que tiene
+          tres campos— quedaba con un hueco vacío al fondo por culpa de
+          "Información general". Cada una mide ahora según su propio contenido. */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
         {/* ── 2. Información general ────────────────────────────────────── */}
         <Section title="Información general">
           <InfoGrid>
@@ -385,25 +238,63 @@ export function EmbroideryOrderDetailContent({
               )}
             </InfoField>
             <InfoField label="Estatus">
-              <StatusBadge
-                status={String(data.estatus_bordado)}
-                config={{
-                  [data.estatus_bordado]: embroideryStatusEntry(
-                    data.estatus_bordado,
-                    data.estatus_bordado_display,
-                  ),
-                }}
+              <EmbroideryStatusSelect
+                currentStatus={data.estatus_bordado}
+                statusDisplay={data.estatus_bordado_display}
+                onStatusChange={(next) =>
+                  updateOrder.mutate({ estatus_bordado: next })
+                }
+                isPending={updateOrder.isPending}
               />
             </InfoField>
+            {/* Los tres campos editables de abajo degradan a su lectura simple
+                en un estatus TERMINAL (ver `isTerminal`): una orden completada o
+                cancelada ya no se toca. El selector de estatus resuelve su
+                propio caso —se queda sin transiciones y se pinta como badge—,
+                así que no necesita el mismo ternario. */}
             <InfoField label="Prioridad">
-              <StatusBadge
-                status={String(data.prioridad)}
-                config={EMBROIDERY_PRIORITY_CONFIG}
-                defaultConfig={embroideryPriorityFallback(data.prioridad)}
-              />
+              {isTerminal ? (
+                <StatusBadge
+                  status={String(data.prioridad)}
+                  config={EMBROIDERY_PRIORITY_CONFIG}
+                  defaultConfig={embroideryPriorityFallback(data.prioridad)}
+                />
+              ) : (
+                <EmbroideryPrioritySelect
+                  prioridad={data.prioridad}
+                  onPriorityChange={(next) => updateOrder.mutate({ prioridad: next })}
+                  isPending={updateOrder.isPending}
+                />
+              )}
             </InfoField>
-            <InfoField label="Observaciones" className="col-span-2 md:col-span-3">
-              {textOrDash(data.observaciones)}
+            <InfoField label="Máquina asignada">
+              {isTerminal ? (
+                textOrDash(data.maquina_asignada)
+              ) : (
+                <EmbroideryMachineField
+                  value={data.maquina_asignada}
+                  onSave={(maquina) =>
+                    updateOrder.mutate({ maquina_asignada: maquina })
+                  }
+                  isPending={updateOrder.isPending}
+                />
+              )}
+            </InfoField>
+            {/* `col-span-2` (no `md:col-span-3`): con los otros cuatro campos
+                la rejilla cierra exacta —3 + (1 + 2)— y desaparece la celda
+                vacía que quedaba al final de la segunda fila. */}
+            <InfoField label="Observaciones" className="col-span-2">
+              {isTerminal ? (
+                textOrDash(data.observaciones)
+              ) : (
+                <EmbroideryObservationsField
+                  value={data.observaciones}
+                  onSave={(observaciones) =>
+                    updateOrder.mutate({ observaciones })
+                  }
+                  isPending={updateOrder.isPending}
+                />
+              )}
             </InfoField>
           </InfoGrid>
         </Section>
@@ -411,81 +302,100 @@ export function EmbroideryOrderDetailContent({
         {/* ── 3. Origen ─────────────────────────────────────────────────── */}
         {/* Empresa / sucursal / usuario con el NOMBRE ya resuelto que el
             backend devuelve (`*_nombre`, vía `source=` + `select_related`); los
-            ids crudos no se pintan porque no le dicen nada al usuario. */}
+            ids crudos no se pintan porque no le dicen nada al usuario.
+            Empresa y sucursal son `read_only` en el serializer y no se editan
+            nunca; el operador sí, salvo en un estatus terminal. */}
         <Section title="Origen">
           <InfoGrid>
             <InfoField label="Empresa">{textOrDash(data.empresa_nombre)}</InfoField>
             <InfoField label="Sucursal">{textOrDash(data.sucursal_nombre)}</InfoField>
             <InfoField label="Operador asignado">
-              {textOrDash(data.usuario_nombre)}
+              {isTerminal ? (
+                textOrDash(data.usuario_nombre)
+              ) : (
+                <EmbroideryOperatorSelect
+                  usuarioNombre={data.usuario_nombre}
+                  onOperatorChange={(usuarioId) =>
+                    updateOrder.mutate({ usuario_asignado: usuarioId })
+                  }
+                  isPending={updateOrder.isPending}
+                />
+              )}
             </InfoField>
           </InfoGrid>
+
+          {/* ── Cobertura del pedido ─────────────────────────────────────
+              Vive DENTRO de "Origen" —y no en una sección propia— porque habla
+              del mismo eje: de dónde viene la orden y cuánto del pedido madre
+              cubre. Se separa con un filete y su propio subtítulo, igual que el
+              bloque de órdenes hermanas que cierra el bloque. */}
+          <div className="mt-4 pt-4 border-t border-slate-100 dark:border-white/10">
+            <SectionTitle>Cobertura del pedido</SectionTitle>
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3 rounded-xl border border-slate-100 dark:border-white/10 text-xs">
+              <StatusBadge
+                status={String(data.cobertura_completa)}
+                config={EMBROIDERY_COVERAGE_CONFIG}
+              />
+              <span className="tabular-nums text-slate-700 dark:text-slate-200">
+                <span className="font-semibold">
+                  {formatQuantityValue(data.cantidad_cubierta)}
+                </span>{" "}
+                de {formatQuantityValue(data.cantidad_contratada)} piezas contratadas
+                por el pedido
+                {porcentaje !== null && ` · ${porcentaje}%`}
+              </span>
+              {!data.cobertura_completa && (
+                <span className="text-slate-500 dark:text-slate-400">
+                  El resto puede programarse en otras órdenes de bordado.
+                </span>
+              )}
+            </div>
+
+            {/* Reparto aproximado — solo cuando el backend lo marca. Hoy es
+                `false` en toda la base, así que este aviso normalmente no
+                aparece; sin el gate sería un estado vacío permanente. */}
+            {data.reparto_por_talla_aproximado && (
+              <div
+                role="note"
+                className="mt-4 flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 dark:border-amber-800/60 dark:bg-amber-900/20 px-4 py-3"
+              >
+                <InfoIcon className="w-5 h-5 shrink-0 text-amber-600 dark:text-amber-400 mt-0.5" />
+                <p className="min-w-0 flex-1 text-xs text-amber-700 dark:text-amber-300">
+                  El pedido tiene piezas programadas sin talla identificable. El total
+                  por producto es exacto, pero el reparto <strong>por talla</strong> del
+                  resumen de avance es aproximado.
+                </p>
+              </div>
+            )}
+
+            {/* Otras OB del mismo pedido — solo si las hay. */}
+            {data.otras_ordenes_del_pedido.length > 0 && (
+              <div className="mt-4 pt-4 border-t border-slate-100 dark:border-white/10">
+                <SectionTitle>
+                  Otras órdenes de este pedido ({data.otras_ordenes_del_pedido.length})
+                </SectionTitle>
+                <SiblingOrders items={data.otras_ordenes_del_pedido} />
+              </div>
+            )}
+          </div>
         </Section>
       </div>
 
-      {/* ── 4. Cobertura del pedido ─────────────────────────────────────── */}
-      <Section title="Cobertura del pedido">
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3 rounded-xl border border-slate-100 dark:border-white/10 text-xs">
-          <StatusBadge
-            status={String(data.cobertura_completa)}
-            config={EMBROIDERY_COVERAGE_CONFIG}
-          />
-          <span className="tabular-nums text-slate-700 dark:text-slate-200">
-            <span className="font-semibold">
-              {formatQuantityValue(data.cantidad_cubierta)}
-            </span>{" "}
-            de {formatQuantityValue(data.cantidad_contratada)} piezas contratadas por
-            el pedido
-            {porcentaje !== null && ` · ${porcentaje}%`}
-          </span>
-          {!data.cobertura_completa && (
-            <span className="text-slate-500 dark:text-slate-400">
-              El resto puede programarse en otras órdenes de bordado.
-            </span>
-          )}
-        </div>
+      {/* ── 4. Resumen de avance ────────────────────────────────────────── */}
+      <EmbroideryProgressSummary
+        resumenAvance={data.resumen_avance}
+        detalles={data.detalles}
+      />
 
-        {/* Reparto aproximado — solo cuando el backend lo marca. Hoy es `false`
-            en toda la base, así que este aviso normalmente no aparece; sin el
-            gate sería un estado vacío permanente. */}
-        {data.reparto_por_talla_aproximado && (
-          <div
-            role="note"
-            className="mt-4 flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 dark:border-amber-800/60 dark:bg-amber-900/20 px-4 py-3"
-          >
-            <InfoIcon className="w-5 h-5 shrink-0 text-amber-600 dark:text-amber-400 mt-0.5" />
-            <p className="min-w-0 flex-1 text-xs text-amber-700 dark:text-amber-300">
-              El pedido tiene piezas programadas sin talla identificable. El total por
-              producto es exacto, pero el reparto <strong>por talla</strong> que se
-              muestra abajo es aproximado.
-            </p>
-          </div>
-        )}
 
-        {/* Otras OB del mismo pedido — solo si las hay. */}
-        {data.otras_ordenes_del_pedido.length > 0 && (
-          <div className="mt-4 pt-4 border-t border-slate-100 dark:border-white/10">
-            <SectionTitle>
-              Otras órdenes de este pedido ({data.otras_ordenes_del_pedido.length})
-            </SectionTitle>
-            <SiblingOrders items={data.otras_ordenes_del_pedido} />
-          </div>
-        )}
-      </Section>
-
-      {/* ── 5. Artículos de la orden ────────────────────────────────────── */}
-      <Section title={`Artículos de la orden (${data.detalles.length})`}>
-        {/* El desglose NO es el del pedido completo: el backend solo itemiza las
-            líneas que ESTA orden toca, así que las demás líneas de bordado del
-            pedido no aparecen aquí ni siquiera en cero. Decirlo evita leer la
-            suma de la columna "Pedido" como el total contratado — que es el del
-            bloque de cobertura de arriba. */}
-        <p className="-mt-2 mb-3 text-[11px] text-slate-500 dark:text-slate-400">
-          Solo se muestran los artículos que cubre esta orden. Si el pedido tiene otras
-          prendas por bordar, no se listan aquí.
-        </p>
-        <LineasTable items={data.detalles} />
-      </Section>
+      {/* ── 5. Historial de avances ─────────────────────────────────────── */}
+      <EmbroideryAvancesHistory
+        avances={data.avances}
+        obId={data.id}
+        isTerminal={isTerminal}
+        detalles={data.detalles}
+        porDetalle={data.resumen_avance.por_detalle}
+      />
     </div>
   );
 }

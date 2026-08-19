@@ -1,9 +1,12 @@
 import { v1_api } from "@/src/api/v1.api";
 import type {
+  BordadoAvance,
+  CreateAvancePayload,
   CreateEmbroideryOrderPayload,
   EmbroideryOnboardingData,
   EmbroideryOrder,
   EmbroideryOrderDetail,
+  UpdateEmbroideryOrderPayload,
 } from "../interfaces/embroidery.interface";
 
 /**
@@ -109,4 +112,55 @@ export const createEmbroideryOrder = async (
     data,
   );
   return response.data;
+};
+
+/**
+ * Actualiza parcialmente una orden de bordado
+ * (`PATCH /produccion/orden-bordado/{id}/`).
+ *
+ * Solo se envían los campos que cambian (ver `UpdateEmbroideryOrderPayload`).
+ *
+ * NO devuelve nada, y es a propósito: la respuesta del PATCH **no** tiene la
+ * forma del detalle. El `get_serializer_class` del ViewSet solo enruta a
+ * `OrdenBordadoRetrieveSerializer` cuando la acción es `retrieve`;
+ * `partial_update` cae al `OrdenBordadoSerializer` base, que no declara
+ * `avances`, `resumen_avance`, `otras_ordenes_del_pedido`, `pedido_vinculado`
+ * ni los tres campos de cobertura, y cuyos `detalles` son los del serializer
+ * ligero (sin `ubicaciones`/`configuracion`).
+ *
+ * Antes se tipaba `Promise<EmbroideryOrderDetail>`, que era una promesa falsa:
+ * no rompía nada solo porque el hook descarta la respuesta e invalida el
+ * detalle, pero invitaba al atajo habitual del repo
+ * (`onSuccess: (data) => queryClient.setQueryData(key, data)`), que habría
+ * metido en la caché un objeto sin `resumen_avance` y reventado la ficha. Para
+ * refrescar la vista se re-consulta el detalle; ver `useUpdateEmbroideryOrder`.
+ */
+export const updateEmbroideryOrder = async (
+  id: number,
+  data: Partial<UpdateEmbroideryOrderPayload>,
+): Promise<void> => {
+  await v1_api.patch(`/produccion/orden-bordado/${id}/`, data);
+};
+
+/**
+ * Registra un avance de bordado (`POST /produccion/bordado-avances/`).
+ *
+ * `usuario` NO se envía: el backend lo inyecta con el usuario autenticado.
+ */
+export const createAvance = async (
+  data: CreateAvancePayload,
+): Promise<BordadoAvance> => {
+  const response = await v1_api.post<BordadoAvance>(
+    "/produccion/bordado-avances/",
+    data,
+  );
+  return response.data;
+};
+
+/**
+ * Elimina un avance de bordado
+ * (`DELETE /produccion/bordado-avances/{id}/`).
+ */
+export const deleteAvance = async (id: number): Promise<void> => {
+  await v1_api.delete(`/produccion/bordado-avances/${id}/`);
 };

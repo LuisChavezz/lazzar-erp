@@ -16,11 +16,8 @@
 
 /**
  * Estatus de una orden de bordado (`OrdenesBordado.EstatusBordado`, enteros
- * 1-7). En la práctica SIEMPRE llega `1` (Pendiente): el `ViewSet` solo expone
- * `list`/`retrieve`/`create` y `estatus_bordado` es `read_only`, así que no
- * hay endpoint que avance el estado (`PUT`/`PATCH` responden 405). Los 7 se
- * tipan igual, para que empezar a usarlos no requiera tocar el frontend
- * (mismo criterio que `PackingEstado`).
+ * 1-7). Los 7 se tipan igual, para que empezar a usarlos no requiera tocar el
+ * frontend (mismo criterio que `PackingEstado`).
  */
 export type EmbroideryOrderStatus = 1 | 2 | 3 | 4 | 5 | 6 | 7;
 
@@ -219,17 +216,140 @@ export interface EmbroideryOrderSibling {
 }
 
 /**
+ * Referencia resuelta del renglón (`OrdenBordadoDetalle`) contra el que se
+ * registró un avance — `orden_bordado_detalle_display` del avance.
+ *
+ * Todos los campos salvo `id` pueden llegar `null`: el backend los arma con
+ * `getattr(..., None)`, así que un renglón sin producto/talla/color resuelto
+ * deja esos nombres en `null`. `cantidad_programada` es `OrdenBordadoDetalle
+ * .cantidad` (piezas que programa ESTE renglón).
+ */
+export interface OrdenBordadoDetalleDisplay {
+  id: number;
+  producto_id: number | null;
+  producto_nombre: string | null;
+  talla_id: number | null;
+  talla_nombre: string | null;
+  color_id: number | null;
+  color_nombre: string | null;
+  cantidad_programada: number | null;
+  posicion_bordado: string | null;
+}
+
+/**
+ * Referencia resuelta de la `PedidoDetalleTalla` que el backend autovincula al
+ * avance — `pedido_detalle_talla_display`. Nullable salvo `id`, por la misma
+ * razón que `OrdenBordadoDetalleDisplay`.
+ */
+export interface PedidoDetalleTallaDisplay {
+  id: number;
+  pedido_detalle_id: number | null;
+  talla_id: number | null;
+  talla_nombre: string | null;
+  cantidad_pedido: number | null;
+}
+
+/**
+ * Registro de avance de bordado (`GET /produccion/bordado-avances/`, embebido
+ * en el detalle de la orden como `avances`). Cada renglón documenta cuántas
+ * piezas y puntadas se bordaron en un momento dado.
+ *
+ * `usuario` viaja como id crudo y `usuario_nombre` ya resuelto por el backend.
+ * `usuario` NO se envía al crear un avance: el backend lo inyecta con el
+ * usuario autenticado.
+ *
+ * `orden_bordado_detalle` es la línea (talla/SKU) contra la que se bordó. Es
+ * NULLABLE: los avances antiguos (anteriores al seguimiento por talla) no lo
+ * tienen, y se muestran como "sin asignar". `pedido_detalle_talla` lo
+ * autovincula el backend a partir del renglón — el frontend NO lo envía.
+ */
+export interface BordadoAvance {
+  id: number;
+  fecha: string;
+  usuario: number;
+  usuario_nombre: string;
+  orden_bordado_detalle: number | null;
+  orden_bordado_detalle_display: OrdenBordadoDetalleDisplay | null;
+  pedido_detalle_talla: number | null;
+  pedido_detalle_talla_display: PedidoDetalleTallaDisplay | null;
+  cantidad_bordada: number;
+  puntadas_realizadas: number;
+  comentario: string | null;
+}
+
+/**
+ * Aporte de un operador a un renglón, dentro de `ResumenAvancePorDetalle
+ * .operadores`. `usuario_nombre` es `get_full_name()` o, si queda vacío, el
+ * email.
+ */
+export interface ResumenOperador {
+  usuario_id: number;
+  usuario_nombre: string;
+  cantidad_bordada: number;
+  puntadas_realizadas: number;
+}
+
+/**
+ * Desglose de avance POR RENGLÓN (talla/SKU) de la orden — cada entrada de
+ * `ResumenAvance.por_detalle`.
+ *
+ * `orden_bordado_detalle_id === null` es la fila LEGACY: agrupa los avances
+ * antiguos sin renglón asignado. En ese caso el backend fija
+ * `producto_nombre = "Sin talla/SKU asignado (registro antiguo)"` y el resto de
+ * los identificadores en `null`; `cantidad_programada`/`puntadas_presupuesto`
+ * llegan en 0 (no hay renglón que presupueste). Los demás nombres son nullable
+ * por la misma razón que los display.
+ */
+export interface ResumenAvancePorDetalle {
+  orden_bordado_detalle_id: number | null;
+  producto_id: number | null;
+  producto_nombre: string | null;
+  talla_id: number | null;
+  talla_nombre: string | null;
+  color_id: number | null;
+  color_nombre: string | null;
+  posicion_bordado: string | null;
+  cantidad_programada: number;
+  puntadas_presupuesto: number;
+  cantidad_bordada: number;
+  puntadas_realizadas: number;
+  porcentaje_avance: number;
+  operadores: ResumenOperador[];
+}
+
+/**
+ * Resumen agregado del avance de la orden (`resumen_avance` en el detalle):
+ * lo programado frente a lo bordado, en piezas y en puntadas, con el
+ * porcentaje ya calculado por el backend. `por_detalle` abre ese total por
+ * renglón (talla/SKU) e incluye los operadores que aportaron a cada uno.
+ */
+export interface ResumenAvance {
+  cantidad_programada: number;
+  cantidad_bordada_total: number;
+  puntadas_presupuesto: number;
+  puntadas_realizadas: number;
+  porcentaje_avance: number;
+  por_detalle: ResumenAvancePorDetalle[];
+}
+
+/**
  * Respuesta de `GET /produccion/orden-bordado/{id}/`.
  *
  * Es efectivamente un superconjunto del listado: mismo encabezado —incluida
  * la cobertura (`cobertura_completa`/`cantidad_cubierta`/
  * `cantidad_contratada`), heredada de `EmbroideryOrder` sin re-declararla—,
- * más los dos campos propios del detalle de abajo y un `detalles` más rico
+ * más los campos propios del detalle de abajo y un `detalles` más rico
  * por renglón (parcialidad + ubicaciones, en vez del renglón ligero del
  * listado).
  */
 export interface EmbroideryOrderDetail extends Omit<EmbroideryOrder, "detalles"> {
   detalles: EmbroideryOrderDetailLine[];
+  /** Máquina bordadora asignada a la orden. `null` mientras no se asigne. */
+  maquina_asignada: string | null;
+  /** Historial de avances de bordado registrados contra esta orden. */
+  avances: BordadoAvance[];
+  /** Resumen agregado de lo programado vs. lo bordado. */
+  resumen_avance: ResumenAvance;
   /** Las demás OB activas del mismo pedido. Vacío si esta es la única. */
   otras_ordenes_del_pedido: EmbroideryOrderSibling[];
   /**
@@ -454,4 +574,36 @@ export interface CreateEmbroideryOrderPayload {
   prioridad?: number;
   observaciones?: string;
   detalles_override?: EmbroideryOrderDetalleOverride[];
+}
+
+// ─── Edición / avances ───────────────────────────────────────────────────────
+
+/**
+ * Cuerpo de `PATCH /produccion/orden-bordado/{id}/` — actualización parcial de
+ * una orden de bordado. Todos los campos son opcionales: se envía solo lo que
+ * cambia.
+ */
+export interface UpdateEmbroideryOrderPayload {
+  estatus_bordado?: EmbroideryOrderStatus;
+  maquina_asignada?: string | null;
+  prioridad?: number;
+  observaciones?: string | null;
+  usuario_asignado?: number | null;
+}
+
+/**
+ * Cuerpo de `POST /produccion/bordado-avances/` — registra un avance contra la
+ * orden `ob` y el renglón `orden_bordado_detalle` (talla/SKU).
+ *
+ * `orden_bordado_detalle` es opcional en el backend, pero la UX SIEMPRE exige
+ * elegir un renglón, así que se declara requerido aquí. `usuario` y
+ * `pedido_detalle_talla` NO se declaran: el backend inyecta el primero (usuario
+ * autenticado) y autovincula el segundo a partir del renglón.
+ */
+export interface CreateAvancePayload {
+  ob: number;
+  orden_bordado_detalle: number;
+  cantidad_bordada: number;
+  puntadas_realizadas: number;
+  comentario?: string;
 }
