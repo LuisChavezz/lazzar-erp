@@ -4,18 +4,16 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { useLogout } from "../features/auth/hooks/useLogout";
-import { ConfirmDialog } from "./ConfirmDialog";
 import { CloseIcon, LogoIcon, MenuIcon } from "./Icons";
 import { getSidebarItems } from "@/src/utils/getSidebarItems";
 import SidebarItem from "./SidebarItem";
 import { Notifications } from "../features/notifications/components/Notifications";
+import { UserMenu } from "./UserMenu";
 import { appRouteGroups } from "@/src/constants/appRoutes";
 
 export default function MobileSidebar() {
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const pathname = usePathname();
-  const { handleLogout, isPending: isLoggingOut } = useLogout();
   const { data: session } = useSession();
   const availableSections = getSidebarItems(session?.user, pathname);
   const activeGroup = appRouteGroups.find(
@@ -54,6 +52,9 @@ export default function MobileSidebar() {
         <div className="flex items-center gap-2">
           {/* Notifications */}
           <Notifications />
+
+          {/* Menú de usuario (incluye "Cerrar sesión") */}
+          <UserMenu />
 
           {/* Menu Button */}
           <button
@@ -164,23 +165,6 @@ export default function MobileSidebar() {
                 )}
               </div>
             ))}
-          </div>
-          <div className="p-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-black/20">
-            <ConfirmDialog
-              title="Cerrar sesión"
-              description="¿Estás seguro de que deseas cerrar sesión?"
-              onConfirm={handleLogout}
-              confirmText="Cerrar sesión"
-              trigger={
-                <button 
-                  type="button"
-                  disabled={isLoggingOut}
-                  className="block w-full text-center px-4 py-3 rounded-xl bg-black dark:bg-white text-white dark:text-black font-bold text-sm shadow-lg disabled:opacity-50 disabled:pointer-events-none"
-                >
-                  {isLoggingOut ? "Cerrando..." : "Cerrar sesión"}
-                </button>
-              }
-            />
           </div>
         </div>
       </div>

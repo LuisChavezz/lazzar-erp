@@ -1,20 +1,28 @@
 "use client";
 
+import { useState } from "react";
 import { useSession } from "next-auth/react";
 import { DropdownMenu } from "@radix-ui/themes";
-import { SettingsIcon } from "./Icons";
+import { LogoutIcon, SettingsIcon } from "./Icons";
+import { ConfirmDialog } from "./ConfirmDialog";
 import { GoogleMenuOption } from "@/src/features/google/components/GoogleMenuOption";
 import { useSettingsModal } from "@/src/features/settings/hooks/useSettingsModal";
+import { useLogout } from "@/src/features/auth/hooks/useLogout";
 
 export const UserMenu = () => {
   const { data: session } = useSession();
   const { open: openSettings } = useSettingsModal();
+  const { handleLogout, isPending: isLoggingOut } = useLogout();
+  /* El diálogo se controla por estado porque su trigger vivía dentro del
+   * DropdownMenu, que se desmonta al seleccionar un item */
+  const [isLogoutConfirmOpen, setIsLogoutConfirmOpen] = useState(false);
 
   const userInitial = session?.user?.name ? session.user.name.charAt(0).toUpperCase() : "U";
   const userEmail = session?.user?.email || "usuario@ejemplo.com";
   const userName = session?.user?.name || "Usuario";
 
   return (
+    <>
     <DropdownMenu.Root>
       <DropdownMenu.Trigger>
         <button
@@ -44,7 +52,28 @@ export const UserMenu = () => {
         {/* Opción dinámica de Google (skeleton / conectar / conectado) */}
         <GoogleMenuOption />
 
+        <div className="h-px bg-slate-200 dark:bg-slate-700 my-1" />
+
+        <DropdownMenu.Item
+          onSelect={() => setIsLogoutConfirmOpen(true)}
+          disabled={isLoggingOut}
+          className="flex items-center gap-2 px-3 py-2 text-sm text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/10 rounded-lg cursor-pointer! outline-none data-highlighted:bg-red-50 dark:data-highlighted:bg-red-900/10 data-highlighted:text-red-600 dark:data-highlighted:text-red-400 disabled:opacity-50 disabled:cursor-not-allowed! transition-colors ease-in-out"
+        >
+          <LogoutIcon className="w-4 h-4 shrink-0" aria-hidden="true" />
+          {isLoggingOut ? "Cerrando..." : "Cerrar sesión"}
+        </DropdownMenu.Item>
+
       </DropdownMenu.Content>
     </DropdownMenu.Root>
+
+    <ConfirmDialog
+      open={isLogoutConfirmOpen}
+      onOpenChange={setIsLogoutConfirmOpen}
+      title="Cerrar sesión"
+      description="¿Estás seguro de que deseas cerrar sesión?"
+      onConfirm={handleLogout}
+      confirmText="Cerrar sesión"
+    />
+    </>
   );
 };

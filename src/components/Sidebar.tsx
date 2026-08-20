@@ -1,20 +1,17 @@
 "use client";
 
-import { useLogout } from "../features/auth/hooks/useLogout";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
 import MobileSidebar from "./MobileSidebar";
 import { getSidebarItems } from "@/src/utils/getSidebarItems";
 import SidebarItem from "./SidebarItem";
-import { ConfirmDialog } from "./ConfirmDialog";
-import { LogoIcon, LogoutIcon, PanelLeftCloseIcon, PanelLeftOpenIcon } from "./Icons";
+import { LogoIcon, PanelLeftCloseIcon, PanelLeftOpenIcon } from "./Icons";
 import { appRouteGroups } from "@/src/constants/appRoutes";
 import { useSidebar } from "./SidebarProvider";
 
 export default function Sidebar() {
   const pathname = usePathname();
-  const { handleLogout, isPending: isLoggingOut } = useLogout();
   const { data: session } = useSession();
   const { isPinned, togglePin } = useSidebar();
   const availableSections = getSidebarItems(session?.user, pathname);
@@ -158,29 +155,6 @@ export default function Sidebar() {
                 </div>
               ))}
             </nav>
-
-            {/* Bottom Actions */}
-            <div className="p-4 border-t border-slate-200 dark:border-slate-800">
-              <ConfirmDialog
-                title="Cerrar sesión"
-                description="¿Estás seguro de que deseas cerrar sesión?"
-                onConfirm={handleLogout}
-                confirmText="Cerrar sesión"
-                trigger={
-                  <button
-                    type="button"
-                    aria-label="Cerrar sesión"
-                    disabled={isLoggingOut}
-                    className="w-full mt-2 flex items-center justify-start gap-4 px-3 py-3 rounded-xl cursor-pointer text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors group relative overflow-hidden disabled:opacity-50 disabled:pointer-events-none"
-                  >
-                    <LogoutIcon className="w-6 h-6 shrink-0" aria-hidden="true" />
-                    <span className={`font-medium text-sm whitespace-nowrap ${labelClass}`}>
-                      {isLoggingOut ? "Cerrando..." : "Cerrar sesión"}
-                    </span>
-                  </button>
-                }
-              />
-            </div>
           </div>
         </div>
       </aside>
