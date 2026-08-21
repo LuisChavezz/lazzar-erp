@@ -119,7 +119,7 @@ function readExcessLines(value: unknown): string[] | undefined {
  *     tiene una OB activa con el 100% de sus tallas de bordado:
  *     `{"err": "Ya existe una orden de bordado activa para este pedido con
  *     el 100% de las prendas...", "orden_bordado_existente": {"id": "44",
- *     "folio": "2026-OB-00001", "pedido": "100", "estado": "Pendiente"}}`.
+ *     "folio": "2026-OB-00001", "pedido": "100", "estado": "Sin trabajar"}}`.
  *     Estructuralmente es la forma B MÁS `orden_bordado_existente` — se
  *     revisa ANTES de B para no perder ese dato extra.
  *
@@ -130,7 +130,7 @@ function readExcessLines(value: unknown): string[] | undefined {
  *        `APIException` a `ErrorDetail` (subclase de `str`), sin importar el
  *        tipo original (`existente.id`/`existente.pedido_id` son `int` en el
  *        modelo). Se castean con `Number(...)` aquí.
- *      - `estado` llega en Title Case (`"Pendiente"`, vía
+ *      - `estado` llega en Title Case (`"Sin trabajar"`, vía
  *        `get_estatus_bordado_display()`), no en mayúsculas — coincide, de
  *        hecho, con las etiquetas que ya usa `EMBROIDERY_STATUS_CONFIG` en
  *        este mismo módulo para `estatus_bordado === 1`.

@@ -16,13 +16,14 @@ import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { formatQuantityValue } from "@/src/utils/formatCurrency";
 import { formatShortDate, formatShortTime } from "@/src/utils/formatDate";
 import { EMBROIDERY_COVERAGE_CONFIG } from "../constants/embroideryStatus";
-import { getAvailableTransitions } from "../constants/embroideryStatusTransitions";
+import { isTerminalStatus } from "../constants/embroideryStatusTransitions";
 import { useEmbroideryOrderDetail } from "../hooks/useEmbroideryOrderDetail";
 import { useUpdateEmbroideryOrder } from "../hooks/useUpdateEmbroideryOrder";
 import { EmbroideryStatusSelect } from "./EmbroideryStatusSelect";
 import { EmbroideryMachineField } from "./EmbroideryMachineField";
 import { EmbroideryObservationsField } from "./EmbroideryObservationsField";
 import { EmbroideryOperatorSelect } from "./EmbroideryOperatorSelect";
+import { EmbroideryProveedorSelect } from "./EmbroideryProveedorSelect";
 import { EmbroideryProgressSummary } from "./EmbroideryProgressSummary";
 import { EmbroideryAvancesHistory } from "./EmbroideryAvancesHistory";
 import type { EmbroideryOrderSibling } from "../interfaces/embroidery.interface";
@@ -173,13 +174,12 @@ export function EmbroideryOrderDetailContent({
       ? Math.round((data.cantidad_cubierta / data.cantidad_contratada) * 100)
       : null;
 
-  // Estatus terminal: la ficha entera pasa a solo lectura y no se registran
-  // avances. Se DERIVA de `getAvailableTransitions` —"no hay a dónde moverse"—
-  // en vez de codificar `=== 5 || === 7` a mano: `EmbroideryStatusSelect` ya
-  // decide así su degradación a badge, y tener las dos reglas por separado las
-  // dejaba discrepar (añadir un estatus terminal nuevo, o recibir un código
-  // fuera de 1-7, bloqueaba el selector y dejaba editable todo lo demás).
-  const isTerminal = getAvailableTransitions(data.estatus_bordado).length === 0;
+  // Estatus terminal (7 Finalizado / 8 Cancelado legacy): la ficha entera pasa
+  // a solo lectura y no se registran avances. Se pregunta a `isTerminalStatus`
+  // en vez de codificar los códigos a mano: es la MISMA función de la que
+  // `getAvailableTransitions` deriva su lista vacía, así que el selector y el
+  // resto del formulario no pueden discrepar.
+  const isTerminal = isTerminalStatus(data.estatus_bordado);
 
   return (
     <div className="w-full space-y-6">
@@ -260,8 +260,8 @@ export function EmbroideryOrderDetailContent({
               />
             </InfoField>
             {/* Los dos campos editables de abajo degradan a su lectura simple
-                en un estatus TERMINAL (ver `isTerminal`): una orden completada o
-                cancelada ya no se toca. El selector de estatus resuelve su
+                en un estatus TERMINAL (ver `isTerminal`): una orden finalizada
+                o cancelada ya no se toca. El selector de estatus resuelve su
                 propio caso —se queda sin transiciones y se pinta como badge—,
                 así que no necesita el mismo ternario. */}
             <InfoField label="Máquina asignada">
@@ -301,11 +301,12 @@ export function EmbroideryOrderDetailContent({
         </Section>
 
         {/* ── 3. Origen ─────────────────────────────────────────────────── */}
-        {/* Empresa / sucursal / usuario con el NOMBRE ya resuelto que el
-            backend devuelve (`*_nombre`, vía `source=` + `select_related`); los
-            ids crudos no se pintan porque no le dicen nada al usuario.
-            Empresa y sucursal son `read_only` en el serializer y no se editan
-            nunca; el operador sí, salvo en un estatus terminal. */}
+        {/* Empresa / sucursal / usuario / proveedor con el NOMBRE ya resuelto
+            que el backend devuelve (`*_nombre`, vía `source=` +
+            `select_related`); los ids crudos no se pintan porque no le dicen
+            nada al usuario. Empresa y sucursal son `read_only` en el serializer
+            y no se editan nunca; el operador y el proveedor sí, salvo en un
+            estatus terminal. */}
         <Section title="Origen">
           <InfoGrid>
             <InfoField label="Empresa">{textOrDash(data.empresa_nombre)}</InfoField>
@@ -318,6 +319,28 @@ export function EmbroideryOrderDetailContent({
                   usuarioNombre={data.usuario_nombre}
                   onOperatorChange={(usuarioId) =>
                     updateOrder.mutate({ usuario_asignado: usuarioId })
+                  }
+                  isPending={updateOrder.isPending}
+                />
+              )}
+            </InfoField>
+            {/* Proveedor: dónde se borda. Sin proveedor NO es un dato que
+                falte —significa que se borda en casa—, así que el caso vacío se
+                rotula "Bordado interno" en lugar del guion largo de
+                `textOrDash`, también en solo lectura. */}
+            <InfoField label="Proveedor">
+              {isTerminal ? (
+                (data.proveedor_nombre?.trim() ?? "") || (
+                  <span className="text-slate-500 dark:text-slate-400">
+                    Bordado interno
+                  </span>
+                )
+              ) : (
+                <EmbroideryProveedorSelect
+                  proveedorNombre={data.proveedor_nombre}
+                  proveedorId={data.proveedor}
+                  onProveedorChange={(proveedorId) =>
+                    updateOrder.mutate({ proveedor: proveedorId })
                   }
                   isPending={updateOrder.isPending}
                 />

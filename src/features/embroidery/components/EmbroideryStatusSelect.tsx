@@ -7,15 +7,10 @@ import { getAvailableTransitions } from "../constants/embroideryStatusTransition
 import type { EmbroideryOrderStatus } from "../interfaces/embroidery.interface";
 
 interface EmbroideryStatusSelectProps {
-  /** Estatus actual de la orden (`estatus_bordado`, 1-7). */
+  /** Estatus actual de la orden (`estatus_bordado`, 1-8). */
   currentStatus: EmbroideryOrderStatus;
   /** Etiqueta resuelta por el backend, respaldo del rótulo local. */
   statusDisplay?: string | null;
-  /**
-   * Estatus previo a "Detenido", para reanudar al correcto. Hoy el backend no
-   * lo expone (ver `getAvailableTransitions`), así que llega `undefined`.
-   */
-  previousStatus?: EmbroideryOrderStatus;
   /** Se invoca con el nuevo estatus al elegir una transición del menú. */
   onStatusChange: (next: EmbroideryOrderStatus) => void;
   /** PATCH en vuelo: inhabilita el disparador y muestra un spinner. */
@@ -25,10 +20,10 @@ interface EmbroideryStatusSelectProps {
 /**
  * Selector de transición de estatus de una orden de bordado.
  *
- * Solo ofrece los estatus a los que la orden PUEDE moverse (según
- * `getAvailableTransitions`), no los siete. En un estatus terminal (sin
- * transiciones: Completado/Cancelado) degrada a un badge de solo lectura, sin
- * disparador.
+ * Ofrece los estatus a los que la orden puede moverse según
+ * `getAvailableTransitions` —hoy, todos menos el suyo y el 8 (Cancelado
+ * legacy)—. En un estatus terminal (sin transiciones: Finalizado o Cancelado
+ * legacy) degrada a un badge de solo lectura, sin disparador.
  *
  * El color y la etiqueta de cada estatus salen de `embroideryStatusEntry` —la
  * misma fuente que el resto del módulo—, no se duplican aquí. Construido sobre
@@ -37,12 +32,11 @@ interface EmbroideryStatusSelectProps {
 export function EmbroideryStatusSelect({
   currentStatus,
   statusDisplay,
-  previousStatus,
   onStatusChange,
   isPending = false,
 }: EmbroideryStatusSelectProps) {
   const current = embroideryStatusEntry(currentStatus, statusDisplay);
-  const transitions = getAvailableTransitions(currentStatus, previousStatus);
+  const transitions = getAvailableTransitions(currentStatus);
 
   const badgeContent = (
     <>

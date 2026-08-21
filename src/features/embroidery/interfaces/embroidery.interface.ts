@@ -16,10 +16,50 @@
 
 /**
  * Estatus de una orden de bordado (`OrdenesBordado.EstatusBordado`, enteros
- * 1-7). Los 7 se tipan igual, para que empezar a usarlos no requiera tocar el
+ * 1-8). Los 8 se tipan igual, para que empezar a usarlos no requiera tocar el
  * frontend (mismo criterio que `PackingEstado`).
+ *
+ *  1 Sin trabajar (default) · 2 Programado · 3 Ponchado · 4 Arreglo ·
+ *  5 Bordando · 6 Detenido · 7 Finalizado · 8 Cancelado (legacy)
+ *
+ * OJO — los enteros se RESIGNIFICARON: el enum anterior era
+ * `1 Pendiente · 2 Preparación · 3 Bordando · 4 Revisión · 5 Completado ·
+ * 6 Detenido · 7 Cancelado`, y la migración `0030` remapeó los datos
+ * existentes (`3→5`, `4→6`, `5→7`, `7→8`). Cualquier código, comentario o
+ * prueba que siga leyendo un entero con su significado viejo está mal: el 5,
+ * que antes era el terminal "Completado", hoy es "Bordando" —una orden en
+ * pleno proceso—.
+ *
+ * El 8 es un valor de SALIDA histórica: recoge los cancelados del enum
+ * anterior. Se tipa y se rotula para pintarlo, pero el selector de la ficha no
+ * lo ofrece como destino (ver `HIDDEN_DESTINATIONS`).
  */
-export type EmbroideryOrderStatus = 1 | 2 | 3 | 4 | 5 | 6 | 7;
+export type EmbroideryOrderStatus = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
+
+/**
+ * Proveedor externo resuelto — `proveedor_display` de la orden.
+ *
+ * Es un CHIP: el backend lo arma a mano (`get_proveedor_display`) con los nueve
+ * datos de contacto del `terceros.Proveedor`, para no obligar a una segunda
+ * petición al catálogo solo para rotular la orden. Todos salvo `id`/`nombre`
+ * salen de `getattr(prov, …, None)`, así que pueden llegar `null`.
+ *
+ * `tipo` es el `TipoProveedor` del backend (`"General"`, `"Compras"`,
+ * `"Produccion"`…), un string libre desde la óptica del frontend: no se tipa
+ * como unión porque el catálogo de choices lo decide el backend y una unión
+ * cerrada rompería al añadir uno.
+ */
+export interface ProveedorDisplay {
+  id: number;
+  codigo: string | null;
+  nombre: string;
+  razon_social: string | null;
+  tipo: string | null;
+  rfc: string | null;
+  email: string | null;
+  telefono: string | null;
+  contacto_principal: string | null;
+}
 
 /**
  * Renglón de `detalles`, embebido en cada orden del listado (el backend usa el
@@ -73,8 +113,10 @@ export interface EmbroideryOrder {
   /**
    * Etiqueta ya resuelta de `estatus_bordado`, que el backend devuelve en el
    * listado y en el detalle. Se usa solo como RESPALDO de la etiqueta local
-   * (ver `embroideryStatusEntry`): el enum de Python omite acentos, así que la
-   * de este frontend gana para los códigos conocidos.
+   * (ver `embroideryStatusEntry`): el mapa de este frontend gana para los
+   * códigos conocidos —hoy reproduce las etiquetas del enum de Python al pie de
+   * la letra, así que ambas coinciden— y este campo solo rotula un código
+   * fuera de 1-8, que el mapa local no podría nombrar.
    */
   estatus_bordado_display: string;
   /**
@@ -102,6 +144,23 @@ export interface EmbroideryOrder {
   /** `get_full_name()` y, si queda vacío, el email. `null` sin usuario. */
   usuario_nombre: string | null;
   detalles: EmbroideryOrderLine[];
+
+  // ─── Proveedor externo ─────────────────────────────────────────────────
+  // FK opcional a `terceros.Proveedor`: documenta que el bordado se
+  // subcontrató. `null` NO es "sin capturar" — significa BORDADO INTERNO, que
+  // es el caso normal, así que la UI lo rotula como tal y no como un hueco.
+  //
+  // Los tres campos los declara `OrdenBordadoSerializer`, del que heredan
+  // TANTO el listado como el detalle, así que viajan en ambas respuestas —
+  // `proveedor_display` incluido, pese a ser el más pesado—. Por eso viven
+  // aquí y no en `EmbroideryOrderDetail`.
+
+  /** Id del proveedor, o `null` si el bordado es interno. Editable por PATCH. */
+  proveedor: number | null;
+  /** `Proveedor.nombre` ya resuelto. `null` cuando no hay proveedor. */
+  proveedor_nombre: string | null;
+  /** Ficha de contacto del proveedor. `null` cuando no hay proveedor. */
+  proveedor_display: ProveedorDisplay | null;
 
   // ─── Cobertura sobre el pedido ─────────────────────────────────────────
   // Antes SOLO las declaraba `OrdenBordadoListSerializer`, y el `retrieve`
@@ -273,7 +332,24 @@ export interface BordadoAvance {
   pedido_detalle_talla: number | null;
   pedido_detalle_talla_display: PedidoDetalleTallaDisplay | null;
   cantidad_bordada: number;
+  /**
+   * Puntadas que lleva UNA pieza. Es lo único que se captura hoy; de aquí sale
+   * `puntadas_total`. `0` en los avances anteriores a este seguimiento.
+   */
+  puntadas_por_pieza: number;
+  /**
+   * Contador manual de la máquina, el campo ORIGINAL de este modelo. Ya no se
+   * captura —el formulario pide puntadas por pieza—, pero el backend lo sigue
+   * devolviendo y los avances antiguos son los únicos que lo traen poblado.
+   */
   puntadas_realizadas: number;
+  /**
+   * `puntadas_por_pieza × cantidad_bordada`, calculado POR EL BACKEND en
+   * `perform_create`: pisa lo que mande el cliente cuando
+   * `puntadas_por_pieza > 0`, y respeta el valor enviado solo en la ruta legacy
+   * (`por_pieza = 0`). Por eso no viaja en `CreateAvancePayload`.
+   */
+  puntadas_total: number;
   comentario: string | null;
 }
 
@@ -286,7 +362,16 @@ export interface ResumenOperador {
   usuario_id: number;
   usuario_nombre: string;
   cantidad_bordada: number;
+  /** Contador manual heredado; ver `BordadoAvance.puntadas_realizadas`. */
   puntadas_realizadas: number;
+  /** Suma de `puntadas_total` de los avances de este operador. */
+  puntadas_total: number;
+  /**
+   * Promedio PONDERADO por piezas de `puntadas_por_pieza`
+   * (`Σ por_pieza × cantidad / Σ cantidad`), ya redondeado a entero por el
+   * backend. `0` cuando ningún avance lo trae capturado.
+   */
+  puntadas_por_pieza_promedio: number;
 }
 
 /**
@@ -312,7 +397,12 @@ export interface ResumenAvancePorDetalle {
   cantidad_programada: number;
   puntadas_presupuesto: number;
   cantidad_bordada: number;
+  /** Contador manual heredado; ver `BordadoAvance.puntadas_realizadas`. */
   puntadas_realizadas: number;
+  /** Suma de `puntadas_total` de los avances de este renglón. */
+  puntadas_total: number;
+  /** Promedio ponderado de `puntadas_por_pieza` en este renglón. */
+  puntadas_por_pieza_promedio: number;
   porcentaje_avance: number;
   operadores: ResumenOperador[];
 }
@@ -327,7 +417,12 @@ export interface ResumenAvance {
   cantidad_programada: number;
   cantidad_bordada_total: number;
   puntadas_presupuesto: number;
+  /** Contador manual heredado; ver `BordadoAvance.puntadas_realizadas`. */
   puntadas_realizadas: number;
+  /** Puntadas efectivamente bordadas: Σ `puntadas_total` de los avances. */
+  puntadas_total: number;
+  /** Promedio ponderado de `puntadas_por_pieza` en toda la orden. */
+  puntadas_por_pieza_promedio: number;
   porcentaje_avance: number;
   por_detalle: ResumenAvancePorDetalle[];
 }
@@ -589,6 +684,12 @@ export interface UpdateEmbroideryOrderPayload {
   prioridad?: number;
   observaciones?: string | null;
   usuario_asignado?: number | null;
+  /**
+   * Proveedor externo, o `null` para devolver la orden a bordado interno. El
+   * backend valida que pertenezca a la empresa de la orden y responde `400`
+   * bajo la clave `proveedor` si no (ver `parseEmbroideryUpdateError`).
+   */
+  proveedor?: number | null;
 }
 
 /**
@@ -599,11 +700,17 @@ export interface UpdateEmbroideryOrderPayload {
  * elegir un renglón, así que se declara requerido aquí. `usuario` y
  * `pedido_detalle_talla` NO se declaran: el backend inyecta el primero (usuario
  * autenticado) y autovincula el segundo a partir del renglón.
+ *
+ * Tampoco viajan las otras dos columnas de puntadas, por motivos opuestos:
+ * `puntadas_total` lo CALCULA el backend (`por_pieza × cantidad`, pisando lo
+ * que mande el cliente), y `puntadas_realizadas` —el contador manual de la
+ * máquina— dejó de capturarse. Ambos siguen en `BordadoAvance`, que es la
+ * lectura.
  */
 export interface CreateAvancePayload {
   ob: number;
   orden_bordado_detalle: number;
   cantidad_bordada: number;
-  puntadas_realizadas: number;
+  puntadas_por_pieza: number;
   comentario?: string;
 }

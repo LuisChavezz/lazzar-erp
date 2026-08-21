@@ -11,9 +11,11 @@ import path from "node:path";
  * pulse "Resume" en el Playwright Inspector.
  *
  * Las mutaciones pegan al backend REAL, así que cada prueba deja las cosas como
- * estaban. La ÚNICA excepción es el cambio de estatus: las transiciones son solo
- * hacia adelante, así que no hay forma de revertirlo desde la UI. Se ejecuta
- * porque se pidió explícitamente; para saltarlo, `SKIP_STATUS_TEST=1`.
+ * estaban — el cambio de estatus incluido: desde el rediseño del enum las
+ * transiciones son libres entre estatus no terminales, así que la prueba salta
+ * a otro estatus y vuelve al de partida. (Antes no podía: eran solo hacia
+ * adelante, y por eso figuraba como la excepción de esta regla.) Para saltarse
+ * el paso de todos modos, `SKIP_STATUS_TEST=1`.
  *
  * Variables de entorno:
  *   BASE_URL         URL del frontend (default `http://localhost:3000`)
@@ -25,8 +27,13 @@ const SHOTS = "tests/screenshots";
 const SKIP_STATUS_TEST = process.env.SKIP_STATUS_TEST === "1";
 const OB_ID = process.env.OB_ID;
 
-/** Estatus terminales: la ficha se vuelve de solo lectura (ver `isTerminal`). */
-const TERMINAL_LABELS = ["Completado", "Cancelado"];
+/**
+ * Estatus terminales: la ficha se vuelve de solo lectura (ver
+ * `isTerminalStatus`). Son los códigos 7 y 8 del enum reescrito; las etiquetas
+ * viejas ("Completado"/"Cancelado") ya no existen y sus enteros significan hoy
+ * otra cosa.
+ */
+const TERMINAL_LABELS = ["Finalizado", "Cancelado (legacy)"];
 
 // ── Utilidades ───────────────────────────────────────────────────────────────
 
@@ -310,14 +317,11 @@ test("Ficha de taller de Orden de Bordado — verificación completa", async ({ 
       .soft(page.getByRole("heading", { name: /Historial de avances/ }))
       .toBeVisible();
 
+    // "Prioridad" ya NO figura: se retiró de la ficha (y del listado) al
+    // quedarse sin `choices` en el modelo y llegar constante en todos los
+    // registros. Su selector inline se borró con ella.
     const infoGeneral = section(page, "Información general");
-    for (const campo of [
-      "Pedido",
-      "Estatus",
-      "Prioridad",
-      "Máquina asignada",
-      "Observaciones",
-    ]) {
+    for (const campo of ["Pedido", "Estatus", "Máquina asignada", "Observaciones"]) {
       await expect.soft(infoGeneral.getByText(campo, { exact: true })).toBeVisible();
     }
 
@@ -330,8 +334,15 @@ test("Ficha de taller de Orden de Bordado — verificación completa", async ({ 
       .soft(origen.getByRole("heading", { name: "Cobertura del pedido" }))
       .toBeVisible();
 
+    // "Puntadas totales" sustituyó a "Puntadas realizadas": el avance registra
+    // el ponchado por pieza y el backend multiplica por las piezas de la tanda.
     const resumen = section(page, "Resumen de avance");
-    for (const rotulo of ["Piezas bordadas", "Puntadas realizadas", "Avance general", "Avance por talla"]) {
+    for (const rotulo of [
+      "Piezas bordadas",
+      "Puntadas totales",
+      "Avance general",
+      "Avance por talla",
+    ]) {
       await expect.soft(resumen.getByText(rotulo, { exact: true })).toBeVisible();
     }
 
@@ -353,6 +364,7 @@ test("Ficha de taller de Orden de Bordado — verificación completa", async ({ 
       "Posición",
       "Programado",
       "Bordado",
+      "Punt total",
       "% Avance",
       "Operadores",
     ]) {
@@ -398,10 +410,14 @@ test("Ficha de taller de Orden de Bordado — verificación completa", async ({ 
       console.log(`  Transiciones ofrecidas: ${etiquetas.join(", ")}`);
       await shot(page, "03-status-dropdown-open.png");
 
-      // El mapa de transiciones es del FRONTEND (el backend acepta cualquier
-      // 1-7): lo que se verifica es que NO se ofrezcan los 7 ni el actual.
-      expect.soft(etiquetas.length).toBeLessThan(7);
+      // Las transiciones son libres desde cualquier estatus no terminal, con
+      // dos exclusiones: el estatus ACTUAL (moverse a sí mismo no es una
+      // transición) y el 8 "Cancelado (legacy)", que es la salida del enum
+      // anterior y no un destino que se ofrezca hoy. De los 8 códigos quedan
+      // por tanto 6 opciones, sea cual sea el estatus de partida.
+      expect.soft(etiquetas.length).toBe(6);
       expect.soft(etiquetas).not.toContain(estatusOriginal);
+      expect.soft(etiquetas).not.toContain("Cancelado (legacy)");
 
       if (SKIP_STATUS_TEST) {
         await page.keyboard.press("Escape");
@@ -409,11 +425,12 @@ test("Ficha de taller de Orden de Bordado — verificación completa", async ({ 
         return;
       }
 
-      // Se elige la primera transición que NO sea Cancelado: cancelar sería
-      // terminal y dejaría la OB inservible para el resto de las pruebas.
+      // Se elige la primera transición NO terminal: mandar la orden a
+      // Finalizado o a Cancelado (legacy) la dejaría de solo lectura y sin nada
+      // que ejercer en el resto de las pruebas.
       const destino =
         etiquetas.find((label) => !TERMINAL_LABELS.includes(label)) ?? etiquetas[0];
-      console.log(`  ⚠ IRREVERSIBLE: cambiando a "${destino}" (no hay vuelta atrás)`);
+      console.log(`  Cambiando a "${destino}"`);
 
       await waitForMutation(
         page,
@@ -427,11 +444,27 @@ test("Ficha de taller de Orden de Bordado — verificación completa", async ({ 
       await expect(disparador).toHaveText(new RegExp(destino));
       console.log(`  Estatus: ${estatusOriginal} → ${destino}`);
       await shot(page, "04-status-changed.png");
-      results.push({
-        step: "Test 4 · limpieza",
-        status: "SKIP",
-        note: `estatus dejado en "${destino}" (transiciones solo hacia adelante)`,
-      });
+
+      // Limpieza: el estatus SÍ se restaura. Las opciones se listan por código
+      // ascendente, así que "la primera no terminal" es la de código más bajo
+      // —"Sin trabajar" para una OB que estaba bordándose—: sin devolverla, la
+      // suite retrocedería una orden viva del taller a cada corrida. Desde el
+      // rediseño del enum las transiciones son libres entre estatus no
+      // terminales, así que volver es un PATCH más (antes no se podía, y de ahí
+      // venía la excepción que documentaba la cabecera de este archivo).
+      await disparador.click();
+      await waitForMutation(
+        page,
+        async () => {
+          await page
+            .getByRole("menuitem", { name: estatusOriginal, exact: true })
+            .click();
+        },
+        OB_PATCH,
+        { awaitRefetch: true },
+      );
+      await expect.soft(disparador).toHaveText(new RegExp(estatusOriginal));
+      console.log(`  Restaurado a "${estatusOriginal}"`);
     });
   }
 
@@ -475,54 +508,11 @@ test("Ficha de taller de Orden de Bordado — verificación completa", async ({ 
     });
   }
 
-  // ── Test 6: prioridad ─────────────────────────────────────────────────────
-  if (!editable) {
-    skipStep("Test 6 · Prioridad", "la OB está en estatus terminal");
-  } else {
-    await runStep("Test 6 · Prioridad", async () => {
-      const disparador = page.getByRole("button", { name: "Cambiar prioridad de la orden" });
-      const original = (await disparador.innerText()).trim();
-      console.log(`  Prioridad original: ${original}`);
-
-      await disparador.click();
-      const opciones = page.getByRole("menuitem");
-      await expect(opciones.first()).toBeVisible();
-      const etiquetas = (await opciones.allInnerTexts()).map((t) => t.trim());
-      console.log(`  Opciones: ${etiquetas.join(", ")}`);
-      await shot(page, "06-priority-dropdown.png");
-
-      const destino = etiquetas.find((label) => label !== original);
-      expect.soft(destino, "debe haber otra prioridad a la que cambiar").toBeTruthy();
-      if (!destino) {
-        await page.keyboard.press("Escape");
-        return;
-      }
-
-      await waitForMutation(
-        page,
-        async () => {
-          await page.getByRole("menuitem", { name: destino, exact: true }).click();
-        },
-        OB_PATCH,
-        { awaitRefetch: true },
-      );
-      await expect.soft(disparador).toHaveText(new RegExp(destino));
-      console.log(`  Prioridad: ${original} → ${destino}`);
-
-      // Limpieza: la prioridad SÍ se puede revertir (no es una máquina de estados).
-      await disparador.click();
-      await waitForMutation(
-        page,
-        async () => {
-          await page.getByRole("menuitem", { name: original, exact: true }).click();
-        },
-        OB_PATCH,
-        { awaitRefetch: true },
-      );
-      await expect.soft(disparador).toHaveText(new RegExp(original));
-      console.log(`  Restaurada a ${original}`);
-    });
-  }
+  // ── Test 6: ELIMINADA ─────────────────────────────────────────────────────
+  // Ejercía el selector inline de prioridad, que ya no existe: el campo se
+  // retiró de la ficha y `EmbroideryPrioritySelect` se borró. La numeración de
+  // las pruebas siguientes se conserva para no desalinearlas de sus capturas
+  // (`07-…`, `08-…`), que se nombran por su paso.
 
   // ── Test 7: observaciones ─────────────────────────────────────────────────
   if (!editable) {
@@ -718,8 +708,9 @@ test("Ficha de taller de Orden de Bordado — verificación completa", async ({ 
   // ── Test 12: estatus terminal ─────────────────────────────────────────────
   skipStep(
     "Test 12 · Comportamiento en estatus terminal",
-    "no se automatiza: Completado/Cancelado son irreversibles — verificar a mano " +
-      "que con esos estatus la ficha muestra badges y textos sin controles de edición",
+    "no se automatiza: Finalizado y Cancelado (legacy) no tienen salida — verificar " +
+      "a mano que con esos estatus la ficha muestra badges y textos sin controles " +
+      "de edición",
   );
 
   // ── Cierre ────────────────────────────────────────────────────────────────

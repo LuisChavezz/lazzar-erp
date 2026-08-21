@@ -23,7 +23,7 @@ import type {
 interface EmbroideryAvancesHistoryProps {
   avances: BordadoAvance[];
   obId: number;
-  /** Estatus terminal (Completado/Cancelado): no se pueden registrar avances. */
+  /** Estatus terminal (Finalizado/Cancelado): no se pueden registrar avances. */
   isTerminal: boolean;
   /** Renglones de la orden — se reenvían al selector del diálogo de alta. */
   detalles: EmbroideryOrderDetailLine[];
@@ -79,7 +79,15 @@ export function EmbroideryAvancesHistory({
                 <th className="px-3 py-2 text-left font-semibold">Talla / SKU</th>
                 <th className="px-3 py-2 text-left font-semibold">Operador</th>
                 <th className="px-3 py-2 text-right font-semibold">Piezas</th>
-                <th className="px-3 py-2 text-right font-semibold">Puntadas</th>
+                {/* Dos columnas desde que el avance registra el ponchado: lo
+                    que lleva UNA prenda y el producto por las piezas de la
+                    tanda. Los avances anteriores a este seguimiento traen 0 en
+                    ambas —su dato vive en `puntadas_realizadas`, el contador
+                    manual, que ya no se pinta— y se muestran tal cual, sin
+                    respaldo: mezclar las dos escalas en una columna daría
+                    cifras incomparables entre filas. */}
+                <th className="px-3 py-2 text-right font-semibold">Punt/pieza</th>
+                <th className="px-3 py-2 text-right font-semibold">Punt total</th>
                 <th className="px-3 py-2 text-left font-semibold">Comentario</th>
                 <th className="px-3 py-2 text-right font-semibold">Acciones</th>
               </tr>
@@ -118,7 +126,10 @@ export function EmbroideryAvancesHistory({
                     {formatQuantityValue(avance.cantidad_bordada)}
                   </td>
                   <td className="px-3 py-2 text-right tabular-nums text-slate-600 dark:text-slate-300">
-                    {formatQuantityValue(avance.puntadas_realizadas)}
+                    {formatQuantityValue(avance.puntadas_por_pieza)}
+                  </td>
+                  <td className="px-3 py-2 text-right tabular-nums text-slate-600 dark:text-slate-300">
+                    {formatQuantityValue(avance.puntadas_total)}
                   </td>
                   <td className="px-3 py-2 text-slate-600 dark:text-slate-300 max-w-xs">
                     {textOrDash(avance.comentario)}

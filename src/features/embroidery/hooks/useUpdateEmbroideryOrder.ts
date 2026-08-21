@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
-import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { updateEmbroideryOrder } from "../services/actions";
+import { parseEmbroideryUpdateError } from "../utils/parseEmbroideryUpdateError";
 import type { UpdateEmbroideryOrderPayload } from "../interfaces/embroidery.interface";
 
 /**
@@ -14,7 +14,7 @@ import type { UpdateEmbroideryOrderPayload } from "../interfaces/embroidery.inte
  *    re-fetch traiga los `avances`/`resumen_avance` y demás campos recalculados
  *    por el backend.
  *  - `["embroidery-orders"]` — el listado, donde `estatus_bordado`/`prioridad`/
- *    `maquina_asignada` de la fila cambian.
+ *    `maquina_asignada`/`proveedor` de la fila cambian.
  */
 export const useUpdateEmbroideryOrder = (id: number) => {
   const queryClient = useQueryClient();
@@ -27,10 +27,12 @@ export const useUpdateEmbroideryOrder = (id: number) => {
       queryClient.invalidateQueries({ queryKey: ["embroidery-orders"] });
       toast.success("Orden de bordado actualizada correctamente");
     },
+    // `parseEmbroideryUpdateError` y no `extractErrorMessage` a secas: este
+    // endpoint rechaza POR CAMPO (`{"proveedor": ["…"]}`), una forma que el
+    // helper compartido no lee — dejaba el toast en "Request failed with status
+    // code 400".
     onError: (error) => {
-      toast.error(
-        extractErrorMessage(error, "No se pudo actualizar la orden de bordado"),
-      );
+      toast.error(parseEmbroideryUpdateError(error));
     },
   });
 };

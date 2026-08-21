@@ -14,7 +14,7 @@ import { useEmbroideryOrders } from "../hooks/useEmbroideryOrders";
 
 // Opciones del filtro derivadas del MISMO catálogo que pinta los badges, de modo
 // que ningún estatus pueda existir en la tabla sin existir en el filtro (ni al
-// revés): el catálogo cubre los 7 valores del enum del backend, no solo los que
+// revés): el catálogo cubre los 8 valores del enum del backend, no solo los que
 // hoy traen datos. `DataTable` compara `String(fila[id]) === value`, así que el
 // `id` es el campo CRUDO de la fila (`estatus_bordado`, no el id de la columna)
 // y los `value` son los enteros del backend en string. Mismo patrón que

@@ -1,74 +1,58 @@
+import { EMBROIDERY_STATUS_CODES } from "./embroideryStatus";
 import type { EmbroideryOrderStatus } from "../interfaces/embroidery.interface";
 
 /**
- * Transiciones de estatus permitidas por el FRONTEND (`estatus_bordado`, 1-7).
+ * Transiciones de estatus de una orden de bordado (`estatus_bordado`, 1-8).
  *
- * OJO: el backend NO impone reglas de transición — su `PATCH` acepta cualquier
- * entero 1-7. Este mapa es una restricción de PRODUCTO del frontend, para que
- * el selector de la ficha solo ofrezca los saltos que tienen sentido en el
- * flujo de bordado, no los siete estatus siempre.
+ * El backend NO impone reglas de transición: su `PATCH` acepta cualquier valor
+ * del enum, y el propio commit que lo reescribió lo declara "sin
+ * automatización". El frontend TAMPOCO las impone ya: el flujo real de taller
+ * no es una línea —una orden vuelve de Bordando a Arreglo, se reponcha, se
+ * detiene y se retoma—, así que el mapa de saltos "válidos" que vivía aquí
+ * describía un proceso que no existe. Desde cualquier estatus no terminal se
+ * puede ir a cualquier otro.
  *
- *  1 Pendiente   → 2 Preparación · 7 Cancelado
- *  2 Preparación → 3 Bordando · 6 Detenido · 7 Cancelado
- *  3 Bordando    → 4 Revisión · 6 Detenido · 7 Cancelado
- *  4 Revisión    → 5 Completado · 6 Detenido · 7 Cancelado
- *  5 Completado  → (terminal)
- *  6 Detenido    → dinámico: reanudar al estatus previo · Cancelado
- *                  (su entrada del mapa es `[]`; la verdad está en
- *                  `getAvailableTransitions`)
- *  7 Cancelado   → (terminal)
+ * Lo único que queda restringido son los dos extremos:
+ *
+ *  - TERMINALES (7 Finalizado, 8 Cancelado legacy): sin salida. La ficha entera
+ *    pasa a solo lectura —ni estatus, ni máquina, ni observaciones, ni
+ *    operador, ni avances— porque una orden cerrada no se retoca.
+ *  - OCULTOS COMO DESTINO (8 Cancelado legacy): el 8 es el desagüe del enum
+ *    ANTERIOR —recoge lo que la migración `0030` remapeó desde el viejo 7
+ *    "Cancelado"—, no un estatus al que se mande una orden hoy. Se rotula y se
+ *    pinta (una OB que ya lo tiene se lee bien), pero no se ofrece.
  */
-export const EMBROIDERY_STATUS_TRANSITIONS: Record<
-  EmbroideryOrderStatus,
-  EmbroideryOrderStatus[]
-> = {
-  1: [2, 7],
-  2: [3, 6, 7],
-  3: [4, 6, 7],
-  4: [5, 6, 7],
-  5: [],
-  6: [],
-  7: [],
-};
+
+/** Estatus sin salida: la orden queda cerrada y la ficha, en solo lectura. */
+const TERMINAL_STATUSES: ReadonlySet<EmbroideryOrderStatus> = new Set([7, 8]);
 
 /**
- * Estatus "Detenido": el ÚNICO cuyas transiciones no salen del mapa de arriba.
- * Su entrada figura como `[]` porque el destino de reanudación depende del
- * estatus previo, que solo se conoce en tiempo de ejecución. Quien necesite las
- * transiciones de una orden debe llamar SIEMPRE a `getAvailableTransitions`,
- * nunca leer el mapa directamente: para el 6 daría la respuesta equivocada.
+ * Estatus que existen y se pintan, pero que el selector nunca ofrece como
+ * DESTINO. Distinto de terminal: esto acota la lista de opciones, no la
+ * editabilidad de la orden que ya está en ese estatus.
  */
-const DETENIDO: EmbroideryOrderStatus = 6;
+const HIDDEN_DESTINATIONS: ReadonlySet<EmbroideryOrderStatus> = new Set([8]);
 
 /**
- * Estatus al que reanuda una orden detenida cuando NO se conoce su estatus
- * previo. Es el primer estatus "en proceso" del flujo, un default seguro.
+ * ¿La orden está en un estatus terminal?
+ *
+ * Es la fuente ÚNICA de esa pregunta: la ficha la usa para degradar sus campos
+ * editables y `getAvailableTransitions` para quedarse sin destinos, de modo que
+ * el selector y el resto del formulario no puedan discrepar.
  */
-const RESUME_DEFAULT: EmbroideryOrderStatus = 2;
-
-/** Cancelado, ofrecido desde todo estatus no terminal — Detenido incluido. */
-const CANCELADO: EmbroideryOrderStatus = 7;
+export const isTerminalStatus = (estatus: EmbroideryOrderStatus): boolean =>
+  TERMINAL_STATUSES.has(estatus);
 
 /**
- * Estatus a los que la orden puede saltar desde su estatus actual.
- *
- * El único caso dinámico es 6 (Detenido), donde se ofrecen DOS salidas:
- * reanudar (volver al estatus en el que estaba antes de detenerse) y cancelar.
- * Cancelar estaba ausente y era una omisión, no una regla: obligaba a reanudar
- * una orden muerta solo para poder cancelarla, y dejaba a Detenido como el
- * único estatus no terminal sin salida a Cancelado.
- *
- * TODO: el backend NO expone hoy el estatus previo a Detenido (el retrieve no
- * trae `estatus_anterior` ni un log de historial), así que `previousStatus`
- * llega `undefined` y se reanuda a 2 (Preparación) como default seguro. Cuando
- * el backend exponga ese dato, pasarlo aquí para reanudar al estatus real.
+ * Estatus a los que la orden puede saltar desde el suyo actual: todos los
+ * demás, salvo los ocultos como destino. Vacío en un estatus terminal, que es
+ * como el selector sabe que debe degradar a badge de solo lectura.
  */
 export const getAvailableTransitions = (
   currentStatus: EmbroideryOrderStatus,
-  previousStatus?: EmbroideryOrderStatus,
 ): EmbroideryOrderStatus[] => {
-  if (currentStatus === DETENIDO) {
-    return [previousStatus ?? RESUME_DEFAULT, CANCELADO];
-  }
-  return EMBROIDERY_STATUS_TRANSITIONS[currentStatus] ?? [];
+  if (isTerminalStatus(currentStatus)) return [];
+  return EMBROIDERY_STATUS_CODES.filter(
+    (estatus) => estatus !== currentStatus && !HIDDEN_DESTINATIONS.has(estatus),
+  );
 };

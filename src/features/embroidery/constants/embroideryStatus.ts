@@ -3,48 +3,60 @@ import type { EmbroideryOrderStatus } from "../interfaces/embroidery.interface";
 
 /**
  * Colores y etiquetas por estatus de una orden de bordado
- * (`OrdenesBordado.EstatusBordado`, 1-7).
+ * (`OrdenesBordado.EstatusBordado`, 1-8).
  *
- * Se cubren los 7 estatus para que empezar a usarlos no requiera tocar el
+ * Se cubren los 8 estatus para que empezar a usarlos no requiera tocar el
  * frontend — mismo criterio que `PACKING_STATUS_CONFIG`.
  *
- * El objeto intermedio con llaves numéricas obliga a TypeScript a exigir las 7
+ * Las etiquetas reproducen las del enum de Python al pie de la letra. No es
+ * casualidad ni redundancia: los enteros se RESIGNIFICARON (el 5 pasó de
+ * "Completado" a "Bordando", el 7 de "Cancelado" a "Finalizado"), así que un
+ * rótulo "propio" que se apartara del backend volvería a abrir la brecha que
+ * este catálogo acaba de cerrar. El 8 recoge los cancelados del enum anterior
+ * y por eso se rotula "(legacy)".
+ *
+ * El objeto intermedio con llaves numéricas obliga a TypeScript a exigir las 8
  * entradas (`satisfies`); lo exportado se tipa `Record<string, …>` porque
  * `StatusBadge` recibe el estatus ya convertido a string.
  */
 const STATUS_BY_CODE = {
   1: {
-    label: "Pendiente",
+    label: "Sin trabajar",
+    cls: "bg-slate-100 text-slate-600 dark:bg-slate-500/10 dark:text-slate-400",
+    dot: "bg-slate-400",
+  },
+  2: {
+    label: "Programado",
     cls: "bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400",
     dot: "bg-amber-500",
   },
-  2: {
-    label: "Preparación",
+  3: {
+    label: "Ponchado",
     cls: "bg-sky-50 text-sky-700 dark:bg-sky-500/10 dark:text-sky-400",
     dot: "bg-sky-500",
   },
-  3: {
+  4: {
+    label: "Arreglo",
+    cls: "bg-orange-50 text-orange-700 dark:bg-orange-500/10 dark:text-orange-400",
+    dot: "bg-orange-500",
+  },
+  5: {
     label: "Bordando",
     cls: "bg-blue-50 text-blue-700 dark:bg-blue-500/10 dark:text-blue-400",
     dot: "bg-blue-500",
   },
-  4: {
-    label: "Revisión",
-    cls: "bg-violet-50 text-violet-700 dark:bg-violet-500/10 dark:text-violet-400",
-    dot: "bg-violet-500",
+  6: {
+    label: "Detenido",
+    cls: "bg-red-50 text-red-700 dark:bg-red-500/10 dark:text-red-400",
+    dot: "bg-red-500",
   },
-  5: {
-    label: "Completado",
+  7: {
+    label: "Finalizado",
     cls: "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400",
     dot: "bg-emerald-500",
   },
-  6: {
-    label: "Detenido",
-    cls: "bg-orange-50 text-orange-700 dark:bg-orange-500/10 dark:text-orange-400",
-    dot: "bg-orange-500",
-  },
-  7: {
-    label: "Cancelado",
+  8: {
+    label: "Cancelado (legacy)",
     cls: "bg-rose-50 text-rose-700 dark:bg-rose-500/10 dark:text-rose-400",
     dot: "bg-rose-500",
   },
@@ -53,7 +65,24 @@ const STATUS_BY_CODE = {
 export const EMBROIDERY_STATUS_CONFIG: Record<string, StatusBadgeConfigEntry> =
   STATUS_BY_CODE;
 
-/** Badge neutro para estatus fuera de 1-7, rotulado con lo que mande el backend. */
+/**
+ * Los 8 códigos del enum, en orden ascendente.
+ *
+ * Se DERIVAN de `STATUS_BY_CODE` en vez de escribirse a mano porque ese objeto
+ * es el único que TypeScript obliga a mantener completo (`satisfies
+ * Record<EmbroideryOrderStatus, …>`): una lista literal aparte podría
+ * quedarse corta al añadir un estatus y nadie se enteraría. El orden lo
+ * garantiza el propio lenguaje —las llaves de índice entero se recorren
+ * ascendentes—, así que no hace falta ordenarlas.
+ *
+ * El `as` es seguro por la misma razón: las llaves del objeto SON los códigos
+ * del tipo, pero `Object.keys` las devuelve como `string[]`.
+ */
+export const EMBROIDERY_STATUS_CODES = Object.keys(STATUS_BY_CODE).map(
+  Number,
+) as EmbroideryOrderStatus[];
+
+/** Badge neutro para estatus fuera de 1-8, rotulado con lo que mande el backend. */
 const NEUTRAL_STATUS_CFG: StatusBadgeConfigEntry = {
   cls: "bg-slate-100 text-slate-600 dark:bg-slate-500/10 dark:text-slate-400",
   dot: "bg-slate-400",
@@ -62,10 +91,10 @@ const NEUTRAL_STATUS_CFG: StatusBadgeConfigEntry = {
 /**
  * Entrada de badge para un estatus concreto: el COLOR sale del mapa local
  * (indexado por el entero `estatus_bordado`) y la ETIQUETA también cuando el
- * código está en 1-7. `estatus_bordado_display` del backend solo entra como
- * RESPALDO —para códigos fuera de 1-7 que este mapa no cubre—, porque el enum de
- * Python omite acentos y preferirlo dejaría las etiquetas acentuadas de aquí
- * como código muerto. El entero crudo es el último recurso. Mismo patrón que
+ * código está en 1-8. `estatus_bordado_display` del backend solo entra como
+ * RESPALDO —para códigos fuera de 1-8 que este mapa no cubre—: sin él, un
+ * estatus nuevo del backend se pintaría con su número crudo hasta que alguien
+ * tocara este archivo. El entero es el último recurso. Mismo patrón que
  * `productionOrderStatusEntry`.
  */
 export const embroideryStatusEntry = (

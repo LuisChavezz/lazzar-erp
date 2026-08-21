@@ -14,9 +14,10 @@ import { z } from "zod";
  *  - `cantidad_bordada`: ENTERO > 0 (piezas bordadas en esta tanda). El modelo
  *    es un `FloatField` y el backend aceptaría decimales, pero no se borda
  *    media prenda: la restricción es de negocio, no de esquema.
- *  - `puntadas_realizadas`: entero >= 0. El 0 se admite A PROPÓSITO —la máquina
- *    puede no haber reportado aún su contador de puntadas (documentado en el
- *    contrato del API)—, por eso NO se exige > 0.
+ *  - `puntadas_por_pieza`: entero >= 0, las puntadas que lleva UNA prenda. El 0
+ *    se admite A PROPÓSITO —puede no conocerse el ponchado al registrar la
+ *    tanda—, por eso NO se exige > 0; en ese caso el backend deja
+ *    `puntadas_total` en 0 en vez de calcularlo.
  *  - `comentario`: opcional.
  */
 export const CreateAvanceFormSchema = z.object({
@@ -36,10 +37,10 @@ export const CreateAvanceFormSchema = z.object({
       (value) => Number.isInteger(Number(value)) && Number(value) > 0,
       "Debe ser un número entero mayor a 0",
     ),
-  puntadas_realizadas: z
+  puntadas_por_pieza: z
     .string()
     .trim()
-    .min(1, "Ingresa las puntadas realizadas")
+    .min(1, "Ingresa las puntadas por pieza")
     .refine(
       (value) => Number.isInteger(Number(value)) && Number(value) >= 0,
       "Debe ser un entero de 0 o más",

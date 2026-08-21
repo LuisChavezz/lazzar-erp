@@ -34,9 +34,11 @@ interface EmbroideryCreateAvanceDialogProps {
 
 /**
  * Diálogo de alta de un avance de bordado. El PRIMER campo es el renglón
- * (talla/SKU) contra el que se borda; los otros tres son piezas, puntadas y un
- * comentario opcional. El `usuario` NO se captura (backend lo inyecta) y
- * `pedido_detalle_talla` tampoco (backend lo autovincula desde el renglón).
+ * (talla/SKU) contra el que se borda; los otros tres son piezas, puntadas POR
+ * PIEZA y un comentario opcional, con el total de puntadas anticipado bajo los
+ * dos números. El `usuario` NO se captura (backend lo inyecta) y
+ * `pedido_detalle_talla` tampoco (backend lo autovincula desde el renglón);
+ * `puntadas_total` tampoco, porque el backend lo calcula.
  *
  * Inputs controlados + validación con `CreateAvanceFormSchema` en el submit. El
  * toast de éxito/error y la invalidación del detalle los hace `useCreateAvance`;
@@ -51,7 +53,7 @@ export function EmbroideryCreateAvanceDialog({
 }: EmbroideryCreateAvanceDialogProps) {
   const [ordenBordadoDetalle, setOrdenBordadoDetalle] = useState("");
   const [cantidadBordada, setCantidadBordada] = useState("");
-  const [puntadasRealizadas, setPuntadasRealizadas] = useState("");
+  const [puntadasPorPieza, setPuntadasPorPieza] = useState("");
   const [comentario, setComentario] = useState("");
   const [errors, setErrors] = useState<FieldErrors>({});
 
@@ -60,7 +62,7 @@ export function EmbroideryCreateAvanceDialog({
   const reset = () => {
     setOrdenBordadoDetalle("");
     setCantidadBordada("");
-    setPuntadasRealizadas("");
+    setPuntadasPorPieza("");
     setComentario("");
     setErrors({});
   };
@@ -125,13 +127,28 @@ export function EmbroideryCreateAvanceDialog({
   // prácticos y el envío debe quedar bloqueado igual que con 0.
   const isLineComplete = remainingCap !== null && remainingCap < 1;
 
+  /**
+   * Vista previa de `puntadas_total`, la MISMA cuenta que hará el backend
+   * (`round(por_pieza × cantidad)` en `perform_create`). Es informativa: no
+   * viaja en el payload, porque el servidor la recalcula y pisa cualquier valor
+   * enviado. `null` mientras falte cualquiera de los dos factores o alguno sea
+   * 0 — un total de 0 puntadas no es un dato que enseñar, es la ausencia de él.
+   */
+  const puntadasTotalPreview = (() => {
+    const porPieza = Number(puntadasPorPieza);
+    const piezas = Number(cantidadBordada);
+    if (!Number.isFinite(porPieza) || !Number.isFinite(piezas)) return null;
+    if (porPieza <= 0 || piezas <= 0) return null;
+    return Math.round(porPieza * piezas);
+  })();
+
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     const parsed = CreateAvanceFormSchema.safeParse({
       orden_bordado_detalle: ordenBordadoDetalle,
       cantidad_bordada: cantidadBordada,
-      puntadas_realizadas: puntadasRealizadas,
+      puntadas_por_pieza: puntadasPorPieza,
       comentario,
     });
 
@@ -161,7 +178,7 @@ export function EmbroideryCreateAvanceDialog({
         ob: obId,
         orden_bordado_detalle: Number(parsed.data.orden_bordado_detalle),
         cantidad_bordada: Number(parsed.data.cantidad_bordada),
-        puntadas_realizadas: Number(parsed.data.puntadas_realizadas),
+        puntadas_por_pieza: Number(parsed.data.puntadas_por_pieza),
         ...(parsed.data.comentario ? { comentario: parsed.data.comentario } : {}),
       },
       {
@@ -183,7 +200,7 @@ export function EmbroideryCreateAvanceDialog({
       maxWidth="460px"
       showCloseButton={false}
       title="Registrar avance"
-      description="Registra las piezas y puntadas bordadas en esta tanda."
+      description="Registra las piezas bordadas en esta tanda y las puntadas de cada una."
     >
       <form onSubmit={handleSubmit} className="space-y-4 py-1">
         <div>
@@ -201,9 +218,9 @@ export function EmbroideryCreateAvanceDialog({
               // comentario NO se toca: puede ser una nota general del turno,
               // escrita antes de elegir la línea.
               setCantidadBordada("");
-              setPuntadasRealizadas("");
+              setPuntadasPorPieza("");
               clearFieldError("cantidad_bordada");
-              clearFieldError("puntadas_realizadas");
+              clearFieldError("puntadas_por_pieza");
             }}
           >
             <option value="" disabled>
@@ -281,22 +298,41 @@ export function EmbroideryCreateAvanceDialog({
               clearFieldError("cantidad_bordada");
             }}
           />
+          {/* Puntadas de UNA prenda, no de la tanda: el total lo multiplica el
+              backend. Sin techo — el ponchado no tiene límite conocido. */}
           <FormInput
-            label="Puntadas realizadas"
+            label="Puntadas por pieza"
             type="number"
             min="0"
             step="1"
             inputMode="numeric"
             placeholder="0"
-            value={puntadasRealizadas}
+            value={puntadasPorPieza}
             disabled={isPending || !hasSelectedLine}
-            error={fieldError("puntadas_realizadas")}
+            error={fieldError("puntadas_por_pieza")}
             onChange={(event) => {
-              setPuntadasRealizadas(event.target.value);
-              clearFieldError("puntadas_realizadas");
+              setPuntadasPorPieza(event.target.value);
+              clearFieldError("puntadas_por_pieza");
             }}
           />
         </div>
+        {/* Anticipo de `puntadas_total`. Se pinta SIEMPRE que haya una línea
+            elegida (con guion largo mientras falten factores) y no solo cuando
+            hay cifra: apareciendo y desapareciendo movería los campos de abajo
+            a cada tecla. */}
+        {hasSelectedLine && (
+          <p className="-mt-2 ml-1 text-[11px] text-slate-500 dark:text-slate-400 tabular-nums">
+            Total:{" "}
+            <strong className="text-slate-700 dark:text-slate-200">
+              {puntadasTotalPreview !== null
+                ? `${formatQuantityValue(puntadasTotalPreview)} puntadas`
+                : "—"}
+            </strong>{" "}
+            <span className="text-slate-400 dark:text-slate-500">
+              (puntadas por pieza × piezas bordadas)
+            </span>
+          </p>
+        )}
         <FormTextarea
           label="Comentario (opcional)"
           rows={3}

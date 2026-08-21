@@ -318,6 +318,13 @@ export function EmbroideryOrderDetailDialog({
               <InfoField label="Operador asignado">
                 {textOrDash(order.usuario_nombre)}
               </InfoField>
+              {/* Solo lectura, como todo este diálogo: el proveedor se asigna
+                  en la página de la orden. Sin proveedor se enuncia "Bordado
+                  interno" —el significado real del `null`— y no el guion largo
+                  de `textOrDash`, que se leería como dato faltante. */}
+              <InfoField label="Proveedor">
+                {order.proveedor_nombre?.trim() || "Bordado interno"}
+              </InfoField>
             </div>
           </div>
 

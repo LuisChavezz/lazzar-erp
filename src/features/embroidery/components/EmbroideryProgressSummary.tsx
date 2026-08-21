@@ -26,15 +26,21 @@ interface EmbroideryProgressSummaryProps {
   detalles: EmbroideryOrderDetailLine[];
 }
 
-/** Tarjeta métrica. Con `total` se lee "hecho / total"; sin él, solo la cifra. */
+/**
+ * Tarjeta métrica. Con `total` se lee "hecho / total"; sin él, solo la cifra.
+ * `hint` cuelga un dato secundario debajo, para no gastar una tarjeta entera en
+ * una cifra que solo tiene sentido junto a la principal.
+ */
 const MetricCard = ({
   label,
   done,
   total,
+  hint,
 }: {
   label: string;
   done: string;
   total?: string;
+  hint?: string;
 }) => (
   <div className="rounded-xl border border-slate-100 dark:border-white/10 px-4 py-3">
     <p className="text-[11px] uppercase tracking-wider text-slate-400 dark:text-slate-500">
@@ -49,6 +55,11 @@ const MetricCard = ({
         </span>
       )}
     </p>
+    {hint !== undefined && (
+      <p className="mt-0.5 text-[11px] tabular-nums text-slate-400 dark:text-slate-500">
+        {hint}
+      </p>
+    )}
   </div>
 );
 
@@ -102,7 +113,8 @@ const RowProgress = ({ row }: { row: ResumenAvancePorDetalle }) => {
 };
 
 /**
- * Resumen de avance de la orden: dos tarjetas globales (piezas y puntadas) +
+ * Resumen de avance de la orden: dos tarjetas globales (piezas y puntadas
+ * totales, ésta con el promedio de puntadas por pieza de subrótulo) +
  * barra de progreso general, y debajo el desglose POR RENGLÓN (talla/SKU) con
  * los operadores que aportaron a cada uno.
  *
@@ -138,16 +150,30 @@ export function EmbroideryProgressSummary({
           done={formatQuantityValue(resumenAvance.cantidad_bordada_total)}
           total={formatQuantityValue(resumenAvance.cantidad_programada)}
         />
-        {/* SIN denominador: `puntadas_presupuesto` no es un presupuesto
-            comparable. El backend lo calcula como Σ`detalles[].puntadas`, que
-            es el conteo de UNA prenda, mientras que `puntadas_realizadas` suma
-            lo que los operadores reportan sobre TODAS las piezas. Presentarlos
-            como fracción daba lecturas sin sentido ("400,000 / 8,000"), y en
-            las órdenes sin ese dato capturado, un "16 / 0". Se muestra solo lo
-            realizado, que sí es un hecho; el % de avance va por piezas. */}
+        {/* `puntadas_total` —Σ (puntadas por pieza × piezas) de cada avance— y
+            no el viejo `puntadas_realizadas`, el contador manual de la máquina
+            que dejó de capturarse. Sin respaldo al campo viejo: las órdenes
+            anteriores a este seguimiento marcan 0, que es lo cierto (nunca se
+            registró el ponchado), y mezclar las dos fuentes daría un total que
+            no cuadra con la suma de la tabla de abajo.
+
+            SIN denominador, como antes: `puntadas_presupuesto` no es
+            comparable. El backend lo calcula como Σ`detalles[].puntadas`, el
+            conteo de UNA prenda, así que presentarlo como fracción daba
+            lecturas sin sentido ("400,000 / 8,000") y, sin el dato capturado,
+            un "16 / 0". El % de avance va por piezas. */}
         <MetricCard
-          label="Puntadas realizadas"
-          done={formatQuantityValue(resumenAvance.puntadas_realizadas)}
+          label="Puntadas totales"
+          done={formatQuantityValue(resumenAvance.puntadas_total)}
+          // El promedio solo dice algo acompañando al total —es su otro factor,
+          // junto a las piezas—, así que va de subrótulo y no de tarjeta
+          // propia. Se omite cuando llega en 0: sin puntadas capturadas, un
+          // "0 punt/pieza" es ruido, no información.
+          hint={
+            resumenAvance.puntadas_por_pieza_promedio > 0
+              ? `${formatQuantityValue(resumenAvance.puntadas_por_pieza_promedio)} punt/pieza en promedio`
+              : undefined
+          }
         />
       </div>
 
@@ -182,6 +208,12 @@ export function EmbroideryProgressSummary({
                   <th className="px-3 py-2 text-left font-semibold">Posición</th>
                   <th className="px-3 py-2 text-right font-semibold">Programado</th>
                   <th className="px-3 py-2 text-right font-semibold">Bordado</th>
+                  {/* Desglose de la tarjeta "Puntadas totales": sin esta
+                      columna, el total de la orden no se podía auditar por
+                      talla. NO se añade el promedio de puntadas por pieza —la
+                      tabla ya carga seis columnas y ese dato se lee en la
+                      tarjeta—. */}
+                  <th className="px-3 py-2 text-right font-semibold">Punt total</th>
                   <th className="px-3 py-2 text-right font-semibold">% Avance</th>
                   <th className="px-3 py-2 text-left font-semibold">Operadores</th>
                 </tr>
@@ -249,6 +281,9 @@ export function EmbroideryProgressSummary({
                       </td>
                       <td className="px-3 py-2 text-right tabular-nums font-semibold text-slate-800 dark:text-white">
                         {formatQuantityValue(row.cantidad_bordada)}
+                      </td>
+                      <td className="px-3 py-2 text-right tabular-nums text-slate-600 dark:text-slate-300">
+                        {formatQuantityValue(row.puntadas_total)}
                       </td>
                       <td className="px-3 py-2 text-right whitespace-nowrap">
                         <RowProgress row={row} />
