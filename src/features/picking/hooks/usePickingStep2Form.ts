@@ -9,14 +9,7 @@ import type {
   CreatePickingPayload,
 } from "../interfaces/picking.interface";
 import type { PickingOnboardingTalla } from "../interfaces/picking-onboarding.interface";
-
-/**
- * Id del almacén "Producto Terminado" — confirmado estable en todos los
- * ambientes (local/staging/producción). El Paso 1 ya no deja elegir almacén
- * (ver `PickingWizardStep1`); todo picking se registra contra este almacén
- * fijo, tanto en el payload de creación como en el resumen del Paso 2.
- */
-const PRODUCTO_TERMINADO_ALMACEN_ID = 1;
+import { PRODUCTO_TERMINADO_ALMACEN_ID } from "../constants/pickingAlmacen";
 
 interface UsePickingStep2FormParams {
   header: PickingHeaderValues;
@@ -155,8 +148,9 @@ function buildLineLimits(
 
 /**
  * Construye el body de creación a partir del encabezado (que YA incluye
- * `operador`, elegido en el Paso 1 — ver `PickingWizardStep1`) + las líneas.
- * `almacen` NO viene del encabezado: siempre es el id fijo
+ * `operador` y `almacen_destino`, elegidos en el Paso 1 — ver
+ * `PickingWizardStep1`) + las líneas. El único campo que NO viene del
+ * encabezado es `almacen` (el ORIGEN): siempre es el id fijo
  * `PRODUCTO_TERMINADO_ALMACEN_ID`.
  */
 function buildPickingPayload(
@@ -167,6 +161,7 @@ function buildPickingPayload(
     pedido: header.pedido,
     operador: header.operador,
     almacen: PRODUCTO_TERMINADO_ALMACEN_ID,
+    almacen_destino: header.almacen_destino,
     prioridad: header.prioridad,
     tipo: header.tipo,
     picking_detalle: lines,
@@ -235,12 +230,22 @@ export function usePickingStep2Form({ header, onSuccess }: UsePickingStep2FormPa
 
   // Resumen del encabezado, resuelto desde la MISMA respuesta del onboarding del
   // pedido (que trae `pedido` y la lista de `almacenes`) — sin threading extra.
-  // El almacén ya no es una elección del Paso 1: se busca el nombre del almacén
-  // fijo (`PRODUCTO_TERMINADO_ALMACEN_ID`) solo para mostrarlo en el resumen.
+  // El ORIGEN no es una elección del Paso 1: se busca el nombre del almacén fijo
+  // (`PRODUCTO_TERMINADO_ALMACEN_ID`) solo para mostrarlo en el resumen.
   const pedido = data?.pedido ?? null;
   const almacenNombre = useMemo(
     () => data?.almacenes.find((a) => a.id === PRODUCTO_TERMINADO_ALMACEN_ID)?.nombre ?? "—",
     [data],
+  );
+  // El DESTINO sí lo eligió el usuario en el Paso 1, así que el id viaja en el
+  // encabezado y aquí solo se resuelve su nombre para mostrarlo. Se busca en
+  // `almacenes` (el catálogo COMPLETO) y no en `almacenes_destino`: el nombre
+  // que corresponde a un id es el mismo en ambas listas, y la completa no puede
+  // quedarse corta si el subconjunto cambiara de criterio entre la carga del
+  // Paso 1 y la de este paso.
+  const almacenDestinoNombre = useMemo(
+    () => data?.almacenes.find((a) => a.id === header.almacen_destino)?.nombre ?? "—",
+    [data, header.almacen_destino],
   );
 
   // ─── Estado de captura ─────────────────────────────────────────────────────
@@ -451,6 +456,7 @@ export function usePickingStep2Form({ header, onSuccess }: UsePickingStep2FormPa
     capturableRowsCount,
     pedido,
     almacenNombre,
+    almacenDestinoNombre,
     isLoading,
     isError,
     error,

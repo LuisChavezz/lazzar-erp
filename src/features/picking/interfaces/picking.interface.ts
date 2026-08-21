@@ -245,9 +245,18 @@ export interface CreatePickingDetalleLine {
  * `operador` SÍ viaja en el payload (el backend lo requiere), pero no es un
  * campo del formulario: se deriva del usuario autenticado y se adjunta al
  * armar el payload (ver `usePickingStep2Form`), nunca capturado ni mostrado en
- * la UI. `almacen` tampoco es un campo del formulario: siempre viaja como el
- * id fijo del almacén "Producto Terminado" (`PRODUCTO_TERMINADO_ALMACEN_ID`
- * en `usePickingStep2Form`), confirmado estable en todos los ambientes.
+ * la UI. `almacen` (ORIGEN) tampoco es un campo del formulario: siempre viaja
+ * como el id fijo del almacén "Producto Terminado"
+ * (`PRODUCTO_TERMINADO_ALMACEN_ID` en `usePickingStep2Form`), confirmado
+ * estable en todos los ambientes.
+ *
+ * `almacen_destino` SÍ es un campo del formulario (Paso 1) y viaja siempre
+ * explícito. El backend acepta omitirlo —cae al `APARTADOS` de la empresa/
+ * sucursal del pedido y solo lanza 400 si tampoco existe—, pero depender de
+ * ese fallback dejaría el destino real fuera de la vista del usuario. Se
+ * valida contra el pedido: misma empresa y sucursal, distinto del origen y con
+ * `permite_entrada` en el catálogo.
+ *
  * `empresa`, `sucursal`, `folio` y `usuario` los resuelve el backend, por eso
  * NO forman parte de este tipo. `estado` ya no se acepta al crear (siempre
  * arranca en "Pendiente"): si se enviara, el backend lo ignora.
@@ -267,7 +276,10 @@ export interface CreatePickingDetalleLine {
 export interface CreatePickingPayload {
   pedido: number;
   operador: number;
+  /** Almacén ORIGEN (id fijo — ver la nota de arriba). */
   almacen: number;
+  /** Almacén DESTINO elegido en el Paso 1. */
+  almacen_destino: number;
   prioridad: PickingPrioridad;
   tipo: PickingTipo;
   observaciones?: string;

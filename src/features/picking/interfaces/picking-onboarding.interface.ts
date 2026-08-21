@@ -44,12 +44,73 @@ export interface PickingOnboardingOperador {
   nombre: string;
 }
 
-/** Almacén disponible, acotado a la empresa/sucursales del usuario. */
+/**
+ * Almacén disponible, acotado a la empresa/sucursales del usuario.
+ *
+ * Es la forma MÍNIMA (cuatro campos): la que el backend usa para los
+ * singletons sugeridos `almacen_origen`/`almacen_destino` (`serializar_almacen`).
+ * Las LISTAS de selector traen además los flags de operación — ver
+ * `PickingOnboardingAlmacenOpcion`.
+ */
 export interface PickingOnboardingAlmacen {
   id: number;
   codigo: string;
   nombre: string;
-  sucursal: number;
+  /**
+   * NULLABLE: es el `sucursal_id` del catálogo, y `Almacen.sucursal` se declara
+   * `null=True, blank=True`. Un almacén sin sucursal es de ALCANCE EMPRESA y el
+   * backend lo acepta como destino de cualquier pedido (solo compara sucursales
+   * cuando el almacén trae una), así que quien filtre por sucursal debe dejarlo
+   * pasar en vez de descartarlo — ver `destinoOptions` en `PickingWizardStep1`.
+   */
+  sucursal: number | null;
+}
+
+/**
+ * Entrada de las listas de almacenes del onboarding
+ * (`almacenes` / `almacenes_origen` / `almacenes_destino`).
+ *
+ * Añade los flags del catálogo con los que el backend arma los subconjuntos y
+ * que además VUELVE A VALIDAR en el `POST` (un origen sin `permite_salida` o
+ * un destino sin `permite_entrada` son un 400 con clave de campo). Se tipa
+ * aparte de `PickingOnboardingAlmacen` porque los singletons sugeridos NO los
+ * traen: darlos por presentes ahí sería mentirle al tipo.
+ */
+export interface PickingOnboardingAlmacenOpcion extends PickingOnboardingAlmacen {
+  tipo_almacen: string | null;
+  permite_entrada: boolean;
+  permite_salida: boolean;
+  permite_transferencia: boolean;
+}
+
+/**
+ * KPIs de surtido del pedido elegido (`header.tracker`).
+ *
+ * Todos viajan como STRING decimal (los porcentajes con 4 decimales, ya en
+ * escala 0–100). Cuando el onboarding se pide SIN `?pedido`, el backend
+ * devuelve el mismo objeto con ceros en lugar de omitirlo.
+ *
+ * Ningún componente lo consume todavía; se tipa para no perder la forma del
+ * contrato ahora que el backend lo publica.
+ */
+export interface PickingOnboardingTracker {
+  pct_asignado_pedido: string;
+  pct_surtido_pedido: string;
+  total_prendas_pedido: string;
+  total_asignado: string;
+  total_surtido: string;
+}
+
+/**
+ * Encabezado sugerido del onboarding. `fecha_picking_sugerida` y
+ * `folio_sugerido_preview` solo vienen poblados con `?pedido`; sin él llegan
+ * en `null` (el esqueleto `armar_payload_vacio` del backend conserva el mismo
+ * shape a propósito, para que el frontend no dependa de si hubo sugerencia).
+ */
+export interface PickingOnboardingHeader {
+  fecha_picking_sugerida: string | null;
+  folio_sugerido_preview: string | null;
+  tracker: PickingOnboardingTracker;
 }
 
 /**
@@ -120,7 +181,30 @@ export interface PickingOnboardingTalla {
 export interface PickingOnboardingData {
   pedidos: PickingOnboardingPedido[];
   operadores: PickingOnboardingOperador[];
-  almacenes: PickingOnboardingAlmacen[];
+  /**
+   * Catálogo COMPLETO de almacenes. El backend lo conserva por compatibilidad,
+   * pero para poblar un selector hay que usar `almacenes_origen` /
+   * `almacenes_destino`: esta lista incluye almacenes que el `POST` rechaza.
+   */
+  almacenes: PickingOnboardingAlmacenOpcion[];
+  /** Subconjunto de `almacenes` con `permite_salida` — candidatos a ORIGEN. */
+  almacenes_origen: PickingOnboardingAlmacenOpcion[];
+  /**
+   * Subconjunto de `almacenes` con `permite_entrada` — candidatos a DESTINO,
+   * que es lo que puebla el selector del Paso 1.
+   *
+   * OJO con dos cosas que el subconjunto NO garantiza y el `POST` sí valida:
+   * está acotado a las sucursales del USUARIO (no a la del pedido), y puede
+   * contener el almacén origen. Por eso el Paso 1 lo filtra otra vez antes de
+   * ofrecerlo (ver `PickingWizardStep1`).
+   *
+   * Además, si el catálogo trae los flags apagados el backend devuelve aquí la
+   * lista COMPLETA como fallback para no bloquear al operador: la presencia de
+   * un almacén en esta lista no prueba que tenga `permite_entrada`.
+   */
+  almacenes_destino: PickingOnboardingAlmacenOpcion[];
+  /** Encabezado sugerido + KPIs de surtido del pedido. */
+  header: PickingOnboardingHeader;
   /**
    * Almacén ORIGEN contra el que el backend calculó `existencia_*` de cada
    * talla. Eco del `?almacen_origen=` enviado; si no se envía (o el usuario no
@@ -130,7 +214,12 @@ export interface PickingOnboardingData {
    * el mismo almacén que se validará al enviar.
    */
   almacen_origen: PickingOnboardingAlmacen | null;
-  /** Almacén DESTINO sugerido (APARTADOS) — no lo consume el wizard actual. */
+  /**
+   * Almacén DESTINO SUGERIDO por el backend (el `APARTADOS` de la empresa/
+   * sucursal del pedido, si existe). Es solo una sugerencia: desde `picking v2`
+   * el destino lo elige el usuario en el Paso 1 y viaja explícito en el `POST`.
+   * Puede llegar `null` cuando no hay un `APARTADOS` configurado.
+   */
   almacen_destino: PickingOnboardingAlmacen | null;
   pedido: PickingOnboardingPedido | null;
   picking_detalle: PickingOnboardingTalla[];

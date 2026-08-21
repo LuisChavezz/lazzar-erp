@@ -15,6 +15,7 @@ import {
   PickingHeaderSchema,
   type PickingHeaderValues,
 } from "../schemas/picking.schema";
+import { PRODUCTO_TERMINADO_ALMACEN_ID } from "../constants/pickingAlmacen";
 import { usePickingOnboarding } from "../hooks/usePickingOnboarding";
 import { PickingOrderDetailDialog } from "./PickingOrderDetailDialog";
 
@@ -45,6 +46,7 @@ interface PickingWizardStep1Props {
 export function PickingWizardStep1({ initialValues, onNext }: PickingWizardStep1Props) {
   const { data, isLoading, isError } = usePickingOnboarding();
   const pedidos = data?.pedidos ?? [];
+  const almacenesDestino = useMemo(() => data?.almacenes_destino ?? [], [data]);
   // Memoizado: sin esto, `data?.operadores ?? []` crea un arreglo nuevo en cada
   // render, lo que invalidaría la dependencia del `useEffect` de preselección de
   // abajo en cada render (aunque el `useRef` lo protege de re-ejecutarse, el
@@ -96,7 +98,71 @@ export function PickingWizardStep1({ initialValues, onNext }: PickingWizardStep1
   // antes de cualquier retorno temprano — Rules of Hooks).
   const selectedPedidoId = useStore(form.store, (state) => state.values.pedido);
   const selectedOperadorId = useStore(form.store, (state) => state.values.operador);
+  const selectedDestinoId = useStore(form.store, (state) => state.values.almacen_destino);
   const selectedPedido = pedidos.find((p) => p.id === selectedPedidoId) ?? null;
+
+  /**
+   * Destinos que el backend de verdad aceptaría para ESTE pedido. `almacenes_destino`
+   * ya viene filtrado por `permite_entrada`, pero el `POST` valida dos cosas más
+   * que ese subconjunto no garantiza, y ofrecer opciones que fallan seguro solo
+   * cambia un error evitable por un 400:
+   *
+   *  - el destino debe ser de la SUCURSAL DEL PEDIDO (la lista viene acotada a
+   *    las sucursales del USUARIO, que pueden ser varias), y
+   *  - debe ser DISTINTO del origen (que aquí es fijo).
+   *
+   * El almacén SIN sucursal (`sucursal: null`, posible porque el campo es
+   * nullable en el catálogo) pasa el filtro a propósito: el backend lo acepta
+   * para cualquier pedido —solo compara cuando hay sucursal
+   * (`if almacen_destino.sucursal_id and ... != pedido.sucursal_id`)—, así que
+   * descartarlo escondería un destino válido. Llega sobre todo a usuarios
+   * superusuario o admin de empresa, para los que el backend no acota el
+   * catálogo por sucursal.
+   *
+   * Mientras no haya pedido elegido no se puede aplicar el filtro de sucursal,
+   * así que se muestran todos los destinos menos el origen; al elegir pedido la
+   * lista se acota y el efecto de abajo descarta una selección que ya no aplique.
+   */
+  const destinoOptions = useMemo(() => {
+    const sinOrigen = almacenesDestino.filter(
+      (a) => a.id !== PRODUCTO_TERMINADO_ALMACEN_ID,
+    );
+    if (!selectedPedido) return sinOrigen;
+    return sinOrigen.filter(
+      (a) => a.sucursal === null || a.sucursal === selectedPedido.sucursal,
+    );
+  }, [almacenesDestino, selectedPedido]);
+
+  /**
+   * Mantiene `almacen_destino` coherente con las opciones vigentes:
+   *
+   *  - si solo hay una opción, se preselecciona (no hay elección que hacer), y
+   *  - si la opción elegida desaparece —típicamente al cambiar de pedido a otro
+   *    de distinta sucursal—, se limpia en lugar de dejar en el estado un id
+   *    que el select ya no muestra y que el backend rechazaría.
+   *
+   * A diferencia de la preselección del operador, esto NO es un default de una
+   * sola vez: es una invariante que debe re-evaluarse cada vez que cambian las
+   * opciones.
+   *
+   * El early-return con la lista CRUDA vacía distingue "la opción elegida dejó
+   * de aplicar" de "todavía no hay catálogo contra el que comparar". Sin él, al
+   * regresar del Paso 2 con la caché del onboarding ya recolectada (el gcTime
+   * corre desde que el Paso 1 se desmonta) el efecto vería `destinoOptions`
+   * vacío y borraría una selección perfectamente válida — y este hook corre
+   * ANTES del early-return de `isLoading`, así que el Loader no lo evita.
+   */
+  useEffect(() => {
+    if (almacenesDestino.length === 0) return;
+    const current = form.getFieldValue("almacen_destino");
+    if (current > 0 && !destinoOptions.some((a) => a.id === current)) {
+      form.setFieldValue("almacen_destino", 0);
+      return;
+    }
+    if (current === 0 && destinoOptions.length === 1) {
+      form.setFieldValue("almacen_destino", destinoOptions[0].id);
+    }
+  }, [almacenesDestino, destinoOptions, form]);
 
   // Preselección del operador: si el usuario autenticado aparece en la lista de
   // `operadores` del onboarding, se le preselecciona por conveniencia — sigue
@@ -149,6 +215,13 @@ export function PickingWizardStep1({ initialValues, onNext }: PickingWizardStep1
   const missingItems: string[] = [];
   if (pedidos.length === 0) missingItems.push("Al menos un pedido autorizado o en proceso");
   if (operadores.length === 0) missingItems.push("Al menos un operador disponible");
+  // Se evalúa contra la lista CRUDA, no contra `destinoOptions`: sin almacenes
+  // de entrada falta configuración del catálogo (esta pantalla), mientras que
+  // "hay almacenes pero ninguno sirve para este pedido" es un caso del selector
+  // —depende del pedido elegido— y se resuelve ahí, no bloqueando el asistente.
+  if (almacenesDestino.length === 0) {
+    missingItems.push("Al menos un almacén que permita entradas (destino del surtido)");
+  }
 
   if (missingItems.length > 0) {
     return (
@@ -177,7 +250,8 @@ export function PickingWizardStep1({ initialValues, onNext }: PickingWizardStep1
     );
   }
 
-  const canAdvance = selectedPedidoId > 0 && selectedOperadorId > 0;
+  const canAdvance =
+    selectedPedidoId > 0 && selectedOperadorId > 0 && selectedDestinoId > 0;
 
   return (
     <>
@@ -196,7 +270,9 @@ export function PickingWizardStep1({ initialValues, onNext }: PickingWizardStep1
             </div>
             <div>
               <h3 className="font-semibold text-slate-900 dark:text-white text-sm">Detalles del picking</h3>
-              <p className="text-[11px] text-slate-500">Pedido a surtir y operador asignado</p>
+              <p className="text-[11px] text-slate-500">
+                Pedido a surtir, operador asignado y almacén destino
+              </p>
             </div>
           </div>
 
@@ -277,7 +353,51 @@ export function PickingWizardStep1({ initialValues, onNext }: PickingWizardStep1
               </form.Field>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+              <div>
+                <form.Field name="almacen_destino">
+                  {(field) => (
+                    <FormSelect
+                      label="Almacén destino"
+                      name={field.name}
+                      value={field.state.value}
+                      disabled={destinoOptions.length === 0}
+                      onChange={(event) => {
+                        const next = Number(event.target.value);
+                        field.handleChange(Number.isNaN(next) ? 0 : next);
+                        clearError("almacen_destino");
+                      }}
+                      onBlur={field.handleBlur}
+                      error={getError("almacen_destino")}
+                    >
+                      <option value="0" disabled>
+                        Seleccionar almacén destino...
+                      </option>
+                      {destinoOptions.map((a) => (
+                        <option
+                          key={a.id}
+                          value={a.id}
+                          className="bg-white dark:bg-zinc-900 text-slate-900 dark:text-white"
+                        >
+                          {a.nombre}
+                        </option>
+                      ))}
+                    </FormSelect>
+                  )}
+                </form.Field>
+                {/* Cuelga de la MISMA condición que el `disabled` de arriba: si
+                    solo se mostrara con pedido elegido, el caso "todos los
+                    almacenes de entrada son el propio origen" dejaría el campo
+                    en gris sin decir por qué, y sin forma de avanzar. */}
+                {destinoOptions.length === 0 && (
+                  <p className="mt-1.5 ml-1 text-xs text-amber-600 dark:text-amber-400">
+                    {selectedPedido
+                      ? "No hay almacenes de entrada en la sucursal de este pedido."
+                      : "No hay almacenes de entrada distintos del almacén de origen."}
+                  </p>
+                )}
+              </div>
+
               <form.Field name="prioridad">
                 {(field) => (
                   <FormSelect

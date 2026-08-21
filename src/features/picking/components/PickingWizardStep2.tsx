@@ -35,6 +35,7 @@ export function PickingWizardStep2({
     capturableRowsCount,
     pedido,
     almacenNombre,
+    almacenDestinoNombre,
     isLoading,
     isError,
     quantities,
@@ -94,7 +95,7 @@ export function PickingWizardStep2({
       className="w-full space-y-5"
     >
       {/* ── Resumen del encabezado capturado ────────────────────────────── */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 rounded-xl bg-slate-50 dark:bg-white/5 px-4 py-3 text-xs">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 rounded-xl bg-slate-50 dark:bg-white/5 px-4 py-3 text-xs">
         <div>
           <p className="text-[11px] uppercase tracking-wider text-slate-400 font-semibold">Pedido</p>
           <p className="font-semibold text-slate-700 dark:text-slate-200 truncate">{pedido?.folio ?? "—"}</p>
@@ -104,8 +105,18 @@ export function PickingWizardStep2({
           <p className="font-semibold text-slate-700 dark:text-slate-200 truncate">{pedido?.cliente_nombre ?? "—"}</p>
         </div>
         <div>
-          <p className="text-[11px] uppercase tracking-wider text-slate-400 font-semibold">Almacén</p>
+          <p className="text-[11px] uppercase tracking-wider text-slate-400 font-semibold">
+            Almacén origen
+          </p>
           <p className="font-semibold text-slate-700 dark:text-slate-200 truncate">{almacenNombre}</p>
+        </div>
+        <div>
+          <p className="text-[11px] uppercase tracking-wider text-slate-400 font-semibold">
+            Almacén destino
+          </p>
+          <p className="font-semibold text-slate-700 dark:text-slate-200 truncate">
+            {almacenDestinoNombre}
+          </p>
         </div>
       </div>
 

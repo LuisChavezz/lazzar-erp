@@ -78,10 +78,11 @@ function firstPickingDetalleMessage(value: unknown): string | undefined {
  * Error de creación de picking, normalizado desde el contrato del backend.
  *
  * `operador` NO tiene campo visible en el formulario (se deriva de la sesión),
- * `almacen` tampoco (id fijo — ver `PRODUCTO_TERMINADO_ALMACEN_ID`), y
- * `picking_detalle` es un arreglo por talla sin un input único al que atribuir
- * el error: los tres se vuelcan a `formError`/`messages` (el banner), no a
- * `fieldErrors`, para que el usuario vea el motivo del rechazo.
+ * `almacen` tampoco (id fijo — ver `PRODUCTO_TERMINADO_ALMACEN_ID`),
+ * `almacen_destino` sí lo tiene pero en el Paso 1 (ya desmontado cuando ocurre
+ * el `POST`), y `picking_detalle` es un arreglo por talla sin un input único al
+ * que atribuir el error: los cuatro se vuelcan a `formError`/`messages` (el
+ * banner), no a `fieldErrors`, para que el usuario vea el motivo del rechazo.
  *
  * `staleData` marca los errores de pendiente desactualizado, que el Paso 2 trata
  * recargando datos en lugar de mostrar un error terminal.
@@ -171,12 +172,30 @@ export function parsePickingError(error: unknown): ParsedPickingError {
     result.messages.push(operadorMessage);
   }
 
-  // `almacen` tampoco tiene campo en la UI (id fijo, ver
-  // `PRODUCTO_TERMINADO_ALMACEN_ID` en `usePickingStep2Form.ts`) — mismo trato.
+  // `almacen` (origen) tampoco tiene campo en la UI (id fijo, ver
+  // `PRODUCTO_TERMINADO_ALMACEN_ID`) — mismo trato.
   const almacenMessage = firstDrfMessage(record.almacen);
   if (almacenMessage) {
     result.formError = result.formError ?? almacenMessage;
     result.messages.push(almacenMessage);
+  }
+
+  // `almacen_destino` SÍ tiene selector, pero vive en el Paso 1 y el `POST` se
+  // dispara desde el Paso 2: para cuando llega este error el input ya no está
+  // en pantalla, así que atribuirlo a un campo no lo mostraría en ningún lado.
+  // Va al banner del Paso 2, que es lo que el usuario está viendo.
+  const almacenDestinoMessage = firstDrfMessage(record.almacen_destino);
+  if (almacenDestinoMessage) {
+    result.formError = result.formError ?? almacenDestinoMessage;
+    result.messages.push(almacenDestinoMessage);
+  }
+
+  // `user`: la clave que usa el backend cuando el usuario autenticado no tiene
+  // empresa asignada. Nunca es atribuible a un input.
+  const userMessage = firstDrfMessage(record.user);
+  if (userMessage) {
+    result.formError = result.formError ?? userMessage;
+    result.messages.push(userMessage);
   }
 
   // `picking_detalle` es el arreglo de líneas: aquí llegan los errores de
