@@ -36,6 +36,15 @@ const StockMovementsView = dynamic(
     loading: configDetailLoading,
   },
 );
+const StockTransfersView = dynamic(
+  () =>
+    import("@/src/features/stock-transfers/components/StockTransfersView").then(
+      (mod) => mod.StockTransfersView,
+    ),
+  {
+    loading: configDetailLoading,
+  },
+);
 const SatInfo = dynamic(() => import("@/src/features/sat/components/SatInfo").then(mod => mod.SatInfo), {
   loading: configDetailLoading,
 });
@@ -140,6 +149,13 @@ export function ConfigDetailView({ selectedView, onBack }: ConfigDetailViewProps
         <div className="flex flex-col gap-6">
           {renderBackButton()}
           <StockMovementsView />
+        </div>
+      )}
+
+      {selectedView === "stock-transfers" && (
+        <div className="flex flex-col gap-6">
+          {renderBackButton()}
+          <StockTransfersView />
         </div>
       )}
 
