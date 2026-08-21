@@ -15,17 +15,12 @@ import {
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { formatQuantityValue } from "@/src/utils/formatCurrency";
 import { formatShortDate, formatShortTime } from "@/src/utils/formatDate";
-import {
-  EMBROIDERY_COVERAGE_CONFIG,
-  EMBROIDERY_PRIORITY_CONFIG,
-  embroideryPriorityFallback,
-} from "../constants/embroideryStatus";
+import { EMBROIDERY_COVERAGE_CONFIG } from "../constants/embroideryStatus";
 import { getAvailableTransitions } from "../constants/embroideryStatusTransitions";
 import { useEmbroideryOrderDetail } from "../hooks/useEmbroideryOrderDetail";
 import { useUpdateEmbroideryOrder } from "../hooks/useUpdateEmbroideryOrder";
 import { EmbroideryStatusSelect } from "./EmbroideryStatusSelect";
 import { EmbroideryMachineField } from "./EmbroideryMachineField";
-import { EmbroideryPrioritySelect } from "./EmbroideryPrioritySelect";
 import { EmbroideryObservationsField } from "./EmbroideryObservationsField";
 import { EmbroideryOperatorSelect } from "./EmbroideryOperatorSelect";
 import { EmbroideryProgressSummary } from "./EmbroideryProgressSummary";
@@ -264,26 +259,11 @@ export function EmbroideryOrderDetailContent({
                 isPending={updateOrder.isPending}
               />
             </InfoField>
-            {/* Los tres campos editables de abajo degradan a su lectura simple
+            {/* Los dos campos editables de abajo degradan a su lectura simple
                 en un estatus TERMINAL (ver `isTerminal`): una orden completada o
                 cancelada ya no se toca. El selector de estatus resuelve su
                 propio caso —se queda sin transiciones y se pinta como badge—,
                 así que no necesita el mismo ternario. */}
-            <InfoField label="Prioridad">
-              {isTerminal ? (
-                <StatusBadge
-                  status={String(data.prioridad)}
-                  config={EMBROIDERY_PRIORITY_CONFIG}
-                  defaultConfig={embroideryPriorityFallback(data.prioridad)}
-                />
-              ) : (
-                <EmbroideryPrioritySelect
-                  prioridad={data.prioridad}
-                  onPriorityChange={(next) => updateOrder.mutate({ prioridad: next })}
-                  isPending={updateOrder.isPending}
-                />
-              )}
-            </InfoField>
             <InfoField label="Máquina asignada">
               {isTerminal ? (
                 textOrDash(data.maquina_asignada)
@@ -297,10 +277,14 @@ export function EmbroideryOrderDetailContent({
                 />
               )}
             </InfoField>
-            {/* `col-span-2` (no `md:col-span-3`): con los otros cuatro campos
-                la rejilla cierra exacta —3 + (1 + 2)— y desaparece la celda
-                vacía que quedaba al final de la segunda fila. */}
-            <InfoField label="Observaciones" className="col-span-2">
+            {/* `md:col-span-3` desde que se quitó "Prioridad": con tres campos
+                sueltos la rejilla de 3 columnas cierra su primera fila exacta
+                (Pedido + Estatus + Máquina) y Observaciones ocupa la segunda
+                entera, sin la celda vacía que dejaría un `col-span-2`. En base
+                (2 columnas) se conserva el `col-span-2` —Observaciones es el
+                campo más largo y partirlo a media columna en móvil se lee peor
+                que el hueco que queda junto a "Máquina asignada". */}
+            <InfoField label="Observaciones" className="col-span-2 md:col-span-3">
               {isTerminal ? (
                 textOrDash(data.observaciones)
               ) : (

@@ -9,8 +9,6 @@ import { formatQuantityValue } from "@/src/utils/formatCurrency";
 import { formatShortDate } from "@/src/utils/formatDate";
 import {
   EMBROIDERY_COVERAGE_CONFIG,
-  EMBROIDERY_PRIORITY_CONFIG,
-  embroideryPriorityFallback,
   embroideryStatusEntry,
 } from "../constants/embroideryStatus";
 import type { EmbroideryOrder } from "../interfaces/embroidery.interface";
@@ -58,7 +56,10 @@ const ActionsCell = ({
  * `EmbroideryOrderDetailDialog`); `fecha_fin` siempre es `null` y `activo`
  * siempre `true` (el queryset filtra `activo=True`), así que ninguna
  * aportaría información aquí. El contenido de `detalles` se resume en una
- * sola columna — su desglose vive en el diálogo de detalle.
+ * sola columna — su desglose vive en el diálogo de detalle. `prioridad` también
+ * se omite: el modelo la declara sin `choices` y hoy llega constante, así que en
+ * la tabla era una columna de un solo valor; sigue visible (y editable) en el
+ * detalle de la orden.
  *
  * Sin anotación de tipo en el retorno (el cast va al final del arreglo) para
  * evitar el mismo error de inferencia documentado en
@@ -69,6 +70,15 @@ const ActionsCell = ({
  * `string | null`).
  */
 export const getEmbroideryOrderColumns = (onViewDetails: (id: number) => void) => [
+  columnHelper.accessor("fecha_inicio", {
+    header: "Alta",
+    sortingFn: "datetime",
+    cell: (info) => (
+      <span className="text-sm text-slate-700 dark:text-slate-200">
+        {formatShortDate(info.getValue())}
+      </span>
+    ),
+  }),
   columnHelper.accessor("folio_bordado", {
     header: "Folio",
     // Folio clickeable: navega al detalle con el MISMO callback que la acción
@@ -109,16 +119,6 @@ export const getEmbroideryOrderColumns = (onViewDetails: (id: number) => void) =
             row.original.estatus_bordado_display,
           ),
         }}
-      />
-    ),
-  }),
-  columnHelper.accessor("prioridad", {
-    header: "Prioridad",
-    cell: (info) => (
-      <StatusBadge
-        status={String(info.getValue())}
-        config={EMBROIDERY_PRIORITY_CONFIG}
-        defaultConfig={embroideryPriorityFallback(info.getValue())}
       />
     ),
   }),
@@ -169,15 +169,6 @@ export const getEmbroideryOrderColumns = (onViewDetails: (id: number) => void) =
         status={String(row.original.cobertura_completa)}
         config={EMBROIDERY_COVERAGE_CONFIG}
       />
-    ),
-  }),
-  columnHelper.accessor("fecha_inicio", {
-    header: "Alta",
-    sortingFn: "datetime",
-    cell: (info) => (
-      <span className="text-sm text-slate-700 dark:text-slate-200">
-        {formatShortDate(info.getValue())}
-      </span>
     ),
   }),
   // Mismo `accessorFn` y mismo motivo que `pedido_folio` (ver el bloque de
