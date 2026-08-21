@@ -80,6 +80,7 @@ import {
   RefreshCw,
   Ruler,
   Save,
+  ScanLine,
   Search,
   Send,
   Settings,
@@ -237,6 +238,10 @@ export const PrinterIcon = (props: LucideProps) => <Printer {...props} />;
 // /config/product-types, así que reutilizarlo dejaría el catálogo de tipos de
 // producto y el módulo de etiquetas indistinguibles por ícono.
 export const LabelsIcon = (props: LucideProps) => <Tags {...props} />;
+// Scanner RFID. `ScanLine` (no `QrCode` ni `Tags`): comparte submenú de WMS con
+// Etiquetas RFID —el módulo hermano de impresión—, y el glifo debe distinguir
+// la LECTURA de la IMPRESIÓN de un vistazo, no repetir la misma familia visual.
+export const ScanLineIcon = (props: LucideProps) => <ScanLine {...props} />;
 export const CopyIcon = (props: LucideProps) => <Copy {...props} />;
 export const BoxIcon = (props: LucideProps) => <Box {...props} />;
 export const WeightIcon = (props: LucideProps) => <Weight {...props} />;

@@ -29,6 +29,7 @@ import {
   PackingIcon,
   EmbarquesIcon,
   LabelsIcon,
+  ScanLineIcon,
 } from "../components/Icons";
 
 export interface AppRouteItem {
@@ -232,6 +233,14 @@ export const appRouteGroups: AppRouteGroup[] = [
         path: "/wms/rfid-labels",
         icon: LabelsIcon,
         description: "Consulta de etiquetas de producto: vista previa, ZPL generado y estatus de impresión.",
+        permission: "R-WMS",
+      },
+      {
+        key: "wms-rfid-scanner",
+        label: "Scanner RFID",
+        path: "/wms/rfid-scanner",
+        icon: ScanLineIcon,
+        description: "Monitor en vivo del lector RFID: lecturas recibidas y su match contra las etiquetas impresas.",
         permission: "R-WMS",
       },
       {
