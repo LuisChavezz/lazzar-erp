@@ -5,9 +5,13 @@ import {
   EmptyLines,
   textOrDash,
 } from "@/src/components/DetailDialogPrimitives";
-import { CheckIcon } from "@/src/components/Icons";
+// `MetricCard` y `RowProgressBar` vivían aquí; se promovieron sin cambios a
+// `components/ProgressPrimitives` al reusarlas el seguimiento de picking del
+// detalle de pedido. El render de esta pantalla no cambió.
+import { MetricCard, RowProgressBar } from "@/src/components/ProgressPrimitives";
 import { ServiceChips } from "./ServiceChips";
 import { formatQuantityValue } from "@/src/utils/formatCurrency";
+import { clampPercentage } from "@/src/utils/percentage";
 import { buildEmbroiderySkuLabel } from "../utils/embroiderySkuLabel";
 import { resolveEmbroideryLineUbicaciones } from "../utils/resolveEmbroideryLineUbicaciones";
 import { EmbroideryLineLocationPopover } from "./EmbroideryLineLocationPopover";
@@ -27,43 +31,6 @@ interface EmbroideryProgressSummaryProps {
   detalles: EmbroideryOrderDetailLine[];
 }
 
-/**
- * Tarjeta métrica. Con `total` se lee "hecho / total"; sin él, solo la cifra.
- * `hint` cuelga un dato secundario debajo, para no gastar una tarjeta entera en
- * una cifra que solo tiene sentido junto a la principal.
- */
-const MetricCard = ({
-  label,
-  done,
-  total,
-  hint,
-}: {
-  label: string;
-  done: string;
-  total?: string;
-  hint?: string;
-}) => (
-  <div className="rounded-xl border border-slate-100 dark:border-white/10 px-4 py-3">
-    <p className="text-[11px] uppercase tracking-wider text-slate-400 dark:text-slate-500">
-      {label}
-    </p>
-    <p className="mt-1 text-lg font-semibold tabular-nums text-slate-800 dark:text-white">
-      {done}
-      {total !== undefined && (
-        <span className="text-sm font-normal text-slate-400 dark:text-slate-500">
-          {" "}
-          / {total}
-        </span>
-      )}
-    </p>
-    {hint !== undefined && (
-      <p className="mt-0.5 text-[11px] tabular-nums text-slate-400 dark:text-slate-500">
-        {hint}
-      </p>
-    )}
-  </div>
-);
-
 const isLegacyRow = (row: ResumenAvancePorDetalle) =>
   row.orden_bordado_detalle_id === null;
 
@@ -76,52 +43,6 @@ const operadoresLabel = (row: ResumenAvancePorDetalle): string => {
   return row.operadores
     .map((op) => `${op.usuario_nombre} (${formatQuantityValue(op.cantidad_bordada)})`)
     .join(", ");
-};
-
-/**
- * Barra de progreso pequeña + porcentaje, para una celda de la tabla.
- * `percentage` llega YA calculado por el backend: aquí solo se acota el ancho
- * visual, nunca se recalcula el número.
- */
-const RowProgressBar = ({
-  percentage,
-  complete = false,
-}: {
-  percentage: number;
-  /**
-   * Pinta la barra de "terminado" (verde + palomita). Solo debe pasarlo quien
-   * pueda AFIRMARLO: no todo porcentaje de esta tabla es una fracción acotada a
-   * 100 (ver `RowPuntadasProgress`), y un `>= 100` sobre una razón que puede
-   * pasarse legítimamente daría por completo lo que no lo está.
-   */
-  complete?: boolean;
-}) => {
-  const width = Math.min(100, Math.max(0, percentage));
-  return (
-    <span className="flex items-center justify-end gap-2">
-      <span className="h-1.5 w-16 rounded-full bg-slate-100 dark:bg-white/10 overflow-hidden">
-        <span
-          className={`block h-full rounded-full ${complete ? "bg-emerald-500" : "bg-sky-500"}`}
-          style={{ width: `${width}%` }}
-        />
-      </span>
-      <span
-        className={`tabular-nums font-semibold ${
-          complete
-            ? "text-emerald-600 dark:text-emerald-400"
-            : "text-slate-700 dark:text-slate-200"
-        }`}
-      >
-        {formatQuantityValue(percentage)}%
-      </span>
-      {complete && (
-        <CheckIcon
-          className="w-3.5 h-3.5 text-emerald-500 shrink-0"
-          aria-label="Completado"
-        />
-      )}
-    </span>
-  );
 };
 
 /**
@@ -177,10 +98,9 @@ export function EmbroideryProgressSummary({
   resumenAvance,
   detalles,
 }: EmbroideryProgressSummaryProps) {
-  const pctWidth = Math.min(100, Math.max(0, resumenAvance.porcentaje_avance));
-  const puntadasPctWidth = Math.min(
-    100,
-    Math.max(0, resumenAvance.puntadas_porcentaje_avance),
+  const pctWidth = clampPercentage(resumenAvance.porcentaje_avance);
+  const puntadasPctWidth = clampPercentage(
+    resumenAvance.puntadas_porcentaje_avance,
   );
 
   // Índice por id del renglón, para que la celda de posición no recorra

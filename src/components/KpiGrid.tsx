@@ -1,6 +1,7 @@
 import type { ComponentType, SVGProps } from "react";
 import Link from "next/link";
 import { KpiTrendIcon } from "./Icons";
+import { clampPercentage } from "@/src/utils/percentage";
 
 export type KpiStatus = "positive" | "negative" | "neutral";
 
@@ -36,8 +37,11 @@ export default function KpiGrid({ items }: KpiGridProps) {
         const badge = statusStyles[status];
         const Icon = item.icon;
         const progress = item.progress ?? 100;
+        // El guardia de finitud se queda AQUÍ y no baja al helper: es propio de
+        // esta tarjeta, cuyo `progress` es opcional y puede llegar con
+        // cualquier número. `clampPercentage` solo aporta el acotado.
         const normalizedProgress = Number.isFinite(progress)
-          ? Math.max(0, Math.min(100, progress))
+          ? clampPercentage(progress)
           : 0;
 
         return (

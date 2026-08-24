@@ -1,3 +1,11 @@
+// El `estado` de un folio de picking es el MISMO enum que el del módulo WMS
+// (`PickingEstado`), así que se importa en vez de redeclararse: son el mismo
+// campo del mismo modelo servido por dos endpoints, y duplicar la unión los
+// dejaría divergir en silencio. Import de solo tipo — sin costo en runtime ni
+// acoplamiento real entre features (`PedidoDetailContent` ya importa además
+// `PICKING_STATUS_CONFIG` de ese módulo para pintarlo).
+import type { PickingEstado } from "@/src/features/picking/interfaces/picking.interface";
+
 /**
  * Configuración JSON congelada de un servicio de la talla (`bordado_config`,
  * `reflejante_config`, `corte_manga_config`, `cambio_talla_config`). El backend
@@ -7,6 +15,56 @@
  * desglosar el contenido. `null` cuando el servicio no aplica.
  */
 export type ServicioConfig = Record<string, unknown> | unknown[] | null;
+
+/**
+ * ── Seguimiento de picking (`tracker_picking`) ───────────────────────────────
+ *
+ * OJO con el FORMATO: TODOS los KPIs del tracker viajan como STRING, y el
+ * backend NO los normalizó — un `Decimal` en cero se serializa como el literal
+ * `"0"` y uno distinto de cero con 4 decimales (`"90.0000"`). O sea: el MISMO
+ * campo llega con dos formatos según su valor. Los campos de origen ENTERO
+ * (`total_prendas_*`) llegan sin decimales (`"90"`).
+ *
+ * Consecuencia para el consumidor: nunca hacer `split(".")` ni asumir 4
+ * decimales. Se leen con `safeParseAmount` (tolera `"0"`, `"90.0000"` y
+ * `null`) y se presentan con `formatQuantityValue`; los porcentajes pasan por
+ * `parsePercentageValue`, que además acota al rango 0–100.
+ */
+
+/**
+ * KPIs de avance de picking del PEDIDO COMPLETO (raíz de `PedidoDetail`).
+ *
+ * Los `pct_*` ya vienen en escala 0–100 (no 0–1) y topados por el backend en
+ * `"100.0000"` — el frontend no los recalcula ni los reescala.
+ *
+ * NO son campos contables: son conteos de PRENDAS, así que el filtro por rol
+ * del backend (`filtrar_campos_contabilidad_pedido`) no los toca y se pintan
+ * para todos los roles.
+ */
+export interface PedidoTrackerPicking {
+  /** Porcentaje del pedido con picking ASIGNADO. Escala 0–100. */
+  pct_asignado_pedido: string;
+  /** Porcentaje del pedido ya SURTIDO. Escala 0–100. */
+  pct_surtido_pedido: string;
+  /** Piezas totales del pedido. Origen ENTERO: llega sin decimales ("90"). */
+  total_prendas_pedido: string;
+  total_asignado: string;
+  total_surtido: string;
+}
+
+/**
+ * KPIs de avance de picking de UNA LÍNEA (`detalles[].tracker_picking`).
+ * Mismas reglas de formato y de visibilidad que `PedidoTrackerPicking`; solo
+ * cambian los nombres de los campos, que el backend sufija con `_linea`.
+ */
+export interface PedidoLineaTrackerPicking {
+  pct_asignado_linea: string;
+  pct_surtido_linea: string;
+  /** Piezas de la línea. Origen ENTERO: llega sin decimales. */
+  total_prendas_linea: string;
+  total_asignado_linea: string;
+  total_surtido_linea: string;
+}
 
 /**
  * Servicio extra facturable de un pedido (`PedidoServicioExtra`). NO reusa el
@@ -209,6 +267,13 @@ export interface PedidoDetalleTalla {
   corte_manga_config: ServicioConfig;
   lleva_cambio_talla: boolean;
   cambio_talla_config: ServicioConfig;
+  // ── Avance de picking de ESTA talla ──────────────────────────────────────
+  // Acumulado de TODOS los pickings del pedido para esta talla (los pickings
+  // son parciales y repetibles). Strings con el formato inconsistente que
+  // documenta `PedidoTrackerPicking`: un cero llega como `"0"`, no `"0.0000"`.
+  // NO son contables — se pintan para todos los roles.
+  cantidad_asignada_picking: string;
+  cantidad_surtida_picking: string;
 }
 
 /**
@@ -241,6 +306,16 @@ export interface PedidoDetalleLinea {
   subtotal_linea?: string;
   cantidad_total: number;
   tallas: PedidoDetalleTalla[];
+  /**
+   * Avance de picking de la línea (producto+color), agregando sus tallas. NO
+   * contable: se pinta para todos los roles. Ver `PedidoLineaTrackerPicking`
+   * para el formato de los strings.
+   *
+   * Opcional por el mismo motivo que el `tracker_picking` de la raíz: una
+   * respuesta de un backend anterior al campo no lo trae, y el tipo debe
+   * obligar a comprobarlo en vez de prometerlo.
+   */
+  tracker_picking?: PedidoLineaTrackerPicking;
 }
 
 /**
@@ -266,6 +341,48 @@ export interface PedidoDocumento {
 }
 
 /**
+ * Un picking del pedido, tal como lo lista `folios_picking` en el retrieve
+ * (`GET /ventas/pedidos/{id}/`). Un pedido acumula VARIOS pickings a lo largo
+ * del tiempo (son parciales y repetibles por talla), así que esto es el
+ * historial de surtido del pedido.
+ *
+ * NO reusa la interfaz `Picking` del módulo WMS, a propósito: es otro
+ * serializer, más chico (sin `picking_detalle`/`prioridad`/`tipo`/`fecha_*`) y
+ * con OTROS NOMBRES para el mismo dato — aquí el almacén origen es
+ * `almacen_origen`/`almacen_origen_nombre`, mientras que `Picking` lo llama
+ * `almacen`/`almacen_nombre`. Tipar esto como `Picking` compilaría en falso y
+ * dejaría `almacen_origen_nombre` fuera del tipo.
+ *
+ * `total_lineas`/`total_lineas_completas` describen SOLO las líneas de ESTE
+ * folio (esta entrega), NO el avance del pedido — misma advertencia que ya
+ * lleva `Picking` en el módulo WMS. El avance del pedido es `tracker_picking`
+ * y nada más; sumar estos contadores entre folios daría otra cosa.
+ *
+ * Nullables: `almacen_destino`/`almacen_destino_nombre` y
+ * `operador`/`operador_nombre` lo son en el esquema (hoy no hay filas nulas en
+ * producción, pero el contrato las permite), así que la UI cae a "—".
+ */
+export interface PedidoFolioPicking {
+  id: number;
+  folio: string;
+  estado: PickingEstado;
+  created_at: string;
+  /** Almacén ORIGEN: de donde se recolecta. Ojo con el nombre — ver arriba. */
+  almacen_origen: number;
+  almacen_origen_nombre: string;
+  almacen_destino: number | null;
+  almacen_destino_nombre: string | null;
+  operador: number | null;
+  operador_nombre: string | null;
+  /** Líneas de ESTE folio, no del pedido. */
+  total_lineas: number;
+  total_lineas_completas: number;
+  /** Strings con el formato inconsistente de `PedidoTrackerPicking`. */
+  cantidad_asignada_total: string;
+  cantidad_surtida_total: string;
+}
+
+/**
  * Respuesta de `GET /ventas/pedidos/{id}/`: la cabecera del pedido más
  * `detalles` (líneas producto+color con tallas anidadas) y `documentos` (los
  * documentos relacionados). Funciona igual con o sin cotización ligada
@@ -280,9 +397,27 @@ export interface PedidoDocumento {
  *
  * `documentos` es opcional: puede faltar para usuarios sin permiso de
  * contabilidad o en casos borde, así que se tipa `?` y la UI cae al estado
- * vacío cuando no viene.
+ * vacío cuando no viene. `tracker_picking` y `folios_picking` siguen el mismo
+ * criterio, por el mismo motivo — ver sus notas abajo.
  */
 export interface PedidoDetail extends Order {
   detalles: PedidoDetalleLinea[];
   documentos?: PedidoDocumento[];
+  /**
+   * Avance de picking del PEDIDO COMPLETO. Va aquí y NO en `Order`: el
+   * serializer del listado (`PedidoListSerializer` → `PedidoListItem`) no lo
+   * expone, y `Order` es la forma que comparten listado y detalle.
+   *
+   * OPCIONAL a propósito, igual que `documentos`: el backend que lo introdujo
+   * es más nuevo que este frontend, así que un despliegue anterior (o un
+   * rollback) responde sin el campo. Tipar el hueco obliga a que TODO consumidor
+   * lo compruebe, en vez de dejar que el tipo prometa algo que la respuesta
+   * puede no traer y reventar con "Cannot read properties of undefined".
+   */
+  tracker_picking?: PedidoTrackerPicking;
+  /**
+   * Historial de pickings del pedido (el backend excluye los cancelados).
+   * Opcional por el mismo motivo que `tracker_picking`; la UI cae a `[]`.
+   */
+  folios_picking?: PedidoFolioPicking[];
 }
