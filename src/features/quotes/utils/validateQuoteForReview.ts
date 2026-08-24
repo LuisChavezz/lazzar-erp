@@ -166,13 +166,17 @@ const mapDetalleToQuoteItem = (
               alto:
                 Number(ubicacion.alto_cm) > 0 ? ubicacion.alto_cm : undefined,
               colorHilo: ubicacion.color_hilo ?? undefined,
-              pantones: undefined,
+              // Se leen de la respuesta, igual que en `useQuoteEditForm`: con
+              // las banderas fijas en `false`, la regla del esquema que exige
+              // ancho y alto cuando hay nuevo ponchado no podía dispararse
+              // nunca sobre una cotización ya guardada.
+              pantones: ubicacion.pantones ?? undefined,
               imagen: ubicacion.imagen ?? "",
-              nuevoPonchado: false,
-              serigrafia: false,
-              sublimado: false,
-              dtf: false,
-              revelado: false,
+              nuevoPonchado: ubicacion.nuevo_ponchado ?? false,
+              serigrafia: ubicacion.serigrafia ?? false,
+              sublimado: ubicacion.sublimado ?? false,
+              dtf: ubicacion.dtf ?? false,
+              revelado: ubicacion.revelado ?? false,
             })
           ),
         }

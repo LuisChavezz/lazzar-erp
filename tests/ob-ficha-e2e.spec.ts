@@ -337,10 +337,13 @@ test("Ficha de taller de Orden de Bordado — verificación completa", async ({ 
     // "Puntadas totales" sustituyó a "Puntadas realizadas": el avance registra
     // el ponchado por pieza y el backend multiplica por las piezas de la tanda.
     const resumen = section(page, "Resumen de avance");
+    // El avance general se desdobló en dos barras rotuladas por unidad desde
+    // que el backend publica `puntadas_porcentaje_avance`.
     for (const rotulo of [
       "Piezas bordadas",
       "Puntadas totales",
-      "Avance general",
+      "Avance general (piezas)",
+      "Avance general (puntadas)",
       "Avance por talla",
     ]) {
       await expect.soft(resumen.getByText(rotulo, { exact: true })).toBeVisible();
@@ -362,10 +365,12 @@ test("Ficha de taller de Orden de Bordado — verificación completa", async ({ 
     for (const columna of [
       "Talla / SKU",
       "Posición",
+      "Servicios",
       "Programado",
       "Bordado",
       "Punt total",
-      "% Avance",
+      "% Piezas",
+      "% Puntadas",
       "Operadores",
     ]) {
       expect.soft(encabezados).toContain(columna);

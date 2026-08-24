@@ -23,6 +23,7 @@ import {
   QuoteOnboardingData,
   type QuotePaymentCondition,
 } from "../interfaces/quote.interface";
+import { deriveTiposServicio } from "../utils/deriveTiposServicio";
 import { useWorkspaceStore } from "../../workspace/store/workspace.store";
 import { useCreateQuote, type QuoteValidationIssue } from "./useCreateQuote";
 import { useQuoteOnboardingData } from "./useQuoteOnboardingData";
@@ -408,30 +409,32 @@ export function useQuoteForm() {
 
       const detalle = (parsed.data.items ?? []).map((item) => {
         const llevaBordado = Boolean(item.bordados?.activo);
-        const bordadoConfig =
+        // `ubicaciones` se saca del literal para poder derivar `tipos_servicio`
+        // DE LO QUE REALMENTE SE ENVÍA (ver `deriveTiposServicio`), no de otra
+        // lectura del formulario. El payload resultante es idéntico al de
+        // antes en ambas ramas: sin bordado, arreglo vacío y notas en blanco.
+        const ubicaciones =
           llevaBordado
-            ? {
-              ubicaciones:
-                item.bordados?.especificaciones?.map((spec) => ({
-                  codigo: spec.posicionCodigo,
-                  descripcion_posicion: spec.posicionPersonalizada?.trim() || null,
-                  ancho_cm: Math.max(0, Number(spec.ancho) || 0),
-                  alto_cm: Math.max(0, Number(spec.alto) || 0),
-                  color_hilo: spec.colorHilo ?? null,
-                  pantones: spec.pantones ?? null,
-                  imagen: spec.imagen,
-                  nuevo_ponchado: spec.nuevoPonchado,
-                  serigrafia: spec.serigrafia,
-                  sublimado: spec.sublimado,
-                  dtf: spec.dtf,
-                  revelado: spec.revelado,
-                })) ?? [],
-              notas: item.bordados?.observaciones ?? "",
-            }
-            : {
-              ubicaciones: [],
-              notas: "",
-            };
+            ? item.bordados?.especificaciones?.map((spec) => ({
+              codigo: spec.posicionCodigo,
+              descripcion_posicion: spec.posicionPersonalizada?.trim() || null,
+              ancho_cm: Math.max(0, Number(spec.ancho) || 0),
+              alto_cm: Math.max(0, Number(spec.alto) || 0),
+              color_hilo: spec.colorHilo ?? null,
+              pantones: spec.pantones ?? null,
+              imagen: spec.imagen,
+              nuevo_ponchado: spec.nuevoPonchado,
+              serigrafia: spec.serigrafia,
+              sublimado: spec.sublimado,
+              dtf: spec.dtf,
+              revelado: spec.revelado,
+            })) ?? []
+            : [];
+        const bordadoConfig = {
+          ubicaciones,
+          notas: llevaBordado ? item.bordados?.observaciones ?? "" : "",
+          tipos_servicio: deriveTiposServicio(ubicaciones),
+        };
         const llevaReflejante = Boolean(item.reflejantes?.activo);
         const reflejanteConfig =
           llevaReflejante

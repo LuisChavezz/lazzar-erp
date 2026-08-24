@@ -49,6 +49,22 @@ export type EmbroideryOrderStatus = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
  * como unión porque el catálogo de choices lo decide el backend y una unión
  * cerrada rompería al añadir uno.
  */
+/**
+ * Técnica de bordado ya rotulada por el backend
+ * (`tipos_servicio_display_list` de Ventas): la clave del enum más su etiqueta
+ * en español, con acentos. La UI pinta `label` y usa `value` de llave — nunca
+ * traduce en el cliente.
+ *
+ * Viaja en dos respuestas distintas con la misma forma: el detalle de la orden
+ * (`EmbroideryOrderDetailLine`) y el catálogo de alta
+ * (`EmbroideryOnboardingDetalle`), de ahí que sea un tipo con nombre y no dos
+ * literales sueltos.
+ */
+export interface TipoServicioDisplay {
+  value: string;
+  label: string;
+}
+
 export interface ProveedorDisplay {
   id: number;
   codigo: string | null;
@@ -250,6 +266,35 @@ export interface EmbroideryOrderDetailLine extends EmbroideryOrderLine {
    * explícitamente para no arrastrar todas las URLs de imagen por renglón.
    */
   configuracion: EmbroideryLineConfiguracion | null;
+  /**
+   * Técnicas aplicadas a ESTE renglón, en claves del enum
+   * (`NUEVO_PONCHADO`, `SERIGRAFIA`, `SUBLIMADO`, `DTF`, `REVELADO`).
+   *
+   * Solo del DETALLE, a propósito: el serializer del listado no lo redefine, así
+   * que ahí sale la columna cruda del modelo —siempre `[]`— y declararlo en
+   * `EmbroideryOrderLine` afirmaría del listado algo que no es cierto.
+   *
+   * De solo lectura: es un `SerializerMethodField` sobre `detalles`, que además
+   * es `read_only` en el serializer padre. Un PATCH que lo mande responde 200 y
+   * no persiste nada, así que no forma parte de ningún payload.
+   *
+   * Arreglo SIEMPRE presente, `[]` con toda normalidad: la fuente real es
+   * `PedidoDetalleTalla.bordado_config["tipos_servicio"]`, que escribe Ventas, y
+   * mientras esa captura no exista en el frontend prácticamente todos los
+   * registros llegan vacíos. Vacío no es error.
+   */
+  tipos_servicio: string[];
+  /**
+   * Las mismas técnicas ya rotuladas por el backend
+   * (`tipos_servicio_display_list`): `[{ value: "SERIGRAFIA", label:
+   * "Serigrafía" }]`, con acentos. La UI pinta `label` y usa `value` solo como
+   * llave — no se construye un mapa clave→etiqueta en el cliente, que es
+   * justamente lo que este campo viene a evitar.
+   *
+   * OJO: nada que ver con `TipoServicioBordadoLegacy` del backend (Plano / 3D /
+   * Chenille / …), el enum single-pick muerto del renglón.
+   */
+  tipos_servicio_display: TipoServicioDisplay[];
 }
 
 /**
@@ -403,7 +448,15 @@ export interface ResumenAvancePorDetalle {
   puntadas_total: number;
   /** Promedio ponderado de `puntadas_por_pieza` en este renglón. */
   puntadas_por_pieza_promedio: number;
+  /** Avance del renglón en PIEZAS: `cantidad_bordada / cantidad_programada`. */
   porcentaje_avance: number;
+  /**
+   * Avance del renglón en PUNTADAS: `puntadas_total / puntadas_presupuesto`,
+   * ya en % y con 2 decimales. Siempre presente; el backend devuelve `0.0`
+   * cuando el presupuesto es 0 —el caso de la fila legacy, que no tiene
+   * renglón que presupueste—, así que NO se recalcula ni se sustituye aquí.
+   */
+  puntadas_porcentaje_avance: number;
   operadores: ResumenOperador[];
 }
 
@@ -423,7 +476,15 @@ export interface ResumenAvance {
   puntadas_total: number;
   /** Promedio ponderado de `puntadas_por_pieza` en toda la orden. */
   puntadas_por_pieza_promedio: number;
+  /** Avance global en PIEZAS: `cantidad_bordada_total / cantidad_programada`. */
   porcentaje_avance: number;
+  /**
+   * Avance global en PUNTADAS: `puntadas_total / puntadas_presupuesto`, ya en %
+   * y con 2 decimales. Siempre presente —también en la rama "sin avances"—, y
+   * `0.0` cuando el presupuesto es 0. Métrica ADICIONAL: no sustituye a
+   * `porcentaje_avance`, que sigue siendo el avance en piezas.
+   */
+  puntadas_porcentaje_avance: number;
   por_detalle: ResumenAvancePorDetalle[];
 }
 
@@ -561,6 +622,19 @@ export interface EmbroideryOnboardingDetalle {
   ubicaciones: EmbroideryOnboardingUbicacion[];
   foto: EmbroideryOnboardingFoto | null;
   notas: string | null;
+  /**
+   * Técnicas capturadas en la cotización para esta línea, en claves del enum.
+   * Mismo campo que publica el detalle de la orden (ver
+   * `EmbroideryOrderDetailLine.tipos_servicio`), aquí como ANTICIPO: se ve al
+   * decidir cantidades, antes de que la orden exista.
+   *
+   * Solo el onboarding de BORDADO los puebla. El de reflejante y el de
+   * corte-manga comparten la vista del backend y devuelven las mismas dos
+   * claves siempre vacías, así que sus tipos no las declaran a propósito.
+   */
+  tipos_servicio: string[];
+  /** Las mismas técnicas ya rotuladas por el backend. Nunca ausente; `[]` normal. */
+  tipos_servicio_display: TipoServicioDisplay[];
 }
 
 /**

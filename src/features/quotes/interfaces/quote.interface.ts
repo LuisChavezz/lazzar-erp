@@ -129,6 +129,24 @@ export interface QuoteById {
           alto_cm: number;
           color_hilo: string | null;
           imagen: string;
+          /**
+           * `pantones` y las cinco banderas de técnica SÍ vuelven en la
+           * respuesta —`bordado_config` es un JSON que el backend guarda y
+           * devuelve verbatim, y el alta los escribe siempre—, pero este tipo
+           * no los declaraba, así que quien rehidrata el formulario no tenía
+           * de dónde leerlos y los reponía en `false`. Eso borraba las técnicas
+           * en cada edición, y desde que `tipos_servicio` se deriva de ellas
+           * borraba también el agregado que lee Producción.
+           *
+           * OPCIONALES: las cotizaciones anteriores a estos campos tienen el
+           * JSON sin ellos, y ahí `undefined` es el dato real, no un error.
+           */
+          pantones?: string | null;
+          nuevo_ponchado?: boolean;
+          serigrafia?: boolean;
+          sublimado?: boolean;
+          dtf?: boolean;
+          revelado?: boolean;
         }[];
       };
       lleva_reflejante: boolean;
@@ -310,6 +328,18 @@ interface QuoteDetail {
         revelado: boolean;
       }[];
       notas: string;
+      /**
+       * Vista AGREGADA de las banderas de arriba, en claves del enum
+       * `TipoServicioBordado` de Ventas: la unión de las técnicas activas en
+       * todas las ubicaciones del renglón. La calcula `deriveTiposServicio` al
+       * serializar —el formulario sigue capturando casillas por ubicación— y es
+       * lo que lee Producción, que necesita el dato por talla y no por
+       * ubicación.
+       *
+       * Nunca ausente: un renglón sin bordado, o con bordado pero sin ninguna
+       * casilla marcada, viaja con `[]`.
+       */
+      tipos_servicio: string[];
     };
     lleva_reflejante: boolean;
     reflejante_config: {

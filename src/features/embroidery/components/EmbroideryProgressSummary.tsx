@@ -6,6 +6,7 @@ import {
   textOrDash,
 } from "@/src/components/DetailDialogPrimitives";
 import { CheckIcon } from "@/src/components/Icons";
+import { ServiceChips } from "./ServiceChips";
 import { formatQuantityValue } from "@/src/utils/formatCurrency";
 import { buildEmbroiderySkuLabel } from "../utils/embroiderySkuLabel";
 import { resolveEmbroideryLineUbicaciones } from "../utils/resolveEmbroideryLineUbicaciones";
@@ -77,14 +78,25 @@ const operadoresLabel = (row: ResumenAvancePorDetalle): string => {
     .join(", ");
 };
 
-/** Barra de progreso pequeña por renglón + porcentaje. */
-const RowProgress = ({ row }: { row: ResumenAvancePorDetalle }) => {
-  // Sin programado no hay porcentaje que enunciar (fila legacy).
-  if (row.cantidad_programada <= 0) {
-    return <span className="text-slate-400 dark:text-slate-500">—</span>;
-  }
-  const width = Math.min(100, Math.max(0, row.porcentaje_avance));
-  const complete = isCompleteRow(row);
+/**
+ * Barra de progreso pequeña + porcentaje, para una celda de la tabla.
+ * `percentage` llega YA calculado por el backend: aquí solo se acota el ancho
+ * visual, nunca se recalcula el número.
+ */
+const RowProgressBar = ({
+  percentage,
+  complete = false,
+}: {
+  percentage: number;
+  /**
+   * Pinta la barra de "terminado" (verde + palomita). Solo debe pasarlo quien
+   * pueda AFIRMARLO: no todo porcentaje de esta tabla es una fracción acotada a
+   * 100 (ver `RowPuntadasProgress`), y un `>= 100` sobre una razón que puede
+   * pasarse legítimamente daría por completo lo que no lo está.
+   */
+  complete?: boolean;
+}) => {
+  const width = Math.min(100, Math.max(0, percentage));
   return (
     <span className="flex items-center justify-end gap-2">
       <span className="h-1.5 w-16 rounded-full bg-slate-100 dark:bg-white/10 overflow-hidden">
@@ -100,7 +112,7 @@ const RowProgress = ({ row }: { row: ResumenAvancePorDetalle }) => {
             : "text-slate-700 dark:text-slate-200"
         }`}
       >
-        {formatQuantityValue(row.porcentaje_avance)}%
+        {formatQuantityValue(percentage)}%
       </span>
       {complete && (
         <CheckIcon
@@ -113,10 +125,46 @@ const RowProgress = ({ row }: { row: ResumenAvancePorDetalle }) => {
 };
 
 /**
+ * Celda de avance en PIEZAS. Sin programado no hay porcentaje que enunciar
+ * (fila legacy), así que cae a "—".
+ */
+const RowPiezasProgress = ({ row }: { row: ResumenAvancePorDetalle }) => {
+  if (row.cantidad_programada <= 0) {
+    return <span className="text-slate-400 dark:text-slate-500">—</span>;
+  }
+  return (
+    <RowProgressBar
+      percentage={row.porcentaje_avance}
+      complete={isCompleteRow(row)}
+    />
+  );
+};
+
+/**
+ * Celda de avance en PUNTADAS. A diferencia de la de piezas NO se corta cuando
+ * el presupuesto es 0: el backend ya devuelve `0.0` en ese caso (fila legacy
+ * incluida) y ese 0 se pinta como "0%", no como raya — el valor del backend es
+ * la única fuente de verdad de esta métrica.
+ *
+ * SIN estado "completo", a diferencia de la celda de piezas: el backend divide
+ * `puntadas_total` —que suma puntadas de TODAS las piezas bordadas— entre
+ * `puntadas_presupuesto`, que es Σ`detalles[].puntadas`, el conteo de UNA
+ * prenda (la misma incomparabilidad por la que la tarjeta de arriba se niega a
+ * enunciar esa fracción). La razón se pasa de 100 en cuanto se borda más de una
+ * pieza —2 de 10 prendas de 8,000 puntadas dan 200%—, así que tratarla como
+ * fracción terminada pintaría de verde y con palomita un renglón al 20%. Se
+ * muestra la cifra, que es un hecho, sin afirmar que la orden esté lista.
+ */
+const RowPuntadasProgress = ({ row }: { row: ResumenAvancePorDetalle }) => (
+  <RowProgressBar percentage={row.puntadas_porcentaje_avance} />
+);
+
+/**
  * Resumen de avance de la orden: dos tarjetas globales (piezas y puntadas
- * totales, ésta con el promedio de puntadas por pieza de subrótulo) +
- * barra de progreso general, y debajo el desglose POR RENGLÓN (talla/SKU) con
- * los operadores que aportaron a cada uno.
+ * totales, ésta con el promedio de puntadas por pieza de subrótulo) + DOS
+ * barras de progreso general —piezas y puntadas—, y debajo el desglose POR
+ * RENGLÓN (talla/SKU), con esos mismos dos porcentajes por fila y los
+ * operadores que aportaron a cada uno.
  *
  * Los totales vienen directos de `resumen_avance` — el backend corrigió el bug
  * de `cantidad_programada`/`puntadas_presupuesto` en 0 cuando no hay avances,
@@ -130,6 +178,10 @@ export function EmbroideryProgressSummary({
   detalles,
 }: EmbroideryProgressSummaryProps) {
   const pctWidth = Math.min(100, Math.max(0, resumenAvance.porcentaje_avance));
+  const puntadasPctWidth = Math.min(
+    100,
+    Math.max(0, resumenAvance.puntadas_porcentaje_avance),
+  );
 
   // Índice por id del renglón, para que la celda de posición no recorra
   // `detalles` en cada fila. La fila legacy (`orden_bordado_detalle_id: null`)
@@ -177,18 +229,44 @@ export function EmbroideryProgressSummary({
         />
       </div>
 
-      <div className="mt-4">
-        <div className="flex items-center justify-between text-xs mb-1">
-          <span className="text-slate-500 dark:text-slate-400">Avance general</span>
-          <span className="tabular-nums font-semibold text-slate-700 dark:text-slate-200">
-            {formatQuantityValue(resumenAvance.porcentaje_avance)}%
-          </span>
+      {/* Dos avances globales, uno debajo del otro y rotulados por su unidad:
+          el de PIEZAS (el de siempre) y el de PUNTADAS que añadió el backend.
+          Se distinguen también por color —esmeralda vs. violeta— porque son
+          métricas distintas de la misma orden y pueden diferir mucho: una talla
+          con muchas puntadas por prenda mueve más el segundo que el primero. */}
+      <div className="mt-4 space-y-3">
+        <div>
+          <div className="flex items-center justify-between text-xs mb-1">
+            <span className="text-slate-500 dark:text-slate-400">
+              Avance general (piezas)
+            </span>
+            <span className="tabular-nums font-semibold text-slate-700 dark:text-slate-200">
+              {formatQuantityValue(resumenAvance.porcentaje_avance)}%
+            </span>
+          </div>
+          <div className="h-2 w-full rounded-full bg-slate-100 dark:bg-white/10 overflow-hidden">
+            <div
+              className="h-full rounded-full bg-emerald-500 transition-all"
+              style={{ width: `${pctWidth}%` }}
+            />
+          </div>
         </div>
-        <div className="h-2 w-full rounded-full bg-slate-100 dark:bg-white/10 overflow-hidden">
-          <div
-            className="h-full rounded-full bg-emerald-500 transition-all"
-            style={{ width: `${pctWidth}%` }}
-          />
+
+        <div>
+          <div className="flex items-center justify-between text-xs mb-1">
+            <span className="text-slate-500 dark:text-slate-400">
+              Avance general (puntadas)
+            </span>
+            <span className="tabular-nums font-semibold text-slate-700 dark:text-slate-200">
+              {formatQuantityValue(resumenAvance.puntadas_porcentaje_avance)}%
+            </span>
+          </div>
+          <div className="h-2 w-full rounded-full bg-slate-100 dark:bg-white/10 overflow-hidden">
+            <div
+              className="h-full rounded-full bg-violet-500 transition-all"
+              style={{ width: `${puntadasPctWidth}%` }}
+            />
+          </div>
         </div>
       </div>
 
@@ -206,6 +284,10 @@ export function EmbroideryProgressSummary({
                 <tr className="text-slate-500 dark:text-slate-400">
                   <th className="px-3 py-2 text-left font-semibold">Talla / SKU</th>
                   <th className="px-3 py-2 text-left font-semibold">Posición</th>
+                  {/* Junto a "Posición" porque hablan de lo mismo: cómo se
+                      decora la prenda. El dato es de solo lectura y hoy llega
+                      vacío casi siempre —lo captura Ventas, no este módulo—. */}
+                  <th className="px-3 py-2 text-left font-semibold">Servicios</th>
                   <th className="px-3 py-2 text-right font-semibold">Programado</th>
                   <th className="px-3 py-2 text-right font-semibold">Bordado</th>
                   {/* Desglose de la tarjeta "Puntadas totales": sin esta
@@ -214,7 +296,10 @@ export function EmbroideryProgressSummary({
                       tabla ya carga seis columnas y ese dato se lee en la
                       tarjeta—. */}
                   <th className="px-3 py-2 text-right font-semibold">Punt total</th>
-                  <th className="px-3 py-2 text-right font-semibold">% Avance</th>
+                  {/* Dos porcentajes rotulados por unidad, en el mismo orden
+                      que las barras globales de arriba. */}
+                  <th className="px-3 py-2 text-right font-semibold">% Piezas</th>
+                  <th className="px-3 py-2 text-right font-semibold">% Puntadas</th>
                   <th className="px-3 py-2 text-left font-semibold">Operadores</th>
                 </tr>
               </thead>
@@ -274,6 +359,20 @@ export function EmbroideryProgressSummary({
                           </span>
                         )}
                       </td>
+                      {/* Los chips salen del RENGLÓN (`detalles`), no de la
+                          fila del resumen: `por_detalle` no trae
+                          `tipos_servicio`. Se cruza con el mismo índice por id
+                          que ya usa la celda de Posición. */}
+                      {/* El guardia es sobre el CRUCE —la fila legacy no tiene
+                          renglón—, no sobre el campo: `tipos_servicio_display`
+                          siempre viene en la respuesta. */}
+                      <td className="px-3 py-2 min-w-40">
+                        <ServiceChips
+                          servicios={
+                            detalle === undefined ? [] : detalle.tipos_servicio_display
+                          }
+                        />
+                      </td>
                       <td className="px-3 py-2 text-right tabular-nums text-slate-600 dark:text-slate-300">
                         {row.cantidad_programada > 0
                           ? formatQuantityValue(row.cantidad_programada)
@@ -286,7 +385,10 @@ export function EmbroideryProgressSummary({
                         {formatQuantityValue(row.puntadas_total)}
                       </td>
                       <td className="px-3 py-2 text-right whitespace-nowrap">
-                        <RowProgress row={row} />
+                        <RowPiezasProgress row={row} />
+                      </td>
+                      <td className="px-3 py-2 text-right whitespace-nowrap">
+                        <RowPuntadasProgress row={row} />
                       </td>
                       <td className="px-3 py-2 text-slate-500 dark:text-slate-400">
                         {operadoresLabel(row)}

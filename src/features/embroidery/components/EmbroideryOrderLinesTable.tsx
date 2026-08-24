@@ -6,6 +6,7 @@ import { formatExactQuantityValue } from "@/src/utils/formatCurrency";
 import { embroideryLineProductoNombre } from "../hooks/useEmbroideryStep2Form";
 import type { EmbroideryOnboardingDetalle } from "../interfaces/embroidery.interface";
 import { EmbroideryLineLocationPopover } from "./EmbroideryLineLocationPopover";
+import { ServiceChips } from "./ServiceChips";
 
 interface EmbroideryOrderLinesTableProps {
   rows: EmbroideryOnboardingDetalle[];
@@ -242,6 +243,23 @@ export function EmbroideryOrderLinesTable({
                     )}
                   </div>
                 )}
+
+                {/* Técnicas de la línea, en su PROPIA fila y no dentro del
+                    bloque de posiciones de arriba: aquél está condicionado a que
+                    haya ubicaciones capturadas, y una línea puede traer
+                    servicios sin ellas. Fuera del `<label>` por el mismo motivo
+                    que el popover —los chips no deben desmarcar la casilla— y
+                    con el mismo `pl-7` para alinearse bajo el texto.
+
+                    Es un ANTICIPO de solo lectura: se ve mientras se decide la
+                    cantidad, no se edita aquí. Lo que la orden acabe mostrando
+                    lo resuelve el backend al crearla. */}
+                <div className="mt-1 flex flex-wrap items-center gap-2 pl-7">
+                  <span className="text-[11px] text-slate-400 dark:text-slate-500">
+                    Servicios:
+                  </span>
+                  <ServiceChips servicios={row.tipos_servicio_display} />
+                </div>
               </div>
             );
           })}

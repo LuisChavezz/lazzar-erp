@@ -24,6 +24,7 @@ import {
   type QuoteOnboardingData,
   type QuotePaymentCondition,
 } from "../interfaces/quote.interface";
+import { deriveTiposServicio } from "../utils/deriveTiposServicio";
 import { useQuoteOnboardingData } from "./useQuoteOnboardingData";
 import { useSatInfo } from "../../sat/hooks/useSatInfo";
 import { useQuote } from "./useQuote";
@@ -135,13 +136,19 @@ const mapDetalleToQuoteItem = (
             ancho: Number(u.ancho_cm) > 0 ? u.ancho_cm : undefined,
             alto: Number(u.alto_cm) > 0 ? u.alto_cm : undefined,
             colorHilo: u.color_hilo ?? undefined,
-            pantones: undefined,
+            // `pantones` y las cinco técnicas se LEEN de la respuesta. Estaban
+            // fijas en `undefined`/`false`, así que abrir una cotización y
+            // guardarla borraba lo capturado —y, desde que `tipos_servicio` se
+            // deriva de estas banderas, borraba también el agregado—. El
+            // `?? false` cubre las cotizaciones viejas, cuyo `bordado_config`
+            // no trae estas claves.
+            pantones: u.pantones ?? undefined,
             imagen: u.imagen ?? "",
-            nuevoPonchado: false,
-            serigrafia: false,
-            sublimado: false,
-            dtf: false,
-            revelado: false,
+            nuevoPonchado: u.nuevo_ponchado ?? false,
+            serigrafia: u.serigrafia ?? false,
+            sublimado: u.sublimado ?? false,
+            dtf: u.dtf ?? false,
+            revelado: u.revelado ?? false,
           })),
         }
       : { activo: false, observaciones: "", especificaciones: [] },
@@ -605,26 +612,31 @@ export function useQuoteEditForm(quoteId: number) {
 
       const detalle = (parsed.data.items ?? []).map((item) => {
         const llevaBordado = Boolean(item.bordados?.activo);
-        const bordadoConfig = llevaBordado
-          ? {
-              ubicaciones:
-                item.bordados?.especificaciones?.map((spec) => ({
-                  codigo: spec.posicionCodigo,
-                  descripcion_posicion: spec.posicionPersonalizada?.trim() || null,
-                  ancho_cm: Math.max(0, Number(spec.ancho) || 0),
-                  alto_cm: Math.max(0, Number(spec.alto) || 0),
-                  color_hilo: spec.colorHilo ?? null,
-                  pantones: spec.pantones ?? null,
-                  imagen: spec.imagen,
-                  nuevo_ponchado: spec.nuevoPonchado,
-                  serigrafia: spec.serigrafia,
-                  sublimado: spec.sublimado,
-                  dtf: spec.dtf,
-                  revelado: spec.revelado,
-                })) ?? [],
-              notas: item.bordados?.observaciones ?? "",
-            }
-          : { ubicaciones: [], notas: "" };
+        // Misma derivación que en el alta (`useQuoteForm`): los dos hooks
+        // arman este bloque por separado —son copias, no un helper compartido—
+        // y ambos POSTean al mismo endpoint de onboarding, así que el campo
+        // tiene que salir de los dos o la edición borraría lo que puso el alta.
+        const ubicaciones = llevaBordado
+          ? item.bordados?.especificaciones?.map((spec) => ({
+              codigo: spec.posicionCodigo,
+              descripcion_posicion: spec.posicionPersonalizada?.trim() || null,
+              ancho_cm: Math.max(0, Number(spec.ancho) || 0),
+              alto_cm: Math.max(0, Number(spec.alto) || 0),
+              color_hilo: spec.colorHilo ?? null,
+              pantones: spec.pantones ?? null,
+              imagen: spec.imagen,
+              nuevo_ponchado: spec.nuevoPonchado,
+              serigrafia: spec.serigrafia,
+              sublimado: spec.sublimado,
+              dtf: spec.dtf,
+              revelado: spec.revelado,
+            })) ?? []
+          : [];
+        const bordadoConfig = {
+          ubicaciones,
+          notas: llevaBordado ? item.bordados?.observaciones ?? "" : "",
+          tipos_servicio: deriveTiposServicio(ubicaciones),
+        };
         const llevaReflejante = Boolean(item.reflejantes?.activo);
         const reflejanteConfig = llevaReflejante
           ? item.reflejantes?.especificaciones?.map((spec) => ({
