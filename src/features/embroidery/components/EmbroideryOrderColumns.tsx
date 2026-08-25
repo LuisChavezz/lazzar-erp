@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { createColumnHelper, type ColumnDef } from "@tanstack/react-table";
 import { StatusBadge } from "@/src/components/StatusBadge";
 import { textOrDash } from "@/src/components/DetailDialogPrimitives";
@@ -102,11 +103,31 @@ export const getEmbroideryOrderColumns = (onViewDetails: (id: number) => void) =
   columnHelper.accessor((row) => row.pedido_folio ?? "", {
     id: "pedido_folio",
     header: "Pedido",
-    cell: (info) => (
-      <span className="font-mono text-sm text-slate-600 dark:text-slate-300">
-        {textOrDash(info.getValue())}
-      </span>
-    ),
+    // Folio del pedido clickeable: enlaza al detalle 360° en su ruta NEUTRA
+    // `/orders/[id]` (solo exige auth + workspace), con `?from=embroidery` para
+    // que su "Volver" regrese a ESTE listado y no a Mesa de Control, que un
+    // usuario solo-Producción no puede abrir. Mismo enlace que ya usa el
+    // detalle de la orden (`EmbroideryOrderDetailContent`).
+    //
+    // Sin folio no hay nada que enlazar: se pinta el guion como texto. Se
+    // navega por `pedido` (la FK del listado); `pedido_vinculado` —la señal que
+    // prefiere el detalle— solo la declara el `retrieve`, no esta respuesta.
+    cell: (info) => {
+      const folio = info.getValue();
+      return folio ? (
+        <Link
+          href={`/orders/${info.row.original.pedido}?from=embroidery`}
+          className="font-mono text-sm text-slate-600 dark:text-slate-300 hover:text-sky-600 dark:hover:text-sky-400 hover:underline transition-colors"
+          title="Ver detalle del pedido"
+        >
+          {folio}
+        </Link>
+      ) : (
+        <span className="font-mono text-sm text-slate-600 dark:text-slate-300">
+          {textOrDash(folio)}
+        </span>
+      );
+    },
   }),
   columnHelper.accessor("estatus_bordado", {
     header: "Estatus",
