@@ -29,6 +29,34 @@ const notifyQueue = (error?: Error): void => {
 };
 
 /**
+ * Cierra la sesión de forma garantizada.
+ *
+ * `signOut` de NextAuth hace fetch a /api/auth/* (csrf + signout) y solo DESPUÉS
+ * asigna window.location. Si ese fetch falla —el mismo fallo de red que produce
+ * los CLIENT_FETCH_ERROR de /api/auth/session— la promesa se rechaza y sin este
+ * try/catch la excepción escapaba del interceptor: no había redirect y el flag
+ * quedaba en `true` de forma permanente, dejando la pestaña en estado zombi
+ * (sesión aparentemente viva, todas las llamadas en 401, sin salida).
+ *
+ * Por eso: fallback duro con window.location.href y reset del latch en `finally`
+ * (la redirección ya habrá comenzado; si la página sobrevive, el latch queda
+ * limpio para el siguiente 401 en vez de bloquearlo para siempre).
+ */
+const forceSignOut = async (): Promise<void> => {
+  if (typeof window === "undefined" || isSigningOut) return;
+
+  isSigningOut = true;
+  try {
+    await signOut({ callbackUrl: "/auth/login" });
+  } catch {
+    // El propio signOut falló (error de red) → forzar la redirección a mano
+    window.location.href = "/auth/login";
+  } finally {
+    isSigningOut = false;
+  }
+};
+
+/**
  * Interceptor de respuesta con lógica de refresh token.
  *
  * Flujo ante un 401:
@@ -54,10 +82,7 @@ v1_api.interceptors.response.use(
 
     // El retry también falló con 401 → sesión inválida, cerrar sesión
     if (originalRequest._retry) {
-      if (typeof window !== "undefined" && !isSigningOut) {
-        isSigningOut = true;
-        await signOut({ callbackUrl: "/auth/login" });
-      }
+      await forceSignOut();
       return Promise.reject(error);
     }
 
@@ -86,10 +111,7 @@ v1_api.interceptors.response.use(
 
     } catch { // El refresh falló → cerrar sesión
       notifyQueue(new Error("Refresh fallido"));
-      if (typeof window !== "undefined" && !isSigningOut) {
-        isSigningOut = true;
-        await signOut({ callbackUrl: "/auth/login" });
-      }
+      await forceSignOut();
       return Promise.reject(error);
 
     } finally { // Reset del estado de refresco

@@ -90,6 +90,13 @@ export const authOptions: NextAuthOptions = {
   },
   session: {
     strategy: "jwt",
+    /* Alineado con REFRESH_TOKEN_LIFETIME del backend (1 día). Sin esto NextAuth
+     * usa su default de 30 días: pasadas ~24h de inactividad el refresh token
+     * caduca y `proxy.ts` —que solo valida este JWT— seguía dejando pasar al
+     * usuario a un estado "logueado sin credenciales de backend" donde toda
+     * llamada API responde 401. Con maxAge la sesión caduca a la vez y el
+     * proxy redirige a /auth/login. */
+    maxAge: 24 * 60 * 60, // 1 día — igual que REFRESH_TOKEN_LIFETIME
   },
   secret: authSecret,
 };
