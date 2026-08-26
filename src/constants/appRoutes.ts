@@ -212,7 +212,7 @@ export const appRouteGroups: AppRouteGroup[] = [
       },
       {
         key: "wms-dispatch",
-        label: "Despacho",
+        label: "Envío",
         path: "/wms/dispatch",
         icon: EmbarquesIcon,
         description: "Entrega de cajas empacadas al transportista para su envío.",
