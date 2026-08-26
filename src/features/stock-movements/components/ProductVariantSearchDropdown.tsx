@@ -67,7 +67,7 @@ export function ProductVariantSearchDropdown({
     const query = debouncedQuery.trim().toLowerCase();
     if (!query) return variants;
     return variants.filter((v) => {
-      const haystack = `${v.sku} ${v.nombre}`.toLowerCase();
+      const haystack = `${v.sku} ${v.nombre} ${v.cod_proscai ?? ""}`.toLowerCase();
       return haystack.includes(query);
     });
   }, [variants, debouncedQuery]);
@@ -200,7 +200,7 @@ export function ProductVariantSearchDropdown({
       <FormInput
         ref={inputRef}
         label="Variante de Producto"
-        placeholder="Buscar producto por SKU o nombre..."
+        placeholder="Buscar producto por SKU, nombre o código Proscai..."
         variant="default"
         value={searchQuery}
         onChange={handleInputChange}
@@ -234,8 +234,16 @@ export function ProductVariantSearchDropdown({
                       : "hover:bg-slate-50 dark:hover:bg-white/10"
                   }`}
                 >
-                  <div className="text-xs font-semibold text-slate-700 dark:text-slate-200">
-                    {variant.sku} - {variant.nombre}
+                  <div className="text-xs font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-2">
+                    <span className="min-w-0 truncate">
+                      {variant.sku} - {variant.nombre}
+                    </span>
+                    {/* El código Proscai puede venir vacío: se omite sin placeholder. */}
+                    {variant.cod_proscai && (
+                      <span className="shrink-0 rounded-md bg-slate-100 dark:bg-white/10 px-1.5 py-0.5 text-[10px] font-medium text-slate-500 dark:text-slate-400">
+                        {variant.cod_proscai}
+                      </span>
+                    )}
                   </div>
                 </button>
               ))
