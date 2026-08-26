@@ -203,6 +203,11 @@ export function QuoteFormContent({
                   <FormSelect
                     label="Tipo de Pedido"
                     options={tiposPedidoOptions}
+                    // Bloqueado por ahora en "Pedido de venta". El select se deja
+                    // visible para que el usuario vea qué se envía, y el valor
+                    // sigue viajando en el payload (React lo mantiene en el
+                    // estado del formulario aunque el control esté deshabilitado).
+                    disabled
                     name={field.name}
                     value={field.state.value}
                     onChange={(event) => {
@@ -1188,6 +1193,9 @@ export function QuoteFormContent({
                 <th className="p-2 text-[10px] font-bold text-slate-400 uppercase tracking-wider w-20 text-center">
                   Reflejante
                 </th>
+                <th className="p-2 text-[10px] font-bold text-slate-400 uppercase tracking-wider w-24 text-center">
+                  Corte Manga
+                </th>
                 <th className="p-2 text-[10px] font-bold text-slate-400 uppercase tracking-wider w-24 text-right">
                   Cantidad
                 </th>
@@ -1207,7 +1215,7 @@ export function QuoteFormContent({
               {fields.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={12}
+                    colSpan={13}
                     className="p-6 text-center text-sm text-slate-500 dark:text-slate-400"
                   >
                     No hay productos agregados.
@@ -1234,6 +1242,7 @@ export function QuoteFormContent({
                       : "—";
                   const bordadoLabel = currentItem?.bordados?.activo ? "Sí" : "No";
                   const reflejanteLabel = currentItem?.reflejantes?.activo ? "Sí" : "No";
+                  const llevaCorteManga = Boolean(currentItem?.lleva_corte_manga);
                   const cantidad = Number(currentItem?.cantidad) || 0;
                   const precio = Number(currentItem?.precio) || 0;
                   const descuento = Number(currentItem?.descuento) || 0;
@@ -1341,6 +1350,27 @@ export function QuoteFormContent({
                           >
                             <EditIcon className="w-3.5 h-3.5" aria-hidden="true" />
                           </button>
+                        </div>
+                      </td>
+                      {/* Corte de manga: se alterna en línea sobre la partida, sin diálogo.
+                          Es una bandera booleana suelta (no un objeto con especificaciones
+                          como bordado/reflejante), así que basta con reescribir el item. */}
+                      <td className="p-2">
+                        <div className="flex items-center justify-center">
+                          <input
+                            type="checkbox"
+                            className="w-4 h-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500 cursor-pointer"
+                            checked={llevaCorteManga}
+                            aria-label={`Corte de manga en la partida ${index + 1}`}
+                            title="Corte de manga"
+                            onChange={(event) => {
+                              if (!currentItem) return;
+                              update(index, {
+                                ...currentItem,
+                                lleva_corte_manga: event.target.checked,
+                              });
+                            }}
+                          />
                         </div>
                       </td>
                       <td className="p-2">

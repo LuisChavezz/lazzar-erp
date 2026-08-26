@@ -25,6 +25,7 @@ import {
   type QuotePaymentCondition,
 } from "../interfaces/quote.interface";
 import { deriveTiposServicio } from "../utils/deriveTiposServicio";
+import { TIPO_PEDIDO } from "../../orders/constants/pedidoStatus";
 import { useQuoteOnboardingData } from "./useQuoteOnboardingData";
 import { useSatInfo } from "../../sat/hooks/useSatInfo";
 import { useQuote } from "./useQuote";
@@ -216,7 +217,9 @@ const mapQuoteByIdToFormValues = (
     condicionPagoMonto: Number(quote.monto) || 0,
     fecha: todayStr,
     agente: userName,
-    tipo_pedido: 0,
+    // Bloqueado en "Pedido de venta", igual que en el alta. `QuoteById` no
+    // expone `tipo_pedido`, así que aquí no hay valor de la API que respetar.
+    tipo_pedido: TIPO_PEDIDO.PEDIDO_DE_VENTA,
     destinatario: quote.destinatario || "",
     empresaEnvio: quote.empresa_envio || "",
     telefonoEnvio: quote.telefono_envio || "",

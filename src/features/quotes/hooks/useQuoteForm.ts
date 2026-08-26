@@ -24,6 +24,7 @@ import {
   type QuotePaymentCondition,
 } from "../interfaces/quote.interface";
 import { deriveTiposServicio } from "../utils/deriveTiposServicio";
+import { TIPO_PEDIDO } from "../../orders/constants/pedidoStatus";
 import { useWorkspaceStore } from "../../workspace/store/workspace.store";
 import { useCreateQuote, type QuoteValidationIssue } from "./useCreateQuote";
 import { useQuoteOnboardingData } from "./useQuoteOnboardingData";
@@ -99,7 +100,9 @@ export const createEmptyValues = (todayStr: string, userName: string): QuoteForm
   condicionPagoMonto: 0,
   fecha: todayStr,
   agente: userName,
-  tipo_pedido: 0,
+  // Bloqueado en "Pedido de venta": el select sigue en el formulario pero está
+  // deshabilitado, así que este es el único valor que puede viajar al backend.
+  tipo_pedido: TIPO_PEDIDO.PEDIDO_DE_VENTA,
   destinatario: "",
   empresaEnvio: "",
   telefonoEnvio: "",
