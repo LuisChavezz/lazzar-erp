@@ -28,7 +28,7 @@ import type { CorteMangaOrderLine } from "../interfaces/corte-manga-order.interf
 // `R-PRODUCCION` y hoy solo se alcanza desde el listado del propio módulo, así
 // que un mapa de orígenes tendría una sola entrada idéntica a su default.
 const BACK = {
-  href: "/wms/corte-manga",
+  href: "/manufacturing/corte-manga",
   label: "Volver a Órdenes de Corte de Manga",
 };
 

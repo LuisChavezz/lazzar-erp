@@ -3,7 +3,7 @@ import { ReflectiveOrderDetailContent } from "@/src/features/reflective-orders/c
 /**
  * Detalle de una orden de reflejante — `GET /produccion/orden-reflejante/{id}/`.
  *
- * Cuelga del módulo (`/wms/reflective-orders/[id]`) y NO de una ruta
+ * Cuelga del módulo (`/manufacturing/reflective-orders/[id]`) y NO de una ruta
  * neutra como `/orders/[id]`: una OR solo se consulta desde Producción, así que
  * hereda `R-PRODUCCION` del prefijo `/manufacturing` que ya cubren
  * `routePermissions.ts` y el matcher de `proxy.ts` — no hace falta registrar

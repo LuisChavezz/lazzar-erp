@@ -467,7 +467,7 @@ export function ManufacturingDashboard() {
               alertas={totalAlertas}
             />
             <ModuleCard
-              href="/wms/embroidery"
+              href="/manufacturing/embroidery"
               icon={ScissorsIcon}
               iconBg="bg-fuchsia-50 dark:bg-fuchsia-500/10"
               iconText="text-fuchsia-500"

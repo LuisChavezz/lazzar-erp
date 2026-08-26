@@ -32,7 +32,7 @@ const EMBROIDERY_FILTER_CONFIG: DataTableFilterConfig[] = [
  * listado de `GET /produccion/orden-bordado/`, con el alta
  * (`POST /produccion/orden-bordado/onboarding/`, ver `EmbroideryOrderForm`) en
  * el toolbar y "Ver Detalles" por renglón, que NAVEGA a la página completa de
- * la orden (`/wms/embroidery/[id]`).
+ * la orden (`/manufacturing/embroidery/[id]`).
  *
  * El diálogo de detalle (`EmbroideryOrderDetailDialog`, que trae su propio
  * detalle vía `GET /produccion/orden-bordado/{id}/`, ver
@@ -68,7 +68,7 @@ export function EmbroideryView() {
   // diálogo sobre esta misma tabla (ver `EmbroideryOrderColumns`). El diálogo
   // sigue montado abajo porque el alta lo usa para el 409 de duplicado.
   const columns = useMemo(
-    () => getEmbroideryOrderColumns((id) => router.push(`/wms/embroidery/${id}`)),
+    () => getEmbroideryOrderColumns((id) => router.push(`/manufacturing/embroidery/${id}`)),
     [router],
   );
 

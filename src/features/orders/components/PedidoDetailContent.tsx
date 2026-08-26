@@ -75,7 +75,7 @@ const BACK_TARGETS: Record<string, { href: string; label: string }> = {
   // (`embroidery`) y no el módulo (`manufacturing`), porque Producción tiene
   // varias listas que pueden enlazar aquí y cada una vuelve a la suya.
   embroidery: {
-    href: "/wms/embroidery",
+    href: "/manufacturing/embroidery",
     label: "Volver a Órdenes de Bordado",
   },
   // Igual que `embroidery`, y con la misma llave por ORIGEN concreto: quien
@@ -83,13 +83,13 @@ const BACK_TARGETS: Record<string, { href: string; label: string }> = {
   // (`ReflectiveOrderDetailContent`) vuelve a SU listado, no al de bordado ni a
   // Mesa de Control.
   reflective: {
-    href: "/wms/reflective-orders",
+    href: "/manufacturing/reflective-orders",
     label: "Volver a Órdenes de Reflejante",
   },
   // Igual que las dos anteriores: quien llega desde el detalle de una orden de
   // corte de manga (`CorteMangaOrderPageContent`) vuelve a SU listado.
   "corte-manga": {
-    href: "/wms/corte-manga",
+    href: "/manufacturing/corte-manga",
     label: "Volver a Órdenes de Corte de Manga",
   },
   // Igual que las tres anteriores: quien llega desde el detalle de una orden de

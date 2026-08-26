@@ -3,7 +3,7 @@ import { EmbroideryOrderDetailContent } from "@/src/features/embroidery/componen
 /**
  * Detalle de una orden de bordado — `GET /produccion/orden-bordado/{id}/`.
  *
- * Cuelga del módulo (`/wms/embroidery/[id]`) y NO de una ruta neutra
+ * Cuelga del módulo (`/manufacturing/embroidery/[id]`) y NO de una ruta neutra
  * como `/orders/[id]`: una OB solo se consulta desde Producción, así que hereda
  * `R-PRODUCCION` del prefijo `/manufacturing` que ya cubren
  * `routePermissions.ts` y el matcher de `proxy.ts` — no hace falta registrar

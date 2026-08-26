@@ -16,7 +16,7 @@ import { useReflectiveOrders } from "../hooks/useReflectiveOrders";
  * el listado de `GET /produccion/orden-reflejante/`, con el alta
  * (`POST /produccion/orden-reflejante/onboarding/`, ver `ReflectiveOrderForm`)
  * en el toolbar y "Ver Detalles" por renglón, que NAVEGA a
- * `/wms/reflective-orders/[id]` (ver `ReflectiveOrderDetailContent`)
+ * `/manufacturing/reflective-orders/[id]` (ver `ReflectiveOrderDetailContent`)
  * en vez de abrir el diálogo — la página tiene el ancho que el desglose por
  * renglón necesita y una URL que se puede compartir. Mismo cambio ya hecho en
  * `EmbroideryView`.
@@ -73,7 +73,7 @@ export function ReflectiveOrdersView() {
   const columns = useMemo(
     () =>
       getReflectiveOrderColumns((id) =>
-        router.push(`/wms/reflective-orders/${id}`),
+        router.push(`/manufacturing/reflective-orders/${id}`),
       ),
     [router],
   );
