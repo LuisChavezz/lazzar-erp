@@ -5,12 +5,12 @@ import { createColumnHelper, type ColumnDef } from "@tanstack/react-table";
 import { ViewIcon } from "@/src/components/Icons";
 import { ActionMenu, type ActionMenuItem } from "@/src/components/ActionMenu";
 import { textOrDash } from "@/src/components/DetailDialogPrimitives";
-import { DispatchDetailDialog } from "./DispatchDetailDialog";
-import type { Dispatch } from "../interfaces/dispatch.interface";
+import { ShippingDetailDialog } from "./ShippingDetailDialog";
+import type { Shipment } from "../interfaces/shipping.interface";
 
 // ── Celda de acciones ────────────────────────────────────────────────────────
 
-const ActionsCell = ({ row }: { row: Dispatch }) => {
+const ActionsCell = ({ row }: { row: Shipment }) => {
   const [isDetailOpen, setIsDetailOpen] = useState(false);
 
   const menuItems: ActionMenuItem[] = [
@@ -19,7 +19,7 @@ const ActionsCell = ({ row }: { row: Dispatch }) => {
 
   return (
     <div className="flex items-center justify-center">
-      <ActionMenu items={menuItems} ariaLabel={`Acciones del despacho de ${row.packing_folio}`} />
+      <ActionMenu items={menuItems} ariaLabel={`Acciones del envío de ${row.packing_folio}`} />
       {/* Montaje condicional: el diálogo no existe hasta abrirlo. Sin fetch
           propio — `row` YA es el objeto completo (`despacho_detalle`
           incluido), la misma forma que devuelve el detalle (listado y
@@ -28,17 +28,17 @@ const ActionsCell = ({ row }: { row: Dispatch }) => {
           checkout de `nucleo-erp` — ninguno de los dos está condicionado por
           `self.action`), así que no dispara ninguna petición nueva. */}
       {isDetailOpen && (
-        <DispatchDetailDialog dispatch={row} open={true} onOpenChange={setIsDetailOpen} />
+        <ShippingDetailDialog shipment={row} open={true} onOpenChange={setIsDetailOpen} />
       )}
     </div>
   );
 };
 
-const columnHelper = createColumnHelper<Dispatch>();
+const columnHelper = createColumnHelper<Shipment>();
 
 /**
  * Columnas del listado de despacho. `Despacho` no tiene folio, estado
- * significativo ni timestamp propios (ver `dispatch.interface.ts`), así que
+ * significativo ni timestamp propios (ver `shipping.interface.ts`), así que
  * el set de columnas se apoya en los campos heredados/denormalizados que sí
  * identifican el renglón. Deliberadamente se omiten:
  * - `packing_estado`: siempre `"PENDIENTE"` en la práctica, no aporta señal.
@@ -46,7 +46,7 @@ const columnHelper = createColumnHelper<Dispatch>();
  *   no tiene campo de nombre), por eso se muestra el id crudo en su lugar.
  * - Cualquier columna de fecha: no existe timestamp alguno en este modelo.
  */
-export const dispatchColumns = [
+export const shipmentColumns = [
   columnHelper.accessor("packing_folio", {
     header: "Packing",
     cell: (info) => (
@@ -82,16 +82,16 @@ export const dispatchColumns = [
   }),
   // Mismo `accessorFn` que `pedido_folio` y por el mismo motivo (ver el bloque
   // de arriba), con un matiz propio de ser columna NUMÉRICA: lo buscable es el
-  // ID CRUDO (`3`), no la etiqueta renderizada (`"Envío #3"`). Por eso el
+  // ID CRUDO (`3`), no la etiqueta renderizada (`"Guía #3"`). Por eso el
   // accessor devuelve el id en texto y la celda sigue leyendo el valor sin
   // formatear de `row.original` para armar su etiqueta — el accessor cambia
   // qué participa en la búsqueda, no qué se ve.
   columnHelper.accessor((row) => (row.envio !== null ? String(row.envio) : ""), {
     id: "envio",
-    header: "Envío",
+    header: "Guía",
     // `envio` es genuinamente `null` cuando el despacho se registró sin
     // envío — el caso de casi todos los despachos creados desde este
-    // frontend (ver `dispatch.interface.ts`), no un dato faltante a resolver.
+    // frontend (ver `shipping.interface.ts`), no un dato faltante a resolver.
     //
     // `sortingFn` explícito: el accessor de arriba devuelve el id como texto
     // (necesario para la búsqueda), pero TanStack auto-detecta el comparador
@@ -103,12 +103,12 @@ export const dispatchColumns = [
       const value = info.row.original.envio;
       return (
         <span className="text-sm tabular-nums text-slate-600 dark:text-slate-300">
-          {value !== null ? `Envío #${value}` : "Sin envío"}
+          {value !== null ? `Guía #${value}` : "Sin guía"}
         </span>
       );
     },
   }),
-  // Mismo criterio numérico que la columna "Envío", incluido el `sortingFn`
+  // Mismo criterio numérico que la columna "Guía", incluido el `sortingFn`
   // explícito (mismo motivo: evitar que TanStack caiga en comparación de texto).
   columnHelper.accessor(
     (row) => (row.envio_transportista !== null ? String(row.envio_transportista) : ""),
@@ -118,7 +118,7 @@ export const dispatchColumns = [
       // `envio_transportista_nombre` siempre viaja `null` (ver interfaz) — se
       // muestra el id crudo con una etiqueta clara en vez de una celda vacía.
       // `envio_transportista` en sí es `null` cuando no hay envío asociado,
-      // mismo criterio que la columna "Envío".
+      // mismo criterio que la columna "Guía".
       sortingFn: (rowA, rowB) =>
         (rowA.original.envio_transportista ?? -Infinity) -
         (rowB.original.envio_transportista ?? -Infinity),
@@ -137,4 +137,4 @@ export const dispatchColumns = [
     header: () => <div className="text-center">Acciones</div>,
     cell: ({ row }) => <ActionsCell row={row.original} />,
   }),
-] as ColumnDef<Dispatch>[];
+] as ColumnDef<Shipment>[];

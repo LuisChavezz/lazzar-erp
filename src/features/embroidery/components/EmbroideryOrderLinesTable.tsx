@@ -28,7 +28,7 @@ interface EmbroideryOrderLinesTableProps {
  *
  * Combina los dos precedentes del proyecto en lugar de inventar un tercero: la
  * casilla por línea con "Marcar/Quitar todas" y el renglón agotado deshabilitado
- * son de `DispatchLinesTable`; el input con techo por línea es el
+ * son de `ShippingLinesTable`; el input con techo por línea es el
  * `DecimalQuantityInput` de picking/packing, aquí con `decimalPlaces={0}` porque
  * las prendas se bordan enteras (`PedidoDetalleTalla.cantidad` es un
  * `PositiveIntegerField` y el backend rechaza fraccionarios con un 400).
@@ -36,8 +36,8 @@ interface EmbroideryOrderLinesTableProps {
  * Las líneas SIN pendiente (`cantidad_pendiente <= 0`, ya cubiertas por órdenes
  * anteriores) se muestran deshabilitadas y etiquetadas «Ya programada», no
  * ocultas: forman parte del pedido, y esconderlas haría parecer que tiene menos
- * prendas de las que tiene. Mismo criterio que las líneas ya despachadas de
- * despacho y las líneas sin pendiente de packing/picking.
+ * prendas de las que tiene. Mismo criterio que las líneas ya enviadas de
+ * envío y las líneas sin pendiente de packing/picking.
  */
 export function EmbroideryOrderLinesTable({
   rows,

@@ -11,31 +11,31 @@ import {
   textOrDash,
 } from "@/src/components/DetailDialogPrimitives";
 import { formatExactQuantityValue } from "@/src/utils/formatCurrency";
-import { DISPATCH_LINE_STATUS_CONFIG } from "../constants/dispatchLineStatus";
-import type { Dispatch, DispatchDetalleLine } from "../interfaces/dispatch.interface";
+import { SHIPPING_LINE_STATUS_CONFIG } from "../constants/shippingLineStatus";
+import type { Shipment, ShipmentDetalleLine } from "../interfaces/shipping.interface";
 
 /** Nombre del producto/variante despachado en una línea. Solo uno de los dos
  *  pares viaja no-nulo por línea, nunca ambos. Mismo criterio que
  *  `PackingDetailDialog`/`PickingDetailDialog`. */
-function lineaProductoNombre(linea: DispatchDetalleLine): string {
+function lineaProductoNombre(linea: ShipmentDetalleLine): string {
   return linea.producto_variante_nombre ?? linea.producto_nombre ?? "—";
 }
 
 /**
  * `envio`/`envio_transportista` en formato de texto. Mismo criterio y misma
- * copia EXACTA que `DispatchColumns.tsx` ("Sin envío"/"Sin transportista")
+ * copia EXACTA que `ShippingColumns.tsx` ("Sin guía"/"Sin transportista")
  * para que el listado y el detalle no digan cosas distintas del mismo dato.
  */
 function envioLabel(value: number | null): string {
-  return value !== null ? `Envío #${value}` : "Sin envío";
+  return value !== null ? `Guía #${value}` : "Sin guía";
 }
 function transportistaLabel(value: number | null): string {
   return value !== null ? `Transportista #${value}` : "Sin transportista";
 }
 
-const LineasTable = ({ items }: { items: DispatchDetalleLine[] }) => {
+const LineasTable = ({ items }: { items: ShipmentDetalleLine[] }) => {
   if (items.length === 0) {
-    return <EmptyLines>Este despacho no tiene líneas registradas.</EmptyLines>;
+    return <EmptyLines>Este envío no tiene líneas registradas.</EmptyLines>;
   }
 
   return (
@@ -71,7 +71,7 @@ const LineasTable = ({ items }: { items: DispatchDetalleLine[] }) => {
             {linea.ubicacion_nombre ?? "—"}
           </td>
           <td className="px-3 py-2">
-            <StatusBadge status={linea.estado} config={DISPATCH_LINE_STATUS_CONFIG} />
+            <StatusBadge status={linea.estado} config={SHIPPING_LINE_STATUS_CONFIG} />
           </td>
         </tr>
       ))}
@@ -79,17 +79,17 @@ const LineasTable = ({ items }: { items: DispatchDetalleLine[] }) => {
   );
 };
 
-interface DispatchDetailDialogProps {
+interface ShippingDetailDialogProps {
   /** El despacho ya cargado por el listado — sin fetch propio (listado y
    *  detalle comparten el mismo `DespachoSerializer` en el backend, mismo
    *  `select_related`/`prefetch_related` en `get_queryset`, confirmado
    *  contra el checkout de `nucleo-erp`). */
-  dispatch: Dispatch;
+  shipment: Shipment;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
-export function DispatchDetailDialog({ dispatch, open, onOpenChange }: DispatchDetailDialogProps) {
+export function ShippingDetailDialog({ shipment, open, onOpenChange }: ShippingDetailDialogProps) {
   return (
     <MainDialog
       open={open}
@@ -101,10 +101,10 @@ export function DispatchDetailDialog({ dispatch, open, onOpenChange }: DispatchD
           <EmbarquesIcon className="w-5 h-5 text-sky-500 shrink-0" />
           <div>
             <p className="text-base font-semibold leading-tight text-slate-800 dark:text-slate-100">
-              Detalle de Despacho
+              Detalle de Envío
             </p>
             <p className="text-xs text-slate-500 dark:text-slate-400 font-mono font-normal mt-0.5">
-              {dispatch.packing_folio}
+              {shipment.packing_folio}
             </p>
           </div>
         </div>
@@ -117,13 +117,13 @@ export function DispatchDetailDialog({ dispatch, open, onOpenChange }: DispatchD
               endpoint de transición sobre packing) — se muestra como texto
               plano, no como `StatusBadge`, para no leerse como un indicador
               de avance que en realidad no existe. */}
-          <InfoField label="Estatus del packing">{textOrDash(dispatch.packing_estado)}</InfoField>
-          <InfoField label="Pedido">{textOrDash(dispatch.pedido_folio)}</InfoField>
-          <InfoField label="Cliente">{textOrDash(dispatch.cliente_nombre)}</InfoField>
-          <InfoField label="Sucursal">{textOrDash(dispatch.sucursal_nombre)}</InfoField>
-          <InfoField label="Envío">{envioLabel(dispatch.envio)}</InfoField>
+          <InfoField label="Estatus del packing">{textOrDash(shipment.packing_estado)}</InfoField>
+          <InfoField label="Pedido">{textOrDash(shipment.pedido_folio)}</InfoField>
+          <InfoField label="Cliente">{textOrDash(shipment.cliente_nombre)}</InfoField>
+          <InfoField label="Sucursal">{textOrDash(shipment.sucursal_nombre)}</InfoField>
+          <InfoField label="Guía">{envioLabel(shipment.envio)}</InfoField>
           <InfoField label="Transportista">
-            {transportistaLabel(dispatch.envio_transportista)}
+            {transportistaLabel(shipment.envio_transportista)}
           </InfoField>
         </div>
 
@@ -134,14 +134,14 @@ export function DispatchDetailDialog({ dispatch, open, onOpenChange }: DispatchD
             <div className="flex items-center gap-2 flex-1 min-w-0">
               <PackingIcon className="w-4 h-4 text-slate-400 shrink-0" aria-hidden="true" />
               <span className="text-sm font-semibold text-slate-700 dark:text-slate-200 truncate">
-                {dispatch.packing_folio}
+                {shipment.packing_folio}
               </span>
             </div>
             <ChevronRightIcon className="w-4 h-4 text-sky-500 shrink-0" aria-hidden="true" />
             <div className="flex items-center gap-2 flex-1 min-w-0">
               <PedidosIcon className="w-4 h-4 text-slate-400 shrink-0" aria-hidden="true" />
               <span className="text-sm font-semibold text-slate-700 dark:text-slate-200 truncate">
-                {textOrDash(dispatch.pedido_folio)}
+                {textOrDash(shipment.pedido_folio)}
               </span>
             </div>
           </div>
@@ -149,8 +149,8 @@ export function DispatchDetailDialog({ dispatch, open, onOpenChange }: DispatchD
 
         {/* Líneas */}
         <div>
-          <SectionTitle>Líneas del despacho</SectionTitle>
-          <LineasTable items={dispatch.despacho_detalle} />
+          <SectionTitle>Líneas del envío</SectionTitle>
+          <LineasTable items={shipment.despacho_detalle} />
         </div>
       </div>
     </MainDialog>

@@ -16,7 +16,7 @@
  * Renglón de detalle del despacho, tal cual viaja embebido en
  * `Despacho.despacho_detalle` (`DespachoDetalleReadSerializer`, confirmado
  * contra el backend — el mismo serializer para listado y detalle, ver
- * `Dispatch`). `DespachoDetalle` en sí solo tiene `id`/`despacho`/
+ * `Shipment`). `DespachoDetalle` en sí solo tiene `id`/`despacho`/
  * `packing_detalle` como columnas propias; todo lo demás lo resuelve el
  * serializer atravesando la cadena `packing_detalle → picking_detalle → ...`.
  *
@@ -49,7 +49,7 @@
  * `PackingDetalleLine`: `PackingDetalle.caja` es una FK nullable sin backend
  * que la asigne hoy, así que en la práctica ambos siempre llegan `null`.
  */
-export interface DispatchDetalleLine {
+export interface ShipmentDetalleLine {
   id: number;
   despacho: number;
   packing_detalle: number;
@@ -89,10 +89,10 @@ export interface DispatchDetalleLine {
  * `envio`/`envio_transportista` son genuinamente `null` cuando el despacho se
  * registró sin envío — el camino que toma hoy todo despacho creado desde este
  * frontend, ya que `Envio` no tiene forma de crearse fuera del admin de
- * Django (ver `CreateDispatchPayload`). No es un hueco de datos a resolver,
+ * Django (ver `CreateShipmentPayload`). No es un hueco de datos a resolver,
  * es el estado real de la mayoría de los despachos.
  */
-export interface Dispatch {
+export interface Shipment {
   id: number;
   packing: number;
   envio: number | null;
@@ -106,7 +106,7 @@ export interface Dispatch {
   sucursal_nombre: string;
   envio_transportista: number | null;
   envio_transportista_nombre: string | null;
-  despacho_detalle: DispatchDetalleLine[];
+  despacho_detalle: ShipmentDetalleLine[];
 }
 
 /**
@@ -114,12 +114,12 @@ export interface Dispatch {
  * es el ÚNICO campo que el serializer acepta por línea: no hay cantidad
  * (despachar es binario por línea), ni caja, ni observaciones.
  *
- * Distinta de `DispatchDetalleLine` (forma de LECTURA del listado) y de
- * `DispatchOnboardingLine` (forma CANDIDATA del onboarding) — las tres viven
+ * Distinta de `ShipmentDetalleLine` (forma de LECTURA del listado) y de
+ * `ShipmentOnboardingLine` (forma CANDIDATA del onboarding) — las tres viven
  * bajo la clave `despacho_detalle` en sus respectivos endpoints pero son
  * shapes distintos, por eso se tipan por separado.
  */
-export interface CreateDispatchDetalleLine {
+export interface CreateShipmentDetalleLine {
   packing_detalle: number;
 }
 
@@ -135,12 +135,12 @@ export interface CreateDispatchDetalleLine {
  * Consecuencia a tener presente: como tampoco existe `PATCH`/`PUT` sobre
  * `Despacho`, un despacho creado sin envío NO puede recibir uno después por
  * API. El formulario lo advierte de forma explícita antes de enviar (ver
- * `DispatchCreateForm`).
+ * `ShippingCreateForm`).
  *
  * `empresa`/`sucursal`/`pedido`/`cliente` los deriva el backend del `packing`
  * elegido — mismo criterio que `CreatePackingPayload`.
  */
-export interface CreateDispatchPayload {
+export interface CreateShipmentPayload {
   packing: number;
-  despacho_detalle: CreateDispatchDetalleLine[];
+  despacho_detalle: CreateShipmentDetalleLine[];
 }

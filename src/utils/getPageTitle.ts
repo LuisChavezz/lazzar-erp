@@ -35,7 +35,7 @@ const ROUTE_TITLES: Record<string, string> = {
   "/wms/locations": "Ubicaciones",
   "/wms/picking": "Picking",
   "/wms/packing": "Packing",
-  "/wms/dispatch": "Despacho",
+  "/wms/shipping": "Envío",
   "/wms/rfid-labels": "Etiquetas RFID",
   "/wms/rfid-scanner": "Scanner RFID",
   "/finance/invoicing": "Facturación",

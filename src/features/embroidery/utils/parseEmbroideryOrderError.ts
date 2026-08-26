@@ -87,7 +87,7 @@ function readExcessLines(value: unknown): string[] | undefined {
 /**
  * Normaliza el error de `POST /produccion/orden-bordado/onboarding/`.
  *
- * Vive aparte del hook (y no dentro de él, como `parseDispatchError`) porque es
+ * Vive aparte del hook (y no dentro de él, como `parseShipmentError`) porque es
  * una función PURA sin dependencias de React: así puede ejercitarse
  * directamente contra las tres formas del contrato sin montar la mutación. El
  * hook la re-exporta para que el punto de importación siga siendo el mismo.

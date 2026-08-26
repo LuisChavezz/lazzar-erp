@@ -1,29 +1,29 @@
 import { useQuery } from "@tanstack/react-query";
 import { useHasLoadedQuery } from "@/src/hooks/useHasLoadedQuery";
-import { getDispatches } from "../services/actions";
-import type { Dispatch } from "../interfaces/dispatch.interface";
+import { getShipments } from "../services/actions";
+import type { Shipment } from "../interfaces/shipping.interface";
 
 /**
- * Lista los despachos (`GET /wms/despachos/`). Llave `["dispatches"]`.
+ * Lista los despachos (`GET /wms/despachos/`). Llave `["shipments"]`.
  *
  * `hasLoaded` distingue una carga inicial fallida (mostrar `ErrorState`) de un
  * refetch fallido con datos en caché (toast + conservar la tabla). Mismo
  * patrón que `usePackings`.
  */
-export const useDispatches = () => {
-  const query = useQuery<Dispatch[]>({
-    queryKey: ["dispatches"],
-    queryFn: getDispatches,
+export const useShipments = () => {
+  const query = useQuery<Shipment[]>({
+    queryKey: ["shipments"],
+    queryFn: getShipments,
   });
 
   const { hasLoaded } = useHasLoadedQuery({
     data: query.data,
     isError: query.isError,
-    toastId: "dispatches-refetch-error",
+    toastId: "shipments-refetch-error",
   });
 
   return {
-    dispatches: query.data ?? [],
+    shipments: query.data ?? [],
     hasLoaded,
     isLoading: query.isLoading,
     isError: query.isError,

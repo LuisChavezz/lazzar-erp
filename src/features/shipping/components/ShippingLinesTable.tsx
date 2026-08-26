@@ -2,11 +2,11 @@
 
 import { LayersIcon } from "@/src/components/Icons";
 import { formatExactQuantityValue } from "@/src/utils/formatCurrency";
-import { dispatchLineProductoNombre } from "../hooks/useDispatchForm";
-import type { DispatchOnboardingLine } from "../interfaces/dispatch-onboarding.interface";
+import { shipmentLineProductoNombre } from "../hooks/useShippingForm";
+import type { ShipmentOnboardingLine } from "../interfaces/shipping-onboarding.interface";
 
-interface DispatchLinesTableProps {
-  rows: DispatchOnboardingLine[];
+interface ShippingLinesTableProps {
+  rows: ShipmentOnboardingLine[];
   checkedIds: Set<number>;
   availableRowsCount: number;
   selectedCount: number;
@@ -25,14 +25,14 @@ interface DispatchLinesTableProps {
  * el packing tiene menos líneas de las que tiene. Mismo criterio que las
  * líneas sin pendiente de `PackingWizardStep2`.
  */
-export function DispatchLinesTable({
+export function ShippingLinesTable({
   rows,
   checkedIds,
   availableRowsCount,
   selectedCount,
   onToggleLine,
   onToggleAll,
-}: DispatchLinesTableProps) {
+}: ShippingLinesTableProps) {
   const allAvailableChecked = availableRowsCount > 0 && selectedCount === availableRowsCount;
 
   return (
@@ -43,7 +43,7 @@ export function DispatchLinesTable({
         </div>
         <div className="min-w-0 flex-1">
           <h3 className="font-semibold text-slate-900 dark:text-white text-sm">
-            Líneas por despachar
+            Líneas por enviar
           </h3>
           <p className="text-[11px] text-slate-500">
             {selectedCount === 0
@@ -69,7 +69,7 @@ export function DispatchLinesTable({
       <div className="p-2 sm:p-4">
         <div className="divide-y divide-slate-100 dark:divide-white/5">
           {rows.map((row) => {
-            const inputId = `dispatch-line-${row.packing_detalle}`;
+            const inputId = `shipping-line-${row.packing_detalle}`;
             const checked = checkedIds.has(row.packing_detalle);
             const disabled = !row.disponible_para_despacho;
 
@@ -95,7 +95,7 @@ export function DispatchLinesTable({
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
                     <p className="text-sm font-semibold text-slate-800 dark:text-slate-100 truncate">
-                      {dispatchLineProductoNombre(row)}
+                      {shipmentLineProductoNombre(row)}
                     </p>
                     {row.talla_nombre && (
                       <span className="inline-flex items-center rounded-full bg-sky-50 dark:bg-sky-500/10 px-2 py-0.5 text-[11px] font-semibold text-sky-700 dark:text-sky-300">
@@ -113,7 +113,7 @@ export function DispatchLinesTable({
                         se lea como un error de carga. */}
                     {row.ya_despachado && (
                       <span className="inline-flex items-center rounded-full bg-slate-100 dark:bg-white/10 px-2 py-0.5 text-[11px] font-semibold text-slate-600 dark:text-slate-300">
-                        Ya despachada
+                        Ya enviada
                       </span>
                     )}
                   </div>

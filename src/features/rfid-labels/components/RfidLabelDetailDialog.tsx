@@ -328,7 +328,7 @@ interface RfidLabelDetailDialogProps {
   /** El evento de impresión ya cargado por el listado — sin fetch propio
    *  (listado y detalle comparten `EtiquetaRFIDSerializer` en el backend,
    *  `get_serializer_class` no distingue por `self.action`). Mismo patrón que
-   *  `DispatchDetailDialog`. */
+   *  `ShippingDetailDialog`. */
   etiqueta: EtiquetaRFID;
   open: boolean;
   onOpenChange: (open: boolean) => void;

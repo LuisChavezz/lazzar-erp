@@ -42,7 +42,7 @@ interface ReflectiveOrderLinesTableProps {
  *
  * Combina los dos precedentes del proyecto en lugar de inventar un tercero: la
  * casilla por línea con "Marcar/Quitar todas" y el renglón agotado deshabilitado
- * son de `DispatchLinesTable`; el input con techo por línea es el
+ * son de `ShippingLinesTable`; el input con techo por línea es el
  * `DecimalQuantityInput` de picking/packing, aquí con `decimalPlaces={0}` porque
  * las prendas se reflejan enteras (`PedidoDetalleTalla.cantidad` es un
  * `PositiveIntegerField` y el backend rechaza fraccionarios con un 400).

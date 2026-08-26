@@ -5,18 +5,18 @@ import { MainDialog } from "@/src/components/MainDialog";
 import { DialogHeader } from "@/src/components/DialogHeader";
 import { Button } from "@/src/components/Button";
 import { EmbarquesIcon } from "@/src/components/Icons";
-import { DispatchCreateForm } from "./DispatchCreateForm";
+import { ShippingCreateForm } from "./ShippingCreateForm";
 
 /**
  * Punto de entrada de la captura de despacho: botón que abre el formulario de
  * un solo paso (elegir packing → marcar líneas → registrar; ver
- * `DispatchCreateForm` para por qué no es un asistente por pasos).
+ * `ShippingCreateForm` para por qué no es un asistente por pasos).
  *
  * El contenido —y con él las llamadas al onboarding— solo se monta cuando el
  * diálogo está abierto, y se re-monta limpio en cada apertura (sin packing ni
  * casillas residuales). Mismo patrón que `PackingForm`/`PickingForm`.
  */
-export const DispatchForm = () => {
+export const ShippingForm = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   return (
@@ -25,8 +25,8 @@ export const DispatchForm = () => {
       onOpenChange={setIsDialogOpen}
       title={
         <DialogHeader
-          title="Nuevo Despacho"
-          subtitle="Entrega de cajas empacadas para su envío"
+          title="Nuevo Envío"
+          subtitle="Entrega de cajas empacadas del packing seleccionado"
           statusColor="sky"
         />
       }
@@ -35,11 +35,11 @@ export const DispatchForm = () => {
       trigger={
         <Button variant="primary">
           <EmbarquesIcon className="w-4 h-4" />
-          Nuevo despacho
+          Nuevo envío
         </Button>
       }
     >
-      {isDialogOpen && <DispatchCreateForm onSuccess={() => setIsDialogOpen(false)} />}
+      {isDialogOpen && <ShippingCreateForm onSuccess={() => setIsDialogOpen(false)} />}
     </MainDialog>
   );
 };

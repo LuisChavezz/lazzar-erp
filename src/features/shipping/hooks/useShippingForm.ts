@@ -1,13 +1,13 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useDispatchOnboarding } from "./useDispatchOnboarding";
-import { useCreateDispatch, type ParsedDispatchError } from "./useCreateDispatch";
-import { CreateDispatchPayloadSchema } from "../schemas/dispatch.schema";
-import type { CreateDispatchDetalleLine } from "../interfaces/dispatch.interface";
-import type { DispatchOnboardingLine } from "../interfaces/dispatch-onboarding.interface";
+import { useShippingOnboarding } from "./useShippingOnboarding";
+import { useCreateShipping, type ParsedShipmentError } from "./useCreateShipping";
+import { CreateShipmentPayloadSchema } from "../schemas/shipping.schema";
+import type { CreateShipmentDetalleLine } from "../interfaces/shipping.interface";
+import type { ShipmentOnboardingLine } from "../interfaces/shipping-onboarding.interface";
 
-interface UseDispatchFormParams {
+interface UseShippingFormParams {
   /** Se invoca tras registrar el despacho correctamente (cierra el diálogo). */
   onSuccess: () => void;
 }
@@ -20,7 +20,7 @@ interface UseDispatchFormParams {
  * captura es un conjunto de ids marcados y el "clamp" equivalente es
  * simplemente descartar los que dejaron de estar disponibles.
  */
-export function useDispatchForm({ onSuccess }: UseDispatchFormParams) {
+export function useShippingForm({ onSuccess }: UseShippingFormParams) {
   const [selectedPackingId, setSelectedPackingId] = useState<number | null>(null);
   const [checkedIds, setCheckedIds] = useState<Set<number>>(() => new Set());
   const [serverBanner, setServerBanner] = useState<string | null>(null);
@@ -30,15 +30,15 @@ export function useDispatchForm({ onSuccess }: UseDispatchFormParams) {
   // Onboarding con alcance al packing elegido (elegibilidad por línea, caché
   // mínima). Con `selectedPackingId` en `null` la llave y la petición son las
   // del catálogo a secas, que el selector ya tiene en caché — no se dispara
-  // una petición extra (ver `useDispatchOnboarding`).
+  // una petición extra (ver `useShippingOnboarding`).
   const { data, isLoading, isError, error, refetch, isFetching } =
-    useDispatchOnboarding(selectedPackingId);
+    useShippingOnboarding(selectedPackingId);
 
   const packing = data?.packing ?? null;
-  const rows: DispatchOnboardingLine[] = selectedPackingId ? data?.despacho_detalle ?? [] : [];
+  const rows: ShipmentOnboardingLine[] = selectedPackingId ? data?.despacho_detalle ?? [] : [];
 
   const availableRowsCount = rows.filter((row) => row.disponible_para_despacho).length;
-  const alreadyDispatchedCount = rows.filter((row) => row.ya_despachado).length;
+  const alreadyShippedCount = rows.filter((row) => row.ya_despachado).length;
 
   // Reconciliación: cuando cambian las filas (típicamente tras el refetch por
   // dato desactualizado, o al cambiar de packing) se descartan los ids
@@ -108,23 +108,23 @@ export function useDispatchForm({ onSuccess }: UseDispatchFormParams) {
   ).length;
 
   // ─── Reparto del error del backend ────────────────────────────────────────
-  const handleServerError = (parsed: ParsedDispatchError) => {
+  const handleServerError = (parsed: ParsedShipmentError) => {
     if (parsed.staleData) {
       // Dato desactualizado: NO es un error terminal. Se recarga la
       // elegibilidad por línea (la casilla afectada quedará deshabilitada y
-      // marcada como "Ya despachada") y se avisa de forma informativa.
+      // marcada como "Ya enviada") y se avisa de forma informativa.
       setServerBanner(null);
       setStaleNotice(
-        "Alguna de las líneas marcadas ya había sido despachada por otro registro. Se actualizaron los datos: revisa la selección y vuelve a registrar.",
+        "Alguna de las líneas marcadas ya había sido enviada por otro registro. Se actualizaron los datos: revisa la selección y vuelve a registrar.",
       );
       void refetch();
       return;
     }
     setStaleNotice(null);
-    setServerBanner(parsed.formError ?? parsed.messages[0] ?? "Error al registrar el despacho.");
+    setServerBanner(parsed.formError ?? parsed.messages[0] ?? "Error al registrar el envío.");
   };
 
-  const { mutateAsync: createDispatch, isPending } = useCreateDispatch(handleServerError);
+  const { mutateAsync: createShipment, isPending } = useCreateShipping(handleServerError);
 
   /**
    * Líneas a enviar. Se recorren las FILAS (no el conjunto de marcados), así
@@ -134,9 +134,9 @@ export function useDispatchForm({ onSuccess }: UseDispatchFormParams) {
    * crea dos `DespachoDetalle`), así que ni siquiera una respuesta con filas
    * repetidas debe poder generar líneas dobles.
    */
-  const buildLines = (): CreateDispatchDetalleLine[] => {
+  const buildLines = (): CreateShipmentDetalleLine[] => {
     const seen = new Set<number>();
-    const lines: CreateDispatchDetalleLine[] = [];
+    const lines: CreateShipmentDetalleLine[] = [];
     for (const row of rows) {
       if (!row.disponible_para_despacho) continue;
       if (!checkedIds.has(row.packing_detalle)) continue;
@@ -151,33 +151,33 @@ export function useDispatchForm({ onSuccess }: UseDispatchFormParams) {
     setServerBanner(null);
 
     if (!selectedPackingId) {
-      setServerBanner("Selecciona un packing para despachar.");
+      setServerBanner("Selecciona un packing para enviar.");
       return;
     }
 
     const lines = buildLines();
     if (lines.length === 0) {
-      setServerBanner("Marca al menos una línea para despachar.");
+      setServerBanner("Marca al menos una línea para enviar.");
       return;
     }
 
     // Se envía la SALIDA del parseo, no el objeto original: `z.object`
     // descarta claves desconocidas, así que el body queda garantizado a
     // `packing` + `despacho_detalle` — `envio` no puede colarse (ver
-    // `CreateDispatchPayloadSchema`).
-    const parsed = CreateDispatchPayloadSchema.safeParse({
+    // `CreateShipmentPayloadSchema`).
+    const parsed = CreateShipmentPayloadSchema.safeParse({
       packing: selectedPackingId,
       despacho_detalle: lines,
     });
     if (!parsed.success) {
-      setServerBanner(parsed.error.issues[0]?.message ?? "Revisa los datos del despacho.");
+      setServerBanner(parsed.error.issues[0]?.message ?? "Revisa los datos del envío.");
       return;
     }
 
     if (submitInFlight.current) return;
     submitInFlight.current = true;
     try {
-      await createDispatch(parsed.data);
+      await createShipment(parsed.data);
       onSuccess();
     } catch {
       // El error ya se repartió en `handleServerError` (banner / aviso stale) y
@@ -193,7 +193,7 @@ export function useDispatchForm({ onSuccess }: UseDispatchFormParams) {
     packing,
     rows,
     availableRowsCount,
-    alreadyDispatchedCount,
+    alreadyShippedCount,
     checkedIds,
     toggleLine,
     toggleAll,
@@ -213,6 +213,6 @@ export function useDispatchForm({ onSuccess }: UseDispatchFormParams) {
 }
 
 /** Nombre del producto/variante de una línea candidata, para mostrar en la tabla. */
-export function dispatchLineProductoNombre(row: DispatchOnboardingLine): string {
+export function shipmentLineProductoNombre(row: ShipmentOnboardingLine): string {
   return row.producto_variante_nombre ?? row.producto_nombre ?? "—";
 }

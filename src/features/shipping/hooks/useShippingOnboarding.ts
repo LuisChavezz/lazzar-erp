@@ -1,15 +1,15 @@
 import { useQuery } from "@tanstack/react-query";
 import { AxiosError } from "axios";
 import { firstDrfMessage } from "@/src/utils/firstDrfMessage";
-import { getDispatchOnboarding } from "../services/actions";
-import type { DispatchOnboardingData } from "../interfaces/dispatch-onboarding.interface";
+import { getShippingOnboarding } from "../services/actions";
+import type { ShipmentOnboardingData } from "../interfaces/shipping-onboarding.interface";
 
 /**
  * Onboarding de despacho (`GET /wms/despachos/onboarding/`).
  *
- * - `useDispatchOnboarding()` / `useDispatchOnboarding(null)` → solo el
+ * - `useShippingOnboarding()` / `useShippingOnboarding(null)` → solo el
  *   catálogo de packings candidatos, para el selector.
- * - `useDispatchOnboarding(packingId)` → además el packing elegido y la
+ * - `useShippingOnboarding(packingId)` → además el packing elegido y la
  *   elegibilidad de despacho por línea (`ya_despachado` /
  *   `disponible_para_despacho`), para la tabla de líneas.
  *
@@ -19,7 +19,7 @@ import type { DispatchOnboardingData } from "../interfaces/dispatch-onboarding.i
  * entre que se carga el formulario y se envía. Para esa llamada se fuerza
  * `staleTime: 0` + `refetchOnMount: "always"` y un `gcTime` corto. Ante el
  * error de "ya fue despachado" el formulario dispara además un `refetch()`
- * manual (ver `useDispatchForm`). Mismo patrón que `usePackingOnboarding` /
+ * manual (ver `useShippingForm`). Mismo patrón que `usePackingOnboarding` /
  * `usePickingOnboarding`.
  *
  * La llamada SIN `packingId` (el catálogo) es un catálogo normal —tan estable
@@ -32,16 +32,16 @@ import type { DispatchOnboardingData } from "../interfaces/dispatch-onboarding.i
  * dos hooks a la vez (catálogo + alcance) mientras no hay packing elegido no
  * dispara dos peticiones, React Query las deduplica.
  */
-export const useDispatchOnboarding = (packingId?: number | null) => {
+export const useShippingOnboarding = (packingId?: number | null) => {
   const normalizedPackingId =
     typeof packingId === "number" && Number.isInteger(packingId) && packingId > 0
       ? packingId
       : null;
   const isPackingScoped = normalizedPackingId !== null;
 
-  const query = useQuery<DispatchOnboardingData>({
-    queryKey: ["dispatch-onboarding", normalizedPackingId],
-    queryFn: () => getDispatchOnboarding(normalizedPackingId),
+  const query = useQuery<ShipmentOnboardingData>({
+    queryKey: ["shipping-onboarding", normalizedPackingId],
+    queryFn: () => getShippingOnboarding(normalizedPackingId),
     ...(isPackingScoped
       ? { staleTime: 0, gcTime: 30_000, refetchOnMount: "always" as const }
       : {}),
@@ -67,7 +67,7 @@ export const useDispatchOnboarding = (packingId?: number | null) => {
  * alcance del usuario. Sin este lector, el mensaje útil del backend se
  * perdería y solo se vería el texto de respaldo.
  */
-export function dispatchOnboardingErrorMessage(error: unknown): string {
+export function shippingOnboardingErrorMessage(error: unknown): string {
   const fallback =
     "Puede que el packing ya no esté disponible o que no tengas acceso a él. Elige otro packing o vuelve a intentarlo.";
   if (!(error instanceof AxiosError)) return fallback;

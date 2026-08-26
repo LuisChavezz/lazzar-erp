@@ -9,7 +9,7 @@ import type { EmbroideryOrder } from "../interfaces/embroidery.interface";
  *
  * `hasLoaded` distingue una carga inicial fallida (mostrar `ErrorState`) de un
  * refetch fallido con datos en caché (toast + conservar la tabla). Mismo
- * patrón que `usePackings`/`useDispatches`.
+ * patrón que `usePackings`/`useShipments`.
  *
  * ORDEN: lo resuelve el backend, que devuelve el listado ya ordenado por
  * `-fecha_inicio, -id` (más reciente primero, con `-id` como desempate

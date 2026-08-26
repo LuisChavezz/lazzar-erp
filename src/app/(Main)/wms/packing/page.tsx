@@ -6,7 +6,7 @@ export default function PackingPage() {
       <div>
         <p className="text-slate-500 dark:text-slate-400 mt-1">
           Empaque de mercancía surtida por picking: registro de cajas, peso y
-          volumen previo al despacho.
+          volumen previo al envío.
         </p>
       </div>
 

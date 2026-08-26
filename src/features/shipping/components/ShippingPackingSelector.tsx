@@ -3,10 +3,10 @@
 import { Loader } from "@/src/components/Loader";
 import { SearchableSelectList } from "@/src/components/SearchableSelectList";
 import { renderRadioIndicator } from "@/src/components/RadioIndicator";
-import { useDispatchOnboarding } from "../hooks/useDispatchOnboarding";
-import type { DispatchOnboardingPacking } from "../interfaces/dispatch-onboarding.interface";
+import { useShippingOnboarding } from "../hooks/useShippingOnboarding";
+import type { ShipmentOnboardingPacking } from "../interfaces/shipping-onboarding.interface";
 
-interface DispatchPackingSelectorProps {
+interface ShippingPackingSelectorProps {
   selectedPackingId: number | null;
   onSelect: (packingId: number) => void;
   /** Bloquea la selección mientras el registro está en vuelo. */
@@ -28,14 +28,14 @@ const PACKING_CATALOG_LIMIT = 50;
  *
  * Usa el onboarding SIN alcance (solo el catálogo), que sí se cachea con el
  * `staleTime` global del proyecto; la llamada con alcance al packing elegido
- * —la que casi no se cachea— vive en `useDispatchForm`.
+ * —la que casi no se cachea— vive en `useShippingForm`.
  */
-export function DispatchPackingSelector({
+export function ShippingPackingSelector({
   selectedPackingId,
   onSelect,
   disabled = false,
-}: DispatchPackingSelectorProps) {
-  const { data, isLoading, isError } = useDispatchOnboarding();
+}: ShippingPackingSelectorProps) {
+  const { data, isLoading, isError } = useShippingOnboarding();
   const packings = data?.packings ?? [];
 
   if (isLoading) {
@@ -43,7 +43,7 @@ export function DispatchPackingSelector({
       <Loader
         className="py-10"
         title="Cargando packings"
-        message="Obteniendo packings disponibles para despachar..."
+        message="Obteniendo packings disponibles para enviar..."
       />
     );
   }
@@ -74,7 +74,7 @@ export function DispatchPackingSelector({
     // cambiando de packing con el registro anterior en vuelo — el error de
     // datos obsoletos que llegara después refetchearía y se explicaría sobre
     // líneas que ya no están en pantalla. Mismo tratamiento que la tabla de
-    // líneas en `DispatchCreateForm`.
+    // líneas en `ShippingCreateForm`.
     <fieldset disabled={disabled} className={`space-y-3 ${disabled ? "opacity-60" : ""}`}>
       {isCatalogCapped && (
         <p className="text-[11px] text-slate-500 dark:text-slate-400 px-1">
@@ -83,7 +83,7 @@ export function DispatchPackingSelector({
         </p>
       )}
 
-      <SearchableSelectList<DispatchOnboardingPacking>
+      <SearchableSelectList<ShipmentOnboardingPacking>
         items={packings}
         searchPlaceholder="Buscar packing por folio, pedido, cliente o almacén..."
         filterPredicate={(packing, term) =>
@@ -99,7 +99,7 @@ export function DispatchPackingSelector({
         // aquí deseleccionar no lleva a ningún lado (no hay botón "Continuar"
         // que deshabilitar) y solo vaciaría la tabla de líneas ya cargada.
         onSelect={(packing) => onSelect(packing.id)}
-        emptyMessage="No hay packings disponibles para despachar."
+        emptyMessage="No hay packings disponibles para enviar."
         noResultsMessage="No se encontraron packings"
         renderIndicator={renderRadioIndicator}
         renderContent={(packing) => (

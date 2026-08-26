@@ -2,13 +2,13 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { AxiosError } from "axios";
 import { firstDrfMessage } from "@/src/utils/firstDrfMessage";
-import { createDispatch } from "../services/actions";
+import { createShipment } from "../services/actions";
 
 /**
  * Mensajes de "dato desactualizado": la línea ya se despachó entre que se
  * cargó el formulario y se envió (otro despacho la consumió). NO es un error
  * fatal — el formulario recarga el onboarding, la línea reaparece marcada
- * como "Ya despachada" y se puede reintentar con el resto. Mismo criterio que
+ * como "Ya enviada" y se puede reintentar con el resto. Mismo criterio que
  * `STALE_DATA_RE` en `useCreatePacking`/`useCreatePicking`.
  *
  * Solo cubre "ya fue despachado". "No pertenecen al packing seleccionado" NO
@@ -63,7 +63,7 @@ function firstDespachoDetalleMessage(value: unknown): string | undefined {
  * `staleData` marca el caso de línea ya despachada, que el formulario trata
  * recargando datos en lugar de mostrar un error terminal.
  */
-export interface ParsedDispatchError {
+export interface ParsedShipmentError {
   formError?: string;
   messages: string[];
   staleData: boolean;
@@ -85,19 +85,19 @@ export interface ParsedDispatchError {
  * Siempre devuelve un objeto (nunca `null`): ante un error inesperado deja un
  * `formError` genérico para que el banner siempre aparezca.
  */
-export function parseDispatchError(error: unknown): ParsedDispatchError {
-  const result: ParsedDispatchError = {
+export function parseShipmentError(error: unknown): ParsedShipmentError {
+  const result: ParsedShipmentError = {
     messages: [],
     staleData: false,
   };
 
-  const finalize = (): ParsedDispatchError => {
+  const finalize = (): ParsedShipmentError => {
     result.staleData = result.messages.some((message) => STALE_DATA_RE.test(message));
     return result;
   };
 
   if (!(error instanceof AxiosError)) {
-    result.formError = "Error al registrar el despacho.";
+    result.formError = "Error al registrar el envío.";
     return finalize();
   }
 
@@ -119,13 +119,13 @@ export function parseDispatchError(error: unknown): ParsedDispatchError {
       result.formError = messages[0];
       result.messages.push(...messages);
     } else {
-      result.formError = "Error al registrar el despacho.";
+      result.formError = "Error al registrar el envío.";
     }
     return finalize();
   }
 
   if (!data || typeof data !== "object") {
-    result.formError = error.message || "Error al registrar el despacho.";
+    result.formError = error.message || "Error al registrar el envío.";
     return finalize();
   }
 
@@ -169,7 +169,7 @@ export function parseDispatchError(error: unknown): ParsedDispatchError {
       if (message) result.messages.push(message);
     });
     if (result.messages.length === 0) {
-      result.formError = "Error de validación al registrar el despacho.";
+      result.formError = "Error de validación al registrar el envío.";
     }
   }
 
@@ -187,25 +187,25 @@ export function parseDispatchError(error: unknown): ParsedDispatchError {
  *
  * Para el dato desactualizado se usa un toast NEUTRO (no de error): no es un
  * fallo del usuario, solo cambió la elegibilidad de una línea. Invalida
- * `["dispatches"]` (el listado) y `["dispatch-onboarding"]` (el catálogo y
+ * `["shipments"]` (el listado) y `["shipping-onboarding"]` (el catálogo y
  * cualquier alcance por packing: despachar líneas cambia su elegibilidad).
  */
-export const useCreateDispatch = (onServerError?: (parsed: ParsedDispatchError) => void) => {
+export const useCreateShipping = (onServerError?: (parsed: ParsedShipmentError) => void) => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: createDispatch,
+    mutationFn: createShipment,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["dispatches"] });
-      queryClient.invalidateQueries({ queryKey: ["dispatch-onboarding"] });
-      toast.success("Despacho registrado correctamente");
+      queryClient.invalidateQueries({ queryKey: ["shipments"] });
+      queryClient.invalidateQueries({ queryKey: ["shipping-onboarding"] });
+      toast.success("Envío registrado correctamente");
     },
     onError: (error) => {
-      const parsed = parseDispatchError(error);
+      const parsed = parseShipmentError(error);
       onServerError?.(parsed);
 
       if (parsed.staleData) {
-        toast("Alguna línea ya había sido despachada; se actualizaron los datos. Revisa y reintenta.", {
+        toast("Alguna línea ya había sido enviada; se actualizaron los datos. Revisa y reintenta.", {
           icon: "🔄",
         });
         return;
@@ -214,7 +214,7 @@ export const useCreateDispatch = (onServerError?: (parsed: ParsedDispatchError) 
       const toastMessage =
         parsed.messages.length > 0
           ? parsed.messages.join("\n")
-          : parsed.formError ?? "Error al registrar el despacho";
+          : parsed.formError ?? "Error al registrar el envío";
       toast.error(toastMessage);
     },
   });

@@ -67,7 +67,7 @@ export const getCorteMangaOrderDetail = async (
  * (`GET /produccion/orden-corte-manga/onboarding/`).
  *
  * SIN parámetros: este onboarding no tiene un segundo modo con alcance al padre
- * elegido (`?pedido=`) como picking/packing/despacho — el service deriva los
+ * elegido (`?pedido=`) como picking/packing/envío — el service deriva los
  * detalles solo en el POST, así que no hay nada que previsualizar por pedido.
  * Por eso basta una sola llamada y se cachea como catálogo normal.
  *

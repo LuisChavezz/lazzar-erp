@@ -8,7 +8,7 @@ import type { CorteMangaOnboardingData } from "../interfaces/corte-manga-order.i
  * `["corte-manga-onboarding"]`.
  *
  * Usa el `staleTime` global (15 min) sin desviaciones, a diferencia de
- * `useDispatchOnboarding`/`usePackingOnboarding`: aquellos bajan el `staleTime`
+ * `useShippingOnboarding`/`usePackingOnboarding`: aquellos bajan el `staleTime`
  * a 0 porque su respuesta trae elegibilidad POR LÍNEA que otro operador puede
  * invalidar en cualquier momento. Aquí no hay nada equivalente — el catálogo es
  * una lista de pedidos con corte de manga y de usuarios activos, ambos tan

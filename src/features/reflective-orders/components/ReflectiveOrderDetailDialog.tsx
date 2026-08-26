@@ -62,7 +62,7 @@ const quantityOrDash = (value: number | null) =>
  * contexto del pedido, no de este documento.
  *
  * `tipo_reflejante`, `posicion` y `metros` se conservan con su `"—"` por
- * renglón (la convención de Packing/Dispatch/Picking, y no la excepción de
+ * renglón (la convención de Packing/Shipping/Picking, y no la excepción de
  * bordado de omitir columnas vacías) porque NO están vacías para el 100% de los
  * renglones: `tipo_reflejante`/`posicion` los puebla la generación automática
  * desde ventas y solo quedan en `null` cuando la orden se creó desde este

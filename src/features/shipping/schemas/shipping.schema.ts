@@ -11,17 +11,17 @@ import { z } from "zod";
  */
 
 /** Id de packing válido para el query param y para el body. `0` = sin elegir. */
-export const DispatchPackingSchema = z.object({
+export const ShipmentPackingSchema = z.object({
   packing: z.number().int().min(1, "Selecciona un packing"),
 });
-export type DispatchPackingValues = z.infer<typeof DispatchPackingSchema>;
+export type ShipmentPackingValues = z.infer<typeof ShipmentPackingSchema>;
 
 /**
  * Una línea del body. `packing_detalle` es el único campo aceptado; el
  * backend lo valida con `min_value=1`, así que se replica aquí para no
  * depender de su rechazo tardío.
  */
-export const CreateDispatchDetalleLineSchema = z.object({
+export const CreateShipmentDetalleLineSchema = z.object({
   packing_detalle: z.number().int().min(1, "Línea de packing inválida"),
 });
 
@@ -40,10 +40,10 @@ export const CreateDispatchDetalleLineSchema = z.object({
  *     `packing` y `despacho_detalle`: `envio` no puede colarse ni por
  *     accidente ni por un cambio futuro que lo agregue río arriba.
  */
-export const CreateDispatchPayloadSchema = z.object({
+export const CreateShipmentPayloadSchema = z.object({
   packing: z.number().int().min(1, "Selecciona un packing"),
   despacho_detalle: z
-    .array(CreateDispatchDetalleLineSchema)
-    .min(1, "Marca al menos una línea para despachar"),
+    .array(CreateShipmentDetalleLineSchema)
+    .min(1, "Marca al menos una línea para enviar"),
 });
-export type CreateDispatchPayloadValues = z.infer<typeof CreateDispatchPayloadSchema>;
+export type CreateShipmentPayloadValues = z.infer<typeof CreateShipmentPayloadSchema>;

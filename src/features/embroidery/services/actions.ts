@@ -14,7 +14,7 @@ import type {
  *
  * Tenant-scoped por empresa/sucursal — el usuario solo ve las órdenes de las
  * sucursales a las que tiene acceso (mismo criterio que picking/packing/
- * despacho; fuera de alcance devuelve `200 []`). Sin parámetros de filtro ni
+ * envío; fuera de alcance devuelve `200 []`). Sin parámetros de filtro ni
  * paginación: el backend devuelve el arreglo COMPLETO.
  *
  * El `queryset` ordena por `-fecha_inicio, -id`, así que el arreglo llega ya en

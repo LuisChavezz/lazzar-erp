@@ -1,7 +1,7 @@
 import type { StatusBadgeConfigEntry } from "@/src/components/StatusBadge";
 
 /**
- * Colores por estatus de línea (`DispatchDetalleLine.estado`, heredado de
+ * Colores por estatus de línea (`ShipmentDetalleLine.estado`, heredado de
  * `PackingDetalle.estado`). Comparte los mismos VALORES que
  * `PACKING_STATUS_CONFIG` (mismo enum de origen en el backend) pero se
  * declara aparte, no se importa desde `packing`: por convención del proyecto
@@ -11,10 +11,10 @@ import type { StatusBadgeConfigEntry } from "@/src/components/StatusBadge";
  * packing.
  *
  * En la práctica hoy solo se ha visto `"PENDIENTE"` (ver
- * `dispatch.interface.ts`), pero se cubren los 4 valores del enum por
+ * `shipping.interface.ts`), pero se cubren los 4 valores del enum por
  * completitud, mismo criterio que `PACKING_STATUS_CONFIG`.
  */
-export const DISPATCH_LINE_STATUS_CONFIG: Record<string, StatusBadgeConfigEntry> = {
+export const SHIPPING_LINE_STATUS_CONFIG: Record<string, StatusBadgeConfigEntry> = {
   PENDIENTE: {
     label: "Pendiente",
     cls: "bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400",

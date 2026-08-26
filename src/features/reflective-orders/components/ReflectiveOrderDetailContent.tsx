@@ -85,7 +85,7 @@ const metrosOrDash = (metros: number): string =>
  * contexto del pedido, no de este documento.
  *
  * `tipo_reflejante`, `posicion` y `metros` conservan su `"—"` por renglón (la
- * convención de Packing/Dispatch/Picking, y no la excepción de bordado de
+ * convención de Packing/Shipping/Picking, y no la excepción de bordado de
  * omitir columnas vacías) porque NO están vacías para el 100% de los renglones:
  * `tipo_reflejante`/`posicion` los puebla la generación automática desde ventas
  * y solo quedan en `null` cuando la orden se creó desde este módulo, cuyo

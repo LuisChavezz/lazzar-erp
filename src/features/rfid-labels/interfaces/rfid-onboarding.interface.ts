@@ -1,6 +1,6 @@
 /**
  * Contrato del endpoint combinado `GET/POST /wms/etiquetas-rfid/onboarding/`
- * (mismo patrón de "1 modal, 1 URL" que picking/packing/despacho).
+ * (mismo patrón de "1 modal, 1 URL" que picking/packing/envío).
  *
  * - GET sin selección  → buscador (`resultados[]`), `tiene_seleccion: false`,
  *   `preview: null`.

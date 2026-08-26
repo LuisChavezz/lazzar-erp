@@ -22,7 +22,7 @@ const ESTADO_FILTER = [
  *
  * `DataTable` se monta SIEMPRE y recibe `isLoading`/`isError` en vez de
  * sustituirse por un skeleton/`ErrorState` en un ternario propio — mismo
- * patrón que `DispatchView`/`PackingView`.
+ * patrón que `ShippingView`/`PackingView`.
  */
 export function RfidLabelsView() {
   const { rfidLabels, isLoading, isError, error, hasLoaded, refetch, isFetching } =

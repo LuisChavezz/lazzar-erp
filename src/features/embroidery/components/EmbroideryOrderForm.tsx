@@ -27,7 +27,7 @@ interface EmbroideryOrderFormProps {
  * El contenido —y con él la llamada al onboarding— solo se monta cuando el
  * diálogo está abierto, y se re-monta limpio en cada apertura (sin pedido,
  * observaciones ni selección de líneas residuales). Mismo patrón que
- * `PickingForm`/`DispatchForm`.
+ * `PickingForm`/`ShippingForm`.
  */
 export const EmbroideryOrderForm = ({
   onViewExistingOrder,

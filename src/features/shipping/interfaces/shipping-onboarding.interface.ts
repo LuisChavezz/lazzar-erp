@@ -16,13 +16,13 @@
  *    por línea de `PackingDetalle` con su elegibilidad de despacho ACTUAL.
  *    Esa elegibilidad puede cambiar entre que se carga el formulario y se
  *    envía (otro operador despacha la misma línea antes), así que no debe
- *    cachearse por mucho — ver `useDispatchOnboarding`.
+ *    cachearse por mucho — ver `useShippingOnboarding`.
  *
  * OJO con el id que se manda en `?packing`: un id inexistente o fuera del
  * alcance del usuario devuelve `400` (no `404`), y un valor NO numérico
  * revienta el endpoint con un `500` sin capturar (bug confirmado del backend).
  * Por eso la acción valida que el id sea un entero positivo antes de pedir
- * (ver `getDispatchOnboarding`).
+ * (ver `getShippingOnboarding`).
  *
  * Los nombres de campo se conservan en español, tal cual el contrato del API.
  */
@@ -32,7 +32,7 @@
  * diferencia del packing YA elegido, el catálogo NO trae `cliente` (id), solo
  * `cliente_nombre`.
  */
-export interface DispatchOnboardingPacking {
+export interface ShipmentOnboardingPacking {
   id: number;
   folio: string;
   pedido: number;
@@ -51,7 +51,7 @@ export interface DispatchOnboardingPacking {
  * El packing elegido (`?packing={id}`) — mismo shape que el catálogo MÁS
  * `cliente` (id), que el catálogo por sí solo no incluye.
  */
-export interface DispatchOnboardingPackingDetail extends DispatchOnboardingPacking {
+export interface ShipmentOnboardingPackingDetail extends ShipmentOnboardingPacking {
   cliente: number | null;
 }
 
@@ -63,12 +63,12 @@ export interface DispatchOnboardingPackingDetail extends DispatchOnboardingPacki
  * arreglo llega casi siempre vacío y un selector de envío se leería como algo
  * roto en lugar de comunicar la limitación real. `Despacho.envio` es nullable
  * desde la migración `0010_alter_despacho_envio`, así que el POST simplemente
- * omite el campo (ver `CreateDispatchPayload`).
+ * omite el campo (ver `CreateShipmentPayload`).
  *
  * `transportista_nombre` siempre viaja `null`: `Transportista` no tiene campo
- * de nombre en el modelo actual — mismo hueco ya documentado en `Dispatch`.
+ * de nombre en el modelo actual — mismo hueco ya documentado en `Shipment`.
  */
-export interface DispatchOnboardingEnvio {
+export interface ShipmentOnboardingEnvio {
   id: number;
   pedido: number;
   transportista: number;
@@ -88,11 +88,11 @@ export interface DispatchOnboardingEnvio {
  *
  * OJO con `talla`/`color`: en ESTA respuesta son los ids resueltos y SIEMPRE
  * vienen como clave (con `null` explícito cuando no aplica). No confundir con
- * `talla_id`/`color_id` de `DispatchDetalleLine` (listado/detalle), que pueden
+ * `talla_id`/`color_id` de `ShipmentDetalleLine` (listado/detalle), que pueden
  * faltar por completo — son shapes distintos del mismo dato, con nombres de
  * campo distintos según el endpoint.
  */
-export interface DispatchOnboardingLine {
+export interface ShipmentOnboardingLine {
   packing_detalle: number;
   picking_detalle: number | null;
   pedido_detalle: number | null;
@@ -121,15 +121,15 @@ export interface DispatchOnboardingLine {
  * `despacho_detalle` es `[]`.
  *
  * `despacho_detalle` aquí son las líneas CANDIDATAS (shape de lectura,
- * `DispatchOnboardingLine`), no las líneas a enviar en el POST
- * (`CreateDispatchDetalleLine`, solo `{ packing_detalle }`) ni las ya
- * registradas (`DispatchDetalleLine`, con `id`/`despacho`). Los tres shapes
+ * `ShipmentOnboardingLine`), no las líneas a enviar en el POST
+ * (`CreateShipmentDetalleLine`, solo `{ packing_detalle }`) ni las ya
+ * registradas (`ShipmentDetalleLine`, con `id`/`despacho`). Los tres shapes
  * comparten el nombre `despacho_detalle` en sus respectivos endpoints — misma
  * colisión de nombres que ya tiene `packing_detalle` en packing.
  */
-export interface DispatchOnboardingData {
-  packings: DispatchOnboardingPacking[];
-  envios: DispatchOnboardingEnvio[];
-  packing: DispatchOnboardingPackingDetail | null;
-  despacho_detalle: DispatchOnboardingLine[];
+export interface ShipmentOnboardingData {
+  packings: ShipmentOnboardingPacking[];
+  envios: ShipmentOnboardingEnvio[];
+  packing: ShipmentOnboardingPackingDetail | null;
+  despacho_detalle: ShipmentOnboardingLine[];
 }

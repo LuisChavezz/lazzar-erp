@@ -26,7 +26,7 @@ const ActionsCell = ({ row }: { row: EtiquetaRFID }) => {
       {/* Montaje condicional: el diálogo no existe hasta abrirlo. Sin fetch
           propio — `row` YA es el objeto completo (listado y detalle comparten
           `EtiquetaRFIDSerializer` en el backend, `get_serializer_class` no
-          distingue por `self.action`). Mismo patrón que `DispatchColumns`. */}
+          distingue por `self.action`). Mismo patrón que `ShippingColumns`. */}
       {isDetailOpen && (
         <RfidLabelDetailDialog etiqueta={row} open={true} onOpenChange={setIsDetailOpen} />
       )}

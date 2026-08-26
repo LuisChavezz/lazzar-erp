@@ -9,7 +9,7 @@ import {
 
 // El normalizador vive en `utils/` por ser una función pura (ver el archivo);
 // se re-exporta aquí para que el punto de importación coincida con el de
-// `parseDispatchError`/`parseStockTransferError`, que sí viven en su hook.
+// `parseShipmentError`/`parseStockTransferError`, que sí viven en su hook.
 export {
   parseEmbroideryOrderError,
   type ParsedEmbroideryOrderError,

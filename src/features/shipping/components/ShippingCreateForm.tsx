@@ -7,12 +7,12 @@ import {
   InfoIcon,
   RefreshIcon,
 } from "@/src/components/Icons";
-import { dispatchOnboardingErrorMessage } from "../hooks/useDispatchOnboarding";
-import { useDispatchForm } from "../hooks/useDispatchForm";
-import { DispatchLinesTable } from "./DispatchLinesTable";
-import { DispatchPackingSelector } from "./DispatchPackingSelector";
+import { shippingOnboardingErrorMessage } from "../hooks/useShippingOnboarding";
+import { useShippingForm } from "../hooks/useShippingForm";
+import { ShippingLinesTable } from "./ShippingLinesTable";
+import { ShippingPackingSelector } from "./ShippingPackingSelector";
 
-interface DispatchCreateFormProps {
+interface ShippingCreateFormProps {
   /** Se invoca tras registrar el despacho correctamente (cierra el diálogo). */
   onSuccess: () => void;
 }
@@ -39,14 +39,14 @@ interface DispatchCreateFormProps {
  * `PATCH`/`PUT`, no hay endpoint detrás de ese botón. Lo que sí se hace es
  * DECIRLO — ver el aviso de permanencia junto al botón de registro.
  */
-export function DispatchCreateForm({ onSuccess }: DispatchCreateFormProps) {
+export function ShippingCreateForm({ onSuccess }: ShippingCreateFormProps) {
   const {
     selectedPackingId,
     selectPacking,
     packing,
     rows,
     availableRowsCount,
-    alreadyDispatchedCount,
+    alreadyShippedCount,
     checkedIds,
     toggleLine,
     toggleAll,
@@ -62,7 +62,7 @@ export function DispatchCreateForm({ onSuccess }: DispatchCreateFormProps) {
     dismissStaleNotice,
     isPending,
     handleSubmit,
-  } = useDispatchForm({ onSuccess });
+  } = useShippingForm({ onSuccess });
 
   const hasPacking = selectedPackingId !== null;
 
@@ -76,13 +76,13 @@ export function DispatchCreateForm({ onSuccess }: DispatchCreateFormProps) {
       <section className="space-y-3">
         <div>
           <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
-            Packing a despachar
+            Packing a enviar
           </h3>
           <p className="text-[11px] text-slate-500">
             El pedido, el cliente y la sucursal se heredan del packing elegido.
           </p>
         </div>
-        <DispatchPackingSelector
+        <ShippingPackingSelector
           selectedPackingId={selectedPackingId}
           onSelect={selectPacking}
           disabled={isPending}
@@ -181,7 +181,7 @@ export function DispatchCreateForm({ onSuccess }: DispatchCreateFormProps) {
             <Loader
               className="py-10"
               title="Cargando líneas"
-              message="Consultando qué líneas de este packing se pueden despachar..."
+              message="Consultando qué líneas de este packing se pueden enviar..."
             />
           ) : isError ? (
             <div className="rounded-2xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 p-6 space-y-3 text-center">
@@ -189,7 +189,7 @@ export function DispatchCreateForm({ onSuccess }: DispatchCreateFormProps) {
                 No se pudieron cargar las líneas del packing
               </p>
               <p className="text-xs text-red-500 dark:text-red-300">
-                {dispatchOnboardingErrorMessage(error)}
+                {shippingOnboardingErrorMessage(error)}
               </p>
               <button
                 type="button"
@@ -207,14 +207,14 @@ export function DispatchCreateForm({ onSuccess }: DispatchCreateFormProps) {
             />
           ) : availableRowsCount === 0 ? (
             <InfoPanel
-              title="Este packing ya fue despachado por completo"
-              subtitle={`Sus ${alreadyDispatchedCount} línea${
-                alreadyDispatchedCount === 1 ? "" : "s"
-              } ya salieron en un despacho anterior. Elige otro packing de la lista de arriba.`}
+              title="Este packing ya fue enviado por completo"
+              subtitle={`Sus ${alreadyShippedCount} línea${
+                alreadyShippedCount === 1 ? "" : "s"
+              } ya salieron en un envío anterior. Elige otro packing de la lista de arriba.`}
             />
           ) : (
             <fieldset disabled={isPending} className="space-y-5">
-              <DispatchLinesTable
+              <ShippingLinesTable
                 rows={rows}
                 checkedIds={checkedIds}
                 availableRowsCount={availableRowsCount}
@@ -251,15 +251,15 @@ export function DispatchCreateForm({ onSuccess }: DispatchCreateFormProps) {
               <ExclamationTriangleIcon className="w-5 h-5 shrink-0 text-amber-600 dark:text-amber-400 mt-0.5" />
               <div className="min-w-0 flex-1 space-y-1">
                 <p className="text-sm font-semibold text-amber-800 dark:text-amber-200">
-                  El registro del despacho es definitivo
+                  El registro del envío es definitivo
                 </p>
                 <ul className="list-disc pl-4 space-y-1 text-xs text-amber-700 dark:text-amber-300">
                   <li>
-                    Las líneas que marques quedan despachadas de forma permanente: el sistema no
+                    Las líneas que marques quedan enviadas de forma permanente: el sistema no
                     permite editarlas ni revertirlas después.
                   </li>
                   <li>
-                    El despacho se registra sin envío ni transportista, y no es posible asociarlos
+                    El envío se registra sin guía ni transportista, y no es posible asociarlos
                     más adelante, así que no quedará registro de a quién se entregó la mercancía.
                   </li>
                 </ul>
@@ -278,7 +278,7 @@ export function DispatchCreateForm({ onSuccess }: DispatchCreateFormProps) {
               loadingLabel="Registrando..."
               disabled={isPending || selectedCount === 0}
             >
-              Registrar despacho
+              Registrar envío
             </FormSubmitButton>
           </div>
         </form>

@@ -1,6 +1,6 @@
 import { v1_api } from "@/src/api/v1.api";
-import type { CreateDispatchPayload, Dispatch } from "../interfaces/dispatch.interface";
-import type { DispatchOnboardingData } from "../interfaces/dispatch-onboarding.interface";
+import type { CreateShipmentPayload, Shipment } from "../interfaces/shipping.interface";
+import type { ShipmentOnboardingData } from "../interfaces/shipping-onboarding.interface";
 
 /**
  * Lista los despachos (`GET /wms/despachos/`).
@@ -12,8 +12,8 @@ import type { DispatchOnboardingData } from "../interfaces/dispatch-onboarding.i
  * renglón, igual que el detalle — una característica del backend a tener en
  * cuenta, no algo que resolver en el frontend.
  */
-export const getDispatches = async (): Promise<Dispatch[]> => {
-  const response = await v1_api.get<Dispatch[]>("/wms/despachos/");
+export const getShipments = async (): Promise<Shipment[]> => {
+  const response = await v1_api.get<Shipment[]>("/wms/despachos/");
   return response.data;
 };
 
@@ -24,19 +24,19 @@ export const getDispatches = async (): Promise<Dispatch[]> => {
  * Sin `packingId` devuelve solo el catálogo de packings candidatos. Con
  * `packingId` añade el packing elegido y `despacho_detalle`: la elegibilidad
  * de despacho por línea, que cambia con el tiempo — por eso el hook que
- * consume esta acción casi no la cachea (ver `useDispatchOnboarding`).
+ * consume esta acción casi no la cachea (ver `useShippingOnboarding`).
  *
  * El id se filtra a entero positivo ANTES de mandarlo: un `?packing` no
  * numérico revienta el endpoint con un `500` sin capturar (bug confirmado del
  * backend). Con un valor no válido se pide el catálogo a secas, que es
  * exactamente lo que la UI necesita cuando todavía no hay packing elegido.
  */
-export const getDispatchOnboarding = async (
+export const getShippingOnboarding = async (
   packingId?: number | null,
-): Promise<DispatchOnboardingData> => {
+): Promise<ShipmentOnboardingData> => {
   const isValidId =
     typeof packingId === "number" && Number.isInteger(packingId) && packingId > 0;
-  const response = await v1_api.get<DispatchOnboardingData>(
+  const response = await v1_api.get<ShipmentOnboardingData>(
     "/wms/despachos/onboarding/",
     isValidId ? { params: { packing: packingId } } : undefined,
   );
@@ -46,9 +46,9 @@ export const getDispatchOnboarding = async (
 /**
  * Crea un despacho (`POST /wms/despachos/`, idéntico a
  * `POST .../onboarding/`). El body lleva únicamente el `packing` y las líneas
- * marcadas; `envio` se omite a propósito (ver `CreateDispatchPayload`).
+ * marcadas; `envio` se omite a propósito (ver `CreateShipmentPayload`).
  */
-export const createDispatch = async (data: CreateDispatchPayload): Promise<Dispatch> => {
-  const response = await v1_api.post<Dispatch>("/wms/despachos/", data);
+export const createShipment = async (data: CreateShipmentPayload): Promise<Shipment> => {
+  const response = await v1_api.post<Shipment>("/wms/despachos/", data);
   return response.data;
 };

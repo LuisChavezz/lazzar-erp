@@ -211,11 +211,11 @@ export const appRouteGroups: AppRouteGroup[] = [
         permission: "R-WMS",
       },
       {
-        key: "wms-dispatch",
+        key: "wms-shipping",
         label: "Envío",
-        path: "/wms/dispatch",
+        path: "/wms/shipping",
         icon: EmbarquesIcon,
-        description: "Entrega de cajas empacadas al transportista para su envío.",
+        description: "Entrega de cajas empacadas al transportista.",
         permission: "R-WMS",
       },
       {
