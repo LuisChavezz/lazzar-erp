@@ -139,17 +139,23 @@ const ActionsCell = ({
       onSelect: () => setIsViewOpen(true),
     },
     {
+      // Lectura dentro de la sección de cotizaciones: basta el permiso de la
+      // propia sección (antes exigía el de MÓDULO, que tras la granularización
+      // ya no lo tiene quien solo accede a esta pantalla).
       label: "Revisar inventario",
       icon: WarehouseIcon,
       onSelect: () => setIsStockReviewOpen(true),
-      permission: "R-MESACONTROL",
+      permission: "R-MESACONTROL-COTI",
     },
     {
+      // Aprobar/rechazar tienen códigos propios en el catálogo:
+      // A-MESACONTROL-COTI y D-MESACONTROL-COTI. `visible` sigue siendo la regla
+      // de NEGOCIO (estatus de la cotización); el permiso es independiente.
       label: "Autorizar",
       icon: CheckCircleIcon,
       onSelect: handleOpenAuthorizeDialog,
       disabled: isAuthorizingOperationsQuote || isRejectingOperationsQuote,
-      permission: "R-MESACONTROL",
+      permission: "A-MESACONTROL-COTI",
       visible: canAuthorizeOperationsQuote,
     },
     {
@@ -157,16 +163,18 @@ const ActionsCell = ({
       icon: RejectIcon,
       onSelect: handleOpenRejectDialog,
       disabled: isRejectingOperationsQuote || isAuthorizingOperationsQuote,
-      permission: "R-MESACONTROL",
+      permission: "D-MESACONTROL-COTI",
       visible: canAuthorizeOperationsQuote,
     },
     {
+      // Aceptar/rechazar CAMBIOS es la misma capacidad de aprobación sobre la
+      // cotización, aplicada a una revisión: reutiliza los mismos códigos.
       label: "Aceptar cambios",
       icon: SyncIcon,
       onSelect: handleOpenAcceptChangesDialog,
       disabled:
         isAcceptingChangesOperationsQuote || isRejectingChangesOperationsQuote,
-      permission: "R-MESACONTROL",
+      permission: "A-MESACONTROL-COTI",
       visible: canAcceptOperationsQuoteChanges,
     },
     {
@@ -175,7 +183,7 @@ const ActionsCell = ({
       onSelect: handleOpenRejectChangesDialog,
       disabled:
         isRejectingChangesOperationsQuote || isAcceptingChangesOperationsQuote,
-      permission: "R-MESACONTROL",
+      permission: "D-MESACONTROL-COTI",
       visible: canAcceptOperationsQuoteChanges,
     },
   ];

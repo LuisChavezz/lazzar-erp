@@ -84,8 +84,10 @@ export function QuoteKanbanBoard() {
     returningTimerRef.current = setTimeout(() => setReturningId(null), 800);
   }, []);
 
-  // Permisos
-  const canCreateOrder = hasPermission("R-CRM", session?.user);
+  // Permisos. "+ Nueva cotización" usa el código de ALTA, no el de lectura de
+  // la sección: ver el tablero (`R-CRM-COTIZACIONES`, lo exige la ruta) no
+  // habilita a crear.
+  const canCreateQuote = hasPermission("C-CRM-COTIZACIONES", session?.user);
 
   // ─── Mapa de columnas resuelto: DnD + búsqueda ───────────────────────────
   const resolvedMap = useMemo<ColumnMap>(() => {
@@ -266,7 +268,7 @@ export function QuoteKanbanBoard() {
         onSearchChange={setSearchQuery}
         searchPlaceholder="Buscar cotización..."
         actionButton={
-          canCreateOrder ? (
+          canCreateQuote ? (
             <Link
               href="/sales/quotes/new"
               aria-label="Crear nueva cotización"

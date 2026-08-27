@@ -1,7 +1,9 @@
 "use client";
 
+import { useSession } from "next-auth/react";
 import { DataTable } from "@/src/components/DataTable";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
+import { hasPermission } from "@/src/utils/permissions";
 import { isInitialLoadError } from "@/src/utils/isInitialLoadError";
 import { shipmentColumns } from "./ShippingColumns";
 import { ShippingForm } from "./ShippingForm";
@@ -22,6 +24,10 @@ export function ShippingView() {
   const { shipments, isLoading, isError, error, hasLoaded, refetch, isFetching } =
     useShipments();
 
+  // `hasPermission` ya cortocircuita para el rol "admin".
+  const { data: session } = useSession();
+  const canCreate = hasPermission("C-WMS-ENVIO", session?.user);
+
   // Solo se trata como error "de pantalla completa" cuando la consulta nunca
   // cargó con éxito; un refetch fallido con datos en caché conserva la tabla
   // y avisa por toast (ver `useShipments`). Mismo criterio que `PackingView`.
@@ -36,7 +42,9 @@ export function ShippingView() {
       onRefetch={refetch}
       isRefetching={isFetching}
       emptyMessage="No hay envíos registrados."
-      actionButton={<ShippingForm />}
+      // Ver el listado exige `R-WMS-ENVIO` (ver `routePermissions`); dar de alta
+      // exige además `C-WMS-ENVIO`.
+      actionButton={canCreate ? <ShippingForm /> : undefined}
       isLoading={isLoading}
       isError={showError}
       errorTitle="Error al cargar los envíos"

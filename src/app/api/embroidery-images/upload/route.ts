@@ -21,8 +21,10 @@ export const runtime = "nodejs";
  * de red, no sustituye a esta.
  */
 export async function POST(request: Request) {
-  // Módulo de Ventas (CRM) — mismo permiso que protege /sales en el proxy.
-  const authResult = await requireAuthenticatedSession("R-CRM");
+  // Sección de Cotizaciones — mismo permiso que protege /sales/quotes en el
+  // proxy: la subida solo se dispara desde el asistente de cotización
+  // (`EmbroideryImageSelector`), que ya exige ese permiso para cargarse.
+  const authResult = await requireAuthenticatedSession("R-CRM-COTIZACIONES");
 
   if ("errorResponse" in authResult) {
     return authResult.errorResponse;

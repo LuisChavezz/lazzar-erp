@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useSession } from "next-auth/react";
 import { DataTable } from "@/src/components/DataTable";
 import { MainDialog } from "@/src/components/MainDialog";
 import { DialogHeader } from "@/src/components/DialogHeader";
@@ -9,6 +10,7 @@ import { ReceiptStepManager } from "./ReceiptStepManager";
 import { useReceipts } from "../hooks/useReceipts";
 import { receiptColumns } from "./ReceiptColumns";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
+import { hasPermission } from "@/src/utils/permissions";
 
 // ─── View ──────────────────────────────────────────────────────────────────
 
@@ -23,6 +25,12 @@ export function ReceiptView() {
   } = useReceipts();
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+
+  // Ver el listado exige `R-WMS-RECEPCIONES` (ver `routePermissions`); dar de
+  // alta exige además `C-WMS-RECEPCIONES`. `hasPermission` ya cortocircuita
+  // para el rol "admin".
+  const { data: session } = useSession();
+  const canCreate = hasPermission("C-WMS-RECEPCIONES", session?.user);
   const columns = useMemo(() => receiptColumns, []);
 
   return (
@@ -48,6 +56,7 @@ export function ReceiptView() {
         onErrorRetry={refetch}
         loadingAriaLabel="Cargando recepciones"
         actionButton={
+          canCreate ? (
           <MainDialog
             title={
               <DialogHeader
@@ -72,6 +81,7 @@ export function ReceiptView() {
           >
             <ReceiptStepManager onClose={() => setIsDialogOpen(false)} />
           </MainDialog>
+          ) : undefined
         }
       />
     </div>

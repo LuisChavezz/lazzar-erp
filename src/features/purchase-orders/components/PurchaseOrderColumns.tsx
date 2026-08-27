@@ -133,16 +133,26 @@ const ActionsCell = ({
       label: "Editar",
       icon: EditIcon,
       onSelect: () => onEdit(order),
+      // `ActionMenu` filtra por `permission` con `hasPermission` (que ya
+      // cortocircuita para "admin"). `editable` sigue siendo la regla de
+      // NEGOCIO (estatus de la orden); esto es la de PERMISOS — se exigen
+      // ambas.
+      permission: "E-COMPRAS-OC",
     });
     // "Editar" NO se restringe por importes aquí, por el mismo motivo que
     // correo/PDF: esto es una fila de listado, sin filtrar. La pérdida de
     // precios que podría causar un rol sin visibilidad financiera se bloquea
     // dentro del wizard (`PurchaseOrderEditStepManager`), que sí trabaja con el
     // detalle filtrado.
+    // `A-COMPRAS-OC` es el código de AUTORIZACIÓN del catálogo, distinto del de
+    // edición: confirmar una orden la autoriza, no la modifica. `editable`
+    // sigue siendo la regla de NEGOCIO (estatus) — se exigen ambas. Mismo
+    // patrón que `A-MESACONTROL-COTI` en `OperationsQuoteColumns`.
     menuItems.push({
       label: "Confirmar",
       icon: CheckCircleIcon,
       onSelect: () => setIsConfirmOpen(true),
+      permission: "A-COMPRAS-OC",
       // Cross-guard: no permitir confirmar mientras se elimina la misma
       // orden (y viceversa, ver "Cancelar" abajo) — ambas mutaciones no
       // deben poder correr en paralelo sobre la misma orden.
@@ -153,6 +163,7 @@ const ActionsCell = ({
       icon: DeleteIcon,
       onSelect: () => setIsDeleteOpen(true),
       disabled: isDeletePending || isPending,
+      permission: "D-COMPRAS-OC",
     });
   }
 

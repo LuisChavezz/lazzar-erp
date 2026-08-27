@@ -1,7 +1,9 @@
 "use client";
 
+import { useSession } from "next-auth/react";
 import { DataTable } from "@/src/components/DataTable";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
+import { hasPermission } from "@/src/utils/permissions";
 import { isInitialLoadError } from "@/src/utils/isInitialLoadError";
 import { packingColumns } from "./PackingColumns";
 import { PackingForm } from "./PackingForm";
@@ -23,6 +25,10 @@ import { usePackings } from "../hooks/usePackings";
  */
 export function PackingView() {
   const { packings, isLoading, isError, error, hasLoaded, refetch, isFetching } = usePackings();
+
+  // `hasPermission` ya cortocircuita para el rol "admin".
+  const { data: session } = useSession();
+  const canCreate = hasPermission("C-WMS-PACKING", session?.user);
 
   // Solo se trata como error "de pantalla completa" cuando la consulta nunca
   // cargó con éxito; un refetch fallido con datos en caché conserva la tabla
@@ -46,7 +52,9 @@ export function PackingView() {
         onRefetch={refetch}
         isRefetching={isFetching}
         emptyMessage="No hay packings registrados."
-        actionButton={<PackingForm />}
+        // Ver el listado exige `R-WMS-PACKING` (ver `routePermissions`); dar de
+        // alta exige además `C-WMS-PACKING`.
+        actionButton={canCreate ? <PackingForm /> : undefined}
         isLoading={isLoading}
         isError={showError}
         errorTitle="Error al cargar los packings"

@@ -1,7 +1,9 @@
 "use client";
 
+import { useSession } from "next-auth/react";
 import { DataTable } from "@/src/components/DataTable";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
+import { hasPermission } from "@/src/utils/permissions";
 import { isInitialLoadError } from "@/src/utils/isInitialLoadError";
 import { rfidLabelColumns } from "./RfidLabelColumns";
 import { RfidLabelCreateDialog } from "./RfidLabelCreateDialog";
@@ -30,6 +32,12 @@ export function RfidLabelsView() {
 
   const showError = isInitialLoadError(isError, hasLoaded);
 
+  // Ver el historial exige `R-WMS-ETIQUETAS` (ver `routePermissions`); registrar
+  // una impresión exige además `C-WMS-ETIQUETAS`. `hasPermission` ya
+  // cortocircuita para el rol "admin".
+  const { data: session } = useSession();
+  const canCreate = hasPermission("C-WMS-ETIQUETAS", session?.user);
+
   return (
     <DataTable
       columns={rfidLabelColumns}
@@ -39,7 +47,7 @@ export function RfidLabelsView() {
       getRowId={(row) => String(row.id)}
       onRefetch={refetch}
       isRefetching={isFetching}
-      actionButton={<RfidLabelCreateDialog />}
+      actionButton={canCreate ? <RfidLabelCreateDialog /> : undefined}
       emptyMessage="No hay impresiones registradas."
       isLoading={isLoading}
       isError={showError}

@@ -19,8 +19,10 @@ import type { QuoteById } from "@/src/features/quotes/interfaces/quote.interface
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
-  // Módulo de Ventas (CRM) — mismo permiso que protege /sales en el proxy.
-  const authResult = await requireAuthenticatedSession("R-CRM");
+  // Sección de Cotizaciones — mismo permiso que protege /sales/quotes en el
+  // proxy: el envío es de una cotización y su único disparador
+  // (`useGoogleSendEmail`) vive en esa pantalla.
+  const authResult = await requireAuthenticatedSession("R-CRM-COTIZACIONES");
 
   if ("errorResponse" in authResult) {
     return authResult.errorResponse;

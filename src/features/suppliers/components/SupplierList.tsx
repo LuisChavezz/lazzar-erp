@@ -7,6 +7,7 @@ import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { MainDialog } from "@/src/components/MainDialog";
 import { Button } from "@/src/components/Button";
 import { PlusIcon } from "@/src/components/Icons";
+import { hasPermission } from "@/src/utils/permissions";
 import SupplierForm from "./SupplierForm";
 import { useSuppliers } from "../hooks/useSuppliers";
 import { getSupplierColumns } from "./SupplierColumns";
@@ -22,10 +23,12 @@ export default function SupplierList({ hideTitle = false }: SupplierListProps) {
   const { suppliers, isLoading, isError, error } = useSuppliers();
   const { data: session } = useSession();
 
-  const isAdmin = session?.user?.role === "admin";
-  const permissions = session?.user?.permissions ?? [];
-  const canEdit = isAdmin || permissions.includes("E-COMPRAS");
-  const canDelete = isAdmin || permissions.includes("D-COMPRAS");
+  // `hasPermission` ya cortocircuita para el rol "admin", así que no hace falta
+  // el `isAdmin || ...` manual que vivía aquí. Los códigos son los del catálogo
+  // de la tabla `permisos`: la sección de proveedores es "-PROV".
+  const canCreate = hasPermission("C-COMPRAS-PROV", session?.user);
+  const canEdit = hasPermission("E-COMPRAS-PROV", session?.user);
+  const canDelete = hasPermission("D-COMPRAS-PROV", session?.user);
 
   const isEditing = Boolean(supplierToEdit?.id);
 
@@ -64,7 +67,9 @@ export default function SupplierList({ hideTitle = false }: SupplierListProps) {
         title={hideTitle ? undefined : "Proveedores"}
         searchPlaceholder="Buscar proveedor..."
         actionButton={
-          canEdit ? (
+          // El alta se rige por C-COMPRAS-PROV, no por el permiso de edición:
+          // son dos capacidades distintas del catálogo.
+          canCreate ? (
             <Button
               variant="primary"
               leftIcon={<PlusIcon className="w-4 h-4" />}

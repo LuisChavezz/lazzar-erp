@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useSession } from "next-auth/react";
 import { ArrowLeftIcon, InfoIcon } from "@/src/components/Icons";
 import { Loader } from "@/src/components/Loader";
 import { ErrorState } from "@/src/components/ErrorState";
@@ -13,6 +14,7 @@ import {
   textOrDash,
 } from "@/src/components/DetailDialogPrimitives";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
+import { hasPermission } from "@/src/utils/permissions";
 import { formatQuantityValue } from "@/src/utils/formatCurrency";
 import { formatShortDate, formatShortTime } from "@/src/utils/formatDate";
 import { EMBROIDERY_COVERAGE_CONFIG } from "../constants/embroideryStatus";
@@ -113,6 +115,13 @@ export function EmbroideryOrderDetailContent({
   // carga/error (que retornan antes de renderizarlos).
   const updateOrder = useUpdateEmbroideryOrder(numericId);
 
+  // Permiso de edición de la ficha. Se resuelve AQUÍ y no más abajo junto a
+  // `isTerminal` porque `useSession` es un hook: los estados de carga/error
+  // retornan antes y no puede quedar tras un `return` condicional.
+  // `hasPermission` ya cortocircuita para el rol "admin".
+  const { data: session } = useSession();
+  const canEditOb = hasPermission("E-PRODUCCION-OB", session?.user);
+
   const BackLink = (
     <Link
       href={BACK.href}
@@ -180,6 +189,12 @@ export function EmbroideryOrderDetailContent({
   // `getAvailableTransitions` deriva su lista vacía, así que el selector y el
   // resto del formulario no pueden discrepar.
   const isTerminal = isTerminalStatus(data.estatus_bordado);
+
+  // Los controles editables degradan a su lectura simple por DOS motivos
+  // independientes: la orden está cerrada, o quien la mira no tiene
+  // `E-PRODUCCION-OB`. Se combinan en una sola bandera para que ningún campo
+  // pueda quedar editable por olvidar una de las dos condiciones.
+  const isReadOnly = isTerminal || !canEditOb;
 
   return (
     <div className="w-full space-y-6">
@@ -257,15 +272,19 @@ export function EmbroideryOrderDetailContent({
                   updateOrder.mutate({ estatus_bordado: next })
                 }
                 isPending={updateOrder.isPending}
+                // El caso terminal lo resuelve el propio selector (se queda sin
+                // transiciones); aquí solo se le añade el de permisos.
+                readOnly={!canEditOb}
               />
             </InfoField>
             {/* Los dos campos editables de abajo degradan a su lectura simple
-                en un estatus TERMINAL (ver `isTerminal`): una orden finalizada
-                o cancelada ya no se toca. El selector de estatus resuelve su
-                propio caso —se queda sin transiciones y se pinta como badge—,
+                con `isReadOnly`: estatus TERMINAL (una orden finalizada o
+                cancelada ya no se toca) o falta de `E-PRODUCCION-OB`. El
+                selector de estatus resuelve su propio caso terminal —se queda
+                sin transiciones y se pinta como badge—,
                 así que no necesita el mismo ternario. */}
             <InfoField label="Máquina asignada">
-              {isTerminal ? (
+              {isReadOnly ? (
                 textOrDash(data.maquina_asignada)
               ) : (
                 <EmbroideryMachineField
@@ -285,7 +304,7 @@ export function EmbroideryOrderDetailContent({
                 campo más largo y partirlo a media columna en móvil se lee peor
                 que el hueco que queda junto a "Máquina asignada". */}
             <InfoField label="Observaciones" className="col-span-2 md:col-span-3">
-              {isTerminal ? (
+              {isReadOnly ? (
                 textOrDash(data.observaciones)
               ) : (
                 <EmbroideryObservationsField
@@ -312,7 +331,7 @@ export function EmbroideryOrderDetailContent({
             <InfoField label="Empresa">{textOrDash(data.empresa_nombre)}</InfoField>
             <InfoField label="Sucursal">{textOrDash(data.sucursal_nombre)}</InfoField>
             <InfoField label="Operador asignado">
-              {isTerminal ? (
+              {isReadOnly ? (
                 textOrDash(data.usuario_nombre)
               ) : (
                 <EmbroideryOperatorSelect
@@ -329,7 +348,7 @@ export function EmbroideryOrderDetailContent({
                 rotula "Bordado interno" en lugar del guion largo de
                 `textOrDash`, también en solo lectura. */}
             <InfoField label="Proveedor">
-              {isTerminal ? (
+              {isReadOnly ? (
                 (data.proveedor_nombre?.trim() ?? "") || (
                   <span className="text-slate-500 dark:text-slate-400">
                     Bordado interno

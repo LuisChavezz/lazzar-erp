@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useSession } from "next-auth/react";
 import {
   EmptyLines,
   Section,
@@ -11,6 +12,7 @@ import { ConfirmDialog } from "@/src/components/ConfirmDialog";
 import { DeleteIcon, PlusIcon } from "@/src/components/Icons";
 import { formatQuantityValue } from "@/src/utils/formatCurrency";
 import { formatShortDate, formatShortTime } from "@/src/utils/formatDate";
+import { hasPermission } from "@/src/utils/permissions";
 import { useDeleteAvance } from "../hooks/useDeleteAvance";
 import { EmbroideryCreateAvanceDialog } from "./EmbroideryCreateAvanceDialog";
 import { buildEmbroiderySkuLabel } from "../utils/embroiderySkuLabel";
@@ -50,7 +52,14 @@ export function EmbroideryAvancesHistory({
   const [avanceToDelete, setAvanceToDelete] = useState<BordadoAvance | null>(null);
   const { mutate: deleteAvance, isPending: isDeleting } = useDeleteAvance(obId);
 
-  const registerButton = (
+  // Un avance es un registro de progreso de la ORDEN, no un documento propio:
+  // tanto darlo de alta como borrarlo modifican la orden, así que ambas
+  // acciones se rigen por `E-PRODUCCION-OB` (el catálogo no tiene un código
+  // propio para avances). `hasPermission` ya cortocircuita para "admin".
+  const { data: session } = useSession();
+  const canEditOb = hasPermission("E-PRODUCCION-OB", session?.user);
+
+  const registerButton = canEditOb ? (
     <Button
       variant="primary"
       leftIcon={<PlusIcon className="w-4 h-4" aria-hidden="true" />}
@@ -64,7 +73,7 @@ export function EmbroideryAvancesHistory({
     >
       Registrar avance
     </Button>
-  );
+  ) : undefined;
 
   return (
     <Section title={`Historial de avances (${avances.length})`} action={registerButton}>
@@ -140,7 +149,7 @@ export function EmbroideryAvancesHistory({
                       —el alta ya está bloqueada—. Se oculta, no se inhabilita,
                       para no ofrecer una acción que nunca va a proceder. */}
                   <td className="px-3 py-2 text-right">
-                    {!isTerminal && (
+                    {!isTerminal && canEditOb && (
                       <button
                         type="button"
                         onClick={() => setAvanceToDelete(avance)}

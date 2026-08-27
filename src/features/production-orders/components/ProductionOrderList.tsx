@@ -2,8 +2,10 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { DataTable } from "@/src/components/DataTable";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
+import { hasPermission } from "@/src/utils/permissions";
 import { isInitialLoadError } from "@/src/utils/isInitialLoadError";
 import { Button } from "@/src/components/Button";
 import { getProductionOrderColumns } from "./ProductionOrderColumns";
@@ -23,6 +25,12 @@ import { useProductionOrders } from "../hooks/useProductionOrders";
  */
 export function ProductionOrderList() {
   const router = useRouter();
+
+  // Ver el listado exige `R-PRODUCCION-OP` (ver `routePermissions`); dar de alta
+  // exige además `C-PRODUCCION-OP`. `hasPermission` ya cortocircuita para el rol
+  // "admin".
+  const { data: session } = useSession();
+  const canCreate = hasPermission("C-PRODUCCION-OP", session?.user);
   const columns = useMemo(
     () =>
       getProductionOrderColumns((id) =>
@@ -55,14 +63,16 @@ export function ProductionOrderList() {
         errorMessage={extractErrorMessage(error, "No se pudo cargar la información.")}
         loadingAriaLabel="Cargando órdenes de producción"
         actionButton={
-          <Button
-            variant="primary"
-            rounded="full"
-            onClick={() => setIsCreateOpen(true)}
-            className="hover:scale-105 active:scale-95"
-          >
-            + Nueva Orden
-          </Button>
+          canCreate ? (
+            <Button
+              variant="primary"
+              rounded="full"
+              onClick={() => setIsCreateOpen(true)}
+              className="hover:scale-105 active:scale-95"
+            >
+              + Nueva Orden
+            </Button>
+          ) : undefined
         }
       />
 

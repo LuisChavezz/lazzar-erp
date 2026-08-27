@@ -2,8 +2,10 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { DataTable, type DataTableFilterConfig } from "@/src/components/DataTable";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
+import { hasPermission } from "@/src/utils/permissions";
 import { isInitialLoadError } from "@/src/utils/isInitialLoadError";
 import { getEmbroideryOrderColumns } from "./EmbroideryOrderColumns";
 import { EmbroideryOrderDetailDialog } from "./EmbroideryOrderDetailDialog";
@@ -57,6 +59,12 @@ const EMBROIDERY_FILTER_CONFIG: DataTableFilterConfig[] = [
 export function EmbroideryView() {
   const { orders, isLoading, isError, error, hasLoaded, refetch, isFetching } =
     useEmbroideryOrders();
+
+  // Ver el listado exige `R-PRODUCCION-OB` (ver `routePermissions`); dar de alta
+  // exige además `C-PRODUCCION-OB`. `hasPermission` ya cortocircuita para el rol
+  // "admin".
+  const { data: session } = useSession();
+  const canCreate = hasPermission("C-PRODUCCION-OB", session?.user);
   const [openOrderId, setOpenOrderId] = useState<number | null>(null);
   const router = useRouter();
 
@@ -93,10 +101,12 @@ export function EmbroideryView() {
         isRefetching={isFetching}
         emptyMessage="No hay órdenes de bordado registradas."
         actionButton={
-          <EmbroideryOrderForm
-            onViewExistingOrder={setOpenOrderId}
-            onCloseExistingOrder={() => setOpenOrderId(null)}
-          />
+          canCreate ? (
+            <EmbroideryOrderForm
+              onViewExistingOrder={setOpenOrderId}
+              onCloseExistingOrder={() => setOpenOrderId(null)}
+            />
+          ) : undefined
         }
         // Un alta nueva se ordena al tope de la página 1 (ver
         // `useEmbroideryOrders`); sin esto, quien esté parado en la página 2 se

@@ -22,8 +22,10 @@ export const runtime = "nodejs";
  * `useFetchEmbroideryImages` la siga consumiendo igual.
  */
 export async function GET() {
-  // Módulo de Ventas (CRM) — mismo permiso que protege /sales en el proxy.
-  const authResult = await requireAuthenticatedSession("R-CRM");
+  // Sección de Cotizaciones — mismo permiso que protege /sales/quotes en el
+  // proxy: la galería solo se consume desde el asistente de cotización
+  // (`StepEmbroidery`), que ya exige ese permiso para cargarse.
+  const authResult = await requireAuthenticatedSession("R-CRM-COTIZACIONES");
 
   if ("errorResponse" in authResult) {
     return authResult.errorResponse;

@@ -73,7 +73,7 @@ export const appRouteGroups: AppRouteGroup[] = [
         path: "/system/reports",
         icon: ReportesIcon,
         description: "Tablero de reportes operativos, financieros y comerciales.",
-        permission: "R-CORE",
+        permission: "R-CORE-REPORTES",
       },
     ],
   },
@@ -93,14 +93,14 @@ export const appRouteGroups: AppRouteGroup[] = [
         label: "Clientes",
         path: "/sales/customers",
         icon: ClientesIcon,
-        permission: "R-CRM",
+        permission: "R-CRM-CLIENTES",
       },
       {
         key: "sales-customer",
         label: "Cliente",
         path: "/sales/customers/[id]",
         icon: ClientesIcon,
-        permission: "R-CRM",
+        permission: "R-CRM-CLIENTES",
         parentPath: "/sales/customers",
         showInSidebar: false,
       },
@@ -109,14 +109,14 @@ export const appRouteGroups: AppRouteGroup[] = [
         label: "Cotizaciones",
         path: "/sales/quotes",
         icon: PedidosIcon,
-        permission: "R-CRM",
+        permission: "R-CRM-COTIZACIONES",
       },
       {
         key: "sales-quotes-new",
         label: "Nuevo Cotización",
         path: "/sales/quotes/new",
         icon: PedidosIcon,
-        permission: "R-CRM",
+        permission: "R-CRM-COTIZACIONES",
         parentPath: "/sales/quotes",
         showInSidebar: false,
       },
@@ -125,7 +125,7 @@ export const appRouteGroups: AppRouteGroup[] = [
         label: "Editar Cotización",
         path: "/sales/quotes/[id]/edit",
         icon: PedidosIcon,
-        permission: "R-CRM",
+        permission: "R-CRM-COTIZACIONES",
         parentPath: "/sales/quotes",
         showInSidebar: false,
       },
@@ -135,21 +135,21 @@ export const appRouteGroups: AppRouteGroup[] = [
         path: "/sales/orders",
         icon: PedidosIcon,
         description: "Pedidos originados en las cotizaciones que creaste.",
-        permission: "R-CRM",
+        permission: "R-CRM-PEDIDOS",
       },
       {
         key: "sales-emails",
         label: "Correos",
         path: "/sales/emails",
         icon: EmailIcon,
-        permission: "R-CRM",
+        permission: "R-CRM-CORREOS",
       },
       {
         key: "sales-calendar",
         label: "Calendario",
         path: "/sales/calendar",
         icon: TasksIcon,
-        permission: "R-CRM",
+        permission: "R-CRM-CALENDAR",
       },
     ],
   },
@@ -170,23 +170,25 @@ export const appRouteGroups: AppRouteGroup[] = [
         path: "/wms/orders",
         icon: PedidosIcon,
         description: "Consulta de pedidos y su detalle para planear el surtido en almacén.",
-        permission: "R-WMS",
+        permission: "R-WMS-PEDIDOS",
       },
       {
         key: "wms-stock",
         label: "Existencias",
         path: "/wms/stock",
         icon: ExistenciasIcon,
-        permission: "R-WMS",
+        permission: "R-WMS-EXISTENCIAS",
       },
       {
         key: "wms-receipts",
         label: "Recepciones",
         path: "/wms/receipts",
         icon: RecepcionesIcon,
-        permission: "R-WMS"
+        permission: "R-WMS-RECEPCIONES"
       },
       // OCULTO EN NAVEGACION: usa datos mock (src/features/locations/mocks/locations-dashboard.mock.ts:11). Restaurar cuando el backend exponga el endpoint real.
+      // Sin código de sección en el catálogo (no existe R-WMS-UBICACIONES): al
+      // restaurarse se queda a nivel de módulo salvo que se dé de alta el código.
       // {
       //   key: "wms-locations",
       //   label: "Ubicaciones",
@@ -200,7 +202,7 @@ export const appRouteGroups: AppRouteGroup[] = [
         path: "/wms/picking",
         icon: RouteIcon,
         description: "Surtido de pedidos: recolección de productos en almacén.",
-        permission: "R-WMS",
+        permission: "R-WMS-PICKING",
       },
       {
         key: "wms-packing",
@@ -208,7 +210,7 @@ export const appRouteGroups: AppRouteGroup[] = [
         path: "/wms/packing",
         icon: PackingIcon,
         description: "Empaque de mercancía surtida por picking.",
-        permission: "R-WMS",
+        permission: "R-WMS-PACKING",
       },
       {
         key: "wms-shipping",
@@ -216,7 +218,7 @@ export const appRouteGroups: AppRouteGroup[] = [
         path: "/wms/shipping",
         icon: EmbarquesIcon,
         description: "Entrega de cajas empacadas al transportista.",
-        permission: "R-WMS",
+        permission: "R-WMS-ENVIO",
       },
       {
         key: "wms-rfid-labels",
@@ -224,7 +226,7 @@ export const appRouteGroups: AppRouteGroup[] = [
         path: "/wms/rfid-labels",
         icon: LabelsIcon,
         description: "Consulta de etiquetas de producto: vista previa, ZPL generado y estatus de impresión.",
-        permission: "R-WMS",
+        permission: "R-WMS-ETIQUETAS",
       },
       {
         key: "wms-rfid-scanner",
@@ -232,7 +234,7 @@ export const appRouteGroups: AppRouteGroup[] = [
         path: "/wms/rfid-scanner",
         icon: ScanLineIcon,
         description: "Monitor en vivo del lector RFID: lecturas recibidas y su match contra las etiquetas impresas.",
-        permission: "R-WMS",
+        permission: "R-WMS-SCANNER",
       },
     ],
   },
@@ -253,14 +255,14 @@ export const appRouteGroups: AppRouteGroup[] = [
         path: "/procurement/orders",
         icon: PedidosIcon,
         description: "Consulta de pedidos y su detalle para planear el abastecimiento.",
-        permission: "R-COMPRAS",
+        permission: "R-COMPRAS-PEDIDOS",
       },
       {
         key: "procurement-orders",
         label: "Órdenes de Compra",
         path: "/procurement/purchase-orders",
         icon: OrdenesIcon,
-        permission: "R-COMPRAS",
+        permission: "R-COMPRAS-OC",
       },
       {
         key: "procurement-purchase-order-receipts",
@@ -268,7 +270,7 @@ export const appRouteGroups: AppRouteGroup[] = [
         path: "/procurement/purchase-order-receipts",
         icon: RecepcionesIcon,
         description: "Recepciones generadas a partir de órdenes de compra.",
-        permission: "R-COMPRAS",
+        permission: "R-COMPRAS-RECEP",
       },
       {
         key: "procurement-suppliers",
@@ -276,7 +278,7 @@ export const appRouteGroups: AppRouteGroup[] = [
         path: "/procurement/suppliers",
         icon: ComprasIcon,
         description: "Catálogo de proveedores registrados en el sistema.",
-        permission: "R-COMPRAS",
+        permission: "R-COMPRAS-PROV",
       },
       // OCULTO EN NAVEGACION: usa datos mock (src/features/purchase-order-reviews/mocks/purchase-order-review.mock.ts:11). Restaurar cuando el backend exponga el endpoint real.
       // {
@@ -324,14 +326,14 @@ export const appRouteGroups: AppRouteGroup[] = [
         path: "/manufacturing/production-orders",
         icon: ProduccionIcon,
         description: "Gestión del flujo de órdenes de producción: verificación de materiales, fabricación, avances y cierre.",
-        permission: "R-PRODUCCION",
+        permission: "R-PRODUCCION-OP",
       },
       {
         key: "manufacturing-embroidery",
         label: "Órdenes de Bordado",
         path: "/manufacturing/embroidery",
         icon: ScissorsIcon,
-        permission: "R-PRODUCCION",
+        permission: "R-PRODUCCION-OB",
       },
       {
         key: "manufacturing-reflective-orders",
@@ -339,7 +341,7 @@ export const appRouteGroups: AppRouteGroup[] = [
         path: "/manufacturing/reflective-orders",
         icon: RulerIcon,
         description: "Órdenes de trabajo para la aplicación de cinta reflejante sobre las prendas del pedido.",
-        permission: "R-PRODUCCION",
+        permission: "R-PRODUCCION-OR",
       },
       {
         key: "manufacturing-corte-manga",
@@ -347,7 +349,7 @@ export const appRouteGroups: AppRouteGroup[] = [
         path: "/manufacturing/corte-manga",
         icon: SliceIcon,
         description: "Órdenes de trabajo para el corte de manga de las prendas del pedido.",
-        permission: "R-PRODUCCION",
+        permission: "R-PRODUCCION-CM",
       },
       // OCULTO EN NAVEGACION: usa datos mock (src/features/cedicor/mocks/cedicor-new-development.mock.ts:11). Restaurar cuando el backend exponga el endpoint real.
       // {
@@ -385,7 +387,7 @@ export const appRouteGroups: AppRouteGroup[] = [
         label: "Facturación",
         path: "/finance/invoicing",
         icon: FacturacionIcon,
-        permission: "R-CONTABILIDAD",
+        permission: "R-CONTABILIDAD-FACTURACION",
       },
       // OCULTO EN NAVEGACION: usa datos mock (src/features/accounts-payable/mocks/accounts-payable.mock.ts:15). Restaurar cuando el backend exponga el endpoint real.
       // {
@@ -400,7 +402,7 @@ export const appRouteGroups: AppRouteGroup[] = [
         label: "CxC (Cobrar)",
         path: "/finance/accounts-receivable",
         icon: CxcIcon,
-        permission: "R-CONTABILIDAD",
+        permission: "R-CONTABILIDAD-CXC",
       },
       // OCULTO EN NAVEGACION: usa datos mock (src/features/bank-accounts/components/BankAccountsList.tsx:5, arreglo literal). Restaurar cuando el backend exponga el endpoint real.
       // {
@@ -423,7 +425,7 @@ export const appRouteGroups: AppRouteGroup[] = [
         label: "Clientes",
         path: "/finance/accounting-customers",
         icon: ClientesIcon,
-        permission: "R-CONTABILIDAD",
+        permission: "R-CONTABILIDAD-CLIENTES",
       },
       // OCULTO EN NAVEGACION: usa datos mock (src/features/price-lists/components/PriceListList.tsx:5, arreglo literal). Restaurar cuando el backend exponga el endpoint real.
       // {
@@ -488,14 +490,14 @@ export const appRouteGroups: AppRouteGroup[] = [
         label: "Cotizaciones",
         path: "/operations/quotes",
         icon: PedidosIcon,
-        permission: "R-MESACONTROL",
+        permission: "R-MESACONTROL-COTI",
       },
       {
         key: "operations-orders",
         label: "Pedidos",
         path: "/operations/orders",
         icon: PedidosIcon,
-        permission: "R-MESACONTROL",
+        permission: "R-MESACONTROL-PEDIDOS",
       },
       // OCULTO EN NAVEGACION: pagina placeholder sin datos. Restaurar cuando tenga implementacion real.
       // {
@@ -510,7 +512,7 @@ export const appRouteGroups: AppRouteGroup[] = [
         label: "Clientes",
         path: "/operations/customers",
         icon: ClientesIcon,
-        permission: "R-MESACONTROL",
+        permission: "R-MESACONTROL-CLIENTES",
       },
     ],
   },

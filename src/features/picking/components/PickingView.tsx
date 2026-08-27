@@ -1,7 +1,9 @@
 "use client";
 
+import { useSession } from "next-auth/react";
 import { DataTable, type DataTableFilterConfig } from "@/src/components/DataTable";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
+import { hasPermission } from "@/src/utils/permissions";
 import { isInitialLoadError } from "@/src/utils/isInitialLoadError";
 import { pickingColumns } from "./PickingColumns";
 import { PickingForm } from "./PickingForm";
@@ -61,6 +63,10 @@ export function PickingView() {
     isFetching,
   } = usePickings();
 
+  // `hasPermission` ya cortocircuita para el rol "admin".
+  const { data: session } = useSession();
+  const canCreate = hasPermission("C-WMS-PICKING", session?.user);
+
   // Solo se trata como error "de pantalla completa" cuando la consulta nunca
   // cargó con éxito; un refetch fallido con datos en caché conserva la tabla
   // (y los KPIs) y avisa por toast (ver `usePickings`). Mismo criterio que
@@ -106,7 +112,9 @@ export function PickingView() {
         onRefetch={refetch}
         isRefetching={isFetching}
         emptyMessage="No hay pickings registrados."
-        actionButton={<PickingForm />}
+        // Ver el listado exige `R-WMS-PICKING` (ver `routePermissions`); dar de
+        // alta exige además `C-WMS-PICKING`.
+        actionButton={canCreate ? <PickingForm /> : undefined}
         isLoading={isLoading}
         isError={showError}
         errorTitle="Error al cargar los pickings"

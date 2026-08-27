@@ -7,6 +7,7 @@ import { Button } from "@/src/components/Button";
 import { MainDialog } from "@/src/components/MainDialog";
 import { DialogHeader } from "@/src/components/DialogHeader";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
+import { hasPermission } from "@/src/utils/permissions";
 import { useDepartments } from "@/src/features/departments/hooks/useDepartments";
 import { getColumns } from "./AreaColumns";
 import { Area } from "../interfaces/area.interface";
@@ -19,10 +20,9 @@ export default function AreaList() {
   const { areas, isLoading, isError, error } = useAreas();
   const { departments } = useDepartments();
   const { data: session } = useSession();
-  const isAdmin = session?.user?.role === "admin";
-  const permissions = session?.user?.permissions ?? [];
-  const canEditHr = isAdmin || permissions.includes("E-RH");
-  const canDeleteHr = isAdmin || permissions.includes("D-RH");
+  // `hasPermission` ya cortocircuita para el rol "admin".
+  const canEditHr = hasPermission("E-RH", session?.user);
+  const canDeleteHr = hasPermission("D-RH", session?.user);
 
   const handleEdit = useCallback(
     (area: Area) => {

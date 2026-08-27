@@ -17,6 +17,7 @@ import {
   textOrDash,
 } from "@/src/components/DetailDialogPrimitives";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
+import { hasPermission } from "@/src/utils/permissions";
 import { formatLocalDate } from "@/src/utils/formatDate";
 import { useWorkspaceStore } from "@/src/features/workspace/store/workspace.store";
 import { useDepartments } from "@/src/features/departments/hooks/useDepartments";
@@ -58,9 +59,8 @@ export const EmployeeDetailContent = ({ employeeId }: EmployeeDetailContentProps
   const { positions } = usePositions();
 
   const { data: session } = useSession();
-  const isAdmin = session?.user?.role === "admin";
-  const permissions = session?.user?.permissions ?? [];
-  const canEditHr = isAdmin || permissions.includes("E-RH");
+  // `hasPermission` ya cortocircuita para el rol "admin".
+  const canEditHr = hasPermission("E-RH", session?.user);
 
   if (isLoading) {
     return <Loader title="Cargando empleado" message="Obteniendo detalle del empleado..." />;

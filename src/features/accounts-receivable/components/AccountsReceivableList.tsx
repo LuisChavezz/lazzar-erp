@@ -1,8 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import { useSession } from "next-auth/react";
 import { DataTable } from "@/src/components/DataTable";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
+import { hasPermission } from "@/src/utils/permissions";
 import { isInitialLoadError } from "@/src/utils/isInitialLoadError";
 import { WarningFilledIcon, RejectIcon } from "@/src/components/Icons";
 import { formatCurrency } from "@/src/utils/formatCurrency";
@@ -33,6 +35,12 @@ export const AccountsReceivableList = () => {
     useCuentasPorCobrar();
   const [bannerDismissed, setBannerDismissed] = useState(false);
 
+  // Ver el listado exige `R-CONTABILIDAD-CXC` (ver `routePermissions`);
+  // registrar una CxC exige además `C-CONTABILIDAD-CXC`. `hasPermission` ya
+  // cortocircuita para el rol "admin".
+  const { data: session } = useSession();
+  const canCreate = hasPermission("C-CONTABILIDAD-CXC", session?.user);
+
   // Solo se trata como error "de pantalla completa" cuando la consulta nunca
   // cargó con éxito; un refetch fallido con datos en caché conserva la tabla y
   // avisa por toast (ver `useCuentasPorCobrar`). Mismo patrón que
@@ -62,7 +70,7 @@ export const AccountsReceivableList = () => {
       onRefetch={refetch}
       isRefetching={isFetching}
       emptyMessage="No hay cuentas por cobrar registradas."
-      actionButton={<RegisterPendingInvoiceDialog />}
+      actionButton={canCreate ? <RegisterPendingInvoiceDialog /> : undefined}
       isLoading={isLoading}
       isError={showError}
       errorTitle="Error al cargar las cuentas por cobrar"

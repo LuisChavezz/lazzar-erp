@@ -7,6 +7,7 @@ import { Button } from "@/src/components/Button";
 import { MainDialog } from "@/src/components/MainDialog";
 import { DialogHeader } from "@/src/components/DialogHeader";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
+import { hasPermission } from "@/src/utils/permissions";
 import { useAreas } from "@/src/features/areas/hooks/useAreas";
 import { getColumns } from "./PositionColumns";
 import { Position } from "../interfaces/position.interface";
@@ -19,10 +20,9 @@ export default function PositionList() {
   const { positions, isLoading, isError, error } = usePositions();
   const { areas } = useAreas();
   const { data: session } = useSession();
-  const isAdmin = session?.user?.role === "admin";
-  const permissions = session?.user?.permissions ?? [];
-  const canEditHr = isAdmin || permissions.includes("E-RH");
-  const canDeleteHr = isAdmin || permissions.includes("D-RH");
+  // `hasPermission` ya cortocircuita para el rol "admin".
+  const canEditHr = hasPermission("E-RH", session?.user);
+  const canDeleteHr = hasPermission("D-RH", session?.user);
 
   const handleEdit = useCallback(
     (position: Position) => {

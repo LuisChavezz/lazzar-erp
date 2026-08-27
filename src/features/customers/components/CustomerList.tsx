@@ -1,8 +1,10 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
+import { useSession } from "next-auth/react";
 import { DataTable } from "@/src/components/DataTable";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
+import { hasPermission } from "@/src/utils/permissions";
 import { DialogHeader } from "@/src/components/DialogHeader";
 import { MainDialog } from "@/src/components/MainDialog";
 import { Button } from "@/src/components/Button";
@@ -24,6 +26,11 @@ export const CustomerList = () => {
   const [returnToListAfterAddress, setReturnToListAfterAddress] = useState(false);
   const [isAddressListDialogOpen, setIsAddressListDialogOpen] = useState(false);
   const [selectedCustomerForList, setSelectedCustomerForList] = useState<Customer | null>(null);
+
+  // Ver el listado exige `R-CRM-CLIENTES` (ver `routePermissions`); dar de alta
+  // exige además `C-CRM-CLIENTES`. `hasPermission` cortocircuita para "admin".
+  const { data: session } = useSession();
+  const canCreate = hasPermission("C-CRM-CLIENTES", session?.user);
 
   const isEditing = Boolean(customerToEdit?.id);
 
@@ -172,13 +179,20 @@ export const CustomerList = () => {
             open={isCustomerDialogOpen}
             onOpenChange={handleDialogOpenChange}
             maxWidth="900px"
+            // Solo se oculta el TRIGGER, no el diálogo: este mismo `MainDialog`
+            // es también el de EDICIÓN (lo abre `handleEdit` desde la fila por
+            // `open`, sin pasar por el trigger). Desmontarlo dejaría sin efecto
+            // la acción "Editar" de quien tenga E-CRM-CLIENTES pero no
+            // C-CRM-CLIENTES.
             trigger={
-              <Button
-                variant="primary"
-                onClick={handleCreateCustomer}
-              >
-                + Nuevo Cliente
-              </Button>
+              canCreate ? (
+                <Button
+                  variant="primary"
+                  onClick={handleCreateCustomer}
+                >
+                  + Nuevo Cliente
+                </Button>
+              ) : undefined
             }
           >
             <CustomerForm

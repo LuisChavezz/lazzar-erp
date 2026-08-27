@@ -33,6 +33,9 @@ const ActionsCell = ({
       label: "Editar",
       icon: EditIcon,
       onSelect: () => onEdit(customer),
+      // `ActionMenu` filtra por `permission` con `hasPermission`, que ya
+      // cortocircuita para el rol "admin".
+      permission: "E-CRM-CLIENTES",
     },
     {
       label: "Direcciones",
@@ -40,9 +43,13 @@ const ActionsCell = ({
       onSelect: () => onViewAddresses(customer),
     },
     {
+      // El catálogo no tiene un código propio para direcciones: dar de alta una
+      // MODIFICA el registro del cliente, así que se rige por su permiso de
+      // edición.
       label: "Agregar Dirección",
       icon: MapPinIcon,
       onSelect: () => onAddAddress(customer),
+      permission: "E-CRM-CLIENTES",
     },
   ];
 

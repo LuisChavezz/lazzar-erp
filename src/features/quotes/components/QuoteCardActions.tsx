@@ -128,6 +128,9 @@ export function QuoteCardActions({ quote, align = "end" }: QuoteCardActionsProps
       label: "Editar",
       icon: EditIcon,
       onSelect: () => router.push(`/sales/quotes/${quote.id}/edit`),
+      // `visible` es la regla de NEGOCIO (estatus editable, ver
+      // `canEditQuote`); `permission` es la de PERMISOS — se exigen ambas.
+      permission: "E-CRM-COTIZACIONES",
       visible: canEdit,
     },
     {
@@ -151,11 +154,15 @@ export function QuoteCardActions({ quote, align = "end" }: QuoteCardActionsProps
       disabled: isDownloadingPdf || isSendingQuoteEmail,
     },
     {
+      // Autorizar/rechazar desde el tablero de Ventas es la misma capacidad de
+      // Mesa de Control, con sus códigos propios del catálogo
+      // (A-MESACONTROL-COTI / D-MESACONTROL-COTI). Sigue siendo un permiso de
+      // OTRO módulo a propósito: quien aprueba es Mesa de Control.
       label: "Autorizar",
       icon: CheckCircleIcon,
       onSelect: handleOpenAuthorizeDialog,
       disabled: isAuthorizingOrder || isRejectingOrder || isSendingQuoteEmail,
-      permission: "R-MESACONTROL",
+      permission: "A-MESACONTROL-COTI",
       visible: canManageAuthorization,
     },
     {
@@ -163,7 +170,7 @@ export function QuoteCardActions({ quote, align = "end" }: QuoteCardActionsProps
       icon: RejectIcon,
       onSelect: handleOpenRejectDialog,
       disabled: isRejectingOrder || isAuthorizingOrder || isSendingQuoteEmail,
-      permission: "R-MESACONTROL",
+      permission: "D-MESACONTROL-COTI",
       visible: canManageAuthorization,
     },
   ];

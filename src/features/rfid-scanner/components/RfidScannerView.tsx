@@ -7,6 +7,7 @@ import { Button } from "@/src/components/Button";
 import { ConfirmDialog } from "@/src/components/ConfirmDialog";
 import { DeleteIcon, ScanLineIcon, XIcon } from "@/src/components/Icons";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
+import { hasPermission } from "@/src/utils/permissions";
 import { isInitialLoadError } from "@/src/utils/isInitialLoadError";
 import { rfidScanColumns } from "./RfidScanColumns";
 import { RfidScannerStats } from "./RfidScannerStats";
@@ -50,15 +51,17 @@ export function RfidScannerView() {
   } = useRfidScannerStats();
   const { mutate: clearScans, isPending: isClearing } = useClearRfidScans();
 
-  // El backend exige superusuario o administrador de empresa. La sesión no
-  // distingue esos flags: `role` es "admin" cuando el backend reportó
-  // `is_admin_empresa || es_admin || is_superuser` (ver `lib/auth.ts`), que es
-  // un conjunto MÁS AMPLIO que el del guard. Así que esto es solo UX —no
-  // ofrecer un botón que casi siempre fallaría—; la frontera real sigue siendo
-  // el 403, y un usuario que solo tenga `es_admin` verá el botón y recibirá el
-  // rechazo del backend con su mensaje.
+  // La purga se rige por `D-WMS-SCANNER` del catálogo de permisos.
+  // `hasPermission` cortocircuita para el rol "admin", así que se conserva el
+  // comportamiento previo (el `role === "admin"` que vivía aquí) y además se
+  // habilita a quien tenga el permiso explícito.
+  //
+  // Sigue siendo solo UX: el backend restringe esta llamada a superusuario o
+  // administrador de empresa —flags que la sesión no distingue, `role` es
+  // "admin" cuando reportó `is_admin_empresa || es_admin || is_superuser` (ver
+  // `lib/auth.ts`)—. La frontera real sigue siendo el 403 con su mensaje.
   const { data: session } = useSession();
-  const canClearScans = session?.user?.role === "admin";
+  const canClearScans = hasPermission("D-WMS-SCANNER", session?.user);
 
   const showError = isInitialLoadError(isError, hasLoaded);
 

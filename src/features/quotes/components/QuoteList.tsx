@@ -32,7 +32,10 @@ export const QuoteList = () => {
   const isUpdatingOrderStatus = isAuthorizingOrder || isRejectingOrder;
   const isTableBusy = isUpdatingOrderStatus || isValidatingReview;
   const isSessionLoading = sessionStatus === "loading";
-  const canCreateOrder = hasPermission("R-CRM", session?.user);
+  // Gatea "+ Nueva cotización". Es el código de ALTA, no el de lectura de la
+  // sección: ver el listado (`R-CRM-COTIZACIONES`, lo exige la ruta) no
+  // habilita a crear.
+  const canCreateQuote = hasPermission("C-CRM-COTIZACIONES", session?.user);
 
   const quoteFilterConfig = useMemo(() => createQuoteFilterConfig(quotes), [quotes]);
 
@@ -69,7 +72,7 @@ export const QuoteList = () => {
             <div className="w-44 shrink-0" aria-hidden="true">
               <LoadingSkeleton className="h-10 rounded-xl" />
             </div>
-          ) : canCreateOrder ? (
+          ) : canCreateQuote ? (
             <div className="flex items-center gap-2 shrink-0">
               <Button asChild variant="primary" rounded="xl">
                 <Link

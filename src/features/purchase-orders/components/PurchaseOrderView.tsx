@@ -2,6 +2,7 @@
 
 import { memo, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import {
   ComprasIcon,
   ClockIcon,
@@ -11,6 +12,7 @@ import {
 import KpiGrid, { type KpiItem } from "@/src/components/KpiGrid";
 import { DataTable } from "@/src/components/DataTable";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
+import { hasPermission } from "@/src/utils/permissions";
 import { MainDialog } from "@/src/components/MainDialog";
 import { DialogHeader } from "@/src/components/DialogHeader";
 import { Button } from "@/src/components/Button";
@@ -106,6 +108,12 @@ export function PurchaseOrderView() {
   const router = useRouter();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
+  // Llegar a esta pantalla exige `R-COMPRAS-OC` (ver `routePermissions`); dar
+  // de alta exige además `C-COMPRAS-OC`. `hasPermission` cortocircuita para
+  // el rol "admin".
+  const { data: session } = useSession();
+  const canCreate = hasPermission("C-COMPRAS-OC", session?.user);
+
   // ── Edición ───────────────────────────────────────────────────────────────
   // El diálogo de edición se monta AQUÍ y no dentro de la celda de acciones:
   // una celda se desmonta al ordenar, paginar o filtrar la tabla, y con ella
@@ -147,32 +155,34 @@ export function PurchaseOrderView() {
       data={purchaseOrders}
       searchPlaceholder="Buscar orden, folio o referencia..."
       actionButton={
-        <MainDialog
-          title={
-            <DialogHeader
-              title="Nueva Orden de Compra"
-              subtitle="Registro Nuevo"
-              statusColor="sky"
+        canCreate ? (
+          <MainDialog
+            title={
+              <DialogHeader
+                title="Nueva Orden de Compra"
+                subtitle="Registro Nuevo"
+                statusColor="sky"
+              />
+            }
+            open={isDialogOpen}
+            onOpenChange={setIsDialogOpen}
+            maxWidth="640px"
+            showCloseButton={false}
+            trigger={
+              <Button
+                variant="primary"
+                rounded="full"
+                onClick={() => setIsDialogOpen(true)}
+              >
+                + Nueva Orden
+              </Button>
+            }
+          >
+            <PurchaseOrderOnboardingStepManager
+              onClose={() => setIsDialogOpen(false)}
             />
-          }
-          open={isDialogOpen}
-          onOpenChange={setIsDialogOpen}
-          maxWidth="640px"
-          showCloseButton={false}
-          trigger={
-            <Button
-              variant="primary"
-              rounded="full"
-              onClick={() => setIsDialogOpen(true)}
-            >
-              + Nueva Orden
-            </Button>
-          }
-        >
-          <PurchaseOrderOnboardingStepManager
-            onClose={() => setIsDialogOpen(false)}
-          />
-        </MainDialog>
+          </MainDialog>
+        ) : undefined
       }
       filterConfig={purchaseOrdersFilterConfig}
       onRefetch={refetch}

@@ -15,6 +15,12 @@ interface EmbroideryStatusSelectProps {
   onStatusChange: (next: EmbroideryOrderStatus) => void;
   /** PATCH en vuelo: inhabilita el disparador y muestra un spinner. */
   isPending?: boolean;
+  /**
+   * Sin permiso de edición (`E-PRODUCCION-OB`): degrada al mismo badge de solo
+   * lectura que un estatus terminal, en vez de ofrecer un menú de transiciones
+   * que el backend rechazaría.
+   */
+  readOnly?: boolean;
 }
 
 /**
@@ -34,6 +40,7 @@ export function EmbroideryStatusSelect({
   statusDisplay,
   onStatusChange,
   isPending = false,
+  readOnly = false,
 }: EmbroideryStatusSelectProps) {
   const current = embroideryStatusEntry(currentStatus, statusDisplay);
   const transitions = getAvailableTransitions(currentStatus);
@@ -48,8 +55,9 @@ export function EmbroideryStatusSelect({
     </>
   );
 
-  // Estatus terminal: badge de solo lectura (no hay a dónde moverse).
-  if (transitions.length === 0) {
+  // Estatus terminal (no hay a dónde moverse) o sin permiso de edición: badge
+  // de solo lectura.
+  if (readOnly || transitions.length === 0) {
     return (
       <span
         className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium whitespace-nowrap ${current.cls}`}

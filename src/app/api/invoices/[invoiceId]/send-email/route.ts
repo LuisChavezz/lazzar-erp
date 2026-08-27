@@ -12,7 +12,8 @@
  * cookies auth-jwt / auth-refresh-jwt que solo el browser puede enviar a ese
  * dominio. La validación autoritativa del envío vive AQUÍ (no solo en el botón
  * deshabilitado del cliente), en varias capas antes de renderizar:
- *   1. Sesión activa + permiso R-CONTABILIDAD (las rutas de `src/app/api/**` no
+ *   1. Sesión activa + permiso R-CONTABILIDAD-FACTURACION (las rutas de
+ *      `src/app/api/**` no
  *      pasan por `src/proxy.ts`, así que este handler necesita su propio chequeo).
  *   2. La forma de `invoice` se valida con `invoiceEmailPayloadSchema` para no
  *      confiar en un payload arbitrario y evitar que un campo faltante rompa el
@@ -47,8 +48,12 @@ export async function POST(
   request: Request,
   { params }: { params: Promise<{ invoiceId: string }> },
 ) {
-  // Módulo de Facturación (Finanzas) — mismo permiso que protege /finance en el proxy.
-  const authResult = await requireAuthenticatedSession("R-CONTABILIDAD");
+  // Sección de Facturación — mismo permiso que protege /finance/invoicing en el
+  // proxy (el envío es de una factura, así que se rige por la sección y no por
+  // el módulo completo).
+  const authResult = await requireAuthenticatedSession(
+    "R-CONTABILIDAD-FACTURACION",
+  );
 
   if ("errorResponse" in authResult) {
     return authResult.errorResponse;

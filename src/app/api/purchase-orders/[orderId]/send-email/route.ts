@@ -39,8 +39,10 @@ export async function POST(
   request: Request,
   { params }: { params: Promise<{ orderId: string }> },
 ) {
-  // Módulo de Compras — mismo permiso que protege /procurement en el proxy.
-  const authResult = await requireAuthenticatedSession("R-COMPRAS");
+  // Sección de Órdenes de Compra — mismo permiso que protege
+  // /procurement/purchase-orders en el proxy (el envío es de una OC, así que se
+  // rige por la sección y no por el módulo completo).
+  const authResult = await requireAuthenticatedSession("R-COMPRAS-OC");
 
   if ("errorResponse" in authResult) {
     return authResult.errorResponse;

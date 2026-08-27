@@ -9,6 +9,7 @@ import { Button } from "@/src/components/Button";
 import { MainDialog } from "@/src/components/MainDialog";
 import { DialogHeader } from "@/src/components/DialogHeader";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
+import { hasPermission } from "@/src/utils/permissions";
 import { useWorkspaceStore } from "@/src/features/workspace/store/workspace.store";
 import { useDepartments } from "@/src/features/departments/hooks/useDepartments";
 import { usePositions } from "@/src/features/positions/hooks/usePositions";
@@ -31,10 +32,9 @@ export default function EmployeeList() {
   const { positions } = usePositions();
 
   const { data: session } = useSession();
-  const isAdmin = session?.user?.role === "admin";
-  const permissions = session?.user?.permissions ?? [];
-  const canEditHr = isAdmin || permissions.includes("E-RH");
-  const canDeleteHr = isAdmin || permissions.includes("D-RH");
+  // `hasPermission` ya cortocircuita para el rol "admin".
+  const canEditHr = hasPermission("E-RH", session?.user);
+  const canDeleteHr = hasPermission("D-RH", session?.user);
 
   // Siembra la caché del detalle antes de navegar para que la página pinte sin
   // esperar al fetch (list y retrieve comparten serializer).

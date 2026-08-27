@@ -2,8 +2,10 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { DataTable } from "@/src/components/DataTable";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
+import { hasPermission } from "@/src/utils/permissions";
 import { isInitialLoadError } from "@/src/utils/isInitialLoadError";
 import { getCorteMangaOrderColumns } from "./CorteMangaOrderColumns";
 import { CorteMangaOrderDetailDialog } from "./CorteMangaOrderDetailDialog";
@@ -69,6 +71,12 @@ import { useCorteMangaOrders } from "../hooks/useCorteMangaOrders";
 export function CorteMangaOrdersView() {
   const { orders, isLoading, isError, error, hasLoaded, refetch, isFetching } =
     useCorteMangaOrders();
+
+  // Ver el listado exige `R-PRODUCCION-CM` (ver `routePermissions`); dar de alta
+  // exige además `C-PRODUCCION-CM`. `hasPermission` ya cortocircuita para el rol
+  // "admin".
+  const { data: session } = useSession();
+  const canCreate = hasPermission("C-PRODUCCION-CM", session?.user);
   const [openOrderId, setOpenOrderId] = useState<number | null>(null);
   const router = useRouter();
 
@@ -104,10 +112,12 @@ export function CorteMangaOrdersView() {
         isRefetching={isFetching}
         emptyMessage="No hay órdenes de corte de manga registradas."
         actionButton={
-          <CorteMangaOrderForm
-            onViewExistingOrder={setOpenOrderId}
-            onCloseExistingOrder={() => setOpenOrderId(null)}
-          />
+          canCreate ? (
+            <CorteMangaOrderForm
+              onViewExistingOrder={setOpenOrderId}
+              onCloseExistingOrder={() => setOpenOrderId(null)}
+            />
+          ) : undefined
         }
         // Un alta nueva se ordena al tope de la página 1 (ver
         // `useCorteMangaOrders`); sin esto, quien esté parado en la página 2 se

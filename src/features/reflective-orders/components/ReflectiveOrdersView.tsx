@@ -2,8 +2,10 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { DataTable } from "@/src/components/DataTable";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
+import { hasPermission } from "@/src/utils/permissions";
 import { isInitialLoadError } from "@/src/utils/isInitialLoadError";
 import { getReflectiveOrderColumns } from "./ReflectiveOrderColumns";
 import { ReflectiveOrderDetailDialog } from "./ReflectiveOrderDetailDialog";
@@ -61,6 +63,12 @@ import { useReflectiveOrders } from "../hooks/useReflectiveOrders";
 export function ReflectiveOrdersView() {
   const { orders, isLoading, isError, error, hasLoaded, refetch, isFetching } =
     useReflectiveOrders();
+
+  // Ver el listado exige `R-PRODUCCION-OR` (ver `routePermissions`); dar de alta
+  // exige además `C-PRODUCCION-OR`. `hasPermission` ya cortocircuita para el rol
+  // "admin".
+  const { data: session } = useSession();
+  const canCreate = hasPermission("C-PRODUCCION-OR", session?.user);
   const [openOrderId, setOpenOrderId] = useState<number | null>(null);
   const router = useRouter();
 
@@ -98,10 +106,12 @@ export function ReflectiveOrdersView() {
         isRefetching={isFetching}
         emptyMessage="No hay órdenes de reflejante registradas."
         actionButton={
-          <ReflectiveOrderForm
-            onViewExistingOrder={setOpenOrderId}
-            onCloseExistingOrder={() => setOpenOrderId(null)}
-          />
+          canCreate ? (
+            <ReflectiveOrderForm
+              onViewExistingOrder={setOpenOrderId}
+              onCloseExistingOrder={() => setOpenOrderId(null)}
+            />
+          ) : undefined
         }
         // Un alta nueva se ordena al tope de la página 1 (ver
         // `useReflectiveOrders`); sin esto, quien esté parado en la página 2 se

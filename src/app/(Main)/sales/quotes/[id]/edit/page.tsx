@@ -33,10 +33,12 @@ export default async function QuoteEditPage({ params }: QuoteEditPageProps) {
   const { id } = await params;
   const quoteId = Number(id);
 
-  // Guard mínimo (solo forma del id). La verificación real de acceso —
+  // Guard local: forma del id + permiso `E-CRM-COTIZACIONES` leído del JWT de
+  // NextAuth (esta ruta no puede expresarse en `routePermissions` por su
+  // segmento dinámico intermedio). La verificación real de acceso al dato —
   // existencia, estatus editable, denegaciones y fallos técnicos — la hace
   // QuoteEditForm en el cliente, el único lado con credenciales del backend.
-  redirectIfQuoteCannotBeEdited(quoteId);
+  await redirectIfQuoteCannotBeEdited(quoteId);
 
   return (
     <div className="w-full space-y-6 pt-2">
