@@ -1,5 +1,3 @@
-// getBranches import intentionally removed along with the commented-out
-// Sucursales card below (src/features/branches/services/actions is untouched).
 import { getCurrencies } from "@/src/features/currency/services/actions";
 import { getColors } from "@/src/features/colors/services/actions";
 import { getSizes } from "@/src/features/sizes/services/actions";
@@ -130,20 +128,6 @@ export const configGroups: ConfigGroupItem[] = [
 ];
 
 export const configCards: ConfigCardItem[] = [
-  // Sucursales: deliberately hidden from the /config menu (temporary, not an
-  // oversight). The Branches feature module (src/features/branches/) and its
-  // "branches" view case in ConfigDetailView remain fully intact for future
-  // re-enablement — just uncomment this card to restore it.
-  // {
-  //   title: "Sucursales",
-  //   description: "Gestión de sucursales operativas",
-  //   icon: BuildingIcon,
-  //   view: "branches",
-  //   group: "Organización",
-  //   adminOnly: true,
-  //   prefetchKey: ["branches"],
-  //   prefetchFn: getBranches,
-  // },
   {
     title: "Almacenes",
     description: "Gestión de almacenes e inventarios",

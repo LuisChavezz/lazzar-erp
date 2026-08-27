@@ -1,6 +1,7 @@
 "use client";
 
 import { memo, useMemo } from "react";
+import { useSession } from "next-auth/react";
 import {
   ClockIcon,
   ErrorIcon,
@@ -9,6 +10,7 @@ import {
 } from "@/src/components/Icons";
 import { DataTable } from "@/src/components/DataTable";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
+import { hasPermission } from "@/src/utils/permissions";
 import KpiGrid, { type KpiItem } from "@/src/components/KpiGrid";
 import { useStockMovements } from "../hooks/useStockMovements";
 import { getStockMovementsColumns } from "./StockMovementsColumns";
@@ -129,6 +131,12 @@ export function StockMovementsView() {
 
   const columns = useMemo(() => getStockMovementsColumns(), []);
 
+  // Registrar un movimiento exige `C-CONFIGURACION` (esta vista se alcanza
+  // desde /config, cuya lectura ya exige R-CONFIGURACION). `hasPermission` ya
+  // cortocircuita para el rol "admin".
+  const { data: session } = useSession();
+  const canCreate = hasPermission("C-CONFIGURACION", session?.user);
+
   // ── Tabla de movimientos ─────────────────────────────────────────────────
   // `DataTable` se monta SIEMPRE (recibe `isLoading`/`isError` y alterna solo
   // su cuerpo), así que su toolbar y `actionButton` siguen disponibles
@@ -139,7 +147,7 @@ export function StockMovementsView() {
       data={stockMovements}
       title="Movimientos de Inventario"
       searchPlaceholder="Buscar por tipo, folio, origen o destino..."
-      actionButton={<StockMovementForm />}
+      actionButton={canCreate ? <StockMovementForm /> : undefined}
       filterConfig={stockMovementsFilterConfig}
       onRefetch={refetch}
       isRefetching={isFetching}

@@ -127,7 +127,11 @@ export function ReflectiveOrdersView() {
         loadingAriaLabel="Cargando órdenes de reflejante"
       />
 
-      {openOrderId !== null && (
+      {/* Acoplado al alta a propósito: `openOrderId` SOLO lo fija el 409 de
+          duplicado de `ReflectiveOrderForm` (la fila navega a la página de
+          detalle). Sin `canCreate` el formulario no se monta, así que este
+          diálogo nunca podría abrirse — la condición lo deja explícito. */}
+      {canCreate && openOrderId !== null && (
         <ReflectiveOrderDetailDialog
           // El diálogo trae TODO su detalle por id. Antes esta vista le pasaba
           // la fila ya localizada en el listado (`orders.find(...)`), apoyada en

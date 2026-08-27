@@ -31,6 +31,10 @@ export const CustomerList = () => {
   // exige además `C-CRM-CLIENTES`. `hasPermission` cortocircuita para "admin".
   const { data: session } = useSession();
   const canCreate = hasPermission("C-CRM-CLIENTES", session?.user);
+  // Las direcciones no tienen código propio en el catálogo: son parte del
+  // registro del cliente, así que se rigen por su permiso de EDICIÓN — el mismo
+  // que gatea "Editar" y "Agregar Dirección" en el menú de fila.
+  const canEdit = hasPermission("E-CRM-CLIENTES", session?.user);
 
   const isEditing = Boolean(customerToEdit?.id);
 
@@ -148,12 +152,17 @@ export const CustomerList = () => {
         onOpenChange={handleAddressListDialogOpenChange}
         maxWidth="620px"
       >
+        {/* Sin permiso de edición el listado de direcciones queda de SOLO
+            LECTURA: `CustomerAddressList` oculta su botón "Agregar" y
+            `CustomerAddressItem` su botón de editar cuando no reciben callback.
+            Sin esto, "Direcciones" —que no exige permiso— sería una vía alterna
+            a los mismos formularios que ya gatea el menú de fila. */}
         {selectedCustomerForList && (
           <CustomerAddressList
             customerId={Number(selectedCustomerForList.id)}
             customerName={selectedCustomerForList.razon_social}
-            onAddAddress={handleAddAddressFromList}
-            onEditAddress={handleEditAddressFromList}
+            onAddAddress={canEdit ? handleAddAddressFromList : undefined}
+            onEditAddress={canEdit ? handleEditAddressFromList : undefined}
           />
         )}
       </MainDialog>

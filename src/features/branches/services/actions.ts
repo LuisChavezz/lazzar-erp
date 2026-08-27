@@ -1,28 +1,17 @@
 import { Branch } from "../interfaces/branch.interface";
-import { BranchFormValues } from "../schemas/branch.schema";
 import { v1_api } from "@/src/api/v1.api";
 
-
-export const getBranches = async (): Promise<Branch[]> => {
-  const response = await v1_api.get("/nucleo/sucursales/");
-
-  return response.data;
-};
-
+/**
+ * Sucursales de una empresa del usuario.
+ *
+ * Única acción viva del módulo: la alimenta `useCompanyBranches`, que consumen
+ * el workspace, el alta de empleados y series y folios. El CRUD de sucursales
+ * (`getBranches`/`createBranch`/`updateBranch` sobre `/nucleo/sucursales/`) se
+ * eliminó junto con `BranchList`, la pantalla de /config que era su único
+ * consumidor y que llevaba tiempo deshabilitada.
+ */
 export const getCompanyBranches = async (companyId: number): Promise<Branch[]> => {
   const response = await v1_api.get(`/nucleo/mis-sucursales/?empresa_id=${companyId}`);
-
-  return response.data;
-};
-
-export const createBranch = async (branch: BranchFormValues & { empresa: number }): Promise<Branch> => {
-  const response = await v1_api.post("/nucleo/sucursales/", branch);
-
-  return response.data;
-};
-
-export const updateBranch = async (branch: BranchFormValues & { empresa: number}): Promise<Branch> => {
-  const response = await v1_api.put(`/nucleo/sucursales/${branch.codigo}/`, branch);
 
   return response.data;
 };

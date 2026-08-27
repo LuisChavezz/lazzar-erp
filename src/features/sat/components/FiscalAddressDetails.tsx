@@ -6,13 +6,16 @@ import FiscalAddressForm from "./FiscalAddressForm";
 import { useState } from "react";
 import { MapPinIcon, EditIcon, BuildingIcon } from "@/src/components/Icons";
 import { useSession } from "next-auth/react";
+import { hasPermission } from "@/src/utils/permissions";
 
 export const FiscalAddressDetails = () => {
   const { fiscalAddress } = useSatStore();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const { data: session } = useSession();
 
-  const isAdmin = session?.user?.role === "admin";
+  // Alta/edición de la dirección fiscal: `E-CONFIGURACION` del catálogo.
+  // `hasPermission` ya cortocircuita para el rol "admin".
+  const canEdit = hasPermission("E-CONFIGURACION", session?.user);
 
   return (
     <div className="space-y-6">
@@ -27,7 +30,7 @@ export const FiscalAddressDetails = () => {
           </p>
         </div>
 
-        {isAdmin && (
+        {canEdit && (
           <MainDialog
           title={
             <div className="flex items-center gap-4 pb-4 border-b border-slate-200 dark:border-white/10 mb-4">

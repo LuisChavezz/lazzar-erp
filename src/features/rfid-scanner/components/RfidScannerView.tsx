@@ -51,15 +51,10 @@ export function RfidScannerView() {
   } = useRfidScannerStats();
   const { mutate: clearScans, isPending: isClearing } = useClearRfidScans();
 
-  // La purga se rige por `D-WMS-SCANNER` del catálogo de permisos.
-  // `hasPermission` cortocircuita para el rol "admin", así que se conserva el
-  // comportamiento previo (el `role === "admin"` que vivía aquí) y además se
-  // habilita a quien tenga el permiso explícito.
-  //
-  // Sigue siendo solo UX: el backend restringe esta llamada a superusuario o
-  // administrador de empresa —flags que la sesión no distingue, `role` es
-  // "admin" cuando reportó `is_admin_empresa || es_admin || is_superuser` (ver
-  // `lib/auth.ts`)—. La frontera real sigue siendo el 403 con su mensaje.
+  // La purga se rige por `D-WMS-SCANNER` del catálogo de permisos, igual que
+  // el resto de acciones de la app. `hasPermission` ya cortocircuita para el
+  // rol "admin". Esto es solo UX: la frontera real es el backend, que responde
+  // 403 con su propio mensaje si rechaza la llamada.
   const { data: session } = useSession();
   const canClearScans = hasPermission("D-WMS-SCANNER", session?.user);
 

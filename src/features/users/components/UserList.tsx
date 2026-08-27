@@ -10,19 +10,22 @@ import { MainDialog } from "@/src/components/MainDialog";
 import { DialogHeader } from "@/src/components/DialogHeader";
 import UserForm from "./UserForm";
 import { useSession } from "next-auth/react";
+import { hasPermission } from "@/src/utils/permissions";
 
 export default function UserList() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const { data: users, isLoading, isError, error } = useUsers();
   const { data: session } = useSession();
-  const isAdmin = session?.user?.role === "admin";
-  const permissions = session?.user?.permissions ?? [];
-  const canReadConfig = isAdmin || permissions.includes("R-CONFIGURACION");
-  const canEditConfig = isAdmin || permissions.includes("E-CONFIGURACION");
-  const canDeleteConfig = isAdmin || permissions.includes("D-CONFIGURACION");
+  // `hasPermission` ya cortocircuita para el rol admin, así que sustituye al
+  // chequeo manual que vivía aquí. El alta usa su propio código
+  // (C-CONFIGURACION), no el de edición.
+  const canRead = hasPermission("R-CONFIGURACION", session?.user);
+  const canCreate = hasPermission("C-CONFIGURACION", session?.user);
+  const canEdit = hasPermission("E-CONFIGURACION", session?.user);
+  const canDelete = hasPermission("D-CONFIGURACION", session?.user);
   const columns = useMemo(
-    () => getUserColumns({ canRead: canReadConfig, canEdit: canEditConfig, canDelete: canDeleteConfig }),
-    [canReadConfig, canEditConfig, canDeleteConfig]
+    () => getUserColumns({ canRead, canEdit, canDelete }),
+    [canRead, canEdit, canDelete]
   );
 
   return (
@@ -37,7 +40,7 @@ export default function UserList() {
       errorMessage={extractErrorMessage(error, "No se pudo cargar la información.")}
       loadingAriaLabel="Cargando usuarios"
       actionButton={
-        canEditConfig ? (
+        canCreate ? (
           <MainDialog
             open={isDialogOpen}
             onOpenChange={setIsDialogOpen}

@@ -10,6 +10,7 @@ import { DialogHeader } from "@/src/components/DialogHeader";
 import { Button } from "@/src/components/Button";
 import { PlusIcon } from "@/src/components/Icons";
 import { useSession } from "next-auth/react";
+import { hasPermission } from "@/src/utils/permissions";
 import CurrencyForm from "./CurrencyForm";
 
 export default function CurrencyList() {
@@ -17,13 +18,15 @@ export default function CurrencyList() {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const { data: session } = useSession();
 
-  const isAdmin = session?.user?.role === "admin";
-  const permissions = session?.user?.permissions ?? [];
-  const canEditConfig = isAdmin || permissions.includes("E-CONFIGURACION");
-  const canDeleteConfig = isAdmin || permissions.includes("D-CONFIGURACION");
+  // `hasPermission` ya cortocircuita para el rol admin, así que sustituye al
+  // chequeo manual que vivía aquí. El alta usa su propio código
+  // (C-CONFIGURACION), no el de edición.
+  const canCreate = hasPermission("C-CONFIGURACION", session?.user);
+  const canEdit = hasPermission("E-CONFIGURACION", session?.user);
+  const canDelete = hasPermission("D-CONFIGURACION", session?.user);
   const columns = useMemo(
-    () => getCurrencyColumns({ canEdit: canEditConfig, canDelete: canDeleteConfig }),
-    [canEditConfig, canDeleteConfig]
+    () => getCurrencyColumns({ canEdit, canDelete }),
+    [canEdit, canDelete]
   );
 
   return (
@@ -54,7 +57,7 @@ export default function CurrencyList() {
         errorMessage={extractErrorMessage(error, "No se pudo cargar la información.")}
         loadingAriaLabel="Cargando monedas"
         actionButton={
-          canEditConfig ? (
+          canCreate ? (
             <Button
               variant="primary"
               rounded="xl"

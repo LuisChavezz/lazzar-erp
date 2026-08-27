@@ -1,12 +1,18 @@
 import type React from "react";
 import { HomeIcon } from "../components/Icons";
-import { appRouteGroups } from "./appRoutes";
+import { appRouteGroups, getGroupAccessPermissions } from "./appRoutes";
 
 export interface SidebarItem {
   label: string;
   href: string;
   icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
   permission?: string;
+  /**
+   * Alternativa a `permission`: basta con tener UNO de estos códigos. La usan
+   * los items de MÓDULO, alcanzables tanto con el permiso del módulo como con
+   * el de cualquiera de sus secciones (ver `getGroupAccessPermissions`).
+   */
+  permissionAnyOf?: string[];
 }
 
 export interface SidebarSection {
@@ -39,7 +45,7 @@ const mapGroupToSidebarItem = (group: (typeof appRouteGroups)[number]): SidebarI
   label: group.moduleLabel,
   href: group.modulePath,
   icon: group.moduleIcon,
-  permission: group.permission,
+  permissionAnyOf: getGroupAccessPermissions(group),
 });
 
 const getActiveGroup = (pathname: string) =>

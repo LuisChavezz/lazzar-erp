@@ -1,7 +1,9 @@
 "use client";
 
+import { useSession } from "next-auth/react";
 import { DataTable } from "@/src/components/DataTable";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
+import { hasPermission } from "@/src/utils/permissions";
 import { isInitialLoadError } from "@/src/utils/isInitialLoadError";
 import { StockTransferForm } from "./StockTransferForm";
 import { stockTransfersColumns } from "./StockTransfersColumns";
@@ -23,6 +25,12 @@ export function StockTransfersView() {
   const { transferencias, isLoading, isError, error, hasLoaded, refetch, isFetching } =
     useTransferencias();
 
+  // Registrar un traspaso exige `C-CONFIGURACION` (esta vista se alcanza desde
+  // /config, cuya lectura ya exige R-CONFIGURACION). `hasPermission` ya
+  // cortocircuita para el rol "admin".
+  const { data: session } = useSession();
+  const canCreate = hasPermission("C-CONFIGURACION", session?.user);
+
   return (
     <div className="space-y-6">
       <DataTable
@@ -34,7 +42,7 @@ export function StockTransfersView() {
         onRefetch={refetch}
         isRefetching={isFetching}
         emptyMessage="No hay traspasos registrados."
-        actionButton={<StockTransferForm />}
+        actionButton={canCreate ? <StockTransferForm /> : undefined}
         isLoading={isLoading}
         isError={isInitialLoadError(isError, hasLoaded)}
         errorTitle="Error al cargar los traspasos"

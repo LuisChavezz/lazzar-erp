@@ -55,6 +55,23 @@ export interface AppRouteGroup {
   items: AppRouteItem[];
 }
 
+/**
+ * Todos los permisos que dan acceso a ALGUNA pantalla del módulo: el del propio
+ * módulo más el de cada una de sus secciones.
+ *
+ * Lo consumen los puntos de ENTRADA (tarjetas de Home, item de módulo del
+ * sidebar) con `hasAnyPermission`. Usar solo `group.permission` dejaría sin
+ * enlace a quien tenga una sección pero no el módulo, que es justo la
+ * granularidad que persigue el catálogo.
+ */
+export const getGroupAccessPermissions = (group: AppRouteGroup): string[] => [
+  ...new Set(
+    [group.permission, ...group.items.map((item) => item.permission)].filter(
+      (permission): permission is string => Boolean(permission)
+    )
+  ),
+];
+
 export const appRouteGroups: AppRouteGroup[] = [
   {
     key: "system",
@@ -116,7 +133,10 @@ export const appRouteGroups: AppRouteGroup[] = [
         label: "Nuevo Cotización",
         path: "/sales/quotes/new",
         icon: PedidosIcon,
-        permission: "R-CRM-COTIZACIONES",
+        // Debe coincidir con la regla de esta MISMA ruta en `routePermissions`
+        // ("/sales/quotes/new" → C-CRM-COTIZACIONES): el alta exige el código de
+        // creación, no el de lectura de la sección.
+        permission: "C-CRM-COTIZACIONES",
         parentPath: "/sales/quotes",
         showInSidebar: false,
       },

@@ -92,12 +92,24 @@ export default function ModuleNav({ moduleKey, modulePath, className }: ModuleNa
     (item) => item.showInSidebar !== false
   );
 
+  // El tab raíz enlaza al landing del módulo, que el proxy protege con el
+  // permiso de MÓDULO. Tras la granularización un usuario puede tener una
+  // sección sin tener el módulo (p. ej. R-WMS-PICKING sin R-WMS): sin este
+  // filtro se le ofrecería un tab que solo lo rebota a "/".
+  const canSeeModuleRoot = activeGroup.permission
+    ? hasPermission(activeGroup.permission, session?.user)
+    : true;
+
   const tabs = [
-    {
-      label: activeGroup.moduleLabel,
-      href: activeGroup.modulePath,
-      isRoot: true,
-    },
+    ...(canSeeModuleRoot
+      ? [
+          {
+            label: activeGroup.moduleLabel,
+            href: activeGroup.modulePath,
+            isRoot: true,
+          },
+        ]
+      : []),
     ...visibleRouteItems
       .filter((item) => (item.permission ? hasPermission(item.permission, session?.user) : true))
       .map((item) => ({

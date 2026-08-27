@@ -12,7 +12,6 @@ import {
   ErrorIcon,
   ExclamationTriangleIcon,
   TrendingUpIcon,
-  ComprasIcon,
   ChevronRightIcon,
 } from "@/src/components/Icons";
 import { isInitialLoadError } from "@/src/utils/isInitialLoadError";

@@ -7,6 +7,7 @@ import { MainDialog } from "../../../components/MainDialog";
 import { DialogHeader } from "@/src/components/DialogHeader";
 import { ProductCategory } from "../interfaces/product-category.interface";
 import { useSession } from "next-auth/react";
+import { hasPermission } from "@/src/utils/permissions";
 import ProductCategoryForm from "./ProductCategoryForm";
 import { useProductCategories } from "../hooks/useProductCategories";
 
@@ -15,10 +16,12 @@ export default function ProductCategoryList() {
   const [selectedCategory, setSelectedCategory] = useState<ProductCategory | null>(null);
   const { categories, isLoading, isError, error } = useProductCategories();
   const { data: session } = useSession();
-  const isAdmin = session?.user?.role === "admin";
-  const permissions = session?.user?.permissions ?? [];
-  const canEditConfig = isAdmin || permissions.includes("E-CONFIGURACION");
-  const canDeleteConfig = isAdmin || permissions.includes("D-CONFIGURACION");
+  // `hasPermission` ya cortocircuita para el rol admin, así que sustituye al
+  // chequeo manual que vivía aquí. El alta usa su propio código
+  // (C-CONFIGURACION), no el de edición.
+  const canCreate = hasPermission("C-CONFIGURACION", session?.user);
+  const canEdit = hasPermission("E-CONFIGURACION", session?.user);
+  const canDelete = hasPermission("D-CONFIGURACION", session?.user);
 
   const handleEdit = useCallback(
     (category: ProductCategory) => {
@@ -34,8 +37,8 @@ export default function ProductCategoryList() {
   };
 
   const columns = useMemo(
-    () => getColumns(handleEdit, { canEdit: canEditConfig, canDelete: canDeleteConfig }),
-    [handleEdit, canEditConfig, canDeleteConfig]
+    () => getColumns(handleEdit, { canEdit, canDelete }),
+    [handleEdit, canEdit, canDelete]
   );
 
   return (
@@ -50,7 +53,10 @@ export default function ProductCategoryList() {
       errorMessage={extractErrorMessage(error, "No se pudo cargar la información.")}
       loadingAriaLabel="Cargando categorías"
       actionButton={
-        canEditConfig ? (
+        // El diálogo es DUAL (alta y edición: lo abre `handleEdit` por `open`,
+        // sin pasar por el trigger), así que se monta también con solo permiso
+        // de edición; lo que se oculta sin `canCreate` es el botón de alta.
+        canCreate || canEdit ? (
           <MainDialog
             title={
               <DialogHeader
@@ -63,14 +69,16 @@ export default function ProductCategoryList() {
             onOpenChange={setIsDialogOpen}
             maxWidth="1000px"
             trigger={
-              <Button
-                variant="primary"
-                rounded="full"
-                onClick={handleNew}
-                className="hover:scale-105 active:scale-95"
-              >
-                + Nueva Categoría
-              </Button>
+              canCreate ? (
+                <Button
+                  variant="primary"
+                  rounded="full"
+                  onClick={handleNew}
+                  className="hover:scale-105 active:scale-95"
+                >
+                  + Nueva Categoría
+                </Button>
+              ) : undefined
             }
           >
             <ProductCategoryForm

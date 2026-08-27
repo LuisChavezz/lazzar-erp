@@ -122,7 +122,11 @@ export function EmbroideryView() {
         loadingAriaLabel="Cargando órdenes de bordado"
       />
 
-      {openOrderId !== null && (
+      {/* Acoplado al alta a propósito: `openOrderId` SOLO lo fija el 409 de
+          duplicado de `EmbroideryOrderForm` (la fila navega a la página de
+          detalle). Sin `canCreate` el formulario no se monta, así que este
+          diálogo nunca podría abrirse — la condición lo deja explícito. */}
+      {canCreate && openOrderId !== null && (
         <EmbroideryOrderDetailDialog
           // El diálogo trae TODO su detalle por id, cobertura incluida: desde
           // que `list` y `retrieve` dejaron de compartir serializer, la fila

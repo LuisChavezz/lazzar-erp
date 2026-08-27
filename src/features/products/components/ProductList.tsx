@@ -7,6 +7,7 @@ import { DialogHeader } from "../../../components/DialogHeader";
 import { Product } from "../interfaces/product.interface";
 import { getColumns } from "./ProductColumns";
 import { useSession } from "next-auth/react";
+import { hasPermission } from "@/src/utils/permissions";
 import ProductForm from "./ProductForm";
 import { useProductCategories } from "../../product-categories/hooks/useProductCategories";
 import { useUnitsOfMeasure } from "../../units-of-measure/hooks/useUnitsOfMeasure";
@@ -18,10 +19,12 @@ import { useProducts } from "../hooks/useProducts";
 
 export default function ProductList() {
   const { data: session } = useSession();
-  const isAdmin = session?.user?.role === "admin";
-  const permissions = session?.user?.permissions ?? [];
-  const canEditConfig = isAdmin || permissions.includes("E-CONFIGURACION");
-  const canDeleteConfig = isAdmin || permissions.includes("D-CONFIGURACION");
+  // `hasPermission` ya cortocircuita para el rol admin, así que sustituye al
+  // chequeo manual que vivía aquí. El alta usa su propio código
+  // (C-CONFIGURACION), no el de edición.
+  const canCreate = hasPermission("C-CONFIGURACION", session?.user);
+  const canEdit = hasPermission("E-CONFIGURACION", session?.user);
+  const canDelete = hasPermission("D-CONFIGURACION", session?.user);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const { products, isLoading, isError, error } = useProducts(3);
@@ -63,8 +66,8 @@ export default function ProductList() {
   );
 
   const columns = useMemo(
-    () => getColumns(handleEdit, { canEdit: canEditConfig, canDelete: canDeleteConfig }, lookups),
-    [handleEdit, canEditConfig, canDeleteConfig, lookups]
+    () => getColumns(handleEdit, { canEdit, canDelete }, lookups),
+    [handleEdit, canEdit, canDelete, lookups]
   );
 
   const isEditing = Boolean(selectedProduct?.id);
@@ -81,7 +84,10 @@ export default function ProductList() {
       errorMessage={extractErrorMessage(error, "No se pudo cargar la información.")}
       loadingAriaLabel="Cargando productos"
       actionButton={
-        canEditConfig ? (
+        // El diálogo es DUAL (alta y edición: lo abre `handleEdit` por `open`,
+        // sin pasar por el trigger), así que se monta también con solo permiso
+        // de edición; lo que se oculta sin `canCreate` es el botón de alta.
+        canCreate || canEdit ? (
           <MainDialog
             title={
               <DialogHeader
@@ -94,14 +100,16 @@ export default function ProductList() {
             onOpenChange={setIsDialogOpen}
             maxWidth="1000px"
             trigger={
-              <Button
-                variant="primary"
-                rounded="full"
-                onClick={handleCreate}
-                className="hover:scale-105 active:scale-95"
-              >
-                + Nuevo Producto
-              </Button>
+              canCreate ? (
+                <Button
+                  variant="primary"
+                  rounded="full"
+                  onClick={handleCreate}
+                  className="hover:scale-105 active:scale-95"
+                >
+                  + Nuevo Producto
+                </Button>
+              ) : undefined
             }
           >
             <ProductForm

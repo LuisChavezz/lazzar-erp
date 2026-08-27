@@ -13,22 +13,53 @@ import { useSuppliers } from "../hooks/useSuppliers";
 import { getSupplierColumns } from "./SupplierColumns";
 import { Supplier } from "../interfaces/supplier.interface";
 
+/**
+ * Códigos de permiso por punto de montaje.
+ *
+ * Este listado se alcanza desde DOS módulos distintos y cada uno tiene su propia
+ * familia en el catálogo de la tabla `permisos`: quien administra proveedores
+ * desde Compras no es necesariamente quien administra los catálogos del sistema.
+ * La lectura ya la controla la ruta de cada módulo (`R-COMPRAS-PROV` en
+ * `/procurement/suppliers`, `R-CONFIGURACION` en `/config`); esto solo decide
+ * qué códigos gobiernan alta, edición y baja.
+ */
+const PERMISSIONS_BY_CONTEXT = {
+  procurement: {
+    create: "C-COMPRAS-PROV",
+    edit: "E-COMPRAS-PROV",
+    delete: "D-COMPRAS-PROV",
+  },
+  config: {
+    create: "C-CONFIGURACION",
+    edit: "E-CONFIGURACION",
+    delete: "D-CONFIGURACION",
+  },
+} as const;
+
 interface SupplierListProps {
   hideTitle?: boolean;
+  /**
+   * Familia de permisos a aplicar según desde dónde se monte el listado.
+   * Por defecto "procurement", que es el comportamiento histórico.
+   */
+  permissionContext?: keyof typeof PERMISSIONS_BY_CONTEXT;
 }
 
-export default function SupplierList({ hideTitle = false }: SupplierListProps) {
+export default function SupplierList({
+  hideTitle = false,
+  permissionContext = "procurement",
+}: SupplierListProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [supplierToEdit, setSupplierToEdit] = useState<Supplier | null>(null);
   const { suppliers, isLoading, isError, error } = useSuppliers();
   const { data: session } = useSession();
 
   // `hasPermission` ya cortocircuita para el rol "admin", así que no hace falta
-  // el `isAdmin || ...` manual que vivía aquí. Los códigos son los del catálogo
-  // de la tabla `permisos`: la sección de proveedores es "-PROV".
-  const canCreate = hasPermission("C-COMPRAS-PROV", session?.user);
-  const canEdit = hasPermission("E-COMPRAS-PROV", session?.user);
-  const canDelete = hasPermission("D-COMPRAS-PROV", session?.user);
+  // el `isAdmin || ...` manual que vivía aquí.
+  const permissions = PERMISSIONS_BY_CONTEXT[permissionContext];
+  const canCreate = hasPermission(permissions.create, session?.user);
+  const canEdit = hasPermission(permissions.edit, session?.user);
+  const canDelete = hasPermission(permissions.delete, session?.user);
 
   const isEditing = Boolean(supplierToEdit?.id);
 

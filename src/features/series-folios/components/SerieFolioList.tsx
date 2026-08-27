@@ -7,6 +7,7 @@ import { Button } from "../../../components/Button";
 import { MainDialog } from "../../../components/MainDialog";
 import { DialogHeader } from "@/src/components/DialogHeader";
 import { useSession } from "next-auth/react";
+import { hasPermission } from "@/src/utils/permissions";
 import { useWorkspaceStore } from "../../workspace/store/workspace.store";
 import { useCompanyBranches } from "../../branches/hooks/useCompanyBranches";
 import { useSerieFolios } from "../hooks/useSerieFolios";
@@ -22,10 +23,12 @@ export default function SerieFolioList() {
   const selectedCompany = useWorkspaceStore((state) => state.selectedCompany);
   const { branches } = useCompanyBranches(selectedCompany.id);
 
-  const isAdmin = session?.user?.role === "admin";
-  const permissions = session?.user?.permissions ?? [];
-  const canEditConfig = isAdmin || permissions.includes("E-CONFIGURACION");
-  const canDeleteConfig = isAdmin || permissions.includes("D-CONFIGURACION");
+  // `hasPermission` ya cortocircuita para el rol admin, así que sustituye al
+  // chequeo manual que vivía aquí. El alta usa su propio código
+  // (C-CONFIGURACION), no el de edición.
+  const canCreate = hasPermission("C-CONFIGURACION", session?.user);
+  const canEdit = hasPermission("E-CONFIGURACION", session?.user);
+  const canDelete = hasPermission("D-CONFIGURACION", session?.user);
 
   const branchLookup = useMemo(
     () => new Map(branches.map((branch) => [branch.id, branch.nombre])),
@@ -47,8 +50,8 @@ export default function SerieFolioList() {
 
   const columns = useMemo(
     () =>
-      getSerieFolioColumns(handleEdit, { canEdit: canEditConfig, canDelete: canDeleteConfig }, branchLookup),
-    [handleEdit, canEditConfig, canDeleteConfig, branchLookup]
+      getSerieFolioColumns(handleEdit, { canEdit, canDelete }, branchLookup),
+    [handleEdit, canEdit, canDelete, branchLookup]
   );
 
   return (
@@ -63,7 +66,10 @@ export default function SerieFolioList() {
       errorMessage={extractErrorMessage(error, "No se pudo cargar la información.")}
       loadingAriaLabel="Cargando series y folios"
       actionButton={
-        canEditConfig ? (
+        // El diálogo es DUAL (alta y edición: lo abre `handleEdit` por `open`,
+        // sin pasar por el trigger), así que se monta también con solo permiso
+        // de edición; lo que se oculta sin `canCreate` es el botón de alta.
+        canCreate || canEdit ? (
           <MainDialog
             title={
               <DialogHeader
@@ -76,14 +82,16 @@ export default function SerieFolioList() {
             onOpenChange={setIsDialogOpen}
             maxWidth="1100px"
             trigger={
-              <Button
-                variant="primary"
-                rounded="full"
-                onClick={handleNew}
-                className="hover:scale-105 active:scale-95"
-              >
-                + Nueva Serie
-              </Button>
+              canCreate ? (
+                <Button
+                  variant="primary"
+                  rounded="full"
+                  onClick={handleNew}
+                  className="hover:scale-105 active:scale-95"
+                >
+                  + Nueva Serie
+                </Button>
+              ) : undefined
             }
           >
             <SerieFolioForm

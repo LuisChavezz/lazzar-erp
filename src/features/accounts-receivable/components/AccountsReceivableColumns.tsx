@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { ColumnDef, createColumnHelper } from "@tanstack/react-table";
 import { ActionMenu, type ActionMenuItem } from "@/src/components/ActionMenu";
-import { ViewIcon, ReceiptIcon, ListaPreciosIcon } from "@/src/components/Icons";
+import { ViewIcon } from "@/src/components/Icons";
 import { StatusBadge } from "@/src/components/StatusBadge";
 import { formatMoneyValue } from "@/src/utils/formatCurrency";
 import { formatShortDate } from "@/src/utils/formatDate";
@@ -28,16 +28,14 @@ const EstatusBadge = ({ estatus }: { estatus: CxCEstatus }) => (
 const ActionsCell = ({ row }: { row: CuentaPorCobrarRow }) => {
   const [isDetailOpen, setIsDetailOpen] = useState(false);
 
+  // "Registrar cobro" y "Ver factura" vivían aquí con `onSelect: () => {}`: se
+  // ofrecían al usuario y no hacían nada. Se retiran hasta que exista la
+  // funcionalidad — un menú que miente es peor que uno corto. Al reponerlas,
+  // "Registrar cobro" solo aplica con saldo pendiente (estatus distinto de
+  // "Pagada" y "Cancelada") y necesitará su código de permiso.
   const menuItems: ActionMenuItem[] = [
     { label: "Ver detalle", icon: ViewIcon, onSelect: () => setIsDetailOpen(true) },
   ];
-
-  // Solo tiene sentido registrar un cobro cuando queda saldo por cobrar.
-  if (row.estatus !== "Pagada" && row.estatus !== "Cancelada") {
-    menuItems.push({ label: "Registrar cobro", icon: ListaPreciosIcon, onSelect: () => {} });
-  }
-
-  menuItems.push({ label: "Ver factura", icon: ReceiptIcon, onSelect: () => {} });
 
   return (
     <div className="flex items-center justify-center">

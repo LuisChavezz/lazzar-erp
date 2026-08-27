@@ -7,6 +7,7 @@ import { MainDialog } from "../../../components/MainDialog";
 import { DialogHeader } from "@/src/components/DialogHeader";
 import { Color } from "../interfaces/color.interface";
 import { useSession } from "next-auth/react";
+import { hasPermission } from "@/src/utils/permissions";
 import ColorForm from "./ColorForm";
 import { useColors } from "../hooks/useColors";
 
@@ -15,10 +16,12 @@ export default function ColorList() {
   const [selectedColor, setSelectedColor] = useState<Color | null>(null);
   const { colors, isLoading, isError, error } = useColors();
   const { data: session } = useSession();
-  const isAdmin = session?.user?.role === "admin";
-  const permissions = session?.user?.permissions ?? [];
-  const canEditConfig = isAdmin || permissions.includes("E-CONFIGURACION");
-  const canDeleteConfig = isAdmin || permissions.includes("D-CONFIGURACION");
+  // `hasPermission` ya cortocircuita para el rol admin, así que sustituye al
+  // chequeo manual que vivía aquí. El alta usa su propio código
+  // (C-CONFIGURACION), no el de edición.
+  const canCreate = hasPermission("C-CONFIGURACION", session?.user);
+  const canEdit = hasPermission("E-CONFIGURACION", session?.user);
+  const canDelete = hasPermission("D-CONFIGURACION", session?.user);
 
   const handleEdit = useCallback(
     (color: Color) => {
@@ -34,8 +37,8 @@ export default function ColorList() {
   };
 
   const columns = useMemo(
-    () => getColumns(handleEdit, { canEdit: canEditConfig, canDelete: canDeleteConfig }),
-    [handleEdit, canEditConfig, canDeleteConfig]
+    () => getColumns(handleEdit, { canEdit, canDelete }),
+    [handleEdit, canEdit, canDelete]
   );
 
   return (
@@ -50,7 +53,10 @@ export default function ColorList() {
       errorMessage={extractErrorMessage(error, "No se pudo cargar la información.")}
       loadingAriaLabel="Cargando colores"
       actionButton={
-        canEditConfig ? (
+        // El diálogo es DUAL (alta y edición: lo abre `handleEdit` por `open`,
+        // sin pasar por el trigger), así que se monta también con solo permiso
+        // de edición; lo que se oculta sin `canCreate` es el botón de alta.
+        canCreate || canEdit ? (
           <MainDialog
             title={
               <DialogHeader
@@ -63,14 +69,16 @@ export default function ColorList() {
             onOpenChange={setIsDialogOpen}
             maxWidth="1000px"
             trigger={
-              <Button
-                variant="primary"
-                rounded="full"
-                onClick={handleNew}
-                className="hover:scale-105 active:scale-95"
-              >
-                + Nuevo Color
-              </Button>
+              canCreate ? (
+                <Button
+                  variant="primary"
+                  rounded="full"
+                  onClick={handleNew}
+                  className="hover:scale-105 active:scale-95"
+                >
+                  + Nuevo Color
+                </Button>
+              ) : undefined
             }
           >
             <ColorForm

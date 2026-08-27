@@ -2,14 +2,27 @@
 "use client"
 
 import { useSession } from "next-auth/react";
-import { hasPermission } from "@/src/utils/permissions";
+import { hasAnyPermission } from "@/src/utils/permissions";
+import { appRouteGroups, getGroupAccessPermissions } from "@/src/constants/appRoutes";
 import { homeCards } from "@/src/constants/homeCards";
 import TiltCard from "./TiltCard";
+
+/**
+ * Permisos que hacen visible la tarjeta de un módulo: el del propio módulo más
+ * el de cada una de sus secciones. Sin esto, quien tuviera solo una sección
+ * (p. ej. `R-CRM-CLIENTES` sin `R-CRM`) vería el Home vacío y no tendría por
+ * dónde entrar. `card.permission` es el respaldo si la tarjeta no corresponde a
+ * ningún grupo de `appRouteGroups`.
+ */
+const cardAccessPermissions = (card: (typeof homeCards)[number]): string[] => {
+  const group = appRouteGroups.find((item) => item.modulePath === card.href);
+  return group ? getGroupAccessPermissions(group) : [card.permission];
+};
 
 export const HomedGrid = () => {
   const { data: session, status } = useSession();
   const visibleHomeCards = homeCards.filter((card) =>
-    hasPermission(card.permission, session?.user)
+    hasAnyPermission(cardAccessPermissions(card), session?.user)
   );
   const skeletonCards = visibleHomeCards.length > 0 ? visibleHomeCards : homeCards;
 

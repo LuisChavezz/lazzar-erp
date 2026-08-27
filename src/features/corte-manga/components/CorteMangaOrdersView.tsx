@@ -133,7 +133,11 @@ export function CorteMangaOrdersView() {
         loadingAriaLabel="Cargando órdenes de corte de manga"
       />
 
-      {openOrderId !== null && (
+      {/* Acoplado al alta a propósito: `openOrderId` SOLO lo fija el 409 de
+          duplicado de `CorteMangaOrderForm` (la fila navega a la página de
+          detalle). Sin `canCreate` el formulario no se monta, así que este
+          diálogo nunca podría abrirse — la condición lo deja explícito. */}
+      {canCreate && openOrderId !== null && (
         <CorteMangaOrderDetailDialog
           // La búsqueda se hace aquí, contra el arreglo que esta vista ya
           // tiene: el diálogo no vuelve a suscribirse a la query solo para
