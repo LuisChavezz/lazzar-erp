@@ -150,6 +150,27 @@ export const appRouteGroups: AppRouteGroup[] = [
         showInSidebar: false,
       },
       {
+        key: "sales-crm-requests",
+        label: "Solicitudes",
+        path: "/sales/crm-requests",
+        icon: ClipboardListIcon,
+        description: "Solicitudes de alta de producto/muestra y de cotización de pedido especial.",
+        // Sin código de sección propio en el catálogo todavía: cae en la regla de
+        // módulo "/sales" → R-CRM, que es justo lo que el proxy exigirá. Cambiar a
+        // R-CRM-SOLICITUDES (y añadir su regla en `routePermissions` ANTES de
+        // "/sales") cuando el backend publique ese código.
+        permission: "R-CRM",
+      },
+      {
+        key: "sales-crm-requests-new",
+        label: "Nueva Solicitud",
+        path: "/sales/crm-requests/new",
+        icon: ClipboardListIcon,
+        permission: "R-CRM",
+        parentPath: "/sales/crm-requests",
+        showInSidebar: false,
+      },
+      {
         key: "sales-orders",
         label: "Mis Pedidos",
         path: "/sales/orders",
