@@ -171,8 +171,8 @@ export const GoogleCalendar = () => {
       {/* Panel lateral: próximos eventos + detalle del evento seleccionado */}
       <div className="xl:sticky xl:top-4 self-start">
         <div className="space-y-4">
-          <GoogleUpcomingEvents />
           <GoogleEventDetails />
+          <GoogleUpcomingEvents />
         </div>
       </div>
 

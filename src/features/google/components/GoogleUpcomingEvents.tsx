@@ -37,7 +37,7 @@ export const GoogleUpcomingEvents = () => {
 
   if (isLoading) {
     return (
-      <section className="bg-white dark:bg-black border border-slate-200 dark:border-white/10 rounded-xl shadow-sm p-6 min-h-88 flex flex-col">
+      <section className="bg-white dark:bg-black border border-slate-200 dark:border-white/10 rounded-xl shadow-sm p-6 flex flex-col">
         <div className="flex items-center justify-between gap-2 mb-6">
           <div className="flex items-center gap-2">
             <GoogleCalendarIcon className="w-4 h-4 shrink-0" aria-hidden="true" />
@@ -49,7 +49,7 @@ export const GoogleUpcomingEvents = () => {
             </div>
           )}
         </div>
-        <div className="flex-1 space-y-3">
+        <div className="space-y-3">
           {Array.from({ length: 5 }).map((_, i) => (
             <div key={i} className="h-12 bg-slate-100 dark:bg-slate-800 rounded-xl animate-pulse" />
           ))}
@@ -59,7 +59,7 @@ export const GoogleUpcomingEvents = () => {
   }
 
   return (
-    <section className="bg-white dark:bg-black border border-slate-200 dark:border-white/10 rounded-xl shadow-sm p-6 min-h-88 flex flex-col">
+    <section className="bg-white dark:bg-black border border-slate-200 dark:border-white/10 rounded-xl shadow-sm p-6 flex flex-col">
       <div className="flex items-center justify-between gap-2 mb-6">
         <div className="flex items-center gap-2">
           <GoogleCalendarIcon className="w-4 h-4 shrink-0" aria-hidden="true" />
@@ -78,11 +78,9 @@ export const GoogleUpcomingEvents = () => {
       </div>
 
       {upcomingEvents.length === 0 ? (
-        <div className="flex-1">
-          <EmptyUpcomingEvents />
-        </div>
+        <EmptyUpcomingEvents />
       ) : (
-        <div className="relative pl-4 border-l border-slate-200 dark:border-slate-800 space-y-6 flex-1">
+        <div className="relative pl-4 border-l border-slate-200 dark:border-slate-800 space-y-6">
           {upcomingEvents.map((event, index) => (
             <EventItem
               key={event.id}
