@@ -3,6 +3,7 @@
 import dynamic from "next/dynamic";
 import { FormInput } from "@/src/components/FormInput";
 import { FormSelect } from "@/src/components/FormSelect";
+import { FormTextarea } from "@/src/components/FormTextarea";
 import {
   FormCancelButton,
   FormSecondaryButton,
@@ -1216,14 +1217,25 @@ export function QuoteFormContent({
                         <td className="p-2 text-center text-xs text-slate-400 select-none align-top pt-4">
                           {index + 1}
                         </td>
+                        {/* Textarea y no input de una línea por dos razones:
+                            escribir descripciones largas es más cómodo con
+                            varias líneas, y Enter dentro de un input de texto
+                            único dispara el envío implícito del <form> — es
+                            decir, mandaba la cotización entera sin querer. En un
+                            textarea Enter inserta un salto de línea, así que no
+                            hace falta interceptar la tecla en ningún lado.
+
+                            Los saltos son solo comodidad de captura: al enviar,
+                            `flattenMuestraNombre` los colapsa y el valor se
+                            guarda en una sola línea. Por eso NO se normaliza
+                            aquí — mientras escribe, el usuario debe verlos. */}
                         <td className="p-2">
-                          <FormInput
-                            variant="compact"
-                            type="text"
+                          <FormTextarea
                             name={`muestras.${index}.nombre`}
                             aria-label={`Descripción del producto de muestra ${index + 1}`}
                             placeholder="Describe el producto solicitado..."
                             maxLength={350}
+                            rows={3}
                             value={linea.nombre}
                             onChange={(event) => {
                               updateMuestraLine(linea.id, event.target.value);
@@ -1232,6 +1244,10 @@ export function QuoteFormContent({
                             aria-invalid={Boolean(nombreError)}
                             error={nombreError}
                             forceUppercase
+                            // El sufijo `!` es necesario: no hay tailwind-merge,
+                            // así que `className` no gana por orden a las
+                            // utilidades de la variante.
+                            className="px-3! py-2! rounded-lg!"
                           />
                         </td>
                         <td className="p-2 align-top pt-3">

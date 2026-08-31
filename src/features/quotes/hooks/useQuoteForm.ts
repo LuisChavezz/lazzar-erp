@@ -56,6 +56,24 @@ export interface MuestraLine {
   nombre: string;
 }
 
+/**
+ * Aplana la descripción de una muestra a UNA sola línea.
+ *
+ * El campo se captura en un `<textarea>` porque escribir descripciones largas
+ * ahí es más cómodo, pero los saltos de línea son una comodidad de captura, no
+ * información: `producto_nombre_externo` se guarda como texto plano. Colapsa
+ * cualquier racha de espacios en blanco —saltos, tabulaciones, espacios
+ * repetidos— a un solo espacio y recorta los extremos.
+ *
+ * Se aplica SOLO al armar el payload, nunca en el `onChange`: mientras el
+ * usuario escribe tiene que seguir viendo sus saltos de línea en el textarea.
+ *
+ * Colapsar solo puede acortar el texto, así que el tope de 350 del schema sigue
+ * cumpliéndose sin revalidar.
+ */
+export const flattenMuestraNombre = (nombre: string): string =>
+  nombre.replace(/\s+/g, " ").trim();
+
 /** Modo de captura de partidas. Ver `quoteFormSchema.modo`. */
 export type QuoteCaptureMode = "catalogo" | "muestra";
 
@@ -498,7 +516,7 @@ export function useQuoteForm() {
        */
       const detalleMuestras: QuoteMuestraDetail[] = parsed.data.muestras.map((linea) => ({
         producto: null,
-        producto_nombre_externo: linea.nombre,
+        producto_nombre_externo: flattenMuestraNombre(linea.nombre),
         tallas: [],
       }));
       const detalle = [...detalleCatalogo, ...detalleMuestras];

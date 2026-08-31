@@ -5,10 +5,20 @@ interface FormTextareaProps extends React.TextareaHTMLAttributes<HTMLTextAreaEle
   label?: string;
   error?: FormFieldError;
   variant?: "default" | "ghost";
+  /**
+   * Convierte a mayúsculas mientras se escribe, igual que en `FormInput`.
+   *
+   * Tiene que hacerse AQUÍ y no en el `onChange` de quien consume: si el
+   * consumidor transforma el valor, el DOM se queda con la minúscula y el
+   * estado con la mayúscula, React reasigna `node.value` al re-renderizar y el
+   * cursor salta al final del campo. Al mutar antes de delegar, el valor del
+   * DOM ya coincide con el del estado y React no lo toca.
+   */
+  forceUppercase?: boolean;
 }
 
 export const FormTextarea = forwardRef<HTMLTextAreaElement, FormTextareaProps>(
-  ({ label, error, className = "", variant = "default", ...props }, ref) => {
+  ({ label, error, className = "", variant = "default", forceUppercase = false, onChange, ...props }, ref) => {
     const textareaId =
       props.id ?? (typeof props.name === "string" ? props.name : undefined);
 
@@ -52,9 +62,34 @@ export const FormTextarea = forwardRef<HTMLTextAreaElement, FormTextareaProps>(
           className={`
             ${baseTextareaStyles}
             ${variants[variant]}
+            ${forceUppercase ? "uppercase placeholder:normal-case" : ""}
             ${className}
           `}
           {...props}
+          onChange={(event) => {
+            if (forceUppercase) {
+              const textarea = event.currentTarget;
+              const value = textarea.value;
+              const nextValue = value.toUpperCase();
+              if (value !== nextValue) {
+                const delta = nextValue.length - value.length;
+                const selectionStart = textarea.selectionStart;
+                const selectionEnd = textarea.selectionEnd;
+                textarea.value = nextValue;
+                // `toUpperCase()` no siempre conserva la longitud (p. ej. "ß" →
+                // "SS"), así que el cursor se desplaza por el delta resultante
+                // en vez de dejarlo en su sitio. Un `<textarea>` siempre admite
+                // selección, así que aquí no hace falta el try/catch que sí
+                // lleva `FormInput` por los `type` que no la soportan.
+                if (selectionStart !== null && selectionEnd !== null) {
+                  const clamp = (pos: number) =>
+                    Math.min(Math.max(pos + delta, 0), nextValue.length);
+                  textarea.setSelectionRange(clamp(selectionStart), clamp(selectionEnd));
+                }
+              }
+            }
+            onChange?.(event);
+          }}
         />
         {error && (
           <p className="text-xs text-red-600 mt-1 font-medium animate-in slide-in-from-top-1 fade-in duration-200">
