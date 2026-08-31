@@ -69,6 +69,19 @@ export interface Quote {
   id: number;
   estatus: number;
   estatus_label: string;
+  /**
+   * Ver `TIPO_PEDIDO` en `orders/constants/pedidoStatus`: 1 = pedido de venta,
+   * 2 = muestra, 3 = pedido de error. No es opcional — el campo del modelo
+   * tiene `default=1` y `CotizacionDashboardItemSerializer` lo lista siempre.
+   */
+  tipo_pedido: number;
+  /**
+   * Etiqueta del backend (`get_tipo_pedido_display`), en mayúsculas:
+   * "PEDIDO DE VENTA". La tabla NO la pinta — usa el `label` de
+   * `getTipoPedidoConfig`, que ya viene con el casing de la app y trae un
+   * respaldo para valores fuera de rango. Se tipa por completitud del contrato.
+   */
+  tipo_pedido_label: string;
   cliente: number;
   cliente_nombre: string;
   cliente_razon_social: string;

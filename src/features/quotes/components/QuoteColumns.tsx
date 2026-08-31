@@ -6,6 +6,7 @@ import { formatCurrency } from "../../../utils/formatCurrency";
 import { getStatusStyles } from "../utils/getStatusStyle";
 import { formatQuoteDateTime } from "../utils/quoteDetailsFormatters";
 import { capitalize } from "@/src/utils/capitalize";
+import { getTipoPedidoConfig } from "../../orders/constants/pedidoStatus";
 import { QuoteCardActions } from "./QuoteCardActions";
 
 export const quoteColumns: ColumnDef<Quote>[] = [
@@ -19,6 +20,25 @@ export const quoteColumns: ColumnDef<Quote>[] = [
         <div className="flex justify-center">
           <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${styles}`}>
             {capitalize(row.original.estatus_label)}
+          </span>
+        </div>
+      );
+    },
+  },
+  {
+    accessorKey: "tipo_pedido",
+    meta: { label: "Tipo" },
+    header: () => <div className="w-full text-center">Tipo</div>,
+    cell: ({ row }) => {
+      // Etiqueta Y color salen de `getTipoPedidoConfig`, no de
+      // `tipo_pedido_label` del API: el config ya trae el casing de la app
+      // ("Pedido de venta" en vez de "PEDIDO DE VENTA") y un badge neutro
+      // "Desconocido (n)" si el backend agrega un tipo que aquí no existe.
+      const { label, className } = getTipoPedidoConfig(row.original.tipo_pedido);
+      return (
+        <div className="flex justify-center">
+          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${className}`}>
+            {label}
           </span>
         </div>
       );
