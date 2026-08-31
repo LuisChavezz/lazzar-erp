@@ -350,8 +350,9 @@ export function ReflectiveOrderDetailContent({
               {/* Se navega por `pedido_vinculado`, no por el par plano
                   `pedido`/`pedido_folio`: su presencia es la única señal de que
                   el pedido madre existe. Sin él queda el folio como texto.
-                  `/orders/[id]` es la ruta NEUTRA del detalle 360° (solo exige
-                  auth + workspace), y `?from=reflective` hace que su "Volver"
+                  `/orders/[id]` es la ruta NEUTRA del detalle 360° (su regla en
+                  `routePermissions` se cumple con CUALQUIERA de varios códigos,
+                  entre ellos `R-PRODUCCION-OR`), y `?from=reflective` hace que su "Volver"
                   regrese al listado de este módulo en vez de a Mesa de Control,
                   que un usuario solo-Producción no puede abrir. */}
               {data.pedido_vinculado ? (

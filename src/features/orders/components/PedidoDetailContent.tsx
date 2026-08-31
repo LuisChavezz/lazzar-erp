@@ -61,7 +61,7 @@ import type {
 
 // ── Navegación "Volver" según el módulo de origen (?from=) ───────────────────
 // La ruta es neutra, así que el destino de "Volver" lo decide quien enlazó.
-// El default cae en Mesa de Control, la lista original de pedidos.
+// Sin `?from=` válido cae en `home` (ver abajo), no en un listado de módulo.
 const BACK_TARGETS: Record<string, { href: string; label: string }> = {
   operations: { href: "/operations/orders", label: "Volver a Mesa de Control" },
   // Sin esta entrada, un usuario solo-WMS caería en /operations/orders y el
@@ -108,8 +108,16 @@ const BACK_TARGETS: Record<string, { href: string; label: string }> = {
     href: "/procurement/purchase-orders",
     label: "Volver a Órdenes de Compra",
   },
+  // Destino universal: el Home no exige ningún permiso de módulo, así que sirve
+  // como salida para quien llega sin `?from=` (URL pegada, recarga, enlace
+  // externo). También es válido como valor explícito de `?from=home`.
+  home: { href: "/", label: "Volver al inicio" },
 };
-const DEFAULT_BACK = { href: "/operations/orders", label: "Volver a pedidos" };
+// Fallback cuando `?from=` falta o no es una llave conocida. Apunta al Home y
+// NO a un listado de módulo: la regla "/orders" admite nueve permisos distintos,
+// así que cualquier listado concreto (antes /operations/orders) rebotaría al
+// home a la mayoría de los usuarios que sí pueden ver esta pantalla.
+const DEFAULT_BACK = BACK_TARGETS.home;
 
 // Banderas de origen del pedido — se pintan solo las que vienen en `true`.
 const ORIGIN_FLAGS: { key: keyof Order; label: string }[] = [

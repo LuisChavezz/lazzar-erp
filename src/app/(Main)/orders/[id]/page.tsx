@@ -5,8 +5,9 @@ import { PedidoDetailContent } from "@/src/features/orders/components/PedidoDeta
  *
  * Ruta NEUTRA (`/orders/[id]`, no colgada de ningún módulo) para poder
  * enlazarse desde varios (Mesa de Control, Ventas, Picking…). El origen viaja
- * en `?from=` para que el "Volver" regrese a quien la abrió. Solo requiere
- * auth + workspace (ver `proxy.ts`); los importes se filtran por rol en el
+ * en `?from=` para que el "Volver" regrese a quien la abrió. Requiere auth +
+ * workspace y CUALQUIERA de los permisos de la regla "/orders" en
+ * `routePermissions` (ver `proxy.ts`); los importes se filtran por rol en el
  * backend.
  */
 export default async function PedidoDetailPage({

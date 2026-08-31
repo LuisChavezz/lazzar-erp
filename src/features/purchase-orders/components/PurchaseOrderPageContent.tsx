@@ -597,8 +597,9 @@ export function PurchaseOrderPageContent({
               {/* Se navega por `pedido_vinculado`, no por el par plano
                   `pedido`/`pedido_folio`: su presencia es la única señal de que
                   el pedido madre existe (la OC de abasto directo no tiene).
-                  `/orders/[id]` es la ruta NEUTRA del detalle 360° (solo exige
-                  auth + workspace), y `?from=purchase-orders` hace que su
+                  `/orders/[id]` es la ruta NEUTRA del detalle 360° (su regla en
+                  `routePermissions` se cumple con CUALQUIERA de varios códigos,
+                  entre ellos `R-COMPRAS-OC`), y `?from=purchase-orders` hace que su
                   "Volver" regrese a este módulo en vez de a Mesa de Control,
                   que un usuario solo-Compras no puede abrir. */}
               {data.pedido_vinculado ? (

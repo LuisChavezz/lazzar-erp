@@ -99,7 +99,8 @@ export const getReflectiveOrderColumns = (onViewDetails: (id: number) => void) =
     id: "pedido_folio",
     header: "Pedido",
     // Folio del pedido clickeable: enlaza al detalle 360° en su ruta NEUTRA
-    // `/orders/[id]` (solo exige auth + workspace), con `?from=reflective` para
+    // `/orders/[id]` (su regla en `routePermissions` se cumple con CUALQUIERA
+    // de varios códigos, entre ellos `R-PRODUCCION-OR`), con `?from=reflective` para
     // que su "Volver" regrese a ESTE listado y no a Mesa de Control, que un
     // usuario solo-Producción no puede abrir. Mismo enlace que ya usa el
     // detalle de la orden (`ReflectiveOrderDetailContent`).

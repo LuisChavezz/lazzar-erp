@@ -16,9 +16,42 @@
  * del módulo y NO concede acceso a sus secciones: cada sección exige su propio
  * código. Las rutas de un módulo sin código de sección propio en el catálogo
  * (p. ej. "/wms/locations") caen en la regla de módulo.
+ *
+ * `permission` acepta un código o un ARREGLO de códigos. Con arreglo la regla se
+ * cumple teniendo CUALQUIERA de ellos (`hasAnyPermission`), para rutas neutras
+ * alcanzables legítimamente desde varios módulos. Un código suelto se evalúa
+ * exactamente igual que antes (`[code]` con `hasAnyPermission` ≡ `hasPermission`).
  */
-export const routePermissions = [
+export const routePermissions: Array<{
+  prefix: string;
+  permission: string | string[];
+}> = [
   { prefix: "/config", permission: "R-CONFIGURACION" },
+
+  // ── Ruta neutra de detalle de pedido ──────────────────────────────────────
+  // `/orders/[id]` no cuelga de ningún módulo: se alcanza desde Ventas, Mesa de
+  // Control, WMS, Compras y Producción vía `?from=`. Por eso NO exige un código
+  // concreto sino CUALQUIERA de los que dan acceso legítimo al pedido o a los
+  // documentos que cuelgan de él (las cotizaciones, órdenes y pickings del
+  // bloque "Documentos relacionados" se consultan desde aquí con las
+  // credenciales reales del usuario y el backend no filtra ese detalle por
+  // permiso: esta regla es el único control de acceso).
+  // Va arriba, antes que cualquier prefijo de módulo, para que ninguna regla
+  // más genérica pueda capturarla si se añaden reglas nuevas.
+  {
+    prefix: "/orders",
+    permission: [
+      "R-CRM-PEDIDOS",
+      "R-WMS-PEDIDOS",
+      "R-COMPRAS-PEDIDOS",
+      "R-MESACONTROL-PEDIDOS",
+      "R-PRODUCCION-OB",
+      "R-PRODUCCION-OR",
+      "R-PRODUCCION-CM",
+      "R-COMPRAS-OC",
+      "R-WMS-PICKING",
+    ],
+  },
 
   // ── Panel de Control (Core) ───────────────────────────────────────────────
   { prefix: "/system/reports", permission: "R-CORE-REPORTES" },

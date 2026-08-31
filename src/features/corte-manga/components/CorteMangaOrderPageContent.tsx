@@ -245,7 +245,9 @@ export function CorteMangaOrderPageContent({
                   el pedido madre existe. Sin él queda el folio como texto — y
                   aquí el campo es OPCIONAL, así que esa rama no es teórica (ver
                   la nota del tipo). `/orders/[id]` es la ruta NEUTRA del detalle
-                  360° (solo exige auth + workspace), y `?from=corte-manga` hace
+                  360° (su regla en `routePermissions` se cumple con CUALQUIERA
+                  de varios códigos, entre ellos `R-PRODUCCION-CM`), y
+                  `?from=corte-manga` hace
                   que su "Volver" regrese al listado de este módulo en vez de a
                   Mesa de Control, que un usuario solo-Producción no puede
                   abrir. */}

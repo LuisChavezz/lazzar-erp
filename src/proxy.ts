@@ -1,7 +1,7 @@
 import { withAuth, type NextRequestWithAuth } from "next-auth/middleware";
 import { getToken } from "next-auth/jwt";
 import { NextResponse, type NextRequest, type NextFetchEvent } from "next/server";
-import { hasPermission } from "./utils/permissions";
+import { hasAnyPermission } from "./utils/permissions";
 import { routePermissions } from "./constants/routePermissions";
 import { authSecret } from "./lib/authSecret";
 
@@ -39,7 +39,14 @@ const authMiddleware = withAuth(
     // Verificar si hay una regla de permisos para la ruta actual
     if (rule) { // Si hay una regla de permisos para la ruta actual permite el acceso
       const token = req.nextauth?.token;
-      const canAccess = hasPermission(rule.permission, {
+      // `permission` puede ser un código o un arreglo (regla que se cumple con
+      // CUALQUIERA de ellos). Se normaliza a arreglo: para un código suelto,
+      // `hasAnyPermission([code])` es idéntico a `hasPermission(code)` — mismo
+      // cortocircuito de rol "admin" incluido.
+      const required = Array.isArray(rule.permission)
+        ? rule.permission
+        : [rule.permission];
+      const canAccess = hasAnyPermission(required, {
         role: token?.role as string | undefined,
         permissions: token?.permissions as string[] | undefined,
       });
@@ -104,10 +111,11 @@ export const config = {
     "/config/:path*",
     "/system/:path*",
     "/sales/:path*",
-    // Ruta neutra de detalle de pedido (accesible desde varios módulos). Entra
-    // al matcher para exigir auth + workspace, pero NO tiene regla en
-    // `routePermissions`: no exige un permiso de módulo (los datos contables ya
-    // se filtran por rol en el backend). Ver `app/(main)/orders/[id]`.
+    // Ruta neutra de detalle de pedido (accesible desde varios módulos). Exige
+    // auth + workspace y, además, CUALQUIERA de los permisos de la regla
+    // "/orders" en `routePermissions` (no un permiso de módulo concreto: se
+    // llega desde Ventas, Mesa de Control, WMS, Compras y Producción). Ver
+    // `app/(main)/orders/[id]`.
     "/orders/:path*",
     "/wms/:path*",
     "/procurement/:path*",
