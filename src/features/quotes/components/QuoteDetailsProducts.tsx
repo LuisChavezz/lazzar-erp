@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { EyeIcon } from "@/src/components/Icons";
 import { QuoteById } from "../interfaces/quote.interface";
-import { toCurrencyOrDash } from "../utils/quoteDetailsFormatters";
+import { getQuoteDetailProductName, toCurrencyOrDash } from "../utils/quoteDetailsFormatters";
 import { QuoteProductEmbroideryView } from "./QuoteProductEmbroideryView";
 import { QuoteProductReflectiveView } from "./QuoteProductReflectiveView";
 
@@ -55,7 +55,7 @@ export const QuoteDetailsProducts = ({ details }: QuoteDetailsProductsProps) => 
               <div className="space-y-1">
                 <div className="flex flex-wrap items-center gap-2">
                   <div className="text-sm font-semibold text-slate-800 dark:text-slate-100">
-                    {detalle.producto_nombre}
+                    {getQuoteDetailProductName(detalle)}
                   </div>
                   {detalle.color_nombre && detalle.color_codigo_hex && (
                     <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 px-2.5 py-0.5 text-xs font-medium text-slate-700 dark:text-slate-300 shadow-sm">

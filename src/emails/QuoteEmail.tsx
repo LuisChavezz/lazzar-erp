@@ -4,6 +4,7 @@ import { BaseEmailLayout, EmailCard } from "@/src/emails/shared/BaseEmailLayout"
 import type { QuoteById } from "@/src/features/quotes/interfaces/quote.interface";
 import {
   formatQuoteDateTime,
+  getQuoteDetailProductName,
   toCurrencyOrDash,
   toDisplayValue,
 } from "@/src/features/quotes/utils/quoteDetailsFormatters";
@@ -87,7 +88,7 @@ export const QuoteEmail = ({ quote }: QuoteEmailProps) => {
                       <tr className={hasAddons ? "" : dividerClass}>
                         <td className="py-4 pr-3 align-top text-slate-900">
                           <Text className="m-0 text-sm font-semibold text-slate-900">
-                            {detail.producto_nombre}
+                            {getQuoteDetailProductName(detail)}
                           </Text>
                         </td>
                         <td className="py-4 pr-3 align-top text-slate-600">

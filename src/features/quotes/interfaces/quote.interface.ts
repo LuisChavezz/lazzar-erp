@@ -166,8 +166,20 @@ export interface QuoteById {
     costo_unitario: string | null;
     subtotal_linea: string;
     cotizacion: number;
-    producto: number;
-    producto_nombre: string;
+    /**
+     * `null` en una línea de PRODUCTO DE MUESTRA (producto externo): la partida
+     * no apunta al catálogo, el nombre viaja en `producto_nombre_externo`.
+     */
+    producto: number | null;
+    /**
+     * OPCIONAL Y NULLABLE a propósito. El serializer lo declara como
+     * `CharField(source="producto.nombre", read_only=True)` SIN `default=None`,
+     * así que con `producto = null` DRF lanza `SkipField` y la clave ni siquiera
+     * aparece en el JSON — no llega como `null`, llega ausente.
+     */
+    producto_nombre?: string | null;
+    /** Nombre libre de la línea de muestra. `null` en líneas de catálogo. */
+    producto_nombre_externo?: string | null;
     color: number | null;
     color_nombre: string | null;
     color_codigo_hex: string | null;
@@ -175,6 +187,12 @@ export interface QuoteById {
   cliente_nombre: string;
   cliente_razon_social: string;
   estatus: number;
+  /**
+   * Campo del modelo `Cotizacion` expuesto por el serializer (`fields="__all__"`).
+   * Ver `TIPO_PEDIDO` en `orders/constants/pedidoStatus`: 1 = pedido de venta,
+   * 2 = muestra. Opcional porque una respuesta anterior al campo no lo trae.
+   */
+  tipo_pedido?: number;
   autorizada_at: string | null;
   cambios_solicitados_at: string | null;
   aprobado_snapshot: string | null;
@@ -300,8 +318,27 @@ export interface QuoteCreate {
     activo: boolean;
     cotizacion: { id: number }
   },
-  detalle: QuoteDetail[],
+  /**
+   * Partidas de la cotización. Es un arreglo HOMOGÉNEO por cotización aunque el
+   * tipo sea una unión: o todas son de catálogo (`QuoteDetail`) o todas son de
+   * muestra (`QuoteMuestraDetail`), según el `modo` del formulario. El backend
+   * no impone esa exclusividad — la garantiza el frontend.
+   */
+  detalle: (QuoteDetail | QuoteMuestraDetail)[],
   servicios_extras: QuoteExtraService[];
+}
+
+/**
+ * Partida de PRODUCTO DE MUESTRA (producto externo): una solicitud de alta de
+ * producto, no una venta de catálogo. Sin talla, sin color y sin precio.
+ *
+ * `tallas: []` es obligatorio, no opcional: el backend recorre `tallas` sin
+ * comprobar su ausencia.
+ */
+export interface QuoteMuestraDetail {
+  producto: null;
+  producto_nombre_externo: string;
+  tallas: [];
 }
 
 interface QuoteDetail {

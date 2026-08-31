@@ -9,6 +9,7 @@
 import { Document, Page, Text, View, Image } from "@react-pdf/renderer";
 import type { QuoteById } from "@/src/features/quotes/interfaces/quote.interface";
 import type { QuotePdfModel } from "../features/quotes/utils/quotePdfTemplateHelpers";
+import { getQuoteDetailProductName } from "../features/quotes/utils/quoteDetailsFormatters";
 import { OPCION_LABEL, POSICION_LABEL, TIPO_LABEL } from "../features/quotes/utils/reflective-labels";
 import { pdfStyles as s } from "./QuotePdfStyles";
 
@@ -121,7 +122,7 @@ export const QuotePdfDocument = ({ quote, model }: QuotePdfDocumentProps) => {
               <View key={detail.id}>
                 {/* Fila principal del producto */}
                 <View style={[s.tableRow, i % 2 !== 0 ? s.tableRowAlt : {}]} wrap={false}>
-                  <Text style={[s.tableCellBold, s.colProduct]}>{detail.producto_nombre}</Text>
+                  <Text style={[s.tableCellBold, s.colProduct]}>{getQuoteDetailProductName(detail)}</Text>
                   <Text style={[s.tableCell, s.colSizes]}>{model.skuSummaries[i]}</Text>
                   <Text style={[s.tableCell, s.colQty]}>{quantity}</Text>
                   <Text style={[s.tableCell, s.colPrice]}>

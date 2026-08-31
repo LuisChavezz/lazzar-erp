@@ -49,6 +49,20 @@ export const toCurrencyOrDash = (value?: string | number | null) => {
   return formatCurrency(Number(value) || 0);
 };
 
+/**
+ * Nombre a mostrar de una partida de cotización.
+ *
+ * Una partida de PRODUCTO DE MUESTRA no apunta al catálogo: el serializer
+ * declara `producto_nombre` como `CharField(source="producto.nombre")` sin
+ * `default`, así que con `producto = null` DRF omite la clave por completo y el
+ * nombre real viaja en `producto_nombre_externo`. Sin este respaldo la partida
+ * se pintaba con el nombre en blanco.
+ */
+export const getQuoteDetailProductName = (detalle: {
+  producto_nombre?: string | null;
+  producto_nombre_externo?: string | null;
+}) => detalle.producto_nombre || detalle.producto_nombre_externo || "-";
+
 // Obtiene etiquetas activas a partir de banderas booleanas.
 // Si ninguna opción está activa, devuelve ["-"] para mantener consistencia visual.
 export const getEnabledOptionLabels = (options: Array<{ label: string; active: boolean }>) => {

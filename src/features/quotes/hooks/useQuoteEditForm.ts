@@ -33,6 +33,7 @@ import { createEmptyValues, type ExtraService } from "./useQuoteForm";
 import { useUpdateQuote } from "./useUpdateQuote";
 import type { QuoteValidationIssue } from "../utils/quoteValidationErrors";
 import { canEditQuote } from "../utils/quoteStatusRules";
+import { scrollToFirstValidationError } from "../utils/scrollToFirstValidationError";
 
 // ─── Catálogos y constantes compartidas ────────────────────────────────────────
 
@@ -91,8 +92,16 @@ const mapDetalleToQuoteItem = (
   const importe = Number((cantidadTotal * precio).toFixed(2));
 
   return {
-    productoId: detalle.producto,
-    descripcion: detalle.producto_nombre,
+    // DEUDA CONOCIDA: `producto`/`producto_nombre` ahora son nullable en el
+    // contrato porque una partida de MUESTRA no apunta al catálogo. La edición
+    // de cotizaciones de muestra está fuera de alcance, así que aquí solo se
+    // normaliza para no romper el tipo: en una partida de catálogo —el único
+    // caso que este formulario sabe editar hoy— ambos campos siempre vienen, y
+    // el comportamiento es idéntico al anterior. Una cotización de muestra
+    // abierta en edición caería en la validación de `quoteItemSchema`
+    // (`productoId >= 1`, `descripcion` requerida) en vez de guardarse mal.
+    productoId: detalle.producto ?? 0,
+    descripcion: detalle.producto_nombre ?? "",
     unidad: "PZA",
     cantidad: cantidadTotal,
     precio,
@@ -194,6 +203,9 @@ const mapQuoteByIdToFormValues = (
   })();
 
   return {
+    // La edición solo contempla cotizaciones de catálogo (el modo muestra es
+    // exclusivo del alta), así que el modo se fija aquí y nunca cambia.
+    modo: "catalogo",
     clienteBusqueda: quote.cliente_razon_social || quote.cliente_nombre || "",
     clienteNombre: quote.cliente_nombre || "",
     razonSocial: quote.cliente_razon_social || "",
@@ -217,9 +229,12 @@ const mapQuoteByIdToFormValues = (
     condicionPagoMonto: Number(quote.monto) || 0,
     fecha: todayStr,
     agente: userName,
-    // Bloqueado en "Pedido de venta", igual que en el alta. `QuoteById` no
-    // expone `tipo_pedido`, así que aquí no hay valor de la API que respetar.
-    tipo_pedido: TIPO_PEDIDO.PEDIDO_DE_VENTA,
+    // Se CONSERVA el valor de la cotización. El comentario anterior decía que
+    // `QuoteById` no exponía `tipo_pedido`, pero sí: es campo del modelo y el
+    // serializer usa `fields = "__all__"`. Fijarlo en "Pedido de venta"
+    // reescribía a 1 cualquier cotización de MUESTRA (2) con solo abrirla y
+    // guardarla, perdiendo su clasificación.
+    tipo_pedido: quote.tipo_pedido ?? TIPO_PEDIDO.PEDIDO_DE_VENTA,
     destinatario: quote.destinatario || "",
     empresaEnvio: quote.empresa_envio || "",
     telefonoEnvio: quote.telefono_envio || "",
@@ -308,64 +323,6 @@ const getPathValue = (source: unknown, path: string) => {
     current = (current as Record<string, unknown>)[token];
   }
   return current;
-};
-
-const scrollToFirstValidationError = (formElement: HTMLFormElement, issuePaths: string[]) => {
-  if (issuePaths.length === 0) return;
-
-  const normalizedIssuePaths = issuePaths.filter(Boolean);
-  const controls = Array.from(
-    formElement.querySelectorAll<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>(
-      "input, select, textarea"
-    )
-  ).filter(
-    (el) =>
-      Boolean(el.name) &&
-      !el.disabled &&
-      !(el instanceof HTMLInputElement && el.type === "hidden")
-  );
-
-  const firstInvalidControl = controls.find((control) =>
-    normalizedIssuePaths.some(
-      (path) =>
-        path === control.name ||
-        path.startsWith(`${control.name}.`) ||
-        control.name.startsWith(`${path}.`)
-    )
-  );
-
-  if (firstInvalidControl) {
-    firstInvalidControl.scrollIntoView({ behavior: "smooth", block: "center" });
-    firstInvalidControl.focus({ preventScroll: true });
-    return;
-  }
-
-  const hasItemsError = normalizedIssuePaths.some(
-    (path) => path === "items" || path.startsWith("items.")
-  );
-  const hasCustomerError = normalizedIssuePaths.some(
-    (path) => path === "clienteBusqueda" || path.startsWith("clienteBusqueda.")
-  );
-  const hasExtraServicesError = normalizedIssuePaths.some(
-    (path) => path === "servicios_extras" || path.startsWith("servicios_extras.")
-  );
-
-  if (hasCustomerError) {
-    const anchor = formElement.querySelector<HTMLElement>('[data-error-anchor="clienteBusqueda"]');
-    anchor?.scrollIntoView({ behavior: "smooth", block: "center" });
-    return;
-  }
-  if (hasExtraServicesError) {
-    const anchor = formElement.querySelector<HTMLElement>(
-      '[data-error-anchor="servicios_extras"]'
-    );
-    anchor?.scrollIntoView({ behavior: "smooth", block: "center" });
-    return;
-  }
-  if (hasItemsError) {
-    const anchor = formElement.querySelector<HTMLElement>('[data-error-anchor="items"]');
-    anchor?.scrollIntoView({ behavior: "smooth", block: "center" });
-  }
 };
 
 const normalizeItem = (item: QuoteItem): QuoteItem => {
@@ -536,6 +493,11 @@ export function useQuoteEditForm(quoteId: number) {
       const parsed = quoteSubmitSchema.safeParse({
         ...value,
         servicios_extras: extraServices,
+        // `muestras` es REQUERIDO por `quoteSubmitSchema` (sin default). La
+        // edición no captura partidas de muestra, pero omitir la clave hacía
+        // fallar el parseo SIEMPRE, y el error caía en un campo que esta
+        // pantalla no renderiza: guardar no hacía absolutamente nada, sin aviso.
+        muestras: [],
       });
 
       if (!parsed.success) {

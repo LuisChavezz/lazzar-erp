@@ -6,10 +6,23 @@
  */
 import { z } from "zod";
 import { quoteItemSchema } from "./quote-item.schema";
+import { quoteMuestraLineSchema } from "./quote-muestra-line.schema";
 
 export { quoteItemSchema } from "./quote-item.schema";
+export { quoteMuestraLineSchema } from "./quote-muestra-line.schema";
 
 export const quoteFormSchema = z.object({
+  /**
+   * Modo de captura de la cotización. Es EXCLUYENTE: o todas las partidas son
+   * de catálogo, o todas son de muestra (producto externo). La exclusividad se
+   * garantiza estructuralmente —las muestras viven en su propio arreglo, nunca
+   * en `items`— y se verifica en el `superRefine` de `quoteSubmitSchema`.
+   *
+   * Se declara como campo del objeto (no como unión discriminada) a propósito:
+   * `validateField` lee `quoteFormSchema.shape[campo]` en cada `onBlur`, y una
+   * unión discriminada no expone `.shape`.
+   */
+  modo: z.enum(["catalogo", "muestra"]).default("catalogo"),
   clienteBusqueda: z.string().optional(),
   clienteNombre: z.string().optional(),
   razonSocial: z.string().optional(),
@@ -103,11 +116,51 @@ export const quoteExtraServiceSchema = z.object({
   cantidad: z.coerce.number().optional(),
 });
 
-export const quoteSubmitSchema = quoteFormSchema.and(
-  z.object({
-    servicios_extras: z.array(quoteExtraServiceSchema),
-  })
-);
+export const quoteSubmitSchema = quoteFormSchema
+  .and(
+    z.object({
+      servicios_extras: z.array(quoteExtraServiceSchema),
+      muestras: z.array(quoteMuestraLineSchema),
+    })
+  )
+  // El refinamiento va SOBRE LA INTERSECCIÓN porque cruza campos de los dos
+  // lados: `modo`/`items` vienen de `quoteFormSchema` y `muestras` del objeto
+  // de la derecha. El `superRefine` que ya vive dentro de `quoteFormSchema`
+  // (condición de pago y parcialidad) queda intacto y sigue corriendo.
+  .superRefine((data, ctx) => {
+    const itemsCount = data.items?.length ?? 0;
+
+    if (data.modo === "muestra") {
+      if (data.muestras.length === 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["muestras"],
+          message: "Agrega al menos un producto de muestra",
+        });
+      }
+      // Defensa en profundidad: la UI vacía el arreglo inactivo al cambiar de
+      // modo, así que llegar aquí con partidas de catálogo significaría que la
+      // exclusividad se rompió en algún camino no previsto.
+      if (itemsCount > 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["items"],
+          message:
+            "Una cotización de muestra no puede llevar productos de catálogo",
+        });
+      }
+      return;
+    }
+
+    if (data.muestras.length > 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["muestras"],
+        message:
+          "Una cotización de catálogo no puede llevar productos de muestra",
+      });
+    }
+  });
 
 export type QuoteFormInput = z.input<typeof quoteFormSchema>;
 export type QuoteFormValues = z.output<typeof quoteFormSchema>;

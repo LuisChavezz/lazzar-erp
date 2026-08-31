@@ -50,6 +50,24 @@ export function validateQuoteForReview(
   quote: QuoteById,
   onboardingData: QuoteOnboardingData
 ): QuoteReviewValidationError[] {
+  /**
+   * Una cotización de PRODUCTO DE MUESTRA (partidas con `producto = null`) no
+   * puede pasar por esta validación: está pensada para partidas de catálogo y
+   * exige producto, color y tallas. Al normalizar la muestra a `productoId: 0`
+   * el usuario recibía "Selecciona un producto válido" sobre un renglón que por
+   * definición no tiene producto, sin manera de corregirlo. Se corta antes con
+   * el motivo real.
+   */
+  if ((quote.detalles ?? []).some((detalle) => detalle.producto == null)) {
+    return [
+      {
+        field: "Productos",
+        message:
+          "Una cotización de productos de muestra no puede enviarse a revisión.",
+      },
+    ];
+  }
+
   const reviewInput = mapQuoteToReviewValidationInput(quote, onboardingData);
   const schemaIssues = getSchemaValidationIssues(reviewInput);
   const schemaIssuePaths = new Set(
@@ -135,8 +153,14 @@ const mapDetalleToQuoteItem = (
   })();
 
   return {
-    productoId: detalle.producto,
-    descripcion: detalle.producto_nombre,
+    // DEUDA CONOCIDA, igual que en `useQuoteEditForm`: ambos campos son
+    // nullable desde que existe la partida de MUESTRA. Enviar a revisión una
+    // cotización de muestra está fuera de alcance; la normalización mantiene el
+    // comportamiento idéntico para partidas de catálogo (donde nunca faltan) y
+    // deja que la validación de catálogo reporte el problema si algún día llega
+    // una de muestra por aquí.
+    productoId: detalle.producto ?? 0,
+    descripcion: detalle.producto_nombre ?? "",
     unidad: "PZA",
     cantidad: detalle.tallas.reduce((sum, talla) => sum + talla.cantidad, 0),
     precio: Number(detalle.precio_unitario) || 0,
@@ -207,6 +231,9 @@ const mapQuoteToReviewValidationInput = (
   );
 
   return {
+    // El envío a revisión solo aplica a cotizaciones de catálogo; el modo se
+    // fija para satisfacer el tipo del formulario, del que este input deriva.
+    modo: "catalogo",
     cliente: quote.cliente,
     clienteBusqueda: quote.cliente_razon_social || quote.cliente_nombre || "",
     clienteNombre: quote.cliente_nombre || "",

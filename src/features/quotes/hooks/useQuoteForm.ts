@@ -20,10 +20,12 @@ import {
 import {
   QuoteCreate,
   QuoteItem,
+  type QuoteMuestraDetail,
   QuoteOnboardingData,
   type QuotePaymentCondition,
 } from "../interfaces/quote.interface";
 import { deriveTiposServicio } from "../utils/deriveTiposServicio";
+import { scrollToFirstValidationError } from "../utils/scrollToFirstValidationError";
 import { TIPO_PEDIDO } from "../../orders/constants/pedidoStatus";
 import { useWorkspaceStore } from "../../workspace/store/workspace.store";
 import { useCreateQuote, type QuoteValidationIssue } from "./useCreateQuote";
@@ -42,6 +44,31 @@ export interface ExtraService {
   monto: number;
   cantidad: number;
 }
+
+/**
+ * Línea de producto de muestra en el formulario. Vive FUERA de TanStack Form,
+ * en su propio `useState`, igual que `extraServices` — nunca dentro de `items`.
+ * Esa separación es la que hace estructural la exclusividad catálogo/muestra:
+ * el arreglo del modo inactivo simplemente está vacío.
+ */
+export interface MuestraLine {
+  id: string;
+  nombre: string;
+}
+
+/** Modo de captura de partidas. Ver `quoteFormSchema.modo`. */
+export type QuoteCaptureMode = "catalogo" | "muestra";
+
+/**
+ * `tipo_pedido` que corresponde a cada modo de captura. El usuario NO lo elige:
+ * el select sigue deshabilitado y el valor lo dicta el toggle, que es la única
+ * entrada que decide si la cotización es una venta o una solicitud de muestra.
+ *
+ * Es la única fuente de esta correspondencia — la usan el estado inicial, el
+ * cambio de modo y el armado del payload, para que las tres no puedan divergir.
+ */
+export const tipoPedidoForMode = (mode: QuoteCaptureMode): number =>
+  mode === "muestra" ? TIPO_PEDIDO.MUESTRA : TIPO_PEDIDO.PEDIDO_DE_VENTA;
 
 const PAYMENT_CONDITION_OPTIONS: { value: QuotePaymentCondition; label: string }[] = [
   { value: "100_anticipo", label: "100% Anticipo" },
@@ -78,6 +105,7 @@ const normalizeItem = (item: QuoteItem): QuoteItem => {
 
 // Estado inicial para flujo de creación.
 export const createEmptyValues = (todayStr: string, userName: string): QuoteFormValues => ({
+  modo: "catalogo",
   clienteBusqueda: "",
   clienteNombre: "",
   razonSocial: "",
@@ -100,9 +128,9 @@ export const createEmptyValues = (todayStr: string, userName: string): QuoteForm
   condicionPagoMonto: 0,
   fecha: todayStr,
   agente: userName,
-  // Bloqueado en "Pedido de venta": el select sigue en el formulario pero está
-  // deshabilitado, así que este es el único valor que puede viajar al backend.
-  tipo_pedido: TIPO_PEDIDO.PEDIDO_DE_VENTA,
+  // No lo elige el usuario (el select sigue deshabilitado): lo dicta el modo de
+  // captura. Arranca en catálogo, así que arranca en "Pedido de venta".
+  tipo_pedido: tipoPedidoForMode("catalogo"),
   destinatario: "",
   empresaEnvio: "",
   telefonoEnvio: "",
@@ -199,48 +227,6 @@ const getPathValue = (source: unknown, path: string) => {
   return current;
 };
 
-// Busca el primer campo inválido en orden visual y mueve el viewport al lugar correcto.
-const scrollToFirstValidationError = (formElement: HTMLFormElement, issuePaths: string[]) => {
-  if (issuePaths.length === 0) {
-    return;
-  }
-
-  const normalizedIssuePaths = issuePaths.filter(Boolean);
-  const controls = Array.from(formElement.querySelectorAll<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>("input, select, textarea"))
-    .filter((element) => Boolean(element.name) && !element.disabled && !(element instanceof HTMLInputElement && element.type === "hidden"));
-
-  const firstInvalidControl = controls.find((control) =>
-    normalizedIssuePaths.some((path) => path === control.name || path.startsWith(`${control.name}.`) || control.name.startsWith(`${path}.`))
-  );
-
-  if (firstInvalidControl) {
-    firstInvalidControl.scrollIntoView({ behavior: "smooth", block: "center" });
-    firstInvalidControl.focus({ preventScroll: true });
-    return;
-  }
-
-  const hasItemsError = normalizedIssuePaths.some((path) => path === "items" || path.startsWith("items."));
-  const hasCustomerError = normalizedIssuePaths.some((path) => path === "clienteBusqueda" || path.startsWith("clienteBusqueda."));
-  const hasExtraServicesError = normalizedIssuePaths.some((path) => path === "servicios_extras" || path.startsWith("servicios_extras."));
-
-  if (hasCustomerError) {
-    const customerAnchor = formElement.querySelector<HTMLElement>('[data-error-anchor="clienteBusqueda"]');
-    customerAnchor?.scrollIntoView({ behavior: "smooth", block: "center" });
-    return;
-  }
-
-  if (hasExtraServicesError) {
-    const extraServicesAnchor = formElement.querySelector<HTMLElement>('[data-error-anchor="servicios_extras"]');
-    extraServicesAnchor?.scrollIntoView({ behavior: "smooth", block: "center" });
-    return;
-  }
-
-  if (hasItemsError) {
-    const itemsAnchor = formElement.querySelector<HTMLElement>('[data-error-anchor="items"]');
-    itemsAnchor?.scrollIntoView({ behavior: "smooth", block: "center" });
-  }
-};
-
 export function useQuoteForm() {
   // Dependencias de navegación y fuentes de datos del formulario.
   const router = useRouter();
@@ -299,6 +285,8 @@ export function useQuoteForm() {
   // Indica si el cliente fue seleccionado mediante el buscador (no mediante creación).
   const [customerSelectedFromSearch, setCustomerSelectedFromSearch] = useState(false);
   const [extraServices, setExtraServices] = useState<ExtraService[]>([]);
+  // Partidas de producto de muestra — mismo patrón que `extraServices`.
+  const [muestraLines, setMuestraLines] = useState<MuestraLine[]>([]);
   // Estado del diálogo de edición de bordado por partida.
   const [embroideryEditIndex, setEmbroideryEditIndex] = useState<number | null>(null);
   const [isEmbroideryEditOpen, setIsEmbroideryEditOpen] = useState(false);
@@ -329,6 +317,7 @@ export function useQuoteForm() {
       const parsed = quoteSubmitSchema.safeParse({
         ...value,
         servicios_extras: extraServices,
+        muestras: muestraLines,
       });
       if (!parsed.success) {
         const nextErrors: ErrorNode = {};
@@ -355,6 +344,20 @@ export function useQuoteForm() {
       }
 
       setErrorTree({});
+
+      /**
+       * Una cotización de muestra NO lleva importes de ningún tipo: es una
+       * solicitud de alta de producto, no una venta. El cero se fuerza aquí,
+       * en el ORIGEN de cada sumando, y no solo sobre `gran_total`: así ningún
+       * campo monetario del payload (`flete`, `seguros`, `anticipo`, `envio`,
+       * `iva`, …) puede quedar con un valor residual si el usuario capturó
+       * cargos en modo catálogo y luego cambió de modo. La UI además oculta
+       * esas secciones; esto es la red de seguridad, no el mecanismo principal.
+       */
+      const isMuestraMode = parsed.data.modo === "muestra";
+      const zeroIfMuestra = (amount: number | undefined) =>
+        isMuestraMode ? 0 : amount ?? 0;
+
       const normalizedItems = (parsed.data.items ?? []).map(normalizeItem)
       const subtotal = normalizedItems.reduce((sum, item) => sum + item.importe, 0);
       const descuentoTotal = normalizedItems.reduce((sum, item) => {
@@ -362,32 +365,48 @@ export function useQuoteForm() {
         return sum + (rawAmount - item.importe);
       }, 0);
 
-      const servicioEnvio = parsed.data.servicioEnvioActivo ? (parsed.data.envio ?? 0) : 0;
+      const flete = zeroIfMuestra(parsed.data.flete);
+      const seguros = zeroIfMuestra(parsed.data.seguros);
+      const anticipo = zeroIfMuestra(parsed.data.anticipo);
+      // El bloque "Condiciones de pago" vive en Información Comercial, que NO se
+      // oculta en modo muestra: sin este cero, elegir "Otra cantidad" mandaba un
+      // `monto` real junto a un `gran_total` de 0.00.
+      const condicionPagoMonto = zeroIfMuestra(parsed.data.condicionPagoMonto);
+      const servicioEnvio = parsed.data.servicioEnvioActivo
+        ? zeroIfMuestra(parsed.data.envio)
+        : 0;
       const programaBordados = parsed.data.programaBordadosActivo
-        ? (parsed.data.programa_bordados ?? 0)
+        ? zeroIfMuestra(parsed.data.programa_bordados)
         : 0;
       const bordadoPantalones = parsed.data.bordadoPantalonesExtrasActivo
-        ? (parsed.data.bordado_pantalones_extras ?? 0)
+        ? zeroIfMuestra(parsed.data.bordado_pantalones_extras)
         : 0;
-      const serigrafia = parsed.data.serigrafiaActivo ? (parsed.data.serigrafia ?? 0) : 0;
-      const reflejante = parsed.data.reflejanteActivo ? (parsed.data.reflejante ?? 0) : 0;
-      const extraServicesTotal = parsed.data.servicios_extras.reduce(
-        (sum, service) => sum + (service.monto ?? 0) * (service.cantidad ?? 0),
-        0
-      );
+      const serigrafia = parsed.data.serigrafiaActivo
+        ? zeroIfMuestra(parsed.data.serigrafia)
+        : 0;
+      const reflejante = parsed.data.reflejanteActivo
+        ? zeroIfMuestra(parsed.data.reflejante)
+        : 0;
+      const extraServicesTotal = isMuestraMode
+        ? 0
+        : parsed.data.servicios_extras.reduce(
+          (sum, service) => sum + (service.monto ?? 0) * (service.cantidad ?? 0),
+          0
+        );
       const extras =
-        (parsed.data.flete ?? 0) +
-        (parsed.data.seguros ?? 0) +
+        flete +
+        seguros +
         servicioEnvio +
         programaBordados +
         bordadoPantalones +
         serigrafia +
         reflejante +
         extraServicesTotal;
-      const ivaRateDecimal = (parsed.data.iva ?? 0) / 100;
+      const ivaRate = isMuestraMode ? 0 : parsed.data.iva ?? 0;
+      const ivaRateDecimal = ivaRate / 100;
       const ivaAmount = Number(((subtotal + extras) * ivaRateDecimal).toFixed(2));
       const granTotal = Number((subtotal + extras + ivaAmount).toFixed(2));
-      const saldoPendiente = Number((granTotal - (parsed.data.anticipo ?? 0)).toFixed(2));
+      const saldoPendiente = Number((granTotal - anticipo).toFixed(2));
 
       const totals = {
         subtotal: Number(subtotal.toFixed(2)),
@@ -395,9 +414,9 @@ export function useQuoteForm() {
         ivaAmount,
         granTotal,
         saldoPendiente,
-        flete: Number((parsed.data.flete ?? 0).toFixed(2)),
-        seguro: Number((parsed.data.seguros ?? 0).toFixed(2)),
-        anticipo: Number((parsed.data.anticipo ?? 0).toFixed(2)),
+        flete: Number(flete.toFixed(2)),
+        seguro: Number(seguros.toFixed(2)),
+        anticipo: Number(anticipo.toFixed(2)),
         ivaRate: ivaRateDecimal,
       };
 
@@ -410,7 +429,7 @@ export function useQuoteForm() {
         otra_cantidad: condicion === "otra_cantidad",
       });
 
-      const detalle = (parsed.data.items ?? []).map((item) => {
+      const detalleCatalogo = (parsed.data.items ?? []).map((item) => {
         const llevaBordado = Boolean(item.bordados?.activo);
         // `ubicaciones` se saca del literal para poder derivar `tipos_servicio`
         // DE LO QUE REALMENTE SE ENVÍA (ver `deriveTiposServicio`), no de otra
@@ -467,6 +486,23 @@ export function useQuoteForm() {
         };
       });
 
+      /**
+       * Las muestras se PLIEGAN dentro de `detalle` — no viajan como un arreglo
+       * hermano. Para el backend son partidas normales con `producto = null`;
+       * `tallas: []` es obligatorio porque el serializer recorre `tallas` sin
+       * comprobar su ausencia.
+       *
+       * Los dos arreglos son mutuamente excluyentes por construcción (uno de los
+       * dos siempre está vacío), así que la concatenación sirve para ambos modos
+       * sin ramificar.
+       */
+      const detalleMuestras: QuoteMuestraDetail[] = parsed.data.muestras.map((linea) => ({
+        producto: null,
+        producto_nombre_externo: linea.nombre,
+        tallas: [],
+      }));
+      const detalle = [...detalleCatalogo, ...detalleMuestras];
+
       const quoteCreatePayload: QuoteCreate = {
         pedido: {
           empresa: selectedCompanyId || 1, // Fallback safe si no hay empresa en workspace
@@ -479,7 +515,10 @@ export function useQuoteForm() {
           forma_pago: parsed.data.forma_pago ?? "",
           metodo_pago: parsed.data.metodo_pago ?? "",
           uso_cfdi: parsed.data.uso_cfdi ?? "",
-          tipo_pedido: parsed.data.tipo_pedido ?? 0,
+          // Se deriva del modo, no se lee del formulario: el select está
+          // deshabilitado, así que `modo` es la única entrada real y esto deja
+          // el payload correcto aunque el estado del campo quedara desfasado.
+          tipo_pedido: tipoPedidoForMode(parsed.data.modo),
           estatus:
             parsed.data.estatusPedido === "Pendiente"
               ? 1
@@ -490,7 +529,7 @@ export function useQuoteForm() {
                   : 4,
           ...mapCondicionPagoFlags(parsed.data.condicionPago ?? "100_anticipo"),
           oc: parsed.data.oc?.trim() || "",
-          monto: parsed.data.condicionPagoMonto ? String(parsed.data.condicionPagoMonto) : "0",
+          monto: condicionPagoMonto ? String(condicionPagoMonto) : "0",
           cliente_razon_social: parsed.data.razonSocial || "",
           cliente_nombre: parsed.data.clienteNombre || "",
           cliente_rfc: parsed.data.rfc || "",
@@ -521,23 +560,28 @@ export function useQuoteForm() {
           serigrafia: serigrafia ? String(serigrafia.toFixed(2)) : "0.00",
           reflejante: reflejante ? String(reflejante.toFixed(2)) : "0.00",
           bordado_logotipo: Boolean(parsed.data.bordado_logotipo),
-          flete: parsed.data.flete ? String(parsed.data.flete.toFixed(2)) : "0.00",
-          seguros: parsed.data.seguros ? String(parsed.data.seguros.toFixed(2)) : "0.00",
-          anticipo: parsed.data.anticipo ? String(parsed.data.anticipo.toFixed(2)) : "0.00",
+          flete: flete ? String(flete.toFixed(2)) : "0.00",
+          seguros: seguros ? String(seguros.toFixed(2)) : "0.00",
+          anticipo: anticipo ? String(anticipo.toFixed(2)) : "0.00",
           subtotal: totals.subtotal ? String(totals.subtotal.toFixed(2)) : "0.00",
           descuento_global: totals.descuentoTotal ? String(totals.descuentoTotal.toFixed(2)) : "0.00",
           ieps: "0.00",
-          iva: parsed.data.iva || 0,
+          iva: ivaRate || 0,
           gran_total: totals.granTotal ? String(totals.granTotal.toFixed(2)) : "0.00",
           activo: true,
           cotizacion: { id: 1 },
         },
         detalle,
-        servicios_extras: parsed.data.servicios_extras.map((service) => ({
-          nombre: service.nombre ?? "",
-          monto: String((service.monto ?? 0).toFixed(2)),
-          cantidad: service.cantidad ?? 0,
-        })),
+        // En modo muestra no viaja ningún servicio extra: la sección está
+        // oculta y su importe ya se anuló arriba, así que enviarlos dejaría en
+        // el backend conceptos con monto que la cotización no refleja.
+        servicios_extras: isMuestraMode
+          ? []
+          : parsed.data.servicios_extras.map((service) => ({
+            nombre: service.nombre ?? "",
+            monto: String((service.monto ?? 0).toFixed(2)),
+            cantidad: service.cantidad ?? 0,
+          })),
       };
       try {
         await createQuoteMutation(quoteCreatePayload);
@@ -554,6 +598,7 @@ export function useQuoteForm() {
 
       form.reset(emptyValues);
       setExtraServices([]);
+      setMuestraLines([]);
       router.push("/sales/quotes");
     },
   });
@@ -671,6 +716,19 @@ export function useQuoteForm() {
     granTotal,
     saldoPendiente,
   } = useMemo(() => {
+    // Réplica en pantalla del cálculo del submit: en modo muestra la
+    // cotización no tiene importes, así que el resumen financiero es cero
+    // completo. Salida temprana para que ambas rutas no puedan divergir.
+    if (values.modo === "muestra") {
+      return {
+        subtotal: 0,
+        descuentoTotal: 0,
+        ivaAmount: 0,
+        granTotal: 0,
+        saldoPendiente: 0,
+      };
+    }
+
     const nextSubtotal = watchedItems.reduce(
       (sum: number, item: QuoteItem) => sum + (Number(item.importe) || 0),
       0
@@ -717,6 +775,7 @@ export function useQuoteForm() {
     };
   }, [
     watchedItems,
+    values.modo,
     values.anticipo,
     values.bordadoPantalonesExtrasActivo,
     values.bordado_pantalones_extras,
@@ -770,6 +829,104 @@ export function useQuoteForm() {
       )
     );
     clearFieldErrors(`items.${index}`);
+  };
+
+  // ─── Partidas de producto de muestra (API estilo `extraServices`) ───────────
+
+  /**
+   * `clearFieldErrors("muestras")` borra TODO el subárbol, incluidos los errores
+   * por renglón. Estas dos operaciones solo deben tocar lo suyo:
+   *
+   * - al agregar, únicamente el mensaje de nivel arreglo ("agrega al menos
+   *   uno"), que `setErrorByPath` guarda como objeto en `muestras`;
+   * - al eliminar, únicamente la entrada de ese índice, reindexando el resto —
+   *   los errores se guardan por índice y las líneas posteriores se recorren.
+   *
+   * Sin esto, borrar un renglón limpiaba los errores visibles de los demás y el
+   * formulario parecía válido hasta el siguiente envío.
+   */
+  const dropMuestrasArrayError = () => {
+    setErrorTree((prev) => {
+      if (!prev.muestras || Array.isArray(prev.muestras)) {
+        return prev;
+      }
+      const next = structuredClone(prev) as ErrorNode;
+      delete next.muestras;
+      return next;
+    });
+  };
+
+  const dropMuestraLineError = (index: number) => {
+    setErrorTree((prev) => {
+      if (!prev.muestras) {
+        return prev;
+      }
+      const next = structuredClone(prev) as ErrorNode;
+      const node = next.muestras;
+      if (Array.isArray(node)) {
+        node.splice(index, 1);
+        if (node.length === 0) {
+          delete next.muestras;
+        }
+      } else {
+        delete next.muestras;
+      }
+      return next;
+    });
+  };
+
+  const addMuestraLine = () => {
+    setMuestraLines((prev) => [...prev, { id: crypto.randomUUID(), nombre: "" }]);
+    dropMuestrasArrayError();
+  };
+
+  const updateMuestraLine = (id: string, nombre: string) => {
+    setMuestraLines((prev) =>
+      prev.map((linea) => (linea.id === id ? { ...linea, nombre } : linea))
+    );
+  };
+
+  const removeMuestraLine = (id: string) => {
+    const index = muestraLines.findIndex((linea) => linea.id === id);
+    setMuestraLines((prev) => prev.filter((linea) => linea.id !== id));
+    if (index >= 0) {
+      dropMuestraLineError(index);
+    }
+  };
+
+  /**
+   * Cambia el modo de captura y VACÍA el arreglo del modo que se abandona.
+   *
+   * Se limpia en vez de conservarse porque la sección del modo inactivo deja de
+   * renderizarse: una partida que sobreviviera ahí sería invisible pero seguiría
+   * viajando en el payload y, peor, dispararía el error de exclusividad de
+   * `quoteSubmitSchema` sobre un campo que el usuario no puede ver ni corregir.
+   * El costo es que volver al modo anterior no restaura lo capturado — a cambio,
+   * el invariante "solo un arreglo tiene contenido" se cumple siempre.
+   *
+   * También mueve `tipo_pedido`, que es un campo del formulario visible en un
+   * select (deshabilitado): si solo se derivara al enviar, el usuario vería
+   * "Pedido de venta" mientras el payload manda "Muestra". Actualizarlo aquí
+   * mantiene honesto lo que se muestra.
+   */
+  const handleModeChange = (nextMode: QuoteCaptureMode) => {
+    if (nextMode === values.modo) {
+      return;
+    }
+
+    if (nextMode === "muestra") {
+      form.setFieldValue("items", []);
+      setExtraServices([]);
+      clearFieldErrors("items");
+      clearFieldErrors("servicios_extras");
+    } else {
+      setMuestraLines([]);
+      clearFieldErrors("muestras");
+    }
+
+    form.setFieldValue("modo", nextMode);
+    form.setFieldValue("tipo_pedido", tipoPedidoForMode(nextMode));
+    clearFieldErrors("tipo_pedido");
   };
 
   // Abre el diálogo de edición de bordado para la partida en `index`.
@@ -948,6 +1105,7 @@ export function useQuoteForm() {
   const handleReset = () => {
     form.reset(emptyValues);
     setExtraServices([]);
+    setMuestraLines([]);
     setSelectedCustomerId(0);
     setCustomerSelectedFromSearch(false);
     setErrorTree({});
@@ -1121,6 +1279,15 @@ export function useQuoteForm() {
     handleSelectShippingAddress,
     extraServices,
     setExtraServices,
+    modo: values.modo,
+    // El alta permite elegir modo; la edición no (ver `useQuoteEditForm`).
+    canSelectMode: true,
+    handleModeChange,
+    muestraLines,
+    addMuestraLine,
+    updateMuestraLine,
+    removeMuestraLine,
+    muestrasError: getError("muestras"),
     embroideryEditIndex,
     isEmbroideryEditOpen,
     openEmbroideryEdit,
