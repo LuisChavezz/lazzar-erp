@@ -1,77 +1,38 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
 import { SearchIcon } from "./Icons";
+import { useGlobalSearchModal } from "@/src/features/search/hooks/useGlobalSearchModal";
 
-
+/**
+ * Botón de búsqueda del header: abre la paleta de búsqueda global
+ * (`GlobalSearchPalette`). Es su ÚNICO punto de entrada — no hay atajo de
+ * teclado.
+ *
+ * Es un icono compacto, con el mismo tratamiento que sus hermanos del header
+ * —la campana de `Notifications`—: `<button>` plano con `p-2`, icono de 20px y
+ * el color pasando de `slate-400` a `sky-600` al pasar el cursor. Sin fondo,
+ * sin borde y sin animación de ancho.
+ */
 export const SearchBar = () => {
-  const [isOpen, setIsOpen] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  // Enfocar el input al expandir, con retardo para que la animación inicie primero
-  useEffect(() => {
-    if (!isOpen) return;
-    const id = setTimeout(() => inputRef.current?.focus(), 150);
-    return () => clearTimeout(id);
-  }, [isOpen]);
-
-  // Cerrar al hacer clic fuera del componente
-  useEffect(() => {
-    if (!isOpen) return;
-    const handleClickOutside = (event: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [isOpen]);
-
-  // Cerrar al presionar Escape
-  const handleKeyDown = (event: React.KeyboardEvent) => {
-    if (event.key === "Escape") setIsOpen(false);
-  };
+  const { open } = useGlobalSearchModal();
 
   return (
-    <div
-      ref={containerRef}
-      role="search"
-      aria-label="Barra de búsqueda"
-      onKeyDown={handleKeyDown}
-      className={[
-        "flex items-center h-10 rounded-full border transition-all duration-300 ease-in-out overflow-hidden",
-        isOpen
-          ? "w-64 bg-white dark:bg-zinc-900 shadow-xl border-slate-100 dark:border-slate-800"
-          : "w-10 bg-transparent border-transparent",
-      ].join(" ")}
-    >
+    // Landmark de búsqueda: lo tenía la barra anterior y es la forma en que un
+    // lector de pantalla salta hasta aquí sin recorrer el header entero.
+    <div role="search" aria-label="Búsqueda global">
       <button
         type="button"
-        aria-label={isOpen ? "Cerrar búsqueda" : "Abrir búsqueda"}
-        aria-expanded={isOpen}
-        aria-controls="search-input"
+        onClick={open}
+        aria-label="Buscar en el sistema"
+        aria-haspopup="dialog"
         title="Buscar"
-        onClick={() => setIsOpen((prev) => !prev)}
-        className={[
-          "shrink-0 h-10 w-10 flex items-center justify-center transition-colors cursor-pointer",
-          isOpen ? "text-sky-600" : "text-slate-400 hover:text-sky-600",
-        ].join(" ")}
+        // `outline-none` quita el anillo del navegador, así que el foco de
+        // teclado se repinta a mano: sin esto el único acceso a la búsqueda no
+        // se ve al tabular.
+        className="p-2 rounded-lg cursor-pointer text-slate-400 hover:text-sky-600 transition outline-none focus-visible:text-sky-600 focus-visible:ring-2 focus-visible:ring-sky-500/50"
       >
         <SearchIcon className="w-5 h-5" aria-hidden="true" />
       </button>
-      <input
-        ref={inputRef}
-        id="search-input"
-        type="text"
-        aria-label="Buscar en el sistema"
-        tabIndex={isOpen ? 0 : -1}
-        className={[
-          "h-full bg-transparent border-none focus:ring-0 focus:outline-none text-sm pr-4 text-slate-600 dark:text-white placeholder-slate-400 transition-opacity duration-200",
-          isOpen ? "w-full opacity-100" : "w-0 opacity-0 pointer-events-none",
-        ].join(" ")}
-        placeholder="Buscar en el sistema..."
-      />
     </div>
   );
 };

@@ -8,6 +8,7 @@ import { authOptions } from "@/src/lib/auth";
 import { SessionThemeProvider } from "@/src/app/SessionThemeProvider";
 import { SidebarProvider } from "@/src/components/SidebarProvider";
 import { SettingsModalProvider } from "@/src/features/settings/components/SettingsModalProvider";
+import { GlobalSearchProvider } from "@/src/features/search/components/GlobalSearchProvider";
 
 export const metadata = {
   title: "ERP NextJS",
@@ -24,6 +25,9 @@ export default async function MainLayout({
   return (
     <SessionThemeProvider session={session}>
       <SettingsModalProvider>
+        {/* Envuelve al header (su disparador) y a todas las páginas: monta la
+            paleta de búsqueda una sola vez para todas las rutas de (Main). */}
+        <GlobalSearchProvider>
         <SidebarProvider>
         <div className="flex h-screen bg-slate-50 dark:bg-black text-slate-900 dark:text-white overflow-hidden selection:bg-sky-500 selection:text-white">
           {/* Background Gradients */}
@@ -46,6 +50,7 @@ export default async function MainLayout({
           </div>
         </div>
         </SidebarProvider>
+        </GlobalSearchProvider>
       </SettingsModalProvider>
     </SessionThemeProvider>
   );
