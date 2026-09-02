@@ -22,6 +22,7 @@ import { formatLocalDate } from "@/src/utils/formatDate";
 import { useWorkspaceStore } from "@/src/features/workspace/store/workspace.store";
 import { useDepartments } from "@/src/features/departments/hooks/useDepartments";
 import { usePositions } from "@/src/features/positions/hooks/usePositions";
+import { getEstadoCivilLabel, getSexoLabel } from "../constants/employeeChoices";
 import { useEmployee } from "../hooks/useEmployee";
 import { getEmployeeFullName } from "../utils/employeeName";
 import EmployeeForm from "./EmployeeForm";
@@ -138,10 +139,39 @@ export const EmployeeDetailContent = ({ employeeId }: EmployeeDetailContentProps
           <InfoField label="Fecha de nacimiento">
             {formatLocalDate(employee.fecha_nacimiento)}
           </InfoField>
-          <InfoField label="CURP">{textOrDash(employee.curp)}</InfoField>
-          <InfoField label="RFC">{textOrDash(employee.rfc)}</InfoField>
+          <InfoField label="Sexo">{textOrDash(getSexoLabel(employee.sexo))}</InfoField>
+          <InfoField label="Estado civil">
+            {textOrDash(getEstadoCivilLabel(employee.estado_civil))}
+          </InfoField>
+          <InfoField label="Nacionalidad">{textOrDash(employee.nacionalidad)}</InfoField>
+          <InfoField label="Lugar de nacimiento">
+            {textOrDash(employee.lugar_nacimiento)}
+          </InfoField>
           <InfoField label="Correo">{textOrDash(employee.email)}</InfoField>
           <InfoField label="Teléfono">{textOrDash(employee.telefono)}</InfoField>
+        </InfoGrid>
+      </Section>
+
+      <Section title="Identificación fiscal y legal">
+        <InfoGrid>
+          <InfoField label="CURP">{textOrDash(employee.curp)}</InfoField>
+          <InfoField label="RFC">{textOrDash(employee.rfc)}</InfoField>
+          <InfoField label="NSS">{textOrDash(employee.nss)}</InfoField>
+          <InfoField label="INFONAVIT">{textOrDash(employee.infonavit)}</InfoField>
+        </InfoGrid>
+      </Section>
+
+      <Section title="Domicilio">
+        <InfoGrid>
+          <InfoField label="Calle">{textOrDash(employee.calle)}</InfoField>
+          <InfoField label="Número exterior">{textOrDash(employee.numero_exterior)}</InfoField>
+          <InfoField label="Número interior">{textOrDash(employee.numero_interior)}</InfoField>
+          <InfoField label="Colonia">{textOrDash(employee.colonia)}</InfoField>
+          <InfoField label="Código postal">{textOrDash(employee.codigo_postal)}</InfoField>
+          <InfoField label="Ciudad">{textOrDash(employee.ciudad)}</InfoField>
+          <InfoField label="Estado (entidad federativa)">
+            {textOrDash(employee.estado)}
+          </InfoField>
         </InfoGrid>
       </Section>
 
@@ -160,6 +190,55 @@ export const EmployeeDetailContent = ({ employeeId }: EmployeeDetailContentProps
               status={employee.activo ? "activo" : "inactivo"}
               config={ACTIVO_INACTIVO_CFG}
             />
+          </InfoField>
+        </InfoGrid>
+      </Section>
+
+      <Section title="Datos bancarios">
+        <InfoGrid>
+          <InfoField label="Banco">{textOrDash(employee.banco)}</InfoField>
+          <InfoField label="Cuenta bancaria">{textOrDash(employee.cuenta_bancaria)}</InfoField>
+          <InfoField label="CLABE">
+            <span className="font-mono">{textOrDash(employee.clabe)}</span>
+          </InfoField>
+          <InfoField label="Moneda de pago">{textOrDash(employee.moneda_pago)}</InfoField>
+        </InfoGrid>
+      </Section>
+
+      <Section title="Contacto de emergencia y salud">
+        <InfoGrid>
+          <InfoField label="Nombre del contacto">
+            {textOrDash(employee.nombre_emergencia)}
+          </InfoField>
+          <InfoField label="Parentesco">{textOrDash(employee.parentesco_emergencia)}</InfoField>
+          <InfoField label="Teléfono de emergencia">
+            {textOrDash(employee.telefono_emergencia)}
+          </InfoField>
+          <InfoField label="Correo de emergencia">
+            {textOrDash(employee.email_emergencia)}
+          </InfoField>
+          <InfoField label="Tipo de sangre">{textOrDash(employee.tipo_sangre)}</InfoField>
+          {/*
+            Se capturan en textarea: ocupan la fila completa y conservan los
+            saltos de línea que escribió el usuario. Sin `whitespace-pre-line`
+            el HTML los colapsa en un párrafo corrido.
+          */}
+          <InfoField label="Alergias" className="col-span-2 md:col-span-3">
+            <span className="whitespace-pre-line">{textOrDash(employee.alergias)}</span>
+          </InfoField>
+          <InfoField label="Enfermedades crónicas" className="col-span-2 md:col-span-3">
+            <span className="whitespace-pre-line">
+              {textOrDash(employee.enfermedades_cronicas)}
+            </span>
+          </InfoField>
+        </InfoGrid>
+      </Section>
+
+      <Section title="Otros">
+        <InfoGrid>
+          <InfoField label="URL de la fotografía">{textOrDash(employee.foto_url)}</InfoField>
+          <InfoField label="Observaciones" className="col-span-2 md:col-span-3">
+            <span className="whitespace-pre-line">{textOrDash(employee.observaciones)}</span>
           </InfoField>
         </InfoGrid>
       </Section>

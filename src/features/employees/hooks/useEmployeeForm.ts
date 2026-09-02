@@ -21,6 +21,44 @@ interface UseEmployeeFormParams {
 
 type EmployeeFormField = keyof EmployeeFormValues;
 
+/**
+ * Lleva a la vista el primer campo inválido tras una validación local fallida.
+ *
+ * "Primero" se resuelve por ORDEN DEL DOM, no por el orden de las claves del
+ * objeto de errores: se recorren los controles del formulario tal como están
+ * montados y se elige el primero que aparezca entre los inválidos. Con siete
+ * secciones, el orden en que Zod emite sus issues no tiene por qué coincidir
+ * con lo que el usuario ve de arriba abajo.
+ *
+ * Es la misma implementación que `useCustomerForm`; se replica aquí porque
+ * allí es un `const` de módulo sin exportar. Ver la nota de duplicación.
+ */
+const scrollToFirstValidationError = (formElement: HTMLFormElement, issuePaths: string[]) => {
+  if (issuePaths.length === 0) {
+    return;
+  }
+
+  const controls = Array.from(
+    formElement.querySelectorAll<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>(
+      "input, select, textarea"
+    )
+  ).filter(
+    (element) =>
+      Boolean(element.name) &&
+      !element.disabled &&
+      !(element instanceof HTMLInputElement && element.type === "hidden")
+  );
+
+  const firstInvalidControl = controls.find((control) => issuePaths.includes(control.name));
+
+  if (!firstInvalidControl) {
+    return;
+  }
+
+  firstInvalidControl.scrollIntoView({ behavior: "smooth", block: "center" });
+  firstInvalidControl.focus({ preventScroll: true });
+};
+
 /** Campo opcional nullable en backend: vacío viaja como null, no como "". */
 const emptyToNull = (value: string) => {
   const trimmed = value.trim();
@@ -61,10 +99,40 @@ export function useEmployeeForm({ onSuccess, employeeToEdit }: UseEmployeeFormPa
       apellido_paterno: "",
       apellido_materno: "",
       fecha_nacimiento: "",
+      sexo: "",
+      estado_civil: "",
+      // Los defaults del backend son "Mexicana" y "MXN". Se escriben en
+      // mayúsculas porque ambos campos llevan `forceUppercase`: si no, el
+      // input los PINTARÍA en mayúsculas (clase CSS) mientras el valor
+      // enviado seguiría en minúsculas hasta que alguien los editara.
+      nacionalidad: "MEXICANA",
+      lugar_nacimiento: "",
       curp: "",
       rfc: "",
+      nss: "",
+      infonavit: "",
       email: "",
       telefono: "",
+      calle: "",
+      numero_exterior: "",
+      numero_interior: "",
+      colonia: "",
+      codigo_postal: "",
+      ciudad: "",
+      estado: "",
+      banco: "",
+      cuenta_bancaria: "",
+      clabe: "",
+      moneda_pago: "MXN",
+      nombre_emergencia: "",
+      parentesco_emergencia: "",
+      telefono_emergencia: "",
+      email_emergencia: "",
+      tipo_sangre: "",
+      alergias: "",
+      enfermedades_cronicas: "",
+      foto_url: "",
+      observaciones: "",
       numero_empleado: "",
       sucursal: 0,
       departamento: 0,
@@ -84,10 +152,36 @@ export function useEmployeeForm({ onSuccess, employeeToEdit }: UseEmployeeFormPa
             apellido_paterno: employeeToEdit.apellido_paterno,
             apellido_materno: employeeToEdit.apellido_materno ?? "",
             fecha_nacimiento: employeeToEdit.fecha_nacimiento ?? "",
+            sexo: employeeToEdit.sexo ?? "",
+            estado_civil: employeeToEdit.estado_civil ?? "",
+            nacionalidad: employeeToEdit.nacionalidad ?? "",
+            lugar_nacimiento: employeeToEdit.lugar_nacimiento ?? "",
             curp: employeeToEdit.curp ?? "",
             rfc: employeeToEdit.rfc ?? "",
+            nss: employeeToEdit.nss ?? "",
+            infonavit: employeeToEdit.infonavit ?? "",
             email: employeeToEdit.email ?? "",
             telefono: employeeToEdit.telefono ?? "",
+            calle: employeeToEdit.calle ?? "",
+            numero_exterior: employeeToEdit.numero_exterior ?? "",
+            numero_interior: employeeToEdit.numero_interior ?? "",
+            colonia: employeeToEdit.colonia ?? "",
+            codigo_postal: employeeToEdit.codigo_postal ?? "",
+            ciudad: employeeToEdit.ciudad ?? "",
+            estado: employeeToEdit.estado ?? "",
+            banco: employeeToEdit.banco ?? "",
+            cuenta_bancaria: employeeToEdit.cuenta_bancaria ?? "",
+            clabe: employeeToEdit.clabe ?? "",
+            moneda_pago: employeeToEdit.moneda_pago ?? "",
+            nombre_emergencia: employeeToEdit.nombre_emergencia ?? "",
+            parentesco_emergencia: employeeToEdit.parentesco_emergencia ?? "",
+            telefono_emergencia: employeeToEdit.telefono_emergencia ?? "",
+            email_emergencia: employeeToEdit.email_emergencia ?? "",
+            tipo_sangre: employeeToEdit.tipo_sangre ?? "",
+            alergias: employeeToEdit.alergias ?? "",
+            enfermedades_cronicas: employeeToEdit.enfermedades_cronicas ?? "",
+            foto_url: employeeToEdit.foto_url ?? "",
+            observaciones: employeeToEdit.observaciones ?? "",
             numero_empleado: employeeToEdit.numero_empleado,
             sucursal: employeeToEdit.sucursal,
             departamento: employeeToEdit.departamento,
@@ -152,12 +246,13 @@ export function useEmployeeForm({ onSuccess, employeeToEdit }: UseEmployeeFormPa
     return false;
   };
 
-  // Valida todo el formulario antes de mutar.
+  // Valida todo el formulario antes de mutar. Devuelve además los campos
+  // inválidos para que el submit pueda llevar el primero a la vista.
   const validateForm = (values: EmployeeFormValues) => {
     const parsed = EmployeeFormSchema.safeParse(values);
     if (parsed.success) {
       setClientErrors({});
-      return true;
+      return { success: true as const, issuePaths: [] as string[] };
     }
 
     const nextErrors: Partial<Record<EmployeeFormField, string>> = {};
@@ -170,7 +265,7 @@ export function useEmployeeForm({ onSuccess, employeeToEdit }: UseEmployeeFormPa
     });
 
     setClientErrors(nextErrors);
-    return false;
+    return { success: false as const, issuePaths: Object.keys(nextErrors) };
   };
 
   // Entrega error compatible con componentes visuales actuales.
@@ -185,7 +280,19 @@ export function useEmployeeForm({ onSuccess, employeeToEdit }: UseEmployeeFormPa
     onSubmit: async ({ value }) => {
       setServerErrors({});
 
-      if (!validateForm(value)) {
+      const validationResult = validateForm(value);
+      if (!validationResult.success) {
+        // En el siguiente frame: `setClientErrors` acaba de programar un
+        // re-render y el mensaje de error todavía no está pintado, así que
+        // centrar antes movería la vista a una posición que cambia enseguida.
+        if (formRef.current) {
+          requestAnimationFrame(() => {
+            if (!formRef.current) {
+              return;
+            }
+            scrollToFirstValidationError(formRef.current, validationResult.issuePaths);
+          });
+        }
         return;
       }
 
@@ -209,10 +316,36 @@ export function useEmployeeForm({ onSuccess, employeeToEdit }: UseEmployeeFormPa
           apellido_paterno: value.apellido_paterno.trim().toUpperCase(),
           apellido_materno: value.apellido_materno.trim().toUpperCase(),
           fecha_nacimiento: emptyToNull(value.fecha_nacimiento),
+          sexo: value.sexo,
+          estado_civil: value.estado_civil,
+          nacionalidad: value.nacionalidad.trim().toUpperCase(),
+          lugar_nacimiento: value.lugar_nacimiento.trim().toUpperCase(),
           curp: emptyToNull(value.curp.toUpperCase()),
           rfc: emptyToNull(value.rfc.toUpperCase()),
+          nss: value.nss.trim(),
+          infonavit: value.infonavit.trim().toUpperCase(),
           email: emptyToNull(value.email),
           telefono: value.telefono.trim(),
+          calle: value.calle.trim().toUpperCase(),
+          numero_exterior: value.numero_exterior.trim().toUpperCase(),
+          numero_interior: value.numero_interior.trim().toUpperCase(),
+          colonia: value.colonia.trim().toUpperCase(),
+          codigo_postal: value.codigo_postal.trim(),
+          ciudad: value.ciudad.trim().toUpperCase(),
+          estado: value.estado.trim().toUpperCase(),
+          banco: value.banco.trim().toUpperCase(),
+          cuenta_bancaria: value.cuenta_bancaria.trim(),
+          clabe: value.clabe.trim(),
+          moneda_pago: value.moneda_pago.trim().toUpperCase(),
+          nombre_emergencia: value.nombre_emergencia.trim().toUpperCase(),
+          parentesco_emergencia: value.parentesco_emergencia.trim().toUpperCase(),
+          telefono_emergencia: value.telefono_emergencia.trim(),
+          email_emergencia: value.email_emergencia.trim(),
+          tipo_sangre: value.tipo_sangre.trim().toUpperCase(),
+          alergias: value.alergias.trim().toUpperCase(),
+          enfermedades_cronicas: value.enfermedades_cronicas.trim().toUpperCase(),
+          foto_url: value.foto_url.trim(),
+          observaciones: value.observaciones.trim().toUpperCase(),
           fecha_ingreso: value.fecha_ingreso,
         };
 
@@ -242,11 +375,28 @@ export function useEmployeeForm({ onSuccess, employeeToEdit }: UseEmployeeFormPa
     },
   });
 
-  // Sincroniza valores cuando cambia la entidad en edición.
+  // Mantiene a mano los últimos valores de edición SIN que su identidad sea
+  // una dependencia del efecto de abajo. Va declarado antes para que React lo
+  // ejecute primero cuando ambos efectos caen en el mismo commit.
+  const editValuesRef = useRef(editValues);
   useEffect(() => {
-    const nextValues = isEditing ? editValues : emptyValues;
-    form.reset(nextValues);
-  }, [editValues, emptyValues, form, isEditing]);
+    editValuesRef.current = editValues;
+  }, [editValues]);
+
+  /**
+   * Repuebla el formulario cuando cambia LA ENTIDAD en edición, identificada
+   * por su `id` y no por la identidad del objeto.
+   *
+   * `editValues` se rederiva cada vez que `employeeToEdit` es un objeto nuevo,
+   * y desde el detalle ese objeto viene de `useEmployee`: cualquier refetch en
+   * segundo plano lo reemplaza. Dependiendo de él, un refetch a mitad de la
+   * captura hacía `form.reset()` y borraba lo que el usuario llevaba escrito
+   * en las siete secciones.
+   */
+  const editedEmployeeId = employeeToEdit?.id ?? null;
+  useEffect(() => {
+    form.reset(editedEmployeeId ? editValuesRef.current : emptyValues);
+  }, [editedEmployeeId, emptyValues, form]);
 
   // Expone estado combinado de carga/mutación.
   const isPending = isCreating || isUpdating || isLoading;
