@@ -1,26 +1,31 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { deleteEmployee } from "../services/actions";
 import toast from "react-hot-toast";
+import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
+import { reactivateEmployee } from "../services/actions";
 import { Employee } from "../interfaces/employee.interface";
 
-export const useDeleteEmployee = () => {
+/**
+ * Reactiva un empleado dado de baja (PATCH `activo: true`).
+ *
+ * Espejo de `useDeleteEmployee` en el sentido contrario: mismo patrón de
+ * optimista con snapshot + rollback, y `onSettled` devuelve la promesa de
+ * invalidación para que la mutación siga "pending" hasta que llegue el refetch.
+ */
+export const useReactivateEmployee = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: deleteEmployee,
+    mutationFn: reactivateEmployee,
     onMutate: async (id) => {
       await queryClient.cancelQueries({ queryKey: ["employees"] });
       const previousEmployees = queryClient.getQueryData<Employee[]>(["employees"]);
 
-      // El DELETE es una baja lógica: el registro NO sale del listado, pasa a
-      // `activo: false`. Por eso el optimista marca la fila como inactiva en
-      // lugar de filtrarla — filtrarla la hacía desaparecer para volver a
-      // aparecer en cuanto el refetch la devolvía.
+      // El registro nunca salió del listado: solo cambia su estatus.
       if (previousEmployees) {
         queryClient.setQueryData<Employee[]>(["employees"], (old) =>
           old
             ? old.map((employee) =>
-                employee.id === id ? { ...employee, activo: false } : employee
+                employee.id === id ? { ...employee, activo: true } : employee
               )
             : []
         );
@@ -33,13 +38,11 @@ export const useDeleteEmployee = () => {
         queryClient.setQueryData(["employees"], context.previousEmployees);
       }
       console.error(err);
-      toast.error("Error al desactivar el empleado");
+      toast.error(extractErrorMessage(err, "Error al reactivar el empleado"));
     },
-    // Se devuelve la promesa para que la mutación siga "pending" hasta que el
-    // refetch termine: así el listado nunca muestra un estado intermedio.
     onSettled: () => queryClient.invalidateQueries({ queryKey: ["employees"] }),
     onSuccess: () => {
-      toast.success("Empleado desactivado correctamente");
+      toast.success("Empleado reactivado correctamente");
     },
   });
 };

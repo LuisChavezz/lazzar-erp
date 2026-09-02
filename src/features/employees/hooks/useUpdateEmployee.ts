@@ -5,8 +5,8 @@ import { updateEmployee } from "../services/actions";
 import { EmployeePayload } from "../interfaces/employee.interface";
 import { EmployeeFormValues } from "../schemas/employee.schema";
 
-// En edición la empresa viaja tal cual la trae el registro: el PUT la exige y
-// no debe reasignarse por el workspace activo del usuario.
+// En edición la empresa viaja tal cual la trae el registro: no debe
+// reasignarse por el workspace activo del usuario.
 interface UpdateEmployeePayload extends EmployeePayload {
   id: number;
 }

@@ -11,8 +11,15 @@ export const createArea = async (area: AreaCreate): Promise<Area> => {
   return data;
 };
 
+/**
+ * Edición parcial: PATCH, nunca PUT.
+ *
+ * El payload omite a propósito `responsable` y `activo` (ver `AreaCreate`). Con
+ * PUT eso los reemplazaría — `responsable` es nullable, así que cada edición lo
+ * dejaba en null en silencio. Con PATCH lo ausente se conserva.
+ */
 export const updateArea = async (id: number, area: AreaCreate): Promise<Area> => {
-  const { data } = await v1_api.put<Area>(`/hr/areas/${id}/`, area);
+  const { data } = await v1_api.patch<Area>(`/hr/areas/${id}/`, area);
   return data;
 };
 

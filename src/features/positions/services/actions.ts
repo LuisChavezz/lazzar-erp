@@ -11,11 +11,19 @@ export const createPosition = async (position: PositionPayload): Promise<Positio
   return data;
 };
 
+/**
+ * Edición parcial: PATCH, nunca PUT.
+ *
+ * Hoy el payload cubre casi todo `Puesto` y solo omite `activo`, pero con PUT
+ * cualquier campo que el backend agregue y este frontend no administre se
+ * vaciaría en silencio en cada edición. Con PATCH lo ausente se conserva.
+ * Mismo criterio que en empleados y áreas.
+ */
 export const updatePosition = async (
   id: number,
   position: PositionPayload
 ): Promise<Position> => {
-  const { data } = await v1_api.put<Position>(`/hr/puestos/${id}/`, position);
+  const { data } = await v1_api.patch<Position>(`/hr/puestos/${id}/`, position);
   return data;
 };
 

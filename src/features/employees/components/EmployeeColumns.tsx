@@ -1,6 +1,6 @@
 import { ColumnDef, createColumnHelper, Row } from "@tanstack/react-table";
 import { useState } from "react";
-import { DeleteIcon, EditIcon, ViewIcon } from "@/src/components/Icons";
+import { BanIcon, CheckCircleIcon, EditIcon, ViewIcon } from "@/src/components/Icons";
 import { ConfirmDialog } from "@/src/components/ConfirmDialog";
 import { ActionMenu, ActionMenuItem } from "@/src/components/ActionMenu";
 import { ACTIVO_INACTIVO_CFG, StatusBadge } from "@/src/components/StatusBadge";
@@ -11,6 +11,7 @@ import { Position } from "@/src/features/positions/interfaces/position.interface
 import { Employee } from "../interfaces/employee.interface";
 import { getEmployeeFullName } from "../utils/employeeName";
 import { useDeleteEmployee } from "../hooks/useDeleteEmployee";
+import { useReactivateEmployee } from "../hooks/useReactivateEmployee";
 
 const columnHelper = createColumnHelper<Employee>();
 
@@ -28,7 +29,19 @@ const ActionsCell = ({
   canDelete: boolean;
 }) => {
   const { mutate: deleteEmployee, isPending } = useDeleteEmployee();
+  const { mutate: reactivateEmployee, isPending: isReactivating } = useReactivateEmployee();
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [isReactivateOpen, setIsReactivateOpen] = useState(false);
+
+  // El DELETE del backend es una baja lógica: pone `activo` en false, no borra
+  // el registro. Por eso la acción se ofrece solo sobre empleados activos —
+  // sobre uno inactivo sería un no-op.
+  const canDeactivate = canDelete && row.original.activo;
+
+  // Reactivar es la dirección contraria del mismo cambio de ciclo de vida, así
+  // que comparte permiso con desactivar (D-RH) y se excluyen entre sí: una fila
+  // ofrece una acción o la otra, nunca las dos.
+  const canReactivate = canDelete && !row.original.activo;
 
   const menuItems: ActionMenuItem[] = [
     {
@@ -44,30 +57,68 @@ const ActionsCell = ({
       onSelect: () => onEdit(row.original),
     });
   }
-  if (canDelete) {
+  if (canDeactivate) {
     menuItems.push({
-      label: "Cancelar",
-      icon: DeleteIcon,
+      label: "Desactivar",
+      icon: BanIcon,
       onSelect: () => setIsDeleteOpen(true),
       disabled: isPending,
+    });
+  }
+  if (canReactivate) {
+    menuItems.push({
+      label: "Reactivar",
+      icon: CheckCircleIcon,
+      onSelect: () => setIsReactivateOpen(true),
+      disabled: isReactivating,
     });
   }
 
   return (
     <div className="flex justify-center">
       <ActionMenu items={menuItems} ariaLabel="Acciones de empleado" />
-      {canDelete && (
+      {/*
+        El diálogo sigue montado mientras esté abierto aunque `canDeactivate`
+        ya sea falso: el optimista invierte `activo` en cuanto arranca la
+        mutación, y sin esto el diálogo se desmontaría antes de poder mostrar
+        su estado pendiente. Lo cierra el `onSettled` de la propia mutación.
+      */}
+      {(canDeactivate || isDeleteOpen) && (
         <ConfirmDialog
           open={isDeleteOpen}
           onOpenChange={setIsDeleteOpen}
-          title="Eliminar Empleado"
-          description="¿Estás seguro de que deseas eliminar este empleado? Esta acción no se puede deshacer."
-          confirmText={isPending ? "Eliminando..." : "Eliminar"}
+          title="Desactivar Empleado"
+          description="¿Deseas desactivar a este empleado? Su información se conserva y seguirá visible en el listado con estatus Inactivo."
+          confirmText={isPending ? "Desactivando..." : "Desactivar"}
+          closeOnConfirm={false}
           onConfirm={() => {
-            deleteEmployee(row.original.id);
-            setIsDeleteOpen(false);
+            if (isPending) {
+              return;
+            }
+            deleteEmployee(row.original.id, {
+              onSettled: () => setIsDeleteOpen(false),
+            });
           }}
-          confirmColor="red"
+          confirmColor="amber"
+        />
+      )}
+      {(canReactivate || isReactivateOpen) && (
+        <ConfirmDialog
+          open={isReactivateOpen}
+          onOpenChange={setIsReactivateOpen}
+          title="Reactivar Empleado"
+          description="¿Deseas reactivar a este empleado? Volverá a aparecer con estatus Activo y se limpiará su fecha de baja."
+          confirmText={isReactivating ? "Reactivando..." : "Reactivar"}
+          closeOnConfirm={false}
+          onConfirm={() => {
+            if (isReactivating) {
+              return;
+            }
+            reactivateEmployee(row.original.id, {
+              onSettled: () => setIsReactivateOpen(false),
+            });
+          }}
+          confirmColor="green"
         />
       )}
     </div>

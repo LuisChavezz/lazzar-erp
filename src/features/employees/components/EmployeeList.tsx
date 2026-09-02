@@ -79,6 +79,11 @@ export default function EmployeeList() {
     <DataTable
       columns={columns}
       data={employees}
+      // Ata la identidad de la fila al id del registro y no a su índice: las
+      // celdas guardan el estado de sus diálogos, y al desactivar/reactivar
+      // cambia `activo` y con él el orden, así que sin esto el estado abierto
+      // podría quedar apuntando a otro empleado.
+      getRowId={(row) => String(row.id)}
       searchPlaceholder="Buscar empleado..."
       isLoading={isLoading}
       isError={isError}

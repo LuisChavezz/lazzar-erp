@@ -17,6 +17,7 @@ import {
   AlertTriangle,
   ArrowLeft,
   ArrowLeftRight,
+  Ban,
   BarChart2,
   Bell,
   Building2,
@@ -138,6 +139,8 @@ export const CloseIcon = (props: LucideProps) => <X {...props} />;
 export const EditIcon = (props: LucideProps) => <Pencil {...props} />;
 export const XIcon = (props: LucideProps) => <X {...props} />;
 export const DeleteIcon = (props: LucideProps) => <Trash2 {...props} />;
+/** Círculo con diagonal. Para bajas lógicas, que NO borran el registro. */
+export const BanIcon = (props: LucideProps) => <Ban {...props} />;
 export const ViewIcon = (props: LucideProps) => <Eye {...props} />;
 export const EyeIcon = (props: LucideProps) => <Eye {...props} />;
 export const EyeOffIcon = (props: LucideProps) => <EyeOff {...props} />;

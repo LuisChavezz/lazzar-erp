@@ -18,7 +18,11 @@
  *   - blue   → confirmColor="blue" (OperationsQuoteColumns, PurchaseOrderColumns,
  *              QuoteCardActions, QuoteKanbanBoard).
  *   - green  → confirmColor="green" (OperationsQuoteColumns, PendingApprovalQueue
- *              vía confirmColor={type === "approve" ? "green" : "red"}).
+ *              vía confirmColor={type === "approve" ? "green" : "red"},
+ *              EmployeeColumns en la reactivación de empleados).
+ *   - amber  → confirmColor="amber" (bajas lógicas "Desactivar" de RH:
+ *              EmployeeColumns, AreaColumns, PositionColumns). Tono de
+ *              advertencia, no destructivo: la baja no borra el registro.
  *
  * IMPORTANTE: si a un componente Radix se le pasa un `color`/`accentColor`
  * nuevo que no esté en esta lista, hay que añadir aquí su escala
@@ -33,5 +37,6 @@
 @import "@radix-ui/themes/tokens/colors/red.css";
 @import "@radix-ui/themes/tokens/colors/blue.css";
 @import "@radix-ui/themes/tokens/colors/green.css";
+@import "@radix-ui/themes/tokens/colors/amber.css";
 @import "@radix-ui/themes/components.css";
 @import "@radix-ui/themes/utilities.css";

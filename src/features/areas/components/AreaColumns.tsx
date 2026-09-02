@@ -1,6 +1,6 @@
 import { ColumnDef, createColumnHelper, Row } from "@tanstack/react-table";
 import { useState } from "react";
-import { EditIcon, DeleteIcon } from "@/src/components/Icons";
+import { EditIcon, BanIcon } from "@/src/components/Icons";
 import { ConfirmDialog } from "@/src/components/ConfirmDialog";
 import { ActionMenu, ActionMenuItem } from "@/src/components/ActionMenu";
 import { ACTIVO_INACTIVO_CFG, StatusBadge } from "@/src/components/StatusBadge";
@@ -24,6 +24,11 @@ const ActionsCell = ({
   const { mutate: deleteArea, isPending } = useDeleteArea();
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
 
+  // El DELETE del backend es una baja lógica: pone `activo` en false, no borra
+  // el registro. Por eso la acción se ofrece solo sobre áreas activas — sobre
+  // una inactiva sería un no-op.
+  const canDeactivate = canDelete && row.original.activo;
+
   const menuItems: ActionMenuItem[] = [];
   if (canEdit) {
     menuItems.push({
@@ -32,10 +37,10 @@ const ActionsCell = ({
       onSelect: () => onEdit(row.original),
     });
   }
-  if (canDelete) {
+  if (canDeactivate) {
     menuItems.push({
-      label: "Cancelar",
-      icon: DeleteIcon,
+      label: "Desactivar",
+      icon: BanIcon,
       onSelect: () => setIsDeleteOpen(true),
       disabled: isPending,
     });
@@ -44,18 +49,18 @@ const ActionsCell = ({
   return (
     <div className="flex justify-center">
       <ActionMenu items={menuItems} />
-      {canDelete && (
+      {canDeactivate && (
         <ConfirmDialog
           open={isDeleteOpen}
           onOpenChange={setIsDeleteOpen}
-          title="Eliminar Área"
-          description="¿Estás seguro de que deseas eliminar esta área? Esta acción no se puede deshacer."
-          confirmText={isPending ? "Eliminando..." : "Eliminar"}
+          title="Desactivar Área"
+          description="¿Deseas desactivar esta área? Su información se conserva y seguirá visible en el listado con estatus Inactivo."
+          confirmText={isPending ? "Desactivando..." : "Desactivar"}
           onConfirm={() => {
             deleteArea(row.original.id);
             setIsDeleteOpen(false);
           }}
-          confirmColor="red"
+          confirmColor="amber"
         />
       )}
     </div>

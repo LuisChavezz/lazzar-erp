@@ -5,8 +5,8 @@ import { updatePosition } from "../services/actions";
 import { PositionPayload } from "../interfaces/position.interface";
 import { PositionFormValues } from "../schemas/position.schema";
 
-// En edición la empresa viaja tal cual la trae el registro: el PUT la exige y
-// no debe reasignarse por el workspace activo del usuario.
+// En edición la empresa viaja tal cual la trae el registro: no debe
+// reasignarse por el workspace activo del usuario.
 interface UpdatePositionPayload extends PositionPayload {
   id: number;
 }

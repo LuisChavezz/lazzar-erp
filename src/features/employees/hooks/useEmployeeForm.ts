@@ -217,8 +217,15 @@ export function useEmployeeForm({ onSuccess, employeeToEdit }: UseEmployeeFormPa
         };
 
         if (isEditing && employeeToEdit) {
-          // La baja solo se captura en edición: un alta nace activa.
-          payload.fecha_baja = emptyToNull(value.fecha_baja);
+          // `fecha_baja` viaja SOLO cuando el empleado está inactivo, que es el
+          // mismo criterio con el que el formulario decide renderizar el campo.
+          // Sobre un empleado activo el campo está oculto, así que enviarlo
+          // reescribiría a ciegas un valor que nadie puede ver ni corregir —
+          // en particular el que el backend acaba de limpiar al reactivarlo.
+          // Al omitirlo, el PATCH lo deja intacto.
+          if (employeeToEdit.activo === false) {
+            payload.fecha_baja = emptyToNull(value.fecha_baja);
+          }
           await updateEmployee({
             id: employeeToEdit.id,
             empresa: employeeToEdit.empresa,

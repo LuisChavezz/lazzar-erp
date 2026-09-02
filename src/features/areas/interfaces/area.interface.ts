@@ -12,8 +12,9 @@ export interface Area {
  * Payload de alta/edición.
  *
  * `responsable` y `activo` se omiten a propósito: el primero es un FK a
- * `hr.Empleado`, que aún no existe en el frontend, y el segundo lo administra
- * el backend. Al no enviarse en el PUT, ambos conservan su valor actual.
+ * `hr.Empleado` que el formulario de áreas todavía no captura (queda
+ * pendiente), y el segundo lo administra el backend. Como la edición usa
+ * PATCH, al no enviarse ambos conservan su valor actual.
  */
 export interface AreaCreate {
   departamento: number;

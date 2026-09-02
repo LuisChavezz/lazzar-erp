@@ -12,9 +12,17 @@ export const useDeletePosition = () => {
       await queryClient.cancelQueries({ queryKey: ["positions"] });
       const previousPositions = queryClient.getQueryData<Position[]>(["positions"]);
 
+      // El DELETE es una baja lógica: el registro NO sale del listado, pasa a
+      // `activo: false`. Por eso el optimista marca la fila como inactiva en
+      // lugar de filtrarla — filtrarla la hacía desaparecer para volver a
+      // aparecer en cuanto el refetch la devolvía.
       if (previousPositions) {
         queryClient.setQueryData<Position[]>(["positions"], (old) =>
-          old ? old.filter((position) => position.id !== id) : []
+          old
+            ? old.map((position) =>
+                position.id === id ? { ...position, activo: false } : position
+              )
+            : []
         );
       }
 
@@ -25,13 +33,13 @@ export const useDeletePosition = () => {
         queryClient.setQueryData(["positions"], context.previousPositions);
       }
       console.error(err);
-      toast.error("Error al eliminar el puesto");
+      toast.error("Error al desactivar el puesto");
     },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ["positions"] });
-    },
+    // Se devuelve la promesa para que la mutación siga "pending" hasta que el
+    // refetch termine: así el listado nunca muestra un estado intermedio.
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ["positions"] }),
     onSuccess: () => {
-      toast.success("Puesto eliminado correctamente");
+      toast.success("Puesto desactivado correctamente");
     },
   });
 };

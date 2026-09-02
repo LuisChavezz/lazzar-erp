@@ -21,7 +21,6 @@ export default function EmployeeForm({ onSuccess, employeeToEdit }: EmployeeForm
     formRef,
     formKey,
     isPending,
-    isEditing,
     branches,
     isLoadingBranches,
     departments,
@@ -413,8 +412,13 @@ export default function EmployeeForm({ onSuccess, employeeToEdit }: EmployeeForm
                 </form.Field>
               </div>
 
-              {/* La baja solo se captura editando: un alta nace activa. */}
-              {isEditing && (
+              {/*
+                La baja solo se captura editando a un empleado YA inactivo: un
+                alta nace activa, y sobre uno activo la fecha no aplica todavía.
+                El backend la sella al desactivar; aquí queda editable para
+                corregirla.
+              */}
+              {employeeToEdit?.activo === false && (
                 <div className="group/field">
                   <form.Field name="fecha_baja">
                     {(field) => (
