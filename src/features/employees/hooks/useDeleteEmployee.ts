@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { deleteEmployee } from "../services/actions";
 import toast from "react-hot-toast";
+import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { Employee } from "../interfaces/employee.interface";
 
 export const useDeleteEmployee = () => {
@@ -33,7 +34,7 @@ export const useDeleteEmployee = () => {
         queryClient.setQueryData(["employees"], context.previousEmployees);
       }
       console.error(err);
-      toast.error("Error al desactivar el empleado");
+      toast.error(extractErrorMessage(err, "Error al desactivar el empleado"));
     },
     // Se devuelve la promesa para que la mutación siga "pending" hasta que el
     // refetch termine: así el listado nunca muestra un estado intermedio.

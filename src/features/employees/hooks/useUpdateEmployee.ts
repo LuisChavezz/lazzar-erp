@@ -47,6 +47,11 @@ export const useUpdateEmployee = (setError?: SetEmployeeError) => {
           });
         }
       }
+      // Cadena fija a propósito, no `extractErrorMessage`: el error habitual
+      // aquí es un 400 de DRF con errores POR CAMPO (ya mapeados arriba), sin
+      // clave `error` de primer nivel. `extractErrorMessage` cae entonces en
+      // `error.message` de Axios y mostraría "Request failed with status code
+      // 400" en lugar de este texto.
       toast.error("Error al actualizar el empleado");
     },
   });
