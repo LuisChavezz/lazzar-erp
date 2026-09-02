@@ -3,6 +3,7 @@
 import { useForm } from "@tanstack/react-form";
 import { useMemo, useRef, useState } from "react";
 import toast from "react-hot-toast";
+import { scrollToFirstValidationError } from "@/src/utils/scrollToFirstValidationError";
 import { CustomerFormSchema, CustomerFormValues } from "../schemas/customer.schema";
 import { Customer, CustomerCreate } from "../interfaces/customer.interface";
 import { useCreateCustomer } from "./useCreateCustomer";
@@ -35,40 +36,6 @@ const normalizeOptionalCustomerFields = (
   telefono: values.telefono ?? "",
   correo: values.correo ?? "",
 });
-
-const scrollToFirstValidationError = (formElement: HTMLFormElement, issuePaths: string[]) => {
-  if (issuePaths.length === 0) {
-    return;
-  }
-
-  const normalizedIssuePaths = issuePaths.filter(Boolean);
-  const controls = Array.from(
-    formElement.querySelectorAll<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>(
-      "input, select, textarea"
-    )
-  ).filter(
-    (element) =>
-      Boolean(element.name) &&
-      !element.disabled &&
-      !(element instanceof HTMLInputElement && element.type === "hidden")
-  );
-
-  const firstInvalidControl = controls.find((control) =>
-    normalizedIssuePaths.some(
-      (path) =>
-        path === control.name ||
-        path.startsWith(`${control.name}.`) ||
-        control.name.startsWith(`${path}.`)
-    )
-  );
-
-  if (!firstInvalidControl) {
-    return;
-  }
-
-  firstInvalidControl.scrollIntoView({ behavior: "smooth", block: "nearest" });
-  firstInvalidControl.focus({ preventScroll: true });
-};
 
 // Estado base del formulario para modo creación.
 // También sirve como fallback cuando no existe cliente en edición.
@@ -237,14 +204,7 @@ export function useCustomerForm({
 
       const validationResult = validateForm(normalizedValues);
       if (!validationResult.success) {
-        if (formRef.current) {
-          requestAnimationFrame(() => {
-            if (!formRef.current) {
-              return;
-            }
-            scrollToFirstValidationError(formRef.current, validationResult.issuePaths);
-          });
-        }
+        scrollToFirstValidationError(formRef.current, validationResult.issuePaths);
         return;
       }
 

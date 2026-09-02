@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import toast from "react-hot-toast";
 import type { FormFieldError } from "@/src/utils/getFieldError";
+import { scrollToFirstValidationError } from "@/src/utils/scrollToFirstValidationError";
 import { useWorkspaceStore } from "@/src/features/workspace/store/workspace.store";
 import { useCompanyBranches } from "@/src/features/branches/hooks/useCompanyBranches";
 import { useDepartments } from "@/src/features/departments/hooks/useDepartments";
@@ -20,44 +21,6 @@ interface UseEmployeeFormParams {
 }
 
 type EmployeeFormField = keyof EmployeeFormValues;
-
-/**
- * Lleva a la vista el primer campo inválido tras una validación local fallida.
- *
- * "Primero" se resuelve por ORDEN DEL DOM, no por el orden de las claves del
- * objeto de errores: se recorren los controles del formulario tal como están
- * montados y se elige el primero que aparezca entre los inválidos. Con siete
- * secciones, el orden en que Zod emite sus issues no tiene por qué coincidir
- * con lo que el usuario ve de arriba abajo.
- *
- * Es la misma implementación que `useCustomerForm`; se replica aquí porque
- * allí es un `const` de módulo sin exportar. Ver la nota de duplicación.
- */
-const scrollToFirstValidationError = (formElement: HTMLFormElement, issuePaths: string[]) => {
-  if (issuePaths.length === 0) {
-    return;
-  }
-
-  const controls = Array.from(
-    formElement.querySelectorAll<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>(
-      "input, select, textarea"
-    )
-  ).filter(
-    (element) =>
-      Boolean(element.name) &&
-      !element.disabled &&
-      !(element instanceof HTMLInputElement && element.type === "hidden")
-  );
-
-  const firstInvalidControl = controls.find((control) => issuePaths.includes(control.name));
-
-  if (!firstInvalidControl) {
-    return;
-  }
-
-  firstInvalidControl.scrollIntoView({ behavior: "smooth", block: "center" });
-  firstInvalidControl.focus({ preventScroll: true });
-};
 
 /** Campo opcional nullable en backend: vacío viaja como null, no como "". */
 const emptyToNull = (value: string) => {
@@ -282,17 +245,7 @@ export function useEmployeeForm({ onSuccess, employeeToEdit }: UseEmployeeFormPa
 
       const validationResult = validateForm(value);
       if (!validationResult.success) {
-        // En el siguiente frame: `setClientErrors` acaba de programar un
-        // re-render y el mensaje de error todavía no está pintado, así que
-        // centrar antes movería la vista a una posición que cambia enseguida.
-        if (formRef.current) {
-          requestAnimationFrame(() => {
-            if (!formRef.current) {
-              return;
-            }
-            scrollToFirstValidationError(formRef.current, validationResult.issuePaths);
-          });
-        }
+        scrollToFirstValidationError(formRef.current, validationResult.issuePaths);
         return;
       }
 

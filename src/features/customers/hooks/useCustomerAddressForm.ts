@@ -3,6 +3,7 @@
 import { useMemo, useRef, useState } from "react";
 import { useForm } from "@tanstack/react-form";
 import toast from "react-hot-toast";
+import { scrollToFirstValidationError } from "@/src/utils/scrollToFirstValidationError";
 import {
   CustomerAddressFormSchema,
   CustomerAddressFormValues,
@@ -85,17 +86,7 @@ export function useCustomerAddressForm({
           }
         }
         setClientErrors(nextErrors);
-
-        const firstInvalidField = Object.keys(nextErrors)[0];
-        if (firstInvalidField && formRef.current) {
-          const el = formRef.current.querySelector<HTMLInputElement>(
-            `[name="${firstInvalidField}"]`
-          );
-          if (el) {
-            el.scrollIntoView({ behavior: "smooth", block: "center" });
-            el.focus({ preventScroll: true });
-          }
-        }
+        scrollToFirstValidationError(formRef.current, Object.keys(nextErrors));
         return;
       }
 
