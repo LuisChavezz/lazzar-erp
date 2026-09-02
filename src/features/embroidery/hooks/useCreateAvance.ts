@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
+import { firstDrfFieldMessage } from "@/src/utils/firstDrfFieldMessage";
 import { createAvance } from "../services/actions";
 
 /**
@@ -24,7 +25,10 @@ export const useCreateAvance = () => {
       toast.success("Avance registrado correctamente");
     },
     onError: (error) => {
-      toast.error(extractErrorMessage(error, "No se pudo registrar el avance"));
+      toast.error(
+        firstDrfFieldMessage(error) ??
+          extractErrorMessage(error, "No se pudo registrar el avance")
+      );
     },
   });
 };

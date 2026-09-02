@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
+import { firstDrfFieldMessage } from "@/src/utils/firstDrfFieldMessage";
 import { deleteAvance } from "../services/actions";
 
 /**
@@ -25,7 +26,10 @@ export const useDeleteAvance = (obId: number) => {
       toast.success("Avance eliminado correctamente");
     },
     onError: (error) => {
-      toast.error(extractErrorMessage(error, "No se pudo eliminar el avance"));
+      toast.error(
+        firstDrfFieldMessage(error) ??
+          extractErrorMessage(error, "No se pudo eliminar el avance")
+      );
     },
   });
 };
