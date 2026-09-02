@@ -14,6 +14,17 @@ interface StepSizesProps {
   sizeQuantitiesPerProduct: Record<number, Record<number, number>>;
   updateSizeQuantity: (productId: number, sizeId: number, value: number) => void;
   openProductId: number | null;
+  /**
+   * Acordeón MULTI-abierto, opcional. Cuando se pasa, manda sobre
+   * `openProductId` y varias filas pueden estar abiertas a la vez.
+   *
+   * Existe porque la validación exige tallas en TODAS las filas: con una sola
+   * abierta, capturar N muestras dejaba paneles nunca vistos que al Agregar
+   * salían con "Sin tallas". Es OPCIONAL a propósito — quien no la pasa
+   * (catálogo y el diálogo de editar tallas) conserva el acordeón de una sola
+   * fila abierta, exactamente como antes.
+   */
+  openProductIds?: ReadonlySet<number>;
   onToggleProduct: (id: number) => void;
   sizeErrors: Record<number, string>;
 }
@@ -24,6 +35,7 @@ export const StepSizes = memo(function StepSizes({
   sizeQuantitiesPerProduct,
   updateSizeQuantity,
   openProductId,
+  openProductIds,
   onToggleProduct,
   sizeErrors,
 }: StepSizesProps) {
@@ -50,7 +62,9 @@ export const StepSizes = memo(function StepSizes({
             const quantities = sizeQuantitiesPerProduct[row.id] ?? {};
             const sizesForProduct = sizesPerProduct[row.id] ?? [];
             const totalQty = sizesForProduct.reduce((s, size) => s + (quantities[size.id] ?? 0), 0);
-            const isOpen = openProductId === row.id;
+            const isOpen = openProductIds
+              ? openProductIds.has(row.id)
+              : openProductId === row.id;
             const hasError = Boolean(sizeErrors[row.id]);
 
             return (

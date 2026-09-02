@@ -12,15 +12,37 @@
  * (`onStepNext`, `onStepBack`), `onSaveItem` y props específicas para cada step
  * que son consumidas por la vista presentacional.
  */
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import type { Color } from "../../colors/interfaces/color.interface";
 import type { Size } from "../../sizes/interfaces/size.interface";
-import { POSITION_OPTIONS, type AddProductDialogProps, type QuoteItem, type Step } from "../types";
+import {
+  MUESTRA_ROW_ID,
+  POSITION_OPTIONS,
+  type AddProductDialogProps,
+  type CatalogRow,
+  type MuestraDraft,
+  type QuoteItem,
+  type Step,
+} from "../types";
 import { useColorsState } from "./useColorsState";
 import { useEmbroideryState } from "./useEmbroideryState";
 import { useProductSelection } from "./useProductSelection";
 import { useReflectiveState } from "./useReflectiveState";
 import { useSizesState } from "./useSizesState";
+
+/**
+ * Aplana la descripción de una muestra a UNA sola línea.
+ *
+ * Los saltos de línea del textarea son comodidad de captura, no información:
+ * `producto_nombre_externo` se persiste como texto plano. Colapsa cualquier
+ * racha de espacios en blanco —saltos, tabulaciones, espacios repetidos— a un
+ * solo espacio y recorta los extremos.
+ *
+ * Se aplica SOLO al ensamblar el item, nunca en el `onChange` del textarea:
+ * mientras escribe, el usuario debe seguir viendo sus saltos de línea.
+ */
+const flattenMuestraNombre = (nombre: string): string =>
+  nombre.replace(/\s+/g, " ").trim();
 
 /**
  * getDialogTitle
@@ -29,6 +51,10 @@ import { useSizesState } from "./useSizesState";
 const getDialogTitle = (step: Step, isEditing: boolean) => {
   if (step === "select") {
     return isEditing ? "Editar producto" : "Agregar productos";
+  }
+
+  if (step === "describe") {
+    return "Producto de muestra";
   }
 
   if (step === "embroidery") {
@@ -59,12 +85,112 @@ export function useAddProductDialogState({
   onAddItems,
   onUpdateItem,
   initialItem,
-  startStep = "select",
+  startStep,
+  variant = "catalogo",
   sizes,
   products,
 }: AddProductDialogProps) {
   const isEditing = Boolean(onUpdateItem && initialItem);
-  const [step, setStep] = useState<Step>(startStep);
+  const isMuestra = variant === "muestra";
+  // El primer paso depende de la variante: catálogo empieza eligiendo producto,
+  // muestra empieza describiéndolo.
+  const initialStep: Step = startStep ?? (isMuestra ? "describe" : "select");
+  const [step, setStep] = useState<Step>(initialStep);
+
+  // ─── Estado del paso "describe" (solo variante muestra) ────────────────────
+  //
+  // Una apertura puede capturar N muestras, igual que catálogo permite elegir N
+  // productos. Cada borrador lleva su propio `id` NEGATIVO, que es la clave con
+  // la que se indexa en los mapas del diálogo (`sizesPerProduct`,
+  // `sizeQuantitiesPerProduct`, `sizeErrors`). Negativo para no poder colisionar
+  // con un `producto.id` real; y se CORTA al ensamblar el item.
+  const [muestraDrafts, setMuestraDrafts] = useState<MuestraDraft[]>(() => [
+    { id: MUESTRA_ROW_ID, descripcion: "", precio: 0 },
+  ]);
+  const nextMuestraIdRef = useRef(MUESTRA_ROW_ID - 1);
+  const [describeSubmitAttempted, setDescribeSubmitAttempted] = useState(false);
+
+  /**
+   * Acordeones ABIERTOS del paso de tallas, SOLO en la variante muestra.
+   *
+   * `useProductSelection.openProductId` guarda un único id, así que su acordeón
+   * es de una fila a la vez. Eso le sirve a catálogo —donde el usuario ya vio la
+   * lista y elige qué abrir—, pero en muestra la validación exige tallas en las
+   * N entradas capturadas: con una sola abierta era fácil pulsar Agregar y
+   * recibir "Sin tallas" en paneles que nunca se abrieron.
+   *
+   * Vive aquí, en estado propio de la variante, en vez de convertir
+   * `openProductId` en un Set: ese id también lo consume el paso de COLORES y el
+   * acordeón de catálogo, y generalizarlo les cambiaría el comportamiento.
+   */
+  const [openMuestraRowIds, setOpenMuestraRowIds] = useState<Set<number>>(
+    () => new Set([MUESTRA_ROW_ID])
+  );
+
+  const toggleMuestraRow = useCallback((id: number) => {
+    setOpenMuestraRowIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  }, []);
+
+  const isDescribeValid =
+    muestraDrafts.length > 0 &&
+    muestraDrafts.every((d) => d.descripcion.trim() && d.precio > 0);
+
+  const addMuestraDraft = useCallback(() => {
+    setMuestraDrafts((prev) => [
+      ...prev,
+      { id: nextMuestraIdRef.current--, descripcion: "", precio: 0 },
+    ]);
+  }, []);
+
+  const removeMuestraDraft = useCallback((id: number) => {
+    setMuestraDrafts((prev) =>
+      prev.length <= 1 ? prev : prev.filter((d) => d.id !== id)
+    );
+  }, []);
+
+  const updateMuestraDraft = useCallback(
+    (id: number, patch: Partial<Omit<MuestraDraft, "id">>) => {
+      setMuestraDrafts((prev) =>
+        prev.map((d) => (d.id === id ? { ...d, ...patch } : d))
+      );
+      setDescribeSubmitAttempted(false);
+    },
+    []
+  );
+
+  /**
+   * Fila SINTÉTICA de la muestra.
+   *
+   * Los mapas del diálogo se indexan por `productoId`, y `selectedRows` sale de
+   * `useProductSelection`, que solo conoce productos del catálogo. En vez de
+   * tocar ese hook —lo que arriesgaría el flujo de catálogo— la variante muestra
+   * inyecta aquí su propia fila con `MUESTRA_ROW_ID`. Vive solo en el diálogo.
+   */
+  const muestraRows = useMemo<CatalogRow[]>(
+    () =>
+      muestraDrafts.map((draft) => ({
+        id: draft.id,
+        productoId: draft.id,
+        // Aplanado con el MISMO criterio que el ensamblado: el encabezado del
+        // acordeón de tallas debe leerse igual que el nombre que se va a
+        // guardar, no con los saltos de línea del textarea.
+        nombre: flattenMuestraNombre(draft.descripcion) || "Producto de muestra",
+        descripcion: flattenMuestraNombre(draft.descripcion),
+        unidad: "PZA",
+        precio: draft.precio,
+        isActive: true,
+      })),
+    [muestraDrafts]
+  );
+
   // Estado editable por el usuario — se inicializa desde initialItem y se resetea al cerrar el diálogo
   const [hasSleevecut, setHasSleevecut] = useState(Boolean(initialItem?.lleva_corte_manga));
 
@@ -73,6 +199,17 @@ export function useAddProductDialogState({
   const embroideryState = useEmbroideryState(initialItem);
   const reflectiveState = useReflectiveState(initialItem);
   const colorsState = useColorsState(initialItem);
+
+  /**
+   * Filas efectivas del diálogo. En catálogo son las seleccionadas por el
+   * usuario; en muestra, la única fila sintética. Todo lo que abajo consumía
+   * `productSelection.selectedRows` pasa por aquí, para que ambas variantes
+   * compartan `sizesPerProduct`, tallas y cantidades sin ramificar en cada uso.
+   */
+  const effectiveSelectedRows = useMemo<CatalogRow[]>(
+    () => (isMuestra ? muestraRows : productSelection.selectedRows),
+    [isMuestra, muestraRows, productSelection.selectedRows]
+  );
 
   // Mapa de productId → colores únicos, derivado de las variantes del producto
   const productColorsById = useMemo<Record<number, Color[]>>(() => {
@@ -112,7 +249,7 @@ export function useAddProductDialogState({
   // Tallas disponibles por producto según el color seleccionado actualmente
   const sizesPerProduct = useMemo<Record<number, Size[]>>(() => {
     const map: Record<number, Size[]> = {};
-    for (const row of productSelection.selectedRows) {
+    for (const row of effectiveSelectedRows) {
       const selectedColorId = colorsState.selectedColorPerProduct[row.id];
       const byColor = productSizesByProductAndColor[row.id];
       if (!byColor) {
@@ -138,26 +275,34 @@ export function useAddProductDialogState({
       }
     }
     return map;
-  }, [productSelection.selectedRows, colorsState.selectedColorPerProduct, productSizesByProductAndColor, sizes]);
+  }, [effectiveSelectedRows, colorsState.selectedColorPerProduct, productSizesByProductAndColor, sizes]);
 
   const orderedSteps = useMemo<Step[]>(() => {
-    const steps: Step[] = ["select"];
+    // Muestra arranca describiendo y NO pasa por colores (no tiene). Los pasos
+    // de servicios se agregan igual que en catálogo, con la misma condición.
+    const steps: Step[] = [isMuestra ? "describe" : "select"];
     if (embroideryState.hasEmbroidery) {
       steps.push("embroidery");
     }
     if (reflectiveState.hasReflective) {
       steps.push("reflective");
     }
-    steps.push("colors");
+    if (!isMuestra) {
+      steps.push("colors");
+    }
     steps.push("sizes");
     return steps;
-  }, [embroideryState.hasEmbroidery, reflectiveState.hasReflective]);
+  }, [embroideryState.hasEmbroidery, isMuestra, reflectiveState.hasReflective]);
 
   const handleOpenChange = useCallback((nextOpen: boolean) => {
     if (!nextOpen) {
-      setStep(startStep);
+      setStep(initialStep);
       // Resetea al valor del item en edición, o false en modo creación
       setHasSleevecut(Boolean(initialItem?.lleva_corte_manga));
+      setMuestraDrafts([{ id: MUESTRA_ROW_ID, descripcion: "", precio: 0 }]);
+      nextMuestraIdRef.current = MUESTRA_ROW_ID - 1;
+      setOpenMuestraRowIds(new Set([MUESTRA_ROW_ID]));
+      setDescribeSubmitAttempted(false);
       productSelection.reset(initialItem);
       sizesState.reset(initialItem);
       embroideryState.reset(initialItem);
@@ -174,11 +319,18 @@ export function useAddProductDialogState({
     reflectiveState,
     colorsState,
     sizesState,
-    startStep,
+    initialStep,
   ]);
 
   const handleStepNext = useCallback(() => {
     if (step === "select" && productSelection.selectedRowIds.size === 0) {
+      return;
+    }
+
+    // Equivalente del guard de "select" para la variante muestra: sin
+    // descripción ni precio no se avanza.
+    if (step === "describe" && !isDescribeValid) {
+      setDescribeSubmitAttempted(true);
       return;
     }
 
@@ -191,7 +343,7 @@ export function useAddProductDialogState({
       return;
     }
 
-    if (step === "colors" && !colorsState.validateColors(productSelection.selectedRows, productColorsById)) {
+    if (!isMuestra && step === "colors" && !colorsState.validateColors(productSelection.selectedRows, productColorsById)) {
       return;
     }
 
@@ -202,12 +354,23 @@ export function useAddProductDialogState({
     }
 
     if (nextStep === "colors" || nextStep === "sizes") {
-      productSelection.openFirstSelectedProduct();
+      // En muestra no hay filas seleccionadas en `useProductSelection`: se abren
+      // los acordeones de TODAS las filas sintéticas, porque todas piden tallas.
+      // Se recalcula en cada entrada al paso para recoger las muestras que el
+      // usuario haya agregado o quitado después de pasar por aquí.
+      if (isMuestra) {
+        setOpenMuestraRowIds(new Set(muestraDrafts.map((draft) => draft.id)));
+      } else {
+        productSelection.openFirstSelectedProduct();
+      }
     }
 
     setStep(nextStep);
   }, [
     embroideryState,
+    isDescribeValid,
+    isMuestra,
+    muestraDrafts,
     orderedSteps,
     productSelection,
     productColorsById,
@@ -234,7 +397,7 @@ export function useAddProductDialogState({
   );
 
   const handleSaveItem = useCallback(() => {
-    const hasValidSizes = sizesState.validateSelectedRows(productSelection.selectedRows, sizesPerProduct);
+    const hasValidSizes = sizesState.validateSelectedRows(effectiveSelectedRows, sizesPerProduct);
     if (!hasValidSizes) {
       return;
     }
@@ -259,6 +422,52 @@ export function useAddProductDialogState({
 
     const reflejantes = reflectiveState.buildPayload();
 
+    if (isMuestra) {
+      const itemsToAdd: QuoteItem[] = muestraDrafts.map((draft) => {
+        const itemSizes = sizesState.getItemSizes(
+          draft.id,
+          sizesPerProduct[draft.id] ?? sizes
+        );
+        // `producto_nombre_externo` es la fuente de verdad del nombre; la
+        // `descripcion` que pinta la tabla se deriva del mismo texto. Ambos van
+        // aplanados: lo que se guarda es una sola línea.
+        const nombre = flattenMuestraNombre(draft.descripcion);
+        return {
+          tipo: "muestra" as const,
+          // El id sintético (`draft.id`, negativo) se CORTA aquí: se usó solo
+          // para indexar los mapas del diálogo y no viaja al item ni al payload.
+          productoId: null,
+          producto_nombre_externo: nombre,
+          descripcion: nombre,
+          unidad: "PZA",
+          cantidad: itemSizes.reduce((sum, size) => sum + size.cantidad, 0),
+          precio: draft.precio,
+          descuento: 0,
+          importe: 0,
+          availableSizes: sizesPerProduct[draft.id] ?? sizes,
+          lleva_corte_manga: hasSleevecut,
+          tallas: itemSizes.map((size) => ({
+            tallaId: size.id,
+            nombre: size.nombre,
+            cantidad: size.cantidad,
+          })),
+          bordados,
+          reflejantes,
+        };
+      });
+
+      if (onAddItems) {
+        onAddItems(itemsToAdd);
+      } else if (onAddItem) {
+        for (const item of itemsToAdd) {
+          onAddItem(item);
+        }
+      }
+
+      handleOpenChange(false);
+      return;
+    }
+
     if (isEditing && onUpdateItem && initialItem) {
       const row = productSelection.selectedRows[0];
       if (!row) {
@@ -272,6 +481,7 @@ export function useAddProductDialogState({
         ? (productColorsById[row.id] ?? []).find((c) => c.id === resolvedColorIdEdit)
         : undefined;
       const item: QuoteItem = {
+        tipo: "catalogo",
         productoId: initialItem.productoId ?? row.productoId,
         descripcion: initialItem.descripcion ?? row.nombre,
         unidad: initialItem.unidad ?? row.unidad,
@@ -305,6 +515,7 @@ export function useAddProductDialogState({
         ? (productColorsById[row.id] ?? []).find((c) => c.id === resolvedColorId)
         : undefined;
       return {
+        tipo: "catalogo" as const,
         productoId: row.productoId,
         descripcion: row.nombre,
         unidad: row.unidad,
@@ -343,6 +554,9 @@ export function useAddProductDialogState({
     hasSleevecut,
     initialItem,
     isEditing,
+    effectiveSelectedRows,
+    isMuestra,
+    muestraDrafts,
     onAddItem,
     onAddItems,
     onUpdateItem,
@@ -354,8 +568,10 @@ export function useAddProductDialogState({
     sizesState,
   ]);
 
-  const canProceed = productSelection.selectedRowIds.size > 0;
-  const isFirstStep = step === "select";
+  const canProceed = isMuestra
+    ? isDescribeValid
+    : productSelection.selectedRowIds.size > 0;
+  const isFirstStep = step === orderedSteps[0];
   const isLastStep = step === "sizes";
   const reflectiveHasBlockingError =
     step === "reflective" &&
@@ -369,6 +585,7 @@ export function useAddProductDialogState({
   return {
     open,
     isEditing,
+    isMuestra,
     title: getDialogTitle(step, isEditing),
     step,
     orderedSteps,
@@ -380,6 +597,19 @@ export function useAddProductDialogState({
     onStepNext: handleStepNext,
     onStepBack: handleStepBack,
     onSaveItem: handleSaveItem,
+    describeStepProps: {
+      drafts: muestraDrafts,
+      onAddDraft: addMuestraDraft,
+      onRemoveDraft: removeMuestraDraft,
+      onUpdateDraft: updateMuestraDraft,
+      showErrors: describeSubmitAttempted,
+      hasEmbroidery: embroideryState.hasEmbroidery,
+      onToggleEmbroidery: (next: boolean) => embroideryState.setHasEmbroidery(next),
+      hasReflective: reflectiveState.hasReflective,
+      onToggleReflective: (next: boolean) => reflectiveState.setHasReflective(next),
+      hasSleevecut,
+      onToggleSleevecut: setHasSleevecut,
+    },
     selectStepProps: {
       search: productSelection.search,
       onSearchChange: (value: string) => productSelection.setSearch(value),
@@ -424,12 +654,15 @@ export function useAddProductDialogState({
       onObservacionesChange: (value: string) => reflectiveState.setObservaciones(value),
     },
     sizesStepProps: {
-      selectedRows: productSelection.selectedRows,
+      selectedRows: effectiveSelectedRows,
       sizesPerProduct,
       sizeQuantitiesPerProduct: sizesState.sizeQuantitiesPerProduct,
       updateSizeQuantity: sizesState.updateSizeQuantity,
       openProductId: productSelection.openProductId,
-      onToggleProduct: productSelection.toggleProduct,
+      // Solo la variante muestra usa el acordeón multi-abierto; catálogo pasa
+      // `undefined` y conserva el de una sola fila.
+      openProductIds: isMuestra ? openMuestraRowIds : undefined,
+      onToggleProduct: isMuestra ? toggleMuestraRow : productSelection.toggleProduct,
       sizeErrors: sizesState.sizeErrors,
     },
     colorsStepProps: {

@@ -1,9 +1,10 @@
 "use client";
 
+import { useState } from "react";
+
 import dynamic from "next/dynamic";
 import { FormInput } from "@/src/components/FormInput";
 import { FormSelect } from "@/src/components/FormSelect";
-import { FormTextarea } from "@/src/components/FormTextarea";
 import {
   FormCancelButton,
   FormSecondaryButton,
@@ -11,7 +12,6 @@ import {
 } from "@/src/components/FormButtons";
 import { EditIcon, EmbarquesIcon, PedidosIcon, PlusIcon } from "@/src/components/Icons";
 import { MainDialog } from "@/src/components/MainDialog";
-import { SegmentedControl } from "@/src/components/SegmentedControl";
 import { getFieldError } from "../../../utils/getFieldError";
 import { formatCurrency } from "../../../utils/formatCurrency";
 import { Loader } from "@/src/components/Loader";
@@ -19,6 +19,11 @@ import { CustomerSearchDropdown } from "./CustomerSearchDropdown";
 import { DialogHeader } from "@/src/components/DialogHeader";
 import { useQuoteForm } from "../hooks/useQuoteForm";
 import { AddProductDialog } from "./AddProductDialog";
+import type { AddProductVariant } from "../types";
+import {
+  getTipoPedidoConfig,
+  TIPO_PEDIDO,
+} from "../../orders/constants/pedidoStatus";
 import { EditEmbroideryDialog } from "./EditEmbroideryDialog";
 import { EditReflectiveDialog } from "./EditReflectiveDialog";
 import { EditSizesDialog } from "./EditSizesDialog";
@@ -36,29 +41,21 @@ const LazyCustomerForm = dynamic(
 // Exporta el tipo del hook para compartir el contrato entre creación y edición
 export type QuoteFormHookResult = ReturnType<typeof useQuoteForm>;
 
-/**
- * Props exclusivas del modo "producto de muestra", que solo existe en el ALTA.
- * Se declaran OPCIONALES para que `useQuoteEditForm` no tenga que inventar
- * stubs de una función que nunca se ejecuta: quien no las manda simplemente no
- * ofrece el modo (`canSelectMode` cae a `false` y `modo` a `"catalogo"`).
- */
-type QuoteMuestraPropKeys =
-  | "modo"
-  | "canSelectMode"
-  | "handleModeChange"
-  | "muestraLines"
-  | "addMuestraLine"
-  | "updateMuestraLine"
-  | "removeMuestraLine"
-  | "muestrasError";
-
 // Props del formulario: resultado del hook más el label personalizable del botón principal
-export type QuoteFormContentProps = Omit<QuoteFormHookResult, QuoteMuestraPropKeys> &
-  Partial<Pick<QuoteFormHookResult, QuoteMuestraPropKeys>> & { submitLabel?: string };
-
-// Valores por defecto para las props opcionales del modo muestra.
-const MUESTRA_LINES_EMPTY: QuoteFormHookResult["muestraLines"] = [];
-const noop = () => { };
+export type QuoteFormContentProps = QuoteFormHookResult & {
+  submitLabel?: string;
+  /**
+   * Alta vs edición. Lo pasan los WRAPPERS (`QuoteForm` / `QuoteEditForm`), no
+   * los hooks: ninguna prop del hook distingue los dos flujos, y derivarlo de
+   * `formKey`/`submitLabel` sería adivinar por el contenido de un string.
+   *
+   * OBLIGATORIA a propósito, sin valor por defecto: con `mode = "create"` el
+   * bloqueo de captura de muestra en edición FALLABA ABIERTO —un wrapper nuevo
+   * que olvidara pasarlo volvía a mostrar "Agregar de Muestra" sin error de
+   * tipos—. Así el compilador obliga a cada wrapper a declarar su flujo.
+   */
+  mode: "create" | "edit";
+};
 
 // Componente de contenido del formulario — reutilizable por creación y edición
 export function QuoteFormContent({
@@ -85,6 +82,7 @@ export function QuoteFormContent({
   isCustomersLoading,
   isCurrenciesLoading,
   isOnboardingLoading,
+  isSizesLoading,
   showForm,
   isCreationSuccessVisible,
   isRouteTransitioning,
@@ -121,14 +119,6 @@ export function QuoteFormContent({
   handleCustomerCreated,
   extraServices,
   setExtraServices,
-  modo = "catalogo",
-  canSelectMode = false,
-  handleModeChange = noop,
-  muestraLines = MUESTRA_LINES_EMPTY,
-  addMuestraLine = noop,
-  updateMuestraLine = noop,
-  removeMuestraLine = noop,
-  muestrasError,
   embroideryEditIndex,
   isEmbroideryEditOpen,
   openEmbroideryEdit,
@@ -147,18 +137,40 @@ export function QuoteFormContent({
   customerAddresses,
   handleSelectShippingAddress,
   submitLabel = "Guardar Cotización",
+  mode,
 }: QuoteFormContentProps) {
-
   /**
-   * Modo "producto de muestra": la cotización documenta una SOLICITUD DE ALTA
-   * de productos que aún no existen en el catálogo. No lleva talla, color ni
-   * importes, así que oculta el asistente de catálogo, los cargos adicionales,
-   * los servicios extras y el resumen financiero completo.
+   * Variante con la que se abre el diálogo de partidas. Es estado EFÍMERO de UI
+   * —qué botón lo abrió—, así que vive aquí y no en el hook: subirlo obligaría a
+   * `useQuoteEditForm` a declararlo también, por el tipo de props compartido.
    */
-  const isMuestraMode = modo === "muestra";
+  const [dialogVariant, setDialogVariant] = useState<AddProductVariant>("catalogo");
+  // Etiqueta y color de la partida de muestra: MISMA fuente que el badge de la
+  // columna "Tipo" del listado (`getTipoPedidoConfig`), no un estilo nuevo.
+  const muestraBadge = getTipoPedidoConfig(TIPO_PEDIDO.MUESTRA);
+  // La captura de muestra es exclusiva del ALTA por ahora: editar una partida de
+  // muestra existente es un paso posterior.
+  const canAddMuestra = mode === "create";
+  /**
+   * Una MUESTRA toma sus tallas del catálogo global y de ninguna otra fuente —
+   * a diferencia de catálogo, que las saca de las variantes del producto. Si esa
+   * lista llega vacía (la consulta falló, o no hay tallas activas), capturar una
+   * muestra produce una partida sin tallas: `validateSelectedRows` SALTA su
+   * validación cuando no hay tallas disponibles, así que no avisa nada y el
+   * problema solo aparece al enviar, como un error de "Cantidad" que no explica
+   * la causa. Se corta aquí, en el origen y con el motivo a la vista.
+   */
+  const areSizesUnavailable = sizes.length === 0;
 
-  // Estado de carga del formulario
-  const isFormLoading = isCustomersLoading || isCurrenciesLoading || isOnboardingLoading || !showForm;
+  // Estado de carga del formulario. `isSizesLoading` entra porque sin él el
+  // formulario se renderizaba con `sizes` todavía vacío y el bloqueo de arriba
+  // se activaría por un instante durante una carga normal.
+  const isFormLoading =
+    isCustomersLoading ||
+    isCurrenciesLoading ||
+    isOnboardingLoading ||
+    isSizesLoading ||
+    !showForm;
   if (isFormLoading) {
     return (
       <div className="w-full pt-2 min-h-200">
@@ -218,25 +230,6 @@ export function QuoteFormContent({
                 {formatCurrency(granTotal)}
               </p>
             </div> */}
-
-            {/* Selector de modo de captura. Solo se ofrece en el ALTA: en
-                edición el hook fija `modo` y los mutadores son no-ops, así que
-                el control se oculta para no mostrar algo inoperante. */}
-            {canSelectMode && (
-              <div className="text-right">
-                <p className="text-[10px] uppercase font-bold text-slate-400 mb-1">
-                  Tipo de partidas
-                </p>
-                <SegmentedControl
-                  options={[
-                    { value: "catalogo", label: "Catálogo" },
-                    { value: "muestra", label: "Muestra" },
-                  ]}
-                  value={modo}
-                  onChange={handleModeChange}
-                />
-              </div>
-            )}
 
             <FormSecondaryButton label="Regresar" onClick={handleBack} />
           </div>
@@ -1142,138 +1135,22 @@ export function QuoteFormContent({
         </div>
       </section>
 
-      {/* ── Partidas de MUESTRA ────────────────────────────────────────────
-          Superficie de captura alterna: una línea = un texto libre. No reutiliza
-          la tabla de catálogo (13 columnas) ni el asistente indexado por
-          producto, porque una muestra no tiene producto, color, talla ni
-          precio que capturar. */}
-      {isMuestraMode ? (
-        <section
-          data-error-anchor="muestras"
-          className="bg-white dark:bg-zinc-900 rounded-3xl p-6 border border-slate-200 dark:border-white/5 shadow-sm flex flex-col h-125"
-        >
-          {muestrasError && (
-            <p className="text-xs text-rose-600 dark:text-rose-400 font-medium mb-2">
-              {muestrasError.message}
-            </p>
-          )}
-          <div className="flex items-center justify-between mb-1">
-            <h2 className="text-lg font-semibold text-slate-800 dark:text-white">
-              Productos de Muestra
-            </h2>
-            <button
-              type="button"
-              onClick={addMuestraLine}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-sky-50 dark:bg-sky-500/10 text-sky-600 dark:text-sky-400 rounded-lg text-xs font-bold tracking-wide hover:bg-sky-100 dark:hover:bg-sky-500/20 transition-colors cursor-pointer"
-              title="Agregar producto de muestra a la cotización"
-              aria-label="Agregar producto de muestra a la cotización"
-            >
-              <PlusIcon className="w-3.5 h-3.5" aria-hidden="true" />
-              Agregar Producto de Muestra
-            </button>
-          </div>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
-            Describe cada producto solicitado. Se registran como solicitud de
-            alta: sin talla, color ni importes.
-          </p>
-
-          <div className="flex-1 overflow-auto -mx-6 px-6 pb-2 border-b border-slate-200 dark:border-slate-800">
-            <table className="w-full border-collapse text-left">
-              <caption className="sr-only">
-                Tabla de productos de muestra de la cotización
-              </caption>
-              <thead className="sticky top-0 z-10 bg-slate-50/95 dark:bg-zinc-900/95 backdrop-blur shadow-sm">
-                <tr>
-                  <th className="p-2 text-[10px] font-bold text-slate-400 uppercase tracking-wider w-10 text-center">
-                    #
-                  </th>
-                  <th className="p-2 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                    Descripción
-                  </th>
-                  <th className="p-2 text-[10px] font-bold text-slate-400 uppercase tracking-wider w-10" />
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-white/5">
-                {muestraLines.length === 0 ? (
-                  <tr>
-                    <td
-                      colSpan={3}
-                      className="p-6 text-center text-sm text-slate-500 dark:text-slate-400"
-                    >
-                      No hay productos de muestra agregados.
-                    </td>
-                  </tr>
-                ) : (
-                  muestraLines.map((linea, index) => {
-                    const nombreError = getFieldError(
-                      getError(`muestras.${index}.nombre`)
-                    );
-
-                    return (
-                      <tr
-                        key={linea.id}
-                        className="group hover:bg-slate-50 dark:hover:bg-white/5 transition-colors"
-                      >
-                        <td className="p-2 text-center text-xs text-slate-400 select-none align-top pt-4">
-                          {index + 1}
-                        </td>
-                        {/* Textarea y no input de una línea por dos razones:
-                            escribir descripciones largas es más cómodo con
-                            varias líneas, y Enter dentro de un input de texto
-                            único dispara el envío implícito del <form> — es
-                            decir, mandaba la cotización entera sin querer. En un
-                            textarea Enter inserta un salto de línea, así que no
-                            hace falta interceptar la tecla en ningún lado.
-
-                            Los saltos son solo comodidad de captura: al enviar,
-                            `flattenMuestraNombre` los colapsa y el valor se
-                            guarda en una sola línea. Por eso NO se normaliza
-                            aquí — mientras escribe, el usuario debe verlos. */}
-                        <td className="p-2">
-                          <FormTextarea
-                            name={`muestras.${index}.nombre`}
-                            aria-label={`Descripción del producto de muestra ${index + 1}`}
-                            placeholder="Describe el producto solicitado..."
-                            maxLength={350}
-                            rows={3}
-                            value={linea.nombre}
-                            onChange={(event) => {
-                              updateMuestraLine(linea.id, event.target.value);
-                              clearFieldErrors(`muestras.${index}.nombre`);
-                            }}
-                            aria-invalid={Boolean(nombreError)}
-                            error={nombreError}
-                            forceUppercase
-                            // El sufijo `!` es necesario: no hay tailwind-merge,
-                            // así que `className` no gana por orden a las
-                            // utilidades de la variante.
-                            className="px-3! py-2! rounded-lg!"
-                          />
-                        </td>
-                        <td className="p-2 align-top pt-3">
-                          <button
-                            type="button"
-                            onClick={() => removeMuestraLine(linea.id)}
-                            aria-label={`Eliminar producto de muestra ${index + 1}`}
-                            title="Eliminar"
-                            className="text-slate-400 hover:text-rose-500 transition-colors cursor-pointer"
-                          >
-                            ✕
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
-        </section>
-      ) : (
       <section data-error-anchor="items" className="bg-white dark:bg-zinc-900 rounded-3xl p-6 border border-slate-200 dark:border-white/5 shadow-sm flex flex-col h-125">
         {itemsError && (
           <p className="text-xs text-rose-600 dark:text-rose-400 font-medium mb-2">
             {itemsError.message}
+          </p>
+        )}
+        {/* El motivo va A LA VISTA, no solo en el `title` del botón: es la causa
+            real, y sustituye al error tardío de "Cantidad" que aparecía al
+            enviar sin explicar nada. Solo afecta a muestra — capturar de
+            catálogo sigue disponible, porque sus tallas salen de las variantes
+            del producto y no de esta lista. */}
+        {canAddMuestra && areSizesUnavailable && (
+          <p className="text-xs text-amber-600 dark:text-amber-400 font-medium mb-2">
+            No se pudieron cargar las tallas del catálogo, así que no es posible
+            capturar productos de muestra. Recarga la página para reintentarlo.
+            Agregar productos de catálogo sigue disponible.
           </p>
         )}
         <div className="flex items-center justify-between mb-4">
@@ -1285,14 +1162,35 @@ export function QuoteFormContent({
               type="button"
               onClick={() => {
                 setEditIndex(null);
+                setDialogVariant("catalogo");
                 setIsAddProductsOpen(true);
               }}
               className="inline-flex items-center px-3 py-1.5 bg-sky-50 dark:bg-sky-500/10 text-sky-600 dark:text-sky-400 rounded-lg text-xs font-bold tracking-wide hover:bg-sky-100 dark:hover:bg-sky-500/20 transition-colors cursor-pointer"
-              title="Agregar producto a la cotización"
-              aria-label="Agregar producto a la cotización"
+              title="Agregar producto de catálogo a la cotización"
+              aria-label="Agregar producto de catálogo a la cotización"
             >
-              Agregar Producto
+              Agregar de Catálogo
             </button>
+            {canAddMuestra && (
+            <button
+              type="button"
+              disabled={areSizesUnavailable}
+              onClick={() => {
+                setEditIndex(null);
+                setDialogVariant("muestra");
+                setIsAddProductsOpen(true);
+              }}
+              className="inline-flex items-center px-3 py-1.5 bg-violet-50 dark:bg-violet-500/10 text-violet-600 dark:text-violet-400 rounded-lg text-xs font-bold tracking-wide hover:bg-violet-100 dark:hover:bg-violet-500/20 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-violet-50 dark:disabled:hover:bg-violet-500/10"
+              title={
+                areSizesUnavailable
+                  ? "No se pudieron cargar las tallas del catálogo"
+                  : "Agregar producto de muestra a la cotización"
+              }
+              aria-label="Agregar producto de muestra a la cotización"
+            >
+              Agregar de Muestra
+            </button>
+            )}
           </div>
         </div>
 
@@ -1328,7 +1226,7 @@ export function QuoteFormContent({
         />
 
         <AddProductDialog
-          key={editIndex ?? "new"}
+          key={`${editIndex ?? "new"}-${dialogVariant}`}
           open={isAddProductsOpen}
           onOpenChange={(nextOpen) => {
             if (!nextOpen) {
@@ -1345,7 +1243,8 @@ export function QuoteFormContent({
               : undefined
           }
           initialItem={editIndex !== null ? watchedItems?.[editIndex] : null}
-          startStep={editIndex !== null ? "sizes" : "select"}
+          startStep={editIndex !== null ? "sizes" : undefined}
+          variant={dialogVariant}
           sizes={sizes}
           products={products}
         />
@@ -1446,11 +1345,23 @@ export function QuoteFormContent({
                       </td>
                       <td className="p-2">
                         <div className="space-y-1">
-                          <div
-                            className={`text-xs font-medium text-slate-700 dark:text-slate-200 ${productoIdError ? "text-rose-600 dark:text-rose-400" : ""}`}
-                          >
-                            {currentItem?.productoId || "—"}
-                          </div>
+                          {/* Una partida de MUESTRA no tiene id de catálogo:
+                              en vez del "—" se marca con el mismo badge que usa
+                              la columna "Tipo" del listado, para que ambas
+                              vistas nombren y coloreen igual. */}
+                          {currentItem?.tipo === "muestra" ? (
+                            <span
+                              className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${muestraBadge.className}`}
+                            >
+                              {muestraBadge.label}
+                            </span>
+                          ) : (
+                            <div
+                              className={`text-xs font-medium text-slate-700 dark:text-slate-200 ${productoIdError ? "text-rose-600 dark:text-rose-400" : ""}`}
+                            >
+                              {currentItem?.productoId || "—"}
+                            </div>
+                          )}
                           {productoIdError && (
                             <p className="text-[10px] text-rose-600 dark:text-rose-400">
                               {productoIdError.message}
@@ -1497,6 +1408,11 @@ export function QuoteFormContent({
                           >
                             {tallasLabel}
                           </span>
+                          {/* Sirve a catálogo y a muestra por igual: el diálogo
+                              resuelve por sí mismo la clave sintética de una
+                              partida sin `productoId`. Completa el trío con los
+                              lápices de bordado y reflejante, que ya operaban
+                              sobre muestras. */}
                           <button
                             type="button"
                             onClick={() => openSizesEdit(index)}
@@ -1659,14 +1575,9 @@ export function QuoteFormContent({
           <div className="text-slate-400">{fields.length} partidas</div>
         </div>
       </section>
-      )}
 
       <section className="grid grid-cols-1 lg:grid-cols-4 gap-6 items-start">
-        {/* En modo muestra la cotización no tiene importes, así que la columna
-            de observaciones ocupa el ancho completo y el bloque económico
-            (cargos adicionales + servicios extras + resumen financiero) no se
-            renderiza en absoluto — no se pinta en $0.00. */}
-        <div className={`${isMuestraMode ? "lg:col-span-4" : "lg:col-span-1"} bg-white dark:bg-zinc-900 rounded-3xl p-6 border border-slate-200 dark:border-white/5 shadow-sm space-y-6`}>
+        <div className="lg:col-span-1 bg-white dark:bg-zinc-900 rounded-3xl p-6 border border-slate-200 dark:border-white/5 shadow-sm space-y-6">
           <div className="space-y-4">
             <div className="flex flex-col  justify-between text-xs">
               <span className="text-[10px] uppercase font-bold text-slate-400">
@@ -1723,7 +1634,6 @@ export function QuoteFormContent({
           </div>
         </div>
 
-        {!isMuestraMode && (
         <div className="lg:col-span-3 bg-white dark:bg-zinc-900 rounded-3xl p-6 border border-slate-200 dark:border-white/5 shadow-sm">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             <div className="space-y-4">
@@ -2055,7 +1965,6 @@ export function QuoteFormContent({
             </div>
           </div>
         </div>
-        )}
       </section>
 
       <div className="flex justify-end gap-3 pb-8">
@@ -2077,5 +1986,5 @@ export function QuoteFormContent({
 // Wrapper de creación — usa el hook de creación y renderiza el contenido compartido
 export default function QuoteForm() {
   const hookResult = useQuoteForm();
-  return <QuoteFormContent {...hookResult} />;
+  return <QuoteFormContent {...hookResult} mode="create" />;
 }

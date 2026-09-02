@@ -2,9 +2,9 @@
  * Lleva el viewport al primer campo inválido tras un submit fallido.
  *
  * Vivía DUPLICADA en `useQuoteForm` y `useQuoteEditForm`. Las dos copias se
- * separaron —solo una aprendió el ancla `muestras`— y el resultado fue que un
- * error de la edición no tenía a dónde hacer scroll. Vive aquí para que las dos
- * pantallas no puedan volver a divergir.
+ * separaron y el resultado fue que un error de la edición no tenía a dónde
+ * hacer scroll. Vive aquí para que las dos pantallas no puedan volver a
+ * divergir.
  */
 
 /**
@@ -15,7 +15,6 @@
 const SECTION_ANCHORS = [
   "clienteBusqueda",
   "servicios_extras",
-  "muestras",
   "items",
 ] as const;
 
@@ -59,8 +58,8 @@ export const scrollToFirstValidationError = (
 
   // Se recorren todas las anclas candidatas y solo se detiene en una que EXISTA
   // en el DOM. Antes cada rama hacía `return` incondicional, así que un error
-  // cuya sección no está renderizada (p. ej. `muestras` en modo catálogo)
-  // abortaba la búsqueda y el submit fallaba sin mover la vista ni señalar nada.
+  // cuya sección no estuviera renderizada abortaba la búsqueda: el submit
+  // fallaba sin mover la vista ni señalar nada.
   for (const anchor of SECTION_ANCHORS) {
     if (!matchesPath(normalizedIssuePaths, anchor)) {
       continue;

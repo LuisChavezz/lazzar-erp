@@ -21,7 +21,40 @@ export type QuoteItem = NonNullable<QuoteFormValues["items"]>[number];
 /**
  * Pasos del diálogo de agregar producto.
  */
-export type Step = "select" | "embroidery" | "reflective" | "colors" | "sizes";
+export type Step =
+  | "select"
+  | "describe"
+  | "embroidery"
+  | "reflective"
+  | "colors"
+  | "sizes";
+
+/**
+ * Variante de captura del diálogo.
+ * - `catalogo`: selección contra el catálogo (flujo original, sin cambios).
+ * - `muestra`: descripción libre + precio, sin selector ni colores.
+ */
+export type AddProductVariant = "catalogo" | "muestra";
+
+/**
+ * Clave sintética de la fila de MUESTRA dentro de los mapas indexados del
+ * diálogo (`sizesPerProduct`, `sizeQuantitiesPerProduct`, `sizeErrors`,
+ * `openProductId`). Es negativa para no poder colisionar con un `producto.id`
+ * real, y vive EXCLUSIVAMENTE en el estado del diálogo: nunca se copia a un
+ * `QuoteItem` ni al payload.
+ */
+export const MUESTRA_ROW_ID = -1;
+
+/**
+ * Borrador de una partida de muestra dentro del diálogo. Su `id` negativo es la
+ * clave de los mapas indexados; NO es un `productoId` y nunca sale del diálogo:
+ * al ensamblar el `QuoteItem` se corta y la partida queda con `productoId: null`.
+ */
+export interface MuestraDraft {
+  id: number;
+  descripcion: string;
+  precio: number;
+}
 
 /**
  * Producto del catálogo con sus variantes disponibles (tal como lo retorna el onboarding).
@@ -95,6 +128,8 @@ export interface AddProductDialogProps {
   onUpdateItem?: (item: QuoteItem) => void;
   initialItem?: QuoteItem | null;
   startStep?: Step;
+  /** Variante de captura. Por defecto `catalogo` (flujo original). */
+  variant?: AddProductVariant;
   sizes: Size[];
   products: ProductWithColors[];
 }
@@ -104,6 +139,7 @@ export interface AddProductDialogProps {
  */
 export const STEP_LABELS: Record<Step, string> = {
   select: "Selección de Productos",
+  describe: "Descripción del Producto",
   embroidery: "Configuración de Bordado",
   reflective: "Configuración de Reflejante",
   colors: "Selección de Color",

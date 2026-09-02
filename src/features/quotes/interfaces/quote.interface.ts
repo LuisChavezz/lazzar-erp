@@ -1,3 +1,5 @@
+import type { z } from "zod";
+import type { quoteItemSchema } from "../schemas/quote-item.schema";
 import { Branch } from "../../branches/interfaces/branch.interface";
 import { Color } from "../../colors/interfaces/color.interface";
 import { Company } from "../../companies/interfaces/company.interface";
@@ -14,56 +16,15 @@ export type QuotePaymentCondition =
   | "por_confirmar"
   | "otra_cantidad";
 
-export interface QuoteItem {
-  productoId: number;
-  descripcion: string;
-  unidad: string;
-  cantidad: number;
-  precio: number;
-  descuento: number;
-  importe: number;
-  availableSizes?: {
-    id: number;
-    nombre: string;
-  }[];
-  tallas?: {
-    tallaId: number;
-    nombre: string;
-    cantidad: number;
-  }[];
-  bordados?: {
-    activo: boolean;
-    observaciones?: string;
-    especificaciones: {
-      posicionCodigo: string;
-      posicionNombre: string;
-      posicionPersonalizada?: string;
-      ancho?: number;
-      alto?: number;
-      colorHilo?: string;
-      pantones?: string;
-      imagen: string;
-      nuevoPonchado: boolean;
-      serigrafia: boolean;
-      sublimado: boolean;
-      dtf: boolean;
-      revelado: boolean;
-    }[];
-  };
-  reflejantes?: {
-    activo: boolean;
-    observaciones?: string;
-    especificaciones: {
-      opcion: string;
-      posicion: string;
-      tipo: string;
-    }[];
-  };
-  lleva_corte_manga?: boolean;
-  colorId?: number;
-  colorNombre?: string;
-  colorHex?: string;
-}
+/**
+ * Partida del FORMULARIO de cotización.
+ *
+ * Se deriva del schema, que es la única fuente de verdad: antes vivía aquí una
+ * copia escrita a mano que replicaba la forma del schema y podía separarse de
+ * él sin que nada lo notara. Hoy es una UNIÓN DISCRIMINADA por `tipo`
+ * (catálogo | muestra) — ver `schemas/quote-item.schema.ts`.
+ */
+export type QuoteItem = z.output<typeof quoteItemSchema>;
 
 export interface Quote {
   id: number;
@@ -332,10 +293,14 @@ export interface QuoteCreate {
     cotizacion: { id: number }
   },
   /**
-   * Partidas de la cotización. Es un arreglo HOMOGÉNEO por cotización aunque el
-   * tipo sea una unión: o todas son de catálogo (`QuoteDetail`) o todas son de
-   * muestra (`QuoteMuestraDetail`), según el `modo` del formulario. El backend
-   * no impone esa exclusividad — la garantiza el frontend.
+   * Partidas de la cotización. Una partida de catálogo (`QuoteDetail`) apunta al
+   * catálogo con `producto`; una de muestra (`QuoteMuestraDetail`) lleva
+   * `producto: null` y el nombre libre en `producto_nombre_externo`. Es la
+   * PRESENCIA de `producto_nombre_externo` lo que distingue una de otra.
+   *
+   * El arreglo es MIXTO: una misma cotización puede llevar partidas de los dos
+   * tipos. `useQuoteForm` lo arma ramificando por el discriminante `tipo` del
+   * formulario, que no se copia al payload.
    */
   detalle: (QuoteDetail | QuoteMuestraDetail)[],
   servicios_extras: QuoteExtraService[];
@@ -343,15 +308,25 @@ export interface QuoteCreate {
 
 /**
  * Partida de PRODUCTO DE MUESTRA (producto externo): una solicitud de alta de
- * producto, no una venta de catálogo. Sin talla, sin color y sin precio.
+ * producto, no una venta de catálogo. El nombre viaja como texto libre en
+ * `producto_nombre_externo` y `producto` va en `null`.
  *
- * `tallas: []` es obligatorio, no opcional: el backend recorre `tallas` sin
- * comprobar su ausencia.
+ * `tallas` es obligatorio, no opcional: el backend lo recorre sin comprobar su
+ * ausencia. Una muestra sin tallas capturadas mandaría `[]`.
+ *
+ * Lo construye el armador de `detalle` de `useQuoteForm`, en la rama
+ * `item.tipo === "muestra"`.
  */
 export interface QuoteMuestraDetail {
   producto: null;
   producto_nombre_externo: string;
-  tallas: [];
+  precio_unitario: string;
+  /**
+   * MISMA forma que las tallas de catálogo: una muestra sí lleva tallas (del
+   * catálogo global de tallas activas) y sus servicios. Lo único que no tiene
+   * es `color_id`.
+   */
+  tallas: QuoteDetail["tallas"];
 }
 
 interface QuoteDetail {
@@ -438,7 +413,16 @@ export interface QuoteOnboardingData {
       value: number;
       label: string;
     }[],
-    tallas: Size[]
+    /**
+     * OPCIONAL porque el endpoint de onboarding NO la devuelve hoy: el objeto
+     * `catalogos` nunca trajo `tallas`. Se declaraba obligatoria, y esa mentira
+     * es la que dejó pasar durante meses un `catalogos.tallas ?? []` que en
+     * tiempo de ejecución siempre valía `[]` sin una sola queja del compilador.
+     *
+     * El catálogo global de tallas activas se pide con `useSizes()`
+     * (`GET /catalogo/talla/`) — ver `useQuoteForm`. NO leas esta clave.
+     */
+    tallas?: Size[]
   },
   busqueda: {
     clientes: {

@@ -4,6 +4,10 @@ import { useState } from "react";
 import { EyeIcon } from "@/src/components/Icons";
 import { QuoteById } from "../interfaces/quote.interface";
 import { getQuoteDetailProductName, toCurrencyOrDash } from "../utils/quoteDetailsFormatters";
+import {
+  getTipoPedidoConfig,
+  TIPO_PEDIDO,
+} from "../../orders/constants/pedidoStatus";
 import { QuoteProductEmbroideryView } from "./QuoteProductEmbroideryView";
 import { QuoteProductReflectiveView } from "./QuoteProductReflectiveView";
 
@@ -19,6 +23,9 @@ interface QuoteDetailsProductsProps {
 
 export const QuoteDetailsProducts = ({ details }: QuoteDetailsProductsProps) => {
   const [activeView, setActiveView] = useState<ActiveView | null>(null);
+  // Misma fuente que el badge de la tabla de captura y el de la columna "Tipo"
+  // del listado, para que las tres vistas nombren y coloreen igual.
+  const muestraBadge = getTipoPedidoConfig(TIPO_PEDIDO.MUESTRA);
 
   if (!details.length) { // If no details
     return (
@@ -57,6 +64,17 @@ export const QuoteDetailsProducts = ({ details }: QuoteDetailsProductsProps) => 
                   <div className="text-sm font-semibold text-slate-800 dark:text-slate-100">
                     {getQuoteDetailProductName(detalle)}
                   </div>
+                  {/* Marcador de DOMINIO: en datos de lectura no existe el
+                      discriminante `tipo` del formulario. Una partida sin
+                      `producto` es una muestra — la misma señal que ya usa
+                      `getQuoteDetailProductName` para caer al nombre externo. */}
+                  {detalle.producto == null && (
+                    <span
+                      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${muestraBadge.className}`}
+                    >
+                      {muestraBadge.label}
+                    </span>
+                  )}
                   {detalle.color_nombre && detalle.color_codigo_hex && (
                     <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 px-2.5 py-0.5 text-xs font-medium text-slate-700 dark:text-slate-300 shadow-sm">
                       <span

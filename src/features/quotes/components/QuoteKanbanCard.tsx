@@ -7,6 +7,11 @@ import { formatCurrency } from "@/src/utils/formatCurrency";
 import { formatQuoteDateTime } from "../utils/quoteDetailsFormatters";
 import { QuoteCardActions } from "./QuoteCardActions";
 import { KANBAN_COLUMNS, KanbanColumnConfig } from "../constants/kanbanColumns";
+import {
+  getTipoPedidoConfig,
+  TIPO_PEDIDO,
+} from "../../orders/constants/pedidoStatus";
+import { isMuestraQuote } from "../utils/quoteStatusRules";
 
 // ─── Lookup estatus → configuración de columna ───────────────────────────────
 const CONFIG_BY_ESTATUS = Object.fromEntries(
@@ -40,6 +45,13 @@ const CardContent = memo(function CardContent({
   isPending: boolean;
 }) {
   const cfg = CONFIG_BY_ESTATUS[quote.estatus] ?? DEFAULT_CONFIG;
+
+  // TERCERA superficie del badge de muestra, junto a la tabla de captura y el
+  // detalle de lectura. Aquí el marcador es el `tipo_pedido` PERSISTIDO —el
+  // mismo que ya consulta el gate de arrastre del tablero—, no el `tipo` del
+  // formulario, que no existe en los datos del listado.
+  const isMuestra = isMuestraQuote(quote.tipo_pedido);
+  const muestraBadge = getTipoPedidoConfig(TIPO_PEDIDO.MUESTRA);
 
   const gran_total = formatCurrency(Number(quote.gran_total) || 0);
   const fecha = formatQuoteDateTime(quote.created_at, "d MMM yyyy");
@@ -81,9 +93,18 @@ const CardContent = memo(function CardContent({
 
       {/* Fila superior: id + menú de acciones */}
       <div className="flex items-start justify-between gap-2 mb-3">
-        <p className="text-xs font-semibold tracking-widest text-slate-400 dark:text-slate-500 uppercase pt-0.5">
-          #{String(quote.id).padStart(5, "0")}
-        </p>
+        <div className="flex items-center gap-2 min-w-0">
+          <p className="text-xs font-semibold tracking-widest text-slate-400 dark:text-slate-500 uppercase pt-0.5">
+            #{String(quote.id).padStart(5, "0")}
+          </p>
+          {isMuestra && (
+            <span
+              className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${muestraBadge.className}`}
+            >
+              {muestraBadge.label}
+            </span>
+          )}
+        </div>
 
         {/* Menú de acciones — stopPropagation evita conflicto con DnD */}
         {!isOverlay && (

@@ -104,6 +104,7 @@ export function useAddProductsDialog({
       .filter((r) => selectedIds.has(r.id))
       .filter((r) => !existingProductIds.has(r.productoId))
       .map((r) => ({
+        tipo: "catalogo" as const,
         productoId: r.productoId,
         descripcion: r.nombre,
         unidad: r.unidad,

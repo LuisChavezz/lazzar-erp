@@ -100,6 +100,7 @@ const mapDetalleToQuoteItem = (
     // el comportamiento es idéntico al anterior. Una cotización de muestra
     // abierta en edición caería en la validación de `quoteItemSchema`
     // (`productoId >= 1`, `descripcion` requerida) en vez de guardarse mal.
+    tipo: "catalogo",
     productoId: detalle.producto ?? 0,
     descripcion: detalle.producto_nombre ?? "",
     unidad: "PZA",
@@ -203,9 +204,6 @@ const mapQuoteByIdToFormValues = (
   })();
 
   return {
-    // La edición solo contempla cotizaciones de catálogo (el modo muestra es
-    // exclusivo del alta), así que el modo se fija aquí y nunca cambia.
-    modo: "catalogo",
     clienteBusqueda: quote.cliente_razon_social || quote.cliente_nombre || "",
     clienteNombre: quote.cliente_nombre || "",
     razonSocial: quote.cliente_razon_social || "",
@@ -493,11 +491,6 @@ export function useQuoteEditForm(quoteId: number) {
       const parsed = quoteSubmitSchema.safeParse({
         ...value,
         servicios_extras: extraServices,
-        // `muestras` es REQUERIDO por `quoteSubmitSchema` (sin default). La
-        // edición no captura partidas de muestra, pero omitir la clave hacía
-        // fallar el parseo SIEMPRE, y el error caía en un campo que esta
-        // pantalla no renderiza: guardar no hacía absolutamente nada, sin aviso.
-        muestras: [],
       });
 
       if (!parsed.success) {
@@ -612,21 +605,35 @@ export function useQuoteEditForm(quoteId: number) {
           : [];
         const llevaCorteManga = Boolean(item.lleva_corte_manga);
         const corteMangaConfig = llevaCorteManga ? { tipo: "1" } : null;
+        const tallas =
+          item.tallas?.map((t) => ({
+            talla: t.tallaId,
+            cantidad: Math.max(0, Number(t.cantidad) || 0),
+            lleva_bordado: llevaBordado,
+            bordado_config: bordadoConfig,
+            lleva_reflejante: llevaReflejante,
+            reflejante_config: reflejanteConfig,
+            lleva_corte_manga: llevaCorteManga,
+            corte_manga_config: corteMangaConfig,
+          })) ?? [];
+        const precio_unitario = String(Number(item.precio).toFixed(2));
+
+        // `tipo` es SOLO DE FORMULARIO y no se copia al payload: se lee aquí
+        // para decidir la forma de la partida y se queda fuera del objeto.
+        if (item.tipo === "muestra") {
+          return {
+            producto: null,
+            producto_nombre_externo: item.producto_nombre_externo,
+            precio_unitario,
+            tallas,
+          };
+        }
+
         return {
           producto: item.productoId,
-          precio_unitario: String(Number(item.precio).toFixed(2)),
+          precio_unitario,
           color_id: item.colorId ?? null,
-          tallas:
-            item.tallas?.map((t) => ({
-              talla: t.tallaId,
-              cantidad: Math.max(0, Number(t.cantidad) || 0),
-              lleva_bordado: llevaBordado,
-              bordado_config: bordadoConfig,
-              lleva_reflejante: llevaReflejante,
-              reflejante_config: reflejanteConfig,
-              lleva_corte_manga: llevaCorteManga,
-              corte_manga_config: corteMangaConfig,
-            })) ?? [],
+          tallas,
         };
       });
 
@@ -1228,6 +1235,14 @@ export function useQuoteEditForm(quoteId: number) {
     isCustomersLoading,
     isCurrenciesLoading,
     isOnboardingLoading: isOnboardingLoading || isQuoteLoading,
+    // Esta pantalla no consulta el catálogo global de tallas: sigue leyendo
+    // `catalogos.tallas` (arriba), que el backend nunca envía, así que `sizes`
+    // es siempre `[]` aquí. Es un defecto CONOCIDO Y DIFERIDO —rompe el diálogo
+    // de editar tallas cuando el producto perdió sus variantes— y se arregla
+    // migrando esta pantalla a `useSizes()`, como ya hizo el alta. Mientras
+    // tanto, `false` mantiene el contrato de props compartido sin alterar en
+    // nada el comportamiento actual: no hay ninguna consulta que esperar.
+    isSizesLoading: false,
     showForm,
     isCreationSuccessVisible: isEditSuccessVisible,
     isRouteTransitioning,

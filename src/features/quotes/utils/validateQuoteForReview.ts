@@ -159,6 +159,7 @@ const mapDetalleToQuoteItem = (
     // comportamiento idéntico para partidas de catálogo (donde nunca faltan) y
     // deja que la validación de catálogo reporte el problema si algún día llega
     // una de muestra por aquí.
+    tipo: "catalogo",
     productoId: detalle.producto ?? 0,
     descripcion: detalle.producto_nombre ?? "",
     unidad: "PZA",
@@ -231,9 +232,6 @@ const mapQuoteToReviewValidationInput = (
   );
 
   return {
-    // El envío a revisión solo aplica a cotizaciones de catálogo; el modo se
-    // fija para satisfacer el tipo del formulario, del que este input deriva.
-    modo: "catalogo",
     cliente: quote.cliente,
     clienteBusqueda: quote.cliente_razon_social || quote.cliente_nombre || "",
     clienteNombre: quote.cliente_nombre || "",

@@ -20,7 +20,6 @@ import {
 import {
   QuoteCreate,
   QuoteItem,
-  type QuoteMuestraDetail,
   QuoteOnboardingData,
   type QuotePaymentCondition,
 } from "../interfaces/quote.interface";
@@ -31,6 +30,7 @@ import { useWorkspaceStore } from "../../workspace/store/workspace.store";
 import { useCreateQuote, type QuoteValidationIssue } from "./useCreateQuote";
 import { useQuoteOnboardingData } from "./useQuoteOnboardingData";
 import { useSatInfo } from "../../sat/hooks/useSatInfo";
+import { useSizes } from "../../sizes/hooks/useSizes";
 
 type QuoteField = keyof QuoteFormValues;
 type OnboardingCustomer = QuoteOnboardingData["busqueda"]["clientes"][number];
@@ -46,47 +46,19 @@ export interface ExtraService {
 }
 
 /**
- * Línea de producto de muestra en el formulario. Vive FUERA de TanStack Form,
- * en su propio `useState`, igual que `extraServices` — nunca dentro de `items`.
- * Esa separación es la que hace estructural la exclusividad catálogo/muestra:
- * el arreglo del modo inactivo simplemente está vacío.
+ * `tipo_pedido` DERIVADO de las partidas capturadas.
+ *
+ * Una cotización con al menos una partida de MUESTRA es una solicitud de
+ * muestra (2); sin ninguna, es un pedido de venta (1). El usuario no lo elige:
+ * el select sigue deshabilitado y solo refleja esta derivación.
+ *
+ * El discriminante `tipo` es la señal a nivel formulario. Se usa él y no
+ * `productoId === null` porque es el campo que la unión discriminada garantiza.
  */
-export interface MuestraLine {
-  id: string;
-  nombre: string;
-}
-
-/**
- * Aplana la descripción de una muestra a UNA sola línea.
- *
- * El campo se captura en un `<textarea>` porque escribir descripciones largas
- * ahí es más cómodo, pero los saltos de línea son una comodidad de captura, no
- * información: `producto_nombre_externo` se guarda como texto plano. Colapsa
- * cualquier racha de espacios en blanco —saltos, tabulaciones, espacios
- * repetidos— a un solo espacio y recorta los extremos.
- *
- * Se aplica SOLO al armar el payload, nunca en el `onChange`: mientras el
- * usuario escribe tiene que seguir viendo sus saltos de línea en el textarea.
- *
- * Colapsar solo puede acortar el texto, así que el tope de 350 del schema sigue
- * cumpliéndose sin revalidar.
- */
-export const flattenMuestraNombre = (nombre: string): string =>
-  nombre.replace(/\s+/g, " ").trim();
-
-/** Modo de captura de partidas. Ver `quoteFormSchema.modo`. */
-export type QuoteCaptureMode = "catalogo" | "muestra";
-
-/**
- * `tipo_pedido` que corresponde a cada modo de captura. El usuario NO lo elige:
- * el select sigue deshabilitado y el valor lo dicta el toggle, que es la única
- * entrada que decide si la cotización es una venta o una solicitud de muestra.
- *
- * Es la única fuente de esta correspondencia — la usan el estado inicial, el
- * cambio de modo y el armado del payload, para que las tres no puedan divergir.
- */
-export const tipoPedidoForMode = (mode: QuoteCaptureMode): number =>
-  mode === "muestra" ? TIPO_PEDIDO.MUESTRA : TIPO_PEDIDO.PEDIDO_DE_VENTA;
+const deriveTipoPedido = (items: QuoteFormValues["items"]): number =>
+  items?.some((item) => item.tipo === "muestra")
+    ? TIPO_PEDIDO.MUESTRA
+    : TIPO_PEDIDO.PEDIDO_DE_VENTA;
 
 const PAYMENT_CONDITION_OPTIONS: { value: QuotePaymentCondition; label: string }[] = [
   { value: "100_anticipo", label: "100% Anticipo" },
@@ -123,7 +95,6 @@ const normalizeItem = (item: QuoteItem): QuoteItem => {
 
 // Estado inicial para flujo de creación.
 export const createEmptyValues = (todayStr: string, userName: string): QuoteFormValues => ({
-  modo: "catalogo",
   clienteBusqueda: "",
   clienteNombre: "",
   razonSocial: "",
@@ -146,9 +117,8 @@ export const createEmptyValues = (todayStr: string, userName: string): QuoteForm
   condicionPagoMonto: 0,
   fecha: todayStr,
   agente: userName,
-  // No lo elige el usuario (el select sigue deshabilitado): lo dicta el modo de
-  // captura. Arranca en catálogo, así que arranca en "Pedido de venta".
-  tipo_pedido: tipoPedidoForMode("catalogo"),
+  // Sin partidas todavía: arranca en pedido de venta. Ver `deriveTipoPedido`.
+  tipo_pedido: TIPO_PEDIDO.PEDIDO_DE_VENTA,
   destinatario: "",
   empresaEnvio: "",
   telefonoEnvio: "",
@@ -252,6 +222,17 @@ export function useQuoteForm() {
   const { data: currencies, isLoading: isCurrenciesLoading } = useCurrencies();
   const { data: onboardingData, isLoading: isOnboardingLoading } = useQuoteOnboardingData();
   const { data: satInfo } = useSatInfo();
+  // Catálogo global de tallas activas (`GET /catalogo/talla/`). NO sale del
+  // onboarding: su objeto `catalogos` nunca trajo `tallas`, así que el prop
+  // `sizes` que llega al diálogo de productos era siempre `[]`.
+  // `useSizes` ya default-ea a `[]`, así que nunca es `undefined`.
+  //
+  // `isLoading` se propaga porque una MUESTRA toma sus tallas de esta lista y
+  // de ninguna otra: sin esperar a que resuelva, el diálogo se abría con cero
+  // tallas y la partida se agregaba vacía sin aviso. Catálogo no depende de
+  // ella —sus tallas salen de las variantes del onboarding—, así que esto solo
+  // alarga la espera que el formulario ya hacía por las otras consultas.
+  const { sizes, isLoading: isSizesLoading } = useSizes();
   const { selectedCompany, selectedBranch } = useWorkspaceStore();
   const selectedCompanyId = selectedCompany?.id || 1; // Fallback
   const selectedBranchId = selectedBranch?.id || 1; // Fallback
@@ -303,8 +284,6 @@ export function useQuoteForm() {
   // Indica si el cliente fue seleccionado mediante el buscador (no mediante creación).
   const [customerSelectedFromSearch, setCustomerSelectedFromSearch] = useState(false);
   const [extraServices, setExtraServices] = useState<ExtraService[]>([]);
-  // Partidas de producto de muestra — mismo patrón que `extraServices`.
-  const [muestraLines, setMuestraLines] = useState<MuestraLine[]>([]);
   // Estado del diálogo de edición de bordado por partida.
   const [embroideryEditIndex, setEmbroideryEditIndex] = useState<number | null>(null);
   const [isEmbroideryEditOpen, setIsEmbroideryEditOpen] = useState(false);
@@ -335,7 +314,6 @@ export function useQuoteForm() {
       const parsed = quoteSubmitSchema.safeParse({
         ...value,
         servicios_extras: extraServices,
-        muestras: muestraLines,
       });
       if (!parsed.success) {
         const nextErrors: ErrorNode = {};
@@ -363,19 +341,6 @@ export function useQuoteForm() {
 
       setErrorTree({});
 
-      /**
-       * Una cotización de muestra NO lleva importes de ningún tipo: es una
-       * solicitud de alta de producto, no una venta. El cero se fuerza aquí,
-       * en el ORIGEN de cada sumando, y no solo sobre `gran_total`: así ningún
-       * campo monetario del payload (`flete`, `seguros`, `anticipo`, `envio`,
-       * `iva`, …) puede quedar con un valor residual si el usuario capturó
-       * cargos en modo catálogo y luego cambió de modo. La UI además oculta
-       * esas secciones; esto es la red de seguridad, no el mecanismo principal.
-       */
-      const isMuestraMode = parsed.data.modo === "muestra";
-      const zeroIfMuestra = (amount: number | undefined) =>
-        isMuestraMode ? 0 : amount ?? 0;
-
       const normalizedItems = (parsed.data.items ?? []).map(normalizeItem)
       const subtotal = normalizedItems.reduce((sum, item) => sum + item.importe, 0);
       const descuentoTotal = normalizedItems.reduce((sum, item) => {
@@ -383,34 +348,23 @@ export function useQuoteForm() {
         return sum + (rawAmount - item.importe);
       }, 0);
 
-      const flete = zeroIfMuestra(parsed.data.flete);
-      const seguros = zeroIfMuestra(parsed.data.seguros);
-      const anticipo = zeroIfMuestra(parsed.data.anticipo);
-      // El bloque "Condiciones de pago" vive en Información Comercial, que NO se
-      // oculta en modo muestra: sin este cero, elegir "Otra cantidad" mandaba un
-      // `monto` real junto a un `gran_total` de 0.00.
-      const condicionPagoMonto = zeroIfMuestra(parsed.data.condicionPagoMonto);
-      const servicioEnvio = parsed.data.servicioEnvioActivo
-        ? zeroIfMuestra(parsed.data.envio)
-        : 0;
+      const flete = parsed.data.flete ?? 0;
+      const seguros = parsed.data.seguros ?? 0;
+      const anticipo = parsed.data.anticipo ?? 0;
+      const condicionPagoMonto = parsed.data.condicionPagoMonto ?? 0;
+      const servicioEnvio = parsed.data.servicioEnvioActivo ? (parsed.data.envio ?? 0) : 0;
       const programaBordados = parsed.data.programaBordadosActivo
-        ? zeroIfMuestra(parsed.data.programa_bordados)
+        ? (parsed.data.programa_bordados ?? 0)
         : 0;
       const bordadoPantalones = parsed.data.bordadoPantalonesExtrasActivo
-        ? zeroIfMuestra(parsed.data.bordado_pantalones_extras)
+        ? (parsed.data.bordado_pantalones_extras ?? 0)
         : 0;
-      const serigrafia = parsed.data.serigrafiaActivo
-        ? zeroIfMuestra(parsed.data.serigrafia)
-        : 0;
-      const reflejante = parsed.data.reflejanteActivo
-        ? zeroIfMuestra(parsed.data.reflejante)
-        : 0;
-      const extraServicesTotal = isMuestraMode
-        ? 0
-        : parsed.data.servicios_extras.reduce(
-          (sum, service) => sum + (service.monto ?? 0) * (service.cantidad ?? 0),
-          0
-        );
+      const serigrafia = parsed.data.serigrafiaActivo ? (parsed.data.serigrafia ?? 0) : 0;
+      const reflejante = parsed.data.reflejanteActivo ? (parsed.data.reflejante ?? 0) : 0;
+      const extraServicesTotal = parsed.data.servicios_extras.reduce(
+        (sum, service) => sum + (service.monto ?? 0) * (service.cantidad ?? 0),
+        0
+      );
       const extras =
         flete +
         seguros +
@@ -420,7 +374,7 @@ export function useQuoteForm() {
         serigrafia +
         reflejante +
         extraServicesTotal;
-      const ivaRate = isMuestraMode ? 0 : parsed.data.iva ?? 0;
+      const ivaRate = parsed.data.iva ?? 0;
       const ivaRateDecimal = ivaRate / 100;
       const ivaAmount = Number(((subtotal + extras) * ivaRateDecimal).toFixed(2));
       const granTotal = Number((subtotal + extras + ivaAmount).toFixed(2));
@@ -447,7 +401,7 @@ export function useQuoteForm() {
         otra_cantidad: condicion === "otra_cantidad",
       });
 
-      const detalleCatalogo = (parsed.data.items ?? []).map((item) => {
+      const detalle = (parsed.data.items ?? []).map((item) => {
         const llevaBordado = Boolean(item.bordados?.activo);
         // `ubicaciones` se saca del literal para poder derivar `tipos_servicio`
         // DE LO QUE REALMENTE SE ENVÍA (ver `deriveTiposServicio`), no de otra
@@ -486,40 +440,37 @@ export function useQuoteForm() {
             : [];
         const llevaCorteManga = Boolean(item.lleva_corte_manga);
         const corteMangaConfig = llevaCorteManga ? { tipo: "1" } : null;
+        const tallas =
+          item.tallas?.map((t) => ({
+            talla: t.tallaId,
+            cantidad: Math.max(0, Number(t.cantidad) || 0),
+            lleva_bordado: llevaBordado,
+            bordado_config: bordadoConfig,
+            lleva_reflejante: llevaReflejante,
+            reflejante_config: reflejanteConfig,
+            lleva_corte_manga: llevaCorteManga,
+            corte_manga_config: corteMangaConfig,
+          })) ?? [];
+        const precio_unitario = String(Number(item.precio).toFixed(2));
+
+        // `tipo` es SOLO DE FORMULARIO y no se copia al payload: se lee aquí
+        // para decidir la forma de la partida y se queda fuera del objeto.
+        if (item.tipo === "muestra") {
+          return {
+            producto: null,
+            producto_nombre_externo: item.producto_nombre_externo,
+            precio_unitario,
+            tallas,
+          };
+        }
+
         return {
           producto: item.productoId,
-          precio_unitario: String(Number(item.precio).toFixed(2)),
+          precio_unitario,
           color_id: item.colorId ?? null,
-          tallas:
-            item.tallas?.map((t) => ({
-              talla: t.tallaId,
-              cantidad: Math.max(0, Number(t.cantidad) || 0),
-              lleva_bordado: llevaBordado,
-              bordado_config: bordadoConfig,
-              lleva_reflejante: llevaReflejante,
-              reflejante_config: reflejanteConfig,
-              lleva_corte_manga: llevaCorteManga,
-              corte_manga_config: corteMangaConfig,
-            })) ?? [],
+          tallas,
         };
       });
-
-      /**
-       * Las muestras se PLIEGAN dentro de `detalle` — no viajan como un arreglo
-       * hermano. Para el backend son partidas normales con `producto = null`;
-       * `tallas: []` es obligatorio porque el serializer recorre `tallas` sin
-       * comprobar su ausencia.
-       *
-       * Los dos arreglos son mutuamente excluyentes por construcción (uno de los
-       * dos siempre está vacío), así que la concatenación sirve para ambos modos
-       * sin ramificar.
-       */
-      const detalleMuestras: QuoteMuestraDetail[] = parsed.data.muestras.map((linea) => ({
-        producto: null,
-        producto_nombre_externo: flattenMuestraNombre(linea.nombre),
-        tallas: [],
-      }));
-      const detalle = [...detalleCatalogo, ...detalleMuestras];
 
       const quoteCreatePayload: QuoteCreate = {
         pedido: {
@@ -533,10 +484,7 @@ export function useQuoteForm() {
           forma_pago: parsed.data.forma_pago ?? "",
           metodo_pago: parsed.data.metodo_pago ?? "",
           uso_cfdi: parsed.data.uso_cfdi ?? "",
-          // Se deriva del modo, no se lee del formulario: el select está
-          // deshabilitado, así que `modo` es la única entrada real y esto deja
-          // el payload correcto aunque el estado del campo quedara desfasado.
-          tipo_pedido: tipoPedidoForMode(parsed.data.modo),
+          tipo_pedido: deriveTipoPedido(parsed.data.items),
           estatus:
             parsed.data.estatusPedido === "Pendiente"
               ? 1
@@ -590,16 +538,11 @@ export function useQuoteForm() {
           cotizacion: { id: 1 },
         },
         detalle,
-        // En modo muestra no viaja ningún servicio extra: la sección está
-        // oculta y su importe ya se anuló arriba, así que enviarlos dejaría en
-        // el backend conceptos con monto que la cotización no refleja.
-        servicios_extras: isMuestraMode
-          ? []
-          : parsed.data.servicios_extras.map((service) => ({
-            nombre: service.nombre ?? "",
-            monto: String((service.monto ?? 0).toFixed(2)),
-            cantidad: service.cantidad ?? 0,
-          })),
+        servicios_extras: parsed.data.servicios_extras.map((service) => ({
+          nombre: service.nombre ?? "",
+          monto: String((service.monto ?? 0).toFixed(2)),
+          cantidad: service.cantidad ?? 0,
+        })),
       };
       try {
         await createQuoteMutation(quoteCreatePayload);
@@ -616,7 +559,6 @@ export function useQuoteForm() {
 
       form.reset(emptyValues);
       setExtraServices([]);
-      setMuestraLines([]);
       router.push("/sales/quotes");
     },
   });
@@ -727,6 +669,22 @@ export function useQuoteForm() {
 
   // Derivados de totales para render inmediato en resumen financiero.
   const watchedItems = useMemo(() => values.items ?? [], [values.items]);
+
+  /**
+   * Mantiene `tipo_pedido` en sincronía con las partidas.
+   *
+   * El select está deshabilitado, así que el usuario nunca lo mueve: este efecto
+   * es lo único que lo escribe, y hace que muestre la verdad (Muestra en cuanto
+   * hay una partida de muestra, Pedido de venta al quitar la última). El payload
+   * vuelve a derivarlo por su cuenta en el submit, así que un desfase del campo
+   * no puede persistir un valor incorrecto.
+   */
+  const derivedTipoPedido = deriveTipoPedido(watchedItems);
+  useEffect(() => {
+    if (values.tipo_pedido !== derivedTipoPedido) {
+      form.setFieldValue("tipo_pedido", derivedTipoPedido);
+    }
+  }, [derivedTipoPedido, form, values.tipo_pedido]);
   const {
     subtotal,
     descuentoTotal,
@@ -734,19 +692,6 @@ export function useQuoteForm() {
     granTotal,
     saldoPendiente,
   } = useMemo(() => {
-    // Réplica en pantalla del cálculo del submit: en modo muestra la
-    // cotización no tiene importes, así que el resumen financiero es cero
-    // completo. Salida temprana para que ambas rutas no puedan divergir.
-    if (values.modo === "muestra") {
-      return {
-        subtotal: 0,
-        descuentoTotal: 0,
-        ivaAmount: 0,
-        granTotal: 0,
-        saldoPendiente: 0,
-      };
-    }
-
     const nextSubtotal = watchedItems.reduce(
       (sum: number, item: QuoteItem) => sum + (Number(item.importe) || 0),
       0
@@ -793,7 +738,6 @@ export function useQuoteForm() {
     };
   }, [
     watchedItems,
-    values.modo,
     values.anticipo,
     values.bordadoPantalonesExtrasActivo,
     values.bordado_pantalones_extras,
@@ -847,104 +791,6 @@ export function useQuoteForm() {
       )
     );
     clearFieldErrors(`items.${index}`);
-  };
-
-  // ─── Partidas de producto de muestra (API estilo `extraServices`) ───────────
-
-  /**
-   * `clearFieldErrors("muestras")` borra TODO el subárbol, incluidos los errores
-   * por renglón. Estas dos operaciones solo deben tocar lo suyo:
-   *
-   * - al agregar, únicamente el mensaje de nivel arreglo ("agrega al menos
-   *   uno"), que `setErrorByPath` guarda como objeto en `muestras`;
-   * - al eliminar, únicamente la entrada de ese índice, reindexando el resto —
-   *   los errores se guardan por índice y las líneas posteriores se recorren.
-   *
-   * Sin esto, borrar un renglón limpiaba los errores visibles de los demás y el
-   * formulario parecía válido hasta el siguiente envío.
-   */
-  const dropMuestrasArrayError = () => {
-    setErrorTree((prev) => {
-      if (!prev.muestras || Array.isArray(prev.muestras)) {
-        return prev;
-      }
-      const next = structuredClone(prev) as ErrorNode;
-      delete next.muestras;
-      return next;
-    });
-  };
-
-  const dropMuestraLineError = (index: number) => {
-    setErrorTree((prev) => {
-      if (!prev.muestras) {
-        return prev;
-      }
-      const next = structuredClone(prev) as ErrorNode;
-      const node = next.muestras;
-      if (Array.isArray(node)) {
-        node.splice(index, 1);
-        if (node.length === 0) {
-          delete next.muestras;
-        }
-      } else {
-        delete next.muestras;
-      }
-      return next;
-    });
-  };
-
-  const addMuestraLine = () => {
-    setMuestraLines((prev) => [...prev, { id: crypto.randomUUID(), nombre: "" }]);
-    dropMuestrasArrayError();
-  };
-
-  const updateMuestraLine = (id: string, nombre: string) => {
-    setMuestraLines((prev) =>
-      prev.map((linea) => (linea.id === id ? { ...linea, nombre } : linea))
-    );
-  };
-
-  const removeMuestraLine = (id: string) => {
-    const index = muestraLines.findIndex((linea) => linea.id === id);
-    setMuestraLines((prev) => prev.filter((linea) => linea.id !== id));
-    if (index >= 0) {
-      dropMuestraLineError(index);
-    }
-  };
-
-  /**
-   * Cambia el modo de captura y VACÍA el arreglo del modo que se abandona.
-   *
-   * Se limpia en vez de conservarse porque la sección del modo inactivo deja de
-   * renderizarse: una partida que sobreviviera ahí sería invisible pero seguiría
-   * viajando en el payload y, peor, dispararía el error de exclusividad de
-   * `quoteSubmitSchema` sobre un campo que el usuario no puede ver ni corregir.
-   * El costo es que volver al modo anterior no restaura lo capturado — a cambio,
-   * el invariante "solo un arreglo tiene contenido" se cumple siempre.
-   *
-   * También mueve `tipo_pedido`, que es un campo del formulario visible en un
-   * select (deshabilitado): si solo se derivara al enviar, el usuario vería
-   * "Pedido de venta" mientras el payload manda "Muestra". Actualizarlo aquí
-   * mantiene honesto lo que se muestra.
-   */
-  const handleModeChange = (nextMode: QuoteCaptureMode) => {
-    if (nextMode === values.modo) {
-      return;
-    }
-
-    if (nextMode === "muestra") {
-      form.setFieldValue("items", []);
-      setExtraServices([]);
-      clearFieldErrors("items");
-      clearFieldErrors("servicios_extras");
-    } else {
-      setMuestraLines([]);
-      clearFieldErrors("muestras");
-    }
-
-    form.setFieldValue("modo", nextMode);
-    form.setFieldValue("tipo_pedido", tipoPedidoForMode(nextMode));
-    clearFieldErrors("tipo_pedido");
   };
 
   // Abre el diálogo de edición de bordado para la partida en `index`.
@@ -1123,7 +969,6 @@ export function useQuoteForm() {
   const handleReset = () => {
     form.reset(emptyValues);
     setExtraServices([]);
-    setMuestraLines([]);
     setSelectedCustomerId(0);
     setCustomerSelectedFromSearch(false);
     setErrorTree({});
@@ -1254,11 +1099,12 @@ export function useQuoteForm() {
     currencyOptions,
     formasPagoOptions,
     metodosPagoOptions,
-    sizes: onboardingData?.catalogos.tallas ?? [],
+    sizes,
     products: onboardingData?.busqueda.productos ?? [],
     isCustomersLoading,
     isCurrenciesLoading,
     isOnboardingLoading,
+    isSizesLoading,
     showForm,
     isCreationSuccessVisible,
     isRouteTransitioning,
@@ -1297,15 +1143,6 @@ export function useQuoteForm() {
     handleSelectShippingAddress,
     extraServices,
     setExtraServices,
-    modo: values.modo,
-    // El alta permite elegir modo; la edición no (ver `useQuoteEditForm`).
-    canSelectMode: true,
-    handleModeChange,
-    muestraLines,
-    addMuestraLine,
-    updateMuestraLine,
-    removeMuestraLine,
-    muestrasError: getError("muestras"),
     embroideryEditIndex,
     isEmbroideryEditOpen,
     openEmbroideryEdit,

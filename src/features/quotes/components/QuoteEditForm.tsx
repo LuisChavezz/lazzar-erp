@@ -51,5 +51,5 @@ export function QuoteEditForm({ quoteId }: QuoteEditFormProps) {
     );
   }
 
-  return <QuoteFormContent {...formProps} submitLabel="Guardar Cambios" />;
+  return <QuoteFormContent {...formProps} submitLabel="Guardar Cambios" mode="edit" />;
 }

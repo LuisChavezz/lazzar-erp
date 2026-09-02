@@ -8,23 +8,38 @@
  */
 import { useCallback, useState } from "react";
 import type { Size } from "../../sizes/interfaces/size.interface";
+import { MUESTRA_ROW_ID } from "../types";
 import type { CatalogRow, QuoteItem } from "../types";
 
 /**
  * buildInitialSizeMap
  * Construye el mapa inicial de cantidades por talla a partir de un `QuoteItem`.
+ *
+ * El mapa se indexa por `productoId`, que una partida de MUESTRA no tiene
+ * (`null` por contrato). Para esas se usa la clave sintética `MUESTRA_ROW_ID`,
+ * la misma que el diálogo de alta emplea para su fila sintética, de modo que
+ * quien edite sus tallas pueda leer las cantidades ya capturadas.
+ *
+ * El cambio es ADITIVO: solo `productoId === null` toma la rama nueva. Un
+ * `productoId` de catálogo (>= 1) recorre exactamente el camino de antes, y
+ * `0`/`undefined` siguen devolviendo `{}` como siempre — `0` es el valor que
+ * `mapDetalleToQuoteItem` da a una muestra rehidratada, un flujo aún diferido.
  */
 const buildInitialSizeMap = (
   item?: QuoteItem | null
 ): Record<number, Record<number, number>> => {
-  if (!item?.productoId || !item.tallas) return {};
+  if (!item?.tallas) return {};
+
+  // `=== null` y no `??`: `undefined` debe seguir cayendo en `{}` como siempre.
+  const key = item.productoId === null ? MUESTRA_ROW_ID : item.productoId;
+  if (!key) return {};
 
   const map: Record<number, number> = {};
   item.tallas.forEach((talla) => {
     map[talla.tallaId] = Math.max(0, Math.floor(Number(talla.cantidad) || 0));
   });
 
-  return { [item.productoId]: map };
+  return { [key]: map };
 };
 
 export interface UseSizesStateParams {

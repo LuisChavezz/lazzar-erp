@@ -23,6 +23,7 @@
 
 import { useCallback, useMemo, useState } from 'react';
 import type { Size } from '../../sizes/interfaces/size.interface';
+import { MUESTRA_ROW_ID } from '../types';
 import type { CatalogRow, QuoteItem } from '../types';
 import { useSizesState } from './useSizesState';
 
@@ -58,11 +59,23 @@ export function useEditSizesDialog({
   // forzando el remount y la reinicialización limpia de useSizesState.
   const sizesState = useSizesState({ initialItem: item });
 
+  /**
+   * Clave con la que se indexa esta partida en `sizeQuantitiesPerProduct`.
+   *
+   * Para catálogo es su `productoId`. Una partida de MUESTRA no tiene uno
+   * (`null`), así que usa la clave sintética `MUESTRA_ROW_ID` — la MISMA que
+   * `buildInitialSizeMap` emplea para sembrar sus cantidades, y la misma que el
+   * diálogo de alta usa para su fila sintética.
+   *
+   * Una constante fija basta: `EditSizesDialog` se remonta por partida vía su
+   * `key` en QuoteForm, así que nunca hay dos sesiones de edición vivas a la vez
+   * y no puede haber colisión.
+   */
+  const rowId = item ? item.productoId ?? MUESTRA_ROW_ID : null;
+
   // Auto-expande el producto único al montar: el diálogo edita un solo
   // producto y siempre debe mostrarse expandido para facilitar la edición.
-  const [openProductId, setOpenProductId] = useState<number | null>(
-    item?.productoId ?? null
-  );
+  const [openProductId, setOpenProductId] = useState<number | null>(rowId);
 
   /**
    * Construye el `CatalogRow` requerido por `StepSizes` a partir del item.
@@ -70,17 +83,20 @@ export function useEditSizesDialog({
    * `sizeQuantitiesPerProduct` por `useSizesState`.
    */
   const selectedRow = useMemo<CatalogRow | null>(() => {
-    if (!item) return null;
+    if (!item || rowId === null) return null;
+    // Sirve a las DOS variantes: `rowId` ya resolvió la clave sintética cuando
+    // la partida es de muestra. El resto de la fila se lee del item, así que no
+    // hace falta ir al catálogo ni distinguir aquí por tipo.
     return {
-      id: item.productoId,
-      productoId: item.productoId,
+      id: rowId,
+      productoId: rowId,
       nombre: item.descripcion,
       descripcion: item.descripcion,
       unidad: item.unidad ?? '',
       precio: item.precio,
       isActive: true,
     };
-  }, [item]);
+  }, [item, rowId]);
 
   /**
    * Valida que exista al menos una talla con cantidad > 0 y, si es válida,
@@ -94,7 +110,7 @@ export function useEditSizesDialog({
       const isValid = sizesState.validateSelectedRows([selectedRow]);
       if (!isValid) return;
 
-      const updatedSizes = sizesState.getItemSizes(item.productoId, effectiveSizes);
+      const updatedSizes = sizesState.getItemSizes(selectedRow.id, effectiveSizes);
       const tallas = updatedSizes.map((size) => ({
         tallaId: size.id,
         nombre: size.nombre,

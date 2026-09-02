@@ -10,12 +10,14 @@ import { MainDialog } from "@/src/components/MainDialog";
 import { StepProgressBar } from "@/src/components/StepProgressBar";
 import { STEP_LABELS, type Step } from "../types";
 import { StepColors } from "./StepColors";
+import { StepDescribe } from "./StepDescribe";
 import { StepEmbroidery } from "./StepEmbroidery";
 import { StepReflective } from "./StepReflective";
 import { StepSelectProduct } from "./StepSelectProduct";
 import { StepSizes } from "./StepSizes";
 
 type StepSelectProductProps = ComponentProps<typeof StepSelectProduct>;
+type StepDescribeProps = ComponentProps<typeof StepDescribe>;
 type StepEmbroideryProps = ComponentProps<typeof StepEmbroidery>;
 type StepReflectiveProps = ComponentProps<typeof StepReflective>;
 type StepColorsProps = ComponentProps<typeof StepColors>;
@@ -35,6 +37,7 @@ export interface AddProductDialogViewProps {
   onStepNext: () => void;
   onStepBack: () => void;
   onSaveItem: () => void;
+  describeStepProps: StepDescribeProps;
   selectStepProps: StepSelectProductProps;
   embroideryStepProps: StepEmbroideryProps;
   reflectiveStepProps: StepReflectiveProps;
@@ -62,6 +65,7 @@ export function AddProductDialogView({
   onStepNext,
   onStepBack,
   onSaveItem,
+  describeStepProps,
   selectStepProps,
   embroideryStepProps,
   reflectiveStepProps,
@@ -120,6 +124,8 @@ export function AddProductDialogView({
 
         {step === "select" ? (
           <StepSelectProduct {...selectStepProps} />
+        ) : step === "describe" ? (
+          <StepDescribe {...describeStepProps} />
         ) : step === "embroidery" ? (
           <StepEmbroidery {...embroideryStepProps} />
         ) : step === "reflective" ? (

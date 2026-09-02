@@ -8,6 +8,11 @@ import { useIsMutating } from "@tanstack/react-query";
 import { useSession } from "next-auth/react";
 import { Loader } from "@/src/components/Loader";
 import { useQuotes } from "../hooks/useQuotes";
+import toast from "react-hot-toast";
+import {
+  canSubmitQuoteForReview,
+  MUESTRA_REVIEW_BLOCK_REASON,
+} from "../utils/quoteStatusRules";
 import { useSubmitQuoteForReview } from "../hooks/useSubmitQuoteForReview";
 import { validateQuoteForReviewMutationKey } from "../hooks/useValidateQuoteForReview";
 import { useQuoteReviewValidationFlow } from "../hooks/useQuoteReviewValidationFlow";
@@ -161,6 +166,21 @@ export function QuoteKanbanBoard() {
       if (sourceColEstatus === targetCol.estatus) return;
       // Solo las cotizaciones en Borrador (estatus 1) pueden moverse
       if (sourceColEstatus !== 1) return;
+
+      /**
+       * MISMA regla que el menú de fila (`canSubmitQuoteForReview`): una
+       * cotización de muestra no va a revisión. Se corta ANTES de
+       * `validateBeforeSendToReview` —que trae la cotización completa del
+       * servidor solo para rechazarla— y antes de cualquier cambio de estado:
+       * en este punto todavía no se aplicó ningún movimiento optimista, así que
+       * devolver la tarjeta es solo la animación de retorno que ya usa el
+       * rechazo por validación.
+       */
+      if (!canSubmitQuoteForReview(movedQuote.estatus, movedQuote.tipo_pedido)) {
+        triggerReturnAnimation(movedQuote.id);
+        toast.error(MUESTRA_REVIEW_BLOCK_REASON);
+        return;
+      }
 
       const validationStatus = await validateBeforeSendToReview(movedQuote.id);
       if (validationStatus !== "valid") {

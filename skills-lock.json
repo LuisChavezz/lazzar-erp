@@ -1,6 +1,12 @@
 {
   "version": 1,
   "skills": {
+    "archify": {
+      "source": "tt-a1i/archify",
+      "sourceType": "github",
+      "skillPath": "archify/SKILL.md",
+      "computedHash": "4bc468e0a52b2a0577675e77226857757930025c4b064dce7eb3c4d7122ca3d7"
+    },
     "caveman": {
       "source": "juliusbrussee/caveman",
       "sourceType": "github",
