@@ -1,7 +1,7 @@
 "use client";
 
 import TiltCard from "@/src/components/TiltCard";
-import { ClipboardListIcon, LayersIcon, UserIcon } from "@/src/components/Icons";
+import { ClipboardListIcon, ClockIcon, LayersIcon, UserIcon } from "@/src/components/Icons";
 
 const cardClassName =
   "cursor-pointer rounded-2xl bg-white dark:bg-black border border-slate-200 dark:border-white/10 p-8 h-full min-h-64";
@@ -39,6 +39,16 @@ const hrCards = [
     accentClass: "text-violet-600 dark:text-violet-400",
     accentBgClass: "bg-violet-50 dark:bg-violet-500/10",
     shadowColorClassName: "hover:shadow-violet-500/25 dark:hover:shadow-violet-500/25",
+  },
+  {
+    icon: ClockIcon,
+    title: "Turnos",
+    description: "Horarios de entrada y salida, días laborales y tolerancia.",
+    footerText: "Ver turnos",
+    href: "/hr/shifts",
+    accentClass: "text-amber-600 dark:text-amber-400",
+    accentBgClass: "bg-amber-50 dark:bg-amber-500/10",
+    shadowColorClassName: "hover:shadow-amber-500/25 dark:hover:shadow-amber-500/25",
   },
 ];
 
