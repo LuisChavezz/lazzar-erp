@@ -33,6 +33,11 @@ export function OperationsOrderPanel() {
   const handleViewDetail = (order: PedidoListItem) =>
     router.push(`/orders/${order.id}?from=operations`);
 
+  // Edición del pedido con sincronización a su cotización de origen. La acción
+  // solo la ve quien tiene `E-MESACONTROL-PEDIDOS` (lo filtra `ActionMenu`).
+  const handleEditMesaControl = (order: PedidoListItem) =>
+    router.push(`/orders/${order.id}/edit-mesa-control`);
+
   const counts = useMemo(() => {
     const confirmados = orders.filter(isOrderConfirmed).length;
     const valorTotal = orders.reduce((sum, o) => sum + safeParseAmount(o.gran_total), 0);
@@ -122,6 +127,7 @@ export function OperationsOrderPanel() {
         orders={orders}
         onConfirmDate={setSelectedOrderForDate}
         onViewDetail={handleViewDetail}
+        onEditMesaControl={handleEditMesaControl}
         onRefetch={handleRefetch}
         isRefetching={isRefetching}
       />

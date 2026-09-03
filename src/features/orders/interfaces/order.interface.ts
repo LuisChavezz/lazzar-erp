@@ -68,15 +68,24 @@ export interface PedidoLineaTrackerPicking {
 
 /**
  * Servicio extra facturable de un pedido (`PedidoServicioExtra`). NO reusa el
- * `QuoteExtraService` de cotizaciones: aquel trae `cantidad` y este no, y este
- * trae `visible_en_factura` que aquel no. `monto` es CONTABLE — el backend lo
- * elimina de la respuesta para usuarios sin rol contable, por eso es opcional.
+ * `QuoteExtraService` de cotizaciones: este trae `visible_en_factura` que aquel
+ * no. `monto` es CONTABLE — el backend lo elimina de la respuesta para usuarios
+ * sin rol contable, por eso es opcional.
  */
 export interface PedidoServicioExtra {
   id: number;
   nombre: string;
   /** Contable: ausente para usuarios sin permiso de contabilidad. */
   monto?: string;
+  /**
+   * Sí existe en `PedidoServicioExtra` (`PositiveIntegerField(default=1)`) y el
+   * serializer la expone con `fields="__all__"`. El comentario de arriba decía
+   * que este modelo no la tenía —a diferencia de `QuoteExtraService`— y era
+   * falso: el único campo que de verdad los separa es `visible_en_factura`. Se
+   * declara porque la edición de Mesa de Control la rehidrata y la reenvía; sin
+   * ella, guardar un pedido reseteaba a 1 cualquier servicio con cantidad > 1.
+   */
+  cantidad: number;
   visible_en_factura: boolean;
 }
 
@@ -290,12 +299,38 @@ export interface PedidoDetalleTalla {
  */
 export interface PedidoDetalleLinea {
   id: number;
-  producto: number;
-  producto_nombre: string;
+  /**
+   * PK del producto de catálogo. NULLABLE por contrato
+   * (`PedidoDetalle.producto` es `null=True, blank=True`): una línea de MUESTRA
+   * no apunta al catálogo y lleva el nombre libre en
+   * `producto_nombre_externo`. Mismo par que `CotizacionDetalle`.
+   */
+  producto: number | null;
+  /**
+   * OPCIONAL Y NULLABLE a propósito, igual que en `QuoteById`: el serializer lo
+   * declara como `CharField(source="producto.nombre", read_only=True)` SIN
+   * `default=None`, así que con `producto = null` DRF lanza `SkipField` y la
+   * clave ni siquiera aparece en el JSON — no llega como `null`, llega ausente.
+   */
+  producto_nombre?: string | null;
+  /** Nombre libre de la línea de muestra. `null` en líneas de catálogo. */
+  producto_nombre_externo?: string | null;
   color: number | null;
   color_nombre: string | null;
   /** Color en hex (ej. `"#000000"`) — se pinta como swatch junto al nombre. */
   color_codigo_hex: string | null;
+  /**
+   * PK de la `DireccionCliente` de ESTA línea (`fields="__all__"`, así que
+   * siempre viene: entero o `null`). NINGUNA pantalla lo captura ni lo muestra
+   * —el domicilio que se ve en la UI es el de la CABECERA (`direccion_envio` y
+   * compañía, texto plano)— y hoy es `null` en todo lo que crea esta app.
+   *
+   * Se declara porque la edición de Mesa de Control BORRA Y RECREA el detalle:
+   * sin arrastrarlo de la lectura al payload, un valor puesto por fuera (admin,
+   * API directa) se perdería en silencio al guardar. Es un PASSTHROUGH opaco —
+   * ver `usePedidoMesaControlEditForm`.
+   */
+  direccion_envio_cliente: number | null;
   /** Contable. */
   precio_lista?: string | null;
   /** Contable. */

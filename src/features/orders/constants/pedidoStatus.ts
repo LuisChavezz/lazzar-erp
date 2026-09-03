@@ -86,3 +86,33 @@ export const getTipoPedidoConfig = (tipo: number): BadgeConfig =>
     label: `Desconocido (${tipo})`,
     className: NEUTRAL_BADGE,
   };
+
+/**
+ * ¿Se puede editar este pedido desde Mesa de Control?
+ *
+ * Regla construida contra el enum COMPLETO (`Pedido.CHOICES_ESTATUS`), no solo
+ * contra los valores que hay en datos hoy:
+ *
+ * | # | Estatus       | ¿Editable? | Por qué                                    |
+ * |---|---------------|------------|--------------------------------------------|
+ * | 1 | BORRADOR      | Sí         | Nada cuelga todavía del pedido.            |
+ * | 2 | POR AUTORIZAR | Sí         | Ídem.                                       |
+ * | 3 | AUTORIZADA    | Sí         | Estado con el que NACE el pedido            |
+ * |   |               |            | (`views.py:1468`) — el caso normal.        |
+ * | 4 | EN PROCESO    | Sí         | Es justamente para lo que existe la         |
+ * |   |               |            | pantalla: corregir un pedido ya en marcha.  |
+ * |   |               |            | Lo que cuelga de él se advierte en el       |
+ * |   |               |            | diálogo de confirmación, no se prohíbe.     |
+ * | 5 | CANCELADO     | **No**     | Guardar borraría y recrearía el detalle de  |
+ * |   |               |            | un pedido muerto, arrastrando por CASCADE   |
+ * |   |               |            | los renglones de picking, factura y         |
+ * |   |               |            | producción. No hay nada que corregir.       |
+ *
+ * Un estatus FUERA del enum (dato corrupto o valor nuevo del backend) se trata
+ * como NO editable: ante un valor que este frontend no sabe interpretar, la
+ * opción segura frente a un guardado destructivo es no dejar entrar.
+ */
+export const canEditPedidoMesaControl = (estatus: number | null | undefined): boolean =>
+  estatus != null &&
+  estatus !== PEDIDO_ESTATUS.CANCELADO &&
+  Object.hasOwn(PEDIDO_ESTATUS_CONFIG, estatus);

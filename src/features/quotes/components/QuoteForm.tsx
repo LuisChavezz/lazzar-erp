@@ -45,16 +45,25 @@ export type QuoteFormHookResult = ReturnType<typeof useQuoteForm>;
 export type QuoteFormContentProps = QuoteFormHookResult & {
   submitLabel?: string;
   /**
-   * Alta vs edición. Lo pasan los WRAPPERS (`QuoteForm` / `QuoteEditForm`), no
-   * los hooks: ninguna prop del hook distingue los dos flujos, y derivarlo de
-   * `formKey`/`submitLabel` sería adivinar por el contenido de un string.
+   * Flujo que renderiza este formulario. Lo pasan los WRAPPERS (`QuoteForm`,
+   * `QuoteEditForm`, `PedidoMesaControlEditForm`), no los hooks: ninguna prop
+   * del hook distingue los flujos, y derivarlo de `formKey`/`submitLabel` sería
+   * adivinar por el contenido de un string.
    *
    * OBLIGATORIA a propósito, sin valor por defecto: con `mode = "create"` el
    * bloqueo de captura de muestra en edición FALLABA ABIERTO —un wrapper nuevo
    * que olvidara pasarlo volvía a mostrar "Agregar de Muestra" sin error de
    * tipos—. Así el compilador obliga a cada wrapper a declarar su flujo.
+   *
+   * `"edit-pedido"` es la edición de un PEDIDO por Mesa de Control. Se añadió a
+   * la unión en vez de migrar la prop a un objeto de capacidades
+   * (`{ canAddMuestra, … }`) porque hoy `mode` tiene UN solo consumidor
+   * —`canAddMuestra`, tres líneas más abajo— y `submitLabel` ya es una prop
+   * aparte: el objeto habría sido puro churn en los tres wrappers sin separar
+   * ninguna diferencia que no esté ya separada. Si aparece una segunda
+   * capacidad que difiera entre flujos, ESE es el momento de hacer el cambio.
    */
-  mode: "create" | "edit";
+  mode: "create" | "edit" | "edit-pedido";
 };
 
 // Componente de contenido del formulario — reutilizable por creación y edición

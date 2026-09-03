@@ -4,18 +4,20 @@ import { type ColumnDef } from '@tanstack/react-table';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { ActionMenu, type ActionMenuItem } from '@/src/components/ActionMenu';
-import { CheckCircleIcon, EyeIcon, TasksIcon } from '@/src/components/Icons';
+import { CheckCircleIcon, EditIcon, EyeIcon, TasksIcon } from '@/src/components/Icons';
 import type { DataTableFilterConfig } from '@/src/components/DataTable';
 import { formatMoneyValueOrDash } from '@/src/utils/formatCurrency';
 import { parseLocalDate } from '@/src/utils/formatDate';
 import type { PedidoListItem } from '../interfaces/order.interface';
+import { canEditPedidoMesaControl } from '../constants/pedidoStatus';
 
 /**
  * Definición ÚNICA de la tabla de pedidos (`GET /ventas/pedidos/`), compartida
  * por los tres módulos que la listan: Mesa de Control, Operaciones de Almacén y
- * Compras. La única diferencia entre ellos es la acción "Confirmar fecha", que
- * solo Mesa de Control expone: se activa pasando `onConfirmDate`. El resto de
- * módulos consume la tabla en modo solo lectura.
+ * Compras. Lo único que los diferencia son dos acciones que solo Mesa de Control
+ * expone —"Confirmar fecha" y "Editar"—, cada una activada pasando su callback
+ * (`onConfirmDate` / `onEditMesaControl`). El resto de módulos consume la tabla
+ * en modo solo lectura.
  */
 
 // Identificador del estado de confirmación, compartido entre la columna y el
@@ -74,12 +76,19 @@ export interface OrderColumnsOptions {
    * acciones. Sin él la tabla queda de solo lectura.
    */
   onConfirmDate?: (order: PedidoListItem) => void;
+  /**
+   * Solo Mesa de Control: al pasarlo se añade "Editar" al menú. Mismo patrón
+   * opcional que `onConfirmDate` — WMS y Compras consumen esta tabla sin
+   * pasarlo y siguen en solo lectura.
+   */
+  onEditMesaControl?: (order: PedidoListItem) => void;
 }
 
 // Fábrica de columnas para cualquier lista de pedidos.
 export function createOrderColumns({
   onViewDetail,
   onConfirmDate,
+  onEditMesaControl,
 }: OrderColumnsOptions): ColumnDef<PedidoListItem, unknown>[] {
   return [
     {
@@ -212,6 +221,29 @@ export function createOrderColumns({
                   onSelect: () => onConfirmDate(order),
                 },
           );
+        }
+
+        // Edición destructiva: `permission` es la regla de PERMISOS, igual que
+        // en `QuoteCardActions`.
+        //
+        // NO lleva la regla de negocio "tiene cotización de origen" que sí lleva
+        // el botón del detalle: `PedidoListSerializer` es un serializer
+        // minimalista de 14 campos escalares y NO expone `cotizacion`, así que
+        // desde esta tabla el dato no existe. Se decide en la pantalla de
+        // edición, que sí carga el detalle y explica el motivo en vez de
+        // reventar al guardar. Inventar aquí un `visible` con un campo ausente
+        // ocultaría la acción para TODOS los pedidos.
+        if (onEditMesaControl) {
+          items.push({
+            label: 'Editar',
+            icon: EditIcon,
+            onSelect: () => onEditMesaControl(order),
+            permission: 'E-MESACONTROL-PEDIDOS',
+            // Regla de NEGOCIO, evaluable aquí porque el listado sí trae
+            // `estatus`: un pedido CANCELADO no se edita — guardar borraría y
+            // recrearía su detalle. Ver `canEditPedidoMesaControl`.
+            visible: canEditPedidoMesaControl(order.estatus),
+          });
         }
 
         return (

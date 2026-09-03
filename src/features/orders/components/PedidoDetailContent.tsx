@@ -3,7 +3,10 @@
 import Link from "next/link";
 import type React from "react";
 import { useState } from "react";
-import { ArrowLeftIcon } from "@/src/components/Icons";
+import { useSession } from "next-auth/react";
+import { ArrowLeftIcon, EditIcon } from "@/src/components/Icons";
+import { Button } from "@/src/components/Button";
+import { hasPermission } from "@/src/utils/permissions";
 import { Loader } from "@/src/components/Loader";
 import { ErrorState } from "@/src/components/ErrorState";
 import {
@@ -27,6 +30,7 @@ import { formatShortDate } from "@/src/utils/formatDate";
 import { useSatInfo } from "@/src/features/sat/hooks/useSatInfo";
 import { usePedidoDetail } from "../hooks/usePedidoDetail";
 import {
+  canEditPedidoMesaControl,
   getPedidoEstatusConfig,
   getTipoPedidoConfig,
   type BadgeConfig,
@@ -390,6 +394,16 @@ function LineaPickingTracker({
 
 // ── Detalle: líneas producto+color con sus tallas ────────────────────────────
 
+/**
+ * Nombre visible de una línea. `producto_nombre` llega AUSENTE (no `null`) en
+ * una línea de MUESTRA —el serializer lo declara con `source="producto.nombre"`
+ * sin `default=None`, así que DRF lanza `SkipField`—, y ahí el nombre real vive
+ * en `producto_nombre_externo`. Antes se pintaba el hueco en blanco.
+ */
+function lineaProductoNombre(linea: PedidoDetalleLinea): string {
+  return linea.producto_nombre || linea.producto_nombre_externo || "—";
+}
+
 function PedidoLineas({
   detalles,
   showAccounting,
@@ -413,7 +427,7 @@ function PedidoLineas({
             <div className="space-y-1 min-w-0">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="text-sm font-semibold text-slate-800 dark:text-slate-100">
-                  {linea.producto_nombre}
+                  {lineaProductoNombre(linea)}
                 </span>
                 {linea.color_nombre && (
                   <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 px-2.5 py-0.5 text-xs font-medium text-slate-700 dark:text-slate-300 shadow-sm">
@@ -488,7 +502,7 @@ function PedidoLineas({
                         <EmbroideryLineLocationPopover
                           key="bordado"
                           ubicaciones={ubicaciones}
-                          productoNombre={linea.producto_nombre}
+                          productoNombre={lineaProductoNombre(linea)}
                           tallaNombre={talla.talla_nombre}
                           colorNombre={linea.color_nombre}
                           posicionLabel={null}
@@ -504,7 +518,7 @@ function PedidoLineas({
                         <ReflectiveLineConfigPopover
                           key="reflejante"
                           configs={reflejantes}
-                          productoNombre={linea.producto_nombre}
+                          productoNombre={lineaProductoNombre(linea)}
                           tallaNombre={talla.talla_nombre}
                           colorNombre={linea.color_nombre}
                         />
@@ -905,6 +919,11 @@ interface PedidoDetailContentProps {
 export function PedidoDetailContent({ pedidoId, from }: PedidoDetailContentProps) {
   const numericId = Number(pedidoId);
   const { data, isLoading, isError, error } = usePedidoDetail(numericId);
+  const { data: session } = useSession();
+  // Permiso del catálogo. OJO: el backend NO lo valida en el endpoint de
+  // edición —exige el ROL `MESA-DE-CONTROL`—, así que esto gobierna la UI y la
+  // frontera real es el rol. Ver `pedidoEditAccess.server.ts`.
+  const canEditMesaControl = hasPermission("E-MESACONTROL-PEDIDOS", session?.user);
   // Documento abierto desde "Documentos relacionados" (`null` = cerrado). Un
   // solo estado para todos los tipos navegables; el diálogo se resuelve del
   // registro `CLICKABLE_DOC_TIPOS` según `openDoc.tipo`.
@@ -1000,8 +1019,27 @@ export function PedidoDetailContent({ pedidoId, from }: PedidoDetailContentProps
 
   return (
     <div className="w-full space-y-6">
-      {/* ── Barra superior con "Volver" ─────────────────────────────────── */}
-      <div className="sticky top-0 z-10 py-2 w-fit">{BackLink}</div>
+      {/* ── Barra superior: "Volver" + acciones ──────────────────────────── */}
+      <div className="sticky top-0 z-10 py-2 flex flex-wrap items-center justify-between gap-3">
+        {BackLink}
+        {/* Editar por Mesa de Control. Tres condiciones, todas necesarias:
+            el PERMISO (`hasPermission` ya cortocircuita para "admin"), tener
+            cotización de origen —sin ella el endpoint responde 400, porque su
+            contrato es editar-y-espejar— y un `estatus` editable (un pedido
+            CANCELADO no se toca). Las dos reglas de negocio se pueden evaluar
+            aquí: el retrieve expone `cotizacion`, a diferencia del listado. */}
+        {canEditMesaControl && data.cotizacion && canEditPedidoMesaControl(data.estatus) && (
+          <Button asChild variant="primary">
+            <Link
+              href={`/orders/${data.id}/edit-mesa-control`}
+              className="inline-flex items-center gap-2"
+            >
+              <EditIcon className="w-4 h-4" aria-hidden="true" />
+              Editar
+            </Link>
+          </Button>
+        )}
+      </div>
 
       {/* ── 1. Cabecera ─────────────────────────────────────────────────── */}
       <section className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 p-5 md:p-6">

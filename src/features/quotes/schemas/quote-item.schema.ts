@@ -59,6 +59,67 @@ const quoteItemBaseSchema = z.object({
   bordados: embroiderySchema.optional(),
   reflejantes: reflectiveSchema.optional(),
   lleva_corte_manga: z.boolean().optional(),
+  /**
+   * PASSTHROUGH de la edición de PEDIDOS por Mesa de Control. Ninguno de los dos
+   * flujos de cotización los captura ni los envía; se declaran aquí —y no en un
+   * mapa aparte— porque Zod ESTRIPA las claves no declaradas: sin esto,
+   * `quoteSubmitSchema.safeParse` los borraría de `parsed.data.items` justo
+   * antes de armar el payload, y la edición de pedido —que borra y recrea el
+   * detalle— los perdería en cada guardado. Mismo motivo por el que ya viven
+   * aquí `colorNombre`, `colorHex` y `availableSizes`.
+   *
+   * Nombres del API (`precio_lista`, `direccion_envio_cliente`) y no camelCase:
+   * son campos reales del backend que solo viajan de ida y vuelta, sin
+   * traducción, igual que `lleva_corte_manga`.
+   *
+   * `precio_lista` es el precio de LISTA del catálogo, distinto del `precio`
+   * negociado del renglón. `undefined` en un renglón nuevo: no tiene uno propio
+   * y el backend lo resuelve desde `producto.precio_base`.
+   */
+  precio_lista: z.coerce.number().min(0).optional(),
+  /**
+   * SIN `.positive()`: es un passthrough opaco, no un campo capturado, y el
+   * backend mismo trata el `0` como "sin dirección" (`_merge_detalle` lo
+   * colapsa a `None`). Con la restricción, un `0` guardado hacía fallar el
+   * `safeParse` en `items.N.direccion_envio_cliente` —una ruta sin ningún input
+   * en pantalla—, así que el formulario rechazaba el envío sin mostrar nada y
+   * sin nada que el usuario pudiera corregir. La normalización de `0` a `null`
+   * se hace al hidratar; esto solo deja de convertir un dato en un bloqueo.
+   */
+  direccion_envio_cliente: z.number().int().nullish(),
+  /**
+   * Configuraciones congeladas que el formulario NO captura y que, sin
+   * arrastrarlas, el guardado destructivo del pedido borraría:
+   *
+   * - `corte_manga_config`: el formulario solo tiene la bandera
+   *   `lleva_corte_manga`; el JSON con el tipo de corte lo escribe el módulo de
+   *   Corte de Manga y aquí solo viaja de ida y vuelta.
+   * - `lleva_cambio_talla` / `cambio_talla_config`: el formulario no los expone
+   *   en absoluto, y `_save_pedido_detalle` los recrea desde el payload (a
+   *   `false`/`null` si no viajan).
+   *
+   * `z.unknown()` porque son `JSONField` sin forma garantizada: se conservan
+   * verbatim, nunca se interpretan. Se declaran aquí —y no en un mapa aparte—
+   * por el mismo motivo que `precio_lista`: Zod estripa las claves no
+   * declaradas.
+   */
+  corte_manga_config: z.unknown().optional(),
+  lleva_cambio_talla: z.boolean().optional(),
+  cambio_talla_config: z.unknown().optional(),
+  /**
+   * Copia ÍNTEGRA de `bordado_config` / `reflejante_config` tal como los
+   * devolvió el servidor, para poder FUSIONAR sobre ella al serializar en vez
+   * de reconstruir el JSON desde cero.
+   *
+   * A diferencia de `corte_manga_config`, aquí el formulario sí posee una parte
+   * del contenido (las ubicaciones y sus banderas), pero solo una parte: el JSON
+   * lo escriben también los módulos de Producción, que meten claves que este
+   * formulario ni lee ni sabe pintar (`foto`, `imagen`, `posicion`,
+   * `observaciones`, y `nombre` dentro de cada ubicación). Reconstruir borraba
+   * todo eso en cada guardado; con el original a mano se conserva.
+   */
+  bordado_config_original: z.unknown().optional(),
+  reflejante_config_original: z.unknown().optional(),
 });
 
 /**
