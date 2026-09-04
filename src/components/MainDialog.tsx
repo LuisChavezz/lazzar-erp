@@ -17,12 +17,20 @@ interface MainDialogProps {
   showCloseButton?: boolean;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
+  /**
+   * Se pasa tal cual a `Dialog.Content`. Corre cuando el diálogo YA se
+   * desmontó, así que es el único punto seguro para abrir otro diálogo a
+   * continuación (encadenar dos `Dialog.Root` en el mismo commit deja el
+   * bloqueo de foco/scroll de Radix a medias). Mismo recurso que usa
+   * `GlobalSearchPalette` para abrir el detalle de cotización al cerrarse.
+   */
+  onCloseAutoFocus?: (event: Event) => void;
 }
 
-export function MainDialog({ 
-  trigger, 
-  title, 
-  description, 
+export function MainDialog({
+  trigger,
+  title,
+  description,
   children,
   maxWidth = "450px",
   actionButton,
@@ -30,6 +38,7 @@ export function MainDialog({
   showCloseButton = true,
   open,
   onOpenChange,
+  onCloseAutoFocus,
 }: MainDialogProps) {
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
@@ -42,6 +51,7 @@ export function MainDialog({
       <Dialog.Content
         maxWidth={maxWidth}
         onPointerDownOutside={(event) => event.preventDefault()}
+        onCloseAutoFocus={onCloseAutoFocus}
         className="bg-white! dark:bg-zinc-900! dark:text-white!"
       >
         {/* Botón X de cierre en la esquina superior derecha */}
