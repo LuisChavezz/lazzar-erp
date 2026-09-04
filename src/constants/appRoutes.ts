@@ -30,6 +30,7 @@ import {
   EmbarquesIcon,
   LabelsIcon,
   ScanLineIcon,
+  BancosIcon,
 } from "../components/Icons";
 
 export interface AppRouteItem {
@@ -441,6 +442,14 @@ export const appRouteGroups: AppRouteGroup[] = [
       //   icon: ContabilidadIcon,
       //   permission: "R-CONTABILIDAD",
       // },
+      {
+        key: "finance-banks",
+        label: "Bancos",
+        path: "/finance/banks",
+        icon: BancosIcon,
+        description: "Catálogo de instituciones bancarias de la empresa.",
+        permission: "R-CONTABILIDAD",
+      },
       {
         key: "finance-accounting-customers",
         label: "Clientes",
