@@ -41,7 +41,12 @@ const ROUTE_TITLES: Record<string, string> = {
   "/finance/invoicing": "Facturación",
   "/finance/accounts-payable": "CxP (Pagar)",
   "/finance/accounts-receivable": "CxC (Cobrar)",
-  "/finance/bank-accounts": "Bancos",
+  // "Bancos" es el CATÁLOGO de instituciones (`/finance/banks`); esta ruta es la
+  // de cuentas. Antes de que existiera el catálogo, esta entrada se llamaba
+  // "Bancos" y dejarla así ponía ese título en el encabezado de dos pantallas
+  // distintas.
+  "/finance/banks": "Bancos",
+  "/finance/bank-accounts": "Cuentas Bancarias",
   "/finance/accounting": "Contabilidad",
   "/finance/accounting-customers": "Clientes",
   "/finance/price-lists": "Lista de Precios",

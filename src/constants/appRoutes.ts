@@ -31,6 +31,7 @@ import {
   LabelsIcon,
   ScanLineIcon,
   BancosIcon,
+  WalletIcon,
 } from "../components/Icons";
 
 export interface AppRouteItem {
@@ -426,14 +427,18 @@ export const appRouteGroups: AppRouteGroup[] = [
         icon: CxcIcon,
         permission: "R-CONTABILIDAD-CXC",
       },
-      // OCULTO EN NAVEGACION: usa datos mock (src/features/bank-accounts/components/BankAccountsList.tsx:5, arreglo literal). Restaurar cuando el backend exponga el endpoint real.
-      // {
-      //   key: "finance-bank-accounts",
-      //   label: "Bancos",
-      //   path: "/finance/bank-accounts",
-      //   icon: BancosIcon,
-      //   permission: "R-CONTABILIDAD",
-      // },
+      {
+        key: "finance-bank-accounts",
+        label: "Cuentas Bancarias",
+        path: "/finance/bank-accounts",
+        // `WalletIcon`, no `BancosIcon`: ese (un `Landmark`, la institución) ya
+        // es el de "Bancos", justo arriba en este mismo grupo, y dos entradas
+        // contiguas con el mismo icono no se distinguen de un vistazo. Una
+        // cartera lee como la CUENTA, no como el banco que la emite.
+        icon: WalletIcon,
+        description: "Cuentas bancarias por banco y moneda, con saldo y estatus.",
+        permission: "R-CONTABILIDAD",
+      },
       // OCULTO EN NAVEGACION: usa datos mock (src/features/accounting/mocks/accounting.mock.ts:18). Restaurar cuando el backend exponga el endpoint real.
       // {
       //   key: "finance-accounting",

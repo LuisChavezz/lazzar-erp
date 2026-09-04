@@ -119,6 +119,7 @@ import {
   Box,
   Weight,
   Container,
+  Wallet,
 } from "lucide-react";
 
 // ─── Tipos comunes ────────────────────────────────────────────────────────────
@@ -207,6 +208,8 @@ export const FacturacionIcon = (props: LucideProps) => <FileText {...props} />;
 export const CxpIcon = (props: LucideProps) => <MinusCircle {...props} />;
 export const CxcIcon = (props: LucideProps) => <PlusCircle {...props} />;
 export const BancosIcon = (props: LucideProps) => <Landmark {...props} />;
+/** Cuenta bancaria — la CUENTA, no la institución (ver `BancosIcon`). */
+export const WalletIcon = (props: LucideProps) => <Wallet {...props} />;
 export const ContabilidadIcon = (props: LucideProps) => <Calculator {...props} />;
 export const ExistenciasIcon = (props: LucideProps) => <ClipboardList {...props} />;
 export const ListaPreciosIcon = (props: LucideProps) => <DollarSign {...props} />;
