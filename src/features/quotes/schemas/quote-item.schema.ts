@@ -120,6 +120,19 @@ const quoteItemBaseSchema = z.object({
    */
   bordado_config_original: z.unknown().optional(),
   reflejante_config_original: z.unknown().optional(),
+  /**
+   * PK del `PedidoDetalle` del que salió esta partida, para poder reenviarla
+   * como `detalle[].id` y que el UPSERT del backend actualice la MISMA fila en
+   * vez de crear otra (ver `PedidoMesaControlDetalleInput.id`).
+   *
+   * `pedido_detalle_id` y no `id` a secas: un `id` suelto en un item de
+   * formulario se confunde con la identidad de fila de la tabla y con las claves
+   * de React. Se serializa como `id` en el payload.
+   *
+   * Ausente en las partidas de cotización y en las que el usuario agrega en esta
+   * sesión — ahí no hay fila previa que actualizar.
+   */
+  pedido_detalle_id: z.number().int().positive().nullish(),
 });
 
 /**

@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { QuoteFormContent } from "@/src/features/quotes/components/QuoteForm";
+import { formatCurrency, formatMoneyValueOrDash } from "@/src/utils/formatCurrency";
 import { usePedidoMesaControlEditForm } from "../hooks/usePedidoMesaControlEditForm";
-import { PedidoMesaControlConfirmDialog } from "./PedidoMesaControlConfirmDialog";
+import { PedidoMesaControlBloqueos } from "./PedidoMesaControlBloqueos";
 
 interface PedidoMesaControlEditFormProps {
   pedidoId: number;
@@ -31,11 +32,41 @@ export function PedidoMesaControlEditForm({ pedidoId }: PedidoMesaControlEditFor
     mergeCollisions,
     isPedidoRetrying,
     retryPedidoLoad,
-    isConfirmOpen,
-    setIsConfirmOpen,
-    confirmSubmit,
+    contextoBloqueos,
+    contextoError,
+    serviciosExtrasBase,
     ...formProps
   } = usePedidoMesaControlEditForm(pedidoId);
+
+  const salidas = (
+    <>
+      <Link
+        href={`/orders/${pedidoId}?from=operations`}
+        className="text-xs font-medium text-sky-600 dark:text-sky-400 hover:underline"
+      >
+        Ver detalle del pedido
+      </Link>
+      <Link
+        href="/operations/orders"
+        className="text-xs font-medium text-slate-500 dark:text-slate-400 hover:underline"
+      >
+        Volver a Mesa de Control
+      </Link>
+    </>
+  );
+
+  /* Documentos ligados: el pedido no es editable. Va PRIMERO entre los estados
+   * terminales porque es el motivo más accionable — hay algo concreto que
+   * cancelar — y porque un pedido puede cumplir varios a la vez: con una orden
+   * de bordado activa y tallas dispares, enseñar la limitación del formulario
+   * mandaba al usuario a investigar la pista equivocada.
+   *
+   * Cubre los dos momentos con el mismo componente porque el backend devuelve
+   * el mismo cuerpo en ambos: el precheck al abrir, y el 409 si el bloqueo
+   * aparece mientras se editaba. */
+  if (contextoBloqueos) {
+    return <PedidoMesaControlBloqueos contexto={contextoBloqueos}>{salidas}</PedidoMesaControlBloqueos>;
+  }
 
   /* Fallo TÉCNICO al cargar el pedido (500, red, timeout — nunca 404/403, que
    * redirigen al listado desde el hook): estado terminal con reintento en vez
@@ -114,7 +145,7 @@ export function PedidoMesaControlEditForm({ pedidoId }: PedidoMesaControlEditFor
 
   /* La respuesta llegó SIN los campos contables (filtrada por rol). Hidratar con
    * ella pondría todos los precios en 0 y el guardado los escribiría así de
-   * verdad, porque el detalle se borra y se recrea. Se corta antes de montar el
+   * verdad. Se corta antes de montar el
    * formulario: es preferible no poder editar a destruir los importes. */
   if (pedidoAccountingHidden) {
     return (
@@ -164,9 +195,8 @@ export function PedidoMesaControlEditForm({ pedidoId }: PedidoMesaControlEditFor
             Este pedido no se puede editar por su estatus.
           </p>
           <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md">
-            Un pedido cancelado no admite cambios: guardar borraría y volvería a
-            crear su detalle, y con él los renglones de picking, factura y
-            producción que cuelgan de sus líneas.
+            Un pedido cancelado no admite cambios. No hay nada que corregir en
+            un documento que ya se dio de baja.
           </p>
           <div className="flex items-center gap-4">
             <Link
@@ -239,28 +269,96 @@ export function PedidoMesaControlEditForm({ pedidoId }: PedidoMesaControlEditFor
     );
   }
 
+  /* Los avisos comparan el estado del formulario contra lo guardado, así que
+   * solo tienen sentido con el formulario YA hidratado. `usePedidoDetail`
+   * resuelve antes que los catálogos y el precheck: en esa ventana `pedido`
+   * existe pero el formulario sigue en `emptyValues`, `granTotal` vale 0 y el
+   * aviso anunciaba "se guardará: $0.00" encima del spinner de carga. */
+  const storedGranTotal = pedido ? Number(pedido.gran_total) : Number.NaN;
+  const granTotalDiffers =
+    formProps.showForm &&
+    Number.isFinite(storedGranTotal) &&
+    Math.abs(storedGranTotal - formProps.granTotal) >= 0.01;
+
   return (
-    <>
+    <div className="w-full space-y-4">
+      {/* Avisos que antes vivían en el diálogo de confirmación. Se pintan
+          INLINE, encima del formulario: sin diálogo hay que enseñarlos mientras
+          se edita, no al final. Ninguno bloquea el guardado. */}
+      {contextoError && (
+        <p
+          role="status"
+          className="rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 px-4 py-2 text-[11px] text-slate-500 dark:text-slate-400"
+        >
+          No se pudo comprobar si el pedido tiene documentos ligados. Puedes
+          intentar guardar: el servidor lo verifica otra vez y lo rechazaría.
+        </p>
+      )}
+
+      {formProps.showForm && mergeCollisions.length > 0 && (
+        <div className="rounded-xl border border-amber-200 dark:border-amber-500/20 bg-amber-50/60 dark:bg-amber-500/5 p-4 space-y-2">
+          <p className="text-sm font-semibold text-amber-700 dark:text-amber-400">
+            La cotización espejo va a fusionar partidas.
+          </p>
+          <p className="text-xs text-slate-600 dark:text-slate-300">
+            El pedido conserva sus renglones (se actualizan por id), pero la
+            cotización de origen se reescribe desde cero y agrupa las partidas que
+            coinciden en producto, color, dirección y tallas —{" "}
+            <strong>sin mirar el precio</strong>. Pedido y cotización quedarán con
+            distinto número de renglones:
+          </p>
+          <ul className="space-y-1 text-xs text-slate-600 dark:text-slate-300">
+            {mergeCollisions.map((collision) => (
+              <li key={collision.posiciones.join("-")} className="flex gap-2">
+                <span aria-hidden="true" className="text-amber-500">
+                  •
+                </span>
+                <span>
+                  {collision.descripcion} — partidas {collision.posiciones.join(", ")}
+                  {collision.precios.length > 1 && (
+                    <>
+                      {" "}
+                      (precios{" "}
+                      <span className="font-mono">{collision.precios.join(" / ")}</span>
+                      ; en la cotización solo sobrevive el primero)
+                    </>
+                  )}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {granTotalDiffers && pedido && (
+        <div className="rounded-xl border border-amber-200 dark:border-amber-500/20 bg-amber-50/60 dark:bg-amber-500/5 p-4 space-y-1">
+          <p className="text-sm font-semibold text-amber-700 dark:text-amber-400">
+            El gran total va a cambiar al guardar.
+          </p>
+          <p className="text-xs text-slate-600 dark:text-slate-300">
+            Guardado hoy:{" "}
+            <span className="font-mono font-semibold">
+              {formatMoneyValueOrDash(pedido.gran_total)}
+            </span>{" "}
+            → se guardará:{" "}
+            <span className="font-mono font-semibold">
+              {formatCurrency(formProps.granTotal)}
+            </span>
+          </p>
+          <p className="text-[11px] text-slate-500 dark:text-slate-400">
+            Suele deberse a servicios extra cuya cantidad no se copió al crear el
+            pedido. Verifica el importe antes de guardar.
+          </p>
+        </div>
+      )}
+
       <QuoteFormContent
         {...formProps}
         submitLabel="Guardar cambios del pedido"
         mode="edit-pedido"
+        removalBlockedExtraServicesCount={serviciosExtrasBase}
+        removalBlockedReason="Este pedido se edita en modo estricto: los renglones existentes se actualizan, no se pueden quitar. Para eliminarlos hay que cancelar antes los documentos ligados."
       />
-      {/* El diálogo va FUERA del formulario: `handleFormSubmit` valida y lo
-          abre, y solo su confirmación dispara el guardado real. Se monta SOLO
-          mientras está abierto para que el folio tecleado nazca vacío en cada
-          apertura, sin un efecto de reseteo. */}
-      {pedido && isConfirmOpen && (
-        <PedidoMesaControlConfirmDialog
-          open
-          onOpenChange={setIsConfirmOpen}
-          pedido={pedido}
-          granTotal={formProps.granTotal}
-          mergeCollisions={mergeCollisions}
-          onConfirm={confirmSubmit}
-          isPending={formProps.isPending}
-        />
-      )}
-    </>
+    </div>
   );
 }

@@ -4,6 +4,7 @@ import type {
   PedidoMesaControlUpdate,
   PedidoMesaControlUpdateResponse,
 } from "../interfaces/pedido-mesa-control.interface";
+import type { PedidoMesaControlContexto } from "../interfaces/pedido-mesa-control-contexto.interface";
 
 
 /** Filtros de query string aceptados por `GET /ventas/pedidos/`. */
@@ -34,10 +35,32 @@ export const getPedidoDetail = async (id: number): Promise<PedidoDetail> => {
  * Edición de un pedido por Mesa de Control, espejada a su cotización de origen
  * (`POST /ventas/pedidos/{id}/editar-mesa-control/`).
  *
- * Una sola llamada atómica: `detalle` es DESTRUCTIVO (el backend borra y recrea
- * los renglones), así que el payload lleva SIEMPRE el detalle completo. El
- * backend responde 400 si el pedido no tiene cotización ligada.
+ * Una sola llamada atómica. Desde `ab63ce2` el guardado es un UPSERT por `id`,
+ * no un borrado-y-recreado, pero el payload sigue llevando SIEMPRE el detalle
+ * completo: omitir un renglón, talla o servicio extra existente no lo borra, lo
+ * rechaza con 400.
+ *
+ * Respuestas de rechazo: 400 si el pedido no tiene cotización ligada o si falta
+ * el ROL `MESA-DE-CONTROL`; **409** con el cuerpo del contexto si el pedido tiene
+ * documentos ligados (factura emitida, órdenes activas, picking, reservas).
  */
+/**
+ * Precheck de la edición estricta
+ * (`GET /ventas/pedidos/{id}/editar-mesa-control-contexto/`).
+ *
+ * Responde 200 tanto si el pedido es editable como si no; `editable` lo dice.
+ * El MISMO cuerpo es el que devuelve el POST de edición con 409 cuando el
+ * bloqueo aparece después de abrir la pantalla.
+ */
+export const getPedidoMesaControlContexto = async (
+  id: number,
+): Promise<PedidoMesaControlContexto> => {
+  const response = await v1_api.get<PedidoMesaControlContexto>(
+    `/ventas/pedidos/${id}/editar-mesa-control-contexto/`,
+  );
+  return response.data;
+};
+
 export const updatePedidoMesaControl = async (
   id: number,
   payload: PedidoMesaControlUpdate,

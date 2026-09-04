@@ -7,16 +7,22 @@
  * guarda el pedido y ESPEJA el cambio a su cotización de origen (que vuelve a
  * `estatus = 3` y regraba su `aprobado_snapshot`).
  *
- * DOS propiedades del backend condicionan todo lo que hay aquí:
+ * TRES propiedades del backend condicionan todo lo que hay aquí:
  *
- *   1. `detalle` es DESTRUCTIVO: `_save_pedido_detalle` hace
- *      `PedidoDetalle.objects.filter(pedido=...).delete()` antes de recrear. El
- *      arreglo viaja SIEMPRE COMPLETO, y todo lo que no se mande se pierde
- *      (incluidos los registros que cuelgan del renglón por CASCADE: picking,
- *      factura, reservas de inventario, órdenes de producción, entregas y
- *      devoluciones).
- *   2. Los importes NO se derivan en el servidor: se guardan verbatim tal como
+ *   1. `_save_pedido_detalle` es un UPSERT por `id` (desde `ab63ce2`; antes
+ *      borraba y recreaba). Los renglones conservan su PK y con ella sus
+ *      referencias, así que ya NO hay cascada destructiva.
+ *   2. El arreglo viaja igualmente SIEMPRE COMPLETO, pero por el motivo
+ *      contrario: omitir un renglón, una talla o un servicio extra que existe
+ *      **no lo borra, lo rechaza con 400**. Solo se puede añadir.
+ *      `servicios_extras` se empareja además por índice POSICIONAL, así que su
+ *      orden tampoco puede cambiar.
+ *   3. Los importes NO se derivan en el servidor: se guardan verbatim tal como
  *      los calcula el cliente, igual que en cotizaciones.
+ *
+ * Antes de todo eso, el endpoint comprueba documentos ligados y responde **409**
+ * con el cuerpo de `PedidoMesaControlContexto` si los hay — ver
+ * `pedido-mesa-control-contexto.interface.ts`.
  */
 import type { QuoteById } from "@/src/features/quotes/interfaces/quote.interface";
 import type { PedidoDetail } from "./order.interface";
@@ -93,6 +99,19 @@ export interface PedidoMesaControlTallaInput {
  * catálogo.
  */
 export interface PedidoMesaControlDetalleInput {
+  /**
+   * PK del `PedidoDetalle` EXISTENTE que este renglón actualiza.
+   *
+   * Desde `ab63ce2` el guardado ya NO borra y recrea: `_save_pedido_detalle` es
+   * un UPSERT por `id`, así que la fila conserva su PK y con ella todas sus
+   * referencias (picking, factura, producción). El serializer lo declara
+   * `required=False, allow_null=True`, pero omitirlo en un renglón que ya existe
+   * hace que el helper cree una fila NUEVA y que el chequeo de sobrantes reviente
+   * con 400: en la práctica es OBLIGATORIO para todo lo que venía del servidor.
+   *
+   * Se omite —y solo se omite— en un renglón que el usuario acaba de agregar.
+   */
+  id?: number;
   producto: number | null;
   producto_nombre_externo?: string;
   precio_lista: string | null;

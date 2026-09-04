@@ -40,6 +40,8 @@ import {
 
 import { canEditPedidoMesaControl, TIPO_PEDIDO } from "../constants/pedidoStatus";
 import { usePedidoDetail } from "./usePedidoDetail";
+import { usePedidoMesaControlContexto } from "./usePedidoMesaControlContexto";
+import type { PedidoMesaControlContexto } from "../interfaces/pedido-mesa-control-contexto.interface";
 import { useUpdatePedidoMesaControl } from "./useUpdatePedidoMesaControl";
 import type {
   PedidoDetail,
@@ -240,12 +242,17 @@ const mapLineaToQuoteItem = (
     colorId: linea.color ?? undefined,
     colorNombre: linea.color_nombre ?? undefined,
     colorHex: linea.color_codigo_hex ?? undefined,
+    // PK de la fila: sin ella el UPSERT del backend crearía un renglón nuevo y
+    // el chequeo de sobrantes tumbaría el guardado con 400.
+    pedido_detalle_id: linea.id,
     // Passthrough opacos: no se editan en ninguna parte del formulario, viajan
-    // de la lectura al payload para sobrevivir al borrado-y-recreado.
+    // de la lectura al payload; el UPSERT del backend reescribe la fila
+    // entera, así que lo que no viaja se pierde igual.
     //
-    // Los tres de servicios se leen de `tallas[0]` SIN riesgo de aplanamiento:
+    // Los tres de servicios (más abajo: `bordados`, `reflejantes` y
+    // `lleva_corte_manga`) se leen de `tallas[0]` SIN riesgo de aplanamiento:
     // `findLineasNoRepresentables` ya rechazó cualquier línea cuyas tallas no
-    // coincidan, así que aquí la primera talla habla por todas.
+    // coincidan, así que ahí la primera talla habla por todas.
     precio_lista: linea.precio_lista != null ? Number(linea.precio_lista) : undefined,
     // `|| null`: el backend trata el 0 como "sin dirección" y lo colapsa a
     // `None`, así que se normaliza aquí en vez de arrastrar un cero que solo
@@ -516,7 +523,8 @@ const buildDetalleFromItems = (
      * `observaciones`/`comentarios` y `posicion`; y dentro de cada ubicación,
      * `nombre` (produccion/api/views.py:139-175, que además publica el
      * config CRUDO íntegro cuando arma OR). Armar el objeto desde cero las
-     * borraba en cada guardado, porque el detalle se borra y se recrea.
+     * borraba en cada guardado: el UPSERT reescribe la columna entera con lo
+     * que venga en el payload.
      *
      * Se parte del original y se sobreescriben SOLO las claves que el
      * formulario posee; lo mismo por ubicación, emparejadas por índice (el
@@ -581,7 +589,7 @@ const buildDetalleFromItems = (
       ? (isEmptyConfig(item.corte_manga_config) ? { tipo: "1" } : item.corte_manga_config)
       : null;
     /* Cambio de talla: el formulario no lo expone en absoluto. Sin
-     * reenviarlo, el borrado-y-recreado lo dejaba en `false`/`null`. */
+     * reenviarlo, el UPSERT deja las dos columnas en `false`/`null`. */
     const llevaCambioTalla = Boolean(item.lleva_cambio_talla);
     const cambioTallaConfig = llevaCambioTalla ? (item.cambio_talla_config ?? null) : null;
 
@@ -619,8 +627,15 @@ const buildDetalleFromItems = (
     const precioLista =
       item.precio_lista != null ? String(Number(item.precio_lista).toFixed(2)) : null;
 
+    /* `id` SOLO cuando la partida venía del servidor. Presente ⇒ el backend
+     * actualiza esa misma fila; ausente ⇒ crea una nueva, que es justo lo que
+     * queremos para una partida agregada en esta sesión. Se emite con spread
+     * condicional para no mandar `id: null`, que no significa lo mismo. */
+    const identidad = item.pedido_detalle_id != null ? { id: item.pedido_detalle_id } : {};
+
     if (item.tipo === "muestra") {
       return {
+        ...identidad,
         producto: null,
         producto_nombre_externo: item.producto_nombre_externo,
         precio_lista: precioLista,
@@ -632,6 +647,7 @@ const buildDetalleFromItems = (
     }
 
     return {
+      ...identidad,
       producto: item.productoId,
       precio_lista: precioLista,
       precio_unitario: precioUnitario,
@@ -657,14 +673,17 @@ const stableStringify = (value: unknown): string => {
 /**
  * Llave de agrupación de `_merge_detalle`, replicada.
  *
- * El backend agrupa por `(producto, producto_nombre_externo, color, direccion,
- * json.dumps(tallas, sort_keys=True))` — **el precio NO entra**. Dos renglones
- * que coincidan en todo eso pero difieran en `precio_unitario` se fusionan: se
- * conserva el precio del PRIMERO, se suman las cantidades y el pedido pierde un
- * renglón. Se replica el `0`/`""` → `None` de color y dirección.
+ * `_merge_detalle` agrupa por `(producto, producto_nombre_externo, color,
+ * direccion, json.dumps(tallas, sort_keys=True))` — **el precio NO entra**. Se
+ * replica su `0`/`""` → `None` de color y dirección.
  *
- * No se puede evitar desde el frontend sin cambiar el contrato del endpoint, y
- * tampoco se debe: lo que sí se puede es AVISAR antes de guardar.
+ * DÓNDE APLICA HOY: desde `ab63ce2` ya NO se usa sobre `PedidoDetalle` —
+ * `_save_pedido_detalle` es un UPSERT por `id` y el pedido conserva sus
+ * renglones. Su único llamador es `_save_cotizacion_detalle`, que sí sigue
+ * borrando y recreando. O sea que el efecto se desplazó: dos partidas que
+ * coincidan en todo salvo el precio sobreviven en el PEDIDO pero se colapsan en
+ * la COTIZACIÓN espejo, y los dos documentos quedan con distinto número de
+ * renglones. Sigue mereciendo un aviso; ya no es pérdida de datos del pedido.
  */
 const mergeGroupKey = (row: PedidoMesaControlDetalleInput): string =>
   stableStringify([
@@ -724,6 +743,21 @@ export function usePedidoMesaControlEditForm(pedidoId: number) {
     refetch: refetchPedido,
   } = usePedidoDetail(pedidoId);
 
+  /**
+   * Precheck de edición estricta. No es un adorno: desde `ab63ce2` el backend
+   * rechaza con 409 el guardado de un pedido con documentos ligados, así que
+   * montar el formulario sin consultarlo sería invitar a capturar cambios que no
+   * se van a poder guardar.
+   *
+   * NO sustituye al manejo del 409 en la mutación: el bloqueo puede aparecer
+   * entre abrir la pantalla y pulsar Guardar.
+   */
+  const {
+    data: contexto,
+    isLoading: isContextoLoading,
+    error: contextoError,
+  } = usePedidoMesaControlContexto(pedidoId);
+
   /* 404/403: denegaciones DEFINITIVAS del backend. Este hook es el punto
    * AUTORITATIVO de verificación de acceso al DATO: el guard del servidor solo
    * valida la forma del id y el permiso del JWT de NextAuth, porque en esta
@@ -760,6 +794,19 @@ export function usePedidoMesaControlEditForm(pedidoId: number) {
     Boolean(pedidoData) && !canEditPedidoMesaControl(pedidoData?.estatus);
 
   /**
+   * Bloqueo por documentos ligados, según el precheck. Es la puerta REAL —
+   * `pedidoNotEditableStatus` sigue existiendo pero mira otra cosa (el estatus
+   * del pedido, que el backend no evalúa) y por eso no la duplica: un pedido
+   * cancelado sin documentos ligados es "editable" para el backend y aun así no
+   * queremos abrirlo.
+   *
+   * El fallo de la consulta NO bloquea: el POST vuelve a comprobarlo por su
+   * cuenta y responde 409, así que un precheck caído degrada a "intentar y que
+   * el servidor decida" en vez de dejar la pantalla inaccesible.
+   */
+  const contextoBloqueos = contexto && !contexto.editable ? contexto : null;
+
+  /**
    * El retrieve pasa por `filtrar_campos_contabilidad_pedido`, que ELIMINA (no
    * anula) ~24 claves cuando el usuario no tiene rol contable: en la cabecera
    * `gran_total`, `subtotal`, `iva`, `forma_pago`, `metodo_pago`, `uso_cfdi`,
@@ -768,7 +815,7 @@ export function usePedidoMesaControlEditForm(pedidoId: number) {
    *
    * Esta pantalla NO PUEDE trabajar con esa respuesta, y el fallo sería
    * silencioso y catastrófico: los precios hidratarían en 0 y el guardado
-   * —que borra y recrea el detalle— los escribiría en 0 de verdad, además de
+   * los escribiría en 0 de verdad, además de
    * reescribir forma/método de pago con los defaults del formulario. Por eso se
    * detecta y se corta ANTES de montar el formulario, en vez de confiar en que
    * quien llega aquí siempre tenga el rol contable.
@@ -828,7 +875,18 @@ export function usePedidoMesaControlEditForm(pedidoId: number) {
   const [selectedCustomerId, setSelectedCustomerId] = useState(0);
   const [customerSelectedFromSearch, setCustomerSelectedFromSearch] = useState(false);
   const [extraServices, setExtraServices] = useState<ExtraService[]>([]);
-  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+  /**
+   * Los `id` de los servicios extra que tenía el pedido al cargarse, EN ORDEN.
+   *
+   * `_save_pedido_servicios_extras` los empareja por índice POSICIONAL y rechaza
+   * con 400 que el arreglo encoja. No basta con vigilar la longitud: añadir uno
+   * y luego borrar uno guardado deja el mismo total y aun así rompe el
+   * emparejamiento (el nuevo ocuparía la posición del borrado y le reescribiría
+   * el nombre y el monto encima, conservando su id). Por eso se guardan las
+   * identidades y no un contador.
+   */
+  const [serviciosExtrasBaseIds, setServiciosExtrasBaseIds] = useState<string[]>([]);
+  const serviciosExtrasBase = serviciosExtrasBaseIds.length;
 
   const [embroideryEditIndex, setEmbroideryEditIndex] = useState<number | null>(null);
   const [isEmbroideryEditOpen, setIsEmbroideryEditOpen] = useState(false);
@@ -860,7 +918,7 @@ export function usePedidoMesaControlEditForm(pedidoId: number) {
   const initialFormValues = useMemo(() => {
     if (!pedidoData || !onboardingData || !satRegimenes) return null;
     if (pedidoAccessDenied || pedidoNotSyncable || pedidoAccountingHidden) return null;
-    if (pedidoNotEditableStatus) return null;
+    if (pedidoNotEditableStatus || contextoBloqueos) return null;
     if (pedidoNotRepresentable) return null;
     const matchedCustomer = onboardingData.busqueda.clientes.find(
       (c) => c.id === pedidoData.cliente,
@@ -884,6 +942,7 @@ export function usePedidoMesaControlEditForm(pedidoId: number) {
     pedidoAccountingHidden,
     pedidoNotRepresentable,
     pedidoNotEditableStatus,
+    contextoBloqueos,
   ]);
 
   /**
@@ -952,8 +1011,49 @@ export function usePedidoMesaControlEditForm(pedidoId: number) {
       }),
     );
     extraServicesVisibilityRef.current = visibility;
+    setServiciosExtrasBaseIds(
+      (pedidoData.servicios_extras ?? []).map((service) => String(service.id)),
+    );
     setExtraServicesInitialized(true);
   }, [extraServicesInitialized, initialFormValues, pedidoData]);
+
+  /**
+   * `setExtraServices` blindado: acepta añadir y editar, rechaza ENCOGER.
+   *
+   * `QuoteFormContent` entrega el setter crudo a un botón de papelera por fila,
+   * y `_save_pedido_servicios_extras` responde 400 si el arreglo trae menos
+   * elementos de los que hay guardados. Se envuelve aquí para que ninguna ruta
+   * —incluido ese botón, que además se pinta deshabilitado— pueda producir el
+   * payload que el backend rechaza.
+   *
+   * Nota sobre el ORDEN: el backend empareja por índice posicional, así que
+   * reordenar reescribiría valores sobre filas ajenas. El JSX compartido NO
+   * permite reordenar (no hay drag, ni mover arriba/abajo, ni sort), y los dos
+   * únicos cambios de orden posibles son añadir —que anexa al final— y quitar,
+   * que es lo que este guard impide. Con eso el emparejamiento posicional queda
+   * a salvo sin tener que tocar el componente.
+   */
+  const setExtraServicesGuarded = useCallback<typeof setExtraServices>(
+    (update) => {
+      setExtraServices((prev) => {
+        const next = typeof update === "function" ? update(prev) : update;
+        /* Los servicios guardados tienen que seguir estando, EN SU MISMA
+         * POSICIÓN. Comparar identidades y no longitudes es lo que cierra el
+         * caso "añadir uno y borrar uno guardado", que deja el total igual. */
+        const conservaLaBase = serviciosExtrasBaseIds.every(
+          (id, index) => next[index]?.id === id,
+        );
+        if (!conservaLaBase) {
+          toast.error(
+            "No se pueden quitar ni reordenar los servicios extras existentes. Cancela primero los documentos ligados al pedido.",
+          );
+          return prev;
+        }
+        return next;
+      });
+    },
+    [serviciosExtrasBaseIds],
+  );
 
   const { addresses: customerAddresses } = useCustomerAddresses({
     customerId: selectedCustomerId,
@@ -963,6 +1063,7 @@ export function usePedidoMesaControlEditForm(pedidoId: number) {
   const showForm =
     Boolean(initialFormValues) &&
     extraServicesInitialized &&
+    !isContextoLoading &&
     !isOnboardingLoading &&
     !isCurrenciesLoading;
 
@@ -981,8 +1082,18 @@ export function usePedidoMesaControlEditForm(pedidoId: number) {
     }
   }, []);
 
+  /**
+   * Bloqueo aparecido DESPUÉS de abrir la pantalla: el 409 del guardado. Se
+   * guarda para pintarlo con la misma lista que el precheck en vez de dejar solo
+   * un toast, y no se limpia — el pedido ya no es editable en esta sesión.
+   */
+  const [bloqueoTardio, setBloqueoTardio] = useState<PedidoMesaControlContexto | null>(null);
+
   const { mutateAsync: updatePedidoMutation, isPending: isUpdatingPedido } =
-    useUpdatePedidoMesaControl({ onValidationError: applyServerValidationIssues });
+    useUpdatePedidoMesaControl({
+      onValidationError: applyServerValidationIssues,
+      onBloqueado: setBloqueoTardio,
+    });
 
   /**
    * Marca UN campo del formulario con un error y hace scroll hasta él.
@@ -1014,6 +1125,23 @@ export function usePedidoMesaControlEditForm(pedidoId: number) {
     setFieldError("clienteBusqueda", "Selecciona un cliente");
     return false;
   }, [selectedCustomerId, setFieldError]);
+
+  /**
+   * Un servicio extra que YA existía no puede quedarse sin nombre: el backend lo
+   * exige (`CharField` requerido) y el payload no lo puede descartar, porque el
+   * arreglo no puede encoger. Se corta con el error sobre su propio campo.
+   */
+  const requireNombresDeServiciosBase = useCallback(() => {
+    const index = extraServices
+      .slice(0, serviciosExtrasBase)
+      .findIndex((service) => !(service.nombre ?? "").trim());
+    if (index === -1) return true;
+    setFieldError(
+      `servicios_extras.${index}.nombre`,
+      "Este servicio ya existe en el pedido: ponle nombre en vez de vaciarlo.",
+    );
+    return false;
+  }, [extraServices, serviciosExtrasBase, setFieldError]);
 
   /**
    * Corta el guardado solo cuando el usuario CAMBIÓ el régimen fiscal a un valor
@@ -1068,6 +1196,7 @@ export function usePedidoMesaControlEditForm(pedidoId: number) {
 
       if (!requireSelectedCustomer()) return;
       if (!requireResolvableRegimenFiscal(parsed.data.regimenFiscal)) return;
+      if (!requireNombresDeServiciosBase()) return;
 
       setErrorTree({});
 
@@ -1105,7 +1234,7 @@ export function usePedidoMesaControlEditForm(pedidoId: number) {
       const condicion = parsed.data.condicionPago ?? "100_anticipo";
       const resolvedRegimenFiscalPk = resolveRegimenFiscalPk(parsed.data.regimenFiscal);
 
-      // ── Detalle COMPLETO (el backend borra y recrea) ──────────────────────
+      // ── Detalle COMPLETO: nada se puede omitir (ver buildDetalleFromItems) ─
       const detalle = buildDetalleFromItems(parsed.data.items ?? []);
 
       const payload: PedidoMesaControlUpdate = {
@@ -1190,11 +1319,20 @@ export function usePedidoMesaControlEditForm(pedidoId: number) {
           gran_total: String(granTotalAmount.toFixed(2)),
         },
         detalle,
-        /* Un servicio sin nombre tumbaría el guardado: `nombre` es
-         * `CharField(max_length=150)` requerido y no admite blanco. Se descartan
-         * los renglones vacíos que la tabla permite dejar a medio capturar. */
+        /* `nombre` es `CharField(max_length=150)` requerido y no admite blanco,
+         * así que un servicio sin nombre tumbaría el guardado.
+         *
+         * Solo se descartan los servicios AÑADIDOS en esta sesión que quedaron
+         * sin nombre. Los que venían del pedido no se pueden filtrar: el arreglo
+         * no puede encoger (400), y además el emparejamiento es posicional, así
+         * que quitar uno de en medio reescribiría los siguientes sobre la fila
+         * equivocada. Uno guardado que se quede sin nombre se corta antes, en
+         * `requireNombresDeServiciosBase`. */
         servicios_extras: parsed.data.servicios_extras
-          .filter((service) => (service.nombre ?? "").trim().length > 0)
+          .filter(
+            (service, index) =>
+              index < serviciosExtrasBase || (service.nombre ?? "").trim().length > 0,
+          )
           .map((service) => ({
             nombre: (service.nombre ?? "").trim(),
             monto: String((service.monto ?? 0).toFixed(2)),
@@ -1406,7 +1544,25 @@ export function usePedidoMesaControlEditForm(pedidoId: number) {
     clearFieldErrors("items");
   };
 
+  /**
+   * Quitar partidas está PROHIBIDO en este flujo.
+   *
+   * Desde `ab63ce2` omitir del payload un renglón que existe no significa
+   * "bórralo": el backend lo detecta como sobrante y responde 400. Una partida
+   * agregada en esta sesión (sin `pedido_detalle_id`) sí se puede quitar, porque
+   * no existe en el servidor y su ausencia no deja ningún sobrante.
+   *
+   * El botón de la papelera ya viene deshabilitado desde `QuoteFormContent` para
+   * las partidas del servidor; esto es la última línea, no la única.
+   */
   const remove = (index: number) => {
+    const item = watchedItems[index];
+    if (item?.pedido_detalle_id != null) {
+      toast.error(
+        "No se puede quitar una partida existente. Cancela primero los documentos ligados al pedido.",
+      );
+      return;
+    }
     form.setFieldValue(
       "items",
       watchedItems.filter((_: QuoteItem, itemIndex: number) => itemIndex !== index),
@@ -1471,15 +1627,61 @@ export function usePedidoMesaControlEditForm(pedidoId: number) {
     setIsSizesEditOpen(true);
   }, []);
 
+  /**
+   * Guardar el diálogo de tallas, comprobando que NINGUNA talla existente haya
+   * desaparecido.
+   *
+   * El diálogo compartido no tiene botón de "quitar talla", pero sí la deja
+   * caer: `useSizesState.getItemSizes` filtra las de cantidad 0, y su validación
+   * solo exige que el TOTAL del renglón sea > 0. O sea que poner una talla en 0
+   * la borra del arreglo — y desde `ab63ce2` una talla que existe y no viaja en
+   * el payload es un 400, no una baja.
+   *
+   * Se compara contra las tallas que traía el pedido para esta partida
+   * (localizada por su `pedido_detalle_id`, no por índice, que se desplaza).
+   */
   const handleSizesEditSave = useCallback(
     (updatedItem: QuoteItem) => {
       if (sizesEditIndex === null) return;
+      const lineaOriginal =
+        updatedItem.pedido_detalle_id != null
+          ? pedidoData?.detalles.find((linea) => linea.id === updatedItem.pedido_detalle_id)
+          : undefined;
+      if (lineaOriginal) {
+        /* Se comparan CONTEOS por talla, no pertenencia a un conjunto: nada
+         * impide en el modelo (`PedidoDetalleTalla` no tiene índice único sobre
+         * `(pedido_detalle, talla)`) que una línea tenga DOS filas de la misma
+         * talla. Con un `Set`, perder una de las dos pasaba desapercibido y el
+         * backend respondía 400 con "Tallas sobrantes: N", un mensaje que no
+         * corresponde a ningún campo y que el formulario no puede pintar. */
+        const contar = (ids: number[]) =>
+          ids.reduce<Map<number, number>>(
+            (acc, id) => acc.set(id, (acc.get(id) ?? 0) + 1),
+            new Map(),
+          );
+        const antes = contar(lineaOriginal.tallas.map((talla) => talla.talla));
+        const despues = contar((updatedItem.tallas ?? []).map((talla) => talla.tallaId));
+        const perdidas = lineaOriginal.tallas.filter(
+          (talla, index, todas) =>
+            // Solo se nombra una vez cada talla con déficit.
+            todas.findIndex((otra) => otra.talla === talla.talla) === index &&
+            (despues.get(talla.talla) ?? 0) < (antes.get(talla.talla) ?? 0),
+        );
+        if (perdidas.length > 0) {
+          toast.error(
+            `No se pueden quitar tallas existentes (${perdidas
+              .map((talla) => talla.talla_nombre)
+              .join(", ")}). Ajusta la cantidad en lugar de dejarla en cero.`,
+          );
+          return;
+        }
+      }
       update(sizesEditIndex, updatedItem);
       setIsSizesEditOpen(false);
       setSizesEditIndex(null);
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [sizesEditIndex],
+    [sizesEditIndex, pedidoData],
   );
 
   const handleSizesEditOpenChange = useCallback((nextOpen: boolean) => {
@@ -1577,65 +1779,32 @@ export function usePedidoMesaControlEditForm(pedidoId: number) {
   };
 
   /**
-   * El submit del formulario NO guarda: valida y abre la confirmación por folio.
+   * Submit directo, SIN confirmación intermedia.
    *
-   * Se valida ANTES de abrir el diálogo a propósito. Si se abriera primero, el
-   * usuario tecleaba el folio, confirmaba, y recién ahí aparecían los errores de
-   * captura detrás del diálogo ya cerrado — pidiendo un gesto deliberado para
-   * después no hacer nada.
+   * Hasta `ab63ce2` este guardado borraba y recreaba el detalle, arrastrando por
+   * CASCADE los renglones de picking, factura y producción; por eso exigía
+   * teclear el folio. Ese riesgo ya no existe por ninguno de sus dos lados: si
+   * hay documentos ligados el backend responde 409 y no se guarda nada, y si no
+   * los hay no queda nada que arrastrar. Mantener el diálogo describiría un
+   * peligro imposible y entrenaría al usuario a teclear folios por costumbre.
+   *
+   * La validación —Zod, cliente, régimen fiscal y nombres de servicios
+   * existentes— NO se repite aquí: vive entera en `form.onSubmit`, que es el
+   * único camino que envía. Duplicarla tenía sentido cuando el diálogo se
+   * interponía entre las dos (la primera decidía si abrirlo, la segunda corría
+   * al confirmar); sin diálogo quedaban consecutivas y se pagaba dos veces el
+   * `safeParse` completo del formulario en cada pulsación de Guardar.
    */
-  const handleFormSubmit: FormEventHandler<HTMLFormElement> = (event) => {
+  const handleFormSubmit: FormEventHandler<HTMLFormElement> = async (event) => {
     event.preventDefault();
     event.stopPropagation();
     if (isSubmittingForm || isUpdatingPedido) return;
 
-    const parsed = quoteSubmitSchema.safeParse({
-      ...form.state.values,
-      servicios_extras: extraServices,
-    });
-
-    if (!parsed.success) {
-      const nextErrors: ErrorNode = {};
-      const issuePaths = parsed.error.issues
-        .map((issue) => issue.path.map((segment) => String(segment)).join("."))
-        .filter(Boolean);
-      parsed.error.issues.forEach((issue) => {
-        if (issue.path.length === 0) return;
-        setErrorByPath(nextErrors, issue.path as (string | number)[], issue.message);
-      });
-      setErrorTree(nextErrors);
-      if (formRef.current) {
-        requestAnimationFrame(() => {
-          if (!formRef.current) return;
-          scrollToFirstValidationError(formRef.current, issuePaths);
-        });
-      }
-      return;
-    }
-
-    if (!requireSelectedCustomer()) return;
-    if (!requireResolvableRegimenFiscal(parsed.data.regimenFiscal)) return;
-
-    setErrorTree({});
-    setIsConfirmOpen(true);
-  };
-
-  /**
-   * Confirmación aceptada: aquí sí se envía.
-   *
-   * El diálogo se cierra al TERMINAR, no antes: mientras la petición viaja sigue
-   * en pantalla con sus botones bloqueados y el label "Guardando...", que es
-   * donde el usuario está mirando. Cerrarlo primero dejaba el gesto sin
-   * respuesta visible hasta que llegaba el toast.
-   */
-  const confirmSubmit = async () => {
-    if (isSubmittingForm) return;
     setIsSubmittingForm(true);
     try {
       await Promise.resolve(form.handleSubmit());
     } finally {
       setIsSubmittingForm(false);
-      setIsConfirmOpen(false);
     }
   };
 
@@ -1760,9 +1929,9 @@ export function usePedidoMesaControlEditForm(pedidoId: number) {
     mergeCollisions,
     isPedidoRetrying: isPedidoFetching,
     retryPedidoLoad: refetchPedido,
-    isConfirmOpen,
-    setIsConfirmOpen,
-    confirmSubmit,
+    contextoBloqueos: bloqueoTardio ?? contextoBloqueos,
+    contextoError,
+    serviciosExtrasBase,
 
     // ── Contrato compartido con QuoteFormContent ─────────────────────────────
     form,
@@ -1828,7 +1997,7 @@ export function usePedidoMesaControlEditForm(pedidoId: number) {
     customerAddresses,
     handleSelectShippingAddress,
     extraServices,
-    setExtraServices,
+    setExtraServices: setExtraServicesGuarded,
     embroideryEditIndex,
     isEmbroideryEditOpen,
     openEmbroideryEdit,

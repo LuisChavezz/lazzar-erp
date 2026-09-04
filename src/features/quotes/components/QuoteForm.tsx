@@ -20,6 +20,7 @@ import { DialogHeader } from "@/src/components/DialogHeader";
 import { useQuoteForm } from "../hooks/useQuoteForm";
 import { AddProductDialog } from "./AddProductDialog";
 import type { AddProductVariant } from "../types";
+import type { QuoteItem } from "../interfaces/quote.interface";
 import {
   getTipoPedidoConfig,
   TIPO_PEDIDO,
@@ -64,6 +65,28 @@ export type QuoteFormContentProps = QuoteFormHookResult & {
    * capacidad que difiera entre flujos, ESE es el momento de hacer el cambio.
    */
   mode: "create" | "edit" | "edit-pedido";
+  /**
+   * Motivo por el que NO se pueden quitar renglones ni servicios extras en este
+   * flujo. Presente ⇒ los botones de papelera se pintan deshabilitados con este
+   * texto como `title`; ausente ⇒ comportamiento de siempre.
+   *
+   * Existe porque la edición estricta de pedidos (`ab63ce2`) convirtió el
+   * guardado en un UPSERT por `id`: omitir del payload un renglón que ya existe
+   * no lo borra, lo rechaza con 400. Se pasa el MOTIVO y no un booleano para que
+   * el usuario pueda leer por qué el control está apagado en vez de encontrarse
+   * un botón muerto.
+   *
+   * Una partida AGREGADA en esta sesión sí se puede quitar —no existe en el
+   * servidor— así que el bloqueo se aplica por fila, no a la tabla entera.
+   */
+  removalBlockedReason?: string;
+  /**
+   * Cuántos servicios extra del arreglo son los que ya existían en el servidor.
+   * Solo esos quedan bloqueados por `removalBlockedReason`; los añadidos en la
+   * sesión se anexan al final y se pueden quitar. Sin este dato el bloqueo sería
+   * de tabla entera y el usuario no podría deshacer un "Agregar servicio".
+   */
+  removalBlockedExtraServicesCount?: number;
 };
 
 // Componente de contenido del formulario — reutilizable por creación y edición
@@ -147,7 +170,16 @@ export function QuoteFormContent({
   handleSelectShippingAddress,
   submitLabel = "Guardar Cotización",
   mode,
+  removalBlockedReason,
+  removalBlockedExtraServicesCount = 0,
 }: QuoteFormContentProps) {
+  /**
+   * Una partida solo está protegida si EXISTE en el servidor. Las que el usuario
+   * acaba de agregar (sin `pedido_detalle_id`) se pueden quitar aunque el flujo
+   * prohíba eliminar: no hay fila previa que el backend eche de menos.
+   */
+  const isRemovalBlocked = (item?: QuoteItem) =>
+    Boolean(removalBlockedReason) && item?.pedido_detalle_id != null;
   /**
    * Variante con la que se abre el diálogo de partidas. Es estado EFÍMERO de UI
    * —qué botón lo abrió—, así que vive aquí y no en el hook: subirlo obligaría a
@@ -1566,7 +1598,11 @@ export function QuoteFormContent({
                             type="button"
                             onClick={() => remove(index)}
                             aria-label="Eliminar partida"
-                            className="text-slate-400 hover:text-rose-500 transition-colors cursor-pointer p-1"
+                            disabled={isRemovalBlocked(currentItem)}
+                            title={
+                              isRemovalBlocked(currentItem) ? removalBlockedReason : undefined
+                            }
+                            className="text-slate-400 hover:text-rose-500 transition-colors cursor-pointer p-1 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:text-slate-400"
                           >
                             ✕
                           </button>
@@ -1850,7 +1886,16 @@ export function QuoteFormContent({
                           clearFieldErrors("servicios_extras");
                         }}
                         aria-label="Eliminar servicio"
-                        className="mt-0.5 text-slate-400 hover:text-rose-500 transition-colors cursor-pointer shrink-0"
+                        disabled={
+                          Boolean(removalBlockedReason) &&
+                          index < removalBlockedExtraServicesCount
+                        }
+                        title={
+                          index < removalBlockedExtraServicesCount
+                            ? removalBlockedReason
+                            : undefined
+                        }
+                        className="mt-0.5 text-slate-400 hover:text-rose-500 transition-colors cursor-pointer shrink-0 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:text-slate-400"
                       >
                         ✕
                       </button>
