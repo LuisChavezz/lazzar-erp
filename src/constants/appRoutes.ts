@@ -2,6 +2,7 @@ import type { ComponentType, SVGProps } from "react";
 import {
   CapitalHumanoIcon,
   ClientesIcon,
+  CalendarDaysIcon,
   ClipboardListIcon,
   ClockIcon,
   LayersIcon,
@@ -513,6 +514,14 @@ export const appRouteGroups: AppRouteGroup[] = [
         path: "/hr/shifts",
         icon: ClockIcon,
         description: "Horarios, días laborales y tolerancia de retardo.",
+        permission: "R-RH",
+      },
+      {
+        key: "hr-calendars",
+        label: "Calendarios",
+        path: "/hr/calendars",
+        icon: CalendarDaysIcon,
+        description: "Días laborables, descansos y festivos por turno.",
         permission: "R-RH",
       },
     ],

@@ -1,7 +1,13 @@
 "use client";
 
 import TiltCard from "@/src/components/TiltCard";
-import { ClipboardListIcon, ClockIcon, LayersIcon, UserIcon } from "@/src/components/Icons";
+import {
+  CalendarDaysIcon,
+  ClipboardListIcon,
+  ClockIcon,
+  LayersIcon,
+  UserIcon,
+} from "@/src/components/Icons";
 
 const cardClassName =
   "cursor-pointer rounded-2xl bg-white dark:bg-black border border-slate-200 dark:border-white/10 p-8 h-full min-h-64";
@@ -49,6 +55,16 @@ const hrCards = [
     accentClass: "text-amber-600 dark:text-amber-400",
     accentBgClass: "bg-amber-50 dark:bg-amber-500/10",
     shadowColorClassName: "hover:shadow-amber-500/25 dark:hover:shadow-amber-500/25",
+  },
+  {
+    icon: CalendarDaysIcon,
+    title: "Calendarios",
+    description: "Días laborables, descansos y festivos de cada turno.",
+    footerText: "Ver calendarios",
+    href: "/hr/calendars",
+    accentClass: "text-rose-600 dark:text-rose-400",
+    accentBgClass: "bg-rose-50 dark:bg-rose-500/10",
+    shadowColorClassName: "hover:shadow-rose-500/25 dark:hover:shadow-rose-500/25",
   },
 ];
 

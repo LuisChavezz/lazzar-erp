@@ -23,6 +23,7 @@ import {
   Building2,
   Calculator,
   CalendarCheck,
+  CalendarDays,
   Check,
   CheckCircle,
   ChevronDown,
@@ -148,6 +149,8 @@ export const EyeOffIcon = (props: LucideProps) => <EyeOff {...props} />;
 export const TrendingUpIcon = (props: LucideProps) => <TrendingUp {...props} />;
 export const DotsVerticalIcon = (props: LucideProps) => <MoreVertical {...props} />;
 export const ClockIcon = (props: LucideProps) => <Clock {...props} />;
+/** Calendario con rejilla de días. Para el calendario laboral de RH. */
+export const CalendarDaysIcon = (props: LucideProps) => <CalendarDays {...props} />;
 export const HistoryIcon = (props: LucideProps) => <History {...props} />;
 export const BellIcon = (props: LucideProps) => <Bell {...props} />;
 export const ErrorIcon = (props: LucideProps) => <AlertTriangle {...props} />;
