@@ -22,6 +22,7 @@ import { formatLocalDate } from "@/src/utils/formatDate";
 import { useWorkspaceStore } from "@/src/features/workspace/store/workspace.store";
 import { useDepartments } from "@/src/features/departments/hooks/useDepartments";
 import { usePositions } from "@/src/features/positions/hooks/usePositions";
+import { useShifts } from "@/src/features/shifts/hooks/useShifts";
 import { getEstadoCivilLabel, getSexoLabel } from "../constants/employeeChoices";
 import { useEmployee } from "../hooks/useEmployee";
 import { getEmployeeFullName } from "../utils/employeeName";
@@ -58,6 +59,7 @@ export const EmployeeDetailContent = ({ employeeId }: EmployeeDetailContentProps
   const availableBranches = useWorkspaceStore((state) => state.availableBranches);
   const { departments } = useDepartments();
   const { positions } = usePositions();
+  const { shifts } = useShifts();
 
   const { data: session } = useSession();
   // `hasPermission` ya cortocircuita para el rol "admin".
@@ -84,6 +86,7 @@ export const EmployeeDetailContent = ({ employeeId }: EmployeeDetailContentProps
     (department) => department.id_departamento === employee.departamento
   )?.nombre;
   const positionName = positions.find((position) => position.id === employee.puesto)?.nombre;
+  const shiftName = shifts.find((shift) => shift.id === employee.turno)?.nombre;
 
   return (
     <div className="w-full space-y-6">
@@ -183,6 +186,7 @@ export const EmployeeDetailContent = ({ employeeId }: EmployeeDetailContentProps
           <InfoField label="Puesto">{textOrDash(positionName)}</InfoField>
           <InfoField label="Departamento">{textOrDash(departmentName)}</InfoField>
           <InfoField label="Sucursal">{textOrDash(branchName)}</InfoField>
+          <InfoField label="Turno">{textOrDash(shiftName)}</InfoField>
           <InfoField label="Fecha de ingreso">{formatLocalDate(employee.fecha_ingreso)}</InfoField>
           <InfoField label="Fecha de baja">{formatLocalDate(employee.fecha_baja)}</InfoField>
           <InfoField label="Estatus">

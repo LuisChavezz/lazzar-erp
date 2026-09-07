@@ -101,6 +101,9 @@ export const EmployeeFormSchema = z.object({
     .int("El departamento es inválido")
     .positive("El departamento es requerido"),
   puesto: z.number().int("El puesto es inválido").positive("El puesto es requerido"),
+  // FK OPCIONAL: 0 es el centinela de "Sin turno" y es un valor válido, así que
+  // se pide `nonnegative` y no `positive`. Mismo idioma que `area` en puestos.
+  turno: z.number().int("El turno es inválido").nonnegative("El turno es inválido"),
   fecha_ingreso: z.string().min(1, "La fecha de ingreso es requerida"),
   fecha_baja: z.string(),
 });

@@ -10,6 +10,7 @@ import { useWorkspaceStore } from "@/src/features/workspace/store/workspace.stor
 import { useCompanyBranches } from "@/src/features/branches/hooks/useCompanyBranches";
 import { useDepartments } from "@/src/features/departments/hooks/useDepartments";
 import { usePositions } from "@/src/features/positions/hooks/usePositions";
+import { useShifts } from "@/src/features/shifts/hooks/useShifts";
 import { EmployeeFormSchema, EmployeeFormValues } from "../schemas/employee.schema";
 import { useCreateEmployee } from "./useCreateEmployee";
 import { useUpdateEmployee } from "./useUpdateEmployee";
@@ -43,6 +44,7 @@ export function useEmployeeForm({ onSuccess, employeeToEdit }: UseEmployeeFormPa
   const { branches, isLoading: isLoadingBranches } = useCompanyBranches(companyId);
   const { departments, isLoading: isLoadingDepartments } = useDepartments();
   const { positions, isLoading: isLoadingPositions } = usePositions();
+  const { shifts, isLoading: isLoadingShifts } = useShifts();
 
   // Conserva referencia al form para scroll superior suave al limpiar.
   const formRef = useRef<HTMLFormElement | null>(null);
@@ -100,6 +102,7 @@ export function useEmployeeForm({ onSuccess, employeeToEdit }: UseEmployeeFormPa
       sucursal: 0,
       departamento: 0,
       puesto: 0,
+      turno: 0,
       fecha_ingreso: "",
       fecha_baja: "",
     }),
@@ -149,6 +152,7 @@ export function useEmployeeForm({ onSuccess, employeeToEdit }: UseEmployeeFormPa
             sucursal: employeeToEdit.sucursal,
             departamento: employeeToEdit.departamento,
             puesto: employeeToEdit.puesto,
+            turno: employeeToEdit.turno ?? 0,
             fecha_ingreso: employeeToEdit.fecha_ingreso,
             fecha_baja: employeeToEdit.fecha_baja ?? "",
           }
@@ -264,6 +268,8 @@ export function useEmployeeForm({ onSuccess, employeeToEdit }: UseEmployeeFormPa
           sucursal: value.sucursal,
           departamento: value.departamento,
           puesto: value.puesto,
+          // El centinela 0 de "Sin turno" no viaja: el backend espera null.
+          turno: value.turno > 0 ? value.turno : null,
           numero_empleado: value.numero_empleado.trim().toUpperCase(),
           nombre: value.nombre.trim().toUpperCase(),
           apellido_paterno: value.apellido_paterno.trim().toUpperCase(),
@@ -387,6 +393,8 @@ export function useEmployeeForm({ onSuccess, employeeToEdit }: UseEmployeeFormPa
     isLoadingDepartments,
     positions,
     isLoadingPositions,
+    shifts,
+    isLoadingShifts,
     getError,
     clearFieldErrors,
     validateField,

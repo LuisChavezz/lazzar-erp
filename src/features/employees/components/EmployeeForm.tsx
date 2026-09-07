@@ -35,6 +35,8 @@ export default function EmployeeForm({ onSuccess, employeeToEdit }: EmployeeForm
     isLoadingDepartments,
     positions,
     isLoadingPositions,
+    shifts,
+    isLoadingShifts,
     getError,
     clearFieldErrors,
     validateField,
@@ -683,6 +685,44 @@ export default function EmployeeForm({ onSuccess, employeeToEdit }: EmployeeForm
                       className="bg-white dark:bg-zinc-900 text-slate-900 dark:text-white"
                     >
                       {position.nombre}
+                    </option>
+                  ))}
+                </FormSelect>
+              )}
+            </form.Field>
+          </div>
+
+          {/*
+            `turno` es opcional: la opción 0 NO va `disabled` —a diferencia de
+            los FK obligatorios— porque "Sin turno" es una elección válida.
+          */}
+          <div className="group/field">
+            <form.Field name="turno">
+              {(field) => (
+                <FormSelect
+                  label="Turno"
+                  name={field.name}
+                  value={String(field.state.value)}
+                  onChange={(event) => {
+                    field.handleChange(Number(event.target.value));
+                    clearFieldErrors("turno");
+                  }}
+                  onBlur={() => {
+                    field.handleBlur();
+                    validateField("turno", field.state.value);
+                  }}
+                  error={getError("turno")}
+                >
+                  <option value="0">
+                    {isLoadingShifts ? "Cargando turnos..." : "Sin turno asignado"}
+                  </option>
+                  {shifts.map((shift) => (
+                    <option
+                      key={shift.id}
+                      value={shift.id}
+                      className="bg-white dark:bg-zinc-900 text-slate-900 dark:text-white"
+                    >
+                      {shift.nombre}
                     </option>
                   ))}
                 </FormSelect>

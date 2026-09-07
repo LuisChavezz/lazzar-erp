@@ -18,6 +18,8 @@ export interface Employee {
   sucursal: number;
   departamento: number;
   puesto: number;
+  /** FK OPCIONAL a `hr.Turno`: un empleado puede no tener turno asignado. */
+  turno: number | null;
   numero_empleado: string;
 
   // ── Datos personales ──────────────────────────────────────────────────
@@ -89,14 +91,13 @@ export interface Employee {
  * workspace activo y en edición se conserva la del registro. `activo` tampoco
  * viaja — lo administra el backend y al omitirlo conserva su valor actual.
  * `fecha_baja` solo aparece cuando se edita a un empleado ya inactivo.
- *
- * `turno` queda fuera a propósito: el módulo de turnos todavía no existe en el
- * frontend, así que no hay de dónde sacar las opciones del select.
  */
 export interface EmployeeCreate {
   sucursal: number;
   departamento: number;
   puesto: number;
+  /** `null` cuando no se asigna turno. El centinela 0 del select no viaja. */
+  turno: number | null;
   numero_empleado: string;
 
   nombre: string;
