@@ -281,7 +281,10 @@ export function useEmployeeForm({ onSuccess, employeeToEdit }: UseEmployeeFormPa
           lugar_nacimiento: value.lugar_nacimiento.trim().toUpperCase(),
           curp: emptyToNull(value.curp.toUpperCase()),
           rfc: emptyToNull(value.rfc.toUpperCase()),
-          nss: value.nss.trim(),
+          // `unique=True, null=True`: Postgres permite N filas con NULL pero
+          // trata "" como un valor real, así que dos empleados sin NSS
+          // chocarían contra `empleados_nss_key`. Igual que `curp` y `rfc`.
+          nss: emptyToNull(value.nss),
           infonavit: value.infonavit.trim().toUpperCase(),
           email: emptyToNull(value.email),
           telefono: value.telefono.trim(),

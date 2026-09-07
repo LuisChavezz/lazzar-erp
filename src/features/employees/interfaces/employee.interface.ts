@@ -39,9 +39,14 @@ export interface Employee {
   lugar_nacimiento: string;
 
   // ── Identificación fiscal y legal ─────────────────────────────────────
+  /**
+   * Los tres son `unique=True, null=True`: su vacío DEBE viajar como `null`.
+   * Postgres admite N filas con NULL en un índice único, pero trata "" como un
+   * valor real y el segundo empleado sin el dato rompería la restricción.
+   */
   curp: string | null;
   rfc: string | null;
-  nss: string;
+  nss: string | null;
   infonavit: string;
 
   // ── Contacto ──────────────────────────────────────────────────────────
@@ -111,7 +116,7 @@ export interface EmployeeCreate {
 
   curp: string | null;
   rfc: string | null;
-  nss: string;
+  nss: string | null;
   infonavit: string;
 
   email: string | null;
