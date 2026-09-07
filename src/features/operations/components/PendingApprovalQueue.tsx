@@ -322,7 +322,10 @@ export const PendingApprovalQueue = () => {
             />
           }
         >
-          <OperationsQuoteDetails quoteId={activeOperationsQuote.id} />
+          <OperationsQuoteDetails
+            quoteId={activeOperationsQuote.id}
+            source="mesa-control"
+          />
         </MainDialog>
       )}
 

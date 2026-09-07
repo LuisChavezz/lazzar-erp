@@ -211,7 +211,10 @@ const ActionsCell = ({
             />
           }
         >
-          <OperationsQuoteDetails quoteId={operationsQuote.id} />
+          <OperationsQuoteDetails
+            quoteId={operationsQuote.id}
+            source="mesa-control"
+          />
         </MainDialog>
       )}
 

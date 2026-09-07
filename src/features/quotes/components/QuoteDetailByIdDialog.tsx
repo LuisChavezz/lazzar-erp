@@ -3,12 +3,23 @@
 import { MainDialog } from "@/src/components/MainDialog";
 import { DialogHeader } from "@/src/components/DialogHeader";
 import { QuoteDetails } from "./QuoteDetails";
+import type { QuoteDetailSource } from "../hooks/useQuote";
 
 interface QuoteDetailByIdDialogProps {
   /** Id de la cotización a consultar. `null` mantiene la consulta apagada. */
   orderId: number | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /**
+   * Recurso por el que `QuoteDetails` pregunta primero. Se omite en el pedido
+   * 360° y en la paleta global: ahí lo común es abrir cotizaciones de cualquier
+   * estatus, que es justo lo que `/ventas/cotizaciones/` sirve —y cuando quien
+   * mira es de mesa de control y no el vendedor, el respaldo por 404 de
+   * `getQuoteDetailById` la recupera por `/ventas/mesa-control/`—. Las
+   * notificaciones de `cotizacion_en_revision` pasan `"mesa-control"` porque
+   * ahí el caso común es el inverso.
+   */
+  source?: QuoteDetailSource;
 }
 
 /**
@@ -30,6 +41,7 @@ export function QuoteDetailByIdDialog({
   orderId,
   open,
   onOpenChange,
+  source,
 }: QuoteDetailByIdDialogProps) {
   return (
     <MainDialog
@@ -44,7 +56,7 @@ export function QuoteDetailByIdDialog({
         />
       }
     >
-      <QuoteDetails quoteId={orderId ?? 0} />
+      <QuoteDetails quoteId={orderId ?? 0} source={source} />
     </MainDialog>
   );
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { getStatusStyles } from "../utils/getStatusStyle";
-import { useQuote } from "../hooks/useQuote";
+import { useQuote, type QuoteDetailSource } from "../hooks/useQuote";
 import { QuoteDetailsProducts } from "./QuoteDetailsProducts";
 import {
   formatQuoteDateTime,
@@ -12,10 +12,17 @@ import {
 
 interface QuoteDetailsProps {
   quoteId: number;
+  /**
+   * Recurso por el que se pregunta primero (ante un 404 se reintenta en el
+   * otro). Se omite en todas las vistas salvo en Mesa de Control, que pasa
+   * `"mesa-control"` porque su usuario no es el vendedor y
+   * `/ventas/cotizaciones/{id}/` le responde 404.
+   */
+  source?: QuoteDetailSource;
 }
 
-export const QuoteDetails = ({ quoteId }: QuoteDetailsProps) => {
-  const { data: quote, isLoading, isError } = useQuote(quoteId);
+export const QuoteDetails = ({ quoteId, source }: QuoteDetailsProps) => {
+  const { data: quote, isLoading, isError } = useQuote(quoteId, source);
 
   if (isLoading) {
     return (

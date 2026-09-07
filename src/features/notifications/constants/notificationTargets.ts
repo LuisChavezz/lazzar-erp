@@ -1,3 +1,4 @@
+import type { QuoteDetailSource } from "@/src/features/quotes/hooks/useQuote";
 import {
   TIPO_COTIZACION_EN_REVISION,
   type Notificacion,
@@ -18,7 +19,7 @@ import {
  */
 export type NotificationTarget =
   | { kind: "route"; href: string }
-  | { kind: "quote-dialog"; quoteId: number };
+  | { kind: "quote-dialog"; quoteId: number; source: QuoteDetailSource };
 
 /** Lee una clave numérica de un `data` sin forma garantizada. */
 const readNumber = (data: unknown, key: string): number | null => {
@@ -39,9 +40,30 @@ type TargetResolver = (data: unknown) => NotificationTarget | null;
  * UI ni navegue a ninguna parte.
  */
 const NOTIFICATION_TARGETS: Record<string, TargetResolver> = {
+  /*
+    `source: "mesa-control"` no es una preferencia global de las notificaciones:
+    es propio de ESTE `tipo`. El backend lo emite en un solo punto —el paso a
+    estatus 2 de una cotización— con `crear_notificacion_por_rol(codigo_rol=
+    "MESA-DE-CONTROL", clave_departamento=CLAVE_DEPARTAMENTO_MESA_CONTROL)`, que
+    crea una fila por cada usuario de ese departamento en la empresa y por nadie
+    más. El vendedor que la envió NO la recibe. Como el destinatario no es el
+    vendedor, `/ventas/cotizaciones/{id}/` le responde 404 por el filtro
+    `vendedor=user`; `/ventas/mesa-control/{id}/` acota por empresa y estatus
+    [2, 5], y la cotización acaba de quedar en 2. Un `tipo` futuro que sí pueda
+    llegarle a un vendedor debe declarar `"cotizaciones"` aquí, no heredar esto.
+
+    Es un ORDEN, no una restricción: la notificación sobrevive al cambio de
+    estatus —nada la borra al autorizar—, así que al abrir una vieja la
+    cotización ya está en 3 y mesa-control responde 404. Ahí entra el respaldo
+    de `getQuoteDetailById`, que reintenta en `/ventas/cotizaciones/{id}/`: un
+    destinatario `is_admin_empresa` o superuser (nada los excluye del rol
+    MESA-DE-CONTROL) la ve por esa ruta a cualquier estatus.
+  */
   [TIPO_COTIZACION_EN_REVISION]: (data) => {
     const quoteId = readNumber(data, "cotizacion_id");
-    return quoteId === null ? null : { kind: "quote-dialog", quoteId };
+    return quoteId === null
+      ? null
+      : { kind: "quote-dialog", quoteId, source: "mesa-control" };
   },
 };
 
