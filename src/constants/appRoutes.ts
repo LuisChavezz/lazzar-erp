@@ -33,6 +33,7 @@ import {
   ScanLineIcon,
   BancosIcon,
   WalletIcon,
+  ReceiptIcon,
 } from "../components/Icons";
 
 export interface AppRouteItem {
@@ -413,7 +414,10 @@ export const appRouteGroups: AppRouteGroup[] = [
         icon: FacturacionIcon,
         permission: "R-CONTABILIDAD-FACTURACION",
       },
-      // OCULTO EN NAVEGACION: usa datos mock (src/features/accounts-payable/mocks/accounts-payable.mock.ts:15). Restaurar cuando el backend exponga el endpoint real.
+      // OCULTO EN NAVEGACION: la pantalla de CxP todavía no existe. La maqueta
+      // con datos faker que ocupaba esta ruta se eliminó al construir Pagos
+      // (EC-134); esta entrada queda reservada para EC-133, que debe reconstruir
+      // `/finance/accounts-payable` contra `/finanzas/cuentas-por-pagar/`.
       // {
       //   key: "finance-accounts-payable",
       //   label: "CxP (Pagar)",
@@ -448,6 +452,14 @@ export const appRouteGroups: AppRouteGroup[] = [
       //   icon: ContabilidadIcon,
       //   permission: "R-CONTABILIDAD",
       // },
+      {
+        key: "finance-payments",
+        label: "Pagos",
+        path: "/finance/payments",
+        icon: ReceiptIcon,
+        description: "Pagos a proveedor aplicados contra cuentas por pagar.",
+        permission: "R-CONTABILIDAD",
+      },
       {
         key: "finance-banks",
         label: "Bancos",
