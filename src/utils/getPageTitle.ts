@@ -51,6 +51,7 @@ const ROUTE_TITLES: Record<string, string> = {
   // distintas.
   "/finance/banks": "Bancos",
   "/finance/payments": "Pagos",
+  "/finance/credit-notes": "Notas de Crédito",
   "/finance/bank-accounts": "Cuentas Bancarias",
   "/finance/accounting": "Contabilidad",
   "/finance/accounting-customers": "Clientes",

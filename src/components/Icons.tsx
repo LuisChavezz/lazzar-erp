@@ -41,6 +41,7 @@ import {
   ExternalLink,
   FileCheck,
   FileCode2,
+  FileMinus,
   FileSearch,
   FileText,
   Filter,
@@ -208,6 +209,12 @@ export const OrdenesIcon = (props: LucideProps) => <ClipboardList {...props} />;
 export const TraspasosIcon = (props: LucideProps) => <ArrowLeftRight {...props} />;
 export const RecepcionesIcon = (props: LucideProps) => <PackageCheck {...props} />;
 export const FacturacionIcon = (props: LucideProps) => <FileText {...props} />;
+/**
+ * Nota de crédito — un DOCUMENTO que resta, de ahí el archivo con el menos. No
+ * se reutiliza `CxpIcon` (un `MinusCircle` suelto) porque ese nombra un saldo,
+ * no un documento, y su etiqueta lo ataría a Cuentas por Pagar.
+ */
+export const NotaCreditoIcon = (props: LucideProps) => <FileMinus {...props} />;
 export const CxpIcon = (props: LucideProps) => <MinusCircle {...props} />;
 export const CxcIcon = (props: LucideProps) => <PlusCircle {...props} />;
 export const BancosIcon = (props: LucideProps) => <Landmark {...props} />;
