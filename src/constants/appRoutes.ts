@@ -34,6 +34,7 @@ import {
   BancosIcon,
   WalletIcon,
   ReceiptIcon,
+  NotaCreditoIcon,
 } from "../components/Icons";
 
 export interface AppRouteItem {
@@ -431,6 +432,14 @@ export const appRouteGroups: AppRouteGroup[] = [
         path: "/finance/accounts-receivable",
         icon: CxcIcon,
         permission: "R-CONTABILIDAD-CXC",
+      },
+      {
+        key: "finance-credit-notes",
+        label: "Notas de Crédito",
+        path: "/finance/credit-notes",
+        icon: NotaCreditoIcon,
+        description: "Créditos sobre facturas de cliente, aplicados a cuentas por cobrar.",
+        permission: "R-CONTABILIDAD",
       },
       {
         key: "finance-bank-accounts",
