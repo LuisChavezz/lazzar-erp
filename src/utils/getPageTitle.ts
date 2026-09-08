@@ -39,6 +39,10 @@ const ROUTE_TITLES: Record<string, string> = {
   "/wms/rfid-labels": "Etiquetas RFID",
   "/wms/rfid-scanner": "Scanner RFID",
   "/finance/invoicing": "Facturación",
+  // Sin pantalla detrás por ahora: la maqueta que ocupaba esta ruta se eliminó al
+  // construir Pagos (EC-134). La entrada se conserva —igual que la del sidebar en
+  // `appRoutes.ts`— reservada para EC-133, que reconstruirá `/finance/accounts-payable`
+  // contra `/finanzas/cuentas-por-pagar/`.
   "/finance/accounts-payable": "CxP (Pagar)",
   "/finance/accounts-receivable": "CxC (Cobrar)",
   // "Bancos" es el CATÁLOGO de instituciones (`/finance/banks`); esta ruta es la
@@ -46,6 +50,7 @@ const ROUTE_TITLES: Record<string, string> = {
   // "Bancos" y dejarla así ponía ese título en el encabezado de dos pantallas
   // distintas.
   "/finance/banks": "Bancos",
+  "/finance/payments": "Pagos",
   "/finance/bank-accounts": "Cuentas Bancarias",
   "/finance/accounting": "Contabilidad",
   "/finance/accounting-customers": "Clientes",
