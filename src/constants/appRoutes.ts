@@ -35,6 +35,7 @@ import {
   WalletIcon,
   ReceiptIcon,
   NotaCreditoIcon,
+  ContabilidadIcon,
 } from "../components/Icons";
 
 export interface AppRouteItem {
@@ -453,14 +454,30 @@ export const appRouteGroups: AppRouteGroup[] = [
         description: "Cuentas bancarias por banco y moneda, con saldo y estatus.",
         permission: "R-CONTABILIDAD",
       },
-      // OCULTO EN NAVEGACION: usa datos mock (src/features/accounting/mocks/accounting.mock.ts:18). Restaurar cuando el backend exponga el endpoint real.
-      // {
-      //   key: "finance-accounting",
-      //   label: "Contabilidad",
-      //   path: "/finance/accounting",
-      //   icon: ContabilidadIcon,
-      //   permission: "R-CONTABILIDAD",
-      // },
+      {
+        // Sustituye a la entrada "finance-accounting" que estaba comentada aquí
+        // ("restaurar cuando el backend exponga el endpoint real"): el endpoint
+        // real es `/finanzas/polizas/` y esta pantalla lo consume. NO se
+        // reutiliza aquella ruta —`/finance/accounting` sigue existiendo en disco
+        // sirviendo la maqueta faker de `features/accounting`, con campos que el
+        // backend no tiene (`naturaleza`, `saldo`, un tipo "cierre")—, así que
+        // apuntar la entrada ahí llevaría a datos inventados. Cuando esa maqueta
+        // se elimine, su carpeta y su ruta se van con ella y aquí no cambia nada.
+        //
+        // Segmento en español, contra la convención kebab-inglés del resto de
+        // finanzas, por el mismo motivo que `/manufacturing/corte-manga`: es el
+        // término que usa el negocio, el que nombra al endpoint
+        // (`/finanzas/polizas/`), el de la etiqueta visible y el del módulo de
+        // features. "accounting-entries" habría chocado además con
+        // `accounting-entry.interface.ts`, que es de la maqueta.
+        key: "finance-polizas",
+        label: "Pólizas",
+        path: "/finance/polizas",
+        icon: ContabilidadIcon,
+        description:
+          "Asientos contables de partida doble, con cuadre de cargos y abonos.",
+        permission: "R-CONTABILIDAD",
+      },
       {
         key: "finance-payments",
         label: "Pagos",
