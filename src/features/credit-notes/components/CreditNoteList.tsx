@@ -34,12 +34,56 @@ const ESTATUS_FILTER = [
   { value: "Cancelada", label: "Cancelada" },
 ];
 
+/**
+ * Candado de reenvío POR FILA para una acción confirmada (emitir, cancelar,
+ * eliminar). Misma implementación que en `PolizaList`.
+ *
+ * - Se toma al CONFIRMAR, nunca al abrir: cerrar el diálogo sin confirmar no deja
+ *   nada tomado.
+ * - Guarda los ids EN VUELO, no un booleano de la acción: mientras la nota A
+ *   viaja, confirmar la B sigue funcionando; confirmar A otra vez no.
+ * - Cerrar el diálogo a mano NO lo suelta: se suelta cuando la petición termina.
+ *   Soltarlo antes dejaría reabrir y confirmar la misma nota con la primera
+ *   petición todavía en curso — justo el doble movimiento de saldo que evita.
+ *
+ * La ref es la guarda: se marca de forma SÍNCRONA, así que el segundo clic de un
+ * doble clic —que llega antes de que React vuelva a pintar— ya la encuentra
+ * puesta. El estado solo refleja lo mismo para pintar la etiqueta de pendiente
+ * de la fila correcta; el `isPending` de la mutación no sirve para eso, porque
+ * con dos filas en vuelo describe solo la última llamada.
+ */
+function useRowActionLock() {
+  const inFlightRef = useRef<Set<number>>(new Set());
+  const [pendingIds, setPendingIds] = useState<ReadonlySet<number>>(() => new Set());
+
+  const acquire = (id: number): boolean => {
+    if (inFlightRef.current.has(id)) return false;
+    inFlightRef.current.add(id);
+    setPendingIds(new Set(inFlightRef.current));
+    return true;
+  };
+
+  const release = (id: number) => {
+    inFlightRef.current.delete(id);
+    setPendingIds(new Set(inFlightRef.current));
+  };
+
+  const isPending = (id: number | null): boolean =>
+    id !== null && pendingIds.has(id);
+
+  return { acquire, release, isPending };
+}
+
 export default function CreditNoteList() {
   const { notasCredito, hasLoaded, isLoading, isError, error, refetch, isFetching } =
     useNotasCredito();
-  const { mutate: emitirNota, isPending: isEmitting } = useEmitirNotaCredito();
-  const { mutate: cancelNota, isPending: isCancelling } = useCancelNotaCredito();
-  const { mutate: deleteNota, isPending: isDeleting } = useDeleteNotaCredito();
+  // `mutateAsync` y no `mutate`: el candado se libera sobre la PROMESA de cada
+  // llamada (ver `useRowActionLock`). Los callbacks que se pasan a `mutate` solo
+  // corren para la ÚLTIMA llamada del observer, así que con dos notas en vuelo el
+  // `onSettled` de la primera se perdería y su candado no se soltaría nunca.
+  const { mutateAsync: emitirNotaAsync } = useEmitirNotaCredito();
+  const { mutateAsync: cancelNotaAsync } = useCancelNotaCredito();
+  const { mutateAsync: deleteNotaAsync } = useDeleteNotaCredito();
 
   const [isFormOpen, setIsFormOpen] = useState(false);
   // Estado de TODOS los diálogos en la vista, no en la celda de acciones: una
@@ -70,22 +114,21 @@ export default function CreditNoteList() {
     etiqueta: string;
   } | null>(null);
 
-  // Cerrojos de reenvío para las dos confirmaciones que MUEVEN saldos.
+  // Un candado POR ACCIÓN, cada uno con las notas que tiene en vuelo (ver
+  // `useRowActionLock`). Emitir y cancelar son las dos confirmaciones que MUEVEN
+  // el saldo de la cuenta por cobrar: dos peticiones simultáneas sobre la misma
+  // nota lo aplicarían o lo devolverían dos veces, porque el backend decide
+  // comparando contra el estatus anterior, que ambas leerían igual.
   //
-  // Tienen que ser refs y no el `isPending` de la mutación: `isPending` solo se
-  // ve tras un re-render, y los dos clics de un doble clic llegan en la misma
-  // ráfaga, antes de que React vuelva a pintar — verificado en el navegador,
-  // donde la guarda por `isPending` dejó pasar un segundo POST. Una ref se marca
-  // de forma SÍNCRONA dentro del propio manejador, así que el segundo clic ya la
-  // encuentra puesta. Se liberan en `onSettled`, cuando la mutación y su refetch
-  // terminaron.
-  const emitLock = useRef(false);
-  const cancelLock = useRef(false);
+  // El `isPending` de la mutación no sirve de guarda —solo se ve tras un
+  // re-render, y los dos clics de un doble clic llegan antes; verificado en el
+  // navegador, donde esa guarda dejó pasar un segundo POST—; la ref sí.
+  const emitLock = useRowActionLock();
+  const cancelLock = useRowActionLock();
   // El borrado necesita el suyo desde que su diálogo sobrevive a la desaparición
-  // optimista de la fila: antes el desmontaje inmediato impedía por accidente el
-  // segundo clic, y ahora ya no. Un DELETE repetido responde 404 y pintaría un
-  // error justo después de un borrado que sí funcionó.
-  const deleteLock = useRef(false);
+  // optimista de la fila: un DELETE repetido responde 404 y pintaría un error
+  // justo después de un borrado que sí funcionó.
+  const deleteLock = useRowActionLock();
 
   // Un error de refetch transitorio no debe descartar la tabla ya cargada; solo
   // se trata como error "de pantalla completa" si la consulta nunca cargó.
@@ -165,7 +208,7 @@ export default function CreditNoteList() {
   // El BORRADO queda FUERA de esta comprobación a propósito: su propio optimista
   // hace desaparecer la fila, así que la guarda se cumpliría siempre y cerraría
   // el diálogo justo al confirmar. No lo necesita — no consulta la lista para
-  // nada (ver `deleteTarget`) y su `onSettled` lo cierra igual.
+  // nada (ver `deleteTarget`) y al terminar la petición se cierra igual.
   const existe = (id: number) => notasCredito.some((nota) => nota.id === id);
   if (emitTargetId !== null && !existe(emitTargetId)) setEmitTargetId(null);
   if (cancelTargetId !== null && !existe(cancelTargetId)) setCancelTargetId(null);
@@ -250,12 +293,14 @@ export default function CreditNoteList() {
           }}
           title="Emitir Nota de Crédito"
           description={`¿Deseas emitir la nota ${etiqueta(emitTargetId)}? Su total se descontará del saldo por cobrar de la factura ligada y podrá marcarla como pagada. Después de emitirla ya no podrá eliminarse: solo cancelarse.`}
-          confirmText={isEmitting ? "Emitiendo..." : "Emitir nota"}
+          confirmText={
+            emitLock.isPending(emitTargetId) ? "Emitiendo..." : "Emitir nota"
+          }
           cancelText="Volver"
           // `closeOnConfirm={false}`: por defecto el diálogo se cierra al instante
           // y la etiqueta de "Emitiendo..." nunca alcanzaría a pintarse (está
-          // documentado en el prop). El cierre lo hace `onSettled`, cuando el
-          // refetch ya terminó.
+          // documentado en el prop). El cierre llega cuando la petición y su
+          // refetch terminaron.
           closeOnConfirm={false}
           // Guarda de reenvío: con `closeOnConfirm={false}` el diálogo sigue
           // montado durante todo el viaje y `ConfirmDialog` no expone forma de
@@ -265,14 +310,18 @@ export default function CreditNoteList() {
           // porque el backend decide si aplicar el crédito comparando contra el
           // estatus anterior, que ambas peticiones leerían como `Borrador`.
           onConfirm={() => {
-            if (emitLock.current) return;
-            emitLock.current = true;
-            emitirNota(emitTargetId, {
-              onSettled: () => {
-                emitLock.current = false;
-                setEmitTargetId(null);
-              },
-            });
+            const id = emitTargetId;
+            if (!emitLock.acquire(id)) return;
+            emitirNotaAsync(id)
+              // El hook ya avisó del error con su toast; aquí solo se evita el
+              // rechazo no manejado de la promesa.
+              .catch(() => {})
+              .finally(() => {
+                emitLock.release(id);
+                // Solo se cierra SU diálogo: si mientras tanto el usuario abrió
+                // el de otra nota, ese no se toca.
+                setEmitTargetId((current) => (current === id ? null : current));
+              });
           }}
           confirmColor="amber"
         />
@@ -286,7 +335,9 @@ export default function CreditNoteList() {
           }}
           title="Cancelar Nota de Crédito"
           description={`¿Deseas cancelar la nota ${etiqueta(cancelTargetId)}? Si estaba emitida, su importe se devolverá al saldo por cobrar de la factura. La nota se conserva en el listado con estatus Cancelada.`}
-          confirmText={isCancelling ? "Cancelando..." : "Cancelar nota"}
+          confirmText={
+            cancelLock.isPending(cancelTargetId) ? "Cancelando..." : "Cancelar nota"
+          }
           cancelText="Volver"
           closeOnConfirm={false}
           // Misma guarda de reenvío que en la emisión, por el motivo simétrico:
@@ -296,14 +347,14 @@ export default function CreditNoteList() {
           // YA está cancelada, no cuando dos peticiones simultáneas la
           // encuentran todavía emitida.
           onConfirm={() => {
-            if (cancelLock.current) return;
-            cancelLock.current = true;
-            cancelNota(cancelTargetId, {
-              onSettled: () => {
-                cancelLock.current = false;
-                setCancelTargetId(null);
-              },
-            });
+            const id = cancelTargetId;
+            if (!cancelLock.acquire(id)) return;
+            cancelNotaAsync(id)
+              .catch(() => {})
+              .finally(() => {
+                cancelLock.release(id);
+                setCancelTargetId((current) => (current === id ? null : current));
+              });
           }}
           confirmColor="amber"
         />
@@ -321,18 +372,22 @@ export default function CreditNoteList() {
           // La etiqueta viene del objetivo capturado al abrir, no de la lista: la
           // fila ya no está ahí mientras la mutación corre.
           description={`¿Deseas eliminar el borrador ${deleteTarget.etiqueta}? Se borrará de forma PERMANENTE y no podrá recuperarse. Si prefieres conservar el rastro del documento, cancélalo en vez de eliminarlo.`}
-          confirmText={isDeleting ? "Eliminando..." : "Eliminar permanentemente"}
+          confirmText={
+            deleteLock.isPending(deleteTarget.id)
+              ? "Eliminando..."
+              : "Eliminar permanentemente"
+          }
           cancelText="Volver"
           closeOnConfirm={false}
           onConfirm={() => {
-            if (deleteLock.current) return;
-            deleteLock.current = true;
-            deleteNota(deleteTarget.id, {
-              onSettled: () => {
-                deleteLock.current = false;
-                setDeleteTarget(null);
-              },
-            });
+            const id = deleteTarget.id;
+            if (!deleteLock.acquire(id)) return;
+            deleteNotaAsync(id)
+              .catch(() => {})
+              .finally(() => {
+                deleteLock.release(id);
+                setDeleteTarget((current) => (current?.id === id ? null : current));
+              });
           }}
           confirmColor="red"
         />
