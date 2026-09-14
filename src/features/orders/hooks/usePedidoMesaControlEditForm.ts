@@ -38,7 +38,11 @@ import {
   type ErrorNode,
 } from "@/src/features/quotes/utils/quoteFormErrorTree";
 
-import { canEditPedidoMesaControl, TIPO_PEDIDO } from "../constants/pedidoStatus";
+import {
+  canEditPedidoMesaControl,
+  isPedidoClasificacion,
+  TIPO_PEDIDO,
+} from "../constants/pedidoStatus";
 import { usePedidoDetail } from "./usePedidoDetail";
 import { usePedidoMesaControlContexto } from "./usePedidoMesaControlContexto";
 import type { PedidoMesaControlContexto } from "../interfaces/pedido-mesa-control-contexto.interface";
@@ -413,6 +417,8 @@ const mapPedidoDetailToFormValues = (
     fecha: todayStr,
     agente: userName,
     tipo_pedido: pedido.tipo_pedido ?? TIPO_PEDIDO.PEDIDO_DE_VENTA,
+    // Ausente, `null` o fuera del catálogo → sin selección.
+    clasificacion: isPedidoClasificacion(pedido.clasificacion) ? pedido.clasificacion : null,
     destinatario: pedido.destinatario || "",
     empresaEnvio: pedido.empresa_envio || "",
     telefonoEnvio: pedido.telefono_envio || "",
@@ -1251,6 +1257,13 @@ export function usePedidoMesaControlEditForm(pedidoId: number) {
           metodo_pago: parsed.data.metodo_pago ?? "",
           uso_cfdi: parsed.data.uso_cfdi ?? "",
           tipo_pedido: parsed.data.tipo_pedido ?? 0,
+          /* Código tal cual, o `null` para la opción vacía — nunca `""` (400).
+           * Se normaliza AQUÍ, sin confiar en el `onChange` del select: `??`
+           * dejaría pasar un `""` que se colara al estado, `isPedidoClasificacion`
+           * no. */
+          clasificacion: isPedidoClasificacion(parsed.data.clasificacion)
+            ? parsed.data.clasificacion
+            : null,
           oc: parsed.data.oc?.trim() || "",
           anticipo_total: condicion === "100_anticipo",
           anticipo_parcial: condicion === "50_anticipo",

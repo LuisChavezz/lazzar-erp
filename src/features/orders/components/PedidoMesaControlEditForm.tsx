@@ -1,7 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { QuoteFormContent } from "@/src/features/quotes/components/QuoteForm";
+import {
+  QUOTE_FORM_CAPABILITIES,
+  QuoteFormContent,
+} from "@/src/features/quotes/components/QuoteForm";
 import { formatCurrency, formatMoneyValueOrDash } from "@/src/utils/formatCurrency";
 import { usePedidoMesaControlEditForm } from "../hooks/usePedidoMesaControlEditForm";
 import { PedidoMesaControlBloqueos } from "./PedidoMesaControlBloqueos";
@@ -355,7 +358,7 @@ export function PedidoMesaControlEditForm({ pedidoId }: PedidoMesaControlEditFor
       <QuoteFormContent
         {...formProps}
         submitLabel="Guardar cambios del pedido"
-        mode="edit-pedido"
+        capabilities={QUOTE_FORM_CAPABILITIES.editPedidoMesaControl}
         removalBlockedExtraServicesCount={serviciosExtrasBase}
         removalBlockedReason="Este pedido se edita en modo estricto: los renglones existentes se actualizan, no se pueden quitar. Para eliminarlos hay que cancelar antes los documentos ligados."
       />

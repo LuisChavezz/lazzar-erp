@@ -105,6 +105,13 @@ export interface Order {
   folio_consecutivo: number | null;
   tipo_pedido: number;
   estatus: number;
+  /**
+   * Código crudo (`CharField(max_length=1)`, nullable), sin etiqueta del
+   * backend. Se tipa como `string` y no como `PedidoClasificacion` porque es lo
+   * que el serializer garantiza; se estrecha con `isPedidoClasificacion`.
+   * Opcional: respuestas previas a la columna pueden no traerlo.
+   */
+  clasificacion?: string | null;
   // ── FKs (PKs crudas) ─────────────────────────────────────────────────────
   empresa: number;
   sucursal: number;

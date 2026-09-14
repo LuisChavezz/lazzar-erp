@@ -6,6 +6,7 @@
  */
 import { z } from "zod";
 import { quoteItemSchema } from "./quote-item.schema";
+import { PEDIDO_CLASIFICACIONES } from "../../orders/constants/pedidoStatus";
 
 export { quoteItemSchema } from "./quote-item.schema";
 
@@ -43,6 +44,12 @@ export const quoteFormSchema = z.object({
   fecha: z.string().optional(),
   agente: z.string().trim().optional(),
   tipo_pedido: z.coerce.number().optional(),
+  /**
+   * Solo lo captura la edición de pedidos por Mesa de Control (lo decide
+   * `capabilities.canEditClasificacion` de `QuoteFormContent`). En los flujos de
+   * cotización queda inerte: no se pinta y sus payloads no lo leen.
+   */
+  clasificacion: z.enum(PEDIDO_CLASIFICACIONES, { message: "Clasificación inválida" }).nullable().optional(),
   destinatario: z.string().optional(),
   empresaEnvio: z.string().optional(),
   telefonoEnvio: z.string().optional(),

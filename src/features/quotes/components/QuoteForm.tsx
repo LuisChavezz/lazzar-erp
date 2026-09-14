@@ -23,6 +23,9 @@ import type { AddProductVariant } from "../types";
 import type { QuoteItem } from "../interfaces/quote.interface";
 import {
   getTipoPedidoConfig,
+  isPedidoClasificacion,
+  PEDIDO_CLASIFICACION_CONFIG,
+  PEDIDO_CLASIFICACIONES,
   TIPO_PEDIDO,
 } from "../../orders/constants/pedidoStatus";
 import { EditEmbroideryDialog } from "./EditEmbroideryDialog";
@@ -42,29 +45,63 @@ const LazyCustomerForm = dynamic(
 // Exporta el tipo del hook para compartir el contrato entre creación y edición
 export type QuoteFormHookResult = ReturnType<typeof useQuoteForm>;
 
+/** Capacidades que difieren entre los flujos que comparten `QuoteFormContent`. */
+export interface QuoteFormCapabilities {
+  /**
+   * Capturar partidas de MUESTRA. Alta y edición de COTIZACIONES sí; la edición
+   * de pedidos no: su guardado es un UPSERT por `id` con mapeo propio que no se
+   * ha validado para partidas de muestra.
+   */
+  canAddMuestra: boolean;
+  /**
+   * Capturar `clasificacion` del pedido. SOLO la edición por Mesa de Control:
+   * es un campo de `Pedido` que ninguna cotización envía.
+   */
+  canEditClasificacion: boolean;
+}
+
+export const QUOTE_FORM_CAPABILITIES = {
+  createQuote: { canAddMuestra: true, canEditClasificacion: false },
+  editQuote: { canAddMuestra: true, canEditClasificacion: false },
+  editPedidoMesaControl: { canAddMuestra: false, canEditClasificacion: true },
+} as const satisfies Record<string, QuoteFormCapabilities>;
+
+/**
+ * Centinela EXPLÍCITO de "sin clasificación", mismo molde que el
+ * `{ value: 0, label: "Seleccionar..." }` de `tipo_pedido`. No es `""` a
+ * propósito: `""` es justo el valor que el backend rechaza con 400, así que no
+ * debe existir en ningún punto del control. Un `<select>` solo maneja strings,
+ * por eso el centinela es texto; en el formulario se traduce a `null`.
+ */
+const CLASIFICACION_SIN_VALOR = "sin_clasificacion";
+
+const CLASIFICACION_OPTIONS = [
+  { value: CLASIFICACION_SIN_VALOR, label: "Sin clasificación" },
+  ...PEDIDO_CLASIFICACIONES.map((codigo) => ({
+    value: codigo,
+    label: PEDIDO_CLASIFICACION_CONFIG[codigo].label,
+  })),
+];
+
 // Props del formulario: resultado del hook más el label personalizable del botón principal
 export type QuoteFormContentProps = QuoteFormHookResult & {
   submitLabel?: string;
   /**
-   * Flujo que renderiza este formulario. Lo pasan los WRAPPERS (`QuoteForm`,
-   * `QuoteEditForm`, `PedidoMesaControlEditForm`), no los hooks: ninguna prop
-   * del hook distingue los flujos, y derivarlo de `formKey`/`submitLabel` sería
-   * adivinar por el contenido de un string.
+   * Qué puede hacer el usuario en el flujo que renderiza este formulario. Lo
+   * pasan los WRAPPERS (`QuoteForm`, `QuoteEditForm`,
+   * `PedidoMesaControlEditForm`) con los presets de `QUOTE_FORM_CAPABILITIES`,
+   * no los hooks: ninguna prop del hook distingue los flujos.
    *
-   * OBLIGATORIA a propósito, sin valor por defecto: con `mode = "create"` el
-   * bloqueo de captura de muestra en edición FALLABA ABIERTO —un wrapper nuevo
-   * que olvidara pasarlo volvía a mostrar "Agregar de Muestra" sin error de
-   * tipos—. Así el compilador obliga a cada wrapper a declarar su flujo.
+   * OBLIGATORIA a propósito, sin valor por defecto, y con TODAS las capacidades
+   * requeridas: un wrapper nuevo que olvidara declarar una no puede caer en un
+   * default abierto (así FALLABA el bloqueo de muestra cuando existía
+   * `mode = "create"`).
    *
-   * `"edit-pedido"` es la edición de un PEDIDO por Mesa de Control. Se añadió a
-   * la unión en vez de migrar la prop a un objeto de capacidades
-   * (`{ canAddMuestra, … }`) porque hoy `mode` tiene UN solo consumidor
-   * —`canAddMuestra`, tres líneas más abajo— y `submitLabel` ya es una prop
-   * aparte: el objeto habría sido puro churn en los tres wrappers sin separar
-   * ninguna diferencia que no esté ya separada. Si aparece una segunda
-   * capacidad que difiera entre flujos, ESE es el momento de hacer el cambio.
+   * Sustituye a la antigua prop `mode: "create" | "edit" | "edit-pedido"`, que
+   * tenía un solo consumidor (`canAddMuestra`). Se migró al aparecer la segunda
+   * capacidad que difiere entre flujos: `canEditClasificacion`.
    */
-  mode: "create" | "edit" | "edit-pedido";
+  capabilities: QuoteFormCapabilities;
   /**
    * Motivo por el que NO se pueden quitar renglones ni servicios extras en este
    * flujo. Presente ⇒ los botones de papelera se pintan deshabilitados con este
@@ -169,7 +206,7 @@ export function QuoteFormContent({
   customerAddresses,
   handleSelectShippingAddress,
   submitLabel = "Guardar Cotización",
-  mode,
+  capabilities,
   removalBlockedReason,
   removalBlockedExtraServicesCount = 0,
 }: QuoteFormContentProps) {
@@ -189,10 +226,7 @@ export function QuoteFormContent({
   // Etiqueta y color de la partida de muestra: MISMA fuente que el badge de la
   // columna "Tipo" del listado (`getTipoPedidoConfig`), no un estilo nuevo.
   const muestraBadge = getTipoPedidoConfig(TIPO_PEDIDO.MUESTRA);
-  // Alta y edición de COTIZACIONES capturan muestra por igual. La edición de
-  // pedidos (`edit-pedido`) queda fuera: su guardado es un UPSERT por `id` con
-  // mapeo propio que no se ha validado para partidas de muestra.
-  const canAddMuestra = mode === "create" || mode === "edit";
+  const { canAddMuestra, canEditClasificacion } = capabilities;
   /**
    * Una MUESTRA toma sus tallas del catálogo global y de ninguna otra fuente —
    * a diferencia de catálogo, que las saca de las variantes del producto. Si esa
@@ -315,6 +349,35 @@ export function QuoteFormContent({
                   />
                 )}
               </form.Field>
+              {canEditClasificacion && (
+                <form.Field name="clasificacion">
+                  {(field) => (
+                    <FormSelect
+                      label="Clasificación"
+                      options={CLASIFICACION_OPTIONS}
+                      name={field.name}
+                      value={field.state.value ?? CLASIFICACION_SIN_VALOR}
+                      onChange={(event) => {
+                        // Centinela → `null`; un código válido pasa tal cual. Nada
+                        // más puede entrar al estado (el payload vuelve a
+                        // normalizar por su cuenta).
+                        const next = event.target.value;
+                        if (next === CLASIFICACION_SIN_VALOR) {
+                          field.handleChange(null);
+                        } else if (isPedidoClasificacion(next)) {
+                          field.handleChange(next);
+                        }
+                        clearFieldErrors("clasificacion");
+                      }}
+                      onBlur={() => {
+                        field.handleBlur();
+                        validateField("clasificacion", field.state.value);
+                      }}
+                      error={getError("clasificacion")}
+                    />
+                  )}
+                </form.Field>
+              )}
               <form.Field name="fecha">
                 {(field) => (
                   <FormInput
@@ -2041,5 +2104,7 @@ export function QuoteFormContent({
 // Wrapper de creación — usa el hook de creación y renderiza el contenido compartido
 export default function QuoteForm() {
   const hookResult = useQuoteForm();
-  return <QuoteFormContent {...hookResult} mode="create" />;
+  return (
+    <QuoteFormContent {...hookResult} capabilities={QUOTE_FORM_CAPABILITIES.createQuote} />
+  );
 }

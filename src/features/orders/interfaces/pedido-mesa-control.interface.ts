@@ -26,6 +26,7 @@
  */
 import type { QuoteById } from "@/src/features/quotes/interfaces/quote.interface";
 import type { PedidoDetail } from "./order.interface";
+import type { PedidoClasificacion } from "../constants/pedidoStatus";
 
 /**
  * Configuraciones congeladas de servicios por talla.
@@ -169,6 +170,11 @@ export interface PedidoMesaControlHeaderInput {
   metodo_pago: string;
   uso_cfdi: string;
   tipo_pedido: number;
+  /**
+   * Código `A`–`F`/`X`, o `null` para "sin clasificación". NUNCA `""`: el
+   * backend lo rechaza con 400.
+   */
+  clasificacion: PedidoClasificacion | null;
   oc: string;
   // ── Condiciones de pago ───────────────────────────────────────────────────
   anticipo_total: boolean;

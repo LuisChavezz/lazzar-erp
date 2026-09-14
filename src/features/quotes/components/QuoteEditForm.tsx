@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuoteEditForm } from "../hooks/useQuoteEditForm";
-import { QuoteFormContent } from "./QuoteForm";
+import { QUOTE_FORM_CAPABILITIES, QuoteFormContent } from "./QuoteForm";
 
 interface QuoteEditFormProps {
   quoteId: number;
@@ -51,5 +51,11 @@ export function QuoteEditForm({ quoteId }: QuoteEditFormProps) {
     );
   }
 
-  return <QuoteFormContent {...formProps} submitLabel="Guardar Cambios" mode="edit" />;
+  return (
+    <QuoteFormContent
+      {...formProps}
+      submitLabel="Guardar Cambios"
+      capabilities={QUOTE_FORM_CAPABILITIES.editQuote}
+    />
+  );
 }

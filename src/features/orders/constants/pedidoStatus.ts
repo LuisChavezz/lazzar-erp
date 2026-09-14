@@ -88,6 +88,36 @@ export const getTipoPedidoConfig = (tipo: number): BadgeConfig =>
   };
 
 /**
+ * `Pedido.clasificacion`: `CharField(max_length=1)` nullable. El backend lo
+ * devuelve como código crudo y NO expone `get_clasificacion_display`, así que la
+ * etiqueta vive aquí. Mapa hermano de los de arriba, con llaves de TEXTO en vez
+ * de numéricas.
+ */
+export const PEDIDO_CLASIFICACIONES = ["A", "B", "C", "D", "E", "F", "X"] as const;
+
+export type PedidoClasificacion = (typeof PEDIDO_CLASIFICACIONES)[number];
+
+export const PEDIDO_CLASIFICACION_CONFIG: Record<PedidoClasificacion, { label: string }> = {
+  A: { label: "A - 2 a 5 días" },
+  B: { label: "B - 5 a 8 días" },
+  C: { label: "C - 5 a 15 días" },
+  D: { label: "D - 4 a 6 semanas" },
+  E: { label: "E - 6 a 8 semanas" },
+  F: { label: "F - 8 a 10 semanas" },
+  X: { label: "X - Solo para facturar" },
+};
+
+export const isPedidoClasificacion = (value: unknown): value is PedidoClasificacion =>
+  typeof value === "string" && Object.hasOwn(PEDIDO_CLASIFICACION_CONFIG, value);
+
+export const getPedidoClasificacionLabel = (clasificacion: string | null | undefined): string => {
+  if (clasificacion == null || clasificacion === "") return "Sin clasificación";
+  return isPedidoClasificacion(clasificacion)
+    ? PEDIDO_CLASIFICACION_CONFIG[clasificacion].label
+    : `Desconocida (${clasificacion})`;
+};
+
+/**
  * ¿Se puede editar este pedido desde Mesa de Control?
  *
  * Regla construida contra el enum COMPLETO (`Pedido.CHOICES_ESTATUS`), no solo
