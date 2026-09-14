@@ -16,9 +16,9 @@ import {
   quoteReviewSchema,
   QUOTE_REVIEW_FIELD_LABELS,
 } from "../schemas/quote-review.schema";
+import { mapQuoteDetalleToItem } from "./mapQuoteDetalleToItem";
 
 type OnboardingCustomer = QuoteOnboardingData["busqueda"]["clientes"][number];
-type OnboardingProduct = QuoteOnboardingData["busqueda"]["productos"][number];
 type QuoteReviewValidationInput = Omit<QuoteFormValues, "items"> & {
   cliente: number;
   items: QuoteItem[];
@@ -50,24 +50,6 @@ export function validateQuoteForReview(
   quote: QuoteById,
   onboardingData: QuoteOnboardingData
 ): QuoteReviewValidationError[] {
-  /**
-   * Una cotización de PRODUCTO DE MUESTRA (partidas con `producto = null`) no
-   * puede pasar por esta validación: está pensada para partidas de catálogo y
-   * exige producto, color y tallas. Al normalizar la muestra a `productoId: 0`
-   * el usuario recibía "Selecciona un producto válido" sobre un renglón que por
-   * definición no tiene producto, sin manera de corregirlo. Se corta antes con
-   * el motivo real.
-   */
-  if ((quote.detalles ?? []).some((detalle) => detalle.producto == null)) {
-    return [
-      {
-        field: "Productos",
-        message:
-          "Una cotización de productos de muestra no puede enviarse a revisión.",
-      },
-    ];
-  }
-
   const reviewInput = mapQuoteToReviewValidationInput(quote, onboardingData);
   const schemaIssues = getSchemaValidationIssues(reviewInput);
   const schemaIssuePaths = new Set(
@@ -115,112 +97,6 @@ const resolveRegimenFiscal = (
   );
 
   return regimen?.value ?? customer.sat_regimen_fiscal__codigo ?? "";
-};
-
-const mapDetalleToQuoteItem = (
-  detalle: QuoteById["detalles"][number],
-  products: OnboardingProduct[]
-): QuoteItem => {
-  const primeraTalla = detalle.tallas[0];
-  const llevaBordado = primeraTalla?.lleva_bordado ?? false;
-  const llevaReflejante = primeraTalla?.lleva_reflejante ?? false;
-  const llevaCorteManga = primeraTalla?.lleva_corte_manga ?? false;
-
-  const product = products.find((item) => item.id === detalle.producto);
-  const colorId = detalle.color ?? null;
-  const availableSizes = (() => {
-    if (!product?.variantes?.length) {
-      return undefined;
-    }
-
-    const seen = new Set<number>();
-    const sizes: Array<{ id: number; nombre: string }> = [];
-
-    for (const variant of product.variantes) {
-      if (colorId !== null && variant.color.id !== colorId) {
-        continue;
-      }
-
-      if (seen.has(variant.talla.id)) {
-        continue;
-      }
-
-      seen.add(variant.talla.id);
-      sizes.push({ id: variant.talla.id, nombre: variant.talla.nombre });
-    }
-
-    return sizes.length > 0 ? sizes : undefined;
-  })();
-
-  return {
-    // DEUDA CONOCIDA, igual que en `useQuoteEditForm`: ambos campos son
-    // nullable desde que existe la partida de MUESTRA. Enviar a revisión una
-    // cotización de muestra está fuera de alcance; la normalización mantiene el
-    // comportamiento idéntico para partidas de catálogo (donde nunca faltan) y
-    // deja que la validación de catálogo reporte el problema si algún día llega
-    // una de muestra por aquí.
-    tipo: "catalogo",
-    productoId: detalle.producto ?? 0,
-    descripcion: detalle.producto_nombre ?? "",
-    unidad: "PZA",
-    cantidad: detalle.tallas.reduce((sum, talla) => sum + talla.cantidad, 0),
-    precio: Number(detalle.precio_unitario) || 0,
-    descuento: 0,
-    importe: Number(detalle.subtotal_linea) || 0,
-    colorId: detalle.color ?? undefined,
-    colorNombre: detalle.color_nombre ?? undefined,
-    colorHex: detalle.color_codigo_hex ?? undefined,
-    availableSizes,
-    tallas: detalle.tallas.map((talla) => ({
-      tallaId: talla.talla,
-      nombre: talla.talla_nombre,
-      cantidad: talla.cantidad,
-    })),
-    bordados: llevaBordado
-      ? {
-          activo: true,
-          observaciones: primeraTalla?.bordado_config?.notas ?? "",
-          especificaciones: (primeraTalla?.bordado_config?.ubicaciones ?? []).map(
-            (ubicacion) => ({
-              posicionCodigo: ubicacion.codigo,
-              posicionNombre:
-                ubicacion.descripcion_posicion?.trim() || ubicacion.codigo,
-              posicionPersonalizada: ubicacion.descripcion_posicion ?? "",
-              ancho:
-                Number(ubicacion.ancho_cm) > 0 ? ubicacion.ancho_cm : undefined,
-              alto:
-                Number(ubicacion.alto_cm) > 0 ? ubicacion.alto_cm : undefined,
-              colorHilo: ubicacion.color_hilo ?? undefined,
-              // Se leen de la respuesta, igual que en `useQuoteEditForm`: con
-              // las banderas fijas en `false`, la regla del esquema que exige
-              // ancho y alto cuando hay nuevo ponchado no podía dispararse
-              // nunca sobre una cotización ya guardada.
-              pantones: ubicacion.pantones ?? undefined,
-              imagen: ubicacion.imagen ?? "",
-              nuevoPonchado: ubicacion.nuevo_ponchado ?? false,
-              serigrafia: ubicacion.serigrafia ?? false,
-              sublimado: ubicacion.sublimado ?? false,
-              dtf: ubicacion.dtf ?? false,
-              revelado: ubicacion.revelado ?? false,
-            })
-          ),
-        }
-      : { activo: false, observaciones: "", especificaciones: [] },
-    reflejantes: llevaReflejante
-      ? {
-          activo: true,
-          observaciones: "",
-          especificaciones: (primeraTalla?.reflejante_config ?? []).map(
-            (reflective) => ({
-              opcion: reflective.opcion || "",
-              posicion: reflective.posicion || "",
-              tipo: reflective.tipo || "",
-            })
-          ),
-        }
-      : { activo: false, observaciones: "", especificaciones: [] },
-    lleva_corte_manga: llevaCorteManga,
-  };
 };
 
 const mapQuoteToReviewValidationInput = (
@@ -290,7 +166,7 @@ const mapQuoteToReviewValidationInput = (
     iva: quote.iva ?? 0,
     moneda: quote.moneda || 0,
     items: (quote.detalles ?? []).map((detalle) =>
-      mapDetalleToQuoteItem(detalle, onboardingData.busqueda.productos)
+      mapQuoteDetalleToItem(detalle, onboardingData.busqueda.productos)
     ),
   };
 };
@@ -305,11 +181,30 @@ const getSchemaValidationIssues = (
     return [];
   }
 
-  return result.error.issues.map((issue) => ({
-    path: normalizeIssuePath(issue.path),
-    message: issue.message,
-  }));
+  return result.error.issues
+    .map((issue) => ({
+      path: normalizeIssuePath(issue.path),
+      message: issue.message,
+    }))
+    .filter((issue) => !isMuestraDescripcionIssue(issue.path, reviewInput));
 };
+
+/**
+ * En una muestra `descripcion` es copia de `producto_nombre_externo` (ver
+ * `mapQuoteDetalleToItem`), así que una descripción vacía fallaba en los dos
+ * campos. Se reporta solo `producto_nombre_externo`. Se filtra aquí y no en el
+ * esquema porque `descripcion` lo exige también `quoteFormSchema`, que es el
+ * esquema de guardado.
+ */
+const isMuestraDescripcionIssue = (
+  path: readonly (string | number)[],
+  reviewInput: QuoteReviewValidationInput
+): boolean =>
+  path.length === 3 &&
+  path[0] === "items" &&
+  path[2] === "descripcion" &&
+  typeof path[1] === "number" &&
+  reviewInput.items[path[1]]?.tipo === "muestra";
 
 const getCatalogValidationErrors = (
   quote: QuoteById,
@@ -381,6 +276,28 @@ const getCatalogValidationErrors = (
 
   (reviewInput.items ?? []).forEach((item, itemIndex) => {
     const rawDetail = quote.detalles[itemIndex];
+    const pushCorteMangaIssue = () => {
+      if (
+        rawDetail?.tallas.some(
+          (size) => size.lleva_corte_manga && !size.corte_manga_config?.tipo?.trim()
+        )
+      ) {
+        pushCatalogValidationIssue(
+          errors,
+          schemaIssuePaths,
+          ["items", itemIndex, "lleva_corte_manga"],
+          "Configura el tipo de corte de manga"
+        );
+      }
+    };
+
+    // Una muestra no apunta al catálogo: producto, color y tallas por variante
+    // no aplican. Su descripción, precio y tallas los cubre el esquema.
+    if (item.tipo === "muestra") {
+      pushCorteMangaIssue();
+      return;
+    }
+
     const product = onboardingData.busqueda.productos.find(
       (candidate) => candidate.id === item.productoId
     );
@@ -424,18 +341,7 @@ const getCatalogValidationErrors = (
       }
     });
 
-    if (
-      rawDetail?.tallas.some(
-        (size) => size.lleva_corte_manga && !size.corte_manga_config?.tipo?.trim()
-      )
-    ) {
-      pushCatalogValidationIssue(
-        errors,
-        schemaIssuePaths,
-        ["items", itemIndex, "lleva_corte_manga"],
-        "Configura el tipo de corte de manga"
-      );
-    }
+    pushCorteMangaIssue();
   });
 
   return errors;

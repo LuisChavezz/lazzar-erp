@@ -107,13 +107,31 @@ const quoteReviewReflectiveSchema = z
     }
   });
 
-const quoteReviewItemSchema = quoteItemSchema.and(
+const reviewTallasSchema = z
+  .array(quoteItemSizeSchema)
+  .min(1, "Agrega al menos una talla");
+
+/**
+ * Endurecimiento por variante. Se intersecta con `quoteItemSchema` (que ya
+ * exige `producto_nombre_externo` y `precio > 0`) en vez de refinar después,
+ * para que los errores de color se reporten en la misma pasada que el resto.
+ * Una muestra no tiene color por contrato, así que solo catálogo lo exige.
+ */
+const quoteReviewItemOverridesSchema = z.discriminatedUnion("tipo", [
   z.object({
+    tipo: z.literal("catalogo"),
     colorId: colorSelectionSchema.shape.colorId,
-    tallas: z.array(quoteItemSizeSchema).min(1, "Agrega al menos una talla"),
+    tallas: reviewTallasSchema,
     reflejantes: quoteReviewReflectiveSchema.optional(),
-  })
-);
+  }),
+  z.object({
+    tipo: z.literal("muestra"),
+    tallas: reviewTallasSchema,
+    reflejantes: quoteReviewReflectiveSchema.optional(),
+  }),
+]);
+
+const quoteReviewItemSchema = quoteItemSchema.and(quoteReviewItemOverridesSchema);
 
 // ─── Labels legibles para los campos validados ────────────────────────────────
 
@@ -154,6 +172,7 @@ export const QUOTE_REVIEW_FIELD_LABELS: Record<string, string> = {
   iva: "IVA",
   items: "Productos",
   productoId: "Producto",
+  producto_nombre_externo: "Descripción de la muestra",
   colorId: "Color",
   tallas: "Tallas",
   tallaId: "Talla",
