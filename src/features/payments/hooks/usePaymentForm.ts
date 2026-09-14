@@ -14,7 +14,7 @@ import {
 } from "../schemas/payment.schema";
 import { buildPagoPayload } from "../utils/buildPagoPayload";
 import { useCreatePago, type ParsedPagoError } from "./useCreatePago";
-import type { CuentaPorPagar } from "../interfaces/cuenta-por-pagar.interface";
+import type { CuentaPorPagar } from "@/src/features/accounts-payable/interfaces/accounts-payable.interface";
 
 const LINE_ERROR_PREFIX = "pago_detalles";
 

@@ -2,7 +2,7 @@ import { v1_api } from "@/src/api/v1.api";
 import type {
   CuentaPorPagar,
   CuentaPorPagarQueryParams,
-} from "../interfaces/cuenta-por-pagar.interface";
+} from "@/src/features/accounts-payable/interfaces/accounts-payable.interface";
 import type { CreatePagoPayload, Pago } from "../interfaces/payment.interface";
 import type { MovimientoBancario } from "../interfaces/movimiento-bancario.interface";
 

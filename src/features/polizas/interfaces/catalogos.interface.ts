@@ -14,8 +14,8 @@
  *
  * CANDIDATOS A EXTRACCIÓN: cuando EC-139/EC-140 construyan esos módulos, estos
  * tipos y sus hooks (`useCuentasContables`, `useCentrosCosto`) deben MUDARSE ahí
- * y `polizas` importarlos, exactamente como `payments` hace con `banks` y como
- * su `cuenta-por-pagar.interface.ts` documenta para EC-133. Hasta entonces
+ * y `polizas` importarlos, exactamente como `payments` hace con `banks` y, desde
+ * EC-133, con `accounts-payable` (`CuentaPorPagar`). Hasta entonces
  * duplicar el catálogo en un módulo vacío sería peor que tenerlo aquí.
  *
  * Como en el resto de finanzas: arreglo PLANO (sin paginación).

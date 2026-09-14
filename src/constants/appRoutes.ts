@@ -9,6 +9,7 @@ import {
   UserIcon,
   ComprasIcon,
   CxcIcon,
+  CxpIcon,
   DashboardIcon,
   ExistenciasIcon,
   FacturacionIcon,
@@ -416,17 +417,17 @@ export const appRouteGroups: AppRouteGroup[] = [
         icon: FacturacionIcon,
         permission: "R-CONTABILIDAD-FACTURACION",
       },
-      // OCULTO EN NAVEGACION: la pantalla de CxP todavía no existe. La maqueta
-      // con datos faker que ocupaba esta ruta se eliminó al construir Pagos
-      // (EC-134); esta entrada queda reservada para EC-133, que debe reconstruir
-      // `/finance/accounts-payable` contra `/finanzas/cuentas-por-pagar/`.
-      // {
-      //   key: "finance-accounts-payable",
-      //   label: "CxP (Pagar)",
-      //   path: "/finance/accounts-payable",
-      //   icon: CxpIcon,
-      //   permission: "R-CONTABILIDAD",
-      // },
+      {
+        // Reconstruida en EC-133 contra `/finanzas/cuentas-por-pagar/` (la
+        // maqueta faker que ocupaba la ruta se eliminó en EC-134). Sin código de
+        // sección propio: la cubre el `R-CONTABILIDAD` del prefijo `/finance`.
+        key: "finance-accounts-payable",
+        label: "CxP (Pagar)",
+        path: "/finance/accounts-payable",
+        icon: CxpIcon,
+        description: "Cuentas por pagar a proveedores, con saldo y vencimiento.",
+        permission: "R-CONTABILIDAD",
+      },
       {
         key: "finance-accounts-receivable",
         label: "CxC (Cobrar)",

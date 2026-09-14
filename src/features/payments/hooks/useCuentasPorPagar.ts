@@ -1,9 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { getCuentasPorPagar } from "../services/actions";
-import {
-  CXP_ESTATUS_APLICABLES,
-  type CuentaPorPagar,
-} from "../interfaces/cuenta-por-pagar.interface";
+import type { CuentaPorPagar } from "@/src/features/accounts-payable/interfaces/accounts-payable.interface";
+import { CXP_ESTATUS_APLICABLES } from "../constants/paymentStatus";
 
 /**
  * Cuentas por pagar APLICABLES de un proveedor — las que el selector del pago

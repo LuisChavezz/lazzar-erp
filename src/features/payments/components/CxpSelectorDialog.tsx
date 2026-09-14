@@ -5,7 +5,7 @@ import { MultiSelectPickerDialogContent } from "@/src/components/MultiSelectPick
 import { formatMoneyValueOrDash } from "@/src/utils/formatCurrency";
 import { formatShortDate } from "@/src/utils/formatDate";
 import { useCuentasPorPagar } from "../hooks/useCuentasPorPagar";
-import type { CuentaPorPagar } from "../interfaces/cuenta-por-pagar.interface";
+import type { CuentaPorPagar } from "@/src/features/accounts-payable/interfaces/accounts-payable.interface";
 
 interface CxpSelectorDialogProps {
   open: boolean;

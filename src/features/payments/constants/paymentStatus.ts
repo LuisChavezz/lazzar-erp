@@ -1,5 +1,22 @@
 import type { StatusBadgeConfigEntry } from "@/src/components/StatusBadge";
+import type { CxPEstatus } from "@/src/features/accounts-payable/interfaces/accounts-payable.interface";
 import type { MetodoPago, PagoEstatus } from "../interfaces/payment.interface";
+
+/**
+ * Estatus que dejan una CxP disponible para aplicarle un pago. `Pagada` y
+ * `Cancelada` quedan fuera de la selección: son terminales. Una CxP vencida SÍ
+ * se ofrece: lo vencido no es un estatus (ver `CxPEstatus`), así que llega como
+ * `Pendiente` o `Parcial`.
+ *
+ * El filtro por estatus se resuelve EN CLIENTE: el `get_queryset` del backend
+ * hace `qs.filter(estatus=estatus)` con un solo valor, así que no admite "Pendiente
+ * O Parcial" en una sola llamada. Lo que sí se delega al servidor es
+ * `saldo_pendiente=true` (`saldo__gt=0`), ver `getCuentasPorPagar`.
+ */
+export const CXP_ESTATUS_APLICABLES: readonly CxPEstatus[] = [
+  "Pendiente",
+  "Parcial",
+];
 
 /**
  * Presentación del `estatus` del pago. Las llaves son los valores CRUDOS del
