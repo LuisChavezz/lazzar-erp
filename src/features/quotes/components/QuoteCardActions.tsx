@@ -134,17 +134,13 @@ export function QuoteCardActions({ quote, align = "end" }: QuoteCardActionsProps
       onSelect: () => setIsViewOpen(true),
     },
     {
-      label: isMuestra ? "Editar (no disponible en muestras)" : "Editar",
+      label: "Editar",
       icon: EditIcon,
       onSelect: () => router.push(`/sales/quotes/${quote.id}/edit`),
       // `visible` es la regla de NEGOCIO (estatus editable, ver
       // `canEditQuote`); `permission` es la de PERMISOS — se exigen ambas.
       permission: "E-CRM-COTIZACIONES",
       visible: canEdit,
-      // La edición rehidrata cada partida como si fuera de catálogo, así que una
-      // de muestra caería en la validación de `quoteItemSchema`
-      // (`productoId >= 1`). Se bloquea aquí en vez de fallar al guardar.
-      disabled: isMuestra,
     },
     {
       label: isMuestra

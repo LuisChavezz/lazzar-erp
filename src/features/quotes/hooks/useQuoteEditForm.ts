@@ -28,11 +28,13 @@ import { deriveTiposServicio } from "../utils/deriveTiposServicio";
 import { TIPO_PEDIDO } from "../../orders/constants/pedidoStatus";
 import { useQuoteOnboardingData } from "./useQuoteOnboardingData";
 import { useSatInfo } from "../../sat/hooks/useSatInfo";
+import { useSizes } from "../../sizes/hooks/useSizes";
 import { useQuote } from "./useQuote";
-import { createEmptyValues, type ExtraService } from "./useQuoteForm";
+import { createEmptyValues, deriveTipoPedido, type ExtraService } from "./useQuoteForm";
 import { useUpdateQuote } from "./useUpdateQuote";
 import type { QuoteValidationIssue } from "../utils/quoteValidationErrors";
 import { canEditQuote } from "../utils/quoteStatusRules";
+import { mapQuoteDetalleToItem } from "../utils/mapQuoteDetalleToItem";
 import { scrollToFirstValidationError } from "../utils/scrollToFirstValidationError";
 import {
   getPathValue,
@@ -79,115 +81,6 @@ const reverseMapCondicionPago = (quote: QuoteById): QuotePaymentCondition => {
 // Tipo alias para los productos del catálogo de onboarding
 type OnboardingProduct = QuoteOnboardingData["busqueda"]["productos"][number];
 
-// Normaliza cada talla de un detalle para construir el QuoteItem del formulario.
-// Recibe el catálogo de productos para derivar las tallas disponibles por variante.
-const mapDetalleToQuoteItem = (
-  detalle: QuoteById["detalles"][number],
-  products?: OnboardingProduct[]
-): QuoteItem => {
-  const primeraTalla = detalle.tallas[0];
-  const llevaBordado = primeraTalla?.lleva_bordado ?? false;
-  const llevaReflejante = primeraTalla?.lleva_reflejante ?? false;
-  const llevaCorteManga = primeraTalla?.lleva_corte_manga ?? false;
-
-  const cantidadTotal = detalle.tallas.reduce((sum, t) => sum + t.cantidad, 0);
-  const precio = Number(detalle.precio_unitario) || 0;
-  // Calcular el importe localmente en lugar de depender de subtotal_linea del API,
-  // que puede venir como "0.00" y provocar que los totales sean incorrectos
-  // en la carga inicial del formulario de edición.
-  const importe = Number((cantidadTotal * precio).toFixed(2));
-
-  return {
-    // DEUDA CONOCIDA: `producto`/`producto_nombre` ahora son nullable en el
-    // contrato porque una partida de MUESTRA no apunta al catálogo. La edición
-    // de cotizaciones de muestra está fuera de alcance, así que aquí solo se
-    // normaliza para no romper el tipo: en una partida de catálogo —el único
-    // caso que este formulario sabe editar hoy— ambos campos siempre vienen, y
-    // el comportamiento es idéntico al anterior. Una cotización de muestra
-    // abierta en edición caería en la validación de `quoteItemSchema`
-    // (`productoId >= 1`, `descripcion` requerida) en vez de guardarse mal.
-    tipo: "catalogo",
-    productoId: detalle.producto ?? 0,
-    descripcion: detalle.producto_nombre ?? "",
-    unidad: "PZA",
-    cantidad: cantidadTotal,
-    precio,
-    descuento: 0,
-    importe,
-    colorId: detalle.color ?? undefined,
-    colorNombre: detalle.color_nombre ?? undefined,
-    colorHex: detalle.color_codigo_hex ?? undefined,
-    // Derivar las tallas disponibles desde las variantes del producto en el catálogo.
-    // Si no se encuentran variantes para ese producto/color, queda undefined
-    // y useEditSizesDialog usará el catálogo global como fallback.
-    availableSizes: (() => {
-      if (!products?.length) return undefined;
-      const product = products.find((p) => p.id === detalle.producto);
-      if (!product?.variantes?.length) return undefined;
-      const colorId = detalle.color ?? null;
-      const seen = new Set<number>();
-      const sizesList: Array<{ id: number; nombre: string }> = [];
-      for (const variant of product.variantes) {
-        if (colorId !== null && variant.color.id !== colorId) continue;
-        if (!seen.has(variant.talla.id)) {
-          seen.add(variant.talla.id);
-          sizesList.push(variant.talla);
-        }
-      }
-      return sizesList.length > 0 ? sizesList : undefined;
-    })(),
-    tallas: detalle.tallas.map((t) => ({
-      tallaId: t.talla,
-      nombre: t.talla_nombre,
-      cantidad: t.cantidad,
-    })),
-    bordados: llevaBordado
-      ? {
-          activo: true,
-          observaciones: primeraTalla?.bordado_config?.notas ?? "",
-          especificaciones: (primeraTalla?.bordado_config?.ubicaciones ?? []).map((u) => ({
-            posicionCodigo: u.codigo,
-            posicionNombre: u.descripcion_posicion?.trim() || u.codigo,
-            posicionPersonalizada: u.descripcion_posicion ?? "",
-            // Convertir null/cero a undefined para que Zod los omita en .optional()
-            ancho: Number(u.ancho_cm) > 0 ? u.ancho_cm : undefined,
-            alto: Number(u.alto_cm) > 0 ? u.alto_cm : undefined,
-            colorHilo: u.color_hilo ?? undefined,
-            // `pantones` y las cinco técnicas se LEEN de la respuesta. Estaban
-            // fijas en `undefined`/`false`, así que abrir una cotización y
-            // guardarla borraba lo capturado —y, desde que `tipos_servicio` se
-            // deriva de estas banderas, borraba también el agregado—. El
-            // `?? false` cubre las cotizaciones viejas, cuyo `bordado_config`
-            // no trae estas claves.
-            pantones: u.pantones ?? undefined,
-            imagen: u.imagen ?? "",
-            nuevoPonchado: u.nuevo_ponchado ?? false,
-            serigrafia: u.serigrafia ?? false,
-            sublimado: u.sublimado ?? false,
-            dtf: u.dtf ?? false,
-            revelado: u.revelado ?? false,
-          })),
-        }
-      : { activo: false, observaciones: "", especificaciones: [] },
-    reflejantes: llevaReflejante
-      ? {
-          activo: true,
-          observaciones: "",
-          especificaciones: (Array.isArray(primeraTalla?.reflejante_config)
-            ? primeraTalla.reflejante_config
-            : []
-          ).map((r) => ({
-            // Normalizar posibles null del backend a cadena vacía
-            opcion: r.opcion || "",
-            posicion: r.posicion || "",
-            tipo: r.tipo || "",
-          })),
-        }
-      : { activo: false, observaciones: "", especificaciones: [] },
-    lleva_corte_manga: llevaCorteManga,
-  };
-};
-
 // Construye los valores iniciales del formulario a partir de una cotización existente
 const mapQuoteByIdToFormValues = (
   quote: QuoteById,
@@ -233,11 +126,9 @@ const mapQuoteByIdToFormValues = (
     condicionPagoMonto: Number(quote.monto) || 0,
     fecha: todayStr,
     agente: userName,
-    // Se CONSERVA el valor de la cotización. El comentario anterior decía que
-    // `QuoteById` no exponía `tipo_pedido`, pero sí: es campo del modelo y el
-    // serializer usa `fields = "__all__"`. Fijarlo en "Pedido de venta"
-    // reescribía a 1 cualquier cotización de MUESTRA (2) con solo abrirla y
-    // guardarla, perdiendo su clasificación.
+    // Valor inicial nada más: en cuanto hay partidas lo sobrescribe
+    // `deriveTipoPedido`, igual que en el alta. Como el mapeo ya rehidrata las
+    // muestras con `tipo: "muestra"`, abrir y guardar no reclasifica nada.
     tipo_pedido: quote.tipo_pedido ?? TIPO_PEDIDO.PEDIDO_DE_VENTA,
     destinatario: quote.destinatario || "",
     empresaEnvio: quote.empresa_envio || "",
@@ -272,7 +163,7 @@ const mapQuoteByIdToFormValues = (
     anticipo: Number(quote.anticipo) || 0,
     iva: quote.iva ?? 16,
     moneda: quote.moneda || 0,
-    items: (quote.detalles ?? []).map((d) => mapDetalleToQuoteItem(d, products)),
+    items: (quote.detalles ?? []).map((d) => mapQuoteDetalleToItem(d, products)),
   };
 };
 
@@ -288,6 +179,7 @@ export function useQuoteEditForm(quoteId: number) {
   const { data: currencies, isLoading: isCurrenciesLoading } = useCurrencies();
   const { data: onboardingData, isLoading: isOnboardingLoading } = useQuoteOnboardingData();
   const { data: satInfo } = useSatInfo();
+  const { sizes, isLoading: isSizesLoading } = useSizes();
 
   // Consulta de la cotización a editar
   const {
@@ -596,7 +488,7 @@ export function useQuoteEditForm(quoteId: number) {
           forma_pago: parsed.data.forma_pago ?? "",
           metodo_pago: parsed.data.metodo_pago ?? "",
           uso_cfdi: parsed.data.uso_cfdi ?? "",
-          tipo_pedido: parsed.data.tipo_pedido ?? 0,
+          tipo_pedido: deriveTipoPedido(parsed.data.items),
           estatus:
             parsed.data.estatusPedido === "Pendiente"
               ? 1
@@ -783,6 +675,16 @@ export function useQuoteEditForm(quoteId: number) {
 
   // Derivados de totales
   const watchedItems = useMemo(() => values.items ?? [], [values.items]);
+
+  // Mismo mecanismo que el alta: el select de tipo refleja en vivo si hay
+  // alguna partida de muestra. El submit vuelve a derivarlo por su cuenta.
+  const derivedTipoPedido = deriveTipoPedido(watchedItems);
+  useEffect(() => {
+    if (values.tipo_pedido !== derivedTipoPedido) {
+      form.setFieldValue("tipo_pedido", derivedTipoPedido);
+    }
+  }, [derivedTipoPedido, form, values.tipo_pedido]);
+
   const { subtotal, descuentoTotal, ivaAmount, granTotal, saldoPendiente } = useMemo(() => {
     const nextSubtotal = watchedItems.reduce(
       (sum: number, item: QuoteItem) => sum + (Number(item.importe) || 0),
@@ -1177,19 +1079,12 @@ export function useQuoteEditForm(quoteId: number) {
     currencyOptions,
     formasPagoOptions,
     metodosPagoOptions,
-    sizes: onboardingData?.catalogos.tallas ?? [],
+    sizes,
     products: onboardingData?.busqueda.productos ?? [],
     isCustomersLoading,
     isCurrenciesLoading,
     isOnboardingLoading: isOnboardingLoading || isQuoteLoading,
-    // Esta pantalla no consulta el catálogo global de tallas: sigue leyendo
-    // `catalogos.tallas` (arriba), que el backend nunca envía, así que `sizes`
-    // es siempre `[]` aquí. Es un defecto CONOCIDO Y DIFERIDO —rompe el diálogo
-    // de editar tallas cuando el producto perdió sus variantes— y se arregla
-    // migrando esta pantalla a `useSizes()`, como ya hizo el alta. Mientras
-    // tanto, `false` mantiene el contrato de props compartido sin alterar en
-    // nada el comportamiento actual: no hay ninguna consulta que esperar.
-    isSizesLoading: false,
+    isSizesLoading,
     showForm,
     isCreationSuccessVisible: isEditSuccessVisible,
     isRouteTransitioning,

@@ -22,8 +22,8 @@ import type { CatalogRow, QuoteItem } from "../types";
  *
  * El cambio es ADITIVO: solo `productoId === null` toma la rama nueva. Un
  * `productoId` de catálogo (>= 1) recorre exactamente el camino de antes, y
- * `0`/`undefined` siguen devolviendo `{}` como siempre — `0` es el valor que
- * `mapDetalleToQuoteItem` da a una muestra rehidratada, un flujo aún diferido.
+ * `0`/`undefined` siguen devolviendo `{}` como siempre. Una muestra rehidratada
+ * en edición también llega con `productoId: null` y toma la rama sintética.
  */
 const buildInitialSizeMap = (
   item?: QuoteItem | null

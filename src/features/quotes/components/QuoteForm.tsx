@@ -189,9 +189,10 @@ export function QuoteFormContent({
   // Etiqueta y color de la partida de muestra: MISMA fuente que el badge de la
   // columna "Tipo" del listado (`getTipoPedidoConfig`), no un estilo nuevo.
   const muestraBadge = getTipoPedidoConfig(TIPO_PEDIDO.MUESTRA);
-  // La captura de muestra es exclusiva del ALTA por ahora: editar una partida de
-  // muestra existente es un paso posterior.
-  const canAddMuestra = mode === "create";
+  // Alta y edición de COTIZACIONES capturan muestra por igual. La edición de
+  // pedidos (`edit-pedido`) queda fuera: su guardado es un UPSERT por `id` con
+  // mapeo propio que no se ha validado para partidas de muestra.
+  const canAddMuestra = mode === "create" || mode === "edit";
   /**
    * Una MUESTRA toma sus tallas del catálogo global y de ninguna otra fuente —
    * a diferencia de catálogo, que las saca de las variantes del producto. Si esa

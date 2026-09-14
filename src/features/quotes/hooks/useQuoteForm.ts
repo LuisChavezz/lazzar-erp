@@ -57,7 +57,7 @@ export interface ExtraService {
  * El discriminante `tipo` es la señal a nivel formulario. Se usa él y no
  * `productoId === null` porque es el campo que la unión discriminada garantiza.
  */
-const deriveTipoPedido = (items: QuoteFormValues["items"]): number =>
+export const deriveTipoPedido = (items: QuoteFormValues["items"]): number =>
   items?.some((item) => item.tipo === "muestra")
     ? TIPO_PEDIDO.MUESTRA
     : TIPO_PEDIDO.PEDIDO_DE_VENTA;
