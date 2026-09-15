@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { updateSupplierInvoice } from "../services/actions";
+import { toastIdBloqueoRegistro } from "../schemas/supplier-invoice.schema";
 import {
   parseSupplierInvoiceError,
   supplierInvoiceErrorToastMessage,
@@ -38,6 +39,13 @@ export const useUpdateSupplierInvoice = (
       const refetch = invalidateSupplierInvoiceQueries(queryClient, factura);
       const etiqueta = factura.folio || `#${factura.id}`;
       const pedido = variables.payload.estatus;
+      // Cualquier escritura exitosa de esta factura —también "Guardar cambios" de
+      // un borrador— deja viejo el aviso de "no se puede registrar" de un intento
+      // anterior (p. ej. se capturó la fecha que faltaba). Se retira AQUÍ, junto
+      // al toast de éxito, y no al terminar `mutateAsync`: eso espera el refetch
+      // y los dos avisos contradictorios convivirían mientras tanto. Solo ese id;
+      // el de éxito tiene el suyo.
+      toast.dismiss(toastIdBloqueoRegistro(factura.id));
       toast.success(
         pedido === "Registrada" && factura.estatus === "Registrada"
           ? `Factura ${etiqueta} registrada: se generó su cuenta por pagar`
