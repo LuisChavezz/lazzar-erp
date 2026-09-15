@@ -47,10 +47,17 @@ export const useUpdateSupplierInvoice = (
       );
       return refetch;
     },
+    // Un rechazo casi siempre significa que la fila del listado estaba VIEJA (p. ej.
+    // otra persona canceló la factura y el backend responde 400 porque la
+    // cancelación es definitiva). El toast da el motivo del backend y el refetch
+    // pinta el estatus real, para que la acción no se quede ofrecida sobre un dato
+    // falso. Se devuelve la promesa, igual que en el éxito: el diálogo de la acción
+    // de fila se cierra sobre datos frescos.
     onError: (error) => {
       const parsed = parseSupplierInvoiceError(error, `${FALLBACK}.`);
       onServerError?.(parsed);
       toast.error(supplierInvoiceErrorToastMessage(parsed, FALLBACK));
+      return queryClient.invalidateQueries({ queryKey: ["facturas-proveedor"] });
     },
   });
 };
