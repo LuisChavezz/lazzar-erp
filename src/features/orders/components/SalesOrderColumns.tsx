@@ -1,10 +1,10 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
-import { type Column, type ColumnDef, type FilterFn } from '@tanstack/react-table';
+import { type ColumnDef, type FilterFn } from '@tanstack/react-table';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { ChevronRightIcon, FilterIcon } from '@/src/components/Icons';
+import { ChevronRightIcon } from '@/src/components/Icons';
+import { ColumnHeaderFilter } from '@/src/components/ColumnHeaderFilter';
 import { formatMoneyValueOrDash } from '@/src/utils/formatCurrency';
 import type { PedidoListItem } from '../interfaces/order.interface';
 import { isOrderConfirmed } from './SharedOrderColumns';
@@ -62,16 +62,10 @@ function hasMeaningfulOc(oc: string | null): oc is string {
   return Boolean(oc && oc.replace(/-/g, '').trim().length > 0);
 }
 
-type ConfirmationFilterValue = 'confirmado' | 'por_confirmar';
-
-const CONFIRMATION_FILTER_OPTIONS: {
-  value: ConfirmationFilterValue | undefined;
-  label: string;
-  dotCls: string | null;
-}[] = [
-  { value: undefined, label: 'Todos', dotCls: null },
-  { value: 'por_confirmar', label: 'Por confirmar', dotCls: 'bg-amber-500' },
-  { value: 'confirmado', label: 'Confirmado', dotCls: 'bg-cyan-500' },
+const CONFIRMATION_FILTER_OPTIONS = [
+  { value: undefined, label: 'Todos' },
+  { value: 'por_confirmar', label: 'Por confirmar', dotClassName: 'bg-amber-500' },
+  { value: 'confirmado', label: 'Confirmado', dotClassName: 'bg-cyan-500' },
 ];
 
 /**
@@ -86,86 +80,6 @@ const confirmationFilterFn: FilterFn<PedidoListItem> = (row, _columnId, filterVa
   return filterValue === 'confirmado' ? confirmed : !confirmed;
 };
 
-/**
- * Ícono de filtro junto a "Folio" que abre un pequeño menú con las mismas
- * opciones que antes vivían en el panel de chips. `stopPropagation` en cada
- * click evita que el clic dispare el toggle de orden del `<th>` (que envuelve
- * todo el encabezado) o el drag-to-reorder de columnas.
- */
-function FolioHeaderFilter({ column }: { column: Column<PedidoListItem, unknown> }) {
-  const [isOpen, setIsOpen] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const activeValue = column.getFilterValue() as ConfirmationFilterValue | undefined;
-
-  useEffect(() => {
-    if (!isOpen) return;
-    const handleClickOutside = (event: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [isOpen]);
-
-  return (
-    <div className="relative" ref={containerRef}>
-      <button
-        type="button"
-        onClick={(event) => {
-          event.stopPropagation();
-          setIsOpen((prev) => !prev);
-        }}
-        onMouseDown={(event) => event.stopPropagation()}
-        className={`inline-flex items-center justify-center rounded p-0.5 transition-colors cursor-pointer ${
-          activeValue
-            ? 'text-sky-600 dark:text-sky-400'
-            : 'text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300'
-        }`}
-        aria-label="Filtrar por estado de confirmación"
-        aria-expanded={isOpen}
-        aria-haspopup="menu"
-        title="Filtrar por estado"
-      >
-        <FilterIcon className="w-3 h-3" />
-      </button>
-      {isOpen && (
-        <div
-          role="menu"
-          aria-label="Filtrar por estado de confirmación"
-          onClick={(event) => event.stopPropagation()}
-          onMouseDown={(event) => event.stopPropagation()}
-          className="absolute left-0 top-full mt-1 w-40 rounded-xl border border-slate-100 dark:border-slate-800 bg-white dark:bg-zinc-900 shadow-xl z-30 overflow-hidden normal-case font-normal tracking-normal"
-        >
-          {CONFIRMATION_FILTER_OPTIONS.map((opt) => (
-            <button
-              key={opt.label}
-              type="button"
-              role="menuitemradio"
-              aria-checked={activeValue === opt.value}
-              onClick={() => {
-                column.setFilterValue(opt.value);
-                setIsOpen(false);
-              }}
-              className={`flex items-center gap-2 w-full text-left px-3 py-2 text-xs transition-colors cursor-pointer hover:bg-slate-50 dark:hover:bg-white/5 ${
-                activeValue === opt.value
-                  ? 'text-sky-600 dark:text-sky-400 font-semibold'
-                  : 'text-slate-600 dark:text-slate-300'
-              }`}
-            >
-              <span
-                className={`h-1.5 w-1.5 rounded-full shrink-0 ${opt.dotCls ?? ''}`}
-                aria-hidden="true"
-              />
-              {opt.label}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
 export function createSalesOrderColumns({
   onViewDetail,
 }: SalesOrderColumnsOptions): ColumnDef<PedidoListItem, unknown>[] {
@@ -176,7 +90,11 @@ export function createSalesOrderColumns({
       header: ({ column }) => (
         <div className="flex items-center gap-1.5">
           <span>Folio</span>
-          <FolioHeaderFilter column={column} />
+          <ColumnHeaderFilter
+            column={column}
+            options={CONFIRMATION_FILTER_OPTIONS}
+            label="estado de confirmación"
+          />
         </div>
       ),
       filterFn: confirmationFilterFn,

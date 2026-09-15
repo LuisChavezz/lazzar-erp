@@ -31,7 +31,7 @@ const statusStyles: Record<KpiStatus, { text: string; bg: string }> = {
 
 export default function KpiGrid({ items }: KpiGridProps) {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 items-start gap-4" role="list">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 items-stretch gap-4" role="list">
       {items.map((item, index) => {
         const status = item.status ?? "neutral";
         const badge = statusStyles[status];

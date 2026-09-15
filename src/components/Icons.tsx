@@ -43,6 +43,7 @@ import {
   FileCode2,
   FileMinus,
   FileSearch,
+  FileSpreadsheet,
   FileText,
   Filter,
   FlaskConical,
@@ -209,6 +210,8 @@ export const OrdenesIcon = (props: LucideProps) => <ClipboardList {...props} />;
 export const TraspasosIcon = (props: LucideProps) => <ArrowLeftRight {...props} />;
 export const RecepcionesIcon = (props: LucideProps) => <PackageCheck {...props} />;
 export const FacturacionIcon = (props: LucideProps) => <FileText {...props} />;
+export const ExportCsvIcon = (props: LucideProps) => <FileSpreadsheet {...props} />;
+export const ExportPdfIcon = (props: LucideProps) => <FileText {...props} />;
 /**
  * Nota de crédito — un DOCUMENTO que resta, de ahí el archivo con el menos. No
  * se reutiliza `CxpIcon` (un `MinusCircle` suelto) porque ese nombra un saldo,

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { ActionMenu, ActionMenuItem } from "@/src/components/ActionMenu";
@@ -54,13 +54,15 @@ const statusDialogColors: Record<number, "sky" | "emerald" | "amber" | "rose"> =
 interface QuoteCardActionsProps {
   quote: Quote;
   align?: "start" | "center" | "end";
+  /** Ver `ActionMenu`: disparador personalizado en vez del botón "⋮" por defecto. */
+  trigger?: ReactNode;
 }
 
 /**
  * Menú de acciones para una cotización.
  * Compartido entre el listado (QuoteColumns) y las cards del tablero kanban.
  */
-export function QuoteCardActions({ quote, align = "end" }: QuoteCardActionsProps) {
+export function QuoteCardActions({ quote, align = "end", trigger }: QuoteCardActionsProps) {
   const router = useRouter();
   const [isViewOpen, setIsViewOpen] = useState(false);
   const [isAuthorizeOpen, setIsAuthorizeOpen] = useState(false);
@@ -176,7 +178,7 @@ export function QuoteCardActions({ quote, align = "end" }: QuoteCardActionsProps
 
   return (
     <>
-      <ActionMenu items={items} ariaLabel="Acciones de cotización" align={align} />
+      <ActionMenu items={items} ariaLabel="Acciones de cotización" align={align} trigger={trigger} />
 
       {isViewOpen && (
         <MainDialog

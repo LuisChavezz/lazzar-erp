@@ -3,7 +3,7 @@
 import type { ButtonHTMLAttributes, ReactElement, ReactNode } from "react";
 import { cloneElement, forwardRef, isValidElement } from "react";
 
-type ButtonVariant = "primary" | "secondary" | "danger" | "ghost";
+type ButtonVariant = "primary" | "secondary" | "danger" | "success" | "ghost";
 type ButtonSize = "md" | "icon";
 type ButtonRounded = "xl" | "full";
 
@@ -30,6 +30,8 @@ const variantClasses: Record<ButtonVariant, string> = {
     "bg-white dark:bg-white/5 hover:bg-slate-50 dark:hover:bg-white/10 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-white/10 shadow-sm",
   danger:
     "bg-rose-600 hover:bg-rose-700 text-white border border-rose-600 shadow-lg shadow-rose-500/30",
+  success:
+    "bg-emerald-600 hover:bg-emerald-700 text-white border border-emerald-600 shadow-lg shadow-emerald-500/30",
   ghost:
     "bg-transparent hover:bg-slate-50 dark:hover:bg-white/5 text-slate-500 dark:text-slate-400 border border-slate-200/80 dark:border-white/10",
 };

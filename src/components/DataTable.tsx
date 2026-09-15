@@ -602,7 +602,7 @@ export function DataTable<TData, TValue>({
       <div
         className={
           "flex flex-col lg:flex-row lg:items-center " +
-          (title ? "justify-between" : "justify-end") +
+          (title || searchAlwaysExpanded ? "justify-between" : "justify-end") +
           " gap-4 " +
           (framed
             ? "p-4 border-b border-slate-100 dark:border-slate-800"
@@ -614,38 +614,44 @@ export function DataTable<TData, TValue>({
           {title}
         </h1>
       ) : null}
+      {/* Buscador siempre visible: vive en el extremo IZQUIERDO de la barra
+          (no junto a los íconos de la derecha) — el resto del toolbar se
+          agrupa aparte más abajo. Solo aplica cuando `searchAlwaysExpanded`;
+          el buscador colapsable de siempre sigue integrado con los íconos. */}
+      {!isServerPaginated && searchAlwaysExpanded && (
+        <div className="relative shrink-0 w-full lg:w-auto">
+          <SearchIcon className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+          <input
+            ref={searchInputRef}
+            id={searchInputId}
+            type="search"
+            value={globalFilter ?? ""}
+            onChange={(e) => setGlobalFilter(e.target.value)}
+            placeholder={searchPlaceholder}
+            aria-label={searchPlaceholder}
+            className="block w-full sm:w-72 py-1.5 pl-9 pr-9 text-sm leading-5 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 text-slate-900 dark:text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-sky-500/50 focus:border-sky-500 transition-shadow [&::-webkit-search-cancel-button]:hidden [-moz-appearance:textfield]"
+          />
+          {globalFilter && (
+            <button
+              type="button"
+              onClick={() => setGlobalFilter("")}
+              className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 transition-colors"
+              aria-label="Limpiar búsqueda"
+            >
+              <CloseIcon className="h-4 w-4" />
+            </button>
+          )}
+        </div>
+      )}
         <div className="flex flex-col lg:flex-row lg:items-center gap-3 w-full lg:w-auto">
           <div className="w-full lg:w-auto overflow-x-auto lg:overflow-visible pb-1">
             <div className="flex items-center justify-end gap-2 min-w-max">
-            {/* La búsqueda se OCULTA en modo servidor: filtraría solo la página
-                actual (no la consulta completa), haciendo creer que un registro
-                de otra página "no existe". Aún no hay búsqueda server-side para
-                estos reportes. En modo cliente permanece visible como antes. */}
-            {!isServerPaginated && searchAlwaysExpanded && (
-              <div className="relative shrink-0">
-                <SearchIcon className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                <input
-                  ref={searchInputRef}
-                  id={searchInputId}
-                  type="search"
-                  value={globalFilter ?? ""}
-                  onChange={(e) => setGlobalFilter(e.target.value)}
-                  placeholder={searchPlaceholder}
-                  aria-label={searchPlaceholder}
-                  className="block w-full sm:w-72 py-1.5 pl-9 pr-9 text-sm leading-5 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 text-slate-900 dark:text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-sky-500/50 focus:border-sky-500 transition-shadow [&::-webkit-search-cancel-button]:hidden [-moz-appearance:textfield]"
-                />
-                {globalFilter && (
-                  <button
-                    type="button"
-                    onClick={() => setGlobalFilter("")}
-                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 transition-colors"
-                    aria-label="Limpiar búsqueda"
-                  >
-                    <CloseIcon className="h-4 w-4" />
-                  </button>
-                )}
-              </div>
-            )}
+            {/* La búsqueda colapsable se OCULTA en modo servidor: filtraría
+                solo la página actual (no la consulta completa), haciendo
+                creer que un registro de otra página "no existe". Aún no hay
+                búsqueda server-side para estos reportes. En modo cliente
+                permanece visible como antes. La variante `searchAlwaysExpanded`
+                ya se renderizó ARRIBA, en el extremo izquierdo de la barra. */}
             {!isServerPaginated && !searchAlwaysExpanded && (
             <div className="flex items-center gap-0">
               <button

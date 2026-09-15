@@ -1,6 +1,5 @@
 import { Metadata } from "next";
 import { QuoteStats } from "@/src/features/quotes/components/QuoteStats";
-import { QuoteActions } from "@/src/features/quotes/components/QuoteActions";
 import { QuoteViewSwitcher } from "@/src/features/quotes/components/QuoteViewSwitcher";
 
 export const metadata: Metadata = {
@@ -18,18 +17,12 @@ const jsonLd = {
 
 export default function QuotesPage() {
   return (
-    <main className="w-full space-y-6 md:space-y-8" aria-label="Gestión de Cotizaciones">
+    <main className="w-full space-y-3 md:space-y-4" aria-label="Gestión de Cotizaciones">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      {/* Header */}
-      <header>
-        <h1 className="sr-only">Cotizaciones de Venta</h1>
-        <p className="text-slate-600 dark:text-slate-300 mt-1">
-          Gestiona y monitorea todas las cotizaciones de venta.
-        </p>
-      </header>
+      <h1 className="sr-only">Cotizaciones de Venta</h1>
 
       {/* Stats */}
       <section aria-labelledby="quotes-stats-heading">
@@ -37,18 +30,11 @@ export default function QuotesPage() {
         <QuoteStats />
       </section>
 
-      {/* Actions Row */}
-      <section aria-labelledby="quotes-actions-heading" className="w-full">
-        <h2 id="quotes-actions-heading" className="sr-only">Acciones de cotizaciones</h2>
-        <QuoteActions />
-      </section>
-
       {/* Listado / Tablero Kanban — con selector de vista */}
-      <section aria-labelledby="quotes-view-heading" className="space-y-4">
+      <section aria-labelledby="quotes-view-heading">
         <h2 id="quotes-view-heading" className="sr-only">Cotizaciones</h2>
         <QuoteViewSwitcher />
       </section>
-
     </main>
   );
 }

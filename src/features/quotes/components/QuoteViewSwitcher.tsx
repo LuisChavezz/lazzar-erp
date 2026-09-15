@@ -51,9 +51,9 @@ export function QuoteViewSwitcher() {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-2">
       {/* Toggle de vista */}
-      <div className="flex justify-end">
+      <div className="flex justify-start">
         <div
           role="tablist"
           aria-label="Cambiar vista de cotizaciones"

@@ -1,6 +1,6 @@
 "use client";
 
-import type { ComponentType, SVGProps } from "react";
+import type { ComponentType, ReactNode, SVGProps } from "react";
 import { DropdownMenu } from "@radix-ui/themes";
 import { useSession } from "next-auth/react";
 import { DotsVerticalIcon } from "./Icons";
@@ -21,12 +21,22 @@ interface ActionMenuProps {
   items: ActionMenuItem[];
   ariaLabel?: string;
   align?: "start" | "center" | "end";
+  /**
+   * Disparador personalizado que reemplaza el botón "⋮" por defecto — p. ej.
+   * el folio/id de la fila, cuando ese dato ya funciona como la acción
+   * principal ("ver detalle") y el resto del menú cuelga de él. Debe ser un
+   * único elemento (Radix `DropdownMenu.Trigger` le reenvía sus props, igual
+   * que al botón por defecto). Por defecto (`undefined`) conserva el botón
+   * de puntos verticales de siempre.
+   */
+  trigger?: ReactNode;
 }
 
 export const ActionMenu = ({
   items,
   ariaLabel = "Abrir menú de acciones",
   align = "end",
+  trigger,
 }: ActionMenuProps) => {
   const { data: session } = useSession();
   const visibleItems = items.filter(
@@ -42,13 +52,15 @@ export const ActionMenu = ({
   return (
     <DropdownMenu.Root>
       <DropdownMenu.Trigger>
-        <button
-          type="button"
-          aria-label={ariaLabel}
-          className="p-1.5 rounded-lg cursor-pointer text-slate-400 hover:text-sky-600 hover:bg-slate-50 dark:hover:bg-white/5 transition-colors"
-        >
-          <DotsVerticalIcon className="w-5 h-5" aria-hidden="true" />
-        </button>
+        {trigger ?? (
+          <button
+            type="button"
+            aria-label={ariaLabel}
+            className="p-1.5 rounded-lg cursor-pointer text-slate-400 hover:text-sky-600 hover:bg-slate-50 dark:hover:bg-white/5 transition-colors"
+          >
+            <DotsVerticalIcon className="w-5 h-5" aria-hidden="true" />
+          </button>
+        )}
       </DropdownMenu.Trigger>
       <DropdownMenu.Content
         align={align}
