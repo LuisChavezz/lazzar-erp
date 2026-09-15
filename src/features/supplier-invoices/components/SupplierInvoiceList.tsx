@@ -48,10 +48,30 @@ export default function SupplierInvoiceList() {
    */
   const [editTarget, setEditTarget] = useState<FacturaProveedor | null>(null);
 
-  // Un candado por acción, con las filas en vuelo de cada una. Registrar genera
-  // una CxP: un doble clic no debe disparar dos PATCH.
-  const registrarLock = useRowActionLock();
-  const cancelLock = useRowActionLock();
+  // UN candado por fila, COMPARTIDO por registrar y cancelar: una factura tiene
+  // como máximo una acción que muta en vuelo. Con un candado por acción, cerrar
+  // con "Volver" la confirmación de registrar aún pendiente y confirmar cancelar
+  // disparaba los dos PATCH a la vez, y el resultado dependía de cuál llegaba
+  // primero. Registrar genera una CxP: un doble clic tampoco debe disparar dos.
+  const rowLock = useRowActionLock();
+
+  /**
+   * `true` —con aviso— si la fila ya tiene una acción en vuelo. Se consulta al
+   * ABRIR una confirmación, para que la otra acción ni siquiera se ofrezca y la
+   * etiqueta de pendiente del diálogo abierto sea siempre la de su propia acción.
+   * Al confirmar decide el candado. `useCallback` porque es dependencia de los
+   * handlers memoizados de abajo.
+   */
+  const accionEnCurso = useCallback(
+    (id: number): boolean => {
+      if (!rowLock.isPending(id)) return false;
+      toast.error("Ya hay una acción en curso para esta factura. Espera a que termine.", {
+        id: `accion-en-curso-${id}`,
+      });
+      return true;
+    },
+    [rowLock],
+  );
 
   const showError = isInitialLoadError(isError, hasLoaded);
 
@@ -78,6 +98,7 @@ export default function SupplierInvoiceList() {
     (id: number) => {
       const factura = facturas.find((item) => item.id === id);
       if (!factura || factura.estatus !== "Borrador") return;
+      if (accionEnCurso(id)) return;
       const bloqueo = motivoBloqueoRegistro(factura);
       if (bloqueo) {
         // Un solo aviso con el motivo más grave (ver `motivoBloqueoRegistro`). El
@@ -89,16 +110,17 @@ export default function SupplierInvoiceList() {
       toast.dismiss(toastIdBloqueoRegistro(id));
       setRegistrarTargetId(id);
     },
-    [facturas],
+    [facturas, accionEnCurso],
   );
 
   const handleCancel = useCallback(
     (id: number) => {
       const factura = facturas.find((item) => item.id === id);
       // Solo borradores (ver `SupplierInvoiceColumns`).
-      if (factura?.estatus === "Borrador") setCancelTargetId(id);
+      if (factura?.estatus !== "Borrador" || accionEnCurso(id)) return;
+      setCancelTargetId(id);
     },
-    [facturas],
+    [facturas, accionEnCurso],
   );
 
   const columns = useMemo(
@@ -129,20 +151,19 @@ export default function SupplierInvoiceList() {
     return factura?.folio || `#${id}`;
   };
 
-  /** Ejecuta una acción de fila bajo su candado y cierra SU diálogo al terminar. */
+  /** Ejecuta una acción de fila bajo el candado de la fila y cierra SU diálogo al terminar. */
   const runRowAction = (
-    lock: ReturnType<typeof useRowActionLock>,
     id: number,
     estatus: "Registrada" | "Cancelada",
     close: (updater: (current: number | null) => number | null) => void,
   ) => {
-    if (!lock.acquire(id)) return;
+    if (!rowLock.acquire(id)) return;
     updateAsync({ id, payload: { estatus } })
       // El hook ya avisó del error con su toast; aquí solo se evita el rechazo
       // no manejado de la promesa.
       .catch(() => {})
       .finally(() => {
-        lock.release(id);
+        rowLock.release(id);
         // Solo se cierra el diálogo de ESTA factura, por si mientras tanto se
         // abrió el de otra.
         close((current) => (current === id ? null : current));
@@ -234,15 +255,13 @@ export default function SupplierInvoiceList() {
           title="Registrar Factura de Proveedor"
           description={`¿Deseas registrar la factura ${etiqueta(registrarTargetId)}? Se generará su cuenta por pagar (CxP) con el total de la factura y sus importes quedarán congelados: después ya no podrá cambiar el total, el proveedor ni la moneda, ni volver a borrador o cancelarse.`}
           confirmText={
-            registrarLock.isPending(registrarTargetId) ? "Registrando..." : "Registrar y generar CxP"
+            rowLock.isPending(registrarTargetId) ? "Registrando..." : "Registrar y generar CxP"
           }
           cancelText="Volver"
           // `closeOnConfirm={false}`: si no, el diálogo se cierra al instante y la
           // etiqueta de pendiente nunca se pinta. Lo cierra `runRowAction` al terminar.
           closeOnConfirm={false}
-          onConfirm={() =>
-            runRowAction(registrarLock, registrarTargetId, "Registrada", setRegistrarTargetId)
-          }
+          onConfirm={() => runRowAction(registrarTargetId, "Registrada", setRegistrarTargetId)}
           confirmColor="amber"
         />
       )}
@@ -255,10 +274,10 @@ export default function SupplierInvoiceList() {
           }}
           title="Cancelar Factura de Proveedor"
           description={`¿Deseas cancelar el borrador ${etiqueta(cancelTargetId)}? No genera cuenta por pagar. La factura se conserva en el listado con estatus Cancelada y ya no admite cambios.`}
-          confirmText={cancelLock.isPending(cancelTargetId) ? "Cancelando..." : "Cancelar factura"}
+          confirmText={rowLock.isPending(cancelTargetId) ? "Cancelando..." : "Cancelar factura"}
           cancelText="Volver"
           closeOnConfirm={false}
-          onConfirm={() => runRowAction(cancelLock, cancelTargetId, "Cancelada", setCancelTargetId)}
+          onConfirm={() => runRowAction(cancelTargetId, "Cancelada", setCancelTargetId)}
           confirmColor="red"
         />
       )}
