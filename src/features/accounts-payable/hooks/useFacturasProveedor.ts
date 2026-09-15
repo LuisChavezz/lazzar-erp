@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
-import { getFacturasProveedor } from "../services/actions";
+// Fetcher ÚNICO del endpoint, en el módulo dueño de las facturas de proveedor.
+import { getSupplierInvoices } from "@/src/features/supplier-invoices/services/actions";
 import type {
   FacturaProveedor,
   FacturaProveedorQueryParams,
@@ -31,7 +32,7 @@ export const useFacturasProveedor = (params: FacturaProveedorQueryParams) => {
     FacturaProveedor[]
   >({
     queryKey: ["facturas-proveedor", params],
-    queryFn: () => getFacturasProveedor(params),
+    queryFn: () => getSupplierInvoices(params),
     enabled: proveedor > 0,
   });
 

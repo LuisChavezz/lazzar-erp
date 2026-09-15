@@ -11,11 +11,12 @@ import type {
  *
  * Los parámetros son opcionales; Axios omite las llaves `undefined`. La
  * respuesta es PESADA (renglones anidados, sin paginación) y el backend ya la
- * acota por empresa.
+ * acota por empresa: quien llame debe acotarla además en el servidor (por
+ * `proveedor` o `recepcion`).
  *
- * `accounts-payable/services/actions.ts` conserva su propio
- * `getFacturasProveedor` equivalente; unificarlos toca ese módulo y queda fuera
- * de este cambio.
+ * Es el fetcher ÚNICO del endpoint: lo usan este módulo y el selector de
+ * facturas de `accounts-payable` (`useFacturasProveedor`). Todas las llaves de
+ * caché que lo consumen cuelgan de `["facturas-proveedor", params]`.
  */
 export const getSupplierInvoices = async (
   params?: FacturaProveedorQueryParams,
