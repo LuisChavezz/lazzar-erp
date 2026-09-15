@@ -36,6 +36,7 @@ import {
   WalletIcon,
   ReceiptIcon,
   NotaCreditoIcon,
+  FacturaProveedorIcon,
   ContabilidadIcon,
 } from "../components/Icons";
 
@@ -426,6 +427,17 @@ export const appRouteGroups: AppRouteGroup[] = [
         path: "/finance/accounts-payable",
         icon: CxpIcon,
         description: "Cuentas por pagar a proveedores, con saldo y vencimiento.",
+        permission: "R-CONTABILIDAD",
+      },
+      {
+        // EC-142. Junto a CxP porque registrar una factura de proveedor es lo que
+        // genera su cuenta por pagar. Sin código de sección propio: la cubre el
+        // `R-CONTABILIDAD` del prefijo `/finance`.
+        key: "finance-supplier-invoices",
+        label: "Facturas de Proveedor",
+        path: "/finance/supplier-invoices",
+        icon: FacturaProveedorIcon,
+        description: "Facturas de mercancía recibida; al registrarse generan su cuenta por pagar.",
         permission: "R-CONTABILIDAD",
       },
       {

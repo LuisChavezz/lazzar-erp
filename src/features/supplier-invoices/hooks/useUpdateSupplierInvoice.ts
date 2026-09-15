@@ -1,0 +1,56 @@
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import toast from "react-hot-toast";
+import { updateSupplierInvoice } from "../services/actions";
+import {
+  parseSupplierInvoiceError,
+  supplierInvoiceErrorToastMessage,
+  type ParsedSupplierInvoiceError,
+} from "../utils/parseSupplierInvoiceError";
+import { invalidateSupplierInvoiceQueries } from "./invalidateSupplierInvoiceQueries";
+
+const FALLBACK = "Error al actualizar la factura de proveedor";
+
+/**
+ * Mutación de actualización PARCIAL (`PATCH`) de una factura de proveedor.
+ *
+ * Genérica a propósito: recibe `{ id, payload }` con cualquier
+ * `UpdateFacturaProveedorPayload`, así que sirve igual a la edición de cabecera
+ * de un borrador que a una futura acción de fila "Registrar"
+ * (`{ estatus: "Registrada" }`) sin cambiar el hook. `onServerError` es opcional
+ * por lo mismo: una acción de fila no tiene formulario donde repartir el error y
+ * se queda con el toast.
+ *
+ * No es optimista: registrar genera una CxP y el backend puede rechazarlo por
+ * reglas de negocio reales; pintar la factura como registrada antes de saberlo
+ * afirmaría un documento contable que no existe.
+ */
+export const useUpdateSupplierInvoice = (
+  onServerError?: (parsed: ParsedSupplierInvoiceError) => void,
+) => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: updateSupplierInvoice,
+    // Devuelve la promesa del refetch: `mutateAsync` no resuelve hasta que el
+    // listado ya muestra el estatus nuevo, así que el diálogo de confirmación de
+    // una acción de fila se cierra sobre datos frescos.
+    onSuccess: (factura, variables) => {
+      const refetch = invalidateSupplierInvoiceQueries(queryClient, factura.estatus);
+      const etiqueta = factura.folio || `#${factura.id}`;
+      const pedido = variables.payload.estatus;
+      toast.success(
+        pedido === "Registrada" && factura.estatus === "Registrada"
+          ? `Factura ${etiqueta} registrada: se generó su cuenta por pagar`
+          : pedido === "Cancelada" && factura.estatus === "Cancelada"
+            ? `Factura ${etiqueta} cancelada`
+            : `Factura ${etiqueta} actualizada`,
+      );
+      return refetch;
+    },
+    onError: (error) => {
+      const parsed = parseSupplierInvoiceError(error, `${FALLBACK}.`);
+      onServerError?.(parsed);
+      toast.error(supplierInvoiceErrorToastMessage(parsed, FALLBACK));
+    },
+  });
+};

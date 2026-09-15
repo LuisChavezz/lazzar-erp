@@ -41,6 +41,7 @@ import {
   ExternalLink,
   FileCheck,
   FileCode2,
+  FileInput,
   FileMinus,
   FileSearch,
   FileText,
@@ -215,6 +216,12 @@ export const FacturacionIcon = (props: LucideProps) => <FileText {...props} />;
  * no un documento, y su etiqueta lo ataría a Cuentas por Pagar.
  */
 export const NotaCreditoIcon = (props: LucideProps) => <FileMinus {...props} />;
+/**
+ * Factura de proveedor — un documento que ENTRA (el proveedor lo emite hacia la
+ * empresa). No se reutiliza `FacturacionIcon`, que ya es el de las facturas a
+ * cliente, en el mismo grupo del sidebar.
+ */
+export const FacturaProveedorIcon = (props: LucideProps) => <FileInput {...props} />;
 export const CxpIcon = (props: LucideProps) => <MinusCircle {...props} />;
 export const CxcIcon = (props: LucideProps) => <PlusCircle {...props} />;
 export const BancosIcon = (props: LucideProps) => <Landmark {...props} />;
