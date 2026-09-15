@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useIsMutating } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { DataTable } from "@/src/components/DataTable";
 import { Button } from "@/src/components/Button";
@@ -15,7 +16,10 @@ import {
   motivoBloqueoRegistro,
   toastIdBloqueoRegistro,
 } from "../schemas/supplier-invoice.schema";
-import type { FacturaProveedor } from "../interfaces/supplier-invoice.interface";
+import type {
+  FacturaProveedor,
+  FacturaProveedorEstatus,
+} from "../interfaces/supplier-invoice.interface";
 import { useSupplierInvoices } from "../hooks/useSupplierInvoices";
 import { useUpdateSupplierInvoice } from "../hooks/useUpdateSupplierInvoice";
 import { getColumns } from "./SupplierInvoiceColumns";
@@ -47,6 +51,25 @@ export default function SupplierInvoiceList() {
    * captura.
    */
   const [editTarget, setEditTarget] = useState<FacturaProveedor | null>(null);
+  /**
+   * Última edición cerrada porque su fila cambió de estatus (ver el ajuste en
+   * render más abajo). El aviso sale en un EFECTO: disparar el toast durante el
+   * render actualizaría otro componente a media renderización.
+   */
+  const [edicionCerrada, setEdicionCerrada] = useState<{
+    etiqueta: string;
+    estatus: FacturaProveedorEstatus | null;
+  } | null>(null);
+  useEffect(() => {
+    if (!edicionCerrada) return;
+    const { etiqueta, estatus } = edicionCerrada;
+    toast.error(
+      estatus
+        ? `La factura ${etiqueta} cambió a ${estatus.toLowerCase()} y ya no se puede editar. Ábrela con "Ver detalle" para consultarla.`
+        : `La factura ${etiqueta} ya no está disponible y no se puede editar.`,
+      { id: "edicion-cerrada-por-estatus", duration: 7000 },
+    );
+  }, [edicionCerrada]);
 
   // UN candado por fila, COMPARTIDO por registrar y cancelar: una factura tiene
   // como máximo una acción que muta en vuelo. Con un candado por acción, cerrar
@@ -144,6 +167,33 @@ export default function SupplierInvoiceList() {
   const existe = (id: number) => facturas.some((f) => f.id === id);
   if (registrarTargetId !== null && !existe(registrarTargetId)) setRegistrarTargetId(null);
   if (cancelTargetId !== null && !existe(cancelTargetId)) setCancelTargetId(null);
+
+  // La EDICIÓN se cierra si, tras un refetch, su fila dejó de ser `Borrador` (otra
+  // persona la registró o canceló) o ya no está. Su foto seguiría ofreciendo
+  // "Guardar cambios", que ya no manda `estatus` y el backend aceptaría como
+  // edición de cabecera de una factura registrada —con la CxP conservando el
+  // vencimiento viejo—. Mismo ajuste en RENDER que los diálogos de arriba, contra
+  // la fila VIVA; no se pide nada al servidor.
+  //
+  // Mientras haya una mutación de ESTA factura en vuelo no se decide: el propio
+  // "Registrar" de la edición refresca el listado antes de resolver (ver
+  // `useUpdateSupplierInvoice`) y cierra el diálogo al terminar; cerrarlo aquí
+  // antes avisaría de un cambio que hizo el mismo usuario.
+  const editVivo =
+    editTarget !== null ? facturas.find((f) => f.id === editTarget.id) ?? null : null;
+  const editEnVuelo =
+    useIsMutating({
+      predicate: (mutation) =>
+        editTarget !== null &&
+        (mutation.state.variables as { id?: number } | undefined)?.id === editTarget.id,
+    }) > 0;
+  if (editTarget !== null && !editEnVuelo && editVivo?.estatus !== "Borrador") {
+    setEditTarget(null);
+    setEdicionCerrada({
+      etiqueta: editTarget.folio || `#${editTarget.id}`,
+      estatus: editVivo?.estatus ?? null,
+    });
+  }
 
   const etiqueta = (id: number | null) => {
     if (id === null) return "";
