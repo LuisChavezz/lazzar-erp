@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useIsMutating } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { DataTable } from "@/src/components/DataTable";
@@ -82,32 +82,27 @@ export default function SupplierInvoiceList() {
    * `true` —con aviso— si la fila ya tiene una acción en vuelo. Se consulta al
    * ABRIR una confirmación, para que la otra acción ni siquiera se ofrezca y la
    * etiqueta de pendiente del diálogo abierto sea siempre la de su propia acción.
-   * Al confirmar decide el candado. `useCallback` porque es dependencia de los
-   * handlers memoizados de abajo.
+   * Al confirmar decide el candado.
    */
-  const accionEnCurso = useCallback(
-    (id: number): boolean => {
-      if (!rowLock.isPending(id)) return false;
-      toast.error("Ya hay una acción en curso para esta factura. Espera a que termine.", {
-        id: `accion-en-curso-${id}`,
-      });
-      return true;
-    },
-    [rowLock],
-  );
+  const accionEnCurso = (id: number): boolean => {
+    if (!rowLock.isPending(id)) return false;
+    toast.error("Ya hay una acción en curso para esta factura. Espera a que termine.", {
+      id: `accion-en-curso-${id}`,
+    });
+    return true;
+  };
 
   const showError = isInitialLoadError(isError, hasLoaded);
 
-  const handleViewDetail = useCallback((id: number) => setOpenDetailId(id), []);
+  // Handlers y columnas sin `useCallback`/`useMemo`: el React Compiler memoiza el
+  // componente, y `DataTable` no depende de la identidad de `columns`.
+  const handleViewDetail = (id: number) => setOpenDetailId(id);
 
-  const handleEdit = useCallback(
-    (id: number) => {
-      const factura = facturas.find((item) => item.id === id);
-      // Solo borradores: una factura registrada o cancelada se consulta, no se edita.
-      if (factura?.estatus === "Borrador") setEditTarget(factura);
-    },
-    [facturas],
-  );
+  const handleEdit = (id: number) => {
+    const factura = facturas.find((item) => item.id === id);
+    // Solo borradores: una factura registrada o cancelada se consulta, no se edita.
+    if (factura?.estatus === "Borrador") setEditTarget(factura);
+  };
 
   /**
    * Registrar desde el listado — el camino que no pasa por un formulario.
@@ -117,39 +112,30 @@ export default function SupplierInvoiceList() {
    * ANTES de abrir la confirmación y el PATCH nunca sale: la acción de fila no
    * tiene dónde capturar la fecha, así que se dice dónde hacerlo.
    */
-  const handleRegistrar = useCallback(
-    (id: number) => {
-      const factura = facturas.find((item) => item.id === id);
-      if (!factura || factura.estatus !== "Borrador") return;
-      if (accionEnCurso(id)) return;
-      const bloqueo = motivoBloqueoRegistro(factura);
-      if (bloqueo) {
-        // Un solo aviso con el motivo más grave (ver `motivoBloqueoRegistro`). El
-        // `id` fijo por factura evita que clics repetidos apilen toasts iguales.
-        toast.error(bloqueo.mensaje, { id: toastIdBloqueoRegistro(id), duration: 9000 });
-        return;
-      }
-      // Registrable: retira cualquier aviso de bloqueo previo de esta factura.
-      toast.dismiss(toastIdBloqueoRegistro(id));
-      setRegistrarTargetId(id);
-    },
-    [facturas, accionEnCurso],
-  );
+  const handleRegistrar = (id: number) => {
+    const factura = facturas.find((item) => item.id === id);
+    if (!factura || factura.estatus !== "Borrador") return;
+    if (accionEnCurso(id)) return;
+    const bloqueo = motivoBloqueoRegistro(factura);
+    if (bloqueo) {
+      // Un solo aviso con el motivo más grave (ver `motivoBloqueoRegistro`). El
+      // `id` fijo por factura evita que clics repetidos apilen toasts iguales.
+      toast.error(bloqueo.mensaje, { id: toastIdBloqueoRegistro(id), duration: 9000 });
+      return;
+    }
+    // Registrable: retira cualquier aviso de bloqueo previo de esta factura.
+    toast.dismiss(toastIdBloqueoRegistro(id));
+    setRegistrarTargetId(id);
+  };
 
-  const handleCancel = useCallback(
-    (id: number) => {
-      const factura = facturas.find((item) => item.id === id);
-      // Solo borradores (ver `SupplierInvoiceColumns`).
-      if (factura?.estatus !== "Borrador" || accionEnCurso(id)) return;
-      setCancelTargetId(id);
-    },
-    [facturas, accionEnCurso],
-  );
+  const handleCancel = (id: number) => {
+    const factura = facturas.find((item) => item.id === id);
+    // Solo borradores (ver `SupplierInvoiceColumns`).
+    if (factura?.estatus !== "Borrador" || accionEnCurso(id)) return;
+    setCancelTargetId(id);
+  };
 
-  const columns = useMemo(
-    () => getColumns(handleViewDetail, handleEdit, handleRegistrar, handleCancel),
-    [handleViewDetail, handleEdit, handleRegistrar, handleCancel],
-  );
+  const columns = getColumns(handleViewDetail, handleEdit, handleRegistrar, handleCancel);
 
   // El detalle se busca contra el arreglo COMPLETO (`facturas` llega sin filtrar;
   // el filtrado ocurre dentro de `DataTable`), así que sobrevive a que la fila
