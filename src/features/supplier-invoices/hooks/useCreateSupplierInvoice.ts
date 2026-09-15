@@ -26,7 +26,7 @@ export const useCreateSupplierInvoice = (
   return useMutation({
     mutationFn: createSupplierInvoice,
     onSuccess: (factura) => {
-      void invalidateSupplierInvoiceQueries(queryClient, factura.estatus);
+      void invalidateSupplierInvoiceQueries(queryClient, factura);
       const etiqueta = factura.folio || `#${factura.id}`;
       toast.success(
         factura.estatus === "Registrada"

@@ -1,5 +1,5 @@
 import type { QueryClient } from "@tanstack/react-query";
-import type { FacturaProveedorEstatus } from "../interfaces/supplier-invoice.interface";
+import type { FacturaProveedor } from "../interfaces/supplier-invoice.interface";
 
 /**
  * Invalidación compartida por TODAS las escrituras de facturas de proveedor
@@ -12,6 +12,11 @@ import type { FacturaProveedorEstatus } from "../interfaces/supplier-invoice.int
  * - `["cuentas-por-pagar"]` solo cuando la factura quedó `Registrada`: registrar
  *   genera (o revive) su CxP. Por prefijo alcanza tanto la llave de
  *   `accounts-payable` como la de `payments`.
+ * - `["purchase-orders", oc]`, el retrieve de la OC de ESTA factura
+ *   (`purchaseOrderQueryOptions`): sus "documentos relacionados" listan las
+ *   facturas de proveedor con su estatus. Dirigida a esa OC y no a
+ *   `["purchase-orders"]`: el listado de OC no muestra facturas, y la respuesta
+ *   de la escritura ya dice cuál es.
  *
  * Devuelve la promesa del refetch: una acción de fila la espera (la mutación
  * sigue "pending" hasta que el listado refleja el nuevo estatus, igual que el
@@ -19,11 +24,12 @@ import type { FacturaProveedorEstatus } from "../interfaces/supplier-invoice.int
  */
 export const invalidateSupplierInvoiceQueries = (
   queryClient: QueryClient,
-  estatus: FacturaProveedorEstatus,
+  factura: Pick<FacturaProveedor, "estatus" | "oc">,
 ): Promise<unknown> =>
   Promise.all([
     queryClient.invalidateQueries({ queryKey: ["facturas-proveedor"] }),
-    estatus === "Registrada"
+    factura.estatus === "Registrada"
       ? queryClient.invalidateQueries({ queryKey: ["cuentas-por-pagar"] })
       : Promise.resolve(),
+    queryClient.invalidateQueries({ queryKey: ["purchase-orders", factura.oc] }),
   ]);

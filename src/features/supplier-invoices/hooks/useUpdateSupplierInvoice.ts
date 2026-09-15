@@ -35,7 +35,7 @@ export const useUpdateSupplierInvoice = (
     // listado ya muestra el estatus nuevo, así que el diálogo de confirmación de
     // una acción de fila se cierra sobre datos frescos.
     onSuccess: (factura, variables) => {
-      const refetch = invalidateSupplierInvoiceQueries(queryClient, factura.estatus);
+      const refetch = invalidateSupplierInvoiceQueries(queryClient, factura);
       const etiqueta = factura.folio || `#${factura.id}`;
       const pedido = variables.payload.estatus;
       toast.success(
