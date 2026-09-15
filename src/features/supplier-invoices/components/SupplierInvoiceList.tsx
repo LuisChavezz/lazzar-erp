@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { useIsMutating } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { DataTable } from "@/src/components/DataTable";
+import { FormSelect } from "@/src/components/FormSelect";
+import { useSuppliers } from "@/src/features/suppliers/hooks/useSuppliers";
 import { Button } from "@/src/components/Button";
 import { MainDialog } from "@/src/components/MainDialog";
 import { DialogHeader } from "@/src/components/DialogHeader";
@@ -28,8 +30,24 @@ import SupplierInvoiceForm from "./SupplierInvoiceForm";
 import SupplierInvoiceEditForm from "./SupplierInvoiceEditForm";
 
 export default function SupplierInvoiceList() {
+  /**
+   * Proveedor cuyas facturas se listan (`0` = ninguno). Es la ENTRADA de la
+   * pantalla: sin él no se consulta nada, porque el listado sin acotar bajaría
+   * todos los renglones de todas las facturas de la empresa (ver
+   * `useSupplierInvoices`).
+   */
+  const [proveedorId, setProveedorId] = useState(0);
+  const { suppliers, isLoading: isLoadingSuppliers, isError: isErrorSuppliers } = useSuppliers();
+  const supplierOptions = suppliers
+    .map((supplier) => ({
+      value: supplier.id,
+      label: supplier.nombre?.trim() || supplier.razon_social || `#${supplier.id}`,
+    }))
+    .sort((a, b) => a.label.localeCompare(b.label, "es"));
   const { facturas, hasLoaded, isLoading, isError, error, refetch, isFetching } =
-    useSupplierInvoices();
+    useSupplierInvoices(proveedorId);
+  // `refetch` ignora `enabled`: sin proveedor no se pide nada.
+  const refetchIfSelected = () => (proveedorId > 0 ? refetch() : undefined);
   // `mutateAsync`, no `mutate`: el candado se libera sobre la PROMESA de cada
   // llamada. Los callbacks de `mutate` solo corren para la última llamada del
   // observer, y con dos filas en vuelo el `finally` de la primera se perdería.
@@ -215,41 +233,75 @@ export default function SupplierInvoiceList() {
         data={facturas}
         baseDataCount={facturas.length}
         title="Facturas de Proveedor"
-        searchPlaceholder="Buscar por folio o proveedor..."
+        searchPlaceholder="Buscar por folio..."
         filterConfig={[
           { id: "estatus", label: "Estatus", options: FACTURA_PROVEEDOR_ESTATUS_FILTER },
         ]}
-        onRefetch={refetch}
+        onRefetch={refetchIfSelected}
         isRefetching={isFetching}
-        emptyMessage="No hay facturas de proveedor registradas."
+        emptyMessage={
+          proveedorId > 0
+            ? "Este proveedor no tiene facturas registradas."
+            : "Selecciona un proveedor para ver sus facturas."
+        }
         isLoading={isLoading}
         isError={showError}
         errorTitle="Error al cargar las facturas de proveedor"
         errorMessage={extractErrorMessage(error, "No se pudo cargar la información.")}
-        onErrorRetry={refetch}
+        onErrorRetry={refetchIfSelected}
         loadingAriaLabel="Cargando facturas de proveedor"
         getRowId={(row) => String(row.id)}
-        paginationResetKey={facturas.length}
+        // Cambiar de proveedor o un alta nueva vuelven a la página 1.
+        paginationResetKey={`${proveedorId}-${facturas.length}`}
         actionButton={
-          <MainDialog
-            title={
-              <DialogHeader
-                title="Nueva Factura de Proveedor"
-                subtitle="Factura de mercancía recibida contra una orden de compra"
-                statusColor="indigo"
-              />
-            }
-            open={isFormOpen}
-            onOpenChange={setIsFormOpen}
-            maxWidth="1100px"
-            trigger={
-              <Button variant="primary" rounded="full" className="hover:scale-105 active:scale-95">
-                + Nueva factura
-              </Button>
-            }
-          >
-            {isFormOpen && <SupplierInvoiceForm onSuccess={() => setIsFormOpen(false)} />}
-          </MainDialog>
+          <div className="flex items-center gap-2">
+            <div className="w-64">
+              <FormSelect
+                name="proveedor"
+                aria-label="Proveedor"
+                value={String(proveedorId)}
+                onChange={(event) => setProveedorId(Number(event.target.value))}
+                disabled={isLoadingSuppliers || isErrorSuppliers}
+                className="py-2! text-xs! rounded-full!"
+              >
+                <option value="0" disabled>
+                  {isLoadingSuppliers
+                    ? "Cargando proveedores..."
+                    : isErrorSuppliers
+                      ? "No se pudo cargar el catálogo de proveedores"
+                      : "Selecciona un proveedor..."}
+                </option>
+                {supplierOptions.map((option) => (
+                  <option
+                    key={option.value}
+                    value={option.value}
+                    className="bg-white dark:bg-zinc-900 text-slate-900 dark:text-white"
+                  >
+                    {option.label}
+                  </option>
+                ))}
+              </FormSelect>
+            </div>
+            <MainDialog
+              title={
+                <DialogHeader
+                  title="Nueva Factura de Proveedor"
+                  subtitle="Factura de mercancía recibida contra una orden de compra"
+                  statusColor="indigo"
+                />
+              }
+              open={isFormOpen}
+              onOpenChange={setIsFormOpen}
+              maxWidth="1100px"
+              trigger={
+                <Button variant="primary" rounded="full" className="hover:scale-105 active:scale-95">
+                  + Nueva factura
+                </Button>
+              }
+            >
+              {isFormOpen && <SupplierInvoiceForm onSuccess={() => setIsFormOpen(false)} />}
+            </MainDialog>
+          </div>
         }
       />
 
