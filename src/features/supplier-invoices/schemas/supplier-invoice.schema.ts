@@ -364,21 +364,19 @@ export const SupplierInvoiceLineFormSchema = z
       });
     }
 
-    const descuento = importeACentavos(line.descuento);
-    if (
-      precio !== null &&
-      descuento !== null &&
-      cantidad !== null &&
-      !tieneMasDeDosDecimales(cantidad)
-    ) {
-      const bruto = Math.round(((cantidad / 100) * precio) / 100);
-      if (descuento > bruto) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: "El descuento no puede exceder el importe del renglón",
-          path: ["descuento"],
-        });
-      }
+    // El bruto sale de `calcularImportesLinea`, la MISMA fórmula que usan el
+    // payload y los totales en vivo, para que la validación no pueda discrepar de
+    // lo que se envía. La tasa de IVA es de cabecera y no llega al renglón, pero
+    // el bruto no depende de ella: `"0"` es solo una tasa válida para que la
+    // función calcule. Devuelve `null` con cantidad, precio o descuento inválidos
+    // (o con más de 2 decimales), y entonces su propio campo ya avisa.
+    const importes = calcularImportesLinea(line, "0");
+    if (importes && importes.descuentoCents > importes.brutoCents) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "El descuento no puede exceder el importe del renglón",
+        path: ["descuento"],
+      });
     }
   });
 
