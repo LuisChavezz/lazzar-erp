@@ -299,7 +299,20 @@ export default function SupplierInvoiceList() {
                 </Button>
               }
             >
-              {isFormOpen && <SupplierInvoiceForm onSuccess={() => setIsFormOpen(false)} />}
+              {isFormOpen && (
+                <SupplierInvoiceForm
+                  onSuccess={(factura) => {
+                    setIsFormOpen(false);
+                    // SOLO en el alta: el listado se filtra por proveedor, y una
+                    // factura de otro proveedor se guardaría sin verse, como si el
+                    // alta hubiera fallado. Si ya es el seleccionado, `setState`
+                    // con el mismo valor no cambia nada y basta la invalidación
+                    // de la mutación. Registrar, cancelar y editar no tocan el
+                    // filtro.
+                    setProveedorId(factura.proveedor);
+                  }}
+                />
+              )}
             </MainDialog>
           </div>
         }

@@ -25,13 +25,15 @@ import {
   calcularTotales,
   centavosAMoneda,
 } from "../schemas/supplier-invoice.schema";
+import type { FacturaProveedor } from "../interfaces/supplier-invoice.interface";
 import { useSupplierInvoiceForm } from "../hooks/useSupplierInvoiceForm";
 import { PurchaseOrderSelectorDialog } from "./PurchaseOrderSelectorDialog";
 import { ReceptionSelectorDialog } from "./ReceptionSelectorDialog";
 import { ReceptionLinesSelectorDialog } from "./ReceptionLinesSelectorDialog";
 
 interface SupplierInvoiceFormProps {
-  onSuccess?: () => void;
+  /** Recibe la factura recién creada (respuesta del POST). */
+  onSuccess?: (factura: FacturaProveedor) => void;
 }
 
 /** Copy único de lo que implica registrar, pintado junto a los botones de envío. */

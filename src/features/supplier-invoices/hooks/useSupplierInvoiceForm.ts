@@ -20,6 +20,7 @@ import {
   motivoBloqueoRegistro,
   type SupplierInvoiceFormValues,
 } from "../schemas/supplier-invoice.schema";
+import type { FacturaProveedor } from "../interfaces/supplier-invoice.interface";
 import { buildSupplierInvoicePayload } from "../utils/buildSupplierInvoicePayload";
 import type { ParsedSupplierInvoiceError } from "../utils/parseSupplierInvoiceError";
 import {
@@ -37,7 +38,9 @@ const LINE_ERROR_PREFIX = "factura_proveedor_detalles";
  */
 const LINE_FIELD_PATH_RE = new RegExp(`^${LINE_ERROR_PREFIX}\\.(\\d+)\\.(.+)$`);
 
-export function useSupplierInvoiceForm({ onSuccess }: { onSuccess?: () => void } = {}) {
+export function useSupplierInvoiceForm({
+  onSuccess,
+}: { onSuccess?: (factura: FacturaProveedor) => void } = {}) {
   // ── Estado de UI ─────────────────────────────────────────────────────────
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [serverBanner, setServerBanner] = useState<string | null>(null);
@@ -173,13 +176,15 @@ export function useSupplierInvoiceForm({ onSuccess }: { onSuccess?: () => void }
       setIsSubmitting(true);
 
       try {
-        await createMutation(buildSupplierInvoicePayload(parsed.data));
+        const factura = await createMutation(buildSupplierInvoicePayload(parsed.data));
         // Valores frescos en cada limpieza (ver `usePolizaForm`).
         form.reset(createEmptySupplierInvoiceForm());
         setLineKeys([]);
         setErrors({});
         setServerBanner(null);
-        onSuccess?.();
+        // La factura CREADA (respuesta del POST): quien monta el formulario puede
+        // necesitar sus datos, p. ej. el listado para mostrar su proveedor.
+        onSuccess?.(factura);
       } catch {
         // El error ya se repartió en `handleServerError` y el toast salió de la
         // mutación. Se captura para que el rechazo de `mutateAsync` no escape por
