@@ -13,18 +13,13 @@ import { qtyToUnits } from "../schemas/supplier-invoice.schema";
  * cuenta: es un documento vivo que puede registrarse en cualquier momento, y
  * dejar facturar la misma cantidad en paralelo produciría dos CxP por la misma
  * mercancía.
- *
- * `excludeFacturaId` descuenta una factura concreta (la que se edita), para que
- * sus propios renglones no se cuenten como "ya facturados" contra sí mismos.
  */
 export const sumarFacturadoPorRecepcionDetalle = (
   facturas: FacturaProveedor[],
-  excludeFacturaId?: number,
 ): Map<number, number> => {
   const facturado = new Map<number, number>();
   for (const factura of facturas) {
     if (factura.estatus === "Cancelada" || factura.activo === false) continue;
-    if (excludeFacturaId !== undefined && factura.id === excludeFacturaId) continue;
     for (const detalle of factura.factura_proveedor_detalles) {
       const units = qtyToUnits(detalle.cantidad) ?? 0;
       facturado.set(
