@@ -444,6 +444,9 @@ export const SupplierInvoiceFormSchema = z
     if (data.estatus_objetivo !== "Registrada") return;
 
     // ── Reglas SOLO al registrar ─────────────────────────────────────────────
+    // El bloqueo por total ≤ 0 NO vive aquí: lo aplica `useSupplierInvoiceForm`
+    // con `motivoBloqueoRegistro`, la definición que comparten las tres entradas
+    // de registro, y solo cuando el formulario ya es válido.
     registrarRefine(data.fecha_vencimiento, ctx);
   });
 
@@ -470,6 +473,11 @@ export interface BloqueoRegistro {
   /** Sufijo corto para la opción del menú: "Registrar (…)". */
   etiqueta: string;
   /**
+   * Solo la causa, sin ningún remedio. Lo usa el ALTA, donde las partidas todavía
+   * se pueden corregir y el "cancela este borrador" de `motivo` sería falso.
+   */
+  causa: string;
+  /**
    * El motivo en sí, sin instrucciones que dependan de desde dónde se intentó
    * registrar. Lo usa el formulario de edición.
    */
@@ -491,14 +499,18 @@ export interface BloqueoRegistro {
 export const toastIdBloqueoRegistro = (facturaId: number): string =>
   `registrar-bloqueado-${facturaId}`;
 
+/** Id del mismo aviso en el ALTA, donde todavía no hay factura (ni id). */
+export const TOAST_ID_BLOQUEO_REGISTRO_ALTA = "registrar-bloqueado-alta";
+
 /**
- * ¿Por qué NO se puede registrar esta factura ya guardada? `null` si nada lo
- * impide.
+ * ¿Por qué NO se puede registrar esta factura? `null` si nada lo impide.
  *
- * Es el camino de la acción de fila "Registrar", que no pasa por ningún
- * formulario. Registrar genera la cuenta por pagar con el `total` de la factura y
- * congela los importes, así que antes de hacerlo la factura tiene que llevar lo
- * mínimo para que esa CxP tenga sentido.
+ * Definición ÚNICA para las TRES entradas que registran: la acción de fila
+ * "Registrar" (factura guardada), el botón "Registrar" de la edición (partidas y
+ * total guardados + cabecera en pantalla) y el del alta (total derivado de las
+ * partidas en pantalla). Registrar genera la cuenta por pagar con el `total` de
+ * la factura y congela los importes, así que antes de hacerlo la factura tiene
+ * que llevar lo mínimo para que esa CxP tenga sentido.
  *
  * Devuelve UN solo motivo aunque se cumplan varios, en orden de gravedad, para que
  * el usuario lea un mensaje coherente y no una pila de avisos contradictorios:
@@ -527,7 +539,13 @@ export const motivoBloqueoRegistro = (factura: {
   if (factura.factura_proveedor_detalles.length === 0) {
     const motivo =
       "No se puede registrar: el borrador no tiene partidas. Además no es recuperable: las partidas solo se capturan al crear la factura, así que no podrán agregarse después. Cancela este borrador y crea una factura nueva con sus partidas.";
-    return { tipo: "sin_partidas", etiqueta: "sin partidas", motivo, mensaje: motivo };
+    return {
+      tipo: "sin_partidas",
+      etiqueta: "sin partidas",
+      causa: "No se puede registrar: la factura no tiene partidas.",
+      motivo,
+      mensaje: motivo,
+    };
   }
 
   // `Number` y no `toCents`/`MONEY_REGEX`: el total llega del backend y puede ser
@@ -540,6 +558,8 @@ export const motivoBloqueoRegistro = (factura: {
     return {
       tipo: "total_no_positivo",
       etiqueta: "total en cero o negativo",
+      causa:
+        "No se puede registrar: el total es cero o menor, y generaría una cuenta por pagar sin nada que pagar.",
       motivo,
       mensaje: motivo,
     };
@@ -556,6 +576,7 @@ export const motivoBloqueoRegistro = (factura: {
     return {
       tipo: "sin_vencimiento",
       etiqueta: "falta vencimiento",
+      causa: motivo,
       motivo,
       mensaje: `${motivo}\nAbre la factura con "Editar", captura la fecha de vencimiento y regístrala desde ahí.`,
     };

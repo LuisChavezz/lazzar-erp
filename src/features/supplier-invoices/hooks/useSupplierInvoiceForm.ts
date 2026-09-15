@@ -3,6 +3,7 @@
 import { useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { useForm } from "@tanstack/react-form";
+import toast from "react-hot-toast";
 import type { FormFieldError } from "@/src/utils/getFieldError";
 import { scrollToFirstValidationError } from "@/src/utils/scrollToFirstValidationError";
 import type {
@@ -11,7 +12,11 @@ import type {
 } from "@/src/features/purchase-orders/interfaces/purchase-order.interface";
 import {
   SupplierInvoiceFormSchema,
+  TOAST_ID_BLOQUEO_REGISTRO_ALTA,
+  calcularTotales,
+  centavosAMoneda,
   createEmptySupplierInvoiceForm,
+  motivoBloqueoRegistro,
   type SupplierInvoiceFormValues,
 } from "../schemas/supplier-invoice.schema";
 import { buildSupplierInvoicePayload } from "../utils/buildSupplierInvoicePayload";
@@ -149,6 +154,37 @@ export function useSupplierInvoiceForm({ onSuccess }: { onSuccess?: () => void }
         );
         return;
       }
+
+      // ── Guarda de REGISTRO: la misma que la fila y la edición ─────────────
+      // Solo con la intención "Registrada" y con el formulario ya válido (con
+      // renglones inválidos las sumas no significan nada y su campo ya avisa). El
+      // total es el DERIVADO que viajará en el POST, así que la guarda juzga
+      // exactamente lo que copiaría la CxP.
+      if (parsed.data.estatus_objetivo === "Registrada") {
+        const { totalCents } = calcularTotales(
+          parsed.data.factura_proveedor_detalles,
+          parsed.data.tasa_iva,
+        );
+        const bloqueo = motivoBloqueoRegistro({
+          folio: parsed.data.folio,
+          fecha_vencimiento: parsed.data.fecha_vencimiento,
+          observaciones: parsed.data.observaciones,
+          total: centavosAMoneda(totalCents),
+          factura_proveedor_detalles: parsed.data.factura_proveedor_detalles,
+        });
+        if (bloqueo) {
+          // `causa` y no `motivo`: aquí las partidas todavía se corrigen.
+          toast.error(
+            `${bloqueo.causa} Revisa las cantidades, los precios y los descuentos de las partidas.`,
+            { id: TOAST_ID_BLOQUEO_REGISTRO_ALTA, duration: 9000 },
+          );
+          return;
+        }
+      }
+      // Ya no hay bloqueo (o se guarda como borrador): un aviso de un intento
+      // anterior contradiría al envío en curso.
+      toast.dismiss(TOAST_ID_BLOQUEO_REGISTRO_ALTA);
+
       setErrors({});
       setIsSubmitting(true);
 
@@ -266,6 +302,7 @@ export function useSupplierInvoiceForm({ onSuccess }: { onSuccess?: () => void }
   };
 
   const handleReset = () => {
+    toast.dismiss(TOAST_ID_BLOQUEO_REGISTRO_ALTA);
     form.reset(createEmptySupplierInvoiceForm());
     setLineKeys([]);
     setErrors({});
