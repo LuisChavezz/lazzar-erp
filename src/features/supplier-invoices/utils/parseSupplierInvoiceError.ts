@@ -1,5 +1,6 @@
 import { AxiosError } from "axios";
 import { firstDrfMessage } from "@/src/utils/firstDrfMessage";
+import { isWholeArrayDrfError } from "@/src/utils/isWholeArrayDrfError";
 
 /**
  * Campos que el formulario puede marcar con un error del backend. Incluye los
@@ -84,15 +85,6 @@ const BANNER_KEYS = [
   "impuestos",
   "total",
 ] as const;
-
-/**
- * `true` si el arreglo de renglones NO viene indexado: una lista de strings habla
- * de la factura entera, no de su primer renglón. Mismo criterio que
- * `esErrorDeArregloCompleto` en `parsePolizaError`.
- */
-const esErrorDeArregloCompleto = (entries: unknown[]): boolean =>
-  entries.length > 0 &&
-  entries.every((entry) => entry === null || typeof entry === "string");
 
 /**
  * Normaliza el error de las operaciones de factura de proveedor (alta y PATCH).
@@ -198,7 +190,7 @@ export function parseSupplierInvoiceError(
   if (typeof detalles === "string" && detalles.length > 0) {
     pushFormError(detalles);
   } else if (Array.isArray(detalles)) {
-    if (esErrorDeArregloCompleto(detalles)) {
+    if (isWholeArrayDrfError(detalles)) {
       detalles.forEach((entry) => {
         const message = firstDrfMessage(entry);
         if (message) pushFormError(message);

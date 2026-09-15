@@ -3,6 +3,7 @@ import {
   MONEY_REGEX,
   toCents,
 } from "@/src/features/accounts-receivable/schemas/register-pending-invoice.schema";
+import { stripTrailingDecimalPoint } from "@/src/utils/decimal";
 
 /**
  * Esquema del formulario de alta de facturas de proveedor.
@@ -73,13 +74,9 @@ export const unitsToQty = (units: number): string => {
  */
 export const tieneMasDeDosDecimales = (units: number): boolean => units % 100 !== 0;
 
-/** Quita el punto de un valor a medio teclear ("12." → "12"). Mismo criterio que pólizas. */
-const sinPuntoFinal = (value: string): string =>
-  /^\d+\.$/.test(value) ? value.slice(0, -1) : value;
-
 /** Dinero de captura → centavos enteros, o `null` si no es dinero. Vacío vale 0. */
 export const importeACentavos = (raw: string): number | null => {
-  const value = sinPuntoFinal(raw.trim());
+  const value = stripTrailingDecimalPoint(raw.trim());
   if (value === "") return 0;
   if (!MONEY_REGEX.test(value)) return null;
   return toCents(value);
@@ -93,7 +90,7 @@ const TASA_REGEX = /^\d{1,3}(\.\d{1,2})?$/;
 
 /** Tasa → centésimas de punto porcentual enteras ("16.00" → 1600), o `null`. */
 export const tasaACentesimas = (raw: string): number | null => {
-  const value = sinPuntoFinal(raw.trim());
+  const value = stripTrailingDecimalPoint(raw.trim());
   if (!TASA_REGEX.test(value)) return null;
   const cents = toCents(value);
   return cents <= 10000 ? cents : null;
@@ -130,7 +127,7 @@ export const calcularImportesLinea = (
   line: Pick<SupplierInvoiceLineFormValues, "cantidad" | "precio_unitario" | "descuento">,
   tasaIva: string,
 ): ImportesLinea | null => {
-  const cantidadUnits = qtyToUnits(sinPuntoFinal(line.cantidad));
+  const cantidadUnits = qtyToUnits(stripTrailingDecimalPoint(line.cantidad));
   const precioCents = importeACentavos(line.precio_unitario);
   const descuentoCents = importeACentavos(line.descuento);
   const tasa = tasaACentesimas(tasaIva);
@@ -238,7 +235,7 @@ const registrarRefine = (fechaVencimiento: string, ctx: z.RefinementCtx) => {
 /** Dinero de captura: el vacío y el punto colgante se normalizan antes de validar. */
 const money = z.preprocess((value) => {
   if (typeof value !== "string") return value;
-  const normalized = sinPuntoFinal(value.trim());
+  const normalized = stripTrailingDecimalPoint(value.trim());
   return normalized === "" ? "0.00" : normalized;
 }, z.string().regex(MONEY_REGEX, MONEY_MESSAGE));
 
@@ -274,7 +271,7 @@ export const SupplierInvoiceLineFormSchema = z
      * `buildSupplierInvoicePayload`— sea el mismo que se validó.
      */
     cantidad: z.preprocess(
-      (value) => (typeof value === "string" ? sinPuntoFinal(value.trim()) : value),
+      (value) => (typeof value === "string" ? stripTrailingDecimalPoint(value.trim()) : value),
       z.string(),
     ),
     precio_unitario: money,
@@ -292,7 +289,7 @@ export const SupplierInvoiceLineFormSchema = z
      * (`importeACentavos`), igual que antes.
      */
     descuento: z.preprocess(
-      (value) => (typeof value === "string" ? sinPuntoFinal(value.trim()) : value),
+      (value) => (typeof value === "string" ? stripTrailingDecimalPoint(value.trim()) : value),
       z.string().refine((value) => value === "" || MONEY_REGEX.test(value), MONEY_MESSAGE),
     ),
   })

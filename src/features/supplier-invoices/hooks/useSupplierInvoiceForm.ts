@@ -6,6 +6,7 @@ import { useForm } from "@tanstack/react-form";
 import toast from "react-hot-toast";
 import type { FormFieldError } from "@/src/utils/getFieldError";
 import { scrollToFirstValidationError } from "@/src/utils/scrollToFirstValidationError";
+import { fieldNameFromIssuePath } from "@/src/utils/fieldNameFromIssuePath";
 import type {
   PurchaseOrder,
   PurchaseOrderReceipt,
@@ -35,23 +36,6 @@ const LINE_ERROR_PREFIX = "factura_proveedor_detalles";
  * mecanismo que `usePolizaForm`.
  */
 const LINE_FIELD_PATH_RE = new RegExp(`^${LINE_ERROR_PREFIX}\\.(\\d+)\\.(.+)$`);
-
-/**
- * Ruta de un issue de Zod → `name` del control en el DOM
- * (`["factura_proveedor_detalles", 0, "cantidad"]` →
- * `factura_proveedor_detalles[0].cantidad`), para `scrollToFirstValidationError`.
- * Copia exacta de la de `usePolizaForm`.
- */
-const fieldNameFromIssuePath = (path: readonly PropertyKey[]): string =>
-  path.reduce<string>(
-    (name, segment) =>
-      typeof segment === "number"
-        ? `${name}[${segment}]`
-        : name
-          ? `${name}.${String(segment)}`
-          : String(segment),
-    "",
-  );
 
 export function useSupplierInvoiceForm({ onSuccess }: { onSuccess?: () => void } = {}) {
   // ── Estado de UI ─────────────────────────────────────────────────────────
