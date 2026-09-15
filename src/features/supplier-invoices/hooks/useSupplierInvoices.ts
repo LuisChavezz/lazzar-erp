@@ -13,6 +13,11 @@ import type { FacturaProveedor } from "../interfaces/supplier-invoice.interface"
  *
  * La llave cuelga de `["facturas-proveedor"]`, la raíz que invalidan todas las
  * escrituras del módulo (`invalidateSupplierInvoiceQueries`).
+ *
+ * Las facturas dadas de baja (`activo=false`) se descartan aquí: el backend no
+ * las filtra del listado, y la pantalla no debe mostrarlas ni ofrecer acciones
+ * sobre ellas. El tope de doble facturación las descarta con el mismo criterio
+ * (`sumarFacturadoPorRecepcionDetalle`).
  */
 export const useSupplierInvoices = () => {
   const { data, isLoading, isError, error, refetch, isFetching } = useQuery<
@@ -29,7 +34,7 @@ export const useSupplierInvoices = () => {
   });
 
   return {
-    facturas: data ?? [],
+    facturas: (data ?? []).filter((factura) => factura.activo !== false),
     hasLoaded,
     isLoading,
     isError,

@@ -8,9 +8,11 @@ import { qtyToUnits } from "../schemas/supplier-invoice.schema";
  * (`recepcion_detalle` → unidades), sumando todas las facturas NO canceladas.
  *
  * Una factura `Cancelada` no cuenta: su mercancía vuelve a estar disponible para
- * facturarse. `Borrador` SÍ cuenta: es un documento vivo que puede registrarse en
- * cualquier momento, y dejar facturar la misma cantidad en paralelo produciría
- * dos CxP por la misma mercancía.
+ * facturarse. Una dada de baja (`activo=false`) tampoco, por la misma razón: el
+ * backend no la filtra del listado, pero ya no respalda nada. `Borrador` SÍ
+ * cuenta: es un documento vivo que puede registrarse en cualquier momento, y
+ * dejar facturar la misma cantidad en paralelo produciría dos CxP por la misma
+ * mercancía.
  *
  * `excludeFacturaId` descuenta una factura concreta (la que se edita), para que
  * sus propios renglones no se cuenten como "ya facturados" contra sí mismos.
@@ -21,7 +23,7 @@ export const sumarFacturadoPorRecepcionDetalle = (
 ): Map<number, number> => {
   const facturado = new Map<number, number>();
   for (const factura of facturas) {
-    if (factura.estatus === "Cancelada") continue;
+    if (factura.estatus === "Cancelada" || factura.activo === false) continue;
     if (excludeFacturaId !== undefined && factura.id === excludeFacturaId) continue;
     for (const detalle of factura.factura_proveedor_detalles) {
       const units = qtyToUnits(detalle.cantidad) ?? 0;
