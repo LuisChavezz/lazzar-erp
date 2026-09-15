@@ -115,10 +115,11 @@ export function useSupplierInvoiceEditForm({
             duration: 9000,
           });
           // Sin partidas o con total ≤ 0 no hay nada que corregir en este
-          // formulario: se corta aquí, sin PATCH. La falta de vencimiento SÍ se
-          // corrige en pantalla, así que sigue al esquema de abajo, que marca el
-          // campo y lleva el foco a él (y también corta antes del PATCH).
-          if (bloqueo.tipo !== "sin_vencimiento") return;
+          // formulario: se corta aquí, sin PATCH. La falta de vencimiento o una
+          // cabecera inválida SÍ se corrigen en pantalla, así que siguen al
+          // esquema de abajo, que marca el campo y lleva el foco a él (y también
+          // corta antes del PATCH).
+          if (bloqueo.tipo === "sin_partidas" || bloqueo.tipo === "total_no_positivo") return;
         } else {
           // La guarda ya pasa (p. ej. se acaba de capturar la fecha): un aviso de
           // bloqueo de un intento anterior contradiría al registro en curso.

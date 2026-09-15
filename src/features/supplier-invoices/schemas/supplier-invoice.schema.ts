@@ -469,7 +469,7 @@ export const SupplierInvoiceEditFormSchema = z
 
 /** Por qué no se puede registrar una factura ya guardada. */
 export interface BloqueoRegistro {
-  tipo: "sin_partidas" | "total_no_positivo" | "sin_vencimiento";
+  tipo: "sin_partidas" | "total_no_positivo" | "sin_vencimiento" | "cabecera_invalida";
   /** Sufijo corto para la opción del menú: "Registrar (…)". */
   etiqueta: string;
   /**
@@ -525,6 +525,8 @@ export const TOAST_ID_BLOQUEO_REGISTRO_ALTA = "registrar-bloqueado-alta";
  *  3. SIN VENCIMIENTO. Se evalúa con el MISMO `SupplierInvoiceEditFormSchema` que
  *     usa la edición de cabecera con la intención `"Registrada"`, de modo que la
  *     acción de fila y el formulario leen una sola definición de esa regla.
+ *  4. CABECERA INVÁLIDA. Cualquier otro fallo de ese esquema (p. ej. un folio de
+ *     más de 30 caracteres capturado en la edición), con su propio mensaje.
  *
  * Los dos primeros NO se aplican al guardado de borradores: un borrador puede
  * guardarse incompleto; esto solo gatea el REGISTRO.
@@ -572,13 +574,29 @@ export const motivoBloqueoRegistro = (factura: {
     estatus_objetivo: "Registrada",
   });
   if (!result.success) {
-    const motivo = result.error.issues[0]?.message ?? FECHA_VENCIMIENTO_REQUERIDA_MESSAGE;
+    // La causa se decide por la RUTA del issue, no por el primero que llegue: con
+    // un folio largo y sin fecha, el esquema reporta los dos (el refine de la
+    // fecha corre igual) y el del folio va primero. La fecha tiene prioridad;
+    // cualquier otro fallo de cabecera se reporta con SU mensaje, nunca como
+    // "falta vencimiento".
+    const issueFecha = result.error.issues.find((issue) => issue.path[0] === "fecha_vencimiento");
+    if (issueFecha) {
+      const motivo = issueFecha.message;
+      return {
+        tipo: "sin_vencimiento",
+        etiqueta: "falta vencimiento",
+        causa: motivo,
+        motivo,
+        mensaje: `${motivo}\nAbre la factura con "Editar", captura la fecha de vencimiento y regístrala desde ahí.`,
+      };
+    }
+    const motivo = result.error.issues[0].message;
     return {
-      tipo: "sin_vencimiento",
-      etiqueta: "falta vencimiento",
+      tipo: "cabecera_invalida",
+      etiqueta: "cabecera inválida",
       causa: motivo,
       motivo,
-      mensaje: `${motivo}\nAbre la factura con "Editar", captura la fecha de vencimiento y regístrala desde ahí.`,
+      mensaje: `${motivo}\nAbre la factura con "Editar", corrige la cabecera y regístrala desde ahí.`,
     };
   }
 
