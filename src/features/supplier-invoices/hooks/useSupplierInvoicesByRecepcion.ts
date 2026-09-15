@@ -51,7 +51,9 @@ export const sumarFacturadoPorRecepcionDetalle = (
  * módulo la invalida (ver `invalidateSupplierInvoiceQueries`).
  */
 export const useSupplierInvoicesByRecepcion = (recepcionId: number) => {
-  const { data, isLoading, isError, error, refetch } = useQuery<FacturaProveedor[]>({
+  const { data, isLoading, isError, error, refetch, isFetching } = useQuery<
+    FacturaProveedor[]
+  >({
     queryKey: ["facturas-proveedor", { recepcion: recepcionId }],
     queryFn: () => getSupplierInvoices({ recepcion: recepcionId }),
     enabled: recepcionId > 0,
@@ -60,6 +62,12 @@ export const useSupplierInvoicesByRecepcion = (recepcionId: number) => {
   return {
     facturas: data ?? [],
     isLoading,
+    /**
+     * `true` también en un refetch en SEGUNDO PLANO (`isLoading` solo lo es en la
+     * primera carga). Mientras dura, `facturas` es la caché anterior —p. ej. la
+     * que invalidó el alta de otra factura— y lo "ya facturado" puede estar viejo.
+     */
+    isFetching,
     isError,
     error,
     refetch,

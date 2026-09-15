@@ -42,7 +42,15 @@ function ReceptionLinesSelectorContent({
   // bloqueo SUAVE: ver `useSupplierInvoicesByRecepcion`.
   const facturas = useSupplierInvoicesByRecepcion(recepcionId);
 
-  const isLoading = oc.isLoading || facturas.isLoading;
+  // Lo ya facturado se REFRESCA en segundo plano (p. ej. al reabrir el selector
+  // después del alta de otra factura de esta recepción, que invalidó la consulta).
+  // Mientras tanto la caché es la anterior: sembrar una partida con ella dejaría
+  // el tope contra un "ya facturado" viejo y permitiría facturar de más. Se trata
+  // como carga —solo la consulta por recepción, que es la que alimenta el tope—
+  // y la lista no se ofrece hasta que llega la respuesta fresca. Con la caché al
+  // día no hay refetch y el selector abre igual que antes.
+  const refrescandoFacturado = facturas.isFetching && !facturas.isLoading;
+  const isLoading = oc.isLoading || facturas.isLoading || refrescandoFacturado;
   // Si la consulta de facturas falla NO se ofrece nada: sin ella el tope sería
   // "todo lo recibido", y eso es justamente la doble facturación que se quiere
   // evitar. Mejor un error visible que un tope falso.
@@ -92,11 +100,19 @@ function ReceptionLinesSelectorContent({
           : "Solo partidas con cantidad por facturar"
       }
       statusColor="indigo"
-      items={items}
+      // Sin ítems durante el refresco: "Confirmar selección" reconstruye la
+      // selección desde `items`, y así una partida marcada antes de que empezara
+      // no puede confirmarse con la caché vieja. Al llegar la respuesta vuelve con
+      // los valores frescos y la selección tentativa se conserva.
+      items={refrescandoFacturado ? [] : items}
       isLoading={isLoading}
       isError={isError}
-      loadingTitle="Cargando partidas"
-      loadingMessage="Obteniendo lo recibido y lo ya facturado..."
+      loadingTitle={refrescandoFacturado ? "Actualizando partidas" : "Cargando partidas"}
+      loadingMessage={
+        refrescandoFacturado
+          ? "Actualizando lo ya facturado de esta recepción antes de ofrecer sus partidas..."
+          : "Obteniendo lo recibido y lo ya facturado..."
+      }
       errorMessage="No se pudo calcular lo ya facturado de esta recepción. Intenta de nuevo."
       searchPlaceholder="Buscar por producto..."
       filterPredicate={(option, term) =>
