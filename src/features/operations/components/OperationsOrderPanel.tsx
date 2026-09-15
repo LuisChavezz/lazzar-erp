@@ -16,6 +16,7 @@ import { formatCurrency, safeParseAmount } from '@/src/utils/formatCurrency';
 import { useOrders } from '@/src/features/orders/hooks/useOrders';
 import type { PedidoListItem } from '@/src/features/orders/interfaces/order.interface';
 import { isOrderConfirmed } from './OperationsOrderColumns';
+import { PedidoProgramacionDialog } from '@/src/features/orders/components/PedidoProgramacionDialog';
 import { OrderConfirmDateDialog } from './OrderConfirmDateDialog';
 import { OperationsOrderTable } from './OperationsOrderTable';
 
@@ -27,6 +28,10 @@ export function OperationsOrderPanel() {
   const isRefetching = useIsFetching({ queryKey: ['orders'] }) > 0;
 
   const [selectedOrderForDate, setSelectedOrderForDate] = useState<PedidoListItem | null>(null);
+  // Mismo patrón que la fecha: el estado vive aquí, no en la celda, para que el
+  // diálogo sobreviva si el renglón sale de la vista filtrada.
+  const [selectedOrderForSchedule, setSelectedOrderForSchedule] =
+    useState<PedidoListItem | null>(null);
 
   // Navega al detalle 360° del pedido (ruta neutra); `?from=operations` para
   // que el "Volver" regrese a esta Mesa de Control.
@@ -128,6 +133,7 @@ export function OperationsOrderPanel() {
         onConfirmDate={setSelectedOrderForDate}
         onViewDetail={handleViewDetail}
         onEditMesaControl={handleEditMesaControl}
+        onProgramar={setSelectedOrderForSchedule}
         onRefetch={handleRefetch}
         isRefetching={isRefetching}
       />
@@ -140,6 +146,17 @@ export function OperationsOrderPanel() {
             if (!open) setSelectedOrderForDate(null);
           }}
           order={selectedOrderForDate}
+        />
+      )}
+
+      {selectedOrderForSchedule && (
+        <PedidoProgramacionDialog
+          key={`schedule-${selectedOrderForSchedule.id}`}
+          open
+          onOpenChange={(open) => {
+            if (!open) setSelectedOrderForSchedule(null);
+          }}
+          order={selectedOrderForSchedule}
         />
       )}
     </div>

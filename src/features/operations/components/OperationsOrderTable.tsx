@@ -21,14 +21,16 @@ export function OperationsOrderTable({
   onConfirmDate,
   onViewDetail,
   onEditMesaControl,
+  onProgramar,
   onRefetch,
   isRefetching,
 }: OperationsOrderTableProps) {
   // Los callbacks son estables; el useMemo evita recrear el array de columnas
   // en cada render del componente padre.
   const columns = useMemo(
-    () => buildOperationsOrderColumns({ onConfirmDate, onViewDetail, onEditMesaControl }),
-    [onConfirmDate, onViewDetail, onEditMesaControl],
+    () =>
+      buildOperationsOrderColumns({ onConfirmDate, onViewDetail, onEditMesaControl, onProgramar }),
+    [onConfirmDate, onViewDetail, onEditMesaControl, onProgramar],
   );
 
   const enrichedOrders = useMemo(() => enrichOrdersWithStatus(orders), [orders]);

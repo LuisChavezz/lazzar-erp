@@ -17,10 +17,23 @@ import type { PedidoDetail } from "../interfaces/order.interface";
  * Primer consumidor de este endpoint en el proyecto; módulos futuros (p. ej.
  * traspasos) pueden reusar este hook tal cual.
  */
-export const usePedidoDetail = (id: number) => {
+interface UsePedidoDetailOptions {
+  /**
+   * `"always"` fuerza la lectura al montar aunque la caché siga fresca
+   * (`staleTime` global de 15 min). Lo usa "Programar pedido": su guardado
+   * REEMPLAZA la lista entera, así que precargarla de una caché vieja borraría
+   * en silencio lo que otro usuario programó mientras tanto.
+   */
+  refetchOnMount?: boolean | "always";
+}
+
+export const usePedidoDetail = (id: number, options: UsePedidoDetailOptions = {}) => {
   return useQuery<PedidoDetail>({
     queryKey: ["pedido-detail", id],
     queryFn: () => getPedidoDetail(id),
     enabled: id > 0,
+    // Spread condicional: un `refetchOnMount: undefined` explícito pisaría el
+    // default del QueryClient para los consumidores que no pasan la opción.
+    ...(options.refetchOnMount !== undefined ? { refetchOnMount: options.refetchOnMount } : {}),
   });
 };

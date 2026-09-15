@@ -5,6 +5,7 @@
 // acoplamiento real entre features (`PedidoDetailContent` ya importa además
 // `PICKING_STATUS_CONFIG` de ese módulo para pintarlo).
 import type { PickingEstado } from "@/src/features/picking/interfaces/picking.interface";
+import type { PedidoProgramacionConf } from "./pedido-programacion.interface";
 
 /**
  * Configuración JSON congelada de un servicio de la talla (`bordado_config`,
@@ -462,4 +463,13 @@ export interface PedidoDetail extends Order {
    * Opcional por el mismo motivo que `tracker_picking`; la UI cae a `[]`.
    */
   folios_picking?: PedidoFolioPicking[];
+  /**
+   * Programación de Mesa de Control. Solo el DETALLE la trae
+   * (`PedidoSerializer`, `__all__`, de solo lectura); el listado no. Se escribe
+   * únicamente con `PATCH /ventas/pedidos/{id}/programar/`.
+   *
+   * Opcional y nullable: el `JSONField` admite `null`, y un backend anterior a
+   * la columna responde sin la clave.
+   */
+  programacion_conf?: PedidoProgramacionConf | null;
 }

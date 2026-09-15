@@ -5,6 +5,10 @@ import type {
   PedidoMesaControlUpdateResponse,
 } from "../interfaces/pedido-mesa-control.interface";
 import type { PedidoMesaControlContexto } from "../interfaces/pedido-mesa-control-contexto.interface";
+import type {
+  PedidoProgramarPayload,
+  PedidoProgramarResponse,
+} from "../interfaces/pedido-programacion.interface";
 
 
 /** Filtros de query string aceptados por `GET /ventas/pedidos/`. */
@@ -57,6 +61,27 @@ export const getPedidoMesaControlContexto = async (
 ): Promise<PedidoMesaControlContexto> => {
   const response = await v1_api.get<PedidoMesaControlContexto>(
     `/ventas/pedidos/${id}/editar-mesa-control-contexto/`,
+  );
+  return response.data;
+};
+
+/**
+ * Programación de un pedido por Mesa de Control
+ * (`PATCH /ventas/pedidos/{id}/programar/`).
+ *
+ * REEMPLAZO TOTAL: `programaciones` sustituye a la lista guardada, así que se
+ * manda completa. Solo `destino` + `cantidad`: la fecha y el usuario los sella
+ * el servidor. 400 si la suma excede las piezas, un destino no está en la lista
+ * blanca o falta el rol de mesa de control; 404 si el pedido no es visible para
+ * la empresa del usuario. No hay 409: no toca renglones.
+ */
+export const programarPedido = async (
+  id: number,
+  payload: PedidoProgramarPayload,
+): Promise<PedidoProgramarResponse> => {
+  const response = await v1_api.patch<PedidoProgramarResponse>(
+    `/ventas/pedidos/${id}/programar/`,
+    payload,
   );
   return response.data;
 };

@@ -4,12 +4,18 @@ import { type ColumnDef } from '@tanstack/react-table';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { ActionMenu, type ActionMenuItem } from '@/src/components/ActionMenu';
-import { CheckCircleIcon, EditIcon, EyeIcon, TasksIcon } from '@/src/components/Icons';
+import {
+  CalendarDaysIcon,
+  CheckCircleIcon,
+  EditIcon,
+  EyeIcon,
+  TasksIcon,
+} from '@/src/components/Icons';
 import type { DataTableFilterConfig } from '@/src/components/DataTable';
 import { formatMoneyValueOrDash } from '@/src/utils/formatCurrency';
 import { parseLocalDate } from '@/src/utils/formatDate';
 import type { PedidoListItem } from '../interfaces/order.interface';
-import { canEditPedidoMesaControl } from '../constants/pedidoStatus';
+import { canEditPedidoMesaControl, PEDIDO_ESTATUS } from '../constants/pedidoStatus';
 
 /**
  * Definición ÚNICA de la tabla de pedidos (`GET /ventas/pedidos/`), compartida
@@ -82,6 +88,11 @@ export interface OrderColumnsOptions {
    * pasarlo y siguen en solo lectura.
    */
   onEditMesaControl?: (order: PedidoListItem) => void;
+  /**
+   * Solo Mesa de Control: al pasarlo se añade "Programar" al menú. Mismo patrón
+   * opcional que `onEditMesaControl`.
+   */
+  onProgramar?: (order: PedidoListItem) => void;
 }
 
 // Fábrica de columnas para cualquier lista de pedidos.
@@ -89,6 +100,7 @@ export function createOrderColumns({
   onViewDetail,
   onConfirmDate,
   onEditMesaControl,
+  onProgramar,
 }: OrderColumnsOptions): ColumnDef<PedidoListItem, unknown>[] {
   return [
     {
@@ -243,6 +255,22 @@ export function createOrderColumns({
             // `estatus`: un pedido CANCELADO no se edita — guardar borraría y
             // recrearía su detalle. Ver `canEditPedidoMesaControl`.
             visible: canEditPedidoMesaControl(order.estatus),
+          });
+        }
+
+        // Mismo permiso de catálogo que "Editar". Se OCULTA en pedidos cancelados
+        // (mismo mecanismo `visible` que "Editar"): programar un pedido dado de
+        // baja no tiene sentido. Es solo defensa de UI — el endpoint `programar`
+        // no evalúa el estatus. Se compara contra CANCELADO y no se reusa
+        // `canEditPedidoMesaControl`, que además oculta estatus fuera del enum
+        // por un motivo propio de la edición destructiva.
+        if (onProgramar) {
+          items.push({
+            label: 'Programar',
+            icon: CalendarDaysIcon,
+            onSelect: () => onProgramar(order),
+            permission: 'E-MESACONTROL-PEDIDOS',
+            visible: order.estatus !== PEDIDO_ESTATUS.CANCELADO,
           });
         }
 
