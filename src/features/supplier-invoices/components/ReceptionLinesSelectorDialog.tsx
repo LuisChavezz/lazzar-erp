@@ -11,6 +11,7 @@ import {
 } from "../hooks/useSupplierInvoicesByRecepcion";
 import {
   buildReceptionLineOptions,
+  recepcionesFacturables,
   type ReceptionLineOption,
 } from "../utils/receptionLineOptions";
 
@@ -47,7 +48,14 @@ function ReceptionLinesSelectorContent({
   // evitar. Mejor un error visible que un tope falso.
   const isError = oc.isError || facturas.isError;
 
-  const recepcion = oc.purchaseOrder?.recepciones.find((r) => r.id === recepcionId);
+  // La recepción se busca entre las FACTURABLES, con la misma regla que el
+  // selector de recepciones: si pasó a borrador o se canceló después de elegirla,
+  // ya no ofrece partidas.
+  const recepcion = oc.purchaseOrder
+    ? recepcionesFacturables(oc.purchaseOrder).facturables.find((r) => r.id === recepcionId)
+    : undefined;
+  const recepcionNoFacturable =
+    !recepcion && Boolean(oc.purchaseOrder?.recepciones.some((r) => r.id === recepcionId));
   const opciones =
     oc.purchaseOrder && recepcion
       ? buildReceptionLineOptions(
@@ -98,7 +106,9 @@ function ReceptionLinesSelectorContent({
       }
       getKey={(option) => option.recepcionDetalle.id}
       emptyMessage={
-        alreadySelectedIds.length > 0
+        recepcionNoFacturable
+          ? "La recepción elegida ya no es facturable (está en borrador o cancelada). Elige otra recepción."
+          : alreadySelectedIds.length > 0
           ? "Ya agregaste todas las partidas disponibles de esta recepción."
           : "Esta recepción no tiene partidas por facturar."
       }

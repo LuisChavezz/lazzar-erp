@@ -5,7 +5,10 @@ import { SingleSelectPickerDialogContent } from "@/src/components/SingleSelectPi
 import { formatShortDate } from "@/src/utils/formatDate";
 import { usePurchaseOrder } from "@/src/features/purchase-orders/hooks/usePurchaseOrder";
 import type { PurchaseOrderReceipt } from "@/src/features/purchase-orders/interfaces/purchase-order.interface";
-import { recepcionesFacturables } from "../utils/receptionLineOptions";
+import {
+  avisosRecepcionesExcluidas,
+  recepcionesFacturables,
+} from "../utils/receptionLineOptions";
 
 interface ReceptionSelectorDialogProps {
   open: boolean;
@@ -32,21 +35,19 @@ function ReceptionSelectorContent({
   // sus partidas). La llave `["purchase-orders", id]` es la misma que usa el
   // selector de partidas, así que el siguiente paso no vuelve a pedirla.
   const { purchaseOrder, isLoading, isError } = usePurchaseOrder(ocId > 0 ? ocId : null);
-  const { facturables: recepciones, excluidasPorOrigen } = purchaseOrder
+  const exclusion = purchaseOrder
     ? recepcionesFacturables(purchaseOrder)
-    : { facturables: [], excluidasPorOrigen: 0 };
+    : { facturables: [], excluidasPorOrigen: 0, excluidasPorEstatus: 0 };
+  const recepciones = exclusion.facturables;
 
   // Mismo patrón que el selector de partidas: lo excluido se CUENTA en el
   // subtítulo con su motivo, en vez de desaparecer en silencio.
-  const aviso =
-    excluidasPorOrigen > 0
-      ? ` ${excluidasPorOrigen} ${excluidasPorOrigen === 1 ? "recepción se excluyó por ser" : "recepciones se excluyeron por ser"} de origen producción: no ${excluidasPorOrigen === 1 ? "está ligada" : "están ligadas"} a la orden de compra.`
-      : "";
+  const avisos = avisosRecepcionesExcluidas(exclusion);
 
   return (
     <SingleSelectPickerDialogContent<PurchaseOrderReceipt>
       title="Seleccionar Recepción"
-      subtitle={`Una factura cubre UNA recepción de la orden de compra.${aviso}`}
+      subtitle={["Una factura cubre UNA recepción de la orden de compra.", ...avisos].join(" ")}
       statusColor="indigo"
       items={recepciones}
       isLoading={isLoading}
@@ -63,8 +64,8 @@ function ReceptionSelectorContent({
       getKey={(recepcion) => recepcion.id}
       selectedKey={selectedRecepcionId > 0 ? selectedRecepcionId : null}
       emptyMessage={
-        excluidasPorOrigen > 0
-          ? "Esta orden de compra no tiene recepciones facturables: todas son de origen producción."
+        avisos.length > 0
+          ? "Esta orden de compra no tiene recepciones facturables: todas se excluyeron por los motivos indicados arriba."
           : "Esta orden de compra no tiene recepciones registradas: no hay mercancía recibida que facturar."
       }
       noResultsMessage="No se encontraron recepciones"
@@ -100,7 +101,7 @@ function ReceptionSelectorContent({
  * ReceptionSelectorDialog — nivel 2 del selector de la factura.
  *
  * Recepciones de la OC elegida, leídas de su retrieve y filtradas a origen `OC`
- * (ver `recepcionesFacturables`).
+ * y a estatus facturable (ver `recepcionesFacturables`).
  */
 export function ReceptionSelectorDialog({
   open,

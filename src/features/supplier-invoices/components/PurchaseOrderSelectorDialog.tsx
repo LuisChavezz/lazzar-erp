@@ -5,6 +5,7 @@ import { SingleSelectPickerDialogContent } from "@/src/components/SingleSelectPi
 import { formatShortDate } from "@/src/utils/formatDate";
 import { usePurchaseOrders } from "@/src/features/purchase-orders/hooks/usePurchaseOrders";
 import type { PurchaseOrder } from "@/src/features/purchase-orders/interfaces/purchase-order.interface";
+import { isPurchaseOrderCancelled } from "@/src/features/purchase-orders/constants/purchaseOrderStatus";
 
 interface PurchaseOrderSelectorDialogProps {
   open: boolean;
@@ -32,11 +33,14 @@ function PurchaseOrderSelectorContent({
   const { purchaseOrders, isLoading, isError } = usePurchaseOrders();
 
   // `GET /compras/ordenes/` es plano y no acepta filtros: se filtra en memoria.
-  // Fuera las inactivas y las que no tienen proveedor (el FK es `SET_NULL`): una
-  // factura de proveedor sin proveedor no puede generar su cuenta por pagar.
+  // Fuera las inactivas, las canceladas y las que no tienen proveedor (el FK es
+  // `SET_NULL`): una factura de proveedor sin proveedor no puede generar su
+  // cuenta por pagar, y una OC cancelada ya no respalda una compra.
   // No se puede filtrar aquí por "tiene recepciones": el listado no las trae; el
   // siguiente paso lo dice si la OC elegida no tiene ninguna.
-  const disponibles = purchaseOrders.filter((oc) => oc.activo && Boolean(oc.proveedor));
+  const disponibles = purchaseOrders.filter(
+    (oc) => oc.activo && !isPurchaseOrderCancelled(oc.estatus) && Boolean(oc.proveedor),
+  );
 
   return (
     <SingleSelectPickerDialogContent<PurchaseOrder>
@@ -57,7 +61,7 @@ function PurchaseOrderSelectorContent({
       }
       getKey={(oc) => oc.id}
       selectedKey={selectedOcId > 0 ? selectedOcId : null}
-      emptyMessage="No hay órdenes de compra activas con proveedor."
+      emptyMessage="No hay órdenes de compra activas, no canceladas y con proveedor."
       noResultsMessage="No se encontraron órdenes de compra"
       renderContent={(oc) => (
         <div className="flex items-start justify-between gap-3">

@@ -33,8 +33,18 @@ export interface ReceptionLineOptions {
   noVinculables: number;
 }
 
+/**
+ * `Recepcion.estatus` (`compras.Recepcion.EstatusRecepcion`), solo los valores
+ * que deciden si se factura. El resto —Recibida (2), Parcial (3), En calidad (4)
+ * y Cerrada (5)— es mercancía recibida y SÍ se factura.
+ */
+const RECEPCION_ESTATUS = {
+  BORRADOR: 1,
+  CANCELADA: 6,
+} as const;
+
 export interface RecepcionesFacturables {
-  /** Recepciones de origen `OC`: las únicas que una factura de proveedor puede cubrir. */
+  /** Recepciones de origen `OC` que no están en borrador ni canceladas. */
   facturables: PurchaseOrderReceipt[];
   /**
    * Recepciones excluidas por ser de origen producción (`OP`): no están ligadas a
@@ -43,23 +53,58 @@ export interface RecepcionesFacturables {
    * selector lo diga, igual que el nivel de partidas cuenta las no vinculables.
    */
   excluidasPorOrigen: number;
+  /**
+   * Recepciones de origen `OC` excluidas por su `estatus`: en `Borrador` la
+   * mercancía aún no se da por recibida, y una `Cancelada` ya no respalda nada
+   * (el propio backend la descuenta de lo recibido). Facturarlas generaría una
+   * cuenta por pagar por mercancía que no entró.
+   */
+  excluidasPorEstatus: number;
 }
 
 /**
- * Recepciones de la OC que se pueden facturar: solo las de origen `OC`.
+ * Recepciones de la OC que se pueden facturar: de origen `OC` y ni en borrador ni
+ * canceladas.
  *
  * El retrieve de la OC ya devuelve solo recepciones de origen OC y activas
  * (contrato confirmado), pero `ReceiptDetail` es un tipo compartido que modela
  * también el origen `OP`; se reafirma aquí para que la regla no dependa de que el
- * serializer siga filtrando. Las excluidas NO se ocultan en silencio: se
- * devuelve su cuenta para que la vista explique por qué no aparecen.
+ * serializer siga filtrando. Ese retrieve NO filtra por `estatus`: una recepción
+ * cancelada sigue `activo=True`. Las excluidas NO se ocultan en silencio: se
+ * devuelven sus cuentas para que la vista explique por qué no aparecen.
  */
 export const recepcionesFacturables = (oc: PurchaseOrderDetail): RecepcionesFacturables => {
-  const facturables = oc.recepciones.filter((r) => r.tipo_origen === "OC");
+  const deOrigenOc = oc.recepciones.filter((r) => r.tipo_origen === "OC");
+  const facturables = deOrigenOc.filter(
+    (r) => r.estatus !== RECEPCION_ESTATUS.BORRADOR && r.estatus !== RECEPCION_ESTATUS.CANCELADA,
+  );
   return {
     facturables,
-    excluidasPorOrigen: oc.recepciones.length - facturables.length,
+    excluidasPorOrigen: oc.recepciones.length - deOrigenOc.length,
+    excluidasPorEstatus: deOrigenOc.length - facturables.length,
   };
+};
+
+/**
+ * Motivos de exclusión de recepciones, en texto, para el subtítulo del selector
+ * de recepciones. Vacío si no se excluyó ninguna.
+ */
+export const avisosRecepcionesExcluidas = ({
+  excluidasPorOrigen,
+  excluidasPorEstatus,
+}: Pick<RecepcionesFacturables, "excluidasPorOrigen" | "excluidasPorEstatus">): string[] => {
+  const avisos: string[] = [];
+  if (excluidasPorOrigen > 0) {
+    avisos.push(
+      `${excluidasPorOrigen} ${excluidasPorOrigen === 1 ? "recepción se excluyó por ser" : "recepciones se excluyeron por ser"} de origen producción: no ${excluidasPorOrigen === 1 ? "está ligada" : "están ligadas"} a la orden de compra.`,
+    );
+  }
+  if (excluidasPorEstatus > 0) {
+    avisos.push(
+      `${excluidasPorEstatus} ${excluidasPorEstatus === 1 ? "recepción se excluyó por estar en borrador o cancelada" : "recepciones se excluyeron por estar en borrador o canceladas"}: no hay mercancía recibida que facturar.`,
+    );
+  }
+  return avisos;
 };
 
 /**
