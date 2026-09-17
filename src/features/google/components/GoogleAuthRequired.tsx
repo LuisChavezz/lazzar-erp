@@ -53,7 +53,7 @@ const GoogleNotConnected = ({
   <div
     role="status"
     aria-label={`Se requiere conexión con Google para acceder a ${featureName}`}
-    className="relative w-full rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 overflow-hidden"
+    className="relative w-full rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-zinc-900 overflow-hidden"
   >
     {/* Fondo con patrón de puntos sutil */}
     <div
@@ -72,13 +72,13 @@ const GoogleNotConnected = ({
       <div className="relative flex items-end justify-center" aria-hidden="true">
         {/* Ícono de funcionalidad (opcional) — posicionado en la parte superior */}
         {icon && (
-          <div className="absolute -top-3 -right-3 z-10 flex h-8 w-8 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 shadow-sm dark:border-slate-600 dark:bg-slate-800 dark:text-slate-400">
+          <div className="absolute -top-3 -right-3 z-10 flex h-8 w-8 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 shadow-sm dark:border-slate-600 dark:bg-zinc-800 dark:text-slate-400">
             {icon}
           </div>
         )}
 
         {/* Logo de Google con anillo suave */}
-        <div className="flex h-20 w-20 items-center justify-center rounded-2xl border border-slate-200 bg-white shadow-md ring-4 ring-brand-100/60 dark:border-slate-600 dark:bg-slate-800 dark:ring-slate-700/80">
+        <div className="flex h-20 w-20 items-center justify-center rounded-2xl border border-slate-200 bg-white shadow-md ring-4 ring-sky-100/60 dark:border-slate-600 dark:bg-zinc-800 dark:ring-slate-700/80">
           <GoogleIcon className="w-10 h-10" />
         </div>
       </div>
@@ -98,13 +98,13 @@ const GoogleNotConnected = ({
         type="button"
         onClick={onConnect}
         disabled={isConnecting}
-        className="inline-flex cursor-pointer items-center gap-2.5 rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-medium text-slate-700 shadow-sm transition-colors duration-200 ease-in-out hover:border-brand-300 hover:bg-brand-50 hover:text-brand-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:border-brand-700 dark:hover:bg-slate-700 dark:hover:text-brand-300"
+        className="inline-flex cursor-pointer items-center gap-2.5 rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-medium text-slate-700 shadow-sm transition-colors duration-200 ease-in-out hover:border-sky-300 hover:bg-sky-50 hover:text-sky-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-600 dark:bg-zinc-800 dark:text-slate-200 dark:hover:border-sky-700 dark:hover:bg-zinc-700 dark:hover:text-sky-300"
       >
         {isConnecting ? (
           <>
             {/* Spinner de carga con la forma de Google */}
             <span
-              className="w-4 h-4 rounded-full border-2 border-brand-300 border-t-brand-600 animate-spin shrink-0"
+              className="w-4 h-4 rounded-full border-2 border-sky-300 border-t-sky-600 animate-spin shrink-0"
               aria-hidden="true"
             />
             Conectando…

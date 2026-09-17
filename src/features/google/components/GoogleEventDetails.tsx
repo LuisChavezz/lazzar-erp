@@ -147,7 +147,7 @@ export const GoogleEventDetails = () => {
         href={event.htmlLink}
         target="_blank"
         rel="noopener noreferrer"
-        className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-2 text-xs font-medium text-slate-600 dark:text-slate-300 shadow-sm transition-colors hover:border-sky-300 hover:bg-sky-50 hover:text-sky-700 dark:hover:border-sky-800 dark:hover:bg-sky-950/30 dark:hover:text-sky-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
+        className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-zinc-900 px-4 py-2 text-xs font-medium text-slate-600 dark:text-slate-300 shadow-sm transition-colors hover:border-sky-300 hover:bg-sky-50 hover:text-sky-700 dark:hover:border-sky-800 dark:hover:bg-sky-950/30 dark:hover:text-sky-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
         aria-label={`Abrir "${event.summary}" en Google Calendar`}
       >
         <ExternalLinkIcon className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />

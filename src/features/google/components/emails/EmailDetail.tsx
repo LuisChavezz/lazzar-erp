@@ -47,14 +47,14 @@ export const EmailDetail = ({ message, onBack }: EmailDetailProps) => {
   }, []);
 
   return (
-    <div className="flex flex-col bg-white dark:bg-slate-900">
+    <div className="flex flex-col h-full bg-white dark:bg-zinc-900">
       {/* Barra superior: botón de volver + enlace a Gmail */}
-      <div className="flex items-center gap-3 px-4 py-3 border-b border-slate-200 dark:border-slate-700 sticky top-0 z-10 bg-white dark:bg-slate-900">
+      <div className="flex items-center gap-3 px-4 py-3 border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-zinc-900">
         <button
           type="button"
           onClick={onBack}
           aria-label="Volver a la bandeja de entrada"
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 cursor-pointer"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-zinc-800 transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 cursor-pointer"
         >
           <ArrowLeftIcon className="w-4 h-4" aria-hidden="true" />
           Volver
@@ -70,22 +70,23 @@ export const EmailDetail = ({ message, onBack }: EmailDetailProps) => {
           target="_blank"
           rel="noopener noreferrer"
           aria-label="Abrir este correo en Gmail"
-          className="ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-700 dark:hover:text-slate-200 transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
+          className="ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-zinc-800 hover:text-slate-700 dark:hover:text-slate-200 transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
         >
           <ExternalLinkIcon className="w-3.5 h-3.5" aria-hidden="true" />
           Abrir en Gmail
         </a>
       </div>
 
-      {/* Contenido del mensaje */}
-      <article className="max-w-3xl mx-auto w-full px-6 py-6">
+      {/* Contenido del mensaje — scrollea por dentro, la barra superior no se mueve */}
+      <div className="flex-1 overflow-y-auto">
+        <article className="max-w-3xl mx-auto w-full px-6 py-6">
         {/* Asunto */}
         <h1 className="text-xl font-bold text-slate-900 dark:text-slate-50 mb-5 leading-snug">
           {message.subject || "(Sin asunto)"}
         </h1>
 
         {/* Metadatos del mensaje — disponibles inmediatamente desde el listado */}
-        <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 px-4 py-3 mb-6 space-y-1.5">
+        <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-zinc-800/50 px-4 py-3 mb-6 space-y-1.5">
           <MetaRow label="De" value={message.from_full || message.from} />
           <MetaRowRecipients label="Para" value={message.to} />
           <MetaRow label="Fecha" value={formatDetailDate(message.date)} />
@@ -137,6 +138,7 @@ export const EmailDetail = ({ message, onBack }: EmailDetailProps) => {
           )}
         </section>
       </article>
+      </div>
     </div>
   );
 };

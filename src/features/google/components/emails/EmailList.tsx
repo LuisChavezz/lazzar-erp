@@ -105,7 +105,7 @@ export const EmailList = ({
       </Suspense>
 
       {/* Cabecera principal */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 sticky top-0 z-10">
+      <div className="flex items-center justify-between px-4 py-2.5 border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-zinc-900 sticky top-0 z-10">
         <h2 className="text-sm font-semibold text-slate-700 dark:text-slate-200">
           {searchQuery ? "Resultados" : "Correos"}
         </h2>
@@ -124,7 +124,7 @@ export const EmailList = ({
             onClick={() => setIsComposeOpen(true)}
             disabled={isFetching}
             aria-label="Redactar nuevo correo"
-            className="flex items-center justify-center w-7 h-7 rounded-lg text-slate-400 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-600 dark:hover:text-slate-300 disabled:opacity-40 disabled:cursor-not-allowed transition-colors duration-150 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
+            className="flex items-center justify-center w-7 h-7 rounded-lg text-slate-400 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-zinc-800 hover:text-slate-600 dark:hover:text-slate-300 disabled:opacity-40 disabled:cursor-not-allowed transition-colors duration-150 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
           >
             <PlusIcon className="w-3.5 h-3.5" aria-hidden="true" />
           </button>
@@ -135,7 +135,7 @@ export const EmailList = ({
             onClick={() => refetch()}
             disabled={isFetching}
             aria-label="Actualizar correos"
-            className="flex items-center justify-center w-7 h-7 rounded-lg text-slate-400 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-600 dark:hover:text-slate-300 disabled:opacity-40 disabled:cursor-not-allowed transition-colors duration-150 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
+            className="flex items-center justify-center w-7 h-7 rounded-lg text-slate-400 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-zinc-800 hover:text-slate-600 dark:hover:text-slate-300 disabled:opacity-40 disabled:cursor-not-allowed transition-colors duration-150 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
           >
             <RefreshIcon
               className={`w-3.5 h-3.5 transition-transform duration-500 ${isFetching ? "animate-spin" : ""}`}
@@ -146,7 +146,7 @@ export const EmailList = ({
       </div>
 
       {/* Barra de búsqueda */}
-      <div className="flex items-center gap-2 px-4 py-2 border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900">
+      <div className="flex items-center gap-2 px-4 py-1.5 border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-zinc-900">
         {/* Input con ícono decorativo y botón de limpiar integrado */}
         <div className="relative flex-1">
           <SearchIcon
@@ -164,11 +164,11 @@ export const EmailList = ({
             className={[
               "w-full pl-8 pr-8 py-1.5 text-xs rounded-lg",
               "border border-slate-200 dark:border-slate-700",
-              "bg-slate-50 dark:bg-slate-800/80",
+              "bg-slate-50 dark:bg-zinc-800/80",
               "text-slate-800 dark:text-slate-200",
               "placeholder:text-slate-400 dark:placeholder:text-slate-500",
               "transition-colors duration-150",
-              "focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent",
+              "focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent",
               // Oculta el botón × nativo del tipo "search"
               "[&::-webkit-search-cancel-button]:appearance-none",
             ].join(" ")}
@@ -179,7 +179,7 @@ export const EmailList = ({
               type="button"
               onClick={handleClearSearch}
               aria-label="Limpiar búsqueda"
-              className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center justify-center w-4 h-4 rounded text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors duration-150 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
+              className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center justify-center w-4 h-4 rounded text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors duration-150 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
             >
               <XIcon className="w-3 h-3" aria-hidden="true" />
             </button>
@@ -193,7 +193,7 @@ export const EmailList = ({
             onClick={handleSubmitSearch}
             disabled={isFetching}
             aria-label="Ejecutar búsqueda"
-            className="flex items-center justify-center w-7 h-7 rounded-lg text-slate-400 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-600 dark:hover:text-slate-300 disabled:opacity-40 disabled:cursor-not-allowed transition-colors duration-150 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
+            className="flex items-center justify-center w-7 h-7 rounded-lg text-slate-400 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-zinc-800 hover:text-slate-600 dark:hover:text-slate-300 disabled:opacity-40 disabled:cursor-not-allowed transition-colors duration-150 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
           >
             <SearchIcon className="w-3.5 h-3.5" aria-hidden="true" />
           </button>
@@ -202,7 +202,7 @@ export const EmailList = ({
 
       {/* Chip de búsqueda activa — visible cuando hay un query comprometido */}
       {searchQuery && (
-        <div className="flex items-center gap-1.5 px-4 py-1.5 bg-slate-100 dark:bg-slate-800/20 border-b border-slate-200 dark:border-slate-700/30">
+        <div className="flex items-center gap-1.5 px-4 py-1.5 bg-slate-100 dark:bg-zinc-800/20 border-b border-slate-200 dark:border-slate-700/30">
           <SearchIcon
             className="w-3 h-3 text-slate-500 dark:text-slate-400 shrink-0"
             aria-hidden="true"
@@ -250,7 +250,7 @@ export const EmailList = ({
       {/* Paginación */}
       {!isPending && messages.length > 0 && (
         <div
-          className="flex items-center justify-between px-4 py-2.5 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
+          className="flex items-center justify-between px-4 py-2 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-zinc-900"
           aria-label="Controles de paginación"
         >
           <button
@@ -262,7 +262,7 @@ export const EmailList = ({
               "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium",
               "transition-colors duration-150",
               hasPreviousPage
-                ? "text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+                ? "text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-zinc-800 cursor-pointer"
                 : "text-slate-300 dark:text-slate-600 cursor-not-allowed",
             ].join(" ")}
           >
@@ -279,7 +279,7 @@ export const EmailList = ({
               "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium",
               "transition-colors duration-150",
               hasNextPage
-                ? "text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+                ? "text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-zinc-800 cursor-pointer"
                 : "text-slate-300 dark:text-slate-600 cursor-not-allowed",
             ].join(" ")}
           >
