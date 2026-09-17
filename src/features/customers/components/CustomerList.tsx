@@ -2,22 +2,29 @@
 
 import { useCallback, useMemo, useState } from "react";
 import { useSession } from "next-auth/react";
-import { DataTable } from "@/src/components/DataTable";
+import { DataTable, DataTableVisibleColumn } from "@/src/components/DataTable";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { hasPermission } from "@/src/utils/permissions";
 import { DialogHeader } from "@/src/components/DialogHeader";
 import { MainDialog } from "@/src/components/MainDialog";
 import { Button } from "@/src/components/Button";
+import { ExportCsvIcon, ExportPdfIcon, PlusIcon } from "@/src/components/Icons";
 import CustomerForm from "./CustomerForm";
 import CustomerAddressForm from "./CustomerAddressForm";
 import { CustomerAddressList } from "./CustomerAddressList";
 import { getCustomerColumns } from "./CustomerColumns";
 import { useCustomers } from "../hooks/useCustomers";
+import { useCustomerCsvExport } from "../hooks/useCustomerCsvExport";
+import { useCustomerPdfExport } from "../hooks/useCustomerPdfExport";
 import { Customer } from "../interfaces/customer.interface";
 import { CustomerAddress } from "../interfaces/customer-address.interface";
 
 export const CustomerList = () => {
   const { customers, isLoading, isError, error } = useCustomers();
+  const [visibleCustomers, setVisibleCustomers] = useState<Customer[]>([]);
+  const [visibleColumns, setVisibleColumns] = useState<DataTableVisibleColumn<Customer>[]>([]);
+  useCustomerCsvExport(visibleCustomers, visibleColumns);
+  useCustomerPdfExport(visibleCustomers, visibleColumns);
   const [isCustomerDialogOpen, setIsCustomerDialogOpen] = useState(false);
   const [customerToEdit, setCustomerToEdit] = useState<Customer | null>(null);
   const [isAddressDialogOpen, setIsAddressDialogOpen] = useState(false);
@@ -170,45 +177,73 @@ export const CustomerList = () => {
       <DataTable
         columns={columns}
         data={customers}
+        framed
+        searchAlwaysExpanded
+        defaultPageSize={20}
+        density="compact"
         searchPlaceholder="Buscar por razón social, nombre, correo o teléfono..."
         isLoading={isLoading}
         isError={isError}
         errorTitle="Error al cargar los clientes"
         errorMessage={extractErrorMessage(error, "No se pudo cargar la información.")}
         loadingAriaLabel="Cargando clientes"
+        onVisibleRowsChange={setVisibleCustomers}
+        onVisibleColumnsChange={setVisibleColumns}
         actionButton={
-          <MainDialog
-            title={
-              <DialogHeader
-                title={isEditing ? "Editar Cliente" : "Alta de Cliente"}
-                subtitle={isEditing ? "Edición de registro" : "Registro Nuevo"}
-                statusColor="emerald"
+          <div className="flex items-center gap-2 shrink-0">
+            <Button
+              variant="success"
+              size="icon"
+              onClick={() => document.dispatchEvent(new CustomEvent("customers:exportCSV"))}
+              title="Exportar a CSV (Excel)"
+              aria-label="Exportar clientes a CSV"
+            >
+              <ExportCsvIcon className="w-4 h-4 shrink-0" />
+            </Button>
+            <Button
+              variant="danger"
+              size="icon"
+              onClick={() => document.dispatchEvent(new CustomEvent("customers:exportPDF"))}
+              title="Exportar a PDF"
+              aria-label="Exportar clientes a PDF"
+            >
+              <ExportPdfIcon className="w-4 h-4 shrink-0" />
+            </Button>
+            <MainDialog
+              title={
+                <DialogHeader
+                  title={isEditing ? "Editar Cliente" : "Alta de Cliente"}
+                  subtitle={isEditing ? "Edición de registro" : "Registro Nuevo"}
+                  statusColor="emerald"
+                />
+              }
+              open={isCustomerDialogOpen}
+              onOpenChange={handleDialogOpenChange}
+              maxWidth="900px"
+              // Solo se oculta el TRIGGER, no el diálogo: este mismo `MainDialog`
+              // es también el de EDICIÓN (lo abre `handleEdit` desde la fila por
+              // `open`, sin pasar por el trigger). Desmontarlo dejaría sin efecto
+              // la acción "Editar" de quien tenga E-CRM-CLIENTES pero no
+              // C-CRM-CLIENTES.
+              trigger={
+                canCreate ? (
+                  <Button
+                    variant="primary"
+                    rounded="full"
+                    onClick={handleCreateCustomer}
+                  >
+                    <PlusIcon className="w-4 h-4 shrink-0" />
+                    Nuevo Cliente
+                  </Button>
+                ) : undefined
+              }
+            >
+              <CustomerForm
+                customerToEdit={customerToEdit}
+                onSuccess={() => handleDialogOpenChange(false)}
               />
-            }
-            open={isCustomerDialogOpen}
-            onOpenChange={handleDialogOpenChange}
-            maxWidth="900px"
-            // Solo se oculta el TRIGGER, no el diálogo: este mismo `MainDialog`
-            // es también el de EDICIÓN (lo abre `handleEdit` desde la fila por
-            // `open`, sin pasar por el trigger). Desmontarlo dejaría sin efecto
-            // la acción "Editar" de quien tenga E-CRM-CLIENTES pero no
-            // C-CRM-CLIENTES.
-            trigger={
-              canCreate ? (
-                <Button
-                  variant="primary"
-                  onClick={handleCreateCustomer}
-                >
-                  + Nuevo Cliente
-                </Button>
-              ) : undefined
-            }
-          >
-            <CustomerForm
-              customerToEdit={customerToEdit}
-              onSuccess={() => handleDialogOpenChange(false)}
-            />
-          </MainDialog>
+            </MainDialog>
+          </div>
         }
       />
     </div>
