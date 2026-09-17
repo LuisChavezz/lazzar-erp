@@ -206,6 +206,11 @@ export function useCreditNoteForm({ onSuccess }: { onSuccess?: () => void } = {}
    * alguno no corresponde.
    */
   const handleFacturaChange = (cuenta: CuentaPorCobrar) => {
+    // Re-confirmar la MISMA factura no cambia nada: el selector único siembra su
+    // selección tentativa con la actual, así que "Confirmar selección" está
+    // habilitado desde que se abre y un clic de más borraría las líneas
+    // capturadas —con sus importes escritos a mano— sin que nadie lo pidiera.
+    if (cuenta.factura_id === form.state.values.factura) return;
     form.setFieldValue("factura", cuenta.factura_id);
     form.setFieldValue("cliente", cuenta.cliente);
     form.setFieldValue("factura_folio", cuenta.factura_folio);
