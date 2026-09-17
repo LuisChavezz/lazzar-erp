@@ -3,6 +3,7 @@ import {
   MONEY_REGEX,
   toCents,
 } from "@/src/features/accounts-receivable/schemas/register-pending-invoice.schema";
+import { stripTrailingDecimalPoint } from "@/src/utils/decimal";
 import { POLIZA_TIPOS, type Poliza } from "../interfaces/poliza.interface";
 
 /**
@@ -134,24 +135,6 @@ export const polizaEsEliminable = (poliza: Poliza): boolean =>
   );
 
 /**
- * Quita el punto de un importe A MEDIO TECLEAR ("12." → "12").
- *
- * `sanitizeDecimalInput` devuelve el punto colgante A PROPÓSITO mientras se
- * escribe: al teclear "12" y luego ".", el campo queda en `"12."` hasta que
- * llegue el primer decimal. `MONEY_REGEX` rechaza esa forma, así que sin esta
- * normalización el renglón caía fuera de las sumas y el panel de cuadre saltaba
- * a "Hay importes con formato inválido" en mitad de la captura — el mismo
- * síntoma que tenía el lado vacío.
- *
- * El patrón exige DÍGITOS antes del punto (`^\d+\.$`), así que solo cubre ese
- * estado de captura concreto y no relaja nada más: `"."` a secas, `"1.2.3"`,
- * `"abc"` y `"1.234"` no coinciden, se devuelven tal cual y `MONEY_REGEX` los
- * sigue rechazando.
- */
-const sinPuntoFinal = (value: string): string =>
-  /^\d+\.$/.test(value) ? value.slice(0, -1) : value;
-
-/**
  * Importe de captura → CENTAVOS ENTEROS, o `null` si el texto no es dinero.
  *
  * ─── UN LADO VACÍO VALE CERO ─────────────────────────────────────────────────
@@ -172,7 +155,7 @@ const sinPuntoFinal = (value: string): string =>
  * la suma en vivo, de modo que no puedan discrepar.
  */
 export const importeACentavos = (raw: string): number | null => {
-  const value = sinPuntoFinal(raw.trim());
+  const value = stripTrailingDecimalPoint(raw.trim());
   if (value === "") return 0;
   if (!MONEY_REGEX.test(value)) return null;
   return toCents(value);
@@ -189,7 +172,7 @@ export const importeACentavos = (raw: string): number | null => {
  */
 const money = z.preprocess((value) => {
   if (typeof value !== "string") return value;
-  const normalized = sinPuntoFinal(value.trim());
+  const normalized = stripTrailingDecimalPoint(value.trim());
   return normalized === "" ? "0.00" : normalized;
 }, z.string().regex(MONEY_REGEX, MONEY_MESSAGE));
 

@@ -48,6 +48,7 @@ const ROUTE_TITLES: Record<string, string> = {
   "/finance/banks": "Bancos",
   "/finance/payments": "Pagos",
   "/finance/credit-notes": "Notas de Crédito",
+  "/finance/supplier-invoices": "Facturas de Proveedor",
   "/finance/bank-accounts": "Cuentas Bancarias",
   "/finance/accounting": "Contabilidad",
   "/finance/polizas": "Pólizas",

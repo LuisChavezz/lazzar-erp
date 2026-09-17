@@ -4,10 +4,6 @@ import type {
   CuentaPorPagar,
   CuentaPorPagarQueryParams,
 } from "../interfaces/accounts-payable.interface";
-import type {
-  FacturaProveedor,
-  FacturaProveedorQueryParams,
-} from "../interfaces/factura-proveedor.interface";
 
 /**
  * Lista las cuentas por pagar desde `GET /finanzas/cuentas-por-pagar/`. El
@@ -23,25 +19,6 @@ export const getCuentasPorPagar = async (
 ): Promise<CuentaPorPagar[]> => {
   const { data } = await v1_api.get<CuentaPorPagar[]>(
     "/finanzas/cuentas-por-pagar/",
-    { params },
-  );
-  return data;
-};
-
-/**
- * Lista las facturas de proveedor desde `GET /finanzas/facturas-proveedor/` —
- * el catálogo del selector del alta manual de CxP.
- *
- * La respuesta es PESADA (cada factura trae sus renglones anidados) y no está
- * paginada, así que conviene acotarla SIEMPRE con `proveedor` en el servidor en
- * vez de traer las de toda la empresa y filtrar en memoria. `useFacturasProveedor`
- * no dispara la consulta sin proveedor.
- */
-export const getFacturasProveedor = async (
-  params?: FacturaProveedorQueryParams,
-): Promise<FacturaProveedor[]> => {
-  const { data } = await v1_api.get<FacturaProveedor[]>(
-    "/finanzas/facturas-proveedor/",
     { params },
   );
   return data;

@@ -1,5 +1,6 @@
 import { AxiosError } from "axios";
 import { firstDrfMessage } from "@/src/utils/firstDrfMessage";
+import { isWholeArrayDrfError } from "@/src/utils/isWholeArrayDrfError";
 
 /** Campos de CABECERA que el backend puede señalar en un `400`. */
 export type PolizaHeaderErrorField =
@@ -34,24 +35,6 @@ const HEADER_FIELDS: PolizaHeaderErrorField[] = [
   "tipo",
   "concepto",
 ];
-
-/**
- * `true` si el arreglo de `poliza_detalles` NO viene indexado por línea.
- *
- * DRF, al validar un `many=True` anidado, devuelve una lista ALINEADA POR ÍNDICE
- * con un objeto por renglón (`{}` para los válidos). En cambio
- * `raise ValidationError({"poliza_detalles": "..."})` —que es como llegan el
- * descuadre de `PolizaService.validar_suma_cero` y cualquier otro error de
- * negocio del servicio— produce una lista de STRINGS que habla de la póliza
- * ENTERA, no de su primer renglón.
- *
- * Sin esta distinción, "La suma de cargos (100.00) debe ser igual a la suma de
- * abonos (90.00)" se pintaría bajo el movimiento 1 —un renglón probablemente
- * correcto— y el usuario buscaría el problema donde no está.
- */
-const esErrorDeArregloCompleto = (entries: unknown[]): boolean =>
-  entries.length > 0 &&
-  entries.every((entry) => entry === null || typeof entry === "string");
 
 /**
  * Normaliza el error de las operaciones de póliza (alta, contabilizar,
@@ -196,9 +179,9 @@ export function parsePolizaError(
     // Un solo mensaje para todo el arreglo.
     pushFormError(detalles);
   } else if (Array.isArray(detalles)) {
-    if (esErrorDeArregloCompleto(detalles)) {
+    if (isWholeArrayDrfError(detalles)) {
       // Lista de strings: habla de la póliza entera (el descuadre), no de sus
-      // renglones. Ver `esErrorDeArregloCompleto`.
+      // renglones. Ver `isWholeArrayDrfError`.
       detalles.forEach((entry) => {
         const message = firstDrfMessage(entry);
         if (message) pushFormError(message);

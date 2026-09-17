@@ -30,6 +30,25 @@ export function sanitizeDecimalInput(raw: string, places: number): string {
 }
 
 /**
+ * Quita el punto de un decimal A MEDIO TECLEAR ("12." → "12").
+ *
+ * `sanitizeDecimalInput` devuelve el punto colgante A PROPÓSITO mientras se
+ * escribe: al teclear "12" y luego ".", el campo queda en `"12."` hasta que
+ * llegue el primer decimal. Las regex de dinero rechazan esa forma, así que sin
+ * esta normalización el renglón caería fuera de las sumas en vivo y marcaría un
+ * formato inválido en mitad de la captura.
+ *
+ * El patrón exige DÍGITOS antes del punto (`^\d+\.$`), así que solo cubre ese
+ * estado de captura concreto y no relaja nada más: `"."` a secas, `"1.2.3"`,
+ * `"abc"` y `"1.234"` no coinciden, se devuelven tal cual y la validación los
+ * sigue rechazando.
+ *
+ * Compartida por los esquemas de pólizas y de facturas de proveedor.
+ */
+export const stripTrailingDecimalPoint = (value: string): string =>
+  /^\d+\.$/.test(value) ? value.slice(0, -1) : value;
+
+/**
  * Normaliza un decimal capturado a la forma que se envía al backend, o `null`
  * si el campo quedó vacío (opcional no capturado) o no sostiene un número.
  *

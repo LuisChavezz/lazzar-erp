@@ -97,9 +97,13 @@ export function MultiSelectPickerDialogContent<T>({
   );
 
   const selectedCount = tentativeKeys.size;
-  // `isLoading`/`isError` no hacen falta aquí: ambas ramas sustituyen la lista,
-  // así que no hay fila que marcar y el conjunto tentativo sigue vacío.
-  const isConfirmDisabled = selectedCount === 0;
+  // También con `isLoading`/`isError`, igual que el selector único: ambas ramas
+  // sustituyen la lista, pero el conjunto tentativo SOBREVIVE a que `items` se
+  // vacíe o se quede viejo (p. ej. un consumidor que trata un refetch en segundo
+  // plano como carga). Sin esto, confirmar durante la carga no hace nada —
+  // `handleConfirm` no encuentra los ítems— y confirmar tras un refetch fallido
+  // propagaría las opciones VIEJAS.
+  const isConfirmDisabled = selectedCount === 0 || isLoading || isError;
 
   const toggle = (item: T) => {
     const key = getKey(item);
