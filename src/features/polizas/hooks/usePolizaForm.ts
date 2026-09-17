@@ -25,7 +25,7 @@ import {
 } from "../utils/parsePolizaError";
 import { useCreatePoliza } from "./useCreatePoliza";
 import { useChartOfAccounts } from "@/src/features/chart-of-accounts/hooks/useChartOfAccounts";
-import { useCentrosCosto } from "./useCentrosCosto";
+import { useCostCenters } from "@/src/features/cost-centers/hooks/useCostCenters";
 
 const LINE_ERROR_PREFIX = "poliza_detalles";
 
@@ -79,11 +79,17 @@ export function usePolizaForm({ onSuccess }: { onSuccess?: () => void } = {}) {
     isLoading: isLoadingCuentas,
     isError: isErrorCuentas,
   } = useChartOfAccounts({ acepta_movimientos: true, activo: true });
+  // Solo los centros de costo ACTIVOS: el filtro va al servidor, igual que el de
+  // las cuentas. Uno dado de baja sigue en el catálogo y en las pólizas que ya lo
+  // usan, pero no debe ofrecerse en una captura nueva. Alimenta los DOS
+  // selectores —el de la cabecera y el de cada movimiento—, que son dos campos
+  // distintos del mismo catálogo (`Poliza` y `PolizaDetalle` declaran cada uno su
+  // FK a `CentroCosto`): una sola entrada de caché sirve a los dos.
   const {
     centrosCosto,
     isLoading: isLoadingCentros,
     isError: isErrorCentros,
-  } = useCentrosCosto();
+  } = useCostCenters({ activo: true });
 
   const isLoadingFormData = isLoadingBranches || isLoadingCuentas || isLoadingCentros;
   // Si CUALQUIER catálogo falla no se puede armar el formulario con selectores

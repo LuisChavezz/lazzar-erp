@@ -125,6 +125,7 @@ import {
   Weight,
   Container,
   Wallet,
+  Coins,
 } from "lucide-react";
 
 // ─── Tipos comunes ────────────────────────────────────────────────────────────
@@ -239,6 +240,14 @@ export const ContabilidadIcon = (props: LucideProps) => <Calculator {...props} /
  * ramas, no como el cálculo.
  */
 export const PlanCuentasIcon = (props: LucideProps) => <ListTree {...props} />;
+/**
+ * Centros de costo — las bolsas a las que se imputa un gasto. Glifo PROPIO
+ * (`Coins`, varias pilas de monedas) y no `WalletIcon` ni `DollarSign`, que ya
+ * son la cuenta bancaria y la lista de precios en este mismo grupo: lo que
+ * distingue a un centro de costo es que el gasto se REPARTE en varios montones,
+ * no el dinero en sí.
+ */
+export const CentrosCostoIcon = (props: LucideProps) => <Coins {...props} />;
 export const ExistenciasIcon = (props: LucideProps) => <ClipboardList {...props} />;
 export const ListaPreciosIcon = (props: LucideProps) => <DollarSign {...props} />;
 export const ClientesIcon = (props: LucideProps) => <Users {...props} />;

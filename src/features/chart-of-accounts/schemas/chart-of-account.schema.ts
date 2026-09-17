@@ -22,12 +22,18 @@ import { CUENTA_CONTABLE_TIPOS } from "../constants/chartOfAccountTipo";
  * pedirá capturarlo.
  */
 export const ChartOfAccountFormSchema = z.object({
+  // `.trim()` ANTES de `.min(1)`: el payload se arma con el valor recortado, así
+  // que validar el crudo dejaba pasar una captura de solo espacios —"   " mide 1
+  // y superaba el requerido— que llegaba al backend como "". Mismo orden que
+  // `BankAccountFormSchema`.
   codigo: z
     .string()
+    .trim()
     .min(1, "El código es requerido")
     .max(30, "El código no puede exceder 30 caracteres"),
   nombre: z
     .string()
+    .trim()
     .min(1, "El nombre es requerido")
     .max(200, "El nombre no puede exceder 200 caracteres"),
   tipo: z.enum(CUENTA_CONTABLE_TIPOS, "Selecciona el tipo de cuenta"),
