@@ -39,6 +39,7 @@ import {
   FacturaProveedorIcon,
   ContabilidadIcon,
   PlanCuentasIcon,
+  CentrosCostoIcon,
 } from "../components/Icons";
 
 export interface AppRouteItem {
@@ -507,6 +508,19 @@ export const appRouteGroups: AppRouteGroup[] = [
         icon: PlanCuentasIcon,
         description:
           "Catálogo de cuentas contables por tipo y nivel, con su estatus.",
+        permission: "R-CONTABILIDAD",
+      },
+      {
+        // EC-140. Junto al Plan de Cuentas porque es el otro catálogo que
+        // alimenta la captura de una póliza: el centro de costo es opcional en
+        // la cabecera y en cada movimiento. Sin código de sección propio: la
+        // cubre el `R-CONTABILIDAD` del prefijo `/finance`.
+        key: "finance-cost-centers",
+        label: "Centros de Costo",
+        path: "/finance/cost-centers",
+        icon: CentrosCostoIcon,
+        description:
+          "Catálogo de centros de costo para imputar los movimientos de una póliza.",
         permission: "R-CONTABILIDAD",
       },
       {
