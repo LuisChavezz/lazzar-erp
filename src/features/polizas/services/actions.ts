@@ -1,9 +1,5 @@
 import { v1_api } from "@/src/api/v1.api";
 import type { CreatePolizaPayload, Poliza } from "../interfaces/poliza.interface";
-import type {
-  CentroCosto,
-  CentroCostoQueryParams,
-} from "../interfaces/catalogos.interface";
 
 /**
  * Lista las pólizas desde `GET /finanzas/polizas/`.
@@ -97,18 +93,4 @@ export const cancelarPoliza = async (id: number): Promise<Poliza> => {
  */
 export const deletePoliza = async (id: number): Promise<void> => {
   await v1_api.delete(`/finanzas/polizas/${id}/`);
-};
-
-/**
- * Catálogo de centros de costo: `GET /finanzas/centros-costo/`.
- *
- * CANDIDATO A EXTRACCIÓN a `features/centros-costo/` cuando EC-140 exista.
- */
-export const getCentrosCosto = async (
-  params?: CentroCostoQueryParams,
-): Promise<CentroCosto[]> => {
-  const { data } = await v1_api.get<CentroCosto[]>("/finanzas/centros-costo/", {
-    params,
-  });
-  return data;
 };
