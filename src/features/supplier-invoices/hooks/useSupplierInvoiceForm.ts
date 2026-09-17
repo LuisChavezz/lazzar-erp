@@ -217,6 +217,11 @@ export function useSupplierInvoiceForm({
    * el backend rechazaría el alta completa.
    */
   const handleOcChange = (oc: PurchaseOrder) => {
+    // Re-confirmar la MISMA orden no cambia nada: el selector único siembra su
+    // selección tentativa con la actual, así que "Confirmar selección" está
+    // habilitado desde que se abre y un clic de más borraría la recepción, las
+    // partidas capturadas y la tasa sin que nadie lo hubiera pedido.
+    if (oc.id === form.state.values.oc) return;
     form.setFieldValue("oc", oc.id);
     form.setFieldValue("oc_folio", oc.folio ?? `OC #${oc.id}`);
     // `proveedor` es `SET_NULL` en la OC aunque el tipo lo declare `number`.
@@ -241,6 +246,9 @@ export function useSupplierInvoiceForm({
 
   /** Fija la recepción. Cambiarla VACÍA los renglones (son de la anterior). */
   const handleRecepcionChange = (recepcion: PurchaseOrderReceipt) => {
+    // Misma guarda que `handleOcChange`: re-confirmar la recepción ya elegida no
+    // es un cambio y no debe borrar las partidas capturadas.
+    if (recepcion.id === form.state.values.recepcion) return;
     form.setFieldValue("recepcion", recepcion.id);
     form.setFieldValue("recepcion_folio", recepcion.folio);
     form.setFieldValue("factura_proveedor_detalles", []);
