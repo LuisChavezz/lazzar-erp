@@ -21,7 +21,7 @@ import { getColumns } from "./PolizaColumns";
 import { PolizaDetailDialog } from "./PolizaDetailDialog";
 import PolizaForm from "./PolizaForm";
 import { usePolizas } from "../hooks/usePolizas";
-import { useCuentasContables } from "../hooks/useCuentasContables";
+import { useChartOfAccounts } from "@/src/features/chart-of-accounts/hooks/useChartOfAccounts";
 import { useCentrosCosto } from "../hooks/useCentrosCosto";
 import { useContabilizarPoliza } from "../hooks/useContabilizarPoliza";
 import { useCancelarPoliza } from "../hooks/useCancelarPoliza";
@@ -98,7 +98,12 @@ export default function PolizaList() {
   // comparten caché con las que usa el formulario de alta.
   const selectedCompany = useWorkspaceStore((state) => state.selectedCompany);
   const { branches } = useCompanyBranches(selectedCompany.id);
-  const { cuentasContables } = useCuentasContables();
+  // Mismos parámetros que el formulario de alta, para compartir su entrada de
+  // caché en vez de abrir una segunda con otro filtro.
+  const { cuentasContables } = useChartOfAccounts({
+    acepta_movimientos: true,
+    activo: true,
+  });
   const { centrosCosto } = useCentrosCosto();
 
   const [isFormOpen, setIsFormOpen] = useState(false);

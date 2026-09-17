@@ -18,7 +18,8 @@ import {
 } from "../constants/polizaStatus";
 import type { Branch } from "@/src/features/branches/interfaces/branch.interface";
 import type { Poliza } from "../interfaces/poliza.interface";
-import type { CentroCosto, CuentaContable } from "../interfaces/catalogos.interface";
+import type { CentroCosto } from "../interfaces/catalogos.interface";
+import type { CuentaContable } from "@/src/features/chart-of-accounts/interfaces/chart-of-account.interface";
 
 interface PolizaDetailDialogProps {
   /**

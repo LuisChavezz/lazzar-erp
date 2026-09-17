@@ -24,7 +24,7 @@ import {
   type ParsedPolizaError,
 } from "../utils/parsePolizaError";
 import { useCreatePoliza } from "./useCreatePoliza";
-import { useCuentasContables } from "./useCuentasContables";
+import { useChartOfAccounts } from "@/src/features/chart-of-accounts/hooks/useChartOfAccounts";
 import { useCentrosCosto } from "./useCentrosCosto";
 
 const LINE_ERROR_PREFIX = "poliza_detalles";
@@ -68,11 +68,17 @@ export function usePolizaForm({ onSuccess }: { onSuccess?: () => void } = {}) {
     isLoading: isLoadingBranches,
     isError: isErrorBranches,
   } = useCompanyBranches(selectedCompany.id);
+  // Solo cuentas que admiten un asiento DIRECTO: el filtro va al servidor. Una
+  // cuenta de agrupación (`acepta_movimientos=false`, las que solo suman a sus
+  // hijas) no puede recibir un cargo o un abono, y una inactiva no debe
+  // ofrecerse. El backend NO impone esta regla —`PolizaDetalle.cuenta_contable`
+  // acepta cualquier cuenta de la empresa—, así que este filtro es lo único que
+  // lo impide.
   const {
     cuentasContables,
     isLoading: isLoadingCuentas,
     isError: isErrorCuentas,
-  } = useCuentasContables();
+  } = useChartOfAccounts({ acepta_movimientos: true, activo: true });
   const {
     centrosCosto,
     isLoading: isLoadingCentros,

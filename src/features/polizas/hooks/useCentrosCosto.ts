@@ -7,10 +7,11 @@ import type { CentroCosto } from "../interfaces/catalogos.interface";
  *
  * ─── HOOK AD HOC DE ESTE MÓDULO ──────────────────────────────────────────────
  *
- * Igual que `useCuentasContables`: no existe `features/centros-costo/` ni ningún
- * otro consumidor de este endpoint, porque su pantalla de catálogo (EC-140) está
- * sin construir. CANDIDATO A EXTRACCIÓN a ese módulo cuando exista, junto con
- * `getCentrosCosto` y el tipo `CentroCosto`.
+ * No existe `features/centros-costo/` ni ningún otro consumidor de este
+ * endpoint, porque su pantalla de catálogo (EC-140) está sin construir.
+ * CANDIDATO A EXTRACCIÓN a ese módulo cuando exista, junto con `getCentrosCosto`
+ * y el tipo `CentroCosto` — el mismo camino que ya recorrieron las cuentas
+ * contables en EC-139, hoy en `features/chart-of-accounts/`.
  *
  * Alimenta DOS selectores a la vez —el de la cabecera de la póliza y el de cada
  * movimiento—, que son dos campos distintos del mismo catálogo: `Poliza` y

@@ -3,8 +3,6 @@ import type { CreatePolizaPayload, Poliza } from "../interfaces/poliza.interface
 import type {
   CentroCosto,
   CentroCostoQueryParams,
-  CuentaContable,
-  CuentaContableQueryParams,
 } from "../interfaces/catalogos.interface";
 
 /**
@@ -99,25 +97,6 @@ export const cancelarPoliza = async (id: number): Promise<Poliza> => {
  */
 export const deletePoliza = async (id: number): Promise<void> => {
   await v1_api.delete(`/finanzas/polizas/${id}/`);
-};
-
-/**
- * Catálogo de cuentas contables: `GET /finanzas/cuentas-contables/`.
- *
- * Los parámetros son opcionales; Axios omite las llaves `undefined`, así que
- * solo viajan las que se fijen. El backend ya acota por la empresa del usuario.
- * Ordena por `codigo, id`.
- *
- * CANDIDATO A EXTRACCIÓN a `features/cuentas-contables/` cuando EC-139 exista.
- */
-export const getCuentasContables = async (
-  params?: CuentaContableQueryParams,
-): Promise<CuentaContable[]> => {
-  const { data } = await v1_api.get<CuentaContable[]>(
-    "/finanzas/cuentas-contables/",
-    { params },
-  );
-  return data;
 };
 
 /**
