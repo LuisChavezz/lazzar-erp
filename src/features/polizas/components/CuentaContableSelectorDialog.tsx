@@ -2,7 +2,7 @@
 
 import { MainDialog } from "@/src/components/MainDialog";
 import { SingleSelectPickerDialogContent } from "@/src/components/SingleSelectPickerDialogContent";
-import type { CuentaContable } from "../interfaces/catalogos.interface";
+import type { CuentaContable } from "@/src/features/chart-of-accounts/interfaces/chart-of-account.interface";
 
 interface CuentaContableSelectorDialogProps {
   open: boolean;
@@ -34,7 +34,7 @@ interface CuentaContableSelectorDialogProps {
  * `FormSelect` por el mismo motivo, del otro lado.
  *
  * `cuentas` llega YA FILTRADO a `acepta_movimientos=true` y `activo=true` desde
- * `useCuentasContables` (filtro de servidor): una cuenta de agrupación no puede
+ * `useChartOfAccounts` (filtro de servidor): una cuenta de agrupación no puede
  * recibir un asiento, y el backend no lo impide por su cuenta.
  */
 export function CuentaContableSelectorDialog({
@@ -84,7 +84,7 @@ export function CuentaContableSelectorDialog({
                   {/* `tipo` es la naturaleza contable real del modelo
                       (Activo/Pasivo/Capital/Ingreso/Gasto/Costo). NO existe un
                       campo `naturaleza` deudora/acreedora ni un `saldo`: los
-                      inventa la maqueta faker de `features/accounting`. */}
+                      inventaba la maqueta faker retirada en EC-139. */}
                   {cuenta.tipo} · Nivel {cuenta.nivel}
                 </p>
               </div>

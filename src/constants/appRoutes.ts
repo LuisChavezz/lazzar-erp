@@ -38,6 +38,7 @@ import {
   NotaCreditoIcon,
   FacturaProveedorIcon,
   ContabilidadIcon,
+  PlanCuentasIcon,
 } from "../components/Icons";
 
 export interface AppRouteItem {
@@ -471,11 +472,11 @@ export const appRouteGroups: AppRouteGroup[] = [
         // Sustituye a la entrada "finance-accounting" que estaba comentada aquí
         // ("restaurar cuando el backend exponga el endpoint real"): el endpoint
         // real es `/finanzas/polizas/` y esta pantalla lo consume. NO se
-        // reutiliza aquella ruta —`/finance/accounting` sigue existiendo en disco
-        // sirviendo la maqueta faker de `features/accounting`, con campos que el
-        // backend no tiene (`naturaleza`, `saldo`, un tipo "cierre")—, así que
-        // apuntar la entrada ahí llevaría a datos inventados. Cuando esa maqueta
-        // se elimine, su carpeta y su ruta se van con ella y aquí no cambia nada.
+        // reutilizó aquella ruta: `/finance/accounting` seguía sirviendo una
+        // maqueta faker con campos que el backend no tiene (`naturaleza`,
+        // `saldo`, un tipo "cierre"), así que apuntar la entrada ahí habría
+        // llevado a datos inventados. Esa maqueta y su ruta se eliminaron en
+        // EC-139, con la llegada del catálogo real de cuentas contables.
         //
         // Segmento en español, contra la convención kebab-inglés del resto de
         // finanzas, por el mismo motivo que `/manufacturing/corte-manga`: es el
@@ -489,6 +490,23 @@ export const appRouteGroups: AppRouteGroup[] = [
         icon: ContabilidadIcon,
         description:
           "Asientos contables de partida doble, con cuadre de cargos y abonos.",
+        permission: "R-CONTABILIDAD",
+      },
+      {
+        // EC-139. Junto a Pólizas porque es el catálogo que alimenta sus
+        // movimientos: una cuenta activa que acepta movimientos es lo único que
+        // el selector de la póliza ofrece. Sin código de sección propio: la
+        // cubre el `R-CONTABILIDAD` del prefijo `/finance`.
+        //
+        // Segmento en kebab-inglés como el resto de finanzas
+        // (`bank-accounts`, `credit-notes`, `supplier-invoices`); `polizas`, en
+        // español, es la excepción documentada arriba.
+        key: "finance-chart-of-accounts",
+        label: "Plan de Cuentas",
+        path: "/finance/chart-of-accounts",
+        icon: PlanCuentasIcon,
+        description:
+          "Catálogo de cuentas contables por tipo y nivel, con su estatus.",
         permission: "R-CONTABILIDAD",
       },
       {

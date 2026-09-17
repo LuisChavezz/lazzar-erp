@@ -37,9 +37,9 @@ export type PolizaTipo = (typeof POLIZA_TIPOS)[number];
 /**
  * Estatus de la póliza, tal cual el enum del backend (`Poliza.PolizaStatus`).
  *
- * NO existe un `tipo: "cierre"` ni un estatus adicional: la maqueta faker de
- * `src/features/accounting/` inventa ambos (y usa minúsculas), y no es un
- * contrato — ver el encabezado de este módulo.
+ * NO existe un `tipo: "cierre"` ni un estatus adicional: los inventaba (en
+ * minúsculas) la maqueta faker de contabilidad, retirada en EC-139, y nunca
+ * fueron contrato — ver el encabezado de este módulo.
  */
 export type PolizaEstatus = "Borrador" | "Contabilizada" | "Cancelada";
 

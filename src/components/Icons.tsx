@@ -108,6 +108,7 @@ import {
   X,
   XCircle,
   List,
+  ListTree,
   Kanban,
   Factory,
   BookUser,
@@ -231,6 +232,13 @@ export const BancosIcon = (props: LucideProps) => <Landmark {...props} />;
 /** Cuenta bancaria — la CUENTA, no la institución (ver `BancosIcon`). */
 export const WalletIcon = (props: LucideProps) => <Wallet {...props} />;
 export const ContabilidadIcon = (props: LucideProps) => <Calculator {...props} />;
+/**
+ * Plan de cuentas — el CATÁLOGO de cuentas contables, no la contabilidad en sí.
+ * No se reutiliza `ContabilidadIcon` (una calculadora), que ya es el de Pólizas
+ * en este mismo grupo del sidebar: un catálogo jerárquico lee como una lista con
+ * ramas, no como el cálculo.
+ */
+export const PlanCuentasIcon = (props: LucideProps) => <ListTree {...props} />;
 export const ExistenciasIcon = (props: LucideProps) => <ClipboardList {...props} />;
 export const ListaPreciosIcon = (props: LucideProps) => <DollarSign {...props} />;
 export const ClientesIcon = (props: LucideProps) => <Users {...props} />;
