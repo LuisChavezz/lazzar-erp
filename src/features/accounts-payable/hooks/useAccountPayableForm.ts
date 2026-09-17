@@ -180,6 +180,11 @@ export function useAccountPayableForm({ onSuccess }: { onSuccess?: () => void } 
    * se PRECARGA y queda editable; `observaciones` no se toca.
    */
   const handleFacturaChange = (factura: FacturaProveedor) => {
+    // Re-confirmar la MISMA factura no cambia nada: el selector único siembra su
+    // selección tentativa con la actual, así que "Confirmar selección" está
+    // habilitado desde que se abre y un clic de más revertiría el vencimiento
+    // que el usuario hubiera ajustado a mano al de la factura.
+    if (factura.id === form.state.values.factura_proveedor) return;
     const values = valuesFromFacturaProveedor(factura);
     form.setFieldValue("factura_proveedor", values.factura_proveedor);
     form.setFieldValue("proveedor", values.proveedor);
