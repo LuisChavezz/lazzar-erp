@@ -9,7 +9,7 @@ import { DialogHeader } from "@/src/components/DialogHeader";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { hasPermission } from "@/src/utils/permissions";
 import { useAreas } from "@/src/features/areas/hooks/useAreas";
-import { getColumns } from "./PositionColumns";
+import { getColumns, PositionRow } from "./PositionColumns";
 import { Position } from "../interfaces/position.interface";
 import PositionForm from "./PositionForm";
 import { usePositions } from "../hooks/usePositions";
@@ -37,15 +37,33 @@ export default function PositionList() {
     setIsDialogOpen(true);
   };
 
+  // El endpoint devuelve el FK como ID crudo; se resuelve el nombre en cliente.
+  const areaNameById = useMemo(
+    () => new Map(areas.map((area) => [area.id, area.nombre])),
+    [areas]
+  );
+
+  // El nombre se incorpora a la FILA, no al accessor: así la llegada tardía del
+  // catálogo de áreas produce un `data` nuevo y TanStack recalcula celda,
+  // búsqueda y orden. Ver `PositionRow`.
+  const rows = useMemo<PositionRow[]>(
+    () =>
+      positions.map((position) => ({
+        ...position,
+        area_nombre: position.area == null ? null : areaNameById.get(position.area) ?? null,
+      })),
+    [positions, areaNameById]
+  );
+
   const columns = useMemo(
-    () => getColumns(handleEdit, { canEdit: canEditHr, canDelete: canDeleteHr }, areas),
-    [handleEdit, canEditHr, canDeleteHr, areas]
+    () => getColumns(handleEdit, { canEdit: canEditHr, canDelete: canDeleteHr }),
+    [handleEdit, canEditHr, canDeleteHr]
   );
 
   return (
     <DataTable
       columns={columns}
-      data={positions}
+      data={rows}
       searchPlaceholder="Buscar puesto..."
       isLoading={isLoading}
       isError={isError}

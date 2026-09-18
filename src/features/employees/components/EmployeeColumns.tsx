@@ -6,14 +6,38 @@ import { ActionMenu, ActionMenuItem } from "@/src/components/ActionMenu";
 import { ACTIVO_INACTIVO_CFG, StatusBadge } from "@/src/components/StatusBadge";
 import { formatLocalDate } from "@/src/utils/formatDate";
 import { Branch } from "@/src/features/branches/interfaces/branch.interface";
-import { Department } from "@/src/features/departments/interfaces/department.interface";
-import { Position } from "@/src/features/positions/interfaces/position.interface";
 import { Employee } from "../interfaces/employee.interface";
 import { getEmployeeFullName } from "../utils/employeeName";
 import { useDeleteEmployee } from "../hooks/useDeleteEmployee";
 import { useReactivateEmployee } from "../hooks/useReactivateEmployee";
 
-const columnHelper = createColumnHelper<Employee>();
+/**
+ * Fila de la tabla: el empleado tal como llega del backend más los nombres de
+ * su puesto y su departamento ya resueltos. Es un modelo de vista, no un tipo
+ * del backend.
+ *
+ * Esos nombres viajan EN LA FILA y no se resuelven dentro del accessor con un
+ * `Map` recibido por parámetro: TanStack guarda en caché el valor del accessor
+ * por fila y solo lo recalcula cuando cambia `data`, no cuando cambian las
+ * columnas. Si los empleados llegaban antes que el catálogo de puestos o de
+ * departamentos, el accessor se congelaba con el ID crudo — en pantalla, en la
+ * búsqueda global y en el orden. Al construir las filas en `EmployeeList` a
+ * partir de empleados + catálogos, la llegada de cada catálogo produce un
+ * `data` nuevo y TanStack recalcula todo. Mismo arreglo que `ContractRow` y
+ * `CalendarRow`.
+ *
+ * La sucursal NO sigue este camino a propósito: sale de `availableBranches` del
+ * workspace, que persiste en `localStorage` y se hidrata de forma síncrona, así
+ * que ya está disponible cuando llegan los empleados.
+ *
+ * `null` = el FK no aparece en su catálogo (o el catálogo todavía no llega).
+ */
+export type EmployeeRow = Employee & {
+  puesto_nombre: string | null;
+  departamento_nombre: string | null;
+};
+
+const columnHelper = createColumnHelper<EmployeeRow>();
 
 const ActionsCell = ({
   row,
@@ -22,7 +46,7 @@ const ActionsCell = ({
   canEdit,
   canDelete,
 }: {
-  row: Row<Employee>;
+  row: Row<EmployeeRow>;
   onViewDetails: (employee: Employee) => void;
   onEdit: (employee: Employee) => void;
   canEdit: boolean;
@@ -129,16 +153,11 @@ export const getColumns = (
   onViewDetails: (employee: Employee) => void,
   onEdit: (employee: Employee) => void,
   permissions: { canEdit: boolean; canDelete: boolean },
-  catalogs: { branches: Branch[]; departments: Department[]; positions: Position[] }
+  branches: Branch[]
 ) => {
   // El endpoint devuelve los FK como IDs crudos; se resuelven en cliente.
-  const branchNameById = new Map(catalogs.branches.map((branch) => [branch.id, branch.nombre]));
-  const departmentNameById = new Map(
-    catalogs.departments.map((department) => [department.id_departamento, department.nombre])
-  );
-  const positionNameById = new Map(
-    catalogs.positions.map((position) => [position.id, position.nombre])
-  );
+  // Puesto y departamento ya vienen resueltos en la fila (ver `EmployeeRow`).
+  const branchNameById = new Map(branches.map((branch) => [branch.id, branch.nombre]));
 
   const columns = [
     columnHelper.accessor("numero_empleado", {
@@ -163,8 +182,11 @@ export const getColumns = (
         <span className="text-slate-600 dark:text-slate-300 font-medium">{info.getValue()}</span>
       ),
     }),
+    // Un solo valor alimenta la celda, la búsqueda global y el orden, así que
+    // los tres ven el nombre resuelto. Siempre es string: el respaldo evita el
+    // `null` que excluiría la columna de la búsqueda (ver DataTable).
     columnHelper.accessor(
-      (row) => positionNameById.get(row.puesto) ?? String(row.puesto),
+      (row) => row.puesto_nombre ?? String(row.puesto),
       {
         id: "puesto",
         header: "Puesto",
@@ -174,7 +196,7 @@ export const getColumns = (
       }
     ),
     columnHelper.accessor(
-      (row) => departmentNameById.get(row.departamento) ?? String(row.departamento),
+      (row) => row.departamento_nombre ?? String(row.departamento),
       {
         id: "departamento",
         header: "Departamento",
@@ -223,7 +245,7 @@ export const getColumns = (
         />
       ),
     }),
-  ] as ColumnDef<Employee>[];
+  ] as ColumnDef<EmployeeRow>[];
 
   return columns;
 };

@@ -5,11 +5,28 @@ import { ConfirmDialog } from "@/src/components/ConfirmDialog";
 import { ActionMenu, ActionMenuItem } from "@/src/components/ActionMenu";
 import { ACTIVO_INACTIVO_CFG, StatusBadge } from "@/src/components/StatusBadge";
 import { formatMoneyValueOrDash } from "@/src/utils/formatCurrency";
-import { Area } from "@/src/features/areas/interfaces/area.interface";
 import { Position } from "../interfaces/position.interface";
 import { useDeletePosition } from "../hooks/useDeletePosition";
 
-const columnHelper = createColumnHelper<Position>();
+/**
+ * Fila de la tabla: el puesto tal como llega del backend más el nombre de su
+ * área ya resuelto. Es un modelo de vista, no un tipo del backend.
+ *
+ * El nombre viaja EN LA FILA y no se resuelve dentro del accessor con un `Map`
+ * recibido por parámetro: TanStack guarda en caché el valor del accessor por
+ * fila y solo lo recalcula cuando cambia `data`, no cuando cambian las
+ * columnas. Si los puestos llegaban antes que el catálogo de áreas, el accessor
+ * se congelaba con el ID crudo — en pantalla, en la búsqueda global y en el
+ * orden. Al construir las filas en `PositionList` a partir de puestos + áreas,
+ * la llegada del catálogo produce un `data` nuevo y TanStack recalcula todo.
+ * Mismo arreglo que `ContractRow` y `CalendarRow`.
+ *
+ * `null` = sin área asignada, o el área no aparece en el catálogo (o todavía
+ * no llega).
+ */
+export type PositionRow = Position & { area_nombre: string | null };
+
+const columnHelper = createColumnHelper<PositionRow>();
 
 const ActionsCell = ({
   row,
@@ -17,7 +34,7 @@ const ActionsCell = ({
   canEdit,
   canDelete,
 }: {
-  row: Row<Position>;
+  row: Row<PositionRow>;
   onEdit: (position: Position) => void;
   canEdit: boolean;
   canDelete: boolean;
@@ -70,12 +87,8 @@ const ActionsCell = ({
 
 export const getColumns = (
   onEdit: (position: Position) => void,
-  permissions: { canEdit: boolean; canDelete: boolean },
-  areas: Area[]
+  permissions: { canEdit: boolean; canDelete: boolean }
 ) => {
-  // El endpoint devuelve el FK como ID crudo; se resuelve el nombre en cliente.
-  const areaNameById = new Map(areas.map((area) => [area.id, area.nombre]));
-
   const columns = [
     columnHelper.accessor("nombre", {
       header: "Nombre",
@@ -85,8 +98,11 @@ export const getColumns = (
         </span>
       ),
     }),
+    // Un solo valor alimenta la celda, la búsqueda global y el orden, así que
+    // los tres ven el nombre resuelto. Siempre es string: el respaldo evita el
+    // `null` que excluiría la columna de la búsqueda (ver DataTable).
     columnHelper.accessor(
-      (row) => (row.area == null ? "—" : areaNameById.get(row.area) ?? String(row.area)),
+      (row) => (row.area == null ? "—" : row.area_nombre ?? String(row.area)),
       {
         id: "area",
         header: "Área",
@@ -112,7 +128,7 @@ export const getColumns = (
         />
       ),
     }),
-  ] as ColumnDef<Position>[];
+  ] as ColumnDef<PositionRow>[];
 
   if (permissions.canEdit || permissions.canDelete) {
     columns.push(
@@ -127,7 +143,7 @@ export const getColumns = (
             canDelete={permissions.canDelete}
           />
         ),
-      }) as ColumnDef<Position>
+      }) as ColumnDef<PositionRow>
     );
   }
 

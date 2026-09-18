@@ -1,14 +1,30 @@
 import { ColumnDef, createColumnHelper, Row } from "@tanstack/react-table";
 import { EditIcon, DeleteIcon } from "../../../components/Icons";
 import { Location } from "../interfaces/location.interface";
-import { Warehouse } from "../../warehouses/interfaces/warehouse.interface";
 import { ConfirmDialog } from "../../../components/ConfirmDialog";
 import { useDeleteLocation } from "../hooks/useDeleteLocation";
 import { capitalize } from "@/src/utils/capitalize";
 import { ActionMenu, ActionMenuItem } from "@/src/components/ActionMenu";
 import { useState } from "react";
 
-const columnHelper = createColumnHelper<Location>();
+/**
+ * Fila de la tabla: la ubicación tal como llega del backend más el nombre de
+ * su almacén ya resuelto. Es un modelo de vista, no un tipo del backend.
+ *
+ * El nombre viaja EN LA FILA y no se resuelve dentro del accessor con un `Map`
+ * recibido por parámetro: TanStack guarda en caché el valor del accessor por
+ * fila y solo lo recalcula cuando cambia `data`, no cuando cambian las
+ * columnas. Si las ubicaciones llegaban antes que el catálogo de almacenes, el
+ * accessor se congelaba con el ID crudo — en pantalla, en la búsqueda global y
+ * en el orden. Al construir las filas en `LocationList` a partir de
+ * ubicaciones + almacenes, la llegada del catálogo produce un `data` nuevo y
+ * TanStack recalcula todo. Mismo arreglo que `ContractRow` y `CalendarRow`.
+ *
+ * `null` = el almacén no aparece en el catálogo (o todavía no llega).
+ */
+export type LocationRow = Location & { almacen_nombre: string | null };
+
+const columnHelper = createColumnHelper<LocationRow>();
 
 // Componente para renderizar las acciones de editar y eliminar una ubicación
 const ActionsCell = ({
@@ -17,7 +33,7 @@ const ActionsCell = ({
   canEdit,
   canDelete,
 }: {
-  row: Row<Location>;
+  row: Row<LocationRow>;
   onEdit: (location: Location) => void;
   canEdit: boolean;
   canDelete: boolean;
@@ -66,12 +82,8 @@ const ActionsCell = ({
 
 export const getColumns = (
   onEdit: (location: Location) => void,
-  permissions: { canEdit: boolean; canDelete: boolean },
-  warehouses: Warehouse[]
+  permissions: { canEdit: boolean; canDelete: boolean }
 ) => {
-  const warehouseNameById = new Map(
-    warehouses.map((warehouse) => [warehouse.id_almacen, warehouse.nombre])
-  );
   const columns = [
     columnHelper.accessor("estatus", {
       header: "Estado",
@@ -106,8 +118,11 @@ export const getColumns = (
         </span>
       ),
     }),
+    // Un solo valor alimenta la celda, la búsqueda global y el orden, así que
+    // los tres ven el nombre resuelto. Siempre es string: el respaldo evita el
+    // `null` que excluiría la columna de la búsqueda (ver DataTable).
     columnHelper.accessor(
-      (row) => warehouseNameById.get(row.almacen) ?? String(row.almacen),
+      (row) => row.almacen_nombre ?? String(row.almacen),
       {
         id: "almacen",
         header: "Almacén",
@@ -118,7 +133,7 @@ export const getColumns = (
         ),
       }
     ),
-  ] as ColumnDef<Location>[];
+  ] as ColumnDef<LocationRow>[];
 
   if (permissions.canEdit || permissions.canDelete) {
     columns.push(
@@ -133,7 +148,7 @@ export const getColumns = (
             canDelete={permissions.canDelete}
           />
         ),
-      }) as ColumnDef<Location>
+      }) as ColumnDef<LocationRow>
     );
   }
 
