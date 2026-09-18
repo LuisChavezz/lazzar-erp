@@ -44,8 +44,9 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# GitHub Copilot workspace instructions
-.github/
+# GitHub Copilot workspace instructions (everything under .github/ except CI)
+.github/*
+!.github/workflows/
 
 # AI / Skills
 .agents/
