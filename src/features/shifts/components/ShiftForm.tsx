@@ -25,6 +25,7 @@ export default function ShiftForm({ onSuccess, shiftToEdit }: ShiftFormProps) {
     isPending,
     getError,
     clearFieldErrors,
+    revalidateHoraRange,
     validateField,
     toggleDiaLaboral,
     handleReset,
@@ -96,6 +97,13 @@ export default function ShiftForm({ onSuccess, shiftToEdit }: ShiftFormProps) {
                       onChange={(event) => {
                         field.handleChange(event.target.value);
                         clearFieldErrors("hora_entrada");
+                        // El error de la regla cruzada vive bajo `hora_salida`:
+                        // si este cambio la satisface (o la vuelve a romper),
+                        // hay que reflejarlo ahí.
+                        revalidateHoraRange(
+                          event.target.value,
+                          form.getFieldValue("hora_salida")
+                        );
                       }}
                       onBlur={() => {
                         field.handleBlur();

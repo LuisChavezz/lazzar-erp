@@ -6,7 +6,14 @@ import type { FormEvent } from "react";
 import toast from "react-hot-toast";
 import type { FormFieldError } from "@/src/utils/getFieldError";
 import { useWorkspaceStore } from "@/src/features/workspace/store/workspace.store";
-import { ShiftFormFields, ShiftFormSchema, ShiftFormValues } from "../schemas/shift.schema";
+import {
+  HORA_RANGE_MESSAGE,
+  ShiftFormFields,
+  ShiftFormSchema,
+  ShiftFormValues,
+  isHoraCompleta,
+  isHoraRangeValid,
+} from "../schemas/shift.schema";
 import { serializeDiasLaborales } from "../constants/diasLaborales";
 import { trimTimeToHHMM } from "../utils/shiftTime";
 import { useCreateShift } from "./useCreateShift";
@@ -36,6 +43,11 @@ export function useShiftForm({ onSuccess, shiftToEdit }: UseShiftFormParams) {
   // Separa errores de validación cliente y servidor para cada campo.
   const [clientErrors, setClientErrors] = useState<Partial<Record<ShiftFormField, string>>>({});
   const [serverErrors, setServerErrors] = useState<Partial<Record<ShiftFormField, string>>>({});
+
+  // ¿La regla cruzada de horas ya se disparó al menos una vez (por blur de
+  // `hora_salida` o por submit)? Mientras sea `true`, cada cambio de
+  // `hora_entrada` la reevalúa. Ver `revalidateHoraRange`.
+  const horaRangeFiredRef = useRef(false);
 
   // Define valores vacíos del formulario. Los defaults del backend (5 minutos
   // de tolerancia y 8 horas base) se siembran aquí para que el alta refleje lo
@@ -104,11 +116,25 @@ export function useShiftForm({ onSuccess, shiftToEdit }: UseShiftFormParams) {
 
   // Valida un solo campo en blur. Se usa `ShiftFormFields` y no
   // `ShiftFormSchema.shape`: el schema lleva un `refine` de objeto y un
-  // `ZodEffects` ya no expone `.shape`. La regla cruzada de horas, por tanto,
-  // solo se evalúa en el submit.
+  // `ZodEffects` ya no expone `.shape`.
   const validateField = (field: ShiftFormField, value: ShiftFormValues[ShiftFormField]) => {
     const fieldSchema = ShiftFormFields[field];
     const parsed = fieldSchema.safeParse(value);
+
+    // El schema de UN campo de `hora_salida` es solo el regex y pasa con
+    // cualquier hora completa, así que sin esto su blur borraba el error de la
+    // regla cruzada aunque el rango siguiera inválido. Por eso su blur evalúa
+    // también la regla, con la hora de entrada vigente. Mismo arreglo que el
+    // blur de `fecha_fin` en contratos.
+    if (
+      field === "hora_salida" &&
+      parsed.success &&
+      !isHoraRangeValid(form.getFieldValue("hora_entrada"), value as string)
+    ) {
+      horaRangeFiredRef.current = true;
+      setClientErrors((prev) => ({ ...prev, hora_salida: HORA_RANGE_MESSAGE }));
+      return false;
+    }
 
     if (parsed.success) {
       setClientErrors((prev) => {
@@ -138,6 +164,9 @@ export function useShiftForm({ onSuccess, shiftToEdit }: UseShiftFormParams) {
     const nextErrors: Partial<Record<ShiftFormField, string>> = {};
     parsed.error.issues.forEach((issue) => {
       const field = issue.path[0] as ShiftFormField;
+      if (field === "hora_salida" && issue.message === HORA_RANGE_MESSAGE) {
+        horaRangeFiredRef.current = true;
+      }
       if (!field || nextErrors[field]) {
         return;
       }
@@ -222,7 +251,58 @@ export function useShiftForm({ onSuccess, shiftToEdit }: UseShiftFormParams) {
   useEffect(() => {
     const nextValues = isEditing ? editValues : emptyValues;
     form.reset(nextValues);
+    horaRangeFiredRef.current = false;
   }, [editValues, emptyValues, form, isEditing]);
+
+  /**
+   * Reevalúa la regla cruzada de horas cuando cambia `hora_entrada`.
+   *
+   * El `refine` deja su error bajo `hora_salida`, pero `clearFieldErrors` solo
+   * limpia el campo que se editó: si el usuario corregía el rango moviendo
+   * `hora_entrada`, el mensaje seguía bajo `hora_salida` aunque ya no aplicara.
+   *
+   * Reevalúa en AMBOS sentidos (limpia o repone), no solo limpia: al teclear en
+   * un `<input type="time">` el navegador emite valores intermedios (`""`, o
+   * una hora con un segmento a medio escribir) que pueden cumplir la regla un
+   * instante. Si solo limpiara, uno de esos borraría el error aunque la hora
+   * final siga siendo inválida; reevaluando en cada cambio, el estado sigue
+   * siempre al último valor, que es el definitivo. Mismo arreglo que
+   * `revalidateFechaRange` en contratos.
+   *
+   * Solo actúa si la regla YA SE DISPARÓ al menos una vez (`horaRangeFiredRef`),
+   * sea por el blur de `hora_salida` o por un submit: antes de eso no se
+   * reprocha nada mientras se escribe. La guarda NO es "hubo un submit" —el
+   * error también nace del blur, con `submissionAttempts` aún en 0— ni "el
+   * error está visible ahora": un valor intermedio lo borra un instante, y una
+   * guarda por visibilidad dejaría de reevaluar justo cuando llega el valor
+   * definitivo. El ref sigue en `true` a través de los intermedios.
+   *
+   * Con una de las dos horas incompleta no toca nada (la regla no aplica y el
+   * vacío es casi siempre un intermedio del tecleo). Solo escribe estado de
+   * errores, nunca dispara validaciones: no hay ciclo.
+   *
+   * Al limpiar se va también el error de servidor: el 400 del backend para
+   * este mismo caso llega bajo `hora_salida` con la misma regla.
+   */
+  const revalidateHoraRange = (horaEntrada: string, horaSalida: string) => {
+    if (
+      !horaRangeFiredRef.current ||
+      !isHoraCompleta(horaEntrada) ||
+      !isHoraCompleta(horaSalida)
+    ) {
+      return;
+    }
+
+    if (isHoraRangeValid(horaEntrada, horaSalida)) {
+      clearFieldErrors("hora_salida");
+    } else {
+      setClientErrors((prev) =>
+        prev.hora_salida === HORA_RANGE_MESSAGE
+          ? prev
+          : { ...prev, hora_salida: HORA_RANGE_MESSAGE }
+      );
+    }
+  };
 
   // Expone estado combinado de carga/mutación.
   const isPending = isCreating || isUpdating || isLoading;
@@ -231,6 +311,7 @@ export function useShiftForm({ onSuccess, shiftToEdit }: UseShiftFormParams) {
   const handleReset = () => {
     const nextValues = isEditing ? editValues : emptyValues;
     form.reset(nextValues);
+    horaRangeFiredRef.current = false;
     setClientErrors({});
     setServerErrors({});
     setTimeout(() => {
@@ -256,6 +337,7 @@ export function useShiftForm({ onSuccess, shiftToEdit }: UseShiftFormParams) {
     isEditing,
     getError,
     clearFieldErrors,
+    revalidateHoraRange,
     validateField,
     toggleDiaLaboral,
     handleReset,
