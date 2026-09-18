@@ -7,12 +7,8 @@ Este proyecto es un **frontend ERP** construido con **Next.js 16**, pensado para
 
 ## 1. Requisitos previos
 
-- **Node.js** >= 20 (recomendado utilizar la versión LTS más reciente).
-- Gestor de paquetes:
-  - `npm` (incluido con Node), o
-  - `yarn`, o
-  - `pnpm`, o
-  - `bun`.
+- **Node.js** 24.x (la misma versión mayor que producción en Vercel; otra versión falla al instalar por `engine-strict`).
+- **npm** >= 10 (incluido con Node). Es el **único** gestor de paquetes del proyecto: el lockfile versionado es `package-lock.json`. No uses `pnpm`, `yarn` ni `bun`: reinstalan `node_modules` con otra estructura sin respetar el lockfile y dejan el árbol inconsistente.
 - Acceso a la **API backend** v1 (URL que se configurará en `NEXT_PUBLIC_API_URL`).
 
 ---
@@ -67,19 +63,15 @@ Variables adicionales (según las funciones que utilices), incluidas en `.env.ex
 
 ## 4. Instalación de dependencias
 
-Ejecuta uno de los siguientes comandos en la raíz del proyecto:
+Ejecuta en la raíz del proyecto:
 
 ```bash
-npm install
-# o
-yarn install
-# o
-pnpm install
-# o
-bun install
+npm ci
 ```
 
-Esto instalará todas las dependencias declaradas en [package.json].
+`npm ci` instala exactamente las versiones de `package-lock.json`. Usa `npm install <paquete>` solo para agregar o actualizar una dependencia (y versiona el `package-lock.json` resultante).
+
+El proyecto declara npm en `packageManager` y `engines` (`package.json`), y `.npmrc` activa `engine-strict`: una versión de Node o npm fuera de rango falla al instalar en lugar de continuar en silencio.
 
 ---
 
