@@ -1,5 +1,15 @@
 import { z } from "zod";
 
+/**
+ * Regla cruzada de folios como función pura: la usan el `refine` de abajo y
+ * `useSerieFolioForm`, que la reevalúa en el blur de `folio_final` y al
+ * cambiar `folio_inicial`. Mismo arreglo que `isHoraRangeValid` en turnos.
+ */
+export const isFolioRangeValid = (folioInicial: number, folioFinal: number) =>
+  folioFinal >= folioInicial;
+
+export const FOLIO_RANGE_MESSAGE = "El folio final debe ser mayor o igual al folio inicial";
+
 export const SerieFolioFormSchema = z
   .object({
     tipo_documento: z.string().min(1, "El tipo de documento es requerido"),
@@ -14,9 +24,9 @@ export const SerieFolioFormSchema = z
     reiniciar_anual: z.boolean(),
     sucursal: z.number().min(1, "La sucursal es requerida"),
   })
-  .refine((data) => data.folio_final >= data.folio_inicial, {
+  .refine((data) => isFolioRangeValid(data.folio_inicial, data.folio_final), {
     path: ["folio_final"],
-    message: "El folio final debe ser mayor o igual al folio inicial",
+    message: FOLIO_RANGE_MESSAGE,
   });
 
 export type SerieFolioFormValues = z.infer<typeof SerieFolioFormSchema>;

@@ -6,7 +6,25 @@ import { useDeleteSerieFolio } from "../hooks/useDeleteSerieFolio";
 import { ActionMenu, ActionMenuItem } from "@/src/components/ActionMenu";
 import { useState } from "react";
 
-const columnHelper = createColumnHelper<SerieFolio>();
+/**
+ * Fila de la tabla: la serie tal como llega del backend más el nombre de su
+ * sucursal ya resuelto. Es un modelo de vista, no un tipo del backend.
+ *
+ * El nombre viaja EN LA FILA y no se resuelve dentro del accessor con un `Map`
+ * recibido por parámetro: TanStack guarda en caché el valor del accessor por
+ * fila y solo lo recalcula cuando cambia `data`, no cuando cambian las
+ * columnas. Si las series llegaban antes que el catálogo de sucursales, el
+ * accessor se congelaba con `""` y la celda afirmaba "Sin sucursal" —falso: la
+ * serie sí tiene— y la búsqueda no la encontraba. Al construir las filas en
+ * `SerieFolioList` a partir de series + sucursales, la llegada del catálogo
+ * produce un `data` nuevo y TanStack recalcula todo. Mismo arreglo que
+ * `ContractRow` y `CalendarRow`.
+ *
+ * `null` = la sucursal no aparece en el catálogo (o todavía no llega).
+ */
+export type SerieFolioRow = SerieFolio & { sucursal_nombre: string | null };
+
+const columnHelper = createColumnHelper<SerieFolioRow>();
 
 const ActionsCell = ({
   row,
@@ -14,7 +32,7 @@ const ActionsCell = ({
   canEdit,
   canDelete,
 }: {
-  row: Row<SerieFolio>;
+  row: Row<SerieFolioRow>;
   onEdit: (serieFolio: SerieFolio) => void;
   canEdit: boolean;
   canDelete: boolean;
@@ -74,8 +92,7 @@ const StatusBadge = ({ active }: { active: boolean }) => {
 
 export const getSerieFolioColumns = (
   onEdit: (serieFolio: SerieFolio) => void,
-  permissions: { canEdit: boolean; canDelete: boolean },
-  branchLookup: Map<number, string>
+  permissions: { canEdit: boolean; canDelete: boolean }
 ) => {
   const columns = [
     columnHelper.accessor("tipo_documento", {
@@ -111,47 +128,31 @@ export const getSerieFolioColumns = (
         </span>
       ),
     }),
-    // `accessor` (no `display`) con el nombre de sucursal YA resuelto, para que
-    // la columna participe en la búsqueda global. Como `display` no tiene
-    // accessor alguno, TanStack la excluía del filtro global en TODAS las filas
-    // —no es el bug de la fila 0, es ausencia total de valor buscable— y el
-    // nombre de sucursal es texto libre que el usuario sí espera poder buscar.
+    // `accessor` (no `display`) con el nombre de sucursal YA resuelto en la
+    // fila (ver `SerieFolioRow`), para que la columna participe en la búsqueda
+    // global y en el orden. Un solo valor alimenta celda, búsqueda y orden.
     //
-    // El miss del lookup colapsa a `""` (misma convención que el resto del
-    // proyecto) y NO a `undefined`: `branchLookup` se arma con una query
-    // independiente de la del listado (`useCompanyBranches`, ver
-    // `SerieFolioList`), así que puede llegar vacío o incompleto mientras carga,
-    // si falla, si no hay empresa seleccionada, o si la serie apunta a una
-    // sucursal ajena a la empresa actual. Devolver `""` mantiene el valor como
-    // string y con ello la columna elegible para la búsqueda; `undefined` la
-    // volvería a dejar fuera. Al resolverse la query, `getSerieFolioColumns` se
-    // reconstruye (el `useMemo` depende de `branchLookup`) y el accessor pasa a
-    // devolver el nombre real.
-    columnHelper.accessor((row) => branchLookup.get(row.sucursal) ?? "", {
-      id: "sucursal",
-      header: "Sucursal",
-      // `display` nunca era ordenable (`getCanSort` exige `accessorFn`); un
-      // `accessor` sí lo es por defecto, y aquí el valor puede estar vacío
-      // mientras `branchLookup` (query independiente de `useCompanyBranches`)
-      // sigue cargando — ordenar en ese momento sería un empate sin sentido
-      // que además se reacomoda solo cuando el lookup resuelve. Se desactiva
-      // explícitamente para conservar el comportamiento de antes (columna no
-      // ordenable) y no sumar ese reacomodo inesperado.
-      enableSorting: false,
-      // Se reutiliza el valor del accessor en vez de repetir el lookup. `||` y
-      // no `??`: el valor sin resolver llega como `""`, no como `null`. El
-      // render es idéntico al anterior (nombre resuelto, o "Sin sucursal").
-      cell: (info) => (
-        <span className="text-slate-500 dark:text-slate-400">
-          {info.getValue() || "Sin sucursal"}
-        </span>
-      ),
-    }),
+    // Mientras el nombre no se resuelve (catálogo cargando, caído, o sucursal
+    // ajena a la empresa actual) se muestra el ID, NO "Sin sucursal": la serie
+    // sí tiene sucursal y afirmar lo contrario confunde. "Sin sucursal" queda
+    // solo para una serie que de verdad no la tenga. Siempre es string, así la
+    // columna nunca queda fuera de la búsqueda (ver DataTable).
+    columnHelper.accessor(
+      (row) =>
+        row.sucursal == null ? "Sin sucursal" : row.sucursal_nombre ?? String(row.sucursal),
+      {
+        id: "sucursal",
+        header: "Sucursal",
+        cell: (info) => (
+          <span className="text-slate-500 dark:text-slate-400">{info.getValue()}</span>
+        ),
+      }
+    ),
     columnHelper.accessor("activo", {
       header: "Estatus",
       cell: (info) => <StatusBadge active={info.getValue()} />,
     }),
-  ] as ColumnDef<SerieFolio>[];
+  ] as ColumnDef<SerieFolioRow>[];
 
   if (permissions.canEdit || permissions.canDelete) {
     columns.push(
@@ -166,7 +167,7 @@ export const getSerieFolioColumns = (
             canDelete={permissions.canDelete}
           />
         ),
-      }) as ColumnDef<SerieFolio>
+      }) as ColumnDef<SerieFolioRow>
     );
   }
 

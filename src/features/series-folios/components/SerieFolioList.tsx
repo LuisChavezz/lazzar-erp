@@ -11,7 +11,7 @@ import { hasPermission } from "@/src/utils/permissions";
 import { useWorkspaceStore } from "../../workspace/store/workspace.store";
 import { useCompanyBranches } from "../../branches/hooks/useCompanyBranches";
 import { useSerieFolios } from "../hooks/useSerieFolios";
-import { getSerieFolioColumns } from "./SerieFolioColumns";
+import { getSerieFolioColumns, SerieFolioRow } from "./SerieFolioColumns";
 import SerieFolioForm from "./SerieFolioForm";
 import { SerieFolio } from "../interfaces/serie-folio.interface";
 
@@ -48,16 +48,28 @@ export default function SerieFolioList() {
     setIsDialogOpen(true);
   }, []);
 
-  const columns = useMemo(
+  // El nombre se incorpora a la FILA, no al accessor: así la llegada tardía del
+  // catálogo de sucursales produce un `data` nuevo y TanStack recalcula celda,
+  // búsqueda y orden. Ver `SerieFolioRow`. El `?? []` va DENTRO del memo:
+  // fuera crearía un arreglo nuevo en cada render mientras no hay datos.
+  const rows = useMemo<SerieFolioRow[]>(
     () =>
-      getSerieFolioColumns(handleEdit, { canEdit, canDelete }, branchLookup),
-    [handleEdit, canEdit, canDelete, branchLookup]
+      (seriesFolios ?? []).map((serieFolio) => ({
+        ...serieFolio,
+        sucursal_nombre: branchLookup.get(serieFolio.sucursal) ?? null,
+      })),
+    [seriesFolios, branchLookup]
+  );
+
+  const columns = useMemo(
+    () => getSerieFolioColumns(handleEdit, { canEdit, canDelete }),
+    [handleEdit, canEdit, canDelete]
   );
 
   return (
     <DataTable
       columns={columns}
-      data={seriesFolios ?? []}
+      data={rows}
       title="Series y Folios"
       searchPlaceholder="Buscar serie, documento o sucursal..."
       isLoading={isLoading}

@@ -23,6 +23,7 @@ export default function SerieFolioForm({ onSuccess, serieFolioToEdit }: SerieFol
     isLoadingBranches,
     getError,
     clearFieldErrors,
+    revalidateFolioRange,
     validateField,
     handleReset,
     handleFormSubmit,
@@ -192,8 +193,13 @@ export default function SerieFolioForm({ onSuccess, serieFolioToEdit }: SerieFol
                     value={field.state.value}
                     onChange={(event) => {
                       const nextValue = Number(event.target.value);
-                      field.handleChange(Number.isNaN(nextValue) ? 0 : nextValue);
+                      const folioInicial = Number.isNaN(nextValue) ? 0 : nextValue;
+                      field.handleChange(folioInicial);
                       clearFieldErrors("folio_inicial");
+                      // El error de la regla cruzada vive bajo `folio_final`:
+                      // si este cambio la satisface (o la vuelve a romper),
+                      // hay que reflejarlo ahí.
+                      revalidateFolioRange(folioInicial, form.getFieldValue("folio_final"));
                     }}
                     onBlur={() => {
                       field.handleBlur();
