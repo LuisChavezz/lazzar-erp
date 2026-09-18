@@ -25,7 +25,7 @@ export function useCalendarForm({ onSuccess, calendarToEdit }: UseCalendarFormPa
   // `turno`. Ver `CalendarCreate`.
 
   // Catálogo de turnos que alimenta el select del FK obligatorio.
-  const { shifts, isLoading: isLoadingShifts } = useShifts();
+  const { shifts, isLoading: isLoadingShifts, isError: isErrorShifts } = useShifts();
 
   // Conserva referencia al form para scroll superior suave al limpiar.
   const formRef = useRef<HTMLFormElement | null>(null);
@@ -226,6 +226,7 @@ export function useCalendarForm({ onSuccess, calendarToEdit }: UseCalendarFormPa
     isEditing,
     shifts,
     isLoadingShifts,
+    isErrorShifts,
     getError,
     clearFieldErrors,
     validateField,
