@@ -35,6 +35,7 @@ import { TIPO_PEDIDO } from "../../orders/constants/pedidoStatus";
 import { useWorkspaceStore } from "../../workspace/store/workspace.store";
 import { useCreateQuote, type QuoteValidationIssue } from "./useCreateQuote";
 import { useQuoteOnboardingData } from "./useQuoteOnboardingData";
+import { isQuoteCrossRuleField, useQuoteCrossRules } from "./useQuoteCrossRules";
 import { useSatInfo } from "../../sat/hooks/useSatInfo";
 import { useSizes } from "../../sizes/hooks/useSizes";
 
@@ -253,6 +254,7 @@ export function useQuoteForm() {
           setErrorByPath(nextErrors, issue.path as (string | number)[], issue.message);
         });
         setErrorTree(nextErrors);
+        crossRules.markCrossRulesFired(parsed.error.issues);
         // Si hay errores, hace scroll al primer campo para acelerar corrección del usuario.
         if (formRef.current) {
           requestAnimationFrame(() => {
@@ -484,10 +486,15 @@ export function useQuoteForm() {
       setIsRouteTransitioning(true);
 
       form.reset(emptyValues);
+      crossRules.resetCrossRules();
       setExtraServices([]);
       router.push("/sales/quotes");
     },
   });
+
+  // Reglas cruzadas del schema (condición de pago → monto, embarque parcial →
+  // comentarios): se reevalúan fuera del submit. Ver `useQuoteCrossRules`.
+  const crossRules = useQuoteCrossRules(() => form.state.values, setErrorTree);
 
   // Snapshot reactivo de valores del formulario para derivados y sincronizaciones.
   const values = useStore(form.baseStore, (state) => state.values);
@@ -572,6 +579,12 @@ export function useQuoteForm() {
   const validateField = (field: QuoteField, value: QuoteFormValues[QuoteField]) => {
     const fieldSchema = quoteFormSchema.shape[field];
     const parsed = fieldSchema.safeParse(value);
+    // El schema de UN campo no ve las reglas cruzadas (0 pasa `min(0)`, ""
+    // pasa `.optional()`): sin esto, salir del campo borraba su error aunque
+    // la regla siguiera rota.
+    if (parsed.success && isQuoteCrossRuleField(field) && crossRules.validateCrossRuleOnBlur(field, value)) {
+      return false;
+    }
     if (parsed.success) {
       clearFieldErrors(field);
       return true;
@@ -894,6 +907,7 @@ export function useQuoteForm() {
 
   const handleReset = () => {
     form.reset(emptyValues);
+    crossRules.resetCrossRules();
     setExtraServices([]);
     setSelectedCustomerId(0);
     setCustomerSelectedFromSearch(false);
@@ -1013,6 +1027,7 @@ export function useQuoteForm() {
     getError,
     clearFieldErrors,
     validateField,
+    revalidateCrossRule: crossRules.revalidateCrossRule,
     isPending,
     sellerName,
     userName,
