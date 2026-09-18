@@ -42,7 +42,6 @@ export function OperationsOrderTable({
       searchAlwaysExpanded
       defaultPageSize={20}
       density="compact"
-      fillHeight
       onRefetch={onRefetch}
       isRefetching={isRefetching}
       isLoadingOverlay={isRefetching}
