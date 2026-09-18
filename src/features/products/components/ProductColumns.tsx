@@ -6,16 +6,26 @@ import { useDeleteProduct } from "../hooks/useDeleteProduct";
 import { ActionMenu, ActionMenuItem } from "../../../components/ActionMenu";
 import { useState } from "react";
 
-const columnHelper = createColumnHelper<Product>();
+/**
+ * Fila de la tabla: el producto tal como llega del backend más el nombre de su
+ * categoría ya resuelto. Es un modelo de vista, no un tipo del backend.
+ *
+ * El nombre viaja EN LA FILA y no se resuelve dentro del accessor con un `Map`
+ * recibido por parámetro: TanStack guarda en caché el valor del accessor por
+ * fila y solo lo recalcula cuando cambia `data`, no cuando cambian las
+ * columnas. La celda leía el catálogo en vivo y se veía bien, pero si el
+ * usuario buscaba u ordenaba mientras el catálogo de categorías aún cargaba,
+ * el accessor se congelaba en `""`: después ni la búsqueda encontraba el
+ * producto por su categoría ni el orden por Categoría ordenaba. Al construir
+ * las filas en `ProductList` a partir de productos + categorías, la llegada
+ * del catálogo produce un `data` nuevo y TanStack recalcula todo. Mismo
+ * arreglo que `ContractRow` y `CalendarRow`.
+ *
+ * `null` = la categoría no aparece en el catálogo (o todavía no llega).
+ */
+export type ProductRow = Product & { categoria_nombre: string | null };
 
-interface ProductLookups {
-  categories: Map<number, string>;
-  units: Map<number, string>;
-  taxes: Map<number, string>;
-  satProdserv: Map<number, string>;
-  satUnit: Map<number, string>;
-  productTypes: Map<string, string>;
-}
+const columnHelper = createColumnHelper<ProductRow>();
 
 const ActionsCell = ({
   row,
@@ -23,7 +33,7 @@ const ActionsCell = ({
   canEdit,
   canDelete,
 }: {
-  row: Row<Product>;
+  row: Row<ProductRow>;
   onEdit: (product: Product) => void;
   canEdit: boolean;
   canDelete: boolean;
@@ -78,8 +88,7 @@ const ActionsCell = ({
 
 export const getColumns = (
   onEdit: (product: Product) => void,
-  permissions: { canEdit: boolean; canDelete: boolean },
-  lookups: ProductLookups
+  permissions: { canEdit: boolean; canDelete: boolean }
 ) => {
   const columns = [
     columnHelper.accessor((row) => (row.activo), {
@@ -117,19 +126,18 @@ export const getColumns = (
         <span className="text-slate-500 dark:text-slate-400">{info.getValue()}</span>
       ),
     }),
-    columnHelper.accessor(
-      (row) => lookups.categories.get(row.categoria_producto) ?? "",
-      {
-        id: "categoria_producto",
-        header: "Categoría",
-        cell: ({ row }) => (
-          <span className="text-slate-500 dark:text-slate-400">
-            {lookups.categories.get(row.original.categoria_producto) ??
-              `#${row.original.categoria_producto}`}
-          </span>
-        ),
-      }
-    ),
+    // El accessor (búsqueda y orden) y la celda leen el mismo nombre ya
+    // resuelto en la fila (ver `ProductRow`). Sin resolver, el accessor da `""`
+    // —string, así la columna sigue en la búsqueda global— y la celda el ID.
+    columnHelper.accessor((row) => row.categoria_nombre ?? "", {
+      id: "categoria_producto",
+      header: "Categoría",
+      cell: ({ row }) => (
+        <span className="text-slate-500 dark:text-slate-400">
+          {row.original.categoria_nombre ?? `#${row.original.categoria_producto}`}
+        </span>
+      ),
+    }),
     columnHelper.accessor("precio_base", {
       header: "Precio",
       cell: ({ row }) => {
@@ -141,7 +149,7 @@ export const getColumns = (
         return <span className="text-slate-600 dark:text-slate-300 font-medium">{formatted}</span>;
       },
     }),
-  ] as ColumnDef<Product>[];
+  ] as ColumnDef<ProductRow>[];
 
   if (permissions.canEdit || permissions.canDelete) {
     columns.push(
@@ -156,7 +164,7 @@ export const getColumns = (
             canDelete={permissions.canDelete}
           />
         ),
-      }) as ColumnDef<Product>
+      }) as ColumnDef<ProductRow>
     );
   }
 

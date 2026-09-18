@@ -31,12 +31,16 @@ export default function EmployeeForm({ onSuccess, employeeToEdit }: EmployeeForm
     isPending,
     branches,
     isLoadingBranches,
+    isErrorBranches,
     departments,
     isLoadingDepartments,
+    isErrorDepartments,
     positions,
     isLoadingPositions,
+    isErrorPositions,
     shifts,
     isLoadingShifts,
+    isErrorShifts,
     getError,
     clearFieldErrors,
     validateField,
@@ -602,7 +606,11 @@ export default function EmployeeForm({ onSuccess, employeeToEdit }: EmployeeForm
                   error={getError("sucursal")}
                 >
                   <option value="0" disabled>
-                    {isLoadingBranches ? "Cargando sucursales..." : "Seleccionar..."}
+                    {isLoadingBranches
+                      ? "Cargando sucursales..."
+                      : isErrorBranches
+                        ? "No se pudo cargar el catálogo de sucursales"
+                        : "Seleccionar..."}
                   </option>
                   {branches.map((branch) => (
                     <option
@@ -616,6 +624,13 @@ export default function EmployeeForm({ onSuccess, employeeToEdit }: EmployeeForm
                 </FormSelect>
               )}
             </form.Field>
+            {/* Un catálogo caído NO se pinta como catálogo vacío (mismo criterio que `ContractForm`). */}
+            {isErrorBranches && (
+              <p className="mt-1 ml-1 text-[11px] text-red-600 dark:text-red-400">
+                No se pudo cargar el catálogo de sucursales. Revisa tu conexión e intenta abrir el
+                diálogo de nuevo.
+              </p>
+            )}
           </div>
 
           <div className="group/field">
@@ -636,7 +651,11 @@ export default function EmployeeForm({ onSuccess, employeeToEdit }: EmployeeForm
                   error={getError("departamento")}
                 >
                   <option value="0" disabled>
-                    {isLoadingDepartments ? "Cargando departamentos..." : "Seleccionar..."}
+                    {isLoadingDepartments
+                      ? "Cargando departamentos..."
+                      : isErrorDepartments
+                        ? "No se pudo cargar el catálogo de departamentos"
+                        : "Seleccionar..."}
                   </option>
                   {departments.map((department) => (
                     <option
@@ -650,6 +669,12 @@ export default function EmployeeForm({ onSuccess, employeeToEdit }: EmployeeForm
                 </FormSelect>
               )}
             </form.Field>
+            {isErrorDepartments && (
+              <p className="mt-1 ml-1 text-[11px] text-red-600 dark:text-red-400">
+                No se pudo cargar el catálogo de departamentos. Revisa tu conexión e intenta abrir
+                el diálogo de nuevo.
+              </p>
+            )}
           </div>
 
           {/*
@@ -676,7 +701,11 @@ export default function EmployeeForm({ onSuccess, employeeToEdit }: EmployeeForm
                   error={getError("puesto")}
                 >
                   <option value="0" disabled>
-                    {isLoadingPositions ? "Cargando puestos..." : "Seleccionar..."}
+                    {isLoadingPositions
+                      ? "Cargando puestos..."
+                      : isErrorPositions
+                        ? "No se pudo cargar el catálogo de puestos"
+                        : "Seleccionar..."}
                   </option>
                   {positions.map((position) => (
                     <option
@@ -690,11 +719,19 @@ export default function EmployeeForm({ onSuccess, employeeToEdit }: EmployeeForm
                 </FormSelect>
               )}
             </form.Field>
+            {isErrorPositions && (
+              <p className="mt-1 ml-1 text-[11px] text-red-600 dark:text-red-400">
+                No se pudo cargar el catálogo de puestos. Revisa tu conexión e intenta abrir el
+                diálogo de nuevo.
+              </p>
+            )}
           </div>
 
           {/*
             `turno` es opcional: la opción 0 NO va `disabled` —a diferencia de
             los FK obligatorios— porque "Sin turno" es una elección válida.
+            Por eso mismo, si el catálogo NO cargó, su texto cambia: "Sin
+            turno" leído ahí haría pasar una falla de carga por una elección.
           */}
           <div className="group/field">
             <form.Field name="turno">
@@ -714,7 +751,11 @@ export default function EmployeeForm({ onSuccess, employeeToEdit }: EmployeeForm
                   error={getError("turno")}
                 >
                   <option value="0">
-                    {isLoadingShifts ? "Cargando turnos..." : "Sin turno asignado"}
+                    {isLoadingShifts
+                      ? "Cargando turnos..."
+                      : isErrorShifts
+                        ? "No se pudo cargar el catálogo de turnos"
+                        : "Sin turno asignado"}
                   </option>
                   {shifts.map((shift) => (
                     <option
@@ -728,6 +769,12 @@ export default function EmployeeForm({ onSuccess, employeeToEdit }: EmployeeForm
                 </FormSelect>
               )}
             </form.Field>
+            {isErrorShifts && (
+              <p className="mt-1 ml-1 text-[11px] text-red-600 dark:text-red-400">
+                No se pudo cargar el catálogo de turnos. Revisa tu conexión e intenta abrir el
+                diálogo de nuevo.
+              </p>
+            )}
           </div>
 
           <div className="group/field">

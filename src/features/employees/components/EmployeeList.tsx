@@ -13,7 +13,7 @@ import { hasPermission } from "@/src/utils/permissions";
 import { useWorkspaceStore } from "@/src/features/workspace/store/workspace.store";
 import { useDepartments } from "@/src/features/departments/hooks/useDepartments";
 import { usePositions } from "@/src/features/positions/hooks/usePositions";
-import { getColumns } from "./EmployeeColumns";
+import { getColumns, EmployeeRow } from "./EmployeeColumns";
 import { Employee } from "../interfaces/employee.interface";
 import EmployeeForm from "./EmployeeForm";
 import { useEmployees } from "../hooks/useEmployees";
@@ -38,12 +38,16 @@ export default function EmployeeList() {
 
   // Siembra la caché del detalle antes de navegar para que la página pinte sin
   // esperar al fetch (list y retrieve comparten serializer).
+  // Se siembra el `Employee` tal como llegó del listado, no la fila de la tabla:
+  // `EmployeeRow` lleva nombres resueltos que no son parte del recurso y no
+  // deben quedar en la caché del detalle.
   const handleViewDetails = useCallback(
     (employee: Employee) => {
-      queryClient.setQueryData(["employees", employee.id], employee);
+      const original = employees.find((item) => item.id === employee.id) ?? employee;
+      queryClient.setQueryData(["employees", employee.id], original);
       router.push(`/hr/employees/${employee.id}`);
     },
-    [queryClient, router]
+    [employees, queryClient, router]
   );
 
   const handleEdit = useCallback((employee: Employee) => {
@@ -56,29 +60,45 @@ export default function EmployeeList() {
     setIsDialogOpen(true);
   };
 
+  // El endpoint devuelve los FK como IDs crudos; se resuelven en cliente.
+  const departmentNameById = useMemo(
+    () =>
+      new Map(departments.map((department) => [department.id_departamento, department.nombre])),
+    [departments]
+  );
+  const positionNameById = useMemo(
+    () => new Map(positions.map((position) => [position.id, position.nombre])),
+    [positions]
+  );
+
+  // Puesto y departamento se incorporan a la FILA, no al accessor: así la
+  // llegada tardía de su catálogo produce un `data` nuevo y TanStack recalcula
+  // celda, búsqueda y orden. Ver `EmployeeRow` (y por qué la sucursal no).
+  const rows = useMemo<EmployeeRow[]>(
+    () =>
+      employees.map((employee) => ({
+        ...employee,
+        puesto_nombre: positionNameById.get(employee.puesto) ?? null,
+        departamento_nombre: departmentNameById.get(employee.departamento) ?? null,
+      })),
+    [employees, positionNameById, departmentNameById]
+  );
+
   const columns = useMemo(
     () =>
       getColumns(
         handleViewDetails,
         handleEdit,
         { canEdit: canEditHr, canDelete: canDeleteHr },
-        { branches: availableBranches, departments, positions }
+        availableBranches
       ),
-    [
-      handleViewDetails,
-      handleEdit,
-      canEditHr,
-      canDeleteHr,
-      availableBranches,
-      departments,
-      positions,
-    ]
+    [handleViewDetails, handleEdit, canEditHr, canDeleteHr, availableBranches]
   );
 
   return (
     <DataTable
       columns={columns}
-      data={employees}
+      data={rows}
       // Ata la identidad de la fila al id del registro y no a su índice: las
       // celdas guardan el estado de sus diálogos, y al desactivar/reactivar
       // cambia `activo` y con él el orden, así que sin esto el estado abierto

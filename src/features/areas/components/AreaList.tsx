@@ -9,7 +9,7 @@ import { DialogHeader } from "@/src/components/DialogHeader";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { hasPermission } from "@/src/utils/permissions";
 import { useDepartments } from "@/src/features/departments/hooks/useDepartments";
-import { getColumns } from "./AreaColumns";
+import { getColumns, AreaRow } from "./AreaColumns";
 import { Area } from "../interfaces/area.interface";
 import AreaForm from "./AreaForm";
 import { useAreas } from "../hooks/useAreas";
@@ -37,15 +37,34 @@ export default function AreaList() {
     setIsDialogOpen(true);
   };
 
+  // El endpoint devuelve el FK como ID crudo; se resuelve el nombre en cliente.
+  const departmentNameById = useMemo(
+    () =>
+      new Map(departments.map((department) => [department.id_departamento, department.nombre])),
+    [departments]
+  );
+
+  // El nombre se incorpora a la FILA, no al accessor: así la llegada tardía del
+  // catálogo de departamentos produce un `data` nuevo y TanStack recalcula
+  // celda, búsqueda y orden. Ver `AreaRow`.
+  const rows = useMemo<AreaRow[]>(
+    () =>
+      areas.map((area) => ({
+        ...area,
+        departamento_nombre: departmentNameById.get(area.departamento) ?? null,
+      })),
+    [areas, departmentNameById]
+  );
+
   const columns = useMemo(
-    () => getColumns(handleEdit, { canEdit: canEditHr, canDelete: canDeleteHr }, departments),
-    [handleEdit, canEditHr, canDeleteHr, departments]
+    () => getColumns(handleEdit, { canEdit: canEditHr, canDelete: canDeleteHr }),
+    [handleEdit, canEditHr, canDeleteHr]
   );
 
   return (
     <DataTable
       columns={columns}
-      data={areas}
+      data={rows}
       searchPlaceholder="Buscar área..."
       isLoading={isLoading}
       isError={isError}

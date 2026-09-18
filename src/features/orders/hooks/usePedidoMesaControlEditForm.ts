@@ -28,6 +28,10 @@ import type {
 } from "@/src/features/quotes/interfaces/quote.interface";
 import { createEmptyValues, type ExtraService } from "@/src/features/quotes/hooks/useQuoteForm";
 import { useQuoteOnboardingData } from "@/src/features/quotes/hooks/useQuoteOnboardingData";
+import {
+  isQuoteCrossRuleField,
+  useQuoteCrossRules,
+} from "@/src/features/quotes/hooks/useQuoteCrossRules";
 import { deriveTiposServicio } from "@/src/features/quotes/utils/deriveTiposServicio";
 import type { QuoteValidationIssue } from "@/src/features/quotes/utils/quoteValidationErrors";
 import { scrollToFirstValidationError } from "@/src/features/quotes/utils/scrollToFirstValidationError";
@@ -1191,6 +1195,7 @@ export function usePedidoMesaControlEditForm(pedidoId: number) {
           setErrorByPath(nextErrors, issue.path as (string | number)[], issue.message);
         });
         setErrorTree(nextErrors);
+        crossRules.markCrossRulesFired(parsed.error.issues);
         if (formRef.current) {
           requestAnimationFrame(() => {
             if (!formRef.current) return;
@@ -1374,14 +1379,20 @@ export function usePedidoMesaControlEditForm(pedidoId: number) {
     },
   });
 
+  // Reglas cruzadas del schema de cotización (condición de pago → monto,
+  // embarque parcial → comentarios): se reevalúan fuera del submit, igual que
+  // en el alta y la edición de cotización. Ver `useQuoteCrossRules`.
+  const crossRules = useQuoteCrossRules(() => form.state.values, setErrorTree);
+
   // Hidrata el formulario una sola vez, en cuanto el detalle está disponible.
   const wasInitializedRef = useRef(false);
   useEffect(() => {
     if (initialFormValues && !wasInitializedRef.current) {
       wasInitializedRef.current = true;
       form.reset(initialFormValues);
+      crossRules.resetCrossRules();
     }
-  }, [form, initialFormValues]);
+  }, [form, initialFormValues, crossRules]);
 
   const values = useStore(form.baseStore, (state) => state.values);
 
@@ -1449,6 +1460,12 @@ export function usePedidoMesaControlEditForm(pedidoId: number) {
   const validateField = (field: QuoteField, value: QuoteFormValues[QuoteField]) => {
     const fieldSchema = quoteFormSchema.shape[field];
     const parsed = fieldSchema.safeParse(value);
+    // El schema de UN campo no ve las reglas cruzadas (0 pasa `min(0)`, ""
+    // pasa `.optional()`): sin esto, salir del campo borraba su error aunque
+    // la regla siguiera rota.
+    if (parsed.success && isQuoteCrossRuleField(field) && crossRules.validateCrossRuleOnBlur(field, value)) {
+      return false;
+    }
     if (parsed.success) {
       clearFieldErrors(field);
       return true;
@@ -1824,6 +1841,7 @@ export function usePedidoMesaControlEditForm(pedidoId: number) {
   const handleReset = () => {
     if (initialFormValues) {
       form.reset(initialFormValues);
+      crossRules.resetCrossRules();
       const visibility: Record<string, boolean> = {};
       setExtraServices(
         (pedidoData?.servicios_extras ?? []).map((service) => {
@@ -1953,6 +1971,7 @@ export function usePedidoMesaControlEditForm(pedidoId: number) {
     getError,
     clearFieldErrors,
     validateField,
+    revalidateCrossRule: crossRules.revalidateCrossRule,
     isPending,
     sellerName,
     userName,

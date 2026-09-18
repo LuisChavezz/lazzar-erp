@@ -4,11 +4,27 @@ import { EditIcon, BanIcon } from "@/src/components/Icons";
 import { ConfirmDialog } from "@/src/components/ConfirmDialog";
 import { ActionMenu, ActionMenuItem } from "@/src/components/ActionMenu";
 import { ACTIVO_INACTIVO_CFG, StatusBadge } from "@/src/components/StatusBadge";
-import { Department } from "@/src/features/departments/interfaces/department.interface";
 import { Area } from "../interfaces/area.interface";
 import { useDeleteArea } from "../hooks/useDeleteArea";
 
-const columnHelper = createColumnHelper<Area>();
+/**
+ * Fila de la tabla: el área tal como llega del backend más el nombre de su
+ * departamento ya resuelto. Es un modelo de vista, no un tipo del backend.
+ *
+ * El nombre viaja EN LA FILA y no se resuelve dentro del accessor con un `Map`
+ * recibido por parámetro: TanStack guarda en caché el valor del accessor por
+ * fila y solo lo recalcula cuando cambia `data`, no cuando cambian las
+ * columnas. Si las áreas llegaban antes que el catálogo de departamentos, el
+ * accessor se congelaba con el ID crudo — en pantalla, en la búsqueda global y
+ * en el orden. Al construir las filas en `AreaList` a partir de áreas +
+ * departamentos, la llegada del catálogo produce un `data` nuevo y TanStack
+ * recalcula todo. Mismo arreglo que `ContractRow` y `CalendarRow`.
+ *
+ * `null` = el departamento no aparece en el catálogo (o todavía no llega).
+ */
+export type AreaRow = Area & { departamento_nombre: string | null };
+
+const columnHelper = createColumnHelper<AreaRow>();
 
 const ActionsCell = ({
   row,
@@ -16,7 +32,7 @@ const ActionsCell = ({
   canEdit,
   canDelete,
 }: {
-  row: Row<Area>;
+  row: Row<AreaRow>;
   onEdit: (area: Area) => void;
   canEdit: boolean;
   canDelete: boolean;
@@ -69,14 +85,8 @@ const ActionsCell = ({
 
 export const getColumns = (
   onEdit: (area: Area) => void,
-  permissions: { canEdit: boolean; canDelete: boolean },
-  departments: Department[]
+  permissions: { canEdit: boolean; canDelete: boolean }
 ) => {
-  // El endpoint devuelve el FK como ID crudo; se resuelve el nombre en cliente.
-  const departmentNameById = new Map(
-    departments.map((department) => [department.id_departamento, department.nombre])
-  );
-
   const columns = [
     columnHelper.accessor("nombre", {
       header: "Nombre",
@@ -94,8 +104,11 @@ export const getColumns = (
         </span>
       ),
     }),
+    // Un solo valor alimenta la celda, la búsqueda global y el orden, así que
+    // los tres ven el nombre resuelto. Siempre es string: el respaldo evita el
+    // `null` que excluiría la columna de la búsqueda (ver DataTable).
     columnHelper.accessor(
-      (row) => departmentNameById.get(row.departamento) ?? String(row.departamento),
+      (row) => row.departamento_nombre ?? String(row.departamento),
       {
         id: "departamento",
         header: "Departamento",
@@ -113,7 +126,7 @@ export const getColumns = (
         />
       ),
     }),
-  ] as ColumnDef<Area>[];
+  ] as ColumnDef<AreaRow>[];
 
   if (permissions.canEdit || permissions.canDelete) {
     columns.push(
@@ -128,7 +141,7 @@ export const getColumns = (
             canDelete={permissions.canDelete}
           />
         ),
-      }) as ColumnDef<Area>
+      }) as ColumnDef<AreaRow>
     );
   }
 

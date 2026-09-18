@@ -40,23 +40,33 @@ const ShiftFormObject = z.object({
 /** Schema de un solo campo, para la validación en blur. */
 export const ShiftFormFields = ShiftFormObject.shape;
 
+/** ¿Las dos horas vienen completas (`"HH:MM"`)? Si no, la regla cruzada no aplica. */
+export const isHoraCompleta = (value: string) => TIME_REGEX.test(value);
+
 /**
  * El backend exige `hora_salida` ESTRICTAMENTE posterior a `hora_entrada`: un
- * turno nocturno es imposible de crear. Se valida aquí para no descubrirlo con
- * un 400.
+ * turno nocturno es imposible de crear.
+ *
+ * Función pura porque la usan el `refine` de abajo y `useShiftForm`, que la
+ * reevalúa en el blur de `hora_salida` y al cambiar `hora_entrada`. Mismo
+ * arreglo que `isFechaRangeValid` en contratos.
  *
  * La comparación lexicográfica de `"HH:MM"` en 24 horas coincide con la
  * cronológica, así que `>` basta. El guardia sobre el regex evita que la regla
  * se dispare mientras el formulario está a medio llenar: ahí el mensaje que
  * toca es el del campo vacío, no el del orden.
  */
+export const isHoraRangeValid = (horaEntrada: string, horaSalida: string) =>
+  !isHoraCompleta(horaEntrada) || !isHoraCompleta(horaSalida) || horaSalida > horaEntrada;
+
+export const HORA_RANGE_MESSAGE =
+  "La hora de salida debe ser posterior a la de entrada (el turno no puede cruzar la medianoche)";
+
+/** Se valida aquí para no descubrir la regla cruzada con un 400. */
 export const ShiftFormSchema = ShiftFormObject.refine(
-  (values) =>
-    !TIME_REGEX.test(values.hora_entrada) ||
-    !TIME_REGEX.test(values.hora_salida) ||
-    values.hora_salida > values.hora_entrada,
+  (values) => isHoraRangeValid(values.hora_entrada, values.hora_salida),
   {
-    message: "La hora de salida debe ser posterior a la de entrada (el turno no puede cruzar la medianoche)",
+    message: HORA_RANGE_MESSAGE,
     // Sin `path` el issue quedaría a nivel de objeto y `validateForm` —que lee
     // `issue.path[0]`— lo descartaría: el formulario no enviaría y no diría
     // por qué.

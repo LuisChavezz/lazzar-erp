@@ -5,7 +5,7 @@ import { Button } from "../../../components/Button";
 import { MainDialog } from "../../../components/MainDialog";
 import { DialogHeader } from "../../../components/DialogHeader";
 import { Product } from "../interfaces/product.interface";
-import { getColumns } from "./ProductColumns";
+import { getColumns, ProductRow } from "./ProductColumns";
 import { useSession } from "next-auth/react";
 import { hasPermission } from "@/src/utils/permissions";
 import ProductForm from "./ProductForm";
@@ -65,9 +65,21 @@ export default function ProductList() {
     [categories, units, taxes, satProdservCodes, satUnitCodes, productTypes]
   );
 
+  // El nombre de la categoría se incorpora a la FILA, no al accessor: así la
+  // llegada tardía de su catálogo produce un `data` nuevo y TanStack recalcula
+  // búsqueda y orden aunque ya se hubieran calculado. Ver `ProductRow`.
+  const rows = useMemo<ProductRow[]>(
+    () =>
+      products.map((product) => ({
+        ...product,
+        categoria_nombre: lookups.categories.get(product.categoria_producto) ?? null,
+      })),
+    [products, lookups]
+  );
+
   const columns = useMemo(
-    () => getColumns(handleEdit, { canEdit, canDelete }, lookups),
-    [handleEdit, canEdit, canDelete, lookups]
+    () => getColumns(handleEdit, { canEdit, canDelete }),
+    [handleEdit, canEdit, canDelete]
   );
 
   const isEditing = Boolean(selectedProduct?.id);
@@ -75,7 +87,7 @@ export default function ProductList() {
   return (
     <DataTable
       columns={columns}
-      data={products}
+      data={rows}
       title="Productos"
       searchPlaceholder="Buscar producto..."
       isLoading={isLoading}

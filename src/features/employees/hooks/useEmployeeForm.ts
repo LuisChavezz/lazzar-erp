@@ -41,10 +41,24 @@ export function useEmployeeForm({ onSuccess, employeeToEdit }: UseEmployeeFormPa
   // `/nucleo/sucursales/`: ese endpoint expone la PK como `id_sucursal` y no
   // trae `id`, mientras que este devuelve `id` = PK y ya viene acotado a las
   // sucursales que el usuario tiene permitidas en la empresa activa.
-  const { branches, isLoading: isLoadingBranches } = useCompanyBranches(companyId);
-  const { departments, isLoading: isLoadingDepartments } = useDepartments();
-  const { positions, isLoading: isLoadingPositions } = usePositions();
-  const { shifts, isLoading: isLoadingShifts } = useShifts();
+  // Cada catálogo expone su propio `isError`: un catálogo caído se avisa en SU
+  // selector, no como catálogo vacío ni con un banner general del formulario.
+  const {
+    branches,
+    isLoading: isLoadingBranches,
+    isError: isErrorBranches,
+  } = useCompanyBranches(companyId);
+  const {
+    departments,
+    isLoading: isLoadingDepartments,
+    isError: isErrorDepartments,
+  } = useDepartments();
+  const {
+    positions,
+    isLoading: isLoadingPositions,
+    isError: isErrorPositions,
+  } = usePositions();
+  const { shifts, isLoading: isLoadingShifts, isError: isErrorShifts } = useShifts();
 
   // Conserva referencia al form para scroll superior suave al limpiar.
   const formRef = useRef<HTMLFormElement | null>(null);
@@ -392,12 +406,16 @@ export function useEmployeeForm({ onSuccess, employeeToEdit }: UseEmployeeFormPa
     isEditing,
     branches,
     isLoadingBranches,
+    isErrorBranches,
     departments,
     isLoadingDepartments,
+    isErrorDepartments,
     positions,
     isLoadingPositions,
+    isErrorPositions,
     shifts,
     isLoadingShifts,
+    isErrorShifts,
     getError,
     clearFieldErrors,
     validateField,

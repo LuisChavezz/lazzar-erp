@@ -27,7 +27,7 @@ export function usePositionForm({ onSuccess, positionToEdit }: UsePositionFormPa
   const companyId = useWorkspaceStore((state) => state.selectedCompany.id);
 
   // Catálogo de áreas que alimenta el select del FK opcional.
-  const { areas, isLoading: isLoadingAreas } = useAreas();
+  const { areas, isLoading: isLoadingAreas, isError: isErrorAreas } = useAreas();
 
   // Conserva referencia al form para scroll superior suave al limpiar.
   const formRef = useRef<HTMLFormElement | null>(null);
@@ -229,6 +229,7 @@ export function usePositionForm({ onSuccess, positionToEdit }: UsePositionFormPa
     isEditing,
     areas,
     isLoadingAreas,
+    isErrorAreas,
     getError,
     clearFieldErrors,
     validateField,

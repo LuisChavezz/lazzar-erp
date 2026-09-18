@@ -88,6 +88,11 @@ export function useContractForm({ onSuccess, contractToEdit }: UseContractFormPa
   const [clientErrors, setClientErrors] = useState<Partial<Record<ContractFormField, string>>>({});
   const [serverErrors, setServerErrors] = useState<Partial<Record<ContractFormField, string>>>({});
 
+  // ¿La regla cruzada de fechas ya se disparó al menos una vez (por blur de
+  // `fecha_fin` o por submit)? Mientras sea `true`, cada cambio de
+  // `fecha_inicio` la reevalúa. Ver `revalidateFechaRange`.
+  const fechaRangeFiredRef = useRef(false);
+
   // Define valores vacíos del formulario. `empleado: 0` es el centinela de
   // "Seleccionar..." y el schema lo rechaza mientras siga así. `tipo` y
   // `estado` arrancan en el default del backend y se envían SIEMPRE.
@@ -174,6 +179,7 @@ export function useContractForm({ onSuccess, contractToEdit }: UseContractFormPa
       parsed.success &&
       !isFechaRangeValid(form.getFieldValue("fecha_inicio"), value as string)
     ) {
+      fechaRangeFiredRef.current = true;
       setClientErrors((prev) => ({ ...prev, fecha_fin: FECHA_RANGE_MESSAGE }));
       return false;
     }
@@ -207,6 +213,9 @@ export function useContractForm({ onSuccess, contractToEdit }: UseContractFormPa
     const nextErrors: Partial<Record<ContractFormField, string>> = {};
     parsed.error.issues.forEach((issue) => {
       const field = issue.path[0] as ContractFormField;
+      if (field === "fecha_fin" && issue.message === FECHA_RANGE_MESSAGE) {
+        fechaRangeFiredRef.current = true;
+      }
       if (!field || nextErrors[field]) {
         return;
       }
@@ -282,6 +291,7 @@ export function useContractForm({ onSuccess, contractToEdit }: UseContractFormPa
   const editedContractId = contractToEdit?.id ?? null;
   useEffect(() => {
     form.reset(editedContractId ? editValuesRef.current : emptyValues);
+    fechaRangeFiredRef.current = false;
   }, [editedContractId, emptyValues, form]);
 
   /**
@@ -297,17 +307,24 @@ export function useContractForm({ onSuccess, contractToEdit }: UseContractFormPa
    * solo limpiara, uno de esos borraría el error aunque la fecha final siga
    * siendo inválida; reevaluando, el estado sigue siempre al valor vigente.
    *
-   * Solo actúa tras el primer intento de envío: antes de eso no se reprocha
-   * nada mientras se escribe, igual que en el resto del formulario. Con una de
-   * las dos fechas vacía no toca nada (la regla no aplica y el vacío es casi
-   * siempre un intermedio del tecleo). Solo escribe estado de errores, nunca
-   * dispara validaciones, así que no hay ciclo posible.
+   * Solo actúa si la regla YA SE DISPARÓ al menos una vez
+   * (`fechaRangeFiredRef`), sea por el blur de `fecha_fin` o por un submit:
+   * antes de eso no se reprocha nada mientras se escribe, igual que en el resto
+   * del formulario. La guarda NO es "hubo un submit" —el error también nace del
+   * blur, con `submissionAttempts` aún en 0— ni "el error está visible ahora":
+   * un valor intermedio lo borra un instante, y una guarda por visibilidad
+   * dejaría de reevaluar justo cuando llega el valor definitivo. El ref sigue
+   * en `true` a través de los intermedios.
+   *
+   * Con una de las dos fechas vacía no toca nada (la regla no aplica y el
+   * vacío es casi siempre un intermedio del tecleo). Solo escribe estado de
+   * errores, nunca dispara validaciones, así que no hay ciclo posible.
    *
    * Al limpiar se va también el error de servidor: el 400 del backend para
    * este mismo caso llega bajo `fecha_fin` con la misma regla.
    */
   const revalidateFechaRange = (fechaInicio: string, fechaFin: string) => {
-    if (form.state.submissionAttempts === 0 || !fechaInicio || !fechaFin) {
+    if (!fechaRangeFiredRef.current || !fechaInicio || !fechaFin) {
       return;
     }
 
@@ -329,6 +346,7 @@ export function useContractForm({ onSuccess, contractToEdit }: UseContractFormPa
   const handleReset = () => {
     const nextValues = isEditing ? editValues : emptyValues;
     form.reset(nextValues);
+    fechaRangeFiredRef.current = false;
     setClientErrors({});
     setServerErrors({});
     setTimeout(() => {

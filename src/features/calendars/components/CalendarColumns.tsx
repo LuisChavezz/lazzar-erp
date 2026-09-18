@@ -4,12 +4,28 @@ import { EditIcon, DeleteIcon } from "@/src/components/Icons";
 import { ConfirmDialog } from "@/src/components/ConfirmDialog";
 import { ActionMenu, ActionMenuItem } from "@/src/components/ActionMenu";
 import { formatLocalDate } from "@/src/utils/formatDate";
-import { Shift } from "@/src/features/shifts/interfaces/shift.interface";
 import { Calendar } from "../interfaces/calendar.interface";
 import { getTipoLabel } from "../constants/tipoCalendario";
 import { useDeleteCalendar } from "../hooks/useDeleteCalendar";
 
-const columnHelper = createColumnHelper<Calendar>();
+/**
+ * Fila de la tabla: el día tal como llega del backend más el nombre del turno
+ * ya resuelto. Es un modelo de vista, no un tipo del backend.
+ *
+ * El nombre viaja EN LA FILA y no se resuelve dentro del accessor con un `Map`
+ * recibido por parámetro: TanStack guarda en caché el valor del accessor por
+ * fila y solo lo recalcula cuando cambia `data`, no cuando cambian las
+ * columnas. Si los días llegaban antes que el catálogo de turnos, el accessor
+ * se congelaba con el ID crudo — en pantalla, en la búsqueda global y en el
+ * orden, que leen ese mismo valor. Al construir las filas en `CalendarList` a
+ * partir de días + turnos, la llegada del catálogo produce un `data` nuevo y
+ * TanStack recalcula todo. Mismo arreglo que `ContractRow`.
+ *
+ * `null` = el turno no aparece en el catálogo (o todavía no llega).
+ */
+export type CalendarRow = Calendar & { turno_nombre: string | null };
+
+const columnHelper = createColumnHelper<CalendarRow>();
 
 const ActionsCell = ({
   row,
@@ -17,7 +33,7 @@ const ActionsCell = ({
   canEdit,
   canDelete,
 }: {
-  row: Row<Calendar>;
+  row: Row<CalendarRow>;
   onEdit: (calendar: Calendar) => void;
   canEdit: boolean;
   canDelete: boolean;
@@ -67,12 +83,8 @@ const ActionsCell = ({
 
 export const getColumns = (
   onEdit: (calendar: Calendar) => void,
-  permissions: { canEdit: boolean; canDelete: boolean },
-  shifts: Shift[]
+  permissions: { canEdit: boolean; canDelete: boolean }
 ) => {
-  // El endpoint devuelve el FK como ID crudo; se resuelve el nombre en cliente.
-  const shiftNameById = new Map(shifts.map((shift) => [shift.id, shift.nombre]));
-
   const columns = [
     // El accessor devuelve la fecha YA formateada, no el ISO crudo: la búsqueda
     // global de DataTable lee el valor del accessor, así que teclear la fecha
@@ -96,7 +108,10 @@ export const getColumns = (
         <span className="text-slate-500 dark:text-slate-400">{info.getValue()}</span>
       ),
     }),
-    columnHelper.accessor((row) => shiftNameById.get(row.turno) ?? String(row.turno), {
+    // Un solo valor alimenta la celda, la búsqueda global y el orden, así que
+    // los tres ven el nombre resuelto. Siempre es string: el respaldo evita el
+    // `null` que excluiría la columna de la búsqueda (ver DataTable).
+    columnHelper.accessor((row) => row.turno_nombre ?? String(row.turno), {
       id: "turno",
       header: "Turno",
       cell: (info) => (
@@ -104,7 +119,7 @@ export const getColumns = (
       ),
     }),
     // Sin columna "Estatus": `Calendario` no tiene `activo`.
-  ] as ColumnDef<Calendar>[];
+  ] as ColumnDef<CalendarRow>[];
 
   if (permissions.canEdit || permissions.canDelete) {
     columns.push(
@@ -119,7 +134,7 @@ export const getColumns = (
             canDelete={permissions.canDelete}
           />
         ),
-      }) as ColumnDef<Calendar>
+      }) as ColumnDef<CalendarRow>
     );
   }
 

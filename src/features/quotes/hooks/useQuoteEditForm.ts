@@ -32,6 +32,7 @@ import { useSizes } from "../../sizes/hooks/useSizes";
 import { useQuote } from "./useQuote";
 import { createEmptyValues, deriveTipoPedido, type ExtraService } from "./useQuoteForm";
 import { useUpdateQuote } from "./useUpdateQuote";
+import { isQuoteCrossRuleField, useQuoteCrossRules } from "./useQuoteCrossRules";
 import type { QuoteValidationIssue } from "../utils/quoteValidationErrors";
 import { canEditQuote } from "../utils/quoteStatusRules";
 import { mapQuoteDetalleToItem } from "../utils/mapQuoteDetalleToItem";
@@ -342,6 +343,7 @@ export function useQuoteEditForm(quoteId: number) {
           setErrorByPath(nextErrors, issue.path as (string | number)[], issue.message);
         });
         setErrorTree(nextErrors);
+        crossRules.markCrossRulesFired(parsed.error.issues);
         if (formRef.current) {
           requestAnimationFrame(() => {
             if (!formRef.current) return;
@@ -570,6 +572,10 @@ export function useQuoteEditForm(quoteId: number) {
     },
   });
 
+  // Reglas cruzadas del schema (condición de pago → monto, embarque parcial →
+  // comentarios): se reevalúan fuera del submit. Ver `useQuoteCrossRules`.
+  const crossRules = useQuoteCrossRules(() => form.state.values, setErrorTree);
+
   // Hidrata el formulario con los valores de la cotización en cuanto están disponibles.
   // Se ejecuta una sola vez gracias al ref de guardia.
   const wasInitializedRef = useRef(false);
@@ -577,8 +583,9 @@ export function useQuoteEditForm(quoteId: number) {
     if (initialFormValues && !wasInitializedRef.current) {
       wasInitializedRef.current = true;
       form.reset(initialFormValues);
+      crossRules.resetCrossRules();
     }
-  }, [form, initialFormValues]);
+  }, [form, initialFormValues, crossRules]);
 
   // Snapshot reactivo de valores del formulario
   const values = useStore(form.baseStore, (state) => state.values);
@@ -653,6 +660,12 @@ export function useQuoteEditForm(quoteId: number) {
   const validateField = (field: QuoteField, value: QuoteFormValues[QuoteField]) => {
     const fieldSchema = quoteFormSchema.shape[field];
     const parsed = fieldSchema.safeParse(value);
+    // El schema de UN campo no ve las reglas cruzadas (0 pasa `min(0)`, ""
+    // pasa `.optional()`): sin esto, salir del campo borraba su error aunque
+    // la regla siguiera rota.
+    if (parsed.success && isQuoteCrossRuleField(field) && crossRules.validateCrossRuleOnBlur(field, value)) {
+      return false;
+    }
     if (parsed.success) {
       clearFieldErrors(field);
       return true;
@@ -948,6 +961,7 @@ export function useQuoteEditForm(quoteId: number) {
   const handleReset = () => {
     if (initialFormValues) {
       form.reset(initialFormValues);
+      crossRules.resetCrossRules();
       setExtraServices(
         (quoteData?.servicios_extras ?? []).map((s) => ({
           id: String(s.id),
@@ -1067,6 +1081,7 @@ export function useQuoteEditForm(quoteId: number) {
     getError,
     clearFieldErrors,
     validateField,
+    revalidateCrossRule: crossRules.revalidateCrossRule,
     isPending,
     sellerName,
     userName,

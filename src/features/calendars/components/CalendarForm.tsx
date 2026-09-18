@@ -21,6 +21,7 @@ export default function CalendarForm({ onSuccess, calendarToEdit }: CalendarForm
     isPending,
     shifts,
     isLoadingShifts,
+    isErrorShifts,
     getError,
     clearFieldErrors,
     validateField,
@@ -34,7 +35,12 @@ export default function CalendarForm({ onSuccess, calendarToEdit }: CalendarForm
   // `turno` es obligatorio y su única fuente es el catálogo de turnos: sin
   // turnos el select no ofrece nada y "El turno es requerido" sonaría a
   // descuido del usuario en vez de a un catálogo vacío.
-  const hasNoShifts = !isLoadingShifts && shifts.length === 0;
+  //
+  // Un catálogo caído NO se pinta como catálogo vacío (mismo criterio que
+  // `ContractForm`): si la petición falló, `shifts` también queda en `[]`, y
+  // decir "da de alta uno" mandaría a crear turnos que ya existen. De ahí que
+  // "vacío" exija una carga EXITOSA.
+  const hasNoShifts = !isLoadingShifts && !isErrorShifts && shifts.length === 0;
 
   return (
     <form ref={formRef} key={formKey} onSubmit={handleFormSubmit} className="w-full">
@@ -125,9 +131,11 @@ export default function CalendarForm({ onSuccess, calendarToEdit }: CalendarForm
                       <option value="0" disabled>
                         {isLoadingShifts
                           ? "Cargando turnos..."
-                          : hasNoShifts
-                            ? "No hay turnos registrados"
-                            : "Seleccionar..."}
+                          : isErrorShifts
+                            ? "No se pudo cargar el catálogo de turnos"
+                            : hasNoShifts
+                              ? "No hay turnos registrados"
+                              : "Seleccionar..."}
                       </option>
                       {shifts.map((shift) => (
                         <option
@@ -141,6 +149,12 @@ export default function CalendarForm({ onSuccess, calendarToEdit }: CalendarForm
                     </FormSelect>
                   )}
                 </form.Field>
+                {isErrorShifts && (
+                  <p className="mt-1 ml-1 text-[11px] text-red-600 dark:text-red-400">
+                    No se pudo cargar el catálogo de turnos. Revisa tu conexión e intenta abrir
+                    el diálogo de nuevo.
+                  </p>
+                )}
                 {hasNoShifts && (
                   <p className="mt-1 ml-1 text-[11px] text-amber-600 dark:text-amber-400">
                     No hay turnos registrados. Da de alta uno en Capital Humano → Turnos antes

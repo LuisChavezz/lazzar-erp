@@ -2,7 +2,7 @@ import { useMemo, useState, useCallback } from "react";
 import { DataTable } from "../../../components/DataTable";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { Button } from "../../../components/Button";
-import { getColumns } from "./LocationColumns";
+import { getColumns, LocationRow } from "./LocationColumns";
 import { MainDialog } from "../../../components/MainDialog";
 import { DialogHeader } from "@/src/components/DialogHeader";
 import { Location } from "../interfaces/location.interface";
@@ -21,7 +21,7 @@ export default function LocationList() {
     isError,
     error,
   } = useLocations();
-  const { data: warehouses = [] } = useWarehouses();
+  const { data: warehouses } = useWarehouses();
   const { data: session } = useSession();
   // `hasPermission` ya cortocircuita para el rol admin, así que sustituye al
   // chequeo manual que vivía aquí. El alta usa su propio código
@@ -40,17 +40,38 @@ export default function LocationList() {
     setIsDialogOpen(true);
   };
 
-  const columns = useMemo(
+  // El endpoint devuelve el FK como ID crudo; se resuelve el nombre en cliente.
+  // El `?? []` va DENTRO del memo: fuera crearía un arreglo nuevo en cada
+  // render mientras no hay datos y el memo nunca se reutilizaría.
+  const warehouseNameById = useMemo(
     () =>
-      getColumns(handleEdit, { canEdit, canDelete }, warehouses),
-    [handleEdit, canEdit, canDelete, warehouses]
+      new Map(
+        (warehouses ?? []).map((warehouse) => [warehouse.id_almacen, warehouse.nombre])
+      ),
+    [warehouses]
   );
-  const tableData = locationsData ?? [];
+
+  // El nombre se incorpora a la FILA, no al accessor: así la llegada tardía del
+  // catálogo de almacenes produce un `data` nuevo y TanStack recalcula celda,
+  // búsqueda y orden. Ver `LocationRow`.
+  const rows = useMemo<LocationRow[]>(
+    () =>
+      (locationsData ?? []).map((location) => ({
+        ...location,
+        almacen_nombre: warehouseNameById.get(location.almacen) ?? null,
+      })),
+    [locationsData, warehouseNameById]
+  );
+
+  const columns = useMemo(
+    () => getColumns(handleEdit, { canEdit, canDelete }),
+    [handleEdit, canEdit, canDelete]
+  );
 
   return (
     <DataTable
       columns={columns}
-      data={tableData}
+      data={rows}
       title="Ubicaciones"
       searchPlaceholder="Buscar ubicación..."
       isLoading={isLoading}

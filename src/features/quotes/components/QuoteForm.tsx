@@ -134,6 +134,7 @@ export function QuoteFormContent({
   getError,
   clearFieldErrors,
   validateField,
+  revalidateCrossRule,
   isPending,
   sellerName,
   userName,
@@ -828,6 +829,10 @@ export function QuoteFormContent({
                   onChange={(event) => {
                     field.handleChange(event.target.value as typeof field.state.value);
                     clearFieldErrors("condicionPago");
+                    // La condición decide si el monto es obligatorio: al salir
+                    // de "otra_cantidad" el monto se deshabilita y su error ya
+                    // no aplica; al volver con monto 0, reaparece.
+                    revalidateCrossRule("condicionPago", event.target.value);
                   }}
                   onBlur={() => {
                     field.handleBlur();
@@ -1203,6 +1208,9 @@ export function QuoteFormContent({
                   onChange={(event) => {
                     field.handleChange(event.target.checked);
                     clearFieldErrors("embarque_parcial");
+                    // La casilla decide si los comentarios son obligatorios:
+                    // reevalúa el error que la regla deja bajo ellos.
+                    revalidateCrossRule("embarque_parcial", event.target.checked);
                   }}
                   onBlur={field.handleBlur}
                 />
