@@ -398,7 +398,10 @@ export const operationsQuoteColumns: ColumnDef<OperationsQuote>[] = [
     ),
   },
   {
-    accessorKey: "codigo_postal",
+    // Mismo `?? ""` que el resto de columnas nullable: un `null` en la primera
+    // fila sacaría la columna de la búsqueda global en todas las filas.
+    id: "codigo_postal",
+    accessorFn: (operationsQuote) => operationsQuote.codigo_postal ?? "",
     meta: { label: "C.P." },
     header: () => <div className="w-full text-center">C.P.</div>,
     cell: ({ row }) => (
