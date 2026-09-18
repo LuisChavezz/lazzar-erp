@@ -41,8 +41,14 @@ const RazonSocialCell = ({ customer }: { customer: OperationsCustomer }) => (
 // ── Columnas ──────────────────────────────────────────────────────────────────
 
 export const operationsCustomerColumns: ColumnDef<OperationsCustomer>[] = [
+  // `nombre` y `rfc` ya no tienen columna propia, pero la búsqueda global de
+  // `DataTable` solo ve accessors de columna: se concatenan aquí para que
+  // sigan siendo buscables (el placeholder de la lista los promete). La celda
+  // pinta desde `row.original`, y el orden sigue encabezado por la razón social.
   {
-    accessorKey: "razon_social",
+    id: "razon_social",
+    accessorFn: (row) =>
+      [row.razon_social, row.nombre, row.rfc].filter(Boolean).join(" "),
     filterFn: estatusFilterFn,
     header: ({ column }) => (
       <div className="flex items-center gap-1.5">

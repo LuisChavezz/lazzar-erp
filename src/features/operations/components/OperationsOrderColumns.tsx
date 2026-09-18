@@ -13,7 +13,6 @@ import {
   EyeIcon,
   TasksIcon,
 } from "@/src/components/Icons";
-import { capitalize } from "@/src/utils/capitalize";
 import { formatMoneyValueOrDash } from "@/src/utils/formatCurrency";
 import type { PedidoListItem } from "@/src/features/orders/interfaces/order.interface";
 import {
@@ -152,7 +151,7 @@ export function buildOperationsOrderColumns(
       header: () => <div className="w-full text-center">Razón social</div>,
       cell: ({ row }) => (
         <span className="block text-center text-sm text-slate-600 dark:text-slate-300 truncate max-w-55">
-          {row.original.cliente_razon_social ? capitalize(row.original.cliente_razon_social) : "—"}
+          {row.original.cliente_razon_social || "—"}
         </span>
       ),
     },
