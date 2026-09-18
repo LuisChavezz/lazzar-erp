@@ -5,6 +5,7 @@ import {
   CalendarDaysIcon,
   ClipboardListIcon,
   ClockIcon,
+  ContractIcon,
   LayersIcon,
   UserIcon,
 } from "@/src/components/Icons";
@@ -65,6 +66,16 @@ const hrCards = [
     accentClass: "text-rose-600 dark:text-rose-400",
     accentBgClass: "bg-rose-50 dark:bg-rose-500/10",
     shadowColorClassName: "hover:shadow-rose-500/25 dark:hover:shadow-rose-500/25",
+  },
+  {
+    icon: ContractIcon,
+    title: "Contratos",
+    description: "Contratos laborales de cada empleado: tipo, vigencia y salario.",
+    footerText: "Ver contratos",
+    href: "/hr/contracts",
+    accentClass: "text-indigo-600 dark:text-indigo-400",
+    accentBgClass: "bg-indigo-50 dark:bg-indigo-500/10",
+    shadowColorClassName: "hover:shadow-indigo-500/25 dark:hover:shadow-indigo-500/25",
   },
 ];
 
