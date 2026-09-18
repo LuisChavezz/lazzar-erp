@@ -39,6 +39,8 @@ import {
   FacturaProveedorIcon,
   ContabilidadIcon,
   PlanCuentasIcon,
+  CentrosCostoIcon,
+  ConciliacionIcon,
 } from "../components/Icons";
 
 export interface AppRouteItem {
@@ -457,6 +459,18 @@ export const appRouteGroups: AppRouteGroup[] = [
         permission: "R-CONTABILIDAD",
       },
       {
+        // Junto a Cuentas Bancarias porque se concilia UNA cuenta contra su
+        // estado de cuenta. Sin código de sección propio: la cubre el
+        // `R-CONTABILIDAD` del prefijo `/finance`.
+        key: "finance-bank-reconciliations",
+        label: "Conciliaciones",
+        path: "/finance/bank-reconciliations",
+        icon: ConciliacionIcon,
+        description:
+          "Cuadre del estado de cuenta contra los libros, por cuenta y periodo.",
+        permission: "R-CONTABILIDAD",
+      },
+      {
         key: "finance-bank-accounts",
         label: "Cuentas Bancarias",
         path: "/finance/bank-accounts",
@@ -507,6 +521,19 @@ export const appRouteGroups: AppRouteGroup[] = [
         icon: PlanCuentasIcon,
         description:
           "Catálogo de cuentas contables por tipo y nivel, con su estatus.",
+        permission: "R-CONTABILIDAD",
+      },
+      {
+        // EC-140. Junto al Plan de Cuentas porque es el otro catálogo que
+        // alimenta la captura de una póliza: el centro de costo es opcional en
+        // la cabecera y en cada movimiento. Sin código de sección propio: la
+        // cubre el `R-CONTABILIDAD` del prefijo `/finance`.
+        key: "finance-cost-centers",
+        label: "Centros de Costo",
+        path: "/finance/cost-centers",
+        icon: CentrosCostoIcon,
+        description:
+          "Catálogo de centros de costo para imputar los movimientos de una póliza.",
         permission: "R-CONTABILIDAD",
       },
       {

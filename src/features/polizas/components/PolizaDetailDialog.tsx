@@ -18,7 +18,7 @@ import {
 } from "../constants/polizaStatus";
 import type { Branch } from "@/src/features/branches/interfaces/branch.interface";
 import type { Poliza } from "../interfaces/poliza.interface";
-import type { CentroCosto } from "../interfaces/catalogos.interface";
+import type { CostCenter } from "@/src/features/cost-centers/interfaces/cost-center.interface";
 import type { CuentaContable } from "@/src/features/chart-of-accounts/interfaces/chart-of-account.interface";
 
 interface PolizaDetailDialogProps {
@@ -42,7 +42,7 @@ interface PolizaDetailDialogProps {
    * id en crudo: es un estado momentáneo y el número sigue identificando la fila.
    */
   cuentasContables: CuentaContable[];
-  centrosCosto: CentroCosto[];
+  centrosCosto: CostCenter[];
   branches: Branch[];
   open: boolean;
   onOpenChange: (open: boolean) => void;

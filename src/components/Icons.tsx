@@ -125,6 +125,8 @@ import {
   Weight,
   Container,
   Wallet,
+  Coins,
+  Scale,
 } from "lucide-react";
 
 // ─── Tipos comunes ────────────────────────────────────────────────────────────
@@ -239,6 +241,22 @@ export const ContabilidadIcon = (props: LucideProps) => <Calculator {...props} /
  * ramas, no como el cálculo.
  */
 export const PlanCuentasIcon = (props: LucideProps) => <ListTree {...props} />;
+/**
+ * Centros de costo — las bolsas a las que se imputa un gasto. Glifo PROPIO
+ * (`Coins`, varias pilas de monedas) y no `WalletIcon` ni `DollarSign`, que ya
+ * son la cuenta bancaria y la lista de precios en este mismo grupo: lo que
+ * distingue a un centro de costo es que el gasto se REPARTE en varios montones,
+ * no el dinero en sí.
+ */
+export const CentrosCostoIcon = (props: LucideProps) => <Coins {...props} />;
+/**
+ * Conciliación bancaria — enfrentar el estado de cuenta contra los libros hasta
+ * que los dos lados pesen lo mismo. Glifo PROPIO (`Scale`, una balanza) y no
+ * `WalletIcon` ni `BancosIcon`, que ya son la cuenta y la institución: lo que
+ * distingue a la conciliación no es el dinero, sino el equilibrio entre dos
+ * cifras.
+ */
+export const ConciliacionIcon = (props: LucideProps) => <Scale {...props} />;
 export const ExistenciasIcon = (props: LucideProps) => <ClipboardList {...props} />;
 export const ListaPreciosIcon = (props: LucideProps) => <DollarSign {...props} />;
 export const ClientesIcon = (props: LucideProps) => <Users {...props} />;

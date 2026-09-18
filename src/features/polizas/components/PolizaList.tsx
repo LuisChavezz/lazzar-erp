@@ -22,7 +22,7 @@ import { PolizaDetailDialog } from "./PolizaDetailDialog";
 import PolizaForm from "./PolizaForm";
 import { usePolizas } from "../hooks/usePolizas";
 import { useChartOfAccounts } from "@/src/features/chart-of-accounts/hooks/useChartOfAccounts";
-import { useCentrosCosto } from "../hooks/useCentrosCosto";
+import { useCostCenters } from "@/src/features/cost-centers/hooks/useCostCenters";
 import { useContabilizarPoliza } from "../hooks/useContabilizarPoliza";
 import { useCancelarPoliza } from "../hooks/useCancelarPoliza";
 import { useDeletePoliza } from "../hooks/useDeletePoliza";
@@ -104,7 +104,7 @@ export default function PolizaList() {
     acepta_movimientos: true,
     activo: true,
   });
-  const { centrosCosto } = useCentrosCosto();
+  const { centrosCosto } = useCostCenters({ activo: true });
 
   const [isFormOpen, setIsFormOpen] = useState(false);
   // Estado de TODOS los diálogos en la vista, no en la celda de acciones: una
