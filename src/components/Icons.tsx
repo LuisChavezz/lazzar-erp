@@ -43,6 +43,7 @@ import {
   FileCode2,
   FileInput,
   FileMinus,
+  FilePenLine,
   FileSearch,
   FileSpreadsheet,
   FileText,
@@ -157,6 +158,11 @@ export const DotsVerticalIcon = (props: LucideProps) => <MoreVertical {...props}
 export const ClockIcon = (props: LucideProps) => <Clock {...props} />;
 /** Calendario con rejilla de días. Para el calendario laboral de RH. */
 export const CalendarDaysIcon = (props: LucideProps) => <CalendarDays {...props} />;
+/**
+ * Documento con pluma. Para los contratos laborales de RH. Es el nombre
+ * canónico de `FileSignature`, que en lucide-react es solo un alias obsoleto.
+ */
+export const ContractIcon = (props: LucideProps) => <FilePenLine {...props} />;
 export const HistoryIcon = (props: LucideProps) => <History {...props} />;
 export const BellIcon = (props: LucideProps) => <Bell {...props} />;
 export const ErrorIcon = (props: LucideProps) => <AlertTriangle {...props} />;
