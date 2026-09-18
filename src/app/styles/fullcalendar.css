@@ -5,8 +5,8 @@
 }
 
 .dark .sales-fullcalendar-loading {
-  background: linear-gradient(180deg, #071126 0%, #030c1d 65%, #020817 100%);
-  border-color: #1e2b49;
+  background: linear-gradient(180deg, #18181b 0%, #0a0a0a 65%, #000000 100%);
+  border-color: #27272a;
 }
 
 /* Animación de entrada para el panel de detalle del evento de Google Calendar */
@@ -45,7 +45,7 @@
 .sales-fullcalendar-theme .fc-header-toolbar {
   align-items: center;
   border-bottom: 1px solid #dbe6f5;
-  margin: 0;
+  margin: 0 !important;
   padding: 8px 8px 7px;
 }
 
@@ -132,21 +132,25 @@
 }
 
 .sales-fullcalendar-theme .fc-daygrid-day-frame {
-  min-height: 88px;
+  min-height: 0;
 }
 
 .sales-fullcalendar-theme .fc-daygrid-day-number {
   color: #0f172a;
-  font-size: 0.95rem;
+  font-size: 0.82rem;
   font-weight: 700;
-  padding: 5px 7px 0 0;
+  padding: 4px 6px 0 0;
 }
 
 .sales-fullcalendar-theme .fc-day-other .fc-daygrid-day-number {
   color: #94a3b8;
 }
 
-.sales-fullcalendar-theme .fc-day-today {
+/* :not(.fc-popover) — FullCalendar reutiliza la clase `fc-day-today` en el
+   popover de "+N más" cuando el día es hoy, así que sin esta exclusión este
+   reset también le borraba el fondo al popover (quedaba transparente y se
+   veía la grilla detrás). */
+.sales-fullcalendar-theme .fc-day-today:not(.fc-popover) {
   background: transparent !important;
   background-color: transparent !important;
   box-shadow: none;
@@ -164,7 +168,7 @@
 }
 
 .sales-fullcalendar-theme .fc-daygrid-day-events {
-  margin: 4px;
+  margin: 3px;
 }
 
 /* Overflow "+N más" link */
@@ -188,24 +192,27 @@
   color: #38bdf8;
 }
 
-/* Popover de eventos desbordados */
+/* Popover de eventos desbordados — !important porque el <style> que
+   FullCalendar inyecta en runtime llega después en la cascada y, al tener la
+   misma especificidad, gana por orden de aparición y deja el fondo
+   transparente (se veía la grilla de fondo detrás del popover). */
 .sales-fullcalendar-theme .fc-popover {
-  background: #ffffff;
-  border: 1px solid #d8e2f0;
+  background: #ffffff !important;
+  border: 1px solid #d8e2f0 !important;
   border-radius: 10px;
   box-shadow: 0 8px 24px rgba(0,0,0,0.08);
   overflow: hidden;
 }
 
 .dark .sales-fullcalendar-theme .fc-popover {
-  background: #0a1328;
-  border-color: #1e2b49;
+  background: #18181b !important;
+  border-color: #27272a !important;
   box-shadow: 0 8px 24px rgba(0,0,0,0.4);
 }
 
 .sales-fullcalendar-theme .fc-popover-header {
-  background: #eef4fb;
-  border-bottom: 1px solid #d8e2f0;
+  background: #eef4fb !important;
+  border-bottom: 1px solid #d8e2f0 !important;
   color: #0f172a;
   font-size: 0.72rem;
   font-weight: 700;
@@ -213,9 +220,9 @@
 }
 
 .dark .sales-fullcalendar-theme .fc-popover-header {
-  background: #0d1a33;
-  border-bottom-color: #1e2b49;
-  color: #dbeafe;
+  background: #27272a !important;
+  border-bottom-color: #3f3f46 !important;
+  color: #f4f4f5;
 }
 
 .sales-fullcalendar-theme .fc-popover-body {
@@ -258,7 +265,7 @@
 /* Hora: ligeramente más sutil que el título */
 .sales-fullcalendar-theme .fc-daygrid-dot-event .fc-event-time {
   color: #475569;
-  font-size: 0.65rem;
+  font-size: 0.6rem;
   font-weight: 600;
   margin-right: 1px;
 }
@@ -266,7 +273,7 @@
 /* Título: más prominente */
 .sales-fullcalendar-theme .fc-daygrid-dot-event .fc-event-title {
   color: #0f172a;
-  font-size: 0.68rem;
+  font-size: 0.62rem;
   font-weight: 700;
 }
 
@@ -310,34 +317,34 @@
 }
 
 .dark .sales-fullcalendar-theme .fc {
-  background: linear-gradient(180deg, #071126 0%, #030c1d 65%, #020817 100%);
-  border-color: #1e2b49;
-  color: #e2ecff;
-  --fc-border-color: #1e2b49;
+  background: linear-gradient(180deg, #18181b 0%, #0a0a0a 65%, #000000 100%);
+  border-color: #27272a;
+  color: #e4e4e7;
+  --fc-border-color: #27272a;
   --fc-today-bg-color: transparent;
 }
 
 .dark .sales-fullcalendar-theme .fc-theme-standard td,
 .dark .sales-fullcalendar-theme .fc-theme-standard th {
-  border-color: #1e2b49 !important;
+  border-color: #27272a !important;
 }
 
 .dark .sales-fullcalendar-theme .fc-header-toolbar {
-  border-bottom-color: #1a2742;
+  border-bottom-color: #27272a;
 }
 
 .dark .sales-fullcalendar-theme .fc-toolbar-title {
-  color: #dbeafe;
+  color: #f4f4f5;
 }
 
 .dark .sales-fullcalendar-theme .fc-button {
-  background: #0d1a33 !important;
-  border-color: #1f3356 !important;
-  color: #cfe2ff !important;
+  background: #27272a !important;
+  border-color: #3f3f46 !important;
+  color: #e4e4e7 !important;
 }
 
 .dark .sales-fullcalendar-theme .fc-button:hover {
-  background: #10244a !important;
+  background: #3f3f46 !important;
 }
 
 .dark .sales-fullcalendar-theme .fc-button-active {
@@ -347,46 +354,46 @@
 
 .dark .sales-fullcalendar-theme .fc-scrollgrid,
 .dark .sales-fullcalendar-theme .fc-scrollgrid table {
-  border-color: #1e2b49;
+  border-color: #27272a;
 }
 
 .dark .sales-fullcalendar-theme .fc-col-header-cell {
-  background: #0a1328;
-  border-color: #1e2b49;
+  background: #18181b;
+  border-color: #27272a;
 }
 
 .dark .sales-fullcalendar-theme .fc-scrollgrid-section-header > * {
-  background: #0a1328;
+  background: #18181b;
 }
 
 .dark .sales-fullcalendar-theme .fc-col-header-cell-cushion {
-  color: #8eb8ff;
+  color: #a1a1aa;
 }
 
 .dark .sales-fullcalendar-theme .fc-daygrid-day {
-  background: linear-gradient(180deg, #0a1328 0%, #081125 100%);
+  background: linear-gradient(180deg, #18181b 0%, #101012 100%);
 }
 
 .dark .sales-fullcalendar-theme .fc-daygrid-day-number {
-  color: #eff6ff;
+  color: #f4f4f5;
 }
 
 .dark .sales-fullcalendar-theme .fc-day-other .fc-daygrid-day-number {
-  color: #5c6d8d;
+  color: #52525b;
 }
 
-.dark .sales-fullcalendar-theme .fc-day-today {
+.dark .sales-fullcalendar-theme .fc-day-today:not(.fc-popover) {
   background: transparent !important;
   background-color: transparent !important;
   box-shadow: none;
 }
 
 .dark .sales-fullcalendar-theme .fc-daygrid-dot-event .fc-event-time {
-  color: #7da4cc;
+  color: #71717a;
 }
 
 .dark .sales-fullcalendar-theme .fc-daygrid-dot-event .fc-event-title {
-  color: #eff6ff;
+  color: #f4f4f5;
 }
 
 .dark .sales-fullcalendar-theme .fc-daygrid-dot-event .fc-daygrid-event-dot,
@@ -422,12 +429,12 @@
   }
 
   .sales-fullcalendar-theme .fc-daygrid-day-frame {
-    min-height: 52px;
+    min-height: 0;
   }
 
   .sales-fullcalendar-theme .fc-daygrid-day-number {
-    font-size: 0.82rem;
-    padding: 4px 6px 0 0;
+    font-size: 0.74rem;
+    padding: 3px 5px 0 0;
   }
 
   .sales-fullcalendar-theme .fc-daygrid-day-events {
@@ -483,19 +490,19 @@
 
 .dark .sales-fullcalendar-theme .fc-timegrid-axis-cushion,
 .dark .sales-fullcalendar-theme .fc-timegrid-slot-label-cushion {
-  color: #4a6080;
+  color: #71717a;
 }
 
 .dark .sales-fullcalendar-theme .fc-timegrid-slot {
-  border-color: #1e2b49;
+  border-color: #27272a;
 }
 
 .dark .sales-fullcalendar-theme .fc-timegrid-slot-minor {
-  border-color: #131f36;
+  border-color: #1f1f22;
 }
 
 .dark .sales-fullcalendar-theme .fc-timegrid-col {
-  background: linear-gradient(180deg, #0a1328 0%, #081125 100%);
+  background: linear-gradient(180deg, #18181b 0%, #101012 100%);
 }
 
 

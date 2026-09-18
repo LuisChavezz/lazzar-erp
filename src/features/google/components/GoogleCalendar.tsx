@@ -26,6 +26,17 @@ import {
   getEventClass,
 } from "../constants/googleCalendar";
 
+/**
+ * Altura de la sección de calendario: ocupa el alto disponible bajo el
+ * header/padding de `(Main)/layout.tsx` para que SOLO el contenido interno
+ * (grilla del calendario o panel lateral) haga scroll, nunca la página
+ * completa. Offsets medidos contra ese layout, ya sin el párrafo descriptivo
+ * que quitamos de `page.tsx` (single child ⇒ sin gap de `space-y` propio):
+ * mobile = header fijo (80px, `pt-20`) + `pb-6` (24px); desktop = `Header` en
+ * flujo (80px) + `md:pb-12` (48px). Si ese layout cambia, reajustar aquí.
+ */
+const CALENDAR_HEIGHT_CLASS = "h-[calc(100dvh-104px)] md:h-[calc(100dvh-128px)] min-h-[420px]";
+
 export const GoogleCalendar = () => {
   const calendarRef = useRef<FullCalendar | null>(null);
   const [currentView, setCurrentView] = useState<CalendarView>("dayGridMonth");
@@ -74,9 +85,11 @@ export const GoogleCalendar = () => {
   // Skeleton mientras se cargan los eventos
   if (isLoading) {
     return (
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_340px]">
-        <div className="sales-fullcalendar-theme sales-fullcalendar-loading h-110" />
-        <div className="space-y-4">
+      <div
+        className={`grid grid-cols-1 grid-rows-[minmax(0,3fr)_minmax(0,2fr)] gap-4 xl:grid-cols-[minmax(0,1fr)_340px] xl:grid-rows-1 ${CALENDAR_HEIGHT_CLASS}`}
+      >
+        <div className="sales-fullcalendar-theme sales-fullcalendar-loading h-full min-h-0" />
+        <div className="min-h-0 overflow-y-auto space-y-4">
           <GoogleUpcomingEvents />
         </div>
       </div>
@@ -84,16 +97,18 @@ export const GoogleCalendar = () => {
   }
 
   return (
-    <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_340px]">
+    <div
+      className={`grid grid-cols-1 grid-rows-[minmax(0,3fr)_minmax(0,2fr)] gap-4 xl:grid-cols-[minmax(0,1fr)_340px] xl:grid-rows-1 ${CALENDAR_HEIGHT_CLASS}`}
+    >
       {/* Calendario principal */}
-      <div className="sales-fullcalendar-theme min-w-0 relative">
+      <div className="sales-fullcalendar-theme min-w-0 h-full min-h-0 relative">
         {/* Selector de vista y botón nuevo evento — flotando sobre el área derecha del header */}
         <div className="absolute top-2 right-2 z-10 flex items-stretch gap-1.5">
           <button
             type="button"
             aria-label="Nuevo evento de Google Calendar"
             onClick={() => setIsFormOpen(true)}
-            className="inline-flex items-center gap-1 rounded-md cursor-pointer border border-[#d1e1f5] dark:border-[#1f3356] bg-[#f8fbff] dark:bg-[#0d1a33] text-[0.68rem] font-bold uppercase text-[#0f172a] dark:text-[#cfe2ff] px-[0.45rem] py-[0.22rem] hover:bg-[#eef5ff] dark:hover:bg-[#10244a] transition-colors"
+            className="inline-flex items-center gap-1 rounded-md cursor-pointer border border-[#d1e1f5] dark:border-zinc-700 bg-[#f8fbff] dark:bg-zinc-800 text-[0.68rem] font-bold uppercase text-[#0f172a] dark:text-zinc-200 px-[0.45rem] py-[0.22rem] hover:bg-[#eef5ff] dark:hover:bg-zinc-700 transition-colors"
           >
             <PlusIcon className="h-3 w-3" aria-hidden="true" />
           </button>
@@ -102,7 +117,7 @@ export const GoogleCalendar = () => {
               <button
                 type="button"
                 aria-label="Seleccionar vista del calendario"
-                className="inline-flex items-center gap-0.5 rounded-md cursor-pointer border border-[#d1e1f5] dark:border-[#1f3356] bg-[#f8fbff] dark:bg-[#0d1a33] text-[0.68rem] font-bold uppercase text-[#0f172a] dark:text-[#cfe2ff] px-[0.45rem] py-[0.22rem] hover:bg-[#eef5ff] dark:hover:bg-[#10244a] transition-colors"
+                className="inline-flex items-center gap-0.5 rounded-md cursor-pointer border border-[#d1e1f5] dark:border-zinc-700 bg-[#f8fbff] dark:bg-zinc-800 text-[0.68rem] font-bold uppercase text-[#0f172a] dark:text-zinc-200 px-[0.45rem] py-[0.22rem] hover:bg-[#eef5ff] dark:hover:bg-zinc-700 transition-colors"
               >
                 {VIEW_OPTIONS.find((v) => v.value === currentView)?.label}
                 <ChevronDownIcon className="h-1.5 w-1.5" aria-hidden="true" />
@@ -153,8 +168,9 @@ export const GoogleCalendar = () => {
           eventTimeFormat={currentView === "timeGridDay" ? DAY_VIEW_TIME_FORMAT : EVENT_TIME_FORMAT}
           slotLabelFormat={DAY_VIEW_TIME_FORMAT}
           displayEventEnd={currentView === "timeGridDay"}
-          dayMaxEventRows={true}
+          dayMaxEventRows={1}
           fixedWeekCount={false}
+          expandRows
           editable={false}
           events={calendarEvents}
           dateClick={handleDateClick}
@@ -163,13 +179,12 @@ export const GoogleCalendar = () => {
             arg.jsEvent.preventDefault();
             setSelectedEventId(arg.event.id);
           }}
-          height="auto"
-          contentHeight="auto"
+          height="100%"
         />
       </div>
 
-      {/* Panel lateral: próximos eventos + detalle del evento seleccionado */}
-      <div className="xl:sticky xl:top-4 self-start">
+      {/* Panel lateral: próximos eventos + detalle del evento seleccionado — scroll interno propio */}
+      <div className="h-full min-h-0 overflow-y-auto">
         <div className="space-y-4">
           <GoogleEventDetails />
           <GoogleUpcomingEvents />

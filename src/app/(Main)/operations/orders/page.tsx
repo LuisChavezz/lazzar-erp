@@ -18,16 +18,12 @@ const jsonLd = {
 
 export default function OperationsOrdersPage() {
   return (
-    <main className="w-full space-y-8" aria-label="Mesa de Control de Pedidos">
+    <main className="w-full" aria-label="Mesa de Control de Pedidos">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <header>
-        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-          Revisa inventario, clasifica stock y programa producción para cada pedido autorizado.
-        </p>
-      </header>
+      <h1 className="sr-only">Pedidos - Mesa de Control</h1>
       <section aria-label="Panel de pedidos">
         <OperationsOrderPanel />
       </section>

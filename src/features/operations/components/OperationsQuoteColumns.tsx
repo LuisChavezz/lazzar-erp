@@ -1,13 +1,15 @@
 "use client";
 
-import { ColumnDef } from "@tanstack/react-table";
+import { ColumnDef, FilterFn } from "@tanstack/react-table";
 import dynamic from "next/dynamic";
 import { useState } from "react";
 import { ActionMenu, ActionMenuItem } from "@/src/components/ActionMenu";
+import { ColumnHeaderFilter, type ColumnFilterOption } from "@/src/components/ColumnHeaderFilter";
 import { ConfirmDialog } from "@/src/components/ConfirmDialog";
 import { DialogHeader } from "@/src/components/DialogHeader";
 import {
   CheckCircleIcon,
+  ChevronRightIcon,
   RejectIcon,
   SyncIcon,
   ViewIcon,
@@ -23,9 +25,7 @@ import {
 import {
   formatQuoteDateTime as formatOperationsQuoteDateTime,
 } from "../../quotes/utils/quoteDetailsFormatters";
-import {
-  getStatusStyles as getOperationsQuoteStatusStyles,
-} from "../../quotes/utils/getStatusStyle";
+import { KANBAN_COLUMNS } from "../../quotes/constants/kanbanColumns";
 import { QuoteDetailsLoadingSkeleton } from "../../quotes/components/QuoteDetailsLoadingSkeleton";
 import { OperationsQuoteStockReviewDialog } from "./OperationsQuoteStockReviewDialog";
 import { useAcceptChangesOperationsQuote } from "../hooks/useAcceptChangesOperationsQuote";
@@ -57,7 +57,30 @@ const operationsQuoteStatusDialogColors: Record<
   4: "rose",
 };
 
-const ActionsCell = ({
+/**
+ * Mismo mapeo estatus → color/label que el tablero Kanban de Cotizaciones
+ * (Ventas) y su listado (`QuoteColumns.tsx`): reutilizarlo evita una segunda
+ * fuente de verdad para los mismos 5 colores en la vista de Mesa de Control.
+ */
+function getOperationsQuoteStatusConfig(estatus: number) {
+  return KANBAN_COLUMNS.find((col) => col.estatus === estatus);
+}
+
+const ESTATUS_FILTER_OPTIONS: ColumnFilterOption[] = [
+  { value: undefined, label: "Todos" },
+  ...KANBAN_COLUMNS.map((col) => ({
+    value: String(col.estatus),
+    label: col.label,
+    dotClassName: col.accentDot,
+  })),
+];
+
+const estatusFilterFn: FilterFn<OperationsQuote> = (row, _columnId, filterValue) => {
+  if (filterValue === undefined) return true;
+  return String(row.original.estatus) === filterValue;
+};
+
+const OperationsQuoteIdCell = ({
   operationsQuote,
 }: {
   operationsQuote: OperationsQuote;
@@ -188,9 +211,34 @@ const ActionsCell = ({
     },
   ];
 
+  const statusConfig = getOperationsQuoteStatusConfig(operationsQuote.estatus);
+
   return (
-    <div className="flex items-center justify-center">
-      <ActionMenu items={items} ariaLabel="Acciones de cotización operativa" />
+    <div className="flex items-center gap-2">
+      <span
+        className={`h-2.5 w-2.5 rounded-full shrink-0 ${statusConfig?.accentDot ?? "bg-slate-400"}`}
+        role="img"
+        aria-label={statusConfig?.label ?? capitalize(operationsQuote.estatus_label)}
+        title={statusConfig?.label ?? capitalize(operationsQuote.estatus_label)}
+      />
+      <ActionMenu
+        items={items}
+        ariaLabel="Acciones de cotización operativa"
+        align="start"
+        trigger={
+          <button
+            type="button"
+            aria-label={`Ver acciones de la cotización #${operationsQuote.id}`}
+            className="group inline-flex items-center gap-1.5 rounded-lg bg-sky-50 dark:bg-sky-500/10 px-2.5 py-1 font-mono font-bold text-sky-700 dark:text-sky-400 hover:bg-sky-100 dark:hover:bg-sky-500/20 transition-colors cursor-pointer"
+          >
+            #{String(operationsQuote.id).padStart(5, "0")}
+            <ChevronRightIcon
+              className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform"
+              aria-hidden="true"
+            />
+          </button>
+        }
+      />
 
       {isViewOpen && (
         <MainDialog
@@ -281,12 +329,17 @@ export const operationsQuoteColumns: ColumnDef<OperationsQuote>[] = [
     accessorFn: (operationsQuote) =>
       `#${String(operationsQuote.id).padStart(5, "0")}`,
     meta: { label: "Cotización" },
-    header: () => <div className="w-full text-center">Cotización</div>,
-    cell: ({ row }) => (
-      <span className="block text-center font-mono text-slate-600 dark:text-slate-300">
-        #{String(row.original.id).padStart(5, "0")}
-      </span>
+    filterFn: estatusFilterFn,
+    header: ({ column }) => (
+      <div className="flex items-center gap-1.5">
+        <span>Cotización</span>
+        <ColumnHeaderFilter column={column} options={ESTATUS_FILTER_OPTIONS} label="estatus" />
+      </div>
     ),
+    // Sin columnas separadas de Estado/Acciones: el punto de color (mismo
+    // mapeo que el tablero Kanban) y el menú completo cuelgan de este mismo
+    // botón, igual que en `QuoteColumns.tsx` (Ventas).
+    cell: ({ row }) => <OperationsQuoteIdCell operationsQuote={row.original} />,
   },
   {
     // `accessorFn` normaliza el NULL a cadena vacía: el filtro global de
@@ -306,23 +359,6 @@ export const operationsQuoteColumns: ColumnDef<OperationsQuote>[] = [
           —
         </span>
       ),
-  },
-  {
-    accessorKey: "estatus_label",
-    meta: { label: "Estado" },
-    header: () => <div className="w-full text-center">Estado</div>,
-    cell: ({ row }) => {
-      const styles = getOperationsQuoteStatusStyles(row.original);
-      return (
-        <div className="flex justify-center">
-          <span
-            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${styles}`}
-          >
-            {capitalize(row.original.estatus_label)}
-          </span>
-        </div>
-      );
-    },
   },
   {
     accessorKey: "cliente_razon_social",
@@ -377,12 +413,5 @@ export const operationsQuoteColumns: ColumnDef<OperationsQuote>[] = [
         {formatCurrency(Number(row.original.gran_total) || 0)}
       </div>
     ),
-  },
-  {
-    id: "actions",
-    meta: { label: "Acciones" },
-    header: () => <div className="text-center">Acciones</div>,
-    size: 90,
-    cell: ({ row }) => <ActionsCell operationsQuote={row.original} />,
   },
 ];

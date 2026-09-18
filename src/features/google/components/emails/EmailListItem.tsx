@@ -63,20 +63,20 @@ export const EmailListItem = memo(function EmailListItem({ message, isSelected, 
       aria-current={isSelected ? true : undefined}
       aria-label={`Correo de ${senderName}: ${message.subject}`}
       className={[
-        "w-full text-left px-4 py-3 flex items-start gap-3",
+        "w-full text-left px-4 py-2.5 flex items-start gap-2.5",
         "border-b border-slate-100 dark:border-slate-800",
         "transition-colors duration-150 cursor-pointer",
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-inset",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-inset",
         "disabled:opacity-50 disabled:cursor-not-allowed",
         isSelected
-          ? "bg-brand-50 dark:bg-brand-700/20"
-          : "hover:bg-slate-50 dark:hover:bg-slate-800/60",
+          ? "bg-sky-50 dark:bg-sky-700/20"
+          : "hover:bg-slate-50 dark:hover:bg-zinc-800/60",
       ].join(" ")}
     >
       {/* Avatar con iniciales */}
       <span
         aria-hidden="true"
-        className={`shrink-0 w-9 h-9 rounded-full ${avatarColor} flex items-center justify-center text-white text-xs font-semibold select-none`}
+        className={`shrink-0 w-8 h-8 rounded-full ${avatarColor} flex items-center justify-center text-white text-xs font-semibold select-none`}
       >
         {initials}
       </span>

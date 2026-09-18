@@ -18,7 +18,7 @@ const Calendar = forwardRef<FullCalendar, CalendarProps>(function Calendar(props
   useCalendarAutoResize({ calendarRef: internalRef, containerRef }); // Auto-resize calendar when container size changes.
 
   return (
-    <div ref={containerRef} className="min-w-0">
+    <div ref={containerRef} className="min-w-0 h-full">
       <FullCalendar
         ref={(instance) => {
           // Keep the internal ref in sync (needed by useCalendarAutoResize),

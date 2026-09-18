@@ -6,6 +6,7 @@ import {
   ReportesIcon,
   ClientesIcon,
   CheckCircleIcon,
+  PedidosIcon,
 } from "@/src/components/Icons";
 
 // ─── Definición de acciones ───────────────────────────────────────────────────
@@ -36,6 +37,30 @@ const ACTIONS = [
     hoverClasses:
       "hover:bg-amber-50 dark:hover:bg-amber-900/10 hover:text-amber-600 dark:hover:text-amber-400 hover:border-amber-200 dark:hover:border-amber-500/20",
     iconHoverClass: "group-hover:text-amber-500",
+  },
+  {
+    // Único acceso restante a /operations/orders desde que se quitó el
+    // ModuleNav (Mesa de Control / Cotizaciones / Pedidos / Clientes) de las
+    // 3 pantallas: sin este enlace, la pantalla quedaría inalcanzable.
+    key: "pedidos-mc",
+    href: "/operations/orders",
+    label: "Pedidos",
+    icon: PedidosIcon,
+    hoverClasses:
+      "hover:bg-indigo-50 dark:hover:bg-indigo-900/10 hover:text-indigo-600 dark:hover:text-indigo-400 hover:border-indigo-200 dark:hover:border-indigo-500/20",
+    iconHoverClass: "group-hover:text-indigo-500",
+  },
+  {
+    // Distinto de "clientes" (abajo): ese apunta al catálogo de Ventas
+    // (/sales/customers); este es la vista propia de Mesa de Control
+    // (/operations/customers), también huérfana tras quitar el ModuleNav.
+    key: "clientes-mc",
+    href: "/operations/customers",
+    label: "Clientes MC",
+    icon: ClientesIcon,
+    hoverClasses:
+      "hover:bg-teal-50 dark:hover:bg-teal-900/10 hover:text-teal-600 dark:hover:text-teal-400 hover:border-teal-200 dark:hover:border-teal-500/20",
+    iconHoverClass: "group-hover:text-teal-500",
   },
   {
     key: "clientes",

@@ -9,14 +9,9 @@ export const metadata: Metadata = {
 
 export default function OperationsCustomersPage() {
   return (
-    <main className="w-full space-y-8">
-      <header>
-        <h1 className="sr-only">Clientes - Mesa de Control</h1>
-        <p className="text-slate-500 dark:text-slate-400 mt-1">
-          Consulta todos los clientes registrados, incluidos los inactivos, desde la Mesa de Control.
-        </p>
-      </header>
-      <section aria-label="Vista de Clientes" className="space-y-6">
+    <main className="w-full">
+      <h1 className="sr-only">Clientes - Mesa de Control</h1>
+      <section aria-label="Vista de Clientes">
         <OperationsCustomerList />
       </section>
     </main>

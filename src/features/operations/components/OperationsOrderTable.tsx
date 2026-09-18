@@ -7,7 +7,6 @@ import {
   buildOperationsOrderColumns,
   type OperationsOrderColumnCallbacks,
 } from './OperationsOrderColumns';
-import { enrichOrdersWithStatus, operationsOrderFilterConfig } from './OperationsOrderFilter';
 
 interface OperationsOrderTableProps extends OperationsOrderColumnCallbacks {
   orders: PedidoListItem[];
@@ -33,15 +32,17 @@ export function OperationsOrderTable({
     [onConfirmDate, onViewDetail, onEditMesaControl, onProgramar],
   );
 
-  const enrichedOrders = useMemo(() => enrichOrdersWithStatus(orders), [orders]);
-
   return (
     <DataTable
       columns={columns}
-      data={enrichedOrders}
+      data={orders}
       baseDataCount={orders.length}
       searchPlaceholder="Buscar por folio, cliente u OC..."
-      filterConfig={operationsOrderFilterConfig}
+      framed
+      searchAlwaysExpanded
+      defaultPageSize={20}
+      density="compact"
+      fillHeight
       onRefetch={onRefetch}
       isRefetching={isRefetching}
       isLoadingOverlay={isRefetching}
