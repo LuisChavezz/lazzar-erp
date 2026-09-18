@@ -126,6 +126,7 @@ import {
   Container,
   Wallet,
   Coins,
+  Scale,
 } from "lucide-react";
 
 // ─── Tipos comunes ────────────────────────────────────────────────────────────
@@ -248,6 +249,14 @@ export const PlanCuentasIcon = (props: LucideProps) => <ListTree {...props} />;
  * no el dinero en sí.
  */
 export const CentrosCostoIcon = (props: LucideProps) => <Coins {...props} />;
+/**
+ * Conciliación bancaria — enfrentar el estado de cuenta contra los libros hasta
+ * que los dos lados pesen lo mismo. Glifo PROPIO (`Scale`, una balanza) y no
+ * `WalletIcon` ni `BancosIcon`, que ya son la cuenta y la institución: lo que
+ * distingue a la conciliación no es el dinero, sino el equilibrio entre dos
+ * cifras.
+ */
+export const ConciliacionIcon = (props: LucideProps) => <Scale {...props} />;
 export const ExistenciasIcon = (props: LucideProps) => <ClipboardList {...props} />;
 export const ListaPreciosIcon = (props: LucideProps) => <DollarSign {...props} />;
 export const ClientesIcon = (props: LucideProps) => <Users {...props} />;

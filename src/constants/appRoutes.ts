@@ -40,6 +40,7 @@ import {
   ContabilidadIcon,
   PlanCuentasIcon,
   CentrosCostoIcon,
+  ConciliacionIcon,
 } from "../components/Icons";
 
 export interface AppRouteItem {
@@ -455,6 +456,18 @@ export const appRouteGroups: AppRouteGroup[] = [
         path: "/finance/credit-notes",
         icon: NotaCreditoIcon,
         description: "Créditos sobre facturas de cliente, aplicados a cuentas por cobrar.",
+        permission: "R-CONTABILIDAD",
+      },
+      {
+        // Junto a Cuentas Bancarias porque se concilia UNA cuenta contra su
+        // estado de cuenta. Sin código de sección propio: la cubre el
+        // `R-CONTABILIDAD` del prefijo `/finance`.
+        key: "finance-bank-reconciliations",
+        label: "Conciliaciones",
+        path: "/finance/bank-reconciliations",
+        icon: ConciliacionIcon,
+        description:
+          "Cuadre del estado de cuenta contra los libros, por cuenta y periodo.",
         permission: "R-CONTABILIDAD",
       },
       {
