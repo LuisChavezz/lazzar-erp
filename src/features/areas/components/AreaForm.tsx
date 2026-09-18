@@ -21,6 +21,7 @@ export default function AreaForm({ onSuccess, areaToEdit }: AreaFormProps) {
     isPending,
     departments,
     isLoadingDepartments,
+    isErrorDepartments,
     getError,
     clearFieldErrors,
     validateField,
@@ -92,7 +93,11 @@ export default function AreaForm({ onSuccess, areaToEdit }: AreaFormProps) {
                       error={getError("departamento")}
                     >
                       <option value="0" disabled>
-                        {isLoadingDepartments ? "Cargando departamentos..." : "Seleccionar..."}
+                        {isLoadingDepartments
+                          ? "Cargando departamentos..."
+                          : isErrorDepartments
+                            ? "No se pudo cargar el catálogo de departamentos"
+                            : "Seleccionar..."}
                       </option>
                       {departments.map((department) => (
                         <option
@@ -106,6 +111,13 @@ export default function AreaForm({ onSuccess, areaToEdit }: AreaFormProps) {
                     </FormSelect>
                   )}
                 </form.Field>
+                {/* Un catálogo caído NO se pinta como catálogo vacío (mismo criterio que `ContractForm`). */}
+                {isErrorDepartments && (
+                  <p className="mt-1 ml-1 text-[11px] text-red-600 dark:text-red-400">
+                    No se pudo cargar el catálogo de departamentos. Revisa tu conexión e intenta
+                    abrir el diálogo de nuevo.
+                  </p>
+                )}
               </div>
 
               <div className="group/field">

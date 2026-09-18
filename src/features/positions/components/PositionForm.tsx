@@ -21,6 +21,7 @@ export default function PositionForm({ onSuccess, positionToEdit }: PositionForm
     isPending,
     areas,
     isLoadingAreas,
+    isErrorAreas,
     getError,
     clearFieldErrors,
     validateField,
@@ -91,8 +92,18 @@ export default function PositionForm({ onSuccess, positionToEdit }: PositionForm
                       }}
                       error={getError("area")}
                     >
+                      {/*
+                        `area` es opcional y la opción 0 ("Sin área asignada")
+                        es una elección válida. Por eso, si el catálogo NO
+                        cargó, su texto cambia: "Sin área" leído ahí haría
+                        pasar una falla de carga por una elección legítima.
+                      */}
                       <option value="0">
-                        {isLoadingAreas ? "Cargando áreas..." : "Sin área asignada"}
+                        {isLoadingAreas
+                          ? "Cargando áreas..."
+                          : isErrorAreas
+                            ? "No se pudo cargar el catálogo de áreas"
+                            : "Sin área asignada"}
                       </option>
                       {areas.map((area) => (
                         <option
@@ -106,6 +117,13 @@ export default function PositionForm({ onSuccess, positionToEdit }: PositionForm
                     </FormSelect>
                   )}
                 </form.Field>
+                {/* Un catálogo caído NO se pinta como catálogo vacío (mismo criterio que `ContractForm`). */}
+                {isErrorAreas && (
+                  <p className="mt-1 ml-1 text-[11px] text-red-600 dark:text-red-400">
+                    No se pudo cargar el catálogo de áreas. Revisa tu conexión e intenta abrir el
+                    diálogo de nuevo.
+                  </p>
+                )}
               </div>
 
               <div className="group/field">

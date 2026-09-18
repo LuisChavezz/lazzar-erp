@@ -22,7 +22,11 @@ export function useAreaForm({ onSuccess, areaToEdit }: UseAreaFormParams) {
   const isEditing = Boolean(areaToEdit?.id);
 
   // Catálogo de departamentos que alimenta el select del FK.
-  const { departments, isLoading: isLoadingDepartments } = useDepartments();
+  const {
+    departments,
+    isLoading: isLoadingDepartments,
+    isError: isErrorDepartments,
+  } = useDepartments();
 
   // Conserva referencia al form para scroll superior suave al limpiar.
   const formRef = useRef<HTMLFormElement | null>(null);
@@ -214,6 +218,7 @@ export function useAreaForm({ onSuccess, areaToEdit }: UseAreaFormParams) {
     isEditing,
     departments,
     isLoadingDepartments,
+    isErrorDepartments,
     getError,
     clearFieldErrors,
     validateField,
