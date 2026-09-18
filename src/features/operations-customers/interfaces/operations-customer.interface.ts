@@ -11,7 +11,7 @@ import { Customer } from "@/src/features/customers/interfaces/customer.interface
 export interface OperationsCustomer
   extends Pick<
     Customer,
-    "nombre" | "razon_social" | "rfc" | "telefono" | "ciudad" | "estado" | "activo"
+    "nombre" | "razon_social" | "rfc" | "telefono" | "correo" | "ciudad" | "estado" | "activo"
   > {
   id: number;
   celular: string | null;

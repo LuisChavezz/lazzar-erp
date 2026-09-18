@@ -125,29 +125,22 @@ export function OperationsOrderPanel() {
   }
 
   return (
-    // Altura acotada SOLO desde `md:` (mismo punto donde `KpiGrid` deja de
-    // apilar sus 4 tarjetas en una columna): en mobile, con las 4 tarjetas en
-    // una sola columna, forzar una altura fija dejaría la tabla en 0px de
-    // alto (invisible) en vez de scroll de página — ahí es preferible el
-    // scroll natural de siempre. Desde `md:` los KPIs pasan a 2+ columnas y
-    // sobra espacio de sobra para que la tabla llene el resto sin scrollear
-    // la página (`flex-1 min-h-0` + `fillHeight` en `DataTable`).
-    <div className="md:h-[calc(100dvh-128px)] md:min-h-[420px] flex flex-col gap-6">
-      <div className="shrink-0">
-        <KpiGrid items={kpis} />
-      </div>
+    // Altura NATURAL a propósito (sin `fillHeight`/calc de viewport): con las
+    // 4 tarjetas KPI arriba, forzar la tabla a llenar el resto de la ventana
+    // se veía extraño — mejor dejar que la tabla use su tamaño por defecto y
+    // la página scrollee normalmente si hace falta.
+    <div className="flex flex-col gap-6">
+      <KpiGrid items={kpis} />
 
-      <div className="md:flex-1 md:min-h-0">
-        <OperationsOrderTable
-          orders={orders}
-          onConfirmDate={setSelectedOrderForDate}
-          onViewDetail={handleViewDetail}
-          onEditMesaControl={handleEditMesaControl}
-          onProgramar={setSelectedOrderForSchedule}
-          onRefetch={handleRefetch}
-          isRefetching={isRefetching}
-        />
-      </div>
+      <OperationsOrderTable
+        orders={orders}
+        onConfirmDate={setSelectedOrderForDate}
+        onViewDetail={handleViewDetail}
+        onEditMesaControl={handleEditMesaControl}
+        onProgramar={setSelectedOrderForSchedule}
+        onRefetch={handleRefetch}
+        isRefetching={isRefetching}
+      />
 
       {selectedOrderForDate && (
         <OrderConfirmDateDialog

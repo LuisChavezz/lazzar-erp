@@ -13,8 +13,8 @@ import {
   EyeIcon,
   TasksIcon,
 } from "@/src/components/Icons";
+import { capitalize } from "@/src/utils/capitalize";
 import { formatMoneyValueOrDash } from "@/src/utils/formatCurrency";
-import { parseLocalDate } from "@/src/utils/formatDate";
 import type { PedidoListItem } from "@/src/features/orders/interfaces/order.interface";
 import {
   canEditPedidoMesaControl,
@@ -147,61 +147,76 @@ export function buildOperationsOrderColumns(
       cell: ({ row }) => <FolioCell order={row.original} {...callbacks} />,
     },
     {
-      id: "cliente",
+      id: "razon_social",
       accessorKey: "cliente_razon_social",
-      header: "Cliente",
-      cell: ({ row }) => {
-        const order = row.original;
-        return (
-          <div>
-            <p
-              className="text-sm font-medium text-slate-800 dark:text-white truncate max-w-55"
-              title={order.cliente_razon_social ?? undefined}
-            >
-              {order.cliente_razon_social || "—"}
-            </p>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              {order.cliente_nombre || "—"}
-            </p>
-          </div>
-        );
-      },
+      header: () => <div className="w-full text-center">Razón social</div>,
+      cell: ({ row }) => (
+        <span className="block text-center text-sm text-slate-600 dark:text-slate-300 truncate max-w-55">
+          {row.original.cliente_razon_social ? capitalize(row.original.cliente_razon_social) : "—"}
+        </span>
+      ),
     },
     {
-      id: "gran_total",
-      accessorKey: "gran_total",
-      header: "Total",
-      cell: ({ row }) => (
-        <span className="tabular-nums text-sm font-semibold text-slate-700 dark:text-slate-200">
-          {formatMoneyValueOrDash(row.original.gran_total)}
-        </span>
+      // PLACEHOLDER a propósito: `PedidoListItem` (listado de
+      // `GET /ventas/pedidos/`) no expone piezas — fija en "—" hasta que el
+      // backend la agregue, mismo patrón que "Última Compra" en
+      // `CustomerColumns.tsx`.
+      id: "piezas",
+      header: () => <div className="w-full text-center">Piezas</div>,
+      enableSorting: false,
+      cell: () => (
+        <span className="block text-center text-slate-400 dark:text-slate-600">—</span>
+      ),
+    },
+    {
+      // PLACEHOLDER: `PedidoListItem` no expone vendedor.
+      id: "vendedor",
+      header: () => <div className="w-full text-center">Vendedor</div>,
+      enableSorting: false,
+      cell: () => (
+        <span className="block text-center text-slate-400 dark:text-slate-600">—</span>
       ),
     },
     {
       id: "created_at",
       accessorKey: "created_at",
-      header: "Fecha",
+      header: () => <div className="w-full text-center">Fecha</div>,
       cell: ({ row }) => {
         const createdAt = row.original.created_at;
         return (
-          <span className="text-sm text-slate-500 dark:text-slate-400 whitespace-nowrap">
+          <span className="block text-center text-sm text-slate-500 dark:text-slate-400 whitespace-nowrap">
             {createdAt ? format(new Date(createdAt), "d MMM yyyy", { locale: es }) : "—"}
           </span>
         );
       },
     },
     {
-      id: "fecha_confirmacion",
-      accessorFn: (order) => order.fecha_confirmacion ?? "",
-      header: "Fecha confirmada",
-      cell: ({ row }) => {
-        const parsedDate = parseLocalDate(row.original.fecha_confirmacion);
-        return (
-          <span className="text-sm text-slate-500 dark:text-slate-400 whitespace-nowrap">
-            {parsedDate ? format(parsedDate, "d MMM yyyy", { locale: es }) : "—"}
-          </span>
-        );
-      },
+      // PLACEHOLDER: `PedidoListItem` no expone clasificación.
+      id: "clasificacion",
+      header: () => <div className="w-full text-center">Clasificación</div>,
+      enableSorting: false,
+      cell: () => (
+        <span className="block text-center text-slate-400 dark:text-slate-600">—</span>
+      ),
+    },
+    {
+      id: "importe_sin_iva",
+      accessorKey: "subtotal",
+      header: () => <div className="w-full text-center">Importe sin IVA</div>,
+      cell: ({ row }) => (
+        <span className="block text-center tabular-nums text-sm font-semibold text-slate-700 dark:text-slate-200">
+          {formatMoneyValueOrDash(row.original.subtotal)}
+        </span>
+      ),
+    },
+    {
+      // PLACEHOLDER: `PedidoListItem` no expone código postal.
+      id: "cp",
+      header: () => <div className="w-full text-center">C.P.</div>,
+      enableSorting: false,
+      cell: () => (
+        <span className="block text-center text-slate-400 dark:text-slate-600">—</span>
+      ),
     },
   ];
 }

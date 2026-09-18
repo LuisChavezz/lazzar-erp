@@ -342,25 +342,6 @@ export const operationsQuoteColumns: ColumnDef<OperationsQuote>[] = [
     cell: ({ row }) => <OperationsQuoteIdCell operationsQuote={row.original} />,
   },
   {
-    // `accessorFn` normaliza el NULL a cadena vacía: el filtro global de
-    // `DataTable` hace `String(valor).includes(...)`, así que un `null` crudo
-    // haría que buscar "null" cazara todas las cotizaciones sin pedido.
-    id: "pedido_folio",
-    accessorFn: (operationsQuote) => operationsQuote.pedido_folio ?? "",
-    meta: { label: "Pedido" },
-    header: () => <div className="w-full text-center">Pedido</div>,
-    cell: ({ row }) =>
-      row.original.pedido_folio ? (
-        <span className="block text-center font-mono text-slate-600 dark:text-slate-300">
-          {row.original.pedido_folio}
-        </span>
-      ) : (
-        <span className="block text-center text-slate-400 dark:text-slate-500">
-          —
-        </span>
-      ),
-  },
-  {
     accessorKey: "cliente_razon_social",
     meta: { label: "Razón social" },
     header: () => <div className="w-full text-center">Razón social</div>,
@@ -395,6 +376,18 @@ export const operationsQuoteColumns: ColumnDef<OperationsQuote>[] = [
     ),
   },
   {
+    // PLACEHOLDER a propósito: `OperationsQuote` todavía no expone
+    // clasificación. Fija en "—" en todas las filas hasta que el backend la
+    // agregue — mismo patrón que "Última Compra" en `CustomerColumns.tsx`.
+    id: "clasificacion",
+    meta: { label: "Clasificación" },
+    header: () => <div className="w-full text-center">Clasificación</div>,
+    enableSorting: false,
+    cell: () => (
+      <span className="block text-center text-slate-400 dark:text-slate-600">—</span>
+    ),
+  },
+  {
     accessorKey: "importe_sin_iva",
     meta: { label: "Importe sin IVA" },
     header: () => <div className="w-full text-center">Importe sin IVA</div>,
@@ -405,13 +398,13 @@ export const operationsQuoteColumns: ColumnDef<OperationsQuote>[] = [
     ),
   },
   {
-    accessorKey: "gran_total",
-    meta: { label: "Total" },
-    header: () => <div className="w-full text-center">Total</div>,
+    accessorKey: "codigo_postal",
+    meta: { label: "C.P." },
+    header: () => <div className="w-full text-center">C.P.</div>,
     cell: ({ row }) => (
-      <div className="text-center font-semibold text-slate-800 dark:text-slate-100">
-        {formatCurrency(Number(row.original.gran_total) || 0)}
-      </div>
+      <span className="block text-center text-slate-500 dark:text-slate-400">
+        {row.original.codigo_postal || "—"}
+      </span>
     ),
   },
 ];

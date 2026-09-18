@@ -29,7 +29,12 @@ export const OperationsQuoteList = () => {
     isAuthorizingOperationsQuote || isRejectingOperationsQuote;
 
   return (
-    <div className="min-h-165">
+    // Altura acotada a la ventana (mismo cálculo que el resto de Mesa de
+    // Control: 128px = header + padding inferior del `<main>` scrolleable) +
+    // `fillHeight` en `DataTable` para que la tabla scrollee INTERNAMENTE en
+    // vez de empujar la página — esta pantalla no tiene tarjetas KPI arriba,
+    // así que no hace falta acotar solo desde `md:`.
+    <div className="h-[calc(100dvh-128px)] min-h-[420px]">
       <DataTable
         columns={operationsQuoteColumns}
         data={operationsQuotes}
@@ -39,6 +44,7 @@ export const OperationsQuoteList = () => {
         searchAlwaysExpanded
         defaultPageSize={20}
         density="compact"
+        fillHeight
         onRefetch={refetch}
         isRefetching={isFetching}
         isLoadingOverlay={isUpdatingOperationsQuoteStatus}
