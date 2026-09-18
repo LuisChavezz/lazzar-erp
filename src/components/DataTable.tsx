@@ -160,6 +160,18 @@ interface DataTableProps<TData, TValue> {
     /** Deshabilita los controles del pager durante la transición de página. */
     isFetching?: boolean;
   };
+  /**
+   * Por defecto (`false`) el área de filas tiene una altura fija (`h-120`,
+   * igual que siempre). En `true` la tabla se estira para llenar la altura de
+   * SU CONTENEDOR (`h-full` en vez de `h-120`) y el resto de secciones
+   * (toolbar, chips de filtro, paginador) se vuelven `shrink-0` — para cuando
+   * el consumidor ya envolvió `DataTable` en un contenedor de altura acotada
+   * (p. ej. `h-[calc(100dvh-Xpx)]`) y quiere que SOLO el cuerpo de la tabla
+   * absorba el espacio restante, en vez de que la página crezca con el total
+   * de filas. Requiere que el padre inmediato pueda darle una altura
+   * definida (flex/grid con `min-h-0`, o una altura explícita).
+   */
+  fillHeight?: boolean;
 }
 
 export function DataTable<TData, TValue>({
@@ -192,6 +204,7 @@ export function DataTable<TData, TValue>({
   defaultPageSize = 10,
   density = "comfortable",
   framed = false,
+  fillHeight = false,
 }: DataTableProps<TData, TValue>) {
   const searchInputId = useId();
   const columnsMenuId = `${searchInputId}-columns-menu`;
@@ -594,16 +607,16 @@ export function DataTable<TData, TValue>({
   return (
     <div
       className={
-        framed
+        (framed
           ? "rounded-2xl border border-slate-200 dark:border-white/20 shadow-sm bg-white dark:bg-black overflow-hidden"
-          : ""
+          : "") + (fillHeight ? " h-full flex flex-col" : "")
       }
     >
       <div
         className={
           "flex flex-col lg:flex-row lg:items-center " +
           (title || searchAlwaysExpanded ? "justify-between" : "justify-end") +
-          " gap-4 " +
+          " gap-4 shrink-0 " +
           (framed
             ? "p-4 border-b border-slate-100 dark:border-slate-800"
             : "mb-4")
@@ -812,7 +825,7 @@ export function DataTable<TData, TValue>({
       {/* ── Separator + Filters Container ───────────────────────────────────── */}
       {!isServerPaginated && filterConfig && filterConfig.length > 0 && (
         <div
-          className="transition-all duration-300 ease-in-out"
+          className="transition-all duration-300 ease-in-out shrink-0"
           style={{
             maxHeight: isFilterExpanded ? `${filterContentHeight}px` : "0px",
             opacity: isFilterExpanded ? 1 : 0,
@@ -996,6 +1009,7 @@ export function DataTable<TData, TValue>({
           incondicional; aquí solo cambia el ÁREA DE DATOS según el estado de la
           consulta del llamador, para que su `actionButton` siga visible durante
           la carga y el error. El estado VACÍO se maneja dentro del `<tbody>`. */}
+      <div className={fillHeight ? "flex-1 min-h-0 flex flex-col" : ""}>
       {isError ? (
         <div className={framed ? "p-4" : ""}>
           {onErrorRetry ? (
@@ -1029,16 +1043,21 @@ export function DataTable<TData, TValue>({
          exterior, así que aquí solo queda el fondo para el blur del overlay. */
       <div
         className={
-          framed
+          (framed
             ? "relative w-full bg-white dark:bg-black"
-            : "relative w-full rounded-2xl border border-slate-200 dark:border-white/20 shadow-sm bg-white dark:bg-black"
+            : "relative w-full rounded-2xl border border-slate-200 dark:border-white/20 shadow-sm bg-white dark:bg-black") +
+          (fillHeight ? " h-full flex flex-col" : "")
         }
       >
           <div
-            className={`overflow-x-auto max-w-full bg-white dark:bg-black transition-all ${
+            className={`overflow-x-auto overflow-y-auto max-w-full bg-white dark:bg-black transition-all ${
               framed ? "" : "rounded-2xl"
             } ${
-              visibleRows.length > 0 || isLoadingOverlay ? "h-120" : ""
+              fillHeight
+                ? "flex-1 min-h-0"
+                : visibleRows.length > 0 || isLoadingOverlay
+                ? "h-120"
+                : ""
             } ${
               isLoadingOverlay ? "blur-sm pointer-events-none select-none" : ""
             }`}
@@ -1228,11 +1247,12 @@ export function DataTable<TData, TValue>({
           )}
         </div>
       )}
+      </div>
 
       {showPager && !isLoading && !isError && (
         <div
           className={
-            "flex flex-col sm:flex-row items-center justify-between gap-4 " +
+            "flex flex-col sm:flex-row items-center justify-between gap-4 shrink-0 " +
             (framed ? "p-4 border-t border-slate-100 dark:border-slate-800" : "mt-6")
           }
         >

@@ -1,21 +1,37 @@
-'use client';
+"use client";
 
-import { type ColumnDef } from '@tanstack/react-table';
-import type { PedidoListItem } from '@/src/features/orders/interfaces/order.interface';
+import { type ColumnDef, type FilterFn } from "@tanstack/react-table";
+import { format } from "date-fns";
+import { es } from "date-fns/locale";
+import { ActionMenu, type ActionMenuItem } from "@/src/components/ActionMenu";
+import { ColumnHeaderFilter, type ColumnFilterOption } from "@/src/components/ColumnHeaderFilter";
 import {
-  createOrderColumns,
-  isOrderConfirmed,
-  ORDER_STATUS_FILTER_FIELD,
-} from '@/src/features/orders/components/SharedOrderColumns';
+  CalendarDaysIcon,
+  CheckCircleIcon,
+  ChevronRightIcon,
+  EditIcon,
+  EyeIcon,
+  TasksIcon,
+} from "@/src/components/Icons";
+import { formatMoneyValueOrDash } from "@/src/utils/formatCurrency";
+import { parseLocalDate } from "@/src/utils/formatDate";
+import type { PedidoListItem } from "@/src/features/orders/interfaces/order.interface";
+import {
+  canEditPedidoMesaControl,
+  PEDIDO_ESTATUS,
+} from "@/src/features/orders/constants/pedidoStatus";
+import { isOrderConfirmed } from "@/src/features/orders/components/SharedOrderColumns";
 
-// Las columnas de pedidos viven en `orders/components/SharedOrderColumns.tsx`,
-// compartidas con Operaciones de Almacén y Compras. Mesa de Control es el único
-// módulo que pasa `onConfirmDate`, `onEditMesaControl` y `onProgramar`, así que es
-// el único con las acciones de confirmar la fecha, editar y programar el pedido en
-// el menú de la fila.
-export { isOrderConfirmed, ORDER_STATUS_FILTER_FIELD };
+export { isOrderConfirmed };
 
-// Callbacks que el componente padre inyecta para acciones del flujo.
+/**
+ * Columnas de Pedidos en Mesa de Control. NO reusa `createOrderColumns` de
+ * `SharedOrderColumns.tsx` a propósito: ese archivo sigue sirviendo a Almacén
+ * y Compras sin cambios (columnas Estado/Acciones separadas). Aquí, siguiendo
+ * el mismo patrón que `SalesOrderColumns.tsx`, el folio funciona como trigger
+ * del menú completo de acciones y lleva el punto de color de confirmación —
+ * sin columnas aparte de "Estado"/"Acciones".
+ */
 export interface OperationsOrderColumnCallbacks {
   onConfirmDate: (order: PedidoListItem) => void;
   onViewDetail: (order: PedidoListItem) => void;
@@ -23,9 +39,169 @@ export interface OperationsOrderColumnCallbacks {
   onProgramar: (order: PedidoListItem) => void;
 }
 
-// Fábrica de columnas para la tabla de la Mesa de Control de Pedidos.
+const CONFIRMATION_FILTER_OPTIONS: ColumnFilterOption[] = [
+  { value: undefined, label: "Todos" },
+  { value: "por_confirmar", label: "Por confirmar", dotClassName: "bg-amber-500" },
+  { value: "confirmado", label: "Confirmado", dotClassName: "bg-cyan-500" },
+];
+
+const confirmationFilterFn: FilterFn<PedidoListItem> = (row, _columnId, filterValue) => {
+  if (!filterValue) return true;
+  const confirmed = isOrderConfirmed(row.original);
+  return filterValue === "confirmado" ? confirmed : !confirmed;
+};
+
+/** Igual que en `SalesOrderColumns.tsx`: varios pedidos traen "-" como OC (placeholder del backend, no una OC real). */
+function hasMeaningfulOc(oc: string | null): oc is string {
+  return Boolean(oc && oc.replace(/-/g, "").trim().length > 0);
+}
+
+const FolioCell = ({
+  order,
+  onConfirmDate,
+  onViewDetail,
+  onEditMesaControl,
+  onProgramar,
+}: {
+  order: PedidoListItem;
+} & OperationsOrderColumnCallbacks) => {
+  const confirmed = isOrderConfirmed(order);
+
+  const items: ActionMenuItem[] = [
+    { label: "Ver detalle", icon: EyeIcon, onSelect: () => onViewDetail(order) },
+    confirmed
+      ? { label: "Fecha confirmada", icon: CheckCircleIcon, disabled: true }
+      : { label: "Confirmar fecha", icon: TasksIcon, onSelect: () => onConfirmDate(order) },
+    {
+      label: "Editar",
+      icon: EditIcon,
+      onSelect: () => onEditMesaControl(order),
+      permission: "E-MESACONTROL-PEDIDOS",
+      visible: canEditPedidoMesaControl(order.estatus),
+    },
+    {
+      label: "Programar",
+      icon: CalendarDaysIcon,
+      onSelect: () => onProgramar(order),
+      permission: "E-MESACONTROL-PEDIDOS",
+      visible: order.estatus !== PEDIDO_ESTATUS.CANCELADO,
+    },
+  ];
+
+  return (
+    <div className="flex items-center gap-2 flex-wrap">
+      <span
+        className={`h-2.5 w-2.5 rounded-full shrink-0 ${confirmed ? "bg-cyan-500" : "bg-amber-500"}`}
+        role="img"
+        aria-label={confirmed ? "Confirmado" : "Por confirmar"}
+        title={confirmed ? "Confirmado" : "Por confirmar"}
+      />
+      <ActionMenu
+        items={items}
+        ariaLabel={`Acciones del pedido ${order.folio}`}
+        align="start"
+        trigger={
+          <button
+            type="button"
+            aria-label={`Ver acciones del pedido ${order.folio}`}
+            className="group inline-flex items-center gap-1 font-mono text-[13px] font-bold text-slate-800 dark:text-white hover:text-sky-600 dark:hover:text-sky-400 hover:underline transition-colors cursor-pointer"
+          >
+            {order.folio || "—"}
+            <ChevronRightIcon
+              className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500 group-hover:text-sky-500 dark:group-hover:text-sky-400 group-hover:translate-x-0.5 transition-all"
+              aria-hidden="true"
+            />
+          </button>
+        }
+      />
+      {hasMeaningfulOc(order.oc) && (
+        <span
+          className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 dark:bg-white/10 text-slate-500 dark:text-slate-400 font-mono"
+          title={`Orden de compra: ${order.oc}`}
+        >
+          OC {order.oc}
+        </span>
+      )}
+    </div>
+  );
+};
+
 export function buildOperationsOrderColumns(
-  callbacks: OperationsOrderColumnCallbacks,
+  callbacks: OperationsOrderColumnCallbacks
 ): ColumnDef<PedidoListItem, unknown>[] {
-  return createOrderColumns(callbacks);
+  return [
+    {
+      id: "folio",
+      accessorKey: "folio",
+      filterFn: confirmationFilterFn,
+      header: ({ column }) => (
+        <div className="flex items-center gap-1.5">
+          <span>Folio</span>
+          <ColumnHeaderFilter
+            column={column}
+            options={CONFIRMATION_FILTER_OPTIONS}
+            label="estado de confirmación"
+          />
+        </div>
+      ),
+      cell: ({ row }) => <FolioCell order={row.original} {...callbacks} />,
+    },
+    {
+      id: "cliente",
+      accessorKey: "cliente_razon_social",
+      header: "Cliente",
+      cell: ({ row }) => {
+        const order = row.original;
+        return (
+          <div>
+            <p
+              className="text-sm font-medium text-slate-800 dark:text-white truncate max-w-55"
+              title={order.cliente_razon_social ?? undefined}
+            >
+              {order.cliente_razon_social || "—"}
+            </p>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              {order.cliente_nombre || "—"}
+            </p>
+          </div>
+        );
+      },
+    },
+    {
+      id: "gran_total",
+      accessorKey: "gran_total",
+      header: "Total",
+      cell: ({ row }) => (
+        <span className="tabular-nums text-sm font-semibold text-slate-700 dark:text-slate-200">
+          {formatMoneyValueOrDash(row.original.gran_total)}
+        </span>
+      ),
+    },
+    {
+      id: "created_at",
+      accessorKey: "created_at",
+      header: "Fecha",
+      cell: ({ row }) => {
+        const createdAt = row.original.created_at;
+        return (
+          <span className="text-sm text-slate-500 dark:text-slate-400 whitespace-nowrap">
+            {createdAt ? format(new Date(createdAt), "d MMM yyyy", { locale: es }) : "—"}
+          </span>
+        );
+      },
+    },
+    {
+      id: "fecha_confirmacion",
+      accessorFn: (order) => order.fecha_confirmacion ?? "",
+      header: "Fecha confirmada",
+      cell: ({ row }) => {
+        const parsedDate = parseLocalDate(row.original.fecha_confirmacion);
+        return (
+          <span className="text-sm text-slate-500 dark:text-slate-400 whitespace-nowrap">
+            {parsedDate ? format(parsedDate, "d MMM yyyy", { locale: es }) : "—"}
+          </span>
+        );
+      },
+    },
+  ];
 }

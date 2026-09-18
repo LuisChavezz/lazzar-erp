@@ -19,6 +19,10 @@ export const OperationsCustomerList = () => {
       columns={operationsCustomerColumns}
       data={customers}
       searchPlaceholder="Buscar por nombre, razón social, RFC o contacto..."
+      framed
+      searchAlwaysExpanded
+      defaultPageSize={20}
+      density="compact"
       onRefetch={refetch}
       isRefetching={isFetching}
       isLoading={isLoading}

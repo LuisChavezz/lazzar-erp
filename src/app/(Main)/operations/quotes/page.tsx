@@ -16,18 +16,13 @@ const jsonLd = { // JSON-LD para SEO
 
 export default function OperationsOrdersPage() {
   return (
-    <main className="w-full space-y-8" aria-label="Mesa de Control de Cotizaciones">
+    <main className="w-full" aria-label="Mesa de Control de Cotizaciones">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <header>
-        <h1 className="sr-only">Cotizaciones - Mesa de Control</h1>
-        <p className="text-slate-500 dark:text-slate-400 mt-1" aria-hidden="false">
-          Supervisa y administra todas las cotizaciones desde la Mesa de Control.
-        </p>
-      </header>
-      <section aria-label="Vista de Cotizaciones" className="space-y-6">
+      <h1 className="sr-only">Cotizaciones - Mesa de Control</h1>
+      <section aria-label="Vista de Cotizaciones">
         <OperationsQuoteList />
       </section>
     </main>
