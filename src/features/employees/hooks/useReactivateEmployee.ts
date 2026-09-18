@@ -1,6 +1,7 @@
+import { AxiosError } from "axios";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
-import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
+import { firstDrfFieldMessage } from "@/src/utils/firstDrfFieldMessage";
 import { reactivateEmployee } from "../services/actions";
 import { Employee } from "../interfaces/employee.interface";
 
@@ -38,7 +39,15 @@ export const useReactivateEmployee = () => {
         queryClient.setQueryData(["employees"], context.previousEmployees);
       }
       console.error(err);
-      toast.error(extractErrorMessage(err, "Error al reactivar el empleado"));
+      // Solo un 400 trae un motivo que mostrar; un 5xx o un fallo de red cae
+      // al texto en español (ver `useToggleCostCenterActivo`).
+      const drfMessage =
+        err instanceof AxiosError && err.response?.status === 400
+          ? firstDrfFieldMessage(err)
+          : undefined;
+      toast.error(
+        drfMessage ?? "No se pudo reactivar el empleado. Intenta de nuevo.",
+      );
     },
     onSettled: () => queryClient.invalidateQueries({ queryKey: ["employees"] }),
     onSuccess: () => {

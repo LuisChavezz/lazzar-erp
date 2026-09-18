@@ -1,6 +1,6 @@
+import { AxiosError } from "axios";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
-import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { firstDrfFieldMessage } from "@/src/utils/firstDrfFieldMessage";
 import { deleteAvance } from "../services/actions";
 
@@ -26,10 +26,13 @@ export const useDeleteAvance = (obId: number) => {
       toast.success("Avance eliminado correctamente");
     },
     onError: (error) => {
-      toast.error(
-        firstDrfFieldMessage(error) ??
-          extractErrorMessage(error, "No se pudo eliminar el avance")
-      );
+      // Solo un 400 trae un motivo que mostrar; un 5xx o un fallo de red cae
+      // al texto en español (ver `useToggleCostCenterActivo`).
+      const drfMessage =
+        error instanceof AxiosError && error.response?.status === 400
+          ? firstDrfFieldMessage(error)
+          : undefined;
+      toast.error(drfMessage ?? "No se pudo eliminar el avance. Intenta de nuevo.");
     },
   });
 };

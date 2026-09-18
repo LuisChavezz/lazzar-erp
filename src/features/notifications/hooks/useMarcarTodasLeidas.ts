@@ -1,6 +1,6 @@
+import { AxiosError } from "axios";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
-import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { firstDrfFieldMessage } from "@/src/utils/firstDrfFieldMessage";
 import { marcarTodasLeidas } from "../services/actions";
 import type { Notificacion } from "../interfaces/notification.interface";
@@ -48,9 +48,14 @@ export const useMarcarTodasLeidas = () => {
       if (context?.previous) {
         queryClient.setQueryData(NOTIFICACIONES_QUERY_KEY, context.previous);
       }
+      // Solo un 400 trae un motivo que mostrar; un 5xx o un fallo de red cae
+      // al texto en español (ver `useToggleCostCenterActivo`).
+      const drfMessage =
+        error instanceof AxiosError && error.response?.status === 400
+          ? firstDrfFieldMessage(error)
+          : undefined;
       toast.error(
-        firstDrfFieldMessage(error) ??
-          extractErrorMessage(error, "No se pudieron marcar las notificaciones"),
+        drfMessage ?? "No se pudieron marcar las notificaciones como leídas.",
       );
     },
     onSettled: () => {

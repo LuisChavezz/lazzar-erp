@@ -1,6 +1,6 @@
+import { AxiosError } from "axios";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
-import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { firstDrfFieldMessage } from "@/src/utils/firstDrfFieldMessage";
 import { marcarNotificacionLeida } from "../services/actions";
 import type { Notificacion } from "../interfaces/notification.interface";
@@ -45,10 +45,17 @@ export const useMarcarNotificacionLeida = () => {
       if (context?.previous) {
         queryClient.setQueryData(NOTIFICACIONES_QUERY_KEY, context.previous);
       }
-      toast.error(
-        firstDrfFieldMessage(error) ??
-          extractErrorMessage(error, "No se pudo marcar la notificación como leída"),
-      );
+      // A diferencia de los demás hooks con este guardia, aquí también pasa el
+      // 403: es el único error de negocio de `marcar-leida` (notificación de
+      // otro usuario) y el backend lo responde en español —"No tienes acceso a
+      // esta notificación."—. Un 5xx o un fallo de red cae al texto de abajo.
+      const status =
+        error instanceof AxiosError ? error.response?.status : undefined;
+      const drfMessage =
+        status === 400 || status === 403
+          ? firstDrfFieldMessage(error)
+          : undefined;
+      toast.error(drfMessage ?? "No se pudo marcar la notificación como leída.");
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: NOTIFICACIONES_QUERY_KEY });
