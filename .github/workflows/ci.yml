@@ -1,0 +1,31 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    env:
+      # `next build` evalúa `src/lib/authSecret.ts`, que lanza fuera de
+      # desarrollo si falta el secreto. Valores de relleno solo para compilar:
+      # este job no despliega ni se conecta al backend.
+      NEXTAUTH_SECRET: ci-build-only-not-a-real-secret
+      NEXTAUTH_URL: http://localhost:3000
+      NEXT_PUBLIC_API_URL: http://localhost:8000/api/v1
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      # Instalación limpia desde el lockfile: detecta un árbol inconsistente.
+      - run: npm ci
+
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm run build
