@@ -27,7 +27,11 @@ export function useSerieFolioForm({ onSuccess, serieFolioToEdit }: UseSerieFolio
   // Obtiene empresa y sucursal activa para inicializar el formulario y catálogo de sucursales.
   const selectedCompany = useWorkspaceStore((state) => state.selectedCompany);
   const selectedBranch = useWorkspaceStore((state) => state.selectedBranch);
-  const { branches, isLoading: isLoadingBranches } = useCompanyBranches(selectedCompany.id);
+  const {
+    branches,
+    isLoading: isLoadingBranches,
+    isError: isErrorBranches,
+  } = useCompanyBranches(selectedCompany.id);
 
   // Determina si se está editando una serie existente.
   const isEditing = Boolean(serieFolioToEdit?.id_serie_folio);
@@ -286,6 +290,7 @@ export function useSerieFolioForm({ onSuccess, serieFolioToEdit }: UseSerieFolio
     isPending,
     branches,
     isLoadingBranches,
+    isErrorBranches,
     getError,
     clearFieldErrors,
     revalidateFolioRange,

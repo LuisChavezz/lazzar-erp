@@ -21,6 +21,7 @@ export default function SerieFolioForm({ onSuccess, serieFolioToEdit }: SerieFol
     isPending,
     branches,
     isLoadingBranches,
+    isErrorBranches,
     getError,
     clearFieldErrors,
     revalidateFolioRange,
@@ -269,6 +270,8 @@ export default function SerieFolioForm({ onSuccess, serieFolioToEdit }: SerieFol
 
             <div className="p-8 space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Selector y aviso en una sola celda del grid: el aviso va DEBAJO del selector. */}
+                <div>
                 <form.Field name="sucursal">
                   {(field) => (
                     <FormSelect
@@ -287,7 +290,11 @@ export default function SerieFolioForm({ onSuccess, serieFolioToEdit }: SerieFol
                       error={getError("sucursal")}
                     >
                       <option value="0" disabled>
-                        {isLoadingBranches ? "Cargando sucursales..." : "Seleccionar..."}
+                        {isLoadingBranches
+                          ? "Cargando sucursales..."
+                          : isErrorBranches
+                            ? "No se pudo cargar el catálogo de sucursales"
+                            : "Seleccionar..."}
                       </option>
                       {branches.map((branch) => (
                         <option
@@ -301,6 +308,14 @@ export default function SerieFolioForm({ onSuccess, serieFolioToEdit }: SerieFol
                     </FormSelect>
                   )}
                 </form.Field>
+                {/* Un catálogo caído NO se pinta como catálogo vacío (mismo criterio que `ContractForm`). */}
+                {isErrorBranches && (
+                  <p className="mt-1 ml-1 text-[11px] text-red-600 dark:text-red-400">
+                    No se pudo cargar el catálogo de sucursales. Revisa tu conexión e intenta
+                    abrir el diálogo de nuevo.
+                  </p>
+                )}
+                </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
