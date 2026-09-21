@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useContext, useSyncExternalStore, type ReactNode } from "react";
 import { useSidebarStore } from "@/src/stores/sidebar.store";
 
 // ─── Interfaz del contexto ────────────────────────────────────────────────────
@@ -23,6 +23,11 @@ const SidebarContext = createContext<SidebarContextType>({
 
 export const useSidebar = () => useContext(SidebarContext);
 
+// ─── Detección de hidratación ─────────────────────────────────────────────────
+
+// No hay nada a qué suscribirse: el valor solo cambia de "servidor" a "cliente".
+const subscribeNoop = () => () => {};
+
 // ─── Proveedor ────────────────────────────────────────────────────────────────
 
 export function SidebarProvider({ children }: { children: ReactNode }) {
@@ -34,9 +39,14 @@ export function SidebarProvider({ children }: { children: ReactNode }) {
   // La rehidratación de Zustand con localStorage es síncrona, por lo que el
   // primer render del cliente ya trae el valor persistido y no coincidiría con
   // el HTML del servidor (siempre `false`). Se difiere un tick para evitar el
-  // error de hidratación.
-  const [hasMounted, setHasMounted] = useState(false);
-  useEffect(() => setHasMounted(true), []);
+  // error de hidratación. `useSyncExternalStore` usa el snapshot de servidor
+  // (`false`) en el SSR y durante la hidratación, y el de cliente (`true`) justo
+  // después, sin un `setState` dentro de un efecto.
+  const hasMounted = useSyncExternalStore(
+    subscribeNoop,
+    () => true,
+    () => false,
+  );
 
   return (
     <SidebarContext value={{ isPinned: hasMounted && isPinned, togglePin }}>
