@@ -199,15 +199,19 @@ export const getColumns = (
       }
     ),
     columnHelper.accessor(
-      (row) => lookups.sizes.get(row.talla) ?? "",
+      // `talla` es null en variantes de productos que no son PT (EC-252).
+      (row) => (row.talla === null ? "" : (lookups.sizes.get(row.talla) ?? "")),
       {
         id: "talla",
         header: "Talla",
-        cell: ({ row }) => (
-          <span className="text-slate-500 dark:text-slate-400">
-            {lookups.sizes.get(row.original.talla) ?? `#${row.original.talla}`}
-          </span>
-        ),
+        cell: ({ row }) => {
+          const talla = row.original.talla;
+          return (
+            <span className="text-slate-500 dark:text-slate-400">
+              {talla === null ? "—" : (lookups.sizes.get(talla) ?? `#${talla}`)}
+            </span>
+          );
+        },
       }
     ),
     columnHelper.accessor("precio_base", {
