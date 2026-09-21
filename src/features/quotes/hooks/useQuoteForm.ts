@@ -32,6 +32,7 @@ import {
   type ErrorNode,
 } from "../utils/quoteFormErrorTree";
 import { TIPO_PEDIDO } from "../../orders/constants/pedidoStatus";
+import { IVA_TASA_FIJA } from "../constants/iva";
 import { useWorkspaceStore } from "../../workspace/store/workspace.store";
 import { useCreateQuote, type QuoteValidationIssue } from "./useCreateQuote";
 import { useQuoteOnboardingData } from "./useQuoteOnboardingData";
@@ -72,11 +73,6 @@ const PAYMENT_CONDITION_OPTIONS: { value: QuotePaymentCondition; label: string }
   { value: "otra_cantidad", label: "Otra cantidad" },
 ];
 
-const IVA_OPTIONS = [
-  { value: 16, label: "16%" },
-  { value: 8, label: "8%" },
-  { value: 0, label: "0%" },
-];
 const DEFAULT_USO_CFDI_VALUE = "G03";
 const DEFAULT_USO_CFDI_LABEL = "G03 - Gastos en general";
 
@@ -137,7 +133,7 @@ export const createEmptyValues = (todayStr: string, userName: string): QuoteForm
   flete: 0,
   seguros: 0,
   anticipo: 0,
-  iva: 16,
+  iva: IVA_TASA_FIJA,
   moneda: 0,
   items: [],
 });
@@ -302,8 +298,7 @@ export function useQuoteForm() {
         serigrafia +
         reflejante +
         extraServicesTotal;
-      const ivaRate = parsed.data.iva ?? 0;
-      const ivaRateDecimal = ivaRate / 100;
+      const ivaRateDecimal = IVA_TASA_FIJA / 100;
       const ivaAmount = Number(((subtotal + extras) * ivaRateDecimal).toFixed(2));
       const granTotal = Number((subtotal + extras + ivaAmount).toFixed(2));
       const saldoPendiente = Number((granTotal - anticipo).toFixed(2));
@@ -460,7 +455,7 @@ export function useQuoteForm() {
           subtotal: totals.subtotal ? String(totals.subtotal.toFixed(2)) : "0.00",
           descuento_global: totals.descuentoTotal ? String(totals.descuentoTotal.toFixed(2)) : "0.00",
           ieps: "0.00",
-          iva: ivaRate || 0,
+          iva: IVA_TASA_FIJA,
           gran_total: totals.granTotal ? String(totals.granTotal.toFixed(2)) : "0.00",
           activo: true,
           cotizacion: { id: 1 },
@@ -661,8 +656,7 @@ export function useQuoteForm() {
       serigrafiaTotal +
       reflejanteTotal +
       extraServicesTotal;
-    const ivaRate = Number(values.iva) || 0;
-    const nextIvaAmount = Number(((nextSubtotal + extras) * (ivaRate / 100)).toFixed(2));
+    const nextIvaAmount = Number(((nextSubtotal + extras) * (IVA_TASA_FIJA / 100)).toFixed(2));
     const nextGranTotal = Number((nextSubtotal + extras + nextIvaAmount).toFixed(2));
     const nextSaldoPendiente = Number(
       (nextGranTotal - (Number(values.anticipo) || 0)).toFixed(2)
@@ -682,7 +676,6 @@ export function useQuoteForm() {
     values.bordado_pantalones_extras,
     values.envio,
     values.flete,
-    values.iva,
     values.programaBordadosActivo,
     values.programa_bordados,
     values.reflejante,
@@ -1034,7 +1027,6 @@ export function useQuoteForm() {
     todayStr,
     tiposPedidoOptions,
     paymentConditionOptions: PAYMENT_CONDITION_OPTIONS,
-    ivaOptions: IVA_OPTIONS,
     regimenFiscalOptions,
     usoCfdiOptions,
     currencyOptions,

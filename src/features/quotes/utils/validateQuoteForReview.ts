@@ -17,9 +17,15 @@ import {
   QUOTE_REVIEW_FIELD_LABELS,
 } from "../schemas/quote-review.schema";
 import { mapQuoteDetalleToItem } from "./mapQuoteDetalleToItem";
+import { IVA_TASA_FIJA } from "../constants/iva";
 
 type OnboardingCustomer = QuoteOnboardingData["busqueda"]["clientes"][number];
-type QuoteReviewValidationInput = Omit<QuoteFormValues, "items"> & {
+type QuoteReviewValidationInput = Omit<QuoteFormValues, "items" | "iva"> & {
+  /**
+   * La tasa GUARDADA, no la fija: así el schema (literal 16) detiene el envío a
+   * revisión de una cotización anterior al IVA fijo que traiga 8 o 0.
+   */
+  iva: number;
   cliente: number;
   items: QuoteItem[];
 };
@@ -163,7 +169,7 @@ const mapQuoteToReviewValidationInput = (
     flete: Number(quote.flete) || 0,
     seguros: Number(quote.seguros) || 0,
     anticipo: Number(quote.anticipo) || 0,
-    iva: quote.iva ?? 0,
+    iva: quote.iva ?? IVA_TASA_FIJA,
     moneda: quote.moneda || 0,
     items: (quote.detalles ?? []).map((detalle) =>
       mapQuoteDetalleToItem(detalle, onboardingData.busqueda.productos)

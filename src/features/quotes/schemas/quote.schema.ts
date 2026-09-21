@@ -7,6 +7,7 @@
 import { z } from "zod";
 import { quoteItemSchema } from "./quote-item.schema";
 import { PEDIDO_CLASIFICACIONES } from "../../orders/constants/pedidoStatus";
+import { IVA_TASA_FIJA } from "../constants/iva";
 
 export { quoteItemSchema } from "./quote-item.schema";
 
@@ -83,7 +84,15 @@ export const quoteFormSchema = z.object({
   flete: z.coerce.number().min(0, "No puede ser negativo").optional(),
   seguros: z.coerce.number().min(0, "No puede ser negativo").optional(),
   anticipo: z.coerce.number().min(0, "No puede ser negativo").optional(),
-  iva: z.coerce.number().int("Debe ser un número entero").min(0, "No puede ser negativo").optional(),
+  /**
+   * Fijo en `IVA_TASA_FIJA`: los formularios siempre lo hidratan en 16, así que
+   * en ellos esta regla no puede fallar. Donde sí actúa es en la validación
+   * previa a revisión, que proyecta la tasa GUARDADA: una cotización anterior
+   * al cambio con 8 o 0 se detiene hasta que se reguarde desde la edición.
+   */
+  iva: z.literal(IVA_TASA_FIJA, {
+    message: `El IVA es fijo al ${IVA_TASA_FIJA}%. Edita y guarda la cotización para aplicarlo.`,
+  }),
   moneda: z.coerce.number().optional(),
   items: z.array(quoteItemSchema).optional(),
 }).superRefine((data, ctx) => {
