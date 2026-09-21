@@ -26,6 +26,7 @@ import {
   ScissorsIcon,
   SliceIcon,
   ProductIcon,
+  ProductVariantsIcon,
   RulerIcon,
   ProduccionIcon,
   RecepcionesIcon,
@@ -393,6 +394,15 @@ export const appRouteGroups: AppRouteGroup[] = [
         description: "Catálogo de productos y alta rápida con código generado automáticamente.",
         // Sin código de sección propio en el catálogo de permisos: la ruta cae
         // en la regla de módulo `/manufacturing` de `routePermissions`.
+        permission: "R-PRODUCCION",
+      },
+      {
+        key: "manufacturing-product-variants",
+        label: "Variantes",
+        path: "/manufacturing/product-variants",
+        icon: ProductVariantsIcon,
+        description: "Variantes de producto y alta rápida con SKU generado automáticamente.",
+        // Igual que Productos: cae en la regla de módulo `/manufacturing`.
         permission: "R-PRODUCCION",
       },
       // OCULTO EN NAVEGACION: usa datos mock (src/features/cedicor/mocks/cedicor-new-development.mock.ts:11). Restaurar cuando el backend exponga el endpoint real.
