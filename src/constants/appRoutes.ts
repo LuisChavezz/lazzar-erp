@@ -25,6 +25,7 @@ import {
   EmailIcon,
   ScissorsIcon,
   SliceIcon,
+  ProductIcon,
   RulerIcon,
   ProduccionIcon,
   RecepcionesIcon,
@@ -383,6 +384,16 @@ export const appRouteGroups: AppRouteGroup[] = [
         icon: SliceIcon,
         description: "Órdenes de trabajo para el corte de manga de las prendas del pedido.",
         permission: "R-PRODUCCION-CM",
+      },
+      {
+        key: "manufacturing-products",
+        label: "Productos",
+        path: "/manufacturing/products",
+        icon: ProductIcon,
+        description: "Catálogo de productos y alta rápida con código generado automáticamente.",
+        // Sin código de sección propio en el catálogo de permisos: la ruta cae
+        // en la regla de módulo `/manufacturing` de `routePermissions`.
+        permission: "R-PRODUCCION",
       },
       // OCULTO EN NAVEGACION: usa datos mock (src/features/cedicor/mocks/cedicor-new-development.mock.ts:11). Restaurar cuando el backend exponga el endpoint real.
       // {
