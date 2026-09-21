@@ -18,6 +18,7 @@ import { Loader } from "@/src/components/Loader";
 import { CustomerSearchDropdown } from "./CustomerSearchDropdown";
 import { DialogHeader } from "@/src/components/DialogHeader";
 import { useQuoteForm } from "../hooks/useQuoteForm";
+import { IVA_TASA_FIJA } from "../constants/iva";
 import { AddProductDialog } from "./AddProductDialog";
 import type { AddProductVariant } from "../types";
 import type { QuoteItem } from "../interfaces/quote.interface";
@@ -141,7 +142,6 @@ export function QuoteFormContent({
   todayStr,
   tiposPedidoOptions,
   paymentConditionOptions,
-  ivaOptions,
   regimenFiscalOptions,
   usoCfdiOptions,
   currencyOptions,
@@ -2040,33 +2040,12 @@ export function QuoteFormContent({
                 <span className="font-medium font-mono text-slate-700 dark:text-slate-200" />
               </div>
               <div className="flex justify-between items-center text-sm">
+                {/* Tasa fija, no editable en ningún flujo (ver `IVA_TASA_FIJA`). */}
                 <div className="flex items-center gap-2">
                   <span className="text-slate-500">IVA</span>
-                  <div className="w-20">
-                    <form.Field name="iva">
-                      {(field) => (
-                        <FormSelect
-                          className="px-2 py-1.5 text-xs bg-slate-100 dark:bg-white/10 rounded-lg"
-                          aria-label="Tasa de IVA"
-                          options={ivaOptions.map((option) => ({
-                            value: option.value,
-                            label: option.label,
-                          }))}
-                          name={field.name}
-                          value={field.state.value}
-                          onChange={(event) => {
-                            const nextValue = Number(event.target.value);
-                            field.handleChange(Number.isNaN(nextValue) ? 0 : nextValue);
-                            clearFieldErrors("iva");
-                          }}
-                          onBlur={() => {
-                            field.handleBlur();
-                            validateField("iva", field.state.value);
-                          }}
-                        />
-                      )}
-                    </form.Field>
-                  </div>
+                  <span className="px-2 py-1 text-xs font-medium rounded-lg bg-slate-100 text-slate-600 dark:bg-white/10 dark:text-slate-300">
+                    {IVA_TASA_FIJA}%
+                  </span>
                 </div>
                 <span className="font-medium font-mono text-slate-700 dark:text-slate-200">
                   {formatCurrency(ivaAmount)}

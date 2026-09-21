@@ -28,6 +28,7 @@ import type {
 } from "@/src/features/quotes/interfaces/quote.interface";
 import { createEmptyValues, type ExtraService } from "@/src/features/quotes/hooks/useQuoteForm";
 import { useQuoteOnboardingData } from "@/src/features/quotes/hooks/useQuoteOnboardingData";
+import { IVA_TASA_FIJA } from "@/src/features/quotes/constants/iva";
 import {
   isQuoteCrossRuleField,
   useQuoteCrossRules,
@@ -97,12 +98,6 @@ const PAYMENT_CONDITION_OPTIONS: { value: QuotePaymentCondition; label: string }
   { value: "pago_antes_embarque", label: "Pago antes de embarque" },
   { value: "por_confirmar", label: "Por confirmar" },
   { value: "otra_cantidad", label: "Otra cantidad" },
-];
-
-const IVA_OPTIONS = [
-  { value: 16, label: "16%" },
-  { value: 8, label: "8%" },
-  { value: 0, label: "0%" },
 ];
 
 const DEFAULT_USO_CFDI_VALUE = "G03";
@@ -457,7 +452,9 @@ const mapPedidoDetailToFormValues = (
     flete: Number(pedido.flete) || 0,
     seguros: Number(pedido.seguros) || 0,
     anticipo: Number(pedido.anticipo) || 0,
-    iva: pedido.iva ?? 16,
+    // Se ignora la tasa guardada (un pedido viejo puede traer 8 o 0): el IVA es
+    // fijo y así el resumen muestra desde el inicio lo que se guardará.
+    iva: IVA_TASA_FIJA,
     moneda: pedido.moneda || 0,
     items: (pedido.detalles ?? []).map((linea) => mapLineaToQuoteItem(linea, products)),
   };
@@ -1238,7 +1235,7 @@ export function usePedidoMesaControlEditForm(pedidoId: number) {
         serigrafia +
         reflejante +
         extraServicesTotal;
-      const ivaRateDecimal = (parsed.data.iva ?? 0) / 100;
+      const ivaRateDecimal = IVA_TASA_FIJA / 100;
       const ivaTotal = Number(((subtotalAmount + extras) * ivaRateDecimal).toFixed(2));
       const granTotalAmount = Number((subtotalAmount + extras + ivaTotal).toFixed(2));
 
@@ -1333,7 +1330,7 @@ export function usePedidoMesaControlEditForm(pedidoId: number) {
           // compartido lo pinta como "$0.00" fijo), así que recalcularlo solo
           // podía borrarlo.
           ieps: storedIeps,
-          iva: parsed.data.iva || 0,
+          iva: IVA_TASA_FIJA,
           gran_total: String(granTotalAmount.toFixed(2)),
         },
         detalle,
@@ -1516,8 +1513,7 @@ export function usePedidoMesaControlEditForm(pedidoId: number) {
       serigrafiaTotal +
       reflejanteTotal +
       extraServicesTotal;
-    const ivaRate = Number(values.iva) || 0;
-    const nextIvaAmount = Number(((nextSubtotal + extras) * (ivaRate / 100)).toFixed(2));
+    const nextIvaAmount = Number(((nextSubtotal + extras) * (IVA_TASA_FIJA / 100)).toFixed(2));
     const nextGranTotal = Number((nextSubtotal + extras + nextIvaAmount).toFixed(2));
     const nextSaldoPendiente = Number(
       (nextGranTotal - (Number(values.anticipo) || 0)).toFixed(2),
@@ -1536,7 +1532,6 @@ export function usePedidoMesaControlEditForm(pedidoId: number) {
     values.bordado_pantalones_extras,
     values.envio,
     values.flete,
-    values.iva,
     values.programaBordadosActivo,
     values.programa_bordados,
     values.reflejante,
@@ -1978,7 +1973,6 @@ export function usePedidoMesaControlEditForm(pedidoId: number) {
     todayStr,
     tiposPedidoOptions,
     paymentConditionOptions: PAYMENT_CONDITION_OPTIONS,
-    ivaOptions: IVA_OPTIONS,
     regimenFiscalOptions,
     usoCfdiOptions,
     currencyOptions,
