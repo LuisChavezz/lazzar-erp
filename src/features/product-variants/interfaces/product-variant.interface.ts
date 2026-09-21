@@ -9,7 +9,8 @@ export interface ProductVariant {
   producto: Product["id"];
   empresa: Company["id"];
   color: Color["id"];
-  talla: Size["id"];
+  /** Nullable: la talla solo se exige a productos PT (ver `productRequiresTalla`). */
+  talla: Size["id"] | null;
   sku: string;
   /** Código Proscai del producto padre (solo lectura; puede venir vacío). */
   cod_proscai: string;
@@ -25,7 +26,8 @@ export interface ProductVariantCreate {
   producto: Product["id"];
   empresa: Company["id"];
   color: Color["id"];
-  talla: Size["id"];
+  /** `null` para productos que no son PT: el formulario no captura talla. */
+  talla: Size["id"] | null;
   sku: string;
   precio_base: string;
   activo: boolean;

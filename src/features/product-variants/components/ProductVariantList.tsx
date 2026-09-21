@@ -13,6 +13,7 @@ import { useProducts } from "../../products/hooks/useProducts";
 import { useColors } from "../../colors/hooks/useColors";
 import { useSizes } from "../../sizes/hooks/useSizes";
 import { useProductVariants } from "../hooks/useProductVariants";
+import { VARIANT_PRODUCT_TYPE_IDS } from "../constants/variantProductTypes";
 
 export default function ProductVariantList() {
   const { data: session } = useSession();
@@ -31,8 +32,11 @@ export default function ProductVariantList() {
     isError: isErrorVariants,
     error: variantsError,
   } = useProductVariants();
+  // Mismos tipos que el formulario (PT + COMPRAS, EC-249): con solo PT, el
+  // nombre del producto de una variante COMPRAS saldría como `#id`. Comparte
+  // la entrada de caché del formulario.
   const { products, isLoading: isLoadingProducts, isError: isErrorProducts, error: productsError } =
-    useProducts(3);
+    useProducts(VARIANT_PRODUCT_TYPE_IDS);
   const { colors, isLoading: isLoadingColors, isError: isErrorColors, error: colorsError } =
     useColors();
   const { sizes, isLoading: isLoadingSizes, isError: isErrorSizes, error: sizesError } =

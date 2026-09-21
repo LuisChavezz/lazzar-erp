@@ -7,7 +7,30 @@ export const getSizes = async (): Promise<Size[]> => {
   return response.data;
 };
 
-export const createSize = async (size: SizeCreate): Promise<Size> => {
+/**
+ * Tallas activas permitidas para una categoría de producto
+ * (`GET /catalogo/talla/?categoria_producto=<id>`). Sin categoría se pide el
+ * catálogo completo.
+ *
+ * Función APARTE de `getSizes` a propósito: `useSizes` y el prefetch de
+ * configuración la pasan como `queryFn` "desnuda", así que añadirle un parámetro
+ * opcional recibiría el contexto de la query como si fuera la categoría.
+ *
+ * Ojo: el backend responde `200 []` tanto si la categoría no tiene tallas como
+ * si no existe; ambos casos significan "sin opciones".
+ */
+export const getSizesByCategory = async (
+  categoriaProductoId: number | null,
+): Promise<Size[]> => {
+  const response = await v1_api.get<Size[]>("/catalogo/talla/", {
+    params: {
+      ...(categoriaProductoId !== null && { categoria_producto: categoriaProductoId }),
+    },
+  });
+  return response.data;
+};
+
+export const createSize =async (size: SizeCreate): Promise<Size> => {
   const response = await v1_api.post<Size>("/catalogo/talla/", size);
   return response.data;
 };

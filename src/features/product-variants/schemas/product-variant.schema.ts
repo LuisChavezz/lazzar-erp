@@ -3,7 +3,12 @@ import { z } from "zod";
 export const ProductVariantFormSchema = z.object({
   producto: z.coerce.number().min(1, "El producto es requerido"),
   color: z.coerce.number().min(1, "El color es requerido"),
-  talla: z.coerce.number().min(1, "La talla es requerida"),
+  /**
+   * `0` = sin talla. Aquí NO se exige: solo es obligatoria si el producto elegido
+   * es PT, y eso depende del producto, no de este valor. La regla condicional
+   * vive en `useProductVariantForm` (`validateTalla`).
+   */
+  talla: z.coerce.number().int().min(0),
   sku: z.string().min(1, "El SKU es requerido"),
   precio_base: z
     .string()

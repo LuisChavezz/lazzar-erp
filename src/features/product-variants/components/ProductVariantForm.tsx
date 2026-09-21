@@ -29,7 +29,10 @@ export default function ProductVariantForm({
     missingItems,
     activeProducts,
     activeColors,
-    activeSizes,
+    requiresTalla,
+    sizeOptions,
+    isLoadingSizes,
+    resetTalla,
     getError,
     clearFieldErrors,
     validateField,
@@ -98,6 +101,7 @@ export default function ProductVariantForm({
                         const nextValue = Number(event.target.value);
                         field.handleChange(Number.isNaN(nextValue) ? 0 : nextValue);
                         clearFieldErrors("producto");
+                        resetTalla();
                       }}
                       onBlur={() => {
                         field.handleBlur();
@@ -157,40 +161,50 @@ export default function ProductVariantForm({
                 </form.Field>
               </div>
 
-              <div className="group/field">
-                <form.Field name="talla">
-                  {(field) => (
-                    <FormSelect
-                      label="Talla"
-                      name={field.name}
-                      value={field.state.value}
-                      onChange={(event) => {
-                        const nextValue = Number(event.target.value);
-                        field.handleChange(Number.isNaN(nextValue) ? 0 : nextValue);
-                        clearFieldErrors("talla");
-                      }}
-                      onBlur={() => {
-                        field.handleBlur();
-                        validateField("talla", field.state.value);
-                      }}
-                      error={getError("talla")}
-                    >
-                      <option value="0" disabled>
-                        Seleccionar...
-                      </option>
-                      {activeSizes.map((size) => (
-                        <option
-                          key={size.id}
-                          value={size.id}
-                          className="bg-white dark:bg-zinc-900 text-slate-900 dark:text-white"
-                        >
-                          {size.nombre}
+              {/* Talla solo para productos PT (EC-252); para el resto no se
+                  captura y se envía `null`. Las opciones salen de la categoría
+                  del producto, así que no se ofrece una talla que el backend
+                  rechazaría. */}
+              {requiresTalla ? (
+                <div className="group/field">
+                  <form.Field name="talla">
+                    {(field) => (
+                      <FormSelect
+                        label="Talla"
+                        name={field.name}
+                        value={field.state.value}
+                        onChange={(event) => {
+                          const nextValue = Number(event.target.value);
+                          field.handleChange(Number.isNaN(nextValue) ? 0 : nextValue);
+                          clearFieldErrors("talla");
+                        }}
+                        onBlur={() => {
+                          field.handleBlur();
+                          validateField("talla", field.state.value);
+                        }}
+                        error={getError("talla")}
+                      >
+                        <option value="0" disabled>
+                          {isLoadingSizes
+                            ? "Cargando..."
+                            : sizeOptions.length === 0
+                              ? "Sin tallas para la categoría del producto"
+                              : "Seleccionar..."}
                         </option>
-                      ))}
-                    </FormSelect>
-                  )}
-                </form.Field>
-              </div>
+                        {sizeOptions.map((size) => (
+                          <option
+                            key={size.id}
+                            value={size.id}
+                            className="bg-white dark:bg-zinc-900 text-slate-900 dark:text-white"
+                          >
+                            {size.nombre}
+                          </option>
+                        ))}
+                      </FormSelect>
+                    )}
+                  </form.Field>
+                </div>
+              ) : null}
 
               <div className="group/field">
                 <form.Field name="precio_base">
