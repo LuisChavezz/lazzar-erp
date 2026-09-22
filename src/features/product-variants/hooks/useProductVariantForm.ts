@@ -7,6 +7,7 @@ import type { FormFieldError } from "../../../utils/getFieldError";
 import { ProductVariantFormSchema, ProductVariantFormValues } from "../schemas/product-variant.schema";
 import { useWorkspaceStore } from "../../workspace/store/workspace.store";
 import { useProducts } from "../../products/hooks/useProducts";
+import { useProduct } from "../../products/hooks/useProduct";
 import { useColors } from "../../colors/hooks/useColors";
 import { useSizesByCategory } from "../../sizes/hooks/useSizesByCategory";
 import { useCreateProductVariant } from "./useCreateProductVariant";
@@ -19,6 +20,10 @@ import {
 } from "../constants/variantProductTypes";
 
 const TALLA_REQUIRED_MESSAGE = "La talla es requerida";
+const PRODUCT_LOADING_MESSAGE =
+  "Aún se está cargando la información del producto. Intenta de nuevo en un momento.";
+const PRODUCT_LOAD_ERROR_MESSAGE =
+  "No se pudo cargar la información del producto. Elige otro o intenta de nuevo.";
 
 /** Regla condicional de talla (EC-252): solo obligatoria para productos PT. */
 const validateTalla = (talla: number, requiresTalla: boolean): string | undefined =>
@@ -48,23 +53,36 @@ export function useProductVariantForm({
   const activeProducts = useMemo(() => products.filter((product) => product.activo), [products]);
   const activeColors = colors;
 
+  // Detecta si el formulario está en modo edición.
+  const isEditing = Boolean(productVariantToEdit?.id);
+
+  // En edición se conserva el producto ACTUAL de la variante aunque no esté en
+  // el catálogo del selector (inactivo, o de un tipo fuera de PT/COMPRAS como
+  // los MP de los BOM): el selector solo sirve para CAMBIARLO. Su tipo y su
+  // categoría —que deciden la talla— salen del detalle del producto, que solo
+  // se pide en ese caso.
+  const editProductId = productVariantToEdit?.producto ?? 0;
+  const isEditProductListed = activeProducts.some((product) => product.id === editProductId);
+  const { product: editProduct, isError: isEditProductError } = useProduct(editProductId, {
+    enabled: !isLoadingProducts && !isEditProductListed,
+  });
+
   const findProduct = (productId: number): Product | undefined =>
-    activeProducts.find((product) => product.id === productId);
+    activeProducts.find((product) => product.id === productId) ??
+    (editProduct?.id === productId ? editProduct : undefined);
 
   // Define los prerequisitos de catálogos para habilitar el formulario. Las
   // tallas ya no son prerequisito global: solo las necesita un producto PT y se
-  // cargan por su categoría (un producto COMPRAS se registra sin talla).
+  // cargan por su categoría (un producto COMPRAS se registra sin talla). Sin
+  // productos en el catálogo se puede editar igual: la variante ya tiene el suyo.
   const missingItems = useMemo(
     () =>
       [
-        activeProducts.length === 0 && !isLoadingProducts ? "Productos" : null,
+        activeProducts.length === 0 && !isLoadingProducts && !isEditing ? "Productos" : null,
         activeColors.length === 0 && !isLoadingColors ? "Colores" : null,
       ].filter((item): item is string => Boolean(item)),
-    [activeColors.length, activeProducts.length, isLoadingColors, isLoadingProducts]
+    [activeColors.length, activeProducts.length, isEditing, isLoadingColors, isLoadingProducts]
   );
-
-  // Detecta si el formulario está en modo edición.
-  const isEditing = Boolean(productVariantToEdit?.id);
 
   // Mantiene referencias visuales y preferencia de captura continua.
   const formRef = useRef<HTMLFormElement | null>(null);
@@ -91,17 +109,17 @@ export function useProductVariantForm({
     []
   );
 
-  // Normaliza valores de edición para evitar IDs no disponibles.
+  // Normaliza valores de edición para evitar IDs no disponibles. El producto se
+  // conserva SIEMPRE (ver `editProductId`), aunque no esté en el catálogo.
   const editValues = useMemo<ProductVariantFormValues>(() => {
     if (!productVariantToEdit) {
       return emptyValues;
     }
 
-    const hasProduct = activeProducts.some((product) => product.id === productVariantToEdit.producto);
     const hasColor = activeColors.some((color) => color.id === productVariantToEdit.color);
 
     return {
-      producto: hasProduct ? productVariantToEdit.producto : 0,
+      producto: productVariantToEdit.producto,
       color: hasColor ? productVariantToEdit.color : 0,
       // Se conserva tal cual (o `0` si la variante no tiene talla). Las opciones
       // salen de la categoría del producto; si esta talla ya no está permitida,
@@ -111,7 +129,7 @@ export function useProductVariantForm({
       precio_base: productVariantToEdit.precio_base,
       activo: productVariantToEdit.activo,
     };
-  }, [activeColors, activeProducts, emptyValues, productVariantToEdit]);
+  }, [activeColors, emptyValues, productVariantToEdit]);
 
   // Mapea errores de mutación por campo para mostrarlos en componentes actuales.
   const setHookError = (field: ProductVariantFormField, error: { message?: string }) => {
@@ -213,8 +231,20 @@ export function useProductVariantForm({
     onSubmit: async ({ value }) => {
       setServerErrors({});
 
-      const requiresTalla = productRequiresTalla(findProduct(value.producto));
+      const productToSave = findProduct(value.producto);
+      const requiresTalla = productRequiresTalla(productToSave);
       if (!validateForm(value, requiresTalla)) {
+        return;
+      }
+
+      // Sin el producto resuelto no se sabe si exige talla: enviar así mandaría
+      // `talla: null` y borraría la de una variante PT. Solo ocurre con el
+      // producto actual de una edición mientras su detalle carga o si falló.
+      if (!productToSave) {
+        const isLoadingEditProduct = value.producto === editProductId && !isEditProductError;
+        setClientErrors({
+          producto: isLoadingEditProduct ? PRODUCT_LOADING_MESSAGE : PRODUCT_LOAD_ERROR_MESSAGE,
+        });
         return;
       }
 
@@ -288,6 +318,37 @@ export function useProductVariantForm({
     clearFieldErrors("talla");
   };
 
+  /**
+   * Confirmación del selector de producto. Reconfirmar el MISMO producto no
+   * toca nada: ni la talla capturada ni el aviso del campo.
+   */
+  const handleProductSelect = (productId: number) => {
+    if (productId === form.state.values.producto) {
+      return;
+    }
+    form.setFieldValue("producto", productId);
+    clearFieldErrors("producto");
+    resetTalla();
+  };
+
+  /**
+   * Etiqueta del producto elegido. Mientras el detalle del producto actual de
+   * una edición carga (o si falló) se usa el nombre que ya trae la variante.
+   */
+  const getProductLabel = (productId: number): string | null => {
+    if (productId <= 0) {
+      return null;
+    }
+    const product = findProduct(productId);
+    if (product) {
+      return product.nombre;
+    }
+    if (productId === editProductId && productVariantToEdit?.producto_nombre) {
+      return productVariantToEdit.producto_nombre;
+    }
+    return `#${productId}`;
+  };
+
   // Expone estado de bloqueo unificado.
   const isPending = isCreating || isUpdating;
 
@@ -325,10 +386,12 @@ export function useProductVariantForm({
     missingItems,
     activeProducts,
     activeColors,
+    selectedProductId,
+    getProductLabel,
+    handleProductSelect,
     requiresTalla,
     sizeOptions,
     isLoadingSizes,
-    resetTalla,
     getError,
     clearFieldErrors,
     validateField,

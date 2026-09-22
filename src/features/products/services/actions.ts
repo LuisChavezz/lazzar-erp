@@ -21,6 +21,16 @@ export const getProducts = async (
   return response.data;
 };
 
+/**
+ * Detalle de un producto. El backend acota el `retrieve` por empresa igual que
+ * el listado (`_alcance_empresa`): un producto ajeno responde 404. No aplica
+ * filtro de tipo ni de `activo`.
+ */
+export const getProduct = async (id: number): Promise<Product> => {
+  const response = await v1_api.get<Product>(`/catalogo/producto/${id}/`);
+  return response.data;
+};
+
 export const createProduct = async (product: ProductCreate): Promise<Product> => {
   const response = await v1_api.post<Product>("/catalogo/producto/", product);
   return response.data;
