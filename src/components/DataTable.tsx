@@ -1141,7 +1141,13 @@ export function DataTable<TData, TValue>({
             } ${
               fillHeight
                 ? "flex-1 min-h-0"
-                : visibleRows.length > 0 || isLoadingOverlay
+                : // La altura fija se conserva también cuando la búsqueda o un
+                  // filtro dejan 0 filas (`hasBaseData`): este contenedor es
+                  // `overflow-y-auto`, y si colapsara a encabezado + fila de
+                  // "sin resultados" recortaría el menú de `ColumnHeaderFilter`
+                  // (solo se veían 2 de 6 opciones) justo cuando el usuario
+                  // necesita cambiar el filtro. Solo colapsa sin datos base.
+                  visibleRows.length > 0 || isLoadingOverlay || hasBaseData
                 ? "h-120"
                 : ""
             } ${
