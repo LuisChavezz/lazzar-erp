@@ -13,7 +13,6 @@ export default function TaxList() {
     <DataTable
       columns={columns}
       data={taxes}
-      title="Impuestos"
       searchPlaceholder="Buscar impuesto..."
       isLoading={isLoading}
       isError={isError}

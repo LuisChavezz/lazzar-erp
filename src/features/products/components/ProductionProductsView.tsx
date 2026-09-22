@@ -55,7 +55,6 @@ export function ProductionProductsView() {
     <DataTable
       columns={READ_ONLY_COLUMNS}
       data={rows}
-      title="Productos"
       searchPlaceholder="Buscar producto..."
       getRowId={(row) => String(row.id)}
       emptyMessage="No hay productos registrados."

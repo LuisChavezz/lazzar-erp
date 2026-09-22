@@ -37,7 +37,6 @@ export const SatInfo = () => {
               columns={regimenesFiscalesColumns}
               data={data?.regimenes_fiscales ?? []}
               searchPlaceholder="Buscar régimen..."
-              title="Regímenes Fiscales"
               isLoading={isLoading}
               isError={isError}
               errorTitle="Error al cargar información"

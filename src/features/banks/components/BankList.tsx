@@ -54,7 +54,6 @@ export default function BankList() {
       columns={columns}
       data={banks}
       baseDataCount={banks.length}
-      title="Bancos"
       searchPlaceholder="Buscar banco por nombre, código o SWIFT..."
       filterConfig={[{ id: "activo", label: "Estatus", options: ACTIVO_FILTER }]}
       onRefetch={refetch}

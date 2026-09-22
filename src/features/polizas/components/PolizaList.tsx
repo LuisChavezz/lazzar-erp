@@ -254,7 +254,6 @@ export default function PolizaList() {
         columns={columns}
         data={polizas}
         baseDataCount={polizas.length}
-        title="Pólizas Contables"
         searchPlaceholder="Buscar por folio o concepto..."
         filterConfig={[
           { id: "estatus", label: "Estatus", options: ESTATUS_FILTER },

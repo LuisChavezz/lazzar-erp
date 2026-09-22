@@ -45,7 +45,6 @@ export default function SizeList() {
     <DataTable
       columns={columns}
       data={sizes}
-      title="Tallas"
       searchPlaceholder="Buscar talla..."
       isLoading={isLoading}
       isError={isError}

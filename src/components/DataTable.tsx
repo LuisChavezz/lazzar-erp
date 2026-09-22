@@ -105,7 +105,6 @@ interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
   data: TData[];
   baseDataCount?: number;
-  title?: string;
   searchPlaceholder?: string;
   /**
    * Por defecto (`true`, diseño aprobado) la búsqueda es un input fijo en el
@@ -243,7 +242,6 @@ export function DataTable<TData, TValue>({
   columns,
   data,
   baseDataCount,
-  title,
   searchPlaceholder = "Buscar...",
   searchAlwaysExpanded = true,
   actionButton,
@@ -704,15 +702,13 @@ export function DataTable<TData, TValue>({
             : "mb-4")
         }
       >
-      {title ? (
-        <h1 className="text-xl font-semibold text-slate-800 dark:text-white">
-          {title}
-        </h1>
-      ) : null}
-      {/* Buscador siempre visible: vive en el extremo IZQUIERDO de la barra
-          (no junto a los íconos de la derecha) — el resto del toolbar se
-          agrupa aparte más abajo. Solo aplica cuando `searchAlwaysExpanded`;
-          el buscador colapsable de siempre sigue integrado con los íconos. */}
+      {/* La tabla NO pinta título: el encabezado de la página lo pone el
+          `Header` global (`HeaderTitle`, por ruta) o la vista que la monta
+          (p. ej. `ConfigDetailView`). Buscador siempre visible: vive en el
+          extremo IZQUIERDO de la barra (no junto a los íconos de la derecha)
+          — el resto del toolbar se agrupa aparte más abajo. El buscador
+          colapsable (`searchAlwaysExpanded={false}`) sigue integrado con los
+          íconos. */}
       {!isServerPaginated && searchAlwaysExpanded && (
         <div className="relative shrink-0 w-full lg:w-auto">
           <SearchIcon className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />

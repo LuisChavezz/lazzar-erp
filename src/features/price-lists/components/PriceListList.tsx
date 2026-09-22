@@ -61,7 +61,6 @@ export const PriceListList = () => {
       <DataTable
         columns={priceListColumns}
         data={PRICE_LIST_DATA}
-        title="Listas de Precios"
         searchPlaceholder="Buscar por código, lista o moneda..."
       />
     </div>

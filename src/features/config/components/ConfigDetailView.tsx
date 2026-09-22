@@ -104,16 +104,23 @@ interface ConfigDetailViewProps {
 }
 
 export function ConfigDetailView({ selectedView, onBack }: ConfigDetailViewProps) {
-  const renderBackButton = () => (
-    <div className="sticky top-0 z-10 py-2 w-fit">
-      <button 
-        onClick={onBack}
-        className="flex items-center gap-2 cursor-pointer text-slate-500 hover:text-sky-500 transition-colors px-4 py-2 rounded-full bg-slate-50 dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800"
-      >
-        <ArrowLeftIcon className="w-4 h-4" />
-        <span className="text-sm font-medium">Volver a configuración</span>
-      </button>
-    </div>
+  // Encabezado de cada catálogo: botón "Volver" + título. El título vivía
+  // dentro de `DataTable` (prop `title`, ya retirada): la tabla no pinta
+  // encabezados y `/config` solo tiene "Configuración" en el `Header` global,
+  // así que aquí es donde el usuario lee qué catálogo está viendo.
+  const renderHeader = (title: string) => (
+    <>
+      <div className="sticky top-0 z-10 py-2 w-fit">
+        <button
+          onClick={onBack}
+          className="flex items-center gap-2 cursor-pointer text-slate-500 hover:text-sky-500 transition-colors px-4 py-2 rounded-full bg-slate-50 dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800"
+        >
+          <ArrowLeftIcon className="w-4 h-4" />
+          <span className="text-sm font-medium">Volver a configuración</span>
+        </button>
+      </div>
+      <h1 className="text-xl font-semibold text-slate-800 dark:text-white">{title}</h1>
+    </>
   );
 
   return (
@@ -128,147 +135,147 @@ export function ConfigDetailView({ selectedView, onBack }: ConfigDetailViewProps
     >
       {selectedView === "warehouses" && (
         <div className="flex flex-col gap-6">
-          {renderBackButton()}
+          {renderHeader("Almacenes")}
           <WarehouseList />
         </div>
       )}
 
       {selectedView === "locations" && (
         <div className="flex flex-col gap-6">
-          {renderBackButton()}
+          {renderHeader("Ubicaciones")}
           <LocationList />
         </div>
       )}
 
       {selectedView === "stock-movements" && (
         <div className="flex flex-col gap-6">
-          {renderBackButton()}
+          {renderHeader("Movimientos de Inventario")}
           <StockMovementsView />
         </div>
       )}
 
       {selectedView === "stock-transfers" && (
         <div className="flex flex-col gap-6">
-          {renderBackButton()}
+          {renderHeader("Traspasos")}
           <StockTransfersView />
         </div>
       )}
 
       {selectedView === "sat" && (
         <div className="flex flex-col gap-6">
-          {renderBackButton()}
+          {renderHeader("Regímenes Fiscales")}
           <SatInfo />
         </div>
       )}
 
       {selectedView === "users" && (
         <div className="flex flex-col gap-6">
-          {renderBackButton()}
+          {renderHeader("Usuarios")}
           <UserList />
         </div>
       )}
 
       {selectedView === "roles" && (
         <div className="flex flex-col gap-6">
-          {renderBackButton()}
+          {renderHeader("Roles")}
           <RoleList />
         </div>
       )}
 
       {selectedView === "currencies" && (
         <div className="flex flex-col gap-6">
-          {renderBackButton()}
+          {renderHeader("Monedas")}
           <CurrencyList />
         </div>
       )}
 
       {selectedView === "series-folios" && (
         <div className="flex flex-col gap-6">
-          {renderBackButton()}
+          {renderHeader("Series y Folios")}
           <SerieFolioList />
         </div>
       )}
 
       {selectedView === "product-categories" && (
         <div className="flex flex-col gap-6">
-          {renderBackButton()}
+          {renderHeader("Categorías de Producto")}
           <ProductCategoryList />
         </div>
       )}
 
       {selectedView === "product-types" && (
         <div className="flex flex-col gap-6">
-          {renderBackButton()}
+          {renderHeader("Tipos de Producto")}
           <ProductTypeList />
         </div>
       )}
 
       {selectedView === "colors" && (
         <div className="flex flex-col gap-6">
-          {renderBackButton()}
+          {renderHeader("Colores")}
           <ColorList />
         </div>
       )}
       
       {selectedView === "sizes" && (
         <div className="flex flex-col gap-6">
-          {renderBackButton()}
+          {renderHeader("Tallas")}
           <SizeList />
         </div>
       )}
       
       {selectedView === "units" && (
         <div className="flex flex-col gap-6">
-          {renderBackButton()}
+          {renderHeader("Unidades de Medida")}
           <UnitOfMeasureList />
         </div>
       )}
 
       {selectedView === "taxes" && (
         <div className="flex flex-col gap-6">
-          {renderBackButton()}
+          {renderHeader("Impuestos")}
           <TaxList />
         </div>
       )}
 
       {selectedView === "sat-prod-serv" && (
         <div className="flex flex-col gap-6">
-          {renderBackButton()}
+          {renderHeader("Claves SAT Prod/Serv")}
           <SatProdservCodeList />
         </div>
       )}
 
       {selectedView === "sat-unit-codes" && (
         <div className="flex flex-col gap-6">
-          {renderBackButton()}
+          {renderHeader("Claves SAT Unidades")}
           <SatUnitCodeList />
         </div>
       )}
 
       {selectedView === "products" && (
         <div className="flex flex-col gap-6">
-          {renderBackButton()}
+          {renderHeader("Productos")}
           <ProductList />
         </div>
       )}
 
       {selectedView === "product-variants" && (
         <div className="flex flex-col gap-6">
-          {renderBackButton()}
+          {renderHeader("Variantes de Producto")}
           <ProductVariantList />
         </div>
       )}
 
       {selectedView === "bom" && (
         <div className="flex flex-col gap-6">
-          {renderBackButton()}
+          {renderHeader("Materiales")}
           <BomList />
         </div>
       )}
 
       {selectedView === "suppliers" && (
         <div className="flex flex-col gap-6">
-          {renderBackButton()}
+          {renderHeader("Proveedores")}
           {/* Montado desde /config: aquí el alta/edición/baja se rige por los
               códigos de CONFIGURACION, no por los de Compras (ver
               `PERMISSIONS_BY_CONTEXT` en `SupplierList`). */}

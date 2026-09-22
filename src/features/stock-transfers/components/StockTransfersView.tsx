@@ -36,7 +36,6 @@ export function StockTransfersView() {
       <DataTable
         columns={stockTransfersColumns}
         data={transferencias}
-        title="Traspasos"
         searchPlaceholder="Buscar folio, almacén o usuario..."
         getRowId={(row) => String(row.id)}
         onRefetch={refetch}

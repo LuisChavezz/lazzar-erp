@@ -72,7 +72,6 @@ export default function LocationList() {
     <DataTable
       columns={columns}
       data={rows}
-      title="Ubicaciones"
       searchPlaceholder="Buscar ubicación..."
       isLoading={isLoading}
       isError={isError}

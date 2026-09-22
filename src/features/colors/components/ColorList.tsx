@@ -45,7 +45,6 @@ export default function ColorList() {
     <DataTable
       columns={columns}
       data={colors}
-      title="Colores"
       searchPlaceholder="Buscar color..."
       isLoading={isLoading}
       isError={isError}

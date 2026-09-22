@@ -12,7 +12,6 @@ export default function RoleList() {
     <DataTable
       columns={roleColumns}
       data={roles ?? []}
-      title="Roles"
       searchPlaceholder="Buscar rol..."
       isLoading={isLoading}
       isError={isError}

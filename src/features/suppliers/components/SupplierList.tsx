@@ -43,7 +43,6 @@ const PERMISSIONS_BY_CONTEXT = {
 } as const;
 
 interface SupplierListProps {
-  hideTitle?: boolean;
   /**
    * Familia de permisos a aplicar según desde dónde se monte el listado.
    * Por defecto "procurement", que es el comportamiento histórico.
@@ -63,7 +62,6 @@ interface SupplierListProps {
 }
 
 export default function SupplierList({
-  hideTitle = false,
   permissionContext = "procurement",
   fillHeight = false,
 }: SupplierListProps) {
@@ -126,7 +124,6 @@ export default function SupplierList({
         ref={tableRef}
         columns={columns}
         data={suppliers}
-        title={hideTitle ? undefined : "Proveedores"}
         searchPlaceholder="Buscar proveedor..."
         fillHeight={fillHeight}
         onVisibleColumnsChange={setVisibleColumns}

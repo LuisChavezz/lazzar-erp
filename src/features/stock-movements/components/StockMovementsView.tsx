@@ -145,7 +145,6 @@ export function StockMovementsView() {
     <DataTable
       columns={columns}
       data={stockMovements}
-      title="Movimientos de Inventario"
       searchPlaceholder="Buscar por tipo, folio, origen o destino..."
       actionButton={canCreate ? <StockMovementForm /> : undefined}
       filterConfig={stockMovementsFilterConfig}

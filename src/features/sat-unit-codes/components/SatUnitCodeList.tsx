@@ -13,7 +13,6 @@ export default function SatUnitCodeList() {
     <DataTable
       columns={columns}
       data={satUnitCodes}
-      title="Claves SAT Unidades"
       searchPlaceholder="Buscar clave..."
       isLoading={isLoading}
       isError={isError}
