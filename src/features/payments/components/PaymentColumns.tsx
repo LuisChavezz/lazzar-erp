@@ -81,6 +81,7 @@ export const getColumns = (
     }),
     columnHelper.accessor("total_pagado", {
       header: "Total pagado",
+      meta: { align: "right" },
       cell: (info) => (
         // El pago no expone moneda propia: la divisa vive en la factura de cada
         // CxP aplicada. Se formatea con el MXN por defecto de `formatCurrency`
@@ -99,6 +100,7 @@ export const getColumns = (
     columnHelper.display({
       id: "actions",
       header: "Acciones",
+      meta: { align: "center" },
       cell: ({ row }) => {
         // "Cancelar" solo sobre pagos APLICADOS: cancelar uno ya cancelado es un
         // no-op en el backend, y sobre un `Borrador` (que esta UI no crea pero

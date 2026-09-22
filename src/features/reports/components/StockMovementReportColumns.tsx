@@ -130,7 +130,7 @@ export const stockMovementReportColumns: ColumnDef<StockMovementReportRow>[] = [
   {
     accessorKey: "cantidad",
     header: "Cantidad",
-    meta: { label: "Cantidad" },
+    meta: { align: "right", label: "Cantidad" },
     cell: ({ row }) => (
       <div className="tabular-nums text-slate-700 dark:text-slate-200">
         {formatQuantityValue(row.original.cantidad)}
@@ -140,7 +140,7 @@ export const stockMovementReportColumns: ColumnDef<StockMovementReportRow>[] = [
   {
     accessorKey: "costo_total",
     header: "Costo Total",
-    meta: { label: "Costo Total" },
+    meta: { align: "right", label: "Costo Total" },
     cell: ({ row }) => (
       <div className="font-semibold tabular-nums text-slate-700 dark:text-slate-200">
         {formatMoneyValue(row.original.costo_total)}

@@ -250,7 +250,7 @@ export function getCedicorProductionOrderColumns(): ColumnDef<ProductionOrder>[]
 
     col.accessor('cantidad_total', {
       header: 'Piezas',
-      meta: { label: 'Piezas' },
+      meta: { align: "right", label: 'Piezas' },
       cell: (info) => (
         <span className="text-xs font-semibold tabular-nums text-slate-700 dark:text-slate-300">
           {info.getValue<number>().toLocaleString('es-MX')}
@@ -330,7 +330,7 @@ export function getCedicorProductionOrderColumns(): ColumnDef<ProductionOrder>[]
     col.display({
       id: 'acciones',
       header: "Acciones",
-      meta: { label: 'Acciones' },
+      meta: { align: "center", label: 'Acciones' },
       cell: (info) => <ActionsCell row={info.row.original} />,
       size: 80,
     }),

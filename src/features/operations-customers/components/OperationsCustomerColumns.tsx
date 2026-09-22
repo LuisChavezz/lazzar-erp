@@ -24,11 +24,8 @@ const estatusFilterFn: FilterFn<OperationsCustomer> = (row, _columnId, filterVal
 // Razón Social, igual que `CustomerColumns.tsx` (Ventas) — a diferencia de
 // aquella, esta tabla es de solo lectura (sin `ActionMenu` por renglón), así
 // que no lleva trigger ni chevron, solo el punto junto al texto.
-// `justify-center`: la celda es un contenedor flex, así que el `text-center`
-// que `DataTable` pone en el `<td>` (modo panel) no la centra por sí solo.
-// El resto de columnas no lleva clase de alineación.
 const RazonSocialCell = ({ customer }: { customer: OperationsCustomer }) => (
-  <div className="flex items-center justify-center gap-2">
+  <div className="flex items-center gap-2">
     <span
       className={`h-2.5 w-2.5 rounded-full shrink-0 ${customer.activo ? "bg-emerald-500" : "bg-slate-400"}`}
       role="img"

@@ -178,6 +178,7 @@ export function createProcurementOrderColumns({
       id: 'gran_total',
       accessorKey: 'gran_total',
       header: 'Total',
+      meta: { align: "right" },
       size: 130,
       cell: ({ row }) => (
         <span className="tabular-nums text-[13px] font-semibold text-slate-700 dark:text-slate-200">

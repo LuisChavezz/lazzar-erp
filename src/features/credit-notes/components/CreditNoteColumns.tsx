@@ -88,6 +88,7 @@ export const getColumns = (
     }),
     columnHelper.accessor("total", {
       header: "Total",
+      meta: { align: "right" },
       cell: (info) => (
         // LIMITACIÓN CONOCIDA: `NotaCredito` no expone moneda propia ni el código
         // de la factura, y el renglón del listado no trae con qué resolverla, así
@@ -109,6 +110,7 @@ export const getColumns = (
     columnHelper.display({
       id: "actions",
       header: "Acciones",
+      meta: { align: "center" },
       cell: ({ row }) => {
         const { id, estatus } = row.original;
         const menuItems: ActionMenuItem[] = [

@@ -153,6 +153,7 @@ export function createOrderColumns({
       id: 'gran_total',
       accessorKey: 'gran_total',
       header: 'Total',
+      meta: { align: "right" },
       cell: ({ row }) => (
         <span className="tabular-nums text-sm font-semibold text-slate-700 dark:text-slate-200">
           {formatMoneyValueOrDash(row.original.gran_total)}
@@ -207,6 +208,7 @@ export function createOrderColumns({
     {
       id: 'acciones',
       header: 'Acciones',
+      meta: { align: "center" },
       cell: ({ row }) => {
         const order = row.original;
         const items: ActionMenuItem[] = [

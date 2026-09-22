@@ -118,6 +118,7 @@ export const getColumns = ({
     }),
     columnHelper.accessor("total", {
       header: "Total",
+      meta: { align: "right" },
       cell: (info) => (
         // En la moneda de la FACTURA; sin moneda resuelta, sin símbolo.
         <div className="tabular-nums text-slate-600 dark:text-slate-300">
@@ -130,6 +131,7 @@ export const getColumns = ({
     }),
     columnHelper.accessor("saldo", {
       header: "Saldo",
+      meta: { align: "right" },
       cell: (info) => (
         <div className="tabular-nums font-semibold text-slate-800 dark:text-white">
           {formatMoneyValueOrDash(
@@ -158,6 +160,7 @@ export const getColumns = ({
     columnHelper.display({
       id: "actions",
       header: "Acciones",
+      meta: { align: "center" },
       cell: ({ row }) => {
         const cuenta = row.original;
         const menuItems: ActionMenuItem[] = [

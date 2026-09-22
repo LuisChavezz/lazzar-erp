@@ -59,6 +59,7 @@ export const getColumns = (
     }),
     columnHelper.accessor("nivel", {
       header: "Nivel",
+      meta: { align: "center" },
       cell: (info) => (
         <div className="text-center tabular-nums text-slate-500 dark:text-slate-400">
           {info.getValue()}
@@ -93,6 +94,7 @@ export const getColumns = (
     columnHelper.display({
       id: "actions",
       header: "Acciones",
+      meta: { align: "center" },
       cell: ({ row }) => {
         const cuenta = row.original;
         const menuItems: ActionMenuItem[] = [

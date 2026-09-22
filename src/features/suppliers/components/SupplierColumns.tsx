@@ -130,6 +130,7 @@ export const getSupplierColumns = (
   columnHelper.display({
     id: "actions",
     header: "Acciones",
+    meta: { align: "center" },
     cell: (info) => (
       <ActionsCell
         supplier={info.row.original}

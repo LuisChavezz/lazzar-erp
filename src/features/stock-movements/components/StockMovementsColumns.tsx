@@ -164,7 +164,7 @@ export function getStockMovementsColumns() {
       id: "actions",
       header: "Acciones",
       size: 90,
-      meta: { label: "Acciones" } as const,
+      meta: { align: "center", label: "Acciones" } as const,
       cell: ({ row }) => <ActionsCell row={row.original} />,
     }),
   ] as ColumnDef<StockMovement>[];

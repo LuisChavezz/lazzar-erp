@@ -82,6 +82,7 @@ export const getColumns = (
     ),
     columnHelper.accessor("saldo_estado_cuenta", {
       header: "Estado de cuenta",
+      meta: { align: "right" },
       cell: (info) => (
         <div className="tabular-nums text-slate-600 dark:text-slate-300">
           {formatSaldo(info.getValue(), monedaDe(info.row.original.cuenta_bancaria))}
@@ -90,6 +91,7 @@ export const getColumns = (
     }),
     columnHelper.accessor("saldo_libros", {
       header: "Libros",
+      meta: { align: "right" },
       cell: (info) => (
         <div className="tabular-nums text-slate-600 dark:text-slate-300">
           {formatSaldo(info.getValue(), monedaDe(info.row.original.cuenta_bancaria))}
@@ -105,6 +107,7 @@ export const getColumns = (
       {
         id: "diferencia",
         header: "Diferencia",
+        meta: { align: "right" },
         cell: (info) => {
           const conciliacion = info.row.original;
           const cuadra = conciliacionCuadra(
@@ -135,6 +138,7 @@ export const getColumns = (
     columnHelper.display({
       id: "actions",
       header: "Acciones",
+      meta: { align: "center" },
       cell: ({ row }) => {
         const conciliacion = row.original;
         const esBorrador = conciliacion.estatus === "Borrador";

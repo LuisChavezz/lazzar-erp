@@ -254,6 +254,7 @@ export const getCorteMangaOrderColumns = (onViewDetails: (id: number) => void) =
   columnHelper.display({
     id: "acciones",
     header: "Acciones",
+    meta: { align: "center" },
     cell: ({ row }) => <ActionsCell order={row.original} onViewDetails={onViewDetails} />,
   }),
 ] as ColumnDef<CorteMangaOrder>[];

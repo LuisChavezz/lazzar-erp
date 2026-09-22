@@ -390,6 +390,7 @@ export function getExpenseRequestColumns(): ColumnDef<ExpensePurchaseRequest, un
     col.display({
       id:   'acciones',
       header: "Acciones",
+      meta: { align: "center" },
       size: 60,
       cell: ({ row }) => {
         // eslint-disable-next-line react-hooks/rules-of-hooks

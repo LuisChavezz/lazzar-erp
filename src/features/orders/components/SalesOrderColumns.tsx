@@ -103,11 +103,7 @@ export function createSalesOrderColumns({
         const order = row.original;
         const confirmed = isOrderConfirmed(order);
         return (
-          // `justify-center`: la celda es un contenedor flex, así que el
-          // `text-center` que `DataTable` pone en el `<td>` (modo panel) no
-          // la centra por sí solo. El resto de columnas no lleva clase de
-          // alineación — la resuelve `DataTable`.
-          <div className="flex items-center justify-center gap-2 flex-wrap">
+          <div className="flex items-center gap-2 flex-wrap">
             <span
               className={`h-2.5 w-2.5 rounded-full shrink-0 ${
                 confirmed ? 'bg-cyan-500' : 'bg-amber-500'
@@ -149,11 +145,8 @@ export function createSalesOrderColumns({
         const order = row.original;
         return (
           <div>
-            {/* `truncate max-w-55` hace del nombre una caja con ancho propio:
-                `mx-auto` centra la CAJA; el `text-center` del `<td>` centra
-                el texto dentro de ella y el subtítulo. */}
             <p
-              className="mx-auto text-[13px] font-medium text-slate-800 dark:text-white truncate max-w-55"
+              className="text-[13px] font-medium text-slate-800 dark:text-white truncate max-w-55"
               title={order.cliente_razon_social ?? undefined}
             >
               {order.cliente_razon_social || '—'}
@@ -170,7 +163,7 @@ export function createSalesOrderColumns({
       header: 'Piezas',
       size: 90,
       enableSorting: false,
-      meta: { hideOnMobile: true },
+      meta: { align: "right", hideOnMobile: true },
       cell: PendingDataCell,
     },
     {
@@ -207,6 +200,7 @@ export function createSalesOrderColumns({
       id: 'subtotal',
       accessorKey: 'subtotal',
       header: 'Importe sin IVA',
+      meta: { align: "right" },
       size: 140,
       cell: ({ row }) => (
         <span className="tabular-nums text-[13px] font-semibold text-slate-700 dark:text-slate-200">

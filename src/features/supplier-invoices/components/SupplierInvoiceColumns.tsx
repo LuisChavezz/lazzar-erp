@@ -78,6 +78,7 @@ export const getColumns = (
     }),
     columnHelper.accessor("total", {
       header: "Total",
+      meta: { align: "right" },
       cell: (info) => {
         const codigo = info.row.original.moneda_codigo;
         return (
@@ -97,6 +98,7 @@ export const getColumns = (
     columnHelper.display({
       id: "actions",
       header: "Acciones",
+      meta: { align: "center" },
       cell: ({ row }) => {
         const factura = row.original;
         const menuItems: ActionMenuItem[] = [

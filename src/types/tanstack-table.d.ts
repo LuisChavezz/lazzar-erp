@@ -29,9 +29,9 @@ declare module "@tanstack/react-table" {
     /**
      * Alineación horizontal de encabezado Y celda, aplicada por `DataTable` a
      * nivel de `<th>`/`<td>` (no hace falta ninguna clase en el contenido de
-     * la columna). Si se omite: `"center"` en modo panel (`framed`), `"left"`
-     * en el resto. Es una vía de escape; el diseño aprobado centra todo,
-     * incluidos importes.
+     * la columna). Si se omite: `"left"`. Importes y cantidades numéricas
+     * van en `"right"` (los dígitos alinean); "Acciones", indicadores de
+     * estatus y columnas centradas a propósito, en `"center"`.
      */
     align?: "left" | "center" | "right";
   }

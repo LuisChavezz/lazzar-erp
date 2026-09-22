@@ -74,6 +74,7 @@ export const packingColumns = [
   }),
   columnHelper.accessor("numero_cajas", {
     header: "Cajas",
+    meta: { align: "right" },
     cell: (info) => (
       <span className="text-sm tabular-nums text-slate-700 dark:text-slate-300">
         {info.getValue()}
@@ -117,6 +118,7 @@ export const packingColumns = [
   columnHelper.display({
     id: "actions",
     header: "Acciones",
+    meta: { align: "center" },
     cell: ({ row }) => <ActionsCell row={row.original} />,
   }),
 ] as ColumnDef<Packing>[];

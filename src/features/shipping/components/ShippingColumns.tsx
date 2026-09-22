@@ -135,6 +135,7 @@ export const shipmentColumns = [
   columnHelper.display({
     id: "actions",
     header: "Acciones",
+    meta: { align: "center" },
     cell: ({ row }) => <ActionsCell row={row.original} />,
   }),
 ] as ColumnDef<Shipment>[];

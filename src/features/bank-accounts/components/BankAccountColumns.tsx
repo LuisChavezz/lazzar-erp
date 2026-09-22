@@ -134,6 +134,7 @@ export const getColumns = (
     }),
     columnHelper.accessor("saldo_actual", {
       header: "Saldo actual",
+      meta: { align: "right" },
       cell: (info) => (
         // Importe en LA MONEDA DE LA CUENTA, vía `formatSaldo`. El saldo lo
         // mantiene el backend al aplicar pagos y cobros; aquí solo se muestra.
@@ -154,6 +155,7 @@ export const getColumns = (
     columnHelper.display({
       id: "actions",
       header: "Acciones",
+      meta: { align: "center" },
       cell: ({ row }) => (
         <ActionsCell row={row} onEdit={onEdit} onViewSummary={onViewSummary} />
       ),

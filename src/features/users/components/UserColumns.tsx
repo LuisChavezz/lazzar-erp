@@ -227,6 +227,7 @@ export const getUserColumns = ({
     columns.push({
       id: "actions",
       header: "Acciones",
+      meta: { align: "center" },
       cell: ({ row }) => (
         <ActionsCell
           user={row.original}

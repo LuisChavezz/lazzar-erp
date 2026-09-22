@@ -61,8 +61,12 @@ export interface DataTableHandle<TData> {
 // el encabezado alinea con `justify-*` (su contenido vive en un wrapper flex
 // junto a la flecha de orden, así que un `text-*` en el contenido de la
 // columna NO tiene efecto — por eso se resuelve aquí y no por columna) y la
-// celda con `text-*`. `"left"` no añade ninguna clase para conservar el
-// render previo de las tablas que no declaran alineación.
+// celda con `text-*`. El default es `"left"` (no añade ninguna clase: el
+// comportamiento natural de una celda de tabla); `"center"` y `"right"` son
+// opt-in por columna. Regla del proyecto: importes y cantidades numéricas van
+// a la DERECHA (`meta: { align: "right" }`) para que los dígitos alineen;
+// "Acciones", indicadores de estatus y columnas centradas a propósito,
+// `meta: { align: "center" }`; el resto queda a la izquierda.
 
 type DataTableColumnAlign = NonNullable<
   NonNullable<ColumnDef<unknown, unknown>["meta"]>["align"]
@@ -71,7 +75,12 @@ type DataTableColumnAlign = NonNullable<
 const HEADER_ALIGN_CLS: Record<DataTableColumnAlign, string> = {
   left: "",
   center: "justify-center text-center",
-  right: "justify-end text-right",
+  // `flex-row-reverse` + `justify-start`: el grupo se empaqueta a la
+  // derecha con la ETIQUETA pegada al borde y la flecha de orden a su
+  // izquierda — así la etiqueta queda alineada con los dígitos de la celda
+  // esté o no ordenada la columna (con `justify-end` la flecha, al aparecer,
+  // la empujaba a la izquierda).
+  right: "flex-row-reverse justify-start text-right",
 };
 
 const CELL_ALIGN_CLS: Record<DataTableColumnAlign, string> = {
@@ -160,8 +169,7 @@ interface DataTableProps<TData, TValue> {
    * separados que flotan con su propio margen — vía de escape, ningún
    * consumidor la usa hoy.
    *
-   * Es también el INTERRUPTOR del "modo panel": además del marco, centra
-   * encabezados y celdas cuando la columna no declara `meta.align`, y fija
+   * Es también el INTERRUPTOR del "modo panel": además del marco, fija
    * una altura mínima de fila (ver `PANEL_ROW_MIN_HEIGHT_CLS`). Nació como
    * opt-in de 6 consumidores y se volvió el default de los 69 en un solo
    * cambio (este), junto con `searchAlwaysExpanded` y `density`.
@@ -292,11 +300,11 @@ export function DataTable<TData, TValue>({
   const cellPaddingCls = density === "compact" ? "px-4 py-2.5" : "px-6 py-4";
   const bodyTextCls = density === "compact" ? "text-[13px]" : "text-sm";
   // ── Modo panel (diseño aprobado) ──────────────────────────────────────────
-  // Detectado por `framed` (ver la doc de la prop). Fuera de este modo todo lo
-  // de abajo es un no-op: sin clase de alineación y sin altura mínima, es
-  // decir, el render previo byte por byte para los consumidores que no lo usan.
+  // Detectado por `framed` (ver la doc de la prop). Fuera de este modo la
+  // altura mínima de fila es un no-op. La alineación NO depende del modo:
+  // izquierda salvo que la columna declare `meta.align` (ver arriba).
   const isPanelDesign = framed;
-  const defaultAlign: DataTableColumnAlign = isPanelDesign ? "center" : "left";
+  const defaultAlign: DataTableColumnAlign = "left";
   // Altura mínima de fila SOLO en modo panel. `h-12` (48px) en cada `<td>`
   // actúa como mínimo en layout de tabla (la fila crece si el contenido es
   // más alto). Es exactamente la altura que ya produce la celda "punto de
@@ -1303,10 +1311,10 @@ export function DataTable<TData, TValue>({
                         const cellMeta = cell.column.columnDef.meta;
                         const hideOnMobileCls = cellMeta?.hideOnMobile ? "hidden md:table-cell" : "";
                         // `text-*` alinea texto e inline; una celda cuyo
-                        // contenido sea un contenedor flex (punto de estatus
-                        // + chip) debe centrarse a sí misma con
-                        // `justify-center`, como hacen las columnas del
-                        // diseño aprobado.
+                        // contenido sea un contenedor flex (p. ej. el menú de
+                        // "Acciones") se centra a sí misma con
+                        // `justify-center` — `meta.align` solo alinea el
+                        // encabezado con ella.
                         const cellAlignCls = CELL_ALIGN_CLS[cellMeta?.align ?? defaultAlign];
                         return (
                           <td

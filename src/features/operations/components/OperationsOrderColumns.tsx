@@ -88,10 +88,7 @@ const FolioCell = ({
   ];
 
   return (
-    // `justify-center`: la celda es un contenedor flex, así que el
-    // `text-center` que `DataTable` pone en el `<td>` (modo panel) no la
-    // centra por sí solo. El resto de columnas no lleva clase de alineación.
-    <div className="flex items-center justify-center gap-2 flex-wrap">
+    <div className="flex items-center gap-2 flex-wrap">
       <span
         className={`h-2.5 w-2.5 rounded-full shrink-0 ${confirmed ? "bg-cyan-500" : "bg-amber-500"}`}
         role="img"
@@ -158,10 +155,7 @@ export function buildOperationsOrderColumns(
       accessorKey: "cliente_razon_social",
       header: "Razón social",
       cell: ({ row }) => (
-        // `block … max-w-55` (para el `truncate`) hace de la razón social una
-        // caja con ancho propio: `mx-auto` centra la CAJA en la celda; el
-        // `text-center` del `<td>` centra el texto dentro de ella.
-        <span className="block mx-auto text-sm text-slate-600 dark:text-slate-300 truncate max-w-55">
+        <span className="block text-sm text-slate-600 dark:text-slate-300 truncate max-w-55">
           {row.original.cliente_razon_social || "—"}
         </span>
       ),
@@ -173,6 +167,7 @@ export function buildOperationsOrderColumns(
       // `CustomerColumns.tsx`.
       id: "piezas",
       header: "Piezas",
+      meta: { align: "right" },
       enableSorting: false,
       cell: () => <span className="text-slate-400 dark:text-slate-600">—</span>,
     },
@@ -207,6 +202,7 @@ export function buildOperationsOrderColumns(
       id: "importe_sin_iva",
       accessorKey: "subtotal",
       header: "Importe sin IVA",
+      meta: { align: "right" },
       cell: ({ row }) => (
         <span className="tabular-nums text-sm font-semibold text-slate-700 dark:text-slate-200">
           {formatMoneyValueOrDash(row.original.subtotal)}

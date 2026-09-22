@@ -79,6 +79,7 @@ export const getColumns = (
     columnHelper.display({
       id: "actions",
       header: "Acciones",
+      meta: { align: "center" },
       cell: ({ row }) => {
         const centro = row.original;
         const menuItems: ActionMenuItem[] = [

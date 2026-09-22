@@ -214,10 +214,7 @@ const OperationsQuoteIdCell = ({
   const statusConfig = getOperationsQuoteStatusConfig(operationsQuote.estatus);
 
   return (
-    // `justify-center`: la celda es un contenedor flex, así que el
-    // `text-center` que `DataTable` pone en el `<td>` (modo panel) no la
-    // centra por sí solo. El resto de columnas no lleva clase de alineación.
-    <div className="flex items-center justify-center gap-2">
+    <div className="flex items-center gap-2">
       <span
         className={`h-2.5 w-2.5 rounded-full shrink-0 ${statusConfig?.accentDot ?? "bg-slate-400"}`}
         role="img"
@@ -356,6 +353,7 @@ export const operationsQuoteColumns: ColumnDef<OperationsQuote>[] = [
   {
     accessorKey: "piezas",
     header: "Piezas",
+    meta: { align: "right" },
     size: 80,
     cell: ({ row }) => (
       <span className="text-slate-500 dark:text-slate-400">
@@ -387,6 +385,7 @@ export const operationsQuoteColumns: ColumnDef<OperationsQuote>[] = [
   {
     accessorKey: "importe_sin_iva",
     header: "Importe sin IVA",
+    meta: { align: "right" },
     cell: ({ row }) => (
       <span className="text-slate-500 dark:text-slate-400">
         {formatCurrency(Number(row.original.importe_sin_iva) || 0)}

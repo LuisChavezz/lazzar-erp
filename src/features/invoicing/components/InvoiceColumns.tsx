@@ -146,6 +146,7 @@ export const invoiceColumns: ColumnDef<Invoice>[] = [
   {
     accessorKey: "total",
     header: "Total",
+    meta: { align: "right" },
     // `total` es un string numérico; ordenamos numéricamente en vez de por
     // el orden alfanumérico que TanStack infiere para strings.
     sortingFn: (rowA, rowB) =>
@@ -177,6 +178,7 @@ export const invoiceColumns: ColumnDef<Invoice>[] = [
   {
     id: "actions",
     header: "Acciones",
+    meta: { align: "center" },
     cell: ({ row }) => <ActionsCell invoice={row.original} />,
   },
 ];

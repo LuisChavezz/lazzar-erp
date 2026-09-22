@@ -102,6 +102,7 @@ export const getColumns = (
     }),
     columnHelper.accessor("salario", {
       header: "Salario",
+      meta: { align: "right" },
       sortingFn: (rowA, rowB) =>
         Number(rowA.original.salario) - Number(rowB.original.salario),
       cell: (info) => (
@@ -126,6 +127,7 @@ export const getColumns = (
       columnHelper.display({
         id: "actions",
         header: "Acciones",
+        meta: { align: "center" },
         cell: ({ row }) => {
           const contract = row.original;
           const menuItems: ActionMenuItem[] = [];

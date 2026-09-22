@@ -48,11 +48,10 @@ function PendingDataCell() {
 }
 
 /**
- * Alineación: `DataTable` en modo panel (`framed`) centra encabezado y celda
- * de cada columna a nivel de `<th>`/`<td>`, así que aquí NO se ponen clases
- * `text-center`/`w-full` (un `w-full` en el encabezado empujaría la flecha de
- * orden al borde). La única excepción es la celda de Cotización, cuyo
- * contenido es un contenedor flex y se centra a sí mismo con `justify-center`.
+ * Alineación: la resuelve `DataTable` a nivel de `<th>`/`<td>` con
+ * `meta.align` (izquierda por defecto; importes y piezas a la derecha), así
+ * que aquí NO se ponen clases `text-*`/`w-full` en encabezados ni celdas (un
+ * `w-full` en el encabezado empujaría la flecha de orden al borde).
  *
  * Arreglo ESTÁTICO a propósito (sin factoría con callbacks): la celda de
  * Cotización solo señala la acción elegida a la vista por contexto
@@ -82,7 +81,7 @@ export const quoteColumns: ColumnDef<Quote>[] = [
     cell: ({ row }) => {
       const statusConfig = getQuoteStatusConfig(row.original.estatus);
       return (
-        <div className="flex items-center justify-center gap-2">
+        <div className="flex items-center gap-2">
           <span
             className={`h-2.5 w-2.5 rounded-full shrink-0 ${statusConfig?.accentDot ?? "bg-slate-400"}`}
             role="img"
@@ -122,6 +121,7 @@ export const quoteColumns: ColumnDef<Quote>[] = [
   {
     id: "piezas",
     header: "Piezas",
+    meta: { align: "right" },
     size: 80,
     cell: ({ row }) => (
       <span className="text-slate-500 dark:text-slate-400">
@@ -147,6 +147,7 @@ export const quoteColumns: ColumnDef<Quote>[] = [
     id: "importeSinIva",
     accessorKey: "importe_sin_iva",
     header: "Importe sin IVA",
+    meta: { align: "right" },
     cell: ({ row }) => (
       <span className="text-slate-500 dark:text-slate-400">
         {formatCurrency(Number(row.original.importe_sin_iva) || 0)}

@@ -133,6 +133,7 @@ export const getColumns = (
       columnHelper.display({
         id: "actions",
         header: "Acciones",
+        meta: { align: "center" },
         cell: ({ row }) => (
           <ActionsCell
             row={row}

@@ -140,6 +140,7 @@ export const getColumns = (
     }),
     columnHelper.accessor("precio_base", {
       header: "Precio",
+      meta: { align: "right" },
       cell: ({ row }) => {
         const value = row.original.precio_base;
         const formatted = new Intl.NumberFormat("es-MX", {
@@ -156,6 +157,7 @@ export const getColumns = (
       columnHelper.display({
         id: "actions",
         header: "Acciones",
+        meta: { align: "center" },
         cell: ({ row }) => (
           <ActionsCell
             row={row}

@@ -380,6 +380,7 @@ export function getPQOrderColumns(): ColumnDef<PQOrder, unknown>[] {
     columnHelper.display({
       id:     'acciones',
       header: 'Acciones',
+      meta: { align: "center" },
       cell: (info) => {
         const row = info.row.original;
         // eslint-disable-next-line react-hooks/rules-of-hooks

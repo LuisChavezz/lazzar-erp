@@ -67,6 +67,7 @@ export const priceListColumns: ColumnDef<PriceListItem>[] = [
   {
     accessorKey: "itemsCount",
     header: "Ítems",
+    meta: { align: "right" },
     cell: ({ row }) => (
       <span className="text-slate-600 dark:text-slate-300">
         {row.original.itemsCount.toLocaleString("es-MX")}
@@ -99,6 +100,7 @@ export const priceListColumns: ColumnDef<PriceListItem>[] = [
   {
     id: "actions",
     header: "Acciones",
+    meta: { align: "center" },
     cell: () => <ActionsCell />,
   },
 ];

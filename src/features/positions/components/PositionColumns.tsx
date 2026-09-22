@@ -113,6 +113,7 @@ export const getColumns = (
     ),
     columnHelper.accessor("salario_base", {
       header: "Salario Base",
+      meta: { align: "right" },
       cell: (info) => (
         <span className="text-slate-600 dark:text-slate-300 font-medium tabular-nums">
           {formatMoneyValueOrDash(info.getValue())}
@@ -135,6 +136,7 @@ export const getColumns = (
       columnHelper.display({
         id: "actions",
         header: "Acciones",
+        meta: { align: "center" },
         cell: ({ row }) => (
           <ActionsCell
             row={row}

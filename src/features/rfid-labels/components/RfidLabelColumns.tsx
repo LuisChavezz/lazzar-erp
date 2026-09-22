@@ -89,6 +89,7 @@ export const rfidLabelColumns = [
   }),
   columnHelper.accessor("cantidad", {
     header: "Cantidad",
+    meta: { align: "right" },
     cell: (info) => (
       <span className="text-sm tabular-nums text-slate-700 dark:text-slate-200">
         {info.getValue()}
@@ -120,6 +121,7 @@ export const rfidLabelColumns = [
   columnHelper.display({
     id: "actions",
     header: "Acciones",
+    meta: { align: "center" },
     cell: ({ row }) => <ActionsCell row={row.original} />,
   }),
 ] as ColumnDef<EtiquetaRFID>[];
