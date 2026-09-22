@@ -171,13 +171,13 @@ export function getStockColumns(maxStock?: number, onSkuInfoClick?: () => void) 
       {
         id: "disponible",
         header: "Existencias",
-        meta: { label: "Existencias" } as const,
+        meta: { label: "Existencias", align: "right" } as const,
         sortingFn: "basic",
         cell: (info) => {
           const stock = info.getValue();
           const cantidad = info.row.original.cantidad;
           return (
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center justify-end gap-1.5">
               <span className="w-2 h-2 rounded-full shrink-0 bg-sky-500" />
               <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">
                 {stock.toLocaleString("es-MX")}

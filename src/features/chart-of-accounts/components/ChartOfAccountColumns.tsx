@@ -61,7 +61,7 @@ export const getColumns = (
       header: "Nivel",
       meta: { align: "center" },
       cell: (info) => (
-        <div className="text-center tabular-nums text-slate-500 dark:text-slate-400">
+        <div className="tabular-nums text-slate-500 dark:text-slate-400">
           {info.getValue()}
         </div>
       ),

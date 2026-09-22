@@ -137,7 +137,7 @@ const MiniStepper = ({ pasoActual, estatus }: { pasoActual: number; estatus: Exp
 // ── Subcomponente: celda de monto ─────────────────────────────────────────────
 
 const MontoCelda = ({ monto }: { monto: number }) => (
-  <div className="flex flex-col items-start">
+  <div className="flex flex-col items-end">
     <span className="text-xs font-bold tabular-nums text-slate-700 dark:text-slate-200 font-mono">
       {new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(monto)}
     </span>
@@ -351,6 +351,7 @@ export function getExpenseRequestColumns(): ColumnDef<ExpensePurchaseRequest, un
     // ── Monto ─────────────────────────────────────────────────────────────
     col.accessor('monto', {
       header: 'Monto',
+      meta:   { align: 'right' },
       size:   120,
       cell: ({ row }) => (
         <MontoCelda monto={row.original.monto} />
