@@ -100,7 +100,7 @@ export const getColumns = (
           type="button"
           onClick={() => onViewSummary(info.row.original.id)}
           title="Ver resumen"
-          className="font-medium text-slate-600 dark:text-slate-300 hover:text-sky-600 dark:hover:text-sky-400 hover:underline cursor-pointer text-left"
+          className="font-medium text-slate-600 dark:text-slate-300 hover:text-sky-600 dark:hover:text-sky-400 hover:underline cursor-pointer"
         >
           {info.getValue() || "—"}
         </button>
@@ -133,11 +133,11 @@ export const getColumns = (
       ),
     }),
     columnHelper.accessor("saldo_actual", {
-      header: () => <div className="text-right">Saldo actual</div>,
+      header: "Saldo actual",
       cell: (info) => (
         // Importe en LA MONEDA DE LA CUENTA, vía `formatSaldo`. El saldo lo
         // mantiene el backend al aplicar pagos y cobros; aquí solo se muestra.
-        <div className="text-right tabular-nums font-semibold text-slate-800 dark:text-white">
+        <div className="tabular-nums font-semibold text-slate-800 dark:text-white">
           {formatSaldo(info.getValue(), info.row.original.moneda_codigo)}
         </div>
       ),
@@ -153,7 +153,7 @@ export const getColumns = (
     }),
     columnHelper.display({
       id: "actions",
-      header: () => <div className="text-center">Acciones</div>,
+      header: "Acciones",
       cell: ({ row }) => (
         <ActionsCell row={row} onEdit={onEdit} onViewSummary={onViewSummary} />
       ),

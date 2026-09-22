@@ -80,12 +80,12 @@ export const getColumns = (
       ),
     }),
     columnHelper.accessor("total_pagado", {
-      header: () => <div className="text-right">Total pagado</div>,
+      header: "Total pagado",
       cell: (info) => (
         // El pago no expone moneda propia: la divisa vive en la factura de cada
         // CxP aplicada. Se formatea con el MXN por defecto de `formatCurrency`
         // hasta que la fase 2 resuelva la moneda desde las líneas.
-        <div className="text-right tabular-nums font-semibold text-slate-800 dark:text-white">
+        <div className="tabular-nums font-semibold text-slate-800 dark:text-white">
           {formatMoneyValue(info.getValue())}
         </div>
       ),
@@ -98,7 +98,7 @@ export const getColumns = (
     }),
     columnHelper.display({
       id: "actions",
-      header: () => <div className="text-center">Acciones</div>,
+      header: "Acciones",
       cell: ({ row }) => {
         // "Cancelar" solo sobre pagos APLICADOS: cancelar uno ya cancelado es un
         // no-op en el backend, y sobre un `Borrador` (que esta UI no crea pero

@@ -151,7 +151,7 @@ export const invoiceColumns: ColumnDef<Invoice>[] = [
     sortingFn: (rowA, rowB) =>
       safeParseAmount(rowA.original.total) - safeParseAmount(rowB.original.total),
     cell: ({ row }) => (
-      <div className="text-right font-semibold text-slate-700 dark:text-slate-200 tabular-nums">
+      <div className="font-semibold text-slate-700 dark:text-slate-200 tabular-nums">
         {formatCurrency(safeParseAmount(row.original.total), {
           currency: row.original.moneda_nombre,
         })}
@@ -176,7 +176,7 @@ export const invoiceColumns: ColumnDef<Invoice>[] = [
   },
   {
     id: "actions",
-    header: () => <div className="text-center">Acciones</div>,
+    header: "Acciones",
     cell: ({ row }) => <ActionsCell invoice={row.original} />,
   },
 ];

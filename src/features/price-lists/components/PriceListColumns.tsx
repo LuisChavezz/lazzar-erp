@@ -98,7 +98,7 @@ export const priceListColumns: ColumnDef<PriceListItem>[] = [
   },
   {
     id: "actions",
-    header: () => <div className="text-center">Acciones</div>,
+    header: "Acciones",
     cell: () => <ActionsCell />,
   },
 ];

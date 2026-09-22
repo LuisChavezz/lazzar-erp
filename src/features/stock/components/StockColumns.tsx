@@ -262,7 +262,7 @@ export function getStockColumns(maxStock?: number, onSkuInfoClick?: () => void) 
     }),
     // columnHelper.display({
     //   id: "actions",
-    //   header: () => <div className="text-center">Acciones</div>,
+    //   header: "Acciones",
     //   size: 90,
     //   cell: ({ row }) => <ActionsCell stock={row.original} />,
     // }),

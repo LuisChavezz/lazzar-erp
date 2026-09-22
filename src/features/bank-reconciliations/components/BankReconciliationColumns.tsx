@@ -81,17 +81,17 @@ export const getColumns = (
       },
     ),
     columnHelper.accessor("saldo_estado_cuenta", {
-      header: () => <div className="text-right">Estado de cuenta</div>,
+      header: "Estado de cuenta",
       cell: (info) => (
-        <div className="text-right tabular-nums text-slate-600 dark:text-slate-300">
+        <div className="tabular-nums text-slate-600 dark:text-slate-300">
           {formatSaldo(info.getValue(), monedaDe(info.row.original.cuenta_bancaria))}
         </div>
       ),
     }),
     columnHelper.accessor("saldo_libros", {
-      header: () => <div className="text-right">Libros</div>,
+      header: "Libros",
       cell: (info) => (
-        <div className="text-right tabular-nums text-slate-600 dark:text-slate-300">
+        <div className="tabular-nums text-slate-600 dark:text-slate-300">
           {formatSaldo(info.getValue(), monedaDe(info.row.original.cuenta_bancaria))}
         </div>
       ),
@@ -104,7 +104,7 @@ export const getColumns = (
       (row) => centavosAMoneda(diferenciaEnCentavos(row.saldo_estado_cuenta, row.saldo_libros)),
       {
         id: "diferencia",
-        header: () => <div className="text-right">Diferencia</div>,
+        header: "Diferencia",
         cell: (info) => {
           const conciliacion = info.row.original;
           const cuadra = conciliacionCuadra(
@@ -113,7 +113,7 @@ export const getColumns = (
           );
           return (
             <div
-              className={`text-right tabular-nums font-medium ${
+              className={`tabular-nums font-medium ${
                 cuadra
                   ? "text-emerald-600 dark:text-emerald-400"
                   : "text-rose-600 dark:text-rose-400"
@@ -134,7 +134,7 @@ export const getColumns = (
     }),
     columnHelper.display({
       id: "actions",
-      header: () => <div className="text-center">Acciones</div>,
+      header: "Acciones",
       cell: ({ row }) => {
         const conciliacion = row.original;
         const esBorrador = conciliacion.estatus === "Borrador";

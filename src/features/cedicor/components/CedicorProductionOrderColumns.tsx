@@ -329,7 +329,7 @@ export function getCedicorProductionOrderColumns(): ColumnDef<ProductionOrder>[]
 
     col.display({
       id: 'acciones',
-      header: () => <div className="text-center">Acciones</div>,
+      header: "Acciones",
       meta: { label: 'Acciones' },
       cell: (info) => <ActionsCell row={info.row.original} />,
       size: 80,

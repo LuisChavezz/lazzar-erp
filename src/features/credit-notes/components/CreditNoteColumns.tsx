@@ -87,7 +87,7 @@ export const getColumns = (
       ),
     }),
     columnHelper.accessor("total", {
-      header: () => <div className="text-right">Total</div>,
+      header: "Total",
       cell: (info) => (
         // LIMITACIÓN CONOCIDA: `NotaCredito` no expone moneda propia ni el código
         // de la factura, y el renglón del listado no trae con qué resolverla, así
@@ -95,7 +95,7 @@ export const getColumns = (
         // SÍ la resuelve (pide la factura para nombrar sus conceptos y de paso
         // obtiene `moneda_nombre`); esta columna no puede sin una consulta por
         // fila. Mismo caso que el `total_pagado` del listado de pagos.
-        <div className="text-right tabular-nums font-semibold text-slate-800 dark:text-white">
+        <div className="tabular-nums font-semibold text-slate-800 dark:text-white">
           {formatMoneyValue(info.getValue())}
         </div>
       ),
@@ -108,7 +108,7 @@ export const getColumns = (
     }),
     columnHelper.display({
       id: "actions",
-      header: () => <div className="text-center">Acciones</div>,
+      header: "Acciones",
       cell: ({ row }) => {
         const { id, estatus } = row.original;
         const menuItems: ActionMenuItem[] = [

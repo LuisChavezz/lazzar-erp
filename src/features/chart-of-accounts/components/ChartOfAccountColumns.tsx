@@ -58,7 +58,7 @@ export const getColumns = (
       ),
     }),
     columnHelper.accessor("nivel", {
-      header: () => <div className="text-center">Nivel</div>,
+      header: "Nivel",
       cell: (info) => (
         <div className="text-center tabular-nums text-slate-500 dark:text-slate-400">
           {info.getValue()}
@@ -92,7 +92,7 @@ export const getColumns = (
     }),
     columnHelper.display({
       id: "actions",
-      header: () => <div className="text-center">Acciones</div>,
+      header: "Acciones",
       cell: ({ row }) => {
         const cuenta = row.original;
         const menuItems: ActionMenuItem[] = [

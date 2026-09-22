@@ -134,7 +134,7 @@ export const getColumns = (
     columns.push(
       columnHelper.display({
         id: "actions",
-        header: () => <div className="text-center">Acciones</div>,
+        header: "Acciones",
         cell: ({ row }) => (
           <ActionsCell
             row={row}
