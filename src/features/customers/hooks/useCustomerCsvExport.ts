@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, type RefObject } from "react";
 import { Customer } from "../interfaces/customer.interface";
-import { DataTableVisibleColumn } from "@/src/components/DataTable";
+import { type DataTableHandle, DataTableVisibleColumn } from "@/src/components/DataTable";
 
 const escapeCsv = (value: string | number | boolean | null | undefined) => {
   if (value === null || value === undefined) return "";
@@ -49,21 +49,17 @@ const buildCsv = (customers: Customer[], columns: DataTableVisibleColumn<Custome
 };
 
 /**
- * `getCustomers` se invoca AL EXPORTAR (no al montar): son las filas
+ * `tableRef` es el `ref` de la `DataTable` de la vista; AL EXPORTAR (no al
+ * montar) se leen de él las filas
  * filtradas y ordenadas que `DataTable` expone por `ref` (`getFilteredRows`),
  * leídas en ese instante. Guardar una copia en un ref dejaba en el archivo
  * valores y orden viejos tras un refetch que no cambiaba el número de filas.
  */
 export const useCustomerCsvExport = (
-  getCustomers: () => Customer[],
+  tableRef: RefObject<DataTableHandle<Customer> | null>,
   columns: DataTableVisibleColumn<Customer>[]
 ) => {
-  const getCustomersRef = useRef(getCustomers);
   const columnsRef = useRef(columns);
-
-  useEffect(() => {
-    getCustomersRef.current = getCustomers;
-  }, [getCustomers]);
 
   useEffect(() => {
     columnsRef.current = columns;
@@ -71,7 +67,7 @@ export const useCustomerCsvExport = (
 
   const exportToCsv = useCallback(() => {
     if (columnsRef.current.length === 0) return;
-    const csvContent = buildCsv(getCustomersRef.current(), columnsRef.current);
+    const csvContent = buildCsv(tableRef.current?.getFilteredRows() ?? [], columnsRef.current);
     const blob = new Blob([`﻿${csvContent}`], {
       type: "text/csv;charset=utf-8;",
     });
@@ -84,7 +80,7 @@ export const useCustomerCsvExport = (
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
-  }, []);
+  }, [tableRef]);
 
   useEffect(() => {
     const handleExport = () => exportToCsv();

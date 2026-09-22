@@ -41,12 +41,11 @@ export const PurchaseOrderReceiptList = () => {
   // páginas) y las columnas llegan por `onVisibleColumnsChange`. Mismo patrón
   // que `PurchaseOrderView`.
   const tableRef = useRef<DataTableHandle<PurchaseOrderReceipt>>(null);
-  const getFilteredReceipts = () => tableRef.current?.getFilteredRows() ?? [];
   const [visibleColumns, setVisibleColumns] = useState<
     DataTableVisibleColumn<PurchaseOrderReceipt>[]
   >([]);
-  usePurchaseOrderReceiptCsvExport(getFilteredReceipts, visibleColumns);
-  usePurchaseOrderReceiptPdfExport(getFilteredReceipts, visibleColumns);
+  usePurchaseOrderReceiptCsvExport(tableRef, visibleColumns);
+  usePurchaseOrderReceiptPdfExport(tableRef, visibleColumns);
 
   return (
     <div className="h-full flex flex-col min-h-0">

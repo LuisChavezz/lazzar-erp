@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useRef } from "react";
-import type { DataTableVisibleColumn } from "@/src/components/DataTable";
+import { useCallback, useEffect, useRef, type RefObject } from "react";
+import type { DataTableHandle, DataTableVisibleColumn } from "@/src/components/DataTable";
 import type { PurchaseOrderReceipt } from "../interfaces/purchase-order-receipt.interface";
 import { getPurchaseOrderReceiptColumnText } from "../utils/purchaseOrderReceiptExport";
 
@@ -27,21 +27,17 @@ const buildCsv = (
  * `useQuoteCsvExport`: refs para no reconstruir el listener en cada render,
  * disparo por `CustomEvent` (`purchase-order-receipts:exportCSV`).
  *
- * `getReceipts` se invoca AL EXPORTAR (no al montar): son las filas filtradas y
+ * `tableRef` es el `ref` de la `DataTable` de la vista; AL EXPORTAR (no al
+ * montar) se leen de él las filas filtradas y
  * ordenadas de TODAS las páginas que `DataTable` expone por `ref`
  * (`getFilteredRows`), leídas en ese instante — así el archivo no se queda
  * en la página visible ni con valores previos a un refetch.
  */
 export const usePurchaseOrderReceiptCsvExport = (
-  getReceipts: () => PurchaseOrderReceipt[],
+  tableRef: RefObject<DataTableHandle<PurchaseOrderReceipt> | null>,
   columns: DataTableVisibleColumn<PurchaseOrderReceipt>[],
 ) => {
-  const getReceiptsRef = useRef(getReceipts);
   const columnsRef = useRef(columns);
-
-  useEffect(() => {
-    getReceiptsRef.current = getReceipts;
-  }, [getReceipts]);
 
   useEffect(() => {
     columnsRef.current = columns;
@@ -49,7 +45,7 @@ export const usePurchaseOrderReceiptCsvExport = (
 
   const exportToCsv = useCallback(() => {
     if (columnsRef.current.length === 0) return;
-    const csvContent = buildCsv(getReceiptsRef.current(), columnsRef.current);
+    const csvContent = buildCsv(tableRef.current?.getFilteredRows() ?? [], columnsRef.current);
     // BOM (`﻿`) para que Excel detecte UTF-8 y no rompa acentos/ñ.
     const blob = new Blob([`﻿${csvContent}`], {
       type: "text/csv;charset=utf-8;",
@@ -63,7 +59,7 @@ export const usePurchaseOrderReceiptCsvExport = (
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
-  }, []);
+  }, [tableRef]);
 
   useEffect(() => {
     const handleExport = () => exportToCsv();

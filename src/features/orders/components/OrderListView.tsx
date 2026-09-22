@@ -93,12 +93,11 @@ export function OrderListView({ from, params, variant = 'shared' }: OrderListVie
   // se LEEN de la tabla al hacer clic (`getFilteredRows`: filtradas y
   // ordenadas de todas las páginas), no se espejean en estado.
   const tableRef = useRef<DataTableHandle<PedidoListItem>>(null);
-  const getFilteredOrders = () => tableRef.current?.getFilteredRows() ?? [];
   const [visibleColumns, setVisibleColumns] = useState<DataTableVisibleColumn<PedidoListItem>[]>(
     [],
   );
-  useProcurementOrderCsvExport(getFilteredOrders, visibleColumns);
-  useProcurementOrderPdfExport(getFilteredOrders, visibleColumns);
+  useProcurementOrderCsvExport(tableRef, visibleColumns);
+  useProcurementOrderPdfExport(tableRef, visibleColumns);
 
   // Leyenda del punto de confirmación, integrada en la barra de herramientas
   // (vía `actionButton`) en vez de una fila propia: no depende de hover (que

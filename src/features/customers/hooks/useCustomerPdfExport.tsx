@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, type RefObject } from "react";
 import { Customer } from "../interfaces/customer.interface";
-import { DataTableVisibleColumn } from "@/src/components/DataTable";
+import { type DataTableHandle, DataTableVisibleColumn } from "@/src/components/DataTable";
 
 const getValueByPath = (value: unknown, path: string) => {
   return path.split(".").reduce<unknown>((acc, key) => {
@@ -207,21 +207,17 @@ const createCustomersPdfDocument = (
 };
 
 /**
- * `getCustomers` se invoca AL EXPORTAR (no al montar): son las filas
+ * `tableRef` es el `ref` de la `DataTable` de la vista; AL EXPORTAR (no al
+ * montar) se leen de él las filas
  * filtradas y ordenadas que `DataTable` expone por `ref` (`getFilteredRows`),
  * leídas en ese instante. Guardar una copia en un ref dejaba en el archivo
  * valores y orden viejos tras un refetch que no cambiaba el número de filas.
  */
 export const useCustomerPdfExport = (
-  getCustomers: () => Customer[],
+  tableRef: RefObject<DataTableHandle<Customer> | null>,
   columns: DataTableVisibleColumn<Customer>[]
 ) => {
-  const getCustomersRef = useRef(getCustomers);
   const columnsRef = useRef(columns);
-
-  useEffect(() => {
-    getCustomersRef.current = getCustomers;
-  }, [getCustomers]);
 
   useEffect(() => {
     columnsRef.current = columns;
@@ -238,7 +234,7 @@ export const useCustomerPdfExport = (
         View: renderer.View,
         StyleSheet: renderer.StyleSheet,
       },
-      getCustomersRef.current(),
+      tableRef.current?.getFilteredRows() ?? [],
       columnsRef.current
     );
     const blob = await renderer.pdf(pdfDocument).toBlob();
@@ -251,7 +247,7 @@ export const useCustomerPdfExport = (
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
-  }, []);
+  }, [tableRef]);
 
   useEffect(() => {
     const handleExport = () => {

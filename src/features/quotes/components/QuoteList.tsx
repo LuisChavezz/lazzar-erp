@@ -30,7 +30,6 @@ export const QuoteList = () => {
   // Las filas a exportar se LEEN de la tabla al hacer clic (`getFilteredRows`),
   // no se espejean en estado: así el archivo siempre lleva los datos vigentes.
   const tableRef = useRef<DataTableHandle<Quote>>(null);
-  const getFilteredQuotes = () => tableRef.current?.getFilteredRows() ?? [];
   const [visibleColumns, setVisibleColumns] = useState<DataTableVisibleColumn<Quote>[]>([]);
   const isAuthorizingOrder =
     useIsMutating({ mutationKey: approveOperationsQuoteMutationKey }) > 0;
@@ -46,8 +45,8 @@ export const QuoteList = () => {
   // habilita a crear.
   const canCreateQuote = hasPermission("C-CRM-COTIZACIONES", session?.user);
 
-  useQuoteCsvExport(getFilteredQuotes, visibleColumns);
-  useQuotePdfExport(getFilteredQuotes, visibleColumns);
+  useQuoteCsvExport(tableRef, visibleColumns);
+  useQuotePdfExport(tableRef, visibleColumns);
 
   // Acciones de fila (menú del chip #id): la LISTA es dueña de las mutaciones
   // y de los diálogos; la celda solo señala qué acción se eligió (por
@@ -64,10 +63,6 @@ export const QuoteList = () => {
         data={quotes}
         baseDataCount={quotes.length}
         searchPlaceholder="Filtra resultados de la tabla"
-        searchAlwaysExpanded
-        defaultPageSize={20}
-        density="compact"
-        framed
         onVisibleColumnsChange={setVisibleColumns}
         isLoading={isOrdersLoading}
         loadingAriaLabel="Cargando cotizaciones"

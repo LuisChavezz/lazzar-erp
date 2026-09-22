@@ -28,10 +28,9 @@ export const CustomerList = () => {
   // Las filas a exportar se LEEN de la tabla al hacer clic (`getFilteredRows`),
   // no se espejean en estado: así el archivo siempre lleva los datos vigentes.
   const tableRef = useRef<DataTableHandle<Customer>>(null);
-  const getFilteredCustomers = () => tableRef.current?.getFilteredRows() ?? [];
   const [visibleColumns, setVisibleColumns] = useState<DataTableVisibleColumn<Customer>[]>([]);
-  useCustomerCsvExport(getFilteredCustomers, visibleColumns);
-  useCustomerPdfExport(getFilteredCustomers, visibleColumns);
+  useCustomerCsvExport(tableRef, visibleColumns);
+  useCustomerPdfExport(tableRef, visibleColumns);
   const [isCustomerDialogOpen, setIsCustomerDialogOpen] = useState(false);
   const [customerToEdit, setCustomerToEdit] = useState<Customer | null>(null);
   const [isAddressDialogOpen, setIsAddressDialogOpen] = useState(false);

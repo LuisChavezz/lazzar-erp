@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, type RefObject } from "react";
 import { Quote } from "../interfaces/quote.interface";
 import { formatCurrency } from "@/src/utils/formatCurrency";
-import { DataTableVisibleColumn } from "@/src/components/DataTable";
+import { type DataTableHandle, DataTableVisibleColumn } from "@/src/components/DataTable";
 
 const escapeCsv = (value: string | number | boolean | null | undefined) => {
   if (value === null || value === undefined) return "";
@@ -75,21 +75,17 @@ const buildCsv = (quotes: Quote[], columns: DataTableVisibleColumn<Quote>[]) => 
 };
 
 /**
- * `getQuotes` se invoca AL EXPORTAR (no al montar): son las filas filtradas y
+ * `tableRef` es el `ref` de la `DataTable` de la vista; AL EXPORTAR (no al
+ * montar) se leen de él las filas filtradas y
  * ordenadas que `DataTable` expone por `ref` (`getFilteredRows`), leídas en
  * ese instante. Guardar una copia en un ref dejaba en el archivo valores y
  * orden viejos tras un refetch que no cambiaba el número de filas.
  */
 export const useQuoteCsvExport = (
-  getQuotes: () => Quote[],
+  tableRef: RefObject<DataTableHandle<Quote> | null>,
   columns: DataTableVisibleColumn<Quote>[]
 ) => {
-  const getQuotesRef = useRef(getQuotes);
   const columnsRef = useRef(columns);
-
-  useEffect(() => {
-    getQuotesRef.current = getQuotes;
-  }, [getQuotes]);
 
   useEffect(() => {
     columnsRef.current = columns;
@@ -98,7 +94,7 @@ export const useQuoteCsvExport = (
   const exportToCsv = useCallback(() => {
     const exportColumns = columnsRef.current.filter((column) => column.id !== "actions");
     if (exportColumns.length === 0) return;
-    const csvContent = buildCsv(getQuotesRef.current(), exportColumns);
+    const csvContent = buildCsv(tableRef.current?.getFilteredRows() ?? [], exportColumns);
     const blob = new Blob([`\uFEFF${csvContent}`], {
       type: "text/csv;charset=utf-8;",
     });
@@ -111,7 +107,7 @@ export const useQuoteCsvExport = (
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
-  }, []);
+  }, [tableRef]);
 
   useEffect(() => {
     const handleExport = () => exportToCsv();

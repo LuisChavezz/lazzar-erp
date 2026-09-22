@@ -112,10 +112,9 @@ export default function SupplierList({
   // páginas) y las columnas llegan por `onVisibleColumnsChange`. Mismo patrón
   // que `PurchaseOrderView`.
   const tableRef = useRef<DataTableHandle<Supplier>>(null);
-  const getFilteredSuppliers = () => tableRef.current?.getFilteredRows() ?? [];
   const [visibleColumns, setVisibleColumns] = useState<DataTableVisibleColumn<Supplier>[]>([]);
-  useSupplierCsvExport(getFilteredSuppliers, visibleColumns);
-  useSupplierPdfExport(getFilteredSuppliers, visibleColumns);
+  useSupplierCsvExport(tableRef, visibleColumns);
+  useSupplierPdfExport(tableRef, visibleColumns);
 
   return (
     <>

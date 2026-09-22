@@ -154,12 +154,11 @@ export function PurchaseOrderView() {
   // (con la visibilidad que haya elegido), no el listado completo sin tocar.
   // Mismo patrón que `QuoteList` (`useQuoteCsvExport`/`useQuotePdfExport`).
   const tableRef = useRef<DataTableHandle<PurchaseOrder>>(null);
-  const getFilteredOrders = () => tableRef.current?.getFilteredRows() ?? [];
   const [visibleColumns, setVisibleColumns] = useState<DataTableVisibleColumn<PurchaseOrder>[]>(
     [],
   );
-  usePurchaseOrderCsvExport(getFilteredOrders, visibleColumns);
-  usePurchaseOrderPdfExport(getFilteredOrders, visibleColumns);
+  usePurchaseOrderCsvExport(tableRef, visibleColumns);
+  usePurchaseOrderPdfExport(tableRef, visibleColumns);
 
   // ── Orden ────────────────────────────────────────────────────────────────
   // Lo resuelve el backend: `-fecha_oc, -id`. `fecha_oc` es la fecha DE NEGOCIO

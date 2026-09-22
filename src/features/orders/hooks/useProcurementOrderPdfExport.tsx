@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useRef } from "react";
-import type { DataTableVisibleColumn } from "@/src/components/DataTable";
+import { useCallback, useEffect, useRef, type RefObject } from "react";
+import type { DataTableHandle, DataTableVisibleColumn } from "@/src/components/DataTable";
 import type { PedidoListItem } from "../interfaces/order.interface";
 import { getProcurementOrderColumnText } from "../utils/procurementOrderExport";
 
@@ -204,21 +204,17 @@ const createProcurementOrdersPdfDocument = (
  * se importa dinámicamente (solo al exportar) y el disparo llega por un
  * `CustomEvent` propio (`procurement-orders:exportPDF`).
  *
- * `getOrders` se invoca AL EXPORTAR (no al montar): son las filas filtradas y
+ * `tableRef` es el `ref` de la `DataTable` de la vista; AL EXPORTAR (no al
+ * montar) se leen de él las filas filtradas y
  * ordenadas de TODAS las páginas que `DataTable` expone por `ref`
  * (`getFilteredRows`), leídas en ese instante — así el archivo no se queda
  * en la página visible ni con valores previos a un refetch.
  */
 export const useProcurementOrderPdfExport = (
-  getOrders: () => PedidoListItem[],
+  tableRef: RefObject<DataTableHandle<PedidoListItem> | null>,
   columns: DataTableVisibleColumn<PedidoListItem>[],
 ) => {
-  const getOrdersRef = useRef(getOrders);
   const columnsRef = useRef(columns);
-
-  useEffect(() => {
-    getOrdersRef.current = getOrders;
-  }, [getOrders]);
 
   useEffect(() => {
     columnsRef.current = columns;
@@ -235,7 +231,7 @@ export const useProcurementOrderPdfExport = (
         View: renderer.View,
         StyleSheet: renderer.StyleSheet,
       },
-      getOrdersRef.current(),
+      tableRef.current?.getFilteredRows() ?? [],
       columnsRef.current,
     );
     const blob = await renderer.pdf(pdfDocument).toBlob();
@@ -248,7 +244,7 @@ export const useProcurementOrderPdfExport = (
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
-  }, []);
+  }, [tableRef]);
 
   useEffect(() => {
     const handleExport = () => {

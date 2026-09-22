@@ -57,11 +57,11 @@ export interface DataTableHandle<TData> {
 
 // ─── Alineación por columna ──────────────────────────────────────────────────
 // Declarada por la columna en `meta.align` (tipado en
-// `src/types/tanstack-table.d.ts`) y aplicada aquí a nivel de `<th>`/`<td>`:
-// el encabezado alinea con `justify-*` (su contenido vive en un wrapper flex
-// junto a la flecha de orden, así que un `text-*` en el contenido de la
-// columna NO tiene efecto — por eso se resuelve aquí y no por columna) y la
-// celda con `text-*`. El default es `"left"` (no añade ninguna clase: el
+// `src/types/tanstack-table.d.ts`) y aplicada aquí: en el encabezado, al
+// wrapper flex que agrupa etiqueta y flecha de orden dentro del `<th>`, con
+// `justify-*` (un `text-*` en el contenido de la columna NO tiene efecto —
+// por eso se resuelve aquí y no por columna); en la celda, al `<td>` con
+// `text-*`. El default es `"left"` (no añade ninguna clase: el
 // comportamiento natural de una celda de tabla); `"center"` y `"right"` son
 // opt-in por columna. Regla del proyecto: importes y cantidades numéricas van
 // a la DERECHA (`meta: { align: "right" }`) para que los dígitos alineen;
@@ -300,12 +300,9 @@ export function DataTable<TData, TValue>({
   const cellPaddingCls = density === "compact" ? "px-4 py-2.5" : "px-6 py-4";
   const bodyTextCls = density === "compact" ? "text-[13px]" : "text-sm";
   // ── Modo panel (diseño aprobado) ──────────────────────────────────────────
-  // Detectado por `framed` (ver la doc de la prop). Fuera de este modo la
-  // altura mínima de fila es un no-op. La alineación NO depende del modo:
-  // izquierda salvo que la columna declare `meta.align` (ver arriba).
-  const isPanelDesign = framed;
-  const defaultAlign: DataTableColumnAlign = "left";
-  // Altura mínima de fila SOLO en modo panel. `h-12` (48px) en cada `<td>`
+  // Altura mínima de fila SOLO en modo panel (`framed`, ver la doc de la
+  // prop). La alineación NO depende del modo: izquierda salvo que la columna
+  // declare `meta.align` (ver arriba). `h-12` (48px) en cada `<td>`
   // actúa como mínimo en layout de tabla (la fila crece si el contenido es
   // más alto). Es exactamente la altura que ya produce la celda "punto de
   // estatus + chip de folio" de Cotizaciones con `density="compact"` (chip de
@@ -313,7 +310,7 @@ export function DataTable<TData, TValue>({
   // es que las tablas del mismo diseño SIN chip en su primera columna
   // (clientes, pedidos) tengan filas de la misma altura en vez de ~40px, y
   // que la altura no dependa de qué columna esté visible.
-  const rowMinHeightCls = isPanelDesign ? PANEL_ROW_MIN_HEIGHT_CLS : "";
+  const rowMinHeightCls = framed ? PANEL_ROW_MIN_HEIGHT_CLS : "";
 
   // Reset pagination when paginationResetKey changes
   const previousPaginationResetKeyRef = useRef(paginationResetKey);
@@ -1183,7 +1180,7 @@ export function DataTable<TData, TValue>({
                     // siguen presentes desde `md` en adelante.
                     const columnMeta = header.column.columnDef.meta;
                     const hideOnMobileCls = columnMeta?.hideOnMobile ? "hidden md:table-cell" : "";
-                    const headerAlignCls = HEADER_ALIGN_CLS[columnMeta?.align ?? defaultAlign];
+                    const headerAlignCls = HEADER_ALIGN_CLS[columnMeta?.align ?? "left"];
                     const sorted = header.column.getIsSorted();
                     const ariaSortValue =
                       sorted === "asc"
@@ -1228,7 +1225,7 @@ export function DataTable<TData, TValue>({
                           moveColumn(draggedId, header.column.id);
                         }
                       }}
-                      className={`${cellPaddingCls} ${hideOnMobileCls} ${headerAlignCls} font-semibold transition-colors group/th sticky top-0 z-10 bg-slate-50 dark:bg-zinc-900 ${
+                      className={`${cellPaddingCls} ${hideOnMobileCls} font-semibold transition-colors group/th sticky top-0 z-10 bg-slate-50 dark:bg-zinc-900 ${
                         canSort
                           ? "cursor-pointer select-none hover:text-slate-700 dark:hover:text-slate-300"
                           : ""
@@ -1315,7 +1312,7 @@ export function DataTable<TData, TValue>({
                         // "Acciones") se centra a sí misma con
                         // `justify-center` — `meta.align` solo alinea el
                         // encabezado con ella.
-                        const cellAlignCls = CELL_ALIGN_CLS[cellMeta?.align ?? defaultAlign];
+                        const cellAlignCls = CELL_ALIGN_CLS[cellMeta?.align ?? "left"];
                         return (
                           <td
                             key={cell.id}
