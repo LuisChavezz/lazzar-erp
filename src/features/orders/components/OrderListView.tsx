@@ -1,9 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useIsFetching, useQueryClient } from '@tanstack/react-query';
-import { DataTable, type DataTableVisibleColumn } from '@/src/components/DataTable';
+import {
+  DataTable,
+  type DataTableHandle,
+  type DataTableVisibleColumn,
+} from '@/src/components/DataTable';
 import { Button } from '@/src/components/Button';
 import { ExportCsvIcon, ExportPdfIcon } from '@/src/components/Icons';
 import { extractErrorMessage } from '@/src/utils/extractErrorMessage';
@@ -83,16 +87,18 @@ export function OrderListView({ from, params, variant = 'shared' }: OrderListVie
 
   // ── Exportar (solo `variant="procurement"`) ───────────────────────────────
   // Los hooks se montan SIEMPRE (reglas de hooks), pero solo tienen datos que
-  // exportar cuando `onVisibleRowsChange`/`onVisibleColumnsChange` están
-  // cableados más abajo — en `shared`/`sales` quedan inertes (el botón que
-  // dispara el `CustomEvent` ni siquiera se renderiza). Mismo patrón que
-  // `PurchaseOrderView`.
-  const [visibleOrders, setVisibleOrders] = useState<PedidoListItem[]>([]);
+  // exportar cuando `onVisibleColumnsChange` está cableado más abajo — en
+  // `shared`/`sales` quedan inertes (el botón que dispara el `CustomEvent` ni
+  // siquiera se renderiza). Mismo patrón que `PurchaseOrderView`. Las filas
+  // se LEEN de la tabla al hacer clic (`getFilteredRows`: filtradas y
+  // ordenadas de todas las páginas), no se espejean en estado.
+  const tableRef = useRef<DataTableHandle<PedidoListItem>>(null);
+  const getFilteredOrders = () => tableRef.current?.getFilteredRows() ?? [];
   const [visibleColumns, setVisibleColumns] = useState<DataTableVisibleColumn<PedidoListItem>[]>(
     [],
   );
-  useProcurementOrderCsvExport(visibleOrders, visibleColumns);
-  useProcurementOrderPdfExport(visibleOrders, visibleColumns);
+  useProcurementOrderCsvExport(getFilteredOrders, visibleColumns);
+  useProcurementOrderPdfExport(getFilteredOrders, visibleColumns);
 
   // Leyenda del punto de confirmación, integrada en la barra de herramientas
   // (vía `actionButton`) en vez de una fila propia: no depende de hover (que
@@ -138,6 +144,7 @@ export function OrderListView({ from, params, variant = 'shared' }: OrderListVie
 
   const table = (
     <DataTable
+      ref={tableRef}
       columns={columns}
       data={enrichedOrders}
       baseDataCount={orders.length}
@@ -159,7 +166,6 @@ export function OrderListView({ from, params, variant = 'shared' }: OrderListVie
       // envuelven este componente en un contenedor de altura acotada, así
       // que activarlo ahí colapsaría la tabla a 0px.
       fillHeight={isProcurement}
-      onVisibleRowsChange={isProcurement ? setVisibleOrders : undefined}
       onVisibleColumnsChange={isProcurement ? setVisibleColumns : undefined}
       isLoading={isLoading}
       isError={isError}

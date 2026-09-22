@@ -26,17 +26,22 @@ const buildCsv = (
  * directamente. Mismo patrón que `usePurchaseOrderCsvExport`/
  * `useQuoteCsvExport`: refs para no reconstruir el listener en cada render,
  * disparo por `CustomEvent` (`purchase-order-receipts:exportCSV`).
+ *
+ * `getReceipts` se invoca AL EXPORTAR (no al montar): son las filas filtradas y
+ * ordenadas de TODAS las páginas que `DataTable` expone por `ref`
+ * (`getFilteredRows`), leídas en ese instante — así el archivo no se queda
+ * en la página visible ni con valores previos a un refetch.
  */
 export const usePurchaseOrderReceiptCsvExport = (
-  receipts: PurchaseOrderReceipt[],
+  getReceipts: () => PurchaseOrderReceipt[],
   columns: DataTableVisibleColumn<PurchaseOrderReceipt>[],
 ) => {
-  const receiptsRef = useRef(receipts);
+  const getReceiptsRef = useRef(getReceipts);
   const columnsRef = useRef(columns);
 
   useEffect(() => {
-    receiptsRef.current = receipts;
-  }, [receipts]);
+    getReceiptsRef.current = getReceipts;
+  }, [getReceipts]);
 
   useEffect(() => {
     columnsRef.current = columns;
@@ -44,7 +49,7 @@ export const usePurchaseOrderReceiptCsvExport = (
 
   const exportToCsv = useCallback(() => {
     if (columnsRef.current.length === 0) return;
-    const csvContent = buildCsv(receiptsRef.current, columnsRef.current);
+    const csvContent = buildCsv(getReceiptsRef.current(), columnsRef.current);
     // BOM (`﻿`) para que Excel detecte UTF-8 y no rompa acentos/ñ.
     const blob = new Blob([`﻿${csvContent}`], {
       type: "text/csv;charset=utf-8;",

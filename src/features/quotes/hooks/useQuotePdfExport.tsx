@@ -339,13 +339,22 @@ const createQuotesPdfDocument = (
   );
 };
 
-export const useQuotePdfExport = (quotes: Quote[], columns: DataTableVisibleColumn<Quote>[]) => {
-  const quotesRef = useRef(quotes);
+/**
+ * `getQuotes` se invoca AL EXPORTAR (no al montar): son las filas filtradas y
+ * ordenadas que `DataTable` expone por `ref` (`getFilteredRows`), leídas en
+ * ese instante. Guardar una copia en un ref dejaba en el archivo valores y
+ * orden viejos tras un refetch que no cambiaba el número de filas.
+ */
+export const useQuotePdfExport = (
+  getQuotes: () => Quote[],
+  columns: DataTableVisibleColumn<Quote>[]
+) => {
+  const getQuotesRef = useRef(getQuotes);
   const columnsRef = useRef(columns);
 
   useEffect(() => {
-    quotesRef.current = quotes;
-  }, [quotes]);
+    getQuotesRef.current = getQuotes;
+  }, [getQuotes]);
 
   useEffect(() => {
     columnsRef.current = columns;
@@ -363,7 +372,7 @@ export const useQuotePdfExport = (quotes: Quote[], columns: DataTableVisibleColu
         View: renderer.View,
         StyleSheet: renderer.StyleSheet,
       },
-      quotesRef.current,
+      getQuotesRef.current(),
       exportColumns
     );
     const blob = await renderer.pdf(pdfDocument).toBlob();

@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useMemo, useState } from "react";
+import { memo, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import {
@@ -12,7 +12,11 @@ import {
   ExportPdfIcon,
 } from "@/src/components/Icons";
 import KpiGrid, { type KpiItem } from "@/src/components/KpiGrid";
-import { DataTable, type DataTableVisibleColumn } from "@/src/components/DataTable";
+import {
+  DataTable,
+  type DataTableHandle,
+  type DataTableVisibleColumn,
+} from "@/src/components/DataTable";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { hasPermission } from "@/src/utils/permissions";
 import { MainDialog } from "@/src/components/MainDialog";
@@ -144,16 +148,18 @@ export function PurchaseOrderView() {
   );
 
   // ── Exportar (Excel/PDF) ──────────────────────────────────────────────────
-  // Exportan lo que el usuario está VIENDO (`onVisibleRowsChange`/
-  // `onVisibleColumnsChange` de `DataTable`: ya filtrado/ordenado, con la
-  // visibilidad de columnas que haya elegido), no el listado completo sin
-  // tocar. Mismo patrón que `QuoteList` (`useQuoteCsvExport`/`useQuotePdfExport`).
-  const [visibleOrders, setVisibleOrders] = useState<PurchaseOrder[]>([]);
+  // Exportan lo que el usuario está VIENDO: las filas se LEEN de la tabla al
+  // hacer clic (`getFilteredRows` de `DataTable`: filtradas y ordenadas de
+  // todas las páginas) y las columnas llegan por `onVisibleColumnsChange`
+  // (con la visibilidad que haya elegido), no el listado completo sin tocar.
+  // Mismo patrón que `QuoteList` (`useQuoteCsvExport`/`useQuotePdfExport`).
+  const tableRef = useRef<DataTableHandle<PurchaseOrder>>(null);
+  const getFilteredOrders = () => tableRef.current?.getFilteredRows() ?? [];
   const [visibleColumns, setVisibleColumns] = useState<DataTableVisibleColumn<PurchaseOrder>[]>(
     [],
   );
-  usePurchaseOrderCsvExport(visibleOrders, visibleColumns);
-  usePurchaseOrderPdfExport(visibleOrders, visibleColumns);
+  usePurchaseOrderCsvExport(getFilteredOrders, visibleColumns);
+  usePurchaseOrderPdfExport(getFilteredOrders, visibleColumns);
 
   // ── Orden ────────────────────────────────────────────────────────────────
   // Lo resuelve el backend: `-fecha_oc, -id`. `fecha_oc` es la fecha DE NEGOCIO
@@ -176,6 +182,7 @@ export function PurchaseOrderView() {
   // visual que una toolbar + tabla en vez de dos bloques flotantes separados.
   const table = (
     <DataTable
+      ref={tableRef}
       columns={columns}
       data={purchaseOrders}
       searchPlaceholder="Buscar orden, folio o referencia..."
@@ -183,7 +190,6 @@ export function PurchaseOrderView() {
       density="compact"
       framed
       defaultPageSize={20}
-      onVisibleRowsChange={setVisibleOrders}
       onVisibleColumnsChange={setVisibleColumns}
       actionButton={
         <div className="flex items-center gap-2 shrink-0">

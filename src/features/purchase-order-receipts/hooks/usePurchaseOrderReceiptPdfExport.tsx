@@ -203,17 +203,22 @@ const createPurchaseOrderReceiptsPdfDocument = (
  * `usePurchaseOrderPdfExport`/`useQuotePdfExport`: `@react-pdf/renderer` se
  * importa dinámicamente (solo al exportar) y el disparo llega por un
  * `CustomEvent` propio (`purchase-order-receipts:exportPDF`).
+ *
+ * `getReceipts` se invoca AL EXPORTAR (no al montar): son las filas filtradas y
+ * ordenadas de TODAS las páginas que `DataTable` expone por `ref`
+ * (`getFilteredRows`), leídas en ese instante — así el archivo no se queda
+ * en la página visible ni con valores previos a un refetch.
  */
 export const usePurchaseOrderReceiptPdfExport = (
-  receipts: PurchaseOrderReceipt[],
+  getReceipts: () => PurchaseOrderReceipt[],
   columns: DataTableVisibleColumn<PurchaseOrderReceipt>[],
 ) => {
-  const receiptsRef = useRef(receipts);
+  const getReceiptsRef = useRef(getReceipts);
   const columnsRef = useRef(columns);
 
   useEffect(() => {
-    receiptsRef.current = receipts;
-  }, [receipts]);
+    getReceiptsRef.current = getReceipts;
+  }, [getReceipts]);
 
   useEffect(() => {
     columnsRef.current = columns;
@@ -230,7 +235,7 @@ export const usePurchaseOrderReceiptPdfExport = (
         View: renderer.View,
         StyleSheet: renderer.StyleSheet,
       },
-      receiptsRef.current,
+      getReceiptsRef.current(),
       columnsRef.current,
     );
     const blob = await renderer.pdf(pdfDocument).toBlob();

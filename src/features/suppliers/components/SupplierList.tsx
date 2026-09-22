@@ -1,8 +1,12 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
-import { DataTable, type DataTableVisibleColumn } from "@/src/components/DataTable";
+import {
+  DataTable,
+  type DataTableHandle,
+  type DataTableVisibleColumn,
+} from "@/src/components/DataTable";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { MainDialog } from "@/src/components/MainDialog";
 import { Button } from "@/src/components/Button";
@@ -105,18 +109,21 @@ export default function SupplierList({
   );
 
   // ── Exportar (Excel/PDF) ──────────────────────────────────────────────────
-  // Exportan lo que el usuario está VIENDO (`onVisibleRowsChange`/
-  // `onVisibleColumnsChange`: ya filtrado/ordenado). Mismo patrón que
-  // `PurchaseOrderView`.
-  const [visibleSuppliers, setVisibleSuppliers] = useState<Supplier[]>([]);
+  // Exportan lo que el usuario está VIENDO: las filas se LEEN de la tabla al
+  // hacer clic (`getFilteredRows`: filtradas y ordenadas de todas las
+  // páginas) y las columnas llegan por `onVisibleColumnsChange`. Mismo patrón
+  // que `PurchaseOrderView`.
+  const tableRef = useRef<DataTableHandle<Supplier>>(null);
+  const getFilteredSuppliers = () => tableRef.current?.getFilteredRows() ?? [];
   const [visibleColumns, setVisibleColumns] = useState<DataTableVisibleColumn<Supplier>[]>([]);
-  useSupplierCsvExport(visibleSuppliers, visibleColumns);
-  useSupplierPdfExport(visibleSuppliers, visibleColumns);
+  useSupplierCsvExport(getFilteredSuppliers, visibleColumns);
+  useSupplierPdfExport(getFilteredSuppliers, visibleColumns);
 
   return (
     <>
       <div className={fillHeight ? "h-full flex flex-col min-h-0" : undefined}>
       <DataTable
+        ref={tableRef}
         columns={columns}
         data={suppliers}
         title={hideTitle ? undefined : "Proveedores"}
@@ -126,7 +133,6 @@ export default function SupplierList({
         framed
         fillHeight={fillHeight}
         defaultPageSize={20}
-        onVisibleRowsChange={setVisibleSuppliers}
         onVisibleColumnsChange={setVisibleColumns}
         actionButton={
           <div className="flex items-center gap-2 shrink-0">

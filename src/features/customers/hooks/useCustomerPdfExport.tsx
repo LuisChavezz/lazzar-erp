@@ -206,16 +206,22 @@ const createCustomersPdfDocument = (
   );
 };
 
+/**
+ * `getCustomers` se invoca AL EXPORTAR (no al montar): son las filas
+ * filtradas y ordenadas que `DataTable` expone por `ref` (`getFilteredRows`),
+ * leídas en ese instante. Guardar una copia en un ref dejaba en el archivo
+ * valores y orden viejos tras un refetch que no cambiaba el número de filas.
+ */
 export const useCustomerPdfExport = (
-  customers: Customer[],
+  getCustomers: () => Customer[],
   columns: DataTableVisibleColumn<Customer>[]
 ) => {
-  const customersRef = useRef(customers);
+  const getCustomersRef = useRef(getCustomers);
   const columnsRef = useRef(columns);
 
   useEffect(() => {
-    customersRef.current = customers;
-  }, [customers]);
+    getCustomersRef.current = getCustomers;
+  }, [getCustomers]);
 
   useEffect(() => {
     columnsRef.current = columns;
@@ -232,7 +238,7 @@ export const useCustomerPdfExport = (
         View: renderer.View,
         StyleSheet: renderer.StyleSheet,
       },
-      customersRef.current,
+      getCustomersRef.current(),
       columnsRef.current
     );
     const blob = await renderer.pdf(pdfDocument).toBlob();

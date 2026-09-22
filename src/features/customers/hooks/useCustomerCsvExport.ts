@@ -48,16 +48,22 @@ const buildCsv = (customers: Customer[], columns: DataTableVisibleColumn<Custome
     .join("\n");
 };
 
+/**
+ * `getCustomers` se invoca AL EXPORTAR (no al montar): son las filas
+ * filtradas y ordenadas que `DataTable` expone por `ref` (`getFilteredRows`),
+ * leídas en ese instante. Guardar una copia en un ref dejaba en el archivo
+ * valores y orden viejos tras un refetch que no cambiaba el número de filas.
+ */
 export const useCustomerCsvExport = (
-  customers: Customer[],
+  getCustomers: () => Customer[],
   columns: DataTableVisibleColumn<Customer>[]
 ) => {
-  const customersRef = useRef(customers);
+  const getCustomersRef = useRef(getCustomers);
   const columnsRef = useRef(columns);
 
   useEffect(() => {
-    customersRef.current = customers;
-  }, [customers]);
+    getCustomersRef.current = getCustomers;
+  }, [getCustomers]);
 
   useEffect(() => {
     columnsRef.current = columns;
@@ -65,7 +71,7 @@ export const useCustomerCsvExport = (
 
   const exportToCsv = useCallback(() => {
     if (columnsRef.current.length === 0) return;
-    const csvContent = buildCsv(customersRef.current, columnsRef.current);
+    const csvContent = buildCsv(getCustomersRef.current(), columnsRef.current);
     const blob = new Blob([`﻿${csvContent}`], {
       type: "text/csv;charset=utf-8;",
     });

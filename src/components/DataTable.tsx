@@ -1,6 +1,15 @@
 "use client";
 
-import { useState, useRef, useEffect, useId, useMemo, useCallback } from "react";
+import {
+  useState,
+  useRef,
+  useEffect,
+  useId,
+  useImperativeHandle,
+  useMemo,
+  useCallback,
+  type Ref,
+} from "react";
 import {
   ColumnDef,
   flexRender,
@@ -40,6 +49,11 @@ export type DataTableVisibleColumn<TData> = {
   accessorKey?: string;
   accessorFn?: (originalRow: TData, index: number) => unknown;
 };
+
+/** Lo que expone `DataTable` por `ref`; ver la doc de la prop `ref`. */
+export interface DataTableHandle<TData> {
+  getFilteredRows: () => TData[];
+}
 
 // ─── Alineación por columna ──────────────────────────────────────────────────
 // Declarada por la columna en `meta.align` (tipado en
@@ -104,7 +118,19 @@ interface DataTableProps<TData, TValue> {
   onActiveFiltersChange?: (filters: DataTableActiveFilter[]) => void;
   onRefetch?: () => void | Promise<unknown>;
   isRefetching?: boolean;
-  onVisibleRowsChange?: (rows: TData[]) => void;
+  /**
+   * Handle imperativo (`ref` de React 19) con `getFilteredRows()`: las filas
+   * que el usuario "está viendo" a lo largo de TODAS las páginas — las que
+   * pasan la búsqueda y los filtros (chips y de columna), en el orden actual,
+   * SIN recortar por paginación — leídas EN EL MOMENTO de la llamada. Lo
+   * consumen las exportaciones (CSV/PDF de Cotizaciones y Clientes) al hacer
+   * clic. Es un getter y no un callback `onXxxChange` a propósito: un callback
+   * necesita detectar "cambió el conjunto" y cualquier firma (ids, índices,
+   * referencias) deja pasar refetches que solo cambian VALORES o que
+   * reordenan filas con ids de índice, y el archivo salía con datos viejos;
+   * un getter no tiene nada que detectar ni riesgo de bucle de render.
+   */
+  ref?: Ref<DataTableHandle<TData>>;
   onVisibleColumnsChange?: (columns: DataTableVisibleColumn<TData>[]) => void;
   isLoadingOverlay?: boolean;
   loadingTitle?: string;
@@ -223,7 +249,7 @@ export function DataTable<TData, TValue>({
   onActiveFiltersChange,
   onRefetch,
   isRefetching,
-  onVisibleRowsChange,
+  ref,
   onVisibleColumnsChange,
   isLoadingOverlay = false,
   loadingTitle,
@@ -385,7 +411,6 @@ export function DataTable<TData, TValue>({
   const [isColumnsOpen, setIsColumnsOpen] = useState(false);
   const columnsDropdownRef = useRef<HTMLDivElement>(null);
   const columnsBtnRef = useRef<HTMLButtonElement>(null);
-  const previousVisibleRowsSignatureRef = useRef("");
   const previousVisibleColumnsSignatureRef = useRef("");
 
   // Close columns dropdown when clicking outside
@@ -490,6 +515,21 @@ export function DataTable<TData, TValue>({
 
   const visibleRows = table.getRowModel().rows;
   const visibleColumns = table.getVisibleLeafColumns();
+
+  // Filas tras búsqueda + filtros + orden y ANTES de paginar (en TanStack:
+  // core → filtered → sorted → paginated; sin grouping/expansion aquí, el
+  // modelo pre-paginación es exactamente el ordenado). `getRowModel()` ya
+  // viene recortado a la página actual, por eso no sirve para exportar. Se
+  // lee del `table` (instancia estable) al invocar el getter, así siempre
+  // refleja los datos y el estado vigentes.
+  useImperativeHandle(
+    ref,
+    () => ({
+      getFilteredRows: () =>
+        table.getPrePaginationRowModel().rows.map((row) => row.original),
+    }),
+    [table]
+  );
   const hasBaseData = baseDataCount !== undefined ? baseDataCount > 0 : data.length > 0;
   const totalRows = table.getFilteredRowModel().rows.length;
   const startRow = totalRows === 0 ? 0 : pagination.pageIndex * pagination.pageSize + 1;
@@ -534,10 +574,6 @@ export function DataTable<TData, TValue>({
     isServerPaginated
       ? serverPagination.onPageChange(currentPage + 1)
       : table.nextPage();
-  const visibleRowsSignature = useMemo(
-    () => visibleRows.map((row) => row.id).join("|"),
-    [visibleRows]
-  );
   const visibleColumnsSignature = useMemo(
     () => visibleColumns.map((column) => column.id).join("|"),
     [visibleColumns]
@@ -597,17 +633,6 @@ export function DataTable<TData, TValue>({
       .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
       .join(" ");
   }, []);
-
-  useEffect(() => {
-    if (!onVisibleRowsChange) return;
-    if (previousVisibleRowsSignatureRef.current === visibleRowsSignature) return;
-    previousVisibleRowsSignatureRef.current = visibleRowsSignature;
-    onVisibleRowsChange(visibleRows.map((r) => r.original));
-  }, [
-    onVisibleRowsChange,
-    visibleRows,
-    visibleRowsSignature,
-  ]);
 
   useEffect(() => {
     if (!onVisibleColumnsChange) return;

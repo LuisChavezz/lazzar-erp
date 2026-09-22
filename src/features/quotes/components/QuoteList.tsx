@@ -1,10 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import Link from "next/link";
 import { useIsMutating } from "@tanstack/react-query";
 import { useSession } from "next-auth/react";
-import { DataTable, DataTableVisibleColumn } from "@/src/components/DataTable";
+import {
+  DataTable,
+  type DataTableHandle,
+  type DataTableVisibleColumn,
+} from "@/src/components/DataTable";
 import { Button } from "@/src/components/Button";
 import { ExportCsvIcon, ExportPdfIcon, PlusIcon } from "@/src/components/Icons";
 import { quoteColumns } from "./QuoteColumns";
@@ -21,7 +25,10 @@ import { validateQuoteForReviewMutationKey } from "../hooks/useValidateQuoteForR
 export const QuoteList = () => {
   const { data: session, status: sessionStatus } = useSession();
   const { quotes, isLoading: isOrdersLoading } = useQuotes();
-  const [visibleOrders, setVisibleOrders] = useState<Quote[]>([]);
+  // Las filas a exportar se LEEN de la tabla al hacer clic (`getFilteredRows`),
+  // no se espejean en estado: así el archivo siempre lleva los datos vigentes.
+  const tableRef = useRef<DataTableHandle<Quote>>(null);
+  const getFilteredQuotes = () => tableRef.current?.getFilteredRows() ?? [];
   const [visibleColumns, setVisibleColumns] = useState<DataTableVisibleColumn<Quote>[]>([]);
   const isAuthorizingOrder =
     useIsMutating({ mutationKey: approveOperationsQuoteMutationKey }) > 0;
@@ -37,12 +44,13 @@ export const QuoteList = () => {
   // habilita a crear.
   const canCreateQuote = hasPermission("C-CRM-COTIZACIONES", session?.user);
 
-  useQuoteCsvExport(visibleOrders, visibleColumns);
-  useQuotePdfExport(visibleOrders, visibleColumns);
+  useQuoteCsvExport(getFilteredQuotes, visibleColumns);
+  useQuotePdfExport(getFilteredQuotes, visibleColumns);
 
   return (
     <div className="min-h-165">
       <DataTable
+        ref={tableRef}
         columns={quoteColumns}
         data={quotes}
         baseDataCount={quotes.length}
@@ -51,7 +59,6 @@ export const QuoteList = () => {
         defaultPageSize={20}
         density="compact"
         framed
-        onVisibleRowsChange={setVisibleOrders}
         onVisibleColumnsChange={setVisibleColumns}
         isLoading={isOrdersLoading}
         loadingAriaLabel="Cargando cotizaciones"

@@ -203,17 +203,22 @@ const createProcurementOrdersPdfDocument = (
  * que `usePurchaseOrderPdfExport`/`useQuotePdfExport`: `@react-pdf/renderer`
  * se importa dinámicamente (solo al exportar) y el disparo llega por un
  * `CustomEvent` propio (`procurement-orders:exportPDF`).
+ *
+ * `getOrders` se invoca AL EXPORTAR (no al montar): son las filas filtradas y
+ * ordenadas de TODAS las páginas que `DataTable` expone por `ref`
+ * (`getFilteredRows`), leídas en ese instante — así el archivo no se queda
+ * en la página visible ni con valores previos a un refetch.
  */
 export const useProcurementOrderPdfExport = (
-  orders: PedidoListItem[],
+  getOrders: () => PedidoListItem[],
   columns: DataTableVisibleColumn<PedidoListItem>[],
 ) => {
-  const ordersRef = useRef(orders);
+  const getOrdersRef = useRef(getOrders);
   const columnsRef = useRef(columns);
 
   useEffect(() => {
-    ordersRef.current = orders;
-  }, [orders]);
+    getOrdersRef.current = getOrders;
+  }, [getOrders]);
 
   useEffect(() => {
     columnsRef.current = columns;
@@ -230,7 +235,7 @@ export const useProcurementOrderPdfExport = (
         View: renderer.View,
         StyleSheet: renderer.StyleSheet,
       },
-      ordersRef.current,
+      getOrdersRef.current(),
       columnsRef.current,
     );
     const blob = await renderer.pdf(pdfDocument).toBlob();
