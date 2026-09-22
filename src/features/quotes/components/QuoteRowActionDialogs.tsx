@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import dynamic from "next/dynamic";
 import { MainDialog } from "@/src/components/MainDialog";
 import { DialogHeader } from "@/src/components/DialogHeader";
@@ -64,6 +65,18 @@ export function QuoteRowActionDialogs({
     if (!open) onClose();
   };
 
+  // Si el estatus deja de ser autorizable con el diálogo de autorizar/rechazar
+  // abierto, `open` pasa a false y el diálogo se oculta — pero Radix no avisa
+  // por `onOpenChange` de un cambio de la prop controlada, así que el estado
+  // se limpia aquí. Sin esto quedaba vivo y, si un refetch posterior volvía a
+  // hacer autorizable la cotización, el diálogo reaparecía sin que nadie lo
+  // pidiera.
+  const authorizationLost =
+    (dialog?.kind === "authorize" || dialog?.kind === "reject") && !canManageAuthorization;
+  useEffect(() => {
+    if (authorizationLost) onClose();
+  }, [authorizationLost, onClose]);
+
   return (
     <>
       {dialog?.kind === "view" && quote && (
@@ -86,7 +99,8 @@ export function QuoteRowActionDialogs({
 
       {/* Misma guarda que tenía la celda (`open && canManageAuthorization`):
           si el estatus deja de ser autorizable mientras está abierto, el
-          diálogo se cierra en vez de disparar una acción inválida. */}
+          diálogo se cierra en vez de disparar una acción inválida (y el
+          efecto `authorizationLost` descarta su estado). */}
       {dialog?.kind === "authorize" && quote && (
         <ConfirmDialog
           key={`authorize-${quote.id}`}

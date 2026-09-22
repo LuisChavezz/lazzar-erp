@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState } from "react";
+import { createContext, useContext, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useMutationState } from "@tanstack/react-query";
 import {
@@ -91,6 +91,12 @@ export interface QuoteRowDialogState {
 export function useQuoteRowActions() {
   const router = useRouter();
   const [dialog, setDialog] = useState<QuoteRowDialogState | null>(null);
+  // Turno de la ÚLTIMA acción que abre diálogo, en cualquier menú. "Enviar a
+  // revisión" abre el suyo solo tras validar en red; si mientras tanto el
+  // usuario pidió otro diálogo (p. ej. "Ver detalles" de otra fila), el turno
+  // ya no es el suyo y no debe reemplazar lo que el usuario abrió después.
+  // Correo/PDF/editar no abren diálogo y no cuentan.
+  const dialogTurnRef = useRef(0);
 
   const approve = useApproveOperationsQuote();
   const reject = useRejectOperationsQuote();
@@ -102,6 +108,7 @@ export function useQuoteRowActions() {
   const onAction = async (action: QuoteRowAction, quote: Quote) => {
     switch (action) {
       case "view":
+        dialogTurnRef.current++;
         setDialog({ kind: "view", quote });
         return;
       case "edit":
@@ -118,11 +125,15 @@ export function useQuoteRowActions() {
         // Misma guarda de NEGOCIO que tenía la celda: fuera de un estatus
         // autorizable el diálogo no se abre (el ítem tampoco es visible).
         if (!canManageQuoteAuthorization(quote.estatus)) return;
+        dialogTurnRef.current++;
         setDialog({ kind: action, quote });
         return;
       case "submitForReview": {
+        const turn = ++dialogTurnRef.current;
         const status = await review.validateBeforeSendToReview(quote.id);
-        if (status === "valid") setDialog({ kind: "submitForReview", quote });
+        if (status === "valid" && turn === dialogTurnRef.current) {
+          setDialog({ kind: "submitForReview", quote });
+        }
         return;
       }
     }
