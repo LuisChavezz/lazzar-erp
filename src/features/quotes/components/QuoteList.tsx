@@ -12,8 +12,10 @@ import {
 import { Button } from "@/src/components/Button";
 import { ExportCsvIcon, ExportPdfIcon, PlusIcon } from "@/src/components/Icons";
 import { quoteColumns } from "./QuoteColumns";
+import { QuoteRowActionDialogs } from "./QuoteRowActionDialogs";
 import { useQuoteCsvExport } from "../hooks/useQuoteCsvExport";
 import { useQuotePdfExport } from "../hooks/useQuotePdfExport";
+import { QuoteRowActionsProvider, useQuoteRowActions } from "../hooks/useQuoteRowActions";
 import { Quote } from "../interfaces/quote.interface";
 import { LoadingSkeleton } from "@/src/components/LoadingSkeleton";
 import { useQuotes } from "../hooks/useQuotes";
@@ -47,8 +49,15 @@ export const QuoteList = () => {
   useQuoteCsvExport(getFilteredQuotes, visibleColumns);
   useQuotePdfExport(getFilteredQuotes, visibleColumns);
 
+  // Acciones de fila (menú del chip #id): la LISTA es dueña de las mutaciones
+  // y de los diálogos; la celda solo señala qué acción se eligió (por
+  // contexto, para que `quoteColumns` siga siendo un arreglo estático).
+  const { onAction, busy, dialogs } = useQuoteRowActions();
+
   return (
+    <QuoteRowActionsProvider value={{ onAction, busy }}>
     <div className="min-h-165">
+      <QuoteRowActionDialogs quotes={quotes} {...dialogs} />
       <DataTable
         ref={tableRef}
         columns={quoteColumns}
@@ -114,5 +123,6 @@ export const QuoteList = () => {
         }
       />
     </div>
+    </QuoteRowActionsProvider>
   );
 };

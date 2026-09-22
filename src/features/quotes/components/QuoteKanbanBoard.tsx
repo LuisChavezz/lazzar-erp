@@ -19,6 +19,8 @@ import { QuoteKanbanColumn } from "./QuoteKanbanColumn";
 import { KANBAN_COLUMNS, KanbanColumnConfig } from "../constants/kanbanColumns";
 import { QuoteKanbanCard } from "./QuoteKanbanCard";
 import { QuoteReviewValidationDialog } from "./QuoteReviewValidationDialog";
+import { QuoteRowActionDialogs } from "./QuoteRowActionDialogs";
+import { QuoteRowActionsProvider, useQuoteRowActions } from "../hooks/useQuoteRowActions";
 import { hasPermission } from "@/src/utils/permissions";
 
 // ─── Tipos locales ────────────────────────────────────────────────────────────
@@ -57,6 +59,17 @@ export function QuoteKanbanBoard() {
   } = useQuoteReviewValidationFlow();
   const isValidatingReview =
     useIsMutating({ mutationKey: validateQuoteForReviewMutationKey }) > 0;
+
+  // ─── Acciones del menú de cada card ──────────────────────────────────────
+  // El TABLERO es dueño de mutaciones y diálogos (ver `useQuoteRowActions`);
+  // el flujo de validación de arriba es el del ARRASTRE, independiente.
+  // `onAction`/`busy` bajan a `QuoteCardActions` por contexto
+  // (`QuoteRowActionsProvider`), sin atravesar columna ni card.
+  const {
+    onAction: onCardAction,
+    busy: cardBusy,
+    dialogs: cardDialogs,
+  } = useQuoteRowActions();
 
   // ─── Estado local del tablero ─────────────────────────────────────────────
   const [columnMap, setColumnMap] = useState<ColumnMap | null>(null);
@@ -257,6 +270,7 @@ export function QuoteKanbanBoard() {
   }
 
   return (
+    <QuoteRowActionsProvider value={{ onAction: onCardAction, busy: cardBusy }}>
     <div
       className="mt-6 flex flex-col gap-4"
       aria-label="Tablero de cotizaciones"
@@ -369,8 +383,10 @@ export function QuoteKanbanBoard() {
         quoteId={validationQuoteId ?? pendingDrop?.quote.id ?? 0}
         errors={reviewValidationErrors}
       />
+      <QuoteRowActionDialogs quotes={quotes} {...cardDialogs} />
 
     </div>
+    </QuoteRowActionsProvider>
   );
 }
 

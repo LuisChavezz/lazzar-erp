@@ -53,6 +53,13 @@ function PendingDataCell() {
  * `text-center`/`w-full` (un `w-full` en el encabezado empujaría la flecha de
  * orden al borde). La única excepción es la celda de Cotización, cuyo
  * contenido es un contenedor flex y se centra a sí mismo con `justify-center`.
+ *
+ * Arreglo ESTÁTICO a propósito (sin factoría con callbacks): la celda de
+ * Cotización solo señala la acción elegida a la vista por contexto
+ * (`QuoteRowActionsProvider`); el estado de los diálogos vive en `QuoteList`,
+ * nunca dentro de la celda (se desmonta al ordenar/filtrar). Si los callbacks
+ * viajaran por aquí, cada cambio de "en curso" recrearía las columnas y
+ * remontaría todas las celdas.
  */
 export const quoteColumns: ColumnDef<Quote>[] = [
   {
