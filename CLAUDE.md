@@ -162,3 +162,13 @@ Using Tailwind v4 via PostCSS plugin only — there is no `tailwind.config.*` fi
 ## React Compiler
 
 The **React Compiler is enabled** (`reactCompiler: true` in `next.config.ts`, via `babel-plugin-react-compiler`). Components are auto-memoized at build time, so manual `useMemo`/`useCallback`/`React.memo` are generally unnecessary — don't add them reflexively. This is also why `DataTable.tsx` carries the intentional `eslint-disable react-hooks/incompatible-library` comment. `next.config.ts` also strips `console.*` in production builds (`compiler.removeConsole`) and whitelists remote image hosts (`raw.githubusercontent.com`, `dl.dropboxusercontent.com`) — new remote image sources must be added to `images.remotePatterns`.
+
+<!-- BEGIN:nextjs-agent-rules -->
+
+# This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
+<!-- END:nextjs-agent-rules -->

@@ -2,15 +2,17 @@
 
 import { useCallback, useMemo, useState } from "react";
 import { useSession } from "next-auth/react";
-import { DataTable } from "@/src/components/DataTable";
+import { DataTable, type DataTableVisibleColumn } from "@/src/components/DataTable";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { MainDialog } from "@/src/components/MainDialog";
 import { Button } from "@/src/components/Button";
-import { PlusIcon } from "@/src/components/Icons";
+import { ExportCsvIcon, ExportPdfIcon, PlusIcon } from "@/src/components/Icons";
 import { hasPermission } from "@/src/utils/permissions";
 import SupplierForm from "./SupplierForm";
 import { useSuppliers } from "../hooks/useSuppliers";
 import { getSupplierColumns } from "./SupplierColumns";
+import { useSupplierCsvExport } from "../hooks/useSupplierCsvExport";
+import { useSupplierPdfExport } from "../hooks/useSupplierPdfExport";
 import { Supplier } from "../interfaces/supplier.interface";
 
 /**
@@ -43,11 +45,23 @@ interface SupplierListProps {
    * Por defecto "procurement", que es el comportamiento histórico.
    */
   permissionContext?: keyof typeof PERMISSIONS_BY_CONTEXT;
+  /**
+   * Cuando es `true`, el cuerpo de la tabla LLENA su contenedor en vez de
+   * reservar un alto fijo de 480px sin importar cuántas filas haya — evita
+   * el scroll de página "vacío" que deja un catálogo corto como Proveedores.
+   * Requiere que el padre inmediato le dé una altura acotada (ver
+   * `procurement/suppliers/page.tsx`). Por defecto `false` (el
+   * comportamiento de siempre): Configuración monta este mismo componente
+   * SIN un contenedor de altura acotada, así que activarlo ahí colapsaría
+   * la tabla a 0px de alto.
+   */
+  fillHeight?: boolean;
 }
 
 export default function SupplierList({
   hideTitle = false,
   permissionContext = "procurement",
+  fillHeight = false,
 }: SupplierListProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [supplierToEdit, setSupplierToEdit] = useState<Supplier | null>(null);
@@ -90,25 +104,62 @@ export default function SupplierList({
     [handleEdit, canEdit, canDelete]
   );
 
+  // ── Exportar (Excel/PDF) ──────────────────────────────────────────────────
+  // Exportan lo que el usuario está VIENDO (`onVisibleRowsChange`/
+  // `onVisibleColumnsChange`: ya filtrado/ordenado). Mismo patrón que
+  // `PurchaseOrderView`.
+  const [visibleSuppliers, setVisibleSuppliers] = useState<Supplier[]>([]);
+  const [visibleColumns, setVisibleColumns] = useState<DataTableVisibleColumn<Supplier>[]>([]);
+  useSupplierCsvExport(visibleSuppliers, visibleColumns);
+  useSupplierPdfExport(visibleSuppliers, visibleColumns);
+
   return (
     <>
+      <div className={fillHeight ? "h-full flex flex-col min-h-0" : undefined}>
       <DataTable
         columns={columns}
         data={suppliers}
         title={hideTitle ? undefined : "Proveedores"}
         searchPlaceholder="Buscar proveedor..."
+        searchAlwaysExpanded
+        density="compact"
+        framed
+        fillHeight={fillHeight}
+        defaultPageSize={20}
+        onVisibleRowsChange={setVisibleSuppliers}
+        onVisibleColumnsChange={setVisibleColumns}
         actionButton={
-          // El alta se rige por C-COMPRAS-PROV, no por el permiso de edición:
-          // son dos capacidades distintas del catálogo.
-          canCreate ? (
+          <div className="flex items-center gap-2 shrink-0">
             <Button
-              variant="primary"
-              leftIcon={<PlusIcon className="w-4 h-4" />}
-              onClick={handleCreate}
+              variant="success"
+              size="icon"
+              onClick={() => document.dispatchEvent(new CustomEvent("suppliers:exportCSV"))}
+              title="Exportar a Excel (CSV)"
+              aria-label="Exportar proveedores a Excel"
             >
-              Nuevo Proveedor
+              <ExportCsvIcon className="w-4 h-4 shrink-0" />
             </Button>
-          ) : undefined
+            <Button
+              variant="danger"
+              size="icon"
+              onClick={() => document.dispatchEvent(new CustomEvent("suppliers:exportPDF"))}
+              title="Exportar a PDF"
+              aria-label="Exportar proveedores a PDF"
+            >
+              <ExportPdfIcon className="w-4 h-4 shrink-0" />
+            </Button>
+            {/* El alta se rige por C-COMPRAS-PROV, no por el permiso de edición:
+                son dos capacidades distintas del catálogo. */}
+            {canCreate && (
+              <Button
+                variant="primary"
+                leftIcon={<PlusIcon className="w-4 h-4" />}
+                onClick={handleCreate}
+              >
+                Nuevo Proveedor
+              </Button>
+            )}
+          </div>
         }
         isLoading={isLoading}
         isError={isError}
@@ -116,6 +167,7 @@ export default function SupplierList({
         errorMessage={extractErrorMessage(error, "No se pudo cargar la información.")}
         loadingAriaLabel="Cargando proveedores"
       />
+      </div>
 
       <MainDialog
         open={isDialogOpen}

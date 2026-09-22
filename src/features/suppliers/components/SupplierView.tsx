@@ -11,5 +11,5 @@ import SupplierList from "./SupplierList";
  * the Config/global Suppliers implementation.
  */
 export default function SupplierView() {
-  return <SupplierList hideTitle />;
+  return <SupplierList hideTitle fillHeight />;
 }

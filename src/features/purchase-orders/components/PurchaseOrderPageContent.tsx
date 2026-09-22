@@ -28,9 +28,25 @@ import { canSeeAmounts, formatIvaPercent } from "../utils/purchaseOrderFinance";
 import { usePurchaseOrder } from "../hooks/usePurchaseOrder";
 import type {
   DocumentoLigado,
+  PurchaseOrderDetail,
   PurchaseOrderDetalle,
   PurchaseOrderReceipt,
 } from "../interfaces/purchase-order.interface";
+
+/** Campos financieros que consume {@link TotalsFooter}, recortados de la cabecera. */
+type OrderTotals = Pick<
+  PurchaseOrderDetail,
+  | "subtotal"
+  | "descuento"
+  | "impuestos"
+  | "total"
+  | "flete"
+  | "seguros"
+  | "porcentaje_iva"
+  | "total_iva"
+  | "gran_total"
+  | "a_cuenta"
+>;
 
 // Destino del "Volver". Fijo —sin el mapa `?from=` de `PedidoDetailContent`—
 // porque esta ruta NO es neutra: cuelga de `/procurement`, exige `R-COMPRAS` y
@@ -87,19 +103,35 @@ const LineasTable = ({
 
   return (
     <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-white/10">
-      <table className="min-w-full text-xs">
+      <table className="min-w-full text-sm">
         <thead className="bg-slate-50 dark:bg-white/5">
           <tr className="text-slate-500 dark:text-slate-400">
-            <th className="px-3 py-2 text-right font-semibold">#</th>
-            <th className="px-3 py-2 text-left font-semibold">Producto</th>
-            <th className="px-3 py-2 text-left font-semibold">Descripción</th>
-            <th className="px-3 py-2 text-right font-semibold">Cantidad</th>
-            <th className="px-3 py-2 text-right font-semibold">Piezas</th>
+            <th className="px-3 py-3 text-right text-[11px] font-semibold uppercase tracking-wide">
+              #
+            </th>
+            <th className="px-3 py-3 text-left text-[11px] font-semibold uppercase tracking-wide">
+              Producto
+            </th>
+            <th className="px-3 py-3 text-left text-[11px] font-semibold uppercase tracking-wide">
+              Descripción
+            </th>
+            <th className="px-3 py-3 text-right text-[11px] font-semibold uppercase tracking-wide">
+              Cantidad
+            </th>
+            <th className="px-3 py-3 text-right text-[11px] font-semibold uppercase tracking-wide">
+              Piezas
+            </th>
             {showAmounts && (
               <>
-                <th className="px-3 py-2 text-right font-semibold">Precio</th>
-                <th className="px-3 py-2 text-right font-semibold">Descuento</th>
-                <th className="px-3 py-2 text-right font-semibold">Importe</th>
+                <th className="px-3 py-3 text-right text-[11px] font-semibold uppercase tracking-wide">
+                  Precio
+                </th>
+                <th className="px-3 py-3 text-right text-[11px] font-semibold uppercase tracking-wide">
+                  Descuento
+                </th>
+                <th className="px-3 py-3 text-right text-[11px] font-semibold uppercase tracking-wide">
+                  Importe
+                </th>
               </>
             )}
           </tr>
@@ -110,30 +142,30 @@ const LineasTable = ({
               key={linea.id}
               className="border-t border-slate-100 dark:border-white/10 align-top hover:bg-slate-50 dark:hover:bg-white/5 transition-colors"
             >
-              <td className="px-3 py-2 text-right tabular-nums text-slate-400 dark:text-slate-500">
+              <td className="px-3 py-3 text-right tabular-nums text-slate-400 dark:text-slate-500">
                 {index + 1}
               </td>
-              <td className="px-3 py-2 text-slate-700 dark:text-slate-200">
+              <td className="px-3 py-3 font-semibold text-slate-800 dark:text-white">
                 {textOrDash(linea.producto_nombre)}
               </td>
-              <td className="px-3 py-2 text-slate-600 dark:text-slate-300">
+              <td className="px-3 py-3 text-slate-500 dark:text-slate-400">
                 {textOrDash(linea.descripcion)}
               </td>
-              <td className="px-3 py-2 text-right tabular-nums text-slate-600 dark:text-slate-300 whitespace-nowrap">
+              <td className="px-3 py-3 text-right tabular-nums text-slate-600 dark:text-slate-300 whitespace-nowrap">
                 {formatQuantityValue(linea.cantidad)}
               </td>
-              <td className="px-3 py-2 text-right tabular-nums text-slate-600 dark:text-slate-300 whitespace-nowrap">
+              <td className="px-3 py-3 text-right tabular-nums text-slate-600 dark:text-slate-300 whitespace-nowrap">
                 {formatQuantityValue(linea.piezas)}
               </td>
               {showAmounts && (
                 <>
-                  <td className="px-3 py-2 text-right tabular-nums text-slate-600 dark:text-slate-300 whitespace-nowrap">
+                  <td className="px-3 py-3 text-right tabular-nums text-slate-600 dark:text-slate-300 whitespace-nowrap">
                     {money(linea.precio)}
                   </td>
-                  <td className="px-3 py-2 text-right tabular-nums text-slate-600 dark:text-slate-300 whitespace-nowrap">
+                  <td className="px-3 py-3 text-right tabular-nums text-slate-600 dark:text-slate-300 whitespace-nowrap">
                     {money(linea.descuento)}
                   </td>
-                  <td className="px-3 py-2 text-right tabular-nums font-semibold text-slate-800 dark:text-white whitespace-nowrap">
+                  <td className="px-3 py-3 text-right tabular-nums font-semibold text-slate-900 dark:text-white whitespace-nowrap">
                     {money(linea.importe)}
                   </td>
                 </>
@@ -145,6 +177,66 @@ const LineasTable = ({
     </div>
   );
 };
+
+/**
+ * Pie de totales de la orden, pegado a la tabla de artículos (como el total
+ * de una factura) en vez de vivir en una tarjeta aparte: así el usuario lee
+ * "tabla → total" de corrido, sin saltar a otra sección de la página.
+ * `Gran total` es el único renglón con jerarquía propia (borde superior,
+ * tamaño mayor, color de acento) porque es el número que más se escanea.
+ */
+const TotalsFooter = ({
+  data,
+  money,
+}: {
+  data: OrderTotals;
+  money: (value: string | undefined) => string;
+}) => (
+  <div className="mt-5 flex justify-end">
+    <div className="w-full sm:w-80 space-y-1.5 text-sm">
+      <div className="flex items-center justify-between text-slate-500 dark:text-slate-400">
+        <span>Subtotal</span>
+        <span className="tabular-nums">{money(data.subtotal)}</span>
+      </div>
+      <div className="flex items-center justify-between text-slate-500 dark:text-slate-400">
+        <span>Descuento</span>
+        <span className="tabular-nums">{money(data.descuento)}</span>
+      </div>
+      <div className="flex items-center justify-between text-slate-500 dark:text-slate-400">
+        <span>
+          {data.porcentaje_iva !== undefined
+            ? `Impuestos (IVA ${formatIvaPercent(data.porcentaje_iva)}%)`
+            : "Impuestos"}
+        </span>
+        <span className="tabular-nums">{money(data.impuestos ?? data.total_iva)}</span>
+      </div>
+      <div className="flex items-center justify-between text-slate-500 dark:text-slate-400">
+        <span>Flete</span>
+        <span className="tabular-nums">{money(data.flete)}</span>
+      </div>
+      <div className="flex items-center justify-between text-slate-500 dark:text-slate-400">
+        <span>Seguros</span>
+        <span className="tabular-nums">{money(data.seguros)}</span>
+      </div>
+      <div className="flex items-center justify-between text-slate-500 dark:text-slate-400">
+        <span>A cuenta</span>
+        <span className="tabular-nums">{money(data.a_cuenta)}</span>
+      </div>
+      <div className="flex items-center justify-between text-slate-600 dark:text-slate-300">
+        <span>Total</span>
+        <span className="tabular-nums font-medium">{money(data.total)}</span>
+      </div>
+      <div className="flex items-center justify-between pt-2.5 mt-1 border-t border-slate-200 dark:border-white/10">
+        <span className="text-base font-bold text-slate-900 dark:text-white">
+          Gran total
+        </span>
+        <span className="text-lg font-bold tabular-nums text-sky-600 dark:text-sky-400">
+          {money(data.gran_total)}
+        </span>
+      </div>
+    </div>
+  </div>
+);
 
 // ── Recepciones asociadas ────────────────────────────────────────────────────
 
@@ -531,13 +623,17 @@ export function PurchaseOrderPageContent({
       <div className="sticky top-0 z-10 py-2 w-fit">{BackLink}</div>
 
       {/* ── 1. Cabecera ─────────────────────────────────────────────────── */}
+      {/* Documento, no tarjeta de dashboard: folio + estatus dominan a la
+          izquierda, y a la derecha solo lo que un usuario necesita SIN hacer
+          scroll — incluido el Gran total, que antes vivía hasta el fondo de
+          la página en su propia tarjeta ("Resumen financiero"). */}
       <section className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 p-5 md:p-6">
-        <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="flex flex-wrap items-start justify-between gap-6">
           <div className="space-y-2 min-w-0">
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2.5">
               {/* El folio lo asigna el backend al crear; el respaldo cubre las
                   órdenes en borrador, que aún no lo tienen. */}
-              <h1 className="text-2xl font-bold text-slate-900 dark:text-white font-mono">
+              <h1 className="text-3xl font-bold text-slate-900 dark:text-white font-mono tracking-tight">
                 {data.folio || `Orden #${data.id}`}
               </h1>
               <StatusBadge
@@ -550,11 +646,11 @@ export function PurchaseOrderPageContent({
                 }}
               />
             </div>
-            <p className="text-sm text-slate-500 dark:text-slate-400">
+            <p className="text-base text-slate-600 dark:text-slate-300">
               {textOrDash(data.proveedor_nombre)}
             </p>
           </div>
-          <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-xs shrink-0">
+          <div className="grid grid-cols-2 gap-x-8 gap-y-3 text-xs shrink-0">
             <InfoField label="Fecha OC">
               <span className="tabular-nums">{formatLocalDate(data.fecha_oc)}</span>
             </InfoField>
@@ -570,130 +666,23 @@ export function PurchaseOrderPageContent({
                 {formatQuantityValue(data.total_piezas)}
               </span>
             </InfoField>
+            {showAmounts && (
+              <InfoField label="Gran total">
+                <span className="tabular-nums font-bold text-base text-sky-600 dark:text-sky-400">
+                  {money(data.gran_total)}
+                </span>
+              </InfoField>
+            )}
           </div>
         </div>
       </section>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* ── 2. Información general ────────────────────────────────────── */}
-        {/* Sin campo "Estatus": el badge ya está junto al folio de la cabecera
-            y repetirlo en la misma pantalla no aporta. Mismo criterio que
-            `PedidoDetailContent`. */}
-        <Section title="Información general">
-          <InfoGrid>
-            <InfoField label="Proveedor">
-              {textOrDash(data.proveedor_nombre)}
-            </InfoField>
-            {/* `break-all` y no el corte por palabra por defecto: un correo no
-                tiene espacios donde partir, así que en pantalla angosta se
-                desbordaba de su columna o rompía en un punto arbitrario del
-                dominio. */}
-            <InfoField label="Correo del proveedor">
-              <span className="break-all">{textOrDash(data.proveedor_correo)}</span>
-            </InfoField>
-            <InfoField label="Tipo">{textOrDash(data.tipo)}</InfoField>
-            <InfoField label="Referencia">{textOrDash(data.referencia)}</InfoField>
-            <InfoField label="Pedido">
-              {/* Se navega por `pedido_vinculado`, no por el par plano
-                  `pedido`/`pedido_folio`: su presencia es la única señal de que
-                  el pedido madre existe (la OC de abasto directo no tiene).
-                  `/orders/[id]` es la ruta NEUTRA del detalle 360° (su regla en
-                  `routePermissions` se cumple con CUALQUIERA de varios códigos,
-                  entre ellos `R-COMPRAS-OC`), y `?from=purchase-orders` hace que su
-                  "Volver" regrese a este módulo en vez de a Mesa de Control,
-                  que un usuario solo-Compras no puede abrir. */}
-              {data.pedido_vinculado ? (
-                <Link
-                  href={`/orders/${data.pedido_vinculado.id}?from=purchase-orders`}
-                  className="font-mono text-sky-600 dark:text-sky-400 hover:underline hover:text-sky-700 dark:hover:text-sky-300 transition-colors"
-                >
-                  {data.pedido_vinculado.folio}
-                </Link>
-              ) : (
-                <span className="font-mono">{textOrDash(data.pedido_folio)}</span>
-              )}
-            </InfoField>
-            <InfoField label="Observaciones" className="col-span-2 md:col-span-3">
-              {textOrDash(data.observaciones)}
-            </InfoField>
-          </InfoGrid>
-        </Section>
-
-        {/* ── 3. Origen ─────────────────────────────────────────────────── */}
-        {/* Empresa / sucursal / usuario con el NOMBRE ya resuelto que el
-            backend devuelve (`*_nombre`); los ids crudos no se pintan porque no
-            le dicen nada al usuario. */}
-        <Section title="Origen">
-          <InfoGrid>
-            <InfoField label="Empresa">{textOrDash(data.empresa_nombre)}</InfoField>
-            <InfoField label="Sucursal">{textOrDash(data.sucursal_nombre)}</InfoField>
-            <InfoField label="Elaboró">{textOrDash(data.usuario_nombre)}</InfoField>
-            {/* La moneda contextualiza TODOS los importes de la página, así que
-                se muestra aunque los importes en sí no sean visibles. */}
-            <InfoField label="Moneda">{textOrDash(data.moneda_codigo)}</InfoField>
-            <InfoField label="Fecha de autorización">
-              <span className="tabular-nums">
-                {formatLocalDate(data.fecha_autorizacion)}
-              </span>
-            </InfoField>
-            <InfoField label="Fecha de vencimiento">
-              <span className="tabular-nums">
-                {formatLocalDate(data.fecha_vencimiento)}
-              </span>
-            </InfoField>
-          </InfoGrid>
-        </Section>
-      </div>
-
-      {/* ── 4. Resumen financiero ───────────────────────────────────────── */}
-      {/* La sección ENTERA se omite cuando el rol no tiene visibilidad
-          financiera: pintarla llena de guiones sugeriría una orden sin
-          importes, que es una lectura distinta (y falsa). */}
-      {showAmounts && (
-        <Section title="Resumen financiero">
-          <InfoGrid>
-            <InfoField label="Subtotal">
-              <span className="tabular-nums">{money(data.subtotal)}</span>
-            </InfoField>
-            <InfoField label="Descuento">
-              <span className="tabular-nums">{money(data.descuento)}</span>
-            </InfoField>
-            <InfoField
-              label={
-                data.porcentaje_iva !== undefined
-                  ? `Impuestos (IVA ${formatIvaPercent(data.porcentaje_iva)}%)`
-                  : "Impuestos"
-              }
-            >
-              <span className="tabular-nums">
-                {/* `total_iva` es el desglose del IVA; `impuestos` es el total
-                    de impuestos de la orden. Se prefiere el segundo y se cae al
-                    primero cuando el backend solo manda ese. */}
-                {money(data.impuestos ?? data.total_iva)}
-              </span>
-            </InfoField>
-            <InfoField label="Flete">
-              <span className="tabular-nums">{money(data.flete)}</span>
-            </InfoField>
-            <InfoField label="Seguros">
-              <span className="tabular-nums">{money(data.seguros)}</span>
-            </InfoField>
-            <InfoField label="A cuenta">
-              <span className="tabular-nums">{money(data.a_cuenta)}</span>
-            </InfoField>
-            <InfoField label="Total">
-              <span className="tabular-nums">{money(data.total)}</span>
-            </InfoField>
-            <InfoField label="Gran total">
-              <span className="tabular-nums font-semibold text-slate-900 dark:text-white">
-                {money(data.gran_total)}
-              </span>
-            </InfoField>
-          </InfoGrid>
-        </Section>
-      )}
-
-      {/* ── 5. Artículos ────────────────────────────────────────────────── */}
+      {/* ── 2. Artículos ─────────────────────────────────────────────────── */}
+      {/* Elemento principal de la página: la tabla es lo primero que se lee
+          después de la cabecera, con más tamaño de letra y aire que el resto
+          del detalle. El resumen financiero se fusiona aquí como pie de
+          totales (igual que el total de una factura), en vez de vivir en una
+          tarjeta aparte más abajo. */}
       <Section title={`Artículos (${data.detalles.length})`}>
         <LineasTable detalles={data.detalles} monedaCodigo={data.moneda_codigo} />
         {data.detalles.length > 0 && (
@@ -703,9 +692,80 @@ export function PurchaseOrderPageContent({
               : `Se muestran ${data.detalles.length} artículos de esta orden.`}
           </p>
         )}
+        {/* La sección de totales se omite cuando el rol no tiene visibilidad
+            financiera: pintarla llena de guiones sugeriría una orden sin
+            importes, que es una lectura distinta (y falsa). */}
+        {showAmounts && <TotalsFooter data={data} money={money} />}
       </Section>
 
-      {/* ── 6. Recepciones asociadas ────────────────────────────────────── */}
+      {/* ── 3. Detalles de la orden ─────────────────────────────────────── */}
+      {/* Información general + Origen fusionadas en una sola tarjeta: son
+          datos de referencia/auditoría (proveedor, tipo, empresa, quién la
+          elaboró…), no lo primero que alguien busca al abrir la orden, así
+          que bajan de prioridad visual y posicional frente a la tabla.
+          Sin campo "Estatus": el badge ya está junto al folio de la cabecera
+          y repetirlo en la misma pantalla no aporta. Mismo criterio que
+          `PedidoDetailContent`. */}
+      <Section title="Detalles de la orden">
+        <InfoGrid>
+          <InfoField label="Proveedor">
+            {textOrDash(data.proveedor_nombre)}
+          </InfoField>
+          {/* `break-all` y no el corte por palabra por defecto: un correo no
+              tiene espacios donde partir, así que en pantalla angosta se
+              desbordaba de su columna o rompía en un punto arbitrario del
+              dominio. */}
+          <InfoField label="Correo del proveedor">
+            <span className="break-all">{textOrDash(data.proveedor_correo)}</span>
+          </InfoField>
+          <InfoField label="Tipo">{textOrDash(data.tipo)}</InfoField>
+          <InfoField label="Referencia">{textOrDash(data.referencia)}</InfoField>
+          <InfoField label="Pedido">
+            {/* Se navega por `pedido_vinculado`, no por el par plano
+                `pedido`/`pedido_folio`: su presencia es la única señal de que
+                el pedido madre existe (la OC de abasto directo no tiene).
+                `/orders/[id]` es la ruta NEUTRA del detalle 360° (su regla en
+                `routePermissions` se cumple con CUALQUIERA de varios códigos,
+                entre ellos `R-COMPRAS-OC`), y `?from=purchase-orders` hace que su
+                "Volver" regrese a este módulo en vez de a Mesa de Control,
+                que un usuario solo-Compras no puede abrir. */}
+            {data.pedido_vinculado ? (
+              <Link
+                href={`/orders/${data.pedido_vinculado.id}?from=purchase-orders`}
+                className="font-mono text-sky-600 dark:text-sky-400 hover:underline hover:text-sky-700 dark:hover:text-sky-300 transition-colors"
+              >
+                {data.pedido_vinculado.folio}
+              </Link>
+            ) : (
+              <span className="font-mono">{textOrDash(data.pedido_folio)}</span>
+            )}
+          </InfoField>
+          {/* Empresa / sucursal / usuario con el NOMBRE ya resuelto que el
+              backend devuelve (`*_nombre`); los ids crudos no se pintan porque
+              no le dicen nada al usuario. */}
+          <InfoField label="Empresa">{textOrDash(data.empresa_nombre)}</InfoField>
+          <InfoField label="Sucursal">{textOrDash(data.sucursal_nombre)}</InfoField>
+          <InfoField label="Elaboró">{textOrDash(data.usuario_nombre)}</InfoField>
+          {/* La moneda contextualiza TODOS los importes de la página, así que
+              se muestra aunque los importes en sí no sean visibles. */}
+          <InfoField label="Moneda">{textOrDash(data.moneda_codigo)}</InfoField>
+          <InfoField label="Fecha de autorización">
+            <span className="tabular-nums">
+              {formatLocalDate(data.fecha_autorizacion)}
+            </span>
+          </InfoField>
+          <InfoField label="Fecha de vencimiento">
+            <span className="tabular-nums">
+              {formatLocalDate(data.fecha_vencimiento)}
+            </span>
+          </InfoField>
+          <InfoField label="Observaciones" className="col-span-2 md:col-span-3">
+            {textOrDash(data.observaciones)}
+          </InfoField>
+        </InfoGrid>
+      </Section>
+
+      {/* ── 4. Recepciones asociadas ────────────────────────────────────── */}
       {data.recepciones.length > 0 && (
         <Section title={`Recepciones asociadas (${data.recepciones.length})`}>
           {/* Con pocas recepciones se leen de corrido; a partir de cuatro se
@@ -729,7 +789,7 @@ export function PurchaseOrderPageContent({
         </Section>
       )}
 
-      {/* ── 7. Documentos relacionados ──────────────────────────────────── */}
+      {/* ── 5. Documentos relacionados ──────────────────────────────────── */}
       {data.documentos.length > 0 && (
         <Section title={`Documentos relacionados (${data.documentos.length})`}>
           <DocumentosTable documentos={data.documentos} onOpenDoc={setOpenDoc} />

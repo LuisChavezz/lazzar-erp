@@ -8,17 +8,21 @@ import {
   ClockIcon,
   CheckCircleIcon,
   ErrorIcon,
+  ExportCsvIcon,
+  ExportPdfIcon,
 } from "@/src/components/Icons";
 import KpiGrid, { type KpiItem } from "@/src/components/KpiGrid";
-import { DataTable } from "@/src/components/DataTable";
+import { DataTable, type DataTableVisibleColumn } from "@/src/components/DataTable";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { hasPermission } from "@/src/utils/permissions";
 import { MainDialog } from "@/src/components/MainDialog";
 import { DialogHeader } from "@/src/components/DialogHeader";
 import { Button } from "@/src/components/Button";
 import { usePurchaseOrders } from "../hooks/usePurchaseOrders";
+import { usePurchaseOrderCsvExport } from "../hooks/usePurchaseOrderCsvExport";
+import { usePurchaseOrderPdfExport } from "../hooks/usePurchaseOrderPdfExport";
 import { getColumns } from "./PurchaseOrderColumns";
-import { createPurchaseOrdersFilterConfig } from "./PurchaseOrdersFilter";
+import { buildStatusOptions, buildSupplierOptions } from "./PurchaseOrdersFilter";
 import type { PurchaseOrder } from "../interfaces/purchase-order.interface";
 import { PurchaseOrderOnboardingStepManager } from "./PurchaseOrderOnboardingStepManager";
 import { PurchaseOrderEditDialog } from "./PurchaseOrderEditDialog";
@@ -121,14 +125,35 @@ export function PurchaseOrderView() {
   // `null` = cerrado; el objeto de la fila alimenta `initialData`.
   const [editingOrder, setEditingOrder] = useState<PurchaseOrder | null>(null);
 
+  // ── Opciones de los filtros de encabezado ─────────────────────────────────
+  // Alimentan los desplegables de O.C. (Estatus) y Proveedor dentro de
+  // `getColumns` (ver `ColumnFilterHeader`); se recalculan solo cuando cambia
+  // el listado, no en cada render.
+  const statusOptions = useMemo(() => buildStatusOptions(purchaseOrders), [purchaseOrders]);
+  const supplierOptions = useMemo(() => buildSupplierOptions(purchaseOrders), [purchaseOrders]);
+
   const columns = useMemo(
     () =>
       getColumns(
         (id) => router.push(`/procurement/purchase-orders/${id}`),
         setEditingOrder,
+        statusOptions,
+        supplierOptions,
       ),
-    [router],
+    [router, statusOptions, supplierOptions],
   );
+
+  // ── Exportar (Excel/PDF) ──────────────────────────────────────────────────
+  // Exportan lo que el usuario está VIENDO (`onVisibleRowsChange`/
+  // `onVisibleColumnsChange` de `DataTable`: ya filtrado/ordenado, con la
+  // visibilidad de columnas que haya elegido), no el listado completo sin
+  // tocar. Mismo patrón que `QuoteList` (`useQuoteCsvExport`/`useQuotePdfExport`).
+  const [visibleOrders, setVisibleOrders] = useState<PurchaseOrder[]>([]);
+  const [visibleColumns, setVisibleColumns] = useState<DataTableVisibleColumn<PurchaseOrder>[]>(
+    [],
+  );
+  usePurchaseOrderCsvExport(visibleOrders, visibleColumns);
+  usePurchaseOrderPdfExport(visibleOrders, visibleColumns);
 
   // ── Orden ────────────────────────────────────────────────────────────────
   // Lo resuelve el backend: `-fecha_oc, -id`. `fecha_oc` es la fecha DE NEGOCIO
@@ -138,53 +163,81 @@ export function PurchaseOrderView() {
   // hacía por `created_at` (el timestamp de inserción, un campo DISTINTO), así
   // que además de redundante contradecía el orden del backend — una OC
   // capturada hoy con fecha retroactiva salía hasta arriba.
-  // ── Configuración de filtros para DataTable ─────────────────────────────
-  const purchaseOrdersFilterConfig = useMemo(
-    () => createPurchaseOrdersFilterConfig(purchaseOrders),
-    [purchaseOrders],
-  );
 
   // ── Tabla de órdenes ──────────────────────────────────────────────────────
   // `DataTable` se monta SIEMPRE (recibe `isLoading`/`isError` y alterna solo
   // su cuerpo), así que su toolbar y `actionButton` ("Nueva Orden") siguen
   // disponibles durante la carga o un error. Mismo patrón que
   // `AccountsReceivableList`.
+  //
+  // `density="compact"` + `framed` + `searchAlwaysExpanded` a propósito: esta
+  // lista prioriza ver muchas órdenes de un vistazo (filas delgadas), un
+  // buscador siempre a mano (sin el paso extra de expandirlo) y un solo marco
+  // visual que una toolbar + tabla en vez de dos bloques flotantes separados.
   const table = (
     <DataTable
       columns={columns}
       data={purchaseOrders}
       searchPlaceholder="Buscar orden, folio o referencia..."
+      searchAlwaysExpanded
+      density="compact"
+      framed
+      defaultPageSize={20}
+      onVisibleRowsChange={setVisibleOrders}
+      onVisibleColumnsChange={setVisibleColumns}
       actionButton={
-        canCreate ? (
-          <MainDialog
-            title={
-              <DialogHeader
-                title="Nueva Orden de Compra"
-                subtitle="Registro Nuevo"
-                statusColor="sky"
-              />
-            }
-            open={isDialogOpen}
-            onOpenChange={setIsDialogOpen}
-            maxWidth="640px"
-            showCloseButton={false}
-            trigger={
-              <Button
-                variant="primary"
-                rounded="full"
-                onClick={() => setIsDialogOpen(true)}
-              >
-                + Nueva Orden
-              </Button>
-            }
+        <div className="flex items-center gap-2 shrink-0">
+          {/* Exportar: a la IZQUIERDA de "+ Nueva Orden" — son consulta, no
+              el CTA principal de la pantalla, así que no deben competir con
+              su prominencia visual. */}
+          <Button
+            variant="success"
+            size="icon"
+            onClick={() => document.dispatchEvent(new CustomEvent("purchase-orders:exportCSV"))}
+            title="Exportar a Excel (CSV)"
+            aria-label="Exportar órdenes de compra a Excel"
           >
-            <PurchaseOrderOnboardingStepManager
-              onClose={() => setIsDialogOpen(false)}
-            />
-          </MainDialog>
-        ) : undefined
+            <ExportCsvIcon className="w-4 h-4 shrink-0" />
+          </Button>
+          <Button
+            variant="danger"
+            size="icon"
+            onClick={() => document.dispatchEvent(new CustomEvent("purchase-orders:exportPDF"))}
+            title="Exportar a PDF"
+            aria-label="Exportar órdenes de compra a PDF"
+          >
+            <ExportPdfIcon className="w-4 h-4 shrink-0" />
+          </Button>
+          {canCreate && (
+            <MainDialog
+              title={
+                <DialogHeader
+                  title="Nueva Orden de Compra"
+                  subtitle="Registro Nuevo"
+                  statusColor="sky"
+                />
+              }
+              open={isDialogOpen}
+              onOpenChange={setIsDialogOpen}
+              maxWidth="640px"
+              showCloseButton={false}
+              trigger={
+                <Button
+                  variant="primary"
+                  rounded="full"
+                  onClick={() => setIsDialogOpen(true)}
+                >
+                  + Nueva Orden
+                </Button>
+              }
+            >
+              <PurchaseOrderOnboardingStepManager
+                onClose={() => setIsDialogOpen(false)}
+              />
+            </MainDialog>
+          )}
+        </div>
       }
-      filterConfig={purchaseOrdersFilterConfig}
       onRefetch={refetch}
       isRefetching={isFetching}
       isLoading={isLoading}

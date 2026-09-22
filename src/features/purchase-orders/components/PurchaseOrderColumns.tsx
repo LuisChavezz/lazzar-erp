@@ -1,20 +1,22 @@
 "use client";
 
 import { useState } from "react";
-import { ColumnDef, createColumnHelper, type SortingFn } from "@tanstack/react-table";
+import { ColumnDef, Column, createColumnHelper } from "@tanstack/react-table";
+import { DropdownMenu } from "@radix-ui/themes";
 import { ActionMenu, type ActionMenuItem } from "@/src/components/ActionMenu";
 import { ConfirmDialog } from "@/src/components/ConfirmDialog";
 import { textOrDash } from "@/src/components/DetailDialogPrimitives";
-import { StatusBadge } from "@/src/components/StatusBadge";
+import type { DataTableFilterOption } from "@/src/components/DataTable";
 import {
   CheckCircleIcon,
   DeleteIcon,
   DownloadIcon,
   EditIcon,
   EmailIcon,
+  FilterIcon,
   ViewIcon,
 } from "@/src/components/Icons";
-import { formatMoneyValueOrDash, safeParseAmount } from "@/src/utils/formatCurrency";
+import { formatQuantityValue } from "@/src/utils/formatCurrency";
 import { formatLocalDate } from "@/src/utils/formatDate";
 import { PurchaseOrder } from "../interfaces/purchase-order.interface";
 import { useConfirmPurchaseOrder } from "../hooks/useConfirmPurchaseOrder";
@@ -28,26 +30,6 @@ import {
 } from "../constants/purchaseOrderStatus";
 
 const columnHelper = createColumnHelper<PurchaseOrder>();
-
-/**
- * Importe en la MONEDA DE LA ORDEN (no siempre MXN) y con "—" cuando el campo
- * viene ausente: el backend elimina los financieros de la respuesta para
- * usuarios sin rol con visibilidad financiera, y `Number(undefined)` pintaría
- * "$NaN" en la celda.
- */
-const money = (value: string | undefined, monedaCodigo: string) =>
-  formatMoneyValueOrDash(value, { currency: monedaCodigo });
-
-/**
- * Orden NUMÉRICO para las columnas de importe. El valor de la celda es el
- * string decimal del backend, y el comparador por defecto de TanStack ordena
- * strings LEXICOGRÁFICAMENTE: "1000.00" quedaría antes de "9.00". Un importe
- * ausente (filtro por rol) llega como "" y cuenta como 0 — el filtro es por
- * usuario, no por fila, así que o se ven todos o ninguno.
- */
-const amountSortingFn: SortingFn<PurchaseOrder> = (rowA, rowB, columnId) =>
-  safeParseAmount(rowA.getValue<string>(columnId)) -
-  safeParseAmount(rowB.getValue<string>(columnId));
 
 // ── Celda de acciones ─────────────────────────────────────────────────────────
 
@@ -226,6 +208,97 @@ const ActionsCell = ({
   );
 };
 
+// ── Filtro por columna (encabezado) ─────────────────────────────────────────
+
+/**
+ * Encabezado de columna con su propio filtro (estilo hoja de cálculo): un
+ * ícono de embudo junto al título abre un desplegable con los valores
+ * distintos de la columna. Reemplaza el panel de filtros tipo "chips" que
+ * vivía en la barra de herramientas (`filterConfig` de `DataTable`) — el
+ * usuario lo pidió así por ser el patrón al que está acostumbrado.
+ *
+ * Se apoya en el `columnFilters` NATIVO de TanStack, que `DataTable` ya deja
+ * cableado (`state.columnFilters`, `onColumnFiltersChange`,
+ * `getFilteredRowModel`) pero sin UI propia porque ninguno de sus 55+
+ * consumidores lo usaba — así que esto vive enteramente en las columnas de
+ * ESTA tabla, sin tocar el componente compartido. `e.stopPropagation()` en el
+ * botón evita que el clic también dispare el `onClick` de ordenamiento que
+ * `DataTable` pone en el `<th>` completo.
+ */
+const ColumnFilterHeader = ({
+  label,
+  options,
+  column,
+}: {
+  label: string;
+  options: DataTableFilterOption[];
+  column: Column<PurchaseOrder, unknown>;
+}) => {
+  const activeValue = column.getFilterValue() as string | undefined;
+
+  return (
+    <div className="flex items-center gap-1.5">
+      <span>{label}</span>
+      <DropdownMenu.Root>
+        <DropdownMenu.Trigger>
+          <button
+            type="button"
+            onClick={(e) => e.stopPropagation()}
+            aria-label={`Filtrar por ${label}`}
+            title={activeValue ? "Filtro activo" : `Filtrar por ${label}`}
+            className={`p-1 rounded cursor-pointer transition-colors ${
+              activeValue
+                ? "text-sky-600 dark:text-sky-400 bg-sky-100 dark:bg-sky-500/20"
+                : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+            }`}
+          >
+            <FilterIcon className="w-3 h-3" aria-hidden="true" />
+          </button>
+        </DropdownMenu.Trigger>
+        <DropdownMenu.Content
+          align="start"
+          onClick={(e) => e.stopPropagation()}
+          className="bg-white! dark:bg-zinc-900! min-w-40 rounded-xl shadow-xl border border-slate-100 dark:border-slate-800 z-50 p-1 normal-case tracking-normal font-normal"
+        >
+          <DropdownMenu.Item
+            onSelect={() => column.setFilterValue(undefined)}
+            className={`flex items-center px-3 py-2 text-xs rounded-lg cursor-pointer! outline-none data-highlighted:bg-slate-50 dark:data-highlighted:bg-white/5 data-highlighted:text-sky-600 dark:data-highlighted:text-sky-400 transition-colors ${
+              activeValue
+                ? "text-slate-600 dark:text-slate-300"
+                : "text-sky-600 dark:text-sky-400"
+            }`}
+          >
+            Todos
+          </DropdownMenu.Item>
+          {options.map((opt) => (
+            <DropdownMenu.Item
+              key={opt.value}
+              onSelect={() => column.setFilterValue(opt.value)}
+              className={`flex items-center px-3 py-2 text-xs rounded-lg cursor-pointer! outline-none data-highlighted:bg-slate-50 dark:data-highlighted:bg-white/5 data-highlighted:text-sky-600 dark:data-highlighted:text-sky-400 transition-colors ${
+                opt.value === activeValue
+                  ? "text-sky-600 dark:text-sky-400"
+                  : "text-slate-600 dark:text-slate-300"
+              }`}
+            >
+              {opt.label}
+            </DropdownMenu.Item>
+          ))}
+        </DropdownMenu.Content>
+      </DropdownMenu.Root>
+    </div>
+  );
+};
+
+/** Filtro EXACTO (no substring) por un campo del `row.original` — el valor de la
+ * columna en pantalla (folio+referencia, nombre del proveedor…) no es el que
+ * se compara; el desplegable filtra por el campo crudo que indique `pick`. */
+const exactFilterFn =
+  <K extends keyof PurchaseOrder>(pick: (row: PurchaseOrder) => PurchaseOrder[K]) =>
+  (row: { original: PurchaseOrder }, _columnId: string, filterValue: string) => {
+    if (!filterValue) return true;
+    return String(pick(row.original)) === filterValue;
+  };
+
 /**
  * Columnas del listado de órdenes de compra (`GET /compras/ordenes/`).
  *
@@ -234,70 +307,114 @@ const ActionsCell = ({
  * vive en `PurchaseOrderView`. Mismo patrón `getXColumns(callbacks)` que
  * `CorteMangaOrderColumns` (navegación) y `AreaColumns` (edición).
  *
- * Las columnas de importe muestran "—" cuando el campo viene ausente: el
- * backend los omite por rol y NO se ocultan las columnas enteras, porque en un
- * mismo listado la visibilidad es por usuario, no por fila —si un usuario no
- * los ve, no los ve en ninguna—, y una columna vacía comunica eso mejor que
- * una columna desaparecida.
+ * Contenido pedido por negocio: O.C. (folio + estatus + referencia, ver
+ * abajo), Proveedor, Fecha OC, Cantidad, Vencimiento, Progreso OC (surtido
+ * vs. solicitado, ver `ProgresoCell`). Los importes (Total/Subtotal/Impuestos)
+ * y "Entrega estimada" salieron del listado a propósito — siguen disponibles
+ * en el detalle de la orden.
+ *
+ * `statusOptions`/`supplierOptions` alimentan los filtros de encabezado de
+ * O.C. (por estatus) y Proveedor — construidos en `PurchaseOrdersFilter.tsx`
+ * a partir del listado completo, porque esta fábrica no lo recibe.
  */
 export const getColumns = (
   onViewDetails: (id: number) => void,
   onEdit: (order: PurchaseOrder) => void,
+  statusOptions: DataTableFilterOption[],
+  supplierOptions: DataTableFilterOption[],
 ) => {
   const columns = [
-    columnHelper.accessor("estatus", {
-      header: "Estatus",
-      cell: ({ row }) => (
-        <StatusBadge
-          status={String(row.original.estatus)}
-          config={{
-            [row.original.estatus]: purchaseOrderStatusEntry(
-              row.original.estatus,
-              row.original.estatus_label,
-            ),
-          }}
-        />
-      ),
-    }),
-    // `accessorFn` con `?? ""` y no `accessor("folio")`, por el mismo motivo de
-    // búsqueda global que `fecha_entrega_estimada` abajo: `folio` es nullable y
-    // el listado viene ordenado por `-fecha_oc, -id`, así que basta con que la
-    // orden más reciente esté pendiente de folio para que la columna quede
-    // fuera de la búsqueda EN TODAS las filas.
-    columnHelper.accessor((row) => row.folio ?? "", {
-      id: "folio",
-      header: "Folio",
-      // Folio clickeable: navega al detalle con el MISMO callback que la acción
-      // "Ver Detalles" (recibe `id`, la PK de esta orden). Mismo patrón que el
-      // folio del listado de pedidos (`SharedOrderColumns`).
-      //
-      // El respaldo `?? "—"` NO es cosmético: sin contenido el `<button>`
-      // colapsa a 0×0 px y el folio queda invisible e inclicable (verificado en
-      // producción, donde 4 de 15 órdenes traen `folio: null`). El guion da un
-      // objetivo de clic real y mantiene la fila navegable.
-      cell: ({ row }) => (
-        <button
-          type="button"
-          onClick={() => onViewDetails(row.original.id)}
-          className="font-mono text-slate-700 dark:text-slate-200 font-semibold hover:text-sky-600 dark:hover:text-sky-400 hover:underline transition-colors cursor-pointer"
-          title="Ver detalle"
-        >
-          {row.original.folio ?? "—"}
-        </button>
-      ),
-    }),
+    // ── O.C. ───────────────────────────────────────────────────────────────
+    // Folio, estatus y referencia consolidados en UNA columna (antes tres) para
+    // dejarle sitio a Solicitadas/Surtidas/Restantes/Comentarios sin abarrotar
+    // la tabla:
+    //  - el estatus se reduce a un punto de color (mismo `dot` que usa
+    //    `StatusBadge`) junto al folio, con la etiqueta accesible por `title`
+    //    y `sr-only` — el color solo no debe ser la única señal;
+    //  - la referencia baja a una mini-pill gris debajo del folio, y se omite
+    //    por completo cuando la orden no trae una (no hay "—" decorativo);
+    //  - el `accessorFn` concatena folio+referencia (con `?? ""` por el mismo
+    //    motivo de búsqueda global que el resto de campos nullable de esta
+    //    tabla) para que el buscador ("Buscar orden, folio o
+    //    referencia...") siga encontrando por cualquiera de los dos, aunque
+    //    el `cell` pinte su propio layout a partir de `row.original`;
+    //  - el filtro de encabezado filtra por ESTATUS (`exactFilterFn`, sobre
+    //    `row.original.estatus`), no por el valor del `accessorFn` — es el
+    //    campo que vive visualmente en esta columna (el punto de color).
+    columnHelper.accessor(
+      (row) => `${row.folio ?? ""} ${row.referencia ?? ""}`.trim(),
+      {
+        id: "folio",
+        // `meta.label` es lo que lee `DataTable` (menú "Mostrar/Ocultar" y la
+        // exportación CSV/PDF) para nombrar la columna: su `header` es una
+        // función (el filtro de encabezado), no un string, así que sin esto
+        // caería al `id` crudo ("Folio") en vez de "O.C.".
+        meta: { label: "O.C." },
+        header: ({ column }) => (
+          <ColumnFilterHeader label="O.C." options={statusOptions} column={column} />
+        ),
+        filterFn: exactFilterFn((row) => row.estatus),
+        cell: ({ row }) => {
+          const cfg = purchaseOrderStatusEntry(
+            row.original.estatus,
+            row.original.estatus_label,
+          );
+          return (
+            <div className="flex items-center gap-2 min-w-0">
+              <span
+                className={`w-2 h-2 rounded-full shrink-0 ${cfg.dot}`}
+                title={cfg.label}
+                aria-hidden="true"
+              />
+              <span className="sr-only">{cfg.label}</span>
+              <div className="flex flex-col items-start gap-1 min-w-0">
+                {/* El respaldo `?? "—"` NO es cosmético: sin contenido el
+                    `<button>` colapsa a 0×0 px y el folio queda invisible e
+                    inclicable (verificado en producción, donde 4 de 15
+                    órdenes traen `folio: null`). El guion da un objetivo de
+                    clic real y mantiene la fila navegable. */}
+                <button
+                  type="button"
+                  onClick={() => onViewDetails(row.original.id)}
+                  className="font-mono text-slate-700 dark:text-slate-200 font-semibold hover:text-sky-600 dark:hover:text-sky-400 hover:underline transition-colors cursor-pointer"
+                  title="Ver detalle"
+                >
+                  {row.original.folio ?? "—"}
+                </button>
+                {row.original.referencia && (
+                  <span
+                    className="inline-flex max-w-[150px] items-center truncate px-1.5 py-0.5 rounded text-[10px] font-medium leading-none bg-slate-100 text-slate-500 dark:bg-white/10 dark:text-slate-400"
+                    title={row.original.referencia}
+                  >
+                    {row.original.referencia}
+                  </span>
+                )}
+              </div>
+            </div>
+          );
+        },
+      },
+    ),
+    // El filtro de encabezado filtra por `proveedor` (el id, no el nombre):
+    // dos proveedores homónimos no deben mezclarse, y es el mismo criterio
+    // que ya usaba `buildSupplierOptions` para deduplicar sus opciones.
+    // El filtro de encabezado filtra por `proveedor` (el id, no el nombre):
+    // dos proveedores homónimos no deben mezclarse, y es el mismo criterio
+    // que ya usaba `buildSupplierOptions` para deduplicar sus opciones.
+    // Sin `text-sm` explícito a propósito: esa clase (14px) le ganaba al
+    // tamaño ambiente de la tabla en modo `density="compact"` (13px, ver
+    // `bodyTextCls` en `DataTable`), y era la única columna que lo hacía —
+    // se veía más grande que el resto sin motivo.
     columnHelper.accessor("proveedor_nombre", {
-      header: "Proveedor",
+      meta: { label: "Proveedor" },
+      header: ({ column }) => (
+        <ColumnFilterHeader label="Proveedor" options={supplierOptions} column={column} />
+      ),
+      filterFn: exactFilterFn((row) => row.proveedor),
       cell: (info) => (
-        <span className="text-slate-700 dark:text-slate-200 text-sm">
+        <span className="text-slate-700 dark:text-slate-200">
           {textOrDash(info.getValue())}
         </span>
-      ),
-    }),
-    columnHelper.accessor("referencia", {
-      header: "Referencia",
-      cell: (info) => (
-        <span className="text-slate-600 dark:text-slate-300">{textOrDash(info.getValue())}</span>
       ),
     }),
     columnHelper.accessor("fecha_oc", {
@@ -308,13 +425,23 @@ export const getColumns = (
         </span>
       ),
     }),
-    // `accessorFn` que colapsa `null` a `""` — mismo bug de
-    // `getColumnCanGlobalFilter`/`flatRows[0]` que ya documenta
-    // `CorteMangaOrderColumns.tsx`. `id` explícito conserva la
-    // visibilidad/orden de columna que guarda `DataTable`.
-    columnHelper.accessor((row) => row.fecha_entrega_estimada ?? "", {
-      id: "fecha_entrega_estimada",
-      header: "Entrega Estimada",
+    // `total_piezas` SÍ llega siempre (no es un campo financiero filtrado por
+    // rol, ver `PurchaseOrderPageContent`).
+    columnHelper.accessor("total_piezas", {
+      header: "Cantidad",
+      cell: (info) => (
+        <span className="text-slate-700 dark:text-slate-200 tabular-nums">
+          {formatQuantityValue(info.getValue())}
+        </span>
+      ),
+    }),
+    // `fecha_vencimiento` SÍ llega siempre en el listado (mismo campo que ya
+    // consume `PurchaseOrderPageContent` en el detalle), así que es un
+    // `accessorFn` normal —`?? ""` por el mismo motivo de búsqueda global que
+    // el resto de fechas nullable de esta tabla.
+    columnHelper.accessor((row) => row.fecha_vencimiento ?? "", {
+      id: "fecha_vencimiento",
+      header: "Vencimiento",
       cell: (info) => (
         <span className="text-slate-600 dark:text-slate-300 tabular-nums">
           {/* `||` y no `??`: el valor ausente ya llega como "", no como null. */}
@@ -322,38 +449,36 @@ export const getColumns = (
         </span>
       ),
     }),
-    // Los tres importes usan `accessorFn` con `?? ""` por el mismo motivo que
-    // `fecha_entrega_estimada`: ahora pueden venir AUSENTES (filtro por rol) y
-    // un `undefined` en la primera fila sacaría la columna de la búsqueda global.
-    columnHelper.accessor((row) => row.total ?? "", {
-      id: "total",
-      header: "Total",
-      sortingFn: amountSortingFn,
-      cell: ({ row }) => (
-        <span className="text-slate-800 dark:text-white font-semibold tabular-nums">
-          {money(row.original.total, row.original.moneda_codigo)}
-        </span>
-      ),
-    }),
-    columnHelper.accessor((row) => row.subtotal ?? "", {
-      id: "subtotal",
-      header: "Subtotal",
-      sortingFn: amountSortingFn,
-      cell: ({ row }) => (
-        <span className="text-slate-600 dark:text-slate-300 tabular-nums">
-          {money(row.original.subtotal, row.original.moneda_codigo)}
-        </span>
-      ),
-    }),
-    columnHelper.accessor((row) => row.impuestos ?? "", {
-      id: "impuestos",
-      header: "Impuestos",
-      sortingFn: amountSortingFn,
-      cell: ({ row }) => (
-        <span className="text-slate-600 dark:text-slate-300 tabular-nums">
-          {money(row.original.impuestos, row.original.moneda_codigo)}
-        </span>
-      ),
+    // ── Progreso OC ────────────────────────────────────────────────────────
+    // Fusiona "Surtidas"/"Restantes" en una sola barra + texto ("surtido /
+    // solicitado · %"). El backend todavía no expone una cantidad SURTIDA
+    // agregada a nivel de cabecera en `GET /compras/ordenes/` (solo el
+    // detalle trae `recepciones[]` anidadas, y sumarlas por fila en el
+    // listado sería un fetch N+1), así que `surtido` queda en 0 A PROPÓSITO
+    // —decisión de negocio, no un supuesto del cliente— hasta que el backend
+    // lo añada; la barra en 0% documenta eso, no afirma que nada se ha
+    // recibido.
+    columnHelper.display({
+      id: "progreso",
+      header: "Progreso OC",
+      cell: ({ row }) => {
+        const solicitado = row.original.total_piezas;
+        const surtido = 0;
+        const pct = solicitado > 0 ? Math.round((surtido / solicitado) * 100) : 0;
+        return (
+          <div className="flex flex-col gap-1 w-full max-w-36">
+            <div className="h-1.5 w-full rounded-full bg-slate-200 dark:bg-white/10 overflow-hidden">
+              <div
+                className="h-full rounded-full bg-sky-500 transition-all"
+                style={{ width: `${pct}%` }}
+              />
+            </div>
+            <span className="text-[11px] tabular-nums text-slate-500 dark:text-slate-400">
+              {formatQuantityValue(surtido)} / {formatQuantityValue(solicitado)} · {pct}%
+            </span>
+          </div>
+        );
+      },
     }),
     columnHelper.display({
       id: "actions",
