@@ -1,12 +1,20 @@
-import type { DataTableFilterConfig } from "@/src/components/DataTable";
+import type { DataTableFilterOption } from "@/src/components/DataTable";
 import type { PurchaseOrder } from "../interfaces/purchase-order.interface";
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
+// ─── Opciones de filtro por columna ─────────────────────────────────────────
+//
+// Antes alimentaban el panel de filtros tipo "chips" de la barra de
+// herramientas (`DataTable`'s `filterConfig`); ahora alimentan los
+// desplegables DENTRO de los encabezados de columna (O.C./Estatus y
+// Proveedor, ver `PurchaseOrderColumns.tsx`) — el patrón al que el usuario
+// está acostumbrado (filtro por columna, como una hoja de cálculo). Se
+// mantienen aquí, separadas de las columnas, porque ambas requieren recorrer
+// TODA la lista para deduplicar valores, y `getColumns` no la recibe.
 
 /** Construye las opciones de estatus a partir de las órdenes de compra. */
-function buildStatusOptions(
+export function buildStatusOptions(
   orders: PurchaseOrder[],
-): { value: string; label: string }[] {
+): DataTableFilterOption[] {
   const map = new Map<number, string>();
   for (const order of orders) {
     const id = order.estatus;
@@ -24,9 +32,9 @@ function buildStatusOptions(
 }
 
 /** Construye las opciones de proveedor a partir de las órdenes de compra. */
-function buildSupplierOptions(
+export function buildSupplierOptions(
   orders: PurchaseOrder[],
-): { value: string; label: string }[] {
+): DataTableFilterOption[] {
   const map = new Map<number, string>();
   for (const order of orders) {
     const id = order.proveedor;
@@ -41,27 +49,4 @@ function buildSupplierOptions(
       value: String(id),
       label: nombre,
     }));
-}
-
-// ─── Factory de configuración de filtros ─────────────────────────────────────
-
-/**
- * Crea la configuración de filtros para la tabla de órdenes de compra.
- * Debe llamarse dentro de un `useMemo` con las órdenes como dependencia.
- */
-export function createPurchaseOrdersFilterConfig(
-  orders: PurchaseOrder[],
-): DataTableFilterConfig[] {
-  return [
-    {
-      id: "estatus",
-      label: "Estatus",
-      options: buildStatusOptions(orders),
-    },
-    {
-      id: "proveedor",
-      label: "Proveedor",
-      options: buildSupplierOptions(orders),
-    },
-  ];
 }

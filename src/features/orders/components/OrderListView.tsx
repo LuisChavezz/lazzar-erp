@@ -1,10 +1,15 @@
 'use client';
 
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useIsFetching, useQueryClient } from '@tanstack/react-query';
-import { DataTable } from '@/src/components/DataTable';
+import { DataTable, type DataTableVisibleColumn } from '@/src/components/DataTable';
+import { Button } from '@/src/components/Button';
+import { ExportCsvIcon, ExportPdfIcon } from '@/src/components/Icons';
 import { extractErrorMessage } from '@/src/utils/extractErrorMessage';
 import { ordersQueryKey, useOrders } from '../hooks/useOrders';
+import { useProcurementOrderCsvExport } from '../hooks/useProcurementOrderCsvExport';
+import { useProcurementOrderPdfExport } from '../hooks/useProcurementOrderPdfExport';
 import type { OrdersQueryParams } from '../services/actions';
 import {
   createOrderColumns,
@@ -12,6 +17,7 @@ import {
   sharedOrderFilterConfig,
 } from './SharedOrderColumns';
 import { createSalesOrderColumns } from './SalesOrderColumns';
+import { createProcurementOrderColumns } from './ProcurementOrderColumns';
 import type { PedidoListItem } from '../interfaces/order.interface';
 
 interface OrderListViewProps {
@@ -31,10 +37,15 @@ interface OrderListViewProps {
    * `"sales"` activa el layout compacto de "Mis pedidos": columnas de
    * `SalesOrderColumns.tsx` (folio con punto de confirmación, sin
    * Estado/Fecha confirmada/Acciones), 20 filas por página y densidad
-   * compacta. Por defecto (`"shared"`) conserva exactamente la tabla de
-   * `SharedOrderColumns.tsx` que siguen usando Almacén y Compras.
+   * compacta. `"procurement"` activa el mismo estándar visual (compacto,
+   * `framed`, buscador siempre expandido, filtro de estatus en el propio
+   * encabezado del folio) con las columnas de `ProcurementOrderColumns.tsx`
+   * y botones de exportar a Excel/PDF — es de solo lectura, así que no lleva
+   * columna de Acciones. Por defecto (`"shared"`) conserva exactamente la
+   * tabla de `SharedOrderColumns.tsx` que sigue usando Almacén (y Mesa de
+   * Control, en su propio consumidor fuera de este componente).
    */
-  variant?: 'shared' | 'sales';
+  variant?: 'shared' | 'sales' | 'procurement';
 }
 
 /**
@@ -61,10 +72,27 @@ export function OrderListView({ from, params, variant = 'shared' }: OrderListVie
     queryClient.invalidateQueries({ queryKey, exact: true });
 
   const isSales = variant === 'sales';
+  const isProcurement = variant === 'procurement';
+  const isCompactVariant = isSales || isProcurement;
   const columns = isSales
     ? createSalesOrderColumns({ onViewDetail: handleViewDetail })
-    : createOrderColumns({ onViewDetail: handleViewDetail });
+    : isProcurement
+      ? createProcurementOrderColumns({ onViewDetail: handleViewDetail })
+      : createOrderColumns({ onViewDetail: handleViewDetail });
   const enrichedOrders = enrichOrdersWithStatus(orders);
+
+  // ── Exportar (solo `variant="procurement"`) ───────────────────────────────
+  // Los hooks se montan SIEMPRE (reglas de hooks), pero solo tienen datos que
+  // exportar cuando `onVisibleRowsChange`/`onVisibleColumnsChange` están
+  // cableados más abajo — en `shared`/`sales` quedan inertes (el botón que
+  // dispara el `CustomEvent` ni siquiera se renderiza). Mismo patrón que
+  // `PurchaseOrderView`.
+  const [visibleOrders, setVisibleOrders] = useState<PedidoListItem[]>([]);
+  const [visibleColumns, setVisibleColumns] = useState<DataTableVisibleColumn<PedidoListItem>[]>(
+    [],
+  );
+  useProcurementOrderCsvExport(visibleOrders, visibleColumns);
+  useProcurementOrderPdfExport(visibleOrders, visibleColumns);
 
   // Leyenda del punto de confirmación, integrada en la barra de herramientas
   // (vía `actionButton`) en vez de una fila propia: no depende de hover (que
@@ -82,7 +110,33 @@ export function OrderListView({ from, params, variant = 'shared' }: OrderListVie
     </div>
   ) : undefined;
 
-  return (
+  // Compras es de solo lectura (sin "Nueva orden"): el único `actionButton`
+  // que le hace falta es exportar. Mismo patrón visual que
+  // `PurchaseOrderView` (verde = Excel, rojo = PDF).
+  const exportButtons = isProcurement ? (
+    <div className="flex items-center gap-2 shrink-0">
+      <Button
+        variant="success"
+        size="icon"
+        onClick={() => document.dispatchEvent(new CustomEvent('procurement-orders:exportCSV'))}
+        title="Exportar a Excel (CSV)"
+        aria-label="Exportar pedidos a Excel"
+      >
+        <ExportCsvIcon className="w-4 h-4 shrink-0" />
+      </Button>
+      <Button
+        variant="danger"
+        size="icon"
+        onClick={() => document.dispatchEvent(new CustomEvent('procurement-orders:exportPDF'))}
+        title="Exportar a PDF"
+        aria-label="Exportar pedidos a PDF"
+      >
+        <ExportPdfIcon className="w-4 h-4 shrink-0" />
+      </Button>
+    </div>
+  ) : undefined;
+
+  const table = (
     <DataTable
       columns={columns}
       data={enrichedOrders}
@@ -90,14 +144,23 @@ export function OrderListView({ from, params, variant = 'shared' }: OrderListVie
       searchPlaceholder={
         isSales ? 'Filtrar resultados: folio, cliente, fecha' : 'Buscar por folio, cliente u OC...'
       }
-      searchAlwaysExpanded={isSales}
-      // En Ventas el filtro de estado vive en el propio encabezado de Folio
-      // (`FolioHeaderFilter`, en `SalesOrderColumns.tsx`) — sin
-      // `filterConfig` no se renderiza el panel de chips genérico. Almacén y
-      // Compras conservan ese panel sin cambios.
-      filterConfig={isSales ? undefined : sharedOrderFilterConfig}
-      actionButton={confirmationLegend}
-      framed={isSales}
+      searchAlwaysExpanded={isCompactVariant}
+      // En Ventas y Compras el filtro de estado vive en el propio encabezado
+      // del folio (`ColumnHeaderFilter`, en `SalesOrderColumns.tsx` /
+      // `ProcurementOrderColumns.tsx`) — sin `filterConfig` no se renderiza
+      // el panel de chips genérico. Almacén conserva ese panel sin cambios.
+      filterConfig={isCompactVariant ? undefined : sharedOrderFilterConfig}
+      actionButton={isSales ? confirmationLegend : exportButtons}
+      framed={isCompactVariant}
+      // Solo Compras: el cuerpo de la tabla llena su contenedor (que el
+      // `page.tsx` de esa ruta acota a la altura del viewport) en vez de
+      // reservar un alto fijo sin importar cuántas filas haya — evita el
+      // scroll de página que molestaba en listas cortas. Ventas/Almacén NO
+      // envuelven este componente en un contenedor de altura acotada, así
+      // que activarlo ahí colapsaría la tabla a 0px.
+      fillHeight={isProcurement}
+      onVisibleRowsChange={isProcurement ? setVisibleOrders : undefined}
+      onVisibleColumnsChange={isProcurement ? setVisibleColumns : undefined}
       isLoading={isLoading}
       isError={isError}
       errorTitle="Error al cargar pedidos"
@@ -107,8 +170,10 @@ export function OrderListView({ from, params, variant = 'shared' }: OrderListVie
       onRefetch={handleRefetch}
       isRefetching={isRefetching}
       isLoadingOverlay={isRefetching}
-      defaultPageSize={isSales ? 20 : undefined}
-      density={isSales ? 'compact' : undefined}
+      defaultPageSize={isCompactVariant ? 20 : undefined}
+      density={isCompactVariant ? 'compact' : undefined}
     />
   );
+
+  return isProcurement ? <div className="h-full flex flex-col min-h-0">{table}</div> : table;
 }
