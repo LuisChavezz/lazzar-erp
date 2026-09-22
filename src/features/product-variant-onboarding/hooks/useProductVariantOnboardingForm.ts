@@ -228,6 +228,25 @@ export function useProductVariantOnboardingForm() {
     clearFieldErrors("talla");
   };
 
+  /**
+   * Confirmación del selector de producto. Reconfirmar el MISMO producto no
+   * toca nada: ni la talla capturada ni los avisos.
+   */
+  const handleProductSelect = (productId: number) => {
+    if (productId === form.state.values.producto) return;
+    form.setFieldValue("producto", productId);
+    clearFieldErrors("producto");
+    resetTalla();
+  };
+
+  /** Etiqueta del producto elegido: `nombre (codigo)`, o solo el nombre sin código. */
+  const getProductLabel = (productId: number): string | null => {
+    if (productId <= 0) return null;
+    const product = findProduct(productId);
+    if (!product) return `#${productId}`;
+    return product.codigo ? `${product.nombre} (${product.codigo})` : product.nombre;
+  };
+
   // `isSubmitting` cubre el hueco entre el click y el `isPending` de la
   // mutación. Deshabilitar el envío en vuelo MITIGA la carrera del SKU (doble
   // click = dos altas), no la elimina: el backend no es atómico en ese punto.
@@ -272,7 +291,8 @@ export function useProductVariantOnboardingForm() {
     getError,
     clearFieldErrors,
     validateField,
-    resetTalla,
+    handleProductSelect,
+    getProductLabel,
     handleReset,
     startAnother,
     handleFormSubmit,
