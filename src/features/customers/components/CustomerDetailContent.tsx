@@ -1,13 +1,15 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import type { ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import KpiGrid from "@/src/components/KpiGrid";
-import { ArrowLeftIcon, WarningFilledIcon } from "@/src/components/Icons";
+import { ArrowLeftIcon } from "@/src/components/Icons";
 import { Loader } from "@/src/components/Loader";
-import { CustomerViews } from "./CustomerViews";
+import { ErrorState } from "@/src/components/ErrorState";
+import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
+import { isInitialLoadError } from "@/src/utils/isInitialLoadError";
+import { CustomerResumenKpis, CustomerResumenKpisSkeleton } from "./CustomerResumenKpis";
+import { CustomerResumenPedidos } from "./CustomerResumenPedidos";
 import { useCustomer } from "../hooks/useCustomer";
-import { buildCustomerKpis } from "../utils/customer-detail";
 
 interface CustomerDetailContentProps {
   customerId: string;
@@ -15,58 +17,90 @@ interface CustomerDetailContentProps {
 
 export const CustomerDetailContent = ({ customerId }: CustomerDetailContentProps) => {
   const router = useRouter();
-  const { data: selectedCustomer, isLoading, isError } = useCustomer(customerId);
-  const items = useMemo(() => buildCustomerKpis(), []);
+  const { data, isPlaceholderData, isError, error, isValidId, hasLoaded } =
+    useCustomer(customerId);
 
-  useEffect(() => {
-    if (isLoading) {
-      return;
-    }
-    if (isError || !selectedCustomer) {
-      router.replace("/sales/customers");
-    }
-  }, [isError, isLoading, router, selectedCustomer]);
+  const backButton = (
+    <div className="sticky top-0 z-10 py-2 w-fit">
+      <button
+        type="button"
+        onClick={() => router.replace("/sales/customers")}
+        className="flex items-center gap-2 cursor-pointer text-slate-500 hover:text-sky-500 transition-colors px-4 py-2 rounded-full bg-slate-50 dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800"
+      >
+        <ArrowLeftIcon className="w-4 h-4" />
+        <span className="text-sm font-medium">Volver</span>
+      </button>
+    </div>
+  );
 
-  if (isLoading) {
+  // Con id inválido la query está deshabilitada y nunca sale de `pending`: se
+  // resuelve ANTES de mirar la carga para no quedar atorado en el `Loader`.
+  if (!isValidId) {
+    return (
+      <div className="w-full space-y-8">
+        {backButton}
+        <ErrorState title="Cliente no válido" message="El identificador del cliente no es válido." />
+      </div>
+    );
+  }
+
+  // Error de pantalla completa SOLO si nunca hubo respuesta real. Un refetch
+  // fallido con datos ya cargados conserva la vista (y `useHasLoadedQuery`
+  // avisa por toast).
+  if (isInitialLoadError(isError, hasLoaded)) {
+    return (
+      <div className="w-full space-y-8">
+        {backButton}
+        <ErrorState
+          title="No se pudo cargar el cliente"
+          message={extractErrorMessage(error, "No existe, no tienes acceso a él o falló la conexión.")}
+        />
+      </div>
+    );
+  }
+
+  // Sin datos ni placeholder: carga inicial en curso (id válido ⇒ query activa).
+  if (!data) {
     return <Loader title="Cargando cliente" message="Obteniendo detalle del cliente..." />;
+  }
+
+  // El resumen solo existe en la respuesta REAL del detalle: mientras se
+  // muestra la fila del listado (placeholder) se pinta un estado de carga,
+  // nunca ceros ni "sin pedidos".
+  const resumen = isPlaceholderData ? undefined : data.resumen_comercial;
+
+  let content: ReactNode;
+  if (resumen) {
+    content = (
+      <>
+        <CustomerResumenKpis resumen={resumen} />
+        <CustomerResumenPedidos resumen={resumen} />
+      </>
+    );
+  } else if (isPlaceholderData) {
+    content = <CustomerResumenKpisSkeleton />;
+  } else {
+    // Respuesta real sin el bloque: no se inventan valores.
+    content = (
+      <ErrorState
+        title="Resumen comercial no disponible"
+        message="El servidor no devolvió el resumen comercial de este cliente."
+      />
+    );
   }
 
   return (
     <div className="w-full space-y-8">
-      <div className="sticky top-0 z-10 py-2 w-fit">
-        <button
-          type="button"
-          onClick={() => router.replace("/sales/customers")}
-          className="flex items-center gap-2 cursor-pointer text-slate-500 hover:text-sky-500 transition-colors px-4 py-2 rounded-full bg-slate-50 dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800"
-        >
-          <ArrowLeftIcon className="w-4 h-4" />
-          <span className="text-sm font-medium">Volver</span>
-        </button>
+      {backButton}
+
+      <div className="space-y-2">
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{data.nombre}</h1>
+        <p className="text-sm text-slate-500 dark:text-slate-400">
+          {data.razon_social} · {data.correo}
+        </p>
       </div>
 
-      <div className="flex items-start justify-between gap-6">
-        <div className="space-y-2 flex-1">
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{selectedCustomer?.nombre}</h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400">
-            {selectedCustomer?.razon_social} · {selectedCustomer?.correo}
-          </p>
-        </div>
-
-        <div className="rounded-lg border border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 p-4 shrink-0">
-          <div className="flex gap-3 items-start">
-            <div className="text-amber-600 dark:text-amber-400 shrink-0 mt-0.5">
-              <WarningFilledIcon className="h-5 w-5" aria-hidden="true" />
-            </div>
-            <div className="text-xs space-y-1">
-              <p className="font-semibold text-amber-900 dark:text-amber-200">Datos de prueba</p>
-              <p className="text-amber-700 dark:text-amber-300">Los valores mostrados en esta pantalla son valores de prueba.</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <KpiGrid items={items} />
-      <CustomerViews />
+      {content}
     </div>
   );
 };

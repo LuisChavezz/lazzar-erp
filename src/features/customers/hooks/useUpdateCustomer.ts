@@ -19,8 +19,10 @@ export const useUpdateCustomer = (setError?: SetCustomerError) => {
 
   return useMutation({
     mutationFn: ({ id, ...values }: UpdateCustomerPayload) => updateCustomer(id, values),
-    onSuccess: () => {
+    onSuccess: (_data, { id }) => {
       queryClient.invalidateQueries({ queryKey: ["customers"] });
+      // `useCustomer` usa el id de la URL (string) en su queryKey.
+      queryClient.invalidateQueries({ queryKey: ["customer", String(id)] });
       toast.success("Cliente actualizado correctamente");
     },
     onError: (error) => {

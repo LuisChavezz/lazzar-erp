@@ -1,4 +1,4 @@
-import type { ComponentType, SVGProps } from "react";
+import type { ComponentType, ReactNode, SVGProps } from "react";
 import Link from "next/link";
 import { KpiTrendIcon } from "./Icons";
 import { clampPercentage } from "@/src/utils/percentage";
@@ -7,7 +7,13 @@ export type KpiStatus = "positive" | "negative" | "neutral";
 
 export interface KpiItem {
   label: string;
-  value: string;
+  /**
+   * Casi siempre un string. Admite un nodo para valores compuestos (p.ej. un
+   * importe por moneda en el detalle de cliente); se pinta dentro del `<h3>`,
+   * así que debe ser contenido en línea (`<span>`, con `block` si hace falta
+   * apilar).
+   */
+  value: ReactNode;
   icon: ComponentType<SVGProps<SVGSVGElement>>;
   iconBgClass: string;
   iconClass: string;

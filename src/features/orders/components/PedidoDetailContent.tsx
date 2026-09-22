@@ -112,6 +112,10 @@ const BACK_TARGETS: Record<string, { href: string; label: string }> = {
     href: "/procurement/purchase-orders",
     label: "Volver a Órdenes de Compra",
   },
+  // Quien llega desde los pedidos recientes del detalle de un cliente
+  // (`CustomerResumenPedidos`) vuelve al listado de clientes. La tabla es estática,
+  // así que no puede volver al cliente CONCRETO.
+  customers: { href: "/sales/customers", label: "Volver a Clientes" },
   // Destino universal: el Home no exige ningún permiso de módulo, así que sirve
   // como salida para quien llega sin `?from=` (URL pegada, recarga, enlace
   // externo). También es válido como valor explícito de `?from=home`.

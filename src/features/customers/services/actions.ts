@@ -1,6 +1,6 @@
 import axios from "axios";
 import { v1_api } from "@/src/api/v1.api";
-import { Customer, CustomerCreate, VerifyRfcResponse } from "../interfaces/customer.interface";
+import { Customer, CustomerCreate, CustomerDetail, VerifyRfcResponse } from "../interfaces/customer.interface";
 import { CustomerAddress, CustomerAddressCreate } from "../interfaces/customer-address.interface";
 
 
@@ -9,8 +9,8 @@ export const getCustomers = async (): Promise<Customer[]> => {
   return response.data;
 };
 
-export const getCustomer = async (id: number): Promise<Customer> => {
-  const response = await v1_api.get<Customer>(`/terceros/clientes/${id}/`);
+export const getCustomer = async (id: number): Promise<CustomerDetail> => {
+  const response = await v1_api.get<CustomerDetail>(`/terceros/clientes/${id}/`);
   return response.data;
 };
 
