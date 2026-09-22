@@ -150,6 +150,7 @@ export const getCurrencyColumns = ({
     columns.push({
       id: "actions",
       header: "Acciones",
+      meta: { align: "center" },
       cell: ({ row }) => (
         <ActionsCell currency={row.original} canEdit={canEdit} canDelete={canDelete} />
       ),

@@ -40,10 +40,6 @@ export const OperationsQuoteList = () => {
         data={operationsQuotes}
         baseDataCount={operationsQuotes.length}
         searchPlaceholder="Buscar cotización operativa..."
-        framed
-        searchAlwaysExpanded
-        defaultPageSize={20}
-        density="compact"
         fillHeight
         onRefetch={refetch}
         isRefetching={isFetching}

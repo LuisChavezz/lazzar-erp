@@ -107,7 +107,6 @@ export default function BankAccountList() {
         columns={columns}
         data={bankAccounts}
         baseDataCount={bankAccounts.length}
-        title="Cuentas Bancarias"
         searchPlaceholder="Buscar alias, banco, titular o número de cuenta..."
         filterConfig={filterConfig}
         onRefetch={refetch}

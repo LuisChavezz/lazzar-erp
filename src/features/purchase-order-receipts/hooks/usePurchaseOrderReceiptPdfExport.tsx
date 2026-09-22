@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useRef } from "react";
-import type { DataTableVisibleColumn } from "@/src/components/DataTable";
+import { useCallback, useEffect, useRef, type RefObject } from "react";
+import type { DataTableHandle, DataTableVisibleColumn } from "@/src/components/DataTable";
 import type { PurchaseOrderReceipt } from "../interfaces/purchase-order-receipt.interface";
 import { getPurchaseOrderReceiptColumnText } from "../utils/purchaseOrderReceiptExport";
 
@@ -203,17 +203,18 @@ const createPurchaseOrderReceiptsPdfDocument = (
  * `usePurchaseOrderPdfExport`/`useQuotePdfExport`: `@react-pdf/renderer` se
  * importa dinámicamente (solo al exportar) y el disparo llega por un
  * `CustomEvent` propio (`purchase-order-receipts:exportPDF`).
+ *
+ * `tableRef` es el `ref` de la `DataTable` de la vista; AL EXPORTAR (no al
+ * montar) se leen de él las filas filtradas y
+ * ordenadas de TODAS las páginas que `DataTable` expone por `ref`
+ * (`getFilteredRows`), leídas en ese instante — así el archivo no se queda
+ * en la página visible ni con valores previos a un refetch.
  */
 export const usePurchaseOrderReceiptPdfExport = (
-  receipts: PurchaseOrderReceipt[],
+  tableRef: RefObject<DataTableHandle<PurchaseOrderReceipt> | null>,
   columns: DataTableVisibleColumn<PurchaseOrderReceipt>[],
 ) => {
-  const receiptsRef = useRef(receipts);
   const columnsRef = useRef(columns);
-
-  useEffect(() => {
-    receiptsRef.current = receipts;
-  }, [receipts]);
 
   useEffect(() => {
     columnsRef.current = columns;
@@ -230,7 +231,7 @@ export const usePurchaseOrderReceiptPdfExport = (
         View: renderer.View,
         StyleSheet: renderer.StyleSheet,
       },
-      receiptsRef.current,
+      tableRef.current?.getFilteredRows() ?? [],
       columnsRef.current,
     );
     const blob = await renderer.pdf(pdfDocument).toBlob();
@@ -243,7 +244,7 @@ export const usePurchaseOrderReceiptPdfExport = (
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
-  }, []);
+  }, [tableRef]);
 
   useEffect(() => {
     const handleExport = () => {

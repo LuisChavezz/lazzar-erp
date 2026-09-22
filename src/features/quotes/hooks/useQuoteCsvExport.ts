@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, type RefObject } from "react";
 import { Quote } from "../interfaces/quote.interface";
 import { formatCurrency } from "@/src/utils/formatCurrency";
-import { DataTableVisibleColumn } from "@/src/components/DataTable";
+import { type DataTableHandle, DataTableVisibleColumn } from "@/src/components/DataTable";
 
 const escapeCsv = (value: string | number | boolean | null | undefined) => {
   if (value === null || value === undefined) return "";
@@ -35,9 +35,23 @@ const getColumnValue = (
   return (quote as unknown as Record<string, unknown>)[column.id];
 };
 
+// Mismo criterio que `useQuotePdfExport`: se detecta por la CLAVE del campo
+// (`accessorKey`, o `id` a falta de ella), no por la etiqueta del encabezado
+// — así "Importe sin IVA" sale formateado y renombrar una columna no rompe
+// la exportación en silencio.
+const CURRENCY_FIELD_KEYS = new Set([
+  "gran_total",
+  "importe_sin_iva",
+  "subtotal",
+  "descuento",
+  "anticipo",
+  "flete",
+  "seguros",
+]);
+
 const isCurrencyColumn = (column: DataTableVisibleColumn<Quote>) => {
   const key = column.accessorKey ?? column.id;
-  return key.startsWith("totals.") || ["Subtotal", "Descuento", "IVA", "Total", "Saldo"].includes(column.header);
+  return key.startsWith("totals.") || CURRENCY_FIELD_KEYS.has(key);
 };
 
 const formatValue = (value: unknown, column: DataTableVisibleColumn<Quote>) => {
@@ -60,13 +74,18 @@ const buildCsv = (quotes: Quote[], columns: DataTableVisibleColumn<Quote>[]) => 
     .join("\n");
 };
 
-export const useQuoteCsvExport = (quotes: Quote[], columns: DataTableVisibleColumn<Quote>[]) => {
-  const quotesRef = useRef(quotes);
+/**
+ * `tableRef` es el `ref` de la `DataTable` de la vista; AL EXPORTAR (no al
+ * montar) se leen de él las filas filtradas y
+ * ordenadas que `DataTable` expone por `ref` (`getFilteredRows`), leídas en
+ * ese instante. Guardar una copia en un ref dejaba en el archivo valores y
+ * orden viejos tras un refetch que no cambiaba el número de filas.
+ */
+export const useQuoteCsvExport = (
+  tableRef: RefObject<DataTableHandle<Quote> | null>,
+  columns: DataTableVisibleColumn<Quote>[]
+) => {
   const columnsRef = useRef(columns);
-
-  useEffect(() => {
-    quotesRef.current = quotes;
-  }, [quotes]);
 
   useEffect(() => {
     columnsRef.current = columns;
@@ -75,7 +94,7 @@ export const useQuoteCsvExport = (quotes: Quote[], columns: DataTableVisibleColu
   const exportToCsv = useCallback(() => {
     const exportColumns = columnsRef.current.filter((column) => column.id !== "actions");
     if (exportColumns.length === 0) return;
-    const csvContent = buildCsv(quotesRef.current, exportColumns);
+    const csvContent = buildCsv(tableRef.current?.getFilteredRows() ?? [], exportColumns);
     const blob = new Blob([`\uFEFF${csvContent}`], {
       type: "text/csv;charset=utf-8;",
     });
@@ -88,7 +107,7 @@ export const useQuoteCsvExport = (quotes: Quote[], columns: DataTableVisibleColu
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
-  }, []);
+  }, [tableRef]);
 
   useEffect(() => {
     const handleExport = () => exportToCsv();

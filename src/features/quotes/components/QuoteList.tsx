@@ -1,15 +1,21 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import Link from "next/link";
 import { useIsMutating } from "@tanstack/react-query";
 import { useSession } from "next-auth/react";
-import { DataTable, DataTableVisibleColumn } from "@/src/components/DataTable";
+import {
+  DataTable,
+  type DataTableHandle,
+  type DataTableVisibleColumn,
+} from "@/src/components/DataTable";
 import { Button } from "@/src/components/Button";
 import { ExportCsvIcon, ExportPdfIcon, PlusIcon } from "@/src/components/Icons";
 import { quoteColumns } from "./QuoteColumns";
+import { QuoteRowActionDialogs } from "./QuoteRowActionDialogs";
 import { useQuoteCsvExport } from "../hooks/useQuoteCsvExport";
 import { useQuotePdfExport } from "../hooks/useQuotePdfExport";
+import { QuoteRowActionsProvider, useQuoteRowActions } from "../hooks/useQuoteRowActions";
 import { Quote } from "../interfaces/quote.interface";
 import { LoadingSkeleton } from "@/src/components/LoadingSkeleton";
 import { useQuotes } from "../hooks/useQuotes";
@@ -21,7 +27,9 @@ import { validateQuoteForReviewMutationKey } from "../hooks/useValidateQuoteForR
 export const QuoteList = () => {
   const { data: session, status: sessionStatus } = useSession();
   const { quotes, isLoading: isOrdersLoading } = useQuotes();
-  const [visibleOrders, setVisibleOrders] = useState<Quote[]>([]);
+  // Las filas a exportar se LEEN de la tabla al hacer clic (`getFilteredRows`),
+  // no se espejean en estado: así el archivo siempre lleva los datos vigentes.
+  const tableRef = useRef<DataTableHandle<Quote>>(null);
   const [visibleColumns, setVisibleColumns] = useState<DataTableVisibleColumn<Quote>[]>([]);
   const isAuthorizingOrder =
     useIsMutating({ mutationKey: approveOperationsQuoteMutationKey }) > 0;
@@ -37,21 +45,24 @@ export const QuoteList = () => {
   // habilita a crear.
   const canCreateQuote = hasPermission("C-CRM-COTIZACIONES", session?.user);
 
-  useQuoteCsvExport(visibleOrders, visibleColumns);
-  useQuotePdfExport(visibleOrders, visibleColumns);
+  useQuoteCsvExport(tableRef, visibleColumns);
+  useQuotePdfExport(tableRef, visibleColumns);
+
+  // Acciones de fila (menú del chip #id): la LISTA es dueña de las mutaciones
+  // y de los diálogos; la celda solo señala qué acción se eligió (por
+  // contexto, para que `quoteColumns` siga siendo un arreglo estático).
+  const { onAction, busy, dialogs } = useQuoteRowActions();
 
   return (
+    <QuoteRowActionsProvider value={{ onAction, busy }}>
     <div className="min-h-165">
+      <QuoteRowActionDialogs quotes={quotes} {...dialogs} />
       <DataTable
+        ref={tableRef}
         columns={quoteColumns}
         data={quotes}
         baseDataCount={quotes.length}
         searchPlaceholder="Filtra resultados de la tabla"
-        searchAlwaysExpanded
-        defaultPageSize={20}
-        density="compact"
-        framed
-        onVisibleRowsChange={setVisibleOrders}
         onVisibleColumnsChange={setVisibleColumns}
         isLoading={isOrdersLoading}
         loadingAriaLabel="Cargando cotizaciones"
@@ -107,5 +118,6 @@ export const QuoteList = () => {
         }
       />
     </div>
+    </QuoteRowActionsProvider>
   );
 };

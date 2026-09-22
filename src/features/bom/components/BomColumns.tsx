@@ -41,6 +41,7 @@ export const columns = [
   }),
   columnHelper.accessor("precio_base", {
     header: "Precio",
+    meta: { align: "right" },
     cell: ({ row }) => {
       const value = row.original.precio_base;
       const formatted = new Intl.NumberFormat("es-MX", {

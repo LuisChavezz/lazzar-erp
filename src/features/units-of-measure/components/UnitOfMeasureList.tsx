@@ -13,7 +13,6 @@ export default function UnitOfMeasureList() {
     <DataTable
       columns={columns}
       data={units}
-      title="Unidades de Medida"
       searchPlaceholder="Buscar unidad..."
       isLoading={isLoading}
       isError={isError}

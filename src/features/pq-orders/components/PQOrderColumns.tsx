@@ -121,7 +121,7 @@ const MiniStepper = ({ pasoActual, estatus }: { pasoActual: number; estatus: PQO
 // ── Subcomponente: celda de monto ─────────────────────────────────────────────
 
 const MontoCelda = ({ monto }: { monto: number }) => (
-  <div className="flex flex-col items-start">
+  <div className="flex flex-col items-end">
     <span className="text-xs font-bold tabular-nums text-slate-700 dark:text-slate-200 font-mono">
       {new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(monto)}
     </span>
@@ -339,6 +339,7 @@ export function getPQOrderColumns(): ColumnDef<PQOrder, unknown>[] {
     columnHelper.accessor('monto_estimado', {
       id:     'monto',
       header: 'Monto Estimado',
+      meta:   { align: 'right' },
       cell: (info) => <MontoCelda monto={info.getValue() as number} />,
     }) as ColumnDef<PQOrder, unknown>,
 
@@ -380,6 +381,7 @@ export function getPQOrderColumns(): ColumnDef<PQOrder, unknown>[] {
     columnHelper.display({
       id:     'acciones',
       header: 'Acciones',
+      meta: { align: "center" },
       cell: (info) => {
         const row = info.row.original;
         // eslint-disable-next-line react-hooks/rules-of-hooks

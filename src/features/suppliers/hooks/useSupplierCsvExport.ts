@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useRef } from "react";
-import type { DataTableVisibleColumn } from "@/src/components/DataTable";
+import { useCallback, useEffect, useRef, type RefObject } from "react";
+import type { DataTableHandle, DataTableVisibleColumn } from "@/src/components/DataTable";
 import type { Supplier } from "../interfaces/supplier.interface";
 import { getSupplierColumnText } from "../utils/supplierExport";
 
@@ -23,17 +23,18 @@ const buildCsv = (suppliers: Supplier[], columns: DataTableVisibleColumn<Supplie
  * directamente. Mismo patrón que `usePurchaseOrderCsvExport`/
  * `useQuoteCsvExport`: refs para no reconstruir el listener en cada render,
  * disparo por `CustomEvent` (`suppliers:exportCSV`).
+ *
+ * `tableRef` es el `ref` de la `DataTable` de la vista; AL EXPORTAR (no al
+ * montar) se leen de él las filas filtradas y
+ * ordenadas de TODAS las páginas que `DataTable` expone por `ref`
+ * (`getFilteredRows`), leídas en ese instante — así el archivo no se queda
+ * en la página visible ni con valores previos a un refetch.
  */
 export const useSupplierCsvExport = (
-  suppliers: Supplier[],
+  tableRef: RefObject<DataTableHandle<Supplier> | null>,
   columns: DataTableVisibleColumn<Supplier>[],
 ) => {
-  const suppliersRef = useRef(suppliers);
   const columnsRef = useRef(columns);
-
-  useEffect(() => {
-    suppliersRef.current = suppliers;
-  }, [suppliers]);
 
   useEffect(() => {
     columnsRef.current = columns;
@@ -42,7 +43,7 @@ export const useSupplierCsvExport = (
   const exportToCsv = useCallback(() => {
     const exportColumns = columnsRef.current.filter((column) => column.id !== "actions");
     if (exportColumns.length === 0) return;
-    const csvContent = buildCsv(suppliersRef.current, exportColumns);
+    const csvContent = buildCsv(tableRef.current?.getFilteredRows() ?? [], exportColumns);
     // BOM (`﻿`) para que Excel detecte UTF-8 y no rompa acentos/ñ.
     const blob = new Blob([`﻿${csvContent}`], {
       type: "text/csv;charset=utf-8;",
@@ -56,7 +57,7 @@ export const useSupplierCsvExport = (
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
-  }, []);
+  }, [tableRef]);
 
   useEffect(() => {
     const handleExport = () => exportToCsv();

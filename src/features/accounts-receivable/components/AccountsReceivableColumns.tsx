@@ -110,6 +110,7 @@ export const accountsReceivableColumns = [
   }),
   columnHelper.accessor("total", {
     header: "Monto",
+    meta: { align: "right" },
     cell: (info) => (
       <span className="text-slate-600 dark:text-slate-300 tabular-nums">
         {formatMoneyValue(info.getValue())}
@@ -118,6 +119,7 @@ export const accountsReceivableColumns = [
   }),
   columnHelper.accessor("saldo", {
     header: "Saldo",
+    meta: { align: "right" },
     cell: (info) => (
       <span className="text-slate-800 dark:text-white font-semibold tabular-nums">
         {formatMoneyValue(info.getValue())}
@@ -147,7 +149,8 @@ export const accountsReceivableColumns = [
   }),
   columnHelper.display({
     id: "actions",
-    header: () => <div className="text-center">Acciones</div>,
+    header: "Acciones",
+    meta: { align: "center" },
     cell: ({ row }) => <ActionsCell row={row.original} />,
   }),
 ] as ColumnDef<CuentaPorCobrarRow>[];

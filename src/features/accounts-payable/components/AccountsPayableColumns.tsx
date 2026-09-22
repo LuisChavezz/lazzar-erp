@@ -117,10 +117,11 @@ export const getColumns = ({
       },
     }),
     columnHelper.accessor("total", {
-      header: () => <div className="text-right">Total</div>,
+      header: "Total",
+      meta: { align: "right" },
       cell: (info) => (
         // En la moneda de la FACTURA; sin moneda resuelta, sin símbolo.
-        <div className="text-right tabular-nums text-slate-600 dark:text-slate-300">
+        <div className="tabular-nums text-slate-600 dark:text-slate-300">
           {formatMoneyValueOrDash(
             info.getValue(),
             moneyFormatFor(info.row.original.moneda_codigo),
@@ -129,9 +130,10 @@ export const getColumns = ({
       ),
     }),
     columnHelper.accessor("saldo", {
-      header: () => <div className="text-right">Saldo</div>,
+      header: "Saldo",
+      meta: { align: "right" },
       cell: (info) => (
-        <div className="text-right tabular-nums font-semibold text-slate-800 dark:text-white">
+        <div className="tabular-nums font-semibold text-slate-800 dark:text-white">
           {formatMoneyValueOrDash(
             info.getValue(),
             moneyFormatFor(info.row.original.moneda_codigo),
@@ -157,7 +159,8 @@ export const getColumns = ({
     }),
     columnHelper.display({
       id: "actions",
-      header: () => <div className="text-center">Acciones</div>,
+      header: "Acciones",
+      meta: { align: "center" },
       cell: ({ row }) => {
         const cuenta = row.original;
         const menuItems: ActionMenuItem[] = [

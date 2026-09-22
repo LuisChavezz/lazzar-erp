@@ -44,9 +44,22 @@ const estatusFilterFn: FilterFn<Quote> = (row, _columnId, filterValue) => {
  * normal con `accessorKey` en cada una.
  */
 function PendingDataCell() {
-  return <span className="block text-center text-slate-400 dark:text-slate-600">—</span>;
+  return <span className="text-slate-400 dark:text-slate-600">—</span>;
 }
 
+/**
+ * Alineación: la resuelve `DataTable` a nivel de `<th>`/`<td>` con
+ * `meta.align` (izquierda por defecto; importes y piezas a la derecha), así
+ * que aquí NO se ponen clases `text-*`/`w-full` en encabezados ni celdas (un
+ * `w-full` en el encabezado empujaría la flecha de orden al borde).
+ *
+ * Arreglo ESTÁTICO a propósito (sin factoría con callbacks): la celda de
+ * Cotización solo señala la acción elegida a la vista por contexto
+ * (`QuoteRowActionsProvider`); el estado de los diálogos vive en `QuoteList`,
+ * nunca dentro de la celda (se desmonta al ordenar/filtrar). Si los callbacks
+ * viajaran por aquí, cada cambio de "en curso" recrearía las columnas y
+ * remontaría todas las celdas.
+ */
 export const quoteColumns: ColumnDef<Quote>[] = [
   {
     accessorKey: "id",
@@ -98,56 +111,52 @@ export const quoteColumns: ColumnDef<Quote>[] = [
   },
   {
     accessorKey: "cliente_razon_social",
-    meta: { label: "Razón social" },
-    header: () => <div className="w-full text-center">Razón social</div>,
+    header: "Razón social",
     cell: ({ row }) => (
-      <span className="block text-center text-slate-600 dark:text-slate-300">
+      <span className="text-slate-600 dark:text-slate-300">
         {capitalize(row.original.cliente_razon_social)}
       </span>
     ),
   },
   {
     id: "piezas",
-    meta: { label: "Piezas" },
-    header: () => <div className="w-full text-center">Piezas</div>,
+    header: "Piezas",
+    meta: { align: "right" },
     size: 80,
     cell: ({ row }) => (
-      <span className="block text-center text-slate-500 dark:text-slate-400">
+      <span className="text-slate-500 dark:text-slate-400">
         {row.original.piezas}
       </span>
     ),
   },
   {
     accessorKey: "created_at",
-    meta: { label: "Fecha" },
-    header: () => <div className="w-full text-center">Fecha</div>,
+    header: "Fecha",
     cell: ({ row }) => (
-      <span className="block text-center text-slate-600 dark:text-slate-300">
+      <span className="text-slate-600 dark:text-slate-300">
         {formatQuoteDateTime(row.original.created_at, "d MMM yyyy, HH:mm")}
       </span>
     ),
   },
   {
     id: "clasificacion",
-    meta: { label: "Clasificación" },
-    header: () => <div className="w-full text-center">Clasificación</div>,
+    header: "Clasificación",
     cell: PendingDataCell,
   },
   {
     id: "importeSinIva",
     accessorKey: "importe_sin_iva",
-    meta: { label: "Importe sin IVA" },
-    header: () => <div className="w-full text-center">Importe sin IVA</div>,
+    header: "Importe sin IVA",
+    meta: { align: "right" },
     cell: ({ row }) => (
-      <span className="block text-center text-slate-500 dark:text-slate-400">
+      <span className="text-slate-500 dark:text-slate-400">
         {formatCurrency(Number(row.original.importe_sin_iva) || 0)}
       </span>
     ),
   },
   {
     id: "codigoPostal",
-    meta: { label: "C.P." },
-    header: () => <div className="w-full text-center">C.P.</div>,
+    header: "C.P.",
     size: 80,
     cell: PendingDataCell,
   },

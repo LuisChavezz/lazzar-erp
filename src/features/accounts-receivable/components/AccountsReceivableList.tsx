@@ -64,7 +64,6 @@ export const AccountsReceivableList = () => {
     <DataTable
       columns={accountsReceivableColumns}
       data={rows}
-      title="Cuentas por Cobrar"
       searchPlaceholder="Buscar folio, cliente o factura..."
       filterConfig={[{ id: "estatus", label: "Estatus", options: ESTATUS_FILTER }]}
       onRefetch={refetch}

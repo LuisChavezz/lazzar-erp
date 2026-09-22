@@ -77,12 +77,13 @@ export const getColumns = (
       ),
     }),
     columnHelper.accessor("total", {
-      header: () => <div className="text-right">Total</div>,
+      header: "Total",
+      meta: { align: "right" },
       cell: (info) => {
         const codigo = info.row.original.moneda_codigo;
         return (
           // En la moneda de la factura: el serializer expone `moneda_codigo`.
-          <div className="text-right tabular-nums font-semibold text-slate-800 dark:text-white">
+          <div className="tabular-nums font-semibold text-slate-800 dark:text-white">
             {formatMoneyValue(info.getValue(), codigo ? { currency: codigo } : undefined)}
           </div>
         );
@@ -96,7 +97,8 @@ export const getColumns = (
     }),
     columnHelper.display({
       id: "actions",
-      header: () => <div className="text-center">Acciones</div>,
+      header: "Acciones",
+      meta: { align: "center" },
       cell: ({ row }) => {
         const factura = row.original;
         const menuItems: ActionMenuItem[] = [

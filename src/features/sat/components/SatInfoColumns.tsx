@@ -33,11 +33,13 @@ export const regimenesFiscalesColumns: ColumnDef<RegimenFiscal>[] = [
   {
     accessorKey: "aplica_fisica",
     header: "Aplica Física",
+    meta: { align: "center" },
     cell: ({ row }) => <BooleanCell value={row.getValue("aplica_fisica")} />,
   },
   {
     accessorKey: "aplica_moral",
     header: "Aplica Moral",
+    meta: { align: "center" },
     cell: ({ row }) => <BooleanCell value={row.getValue("aplica_moral")} />,
   },
 ];

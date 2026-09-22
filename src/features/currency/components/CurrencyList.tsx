@@ -49,7 +49,6 @@ export default function CurrencyList() {
       <DataTable
         columns={columns}
         data={currencies ?? []}
-        title="Monedas"
         searchPlaceholder="Buscar moneda..."
         isLoading={isLoading}
         isError={isError}

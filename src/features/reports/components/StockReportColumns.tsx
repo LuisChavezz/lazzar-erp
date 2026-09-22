@@ -33,10 +33,10 @@ const quantityColumn = (
 ): ColumnDef<StockReportRow> => ({
   accessorKey: key,
   header,
-  meta: { label: header },
+  meta: { label: header, align: "right" },
   sortingFn: numericSortingFn(key),
   cell: ({ row }) => (
-    <div className="text-right tabular-nums text-slate-700 dark:text-slate-200">
+    <div className="tabular-nums text-slate-700 dark:text-slate-200">
       {formatQuantityValue(row.original[key])}
     </div>
   ),
@@ -48,10 +48,10 @@ const currencyColumn = (
 ): ColumnDef<StockReportRow> => ({
   accessorKey: key,
   header,
-  meta: { label: header },
+  meta: { label: header, align: "right" },
   sortingFn: numericSortingFn(key),
   cell: ({ row }) => (
-    <div className="text-right font-semibold tabular-nums text-slate-700 dark:text-slate-200">
+    <div className="font-semibold tabular-nums text-slate-700 dark:text-slate-200">
       {formatMoneyValue(row.original[key])}
     </div>
   ),

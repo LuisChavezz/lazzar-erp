@@ -18,7 +18,7 @@ import { isOrderConfirmed } from './SharedOrderColumns';
  * cambios — ver `OrderListView` (`variant`).
  *
  * El filtro de estado vive AQUÍ, en el propio encabezado de Folio
- * (`FolioHeaderFilter`), en vez del panel genérico de chips de `DataTable`
+ * (`ColumnHeaderFilter`), en vez del panel genérico de chips de `DataTable`
  * (`filterConfig`) — `OrderListView` ya no le pasa `filterConfig` en esta
  * variante. Usa el estado NATIVO de columna de TanStack
  * (`column.getFilterValue`/`setFilterValue`), habilitado en `DataTable.tsx`
@@ -163,7 +163,7 @@ export function createSalesOrderColumns({
       header: 'Piezas',
       size: 90,
       enableSorting: false,
-      meta: { hideOnMobile: true },
+      meta: { align: "right", hideOnMobile: true },
       cell: PendingDataCell,
     },
     {
@@ -200,6 +200,7 @@ export function createSalesOrderColumns({
       id: 'subtotal',
       accessorKey: 'subtotal',
       header: 'Importe sin IVA',
+      meta: { align: "right" },
       size: 140,
       cell: ({ row }) => (
         <span className="tabular-nums text-[13px] font-semibold text-slate-700 dark:text-slate-200">

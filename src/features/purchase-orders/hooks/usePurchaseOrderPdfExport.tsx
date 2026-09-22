@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useRef } from "react";
-import type { DataTableVisibleColumn } from "@/src/components/DataTable";
+import { useCallback, useEffect, useRef, type RefObject } from "react";
+import type { DataTableHandle, DataTableVisibleColumn } from "@/src/components/DataTable";
 import type { PurchaseOrder } from "../interfaces/purchase-order.interface";
 import { getPurchaseOrderColumnText } from "../utils/purchaseOrderExport";
 
@@ -204,17 +204,18 @@ const createPurchaseOrdersPdfDocument = (
  * `useQuotePdfExport`: `@react-pdf/renderer` se importa dinámicamente (solo
  * al exportar, no en el bundle inicial) y el disparo llega por un
  * `CustomEvent` propio (`purchase-orders:exportPDF`).
+ *
+ * `tableRef` es el `ref` de la `DataTable` de la vista; AL EXPORTAR (no al
+ * montar) se leen de él las filas filtradas y
+ * ordenadas de TODAS las páginas que `DataTable` expone por `ref`
+ * (`getFilteredRows`), leídas en ese instante — así el archivo no se queda
+ * en la página visible ni con valores previos a un refetch.
  */
 export const usePurchaseOrderPdfExport = (
-  orders: PurchaseOrder[],
+  tableRef: RefObject<DataTableHandle<PurchaseOrder> | null>,
   columns: DataTableVisibleColumn<PurchaseOrder>[],
 ) => {
-  const ordersRef = useRef(orders);
   const columnsRef = useRef(columns);
-
-  useEffect(() => {
-    ordersRef.current = orders;
-  }, [orders]);
 
   useEffect(() => {
     columnsRef.current = columns;
@@ -232,7 +233,7 @@ export const usePurchaseOrderPdfExport = (
         View: renderer.View,
         StyleSheet: renderer.StyleSheet,
       },
-      ordersRef.current,
+      tableRef.current?.getFilteredRows() ?? [],
       exportColumns,
     );
     const blob = await renderer.pdf(pdfDocument).toBlob();
@@ -245,7 +246,7 @@ export const usePurchaseOrderPdfExport = (
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
-  }, []);
+  }, [tableRef]);
 
   useEffect(() => {
     const handleExport = () => {

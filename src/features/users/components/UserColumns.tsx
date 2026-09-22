@@ -226,7 +226,8 @@ export const getUserColumns = ({
   if (canRead || canEdit || canDelete) {
     columns.push({
       id: "actions",
-      header: () => <div className="text-center">Acciones</div>,
+      header: "Acciones",
+      meta: { align: "center" },
       cell: ({ row }) => (
         <ActionsCell
           user={row.original}

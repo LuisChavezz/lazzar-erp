@@ -281,7 +281,7 @@ export function getCedicorNewDevelopmentColumns(): ColumnDef<NewDevelopment>[] {
 
     col.accessor('cantidad_total', {
       header: 'Piezas',
-      meta: { label: 'Piezas' },
+      meta: { align: "right", label: 'Piezas' },
       cell: (info) => (
         <span className="text-xs font-semibold tabular-nums text-slate-700 dark:text-slate-300">
           {info.getValue<number>().toLocaleString('es-MX')}
@@ -360,8 +360,8 @@ export function getCedicorNewDevelopmentColumns(): ColumnDef<NewDevelopment>[] {
 
     col.display({
       id: 'acciones',
-      header: () => <div className="text-center">Acciones</div>,
-      meta: { label: 'Acciones' },
+      header: "Acciones",
+      meta: { align: "center", label: 'Acciones' },
       cell: (info) => <ActionsCell row={info.row.original} />,
       size: 80,
     }),

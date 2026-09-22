@@ -229,7 +229,6 @@ export default function CreditNoteList() {
         columns={columns}
         data={notasCredito}
         baseDataCount={notasCredito.length}
-        title="Notas de Crédito"
         searchPlaceholder="Buscar por folio, factura, cliente o motivo..."
         filterConfig={[{ id: "estatus", label: "Estatus", options: ESTATUS_FILTER }]}
         onRefetch={refetch}

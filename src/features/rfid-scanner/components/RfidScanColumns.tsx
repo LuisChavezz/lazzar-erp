@@ -69,6 +69,7 @@ export const rfidScanColumns = [
   // que acaba de pasar por la antena es una etiqueta impresa por el ERP.
   columnHelper.accessor("match_impresion", {
     header: "Match",
+    meta: { align: "center" },
     size: 90,
     cell: (info) =>
       info.getValue() ? (

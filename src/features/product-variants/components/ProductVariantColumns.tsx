@@ -216,6 +216,7 @@ export const getColumns = (
     ),
     columnHelper.accessor("precio_base", {
       header: "Precio Base",
+      meta: { align: "right" },
       cell: (info) => (
         <span className="text-slate-500 dark:text-slate-400">{info.getValue()}</span>
       ),
@@ -226,7 +227,8 @@ export const getColumns = (
     columns.push(
       columnHelper.display({
         id: "actions",
-        header: () => <div className="text-center">Acciones</div>,
+        header: "Acciones",
+        meta: { align: "center" },
         cell: ({ row }) => (
           <ActionsCell
             row={row}

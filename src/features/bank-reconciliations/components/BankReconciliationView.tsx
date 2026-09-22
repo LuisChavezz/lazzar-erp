@@ -265,7 +265,6 @@ export function BankReconciliationView() {
         columns={columns}
         data={conciliaciones}
         baseDataCount={conciliaciones.length}
-        title="Conciliaciones Bancarias"
         searchPlaceholder="Buscar por cuenta o periodo..."
         // Solo el estatus se filtra en memoria; cuenta y periodo van al
         // servidor (ver el encabezado de este archivo).

@@ -1,9 +1,9 @@
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, type RefObject } from "react";
 import { format, parseISO, isValid } from "date-fns";
 import { es } from "date-fns/locale";
 import { Quote } from "../interfaces/quote.interface";
 import { formatCurrency } from "@/src/utils/formatCurrency";
-import { DataTableVisibleColumn } from "@/src/components/DataTable";
+import { type DataTableHandle, DataTableVisibleColumn } from "@/src/components/DataTable";
 
 const getValueByPath = (value: unknown, path: string) => {
   return path.split(".").reduce<unknown>((acc, key) => {
@@ -339,13 +339,18 @@ const createQuotesPdfDocument = (
   );
 };
 
-export const useQuotePdfExport = (quotes: Quote[], columns: DataTableVisibleColumn<Quote>[]) => {
-  const quotesRef = useRef(quotes);
+/**
+ * `tableRef` es el `ref` de la `DataTable` de la vista; AL EXPORTAR (no al
+ * montar) se leen de él las filas filtradas y
+ * ordenadas que `DataTable` expone por `ref` (`getFilteredRows`), leídas en
+ * ese instante. Guardar una copia en un ref dejaba en el archivo valores y
+ * orden viejos tras un refetch que no cambiaba el número de filas.
+ */
+export const useQuotePdfExport = (
+  tableRef: RefObject<DataTableHandle<Quote> | null>,
+  columns: DataTableVisibleColumn<Quote>[]
+) => {
   const columnsRef = useRef(columns);
-
-  useEffect(() => {
-    quotesRef.current = quotes;
-  }, [quotes]);
 
   useEffect(() => {
     columnsRef.current = columns;
@@ -363,7 +368,7 @@ export const useQuotePdfExport = (quotes: Quote[], columns: DataTableVisibleColu
         View: renderer.View,
         StyleSheet: renderer.StyleSheet,
       },
-      quotesRef.current,
+      tableRef.current?.getFilteredRows() ?? [],
       exportColumns
     );
     const blob = await renderer.pdf(pdfDocument).toBlob();
@@ -376,7 +381,7 @@ export const useQuotePdfExport = (quotes: Quote[], columns: DataTableVisibleColu
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
-  }, []);
+  }, [tableRef]);
 
   useEffect(() => {
     const handleExport = () => {

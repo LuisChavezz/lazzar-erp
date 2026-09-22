@@ -114,7 +114,8 @@ export const stockTransfersColumns = [
   }),
   columnHelper.display({
     id: "actions",
-    header: () => <div className="text-center">Acciones</div>,
+    header: "Acciones",
+    meta: { align: "center" },
     cell: ({ row }) => <ActionsCell row={row.original} />,
   }),
 ] as ColumnDef<TransferenciaListItem>[];

@@ -106,7 +106,8 @@ export const roleColumns: ColumnDef<Role>[] = [
   },
   {
     id: "actions",
-    header: () => <div className="text-center">Acciones</div>,
+    header: "Acciones",
+    meta: { align: "center" },
     size: 90,
     cell: ({ row }) => <ActionsCell role={row.original} />,
   },

@@ -232,7 +232,6 @@ export default function SupplierInvoiceList() {
         columns={columns}
         data={facturas}
         baseDataCount={facturas.length}
-        title="Facturas de Proveedor"
         searchPlaceholder="Buscar por folio..."
         filterConfig={[
           { id: "estatus", label: "Estatus", options: FACTURA_PROVEEDOR_ESTATUS_FILTER },

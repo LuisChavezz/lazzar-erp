@@ -32,7 +32,6 @@ export const InvoiceList = () => {
   return (
     <div className="space-y-6">
       <DataTable
-        title="Facturación"
         columns={invoiceColumns}
         data={invoices}
         baseDataCount={invoices.length}

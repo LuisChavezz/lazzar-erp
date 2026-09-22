@@ -133,6 +133,11 @@ export function buildOperationsOrderColumns(
       id: "folio",
       accessorKey: "folio",
       filterFn: confirmationFilterFn,
+      // Punto + folio (`P-00000-2026` en mono) + chevron miden ~124px; con el
+      // ancho por defecto (150px, 118 útiles) la celda se partía en dos
+      // líneas y el punto quedaba encima del folio. Mismo ancho que el folio
+      // de `SalesOrderColumns.tsx`.
+      size: 190,
       header: ({ column }) => (
         <div className="flex items-center gap-1.5">
           <span>Folio</span>
@@ -148,9 +153,9 @@ export function buildOperationsOrderColumns(
     {
       id: "razon_social",
       accessorKey: "cliente_razon_social",
-      header: () => <div className="w-full text-center">Razón social</div>,
+      header: "Razón social",
       cell: ({ row }) => (
-        <span className="block text-center text-sm text-slate-600 dark:text-slate-300 truncate max-w-55">
+        <span className="block text-sm text-slate-600 dark:text-slate-300 truncate max-w-55">
           {row.original.cliente_razon_social || "—"}
         </span>
       ),
@@ -161,29 +166,26 @@ export function buildOperationsOrderColumns(
       // backend la agregue, mismo patrón que "Última Compra" en
       // `CustomerColumns.tsx`.
       id: "piezas",
-      header: () => <div className="w-full text-center">Piezas</div>,
+      header: "Piezas",
+      meta: { align: "right" },
       enableSorting: false,
-      cell: () => (
-        <span className="block text-center text-slate-400 dark:text-slate-600">—</span>
-      ),
+      cell: () => <span className="text-slate-400 dark:text-slate-600">—</span>,
     },
     {
       // PLACEHOLDER: `PedidoListItem` no expone vendedor.
       id: "vendedor",
-      header: () => <div className="w-full text-center">Vendedor</div>,
+      header: "Vendedor",
       enableSorting: false,
-      cell: () => (
-        <span className="block text-center text-slate-400 dark:text-slate-600">—</span>
-      ),
+      cell: () => <span className="text-slate-400 dark:text-slate-600">—</span>,
     },
     {
       id: "created_at",
       accessorKey: "created_at",
-      header: () => <div className="w-full text-center">Fecha</div>,
+      header: "Fecha",
       cell: ({ row }) => {
         const createdAt = row.original.created_at;
         return (
-          <span className="block text-center text-sm text-slate-500 dark:text-slate-400 whitespace-nowrap">
+          <span className="text-sm text-slate-500 dark:text-slate-400 whitespace-nowrap">
             {createdAt ? format(new Date(createdAt), "d MMM yyyy", { locale: es }) : "—"}
           </span>
         );
@@ -192,18 +194,17 @@ export function buildOperationsOrderColumns(
     {
       // PLACEHOLDER: `PedidoListItem` no expone clasificación.
       id: "clasificacion",
-      header: () => <div className="w-full text-center">Clasificación</div>,
+      header: "Clasificación",
       enableSorting: false,
-      cell: () => (
-        <span className="block text-center text-slate-400 dark:text-slate-600">—</span>
-      ),
+      cell: () => <span className="text-slate-400 dark:text-slate-600">—</span>,
     },
     {
       id: "importe_sin_iva",
       accessorKey: "subtotal",
-      header: () => <div className="w-full text-center">Importe sin IVA</div>,
+      header: "Importe sin IVA",
+      meta: { align: "right" },
       cell: ({ row }) => (
-        <span className="block text-center tabular-nums text-sm font-semibold text-slate-700 dark:text-slate-200">
+        <span className="tabular-nums text-sm font-semibold text-slate-700 dark:text-slate-200">
           {formatMoneyValueOrDash(row.original.subtotal)}
         </span>
       ),
@@ -211,11 +212,9 @@ export function buildOperationsOrderColumns(
     {
       // PLACEHOLDER: `PedidoListItem` no expone código postal.
       id: "cp",
-      header: () => <div className="w-full text-center">C.P.</div>,
+      header: "C.P.",
       enableSorting: false,
-      cell: () => (
-        <span className="block text-center text-slate-400 dark:text-slate-600">—</span>
-      ),
+      cell: () => <span className="text-slate-400 dark:text-slate-600">—</span>,
     },
   ];
 }

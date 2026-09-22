@@ -153,7 +153,6 @@ export default function AccountsPayableList() {
         columns={columns}
         data={cuentasVisibles}
         baseDataCount={cuentasVisibles.length}
-        title="Cuentas por Pagar"
         searchPlaceholder="Buscar por proveedor o factura..."
         filterConfig={[{ id: "estatus", label: "Estatus", options: ESTATUS_FILTER }]}
         onRefetch={refetch}

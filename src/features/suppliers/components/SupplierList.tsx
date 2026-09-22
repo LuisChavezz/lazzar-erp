@@ -1,8 +1,12 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
-import { DataTable, type DataTableVisibleColumn } from "@/src/components/DataTable";
+import {
+  DataTable,
+  type DataTableHandle,
+  type DataTableVisibleColumn,
+} from "@/src/components/DataTable";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { MainDialog } from "@/src/components/MainDialog";
 import { Button } from "@/src/components/Button";
@@ -39,7 +43,6 @@ const PERMISSIONS_BY_CONTEXT = {
 } as const;
 
 interface SupplierListProps {
-  hideTitle?: boolean;
   /**
    * Familia de permisos a aplicar según desde dónde se monte el listado.
    * Por defecto "procurement", que es el comportamiento histórico.
@@ -59,7 +62,6 @@ interface SupplierListProps {
 }
 
 export default function SupplierList({
-  hideTitle = false,
   permissionContext = "procurement",
   fillHeight = false,
 }: SupplierListProps) {
@@ -105,28 +107,24 @@ export default function SupplierList({
   );
 
   // ── Exportar (Excel/PDF) ──────────────────────────────────────────────────
-  // Exportan lo que el usuario está VIENDO (`onVisibleRowsChange`/
-  // `onVisibleColumnsChange`: ya filtrado/ordenado). Mismo patrón que
-  // `PurchaseOrderView`.
-  const [visibleSuppliers, setVisibleSuppliers] = useState<Supplier[]>([]);
+  // Exportan lo que el usuario está VIENDO: las filas se LEEN de la tabla al
+  // hacer clic (`getFilteredRows`: filtradas y ordenadas de todas las
+  // páginas) y las columnas llegan por `onVisibleColumnsChange`. Mismo patrón
+  // que `PurchaseOrderView`.
+  const tableRef = useRef<DataTableHandle<Supplier>>(null);
   const [visibleColumns, setVisibleColumns] = useState<DataTableVisibleColumn<Supplier>[]>([]);
-  useSupplierCsvExport(visibleSuppliers, visibleColumns);
-  useSupplierPdfExport(visibleSuppliers, visibleColumns);
+  useSupplierCsvExport(tableRef, visibleColumns);
+  useSupplierPdfExport(tableRef, visibleColumns);
 
   return (
     <>
       <div className={fillHeight ? "h-full flex flex-col min-h-0" : undefined}>
       <DataTable
+        ref={tableRef}
         columns={columns}
         data={suppliers}
-        title={hideTitle ? undefined : "Proveedores"}
         searchPlaceholder="Buscar proveedor..."
-        searchAlwaysExpanded
-        density="compact"
-        framed
         fillHeight={fillHeight}
-        defaultPageSize={20}
-        onVisibleRowsChange={setVisibleSuppliers}
         onVisibleColumnsChange={setVisibleColumns}
         actionButton={
           <div className="flex items-center gap-2 shrink-0">

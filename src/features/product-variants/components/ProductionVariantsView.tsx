@@ -64,7 +64,6 @@ export function ProductionVariantsView() {
     <DataTable
       columns={columns}
       data={productVariants}
-      title="Variantes de Producto"
       searchPlaceholder="Buscar variante..."
       getRowId={(row) => String(row.id)}
       emptyMessage="No hay variantes registradas."

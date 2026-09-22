@@ -98,7 +98,6 @@ export default function ChartOfAccountList() {
         columns={columns}
         data={cuentasContables}
         baseDataCount={cuentasContables.length}
-        title="Plan de Cuentas"
         searchPlaceholder="Buscar por código o nombre de cuenta..."
         filterConfig={[
           { id: "tipo", label: "Tipo", options: CUENTA_CONTABLE_TIPO_FILTER },

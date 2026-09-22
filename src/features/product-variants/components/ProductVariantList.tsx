@@ -77,7 +77,6 @@ export default function ProductVariantList() {
     <DataTable
       columns={columns}
       data={productVariants}
-      title="Variantes de Producto"
       searchPlaceholder="Buscar variante..."
       isLoading={isLoading}
       isError={isError}

@@ -186,7 +186,8 @@ export function getProductionOrderColumns(
     // Acciones
     columnHelper.display({
       id: 'acciones',
-      header: () => <div className="text-center">Acciones</div>,
+      header: "Acciones",
+      meta: { align: "center" },
       size: 90,
       cell: ({ row }) => <ActionsCell row={row.original} onViewDetails={onViewDetails} />,
     }),

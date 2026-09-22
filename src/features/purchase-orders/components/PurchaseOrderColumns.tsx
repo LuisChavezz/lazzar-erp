@@ -429,6 +429,7 @@ export const getColumns = (
     // rol, ver `PurchaseOrderPageContent`).
     columnHelper.accessor("total_piezas", {
       header: "Cantidad",
+      meta: { align: "right" },
       cell: (info) => (
         <span className="text-slate-700 dark:text-slate-200 tabular-nums">
           {formatQuantityValue(info.getValue())}
@@ -482,7 +483,8 @@ export const getColumns = (
     }),
     columnHelper.display({
       id: "actions",
-      header: () => <div className="text-center">Acciones</div>,
+      header: "Acciones",
+      meta: { align: "center" },
       cell: ({ row }) => (
         <ActionsCell
           order={row.original}

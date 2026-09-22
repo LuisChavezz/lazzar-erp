@@ -1,13 +1,7 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
-import dynamic from "next/dynamic";
-import { useRouter } from "next/navigation";
+import type { ReactNode } from "react";
 import { ActionMenu, ActionMenuItem } from "@/src/components/ActionMenu";
-import { MainDialog } from "@/src/components/MainDialog";
-import { DialogHeader } from "@/src/components/DialogHeader";
-import { ConfirmDialog } from "@/src/components/ConfirmDialog";
-import { QuoteDetailsLoadingSkeleton } from "./QuoteDetailsLoadingSkeleton";
 import {
   CheckCircleIcon,
   DownloadIcon,
@@ -17,38 +11,13 @@ import {
   RejectIcon,
   ViewIcon,
 } from "@/src/components/Icons";
-import { useApproveOperationsQuote } from "../../operations/hooks/useApproveOperationsQuote";
-import { useRejectOperationsQuote } from "../../operations/hooks/useRejectOperationsQuote";
-import { useGoogleSendEmail } from "../../google/hooks/useGoogleSendEmail";
-import { useDownloadQuotePdf } from "../hooks/useDownloadQuotePdf";
-import { useSubmitQuoteForReview } from "../hooks/useSubmitQuoteForReview";
-import { useQuoteReviewValidationFlow } from "../hooks/useQuoteReviewValidationFlow";
+import { isQuoteRowBusy, useQuoteRowActionsContext } from "../hooks/useQuoteRowActions";
 import { Quote } from "../interfaces/quote.interface";
 import {
   canEditQuote,
   canManageQuoteAuthorization,
   isQuoteReviewableStatus,
 } from "../utils/quoteStatusRules";
-import { QuoteReviewValidationDialog } from "./QuoteReviewValidationDialog";
-
-// ─── Carga diferida del panel de detalles ─────────────────────────────────────
-const QuoteDetails = dynamic(
-  () => import("./QuoteDetails").then((mod) => mod.QuoteDetails),
-  {
-    ssr: false,
-    loading: () => (
-      <QuoteDetailsLoadingSkeleton ariaLabel="Cargando detalle de cotización" />
-    ),
-  }
-);
-
-// ─── Colores del dialog de detalles por estatus ───────────────────────────────
-const statusDialogColors: Record<number, "sky" | "emerald" | "amber" | "rose"> = {
-  1: "amber",
-  2: "sky",
-  3: "emerald",
-  4: "rose",
-};
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 interface QuoteCardActionsProps {
@@ -61,74 +30,38 @@ interface QuoteCardActionsProps {
 /**
  * Menú de acciones para una cotización.
  * Compartido entre el listado (QuoteColumns) y las cards del tablero kanban.
+ *
+ * Solo SEÑALA intención: no tiene mutaciones ni diálogos propios. Esos viven
+ * en la vista (`useQuoteRowActions` + `QuoteRowActionDialogs`), porque un
+ * diálogo dentro de la celda se desmontaba junto con ella cuando la fila
+ * salía de la vista filtrada a media interacción (p. ej. al autorizarla con
+ * un filtro de estatus activo). `onAction` y `busy` (trabajo en curso por
+ * cotización, que acota etiquetas y `disabled` a ESTA fila) llegan por
+ * contexto desde la vista dueña — ver `QuoteRowActionsProvider`.
  */
 export function QuoteCardActions({ quote, align = "end", trigger }: QuoteCardActionsProps) {
-  const router = useRouter();
-  const [isViewOpen, setIsViewOpen] = useState(false);
-  const [isAuthorizeOpen, setIsAuthorizeOpen] = useState(false);
-  const [isRejectOpen, setIsRejectOpen] = useState(false);
-  const [isSubmitForReviewOpen, setIsSubmitForReviewOpen] = useState(false);
-
-  const {
-    mutate: authorizeOrder,
-    isPending: isAuthorizingOrder,
-  } = useApproveOperationsQuote();
-  const { mutate: rejectOrder, isPending: isRejectingOrder } =
-    useRejectOperationsQuote();
-  const { mutate: sendQuoteEmail, isPending: isSendingQuoteEmail } = useGoogleSendEmail();
-  const { mutate: downloadPdf, isPending: isDownloadingPdf } = useDownloadQuotePdf();
-  const { mutate: submitQuoteForReview, isPending: isSubmittingForReview } =
-    useSubmitQuoteForReview();
-  const {
-    reviewValidationErrors,
-    isReviewValidationDialogOpen,
-    setIsReviewValidationDialogOpen,
-    validationQuoteId,
-    isValidatingReview,
-    validateBeforeSendToReview,
-  } = useQuoteReviewValidationFlow();
+  const { onAction, busy } = useQuoteRowActionsContext();
+  const isAuthorizing = isQuoteRowBusy(busy, "authorize", quote.id);
+  const isRejecting = isQuoteRowBusy(busy, "reject", quote.id);
+  const isSendingEmail = isQuoteRowBusy(busy, "sendEmail", quote.id);
+  const isDownloadingPdf = isQuoteRowBusy(busy, "downloadPdf", quote.id);
+  const isSubmittingForReview = isQuoteRowBusy(busy, "submitForReview", quote.id);
+  const isValidatingReview = isQuoteRowBusy(busy, "validateReview", quote.id);
 
   // ─── Permisos de acción por estatus ───────────────────────────────────────
   const canEdit = canEditQuote(quote.estatus);
   const canManageAuthorization = canManageQuoteAuthorization(quote.estatus);
 
-  const handleOpenAuthorizeDialog = () => {
-    if (!canManageAuthorization) return;
-    setIsAuthorizeOpen(true);
-  };
-
-  const handleOpenRejectDialog = () => {
-    if (!canManageAuthorization) return;
-    setIsRejectOpen(true);
-  };
-
-  const handleAuthorize = () => {
-    if (!canManageAuthorization) return;
-    authorizeOrder(quote.id);
-  };
-
-  const handleReject = () => {
-    if (!canManageAuthorization) return;
-    rejectOrder(quote.id);
-  };
-
-  const handleSubmitForReviewClick = async () => {
-    const validationStatus = await validateBeforeSendToReview(quote.id);
-    if (validationStatus === "valid") {
-      setIsSubmitForReviewOpen(true);
-    }
-  };
-
   const items: ActionMenuItem[] = [
     {
       label: "Ver detalles",
       icon: ViewIcon,
-      onSelect: () => setIsViewOpen(true),
+      onSelect: () => onAction("view", quote),
     },
     {
       label: "Editar",
       icon: EditIcon,
-      onSelect: () => router.push(`/sales/quotes/${quote.id}/edit`),
+      onSelect: () => onAction("edit", quote),
       // `visible` es la regla de NEGOCIO (estatus editable, ver
       // `canEditQuote`); `permission` es la de PERMISOS — se exigen ambas.
       permission: "E-CRM-COTIZACIONES",
@@ -137,22 +70,22 @@ export function QuoteCardActions({ quote, align = "end", trigger }: QuoteCardAct
     {
       label: isValidatingReview ? "Verificando..." : "Enviar a revisión",
       icon: PaperPlaneIcon,
-      onSelect: handleSubmitForReviewClick,
+      onSelect: () => onAction("submitForReview", quote),
       disabled: isSubmittingForReview || isValidatingReview,
       visible: isQuoteReviewableStatus(quote.estatus),
     },
     {
-      label: isSendingQuoteEmail ? "Enviando..." : "Enviar correo",
+      label: isSendingEmail ? "Enviando..." : "Enviar correo",
       icon: EmailIcon,
-      onSelect: () => sendQuoteEmail(quote.id),
-      disabled: isSendingQuoteEmail || isAuthorizingOrder || isRejectingOrder || isDownloadingPdf,
+      onSelect: () => onAction("sendEmail", quote),
+      disabled: isSendingEmail || isAuthorizing || isRejecting || isDownloadingPdf,
       keepOpenOnSelect: true,
     },
     {
       label: isDownloadingPdf ? "Generando PDF..." : "Descargar PDF",
       icon: DownloadIcon,
-      onSelect: () => downloadPdf(quote.id),
-      disabled: isDownloadingPdf || isSendingQuoteEmail,
+      onSelect: () => onAction("downloadPdf", quote),
+      disabled: isDownloadingPdf || isSendingEmail,
     },
     {
       // Autorizar/rechazar desde el tablero de Ventas es la misma capacidad de
@@ -161,75 +94,20 @@ export function QuoteCardActions({ quote, align = "end", trigger }: QuoteCardAct
       // OTRO módulo a propósito: quien aprueba es Mesa de Control.
       label: "Autorizar",
       icon: CheckCircleIcon,
-      onSelect: handleOpenAuthorizeDialog,
-      disabled: isAuthorizingOrder || isRejectingOrder || isSendingQuoteEmail,
+      onSelect: () => onAction("authorize", quote),
+      disabled: isAuthorizing || isRejecting || isSendingEmail,
       permission: "A-MESACONTROL-COTI",
       visible: canManageAuthorization,
     },
     {
       label: "Rechazar",
       icon: RejectIcon,
-      onSelect: handleOpenRejectDialog,
-      disabled: isRejectingOrder || isAuthorizingOrder || isSendingQuoteEmail,
+      onSelect: () => onAction("reject", quote),
+      disabled: isRejecting || isAuthorizing || isSendingEmail,
       permission: "D-MESACONTROL-COTI",
       visible: canManageAuthorization,
     },
   ];
 
-  return (
-    <>
-      <ActionMenu items={items} ariaLabel="Acciones de cotización" align={align} trigger={trigger} />
-
-      {isViewOpen && (
-        <MainDialog
-          open={isViewOpen}
-          onOpenChange={setIsViewOpen}
-          maxWidth="1000px"
-          title={
-            <DialogHeader
-              title={`Detalles del pedido #${quote.id}`}
-              subtitle={quote.cliente_nombre || quote.cliente_razon_social}
-              statusColor={statusDialogColors[quote.estatus] ?? "sky"}
-            />
-          }
-        >
-          <QuoteDetails quoteId={quote.id} />
-        </MainDialog>
-      )}
-
-      <ConfirmDialog
-        open={isAuthorizeOpen && canManageAuthorization}
-        onOpenChange={setIsAuthorizeOpen}
-        title="Autorizar pedido"
-        description={`¿Deseas autorizar el pedido #${quote.id}?`}
-        confirmText={isAuthorizingOrder ? "Autorizando..." : "Autorizar"}
-        confirmColor="blue"
-        onConfirm={handleAuthorize}
-      />
-      <ConfirmDialog
-        open={isRejectOpen && canManageAuthorization}
-        onOpenChange={setIsRejectOpen}
-        title="Rechazar pedido"
-        description={`¿Deseas rechazar el pedido #${quote.id}?`}
-        confirmText={isRejectingOrder ? "Rechazando..." : "Rechazar"}
-        confirmColor="red"
-        onConfirm={handleReject}
-      />
-      <ConfirmDialog
-        open={isSubmitForReviewOpen}
-        onOpenChange={setIsSubmitForReviewOpen}
-        title="Enviar a revisión"
-        description={`Mientras la cotización #${quote.id} esté en revisión no podrá editarse. ¿Deseas continuar?`}
-        confirmText={isSubmittingForReview ? "Enviando..." : "Enviar a revisión"}
-        confirmColor="blue"
-        onConfirm={() => submitQuoteForReview(quote.id)}
-      />
-      <QuoteReviewValidationDialog
-        open={isReviewValidationDialogOpen}
-        onOpenChange={setIsReviewValidationDialogOpen}
-        quoteId={validationQuoteId ?? quote.id}
-        errors={reviewValidationErrors}
-      />
-    </>
-  );
+  return <ActionMenu items={items} ariaLabel="Acciones de cotización" align={align} trigger={trigger} />;
 }

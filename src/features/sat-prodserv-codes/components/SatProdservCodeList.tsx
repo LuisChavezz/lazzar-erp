@@ -13,7 +13,6 @@ export default function SatProdservCodeList() {
     <DataTable
       columns={columns}
       data={satProdservCodes}
-      title="Claves SAT Prod/Serv"
       searchPlaceholder="Buscar clave..."
       isLoading={isLoading}
       isError={isError}

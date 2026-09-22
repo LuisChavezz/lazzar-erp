@@ -88,7 +88,6 @@ export default function ProductList() {
     <DataTable
       columns={columns}
       data={rows}
-      title="Productos"
       searchPlaceholder="Buscar producto..."
       isLoading={isLoading}
       isError={isError}

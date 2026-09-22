@@ -25,13 +25,13 @@ interface QuoteDetailByIdDialogProps {
 /**
  * Envoltorio de `QuoteDetails` para el registro `CLICKABLE_DOC_TIPOS` del detalle
  * de pedido. `QuoteDetails` NO es un diálogo: es el CONTENIDO que
- * `QuoteCardActions` mete dentro de un `MainDialog`, y ya es self-fetching por id
+ * `QuoteRowActionDialogs` mete dentro de un `MainDialog`, y ya es self-fetching por id
  * (`useQuote`) con sus propios estados de carga/error. Este wrapper solo aporta
  * el armazón `MainDialog` con la firma por id que el registro exige —sin action
  * ni hook nuevos, y sin loader propio (lo maneja `QuoteDetails`)—.
  *
- * Chrome replicado de `QuoteCardActions`: `DialogHeader` + `maxWidth="1000px"`.
- * A diferencia de `QuoteCardActions` —que tiene la fila y rotula el encabezado
+ * Chrome replicado de `QuoteRowActionDialogs`: `DialogHeader` + `maxWidth="1000px"`.
+ * A diferencia de `QuoteRowActionDialogs` —que tiene la fila y rotula el encabezado
  * con cliente/estatus del pedido— aquí solo se tiene el id, así que el título es
  * fijo ("Detalle de Cotización", sin colgarle un `#id` que se leería como folio
  * de pedido) y el `statusColor` queda en `sky`: el folio, cliente y estatus

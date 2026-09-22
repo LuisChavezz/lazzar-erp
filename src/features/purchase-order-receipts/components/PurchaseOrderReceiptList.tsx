@@ -1,7 +1,11 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { DataTable, type DataTableVisibleColumn } from "@/src/components/DataTable";
+import { useMemo, useRef, useState } from "react";
+import {
+  DataTable,
+  type DataTableHandle,
+  type DataTableVisibleColumn,
+} from "@/src/components/DataTable";
 import { Button } from "@/src/components/Button";
 import { ExportCsvIcon, ExportPdfIcon } from "@/src/components/Icons";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
@@ -32,33 +36,30 @@ export const PurchaseOrderReceiptList = () => {
   );
 
   // ── Exportar (Excel/PDF) ──────────────────────────────────────────────────
-  // Exportan lo que el usuario está VIENDO (`onVisibleRowsChange`/
-  // `onVisibleColumnsChange`: ya filtrado/ordenado). Mismo patrón que
-  // `PurchaseOrderView`.
-  const [visibleReceipts, setVisibleReceipts] = useState<PurchaseOrderReceipt[]>([]);
+  // Exportan lo que el usuario está VIENDO: las filas se LEEN de la tabla al
+  // hacer clic (`getFilteredRows`: filtradas y ordenadas de todas las
+  // páginas) y las columnas llegan por `onVisibleColumnsChange`. Mismo patrón
+  // que `PurchaseOrderView`.
+  const tableRef = useRef<DataTableHandle<PurchaseOrderReceipt>>(null);
   const [visibleColumns, setVisibleColumns] = useState<
     DataTableVisibleColumn<PurchaseOrderReceipt>[]
   >([]);
-  usePurchaseOrderReceiptCsvExport(visibleReceipts, visibleColumns);
-  usePurchaseOrderReceiptPdfExport(visibleReceipts, visibleColumns);
+  usePurchaseOrderReceiptCsvExport(tableRef, visibleColumns);
+  usePurchaseOrderReceiptPdfExport(tableRef, visibleColumns);
 
   return (
     <div className="h-full flex flex-col min-h-0">
     <DataTable
+      ref={tableRef}
       columns={columns}
       data={receipts}
       baseDataCount={receipts.length}
       searchPlaceholder="Buscar por folio, orden de compra o proveedor..."
-      searchAlwaysExpanded
-      density="compact"
-      framed
       // El cuerpo de la tabla llena su contenedor (que `page.tsx` acota a la
       // altura del viewport) en vez de reservar un alto fijo sin importar
       // cuántas filas haya — evita el scroll de página. Mismo criterio que
       // `SupplierList`/`OrderListView` (variant procurement).
       fillHeight
-      defaultPageSize={20}
-      onVisibleRowsChange={setVisibleReceipts}
       onVisibleColumnsChange={setVisibleColumns}
       actionButton={
         <div className="flex items-center gap-2 shrink-0">

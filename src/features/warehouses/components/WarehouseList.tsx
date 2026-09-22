@@ -44,7 +44,6 @@ export default function WarehouseList() {
     <DataTable
       columns={columns}
       data={warehouses ?? []}
-      title="Almacenes"
       searchPlaceholder="Buscar almacén..."
       isLoading={isLoading}
       isError={isError}

@@ -32,7 +32,6 @@ export default function UserList() {
     <DataTable
       columns={columns}
       data={users ?? []}
-      title="Usuarios"
       searchPlaceholder="Buscar usuario..."
       isLoading={isLoading}
       isError={isError}

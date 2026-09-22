@@ -38,10 +38,6 @@ export function OperationsOrderTable({
       data={orders}
       baseDataCount={orders.length}
       searchPlaceholder="Buscar por folio, cliente u OC..."
-      framed
-      searchAlwaysExpanded
-      defaultPageSize={20}
-      density="compact"
       onRefetch={onRefetch}
       isRefetching={isRefetching}
       isLoadingOverlay={isRefetching}

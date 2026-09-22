@@ -117,7 +117,8 @@ export const getColumns = (onEdit: (banco: Banco) => void) => {
     }),
     columnHelper.display({
       id: "actions",
-      header: () => <div className="text-center">Acciones</div>,
+      header: "Acciones",
+      meta: { align: "center" },
       cell: ({ row }) => <ActionsCell row={row} onEdit={onEdit} />,
     }),
   ] as ColumnDef<Banco>[];

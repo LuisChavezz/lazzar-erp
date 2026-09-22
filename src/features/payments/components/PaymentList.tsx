@@ -99,7 +99,6 @@ export default function PaymentList() {
         columns={columns}
         data={pagos}
         baseDataCount={pagos.length}
-        title="Pagos a Proveedor"
         searchPlaceholder="Buscar por proveedor, referencia o cuenta..."
         filterConfig={[
           { id: "estatus", label: "Estatus", options: ESTATUS_FILTER },

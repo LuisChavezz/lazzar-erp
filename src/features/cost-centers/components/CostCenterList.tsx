@@ -101,7 +101,6 @@ export default function CostCenterList() {
         columns={columns}
         data={centrosCosto}
         baseDataCount={centrosCosto.length}
-        title="Centros de Costo"
         searchPlaceholder="Buscar por código, nombre o descripción..."
         filterConfig={[
           { id: "activo", label: "Estatus", options: ACTIVO_FILTER },

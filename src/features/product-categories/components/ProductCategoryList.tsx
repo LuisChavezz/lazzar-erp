@@ -45,7 +45,6 @@ export default function ProductCategoryList() {
     <DataTable
       columns={columns}
       data={categories}
-      title="Categorías de Producto"
       searchPlaceholder="Buscar categoría..."
       isLoading={isLoading}
       isError={isError}

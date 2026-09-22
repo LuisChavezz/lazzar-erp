@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useRef } from "react";
-import type { DataTableVisibleColumn } from "@/src/components/DataTable";
+import { useCallback, useEffect, useRef, type RefObject } from "react";
+import type { DataTableHandle, DataTableVisibleColumn } from "@/src/components/DataTable";
 import type { PurchaseOrder } from "../interfaces/purchase-order.interface";
 import { getPurchaseOrderColumnText } from "../utils/purchaseOrderExport";
 
@@ -28,17 +28,18 @@ const buildCsv = (
  * `useQuoteCsvExport`: refs para no reconstruir el listener en cada render,
  * y el disparo llega por un `CustomEvent` propio (`purchase-orders:exportCSV`)
  * para no acoplar el botón de la vista con el hook.
+ *
+ * `tableRef` es el `ref` de la `DataTable` de la vista; AL EXPORTAR (no al
+ * montar) se leen de él las filas filtradas y
+ * ordenadas de TODAS las páginas que `DataTable` expone por `ref`
+ * (`getFilteredRows`), leídas en ese instante — así el archivo no se queda
+ * en la página visible ni con valores previos a un refetch.
  */
 export const usePurchaseOrderCsvExport = (
-  orders: PurchaseOrder[],
+  tableRef: RefObject<DataTableHandle<PurchaseOrder> | null>,
   columns: DataTableVisibleColumn<PurchaseOrder>[],
 ) => {
-  const ordersRef = useRef(orders);
   const columnsRef = useRef(columns);
-
-  useEffect(() => {
-    ordersRef.current = orders;
-  }, [orders]);
 
   useEffect(() => {
     columnsRef.current = columns;
@@ -47,7 +48,7 @@ export const usePurchaseOrderCsvExport = (
   const exportToCsv = useCallback(() => {
     const exportColumns = columnsRef.current.filter((column) => column.id !== "actions");
     if (exportColumns.length === 0) return;
-    const csvContent = buildCsv(ordersRef.current, exportColumns);
+    const csvContent = buildCsv(tableRef.current?.getFilteredRows() ?? [], exportColumns);
     // BOM (`﻿`) para que Excel detecte UTF-8 y no rompa acentos/ñ.
     const blob = new Blob([`﻿${csvContent}`], {
       type: "text/csv;charset=utf-8;",
@@ -61,7 +62,7 @@ export const usePurchaseOrderCsvExport = (
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
-  }, []);
+  }, [tableRef]);
 
   useEffect(() => {
     const handleExport = () => exportToCsv();

@@ -112,17 +112,19 @@ export const getColumns = (
       ),
     }),
     columnHelper.accessor("total_cargos", {
-      header: () => <div className="text-right">Cargos</div>,
+      header: "Cargos",
+      meta: { align: "right" },
       cell: (info) => (
-        <div className="text-right tabular-nums font-semibold text-slate-800 dark:text-white">
+        <div className="tabular-nums font-semibold text-slate-800 dark:text-white">
           {importe(info.getValue())}
         </div>
       ),
     }),
     columnHelper.accessor("total_abonos", {
-      header: () => <div className="text-right">Abonos</div>,
+      header: "Abonos",
+      meta: { align: "right" },
       cell: (info) => (
-        <div className="text-right tabular-nums font-semibold text-slate-800 dark:text-white">
+        <div className="tabular-nums font-semibold text-slate-800 dark:text-white">
           {importe(info.getValue())}
         </div>
       ),
@@ -153,7 +155,8 @@ export const getColumns = (
     }),
     columnHelper.display({
       id: "actions",
-      header: () => <div className="text-center">Acciones</div>,
+      header: "Acciones",
+      meta: { align: "center" },
       cell: ({ row }) => {
         const { id, estatus, cuadre_correcto, total_cargos, total_abonos } =
           row.original;

@@ -1,6 +1,15 @@
 "use client";
 
-import { useState, useRef, useEffect, useId, useMemo, useCallback } from "react";
+import {
+  useState,
+  useRef,
+  useEffect,
+  useId,
+  useImperativeHandle,
+  useMemo,
+  useCallback,
+  type Ref,
+} from "react";
 import {
   ColumnDef,
   flexRender,
@@ -41,6 +50,48 @@ export type DataTableVisibleColumn<TData> = {
   accessorFn?: (originalRow: TData, index: number) => unknown;
 };
 
+/** Lo que expone `DataTable` por `ref`; ver la doc de la prop `ref`. */
+export interface DataTableHandle<TData> {
+  getFilteredRows: () => TData[];
+}
+
+// ─── Alineación por columna ──────────────────────────────────────────────────
+// Declarada por la columna en `meta.align` (tipado en
+// `src/types/tanstack-table.d.ts`) y aplicada aquí: en el encabezado, al
+// wrapper flex que agrupa etiqueta y flecha de orden dentro del `<th>`, con
+// `justify-*` (un `text-*` en el contenido de la columna NO tiene efecto —
+// por eso se resuelve aquí y no por columna); en la celda, al `<td>` con
+// `text-*`. El default es `"left"` (no añade ninguna clase: el
+// comportamiento natural de una celda de tabla); `"center"` y `"right"` son
+// opt-in por columna. Regla del proyecto: importes y cantidades numéricas van
+// a la DERECHA (`meta: { align: "right" }`) para que los dígitos alineen;
+// "Acciones", indicadores de estatus y columnas centradas a propósito,
+// `meta: { align: "center" }`; el resto queda a la izquierda.
+
+type DataTableColumnAlign = NonNullable<
+  NonNullable<ColumnDef<unknown, unknown>["meta"]>["align"]
+>;
+
+const HEADER_ALIGN_CLS: Record<DataTableColumnAlign, string> = {
+  left: "",
+  center: "justify-center text-center",
+  // `flex-row-reverse` + `justify-start`: el grupo se empaqueta a la
+  // derecha con la ETIQUETA pegada al borde y la flecha de orden a su
+  // izquierda — así la etiqueta queda alineada con los dígitos de la celda
+  // esté o no ordenada la columna (con `justify-end` la flecha, al aparecer,
+  // la empujaba a la izquierda).
+  right: "flex-row-reverse justify-start text-right",
+};
+
+const CELL_ALIGN_CLS: Record<DataTableColumnAlign, string> = {
+  left: "",
+  center: "text-center",
+  right: "text-right",
+};
+
+/** Altura mínima de fila en modo panel; ver `rowMinHeightCls` en el componente. */
+const PANEL_ROW_MIN_HEIGHT_CLS = "h-12";
+
 // ─── Filter types ────────────────────────────────────────────────────────────
 
 export interface DataTableFilterOption {
@@ -63,12 +114,13 @@ interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
   data: TData[];
   baseDataCount?: number;
-  title?: string;
   searchPlaceholder?: string;
   /**
-   * Por defecto (`false`) la búsqueda arranca colapsada detrás del ícono de
-   * lupa, igual que siempre. En `true` se muestra como un input fijo (sin
-   * botón de colapsar) — para listas donde filtrar es la acción principal.
+   * Por defecto (`true`, diseño aprobado) la búsqueda es un input fijo en el
+   * extremo izquierdo de la barra. En `false` arranca colapsada detrás del
+   * ícono de lupa, junto a los demás íconos — vía de escape, ningún consumidor
+   * la usa hoy. En modo servidor (`serverPagination`) no se renderiza ninguna
+   * de las dos: filtraría solo la página actual.
    */
   searchAlwaysExpanded?: boolean;
   actionButton?: React.ReactNode;
@@ -76,7 +128,19 @@ interface DataTableProps<TData, TValue> {
   onActiveFiltersChange?: (filters: DataTableActiveFilter[]) => void;
   onRefetch?: () => void | Promise<unknown>;
   isRefetching?: boolean;
-  onVisibleRowsChange?: (rows: TData[]) => void;
+  /**
+   * Handle imperativo (`ref` de React 19) con `getFilteredRows()`: las filas
+   * que el usuario "está viendo" a lo largo de TODAS las páginas — las que
+   * pasan la búsqueda y los filtros (chips y de columna), en el orden actual,
+   * SIN recortar por paginación — leídas EN EL MOMENTO de la llamada. Lo
+   * consumen las exportaciones (CSV/PDF de Cotizaciones y Clientes) al hacer
+   * clic. Es un getter y no un callback `onXxxChange` a propósito: un callback
+   * necesita detectar "cambió el conjunto" y cualquier firma (ids, índices,
+   * referencias) deja pasar refetches que solo cambian VALORES o que
+   * reordenan filas con ids de índice, y el archivo salía con datos viejos;
+   * un getter no tiene nada que detectar ni riesgo de bucle de render.
+   */
+  ref?: Ref<DataTableHandle<TData>>;
   onVisibleColumnsChange?: (columns: DataTableVisibleColumn<TData>[]) => void;
   isLoadingOverlay?: boolean;
   loadingTitle?: string;
@@ -84,23 +148,31 @@ interface DataTableProps<TData, TValue> {
   /** Al cambiar, reinicia la paginación a la página 1 sin afectar sorting, búsqueda, filtros o columnas. */
   paginationResetKey?: string | number;
   /**
-   * Tamaño de página inicial en modo cliente. Por defecto `10`, igual que
-   * antes de existir esta prop — pásala solo cuando ese consumidor deba
-   * arrancar en otro tamaño (el selector "Filas" sigue permitiendo cambiarlo).
+   * Tamaño de página inicial en modo cliente. Por defecto `20` (diseño
+   * aprobado; una de las opciones del selector "Filas") — pásala solo cuando
+   * ese consumidor deba arrancar en otro tamaño (el selector sigue
+   * permitiendo cambiarlo). En modo servidor no aplica: el `page_size` lo
+   * fija el backend.
    */
   defaultPageSize?: number;
   /**
-   * Densidad visual de encabezados/filas. `"comfortable"` (por defecto)
-   * conserva el padding y tamaño de fuente de siempre; `"compact"` los reduce
-   * para listas que priorizan ver más filas de un vistazo sin scroll.
+   * Densidad visual de encabezados/filas. `"compact"` (por defecto, diseño
+   * aprobado): `px-4 py-2.5` y texto de 13px. `"comfortable"` conserva el
+   * padding/fuente del diseño anterior (`px-6 py-4`, `text-sm`) — vía de
+   * escape, ningún consumidor la usa hoy.
    */
   density?: "comfortable" | "compact";
   /**
-   * Por defecto (`false`) la barra de herramientas y la tabla se renderizan
-   * como bloques separados, igual que siempre. En `true` comparten un único
-   * marco (borde/esquinas/sombra), con la barra y el paginador como
-   * secciones separadas por un divisor en vez de flotar con su propio
-   * margen — para listas donde se busca una sensación de panel sólido.
+   * Por defecto (`true`, diseño aprobado) la barra de herramientas, la tabla
+   * y el paginador comparten un único marco (borde/esquinas/sombra) con
+   * divisores entre secciones. En `false` se renderizan como bloques
+   * separados que flotan con su propio margen — vía de escape, ningún
+   * consumidor la usa hoy.
+   *
+   * Es también el INTERRUPTOR del "modo panel": además del marco, fija
+   * una altura mínima de fila (ver `PANEL_ROW_MIN_HEIGHT_CLS`). Nació como
+   * opt-in de 6 consumidores y se volvió el default de los 69 en un solo
+   * cambio (este), junto con `searchAlwaysExpanded` y `density`.
    */
   framed?: boolean;
   /** Mensaje del estado vacío dentro del cuerpo de la tabla (cuando no hay datos). */
@@ -178,15 +250,14 @@ export function DataTable<TData, TValue>({
   columns,
   data,
   baseDataCount,
-  title,
   searchPlaceholder = "Buscar...",
-  searchAlwaysExpanded = false,
+  searchAlwaysExpanded = true,
   actionButton,
   filterConfig,
   onActiveFiltersChange,
   onRefetch,
   isRefetching,
-  onVisibleRowsChange,
+  ref,
   onVisibleColumnsChange,
   isLoadingOverlay = false,
   loadingTitle,
@@ -201,9 +272,9 @@ export function DataTable<TData, TValue>({
   onErrorRetry,
   getRowId,
   serverPagination,
-  defaultPageSize = 10,
-  density = "comfortable",
-  framed = false,
+  defaultPageSize = 20,
+  density = "compact",
+  framed = true,
   fillHeight = false,
 }: DataTableProps<TData, TValue>) {
   const searchInputId = useId();
@@ -217,7 +288,7 @@ export function DataTable<TData, TValue>({
   // Estado NATIVO de TanStack para filtros por columna (distinto del
   // mecanismo de chips `activeFilters`/`filterConfig` de abajo). Columnas que
   // no declaran `filterFn` ni llaman `column.setFilterValue()` nunca lo
-  // pueblan, así que para los 55+ consumidores que no lo usan esto es un
+  // pueblan, así que para los 69 consumidores que no lo usan esto es un
   // no-op idéntico a no tenerlo — lo consume `getFilteredRowModel` más abajo.
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [pagination, setPagination] = useState<PaginationState>({
@@ -228,6 +299,18 @@ export function DataTable<TData, TValue>({
   // repetirlo en cada className de encabezado/celda.
   const cellPaddingCls = density === "compact" ? "px-4 py-2.5" : "px-6 py-4";
   const bodyTextCls = density === "compact" ? "text-[13px]" : "text-sm";
+  // ── Modo panel (diseño aprobado) ──────────────────────────────────────────
+  // Altura mínima de fila SOLO en modo panel (`framed`, ver la doc de la
+  // prop). La alineación NO depende del modo: izquierda salvo que la columna
+  // declare `meta.align` (ver arriba). `h-12` (48px) en cada `<td>`
+  // actúa como mínimo en layout de tabla (la fila crece si el contenido es
+  // más alto). Es exactamente la altura que ya produce la celda "punto de
+  // estatus + chip de folio" de Cotizaciones con `density="compact"` (chip de
+  // ~28px + 2×10px de padding), así que esa tabla no cambia; lo que consigue
+  // es que las tablas del mismo diseño SIN chip en su primera columna
+  // (clientes, pedidos) tengan filas de la misma altura en vez de ~40px, y
+  // que la altura no dependa de qué columna esté visible.
+  const rowMinHeightCls = framed ? PANEL_ROW_MIN_HEIGHT_CLS : "";
 
   // Reset pagination when paginationResetKey changes
   const previousPaginationResetKeyRef = useRef(paginationResetKey);
@@ -333,7 +416,6 @@ export function DataTable<TData, TValue>({
   const [isColumnsOpen, setIsColumnsOpen] = useState(false);
   const columnsDropdownRef = useRef<HTMLDivElement>(null);
   const columnsBtnRef = useRef<HTMLButtonElement>(null);
-  const previousVisibleRowsSignatureRef = useRef("");
   const previousVisibleColumnsSignatureRef = useRef("");
 
   // Close columns dropdown when clicking outside
@@ -407,7 +489,7 @@ export function DataTable<TData, TValue>({
   // conservar la visibilidad/orden de columna que guarda esta tabla. Ver
   // `CorteMangaOrderColumns.tsx` para el caso canónico documentado. Esto se
   // resuelve por columna, no aquí, para no arriesgar un cambio de
-  // comportamiento compartido por los 55+ módulos que usan `DataTable`.
+  // comportamiento compartido por los 69 consumidores de `DataTable`.
   // eslint-disable-next-line react-hooks/incompatible-library
   const table = useReactTable({
     data: filteredData,
@@ -438,6 +520,21 @@ export function DataTable<TData, TValue>({
 
   const visibleRows = table.getRowModel().rows;
   const visibleColumns = table.getVisibleLeafColumns();
+
+  // Filas tras búsqueda + filtros + orden y ANTES de paginar (en TanStack:
+  // core → filtered → sorted → paginated; sin grouping/expansion aquí, el
+  // modelo pre-paginación es exactamente el ordenado). `getRowModel()` ya
+  // viene recortado a la página actual, por eso no sirve para exportar. Se
+  // lee del `table` (instancia estable) al invocar el getter, así siempre
+  // refleja los datos y el estado vigentes.
+  useImperativeHandle(
+    ref,
+    () => ({
+      getFilteredRows: () =>
+        table.getPrePaginationRowModel().rows.map((row) => row.original),
+    }),
+    [table]
+  );
   const hasBaseData = baseDataCount !== undefined ? baseDataCount > 0 : data.length > 0;
   const totalRows = table.getFilteredRowModel().rows.length;
   const startRow = totalRows === 0 ? 0 : pagination.pageIndex * pagination.pageSize + 1;
@@ -482,10 +579,6 @@ export function DataTable<TData, TValue>({
     isServerPaginated
       ? serverPagination.onPageChange(currentPage + 1)
       : table.nextPage();
-  const visibleRowsSignature = useMemo(
-    () => visibleRows.map((row) => row.id).join("|"),
-    [visibleRows]
-  );
   const visibleColumnsSignature = useMemo(
     () => visibleColumns.map((column) => column.id).join("|"),
     [visibleColumns]
@@ -522,10 +615,10 @@ export function DataTable<TData, TValue>({
   };
 
   const getColumnLabel = useCallback((column: (typeof visibleColumns)[number]) => {
-    const columnDef = column.columnDef as {
-      header?: unknown;
+    // El cast queda solo por `accessorKey`, que la unión `ColumnDef` no
+    // expone; `meta` ya viene tipado globalmente (`tanstack-table.d.ts`).
+    const columnDef = column.columnDef as ColumnDef<TData, unknown> & {
       accessorKey?: string;
-      meta?: { label?: string };
     };
 
     if (typeof columnDef.meta?.label === "string" && columnDef.meta.label.trim().length > 0) {
@@ -545,17 +638,6 @@ export function DataTable<TData, TValue>({
       .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
       .join(" ");
   }, []);
-
-  useEffect(() => {
-    if (!onVisibleRowsChange) return;
-    if (previousVisibleRowsSignatureRef.current === visibleRowsSignature) return;
-    previousVisibleRowsSignatureRef.current = visibleRowsSignature;
-    onVisibleRowsChange(visibleRows.map((r) => r.original));
-  }, [
-    onVisibleRowsChange,
-    visibleRows,
-    visibleRowsSignature,
-  ]);
 
   useEffect(() => {
     if (!onVisibleColumnsChange) return;
@@ -615,22 +697,23 @@ export function DataTable<TData, TValue>({
       <div
         className={
           "flex flex-col lg:flex-row lg:items-center " +
-          (title || searchAlwaysExpanded ? "justify-between" : "justify-end") +
+          // `justify-between` solo cuando el buscador fijo de la izquierda
+          // existe; en modo servidor no se renderiza y un único hijo con
+          // `between` quedaría pegado a la IZQUIERDA en vez de a la derecha.
+          (!isServerPaginated && searchAlwaysExpanded ? "justify-between" : "justify-end") +
           " gap-4 shrink-0 " +
           (framed
             ? "p-4 border-b border-slate-100 dark:border-slate-800"
             : "mb-4")
         }
       >
-      {title ? (
-        <h1 className="text-xl font-semibold text-slate-800 dark:text-white">
-          {title}
-        </h1>
-      ) : null}
-      {/* Buscador siempre visible: vive en el extremo IZQUIERDO de la barra
-          (no junto a los íconos de la derecha) — el resto del toolbar se
-          agrupa aparte más abajo. Solo aplica cuando `searchAlwaysExpanded`;
-          el buscador colapsable de siempre sigue integrado con los íconos. */}
+      {/* La tabla NO pinta título: el encabezado de la página lo pone el
+          `Header` global (`HeaderTitle`, por ruta) o la vista que la monta
+          (p. ej. `ConfigDetailView`). Buscador siempre visible: vive en el
+          extremo IZQUIERDO de la barra (no junto a los íconos de la derecha)
+          — el resto del toolbar se agrupa aparte más abajo. El buscador
+          colapsable (`searchAlwaysExpanded={false}`) sigue integrado con los
+          íconos. */}
       {!isServerPaginated && searchAlwaysExpanded && (
         <div className="relative shrink-0 w-full lg:w-auto">
           <SearchIcon className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -659,12 +742,13 @@ export function DataTable<TData, TValue>({
         <div className="flex flex-col lg:flex-row lg:items-center gap-3 w-full lg:w-auto">
           <div className="w-full lg:w-auto overflow-x-auto lg:overflow-visible pb-1">
             <div className="flex items-center justify-end gap-2 min-w-max">
-            {/* La búsqueda colapsable se OCULTA en modo servidor: filtraría
-                solo la página actual (no la consulta completa), haciendo
-                creer que un registro de otra página "no existe". Aún no hay
-                búsqueda server-side para estos reportes. En modo cliente
-                permanece visible como antes. La variante `searchAlwaysExpanded`
-                ya se renderizó ARRIBA, en el extremo izquierdo de la barra. */}
+            {/* Búsqueda colapsable: solo con `searchAlwaysExpanded={false}`
+                (vía de escape; el buscador fijo por defecto ya se renderizó
+                ARRIBA, en el extremo izquierdo de la barra). Ambas se OCULTAN
+                en modo servidor: filtrarían solo la página actual (no la
+                consulta completa), haciendo creer que un registro de otra
+                página "no existe". Aún no hay búsqueda server-side para
+                estos reportes. */}
             {!isServerPaginated && !searchAlwaysExpanded && (
             <div className="flex items-center gap-0">
               <button
@@ -833,8 +917,15 @@ export function DataTable<TData, TValue>({
             pointerEvents: isFilterExpanded ? "auto" : "none",
           }}
         >
-          <div ref={filterContentRef} className="mb-2">
-            <hr className="border-t border-slate-200 dark:border-white/10 mb-3" />
+          {/* En modo `framed` los chips viven DENTRO del panel: llevan el
+              mismo padding horizontal que la barra (`p-4`) y no repiten el
+              `<hr>` (la barra ya cierra con `border-b`); su propio `border-b`
+              los separa del encabezado de la tabla. Fuera de `framed`, el
+              bloque flotante de siempre. */}
+          <div ref={filterContentRef} className={framed ? "px-4 py-3 border-b border-slate-100 dark:border-slate-800" : "mb-2"}>
+            {!framed && (
+              <hr className="border-t border-slate-200 dark:border-white/10 mb-3" />
+            )}
             <div className="flex flex-wrap items-center gap-2">
               {/* Active filter chips */}
               {activeFilterConfigs.map((af) => {
@@ -1055,7 +1146,13 @@ export function DataTable<TData, TValue>({
             } ${
               fillHeight
                 ? "flex-1 min-h-0"
-                : visibleRows.length > 0 || isLoadingOverlay
+                : // La altura fija se conserva también cuando la búsqueda o un
+                  // filtro dejan 0 filas (`hasBaseData`): este contenedor es
+                  // `overflow-y-auto`, y si colapsara a encabezado + fila de
+                  // "sin resultados" recortaría el menú de `ColumnHeaderFilter`
+                  // (solo se veían 2 de 6 opciones) justo cuando el usuario
+                  // necesita cambiar el filtro. Solo colapsa sin datos base.
+                  visibleRows.length > 0 || isLoadingOverlay || hasBaseData
                 ? "h-120"
                 : ""
             } ${
@@ -1081,10 +1178,9 @@ export function DataTable<TData, TValue>({
                     // todavía) pueden marcarse `meta: { hideOnMobile: true }`
                     // para no competir por espacio en pantallas angostas —
                     // siguen presentes desde `md` en adelante.
-                    const columnMeta = header.column.columnDef.meta as
-                      | { hideOnMobile?: boolean }
-                      | undefined;
+                    const columnMeta = header.column.columnDef.meta;
                     const hideOnMobileCls = columnMeta?.hideOnMobile ? "hidden md:table-cell" : "";
+                    const headerAlignCls = HEADER_ALIGN_CLS[columnMeta?.align ?? "left"];
                     const sorted = header.column.getIsSorted();
                     const ariaSortValue =
                       sorted === "asc"
@@ -1152,7 +1248,13 @@ export function DataTable<TData, TValue>({
                       aria-sort={canSort ? ariaSortValue : undefined}
                       style={{ width: header.getSize() }}
                     >
-                      <div className="flex items-center gap-2">
+                      {/* Wrapper flex del encabezado: etiqueta (+ filtro de
+                          columna si lo hay) y flecha de orden como UN grupo,
+                          que `justify-*` desplaza completo — la flecha queda
+                          siempre pegada a la etiqueta, no al borde de la celda.
+                          Por eso el contenido de la columna no debe traer
+                          `w-full`/`text-*` propios: rompería el grupo. */}
+                      <div className={`flex items-center gap-2 ${headerAlignCls}`}>
                         {header.isPlaceholder
                           ? null
                           : flexRender(
@@ -1203,14 +1305,18 @@ export function DataTable<TData, TValue>({
                       className="hover:bg-slate-50/50 dark:hover:bg-white/5 transition-colors"
                     >
                       {row.getVisibleCells().map((cell) => {
-                        const cellMeta = cell.column.columnDef.meta as
-                          | { hideOnMobile?: boolean }
-                          | undefined;
+                        const cellMeta = cell.column.columnDef.meta;
                         const hideOnMobileCls = cellMeta?.hideOnMobile ? "hidden md:table-cell" : "";
+                        // `text-*` alinea texto e inline; una celda cuyo
+                        // contenido sea un contenedor flex (p. ej. el menú de
+                        // "Acciones") se centra a sí misma con
+                        // `justify-center` — `meta.align` solo alinea el
+                        // encabezado con ella.
+                        const cellAlignCls = CELL_ALIGN_CLS[cellMeta?.align ?? "left"];
                         return (
                           <td
                             key={cell.id}
-                            className={`${cellPaddingCls} ${hideOnMobileCls}`}
+                            className={`${cellPaddingCls} ${hideOnMobileCls} ${cellAlignCls} ${rowMinHeightCls}`}
                             style={{ width: cell.column.getSize() }}
                           >
                             {flexRender(cell.column.columnDef.cell, cell.getContext())}

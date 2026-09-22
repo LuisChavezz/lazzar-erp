@@ -70,7 +70,6 @@ export default function SerieFolioList() {
     <DataTable
       columns={columns}
       data={rows}
-      title="Series y Folios"
       searchPlaceholder="Buscar serie, documento o sucursal..."
       isLoading={isLoading}
       isError={isError}

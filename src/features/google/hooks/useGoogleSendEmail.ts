@@ -11,9 +11,12 @@ import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 
 // --- Hook ---
 
+/** Exportada para que `useQuoteRowActions` observe los envíos en curso por cotización. */
+export const sendQuoteEmailMutationKey = ["google", "send-quote-email"] as const;
+
 export const useGoogleSendEmail = () =>
   useMutation<SendEmailResult, unknown, number>({
-    mutationKey: ["google", "send-quote-email"],
+    mutationKey: sendQuoteEmailMutationKey,
     /**
      * Flujo de tres pasos — todo el acceso al backend externo ocurre client-side
      * via v1_api, garantizando que las cookies auth-jwt/auth-refresh-jwt del browser

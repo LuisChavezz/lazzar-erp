@@ -12,7 +12,6 @@ export default function BomList() {
     <DataTable
       columns={columns}
       data={products}
-      title="Materiales"
       searchPlaceholder="Buscar material..."
       isLoading={isLoading}
       isError={isError}

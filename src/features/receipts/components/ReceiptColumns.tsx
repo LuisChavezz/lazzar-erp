@@ -115,7 +115,8 @@ export const receiptColumns = [
   }),
   columnHelper.display({
     id: "actions",
-    header: () => <div className="text-center">Acciones</div>,
+    header: "Acciones",
+    meta: { align: "center" },
     cell: ({ row }) => (
       <ReceiptActionsCell row={row.original} DetailDialog={ReceiptDetailDialog} />
     ),
