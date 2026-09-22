@@ -77,7 +77,10 @@ const RazonSocialCell = ({
   ];
 
   return (
-    <div className="flex items-center gap-2">
+    // `justify-center`: la celda es un contenedor flex, así que el
+    // `text-center` que `DataTable` pone en el `<td>` (modo panel) no la
+    // centra por sí solo. El resto de columnas no lleva clase de alineación.
+    <div className="flex items-center justify-center gap-2">
       <span
         className={`h-2.5 w-2.5 rounded-full shrink-0 ${customer.activo ? "bg-emerald-500" : "bg-slate-400"}`}
         role="img"
@@ -91,7 +94,7 @@ const RazonSocialCell = ({
         trigger={
           <button
             type="button"
-            className="group inline-flex items-center gap-1 font-medium text-slate-700 dark:text-slate-200 hover:text-sky-600 dark:hover:text-sky-400 hover:underline cursor-pointer text-left"
+            className="group inline-flex items-center gap-1 font-medium text-slate-700 dark:text-slate-200 hover:text-sky-600 dark:hover:text-sky-400 hover:underline cursor-pointer text-center"
             title="Ver acciones"
           >
             {customer.razon_social}

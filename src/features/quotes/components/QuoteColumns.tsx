@@ -44,9 +44,16 @@ const estatusFilterFn: FilterFn<Quote> = (row, _columnId, filterValue) => {
  * normal con `accessorKey` en cada una.
  */
 function PendingDataCell() {
-  return <span className="block text-center text-slate-400 dark:text-slate-600">—</span>;
+  return <span className="text-slate-400 dark:text-slate-600">—</span>;
 }
 
+/**
+ * Alineación: `DataTable` en modo panel (`framed`) centra encabezado y celda
+ * de cada columna a nivel de `<th>`/`<td>`, así que aquí NO se ponen clases
+ * `text-center`/`w-full` (un `w-full` en el encabezado empujaría la flecha de
+ * orden al borde). La única excepción es la celda de Cotización, cuyo
+ * contenido es un contenedor flex y se centra a sí mismo con `justify-center`.
+ */
 export const quoteColumns: ColumnDef<Quote>[] = [
   {
     accessorKey: "id",
@@ -68,7 +75,7 @@ export const quoteColumns: ColumnDef<Quote>[] = [
     cell: ({ row }) => {
       const statusConfig = getQuoteStatusConfig(row.original.estatus);
       return (
-        <div className="flex items-center gap-2">
+        <div className="flex items-center justify-center gap-2">
           <span
             className={`h-2.5 w-2.5 rounded-full shrink-0 ${statusConfig?.accentDot ?? "bg-slate-400"}`}
             role="img"
@@ -98,56 +105,50 @@ export const quoteColumns: ColumnDef<Quote>[] = [
   },
   {
     accessorKey: "cliente_razon_social",
-    meta: { label: "Razón social" },
-    header: () => <div className="w-full text-center">Razón social</div>,
+    header: "Razón social",
     cell: ({ row }) => (
-      <span className="block text-center text-slate-600 dark:text-slate-300">
+      <span className="text-slate-600 dark:text-slate-300">
         {capitalize(row.original.cliente_razon_social)}
       </span>
     ),
   },
   {
     id: "piezas",
-    meta: { label: "Piezas" },
-    header: () => <div className="w-full text-center">Piezas</div>,
+    header: "Piezas",
     size: 80,
     cell: ({ row }) => (
-      <span className="block text-center text-slate-500 dark:text-slate-400">
+      <span className="text-slate-500 dark:text-slate-400">
         {row.original.piezas}
       </span>
     ),
   },
   {
     accessorKey: "created_at",
-    meta: { label: "Fecha" },
-    header: () => <div className="w-full text-center">Fecha</div>,
+    header: "Fecha",
     cell: ({ row }) => (
-      <span className="block text-center text-slate-600 dark:text-slate-300">
+      <span className="text-slate-600 dark:text-slate-300">
         {formatQuoteDateTime(row.original.created_at, "d MMM yyyy, HH:mm")}
       </span>
     ),
   },
   {
     id: "clasificacion",
-    meta: { label: "Clasificación" },
-    header: () => <div className="w-full text-center">Clasificación</div>,
+    header: "Clasificación",
     cell: PendingDataCell,
   },
   {
     id: "importeSinIva",
     accessorKey: "importe_sin_iva",
-    meta: { label: "Importe sin IVA" },
-    header: () => <div className="w-full text-center">Importe sin IVA</div>,
+    header: "Importe sin IVA",
     cell: ({ row }) => (
-      <span className="block text-center text-slate-500 dark:text-slate-400">
+      <span className="text-slate-500 dark:text-slate-400">
         {formatCurrency(Number(row.original.importe_sin_iva) || 0)}
       </span>
     ),
   },
   {
     id: "codigoPostal",
-    meta: { label: "C.P." },
-    header: () => <div className="w-full text-center">C.P.</div>,
+    header: "C.P.",
     size: 80,
     cell: PendingDataCell,
   },

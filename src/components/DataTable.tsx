@@ -41,6 +41,34 @@ export type DataTableVisibleColumn<TData> = {
   accessorFn?: (originalRow: TData, index: number) => unknown;
 };
 
+// ─── Alineación por columna ──────────────────────────────────────────────────
+// Declarada por la columna en `meta.align` (tipado en
+// `src/types/tanstack-table.d.ts`) y aplicada aquí a nivel de `<th>`/`<td>`:
+// el encabezado alinea con `justify-*` (su contenido vive en un wrapper flex
+// junto a la flecha de orden, así que un `text-*` en el contenido de la
+// columna NO tiene efecto — por eso se resuelve aquí y no por columna) y la
+// celda con `text-*`. `"left"` no añade ninguna clase para conservar el
+// render previo de las tablas que no declaran alineación.
+
+type DataTableColumnAlign = NonNullable<
+  NonNullable<ColumnDef<unknown, unknown>["meta"]>["align"]
+>;
+
+const HEADER_ALIGN_CLS: Record<DataTableColumnAlign, string> = {
+  left: "",
+  center: "justify-center text-center",
+  right: "justify-end text-right",
+};
+
+const CELL_ALIGN_CLS: Record<DataTableColumnAlign, string> = {
+  left: "",
+  center: "text-center",
+  right: "text-right",
+};
+
+/** Altura mínima de fila en modo panel; ver `rowMinHeightCls` en el componente. */
+const PANEL_ROW_MIN_HEIGHT_CLS = "h-12";
+
 // ─── Filter types ────────────────────────────────────────────────────────────
 
 export interface DataTableFilterOption {
@@ -101,6 +129,15 @@ interface DataTableProps<TData, TValue> {
    * marco (borde/esquinas/sombra), con la barra y el paginador como
    * secciones separadas por un divisor en vez de flotar con su propio
    * margen — para listas donde se busca una sensación de panel sólido.
+   *
+   * Es también el INTERRUPTOR del "modo panel" (el diseño aprobado en
+   * Cotizaciones): además del marco, centra encabezados y celdas cuando la
+   * columna no declara `meta.align`, y fija una altura mínima de fila (ver
+   * `PANEL_ROW_MIN_HEIGHT_CLS`). Se eligió `framed` y no una bandera aparte
+   * porque es la prop que los 6 consumidores del diseño ya pasan sin
+   * excepción, y porque así volver el diseño el default de toda la app es un
+   * solo cambio: `framed = true` aquí (junto con `searchAlwaysExpanded` y
+   * `density`, que siguen siendo independientes).
    */
   framed?: boolean;
   /** Mensaje del estado vacío dentro del cuerpo de la tabla (cuando no hay datos). */
@@ -217,7 +254,7 @@ export function DataTable<TData, TValue>({
   // Estado NATIVO de TanStack para filtros por columna (distinto del
   // mecanismo de chips `activeFilters`/`filterConfig` de abajo). Columnas que
   // no declaran `filterFn` ni llaman `column.setFilterValue()` nunca lo
-  // pueblan, así que para los 55+ consumidores que no lo usan esto es un
+  // pueblan, así que para los 69 consumidores que no lo usan esto es un
   // no-op idéntico a no tenerlo — lo consume `getFilteredRowModel` más abajo.
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [pagination, setPagination] = useState<PaginationState>({
@@ -228,6 +265,21 @@ export function DataTable<TData, TValue>({
   // repetirlo en cada className de encabezado/celda.
   const cellPaddingCls = density === "compact" ? "px-4 py-2.5" : "px-6 py-4";
   const bodyTextCls = density === "compact" ? "text-[13px]" : "text-sm";
+  // ── Modo panel (diseño aprobado) ──────────────────────────────────────────
+  // Detectado por `framed` (ver la doc de la prop). Fuera de este modo todo lo
+  // de abajo es un no-op: sin clase de alineación y sin altura mínima, es
+  // decir, el render previo byte por byte para los consumidores que no lo usan.
+  const isPanelDesign = framed;
+  const defaultAlign: DataTableColumnAlign = isPanelDesign ? "center" : "left";
+  // Altura mínima de fila SOLO en modo panel. `h-12` (48px) en cada `<td>`
+  // actúa como mínimo en layout de tabla (la fila crece si el contenido es
+  // más alto). Es exactamente la altura que ya produce la celda "punto de
+  // estatus + chip de folio" de Cotizaciones con `density="compact"` (chip de
+  // ~28px + 2×10px de padding), así que esa tabla no cambia; lo que consigue
+  // es que las tablas del mismo diseño SIN chip en su primera columna
+  // (clientes, pedidos) tengan filas de la misma altura en vez de ~40px, y
+  // que la altura no dependa de qué columna esté visible.
+  const rowMinHeightCls = isPanelDesign ? PANEL_ROW_MIN_HEIGHT_CLS : "";
 
   // Reset pagination when paginationResetKey changes
   const previousPaginationResetKeyRef = useRef(paginationResetKey);
@@ -407,7 +459,7 @@ export function DataTable<TData, TValue>({
   // conservar la visibilidad/orden de columna que guarda esta tabla. Ver
   // `CorteMangaOrderColumns.tsx` para el caso canónico documentado. Esto se
   // resuelve por columna, no aquí, para no arriesgar un cambio de
-  // comportamiento compartido por los 55+ módulos que usan `DataTable`.
+  // comportamiento compartido por los 69 consumidores de `DataTable`.
   // eslint-disable-next-line react-hooks/incompatible-library
   const table = useReactTable({
     data: filteredData,
@@ -522,10 +574,10 @@ export function DataTable<TData, TValue>({
   };
 
   const getColumnLabel = useCallback((column: (typeof visibleColumns)[number]) => {
-    const columnDef = column.columnDef as {
-      header?: unknown;
+    // El cast queda solo por `accessorKey`, que la unión `ColumnDef` no
+    // expone; `meta` ya viene tipado globalmente (`tanstack-table.d.ts`).
+    const columnDef = column.columnDef as ColumnDef<TData, unknown> & {
       accessorKey?: string;
-      meta?: { label?: string };
     };
 
     if (typeof columnDef.meta?.label === "string" && columnDef.meta.label.trim().length > 0) {
@@ -833,8 +885,15 @@ export function DataTable<TData, TValue>({
             pointerEvents: isFilterExpanded ? "auto" : "none",
           }}
         >
-          <div ref={filterContentRef} className="mb-2">
-            <hr className="border-t border-slate-200 dark:border-white/10 mb-3" />
+          {/* En modo `framed` los chips viven DENTRO del panel: llevan el
+              mismo padding horizontal que la barra (`p-4`) y no repiten el
+              `<hr>` (la barra ya cierra con `border-b`); su propio `border-b`
+              los separa del encabezado de la tabla. Fuera de `framed`, el
+              bloque flotante de siempre. */}
+          <div ref={filterContentRef} className={framed ? "px-4 py-3 border-b border-slate-100 dark:border-slate-800" : "mb-2"}>
+            {!framed && (
+              <hr className="border-t border-slate-200 dark:border-white/10 mb-3" />
+            )}
             <div className="flex flex-wrap items-center gap-2">
               {/* Active filter chips */}
               {activeFilterConfigs.map((af) => {
@@ -1081,10 +1140,9 @@ export function DataTable<TData, TValue>({
                     // todavía) pueden marcarse `meta: { hideOnMobile: true }`
                     // para no competir por espacio en pantallas angostas —
                     // siguen presentes desde `md` en adelante.
-                    const columnMeta = header.column.columnDef.meta as
-                      | { hideOnMobile?: boolean }
-                      | undefined;
+                    const columnMeta = header.column.columnDef.meta;
                     const hideOnMobileCls = columnMeta?.hideOnMobile ? "hidden md:table-cell" : "";
+                    const headerAlignCls = HEADER_ALIGN_CLS[columnMeta?.align ?? defaultAlign];
                     const sorted = header.column.getIsSorted();
                     const ariaSortValue =
                       sorted === "asc"
@@ -1129,7 +1187,7 @@ export function DataTable<TData, TValue>({
                           moveColumn(draggedId, header.column.id);
                         }
                       }}
-                      className={`${cellPaddingCls} ${hideOnMobileCls} font-semibold transition-colors group/th sticky top-0 z-10 bg-slate-50 dark:bg-zinc-900 ${
+                      className={`${cellPaddingCls} ${hideOnMobileCls} ${headerAlignCls} font-semibold transition-colors group/th sticky top-0 z-10 bg-slate-50 dark:bg-zinc-900 ${
                         canSort
                           ? "cursor-pointer select-none hover:text-slate-700 dark:hover:text-slate-300"
                           : ""
@@ -1152,7 +1210,13 @@ export function DataTable<TData, TValue>({
                       aria-sort={canSort ? ariaSortValue : undefined}
                       style={{ width: header.getSize() }}
                     >
-                      <div className="flex items-center gap-2">
+                      {/* Wrapper flex del encabezado: etiqueta (+ filtro de
+                          columna si lo hay) y flecha de orden como UN grupo,
+                          que `justify-*` desplaza completo — la flecha queda
+                          siempre pegada a la etiqueta, no al borde de la celda.
+                          Por eso el contenido de la columna no debe traer
+                          `w-full`/`text-*` propios: rompería el grupo. */}
+                      <div className={`flex items-center gap-2 ${headerAlignCls}`}>
                         {header.isPlaceholder
                           ? null
                           : flexRender(
@@ -1203,14 +1267,18 @@ export function DataTable<TData, TValue>({
                       className="hover:bg-slate-50/50 dark:hover:bg-white/5 transition-colors"
                     >
                       {row.getVisibleCells().map((cell) => {
-                        const cellMeta = cell.column.columnDef.meta as
-                          | { hideOnMobile?: boolean }
-                          | undefined;
+                        const cellMeta = cell.column.columnDef.meta;
                         const hideOnMobileCls = cellMeta?.hideOnMobile ? "hidden md:table-cell" : "";
+                        // `text-*` alinea texto e inline; una celda cuyo
+                        // contenido sea un contenedor flex (punto de estatus
+                        // + chip) debe centrarse a sí misma con
+                        // `justify-center`, como hacen las columnas del
+                        // diseño aprobado.
+                        const cellAlignCls = CELL_ALIGN_CLS[cellMeta?.align ?? defaultAlign];
                         return (
                           <td
                             key={cell.id}
-                            className={`${cellPaddingCls} ${hideOnMobileCls}`}
+                            className={`${cellPaddingCls} ${hideOnMobileCls} ${cellAlignCls} ${rowMinHeightCls}`}
                             style={{ width: cell.column.getSize() }}
                           >
                             {flexRender(cell.column.columnDef.cell, cell.getContext())}

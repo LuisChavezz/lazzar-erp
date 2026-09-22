@@ -214,7 +214,10 @@ const OperationsQuoteIdCell = ({
   const statusConfig = getOperationsQuoteStatusConfig(operationsQuote.estatus);
 
   return (
-    <div className="flex items-center gap-2">
+    // `justify-center`: la celda es un contenedor flex, así que el
+    // `text-center` que `DataTable` pone en el `<td>` (modo panel) no la
+    // centra por sí solo. El resto de columnas no lleva clase de alineación.
+    <div className="flex items-center justify-center gap-2">
       <span
         className={`h-2.5 w-2.5 rounded-full shrink-0 ${statusConfig?.accentDot ?? "bg-slate-400"}`}
         role="img"
@@ -343,31 +346,28 @@ export const operationsQuoteColumns: ColumnDef<OperationsQuote>[] = [
   },
   {
     accessorKey: "cliente_razon_social",
-    meta: { label: "Razón social" },
-    header: () => <div className="w-full text-center">Razón social</div>,
+    header: "Razón social",
     cell: ({ row }) => (
-      <span className="block text-center text-slate-600 dark:text-slate-300">
+      <span className="text-slate-600 dark:text-slate-300">
         {capitalize(row.original.cliente_razon_social)}
       </span>
     ),
   },
   {
     accessorKey: "piezas",
-    meta: { label: "Piezas" },
-    header: () => <div className="w-full text-center">Piezas</div>,
+    header: "Piezas",
     size: 80,
     cell: ({ row }) => (
-      <span className="block text-center text-slate-500 dark:text-slate-400">
+      <span className="text-slate-500 dark:text-slate-400">
         {row.original.piezas}
       </span>
     ),
   },
   {
     accessorKey: "created_at",
-    meta: { label: "Fecha" },
-    header: () => <div className="w-full text-center">Fecha</div>,
+    header: "Fecha",
     cell: ({ row }) => (
-      <span className="block text-center text-slate-600 dark:text-slate-300">
+      <span className="text-slate-600 dark:text-slate-300">
         {formatOperationsQuoteDateTime(
           row.original.created_at,
           "d MMM yyyy, HH:mm"
@@ -380,19 +380,15 @@ export const operationsQuoteColumns: ColumnDef<OperationsQuote>[] = [
     // clasificación. Fija en "—" en todas las filas hasta que el backend la
     // agregue — mismo patrón que "Última Compra" en `CustomerColumns.tsx`.
     id: "clasificacion",
-    meta: { label: "Clasificación" },
-    header: () => <div className="w-full text-center">Clasificación</div>,
+    header: "Clasificación",
     enableSorting: false,
-    cell: () => (
-      <span className="block text-center text-slate-400 dark:text-slate-600">—</span>
-    ),
+    cell: () => <span className="text-slate-400 dark:text-slate-600">—</span>,
   },
   {
     accessorKey: "importe_sin_iva",
-    meta: { label: "Importe sin IVA" },
-    header: () => <div className="w-full text-center">Importe sin IVA</div>,
+    header: "Importe sin IVA",
     cell: ({ row }) => (
-      <span className="block text-center text-slate-500 dark:text-slate-400">
+      <span className="text-slate-500 dark:text-slate-400">
         {formatCurrency(Number(row.original.importe_sin_iva) || 0)}
       </span>
     ),
@@ -402,10 +398,9 @@ export const operationsQuoteColumns: ColumnDef<OperationsQuote>[] = [
     // fila sacaría la columna de la búsqueda global en todas las filas.
     id: "codigo_postal",
     accessorFn: (operationsQuote) => operationsQuote.codigo_postal ?? "",
-    meta: { label: "C.P." },
-    header: () => <div className="w-full text-center">C.P.</div>,
+    header: "C.P.",
     cell: ({ row }) => (
-      <span className="block text-center text-slate-500 dark:text-slate-400">
+      <span className="text-slate-500 dark:text-slate-400">
         {row.original.codigo_postal || "—"}
       </span>
     ),

@@ -18,7 +18,7 @@ import { isOrderConfirmed } from './SharedOrderColumns';
  * cambios — ver `OrderListView` (`variant`).
  *
  * El filtro de estado vive AQUÍ, en el propio encabezado de Folio
- * (`FolioHeaderFilter`), en vez del panel genérico de chips de `DataTable`
+ * (`ColumnHeaderFilter`), en vez del panel genérico de chips de `DataTable`
  * (`filterConfig`) — `OrderListView` ya no le pasa `filterConfig` en esta
  * variante. Usa el estado NATIVO de columna de TanStack
  * (`column.getFilterValue`/`setFilterValue`), habilitado en `DataTable.tsx`
@@ -103,7 +103,11 @@ export function createSalesOrderColumns({
         const order = row.original;
         const confirmed = isOrderConfirmed(order);
         return (
-          <div className="flex items-center gap-2 flex-wrap">
+          // `justify-center`: la celda es un contenedor flex, así que el
+          // `text-center` que `DataTable` pone en el `<td>` (modo panel) no
+          // la centra por sí solo. El resto de columnas no lleva clase de
+          // alineación — la resuelve `DataTable`.
+          <div className="flex items-center justify-center gap-2 flex-wrap">
             <span
               className={`h-2.5 w-2.5 rounded-full shrink-0 ${
                 confirmed ? 'bg-cyan-500' : 'bg-amber-500'
@@ -145,8 +149,11 @@ export function createSalesOrderColumns({
         const order = row.original;
         return (
           <div>
+            {/* `truncate max-w-55` hace del nombre una caja con ancho propio:
+                `mx-auto` centra la CAJA; el `text-center` del `<td>` centra
+                el texto dentro de ella y el subtítulo. */}
             <p
-              className="text-[13px] font-medium text-slate-800 dark:text-white truncate max-w-55"
+              className="mx-auto text-[13px] font-medium text-slate-800 dark:text-white truncate max-w-55"
               title={order.cliente_razon_social ?? undefined}
             >
               {order.cliente_razon_social || '—'}
