@@ -128,11 +128,7 @@ export default function SupplierList({
         data={suppliers}
         title={hideTitle ? undefined : "Proveedores"}
         searchPlaceholder="Buscar proveedor..."
-        searchAlwaysExpanded
-        density="compact"
-        framed
         fillHeight={fillHeight}
-        defaultPageSize={20}
         onVisibleColumnsChange={setVisibleColumns}
         actionButton={
           <div className="flex items-center gap-2 shrink-0">

@@ -56,15 +56,11 @@ export const PurchaseOrderReceiptList = () => {
       data={receipts}
       baseDataCount={receipts.length}
       searchPlaceholder="Buscar por folio, orden de compra o proveedor..."
-      searchAlwaysExpanded
-      density="compact"
-      framed
       // El cuerpo de la tabla llena su contenedor (que `page.tsx` acota a la
       // altura del viewport) en vez de reservar un alto fijo sin importar
       // cuántas filas haya — evita el scroll de página. Mismo criterio que
       // `SupplierList`/`OrderListView` (variant procurement).
       fillHeight
-      defaultPageSize={20}
       onVisibleColumnsChange={setVisibleColumns}
       actionButton={
         <div className="flex items-center gap-2 shrink-0">

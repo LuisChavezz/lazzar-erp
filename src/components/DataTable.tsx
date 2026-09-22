@@ -108,9 +108,11 @@ interface DataTableProps<TData, TValue> {
   title?: string;
   searchPlaceholder?: string;
   /**
-   * Por defecto (`false`) la búsqueda arranca colapsada detrás del ícono de
-   * lupa, igual que siempre. En `true` se muestra como un input fijo (sin
-   * botón de colapsar) — para listas donde filtrar es la acción principal.
+   * Por defecto (`true`, diseño aprobado) la búsqueda es un input fijo en el
+   * extremo izquierdo de la barra. En `false` arranca colapsada detrás del
+   * ícono de lupa, junto a los demás íconos — vía de escape, ningún consumidor
+   * la usa hoy. En modo servidor (`serverPagination`) no se renderiza ninguna
+   * de las dos: filtraría solo la página actual.
    */
   searchAlwaysExpanded?: boolean;
   actionButton?: React.ReactNode;
@@ -138,32 +140,32 @@ interface DataTableProps<TData, TValue> {
   /** Al cambiar, reinicia la paginación a la página 1 sin afectar sorting, búsqueda, filtros o columnas. */
   paginationResetKey?: string | number;
   /**
-   * Tamaño de página inicial en modo cliente. Por defecto `10`, igual que
-   * antes de existir esta prop — pásala solo cuando ese consumidor deba
-   * arrancar en otro tamaño (el selector "Filas" sigue permitiendo cambiarlo).
+   * Tamaño de página inicial en modo cliente. Por defecto `20` (diseño
+   * aprobado; una de las opciones del selector "Filas") — pásala solo cuando
+   * ese consumidor deba arrancar en otro tamaño (el selector sigue
+   * permitiendo cambiarlo). En modo servidor no aplica: el `page_size` lo
+   * fija el backend.
    */
   defaultPageSize?: number;
   /**
-   * Densidad visual de encabezados/filas. `"comfortable"` (por defecto)
-   * conserva el padding y tamaño de fuente de siempre; `"compact"` los reduce
-   * para listas que priorizan ver más filas de un vistazo sin scroll.
+   * Densidad visual de encabezados/filas. `"compact"` (por defecto, diseño
+   * aprobado): `px-4 py-2.5` y texto de 13px. `"comfortable"` conserva el
+   * padding/fuente del diseño anterior (`px-6 py-4`, `text-sm`) — vía de
+   * escape, ningún consumidor la usa hoy.
    */
   density?: "comfortable" | "compact";
   /**
-   * Por defecto (`false`) la barra de herramientas y la tabla se renderizan
-   * como bloques separados, igual que siempre. En `true` comparten un único
-   * marco (borde/esquinas/sombra), con la barra y el paginador como
-   * secciones separadas por un divisor en vez de flotar con su propio
-   * margen — para listas donde se busca una sensación de panel sólido.
+   * Por defecto (`true`, diseño aprobado) la barra de herramientas, la tabla
+   * y el paginador comparten un único marco (borde/esquinas/sombra) con
+   * divisores entre secciones. En `false` se renderizan como bloques
+   * separados que flotan con su propio margen — vía de escape, ningún
+   * consumidor la usa hoy.
    *
-   * Es también el INTERRUPTOR del "modo panel" (el diseño aprobado en
-   * Cotizaciones): además del marco, centra encabezados y celdas cuando la
-   * columna no declara `meta.align`, y fija una altura mínima de fila (ver
-   * `PANEL_ROW_MIN_HEIGHT_CLS`). Se eligió `framed` y no una bandera aparte
-   * porque es la prop que los 6 consumidores del diseño ya pasan sin
-   * excepción, y porque así volver el diseño el default de toda la app es un
-   * solo cambio: `framed = true` aquí (junto con `searchAlwaysExpanded` y
-   * `density`, que siguen siendo independientes).
+   * Es también el INTERRUPTOR del "modo panel": además del marco, centra
+   * encabezados y celdas cuando la columna no declara `meta.align`, y fija
+   * una altura mínima de fila (ver `PANEL_ROW_MIN_HEIGHT_CLS`). Nació como
+   * opt-in de 6 consumidores y se volvió el default de los 69 en un solo
+   * cambio (este), junto con `searchAlwaysExpanded` y `density`.
    */
   framed?: boolean;
   /** Mensaje del estado vacío dentro del cuerpo de la tabla (cuando no hay datos). */
@@ -243,7 +245,7 @@ export function DataTable<TData, TValue>({
   baseDataCount,
   title,
   searchPlaceholder = "Buscar...",
-  searchAlwaysExpanded = false,
+  searchAlwaysExpanded = true,
   actionButton,
   filterConfig,
   onActiveFiltersChange,
@@ -264,9 +266,9 @@ export function DataTable<TData, TValue>({
   onErrorRetry,
   getRowId,
   serverPagination,
-  defaultPageSize = 10,
-  density = "comfortable",
-  framed = false,
+  defaultPageSize = 20,
+  density = "compact",
+  framed = true,
   fillHeight = false,
 }: DataTableProps<TData, TValue>) {
   const searchInputId = useId();
@@ -692,7 +694,10 @@ export function DataTable<TData, TValue>({
       <div
         className={
           "flex flex-col lg:flex-row lg:items-center " +
-          (title || searchAlwaysExpanded ? "justify-between" : "justify-end") +
+          // `justify-between` solo cuando el buscador fijo de la izquierda
+          // existe; en modo servidor no se renderiza y un único hijo con
+          // `between` quedaría pegado a la IZQUIERDA en vez de a la derecha.
+          (!isServerPaginated && searchAlwaysExpanded ? "justify-between" : "justify-end") +
           " gap-4 shrink-0 " +
           (framed
             ? "p-4 border-b border-slate-100 dark:border-slate-800"
@@ -736,12 +741,13 @@ export function DataTable<TData, TValue>({
         <div className="flex flex-col lg:flex-row lg:items-center gap-3 w-full lg:w-auto">
           <div className="w-full lg:w-auto overflow-x-auto lg:overflow-visible pb-1">
             <div className="flex items-center justify-end gap-2 min-w-max">
-            {/* La búsqueda colapsable se OCULTA en modo servidor: filtraría
-                solo la página actual (no la consulta completa), haciendo
-                creer que un registro de otra página "no existe". Aún no hay
-                búsqueda server-side para estos reportes. En modo cliente
-                permanece visible como antes. La variante `searchAlwaysExpanded`
-                ya se renderizó ARRIBA, en el extremo izquierdo de la barra. */}
+            {/* Búsqueda colapsable: solo con `searchAlwaysExpanded={false}`
+                (vía de escape; el buscador fijo por defecto ya se renderizó
+                ARRIBA, en el extremo izquierdo de la barra). Ambas se OCULTAN
+                en modo servidor: filtrarían solo la página actual (no la
+                consulta completa), haciendo creer que un registro de otra
+                página "no existe". Aún no hay búsqueda server-side para
+                estos reportes. */}
             {!isServerPaginated && !searchAlwaysExpanded && (
             <div className="flex items-center gap-0">
               <button

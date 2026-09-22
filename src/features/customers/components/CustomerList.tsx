@@ -185,10 +185,6 @@ export const CustomerList = () => {
         ref={tableRef}
         columns={columns}
         data={customers}
-        framed
-        searchAlwaysExpanded
-        defaultPageSize={20}
-        density="compact"
         searchPlaceholder="Buscar por razón social, nombre, correo o teléfono..."
         isLoading={isLoading}
         isError={isError}

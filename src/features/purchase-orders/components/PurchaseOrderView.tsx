@@ -176,20 +176,14 @@ export function PurchaseOrderView() {
   // disponibles durante la carga o un error. Mismo patrón que
   // `AccountsReceivableList`.
   //
-  // `density="compact"` + `framed` + `searchAlwaysExpanded` a propósito: esta
-  // lista prioriza ver muchas órdenes de un vistazo (filas delgadas), un
-  // buscador siempre a mano (sin el paso extra de expandirlo) y un solo marco
-  // visual que una toolbar + tabla en vez de dos bloques flotantes separados.
+  // Filas compactas, buscador siempre a mano y un solo marco que une toolbar
+  // + tabla vienen del default de `DataTable` (diseño aprobado): no se pasan.
   const table = (
     <DataTable
       ref={tableRef}
       columns={columns}
       data={purchaseOrders}
       searchPlaceholder="Buscar orden, folio o referencia..."
-      searchAlwaysExpanded
-      density="compact"
-      framed
-      defaultPageSize={20}
       onVisibleColumnsChange={setVisibleColumns}
       actionButton={
         <div className="flex items-center gap-2 shrink-0">
