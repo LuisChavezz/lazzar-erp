@@ -136,6 +136,11 @@ export function buildOperationsOrderColumns(
       id: "folio",
       accessorKey: "folio",
       filterFn: confirmationFilterFn,
+      // Punto + folio (`P-00000-2026` en mono) + chevron miden ~124px; con el
+      // ancho por defecto (150px, 118 útiles) la celda se partía en dos
+      // líneas y el punto quedaba encima del folio. Mismo ancho que el folio
+      // de `SalesOrderColumns.tsx`.
+      size: 190,
       header: ({ column }) => (
         <div className="flex items-center gap-1.5">
           <span>Folio</span>
