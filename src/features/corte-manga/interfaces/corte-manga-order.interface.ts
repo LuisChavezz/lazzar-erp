@@ -239,7 +239,8 @@ export interface CorteMangaOnboardingPedido {
   sucursal: number | null;
   sucursal_nombre: string | null;
   /** Lo que Mesa de Control programó a corte de manga; solo informativo. */
-  programado: WorkOrderProgramado;
+  // Opcional: un backend sin a3f232f no manda la clave y el indicador se oculta.
+  programado?: WorkOrderProgramado;
 }
 
 /**

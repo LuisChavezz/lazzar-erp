@@ -665,7 +665,8 @@ export interface EmbroideryOnboardingPedido {
   sucursal_nombre: string | null;
   detalles: EmbroideryOnboardingDetalle[];
   /** Lo que Mesa de Control programó a bordado; solo informativo. */
-  programado: WorkOrderProgramado;
+  // Opcional: un backend sin a3f232f no manda la clave y el indicador se oculta.
+  programado?: WorkOrderProgramado;
 }
 
 /**

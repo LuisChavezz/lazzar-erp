@@ -1,6 +1,9 @@
 import { CalendarDaysIcon } from "./Icons";
-import { formatQuantityValue } from "../utils/formatCurrency";
-import { formatShortDate } from "../utils/formatDate";
+import {
+  PROGRAMADO_EMPTY_LABEL,
+  formatPiezas,
+  formatProgramadoDetail,
+} from "../utils/formatWorkOrderProgramado";
 import type { WorkOrderProgramado } from "../interfaces/work-order-programado.interface";
 
 /**
@@ -13,47 +16,25 @@ import type { WorkOrderProgramado } from "../interfaces/work-order-programado.in
  * cantidades. El rótulo siempre es "Programado por Mesa de Control" —nunca
  * "Programado" a secas—, porque esa palabra ya significa otras cosas en estos
  * módulos (estatus 2 de la OB, `cantidad_asignada` en el detalle). Sin
- * programación se muestra "Sin programar" en tono neutro: no es un problema
- * que atender, así que nada de ámbar ni rojo.
+ * programación (`null`) se muestra en tono neutro: no es un problema que
+ * atender, así que nada de ámbar ni rojo. Sin la clave (`undefined`) no se
+ * muestra nada.
  */
 
 const LABEL = "Programado por Mesa de Control";
-const EMPTY_LABEL = "Sin programar";
-const EMPTY_TITLE = "Mesa de Control no ha programado este pedido para este destino";
-
-/**
- * "pzas" invariable, también para 1: es la abreviatura que usa el resto de la
- * app (columnas de OB/OR/OCM, detalle de pedido, picking).
- */
-const formatPiezas = (cantidad: number) => `${formatQuantityValue(cantidad)} pzas`;
-
-/**
- * Detalle secundario: fecha corta + quién programó. `fecha` es un datetime con
- * zona, así que va SIN `timeZone` (día en la zona del usuario, ver
- * `formatShortDate`). Sin `usuario_nombre` queda solo la fecha, sin separador
- * colgando.
- */
-const formatProgramadoDetail = (programado: NonNullable<WorkOrderProgramado>) =>
-  [formatShortDate(programado.fecha), programado.usuario_nombre?.trim()]
-    .filter(Boolean)
-    .join(" · ");
-
-/**
- * Versión en TEXTO PLANO para un `<option>` nativo, que no admite marcado. Más
- * corta que el rótulo completo para no desbordar la lista; el detalle
- * completo se muestra fuera del `<select>` con el componente.
- */
-export const formatProgramadoOptionText = (programado: WorkOrderProgramado): string =>
-  programado ? `Prog. Mesa de Control: ${formatPiezas(programado.cantidad)}` : EMPTY_LABEL;
 
 interface MesaControlProgramadoIndicatorProps {
-  programado: WorkOrderProgramado;
+  programado: WorkOrderProgramado | undefined;
 }
 
 /** Bloque con el detalle en una segunda línea, para el pedido elegido. */
 export function MesaControlProgramadoIndicator({
   programado,
 }: MesaControlProgramadoIndicatorProps) {
+  if (programado === undefined) return null;
+
+  const detail = programado ? formatProgramadoDetail(programado) : null;
+
   return (
     <div
       role="note"
@@ -68,13 +49,11 @@ export function MesaControlProgramadoIndicator({
               {formatPiezas(programado.cantidad)}
             </span>
           </p>
-          <p className="text-[11px] text-slate-500 mt-1 truncate">
-            {formatProgramadoDetail(programado)}
-          </p>
+          {detail && <p className="text-[11px] text-slate-500 mt-1 break-words">{detail}</p>}
         </div>
       ) : (
-        <p title={EMPTY_TITLE} className="min-w-0 flex-1 text-xs text-slate-500 dark:text-slate-400">
-          {EMPTY_LABEL}
+        <p className="min-w-0 flex-1 text-xs text-slate-500 dark:text-slate-400">
+          {PROGRAMADO_EMPTY_LABEL}
         </p>
       )}
     </div>

@@ -15,6 +15,9 @@
  * `usuario_id`. `cantidad` llega como float. `fecha` es un datetime ISO con
  * zona. `usuario_nombre` se modela nullable por defensa: el contrato no
  * garantiza que siempre venga resuelto.
+ *
+ * Los `*OnboardingPedido` lo declaran OPCIONAL (`programado?:`): la clave
+ * ausente (backend sin a3f232f) oculta el indicador, a diferencia de `null`.
  */
 export type WorkOrderProgramado = {
   cantidad: number;

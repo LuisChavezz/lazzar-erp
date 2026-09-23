@@ -164,17 +164,16 @@ export function ReflectiveOrderStep1({
                     </option>
                   ))}
                 </FormSelect>
+                <p className="ml-1 text-[11px] text-slate-500">
+                  En el siguiente paso eliges qué prendas del pedido entran en esta orden y
+                  con cuántas piezas cada una.
+                </p>
                 {/* Solo informativo: no toca las cantidades del Paso 2. */}
                 {selected && <MesaControlProgramadoIndicator programado={selected.programado} />}
               </div>
             );
           }}
         </form.Field>
-
-        <p className="-mt-3 ml-1 text-[11px] text-slate-500">
-          En el siguiente paso eliges qué prendas del pedido entran en esta orden y con
-          cuántas piezas cada una.
-        </p>
 
         {/* ── Prioridad ──────────────────────────────────────────────────── */}
         <form.Field name="prioridad">

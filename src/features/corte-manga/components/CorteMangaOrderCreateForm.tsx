@@ -278,17 +278,16 @@ export function CorteMangaOrderCreateForm({
                     </option>
                   ))}
                 </FormSelect>
+                <p className="ml-1 text-[11px] text-slate-500">
+                  Las prendas a las que se aplica el corte de manga se toman automáticamente
+                  del pedido: se genera un renglón por cada talla marcada para corte de manga.
+                </p>
                 {/* Solo informativo: la orden sigue tomando todas las tallas. */}
                 {selected && <MesaControlProgramadoIndicator programado={selected.programado} />}
               </div>
             );
           }}
         </form.Field>
-
-        <p className="-mt-3 ml-1 text-[11px] text-slate-500">
-          Las prendas a las que se aplica el corte de manga se toman automáticamente del
-          pedido: se genera un renglón por cada talla marcada para corte de manga.
-        </p>
 
         {/* ── Prioridad ──────────────────────────────────────────────────── */}
         <form.Field name="prioridad">

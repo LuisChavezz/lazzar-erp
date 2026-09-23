@@ -454,7 +454,8 @@ export interface ReflectiveOnboardingPedido {
    */
   detalles: ReflectiveOnboardingDetalle[];
   /** Lo que Mesa de Control programó a reflejante; solo informativo. */
-  programado: WorkOrderProgramado;
+  // Opcional: un backend sin a3f232f no manda la clave y el indicador se oculta.
+  programado?: WorkOrderProgramado;
 }
 
 /**
