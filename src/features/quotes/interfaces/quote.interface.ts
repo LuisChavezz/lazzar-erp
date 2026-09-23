@@ -167,6 +167,12 @@ export interface QuoteById {
    * 2 = muestra. Opcional porque una respuesta anterior al campo no lo trae.
    */
   tipo_pedido?: number;
+  /**
+   * `true` si la cotización nació de "Recompra" (`POST
+   * /ventas/pedidos/{id}/recomprar/`). La edición la conserva solo porque su
+   * payload NUNCA manda este campo: no agregarlo a `QuoteCreate`.
+   */
+  recompra: boolean;
   autorizada_at: string | null;
   cambios_solicitados_at: string | null;
   aprobado_snapshot: string | null;

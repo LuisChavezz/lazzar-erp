@@ -1070,6 +1070,10 @@ export function useQuoteEditForm(quoteId: number) {
     quoteLoadFailed,
     isQuoteRetrying: isQuoteFetching,
     retryQuoteLoad: refetchQuote,
+    /* Solo de lectura, para el badge de la cabecera (QuoteEditForm). No entra
+     * al formulario ni al payload: la edición conserva `recompra` porque nunca
+     * lo envía. */
+    isRecompra: Boolean(quoteData?.recompra),
     form,
     formRef,
     formKey: `quote-edit-${quoteId}`,

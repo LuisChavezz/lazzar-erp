@@ -3,6 +3,7 @@
 import { getStatusStyles } from "../utils/getStatusStyle";
 import { useQuote, type QuoteDetailSource } from "../hooks/useQuote";
 import { QuoteDetailsProducts } from "./QuoteDetailsProducts";
+import { RecompraBadge } from "./RecompraBadge";
 import {
   formatQuoteDateTime,
   getEnabledOptionLabels,
@@ -61,9 +62,12 @@ export const QuoteDetails = ({ quoteId, source }: QuoteDetailsProps) => {
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
         <div className="rounded-xl border border-slate-200 dark:border-white/10 p-4 bg-white dark:bg-white/5">
           <p className="text-xs uppercase text-slate-400 font-semibold">Estatus</p>
-          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium mt-2 ${statusClassName}`}>
-            {quote.estatus_label}
-          </span>
+          <div className="flex flex-wrap items-center gap-2 mt-2">
+            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusClassName}`}>
+              {quote.estatus_label}
+            </span>
+            {quote.recompra && <RecompraBadge />}
+          </div>
         </div>
         <div className="rounded-xl border border-slate-200 dark:border-white/10 p-4 bg-white dark:bg-white/5">
           <p className="text-xs uppercase text-slate-400 font-semibold">Total</p>

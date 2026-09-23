@@ -2,6 +2,7 @@
 
 import { useQuoteEditForm } from "../hooks/useQuoteEditForm";
 import { QUOTE_FORM_CAPABILITIES, QuoteFormContent } from "./QuoteForm";
+import { RecompraBadge } from "./RecompraBadge";
 
 interface QuoteEditFormProps {
   quoteId: number;
@@ -10,7 +11,7 @@ interface QuoteEditFormProps {
 // Componente de edición de cotización.
 // Delega toda la lógica a useQuoteEditForm y reutiliza QuoteFormContent para el JSX.
 export function QuoteEditForm({ quoteId }: QuoteEditFormProps) {
-  const { quoteLoadFailed, isQuoteRetrying, retryQuoteLoad, ...formProps } =
+  const { quoteLoadFailed, isQuoteRetrying, retryQuoteLoad, isRecompra, ...formProps } =
     useQuoteEditForm(quoteId);
 
   /* Fallo TÉCNICO al cargar la cotización (500, red, timeout — nunca 404/403,
@@ -55,6 +56,7 @@ export function QuoteEditForm({ quoteId }: QuoteEditFormProps) {
     <QuoteFormContent
       {...formProps}
       submitLabel="Guardar Cambios"
+      headerBadge={isRecompra ? <RecompraBadge /> : undefined}
       capabilities={QUOTE_FORM_CAPABILITIES.editQuote}
     />
   );

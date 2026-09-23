@@ -18,6 +18,12 @@ interface ConfirmDialogProps {
    * usa (típicamente en el `onSettled` de la mutación).
    */
   closeOnConfirm?: boolean;
+  /**
+   * Acción en curso: deshabilita Confirmar Y Cancelar e ignora Esc y el clic
+   * fuera, así que el diálogo no puede cerrarse ni reenviarse mientras dure.
+   * Pensado para mutaciones no idempotentes con `closeOnConfirm={false}`.
+   */
+  busy?: boolean;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
 }
@@ -32,11 +38,12 @@ export function ConfirmDialog({
   maxWidth = "450px",
   confirmColor = "red",
   closeOnConfirm = true,
+  busy = false,
   open,
   onOpenChange
 }: ConfirmDialogProps) {
   const confirmButton = (
-    <Button onClick={onConfirm} variant="solid" color={confirmColor}>
+    <Button onClick={onConfirm} variant="solid" color={confirmColor} disabled={busy}>
       {confirmText}
     </Button>
   );
@@ -49,7 +56,13 @@ export function ConfirmDialog({
         </Dialog.Trigger>
       )}
 
-      <Dialog.Content maxWidth={maxWidth} className="bg-white! dark:bg-zinc-900! dark:text-white!">
+      <Dialog.Content
+        maxWidth={maxWidth}
+        className="bg-white! dark:bg-zinc-900! dark:text-white!"
+        onEscapeKeyDown={busy ? (event) => event.preventDefault() : undefined}
+        onPointerDownOutside={busy ? (event) => event.preventDefault() : undefined}
+        onInteractOutside={busy ? (event) => event.preventDefault() : undefined}
+      >
         <Dialog.Title>{title}</Dialog.Title>
         <Dialog.Description size="2" mb="4">
           {description}
@@ -57,7 +70,7 @@ export function ConfirmDialog({
 
         <Flex gap="3" mt="4" justify="end">
           <Dialog.Close>
-            <Button variant="soft" color="gray" className=" dark:bg-zinc-800! dark:text-white!">
+            <Button variant="soft" color="gray" className=" dark:bg-zinc-800! dark:text-white!" disabled={busy}>
               {cancelText}
             </Button>
           </Dialog.Close>

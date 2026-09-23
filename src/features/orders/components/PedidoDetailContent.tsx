@@ -2,11 +2,14 @@
 
 import Link from "next/link";
 import type React from "react";
-import { useState } from "react";
+import { useRef, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { ArrowLeftIcon, EditIcon } from "@/src/components/Icons";
+import { ArrowLeftIcon, CopyIcon, EditIcon } from "@/src/components/Icons";
 import { Button } from "@/src/components/Button";
-import { hasPermission } from "@/src/utils/permissions";
+import { ConfirmDialog } from "@/src/components/ConfirmDialog";
+import { hasAnyPermission, hasPermission } from "@/src/utils/permissions";
+import { routePermissions } from "@/src/constants/routePermissions";
 import { Loader } from "@/src/components/Loader";
 import { ErrorState } from "@/src/components/ErrorState";
 import {
@@ -29,10 +32,13 @@ import { PICKING_STATUS_CONFIG } from "@/src/features/picking/constants/pickingS
 import { formatShortDate } from "@/src/utils/formatDate";
 import { useSatInfo } from "@/src/features/sat/hooks/useSatInfo";
 import { usePedidoDetail } from "../hooks/usePedidoDetail";
+import { useRecomprarPedido } from "../hooks/useRecomprarPedido";
 import {
   canEditPedidoMesaControl,
+  canRecomprarPedido,
   getPedidoEstatusConfig,
   getTipoPedidoConfig,
+  ORIGIN_BADGE_CLASS,
   type BadgeConfig,
 } from "../constants/pedidoStatus";
 import {
@@ -188,10 +194,25 @@ function canSeeAccounting(pedido: Order): boolean {
   );
 }
 
-// Badge de origen: gris/neutro, para leerse como una categoría distinta de los
-// badges de estatus/tipo (que van con color).
-const ORIGIN_BADGE_CLASS =
-  "bg-slate-100 text-slate-600 dark:bg-slate-500/15 dark:text-slate-300";
+/**
+ * Regla del proxy que cubre /sales/quotes/{id}/edit, resuelta con la MISMA
+ * búsqueda que `src/proxy.ts` (primera coincidencia de `prefix` exacto o
+ * `prefix/`). El id es un ejemplo: la regla no depende de él. Si cambia el
+ * mapa en `routePermissions`, esto lo sigue sin tocar este archivo.
+ */
+const QUOTE_EDIT_SAMPLE_PATH = "/sales/quotes/0/edit";
+const QUOTE_EDIT_ROUTE_RULE = routePermissions.find(
+  ({ prefix }) =>
+    QUOTE_EDIT_SAMPLE_PATH === prefix || QUOTE_EDIT_SAMPLE_PATH.startsWith(`${prefix}/`),
+);
+
+function canAccessQuoteEditRoute(
+  user: Parameters<typeof hasPermission>[1],
+): boolean {
+  if (!QUOTE_EDIT_ROUTE_RULE) return true;
+  const { permission } = QUOTE_EDIT_ROUTE_RULE;
+  return hasAnyPermission(Array.isArray(permission) ? permission : [permission], user);
+}
 
 // ── Piezas presentacionales locales ──────────────────────────────────────────
 
@@ -928,6 +949,47 @@ export function PedidoDetailContent({ pedidoId, from }: PedidoDetailContentProps
   // edición —exige el ROL `MESA-DE-CONTROL`—, así que esto gobierna la UI y la
   // frontera real es el rol. Ver `pedidoEditAccess.server.ts`.
   const canEditMesaControl = hasPermission("E-MESACONTROL-PEDIDOS", session?.user);
+  // Recompra aterriza en /sales/quotes/{id}/edit, así que exige EXACTAMENTE lo
+  // que exige esa ruta; si no, el usuario crearía la cotización y rebotaría
+  // DESPUÉS, dejándola huérfana:
+  //   - la regla del proxy para esa ruta (hoy "/sales/quotes" →
+  //     R-CRM-COTIZACIONES), derivada de `routePermissions` en vez de repetir
+  //     el código;
+  //   - E-CRM-COTIZACIONES, el guard de la página (`quoteEditAccess.server`).
+  // No se pide `C-CRM-COTIZACIONES`: ningún rol lo tiene (tampoco "Ventas").
+  const canRecomprar =
+    canAccessQuoteEditRoute(session?.user) &&
+    hasPermission("E-CRM-COTIZACIONES", session?.user);
+  const router = useRouter();
+  const { mutateAsync: recomprar, isPending: isRecomprando } = useRecomprarPedido();
+  const [isRecompraConfirmOpen, setIsRecompraConfirmOpen] = useState(false);
+  // El endpoint NO es idempotente. `isPending` llega un render tarde, así que
+  // un doble clic rápido lo rebasaría: el candado síncrono es el ref, y solo
+  // cubre el POST (lo único no idempotente).
+  const recompraLockRef = useRef(false);
+  // La navegación a la cotización va en una transición: `isPending` sigue en
+  // `true` hasta que la ruta nueva se monta (y este componente desaparece) y
+  // vuelve a `false` sola si la navegación se abandona (Atrás, "Volver", otra
+  // navegación que la reemplaza). Así el botón se reactiva sin estado que
+  // haya que limpiar a mano ni comparaciones de pathname.
+  const [isNavigatingToQuote, startNavigationToQuote] = useTransition();
+
+  const handleConfirmRecompra = async () => {
+    if (recompraLockRef.current) return;
+    recompraLockRef.current = true;
+    try {
+      const { cotizacion } = await recomprar(numericId);
+      setIsRecompraConfirmOpen(false);
+      startNavigationToQuote(() => {
+        router.push(`/sales/quotes/${cotizacion.id}/edit`);
+      });
+    } catch {
+      // El hook ya avisó con su toast; el diálogo queda abierto y cerrable
+      // para reintentar o cancelar.
+    } finally {
+      recompraLockRef.current = false;
+    }
+  };
   // Documento abierto desde "Documentos relacionados" (`null` = cerrado). Un
   // solo estado para todos los tipos navegables; el diálogo se resuelve del
   // registro `CLICKABLE_DOC_TIPOS` según `openDoc.tipo`.
@@ -1032,18 +1094,47 @@ export function PedidoDetailContent({ pedidoId, from }: PedidoDetailContentProps
             contrato es editar-y-espejar— y un `estatus` editable (un pedido
             CANCELADO no se toca). Las dos reglas de negocio se pueden evaluar
             aquí: el retrieve expone `cotizacion`, a diferencia del listado. */}
-        {canEditMesaControl && data.cotizacion && canEditPedidoMesaControl(data.estatus) && (
-          <Button asChild variant="primary">
-            <Link
-              href={`/orders/${data.id}/edit-mesa-control`}
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Recompra: NO depende de `data.cotizacion` (el backend clona el
+              pedido mismo, tenga o no cotización de origen). */}
+          {canRecomprar && canRecomprarPedido(data.estatus) && (
+            <Button
+              variant="secondary"
+              onClick={() => setIsRecompraConfirmOpen(true)}
+              disabled={isRecomprando || isNavigatingToQuote}
               className="inline-flex items-center gap-2"
             >
-              <EditIcon className="w-4 h-4" aria-hidden="true" />
-              Editar
-            </Link>
-          </Button>
-        )}
+              <CopyIcon className="w-4 h-4" aria-hidden="true" />
+              Recompra
+            </Button>
+          )}
+          {canEditMesaControl && data.cotizacion && canEditPedidoMesaControl(data.estatus) && (
+            <Button asChild variant="primary">
+              <Link
+                href={`/orders/${data.id}/edit-mesa-control`}
+                className="inline-flex items-center gap-2"
+              >
+                <EditIcon className="w-4 h-4" aria-hidden="true" />
+                Editar
+              </Link>
+            </Button>
+          )}
+        </div>
       </div>
+
+      <ConfirmDialog
+        open={isRecompraConfirmOpen}
+        onOpenChange={setIsRecompraConfirmOpen}
+        title="Crear cotización de recompra"
+        description={`Se creará una cotización NUEVA en borrador a partir del pedido ${
+          data.folio || `#${data.id}`
+        }, con sus mismos productos, tallas y servicios. Los precios se copian tal como están en este pedido (no se recalculan); podrás ajustarlos antes de enviarla a revisión. Este pedido no se modifica.`}
+        confirmText={isRecomprando ? "Creando..." : "Crear cotización"}
+        confirmColor="blue"
+        closeOnConfirm={false}
+        busy={isRecomprando}
+        onConfirm={handleConfirmRecompra}
+      />
 
       {/* ── 1. Cabecera ─────────────────────────────────────────────────── */}
       <section className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 p-5 md:p-6">
