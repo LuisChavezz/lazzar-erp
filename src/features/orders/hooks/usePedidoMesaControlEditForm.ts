@@ -743,13 +743,43 @@ export function usePedidoMesaControlEditForm(pedidoId: number) {
   // inservible en cuanto un producto pierde sus variantes.
   const { sizes, isLoading: isSizesLoading } = useSizes();
 
+  /**
+   * Detalle leído EN ESTE MONTAJE, nunca el de la caché. El formulario se
+   * hidrata una sola vez y el guardado reenvía TODOS los campos, así que
+   * hidratarlo con la caché (compartida con el detalle 360°, `staleTime` de
+   * 15 min) reescribiría en silencio lo que alguien cambió mientras tanto.
+   * Mismo criterio que "Programar pedido" (`PedidoProgramacionDialog`).
+   *
+   * `pedidoData` queda en `undefined` hasta que la lectura de este montaje
+   * responde con éxito, de modo que TODO lo que se deriva de él —hidratación,
+   * bloqueos, importes arrastrados al payload— ve la misma versión fresca. Si
+   * esa lectura falla, tampoco se cae a la caché: `pedidoError` lleva a la
+   * pantalla de reintento.
+   *
+   * La puerta vale SOLO para esa primera lectura. `hasFreshPedido` es un
+   * cerrojo: una vez abierto no se vuelve a cerrar. Sin él, un refetch posterior
+   * fallido (una invalidación, un reconnect) —que en TanStack v5 pone `error`
+   * pero CONSERVA `data`— dejaba `pedidoData` en `undefined` y cambiaba el
+   * formulario por la pantalla de reintento, perdiendo lo capturado sin guardar.
+   * Ya hidratado, ese error se ignora: el dato anterior sigue siendo válido y el
+   * guardado lo vuelve a validar el backend.
+   */
   const {
-    data: pedidoData,
+    data: cachedOrFreshPedido,
     isLoading: isPedidoLoading,
     isFetching: isPedidoFetching,
-    error: pedidoError,
+    isFetchedAfterMount: isPedidoFetchedAfterMount,
+    error: pedidoQueryError,
     refetch: refetchPedido,
-  } = usePedidoDetail(pedidoId);
+  } = usePedidoDetail(pedidoId, { refetchOnMount: "always" });
+  const [hasFreshPedido, setHasFreshPedido] = useState(false);
+  // Ajuste de estado derivado EN RENDER (patrón de React para derivar de una
+  // prop sin `useEffect`), el mismo que usa `useInlineDraft`.
+  if (!hasFreshPedido && isPedidoFetchedAfterMount && !pedidoQueryError && cachedOrFreshPedido) {
+    setHasFreshPedido(true);
+  }
+  const pedidoData = hasFreshPedido ? cachedOrFreshPedido : undefined;
+  const pedidoError = hasFreshPedido ? null : pedidoQueryError;
 
   /**
    * Precheck de edición estricta. No es un adorno: desde `ab63ce2` el backend
@@ -1983,7 +2013,7 @@ export function usePedidoMesaControlEditForm(pedidoId: number) {
     products: onboardingData?.busqueda.productos ?? [],
     isCustomersLoading,
     isCurrenciesLoading,
-    isOnboardingLoading: isOnboardingLoading || isPedidoLoading,
+    isOnboardingLoading: isOnboardingLoading || isPedidoLoading || !hasFreshPedido,
     isSizesLoading,
     showForm,
     /* Este flujo no tiene pantalla de éxito propia: al guardar se vuelve al
