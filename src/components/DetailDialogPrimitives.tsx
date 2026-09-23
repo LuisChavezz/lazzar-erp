@@ -87,9 +87,16 @@ export const Section = ({
  * se coloca a 25px a la izquierda del dato, o sea a 24px del anterior: la fila
  * sin partir queda idéntica. En móvil el filete ya se ocultaba y el hueco era de
  * 24px, y así se conserva.
+ *
+ * `px-1.5 -mx-1.5`: `overflow-x-clip` recorta en el borde del PADDING, así que
+ * sin él también recortaría el anillo de foco de un control editable que abra
+ * una línea. Los 6px de padding le dejan sitio y el margen negativo los
+ * compensa (ni la posición ni el ancho útil de la fila cambian). El filete del
+ * dato que abre línea sigue a 25px del dato, o sea 19px fuera del borde: sigue
+ * recortado.
  */
 export const HeaderStatRow = ({ children }: { children: React.ReactNode }) => (
-  <div className="flex flex-wrap items-center gap-x-6 sm:gap-x-[49px] gap-y-3 overflow-x-clip">
+  <div className="flex flex-wrap items-center gap-x-6 sm:gap-x-[49px] gap-y-3 overflow-x-clip px-1.5 -mx-1.5">
     {children}
   </div>
 );
@@ -108,13 +115,15 @@ export const HeaderStat = ({
     <span className="block text-[11px] text-slate-400 dark:text-slate-500">
       {label}
     </span>
-    <span
-      className={`block text-[13px] tabular-nums text-slate-700 dark:text-slate-200 ${
+    {/* `div` y no `span`: el valor puede ser un control editable en línea
+        (select, input), que no debe ir dentro de un elemento inline. */}
+    <div
+      className={`text-[13px] tabular-nums text-slate-700 dark:text-slate-200 ${
         bold ? "font-medium" : "font-normal"
       }`}
     >
       {children}
-    </span>
+    </div>
   </div>
 );
 
