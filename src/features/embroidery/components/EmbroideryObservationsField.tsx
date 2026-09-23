@@ -13,7 +13,7 @@ interface EmbroideryObservationsFieldProps {
   /** Valor canónico del servidor (`observaciones`). */
   value: string | null;
   /** Se invoca con el nuevo valor (o `null` si queda vacío) al confirmar. */
-  onSave: (value: string | null) => void;
+  onSave: (value: string | null) => void | Promise<unknown>;
   /** PATCH en vuelo: inhabilita el campo. */
   isPending?: boolean;
 }
