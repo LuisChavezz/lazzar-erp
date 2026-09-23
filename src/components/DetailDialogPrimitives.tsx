@@ -66,6 +66,58 @@ export const Section = ({
   </section>
 );
 
+/**
+ * Contenedor de los `HeaderStat` de la cabecera en FILA de una página de
+ * detalle (identidad a la izquierda con `mr-auto`, datos a la derecha).
+ * Originado en la orden de bordado y adoptado por el detalle de pedido.
+ *
+ * El filete entre datos NO es un elemento propio: es el `::before` de cada
+ * `HeaderStat`, colgado en el centro del hueco que lo separa del anterior. Así
+ * la fila puede partirse sin dejar filetes sueltos:
+ *
+ * - Nunca queda uno al FINAL de una línea, porque pertenece al dato que lo
+ *   sigue y viaja con él a la línea siguiente.
+ * - El del dato que ABRE una línea cae fuera del borde izquierdo del
+ *   contenedor, y `overflow-x-clip` lo recorta. Es `clip` y no `hidden`: recorta
+ *   solo en horizontal y no crea contenedor de scroll, así que no toca la altura
+ *   ni el contenido que sobresalga en vertical.
+ *
+ * Medidas: antes el filete era un hermano de 1px con `gap-x-6` a cada lado
+ * (24 + 1 + 24 = 49px entre datos). Aquí el hueco es `gap-x-[49px]` y el filete
+ * se coloca a 25px a la izquierda del dato, o sea a 24px del anterior: la fila
+ * sin partir queda idéntica. En móvil el filete ya se ocultaba y el hueco era de
+ * 24px, y así se conserva.
+ */
+export const HeaderStatRow = ({ children }: { children: React.ReactNode }) => (
+  <div className="flex flex-wrap items-center gap-x-6 sm:gap-x-[49px] gap-y-3 overflow-x-clip">
+    {children}
+  </div>
+);
+
+/** Un dato label-arriba/valor-abajo dentro de `HeaderStatRow`. */
+export const HeaderStat = ({
+  label,
+  children,
+  bold = false,
+}: {
+  label: string;
+  children: React.ReactNode;
+  bold?: boolean;
+}) => (
+  <div className="relative shrink-0 before:absolute before:left-[-25px] before:top-1/2 before:-translate-y-1/2 before:hidden sm:before:block before:w-px before:h-6 before:bg-slate-200 dark:before:bg-white/10">
+    <span className="block text-[11px] text-slate-400 dark:text-slate-500">
+      {label}
+    </span>
+    <span
+      className={`block text-[13px] tabular-nums text-slate-700 dark:text-slate-200 ${
+        bold ? "font-medium" : "font-normal"
+      }`}
+    >
+      {children}
+    </span>
+  </div>
+);
+
 /** Rejilla de campos etiqueta/valor reutilizada por las secciones de detalle. */
 export const InfoGrid = ({ children }: { children: React.ReactNode }) => (
   <div className="grid grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-3 text-xs">
