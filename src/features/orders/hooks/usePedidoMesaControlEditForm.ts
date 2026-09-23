@@ -49,6 +49,7 @@ import {
   TIPO_PEDIDO,
 } from "../constants/pedidoStatus";
 import { usePedidoDetail } from "./usePedidoDetail";
+import { getLocalTodayDate } from "@/src/utils/formatDate";
 import { usePedidoMesaControlContexto } from "./usePedidoMesaControlContexto";
 import type { PedidoMesaControlContexto } from "../interfaces/pedido-mesa-control-contexto.interface";
 import { useUpdatePedidoMesaControl } from "./useUpdatePedidoMesaControl";
@@ -863,7 +864,7 @@ export function usePedidoMesaControlEditForm(pedidoId: number) {
 
   const userName = session?.user?.name || "Usuario";
   const sellerName = userName;
-  const todayStr = new Date().toISOString().slice(0, 10);
+  const todayStr = getLocalTodayDate();
   const formRef = useRef<HTMLFormElement | null>(null);
   const emptyValues = useMemo(() => createEmptyValues(todayStr, userName), [todayStr, userName]);
 
