@@ -5,6 +5,7 @@ import type { FormEvent } from "react";
 import { useForm } from "@tanstack/react-form";
 import { useSession } from "next-auth/react";
 import type { FormFieldError } from "@/src/utils/getFieldError";
+import { formatProgramadoOptionText } from "@/src/components/MesaControlProgramadoIndicator";
 import {
   CreateCorteMangaOrderFormSchema,
   type CreateCorteMangaOrderFormValues,
@@ -62,9 +63,12 @@ export function useCorteMangaOrderForm({ onSuccess }: { onSuccess?: () => void }
         value: pedido.id,
         // `folio` es nullable en el modelo: sin él, el id es lo único que
         // identifica al pedido en la lista.
-        label: [pedido.folio ?? `Pedido #${pedido.id}`, pedido.cliente_nombre]
+        // El `<option>` nativo solo admite texto: ahí va la versión corta de
+        // `programado`; el detalle se muestra bajo el select.
+        label: `${[pedido.folio ?? `Pedido #${pedido.id}`, pedido.cliente_nombre]
           .filter(Boolean)
-          .join(" — "),
+          .join(" — ")} · ${formatProgramadoOptionText(pedido.programado)}`,
+        programado: pedido.programado,
       })),
     [pedidos],
   );

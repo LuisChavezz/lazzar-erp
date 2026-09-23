@@ -1,3 +1,5 @@
+import type { WorkOrderProgramado } from "@/src/interfaces/work-order-programado.interface";
+
 /**
  * Contratos del endpoint de órdenes de corte de manga
  * (`/produccion/orden-corte-manga/`).
@@ -236,6 +238,8 @@ export interface CorteMangaOnboardingPedido {
   cliente_nombre: string | null;
   sucursal: number | null;
   sucursal_nombre: string | null;
+  /** Lo que Mesa de Control programó a corte de manga; solo informativo. */
+  programado: WorkOrderProgramado;
 }
 
 /**

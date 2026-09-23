@@ -1,3 +1,5 @@
+import type { WorkOrderProgramado } from "@/src/interfaces/work-order-programado.interface";
+
 /**
  * Contratos del endpoint REAL de órdenes de bordado
  * (`/produccion/orden-bordado/`).
@@ -662,6 +664,8 @@ export interface EmbroideryOnboardingPedido {
   sucursal: number | null;
   sucursal_nombre: string | null;
   detalles: EmbroideryOnboardingDetalle[];
+  /** Lo que Mesa de Control programó a bordado; solo informativo. */
+  programado: WorkOrderProgramado;
 }
 
 /**

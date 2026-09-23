@@ -4,6 +4,7 @@ import { FormSelect } from "@/src/components/FormSelect";
 import { FormTextarea } from "@/src/components/FormTextarea";
 import { FormSubmitButton } from "@/src/components/FormButtons";
 import { Loader } from "@/src/components/Loader";
+import { MesaControlProgramadoIndicator } from "@/src/components/MesaControlProgramadoIndicator";
 import { InfoIcon, RefreshIcon, UserIcon } from "@/src/components/Icons";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { useEmbroideryStep1Form } from "../hooks/useEmbroideryStep1Form";
@@ -115,32 +116,39 @@ export function EmbroideryOrderStep1({
       <fieldset className="space-y-5">
         {/* ── Pedido ─────────────────────────────────────────────────────── */}
         <form.Field name="pedido">
-          {(field) => (
-            <FormSelect
-              label="Pedido"
-              name={field.name}
-              value={field.state.value}
-              onChange={(event) => {
-                field.handleChange(Number(event.target.value));
-                clearError("pedido");
-              }}
-              onBlur={field.handleBlur}
-              error={getError("pedido")}
-            >
-              <option value="0" disabled>
-                Seleccionar pedido...
-              </option>
-              {pedidoOptions.map((option) => (
-                <option
-                  key={option.value}
-                  value={option.value}
-                  className="bg-white dark:bg-zinc-900 text-slate-900 dark:text-white"
+          {(field) => {
+            const selected = pedidoOptions.find((option) => option.value === field.state.value);
+            return (
+              <div className="space-y-2">
+                <FormSelect
+                  label="Pedido"
+                  name={field.name}
+                  value={field.state.value}
+                  onChange={(event) => {
+                    field.handleChange(Number(event.target.value));
+                    clearError("pedido");
+                  }}
+                  onBlur={field.handleBlur}
+                  error={getError("pedido")}
                 >
-                  {option.label}
-                </option>
-              ))}
-            </FormSelect>
-          )}
+                  <option value="0" disabled>
+                    Seleccionar pedido...
+                  </option>
+                  {pedidoOptions.map((option) => (
+                    <option
+                      key={option.value}
+                      value={option.value}
+                      className="bg-white dark:bg-zinc-900 text-slate-900 dark:text-white"
+                    >
+                      {option.label}
+                    </option>
+                  ))}
+                </FormSelect>
+                {/* Solo informativo: no toca las cantidades del Paso 2. */}
+                {selected && <MesaControlProgramadoIndicator programado={selected.programado} />}
+              </div>
+            );
+          }}
         </form.Field>
 
         <p className="-mt-3 ml-1 text-[11px] text-slate-500">
