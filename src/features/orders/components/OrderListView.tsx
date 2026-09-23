@@ -54,9 +54,8 @@ interface OrderListViewProps {
 
 /**
  * Lista de pedidos compartida por los módulos que consumen `GET
- * /ventas/pedidos/` en modo solo lectura (Almacén, Compras/SCM, Ventas). Misma
- * tabla que la Mesa de Control, pero sin confirmar la fecha del pedido: eso
- * vive únicamente en Mesa de Control.
+ * /ventas/pedidos/` en modo solo lectura (Almacén, Compras/SCM, Ventas), sin
+ * las acciones de edición de Mesa de Control.
  */
 export function OrderListView({ from, params, variant = 'shared' }: OrderListViewProps) {
   const { orders, isLoading, isError, error } = useOrders(params);

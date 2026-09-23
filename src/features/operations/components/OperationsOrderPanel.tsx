@@ -17,7 +17,6 @@ import { useOrders } from '@/src/features/orders/hooks/useOrders';
 import type { PedidoListItem } from '@/src/features/orders/interfaces/order.interface';
 import { isOrderConfirmed } from './OperationsOrderColumns';
 import { PedidoProgramacionDialog } from '@/src/features/orders/components/PedidoProgramacionDialog';
-import { OrderConfirmDateDialog } from './OrderConfirmDateDialog';
 import { OperationsOrderTable } from './OperationsOrderTable';
 
 // Componente principal de la Mesa de Control de Pedidos.
@@ -27,9 +26,8 @@ export function OperationsOrderPanel() {
   const router = useRouter();
   const isRefetching = useIsFetching({ queryKey: ['orders'] }) > 0;
 
-  const [selectedOrderForDate, setSelectedOrderForDate] = useState<PedidoListItem | null>(null);
-  // Mismo patrón que la fecha: el estado vive aquí, no en la celda, para que el
-  // diálogo sobreviva si el renglón sale de la vista filtrada.
+  // El estado del diálogo vive aquí, no en la celda, para que sobreviva si el
+  // renglón sale de la vista filtrada.
   const [selectedOrderForSchedule, setSelectedOrderForSchedule] =
     useState<PedidoListItem | null>(null);
 
@@ -134,24 +132,12 @@ export function OperationsOrderPanel() {
 
       <OperationsOrderTable
         orders={orders}
-        onConfirmDate={setSelectedOrderForDate}
         onViewDetail={handleViewDetail}
         onEditMesaControl={handleEditMesaControl}
         onProgramar={setSelectedOrderForSchedule}
         onRefetch={handleRefetch}
         isRefetching={isRefetching}
       />
-
-      {selectedOrderForDate && (
-        <OrderConfirmDateDialog
-          key={`date-${selectedOrderForDate.id}`}
-          open
-          onOpenChange={(open) => {
-            if (!open) setSelectedOrderForDate(null);
-          }}
-          order={selectedOrderForDate}
-        />
-      )}
 
       {selectedOrderForSchedule && (
         <PedidoProgramacionDialog
