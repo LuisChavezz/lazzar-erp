@@ -6,10 +6,8 @@ import { es } from 'date-fns/locale';
 import { ActionMenu, type ActionMenuItem } from '@/src/components/ActionMenu';
 import {
   CalendarDaysIcon,
-  CheckCircleIcon,
   EditIcon,
   EyeIcon,
-  TasksIcon,
 } from '@/src/components/Icons';
 import type { DataTableFilterConfig } from '@/src/components/DataTable';
 import { formatMoneyValueOrDash } from '@/src/utils/formatCurrency';
@@ -19,11 +17,10 @@ import { canEditPedidoMesaControl, PEDIDO_ESTATUS } from '../constants/pedidoSta
 
 /**
  * Definición ÚNICA de la tabla de pedidos (`GET /ventas/pedidos/`), compartida
- * por los tres módulos que la listan: Mesa de Control, Operaciones de Almacén y
- * Compras. Lo único que los diferencia son dos acciones que solo Mesa de Control
- * expone —"Confirmar fecha" y "Editar"—, cada una activada pasando su callback
- * (`onConfirmDate` / `onEditMesaControl`). El resto de módulos consume la tabla
- * en modo solo lectura.
+ * por los módulos que la listan en modo lectura (Operaciones de Almacén,
+ * Compras). Las acciones de Mesa de Control —"Editar" y "Programar"— se activan
+ * pasando su callback (`onEditMesaControl` / `onProgramar`); sin ellos la tabla
+ * queda de solo lectura.
  */
 
 // Identificador del estado de confirmación, compartido entre la columna y el
@@ -78,14 +75,8 @@ export interface OrderColumnsOptions {
   /** Abre el detalle 360° del pedido. Cada módulo decide su `?from=`. */
   onViewDetail: (order: PedidoListItem) => void;
   /**
-   * Solo Mesa de Control: al pasarlo se añade "Confirmar fecha" al menú de
-   * acciones. Sin él la tabla queda de solo lectura.
-   */
-  onConfirmDate?: (order: PedidoListItem) => void;
-  /**
-   * Solo Mesa de Control: al pasarlo se añade "Editar" al menú. Mismo patrón
-   * opcional que `onConfirmDate` — WMS y Compras consumen esta tabla sin
-   * pasarlo y siguen en solo lectura.
+   * Solo Mesa de Control: al pasarlo se añade "Editar" al menú. WMS y Compras
+   * consumen esta tabla sin pasarlo y siguen en solo lectura.
    */
   onEditMesaControl?: (order: PedidoListItem) => void;
   /**
@@ -98,7 +89,6 @@ export interface OrderColumnsOptions {
 // Fábrica de columnas para cualquier lista de pedidos.
 export function createOrderColumns({
   onViewDetail,
-  onConfirmDate,
   onEditMesaControl,
   onProgramar,
 }: OrderColumnsOptions): ColumnDef<PedidoListItem, unknown>[] {
@@ -218,24 +208,6 @@ export function createOrderColumns({
             onSelect: () => onViewDetail(order),
           },
         ];
-
-        // Solo los pedidos sin fecha de confirmación pueden confirmarse; los ya
-        // confirmados muestran un ítem deshabilitado como referencia visual.
-        if (onConfirmDate) {
-          items.push(
-            isOrderConfirmed(order)
-              ? {
-                  label: 'Fecha confirmada',
-                  icon: CheckCircleIcon,
-                  disabled: true,
-                }
-              : {
-                  label: 'Confirmar fecha',
-                  icon: TasksIcon,
-                  onSelect: () => onConfirmDate(order),
-                },
-          );
-        }
 
         // Edición destructiva: `permission` es la regla de PERMISOS, igual que
         // en `QuoteCardActions`.

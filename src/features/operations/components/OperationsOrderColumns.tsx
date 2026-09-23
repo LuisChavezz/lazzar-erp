@@ -7,11 +7,9 @@ import { ActionMenu, type ActionMenuItem } from "@/src/components/ActionMenu";
 import { ColumnHeaderFilter, type ColumnFilterOption } from "@/src/components/ColumnHeaderFilter";
 import {
   CalendarDaysIcon,
-  CheckCircleIcon,
   ChevronRightIcon,
   EditIcon,
   EyeIcon,
-  TasksIcon,
 } from "@/src/components/Icons";
 import { formatMoneyValueOrDash } from "@/src/utils/formatCurrency";
 import type { PedidoListItem } from "@/src/features/orders/interfaces/order.interface";
@@ -32,7 +30,6 @@ export { isOrderConfirmed };
  * sin columnas aparte de "Estado"/"Acciones".
  */
 export interface OperationsOrderColumnCallbacks {
-  onConfirmDate: (order: PedidoListItem) => void;
   onViewDetail: (order: PedidoListItem) => void;
   onEditMesaControl: (order: PedidoListItem) => void;
   onProgramar: (order: PedidoListItem) => void;
@@ -57,7 +54,6 @@ function hasMeaningfulOc(oc: string | null): oc is string {
 
 const FolioCell = ({
   order,
-  onConfirmDate,
   onViewDetail,
   onEditMesaControl,
   onProgramar,
@@ -68,9 +64,7 @@ const FolioCell = ({
 
   const items: ActionMenuItem[] = [
     { label: "Ver detalle", icon: EyeIcon, onSelect: () => onViewDetail(order) },
-    confirmed
-      ? { label: "Fecha confirmada", icon: CheckCircleIcon, disabled: true }
-      : { label: "Confirmar fecha", icon: TasksIcon, onSelect: () => onConfirmDate(order) },
+    // La fecha de confirmación se edita en la cabecera del detalle del pedido.
     {
       label: "Editar",
       icon: EditIcon,
