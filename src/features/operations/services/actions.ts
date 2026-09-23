@@ -1,19 +1,9 @@
 import { v1_api } from "@/src/api/v1.api";
 import { OperationsQuote } from "../interfaces/operations-quote.interface";
-import { OperationsQuoteStockDetail } from "../interfaces/operations-quote-stock-detail.interface";
 
 
 export const getOperationsQuotes = async (): Promise<OperationsQuote[]> => {
   const response = await v1_api.get<OperationsQuote[]>("/ventas/mesa-control/");
-  return response.data;
-};
-
-export const getOperationsQuoteStockDetails = async (
-  id: number
-): Promise<OperationsQuoteStockDetail[]> => {
-  const response = await v1_api.get<OperationsQuoteStockDetail[]>(
-    `/ventas/mesa-control/${id}/stock-detalle/`
-  );
   return response.data;
 };
 

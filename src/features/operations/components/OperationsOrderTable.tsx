@@ -23,6 +23,7 @@ export function OperationsOrderTable({
   onViewDetail,
   onEditMesaControl,
   onProgramar,
+  onReviewStock,
   onRefetch,
   isRefetching,
   isLoading,
@@ -33,8 +34,13 @@ export function OperationsOrderTable({
   // en cada render del componente padre.
   const columns = useMemo(
     () =>
-      buildOperationsOrderColumns({ onViewDetail, onEditMesaControl, onProgramar }),
-    [onViewDetail, onEditMesaControl, onProgramar],
+      buildOperationsOrderColumns({
+        onViewDetail,
+        onEditMesaControl,
+        onProgramar,
+        onReviewStock,
+      }),
+    [onViewDetail, onEditMesaControl, onProgramar, onReviewStock],
   );
 
   return (
