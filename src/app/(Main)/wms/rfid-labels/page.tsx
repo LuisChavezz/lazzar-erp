@@ -2,5 +2,9 @@ import { RfidLabelsView } from "@/src/features/rfid-labels/components/RfidLabels
 
 // Página de Etiquetas RFID — módulo de WMS
 export default function RfidLabelsPage() {
-  return <RfidLabelsView />;
+  return (
+    <div className="w-full h-[calc(100dvh-13rem)] min-h-0">
+      <RfidLabelsView />
+    </div>
+  );
 }

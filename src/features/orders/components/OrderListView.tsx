@@ -51,6 +51,16 @@ interface OrderListViewProps {
    * mismo en las tres: es el default de `DataTable`.
    */
   variant?: 'shared' | 'sales' | 'procurement';
+  /**
+   * Cuando es `true`, el cuerpo de la tabla LLENA su contenedor en vez de
+   * reservar un alto fijo sin importar cuántas filas haya — evita el scroll
+   * de página en listas cortas. Requiere que el padre inmediato le dé una
+   * altura acotada (ver `wms/orders/page.tsx`). Siempre `true` para
+   * `variant="procurement"` (no hace falta pasarlo ahí); por defecto
+   * `false` para `"shared"`/`"sales"`, cuyos puntos de montaje no envuelven
+   * este componente en un contenedor de altura acotada.
+   */
+  fillHeight?: boolean;
 }
 
 /**
@@ -58,7 +68,12 @@ interface OrderListViewProps {
  * /ventas/pedidos/` en modo solo lectura (Almacén, Compras/SCM, Ventas), sin
  * las acciones de edición de Mesa de Control.
  */
-export function OrderListView({ from, params, variant = 'shared' }: OrderListViewProps) {
+export function OrderListView({
+  from,
+  params,
+  variant = 'shared',
+  fillHeight = false,
+}: OrderListViewProps) {
   const { orders, isLoading, isError, error, hasLoaded } = useOrders(params);
   // Solo un error SIN datos cargados sustituye las filas; un refetch fallido
   // conserva la tabla y avisa por toast (ver `useOrders`).
@@ -81,6 +96,9 @@ export function OrderListView({ from, params, variant = 'shared' }: OrderListVie
   const isSales = variant === 'sales';
   const isProcurement = variant === 'procurement';
   const isCompactVariant = isSales || isProcurement;
+  // `variant="procurement"` siempre lo activa; el resto lo decide el
+  // `fillHeight` que reciba la vista (ver doc de la prop).
+  const useFillHeight = isProcurement || fillHeight;
   const columns = isSales
     ? createSalesOrderColumns({ onViewDetail: handleViewDetail })
     : isProcurement
@@ -160,13 +178,12 @@ export function OrderListView({ from, params, variant = 'shared' }: OrderListVie
       // marco de la tabla).
       filterConfig={isCompactVariant ? undefined : sharedOrderFilterConfig}
       actionButton={isSales ? confirmationLegend : exportButtons}
-      // Solo Compras: el cuerpo de la tabla llena su contenedor (que el
-      // `page.tsx` de esa ruta acota a la altura del viewport) en vez de
-      // reservar un alto fijo sin importar cuántas filas haya — evita el
-      // scroll de página que molestaba en listas cortas. Ventas/Almacén NO
-      // envuelven este componente en un contenedor de altura acotada, así
-      // que activarlo ahí colapsaría la tabla a 0px.
-      fillHeight={isProcurement}
+      // El cuerpo de la tabla llena su contenedor (que el `page.tsx` de esa
+      // ruta acota a la altura del viewport) en vez de reservar un alto fijo
+      // sin importar cuántas filas haya — evita el scroll de página en
+      // listas cortas. Solo cuando el punto de montaje envuelve este
+      // componente en un contenedor de altura acotada (ver `useFillHeight`).
+      fillHeight={useFillHeight}
       onVisibleColumnsChange={isProcurement ? setVisibleColumns : undefined}
       isLoading={isLoading}
       isError={showError}
@@ -180,5 +197,5 @@ export function OrderListView({ from, params, variant = 'shared' }: OrderListVie
     />
   );
 
-  return isProcurement ? <div className="h-full flex flex-col min-h-0">{table}</div> : table;
+  return useFillHeight ? <div className="h-full flex flex-col min-h-0">{table}</div> : table;
 }

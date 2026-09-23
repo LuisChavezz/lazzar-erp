@@ -3,15 +3,7 @@ import { RfidScannerView } from "@/src/features/rfid-scanner/components/RfidScan
 // Página de Scanner RFID — módulo de WMS
 export default function RfidScannerPage() {
   return (
-    <div className="w-full space-y-8">
-      <div>
-        <p className="text-slate-500 dark:text-slate-400 mt-1">
-          Monitor en vivo del lector RFID: las etiquetas que pasan frente a la
-          antena se muestran aquí conforme llegan, indicando si corresponden a
-          una impresión registrada en el ERP.
-        </p>
-      </div>
-
+    <div className="w-full h-[calc(100dvh-13rem)] min-h-0">
       <RfidScannerView />
     </div>
   );

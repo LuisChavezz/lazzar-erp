@@ -37,30 +37,43 @@ export function PackingView() {
   const showError = isInitialLoadError(isError, hasLoaded);
 
   return (
-    <div className="space-y-6">
+    <div className="h-full flex flex-col min-h-0 space-y-6">
       {/* KPIs: ocultos durante la carga INICIAL y ante un error de carga —no
           hay datos que resumir—, igual que `PickingStats` en `PickingView`.
           `packings` arranca en `[]`, así que sin este gate las tarjetas
-          mostrarían ceros que se leerían como datos reales. */}
-      {!isLoading && !showError && <PackingStats items={packings} />}
+          mostrarían ceros que se leerían como datos reales. `shrink-0`: solo
+          la tabla de abajo debe crecer para llenar el espacio disponible. */}
+      {!isLoading && !showError && (
+        <div className="shrink-0">
+          <PackingStats items={packings} />
+        </div>
+      )}
 
-      <DataTable
-        columns={packingColumns}
-        data={packings}
-        searchPlaceholder="Buscar folio, picking, pedido u operador..."
-        getRowId={(row) => String(row.id)}
-        onRefetch={refetch}
-        isRefetching={isFetching}
-        emptyMessage="No hay packings registrados."
-        // Ver el listado exige `R-WMS-PACKING` (ver `routePermissions`); dar de
-        // alta exige además `C-WMS-PACKING`.
-        actionButton={canCreate ? <PackingForm /> : undefined}
-        isLoading={isLoading}
-        isError={showError}
-        errorTitle="Error al cargar los packings"
-        errorMessage={extractErrorMessage(error, "No se pudo cargar la información.")}
-        loadingAriaLabel="Cargando packings"
-      />
+      {/* `min-h-120`: piso de la tabla cuando la fila de KPIs deja poco
+          espacio remanente — sin esto, `flex-1` podía encoger la tabla a un
+          puñado de filas visibles en viewports más cortos. */}
+      <div className="flex-1 min-h-120 flex flex-col">
+        <DataTable
+          columns={packingColumns}
+          data={packings}
+          searchPlaceholder="Buscar folio, picking, pedido u operador..."
+          getRowId={(row) => String(row.id)}
+          // El cuerpo llena el contenedor de altura acotada que da
+          // `wms/packing/page.tsx`, en vez de reservar un alto fijo.
+          fillHeight
+          onRefetch={refetch}
+          isRefetching={isFetching}
+          emptyMessage="No hay packings registrados."
+          // Ver el listado exige `R-WMS-PACKING` (ver `routePermissions`); dar de
+          // alta exige además `C-WMS-PACKING`.
+          actionButton={canCreate ? <PackingForm /> : undefined}
+          isLoading={isLoading}
+          isError={showError}
+          errorTitle="Error al cargar los packings"
+          errorMessage={extractErrorMessage(error, "No se pudo cargar la información.")}
+          loadingAriaLabel="Cargando packings"
+        />
+      </div>
     </div>
   );
 }

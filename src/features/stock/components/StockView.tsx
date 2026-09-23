@@ -207,9 +207,10 @@ export function StockView() {
   }
 
   return (
-    <div className="space-y-6">
-      {/* ── Barra de filtros (siempre visible, incluso en carga/error) ───── */}
-      <div className="flex flex-wrap items-center gap-3">
+    <div className="h-full flex flex-col min-h-0 space-y-6">
+      {/* ── Barra de filtros (siempre visible, incluso en carga/error) ─────
+          `shrink-0`: solo la tabla de abajo debe crecer. */}
+      <div className="flex flex-wrap items-center gap-3 shrink-0">
         <WarehouseFilter value={almacenId} onChange={handleAlmacenChange} />
       </div>
 
@@ -218,7 +219,7 @@ export function StockView() {
           visible. `animate-stock-reveal` da la entrada sutil al elegir un
           almacén; el wrapper NO va keyeado por almacén, así que al cambiar
           entre dos almacenes válidos permanece montado y no se repite. */}
-      <div className="space-y-6 animate-stock-reveal">
+      <div className="flex-1 min-h-0 flex flex-col space-y-6 animate-stock-reveal">
         {/* ── KPIs calculados sobre los datos ya filtrados por almacén ────
             Ocultos durante la carga INICIAL (`isLoading`, sin datos ni
             placeholder): antes se mostraban con existencias en cero (p. ej.
@@ -227,13 +228,15 @@ export function StockView() {
             isPlaceholderData`, con los datos del almacén anterior como
             placeholder) `isLoading` es false, así que siguen visibles pero
             atenuados, igual que la tabla, en vez de mostrar en silencio las
-            cifras del almacén anterior sin ningún indicador visual. */}
+            cifras del almacén anterior sin ningún indicador visual.
+            `shrink-0`: solo la tabla debe crecer. */}
         {!isLoading && !showError && (
           <div
             className={
-              isSwitchingAlmacen
+              "shrink-0 " +
+              (isSwitchingAlmacen
                 ? "blur-sm pointer-events-none select-none transition-[filter] duration-200"
-                : "transition-[filter] duration-200"
+                : "transition-[filter] duration-200")
             }
           >
             <StockStats items={stockItems} maxStock={maxStock} />
@@ -245,27 +248,34 @@ export function StockView() {
             `queryKey` de `useStockItems` ya incluye el almacén y trae los
             datos correctos sin remontar la tabla (lo que antes borraba
             sort/búsqueda/filtros/columnas). Solo la paginación se reinicia
-            a la página 1, vía `paginationResetKey`. */}
-        <DataTable
-          columns={columns}
-          data={enrichedData}
-          searchPlaceholder="Buscar por producto o SKU..."
-          filterConfig={stockFilterConfig}
-          onRefetch={async () => {
-            await Promise.all([refetch(), refetchWarehouses()]);
-          }}
-          isRefetching={isFetching}
-          isLoadingOverlay={isSwitchingAlmacen}
-          loadingTitle="Actualizando existencias"
-          loadingMessage="Estamos cargando las existencias del almacén seleccionado."
-          paginationResetKey={almacenId}
-          isLoading={isLoading}
-          loadingAriaLabel="Cargando existencias"
-          isError={showError}
-          errorTitle="Error al cargar existencias"
-          errorMessage={extractErrorMessage(error, "No se pudo cargar la información.")}
-          onErrorRetry={() => void refetch()}
-        />
+            a la página 1, vía `paginationResetKey`. `fillHeight`: el cuerpo
+            llena el espacio restante del contenedor de altura acotada que
+            da `wms/stock/page.tsx`, en vez de reservar un alto fijo.
+            `min-h-120`: piso de la tabla cuando el filtro de almacén + los
+            KPIs dejan poco espacio remanente. */}
+        <div className="flex-1 min-h-120 flex flex-col">
+          <DataTable
+            columns={columns}
+            data={enrichedData}
+            searchPlaceholder="Buscar por producto o SKU..."
+            filterConfig={stockFilterConfig}
+            fillHeight
+            onRefetch={async () => {
+              await Promise.all([refetch(), refetchWarehouses()]);
+            }}
+            isRefetching={isFetching}
+            isLoadingOverlay={isSwitchingAlmacen}
+            loadingTitle="Actualizando existencias"
+            loadingMessage="Estamos cargando las existencias del almacén seleccionado."
+            paginationResetKey={almacenId}
+            isLoading={isLoading}
+            loadingAriaLabel="Cargando existencias"
+            isError={showError}
+            errorTitle="Error al cargar existencias"
+            errorMessage={extractErrorMessage(error, "No se pudo cargar la información.")}
+            onErrorRetry={() => void refetch()}
+          />
+        </div>
       </div>
 
       <SkuInfoDialog open={skuInfoOpen} onOpenChange={setSkuInfoOpen} />

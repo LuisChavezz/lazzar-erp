@@ -34,7 +34,7 @@ export function ReceiptView() {
   const columns = useMemo(() => receiptColumns, []);
 
   return (
-    <div className="space-y-6">
+    <div className="h-full flex flex-col min-h-0">
       {/* ── KPIs — pending implementation ─────────────────────────────── */}
 
       {/* ── Table ──────────────────────────────────────────────────────────
@@ -42,11 +42,14 @@ export function ReceiptView() {
           toolbar (con "Nueva Recepción") permanece disponible. El estado de
           error ofrece "Reintentar" vía `onErrorRetry` —misma capacidad que el
           `ErrorDisplay` que antes se mostraba a pantalla completa, pero
-          conservando el toolbar—. */}
+          conservando el toolbar—. `fillHeight`: el cuerpo llena el
+          contenedor de altura acotada que da `wms/receipts/page.tsx`, en vez
+          de reservar un alto fijo sin importar cuántas filas haya. */}
       <DataTable
         columns={columns}
         data={receipts}
         searchPlaceholder="Buscar recepción..."
+        fillHeight
         onRefetch={refetch}
         isRefetching={isFetching}
         isLoading={isLoading}

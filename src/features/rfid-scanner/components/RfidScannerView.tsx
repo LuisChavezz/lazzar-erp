@@ -82,14 +82,25 @@ export function RfidScannerView() {
   };
 
   return (
-    <div className="space-y-6">
-      <RfidScannerStats stats={stats} isLoading={isStatsLoading} />
+    <div className="h-full flex flex-col min-h-0 space-y-6">
+      {/* `shrink-0`: solo la tabla de abajo debe crecer para llenar el
+          espacio disponible. */}
+      <div className="shrink-0">
+        <RfidScannerStats stats={stats} isLoading={isStatsLoading} />
+      </div>
 
+      {/* `min-h-120`: piso de la tabla cuando la barra de estado del lector
+          deja poco espacio remanente — sin esto, `flex-1` podía encoger la
+          tabla a un puñado de filas visibles en viewports más cortos. */}
+      <div className="flex-1 min-h-120 flex flex-col">
       <DataTable
         columns={rfidScanColumns}
         data={scans}
         searchPlaceholder="Buscar EPC, SKU, color, talla o folio..."
         getRowId={(row) => String(row.id)}
+        // El cuerpo llena el contenedor de altura acotada que da
+        // `wms/rfid-scanner/page.tsx`, en vez de reservar un alto fijo.
+        fillHeight
         onRefetch={handleRefetch}
         isRefetching={isManualRefetching}
         actionButton={
@@ -149,6 +160,7 @@ export function RfidScannerView() {
         onErrorRetry={refetch}
         loadingAriaLabel="Cargando lecturas"
       />
+      </div>
     </div>
   );
 }
