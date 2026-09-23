@@ -756,13 +756,19 @@ export function usePedidoMesaControlEditForm(pedidoId: number) {
    * esa lectura falla, tampoco se cae a la caché: `pedidoError` lleva a la
    * pantalla de reintento.
    *
-   * La puerta vale SOLO para esa primera lectura. `hasFreshPedido` es un
-   * cerrojo: una vez abierto no se vuelve a cerrar. Sin él, un refetch posterior
-   * fallido (una invalidación, un reconnect) —que en TanStack v5 pone `error`
-   * pero CONSERVA `data`— dejaba `pedidoData` en `undefined` y cambiaba el
-   * formulario por la pantalla de reintento, perdiendo lo capturado sin guardar.
-   * Ya hidratado, ese error se ignora: el dato anterior sigue siendo válido y el
-   * guardado lo vuelve a validar el backend.
+   * La puerta vale SOLO para esa primera lectura. `hydrationPedido` es un
+   * cerrojo que guarda el pedido de esa lectura y ya no cambia:
+   *
+   * - Un refetch posterior FALLIDO (una invalidación, un reconnect) —que en
+   *   TanStack v5 pone `error` pero CONSERVA `data`— dejaba `pedidoData` en
+   *   `undefined` y cambiaba el formulario por la pantalla de reintento,
+   *   perdiendo lo capturado sin guardar. Ya hidratado, ese error se ignora.
+   * - Un refetch posterior EXITOSO no se mezcla con lo hidratado: el formulario
+   *   se hidrata UNA vez y el payload arrastra valores del pedido (`sucursal`,
+   *   `ieps`, `descuento_global`, los `id` de servicios extra, los renglones
+   *   para las tallas). Leídos de otra versión, el guardado mezclaría dos
+   *   pedidos. Todo sale del MISMO snapshot con el que se hidrató; lo que haya
+   *   cambiado en el servidor lo vuelve a validar el backend (409 incluido).
    */
   const {
     data: cachedOrFreshPedido,
@@ -772,13 +778,14 @@ export function usePedidoMesaControlEditForm(pedidoId: number) {
     error: pedidoQueryError,
     refetch: refetchPedido,
   } = usePedidoDetail(pedidoId, { refetchOnMount: "always" });
-  const [hasFreshPedido, setHasFreshPedido] = useState(false);
+  const [hydrationPedido, setHydrationPedido] = useState<PedidoDetail | null>(null);
   // Ajuste de estado derivado EN RENDER (patrón de React para derivar de una
   // prop sin `useEffect`), el mismo que usa `useInlineDraft`.
-  if (!hasFreshPedido && isPedidoFetchedAfterMount && !pedidoQueryError && cachedOrFreshPedido) {
-    setHasFreshPedido(true);
+  if (!hydrationPedido && isPedidoFetchedAfterMount && !pedidoQueryError && cachedOrFreshPedido) {
+    setHydrationPedido(cachedOrFreshPedido);
   }
-  const pedidoData = hasFreshPedido ? cachedOrFreshPedido : undefined;
+  const hasFreshPedido = hydrationPedido !== null;
+  const pedidoData = hydrationPedido ?? undefined;
   const pedidoError = hasFreshPedido ? null : pedidoQueryError;
 
   /**
