@@ -8,8 +8,9 @@ import {
   ProductVariantsIcon,
 } from "@/src/components/Icons";
 import { DataTable } from "@/src/components/DataTable";
-import { ErrorState } from "@/src/components/ErrorState";
+import { useHasLoadedQuery } from "@/src/hooks/useHasLoadedQuery";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
+import { isInitialLoadError } from "@/src/utils/isInitialLoadError";
 import KpiGrid, { type KpiItem } from "@/src/components/KpiGrid";
 import { useWarehouses } from "@/src/features/warehouses/hooks/useWarehouses";
 import { useStockItems } from "../hooks/useStockItems";
@@ -124,6 +125,7 @@ export function StockView() {
   // El fetch se activa solo cuando hay un almacén seleccionado y no se sabe
   // todavía que sea inválido: evita consultar existencias con un almacen_id
   // que no corresponde a ningún almacén real o activo.
+  const stockQuery = useStockItems(filters, { enabled: hasAlmacen && !isAlmacenInvalid });
   const {
     data: stockItems = [],
     isLoading,
@@ -132,7 +134,17 @@ export function StockView() {
     refetch,
     isFetching,
     isPlaceholderData,
-  } = useStockItems(filters, { enabled: hasAlmacen && !isAlmacenInvalid });
+  } = stockQuery;
+
+  // Solo la respuesta real de ESTE almacén cuenta como "cargado", no el
+  // placeholder del anterior (mismo criterio que `useCustomer`). Un refetch
+  // fallido con datos conserva la tabla y avisa por toast.
+  const { hasLoaded } = useHasLoadedQuery({
+    data: isPlaceholderData ? undefined : stockQuery.data,
+    isError,
+    toastId: "stock-items-refetch-error",
+  });
+  const showError = isInitialLoadError(isError, hasLoaded);
 
   // Cambio de almacén en curso: `keepPreviousData` sigue mostrando los datos
   // del almacén anterior mientras llega la nueva página. Distinto de
@@ -201,78 +213,60 @@ export function StockView() {
         <WarehouseFilter value={almacenId} onChange={handleAlmacenChange} />
       </div>
 
-      {/* El estado de error (con botón "Reintentar") es una capacidad distinta
-          del `ErrorState` interno de `DataTable` (que no ofrece retry); se
-          conserva tal cual en vez de migrarse a las props `isError`/
-          `errorTitle` de `DataTable`. Solo el estado de carga se migra a la
-          prop `isLoading`, para que la tabla (con sus KPIs) permanezca
-          montada mientras carga en lugar de un `Loader` a pantalla completa. */}
-      {isError ? (
-        <div className="space-y-3">
-          <ErrorState
-            title="Error al cargar existencias"
-            message={extractErrorMessage(error, "No se pudo cargar la información.")}
-          />
-          <div className="flex justify-center">
-            <button
-              type="button"
-              onClick={() => refetch()}
-              className="inline-flex items-center gap-1 text-xs font-medium text-red-600 dark:text-red-400 hover:underline"
-            >
-              Reintentar
-            </button>
+      {/* `DataTable` se monta SIEMPRE: carga y error se muestran en su área de
+          datos (con "Reintentar" vía `onErrorRetry`), y el toolbar sigue
+          visible. `animate-stock-reveal` da la entrada sutil al elegir un
+          almacén; el wrapper NO va keyeado por almacén, así que al cambiar
+          entre dos almacenes válidos permanece montado y no se repite. */}
+      <div className="space-y-6 animate-stock-reveal">
+        {/* ── KPIs calculados sobre los datos ya filtrados por almacén ────
+            Ocultos durante la carga INICIAL (`isLoading`, sin datos ni
+            placeholder): antes se mostraban con existencias en cero (p. ej.
+            "Total en Inventario: 0") hasta que llegaba la respuesta. En un
+            cambio de almacén (`isSwitchingAlmacen` = `isFetching &&
+            isPlaceholderData`, con los datos del almacén anterior como
+            placeholder) `isLoading` es false, así que siguen visibles pero
+            atenuados, igual que la tabla, en vez de mostrar en silencio las
+            cifras del almacén anterior sin ningún indicador visual. */}
+        {!isLoading && !showError && (
+          <div
+            className={
+              isSwitchingAlmacen
+                ? "blur-sm pointer-events-none select-none transition-[filter] duration-200"
+                : "transition-[filter] duration-200"
+            }
+          >
+            <StockStats items={stockItems} maxStock={maxStock} />
           </div>
-        </div>
-      ) : (
-        // `animate-stock-reveal` da la entrada sutil al elegir un almacén.
-        // El wrapper NO va keyeado por almacén, así que al cambiar entre dos
-        // almacenes válidos permanece montado y la animación no se repite.
-        <div className="space-y-6 animate-stock-reveal">
-          {/* ── KPIs calculados sobre los datos ya filtrados por almacén ────
-              Ocultos durante la carga INICIAL (`isLoading`, sin datos ni
-              placeholder): antes se mostraban con existencias en cero (p. ej.
-              "Total en Inventario: 0") hasta que llegaba la respuesta. En un
-              cambio de almacén (`isSwitchingAlmacen` = `isFetching &&
-              isPlaceholderData`, con los datos del almacén anterior como
-              placeholder) `isLoading` es false, así que siguen visibles pero
-              atenuados, igual que la tabla, en vez de mostrar en silencio las
-              cifras del almacén anterior sin ningún indicador visual. */}
-          {!isLoading && (
-            <div
-              className={
-                isSwitchingAlmacen
-                  ? "blur-sm pointer-events-none select-none transition-[filter] duration-200"
-                  : "transition-[filter] duration-200"
-              }
-            >
-              <StockStats items={stockItems} maxStock={maxStock} />
-            </div>
-          )}
+        )}
 
-          {/* ── Tabla de existencias ───────────────────────────────────────
-              El componente permanece montado al cambiar de almacén: el
-              `queryKey` de `useStockItems` ya incluye el almacén y trae los
-              datos correctos sin remontar la tabla (lo que antes borraba
-              sort/búsqueda/filtros/columnas). Solo la paginación se reinicia
-              a la página 1, vía `paginationResetKey`. */}
-          <DataTable
-            columns={columns}
-            data={enrichedData}
-            searchPlaceholder="Buscar por producto o SKU..."
-            filterConfig={stockFilterConfig}
-            onRefetch={async () => {
-              await Promise.all([refetch(), refetchWarehouses()]);
-            }}
-            isRefetching={isFetching}
-            isLoadingOverlay={isSwitchingAlmacen}
-            loadingTitle="Actualizando existencias"
-            loadingMessage="Estamos cargando las existencias del almacén seleccionado."
-            paginationResetKey={almacenId}
-            isLoading={isLoading}
-            loadingAriaLabel="Cargando existencias"
-          />
-        </div>
-      )}
+        {/* ── Tabla de existencias ───────────────────────────────────────
+            El componente permanece montado al cambiar de almacén: el
+            `queryKey` de `useStockItems` ya incluye el almacén y trae los
+            datos correctos sin remontar la tabla (lo que antes borraba
+            sort/búsqueda/filtros/columnas). Solo la paginación se reinicia
+            a la página 1, vía `paginationResetKey`. */}
+        <DataTable
+          columns={columns}
+          data={enrichedData}
+          searchPlaceholder="Buscar por producto o SKU..."
+          filterConfig={stockFilterConfig}
+          onRefetch={async () => {
+            await Promise.all([refetch(), refetchWarehouses()]);
+          }}
+          isRefetching={isFetching}
+          isLoadingOverlay={isSwitchingAlmacen}
+          loadingTitle="Actualizando existencias"
+          loadingMessage="Estamos cargando las existencias del almacén seleccionado."
+          paginationResetKey={almacenId}
+          isLoading={isLoading}
+          loadingAriaLabel="Cargando existencias"
+          isError={showError}
+          errorTitle="Error al cargar existencias"
+          errorMessage={extractErrorMessage(error, "No se pudo cargar la información.")}
+          onErrorRetry={() => void refetch()}
+        />
+      </div>
 
       <SkuInfoDialog open={skuInfoOpen} onOpenChange={setSkuInfoOpen} />
     </div>
