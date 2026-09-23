@@ -4,15 +4,15 @@ import type { ReactNode } from "react";
 import { DropdownMenu } from "@radix-ui/themes";
 import { ChevronDownIcon, RefreshIcon } from "@/src/components/Icons";
 
-export interface EmbroideryInlineSelectOption {
+export interface InlineSelectOption {
   value: string;
   label: string;
   /** Clase del punto de color, para opciones que se pintan como badge. */
   dot?: string;
 }
 
-interface EmbroideryInlineSelectProps {
-  options: EmbroideryInlineSelectOption[];
+interface InlineSelectProps {
+  options: InlineSelectOption[];
   onSelect: (value: string) => void;
   /** Contenido del disparador (badge o texto); el chevron lo pone este componente. */
   children: ReactNode;
@@ -26,17 +26,18 @@ interface EmbroideryInlineSelectProps {
 }
 
 /**
- * Disparador + menú para editar UN campo de la ficha en línea.
+ * Disparador + menú para editar UN campo de una ficha de detalle en línea:
+ * guarda al elegir una opción.
  *
- * Extrae el andamiaje de Radix que comparten los selectores inline del módulo
- * (prioridad, operador) para no triplicarlo. `EmbroideryStatusSelect` mantiene
- * el suyo propio: su disparador degrada a badge de solo lectura según las
+ * Nació en la orden de bordado (operador, proveedor) y lo usa también la
+ * cabecera del pedido (clasificación). `EmbroideryStatusSelect` mantiene
+ * su propio andamiaje: su disparador degrada a badge de solo lectura según las
  * transiciones disponibles, una regla que no aplica a los demás campos.
  *
  * El aspecto lo decide el consumidor vía `triggerClassName` + `children`; aquí
  * solo viven el chevron, el estado pendiente y la lista.
  */
-export function EmbroideryInlineSelect({
+export function InlineSelect({
   options,
   onSelect,
   children,
@@ -44,7 +45,7 @@ export function EmbroideryInlineSelect({
   triggerClassName = "",
   isPending = false,
   emptyLabel = "Sin opciones disponibles",
-}: EmbroideryInlineSelectProps) {
+}: InlineSelectProps) {
   return (
     <DropdownMenu.Root>
       <DropdownMenu.Trigger>

@@ -1,7 +1,7 @@
 "use client";
 
 import { FormInput } from "@/src/components/FormInput";
-import { useInlineDraft } from "../hooks/useInlineDraft";
+import { useInlineDraft } from "@/src/hooks/useInlineDraft";
 
 /** Techo de longitud del nombre de máquina — texto libre, sin otra validación. */
 const MAX_LENGTH = 100;

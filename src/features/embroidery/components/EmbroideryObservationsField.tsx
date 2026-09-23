@@ -1,7 +1,7 @@
 "use client";
 
 import { FormTextarea } from "@/src/components/FormTextarea";
-import { useInlineDraft } from "../hooks/useInlineDraft";
+import { useInlineDraft } from "@/src/hooks/useInlineDraft";
 
 /**
  * Tope blando. `observaciones` es un `TextField` en el backend (sin límite de

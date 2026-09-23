@@ -2,7 +2,7 @@
 
 import { useUsers } from "@/src/features/users/hooks/useUsers";
 import type { User } from "@/src/features/users/interfaces/user.interface";
-import { EmbroideryInlineSelect } from "./EmbroideryInlineSelect";
+import { InlineSelect } from "@/src/components/InlineSelect";
 
 /**
  * Nombre humano de un usuario, con el MISMO criterio que el backend
@@ -47,7 +47,7 @@ export function EmbroideryOperatorSelect({
     .sort((a, b) => a.label.localeCompare(b.label, "es"));
 
   return (
-    <EmbroideryInlineSelect
+    <InlineSelect
       options={options}
       onSelect={(value) => onOperatorChange(Number(value))}
       ariaLabel="Cambiar operador asignado"
@@ -60,6 +60,6 @@ export function EmbroideryOperatorSelect({
       ) : (
         <span className="italic text-slate-400 dark:text-slate-500">Sin asignar</span>
       )}
-    </EmbroideryInlineSelect>
+    </InlineSelect>
   );
 }
