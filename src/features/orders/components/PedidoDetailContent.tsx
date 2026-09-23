@@ -35,12 +35,16 @@ import { formatShortDate, parseLocalDate } from "@/src/utils/formatDate";
 import { useSatInfo } from "@/src/features/sat/hooks/useSatInfo";
 import { usePedidoDetail } from "../hooks/usePedidoDetail";
 import { useRecomprarPedido } from "../hooks/useRecomprarPedido";
+import { useUpdatePedidoHeader } from "../hooks/useUpdatePedidoHeader";
+import { PedidoClasificacionSelect } from "./PedidoClasificacionSelect";
+import { PedidoFechaConfirmacionField } from "./PedidoFechaConfirmacionField";
 import {
   canEditPedidoMesaControl,
   canRecomprarPedido,
   getPedidoClasificacionLabel,
   getPedidoEstatusConfig,
   getTipoPedidoConfig,
+  isPedidoTerminal,
   ORIGIN_BADGE_CLASS,
   type BadgeConfig,
 } from "../constants/pedidoStatus";
@@ -983,6 +987,11 @@ export function PedidoDetailContent({ pedidoId, from }: PedidoDetailContentProps
     hasPermission("E-CRM-COTIZACIONES", session?.user);
   const router = useRouter();
   const { mutateAsync: recomprar, isPending: isRecomprando } = useRecomprarPedido();
+  // Edición en línea de la cabecera: UNA mutación por campo, para que cada
+  // control lleve su propio pendiente (editar ambos seguidos los muestra en
+  // vuelo por separado, y ninguno se re-habilita por el guardado del otro).
+  const updateFechaConfirmacion = useUpdatePedidoHeader();
+  const updateClasificacion = useUpdatePedidoHeader();
   const [isRecompraConfirmOpen, setIsRecompraConfirmOpen] = useState(false);
   // El endpoint NO es idempotente. `isPending` llega un render tarde, así que
   // un doble clic rápido lo rebasaría: el candado síncrono es el ref, y solo
@@ -1081,6 +1090,10 @@ export function PedidoDetailContent({ pedidoId, from }: PedidoDetailContentProps
   const estatusCfg = getPedidoEstatusConfig(data.estatus);
   const tipoCfg = getTipoPedidoConfig(data.tipo_pedido);
   const showAccounting = canSeeAccounting(data);
+  // Edición en línea de la cabecera: permiso de Mesa de Control y pedido no
+  // terminado. Independiente de `canEditPedidoMesaControl`, que gobierna el
+  // botón Editar (guardado destructivo) con su propia regla.
+  const canEditHeader = canEditMesaControl && !isPedidoTerminal(data.estatus);
   const totalPiezas = data.detalles.reduce(
     (sum, linea) => sum + (linea.cantidad_total ?? 0),
     0,
@@ -1186,13 +1199,47 @@ export function PedidoDetailContent({ pedidoId, from }: PedidoDetailContentProps
 
           <HeaderStatRow>
             <HeaderStat label="Creado">{formatShortDate(data.created_at)}</HeaderStat>
+            {/* Fecha confirmada y Clasificación se editan en línea con
+                `E-MESACONTROL-PEDIDOS` y solo si el pedido no está en un
+                estatus final (la frontera real es el backend: exige mesa de
+                control y responde 400 `permiso`). Cada control manda SOLO su
+                clave en el PATCH. Si no, texto plano. */}
             <HeaderStat label="Fecha confirmada">
-              {data.fecha_confirmacion ? formatShortDate(data.fecha_confirmacion) : "—"}
+              {canEditHeader ? (
+                <PedidoFechaConfirmacionField
+                  value={data.fecha_confirmacion}
+                  // `mutateAsync`: si el guardado falla, el campo vuelve solo
+                  // al valor del servidor (`useInlineDraft`).
+                  onSave={(fecha_confirmacion) =>
+                    updateFechaConfirmacion.mutateAsync({
+                      pedidoId: data.id,
+                      payload: { fecha_confirmacion },
+                    })
+                  }
+                  isPending={updateFechaConfirmacion.isPending}
+                />
+              ) : data.fecha_confirmacion ? (
+                formatShortDate(data.fecha_confirmacion)
+              ) : (
+                "—"
+              )}
             </HeaderStat>
-            {/* Texto plano: `PEDIDO_CLASIFICACION_CONFIG` solo define etiquetas,
-                no color de badge. */}
+            {/* Texto plano en solo lectura: `PEDIDO_CLASIFICACION_CONFIG` solo
+                define etiquetas, no color de badge. */}
             <HeaderStat label="Clasificación">
-              {data.clasificacion ? getPedidoClasificacionLabel(data.clasificacion) : "—"}
+              {canEditHeader ? (
+                <PedidoClasificacionSelect
+                  value={data.clasificacion}
+                  onChange={(clasificacion) =>
+                    updateClasificacion.mutate({ pedidoId: data.id, payload: { clasificacion } })
+                  }
+                  isPending={updateClasificacion.isPending}
+                />
+              ) : data.clasificacion ? (
+                getPedidoClasificacionLabel(data.clasificacion)
+              ) : (
+                "—"
+              )}
             </HeaderStat>
             <HeaderStat label="Entrega estimada">
               {formatEntregaEstimada(data.fecha_entrega_min, data.fecha_entrega_max)}

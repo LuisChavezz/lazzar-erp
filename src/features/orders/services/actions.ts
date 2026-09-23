@@ -10,6 +10,7 @@ import type {
   PedidoProgramarResponse,
 } from "../interfaces/pedido-programacion.interface";
 import type { PedidoRecompraResponse } from "../interfaces/pedido-recompra.interface";
+import type { PedidoHeaderUpdate } from "../interfaces/pedido-update.interface";
 
 
 /** Filtros de query string aceptados por `GET /ventas/pedidos/`. */
@@ -34,6 +35,21 @@ export const getOrders = async (params?: OrdersQueryParams): Promise<PedidoListI
 export const getPedidoDetail = async (id: number): Promise<PedidoDetail> => {
   const response = await v1_api.get<PedidoDetail>(`/ventas/pedidos/${id}/`);
   return response.data;
+};
+
+/**
+ * Edición parcial de la cabecera de un pedido (`PATCH /ventas/pedidos/{id}/`).
+ * Manda SOLO las claves recibidas (ver `PedidoHeaderUpdate`).
+ *
+ * La respuesta NO se devuelve a propósito: es el detalle SIN el filtro de
+ * campos contables que aplica el `GET`, así que usarla como caché mostraría
+ * totales a quien no debe verlos. El hook invalida y vuelve a leer.
+ */
+export const updatePedidoHeader = async (
+  id: number,
+  payload: PedidoHeaderUpdate,
+): Promise<void> => {
+  await v1_api.patch(`/ventas/pedidos/${id}/`, payload);
 };
 
 /**

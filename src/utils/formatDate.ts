@@ -26,12 +26,34 @@ export const parseLocalDate = (
  * No usa `toISOString()`: ese devuelve el día en UTC, que en México (UTC-6) a
  * partir de las 18:00 locales ya es mañana.
  */
-export const getLocalTodayDate = (): string => {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, "0");
-  const day = String(now.getDate()).padStart(2, "0");
+export const getLocalTodayDate = (): string => toLocalDateKey(new Date());
+
+/** Día calendario LOCAL de un `Date` como "yyyy-mm-dd" (sin pasar por UTC). */
+export const toLocalDateKey = (date: Date): string => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
+};
+
+/**
+ * Medianoche LOCAL de un día "yyyy-mm-dd" como datetime ISO con offset
+ * explícito, p. ej. "2026-09-23T00:00:00-06:00".
+ *
+ * Ni `toISOString()` (convierte a UTC: "2026-09-23T06:00:00Z", que un backend
+ * que guarde fecha en otra zona puede leer como otro día) ni la fecha pelada
+ * (el campo es datetime). El offset es el que rige ESE día en la zona del
+ * navegador, no el de hoy, por si la zona tuviera horario de verano.
+ * Devuelve `null` si el valor no es un día válido.
+ */
+export const toLocalMidnightIso = (dateKey: string): string | null => {
+  const date = parseLocalDate(dateKey);
+  if (!date || dateKey.includes("T")) return null;
+  const offsetMinutes = -date.getTimezoneOffset();
+  const sign = offsetMinutes >= 0 ? "+" : "-";
+  const hours = String(Math.floor(Math.abs(offsetMinutes) / 60)).padStart(2, "0");
+  const minutes = String(Math.abs(offsetMinutes) % 60).padStart(2, "0");
+  return `${toLocalDateKey(date)}T00:00:00${sign}${hours}:${minutes}`;
 };
 
 /**

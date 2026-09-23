@@ -154,6 +154,19 @@ export const canEditPedidoMesaControl = (estatus: number | null | undefined): bo
   estatus !== PEDIDO_ESTATUS.CANCELADO &&
   Object.hasOwn(PEDIDO_ESTATUS_CONFIG, estatus);
 
+/**
+ * ¿El pedido está en un estatus FINAL? Hoy solo CANCELADO: es el único que el
+ * enum (`Pedido.CHOICES_ESTATUS`) trata como cierre; EN PROCESO sigue vivo y no
+ * hay un "Entregado"/"Cerrado". Gobierna la edición en línea de la cabecera del
+ * detalle (clasificación, fecha de confirmación).
+ *
+ * Distinta de `canEditPedidoMesaControl` a propósito: aquélla protege un
+ * guardado DESTRUCTIVO y por eso también cierra el paso a estatus fuera del
+ * enum; ésta solo responde "¿ya terminó?", y un valor desconocido no lo es.
+ */
+export const isPedidoTerminal = (estatus: number | null | undefined): boolean =>
+  estatus === PEDIDO_ESTATUS.CANCELADO;
+
 const RECOMPRABLE_PEDIDO_ESTATUSES = new Set<number>([
   PEDIDO_ESTATUS.AUTORIZADA,
   PEDIDO_ESTATUS.EN_PROCESO,

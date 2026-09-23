@@ -10,7 +10,8 @@ export const normalizeDraft = (value: string | null): string | null => {
 
 /**
  * Borrador local de un campo de texto que se guarda AL SALIR (blur) contra un
- * valor canónico del servidor.
+ * valor canónico del servidor. Lo usan los campos inline de la orden de
+ * bordado (máquina, observaciones) y la fecha de confirmación del pedido.
  *
  * Resuelve una pérdida silenciosa de datos que tenían duplicada los campos de
  * máquina y observaciones. Ambos resincronizaban el borrador en cada cambio de
@@ -89,5 +90,16 @@ export function useInlineDraft(
     }
   };
 
-  return { draft, setDraft, handleBlur };
+  /**
+   * Descarta el borrador y vuelve al valor del servidor SIN guardar. Para el
+   * campo que sabe que su borrador no es un valor válido: un
+   * `<input type="date">` a medio teclear reporta `value === ""`, igual que uno
+   * vaciado a propósito, y `handleBlur` lo guardaría como `null`.
+   */
+  const revert = () => {
+    setIsEditing(false);
+    setDraftValue(serverValue ?? "");
+  };
+
+  return { draft, setDraft, handleBlur, revert };
 }
