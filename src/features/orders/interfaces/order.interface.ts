@@ -472,4 +472,14 @@ export interface PedidoDetail extends Order {
    * la columna responde sin la clave.
    */
   programacion_conf?: PedidoProgramacionConf | null;
+  /**
+   * Rango de entrega estimado, derivado por el backend de `clasificacion`
+   * (solo lectura). Fechas-calendario `"YYYY-MM-DD"`, SIN hora: formatearlas
+   * con `parseLocalDate`/`formatLocalDate`, nunca con `new Date(value)`, que
+   * las lee como medianoche UTC y en México pinta el día anterior. `null`
+   * cuando `clasificacion` es `null`/`""`/`X`. Solo el DETALLE las trae; el
+   * listado no.
+   */
+  fecha_entrega_min: string | null;
+  fecha_entrega_max: string | null;
 }
