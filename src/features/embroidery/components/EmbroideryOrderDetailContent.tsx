@@ -261,7 +261,7 @@ export function EmbroideryOrderDetailContent({
                 <EmbroideryMachineField
                   value={data.maquina_asignada}
                   onSave={(maquina) =>
-                    updateOrder.mutate({ maquina_asignada: maquina })
+                    updateOrder.mutateAsync({ maquina_asignada: maquina })
                   }
                   isPending={updateOrder.isPending}
                 />
@@ -281,7 +281,7 @@ export function EmbroideryOrderDetailContent({
                 <EmbroideryObservationsField
                   value={data.observaciones}
                   onSave={(observaciones) =>
-                    updateOrder.mutate({ observaciones })
+                    updateOrder.mutateAsync({ observaciones })
                   }
                   isPending={updateOrder.isPending}
                 />

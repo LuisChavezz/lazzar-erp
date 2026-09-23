@@ -38,19 +38,37 @@ export const normalizeDraft = (value: string | null): string | null => {
 export function useInlineDraft(
   /** Valor canónico del servidor. */
   serverValue: string | null,
-  /** Se invoca al salir del campo SOLO si el valor cambió. */
-  onSave: (value: string | null) => void,
+  /**
+   * Se invoca al salir del campo SOLO si el valor cambió. Si devuelve una
+   * promesa (p. ej. `mutateAsync`) y ésta se rechaza, el campo vuelve al valor
+   * del servidor: sin eso, un guardado fallido dejaba pintado el borrador como
+   * si se hubiera guardado, porque el valor del servidor no cambia y nada
+   * vuelve a sincronizarlo. El aviso del error es cosa de quien guarda (toast).
+   */
+  onSave: (value: string | null) => void | Promise<unknown>,
 ) {
   const [draft, setDraftValue] = useState(serverValue ?? "");
   const [prevServerValue, setPrevServerValue] = useState(serverValue);
   /** El usuario tecleó y todavía no ha salido del campo. */
   const [isEditing, setIsEditing] = useState(false);
+  /** Guardados rechazados, y cuántos ya se atendieron (ver abajo). */
+  const [failedSaves, setFailedSaves] = useState(0);
+  const [handledFailedSaves, setHandledFailedSaves] = useState(0);
 
   // Ajuste de estado derivado EN RENDER (el patrón documentado de React para
   // derivar de una prop sin `useEffect`), pero solo cuando no hay una edición
   // en curso que pisar.
   if (serverValue !== prevServerValue) {
     setPrevServerValue(serverValue);
+    if (!isEditing) setDraftValue(serverValue ?? "");
+  }
+
+  // Un guardado se rechazó: se vuelve al valor del servidor, que no cambió.
+  // Se resuelve aquí, en render, y no dentro del `catch`: ahí `serverValue` e
+  // `isEditing` serían los del momento del guardado, y si el usuario ya volvió
+  // a teclear no hay que pisarle lo nuevo.
+  if (failedSaves !== handledFailedSaves) {
+    setHandledFailedSaves(failedSaves);
     if (!isEditing) setDraftValue(serverValue ?? "");
   }
 
@@ -65,7 +83,10 @@ export function useInlineDraft(
     // Sin cambios respecto al servidor no hay nada que guardar: evita un PATCH
     // por el simple hecho de entrar y salir del campo.
     if (next === normalizeDraft(serverValue)) return;
-    onSave(next);
+    const result = onSave(next);
+    if (result) {
+      result.catch(() => setFailedSaves((count) => count + 1));
+    }
   };
 
   return { draft, setDraft, handleBlur };

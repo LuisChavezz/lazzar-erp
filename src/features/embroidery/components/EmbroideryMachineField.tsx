@@ -10,7 +10,7 @@ interface EmbroideryMachineFieldProps {
   /** Valor canónico del servidor (`maquina_asignada`). */
   value: string | null;
   /** Se invoca con el nuevo valor (o `null` si queda vacío) al confirmar. */
-  onSave: (value: string | null) => void;
+  onSave: (value: string | null) => void | Promise<unknown>;
   /** PATCH en vuelo: inhabilita el campo. */
   isPending?: boolean;
 }
