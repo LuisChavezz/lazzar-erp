@@ -1,11 +1,11 @@
 "use client";
 
 import { useSuppliers } from "@/src/features/suppliers/hooks/useSuppliers";
-import { EmbroideryInlineSelect } from "./EmbroideryInlineSelect";
+import { InlineSelect } from "@/src/components/InlineSelect";
 
 /**
  * Valor de la opción "bordado interno". Cadena vacía porque
- * `EmbroideryInlineSelect` emite `string` y ningún id de proveedor puede
+ * `InlineSelect` emite `string` y ningún id de proveedor puede
  * colisionar con ella.
  */
 const INTERNAL_VALUE = "";
@@ -82,7 +82,7 @@ export function EmbroideryProveedorSelect({
   ];
 
   return (
-    <EmbroideryInlineSelect
+    <InlineSelect
       options={options}
       onSelect={(value) =>
         onProveedorChange(value === INTERNAL_VALUE ? null : Number(value))
@@ -100,6 +100,6 @@ export function EmbroideryProveedorSelect({
       ) : (
         <span className="text-slate-500 dark:text-slate-400">{INTERNAL_LABEL}</span>
       )}
-    </EmbroideryInlineSelect>
+    </InlineSelect>
   );
 }
