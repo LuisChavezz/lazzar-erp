@@ -9,14 +9,12 @@ export const metadata: Metadata = {
 
 export default function WmsOrdersPage() {
   return (
-    <main className="w-full space-y-8" aria-label="Pedidos de almacén">
-      <header>
-        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-          Consulta los pedidos y su detalle para planear el surtido en almacén.
-        </p>
-      </header>
-      <section aria-label="Lista de pedidos">
-        <OrderListView from="wms" />
+    <main
+      className="w-full h-[calc(100dvh-13rem)] min-h-0 flex flex-col"
+      aria-label="Pedidos de almacén"
+    >
+      <section aria-label="Lista de pedidos" className="flex-1 min-h-0 flex flex-col">
+        <OrderListView from="wms" fillHeight />
       </section>
     </main>
   );

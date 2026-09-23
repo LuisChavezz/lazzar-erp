@@ -1,7 +1,7 @@
 "use client";
 
 import { RouteIcon, ClipboardListIcon } from "@/src/components/Icons";
-import KpiGrid, { type KpiItem } from "@/src/components/KpiGrid";
+import { KpiCard, type KpiItem } from "@/src/components/KpiGrid";
 import { computePickingKpis } from "../utils/picking.utils";
 import { PickingPriorityBreakdown } from "./PickingPriorityBreakdown";
 import type { Picking } from "../interfaces/picking.interface";
@@ -17,6 +17,14 @@ import type { Picking } from "../interfaces/picking.interface";
  * patrón que `OrderStats` (`PurchaseOrderView`): sin ese gate, `items`
  * arrancaría en `[]` y las tarjetas mostrarían ceros que se leerían como datos
  * reales durante la carga inicial.
+ *
+ * El desglose por prioridad (`PickingPriorityBreakdown`) NO usa `KpiGrid`
+ * completo a propósito: antes vivía apilado debajo de las dos tarjetas,
+ * ocupando una fila propia. Aquí se arma la MISMA grilla a mano
+ * (`KpiCard` suelto en vez de `<KpiGrid>`) para que el desglose entre como
+ * tercer miembro de la fila (`md:col-span-2`) y quede a la misma altura que
+ * "Total de Pickings"/"Líneas por Surtir" en vez de un bloque de dashboard
+ * aparte.
  */
 export function PickingStats({ items }: { items: Picking[] }) {
   const kpis = computePickingKpis(items);
@@ -43,9 +51,14 @@ export function PickingStats({ items }: { items: Picking[] }) {
   ];
 
   return (
-    <div className="space-y-4">
-      <KpiGrid items={cards} />
-      <PickingPriorityBreakdown breakdown={kpis.prioridadBreakdown} />
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 items-stretch gap-4" role="list">
+      {cards.map((item, index) => (
+        <KpiCard key={`${item.label}-${index}`} item={item} />
+      ))}
+      <PickingPriorityBreakdown
+        breakdown={kpis.prioridadBreakdown}
+        className="md:col-span-2"
+      />
     </div>
   );
 }

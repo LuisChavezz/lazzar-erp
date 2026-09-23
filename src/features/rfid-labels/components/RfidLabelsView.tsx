@@ -39,21 +39,26 @@ export function RfidLabelsView() {
   const canCreate = hasPermission("C-WMS-ETIQUETAS", session?.user);
 
   return (
-    <DataTable
-      columns={rfidLabelColumns}
-      data={rfidLabels}
-      searchPlaceholder="Buscar folio, SKU, producto o variante..."
-      filterConfig={[{ id: "status", label: "Estatus", options: ESTADO_FILTER }]}
-      getRowId={(row) => String(row.id)}
-      onRefetch={refetch}
-      isRefetching={isFetching}
-      actionButton={canCreate ? <RfidLabelCreateDialog /> : undefined}
-      emptyMessage="No hay impresiones registradas."
-      isLoading={isLoading}
-      isError={showError}
-      errorTitle="Error al cargar las impresiones"
-      errorMessage={extractErrorMessage(error, "No se pudo cargar la información.")}
-      loadingAriaLabel="Cargando impresiones"
-    />
+    <div className="h-full flex flex-col min-h-0">
+      <DataTable
+        columns={rfidLabelColumns}
+        data={rfidLabels}
+        searchPlaceholder="Buscar folio, SKU, producto o variante..."
+        filterConfig={[{ id: "status", label: "Estatus", options: ESTADO_FILTER }]}
+        getRowId={(row) => String(row.id)}
+        // El cuerpo llena el contenedor de altura acotada que da
+        // `wms/rfid-labels/page.tsx`, en vez de reservar un alto fijo.
+        fillHeight
+        onRefetch={refetch}
+        isRefetching={isFetching}
+        actionButton={canCreate ? <RfidLabelCreateDialog /> : undefined}
+        emptyMessage="No hay impresiones registradas."
+        isLoading={isLoading}
+        isError={showError}
+        errorTitle="Error al cargar las impresiones"
+        errorMessage={extractErrorMessage(error, "No se pudo cargar la información.")}
+        loadingAriaLabel="Cargando impresiones"
+      />
+    </div>
   );
 }

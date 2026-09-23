@@ -34,22 +34,27 @@ export function ShippingView() {
   const showError = isInitialLoadError(isError, hasLoaded);
 
   return (
-    <DataTable
-      columns={shipmentColumns}
-      data={shipments}
-      searchPlaceholder="Buscar packing, pedido, cliente, sucursal, guía o transportista..."
-      getRowId={(row) => String(row.id)}
-      onRefetch={refetch}
-      isRefetching={isFetching}
-      emptyMessage="No hay envíos registrados."
-      // Ver el listado exige `R-WMS-ENVIO` (ver `routePermissions`); dar de alta
-      // exige además `C-WMS-ENVIO`.
-      actionButton={canCreate ? <ShippingForm /> : undefined}
-      isLoading={isLoading}
-      isError={showError}
-      errorTitle="Error al cargar los envíos"
-      errorMessage={extractErrorMessage(error, "No se pudo cargar la información.")}
-      loadingAriaLabel="Cargando envíos"
-    />
+    <div className="h-full flex flex-col min-h-0">
+      <DataTable
+        columns={shipmentColumns}
+        data={shipments}
+        searchPlaceholder="Buscar packing, pedido, cliente, sucursal, guía o transportista..."
+        getRowId={(row) => String(row.id)}
+        // El cuerpo llena el contenedor de altura acotada que da
+        // `wms/shipping/page.tsx`, en vez de reservar un alto fijo.
+        fillHeight
+        onRefetch={refetch}
+        isRefetching={isFetching}
+        emptyMessage="No hay envíos registrados."
+        // Ver el listado exige `R-WMS-ENVIO` (ver `routePermissions`); dar de alta
+        // exige además `C-WMS-ENVIO`.
+        actionButton={canCreate ? <ShippingForm /> : undefined}
+        isLoading={isLoading}
+        isError={showError}
+        errorTitle="Error al cargar los envíos"
+        errorMessage={extractErrorMessage(error, "No se pudo cargar la información.")}
+        loadingAriaLabel="Cargando envíos"
+      />
+    </div>
   );
 }

@@ -92,35 +92,49 @@ export function PickingView() {
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="h-full flex flex-col min-h-0 space-y-6">
       {/* KPIs: ocultos durante la carga INICIAL y ante un error de carga —no
           hay datos que resumir—, igual que `OrderStats` en `PurchaseOrderView`.
           `pickings` arranca en `[]`, así que sin este gate las tarjetas
-          mostrarían ceros que se leerían como datos reales. */}
-      {!isLoading && !showError && <PickingStats items={pickings} />}
+          mostrarían ceros que se leerían como datos reales. `shrink-0`: solo
+          la tabla de abajo debe crecer. */}
+      {!isLoading && !showError && (
+        <div className="shrink-0">
+          <PickingStats items={pickings} />
+        </div>
+      )}
 
       {/* El placeholder de búsqueda NO menciona "almacén": la búsqueda global
           de `DataTable` usa el filtro por defecto de TanStack, que solo recorre
           columnas ACCESSOR, y la de almacén ya no existe — ofrecerla devolvería
           "sin resultados" sobre pickings que sí coinciden. */}
-      <DataTable
-        columns={pickingColumns}
-        data={rows}
-        searchPlaceholder="Buscar folio, pedido u operador..."
-        filterConfig={filterConfig}
-        getRowId={(row) => String(row.id)}
-        onRefetch={refetch}
-        isRefetching={isFetching}
-        emptyMessage="No hay pickings registrados."
-        // Ver el listado exige `R-WMS-PICKING` (ver `routePermissions`); dar de
-        // alta exige además `C-WMS-PICKING`.
-        actionButton={canCreate ? <PickingForm /> : undefined}
-        isLoading={isLoading}
-        isError={showError}
-        errorTitle="Error al cargar los pickings"
-        errorMessage={extractErrorMessage(error, "No se pudo cargar la información.")}
-        loadingAriaLabel="Cargando pickings"
-      />
+      {/* `min-h-120`: piso de la tabla cuando la fila de KPIs (con el
+          desglose por prioridad a su lado) deja poco espacio remanente —
+          sin esto, `flex-1` podía encoger la tabla a un puñado de filas
+          visibles en viewports más cortos. */}
+      <div className="flex-1 min-h-120 flex flex-col">
+        <DataTable
+          columns={pickingColumns}
+          data={rows}
+          searchPlaceholder="Buscar folio, pedido u operador..."
+          filterConfig={filterConfig}
+          getRowId={(row) => String(row.id)}
+          // El cuerpo llena el contenedor de altura acotada que da
+          // `wms/picking/page.tsx`, en vez de reservar un alto fijo.
+          fillHeight
+          onRefetch={refetch}
+          isRefetching={isFetching}
+          emptyMessage="No hay pickings registrados."
+          // Ver el listado exige `R-WMS-PICKING` (ver `routePermissions`); dar de
+          // alta exige además `C-WMS-PICKING`.
+          actionButton={canCreate ? <PickingForm /> : undefined}
+          isLoading={isLoading}
+          isError={showError}
+          errorTitle="Error al cargar los pickings"
+          errorMessage={extractErrorMessage(error, "No se pudo cargar la información.")}
+          loadingAriaLabel="Cargando pickings"
+        />
+      </div>
     </div>
   );
 }

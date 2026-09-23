@@ -8,16 +8,26 @@ import type { PickingKpis } from "../utils/picking.utils";
  * Desglose del listado por prioridad. Los colores salen de
  * `PICKING_PRIORIDAD_CONFIG` —la misma fuente que el badge de la columna
  * "Prioridad"—, así que la tabla y estas tarjetas no pueden divergir.
+ *
+ * `className` es lo que le permite a `PickingStats` colocarla como un
+ * tercer miembro (`md:col-span-2`) de la MISMA fila de KPIs en vez de
+ * apilarla debajo — `h-full flex flex-col` interno reparte el contenido
+ * cuando la fila queda más alta que su contenido natural (el `items-stretch`
+ * de esa grilla la estira a la altura de las tarjetas vecinas).
  */
 export const PickingPriorityBreakdown = ({
   breakdown,
+  className = "",
 }: {
   breakdown: PickingKpis["prioridadBreakdown"];
+  className?: string;
 }) => {
   const total = PICKING_PRIORIDAD_ORDER.reduce((acc, key) => acc + breakdown[key], 0);
 
   return (
-    <div className="rounded-xl bg-white dark:bg-black border border-slate-200 dark:border-white/10 p-5 shadow-sm">
+    <div
+      className={`h-full flex flex-col justify-center rounded-xl bg-white dark:bg-black border border-slate-200 dark:border-white/10 p-5 shadow-sm ${className}`}
+    >
       <div className="flex items-center justify-between mb-4">
         <div>
           <h3 className="text-sm font-bold text-slate-800 dark:text-white">
