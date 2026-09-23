@@ -8,6 +8,7 @@ import { ColumnHeaderFilter } from '@/src/components/ColumnHeaderFilter';
 import { formatMoneyValueOrDash } from '@/src/utils/formatCurrency';
 import type { PedidoListItem } from '../interfaces/order.interface';
 import { isOrderConfirmed } from './SharedOrderColumns';
+import { hasMeaningfulOc } from '../utils/pedidoFormat';
 
 /**
  * Columnas de "Mis pedidos" (Ventas, `GET /ventas/pedidos/`). NO reusa
@@ -48,18 +49,6 @@ export interface SalesOrderColumnsOptions {
 
 function PendingDataCell() {
   return <span className="text-[13px] text-slate-300 dark:text-slate-600">—</span>;
-}
-
-/**
- * La OC vuelve a la celda de folio, pero sutil (texto, no badge con borde) y
- * solo cuando aporta algo: varios pedidos traen literalmente `"-"` como OC
- * (placeholder del backend, no una OC real) — de ahí salía el recuadro vacío
- * que se veía en la tabla anterior. Se oculta cuando, quitando guiones, no
- * queda ningún caracter (p. ej. `"-"`, `"--"`), y se muestra tal cual cuando
- * sí trae contenido (p. ej. `"-AS"`).
- */
-function hasMeaningfulOc(oc: string | null): oc is string {
-  return Boolean(oc && oc.replace(/-/g, '').trim().length > 0);
 }
 
 const CONFIRMATION_FILTER_OPTIONS = [

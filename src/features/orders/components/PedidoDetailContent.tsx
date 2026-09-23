@@ -31,7 +31,8 @@ import { parsePercentageValue } from "@/src/utils/percentage";
 import { MetricCard, RowProgressBar } from "@/src/components/ProgressPrimitives";
 import { StatusBadge } from "@/src/components/StatusBadge";
 import { PICKING_STATUS_CONFIG } from "@/src/features/picking/constants/pickingStatus";
-import { formatShortDate, parseLocalDate } from "@/src/utils/formatDate";
+import { formatShortDate } from "@/src/utils/formatDate";
+import { formatEntregaEstimada } from "../utils/pedidoFormat";
 import { useSatInfo } from "@/src/features/sat/hooks/useSatInfo";
 import { usePedidoDetail } from "../hooks/usePedidoDetail";
 import { useRecomprarPedido } from "../hooks/useRecomprarPedido";
@@ -81,6 +82,12 @@ import type {
 // Sin `?from=` válido cae en `home` (ver abajo), no en un listado de módulo.
 const BACK_TARGETS: Record<string, { href: string; label: string }> = {
   operations: { href: "/operations/orders", label: "Volver a Mesa de Control" },
+  // Quien llega desde "Pedidos programados" vuelve a ESA lista, no a "Pedidos".
+  // Misma convención de llave por ORIGEN concreto que `embroidery`.
+  "scheduled-orders": {
+    href: "/operations/scheduled-orders",
+    label: "Volver a Pedidos programados",
+  },
   // Sin esta entrada, un usuario solo-WMS caería en /operations/orders y el
   // proxy lo rebotaría al home por falta de R-MESACONTROL.
   wms: { href: "/wms/orders", label: "Volver a Operaciones de Almacén" },
@@ -199,24 +206,6 @@ function canSeeAccounting(pedido: Order): boolean {
     pedido.forma_pago !== undefined ||
     pedido.iva !== undefined
   );
-}
-
-/**
- * Rango de entrega estimado (`fecha_entrega_min`–`fecha_entrega_max`).
- *
- * Son fechas-calendario `"YYYY-MM-DD"`: pasan por `parseLocalDate` ANTES de
- * `formatShortDate`, que con el string crudo haría `new Date("YYYY-MM-DD")`
- * (medianoche UTC) y en México pintaría el día anterior. Con el `Date` local ya
- * construido, `formatShortDate` solo aplica el formato "14 jul 2026" que usa el
- * resto de la cabecera.
- */
-function formatEntregaEstimada(min: string | null, max: string | null): string {
-  const desde = parseLocalDate(min);
-  const hasta = parseLocalDate(max);
-  if (!desde || !hasta) return "—";
-  const desdeLabel = formatShortDate(desde);
-  const hastaLabel = formatShortDate(hasta);
-  return desdeLabel === hastaLabel ? desdeLabel : `${desdeLabel} – ${hastaLabel}`;
 }
 
 /**

@@ -677,6 +677,17 @@ export const appRouteGroups: AppRouteGroup[] = [
         icon: PedidosIcon,
         permission: "R-MESACONTROL-PEDIDOS",
       },
+      {
+        // Ruta HERMANA de `/operations/orders`, no anidada: `SidebarItem` y
+        // `ModuleNav` marcan activo por prefijo, así que anidada resaltaría
+        // también "Pedidos". Su permiso vive en su propia regla de
+        // `routePermissions`.
+        key: "operations-scheduled-orders",
+        label: "Pedidos programados",
+        path: "/operations/scheduled-orders",
+        icon: CalendarDaysIcon,
+        permission: "R-MESACONTROL-PEDIDOS",
+      },
       // OCULTO EN NAVEGACION: pagina placeholder sin datos. Restaurar cuando tenga implementacion real.
       // {
       //   key: "operations-samples",

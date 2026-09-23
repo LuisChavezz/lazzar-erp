@@ -251,6 +251,21 @@ export interface PedidoListItem {
   activo: boolean;
   cliente: number;
   moneda: number;
+  /** Etiqueta del backend; la UI usa las constantes locales (`pedidoStatus.ts`). */
+  estatus_display: string;
+  /** Código crudo, igual que en `Order`; se estrecha con `isPedidoClasificacion`. */
+  clasificacion: string | null;
+  /** Etiqueta del backend; la UI usa `getPedidoClasificacionLabel`. */
+  clasificacion_display: string | null;
+  /**
+   * Fechas-calendario `"YYYY-MM-DD"` (sin hora), derivadas de `clasificacion`;
+   * `null` cuando no hay clasificación que las fije. Se formatean con
+   * `timeZone: "UTC"` para no pintar el día anterior en México.
+   */
+  fecha_entrega_min: string | null;
+  fecha_entrega_max: string | null;
+  /** `null`, `{}` o `{ programaciones: [...] }` (ver `PedidoProgramacionConf`). */
+  programacion_conf: PedidoProgramacionConf | null;
 }
 
 /**
