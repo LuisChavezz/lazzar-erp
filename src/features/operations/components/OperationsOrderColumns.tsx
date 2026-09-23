@@ -18,6 +18,7 @@ import {
   PEDIDO_ESTATUS,
 } from "@/src/features/orders/constants/pedidoStatus";
 import { isOrderConfirmed } from "@/src/features/orders/components/SharedOrderColumns";
+import { hasMeaningfulOc } from "@/src/features/orders/utils/pedidoFormat";
 
 export { isOrderConfirmed };
 
@@ -46,11 +47,6 @@ const confirmationFilterFn: FilterFn<PedidoListItem> = (row, _columnId, filterVa
   const confirmed = isOrderConfirmed(row.original);
   return filterValue === "confirmado" ? confirmed : !confirmed;
 };
-
-/** Igual que en `SalesOrderColumns.tsx`: varios pedidos traen "-" como OC (placeholder del backend, no una OC real). */
-function hasMeaningfulOc(oc: string | null): oc is string {
-  return Boolean(oc && oc.replace(/-/g, "").trim().length > 0);
-}
 
 const FolioCell = ({
   order,

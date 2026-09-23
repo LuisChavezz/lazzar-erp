@@ -11,6 +11,7 @@ const ROUTE_TITLES: Record<string, string> = {
   "/operations": "Mesa de Control",
   "/operations/quotes": "Cotizaciones",
   "/operations/orders": "Pedidos",
+  "/operations/scheduled-orders": "Pedidos programados",
   "/operations/samples": "Muestras",
   "/operations/customers": "Clientes",
   "/sales/quotes": "Cotizaciones",

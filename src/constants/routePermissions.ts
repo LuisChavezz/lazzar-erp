@@ -77,6 +77,9 @@ export const routePermissions: Array<{
   // ── Mesa de Control ───────────────────────────────────────────────────────
   { prefix: "/operations/quotes", permission: "R-MESACONTROL-COTI" },
   { prefix: "/operations/orders", permission: "R-MESACONTROL-PEDIDOS" },
+  // Hermana de `/operations/orders` (no anidada, ver `appRoutes`): sin su
+  // propia regla caería en `/operations` y exigiría R-MESACONTROL en su lugar.
+  { prefix: "/operations/scheduled-orders", permission: "R-MESACONTROL-PEDIDOS" },
   { prefix: "/operations/customers", permission: "R-MESACONTROL-CLIENTES" },
   { prefix: "/operations", permission: "R-MESACONTROL" },
 

@@ -9,6 +9,7 @@ import { formatMoneyValueOrDash } from '@/src/utils/formatCurrency';
 import { parseLocalDate } from '@/src/utils/formatDate';
 import type { PedidoListItem } from '../interfaces/order.interface';
 import { PEDIDO_ESTATUS, PEDIDO_ESTATUS_CONFIG, getPedidoEstatusConfig } from '../constants/pedidoStatus';
+import { hasMeaningfulOc } from '../utils/pedidoFormat';
 
 /**
  * Columnas de "Pedidos" vistos desde Compras/SCM (`GET /ventas/pedidos/`,
@@ -58,15 +59,6 @@ const estatusFilterFn: FilterFn<PedidoListItem> = (row, _columnId, filterValue) 
   if (!filterValue) return true;
   return String(row.original.estatus) === filterValue;
 };
-
-/**
- * La OC del pedido, igual que en `SalesOrderColumns.tsx`: varios pedidos
- * traen literalmente "-"/"--" como OC (placeholder del backend, no una OC
- * real), así que se oculta cuando no queda contenido significativo.
- */
-function hasMeaningfulOc(oc: string | null): oc is string {
-  return Boolean(oc && oc.replace(/-/g, '').trim().length > 0);
-}
 
 export function createProcurementOrderColumns({
   onViewDetail,
