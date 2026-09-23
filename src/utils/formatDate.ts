@@ -21,6 +21,20 @@ export const parseLocalDate = (
 };
 
 /**
+ * Fecha de HOY como "yyyy-mm-dd" en la zona horaria LOCAL.
+ *
+ * No usa `toISOString()`: ese devuelve el día en UTC, que en México (UTC-6) a
+ * partir de las 18:00 locales ya es mañana.
+ */
+export const getLocalTodayDate = (): string => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
+/**
  * Formatea un string "yyyy-mm-dd" como fecha local es-MX. Devuelve "—" cuando
  * no hay valor y el valor original cuando no puede parsearse.
  */
