@@ -5,6 +5,7 @@ import { SearchableSelectList } from "@/src/components/SearchableSelectList";
 import { renderRadioIndicator } from "@/src/components/RadioIndicator";
 import { useOrders } from "@/src/features/orders/hooks/useOrders";
 import type { PedidoListItem } from "@/src/features/orders/interfaces/order.interface";
+import { isInitialLoadError } from "@/src/utils/isInitialLoadError";
 
 interface InvoiceOrderSelectorProps {
   /** Id del pedido seleccionado (`0` = ninguno). */
@@ -27,7 +28,7 @@ export function InvoiceOrderSelector({
   selectedOrderId,
   onSelect,
 }: InvoiceOrderSelectorProps) {
-  const { orders, isLoading, isError } = useOrders();
+  const { orders, isLoading, isError, hasLoaded } = useOrders();
 
   if (isLoading) {
     return (
@@ -38,7 +39,9 @@ export function InvoiceOrderSelector({
     );
   }
 
-  if (isError) {
+  // Solo un error SIN datos cargados oculta la lista; un refetch fallido la
+  // conserva y avisa por toast (ver `useOrders`).
+  if (isInitialLoadError(isError, hasLoaded)) {
     return (
       <p className="text-sm text-red-500 p-4">Error al cargar los pedidos.</p>
     );

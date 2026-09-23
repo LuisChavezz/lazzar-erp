@@ -11,6 +11,7 @@ import {
   PedidosIcon,
 } from '@/src/components/Icons';
 import { extractErrorMessage } from '@/src/utils/extractErrorMessage';
+import { isInitialLoadError } from '@/src/utils/isInitialLoadError';
 import { formatCurrency, safeParseAmount } from '@/src/utils/formatCurrency';
 import { ordersQueryKey, useOrders } from '@/src/features/orders/hooks/useOrders';
 import type { PedidoListItem } from '@/src/features/orders/interfaces/order.interface';
@@ -20,7 +21,10 @@ import { OperationsOrderTable } from './OperationsOrderTable';
 
 // Componente principal de la Mesa de Control de Pedidos.
 export function OperationsOrderPanel() {
-  const { orders, isLoading, isError, error } = useOrders();
+  const { orders, isLoading, isError, error, hasLoaded } = useOrders();
+  // Solo un error SIN datos cargados sustituye las filas; un refetch fallido
+  // conserva tabla y KPIs y avisa por toast (ver `useOrders`).
+  const showError = isInitialLoadError(isError, hasLoaded);
   const queryClient = useQueryClient();
   const router = useRouter();
   // `exact`: solo la clave SIN params de este panel. Las variantes con filtros
@@ -100,7 +104,9 @@ export function OperationsOrderPanel() {
     [counts],
   );
 
-  const handleRefetch = () => queryClient.invalidateQueries({ queryKey: ['orders'] });
+  // Solo la clave de este panel: las variantes con filtros no se marcan stale.
+  const handleRefetch = () =>
+    queryClient.invalidateQueries({ queryKey: ordersQueryKey(), exact: true });
 
   return (
     // Altura NATURAL a propósito (sin `fillHeight`/calc de viewport): con las
@@ -113,12 +119,12 @@ export function OperationsOrderPanel() {
           leerían como reales—, igual que `EmbroideryStats` en su vista. La
           tabla NO se gatea: se monta siempre y alterna solo su área de datos,
           de modo que el toolbar sigue visible durante la carga y el error. */}
-      {!isLoading && !isError && <KpiGrid items={kpis} />}
+      {!isLoading && !showError && <KpiGrid items={kpis} />}
 
       <OperationsOrderTable
         orders={orders}
         isLoading={isLoading}
-        isError={isError}
+        isError={showError}
         errorMessage={extractErrorMessage(error, 'No se pudo cargar la información.')}
         onViewDetail={handleViewDetail}
         onEditMesaControl={handleEditMesaControl}

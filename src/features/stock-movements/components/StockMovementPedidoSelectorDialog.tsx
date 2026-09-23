@@ -4,6 +4,7 @@ import { MainDialog } from "@/src/components/MainDialog";
 import { SingleSelectPickerDialogContent } from "@/src/components/SingleSelectPickerDialogContent";
 import { useOrders } from "@/src/features/orders/hooks/useOrders";
 import type { PedidoListItem } from "@/src/features/orders/interfaces/order.interface";
+import { isInitialLoadError } from "@/src/utils/isInitialLoadError";
 
 export interface SelectedPedido {
   id: number;
@@ -35,7 +36,7 @@ function PedidoSelectorContent({
   onConfirm: (pedido: SelectedPedido) => void;
   onCancel: () => void;
 }) {
-  const { orders, isLoading, isError } = useOrders();
+  const { orders, isLoading, isError, hasLoaded } = useOrders();
 
   return (
     <SingleSelectPickerDialogContent<PedidoListItem>
@@ -44,7 +45,9 @@ function PedidoSelectorContent({
       statusColor="indigo"
       items={orders}
       isLoading={isLoading}
-      isError={isError}
+      // Solo un error SIN datos cargados oculta la lista; un refetch fallido
+      // la conserva y avisa por toast (ver `useOrders`).
+      isError={isInitialLoadError(isError, hasLoaded)}
       loadingTitle="Cargando pedidos"
       loadingMessage="Obteniendo pedidos disponibles..."
       errorMessage="Error al cargar los pedidos."

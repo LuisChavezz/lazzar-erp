@@ -11,6 +11,7 @@ import {
 import { Button } from '@/src/components/Button';
 import { ExportCsvIcon, ExportPdfIcon } from '@/src/components/Icons';
 import { extractErrorMessage } from '@/src/utils/extractErrorMessage';
+import { isInitialLoadError } from '@/src/utils/isInitialLoadError';
 import { ordersQueryKey, useOrders } from '../hooks/useOrders';
 import { useProcurementOrderCsvExport } from '../hooks/useProcurementOrderCsvExport';
 import { useProcurementOrderPdfExport } from '../hooks/useProcurementOrderPdfExport';
@@ -58,7 +59,10 @@ interface OrderListViewProps {
  * las acciones de edición de Mesa de Control.
  */
 export function OrderListView({ from, params, variant = 'shared' }: OrderListViewProps) {
-  const { orders, isLoading, isError, error } = useOrders(params);
+  const { orders, isLoading, isError, error, hasLoaded } = useOrders(params);
+  // Solo un error SIN datos cargados sustituye las filas; un refetch fallido
+  // conserva la tabla y avisa por toast (ver `useOrders`).
+  const showError = isInitialLoadError(isError, hasLoaded);
   const queryClient = useQueryClient();
   const router = useRouter();
   // Acotamos a la queryKey de esta variante para no encender el spinner ni
@@ -165,7 +169,7 @@ export function OrderListView({ from, params, variant = 'shared' }: OrderListVie
       fillHeight={isProcurement}
       onVisibleColumnsChange={isProcurement ? setVisibleColumns : undefined}
       isLoading={isLoading}
-      isError={isError}
+      isError={showError}
       errorTitle="Error al cargar pedidos"
       errorMessage={extractErrorMessage(error, 'No se pudo cargar la información.')}
       onErrorRetry={handleRefetch}

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { PedidoListItem } from "@/src/features/orders/interfaces/order.interface";
 import { useOrders } from "@/src/features/orders/hooks/useOrders";
 import { SearchInput } from "@/src/components/SearchInput";
+import { isInitialLoadError } from "@/src/utils/isInitialLoadError";
 
 interface PurchaseOrderSelectorProps {
   selectedOrderId: number | null;
@@ -14,7 +15,7 @@ export function PurchaseOrderSelector({
   selectedOrderId,
   onSelect,
 }: PurchaseOrderSelectorProps) {
-  const { orders, isLoading, isError } = useOrders();
+  const { orders, isLoading, isError, hasLoaded } = useOrders();
   const [search, setSearch] = useState("");
 
   // Filtra por folio, folio_consecutivo o cliente
@@ -37,7 +38,9 @@ export function PurchaseOrderSelector({
     );
   }
 
-  if (isError) {
+  // Solo un error SIN datos cargados oculta la lista; un refetch fallido la
+  // conserva y avisa por toast (ver `useOrders`).
+  if (isInitialLoadError(isError, hasLoaded)) {
     return (
       <p className="text-sm text-red-500 p-4">
         Error al cargar los pedidos.
