@@ -6,6 +6,7 @@ import { useForm } from "@tanstack/react-form";
 import { useSession } from "next-auth/react";
 import type { FormFieldError } from "@/src/utils/getFieldError";
 import { isInitialLoadError } from "@/src/utils/isInitialLoadError";
+import { buildWorkOrderPedidoOption } from "@/src/utils/formatWorkOrderProgramado";
 import {
   CreateReflectiveOrderFormSchema,
   type CreateReflectiveOrderFormValues,
@@ -74,15 +75,7 @@ export function useReflectiveStep1Form({
 
   // ─── Opciones derivadas ───────────────────────────────────────────────────
   const pedidoOptions = useMemo(
-    () =>
-      pedidos.map((pedido) => ({
-        value: pedido.id,
-        // `folio` es nullable en el modelo: sin él, el id es lo único que
-        // identifica al pedido en la lista.
-        label: [pedido.folio ?? `Pedido #${pedido.id}`, pedido.cliente_nombre]
-          .filter(Boolean)
-          .join(" — "),
-      })),
+    () => pedidos.map(buildWorkOrderPedidoOption),
     [pedidos],
   );
 

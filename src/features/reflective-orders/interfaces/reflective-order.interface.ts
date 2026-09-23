@@ -1,3 +1,5 @@
+import type { WorkOrderProgramado } from "@/src/interfaces/work-order-programado.interface";
+
 /**
  * Contratos del endpoint de órdenes de reflejante
  * (`/produccion/orden-reflejante/`).
@@ -451,6 +453,9 @@ export interface ReflectiveOnboardingPedido {
    * devolvía; es lo que alimenta el Paso 2 del asistente.
    */
   detalles: ReflectiveOnboardingDetalle[];
+  /** Lo que Mesa de Control programó a reflejante; solo informativo. */
+  // Opcional: un backend sin a3f232f no manda la clave y el indicador se oculta.
+  programado?: WorkOrderProgramado;
 }
 
 /**

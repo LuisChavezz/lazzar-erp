@@ -4,6 +4,7 @@ import { FormSelect } from "@/src/components/FormSelect";
 import { FormTextarea } from "@/src/components/FormTextarea";
 import { FormSubmitButton } from "@/src/components/FormButtons";
 import { Loader } from "@/src/components/Loader";
+import { MesaControlProgramadoIndicator } from "@/src/components/MesaControlProgramadoIndicator";
 import {
   ExclamationTriangleIcon,
   FolioIcon,
@@ -242,45 +243,51 @@ export function CorteMangaOrderCreateForm({
       <fieldset disabled={isPending} className="space-y-5">
         {/* ── Pedido ─────────────────────────────────────────────────────── */}
         <form.Field name="pedido">
-          {(field) => (
-            <FormSelect
-              label="Pedido"
-              name={field.name}
-              value={field.state.value}
-              onChange={(event) => {
-                field.handleChange(Number(event.target.value));
-                clearError("pedido");
-                // El aviso de duplicado habla SIEMPRE del pedido que se envió
-                // ("Ya existe una orden ... para este pedido", con enlace a esa
-                // orden). Al cambiar de pedido deja de aplicar: si sobreviviera,
-                // le atribuiría al pedido recién elegido una orden que no tiene
-                // y el enlace abriría el detalle de otro pedido. Se descarta
-                // aquí y no solo al enviar.
-                dismissDuplicate();
-              }}
-              onBlur={field.handleBlur}
-              error={getError("pedido")}
-            >
-              <option value="0" disabled>
-                Seleccionar pedido...
-              </option>
-              {pedidoOptions.map((option) => (
-                <option
-                  key={option.value}
-                  value={option.value}
-                  className="bg-white dark:bg-zinc-900 text-slate-900 dark:text-white"
+          {(field) => {
+            const selected = pedidoOptions.find((option) => option.value === field.state.value);
+            return (
+              <div className="space-y-2">
+                <FormSelect
+                  label="Pedido"
+                  name={field.name}
+                  value={field.state.value}
+                  onChange={(event) => {
+                    field.handleChange(Number(event.target.value));
+                    clearError("pedido");
+                    // El aviso de duplicado habla SIEMPRE del pedido que se envió
+                    // ("Ya existe una orden ... para este pedido", con enlace a esa
+                    // orden). Al cambiar de pedido deja de aplicar: si sobreviviera,
+                    // le atribuiría al pedido recién elegido una orden que no tiene
+                    // y el enlace abriría el detalle de otro pedido. Se descarta
+                    // aquí y no solo al enviar.
+                    dismissDuplicate();
+                  }}
+                  onBlur={field.handleBlur}
+                  error={getError("pedido")}
                 >
-                  {option.label}
-                </option>
-              ))}
-            </FormSelect>
-          )}
+                  <option value="0" disabled>
+                    Seleccionar pedido...
+                  </option>
+                  {pedidoOptions.map((option) => (
+                    <option
+                      key={option.value}
+                      value={option.value}
+                      className="bg-white dark:bg-zinc-900 text-slate-900 dark:text-white"
+                    >
+                      {option.label}
+                    </option>
+                  ))}
+                </FormSelect>
+                <p className="ml-1 text-[11px] text-slate-500">
+                  Las prendas a las que se aplica el corte de manga se toman automáticamente
+                  del pedido: se genera un renglón por cada talla marcada para corte de manga.
+                </p>
+                {/* Solo informativo: la orden sigue tomando todas las tallas. */}
+                {selected && <MesaControlProgramadoIndicator programado={selected.programado} />}
+              </div>
+            );
+          }}
         </form.Field>
-
-        <p className="-mt-3 ml-1 text-[11px] text-slate-500">
-          Las prendas a las que se aplica el corte de manga se toman automáticamente del
-          pedido: se genera un renglón por cada talla marcada para corte de manga.
-        </p>
 
         {/* ── Prioridad ──────────────────────────────────────────────────── */}
         <form.Field name="prioridad">
