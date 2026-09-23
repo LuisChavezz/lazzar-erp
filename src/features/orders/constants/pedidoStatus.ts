@@ -75,6 +75,13 @@ export const TIPO_PEDIDO_CONFIG: Record<number, BadgeConfig> = {
 
 const NEUTRAL_BADGE = "bg-slate-100 text-slate-600 dark:bg-slate-500/15 dark:text-slate-300";
 
+/**
+ * Badge de ORIGEN (Recompra, Chat online, Amazon…): gris/neutro, para leerse
+ * como una categoría distinta de los badges de estatus/tipo, que van con color.
+ * Lo comparten el detalle del pedido y el de la cotización (`RecompraBadge`).
+ */
+export const ORIGIN_BADGE_CLASS = NEUTRAL_BADGE;
+
 export const getPedidoEstatusConfig = (estatus: number): BadgeConfig =>
   PEDIDO_ESTATUS_CONFIG[estatus] ?? {
     label: `Desconocido (${estatus})`,
@@ -146,3 +153,17 @@ export const canEditPedidoMesaControl = (estatus: number | null | undefined): bo
   estatus != null &&
   estatus !== PEDIDO_ESTATUS.CANCELADO &&
   Object.hasOwn(PEDIDO_ESTATUS_CONFIG, estatus);
+
+const RECOMPRABLE_PEDIDO_ESTATUSES = new Set<number>([
+  PEDIDO_ESTATUS.AUTORIZADA,
+  PEDIDO_ESTATUS.EN_PROCESO,
+]);
+
+/**
+ * ¿Se ofrece "Recompra" (clonar el pedido en una cotización nueva) para este
+ * pedido? Solo AUTORIZADA o EN PROCESO: son los pedidos que ya se vendieron de
+ * verdad. Es una decisión de PRODUCTO, más estricta que el backend
+ * (`POST /ventas/pedidos/{id}/recomprar/` acepta cualquier estatus).
+ */
+export const canRecomprarPedido = (estatus: number | null | undefined): boolean =>
+  estatus != null && RECOMPRABLE_PEDIDO_ESTATUSES.has(estatus);

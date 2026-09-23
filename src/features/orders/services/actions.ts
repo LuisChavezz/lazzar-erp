@@ -9,6 +9,7 @@ import type {
   PedidoProgramarPayload,
   PedidoProgramarResponse,
 } from "../interfaces/pedido-programacion.interface";
+import type { PedidoRecompraResponse } from "../interfaces/pedido-recompra.interface";
 
 
 /** Filtros de query string aceptados por `GET /ventas/pedidos/`. */
@@ -82,6 +83,22 @@ export const programarPedido = async (
   const response = await v1_api.patch<PedidoProgramarResponse>(
     `/ventas/pedidos/${id}/programar/`,
     payload,
+  );
+  return response.data;
+};
+
+/**
+ * Recompra: clona el pedido en una cotización NUEVA en BORRADOR
+ * (`POST /ventas/pedidos/{id}/recomprar/`). Sin cuerpo. Copia precios y totales
+ * del pedido tal cual (no los recalcula) y no modifica el pedido.
+ *
+ * NO es idempotente: cada llamada crea otra cotización. 404 si el pedido no
+ * existe, es de otra empresa o está dado de baja; un fallo de integridad llega
+ * como 500 crudo. No hay errores de validación por campo.
+ */
+export const recomprarPedido = async (id: number): Promise<PedidoRecompraResponse> => {
+  const response = await v1_api.post<PedidoRecompraResponse>(
+    `/ventas/pedidos/${id}/recomprar/`,
   );
   return response.data;
 };

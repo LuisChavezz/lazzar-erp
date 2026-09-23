@@ -1,5 +1,6 @@
 "use client";
 
+import type React from "react";
 import { useState } from "react";
 
 import dynamic from "next/dynamic";
@@ -125,6 +126,8 @@ export type QuoteFormContentProps = QuoteFormHookResult & {
    * de tabla entera y el usuario no podría deshacer un "Agregar servicio".
    */
   removalBlockedExtraServicesCount?: number;
+  /** Marca junto al título "Información Comercial" (p. ej. `RecompraBadge`). */
+  headerBadge?: React.ReactNode;
 };
 
 // Componente de contenido del formulario — reutilizable por creación y edición
@@ -210,6 +213,7 @@ export function QuoteFormContent({
   capabilities,
   removalBlockedReason,
   removalBlockedExtraServicesCount = 0,
+  headerBadge,
 }: QuoteFormContentProps) {
   /**
    * Una partida solo está protegida si EXISTE en el servidor. Las que el usuario
@@ -290,9 +294,12 @@ export function QuoteFormContent({
               <PedidosIcon className="w-6 h-6" />
             </div>
             <div>
-              <h2 className="font-display font-semibold text-slate-900 dark:text-white text-xl">
-                Información Comercial
-              </h2>
+              <div className="flex flex-wrap items-center gap-2">
+                <h2 className="font-display font-semibold text-slate-900 dark:text-white text-xl">
+                  Información Comercial
+                </h2>
+                {headerBadge}
+              </div>
               <p className="text-xs text-slate-500 dark:text-slate-400">
                 Datos principales de la cotización y configuración comercial.
               </p>
