@@ -13,6 +13,8 @@ import { routePermissions } from "@/src/constants/routePermissions";
 import { Loader } from "@/src/components/Loader";
 import { ErrorState } from "@/src/components/ErrorState";
 import {
+  HeaderStat,
+  HeaderStatRow,
   InfoField,
   InfoGrid,
   Section,
@@ -29,13 +31,14 @@ import { parsePercentageValue } from "@/src/utils/percentage";
 import { MetricCard, RowProgressBar } from "@/src/components/ProgressPrimitives";
 import { StatusBadge } from "@/src/components/StatusBadge";
 import { PICKING_STATUS_CONFIG } from "@/src/features/picking/constants/pickingStatus";
-import { formatShortDate } from "@/src/utils/formatDate";
+import { formatShortDate, parseLocalDate } from "@/src/utils/formatDate";
 import { useSatInfo } from "@/src/features/sat/hooks/useSatInfo";
 import { usePedidoDetail } from "../hooks/usePedidoDetail";
 import { useRecomprarPedido } from "../hooks/useRecomprarPedido";
 import {
   canEditPedidoMesaControl,
   canRecomprarPedido,
+  getPedidoClasificacionLabel,
   getPedidoEstatusConfig,
   getTipoPedidoConfig,
   ORIGIN_BADGE_CLASS,
@@ -192,6 +195,24 @@ function canSeeAccounting(pedido: Order): boolean {
     pedido.forma_pago !== undefined ||
     pedido.iva !== undefined
   );
+}
+
+/**
+ * Rango de entrega estimado (`fecha_entrega_min`–`fecha_entrega_max`).
+ *
+ * Son fechas-calendario `"YYYY-MM-DD"`: pasan por `parseLocalDate` ANTES de
+ * `formatShortDate`, que con el string crudo haría `new Date("YYYY-MM-DD")`
+ * (medianoche UTC) y en México pintaría el día anterior. Con el `Date` local ya
+ * construido, `formatShortDate` solo aplica el formato "14 jul 2026" que usa el
+ * resto de la cabecera.
+ */
+function formatEntregaEstimada(min: string | null, max: string | null): string {
+  const desde = parseLocalDate(min);
+  const hasta = parseLocalDate(max);
+  if (!desde || !hasta) return "—";
+  const desdeLabel = formatShortDate(desde);
+  const hastaLabel = formatShortDate(hasta);
+  return desdeLabel === hastaLabel ? desdeLabel : `${desdeLabel} – ${hastaLabel}`;
 }
 
 /**
@@ -1137,11 +1158,14 @@ export function PedidoDetailContent({ pedidoId, from }: PedidoDetailContentProps
       />
 
       {/* ── 1. Cabecera ─────────────────────────────────────────────────── */}
-      <section className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 p-5 md:p-6">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="space-y-2 min-w-0">
+      {/* Misma fila que la cabecera de la orden de bordado: identidad a la
+          izquierda (`mr-auto`) y los datos en `HeaderStatRow`, que se parte
+          a la siguiente línea cuando no cabe sin dejar filetes sueltos. */}
+      <section className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 px-5 py-3.5 md:px-6">
+        <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
+          <div className="mr-auto min-w-0 space-y-1">
             <div className="flex flex-wrap items-center gap-2">
-              <h1 className="text-2xl font-bold text-slate-900 dark:text-white font-mono">
+              <h1 className="text-[22px] font-medium text-slate-900 dark:text-white font-mono min-w-0 truncate">
                 {data.folio || `Pedido #${data.id}`}
               </h1>
               <Badge config={estatusCfg} />
@@ -1159,22 +1183,29 @@ export function PedidoDetailContent({ pedidoId, from }: PedidoDetailContentProps
               {textOrDash(data.cliente_razon_social || data.cliente_nombre)}
             </p>
           </div>
-          <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-xs shrink-0">
-            <InfoField label="Creado">{formatShortDate(data.created_at)}</InfoField>
-            <InfoField label="Fecha confirmada">
+
+          <HeaderStatRow>
+            <HeaderStat label="Creado">{formatShortDate(data.created_at)}</HeaderStat>
+            <HeaderStat label="Fecha confirmada">
               {data.fecha_confirmacion ? formatShortDate(data.fecha_confirmacion) : "—"}
-            </InfoField>
-            <InfoField label="Total piezas">
-              <span className="tabular-nums font-semibold">{totalPiezas}</span>
-            </InfoField>
+            </HeaderStat>
+            {/* Texto plano: `PEDIDO_CLASIFICACION_CONFIG` solo define etiquetas,
+                no color de badge. */}
+            <HeaderStat label="Clasificación">
+              {data.clasificacion ? getPedidoClasificacionLabel(data.clasificacion) : "—"}
+            </HeaderStat>
+            <HeaderStat label="Entrega estimada">
+              {formatEntregaEstimada(data.fecha_entrega_min, data.fecha_entrega_max)}
+            </HeaderStat>
+            <HeaderStat label="Total piezas" bold>
+              {totalPiezas}
+            </HeaderStat>
             {showAccounting && (
-              <InfoField label="Gran total">
-                <span className="tabular-nums font-semibold">
-                  {formatMoneyValueOrDash(data.gran_total)}
-                </span>
-              </InfoField>
+              <HeaderStat label="Gran total" bold>
+                {formatMoneyValueOrDash(data.gran_total)}
+              </HeaderStat>
             )}
-          </div>
+          </HeaderStatRow>
         </div>
       </section>
 
