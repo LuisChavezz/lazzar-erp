@@ -10,6 +10,7 @@ import {
   ChevronRightIcon,
   EditIcon,
   EyeIcon,
+  WarehouseIcon,
 } from "@/src/components/Icons";
 import { formatMoneyValueOrDash } from "@/src/utils/formatCurrency";
 import type { PedidoListItem } from "@/src/features/orders/interfaces/order.interface";
@@ -34,6 +35,7 @@ export interface OperationsOrderColumnCallbacks {
   onViewDetail: (order: PedidoListItem) => void;
   onEditMesaControl: (order: PedidoListItem) => void;
   onProgramar: (order: PedidoListItem) => void;
+  onReviewStock: (order: PedidoListItem) => void;
 }
 
 const CONFIRMATION_FILTER_OPTIONS: ColumnFilterOption[] = [
@@ -53,6 +55,7 @@ const FolioCell = ({
   onViewDetail,
   onEditMesaControl,
   onProgramar,
+  onReviewStock,
 }: {
   order: PedidoListItem;
 } & OperationsOrderColumnCallbacks) => {
@@ -73,6 +76,13 @@ const FolioCell = ({
       icon: CalendarDaysIcon,
       onSelect: () => onProgramar(order),
       permission: "E-MESACONTROL-PEDIDOS",
+      visible: order.estatus !== PEDIDO_ESTATUS.CANCELADO,
+    },
+    {
+      label: "Revisar inventario",
+      icon: WarehouseIcon,
+      onSelect: () => onReviewStock(order),
+      permission: "R-MESACONTROL-PEDIDOS",
       visible: order.estatus !== PEDIDO_ESTATUS.CANCELADO,
     },
   ];

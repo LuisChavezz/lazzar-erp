@@ -13,7 +13,6 @@ import {
   RejectIcon,
   SyncIcon,
   ViewIcon,
-  WarehouseIcon,
 } from "@/src/components/Icons";
 import { MainDialog } from "@/src/components/MainDialog";
 import { capitalize } from "@/src/utils/capitalize";
@@ -27,7 +26,6 @@ import {
 } from "../../quotes/utils/quoteDetailsFormatters";
 import { KANBAN_COLUMNS } from "../../quotes/constants/kanbanColumns";
 import { QuoteDetailsLoadingSkeleton } from "../../quotes/components/QuoteDetailsLoadingSkeleton";
-import { OperationsQuoteStockReviewDialog } from "./OperationsQuoteStockReviewDialog";
 import { useAcceptChangesOperationsQuote } from "../hooks/useAcceptChangesOperationsQuote";
 import { useApproveOperationsQuote } from "../hooks/useApproveOperationsQuote";
 import { useRejectChangesOperationsQuote } from "../hooks/useRejectChangesOperationsQuote";
@@ -86,7 +84,6 @@ const OperationsQuoteIdCell = ({
   operationsQuote: OperationsQuote;
 }) => {
   const [isViewOpen, setIsViewOpen] = useState(false);
-  const [isStockReviewOpen, setIsStockReviewOpen] = useState(false);
   const [isAuthorizeOpen, setIsAuthorizeOpen] = useState(false);
   const [isRejectOpen, setIsRejectOpen] = useState(false);
   const [isAcceptChangesOpen, setIsAcceptChangesOpen] = useState(false);
@@ -160,15 +157,6 @@ const OperationsQuoteIdCell = ({
       label: "Ver detalles",
       icon: ViewIcon,
       onSelect: () => setIsViewOpen(true),
-    },
-    {
-      // Lectura dentro de la sección de cotizaciones: basta el permiso de la
-      // propia sección (antes exigía el de MÓDULO, que tras la granularización
-      // ya no lo tiene quien solo accede a esta pantalla).
-      label: "Revisar inventario",
-      icon: WarehouseIcon,
-      onSelect: () => setIsStockReviewOpen(true),
-      permission: "R-MESACONTROL-COTI",
     },
     {
       // Aprobar/rechazar tienen códigos propios en el catálogo:
@@ -265,15 +253,6 @@ const OperationsQuoteIdCell = ({
           />
         </MainDialog>
       )}
-
-      {/* key={id+open} garantiza que el componente se remonte al abrir/cerrar el di\u00e1logo,
-          reseteando el estado de selecciones de producci\u00f3n sin necesitar useEffect. */}
-      <OperationsQuoteStockReviewDialog
-        key={`stock-review-${operationsQuote.id}-${isStockReviewOpen}`}
-        open={isStockReviewOpen}
-        onOpenChange={setIsStockReviewOpen}
-        operationsQuote={operationsQuote}
-      />
 
       <ConfirmDialog
         open={isAuthorizeOpen && canAuthorizeOperationsQuote}

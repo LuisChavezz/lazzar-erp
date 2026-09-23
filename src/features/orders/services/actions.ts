@@ -11,6 +11,7 @@ import type {
 } from "../interfaces/pedido-programacion.interface";
 import type { PedidoRecompraResponse } from "../interfaces/pedido-recompra.interface";
 import type { PedidoHeaderUpdate } from "../interfaces/pedido-update.interface";
+import type { OrderStockDetail } from "../interfaces/order-stock-detail.interface";
 
 
 /** Filtros de query string aceptados por `GET /ventas/pedidos/`. */
@@ -34,6 +35,19 @@ export const getOrders = async (params?: OrdersQueryParams): Promise<PedidoListI
  */
 export const getPedidoDetail = async (id: number): Promise<PedidoDetail> => {
   const response = await v1_api.get<PedidoDetail>(`/ventas/pedidos/${id}/`);
+  return response.data;
+};
+
+/**
+ * Existencia vs cantidad pedida por línea y talla
+ * (`GET /ventas/pedidos/{id}/stock-detalle/`).
+ *
+ * Un solo argumento y SIN objeto de config a propósito: el backend deja pasar
+ * los filtros del listado (`mis_pedidos`, `q`, `folio`) a esta ruta de detalle
+ * y cualquiera de ellos puede producir un 404 falso. Nunca agregar `params`.
+ */
+export const getOrderStockDetail = async (id: number): Promise<OrderStockDetail[]> => {
+  const response = await v1_api.get<OrderStockDetail[]>(`/ventas/pedidos/${id}/stock-detalle/`);
   return response.data;
 };
 

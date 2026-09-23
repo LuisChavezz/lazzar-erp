@@ -18,6 +18,7 @@ import type { PedidoListItem } from '@/src/features/orders/interfaces/order.inte
 import { isOrderConfirmed } from './OperationsOrderColumns';
 import { PedidoProgramacionDialog } from '@/src/features/orders/components/PedidoProgramacionDialog';
 import { OperationsOrderTable } from './OperationsOrderTable';
+import { OrderStockReviewDialog } from './OrderStockReviewDialog';
 
 // Componente principal de la Mesa de Control de Pedidos.
 export function OperationsOrderPanel() {
@@ -35,6 +36,8 @@ export function OperationsOrderPanel() {
   // El estado del diálogo vive aquí, no en la celda, para que sobreviva si el
   // renglón sale de la vista filtrada.
   const [selectedOrderForSchedule, setSelectedOrderForSchedule] =
+    useState<PedidoListItem | null>(null);
+  const [selectedOrderForStock, setSelectedOrderForStock] =
     useState<PedidoListItem | null>(null);
 
   // Navega al detalle 360° del pedido (ruta neutra); `?from=operations` para
@@ -129,6 +132,7 @@ export function OperationsOrderPanel() {
         onViewDetail={handleViewDetail}
         onEditMesaControl={handleEditMesaControl}
         onProgramar={setSelectedOrderForSchedule}
+        onReviewStock={setSelectedOrderForStock}
         onRefetch={handleRefetch}
         isRefetching={isRefetching}
       />
@@ -141,6 +145,23 @@ export function OperationsOrderPanel() {
             if (!open) setSelectedOrderForSchedule(null);
           }}
           order={selectedOrderForSchedule}
+        />
+      )}
+
+      {selectedOrderForStock && (
+        <OrderStockReviewDialog
+          key={`stock-${selectedOrderForStock.id}`}
+          open
+          onOpenChange={(open) => {
+            if (!open) setSelectedOrderForStock(null);
+          }}
+          orderId={selectedOrderForStock.id}
+          folio={selectedOrderForStock.folio}
+          clientName={
+            selectedOrderForStock.cliente_razon_social ||
+            selectedOrderForStock.cliente_nombre
+          }
+          createdAt={selectedOrderForStock.created_at}
         />
       )}
     </div>
