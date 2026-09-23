@@ -12,6 +12,9 @@ interface OperationsOrderTableProps extends OperationsOrderColumnCallbacks {
   orders: PedidoListItem[];
   onRefetch?: () => void | Promise<unknown>;
   isRefetching?: boolean;
+  isLoading?: boolean;
+  isError?: boolean;
+  errorMessage?: string;
 }
 
 // Tabla de la Mesa de Control de Pedidos — usa DataTable con columnas dedicadas
@@ -22,6 +25,9 @@ export function OperationsOrderTable({
   onProgramar,
   onRefetch,
   isRefetching,
+  isLoading,
+  isError,
+  errorMessage,
 }: OperationsOrderTableProps) {
   // Los callbacks son estables; el useMemo evita recrear el array de columnas
   // en cada render del componente padre.
@@ -40,6 +46,12 @@ export function OperationsOrderTable({
       onRefetch={onRefetch}
       isRefetching={isRefetching}
       isLoadingOverlay={isRefetching}
+      isLoading={isLoading}
+      isError={isError}
+      errorTitle="Error al cargar pedidos"
+      errorMessage={errorMessage}
+      onErrorRetry={onRefetch ? () => void onRefetch() : undefined}
+      loadingAriaLabel="Cargando pedidos"
     />
   );
 }

@@ -4,16 +4,15 @@ import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useIsFetching, useQueryClient } from '@tanstack/react-query';
 import KpiGrid, { type KpiItem } from '@/src/components/KpiGrid';
-import { ErrorState } from '@/src/components/ErrorState';
-import { LoadingSkeleton } from '@/src/components/LoadingSkeleton';
 import {
   CheckCircleIcon,
   ClockIcon,
   ListaPreciosIcon,
   PedidosIcon,
 } from '@/src/components/Icons';
+import { extractErrorMessage } from '@/src/utils/extractErrorMessage';
 import { formatCurrency, safeParseAmount } from '@/src/utils/formatCurrency';
-import { useOrders } from '@/src/features/orders/hooks/useOrders';
+import { ordersQueryKey, useOrders } from '@/src/features/orders/hooks/useOrders';
 import type { PedidoListItem } from '@/src/features/orders/interfaces/order.interface';
 import { isOrderConfirmed } from './OperationsOrderColumns';
 import { PedidoProgramacionDialog } from '@/src/features/orders/components/PedidoProgramacionDialog';
@@ -24,7 +23,10 @@ export function OperationsOrderPanel() {
   const { orders, isLoading, isError, error } = useOrders();
   const queryClient = useQueryClient();
   const router = useRouter();
-  const isRefetching = useIsFetching({ queryKey: ['orders'] }) > 0;
+  // `exact`: solo la clave SIN params de este panel. Las variantes con filtros
+  // (`["orders", params]`, p. ej. "Mis pedidos") comparten el prefijo y, sin
+  // esto, encenderían el spinner de esta tabla. Mismo criterio que `OrderListView`.
+  const isRefetching = useIsFetching({ queryKey: ordersQueryKey(), exact: true }) > 0;
 
   // El estado del diálogo vive aquí, no en la celda, para que sobreviva si el
   // renglón sale de la vista filtrada.
@@ -100,38 +102,24 @@ export function OperationsOrderPanel() {
 
   const handleRefetch = () => queryClient.invalidateQueries({ queryKey: ['orders'] });
 
-  if (isLoading) {
-    return (
-      <div
-        className="min-h-165"
-        role="status"
-        aria-live="polite"
-        aria-label="Cargando pedidos"
-      >
-        <LoadingSkeleton className="h-96 rounded-3xl" />
-      </div>
-    );
-  }
-
-  if (isError) {
-    return (
-      <ErrorState
-        title="Error al cargar pedidos"
-        message={(error as Error)?.message}
-      />
-    );
-  }
-
   return (
     // Altura NATURAL a propósito (sin `fillHeight`/calc de viewport): con las
     // 4 tarjetas KPI arriba, forzar la tabla a llenar el resto de la ventana
     // se veía extraño — mejor dejar que la tabla use su tamaño por defecto y
     // la página scrollee normalmente si hace falta.
     <div className="flex flex-col gap-6">
-      <KpiGrid items={kpis} />
+      {/* KPIs: ocultos durante la carga y ante un error —no hay datos que
+          resumir y `orders` arranca en `[]`, así que mostrarían ceros que se
+          leerían como reales—, igual que `EmbroideryStats` en su vista. La
+          tabla NO se gatea: se monta siempre y alterna solo su área de datos,
+          de modo que el toolbar sigue visible durante la carga y el error. */}
+      {!isLoading && !isError && <KpiGrid items={kpis} />}
 
       <OperationsOrderTable
         orders={orders}
+        isLoading={isLoading}
+        isError={isError}
+        errorMessage={extractErrorMessage(error, 'No se pudo cargar la información.')}
         onViewDetail={handleViewDetail}
         onEditMesaControl={handleEditMesaControl}
         onProgramar={setSelectedOrderForSchedule}
