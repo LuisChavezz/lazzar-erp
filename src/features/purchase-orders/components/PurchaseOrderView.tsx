@@ -42,10 +42,7 @@ import {
 const OrderStats = memo(function OrderStats({ items }: { items: PurchaseOrder[] }) {
   // Las canceladas (estatus 6) siguen en el listado, pero ya no son órdenes
   // "activas": se excluyen del total y se cuentan aparte en su propia tarjeta.
-  const total = useMemo(
-    () => items.filter((o) => !isPurchaseOrderCancelled(o.estatus)).length,
-    [items],
-  );
+  const total = items.filter((o) => !isPurchaseOrderCancelled(o.estatus)).length;
 
   const pendientes = useMemo(
     () => items.filter((o) => isPurchaseOrderPending(o.estatus)).length,
