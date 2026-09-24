@@ -30,16 +30,18 @@ export const getSpecialOrderColumns = ({
 }: SpecialOrderColumnCallbacks): ColumnDef<SpecialOrderRow>[] => [
   {
     id: "folio",
-    accessorFn: (order) => order.folio ?? "",
+    // El valor buscable es EXACTAMENTE el texto pintado, incluido el respaldo
+    // `Pedido #id` cuando `folio` es nulo: así la búsqueda encuentra lo que se ve.
+    accessorFn: (order) => order.folio || `Pedido #${order.id}`,
     header: "Folio",
-    cell: ({ row }) => (
+    cell: (info) => (
       <button
         type="button"
-        onClick={() => onViewDetail(row.original.id)}
+        onClick={() => onViewDetail(info.row.original.id)}
         className="font-mono text-slate-700 dark:text-slate-200 font-semibold hover:text-sky-600 dark:hover:text-sky-400 hover:underline transition-colors cursor-pointer"
         title="Ver detalle"
       >
-        {row.original.folio || `Pedido #${row.original.id}`}
+        {info.getValue<string>()}
       </button>
     ),
   },
