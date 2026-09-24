@@ -868,7 +868,11 @@ export function DataTable<TData, TValue>({
                         </h3>
                       </div>
                       <div className="p-2 max-h-60 overflow-y-auto">
-                        {table.getAllLeafColumns().map((column) => {
+                        {/* Solo las columnas ocultables: una columna con
+                            `enableHiding: false` (p. ej. la que lleva el menú de
+                            acciones de la fila) no aparece aquí. Sin esa opción,
+                            `getCanHide()` es `true` y la lista no cambia. */}
+                        {table.getAllLeafColumns().filter((column) => column.getCanHide()).map((column) => {
                           return (
                             <button
                               type="button"
