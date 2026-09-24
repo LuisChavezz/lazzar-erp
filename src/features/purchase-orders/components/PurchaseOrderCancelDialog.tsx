@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { MainDialog } from "@/src/components/MainDialog";
 import { FormTextarea } from "@/src/components/FormTextarea";
@@ -52,6 +52,12 @@ export function PurchaseOrderCancelDialog({
     onReasonError: setMotivoError,
   });
 
+  // Guarda SÍNCRONA contra el doble envío. `isPending` no basta: dos clics en
+  // el mismo tick corren en el mismo render y ambos leen `isPending === false`
+  // (el `disabled` del botón llega hasta el siguiente render). La ref cambia al
+  // instante y se libera cuando la mutación termina.
+  const submittingRef = useRef(false);
+
   const orderLabel = order ? (order.folio ?? `#${order.id}`) : "";
 
   const handleOpenChange = (next: boolean) => {
@@ -67,7 +73,7 @@ export function PurchaseOrderCancelDialog({
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!order) return;
+    if (!order || submittingRef.current) return;
 
     const parsed = CancelPurchaseOrderFormSchema.safeParse({
       motivo_cancelacion: motivo,
@@ -77,9 +83,13 @@ export function PurchaseOrderCancelDialog({
       return;
     }
 
+    submittingRef.current = true;
     mutate(
       { id: order.id, payload: parsed.data },
       {
+        onSettled: () => {
+          submittingRef.current = false;
+        },
         onSuccess: () => handleOpenChange(false),
         // Un error de `estatus` (p. ej. "La orden ya no puede cancelarse.")
         // significa que la orden ya es terminal: reintentar no sirve. Se
