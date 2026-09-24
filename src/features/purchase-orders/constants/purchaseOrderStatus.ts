@@ -5,8 +5,10 @@ import type { StatusBadgeConfigEntry } from "@/src/components/StatusBadge";
  * (`OrdenCompra.estatus`). `BORRADOR` es el default del modelo Django pero
  * nunca lo asigna el único flujo real de creación (`POST
  * /compras/ordenes/onboarding/` siempre asigna `PENDIENTE`); solo ocurriría
- * si una orden se creara fuera de la API (admin/shell). `CANCELADA` tampoco
- * la asigna ningún endpoint hoy — no existe una acción de cancelar.
+ * si una orden se creara fuera de la API (admin/shell). `CANCELADA` la asigna
+ * `POST /compras/ordenes/{id}/cancelar/`; es TERMINAL (el backend rechaza
+ * edición, confirmación y recepción) y la orden sigue visible en listado y
+ * detalle con su `motivo_cancelacion`.
  */
 export const PURCHASE_ORDER_STATUS = {
   BORRADOR: 1,
@@ -46,12 +48,25 @@ export const isPurchaseOrderCancelled = (estatus: number) =>
 
 /**
  * Borrador o pendiente — la orden aún no se autoriza, por lo que sigue
- * pudiendo editarse, confirmarse o eliminarse. A partir de autorizada
- * ninguna de esas tres acciones debe quedar disponible (ya hay compromiso
- * con el proveedor y, más adelante, posibles recepciones asociadas).
+ * pudiendo editarse, confirmarse o eliminarse (eliminar = borrar un error de
+ * captura; el backend además lo rechaza si ya hay recepciones o facturas).
+ *
+ * Editar una AUTORIZADA lo permite el backend (la regresa a pendiente), pero
+ * la UI lo mantiene bloqueado a propósito: es una decisión de negocio aún
+ * pendiente, no un olvido.
  */
 export const isPurchaseOrderEditable = (estatus: number) =>
   isPurchaseOrderDraft(estatus) || isPurchaseOrderPending(estatus);
+
+/**
+ * Borrador, pendiente o autorizada — la orden puede CANCELARSE (queda en
+ * estatus 6 con su motivo, sin borrarse). Recibida parcial o totalmente ya no:
+ * hay mercancía de por medio. El backend además la rechaza si hay recepciones
+ * activas o facturas de proveedor vivas, cosa que el listado no expone; ese
+ * 400 llega con su mensaje al diálogo.
+ */
+export const isPurchaseOrderCancellable = (estatus: number) =>
+  isPurchaseOrderEditable(estatus) || estatus === PURCHASE_ORDER_STATUS.AUTORIZADA;
 
 /**
  * Colores y etiquetas por estatus, en la forma `StatusBadgeConfigEntry` que
