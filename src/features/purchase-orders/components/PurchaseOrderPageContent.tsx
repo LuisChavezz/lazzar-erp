@@ -23,7 +23,10 @@ import { formatLocalDate, formatShortDate } from "@/src/utils/formatDate";
 import { RECEIPT_STATUS_CONFIG } from "@/src/features/receipts/constants/receiptStatus";
 import { ReceiptDetailByIdDialog } from "@/src/features/purchase-order-receipts/components/ReceiptDetailByIdDialog";
 import { StockMovementDetailByIdDialog } from "@/src/features/stock-movements/components/StockMovementDetailByIdDialog";
-import { purchaseOrderStatusEntry } from "../constants/purchaseOrderStatus";
+import {
+  isPurchaseOrderCancelled,
+  purchaseOrderStatusEntry,
+} from "../constants/purchaseOrderStatus";
 import { canSeeAmounts, formatIvaPercent } from "../utils/purchaseOrderFinance";
 import { usePurchaseOrder } from "../hooks/usePurchaseOrder";
 import type {
@@ -762,6 +765,15 @@ export function PurchaseOrderPageContent({
           <InfoField label="Observaciones" className="col-span-2 md:col-span-3">
             {textOrDash(data.observaciones)}
           </InfoField>
+          {/* Solo en canceladas y si el backend manda el motivo (campo
+              opcional: no está confirmado en todas las respuestas). */}
+          {isPurchaseOrderCancelled(data.estatus) && data.motivo_cancelacion?.trim() && (
+            <InfoField label="Motivo de cancelación" className="col-span-2 md:col-span-3">
+              <span className="text-rose-700 dark:text-rose-400">
+                {data.motivo_cancelacion}
+              </span>
+            </InfoField>
+          )}
         </InfoGrid>
       </Section>
 

@@ -19,7 +19,10 @@ import {
   formatQuantityValue,
 } from "@/src/utils/formatCurrency";
 import { formatLocalDate } from "@/src/utils/formatDate";
-import { purchaseOrderStatusEntry } from "../constants/purchaseOrderStatus";
+import {
+  isPurchaseOrderCancelled,
+  purchaseOrderStatusEntry,
+} from "../constants/purchaseOrderStatus";
 import { canSeeAmounts, formatIvaPercent } from "../utils/purchaseOrderFinance";
 import type {
   DocumentoLigado,
@@ -440,6 +443,19 @@ export function PurchaseOrderDetailDialog({
                   </span>
                 </InfoField>
               )}
+              {/* Solo en canceladas y si el backend manda el motivo (campo
+                  opcional: no está confirmado en todas las respuestas). */}
+              {isPurchaseOrderCancelled(purchaseOrder.estatus) &&
+                purchaseOrder.motivo_cancelacion?.trim() && (
+                  <InfoField
+                    label="Motivo de cancelación"
+                    className="col-span-2 sm:col-span-3"
+                  >
+                    <span className="leading-snug text-rose-700 dark:text-rose-400">
+                      {purchaseOrder.motivo_cancelacion}
+                    </span>
+                  </InfoField>
+                )}
             </div>
 
             {/* Origen — nombres ya resueltos por el backend (`*_nombre`); los
