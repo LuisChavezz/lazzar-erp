@@ -18,7 +18,9 @@ export const getPurchaseOrderColumnText = (
 ): string => {
   switch (column.id) {
     case "folio":
-      return [order.folio ?? "—", order.estatus_label, order.referencia || null]
+      // Mismo identificador que el disparador del listado: el folio, o `#id`
+      // mientras la orden no tiene folio (antes de confirmarse).
+      return [order.folio ?? `#${order.id}`, order.estatus_label, order.referencia || null]
         .filter(Boolean)
         .join(" · ");
     case "fecha_oc":
