@@ -406,11 +406,12 @@ export const getColumns = (
     //    y `sr-only` — el color solo no debe ser la única señal;
     //  - la referencia va en una mini-pill gris junto al folio, y se omite por
     //    completo cuando la orden no trae una (no hay "—" decorativo);
-    //  - el `accessorFn` concatena folio, referencia e id (con `?? ""` por la
-    //    trampa de búsqueda global con campos nullable, ver `DataTable`) para
-    //    que el buscador encuentre por lo que el disparador muestra — el folio,
-    //    o `#id` cuando aún no hay folio —, aunque el `cell` pinte su propio
-    //    layout a partir de `row.original`;
+    //  - el `accessorFn` concatena lo que el disparador muestra —el folio, o
+    //    `#id` SOLO cuando aún no hay folio (el id es interno: añadirlo a
+    //    todas las filas haría que buscar `129` trajera también la #1290)— y
+    //    la referencia, con `?? ""`: siempre es un string, nunca `null`, por la
+    //    trampa de búsqueda global con campos nullable (ver `DataTable`). El
+    //    `cell` pinta su propio layout a partir de `row.original`;
     //  - el filtro de encabezado filtra por ESTATUS (`exactFilterFn`, sobre
     //    `row.original.estatus`), no por el valor del `accessorFn` — es el
     //    campo que vive visualmente en esta columna (el punto de color);
@@ -420,7 +421,7 @@ export const getColumns = (
     //    pill de referencia (tope de 120) + huecos y padding de celda. Con el
     //    ancho por defecto (150) la referencia no cabía en la misma línea.
     columnHelper.accessor(
-      (row) => `${row.folio ?? ""} ${row.referencia ?? ""} #${row.id}`.trim(),
+      (row) => `${row.folio ?? `#${row.id}`} ${row.referencia ?? ""}`.trim(),
       {
         id: "folio",
         // `meta.label` es lo que lee `DataTable` (la exportación CSV/PDF) para
