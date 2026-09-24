@@ -90,10 +90,10 @@ export const GoogleCalendar = () => {
       >
         <div className="sales-fullcalendar-theme sales-fullcalendar-loading h-full min-h-0" />
         <div className="min-h-0 overflow-y-auto space-y-4">
-          <GoogleUpcomingEvents />
+          <GoogleUpcomingEvents hideViewAll />
         </div>
       </div>
-    );
+);
   }
 
   return (
@@ -187,7 +187,7 @@ export const GoogleCalendar = () => {
       <div className="h-full min-h-0 overflow-y-auto">
         <div className="space-y-4">
           <GoogleEventDetails />
-          <GoogleUpcomingEvents />
+          <GoogleUpcomingEvents hideViewAll />
         </div>
       </div>
 
