@@ -37,12 +37,16 @@ export interface SpecialOrderListItem {
  * `tipos_servicio` no se pinta: se deriva de las banderas de técnica de cada
  * ubicación (`quotes/utils/deriveTiposServicio.ts`), que el popover de
  * ubicaciones ya muestra.
+ *
+ * `type` y no `interface` a propósito: un alias de objeto tiene firma de índice
+ * implícita y así satisface `ServicioConfig`, el tipo que reciben los lectores
+ * compartidos de `orders/utils/tallaServiceConfigs.ts`.
  */
-export interface SpecialOrderBordadoConfig {
+export type SpecialOrderBordadoConfig = {
   notas?: string | null;
   ubicaciones?: EmbroideryOnboardingUbicacion[];
   tipos_servicio?: string[];
-}
+};
 
 /** Talla de una línea especial (`PedidoDetalleTallaEspecialSerializer`). Sin precios. */
 export interface SpecialOrderTalla {

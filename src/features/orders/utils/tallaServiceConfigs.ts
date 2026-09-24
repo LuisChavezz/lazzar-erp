@@ -1,13 +1,16 @@
 import type { EmbroideryOnboardingUbicacion } from "@/src/features/embroidery/interfaces/embroidery.interface";
 import type { ReflectiveLineConfigEntry } from "@/src/features/reflective-orders/interfaces/reflective-order.interface";
+import type { ServicioConfig } from "../interfaces/order.interface";
 
 /**
  * Lectura segura de los `*_config` de JSON libre de una talla de pedido.
  *
  * Los consumen el detalle 360° del pedido (`PedidoDetailContent`) y el detalle
- * de pedidos especiales de Producción (`special-orders`). Reciben `unknown` y no
- * el tipo de cada contrato porque son el MISMO `JSONField` visto desde dos
- * serializers distintos: lo que importa es la forma real, que se comprueba aquí.
+ * de pedidos especiales de Producción (`special-orders`). Reciben
+ * `ServicioConfig` —el `JSONField` tal cual lo tipa este módulo—: cualquier
+ * contrato cuyo config sea un objeto (alias `type`, no `interface`), un arreglo
+ * o `null` lo satisface, y pasar otra cosa (la talla entera, un string) no
+ * compila.
  *
  * Solo EXTRAEN: nunca deciden si el servicio aplica. Eso lo dicen únicamente
  * las banderas `lleva_*` —`bordado_config` llega como cascarón vacío aunque
@@ -20,7 +23,7 @@ import type { ReflectiveLineConfigEntry } from "@/src/features/reflective-orders
  * doble guard (objeto, luego arreglo). Devuelve `[]` cuando falta o viene con
  * otra forma; el popover solo se abre si hay al menos una.
  */
-export function bordadoUbicaciones(config: unknown): EmbroideryOnboardingUbicacion[] {
+export function bordadoUbicaciones(config: ServicioConfig): EmbroideryOnboardingUbicacion[] {
   if (config && !Array.isArray(config)) {
     const ubic = (config as Record<string, unknown>).ubicaciones;
     if (Array.isArray(ubic)) return ubic as EmbroideryOnboardingUbicacion[];
@@ -32,6 +35,6 @@ export function bordadoUbicaciones(config: unknown): EmbroideryOnboardingUbicaci
  * Entradas del `reflejante_config` — aquí el config ES el arreglo directamente
  * (no un objeto que lo envuelva, a diferencia de bordado). `[]` si no es arreglo.
  */
-export function reflejanteEntries(config: unknown): ReflectiveLineConfigEntry[] {
+export function reflejanteEntries(config: ServicioConfig): ReflectiveLineConfigEntry[] {
   return Array.isArray(config) ? (config as ReflectiveLineConfigEntry[]) : [];
 }
