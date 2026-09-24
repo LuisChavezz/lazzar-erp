@@ -31,7 +31,9 @@ export const ORDER_STATUS_FILTER_FIELD = 'estatus_confirmacion' as const;
 export type OrderWithStatus = PedidoListItem & { [ORDER_STATUS_FILTER_FIELD]: string };
 
 // Un pedido se considera confirmado cuando ya tiene fecha de confirmación.
-export function isOrderConfirmed(order: PedidoListItem): boolean {
+// Recibe solo ese campo para que otros contratos de pedido (p. ej. los pedidos
+// especiales de Producción) compartan la misma regla.
+export function isOrderConfirmed(order: Pick<PedidoListItem, 'fecha_confirmacion'>): boolean {
   return Boolean(order.fecha_confirmacion);
 }
 
