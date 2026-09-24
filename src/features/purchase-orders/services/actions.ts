@@ -1,5 +1,6 @@
 import { v1_api } from "@/src/api/v1.api";
 import {
+  CancelPurchaseOrderParams,
   PurchaseOrder,
   PurchaseOrderDetail,
   UpdatePurchaseOrderParams,
@@ -41,6 +42,22 @@ export const postPurchaseOrder = async (
 
 export const confirmPurchaseOrder = async (ordenCompraId: number): Promise<void> => {
   await v1_api.post(`/compras/ordenes/${ordenCompraId}/aceptar/`);
+}
+
+/**
+ * Cancela la orden: queda en estatus 6 (CANCELADA), conserva `activo` y sigue
+ * visible en listado y detalle. Distinto de `deletePurchaseOrder`, que borra un
+ * error de captura.
+ */
+export const cancelPurchaseOrder = async ({
+  id,
+  payload,
+}: CancelPurchaseOrderParams): Promise<PurchaseOrder> => {
+  const response = await v1_api.post<PurchaseOrder>(
+    `/compras/ordenes/${id}/cancelar/`,
+    payload,
+  );
+  return response.data;
 }
 
 export const updatePurchaseOrder = async ({

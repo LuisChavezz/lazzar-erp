@@ -87,6 +87,13 @@ export interface PurchaseOrder {
   tipo: string;
   total_piezas: number;
   observaciones: string | null;
+  /**
+   * Motivo capturado al cancelar la orden (`POST ordenes/{id}/cancelar/`),
+   * solo lectura. Opcional Y nullable: el backend lo añadió a sus serializers
+   * de lectura, pero no está confirmado que el LISTADO lo incluya, y en una
+   * orden no cancelada no hay motivo.
+   */
+  motivo_cancelacion?: string | null;
   activo: boolean;
   created_at: string;
   updated_at: string;
@@ -235,6 +242,25 @@ export type UpdatePurchaseOrderHeader = Pick<
 export type UpdatePurchaseOrderBody = UpdatePurchaseOrderHeader & {
   detalles: PurchaseOrderDetalleItem[];
 };
+
+//
+// ─── Cancelación de la orden de compra ──────────────────────────────────────
+//
+
+/**
+ * Cuerpo de `POST /compras/ordenes/{id}/cancelar/`. El motivo es obligatorio:
+ * en blanco el backend responde 400 con
+ * `{ "motivo_cancelacion": "El motivo de cancelación es requerido." }`.
+ */
+export interface CancelPurchaseOrderPayload {
+  motivo_cancelacion: string;
+}
+
+/** Parámetros para la acción de cancelación de una orden de compra. */
+export interface CancelPurchaseOrderParams {
+  id: number;
+  payload: CancelPurchaseOrderPayload;
+}
 
 /** Parámetros para la acción de actualización de una orden de compra. */
 export interface UpdatePurchaseOrderParams {
