@@ -5,6 +5,7 @@ import type { FormEvent } from "react";
 import { MainDialog } from "@/src/components/MainDialog";
 import { FormTextarea } from "@/src/components/FormTextarea";
 import { FormCancelButton, FormSubmitButton } from "@/src/components/FormButtons";
+import { drfFieldMessage } from "@/src/utils/firstDrfFieldMessage";
 import { useCancelPurchaseOrder } from "../hooks/useCancelPurchaseOrder";
 import { CancelPurchaseOrderFormSchema } from "../schemas/purchase-order-cancel.schema";
 import type { PurchaseOrder } from "../interfaces/purchase-order.interface";
@@ -30,7 +31,7 @@ interface PurchaseOrderCancelDialogProps {
  *
  * Mismo esqueleto que `EmbroideryCreateAvanceDialog` (input controlado +
  * `safeParse` al enviar, `FormTextarea`, `FormCancelButton`/`FormSubmitButton`
- * y cierre solo al éxito). El motivo va SIN `forceUppercase`: es texto libre
+ * y cierre al éxito). El motivo va SIN `forceUppercase`: es texto libre
  * para explicar una decisión, igual que el `motivo` de notas de crédito y las
  * observaciones de finanzas.
  *
@@ -78,7 +79,17 @@ export function PurchaseOrderCancelDialog({
 
     mutate(
       { id: order.id, payload: parsed.data },
-      { onSuccess: () => handleOpenChange(false) },
+      {
+        onSuccess: () => handleOpenChange(false),
+        // Un error de `estatus` (p. ej. "La orden ya no puede cancelarse.")
+        // significa que la orden ya es terminal: reintentar no sirve. Se
+        // cierra; el toast del hook explica el motivo y su refetch muestra la
+        // fila con su estatus real. Cualquier otro error (red, 5xx, forma
+        // inesperada) deja el diálogo abierto con el motivo escrito.
+        onError: (error) => {
+          if (drfFieldMessage(error, "estatus")) handleOpenChange(false);
+        },
+      },
     );
   };
 
