@@ -40,7 +40,12 @@ import {
 // ─── KPIs ────────────────────────────────────────────────────────────────────
 
 const OrderStats = memo(function OrderStats({ items }: { items: PurchaseOrder[] }) {
-  const total = items.length;
+  // Las canceladas (estatus 6) siguen en el listado, pero ya no son órdenes
+  // "activas": se excluyen del total y se cuentan aparte en su propia tarjeta.
+  const total = useMemo(
+    () => items.filter((o) => !isPurchaseOrderCancelled(o.estatus)).length,
+    [items],
+  );
 
   const pendientes = useMemo(
     () => items.filter((o) => isPurchaseOrderPending(o.estatus)).length,
@@ -92,7 +97,7 @@ const OrderStats = memo(function OrderStats({ items }: { items: PurchaseOrder[] 
         icon: ErrorIcon,
         iconBgClass: "bg-red-50 dark:bg-red-500/10",
         iconClass: "text-red-500",
-        trendLabel: "Este período",
+        trendLabel: "Total registradas",
         status: "negative",
       },
     ],
