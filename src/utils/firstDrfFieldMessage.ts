@@ -25,6 +25,22 @@ import { firstDrfMessage } from "./firstDrfMessage";
  * corte-manga, bordado y reflejante. Para esos casos devuelve `undefined` y
  * deja que decida el fallback.
  */
+/**
+ * Mensaje del backend para UN campo concreto del cuerpo de un error de DRF
+ * (`{ campo: "msg" }` o `{ campo: ["msg"] }`), o `undefined` si ese campo no
+ * trae mensaje. Para que un formulario pinte el error bajo su propio campo en
+ * vez de en un toast.
+ */
+export const drfFieldMessage = (error: unknown, field: string): string | undefined => {
+  const data = (error as AxiosError)?.response?.data;
+
+  if (!data || typeof data !== "object") {
+    return undefined;
+  }
+
+  return firstDrfMessage((data as Record<string, unknown>)[field]);
+};
+
 export const firstDrfFieldMessage = (error: unknown): string | undefined => {
   const data = (error as AxiosError)?.response?.data;
 
