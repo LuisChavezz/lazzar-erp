@@ -225,6 +225,9 @@ const ActionsCell = ({
           title="Eliminar Orden de Compra"
           description={`¿Estás seguro de que deseas eliminar la orden de compra ${orderLabel}? Esta acción no se puede deshacer.`}
           confirmText={isDeletePending ? "Eliminando..." : "Eliminar"}
+          // "Volver" y no el "Cancelar" por defecto: "Cancelar" es también
+          // una acción del menú de esta fila (anular la orden).
+          cancelText="Volver"
           confirmColor="red"
           onConfirm={() => {
             deleteOrder(order.id);
