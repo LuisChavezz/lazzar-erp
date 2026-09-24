@@ -99,9 +99,6 @@ export function SpecialOrderPageContent({ orderId }: SpecialOrderPageContentProp
           {data.folio || `Pedido #${data.id}`}
         </h1>
         <InfoGrid>
-          <InfoField label="Folio">
-            <span className="font-mono">{data.folio || "—"}</span>
-          </InfoField>
           <InfoField label="Cliente">{data.cliente_nombre || "—"}</InfoField>
           <InfoField label="Clasificación">
             <span className={data.clasificacion ? undefined : "text-slate-400 dark:text-slate-500"}>
