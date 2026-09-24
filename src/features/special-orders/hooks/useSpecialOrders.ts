@@ -2,6 +2,13 @@ import { useQuery } from "@tanstack/react-query";
 import { useHasLoadedQuery } from "@/src/hooks/useHasLoadedQuery";
 import { getSpecialOrders } from "../services/actions";
 import type { SpecialOrderListItem } from "../interfaces/special-order.interface";
+import { type SpecialOrderRow, withFilterFields } from "../utils/specialOrderFilters";
+
+/**
+ * Respaldo ESTABLE mientras no hay datos: un `[]` literal sería un arreglo nuevo
+ * en cada render y `DataTable` recalcularía su modelo de filas cada vez.
+ */
+const EMPTY_ROWS: SpecialOrderRow[] = [];
 
 /**
  * Lista los pedidos especiales (`GET /produccion/pedidos-especiales/`). Llave
@@ -20,6 +27,10 @@ import type { SpecialOrderListItem } from "../interfaces/special-order.interface
  * clasificación/fecha desde su navegador—, así que ninguna invalidación local
  * lo alcanzaría. Con `staleTime: 0` la consulta se refresca al montar y, con
  * `refetchOnWindowFocus`, al volver a la pestaña.
+ *
+ * `select` materializa los campos de los chips (`withFilterFields`) una sola
+ * vez por respuesta: TanStack memoiza el resultado mientras `data` y la
+ * referencia de la función (de módulo, estable) no cambien.
  */
 export const SPECIAL_ORDERS_FRESHNESS = {
   staleTime: 0,
@@ -27,13 +38,14 @@ export const SPECIAL_ORDERS_FRESHNESS = {
 } as const;
 
 export const useSpecialOrders = () => {
-  const query = useQuery<SpecialOrderListItem[]>({
+  const query = useQuery<SpecialOrderListItem[], Error, SpecialOrderRow[]>({
     queryKey: ["special-orders"],
     queryFn: getSpecialOrders,
+    select: withFilterFields,
     ...SPECIAL_ORDERS_FRESHNESS,
   });
 
-  const orders = query.data ?? [];
+  const orders = query.data ?? EMPTY_ROWS;
 
   const { hasLoaded } = useHasLoadedQuery({
     data: query.data,
