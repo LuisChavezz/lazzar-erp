@@ -91,6 +91,7 @@ import {
   Send,
   Settings,
   ShieldCheck,
+  Shirt,
   ShoppingBag,
   ShoppingCart,
   Star,
@@ -285,6 +286,11 @@ export const ScissorsIcon = (props: LucideProps) => <Scissors {...props} />;
 // identifica a Órdenes de Bordado en el mismo submenú de Producción: dos rutas
 // hermanas con el mismo ícono son indistinguibles en la barra lateral.
 export const SliceIcon = (props: LucideProps) => <Slice {...props} />;
+// Pedidos especiales (líneas de muestra fuera de catálogo). `Shirt` —la prenda a
+// fabricar— y NO `SamplesIcon` (`Layers2`), que queda reservado para el módulo
+// de Muestras de Mesa de Control; tampoco `Package`/`PackageOpen`, que ya
+// identifican a Productos y Variantes en el mismo submenú de Producción.
+export const SpecialOrdersIcon = (props: LucideProps) => <Shirt {...props} />;
 export const RouteIcon = (props: LucideProps) => <Route {...props} />;
 // `Boxes` (no `PackageOpen`): ese glifo ya lo exporta `ProductVariantsIcon` y
 // se usa dentro de /wms/stock, así que reutilizarlo dejaría dos destinos
