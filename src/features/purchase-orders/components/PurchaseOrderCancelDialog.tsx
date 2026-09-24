@@ -5,10 +5,7 @@ import type { FormEvent } from "react";
 import { MainDialog } from "@/src/components/MainDialog";
 import { FormTextarea } from "@/src/components/FormTextarea";
 import { FormCancelButton, FormSubmitButton } from "@/src/components/FormButtons";
-import {
-  cancelReasonFieldError,
-  useCancelPurchaseOrder,
-} from "../hooks/useCancelPurchaseOrder";
+import { useCancelPurchaseOrder } from "../hooks/useCancelPurchaseOrder";
 import { CancelPurchaseOrderFormSchema } from "../schemas/purchase-order-cancel.schema";
 import type { PurchaseOrder } from "../interfaces/purchase-order.interface";
 
@@ -48,7 +45,11 @@ export function PurchaseOrderCancelDialog({
   const [motivo, setMotivo] = useState("");
   const [motivoError, setMotivoError] = useState<string | null>(null);
 
-  const { mutate, isPending } = useCancelPurchaseOrder();
+  // El error de `motivo_cancelacion` se pinta bajo el textarea en vez de en un
+  // toast; el resto de errores los notifica el hook.
+  const { mutate, isPending } = useCancelPurchaseOrder({
+    onReasonError: setMotivoError,
+  });
 
   const orderLabel = order ? (order.folio ?? `#${order.id}`) : "";
 
@@ -77,15 +78,7 @@ export function PurchaseOrderCancelDialog({
 
     mutate(
       { id: order.id, payload: parsed.data },
-      {
-        onSuccess: () => handleOpenChange(false),
-        // El resto de errores los notifica el hook con un toast; el del campo
-        // se pinta aquí, bajo el textarea.
-        onError: (error) => {
-          const fieldMessage = cancelReasonFieldError(error);
-          if (fieldMessage) setMotivoError(fieldMessage);
-        },
-      },
+      { onSuccess: () => handleOpenChange(false) },
     );
   };
 
