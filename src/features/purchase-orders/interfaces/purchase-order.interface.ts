@@ -89,11 +89,10 @@ export interface PurchaseOrder {
   observaciones: string | null;
   /**
    * Motivo capturado al cancelar la orden (`POST ordenes/{id}/cancelar/`),
-   * solo lectura. Opcional Y nullable: el backend lo añadió a sus serializers
-   * de lectura, pero no está confirmado que el LISTADO lo incluya, y en una
-   * orden no cancelada no hay motivo.
+   * solo lectura. Llega TANTO en el listado como en el detalle (verificado
+   * contra el backend); `null` cuando la orden no está cancelada.
    */
-  motivo_cancelacion?: string | null;
+  motivo_cancelacion: string | null;
   activo: boolean;
   created_at: string;
   updated_at: string;
