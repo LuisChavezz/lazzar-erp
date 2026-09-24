@@ -11,6 +11,7 @@ import {
   CheckCircleIcon,
   CloseIcon,
   DeleteIcon,
+  ChevronRightIcon,
   DownloadIcon,
   EditIcon,
   EmailIcon,
@@ -33,10 +34,15 @@ import {
 
 const columnHelper = createColumnHelper<PurchaseOrder>();
 
-// ── Celda de acciones ─────────────────────────────────────────────────────────
+// ── Celda O.C. (folio + menú de acciones) ─────────────────────────────────────
 
 /**
- * Menú de acciones de la fila.
+ * Primera columna de la fila: punto de estatus, folio y referencia. El FOLIO es
+ * el disparador del menú de acciones de la fila (no hay columna "Acciones"
+ * aparte): al hacer clic abre el menú y "Ver Detalles" es su primer item — ya
+ * no navega directo. Mismo patrón que Cotizaciones (#127) y, en lo visual, que
+ * `OperationsOrderColumns` (texto tipo link con chevron; el punto y la
+ * referencia van FUERA del botón, son indicadores, no parte de la acción).
  *
  * Navegación, edición y cancelación se DELEGAN a la vista (`onViewDetails` /
  * `onEdit` / `onCancel`): sus destinos —una página de detalle y dos diálogos
@@ -49,7 +55,7 @@ const columnHelper = createColumnHelper<PurchaseOrder>();
  * Mismo reparto que `AreaColumns` y el resto de los catálogos. Enviar correo y
  * Descargar PDF no abren nada — son `mutate(id)` directos.
  */
-const ActionsCell = ({
+const FolioCell = ({
   order,
   onViewDetails,
   onEdit,
@@ -67,11 +73,12 @@ const ActionsCell = ({
   const { mutate: sendEmail, isPending: isSendingEmail } = useSendPurchaseOrderEmail();
   const { mutate: downloadPdf, isPending: isDownloadingPdf } = useDownloadPurchaseOrderPdf();
 
-  // Cómo se nombra la orden en el `aria-label` del menú y en el texto de los
-  // diálogos de confirmación. `folio` puede ser `null` —y precisamente en las
-  // órdenes EDITABLES, que son las que ven estos diálogos—, así que sin el
-  // respaldo salía literalmente "la orden de compra null".
+  // Cómo se nombra la orden en el disparador, su `aria-label` y el texto de los
+  // diálogos de confirmación. `folio` es `null` hasta que la orden se confirma
+  // —precisamente en las EDITABLES, que son las que ven estos diálogos—, así
+  // que sin el respaldo salía literalmente "la orden de compra null".
   const orderLabel = order.folio ?? `#${order.id}`;
+  const statusCfg = purchaseOrderStatusEntry(order.estatus, order.estatus_label);
 
   // Borrador o pendiente: la orden aún no se autoriza, así que puede
   // editarse, confirmarse o eliminarse. Autorizada en adelante, ninguna de
@@ -202,8 +209,43 @@ const ActionsCell = ({
   }
 
   return (
-    <div className="flex items-center justify-center">
-      <ActionMenu items={menuItems} ariaLabel={`Acciones de la orden ${orderLabel}`} />
+    // `whitespace-nowrap`: punto, folio, chevron y referencia en UNA línea (ver
+    // `size` de la columna).
+    <div className="flex items-center gap-2 min-w-0 whitespace-nowrap">
+      <span
+        className={`w-2 h-2 rounded-full shrink-0 ${statusCfg.dot}`}
+        title={statusCfg.label}
+        aria-hidden="true"
+      />
+      <span className="sr-only">{statusCfg.label}</span>
+      {/* "Ver Detalles" siempre es visible, así que `ActionMenu` nunca devuelve
+          `null` aquí y el folio no desaparece. */}
+      <ActionMenu
+        items={menuItems}
+        ariaLabel={`Acciones de la orden ${orderLabel}`}
+        align="start"
+        trigger={
+          <button
+            type="button"
+            aria-label={`Ver acciones de la orden ${orderLabel}`}
+            className="group inline-flex items-center gap-1 font-mono font-bold text-slate-800 dark:text-white hover:text-sky-600 dark:hover:text-sky-400 hover:underline transition-colors cursor-pointer"
+          >
+            {orderLabel}
+            <ChevronRightIcon
+              className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500 group-hover:text-sky-500 dark:group-hover:text-sky-400 group-hover:translate-x-0.5 transition-all"
+              aria-hidden="true"
+            />
+          </button>
+        }
+      />
+      {order.referencia && (
+        <span
+          className="inline-flex max-w-[120px] items-center truncate px-1.5 py-0.5 rounded text-[10px] font-medium leading-none bg-slate-100 text-slate-500 dark:bg-white/10 dark:text-slate-400"
+          title={order.referencia}
+        >
+          {order.referencia}
+        </span>
+      )}
       {editable && (
         <ConfirmDialog
           open={isConfirmOpen}
@@ -333,13 +375,13 @@ const exactFilterFn =
 /**
  * Columnas del listado de órdenes de compra (`GET /compras/ordenes/`).
  *
- * Fábrica —no un arreglo estático— porque el folio y la acción "Ver Detalles"
- * navegan a la página de detalle, y "Editar" abre el diálogo de edición que
- * vive en `PurchaseOrderView`. Mismo patrón `getXColumns(callbacks)` que
+ * Fábrica —no un arreglo estático— porque la acción "Ver Detalles" navega a la
+ * página de detalle, y "Editar"/"Cancelar" abren diálogos que viven en
+ * `PurchaseOrderView`. Mismo patrón `getXColumns(callbacks)` que
  * `CorteMangaOrderColumns` (navegación) y `AreaColumns` (edición).
  *
- * Contenido pedido por negocio: O.C. (folio + estatus + referencia, ver
- * abajo), Proveedor, Fecha OC, Cantidad, Vencimiento, Progreso OC (surtido
+ * Contenido pedido por negocio: O.C. (folio + estatus + referencia, y el menú
+ * de acciones de la fila, ver abajo), Proveedor, Fecha OC, Cantidad, Vencimiento, Progreso OC (surtido
  * vs. solicitado, ver `ProgresoCell`). Los importes (Total/Subtotal/Impuestos)
  * y "Entrega estimada" salieron del listado a propósito — siguen disponibles
  * en el detalle de la orden.
@@ -357,74 +399,49 @@ export const getColumns = (
 ) => {
   const columns = [
     // ── O.C. ───────────────────────────────────────────────────────────────
-    // Folio, estatus y referencia consolidados en UNA columna (antes tres) para
-    // dejarle sitio a Solicitadas/Surtidas/Restantes/Comentarios sin abarrotar
-    // la tabla:
+    // Folio, estatus y referencia en UNA columna, que además es la del menú de
+    // acciones de la fila (ver `FolioCell`):
     //  - el estatus se reduce a un punto de color (mismo `dot` que usa
     //    `StatusBadge`) junto al folio, con la etiqueta accesible por `title`
     //    y `sr-only` — el color solo no debe ser la única señal;
-    //  - la referencia baja a una mini-pill gris debajo del folio, y se omite
-    //    por completo cuando la orden no trae una (no hay "—" decorativo);
-    //  - el `accessorFn` concatena folio+referencia (con `?? ""` por el mismo
-    //    motivo de búsqueda global que el resto de campos nullable de esta
-    //    tabla) para que el buscador ("Buscar orden, folio o
-    //    referencia...") siga encontrando por cualquiera de los dos, aunque
-    //    el `cell` pinte su propio layout a partir de `row.original`;
+    //  - la referencia va en una mini-pill gris junto al folio, y se omite por
+    //    completo cuando la orden no trae una (no hay "—" decorativo);
+    //  - el `accessorFn` concatena folio, referencia e id (con `?? ""` por la
+    //    trampa de búsqueda global con campos nullable, ver `DataTable`) para
+    //    que el buscador encuentre por lo que el disparador muestra — el folio,
+    //    o `#id` cuando aún no hay folio —, aunque el `cell` pinte su propio
+    //    layout a partir de `row.original`;
     //  - el filtro de encabezado filtra por ESTATUS (`exactFilterFn`, sobre
     //    `row.original.estatus`), no por el valor del `accessorFn` — es el
-    //    campo que vive visualmente en esta columna (el punto de color).
+    //    campo que vive visualmente en esta columna (el punto de color);
+    //  - `enableHiding: false`: ocultarla desde "Mostrar/Ocultar" escondería
+    //    también el menú de acciones; nunca lleva `hideOnMobile` por lo mismo;
+    //  - `size: 260`: punto (8) + folio mono `OC-1-178` con chevron (~90) +
+    //    pill de referencia (tope de 120) + huecos y padding de celda. Con el
+    //    ancho por defecto (150) la referencia no cabía en la misma línea.
     columnHelper.accessor(
-      (row) => `${row.folio ?? ""} ${row.referencia ?? ""}`.trim(),
+      (row) => `${row.folio ?? ""} ${row.referencia ?? ""} #${row.id}`.trim(),
       {
         id: "folio",
-        // `meta.label` es lo que lee `DataTable` (menú "Mostrar/Ocultar" y la
-        // exportación CSV/PDF) para nombrar la columna: su `header` es una
-        // función (el filtro de encabezado), no un string, así que sin esto
-        // caería al `id` crudo ("Folio") en vez de "O.C.".
+        // `meta.label` es lo que lee `DataTable` (la exportación CSV/PDF) para
+        // nombrar la columna: su `header` es una función (el filtro de
+        // encabezado), no un string, así que sin esto caería al `id` crudo
+        // ("Folio") en vez de "O.C.".
         meta: { label: "O.C." },
+        enableHiding: false,
+        size: 260,
         header: ({ column }) => (
           <ColumnFilterHeader label="O.C." options={statusOptions} column={column} />
         ),
         filterFn: exactFilterFn((row) => row.estatus),
-        cell: ({ row }) => {
-          const cfg = purchaseOrderStatusEntry(
-            row.original.estatus,
-            row.original.estatus_label,
-          );
-          return (
-            <div className="flex items-center gap-2 min-w-0">
-              <span
-                className={`w-2 h-2 rounded-full shrink-0 ${cfg.dot}`}
-                title={cfg.label}
-                aria-hidden="true"
-              />
-              <span className="sr-only">{cfg.label}</span>
-              <div className="flex flex-col items-start gap-1 min-w-0">
-                {/* El respaldo `?? "—"` NO es cosmético: sin contenido el
-                    `<button>` colapsa a 0×0 px y el folio queda invisible e
-                    inclicable (verificado en producción, donde 4 de 15
-                    órdenes traen `folio: null`). El guion da un objetivo de
-                    clic real y mantiene la fila navegable. */}
-                <button
-                  type="button"
-                  onClick={() => onViewDetails(row.original.id)}
-                  className="font-mono text-slate-700 dark:text-slate-200 font-semibold hover:text-sky-600 dark:hover:text-sky-400 hover:underline transition-colors cursor-pointer"
-                  title="Ver detalle"
-                >
-                  {row.original.folio ?? "—"}
-                </button>
-                {row.original.referencia && (
-                  <span
-                    className="inline-flex max-w-[150px] items-center truncate px-1.5 py-0.5 rounded text-[10px] font-medium leading-none bg-slate-100 text-slate-500 dark:bg-white/10 dark:text-slate-400"
-                    title={row.original.referencia}
-                  >
-                    {row.original.referencia}
-                  </span>
-                )}
-              </div>
-            </div>
-          );
-        },
+        cell: ({ row }) => (
+          <FolioCell
+            order={row.original}
+            onViewDetails={onViewDetails}
+            onEdit={onEdit}
+            onCancel={onCancel}
+          />
+        ),
       },
     ),
     // El filtro de encabezado filtra por `proveedor` (el id, no el nombre):
@@ -512,19 +529,6 @@ export const getColumns = (
           </div>
         );
       },
-    }),
-    columnHelper.display({
-      id: "actions",
-      header: "Acciones",
-      meta: { align: "center" },
-      cell: ({ row }) => (
-        <ActionsCell
-          order={row.original}
-          onViewDetails={onViewDetails}
-          onEdit={onEdit}
-          onCancel={onCancel}
-        />
-      ),
     }),
   ] as ColumnDef<PurchaseOrder>[];
 
