@@ -25,6 +25,7 @@ import {
   EmailIcon,
   ScissorsIcon,
   SliceIcon,
+  SpecialOrdersIcon,
   ProductIcon,
   ProductVariantsIcon,
   RulerIcon,
@@ -385,6 +386,17 @@ export const appRouteGroups: AppRouteGroup[] = [
         icon: SliceIcon,
         description: "Órdenes de trabajo para el corte de manga de las prendas del pedido.",
         permission: "R-PRODUCCION-CM",
+      },
+      {
+        key: "manufacturing-special-orders",
+        label: "Pedidos especiales",
+        path: "/manufacturing/special-orders",
+        icon: SpecialOrdersIcon,
+        description: "Pedidos con líneas de muestra (productos fuera de catálogo) y los servicios que llevan sus tallas.",
+        // Sin código de sección propio en el catálogo de permisos: igual que
+        // Productos, la ruta (y su detalle `[id]`) cae en la regla de módulo
+        // `/manufacturing` de `routePermissions`.
+        permission: "R-PRODUCCION",
       },
       {
         key: "manufacturing-products",
