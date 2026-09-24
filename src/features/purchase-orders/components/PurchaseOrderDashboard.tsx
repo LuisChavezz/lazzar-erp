@@ -27,7 +27,12 @@ interface PurchaseOrderDashboardProps {
 export function PurchaseOrderDashboard({ orders }: PurchaseOrderDashboardProps) {
   // Agregaciones derivadas de los datos
   const stats = useMemo(() => {
-    const total = orders.length;
+    // Las canceladas (estatus 6) siguen llegando en el listado, pero ya no son
+    // órdenes "activas": no cuentan en el total, en el valor ni en el Top 5.
+    // `total` es además el denominador de las barras de progreso, así que las
+    // proporciones también quedan sobre las activas.
+    const activas = orders.filter((o) => !isPurchaseOrderCancelled(o.estatus));
+    const total = activas.length;
     // `safeParseAmount` y no `Number()`: `total` puede venir AUSENTE de la
     // respuesta (filtro por rol), y `Number(undefined)` contaminaría la suma
     // entera con `NaN`. Un importe no visible cuenta como 0 en el agregado.
@@ -35,7 +40,7 @@ export function PurchaseOrderDashboard({ orders }: PurchaseOrderDashboardProps) 
     // La suma mezcla monedas —el listado puede traer órdenes en MXN y en USD—
     // y se rotula en la moneda por defecto. Es una aproximación heredada; un
     // total correcto exigiría tipo de cambio, que el backend no expone aquí.
-    const totalValue = orders.reduce((s, o) => s + safeParseAmount(o.total), 0);
+    const totalValue = activas.reduce((s, o) => s + safeParseAmount(o.total), 0);
 
     const pendientes = orders.filter((o) => isPurchaseOrderPending(o.estatus)).length;
     const autorizadasOCompletadas = orders.filter((o) =>
@@ -65,7 +70,7 @@ export function PurchaseOrderDashboard({ orders }: PurchaseOrderDashboardProps) 
       .slice(0, 8);
 
     // Top 5 por valor total — mismo criterio que `totalValue` para el ausente.
-    const topByValue = [...orders]
+    const topByValue = [...activas]
       .sort((a, b) => safeParseAmount(b.total) - safeParseAmount(a.total))
       .slice(0, 5);
 
