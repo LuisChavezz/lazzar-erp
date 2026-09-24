@@ -54,7 +54,6 @@ import {
   getMetodoPagoLabel,
   getUsoCfdiLabel,
 } from "../constants/satCatalogs";
-import { EmbroideryLineLocationPopover } from "@/src/features/embroidery/components/EmbroideryLineLocationPopover";
 import { EmbroideryOrderDetailDialog } from "@/src/features/embroidery/components/EmbroideryOrderDetailDialog";
 import { ReflectiveOrderDetailDialog } from "@/src/features/reflective-orders/components/ReflectiveOrderDetailDialog";
 import { CorteMangaOrderDetailByIdDialog } from "@/src/features/corte-manga/components/CorteMangaOrderDetailByIdDialog";
@@ -65,8 +64,7 @@ import { PurchaseOrderDetailDialog } from "@/src/features/purchase-orders/compon
 import { QuoteDetailByIdDialog } from "@/src/features/quotes/components/QuoteDetailByIdDialog";
 import { InvoiceDetailByIdDialog } from "@/src/features/invoicing/components/InvoiceDetailByIdDialog";
 import { StockMovementDetailByIdDialog } from "@/src/features/stock-movements/components/StockMovementDetailByIdDialog";
-import { ReflectiveLineConfigPopover } from "@/src/features/reflective-orders/components/ReflectiveLineConfigPopover";
-import { bordadoUbicaciones, reflejanteEntries } from "../utils/tallaServiceConfigs";
+import { TallaServiceChips } from "./TallaServiceChips";
 import type {
   Order,
   PedidoDetalleLinea,
@@ -242,16 +240,6 @@ function MoneyRow({ label, value }: { label: string; value?: string | null }) {
 function OptionalMoneyRow({ label, value }: { label: string; value?: string | null }) {
   if (safeParseAmount(value) <= 0) return null;
   return <MoneyRow label={label} value={value} />;
-}
-
-/** Chip estático de servicio (corte manga / cambio talla, o bordado/reflejante
- *  cuando su config viene vacío y no hay popover que abrir). */
-function ServiceChip({ children }: { children: React.ReactNode }) {
-  return (
-    <span className="inline-flex items-center rounded bg-sky-50 dark:bg-sky-500/10 px-1.5 py-0.5 text-[10px] font-medium text-sky-700 dark:text-sky-300">
-      {children}
-    </span>
-  );
 }
 
 // ── Seguimiento de picking ───────────────────────────────────────────────────
@@ -500,54 +488,6 @@ function PedidoLineas({
               </thead>
               <tbody>
                 {linea.tallas.map((talla) => {
-                  // Chips de servicio de la talla. Bordado y reflejante se
-                  // envuelven en su popover de detalle cuando traen config; si el
-                  // config viene vacío (o para corte manga / cambio talla, que no
-                  // se detallan), queda un chip estático.
-                  const ubicaciones = talla.lleva_bordado
-                    ? bordadoUbicaciones(talla.bordado_config)
-                    : [];
-                  const reflejantes = talla.lleva_reflejante
-                    ? reflejanteEntries(talla.reflejante_config)
-                    : [];
-                  const servicioChips: React.ReactNode[] = [];
-                  if (talla.lleva_bordado) {
-                    servicioChips.push(
-                      ubicaciones.length > 0 ? (
-                        <EmbroideryLineLocationPopover
-                          key="bordado"
-                          ubicaciones={ubicaciones}
-                          productoNombre={lineaProductoNombre(linea)}
-                          tallaNombre={talla.talla_nombre}
-                          colorNombre={linea.color_nombre}
-                          posicionLabel={null}
-                        />
-                      ) : (
-                        <ServiceChip key="bordado">Bordado</ServiceChip>
-                      ),
-                    );
-                  }
-                  if (talla.lleva_reflejante) {
-                    servicioChips.push(
-                      reflejantes.length > 0 ? (
-                        <ReflectiveLineConfigPopover
-                          key="reflejante"
-                          configs={reflejantes}
-                          productoNombre={lineaProductoNombre(linea)}
-                          tallaNombre={talla.talla_nombre}
-                          colorNombre={linea.color_nombre}
-                        />
-                      ) : (
-                        <ServiceChip key="reflejante">Reflejante</ServiceChip>
-                      ),
-                    );
-                  }
-                  if (talla.lleva_corte_manga) {
-                    servicioChips.push(<ServiceChip key="corte">Corte manga</ServiceChip>);
-                  }
-                  if (talla.lleva_cambio_talla) {
-                    servicioChips.push(<ServiceChip key="cambio">Cambio talla</ServiceChip>);
-                  }
                   // Lo surtido cubre lo pedido de esta talla. Es un HECHO
                   // comparable —ambos lados son piezas de la misma talla—, no
                   // una razón que pueda pasarse de largo, así que se puede
@@ -575,13 +515,11 @@ function PedidoLineas({
                         )}
                       </td>
                       <td className="px-3 py-2">
-                        {servicioChips.length === 0 ? (
-                          <span className="text-slate-300 dark:text-slate-600">—</span>
-                        ) : (
-                          <div className="flex flex-wrap items-center gap-1">
-                            {servicioChips}
-                          </div>
-                        )}
+                        <TallaServiceChips
+                          talla={talla}
+                          productoNombre={lineaProductoNombre(linea)}
+                          colorNombre={linea.color_nombre}
+                        />
                       </td>
                       {showAccounting && (
                         <td className="px-3 py-2 text-right tabular-nums text-slate-600 dark:text-slate-300 whitespace-nowrap">

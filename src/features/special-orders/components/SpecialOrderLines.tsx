@@ -1,10 +1,7 @@
 "use client";
 
-import type React from "react";
 import { EmptyLines, LineItemsTable } from "@/src/components/DetailDialogPrimitives";
-import { EmbroideryLineLocationPopover } from "@/src/features/embroidery/components/EmbroideryLineLocationPopover";
-import { ReflectiveLineConfigPopover } from "@/src/features/reflective-orders/components/ReflectiveLineConfigPopover";
-import { bordadoUbicaciones, reflejanteEntries } from "@/src/features/orders/utils/tallaServiceConfigs";
+import { TallaServiceChips } from "@/src/features/orders/components/TallaServiceChips";
 import { cleanText } from "@/src/utils/cleanText";
 import { formatQuantityValue } from "@/src/utils/formatCurrency";
 import type {
@@ -12,26 +9,11 @@ import type {
   SpecialOrderTalla,
 } from "../interfaces/special-order.interface";
 
-/** Chip estático de servicio. Mismo estilo que el de `PedidoDetailContent`. */
-function ServiceChip({ children }: { children: React.ReactNode }) {
-  return (
-    <span className="inline-flex items-center rounded bg-sky-50 dark:bg-sky-500/10 px-1.5 py-0.5 text-[10px] font-medium text-sky-700 dark:text-sky-300">
-      {children}
-    </span>
-  );
-}
-
 /**
- * Servicios de UNA talla. Lo que aplica lo deciden SOLO las banderas `lleva_*`:
- * `bordado_config` llega como cascarón no nulo aunque `lleva_bordado` sea
- * `false`, así que la presencia de un config nunca activa un servicio.
- *
- * - Bordado y reflejante abren su popover de detalle cuando el config trae
- *   entradas; si no, queda el chip estático (mismo criterio que `PedidoLineas`).
- * - Corte de manga: solo el rótulo. Su `tipo` es un valor fijo sin significado
- *   conocido (`{ tipo: "1" }` en todos los datos) y no se muestra.
- * - Cambio de talla: solo el rótulo, con la redacción del detalle de pedido. Su
- *   config no tiene forma conocida y no se interpreta.
+ * Servicios de UNA talla: los chips compartidos con el detalle de pedido
+ * (`TallaServiceChips`, que decide solo por las banderas `lleva_*`, nunca
+ * muestra el `tipo` de corte de manga ni interpreta `cambio_talla_config`) más,
+ * solo aquí, las notas del bordado cuando las hay.
  */
 function TallaServices({
   talla,
@@ -40,66 +22,28 @@ function TallaServices({
   talla: SpecialOrderTalla;
   line: SpecialOrderLine;
 }) {
-  const ubicaciones = talla.lleva_bordado ? bordadoUbicaciones(talla.bordado_config) : [];
-  const reflejantes = talla.lleva_reflejante ? reflejanteEntries(talla.reflejante_config) : [];
   // `typeof` y no solo `cleanText`: el config es JSON libre y `notas` podría no
   // ser texto.
   const notas = talla.bordado_config?.notas;
   const notasBordado =
     talla.lleva_bordado && typeof notas === "string" ? cleanText(notas) : null;
 
-  const chips: React.ReactNode[] = [];
-  if (talla.lleva_bordado) {
-    chips.push(
-      ubicaciones.length > 0 ? (
-        <EmbroideryLineLocationPopover
-          key="bordado"
-          ubicaciones={ubicaciones}
-          productoNombre={line.producto_nombre_externo}
-          tallaNombre={talla.talla_nombre}
-          colorNombre={line.color_nombre}
-          posicionLabel={null}
-        />
-      ) : (
-        <ServiceChip key="bordado">Bordado</ServiceChip>
-      ),
-    );
-  }
-  if (talla.lleva_reflejante) {
-    chips.push(
-      reflejantes.length > 0 ? (
-        <ReflectiveLineConfigPopover
-          key="reflejante"
-          configs={reflejantes}
-          productoNombre={line.producto_nombre_externo}
-          tallaNombre={talla.talla_nombre}
-          colorNombre={line.color_nombre}
-        />
-      ) : (
-        <ServiceChip key="reflejante">Reflejante</ServiceChip>
-      ),
-    );
-  }
-  if (talla.lleva_corte_manga) {
-    chips.push(<ServiceChip key="corte">Corte de manga</ServiceChip>);
-  }
-  if (talla.lleva_cambio_talla) {
-    chips.push(<ServiceChip key="cambio">Cambio talla</ServiceChip>);
-  }
-
-  if (chips.length === 0) {
-    return <span className="text-slate-300 dark:text-slate-600">—</span>;
-  }
+  const chips = (
+    <TallaServiceChips
+      talla={talla}
+      productoNombre={line.producto_nombre_externo}
+      colorNombre={line.color_nombre}
+    />
+  );
+  if (!notasBordado) return chips;
 
   return (
     <div className="space-y-1">
-      <div className="flex flex-wrap items-center gap-1">{chips}</div>
-      {notasBordado && (
-        <p className="text-[11px] text-slate-500 dark:text-slate-400 break-words">
-          <span className="text-slate-400 dark:text-slate-500">Notas de bordado: </span>
-          {notasBordado}
-        </p>
-      )}
+      {chips}
+      <p className="text-[11px] text-slate-500 dark:text-slate-400 break-words">
+        <span className="text-slate-400 dark:text-slate-500">Notas de bordado: </span>
+        {notasBordado}
+      </p>
     </div>
   );
 }
