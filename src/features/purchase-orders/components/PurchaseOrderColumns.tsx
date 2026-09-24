@@ -210,8 +210,11 @@ const FolioCell = ({
 
   return (
     // `whitespace-nowrap`: punto, folio, chevron y referencia en UNA línea (ver
-    // `size` de la columna).
-    <div className="flex items-center gap-2 min-w-0 whitespace-nowrap">
+    // `size` de la columna). `overflow-hidden`: la tabla es `table-fixed` y la
+    // columna se puede angostar; sin él, la referencia se pintaba encima de la
+    // columna Proveedor. Lo que sobra se recorta (la pill ya trunca), y
+    // `minSize` garantiza que el punto y el disparador siempre caben.
+    <div className="flex items-center gap-2 min-w-0 overflow-hidden whitespace-nowrap">
       <span
         className={`w-2 h-2 rounded-full shrink-0 ${statusCfg.dot}`}
         title={statusCfg.label}
@@ -419,7 +422,11 @@ export const getColumns = (
     //    también el menú de acciones; nunca lleva `hideOnMobile` por lo mismo;
     //  - `size: 260`: punto (8) + folio mono `OC-1-178` con chevron (~90) +
     //    pill de referencia (tope de 120) + huecos y padding de celda. Con el
-    //    ancho por defecto (150) la referencia no cabía en la misma línea.
+    //    ancho por defecto (150) la referencia no cabía en la misma línea;
+    //  - `minSize: 150`: padding de celda (2×16) + punto (8) + hueco (8) +
+    //    folio mono con chevron (~100 para un folio tipo `OC-10-1234`). Por
+    //    debajo, al angostar la columna se recortaría el disparador; la
+    //    referencia sí puede recortarse.
     columnHelper.accessor(
       (row) => `${row.folio ?? `#${row.id}`} ${row.referencia ?? ""}`.trim(),
       {
@@ -431,6 +438,7 @@ export const getColumns = (
         meta: { label: "O.C." },
         enableHiding: false,
         size: 260,
+        minSize: 150,
         header: ({ column }) => (
           <ColumnFilterHeader label="O.C." options={statusOptions} column={column} />
         ),
