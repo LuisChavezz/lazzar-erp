@@ -81,6 +81,9 @@ export const routePermissions: Array<{
   // propia regla caería en `/operations` y exigiría R-MESACONTROL en su lugar.
   { prefix: "/operations/scheduled-orders", permission: "R-MESACONTROL-PEDIDOS" },
   { prefix: "/operations/customers", permission: "R-MESACONTROL-CLIENTES" },
+  // Código de MÓDULO a propósito: muestran la cuenta de Google del propio usuario, no datos del módulo.
+  { prefix: "/operations/emails", permission: "R-MESACONTROL" },
+  { prefix: "/operations/calendar", permission: "R-MESACONTROL" },
   { prefix: "/operations", permission: "R-MESACONTROL" },
 
   // ── Operaciones de Almacén (WMS) ──────────────────────────────────────────

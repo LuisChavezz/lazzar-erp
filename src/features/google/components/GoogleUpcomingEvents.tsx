@@ -2,7 +2,6 @@
 
 import { useMemo } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
 import { compareAsc, isAfter, parseISO } from "date-fns";
 import { GoogleCalendarIcon, ChevronRightIcon } from "@/src/components/Icons";
 import { useGoogleCalendarEvents } from "../hooks/useGoogleCalendarEvents";
@@ -18,10 +17,11 @@ import type { GoogleCalendarEvent } from "../interfaces/google.interface";
  *
  * Muestra hasta 5 eventos futuros ordenados por fecha. Al hacer clic
  * sobre un evento, lo selecciona en la store para visualizar su detalle.
+ *
+ * `hideViewAll` oculta el enlace "Ver todo": lo pasa `GoogleCalendar`, donde el
+ * panel ya vive dentro del calendario completo (sea cual sea el módulo).
  */
-export const GoogleUpcomingEvents = () => {
-  const pathname = usePathname();
-  const isCalendarPage = pathname === "/sales/calendar";
+export const GoogleUpcomingEvents = ({ hideViewAll = false }: { hideViewAll?: boolean }) => {
   const { data, isLoading } = useGoogleCalendarEvents();
   const selectedEventId = useGoogleCalendarStore((s) => s.selectedEventId);
   const setSelectedEventId = useGoogleCalendarStore((s) => s.setSelectedEventId);
@@ -43,7 +43,7 @@ export const GoogleUpcomingEvents = () => {
             <GoogleCalendarIcon className="w-4 h-4 shrink-0" aria-hidden="true" />
             <h3 className="font-bold text-slate-800 dark:text-white text-sm">Próximos eventos</h3>
           </div>
-          {!isCalendarPage && (
+          {!hideViewAll && (
             <div className="w-16" aria-hidden="true">
               <div className="h-4 rounded-full bg-slate-200 dark:bg-slate-700 animate-pulse" />
             </div>
@@ -65,7 +65,7 @@ export const GoogleUpcomingEvents = () => {
           <GoogleCalendarIcon className="w-4 h-4 shrink-0" aria-hidden="true" />
           <h3 className="font-bold text-slate-800 dark:text-white text-sm">Próximos eventos</h3>
         </div>
-        {!isCalendarPage && (
+        {!hideViewAll && (
           <Link
             href="/sales/calendar"
             className="inline-flex items-center gap-0.5 text-[0.68rem] font-semibold text-sky-600 dark:text-sky-400 hover:text-sky-700 dark:hover:text-sky-300 transition-colors"

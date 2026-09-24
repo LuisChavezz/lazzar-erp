@@ -703,6 +703,20 @@ export const appRouteGroups: AppRouteGroup[] = [
         icon: ClientesIcon,
         permission: "R-MESACONTROL-CLIENTES",
       },
+      {
+        key: "operations-emails",
+        label: "Correos",
+        path: "/operations/emails",
+        icon: EmailIcon,
+        permission: "R-MESACONTROL",
+      },
+      {
+        key: "operations-calendar",
+        label: "Calendario",
+        path: "/operations/calendar",
+        icon: TasksIcon,
+        permission: "R-MESACONTROL",
+      },
     ],
   },
   {
