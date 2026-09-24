@@ -18,9 +18,13 @@ interface UseCancelPurchaseOrderOptions {
 /**
  * Cancela una orden de compra (`POST /compras/ordenes/{id}/cancelar/`).
  *
- * Invalida lo mismo que `useConfirmPurchaseOrder`: `["purchase-orders"]` (por
- * prefijo también el detalle `["purchase-orders", id]`) y el onboarding de
- * OC. La orden cancelada NO desaparece: vuelve en el listado con estatus 6.
+ * Invalida `["purchase-orders"]` (por prefijo también el detalle
+ * `["purchase-orders", id]`) al TERMINAR, con éxito o con error: un 400 como
+ * `{ "estatus": "La orden ya no puede cancelarse." }` significa que la fila en
+ * caché está vieja (p. ej. se canceló en otra pestaña), y sin refetch seguiría
+ * ofreciendo acciones que el backend ya rechaza. El onboarding de OC solo
+ * cambia si la cancelación ocurrió. La orden cancelada NO desaparece: vuelve
+ * en el listado con estatus 6.
  *
  * Errores: salen en toast con el mensaje del backend (`firstDrfFieldMessage`,
  * con `extractErrorMessage` de respaldo), salvo el de `motivo_cancelacion`
@@ -32,11 +36,13 @@ export const useCancelPurchaseOrder = ({ onReasonError }: UseCancelPurchaseOrder
   return useMutation({
     mutationFn: cancelPurchaseOrder,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["purchase-orders"] });
       queryClient.invalidateQueries({
         queryKey: ["purchase-order-onboarding"],
       });
       toast.success("Orden de compra cancelada correctamente");
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["purchase-orders"] });
     },
     onError: (error) => {
       const reasonMessage = drfFieldMessage(error, "motivo_cancelacion");
