@@ -89,7 +89,7 @@ const ActionsCell = ({
   const supplierHasNoEmail = !order.proveedor_correo;
 
   // Solo se envía/descarga la orden una vez autorizada (o más avanzada): antes de
-  // eso todavía puede editarse/cancelarse, así que no debe salir un documento en
+  // eso todavía puede editarse/eliminarse, así que no debe salir un documento en
   // firme. Cuando la condición no se cumple, la acción se OCULTA por completo
   // (igual que Editar/Confirmar/Cancelar), no se muestra deshabilitada.
   const isAuthorizedOrBeyond = isPurchaseOrderAuthorizedOrComplete(order.estatus);
