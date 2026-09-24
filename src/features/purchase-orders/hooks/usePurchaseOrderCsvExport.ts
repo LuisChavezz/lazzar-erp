@@ -46,7 +46,7 @@ export const usePurchaseOrderCsvExport = (
   }, [columns]);
 
   const exportToCsv = useCallback(() => {
-    const exportColumns = columnsRef.current.filter((column) => column.id !== "actions");
+    const exportColumns = columnsRef.current;
     if (exportColumns.length === 0) return;
     const csvContent = buildCsv(tableRef.current?.getFilteredRows() ?? [], exportColumns);
     // BOM (`﻿`) para que Excel detecte UTF-8 y no rompa acentos/ñ.
