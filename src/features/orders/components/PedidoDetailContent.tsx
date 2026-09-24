@@ -65,13 +65,11 @@ import { PurchaseOrderDetailDialog } from "@/src/features/purchase-orders/compon
 import { QuoteDetailByIdDialog } from "@/src/features/quotes/components/QuoteDetailByIdDialog";
 import { InvoiceDetailByIdDialog } from "@/src/features/invoicing/components/InvoiceDetailByIdDialog";
 import { StockMovementDetailByIdDialog } from "@/src/features/stock-movements/components/StockMovementDetailByIdDialog";
-import type { EmbroideryOnboardingUbicacion } from "@/src/features/embroidery/interfaces/embroidery.interface";
 import { ReflectiveLineConfigPopover } from "@/src/features/reflective-orders/components/ReflectiveLineConfigPopover";
-import type { ReflectiveLineConfigEntry } from "@/src/features/reflective-orders/interfaces/reflective-order.interface";
+import { bordadoUbicaciones, reflejanteEntries } from "../utils/tallaServiceConfigs";
 import type {
   Order,
   PedidoDetalleLinea,
-  PedidoDetalleTalla,
   PedidoDocumento,
   PedidoFolioPicking,
   PedidoTrackerPicking,
@@ -173,28 +171,6 @@ const PAYMENT_CONDITIONS: { key: keyof Order; label: string }[] = [
   { key: "por_confirmar", label: "Por confirmar" },
   { key: "otra_cantidad", label: "Otra cantidad" },
 ];
-
-/**
- * Ubicaciones del `bordado_config` de una talla — el config es un OBJETO
- * `{ notas, ubicaciones[] }` de JSON libre, así que se extrae `.ubicaciones` con
- * doble guard (objeto, luego arreglo). Devuelve `[]` cuando falta o viene con
- * otra forma; el popover solo se abre si hay al menos una.
- */
-function bordadoUbicaciones(config: PedidoDetalleTalla["bordado_config"]): EmbroideryOnboardingUbicacion[] {
-  if (config && !Array.isArray(config)) {
-    const ubic = (config as Record<string, unknown>).ubicaciones;
-    if (Array.isArray(ubic)) return ubic as EmbroideryOnboardingUbicacion[];
-  }
-  return [];
-}
-
-/**
- * Entradas del `reflejante_config` — aquí el config ES el arreglo directamente
- * (no un objeto que lo envuelva, a diferencia de bordado). `[]` si no es arreglo.
- */
-function reflejanteEntries(config: PedidoDetalleTalla["reflejante_config"]): ReflectiveLineConfigEntry[] {
-  return Array.isArray(config) ? (config as ReflectiveLineConfigEntry[]) : [];
-}
 
 // Detecta si el usuario tiene visibilidad contable: el backend ELIMINA estos
 // campos (no los anula) cuando no hay permiso, así que basta con que uno de los
