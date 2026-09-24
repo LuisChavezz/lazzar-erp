@@ -1,6 +1,6 @@
 "use client";
 
-import { EmptyLines, LineItemsTable } from "@/src/components/DetailDialogPrimitives";
+import { EmptyLines } from "@/src/components/DetailDialogPrimitives";
 import { TallaServiceChips } from "@/src/features/orders/components/TallaServiceChips";
 import { cleanText } from "@/src/utils/cleanText";
 import { formatQuantityValue } from "@/src/utils/formatCurrency";
@@ -97,29 +97,39 @@ export function SpecialOrderLines({ detalles }: { detalles: SpecialOrderLine[] }
             {line.tallas.length === 0 ? (
               <EmptyLines>Esta línea no tiene tallas.</EmptyLines>
             ) : (
-              <LineItemsTable
-                head={
-                  <>
-                    <th className="px-3 py-2 font-semibold">Talla</th>
-                    <th className="px-3 py-2 font-semibold">Servicios</th>
-                    <th className="px-3 py-2 font-semibold text-right">Cantidad</th>
-                  </>
-                }
-              >
-                {line.tallas.map((talla) => (
-                  <tr key={talla.id} className="align-top">
-                    <td className="px-3 py-2 whitespace-nowrap text-slate-700 dark:text-slate-200">
-                      {talla.talla_nombre || "—"}
-                    </td>
-                    <td className="px-3 py-2">
-                      <TallaServices talla={talla} line={line} />
-                    </td>
-                    <td className="px-3 py-2 text-right tabular-nums font-semibold text-slate-800 dark:text-white whitespace-nowrap">
-                      {formatQuantityValue(talla.cantidad)}
-                    </td>
-                  </tr>
-                ))}
-              </LineItemsTable>
+              // Tabla propia y NO `LineItemsTable`: ese chrome acota el alto a
+              // `max-h-72` con scroll interno, correcto en un diálogo y lo
+              // contrario de lo que quiere una página (mismo criterio que
+              // `CorteMangaOrderPageContent`). Aquí las tallas se leen de corrido.
+              <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-white/10">
+                <table className="min-w-full text-xs">
+                  <thead className="bg-slate-50 dark:bg-white/5">
+                    <tr className="text-slate-500 dark:text-slate-400">
+                      <th className="px-3 py-2 text-left font-semibold">Talla</th>
+                      <th className="px-3 py-2 text-left font-semibold">Servicios</th>
+                      <th className="px-3 py-2 text-right font-semibold">Cantidad</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {line.tallas.map((talla) => (
+                      <tr
+                        key={talla.id}
+                        className="border-t border-slate-100 dark:border-white/10 align-top hover:bg-slate-50 dark:hover:bg-white/5 transition-colors"
+                      >
+                        <td className="px-3 py-2 whitespace-nowrap text-slate-700 dark:text-slate-200">
+                          {talla.talla_nombre || "—"}
+                        </td>
+                        <td className="px-3 py-2">
+                          <TallaServices talla={talla} line={line} />
+                        </td>
+                        <td className="px-3 py-2 text-right tabular-nums font-semibold text-slate-800 dark:text-white whitespace-nowrap">
+                          {formatQuantityValue(talla.cantidad)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             )}
           </div>
         </div>
