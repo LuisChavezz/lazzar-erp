@@ -5,7 +5,7 @@ import { DataTable } from "@/src/components/DataTable";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { isInitialLoadError } from "@/src/utils/isInitialLoadError";
 import { useSpecialOrders } from "../hooks/useSpecialOrders";
-import { SPECIAL_ORDER_FILTER_CONFIG, withFilterFields } from "../utils/specialOrderFilters";
+import { SPECIAL_ORDER_FILTER_CONFIG } from "../utils/specialOrderFilters";
 import { getSpecialOrderColumns } from "./SpecialOrderColumns";
 
 /**
@@ -33,7 +33,7 @@ export function SpecialOrdersView() {
   return (
     <DataTable
       columns={columns}
-      data={withFilterFields(orders)}
+      data={orders}
       getRowId={(row) => String(row.id)}
       searchPlaceholder="Buscar por folio o cliente..."
       filterConfig={SPECIAL_ORDER_FILTER_CONFIG}
