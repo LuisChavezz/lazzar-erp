@@ -222,7 +222,7 @@ export const usePurchaseOrderPdfExport = (
   }, [columns]);
 
   const exportToPdf = useCallback(async () => {
-    const exportColumns = columnsRef.current.filter((column) => column.id !== "actions");
+    const exportColumns = columnsRef.current;
     if (exportColumns.length === 0) return;
     const renderer = await import("@react-pdf/renderer");
     const pdfDocument = createPurchaseOrdersPdfDocument(

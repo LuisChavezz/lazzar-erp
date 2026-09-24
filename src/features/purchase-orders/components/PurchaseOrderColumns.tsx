@@ -384,10 +384,10 @@ const exactFilterFn =
  * `CorteMangaOrderColumns` (navegación) y `AreaColumns` (edición).
  *
  * Contenido pedido por negocio: O.C. (folio + estatus + referencia, y el menú
- * de acciones de la fila, ver abajo), Proveedor, Fecha OC, Cantidad, Vencimiento, Progreso OC (surtido
- * vs. solicitado, ver `ProgresoCell`). Los importes (Total/Subtotal/Impuestos)
- * y "Entrega estimada" salieron del listado a propósito — siguen disponibles
- * en el detalle de la orden.
+ * de acciones de la fila, ver abajo), Proveedor, Fecha OC, Cantidad,
+ * Vencimiento, Progreso OC (surtido vs. solicitado, ver `ProgresoCell`). Los
+ * importes (Total/Subtotal/Impuestos) y "Entrega estimada" salieron del
+ * listado a propósito — siguen disponibles en el detalle de la orden.
  *
  * `statusOptions`/`supplierOptions` alimentan los filtros de encabezado de
  * O.C. (por estatus) y Proveedor — construidos en `PurchaseOrdersFilter.tsx`
