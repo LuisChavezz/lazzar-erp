@@ -9,6 +9,7 @@ import { textOrDash } from "@/src/components/DetailDialogPrimitives";
 import type { DataTableFilterOption } from "@/src/components/DataTable";
 import {
   CheckCircleIcon,
+  CloseIcon,
   DeleteIcon,
   DownloadIcon,
   EditIcon,
@@ -25,6 +26,7 @@ import { useSendPurchaseOrderEmail } from "../hooks/useSendPurchaseOrderEmail";
 import { useDownloadPurchaseOrderPdf } from "../hooks/useDownloadPurchaseOrderPdf";
 import {
   isPurchaseOrderAuthorizedOrComplete,
+  isPurchaseOrderCancellable,
   isPurchaseOrderEditable,
   purchaseOrderStatusEntry,
 } from "../constants/purchaseOrderStatus";
@@ -36,11 +38,13 @@ const columnHelper = createColumnHelper<PurchaseOrder>();
 /**
  * Menú de acciones de la fila.
  *
- * Navegación y edición se DELEGAN a la vista (`onViewDetails` / `onEdit`): sus
- * destinos —una página de detalle y un diálogo de formulario— deben sobrevivir
- * a que la celda se desmonte al ordenar, paginar o filtrar.
+ * Navegación, edición y cancelación se DELEGAN a la vista (`onViewDetails` /
+ * `onEdit` / `onCancel`): sus destinos —una página de detalle y dos diálogos
+ * de formulario— deben sobrevivir a que la celda se desmonte al ordenar,
+ * paginar o filtrar. Cancelar en particular CAMBIA el estatus de la fila, así
+ * que el refetch puede sacarla de una vista filtrada con el diálogo abierto.
  *
- * Confirmar y Cancelar sí se resuelven aquí, con su `ConfirmDialog` y su hook:
+ * Confirmar y Eliminar sí se resuelven aquí, con su `ConfirmDialog` y su hook:
  * son mutaciones inmediatas sobre ESTA fila, no un estado que deba sobrevivirle.
  * Mismo reparto que `AreaColumns` y el resto de los catálogos. Enviar correo y
  * Descargar PDF no abren nada — son `mutate(id)` directos.
@@ -49,10 +53,12 @@ const ActionsCell = ({
   order,
   onViewDetails,
   onEdit,
+  onCancel,
 }: {
   order: PurchaseOrder;
   onViewDetails: (id: number) => void;
   onEdit: (order: PurchaseOrder) => void;
+  onCancel: (order: PurchaseOrder) => void;
 }) => {
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
@@ -71,6 +77,10 @@ const ActionsCell = ({
   // editarse, confirmarse o eliminarse. Autorizada en adelante, ninguna de
   // las tres debe quedar disponible.
   const editable = isPurchaseOrderEditable(order.estatus);
+
+  // Borrador, pendiente o autorizada: la orden puede cancelarse (queda en
+  // estatus 6 con su motivo). Es una acción DISTINTA de eliminar.
+  const cancellable = isPurchaseOrderCancellable(order.estatus);
 
   // El envío al proveedor requiere un correo. `proveedor_correo` ya viene
   // SIEMPRE en el listado (el serializer lo expone tanto en list como en
@@ -136,12 +146,30 @@ const ActionsCell = ({
       onSelect: () => setIsConfirmOpen(true),
       permission: "A-COMPRAS-OC",
       // Cross-guard: no permitir confirmar mientras se elimina la misma
-      // orden (y viceversa, ver "Cancelar" abajo) — ambas mutaciones no
+      // orden (y viceversa, ver "Eliminar" abajo) — ambas mutaciones no
       // deben poder correr en paralelo sobre la misma orden.
       disabled: isPending || isDeletePending,
     });
+  }
+
+  if (cancellable) {
+    // Cancelar ANULA la orden sin borrarla: queda visible con estatus 6 y su
+    // motivo. Lo pide `A-COMPRAS-OC` (el mismo código que autoriza): anular
+    // una orden es una decisión sobre su autorización, no una edición.
     menuItems.push({
       label: "Cancelar",
+      icon: CloseIcon,
+      onSelect: () => onCancel(order),
+      permission: "A-COMPRAS-OC",
+      disabled: isPending || isDeletePending,
+    });
+  }
+
+  if (editable) {
+    // Eliminar BORRA un error de captura (DELETE). Solo borrador/pendiente; el
+    // backend además lo rechaza si ya hay recepciones o facturas.
+    menuItems.push({
+      label: "Eliminar",
       icon: DeleteIcon,
       onSelect: () => setIsDeleteOpen(true),
       disabled: isDeletePending || isPending,
@@ -320,6 +348,7 @@ const exactFilterFn =
 export const getColumns = (
   onViewDetails: (id: number) => void,
   onEdit: (order: PurchaseOrder) => void,
+  onCancel: (order: PurchaseOrder) => void,
   statusOptions: DataTableFilterOption[],
   supplierOptions: DataTableFilterOption[],
 ) => {
@@ -490,6 +519,7 @@ export const getColumns = (
           order={row.original}
           onViewDetails={onViewDetails}
           onEdit={onEdit}
+          onCancel={onCancel}
         />
       ),
     }),

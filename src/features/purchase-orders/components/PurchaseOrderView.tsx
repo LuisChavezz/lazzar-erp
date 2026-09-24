@@ -30,6 +30,7 @@ import { buildStatusOptions, buildSupplierOptions } from "./PurchaseOrdersFilter
 import type { PurchaseOrder } from "../interfaces/purchase-order.interface";
 import { PurchaseOrderOnboardingStepManager } from "./PurchaseOrderOnboardingStepManager";
 import { PurchaseOrderEditDialog } from "./PurchaseOrderEditDialog";
+import { PurchaseOrderCancelDialog } from "./PurchaseOrderCancelDialog";
 import {
   isPurchaseOrderAuthorizedOrComplete,
   isPurchaseOrderCancelled,
@@ -129,6 +130,14 @@ export function PurchaseOrderView() {
   // `null` = cerrado; el objeto de la fila alimenta `initialData`.
   const [editingOrder, setEditingOrder] = useState<PurchaseOrder | null>(null);
 
+  // ── Cancelación ───────────────────────────────────────────────────────────
+  // Mismo motivo que la edición, y uno más: cancelar CAMBIA el estatus, así
+  // que el refetch puede sacar la fila de una vista filtrada por estatus con
+  // el diálogo todavía abierto. `open` va aparte de la orden para que el texto
+  // del diálogo no se vacíe durante su animación de cierre.
+  const [cancellingOrder, setCancellingOrder] = useState<PurchaseOrder | null>(null);
+  const [isCancelOpen, setIsCancelOpen] = useState(false);
+
   // ── Opciones de los filtros de encabezado ─────────────────────────────────
   // Alimentan los desplegables de O.C. (Estatus) y Proveedor dentro de
   // `getColumns` (ver `ColumnFilterHeader`); se recalculan solo cuando cambia
@@ -141,6 +150,11 @@ export function PurchaseOrderView() {
       getColumns(
         (id) => router.push(`/procurement/purchase-orders/${id}`),
         setEditingOrder,
+        // Inline (solo setters, estables) para no romper las deps del memo.
+        (order) => {
+          setCancellingOrder(order);
+          setIsCancelOpen(true);
+        },
         statusOptions,
         supplierOptions,
       ),
@@ -272,6 +286,13 @@ export function PurchaseOrderView() {
           if (!open) setEditingOrder(null);
         }}
         initialData={editingOrder ?? undefined}
+      />
+
+      {/* ── Cancelación ───────────────────────────────────────────────────── */}
+      <PurchaseOrderCancelDialog
+        order={cancellingOrder}
+        open={isCancelOpen}
+        onOpenChange={setIsCancelOpen}
       />
     </div>
   );
