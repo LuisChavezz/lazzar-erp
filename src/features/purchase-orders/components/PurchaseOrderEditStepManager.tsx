@@ -27,9 +27,13 @@
  */
 
 import { useCallback, useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { StepProgressBar } from "@/src/components/StepProgressBar";
 import type { PurchaseOrderDetalleItem } from "../interfaces/purchase-order-onboarding.interface";
-import type { PurchaseOrder } from "../interfaces/purchase-order.interface";
+import type {
+  PurchaseOrder,
+  PurchaseOrderDetail,
+} from "../interfaces/purchase-order.interface";
 import type { PurchaseOrderEditFormValues } from "../schemas/purchase-order-edit.schema";
 import {
   PURCHASE_ORDER_WIZARD_STEPS as STEPS,
@@ -37,7 +41,7 @@ import {
   type PurchaseOrderWizardStep as EditStep,
 } from "../constants/purchaseOrderWizardSteps";
 import { usePurchaseOrderOnboardingData } from "../hooks/usePurchaseOrderOnboardingData";
-import { usePurchaseOrder } from "../hooks/usePurchaseOrder";
+import { purchaseOrderQueryOptions } from "../hooks/usePurchaseOrder";
 import { canSeeAmounts } from "../utils/purchaseOrderFinance";
 import { PURCHASE_ORDER_STATUS } from "../constants/purchaseOrderStatus";
 import { PurchaseOrderEditStep1 } from "./PurchaseOrderEditStep1";
@@ -66,13 +70,24 @@ export function PurchaseOrderEditStepManager({
   } = usePurchaseOrderOnboardingData();
 
   // Detalle de la orden — aporta los renglones existentes (con `producto_id`)
-  // para sembrar el paso de productos.
+  // para sembrar el paso de productos, y el `estatus` que decide el aviso de
+  // "orden autorizada".
+  //
+  // Se lee SIEMPRE fresco al abrir (`refetchOnMount: "always"`) y el wizard no
+  // se pinta hasta que esa lectura termina (`isFetchedAfterMount`): con los
+  // defaults de `usePurchaseOrder` se serviría la copia en caché (hasta 15 min)
+  // y, si otro usuario confirmó la orden, se editaría una AUTORIZADA sin el
+  // aviso. Mismas opciones de query que `usePurchaseOrder` (misma llave, así
+  // que la caché se comparte); solo cambia el refetch al montar, aquí.
   const {
-    purchaseOrder: detail,
-    isLoading: isDetailLoading,
+    data: detail,
+    isFetchedAfterMount: isDetailFresh,
     isError: isDetailError,
     error: detailError,
-  } = usePurchaseOrder(initialData.id);
+  } = useQuery<PurchaseOrderDetail>({
+    ...purchaseOrderQueryOptions(initialData.id),
+    refetchOnMount: "always",
+  });
 
   /** Step 1 validó el encabezado: lo guardamos y avanzamos a productos. */
   const handleStep1Success = useCallback(
@@ -112,7 +127,9 @@ export function PurchaseOrderEditStepManager({
     [detail],
   );
 
-  const isLoading = isOnboardingLoading || isDetailLoading;
+  // Hasta que la lectura fresca del detalle termina (con éxito o con error) se
+  // muestra el estado de carga, aunque haya una copia en caché.
+  const isLoading = isOnboardingLoading || !isDetailFresh;
   const isError = isOnboardingError || isDetailError;
   const error = onboardingError ?? detailError;
 
@@ -168,8 +185,9 @@ export function PurchaseOrderEditStepManager({
   }
 
   // Editar una AUTORIZADA la regresa a pendiente (el PUT siempre fija estatus
-  // 2 y conserva el folio). Se lee de `detail` —recién consultado— y no de la
-  // fila del listado, que podría estar vieja. Vive aquí, en el manager, para
+  // 2 y conserva el folio). Se lee de `detail`, consultado al abrir el wizard
+  // (ver `refetchOnMount` arriba), y no de la fila del listado, que podría
+  // estar vieja. Vive aquí, en el manager, para
   // que se vea en AMBOS pasos. Siempre se muestra en estatus 3: no hay registro
   // de envío al proveedor que permita condicionar la segunda frase.
   const isAuthorized = detail.estatus === PURCHASE_ORDER_STATUS.AUTORIZADA;
