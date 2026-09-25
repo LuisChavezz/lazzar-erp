@@ -50,6 +50,7 @@ import {
   Filter,
   FlaskConical,
   FolderOpen,
+  GraduationCap,
   Heart,
   HelpCircle,
   History,
@@ -164,6 +165,8 @@ export const CalendarDaysIcon = (props: LucideProps) => <CalendarDays {...props}
  * canónico de `FileSignature`, que en lucide-react es solo un alias obsoleto.
  */
 export const ContractIcon = (props: LucideProps) => <FilePenLine {...props} />;
+/** Birrete. Para las capacitaciones de RH. */
+export const TrainingIcon = (props: LucideProps) => <GraduationCap {...props} />;
 export const HistoryIcon = (props: LucideProps) => <History {...props} />;
 export const BellIcon = (props: LucideProps) => <Bell {...props} />;
 export const ErrorIcon = (props: LucideProps) => <AlertTriangle {...props} />;

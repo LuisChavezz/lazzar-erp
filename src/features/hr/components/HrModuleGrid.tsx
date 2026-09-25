@@ -7,6 +7,7 @@ import {
   ClockIcon,
   ContractIcon,
   LayersIcon,
+  TrainingIcon,
   UserIcon,
 } from "@/src/components/Icons";
 
@@ -76,6 +77,16 @@ const hrCards = [
     accentClass: "text-indigo-600 dark:text-indigo-400",
     accentBgClass: "bg-indigo-50 dark:bg-indigo-500/10",
     shadowColorClassName: "hover:shadow-indigo-500/25 dark:hover:shadow-indigo-500/25",
+  },
+  {
+    icon: TrainingIcon,
+    title: "Capacitaciones",
+    description: "Cursos de cada empleado: institución, estado, horas y calificación.",
+    footerText: "Ver capacitaciones",
+    href: "/hr/trainings",
+    accentClass: "text-teal-600 dark:text-teal-400",
+    accentBgClass: "bg-teal-50 dark:bg-teal-500/10",
+    shadowColorClassName: "hover:shadow-teal-500/25 dark:hover:shadow-teal-500/25",
   },
 ];
 
