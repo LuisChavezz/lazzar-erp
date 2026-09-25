@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { updatePurchaseOrder } from "../services/actions";
+import { invalidateReceiptOrderOptions } from "../utils/invalidateReceiptOrderOptions";
 import type { UpdatePurchaseOrderParams } from "../interfaces/purchase-order.interface";
 import { drfFieldMessage, firstDrfFieldMessage } from "@/src/utils/firstDrfFieldMessage";
 import toast from "react-hot-toast";
@@ -51,7 +52,7 @@ export const useUpdatePurchaseOrder = ({
       // El PUT recrea los renglones (ids nuevos) y regresa la orden a
       // pendiente: el selector de OC del alta de recepción no debe seguir
       // ofreciéndola desde su caché con los ids viejos.
-      queryClient.invalidateQueries({ queryKey: ["receipt-onboarding-data"] });
+      invalidateReceiptOrderOptions(queryClient);
       toast.success("Orden de compra actualizada correctamente");
     },
     // Con éxito o con error: un rechazo significa que la fila en caché está
