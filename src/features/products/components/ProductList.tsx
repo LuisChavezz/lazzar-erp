@@ -27,7 +27,7 @@ export default function ProductList() {
   const canDelete = hasPermission("D-CONFIGURACION", session?.user);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
-  const { products, isLoading, isError, error } = useProducts(3);
+  const { products, isLoading, isInitialError, error } = useProducts(3);
 
   const { categories } = useProductCategories();
   const { units } = useUnitsOfMeasure();
@@ -90,7 +90,7 @@ export default function ProductList() {
       data={rows}
       searchPlaceholder="Buscar producto..."
       isLoading={isLoading}
-      isError={isError}
+      isError={isInitialError}
       errorTitle="Error al cargar productos"
       errorMessage={extractErrorMessage(error, "No se pudo cargar la información.")}
       loadingAriaLabel="Cargando productos"

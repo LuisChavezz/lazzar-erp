@@ -6,7 +6,7 @@ import { useProducts } from "@/src/features/products/hooks/useProducts";
 import { columns } from "./BomColumns";
 
 export default function BomList() {
-  const { products, isLoading, isError, error } = useProducts("2");
+  const { products, isLoading, isInitialError, error } = useProducts("2");
 
   return (
     <DataTable
@@ -14,7 +14,7 @@ export default function BomList() {
       data={products}
       searchPlaceholder="Buscar material..."
       isLoading={isLoading}
-      isError={isError}
+      isError={isInitialError}
       errorTitle="Error al cargar la lista de materiales"
       errorMessage={extractErrorMessage(error, "No se pudo cargar la información.")}
       loadingAriaLabel="Cargando lista de materiales"
