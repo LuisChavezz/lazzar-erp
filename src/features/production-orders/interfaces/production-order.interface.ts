@@ -164,7 +164,11 @@ export interface CreateProductionOrderDetalle {
 /**
  * Cuerpo del POST de creación. El backend resuelve la lista de materiales (BOM)
  * automáticamente a partir de cada `producto_variante_id`, por lo que ya no se
- * envían `pedido`, `ruta_produccion` ni `producto_variante_ids`.
+ * envían `ruta_produccion` ni `producto_variante_ids`.
+ *
+ * `pedido` es OPCIONAL: el id de un pedido especial
+ * (`GET /produccion/pedidos-especiales/`). Sin pedido la clave se OMITE —no se
+ * manda `null` ni `""`—. Un pedido inválido regresa `400 { pedido: "..." }`.
  */
 export interface CreateProductionOrderBody {
   empresa: number;
@@ -172,12 +176,18 @@ export interface CreateProductionOrderBody {
   estatus_op: number;
   prioridad: number;
   observaciones: string;
+  pedido?: number;
   orden_produccion_detalle: CreateProductionOrderDetalle[];
 }
 
-/** Respuesta del POST de creación (`201`). */
+/** Respuesta del POST de creación (`201`). No repite el pedido vinculado. */
 export interface CreateProductionOrderResponse {
   msg: string;
+  op_id: number;
+  folio_op: string;
+  consumo_produccion_id: number;
+  movimiento_inventario_id: number;
+  movimiento_id: number;
 }
 
 // ── GET /produccion/orden-produccion/ ────────────────────────────────────────

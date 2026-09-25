@@ -3,6 +3,7 @@
 import { FactoryIcon } from "@/src/components/Icons";
 import { MainDialog } from "@/src/components/MainDialog";
 import { StatusBadge } from "@/src/components/StatusBadge";
+import { textOrDash } from "@/src/components/DetailDialogPrimitives";
 import { formatLocalDate } from "@/src/utils/formatDate";
 import { productionOrderStatusEntry } from "@/src/features/production-orders/constants/productionOrderStatus";
 import { useProductionOrderOnboarding } from "@/src/features/production-orders/hooks/useProductionOrderOnboarding";
@@ -221,6 +222,13 @@ export function ProductionOrderDetailDialog({
             </InfoField>
             <InfoField label="Prioridad">
               <span className="tabular-nums">{data.prioridad}</span>
+            </InfoField>
+            {/* Pedido opcional: "—" cuando la orden no tiene. Mismo criterio que
+                `ProductionOrderPageContent` (texto, sin enlace a `/orders`). */}
+            <InfoField label="Pedido">
+              <span className="font-mono">
+                {textOrDash(data.pedido_vinculado?.folio ?? data.pedido_folio)}
+              </span>
             </InfoField>
             <InfoField label="Fecha inicio">{formatLocalDate(data.fecha_inicio)}</InfoField>
             <InfoField label="Fecha fin">{formatLocalDate(data.fecha_fin)}</InfoField>

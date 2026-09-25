@@ -20,6 +20,11 @@ export const CreateProductionOrderDetalleSchema = z.object({
  * `estatus_op` viaja fijo en `1` (estatus inicial "creada"). `empresa` y
  * `sucursal` provienen del workspace activo. El detalle por variante
  * (cantidad, unidad y observaciones) se configura en el Paso 2.
+ *
+ * `pedido` es opcional: sin pedido el campo queda `undefined`. La clave SÍ
+ * puede seguir presente en `parsed.data` (`pedido: undefined`); se omite del
+ * request solo porque el body se serializa como JSON, que descarta los
+ * `undefined`.
  */
 export const CreateProductionOrderFormSchema = z.object({
   empresa: z.number().int().positive("La empresa es requerida"),
@@ -27,6 +32,7 @@ export const CreateProductionOrderFormSchema = z.object({
   estatus_op: z.number().int().positive(),
   prioridad: z.number().int().positive("La prioridad es requerida"),
   observaciones: z.string(),
+  pedido: z.number().int().positive().optional(),
   orden_produccion_detalle: z
     .array(CreateProductionOrderDetalleSchema)
     .min(1, "Agrega al menos un producto"),

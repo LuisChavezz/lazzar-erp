@@ -1,19 +1,25 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import { Loader } from "@/src/components/Loader";
-import { CheckIcon } from "@/src/components/Icons";
+import { CheckIcon, XIcon } from "@/src/components/Icons";
 import { FormSelect } from "@/src/components/FormSelect";
 import { FormTextarea } from "@/src/components/FormTextarea";
 import { SearchableSelectList } from "@/src/components/SearchableSelectList";
 import { useProductVariants } from "@/src/features/product-variants/hooks/useProductVariants";
 import type { ProductVariant } from "@/src/features/product-variants/interfaces/product-variant.interface";
+import {
+  ProductionOrderPedidoSelectorDialog,
+  type SelectedProductionOrderPedido,
+} from "./ProductionOrderPedidoSelectorDialog";
 
 /** Datos de cabecera + variantes capturados en el Paso 1. */
 export interface ProductionOrderStep1Data {
   prioridad: number;
   observaciones: string;
+  /** Pedido especial vinculado (opcional); `null` = sin pedido. */
+  pedido: SelectedProductionOrderPedido | null;
   variantIds: number[];
 }
 
@@ -47,7 +53,8 @@ function toNumber(raw: string): number {
  * ProductionOrderStep1
  *
  * Paso 1 del asistente de orden de producción. Captura los campos de cabecera
- * (prioridad y observaciones) y una lista buscable de
+ * (prioridad, observaciones y un pedido especial opcional, elegido en un
+ * diálogo apilado) y una lista buscable de
  * selección múltiple de variantes de producto. La configuración por renglón
  * (BOM, cantidad, unidad y observaciones) ocurre en el Paso 2. "Continuar" se
  * habilita cuando hay al menos una variante seleccionada y una prioridad
@@ -66,6 +73,13 @@ export function ProductionOrderStep1({
   const [observaciones, setObservaciones] = useState<string>(
     initialData?.observaciones ?? "",
   );
+  const [pedido, setPedido] = useState<SelectedProductionOrderPedido | null>(
+    initialData?.pedido ?? null,
+  );
+  const [isPedidoSelectorOpen, setIsPedidoSelectorOpen] = useState(false);
+  // La etiqueta no envuelve ningún control (son botones que abren un diálogo):
+  // cada botón la referencia vía `aria-describedby` para exponer el contexto.
+  const pedidoLabelId = useId();
   const [selectedIds, setSelectedIds] = useState<number[]>(
     initialData?.variantIds ?? [],
   );
@@ -100,7 +114,7 @@ export function ProductionOrderStep1({
 
   const handleNext = () => {
     if (!canAdvance) return;
-    onNext({ prioridad, observaciones, variantIds: selectedIds });
+    onNext({ prioridad, observaciones, pedido, variantIds: selectedIds });
   };
 
   return (
@@ -135,6 +149,58 @@ export function ProductionOrderStep1({
         value={observaciones}
         onChange={(event) => setObservaciones(event.target.value)}
       />
+
+      {/* Pedido relacionado — selección opcional vía diálogo apilado */}
+      <div>
+        <label
+          id={pedidoLabelId}
+          className="text-[11px] font-bold text-slate-400 uppercase tracking-wider ml-1 mb-1 block"
+        >
+          Pedido relacionado (opcional)
+        </label>
+
+        {pedido ? (
+          <div className="flex items-center justify-between gap-3 rounded-xl border border-sky-200 bg-sky-50 dark:border-sky-700/60 dark:bg-sky-900/20 px-4 py-3">
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-slate-800 dark:text-slate-100 truncate">
+                {pedido.label}
+              </p>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                Pedido vinculado a esta orden de producción
+              </p>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={() => setIsPedidoSelectorOpen(true)}
+                aria-describedby={pedidoLabelId}
+                className="px-3 py-1.5 text-xs font-semibold rounded-lg cursor-pointer border border-sky-200 text-sky-700 hover:bg-sky-100 dark:border-sky-700 dark:text-sky-300 dark:hover:bg-sky-500/10 transition-colors"
+              >
+                Cambiar
+              </button>
+              <button
+                type="button"
+                onClick={() => setPedido(null)}
+                aria-label="Quitar pedido"
+                aria-describedby={pedidoLabelId}
+                className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold rounded-lg cursor-pointer border border-slate-200 text-slate-500 hover:bg-slate-100 hover:text-rose-600 dark:border-white/10 dark:text-slate-400 dark:hover:bg-white/5 transition-colors"
+              >
+                <XIcon className="w-4 h-4" />
+                Quitar
+              </button>
+            </div>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setIsPedidoSelectorOpen(true)}
+            aria-describedby={pedidoLabelId}
+            className="w-full rounded-xl border border-dashed border-slate-300 dark:border-white/15 px-4 py-3 text-sm font-medium text-slate-600 dark:text-slate-300 hover:border-sky-400 hover:text-sky-700 dark:hover:border-sky-600 dark:hover:text-sky-300 cursor-pointer transition-colors"
+          >
+            + Relacionar a un pedido
+          </button>
+        )}
+      </div>
 
       {/* Selected count */}
       <p className="text-xs text-slate-500 font-medium">
@@ -206,6 +272,15 @@ export function ProductionOrderStep1({
           <ArrowRight className="h-4 w-4" />
         </button>
       </div>
+
+      {/* Re-confirmar el MISMO pedido solo reescribe `{id, label}`: no hay
+          datos derivados que se pierdan, así que no hace falta guarda. */}
+      <ProductionOrderPedidoSelectorDialog
+        open={isPedidoSelectorOpen}
+        onOpenChange={setIsPedidoSelectorOpen}
+        selectedPedidoId={pedido?.id ?? null}
+        onSelect={setPedido}
+      />
     </div>
   );
 }
