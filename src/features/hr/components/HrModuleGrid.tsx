@@ -8,6 +8,7 @@ import {
   ContractIcon,
   LayersIcon,
   TrainingIcon,
+  IncidentIcon,
   UserIcon,
 } from "@/src/components/Icons";
 
@@ -87,6 +88,16 @@ const hrCards = [
     accentClass: "text-teal-600 dark:text-teal-400",
     accentBgClass: "bg-teal-50 dark:bg-teal-500/10",
     shadowColorClassName: "hover:shadow-teal-500/25 dark:hover:shadow-teal-500/25",
+  },
+  {
+    icon: IncidentIcon,
+    title: "Incidencias",
+    description: "Retardos, faltas y otras incidencias: gravedad, estado y seguimiento.",
+    footerText: "Ver incidencias",
+    href: "/hr/incidents",
+    accentClass: "text-amber-600 dark:text-amber-400",
+    accentBgClass: "bg-amber-50 dark:bg-amber-500/10",
+    shadowColorClassName: "hover:shadow-amber-500/25 dark:hover:shadow-amber-500/25",
   },
 ];
 

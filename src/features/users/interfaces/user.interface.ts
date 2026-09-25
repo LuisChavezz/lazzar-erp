@@ -20,6 +20,8 @@ export interface User {
   date_joined: string;
   last_login: string | null;
   roles_ids: Role["id"][];
+  /** `get_full_name()` del backend (solo lectura). */
+  nombre_completo?: string;
 }
 
 export interface RegisterUser {
