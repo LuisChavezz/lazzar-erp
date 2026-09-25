@@ -43,6 +43,12 @@ interface PurchaseOrderEditStep2Props {
   initialItems: PurchaseOrderDetalleItem[];
   /** Llamado tras un PUT exitoso — paso final del wizard. */
   onSuccess: () => void;
+  /**
+   * Llamado cuando el backend rechaza el PUT porque la orden ya no puede
+   * editarse: cancelada, con recepciones o facturas (400) o eliminada (404).
+   * Ver `useUpdatePurchaseOrder`.
+   */
+  onOrderNoLongerEditable: () => void;
   /** Vuelve al Step 1 (encabezado). */
   onBack: () => void;
 }
@@ -61,13 +67,14 @@ export function PurchaseOrderEditStep2({
   onboardingData,
   initialItems,
   onSuccess,
+  onOrderNoLongerEditable,
   onBack,
 }: PurchaseOrderEditStep2Props) {
   // Opt-out del React Compiler: `useVirtualizer` retorna funciones internas
   // que el compilador no puede memoizar de forma segura.
   "use no memo";
 
-  const { mutate: update, isPending } = useUpdatePurchaseOrder();
+  const { mutate: update, isPending } = useUpdatePurchaseOrder({ onOrderNoLongerEditable });
   const [searchQuery, setSearchQuery] = useState("");
   const [quantities, setQuantities] = useState<Record<number, number>>(() =>
     Object.fromEntries(initialItems.map((i) => [i.producto, i.cantidad] as const)),

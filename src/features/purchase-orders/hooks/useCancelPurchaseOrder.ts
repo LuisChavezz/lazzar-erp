@@ -3,6 +3,7 @@ import toast from "react-hot-toast";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { drfFieldMessage, firstDrfFieldMessage } from "@/src/utils/firstDrfFieldMessage";
 import { cancelPurchaseOrder } from "../services/actions";
+import { invalidateReceiptOrderOptions } from "../utils/invalidateReceiptOrderOptions";
 
 interface UseCancelPurchaseOrderOptions {
   /**
@@ -39,6 +40,8 @@ export const useCancelPurchaseOrder = ({ onReasonError }: UseCancelPurchaseOrder
       queryClient.invalidateQueries({
         queryKey: ["purchase-order-onboarding"],
       });
+      // Una autorizada cancelada deja de ser recibible.
+      invalidateReceiptOrderOptions(queryClient);
       toast.success("Orden de compra cancelada correctamente");
     },
     onSettled: () => {

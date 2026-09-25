@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { confirmPurchaseOrder } from "../services/actions";
+import { invalidateReceiptOrderOptions } from "../utils/invalidateReceiptOrderOptions";
 import toast from "react-hot-toast";
 import { AxiosError } from "axios";
 
@@ -13,6 +14,8 @@ export const useConfirmPurchaseOrder = () => {
       queryClient.invalidateQueries({
         queryKey: ["purchase-order-onboarding"],
       });
+      // Confirmada = autorizada = recibible: debe aparecer en el alta de recepción.
+      invalidateReceiptOrderOptions(queryClient);
       toast.success("Orden de compra confirmada correctamente");
     },
     onError: (error) => {
