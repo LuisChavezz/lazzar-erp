@@ -38,6 +38,7 @@ export const useEmbroideryOrders = ({
     // `false` deja el efecto del toast sin disparar, conservando el cálculo de
     // `hasLoaded` (que solo depende de `data`).
     isError: notifyOnRefetchError && query.isError,
+    errorUpdatedAt: query.errorUpdatedAt,
     toastId: "embroidery-orders-refetch-error",
   });
 

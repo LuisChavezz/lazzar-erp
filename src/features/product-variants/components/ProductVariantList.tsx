@@ -35,11 +35,15 @@ export default function ProductVariantList() {
   // Mismos tipos que el formulario (PT + COMPRAS, EC-249): con solo PT, el
   // nombre del producto de una variante COMPRAS saldría como `#id`. Comparte
   // la entrada de caché del formulario.
-  const { products, isLoading: isLoadingProducts, isError: isErrorProducts, error: productsError } =
-    useProducts(VARIANT_PRODUCT_TYPE_IDS);
-  const { colors, isLoading: isLoadingColors, isError: isErrorColors, error: colorsError } =
+  const {
+    products,
+    isLoading: isLoadingProducts,
+    isInitialError: isErrorProducts,
+    error: productsError,
+  } = useProducts(VARIANT_PRODUCT_TYPE_IDS);
+  const { colors, isLoading: isLoadingColors, isInitialError: isErrorColors, error: colorsError } =
     useColors();
-  const { sizes, isLoading: isLoadingSizes, isError: isErrorSizes, error: sizesError } =
+  const { sizes, isLoading: isLoadingSizes, isInitialError: isErrorSizes, error: sizesError } =
     useSizes();
 
   const handleEdit = useCallback(
@@ -70,6 +74,9 @@ export default function ProductVariantList() {
   );
   const isEditing = Boolean(selectedProductVariant?.id);
   const isLoading = isLoadingVariants || isLoadingProducts || isLoadingColors || isLoadingSizes;
+  // Productos, colores y tallas ya llegan filtrados: un refetch fallido de
+  // esos catálogos conserva la tabla (toast desde su hook) y su `error` es
+  // `null` salvo en una carga inicial fallida.
   const isError = isErrorVariants || isErrorProducts || isErrorColors || isErrorSizes;
   const error = variantsError || productsError || colorsError || sizesError;
 

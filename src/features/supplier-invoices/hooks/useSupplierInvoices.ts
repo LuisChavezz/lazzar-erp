@@ -29,7 +29,7 @@ import type { FacturaProveedor } from "../interfaces/supplier-invoice.interface"
  */
 export const useSupplierInvoices = (proveedorId: number) => {
   const params = { proveedor: proveedorId };
-  const { data, isLoading, isError, error, refetch, isFetching } = useQuery<
+  const { data, isLoading, isError, errorUpdatedAt, error, refetch, isFetching } = useQuery<
     FacturaProveedor[]
   >({
     queryKey: ["facturas-proveedor", params],
@@ -40,6 +40,7 @@ export const useSupplierInvoices = (proveedorId: number) => {
   const { hasLoaded } = useHasLoadedQuery({
     data,
     isError,
+    errorUpdatedAt,
     toastId: "facturas-proveedor-refetch-error",
   });
 

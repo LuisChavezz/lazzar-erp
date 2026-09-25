@@ -19,6 +19,7 @@ export const useShipments = () => {
   const { hasLoaded } = useHasLoadedQuery({
     data: query.data,
     isError: query.isError,
+    errorUpdatedAt: query.errorUpdatedAt,
     toastId: "shipments-refetch-error",
   });
 

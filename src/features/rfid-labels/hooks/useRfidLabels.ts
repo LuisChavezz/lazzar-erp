@@ -16,6 +16,7 @@ export const useRfidLabels = () => {
   const { hasLoaded } = useHasLoadedQuery({
     data: query.data,
     isError: query.isError,
+    errorUpdatedAt: query.errorUpdatedAt,
     toastId: "etiquetas-rfid-refetch-error",
   });
 

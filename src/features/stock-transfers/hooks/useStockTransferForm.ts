@@ -49,9 +49,9 @@ export function useStockTransferForm({ onSuccess }: { onSuccess?: () => void } =
     isError: isErrorLocations,
   } = useLocations();
   const {
-    products = [],
+    products,
     isLoading: isLoadingProducts,
-    isError: isErrorProducts,
+    isInitialError: isErrorProducts,
   } = useProducts();
   const {
     productVariants = [],
@@ -61,11 +61,14 @@ export function useStockTransferForm({ onSuccess }: { onSuccess?: () => void } =
 
   const isLoadingFormData =
     isLoadingWarehouses || isLoadingLocations || isLoadingProducts || isLoadingVariants;
-  // Si CUALQUIER catálogo falla, no se puede armar el formulario con selects
-  // válidos: se expone para que el diálogo muestre un estado de error explícito
+  // Si un catálogo falla, no se puede armar el formulario con selects válidos:
+  // se expone para que el diálogo muestre un estado de error explícito
   // en vez de la pantalla de "faltan configuraciones" (una lista vacía por error
   // de red se confundiría con un catálogo legítimamente vacío). Mismo patrón que
-  // `useRegisterPendingInvoiceForm` (CxC).
+  // `useRegisterPendingInvoiceForm` (CxC). Productos solo cuenta si NUNCA cargó
+  // (`useProducts` expone `isInitialError`; un refetch fallido conserva el
+  // formulario y avisa por toast); almacenes, ubicaciones y variantes usan su
+  // `isError` crudo, así que un refetch fallido de esos sí bloquea el formulario.
   const isErrorFormData =
     isErrorWarehouses || isErrorLocations || isErrorProducts || isErrorVariants;
 

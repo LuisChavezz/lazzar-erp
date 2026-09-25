@@ -58,10 +58,10 @@ export function useProductVariantOnboardingForm() {
   const {
     products,
     isLoading: isLoadingProducts,
-    isError: isProductsError,
+    isInitialError: isProductsError,
     error: productsError,
   } = useProducts(VARIANT_PRODUCT_TYPE_IDS);
-  const { colors, isLoading: isLoadingColors, isError: isColorsError, error: colorsError } =
+  const { colors, isLoading: isLoadingColors, isInitialError: isColorsError, error: colorsError } =
     useColors();
 
   const activeProducts = products.filter((product) => product.activo);

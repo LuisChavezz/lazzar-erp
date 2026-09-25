@@ -9,7 +9,7 @@ import { Pago } from "../interfaces/payment.interface";
  * de buscar, filtrar y paginar en memoria. Mismo molde que `useBanks`.
  */
 export const usePagos = () => {
-  const { data, isLoading, isError, error, refetch, isFetching } = useQuery<Pago[]>({
+  const { data, isLoading, isError, errorUpdatedAt, error, refetch, isFetching } = useQuery<Pago[]>({
     queryKey: ["pagos"],
     queryFn: getPagos,
   });
@@ -17,6 +17,7 @@ export const usePagos = () => {
   const { hasLoaded } = useHasLoadedQuery({
     data,
     isError,
+    errorUpdatedAt,
     toastId: "pagos-refetch-error",
   });
 

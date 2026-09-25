@@ -23,7 +23,7 @@ interface BomStep1Props {
  * at least one product is selected.
  */
 export function BomStep1({ onNext, onBack }: BomStep1Props) {
-  const { products, isLoading, isError } = useProducts(2);
+  const { products, isLoading, isInitialError } = useProducts(2);
 
   const [search, setSearch] = useState("");
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
@@ -55,7 +55,9 @@ export function BomStep1({ onNext, onBack }: BomStep1Props) {
   }
 
   // ── Error state ───────────────────────────────────────────────────────
-  if (isError) {
+  // Solo si el catálogo nunca cargó: un refetch fallido conserva la lista (y
+  // la selección) y avisa por toast desde `useProducts`.
+  if (isInitialError) {
     return (
       <p className="text-sm text-red-500 p-4">Error al cargar los productos.</p>
     );

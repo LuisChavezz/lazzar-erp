@@ -19,6 +19,7 @@ export const usePickings = () => {
   const { hasLoaded } = useHasLoadedQuery({
     data: query.data,
     isError: query.isError,
+    errorUpdatedAt: query.errorUpdatedAt,
     toastId: "pickings-refetch-error",
   });
 

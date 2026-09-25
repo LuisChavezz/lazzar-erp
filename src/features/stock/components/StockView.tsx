@@ -142,6 +142,7 @@ export function StockView() {
   const { hasLoaded } = useHasLoadedQuery({
     data: isPlaceholderData ? undefined : stockQuery.data,
     isError,
+    errorUpdatedAt: stockQuery.errorUpdatedAt,
     toastId: "stock-items-refetch-error",
   });
   const showError = isInitialLoadError(isError, hasLoaded);

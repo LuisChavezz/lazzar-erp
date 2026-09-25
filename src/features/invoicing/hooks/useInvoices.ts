@@ -4,7 +4,7 @@ import { getInvoices } from "../services/actions";
 import { Invoice } from "../interfaces/invoice.interface";
 
 export const useInvoices = () => {
-  const { data, isLoading, isError, error, refetch, isFetching } = useQuery<
+  const { data, isLoading, isError, errorUpdatedAt, error, refetch, isFetching } = useQuery<
     Invoice[]
   >({
     queryKey: ["invoices"],
@@ -14,6 +14,7 @@ export const useInvoices = () => {
   const { hasLoaded } = useHasLoadedQuery({
     data,
     isError,
+    errorUpdatedAt,
     toastId: "invoices-refetch-error",
   });
 

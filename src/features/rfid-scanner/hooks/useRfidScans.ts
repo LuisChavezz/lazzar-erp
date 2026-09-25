@@ -37,6 +37,7 @@ export const useRfidScans = (enabled: boolean) => {
   const { hasLoaded } = useHasLoadedQuery({
     data: query.data,
     isError: query.isError,
+    errorUpdatedAt: query.errorUpdatedAt,
     toastId: "rfid-scans-refetch-error",
     errorMessage:
       "No se pudieron actualizar las lecturas. Mostrando las últimas recibidas.",

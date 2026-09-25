@@ -9,7 +9,7 @@ import { CuentaBancaria } from "../interfaces/bank-account.interface";
  * de buscar, filtrar y paginar en memoria.
  */
 export const useBankAccounts = () => {
-  const { data, isLoading, isError, error, refetch, isFetching } = useQuery<
+  const { data, isLoading, isError, errorUpdatedAt, error, refetch, isFetching } = useQuery<
     CuentaBancaria[]
   >({
     queryKey: ["bank-accounts"],
@@ -19,6 +19,7 @@ export const useBankAccounts = () => {
   const { hasLoaded } = useHasLoadedQuery({
     data,
     isError,
+    errorUpdatedAt,
     toastId: "bank-accounts-refetch-error",
   });
 

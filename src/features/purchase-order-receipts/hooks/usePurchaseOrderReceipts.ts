@@ -10,7 +10,7 @@ import type { PurchaseOrderReceipt } from "../interfaces/purchase-order-receipt.
  * caché no colisione con la vista sin filtro de WMS (["receipts"]).
  */
 export const usePurchaseOrderReceipts = () => {
-  const { data, isLoading, isError, error, refetch, isFetching } = useQuery<
+  const { data, isLoading, isError, errorUpdatedAt, error, refetch, isFetching } = useQuery<
     PurchaseOrderReceipt[]
   >({
     queryKey: ["purchase-order-receipts"],
@@ -20,6 +20,7 @@ export const usePurchaseOrderReceipts = () => {
   const { hasLoaded } = useHasLoadedQuery({
     data,
     isError,
+    errorUpdatedAt,
     toastId: "purchase-order-receipts-refetch-error",
   });
 

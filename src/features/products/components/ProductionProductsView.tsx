@@ -39,7 +39,7 @@ export function ProductionProductsView() {
   const canCreate = hasPermission("R-PRODUCCION", session?.user);
   const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
 
-  const { products, isLoading, isError, error } = useProducts();
+  const { products, isLoading, isInitialError, error } = useProducts();
   const { categories } = useProductCategories();
 
   // El nombre de la categoría se incorpora a la FILA (ver `ProductRow`): así la
@@ -59,7 +59,7 @@ export function ProductionProductsView() {
       getRowId={(row) => String(row.id)}
       emptyMessage="No hay productos registrados."
       isLoading={isLoading}
-      isError={isError}
+      isError={isInitialError}
       errorTitle="Error al cargar productos"
       errorMessage={extractErrorMessage(error, "No se pudo cargar la información.")}
       loadingAriaLabel="Cargando productos"

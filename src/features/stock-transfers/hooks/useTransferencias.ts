@@ -21,6 +21,7 @@ export const useTransferencias = () => {
   const { hasLoaded } = useHasLoadedQuery({
     data: query.data,
     isError: query.isError,
+    errorUpdatedAt: query.errorUpdatedAt,
     toastId: "transferencias-refetch-error",
   });
 

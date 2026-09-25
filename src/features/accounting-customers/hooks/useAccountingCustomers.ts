@@ -4,7 +4,7 @@ import { getAccountingCustomers } from "../services/actions";
 import { AccountingCustomer } from "../interfaces/accounting-customer.interface";
 
 export const useAccountingCustomers = () => {
-  const { data, isLoading, isError, error, refetch, isFetching } = useQuery<
+  const { data, isLoading, isError, errorUpdatedAt, error, refetch, isFetching } = useQuery<
     AccountingCustomer[]
   >({
     queryKey: ["accounting-customers"],
@@ -14,6 +14,7 @@ export const useAccountingCustomers = () => {
   const { hasLoaded } = useHasLoadedQuery({
     data,
     isError,
+    errorUpdatedAt,
     toastId: "accounting-customers-refetch-error",
   });
 

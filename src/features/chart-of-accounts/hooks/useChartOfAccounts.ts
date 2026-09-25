@@ -42,7 +42,7 @@ export const CHART_OF_ACCOUNTS_LIST_KEY = ["cuentas-contables", {}] as const;
  * decidiría lo que ve la otra.
  */
 export const useChartOfAccounts = (params?: CuentaContableQueryParams) => {
-  const { data, isLoading, isError, error, refetch, isFetching } = useQuery<
+  const { data, isLoading, isError, errorUpdatedAt, error, refetch, isFetching } = useQuery<
     CuentaContable[]
   >({
     queryKey: ["cuentas-contables", params ?? {}],
@@ -52,6 +52,7 @@ export const useChartOfAccounts = (params?: CuentaContableQueryParams) => {
   const { hasLoaded } = useHasLoadedQuery({
     data,
     isError,
+    errorUpdatedAt,
     toastId: "cuentas-contables-refetch-error",
   });
 

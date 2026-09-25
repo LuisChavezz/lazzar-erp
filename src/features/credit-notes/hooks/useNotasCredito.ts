@@ -13,7 +13,7 @@ import type { NotaCredito } from "../interfaces/credit-note.interface";
  * vista).
  */
 export const useNotasCredito = () => {
-  const { data, isLoading, isError, error, refetch, isFetching } = useQuery<
+  const { data, isLoading, isError, errorUpdatedAt, error, refetch, isFetching } = useQuery<
     NotaCredito[]
   >({
     queryKey: ["credit-notes"],
@@ -23,6 +23,7 @@ export const useNotasCredito = () => {
   const { hasLoaded } = useHasLoadedQuery({
     data,
     isError,
+    errorUpdatedAt,
     toastId: "credit-notes-refetch-error",
   });
 

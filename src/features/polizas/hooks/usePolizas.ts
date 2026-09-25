@@ -13,7 +13,7 @@ import type { Poliza } from "../interfaces/poliza.interface";
  * vista).
  */
 export const usePolizas = () => {
-  const { data, isLoading, isError, error, refetch, isFetching } = useQuery<Poliza[]>(
+  const { data, isLoading, isError, errorUpdatedAt, error, refetch, isFetching } = useQuery<Poliza[]>(
     {
       queryKey: ["polizas"],
       queryFn: getPolizas,
@@ -23,6 +23,7 @@ export const usePolizas = () => {
   const { hasLoaded } = useHasLoadedQuery({
     data,
     isError,
+    errorUpdatedAt,
     toastId: "polizas-refetch-error",
   });
 
