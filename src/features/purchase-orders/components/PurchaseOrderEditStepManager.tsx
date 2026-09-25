@@ -39,6 +39,7 @@ import {
 import { usePurchaseOrderOnboardingData } from "../hooks/usePurchaseOrderOnboardingData";
 import { usePurchaseOrder } from "../hooks/usePurchaseOrder";
 import { canSeeAmounts } from "../utils/purchaseOrderFinance";
+import { PURCHASE_ORDER_STATUS } from "../constants/purchaseOrderStatus";
 import { PurchaseOrderEditStep1 } from "./PurchaseOrderEditStep1";
 import { PurchaseOrderEditStep2 } from "./PurchaseOrderEditStep2";
 
@@ -158,6 +159,13 @@ export function PurchaseOrderEditStepManager({
     );
   }
 
+  // Editar una AUTORIZADA la regresa a pendiente (el PUT siempre fija estatus
+  // 2 y conserva el folio). Se lee de `detail` —recién consultado— y no de la
+  // fila del listado, que podría estar vieja. Vive aquí, en el manager, para
+  // que se vea en AMBOS pasos. Siempre se muestra en estatus 3: no hay registro
+  // de envío al proveedor que permita condicionar la segunda frase.
+  const isAuthorized = detail.estatus === PURCHASE_ORDER_STATUS.AUTORIZADA;
+
   return (
     <div className="w-full space-y-6">
       <StepProgressBar
@@ -165,6 +173,14 @@ export function PurchaseOrderEditStepManager({
         currentStep={currentStep}
         labels={STEP_LABELS}
       />
+      {isAuthorized && (
+        <div className="rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 px-3 py-2 text-xs text-amber-700 dark:text-amber-400">
+          Esta orden ya está autorizada. Al guardar los cambios volverá a
+          «Pendiente a confirmar» y tendrá que confirmarse de nuevo; conservará
+          su folio. Si ya se la enviaste al proveedor, reenvíasela después de
+          confirmarla.
+        </div>
+      )}
       <div>
         {currentStep === "step-1" && (
           <PurchaseOrderEditStep1
