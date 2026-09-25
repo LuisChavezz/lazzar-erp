@@ -114,9 +114,12 @@ export function useCreateProductionOrderForm({
         setErrors(nextErrors);
 
         // `empresa` / `sucursal` no tienen campo visible en el Paso 2 (vienen
-        // del workspace): si fallan, avísalo por toast para no dejar al usuario
-        // sin feedback al confirmar.
-        const headerError = nextErrors["empresa"] ?? nextErrors["sucursal"];
+        // del workspace) y `pedido` se elige en el Paso 1: si fallan, avísalo
+        // por toast para no dejar al usuario sin feedback al confirmar.
+        const headerError =
+          nextErrors["empresa"] ??
+          nextErrors["sucursal"] ??
+          (nextErrors["pedido"] ? "El pedido seleccionado no es válido" : undefined);
         if (headerError) {
           toast.error(headerError);
         }

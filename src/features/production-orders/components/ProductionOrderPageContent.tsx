@@ -342,14 +342,17 @@ export function ProductionOrderPageContent({
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* ── 2. Información general ────────────────────────────────────── */}
         <Section title="Información general">
-          {/* Sin campo "Pedido": `OrdenProduccion.pedido` nunca se puebla en la
-              práctica —el alta de esta orden no vincula ningún pedido—, así que
-              `pedido_folio`/`pedido_vinculado` siempre llegarían en guion. No es
-              un `null` ocasional que valga la pena cubrir con `textOrDash`: es
-              ruido constante, a diferencia de OB/OR/OCM, que sí cuelgan de un
-              pedido real. El campo sigue declarado en la interfaz —el backend lo
-              manda igual— por si una futura orden llega a traerlo. */}
           <InfoGrid>
+            <InfoField label="Pedido">
+              {/* El pedido es OPCIONAL en el alta de esta orden, así que el guion
+                  es un estado normal. Texto y NO enlace a `/orders/[id]` como en
+                  OB/OR/OCM: la regla de esa ruta no incluye `R-PRODUCCION-OP`, y
+                  un usuario solo-OP rebotaría. `pedido_vinculado` es opcional en
+                  el tipo, de ahí el respaldo en el par plano `pedido_folio`. */}
+              <span className="font-mono">
+                {textOrDash(data.pedido_vinculado?.folio ?? data.pedido_folio)}
+              </span>
+            </InfoField>
             {/* Estatus + Prioridad, el mismo par que las páginas hermanas
                 muestran en este bloque. Ambos salieron de la cabecera, así que
                 aquí no se duplican. */}
