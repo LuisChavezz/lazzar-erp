@@ -26,17 +26,18 @@ const DRF_DEFAULT_NOT_FOUND = /matches the given query|^not found\.?$/i;
 
 interface UseUpdatePurchaseOrderOptions {
   /**
-   * Se llama (además del toast con el mensaje del backend) cuando el PUT se
-   * rechaza con una de {@link BUSINESS_REJECTION_KEYS}, o con un 404 (la orden
-   * se eliminó en otro lado), para que el llamador cierre el flujo de
-   * edición. Cualquier otro error deja todo como está.
+   * Se llama (además del toast) cuando la orden YA NO puede editarse: el PUT
+   * se rechaza con un 400 con una de {@link BUSINESS_REJECTION_KEYS}
+   * (cancelada, con recepciones o facturas) o con un 404 (se eliminó en otro
+   * lado). Es para que el llamador cierre el flujo de edición; cualquier otro
+   * error deja todo como está.
    * Mismo patrón de opción que `useCancelPurchaseOrder({ onReasonError })`.
    */
-  onBusinessRejection?: () => void;
+  onOrderNoLongerEditable?: () => void;
 }
 
 export const useUpdatePurchaseOrder = ({
-  onBusinessRejection,
+  onOrderNoLongerEditable,
 }: UseUpdatePurchaseOrderOptions = {}) => {
   const queryClient = useQueryClient();
 
@@ -71,7 +72,7 @@ export const useUpdatePurchaseOrder = ({
           toast.error(
             detail && !DRF_DEFAULT_NOT_FOUND.test(detail) ? detail : NOT_FOUND_FALLBACK,
           );
-          onBusinessRejection?.();
+          onOrderNoLongerEditable?.();
           return;
         }
 
@@ -83,7 +84,7 @@ export const useUpdatePurchaseOrder = ({
           ).find(Boolean);
           if (rejectionMessage) {
             toast.error(rejectionMessage);
-            onBusinessRejection?.();
+            onOrderNoLongerEditable?.();
             return;
           }
           const firstMessage = firstDrfFieldMessage(error);
