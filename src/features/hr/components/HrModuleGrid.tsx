@@ -9,6 +9,7 @@ import {
   LayersIcon,
   TrainingIcon,
   IncidentIcon,
+  EvaluationIcon,
   UserIcon,
 } from "@/src/components/Icons";
 
@@ -98,6 +99,16 @@ const hrCards = [
     accentClass: "text-amber-600 dark:text-amber-400",
     accentBgClass: "bg-amber-50 dark:bg-amber-500/10",
     shadowColorClassName: "hover:shadow-amber-500/25 dark:hover:shadow-amber-500/25",
+  },
+  {
+    icon: EvaluationIcon,
+    title: "Evaluaciones",
+    description: "Evaluaciones de desempeño, competencias y objetivos por periodo.",
+    footerText: "Ver evaluaciones",
+    href: "/hr/evaluations",
+    accentClass: "text-fuchsia-600 dark:text-fuchsia-400",
+    accentBgClass: "bg-fuchsia-50 dark:bg-fuchsia-500/10",
+    shadowColorClassName: "hover:shadow-fuchsia-500/25 dark:hover:shadow-fuchsia-500/25",
   },
 ];
 
