@@ -14,7 +14,7 @@ import { useColors } from "../hooks/useColors";
 export default function ColorList() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedColor, setSelectedColor] = useState<Color | null>(null);
-  const { colors, isLoading, isError, error } = useColors();
+  const { colors, isLoading, isInitialError, error } = useColors();
   const { data: session } = useSession();
   // `hasPermission` ya cortocircuita para el rol admin, así que sustituye al
   // chequeo manual que vivía aquí. El alta usa su propio código
@@ -47,7 +47,7 @@ export default function ColorList() {
       data={colors}
       searchPlaceholder="Buscar color..."
       isLoading={isLoading}
-      isError={isError}
+      isError={isInitialError}
       errorTitle="Error al cargar colores"
       errorMessage={extractErrorMessage(error, "No se pudo cargar la información.")}
       loadingAriaLabel="Cargando colores"

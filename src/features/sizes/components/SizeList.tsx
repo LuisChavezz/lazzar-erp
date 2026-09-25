@@ -14,7 +14,7 @@ import { useSizes } from "../hooks/useSizes";
 export default function SizeList() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedSize, setSelectedSize] = useState<Size | null>(null);
-  const { sizes, isLoading, isError, error } = useSizes();
+  const { sizes, isLoading, isInitialError, error } = useSizes();
   const { data: session } = useSession();
   // `hasPermission` ya cortocircuita para el rol admin, así que sustituye al
   // chequeo manual que vivía aquí. El alta usa su propio código
@@ -47,7 +47,7 @@ export default function SizeList() {
       data={sizes}
       searchPlaceholder="Buscar talla..."
       isLoading={isLoading}
-      isError={isError}
+      isError={isInitialError}
       errorTitle="Error al cargar tallas"
       errorMessage={extractErrorMessage(error, "No se pudo cargar la información.")}
       loadingAriaLabel="Cargando tallas"

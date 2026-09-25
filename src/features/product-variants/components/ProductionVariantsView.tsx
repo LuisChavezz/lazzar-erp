@@ -42,11 +42,15 @@ export function ProductionVariantsView() {
     isError: isErrorVariants,
     error: variantsError,
   } = useProductVariants();
-  const { products, isLoading: isLoadingProducts, isError: isErrorProducts, error: productsError } =
-    useProducts();
-  const { colors, isLoading: isLoadingColors, isError: isErrorColors, error: colorsError } =
+  const {
+    products,
+    isLoading: isLoadingProducts,
+    isInitialError: isErrorProducts,
+    error: productsError,
+  } = useProducts();
+  const { colors, isLoading: isLoadingColors, isInitialError: isErrorColors, error: colorsError } =
     useColors();
-  const { sizes, isLoading: isLoadingSizes, isError: isErrorSizes, error: sizesError } =
+  const { sizes, isLoading: isLoadingSizes, isInitialError: isErrorSizes, error: sizesError } =
     useSizes();
 
   const lookups = {
@@ -57,6 +61,9 @@ export function ProductionVariantsView() {
   const columns = getColumns(() => {}, { canEdit: false, canDelete: false }, lookups);
 
   const isLoading = isLoadingVariants || isLoadingProducts || isLoadingColors || isLoadingSizes;
+  // Productos, colores y tallas ya llegan filtrados: un refetch fallido de
+  // esos catálogos conserva la tabla (toast desde su hook) y su `error` es
+  // `null` salvo en una carga inicial fallida.
   const isError = isErrorVariants || isErrorProducts || isErrorColors || isErrorSizes;
   const error = variantsError || productsError || colorsError || sizesError;
 
