@@ -13,7 +13,7 @@ import { OperationsCustomer } from "../interfaces/operations-customer.interface"
 // manejable, sobre el riesgo de una abstracción incorrecta que deba
 // deshacerse después.
 export const useOperationsCustomers = () => {
-  const { data, isLoading, isError, error, refetch, isFetching } = useQuery<
+  const { data, isLoading, isError, errorUpdatedAt, error, refetch, isFetching } = useQuery<
     OperationsCustomer[]
   >({
     queryKey: ["operations-customers"],
@@ -23,6 +23,7 @@ export const useOperationsCustomers = () => {
   const { hasLoaded } = useHasLoadedQuery({
     data,
     isError,
+    errorUpdatedAt,
     toastId: "operations-customers-refetch-error",
   });
 

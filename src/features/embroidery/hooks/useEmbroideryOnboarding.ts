@@ -51,6 +51,7 @@ export const useEmbroideryOnboarding = () => {
   const { hasLoaded } = useHasLoadedQuery({
     data: query.data,
     isError: query.isError,
+    errorUpdatedAt: query.errorUpdatedAt,
     toastId: "embroidery-onboarding-refetch-error",
     errorMessage:
       "No se pudieron actualizar los pendientes del pedido. Mostrando los datos anteriores.",

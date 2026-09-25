@@ -36,6 +36,7 @@ export const useCuentasPorCobrar = (params?: CuentaPorCobrarQueryParams) => {
   const { hasLoaded } = useHasLoadedQuery({
     data: query.data,
     isError: query.isError,
+    errorUpdatedAt: query.errorUpdatedAt,
     toastId: "accounts-receivable-refetch-error",
   });
 

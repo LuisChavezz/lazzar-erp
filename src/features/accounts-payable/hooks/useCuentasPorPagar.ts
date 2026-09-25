@@ -30,7 +30,7 @@ import type {
  * vista).
  */
 export const useCuentasPorPagar = (params?: CuentaPorPagarQueryParams) => {
-  const { data, isLoading, isError, error, refetch, isFetching } = useQuery<
+  const { data, isLoading, isError, errorUpdatedAt, error, refetch, isFetching } = useQuery<
     CuentaPorPagar[]
   >({
     queryKey: ["cuentas-por-pagar", params ?? {}],
@@ -40,6 +40,7 @@ export const useCuentasPorPagar = (params?: CuentaPorPagarQueryParams) => {
   const { hasLoaded } = useHasLoadedQuery({
     data,
     isError,
+    errorUpdatedAt,
     toastId: "cuentas-por-pagar-refetch-error",
   });
 

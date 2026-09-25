@@ -46,7 +46,7 @@ export const COST_CENTERS_LIST_KEY = ["centros-costo", {}] as const;
  * (ver `CostCenterQueryParams`).
  */
 export const useCostCenters = (params?: CostCenterQueryParams) => {
-  const { data, isLoading, isError, error, refetch, isFetching } = useQuery<
+  const { data, isLoading, isError, errorUpdatedAt, error, refetch, isFetching } = useQuery<
     CostCenter[]
   >({
     queryKey: ["centros-costo", params ?? {}],
@@ -56,6 +56,7 @@ export const useCostCenters = (params?: CostCenterQueryParams) => {
   const { hasLoaded } = useHasLoadedQuery({
     data,
     isError,
+    errorUpdatedAt,
     toastId: "centros-costo-refetch-error",
   });
 

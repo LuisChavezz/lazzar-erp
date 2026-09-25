@@ -12,7 +12,7 @@ export const ordersQueryKey = (params?: OrdersQueryParams) =>
   params ? (["orders", params] as const) : (["orders"] as const);
 
 export const useOrders = (params?: OrdersQueryParams) => {
-  const { data, isLoading, isError, error } = useQuery<PedidoListItem[]>({
+  const { data, isLoading, isError, errorUpdatedAt, error } = useQuery<PedidoListItem[]>({
     queryKey: ordersQueryKey(params),
     // Envuelto en una arrow a propósito: pasar `getOrders` pelado haría que
     // React Query le inyectara su `QueryFunctionContext` como primer argumento
@@ -26,6 +26,7 @@ export const useOrders = (params?: OrdersQueryParams) => {
   const { hasLoaded } = useHasLoadedQuery({
     data,
     isError,
+    errorUpdatedAt,
     toastId: "orders-refetch-error",
   });
 

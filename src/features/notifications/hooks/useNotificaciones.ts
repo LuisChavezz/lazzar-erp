@@ -48,6 +48,7 @@ export const useNotificaciones = (enabled: boolean) => {
   const { hasLoaded } = useHasLoadedQuery({
     data: query.data,
     isError: query.isError,
+    errorUpdatedAt: query.errorUpdatedAt,
     toastId: "notificaciones-refetch-error",
   });
 

@@ -41,6 +41,7 @@ export const useConciliaciones = (
     data: queryData,
     isLoading,
     isError,
+    errorUpdatedAt,
     error,
     refetch,
     isFetching,
@@ -70,6 +71,7 @@ export const useConciliaciones = (
   const { hasLoaded } = useHasLoadedQuery({
     data,
     isError,
+    errorUpdatedAt,
     toastId: "conciliaciones-bancarias-refetch-error",
   });
 

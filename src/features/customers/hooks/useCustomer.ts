@@ -39,7 +39,7 @@ export const useCustomer = (customerId: string) => {
   const numericCustomerId = Number(customerId);
   const isValidId = Number.isFinite(numericCustomerId) && numericCustomerId > 0;
 
-  const { data, isPlaceholderData, isError, error } = useQuery<CustomerDetail>({
+  const { data, isPlaceholderData, isError, errorUpdatedAt, error } = useQuery<CustomerDetail>({
     queryKey: ["customer", customerId],
     queryFn: () => getCustomer(numericCustomerId),
     enabled: isValidId,
@@ -54,6 +54,7 @@ export const useCustomer = (customerId: string) => {
     // La fila del listado no cuenta como "cargado": solo la respuesta real.
     data: isPlaceholderData ? undefined : data,
     isError,
+    errorUpdatedAt,
     toastId: "customer-detail-refetch-error",
     errorMessage: "No se pudo actualizar el cliente. Mostrando datos anteriores.",
   });

@@ -4,7 +4,7 @@ import { getProductionOrders } from "@/src/features/production-orders/services/a
 import type { ProductionOrderListItem } from "@/src/features/production-orders/interfaces/production-order.interface";
 
 export const useProductionOrders = () => {
-  const { data, isLoading, isError, error, refetch, isRefetching } =
+  const { data, isLoading, isError, errorUpdatedAt, error, refetch, isRefetching } =
     useQuery<ProductionOrderListItem[]>({
       queryKey: ["production-orders"],
       queryFn: getProductionOrders,
@@ -13,6 +13,7 @@ export const useProductionOrders = () => {
   const { hasLoaded } = useHasLoadedQuery({
     data,
     isError,
+    errorUpdatedAt,
     toastId: "production-orders-refetch-error",
   });
 

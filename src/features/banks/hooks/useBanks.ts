@@ -9,7 +9,7 @@ import { Banco } from "../interfaces/bank.interface";
  * paginar en memoria.
  */
 export const useBanks = () => {
-  const { data, isLoading, isError, error, refetch, isFetching } = useQuery<Banco[]>({
+  const { data, isLoading, isError, errorUpdatedAt, error, refetch, isFetching } = useQuery<Banco[]>({
     queryKey: ["banks"],
     queryFn: getBanks,
   });
@@ -17,6 +17,7 @@ export const useBanks = () => {
   const { hasLoaded } = useHasLoadedQuery({
     data,
     isError,
+    errorUpdatedAt,
     toastId: "banks-refetch-error",
   });
 

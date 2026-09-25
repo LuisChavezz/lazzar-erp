@@ -34,6 +34,7 @@ export const useReflectiveOrders = () => {
   const { hasLoaded } = useHasLoadedQuery({
     data: query.data,
     isError: query.isError,
+    errorUpdatedAt: query.errorUpdatedAt,
     toastId: "reflective-orders-refetch-error",
   });
 

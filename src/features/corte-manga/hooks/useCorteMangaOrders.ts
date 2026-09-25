@@ -29,6 +29,7 @@ export const useCorteMangaOrders = () => {
   const { hasLoaded } = useHasLoadedQuery({
     data: query.data,
     isError: query.isError,
+    errorUpdatedAt: query.errorUpdatedAt,
     toastId: "corte-manga-orders-refetch-error",
   });
 
