@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { updatePurchaseOrder } from "../services/actions";
 import type { UpdatePurchaseOrderParams } from "../interfaces/purchase-order.interface";
-import { drfFieldMessage } from "@/src/utils/firstDrfFieldMessage";
+import { drfFieldMessage, firstDrfFieldMessage } from "@/src/utils/firstDrfFieldMessage";
 import toast from "react-hot-toast";
 import { AxiosError } from "axios";
 
@@ -76,14 +76,19 @@ export const useUpdatePurchaseOrder = ({
         }
 
         if (statusCode === 400 && data) {
-          const isBusinessRejection = BUSINESS_REJECTION_KEYS.some((key) =>
+          // Rechazo de negocio: se muestra el mensaje de LA CLAVE que cierra el
+          // flujo, no el de la primera clave del cuerpo (podría ser otra).
+          const rejectionMessage = BUSINESS_REJECTION_KEYS.map((key) =>
             drfFieldMessage(error, key),
-          );
-          const validationErrors = data as Record<string, string[]>;
-          const firstMessage = Object.values(validationErrors).flat()[0];
+          ).find(Boolean);
+          if (rejectionMessage) {
+            toast.error(rejectionMessage);
+            onBusinessRejection?.();
+            return;
+          }
+          const firstMessage = firstDrfFieldMessage(error);
           if (firstMessage) {
             toast.error(firstMessage);
-            if (isBusinessRejection) onBusinessRejection?.();
             return;
           }
         }
