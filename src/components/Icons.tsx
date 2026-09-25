@@ -30,6 +30,7 @@ import {
   ChevronLeft,
   ChevronRight,
   ChevronUp,
+  ClipboardCheck,
   ClipboardList,
   Copy,
   Clock,
@@ -174,6 +175,8 @@ export const TrainingIcon = (props: LucideProps) => <GraduationCap {...props} />
  * `AlertTriangle`: aquí ya significa "error" (`ErrorIcon`).
  */
 export const IncidentIcon = (props: LucideProps) => <FileExclamationPoint {...props} />;
+/** Portapapeles con palomita. Para las evaluaciones de RH. */
+export const EvaluationIcon = (props: LucideProps) => <ClipboardCheck {...props} />;
 export const HistoryIcon = (props: LucideProps) => <History {...props} />;
 export const BellIcon = (props: LucideProps) => <Bell {...props} />;
 export const ErrorIcon = (props: LucideProps) => <AlertTriangle {...props} />;
