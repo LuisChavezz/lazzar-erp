@@ -86,6 +86,14 @@ export function PurchaseOrderEditStepManager({
   /** Step 2 guardó (PUT) exitosamente — paso final del wizard. */
   const handleStep2Success = () => onClose?.();
 
+  /**
+   * El backend rechazó el PUT porque la orden ya no puede editarse (se canceló
+   * o recibió en otro lado): reintentar no sirve, así que se cierra. El toast
+   * con el motivo y el refetch de la fila los hace `useUpdatePurchaseOrder`.
+   * Cualquier otro error deja el diálogo abierto con los cambios.
+   */
+  const handleBusinessRejection = () => onClose?.();
+
   // Renglones iniciales del paso de productos: sembrados desde los renglones
   // existentes de la orden, conservando `precio` y `descripcion` reales (no
   // solo la cantidad).
@@ -205,6 +213,7 @@ export function PurchaseOrderEditStepManager({
               onboardingData={onboardingData}
               initialItems={initialItems}
               onSuccess={handleStep2Success}
+              onBusinessRejection={handleBusinessRejection}
               onBack={() => setCurrentStep("step-1")}
             />
           </div>
