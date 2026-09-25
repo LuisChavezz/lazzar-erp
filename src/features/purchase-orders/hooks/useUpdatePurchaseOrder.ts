@@ -13,11 +13,21 @@ import { AxiosError } from "axios";
  */
 const BUSINESS_REJECTION_KEYS = ["estatus", "recepciones", "facturas_proveedores"] as const;
 
+/**
+ * Respaldo para el 404: la orden ya no existe para el backend (se eliminó en
+ * otro lado). `update` responde `{ "detail": "Orden de compra no encontrada." }`,
+ * pero un 404 genérico de DRF trae el texto en inglés ("No OrdenCompra matches
+ * the given query."), que no se le muestra al usuario.
+ */
+const NOT_FOUND_FALLBACK = "La orden de compra ya no existe; es posible que se haya eliminado.";
+const DRF_DEFAULT_NOT_FOUND = /matches the given query/i;
+
 interface UseUpdatePurchaseOrderOptions {
   /**
    * Se llama (además del toast con el mensaje del backend) cuando el PUT se
-   * rechaza con una de {@link BUSINESS_REJECTION_KEYS}, para que el llamador
-   * cierre el flujo de edición. Cualquier otro error deja todo como está.
+   * rechaza con una de {@link BUSINESS_REJECTION_KEYS}, o con un 404 (la orden
+   * se eliminó en otro lado), para que el llamador cierre el flujo de
+   * edición. Cualquier otro error deja todo como está.
    * Mismo patrón de opción que `useCancelPurchaseOrder({ onReasonError })`.
    */
   onBusinessRejection?: () => void;
@@ -51,6 +61,17 @@ export const useUpdatePurchaseOrder = ({
       if (error instanceof AxiosError) {
         const statusCode = error.response?.status;
         const data = error.response?.data;
+
+        // La orden ya no existe (soft-delete en otra pestaña): reintentar no
+        // sirve. El refetch de `onSettled` la quita del listado.
+        if (statusCode === 404) {
+          const detail = drfFieldMessage(error, "detail");
+          toast.error(
+            detail && !DRF_DEFAULT_NOT_FOUND.test(detail) ? detail : NOT_FOUND_FALLBACK,
+          );
+          onBusinessRejection?.();
+          return;
+        }
 
         if (statusCode === 400 && data) {
           const isBusinessRejection = BUSINESS_REJECTION_KEYS.some((key) =>
