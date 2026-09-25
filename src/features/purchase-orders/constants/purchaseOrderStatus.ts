@@ -47,16 +47,24 @@ export const isPurchaseOrderCancelled = (estatus: number) =>
   estatus === PURCHASE_ORDER_STATUS.CANCELADA;
 
 /**
- * Borrador o pendiente — la orden aún no se autoriza, por lo que sigue
- * pudiendo editarse, confirmarse o eliminarse (eliminar = borrar un error de
- * captura; el backend además lo rechaza si ya hay recepciones o facturas).
- *
- * Editar una AUTORIZADA lo permite el backend (la regresa a pendiente), pero
- * la UI lo mantiene bloqueado a propósito: es una decisión de negocio aún
- * pendiente, no un olvido.
+ * Borrador o pendiente — la orden aún NO se confirma, por lo que puede
+ * confirmarse o eliminarse (eliminar = borrar un error de captura; el backend
+ * además lo rechaza si ya hay recepciones o facturas). Editar es una regla
+ * aparte, más amplia: ver {@link isPurchaseOrderEditable}.
+ */
+export const isPurchaseOrderUnconfirmed = (estatus: number) =>
+  isPurchaseOrderDraft(estatus) || isPurchaseOrderPending(estatus);
+
+/**
+ * Borrador, pendiente o autorizada — la orden puede EDITARSE. Editar una
+ * autorizada la regresa a pendiente (el backend fija estatus 2 en todo PUT y
+ * conserva el folio), así que tendrá que confirmarse de nuevo; el wizard lo
+ * avisa. Recibida parcial o totalmente, o cancelada, ya no. El backend además
+ * rechaza la edición si hay recepciones o facturas de proveedor, cosa que el
+ * listado no expone.
  */
 export const isPurchaseOrderEditable = (estatus: number) =>
-  isPurchaseOrderDraft(estatus) || isPurchaseOrderPending(estatus);
+  isPurchaseOrderUnconfirmed(estatus) || estatus === PURCHASE_ORDER_STATUS.AUTORIZADA;
 
 /**
  * Borrador, pendiente o autorizada — la orden puede CANCELARSE (queda en
@@ -66,7 +74,7 @@ export const isPurchaseOrderEditable = (estatus: number) =>
  * 400 llega con su mensaje al diálogo.
  */
 export const isPurchaseOrderCancellable = (estatus: number) =>
-  isPurchaseOrderEditable(estatus) || estatus === PURCHASE_ORDER_STATUS.AUTORIZADA;
+  isPurchaseOrderUnconfirmed(estatus) || estatus === PURCHASE_ORDER_STATUS.AUTORIZADA;
 
 /**
  * Colores y etiquetas por estatus, en la forma `StatusBadgeConfigEntry` que

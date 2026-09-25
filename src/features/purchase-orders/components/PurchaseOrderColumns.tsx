@@ -29,6 +29,7 @@ import {
   isPurchaseOrderAuthorizedOrComplete,
   isPurchaseOrderCancellable,
   isPurchaseOrderEditable,
+  isPurchaseOrderUnconfirmed,
   purchaseOrderStatusEntry,
 } from "../constants/purchaseOrderStatus";
 
@@ -80,9 +81,12 @@ const FolioCell = ({
   const orderLabel = order.folio ?? `#${order.id}`;
   const statusCfg = purchaseOrderStatusEntry(order.estatus, order.estatus_label);
 
-  // Borrador o pendiente: la orden aún no se autoriza, así que puede
-  // editarse, confirmarse o eliminarse. Autorizada en adelante, ninguna de
-  // las tres debe quedar disponible.
+  // Borrador o pendiente: la orden aún no se confirma, así que puede
+  // confirmarse o eliminarse. Autorizada en adelante, ninguna de las dos.
+  const unconfirmed = isPurchaseOrderUnconfirmed(order.estatus);
+
+  // Borrador, pendiente o autorizada: la orden puede editarse. Guardar una
+  // autorizada la regresa a pendiente (lo avisa el wizard).
   const editable = isPurchaseOrderEditable(order.estatus);
 
   // Borrador, pendiente o autorizada: la orden puede cancelarse (queda en
@@ -143,10 +147,13 @@ const FolioCell = ({
     // precios que podría causar un rol sin visibilidad financiera se bloquea
     // dentro del wizard (`PurchaseOrderEditStepManager`), que sí trabaja con el
     // detalle filtrado.
+  }
+
+  if (unconfirmed) {
     // `A-COMPRAS-OC` es el código de AUTORIZACIÓN del catálogo, distinto del de
-    // edición: confirmar una orden la autoriza, no la modifica. `editable`
-    // sigue siendo la regla de NEGOCIO (estatus) — se exigen ambas. Mismo
-    // patrón que `A-MESACONTROL-COTI` en `OperationsQuoteColumns`.
+    // edición: confirmar una orden la autoriza, no la modifica. `unconfirmed`
+    // es la regla de NEGOCIO (estatus) — se exigen ambas. Mismo patrón que
+    // `A-MESACONTROL-COTI` en `OperationsQuoteColumns`.
     menuItems.push({
       label: "Confirmar",
       icon: CheckCircleIcon,
@@ -172,7 +179,7 @@ const FolioCell = ({
     });
   }
 
-  if (editable) {
+  if (unconfirmed) {
     // Eliminar BORRA un error de captura (DELETE). Solo borrador/pendiente; el
     // backend además lo rechaza si ya hay recepciones o facturas.
     menuItems.push({
@@ -249,7 +256,7 @@ const FolioCell = ({
           {order.referencia}
         </span>
       )}
-      {editable && (
+      {unconfirmed && (
         <ConfirmDialog
           open={isConfirmOpen}
           onOpenChange={setIsConfirmOpen}
@@ -263,7 +270,7 @@ const FolioCell = ({
           }}
         />
       )}
-      {editable && (
+      {unconfirmed && (
         <ConfirmDialog
           open={isDeleteOpen}
           onOpenChange={setIsDeleteOpen}
