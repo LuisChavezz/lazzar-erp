@@ -16,11 +16,13 @@ const BUSINESS_REJECTION_KEYS = ["estatus", "recepciones", "facturas_proveedores
 /**
  * Respaldo para el 404: la orden ya no existe para el backend (se eliminó en
  * otro lado). `update` responde `{ "detail": "Orden de compra no encontrada." }`,
- * pero un 404 genérico de DRF trae el texto en inglés ("No OrdenCompra matches
- * the given query."), que no se le muestra al usuario.
+ * que se muestra tal cual. Los dos textos por defecto de DRF para un 404 están
+ * en inglés —el de `Http404`/`get_object_or_404` ("No OrdenCompra matches the
+ * given query.") y el de la excepción `NotFound` ("Not found.")— y no se le
+ * muestran al usuario.
  */
 const NOT_FOUND_FALLBACK = "La orden de compra ya no existe; es posible que se haya eliminado.";
-const DRF_DEFAULT_NOT_FOUND = /matches the given query/i;
+const DRF_DEFAULT_NOT_FOUND = /matches the given query|^not found\.?$/i;
 
 interface UseUpdatePurchaseOrderOptions {
   /**
