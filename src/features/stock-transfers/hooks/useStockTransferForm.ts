@@ -109,7 +109,7 @@ export function useStockTransferForm({ onSuccess }: { onSuccess?: () => void } =
     () =>
       products
         .filter((p) => p.activo)
-        .map((p) => ({ id: p.id, label: p.nombre, sublabel: p.codigo })),
+        .map((p) => ({ id: p.id, label: p.nombre, sublabel: p.codigo ?? undefined })),
     [products],
   );
 

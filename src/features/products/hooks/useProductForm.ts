@@ -4,22 +4,27 @@ import { useForm } from "@tanstack/react-form";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import type { FormFieldError } from "../../../utils/getFieldError";
-import { ProductFormSchema, ProductFormValues } from "../schemas/product.schema";
+import {
+  createProductEditSchema,
+  ProductFormValues,
+  ProductRequiredFields,
+} from "../schemas/product.schema";
 import { useProductCategories } from "../../product-categories/hooks/useProductCategories";
 import { useUnitsOfMeasure } from "../../units-of-measure/hooks/useUnitsOfMeasure";
 import { useTaxes } from "../../taxes/hooks/useTaxes";
 import { useSatUnitCodes } from "../../sat-unit-codes/hooks/useSatUnitCodes";
 import { useProductTypes } from "../../product-types/hooks/useProductTypes";
 import { useSatProdServCodes } from "../../sat-prodserv-codes/hooks/useSatProdServCodes";
-import { useWorkspaceStore } from "../../workspace/store/workspace.store";
-import { useCreateProduct } from "./useCreateProduct";
 import { useUpdateProduct } from "./useUpdateProduct";
-import { Product } from "../interfaces/product.interface";
+import { Product, ProductUpdate } from "../interfaces/product.interface";
 
 interface UseProductFormParams {
   onSuccess: () => void;
-  productToEdit?: Product | null;
+  product: Product;
 }
+
+// `0` es "sin seleccionar" en los `<select>`; al backend viaja como `null`.
+const toCatalogId = (id: number) => (id > 0 ? id : null);
 
 type ProductFormField = keyof ProductFormValues;
 
@@ -44,102 +49,131 @@ const scrollToFirstValidationError = (formElement: HTMLFormElement, issuePaths: 
   }
 };
 
-export function useProductForm({ onSuccess, productToEdit }: UseProductFormParams) {
-  // Obtiene la empresa activa para construir payloads de creación y edición.
-  const selectedCompany = useWorkspaceStore((state) => state.selectedCompany);
-
+/**
+ * Formulario de EDICIÓN de producto. No hay modo alta: los productos se crean
+ * solo por el alta rápida (`product-onboarding`), que asigna el `codigo`.
+ */
+export function useProductForm({ onSuccess, product }: UseProductFormParams) {
   // Carga catálogos requeridos para los selectores del formulario.
-  const { categories, isLoading: isLoadingProductCategories } = useProductCategories();
-  const { units, isLoading: isLoadingUnits } = useUnitsOfMeasure();
-  const { taxes, isLoading: isLoadingTaxes } = useTaxes();
-  const { satProdservCodes, isLoading: isLoadingSatProdservCodes } = useSatProdServCodes();
-  const { satUnitCodes, isLoading: isLoadingSatUnitCodes } = useSatUnitCodes();
+  const {
+    categories,
+    isLoading: isLoadingProductCategories,
+    isError: isProductCategoriesError,
+    error: productCategoriesError,
+  } = useProductCategories();
+  const { units, isLoading: isLoadingUnits, isError: isUnitsError, error: unitsError } =
+    useUnitsOfMeasure();
+  const { taxes, isLoading: isLoadingTaxes, isError: isTaxesError, error: taxesError } = useTaxes();
+  const {
+    satProdservCodes,
+    isLoading: isLoadingSatProdservCodes,
+    isError: isSatProdservCodesError,
+    error: satProdservCodesError,
+  } = useSatProdServCodes();
+  const {
+    satUnitCodes,
+    isLoading: isLoadingSatUnitCodes,
+    isError: isSatUnitCodesError,
+    error: satUnitCodesError,
+  } = useSatUnitCodes();
+  // Solo para MOSTRAR el nombre del tipo (la respuesta del producto trae el
+  // PK, no el `codigo`). Por eso no entra en `catalogs`: si falla o viene
+  // vacío, la edición sigue y el tipo se muestra degradado.
   const { productTypes, isLoading: isLoadingProductTypes } = useProductTypes();
 
-  // Detecta modo edición en función de la entidad recibida.
-  const isEditing = Boolean(productToEdit?.id);
-
-  // Mantiene estado de referencia del formulario y preferencias de captura continua.
   const formRef = useRef<HTMLFormElement | null>(null);
-  const [keepCreating, setKeepCreating] = useState(false);
 
   // Separa errores de validación local y errores devueltos por backend.
   const [clientErrors, setClientErrors] = useState<Partial<Record<ProductFormField, string>>>({});
   const [serverErrors, setServerErrors] = useState<Partial<Record<ProductFormField, string>>>({});
 
-  // Define los valores base para modo creación.
-  const emptyValues = useMemo<ProductFormValues>(
-    () => ({
-      nombre: "",
-      descripcion: "",
-      tipo: "",
-      categoria_producto: 0,
-      unidad_medida: 0,
-      impuesto: 0,
-      sat_prodserv: 0,
-      sat_unidad: 0,
-      precio_base: 0,
-      activo: true,
-    }),
-    []
-  );
+  // Obligatoriedad de los campos condicionales: se lee del registro recibido
+  // (el que había al abrir el formulario), no de lo que se va tecleando, así que
+  // un campo que ya tenía valor no se puede vaciar y uno vacío no se exige.
+  const requiredFields: ProductRequiredFields = {
+    descripcion: Boolean(product.descripcion?.trim()),
+    unidad_medida: product.unidad_medida !== null,
+    impuesto: product.impuesto !== null,
+    sat_prodserv: product.sat_prodserv !== null,
+    sat_unidad: product.sat_unidad !== null,
+  };
+  const productSchema = createProductEditSchema(requiredFields);
+
+  // `tipo` es de solo lectura: se fija en el alta rápida y no viaja en el PUT.
+  // Sin tipo, "—"; sin catálogo (cargando, error o id desconocido), el PK.
+  const productTypeLabel =
+    product.tipo === null
+      ? "—"
+      : (productTypes.find((type) => type.id === product.tipo)?.codigo ??
+        (isLoadingProductTypes ? "Cargando..." : `#${product.tipo}`));
 
   // Normaliza valores de edición para evitar IDs inexistentes en catálogos no cargados.
   const editValues = useMemo<ProductFormValues>(() => {
-    if (!productToEdit) {
-      return emptyValues;
-    }
-
-    const hasCategory = categories.some((category) => category.id === productToEdit.categoria_producto);
-    const productTypeCode = productToEdit.tipo ?? "";
-    const hasType = productTypes.some((type) => type.codigo === productTypeCode);
-    const hasUnit = units.some((unit) => unit.id === productToEdit.unidad_medida);
-    const hasTax = taxes.some((tax) => tax.id === productToEdit.impuesto);
+    const hasCategory = categories.some((category) => category.id === product.categoria_producto);
+    const hasUnit = units.some((unit) => unit.id === product.unidad_medida);
+    const hasTax = taxes.some((tax) => tax.id === product.impuesto);
     const hasSatProdserv = satProdservCodes.some(
-      (code) => code.id_sat_prodserv === productToEdit.sat_prodserv
+      (code) => code.id_sat_prodserv === product.sat_prodserv
     );
-    const hasSatUnit = satUnitCodes.some((code) => code.id_sat_unidad === productToEdit.sat_unidad);
+    const hasSatUnit = satUnitCodes.some((code) => code.id_sat_unidad === product.sat_unidad);
 
     return {
-      nombre: productToEdit.nombre,
-      descripcion: productToEdit.descripcion ?? "",
-      tipo: hasType ? productTypeCode : "",
-      categoria_producto: hasCategory ? productToEdit.categoria_producto : 0,
-      unidad_medida: hasUnit ? (productToEdit.unidad_medida ?? 0) : 0,
-      impuesto: hasTax ? (productToEdit.impuesto ?? 0) : 0,
-      sat_prodserv: hasSatProdserv ? (productToEdit.sat_prodserv ?? 0) : 0,
-      sat_unidad: hasSatUnit ? (productToEdit.sat_unidad ?? 0) : 0,
-      precio_base: parseFloat(productToEdit.precio_base) || 0,
-      activo: productToEdit.activo,
+      nombre: product.nombre,
+      descripcion: product.descripcion ?? "",
+      categoria_producto: hasCategory ? product.categoria_producto : 0,
+      unidad_medida: hasUnit ? (product.unidad_medida ?? 0) : 0,
+      impuesto: hasTax ? (product.impuesto ?? 0) : 0,
+      sat_prodserv: hasSatProdserv ? (product.sat_prodserv ?? 0) : 0,
+      sat_unidad: hasSatUnit ? (product.sat_unidad ?? 0) : 0,
+      precio_base: parseFloat(product.precio_base) || 0,
+      activo: product.activo,
     };
-  }, [categories, emptyValues, productToEdit, productTypes, satProdservCodes, satUnitCodes, taxes, units]);
+  }, [categories, product, satProdservCodes, satUnitCodes, taxes, units]);
 
-  // Expone faltantes de catálogos para bloquear el formulario cuando no hay prerequisitos.
-  const missingItems = useMemo(
-    () =>
-      [
-        categories.length === 0 && !isLoadingProductCategories ? "Categorías de producto" : null,
-        productTypes.length === 0 && !isLoadingProductTypes ? "Tipos de producto" : null,
-        units.length === 0 && !isLoadingUnits ? "Unidades de medida" : null,
-        taxes.length === 0 && !isLoadingTaxes ? "Impuestos" : null,
-        satProdservCodes.length === 0 && !isLoadingSatProdservCodes ? "Claves SAT Prod/Serv" : null,
-        satUnitCodes.length === 0 && !isLoadingSatUnitCodes ? "Claves SAT Unidad" : null,
-      ].filter((item): item is string => Boolean(item)),
-    [
-      categories.length,
-      isLoadingProductCategories,
-      isLoadingProductTypes,
-      isLoadingSatProdservCodes,
-      isLoadingSatUnitCodes,
-      isLoadingTaxes,
-      isLoadingUnits,
-      productTypes.length,
-      satProdservCodes.length,
-      satUnitCodes.length,
-      taxes.length,
-      units.length,
-    ]
-  );
+  // Mismo criterio que el alta rápida: un catálogo que falló al cargar se
+  // reporta como error, no como faltante (un error de red no significa que no
+  // existan registros).
+  const catalogs = [
+    {
+      label: "Categorías de producto",
+      count: categories.length,
+      isLoading: isLoadingProductCategories,
+      isError: isProductCategoriesError,
+      error: productCategoriesError,
+    },
+    {
+      label: "Unidades de medida",
+      count: units.length,
+      isLoading: isLoadingUnits,
+      isError: isUnitsError,
+      error: unitsError,
+    },
+    {
+      label: "Impuestos",
+      count: taxes.length,
+      isLoading: isLoadingTaxes,
+      isError: isTaxesError,
+      error: taxesError,
+    },
+    {
+      label: "Claves SAT Prod/Serv",
+      count: satProdservCodes.length,
+      isLoading: isLoadingSatProdservCodes,
+      isError: isSatProdservCodesError,
+      error: satProdservCodesError,
+    },
+    {
+      label: "Claves SAT Unidad",
+      count: satUnitCodes.length,
+      isLoading: isLoadingSatUnitCodes,
+      isError: isSatUnitCodesError,
+      error: satUnitCodesError,
+    },
+  ];
+  const catalogsError = catalogs.find((catalog) => catalog.isError)?.error ?? null;
+  const missingItems = catalogs
+    .filter((catalog) => !catalog.isLoading && !catalog.isError && catalog.count === 0)
+    .map((catalog) => catalog.label);
 
   // Traduce errores de mutaciones al estado interno de errores por campo.
   const setHookError = (field: ProductFormField, error: { message?: string }) => {
@@ -149,8 +183,7 @@ export function useProductForm({ onSuccess, productToEdit }: UseProductFormParam
     setServerErrors((prev) => ({ ...prev, [field]: error.message as string }));
   };
 
-  const { mutateAsync: createProduct, isPending: isCreating } = useCreateProduct(setHookError);
-  const { mutateAsync: updateProduct, isPending: isUpdating } = useUpdateProduct(setHookError);
+  const { mutateAsync: updateProduct, isPending } = useUpdateProduct(setHookError);
 
   // Limpia errores de cliente y servidor al modificar un campo.
   const clearFieldErrors = (field: ProductFormField) => {
@@ -174,7 +207,7 @@ export function useProductForm({ onSuccess, productToEdit }: UseProductFormParam
 
   // Valida un campo en onBlur usando la regla puntual del schema.
   const validateField = (field: ProductFormField, value: ProductFormValues[ProductFormField]) => {
-    const fieldSchema = ProductFormSchema.shape[field];
+    const fieldSchema = productSchema.shape[field];
     const parsed = fieldSchema.safeParse(value);
     if (parsed.success) {
       setClientErrors((prev) => {
@@ -195,7 +228,7 @@ export function useProductForm({ onSuccess, productToEdit }: UseProductFormParam
 
   // Valida el formulario completo antes del submit y construye el mapa de errores.
   const validateForm = (values: ProductFormValues) => {
-    const parsed = ProductFormSchema.safeParse(values);
+    const parsed = productSchema.safeParse(values);
     if (parsed.success) {
       setClientErrors({});
       return true;
@@ -230,9 +263,8 @@ export function useProductForm({ onSuccess, productToEdit }: UseProductFormParam
     return message ? ({ message } as FormFieldError) : undefined;
   };
 
-  // Centraliza estado y flujo de submit para crear/editar manteniendo el comportamiento actual.
   const form = useForm({
-    defaultValues: isEditing ? editValues : emptyValues,
+    defaultValues: editValues,
     onSubmit: async ({ value }) => {
       setServerErrors({});
 
@@ -240,36 +272,23 @@ export function useProductForm({ onSuccess, productToEdit }: UseProductFormParam
         return;
       }
 
+      // Campos explícitos, sin `...value`: sin `tipo` (el backend conserva el
+      // guardado, ver `ProductUpdate`) y los catálogos sin seleccionar viajan
+      // como `null` (el backend los admite vacíos).
+      const payload: ProductUpdate = {
+        nombre: value.nombre,
+        descripcion: value.descripcion,
+        categoria_producto: value.categoria_producto,
+        unidad_medida: toCatalogId(value.unidad_medida),
+        impuesto: toCatalogId(value.impuesto),
+        sat_prodserv: toCatalogId(value.sat_prodserv),
+        sat_unidad: toCatalogId(value.sat_unidad),
+        precio_base: value.precio_base,
+        activo: value.activo,
+      };
+
       try {
-        if (isEditing && productToEdit) {
-          await updateProduct({
-            id: productToEdit.id,
-            empresa: productToEdit.empresa ?? selectedCompany.id!,
-            ...value,
-          });
-          form.reset(editValues);
-          onSuccess();
-          return;
-        }
-
-        await createProduct({
-          empresa: selectedCompany.id!,
-          ...value,
-        });
-
-        if (keepCreating) {
-          form.reset({
-            ...value,
-            nombre: "",
-            descripcion: "",
-          });
-          setTimeout(() => {
-            formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-          }, 0);
-          return;
-        }
-
-        form.reset(emptyValues);
+        await updateProduct({ id: product.id, ...payload });
         onSuccess();
       } catch {
         return;
@@ -279,18 +298,12 @@ export function useProductForm({ onSuccess, productToEdit }: UseProductFormParam
 
   // Sincroniza el formulario cuando cambian valores derivados de edición.
   useEffect(() => {
-    if (!isEditing) {
-      return;
-    }
     form.reset(editValues);
-  }, [editValues, form, isEditing]);
+  }, [editValues, form]);
 
-  // Expone estado global de bloqueo para evitar interacción durante mutaciones.
-  const isPending = isCreating || isUpdating;
-
-  // Restablece manualmente el formulario según modo y limpia errores.
+  // Restablece manualmente el formulario a los valores del producto y limpia errores.
   const handleReset = () => {
-    form.reset(isEditing ? editValues : emptyValues);
+    form.reset(editValues);
     setClientErrors({});
     setServerErrors({});
     setTimeout(() => {
@@ -305,24 +318,22 @@ export function useProductForm({ onSuccess, productToEdit }: UseProductFormParam
     void form.handleSubmit();
   };
 
-  // Define key estable para remount entre creación y edición.
-  const formKey = isEditing ? `product-edit-${productToEdit?.id ?? "ready"}` : "product-new";
+  // Define key estable para remount entre productos.
+  const formKey = `product-edit-${product.id}`;
 
   return {
     form,
     formRef,
     formKey,
-    isEditing,
     isPending,
-    keepCreating,
-    setKeepCreating,
+    catalogsError,
     missingItems,
     categories,
     units,
     taxes,
     satProdservCodes,
     satUnitCodes,
-    productTypes,
+    productTypeLabel,
     getError,
     clearFieldErrors,
     validateField,

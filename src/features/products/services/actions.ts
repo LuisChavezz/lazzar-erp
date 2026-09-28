@@ -1,5 +1,5 @@
 import { v1_api } from "@/src/api/v1.api";
-import { Product, ProductCreate } from "../interfaces/product.interface";
+import { Product, ProductUpdate } from "../interfaces/product.interface";
 
 
 /**
@@ -31,12 +31,11 @@ export const getProduct = async (id: number): Promise<Product> => {
   return response.data;
 };
 
-export const createProduct = async (product: ProductCreate): Promise<Product> => {
-  const response = await v1_api.post<Product>("/catalogo/producto/", product);
-  return response.data;
-};
+// Sin `createProduct`: el alta de productos va solo por el alta rápida
+// (`product-onboarding`, `POST /catalogo/producto/onboarding/`), que asigna el
+// `codigo`. El `POST` base lo dejaría en `null`.
 
-export const updateProduct = async (id: number, product: ProductCreate): Promise<Product> => {
+export const updateProduct = async (id: number, product: ProductUpdate): Promise<Product> => {
   const response = await v1_api.put<Product>(`/catalogo/producto/${id}/`, product);
   return response.data;
 }

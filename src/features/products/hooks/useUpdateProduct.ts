@@ -1,12 +1,12 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { updateProduct } from "../services/actions";
 import { ProductFormValues } from "../schemas/product.schema";
+import type { ProductUpdate } from "../interfaces/product.interface";
 import toast from "react-hot-toast";
 import { AxiosError } from "axios";
 
-interface UpdateProductPayload extends ProductFormValues {
+interface UpdateProductPayload extends ProductUpdate {
   id: number;
-  empresa: number;
 }
 
 type SetProductError = (
