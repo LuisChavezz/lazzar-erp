@@ -1,8 +1,8 @@
 "use client";
 
-import { useForm } from "@tanstack/react-form";
+import { useForm, useStore } from "@tanstack/react-form";
 import { useQueryClient } from "@tanstack/react-query";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import toast from "react-hot-toast";
 import type { FormFieldError } from "@/src/utils/getFieldError";
@@ -11,6 +11,10 @@ import { useEmployees } from "@/src/features/employees/hooks/useEmployees";
 import { getEmployeeFullName } from "@/src/features/employees/utils/employeeName";
 import type { Employee } from "@/src/features/employees/interfaces/employee.interface";
 import { useShifts } from "@/src/features/shifts/hooks/useShifts";
+import {
+  useEmployeeCalendarOccupancy,
+  useForeignOccupancySources,
+} from "@/src/hooks/useEmployeeCalendarOccupancy";
 import {
   createVacationFormSchema,
   getDiasSolicitadosError,
@@ -21,6 +25,7 @@ import {
 import { ESTADO_PENDIENTE } from "../constants/vacationChoices";
 import { Vacation, VacationWrite } from "../interfaces/vacation.interface";
 import { suggestDiasSolicitados, toPrefillValue } from "../utils/suggestDiasSolicitados";
+import { VACATION_OCCUPANCY_KIND } from "../utils/vacationOccupancy";
 import { useCreateVacation } from "./useCreateVacation";
 import { useUpdateVacation } from "./useUpdateVacation";
 import { useVacations, VACATIONS_KEY } from "./useVacations";
@@ -71,6 +76,17 @@ const buildEmployeeOptions = (
 
 const NO_FIRED: Record<CrossRuleField, boolean> = { fecha_fin: false, dias_solicitados: false };
 
+/**
+ * De dónde salió el valor vigente de `dias_solicitados`:
+ * - `auto`: la sugerencia (o vacío porque aún no la hay). Se actualiza sola
+ *   cuando llega o cambia un catálogo que la alimenta (turnos, empleados).
+ * - `manual`: lo tecleó la persona. Nunca se pisa por la llegada de datos.
+ * - `stored`: el valor guardado de una solicitud en edición (D1: abrirla nunca
+ *   lo recalcula).
+ * Cambiar DE VERDAD el empleado o una fecha vuelve a `auto` (D1).
+ */
+type DiasSource = "auto" | "manual" | "stored";
+
 export function useVacationForm({ onSuccess, vacationToEdit }: UseVacationFormParams) {
   // Determina modo creación/edición. Solo se edita una solicitud pendiente.
   const isEditing = Boolean(vacationToEdit?.id);
@@ -86,14 +102,13 @@ export function useVacationForm({ onSuccess, vacationToEdit }: UseVacationFormPa
   // El listado COMPLETO alimenta la regla de traslape (misma caché que la tabla).
   const { vacations, hasLoaded: hasLoadedVacations } = useVacations();
   const queryClient = useQueryClient();
+  // Fuentes de los OTROS recursos que ocupan días (permisos y ausencias),
+  // repartidas por el hub de RH: este módulo no importa el de ausencias.
+  const foreignSources = useForeignOccupancySources(VACATION_OCCUPANCY_KIND);
 
   const currentEmpleadoId = vacationToEdit?.empleado ?? null;
   // Sin `useMemo`: el React Compiler memoiza, y nada depende de su identidad.
   const empleadoOptions = buildEmployeeOptions(employees, currentEmpleadoId);
-
-  // Contexto de las reglas cruzadas: se arma en cada render con el listado
-  // vigente, así un refetch que traiga otra solicitud entra en la regla.
-  const ruleContext = { vacations, editingId };
 
   // Conserva referencia al form para scroll superior suave al limpiar.
   const formRef = useRef<HTMLFormElement | null>(null);
@@ -111,6 +126,9 @@ export function useVacationForm({ onSuccess, vacationToEdit }: UseVacationFormPa
   // o por submit)? Mientras sea `true`, cada cambio de los otros campos de la
   // regla la reevalúa. Mismo mecanismo que en evaluaciones.
   const firedRef = useRef<Record<CrossRuleField, boolean>>({ ...NO_FIRED });
+
+  // Origen del valor de `dias_solicitados` (ver `DiasSource`).
+  const diasSourceRef = useRef<DiasSource>(isEditing ? "stored" : "auto");
 
   const emptyValues = useMemo<VacationFormValues>(
     () => ({
@@ -292,7 +310,8 @@ export function useVacationForm({ onSuccess, vacationToEdit }: UseVacationFormPa
         queryClient,
         value,
         isEditing ? editingId : null,
-        ESTADO_PENDIENTE
+        ESTADO_PENDIENTE,
+        foreignSources
       );
       if (check.result === "stale") {
         onSuccess();
@@ -356,6 +375,20 @@ export function useVacationForm({ onSuccess, vacationToEdit }: UseVacationFormPa
     },
   });
 
+  // Valores que alimentan el traslape y la sugerencia de días, observados para
+  // que la llegada de datos (catálogos, ocupación del empleado) se refleje.
+  const watchedEmpleado = useStore(form.store, (state) => state.values.empleado);
+  const watchedFechaInicio = useStore(form.store, (state) => state.values.fecha_inicio);
+  const watchedFechaFin = useStore(form.store, (state) => state.values.fecha_fin);
+
+  // Permisos y ausencias del empleado elegido (solo `?empleado=`), para el
+  // AVISO de traslape en blur. La guarda previa a escribir los vuelve a pedir.
+  const foreignOccupants = useEmployeeCalendarOccupancy(foreignSources, watchedEmpleado);
+
+  // Contexto de las reglas cruzadas: se arma en cada render con el listado
+  // vigente, así un refetch que traiga otra solicitud entra en la regla.
+  const ruleContext = { vacations, editingId, foreignOccupants };
+
   // Mantiene a mano los últimos valores de edición SIN que su identidad sea
   // una dependencia del efecto de abajo. Va declarado antes para que React lo
   // ejecute primero cuando ambos efectos caen en el mismo commit.
@@ -373,6 +406,7 @@ export function useVacationForm({ onSuccess, vacationToEdit }: UseVacationFormPa
   useEffect(() => {
     form.reset(editingId ? editValuesRef.current : emptyValues);
     firedRef.current = { ...NO_FIRED };
+    diasSourceRef.current = editingId ? "stored" : "auto";
   }, [editingId, emptyValues, form]);
 
   /**
@@ -430,10 +464,53 @@ export function useVacationForm({ onSuccess, vacationToEdit }: UseVacationFormPa
     const nextValues = { ...form.state.values, [field]: nextValue };
     const nextDias = toPrefillValue(getDiasSuggestion(nextValues));
     form.setFieldValue("dias_solicitados", nextDias);
+    diasSourceRef.current = "auto";
     clearFieldErrors("dias_solicitados");
 
     revalidateCrossRules({ [field]: nextValue, dias_solicitados: nextDias });
   };
+
+  /** La persona teclea los días: desde aquí la llegada de datos ya no los pisa. */
+  const markDiasManual = () => {
+    diasSourceRef.current = "manual";
+    clearFieldErrors("dias_solicitados");
+  };
+
+  /**
+   * Sugerencia vigente con los valores y catálogos actuales. Cambia cuando la
+   * persona cambia el empleado o una fecha (ya aplicado por `changeDiasInput`)
+   * y también cuando LLEGA o cambia un catálogo que la alimenta: turnos o
+   * empleados que cargan después de elegir las fechas.
+   */
+  const autoDias = toPrefillValue(
+    getDiasSuggestion({
+      empleado: watchedEmpleado,
+      fecha_inicio: watchedFechaInicio,
+      fecha_fin: watchedFechaFin,
+    })
+  );
+
+  /**
+   * Sincroniza el campo con la sugerencia cuando llegan los datos, SOLO si su
+   * valor vigente también es automático: un valor tecleado (`manual`) o el
+   * guardado de una solicitud en edición (`stored`) nunca se pisan. Reevalúa
+   * la regla de días si ya se había disparado (p. ej. un "requeridos" de un
+   * envío previo a que cargara el catálogo). Es idempotente: si el campo ya
+   * tiene la sugerencia, no hace nada.
+   *
+   * `useEffectEvent`: lee el estado vigente del form y de las reglas sin ser
+   * dependencia; el efecto solo se dispara cuando cambia la sugerencia.
+   */
+  const syncAutoDias = useEffectEvent((nextDias: string) => {
+    if (diasSourceRef.current !== "auto" || form.state.values.dias_solicitados === nextDias) {
+      return;
+    }
+    form.setFieldValue("dias_solicitados", nextDias);
+    revalidateCrossRules({ dias_solicitados: nextDias });
+  });
+  useEffect(() => {
+    syncAutoDias(autoDias);
+  }, [autoDias]);
 
   // Expone estado combinado de carga/mutación.
   const isPending = isCreating || isUpdating || isLoading;
@@ -443,6 +520,7 @@ export function useVacationForm({ onSuccess, vacationToEdit }: UseVacationFormPa
     const nextValues = isEditing ? editValues : emptyValues;
     form.reset(nextValues);
     firedRef.current = { ...NO_FIRED };
+    diasSourceRef.current = isEditing ? "stored" : "auto";
     setClientErrors({});
     setServerErrors({});
     setTimeout(() => {
@@ -474,6 +552,7 @@ export function useVacationForm({ onSuccess, vacationToEdit }: UseVacationFormPa
     getError,
     getDiasSuggestion,
     changeDiasInput,
+    markDiasManual,
     clearFieldErrors,
     revalidateCrossRules,
     validateField,

@@ -1,6 +1,10 @@
-import { AxiosError } from "axios";
 import type { QueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
+import type {
+  CalendarOccupancySource,
+  CalendarOccupant,
+} from "@/src/interfaces/hr-calendar.interface";
+import { isNotFoundError } from "@/src/utils/drfWriteErrors";
 import { getVacation, getVacationsByEmployee } from "../services/actions";
 import type { EstadoVacacion } from "../constants/vacationChoices";
 import type { Vacation } from "../interfaces/vacation.interface";
@@ -8,6 +12,7 @@ import { getFechaFinError, type VacationFormValues } from "../schemas/vacation.s
 import { VACATIONS_KEY } from "./useVacations";
 import {
   VACATION_CHECK_FAILED_MESSAGE,
+  VACATION_OVERLAP_CHECK_FAILED_MESSAGE,
   VACATION_GONE_MESSAGE,
   vacationEstadoChangedMessage,
 } from "./vacationErrorMessages";
@@ -21,12 +26,13 @@ import {
  */
 export type VacationEstadoCheck = "ok" | "stale" | "error";
 
-const is404 = (error: unknown) => error instanceof AxiosError && error.response?.status === 404;
-
 /** Aviso de falla de la guarda: nunca el texto crudo de Axios. */
-const reportCheckFailure = (error: unknown): "error" => {
+const reportCheckFailure = (
+  error: unknown,
+  message: string = VACATION_CHECK_FAILED_MESSAGE
+): "error" => {
   console.error(error);
-  toast.error(VACATION_CHECK_FAILED_MESSAGE);
+  toast.error(message);
   return "error";
 };
 
@@ -65,7 +71,9 @@ export const verifyVacationEstado = async (
   try {
     return compareFreshEstado(queryClient, await getVacation(id), expected);
   } catch (error) {
-    return is404(error) ? compareFreshEstado(queryClient, null, expected) : reportCheckFailure(error);
+    return isNotFoundError(error)
+      ? compareFreshEstado(queryClient, null, expected)
+      : reportCheckFailure(error);
   }
 };
 
@@ -93,8 +101,11 @@ export type VacationWriteCheck =
  *    cambió el empleado— se pide `GET /{id}/` para distinguir "ya no existe"
  *    (404) de "sigue, con otro empleado". El estado va ANTES que el traslape:
  *    si ya no está pendiente, el diálogo se cierra sin importar las fechas.
- * 3. El traslape, con la MISMA regla del schema (`getFechaFinError`: cuentan
- *    pendientes y aprobadas, no rechazadas, y se excluye la editada).
+ * 3. El traslape, con la MISMA regla del schema (`getFechaFinError`): primero
+ *    contra las vacaciones (cuentan pendientes y aprobadas, no rechazadas, y se
+ *    excluye la editada) y después contra los OTROS recursos del empleado
+ *    (permisos y ausencias), que se piden en paralelo con el paso 1 a través
+ *    de sus fuentes (`foreignSources`, repartidas por el hub de RH).
  *
  * Falla cerrado: cualquier GET fallido (salvo el 404 del paso 2) devuelve
  * `error` y no se escribe.
@@ -103,14 +114,23 @@ export const preflightVacationWrite = async (
   queryClient: QueryClient,
   values: Pick<VacationFormValues, "empleado" | "fecha_inicio" | "fecha_fin">,
   editingId: number | null,
-  expectedEstado: EstadoVacacion
+  expectedEstado: EstadoVacacion,
+  foreignSources: readonly CalendarOccupancySource[]
 ): Promise<VacationWriteCheck> => {
-  let employeeVacations: Vacation[];
-  try {
-    employeeVacations = await getVacationsByEmployee(values.empleado);
-  } catch (error) {
-    return { result: reportCheckFailure(error) };
+  // En paralelo, pero con su propio fallo: si cae la consulta de los OTROS
+  // recursos, el aviso dice que lo no verificado fue el traslape.
+  const [ownResult, foreignResult] = await Promise.allSettled([
+    getVacationsByEmployee(values.empleado),
+    Promise.all(foreignSources.map((source) => source.fetchByEmployee(values.empleado))),
+  ]);
+  if (ownResult.status === "rejected") {
+    return { result: reportCheckFailure(ownResult.reason) };
   }
+  if (foreignResult.status === "rejected") {
+    return { result: reportCheckFailure(foreignResult.reason, VACATION_OVERLAP_CHECK_FAILED_MESSAGE) };
+  }
+  const employeeVacations: Vacation[] = ownResult.value;
+  const foreignOccupants: CalendarOccupant[] = foreignResult.value.flat();
 
   if (editingId !== null) {
     let fresh = employeeVacations.find((vacation) => vacation.id === editingId) ?? null;
@@ -118,7 +138,7 @@ export const preflightVacationWrite = async (
       try {
         fresh = await getVacation(editingId);
       } catch (error) {
-        if (!is404(error)) {
+        if (!isNotFoundError(error)) {
           return { result: reportCheckFailure(error) };
         }
       }
@@ -129,7 +149,11 @@ export const preflightVacationWrite = async (
     }
   }
 
-  const overlapMessage = getFechaFinError(values, { vacations: employeeVacations, editingId });
+  const overlapMessage = getFechaFinError(values, {
+    vacations: employeeVacations,
+    editingId,
+    foreignOccupants,
+  });
   if (overlapMessage) {
     void queryClient.invalidateQueries({ queryKey: VACATIONS_KEY });
     return { result: "overlap", message: overlapMessage };

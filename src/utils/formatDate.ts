@@ -67,6 +67,13 @@ export const formatLocalDate = (value: string | null | undefined): string => {
 };
 
 /**
+ * Rango de dos fechas "yyyy-mm-dd" como "1/10/2026 – 5/10/2026" (es-MX, fecha
+ * local). Mismo texto en la celda y en la búsqueda de las tablas de RH.
+ */
+export const formatLocalDateRange = (range: { fecha_inicio: string; fecha_fin: string }): string =>
+  `${formatLocalDate(range.fecha_inicio)} – ${formatLocalDate(range.fecha_fin)}`;
+
+/**
  * Formatea una fecha (`Date` o string parseable por `Date`, p.ej. un ISO
  * completo) como "14 jul 2026" (es-MX: día 2 dígitos, mes abreviado, año).
  * Devuelve "—" para valores vacíos o que no parseen a una fecha válida.
