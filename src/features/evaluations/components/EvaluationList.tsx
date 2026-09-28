@@ -22,7 +22,10 @@ import {
 import EvaluationForm from "./EvaluationForm";
 import { useEvaluations } from "../hooks/useEvaluations";
 import { useDeleteEvaluation } from "../hooks/useDeleteEvaluation";
-import { EvaluationRowActionsProvider } from "../hooks/useEvaluationRowActions";
+import {
+  EvaluationRowActionsProvider,
+  usePendingEvaluationDeleteIds,
+} from "../hooks/useEvaluationRowActions";
 
 export default function EvaluationList() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -34,6 +37,9 @@ export default function EvaluationList() {
   const { evaluations, isLoading, isInitialError, error } = useEvaluations();
   const { employees } = useEmployees();
   const { mutate: deleteEvaluation } = useDeleteEvaluation();
+  // Borrados en vuelo: UNA suscripción para toda la tabla, que llega a los
+  // menús por contexto.
+  const deletingIds = usePendingEvaluationDeleteIds();
   const { data: session } = useSession();
   // `hasPermission` ya cortocircuita para el rol "admin".
   const canEditHr = hasPermission("E-RH", session?.user);
@@ -109,7 +115,9 @@ export default function EvaluationList() {
   if (deleteTargetId !== null && evaluationToDelete === null) setDeleteTargetId(null);
 
   return (
-    <EvaluationRowActionsProvider value={{ onEdit: handleEdit, onDelete: handleDelete }}>
+    <EvaluationRowActionsProvider
+      value={{ onEdit: handleEdit, onDelete: handleDelete, deletingIds }}
+    >
       <DataTable
         columns={columns}
         data={rows}

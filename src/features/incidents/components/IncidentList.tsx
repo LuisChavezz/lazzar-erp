@@ -12,7 +12,7 @@ import { hasPermission } from "@/src/utils/permissions";
 import { useEmployees } from "@/src/features/employees/hooks/useEmployees";
 import { getEmployeeFullName } from "@/src/features/employees/utils/employeeName";
 import { useUsers } from "@/src/features/users/hooks/useUsers";
-import type { User } from "@/src/features/users/interfaces/user.interface";
+import { resolveUserName } from "@/src/features/users/utils/resolveUserName";
 import { getColumns, IncidentRow } from "./IncidentColumns";
 import { Incident } from "../interfaces/incident.interface";
 import {
@@ -42,34 +42,6 @@ const FILTER_CONFIG: DataTableFilterConfig[] = [
   },
 ];
 
-/**
- * Texto de "Reportado por". SIEMPRE string, para que la columna nunca quede
- * fuera de la búsqueda global. Precedencia:
- *
- * 1. Sin reportante (`null`) → "—".
- * 2. Con el catálogo de usuarios cargado —aunque un refetch posterior haya
- *    fallado, porque `data` se conserva— → `nombre_completo` (el
- *    `get_full_name()` del backend), luego el email, y si el id no está en el
- *    catálogo, "Usuario #N".
- * 3. Sin datos y con la consulta en error → "Usuario #N".
- * 4. Sin datos y todavía cargando → "…". `/usuarios/` es lento (calcula
- *    permisos por usuario) y mostrar "Usuario #N" mientras tanto parecería una
- *    referencia rota, no una carga en curso.
- */
-const getReporterName = (
-  reportadoPor: number | null,
-  usersById: Map<number, User> | null,
-  usersFailed: boolean
-): string => {
-  if (reportadoPor === null) {
-    return "—";
-  }
-  if (usersById) {
-    const user = usersById.get(reportadoPor);
-    return user?.nombre_completo?.trim() || user?.email || `Usuario #${reportadoPor}`;
-  }
-  return usersFailed ? `Usuario #${reportadoPor}` : "…";
-};
 
 export default function IncidentList() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -83,7 +55,7 @@ export default function IncidentList() {
   const { employees } = useEmployees();
   // Solo para resolver `reportado_por`. No bloquea ni la tabla ni el
   // formulario: mientras carga la columna dice "…" y si falla cae a
-  // "Usuario #N" (ver `getReporterName`).
+  // "Usuario #N" (ver `resolveUserName`).
   const { data: users, isError: isUsersError } = useUsers();
   const { mutate: toggleActivo } = useToggleIncidentActivo();
   const { data: session } = useSession();
@@ -121,7 +93,10 @@ export default function IncidentList() {
   const rows: IncidentRow[] = incidents.map((incident) => ({
     ...incident,
     empleado_nombre: employeeNameById.get(incident.empleado) ?? null,
-    reportado_por_nombre: getReporterName(incident.reportado_por, usersById, isUsersError),
+    // SIEMPRE string, para que la columna nunca quede fuera de la búsqueda
+    // global: sin reportante (`null`) → "—".
+    reportado_por_nombre:
+      resolveUserName(incident.reportado_por, usersById, isUsersError) ?? "—",
   }));
 
   // Solo dependen de los permisos: callbacks y "en vuelo" llegan al menú por

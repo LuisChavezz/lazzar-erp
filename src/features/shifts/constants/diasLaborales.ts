@@ -44,16 +44,26 @@ export const serializeDiasLaborales = (selected: readonly string[]): string =>
  * mayúsculas y descarta lo que no sea un código conocido. Un valor heredado
  * como "Lunes a viernes" devuelve `[]` — el llamador decide qué hacer con la
  * cadena original, que esta función nunca destruye.
+ *
+ * Formato heredado previo a la convención `X`: turnos capturados como
+ * "L,M,M,J,V" usan `M` para martes Y miércoles. Si `M` aparece repetida y no
+ * hay `X`, la repetición se lee como miércoles (en orden de semana es la única
+ * lectura posible). Una `M` sola sigue siendo martes, como dice el catálogo.
+ * `serializeDiasLaborales` emite siempre `X`, así que re-guardar normaliza.
  */
 export const parseDiasLaborales = (value: string | null | undefined): string[] => {
   if (!value) {
     return [];
   }
 
-  const parsed = value
-    .split(",")
-    .map((entry) => entry.trim().toUpperCase())
-    .filter(isDiaLaboral);
+  const entries = value.split(",").map((entry) => entry.trim().toUpperCase());
+  const parsed = entries.filter(isDiaLaboral);
+
+  const hasLegacyMiercoles =
+    !entries.includes("X") && entries.filter((entry) => entry === "M").length > 1;
+  if (hasLegacyMiercoles) {
+    parsed.push("X");
+  }
 
   return CANONICAL_ORDER.filter((dia) => parsed.includes(dia));
 };

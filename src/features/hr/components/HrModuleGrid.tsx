@@ -10,6 +10,7 @@ import {
   TrainingIcon,
   IncidentIcon,
   EvaluationIcon,
+  VacationIcon,
   UserIcon,
 } from "@/src/components/Icons";
 
@@ -109,6 +110,16 @@ const hrCards = [
     accentClass: "text-fuchsia-600 dark:text-fuchsia-400",
     accentBgClass: "bg-fuchsia-50 dark:bg-fuchsia-500/10",
     shadowColorClassName: "hover:shadow-fuchsia-500/25 dark:hover:shadow-fuchsia-500/25",
+  },
+  {
+    icon: VacationIcon,
+    title: "Vacaciones",
+    description: "Solicitudes de vacaciones: periodo, días, aprobación y rechazo.",
+    footerText: "Ver vacaciones",
+    href: "/hr/vacations",
+    accentClass: "text-cyan-600 dark:text-cyan-400",
+    accentBgClass: "bg-cyan-50 dark:bg-cyan-500/10",
+    shadowColorClassName: "hover:shadow-cyan-500/25 dark:hover:shadow-cyan-500/25",
   },
 ];
 
