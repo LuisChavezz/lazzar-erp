@@ -26,11 +26,9 @@ export interface ProductOnboardingPayload {
 /**
  * Respuesta 201: `ProductoSerializer` completo (`fields='__all__'`).
  *
- * Se parte de `Product` pero se corrige `tipo`: en el modelo es FK a
- * `TipoProducto`, así que DRF devuelve su PK (número), no el `codigo` que
- * declara `Product`. `codigo` siempre llega poblado en este endpoint.
+ * Es `Product` con `codigo` estrechado: en general es nullable, pero este
+ * endpoint siempre lo devuelve poblado (lo genera el alta).
  */
-export type ProductOnboardingResult = Omit<Product, "tipo" | "codigo"> & {
-  tipo: ProductType["id"] | null;
+export type ProductOnboardingResult = Omit<Product, "codigo"> & {
   codigo: string;
 };

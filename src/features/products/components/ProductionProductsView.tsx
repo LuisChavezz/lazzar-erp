@@ -1,15 +1,11 @@
 "use client";
 
-import { useState } from "react";
 import { useSession } from "next-auth/react";
 import { DataTable } from "@/src/components/DataTable";
-import { Button } from "@/src/components/Button";
-import { MainDialog } from "@/src/components/MainDialog";
-import { DialogHeader } from "@/src/components/DialogHeader";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { hasPermission } from "@/src/utils/permissions";
 import { useProductCategories } from "../../product-categories/hooks/useProductCategories";
-import ProductOnboardingForm from "../../product-onboarding/components/ProductOnboardingForm";
+import ProductOnboardingDialog from "../../product-onboarding/components/ProductOnboardingDialog";
 import { useProducts } from "../hooks/useProducts";
 import { getColumns, type ProductRow } from "./ProductColumns";
 
@@ -32,12 +28,11 @@ const READ_ONLY_COLUMNS = getColumns(() => {}, { canEdit: false, canDelete: fals
  *
  * `DataTable` se monta SIEMPRE y alterna internamente solo su área de datos, así
  * que el toolbar —y el botón de alta— sigue visible durante la carga y el error.
- * El estado del diálogo vive aquí, no en una celda.
+ * El estado del diálogo vive en `ProductOnboardingDialog`, no en una celda.
  */
 export function ProductionProductsView() {
   const { data: session } = useSession();
   const canCreate = hasPermission("R-PRODUCCION", session?.user);
-  const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
 
   const { products, isLoading, isInitialError, error } = useProducts();
   const { categories } = useProductCategories();
@@ -63,35 +58,7 @@ export function ProductionProductsView() {
       errorTitle="Error al cargar productos"
       errorMessage={extractErrorMessage(error, "No se pudo cargar la información.")}
       loadingAriaLabel="Cargando productos"
-      actionButton={
-        canCreate ? (
-          // Radix desmonta el contenido al cerrar, así que cada apertura empieza
-          // con el formulario vacío.
-          <MainDialog
-            title={
-              <DialogHeader
-                title="Alta Rápida de Producto"
-                subtitle="Código generado automáticamente"
-                statusColor="emerald"
-              />
-            }
-            open={isOnboardingOpen}
-            onOpenChange={setIsOnboardingOpen}
-            maxWidth="720px"
-            trigger={
-              <Button
-                variant="primary"
-                rounded="full"
-                className="hover:scale-105 active:scale-95"
-              >
-                + Nuevo Producto
-              </Button>
-            }
-          >
-            <ProductOnboardingForm />
-          </MainDialog>
-        ) : undefined
-      }
+      actionButton={canCreate ? <ProductOnboardingDialog /> : undefined}
     />
   );
 }

@@ -49,7 +49,18 @@ interface ConfigCardItem {
   view: string;
   group: string;
   adminOnly?: boolean;
-  prefetchKey?: (string | number)[];
+  /**
+   * Debe ser IDÉNTICA a la llave del hook que lee la vista (incluidos los
+   * parámetros, aunque sean `undefined`: `["x", undefined]` no es `["x"]`), o el
+   * prefetch llena una entrada que nadie lee.
+   */
+  prefetchKey?: (string | number | undefined)[];
+  /**
+   * Se pasa tal cual como `queryFn`, así que TanStack le entrega su contexto
+   * como primer argumento. Una acción con parámetros opcionales va SIEMPRE
+   * envuelta (`() => getX(param)`): TypeScript no lo detecta, y sin envolver el
+   * contexto viaja como parámetro de la petición.
+   */
   prefetchFn?: () => Promise<unknown>;
 }
 
@@ -312,8 +323,9 @@ export const configCards: ConfigCardItem[] = [
     view: "products",
     group: "Productos",
     adminOnly: true,
-    prefetchKey: ["products"],
-    prefetchFn: getProducts,
+    // Misma llave y parámetro que `ProductList` (`useProducts(3)`: solo PT).
+    prefetchKey: ["products", 3],
+    prefetchFn: () => getProducts(3),
   },
   {
     title: "Variantes de Producto",
@@ -322,8 +334,9 @@ export const configCards: ConfigCardItem[] = [
     view: "product-variants",
     group: "Productos",
     adminOnly: true,
-    prefetchKey: ["product-variants"],
-    prefetchFn: getProductVariants,
+    // Misma llave que `ProductVariantList` (`useProductVariants()`, sin `con_bom`).
+    prefetchKey: ["product-variants", undefined],
+    prefetchFn: () => getProductVariants(),
   },
   {
     title: "Materiales",

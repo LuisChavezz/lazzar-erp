@@ -4,6 +4,7 @@ import { Product } from "../interfaces/product.interface";
 import { ConfirmDialog } from "../../../components/ConfirmDialog";
 import { useDeleteProduct } from "../hooks/useDeleteProduct";
 import { ActionMenu, ActionMenuItem } from "../../../components/ActionMenu";
+import { textOrDash } from "../../../components/DetailDialogPrimitives";
 import { useState } from "react";
 
 /**
@@ -114,10 +115,12 @@ export const getColumns = (
         <span className="text-slate-600 dark:text-slate-300 font-medium">{info.getValue()}</span>
       ),
     }),
-    columnHelper.accessor("codigo", {
+    // Nullable: un producto que no pasó por el alta rápida puede no tener código.
+    columnHelper.accessor((row) => row.codigo ?? "", {
+      id: "codigo",
       header: "Código",
-      cell: (info) => (
-        <span className="text-slate-500 dark:text-slate-400">{info.getValue()}</span>
+      cell: ({ row }) => (
+        <span className="text-slate-500 dark:text-slate-400">{textOrDash(row.original.codigo)}</span>
       ),
     }),
     columnHelper.accessor("cod_proscai", {

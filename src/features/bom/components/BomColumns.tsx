@@ -1,5 +1,6 @@
 import { ColumnDef, createColumnHelper } from "@tanstack/react-table";
 import { Product } from "@/src/features/products/interfaces/product.interface";
+import { textOrDash } from "@/src/components/DetailDialogPrimitives";
 
 const columnHelper = createColumnHelper<Product>();
 
@@ -27,10 +28,12 @@ export const columns = [
       <span className="text-slate-600 dark:text-slate-300 font-medium">{info.getValue()}</span>
     ),
   }),
-  columnHelper.accessor("codigo", {
+  // Nullable: un producto que no pasó por el alta rápida puede no tener código.
+  columnHelper.accessor((row) => row.codigo ?? "", {
+    id: "codigo",
     header: "Código",
-    cell: (info) => (
-      <span className="text-slate-500 dark:text-slate-400">{info.getValue()}</span>
+    cell: ({ row }) => (
+      <span className="text-slate-500 dark:text-slate-400">{textOrDash(row.original.codigo)}</span>
     ),
   }),
   columnHelper.accessor("cod_proscai", {
