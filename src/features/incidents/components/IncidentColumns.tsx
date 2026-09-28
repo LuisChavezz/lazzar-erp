@@ -35,7 +35,7 @@ import {
  * - `reportado_por_nombre`: SIEMPRE string, ya con su respaldo ("…" mientras
  *   carga el catálogo, "Usuario #N" si el id no se resuelve o el catálogo
  *   falló, "—" si es `null`), para que la columna nunca quede fuera de la
- *   búsqueda global. Ver `getReporterName` en `IncidentList`.
+ *   búsqueda global. Ver `resolveUserName` (users/utils) y su uso en `IncidentList`.
  */
 export type IncidentRow = Incident & {
   empleado_nombre: string | null;

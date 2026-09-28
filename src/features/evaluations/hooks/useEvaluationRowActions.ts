@@ -15,6 +15,8 @@ import { deleteEvaluationMutationKey } from "./useDeleteEvaluation";
 export interface EvaluationRowActionsContextValue {
   onEdit: (evaluation: Evaluation) => void;
   onDelete: (evaluation: Evaluation) => void;
+  /** Ids con un borrado en vuelo (`usePendingEvaluationDeleteIds`, calculado en la lista). */
+  deletingIds: number[];
 }
 
 const EvaluationRowActionsContext = createContext<EvaluationRowActionsContextValue | null>(null);
@@ -34,8 +36,9 @@ export function useEvaluationRowActionsContext(): EvaluationRowActionsContextVal
 
 /**
  * Ids de evaluación con un borrado EN CURSO, leídos de la `MutationCache` y no
- * de la instancia de `useMutation`, que solo recuerda su ÚLTIMA llamada. Mismo
- * criterio que `usePendingTrainingDeleteIds`.
+ * de la instancia de `useMutation`, que solo recuerda su ÚLTIMA llamada. Se
+ * llama UNA vez en `EvaluationList` y el resultado llega a cada menú por el
+ * contexto (`deletingIds`), no con una suscripción por fila.
  */
 export function usePendingEvaluationDeleteIds(): number[] {
   return useMutationState({

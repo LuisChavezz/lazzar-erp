@@ -102,6 +102,7 @@ import {
   Tag,
   Tags,
   Trash2,
+  TreePalm,
   TrendingDown,
   TrendingUp,
   Truck,
@@ -177,6 +178,11 @@ export const TrainingIcon = (props: LucideProps) => <GraduationCap {...props} />
 export const IncidentIcon = (props: LucideProps) => <FileExclamationPoint {...props} />;
 /** Portapapeles con palomita. Para las evaluaciones de RH. */
 export const EvaluationIcon = (props: LucideProps) => <ClipboardCheck {...props} />;
+/**
+ * Palmera. Para las vacaciones de RH. No se usa `CalendarDays`: ya es el
+ * calendario laboral (`CalendarDaysIcon`).
+ */
+export const VacationIcon = (props: LucideProps) => <TreePalm {...props} />;
 export const HistoryIcon = (props: LucideProps) => <History {...props} />;
 export const BellIcon = (props: LucideProps) => <Bell {...props} />;
 export const ErrorIcon = (props: LucideProps) => <AlertTriangle {...props} />;

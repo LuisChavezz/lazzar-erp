@@ -13,7 +13,6 @@ import {
 } from "../constants/evaluationChoices";
 import {
   useEvaluationRowActionsContext,
-  usePendingEvaluationDeleteIds,
 } from "../hooks/useEvaluationRowActions";
 
 /**
@@ -41,9 +40,10 @@ export type EvaluationRow = Evaluation & {
 const columnHelper = createColumnHelper<EvaluationRow>();
 
 /**
- * Menú de acciones de UNA fila. Lee los callbacks por contexto y el "en
- * borrado" de la `MutationCache` (ver `useEvaluationRowActions`), así que un
- * borrado en vuelo solo re-renderiza este componente y no remonta las celdas.
+ * Menú de acciones de UNA fila. Lee por contexto los callbacks y el "en
+ * borrado", que `EvaluationList` lee de la `MutationCache` con UNA suscripción
+ * para toda la tabla (ver `useEvaluationRowActions`); un borrado en vuelo no
+ * remonta las celdas.
  *
  * Es solo presentacional: el diálogo de confirmación vive en `EvaluationList`,
  * porque una celda se desmonta al ordenar, paginar o filtrar.
@@ -57,8 +57,7 @@ function EvaluationRowActionsMenu({
   canEdit: boolean;
   canDelete: boolean;
 }) {
-  const { onEdit, onDelete } = useEvaluationRowActionsContext();
-  const deletingIds = usePendingEvaluationDeleteIds();
+  const { onEdit, onDelete, deletingIds } = useEvaluationRowActionsContext();
   const menuItems: ActionMenuItem[] = [];
 
   if (canEdit) {
