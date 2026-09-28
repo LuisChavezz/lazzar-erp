@@ -2,7 +2,7 @@
 
 import { createContext, useContext } from "react";
 import { useMutationState } from "@tanstack/react-query";
-import type { Mutation } from "@tanstack/react-query";
+import { selectMutationRecordId } from "@/src/utils/mutationRecordId";
 import type { Vacation } from "../interfaces/vacation.interface";
 import { deleteVacationMutationKey } from "./useDeleteVacation";
 import { approveVacationMutationKey } from "./useApproveVacation";
@@ -43,12 +43,6 @@ export function useVacationRowActionsContext(): VacationRowActionsContextValue {
   return value;
 }
 
-/** Id de la solicitud de una mutación de fila, sea cual sea la forma de sus variables. */
-const selectVacationId = (mutation: Mutation<unknown, Error, unknown, unknown>): number => {
-  const variables = mutation.state.variables;
-  return typeof variables === "number" ? variables : (variables as { id: number }).id;
-};
-
 /** Primer segmento de la clave de cada mutación de fila. */
 const ROW_MUTATION_KEYS = new Set<unknown>([
   deleteVacationMutationKey[0],
@@ -73,6 +67,6 @@ export function usePendingVacationIds(): number[] {
       status: "pending",
       predicate: (mutation) => ROW_MUTATION_KEYS.has(mutation.options.mutationKey?.[0]),
     },
-    select: selectVacationId,
+    select: selectMutationRecordId,
   });
 }

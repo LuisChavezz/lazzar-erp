@@ -77,6 +77,7 @@ export default function VacationForm({ onSuccess, vacationToEdit }: VacationForm
     getError,
     getDiasSuggestion,
     changeDiasInput,
+    markDiasManual,
     clearFieldErrors,
     validateField,
     handleReset,
@@ -224,7 +225,7 @@ export default function VacationForm({ onSuccess, vacationToEdit }: VacationForm
                       value={field.state.value}
                       onChange={(event) => {
                         field.handleChange(event.target.value);
-                        clearFieldErrors("dias_solicitados");
+                        markDiasManual();
                       }}
                       onBlur={() => {
                         field.handleBlur();

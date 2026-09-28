@@ -24,6 +24,7 @@ import {
   Calculator,
   CalendarCheck,
   CalendarDays,
+  CalendarX2,
   Check,
   CheckCircle,
   ChevronDown,
@@ -183,6 +184,8 @@ export const EvaluationIcon = (props: LucideProps) => <ClipboardCheck {...props}
  * calendario laboral (`CalendarDaysIcon`).
  */
 export const VacationIcon = (props: LucideProps) => <TreePalm {...props} />;
+/** Calendario con una cruz. Para los permisos y ausencias de RH. */
+export const AbsenceIcon = (props: LucideProps) => <CalendarX2 {...props} />;
 export const HistoryIcon = (props: LucideProps) => <History {...props} />;
 export const BellIcon = (props: LucideProps) => <Bell {...props} />;
 export const ErrorIcon = (props: LucideProps) => <AlertTriangle {...props} />;

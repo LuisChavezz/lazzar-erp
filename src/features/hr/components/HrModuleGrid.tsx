@@ -11,6 +11,7 @@ import {
   IncidentIcon,
   EvaluationIcon,
   VacationIcon,
+  AbsenceIcon,
   UserIcon,
 } from "@/src/components/Icons";
 
@@ -120,6 +121,16 @@ const hrCards = [
     accentClass: "text-cyan-600 dark:text-cyan-400",
     accentBgClass: "bg-cyan-50 dark:bg-cyan-500/10",
     shadowColorClassName: "hover:shadow-cyan-500/25 dark:hover:shadow-cyan-500/25",
+  },
+  {
+    icon: AbsenceIcon,
+    title: "Permisos y ausencias",
+    description: "Permisos, incapacidades y faltas injustificadas, con su goce de sueldo.",
+    footerText: "Ver permisos y ausencias",
+    href: "/hr/absences",
+    accentClass: "text-orange-600 dark:text-orange-400",
+    accentBgClass: "bg-orange-50 dark:bg-orange-500/10",
+    shadowColorClassName: "hover:shadow-orange-500/25 dark:hover:shadow-orange-500/25",
   },
 ];
 

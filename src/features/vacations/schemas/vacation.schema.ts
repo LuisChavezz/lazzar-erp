@@ -1,9 +1,9 @@
 import { z } from "zod";
-import { formatLocalDate } from "@/src/utils/formatDate";
+import type { CalendarOccupant } from "@/src/interfaces/hr-calendar.interface";
+import { calendarConflictMessage, findCalendarConflict } from "@/src/utils/hrCalendarOverlap";
 import type { Vacation } from "../interfaces/vacation.interface";
-import { getEstadoVacacionLabel } from "../constants/vacationChoices";
 import { countCalendarDays } from "../utils/workingDays";
-import { findOverlappingVacation } from "../utils/findOverlappingVacation";
+import { toOwnVacationOccupant, VACATION_OCCUPANCY_KIND } from "../utils/vacationOccupancy";
 
 /**
  * Objeto base SIN las reglas cruzadas.
@@ -32,11 +32,14 @@ export type VacationFormValues = z.infer<typeof VacationFormObject>;
 
 /**
  * Lo que las reglas cruzadas necesitan además de los valores del form: el
- * listado COMPLETO de solicitudes (traslape) y el id en edición (se excluye).
+ * listado de solicitudes (traslape), el id en edición (se excluye) y la
+ * ocupación de los OTROS recursos del empleado (permisos y ausencias), ya
+ * traducida por su módulo.
  */
 export interface VacationRuleContext {
   vacations: readonly Vacation[];
   editingId: number | null;
+  foreignOccupants: readonly CalendarOccupant[];
 }
 
 export const FECHA_FIN_ANTERIOR_MESSAGE = "La fecha de fin no puede ser anterior a la de inicio.";
@@ -50,6 +53,11 @@ export const DIAS_ENTERO_MESSAGE = "Captura un número entero de días, mínimo 
  * 1. No puede ser anterior a `fecha_inicio` (mismo texto que el backend).
  * 2. El periodo no puede traslaparse con otra solicitud pendiente o aprobada
  *    del mismo empleado (D6). Solo se evalúa con un rango válido.
+ * 3. Tampoco con un permiso, incapacidad o falta pendiente o aprobado del
+ *    empleado (`foreignOccupants`). Va después de la regla 2.
+ *
+ * Con datos en caché es un aviso (blur); la guarda previa a escribir la vuelve
+ * a correr con datos frescos del servidor.
  */
 export const getFechaFinError = (
   values: Pick<VacationFormValues, "empleado" | "fecha_inicio" | "fecha_fin">,
@@ -65,14 +73,13 @@ export const getFechaFinError = (
     return null;
   }
 
-  const overlapping = findOverlappingVacation(values, context.vacations, context.editingId);
-  if (!overlapping) {
-    return null;
-  }
-  const estado = (getEstadoVacacionLabel(overlapping.estado) ?? overlapping.estado).toLowerCase();
-  return `El periodo se traslapa con otra solicitud ${estado} de este empleado (del ${formatLocalDate(
-    overlapping.fecha_inicio
-  )} al ${formatLocalDate(overlapping.fecha_fin)}).`;
+  const conflict =
+    findCalendarConflict(
+      values,
+      context.vacations.map(toOwnVacationOccupant),
+      context.editingId !== null ? { kind: VACATION_OCCUPANCY_KIND, id: context.editingId } : null
+    ) ?? findCalendarConflict(values, context.foreignOccupants);
+  return conflict ? calendarConflictMessage(conflict) : null;
 };
 
 /**

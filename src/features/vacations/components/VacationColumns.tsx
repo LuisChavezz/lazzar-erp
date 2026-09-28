@@ -8,7 +8,7 @@ import {
 } from "@/src/components/Icons";
 import { ActionMenu, ActionMenuItem } from "@/src/components/ActionMenu";
 import { StatusBadge } from "@/src/components/StatusBadge";
-import { formatLocalDate, formatShortDate } from "@/src/utils/formatDate";
+import { formatLocalDateRange, formatShortDate } from "@/src/utils/formatDate";
 import { Vacation } from "../interfaces/vacation.interface";
 import {
   ESTADO_APROBADO,
@@ -41,9 +41,8 @@ export type VacationRow = Vacation & {
 
 const columnHelper = createColumnHelper<VacationRow>();
 
-/** "01/10/2026 – 05/10/2026": el mismo texto en la celda y en la búsqueda. */
-export const formatVacationRange = (vacation: Pick<Vacation, "fecha_inicio" | "fecha_fin">) =>
-  `${formatLocalDate(vacation.fecha_inicio)} – ${formatLocalDate(vacation.fecha_fin)}`;
+/** "1/10/2026 – 5/10/2026": el mismo texto en la celda y en la búsqueda. */
+export const formatVacationRange = formatLocalDateRange;
 
 export interface VacationColumnPermissions {
   canEdit: boolean;
