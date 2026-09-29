@@ -233,6 +233,32 @@ export interface CorteMangaOrder {
  * `folio`, `cliente_nombre` y `sucursal_nombre` pueden ser `null`
  * (`Pedido.folio` es nullable y los nombres se leen con `getattr(..., None)`).
  */
+/**
+ * Renglón de `CorteMangaOnboardingPedido.detalles`: una talla del pedido marcada
+ * `lleva_corte_manga`. Solo se tipan los campos vistos en una respuesta real, con
+ * la nulabilidad observada:
+ *  - `producto_id`/`producto_nombre` llegan `null` en las tallas de MUESTRA
+ *    (líneas con `producto_nombre_externo`); `color_id`/`color_nombre` también
+ *    se vieron `null` en esas líneas.
+ *
+ * La respuesta trae además `posicion_sugerida`, `ubicaciones`, `foto`, `notas`,
+ * `tipos_servicio` y `tipos_servicio_display`, que no se tipan: solo se han visto
+ * `null` o vacíos, así que su forma real no está confirmada.
+ */
+export interface CorteMangaOnboardingDetalle {
+  pedido_detalle_talla_id: number;
+  pedido_detalle_id: number;
+  producto_id: number | null;
+  producto_nombre: string | null;
+  talla_id: number;
+  talla_nombre: string;
+  color_id: number | null;
+  color_nombre: string | null;
+  cantidad_pedido: number;
+  cantidad_asignada: number;
+  cantidad_pendiente: number;
+}
+
 export interface CorteMangaOnboardingPedido {
   id: number;
   folio: string | null;
@@ -240,6 +266,13 @@ export interface CorteMangaOnboardingPedido {
   cliente_nombre: string | null;
   sucursal: number | null;
   sucursal_nombre: string | null;
+  /**
+   * Detalle POR TALLA con corte de manga y su saldo. El formulario no lo pinta
+   * (la OCM toma siempre todas las tallas), pero es la razón de la ventana de
+   * 5 s de `useCorteMangaOnboarding`: `cantidad_asignada`/`cantidad_pendiente`
+   * cambian cuando otra OCM cubre el pedido.
+   */
+  detalles: CorteMangaOnboardingDetalle[];
   /** Lo que Mesa de Control programó a corte de manga; solo informativo. */
   // Opcional: un backend sin a3f232f no manda la clave y el indicador se oculta.
   programado?: WorkOrderProgramado;

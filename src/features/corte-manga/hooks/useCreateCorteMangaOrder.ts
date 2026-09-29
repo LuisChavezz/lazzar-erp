@@ -58,8 +58,14 @@ export const useCreateCorteMangaOrder = (
       // sobre una orden que el backend acaba de confirmar. Refrescar el listado
       // aquí es lo que hace que ese enlace pueda resolver — ES la búsqueda
       // contra la lista de la que depende el bloque ámbar.
+      //
+      // El catálogo del alta también se invalida: el 409 dice justamente que
+      // el pedido ya está cubierto, y un pedido cubierto al 100% deja de salir
+      // en el onboarding (ver `CorteMangaOnboardingPedido`). Sin esto el pedido
+      // seguiría en el selector y reenviar daría el mismo 409.
       if (parsed.duplicate) {
         queryClient.invalidateQueries({ queryKey: ["corte-manga-orders"] });
+        queryClient.invalidateQueries({ queryKey: ["corte-manga-onboarding"] });
       }
 
       const toastMessage =
