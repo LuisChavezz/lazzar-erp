@@ -1,5 +1,8 @@
 import { z } from "zod";
 import { isHHMM, toMexicoIsoDateTime } from "@/src/utils/mexicoTime";
+import { HORA_INVALIDA_MESSAGE, type StoredTime } from "@/src/utils/timeInput";
+
+export { HORA_INVALIDA_MESSAGE, type StoredTime };
 
 /**
  * Reglas de horas del registro de asistencia, espejo de
@@ -8,7 +11,6 @@ import { isHHMM, toMexicoIsoDateTime } from "@/src/utils/mexicoTime";
  * hora local debe caer en `fecha`" se cumple por construcción.
  */
 
-export const HORA_INVALIDA_MESSAGE = "Captura una hora válida (HH:MM).";
 export const HORA_REQUERIDA_MESSAGE = "La hora es requerida";
 export const SALIDA_SIN_ENTRADA_MESSAGE = "No se puede registrar la salida sin una hora de entrada.";
 export const QUITAR_ENTRADA_CON_SALIDA_MESSAGE =
@@ -30,14 +32,6 @@ export const AttendanceCorrectionFields = AttendanceCorrectionObject.shape;
 export type AttendanceCorrectionValues = z.infer<typeof AttendanceCorrectionObject>;
 
 export type AttendanceCorrectionField = keyof AttendanceCorrectionValues;
-
-/** Una hora GUARDADA del registro: lo que muestra el input y el datetime completo. */
-export interface StoredTime {
-  /** "HH:MM" con que se sembró el input ("" si no había hora). */
-  hhmm: string;
-  /** Datetime ISO de la API, con segundos, o `null`. */
-  iso: string | null;
-}
 
 export interface AttendanceCorrectionContext {
   fecha: string;

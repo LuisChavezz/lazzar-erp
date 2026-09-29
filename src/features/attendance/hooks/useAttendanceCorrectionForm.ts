@@ -6,6 +6,7 @@ import type { FormEvent } from "react";
 import { AxiosError } from "axios";
 import type { FormFieldError } from "@/src/utils/getFieldError";
 import { getMexicoTimeHHMM, toMexicoIsoDateTime } from "@/src/utils/mexicoTime";
+import { HORA_INEXISTENTE_MESSAGE } from "@/src/utils/timeInput";
 import type { AttendanceCorrectionBody } from "../interfaces/attendance.interface";
 import {
   AttendanceCorrectionFields,
@@ -19,7 +20,6 @@ import type { AttendanceRow } from "../utils/attendanceRows";
 import { targetOf } from "../utils/attendanceRowTarget";
 import { useCorrectAttendance } from "./useCorrectAttendance";
 
-const HORA_INEXISTENTE_MESSAGE = "Esa hora no existe en la zona horaria de México para este día.";
 const SIN_CAMBIOS_MESSAGE = "No hay cambios que guardar.";
 
 type FieldErrors = Partial<Record<AttendanceCorrectionField, string>>;

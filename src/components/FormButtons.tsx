@@ -61,16 +61,19 @@ export function FormSubmitButton({
   loadingLabel = "Guardando...",
   children,
   className,
+  disabled,
   ...props
 }: FormSubmitButtonProps) {
+  // `disabled` se SUMA al bloqueo por envío en curso, nunca lo reemplaza.
+  const isDisabled = Boolean(isPending || disabled);
   return (
     <button
       type="submit"
-      disabled={isPending || props.disabled}
       className={`rounded-xl bg-sky-600 px-6 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2 cursor-pointer transition-colors ease-in-out duration-200 ${
-        isPending || props.disabled ? "opacity-50 cursor-not-allowed" : ""
+        isDisabled ? "opacity-50 cursor-not-allowed" : ""
       } ${className || ""}`}
       {...props}
+      disabled={isDisabled}
     >
       {isPending ? loadingLabel : children}
     </button>

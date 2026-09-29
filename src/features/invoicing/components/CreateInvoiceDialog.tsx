@@ -89,10 +89,6 @@ function CreateInvoiceForm({ onSuccess }: { onSuccess: () => void }) {
             <FormSubmitButton
               isPending={isSubmitting}
               loadingLabel="Creando factura..."
-              // `isSubmitting` va incluido en `disabled` a propósito: el spread
-              // `{...props}` de FormSubmitButton pisa su guard interno de
-              // `isPending`, así que sin esto el botón quedaría habilitado
-              // durante el envío (mismo patrón que PurchaseOrderOnboardingStep2).
               disabled={selectedOrderId <= 0 || isSubmitting}
             >
               Crear factura

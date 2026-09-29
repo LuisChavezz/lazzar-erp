@@ -42,6 +42,8 @@ export function useAttendancePermissions(): AttendancePermissions {
 
 /** Acciones sobre un registro existente (ambas pestañas). */
 export interface AttendanceRecordActions {
+  /** "Desglose de horas" (control de horas): lo abre cualquiera que vea la fila. */
+  onOpenBreakdown: (record: AttendanceRow) => void;
   onCorrect: (record: AttendanceRow) => void;
   /** Justificar o quitar la justificación, según el estado del registro. */
   onToggleJustification: (record: AttendanceRow) => void;

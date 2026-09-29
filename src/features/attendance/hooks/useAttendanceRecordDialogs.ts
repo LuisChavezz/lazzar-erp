@@ -23,14 +23,14 @@ export const justificationModeFor = (estado: EstadoAsistencia): JustificationMod
 };
 
 /**
- * Estado de los diálogos sobre un registro existente (corregir, justificar o
- * quitar la justificación, eliminar), compartido por el pase de lista y el
- * historial, y ÚNICO mecanismo de aviso de "diálogo cerrado porque el registro
- * cambió" del módulo (`notifyStale`, que también usa la checada con hora del
- * pase de lista). Vive en la VISTA, nunca en una celda: corregir o justificar
- * cambia `estado` (un filtro del historial) y el pase de lista reordena y
- * oculta filas, así que la celda —con su diálogo— podría desmontarse a media
- * operación.
+ * Estado de los diálogos sobre un registro existente (desglose de horas,
+ * corregir, justificar o quitar la justificación, eliminar), compartido por el
+ * pase de lista y el historial, y ÚNICO mecanismo de aviso de "diálogo cerrado
+ * porque el registro cambió" del módulo (`notifyStale`, que también usa la
+ * checada con hora del pase de lista). Vive en la VISTA, nunca en una celda:
+ * corregir o justificar cambia `estado` (un filtro del historial) y el pase de
+ * lista reordena y oculta filas, así que la celda —con su diálogo— podría
+ * desmontarse a media operación.
  *
  * Se guarda el ID (y, al justificar, el modo con que se abrió) y se resuelve
  * contra el listado vigente. Si un refetch muestra que el registro ya no existe
@@ -59,6 +59,9 @@ export function useAttendanceRecordDialogs(
     mode: JustificationMode;
   } | null>(null);
   const [deleteId, setDeleteId] = useState<number | null>(null);
+  // El desglose se resuelve contra el listado en cada render: el diálogo
+  // siempre ve la asistencia VIGENTE (sus límites y si aún tiene entrada).
+  const [breakdownId, setBreakdownId] = useState<number | null>(null);
   // Aviso pendiente del cierre por datos obsoletos. Se muestra desde un efecto:
   // un toast en pleno render actualizaría otro componente (el Toaster).
   const [staleNotice, setStaleNotice] = useState<{ key: string; message: string } | null>(null);
@@ -70,6 +73,7 @@ export function useAttendanceRecordDialogs(
   const correctTarget = findRow(correctRequest?.id ?? null);
   const justifyTarget = findRow(justifyRequest?.id ?? null);
   const deleteTarget = findRow(deleteId);
+  const breakdownTarget = findRow(breakdownId);
 
   /**
    * Programa el aviso de un diálogo cerrado por datos obsoletos. `key` estable
@@ -103,6 +107,10 @@ export function useAttendanceRecordDialogs(
       setDeleteId(null);
       notifyStale(`attendance-gone-${deleteId}`, ATTENDANCE_GONE_MESSAGE);
     }
+    if (breakdownId !== null && breakdownTarget === null && !isPending(breakdownId)) {
+      setBreakdownId(null);
+      notifyStale(`attendance-gone-${breakdownId}`, ATTENDANCE_GONE_MESSAGE);
+    }
   }
 
   useEffect(() => {
@@ -116,7 +124,10 @@ export function useAttendanceRecordDialogs(
     justifyTarget,
     justifyMode: justifyRequest?.mode ?? null,
     deleteTarget,
+    breakdownTarget,
     notifyStale,
+    openBreakdown: (record: AttendanceRow) => setBreakdownId(record.id),
+    closeBreakdown: () => setBreakdownId(null),
     openCorrect: (record: AttendanceRow) => setCorrectRequest({ id: record.id, failed: false }),
     openJustification: (record: AttendanceRow) => {
       const mode = justificationModeFor(record.estado);
