@@ -5,6 +5,7 @@ import type { FormEvent } from "react";
 import { useForm } from "@tanstack/react-form";
 import { useSession } from "next-auth/react";
 import type { FormFieldError } from "@/src/utils/getFieldError";
+import { isInitialLoadError } from "@/src/utils/isInitialLoadError";
 import { buildWorkOrderPedidoOption } from "@/src/utils/formatWorkOrderProgramado";
 import {
   CreateCorteMangaOrderFormSchema,
@@ -40,11 +41,20 @@ export function useCorteMangaOrderForm({ onSuccess }: { onSuccess?: () => void }
     pedidos,
     operadores,
     folioPreview,
+    hasLoaded,
     isLoading: isLoadingCatalog,
-    isError: isErrorCatalog,
+    isError,
     error: catalogError,
     refetch: refetchCatalog,
   } = useCorteMangaOnboarding();
+
+  /**
+   * Solo es error "de pantalla completa" cuando el catálogo NUNCA cargó. Un
+   * refetch fallido con datos en caché conserva el formulario —y con él lo ya
+   * capturado— y avisa por toast desde `useCorteMangaOnboarding`. Mismo
+   * criterio que `useEmbroideryStep1Form` y `useReflectiveStep1Form`.
+   */
+  const isErrorCatalog = isInitialLoadError(isError, hasLoaded);
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [serverBanner, setServerBanner] = useState<string | null>(null);
@@ -138,6 +148,15 @@ export function useCorteMangaOrderForm({ onSuccess }: { onSuccess?: () => void }
           if (!nextErrors[key]) nextErrors[key] = issue.message;
         });
         setErrors(nextErrors);
+        return;
+      }
+
+      // El pedido tiene que seguir existiendo en el catálogo RECIÉN cargado: un
+      // refetch puede haberlo sacado de la respuesta, y el `<select>` ya no lo
+      // muestra aunque el valor siga en el formulario. Mismo guard que
+      // `useEmbroideryStep1Form` y `useReflectiveStep1Form`.
+      if (!pedidos.some((option) => option.id === parsed.data.pedido)) {
+        setErrors((prev) => ({ ...prev, pedido: "Selecciona un pedido" }));
         return;
       }
       setErrors({});
