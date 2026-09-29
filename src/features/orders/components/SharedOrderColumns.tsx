@@ -3,24 +3,16 @@
 import { type ColumnDef } from '@tanstack/react-table';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { ActionMenu, type ActionMenuItem } from '@/src/components/ActionMenu';
-import {
-  CalendarDaysIcon,
-  EditIcon,
-  EyeIcon,
-} from '@/src/components/Icons';
 import type { DataTableFilterConfig } from '@/src/components/DataTable';
 import { formatMoneyValueOrDash } from '@/src/utils/formatCurrency';
 import { parseLocalDate } from '@/src/utils/formatDate';
 import type { PedidoListItem } from '../interfaces/order.interface';
-import { canEditPedidoMesaControl, PEDIDO_ESTATUS } from '../constants/pedidoStatus';
 
 /**
- * Definición ÚNICA de la tabla de pedidos (`GET /ventas/pedidos/`), compartida
- * por los módulos que la listan en modo lectura (Operaciones de Almacén,
- * Compras). Las acciones de Mesa de Control —"Editar" y "Programar"— se activan
- * pasando su callback (`onEditMesaControl` / `onProgramar`); sin ellos la tabla
- * queda de solo lectura.
+ * Columnas de la tabla de pedidos (`GET /ventas/pedidos/`) en modo lectura de
+ * Operaciones de Almacén (`OrderListView` con `variant="shared"`). Ventas,
+ * Compras y Mesa de Control tienen sus propias fábricas; de este archivo solo
+ * reutilizan helpers (`isOrderConfirmed`, `ORDER_STATUS_FILTER_FIELD`, …).
  */
 
 // Identificador del estado de confirmación, compartido entre la columna y el
@@ -74,25 +66,17 @@ export const sharedOrderFilterConfig: DataTableFilterConfig[] = [
 ];
 
 export interface OrderColumnsOptions {
-  /** Abre el detalle 360° del pedido. Cada módulo decide su `?from=`. */
+  /**
+   * Abre el detalle 360° del pedido desde el folio. Cada módulo decide su
+   * `?from=`. No hay columna de Acciones: su único elemento era "Ver detalle",
+   * que ya cubre el folio.
+   */
   onViewDetail: (order: PedidoListItem) => void;
-  /**
-   * Solo Mesa de Control: al pasarlo se añade "Editar" al menú. WMS y Compras
-   * consumen esta tabla sin pasarlo y siguen en solo lectura.
-   */
-  onEditMesaControl?: (order: PedidoListItem) => void;
-  /**
-   * Solo Mesa de Control: al pasarlo se añade "Programar" al menú. Mismo patrón
-   * opcional que `onEditMesaControl`.
-   */
-  onProgramar?: (order: PedidoListItem) => void;
 }
 
 // Fábrica de columnas para cualquier lista de pedidos.
 export function createOrderColumns({
   onViewDetail,
-  onEditMesaControl,
-  onProgramar,
 }: OrderColumnsOptions): ColumnDef<PedidoListItem, unknown>[] {
   return [
     {
@@ -194,66 +178,6 @@ export function createOrderColumns({
           >
             {cfg.label}
           </span>
-        );
-      },
-    },
-    {
-      id: 'acciones',
-      header: 'Acciones',
-      meta: { align: "center" },
-      cell: ({ row }) => {
-        const order = row.original;
-        const items: ActionMenuItem[] = [
-          {
-            label: 'Ver detalle',
-            icon: EyeIcon,
-            onSelect: () => onViewDetail(order),
-          },
-        ];
-
-        // Edición destructiva: `permission` es la regla de PERMISOS, igual que
-        // en `QuoteCardActions`.
-        //
-        // NO lleva la regla de negocio "tiene cotización de origen" que sí lleva
-        // el botón del detalle: `PedidoListSerializer` es un serializer
-        // minimalista de 14 campos escalares y NO expone `cotizacion`, así que
-        // desde esta tabla el dato no existe. Se decide en la pantalla de
-        // edición, que sí carga el detalle y explica el motivo en vez de
-        // reventar al guardar. Inventar aquí un `visible` con un campo ausente
-        // ocultaría la acción para TODOS los pedidos.
-        if (onEditMesaControl) {
-          items.push({
-            label: 'Editar',
-            icon: EditIcon,
-            onSelect: () => onEditMesaControl(order),
-            permission: 'E-MESACONTROL-PEDIDOS',
-            // Regla de NEGOCIO, evaluable aquí porque el listado sí trae
-            // `estatus`: un pedido CANCELADO no se edita — guardar borraría y
-            // recrearía su detalle. Ver `canEditPedidoMesaControl`.
-            visible: canEditPedidoMesaControl(order.estatus),
-          });
-        }
-
-        // Mismo permiso de catálogo que "Editar". Se OCULTA en pedidos cancelados
-        // (mismo mecanismo `visible` que "Editar"): programar un pedido dado de
-        // baja no tiene sentido. Es solo defensa de UI — el endpoint `programar`
-        // no evalúa el estatus. Se compara contra CANCELADO y no se reusa
-        // `canEditPedidoMesaControl`, que además oculta estatus fuera del enum
-        // por un motivo propio de la edición destructiva.
-        if (onProgramar) {
-          items.push({
-            label: 'Programar',
-            icon: CalendarDaysIcon,
-            onSelect: () => onProgramar(order),
-            permission: 'E-MESACONTROL-PEDIDOS',
-            visible: order.estatus !== PEDIDO_ESTATUS.CANCELADO,
-          });
-        }
-
-        return (
-          <div className="flex items-center justify-center">
-            <ActionMenu items={items} ariaLabel={`Acciones del pedido ${order.folio}`} />
-          </div>
         );
       },
     },

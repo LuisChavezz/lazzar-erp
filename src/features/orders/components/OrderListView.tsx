@@ -45,8 +45,8 @@ interface OrderListViewProps {
    * `ProcurementOrderColumns.tsx` (filtro de estatus en el propio encabezado
    * del folio) y botones de exportar a Excel/PDF — es de solo lectura, así
    * que no lleva columna de Acciones. Por defecto (`"shared"`) conserva las
-   * columnas de `SharedOrderColumns.tsx` que sigue usando Almacén (y Mesa de
-   * Control, en su propio consumidor fuera de este componente). El aspecto
+   * columnas de `SharedOrderColumns.tsx` que usa Almacén (sin columna de
+   * Acciones: el detalle se abre desde el folio). El aspecto
    * (marco, buscador fijo, densidad compacta, 20 filas por página) es el
    * mismo en las tres: es el default de `DataTable`.
    */
