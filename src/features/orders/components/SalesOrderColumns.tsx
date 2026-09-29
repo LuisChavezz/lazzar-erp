@@ -9,6 +9,8 @@ import { formatMoneyValueOrDash } from '@/src/utils/formatCurrency';
 import type { PedidoListItem } from '../interfaces/order.interface';
 import { isOrderConfirmed } from './SharedOrderColumns';
 import { hasMeaningfulOc } from '../utils/pedidoFormat';
+import type { PedidoDetailOrigin } from '../constants/pedidoDetailOrigins';
+import { PedidoFolioLink } from './PedidoFolioLink';
 
 /**
  * Columnas de "Mis pedidos" (Ventas, `GET /ventas/pedidos/`). NO reusa
@@ -44,7 +46,8 @@ import { hasMeaningfulOc } from '../utils/pedidoFormat';
  * filtro contable), así que no hace falta el fallback `?? undefined`.
  */
 export interface SalesOrderColumnsOptions {
-  onViewDetail: (order: PedidoListItem) => void;
+  /** Llave `?from=` del detalle 360° que abre el folio. */
+  from: PedidoDetailOrigin;
 }
 
 function PendingDataCell() {
@@ -70,7 +73,7 @@ const confirmationFilterFn: FilterFn<PedidoListItem> = (row, _columnId, filterVa
 };
 
 export function createSalesOrderColumns({
-  onViewDetail,
+  from,
 }: SalesOrderColumnsOptions): ColumnDef<PedidoListItem, unknown>[] {
   return [
     {
@@ -101,18 +104,17 @@ export function createSalesOrderColumns({
               aria-label={confirmed ? 'Confirmado' : 'Por confirmar'}
               title={confirmed ? 'Confirmado' : 'Por confirmar'}
             />
-            <button
-              type="button"
-              onClick={() => onViewDetail(order)}
-              className="group inline-flex items-center gap-1 font-mono text-[13px] font-bold text-slate-800 dark:text-white hover:text-sky-600 dark:hover:text-sky-400 hover:underline transition-colors cursor-pointer"
-              title="Ver detalle del pedido"
+            <PedidoFolioLink
+              pedidoId={order.id}
+              folio={order.folio}
+              from={from}
+              className="group inline-flex items-center gap-1 font-mono text-[13px] font-bold text-slate-800 dark:text-white"
             >
-              {order.folio || '—'}
               <ChevronRightIcon
                 className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500 group-hover:text-sky-500 dark:group-hover:text-sky-400 group-hover:translate-x-0.5 transition-all"
                 aria-hidden="true"
               />
-            </button>
+            </PedidoFolioLink>
             {hasMeaningfulOc(order.oc) && (
               <span
                 className="text-[11px] text-slate-400 dark:text-slate-500 font-mono"

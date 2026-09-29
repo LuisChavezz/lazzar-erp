@@ -2,12 +2,9 @@
 
 import { DataTable } from '@/src/components/DataTable';
 import type { PedidoListItem } from '@/src/features/orders/interfaces/order.interface';
-import {
-  getScheduledOrderColumns,
-  type ScheduledOrderColumnCallbacks,
-} from './ScheduledOrderColumns';
+import { getScheduledOrderColumns } from './ScheduledOrderColumns';
 
-interface ScheduledOrdersTableProps extends ScheduledOrderColumnCallbacks {
+interface ScheduledOrdersTableProps {
   orders: PedidoListItem[];
   onRefetch?: () => void | Promise<unknown>;
   isRefetching?: boolean;
@@ -19,14 +16,13 @@ interface ScheduledOrdersTableProps extends ScheduledOrderColumnCallbacks {
 // Tabla de "Pedidos programados" — hermana de `OperationsOrderTable`, solo lectura.
 export function ScheduledOrdersTable({
   orders,
-  onViewDetail,
   onRefetch,
   isRefetching,
   isLoading,
   isError,
   errorMessage,
 }: ScheduledOrdersTableProps) {
-  const columns = getScheduledOrderColumns({ onViewDetail });
+  const columns = getScheduledOrderColumns();
 
   return (
     <DataTable

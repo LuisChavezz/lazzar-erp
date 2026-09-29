@@ -30,7 +30,7 @@ const EDIT_PEDIDO_PERMISSION = "E-MESACONTROL-PEDIDOS";
  *
  * DOS PERMISOS, NO UNO. Este guard exige `E-MESACONTROL-PEDIDOS`, pero NO es
  * la primera puerta: `src/proxy.ts` evalúa antes la regla "/orders" de
- * `routePermissions`, que exige CUALQUIERA de nueve códigos de LECTURA. O sea
+ * `routePermissions`, que exige CUALQUIERA de once códigos de LECTURA. O sea
  * que el rol de Mesa de Control necesita los dos —`R-MESACONTROL-PEDIDOS` para
  * llegar y `E-MESACONTROL-PEDIDOS` para editar—, y hoy el despliegue los asigna
  * juntos. Con solo el de edición, el proxy rebota al home antes de que esta
@@ -43,7 +43,7 @@ const EDIT_PEDIDO_PERMISSION = "E-MESACONTROL-PEDIDOS";
  * `permissions` — la misma fuente que `src/proxy.ts` lee con `getToken`. Hace
  * falta aquí porque `routePermissions` no puede expresar esta ruta: el segmento
  * dinámico va EN MEDIO, y la regla "/orders" que sí la cubre exige CUALQUIERA de
- * nueve permisos de lectura, ninguno de los cuales autoriza a editar.
+ * once permisos de lectura, ninguno de los cuales autoriza a editar.
  *
  * La verificación real de acceso al DATO —existencia del pedido, denegaciones
  * 403/404 y la ausencia de cotización ligada— vive en el cliente

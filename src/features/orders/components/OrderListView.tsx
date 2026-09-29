@@ -1,7 +1,6 @@
 'use client';
 
 import { useRef, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { useIsFetching, useQueryClient } from '@tanstack/react-query';
 import {
   DataTable,
@@ -16,6 +15,7 @@ import { ordersQueryKey, useOrders } from '../hooks/useOrders';
 import { useProcurementOrderCsvExport } from '../hooks/useProcurementOrderCsvExport';
 import { useProcurementOrderPdfExport } from '../hooks/useProcurementOrderPdfExport';
 import type { OrdersQueryParams } from '../services/actions';
+import type { PedidoDetailOrigin } from '../constants/pedidoDetailOrigins';
 import {
   createOrderColumns,
   enrichOrdersWithStatus,
@@ -31,7 +31,7 @@ interface OrderListViewProps {
    * "Volver" regrese a la lista del módulo correcto (`wms`, `procurement`,
    * `sales`, …).
    */
-  from: string;
+  from: PedidoDetailOrigin;
   /**
    * Filtros de `GET /ventas/pedidos/`. Sin params se listan todos; con
    * `{ mis_pedidos: "true" }` el backend acota a los pedidos del vendedor.
@@ -79,16 +79,10 @@ export function OrderListView({
   // conserva la tabla y avisa por toast (ver `useOrders`).
   const showError = isInitialLoadError(isError, hasLoaded);
   const queryClient = useQueryClient();
-  const router = useRouter();
   // Acotamos a la queryKey de esta variante para no encender el spinner ni
   // invalidar el caché de otras vistas de pedidos (p. ej. "Mis pedidos").
   const queryKey = ordersQueryKey(params);
   const isRefetching = useIsFetching({ queryKey, exact: true }) > 0;
-
-  // Detalle 360° del pedido en su ruta neutra; `?from` hace que el "Volver"
-  // regrese a esta lista.
-  const handleViewDetail = (order: PedidoListItem) =>
-    router.push(`/orders/${order.id}?from=${from}`);
 
   const handleRefetch = () =>
     queryClient.invalidateQueries({ queryKey, exact: true });
@@ -99,11 +93,13 @@ export function OrderListView({
   // `variant="procurement"` siempre lo activa; el resto lo decide el
   // `fillHeight` que reciba la vista (ver doc de la prop).
   const useFillHeight = isProcurement || fillHeight;
+  // El folio de las tres variantes es un `PedidoFolioLink` al detalle 360°;
+  // `from` hace que su "Volver" regrese a esta lista.
   const columns = isSales
-    ? createSalesOrderColumns({ onViewDetail: handleViewDetail })
+    ? createSalesOrderColumns({ from })
     : isProcurement
-      ? createProcurementOrderColumns({ onViewDetail: handleViewDetail })
-      : createOrderColumns({ onViewDetail: handleViewDetail });
+      ? createProcurementOrderColumns({ from })
+      : createOrderColumns({ from });
   const enrichedOrders = enrichOrdersWithStatus(orders);
 
   // ── Exportar (solo `variant="procurement"`) ───────────────────────────────

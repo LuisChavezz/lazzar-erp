@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { PedidoFolioLink } from "@/src/features/orders/components/PedidoFolioLink";
 import {
   EmptyLines,
   LineItemsTable,
@@ -65,13 +65,12 @@ export const CustomerResumenPedidos = ({ resumen }: { resumen: ResumenComercial 
                         pedido que el resto de páginas de detalle
                         (`EmbroideryOrderDetailContent`): en color desde el
                         reposo, no solo al pasar el cursor. */}
-                    <Link
-                      href={`/orders/${pedido.id}?from=customers`}
-                      title="Ver detalle"
-                      className="font-mono text-sky-600 dark:text-sky-400 hover:underline hover:text-sky-700 dark:hover:text-sky-300 transition-colors"
-                    >
-                      {pedido.folio}
-                    </Link>
+                    <PedidoFolioLink
+                      pedidoId={pedido.id}
+                      folio={pedido.folio}
+                      from="customers"
+                      className="font-mono text-sky-600 dark:text-sky-400"
+                    />
                   </td>
                   {/* Timestamp real: sin `timeZone: "UTC"` (ver `formatShortDate`). */}
                   <td className="px-3 py-2 whitespace-nowrap">{formatShortDate(pedido.fecha)}</td>
