@@ -153,8 +153,10 @@ function readExcessLines(value: unknown): string[] | undefined {
  *     misma clave (id repetido/ajeno/sin bordado, cantidad no entera, <= 0 o
  *     mayor a la contratada) con un string plano, no una lista.
  *
- * Siempre devuelve un objeto (nunca `null`) y garantiza que haya algo que
- * mostrar: si no se reconoce nada, deja un `formError` genérico.
+ * Siempre devuelve un objeto (nunca `null`). En un 400/403/409 con cuerpo JSON
+ * garantiza que haya algo que mostrar (si no reconoce nada, deja un `formError`
+ * genérico); fuera de eso devuelve `formError` vacío a propósito para que el
+ * consumidor use su texto fijo — ver el guardia de status al inicio.
  */
 export function parseEmbroideryOrderError(error: unknown): ParsedEmbroideryOrderError {
   const result: ParsedEmbroideryOrderError = {
@@ -162,19 +164,23 @@ export function parseEmbroideryOrderError(error: unknown): ParsedEmbroideryOrder
     messages: [],
   };
 
-  if (!(error instanceof AxiosError)) {
-    result.formError = EMBROIDERY_ORDER_GENERIC_ERROR;
-    return result;
-  }
+  // El cuerpo del backend solo se lee en un 400 (formas A/B/C/E y
+  // `detalles_override`), un 403 (el `detail` en español de un
+  // `PermissionDenied`, que dice que es un problema de permisos y no algo que
+  // se arregle reintentando — mismo criterio que `drfActionErrorMessage`) o el
+  // 409 de duplicado (forma D): son los únicos rechazos con un mensaje pensado
+  // para el usuario. Cualquier otra cosa —un 500
+  // cuyo cuerpo es la página HTML de depuración de Django, un 502 de un proxy,
+  // un error de red sin respuesta, o algo que ni siquiera es un `AxiosError`—
+  // sale SIN `formError` ni `messages`, y cada consumidor pone su texto fijo en
+  // español (`EMBROIDERY_ORDER_GENERIC_ERROR` en el toast y el banner). Mismo
+  // criterio que `parseCorteMangaOrderError` y `useToggleCostCenterActivo`
+  // (EC-140).
+  if (!(error instanceof AxiosError)) return result;
+  const status = error.response?.status;
+  if (status !== 400 && status !== 403 && status !== 409) return result;
 
   const data = error.response?.data;
-
-  // Respuesta en texto plano (p. ej. un 500 que devuelve HTML/string).
-  if (typeof data === "string" && data.trim().length > 0) {
-    result.formError = data;
-    result.messages.push(data);
-    return result;
-  }
 
   // ── Forma A: arreglo plano a nivel raíz ──────────────────────────────────
   if (Array.isArray(data)) {
@@ -190,8 +196,10 @@ export function parseEmbroideryOrderError(error: unknown): ParsedEmbroideryOrder
     return result;
   }
 
+  // Cuerpo inesperado (vacío, o texto/HTML en vez de JSON): nada que mostrar
+  // verbatim, mismo tratamiento que un status fuera de 400/403/409. En particular
+  // NO se usa `error.message` ("Request failed with status code 400").
   if (!data || typeof data !== "object") {
-    result.formError = error.message || EMBROIDERY_ORDER_GENERIC_ERROR;
     return result;
   }
 
@@ -265,8 +273,10 @@ export function parseEmbroideryOrderError(error: unknown): ParsedEmbroideryOrder
     result.messages.push(overrideMessage);
   }
 
-  // Claves estándar de DRF (defensivo: hoy ninguna ruta del service las
-  // produce, pero un `PermissionDenied`/`NotAuthenticated` sí daría `detail`).
+  // Claves estándar de DRF. `detail` es la forma del 403 (`PermissionDenied`)
+  // que deja pasar el guardia de status; ninguna ruta del service lo produce en
+  // un 400. (Un `NotAuthenticated` es 401 y lo resuelve el interceptor de
+  // `v1_api` antes de llegar aquí.)
   const detail = firstDrfMessage(record.detail);
   if (detail) {
     result.formError = result.formError ?? detail;

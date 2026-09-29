@@ -1,14 +1,34 @@
 "use client";
 
+import { AxiosError } from "axios";
 import { FormSelect } from "@/src/components/FormSelect";
 import { FormTextarea } from "@/src/components/FormTextarea";
 import { FormSubmitButton } from "@/src/components/FormButtons";
 import { Loader } from "@/src/components/Loader";
 import { MesaControlProgramadoIndicator } from "@/src/components/MesaControlProgramadoIndicator";
 import { InfoIcon, RefreshIcon, UserIcon } from "@/src/components/Icons";
-import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
+import { firstDrfFieldMessage } from "@/src/utils/firstDrfFieldMessage";
 import { useEmbroideryStep1Form } from "../hooks/useEmbroideryStep1Form";
 import type { CreateEmbroideryOrderFormValues } from "../schemas/embroidery-order.schema";
+
+const CATALOG_ERROR_FALLBACK = "Vuelve a intentarlo en un momento.";
+
+/**
+ * Mensaje del panel de carga fallida del catálogo. El cuerpo del backend se
+ * muestra SOLO en un 400 o un 403 (el `detail` de un `PermissionDenied`: sin él,
+ * el panel invitaría a reintentar algo que es un problema de permisos — mismo
+ * criterio que `drfActionErrorMessage`): cualquier otro fallo —un 500 cuyo cuerpo es la página
+ * HTML de depuración de Django, un 502, un error de red— cae al texto fijo. NO
+ * se usa `extractErrorMessage`: su `error instanceof Error` lo satisface un
+ * `AxiosError`, así que mostraría "Request failed with status code 500" en vez
+ * del respaldo. Mismo criterio que `CorteMangaOrderCreateForm` y que
+ * `parseEmbroideryOrderError` para el alta.
+ */
+const getCatalogErrorMessage = (error: unknown): string =>
+  (error instanceof AxiosError &&
+  (error.response?.status === 400 || error.response?.status === 403)
+    ? firstDrfFieldMessage(error)
+    : undefined) ?? CATALOG_ERROR_FALLBACK;
 
 /**
  * Opciones de prioridad. El mapeo 1 = Alta, 2 = Media, 3 = Baja replica el de
@@ -77,7 +97,7 @@ export function EmbroideryOrderStep1({
           No se pudieron cargar los pedidos
         </p>
         <p className="text-xs text-red-500 dark:text-red-300">
-          {extractErrorMessage(catalogError, "Vuelve a intentarlo en un momento.")}
+          {getCatalogErrorMessage(catalogError)}
         </p>
         <button
           type="button"

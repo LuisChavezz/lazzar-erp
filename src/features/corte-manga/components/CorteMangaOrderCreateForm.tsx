@@ -1,5 +1,6 @@
 "use client";
 
+import { AxiosError } from "axios";
 import { FormSelect } from "@/src/components/FormSelect";
 import { FormTextarea } from "@/src/components/FormTextarea";
 import { FormSubmitButton } from "@/src/components/FormButtons";
@@ -12,8 +13,27 @@ import {
   RefreshIcon,
   UserIcon,
 } from "@/src/components/Icons";
-import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
+import { firstDrfFieldMessage } from "@/src/utils/firstDrfFieldMessage";
 import { useCorteMangaOrderForm } from "../hooks/useCorteMangaOrderForm";
+
+const CATALOG_ERROR_FALLBACK = "Vuelve a intentarlo en un momento.";
+
+/**
+ * Mensaje del panel de carga fallida del catálogo. El cuerpo del backend se
+ * muestra SOLO en un 400 o un 403 (el `detail` de un `PermissionDenied`: sin él,
+ * el panel invitaría a reintentar algo que es un problema de permisos — mismo
+ * criterio que `drfActionErrorMessage`): cualquier otro fallo —un 500 cuyo cuerpo es la página
+ * HTML de depuración de Django, un 502, un error de red— cae al texto fijo. NO
+ * se usa `extractErrorMessage`: su `error instanceof Error` lo satisface un
+ * `AxiosError`, así que mostraría "Request failed with status code 500" en vez
+ * del respaldo. Mismo criterio que `useToggleCostCenterActivo` (EC-140) y que
+ * `parseCorteMangaOrderError` para el alta.
+ */
+const getCatalogErrorMessage = (error: unknown): string =>
+  (error instanceof AxiosError &&
+  (error.response?.status === 400 || error.response?.status === 403)
+    ? firstDrfFieldMessage(error)
+    : undefined) ?? CATALOG_ERROR_FALLBACK;
 
 /**
  * Opciones de prioridad. El mapeo 1 = Alta, 2 = Media, 3 = Baja es EL MISMO que
@@ -121,7 +141,7 @@ export function CorteMangaOrderCreateForm({
           No se pudieron cargar los pedidos
         </p>
         <p className="text-xs text-red-500 dark:text-red-300">
-          {extractErrorMessage(catalogError, "Vuelve a intentarlo en un momento.")}
+          {getCatalogErrorMessage(catalogError)}
         </p>
         <button
           type="button"
@@ -135,8 +155,11 @@ export function CorteMangaOrderCreateForm({
     );
   }
 
-  // Catálogo legítimamente vacío: no hay nada que dar de alta.
-  if (pedidoOptions.length === 0) {
+  // Catálogo legítimamente vacío: no hay nada que dar de alta. Salvo con un
+  // aviso de duplicado en pantalla: el 409 invalida el catálogo y, si el pedido
+  // rechazado era el último, el refetch llega vacío — sustituir el formulario
+  // aquí escondería justo el bloque que explica qué orden ya lo cubre.
+  if (pedidoOptions.length === 0 && !duplicate) {
     return (
       <div className="rounded-2xl border border-amber-200 dark:border-amber-800/60 bg-amber-50 dark:bg-amber-900/20 p-6 flex items-start gap-4">
         <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-500/10 flex items-center justify-center text-amber-600 dark:text-amber-400 shrink-0">
@@ -250,7 +273,12 @@ export function CorteMangaOrderCreateForm({
                 <FormSelect
                   label="Pedido"
                   name={field.name}
-                  value={field.state.value}
+                  // Si un refetch sacó al pedido elegido del catálogo (p. ej. tras
+                  // el 409 de duplicado), un `<select>` controlado con un valor
+                  // sin `<option>` hace que el navegador pinte OTRO pedido como
+                  // elegido mientras el formulario conserva el anterior. Se
+                  // muestra el placeholder, y el guard del envío pide elegir uno.
+                  value={selected ? field.state.value : 0}
                   onChange={(event) => {
                     field.handleChange(Number(event.target.value));
                     clearError("pedido");

@@ -26,10 +26,12 @@ export {
  * por defecto del usuario y puede no coincidir con la serie realmente consumida
  * (la de la sucursal del pedido).
  *
- * Invalida `["corte-manga-orders"]` (el listado). NO invalida
- * `["corte-manga-onboarding"]`: crear una orden no saca al pedido del catálogo
- * —el backend no excluye los pedidos que ya tienen OCM— así que la respuesta
- * sería idéntica y el refetch, desperdiciado.
+ * Invalida dos llaves, porque crear una orden cambia datos de ambas respuestas:
+ *  - `["corte-manga-orders"]` — el listado, donde aparece la orden nueva.
+ *  - `["corte-manga-onboarding"]` — el catálogo del alta: cada pedido trae su
+ *    detalle por talla con `cantidad_asignada`/`cantidad_pendiente`, que la
+ *    orden recién creada consume. Mismo criterio que `useCreateEmbroideryOrder`
+ *    y `useCreateReflectiveOrder`.
  */
 export const useCreateCorteMangaOrder = (
   onServerError?: (parsed: ParsedCorteMangaOrderError) => void,
@@ -40,6 +42,7 @@ export const useCreateCorteMangaOrder = (
     mutationFn: createCorteMangaOrder,
     onSuccess: (order) => {
       queryClient.invalidateQueries({ queryKey: ["corte-manga-orders"] });
+      queryClient.invalidateQueries({ queryKey: ["corte-manga-onboarding"] });
       toast.success(`Orden de corte de manga ${order.folio_ocm} creada correctamente`);
     },
     onError: (error) => {
@@ -49,14 +52,20 @@ export const useCreateCorteMangaOrder = (
       // El 409 nombra una orden EXISTENTE cuyo id el aviso de duplicado
       // convierte en un enlace al diálogo de detalle, que la resuelve contra la
       // lista en caché. Esa orden puede haberla creado otro usuario después del
-      // último fetch (el `staleTime` global es de 15 min) o ser una fila
+      // último fetch (el `staleTime` global del listado es de 15 min) o ser una fila
       // histórica de la generación automática desde ventas, en cuyo caso no
       // estaría en caché y el detalle diría "no existe o no tienes acceso"
       // sobre una orden que el backend acaba de confirmar. Refrescar el listado
       // aquí es lo que hace que ese enlace pueda resolver — ES la búsqueda
       // contra la lista de la que depende el bloque ámbar.
+      //
+      // El catálogo del alta también se invalida: el 409 dice justamente que
+      // el pedido ya está cubierto, y un pedido cubierto al 100% deja de salir
+      // en el onboarding (ver `CorteMangaOnboardingPedido`). Sin esto el pedido
+      // seguiría en el selector y reenviar daría el mismo 409.
       if (parsed.duplicate) {
         queryClient.invalidateQueries({ queryKey: ["corte-manga-orders"] });
+        queryClient.invalidateQueries({ queryKey: ["corte-manga-onboarding"] });
       }
 
       const toastMessage =
