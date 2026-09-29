@@ -3,13 +3,13 @@ import { firstDrfMessage } from "./firstDrfMessage";
 import { firstDrfFieldMessage } from "./firstDrfFieldMessage";
 
 /**
- * Manejo de los errores de escritura de DRF que comparten los catálogos de RH
- * con flujo de aprobación (vacaciones, permisos y ausencias). El backend
- * responde con dos formas y aquí se atienden ambas:
+ * Manejo de los errores de escritura de DRF que comparten los módulos de RH
+ * (vacaciones, permisos y ausencias, asistencia). El backend responde con dos
+ * formas y aquí se atienden ambas:
  *
  * - Validación del serializer (alta/edición): diccionario por campo,
  *   `{"fecha_fin": ["..."]}`.
- * - Acciones (`aprobar/`, `rechazar/`): `{"detail": "..."}`.
+ * - Acciones (`aprobar/`, `rechazar/`, `registrar_entrada/`...): `{"detail": "..."}`.
  */
 
 /**
@@ -64,9 +64,12 @@ export const isNotFoundError = (error: unknown): boolean =>
   error instanceof AxiosError && error.response?.status === 404;
 
 /**
- * Error de una acción sobre un registro (aprobar, rechazar, eliminar). Un 404
- * significa que otra persona ya lo borró (`notFoundMessage`); un 400/403 trae
- * su `detail` en español. Red y 5xx caen al respaldo.
+ * Error de una acción sobre un registro (aprobar, rechazar, eliminar, checar).
+ * Un 404 significa que otra persona ya lo borró (`notFoundMessage`); un
+ * 400/403 trae su `detail` en español. Un 409 (conflicto: el borrado que
+ * choca con registros que dependen de él, una checada ya registrada) muestra
+ * su `detail` cuando es texto, porque es lo único que explica QUÉ chocó. Red
+ * y 5xx caen al respaldo.
  */
 export const drfActionErrorMessage = (
   error: unknown,
@@ -79,6 +82,12 @@ export const drfActionErrorMessage = (
   const status = error instanceof AxiosError ? error.response?.status : undefined;
   if (status === 400 || status === 403) {
     return firstDrfFieldMessage(error) ?? fallback;
+  }
+  if (status === 409) {
+    const data = (error as AxiosError).response?.data;
+    const detail =
+      data && typeof data === "object" ? (data as Record<string, unknown>).detail : undefined;
+    return typeof detail === "string" && detail.trim() ? detail : fallback;
   }
   return fallback;
 };

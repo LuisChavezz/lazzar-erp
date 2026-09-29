@@ -7,15 +7,10 @@
  * salta ni repite un día por un cambio de horario local.
  */
 
+import { getDiaLaboralCode } from "@/src/features/shifts/constants/diasLaborales";
+
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const DAY_MS = 86_400_000;
-
-/**
- * Código de turno de cada día de la semana, indexado por `getUTCDay()`
- * (0 = domingo). Son los códigos de `DIA_LABORAL_OPTIONS` en `shifts`
- * ("L,M,X,J,V,S,D", con X para miércoles).
- */
-const CODIGO_POR_DIA_SEMANA = ["D", "L", "M", "X", "J", "V", "S"] as const;
 
 /** Medianoche UTC (ms) de un `"YYYY-MM-DD"` válido, o `null`. */
 const toUtcDay = (value: string): number | null => {
@@ -68,8 +63,7 @@ export const countWorkingDays = (
   const laborales = new Set(diasLaborales);
   let count = 0;
   for (let offset = 0; offset < total; offset += 1) {
-    const diaSemana = new Date(start + offset * DAY_MS).getUTCDay();
-    if (laborales.has(CODIGO_POR_DIA_SEMANA[diaSemana])) {
+    if (laborales.has(getDiaLaboralCode(new Date(start + offset * DAY_MS)))) {
       count += 1;
     }
   }
