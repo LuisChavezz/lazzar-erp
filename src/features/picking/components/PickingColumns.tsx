@@ -5,6 +5,7 @@ import { createColumnHelper, type ColumnDef } from "@tanstack/react-table";
 import { UserIcon, ViewIcon } from "@/src/components/Icons";
 import { ActionMenu, type ActionMenuItem } from "@/src/components/ActionMenu";
 import { StatusBadge } from "@/src/components/StatusBadge";
+import { formatShortDate } from "@/src/utils/formatDate";
 import {
   PICKING_PRIORIDAD_CONFIG,
   pickingPrioridadRank,
@@ -85,6 +86,20 @@ export const pickingColumns = [
       pickingPrioridadRank(a.original.prioridad) -
       pickingPrioridadRank(b.original.prioridad),
     cell: (info) => <StatusBadge status={info.getValue()} config={PICKING_PRIORIDAD_CONFIG} />,
+  }),
+  // `created_at` es un timestamp real (con hora y offset), así que va SIN
+  // `timeZone: "UTC"`: el día se pinta en la zona del usuario (ver
+  // `formatShortDate`). Se ordena sobre el ISO crudo, no sobre el texto
+  // formateado. Misma convención que la columna "Creado" de Embarque
+  // (`PackingColumns`).
+  columnHelper.accessor("created_at", {
+    header: "Fecha de creación",
+    sortingFn: "datetime",
+    cell: (info) => (
+      <span className="text-sm text-slate-700 dark:text-slate-200">
+        {formatShortDate(info.getValue())}
+      </span>
+    ),
   }),
   columnHelper.display({
     id: "actions",
