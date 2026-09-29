@@ -118,7 +118,7 @@ export function parsePickingError(error: unknown): ParsedPickingError {
   };
 
   if (!(error instanceof AxiosError)) {
-    result.formError = "Error al registrar el picking.";
+    result.formError = "Error al registrar el surtido.";
     return finalize();
   }
 
@@ -140,13 +140,13 @@ export function parsePickingError(error: unknown): ParsedPickingError {
       result.formError = messages[0];
       result.messages.push(...messages);
     } else {
-      result.formError = "Error al registrar el picking.";
+      result.formError = "Error al registrar el surtido.";
     }
     return finalize();
   }
 
   if (!data || typeof data !== "object") {
-    result.formError = error.message || "Error al registrar el picking.";
+    result.formError = error.message || "Error al registrar el surtido.";
     return finalize();
   }
 
@@ -225,7 +225,7 @@ export function parsePickingError(error: unknown): ParsedPickingError {
       if (message) result.messages.push(message);
     });
     if (result.messages.length === 0) {
-      result.formError = "Error de validación al registrar el picking.";
+      result.formError = "Error de validación al registrar el surtido.";
     }
   }
 
@@ -258,7 +258,7 @@ export const useCreatePicking = (onServerError?: (parsed: ParsedPickingError) =>
     mutationFn: createPicking,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["pickings"] });
-      toast.success("Picking registrado correctamente");
+      toast.success("Surtido registrado correctamente");
     },
     onError: (error) => {
       const parsed = parsePickingError(error);
@@ -274,7 +274,7 @@ export const useCreatePicking = (onServerError?: (parsed: ParsedPickingError) =>
       const toastMessage =
         parsed.messages.length > 0
           ? parsed.messages.join("\n")
-          : parsed.formError ?? "Error al registrar el picking";
+          : parsed.formError ?? "Error al registrar el surtido";
       toast.error(toastMessage);
     },
   });

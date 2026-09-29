@@ -169,13 +169,13 @@ export function usePackingStep2Form({ pickingId, onSuccess }: UsePackingStep2For
       // pendientes y se avisa de forma informativa.
       setServerBanner(null);
       setStaleNotice(
-        "Las cantidades pendientes por empacar cambiaron (otro packing las modificó). Se actualizaron los datos: revisa y vuelve a registrar.",
+        "Las cantidades pendientes por empacar cambiaron (otro embarque las modificó). Se actualizaron los datos: revisa y vuelve a registrar.",
       );
       void refetch();
       return;
     }
     setStaleNotice(null);
-    setServerBanner(parsed.formError ?? parsed.messages[0] ?? "Error al registrar el packing.");
+    setServerBanner(parsed.formError ?? parsed.messages[0] ?? "Error al registrar el embarque.");
   };
 
   const { mutateAsync: createPacking, isPending } = useCreatePacking(handleServerError);
@@ -212,7 +212,7 @@ export function usePackingStep2Form({ pickingId, onSuccess }: UsePackingStep2For
     // tipo y el rechazo llegaría del backend como un 400.
     const parsedHeader = PackingHeaderSchema.safeParse(header);
     if (!parsedHeader.success) {
-      setServerBanner(parsedHeader.error.issues[0]?.message ?? "Revisa los datos del empaque.");
+      setServerBanner(parsedHeader.error.issues[0]?.message ?? "Revisa los datos del embarque.");
       return;
     }
 

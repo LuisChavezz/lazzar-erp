@@ -124,15 +124,15 @@ export function PickingView() {
           fillHeight
           onRefetch={refetch}
           isRefetching={isFetching}
-          emptyMessage="No hay pickings registrados."
+          emptyMessage="No hay surtidos registrados."
           // Ver el listado exige `R-WMS-PICKING` (ver `routePermissions`); dar de
           // alta exige además `C-WMS-PICKING`.
           actionButton={canCreate ? <PickingForm /> : undefined}
           isLoading={isLoading}
           isError={showError}
-          errorTitle="Error al cargar los pickings"
+          errorTitle="Error al cargar los surtidos"
           errorMessage={extractErrorMessage(error, "No se pudo cargar la información.")}
-          loadingAriaLabel="Cargando pickings"
+          loadingAriaLabel="Cargando surtidos"
         />
       </div>
     </div>

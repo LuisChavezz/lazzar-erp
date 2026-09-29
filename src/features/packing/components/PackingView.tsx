@@ -56,22 +56,22 @@ export function PackingView() {
         <DataTable
           columns={packingColumns}
           data={packings}
-          searchPlaceholder="Buscar folio, picking, pedido u operador..."
+          searchPlaceholder="Buscar folio, surtido, pedido u operador..."
           getRowId={(row) => String(row.id)}
           // El cuerpo llena el contenedor de altura acotada que da
           // `wms/packing/page.tsx`, en vez de reservar un alto fijo.
           fillHeight
           onRefetch={refetch}
           isRefetching={isFetching}
-          emptyMessage="No hay packings registrados."
+          emptyMessage="No hay embarques registrados."
           // Ver el listado exige `R-WMS-PACKING` (ver `routePermissions`); dar de
           // alta exige además `C-WMS-PACKING`.
           actionButton={canCreate ? <PackingForm /> : undefined}
           isLoading={isLoading}
           isError={showError}
-          errorTitle="Error al cargar los packings"
+          errorTitle="Error al cargar los embarques"
           errorMessage={extractErrorMessage(error, "No se pudo cargar la información.")}
-          loadingAriaLabel="Cargando packings"
+          loadingAriaLabel="Cargando embarques"
         />
       </div>
     </div>

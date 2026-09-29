@@ -345,7 +345,7 @@ export function PickingWizardStep2({
           loadingLabel="Registrando..."
           disabled={isPending || selectedCount === 0 || overAllocations.length > 0}
         >
-          Registrar picking
+          Registrar surtido
         </FormSubmitButton>
       </div>
     </form>

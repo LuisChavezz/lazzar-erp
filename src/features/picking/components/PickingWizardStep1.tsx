@@ -233,7 +233,7 @@ export function PickingWizardStep1({ initialValues, onNext }: PickingWizardStep1
           <div className="space-y-3">
             <div>
               <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-100">
-                Faltan configuraciones para registrar un picking
+                Faltan configuraciones para registrar un surtido
               </h3>
               <p className="text-sm text-slate-500 dark:text-slate-400">
                 Antes de iniciar un surtido, verifica lo siguiente:
@@ -269,7 +269,7 @@ export function PickingWizardStep1({ initialValues, onNext }: PickingWizardStep1
               <RouteIcon className="w-4 h-4" />
             </div>
             <div>
-              <h3 className="font-semibold text-slate-900 dark:text-white text-sm">Detalles del picking</h3>
+              <h3 className="font-semibold text-slate-900 dark:text-white text-sm">Detalles del surtido</h3>
               <p className="text-[11px] text-slate-500">
                 Pedido a surtir, operador asignado y almacén destino
               </p>
@@ -427,7 +427,7 @@ export function PickingWizardStep1({ initialValues, onNext }: PickingWizardStep1
               <form.Field name="tipo">
                 {(field) => (
                   <FormSelect
-                    label="Tipo de picking"
+                    label="Tipo de surtido"
                     name={field.name}
                     value={field.state.value}
                     onChange={(event) => {
@@ -455,7 +455,7 @@ export function PickingWizardStep1({ initialValues, onNext }: PickingWizardStep1
               {(field) => (
                 <FormTextarea
                   label="Observaciones (opcional)"
-                  placeholder="Notas del picking"
+                  placeholder="Notas del surtido"
                   rows={2}
                   name={field.name}
                   value={field.state.value}

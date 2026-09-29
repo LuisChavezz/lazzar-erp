@@ -62,7 +62,7 @@ export function PickingDetailByIdDialog({
           <RouteIcon className="w-5 h-5 text-sky-500 shrink-0" />
           <div>
             <p className="text-base font-semibold leading-tight text-slate-800 dark:text-slate-100">
-              Detalle de Picking
+              Detalle de Surtido
             </p>
             <p className="text-xs text-slate-500 dark:text-slate-400 font-mono font-normal mt-0.5">
               {subtitle}
@@ -72,12 +72,12 @@ export function PickingDetailByIdDialog({
       }
     >
       {isLoading ? (
-        <Loader title="Cargando detalle del picking..." className="py-16" />
+        <Loader title="Cargando detalle del surtido..." className="py-16" />
       ) : isError || !row ? (
         // Error de red o consulta resuelta sin registro (404 fuera de tenant / id
         // inexistente): el backend fusiona ambos en un 404, un solo estado basta.
         <ErrorState
-          title="No se pudo cargar el picking"
+          title="No se pudo cargar el surtido"
           message={extractErrorMessage(
             error,
             "No existe, no tienes acceso a él o falló la conexión.",

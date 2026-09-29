@@ -22,7 +22,7 @@ export const PickingForm = () => {
       onOpenChange={setIsDialogOpen}
       title={
         <DialogHeader
-          title="Nuevo Picking"
+          title="Nuevo Surtido"
           subtitle="Surtido parcial de un pedido por tallas"
           statusColor="sky"
         />
@@ -32,7 +32,7 @@ export const PickingForm = () => {
       trigger={
         <Button variant="primary">
           <RouteIcon className="w-4 h-4" />
-          Nuevo picking
+          Nuevo surtido
         </Button>
       }
     >

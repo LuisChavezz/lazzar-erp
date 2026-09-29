@@ -31,7 +31,7 @@ export function PickingStats({ items }: { items: Picking[] }) {
 
   const cards: KpiItem[] = [
     {
-      label: "Total de Pickings",
+      label: "Total de Surtidos",
       value: String(kpis.totalPickings),
       icon: RouteIcon,
       iconBgClass: "bg-sky-50 dark:bg-sky-500/10",
