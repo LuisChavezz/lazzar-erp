@@ -223,10 +223,12 @@ export interface CorteMangaOrder {
  * con AL MENOS una talla marcada `lleva_corte_manga=True`, ordenados
  * `-created_at, -id`.
  *
- * OJO: el catálogo NO excluye los pedidos que ya tienen una orden de corte de
- * manga activa — se puede elegir uno y recibir el 409 de duplicado. Es
- * justamente el caso que atiende el bloque ámbar de
- * `CorteMangaOrderCreateForm`.
+ * OJO: comportamiento OBSERVADO en vivo, no confirmado en el código del
+ * backend: un pedido cubierto al 100% por OCM existentes deja de aparecer en el
+ * catálogo (al crear la OCM que lo cubría, desapareció de la respuesta
+ * inmediatamente). Aun así el 409 de duplicado sigue siendo posible —p. ej.
+ * otro usuario crea la orden entre la carga del catálogo y el envío—, y es el
+ * caso que atiende el bloque ámbar de `CorteMangaOrderCreateForm`.
  *
  * `folio`, `cliente_nombre` y `sucursal_nombre` pueden ser `null`
  * (`Pedido.folio` es nullable y los nombres se leen con `getattr(..., None)`).
