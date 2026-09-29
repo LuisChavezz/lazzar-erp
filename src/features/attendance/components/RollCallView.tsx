@@ -141,6 +141,7 @@ export function RollCallView({ fecha, today, showAll, setParams }: RollCallViewP
     <AttendanceRowActionsProvider
       value={{
         record: {
+          onOpenBreakdown: dialogs.openBreakdown,
           onCorrect: dialogs.openCorrect,
           onToggleJustification: dialogs.openJustification,
           onDelete: dialogs.openDelete,

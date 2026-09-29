@@ -107,6 +107,7 @@ export function AttendanceHistoryView({ desde, hasta, setParams }: AttendanceHis
     <AttendanceRowActionsProvider
       value={{
         record: {
+          onOpenBreakdown: dialogs.openBreakdown,
           onCorrect: dialogs.openCorrect,
           onToggleJustification: dialogs.openJustification,
           onDelete: dialogs.openDelete,

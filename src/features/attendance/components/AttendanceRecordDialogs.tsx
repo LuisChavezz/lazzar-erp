@@ -11,6 +11,7 @@ import { useDeleteAttendance } from "../hooks/useDeleteAttendance";
 import type { AttendanceRow } from "../utils/attendanceRows";
 import { targetOf } from "../utils/attendanceRowTarget";
 import { AttendanceCorrectionDialog } from "./AttendanceCorrectionDialog";
+import { TimeTrackingDialog } from "@/src/features/time-tracking/components/TimeTrackingDialog";
 
 interface AttendanceRecordDialogsProps {
   dialogs: AttendanceRecordDialogsState;
@@ -43,11 +44,22 @@ export function AttendanceRecordDialogs({ dialogs, permissions }: AttendanceReco
     });
   };
 
-  const { correctTarget, justifyTarget, justifyMode, deleteTarget } = dialogs;
+  const { correctTarget, justifyTarget, justifyMode, deleteTarget, breakdownTarget } = dialogs;
   const isJustify = justifyMode === "justificar";
 
   return (
     <>
+      {/* Sin permiso propio: consultar es de quien vea la fila; el diálogo
+          decide qué acciones ofrece. */}
+      {breakdownTarget && (
+        <TimeTrackingDialog
+          key={breakdownTarget.id}
+          attendance={breakdownTarget}
+          permissions={permissions}
+          onClose={dialogs.closeBreakdown}
+        />
+      )}
+
       {permissions.canCapture && correctTarget && (
         <AttendanceCorrectionDialog
           key={correctTarget.id}

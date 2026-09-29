@@ -1,6 +1,7 @@
 import { ColumnDef, createColumnHelper } from "@tanstack/react-table";
 import {
   CheckCircleIcon,
+  ClockIcon,
   DeleteIcon,
   EditIcon,
   RejectIcon,
@@ -72,6 +73,9 @@ export function EmployeeCell({ nombre, numero }: { nombre: string; numero: strin
 /**
  * Acciones de un registro EXISTENTE según la matriz de permisos (decisión 3):
  *
+ * - "Desglose de horas" (cualquiera que vea la fila): los tramos de control de
+ *   horas del registro. Qué se puede hacer dentro lo decide el diálogo según
+ *   los mismos permisos; sin hora de entrada solo se consulta o se borra.
  * - "Corregir" (`E-RH`): horas y observaciones; nunca cambia `estado`.
  * - "Justificar" (`D-RH`): solo sobre `falta` o `retardo` (un registro
  *   puntual no tiene nada que justificar).
@@ -86,7 +90,14 @@ export const buildRecordMenuItems = (
   actions: AttendanceRecordActions,
   isBusy: boolean
 ): ActionMenuItem[] => {
-  const items: ActionMenuItem[] = [];
+  const items: ActionMenuItem[] = [
+    {
+      label: "Desglose de horas",
+      icon: ClockIcon,
+      onSelect: () => actions.onOpenBreakdown(record),
+      disabled: isBusy,
+    },
+  ];
   if (permissions.canCapture) {
     items.push({
       label: "Corregir",
