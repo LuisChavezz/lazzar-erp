@@ -11,14 +11,15 @@ import path from "node:path";
  * `ob-ficha-e2e.spec.ts` y `rfid-scanner-e2e.spec.ts`.
  *
  * ⚠ El paso 4 es IRREVERSIBLE Y REAL: `POST /wms/pickings/` crea un documento
- * en el backend de producción y la UI NO ofrece forma de borrarlo ni de
+ * en el backend al que apunte `NEXT_PUBLIC_API_URL` (revisa `.env.local` antes
+ * de correr con `RUN_CREATE=1`) y la UI NO ofrece forma de borrarlo ni de
  * cancelarlo (`PickingColumns` solo tiene "Ver Detalles"). A diferencia de la
  * ficha de la OB —que restaura todo lo que toca— aquí no hay limpieza posible.
  *
  * Por eso la creación es OPT-IN (`RUN_CREATE=1`) y no opt-out, por el mismo
  * motivo que la purga de `rfid-scanner-e2e`: `npm run e2e` sin argumentos
  * recoge TODOS los specs de `tests/`, así que un opt-out convertiría el comando
- * de siempre en uno que además siembra pickings en producción, sin que quien lo
+ * de siempre en uno que además siembra pickings en ese backend, sin que quien lo
  * teclea tenga por qué saber que este archivo existe.
  *
  * Sin `RUN_CREATE`, los pasos 1-3 corren completos —incluida la captura de
@@ -203,7 +204,7 @@ test("Alta de picking parcial — asistente de 2 pasos", async ({ page }) => {
 
     // El botón vive en el `actionButton` del toolbar de `DataTable`, que sigue
     // montado durante la carga de la tabla — no hay que esperar a los datos.
-    const nuevo = page.getByRole("button", { name: "Nuevo picking" });
+    const nuevo = page.getByRole("button", { name: "Nuevo surtido" });
     await expect(nuevo).toBeVisible({ timeout: 60_000 });
     await shot(page, "picking-01-listado.png");
 
@@ -218,9 +219,9 @@ test("Alta de picking parcial — asistente de 2 pasos", async ({ page }) => {
     await onboarding;
 
     await expect(dialog).toBeVisible();
-    await expect(dialog.getByText("Nuevo Picking")).toBeVisible();
+    await expect(dialog.getByText("Nuevo Surtido")).toBeVisible();
     await expect(
-      dialog.getByRole("heading", { name: "Detalles del picking" }),
+      dialog.getByRole("heading", { name: "Detalles del surtido" }),
     ).toBeVisible({ timeout: 60_000 });
     await shot(page, "picking-02-paso1-vacio.png");
   });
@@ -259,7 +260,7 @@ test("Alta de picking parcial — asistente de 2 pasos", async ({ page }) => {
     // Prioridad y tipo ya vienen con default ("Media" / "Por pedido"): se
     // dejan tal cual — la prueba no los ejercita, solo confirma que existen.
     await expect.soft(dialog.getByLabel("Prioridad", { exact: true })).toBeVisible();
-    await expect.soft(dialog.getByLabel("Tipo de picking", { exact: true })).toBeVisible();
+    await expect.soft(dialog.getByLabel("Tipo de surtido", { exact: true })).toBeVisible();
 
     await dialog
       .getByLabel("Observaciones (opcional)", { exact: true })
@@ -364,7 +365,7 @@ test("Alta de picking parcial — asistente de 2 pasos", async ({ page }) => {
         .soft(dialog.getByText("Varias tallas comparten la misma existencia"))
         .toBeHidden();
 
-      const registrar = dialog.getByRole("button", { name: "Registrar picking" });
+      const registrar = dialog.getByRole("button", { name: "Registrar surtido" });
       await expect(registrar).toBeEnabled();
       listoParaEnviar = true;
       await shot(page, "picking-04-cantidad-capturada.png");
@@ -394,7 +395,7 @@ test("Alta de picking parcial — asistente de 2 pasos", async ({ page }) => {
       const response = await waitForMutation(
         page,
         async () => {
-          await dialog.getByRole("button", { name: "Registrar picking" }).click();
+          await dialog.getByRole("button", { name: "Registrar surtido" }).click();
         },
         PICKINGS_POST,
       );
@@ -407,7 +408,7 @@ test("Alta de picking parcial — asistente de 2 pasos", async ({ page }) => {
 
       // El diálogo se cierra desde `onSuccess` del asistente.
       await expect(dialog).toBeHidden({ timeout: 30_000 });
-      await expect.soft(page.getByText("Picking registrado correctamente")).toBeVisible();
+      await expect.soft(page.getByText("Surtido registrado correctamente")).toBeVisible();
       await shot(page, "picking-05-registrado.png");
     });
   }

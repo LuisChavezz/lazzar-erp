@@ -40,17 +40,17 @@ const HEADER_DECIMAL_PLACES = 3;
  */
 const ZERO_PENDING_COPY: Record<PackingZeroPendingCause, { title: string; subtitle: string }> = {
   "fully-packed": {
-    title: "Este picking ya fue completamente empacado",
-    subtitle: "Regresa para elegir otro picking.",
+    title: "Este surtido ya fue completamente empacado",
+    subtitle: "Regresa para elegir otro surtido.",
   },
   "never-assigned": {
-    title: "Este picking no tiene cantidad asignada para empacar",
+    title: "Este surtido no tiene cantidad asignada para empacar",
     subtitle:
-      "Sus líneas no tienen cantidad asignada — puede tratarse de un picking generado antes del flujo de surtido parcial. Regresa para elegir otro picking.",
+      "Sus líneas no tienen cantidad asignada — puede tratarse de un surtido registrado antes de que existiera la captura parcial por tallas. Regresa para elegir otro surtido.",
   },
   mixed: {
-    title: "Este picking ya no tiene nada pendiente por empacar",
-    subtitle: "Regresa para elegir otro picking.",
+    title: "Este surtido ya no tiene nada pendiente por empacar",
+    subtitle: "Regresa para elegir otro surtido.",
   },
 };
 
@@ -82,7 +82,7 @@ export function PackingWizardStep2({ step1, onBack, onSuccess }: PackingWizardSt
       <Loader
         className="py-12"
         title="Cargando pendientes"
-        message="Consultando lo que queda por empacar de este picking..."
+        message="Consultando lo que queda por empacar de este surtido..."
       />
     );
   }
@@ -92,10 +92,10 @@ export function PackingWizardStep2({ step1, onBack, onSuccess }: PackingWizardSt
       <div className="space-y-4">
         <div className="rounded-xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 p-6 text-center">
           <p className="text-sm font-semibold text-red-600 dark:text-red-400">
-            No se pudieron cargar los pendientes del picking
+            No se pudieron cargar los pendientes del surtido
           </p>
           <p className="text-xs text-red-500 dark:text-red-300 mt-1">
-            Regresa e intenta seleccionar el picking de nuevo.
+            Regresa e intenta seleccionar el surtido de nuevo.
           </p>
         </div>
         <div className="flex justify-start">
@@ -119,7 +119,7 @@ export function PackingWizardStep2({ step1, onBack, onSuccess }: PackingWizardSt
       {/* ── Resumen del picking elegido ─────────────────────────────────── */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 rounded-xl bg-slate-50 dark:bg-white/5 px-4 py-3 text-xs">
         <div>
-          <p className="text-[11px] uppercase tracking-wider text-slate-400 font-semibold">Picking</p>
+          <p className="text-[11px] uppercase tracking-wider text-slate-400 font-semibold">Surtido</p>
           <p className="font-semibold text-slate-700 dark:text-slate-200 truncate">{picking?.folio ?? "—"}</p>
         </div>
         <div>
@@ -178,7 +178,7 @@ export function PackingWizardStep2({ step1, onBack, onSuccess }: PackingWizardSt
         {/* ── Encabezado propio de packing (todo opcional) ────────────────── */}
         <section className="bg-white dark:bg-zinc-900 rounded-2xl border border-slate-200 dark:border-white/5 shadow-sm dark:shadow-none overflow-hidden">
           <div className="px-6 py-4 border-b border-slate-100 dark:border-white/5 bg-slate-50/50 dark:bg-white/2">
-            <h3 className="font-semibold text-slate-900 dark:text-white text-sm">Detalles del empaque</h3>
+            <h3 className="font-semibold text-slate-900 dark:text-white text-sm">Detalles del embarque</h3>
             <p className="text-[11px] text-slate-500">Cajas, peso y volumen (opcional)</p>
           </div>
           <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-5">
@@ -236,7 +236,7 @@ export function PackingWizardStep2({ step1, onBack, onSuccess }: PackingWizardSt
               <FormTextarea
                 label="Observaciones (opcional)"
                 name="observaciones"
-                placeholder="Notas del packing"
+                placeholder="Notas del embarque"
                 rows={2}
                 value={header.observaciones}
                 onChange={(event) =>
@@ -259,10 +259,10 @@ export function PackingWizardStep2({ step1, onBack, onSuccess }: PackingWizardSt
             {rows.length === 0 ? (
               <div>
                 <h3 className="text-sm font-semibold text-amber-800 dark:text-amber-200">
-                  Este picking no tiene líneas registradas
+                  Este surtido no tiene líneas registradas
                 </h3>
                 <p className="text-xs text-amber-700 dark:text-amber-300 mt-1">
-                  Regresa para elegir otro picking.
+                  Regresa para elegir otro surtido.
                 </p>
               </div>
             ) : (
@@ -285,7 +285,7 @@ export function PackingWizardStep2({ step1, onBack, onSuccess }: PackingWizardSt
               <div>
                 <h3 className="font-semibold text-slate-900 dark:text-white text-sm">Líneas por empacar</h3>
                 <p className="text-[11px] text-slate-500">
-                  Captura la cantidad a empacar en este packing (máximo: lo pendiente por línea)
+                  Captura la cantidad de cada línea que entra en este embarque (máximo: lo pendiente por línea)
                 </p>
               </div>
             </div>
@@ -372,7 +372,7 @@ export function PackingWizardStep2({ step1, onBack, onSuccess }: PackingWizardSt
           loadingLabel="Registrando..."
           disabled={isPending || selectedCount === 0}
         >
-          Registrar packing
+          Registrar embarque
         </FormSubmitButton>
       </div>
     </form>

@@ -48,7 +48,7 @@ export const packingColumns = [
     ),
   }),
   columnHelper.accessor("picking_folio", {
-    header: "Picking",
+    header: "Surtido",
     cell: (info) => (
       <span className="font-mono text-sm text-slate-600 dark:text-slate-300">
         {info.getValue()}

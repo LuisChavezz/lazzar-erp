@@ -43,8 +43,8 @@ export function PackingWizardStep1({ initialValues, onNext }: PackingWizardStep1
     return (
       <Loader
         className="py-12"
-        title="Cargando pickings"
-        message="Obteniendo pickings disponibles para empacar..."
+        title="Cargando surtidos"
+        message="Obteniendo surtidos disponibles para empacar..."
       />
     );
   }
@@ -53,7 +53,7 @@ export function PackingWizardStep1({ initialValues, onNext }: PackingWizardStep1
     return (
       <div className="rounded-xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 p-6 text-center">
         <p className="text-sm font-semibold text-red-600 dark:text-red-400">
-          No se pudo cargar el catálogo de pickings
+          No se pudo cargar el catálogo de surtidos
         </p>
         <p className="text-xs text-red-500 dark:text-red-300 mt-1">
           Revisa tu conexión e intenta abrir el diálogo de nuevo.
@@ -80,14 +80,14 @@ export function PackingWizardStep1({ initialValues, onNext }: PackingWizardStep1
     >
       {isCatalogCapped && (
         <p className="text-[11px] text-slate-500 dark:text-slate-400 px-1">
-          Mostrando los {PACKING_CATALOG_LIMIT} pickings más recientes. La búsqueda solo
+          Mostrando los {PACKING_CATALOG_LIMIT} surtidos más recientes. La búsqueda solo
           filtra esta lista: si no encuentras uno más antiguo, puede estar fuera de ella.
         </p>
       )}
 
       <SearchableSelectList<PackingOnboardingPicking>
         items={pickings}
-        searchPlaceholder="Buscar picking por folio, pedido, cliente o almacén..."
+        searchPlaceholder="Buscar surtido por folio, pedido, cliente o almacén..."
         filterPredicate={(picking, term) =>
           picking.folio.toLowerCase().includes(term) ||
           (picking.pedido_folio ?? "").toLowerCase().includes(term) ||
@@ -99,8 +99,8 @@ export function PackingWizardStep1({ initialValues, onNext }: PackingWizardStep1
         onSelect={(picking) =>
           setSelectedId((prev) => (prev === picking.id ? null : picking.id))
         }
-        emptyMessage="No hay pickings disponibles para empacar."
-        noResultsMessage="No se encontraron pickings"
+        emptyMessage="No hay surtidos disponibles para empacar."
+        noResultsMessage="No se encontraron surtidos"
         renderIndicator={renderRadioIndicator}
         renderContent={(picking) => (
           <>

@@ -19,7 +19,7 @@ import { toSendableDecimal } from "@/src/utils/decimal";
 
 /** Paso 1: solo el picking origen. `0` = sin seleccionar. */
 export const PackingStep1Schema = z.object({
-  picking: z.number().int().min(1, "Selecciona un picking"),
+  picking: z.number().int().min(1, "Selecciona un surtido"),
 });
 export type PackingStep1Values = z.infer<typeof PackingStep1Schema>;
 

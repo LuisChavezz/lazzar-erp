@@ -319,7 +319,7 @@ function PedidoPickingTracker({ tracker }: { tracker?: PedidoTrackerPicking }) {
   const totalPrendas = formatExactQuantityValue(tracker.total_prendas_pedido);
 
   return (
-    <Section title="Avance de picking">
+    <Section title="Avance de surtido">
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <MetricCard label="Prendas del pedido" done={totalPrendas} />
         <MetricCard
@@ -575,6 +575,22 @@ const MOVIMIENTO_INVENTARIO_TIPO = "movimiento_inventario";
  */
 const PICKING_DOC_TIPO = "picking";
 
+/** Llave de `CLICKABLE_DOC_TIPOS` para el detalle de un packing (= `doc.tipo`). */
+const PACKING_DOC_TIPO = "packing";
+
+/**
+ * Etiqueta visible por `doc.tipo` que reemplaza el `doc.label` del backend
+ * ("Picking (WMS)" / "Packing (WMS)") por el término de la UI. Un tipo ausente
+ * conserva el `doc.label` tal cual llega.
+ */
+const DOC_LABEL_OVERRIDES: Record<string, string> = {
+  [PICKING_DOC_TIPO]: "Surtido (WMS)",
+  [PACKING_DOC_TIPO]: "Embarque (WMS)",
+};
+
+const docLabel = (doc: PedidoDocumento): string =>
+  Object.hasOwn(DOC_LABEL_OVERRIDES, doc.tipo) ? DOC_LABEL_OVERRIDES[doc.tipo] : doc.label;
+
 /**
  * Registro de tipos de documento con detalle navegable desde aquí. La llave es
  * el `doc.tipo`; el valor, el diálogo que lo abre. Todos los diálogos incluidos
@@ -611,7 +627,7 @@ const CLICKABLE_DOC_TIPOS: Record<string, DocDetailDialog> = {
   [PICKING_DOC_TIPO]: PickingDetailByIdDialog,
   // Packing es como picking pero sin enriquecimiento; el wrapper fetchea por id
   // y maneja loading/error (el diálogo no acepta null ni los tiene).
-  packing: PackingDetailByIdDialog,
+  [PACKING_DOC_TIPO]: PackingDetailByIdDialog,
   // Orden de compra encaja directo: ya es self-fetching por id y su firma es
   // exactamente la del registro (`{ orderId, open, onOpenChange }`).
   orden_compra: PurchaseOrderDetailDialog,
@@ -695,6 +711,7 @@ function PedidoDocumentos({
             const fecha = isStub ? "—" : formatShortDate(doc.fecha);
             // Estatus: nunca para stubs ni movimiento; badge si viene, si no —.
             const showEstatus = !isStub && !isMovimiento && doc.estatus;
+            const label = docLabel(doc);
             return (
               <tr
                 key={`${doc.tipo}-${doc.id}`}
@@ -706,12 +723,12 @@ function PedidoDocumentos({
                       type="button"
                       onClick={() => onOpenDoc({ tipo: doc.tipo, id: doc.id })}
                       className="text-sky-600 dark:text-sky-400 hover:underline hover:text-sky-700 dark:hover:text-sky-300 cursor-pointer font-medium text-left transition-colors"
-                      title={`Ver detalle: ${doc.label}`}
+                      title={`Ver detalle: ${label}`}
                     >
-                      {doc.label}
+                      {label}
                     </button>
                   ) : (
-                    doc.label
+                    label
                   )}
                 </td>
                 <td className="px-3 py-2 font-mono text-slate-600 dark:text-slate-300 whitespace-nowrap">
@@ -771,7 +788,7 @@ function PedidoFoliosPicking({
   onOpenFolio: (doc: { tipo: string; id: number }) => void;
 }) {
   if (folios.length === 0) {
-    return <EmptyLines>Este pedido todavía no tiene pickings.</EmptyLines>;
+    return <EmptyLines>Este pedido todavía no tiene surtidos.</EmptyLines>;
   }
 
   const ordenados = [...folios].sort((a, b) => {
@@ -817,7 +834,7 @@ function PedidoFoliosPicking({
                     onOpenFolio({ tipo: PICKING_DOC_TIPO, id: folio.id })
                   }
                   className="font-mono text-sky-600 dark:text-sky-400 hover:underline hover:text-sky-700 dark:hover:text-sky-300 cursor-pointer font-medium text-left transition-colors whitespace-nowrap"
-                  title="Ver detalle del picking"
+                  title="Ver detalle del surtido"
                 >
                   {textOrDash(folio.folio)}
                 </button>
@@ -1305,7 +1322,7 @@ export function PedidoDetailContent({ pedidoId, from }: PedidoDetailContentProps
       {/* ── Fila full-width: historial de pickings (8 columnas, necesita ancho).
           Va después de los productos y antes de los documentos: es el desglose
           de las barras de arriba y el paso previo a la bitácora documental. */}
-      <Section title={`Folios de picking (${(data.folios_picking ?? []).length})`}>
+      <Section title={`Folios de surtido (${(data.folios_picking ?? []).length})`}>
         <PedidoFoliosPicking
           folios={data.folios_picking ?? []}
           onOpenFolio={setOpenDoc}

@@ -31,7 +31,7 @@ export const PickingPriorityBreakdown = ({
       <div className="flex items-center justify-between mb-4">
         <div>
           <h3 className="text-sm font-bold text-slate-800 dark:text-white">
-            Pickings por Prioridad
+            Surtidos por Prioridad
           </h3>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
             Distribución del listado cargado

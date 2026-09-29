@@ -202,7 +202,7 @@ export const appRouteGroups: AppRouteGroup[] = [
     permission: "R-WMS",
     moduleLabel: "Operaciones de Almacén",
     modulePath: "/wms",
-    moduleDescription: "Inventario, ubicaciones, movimientos, picking, packing y transferencias.",
+    moduleDescription: "Inventario, ubicaciones, movimientos, surtido, embarque y transferencias.",
     moduleIcon: InventariosIcon,
     showInHome: true,
     items: [
@@ -240,7 +240,7 @@ export const appRouteGroups: AppRouteGroup[] = [
       // },
       {
         key: "wms-picking",
-        label: "Picking",
+        label: "Surtido",
         path: "/wms/picking",
         icon: RouteIcon,
         description: "Surtido de pedidos: recolección de productos en almacén.",
@@ -248,10 +248,10 @@ export const appRouteGroups: AppRouteGroup[] = [
       },
       {
         key: "wms-packing",
-        label: "Packing",
+        label: "Embarque",
         path: "/wms/packing",
         icon: PackingIcon,
-        description: "Empaque de mercancía surtida por picking.",
+        description: "Empaque de la mercancía proveniente de un surtido.",
         permission: "R-WMS-PACKING",
       },
       {

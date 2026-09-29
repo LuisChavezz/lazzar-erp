@@ -368,7 +368,7 @@ export function usePickingStep2Form({ header, onSuccess }: UsePickingStep2FormPa
       return;
     }
     setStaleNotice(null);
-    const raw = parsed.formError ?? parsed.messages[0] ?? "Error al registrar el picking.";
+    const raw = parsed.formError ?? parsed.messages[0] ?? "Error al registrar el surtido.";
     setServerBanner(friendlyReservaMessage(raw, rows));
   };
 

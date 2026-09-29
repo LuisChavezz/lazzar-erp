@@ -24,7 +24,7 @@ function lineaProductoNombre(linea: PackingDetalleLine): string {
 
 const LineasTable = ({ items }: { items: PackingDetalleLine[] }) => {
   if (items.length === 0) {
-    return <EmptyLines>Este packing no tiene líneas registradas.</EmptyLines>;
+    return <EmptyLines>Este embarque no tiene líneas registradas.</EmptyLines>;
   }
 
   return (
@@ -94,7 +94,7 @@ export function PackingDetailDialog({ packing, open, onOpenChange }: PackingDeta
           <PackingIcon className="w-5 h-5 text-sky-500 shrink-0" />
           <div>
             <p className="text-base font-semibold leading-tight text-slate-800 dark:text-slate-100">
-              Detalle de Packing
+              Detalle de Embarque
             </p>
             <p className="text-xs text-slate-500 dark:text-slate-400 font-mono font-normal mt-0.5">
               {packing.folio}
@@ -158,7 +158,7 @@ export function PackingDetailContent({ packing }: { packing: Packing }) {
 
         {/* Picking → Pedido */}
         <div>
-          <SectionTitle>Picking de origen</SectionTitle>
+          <SectionTitle>Surtido de origen</SectionTitle>
           <div className="flex items-center gap-3 px-4 py-3 rounded-xl border border-slate-100 dark:border-white/10">
             <div className="flex items-center gap-2 flex-1 min-w-0">
               <RouteIcon className="w-4 h-4 text-slate-400 shrink-0" aria-hidden="true" />
@@ -183,7 +183,7 @@ export function PackingDetailContent({ packing }: { packing: Packing }) {
 
         {/* Líneas */}
         <div>
-          <SectionTitle>Líneas del packing</SectionTitle>
+          <SectionTitle>Líneas del embarque</SectionTitle>
           <LineasTable items={packing.packing_detalle} />
         </div>
       </div>

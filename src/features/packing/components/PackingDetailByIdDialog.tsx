@@ -55,7 +55,7 @@ export function PackingDetailByIdDialog({
           <PackingIcon className="w-5 h-5 text-sky-500 shrink-0" />
           <div>
             <p className="text-base font-semibold leading-tight text-slate-800 dark:text-slate-100">
-              Detalle de Packing
+              Detalle de Embarque
             </p>
             <p className="text-xs text-slate-500 dark:text-slate-400 font-mono font-normal mt-0.5">
               {subtitle}
@@ -65,12 +65,12 @@ export function PackingDetailByIdDialog({
       }
     >
       {isLoading ? (
-        <Loader title="Cargando detalle del packing..." className="py-16" />
+        <Loader title="Cargando detalle del embarque..." className="py-16" />
       ) : isError || !packing ? (
         // Error de red o consulta resuelta sin registro (404 fuera de tenant / id
         // inexistente): el backend fusiona ambos en un 404, un solo estado basta.
         <ErrorState
-          title="No se pudo cargar el packing"
+          title="No se pudo cargar el embarque"
           message={extractErrorMessage(
             error,
             "No existe, no tienes acceso a él o falló la conexión.",

@@ -68,7 +68,7 @@ function lineaProductoNombre(linea: PickingDetalleLine): string {
 
 const LineasTable = ({ items }: { items: PickingDetalleLine[] }) => {
   if (items.length === 0) {
-    return <EmptyLines>Este picking no tiene líneas registradas.</EmptyLines>;
+    return <EmptyLines>Este surtido no tiene líneas registradas.</EmptyLines>;
   }
 
   return (
@@ -163,7 +163,7 @@ export function PickingDetailDialog({ picking, open, onOpenChange }: PickingDeta
           <RouteIcon className="w-5 h-5 text-sky-500 shrink-0" />
           <div>
             <p className="text-base font-semibold leading-tight text-slate-800 dark:text-slate-100">
-              Detalle de Picking
+              Detalle de Surtido
             </p>
             <p className="text-xs text-slate-500 dark:text-slate-400 font-mono font-normal mt-0.5">
               {picking.folio}
@@ -277,7 +277,7 @@ export function PickingDetailContent({ picking }: { picking: PickingRow }) {
           </div>
           {picking.almacen_destino_nombre && (
             <p className="mt-1.5 px-1 text-[11px] text-slate-500 dark:text-slate-400">
-              El destino es informativo: el picking documenta el surtido, no
+              El destino es informativo: el surtido solo queda documentado, no
               traspasa existencias por sí mismo.
             </p>
           )}
@@ -285,7 +285,7 @@ export function PickingDetailContent({ picking }: { picking: PickingRow }) {
 
         {/* Líneas */}
         <div>
-          <SectionTitle>Líneas del picking</SectionTitle>
+          <SectionTitle>Líneas del surtido</SectionTitle>
           <LineasTable items={picking.picking_detalle} />
         </div>
       </div>

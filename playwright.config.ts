@@ -11,9 +11,9 @@ import { defineConfig, devices } from "@playwright/test";
  *  - `retries: 0`: reintentar implicaría volver a pedir el login.
  *
  * `BASE_URL` apunta por defecto al dev server local. OJO: el frontend local
- * habla con el backend de PRODUCCIÓN (`NEXT_PUBLIC_API_URL`), así que las
- * mutaciones del spec tocan datos reales — de ahí que cada prueba restaure lo
- * que cambió.
+ * habla con el backend al que apunte `NEXT_PUBLIC_API_URL` (revisa
+ * `.env.local` antes de correr), así que las mutaciones del spec tocan los
+ * datos reales de ESE backend — de ahí que cada prueba restaure lo que cambió.
  */
 export default defineConfig({
   testDir: "./tests",

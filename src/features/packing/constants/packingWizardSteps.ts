@@ -8,6 +8,6 @@ export type PackingWizardStep = "step-1" | "step-2";
 export const PACKING_WIZARD_STEPS: readonly PackingWizardStep[] = ["step-1", "step-2"];
 
 export const PACKING_WIZARD_STEP_LABELS: Record<PackingWizardStep, string> = {
-  "step-1": "Picking origen",
+  "step-1": "Surtido origen",
   "step-2": "Empacar líneas",
 };
