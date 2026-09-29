@@ -69,6 +69,25 @@ export const parseDiasLaborales = (value: string | null | undefined): string[] =
 };
 
 /**
+ * Código de día de cada día de la semana, indexado por `getUTCDay()`
+ * (0 = domingo). Son los códigos de `DIA_LABORAL_OPTIONS`.
+ */
+const CODIGO_POR_DIA_SEMANA = ["D", "L", "M", "X", "J", "V", "S"] as const;
+
+/**
+ * Código de día (`"L"`, `"X"`...) del día calendario UTC de `date`. Se lee en
+ * UTC a propósito: quien llama construye la fecha con `Date.UTC`, así el día no
+ * depende de la zona del navegador ni de un cambio de horario.
+ */
+export const getDiaLaboralCode = (date: Date): string => CODIGO_POR_DIA_SEMANA[date.getUTCDay()];
+
+/** Código de día de una fecha calendario `"YYYY-MM-DD"` (ver `getDiaLaboralCode`). */
+export const getDiaLaboralCodeForDateKey = (fecha: string): string => {
+  const [year, month, day] = fecha.split("-").map(Number);
+  return getDiaLaboralCode(new Date(Date.UTC(year, month - 1, day)));
+};
+
+/**
  * `true` cuando la cadena guardada tiene contenido pero NADA de lo que trae es
  * un código conocido. El formulario lo usa para avisar en vez de fingir que el
  * turno no tiene días asignados.

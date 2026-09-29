@@ -68,6 +68,7 @@ import {
   Layers2,
   Loader2,
   Lock,
+  LogIn,
   LogOut,
   Mail,
   MapPin,
@@ -109,8 +110,10 @@ import {
   Truck,
   Upload,
   User,
+  UserCheck,
   UserCog,
   Users,
+  UserX,
   Warehouse,
   X,
   XCircle,
@@ -186,6 +189,17 @@ export const EvaluationIcon = (props: LucideProps) => <ClipboardCheck {...props}
 export const VacationIcon = (props: LucideProps) => <TreePalm {...props} />;
 /** Calendario con una cruz. Para los permisos y ausencias de RH. */
 export const AbsenceIcon = (props: LucideProps) => <CalendarX2 {...props} />;
+/** Persona con palomita. Para la asistencia (pase de lista) de RH. */
+export const AttendanceIcon = (props: LucideProps) => <UserCheck {...props} />;
+/** Flecha entrando. Para registrar la ENTRADA de una checada. */
+export const CheckInIcon = (props: LucideProps) => <LogIn {...props} />;
+/**
+ * Flecha saliendo. Para registrar la SALIDA de una checada. Mismo glifo que
+ * `LogoutIcon`, con nombre propio para no mezclar "cerrar sesión" con checar.
+ */
+export const CheckOutIcon = (props: LucideProps) => <LogOut {...props} />;
+/** Persona con una cruz. Para marcar la falta del día en el pase de lista. */
+export const MarkAbsenceIcon = (props: LucideProps) => <UserX {...props} />;
 export const HistoryIcon = (props: LucideProps) => <History {...props} />;
 export const BellIcon = (props: LucideProps) => <Bell {...props} />;
 export const ErrorIcon = (props: LucideProps) => <AlertTriangle {...props} />;

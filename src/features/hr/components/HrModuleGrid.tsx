@@ -12,6 +12,7 @@ import {
   EvaluationIcon,
   VacationIcon,
   AbsenceIcon,
+  AttendanceIcon,
   UserIcon,
 } from "@/src/components/Icons";
 
@@ -131,6 +132,16 @@ const hrCards = [
     accentClass: "text-orange-600 dark:text-orange-400",
     accentBgClass: "bg-orange-50 dark:bg-orange-500/10",
     shadowColorClassName: "hover:shadow-orange-500/25 dark:hover:shadow-orange-500/25",
+  },
+  {
+    icon: AttendanceIcon,
+    title: "Asistencia",
+    description: "Pase de lista del día: entradas, salidas, retardos y correcciones, con su historial.",
+    footerText: "Ver asistencia",
+    href: "/hr/attendance",
+    accentClass: "text-lime-600 dark:text-lime-400",
+    accentBgClass: "bg-lime-50 dark:bg-lime-500/10",
+    shadowColorClassName: "hover:shadow-lime-500/25 dark:hover:shadow-lime-500/25",
   },
 ];
 
