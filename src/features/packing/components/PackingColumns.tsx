@@ -5,7 +5,7 @@ import { createColumnHelper, type ColumnDef } from "@tanstack/react-table";
 import { UserIcon, ViewIcon } from "@/src/components/Icons";
 import { ActionMenu, type ActionMenuItem } from "@/src/components/ActionMenu";
 import { StatusBadge } from "@/src/components/StatusBadge";
-import { textOrDash } from "@/src/components/DetailDialogPrimitives";
+import { PedidoFolioLink } from "@/src/features/orders/components/PedidoFolioLink";
 import { formatExactQuantityValue } from "@/src/utils/formatCurrency";
 import { formatShortDate } from "@/src/utils/formatDate";
 import { PACKING_STATUS_CONFIG } from "../constants/packingStatus";
@@ -63,9 +63,11 @@ export const packingColumns = [
     id: "pedido_folio",
     header: "Pedido",
     cell: (info) => (
-      <span className="font-mono text-sm text-slate-600 dark:text-slate-300">
-        {textOrDash(info.getValue())}
-      </span>
+      <PedidoFolioLink
+        pedidoId={info.row.original.pedido}
+        folio={info.row.original.pedido_folio}
+        from="packing"
+      />
     ),
   }),
   columnHelper.accessor("estado", {

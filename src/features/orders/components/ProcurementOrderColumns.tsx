@@ -10,6 +10,8 @@ import { parseLocalDate } from '@/src/utils/formatDate';
 import type { PedidoListItem } from '../interfaces/order.interface';
 import { PEDIDO_ESTATUS, PEDIDO_ESTATUS_CONFIG, getPedidoEstatusConfig } from '../constants/pedidoStatus';
 import { hasMeaningfulOc } from '../utils/pedidoFormat';
+import type { PedidoDetailOrigin } from '../constants/pedidoDetailOrigins';
+import { PedidoFolioLink } from './PedidoFolioLink';
 
 /**
  * Columnas de "Pedidos" vistos desde Compras/SCM (`GET /ventas/pedidos/`,
@@ -33,7 +35,8 @@ import { hasMeaningfulOc } from '../utils/pedidoFormat';
  * planearse.
  */
 export interface ProcurementOrderColumnsOptions {
-  onViewDetail: (order: PedidoListItem) => void;
+  /** Llave `?from=` del detalle 360° que abre el folio. */
+  from: PedidoDetailOrigin;
 }
 
 /** Punto de color por estatus — deriva de los mismos colores que ya usa `PEDIDO_ESTATUS_CONFIG.className`. */
@@ -61,7 +64,7 @@ const estatusFilterFn: FilterFn<PedidoListItem> = (row, _columnId, filterValue) 
 };
 
 export function createProcurementOrderColumns({
-  onViewDetail,
+  from,
 }: ProcurementOrderColumnsOptions): ColumnDef<PedidoListItem, unknown>[] {
   return [
     {
@@ -87,18 +90,17 @@ export function createProcurementOrderColumns({
             />
             <span className="sr-only">{cfg.label}</span>
             <div className="flex flex-col items-start gap-1 min-w-0">
-              <button
-                type="button"
-                onClick={() => onViewDetail(order)}
-                className="group inline-flex items-center gap-1 font-mono text-[13px] font-bold text-slate-800 dark:text-white hover:text-sky-600 dark:hover:text-sky-400 hover:underline transition-colors cursor-pointer"
-                title="Ver detalle del pedido"
+              <PedidoFolioLink
+                pedidoId={order.id}
+                folio={order.folio}
+                from={from}
+                className="group inline-flex items-center gap-1 font-mono text-[13px] font-bold text-slate-800 dark:text-white"
               >
-                {order.folio || '—'}
                 <ChevronRightIcon
                   className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500 group-hover:text-sky-500 dark:group-hover:text-sky-400 group-hover:translate-x-0.5 transition-all"
                   aria-hidden="true"
                 />
-              </button>
+              </PedidoFolioLink>
               {hasMeaningfulOc(order.oc) && (
                 <span
                   className="inline-flex max-w-32 items-center truncate px-1.5 py-0.5 rounded text-[10px] font-medium leading-none bg-slate-100 text-slate-500 dark:bg-white/10 dark:text-slate-400"

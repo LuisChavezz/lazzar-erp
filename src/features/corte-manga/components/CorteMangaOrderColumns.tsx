@@ -1,12 +1,12 @@
 "use client";
 
-import Link from "next/link";
 import { type ColumnDef, createColumnHelper } from "@tanstack/react-table";
 import { StatusBadge } from "@/src/components/StatusBadge";
 import { ActionMenu, type ActionMenuItem } from "@/src/components/ActionMenu";
 import { ViewIcon } from "@/src/components/Icons";
 import { formatQuantityValue } from "@/src/utils/formatCurrency";
 import { formatShortDate } from "@/src/utils/formatDate";
+import { PedidoFolioLink } from "@/src/features/orders/components/PedidoFolioLink";
 import {
   CORTE_MANGA_ORDER_PRIORITY_CONFIG,
   corteMangaOrderPriorityFallback,
@@ -104,24 +104,17 @@ export const getCorteMangaOrderColumns = (onViewDetails: (id: number) => void) =
     // un usuario solo-Producción no puede abrir. Mismo enlace que ya usa el
     // detalle de la orden (`CorteMangaOrderPageContent`).
     //
-    // Sin folio no hay nada que enlazar: se pinta el guion como texto. Se
-    // navega por `pedido` (la FK del listado); `pedido_vinculado` —la señal que
-    // prefiere el detalle— solo la declara el `retrieve`, no esta respuesta.
-    cell: (info) => {
-      // `||` y no `??`: el valor ausente llega como `""`, no como `null`.
-      const folio = info.getValue();
-      return folio ? (
-        <Link
-          href={`/orders/${info.row.original.pedido}?from=corte-manga`}
-          className="font-mono text-sm text-slate-600 dark:text-slate-300 hover:text-sky-600 dark:hover:text-sky-400 hover:underline transition-colors"
-          title="Ver detalle del pedido"
-        >
-          {folio}
-        </Link>
-      ) : (
-        <span className="font-mono text-sm text-slate-600 dark:text-slate-300">—</span>
-      );
-    },
+    // Sin folio el guion también enlaza (`PedidoFolioLink`; el valor ausente
+    // llega como `""` por el accessor): el id existe siempre. Se navega por
+    // `pedido` (la FK del listado); `pedido_vinculado` —la señal que prefiere
+    // el detalle— solo la declara el `retrieve`, no esta respuesta.
+    cell: (info) => (
+      <PedidoFolioLink
+        pedidoId={info.row.original.pedido}
+        folio={info.getValue()}
+        from="corte-manga"
+      />
+    ),
   }),
   columnHelper.accessor("estatus_corte", {
     header: "Estatus",

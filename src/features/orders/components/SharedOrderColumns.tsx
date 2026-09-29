@@ -7,6 +7,8 @@ import type { DataTableFilterConfig } from '@/src/components/DataTable';
 import { formatMoneyValueOrDash } from '@/src/utils/formatCurrency';
 import { parseLocalDate } from '@/src/utils/formatDate';
 import type { PedidoListItem } from '../interfaces/order.interface';
+import type { PedidoDetailOrigin } from '../constants/pedidoDetailOrigins';
+import { PedidoFolioLink } from './PedidoFolioLink';
 
 /**
  * Columnas de la tabla de pedidos (`GET /ventas/pedidos/`) en modo lectura de
@@ -67,16 +69,15 @@ export const sharedOrderFilterConfig: DataTableFilterConfig[] = [
 
 export interface OrderColumnsOptions {
   /**
-   * Abre el detalle 360° del pedido desde el folio. Cada módulo decide su
-   * `?from=`. No hay columna de Acciones: su único elemento era "Ver detalle",
-   * que ya cubre el folio.
+   * Llave `?from=` del detalle 360° que abre el folio. No hay columna de
+   * Acciones: su único elemento era "Ver detalle", que ya cubre el folio.
    */
-  onViewDetail: (order: PedidoListItem) => void;
+  from: PedidoDetailOrigin;
 }
 
 // Fábrica de columnas para cualquier lista de pedidos.
 export function createOrderColumns({
-  onViewDetail,
+  from,
 }: OrderColumnsOptions): ColumnDef<PedidoListItem, unknown>[] {
   return [
     {
@@ -87,14 +88,12 @@ export function createOrderColumns({
         const order = row.original;
         return (
           <div className="flex items-center gap-2 flex-wrap">
-            <button
-              type="button"
-              onClick={() => onViewDetail(order)}
-              className="font-mono text-sm font-bold text-slate-800 dark:text-white hover:text-sky-600 dark:hover:text-sky-400 hover:underline transition-colors cursor-pointer"
-              title="Ver detalle del pedido"
-            >
-              {order.folio || '—'}
-            </button>
+            <PedidoFolioLink
+              pedidoId={order.id}
+              folio={order.folio}
+              from={from}
+              className="font-mono text-sm font-bold text-slate-800 dark:text-white"
+            />
             {order.oc && (
               <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 dark:bg-white/10 text-slate-500 dark:text-slate-400 font-mono">
                 {order.oc}

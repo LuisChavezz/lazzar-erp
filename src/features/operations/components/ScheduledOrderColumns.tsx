@@ -7,6 +7,7 @@ import { formatMoneyValueOrDash } from "@/src/utils/formatCurrency";
 import { formatPiezas } from "@/src/utils/formatWorkOrderProgramado";
 import { formatEntregaEstimada, hasMeaningfulOc } from "@/src/features/orders/utils/pedidoFormat";
 import type { PedidoListItem } from "@/src/features/orders/interfaces/order.interface";
+import { PedidoFolioLink } from "@/src/features/orders/components/PedidoFolioLink";
 import type { PedidoProgramacion } from "@/src/features/orders/interfaces/pedido-programacion.interface";
 import {
   getPedidoClasificacionLabel,
@@ -21,13 +22,11 @@ import {
 /**
  * Columnas de "Pedidos programados" (Mesa de Control, SOLO LECTURA). Hermanas
  * de `OperationsOrderColumns`, sin sus acciones de edición/programación: el
- * folio abre directamente el detalle 360°. Se omiten sus columnas placeholder
- * (Piezas, Vendedor, C.P.) y se agregan las de programación y entrega, que el
- * listado sí trae.
+ * folio abre directamente el detalle 360° (`PedidoFolioLink`,
+ * `?from=scheduled-orders` para que el "Volver" regrese a esta lista y no a
+ * "Pedidos"). Se omiten sus columnas placeholder (Piezas, Vendedor, C.P.) y se
+ * agregan las de programación y entrega, que el listado sí trae.
  */
-export interface ScheduledOrderColumnCallbacks {
-  onViewDetail: (order: PedidoListItem) => void;
-}
 
 /**
  * Entradas de `programacion_conf`, tolerando `null`, `{}` y un
@@ -108,9 +107,7 @@ const destinoFilterFn: FilterFn<PedidoListItem> = (row, _columnId, filterValue) 
 
 const DASH = <span className="text-slate-400 dark:text-slate-600">—</span>;
 
-export function getScheduledOrderColumns({
-  onViewDetail,
-}: ScheduledOrderColumnCallbacks): ColumnDef<PedidoListItem, unknown>[] {
+export function getScheduledOrderColumns(): ColumnDef<PedidoListItem, unknown>[] {
   return [
     {
       id: "folio",
@@ -121,14 +118,12 @@ export function getScheduledOrderColumns({
         const order = row.original;
         return (
           <div className="flex items-center gap-2 flex-wrap">
-            <button
-              type="button"
-              onClick={() => onViewDetail(order)}
-              title="Ver detalle"
-              className="font-mono text-[13px] font-bold text-slate-800 dark:text-white hover:text-sky-600 dark:hover:text-sky-400 hover:underline transition-colors cursor-pointer"
-            >
-              {order.folio || "—"}
-            </button>
+            <PedidoFolioLink
+              pedidoId={order.id}
+              folio={order.folio}
+              from="scheduled-orders"
+              className="font-mono text-[13px] font-bold text-slate-800 dark:text-white"
+            />
             {hasMeaningfulOc(order.oc) && (
               <span
                 className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 dark:bg-white/10 text-slate-500 dark:text-slate-400 font-mono"

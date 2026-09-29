@@ -10,6 +10,7 @@ import {
   pickingPrioridadRank,
 } from "../constants/pickingPrioridad";
 import { PICKING_STATUS_CONFIG } from "../constants/pickingStatus";
+import { PedidoFolioLink } from "@/src/features/orders/components/PedidoFolioLink";
 import { PickingDetailDialog } from "./PickingDetailDialog";
 import type { PickingRow } from "../interfaces/picking.interface";
 
@@ -50,9 +51,11 @@ export const pickingColumns = [
   columnHelper.accessor("pedido_folio", {
     header: "Pedido",
     cell: (info) => (
-      <span className="font-mono text-sm text-slate-600 dark:text-slate-300">
-        {info.getValue()}
-      </span>
+      <PedidoFolioLink
+        pedidoId={info.row.original.pedido}
+        folio={info.getValue()}
+        from="picking"
+      />
     ),
   }),
   columnHelper.accessor("operador_nombre", {

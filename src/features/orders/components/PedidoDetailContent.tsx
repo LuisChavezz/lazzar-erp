@@ -72,11 +72,17 @@ import type {
   PedidoFolioPicking,
   PedidoTrackerPicking,
 } from "../interfaces/order.interface";
+import {
+  isPedidoDetailOrigin,
+  type PedidoDetailOrigin,
+} from "../constants/pedidoDetailOrigins";
 
 // ── Navegación "Volver" según el módulo de origen (?from=) ───────────────────
 // La ruta es neutra, así que el destino de "Volver" lo decide quien enlazó.
 // Sin `?from=` válido cae en `home` (ver abajo), no en un listado de módulo.
-const BACK_TARGETS: Record<string, { href: string; label: string }> = {
+// Las llaves salen de `PEDIDO_DETAIL_ORIGINS`: el `Record` exige un destino por
+// cada origen declarado y rechaza llaves que no lo estén.
+const BACK_TARGETS: Record<PedidoDetailOrigin, { href: string; label: string }> = {
   operations: { href: "/operations/orders", label: "Volver a Mesa de Control" },
   // Quien llega desde "Pedidos programados" vuelve a ESA lista, no a "Pedidos".
   // Misma convención de llave por ORIGEN concreto que `embroidery`.
@@ -87,6 +93,12 @@ const BACK_TARGETS: Record<string, { href: string; label: string }> = {
   // Sin esta entrada, un usuario solo-WMS caería en /operations/orders y el
   // proxy lo rebotaría al home por falta de R-MESACONTROL.
   wms: { href: "/wms/orders", label: "Volver a Operaciones de Almacén" },
+  // Folio de pedido en las tablas de Surtido/Embarque/Envío (`PedidoFolioLink`):
+  // cada una vuelve a SU listado. Misma convención de llave por ORIGEN concreto
+  // que `embroidery`.
+  picking: { href: "/wms/picking", label: "Volver a Surtido" },
+  packing: { href: "/wms/packing", label: "Volver a Embarque" },
+  shipping: { href: "/wms/shipping", label: "Volver a Envío" },
   procurement: { href: "/procurement/orders", label: "Volver a Compras" },
   sales: { href: "/sales/orders", label: "Volver a Mis Pedidos" },
   // Mismo motivo que `wms`: sin esta entrada, quien llega desde el detalle de
@@ -138,7 +150,7 @@ const BACK_TARGETS: Record<string, { href: string; label: string }> = {
   home: { href: "/", label: "Volver al inicio" },
 };
 // Fallback cuando `?from=` falta o no es una llave conocida. Apunta al Home y
-// NO a un listado de módulo: la regla "/orders" admite nueve permisos distintos,
+// NO a un listado de módulo: la regla "/orders" admite once permisos distintos,
 // así que cualquier listado concreto (antes /operations/orders) rebotaría al
 // home a la mayoría de los usuarios que sí pueden ver esta pantalla.
 const DEFAULT_BACK = BACK_TARGETS.home;
@@ -956,13 +968,11 @@ export function PedidoDetailContent({ pedidoId, from }: PedidoDetailContentProps
   // llega como PK del FK (no como código SAT) y no se puede mapear sin él.
   const { data: satCatalogs } = useSatInfo();
 
-  // `Object.hasOwn` y no el indexado directo, por el mismo motivo que
-  // `CLICKABLE_DOC_TIPOS` arriba: `from` viene de la URL, así que
-  // `?from=constructor` (o `toString`, `valueOf`) resolvería a una función
-  // heredada de `Object.prototype` —truthy— y dejaría `back.href` en
-  // `undefined`, reventando el `<Link>` del "Volver".
-  const back =
-    from && Object.hasOwn(BACK_TARGETS, from) ? BACK_TARGETS[from] : DEFAULT_BACK;
+  // `from` viene crudo de la URL: el guard lo compara contra la lista de
+  // orígenes (no contra las llaves del objeto), así que `?from=constructor`
+  // (o `toString`, `valueOf`) no resuelve a una función heredada de
+  // `Object.prototype`. Faltante o desconocido → `DEFAULT_BACK`.
+  const back = isPedidoDetailOrigin(from) ? BACK_TARGETS[from] : DEFAULT_BACK;
 
   const BackLink = (
     <Link
