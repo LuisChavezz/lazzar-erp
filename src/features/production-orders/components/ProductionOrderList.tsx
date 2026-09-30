@@ -11,6 +11,8 @@ import { Button } from "@/src/components/Button";
 import { getProductionOrderColumns } from "./ProductionOrderColumns";
 import { CreateProductionOrderDialog } from "./CreateProductionOrderDialog";
 import { useProductionOrders } from "../hooks/useProductionOrders";
+import { ProductionOrderCriticalPathDialog } from "@/src/features/production-order-critical-path/components/ProductionOrderCriticalPathDialog";
+import type { CriticalPathTarget } from "@/src/features/production-order-critical-path/interfaces/production-order-critical-path.interface";
 
 /**
  * Lista principal de órdenes de producción.
@@ -31,10 +33,15 @@ export function ProductionOrderList() {
   // "admin".
   const { data: session } = useSession();
   const canCreate = hasPermission("C-PRODUCCION-OP", session?.user);
+  // OP cuya ruta crítica está abierta. Se guarda la FOTO (id + folio) de la
+  // apertura y no se resuelve contra el listado: la ruta crítica no depende de
+  // la fila, así que un refetch del listado no debe cerrar el diálogo.
+  const [criticalPathTarget, setCriticalPathTarget] = useState<CriticalPathTarget | null>(null);
   const columns = useMemo(
     () =>
-      getProductionOrderColumns((id) =>
-        router.push(`/manufacturing/production-orders/${id}`),
+      getProductionOrderColumns(
+        (id) => router.push(`/manufacturing/production-orders/${id}`),
+        (row) => setCriticalPathTarget({ opId: row.op_id, folio: row.folio_op }),
       ),
     [router],
   );
@@ -81,6 +88,16 @@ export function ProductionOrderList() {
         onOpenChange={setIsCreateOpen}
         onSuccess={() => setIsCreateOpen(false)}
       />
+
+      {/* Montado solo mientras está abierto: el GET de la ruta crítica CREA
+          el registro, y cada apertura pide una lectura fresca. */}
+      {criticalPathTarget && (
+        <ProductionOrderCriticalPathDialog
+          key={criticalPathTarget.opId}
+          target={criticalPathTarget}
+          onClose={() => setCriticalPathTarget(null)}
+        />
+      )}
     </div>
   );
 }
