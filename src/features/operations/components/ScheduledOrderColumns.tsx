@@ -283,6 +283,10 @@ export function getScheduledOrderColumns(): ColumnDef<PedidoListItem, unknown>[]
       id: "entrega",
       header: "Entrega",
       accessorKey: "fecha_entrega_min",
+      // `DataTable` es `table-fixed` y la celda no recorta: sin `size` (150 por
+      // defecto) el rango `nowrap` más largo, "28 may 2026 – 28 may 2026"
+      // (~178px a 14px), invadía "Clasificación". 178 + 32 de padding + holgura.
+      size: 220,
       cell: ({ row }) => {
         const { fecha_entrega_min, fecha_entrega_max } = row.original;
         return (
@@ -296,6 +300,8 @@ export function getScheduledOrderColumns(): ColumnDef<PedidoListItem, unknown>[]
       id: "clasificacion",
       accessorKey: "clasificacion",
       header: "Clasificación",
+      // Etiqueta más larga: "X - Solo para facturar" (~136px) + 32 de padding.
+      size: 180,
       cell: ({ row }) => (
         <span className="text-sm text-slate-600 dark:text-slate-300 whitespace-nowrap">
           {getPedidoClasificacionLabel(row.original.clasificacion)}
