@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { LoadingSkeleton } from "./LoadingSkeleton";
-import { ChevronLeftIcon, ChevronRightIcon } from "./Icons";
+import { ChevronLeftIcon, ChevronRightIcon, HomeIcon } from "./Icons";
 import { appRouteGroups } from "@/src/constants/appRoutes";
 import { hasPermission } from "@/src/utils/permissions";
 
@@ -15,6 +15,13 @@ interface ModuleNavProps {
   className?: string;
 }
 
+/**
+ * Miga de pan del módulo: Inicio > Módulo > (sub-rutas del módulo, separadas
+ * por chevron). Todas las sub-rutas quedan presentes y son clickeables —
+ * "semi-activas" en gris, la actual resaltada en azul — en vez del navbar de
+ * tabs anterior (con borde inferior y más alto). Se desplaza horizontalmente
+ * cuando no caben todas.
+ */
 export default function ModuleNav({ moduleKey, modulePath, className }: ModuleNavProps) {
   const pathname = usePathname();
   const { data: session, status } = useSession();
@@ -48,7 +55,7 @@ export default function ModuleNav({ moduleKey, modulePath, className }: ModuleNa
 
     const observer = new ResizeObserver(() => updateScrollState());
     observer.observe(el);
-    // Observa también la fila interna: cambios en el número de tabs alteran scrollWidth.
+    // Observa también la fila interna: cambios en el número de crumbs alteran scrollWidth.
     const inner = el.firstElementChild;
     if (inner) observer.observe(inner);
 
@@ -60,7 +67,7 @@ export default function ModuleNav({ moduleKey, modulePath, className }: ModuleNa
     };
   }, [updateScrollState, isLoading]);
 
-  // Al navegar (o montar), lleva el tab activo al área visible del contenedor.
+  // Al navegar (o montar), lleva el crumb activo al área visible del contenedor.
   useEffect(() => {
     if (isLoading) return;
     const el = scrollRef.current;
@@ -92,92 +99,104 @@ export default function ModuleNav({ moduleKey, modulePath, className }: ModuleNa
     (item) => item.showInSidebar !== false
   );
 
-  // El tab raíz enlaza al landing del módulo, que el proxy protege con el
+  // El crumb raíz enlaza al landing del módulo, que el proxy protege con el
   // permiso de MÓDULO. Tras la granularización un usuario puede tener una
   // sección sin tener el módulo (p. ej. R-WMS-PICKING sin R-WMS): sin este
-  // filtro se le ofrecería un tab que solo lo rebota a "/".
+  // filtro se le ofrecería un crumb que solo lo rebota a "/".
   const canSeeModuleRoot = activeGroup.permission
     ? hasPermission(activeGroup.permission, session?.user)
     : true;
 
-  const tabs = [
-    ...(canSeeModuleRoot
-      ? [
-          {
-            label: activeGroup.moduleLabel,
-            href: activeGroup.modulePath,
-            isRoot: true,
-          },
-        ]
-      : []),
-    ...visibleRouteItems
-      .filter((item) => (item.permission ? hasPermission(item.permission, session?.user) : true))
-      .map((item) => ({
-        label: item.label,
-        href: item.path,
-        isRoot: false,
-      })),
-  ];
-  const loadingTabPlaceholders = Array.from({
+  // La "casita" ya ES el crumb raíz (dashboard del módulo) — se come esa
+  // primera opción para ahorrar espacio, en vez de repetirla como texto.
+  const crumbs = visibleRouteItems
+    .filter((item) => (item.permission ? hasPermission(item.permission, session?.user) : true))
+    .map((item) => ({
+      label: item.label,
+      href: item.path,
+      isRoot: false,
+    }));
+  const loadingCrumbPlaceholders = Array.from({
     length: Math.max(1, visibleRouteItems.length),
   });
 
   const isActive = (href: string, isRoot: boolean) =>
     isRoot ? pathname === href : pathname === href || pathname.startsWith(`${href}/`);
 
+  const isModuleRootActive = pathname === activeGroup.modulePath;
+
   return (
     <nav
       aria-label="Navegación del módulo"
       aria-busy={isLoading}
-      className={`relative w-full min-h-12 border-b border-slate-200/70 dark:border-white/10 ${className ?? ""}`}
+      className={`relative flex w-full items-center ${className ?? ""}`}
     >
+      <Link
+        href={canSeeModuleRoot ? activeGroup.modulePath : "/"}
+        aria-label={activeGroup.moduleLabel}
+        aria-current={isModuleRootActive ? "page" : undefined}
+        title={activeGroup.moduleLabel}
+        className={`flex shrink-0 items-center justify-center rounded p-0.5 transition-colors ${
+          isModuleRootActive
+            ? "text-sky-600 dark:text-sky-300"
+            : "text-slate-400 hover:text-sky-600 dark:text-slate-500 dark:hover:text-sky-300"
+        }`}
+      >
+        <HomeIcon className="h-3.5 w-3.5" />
+      </Link>
+
       <div ref={scrollRef} className="overflow-x-auto no-scrollbar">
-        <div className="flex min-h-12 items-end gap-4 sm:gap-6 flex-nowrap">
+        <div className="flex items-center flex-nowrap text-xs sm:text-sm">
           {isLoading ? (
             <>
-              <span className="shrink-0 pb-3 text-sm font-semibold text-sky-600 dark:text-sky-300 border-b-2 border-sky-500 dark:border-sky-400">
+              <ChevronRightIcon className="mx-1 h-3.5 w-3.5 shrink-0 text-slate-300 dark:text-slate-600" />
+              <span className="shrink-0 font-semibold text-sky-600 dark:text-sky-300">
                 {activeGroup.moduleLabel}
               </span>
-              {loadingTabPlaceholders.map((_, index) => (
-                <div
-                  key={`module-nav-skeleton-${activeGroup.key}-${index}`}
-                  className={`shrink-0 pb-3 ${index % 2 === 0 ? "w-24" : "w-20"}`}
-                  aria-hidden="true"
-                >
-                  <LoadingSkeleton className="h-4 rounded-full" />
-                </div>
+              {loadingCrumbPlaceholders.map((_, index) => (
+                <span key={`module-nav-skeleton-${activeGroup.key}-${index}`} className="flex items-center">
+                  <ChevronRightIcon className="mx-1 h-3.5 w-3.5 shrink-0 text-slate-300 dark:text-slate-600" />
+                  <div
+                    className={`shrink-0 ${index % 2 === 0 ? "w-20" : "w-16"}`}
+                    aria-hidden="true"
+                  >
+                    <LoadingSkeleton className="h-4 rounded-full" />
+                  </div>
+                </span>
               ))}
             </>
           ) : (
-            tabs.map((tab) => (
-              <Link
-                key={tab.href}
-                href={tab.href}
-                aria-label={tab.label}
-                aria-current={isActive(tab.href, tab.isRoot) ? "page" : undefined}
-                className={`shrink-0 pb-3 text-sm font-semibold transition-colors border-b-2 ${
-                  isActive(tab.href, tab.isRoot)
-                    ? "text-sky-600 dark:text-sky-300 border-sky-500 dark:border-sky-400"
-                    : "text-slate-500 dark:text-slate-400 border-transparent hover:text-sky-600 dark:hover:text-sky-300"
-                }`}
-              >
-                {tab.label}
-              </Link>
+            crumbs.map((crumb) => (
+              <span key={crumb.href} className="flex items-center">
+                <ChevronRightIcon className="mx-1 h-3.5 w-3.5 shrink-0 text-slate-300 dark:text-slate-600" />
+                <Link
+                  href={crumb.href}
+                  aria-label={crumb.label}
+                  aria-current={isActive(crumb.href, crumb.isRoot) ? "page" : undefined}
+                  className={`shrink-0 whitespace-nowrap transition-colors ${
+                    isActive(crumb.href, crumb.isRoot)
+                      ? "font-semibold text-sky-600 dark:text-sky-300"
+                      : "text-slate-500 dark:text-slate-400 hover:text-sky-600 dark:hover:text-sky-300"
+                  }`}
+                >
+                  {crumb.label}
+                </Link>
+              </span>
             ))
           )}
         </div>
       </div>
 
       {!isLoading && canScrollLeft && (
-        <div className="pointer-events-none absolute inset-y-0 left-0 z-10 flex items-center">
+        <div className="pointer-events-none absolute inset-y-0 left-6 z-10 flex items-center">
           <div className="pointer-events-none absolute inset-y-0 left-0 w-8 bg-gradient-to-r from-slate-50 dark:from-black to-transparent" />
           <button
             type="button"
             aria-label="Desplazar a la izquierda"
             onClick={() => scrollBy("left")}
-            className="pointer-events-auto relative flex h-7 w-7 items-center justify-center rounded-full text-slate-500 dark:text-slate-400 transition-colors hover:text-sky-600 dark:hover:text-sky-300"
+            className="pointer-events-auto relative flex h-6 w-6 items-center justify-center rounded-full text-slate-500 dark:text-slate-400 transition-colors hover:text-sky-600 dark:hover:text-sky-300"
           >
-            <ChevronLeftIcon className="h-5 w-5" />
+            <ChevronLeftIcon className="h-4 w-4" />
           </button>
         </div>
       )}
@@ -189,9 +208,9 @@ export default function ModuleNav({ moduleKey, modulePath, className }: ModuleNa
             type="button"
             aria-label="Desplazar a la derecha"
             onClick={() => scrollBy("right")}
-            className="pointer-events-auto relative flex h-7 w-7 items-center justify-center rounded-full text-slate-500 dark:text-slate-400 transition-colors hover:text-sky-600 dark:hover:text-sky-300"
+            className="pointer-events-auto relative flex h-6 w-6 items-center justify-center rounded-full text-slate-500 dark:text-slate-400 transition-colors hover:text-sky-600 dark:hover:text-sky-300"
           >
-            <ChevronRightIcon className="h-5 w-5" />
+            <ChevronRightIcon className="h-4 w-4" />
           </button>
         </div>
       )}
