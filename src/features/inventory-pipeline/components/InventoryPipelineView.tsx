@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { DataTable } from "@/src/components/DataTable";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { isInitialLoadError } from "@/src/utils/isInitialLoadError";
@@ -34,10 +34,18 @@ export function InventoryPipelineView() {
   // Error de pantalla completa solo si nunca cargó; un refetch fallido con
   // datos en caché conserva la tabla y avisa por toast (`useHasLoadedQuery`).
   const showError = isInitialLoadError(isError, hasLoaded);
-  const columns = useMemo(() => getInventoryPipelineColumns(setOpenProductoId), []);
+  const columns = getInventoryPipelineColumns(setOpenProductoId);
 
   const openRow =
     openProductoId !== null ? rows.find((row) => row.productoId === openProductoId) : undefined;
+
+  // Si un refetch saca del reporte el producto abierto, se olvida su id (no
+  // basta con dejar de pintar el diálogo): si no, un refetch posterior que lo
+  // devolviera reabriría el diálogo sin que nadie hiciera clic. Ajuste de
+  // estado durante el render, guardado por la condición para no ciclar.
+  if (openProductoId !== null && hasLoaded && !openRow) {
+    setOpenProductoId(null);
+  }
 
   return (
     <div className="space-y-6">
@@ -57,8 +65,8 @@ export function InventoryPipelineView() {
         loadingAriaLabel="Cargando reporte de existencias, producción y compras"
       />
 
-      {/* Si tras un refetch el producto ya no está en el reporte, el diálogo
-          simplemente no se pinta (no hay endpoint de detalle al cual recurrir). */}
+      {/* Sin endpoint de detalle al cual recurrir: si el producto sale del
+          reporte, el diálogo se cierra (ver el ajuste de `openProductoId`). */}
       {openRow && (
         <InventoryPipelineDetailDialog
           row={openRow}
