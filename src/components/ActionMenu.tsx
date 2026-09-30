@@ -50,7 +50,14 @@ export const ActionMenu = ({
   }
 
   return (
-    <DropdownMenu.Root>
+    // `modal={false}` a propósito: los items suelen abrir un `MainDialog` en el
+    // MISMO tick en que el menú se cierra. Con el menú modal, su
+    // DismissableLayer y la del diálogo se traslapan sobre el mismo
+    // `originalBodyPointerEvents` compartido y, al cerrar el diálogo con Escape,
+    // el `body` se quedaba en `pointer-events: none` (página muerta al mouse).
+    // Bug conocido de Radix: radix-ui/primitives#3317. No modal, el menú no toca
+    // ese bloqueo y solo el diálogo lo gestiona.
+    <DropdownMenu.Root modal={false}>
       <DropdownMenu.Trigger>
         {trigger ?? (
           <button

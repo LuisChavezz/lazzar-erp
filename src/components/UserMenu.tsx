@@ -23,7 +23,13 @@ export const UserMenu = () => {
 
   return (
     <>
-    <DropdownMenu.Root>
+    {/* `modal={false}` PREVENTIVO, por consistencia con `ActionMenu`: sus
+        items abren diálogos (Ajustes, confirmación de cierre de sesión), el
+        mismo patrón que en `ActionMenu` dejaba el `body` en
+        `pointer-events: none` al cerrar con Escape (radix-ui/primitives#3317).
+        Aquí hoy NO se reproduce —los diálogos están siempre montados y solo
+        cambia su `open`—, pero no modal el menú no toca ese bloqueo. */}
+    <DropdownMenu.Root modal={false}>
       <DropdownMenu.Trigger>
         <button
           type="button"
