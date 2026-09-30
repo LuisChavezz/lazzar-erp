@@ -39,6 +39,7 @@ const ROUTE_TITLES: Record<string, string> = {
   "/manufacturing/cedicor-production-orders": "Cedicor - Producción",
   "/wms/stock": "Existencias",
   "/wms/receipts": "Recepciones",
+  "/wms/quality-inspections": "Calidad",
   "/wms/locations": "Ubicaciones",
   "/wms/picking": "Surtido",
   "/wms/packing": "Embarque",

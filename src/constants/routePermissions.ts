@@ -94,6 +94,9 @@ export const routePermissions: Array<{
   { prefix: "/wms/orders", permission: "R-WMS-PEDIDOS" },
   { prefix: "/wms/stock", permission: "R-WMS-EXISTENCIAS" },
   { prefix: "/wms/receipts", permission: "R-WMS-RECEPCIONES" },
+  // Registrar la inspección exige además `C-WMS-CALIDAD` (en la vista). El
+  // backend no valida ningún permiso de Calidad: ambos controles son de UI.
+  { prefix: "/wms/quality-inspections", permission: "R-WMS-CALIDAD" },
   { prefix: "/wms/picking", permission: "R-WMS-PICKING" },
   { prefix: "/wms/packing", permission: "R-WMS-PACKING" },
   { prefix: "/wms/shipping", permission: "R-WMS-ENVIO" },
