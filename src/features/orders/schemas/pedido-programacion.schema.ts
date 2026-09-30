@@ -4,7 +4,12 @@
  * backend sigue siendo la fuente de verdad.
  */
 import { z } from "zod";
-import { PEDIDO_PROGRAMACION_DESTINOS } from "../constants/pedidoProgramacion";
+import {
+  getDestinoNoAplicable,
+  getDestinoNoAplicableMessage,
+  PEDIDO_PROGRAMACION_DESTINOS,
+  type PedidoProgramacionDestino,
+} from "../constants/pedidoProgramacion";
 import type { PedidoDetail } from "../interfaces/order.interface";
 
 /**
@@ -15,7 +20,18 @@ import type { PedidoDetail } from "../interfaces/order.interface";
 export interface PedidoProgramacionRowFormValues {
   destino: string;
   cantidad: string;
+  comentarios: string;
 }
+
+/** Tope de `comentarios` por entrada, igual que el serializer. */
+export const PEDIDO_PROGRAMACION_COMENTARIOS_MAX = 500;
+
+/**
+ * Longitud en CODE POINTS, como el `max_length` del serializer (el `len()` de
+ * Python), no en unidades UTF-16 (`String.length`), que cuenta doble cada
+ * emoji o carácter astral y rechazaría comentarios que el backend acepta.
+ */
+export const countCodePoints = (text: string): number => [...text].length;
 
 export interface PedidoProgramacionFormValues {
   programaciones: PedidoProgramacionRowFormValues[];
@@ -29,6 +45,15 @@ const pedidoProgramacionRowSchema = z.object({
     .regex(/^\d+$/, "Captura una cantidad entera")
     .transform(Number)
     .pipe(z.number().int().min(1, "La cantidad debe ser al menos 1")),
+  // Recortado: un comentario de solo espacios cuenta como vacío (→ `null`).
+  comentarios: z
+    .string()
+    .trim()
+    .refine(
+      (value) => countCodePoints(value) <= PEDIDO_PROGRAMACION_COMENTARIOS_MAX,
+      `Máximo ${PEDIDO_PROGRAMACION_COMENTARIOS_MAX} caracteres`,
+    )
+    .transform((value) => (value === "" ? null : value)),
 });
 
 /**
@@ -49,13 +74,30 @@ export const sumProgramacionCantidades = (rows: PedidoProgramacionRowFormValues[
   rows.reduce((sum, row) => sum + parseProgramacionCantidad(row.cantidad), 0);
 
 /**
- * Schema de la lista completa. Depende del pedido (el techo de piezas), igual
- * que el serializer recibe `total_piezas` en su contexto.
+ * Schema de la lista completa. Depende del pedido (el techo de piezas y sus
+ * `destinos_aplicables`), igual que el serializer los recibe en su contexto.
  */
-export const createPedidoProgramacionSchema = (totalPiezas: number) =>
+export const createPedidoProgramacionSchema = (
+  totalPiezas: number,
+  destinosAplicables: readonly PedidoProgramacionDestino[],
+) =>
   z
     .object({ programaciones: z.array(pedidoProgramacionRowSchema) })
     .superRefine((data, ctx) => {
+      // Guarda al enviar. En la UI el botón ya queda deshabilitado con la MISMA
+      // regla (`getDestinoNoAplicable`, marca en vivo del hook); esto cubre
+      // cualquier envío que no pase por ese botón.
+      data.programaciones.forEach((row, index) => {
+        const noAplicable = getDestinoNoAplicable(row.destino, destinosAplicables);
+        if (noAplicable) {
+          ctx.addIssue({
+            code: "custom",
+            path: ["programaciones", index, "destino"],
+            message: getDestinoNoAplicableMessage(noAplicable),
+          });
+        }
+      });
+
       const suma = data.programaciones.reduce((sum, row) => sum + row.cantidad, 0);
       if (suma > totalPiezas) {
         ctx.addIssue({
@@ -83,6 +125,9 @@ export const createPedidoProgramacionFormValues = (
       ? programaciones.map((programacion) => ({
           destino: typeof programacion.destino === "string" ? programacion.destino : "",
           cantidad: String(programacion.cantidad ?? ""),
+          // Entradas previas a `comentarios` no traen la clave; `null` → vacío.
+          comentarios:
+            typeof programacion.comentarios === "string" ? programacion.comentarios : "",
         }))
       : [],
   };

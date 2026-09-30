@@ -6,6 +6,7 @@ import { Loader } from "@/src/components/Loader";
 import { ErrorState } from "@/src/components/ErrorState";
 import { FormInput } from "@/src/components/FormInput";
 import { FormSelect } from "@/src/components/FormSelect";
+import { FormTextarea } from "@/src/components/FormTextarea";
 import { FormCancelButton, FormSubmitButton } from "@/src/components/FormButtons";
 import { Button } from "@/src/components/Button";
 import { CalendarDaysIcon, DeleteIcon, PlusIcon } from "@/src/components/Icons";
@@ -13,30 +14,45 @@ import {
   getPedidoProgramacionDestinoLabel,
   isPedidoProgramacionDestino,
   PEDIDO_PROGRAMACION_DESTINO_LABELS,
-  PEDIDO_PROGRAMACION_DESTINOS,
+  type PedidoProgramacionDestino,
 } from "../constants/pedidoProgramacion";
 import { usePedidoDetail } from "../hooks/usePedidoDetail";
 import { usePedidoProgramacionForm } from "../hooks/usePedidoProgramacionForm";
+import {
+  countCodePoints,
+  PEDIDO_PROGRAMACION_COMENTARIOS_MAX,
+} from "../schemas/pedido-programacion.schema";
 import type { PedidoDetail, PedidoListItem } from "../interfaces/order.interface";
 
-const DESTINO_OPTIONS = [
-  { value: "", label: "Seleccionar..." },
-  ...PEDIDO_PROGRAMACION_DESTINOS.map((codigo) => ({
-    value: codigo,
-    label: PEDIDO_PROGRAMACION_DESTINO_LABELS[codigo],
-  })),
-];
-
 /**
- * Un destino GUARDADO fuera de la lista blanca no tiene opción en el select, y
- * un `<select>` nativo pintaría la primera ("Seleccionar...") aunque el estado
- * conserve el código. Se añade como opción visible para que el usuario vea qué
- * hay guardado; el schema lo marca como inválido.
+ * Opciones del select de UN renglón: solo los `destinos_aplicables` del pedido.
+ *
+ * Un destino GUARDADO fuera de esa lista no tendría opción, y un `<select>`
+ * nativo pintaría la primera ("Seleccionar...") aunque el estado conserve el
+ * código. Se añade como opción visible SOLO en su propio renglón —nunca se
+ * ofrece a los demás— para que el usuario vea qué hay guardado: marcado
+ * "no aplica" si es de la lista blanca (el renglón muestra su error) o
+ * "Desconocido" si no lo es (lo marca el schema).
  */
-const getDestinoOptions = (destino: string) =>
-  destino === "" || isPedidoProgramacionDestino(destino)
-    ? DESTINO_OPTIONS
-    : [...DESTINO_OPTIONS, { value: destino, label: getPedidoProgramacionDestinoLabel(destino) }];
+const getDestinoOptions = (
+  destino: string,
+  destinosAplicables: readonly PedidoProgramacionDestino[],
+) => {
+  const options = [
+    { value: "", label: "Seleccionar..." },
+    ...destinosAplicables.map((codigo) => ({
+      value: codigo,
+      label: PEDIDO_PROGRAMACION_DESTINO_LABELS[codigo],
+    })),
+  ];
+  if (destino === "" || (destinosAplicables as readonly string[]).includes(destino)) {
+    return options;
+  }
+  const label = isPedidoProgramacionDestino(destino)
+    ? `${PEDIDO_PROGRAMACION_DESTINO_LABELS[destino]} (no aplica)`
+    : getPedidoProgramacionDestinoLabel(destino);
+  return [...options, { value: destino, label }];
+};
 
 /** Solo dígitos: `cantidad` es un entero positivo. */
 const sanitizeIntegerInput = (raw: string) => raw.replace(/\D/g, "");
@@ -53,8 +69,11 @@ function PedidoProgramacionForm({ pedido, onClose }: PedidoProgramacionFormProps
     totalPiezas,
     sumaProgramada,
     excedeTotal,
+    destinosAplicables,
+    hayDestinosNoAplicables,
     isPending,
     getError,
+    getDestinoError,
     clearError,
     addRow,
     removeRow,
@@ -95,14 +114,14 @@ function PedidoProgramacionForm({ pedido, onClose }: PedidoProgramacionFormProps
                       {(field) => (
                         <FormSelect
                           label="Destino"
-                          options={getDestinoOptions(row.destino)}
+                          options={getDestinoOptions(row.destino, destinosAplicables)}
                           name={field.name}
                           value={field.state.value}
                           onChange={(event) => {
                             field.handleChange(event.target.value);
                             clearError(`programaciones.${index}.destino`);
                           }}
-                          error={getError(`programaciones.${index}.destino`)}
+                          error={getDestinoError(index)}
                         />
                       )}
                     </form.Field>
@@ -132,6 +151,43 @@ function PedidoProgramacionForm({ pedido, onClose }: PedidoProgramacionFormProps
                     >
                       <DeleteIcon className="w-4 h-4" aria-hidden="true" />
                     </button>
+
+                    {/* Segunda fila del renglón, bajo destino + cantidad: un
+                        comentario largo crece hacia abajo sin empujar los
+                        controles. Sin `maxLength` nativo: el exceso se marca
+                        con el error del schema en vez de truncarse en silencio. */}
+                    <form.Field name={`programaciones[${index}].comentarios`}>
+                      {(field) => {
+                        // Code points, igual que el schema y el backend.
+                        const comentariosLength = countCodePoints(field.state.value.trim());
+                        return (
+                          <div className="col-span-2">
+                            <FormTextarea
+                              label="Comentarios (opcional)"
+                              placeholder="Indicaciones para este destino..."
+                              rows={2}
+                              forceUppercase
+                              name={field.name}
+                              value={field.state.value}
+                              onChange={(event) => {
+                                field.handleChange(event.target.value);
+                                clearError(`programaciones.${index}.comentarios`);
+                              }}
+                              error={getError(`programaciones.${index}.comentarios`)}
+                            />
+                            <p
+                              className={`mt-1 text-right text-[11px] tabular-nums ${
+                                comentariosLength > PEDIDO_PROGRAMACION_COMENTARIOS_MAX
+                                  ? "text-rose-600 dark:text-rose-400"
+                                  : "text-slate-400 dark:text-slate-500"
+                              }`}
+                            >
+                              {comentariosLength}/{PEDIDO_PROGRAMACION_COMENTARIOS_MAX}
+                            </p>
+                          </div>
+                        );
+                      }}
+                    </form.Field>
                   </div>
                 ))}
               </div>
@@ -176,7 +232,7 @@ function PedidoProgramacionForm({ pedido, onClose }: PedidoProgramacionFormProps
               interna de `FormSubmitButton`. */}
           <FormSubmitButton
             isPending={isPending}
-            disabled={isPending || excedeTotal}
+            disabled={isPending || excedeTotal || hayDestinosNoAplicables}
             loadingLabel="Guardando..."
           >
             Guardar programación

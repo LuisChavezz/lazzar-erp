@@ -101,8 +101,8 @@ export const getPedidoMesaControlContexto = async (
  * (`PATCH /ventas/pedidos/{id}/programar/`).
  *
  * REEMPLAZO TOTAL: `programaciones` sustituye a la lista guardada, así que se
- * manda completa. Solo `destino` + `cantidad`: la fecha y el usuario los sella
- * el servidor. 400 si la suma excede las piezas, un destino no está en la lista
+ * manda completa. Cada entrada lleva `destino`, `cantidad` y `comentarios`; la
+ * fecha y el usuario los sella el servidor. 400 si la suma excede las piezas, un destino no está en la lista
  * blanca o falta el rol de mesa de control; 404 si el pedido no es visible para
  * la empresa del usuario. No hay 409: no toca renglones.
  */

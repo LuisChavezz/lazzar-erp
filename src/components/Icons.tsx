@@ -73,6 +73,7 @@ import {
   Mail,
   MapPin,
   Menu,
+  MessageSquareText,
   MinusCircle,
   Monitor,
   Moon,
@@ -265,6 +266,7 @@ export const ExportPdfIcon = (props: LucideProps) => <FileText {...props} />;
  * no un documento, y su etiqueta lo ataría a Cuentas por Pagar.
  */
 export const NotaCreditoIcon = (props: LucideProps) => <FileMinus {...props} />;
+export const CommentIcon = (props: LucideProps) => <MessageSquareText {...props} />;
 /**
  * Factura de proveedor — un documento que ENTRA (el proveedor lo emite hacia la
  * empresa). No se reutiliza `FacturacionIcon`, que ya es el de las facturas a

@@ -40,9 +40,15 @@ const EMBROIDERY_ONBOARDING_STALE_TIME = 5_000;
  * refetch borraría las cantidades capturadas. Mismo patrón que
  * `useEmbroideryOrders`.
  */
+/**
+ * Exportada porque "Programar pedido" (feature `orders`) la invalida: cada
+ * pedido del onboarding trae su `programado` de Mesa de Control.
+ */
+export const embroideryOnboardingQueryKey = ["embroidery-onboarding"] as const;
+
 export const useEmbroideryOnboarding = () => {
   const query = useQuery<EmbroideryOnboardingData>({
-    queryKey: ["embroidery-onboarding"],
+    queryKey: embroideryOnboardingQueryKey,
     queryFn: getEmbroideryOnboarding,
     staleTime: EMBROIDERY_ONBOARDING_STALE_TIME,
     gcTime: 30_000,

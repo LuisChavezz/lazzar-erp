@@ -1,6 +1,8 @@
 "use client";
 
 import { type ColumnDef, type FilterFn } from "@tanstack/react-table";
+import { Popover } from "@radix-ui/themes";
+import { CommentIcon } from "@/src/components/Icons";
 import { ColumnHeaderFilter, type ColumnFilterOption } from "@/src/components/ColumnHeaderFilter";
 import { formatShortDate } from "@/src/utils/formatDate";
 import { formatMoneyValueOrDash } from "@/src/utils/formatCurrency";
@@ -84,6 +86,49 @@ const formatCantidad = (cantidad: unknown): string => {
         : NaN;
   return Number.isFinite(value) ? formatPiezas(value) : "—";
 };
+
+/** Comentario de la entrada, o `null` si falta, es `null` o solo trae espacios. */
+const getComentarios = (programacion: PedidoProgramacion): string | null =>
+  typeof programacion.comentarios === "string" && programacion.comentarios.trim()
+    ? programacion.comentarios
+    : null;
+
+/**
+ * Icono en el chip de una entrada CON comentario; el clic abre el texto en un
+ * `Popover` de Radix Themes (mismo recurso que `ReflectiveLineConfigPopover`).
+ * Sin autor ni fecha: el backend re-sella ambos en todas las entradas en cada
+ * guardado, así que no son del comentario.
+ */
+function ProgramacionComentariosPopover({
+  comentarios,
+  destinoLabel,
+}: {
+  comentarios: string;
+  destinoLabel: string;
+}) {
+  return (
+    <Popover.Root>
+      <Popover.Trigger>
+        <button
+          type="button"
+          aria-label={`Ver comentarios de ${destinoLabel}`}
+          title="Ver comentarios"
+          className="-mr-1 inline-flex items-center rounded p-0.5 text-sky-600 dark:text-sky-400 hover:bg-sky-100 dark:hover:bg-sky-500/20 cursor-pointer"
+        >
+          <CommentIcon className="w-3.5 h-3.5" aria-hidden="true" />
+        </button>
+      </Popover.Trigger>
+      <Popover.Content size="1" width="300px" side="top" align="start">
+        <p className="pb-1 text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+          Comentarios · {destinoLabel}
+        </p>
+        <p className="max-h-60 overflow-y-auto whitespace-pre-wrap break-words text-sm text-slate-700 dark:text-slate-200">
+          {comentarios}
+        </p>
+      </Popover.Content>
+    </Popover.Root>
+  );
+}
 
 /** Texto buscable de la columna: las etiquetas en español que pinta la celda. */
 const getDestinoLabels = (order: PedidoListItem): string =>
@@ -182,17 +227,27 @@ export function getScheduledOrderColumns(): ColumnDef<PedidoListItem, unknown>[]
         if (programaciones.length === 0) return DASH;
         return (
           <div className="flex flex-wrap gap-1.5">
-            {programaciones.map((programacion, index) => (
-              <span
-                key={`${programacion.destino}-${index}`}
-                className="inline-flex items-center gap-1 rounded-md bg-slate-100 dark:bg-white/10 px-2 py-0.5 text-xs text-slate-700 dark:text-slate-200 whitespace-nowrap"
-              >
-                {getPedidoProgramacionDestinoLabel(String(programacion.destino))}
-                <span className="tabular-nums font-semibold">
-                  {formatCantidad(programacion.cantidad)}
+            {programaciones.map((programacion, index) => {
+              const destinoLabel = getPedidoProgramacionDestinoLabel(String(programacion.destino));
+              const comentarios = getComentarios(programacion);
+              return (
+                <span
+                  key={`${programacion.destino}-${index}`}
+                  className="inline-flex items-center gap-1 rounded-md bg-slate-100 dark:bg-white/10 px-2 py-0.5 text-xs text-slate-700 dark:text-slate-200 whitespace-nowrap"
+                >
+                  {destinoLabel}
+                  <span className="tabular-nums font-semibold">
+                    {formatCantidad(programacion.cantidad)}
+                  </span>
+                  {comentarios && (
+                    <ProgramacionComentariosPopover
+                      comentarios={comentarios}
+                      destinoLabel={destinoLabel}
+                    />
+                  )}
                 </span>
-              </span>
-            ))}
+              );
+            })}
           </div>
         );
       },
@@ -228,6 +283,10 @@ export function getScheduledOrderColumns(): ColumnDef<PedidoListItem, unknown>[]
       id: "entrega",
       header: "Entrega",
       accessorKey: "fecha_entrega_min",
+      // `DataTable` es `table-fixed` y la celda no recorta: sin `size` (150 por
+      // defecto) el rango `nowrap` más largo, "28 may 2026 – 28 may 2026"
+      // (~178px a 14px), invadía "Clasificación". 178 + 32 de padding + holgura.
+      size: 220,
       cell: ({ row }) => {
         const { fecha_entrega_min, fecha_entrega_max } = row.original;
         return (
@@ -241,6 +300,8 @@ export function getScheduledOrderColumns(): ColumnDef<PedidoListItem, unknown>[]
       id: "clasificacion",
       accessorKey: "clasificacion",
       header: "Clasificación",
+      // Etiqueta más larga: "X - Solo para facturar" (~136px) + 32 de padding.
+      size: 180,
       cell: ({ row }) => (
         <span className="text-sm text-slate-600 dark:text-slate-300 whitespace-nowrap">
           {getPedidoClasificacionLabel(row.original.clasificacion)}

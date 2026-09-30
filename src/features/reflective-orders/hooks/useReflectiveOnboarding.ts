@@ -43,9 +43,15 @@ const REFLECTIVE_ONBOARDING_STALE_TIME = 5_000;
  * del usuario, no con la del pedido). Quien lo pinte debe rotularlo como tal —
  * ver `ReflectiveOnboardingData`.
  */
+/**
+ * Exportada porque "Programar pedido" (feature `orders`) la invalida: cada
+ * pedido del onboarding trae su `programado` de Mesa de Control.
+ */
+export const reflectiveOnboardingQueryKey = ["reflective-onboarding"] as const;
+
 export const useReflectiveOnboarding = () => {
   const query = useQuery<ReflectiveOnboardingData>({
-    queryKey: ["reflective-onboarding"],
+    queryKey: reflectiveOnboardingQueryKey,
     queryFn: getReflectiveOnboarding,
     staleTime: REFLECTIVE_ONBOARDING_STALE_TIME,
     gcTime: 30_000,

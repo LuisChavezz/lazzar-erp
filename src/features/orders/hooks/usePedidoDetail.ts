@@ -27,9 +27,11 @@ interface UsePedidoDetailOptions {
   refetchOnMount?: boolean | "always";
 }
 
+export const pedidoDetailQueryKey = (id: number) => ["pedido-detail", id] as const;
+
 export const usePedidoDetail = (id: number, options: UsePedidoDetailOptions = {}) => {
   return useQuery<PedidoDetail>({
-    queryKey: ["pedido-detail", id],
+    queryKey: pedidoDetailQueryKey(id),
     queryFn: () => getPedidoDetail(id),
     enabled: id > 0,
     // Spread condicional: un `refetchOnMount: undefined` explícito pisaría el
