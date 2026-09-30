@@ -488,6 +488,12 @@ export interface PedidoDetail extends Order {
    */
   programacion_conf?: PedidoProgramacionConf | null;
   /**
+   * Destinos a los que `programar` admite enviar este pedido (códigos de la
+   * lista blanca, p. ej. `["EMBARQUE", "APARTADO"]`). Solo el DETALLE lo trae.
+   * Opcional por la misma razón que `programacion_conf`.
+   */
+  destinos_aplicables?: string[];
+  /**
    * Rango de entrega estimado, derivado por el backend de `clasificacion`
    * (solo lectura). Fechas-calendario `"YYYY-MM-DD"`, SIN hora: formatearlas
    * con `parseLocalDate`/`formatLocalDate`, nunca con `new Date(value)`, que

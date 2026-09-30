@@ -12,6 +12,12 @@ import {
   getPedidoTotalPiezas,
   sumProgramacionCantidades,
 } from "../schemas/pedido-programacion.schema";
+import {
+  getDestinoNoAplicableMessage,
+  getPedidoDestinosAplicables,
+  isPedidoProgramacionDestino,
+  type PedidoProgramacionDestino,
+} from "../constants/pedidoProgramacion";
 import { useProgramarPedido } from "./useProgramarPedido";
 
 const LIST_ERROR_KEY = "programaciones";
@@ -35,6 +41,7 @@ export function usePedidoProgramacionForm({
   onSuccess?: () => void;
 }) {
   const totalPiezas = getPedidoTotalPiezas(pedido);
+  const destinosAplicables = getPedidoDestinosAplicables(pedido.destinos_aplicables);
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -91,7 +98,9 @@ export function usePedidoProgramacionForm({
   const form = useForm({
     defaultValues: initialValues,
     onSubmit: async ({ value }) => {
-      const parsed = createPedidoProgramacionSchema(totalPiezas).safeParse(value);
+      const parsed = createPedidoProgramacionSchema(totalPiezas, destinosAplicables).safeParse(
+        value,
+      );
       if (!parsed.success) {
         const nextErrors: Record<string, string> = {};
         parsed.error.issues.forEach((issue) => {
@@ -127,6 +136,29 @@ export function usePedidoProgramacionForm({
   const sumaProgramada = sumProgramacionCantidades(programaciones);
   const excedeTotal = sumaProgramada > totalPiezas;
 
+  /**
+   * Destino (de la lista blanca) que el pedido ya NO admite, o `null`. Se
+   * evalúa en vivo, no solo al enviar: una entrada guardada así debe verse
+   * marcada desde que se abre el diálogo. `""` y los códigos desconocidos no
+   * cuentan aquí; esos los marca el schema.
+   */
+  const getDestinoNoAplicable = (destino: string): PedidoProgramacionDestino | null =>
+    isPedidoProgramacionDestino(destino) && !destinosAplicables.includes(destino)
+      ? destino
+      : null;
+  const hayDestinosNoAplicables = programaciones.some(
+    (row) => getDestinoNoAplicable(row.destino) !== null,
+  );
+
+  /** Error de un campo: el del estado (submit/servidor) o, para `destino`, el de aplicabilidad. */
+  const getRowError = (index: number, field: "destino" | "cantidad" | "comentarios") => {
+    const path = `programaciones.${index}.${field}`;
+    const stored = getError(path);
+    if (stored || field !== "destino") return stored;
+    const noAplicable = getDestinoNoAplicable(programaciones[index]?.destino ?? "");
+    return noAplicable ? { message: getDestinoNoAplicableMessage(noAplicable) } : undefined;
+  };
+
   const addRow = () => {
     form.pushFieldValue("programaciones", { destino: "", cantidad: "", comentarios: "" });
     setRowKeys((prev) => [...prev, rowKeyCounter.current++]);
@@ -151,8 +183,11 @@ export function usePedidoProgramacionForm({
     totalPiezas,
     sumaProgramada,
     excedeTotal,
+    destinosAplicables,
+    hayDestinosNoAplicables,
     isPending: isSubmitting || isSaving,
     getError,
+    getRowError,
     clearError,
     addRow,
     removeRow,

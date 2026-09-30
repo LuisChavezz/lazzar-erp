@@ -14,31 +14,42 @@ import {
   getPedidoProgramacionDestinoLabel,
   isPedidoProgramacionDestino,
   PEDIDO_PROGRAMACION_DESTINO_LABELS,
-  PEDIDO_PROGRAMACION_DESTINOS,
+  type PedidoProgramacionDestino,
 } from "../constants/pedidoProgramacion";
 import { usePedidoDetail } from "../hooks/usePedidoDetail";
 import { usePedidoProgramacionForm } from "../hooks/usePedidoProgramacionForm";
 import { PEDIDO_PROGRAMACION_COMENTARIOS_MAX } from "../schemas/pedido-programacion.schema";
 import type { PedidoDetail, PedidoListItem } from "../interfaces/order.interface";
 
-const DESTINO_OPTIONS = [
-  { value: "", label: "Seleccionar..." },
-  ...PEDIDO_PROGRAMACION_DESTINOS.map((codigo) => ({
-    value: codigo,
-    label: PEDIDO_PROGRAMACION_DESTINO_LABELS[codigo],
-  })),
-];
-
 /**
- * Un destino GUARDADO fuera de la lista blanca no tiene opción en el select, y
- * un `<select>` nativo pintaría la primera ("Seleccionar...") aunque el estado
- * conserve el código. Se añade como opción visible para que el usuario vea qué
- * hay guardado; el schema lo marca como inválido.
+ * Opciones del select de UN renglón: solo los `destinos_aplicables` del pedido.
+ *
+ * Un destino GUARDADO fuera de esa lista no tendría opción, y un `<select>`
+ * nativo pintaría la primera ("Seleccionar...") aunque el estado conserve el
+ * código. Se añade como opción visible SOLO en su propio renglón —nunca se
+ * ofrece a los demás— para que el usuario vea qué hay guardado: marcado
+ * "no aplica" si es de la lista blanca (el renglón muestra su error) o
+ * "Desconocido" si no lo es (lo marca el schema).
  */
-const getDestinoOptions = (destino: string) =>
-  destino === "" || isPedidoProgramacionDestino(destino)
-    ? DESTINO_OPTIONS
-    : [...DESTINO_OPTIONS, { value: destino, label: getPedidoProgramacionDestinoLabel(destino) }];
+const getDestinoOptions = (
+  destino: string,
+  destinosAplicables: readonly PedidoProgramacionDestino[],
+) => {
+  const options = [
+    { value: "", label: "Seleccionar..." },
+    ...destinosAplicables.map((codigo) => ({
+      value: codigo,
+      label: PEDIDO_PROGRAMACION_DESTINO_LABELS[codigo],
+    })),
+  ];
+  if (destino === "" || (destinosAplicables as readonly string[]).includes(destino)) {
+    return options;
+  }
+  const label = isPedidoProgramacionDestino(destino)
+    ? `${PEDIDO_PROGRAMACION_DESTINO_LABELS[destino]} (no aplica)`
+    : getPedidoProgramacionDestinoLabel(destino);
+  return [...options, { value: destino, label }];
+};
 
 /** Solo dígitos: `cantidad` es un entero positivo. */
 const sanitizeIntegerInput = (raw: string) => raw.replace(/\D/g, "");
@@ -55,8 +66,11 @@ function PedidoProgramacionForm({ pedido, onClose }: PedidoProgramacionFormProps
     totalPiezas,
     sumaProgramada,
     excedeTotal,
+    destinosAplicables,
+    hayDestinosNoAplicables,
     isPending,
     getError,
+    getRowError,
     clearError,
     addRow,
     removeRow,
@@ -97,14 +111,14 @@ function PedidoProgramacionForm({ pedido, onClose }: PedidoProgramacionFormProps
                       {(field) => (
                         <FormSelect
                           label="Destino"
-                          options={getDestinoOptions(row.destino)}
+                          options={getDestinoOptions(row.destino, destinosAplicables)}
                           name={field.name}
                           value={field.state.value}
                           onChange={(event) => {
                             field.handleChange(event.target.value);
                             clearError(`programaciones.${index}.destino`);
                           }}
-                          error={getError(`programaciones.${index}.destino`)}
+                          error={getRowError(index, "destino")}
                         />
                       )}
                     </form.Field>
@@ -211,7 +225,7 @@ function PedidoProgramacionForm({ pedido, onClose }: PedidoProgramacionFormProps
               interna de `FormSubmitButton`. */}
           <FormSubmitButton
             isPending={isPending}
-            disabled={isPending || excedeTotal}
+            disabled={isPending || excedeTotal || hayDestinosNoAplicables}
             loadingLabel="Guardando..."
           >
             Guardar programación

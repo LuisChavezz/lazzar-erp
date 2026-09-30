@@ -4,7 +4,11 @@
  * backend sigue siendo la fuente de verdad.
  */
 import { z } from "zod";
-import { PEDIDO_PROGRAMACION_DESTINOS } from "../constants/pedidoProgramacion";
+import {
+  getDestinoNoAplicableMessage,
+  PEDIDO_PROGRAMACION_DESTINOS,
+  type PedidoProgramacionDestino,
+} from "../constants/pedidoProgramacion";
 import type { PedidoDetail } from "../interfaces/order.interface";
 
 /**
@@ -62,13 +66,26 @@ export const sumProgramacionCantidades = (rows: PedidoProgramacionRowFormValues[
   rows.reduce((sum, row) => sum + parseProgramacionCantidad(row.cantidad), 0);
 
 /**
- * Schema de la lista completa. Depende del pedido (el techo de piezas), igual
- * que el serializer recibe `total_piezas` en su contexto.
+ * Schema de la lista completa. Depende del pedido (el techo de piezas y sus
+ * `destinos_aplicables`), igual que el serializer los recibe en su contexto.
  */
-export const createPedidoProgramacionSchema = (totalPiezas: number) =>
+export const createPedidoProgramacionSchema = (
+  totalPiezas: number,
+  destinosAplicables: readonly PedidoProgramacionDestino[],
+) =>
   z
     .object({ programaciones: z.array(pedidoProgramacionRowSchema) })
     .superRefine((data, ctx) => {
+      data.programaciones.forEach((row, index) => {
+        if (!destinosAplicables.includes(row.destino)) {
+          ctx.addIssue({
+            code: "custom",
+            path: ["programaciones", index, "destino"],
+            message: getDestinoNoAplicableMessage(row.destino),
+          });
+        }
+      });
+
       const suma = data.programaciones.reduce((sum, row) => sum + row.cantidad, 0);
       if (suma > totalPiezas) {
         ctx.addIssue({
