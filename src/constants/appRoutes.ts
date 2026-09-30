@@ -754,6 +754,13 @@ export const appRouteGroups: AppRouteGroup[] = [
         icon: CalendarDaysIcon,
         permission: "R-MESACONTROL-PEDIDOS",
       },
+      {
+        key: "operations-inventory-pipeline",
+        label: "Existencias, producción y compras",
+        path: "/operations/inventory-pipeline",
+        icon: InventariosIcon,
+        permission: "R-MESACONTROL",
+      },
       // OCULTO EN NAVEGACION: pagina placeholder sin datos. Restaurar cuando tenga implementacion real.
       // {
       //   key: "operations-samples",
