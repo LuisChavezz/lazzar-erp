@@ -86,6 +86,8 @@ export const routePermissions: Array<{
   // Código de MÓDULO a propósito: muestran la cuenta de Google del propio usuario, no datos del módulo.
   { prefix: "/operations/emails", permission: "R-MESACONTROL" },
   { prefix: "/operations/calendar", permission: "R-MESACONTROL" },
+  // Código de MÓDULO a propósito: el reporte no tiene código de sección propio.
+  { prefix: "/operations/inventory-pipeline", permission: "R-MESACONTROL" },
   { prefix: "/operations", permission: "R-MESACONTROL" },
 
   // ── Operaciones de Almacén (WMS) ──────────────────────────────────────────
