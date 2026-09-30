@@ -9,7 +9,11 @@ import {
 } from "@/src/features/quotes/utils/quoteValidationErrors";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { firstDrfMessage } from "@/src/utils/firstDrfMessage";
+import { embroideryOnboardingQueryKey } from "@/src/features/embroidery/hooks/useEmbroideryOnboarding";
+import { reflectiveOnboardingQueryKey } from "@/src/features/reflective-orders/hooks/useReflectiveOnboarding";
+import { corteMangaOnboardingQueryKey } from "@/src/features/corte-manga/hooks/useCorteMangaOnboarding";
 import { programarPedido } from "../services/actions";
+import { pedidoDetailQueryKey } from "./usePedidoDetail";
 import type {
   PedidoProgramarPayload,
   PedidoProgramarResponse,
@@ -75,14 +79,14 @@ export const useProgramarPedido = ({ onValidationError }: UseProgramarPedidoOpti
   return useMutation<PedidoProgramarResponse, unknown, ProgramarPedidoVariables>({
     mutationFn: ({ pedidoId, payload }) => programarPedido(pedidoId, payload),
     onSuccess: (_, { pedidoId }) => {
-      queryClient.invalidateQueries({ queryKey: ["pedido-detail", pedidoId] });
+      queryClient.invalidateQueries({ queryKey: pedidoDetailQueryKey(pedidoId) });
       queryClient.invalidateQueries({ queryKey: ["orders"] });
       // Los onboardings de OB/OR/OCM exponen `programado` por pedido
       // (`MesaControlProgramadoIndicator`): uno ya abierto debe reflejar la
       // programación nueva sin recargar.
-      queryClient.invalidateQueries({ queryKey: ["embroidery-onboarding"] });
-      queryClient.invalidateQueries({ queryKey: ["reflective-onboarding"] });
-      queryClient.invalidateQueries({ queryKey: ["corte-manga-onboarding"] });
+      queryClient.invalidateQueries({ queryKey: embroideryOnboardingQueryKey });
+      queryClient.invalidateQueries({ queryKey: reflectiveOnboardingQueryKey });
+      queryClient.invalidateQueries({ queryKey: corteMangaOnboardingQueryKey });
       toast.success("Programación del pedido guardada");
     },
     onError: (error) => {

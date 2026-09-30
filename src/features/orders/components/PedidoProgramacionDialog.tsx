@@ -18,7 +18,10 @@ import {
 } from "../constants/pedidoProgramacion";
 import { usePedidoDetail } from "../hooks/usePedidoDetail";
 import { usePedidoProgramacionForm } from "../hooks/usePedidoProgramacionForm";
-import { PEDIDO_PROGRAMACION_COMENTARIOS_MAX } from "../schemas/pedido-programacion.schema";
+import {
+  countCodePoints,
+  PEDIDO_PROGRAMACION_COMENTARIOS_MAX,
+} from "../schemas/pedido-programacion.schema";
 import type { PedidoDetail, PedidoListItem } from "../interfaces/order.interface";
 
 /**
@@ -70,7 +73,7 @@ function PedidoProgramacionForm({ pedido, onClose }: PedidoProgramacionFormProps
     hayDestinosNoAplicables,
     isPending,
     getError,
-    getRowError,
+    getDestinoError,
     clearError,
     addRow,
     removeRow,
@@ -118,7 +121,7 @@ function PedidoProgramacionForm({ pedido, onClose }: PedidoProgramacionFormProps
                             field.handleChange(event.target.value);
                             clearError(`programaciones.${index}.destino`);
                           }}
-                          error={getRowError(index, "destino")}
+                          error={getDestinoError(index)}
                         />
                       )}
                     </form.Field>
@@ -154,32 +157,36 @@ function PedidoProgramacionForm({ pedido, onClose }: PedidoProgramacionFormProps
                         controles. Sin `maxLength` nativo: el exceso se marca
                         con el error del schema en vez de truncarse en silencio. */}
                     <form.Field name={`programaciones[${index}].comentarios`}>
-                      {(field) => (
-                        <div className="col-span-2">
-                          <FormTextarea
-                            label="Comentarios (opcional)"
-                            placeholder="Indicaciones para este destino..."
-                            rows={2}
-                            forceUppercase
-                            name={field.name}
-                            value={field.state.value}
-                            onChange={(event) => {
-                              field.handleChange(event.target.value);
-                              clearError(`programaciones.${index}.comentarios`);
-                            }}
-                            error={getError(`programaciones.${index}.comentarios`)}
-                          />
-                          <p
-                            className={`mt-1 text-right text-[11px] tabular-nums ${
-                              field.state.value.trim().length > PEDIDO_PROGRAMACION_COMENTARIOS_MAX
-                                ? "text-rose-600 dark:text-rose-400"
-                                : "text-slate-400 dark:text-slate-500"
-                            }`}
-                          >
-                            {field.state.value.trim().length}/{PEDIDO_PROGRAMACION_COMENTARIOS_MAX}
-                          </p>
-                        </div>
-                      )}
+                      {(field) => {
+                        // Code points, igual que el schema y el backend.
+                        const comentariosLength = countCodePoints(field.state.value.trim());
+                        return (
+                          <div className="col-span-2">
+                            <FormTextarea
+                              label="Comentarios (opcional)"
+                              placeholder="Indicaciones para este destino..."
+                              rows={2}
+                              forceUppercase
+                              name={field.name}
+                              value={field.state.value}
+                              onChange={(event) => {
+                                field.handleChange(event.target.value);
+                                clearError(`programaciones.${index}.comentarios`);
+                              }}
+                              error={getError(`programaciones.${index}.comentarios`)}
+                            />
+                            <p
+                              className={`mt-1 text-right text-[11px] tabular-nums ${
+                                comentariosLength > PEDIDO_PROGRAMACION_COMENTARIOS_MAX
+                                  ? "text-rose-600 dark:text-rose-400"
+                                  : "text-slate-400 dark:text-slate-500"
+                              }`}
+                            >
+                              {comentariosLength}/{PEDIDO_PROGRAMACION_COMENTARIOS_MAX}
+                            </p>
+                          </div>
+                        );
+                      }}
                     </form.Field>
                   </div>
                 ))}

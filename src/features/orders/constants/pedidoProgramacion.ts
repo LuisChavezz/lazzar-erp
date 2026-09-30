@@ -41,6 +41,20 @@ export const getPedidoDestinosAplicables = (
     : PEDIDO_PROGRAMACION_DESTINOS;
 
 /**
+ * Regla ÚNICA de aplicabilidad, compartida por la marca en vivo del formulario
+ * y por la guarda del schema al enviar: devuelve el destino (de la lista
+ * blanca) que el pedido NO admite, o `null`. `""` y los códigos desconocidos
+ * dan `null`; esos los marca el `z.enum` del schema.
+ */
+export const getDestinoNoAplicable = (
+  destino: string,
+  destinosAplicables: readonly PedidoProgramacionDestino[],
+): PedidoProgramacionDestino | null =>
+  isPedidoProgramacionDestino(destino) && !destinosAplicables.includes(destino)
+    ? destino
+    : null;
+
+/**
  * Error de renglón para una entrada GUARDADA cuyo destino el pedido ya no
  * admite: no se descarta ni se reescribe sola, el usuario la quita o la cambia.
  */

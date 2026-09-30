@@ -5,6 +5,7 @@
  */
 import { z } from "zod";
 import {
+  getDestinoNoAplicable,
   getDestinoNoAplicableMessage,
   PEDIDO_PROGRAMACION_DESTINOS,
   type PedidoProgramacionDestino,
@@ -25,6 +26,13 @@ export interface PedidoProgramacionRowFormValues {
 /** Tope de `comentarios` por entrada, igual que el serializer. */
 export const PEDIDO_PROGRAMACION_COMENTARIOS_MAX = 500;
 
+/**
+ * Longitud en CODE POINTS, como el `max_length` del serializer (el `len()` de
+ * Python), no en unidades UTF-16 (`String.length`), que cuenta doble cada
+ * emoji o carácter astral y rechazaría comentarios que el backend acepta.
+ */
+export const countCodePoints = (text: string): number => [...text].length;
+
 export interface PedidoProgramacionFormValues {
   programaciones: PedidoProgramacionRowFormValues[];
 }
@@ -41,8 +49,8 @@ const pedidoProgramacionRowSchema = z.object({
   comentarios: z
     .string()
     .trim()
-    .max(
-      PEDIDO_PROGRAMACION_COMENTARIOS_MAX,
+    .refine(
+      (value) => countCodePoints(value) <= PEDIDO_PROGRAMACION_COMENTARIOS_MAX,
       `Máximo ${PEDIDO_PROGRAMACION_COMENTARIOS_MAX} caracteres`,
     )
     .transform((value) => (value === "" ? null : value)),
@@ -76,12 +84,16 @@ export const createPedidoProgramacionSchema = (
   z
     .object({ programaciones: z.array(pedidoProgramacionRowSchema) })
     .superRefine((data, ctx) => {
+      // Guarda al enviar. En la UI el botón ya queda deshabilitado con la MISMA
+      // regla (`getDestinoNoAplicable`, marca en vivo del hook); esto cubre
+      // cualquier envío que no pase por ese botón.
       data.programaciones.forEach((row, index) => {
-        if (!destinosAplicables.includes(row.destino)) {
+        const noAplicable = getDestinoNoAplicable(row.destino, destinosAplicables);
+        if (noAplicable) {
           ctx.addIssue({
             code: "custom",
             path: ["programaciones", index, "destino"],
-            message: getDestinoNoAplicableMessage(row.destino),
+            message: getDestinoNoAplicableMessage(noAplicable),
           });
         }
       });

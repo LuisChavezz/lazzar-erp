@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { useForm, useStore } from "@tanstack/react-form";
+import { useQueryClient } from "@tanstack/react-query";
 import type { FormFieldError } from "@/src/utils/getFieldError";
 import type { QuoteValidationIssue } from "@/src/features/quotes/utils/quoteValidationErrors";
 import type { PedidoDetail } from "../interfaces/order.interface";
@@ -13,11 +14,12 @@ import {
   sumProgramacionCantidades,
 } from "../schemas/pedido-programacion.schema";
 import {
+  getDestinoNoAplicable,
   getDestinoNoAplicableMessage,
   getPedidoDestinosAplicables,
-  isPedidoProgramacionDestino,
-  type PedidoProgramacionDestino,
 } from "../constants/pedidoProgramacion";
+import { getPedidoDetail } from "../services/actions";
+import { pedidoDetailQueryKey } from "./usePedidoDetail";
 import { useProgramarPedido } from "./useProgramarPedido";
 
 const LIST_ERROR_KEY = "programaciones";
@@ -43,6 +45,7 @@ export function usePedidoProgramacionForm({
   const totalPiezas = getPedidoTotalPiezas(pedido);
   const destinosAplicables = getPedidoDestinosAplicables(pedido.destinos_aplicables);
 
+  const queryClient = useQueryClient();
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -81,6 +84,29 @@ export function usePedidoProgramacionForm({
     });
   };
 
+  /**
+   * Relee el detalle para recalcular `destinos_aplicables` cuando el backend
+   * rechaza la LISTA: el pedido pudo cambiar de servicios con el diálogo
+   * abierto y la regla en vivo marcará el renglón afectado. No se interpreta el
+   * texto del 400: cualquier error de lista relee.
+   *
+   * Por qué NO resetea el formulario: los valores iniciales viven en un
+   * `useState` (misma referencia para siempre), así que `useForm` no ve cambiar
+   * `defaultValues`; el nuevo detalle solo cambia `pedido`, del que se derivan
+   * `destinosAplicables` y `totalPiezas`. Se lee con la acción directa y se
+   * escribe con `setQueryData`, no con `refetch`: un refetch FALLIDO pondría la
+   * query en error y el diálogo cambiaría el formulario por su `ErrorState`,
+   * perdiendo lo capturado. Si la relectura falla, se conserva el detalle actual.
+   */
+  const refreshPedidoDetail = async () => {
+    try {
+      const fresh = await getPedidoDetail(pedido.id);
+      queryClient.setQueryData(pedidoDetailQueryKey(pedido.id), fresh);
+    } catch {
+      // El 400 original ya se mostró; sin detalle nuevo no hay nada que recalcular.
+    }
+  };
+
   const applyServerIssues = (issues: QuoteValidationIssue[]) => {
     setErrors((prev) => {
       const next = { ...prev };
@@ -89,6 +115,9 @@ export function usePedidoProgramacionForm({
       });
       return next;
     });
+    if (issues.some((issue) => issue.path === LIST_ERROR_KEY)) {
+      void refreshPedidoDetail();
+    }
   };
 
   const { mutateAsync: programarMutation, isPending: isSaving } = useProgramarPedido({
@@ -137,25 +166,22 @@ export function usePedidoProgramacionForm({
   const excedeTotal = sumaProgramada > totalPiezas;
 
   /**
-   * Destino (de la lista blanca) que el pedido ya NO admite, o `null`. Se
-   * evalúa en vivo, no solo al enviar: una entrada guardada así debe verse
-   * marcada desde que se abre el diálogo. `""` y los códigos desconocidos no
-   * cuentan aquí; esos los marca el schema.
+   * Marca EN VIVO, no solo al enviar: una entrada guardada con un destino que
+   * el pedido ya no admite debe verse marcada desde que se abre el diálogo, y
+   * bloquea el guardado. Misma regla que la guarda del schema.
    */
-  const getDestinoNoAplicable = (destino: string): PedidoProgramacionDestino | null =>
-    isPedidoProgramacionDestino(destino) && !destinosAplicables.includes(destino)
-      ? destino
-      : null;
   const hayDestinosNoAplicables = programaciones.some(
-    (row) => getDestinoNoAplicable(row.destino) !== null,
+    (row) => getDestinoNoAplicable(row.destino, destinosAplicables) !== null,
   );
 
-  /** Error de un campo: el del estado (submit/servidor) o, para `destino`, el de aplicabilidad. */
-  const getRowError = (index: number, field: "destino" | "cantidad" | "comentarios") => {
-    const path = `programaciones.${index}.${field}`;
-    const stored = getError(path);
-    if (stored || field !== "destino") return stored;
-    const noAplicable = getDestinoNoAplicable(programaciones[index]?.destino ?? "");
+  /** Error del destino de un renglón: el del estado (submit/servidor) o el de aplicabilidad. */
+  const getDestinoError = (index: number): FormFieldError | undefined => {
+    const stored = getError(`programaciones.${index}.destino`);
+    if (stored) return stored;
+    const noAplicable = getDestinoNoAplicable(
+      programaciones[index]?.destino ?? "",
+      destinosAplicables,
+    );
     return noAplicable ? { message: getDestinoNoAplicableMessage(noAplicable) } : undefined;
   };
 
@@ -187,7 +213,7 @@ export function usePedidoProgramacionForm({
     hayDestinosNoAplicables,
     isPending: isSubmitting || isSaving,
     getError,
-    getRowError,
+    getDestinoError,
     clearError,
     addRow,
     removeRow,
