@@ -62,21 +62,19 @@ const QuantityCell = ({ value }: { value: number }) => (
  *
  * Búsqueda global: solo `codigo` y `descripcion`. Las columnas numéricas llevan
  * `enableGlobalFilter: false` —TanStack también busca en valores `number`, y
- * un "150" coincidiendo con una cantidad confundiría—. El texto usa `?? ""` en
- * el accessor por el pitfall de la primera fila nula (ver
- * `CorteMangaOrderColumns`), aunque el mapper ya lo normaliza.
+ * un "150" coincidiendo con una cantidad confundiría—. `codigo`/`descripcion`
+ * llegan siempre como `string` (el mapper colapsa `null` a `""`), así que no
+ * les afecta el pitfall de la primera fila nula (ver `CorteMangaOrderColumns`).
  *
  * Las cantidades son `number` (el mapper las parsea) para que ordenen por
  * valor; el formato se aplica aquí con `formatExactQuantityValue`.
  */
 export const getInventoryPipelineColumns = (onViewDetails: (productoId: number) => void) => [
-  columnHelper.accessor((row) => row.codigo ?? "", {
-    id: "codigo",
+  columnHelper.accessor("codigo", {
     header: "Código",
     cell: ({ row }) => <CodigoCell row={row.original} onViewDetails={onViewDetails} />,
   }),
-  columnHelper.accessor((row) => row.descripcion ?? "", {
-    id: "descripcion",
+  columnHelper.accessor("descripcion", {
     header: "Descripción",
     cell: (info) => (
       <span
