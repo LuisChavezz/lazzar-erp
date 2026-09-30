@@ -77,6 +77,12 @@ export const useProgramarPedido = ({ onValidationError }: UseProgramarPedidoOpti
     onSuccess: (_, { pedidoId }) => {
       queryClient.invalidateQueries({ queryKey: ["pedido-detail", pedidoId] });
       queryClient.invalidateQueries({ queryKey: ["orders"] });
+      // Los onboardings de OB/OR/OCM exponen `programado` por pedido
+      // (`MesaControlProgramadoIndicator`): uno ya abierto debe reflejar la
+      // programación nueva sin recargar.
+      queryClient.invalidateQueries({ queryKey: ["embroidery-onboarding"] });
+      queryClient.invalidateQueries({ queryKey: ["reflective-onboarding"] });
+      queryClient.invalidateQueries({ queryKey: ["corte-manga-onboarding"] });
       toast.success("Programación del pedido guardada");
     },
     onError: (error) => {
