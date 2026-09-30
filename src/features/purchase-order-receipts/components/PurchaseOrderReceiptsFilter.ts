@@ -1,5 +1,6 @@
 import type { DataTableFilterOption } from "@/src/components/DataTable";
 import type { PurchaseOrderReceipt } from "../interfaces/purchase-order-receipt.interface";
+import { getReceiptEstatusLabel } from "@/src/features/receipts/constants/receiptStatus";
 
 // ─── Opciones de filtro por columna ─────────────────────────────────────────
 // Alimentan los desplegables dentro de los encabezados de Folio (Estatus) y
@@ -8,10 +9,10 @@ import type { PurchaseOrderReceipt } from "../interfaces/purchase-order-receipt.
 
 /**
  * Opciones de estatus a partir de las recepciones cargadas. El listado
- * (`GET /compras/recepciones/`) NO trae `estatus_label` — solo el detalle lo
- * expone (ver `receiptStatus.ts`) — así que la etiqueta es el propio código
- * ("Estatus 2"), no un texto de negocio: es honesto con el dato disponible
- * en vez de adivinar un mapeo que podría estar mal.
+ * (`GET /compras/recepciones/`) solo trae el código; la etiqueta sale del
+ * mismo mapa del enum `Recepcion.EstatusRecepcion` que usa WMS
+ * (`getReceiptEstatusLabel`). El VALOR sigue siendo el código, que es lo que
+ * compara `exactFilterFn`.
  */
 export function buildReceiptStatusOptions(
   receipts: PurchaseOrderReceipt[],
@@ -22,7 +23,7 @@ export function buildReceiptStatusOptions(
   }
   return Array.from(values)
     .sort((a, b) => a - b)
-    .map((estatus) => ({ value: String(estatus), label: `Estatus ${estatus}` }));
+    .map((estatus) => ({ value: String(estatus), label: getReceiptEstatusLabel(estatus) }));
 }
 
 /** Construye las opciones de proveedor a partir de las recepciones cargadas. */

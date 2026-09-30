@@ -1,6 +1,7 @@
 import type { DataTableVisibleColumn } from "@/src/components/DataTable";
 import { formatLocalDate } from "@/src/utils/formatDate";
 import type { PurchaseOrderReceipt } from "../interfaces/purchase-order-receipt.interface";
+import { getReceiptEstatusLabel } from "@/src/features/receipts/constants/receiptStatus";
 
 /**
  * Texto plano por columna para los reportes CSV y PDF del listado
@@ -16,7 +17,7 @@ export const getPurchaseOrderReceiptColumnText = (
 ): string => {
   switch (column.id) {
     case "folio":
-      return [receipt.folio || "—", `Estatus ${receipt.estatus}`, receipt.remision || null]
+      return [receipt.folio || "—", getReceiptEstatusLabel(receipt.estatus), receipt.remision || null]
         .filter(Boolean)
         .join(" · ");
     case "fecha_recepcion":
