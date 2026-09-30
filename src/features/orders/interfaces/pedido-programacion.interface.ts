@@ -18,10 +18,14 @@ import type { PedidoProgramacionDestino } from "../constants/pedidoProgramacion"
  *
  * `fecha`, `usuario_id` y `usuario_nombre` los SELLA EL SERVIDOR al guardar:
  * para el frontend son de solo lectura y nunca viajan en el payload.
+ *
+ * `comentarios` es opcional: las entradas guardadas antes de que existiera no
+ * traen la clave. El servidor guarda un `null` como `""`.
  */
 export interface PedidoProgramacion {
   destino: string;
   cantidad: number;
+  comentarios?: string | null;
   fecha?: string;
   usuario_id?: number;
   usuario_nombre?: string;
@@ -35,10 +39,14 @@ export interface PedidoProgramacionConf {
   programaciones?: PedidoProgramacion[];
 }
 
-/** Una entrada del payload: SOLO `destino` + `cantidad`. */
+/**
+ * Una entrada del payload: `destino`, `cantidad` y `comentarios` (máx. 500;
+ * `null` cuando no hay comentario).
+ */
 export interface PedidoProgramacionInput {
   destino: PedidoProgramacionDestino;
   cantidad: number;
+  comentarios?: string | null;
 }
 
 /** Cuerpo del PATCH. */

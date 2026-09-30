@@ -104,15 +104,14 @@ export function usePedidoProgramacionForm({
       setErrors({});
       setIsSubmitting(true);
       try {
-        // Lista COMPLETA (reemplazo total) y SOLO destino + cantidad: la fecha y
-        // el usuario los sella el servidor.
+        // Lista COMPLETA (reemplazo total) con destino, cantidad y comentarios
+        // (`null` si está vacío). La fecha y el usuario los sella el servidor.
         await programarMutation({
           pedidoId: pedido.id,
           payload: {
-            programaciones: parsed.data.programaciones.map(({ destino, cantidad }) => ({
-              destino,
-              cantidad,
-            })),
+            programaciones: parsed.data.programaciones.map(
+              ({ destino, cantidad, comentarios }) => ({ destino, cantidad, comentarios }),
+            ),
           },
         });
         onSuccess?.();
@@ -129,7 +128,7 @@ export function usePedidoProgramacionForm({
   const excedeTotal = sumaProgramada > totalPiezas;
 
   const addRow = () => {
-    form.pushFieldValue("programaciones", { destino: "", cantidad: "" });
+    form.pushFieldValue("programaciones", { destino: "", cantidad: "", comentarios: "" });
     setRowKeys((prev) => [...prev, rowKeyCounter.current++]);
     clearError(LIST_ERROR_KEY);
   };

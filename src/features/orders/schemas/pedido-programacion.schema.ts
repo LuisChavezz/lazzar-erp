@@ -15,7 +15,11 @@ import type { PedidoDetail } from "../interfaces/order.interface";
 export interface PedidoProgramacionRowFormValues {
   destino: string;
   cantidad: string;
+  comentarios: string;
 }
+
+/** Tope de `comentarios` por entrada, igual que el serializer. */
+export const PEDIDO_PROGRAMACION_COMENTARIOS_MAX = 500;
 
 export interface PedidoProgramacionFormValues {
   programaciones: PedidoProgramacionRowFormValues[];
@@ -29,6 +33,15 @@ const pedidoProgramacionRowSchema = z.object({
     .regex(/^\d+$/, "Captura una cantidad entera")
     .transform(Number)
     .pipe(z.number().int().min(1, "La cantidad debe ser al menos 1")),
+  // Recortado: un comentario de solo espacios cuenta como vacío (→ `null`).
+  comentarios: z
+    .string()
+    .trim()
+    .max(
+      PEDIDO_PROGRAMACION_COMENTARIOS_MAX,
+      `Máximo ${PEDIDO_PROGRAMACION_COMENTARIOS_MAX} caracteres`,
+    )
+    .transform((value) => (value === "" ? null : value)),
 });
 
 /**
@@ -83,6 +96,9 @@ export const createPedidoProgramacionFormValues = (
       ? programaciones.map((programacion) => ({
           destino: typeof programacion.destino === "string" ? programacion.destino : "",
           cantidad: String(programacion.cantidad ?? ""),
+          // Entradas previas a `comentarios` no traen la clave; `null` → vacío.
+          comentarios:
+            typeof programacion.comentarios === "string" ? programacion.comentarios : "",
         }))
       : [],
   };

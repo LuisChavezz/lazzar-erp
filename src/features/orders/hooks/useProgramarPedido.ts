@@ -40,7 +40,7 @@ const extractRejectionMessage = (data: unknown): string | undefined => {
  * normalizador que la edición de Mesa de Control): DRF anida los errores por
  * ruta y aquí las rutas ya coinciden con las del formulario —
  * `programaciones` (suma excedida) y `programaciones.N.destino` /
- * `programaciones.N.cantidad` (por renglón)—.
+ * `programaciones.N.cantidad` / `programaciones.N.comentarios` (por renglón)—.
  */
 const extractProgramacionIssues = (data: unknown): QuoteValidationIssue[] => {
   const issues = extractQuoteValidationIssues(data).filter(
