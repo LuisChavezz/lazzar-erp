@@ -4,7 +4,7 @@ import { createColumnHelper, type ColumnDef } from "@tanstack/react-table";
 import type { ProductionOrderListItem } from "../interfaces/production-order.interface";
 import { ActionMenu } from "@/src/components/ActionMenu";
 import type { ActionMenuItem } from "@/src/components/ActionMenu";
-import { ViewIcon } from "@/src/components/Icons";
+import { RouteIcon, ViewIcon } from "@/src/components/Icons";
 import { StatusBadge } from "@/src/components/StatusBadge";
 import {
   PRODUCTION_ORDER_PRIORITY_CONFIG,
@@ -17,15 +17,22 @@ const columnHelper = createColumnHelper<ProductionOrderListItem>();
 const ActionsCell = ({
   row,
   onViewDetails,
+  onOpenCriticalPath,
 }: {
   row: ProductionOrderListItem;
   onViewDetails: (id: number) => void;
+  onOpenCriticalPath: (row: ProductionOrderListItem) => void;
 }) => {
   const menuItems: ActionMenuItem[] = [
     {
       label: 'Ver detalle',
       icon: ViewIcon,
       onSelect: () => onViewDetails(row.op_id),
+    },
+    {
+      label: 'Ruta crítica',
+      icon: RouteIcon,
+      onSelect: () => onOpenCriticalPath(row),
     },
   ];
 
@@ -48,9 +55,14 @@ const ActionsCell = ({
  * `getEmbroideryOrderColumns`/`getReflectiveOrderColumns`/
  * `getCorteMangaOrderColumns`; aquí el callback recibe `op_id` (la PK de esta
  * orden), no `id`.
+ *
+ * `onOpenCriticalPath` solo AVISA al listado, que es dueño del diálogo de ruta
+ * crítica: montado dentro de la celda, un refetch o un cambio de página lo
+ * desmontaría a media captura.
  */
 export function getProductionOrderColumns(
   onViewDetails: (id: number) => void,
+  onOpenCriticalPath: (row: ProductionOrderListItem) => void,
 ): ColumnDef<ProductionOrderListItem, unknown>[] {
   return [
     // Folio OP
@@ -189,7 +201,13 @@ export function getProductionOrderColumns(
       header: "Acciones",
       meta: { align: "center" },
       size: 90,
-      cell: ({ row }) => <ActionsCell row={row.original} onViewDetails={onViewDetails} />,
+      cell: ({ row }) => (
+        <ActionsCell
+          row={row.original}
+          onViewDetails={onViewDetails}
+          onOpenCriticalPath={onOpenCriticalPath}
+        />
+      ),
     }),
   ] as ColumnDef<ProductionOrderListItem, unknown>[];
 }

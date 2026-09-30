@@ -1,7 +1,9 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
-import { ArrowLeftIcon } from "@/src/components/Icons";
+import { ArrowLeftIcon, RouteIcon } from "@/src/components/Icons";
+import { Button } from "@/src/components/Button";
 import { Loader } from "@/src/components/Loader";
 import { ErrorState } from "@/src/components/ErrorState";
 import { StatusBadge } from "@/src/components/StatusBadge";
@@ -28,6 +30,7 @@ import type {
   ProductionOrderConsumo,
   ProductionOrderOnboardingProducto,
 } from "../interfaces/production-order.interface";
+import { ProductionOrderCriticalPathDialog } from "@/src/features/production-order-critical-path/components/ProductionOrderCriticalPathDialog";
 
 // Destino del "Volver". Fijo —sin el mapa `?from=` de `PedidoDetailContent`—
 // porque esta ruta NO es neutra: cuelga de `/manufacturing`, exige
@@ -234,6 +237,9 @@ export function ProductionOrderPageContent({
   // ya deja la consulta apagada por su propio `enabled`; el guard de abajo solo
   // decide qué SE PINTA en ese caso, no si se dispara la petición.
   const { data, isLoading, isError, error } = useProductionOrderOnboarding(numericId);
+  // El diálogo de ruta crítica se MONTA solo al abrirlo: su GET crea el
+  // registro, así que pintar esta página no debe dispararlo.
+  const [isCriticalPathOpen, setIsCriticalPathOpen] = useState(false);
 
   const BackLink = (
     <Link
@@ -311,6 +317,10 @@ export function ProductionOrderPageContent({
                 {data.folio_op || `Orden #${data.op_id}`}
               </h1>
             </div>
+            <Button variant="secondary" onClick={() => setIsCriticalPathOpen(true)}>
+              <RouteIcon className="w-4 h-4" aria-hidden="true" />
+              Ruta crítica
+            </Button>
           </div>
           <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-xs shrink-0">
             <InfoField label="Alta">
@@ -431,6 +441,13 @@ export function ProductionOrderPageContent({
           </div>
         )}
       </Section>
+
+      {isCriticalPathOpen && (
+        <ProductionOrderCriticalPathDialog
+          target={{ opId: data.op_id, folio: data.folio_op }}
+          onClose={() => setIsCriticalPathOpen(false)}
+        />
+      )}
     </div>
   );
 }
