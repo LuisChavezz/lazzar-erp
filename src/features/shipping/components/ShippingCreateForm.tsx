@@ -76,10 +76,10 @@ export function ShippingCreateForm({ onSuccess }: ShippingCreateFormProps) {
       <section className="space-y-3">
         <div>
           <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
-            Embarque a enviar
+            Empaque a enviar
           </h3>
           <p className="text-[11px] text-slate-500">
-            El pedido, el cliente y la sucursal se heredan del embarque elegido.
+            El pedido, el cliente y la sucursal se heredan del empaque elegido.
           </p>
         </div>
         <ShippingPackingSelector
@@ -102,7 +102,7 @@ export function ShippingCreateForm({ onSuccess }: ShippingCreateFormProps) {
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 rounded-xl bg-slate-50 dark:bg-white/5 px-4 py-3 text-xs">
             <div>
               <p className="text-[11px] uppercase tracking-wider text-slate-400 font-semibold">
-                Embarque
+                Empaque
               </p>
               <p className="font-semibold text-slate-700 dark:text-slate-200 truncate">
                 {packing?.folio ?? "—"}
@@ -181,12 +181,12 @@ export function ShippingCreateForm({ onSuccess }: ShippingCreateFormProps) {
             <Loader
               className="py-10"
               title="Cargando líneas"
-              message="Consultando qué líneas de este embarque se pueden enviar..."
+              message="Consultando qué líneas de este empaque se pueden enviar..."
             />
           ) : isError ? (
             <div className="rounded-2xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 p-6 space-y-3 text-center">
               <p className="text-sm font-semibold text-red-600 dark:text-red-400">
-                No se pudieron cargar las líneas del embarque
+                No se pudieron cargar las líneas del empaque
               </p>
               <p className="text-xs text-red-500 dark:text-red-300">
                 {shippingOnboardingErrorMessage(error)}
@@ -202,17 +202,17 @@ export function ShippingCreateForm({ onSuccess }: ShippingCreateFormProps) {
             </div>
           ) : rows.length === 0 ? (
             <InfoPanel
-              title="Este embarque no tiene líneas registradas"
-              subtitle="Elige otro embarque de la lista de arriba."
+              title="Este empaque no tiene líneas registradas"
+              subtitle="Elige otro empaque de la lista de arriba."
             />
           ) : availableRowsCount === 0 ? (
             <InfoPanel
-              title="Este embarque ya fue enviado por completo"
+              title="Este empaque ya fue enviado por completo"
               subtitle={`${
                 alreadyShippedCount === 1
                   ? "Su 1 línea ya salió"
                   : `Sus ${alreadyShippedCount} líneas ya salieron`
-              } en un envío anterior. Elige otro embarque de la lista de arriba.`}
+              } en un envío anterior. Elige otro empaque de la lista de arriba.`}
             />
           ) : (
             <fieldset disabled={isPending} className="space-y-5">

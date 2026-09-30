@@ -23,7 +23,7 @@ export const PackingForm = () => {
       onOpenChange={setIsDialogOpen}
       title={
         <DialogHeader
-          title="Nuevo Embarque"
+          title="Nuevo Empaque"
           subtitle="Empaque de la mercancía de un surtido"
           statusColor="sky"
         />
@@ -33,7 +33,7 @@ export const PackingForm = () => {
       trigger={
         <Button variant="primary">
           <PackingIcon className="w-4 h-4" />
-          Nuevo embarque
+          Nuevo empaque
         </Button>
       }
     >

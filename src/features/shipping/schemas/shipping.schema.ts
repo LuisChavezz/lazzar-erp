@@ -12,7 +12,7 @@ import { z } from "zod";
 
 /** Id de packing válido para el query param y para el body. `0` = sin elegir. */
 export const ShipmentPackingSchema = z.object({
-  packing: z.number().int().min(1, "Selecciona un embarque"),
+  packing: z.number().int().min(1, "Selecciona un empaque"),
 });
 export type ShipmentPackingValues = z.infer<typeof ShipmentPackingSchema>;
 
@@ -22,7 +22,7 @@ export type ShipmentPackingValues = z.infer<typeof ShipmentPackingSchema>;
  * depender de su rechazo tardío.
  */
 export const CreateShipmentDetalleLineSchema = z.object({
-  packing_detalle: z.number().int().min(1, "Línea de embarque inválida"),
+  packing_detalle: z.number().int().min(1, "Línea de empaque inválida"),
 });
 
 /**
@@ -41,7 +41,7 @@ export const CreateShipmentDetalleLineSchema = z.object({
  *     accidente ni por un cambio futuro que lo agregue río arriba.
  */
 export const CreateShipmentPayloadSchema = z.object({
-  packing: z.number().int().min(1, "Selecciona un embarque"),
+  packing: z.number().int().min(1, "Selecciona un empaque"),
   despacho_detalle: z
     .array(CreateShipmentDetalleLineSchema)
     .min(1, "Marca al menos una línea para enviar"),

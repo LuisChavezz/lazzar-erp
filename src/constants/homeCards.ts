@@ -40,7 +40,7 @@ export const homeCards = [
   {
     icon: InventariosIcon,
     title: "Operaciones de Almacén (WMS)",
-    description: "Inventario, ubicaciones, movimientos, surtido, embarque y transferencias.",
+    description: "Inventario, ubicaciones, movimientos, surtido, empaque y transferencias.",
     footerText: "Gestionar almacenes",
     href: "/wms",
     accentClass: "text-emerald-600 dark:text-emerald-400",

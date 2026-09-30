@@ -24,7 +24,7 @@ function lineaProductoNombre(linea: PackingDetalleLine): string {
 
 const LineasTable = ({ items }: { items: PackingDetalleLine[] }) => {
   if (items.length === 0) {
-    return <EmptyLines>Este embarque no tiene líneas registradas.</EmptyLines>;
+    return <EmptyLines>Este empaque no tiene líneas registradas.</EmptyLines>;
   }
 
   return (
@@ -94,7 +94,7 @@ export function PackingDetailDialog({ packing, open, onOpenChange }: PackingDeta
           <PackingIcon className="w-5 h-5 text-sky-500 shrink-0" />
           <div>
             <p className="text-base font-semibold leading-tight text-slate-800 dark:text-slate-100">
-              Detalle de Embarque
+              Detalle de Empaque
             </p>
             <p className="text-xs text-slate-500 dark:text-slate-400 font-mono font-normal mt-0.5">
               {packing.folio}
@@ -183,7 +183,7 @@ export function PackingDetailContent({ packing }: { packing: Packing }) {
 
         {/* Líneas */}
         <div>
-          <SectionTitle>Líneas del embarque</SectionTitle>
+          <SectionTitle>Líneas del empaque</SectionTitle>
           <LineasTable items={packing.packing_detalle} />
         </div>
       </div>

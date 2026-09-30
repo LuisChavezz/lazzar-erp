@@ -90,7 +90,7 @@ export const pickingColumns = [
   // `created_at` es un timestamp real (con hora y offset), así que va SIN
   // `timeZone: "UTC"`: el día se pinta en la zona del usuario (ver
   // `formatShortDate`). Se ordena sobre el ISO crudo, no sobre el texto
-  // formateado. Misma convención que la columna "Creado" de Embarque
+  // formateado. Misma convención que la columna "Creado" de Empaque
   // (`PackingColumns`).
   columnHelper.accessor("created_at", {
     header: "Fecha de creación",

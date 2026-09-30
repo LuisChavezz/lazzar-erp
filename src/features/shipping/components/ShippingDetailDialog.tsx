@@ -117,7 +117,7 @@ export function ShippingDetailDialog({ shipment, open, onOpenChange }: ShippingD
               endpoint de transición sobre packing) — se muestra como texto
               plano, no como `StatusBadge`, para no leerse como un indicador
               de avance que en realidad no existe. */}
-          <InfoField label="Estatus del embarque">{textOrDash(shipment.packing_estado)}</InfoField>
+          <InfoField label="Estatus del empaque">{textOrDash(shipment.packing_estado)}</InfoField>
           <InfoField label="Pedido">{textOrDash(shipment.pedido_folio)}</InfoField>
           <InfoField label="Cliente">{textOrDash(shipment.cliente_nombre)}</InfoField>
           <InfoField label="Sucursal">{textOrDash(shipment.sucursal_nombre)}</InfoField>
@@ -129,7 +129,7 @@ export function ShippingDetailDialog({ shipment, open, onOpenChange }: ShippingD
 
         {/* Packing de origen */}
         <div>
-          <SectionTitle>Embarque de origen</SectionTitle>
+          <SectionTitle>Empaque de origen</SectionTitle>
           <div className="flex items-center gap-3 px-4 py-3 rounded-xl border border-slate-100 dark:border-white/10">
             <div className="flex items-center gap-2 flex-1 min-w-0">
               <PackingIcon className="w-4 h-4 text-slate-400 shrink-0" aria-hidden="true" />

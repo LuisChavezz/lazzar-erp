@@ -63,15 +63,15 @@ export function PackingView() {
           fillHeight
           onRefetch={refetch}
           isRefetching={isFetching}
-          emptyMessage="No hay embarques registrados."
+          emptyMessage="No hay empaques registrados."
           // Ver el listado exige `R-WMS-PACKING` (ver `routePermissions`); dar de
           // alta exige además `C-WMS-PACKING`.
           actionButton={canCreate ? <PackingForm /> : undefined}
           isLoading={isLoading}
           isError={showError}
-          errorTitle="Error al cargar los embarques"
+          errorTitle="Error al cargar los empaques"
           errorMessage={extractErrorMessage(error, "No se pudo cargar la información.")}
-          loadingAriaLabel="Cargando embarques"
+          loadingAriaLabel="Cargando empaques"
         />
       </div>
     </div>

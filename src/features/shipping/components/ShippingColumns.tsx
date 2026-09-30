@@ -48,7 +48,7 @@ const columnHelper = createColumnHelper<Shipment>();
  */
 export const shipmentColumns = [
   columnHelper.accessor("packing_folio", {
-    header: "Embarque",
+    header: "Empaque",
     cell: (info) => (
       <span className="font-mono text-slate-700 dark:text-slate-200 font-semibold">
         {info.getValue()}
