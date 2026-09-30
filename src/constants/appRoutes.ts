@@ -42,6 +42,7 @@ import {
   EmbarquesIcon,
   LabelsIcon,
   ScanLineIcon,
+  ShieldCheckIcon,
   BancosIcon,
   WalletIcon,
   ReceiptIcon,
@@ -227,6 +228,14 @@ export const appRouteGroups: AppRouteGroup[] = [
         path: "/wms/receipts",
         icon: RecepcionesIcon,
         permission: "R-WMS-RECEPCIONES"
+      },
+      {
+        key: "wms-quality-inspections",
+        label: "Calidad",
+        path: "/wms/quality-inspections",
+        icon: ShieldCheckIcon,
+        description: "Inspección de calidad de las recepciones: lo aprobado entra a existencias.",
+        permission: "R-WMS-CALIDAD",
       },
       // OCULTO EN NAVEGACION: usa datos mock (src/features/locations/mocks/locations-dashboard.mock.ts:11). Restaurar cuando el backend exponga el endpoint real.
       // Sin código de sección en el catálogo (no existe R-WMS-UBICACIONES): al

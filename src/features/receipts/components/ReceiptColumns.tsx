@@ -6,6 +6,7 @@ import { StatusBadge, type StatusBadgeConfigEntry } from "@/src/components/Statu
 import { textOrDash } from "@/src/components/DetailDialogPrimitives";
 import { ReceiptDetailDialog } from "./ReceiptDetailDialog";
 import { ReceiptActionsCell } from "./ReceiptActionsCell";
+import { getReceiptEstatusLabel, RECEIPT_STATUS_CONFIG } from "../constants/receiptStatus";
 
 const columnHelper = createColumnHelper<Receipt>();
 
@@ -29,14 +30,13 @@ const TIPO_ORIGEN_DESCONOCIDO_CFG: StatusBadgeConfigEntry = {
 };
 
 // ── Badge de estatus ─────────────────────────────────────────────────────────
-// No existe un mapa de etiquetas/colores por valor de `estatus` para este
-// recurso; se reutiliza el fallback neutro de StatusBadge en vez de pintar un
-// pill a mano.
-const estatusDefaultConfig = (estatus: number): StatusBadgeConfigEntry => ({
-  label: `Estatus ${estatus}`,
+// El listado solo trae el código numérico: `getReceiptEstatusLabel` lo lleva a
+// la etiqueta del detalle y de ahí al mismo `RECEIPT_STATUS_CONFIG`. Un código
+// desconocido ("Estatus N") cae en este fallback neutro.
+const ESTATUS_DESCONOCIDO_CFG: StatusBadgeConfigEntry = {
   cls: "bg-slate-100 text-slate-600 dark:bg-slate-500/10 dark:text-slate-400",
   dot: "bg-slate-400",
-});
+};
 
 export const receiptColumns = [
   columnHelper.accessor("folio", {
@@ -103,13 +103,16 @@ export const receiptColumns = [
       </span>
     ),
   }),
-  columnHelper.accessor("estatus", {
+  // El valor de la columna es la ETIQUETA, no el código: así la búsqueda
+  // global ("calidad", "cerrada") y el orden trabajan sobre lo que se ve.
+  columnHelper.accessor((row) => getReceiptEstatusLabel(row.estatus), {
+    id: "estatus",
     header: "Estatus",
     cell: (info) => (
       <StatusBadge
-        status={String(info.getValue())}
-        config={{}}
-        defaultConfig={estatusDefaultConfig(info.getValue())}
+        status={info.getValue()}
+        config={RECEIPT_STATUS_CONFIG}
+        defaultConfig={ESTATUS_DESCONOCIDO_CFG}
       />
     ),
   }),

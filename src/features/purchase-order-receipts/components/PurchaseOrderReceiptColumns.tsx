@@ -8,6 +8,10 @@ import { ColumnHeaderFilter } from "@/src/components/ColumnHeaderFilter";
 import type { PurchaseOrderReceipt } from "../interfaces/purchase-order-receipt.interface";
 import { formatLocalDate } from "@/src/utils/formatDate";
 import { PurchaseOrderReceiptDetailDialog } from "./PurchaseOrderReceiptDetailDialog";
+import {
+  getReceiptEstatusLabel,
+  RECEIPT_STATUS_CONFIG,
+} from "@/src/features/receipts/constants/receiptStatus";
 
 // ── Filtro exacto por columna ────────────────────────────────────────────────
 // Mismo criterio que `PurchaseOrderColumns.tsx`: el valor a comparar es un
@@ -21,9 +25,9 @@ const exactFilterFn =
   };
 
 /**
- * Celda de Folio: punto de estatus (neutro — ver nota en `PurchaseOrderReceiptsFilter.ts`
- * sobre por qué no hay color por estatus) + folio + remisión como mini-pill
- * gris (se omite cuando no hay remisión capturada). El folio ABRE el mismo
+ * Celda de Folio: punto de estatus (color y etiqueta del mismo
+ * `RECEIPT_STATUS_CONFIG` que usa WMS/Recepciones) + folio + mini-pills de
+ * estatus y de remisión (esta se omite cuando no hay remisión capturada). El folio ABRE el mismo
  * diálogo de detalle que antes vivía detrás de "Ver Detalles" en la columna
  * Acciones — esta vista no tiene página propia de detalle (es un `MainDialog`,
  * no una ruta), así que a diferencia de Órdenes de Compra/Pedidos el folio no
@@ -32,16 +36,16 @@ const exactFilterFn =
  */
 const FolioCell = ({ receipt }: { receipt: PurchaseOrderReceipt }) => {
   const [isDetailOpen, setIsDetailOpen] = useState(false);
-  const estatusLabel = `Estatus ${receipt.estatus}`;
+  const estatusLabel = getReceiptEstatusLabel(receipt.estatus);
+  const estatusCfg = RECEIPT_STATUS_CONFIG[estatusLabel];
 
   return (
     <div className="flex items-center gap-2 min-w-0">
       <span
-        className="w-2 h-2 rounded-full shrink-0 bg-slate-400"
+        className={`w-2 h-2 rounded-full shrink-0 ${estatusCfg?.dot ?? "bg-slate-400"}`}
         title={estatusLabel}
         aria-hidden="true"
       />
-      <span className="sr-only">{estatusLabel}</span>
       <div className="flex flex-col items-start gap-1 min-w-0">
         <button
           type="button"
@@ -51,14 +55,23 @@ const FolioCell = ({ receipt }: { receipt: PurchaseOrderReceipt }) => {
         >
           {receipt.folio || "—"}
         </button>
-        {receipt.remision && (
+        <div className="flex flex-wrap items-center gap-1">
           <span
-            className="inline-flex max-w-32 items-center truncate px-1.5 py-0.5 rounded text-[10px] font-medium leading-none bg-slate-100 text-slate-500 dark:bg-white/10 dark:text-slate-400"
-            title={`Remisión: ${receipt.remision}`}
+            className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium leading-none whitespace-nowrap ${
+              estatusCfg?.cls ?? "bg-slate-100 text-slate-500 dark:bg-white/10 dark:text-slate-400"
+            }`}
           >
-            {receipt.remision}
+            {estatusLabel}
           </span>
-        )}
+          {receipt.remision && (
+            <span
+              className="inline-flex max-w-32 items-center truncate px-1.5 py-0.5 rounded text-[10px] font-medium leading-none bg-slate-100 text-slate-500 dark:bg-white/10 dark:text-slate-400"
+              title={`Remisión: ${receipt.remision}`}
+            >
+              {receipt.remision}
+            </span>
+          )}
+        </div>
       </div>
       <PurchaseOrderReceiptDetailDialog
         receiptId={isDetailOpen ? receipt.id : null}
@@ -89,13 +102,15 @@ export const createPurchaseOrderReceiptColumns = ({
   statusOptions,
   supplierOptions,
 }: CreatePurchaseOrderReceiptColumnsOptions): ColumnDef<PurchaseOrderReceipt>[] => [
-  // Folio+remisión concatenados en el `accessorFn` (con `?? ""` por el mismo
-  // motivo de búsqueda global que el resto de columnas de listado nullable
-  // del proyecto) para que el buscador siga encontrando por cualquiera de
-  // los dos, aunque el `cell` pinte su propio layout desde `row.original`.
+  // Folio+remisión+estatus concatenados en el `accessorFn` (con `?? ""` por el
+  // mismo motivo de búsqueda global que el resto de columnas de listado
+  // nullable del proyecto) para que el buscador encuentre por cualquiera de
+  // los tres (p. ej. "calidad"), aunque el `cell` pinte su propio layout desde
+  // `row.original`. El folio va primero, así que el orden sigue siendo por folio.
   {
     id: "folio",
-    accessorFn: (row) => `${row.folio ?? ""} ${row.remision ?? ""}`.trim(),
+    accessorFn: (row) =>
+      `${row.folio ?? ""} ${row.remision ?? ""} ${getReceiptEstatusLabel(row.estatus)}`.trim(),
     meta: { label: "Folio" },
     header: ({ column }) => (
       <div className="flex items-center gap-1.5">
