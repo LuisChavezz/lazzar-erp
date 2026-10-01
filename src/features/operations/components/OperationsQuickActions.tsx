@@ -39,9 +39,10 @@ const ACTIONS = [
     iconHoverClass: "group-hover:text-amber-500",
   },
   {
-    // Único acceso restante a /operations/orders desde que se quitó el
-    // ModuleNav (Mesa de Control / Cotizaciones / Pedidos / Clientes) de las
-    // 3 pantallas: sin este enlace, la pantalla quedaría inalcanzable.
+    // Atajo a /operations/orders, que también está en el sidebar y el
+    // ModuleNav (sub-grupo Operación Comercial). A diferencia de esos dos, los
+    // accesos rápidos NO se filtran por permiso: quien no tiene
+    // R-MESACONTROL-PEDIDOS ve el atajo y el proxy lo redirige al entrar.
     key: "pedidos-mc",
     href: "/operations/orders",
     label: "Pedidos",
@@ -53,7 +54,9 @@ const ACTIONS = [
   {
     // Distinto de "clientes" (abajo): ese apunta al catálogo de Ventas
     // (/sales/customers); este es la vista propia de Mesa de Control
-    // (/operations/customers), también huérfana tras quitar el ModuleNav.
+    // (/operations/customers), también en el sidebar y el ModuleNav del
+    // módulo (sub-grupo Maestros). Igual que el resto de accesos rápidos, no
+    // se filtra por permiso: sin R-MESACONTROL-CLIENTES el proxy redirige.
     key: "clientes-mc",
     href: "/operations/customers",
     label: "Clientes MC",
