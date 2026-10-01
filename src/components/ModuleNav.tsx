@@ -4,10 +4,89 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
+import { DropdownMenu } from "@radix-ui/themes";
 import { LoadingSkeleton } from "./LoadingSkeleton";
-import { ChevronLeftIcon, ChevronRightIcon, HomeIcon } from "./Icons";
+import { ChevronDownIcon, ChevronLeftIcon, ChevronRightIcon, HomeIcon } from "./Icons";
 import { appRouteGroups } from "@/src/constants/appRoutes";
 import { hasPermission } from "@/src/utils/permissions";
+import {
+  filterVisibleRouteSections,
+  findActiveRouteSection,
+  getRouteSections,
+  type RouteSection,
+} from "@/src/utils/routeSections";
+
+interface SectionMenuProps {
+  section: RouteSection;
+  isActive: boolean;
+  isCurrentPath: (path: string) => boolean;
+}
+
+/**
+ * Un sub-grupo como menú desplegable: el disparador es su etiqueta (nunca
+ * cambia de texto) y cada opción es un enlace real a una hoja.
+ *
+ * `DropdownMenu.Item` de Radix Themes acepta `asChild` (lo declara su
+ * `baseMenuItemPropDefs`), así que la opción ES el `<Link>`: abrir en otra
+ * pestaña, clic medio, prefetch y `href` visible funcionan como en las migas.
+ * Enter sobre la opción la "clickea", y el `<Link>` navega.
+ *
+ * El resaltado usa el `sky` de Tailwind, igual que las migas planas y el
+ * sidebar, y no el token de acento de Radix: el `<Theme>` de la app usa
+ * `indigo` como acento y desentonaría con el resto de la navegación.
+ */
+function SectionMenu({ section, isActive, isCurrentPath }: SectionMenuProps) {
+  return (
+    <DropdownMenu.Root>
+      <DropdownMenu.Trigger>
+        <button
+          type="button"
+          // `data-active` lo busca el efecto de scroll para llevar el sub-grupo
+          // activo a la vista; `aria-current` anuncia a lectores de pantalla en
+          // qué sub-grupo está la página con el menú cerrado (la hoja con
+          // `aria-current="page"` solo existe en el DOM con el menú abierto).
+          data-active={isActive ? "" : undefined}
+          aria-current={isActive ? "true" : undefined}
+          className={`inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded px-1 cursor-pointer transition-colors ${
+            isActive
+              ? "font-semibold text-sky-600 dark:text-sky-300"
+              : "text-slate-500 dark:text-slate-400 hover:text-sky-600 dark:hover:text-sky-300"
+          }`}
+        >
+          {section.label}
+          <ChevronDownIcon className="h-3 w-3 shrink-0" aria-hidden="true" />
+        </button>
+      </DropdownMenu.Trigger>
+      <DropdownMenu.Content
+        align="start"
+        className="bg-white! dark:bg-zinc-900! min-w-44 max-h-80 overflow-y-auto rounded-xl shadow-xl border border-slate-100 dark:border-slate-800 z-50 p-1"
+      >
+        {section.items.map((item) => {
+          const isCurrent = isCurrentPath(item.path);
+          return (
+            <DropdownMenu.Item
+              key={item.path}
+              asChild
+              className={`flex items-center gap-2 px-3 py-2 text-xs rounded-lg cursor-pointer! outline-none data-highlighted:bg-slate-50 dark:data-highlighted:bg-white/5 data-highlighted:text-sky-600 dark:data-highlighted:text-sky-400 transition-colors ease-in-out ${
+                isCurrent
+                  ? "font-semibold text-sky-600 dark:text-sky-300"
+                  : "text-slate-600 dark:text-slate-300"
+              }`}
+            >
+              <Link href={item.path} aria-current={isCurrent ? "page" : undefined}>
+                <span
+                  className={`h-1.5 w-1.5 shrink-0 rounded-full ${isCurrent ? "bg-sky-500" : "bg-transparent"}`}
+                  aria-hidden="true"
+                />
+                <span>{item.label}</span>
+              </Link>
+            </DropdownMenu.Item>
+          );
+        })}
+      </DropdownMenu.Content>
+    </DropdownMenu.Root>
+  );
+}
 
 interface ModuleNavProps {
   moduleKey?: string;
@@ -21,6 +100,11 @@ interface ModuleNavProps {
  * "semi-activas" en gris, la actual resaltada en azul — en vez del navbar de
  * tabs anterior (con borde inferior y más alto). Se desplaza horizontalmente
  * cuando no caben todas.
+ *
+ * Si el módulo declara `sections`: Inicio > un menú desplegable por sub-grupo
+ * visible (hermanos, sin chevron entre ellos), cada uno con sus hojas. El del
+ * sub-grupo de la ruta actual se resalta y su menú marca la hoja actual; en el
+ * landing del módulo ninguno está activo.
  */
 export default function ModuleNav({ moduleKey, modulePath, className }: ModuleNavProps) {
   const pathname = usePathname();
@@ -68,11 +152,15 @@ export default function ModuleNav({ moduleKey, modulePath, className }: ModuleNa
   }, [updateScrollState, isLoading]);
 
   // Al navegar (o montar), lleva el crumb activo al área visible del contenedor.
+  // Con sub-grupos el elemento activo es el disparador del sub-grupo
+  // (`data-active`): sus hojas viven en un portal, fuera de este contenedor.
   useEffect(() => {
     if (isLoading) return;
     const el = scrollRef.current;
     if (!el) return;
-    const active = el.querySelector<HTMLElement>('[aria-current="page"]');
+    const active =
+      el.querySelector<HTMLElement>("[data-active]") ??
+      el.querySelector<HTMLElement>('[aria-current="page"]');
     if (active) {
       active.scrollIntoView({ inline: "nearest", block: "nearest", behavior: "smooth" });
     }
@@ -107,17 +195,36 @@ export default function ModuleNav({ moduleKey, modulePath, className }: ModuleNa
     ? hasPermission(activeGroup.permission, session?.user)
     : true;
 
+  // Con sub-grupos, un menú por sub-grupo; la visibilidad (permiso por hoja +
+  // poda de sub-grupos vacíos) y el sub-grupo activo salen del helper compartido.
+  // Se resuelven UNA vez: la lista declarada (sin filtrar) dimensiona el skeleton.
+  const declaredSections = getRouteSections(activeGroup);
+  const visibleSections = declaredSections
+    ? filterVisibleRouteSections(declaredSections, session?.user)
+    : null;
+  const activeSection = visibleSections
+    ? findActiveRouteSection(visibleSections, pathname)
+    : undefined;
+
   // La "casita" ya ES el crumb raíz (dashboard del módulo) — se come esa
   // primera opción para ahorrar espacio, en vez de repetirla como texto.
-  const crumbs = visibleRouteItems
-    .filter((item) => (item.permission ? hasPermission(item.permission, session?.user) : true))
-    .map((item) => ({
-      label: item.label,
-      href: item.path,
-      isRoot: false,
-    }));
+  // Solo en módulos planos: con sub-grupos no se pintan.
+  const crumbs = declaredSections
+    ? []
+    : visibleRouteItems
+        .filter((item) => (item.permission ? hasPermission(item.permission, session?.user) : true))
+        .map((item) => ({
+          label: item.label,
+          href: item.path,
+          isRoot: false,
+        }));
+
+  // Mientras carga la sesión aún no hay permisos: el skeleton se dimensiona
+  // con lo declarado (sin filtrar): un hueco por sub-grupo, o uno por hoja.
   const loadingCrumbPlaceholders = Array.from({
-    length: Math.max(1, visibleRouteItems.length),
+    length: declaredSections
+      ? Math.max(1, declaredSections.length)
+      : Math.max(1, visibleRouteItems.length),
   });
 
   const isActive = (href: string, isRoot: boolean) =>
@@ -147,7 +254,25 @@ export default function ModuleNav({ moduleKey, modulePath, className }: ModuleNa
 
       <div ref={scrollRef} className="overflow-x-auto no-scrollbar">
         <div className="flex items-center flex-nowrap text-xs sm:text-sm">
-          {isLoading ? (
+          {isLoading && declaredSections ? (
+            // Misma estructura que la fila cargada (un chevron y luego los
+            // disparadores hermanos) para que no salte al resolver la sesión.
+            <>
+              <ChevronRightIcon className="mx-1 h-3.5 w-3.5 shrink-0 text-slate-300 dark:text-slate-600" />
+              <div className="flex items-center gap-2">
+                {loadingCrumbPlaceholders.map((_, index) => (
+                  <div
+                    key={`module-nav-skeleton-${activeGroup.key}-${index}`}
+                    // `h-5`: misma altura que un disparador, para que la fila no cambie de alto.
+                    className={`flex h-5 shrink-0 items-center ${index % 2 === 0 ? "w-24" : "w-20"}`}
+                    aria-hidden="true"
+                  >
+                    <LoadingSkeleton className="h-4 rounded-full" />
+                  </div>
+                ))}
+              </div>
+            </>
+          ) : isLoading ? (
             <>
               <ChevronRightIcon className="mx-1 h-3.5 w-3.5 shrink-0 text-slate-300 dark:text-slate-600" />
               <span className="shrink-0 font-semibold text-sky-600 dark:text-sky-300">
@@ -165,6 +290,22 @@ export default function ModuleNav({ moduleKey, modulePath, className }: ModuleNa
                 </span>
               ))}
             </>
+          ) : visibleSections ? (
+            visibleSections.length > 0 && (
+              <>
+                <ChevronRightIcon className="mx-1 h-3.5 w-3.5 shrink-0 text-slate-300 dark:text-slate-600" />
+                <div className="flex items-center gap-2">
+                  {visibleSections.map((section) => (
+                    <SectionMenu
+                      key={section.key}
+                      section={section}
+                      isActive={section.key === activeSection?.key}
+                      isCurrentPath={(path) => isActive(path, false)}
+                    />
+                  ))}
+                </div>
+              </>
+            )
           ) : (
             crumbs.map((crumb) => (
               <span key={crumb.href} className="flex items-center">
