@@ -11,7 +11,7 @@ import {
   type PedidoProgramacionDestino,
 } from "../constants/pedidoProgramacion";
 import type { PedidoDetail } from "../interfaces/order.interface";
-import type { PedidoProgramacion } from "../interfaces/pedido-programacion.interface";
+import { getProgramacionesValidas } from "../utils/pedidoProgramacion";
 
 /**
  * Valores CRUDOS del formulario. `destino` es `""` mientras no se elige (la
@@ -118,28 +118,16 @@ export const createPedidoProgramacionSchema = (
  * usuario decide si lo cambia o lo quita antes de guardar.
  *
  * Un elemento que no es objeto (`null`/primitivo/arreglo en el `JSONField`) sí
- * se descarta: no es un renglón y leer sus campos tumbaría el diálogo. Mismo
- * criterio que `getProgramaciones` (`ScheduledOrderColumns.tsx`), para que el
- * diálogo y la tabla cuenten los mismos renglones.
+ * se descarta, y `comentarios` ausente o `null` llega como `""`: ambas reglas
+ * viven en `getProgramacionesValidas`, compartida con la tabla "Pedidos
+ * programados" para que el diálogo y la tabla cuenten los mismos renglones.
  */
 export const createPedidoProgramacionFormValues = (
   pedido: PedidoDetail,
-): PedidoProgramacionFormValues => {
-  const programaciones: unknown = pedido.programacion_conf?.programaciones;
-  return {
-    programaciones: Array.isArray(programaciones)
-      ? programaciones
-          .filter(
-            (p): p is PedidoProgramacion =>
-              typeof p === "object" && p !== null && !Array.isArray(p),
-          )
-          .map((programacion) => ({
-            destino: typeof programacion.destino === "string" ? programacion.destino : "",
-            cantidad: String(programacion.cantidad ?? ""),
-            // Entradas previas a `comentarios` no traen la clave; `null` → vacío.
-            comentarios:
-              typeof programacion.comentarios === "string" ? programacion.comentarios : "",
-          }))
-      : [],
-  };
-};
+): PedidoProgramacionFormValues => ({
+  programaciones: getProgramacionesValidas(pedido.programacion_conf).map((programacion) => ({
+    destino: typeof programacion.destino === "string" ? programacion.destino : "",
+    cantidad: String(programacion.cantidad ?? ""),
+    comentarios: programacion.comentarios,
+  })),
+});

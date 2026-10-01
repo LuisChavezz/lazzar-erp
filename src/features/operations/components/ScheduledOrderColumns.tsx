@@ -1,16 +1,13 @@
 "use client";
 
-import { type ColumnDef, type FilterFn } from "@tanstack/react-table";
+import { type ColumnDef, type FilterFn, type SortingFn } from "@tanstack/react-table";
 import { Popover } from "@radix-ui/themes";
-import { CommentIcon } from "@/src/components/Icons";
 import { ColumnHeaderFilter, type ColumnFilterOption } from "@/src/components/ColumnHeaderFilter";
 import { formatShortDate } from "@/src/utils/formatDate";
 import { formatMoneyValueOrDash } from "@/src/utils/formatCurrency";
 import { formatPiezas } from "@/src/utils/formatWorkOrderProgramado";
 import { formatEntregaEstimada, hasMeaningfulOc } from "@/src/features/orders/utils/pedidoFormat";
-import type { PedidoListItem } from "@/src/features/orders/interfaces/order.interface";
 import { PedidoFolioLink } from "@/src/features/orders/components/PedidoFolioLink";
-import type { PedidoProgramacion } from "@/src/features/orders/interfaces/pedido-programacion.interface";
 import {
   getPedidoClasificacionLabel,
   getPedidoEstatusConfig,
@@ -20,81 +17,47 @@ import {
   PEDIDO_PROGRAMACION_DESTINOS,
   PEDIDO_PROGRAMACION_DESTINO_LABELS,
 } from "@/src/features/orders/constants/pedidoProgramacion";
+import type { ScheduledParcialidadRow } from "../interfaces/scheduled-parcialidad.interface";
 
 /**
- * Columnas de "Pedidos programados" (Mesa de Control, SOLO LECTURA). Hermanas
- * de `OperationsOrderColumns`, sin sus acciones de edición/programación: el
- * folio abre directamente el detalle 360° (`PedidoFolioLink`,
+ * Columnas de "Pedidos programados" (Mesa de Control, SOLO LECTURA): UNA FILA
+ * POR PARCIALIDAD (`flattenScheduledParcialidades`). Las columnas del pedido
+ * (folio, cliente, estatus, entrega…) se repiten en cada parcialidad del mismo
+ * folio; "Parcialidad", "Destino", "Cantidad" y "Comentarios" son de la fila.
+ *
+ * El folio abre directamente el detalle 360° (`PedidoFolioLink`,
  * `?from=scheduled-orders` para que el "Volver" regrese a esta lista y no a
- * "Pedidos"). Se omiten sus columnas placeholder (Piezas, Vendedor, C.P.) y se
- * agregan las de programación y entrega, que el listado sí trae.
+ * "Pedidos").
+ *
+ * Búsqueda global: solo participan las columnas con texto que el usuario
+ * teclea (folio + OC, destino, comentarios, razón social). Las que exponen un
+ * código crudo, una fecha ISO, un número o milisegundos se excluyen con
+ * `enableGlobalFilter: false`.
  */
 
 /**
- * Entradas de `programacion_conf`, tolerando `null`, `{}` y un
- * `programaciones` ausente o no-arreglo (el filtro `programado=true` ya los
- * excluye, pero el tipo los admite).
+ * Piezas de la parcialidad como número, o `undefined` si falta o no es
+ * numérica (`cantidad` viene de un `JSONField`).
  */
-export const getProgramaciones = (order: PedidoListItem): PedidoProgramacion[] => {
-  const programaciones: unknown = order.programacion_conf?.programaciones;
-  if (!Array.isArray(programaciones)) return [];
-  // Solo objetos: un elemento `null`/primitivo en el JSON rompería cualquier
-  // lectura de `destino`/`cantidad`/`fecha` más abajo.
-  return programaciones.filter(
-    (p): p is PedidoProgramacion => typeof p === "object" && p !== null && !Array.isArray(p),
-  );
-};
-
-/**
- * "Última programación" del PEDIDO. El backend reescribe `fecha`/`usuario_*`
- * en TODAS las entradas en cada reprogramación, así que son iguales; aun así se
- * toma la más reciente por si alguna vez difieren. Nunca se muestra por destino.
- */
-const getUltimaProgramacion = (
-  order: PedidoListItem,
-): { fecha: string; time: number; usuario: string | null } | null => {
-  let latest: { fecha: string; time: number; usuario: string | null } | null = null;
-  for (const programacion of getProgramaciones(order)) {
-    if (typeof programacion.fecha !== "string" || !programacion.fecha) continue;
-    const time = new Date(programacion.fecha).getTime();
-    if (Number.isNaN(time)) continue;
-    if (!latest || time > latest.time) {
-      latest = {
-        fecha: programacion.fecha,
-        time,
-        usuario:
-          typeof programacion.usuario_nombre === "string"
-            ? programacion.usuario_nombre.trim() || null
-            : null,
-      };
-    }
-  }
-  return latest;
-};
-
-/**
- * Piezas de una entrada con el formato común de la app ("N pzas", invariable).
- * `cantidad` viene de un `JSONField`: si falta o no es numérica se pinta "—"
- * en vez de dejar que `formatPiezas` la muestre como "0 pzas".
- */
-const formatCantidad = (cantidad: unknown): string => {
+const getCantidadValue = (cantidad: unknown): number | undefined => {
   const value =
     typeof cantidad === "number"
       ? cantidad
       : typeof cantidad === "string" && cantidad.trim() !== ""
         ? Number(cantidad)
         : NaN;
-  return Number.isFinite(value) ? formatPiezas(value) : "—";
+  return Number.isFinite(value) ? value : undefined;
 };
 
-/** Comentario de la entrada, o `null` si falta, es `null` o solo trae espacios. */
-const getComentarios = (programacion: PedidoProgramacion): string | null =>
-  typeof programacion.comentarios === "string" && programacion.comentarios.trim()
-    ? programacion.comentarios
-    : null;
+/** Comentario de la parcialidad, o `null` si está vacío o solo trae espacios. */
+const getComentarios = (row: ScheduledParcialidadRow): string | null =>
+  row.comentarios.trim() ? row.comentarios : null;
+
+const getDestinoLabel = (row: ScheduledParcialidadRow): string =>
+  getPedidoProgramacionDestinoLabel(String(row.destino));
 
 /**
- * Icono en el chip de una entrada CON comentario; el clic abre el texto en un
+ * Comentario en una línea truncada; el clic abre el texto completo en un
  * `Popover` de Radix Themes (mismo recurso que `ReflectiveLineConfigPopover`).
  * Sin autor ni fecha: el backend re-sella ambos en todas las entradas en cada
  * guardado, así que no son del comentario.
@@ -111,11 +74,11 @@ function ProgramacionComentariosPopover({
       <Popover.Trigger>
         <button
           type="button"
-          aria-label={`Ver comentarios de ${destinoLabel}`}
-          title="Ver comentarios"
-          className="-mr-1 inline-flex items-center rounded p-0.5 text-sky-600 dark:text-sky-400 hover:bg-sky-100 dark:hover:bg-sky-500/20 cursor-pointer"
+          aria-label={`Comentario de ${destinoLabel}: ${comentarios}`}
+          title={comentarios}
+          className="block max-w-full truncate rounded text-left text-sm text-slate-600 dark:text-slate-300 hover:text-sky-600 dark:hover:text-sky-400 hover:underline cursor-pointer"
         >
-          <CommentIcon className="w-3.5 h-3.5" aria-hidden="true" />
+          {comentarios}
         </button>
       </Popover.Trigger>
       <Popover.Content size="1" width="300px" side="top" align="start">
@@ -130,12 +93,6 @@ function ProgramacionComentariosPopover({
   );
 }
 
-/** Texto buscable de la columna: las etiquetas en español que pinta la celda. */
-const getDestinoLabels = (order: PedidoListItem): string =>
-  getProgramaciones(order)
-    .map((p) => getPedidoProgramacionDestinoLabel(String(p.destino)))
-    .join(", ");
-
 const DESTINO_FILTER_OPTIONS: ColumnFilterOption[] = [
   { value: undefined, label: "Todos" },
   ...PEDIDO_PROGRAMACION_DESTINOS.map((destino) => ({
@@ -144,37 +101,55 @@ const DESTINO_FILTER_OPTIONS: ColumnFilterOption[] = [
   })),
 ];
 
-/** Un pedido coincide si CUALQUIERA de sus entradas va a ese destino. */
-const destinoFilterFn: FilterFn<PedidoListItem> = (row, _columnId, filterValue) => {
+/** Coincide la PARCIALIDAD cuyo destino es el filtrado (no el pedido completo). */
+const destinoFilterFn: FilterFn<ScheduledParcialidadRow> = (row, _columnId, filterValue) => {
   if (!filterValue) return true;
-  return getProgramaciones(row.original).some((p) => p.destino === filterValue);
+  return row.original.destino === filterValue;
+};
+
+/**
+ * Orden de "Folio" solo por el folio (no por la cadena folio + OC del
+ * accessor), con los folios vacíos al final en orden ascendente. TanStack
+ * invierte el resultado en descendente, así que ahí quedan al principio.
+ */
+const folioSortingFn: SortingFn<ScheduledParcialidadRow> = (rowA, rowB) => {
+  const folioA = rowA.original.folio?.trim() ?? "";
+  const folioB = rowB.original.folio?.trim() ?? "";
+  if (!folioA || !folioB) return Number(!folioA) - Number(!folioB);
+  return folioA.localeCompare(folioB, "es", { numeric: true });
 };
 
 const DASH = <span className="text-slate-400 dark:text-slate-600">—</span>;
 
-export function getScheduledOrderColumns(): ColumnDef<PedidoListItem, unknown>[] {
+export function getScheduledOrderColumns(): ColumnDef<ScheduledParcialidadRow, unknown>[] {
   return [
     {
       id: "folio",
-      accessorKey: "folio",
-      size: 190,
       header: "Folio",
+      meta: { label: "Folio" },
+      // Folio + OC: alimenta la búsqueda global con ambos (la OC no tiene
+      // columna propia). El orden NO usa esa cadena: `folioSortingFn` compara
+      // solo el folio.
+      accessorFn: (row) =>
+        [row.folio ?? "", hasMeaningfulOc(row.oc) ? row.oc : ""].join(" ").trim(),
+      sortingFn: folioSortingFn,
+      size: 190,
       cell: ({ row }) => {
-        const order = row.original;
+        const parcialidad = row.original;
         return (
           <div className="flex items-center gap-2 flex-wrap">
             <PedidoFolioLink
-              pedidoId={order.id}
-              folio={order.folio}
+              pedidoId={parcialidad.pedidoId}
+              folio={parcialidad.folio}
               from="scheduled-orders"
               className="font-mono text-[13px] font-bold text-slate-800 dark:text-white"
             />
-            {hasMeaningfulOc(order.oc) && (
+            {hasMeaningfulOc(parcialidad.oc) && (
               <span
                 className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 dark:bg-white/10 text-slate-500 dark:text-slate-400 font-mono"
-                title={`Orden de compra: ${order.oc}`}
+                title={`Orden de compra: ${parcialidad.oc}`}
               >
-                OC {order.oc}
+                OC {parcialidad.oc}
               </span>
             )}
           </div>
@@ -182,8 +157,84 @@ export function getScheduledOrderColumns(): ColumnDef<PedidoListItem, unknown>[]
       },
     },
     {
+      id: "parcialidad",
+      header: "Parcialidad",
+      accessorFn: (row) => row.indice,
+      // Sin orden propio: ordenar por índice mezclaría las "1 de N" de todos
+      // los pedidos. Ordenar por Folio ya deja cada pedido junto y en orden.
+      enableSorting: false,
+      enableGlobalFilter: false,
+      meta: { align: "center" },
+      size: 120,
+      cell: ({ row }) => (
+        <span className="text-sm tabular-nums text-slate-600 dark:text-slate-300 whitespace-nowrap">
+          {row.original.indice + 1} de {row.original.totalParcialidades}
+        </span>
+      ),
+    },
+    {
+      id: "destino",
+      header: ({ column }) => (
+        <div className="flex items-center gap-1.5">
+          <span>Destino</span>
+          <ColumnHeaderFilter column={column} options={DESTINO_FILTER_OPTIONS} label="destino" />
+        </div>
+      ),
+      meta: { label: "Destino" },
+      // El accessor (etiqueta visible) alimenta búsqueda y orden; el filtro
+      // compara el CÓDIGO de `row.original` (`destinoFilterFn`).
+      accessorFn: getDestinoLabel,
+      filterFn: destinoFilterFn,
+      size: 160,
+      cell: ({ row }) => (
+        <span className="text-sm text-slate-700 dark:text-slate-200 whitespace-nowrap">
+          {getDestinoLabel(row.original)}
+        </span>
+      ),
+    },
+    {
+      id: "cantidad",
+      header: "Cantidad",
+      accessorFn: (row) => getCantidadValue(row.cantidad),
+      sortingFn: "basic",
+      sortUndefined: "last",
+      enableGlobalFilter: false,
+      meta: { align: "right" },
+      size: 120,
+      cell: ({ row }) => {
+        const cantidad = getCantidadValue(row.original.cantidad);
+        return cantidad === undefined ? (
+          DASH
+        ) : (
+          <span className="tabular-nums text-sm font-semibold text-slate-700 dark:text-slate-200 whitespace-nowrap">
+            {formatPiezas(cantidad)}
+          </span>
+        );
+      },
+    },
+    {
+      id: "comentarios",
+      header: "Comentarios",
+      accessorKey: "comentarios",
+      enableSorting: false,
+      size: 240,
+      cell: ({ row }) => {
+        const comentarios = getComentarios(row.original);
+        if (!comentarios) return DASH;
+        return (
+          <ProgramacionComentariosPopover
+            comentarios={comentarios}
+            destinoLabel={getDestinoLabel(row.original)}
+          />
+        );
+      },
+    },
+    {
       id: "razon_social",
-      accessorKey: "cliente_razon_social",
+      // Siempre string: TanStack decide si una columna entra a la búsqueda
+      // global por el tipo de su valor en la PRIMERA fila, y un `null` ahí la
+      // dejaría fuera para todas.
+      accessorFn: (row) => row.cliente_razon_social ?? "",
       header: "Razón social",
       cell: ({ row }) => (
         <span className="block text-sm text-slate-600 dark:text-slate-300 truncate max-w-55">
@@ -195,6 +246,7 @@ export function getScheduledOrderColumns(): ColumnDef<PedidoListItem, unknown>[]
       id: "estatus",
       accessorKey: "estatus",
       header: "Estatus",
+      enableGlobalFilter: false,
       meta: { align: "center" },
       cell: ({ row }) => {
         const { label, className } = getPedidoEstatusConfig(row.original.estatus);
@@ -208,81 +260,10 @@ export function getScheduledOrderColumns(): ColumnDef<PedidoListItem, unknown>[]
       },
     },
     {
-      id: "programacion",
-      header: ({ column }) => (
-        <div className="flex items-center gap-1.5">
-          <span>Programación</span>
-          <ColumnHeaderFilter column={column} options={DESTINO_FILTER_OPTIONS} label="destino" />
-        </div>
-      ),
-      meta: { label: "Programación" },
-      // El accessor alimenta la búsqueda global con las etiquetas visibles; el
-      // filtro por destino lee los CÓDIGOS de `row.original` (`destinoFilterFn`).
-      accessorFn: getDestinoLabels,
-      filterFn: destinoFilterFn,
-      enableSorting: false,
-      size: 260,
-      cell: ({ row }) => {
-        const programaciones = getProgramaciones(row.original);
-        if (programaciones.length === 0) return DASH;
-        return (
-          <div className="flex flex-wrap gap-1.5">
-            {programaciones.map((programacion, index) => {
-              const destinoLabel = getPedidoProgramacionDestinoLabel(String(programacion.destino));
-              const comentarios = getComentarios(programacion);
-              return (
-                <span
-                  key={`${programacion.destino}-${index}`}
-                  className="inline-flex items-center gap-1 rounded-md bg-slate-100 dark:bg-white/10 px-2 py-0.5 text-xs text-slate-700 dark:text-slate-200 whitespace-nowrap"
-                >
-                  {destinoLabel}
-                  <span className="tabular-nums font-semibold">
-                    {formatCantidad(programacion.cantidad)}
-                  </span>
-                  {comentarios && (
-                    <ProgramacionComentariosPopover
-                      comentarios={comentarios}
-                      destinoLabel={destinoLabel}
-                    />
-                  )}
-                </span>
-              );
-            })}
-          </div>
-        );
-      },
-    },
-    {
-      id: "ultima_programacion",
-      header: "Última programación",
-      // Instante en ms (orden cronológico real, sin depender del offset del
-      // ISO); sin fecha válida → `undefined`, que `sortUndefined: "last"`
-      // manda al final en ambas direcciones.
-      accessorFn: (order) => getUltimaProgramacion(order)?.time,
-      sortingFn: "basic",
-      sortUndefined: "last",
-      cell: ({ row }) => {
-        const ultima = getUltimaProgramacion(row.original);
-        if (!ultima) return DASH;
-        return (
-          <div className="flex flex-col text-sm leading-tight">
-            {/* Timestamp real: sin `timeZone: "UTC"` (ver `formatShortDate`). */}
-            <span className="text-slate-600 dark:text-slate-300 whitespace-nowrap">
-              {formatShortDate(ultima.fecha)}
-            </span>
-            {ultima.usuario && (
-              <span className="text-xs text-slate-400 dark:text-slate-500 truncate max-w-45">
-                {ultima.usuario}
-              </span>
-            )}
-          </div>
-        );
-      },
-    },
-    {
       id: "entrega",
       header: "Entrega",
       accessorKey: "fecha_entrega_min",
+      enableGlobalFilter: false,
       // `DataTable` es `table-fixed` y la celda no recorta: sin `size` (150 por
       // defecto) el rango `nowrap` más largo, "28 may 2026 – 28 may 2026"
       // (~178px a 14px), invadía "Clasificación". 178 + 32 de padding + holgura.
@@ -300,6 +281,7 @@ export function getScheduledOrderColumns(): ColumnDef<PedidoListItem, unknown>[]
       id: "clasificacion",
       accessorKey: "clasificacion",
       header: "Clasificación",
+      enableGlobalFilter: false,
       // Etiqueta más larga: "X - Solo para facturar" (~136px) + 32 de padding.
       size: 180,
       cell: ({ row }) => (
@@ -309,9 +291,46 @@ export function getScheduledOrderColumns(): ColumnDef<PedidoListItem, unknown>[]
       ),
     },
     {
+      id: "ultima_programacion",
+      // Dato del PEDIDO, no de la parcialidad: el backend re-sella fecha y
+      // usuario en todos los renglones en cada guardado.
+      header: () => (
+        <span title="Último guardado de la programación completa del pedido; aplica a todas sus parcialidades.">
+          Programación guardada
+        </span>
+      ),
+      meta: { label: "Programación guardada" },
+      // Instante en ms (orden cronológico real, sin depender del offset del
+      // ISO); sin fecha válida → `undefined`, que `sortUndefined: "last"`
+      // manda al final en ambas direcciones.
+      accessorFn: (row) => row.ultimaProgramacion?.time,
+      sortingFn: "basic",
+      sortUndefined: "last",
+      enableGlobalFilter: false,
+      size: 200,
+      cell: ({ row }) => {
+        const ultima = row.original.ultimaProgramacion;
+        if (!ultima) return DASH;
+        return (
+          <div className="flex flex-col text-sm leading-tight">
+            {/* Timestamp real: sin `timeZone: "UTC"` (ver `formatShortDate`). */}
+            <span className="text-slate-600 dark:text-slate-300 whitespace-nowrap">
+              {formatShortDate(ultima.fecha)}
+            </span>
+            {ultima.usuario && (
+              <span className="text-xs text-slate-400 dark:text-slate-500 truncate max-w-45">
+                {ultima.usuario}
+              </span>
+            )}
+          </div>
+        );
+      },
+    },
+    {
       id: "created_at",
       accessorKey: "created_at",
       header: "Fecha",
+      enableGlobalFilter: false,
       cell: ({ row }) => (
         <span className="text-sm text-slate-500 dark:text-slate-400 whitespace-nowrap">
           {formatShortDate(row.original.created_at)}
@@ -321,8 +340,15 @@ export function getScheduledOrderColumns(): ColumnDef<PedidoListItem, unknown>[]
     {
       id: "importe_sin_iva",
       accessorKey: "subtotal",
-      header: "Importe sin IVA",
-      meta: { align: "right" },
+      // Subtotal del PEDIDO completo (sin IVA), no de la parcialidad.
+      header: () => (
+        <span title="Importe sin IVA del pedido completo; se repite en cada parcialidad.">
+          Importe del pedido
+        </span>
+      ),
+      enableGlobalFilter: false,
+      meta: { align: "right", label: "Importe del pedido" },
+      size: 180,
       cell: ({ row }) => (
         <span className="tabular-nums text-sm font-semibold text-slate-700 dark:text-slate-200">
           {formatMoneyValueOrDash(row.original.subtotal)}
