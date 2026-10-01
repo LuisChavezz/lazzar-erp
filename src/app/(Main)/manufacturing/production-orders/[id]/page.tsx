@@ -12,10 +12,13 @@ import { ProductionOrderPageContent } from "@/src/features/production-orders/com
  * traduce al parámetro que el backend espera.
  *
  * Cuelga del módulo (`/manufacturing/production-orders/[id]`) y NO de una ruta
- * neutra como `/orders/[id]`: hereda `R-PRODUCCION` del prefijo
- * `/manufacturing` que ya cubren `routePermissions.ts` y el matcher de
- * `proxy.ts` — no hace falta registrar nada. Las páginas de detalle tampoco
- * entran en `appRoutes.ts`, que alimenta el home y el sidebar (solo índices).
+ * neutra como `/orders/[id]`. Por el `startsWith` del proxy cae en la regla
+ * `/manufacturing/production-orders` de `routePermissions.ts` y exige
+ * `R-PRODUCCION-OP` (no el `R-PRODUCCION` del módulo); junto con el matcher de
+ * `proxy.ts`, no hace falta registrar nada. Tampoco tiene entrada en
+ * `appRoutes.ts` (otros detalles sí la tienen, ocultos con
+ * `showInSidebar: false`, p. ej. `/sales/customers/[id]`): el sub-grupo y la
+ * hoja activos se resuelven por prefijo hacia Órdenes de Producción.
  *
  * Convive con `ProductionOrderDetailDialog`/`ProductionOrderDetailByIdDialog`,
  * que siguen montados sin cambios. Esta página es la vista extendida, de SOLO
