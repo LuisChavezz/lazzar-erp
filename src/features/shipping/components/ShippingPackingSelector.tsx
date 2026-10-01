@@ -42,8 +42,8 @@ export function ShippingPackingSelector({
     return (
       <Loader
         className="py-10"
-        title="Cargando empaques"
-        message="Obteniendo empaques disponibles para enviar..."
+        title="Cargando embarques"
+        message="Obteniendo embarques disponibles para enviar..."
       />
     );
   }
@@ -52,7 +52,7 @@ export function ShippingPackingSelector({
     return (
       <div className="rounded-xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 p-6 text-center">
         <p className="text-sm font-semibold text-red-600 dark:text-red-400">
-          No se pudo cargar el catálogo de empaques
+          No se pudo cargar el catálogo de embarques
         </p>
         <p className="text-xs text-red-500 dark:text-red-300 mt-1">
           Revisa tu conexión e intenta abrir el diálogo de nuevo.
@@ -78,14 +78,14 @@ export function ShippingPackingSelector({
     <fieldset disabled={disabled} className={`space-y-3 ${disabled ? "opacity-60" : ""}`}>
       {isCatalogCapped && (
         <p className="text-[11px] text-slate-500 dark:text-slate-400 px-1">
-          Mostrando los {PACKING_CATALOG_LIMIT} empaques más recientes. La búsqueda solo filtra
+          Mostrando los {PACKING_CATALOG_LIMIT} embarques más recientes. La búsqueda solo filtra
           esta lista: si no encuentras uno más antiguo, puede estar fuera de ella.
         </p>
       )}
 
       <SearchableSelectList<ShipmentOnboardingPacking>
         items={packings}
-        searchPlaceholder="Buscar empaque por folio, pedido, cliente o almacén..."
+        searchPlaceholder="Buscar embarque por folio, pedido, cliente o almacén..."
         filterPredicate={(packing, term) =>
           packing.folio.toLowerCase().includes(term) ||
           (packing.pedido_folio ?? "").toLowerCase().includes(term) ||
@@ -99,8 +99,8 @@ export function ShippingPackingSelector({
         // aquí deseleccionar no lleva a ningún lado (no hay botón "Continuar"
         // que deshabilitar) y solo vaciaría la tabla de líneas ya cargada.
         onSelect={(packing) => onSelect(packing.id)}
-        emptyMessage="No hay empaques disponibles para enviar."
-        noResultsMessage="No se encontraron empaques"
+        emptyMessage="No hay embarques disponibles para enviar."
+        noResultsMessage="No se encontraron embarques"
         renderIndicator={renderRadioIndicator}
         renderContent={(packing) => (
           <>

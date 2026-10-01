@@ -151,7 +151,7 @@ export function useShippingForm({ onSuccess }: UseShippingFormParams) {
     setServerBanner(null);
 
     if (!selectedPackingId) {
-      setServerBanner("Selecciona un empaque para enviar.");
+      setServerBanner("Selecciona un embarque para enviar.");
       return;
     }
 

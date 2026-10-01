@@ -38,7 +38,7 @@ export function ShippingView() {
       <DataTable
         columns={shipmentColumns}
         data={shipments}
-        searchPlaceholder="Buscar empaque, pedido, cliente, sucursal, guía o transportista..."
+        searchPlaceholder="Buscar embarque, pedido, cliente, sucursal, guía o transportista..."
         getRowId={(row) => String(row.id)}
         // El cuerpo llena el contenedor de altura acotada que da
         // `wms/shipping/page.tsx`, en vez de reservar un alto fijo.

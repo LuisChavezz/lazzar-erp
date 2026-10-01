@@ -93,11 +93,11 @@ const BACK_TARGETS: Record<PedidoDetailOrigin, { href: string; label: string }> 
   // Sin esta entrada, un usuario solo-WMS caería en /operations/orders y el
   // proxy lo rebotaría al home por falta de R-MESACONTROL.
   wms: { href: "/wms/orders", label: "Volver a Operaciones de Almacén" },
-  // Folio de pedido en las tablas de Surtido/Empaque/Envío (`PedidoFolioLink`):
+  // Folio de pedido en las tablas de Surtido/Embarque/Envío (`PedidoFolioLink`):
   // cada una vuelve a SU listado. Misma convención de llave por ORIGEN concreto
   // que `embroidery`.
   picking: { href: "/wms/picking", label: "Volver a Surtido" },
-  packing: { href: "/wms/packing", label: "Volver a Empaque" },
+  packing: { href: "/wms/packing", label: "Volver a Embarque" },
   shipping: { href: "/wms/shipping", label: "Volver a Envío" },
   procurement: { href: "/procurement/orders", label: "Volver a Compras" },
   sales: { href: "/sales/orders", label: "Volver a Mis Pedidos" },
@@ -597,7 +597,7 @@ const PACKING_DOC_TIPO = "packing";
  */
 const DOC_LABEL_OVERRIDES: Record<string, string> = {
   [PICKING_DOC_TIPO]: "Surtido (WMS)",
-  [PACKING_DOC_TIPO]: "Empaque (WMS)",
+  [PACKING_DOC_TIPO]: "Embarque (WMS)",
 };
 
 const docLabel = (doc: PedidoDocumento): string =>
