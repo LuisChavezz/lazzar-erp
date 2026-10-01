@@ -1,11 +1,11 @@
 'use client';
 
 import { DataTable } from '@/src/components/DataTable';
-import type { PedidoListItem } from '@/src/features/orders/interfaces/order.interface';
+import type { ScheduledParcialidadRow } from '../interfaces/scheduled-parcialidad.interface';
 import { getScheduledOrderColumns } from './ScheduledOrderColumns';
 
 interface ScheduledOrdersTableProps {
-  orders: PedidoListItem[];
+  parcialidades: ScheduledParcialidadRow[];
   onRefetch?: () => void | Promise<unknown>;
   isRefetching?: boolean;
   isLoading?: boolean;
@@ -13,9 +13,10 @@ interface ScheduledOrdersTableProps {
   errorMessage?: string;
 }
 
-// Tabla de "Pedidos programados" — hermana de `OperationsOrderTable`, solo lectura.
+// Tabla de "Pedidos programados" — hermana de `OperationsOrderTable`, solo
+// lectura, con UNA fila por parcialidad (`rowId` = pedido + índice).
 export function ScheduledOrdersTable({
-  orders,
+  parcialidades,
   onRefetch,
   isRefetching,
   isLoading,
@@ -27,11 +28,11 @@ export function ScheduledOrdersTable({
   return (
     <DataTable
       columns={columns}
-      data={orders}
-      baseDataCount={orders.length}
-      getRowId={(row) => String(row.id)}
-      searchPlaceholder="Buscar por folio, cliente u OC..."
-      emptyMessage="No hay pedidos programados."
+      data={parcialidades}
+      baseDataCount={parcialidades.length}
+      getRowId={(row) => row.rowId}
+      searchPlaceholder="Folio, OC, cliente, destino…"
+      emptyMessage="No hay parcialidades programadas."
       onRefetch={onRefetch}
       isRefetching={isRefetching}
       isLoadingOverlay={isRefetching}
