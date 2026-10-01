@@ -65,6 +65,18 @@ const ROUTE_TITLES: Record<string, string> = {
   "/finance/accounting-customers": "Clientes",
   "/finance/price-lists": "Lista de Precios",
   "/system/reports": "Reportes",
+  "/hr/employees": "Empleados",
+  "/hr/areas": "Áreas",
+  "/hr/positions": "Puestos",
+  "/hr/shifts": "Turnos",
+  "/hr/contracts": "Contratos",
+  "/hr/calendars": "Calendarios",
+  "/hr/vacations": "Vacaciones",
+  "/hr/absences": "Permisos y Ausencias",
+  "/hr/attendance": "Asistencia",
+  "/hr/incidents": "Incidencias",
+  "/hr/trainings": "Capacitaciones",
+  "/hr/evaluations": "Evaluaciones",
 };
 
 export function getPageTitle(path: string | undefined | null): string {

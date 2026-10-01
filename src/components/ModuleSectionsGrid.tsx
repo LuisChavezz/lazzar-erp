@@ -11,6 +11,17 @@ import { getRouteSections, getVisibleRouteSections } from "@/src/utils/routeSect
 const cardClassName =
   "rounded-2xl bg-white dark:bg-black border border-slate-200 dark:border-white/10 p-8 h-full min-h-64 shadow-sm dark:shadow-none";
 
+/**
+ * Columnas según cuántos sub-grupos se pintan: un número par se reparte en 2
+ * columnas (4 → 2×2) para no dejar una tarjeta sola en la última fila; uno
+ * impar conserva el máximo de 3. Clases completas y estáticas: Tailwind v4 no
+ * detecta nombres de clase armados en tiempo de ejecución.
+ */
+const gridClassName = (sectionCount: number) =>
+  sectionCount % 2 === 0
+    ? "grid grid-cols-1 sm:grid-cols-2 gap-6"
+    : "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6";
+
 interface ModuleSectionsGridProps {
   moduleKey: string;
 }
@@ -33,11 +44,12 @@ export function ModuleSectionsGrid({ moduleKey }: ModuleSectionsGridProps) {
   }
 
   // Reserva el espacio de las tarjetas mientras resuelven los permisos (CLS),
-  // igual que `HomeGrid`.
+  // igual que `HomeGrid`. Aún no hay permisos: se dimensiona con lo declarado.
   if (status === "loading") {
+    const declaredSections = getRouteSections(group) ?? [];
     return (
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-        {(getRouteSections(group) ?? []).map((section) => (
+      <div className={gridClassName(declaredSections.length)}>
+        {declaredSections.map((section) => (
           <div key={section.key} className={cardClassName} aria-hidden="true" />
         ))}
       </div>
@@ -47,7 +59,7 @@ export function ModuleSectionsGrid({ moduleKey }: ModuleSectionsGridProps) {
   const sections = getVisibleRouteSections(group, session?.user) ?? [];
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+    <div className={gridClassName(sections.length)}>
       {sections.map((section) => (
         <section
           key={section.key}

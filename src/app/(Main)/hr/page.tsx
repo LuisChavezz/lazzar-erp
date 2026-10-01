@@ -1,16 +1,10 @@
-import { HrModuleGrid } from "@/src/features/hr/components/HrModuleGrid";
+import { ModuleSectionsGrid } from "@/src/components/ModuleSectionsGrid";
 
-// Página principal del módulo de Capital Humano — índice de sus catálogos.
+// Página principal de Capital Humano — índice de sus sub-grupos.
 export default function HrPage() {
   return (
     <div className="w-full space-y-8">
-      <div>
-        <p className="text-slate-500 dark:text-slate-400 mt-1">
-          Plantilla, asistencia, nómina y desempeño del talento de la organización.
-        </p>
-      </div>
-
-      <HrModuleGrid />
+      <ModuleSectionsGrid moduleKey="hr" />
     </div>
   );
 }

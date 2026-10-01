@@ -688,7 +688,7 @@ export const appRouteGroups: AppRouteGroup[] = [
       // },
     ],
   }),
-  {
+  defineSectionedGroup({
     key: "hr",
     label: "Capital humano",
     description: "Plantilla, nómina y asistencia.",
@@ -698,7 +698,14 @@ export const appRouteGroups: AppRouteGroup[] = [
     moduleDescription: "Plantilla, asistencia, nómina y desempeño del talento de la organización.",
     moduleIcon: CapitalHumanoIcon,
     showInHome: true,
+    sections: [
+      { key: "organization", label: "Organización" },
+      { key: "labor-administration", label: "Administración Laboral" },
+      { key: "attendance-incidents", label: "Asistencia e Incidencias" },
+      { key: "development", label: "Desarrollo" },
+    ],
     items: [
+      // ── Organización ──────────────────────────────────────────────────────────
       {
         key: "hr-employees",
         label: "Empleados",
@@ -706,6 +713,7 @@ export const appRouteGroups: AppRouteGroup[] = [
         icon: UserIcon,
         description: "Plantilla de la organización.",
         permission: "R-RH",
+        section: "organization",
       },
       {
         key: "hr-areas",
@@ -714,6 +722,7 @@ export const appRouteGroups: AppRouteGroup[] = [
         icon: LayersIcon,
         description: "Áreas operativas de cada departamento.",
         permission: "R-RH",
+        section: "organization",
       },
       {
         key: "hr-positions",
@@ -722,6 +731,7 @@ export const appRouteGroups: AppRouteGroup[] = [
         icon: ClipboardListIcon,
         description: "Catálogo de puestos y su área asignada.",
         permission: "R-RH",
+        section: "organization",
       },
       {
         key: "hr-shifts",
@@ -730,6 +740,17 @@ export const appRouteGroups: AppRouteGroup[] = [
         icon: ClockIcon,
         description: "Horarios, días laborales y tolerancia de retardo.",
         permission: "R-RH",
+        section: "organization",
+      },
+      // ── Administración Laboral ────────────────────────────────────────────────
+      {
+        key: "hr-contracts",
+        label: "Contratos",
+        path: "/hr/contracts",
+        icon: ContractIcon,
+        description: "Contratos laborales, vigencia y salario de cada empleado.",
+        permission: "R-RH",
+        section: "labor-administration",
       },
       {
         key: "hr-calendars",
@@ -738,38 +759,7 @@ export const appRouteGroups: AppRouteGroup[] = [
         icon: CalendarDaysIcon,
         description: "Días laborables, descansos y festivos por turno.",
         permission: "R-RH",
-      },
-      {
-        key: "hr-contracts",
-        label: "Contratos",
-        path: "/hr/contracts",
-        icon: ContractIcon,
-        description: "Contratos laborales, vigencia y salario de cada empleado.",
-        permission: "R-RH",
-      },
-      {
-        key: "hr-trainings",
-        label: "Capacitaciones",
-        path: "/hr/trainings",
-        icon: TrainingIcon,
-        description: "Cursos de cada empleado: estado, horas y calificación.",
-        permission: "R-RH",
-      },
-      {
-        key: "hr-incidents",
-        label: "Incidencias",
-        path: "/hr/incidents",
-        icon: IncidentIcon,
-        description: "Retardos, faltas y otras incidencias de cada empleado.",
-        permission: "R-RH",
-      },
-      {
-        key: "hr-evaluations",
-        label: "Evaluaciones",
-        path: "/hr/evaluations",
-        icon: EvaluationIcon,
-        description: "Evaluaciones de desempeño, competencias y objetivos.",
-        permission: "R-RH",
+        section: "labor-administration",
       },
       {
         key: "hr-vacations",
@@ -778,15 +768,18 @@ export const appRouteGroups: AppRouteGroup[] = [
         icon: VacationIcon,
         description: "Solicitudes de vacaciones, su aprobación y trazabilidad.",
         permission: "R-RH",
+        section: "labor-administration",
       },
       {
         key: "hr-absences",
-        label: "Permisos y ausencias",
+        label: "Permisos y Ausencias",
         path: "/hr/absences",
         icon: AbsenceIcon,
         description: "Permisos, incapacidades y faltas injustificadas.",
         permission: "R-RH",
+        section: "labor-administration",
       },
+      // ── Asistencia e Incidencias ──────────────────────────────────────────────
       {
         key: "hr-attendance",
         label: "Asistencia",
@@ -794,9 +787,38 @@ export const appRouteGroups: AppRouteGroup[] = [
         icon: AttendanceIcon,
         description: "Pase de lista diario: entradas, salidas e historial.",
         permission: "R-RH",
+        section: "attendance-incidents",
+      },
+      {
+        key: "hr-incidents",
+        label: "Incidencias",
+        path: "/hr/incidents",
+        icon: IncidentIcon,
+        description: "Retardos, faltas y otras incidencias de cada empleado.",
+        permission: "R-RH",
+        section: "attendance-incidents",
+      },
+      // ── Desarrollo ────────────────────────────────────────────────────────────
+      {
+        key: "hr-trainings",
+        label: "Capacitaciones",
+        path: "/hr/trainings",
+        icon: TrainingIcon,
+        description: "Cursos de cada empleado: estado, horas y calificación.",
+        permission: "R-RH",
+        section: "development",
+      },
+      {
+        key: "hr-evaluations",
+        label: "Evaluaciones",
+        path: "/hr/evaluations",
+        icon: EvaluationIcon,
+        description: "Evaluaciones de desempeño, competencias y objetivos.",
+        permission: "R-RH",
+        section: "development",
       },
     ],
-  },
+  }),
   {
     key: "operations",
     label: "Mesa de Control",

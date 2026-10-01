@@ -142,7 +142,11 @@ Los módulos operativos, comerciales y financieros se organizan por **dominio de
   - **Maestros**: Clientes (`/finance/accounting-customers`).
   - Además, Lista de Precios (`/finance/price-lists`).
 - **Panel de Control (Core)** (`/system`): Reportes (`/system/reports`).
-- **Capital Humano** (`/hr`).
+- **Capital Humano** (`/hr`), organizada en sub-grupos:
+  - **Organización**: Empleados (`/hr/employees`), Áreas (`/hr/areas`), Puestos (`/hr/positions`) y Turnos (`/hr/shifts`).
+  - **Administración Laboral**: Contratos (`/hr/contracts`), Calendarios (`/hr/calendars`), Vacaciones (`/hr/vacations`) y Permisos y Ausencias (`/hr/absences`).
+  - **Asistencia e Incidencias**: Asistencia (`/hr/attendance`) e Incidencias (`/hr/incidents`).
+  - **Desarrollo**: Capacitaciones (`/hr/trainings`) y Evaluaciones (`/hr/evaluations`).
 
 Cada módulo sigue el patrón:
 
