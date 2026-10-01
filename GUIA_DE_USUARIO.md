@@ -130,7 +130,12 @@ Desde el listado de materiales puedes **eliminar** un componente cuando ya no ap
 Los módulos operativos, comerciales y financieros se organizan por **dominio de negocio**:
 
 - **CRM y Ventas** (`/sales`): Clientes (`/sales/customers`), Cotizaciones (`/sales/quotes`, con alta en `/sales/quotes/new` y edición en `/sales/quotes/[id]/edit`), Correos (`/sales/emails`) y Calendario (`/sales/calendar`).
-- **Mesa de Control** (`/operations`): Cotizaciones (`/operations/quotes`), Pedidos (`/operations/orders`) y Muestras (`/operations/samples`).
+- **Mesa de Control** (`/operations`), organizada en sub-grupos:
+  - **Operación Comercial**: Cotizaciones (`/operations/quotes`), Pedidos (`/operations/orders`) y Pedidos Programados (`/operations/scheduled-orders`).
+  - **Seguimiento**: Existencias, Producción y Compras (`/operations/inventory-pipeline`).
+  - **Maestros**: Clientes (`/operations/customers`).
+  - **Comunicación**: Correos (`/operations/emails`) y Calendario (`/operations/calendar`).
+  - Además, Muestras (`/operations/samples`).
 - **Operaciones de Almacén – WMS** (`/wms`): Existencias (`/wms/stock`), Recepciones (`/wms/receipts`) y Ubicaciones (`/wms/locations`). Los Movimientos de Inventario se administran desde **Configuración → Organización**.
 - **Compras y SCM** (`/procurement`): Órdenes de Compra (`/procurement/purchase-orders`), Proveedores (`/procurement/suppliers`), Revisión de Pedidos (`/procurement/order-reviews`), Solicitudes de Gastos (`/procurement/expense-requests`) y Pedidos P.Q. (`/procurement/pq-orders`).
 - **Manufactura (Producción)** (`/manufacturing`): Órdenes de Producción (`/manufacturing/production-orders`), Órdenes de Bordado (`/manufacturing/embroidery`) y los flujos Cedicor de Nuevo Desarrollo y Producción.

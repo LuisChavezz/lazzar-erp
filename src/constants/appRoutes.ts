@@ -819,7 +819,7 @@ export const appRouteGroups: AppRouteGroup[] = [
       },
     ],
   }),
-  {
+  defineSectionedGroup({
     key: "operations",
     label: "Mesa de Control",
     description: "Panel de control general de la organización, con visión global de las operaciones y rendimiento.",
@@ -829,13 +829,21 @@ export const appRouteGroups: AppRouteGroup[] = [
     moduleDescription: "Panel de control general de la organización, con visión global de las operaciones y rendimiento.",
     moduleIcon: OperationsIcon,
     showInHome: true,
+    sections: [
+      { key: "commercial-operations", label: "Operación Comercial" },
+      { key: "tracking", label: "Seguimiento" },
+      { key: "master-data", label: "Maestros" },
+      { key: "communication", label: "Comunicación" },
+    ],
     items: [
+      // ── Operación Comercial ─────────────────────────────────────────────────
       {
         key: "operations-quotes",
         label: "Cotizaciones",
         path: "/operations/quotes",
         icon: PedidosIcon,
         permission: "R-MESACONTROL-COTI",
+        section: "commercial-operations",
       },
       {
         key: "operations-orders",
@@ -843,6 +851,7 @@ export const appRouteGroups: AppRouteGroup[] = [
         path: "/operations/orders",
         icon: PedidosIcon,
         permission: "R-MESACONTROL-PEDIDOS",
+        section: "commercial-operations",
       },
       {
         // Ruta HERMANA de `/operations/orders`, no anidada: `SidebarItem` y
@@ -850,17 +859,20 @@ export const appRouteGroups: AppRouteGroup[] = [
         // también "Pedidos". Su permiso vive en su propia regla de
         // `routePermissions`.
         key: "operations-scheduled-orders",
-        label: "Pedidos programados",
+        label: "Pedidos Programados",
         path: "/operations/scheduled-orders",
         icon: CalendarDaysIcon,
         permission: "R-MESACONTROL-PEDIDOS",
+        section: "commercial-operations",
       },
+      // ── Seguimiento ─────────────────────────────────────────────────────────
       {
         key: "operations-inventory-pipeline",
-        label: "Existencias, producción y compras",
+        label: "Existencias, Producción y Compras",
         path: "/operations/inventory-pipeline",
         icon: InventariosIcon,
         permission: "R-MESACONTROL",
+        section: "tracking",
       },
       // OCULTO EN NAVEGACION: pagina placeholder sin datos. Restaurar cuando tenga implementacion real.
       // {
@@ -870,19 +882,23 @@ export const appRouteGroups: AppRouteGroup[] = [
       //   icon: SamplesIcon,
       //   permission: "R-MESACONTROL",
       // },
+      // ── Maestros ────────────────────────────────────────────────────────────
       {
         key: "operations-customers",
         label: "Clientes",
         path: "/operations/customers",
         icon: ClientesIcon,
         permission: "R-MESACONTROL-CLIENTES",
+        section: "master-data",
       },
+      // ── Comunicación ────────────────────────────────────────────────────────
       {
         key: "operations-emails",
         label: "Correos",
         path: "/operations/emails",
         icon: EmailIcon,
         permission: "R-MESACONTROL",
+        section: "communication",
       },
       {
         key: "operations-calendar",
@@ -890,9 +906,10 @@ export const appRouteGroups: AppRouteGroup[] = [
         path: "/operations/calendar",
         icon: TasksIcon,
         permission: "R-MESACONTROL",
+        section: "communication",
       },
     ],
-  },
+  }),
   {
     key: "config",
     label: "Configuración",
