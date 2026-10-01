@@ -101,7 +101,7 @@ Ruta base del proyecto:
   - `/` – Dashboard / inicio.
   - `/system` – Panel de Control (Core): `/system/reports`.
   - `/sales` – CRM y Ventas: `/sales/customers` (y `/sales/customers/[id]`), `/sales/quotes` (`/new`, `/[id]`, `/[id]/edit`), `/sales/emails`, `/sales/calendar`.
-  - `/operations` – Mesa de Control: `/operations/quotes`, `/operations/orders`, `/operations/samples`.
+  - `/operations` – Mesa de Control, navegada por sub-grupos: Operación Comercial (`/operations/quotes`, `/operations/orders`, `/operations/scheduled-orders`), Seguimiento (`/operations/inventory-pipeline`), Maestros (`/operations/customers`) y Comunicación (`/operations/emails`, `/operations/calendar`); además `/operations/samples`.
   - `/wms` – Operaciones de Almacén: `/wms/stock`, `/wms/receipts`, `/wms/locations`. Los movimientos de inventario se gestionan desde `/config` (grupo Organización).
   - `/procurement` – Compras y SCM: `/procurement/purchase-orders`, `/procurement/suppliers`, `/procurement/order-reviews`, `/procurement/expense-requests`, `/procurement/pq-orders`.
   - `/manufacturing` – Manufactura: `/manufacturing/production-orders`, `/manufacturing/embroidery`, `/manufacturing/cedicor-production-orders`, `/manufacturing/cedicor-product-development-orders`.
@@ -110,7 +110,7 @@ Ruta base del proyecto:
   - `/config` – Configuración (catálogos maestros).
   - `/settings` – Ajustes de cuenta: `/settings/profile`, `/settings/security`.
 
-  La definición de grupos, etiquetas de navegación e iconos vive centralizada en `src/constants/appRoutes.ts`. Un grupo puede declarar sub-grupos opcionales (`sections`, y `section` en cada hoja): hoy Finanzas y Capital Humano; el sidebar, `ModuleNav` y el landing del módulo los resuelven con `src/utils/routeSections.ts`, y los grupos sin `sections` se navegan planos. El mapeo prefijo→permiso y la prioridad de redirección post-login en `src/constants/routePermissions.ts`.
+  La definición de grupos, etiquetas de navegación e iconos vive centralizada en `src/constants/appRoutes.ts`. Un grupo puede declarar sub-grupos opcionales (`sections`, y `section` en cada hoja): hoy Finanzas, Capital Humano y Mesa de Control; el sidebar, `ModuleNav` y el landing del módulo (`ModuleSectionsGrid`, salvo Mesa de Control, que conserva su dashboard) los resuelven con `src/utils/routeSections.ts`, y los grupos sin `sections` se navegan planos. El mapeo prefijo→permiso y la prioridad de redirección post-login en `src/constants/routePermissions.ts`.
 
 ### 3.3 Layout de autenticación (`src/app/auth/layout.tsx`)
 
