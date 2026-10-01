@@ -134,7 +134,13 @@ Los módulos operativos, comerciales y financieros se organizan por **dominio de
 - **Operaciones de Almacén – WMS** (`/wms`): Existencias (`/wms/stock`), Recepciones (`/wms/receipts`) y Ubicaciones (`/wms/locations`). Los Movimientos de Inventario se administran desde **Configuración → Organización**.
 - **Compras y SCM** (`/procurement`): Órdenes de Compra (`/procurement/purchase-orders`), Proveedores (`/procurement/suppliers`), Revisión de Pedidos (`/procurement/order-reviews`), Solicitudes de Gastos (`/procurement/expense-requests`) y Pedidos P.Q. (`/procurement/pq-orders`).
 - **Manufactura (Producción)** (`/manufacturing`): Órdenes de Producción (`/manufacturing/production-orders`), Órdenes de Bordado (`/manufacturing/embroidery`) y los flujos Cedicor de Nuevo Desarrollo y Producción.
-- **Finanzas y Contabilidad** (`/finance`): Facturación (`/finance/invoicing`), CxP (`/finance/accounts-payable`), CxC (`/finance/accounts-receivable`), Bancos (`/finance/bank-accounts`), Contabilidad (`/finance/accounting`) y Lista de Precios (`/finance/price-lists`).
+- **Finanzas y Contabilidad** (`/finance`), organizada en sub-grupos:
+  - **Cuentas por Cobrar**: Facturación (`/finance/invoicing`), CxC (`/finance/accounts-receivable`) y Notas de Crédito (`/finance/credit-notes`).
+  - **Cuentas por Pagar**: Facturas de Proveedor (`/finance/supplier-invoices`), CxP (`/finance/accounts-payable`) y Pagos (`/finance/payments`).
+  - **Tesorería**: Bancos (`/finance/banks`), Cuentas Bancarias (`/finance/bank-accounts`) y Conciliaciones (`/finance/bank-reconciliations`).
+  - **Contabilidad**: Pólizas (`/finance/polizas`), Plan de Cuentas (`/finance/chart-of-accounts`) y Centros de Costo (`/finance/cost-centers`).
+  - **Maestros**: Clientes (`/finance/accounting-customers`).
+  - Además, Lista de Precios (`/finance/price-lists`).
 - **Panel de Control (Core)** (`/system`): Reportes (`/system/reports`).
 - **Capital Humano** (`/hr`).
 
