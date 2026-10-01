@@ -105,12 +105,12 @@ Ruta base del proyecto:
   - `/wms` – Operaciones de Almacén: `/wms/stock`, `/wms/receipts`, `/wms/locations`. Los movimientos de inventario se gestionan desde `/config` (grupo Organización).
   - `/procurement` – Compras y SCM: `/procurement/purchase-orders`, `/procurement/suppliers`, `/procurement/order-reviews`, `/procurement/expense-requests`, `/procurement/pq-orders`.
   - `/manufacturing` – Manufactura: `/manufacturing/production-orders`, `/manufacturing/embroidery`, `/manufacturing/cedicor-production-orders`, `/manufacturing/cedicor-product-development-orders`.
-  - `/finance` – Finanzas y Contabilidad: `/finance/invoicing`, `/finance/accounts-payable`, `/finance/accounts-receivable`, `/finance/bank-accounts`, `/finance/accounting`, `/finance/price-lists`.
+  - `/finance` – Finanzas y Contabilidad, navegada por sub-grupos: Cuentas por Cobrar (`/finance/invoicing`, `/finance/accounts-receivable`, `/finance/credit-notes`), Cuentas por Pagar (`/finance/supplier-invoices`, `/finance/accounts-payable`, `/finance/payments`), Tesorería (`/finance/banks`, `/finance/bank-accounts`, `/finance/bank-reconciliations`), Contabilidad (`/finance/polizas`, `/finance/chart-of-accounts`, `/finance/cost-centers`) y Maestros (`/finance/accounting-customers`); además `/finance/price-lists`.
   - `/hr` – Capital Humano.
   - `/config` – Configuración (catálogos maestros).
   - `/settings` – Ajustes de cuenta: `/settings/profile`, `/settings/security`.
 
-  La definición de grupos, etiquetas de navegación e iconos vive centralizada en `src/constants/appRoutes.ts`; el mapeo prefijo→permiso y la prioridad de redirección post-login en `src/constants/routePermissions.ts`.
+  La definición de grupos, etiquetas de navegación e iconos vive centralizada en `src/constants/appRoutes.ts`. Un grupo puede declarar sub-grupos opcionales (`sections`, y `section` en cada hoja): hoy solo Finanzas; el sidebar, `ModuleNav` y el landing del módulo los resuelven con `src/utils/routeSections.ts`, y los grupos sin `sections` se navegan planos. El mapeo prefijo→permiso y la prioridad de redirección post-login en `src/constants/routePermissions.ts`.
 
 ### 3.3 Layout de autenticación (`src/app/auth/layout.tsx`)
 
