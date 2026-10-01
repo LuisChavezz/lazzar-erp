@@ -10,7 +10,7 @@ export default function ManufacturingPage() {
           Manufactura
         </h1>
         <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-          Resumen operativo de los procesos de producción, bordado y desarrollo de producto
+          Resumen operativo de los procesos de producción y bordado
         </p>
       </div>
       <ManufacturingDashboard />

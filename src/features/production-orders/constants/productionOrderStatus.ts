@@ -86,7 +86,8 @@ const NEUTRAL_STATUS_CFG: StatusBadgeConfigEntry = {
 export const productionOrderStatusEntry = (
   estatus: number,
   display?: string | null,
-): StatusBadgeConfigEntry => {
+): StatusBadgeConfigEntry & { label: string } => {
+  // El tipo declara lo que la función ya garantiza: `label` siempre resuelto.
   const base = PRODUCTION_ORDER_STATUS_CONFIG[String(estatus)] ?? NEUTRAL_STATUS_CFG;
   return { ...base, label: base.label || display?.trim() || String(estatus) };
 };
