@@ -35,6 +35,10 @@ import type {
   PurchaseOrderDetalle,
   PurchaseOrderReceipt,
 } from "../interfaces/purchase-order.interface";
+import {
+  isPurchaseOrderDetailOrigin,
+  type PurchaseOrderDetailOrigin,
+} from "../constants/purchaseOrderDetailOrigins";
 
 /** Campos financieros que consume {@link TotalsFooter}, recortados de la cabecera. */
 type OrderTotals = Pick<
@@ -51,14 +55,20 @@ type OrderTotals = Pick<
   | "a_cuenta"
 >;
 
-// Destino del "Volver". Fijo —sin el mapa `?from=` de `PedidoDetailContent`—
-// porque esta ruta NO es neutra: cuelga de `/procurement`, exige `R-COMPRAS` y
-// hoy solo se alcanza desde el listado del propio módulo, así que un mapa de
-// orígenes tendría una sola entrada idéntica a su default. La flecha la pinta
-// el icono del enlace, por eso el label no la lleva.
-const BACK = {
+// Destino del "Volver". Por defecto, el listado de órdenes de compra; un
+// `?from=` conocido (ver `purchaseOrderDetailOrigins`) lo cambia al listado que
+// enlazó el detalle, mismo patrón que `BACK_TARGETS` de `PedidoDetailContent`.
+// La flecha la pinta el icono del enlace, por eso el label no la lleva.
+const DEFAULT_BACK = {
   href: "/procurement/purchase-orders",
   label: "Volver a Órdenes de Compra",
+};
+
+const BACK_TARGETS: Record<PurchaseOrderDetailOrigin, { href: string; label: string }> = {
+  "purchase-order-receipts": {
+    href: "/procurement/purchase-order-receipts",
+    label: "Volver a Recepciones",
+  },
 };
 
 // ── Visibilidad de importes ──────────────────────────────────────────────────
@@ -519,6 +529,8 @@ const DocumentosTable = ({
 interface PurchaseOrderPageContentProps {
   /** Id de la orden tal cual llega del segmento de ruta (string). */
   orderId: string;
+  /** `?from=` crudo de la URL; se valida contra `PURCHASE_ORDER_DETAIL_ORIGINS`. */
+  from?: string;
 }
 
 /**
@@ -536,7 +548,9 @@ interface PurchaseOrderPageContentProps {
  */
 export function PurchaseOrderPageContent({
   orderId,
+  from,
 }: PurchaseOrderPageContentProps) {
+  const back = isPurchaseOrderDetailOrigin(from) ? BACK_TARGETS[from] : DEFAULT_BACK;
   const numericId = Number(orderId);
   // `Number.isInteger` acota antes de consultar: el segmento de ruta es texto
   // libre, así que "1.5" o "abc" no deben llegar al backend como id.
@@ -563,11 +577,11 @@ export function PurchaseOrderPageContent({
 
   const BackLink = (
     <Link
-      href={BACK.href}
+      href={back.href}
       className="inline-flex items-center gap-2 text-slate-500 hover:text-sky-500 transition-colors px-4 py-2 rounded-full bg-slate-50 dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800"
     >
       <ArrowLeftIcon className="w-4 h-4" />
-      <span className="text-sm font-medium">{BACK.label}</span>
+      <span className="text-sm font-medium">{back.label}</span>
     </Link>
   );
 
