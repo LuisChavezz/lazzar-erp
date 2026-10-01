@@ -331,7 +331,7 @@ export const appRouteGroups: AppRouteGroup[] = [
       },
     ],
   },
-  {
+  defineSectionedGroup({
     key: "procurement",
     label: "Compras y abastecimiento",
     description: "Requisiciones, compras y recepciones.",
@@ -341,7 +341,12 @@ export const appRouteGroups: AppRouteGroup[] = [
     moduleDescription: "Requisiciones, cotizaciones proveedor, órdenes de compra y recepciones.",
     moduleIcon: ComprasIcon,
     showInHome: true,
+    sections: [
+      { key: "operation", label: "Operación" },
+      { key: "master-data", label: "Maestros" },
+    ],
     items: [
+      // ── Operación ───────────────────────────────────────────────────────────
       {
         key: "procurement-sales-orders",
         label: "Pedidos",
@@ -349,6 +354,7 @@ export const appRouteGroups: AppRouteGroup[] = [
         icon: PedidosIcon,
         description: "Consulta de pedidos y su detalle para planear el abastecimiento.",
         permission: "R-COMPRAS-PEDIDOS",
+        section: "operation",
       },
       {
         key: "procurement-orders",
@@ -356,6 +362,7 @@ export const appRouteGroups: AppRouteGroup[] = [
         path: "/procurement/purchase-orders",
         icon: OrdenesIcon,
         permission: "R-COMPRAS-OC",
+        section: "operation",
       },
       {
         key: "procurement-purchase-order-receipts",
@@ -364,7 +371,9 @@ export const appRouteGroups: AppRouteGroup[] = [
         icon: RecepcionesIcon,
         description: "Recepciones generadas a partir de órdenes de compra.",
         permission: "R-COMPRAS-RECEP",
+        section: "operation",
       },
+      // ── Maestros ────────────────────────────────────────────────────────────
       {
         key: "procurement-suppliers",
         label: "Proveedores",
@@ -372,6 +381,7 @@ export const appRouteGroups: AppRouteGroup[] = [
         icon: ComprasIcon,
         description: "Catálogo de proveedores registrados en el sistema.",
         permission: "R-COMPRAS-PROV",
+        section: "master-data",
       },
       // OCULTO EN NAVEGACION: usa datos mock (src/features/purchase-order-reviews/mocks/purchase-order-review.mock.ts:11). Restaurar cuando el backend exponga el endpoint real.
       // {
@@ -401,7 +411,7 @@ export const appRouteGroups: AppRouteGroup[] = [
       //   permission: "R-COMPRAS",
       // },
     ],
-  },
+  }),
   {
     key: "manufacturing",
     label: "Producción",
