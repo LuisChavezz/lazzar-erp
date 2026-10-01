@@ -7,9 +7,11 @@ import { useSession } from "next-auth/react";
 import { CloseIcon, LogoIcon, MenuIcon } from "./Icons";
 import { getSidebarItems } from "@/src/utils/getSidebarItems";
 import SidebarItem from "./SidebarItem";
+import SidebarModuleItems from "./SidebarModuleItems";
 import { Notifications } from "../features/notifications/components/Notifications";
 import { UserMenu } from "./UserMenu";
 import { appRouteGroups } from "@/src/constants/appRoutes";
+import { mainGroupKeys } from "@/src/constants/sidebarItems";
 
 export default function MobileSidebar() {
   const [isMobileOpen, setIsMobileOpen] = useState(false);
@@ -19,16 +21,6 @@ export default function MobileSidebar() {
   const activeGroup = appRouteGroups.find(
     (group) => pathname === group.modulePath || pathname.startsWith(`${group.modulePath}/`)
   );
-  const mainGroupKeys = new Set([
-    "system",
-    "sales",
-    "wms",
-    "procurement",
-    "manufacturing",
-    "finance",
-    "hr",
-    "operations",
-  ]);
   const moduleLabel =
     activeGroup && mainGroupKeys.has(activeGroup.key) ? activeGroup.moduleLabel : null;
   const moduleItem =
@@ -133,17 +125,25 @@ export default function MobileSidebar() {
                         </span>
                       </div>
                       <div className="ml-4 pl-3 border-l border-slate-200/70 dark:border-white/10 space-y-2">
-                        {section.items
-                          .slice(1)
-                          .filter((item) => item.href !== moduleItem.href)
-                          .map((item, itemIndex) => (
-                            <SidebarItem
-                              key={itemIndex}
-                              item={item}
-                              variant="mobile"
-                              setIsMobileOpen={setIsMobileOpen}
-                            />
-                          ))}
+                        {activeGroup?.sections ? (
+                          <SidebarModuleItems
+                            group={activeGroup}
+                            variant="mobile"
+                            setIsMobileOpen={setIsMobileOpen}
+                          />
+                        ) : (
+                          section.items
+                            .slice(1)
+                            .filter((item) => item.href !== moduleItem.href)
+                            .map((item, itemIndex) => (
+                              <SidebarItem
+                                key={itemIndex}
+                                item={item}
+                                variant="mobile"
+                                setIsMobileOpen={setIsMobileOpen}
+                              />
+                            ))
+                        )}
                       </div>
                     </div>
                   </div>

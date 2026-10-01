@@ -6,8 +6,10 @@ import { useSession } from "next-auth/react";
 import MobileSidebar from "./MobileSidebar";
 import { getSidebarItems } from "@/src/utils/getSidebarItems";
 import SidebarItem from "./SidebarItem";
+import SidebarModuleItems from "./SidebarModuleItems";
 import { LogoIcon, PanelLeftCloseIcon, PanelLeftOpenIcon } from "./Icons";
 import { appRouteGroups } from "@/src/constants/appRoutes";
+import { mainGroupKeys } from "@/src/constants/sidebarItems";
 import { useSidebar } from "./SidebarProvider";
 
 export default function Sidebar() {
@@ -18,16 +20,6 @@ export default function Sidebar() {
   const activeGroup = appRouteGroups.find(
     (group) => pathname === group.modulePath || pathname.startsWith(`${group.modulePath}/`)
   );
-  const mainGroupKeys = new Set([
-    "system",
-    "sales",
-    "wms",
-    "procurement",
-    "manufacturing",
-    "finance",
-    "hr",
-    "operations",
-  ]);
   const moduleLabel =
     activeGroup && mainGroupKeys.has(activeGroup.key) ? activeGroup.moduleLabel : null;
   const moduleItem =
@@ -131,12 +123,16 @@ export default function Sidebar() {
                           </span>
                         </div>
                         <div className={subItemIndentClass}>
-                          {section.items
-                            .slice(1)
-                            .filter((item) => item.href !== moduleItem.href)
-                            .map((item, itemIndex) => (
-                              <SidebarItem key={itemIndex} item={item} variant="desktop" />
-                            ))}
+                          {activeGroup?.sections ? (
+                            <SidebarModuleItems group={activeGroup} variant="desktop" />
+                          ) : (
+                            section.items
+                              .slice(1)
+                              .filter((item) => item.href !== moduleItem.href)
+                              .map((item, itemIndex) => (
+                                <SidebarItem key={itemIndex} item={item} variant="desktop" />
+                              ))
+                          )}
                         </div>
                       </div>
                     </div>
