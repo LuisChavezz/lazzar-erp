@@ -8,6 +8,9 @@ import { ColumnHeaderFilter } from "@/src/components/ColumnHeaderFilter";
 import type { PurchaseOrderReceipt } from "../interfaces/purchase-order-receipt.interface";
 import { formatLocalDate } from "@/src/utils/formatDate";
 import { PurchaseOrderReceiptDetailDialog } from "./PurchaseOrderReceiptDetailDialog";
+import { useSession } from "next-auth/react";
+import { hasPermission } from "@/src/utils/permissions";
+import { purchaseOrderDetailHref } from "@/src/features/purchase-orders/constants/purchaseOrderDetailOrigins";
 import {
   getReceiptEstatusLabel,
   RECEIPT_STATUS_CONFIG,
@@ -23,6 +26,35 @@ const exactFilterFn =
     if (!filterValue) return true;
     return String(pick(row.original)) === filterValue;
   };
+
+/**
+ * Celda de la OC de origen. Enlaza al detalle de la orden solo si el usuario
+ * tiene `R-COMPRAS-OC`, que es lo que exige esa ruta en `routePermissions`
+ * (`/procurement/purchase-orders`); sin él el proxy lo redirigiría, así que el
+ * folio se pinta como texto. `?from=` hace que el "Volver" del detalle regrese
+ * a Recepciones (ver `purchaseOrderDetailOrigins`).
+ */
+const PurchaseOrderFolioCell = ({ receipt }: { receipt: PurchaseOrderReceipt }) => {
+  const { data: session } = useSession();
+
+  if (!hasPermission("R-COMPRAS-OC", session?.user)) {
+    return (
+      <span className="font-mono text-slate-700 dark:text-slate-200">
+        {receipt.orden_compra_folio}
+      </span>
+    );
+  }
+
+  return (
+    <Link
+      href={purchaseOrderDetailHref(receipt.orden_compra, "purchase-order-receipts")}
+      className="font-mono text-sky-600 dark:text-sky-400 hover:underline hover:text-sky-700 dark:hover:text-sky-300 transition-colors"
+      title="Ver orden de compra"
+    >
+      {receipt.orden_compra_folio}
+    </Link>
+  );
+};
 
 /**
  * Celda de Folio: punto de estatus (color y etiqueta del mismo
@@ -128,15 +160,7 @@ export const createPurchaseOrderReceiptColumns = ({
   {
     accessorKey: "orden_compra_folio",
     header: "Orden de Compra",
-    cell: ({ row }) => (
-      <Link
-        href={`/procurement/purchase-orders/${row.original.orden_compra}`}
-        className="font-mono text-sky-600 dark:text-sky-400 hover:underline hover:text-sky-700 dark:hover:text-sky-300 transition-colors"
-        title="Ver orden de compra"
-      >
-        {row.original.orden_compra_folio}
-      </Link>
-    ),
+    cell: ({ row }) => <PurchaseOrderFolioCell receipt={row.original} />,
   },
   {
     accessorKey: "proveedor_nombre",
