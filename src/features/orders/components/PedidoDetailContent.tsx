@@ -88,7 +88,7 @@ const BACK_TARGETS: Record<PedidoDetailOrigin, { href: string; label: string }> 
   // Misma convención de llave por ORIGEN concreto que `embroidery`.
   "scheduled-orders": {
     href: "/operations/scheduled-orders",
-    label: "Volver a Pedidos programados",
+    label: "Volver a Pedidos Programados",
   },
   // Sin esta entrada, un usuario solo-WMS caería en /operations/orders y el
   // proxy lo rebotaría al home por falta de R-MESACONTROL.
