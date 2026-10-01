@@ -63,6 +63,19 @@ export interface AppRouteItem {
   permission?: string;
   parentPath?: string;
   showInSidebar?: boolean;
+  /**
+   * Sub-grupo de NAVEGACIÓN al que pertenece la hoja: la `key` de una entrada
+   * de `sections` de su grupo. Solo tiene efecto si el grupo declara
+   * `sections`. No confundir con los códigos de permiso "de sección"
+   * (`R-<MODULO>-<SECCION>`): esto solo agrupa visualmente, no gatea nada.
+   */
+  section?: string;
+}
+
+/** Sub-grupo de navegación intermedio entre el módulo y sus hojas. */
+export interface AppRouteSection {
+  key: string;
+  label: string;
 }
 
 export interface AppRouteGroup {
@@ -75,6 +88,15 @@ export interface AppRouteGroup {
   moduleDescription?: string;
   moduleIcon: ComponentType<SVGProps<SVGSVGElement>>;
   showInHome?: boolean;
+  /**
+   * Sub-grupos, en el orden en que se muestran. Opcional y gradual: un grupo
+   * SIN `sections` se navega plano, como siempre. Con `sections`, el sidebar,
+   * `ModuleNav` y el landing del módulo agrupan las hojas por su `section`
+   * (ver `src/utils/routeSections.ts`). `items` sigue siendo la lista plana de
+   * siempre, así que quien la recorre (p. ej. `getGroupAccessPermissions`) no
+   * cambia; el orden de las hojas dentro de un sub-grupo es el de `items`.
+   */
+  sections?: AppRouteSection[];
   items: AppRouteItem[];
 }
 
@@ -94,6 +116,26 @@ export const getGroupAccessPermissions = (group: AppRouteGroup): string[] => [
     )
   ),
 ];
+
+/** Hoja de un grupo con sub-grupos: `section` obligatorio y tipado a sus claves. */
+type SectionedRouteItem<SectionKey extends string> =
+  | (Omit<AppRouteItem, "section"> & { section: SectionKey })
+  // Las rutas ocultas (detalle, alta) no se listan, así que pueden omitirlo.
+  | (Omit<AppRouteItem, "section"> & { section?: SectionKey; showInSidebar: false });
+
+/**
+ * Declara un grupo con `sections` de forma que una `section` mal escrita, no
+ * declarada u olvidada en una hoja navegable falle en COMPILACIÓN. Las claves
+ * se infieren de `sections` (`const`); `NoInfer` impide que una hoja amplíe esa
+ * unión con su propio valor. Devuelve un `AppRouteGroup` normal: el resto del
+ * catálogo y sus consumidores no cambian.
+ */
+const defineSectionedGroup = <const SectionKey extends string>(
+  group: Omit<AppRouteGroup, "sections" | "items"> & {
+    sections: readonly { key: SectionKey; label: string }[];
+    items: SectionedRouteItem<NoInfer<SectionKey>>[];
+  }
+): AppRouteGroup => ({ ...group, sections: [...group.sections] });
 
 export const appRouteGroups: AppRouteGroup[] = [
   {
@@ -452,7 +494,7 @@ export const appRouteGroups: AppRouteGroup[] = [
       // },
     ],
   },
-  {
+  defineSectionedGroup({
     key: "finance",
     label: "Finanzas y contabilidad",
     description: "Facturación, cuentas y bancos.",
@@ -462,13 +504,54 @@ export const appRouteGroups: AppRouteGroup[] = [
     moduleDescription: "Facturación, CxC, CxP, tesorería, bancos y contabilidad general.",
     moduleIcon: ListaPreciosIcon,
     showInHome: true,
+    // Primer módulo con sub-grupos. `items` va en el mismo orden que los
+    // sub-grupos para que cada uno liste sus hojas en el orden acordado.
+    sections: [
+      { key: "receivables", label: "Cuentas por Cobrar" },
+      { key: "payables", label: "Cuentas por Pagar" },
+      { key: "treasury", label: "Tesorería" },
+      { key: "accounting", label: "Contabilidad" },
+      { key: "master-data", label: "Maestros" },
+    ],
     items: [
+      // ── Cuentas por Cobrar ──────────────────────────────────────────────────
       {
         key: "finance-invoicing",
         label: "Facturación",
         path: "/finance/invoicing",
         icon: FacturacionIcon,
         permission: "R-CONTABILIDAD-FACTURACION",
+        section: "receivables",
+      },
+      {
+        key: "finance-accounts-receivable",
+        label: "CxC (Cobrar)",
+        path: "/finance/accounts-receivable",
+        icon: CxcIcon,
+        permission: "R-CONTABILIDAD-CXC",
+        section: "receivables",
+      },
+      {
+        key: "finance-credit-notes",
+        label: "Notas de Crédito",
+        path: "/finance/credit-notes",
+        icon: NotaCreditoIcon,
+        description: "Créditos sobre facturas de cliente, aplicados a cuentas por cobrar.",
+        permission: "R-CONTABILIDAD",
+        section: "receivables",
+      },
+      // ── Cuentas por Pagar ───────────────────────────────────────────────────
+      {
+        // EC-142. Junto a CxP porque registrar una factura de proveedor es lo que
+        // genera su cuenta por pagar. Sin código de sección propio: la cubre el
+        // `R-CONTABILIDAD` del prefijo `/finance`.
+        key: "finance-supplier-invoices",
+        label: "Facturas de Proveedor",
+        path: "/finance/supplier-invoices",
+        icon: FacturaProveedorIcon,
+        description: "Facturas de mercancía recibida; al registrarse generan su cuenta por pagar.",
+        permission: "R-CONTABILIDAD",
+        section: "payables",
       },
       {
         // Reconstruida en EC-133 contra `/finanzas/cuentas-por-pagar/` (la
@@ -480,32 +563,40 @@ export const appRouteGroups: AppRouteGroup[] = [
         icon: CxpIcon,
         description: "Cuentas por pagar a proveedores, con saldo y vencimiento.",
         permission: "R-CONTABILIDAD",
+        section: "payables",
       },
       {
-        // EC-142. Junto a CxP porque registrar una factura de proveedor es lo que
-        // genera su cuenta por pagar. Sin código de sección propio: la cubre el
-        // `R-CONTABILIDAD` del prefijo `/finance`.
-        key: "finance-supplier-invoices",
-        label: "Facturas de Proveedor",
-        path: "/finance/supplier-invoices",
-        icon: FacturaProveedorIcon,
-        description: "Facturas de mercancía recibida; al registrarse generan su cuenta por pagar.",
+        key: "finance-payments",
+        label: "Pagos",
+        path: "/finance/payments",
+        icon: ReceiptIcon,
+        description: "Pagos a proveedor aplicados contra cuentas por pagar.",
         permission: "R-CONTABILIDAD",
+        section: "payables",
       },
+      // ── Tesorería ───────────────────────────────────────────────────────────
       {
-        key: "finance-accounts-receivable",
-        label: "CxC (Cobrar)",
-        path: "/finance/accounts-receivable",
-        icon: CxcIcon,
-        permission: "R-CONTABILIDAD-CXC",
-      },
-      {
-        key: "finance-credit-notes",
-        label: "Notas de Crédito",
-        path: "/finance/credit-notes",
-        icon: NotaCreditoIcon,
-        description: "Créditos sobre facturas de cliente, aplicados a cuentas por cobrar.",
+        key: "finance-banks",
+        label: "Bancos",
+        path: "/finance/banks",
+        icon: BancosIcon,
+        description: "Catálogo de instituciones bancarias de la empresa.",
         permission: "R-CONTABILIDAD",
+        section: "treasury",
+      },
+      {
+        key: "finance-bank-accounts",
+        label: "Cuentas Bancarias",
+        path: "/finance/bank-accounts",
+        // `WalletIcon`, no `BancosIcon`: ese (un `Landmark`, la institución) ya
+        // es el de "Bancos", la hoja inmediatamente anterior en este mismo
+        // sub-grupo (Tesorería), y dos entradas contiguas con el mismo icono no
+        // se distinguen de un vistazo. Una cartera lee como la CUENTA, no como
+        // el banco que la emite.
+        icon: WalletIcon,
+        description: "Cuentas bancarias por banco y moneda, con saldo y estatus.",
+        permission: "R-CONTABILIDAD",
+        section: "treasury",
       },
       {
         // Junto a Cuentas Bancarias porque se concilia UNA cuenta contra su
@@ -518,19 +609,9 @@ export const appRouteGroups: AppRouteGroup[] = [
         description:
           "Cuadre del estado de cuenta contra los libros, por cuenta y periodo.",
         permission: "R-CONTABILIDAD",
+        section: "treasury",
       },
-      {
-        key: "finance-bank-accounts",
-        label: "Cuentas Bancarias",
-        path: "/finance/bank-accounts",
-        // `WalletIcon`, no `BancosIcon`: ese (un `Landmark`, la institución) ya
-        // es el de "Bancos", justo arriba en este mismo grupo, y dos entradas
-        // contiguas con el mismo icono no se distinguen de un vistazo. Una
-        // cartera lee como la CUENTA, no como el banco que la emite.
-        icon: WalletIcon,
-        description: "Cuentas bancarias por banco y moneda, con saldo y estatus.",
-        permission: "R-CONTABILIDAD",
-      },
+      // ── Contabilidad ────────────────────────────────────────────────────────
       {
         // Sustituye a la entrada "finance-accounting" que estaba comentada aquí
         // ("restaurar cuando el backend exponga el endpoint real"): el endpoint
@@ -554,6 +635,7 @@ export const appRouteGroups: AppRouteGroup[] = [
         description:
           "Asientos contables de partida doble, con cuadre de cargos y abonos.",
         permission: "R-CONTABILIDAD",
+        section: "accounting",
       },
       {
         // EC-139. Junto a Pólizas porque es el catálogo que alimenta sus
@@ -571,6 +653,7 @@ export const appRouteGroups: AppRouteGroup[] = [
         description:
           "Catálogo de cuentas contables por tipo y nivel, con su estatus.",
         permission: "R-CONTABILIDAD",
+        section: "accounting",
       },
       {
         // EC-140. Junto al Plan de Cuentas porque es el otro catálogo que
@@ -584,29 +667,16 @@ export const appRouteGroups: AppRouteGroup[] = [
         description:
           "Catálogo de centros de costo para imputar los movimientos de una póliza.",
         permission: "R-CONTABILIDAD",
+        section: "accounting",
       },
-      {
-        key: "finance-payments",
-        label: "Pagos",
-        path: "/finance/payments",
-        icon: ReceiptIcon,
-        description: "Pagos a proveedor aplicados contra cuentas por pagar.",
-        permission: "R-CONTABILIDAD",
-      },
-      {
-        key: "finance-banks",
-        label: "Bancos",
-        path: "/finance/banks",
-        icon: BancosIcon,
-        description: "Catálogo de instituciones bancarias de la empresa.",
-        permission: "R-CONTABILIDAD",
-      },
+      // ── Maestros ────────────────────────────────────────────────────────────
       {
         key: "finance-accounting-customers",
         label: "Clientes",
         path: "/finance/accounting-customers",
         icon: ClientesIcon,
         permission: "R-CONTABILIDAD-CLIENTES",
+        section: "master-data",
       },
       // OCULTO EN NAVEGACION: usa datos mock (src/features/price-lists/components/PriceListList.tsx:5, arreglo literal). Restaurar cuando el backend exponga el endpoint real.
       // {
@@ -617,7 +687,7 @@ export const appRouteGroups: AppRouteGroup[] = [
       //   permission: "R-CONTABILIDAD",
       // },
     ],
-  },
+  }),
   {
     key: "hr",
     label: "Capital humano",
