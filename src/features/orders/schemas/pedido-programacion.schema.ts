@@ -11,6 +11,7 @@ import {
   type PedidoProgramacionDestino,
 } from "../constants/pedidoProgramacion";
 import type { PedidoDetail } from "../interfaces/order.interface";
+import type { PedidoProgramacion } from "../interfaces/pedido-programacion.interface";
 
 /**
  * Valores CRUDOS del formulario. `destino` es `""` mientras no se elige (la
@@ -115,20 +116,30 @@ export const createPedidoProgramacionSchema = (
  * Un destino fuera de la lista blanca se precarga tal cual —no se descarta en
  * silencio—: el select no lo puede mostrar y el schema lo marca, así que el
  * usuario decide si lo cambia o lo quita antes de guardar.
+ *
+ * Un elemento que no es objeto (`null`/primitivo/arreglo en el `JSONField`) sí
+ * se descarta: no es un renglón y leer sus campos tumbaría el diálogo. Mismo
+ * criterio que `getProgramaciones` (`ScheduledOrderColumns.tsx`), para que el
+ * diálogo y la tabla cuenten los mismos renglones.
  */
 export const createPedidoProgramacionFormValues = (
   pedido: PedidoDetail,
 ): PedidoProgramacionFormValues => {
-  const programaciones = pedido.programacion_conf?.programaciones;
+  const programaciones: unknown = pedido.programacion_conf?.programaciones;
   return {
     programaciones: Array.isArray(programaciones)
-      ? programaciones.map((programacion) => ({
-          destino: typeof programacion.destino === "string" ? programacion.destino : "",
-          cantidad: String(programacion.cantidad ?? ""),
-          // Entradas previas a `comentarios` no traen la clave; `null` → vacío.
-          comentarios:
-            typeof programacion.comentarios === "string" ? programacion.comentarios : "",
-        }))
+      ? programaciones
+          .filter(
+            (p): p is PedidoProgramacion =>
+              typeof p === "object" && p !== null && !Array.isArray(p),
+          )
+          .map((programacion) => ({
+            destino: typeof programacion.destino === "string" ? programacion.destino : "",
+            cantidad: String(programacion.cantidad ?? ""),
+            // Entradas previas a `comentarios` no traen la clave; `null` → vacío.
+            comentarios:
+              typeof programacion.comentarios === "string" ? programacion.comentarios : "",
+          }))
       : [],
   };
 };

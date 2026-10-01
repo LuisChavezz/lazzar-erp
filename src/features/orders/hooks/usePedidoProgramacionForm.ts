@@ -163,6 +163,12 @@ export function usePedidoProgramacionForm({
 
   const programaciones = useStore(form.store, (state) => state.values.programaciones);
   const sumaProgramada = sumProgramacionCantidades(programaciones);
+  /**
+   * Cada renglón es una parcialidad: cuenta renglones, no destinos distintos
+   * (un destino puede repetirse), e incluye los vacíos o con error, que el
+   * guardado ya bloquea hasta que sean válidos.
+   */
+  const totalParcialidades = programaciones.length;
   const excedeTotal = sumaProgramada > totalPiezas;
 
   /**
@@ -208,6 +214,7 @@ export function usePedidoProgramacionForm({
     rowKeys,
     totalPiezas,
     sumaProgramada,
+    totalParcialidades,
     excedeTotal,
     destinosAplicables,
     hayDestinosNoAplicables,
