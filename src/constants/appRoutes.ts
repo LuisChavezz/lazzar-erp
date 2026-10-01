@@ -412,7 +412,7 @@ export const appRouteGroups: AppRouteGroup[] = [
       // },
     ],
   }),
-  {
+  defineSectionedGroup({
     key: "manufacturing",
     label: "Producción",
     description: "BOM, rutas y producción.",
@@ -422,7 +422,12 @@ export const appRouteGroups: AppRouteGroup[] = [
     moduleDescription: "BOM, rutas, órdenes de producción, avances y consumos de material.",
     moduleIcon: SettingsIcon,
     showInHome: true,
+    sections: [
+      { key: "operation", label: "Operación" },
+      { key: "catalog", label: "Catálogo" },
+    ],
     items: [
+      // ── Operación ───────────────────────────────────────────────────────────
       {
         key: "manufacturing-production-orders",
         label: "Órdenes de Producción",
@@ -430,6 +435,7 @@ export const appRouteGroups: AppRouteGroup[] = [
         icon: ProduccionIcon,
         description: "Gestión del flujo de órdenes de producción: verificación de materiales, fabricación, avances y cierre.",
         permission: "R-PRODUCCION-OP",
+        section: "operation",
       },
       {
         key: "manufacturing-embroidery",
@@ -437,6 +443,7 @@ export const appRouteGroups: AppRouteGroup[] = [
         path: "/manufacturing/embroidery",
         icon: ScissorsIcon,
         permission: "R-PRODUCCION-OB",
+        section: "operation",
       },
       {
         key: "manufacturing-reflective-orders",
@@ -445,6 +452,7 @@ export const appRouteGroups: AppRouteGroup[] = [
         icon: RulerIcon,
         description: "Órdenes de trabajo para la aplicación de cinta reflejante sobre las prendas del pedido.",
         permission: "R-PRODUCCION-OR",
+        section: "operation",
       },
       {
         key: "manufacturing-corte-manga",
@@ -453,10 +461,11 @@ export const appRouteGroups: AppRouteGroup[] = [
         icon: SliceIcon,
         description: "Órdenes de trabajo para el corte de manga de las prendas del pedido.",
         permission: "R-PRODUCCION-CM",
+        section: "operation",
       },
       {
         key: "manufacturing-special-orders",
-        label: "Pedidos especiales",
+        label: "Pedidos Especiales",
         path: "/manufacturing/special-orders",
         icon: SpecialOrdersIcon,
         description: "Pedidos con líneas de muestra (productos fuera de catálogo) y los servicios que llevan sus tallas.",
@@ -464,7 +473,9 @@ export const appRouteGroups: AppRouteGroup[] = [
         // Productos, la ruta (y su detalle `[id]`) cae en la regla de módulo
         // `/manufacturing` de `routePermissions`.
         permission: "R-PRODUCCION",
+        section: "operation",
       },
+      // ── Catálogo ────────────────────────────────────────────────────────────
       {
         key: "manufacturing-products",
         label: "Productos",
@@ -474,6 +485,7 @@ export const appRouteGroups: AppRouteGroup[] = [
         // Sin código de sección propio en el catálogo de permisos: la ruta cae
         // en la regla de módulo `/manufacturing` de `routePermissions`.
         permission: "R-PRODUCCION",
+        section: "catalog",
       },
       {
         key: "manufacturing-product-variants",
@@ -483,6 +495,7 @@ export const appRouteGroups: AppRouteGroup[] = [
         description: "Variantes de producto y alta rápida con SKU generado automáticamente.",
         // Igual que Productos: cae en la regla de módulo `/manufacturing`.
         permission: "R-PRODUCCION",
+        section: "catalog",
       },
       // OCULTO EN NAVEGACION: usa datos mock (src/features/cedicor/mocks/cedicor-new-development.mock.ts:11). Restaurar cuando el backend exponga el endpoint real.
       // {
@@ -503,7 +516,7 @@ export const appRouteGroups: AppRouteGroup[] = [
       //   permission: "R-PRODUCCION",
       // },
     ],
-  },
+  }),
   defineSectionedGroup({
     key: "finance",
     label: "Finanzas y contabilidad",

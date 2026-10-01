@@ -4,14 +4,9 @@ import type { WorkOrderProgramado } from "@/src/interfaces/work-order-programado
  * Contratos del endpoint REAL de órdenes de bordado
  * (`/produccion/orden-bordado/`).
  *
- * OJO — convivencia temporal: `interfaces/embroidery-order.interface.ts`
- * (vecino de este archivo) declara OTRO tipo llamado `EmbroideryOrder`, el de
- * la maqueta con `@faker-js/faker` que todavía alimenta el KPI "Órdenes de
- * Bordado" de `ManufacturingDashboard`. Son formas COMPLETAMENTE distintas
- * (la maqueta inventa rack, ponchados, validación de arte…; el API real
- * expone 13 campos y ningún nombre resuelto), así que NO se unifican: el
- * archivo mock se retira cuando el dashboard migre a este endpoint. Ningún
- * archivo importa ambos, así que cada `import` elige por ruta sin ambigüedad.
+ * Es la única definición de `EmbroideryOrder`: la maqueta con
+ * `@faker-js/faker` que convivía aquí ya se retiró, y el dashboard de
+ * manufactura (`ManufacturingDashboard`) consume este endpoint real.
  *
  * Los nombres de campo se conservan en español, tal cual el contrato del API.
  */

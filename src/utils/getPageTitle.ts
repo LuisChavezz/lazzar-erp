@@ -33,7 +33,7 @@ const ROUTE_TITLES: Record<string, string> = {
   "/manufacturing/embroidery": "Órdenes de Bordado",
   "/manufacturing/reflective-orders": "Órdenes de Reflejante",
   "/manufacturing/corte-manga": "Órdenes de Corte de Manga",
-  "/manufacturing/special-orders": "Pedidos especiales",
+  "/manufacturing/special-orders": "Pedidos Especiales",
   "/manufacturing/products": "Productos",
   "/manufacturing/product-variants": "Variantes",
   "/manufacturing/cedicor-product-development-orders": "Cedicor - Nuevo Desarrollo",

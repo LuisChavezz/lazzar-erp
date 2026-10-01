@@ -1,52 +1,31 @@
 "use client";
 
-import { useMemo } from "react";
+import type { ReactNode } from "react";
 import Link from "next/link";
+import { useSession } from "next-auth/react";
+import { hasPermission } from "@/src/utils/permissions";
+import { ModuleSectionsGrid } from "@/src/components/ModuleSectionsGrid";
 import {
   ProduccionIcon,
   FactoryIcon,
   ScissorsIcon,
-  LayersIcon,
   CheckCircleIcon,
-  ClockIcon,
   ErrorIcon,
   ExclamationTriangleIcon,
   TrendingUpIcon,
   ChevronRightIcon,
 } from "@/src/components/Icons";
-import { isInitialLoadError } from "@/src/utils/isInitialLoadError";
 import { useEmbroideryOrders } from "@/src/features/embroidery/hooks/useEmbroideryOrders";
-import { MOCK_CEDICOR_PRODUCTION_ORDERS } from "@/src/features/cedicor/mocks/cedicor-production-order.mock";
-import { MOCK_CEDICOR_NEW_DEVELOPMENT } from "@/src/features/cedicor/mocks/cedicor-new-development.mock";
+import type { EmbroideryOrder } from "@/src/features/embroidery/interfaces/embroidery.interface";
+import { useProductionOrders } from "@/src/features/production-orders/hooks/useProductionOrders";
+import type { ProductionOrderListItem } from "@/src/features/production-orders/interfaces/production-order.interface";
+import { productionOrderStatusEntry } from "@/src/features/production-orders/constants/productionOrderStatus";
 import {
-  PRODUCTION_ORDER_STATUS_LABELS,
-  type ProductionOrder,
-  type ProductionOrderStatus,
-} from "@/src/features/production-orders/interfaces/production-order.interface";
-
-// ── Tipos de estatus de cada sub-módulo ──────────────────────────────────────
-
-type ProdStatus = ProductionOrderStatus;
-type CedicorProdStatus = (typeof MOCK_CEDICOR_PRODUCTION_ORDERS)[number]["estatus"];
-type CedicorDevStatus = (typeof MOCK_CEDICOR_NEW_DEVELOPMENT)[number]["estatus"];
-
-// ── Helpers visuales ─────────────────────────────────────────────────────────
-
-/** Retorna las clases CSS de color para cada estatus de las OPs principales */
-function prodStatusCls(estatus: ProdStatus): { text: string; bg: string; dot: string } {
-  const map: Partial<Record<ProdStatus, { text: string; bg: string; dot: string }>> = {
-    creada:                 { text: "text-slate-600 dark:text-slate-400",  bg: "bg-slate-50 dark:bg-slate-500/10",   dot: "bg-slate-400" },
-    verificando_materiales: { text: "text-amber-700 dark:text-amber-400",  bg: "bg-amber-50 dark:bg-amber-500/10",   dot: "bg-amber-500" },
-    en_fabricacion:         { text: "text-sky-700 dark:text-sky-400",      bg: "bg-sky-50 dark:bg-sky-500/10",       dot: "bg-sky-500" },
-    registrando_avance:     { text: "text-violet-700 dark:text-violet-400",bg: "bg-violet-50 dark:bg-violet-500/10", dot: "bg-violet-500" },
-    cierre_solicitado:      { text: "text-teal-700 dark:text-teal-400",    bg: "bg-teal-50 dark:bg-teal-500/10",     dot: "bg-teal-500" },
-    cerrada:                { text: "text-emerald-700 dark:text-emerald-400", bg: "bg-emerald-50 dark:bg-emerald-500/10", dot: "bg-emerald-500" },
-    comprando_materiales:   { text: "text-orange-700 dark:text-orange-400",bg: "bg-orange-50 dark:bg-orange-500/10", dot: "bg-orange-500" },
-    material_faltante:      { text: "text-red-700 dark:text-red-400",      bg: "bg-red-50 dark:bg-red-500/15",       dot: "bg-red-500" },
-    cancelada:              { text: "text-zinc-500 dark:text-zinc-400",    bg: "bg-zinc-100 dark:bg-zinc-500/10",    dot: "bg-zinc-400" },
-  };
-  return map[estatus] ?? { text: "text-slate-500", bg: "bg-slate-100", dot: "bg-slate-400" };
-}
+  getEmbroideryOrderMetrics,
+  getProductionOrderMetrics,
+  type EmbroideryOrderMetrics,
+  type ProductionOrderMetrics,
+} from "../utils/manufacturingDashboardMetrics";
 
 // ── Sub-componentes reutilizables ─────────────────────────────────────────────
 
@@ -207,27 +186,18 @@ function ModuleCard({
   );
 }
 
-/** Fila de orden en alerta (panel derecho) */
-function AlertRow({
-  folio,
-  nombre,
-  estatus,
-}: {
-  folio: string;
-  nombre: string;
-  estatus: ProdStatus;
-}) {
-  const cls = prodStatusCls(estatus);
+/** Fila de una OP (panel de alertas y "Últimas órdenes"): folio + estatus real. */
+function OrderRow({ order }: { order: ProductionOrderListItem }) {
+  const status = productionOrderStatusEntry(order.estatus_op, order.estatus_op_display);
 
   return (
     <div className="flex items-center gap-3 py-2.5 border-b border-slate-100 dark:border-white/5 last:border-0">
-      <span className={`w-2 h-2 rounded-full shrink-0 ${cls.dot}`} aria-hidden="true" />
-      <div className="flex-1 min-w-0">
-        <p className="text-xs font-semibold text-slate-700 dark:text-slate-200 font-mono">{folio}</p>
-        <p className="text-[11px] text-slate-400 truncate">{nombre}</p>
-      </div>
-      <span className={`shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded ${cls.bg} ${cls.text}`}>
-        {PRODUCTION_ORDER_STATUS_LABELS[estatus]}
+      <span className={`w-2 h-2 rounded-full shrink-0 ${status.dot}`} aria-hidden="true" />
+      <p className="flex-1 min-w-0 text-xs font-semibold text-slate-700 dark:text-slate-200 font-mono truncate">
+        {order.folio_op}
+      </p>
+      <span className={`shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded ${status.cls}`}>
+        {status.label}
       </span>
     </div>
   );
@@ -239,13 +209,14 @@ function DistBar({
   count,
   total,
   dotCls,
-  textCls,
+  labelCls,
 }: {
   label: string;
   count: number;
   total: number;
   dotCls: string;
-  textCls: string;
+  /** Clases del badge del estatus (`PRODUCTION_ORDER_STATUS_CONFIG`). */
+  labelCls: string;
 }) {
   const pct = total > 0 ? (count / total) * 100 : 0;
 
@@ -253,7 +224,7 @@ function DistBar({
     <div className="flex items-center gap-3">
       <div className="flex items-center gap-1.5 w-40 shrink-0">
         <span className={`w-2 h-2 rounded-full shrink-0 ${dotCls}`} aria-hidden="true" />
-        <span className={`text-[11px] font-semibold truncate ${textCls}`}>{label}</span>
+        <span className={`text-[11px] font-semibold truncate rounded px-1.5 py-0.5 ${labelCls}`}>{label}</span>
       </div>
       <div className="flex-1 h-3 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden relative">
         <div
@@ -273,423 +244,397 @@ function DistBar({
   );
 }
 
-// ── Componente principal ──────────────────────────────────────────────────────
+/** Fila de la distribución por prioridad. */
+function PriorityRow({
+  label,
+  count,
+  total,
+  dotCls,
+  valueCls,
+  isUnavailable,
+}: {
+  label: string;
+  count: number;
+  total: number;
+  dotCls: string;
+  valueCls: string;
+  isUnavailable: boolean;
+}) {
+  const pct = total > 0 ? (count / total) * 100 : 0;
 
-export function ManufacturingDashboard() {
-  // Único dato REAL de este dashboard hoy: el resto de las tarjetas
-  // (`prod`, Cedicor) siguen en `[]`/maqueta. Misma query cacheada que ya usa
-  // `EmbroideryView` (`["embroidery-orders"]`) — sin fetch nuevo.
-  //
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-1.5">
+        <div className="flex items-center gap-2">
+          <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${dotCls}`} aria-hidden="true" />
+          <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">{label}</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className={`text-sm font-bold tabular-nums font-mono ${valueCls}`}>
+            {isUnavailable ? "—" : count}
+          </span>
+          <span className="text-[10px] font-bold text-slate-400">
+            {isUnavailable ? "" : `${Math.round(pct)}%`}
+          </span>
+        </div>
+      </div>
+      <div className="h-2 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+        <div
+          className={`h-full rounded-full transition-all duration-700 ${dotCls}`}
+          style={{ width: `${isUnavailable ? 0 : pct}%` }}
+        />
+      </div>
+    </div>
+  );
+}
+
+// ── Datos ─────────────────────────────────────────────────────────────────────
+
+/**
+ * Listado + si sus cifras se pueden mostrar. `isUnavailable` pinta guiones en
+ * vez de ceros: un `0` se leería como "no hay órdenes" cuando lo cierto es "no
+ * se pudo saber". Es `!hasLoaded` (`data === undefined`), que equivale a
+ * `isPending || isInitialLoadError`: cubre la carga, el error de carga inicial
+ * y también una consulta PAUSADA (p. ej. sin conexión), donde `isLoading` es
+ * `false` aunque no haya datos. Un refetch fallido CON datos en caché no entra
+ * aquí: se conservan los últimos datos buenos.
+ */
+interface ListState<T> {
+  data: T[];
+  isUnavailable: boolean;
+}
+
+// Cada listado se consulta SOLO si el usuario tiene el permiso de su pantalla
+// (`R-PRODUCCION-OP` / `-OB`): estos componentes se montan únicamente en ese
+// caso, así que sin permiso no sale la petición. Es el gating que permiten
+// `useProductionOrders`/`useEmbroideryOrders` sin opción `enabled`. Comparten
+// la caché (`["production-orders"]`, `["embroidery-orders"]`) con sus
+// pantallas: no hay fetch extra al venir de ellas.
+
+function WithProductionOrders({
+  children,
+}: {
+  children: (state: ListState<ProductionOrderListItem>) => ReactNode;
+}) {
+  const { data, hasLoaded } = useProductionOrders();
+  return children({ data: data ?? [], isUnavailable: !hasLoaded });
+}
+
+function WithEmbroideryOrders({
+  children,
+}: {
+  children: (state: ListState<EmbroideryOrder>) => ReactNode;
+}) {
   // `notifyOnRefetchError: false`: el toast de "no se pudo actualizar" de
   // `useEmbroideryOrders` está redactado para la pantalla de bordado; aquí
-  // llegaría sin decir a cuál de las cuatro tarjetas se refiere.
-  const {
-    orders: embOrders,
-    isLoading: isLoadingEmb,
-    isError: isErrorEmb,
-    hasLoaded: hasLoadedEmb,
-  } = useEmbroideryOrders({ notifyOnRefetchError: false });
+  // llegaría sin decir a qué bloque se refiere.
+  const { orders, hasLoaded } = useEmbroideryOrders({
+    notifyOnRefetchError: false,
+  });
+  return children({ data: orders, isUnavailable: !hasLoaded });
+}
 
-  // Mientras carga, o si la carga inicial falló, NO hay cifras de bordado que
-  // mostrar. `orders` es `[]` en ambos casos, y pintar ese `0` afirmaría "no
-  // hay órdenes" cuando lo cierto es "no se pudo saber" — el mismo criterio
-  // por el que `EmbroideryView` esconde sus KPIs en vez de enseñar ceros. Un
-  // refetch fallido CON datos en caché no entra aquí: se conservan los
-  // últimos datos buenos (igual que la tabla de bordado).
-  const embUnavailable = isLoadingEmb || isInitialLoadError(isErrorEmb, hasLoadedEmb);
+// ── Componente principal ──────────────────────────────────────────────────────
 
-  // Lo ÚNICO que el memo de abajo necesita de bordado. Se extrae aquí para que
-  // la dependencia del memo sea un número estable y no el arreglo, que
-  // `useEmbroideryOrders` reconstruye (spread + sort) en cada invocación: con
-  // `[embOrders]` el memo nunca acertaría y recalcularía también las
-  // estadísticas de Cedicor y de OPs en cada render.
-  const embCount = embOrders.length;
+/**
+ * Dashboard de Manufactura con datos reales de OP y OB. Cada bloque depende del
+ * permiso de su pantalla: sin `R-PRODUCCION-OP` no hay ningún bloque de OP (ni
+ * se consulta su listado) y las OPs no suman a los totales; lo mismo con
+ * `R-PRODUCCION-OB` para bordado. Sin ninguno de los dos se muestra el índice
+ * del módulo por sub-grupos (`ModuleSectionsGrid`).
+ */
+export function ManufacturingDashboard() {
+  const { data: session } = useSession();
+  const canViewProductionOrders = hasPermission("R-PRODUCCION-OP", session?.user);
+  const canViewEmbroideryOrders = hasPermission("R-PRODUCCION-OB", session?.user);
 
-  const stats = useMemo(() => {
-    const hoy = new Date();
+  if (canViewProductionOrders && canViewEmbroideryOrders) {
+    return (
+      <WithProductionOrders>
+        {(op) => (
+          <WithEmbroideryOrders>{(ob) => <DashboardContent op={op} ob={ob} />}</WithEmbroideryOrders>
+        )}
+      </WithProductionOrders>
+    );
+  }
+  if (canViewProductionOrders) {
+    return <WithProductionOrders>{(op) => <DashboardContent op={op} />}</WithProductionOrders>;
+  }
+  if (canViewEmbroideryOrders) {
+    return <WithEmbroideryOrders>{(ob) => <DashboardContent ob={ob} />}</WithEmbroideryOrders>;
+  }
+  // Sin ningún bloque visible, en vez de una página vacía: el índice del módulo
+  // por sub-grupos, igual que el landing de Finanzas y Capital Humano.
+  return <ModuleSectionsGrid moduleKey="manufacturing" />;
+}
 
-    // ── Órdenes de Producción (módulo principal) ─────────────────────────
-    const prod: ProductionOrder[] = [];
-    const prodActivas   = prod.filter((o) => !["cerrada", "cancelada"].includes(o.estatus));
-    const prodFabricando = prod.filter((o) => o.estatus === "en_fabricacion");
-    const prodAlertas   = prod.filter((o) => ["material_faltante", "comprando_materiales"].includes(o.estatus));
-    const prodCompletas = prod.filter((o) => o.estatus === "cerrada");
-    const prodVencidas  = prodActivas.filter((o) => {
-      if (!o.fecha_estimada_entrega) return false;
-      return new Date(o.fecha_estimada_entrega) < hoy;
-    });
+/**
+ * Cuerpo del dashboard. `op`/`ob` ausentes = el usuario no tiene ese permiso:
+ * sus bloques no se pintan y no suman a los totales.
+ */
+function DashboardContent({
+  op,
+  ob,
+}: {
+  op?: ListState<ProductionOrderListItem>;
+  ob?: ListState<EmbroideryOrder>;
+}) {
+  const opMetrics: ProductionOrderMetrics | null = op ? getProductionOrderMetrics(op.data) : null;
+  const obMetrics: EmbroideryOrderMetrics | null = ob ? getEmbroideryOrderMetrics(ob.data) : null;
+  const opUnavailable = op?.isUnavailable ?? false;
+  const obUnavailable = ob?.isUnavailable ?? false;
 
-    // Distribución por estatus (para el gráfico)
-    const statusDist: Array<{ estatus: ProdStatus; count: number }> = [
-      "creada",
-      "verificando_materiales",
-      "en_fabricacion",
-      "registrando_avance",
-      "cierre_solicitado",
-      "cerrada",
-      "comprando_materiales",
-      "material_faltante",
-      "cancelada",
-    ].map((e) => ({
-      estatus: e as ProdStatus,
-      count: prod.filter((o) => o.estatus === e).length,
-    })).filter((e) => e.count > 0);
+  // Totales consolidados: solo los bloques visibles, sin canceladas (OP 7,
+  // OB 8). Si alguna fuente incluida no se pudo cargar, el total no se conoce.
+  const totalsUnavailable = opUnavailable || obUnavailable;
+  const totalCounted = (opMetrics?.counted ?? 0) + (obMetrics?.counted ?? 0);
+  const totalActive = (opMetrics?.active ?? 0) + (obMetrics?.active ?? 0);
+  const totalAlerts = (opMetrics?.stopped.length ?? 0) + (obMetrics?.alerts ?? 0);
 
-    // Distribución por prioridad
-    const alta  = prod.filter((o) => o.prioridad === "alta").length;
-    const media = prod.filter((o) => o.prioridad === "media").length;
-    const baja  = prod.filter((o) => o.prioridad === "baja").length;
+  const fmt = (value: number, isUnavailable: boolean) => (isUnavailable ? "—" : value);
+  const pctOf = (count: number, base: number) => (base > 0 ? (count / base) * 100 : 0);
 
-    // Últimas 5 OPs recientes (para el panel derecho, cuando no hay alertas)
-    const recientes = [...prod]
-      .sort((a, b) => new Date(b.fecha_creacion).getTime() - new Date(a.fecha_creacion).getTime())
-      .slice(0, 5);
-
-    // ── Bordado ──────────────────────────────────────────────────────────
-    // Datos REALES (`GET /produccion/orden-bordado/`, vía `useEmbroideryOrders`
-    // arriba) — ya no `MOCK_EMBROIDERY_ORDERS`.
-    //
-    // `activas`/`completas` migran de un desglose por `estatus_hoja` (4
-    // valores de la MAQUETA: sin_liberar/liberada/en_proceso/terminada) que NO
-    // tiene equivalente real: el campo real, `estatus_bordado`, es SIEMPRE `1`
-    // (Pendiente) — es `read_only` en el serializer y ningún endpoint lo
-    // avanza (`PUT`/`PATCH` → 405, confirmado en los chunks de listado/alta de
-    // `embroidery`). Bajo esa realidad, toda orden real es, por definición,
-    // "no terminada": `activas = total` y `completas = 0` no son una
-    // aproximación sino la cifra exacta que produciría el mismo filtro de
-    // antes aplicado a datos donde `terminada` jamás ocurre. La tarjeta (y su
-    // barra "% completadas") leerá 0% completado permanentemente — decisión
-    // explícita, no un bug: no existe una repartición de progreso real que
-    // mostrar hasta que el backend exponga una transición de estatus.
-    // `alertas` no cambia: ya era `0` fijo, sin depender de la maqueta
-    // ("sin estatus de alerta definido en bordado").
-    const embActivas   = embCount;
-    const embCompletas = 0;
-    const embAlertas   = 0;
-
-    // ── Cedicor — Producción ─────────────────────────────────────────────
-    const cedProd = MOCK_CEDICOR_PRODUCTION_ORDERS;
-    const cedProdCompletas = cedProd.filter((o) => (o.estatus as CedicorProdStatus) === "despachado_confeccion").length;
-    const cedProdCanceladas = cedProd.filter((o) => (o.estatus as CedicorProdStatus) === "cancelado").length;
-    const cedProdAlertas = cedProd.filter((o) => (o.estatus as CedicorProdStatus) === "material_faltante").length;
-    const cedProdActivas = cedProd.length - cedProdCompletas - cedProdCanceladas;
-
-    // ── Cedicor — Nuevo Desarrollo ───────────────────────────────────────
-    const cedDev = MOCK_CEDICOR_NEW_DEVELOPMENT;
-    const cedDevCompletas = cedDev.filter((o) => (o.estatus as CedicorDevStatus) === "despachado_confeccion").length;
-    const cedDevCanceladas = cedDev.filter((o) => (o.estatus as CedicorDevStatus) === "cancelado").length;
-    const cedDevAlertas = cedDev.filter((o) => (o.estatus as CedicorDevStatus) === "material_faltante").length;
-    const cedDevActivas = cedDev.length - cedDevCompletas - cedDevCanceladas;
-
-    return {
-      prod, prodActivas, prodFabricando, prodAlertas, prodCompletas, prodVencidas,
-      statusDist, alta, media, baja, recientes,
-      emb: { total: embCount, activas: embActivas, completas: embCompletas, alertas: embAlertas },
-      cedProd: { total: cedProd.length, activas: cedProdActivas, completas: cedProdCompletas, alertas: cedProdAlertas },
-      cedDev: { total: cedDev.length, activas: cedDevActivas, completas: cedDevCompletas, alertas: cedDevAlertas },
-    };
-    // `embCount` (ver arriba) es la dependencia EXACTA, no una aproximación:
-    // es el único dato de bordado que este cuerpo lee.
-  }, [embCount]);
-
-  const totalAlertas = stats.prodAlertas.length;
+  const totals = (
+    <div className="grid grid-cols-3 gap-3 text-center">
+      {[
+        { label: "Total OP + OB", value: totalCounted, cls: "text-slate-700 dark:text-slate-200" },
+        { label: "Activas", value: totalActive, cls: "text-sky-600 dark:text-sky-400" },
+        {
+          label: "Alertas",
+          value: totalAlerts,
+          cls: !totalsUnavailable && totalAlerts > 0 ? "text-red-600 dark:text-red-400" : "text-slate-400",
+        },
+      ].map(({ label, value, cls }) => (
+        <div key={label} className="rounded-lg bg-slate-50 dark:bg-white/5 py-2 px-1">
+          <p className={`text-lg font-black tabular-nums font-mono ${cls}`}>{fmt(value, totalsUnavailable)}</p>
+          <p className="text-[10px] text-slate-400 dark:text-slate-500 font-semibold uppercase tracking-wide mt-0.5">{label}</p>
+        </div>
+      ))}
+    </div>
+  );
 
   return (
     <div className="space-y-6">
 
-      {/* ── KPIs principales ─────────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <KpiCard
-          label="OPs Activas"
-          value={stats.prodActivas.length}
-          sub="Órdenes en curso"
-          icon={ProduccionIcon}
-          iconBg="bg-sky-50 dark:bg-sky-500/10"
-          iconText="text-sky-500"
-          accentColor="text-sky-500"
-          progress={stats.prod.length > 0 ? (stats.prodActivas.length / stats.prod.length) * 100 : 0}
-          badge="Activas"
-          badgeCls="text-sky-500 bg-sky-50 dark:bg-sky-500/10"
-        />
-        <KpiCard
-          label="En Fabricación"
-          value={stats.prodFabricando.length}
-          sub="Órdenes en piso"
-          icon={FactoryIcon}
-          iconBg="bg-violet-50 dark:bg-violet-500/10"
-          iconText="text-violet-500"
-          accentColor="text-violet-500"
-          progress={stats.prod.length > 0 ? (stats.prodFabricando.length / stats.prod.length) * 100 : 0}
-        />
-        <KpiCard
-          label="Alertas"
-          value={totalAlertas}
-          sub={`${stats.prodAlertas.filter((o) => o.estatus === "material_faltante").length} faltantes · ${stats.prodAlertas.filter((o) => o.estatus === "comprando_materiales").length} comprando`}
-          icon={ExclamationTriangleIcon}
-          iconBg={totalAlertas > 0 ? "bg-red-50 dark:bg-red-500/10" : "bg-slate-50 dark:bg-slate-500/10"}
-          iconText={totalAlertas > 0 ? "text-red-500" : "text-slate-400"}
-          accentColor={totalAlertas > 0 ? "text-red-500" : "text-slate-400"}
-          progress={stats.prod.length > 0 ? (totalAlertas / stats.prod.length) * 100 : 0}
-        />
-        <KpiCard
-          label="Completadas"
-          value={stats.prodCompletas.length}
-          icon={CheckCircleIcon}
-          iconBg="bg-emerald-50 dark:bg-emerald-500/10"
-          iconText="text-emerald-500"
-          accentColor="text-emerald-500"
-          progress={stats.prod.length > 0 ? (stats.prodCompletas.length / stats.prod.length) * 100 : 0}
-          badge={stats.prodVencidas.length > 0 ? `${stats.prodVencidas.length} vencidas` : undefined}
-          badgeCls="text-red-500 bg-red-50 dark:bg-red-500/10"
-        />
-      </div>
+      {/* ── KPIs principales (OP) ────────────────────────────────────────── */}
+      {opMetrics && (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <KpiCard
+            label="OPs Activas"
+            value={fmt(opMetrics.active, opUnavailable)}
+            sub="Órdenes en curso"
+            icon={ProduccionIcon}
+            iconBg="bg-sky-50 dark:bg-sky-500/10"
+            iconText="text-sky-500"
+            accentColor="text-sky-500"
+            progress={opUnavailable ? 0 : pctOf(opMetrics.active, opMetrics.counted)}
+            badge="Activas"
+            badgeCls="text-sky-500 bg-sky-50 dark:bg-sky-500/10"
+          />
+          <KpiCard
+            label="En Producción"
+            value={fmt(opMetrics.inProduction, opUnavailable)}
+            sub="Órdenes en piso"
+            icon={FactoryIcon}
+            iconBg="bg-violet-50 dark:bg-violet-500/10"
+            iconText="text-violet-500"
+            accentColor="text-violet-500"
+            progress={opUnavailable ? 0 : pctOf(opMetrics.inProduction, opMetrics.counted)}
+          />
+          <KpiCard
+            label="Alertas"
+            value={fmt(opMetrics.stopped.length, opUnavailable)}
+            sub="detenidas"
+            icon={ExclamationTriangleIcon}
+            iconBg={!opUnavailable && opMetrics.stopped.length > 0 ? "bg-red-50 dark:bg-red-500/10" : "bg-slate-50 dark:bg-slate-500/10"}
+            iconText={!opUnavailable && opMetrics.stopped.length > 0 ? "text-red-500" : "text-slate-400"}
+            accentColor={!opUnavailable && opMetrics.stopped.length > 0 ? "text-red-500" : "text-slate-400"}
+            progress={opUnavailable ? 0 : pctOf(opMetrics.stopped.length, opMetrics.counted)}
+          />
+          <KpiCard
+            label="Completadas"
+            value={fmt(opMetrics.completed, opUnavailable)}
+            icon={CheckCircleIcon}
+            iconBg="bg-emerald-50 dark:bg-emerald-500/10"
+            iconText="text-emerald-500"
+            accentColor="text-emerald-500"
+            progress={opUnavailable ? 0 : pctOf(opMetrics.completed, opMetrics.counted)}
+          />
+        </div>
+      )}
 
-      {/* ── Grid central ─────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 items-start">
+      {/* ── Grid central: módulos (2/3) + panel de OPs (1/3) ─────────────── */}
+      {/* Sin OP no hay panel derecho: los módulos ocupan todo el ancho. */}
+      <div className={`grid grid-cols-1 gap-6 items-start ${opMetrics ? "xl:grid-cols-3" : ""}`}>
 
-        {/* Módulos de producción (2/3) */}
-        <div className="xl:col-span-2 space-y-4">
+        {/* Módulos de producción */}
+        <div className={`space-y-4 ${opMetrics ? "xl:col-span-2" : ""}`}>
           <div>
             <h2 className="text-sm font-bold text-slate-800 dark:text-white">Módulos de producción</h2>
             <p className="text-xs text-slate-400 mt-0.5">Estado general por área de manufactura</p>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <ModuleCard
-              href="/manufacturing/production-orders"
-              icon={ProduccionIcon}
-              iconBg="bg-sky-50 dark:bg-sky-500/10"
-              iconText="text-sky-500"
-              title="Órdenes de Producción"
-              total={stats.prod.length}
-              activas={stats.prodActivas.length}
-              completas={stats.prodCompletas.length}
-              alertas={totalAlertas}
-            />
-            <ModuleCard
-              href="/manufacturing/embroidery"
-              icon={ScissorsIcon}
-              iconBg="bg-fuchsia-50 dark:bg-fuchsia-500/10"
-              iconText="text-fuchsia-500"
-              title="Órdenes de Bordado"
-              total={stats.emb.total}
-              activas={stats.emb.activas}
-              completas={stats.emb.completas}
-              alertas={stats.emb.alertas}
-              isUnavailable={embUnavailable}
-            />
-            <ModuleCard
-              href="/manufacturing/cedicor-production-orders"
-              icon={FactoryIcon}
-              iconBg="bg-teal-50 dark:bg-teal-500/10"
-              iconText="text-teal-500"
-              title="Cedicor — Producción"
-              total={stats.cedProd.total}
-              activas={stats.cedProd.activas}
-              completas={stats.cedProd.completas}
-              alertas={stats.cedProd.alertas}
-            />
-            <ModuleCard
-              href="/manufacturing/cedicor-product-development-orders"
-              icon={LayersIcon}
-              iconBg="bg-indigo-50 dark:bg-indigo-500/10"
-              iconText="text-indigo-500"
-              title="Cedicor — Nuevo Desarrollo"
-              total={stats.cedDev.total}
-              activas={stats.cedDev.activas}
-              completas={stats.cedDev.completas}
-              alertas={stats.cedDev.alertas}
-            />
+            {opMetrics && (
+              <ModuleCard
+                href="/manufacturing/production-orders"
+                icon={ProduccionIcon}
+                iconBg="bg-sky-50 dark:bg-sky-500/10"
+                iconText="text-sky-500"
+                title="Órdenes de Producción"
+                total={opMetrics.counted}
+                activas={opMetrics.active}
+                completas={opMetrics.completed}
+                alertas={opMetrics.stopped.length}
+                isUnavailable={opUnavailable}
+              />
+            )}
+            {obMetrics && (
+              <ModuleCard
+                href="/manufacturing/embroidery"
+                icon={ScissorsIcon}
+                iconBg="bg-fuchsia-50 dark:bg-fuchsia-500/10"
+                iconText="text-fuchsia-500"
+                title="Órdenes de Bordado"
+                total={obMetrics.counted}
+                activas={obMetrics.active}
+                completas={obMetrics.completed}
+                alertas={obMetrics.alerts}
+                isUnavailable={obUnavailable}
+              />
+            )}
           </div>
+          {/* Sin OP no existe la tarjeta de prioridad que los aloja: los
+              totales van aquí, bajo las tarjetas de módulo. */}
+          {!opMetrics && (
+            <div className="rounded-xl bg-white dark:bg-black border border-slate-200 dark:border-white/10 p-5 shadow-sm">
+              {totals}
+            </div>
+          )}
         </div>
 
-        {/* Panel derecho (1/3): alertas + recientes */}
-        <div className="space-y-4">
+        {/* Panel derecho (1/3): alertas + recientes (OP) */}
+        {opMetrics && (
+          <div className="space-y-4">
 
-          {/* Sección de alertas */}
-          {totalAlertas > 0 && (
-            <div className="rounded-xl bg-white dark:bg-black border border-red-200 dark:border-red-500/20 p-4 shadow-sm">
-              <div className="flex items-center gap-2 mb-3">
-                <ErrorIcon className="w-4 h-4 text-red-500 shrink-0" />
-                <div>
-                  <h3 className="text-sm font-bold text-slate-800 dark:text-white">Órdenes en alerta</h3>
-                  <p className="text-[11px] text-slate-400">Material faltante o en compra</p>
+            {/* Sección de alertas */}
+            {!opUnavailable && opMetrics.stopped.length > 0 && (
+              <div className="rounded-xl bg-white dark:bg-black border border-red-200 dark:border-red-500/20 p-4 shadow-sm">
+                <div className="flex items-center gap-2 mb-3">
+                  <ErrorIcon className="w-4 h-4 text-red-500 shrink-0" />
+                  <div>
+                    <h3 className="text-sm font-bold text-slate-800 dark:text-white">Órdenes en alerta</h3>
+                    <p className="text-[11px] text-slate-400">Órdenes detenidas</p>
+                  </div>
                 </div>
+                <div>
+                  {opMetrics.stopped.map((o) => (
+                    <OrderRow key={o.op_id} order={o} />
+                  ))}
+                </div>
+                <Link
+                  href="/manufacturing/production-orders"
+                  className="mt-3 flex items-center gap-1 text-xs font-semibold text-sky-600 dark:text-sky-400 hover:text-sky-700 dark:hover:text-sky-300 transition-colors"
+                >
+                  Ver todas
+                  <ChevronRightIcon className="w-3 h-3" />
+                </Link>
               </div>
-              <div>
-                {stats.prodAlertas.map((o) => (
-                  <AlertRow key={o.id} folio={o.folio} nombre={o.nombre_producto} estatus={o.estatus} />
-                ))}
+            )}
+
+            {/* Últimas órdenes recientes */}
+            <div className="rounded-xl bg-white dark:bg-black border border-slate-200 dark:border-white/10 p-4 shadow-sm">
+              <div className="flex items-center justify-between mb-3">
+                <div>
+                  <h3 className="text-sm font-bold text-slate-800 dark:text-white">Últimas órdenes</h3>
+                  <p className="text-[11px] text-slate-400">Más recientes por fecha de inicio</p>
+                </div>
+                <TrendingUpIcon className="w-4 h-4 text-slate-300 dark:text-slate-600" />
               </div>
+              {opUnavailable ? (
+                <p className="py-2.5 text-xs text-slate-400">—</p>
+              ) : opMetrics.recent.length === 0 ? (
+                <p className="py-2.5 text-xs text-slate-400">Sin órdenes</p>
+              ) : (
+                opMetrics.recent.map((o) => <OrderRow key={o.op_id} order={o} />)
+              )}
               <Link
                 href="/manufacturing/production-orders"
                 className="mt-3 flex items-center gap-1 text-xs font-semibold text-sky-600 dark:text-sky-400 hover:text-sky-700 dark:hover:text-sky-300 transition-colors"
               >
-                Ver todas
+                Ver todas las OPs
                 <ChevronRightIcon className="w-3 h-3" />
               </Link>
             </div>
-          )}
-
-          {/* Últimas órdenes recientes */}
-          <div className="rounded-xl bg-white dark:bg-black border border-slate-200 dark:border-white/10 p-4 shadow-sm">
-            <div className="flex items-center justify-between mb-3">
-              <div>
-                <h3 className="text-sm font-bold text-slate-800 dark:text-white">Últimas órdenes</h3>
-                <p className="text-[11px] text-slate-400">Creadas recientemente</p>
-              </div>
-              <TrendingUpIcon className="w-4 h-4 text-slate-300 dark:text-slate-600" />
-            </div>
-            {stats.recientes.map((o) => (
-              <AlertRow key={o.id} folio={o.folio} nombre={o.nombre_producto} estatus={o.estatus} />
-            ))}
-            <Link
-              href="/manufacturing/production-orders"
-              className="mt-3 flex items-center gap-1 text-xs font-semibold text-sky-600 dark:text-sky-400 hover:text-sky-700 dark:hover:text-sky-300 transition-colors"
-            >
-              Ver todas las OPs
-              <ChevronRightIcon className="w-3 h-3" />
-            </Link>
           </div>
-
-          {/* Órdenes vencidas (si hay) */}
-          {stats.prodVencidas.length > 0 && (
-            <div className="rounded-xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 p-4">
-              <div className="flex items-center gap-2">
-                <ClockIcon className="w-4 h-4 text-amber-500 shrink-0" />
-                <div>
-                  <p className="text-sm font-bold text-amber-800 dark:text-amber-300">
-                    {stats.prodVencidas.length} {stats.prodVencidas.length === 1 ? "orden vencida" : "órdenes vencidas"}
-                  </p>
-                  <p className="text-[11px] text-amber-700 dark:text-amber-400">
-                    Fecha estimada de entrega superada
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
+        )}
       </div>
 
-      {/* ── Sección inferior ─────────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* ── Sección inferior (OP) ────────────────────────────────────────── */}
+      {opMetrics && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
-        {/* Distribución por estatus */}
-        <div className="rounded-xl bg-white dark:bg-black border border-slate-200 dark:border-white/10 p-5 shadow-sm">
-          <div className="mb-4">
-            <h2 className="text-sm font-bold text-slate-800 dark:text-white">Distribución por estatus</h2>
-            <p className="text-xs text-slate-400 mt-0.5">Órdenes de Producción — {stats.prod.length} totales</p>
+          {/* Distribución por estatus */}
+          <div className="rounded-xl bg-white dark:bg-black border border-slate-200 dark:border-white/10 p-5 shadow-sm">
+            <div className="mb-4">
+              <h2 className="text-sm font-bold text-slate-800 dark:text-white">Distribución por estatus</h2>
+              <p className="text-xs text-slate-400 mt-0.5">
+                Órdenes de Producción — {fmt(opMetrics.all, opUnavailable)} totales
+              </p>
+            </div>
+            <div className="space-y-2.5">
+              {!opUnavailable &&
+                opMetrics.byStatus.map((item) => {
+                  const status = productionOrderStatusEntry(item.estatus, item.display);
+                  return (
+                    <DistBar
+                      key={item.estatus}
+                      label={status.label}
+                      count={item.count}
+                      total={opMetrics.all}
+                      dotCls={status.dot}
+                      labelCls={status.cls}
+                    />
+                  );
+                })}
+            </div>
           </div>
-          <div className="space-y-2.5">
-            {stats.statusDist.map((item) => {
-              const cls = prodStatusCls(item.estatus);
-              return (
-                <DistBar
-                  key={item.estatus}
-                  label={PRODUCTION_ORDER_STATUS_LABELS[item.estatus]}
-                  count={item.count}
-                  total={stats.prod.length}
-                  dotCls={cls.dot}
-                  textCls={cls.text}
-                />
-              );
-            })}
+
+          {/* Distribución por prioridad + totales consolidados */}
+          <div className="rounded-xl bg-white dark:bg-black border border-slate-200 dark:border-white/10 p-5 shadow-sm">
+            <div className="mb-4">
+              <h2 className="text-sm font-bold text-slate-800 dark:text-white">Prioridad de órdenes</h2>
+              <p className="text-xs text-slate-400 mt-0.5">Clasificación de Órdenes de Producción por urgencia</p>
+            </div>
+            <div className="space-y-4">
+              <PriorityRow
+                label="Alta prioridad"
+                count={opMetrics.byPriority.high}
+                total={opMetrics.all}
+                dotCls="bg-red-500"
+                valueCls="text-red-600 dark:text-red-400"
+                isUnavailable={opUnavailable}
+              />
+              <PriorityRow
+                label="Media prioridad"
+                count={opMetrics.byPriority.medium}
+                total={opMetrics.all}
+                dotCls="bg-amber-500"
+                valueCls="text-amber-600 dark:text-amber-400"
+                isUnavailable={opUnavailable}
+              />
+              <PriorityRow
+                label="Baja prioridad"
+                count={opMetrics.byPriority.low}
+                total={opMetrics.all}
+                dotCls="bg-slate-400"
+                valueCls="text-slate-500 dark:text-slate-400"
+                isUnavailable={opUnavailable}
+              />
+            </div>
+            <div className="mt-6 pt-4 border-t border-slate-100 dark:border-white/5">{totals}</div>
           </div>
         </div>
-
-        {/* Distribución por prioridad */}
-        <div className="rounded-xl bg-white dark:bg-black border border-slate-200 dark:border-white/10 p-5 shadow-sm">
-          <div className="mb-4">
-            <h2 className="text-sm font-bold text-slate-800 dark:text-white">Prioridad de órdenes</h2>
-            <p className="text-xs text-slate-400 mt-0.5">Clasificación de Órdenes de Producción por urgencia</p>
-          </div>
-          <div className="space-y-4">
-            {/* Alta */}
-            <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <div className="flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-red-500 shrink-0" aria-hidden="true" />
-                  <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">Alta prioridad</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-bold tabular-nums font-mono text-red-600 dark:text-red-400">{stats.alta}</span>
-                  <span className="text-[10px] font-bold text-slate-400">
-                    {stats.prod.length > 0 ? Math.round((stats.alta / stats.prod.length) * 100) : 0}%
-                  </span>
-                </div>
-              </div>
-              <div className="h-2 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-red-500 rounded-full transition-all duration-700"
-                  style={{ width: `${stats.prod.length > 0 ? (stats.alta / stats.prod.length) * 100 : 0}%` }}
-                />
-              </div>
-            </div>
-            {/* Media */}
-            <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <div className="flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-amber-500 shrink-0" aria-hidden="true" />
-                  <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">Media prioridad</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-bold tabular-nums font-mono text-amber-600 dark:text-amber-400">{stats.media}</span>
-                  <span className="text-[10px] font-bold text-slate-400">
-                    {stats.prod.length > 0 ? Math.round((stats.media / stats.prod.length) * 100) : 0}%
-                  </span>
-                </div>
-              </div>
-              <div className="h-2 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-amber-500 rounded-full transition-all duration-700"
-                  style={{ width: `${stats.prod.length > 0 ? (stats.media / stats.prod.length) * 100 : 0}%` }}
-                />
-              </div>
-            </div>
-            {/* Baja */}
-            <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <div className="flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-slate-400 shrink-0" aria-hidden="true" />
-                  <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">Baja prioridad</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-bold tabular-nums font-mono text-slate-500 dark:text-slate-400">{stats.baja}</span>
-                  <span className="text-[10px] font-bold text-slate-400">
-                    {stats.prod.length > 0 ? Math.round((stats.baja / stats.prod.length) * 100) : 0}%
-                  </span>
-                </div>
-              </div>
-              <div className="h-2 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-slate-400 rounded-full transition-all duration-700"
-                  style={{ width: `${stats.prod.length > 0 ? (stats.baja / stats.prod.length) * 100 : 0}%` }}
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Totales consolidados — los dos primeros suman la aportación de
-              bordado, así que cuando esa cifra no se pudo obtener el
-              consolidado tampoco se conoce: se pinta "—" en vez de un número
-              que silenciosamente omitiría un módulo entero. "Alertas" no
-              incluye bordado (no tiene estatus de alerta), así que no se ve
-              afectado. */}
-          <div className="mt-6 pt-4 border-t border-slate-100 dark:border-white/5 grid grid-cols-3 gap-3 text-center">
-            {[
-              { label: "Total módulo", value: stats.prod.length + stats.emb.total + stats.cedProd.total + stats.cedDev.total, cls: "text-slate-700 dark:text-slate-200", dependeDeBordado: true },
-              { label: "Activas", value: stats.prodActivas.length + stats.emb.activas + stats.cedProd.activas + stats.cedDev.activas, cls: "text-sky-600 dark:text-sky-400", dependeDeBordado: true },
-              { label: "Alertas", value: totalAlertas + stats.cedProd.alertas + stats.cedDev.alertas, cls: totalAlertas + stats.cedProd.alertas + stats.cedDev.alertas > 0 ? "text-red-600 dark:text-red-400" : "text-slate-400", dependeDeBordado: false },
-            ].map(({ label, value, cls, dependeDeBordado }) => (
-              <div key={label} className="rounded-lg bg-slate-50 dark:bg-white/5 py-2 px-1">
-                <p className={`text-lg font-black tabular-nums font-mono ${cls}`}>
-                  {dependeDeBordado && embUnavailable ? "—" : value}
-                </p>
-                <p className="text-[10px] text-slate-400 dark:text-slate-500 font-semibold uppercase tracking-wide mt-0.5">{label}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
+      )}
     </div>
   );
 }

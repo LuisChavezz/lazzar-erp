@@ -16,7 +16,7 @@ import { SpecialOrderLines } from "./SpecialOrderLines";
 // `CorteMangaOrderPageContent`).
 const BACK = {
   href: "/manufacturing/special-orders",
-  label: "Volver a Pedidos especiales",
+  label: "Volver a Pedidos Especiales",
 };
 
 interface SpecialOrderPageContentProps {
