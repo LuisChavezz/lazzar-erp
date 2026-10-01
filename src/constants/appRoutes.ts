@@ -245,7 +245,7 @@ export const appRouteGroups: AppRouteGroup[] = [
     permission: "R-WMS",
     moduleLabel: "Operaciones de Almacén",
     modulePath: "/wms",
-    moduleDescription: "Inventario, ubicaciones, movimientos, surtido, empaque y transferencias.",
+    moduleDescription: "Inventario, ubicaciones, movimientos, surtido, embarque y transferencias.",
     moduleIcon: InventariosIcon,
     showInHome: true,
     items: [
@@ -299,7 +299,7 @@ export const appRouteGroups: AppRouteGroup[] = [
       },
       {
         key: "wms-packing",
-        label: "Empaque",
+        label: "Embarque",
         path: "/wms/packing",
         icon: PackingIcon,
         description: "Empaque de la mercancía proveniente de un surtido.",

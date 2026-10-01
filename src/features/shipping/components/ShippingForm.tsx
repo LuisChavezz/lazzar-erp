@@ -26,7 +26,7 @@ export const ShippingForm = () => {
       title={
         <DialogHeader
           title="Nuevo Envío"
-          subtitle="Entrega de las cajas del empaque seleccionado"
+          subtitle="Entrega de las cajas del embarque seleccionado"
           statusColor="sky"
         />
       }

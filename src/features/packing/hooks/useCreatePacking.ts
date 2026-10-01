@@ -100,7 +100,7 @@ export function parsePackingError(error: unknown): ParsedPackingError {
   };
 
   if (!(error instanceof AxiosError)) {
-    result.formError = "Error al registrar el empaque.";
+    result.formError = "Error al registrar el embarque.";
     return finalize();
   }
 
@@ -123,13 +123,13 @@ export function parsePackingError(error: unknown): ParsedPackingError {
       result.formError = messages[0];
       result.messages.push(...messages);
     } else {
-      result.formError = "Error al registrar el empaque.";
+      result.formError = "Error al registrar el embarque.";
     }
     return finalize();
   }
 
   if (!data || typeof data !== "object") {
-    result.formError = error.message || "Error al registrar el empaque.";
+    result.formError = error.message || "Error al registrar el embarque.";
     return finalize();
   }
 
@@ -187,7 +187,7 @@ export function parsePackingError(error: unknown): ParsedPackingError {
       if (message) result.messages.push(message);
     });
     if (result.messages.length === 0) {
-      result.formError = "Error de validación al registrar el empaque.";
+      result.formError = "Error de validación al registrar el embarque.";
     }
   }
 
@@ -221,7 +221,7 @@ export const useCreatePacking = (onServerError?: (parsed: ParsedPackingError) =>
       // silencio, dejando el catálogo del Paso 1 servido de caché hasta 15min
       // (usa el `staleTime` global a propósito, ver el hook).
       queryClient.invalidateQueries({ queryKey: ["packing-onboarding"] });
-      toast.success("Empaque registrado correctamente");
+      toast.success("Embarque registrado correctamente");
     },
     onError: (error) => {
       const parsed = parsePackingError(error);
@@ -237,7 +237,7 @@ export const useCreatePacking = (onServerError?: (parsed: ParsedPackingError) =>
       const toastMessage =
         parsed.messages.length > 0
           ? parsed.messages.join("\n")
-          : parsed.formError ?? "Error al registrar el empaque";
+          : parsed.formError ?? "Error al registrar el embarque";
       toast.error(toastMessage);
     },
   });

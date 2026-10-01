@@ -69,7 +69,7 @@ export const useShippingOnboarding = (packingId?: number | null) => {
  */
 export function shippingOnboardingErrorMessage(error: unknown): string {
   const fallback =
-    "Puede que el empaque ya no esté disponible o que no tengas acceso a él. Elige otro empaque o vuelve a intentarlo.";
+    "Puede que el embarque ya no esté disponible o que no tengas acceso a él. Elige otro embarque o vuelve a intentarlo.";
   if (!(error instanceof AxiosError)) return fallback;
 
   const data = error.response?.data;

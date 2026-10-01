@@ -178,7 +178,7 @@ export function PackingWizardStep2({ step1, onBack, onSuccess }: PackingWizardSt
         {/* ── Encabezado propio de packing (todo opcional) ────────────────── */}
         <section className="bg-white dark:bg-zinc-900 rounded-2xl border border-slate-200 dark:border-white/5 shadow-sm dark:shadow-none overflow-hidden">
           <div className="px-6 py-4 border-b border-slate-100 dark:border-white/5 bg-slate-50/50 dark:bg-white/2">
-            <h3 className="font-semibold text-slate-900 dark:text-white text-sm">Detalles del empaque</h3>
+            <h3 className="font-semibold text-slate-900 dark:text-white text-sm">Detalles del embarque</h3>
             <p className="text-[11px] text-slate-500">Cajas, peso y volumen (opcional)</p>
           </div>
           <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-5">
@@ -236,7 +236,7 @@ export function PackingWizardStep2({ step1, onBack, onSuccess }: PackingWizardSt
               <FormTextarea
                 label="Observaciones (opcional)"
                 name="observaciones"
-                placeholder="Notas del empaque"
+                placeholder="Notas del embarque"
                 rows={2}
                 value={header.observaciones}
                 onChange={(event) =>
@@ -285,7 +285,7 @@ export function PackingWizardStep2({ step1, onBack, onSuccess }: PackingWizardSt
               <div>
                 <h3 className="font-semibold text-slate-900 dark:text-white text-sm">Líneas por empacar</h3>
                 <p className="text-[11px] text-slate-500">
-                  Captura la cantidad de cada línea que entra en este empaque (máximo: lo pendiente por línea)
+                  Captura la cantidad de cada línea que entra en este embarque (máximo: lo pendiente por línea)
                 </p>
               </div>
             </div>
@@ -372,7 +372,7 @@ export function PackingWizardStep2({ step1, onBack, onSuccess }: PackingWizardSt
           loadingLabel="Registrando..."
           disabled={isPending || selectedCount === 0}
         >
-          Registrar empaque
+          Registrar embarque
         </FormSubmitButton>
       </div>
     </form>
