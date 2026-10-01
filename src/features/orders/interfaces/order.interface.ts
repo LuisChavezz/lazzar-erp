@@ -479,8 +479,9 @@ export interface PedidoDetail extends Order {
    */
   folios_picking?: PedidoFolioPicking[];
   /**
-   * Programación de Mesa de Control. Solo el DETALLE la trae
-   * (`PedidoSerializer`, `__all__`, de solo lectura); el listado no. Se escribe
+   * Programación de Mesa de Control. La traen el DETALLE (`PedidoSerializer`,
+   * `__all__`, de solo lectura) y también el listado (ver
+   * `PedidoListItem.programacion_conf`). Se escribe
    * únicamente con `PATCH /ventas/pedidos/{id}/programar/`.
    *
    * Opcional y nullable: el `JSONField` admite `null`, y un backend anterior a

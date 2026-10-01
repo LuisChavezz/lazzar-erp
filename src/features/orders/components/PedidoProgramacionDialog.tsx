@@ -68,6 +68,7 @@ function PedidoProgramacionForm({ pedido, onClose }: PedidoProgramacionFormProps
     rowKeys,
     totalPiezas,
     sumaProgramada,
+    totalParcialidades,
     excedeTotal,
     destinosAplicables,
     hayDestinosNoAplicables,
@@ -195,7 +196,8 @@ function PedidoProgramacionForm({ pedido, onClose }: PedidoProgramacionFormProps
           }
         </form.Field>
 
-        {/* Suma en vivo contra el total del pedido. */}
+        {/* Parcialidades (renglones) y suma en vivo contra el total del pedido.
+            Sin renglones solo queda la suma: el estado vacío ya lo explica. */}
         <div
           className={`flex items-center justify-between rounded-xl border px-4 py-3 ${
             excedeTotal
@@ -205,12 +207,20 @@ function PedidoProgramacionForm({ pedido, onClose }: PedidoProgramacionFormProps
           aria-live="polite"
         >
           <span className="text-xs text-slate-500 dark:text-slate-400">Programado</span>
-          <span
-            className={`text-sm font-semibold tabular-nums ${
-              excedeTotal ? "text-rose-600 dark:text-rose-400" : "text-slate-700 dark:text-slate-200"
-            }`}
-          >
-            {sumaProgramada} de {totalPiezas} piezas
+          <span className="text-sm font-semibold tabular-nums">
+            {totalParcialidades > 0 && (
+              <span className="text-slate-700 dark:text-slate-200">
+                {totalParcialidades} {totalParcialidades === 1 ? "parcialidad" : "parcialidades"}
+                <span className="mx-1.5 font-normal text-slate-400 dark:text-slate-500">·</span>
+              </span>
+            )}
+            <span
+              className={
+                excedeTotal ? "text-rose-600 dark:text-rose-400" : "text-slate-700 dark:text-slate-200"
+              }
+            >
+              {sumaProgramada} de {totalPiezas} piezas
+            </span>
           </span>
         </div>
 
@@ -253,9 +263,9 @@ interface PedidoProgramacionDialogProps {
 /**
  * "Programar pedido" desde la Mesa de Control.
  *
- * El renglón del listado (`PedidoListItem`) no trae `detalles` ni
- * `programacion_conf`, así que el diálogo lee el detalle al abrirse
- * (`usePedidoDetail`), con los estados de carga/error de
+ * El renglón del listado (`PedidoListItem`) trae `programacion_conf` pero no
+ * `detalles` (el total de piezas) ni `destinos_aplicables`, así que el diálogo
+ * lee el detalle al abrirse (`usePedidoDetail`), con los estados de carga/error de
  * `PickingOrderDetailDialog`.
  *
  * `refetchOnMount: "always"` + esperar a `isFetchedAfterMount`: el guardado
