@@ -137,7 +137,10 @@ Los módulos operativos, comerciales y financieros se organizan por **dominio de
   - **Comunicación**: Correos (`/operations/emails`) y Calendario (`/operations/calendar`).
   - Además, Muestras (`/operations/samples`).
 - **Operaciones de Almacén – WMS** (`/wms`): Existencias (`/wms/stock`), Recepciones (`/wms/receipts`) y Ubicaciones (`/wms/locations`). Los Movimientos de Inventario se administran desde **Configuración → Organización**.
-- **Compras y SCM** (`/procurement`): Órdenes de Compra (`/procurement/purchase-orders`), Proveedores (`/procurement/suppliers`), Revisión de Pedidos (`/procurement/order-reviews`), Solicitudes de Gastos (`/procurement/expense-requests`) y Pedidos P.Q. (`/procurement/pq-orders`).
+- **Compras y SCM** (`/procurement`), organizada en sub-grupos:
+  - **Operación**: Pedidos (`/procurement/orders`), Órdenes de Compra (`/procurement/purchase-orders`) y Recepciones (`/procurement/purchase-order-receipts`).
+  - **Maestros**: Proveedores (`/procurement/suppliers`).
+  - Además, Revisión de Pedidos (`/procurement/order-reviews`), Solicitudes de Gastos (`/procurement/expense-requests`) y Pedidos P.Q. (`/procurement/pq-orders`).
 - **Manufactura (Producción)** (`/manufacturing`): Órdenes de Producción (`/manufacturing/production-orders`), Órdenes de Bordado (`/manufacturing/embroidery`) y los flujos Cedicor de Nuevo Desarrollo y Producción.
 - **Finanzas y Contabilidad** (`/finance`), organizada en sub-grupos:
   - **Cuentas por Cobrar**: Facturación (`/finance/invoicing`), CxC (`/finance/accounts-receivable`) y Notas de Crédito (`/finance/credit-notes`).
