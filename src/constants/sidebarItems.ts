@@ -27,7 +27,9 @@ const homeItem: SidebarItem = {
 };
 
 // Agrupa los módulos principales que se muestran en Home y navegación principal.
-const mainGroupKeys = new Set([
+// Única fuente: `Sidebar` y `MobileSidebar` la importan para decidir si pintan
+// el bloque de módulo activo.
+export const mainGroupKeys = new Set([
   "system",
   "sales",
   "wms",
