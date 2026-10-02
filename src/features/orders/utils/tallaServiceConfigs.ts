@@ -5,8 +5,9 @@ import type { ServicioConfig } from "../interfaces/order.interface";
 /**
  * Lectura segura de los `*_config` de JSON libre de una talla de pedido.
  *
- * Los consumen el detalle 360° del pedido (`PedidoDetailContent`) y el detalle
- * de pedidos especiales de Producción (`special-orders`). Reciben
+ * Los consume `TallaServiceChips`, que usan el detalle de pedido (popovers de
+ * servicio de la tabla de productos, `OrderLineServiceCell`) y el detalle de
+ * pedidos especiales de Producción (`special-orders`). Reciben
  * `ServicioConfig` —el `JSONField` tal cual lo tipa este módulo—: cualquier
  * contrato cuyo config sea un objeto (alias `type`, no `interface`), un arreglo
  * o `null` lo satisface, y pasar otra cosa (la talla entera, un string) no

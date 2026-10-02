@@ -7,7 +7,7 @@
  * NO cubre `cliente_regimen_fiscal`: ese es una FK cuyo valor serializado es el
  * PK (`id_sat_regimen_fiscal`, p.ej. 17), NO el código SAT (601, 626…), así que
  * un mapa por código no casaría. Se resuelve por catálogo (`useSatInfo`) en el
- * componente. Ver `PedidoDetailContent`.
+ * componente. Ver `OrderCommercialInfoSection`.
  *
  * Los getters caen al valor crudo cuando el código no está en el mapa y a "—"
  * cuando viene vacío/ausente — nunca "undefined".

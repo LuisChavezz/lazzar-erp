@@ -12,7 +12,7 @@ import type { PedidoRecompraResponse } from "../interfaces/pedido-recompra.inter
  * resumen del cliente); el pedido origen no cambia, así que no se toca.
  *
  * El endpoint NO es idempotente: la guarda contra el doble envío vive en quien
- * la dispara (`PedidoDetailContent`), no aquí.
+ * la dispara (`OrderRecompraAction`), no aquí.
  */
 export const useRecomprarPedido = () => {
   const queryClient = useQueryClient();
