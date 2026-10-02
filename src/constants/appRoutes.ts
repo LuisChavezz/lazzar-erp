@@ -239,17 +239,23 @@ export const appRouteGroups: AppRouteGroup[] = [
       },
     ],
   },
-  {
+  defineSectionedGroup({
     key: "wms",
     label: "Operaciones de almacén - WMS",
-    description: "Inventario, ubicaciones, movimientos y embarques.",
+    description: "Pedidos, recepción, calidad, surtido, embarque, envío, existencias y RFID.",
     permission: "R-WMS",
     moduleLabel: "Operaciones de Almacén",
     modulePath: "/wms",
-    moduleDescription: "Inventario, ubicaciones, movimientos, surtido, embarque y transferencias.",
+    moduleDescription: "Recepción, calidad, surtido, embarque y envío de mercancía, existencias y etiquetado RFID.",
     moduleIcon: InventariosIcon,
     showInHome: true,
+    sections: [
+      { key: "operation", label: "Operación" },
+      { key: "inventory", label: "Inventario" },
+      { key: "rfid", label: "RFID" },
+    ],
     items: [
+      // ── Operación ───────────────────────────────────────────────────────────
       {
         key: "wms-orders",
         label: "Pedidos",
@@ -257,20 +263,15 @@ export const appRouteGroups: AppRouteGroup[] = [
         icon: PedidosIcon,
         description: "Consulta de pedidos y su detalle para planear el surtido en almacén.",
         permission: "R-WMS-PEDIDOS",
-      },
-      {
-        key: "wms-stock",
-        label: "Existencias",
-        path: "/wms/stock",
-        icon: ExistenciasIcon,
-        permission: "R-WMS-EXISTENCIAS",
+        section: "operation",
       },
       {
         key: "wms-receipts",
         label: "Recepciones",
         path: "/wms/receipts",
         icon: RecepcionesIcon,
-        permission: "R-WMS-RECEPCIONES"
+        permission: "R-WMS-RECEPCIONES",
+        section: "operation",
       },
       {
         key: "wms-quality-inspections",
@@ -279,6 +280,43 @@ export const appRouteGroups: AppRouteGroup[] = [
         icon: ShieldCheckIcon,
         description: "Inspección de calidad de las recepciones: lo aprobado entra a existencias.",
         permission: "R-WMS-CALIDAD",
+        section: "operation",
+      },
+      {
+        key: "wms-picking",
+        label: "Surtido",
+        path: "/wms/picking",
+        icon: RouteIcon,
+        description: "Surtido de pedidos: recolección de productos en almacén.",
+        permission: "R-WMS-PICKING",
+        section: "operation",
+      },
+      {
+        key: "wms-packing",
+        label: "Embarque",
+        path: "/wms/packing",
+        icon: PackingIcon,
+        description: "Empaque de la mercancía proveniente de un surtido.",
+        permission: "R-WMS-PACKING",
+        section: "operation",
+      },
+      {
+        key: "wms-shipping",
+        label: "Envíos",
+        path: "/wms/shipping",
+        icon: EmbarquesIcon,
+        description: "Entrega de cajas empacadas al transportista.",
+        permission: "R-WMS-ENVIO",
+        section: "operation",
+      },
+      // ── Inventario ──────────────────────────────────────────────────────────
+      {
+        key: "wms-stock",
+        label: "Existencias",
+        path: "/wms/stock",
+        icon: ExistenciasIcon,
+        permission: "R-WMS-EXISTENCIAS",
+        section: "inventory",
       },
       // OCULTO EN NAVEGACION: usa datos mock (src/features/locations/mocks/locations-dashboard.mock.ts:11). Restaurar cuando el backend exponga el endpoint real.
       // Sin código de sección en el catálogo (no existe R-WMS-UBICACIONES): al
@@ -289,31 +327,9 @@ export const appRouteGroups: AppRouteGroup[] = [
       //   path: "/wms/locations",
       //   icon: MapPinIcon,
       //   permission: "R-WMS",
+      //   section: "inventory",
       // },
-      {
-        key: "wms-picking",
-        label: "Surtido",
-        path: "/wms/picking",
-        icon: RouteIcon,
-        description: "Surtido de pedidos: recolección de productos en almacén.",
-        permission: "R-WMS-PICKING",
-      },
-      {
-        key: "wms-packing",
-        label: "Embarque",
-        path: "/wms/packing",
-        icon: PackingIcon,
-        description: "Empaque de la mercancía proveniente de un surtido.",
-        permission: "R-WMS-PACKING",
-      },
-      {
-        key: "wms-shipping",
-        label: "Envío",
-        path: "/wms/shipping",
-        icon: EmbarquesIcon,
-        description: "Entrega de cajas empacadas al transportista.",
-        permission: "R-WMS-ENVIO",
-      },
+      // ── RFID ────────────────────────────────────────────────────────────────
       {
         key: "wms-rfid-labels",
         label: "Etiquetas RFID",
@@ -321,6 +337,7 @@ export const appRouteGroups: AppRouteGroup[] = [
         icon: LabelsIcon,
         description: "Consulta de etiquetas de producto: vista previa, ZPL generado y estatus de impresión.",
         permission: "R-WMS-ETIQUETAS",
+        section: "rfid",
       },
       {
         key: "wms-rfid-scanner",
@@ -329,9 +346,10 @@ export const appRouteGroups: AppRouteGroup[] = [
         icon: ScanLineIcon,
         description: "Monitor en vivo del lector RFID: lecturas recibidas y su match contra las etiquetas impresas.",
         permission: "R-WMS-SCANNER",
+        section: "rfid",
       },
     ],
-  },
+  }),
   defineSectionedGroup({
     key: "procurement",
     label: "Compras y abastecimiento",
