@@ -1,15 +1,10 @@
+import { ModuleSectionsGrid } from "@/src/components/ModuleSectionsGrid";
 
-
+// Página principal de Operaciones de Almacén — índice de sus sub-grupos.
 export default function WmsPage() {
-
   return (
     <div className="w-full space-y-8">
-      <div>
-        <p className="text-slate-500 dark:text-slate-400 mt-1">
-          Vista general de inventarios y movimientos operativos de almacén.
-        </p>
-      </div>
-      {/* <KpiGrid items={items} /> */}
+      <ModuleSectionsGrid moduleKey="wms" />
     </div>
   );
 }
