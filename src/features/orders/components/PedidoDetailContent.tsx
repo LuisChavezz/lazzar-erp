@@ -92,7 +92,7 @@ const BACK_TARGETS: Record<PedidoDetailOrigin, { href: string; label: string }> 
   },
   // Sin esta entrada, un usuario solo-WMS caería en /operations/orders y el
   // proxy lo rebotaría al home por falta de R-MESACONTROL.
-  wms: { href: "/wms/orders", label: "Volver a Operaciones de Almacén" },
+  wms: { href: "/wms/orders", label: "Volver a Pedidos" },
   // Folio de pedido en las tablas de Surtido/Embarque/Envíos (`PedidoFolioLink`):
   // cada una vuelve a SU listado. Misma convención de llave por ORIGEN concreto
   // que `embroidery`.
