@@ -47,7 +47,7 @@ Una vez dentro del sistema, la interfaz se organiza en:
 
 - **Sidebar lateral** (`Sidebar`): la navegación está organizada por **módulos de negocio** y es **contextual** (cambia según dónde te encuentres):
   - En **Inicio** y **Configuración** se muestran los módulos principales: **Panel de Control (Core)**, **CRM y Ventas**, **Mesa de Control**, **Operaciones de Almacén**, **Compras y SCM**, **Manufactura (Producción)**, **Finanzas y Contabilidad** y **Capital Humano**.
-  - Al entrar a un módulo, el menú muestra sus secciones internas. Por ejemplo, en **Operaciones de Almacén** verás Existencias, Recepciones y Ubicaciones.
+  - Al entrar a un módulo, el menú muestra sus secciones internas. Por ejemplo, en **Operaciones de Almacén** verás sus sub-grupos Operación, Inventario y RFID.
   - En la parte inferior, un bloque **Ajustes** agrupa el perfil/seguridad de la cuenta y la **Configuración** del sistema.
   - Cada módulo y sección se muestra según los **permisos** del usuario.
 - **Header superior** (`Header`):
@@ -136,7 +136,11 @@ Los módulos operativos, comerciales y financieros se organizan por **dominio de
   - **Maestros**: Clientes (`/operations/customers`).
   - **Comunicación**: Correos (`/operations/emails`) y Calendario (`/operations/calendar`).
   - Además, Muestras (`/operations/samples`).
-- **Operaciones de Almacén – WMS** (`/wms`): Existencias (`/wms/stock`), Recepciones (`/wms/receipts`) y Ubicaciones (`/wms/locations`). Los Movimientos de Inventario se administran desde **Configuración → Organización**.
+- **Operaciones de Almacén – WMS** (`/wms`), organizada en sub-grupos:
+  - **Operación**: Pedidos (`/wms/orders`), Recepciones (`/wms/receipts`), Calidad (`/wms/quality-inspections`), Surtido (`/wms/picking`), Embarque (`/wms/packing`) y Envíos (`/wms/shipping`).
+  - **Inventario**: Existencias (`/wms/stock`).
+  - **RFID**: Etiquetas RFID (`/wms/rfid-labels`) y Scanner RFID (`/wms/rfid-scanner`).
+  - Además, Ubicaciones (`/wms/locations`), oculta de la navegación. Los Movimientos de Inventario se administran desde **Configuración → Organización**.
 - **Compras y SCM** (`/procurement`), organizada en sub-grupos:
   - **Operación**: Pedidos (`/procurement/orders`), Órdenes de Compra (`/procurement/purchase-orders`) y Recepciones (`/procurement/purchase-order-receipts`).
   - **Maestros**: Proveedores (`/procurement/suppliers`).
