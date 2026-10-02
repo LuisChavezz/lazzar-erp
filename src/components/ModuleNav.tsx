@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { DropdownMenu } from "@radix-ui/themes";
+import { NavigationMenu } from "radix-ui";
 import { LoadingSkeleton } from "./LoadingSkeleton";
 import { ChevronDownIcon, ChevronLeftIcon, ChevronRightIcon, HomeIcon } from "./Icons";
 import { appRouteGroups } from "@/src/constants/appRoutes";
@@ -16,75 +16,122 @@ import {
   type RouteSection,
 } from "@/src/utils/routeSections";
 
+/** Retardo de apertura por hover (`delayDuration` de NavigationMenu). */
+const HOVER_OPEN_DELAY_MS = 100;
+
+/**
+ * Borde izquierdo del disparador de `sectionKey` respecto a la nav, ya restado
+ * el scroll horizontal de la fila: donde debe empezar su menú.
+ */
+const measureTriggerLeft = (nav: HTMLElement | null, sectionKey: string) => {
+  const trigger = nav?.querySelector<HTMLElement>(`[data-section="${sectionKey}"]`);
+  if (!nav || !trigger) return 0;
+  return trigger.getBoundingClientRect().left - nav.getBoundingClientRect().left;
+};
+
 interface SectionMenuProps {
   section: RouteSection;
   isActive: boolean;
   isCurrentPath: (path: string) => boolean;
+  /** Registra el tipo de puntero que pulsó el disparador (ver `ModuleNav`). */
+  onTriggerPointerDown: (event: React.PointerEvent) => void;
+  /** Olvida ese registro si la pulsación no acabó en clic. */
+  onTriggerPointerCancel: () => void;
 }
 
 /**
- * Un sub-grupo como menú desplegable: el disparador es su etiqueta (nunca
- * cambia de texto) y cada opción es un enlace real a una hoja.
+ * Un sub-grupo como menú de navegación (`NavigationMenu` de Radix): el
+ * disparador es su etiqueta (nunca cambia de texto) y cada opción es un enlace
+ * real a una hoja.
  *
- * `DropdownMenu.Item` de Radix Themes acepta `asChild` (lo declara su
- * `baseMenuItemPropDefs`), así que la opción ES el `<Link>`: abrir en otra
- * pestaña, clic medio, prefetch y `href` visible funcionan como en las migas.
- * Enter sobre la opción la "clickea", y el `<Link>` navega.
+ * `NavigationMenu` es el primitivo pensado para menús de enlaces que se abren
+ * con hover: abre al pasar el mouse, cambia de menú sin esperar si ya hay uno
+ * abierto, no toma el foco al abrir por hover (quien escribía en un campo sigue
+ * escribiendo ahí), y con teclado el disparador abre con Enter/Espacio, la
+ * flecha abajo entra a las opciones y Escape cierra devolviendo el foco al
+ * disparador. El hover solo reacciona al mouse; en táctil abre y cierra el
+ * toque.
  *
- * El resaltado usa el `sky` de Tailwind, igual que las migas planas y el
- * sidebar, y no el token de acento de Radix: el `<Theme>` de la app usa
- * `indigo` como acento y desentonaría con el resto de la navegación.
+ * `NavigationMenu.Link asChild` envuelve el `<Link>` de Next: la opción ES el
+ * enlace (otra pestaña, clic medio, prefetch y `href` visible funcionan) y su
+ * `active` pone `aria-current="page"` en la hoja actual. Elegir una hoja cierra
+ * el menú.
+ *
+ * El contenido NO se pinta aquí: Radix lo lleva al `NavigationMenu.Viewport`
+ * de `ModuleNav`, que vive fuera del contenedor con scroll horizontal para que
+ * no lo recorte.
+ *
+ * Estilos: es un primitivo sin estilos, así que el aspecto del menú anterior
+ * (Radix Themes `DropdownMenu`) se replica con sus mismos tokens (`--gray-12`,
+ * `--accent-9`, `--accent-contrast`, `--shadow-5`, `--default-font-family`).
+ * La hoja actual se marca con el `sky` de Tailwind, igual que las migas planas
+ * y el sidebar, en los `<span>` internos; con la opción resaltada (hover o
+ * foco, fondo de acento) el texto y el punto toman el color de contraste para
+ * no quedar sky sobre índigo, y la hoja sigue distinguiéndose por peso y punto.
  */
-function SectionMenu({ section, isActive, isCurrentPath }: SectionMenuProps) {
+function SectionMenu({
+  section,
+  isActive,
+  isCurrentPath,
+  onTriggerPointerDown,
+  onTriggerPointerCancel,
+}: SectionMenuProps) {
   return (
-    <DropdownMenu.Root>
-      <DropdownMenu.Trigger>
-        <button
-          type="button"
-          // `data-active` lo busca el efecto de scroll para llevar el sub-grupo
-          // activo a la vista; `aria-current` anuncia a lectores de pantalla en
-          // qué sub-grupo está la página con el menú cerrado (la hoja con
-          // `aria-current="page"` solo existe en el DOM con el menú abierto).
-          data-active={isActive ? "" : undefined}
-          aria-current={isActive ? "true" : undefined}
-          className={`inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded px-1 cursor-pointer transition-colors ${
-            isActive
-              ? "font-semibold text-sky-600 dark:text-sky-300"
-              : "text-slate-500 dark:text-slate-400 hover:text-sky-600 dark:hover:text-sky-300"
-          }`}
-        >
-          {section.label}
-          <ChevronDownIcon className="h-3 w-3 shrink-0" aria-hidden="true" />
-        </button>
-      </DropdownMenu.Trigger>
-      <DropdownMenu.Content
-        align="start"
-        className="bg-white! dark:bg-zinc-900! min-w-44 max-h-80 overflow-y-auto rounded-xl shadow-xl border border-slate-100 dark:border-slate-800 z-50 p-1"
+    <NavigationMenu.Item value={section.key}>
+      <NavigationMenu.Trigger
+        onPointerDown={onTriggerPointerDown}
+        onPointerCancel={onTriggerPointerCancel}
+        // Lo usa `ModuleNav` para colocar el menú bajo su disparador.
+        data-section={section.key}
+        // `data-active` lo busca el efecto de scroll para llevar el sub-grupo
+        // activo a la vista; `aria-current` anuncia a lectores de pantalla en
+        // qué sub-grupo está la página con el menú cerrado (la hoja con
+        // `aria-current="page"` solo existe en el DOM con el menú abierto).
+        data-active={isActive ? "" : undefined}
+        aria-current={isActive ? "true" : undefined}
+        className={`inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded px-1 cursor-pointer transition-colors ${
+          isActive
+            ? "font-semibold text-sky-600 dark:text-sky-300"
+            : "text-slate-500 dark:text-slate-400 hover:text-sky-600 dark:hover:text-sky-300"
+        }`}
+      >
+        {section.label}
+        <ChevronDownIcon className="h-3 w-3 shrink-0" aria-hidden="true" />
+      </NavigationMenu.Trigger>
+      <NavigationMenu.Content
+        className="absolute left-0 top-0 max-h-80 min-w-44 overflow-y-auto rounded-lg border border-slate-100 bg-white p-3 font-(family-name:--default-font-family) text-sm shadow-[var(--shadow-5)] dark:border-slate-800 dark:bg-zinc-900"
       >
         {section.items.map((item) => {
           const isCurrent = isCurrentPath(item.path);
           return (
-            <DropdownMenu.Item
-              key={item.path}
-              asChild
-              className={`flex items-center gap-2 px-3 py-2 text-xs rounded-lg cursor-pointer! outline-none data-highlighted:bg-slate-50 dark:data-highlighted:bg-white/5 data-highlighted:text-sky-600 dark:data-highlighted:text-sky-400 transition-colors ease-in-out ${
-                isCurrent
-                  ? "font-semibold text-sky-600 dark:text-sky-300"
-                  : "text-slate-600 dark:text-slate-300"
-              }`}
-            >
-              <Link href={item.path} aria-current={isCurrent ? "page" : undefined}>
+            <NavigationMenu.Link key={item.path} asChild active={isCurrent}>
+              <Link
+                href={item.path}
+                className="group flex h-8 cursor-pointer items-center gap-2 whitespace-nowrap rounded px-3 text-(--gray-12) outline-none hover:bg-(--accent-9) hover:text-(--accent-contrast) focus:bg-(--accent-9) focus:text-(--accent-contrast)"
+              >
                 <span
-                  className={`h-1.5 w-1.5 shrink-0 rounded-full ${isCurrent ? "bg-sky-500" : "bg-transparent"}`}
+                  className={`h-1.5 w-1.5 shrink-0 rounded-full ${
+                    isCurrent
+                      ? "bg-sky-500 group-hover:bg-(--accent-contrast) group-focus:bg-(--accent-contrast)"
+                      : "bg-transparent"
+                  }`}
                   aria-hidden="true"
                 />
-                <span>{item.label}</span>
+                <span
+                  className={
+                    isCurrent
+                      ? "font-semibold text-sky-600 dark:text-sky-300 group-hover:text-inherit group-focus:text-inherit"
+                      : undefined
+                  }
+                >
+                  {item.label}
+                </span>
               </Link>
-            </DropdownMenu.Item>
+            </NavigationMenu.Link>
           );
         })}
-      </DropdownMenu.Content>
-    </DropdownMenu.Root>
+      </NavigationMenu.Content>
+    </NavigationMenu.Item>
   );
 }
 
@@ -110,7 +157,62 @@ export default function ModuleNav({ moduleKey, modulePath, className }: ModuleNa
   const pathname = usePathname();
   const { data: session, status } = useSession();
 
+  const navRef = useRef<HTMLElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  // ── Menús de sub-grupo (`NavigationMenu`, solo en módulos con `sections`) ──
+  // `value` controlado: la clave del sub-grupo abierto, o "" si ninguno.
+  const [openSection, setOpenSection] = useState("");
+  // Abierto con un toque: se pinta la capa que intercepta el toque de cierre.
+  const [openedByTouch, setOpenedByTouch] = useState(false);
+  // Borde izquierdo del menú abierto, relativo a la nav (bajo su disparador).
+  const [viewportLeft, setViewportLeft] = useState(0);
+  // Tipo de puntero del último `pointerdown` en un disparador; se consume en
+  // el siguiente `onValueChange` (el clic que alterna el menú). Se olvida si
+  // la pulsación se cancela sin clic (p. ej. el dedo arrastra la fila): si no,
+  // la siguiente apertura con mouse o teclado se tomaría por táctil.
+  const lastTriggerPointerTypeRef = useRef<string | null>(null);
+  const [renderedPathname, setRenderedPathname] = useState(pathname);
+
+  // Al cambiar de ruta (navegación, atrás/adelante, `router.push`) el menú se
+  // cierra en el mismo render: nunca se pinta abierto en la ruta nueva.
+  if (renderedPathname !== pathname) {
+    setRenderedPathname(pathname);
+    setOpenSection("");
+    setOpenedByTouch(false);
+  }
+
+  const handleSectionChange = (value: string) => {
+    const pointerType = lastTriggerPointerTypeRef.current;
+    lastTriggerPointerTypeRef.current = null;
+    setOpenSection(value);
+    // Todo puntero sin hover (dedo o lápiz) abre con un toque y necesita la
+    // capa; el mouse y el teclado (sin `pointerdown`) no.
+    setOpenedByTouch(value !== "" && pointerType !== null && pointerType !== "mouse");
+    if (value) setViewportLeft(measureTriggerLeft(navRef.current, value));
+  };
+
+  const handleTriggerPointerDown = (event: React.PointerEvent) => {
+    lastTriggerPointerTypeRef.current = event.pointerType;
+  };
+
+  const handleTriggerPointerCancel = () => {
+    lastTriggerPointerTypeRef.current = null;
+  };
+
+  // Con un menú abierto, si la fila se desplaza o cambia el ancho de la
+  // ventana, el menú sigue a su disparador.
+  useEffect(() => {
+    if (!openSection) return;
+    const row = scrollRef.current;
+    const reposition = () => setViewportLeft(measureTriggerLeft(navRef.current, openSection));
+    row?.addEventListener("scroll", reposition, { passive: true });
+    window.addEventListener("resize", reposition);
+    return () => {
+      row?.removeEventListener("scroll", reposition);
+      window.removeEventListener("resize", reposition);
+    };
+  }, [openSection]);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
 
@@ -153,7 +255,7 @@ export default function ModuleNav({ moduleKey, modulePath, className }: ModuleNa
 
   // Al navegar (o montar), lleva el crumb activo al área visible del contenedor.
   // Con sub-grupos el elemento activo es el disparador del sub-grupo
-  // (`data-active`): sus hojas viven en un portal, fuera de este contenedor.
+  // (`data-active`): sus hojas se pintan en el `Viewport`, fuera de este contenedor.
   useEffect(() => {
     if (isLoading) return;
     const el = scrollRef.current;
@@ -232,12 +334,27 @@ export default function ModuleNav({ moduleKey, modulePath, className }: ModuleNa
 
   const isModuleRootActive = pathname === activeGroup.modulePath;
 
-  return (
+  const showTouchOverlay = Boolean(declaredSections) && openSection !== "" && openedByTouch;
+
+  const nav = (
     <nav
+      ref={navRef}
       aria-label="Navegación del módulo"
       aria-busy={isLoading}
       className={`relative flex w-full items-center ${className ?? ""}`}
     >
+      {showTouchOverlay && (
+        // Menú abierto con un toque: capa fija y transparente bajo el menú y la
+        // fila. El toque "fuera" cae aquí y solo cierra el menú; sin ella,
+        // `NavigationMenu` (que no es modal) cerraría el menú y además dejaría
+        // pasar el toque al elemento de debajo (p. ej. un enlace de folio).
+        // Con mouse o teclado no hay capa: el cambio de menú por hover sigue.
+        <div
+          aria-hidden="true"
+          className="fixed inset-0 z-40"
+          onClick={() => handleSectionChange("")}
+        />
+      )}
       <Link
         href={canSeeModuleRoot ? activeGroup.modulePath : "/"}
         aria-label={activeGroup.moduleLabel}
@@ -252,7 +369,10 @@ export default function ModuleNav({ moduleKey, modulePath, className }: ModuleNa
         <HomeIcon className="h-3.5 w-3.5" />
       </Link>
 
-      <div ref={scrollRef} className="overflow-x-auto no-scrollbar">
+      <div
+        ref={scrollRef}
+        className={`overflow-x-auto no-scrollbar${showTouchOverlay ? " relative z-50" : ""}`}
+      >
         <div className="flex items-center flex-nowrap text-xs sm:text-sm">
           {isLoading && declaredSections ? (
             // Misma estructura que la fila cargada (un chevron y luego los
@@ -294,16 +414,18 @@ export default function ModuleNav({ moduleKey, modulePath, className }: ModuleNa
             visibleSections.length > 0 && (
               <>
                 <ChevronRightIcon className="mx-1 h-3.5 w-3.5 shrink-0 text-slate-300 dark:text-slate-600" />
-                <div className="flex items-center gap-2">
+                <NavigationMenu.List className="flex items-center gap-2">
                   {visibleSections.map((section) => (
                     <SectionMenu
                       key={section.key}
                       section={section}
                       isActive={section.key === activeSection?.key}
                       isCurrentPath={(path) => isActive(path, false)}
+                      onTriggerPointerDown={handleTriggerPointerDown}
+                      onTriggerPointerCancel={handleTriggerPointerCancel}
                     />
                   ))}
-                </div>
+                </NavigationMenu.List>
               </>
             )
           ) : (
@@ -327,6 +449,22 @@ export default function ModuleNav({ moduleKey, modulePath, className }: ModuleNa
           )}
         </div>
       </div>
+
+      {declaredSections && (
+        // Aquí pinta Radix el menú abierto: dentro de la nav (que es su
+        // `position: relative`) pero FUERA del contenedor con scroll horizontal,
+        // así que ese `overflow` no lo recorta. Se coloca bajo su disparador y
+        // se acota para no salirse por la derecha de la nav. Ancho y alto los
+        // mide Radix del contenido (variables `--radix-navigation-menu-*`); en
+        // el primer frame de cada apertura aún no existen, de ahí el `0px` de
+        // respaldo (sin él el `calc` es inválido y el menú salta desde el borde).
+        <NavigationMenu.Viewport
+          className="absolute top-full z-50 mt-1 h-(--radix-navigation-menu-viewport-height) w-(--radix-navigation-menu-viewport-width)"
+          style={{
+            left: `clamp(0px, ${viewportLeft}px, calc(100% - var(--radix-navigation-menu-viewport-width, 0px)))`,
+          }}
+        />
+      )}
 
       {!isLoading && canScrollLeft && (
         <div className="pointer-events-none absolute inset-y-0 left-6 z-10 flex items-center">
@@ -356,5 +494,21 @@ export default function ModuleNav({ moduleKey, modulePath, className }: ModuleNa
         </div>
       )}
     </nav>
+  );
+
+  // Con sub-grupos la propia nav es el `Root` de `NavigationMenu` (`asChild`),
+  // sin anidar un segundo landmark. Los módulos planos no lo llevan: su DOM
+  // queda igual que antes.
+  return declaredSections ? (
+    <NavigationMenu.Root
+      asChild
+      value={openSection}
+      onValueChange={handleSectionChange}
+      delayDuration={HOVER_OPEN_DELAY_MS}
+    >
+      {nav}
+    </NavigationMenu.Root>
+  ) : (
+    nav
   );
 }
