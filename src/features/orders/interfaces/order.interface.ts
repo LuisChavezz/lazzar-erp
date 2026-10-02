@@ -2,8 +2,8 @@
 // (`PickingEstado`), así que se importa en vez de redeclararse: son el mismo
 // campo del mismo modelo servido por dos endpoints, y duplicar la unión los
 // dejaría divergir en silencio. Import de solo tipo — sin costo en runtime ni
-// acoplamiento real entre features (`PedidoDetailContent` ya importa además
-// `PICKING_STATUS_CONFIG` de ese módulo para pintarlo).
+// acoplamiento real entre features (`OrderPickingFoliosSection` ya importa
+// además `PICKING_STATUS_CONFIG` de ese módulo para pintarlo).
 import type { PickingEstado } from "@/src/features/picking/interfaces/picking.interface";
 import type { PedidoProgramacionConf } from "./pedido-programacion.interface";
 
