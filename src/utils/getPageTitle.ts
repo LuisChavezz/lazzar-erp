@@ -78,6 +78,7 @@ const ROUTE_TITLES: Record<string, string> = {
   "/hr/incidents": "Incidencias",
   "/hr/trainings": "Capacitaciones",
   "/hr/evaluations": "Evaluaciones",
+  "/hr/productivity": "Productividad",
 };
 
 export function getPageTitle(path: string | undefined | null): string {
