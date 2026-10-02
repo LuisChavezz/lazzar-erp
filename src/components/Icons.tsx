@@ -53,6 +53,7 @@ import {
   Filter,
   FlaskConical,
   FolderOpen,
+  Gauge,
   GraduationCap,
   Heart,
   HelpCircle,
@@ -109,6 +110,7 @@ import {
   TrendingDown,
   TrendingUp,
   Truck,
+  Undo2,
   Upload,
   User,
   UserCheck,
@@ -183,6 +185,13 @@ export const TrainingIcon = (props: LucideProps) => <GraduationCap {...props} />
 export const IncidentIcon = (props: LucideProps) => <FileExclamationPoint {...props} />;
 /** Portapapeles con palomita. Para las evaluaciones de RH. */
 export const EvaluationIcon = (props: LucideProps) => <ClipboardCheck {...props} />;
+/** Velocímetro. Para la productividad (meta contra resultado) de RH. */
+export const ProductivityIcon = (props: LucideProps) => <Gauge {...props} />;
+/**
+ * Flecha de regreso. Para devolver un registro confirmado a borrador. No se usa
+ * `RefreshCw`: ya significa "recargar" (`RefreshIcon`).
+ */
+export const ReopenIcon = (props: LucideProps) => <Undo2 {...props} />;
 /**
  * Palmera. Para las vacaciones de RH. No se usa `CalendarDays`: ya es el
  * calendario laboral (`CalendarDaysIcon`).
