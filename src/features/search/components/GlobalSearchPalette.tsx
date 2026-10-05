@@ -163,36 +163,17 @@ export function GlobalSearchPalette() {
 
     cerrarYLimpiar();
 
-    switch (apertura) {
-      case "ruta-pedido":
-        // `?from=home` es una llave declarada en `BACK_TARGETS` del detalle de
-        // pedido y apunta al Home, el único destino que no exige permiso de
-        // módulo. Desde la búsqueda no hay un listado de origen al que volver
-        // —se puede abrir desde cualquier ruta—, así que cualquier otra llave
-        // arriesgaría un "Volver" que el proxy rebotaría.
-        router.push(`/orders/${result.id}?from=home`);
-        break;
-      case "ruta-cliente":
-        router.push(`/sales/customers/${result.id}`);
+    switch (apertura.modo) {
+      case "ruta":
+        // La URL de cada entidad (y el porqué de su `?from=`, si lo lleva) vive
+        // en `SEARCH_APERTURA`.
+        router.push(apertura.href(result.id));
         break;
       case "dialogo-cotizacion":
         // La cotización no tiene ruta de detalle: se abre el mismo diálogo
         // self-fetching que usa el pedido 360°. Solo se ANOTA aquí; lo abre
         // `onCloseAutoFocus`, cuando la paleta ya se desmontó de verdad.
         pendingQuoteRef.current = result.id;
-        break;
-      case "ruta-orden-bordado":
-        // Sin `?from=`: el "Volver" de la página es fijo al listado de órdenes
-        // de bordado, que exige el mismo `R-PRODUCCION-OB` que esta ruta.
-        router.push(`/manufacturing/embroidery/${result.id}`);
-        break;
-      case "ruta-orden-reflejante":
-        // Como bordado: "Volver" fijo al listado, mismo `R-PRODUCCION-OR`.
-        router.push(`/manufacturing/reflective-orders/${result.id}`);
-        break;
-      case "ruta-orden-corte-manga":
-        // Como bordado: "Volver" fijo al listado, mismo `R-PRODUCCION-CM`.
-        router.push(`/manufacturing/corte-manga/${result.id}`);
         break;
       case "dialogo-factura":
         // Igual que la cotización: la factura no tiene ruta de detalle, y su
