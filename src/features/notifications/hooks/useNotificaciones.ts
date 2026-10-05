@@ -17,12 +17,20 @@ export const NOTIFICACIONES_QUERY_KEY = ["notificaciones"] as const;
  * `undefined` pero `isPending` pasa a `false`. Derivarlo aquí una sola vez
  * impide que el siguiente consumidor repita esa lectura.
  *
- * - `loading`: sin datos y sin error todavía.
+ * - `loading`: sin datos y con un fetch en curso.
+ * - `offline`: sin datos y con el fetch PAUSADO por falta de red
+ *              (`networkMode: "online"`, el default). Sin este estado el
+ *              spinner se quedaría indefinidamente. Al volver la red query-core
+ *              reanuda el fetch pausado solo.
  * - `error`:   la carga INICIAL falló y no hay nada que pintar.
- * - `ready`:   hay datos. Incluye el refetch fallido con caché, cuyo aviso lo
- *              da el toast de `useHasLoadedQuery` sin tirar la lista.
+ * - `ready`:   hay datos. Tiene prioridad sobre todo lo demás: incluye el
+ *              refetch fallido o pausado con caché, que conserva la lista (el
+ *              aviso del fallo lo da el toast de `useHasLoadedQuery`).
+ *
+ * Fuera de `ready` no hay controles que operen sobre la lista: `offline` y
+ * `error` solo ofrecen su mensaje y "Reintentar".
  */
-export type NotificacionesListState = "loading" | "error" | "ready";
+export type NotificacionesListState = "loading" | "offline" | "error" | "ready";
 
 /**
  * Lista las notificaciones del usuario (`GET /notificaciones/`).
@@ -54,16 +62,31 @@ export const useNotificaciones = (enabled: boolean) => {
 
   // `hasLoaded` (`data !== undefined`) y no `isPending` es el corte correcto
   // entre "aún no hay nada" y "ya hay lista": equivale al `isLoadingError`
-  // de query-core (`isError && !hasData`).
+  // de query-core (`isError && !hasData`). `isPaused` va DESPUÉS de `isError`
+  // sin que se pisen: un fetch sin datos —también el de "Reintentar"— vuelve
+  // la consulta a `pending` (`fetchState` de query-core), así que un reintento
+  // sin red sale de `error` y cae en `offline`.
   const listState: NotificacionesListState = hasLoaded
     ? "ready"
     : query.isError
       ? "error"
-      : "loading";
+      : query.isPaused
+        ? "offline"
+        : "loading";
+
+  const notificaciones = query.data ?? [];
 
   return {
-    notificaciones: query.data ?? [],
+    /**
+     * `[]` mientras no hay datos: NO sirve para inferir vacío ni no leídas.
+     * Para eso están `isEmpty` y `hasUnread`, que solo valen `true` en `ready`.
+     */
+    notificaciones,
     listState,
+    /** `true` solo con la lista cargada y sin ninguna notificación. */
+    isEmpty: hasLoaded && notificaciones.length === 0,
+    /** `true` solo con la lista cargada y al menos una no leída. */
+    hasUnread: hasLoaded && notificaciones.some((n) => !n.leido),
     error: query.error,
     /**
      * Instante de la última respuesta exitosa. Es el "ahora" que se le pasa a
