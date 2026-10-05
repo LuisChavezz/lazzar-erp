@@ -15,9 +15,9 @@ export const RFID_SCANS_POLL_INTERVAL_MS = 3000;
  * Lecturas del lector RFID en vivo (`GET /wms/etiquetas-rfid/scans/`).
  * Llave `["rfid-scans"]`.
  *
- * Es la ÚNICA consulta de la app que hace polling, y por eso está gateada por
- * `enabled`: sin el interruptor, abrir la pantalla y olvidarla dejaría una
- * petición cada 3 s indefinidamente. `refetchIntervalInBackground: false`
+ * Hace polling, y por eso está gateada por `enabled`: sin el interruptor, abrir
+ * la pantalla y olvidarla dejaría una petición cada 3 s indefinidamente. (El
+ * mismo interruptor gobierna el ciclo de 15 s de `useRfidScannerStats`.) `refetchIntervalInBackground: false`
  * (el default, explícito aquí por ser justo el punto delicado) detiene el ciclo
  * mientras la pestaña no está visible y lo reanuda al volver.
  *
@@ -48,6 +48,10 @@ export const useRfidScans = (enabled: boolean) => {
     hasLoaded,
     isLoading: query.isLoading,
     isError: query.isError,
+    // `status === "success"`: datos cargados Y el último fetch no falló. A
+    // diferencia de `hasLoaded`, se vuelve `false` si un refetch falla aunque
+    // sigan en caché las lecturas anteriores.
+    isSuccess: query.isSuccess,
     error: query.error,
     refetch: query.refetch,
     isFetching: query.isFetching,

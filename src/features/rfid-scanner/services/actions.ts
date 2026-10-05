@@ -10,9 +10,13 @@ import type {
  * impresas (`GET /wms/etiquetas-rfid/scans/`).
  *
  * Sin params: los que acepta (`?epc=`) solo alimentan `debug_get`, que esta
- * pantalla no consume. El backend acota el cruce a empresa/sucursales del
- * usuario, así que una lectura de otra empresa llega con `match_impresion:
- * false` en vez de filtrarse.
+ * pantalla no consume.
+ *
+ * El backend toma las 50 lecturas más recientes de TODA la tabla (`RfidScan`
+ * no tiene empresa) y, para quien no es superusuario, DESCARTA las que no
+ * cruzan con una etiqueta impresa de su empresa/sucursales. Así que un
+ * no-superusuario puede recibir menos de 50 —o ninguna— aunque haya lecturas
+ * en base; solo el superusuario ve el lote completo, coincidan o no.
  */
 export const fetchRfidScans = async (): Promise<RfidScansResponse> => {
   const response = await v1_api.get<RfidScansResponse>("/wms/etiquetas-rfid/scans/");

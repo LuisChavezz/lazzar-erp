@@ -35,8 +35,8 @@ interface RfidScannerStatsProps {
  * muestra en gris, como lo que es: estado desconocido.
  *
  * `last_scan_seconds_ago` es una FOTO del momento en que se consultó
- * `scanner-stats`, no un contador vivo: el llamador la refresca al encender el
- * monitoreo (ver `RfidScannerView`).
+ * `scanner-stats`, no un contador vivo: se renueva cada 15 s mientras el
+ * monitoreo está encendido (ver `useRfidScannerStats`).
  */
 export function RfidScannerStats({ stats, isLoading }: RfidScannerStatsProps) {
   const secondsAgo = stats?.last_scan_seconds_ago ?? null;
