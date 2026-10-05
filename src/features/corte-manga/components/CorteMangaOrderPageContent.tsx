@@ -24,9 +24,11 @@ import { useCorteMangaOrderDetail } from "../hooks/useCorteMangaOrderDetail";
 import type { CorteMangaOrderLine } from "../interfaces/corte-manga-order.interface";
 
 // Destino del "Volver". Fijo —sin el mapa `?from=` de `PedidoDetailContent`—
-// porque esta ruta NO es neutra: cuelga de `/manufacturing`, exige
-// `R-PRODUCCION` y hoy solo se alcanza desde el listado del propio módulo, así
-// que un mapa de orígenes tendría una sola entrada idéntica a su default.
+// porque esta ruta NO es neutra: cuelga de `/manufacturing` y exige su código
+// de sección, `R-PRODUCCION-CM` (el `R-PRODUCCION` del módulo no basta). Se llega desde
+// su listado y desde la búsqueda global, y el backend solo manda el grupo de
+// la búsqueda a quien tiene ese mismo `R-PRODUCCION-CM`: todo el que llega aquí puede
+// abrir el listado, así que un mapa de orígenes no añadiría nada.
 const BACK = {
   href: "/manufacturing/corte-manga",
   label: "Volver a Órdenes de Corte de Manga",

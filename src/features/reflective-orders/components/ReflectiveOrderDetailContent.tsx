@@ -34,9 +34,11 @@ import type {
 } from "../interfaces/reflective-order.interface";
 
 // Destino del "Volver". Fijo —sin el mapa `?from=` de `PedidoDetailContent`—
-// porque esta ruta NO es neutra: cuelga de `/manufacturing`, exige
-// `R-PRODUCCION` y hoy solo se alcanza desde el listado del propio módulo, así
-// que un mapa de orígenes tendría una sola entrada idéntica a su default.
+// porque esta ruta NO es neutra: cuelga de `/manufacturing` y exige su código
+// de sección, `R-PRODUCCION-OR` (el `R-PRODUCCION` del módulo no basta). Se llega desde
+// su listado y desde la búsqueda global, y el backend solo manda el grupo de
+// la búsqueda a quien tiene ese mismo `R-PRODUCCION-OR`: todo el que llega aquí puede
+// abrir el listado, así que un mapa de orígenes no añadiría nada.
 const BACK = {
   href: "/manufacturing/reflective-orders",
   label: "Volver a Órdenes de Reflejante",
