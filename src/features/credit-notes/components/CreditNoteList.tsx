@@ -224,13 +224,15 @@ export default function CreditNoteList() {
   // cuerpo, de modo que el toolbar —búsqueda, filtros, refrescar, columnas y el
   // botón "+ Nueva nota"— sigue disponible durante la carga y ante un error.
   return (
-    <div className="space-y-6">
+    <div className="h-full flex flex-col min-h-0 space-y-6">
+      <div className="flex-1 min-h-0 flex flex-col">
       <DataTable
         columns={columns}
         data={notasCredito}
         baseDataCount={notasCredito.length}
         searchPlaceholder="Buscar por folio, factura, cliente o motivo..."
         filterConfig={[{ id: "estatus", label: "Estatus", options: ESTATUS_FILTER }]}
+        fillHeight
         onRefetch={refetch}
         isRefetching={isFetching}
         emptyMessage="No hay notas de crédito registradas."
@@ -273,6 +275,7 @@ export default function CreditNoteList() {
           </MainDialog>
         }
       />
+      </div>
 
       {detailNota && (
         <CreditNoteDetailDialog

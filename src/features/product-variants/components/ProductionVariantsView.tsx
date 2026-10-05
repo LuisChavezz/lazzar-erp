@@ -68,11 +68,13 @@ export function ProductionVariantsView() {
   const error = variantsError || productsError || colorsError || sizesError;
 
   return (
+    <div className="h-full flex flex-col min-h-0">
     <DataTable
       columns={columns}
       data={productVariants}
       searchPlaceholder="Buscar variante..."
       getRowId={(row) => String(row.id)}
+      fillHeight
       emptyMessage="No hay variantes registradas."
       isLoading={isLoading}
       isError={isError}
@@ -109,5 +111,6 @@ export function ProductionVariantsView() {
         ) : undefined
       }
     />
+    </div>
   );
 }

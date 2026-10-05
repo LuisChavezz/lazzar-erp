@@ -50,12 +50,14 @@ export default function BankList() {
   // El listado no se gatea con permisos de acción: el backend de finanzas solo
   // exige `IsAuthenticated` y no existen códigos de permiso para bancos.
   return (
+    <div className="h-full flex flex-col min-h-0">
     <DataTable
       columns={columns}
       data={banks}
       baseDataCount={banks.length}
       searchPlaceholder="Buscar banco por nombre, código o SWIFT..."
       filterConfig={[{ id: "activo", label: "Estatus", options: ACTIVO_FILTER }]}
+      fillHeight
       onRefetch={refetch}
       isRefetching={isFetching}
       emptyMessage="No hay bancos registrados."
@@ -92,5 +94,6 @@ export default function BankList() {
         </MainDialog>
       }
     />
+    </div>
   );
 }

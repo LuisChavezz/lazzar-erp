@@ -94,7 +94,8 @@ export default function PaymentList() {
   // cuerpo, de modo que el toolbar —búsqueda, filtros, refrescar, columnas y el
   // botón "+ Nuevo pago"— sigue disponible durante la carga y ante un error.
   return (
-    <div className="space-y-6">
+    <div className="h-full flex flex-col min-h-0 space-y-6">
+      <div className="flex-1 min-h-0 flex flex-col">
       <DataTable
         columns={columns}
         data={pagos}
@@ -104,6 +105,7 @@ export default function PaymentList() {
           { id: "estatus", label: "Estatus", options: ESTATUS_FILTER },
           { id: "metodo_pago", label: "Método", options: METODO_FILTER },
         ]}
+        fillHeight
         onRefetch={refetch}
         isRefetching={isFetching}
         emptyMessage="No hay pagos registrados."
@@ -145,6 +147,7 @@ export default function PaymentList() {
           </MainDialog>
         }
       />
+      </div>
 
       {detailPago && (
         <PaymentDetailDialog

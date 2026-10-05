@@ -2,7 +2,7 @@ import BankAccountList from "@/src/features/bank-accounts/components/BankAccount
 
 export default function BankAccountsPage() {
   return (
-    <div className="w-full">
+    <div className="w-full h-[calc(100dvh-13rem)] min-h-0">
       <BankAccountList />
     </div>
   );

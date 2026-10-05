@@ -93,7 +93,7 @@ export default function ChartOfAccountList() {
   // cuerpo, de modo que el toolbar —búsqueda, filtros, refrescar, columnas y el
   // botón de alta— sigue disponible durante la carga y ante un error.
   return (
-    <>
+    <div className="h-full flex flex-col min-h-0">
       <DataTable
         columns={columns}
         data={cuentasContables}
@@ -108,6 +108,7 @@ export default function ChartOfAccountList() {
           },
           { id: "activo", label: "Estatus", options: ACTIVO_FILTER },
         ]}
+        fillHeight
         onRefetch={refetch}
         isRefetching={isFetching}
         emptyMessage="No hay cuentas contables registradas."
@@ -202,6 +203,6 @@ export default function ChartOfAccountList() {
           confirmColor={toggleCuenta.activo ? "amber" : "green"}
         />
       )}
-    </>
+    </div>
   );
 }
