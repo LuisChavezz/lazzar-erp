@@ -20,6 +20,13 @@ interface QuoteDetailByIdDialogProps {
    * ahí el caso común es el inverso.
    */
   source?: QuoteDetailSource;
+  /**
+   * Opcional, se pasa tal cual a `MainDialog`: corre cuando el diálogo YA se
+   * desmontó (terminada la animación de salida). Sirve para soltar el id justo
+   * ahí; soltarlo antes apaga la consulta y el contenido cae a su estado de
+   * error mientras aún se ve. Sin ella el diálogo se comporta como siempre.
+   */
+  onCloseAutoFocus?: (event: Event) => void;
 }
 
 /**
@@ -42,11 +49,13 @@ export function QuoteDetailByIdDialog({
   open,
   onOpenChange,
   source,
+  onCloseAutoFocus,
 }: QuoteDetailByIdDialogProps) {
   return (
     <MainDialog
       open={open}
       onOpenChange={onOpenChange}
+      onCloseAutoFocus={onCloseAutoFocus}
       maxWidth="1000px"
       title={
         <DialogHeader

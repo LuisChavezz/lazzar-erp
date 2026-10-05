@@ -48,9 +48,8 @@ export function GlobalSearchPalette() {
    * SEPARADOS. Al cerrar solo se baja `open`; el id se conserva durante la
    * animación de salida, porque con `null` la consulta del diálogo se apaga y
    * su contenido cae al estado de error ("No se pudo cargar…") mientras aún se
-   * ve desvaneciéndose. Ninguno de los dos diálogos expone un aviso de "cierre
-   * terminado", así que el id se libera en la siguiente apertura de la paleta
-   * (`onOpenAutoFocus`), que solo puede ocurrir con el detalle ya cerrado.
+   * ve desvaneciéndose. El id se libera en el `onCloseAutoFocus` del propio
+   * diálogo, que corre ya desmontado.
    */
   const [quoteId, setQuoteId] = useState<number | null>(null);
   const [isQuoteOpen, setIsQuoteOpen] = useState(false);
@@ -247,10 +246,6 @@ export function GlobalSearchPalette() {
             // diálogos.
             pendingQuoteRef.current = null;
             pendingInvoiceRef.current = null;
-            // El detalle anterior ya terminó de cerrarse (era modal: la paleta
-            // no se podía abrir encima). Se suelta su id y su consulta se apaga.
-            setQuoteId(null);
-            setInvoiceId(null);
             inputRef.current?.focus();
           }}
           onCloseAutoFocus={() => {
@@ -479,6 +474,7 @@ export function GlobalSearchPalette() {
         orderId={quoteId}
         open={isQuoteOpen}
         onOpenChange={setIsQuoteOpen}
+        onCloseAutoFocus={() => setQuoteId(null)}
       />
 
       {/* La factura tampoco tiene ruta de detalle: mismo diálogo self-fetching
@@ -488,6 +484,7 @@ export function GlobalSearchPalette() {
         orderId={invoiceId}
         open={isInvoiceOpen}
         onOpenChange={setIsInvoiceOpen}
+        onCloseAutoFocus={() => setInvoiceId(null)}
       />
     </>
   );
