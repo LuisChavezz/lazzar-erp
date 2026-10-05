@@ -186,6 +186,14 @@ export function GlobalSearchPalette() {
         // de bordado, que exige el mismo `R-PRODUCCION-OB` que esta ruta.
         router.push(`/manufacturing/embroidery/${result.id}`);
         break;
+      case "ruta-orden-reflejante":
+        // Como bordado: "Volver" fijo al listado, mismo `R-PRODUCCION-OR`.
+        router.push(`/manufacturing/reflective-orders/${result.id}`);
+        break;
+      case "ruta-orden-corte-manga":
+        // Como bordado: "Volver" fijo al listado, mismo `R-PRODUCCION-CM`.
+        router.push(`/manufacturing/corte-manga/${result.id}`);
+        break;
       case "dialogo-factura":
         // Igual que la cotización: la factura no tiene ruta de detalle, y su
         // diálogo self-fetching se abre en `onCloseAutoFocus`.
