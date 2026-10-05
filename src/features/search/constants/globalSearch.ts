@@ -37,51 +37,46 @@ export const SEARCH_DEBOUNCE_MS = 350;
 
 /**
  * Cómo se ABRE cada entidad. Es el mapa `tipo → apertura` derivado de cómo se
- * llega hoy a cada detalle en la app:
+ * llega hoy a cada detalle en la app: por RUTA si la entidad tiene página de
+ * detalle, o por el diálogo self-fetching que ya existe si no la tiene.
  *
- *  - `pedido`     → ruta neutra `/orders/[id]` (la misma a la que navegan los
- *                   listados de Ventas, Mesa de Control, WMS, Compras y las
- *                   órdenes de Producción).
- *  - `cliente`    → ruta `/sales/customers/[id]` (único camino al detalle de
- *                   cliente en toda la app).
- *  - `cotizacion` → NO tiene ruta: su detalle es un diálogo self-fetching
- *                   (`QuoteDetailByIdDialog`), el mismo que abre el bloque
- *                   "Documentos relacionados" del pedido 360°.
- *  - `orden_bordado` → ruta `/manufacturing/embroidery/[id]`, sin `?from=`: su
- *                   "Volver" es fijo al listado de órdenes de bordado, que exige
- *                   el mismo `R-PRODUCCION-OB` que la ruta y que el backend pide
- *                   para mandar el grupo.
- *  - `orden_reflejante` / `orden_corte_manga` → igual que bordado: rutas
- *                   `/manufacturing/reflective-orders/[id]` y
- *                   `/manufacturing/corte-manga/[id]`, sin `?from=`, con
- *                   "Volver" fijo a su listado. Ruta, listado y visibilidad del
- *                   backend exigen el mismo código (`R-PRODUCCION-OR` /
- *                   `R-PRODUCCION-CM`).
- *  - `factura`    → NO tiene ruta de detalle: diálogo self-fetching
- *                   (`InvoiceDetailByIdDialog`), el mismo del pedido 360°, con la
- *                   misma secuencia que la cotización.
+ * Una apertura por ruta solo declara cómo se construye la URL desde el `id`;
+ * la paleta la cierra y navega igual para todas. Los diálogos sí tienen cada
+ * uno su propio montaje y secuencia en la paleta, así que van por nombre.
  *
  * Un `tipo` ausente de este mapa es una entidad que el backend ya devuelve pero
  * el frontend todavía no sabe abrir: la fila se pinta (el backend la autorizó)
  * pero no es accionable, en vez de romper o navegar a una ruta inventada.
  */
 export type SearchApertura =
-  | "ruta-pedido"
-  | "ruta-cliente"
-  | "ruta-orden-bordado"
-  | "ruta-orden-reflejante"
-  | "ruta-orden-corte-manga"
-  | "dialogo-cotizacion"
-  | "dialogo-factura";
+  | { modo: "ruta"; href: (id: number) => string }
+  | { modo: "dialogo-cotizacion" }
+  | { modo: "dialogo-factura" };
 
 export const SEARCH_APERTURA: Record<string, SearchApertura> = {
-  pedido: "ruta-pedido",
-  cliente: "ruta-cliente",
-  cotizacion: "dialogo-cotizacion",
-  orden_bordado: "ruta-orden-bordado",
-  orden_reflejante: "ruta-orden-reflejante",
-  orden_corte_manga: "ruta-orden-corte-manga",
-  factura: "dialogo-factura",
+  // Ruta neutra `/orders/[id]`, la misma a la que navegan los listados de
+  // Ventas, Mesa de Control, WMS, Compras y las órdenes de Producción.
+  // `?from=home` es una llave declarada en `BACK_TARGETS` del detalle de pedido
+  // y apunta al Home, el único destino que no exige permiso de módulo: desde la
+  // búsqueda no hay un listado de origen al que volver —se puede abrir desde
+  // cualquier ruta—, así que cualquier otra llave arriesgaría un "Volver" que
+  // el proxy rebotaría.
+  pedido: { modo: "ruta", href: (id) => `/orders/${id}?from=home` },
+  // Único camino al detalle de cliente en toda la app.
+  cliente: { modo: "ruta", href: (id) => `/sales/customers/${id}` },
+  // Sin ruta de detalle: el diálogo self-fetching (`QuoteDetailByIdDialog`) que
+  // abre el bloque "Documentos relacionados" del pedido 360°.
+  cotizacion: { modo: "dialogo-cotizacion" },
+  // Órdenes de producción: su página de detalle, sin `?from=`. El "Volver" es
+  // fijo al listado del módulo, que exige el mismo código de sección que la
+  // ruta y que el backend pide para mandar el grupo (`R-PRODUCCION-OB` / `-OR`
+  // / `-CM`): todo el que recibe la fila puede abrir la ruta y volver.
+  orden_bordado: { modo: "ruta", href: (id) => `/manufacturing/embroidery/${id}` },
+  orden_reflejante: { modo: "ruta", href: (id) => `/manufacturing/reflective-orders/${id}` },
+  orden_corte_manga: { modo: "ruta", href: (id) => `/manufacturing/corte-manga/${id}` },
+  // Sin ruta de detalle: `InvoiceDetailByIdDialog`, el mismo del pedido 360°,
+  // con la misma secuencia que la cotización.
+  factura: { modo: "dialogo-factura" },
 };
 
 /**
