@@ -50,11 +50,27 @@ export function GlobalSearchPalette() {
    * su contenido cae al estado de error ("No se pudo cargar…") mientras aún se
    * ve desvaneciéndose. El id se libera en el `onCloseAutoFocus` del propio
    * diálogo, que corre ya desmontado.
+   *
+   * Las refs son el espejo SÍNCRONO de cada `open`, para la guarda de ese
+   * cierre: si el mismo diálogo se reabre con otro id mientras el anterior aún
+   * se desvanece, su `onCloseAutoFocus` llega después y soltaría el id NUEVO.
+   * Se escriben en el mismo manejador que abre o cierra, sin depender de un
+   * render intermedio.
    */
   const [quoteId, setQuoteId] = useState<number | null>(null);
   const [isQuoteOpen, setIsQuoteOpen] = useState(false);
+  const isQuoteOpenRef = useRef(false);
+  const setQuoteOpen = (open: boolean) => {
+    isQuoteOpenRef.current = open;
+    setIsQuoteOpen(open);
+  };
   const [invoiceId, setInvoiceId] = useState<number | null>(null);
   const [isInvoiceOpen, setIsInvoiceOpen] = useState(false);
+  const isInvoiceOpenRef = useRef(false);
+  const setInvoiceOpen = (open: boolean) => {
+    isInvoiceOpenRef.current = open;
+    setIsInvoiceOpen(open);
+  };
 
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
@@ -261,11 +277,11 @@ export function GlobalSearchPalette() {
             pendingInvoiceRef.current = null;
             if (pendingQuote !== null) {
               setQuoteId(pendingQuote);
-              setIsQuoteOpen(true);
+              setQuoteOpen(true);
             }
             if (pendingInvoice !== null) {
               setInvoiceId(pendingInvoice);
-              setIsInvoiceOpen(true);
+              setInvoiceOpen(true);
             }
           }}
         >
@@ -473,8 +489,11 @@ export function GlobalSearchPalette() {
       <QuoteDetailByIdDialog
         orderId={quoteId}
         open={isQuoteOpen}
-        onOpenChange={setIsQuoteOpen}
-        onCloseAutoFocus={() => setQuoteId(null)}
+        onOpenChange={setQuoteOpen}
+        onCloseAutoFocus={() => {
+          // Guarda: un cierre tardío no suelta la cotización que ya se reabrió.
+          if (!isQuoteOpenRef.current) setQuoteId(null);
+        }}
       />
 
       {/* La factura tampoco tiene ruta de detalle: mismo diálogo self-fetching
@@ -483,8 +502,11 @@ export function GlobalSearchPalette() {
       <InvoiceDetailByIdDialog
         orderId={invoiceId}
         open={isInvoiceOpen}
-        onOpenChange={setIsInvoiceOpen}
-        onCloseAutoFocus={() => setInvoiceId(null)}
+        onOpenChange={setInvoiceOpen}
+        onCloseAutoFocus={() => {
+          // Guarda: un cierre tardío no suelta la factura que ya se reabrió.
+          if (!isInvoiceOpenRef.current) setInvoiceId(null);
+        }}
       />
     </>
   );

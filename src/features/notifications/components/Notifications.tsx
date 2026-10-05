@@ -48,6 +48,18 @@ export const Notifications = () => {
     error durante la animación de salida.
   */
   const [isQuoteOpen, setIsQuoteOpen] = useState(false);
+  /*
+    Espejo SÍNCRONO de `isQuoteOpen` para la guarda del cierre: si se abre otra
+    cotización mientras la anterior aún se desvanece, su `onCloseAutoFocus`
+    llega después y soltaría el destino NUEVO. La ref se escribe en el mismo
+    manejador que abre o cierra, así que no depende de que React haya vuelto a
+    renderizar antes de que llegue ese evento.
+  */
+  const isQuoteOpenRef = useRef(false);
+  const setQuoteOpen = (open: boolean) => {
+    isQuoteOpenRef.current = open;
+    setIsQuoteOpen(open);
+  };
   const dropdownRef = useRef<HTMLDivElement>(null);
   const btnRef = useRef<HTMLButtonElement>(null);
 
@@ -117,7 +129,7 @@ export const Notifications = () => {
     // La cotización no tiene ruta de detalle: se abre el mismo diálogo
     // self-fetching que usan la paleta global y el pedido 360°.
     setQuoteTarget(target);
-    setIsQuoteOpen(true);
+    setQuoteOpen(true);
   };
 
   /**
@@ -182,8 +194,11 @@ export const Notifications = () => {
         orderId={quoteTarget?.quoteId ?? null}
         source={quoteTarget?.source}
         open={isQuoteOpen}
-        onOpenChange={setIsQuoteOpen}
-        onCloseAutoFocus={() => setQuoteTarget(null)}
+        onOpenChange={setQuoteOpen}
+        onCloseAutoFocus={() => {
+          // Guarda: un cierre tardío no suelta la cotización que ya se reabrió.
+          if (!isQuoteOpenRef.current) setQuoteTarget(null);
+        }}
       />
 
       {/*
