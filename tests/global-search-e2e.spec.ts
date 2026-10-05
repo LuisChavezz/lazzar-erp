@@ -133,22 +133,28 @@ async function estadoBody(page: Page) {
 }
 
 /**
- * Texto de error/vacío de cada diálogo de detalle y el de su estado de carga,
- * copiados de sus componentes: `InvoiceDetailByIdDialog` (`ErrorState` y
- * `Loader`) y `QuoteDetails` (bloque rosa y esqueleto con `aria-label`).
+ * Estado de error y de carga de cada diálogo de detalle, copiados de sus
+ * componentes: `InvoiceDetailByIdDialog` (`ErrorState` y el TEXTO visible del
+ * `Loader`) y `QuoteDetails` (bloque rosa, y un esqueleto `role="status"` cuyo
+ * nombre solo existe como `aria-label`, no como texto: por eso la carga se
+ * localiza por rol y no con `getByText`).
  *
- * Al cerrar, el id vuelve a `null` mientras Radix aún anima la salida; si el
- * diálogo pinta su estado de error con un id apagado, ese texto DESTELLA durante
- * la animación. Es justo lo que se vigila.
+ * Regresión que se vigila: si al cerrar se suelta el id del diálogo mientras
+ * Radix aún anima la salida, su consulta se apaga y el contenido cae al estado
+ * de error, que DESTELLA durante la animación. La paleta conserva el id hasta
+ * que el cierre termina, así que el texto de error no debe aparecer nunca.
  */
-const TEXTO_DETALLE: Record<string, { error: string; cargando: string }> = {
+const TEXTO_DETALLE: Record<
+  string,
+  { error: string; cargando: (dialogo: Locator) => Locator }
+> = {
   factura: {
     error: "No se pudo cargar la factura",
-    cargando: "Cargando detalle de la factura...",
+    cargando: (dialogo) => dialogo.getByText("Cargando detalle de la factura..."),
   },
   cotizacion: {
     error: "No se pudieron cargar los detalles del pedido.",
-    cargando: "Cargando detalles del pedido",
+    cargando: (dialogo) => dialogo.getByRole("status", { name: "Cargando detalles del pedido" }),
   },
 };
 
@@ -284,7 +290,13 @@ test("Búsqueda global — paleta de comandos", async ({ page }) => {
   }
 
   // ── Paso 0: login (automático con E2E_EMAIL/E2E_PASSWORD, si no manual) ───
-  await runStep(E2E_EMAIL ? `Paso 0 · Login automático (${E2E_EMAIL})` : "Paso 0 · Login manual (pausa)", async () => {
+  // El modo lo deciden las DOS variables juntas: con una sola, el nombre del
+  // paso diría "automático" y el cuerpo se quedaría en la pausa manual.
+  const loginAutomatico = Boolean(E2E_EMAIL && E2E_PASSWORD);
+  await runStep(loginAutomatico ? `Paso 0 · Login automático (${E2E_EMAIL})` : "Paso 0 · Login manual (pausa)", async () => {
+    if (Boolean(E2E_EMAIL) !== Boolean(E2E_PASSWORD)) {
+      throw new Error("E2E_EMAIL y E2E_PASSWORD van juntas: define las dos o ninguna");
+    }
     await page.goto("/auth/login");
     if (E2E_EMAIL && E2E_PASSWORD) {
       await page.getByPlaceholder("Correo electrónico").fill(E2E_EMAIL);
@@ -294,17 +306,38 @@ test("Búsqueda global — paleta de comandos", async ({ page }) => {
         timeout: 60_000,
       });
       // `/select-branch`: primero la empresa y luego la sucursal. Las dos son
-      // tarjetas `<button>` con un `<h3>`; se elige la primera visible. Una
-      // empresa sin sucursales ofrece "Continuar con la empresa".
-      for (let intento = 0; intento < 3 && page.url().includes("/select-branch"); intento += 1) {
-        const tarjeta = page.locator("button:has(h3)").filter({ visible: true }).first();
-        const continuar = page.getByRole("button", { name: "Continuar con la empresa" });
-        await expect(tarjeta.or(continuar).first()).toBeVisible({ timeout: 30_000 });
-        if (await continuar.isVisible()) await continuar.click();
-        else await tarjeta.click();
-        await page
-          .waitForURL((url) => !url.pathname.startsWith("/select-branch"), { timeout: 5_000 })
-          .catch(() => {});
+      // tarjetas `<button>` con un `<h3>`. La rejilla que no toca NO sale del
+      // DOM: se queda con `opacity-0 pointer-events-none` (y para Playwright
+      // opacidad 0 sigue siendo "visible"), así que las tarjetas elegibles son
+      // las que no cuelgan de un `.pointer-events-none`. Una empresa sin
+      // sucursales ofrece "Continuar con la empresa".
+      const tarjetas = page.locator(
+        "button:has(h3):not(.pointer-events-none *):not([disabled])",
+      );
+      const continuar = page.getByRole("button", { name: "Continuar con la empresa" });
+      const fueraDeSelect = (url: URL) => !url.pathname.startsWith("/select-branch");
+      for (let intento = 0; intento < 4 && page.url().includes("/select-branch"); intento += 1) {
+        await expect(tarjetas.or(continuar).first()).toBeVisible({ timeout: 30_000 });
+        if (await continuar.isVisible()) {
+          await continuar.click();
+        } else {
+          const elegida = (await tarjetas.first().innerText()).trim();
+          await tarjetas.first().click();
+          // Se espera a que la elección SURTA efecto —salir de la página o que
+          // la primera tarjeta elegible ya sea otra (la rejilla cambió)— antes
+          // de volver a mirar, para no pulsar dos veces la misma empresa.
+          await expect
+            .poll(
+              async () =>
+                fueraDeSelect(new URL(page.url())) ||
+                ((await tarjetas.count()) > 0 &&
+                  (await tarjetas.first().innerText()).trim() !== elegida) ||
+                (await continuar.isVisible()),
+              { timeout: 30_000 },
+            )
+            .toBe(true);
+        }
+        await page.waitForURL(fueraDeSelect, { timeout: 5_000 }).catch(() => {});
       }
     } else {
       console.log(`
@@ -669,7 +702,7 @@ test("Búsqueda global — paleta de comandos", async ({ page }) => {
         // a que acabe la carga y se exige que no esté en su estado de error
         // (eso sería un fallo de apertura, no un destello).
         const textos = TEXTO_DETALLE[tipo];
-        await expect(dialogoDetalle.getByText(textos.cargando)).toHaveCount(0, { timeout: 20_000 });
+        await expect(textos.cargando(dialogoDetalle)).toHaveCount(0, { timeout: 20_000 });
         await expect(
           dialogoDetalle.getByText(textos.error),
           `el detalle de "${tipo}" abrió en su estado de error`,
