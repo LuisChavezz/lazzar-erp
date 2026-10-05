@@ -6,6 +6,7 @@ import { Dialog, VisuallyHidden } from "@radix-ui/themes";
 import { LoadingSpinnerIcon, SearchIcon } from "@/src/components/Icons";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { QuoteDetailByIdDialog } from "@/src/features/quotes/components/QuoteDetailByIdDialog";
+import { InvoiceDetailByIdDialog } from "@/src/features/invoicing/components/InvoiceDetailByIdDialog";
 import { useGlobalSearch } from "../hooks/useGlobalSearch";
 import { useGlobalSearchModal } from "../hooks/useGlobalSearchModal";
 import {
@@ -42,13 +43,26 @@ export function GlobalSearchPalette() {
 
   const [query, setQuery] = useState("");
   const [activeIndex, setActiveIndex] = useState(0);
-  /** Cotización cuyo diálogo está abierto. `null` mantiene su consulta apagada. */
+  /**
+   * Detalle de cotización / factura: el id y la apertura van en estados
+   * SEPARADOS. Al cerrar solo se baja `open`; el id se conserva durante la
+   * animación de salida, porque con `null` la consulta del diálogo se apaga y
+   * su contenido cae al estado de error ("No se pudo cargar…") mientras aún se
+   * ve desvaneciéndose. Ninguno de los dos diálogos expone un aviso de "cierre
+   * terminado", así que el id se libera en la siguiente apertura de la paleta
+   * (`onOpenAutoFocus`), que solo puede ocurrir con el detalle ya cerrado.
+   */
   const [quoteId, setQuoteId] = useState<number | null>(null);
+  const [isQuoteOpen, setIsQuoteOpen] = useState(false);
+  const [invoiceId, setInvoiceId] = useState<number | null>(null);
+  const [isInvoiceOpen, setIsInvoiceOpen] = useState(false);
 
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
   /** Cotización elegida a la espera de que la paleta termine de cerrarse. */
   const pendingQuoteRef = useRef<number | null>(null);
+  /** Factura elegida a la espera de que la paleta termine de cerrarse. */
+  const pendingInvoiceRef = useRef<number | null>(null);
   /**
    * Última posición REAL del puntero. Al desplazarse la lista con el teclado, el
    * navegador vuelve a emitir eventos de ratón sobre la fila que queda bajo un
@@ -59,7 +73,7 @@ export function GlobalSearchPalette() {
 
   const {
     data,
-    groups,
+    groups: receivedGroups,
     debouncedQuery,
     isQueryEnabled,
     isLoading,
@@ -67,6 +81,12 @@ export function GlobalSearchPalette() {
     isError,
     error,
   } = useGlobalSearch(query);
+
+  // El backend manda VACÍO el grupo de una entidad que el usuario puede ver pero
+  // que no casa con el término. Se oculta: es solo presentación —quién ve qué ya
+  // lo decidió el backend—, y un encabezado sin filas no informa nada. Todo lo
+  // de abajo (índice plano, render, vacío) parte de ESTA lista.
+  const groups = receivedGroups.filter((group) => group.resultados.length > 0);
 
   // Longitudes mínimas: manda el servidor; las constantes solo cubren el hueco
   // hasta que llega la primera respuesta.
@@ -146,6 +166,16 @@ export function GlobalSearchPalette() {
         // `onCloseAutoFocus`, cuando la paleta ya se desmontó de verdad.
         pendingQuoteRef.current = result.id;
         break;
+      case "ruta-orden-bordado":
+        // Sin `?from=`: el "Volver" de la página es fijo al listado de órdenes
+        // de bordado, que exige el mismo `R-PRODUCCION-OB` que esta ruta.
+        router.push(`/manufacturing/embroidery/${result.id}`);
+        break;
+      case "dialogo-factura":
+        // Igual que la cotización: la factura no tiene ruta de detalle, y su
+        // diálogo self-fetching se abre en `onCloseAutoFocus`.
+        pendingInvoiceRef.current = result.id;
+        break;
     }
   };
 
@@ -211,22 +241,37 @@ export function GlobalSearchPalette() {
             // El foco va al input y no al primer elemento enfocable que Radix
             // encuentre: en una paleta se escribe de inmediato.
             event.preventDefault();
-            // Al reabrir se descarta cualquier cotización que quedara anotada:
-            // si el usuario vuelve a la paleta en vez de dejarla cerrarse,
-            // cambió de idea, y abrir el detalle después dejaría dos diálogos.
+            // Al reabrir se descarta cualquier cotización o factura que quedara
+            // anotada: si el usuario vuelve a la paleta en vez de dejarla
+            // cerrarse, cambió de idea, y abrir el detalle después dejaría dos
+            // diálogos.
             pendingQuoteRef.current = null;
+            pendingInvoiceRef.current = null;
+            // El detalle anterior ya terminó de cerrarse (era modal: la paleta
+            // no se podía abrir encima). Se suelta su id y su consulta se apaga.
+            setQuoteId(null);
+            setInvoiceId(null);
             inputRef.current?.focus();
           }}
           onCloseAutoFocus={() => {
             // Radix lanza esto al DESMONTAR el contenido, ya terminada la
             // animación de salida: es el punto exacto en que la paleta ha
             // dejado de existir y se puede montar el detalle de la cotización
-            // sin que los dos diálogos solapen su bloqueo del `body`. Se
-            // secuencia sobre el evento real en vez de adivinar una espera.
-            const pending = pendingQuoteRef.current;
-            if (pending === null) return;
+            // o de la factura sin que los dos diálogos solapen su bloqueo del
+            // `body`. Se secuencia sobre el evento real en vez de adivinar una
+            // espera. `handleSelect` solo anota una de las dos por selección.
+            const pendingQuote = pendingQuoteRef.current;
+            const pendingInvoice = pendingInvoiceRef.current;
             pendingQuoteRef.current = null;
-            setQuoteId(pending);
+            pendingInvoiceRef.current = null;
+            if (pendingQuote !== null) {
+              setQuoteId(pendingQuote);
+              setIsQuoteOpen(true);
+            }
+            if (pendingInvoice !== null) {
+              setInvoiceId(pendingInvoice);
+              setIsInvoiceOpen(true);
+            }
           }}
         >
           <VisuallyHidden>
@@ -286,7 +331,11 @@ export function GlobalSearchPalette() {
               <p className="m-1 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-xs text-red-700 dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-300">
                 {extractErrorMessage(error, "No se pudo buscar. Intenta de nuevo.")}
               </p>
-            ) : isLoading ? (
+            ) : isLoading || (totalResults === 0 && isFetching) ? (
+              // `|| …isFetching`: con `keepPreviousData`, si la búsqueda ANTERIOR
+              // quedó vacía, sus datos siguen ahí mientras vuela la nueva, y el
+              // vacío diría "Sin resultados para <término nuevo>" antes de que
+              // haya respuesta. Sin filas que conservar, se muestra la carga.
               <div className="flex items-center justify-center gap-2 py-10 text-sm text-slate-400">
                 <LoadingSpinnerIcon className="h-4 w-4 animate-spin" aria-hidden="true" />
                 Buscando...
@@ -300,8 +349,9 @@ export function GlobalSearchPalette() {
               // arriba (pista, error, vacío) son texto, no opciones, y colgarlos
               // de un listbox los dejaría fuera del lector de pantalla.
               <div role="listbox" aria-label="Resultados de la búsqueda">
-                {/* Se itera lo que llegue: `grupos` solo trae las entidades que
-                    el usuario puede ver, así que su longitud es variable. */}
+                {/* Se itera lo que llegue (sin los grupos vacíos): `grupos` solo
+                    trae las entidades que el usuario puede ver, así que su
+                    longitud es variable. */}
                 {groups.map((group, groupIndex) => (
                   <section
                     key={group.tipo}
@@ -425,10 +475,17 @@ export function GlobalSearchPalette() {
       */}
       <QuoteDetailByIdDialog
         orderId={quoteId}
-        open={quoteId !== null}
-        onOpenChange={(next) => {
-          if (!next) setQuoteId(null);
-        }}
+        open={isQuoteOpen}
+        onOpenChange={setIsQuoteOpen}
+      />
+
+      {/* La factura tampoco tiene ruta de detalle: mismo diálogo self-fetching
+          que su bloque en "Documentos relacionados" del pedido 360°, hermano
+          de la paleta como el de la cotización. */}
+      <InvoiceDetailByIdDialog
+        orderId={invoiceId}
+        open={isInvoiceOpen}
+        onOpenChange={setIsInvoiceOpen}
       />
     </>
   );

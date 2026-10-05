@@ -38,15 +38,32 @@ import path from "node:path";
  *                 aperturas. Debe tener al menos `longitud_minima_nombre` (3)
  *                 caracteres para que el backend busque también por nombre.
  *
+ *   E2E_EMAIL / E2E_PASSWORD  Opcionales. Con las dos, el Paso 0 entra solo
+ *                 (y elige la primera empresa/sucursal) en vez de pausar. Solo
+ *                 cuentas de prueba sin MFA; pásalas por entorno, nunca en el repo.
+ *
  * Ejecución (solo este archivo; `npm run e2e` a secas corre TODOS los specs):
  *   npm run e2e -- tests/global-search-e2e.spec.ts
  *   SEARCH_QUERY=lopez npm run e2e -- tests/global-search-e2e.spec.ts
+ *   SEARCH_QUERY=OB-000 npm run e2e -- tests/global-search-e2e.spec.ts   (órdenes de bordado)
+ *   SEARCH_QUERY=FAC-   npm run e2e -- tests/global-search-e2e.spec.ts   (facturas)
  */
 
 const SHOTS = "tests/screenshots";
 
 /** Término de búsqueda. Ver `SEARCH_QUERY` en la cabecera. */
 const QUERY = process.env.SEARCH_QUERY ?? "com";
+
+/**
+ * Credenciales opcionales para el login automático. Sin ellas el Paso 0 se
+ * detiene en `page.pause()` para el login manual de siempre. Solo cuentas de
+ * prueba sin MFA, y siempre por entorno: nunca escritas en el repo.
+ */
+const E2E_EMAIL = process.env.E2E_EMAIL;
+const E2E_PASSWORD = process.env.E2E_PASSWORD;
+
+/** Término de 3+ caracteres que no debería casar con nada (Paso 5b). */
+const SIN_COINCIDENCIAS = "zqxjw-nada-e2e";
 
 /**
  * Longitudes del contrato de `GET /search/`. Son el DEFAULT del que parte la UI
@@ -115,6 +132,56 @@ async function estadoBody(page: Page) {
   });
 }
 
+/**
+ * Texto de error/vacío de cada diálogo de detalle y el de su estado de carga,
+ * copiados de sus componentes: `InvoiceDetailByIdDialog` (`ErrorState` y
+ * `Loader`) y `QuoteDetails` (bloque rosa y esqueleto con `aria-label`).
+ *
+ * Al cerrar, el id vuelve a `null` mientras Radix aún anima la salida; si el
+ * diálogo pinta su estado de error con un id apagado, ese texto DESTELLA durante
+ * la animación. Es justo lo que se vigila.
+ */
+const TEXTO_DETALLE: Record<string, { error: string; cargando: string }> = {
+  factura: {
+    error: "No se pudo cargar la factura",
+    cargando: "Cargando detalle de la factura...",
+  },
+  cotizacion: {
+    error: "No se pudieron cargar los detalles del pedido.",
+    cargando: "Cargando detalles del pedido",
+  },
+};
+
+/**
+ * Instala un `MutationObserver` sobre el body que anota si `texto` se AÑADE al
+ * DOM (nodo nuevo o texto cambiado). Se instala justo antes de cerrar, con el
+ * diálogo ya resuelto, así que cualquier aparición es un destello del cierre.
+ */
+async function vigilarTexto(page: Page, texto: string) {
+  await page.evaluate((t) => {
+    const w = window as unknown as { __destello?: boolean; __obs?: MutationObserver };
+    w.__destello = false;
+    w.__obs?.disconnect();
+    w.__obs = new MutationObserver((mutaciones) => {
+      for (const m of mutaciones) {
+        const nodos =
+          m.type === "characterData" ? [m.target] : Array.from(m.addedNodes);
+        if (nodos.some((n) => (n.textContent ?? "").includes(t))) w.__destello = true;
+      }
+    });
+    w.__obs.observe(document.body, { childList: true, subtree: true, characterData: true });
+  }, texto);
+}
+
+/** Corta la vigilancia y devuelve si el texto llegó a aparecer. */
+async function cortarVigilancia(page: Page): Promise<boolean> {
+  return page.evaluate(() => {
+    const w = window as unknown as { __destello?: boolean; __obs?: MutationObserver };
+    w.__obs?.disconnect();
+    return w.__destello === true;
+  });
+}
+
 // ── Suite ────────────────────────────────────────────────────────────────────
 
 test("Búsqueda global — paleta de comandos", async ({ page }) => {
@@ -138,11 +205,24 @@ test("Búsqueda global — paleta de comandos", async ({ page }) => {
   const dialogoCotizacion = page
     .getByRole("dialog")
     .filter({ hasText: "Detalle de Cotización" });
+  const dialogoFactura = page
+    .getByRole("dialog")
+    .filter({ hasText: "Detalles de Facturación" });
+
+  /** Resultado del vigilante de destello de error por diálogo (`tipo` → apareció). */
+  const destellos: Record<string, boolean> = {};
+  /** Resultado del "Volver" de la página de orden de bordado. */
+  let volverOb: string | null = null;
 
   /** Rutas de (Main) desde las que se abrió la paleta. */
   const rutasProbadas: string[] = [];
   /** Grupos (`tipo`) que la cuenta ve con `QUERY`. Se llena en el Paso 5. */
   let tiposVisibles: string[] = [];
+  /** Filas de cada grupo pintado en la búsqueda del Paso 5. */
+  let filasPorTipo: Record<string, number> = {};
+  /** `tipo(filas)` de cada grupo pintado, para el log y el resumen. */
+  const describirGrupos = () =>
+    tiposVisibles.map((t) => `${t}(${filasPorTipo[t] ?? "?"})`).join(", ");
   /** Etiquetas de esos grupos, para el resumen. */
   let etiquetasVisibles: string[] = [];
 
@@ -203,19 +283,41 @@ test("Búsqueda global — paleta de comandos", async ({ page }) => {
     return rotulo.replace("global-search-group-", "");
   }
 
-  // ── Paso 0: login manual ──────────────────────────────────────────────────
-  await runStep("Paso 0 · Login manual (pausa)", async () => {
+  // ── Paso 0: login (automático con E2E_EMAIL/E2E_PASSWORD, si no manual) ───
+  await runStep(E2E_EMAIL ? `Paso 0 · Login automático (${E2E_EMAIL})` : "Paso 0 · Login manual (pausa)", async () => {
     await page.goto("/auth/login");
-    console.log(`
+    if (E2E_EMAIL && E2E_PASSWORD) {
+      await page.getByPlaceholder("Correo electrónico").fill(E2E_EMAIL);
+      await page.getByPlaceholder("Contraseña").fill(E2E_PASSWORD);
+      await page.locator('button[type="submit"]').click();
+      await page.waitForURL((url) => !url.pathname.startsWith("/auth/login"), {
+        timeout: 60_000,
+      });
+      // `/select-branch`: primero la empresa y luego la sucursal. Las dos son
+      // tarjetas `<button>` con un `<h3>`; se elige la primera visible. Una
+      // empresa sin sucursales ofrece "Continuar con la empresa".
+      for (let intento = 0; intento < 3 && page.url().includes("/select-branch"); intento += 1) {
+        const tarjeta = page.locator("button:has(h3)").filter({ visible: true }).first();
+        const continuar = page.getByRole("button", { name: "Continuar con la empresa" });
+        await expect(tarjeta.or(continuar).first()).toBeVisible({ timeout: 30_000 });
+        if (await continuar.isVisible()) await continuar.click();
+        else await tarjeta.click();
+        await page
+          .waitForURL((url) => !url.pathname.startsWith("/select-branch"), { timeout: 5_000 })
+          .catch(() => {});
+      }
+    } else {
+      console.log(`
   ┌──────────────────────────────────────────────────────────────┐
   │  PAUSA — entra a mano en la ventana del navegador:           │
   │    1. Captura usuario y contraseña (y MFA si aplica).        │
   │    2. Si te manda a /select-branch, elige empresa/sucursal.  │
   │    3. Pulsa ▶ "Resume" en el Playwright Inspector.           │
   └──────────────────────────────────────────────────────────────┘`);
-    await page.pause();
+      await page.pause();
+    }
 
-    // Tras el resume: cualquier ruta sirve mientras NO sea login ni la
+    // Tras el login (o el resume): cualquier ruta sirve mientras NO sea login ni la
     // selección de sucursal — el `proxy.ts` reenvía ahí a quien no tenga
     // sesión o workspace, así que seguir en ellas significa login incompleto.
     await expect(page).not.toHaveURL(/\/auth\/login/);
@@ -357,12 +459,20 @@ test("Búsqueda global — paleta de comandos", async ({ page }) => {
     const numGrupos = await grupos.count();
     etiquetasVisibles = await paleta.getByRole("heading", { level: 3 }).allInnerTexts();
     tiposVisibles = [];
+    filasPorTipo = {};
     for (let i = 0; i < numGrupos; i += 1) {
-      tiposVisibles.push(await tipoDeGrupo(grupos.nth(i)));
+      const tipo = await tipoDeGrupo(grupos.nth(i));
+      tiposVisibles.push(tipo);
+      filasPorTipo[tipo] = await grupos.nth(i).getByRole("option").count();
+      // La paleta oculta los grupos que el backend manda vacíos (entidad visible
+      // para la cuenta, sin coincidencias): todo grupo pintado trae filas.
+      expect
+        .soft(filasPorTipo[tipo], `el grupo "${tipo}" se pintó sin filas`)
+        .toBeGreaterThan(0);
     }
     console.log(
-      `  Grupos visibles para esta cuenta: ${numGrupos}` +
-        (numGrupos ? ` → ${tiposVisibles.join(", ")} (${etiquetasVisibles.join(" · ")})` : ""),
+      `  Grupos pintados para esta cuenta: ${numGrupos}` +
+        (numGrupos ? ` → ${describirGrupos()} (${etiquetasVisibles.join(" · ")})` : ""),
     );
     console.log(`  Filas totales: ${total}`);
 
@@ -422,10 +532,26 @@ test("Búsqueda global — paleta de comandos", async ({ page }) => {
     await cerrarPaleta();
   });
 
+  // ── Paso 5b: término sin coincidencias ────────────────────────────────────
+  // Todos los grupos llegan vacíos (o no llega ninguno): la paleta no pinta
+  // encabezados sueltos y muestra el estado vacío.
+  await runStep("Paso 5b · Término sin coincidencias: estado vacío sin grupos", async () => {
+    await empezarEnHome();
+    await abrirPaleta();
+    await buscar(SIN_COINCIDENCIAS);
+    await expect(paleta.getByText(/Sin resultados para/)).toBeVisible();
+    await expect(grupos, "no debe pintarse ningún grupo").toHaveCount(0);
+    await expect(paleta.getByRole("heading", { level: 3 })).toHaveCount(0);
+    await expect(opciones).toHaveCount(0);
+    console.log(`  "${SIN_COINCIDENCIAS}" → estado vacío, 0 grupos pintados`);
+    await shot(page, "search-05b-sin-coincidencias.png");
+    await cerrarPaleta();
+  });
+
   // ── Paso 6: aperturas por tipo ────────────────────────────────────────────
   if (tiposVisibles.length === 0) {
     skipStep(
-      "Paso 6 · Aperturas (pedido / cliente / cotización)",
+      "Paso 6 · Aperturas (pedido / cliente / cotización / orden de bordado / factura)",
       `sin grupos con resultados para "${QUERY}" — usa otro SEARCH_QUERY o una cuenta con datos`,
     );
   } else {
@@ -433,10 +559,32 @@ test("Búsqueda global — paleta de comandos", async ({ page }) => {
       const nombrePaso = `Paso 6 · Apertura de "${tipo}"`;
 
       // Solo se sabe abrir lo que el frontend mapea hoy. Un tipo nuevo del
-      // backend se salta con nota: la paleta lo pinta pero no lo abre, y eso es
-      // el comportamiento esperado, no un fallo.
-      if (!["pedido", "cliente", "cotizacion"].includes(tipo)) {
-        skipStep(nombrePaso, "tipo sin apertura en el frontend (entidad nueva del backend)");
+      // backend (p. ej. `producto`) NO se abre: se comprueba que su fila se
+      // pinta como no accionable y que elegirla no cierra la paleta ni navega.
+      if (
+        !["pedido", "cliente", "cotizacion", "orden_bordado", "factura"].includes(tipo)
+      ) {
+        await runStep(`${nombrePaso} (no accionable)`, async () => {
+          await empezarEnHome();
+          await abrirPaleta();
+          await buscar(QUERY);
+          const fila = paleta
+            .locator(`[aria-labelledby="global-search-group-${tipo}"]`)
+            .getByRole("option")
+            .first();
+          if ((await fila.count()) === 0) {
+            throw new Error(`el grupo "${tipo}" ya no trae filas en esta segunda búsqueda`);
+          }
+          await expect(fila).toHaveAttribute("aria-disabled", "true");
+          await expect(fila).toContainText("No disponible");
+          // `dispatchEvent` y no `click()`: Playwright cuenta `aria-disabled`
+          // como deshabilitado y `click()` esperaría hasta el timeout. Lo que se
+          // prueba es justo que el `onClick` de la fila no haga nada.
+          await fila.dispatchEvent("click");
+          await expect(paleta, "una fila no accionable no cierra la paleta").toBeVisible();
+          await expect(page, "una fila no accionable no navega").toHaveURL(/\/$/);
+          await cerrarPaleta();
+        });
         continue;
       }
 
@@ -487,30 +635,70 @@ test("Búsqueda global — paleta de comandos", async ({ page }) => {
           return;
         }
 
-        // ── cotizacion: NO es una ruta, es un diálogo ───────────────────────
+        if (tipo === "orden_bordado") {
+          // El backend solo manda este grupo con `R-PRODUCCION-OB`, el mismo
+          // código que exige la ruta: un rebote al Home sería un desajuste.
+          await expect(paleta).toBeHidden({ timeout: 15_000 });
+          await expect(page).toHaveURL(/\/manufacturing\/embroidery\/\d+/, { timeout: 20_000 });
+          console.log(`  → ${page.url()}`);
+          await shot(page, "search-07b-apertura-orden-bordado.png");
+
+          // "Volver" fijo al listado del módulo (mismo `R-PRODUCCION-OB`).
+          volverOb = "FAIL";
+          await page.getByRole("link", { name: "Volver a Órdenes de Bordado" }).click();
+          await expect(page).toHaveURL(/\/manufacturing\/embroidery\/?(\?.*)?$/, {
+            timeout: 20_000,
+          });
+          volverOb = "PASS";
+          console.log(`  Volver → ${page.url()}`);
+          return;
+        }
+
+        // ── cotizacion / factura: NO son rutas, son diálogos ────────────────
         // Aquí vive el riesgo de los dos diálogos de Radix apilados: la paleta
         // se cierra y, tras un respiro, se monta el detalle. Se comprueba que la
         // secuencia deja la página utilizable.
         await expect(paleta, "la paleta debe cerrarse antes de abrir el detalle").toBeHidden({
           timeout: 15_000,
         });
-        await expect(page, "abrir una cotización no debe navegar").toHaveURL(/\/$/);
-        await expect(dialogoCotizacion).toBeVisible({ timeout: 20_000 });
+        const dialogoDetalle = tipo === "factura" ? dialogoFactura : dialogoCotizacion;
+        await expect(page, `abrir "${tipo}" no debe navegar`).toHaveURL(/\/$/);
+        await expect(dialogoDetalle).toBeVisible({ timeout: 20_000 });
+
+        // El vigilante solo tiene sentido con el detalle YA resuelto: se espera
+        // a que acabe la carga y se exige que no esté en su estado de error
+        // (eso sería un fallo de apertura, no un destello).
+        const textos = TEXTO_DETALLE[tipo];
+        await expect(dialogoDetalle.getByText(textos.cargando)).toHaveCount(0, { timeout: 20_000 });
+        await expect(
+          dialogoDetalle.getByText(textos.error),
+          `el detalle de "${tipo}" abrió en su estado de error`,
+        ).toHaveCount(0);
 
         // Con el diálogo ABIERTO el body está bloqueado a propósito (Radix
         // aísla el fondo), así que lo que se afirma es que el diálogo en sí
         // responde: su botón de cierre es visible y utilizable.
-        const cerrar = dialogoCotizacion.getByRole("button", { name: "Cerrar", exact: true });
+        const cerrar = dialogoDetalle.getByRole("button", { name: "Cerrar", exact: true });
         await expect(cerrar).toBeVisible();
         await expect(cerrar).toBeEnabled();
-        await shot(page, "search-08-apertura-cotizacion.png");
+        await shot(page, `search-08-apertura-${tipo}.png`);
 
         // Solo puede haber UN diálogo vivo: si la paleta siguiera montada,
         // habría dos y el fondo quedaría bloqueado dos veces.
         await expect(page.getByRole("dialog")).toHaveCount(1);
 
+        await vigilarTexto(page, textos.error);
         await cerrar.click();
-        await expect(dialogoCotizacion).toBeHidden({ timeout: 15_000 });
+        await expect(dialogoDetalle).toBeHidden({ timeout: 15_000 });
+        // "Del todo desaparecido": ningún `dialog` en el DOM (Radix lo desmonta
+        // al terminar la animación de salida).
+        await expect(page.getByRole("dialog")).toHaveCount(0, { timeout: 15_000 });
+        const destello = await cortarVigilancia(page);
+        destellos[tipo] = destello;
+        console.log(`  Destello de error al cerrar (${tipo}): ${destello ? "SÍ" : "no"}`);
+        expect
+          .soft(destello, `el texto "${textos.error}" destelló al cerrar el detalle de "${tipo}"`)
+          .toBe(false);
 
         // Y AHORA sí: la página debe haber quedado limpia.
         await expect
@@ -547,9 +735,17 @@ test("Búsqueda global — paleta de comandos", async ({ page }) => {
   console.log(`Rutas probadas:   ${rutasProbadas.join(" · ") || "—"}`);
   console.log(
     `Grupos de la cuenta: ${
-      tiposVisibles.length ? `${tiposVisibles.join(", ")} (${etiquetasVisibles.join(" · ")})` : "—"
+      tiposVisibles.length ? `${describirGrupos()} (${etiquetasVisibles.join(" · ")})` : "—"
     }`,
   );
+  console.log(
+    `Destello al cerrar: ${
+      Object.entries(destellos)
+        .map(([t, d]) => `${t}=${d ? "SÍ" : "no"}`)
+        .join(" · ") || "— (ningún diálogo probado)"
+    }`,
+  );
+  console.log(`Volver de OB:     ${volverOb ?? "— (no probado)"}`);
   console.log("─".repeat(ancho + 30));
   for (const { step, status, note } of results) {
     const icono = status === "PASS" ? "✔" : status === "FAIL" ? "✖" : "⏭";

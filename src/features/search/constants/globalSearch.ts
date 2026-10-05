@@ -3,6 +3,8 @@ import {
   ClientesIcon,
   FacturacionIcon,
   PedidosIcon,
+  ReceiptIcon,
+  ScissorsIcon,
   SearchIcon,
 } from "@/src/components/Icons";
 
@@ -43,17 +45,31 @@ export const SEARCH_DEBOUNCE_MS = 350;
  *  - `cotizacion` → NO tiene ruta: su detalle es un diálogo self-fetching
  *                   (`QuoteDetailByIdDialog`), el mismo que abre el bloque
  *                   "Documentos relacionados" del pedido 360°.
+ *  - `orden_bordado` → ruta `/manufacturing/embroidery/[id]`, sin `?from=`: su
+ *                   "Volver" es fijo al listado de órdenes de bordado, que exige
+ *                   el mismo `R-PRODUCCION-OB` que la ruta y que el backend pide
+ *                   para mandar el grupo.
+ *  - `factura`    → NO tiene ruta de detalle: diálogo self-fetching
+ *                   (`InvoiceDetailByIdDialog`), el mismo del pedido 360°, con la
+ *                   misma secuencia que la cotización.
  *
  * Un `tipo` ausente de este mapa es una entidad que el backend ya devuelve pero
  * el frontend todavía no sabe abrir: la fila se pinta (el backend la autorizó)
  * pero no es accionable, en vez de romper o navegar a una ruta inventada.
  */
-export type SearchApertura = "ruta-pedido" | "ruta-cliente" | "dialogo-cotizacion";
+export type SearchApertura =
+  | "ruta-pedido"
+  | "ruta-cliente"
+  | "ruta-orden-bordado"
+  | "dialogo-cotizacion"
+  | "dialogo-factura";
 
 export const SEARCH_APERTURA: Record<string, SearchApertura> = {
   pedido: "ruta-pedido",
   cliente: "ruta-cliente",
   cotizacion: "dialogo-cotizacion",
+  orden_bordado: "ruta-orden-bordado",
+  factura: "dialogo-factura",
 };
 
 /**
@@ -69,12 +85,16 @@ export const getSearchApertura = (tipo: string): SearchApertura | null =>
 /**
  * Ícono por entidad. `cotizacion` usa el glifo de documento (`FileText`) y no el
  * de pedidos —que el sidebar comparte entre ambas— porque en una lista mixta los
- * dos grupos deben distinguirse de un vistazo.
+ * dos grupos deben distinguirse de un vistazo. Por la misma razón `factura` usa
+ * `Receipt` y no el `FileText` de su módulo (Facturación en el sidebar): ese
+ * glifo ya es el de cotización aquí. `orden_bordado` usa las tijeras del módulo.
  */
 const SEARCH_ENTITY_ICONS: Record<string, ComponentType<SVGProps<SVGSVGElement>>> = {
   pedido: PedidosIcon,
   cliente: ClientesIcon,
   cotizacion: FacturacionIcon,
+  orden_bordado: ScissorsIcon,
+  factura: ReceiptIcon,
 };
 
 /** Ícono de la entidad, con la lupa como neutro para tipos aún desconocidos. */
