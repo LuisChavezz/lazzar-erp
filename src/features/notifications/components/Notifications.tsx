@@ -41,6 +41,13 @@ export const Notifications = () => {
     NotificationTarget,
     { kind: "quote-dialog" }
   > | null>(null);
+  /*
+    La apertura va aparte del destino: al cerrar solo se baja `open` y el
+    destino se suelta en el `onCloseAutoFocus` del diálogo, ya desmontado.
+    Soltarlo antes apaga la consulta y el contenido destella su estado de
+    error durante la animación de salida.
+  */
+  const [isQuoteOpen, setIsQuoteOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const btnRef = useRef<HTMLButtonElement>(null);
 
@@ -110,6 +117,7 @@ export const Notifications = () => {
     // La cotización no tiene ruta de detalle: se abre el mismo diálogo
     // self-fetching que usan la paleta global y el pedido 360°.
     setQuoteTarget(target);
+    setIsQuoteOpen(true);
   };
 
   /**
@@ -173,10 +181,9 @@ export const Notifications = () => {
       <QuoteDetailByIdDialog
         orderId={quoteTarget?.quoteId ?? null}
         source={quoteTarget?.source}
-        open={quoteTarget !== null}
-        onOpenChange={(next) => {
-          if (!next) setQuoteTarget(null);
-        }}
+        open={isQuoteOpen}
+        onOpenChange={setIsQuoteOpen}
+        onCloseAutoFocus={() => setQuoteTarget(null)}
       />
 
       {/*

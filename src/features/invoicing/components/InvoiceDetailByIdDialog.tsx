@@ -13,6 +13,13 @@ interface InvoiceDetailByIdDialogProps {
   orderId: number | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /**
+   * Opcional, se pasa tal cual a `MainDialog`: corre cuando el diálogo YA se
+   * desmontó (terminada la animación de salida). Sirve para soltar el id justo
+   * ahí; soltarlo antes apaga la consulta y el contenido cae a su estado de
+   * error mientras aún se ve. Sin ella el diálogo se comporta como siempre.
+   */
+  onCloseAutoFocus?: (event: Event) => void;
 }
 
 /** Armazón (MainDialog + DialogHeader) idéntico al que usa `InvoiceColumns`,
@@ -20,16 +27,19 @@ interface InvoiceDetailByIdDialogProps {
 function ShellDialog({
   open,
   onOpenChange,
+  onCloseAutoFocus,
   children,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onCloseAutoFocus?: (event: Event) => void;
   children: React.ReactNode;
 }) {
   return (
     <MainDialog
       open={open}
       onOpenChange={onOpenChange}
+      onCloseAutoFocus={onCloseAutoFocus}
       maxWidth="900px"
       title={
         <DialogHeader
@@ -62,12 +72,13 @@ export function InvoiceDetailByIdDialog({
   orderId,
   open,
   onOpenChange,
+  onCloseAutoFocus,
 }: InvoiceDetailByIdDialogProps) {
   const { data: invoice, isLoading, isError, error } = useInvoiceDetail(orderId);
 
   if (isLoading) {
     return (
-      <ShellDialog open={open} onOpenChange={onOpenChange}>
+      <ShellDialog open={open} onOpenChange={onOpenChange} onCloseAutoFocus={onCloseAutoFocus}>
         <Loader title="Cargando detalle de la factura..." className="py-16" />
       </ShellDialog>
     );
@@ -77,7 +88,7 @@ export function InvoiceDetailByIdDialog({
   // id inexistente): el backend fusiona ambos en un 404, un solo estado basta.
   if (isError || !invoice) {
     return (
-      <ShellDialog open={open} onOpenChange={onOpenChange}>
+      <ShellDialog open={open} onOpenChange={onOpenChange} onCloseAutoFocus={onCloseAutoFocus}>
         <ErrorState
           title="No se pudo cargar la factura"
           message={extractErrorMessage(
@@ -90,7 +101,7 @@ export function InvoiceDetailByIdDialog({
   }
 
   return (
-    <ShellDialog open={open} onOpenChange={onOpenChange}>
+    <ShellDialog open={open} onOpenChange={onOpenChange} onCloseAutoFocus={onCloseAutoFocus}>
       <InvoiceDetails invoice={invoice} />
     </ShellDialog>
   );
