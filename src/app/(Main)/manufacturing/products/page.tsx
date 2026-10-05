@@ -2,5 +2,9 @@ import { ProductionProductsView } from "@/src/features/products/components/Produ
 
 // Página de Productos — módulo de manufactura (listado + alta rápida)
 export default function ManufacturingProductsPage() {
-  return <ProductionProductsView />;
+  return (
+    <div className="w-full h-[calc(100dvh-13rem)] min-h-0">
+      <ProductionProductsView />
+    </div>
+  );
 }

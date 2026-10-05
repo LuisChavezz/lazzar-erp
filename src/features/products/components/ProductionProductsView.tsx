@@ -47,18 +47,21 @@ export function ProductionProductsView() {
   }));
 
   return (
-    <DataTable
-      columns={READ_ONLY_COLUMNS}
-      data={rows}
-      searchPlaceholder="Buscar producto..."
-      getRowId={(row) => String(row.id)}
-      emptyMessage="No hay productos registrados."
-      isLoading={isLoading}
-      isError={isInitialError}
-      errorTitle="Error al cargar productos"
-      errorMessage={extractErrorMessage(error, "No se pudo cargar la información.")}
-      loadingAriaLabel="Cargando productos"
-      actionButton={canCreate ? <ProductOnboardingDialog /> : undefined}
-    />
+    <div className="h-full flex flex-col min-h-0">
+      <DataTable
+        columns={READ_ONLY_COLUMNS}
+        data={rows}
+        searchPlaceholder="Buscar producto..."
+        getRowId={(row) => String(row.id)}
+        fillHeight
+        emptyMessage="No hay productos registrados."
+        isLoading={isLoading}
+        isError={isInitialError}
+        errorTitle="Error al cargar productos"
+        errorMessage={extractErrorMessage(error, "No se pudo cargar la información.")}
+        loadingAriaLabel="Cargando productos"
+        actionButton={canCreate ? <ProductOnboardingDialog /> : undefined}
+      />
+    </div>
   );
 }

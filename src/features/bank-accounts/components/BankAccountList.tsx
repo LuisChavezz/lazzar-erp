@@ -102,13 +102,15 @@ export default function BankAccountList() {
   // El listado no se gatea con permisos de acción: el backend de finanzas solo
   // exige `IsAuthenticated` y no existen códigos de permiso para cuentas.
   return (
-    <div className="space-y-6">
+    <div className="h-full flex flex-col min-h-0 space-y-6">
+      <div className="flex-1 min-h-0 flex flex-col">
       <DataTable
         columns={columns}
         data={bankAccounts}
         baseDataCount={bankAccounts.length}
         searchPlaceholder="Buscar alias, banco, titular o número de cuenta..."
         filterConfig={filterConfig}
+        fillHeight
         onRefetch={refetch}
         isRefetching={isFetching}
         emptyMessage="No hay cuentas bancarias registradas."
@@ -149,6 +151,7 @@ export default function BankAccountList() {
           </MainDialog>
         }
       />
+      </div>
 
       {summaryAccount && (
         <BankAccountSummaryDialog

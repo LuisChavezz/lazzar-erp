@@ -31,21 +31,24 @@ export function SpecialOrdersView() {
   });
 
   return (
-    <DataTable
-      columns={columns}
-      data={orders}
-      getRowId={(row) => String(row.id)}
-      searchPlaceholder="Buscar por folio o cliente..."
-      filterConfig={SPECIAL_ORDER_FILTER_CONFIG}
-      onRefetch={refetch}
-      isRefetching={isFetching}
-      emptyMessage="No hay pedidos especiales."
-      isLoading={isLoading}
-      isError={showError}
-      errorTitle="Error al cargar los pedidos especiales"
-      errorMessage={extractErrorMessage(error, "No se pudo cargar la información.")}
-      onErrorRetry={refetch}
-      loadingAriaLabel="Cargando pedidos especiales"
-    />
+    <div className="h-full flex flex-col min-h-0">
+      <DataTable
+        columns={columns}
+        data={orders}
+        getRowId={(row) => String(row.id)}
+        searchPlaceholder="Buscar por folio o cliente..."
+        filterConfig={SPECIAL_ORDER_FILTER_CONFIG}
+        fillHeight
+        onRefetch={refetch}
+        isRefetching={isFetching}
+        emptyMessage="No hay pedidos especiales."
+        isLoading={isLoading}
+        isError={showError}
+        errorTitle="Error al cargar los pedidos especiales"
+        errorMessage={extractErrorMessage(error, "No se pudo cargar la información.")}
+        onErrorRetry={refetch}
+        loadingAriaLabel="Cargando pedidos especiales"
+      />
+    </div>
   );
 }

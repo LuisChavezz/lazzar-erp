@@ -2,7 +2,7 @@ import CreditNoteList from "@/src/features/credit-notes/components/CreditNoteLis
 
 export default function CreditNotesPage() {
   return (
-    <div className="w-full">
+    <div className="w-full h-[calc(100dvh-13rem)] min-h-0">
       <CreditNoteList />
     </div>
   );

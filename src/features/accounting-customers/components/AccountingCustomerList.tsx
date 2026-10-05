@@ -15,18 +15,21 @@ export const AccountingCustomerList = () => {
   const showError = isInitialLoadError(isError, hasLoaded);
 
   return (
-    <DataTable
-      columns={accountingCustomerColumns}
-      data={customers}
-      baseDataCount={customers.length}
-      searchPlaceholder="Buscar por nombre, razón social, RFC o correo..."
-      onRefetch={refetch}
-      isRefetching={isFetching}
-      isLoading={isLoading}
-      isError={showError}
-      errorTitle="Error al cargar los clientes"
-      errorMessage={extractErrorMessage(error, "No se pudo cargar la información.")}
-      loadingAriaLabel="Cargando clientes"
-    />
+    <div className="h-full flex flex-col min-h-0">
+      <DataTable
+        columns={accountingCustomerColumns}
+        data={customers}
+        baseDataCount={customers.length}
+        searchPlaceholder="Buscar por nombre, razón social, RFC o correo..."
+        fillHeight
+        onRefetch={refetch}
+        isRefetching={isFetching}
+        isLoading={isLoading}
+        isError={showError}
+        errorTitle="Error al cargar los clientes"
+        errorMessage={extractErrorMessage(error, "No se pudo cargar la información.")}
+        loadingAriaLabel="Cargando clientes"
+      />
+    </div>
   );
 };

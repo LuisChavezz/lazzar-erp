@@ -55,33 +55,36 @@ export function ProductionOrderList() {
   const showError = isInitialLoadError(isError, hasLoaded);
 
   return (
-    <div className="space-y-5">
-      <DataTable
-        columns={columns}
-        data={data ?? []}
-        baseDataCount={data?.length ?? 0}
-        searchPlaceholder="Buscar..."
-        isLoadingOverlay={isRefetching}
-        onRefetch={refetch}
-        isRefetching={isRefetching}
-        isLoading={isLoading}
-        isError={showError}
-        errorTitle="Error al cargar las órdenes de producción"
-        errorMessage={extractErrorMessage(error, "No se pudo cargar la información.")}
-        loadingAriaLabel="Cargando órdenes de producción"
-        actionButton={
-          canCreate ? (
-            <Button
-              variant="primary"
-              rounded="full"
-              onClick={() => setIsCreateOpen(true)}
-              className="hover:scale-105 active:scale-95"
-            >
-              + Nueva Orden
-            </Button>
-          ) : undefined
-        }
-      />
+    <div className="h-full flex flex-col min-h-0 space-y-5">
+      <div className="flex-1 min-h-0 flex flex-col">
+        <DataTable
+          columns={columns}
+          data={data ?? []}
+          baseDataCount={data?.length ?? 0}
+          searchPlaceholder="Buscar..."
+          fillHeight
+          isLoadingOverlay={isRefetching}
+          onRefetch={refetch}
+          isRefetching={isRefetching}
+          isLoading={isLoading}
+          isError={showError}
+          errorTitle="Error al cargar las órdenes de producción"
+          errorMessage={extractErrorMessage(error, "No se pudo cargar la información.")}
+          loadingAriaLabel="Cargando órdenes de producción"
+          actionButton={
+            canCreate ? (
+              <Button
+                variant="primary"
+                rounded="full"
+                onClick={() => setIsCreateOpen(true)}
+                className="hover:scale-105 active:scale-95"
+              >
+                + Nueva Orden
+              </Button>
+            ) : undefined
+          }
+        />
+      </div>
 
       <CreateProductionOrderDialog
         open={isCreateOpen}

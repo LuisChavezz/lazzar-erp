@@ -148,13 +148,15 @@ export default function AccountsPayableList() {
   // cuerpo, así que el toolbar —búsqueda, filtros, "Solo vencidas" y "Registrar
   // CxP faltante"— sigue disponible durante la carga y ante un error.
   return (
-    <div className="space-y-6">
+    <div className="h-full flex flex-col min-h-0 space-y-6">
+      <div className="flex-1 min-h-0 flex flex-col">
       <DataTable
         columns={columns}
         data={cuentasVisibles}
         baseDataCount={cuentasVisibles.length}
         searchPlaceholder="Buscar por proveedor o factura..."
         filterConfig={[{ id: "estatus", label: "Estatus", options: ESTATUS_FILTER }]}
+        fillHeight
         onRefetch={refetch}
         isRefetching={isFetching}
         emptyMessage={
@@ -189,6 +191,7 @@ export default function AccountsPayableList() {
           </div>
         }
       />
+      </div>
 
       {detailCuenta && (
         <AccountsPayableDetailDialog

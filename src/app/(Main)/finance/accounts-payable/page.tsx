@@ -2,7 +2,7 @@ import AccountsPayableList from "@/src/features/accounts-payable/components/Acco
 
 export default function AccountsPayablePage() {
   return (
-    <div className="w-full">
+    <div className="w-full h-[calc(100dvh-13rem)] min-h-0">
       <AccountsPayableList />
     </div>
   );

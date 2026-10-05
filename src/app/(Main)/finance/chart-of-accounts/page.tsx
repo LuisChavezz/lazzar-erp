@@ -6,7 +6,7 @@ import ChartOfAccountList from "@/src/features/chart-of-accounts/components/Char
  */
 export default function ChartOfAccountsPage() {
   return (
-    <div className="w-full">
+    <div className="w-full h-[calc(100dvh-13rem)] min-h-0">
       <ChartOfAccountList />
     </div>
   );
