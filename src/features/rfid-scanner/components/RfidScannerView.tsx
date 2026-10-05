@@ -42,13 +42,14 @@ export function RfidScannerView() {
   // actualizar — que quedaría parpadeando y rechazando clics cada 3 segundos.
   const [isManualRefetching, setIsManualRefetching] = useState(false);
 
-  const { scans, isLoading, isError, error, hasLoaded, refetch } =
+  const { scans, isLoading, isError, isSuccess, error, hasLoaded, refetch } =
     useRfidScans(isMonitoring);
   const {
     stats,
     isLoading: isStatsLoading,
+    isSuccess: isStatsSuccess,
     refetch: refetchStats,
-  } = useRfidScannerStats();
+  } = useRfidScannerStats(isMonitoring);
   const { mutate: clearScans, isPending: isClearing } = useClearRfidScans();
 
   // La purga se rige por `D-WMS-SCANNER` del catálogo de permisos, igual que
@@ -58,14 +59,28 @@ export function RfidScannerView() {
   const { data: session } = useSession();
   const canClearScans = hasPermission("D-WMS-SCANNER", session?.user);
 
+  // "Nada que limpiar" exige que AMBAS fuentes lo confirmen con una respuesta
+  // vigente: la tabla —solo con el monitoreo encendido, porque detenida es una
+  // foto congelada— y el total global de `scanner-stats`. En cualquier otro
+  // caso (cargando, error, monitoreo detenido, stats con 403) el botón queda
+  // habilitado: ante la duda se deja intentar, y el backend responde igual.
+  // `isSuccess` y no `hasLoaded`: tras un refetch fallido la caché conserva
+  // datos viejos, pero ya no confirman nada.
+  const hasNothingToClear =
+    isMonitoring &&
+    isSuccess &&
+    scans.length === 0 &&
+    isStatsSuccess &&
+    stats?.total_rfidscan_rows === 0;
+
   const showError = isInitialLoadError(isError, hasLoaded);
 
   const handleToggleMonitoring = () => {
     const next = !isMonitoring;
     setIsMonitoring(next);
-    // Al encender se revalida el estado del lector: `scanner-stats` no tiene
-    // ciclo propio, así que sin esto la barra seguiría mostrando la foto del
-    // montaje de la pantalla (ver `useRfidScannerStats`).
+    // Al encender se revalida el estado del lector de inmediato, sin esperar
+    // al primer ciclo de 15 s de `scanner-stats`. Es también lo que reanuda ese
+    // polling si se había apagado por un error (ver `useRfidScannerStats`).
     if (next) void refetchStats();
   };
 
@@ -107,29 +122,51 @@ export function RfidScannerView() {
           <div className="flex items-center gap-2">
             {canClearScans && (
               <>
-                <Button
-                  variant="danger"
-                  onClick={() => setIsClearOpen(true)}
-                  disabled={isClearing}
-                  leftIcon={<DeleteIcon className="w-4 h-4" />}
+                {/* El `title` va en un `<span>` y no en el botón: un `<button>`
+                    deshabilitado no recibe eventos de puntero, así que el
+                    navegador no siempre muestra su tooltip. Por eso, además,
+                    el botón vacío lleva `pointer-events-none!`: así el puntero
+                    "atraviesa" el botón y el hover cae en el `span`. */}
+                <span
+                  className="inline-flex"
+                  title={hasNothingToClear ? "No hay lecturas para limpiar" : undefined}
                 >
-                  {isClearing ? "Limpiando..." : "Limpiar lecturas"}
-                </Button>
+                  <Button
+                    variant="danger"
+                    onClick={() => setIsClearOpen(true)}
+                    disabled={isClearing || hasNothingToClear}
+                    className={hasNothingToClear ? "pointer-events-none!" : undefined}
+                    leftIcon={<DeleteIcon className="w-4 h-4" />}
+                  >
+                    {isClearing ? "Limpiando..." : "Limpiar lecturas"}
+                  </Button>
+                </span>
                 {/* Diálogo controlado por estado y NO por el `trigger` de
                     `ConfirmDialog`: el botón de arriba necesita su propio
                     `variant`/`leftIcon`/`disabled`, que el trigger no expone.
-                    Mismo patrón que `ColorColumns`. */}
+                    Mismo patrón que `ColorColumns`.
+
+                    Queda abierto y bloqueado (`busy`) mientras corre la purga,
+                    como en `VacationList`: se cierra solo si el backend
+                    confirma; si falla sigue abierto y el toast de
+                    `useClearRfidScans` explica por qué. `busy` ya bloquea
+                    todas las vías de cierre (Esc, clic fuera y Cancelar), así
+                    que `onOpenChange` no necesita su propia guarda. */}
                 <ConfirmDialog
                   open={isClearOpen}
                   onOpenChange={setIsClearOpen}
                   title="Limpiar lecturas RFID"
-                  description="¿Eliminar todas las lecturas? Se borrarán TODAS las almacenadas, no solo las de esta sucursal. Esta acción no se puede deshacer."
+                  description="Se eliminarán todas las lecturas RFID de todas las empresas y sucursales. Esta acción no se puede deshacer."
+                  confirmationWord="LIMPIAR"
                   confirmText={isClearing ? "Eliminando..." : "Eliminar"}
                   confirmColor="red"
-                  onConfirm={() => {
-                    clearScans();
-                    setIsClearOpen(false);
-                  }}
+                  closeOnConfirm={false}
+                  busy={isClearing}
+                  onConfirm={() =>
+                    clearScans(undefined, {
+                      onSuccess: () => setIsClearOpen(false),
+                    })
+                  }
                 />
               </>
             )}
