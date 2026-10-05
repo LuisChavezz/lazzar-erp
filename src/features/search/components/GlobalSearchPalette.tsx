@@ -331,11 +331,13 @@ export function GlobalSearchPalette() {
               <p className="m-1 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-xs text-red-700 dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-300">
                 {extractErrorMessage(error, "No se pudo buscar. Intenta de nuevo.")}
               </p>
-            ) : isLoading || (totalResults === 0 && isFetching) ? (
-              // `|| …isFetching`: con `keepPreviousData`, si la búsqueda ANTERIOR
+            ) : isLoading || (totalResults === 0 && data?.q !== debouncedQuery) ? (
+              // `|| …data.q`: con `keepPreviousData`, si la búsqueda ANTERIOR
               // quedó vacía, sus datos siguen ahí mientras vuela la nueva, y el
               // vacío diría "Sin resultados para <término nuevo>" antes de que
-              // haya respuesta. Sin filas que conservar, se muestra la carga.
+              // haya respuesta. Se compara el `q` que el backend devuelve (ya
+              // recortado, igual que `debouncedQuery`) y no `isFetching`: un
+              // refetch del MISMO término no debe cambiar el vacío por la carga.
               <div className="flex items-center justify-center gap-2 py-10 text-sm text-slate-400">
                 <LoadingSpinnerIcon className="h-4 w-4 animate-spin" aria-hidden="true" />
                 Buscando...
