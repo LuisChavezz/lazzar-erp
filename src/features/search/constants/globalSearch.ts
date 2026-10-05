@@ -4,8 +4,10 @@ import {
   FacturacionIcon,
   PedidosIcon,
   ReceiptIcon,
+  RulerIcon,
   ScissorsIcon,
   SearchIcon,
+  SliceIcon,
 } from "@/src/components/Icons";
 
 /**
@@ -49,6 +51,12 @@ export const SEARCH_DEBOUNCE_MS = 350;
  *                   "Volver" es fijo al listado de órdenes de bordado, que exige
  *                   el mismo `R-PRODUCCION-OB` que la ruta y que el backend pide
  *                   para mandar el grupo.
+ *  - `orden_reflejante` / `orden_corte_manga` → igual que bordado: rutas
+ *                   `/manufacturing/reflective-orders/[id]` y
+ *                   `/manufacturing/corte-manga/[id]`, sin `?from=`, con
+ *                   "Volver" fijo a su listado. Ruta, listado y visibilidad del
+ *                   backend exigen el mismo código (`R-PRODUCCION-OR` /
+ *                   `R-PRODUCCION-CM`).
  *  - `factura`    → NO tiene ruta de detalle: diálogo self-fetching
  *                   (`InvoiceDetailByIdDialog`), el mismo del pedido 360°, con la
  *                   misma secuencia que la cotización.
@@ -61,6 +69,8 @@ export type SearchApertura =
   | "ruta-pedido"
   | "ruta-cliente"
   | "ruta-orden-bordado"
+  | "ruta-orden-reflejante"
+  | "ruta-orden-corte-manga"
   | "dialogo-cotizacion"
   | "dialogo-factura";
 
@@ -69,6 +79,8 @@ export const SEARCH_APERTURA: Record<string, SearchApertura> = {
   cliente: "ruta-cliente",
   cotizacion: "dialogo-cotizacion",
   orden_bordado: "ruta-orden-bordado",
+  orden_reflejante: "ruta-orden-reflejante",
+  orden_corte_manga: "ruta-orden-corte-manga",
   factura: "dialogo-factura",
 };
 
@@ -87,13 +99,16 @@ export const getSearchApertura = (tipo: string): SearchApertura | null =>
  * de pedidos —que el sidebar comparte entre ambas— porque en una lista mixta los
  * dos grupos deben distinguirse de un vistazo. Por la misma razón `factura` usa
  * `Receipt` y no el `FileText` de su módulo (Facturación en el sidebar): ese
- * glifo ya es el de cotización aquí. `orden_bordado` usa las tijeras del módulo.
+ * glifo ya es el de cotización aquí. `orden_bordado`, `orden_reflejante` y
+ * `orden_corte_manga` usan el ícono de su módulo (tijeras, regla, rebanada).
  */
 const SEARCH_ENTITY_ICONS: Record<string, ComponentType<SVGProps<SVGSVGElement>>> = {
   pedido: PedidosIcon,
   cliente: ClientesIcon,
   cotizacion: FacturacionIcon,
   orden_bordado: ScissorsIcon,
+  orden_reflejante: RulerIcon,
+  orden_corte_manga: SliceIcon,
   factura: ReceiptIcon,
 };
 

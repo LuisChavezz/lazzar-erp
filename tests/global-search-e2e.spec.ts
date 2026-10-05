@@ -62,6 +62,25 @@ const QUERY = process.env.SEARCH_QUERY ?? "com";
 const E2E_EMAIL = process.env.E2E_EMAIL;
 const E2E_PASSWORD = process.env.E2E_PASSWORD;
 
+/**
+ * Órdenes de producción que se abren por RUTA: listado del módulo (base de la
+ * URL del detalle) y rótulo del enlace "Volver" de su página, fijo al listado.
+ */
+const ORDENES_PRODUCCION: Record<string, { listado: string; volver: string }> = {
+  orden_bordado: {
+    listado: "/manufacturing/embroidery",
+    volver: "Volver a Órdenes de Bordado",
+  },
+  orden_reflejante: {
+    listado: "/manufacturing/reflective-orders",
+    volver: "Volver a Órdenes de Reflejante",
+  },
+  orden_corte_manga: {
+    listado: "/manufacturing/corte-manga",
+    volver: "Volver a Órdenes de Corte de Manga",
+  },
+};
+
 /** Término de 3+ caracteres que no debería casar con nada (Paso 5b). */
 const SIN_COINCIDENCIAS = "zqxjw-nada-e2e";
 
@@ -218,7 +237,8 @@ test("Búsqueda global — paleta de comandos", async ({ page }) => {
   /** Resultado del vigilante de destello de error por diálogo (`tipo` → apareció). */
   const destellos: Record<string, boolean> = {};
   /** Resultado del "Volver" de la página de orden de bordado. */
-  let volverOb: string | null = null;
+  /** Resultado del "Volver" de cada página de orden de producción (`tipo` → PASS/FAIL). */
+  const volverOrdenes: Record<string, string> = {};
 
   /** Rutas de (Main) desde las que se abrió la paleta. */
   const rutasProbadas: string[] = [];
@@ -302,9 +322,21 @@ test("Búsqueda global — paleta de comandos", async ({ page }) => {
       await page.getByPlaceholder("Correo electrónico").fill(E2E_EMAIL);
       await page.getByPlaceholder("Contraseña").fill(E2E_PASSWORD);
       await page.locator('button[type="submit"]').click();
-      await page.waitForURL((url) => !url.pathname.startsWith("/auth/login"), {
-        timeout: 60_000,
-      });
+      // Tras validar las credenciales, algunas cuentas (no siempre) reciben el
+      // aviso OPCIONAL de activar MFA en la misma página de login; se descarta.
+      const sinMfa = page.getByRole("button", { name: "Continuar sin MFA" });
+      const fueraDeLogin = (url: URL) => !url.pathname.startsWith("/auth/login");
+      // `catch` en las dos: la que pierde la carrera seguiría pendiente y su
+      // rechazo posterior no debe quedar sin manejar. El `waitForURL` de abajo
+      // es el que decide si el login terminó.
+      await Promise.race([
+        page.waitForURL(fueraDeLogin, { timeout: 60_000 }).catch(() => {}),
+        sinMfa
+          .waitFor({ timeout: 60_000 })
+          .then(() => sinMfa.click())
+          .catch(() => {}),
+      ]);
+      await page.waitForURL(fueraDeLogin, { timeout: 60_000 });
       // `/select-branch`: primero la empresa y luego la sucursal. Las dos son
       // tarjetas `<button>` con un `<h3>`. La rejilla que no toca NO sale del
       // DOM: se queda con `opacity-0 pointer-events-none` (y para Playwright
@@ -595,7 +627,15 @@ test("Búsqueda global — paleta de comandos", async ({ page }) => {
       // backend (p. ej. `producto`) NO se abre: se comprueba que su fila se
       // pinta como no accionable y que elegirla no cierra la paleta ni navega.
       if (
-        !["pedido", "cliente", "cotizacion", "orden_bordado", "factura"].includes(tipo)
+        ![
+          "pedido",
+          "cliente",
+          "cotizacion",
+          "orden_bordado",
+          "orden_reflejante",
+          "orden_corte_manga",
+          "factura",
+        ].includes(tipo)
       ) {
         await runStep(`${nombrePaso} (no accionable)`, async () => {
           await empezarEnHome();
@@ -668,21 +708,24 @@ test("Búsqueda global — paleta de comandos", async ({ page }) => {
           return;
         }
 
-        if (tipo === "orden_bordado") {
-          // El backend solo manda este grupo con `R-PRODUCCION-OB`, el mismo
-          // código que exige la ruta: un rebote al Home sería un desajuste.
+        const ordenProduccion = ORDENES_PRODUCCION[tipo];
+        if (ordenProduccion) {
+          // El backend solo manda estos grupos con el código de sección que
+          // exige la ruta (`R-PRODUCCION-OB/OR/CM`): un rebote al Home sería un
+          // desajuste.
+          const { listado, volver } = ordenProduccion;
           await expect(paleta).toBeHidden({ timeout: 15_000 });
-          await expect(page).toHaveURL(/\/manufacturing\/embroidery\/\d+/, { timeout: 20_000 });
+          await expect(page).toHaveURL(new RegExp(`${listado}/\\d+`), { timeout: 20_000 });
           console.log(`  → ${page.url()}`);
-          await shot(page, "search-07b-apertura-orden-bordado.png");
+          await shot(page, `search-07b-apertura-${tipo}.png`);
 
-          // "Volver" fijo al listado del módulo (mismo `R-PRODUCCION-OB`).
-          volverOb = "FAIL";
-          await page.getByRole("link", { name: "Volver a Órdenes de Bordado" }).click();
-          await expect(page).toHaveURL(/\/manufacturing\/embroidery\/?(\?.*)?$/, {
+          // "Volver" fijo al listado del módulo (mismo código de sección).
+          volverOrdenes[tipo] = "FAIL";
+          await page.getByRole("link", { name: volver }).click();
+          await expect(page).toHaveURL(new RegExp(`${listado}/?(\\?.*)?$`), {
             timeout: 20_000,
           });
-          volverOb = "PASS";
+          volverOrdenes[tipo] = "PASS";
           console.log(`  Volver → ${page.url()}`);
           return;
         }
@@ -778,7 +821,13 @@ test("Búsqueda global — paleta de comandos", async ({ page }) => {
         .join(" · ") || "— (ningún diálogo probado)"
     }`,
   );
-  console.log(`Volver de OB:     ${volverOb ?? "— (no probado)"}`);
+  console.log(
+    `Volver de órdenes: ${
+      Object.entries(volverOrdenes)
+        .map(([t, r]) => `${t}=${r}`)
+        .join(" · ") || "— (no probado)"
+    }`,
+  );
   console.log("─".repeat(ancho + 30));
   for (const { step, status, note } of results) {
     const icono = status === "PASS" ? "✔" : status === "FAIL" ? "✖" : "⏭";
