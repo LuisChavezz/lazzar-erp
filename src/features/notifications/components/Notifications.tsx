@@ -15,6 +15,7 @@ import { useMarcarTodasLeidas } from "../hooks/useMarcarTodasLeidas";
 import { NotificationItem } from "./NotificationItem";
 import { NotificationsDialog } from "./NotificationsDialog";
 import { NotificationsListStatus } from "./NotificationsListStatus";
+import { refocusOnUnmount } from "../utils/refocusOnUnmount";
 
 /**
  * Cuántas notificaciones muestra el dropdown.
@@ -73,34 +74,46 @@ export const Notifications = () => {
 
   // La consulta solo existe mientras alguna superficie está abierta: montar la
   // campana en el header no dispara ningún fetch.
-  const { notificaciones, listState, error, dataUpdatedAt, refetch } =
-    useNotificaciones(isNotifOpen || isDialogOpen);
+  const {
+    notificaciones,
+    listState,
+    isEmpty,
+    hasUnread,
+    error,
+    dataUpdatedAt,
+    refetch,
+  } = useNotificaciones(isNotifOpen || isDialogOpen);
 
   const marcarLeida = useMarcarNotificacionLeida();
   const marcarTodas = useMarcarTodasLeidas();
 
-  const hasUnread = notificaciones.some((notificacion) => !notificacion.leido);
+  // Destino del foco cuando un botón pulsado desaparece (ver `refocusOnUnmount`).
+  const listRef = useRef<HTMLDivElement>(null);
+
   const visibles = notificaciones.slice(0, DROPDOWN_LIMIT);
   const isReady = listState === "ready";
-  const showList = isReady && visibles.length > 0;
+  const showList = isReady && !isEmpty;
 
   /*
-    Los controles que operan sobre la lista se ocultan SOLO ante un resultado
-    confirmado (`ready`). Mientras carga o si la carga falló siguen montados: en
-    esos estados `notificaciones` es `[]` y ocultarlos convertiría un fallo en
-    un falso "no tienes notificaciones" sin salida.
+    Los controles que operan sobre la lista existen SOLO en `ready`. Mientras
+    carga no hay nada sobre qué actuar, y sin red o con la carga fallida el
+    estado ya tiene su propio mensaje y su "Reintentar"
+    (`NotificationsListStatus`), así que ocultarlos no se confunde con una
+    bandeja vacía. Un refetch en segundo plano sigue en `ready`, por lo que no
+    parpadean. `isEmpty` y `hasUnread` ya vienen del hook acotados a `ready`.
   */
 
   // Con la lista vacía no hay nada que ver en el modal.
-  const showVerTodas = !isReady || notificaciones.length > 0;
+  const showVerTodas = isReady && !isEmpty;
 
   /*
     Sin no leídas la mutación no cambiaría nada. `marcarTodas.isPending` lo
     mantiene montado mientras vuela: el optimista de `onMutate` ya dejó todo en
     leído, así que sin esta condición el botón se desmontaría en el mismo commit
-    del clic y su estado deshabilitado sería inalcanzable.
+    del clic y su estado deshabilitado sería inalcanzable. Al asentarse se
+    desmonta, y `refocusOnUnmount` lleva el foco a la lista.
   */
-  const showMarcarTodas = !isReady || hasUnread || marcarTodas.isPending;
+  const showMarcarTodas = isReady && (hasUnread || marcarTodas.isPending);
 
   // Cierra el dropdown al hacer clic fuera
   useEffect(() => {
@@ -177,6 +190,8 @@ export const Notifications = () => {
         notificaciones={notificaciones}
         nowMs={dataUpdatedAt}
         listState={listState}
+        isEmpty={isEmpty}
+        hasUnread={hasUnread}
         error={error}
         onRetry={() => void refetch()}
         onMarkRead={(notificacion) => marcarLeida.mutate(notificacion.id)}
@@ -236,41 +251,58 @@ export const Notifications = () => {
             </h3>
             {showMarcarTodas && (
               <button
+                ref={refocusOnUnmount(listRef)}
                 type="button"
                 aria-label="Marcar todas las notificaciones como leídas"
                 className="shrink-0 whitespace-nowrap text-xs font-medium cursor-pointer! text-sky-500 hover:underline bg-transparent disabled:cursor-default disabled:text-slate-400"
                 onClick={() => marcarTodas.mutate()}
-                disabled={!hasUnread || marcarTodas.isPending}
+                disabled={marcarTodas.isPending}
               >
                 Marcar todas como leídas
               </button>
             )}
           </div>
 
-          {/* Lista */}
+          {/*
+            Lista. El contenedor es un `group` enfocable fuera del orden de
+            tabulación (destino del foco de `refocusOnUnmount`); el `list` va
+            dentro y solo con `listitem` como hijos, porque los mensajes de
+            estado no son elementos de la lista.
+          */}
           <div
-            className="max-h-96 overflow-y-auto custom-scrollbar"
-            role="list"
+            ref={listRef}
+            tabIndex={-1}
+            className="max-h-96 overflow-y-auto custom-scrollbar outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-sky-500/40"
+            role="group"
             aria-label="Lista de notificaciones recientes"
           >
             <NotificationsListStatus
               listState={listState}
               error={error}
-              isEmpty={visibles.length === 0}
+              isEmpty={isEmpty}
               emptyMessage="No tienes notificaciones."
               onRetry={() => void refetch()}
+              focusFallbackRef={listRef}
             />
 
-            {showList &&
-              visibles.map((notificacion) => (
-                <NotificationItem
-                  key={notificacion.id}
-                  notificacion={notificacion}
-                  nowMs={dataUpdatedAt}
-                  isActionable={resolveNotificationTarget(notificacion) !== null}
-                  onActivate={() => handleActivateFromDropdown(notificacion)}
-                />
-              ))}
+            {showList && (
+              <div role="list">
+                {visibles.map((notificacion) => (
+                  <div key={notificacion.id} role="listitem">
+                    <NotificationItem
+                      notificacion={notificacion}
+                      nowMs={dataUpdatedAt}
+                      isActionable={
+                        resolveNotificationTarget(notificacion) !== null
+                      }
+                      onActivate={() =>
+                        handleActivateFromDropdown(notificacion)
+                      }
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Pie — se oculta entero para no dejar una franja vacía */}
