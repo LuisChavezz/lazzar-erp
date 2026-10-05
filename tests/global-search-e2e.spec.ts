@@ -1,6 +1,7 @@
 import { test, expect, type Locator, type Page } from "@playwright/test";
 import fs from "node:fs";
 import path from "node:path";
+import { getSearchApertura } from "@/src/features/search/constants/globalSearch";
 
 /**
  * E2E manual de la búsqueda global (paleta de comandos, `src/features/search/`).
@@ -26,8 +27,10 @@ import path from "node:path";
  *
  * Tampoco se afirma nada sobre folios, nombres ni ids concretos: solo
  * ESTRUCTURA (existe una fila, existe un encabezado de grupo, la URL casa con
- * `/orders/\d+`). El mismo archivo debe pasar con un admin (todos los grupos) y
- * con un usuario de un solo permiso (un grupo).
+ * `/orders/\d+`). La única comparación de datos es de la fila consigo misma: el
+ * folio de una orden de producción elegida debe aparecer en su página de
+ * detalle. El mismo archivo debe pasar con un admin (todos los grupos) y con un
+ * usuario de un solo permiso (un grupo).
  *
  * Variables de entorno:
  *   BASE_URL      URL del frontend (default `http://localhost:3000`)
@@ -40,13 +43,19 @@ import path from "node:path";
  *
  *   E2E_EMAIL / E2E_PASSWORD  Opcionales. Con las dos, el Paso 0 entra solo
  *                 (y elige la primera empresa/sucursal) en vez de pausar. Solo
- *                 cuentas de prueba sin MFA; pásalas por entorno, nunca en el repo.
+ *                 cuentas de prueba sin MFA ACTIVADO (el aviso opcional de
+ *                 activarlo se descarta solo); pásalas por entorno, nunca en el
+ *                 repo.
  *
  * Ejecución (solo este archivo; `npm run e2e` a secas corre TODOS los specs):
  *   npm run e2e -- tests/global-search-e2e.spec.ts
  *   SEARCH_QUERY=lopez npm run e2e -- tests/global-search-e2e.spec.ts
  *   SEARCH_QUERY=OB-000 npm run e2e -- tests/global-search-e2e.spec.ts   (órdenes de bordado)
+ *   SEARCH_QUERY=OR-000 npm run e2e -- tests/global-search-e2e.spec.ts   (órdenes de reflejante)
+ *   SEARCH_QUERY=CM-000 npm run e2e -- tests/global-search-e2e.spec.ts   (órdenes de corte de manga)
  *   SEARCH_QUERY=FAC-   npm run e2e -- tests/global-search-e2e.spec.ts   (facturas)
+ * Los folios de órdenes y facturas solo casan con su propio término: con el
+ * default "com" esos grupos no aparecen y sus aperturas no se ejercitan.
  */
 
 const SHOTS = "tests/screenshots";
@@ -57,7 +66,7 @@ const QUERY = process.env.SEARCH_QUERY ?? "com";
 /**
  * Credenciales opcionales para el login automático. Sin ellas el Paso 0 se
  * detiene en `page.pause()` para el login manual de siempre. Solo cuentas de
- * prueba sin MFA, y siempre por entorno: nunca escritas en el repo.
+ * prueba sin MFA activado, y siempre por entorno: nunca escritas en el repo.
  */
 const E2E_EMAIL = process.env.E2E_EMAIL;
 const E2E_PASSWORD = process.env.E2E_PASSWORD;
@@ -322,21 +331,34 @@ test("Búsqueda global — paleta de comandos", async ({ page }) => {
       await page.getByPlaceholder("Correo electrónico").fill(E2E_EMAIL);
       await page.getByPlaceholder("Contraseña").fill(E2E_PASSWORD);
       await page.locator('button[type="submit"]').click();
-      // Tras validar las credenciales, algunas cuentas (no siempre) reciben el
-      // aviso OPCIONAL de activar MFA en la misma página de login; se descarta.
+      // Tras enviar hay tres desenlaces, y se espera a CUALQUIERA en un solo
+      // plazo: salir del login; el aviso OPCIONAL de activar MFA, que algunas
+      // cuentas reciben (no siempre) en la misma página y se descarta; o el
+      // rechazo, que el login comunica con un toast (`role="status"`). Así unas
+      // credenciales malas fallan en ese plazo con el mensaje real, en vez de
+      // agotar dos esperas seguidas.
       const sinMfa = page.getByRole("button", { name: "Continuar sin MFA" });
+      const toastLogin = page.getByRole("status").filter({ hasText: /\S/ });
       const fueraDeLogin = (url: URL) => !url.pathname.startsWith("/auth/login");
-      // `catch` en las dos: la que pierde la carrera seguiría pendiente y su
-      // rechazo posterior no debe quedar sin manejar. El `waitForURL` de abajo
-      // es el que decide si el login terminó.
-      await Promise.race([
-        page.waitForURL(fueraDeLogin, { timeout: 60_000 }).catch(() => {}),
-        sinMfa
-          .waitFor({ timeout: 60_000 })
-          .then(() => sinMfa.click())
-          .catch(() => {}),
-      ]);
-      await page.waitForURL(fueraDeLogin, { timeout: 60_000 });
+      let desenlace = "";
+      await expect
+        .poll(
+          async () => {
+            if (fueraDeLogin(new URL(page.url()))) desenlace = "dentro";
+            else if (await sinMfa.isVisible()) desenlace = "mfa";
+            else if ((await toastLogin.count()) > 0) desenlace = "rechazo";
+            return desenlace;
+          },
+          { message: "el login no terminó, no ofreció MFA ni mostró error", timeout: 60_000 },
+        )
+        .not.toBe("");
+      if (desenlace === "rechazo") {
+        throw new Error(`login rechazado: ${(await toastLogin.first().innerText()).trim()}`);
+      }
+      if (desenlace === "mfa") {
+        await sinMfa.click();
+        await page.waitForURL(fueraDeLogin, { timeout: 60_000 });
+      }
       // `/select-branch`: primero la empresa y luego la sucursal. Las dos son
       // tarjetas `<button>` con un `<h3>`. La rejilla que no toca NO sale del
       // DOM: se queda con `opacity-0 pointer-events-none` (y para Playwright
@@ -616,27 +638,19 @@ test("Búsqueda global — paleta de comandos", async ({ page }) => {
   // ── Paso 6: aperturas por tipo ────────────────────────────────────────────
   if (tiposVisibles.length === 0) {
     skipStep(
-      "Paso 6 · Aperturas (pedido / cliente / cotización / orden de bordado / factura)",
+      "Paso 6 · Aperturas (pedido / cliente / cotización / órdenes de bordado, reflejante y corte de manga / factura)",
       `sin grupos con resultados para "${QUERY}" — usa otro SEARCH_QUERY o una cuenta con datos`,
     );
   } else {
     for (const tipo of tiposVisibles) {
       const nombrePaso = `Paso 6 · Apertura de "${tipo}"`;
 
-      // Solo se sabe abrir lo que el frontend mapea hoy. Un tipo nuevo del
-      // backend (p. ej. `producto`) NO se abre: se comprueba que su fila se
-      // pinta como no accionable y que elegirla no cierra la paleta ni navega.
-      if (
-        ![
-          "pedido",
-          "cliente",
-          "cotizacion",
-          "orden_bordado",
-          "orden_reflejante",
-          "orden_corte_manga",
-          "factura",
-        ].includes(tipo)
-      ) {
+      // Solo se sabe abrir lo que el frontend mapea hoy, y se le pregunta a la
+      // MISMA función que usa la paleta (`getSearchApertura`): una lista copiada
+      // aquí se desincronizaría al mapear un tipo nuevo. Un tipo sin apertura
+      // (p. ej. `producto`) NO se abre: se comprueba que su fila se pinta como
+      // no accionable y que elegirla no cierra la paleta ni navega.
+      if (getSearchApertura(tipo) === null) {
         await runStep(`${nombrePaso} (no accionable)`, async () => {
           await empezarEnHome();
           await abrirPaleta();
@@ -675,6 +689,15 @@ test("Búsqueda global — paleta de comandos", async ({ page }) => {
         }
         const rotuloFila = (await fila.innerText()).split("\n")[0].trim();
         console.log(`  Fila elegida: "${rotuloFila}"`);
+        // `codigo` de la fila (el folio, en monoespaciada). Se lee ANTES de
+        // elegirla: la paleta se desmonta al navegar.
+        const codigoFila = (
+          await fila
+            .locator(".font-mono")
+            .first()
+            .innerText()
+            .catch(() => "")
+        ).trim();
 
         await fila.click();
 
@@ -708,7 +731,11 @@ test("Búsqueda global — paleta de comandos", async ({ page }) => {
           return;
         }
 
-        const ordenProduccion = ORDENES_PRODUCCION[tipo];
+        // `Object.hasOwn`, igual que `getSearchApertura`: el `tipo` sale del DOM
+        // y un `constructor` resolvería a una función heredada (truthy).
+        const ordenProduccion = Object.hasOwn(ORDENES_PRODUCCION, tipo)
+          ? ORDENES_PRODUCCION[tipo]
+          : undefined;
         if (ordenProduccion) {
           // El backend solo manda estos grupos con el código de sección que
           // exige la ruta (`R-PRODUCCION-OB/OR/CM`): un rebote al Home sería un
@@ -717,6 +744,15 @@ test("Búsqueda global — paleta de comandos", async ({ page }) => {
           await expect(paleta).toBeHidden({ timeout: 15_000 });
           await expect(page).toHaveURL(new RegExp(`${listado}/\\d+`), { timeout: 20_000 });
           console.log(`  → ${page.url()}`);
+          // La URL y el "Volver" también existen en los estados de carga y de
+          // ERROR de la página: sin esto, un detalle roto (404/403) pasaría. El
+          // folio de la fila solo se pinta con el detalle cargado.
+          expect(codigoFila, "la fila de una orden debe traer su folio").not.toBe("");
+          await expect(
+            page.getByText(codigoFila, { exact: true }).first(),
+            `el detalle debe mostrar el folio ${codigoFila}`,
+          ).toBeVisible({ timeout: 20_000 });
+          console.log(`  Folio en el detalle: ${codigoFila}`);
           await shot(page, `search-07b-apertura-${tipo}.png`);
 
           // "Volver" fijo al listado del módulo (mismo código de sección).
