@@ -54,3 +54,20 @@ export const ACTIVO_INACTIVO_CFG: Record<"activo" | "inactivo", StatusBadgeConfi
     dot: "bg-slate-400",
   },
 };
+
+/**
+ * Config compartida para un booleano rotulado "Sí"/"No" (Sí esmeralda, No
+ * zinc). Las claves son el booleano en string: `status={String(flag)}`.
+ */
+export const SI_NO_CFG: Record<"true" | "false", StatusBadgeConfigEntry> = {
+  true: {
+    label: "Sí",
+    cls: "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400",
+    dot: "bg-emerald-500",
+  },
+  false: {
+    label: "No",
+    cls: "bg-zinc-100 text-zinc-500 dark:bg-zinc-500/10 dark:text-zinc-400",
+    dot: "bg-zinc-400",
+  },
+};

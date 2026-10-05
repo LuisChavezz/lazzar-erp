@@ -6,9 +6,11 @@ import { ArrowLeftIcon, RouteIcon } from "@/src/components/Icons";
 import { Button } from "@/src/components/Button";
 import { Loader } from "@/src/components/Loader";
 import { ErrorState } from "@/src/components/ErrorState";
-import { StatusBadge } from "@/src/components/StatusBadge";
+import { SI_NO_CFG, StatusBadge } from "@/src/components/StatusBadge";
 import {
   EmptyLines,
+  HeaderStat,
+  HeaderStatRow,
   InfoField,
   InfoGrid,
   Section,
@@ -19,7 +21,7 @@ import {
   formatExactQuantityValue,
   formatQuantityValue,
 } from "@/src/utils/formatCurrency";
-import { formatShortDate, formatShortTime } from "@/src/utils/formatDate";
+import { formatShortDate, formatShortDateTime } from "@/src/utils/formatDate";
 import {
   PRODUCTION_ORDER_PRIORITY_CONFIG,
   productionOrderPriorityFallback,
@@ -39,6 +41,20 @@ import { ProductionOrderCriticalPathDialog } from "@/src/features/production-ord
 const BACK = {
   href: "/manufacturing/production-orders",
   label: "Volver a Órdenes de Producción",
+};
+
+// ── Cabecera ──────────────────────────────────────────────────────────────────
+
+/**
+ * Fecha corta de un timestamp, con la fecha + hora completas en el `title`
+ * nativo (`formatShortDateTime`, sin `timeZone`: la misma combinación que la
+ * cabecera pintaba antes, así que la hora del tooltip es la que se veía). Vacío
+ * o no parseable: un solo "—" y sin `title`.
+ */
+const DateWithTimeTitle = ({ value }: { value: string | null }) => {
+  const date = formatShortDate(value);
+  if (date === "—") return <span>—</span>;
+  return <span title={formatShortDateTime(value)}>{date}</span>;
 };
 
 // ── Productos ─────────────────────────────────────────────────────────────────
@@ -309,43 +325,33 @@ export function ProductionOrderPageContent({
       <div className="sticky top-0 z-10 py-2 w-fit">{BackLink}</div>
 
       {/* ── 1. Cabecera ─────────────────────────────────────────────────── */}
-      <section className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 p-5 md:p-6">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="space-y-2 min-w-0">
-            <div className="flex flex-wrap items-center gap-2">
-              <h1 className="text-2xl font-bold text-slate-900 dark:text-white font-mono">
-                {data.folio_op || `Orden #${data.op_id}`}
-              </h1>
-            </div>
-            <Button variant="secondary" onClick={() => setIsCriticalPathOpen(true)}>
-              <RouteIcon className="w-4 h-4" aria-hidden="true" />
-              Ruta crítica
-            </Button>
-          </div>
-          <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-xs shrink-0">
-            <InfoField label="Alta">
-              <span className="tabular-nums">
-                {formatShortDate(data.fecha_inicio)} ·{" "}
-                {formatShortTime(data.fecha_inicio)}
-              </span>
-            </InfoField>
-            <InfoField label="Fin">
-              <span className="tabular-nums">
-                {formatShortDate(data.fecha_fin)} · {formatShortTime(data.fecha_fin)}
-              </span>
-            </InfoField>
-            <InfoField label="Cierre solicitado" className="col-span-2">
-              <span
-                className={`inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold ${
-                  data.cerrar_orden
-                    ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400"
-                    : "bg-zinc-100 text-zinc-500 dark:bg-zinc-500/10 dark:text-zinc-400"
-                }`}
-              >
-                {data.cerrar_orden ? "Sí" : "No"}
-              </span>
-            </InfoField>
-          </div>
+      {/* Misma fila compacta que la cabecera de OB (`HeaderStatRow`). "Ruta
+          crítica" va DESPUÉS de la fila y no dentro: el `overflow-x-clip` de
+          `HeaderStatRow` solo recorta a sus propios hijos, así que el botón
+          nunca puede quedar oculto; en anchos estrechos el `flex-wrap` de
+          fuera lo baja a su propia línea. */}
+      <section className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 px-5 py-3.5 md:px-6">
+        <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
+          <h1 className="text-[22px] font-medium text-slate-900 dark:text-white font-mono mr-auto min-w-0 truncate">
+            {data.folio_op || `Orden #${data.op_id}`}
+          </h1>
+
+          <HeaderStatRow>
+            <HeaderStat label="Alta">
+              <DateWithTimeTitle value={data.fecha_inicio} />
+            </HeaderStat>
+            <HeaderStat label="Fin">
+              <DateWithTimeTitle value={data.fecha_fin} />
+            </HeaderStat>
+            <HeaderStat label="Cierre solicitado">
+              <StatusBadge status={String(data.cerrar_orden)} config={SI_NO_CFG} />
+            </HeaderStat>
+          </HeaderStatRow>
+
+          <Button variant="secondary" onClick={() => setIsCriticalPathOpen(true)}>
+            <RouteIcon className="w-4 h-4" aria-hidden="true" />
+            Ruta crítica
+          </Button>
         </div>
       </section>
 
@@ -388,15 +394,7 @@ export function ProductionOrderPageContent({
                 columna propia: sin él, una orden dada de baja se leería aquí
                 idéntica a una vigente. */}
             <InfoField label="Activo">
-              <span
-                className={`inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold ${
-                  data.activo
-                    ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400"
-                    : "bg-zinc-100 text-zinc-500 dark:bg-zinc-500/10 dark:text-zinc-400"
-                }`}
-              >
-                {data.activo ? "Sí" : "No"}
-              </span>
+              <StatusBadge status={String(data.activo)} config={SI_NO_CFG} />
             </InfoField>
             <InfoField label="Observaciones" className="col-span-2 md:col-span-3">
               {textOrDash(data.observaciones)}
