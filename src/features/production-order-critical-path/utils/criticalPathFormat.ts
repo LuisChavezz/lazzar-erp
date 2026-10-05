@@ -1,4 +1,4 @@
-import { formatShortDate, formatShortTime } from "@/src/utils/formatDate";
+import { formatShortDateTime } from "@/src/utils/formatDate";
 
 /**
  * Sello del servidor (datetime con offset, p. ej. `-06:00`) como
@@ -6,4 +6,4 @@ import { formatShortDate, formatShortTime } from "@/src/utils/formatDate";
  * es un instante real, no una fecha-calendario.
  */
 export const formatCriticalPathDateTime = (value: string | null | undefined): string =>
-  value ? `${formatShortDate(value)} · ${formatShortTime(value)}` : "—";
+  formatShortDateTime(value);

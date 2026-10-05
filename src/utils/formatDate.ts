@@ -114,3 +114,16 @@ export const formatShortTime = (
   if (Number.isNaN(date.getTime())) return "—";
   return date.toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" });
 };
+
+/**
+ * Fecha + hora de un timestamp real como "14 jul 2026 · 10:32", combinando
+ * `formatShortDate` y `formatShortTime` (zona horaria del usuario, sin
+ * `timeZone`). Un solo "—" —y no "— · —"— para valores vacíos o que no parseen.
+ */
+export const formatShortDateTime = (
+  value: string | Date | null | undefined,
+): string => {
+  const date = formatShortDate(value);
+  if (date === "—") return "—";
+  return `${date} · ${formatShortTime(value)}`;
+};
