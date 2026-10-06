@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, type RefObject } from "react";
 import { Quote } from "../interfaces/quote.interface";
 import { formatCurrency } from "@/src/utils/formatCurrency";
 import { type DataTableHandle, DataTableVisibleColumn } from "@/src/components/DataTable";
+import { downloadBlob } from "@/src/utils/downloadBlob";
 
 const escapeCsv = (value: string | number | boolean | null | undefined) => {
   if (value === null || value === undefined) return "";
@@ -98,15 +99,8 @@ export const useQuoteCsvExport = (
     const blob = new Blob([`\uFEFF${csvContent}`], {
       type: "text/csv;charset=utf-8;",
     });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
     const today = new Date().toISOString().split("T")[0];
-    link.href = url;
-    link.download = `quotes-${today}.csv`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+    downloadBlob(blob, `quotes-${today}.csv`);
   }, [tableRef]);
 
   useEffect(() => {

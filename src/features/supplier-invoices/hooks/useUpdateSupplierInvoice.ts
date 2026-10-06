@@ -12,6 +12,13 @@ import { invalidateSupplierInvoiceQueries } from "./invalidateSupplierInvoiceQue
 const FALLBACK = "Error al actualizar la factura de proveedor";
 
 /**
+ * Llave de la mutación. La usa `SupplierInvoiceList` para saber si hay una
+ * EDICIÓN en vuelo de una factura sin confundirla con otras mutaciones cuyas
+ * variables también traen `id` (p. ej. la descarga del documento fusionado).
+ */
+export const updateSupplierInvoiceMutationKey = ["update-supplier-invoice"] as const;
+
+/**
  * Mutación de actualización PARCIAL (`PATCH`) de una factura de proveedor.
  *
  * Genérica a propósito: recibe `{ id, payload }` con cualquier
@@ -31,6 +38,7 @@ export const useUpdateSupplierInvoice = (
   const queryClient = useQueryClient();
 
   return useMutation({
+    mutationKey: updateSupplierInvoiceMutationKey,
     mutationFn: updateSupplierInvoice,
     // Devuelve la promesa del refetch: `mutateAsync` no resuelve hasta que el
     // listado ya muestra el estatus nuevo, así que el diálogo de confirmación de

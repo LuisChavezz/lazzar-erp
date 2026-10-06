@@ -14,6 +14,7 @@
  */
 import type { Invoice } from "../interfaces/invoice.interface";
 import { generateInvoicePdfBlob } from "./pdf/invoicePdfBlob";
+import { downloadBlob } from "@/src/utils/downloadBlob";
 
 /**
  * Descarga el PDF de la factura indicada directamente desde el cliente.
@@ -22,12 +23,7 @@ import { generateInvoicePdfBlob } from "./pdf/invoicePdfBlob";
 export const downloadInvoicePdf = async (invoice: Invoice): Promise<void> => {
   const blob = await generateInvoicePdfBlob(invoice);
 
-  const objectUrl = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = objectUrl;
   // El folio es más legible que el id para el nombre del archivo; si por algún
   // motivo viene vacío, se cae al id para no generar "factura-.pdf".
-  link.download = `factura-${invoice.folio || invoice.id}.pdf`;
-  link.click();
-  URL.revokeObjectURL(objectUrl);
+  downloadBlob(blob, `factura-${invoice.folio || invoice.id}.pdf`);
 };

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, type RefObject } from "react";
 import type { DataTableHandle, DataTableVisibleColumn } from "@/src/components/DataTable";
 import type { PurchaseOrderReceipt } from "../interfaces/purchase-order-receipt.interface";
 import { getPurchaseOrderReceiptColumnText } from "../utils/purchaseOrderReceiptExport";
+import { downloadBlob } from "@/src/utils/downloadBlob";
 
 /** Ancho relativo de cada columna en el PDF — Folio/Proveedor llevan texto más largo. */
 const getColumnWeight = (column: DataTableVisibleColumn<PurchaseOrderReceipt>): number => {
@@ -235,15 +236,8 @@ export const usePurchaseOrderReceiptPdfExport = (
       columnsRef.current,
     );
     const blob = await renderer.pdf(pdfDocument).toBlob();
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
     const today = new Date().toISOString().split("T")[0];
-    link.href = url;
-    link.download = `recepciones-${today}.pdf`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+    downloadBlob(blob, `recepciones-${today}.pdf`);
   }, [tableRef]);
 
   useEffect(() => {

@@ -8,6 +8,7 @@
  */
 import { getQuoteById } from "./actions";
 import { generateQuotePdfBlob } from "./pdf/quotePdfBlob";
+import { downloadBlob } from "@/src/utils/downloadBlob";
 
 /**
  * Descarga el PDF de la cotizacion indicada directamente desde el cliente.
@@ -17,10 +18,5 @@ export const downloadQuotePdf = async (quoteId: number): Promise<void> => {
   const quote = await getQuoteById(quoteId);
   const blob = await generateQuotePdfBlob(quote);
 
-  const objectUrl = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = objectUrl;
-  link.download = `cotizacion-${quoteId}.pdf`;
-  link.click();
-  URL.revokeObjectURL(objectUrl);
+  downloadBlob(blob, `cotizacion-${quoteId}.pdf`);
 };

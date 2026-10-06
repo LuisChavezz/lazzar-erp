@@ -103,8 +103,33 @@ export interface FacturaProveedor {
    */
   created_at: string | null;
   updated_at: string | null;
+  /**
+   * Solo lectura (EC-397). `true` si la factura tiene adjunto el PDF del
+   * proveedor; es la condición del documento fusionado OC + RC + factura
+   * (`pdf-fusionado/` responde 400 sin él). Se escribe solo por `adjuntar-pdf/`.
+   */
+  tiene_pdf_adjunto: boolean;
+  /**
+   * Nombre ORIGINAL del PDF adjunto, o `null` si no hay. Lo fija `adjuntar-pdf/`.
+   * OJO: el serializer del backend NO lo marca de solo lectura (usa
+   * `exclude = ["pdf_adjunto"]`), así que POST/PATCH lo aceptarían; el frontend
+   * nunca lo envía (no está en `CreateFacturaProveedorPayload` ni en
+   * `UpdateFacturaProveedorPayload`), para no desalinearlo del archivo real.
+   */
+  pdf_adjunto_nombre: string | null;
   /** Renglones anidados. Puede venir vacío. */
   factura_proveedor_detalles: FacturaProveedorDetalle[];
+}
+
+/**
+ * Respuesta 200 de `POST /finanzas/facturas-proveedor/{id}/adjuntar-pdf/`.
+ *
+ * Solo trae los dos campos del adjunto —NO la factura—, así que quien invalida
+ * cachés toma `estatus` y `oc` de la fila que ya tenía.
+ */
+export interface AdjuntarPdfFacturaProveedorResponse {
+  tiene_pdf_adjunto: boolean;
+  pdf_adjunto_nombre: string | null;
 }
 
 /**

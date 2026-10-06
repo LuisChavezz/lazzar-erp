@@ -4,6 +4,7 @@ import { es } from "date-fns/locale";
 import { Quote } from "../interfaces/quote.interface";
 import { formatCurrency } from "@/src/utils/formatCurrency";
 import { type DataTableHandle, DataTableVisibleColumn } from "@/src/components/DataTable";
+import { downloadBlob } from "@/src/utils/downloadBlob";
 
 const getValueByPath = (value: unknown, path: string) => {
   return path.split(".").reduce<unknown>((acc, key) => {
@@ -372,15 +373,8 @@ export const useQuotePdfExport = (
       exportColumns
     );
     const blob = await renderer.pdf(pdfDocument).toBlob();
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
     const today = new Date().toISOString().split("T")[0];
-    link.href = url;
-    link.download = `quotes-${today}.pdf`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+    downloadBlob(blob, `quotes-${today}.pdf`);
   }, [tableRef]);
 
   useEffect(() => {
