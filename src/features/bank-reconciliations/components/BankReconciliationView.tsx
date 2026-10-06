@@ -1,16 +1,17 @@
 "use client";
 
 import { useState } from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { DataTable } from "@/src/components/DataTable";
 import { Button } from "@/src/components/Button";
 import { MainDialog } from "@/src/components/MainDialog";
 import { DialogHeader } from "@/src/components/DialogHeader";
 import { ConfirmDialog } from "@/src/components/ConfirmDialog";
-import { FormInput } from "@/src/components/FormInput";
+import { UrlDateInput } from "@/src/components/UrlDateInput";
 import { FormSelect } from "@/src/components/FormSelect";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { isInitialLoadError } from "@/src/utils/isInitialLoadError";
+import { isValidDateKey } from "@/src/utils/formatDate";
 import { useBankAccounts } from "@/src/features/bank-accounts/hooks/useBankAccounts";
 import { formatSaldo } from "@/src/features/bank-accounts/utils/bankAccountMoney";
 import { CONCILIACION_ESTATUS_FILTER } from "../constants/conciliacionEstatus";
@@ -52,7 +53,6 @@ import PrepararConciliacionForm from "./PrepararConciliacionForm";
  * al botón de atrás.
  */
 export function BankReconciliationView() {
-  const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
@@ -74,8 +74,10 @@ export function BankReconciliationView() {
 
   // Solo se consulta con cuenta Y periodo completos: sin ellos la petición
   // traería todas las conciliaciones de la empresa, que no es lo que esta
-  // pantalla quiere mostrar.
-  const filtrosListos = cuentaId !== null && desde !== "" && hasta !== "" && desde <= hasta;
+  // pantalla quiere mostrar. Las fechas se validan como días REALES: un enlace
+  // con `desde=2026-02-30` cumple la forma pero el backend responde 500.
+  const filtrosListos =
+    cuentaId !== null && isValidDateKey(desde) && isValidDateKey(hasta) && desde <= hasta;
   const params = filtrosListos
     ? { cuenta_bancaria: cuentaId, fecha_inicio: desde, fecha_fin: hasta }
     : undefined;
@@ -97,15 +99,19 @@ export function BankReconciliationView() {
   const isSwitchingFilters = isFetching && isPlaceholderData;
 
   // Cambiar un filtro es ajustar la vista, no navegar: `replace` para no
-  // ensuciar el historial.
+  // ensuciar el historial. Se parte de la query ACTUAL del navegador, no de la
+  // de este render, y se escribe con `history.replaceState` (síncrono; Next
+  // sincroniza `useSearchParams`) en vez de `router.replace` (asíncrono): dos
+  // fechas publicadas casi a la vez no deben pisarse. La página no lee la query
+  // en el servidor.
   const setFilter = (patch: Record<string, string | null>) => {
-    const next = new URLSearchParams(searchParams.toString());
+    const next = new URLSearchParams(window.location.search);
     Object.entries(patch).forEach(([key, value]) => {
       if (value === null || value === "") next.delete(key);
       else next.set(key, value);
     });
     const qs = next.toString();
-    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+    window.history.replaceState(null, "", qs ? `${pathname}?${qs}` : pathname);
   };
 
   // ── Diálogos: su estado vive AQUÍ, nunca en la celda ─────────────────────
@@ -137,9 +143,9 @@ export function BankReconciliationView() {
   // ── Detalle "fijado" ─────────────────────────────────────────────────────
   // Al preparar —o al abrir la conciliación cerrada que ofrece la tarjeta de
   // conflicto— la vista cambia de filtro Y abre el detalle en el mismo gesto.
-  // El filtro vive en la URL y `router.replace` se aplica de forma ASÍNCRONA:
-  // durante ese intervalo el listado sigue siendo el del filtro ANTERIOR, ya
-  // asentado, y ahí la fila buscada no está. Resolver el detalle solo contra el
+  // El filtro vive en la URL y el listado del filtro nuevo llega de forma
+  // ASÍNCRONA: durante ese intervalo el listado sigue siendo el del filtro
+  // ANTERIOR, ya asentado, y ahí la fila buscada no está. Resolver el detalle solo contra el
   // listado hacía que la limpieza del id colgado lo cerrara antes de abrirse.
   //
   // Por eso esos dos caminos FIJAN el objeto que ya tienen en mano, junto con el
@@ -245,19 +251,19 @@ export function BankReconciliationView() {
             ))}
           </FormSelect>
         </div>
-        <FormInput
+        {/* Borrador local (ver `UrlDateInput`): ligado directo a la URL, el año
+            no se podía teclear. Solo publica fechas completas o el vacío. */}
+        <UrlDateInput
           label="Desde"
-          type="date"
           name="desde"
           value={desde}
-          onChange={(event) => setFilter({ desde: event.target.value })}
+          onCommit={(value) => setFilter({ desde: value })}
         />
-        <FormInput
+        <UrlDateInput
           label="Hasta"
-          type="date"
           name="hasta"
           value={hasta}
-          onChange={(event) => setFilter({ hasta: event.target.value })}
+          onCommit={(value) => setFilter({ hasta: value })}
         />
       </section>
 

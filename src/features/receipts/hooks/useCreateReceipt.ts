@@ -13,6 +13,9 @@ export const useCreateReceipt = () => {
       queryClient.invalidateQueries({ queryKey: ["receipts"] });
       queryClient.invalidateQueries({ queryKey: ["purchase-order-receipts"] });
       queryClient.invalidateQueries({ queryKey: ["receipt-onboarding-data"] });
+      // La recepción cambia el estatus de la OC (parcial/recibida): listado,
+      // detalle e historial por proveedor cuelgan de este prefijo.
+      queryClient.invalidateQueries({ queryKey: ["purchase-orders"] });
       toast.success("Recepción registrada correctamente");
     },
     onError: (error) => {

@@ -99,7 +99,7 @@ export function useSupplierForm({ onSuccess, supplierToEdit, isRfcVerified = fal
 
   // ── Contexto de empresa activa ──────────────────────────────────────────
   // Sigue el mismo patrón que useProductForm y useCustomerForm.
-  // selectedCompany.id se usa como "empresa" en el payload de creación.
+  // selectedCompany.id se usa como "empresa" SOLO en el payload de creación.
   const selectedCompany = useWorkspaceStore(
     (state) => state.selectedCompany
   );
@@ -144,17 +144,21 @@ export function useSupplierForm({ onSuccess, supplierToEdit, isRfcVerified = fal
       contacto_principal: "",
       dias_credito: 0,
       limite_credito: "0.00",
-      sat_regimen_fiscal: 1,
-      sat_forma_pago: 1,
-      sat_metodo_pago: 1,
-      moneda: 1,
+      // `0` = "Seleccionar...": el alta obliga a elegir los catálogos, igual
+      // que la edición cuando falta uno (ver el esquema).
+      sat_regimen_fiscal: 0,
+      sat_forma_pago: 0,
+      sat_metodo_pago: 0,
+      moneda: 0,
     }),
     []
   );
 
   // ── Valores de edición (modo edición) ───────────────────────────────────
-  // Se derivan del proveedor recibido por props y se normalizan los
-  // catálogos SAT para evitar seleccionar IDs inexistentes.
+  // Se derivan del proveedor recibido por props. Un catálogo (SAT o moneda)
+  // ausente o que no existe en su lista queda en `0` —el "Seleccionar..." del
+  // select— y el esquema lo exige antes de enviar. Antes caía al id `1`, que
+  // guardaba en silencio un régimen/forma/método/moneda que nadie eligió.
   const editValues = useMemo<SupplierFormValues>(() => {
     if (!supplierToEdit) {
       return emptyValues;
@@ -183,16 +187,10 @@ export function useSupplierForm({ onSuccess, supplierToEdit, isRfcVerified = fal
       contacto_principal: supplierToEdit.contacto_principal,
       dias_credito: supplierToEdit.dias_credito,
       limite_credito: supplierToEdit.limite_credito,
-      sat_regimen_fiscal: hasRegimen
-        ? supplierToEdit.sat_regimen_fiscal
-        : 1,
-      sat_forma_pago: hasFormaPago
-        ? supplierToEdit.sat_forma_pago
-        : 1,
-      sat_metodo_pago: hasMetodoPago
-        ? supplierToEdit.sat_metodo_pago
-        : 1,
-      moneda: hasCurrency ? supplierToEdit.moneda : 1,
+      sat_regimen_fiscal: hasRegimen ? supplierToEdit.sat_regimen_fiscal : 0,
+      sat_forma_pago: hasFormaPago ? supplierToEdit.sat_forma_pago : 0,
+      sat_metodo_pago: hasMetodoPago ? supplierToEdit.sat_metodo_pago : 0,
+      moneda: hasCurrency ? supplierToEdit.moneda : 0,
     };
   }, [supplierToEdit, regimenesFiscales, formasPago, metodosPago, availableCurrencies, emptyValues]);
 
@@ -318,8 +316,9 @@ export function useSupplierForm({ onSuccess, supplierToEdit, isRfcVerified = fal
         return;
       }
 
-      // 3. Construye el payload base con tipado explícito.
-      //    "empresa" se obtiene del contexto en lugar del formulario.
+      // 3. Construye el payload base con tipado explícito. Sin "empresa": la
+      //    edición la omite (el backend conserva la guardada) y solo el alta
+      //    la añade, desde el workspace activo y no desde el formulario.
       const payload = {
         codigo: value.codigo,
         nombre: value.nombre,
@@ -334,7 +333,6 @@ export function useSupplierForm({ onSuccess, supplierToEdit, isRfcVerified = fal
         sat_forma_pago: value.sat_forma_pago,
         sat_metodo_pago: value.sat_metodo_pago,
         moneda: value.moneda,
-        empresa: selectedCompany.id!,
       };
 
       // 4. Decide entre actualización o creación según el modo.
@@ -355,7 +353,10 @@ export function useSupplierForm({ onSuccess, supplierToEdit, isRfcVerified = fal
       }
 
       // 7. Ejecuta la mutación de creación.
-      const createdSupplier = await createSupplier(payload);
+      const createdSupplier = await createSupplier({
+        ...payload,
+        empresa: selectedCompany.id!,
+      });
 
       // 8. Si la mutación falló, se detiene aquí.
       if (!createdSupplier) {

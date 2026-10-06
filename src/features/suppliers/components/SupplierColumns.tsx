@@ -1,30 +1,54 @@
-import { useState } from "react";
+import Link from "next/link";
+import { useIsMutating } from "@tanstack/react-query";
 import { ColumnDef, createColumnHelper } from "@tanstack/react-table";
-import { EditIcon, DeleteIcon } from "@/src/components/Icons";
+import { EditIcon, DeleteIcon, ViewIcon } from "@/src/components/Icons";
 import { Supplier } from "../interfaces/supplier.interface";
 import { ActionMenu, ActionMenuItem } from "@/src/components/ActionMenu";
-import { ConfirmDialog } from "@/src/components/ConfirmDialog";
-import { useDeleteSupplier } from "../hooks/useDeleteSupplier";
+import { supplierDetailHref } from "../utils/supplierPurchaseOrderHistoryFilters";
+import { DELETE_SUPPLIER_MUTATION_KEY } from "../hooks/useDeleteSupplier";
 
 const columnHelper = createColumnHelper<Supplier>();
+
+/**
+ * Qué puede hacer el usuario en ESTE punto de montaje. Lo decide `SupplierList`
+ * según su `permissionContext`: `canViewDetail` solo es `true` en Compras
+ * (Configuración es solo de edición y no lleva entradas al detalle).
+ */
+export interface SupplierColumnPermissions {
+  canEdit: boolean;
+  canDelete: boolean;
+  canViewDetail: boolean;
+}
 
 // ─── Actions Cell ─────────────────────────────────────────────────────────────
 
 const ActionsCell = ({
   supplier,
   onEdit,
+  onViewDetail,
+  onDeactivate,
   canEdit,
   canDelete,
+  canViewDetail,
 }: {
   supplier: Supplier;
   onEdit: (supplier: Supplier) => void;
-  canEdit: boolean;
-  canDelete: boolean;
-}) => {
-  const { mutate: deleteSupplier, isPending } = useDeleteSupplier();
-  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
-
+  onViewDetail: (supplier: Supplier) => void;
+  onDeactivate: (supplier: Supplier) => void;
+} & SupplierColumnPermissions) => {
+  // Global, no por fila: mientras CUALQUIER baja esté en vuelo no se permite
+  // otra (ver `DELETE_SUPPLIER_MUTATION_KEY`). Se lee aquí y no se pasa por la
+  // factoría de columnas, que remontaría todas las celdas al cambiar.
+  const isDeactivating = useIsMutating({ mutationKey: DELETE_SUPPLIER_MUTATION_KEY }) > 0;
   const menuItems: ActionMenuItem[] = [];
+
+  if (canViewDetail) {
+    menuItems.push({
+      label: "Ver detalle",
+      icon: ViewIcon,
+      onSelect: () => onViewDetail(supplier),
+    });
+  }
 
   if (canEdit) {
     menuItems.push({
@@ -34,32 +58,20 @@ const ActionsCell = ({
     });
   }
 
+  // Baja LÓGICA: el texto habla de "desactivar" y no de "eliminar". El diálogo
+  // de confirmación vive en `SupplierList`, no en la celda (ver allí).
   if (canDelete) {
     menuItems.push({
-      label: "Cancelar",
+      label: "Desactivar",
       icon: DeleteIcon,
-      onSelect: () => setIsDeleteOpen(true),
-      disabled: isPending,
+      onSelect: () => onDeactivate(supplier),
+      disabled: isDeactivating,
     });
   }
 
   return (
     <div className="flex justify-center">
       <ActionMenu items={menuItems} />
-      {canDelete && (
-        <ConfirmDialog
-          open={isDeleteOpen}
-          onOpenChange={setIsDeleteOpen}
-          title="Eliminar Proveedor"
-          description={`¿Estás seguro de que deseas eliminar al proveedor "${supplier.nombre}"? Esta acción no se puede deshacer.`}
-          confirmText={isPending ? "Eliminando..." : "Eliminar"}
-          confirmColor="red"
-          onConfirm={() => {
-            deleteSupplier(supplier.id);
-            setIsDeleteOpen(false);
-          }}
-        />
-      )}
     </div>
   );
 };
@@ -75,7 +87,9 @@ const ActionsCell = ({
 
 export const getSupplierColumns = (
   onEdit: (supplier: Supplier) => void,
-  permissions?: { canEdit: boolean; canDelete: boolean }
+  onViewDetail: (supplier: Supplier) => void,
+  onDeactivate: (supplier: Supplier) => void,
+  permissions?: SupplierColumnPermissions
 ): ColumnDef<Supplier>[] => [
   columnHelper.accessor((row) => `${row.codigo} ${row.nombre}`.trim(), {
     id: "proveedor",
@@ -85,12 +99,24 @@ export const getSupplierColumns = (
         <span className="font-mono text-[11px] font-semibold text-sky-600 dark:text-sky-400 bg-sky-50 dark:bg-sky-500/10 px-1.5 py-0.5 rounded shrink-0">
           {row.original.codigo}
         </span>
-        <span
-          className="font-medium text-slate-900 dark:text-white truncate"
-          title={row.original.nombre}
-        >
-          {row.original.nombre}
-        </span>
+        {/* Con acceso al detalle, el nombre es un enlace REAL (clic medio abre
+            pestaña nueva) a la misma página que "Ver detalle". */}
+        {permissions?.canViewDetail ? (
+          <Link
+            href={supplierDetailHref(row.original.id)}
+            className="font-medium text-slate-900 dark:text-white truncate hover:text-sky-600 dark:hover:text-sky-400 hover:underline cursor-pointer"
+            title="Ver detalle"
+          >
+            {row.original.nombre}
+          </Link>
+        ) : (
+          <span
+            className="font-medium text-slate-900 dark:text-white truncate"
+            title={row.original.nombre}
+          >
+            {row.original.nombre}
+          </span>
+        )}
       </div>
     ),
   }),
@@ -135,8 +161,11 @@ export const getSupplierColumns = (
       <ActionsCell
         supplier={info.row.original}
         onEdit={onEdit}
+        onViewDetail={onViewDetail}
+        onDeactivate={onDeactivate}
         canEdit={permissions?.canEdit ?? false}
         canDelete={permissions?.canDelete ?? false}
+        canViewDetail={permissions?.canViewDetail ?? false}
       />
     ),
   }),

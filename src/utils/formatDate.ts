@@ -30,11 +30,37 @@ export const getLocalTodayDate = (): string => toLocalDateKey(new Date());
 
 /** Día calendario LOCAL de un `Date` como "yyyy-mm-dd" (sin pasar por UTC). */
 export const toLocalDateKey = (date: Date): string => {
-  const year = date.getFullYear();
+  // Año a 4 dígitos: un año < 1000 (p. ej. el "0202" intermedio al teclear en
+  // un `<input type="date">`) debe salir con la misma forma "yyyy-mm-dd".
+  const year = String(date.getFullYear()).padStart(4, "0");
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
 };
+
+/**
+ * ¿Es `value` un día calendario REAL en formato "yyyy-mm-dd"?
+ *
+ * `parseLocalDate` no sirve como validador: `new Date(2026, 1, 30)` desborda al
+ * 2 de marzo en vez de fallar. Aquí se exige la forma exacta y que el día
+ * sobreviva al viaje de ida y vuelta (`"2026-02-30"` vuelve como `"2026-03-02"`
+ * y se rechaza). Pensado para fechas que viajan a la API como filtro: el
+ * backend responde 500 ante una fecha bien formada pero imposible.
+ */
+export const isValidDateKey = (value: string | null | undefined): value is string => {
+  if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const date = parseLocalDate(value);
+  return date !== null && toLocalDateKey(date) === value;
+};
+
+/**
+ * ¿Es `value` una fecha COMPLETA capturada en un `<input type="date">`? Día
+ * real y año ≥ 1900. El piso descarta los años intermedios que el control
+ * emite mientras se teclea el año ("0002", "0020", "0202"…): son días válidos
+ * pero no lo que el usuario está escribiendo.
+ */
+export const isCompleteDateEntry = (value: string | null | undefined): value is string =>
+  isValidDateKey(value) && value >= "1900-01-01";
 
 /**
  * Medianoche LOCAL de un día "yyyy-mm-dd" como datetime ISO con offset
