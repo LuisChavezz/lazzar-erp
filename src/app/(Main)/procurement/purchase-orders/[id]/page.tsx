@@ -1,4 +1,8 @@
 import { PurchaseOrderPageContent } from "@/src/features/purchase-orders/components/PurchaseOrderPageContent";
+import {
+  SUPPLIER_ORIGIN_QUERY_KEYS,
+  type PurchaseOrderBackParams,
+} from "@/src/features/purchase-orders/constants/purchaseOrderDetailOrigins";
 
 /**
  * Detalle de una orden de compra — `GET /compras/ordenes/{id}/`.
@@ -12,13 +16,14 @@ import { PurchaseOrderPageContent } from "@/src/features/purchase-orders/compone
  * con `showInSidebar: false`, p. ej. `/sales/customers/[id]`): el sub-grupo y
  * la hoja activos se resuelven por prefijo hacia Órdenes de Compra.
  *
- * A esta ruta enlazan el listado de órdenes de compra (`PurchaseOrderView`) y
+ * A esta ruta enlazan el listado de órdenes de compra (`PurchaseOrderView`),
  * el folio de OC de Recepciones (`PurchaseOrderReceiptColumns`, con
- * `?from=purchase-order-receipts`). El `?from=` decide el "Volver" con el mismo
- * patrón que el detalle de pedido: una lista cerrada de orígenes
- * (`purchaseOrderDetailOrigins`) mapeada a destinos fijos (`BACK_TARGETS` en
- * `PurchaseOrderPageContent`); sin `from` o con uno desconocido vuelve al
- * listado de órdenes de compra.
+ * `?from=purchase-order-receipts`) y el historial de compras del detalle de
+ * proveedor (`?from=supplier&proveedor=…` más sus filtros). El `?from=` decide
+ * el "Volver" con el mismo patrón que el detalle de pedido: una lista cerrada
+ * de orígenes (`purchaseOrderDetailOrigins`) mapeada a destinos fijos, salvo
+ * `supplier`, que reconstruye la URL del proveedor con valores validados; sin
+ * `from` o con uno desconocido vuelve al listado de órdenes de compra.
  *
  * Convive con `PurchaseOrderDetailDialog`, que sigue montado sin cambios y
  * alimenta "Documentos relacionados" del detalle de pedido
@@ -31,14 +36,22 @@ export default async function PurchaseOrderDetailPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ from?: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const { id } = await params;
-  const { from } = await searchParams;
+  const query = await searchParams;
+  // Una llave repetida llega como arreglo: se toma solo un valor de texto, y
+  // nada más. Estos valores siguen CRUDOS; `resolvePurchaseOrderBack` los
+  // valida uno por uno y nunca copia la query a un `href`.
+  const first = (value: string | string[] | undefined) =>
+    Array.isArray(value) ? value[0] : value;
+  const backParams: PurchaseOrderBackParams = Object.fromEntries(
+    SUPPLIER_ORIGIN_QUERY_KEYS.map((key) => [key, first(query[key])]),
+  );
 
   return (
     <div className="w-full space-y-6 pt-2">
-      <PurchaseOrderPageContent orderId={id} from={from} />
+      <PurchaseOrderPageContent orderId={id} from={first(query.from)} backParams={backParams} />
     </div>
   );
 }

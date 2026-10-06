@@ -1,11 +1,11 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { updateSupplier } from "../services/actions";
-import { SupplierCreate } from "../interfaces/supplier.interface";
+import { SupplierUpdate } from "../interfaces/supplier.interface";
 import { SupplierFormValues } from "../schemas/supplier.schema";
 import toast from "react-hot-toast";
 import { AxiosError } from "axios";
 
-interface UpdateSupplierPayload extends SupplierCreate {
+interface UpdateSupplierPayload extends SupplierUpdate {
   id: number;
 }
 

@@ -3,10 +3,18 @@ import { deleteSupplier } from "../services/actions";
 import toast from "react-hot-toast";
 import { Supplier } from "../interfaces/supplier.interface";
 
+/**
+ * Identifica la baja en curso: el menú de cada fila la lee con `useIsMutating`
+ * para deshabilitar "Desactivar" en TODAS mientras haya una en vuelo (dos bajas
+ * simultáneas se pisarían los snapshots del rollback optimista).
+ */
+export const DELETE_SUPPLIER_MUTATION_KEY = ["delete-supplier"] as const;
+
 export const useDeleteSupplier = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
+    mutationKey: DELETE_SUPPLIER_MUTATION_KEY,
     mutationFn: deleteSupplier,
     onMutate: async (id) => {
       await queryClient.cancelQueries({ queryKey: ["suppliers"] });
@@ -25,13 +33,16 @@ export const useDeleteSupplier = () => {
         queryClient.setQueryData(["suppliers"], context.previousSuppliers);
       }
       console.error(err);
-      toast.error("Error al eliminar el proveedor");
+      toast.error("Error al desactivar el proveedor");
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["suppliers"] });
     },
-    onSuccess: () => {
-      toast.success("Proveedor eliminado correctamente");
+    onSuccess: (_data, id) => {
+      // Sin esto, volver al detalle mostraría la ficha cacheada del proveedor
+      // ya desactivado. Solo la llave EXACTA: el listado `["suppliers"]` sigue.
+      queryClient.removeQueries({ queryKey: ["suppliers", id], exact: true });
+      toast.success("Proveedor desactivado correctamente");
     },
   });
 };

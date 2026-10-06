@@ -36,8 +36,8 @@ import type {
   PurchaseOrderReceipt,
 } from "../interfaces/purchase-order.interface";
 import {
-  isPurchaseOrderDetailOrigin,
-  type PurchaseOrderDetailOrigin,
+  resolvePurchaseOrderBack,
+  type PurchaseOrderBackParams,
 } from "../constants/purchaseOrderDetailOrigins";
 
 /** Campos financieros que consume {@link TotalsFooter}, recortados de la cabecera. */
@@ -55,21 +55,9 @@ type OrderTotals = Pick<
   | "a_cuenta"
 >;
 
-// Destino del "Volver". Por defecto, el listado de órdenes de compra; un
-// `?from=` conocido (ver `purchaseOrderDetailOrigins`) lo cambia al listado que
-// enlazó el detalle, mismo patrón que `BACK_TARGETS` de `PedidoDetailContent`.
-// La flecha la pinta el icono del enlace, por eso el label no la lleva.
-const DEFAULT_BACK = {
-  href: "/procurement/purchase-orders",
-  label: "Volver a Órdenes de Compra",
-};
-
-const BACK_TARGETS: Record<PurchaseOrderDetailOrigin, { href: string; label: string }> = {
-  "purchase-order-receipts": {
-    href: "/procurement/purchase-order-receipts",
-    label: "Volver a Recepciones",
-  },
-};
+// Destino del "Volver": por defecto, el listado de órdenes de compra; un
+// `?from=` conocido lo cambia a la vista que enlazó el detalle (ver
+// `resolvePurchaseOrderBack` en `purchaseOrderDetailOrigins`).
 
 // ── Visibilidad de importes ──────────────────────────────────────────────────
 // `canSeeAmounts` (cabecera) y `formatIvaPercent` viven en
@@ -531,6 +519,8 @@ interface PurchaseOrderPageContentProps {
   orderId: string;
   /** `?from=` crudo de la URL; se valida contra `PURCHASE_ORDER_DETAIL_ORIGINS`. */
   from?: string;
+  /** Parámetros crudos del origen `supplier`; se validan uno por uno al resolver el "Volver". */
+  backParams?: PurchaseOrderBackParams;
 }
 
 /**
@@ -549,8 +539,9 @@ interface PurchaseOrderPageContentProps {
 export function PurchaseOrderPageContent({
   orderId,
   from,
+  backParams,
 }: PurchaseOrderPageContentProps) {
-  const back = isPurchaseOrderDetailOrigin(from) ? BACK_TARGETS[from] : DEFAULT_BACK;
+  const back = resolvePurchaseOrderBack(from, backParams);
   const numericId = Number(orderId);
   // `Number.isInteger` acota antes de consultar: el segmento de ruta es texto
   // libre, así que "1.5" o "abc" no deben llegar al backend como id.

@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import {
   DataTable,
@@ -8,12 +9,14 @@ import {
   type DataTableVisibleColumn,
 } from "@/src/components/DataTable";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
-import { MainDialog } from "@/src/components/MainDialog";
 import { Button } from "@/src/components/Button";
 import { ExportCsvIcon, ExportPdfIcon, PlusIcon } from "@/src/components/Icons";
 import { hasPermission } from "@/src/utils/permissions";
-import SupplierForm from "./SupplierForm";
+import { ConfirmDialog } from "@/src/components/ConfirmDialog";
+import { useDeleteSupplier } from "../hooks/useDeleteSupplier";
+import SupplierFormDialog from "./SupplierFormDialog";
 import { useSuppliers } from "../hooks/useSuppliers";
+import { supplierDetailHref } from "../utils/supplierPurchaseOrderHistoryFilters";
 import { getSupplierColumns } from "./SupplierColumns";
 import { useSupplierCsvExport } from "../hooks/useSupplierCsvExport";
 import { useSupplierPdfExport } from "../hooks/useSupplierPdfExport";
@@ -76,13 +79,30 @@ export default function SupplierList({
   const canCreate = hasPermission(permissions.create, session?.user);
   const canEdit = hasPermission(permissions.edit, session?.user);
   const canDelete = hasPermission(permissions.delete, session?.user);
+  // El detalle (`/procurement/suppliers/[id]`) solo se ofrece desde Compras:
+  // Configuración monta este listado como catálogo de solo edición. Exige el
+  // permiso de LECTURA de la ruta destino, no el de edición.
+  const canViewDetail =
+    permissionContext === "procurement" && hasPermission("R-COMPRAS-PROV", session?.user);
 
-  const isEditing = Boolean(supplierToEdit?.id);
+  // `handleViewDetail`, `handleEdit` y `columns` sin `useCallback`/`useMemo`: el React Compiler
+  // memoiza (ver CLAUDE.md).
+  const router = useRouter();
+  const handleViewDetail = (supplier: Supplier) => router.push(supplierDetailHref(supplier.id));
 
-  const handleEdit = useCallback((supplier: Supplier) => {
+  const handleEdit = (supplier: Supplier) => {
     setSupplierToEdit(supplier);
     setIsDialogOpen(true);
-  }, []);
+  };
+
+  // ── Desactivar ────────────────────────────────────────────────────────────
+  // El diálogo vive AQUÍ y no en la celda: la baja quita la fila de forma
+  // optimista (y ordenar/paginar desmonta celdas), así que un diálogo dentro de
+  // la celda se desmontaría con ella. La celda solo dispara `onDeactivate`.
+  // El DELETE del backend es una baja LÓGICA (`activo=False`): el proveedor
+  // deja de listarse y su detalle responde 404, pero no se borra.
+  const [supplierToDeactivate, setSupplierToDeactivate] = useState<Supplier | null>(null);
+  const { mutate: deactivateSupplier, isPending: isDeactivating } = useDeleteSupplier();
 
   const handleCreate = useCallback(() => {
     setSupplierToEdit(null);
@@ -101,10 +121,11 @@ export default function SupplierList({
     setSupplierToEdit(null);
   }, []);
 
-  const columns = useMemo(
-    () => getSupplierColumns(handleEdit, { canEdit, canDelete }),
-    [handleEdit, canEdit, canDelete]
-  );
+  const columns = getSupplierColumns(handleEdit, handleViewDetail, setSupplierToDeactivate, {
+    canEdit,
+    canDelete,
+    canViewDetail,
+  });
 
   // ── Exportar (Excel/PDF) ──────────────────────────────────────────────────
   // Exportan lo que el usuario está VIENDO: las filas se LEEN de la tabla al
@@ -167,31 +188,29 @@ export default function SupplierList({
       />
       </div>
 
-      <MainDialog
+      {canDelete && (
+        <ConfirmDialog
+          open={supplierToDeactivate !== null}
+          onOpenChange={(open) => {
+            if (!open) setSupplierToDeactivate(null);
+          }}
+          title="Desactivar proveedor"
+          description={`¿Deseas desactivar al proveedor "${supplierToDeactivate?.nombre ?? ""}"? Dejará de aparecer en los listados.`}
+          confirmText={isDeactivating ? "Desactivando..." : "Desactivar"}
+          confirmColor="red"
+          onConfirm={() => {
+            if (supplierToDeactivate) deactivateSupplier(supplierToDeactivate.id);
+            setSupplierToDeactivate(null);
+          }}
+        />
+      )}
+
+      <SupplierFormDialog
         open={isDialogOpen}
         onOpenChange={handleDialogOpenChange}
-        maxWidth="1000px"
-        title={
-          <div className="flex items-center gap-4 pb-4 border-b border-slate-200 dark:border-white/10 mb-4">
-            <div>
-              <h1 className="text-xl font-bold text-slate-900 dark:text-white font-display tracking-tight">
-                {isEditing ? "Editar Proveedor" : "Nuevo Proveedor"}
-              </h1>
-              <div className="flex items-center gap-2">
-                <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-sky-400 opacity-75" />
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-sky-500" />
-                </span>
-                <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
-                  {isEditing ? "Edición de proveedor" : "Alta de proveedor"}
-                </p>
-              </div>
-            </div>
-          </div>
-        }
-      >
-        <SupplierForm onSuccess={handleSuccess} supplierToEdit={supplierToEdit} />
-      </MainDialog>
+        supplierToEdit={supplierToEdit}
+        onSuccess={handleSuccess}
+      />
     </>
   );
 }

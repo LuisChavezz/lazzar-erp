@@ -443,7 +443,7 @@ export default function SupplierForm({ onSuccess, supplierToEdit }: SupplierForm
                         value={field.state.value}
                         onChange={(event) => {
                           const nextValue = Number(event.target.value);
-                          field.handleChange(Number.isNaN(nextValue) ? 1 : nextValue);
+                          field.handleChange(Number.isNaN(nextValue) ? 0 : nextValue);
                           clearFieldErrors("moneda");
                         }}
                         onBlur={() => {
@@ -452,7 +452,11 @@ export default function SupplierForm({ onSuccess, supplierToEdit }: SupplierForm
                         }}
                         error={getError("moneda")}
                       >
-                        <option value="" disabled className="bg-white dark:bg-zinc-900 text-slate-500">
+                        {/* `value="0"` como los selects SAT: el estado "sin moneda"
+                            es `0`, y con `""` React no encontraría la opción y
+                            mostraría la primera moneda aunque no se hubiera
+                            elegido ninguna. */}
+                        <option value="0" disabled className="bg-white dark:bg-zinc-900 text-slate-500">
                           {isLoadingCatalogs ? "Cargando..." : "Seleccionar..."}
                         </option>
                         {availableCurrencies.map((currency) => (

@@ -41,3 +41,9 @@ export interface SupplierCreate {
   moneda: Currency["id"];
 }
 
+/**
+ * Cuerpo del PUT. Sin `empresa`: en el serializer no es obligatoria y omitirla
+ * conserva la empresa guardada, así que la edición no la reescribe con la del
+ * workspace activo. El alta (`SupplierCreate`) sí la sigue enviando.
+ */
+export type SupplierUpdate = Omit<SupplierCreate, "empresa">;

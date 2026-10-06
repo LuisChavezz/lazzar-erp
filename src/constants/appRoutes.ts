@@ -402,6 +402,15 @@ export const appRouteGroups: AppRouteGroup[] = [
         permission: "R-COMPRAS-PROV",
         section: "master-data",
       },
+      {
+        key: "procurement-supplier",
+        label: "Proveedor",
+        path: "/procurement/suppliers/[id]",
+        icon: ComprasIcon,
+        permission: "R-COMPRAS-PROV",
+        parentPath: "/procurement/suppliers",
+        showInSidebar: false,
+      },
       // OCULTO EN NAVEGACION: usa datos mock (src/features/purchase-order-reviews/mocks/purchase-order-review.mock.ts:11). Restaurar cuando el backend exponga el endpoint real.
       // {
       //   key: "procurement-order-reviews",
