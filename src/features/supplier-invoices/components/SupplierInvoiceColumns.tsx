@@ -1,9 +1,10 @@
-import { ColumnDef, createColumnHelper } from "@tanstack/react-table";
+import { ColumnDef, createColumnHelper, FilterFn } from "@tanstack/react-table";
 import { ActionMenu, ActionMenuItem } from "@/src/components/ActionMenu";
-import { StatusBadge } from "@/src/components/StatusBadge";
+import { ColumnHeaderFilter, type ColumnFilterOption } from "@/src/components/ColumnHeaderFilter";
 import {
   BanIcon,
   CheckCircleIcon,
+  ChevronRightIcon,
   DownloadIcon,
   EditIcon,
   UploadIcon,
@@ -21,13 +22,28 @@ const columnHelper = createColumnHelper<FacturaProveedor>();
 /** Fecha-calendario "YYYY-MM-DD" → texto; `timeZone: "UTC"` evita el día anterior. */
 const fecha = (value: string) => (value ? formatShortDate(value, { timeZone: "UTC" }) : "—");
 
+const ESTATUS_FILTER_OPTIONS: ColumnFilterOption[] = [
+  { value: undefined, label: "Todos" },
+  ...Object.entries(FACTURA_PROVEEDOR_ESTATUS_CONFIG).map(([estatus, cfg]) => ({
+    value: estatus,
+    label: cfg.label ?? estatus,
+    dotClassName: cfg.dot,
+  })),
+];
+
+const estatusFilterFn: FilterFn<FacturaProveedor> = (row, _columnId, filterValue) => {
+  if (filterValue === undefined) return true;
+  return row.original.estatus === filterValue;
+};
+
 /**
- * Menú de acciones de UNA factura. Callbacks y "en vuelo" llegan por contexto
+ * Celda de Folio: punto de estatus + folio+chevron (disparador del menú) +
+ * menú de acciones. Callbacks y "en vuelo" llegan por contexto
  * (`SupplierInvoiceRowActionsProvider`), no por `getColumns`: así empezar o
- * terminar una subida o descarga solo re-renderiza los menús, sin remontar las
- * celdas ni cerrar el menú abierto de otra fila.
+ * terminar una subida o descarga solo re-renderiza esta celda, sin remontar
+ * las demás ni cerrar el menú abierto de otra fila.
  */
-function SupplierInvoiceRowActions({ factura }: { factura: FacturaProveedor }) {
+function SupplierInvoiceFolioCell({ factura, folio }: { factura: FacturaProveedor; folio: string }) {
   const callbacks = useSupplierInvoiceRowActionsContext();
   const uploading = callbacks.uploadingIds.includes(factura.id);
   const downloading = callbacks.downloadingIds.includes(factura.id);
@@ -86,26 +102,32 @@ function SupplierInvoiceRowActions({ factura }: { factura: FacturaProveedor }) {
     });
   }
 
+  const statusCfg = FACTURA_PROVEEDOR_ESTATUS_CONFIG[factura.estatus];
   return (
-    <div className="flex justify-center">
-      <ActionMenu items={menuItems} />
+    <div className="flex items-center gap-2">
+      <span
+        className={`h-2.5 w-2.5 rounded-full shrink-0 ${statusCfg?.dot ?? "bg-slate-400"}`}
+        title={statusCfg?.label ?? factura.estatus}
+        aria-hidden="true"
+      />
+      <span className="sr-only">{statusCfg?.label ?? factura.estatus}</span>
+      <ActionMenu
+        items={menuItems}
+        ariaLabel={`Acciones de la factura ${folio}`}
+        align="start"
+        trigger={
+          <button type="button" title="Ver acciones" className="group inline-flex items-center gap-1 cursor-pointer">
+            <span className="font-mono text-[11px] font-semibold text-slate-700 dark:text-slate-200 group-hover:text-sky-600 dark:group-hover:text-sky-400">
+              {folio}
+            </span>
+            <ChevronRightIcon
+              className="h-3.5 w-3.5 shrink-0 text-slate-400 dark:text-slate-500 group-hover:text-sky-500 dark:group-hover:text-sky-400 group-hover:translate-x-0.5 transition-all"
+              aria-hidden="true"
+            />
+          </button>
+        }
+      />
     </div>
-  );
-}
-
-/** Folio como disparador del detalle (mismo callback que "Ver detalle"). */
-function SupplierInvoiceFolioTrigger({ factura, folio }: { factura: FacturaProveedor; folio: string }) {
-  const { onViewDetail } = useSupplierInvoiceRowActionsContext();
-  return (
-    <button
-      type="button"
-      onClick={() => onViewDetail(factura.id)}
-      title="Ver detalle"
-      className="font-mono text-xs font-medium text-slate-600 dark:text-slate-300 hover:text-sky-600 dark:hover:text-sky-400 hover:underline cursor-pointer"
-    >
-      {/* `folio` es nullable y no único: se cae al `#id`, que siempre existe. */}
-      {folio || `#${factura.id}`}
-    </button>
   );
 }
 
@@ -130,9 +152,19 @@ export const getColumns = () => {
     // TODAS. Mismo criterio que `PolizaColumns` / `CorteMangaOrderColumns`.
     columnHelper.accessor((row) => row.folio ?? "", {
       id: "folio",
-      header: "Folio",
+      header: ({ column }) => (
+        <div className="flex items-center gap-1.5">
+          <span>Folio</span>
+          <ColumnHeaderFilter column={column} options={ESTATUS_FILTER_OPTIONS} label="estatus" />
+        </div>
+      ),
+      filterFn: estatusFilterFn,
+      // `folio` es nullable y no único: se cae al `#id`, que siempre existe.
       cell: (info) => (
-        <SupplierInvoiceFolioTrigger factura={info.row.original} folio={info.getValue()} />
+        <SupplierInvoiceFolioCell
+          factura={info.row.original}
+          folio={info.getValue() || `#${info.row.original.id}`}
+        />
       ),
     }),
     columnHelper.accessor((row) => row.proveedor_nombre ?? "", {
@@ -173,20 +205,6 @@ export const getColumns = () => {
           </div>
         );
       },
-    }),
-    columnHelper.accessor("estatus", {
-      header: "Estatus",
-      cell: (info) => (
-        <StatusBadge status={info.getValue()} config={FACTURA_PROVEEDOR_ESTATUS_CONFIG} />
-      ),
-    }),
-    columnHelper.display({
-      id: "actions",
-      header: "Acciones",
-      meta: { align: "center" },
-      cell: ({ row }) => (
-        <SupplierInvoiceRowActions factura={row.original} />
-      ),
     }),
   ] as ColumnDef<FacturaProveedor>[];
 

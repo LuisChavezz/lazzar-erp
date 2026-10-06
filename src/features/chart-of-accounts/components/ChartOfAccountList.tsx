@@ -8,30 +8,12 @@ import { DialogHeader } from "@/src/components/DialogHeader";
 import { ConfirmDialog } from "@/src/components/ConfirmDialog";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { isInitialLoadError } from "@/src/utils/isInitialLoadError";
-import { CUENTA_CONTABLE_TIPO_FILTER } from "../constants/chartOfAccountTipo";
 import type { CuentaContable } from "../interfaces/chart-of-account.interface";
 import { useChartOfAccounts } from "../hooks/useChartOfAccounts";
 import { useToggleChartOfAccountActivo } from "../hooks/useToggleChartOfAccountActivo";
 import { getColumns } from "./ChartOfAccountColumns";
 import { ChartOfAccountDetailDialog } from "./ChartOfAccountDetailDialog";
 import ChartOfAccountForm from "./ChartOfAccountForm";
-
-/**
- * Filtros de la tabla. `DataTable` filtra en MEMORIA comparando
- * `String(row[configId]) === value`, así que los booleanos van como "true"/"false"
- * y el tipo con los valores CRUDOS del enum. El backend acepta `?activo=`,
- * `?tipo=` y `?acepta_movimientos=`, pero la tabla no tiene puente hacia
- * parámetros del servidor.
- */
-const ACTIVO_FILTER = [
-  { value: "true", label: "Activo" },
-  { value: "false", label: "Inactivo" },
-];
-
-const ACEPTA_MOVIMIENTOS_FILTER = [
-  { value: "true", label: "Acepta movimientos" },
-  { value: "false", label: "Agrupación" },
-];
 
 export default function ChartOfAccountList() {
   const { cuentasContables, hasLoaded, isLoading, isError, error, refetch, isFetching } =
@@ -99,15 +81,6 @@ export default function ChartOfAccountList() {
         data={cuentasContables}
         baseDataCount={cuentasContables.length}
         searchPlaceholder="Buscar por código o nombre de cuenta..."
-        filterConfig={[
-          { id: "tipo", label: "Tipo", options: CUENTA_CONTABLE_TIPO_FILTER },
-          {
-            id: "acepta_movimientos",
-            label: "Movimientos",
-            options: ACEPTA_MOVIMIENTOS_FILTER,
-          },
-          { id: "activo", label: "Estatus", options: ACTIVO_FILTER },
-        ]}
         fillHeight
         onRefetch={refetch}
         isRefetching={isFetching}

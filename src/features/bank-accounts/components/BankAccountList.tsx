@@ -14,17 +14,6 @@ import { CuentaBancaria } from "../interfaces/bank-account.interface";
 import BankAccountForm from "./BankAccountForm";
 import { useBankAccounts } from "../hooks/useBankAccounts";
 
-/**
- * Filtro de estatus. `DataTable` filtra en MEMORIA comparando
- * `String(row[configId]) === value`, así que los valores son los del booleano
- * `activo` serializado ("true"/"false"), no etiquetas. El backend sí acepta
- * `?activo=`, pero la tabla no tiene puente hacia parámetros del servidor.
- */
-const ACTIVO_FILTER = [
-  { value: "true", label: "Activo" },
-  { value: "false", label: "Inactivo" },
-];
-
 export default function BankAccountList() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedAccount, setSelectedAccount] = useState<CuentaBancaria | null>(null);
@@ -53,28 +42,23 @@ export default function BankAccountList() {
     setIsDialogOpen(true);
   };
 
-  const columns = useMemo(
-    () => getColumns(handleEdit, setOpenSummaryId),
-    [handleEdit]
+  // El filtro de "Banco" compara contra `row.banco` (el id crudo del FK), así
+  // que sus valores son ids. Se omite (ícono de filtro oculto en la columna)
+  // mientras no haya bancos cargados: un filtro sin opciones es un control
+  // muerto.
+  const bancoFilterOptions = useMemo(
+    () =>
+      banks.map((banco) => ({
+        value: String(banco.id),
+        label: banco.nombre ?? `Banco #${banco.id}`,
+      })),
+    [banks],
   );
 
-  // El filtro por banco compara contra `row.banco` (el id crudo del FK), así que
-  // sus valores son ids. Se omite mientras no haya bancos cargados: un filtro
-  // sin opciones es un control muerto.
-  const filterConfig = useMemo(() => {
-    const configs = [{ id: "activo", label: "Estatus", options: ACTIVO_FILTER }];
-    if (banks.length > 0) {
-      configs.unshift({
-        id: "banco",
-        label: "Banco",
-        options: banks.map((banco) => ({
-          value: String(banco.id),
-          label: banco.nombre ?? `Banco #${banco.id}`,
-        })),
-      });
-    }
-    return configs;
-  }, [banks]);
+  const columns = useMemo(
+    () => getColumns(handleEdit, setOpenSummaryId, bancoFilterOptions),
+    [handleEdit, bancoFilterOptions]
+  );
 
   // La cuenta cuyo resumen está abierto se busca contra el arreglo que esta
   // vista ya tiene: el diálogo no vuelve a suscribirse al listado solo para
@@ -109,7 +93,6 @@ export default function BankAccountList() {
         data={bankAccounts}
         baseDataCount={bankAccounts.length}
         searchPlaceholder="Buscar alias, banco, titular o número de cuenta..."
-        filterConfig={filterConfig}
         fillHeight
         onRefetch={refetch}
         isRefetching={isFetching}

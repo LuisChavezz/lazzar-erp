@@ -1,15 +1,35 @@
-import { ColumnDef, createColumnHelper, Row } from "@tanstack/react-table";
-import { useState } from "react";
-import { EditIcon, BanIcon, CheckCircleIcon } from "@/src/components/Icons";
+import { ColumnDef, createColumnHelper, FilterFn, Row } from "@tanstack/react-table";
+import { useState, type ReactNode } from "react";
+import { EditIcon, BanIcon, CheckCircleIcon, ChevronRightIcon } from "@/src/components/Icons";
 import { ConfirmDialog } from "@/src/components/ConfirmDialog";
 import { ActionMenu, ActionMenuItem } from "@/src/components/ActionMenu";
-import { ACTIVO_INACTIVO_CFG, StatusBadge } from "@/src/components/StatusBadge";
+import { ACTIVO_INACTIVO_CFG } from "@/src/components/StatusBadge";
+import { ColumnHeaderFilter, type ColumnFilterOption } from "@/src/components/ColumnHeaderFilter";
 import { Banco } from "../interfaces/bank.interface";
 import { useToggleBankActivo } from "../hooks/useToggleBankActivo";
 
 const columnHelper = createColumnHelper<Banco>();
 
-const ActionsCell = ({ row, onEdit }: { row: Row<Banco>; onEdit: (banco: Banco) => void }) => {
+const ACTIVO_FILTER_OPTIONS: ColumnFilterOption[] = [
+  { value: undefined, label: "Todos" },
+  { value: "true", label: "Activo", dotClassName: ACTIVO_INACTIVO_CFG.activo.dot },
+  { value: "false", label: "Inactivo", dotClassName: ACTIVO_INACTIVO_CFG.inactivo.dot },
+];
+
+const activoFilterFn: FilterFn<Banco> = (row, _columnId, filterValue) => {
+  if (filterValue === undefined) return true;
+  return String(row.original.activo) === filterValue;
+};
+
+const ActionsCell = ({
+  row,
+  onEdit,
+  trigger,
+}: {
+  row: Row<Banco>;
+  onEdit: (banco: Banco) => void;
+  trigger: ReactNode;
+}) => {
   const { mutate: toggleActivo, isPending } = useToggleBankActivo();
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
 
@@ -34,8 +54,8 @@ const ActionsCell = ({ row, onEdit }: { row: Row<Banco>; onEdit: (banco: Banco) 
   ];
 
   return (
-    <div className="flex justify-center">
-      <ActionMenu items={menuItems} />
+    <>
+      <ActionMenu items={menuItems} align="start" trigger={trigger} />
       <ConfirmDialog
         open={isConfirmOpen}
         onOpenChange={setIsConfirmOpen}
@@ -61,19 +81,45 @@ const ActionsCell = ({ row, onEdit }: { row: Row<Banco>; onEdit: (banco: Banco) 
         // `ConfirmDialog` usa la paleta de Radix: "green", no "emerald".
         confirmColor={activo ? "amber" : "green"}
       />
-    </div>
+    </>
   );
 };
 
 export const getColumns = (onEdit: (banco: Banco) => void) => {
   const columns = [
     columnHelper.accessor("nombre", {
-      header: "Nombre",
-      cell: (info) => (
-        <span className="text-slate-600 dark:text-slate-300 font-medium">
-          {info.getValue() || "—"}
-        </span>
+      header: ({ column }) => (
+        <div className="flex items-center gap-1.5">
+          <span>Nombre</span>
+          <ColumnHeaderFilter column={column} options={ACTIVO_FILTER_OPTIONS} label="estatus" />
+        </div>
       ),
+      filterFn: activoFilterFn,
+      cell: (info) => {
+        const banco = info.row.original;
+        const statusCfg = banco.activo ? ACTIVO_INACTIVO_CFG.activo : ACTIVO_INACTIVO_CFG.inactivo;
+        return (
+          <div className="flex items-center gap-2">
+            <span className={`h-2.5 w-2.5 rounded-full shrink-0 ${statusCfg.dot}`} title={statusCfg.label} aria-hidden="true" />
+            <span className="sr-only">{statusCfg.label}</span>
+            <ActionsCell
+              row={info.row}
+              onEdit={onEdit}
+              trigger={
+                <button type="button" title="Ver acciones" className="group inline-flex items-center gap-1 cursor-pointer">
+                  <span className="text-[11px] font-semibold text-slate-700 dark:text-slate-200 group-hover:text-sky-600 dark:group-hover:text-sky-400">
+                    {info.getValue() || "—"}
+                  </span>
+                  <ChevronRightIcon
+                    className="h-3.5 w-3.5 shrink-0 text-slate-400 dark:text-slate-500 group-hover:text-sky-500 dark:group-hover:text-sky-400 group-hover:translate-x-0.5 transition-all"
+                    aria-hidden="true"
+                  />
+                </button>
+              }
+            />
+          </div>
+        );
+      },
     }),
     columnHelper.accessor("codigo", {
       header: "Código",
@@ -105,21 +151,6 @@ export const getColumns = (onEdit: (banco: Banco) => void) => {
           </span>
         );
       },
-    }),
-    columnHelper.accessor("activo", {
-      header: "Estatus",
-      cell: (info) => (
-        <StatusBadge
-          status={info.getValue() ? "activo" : "inactivo"}
-          config={ACTIVO_INACTIVO_CFG}
-        />
-      ),
-    }),
-    columnHelper.display({
-      id: "actions",
-      header: "Acciones",
-      meta: { align: "center" },
-      cell: ({ row }) => <ActionsCell row={row} onEdit={onEdit} />,
     }),
   ] as ColumnDef<Banco>[];
 

@@ -1,10 +1,22 @@
-import { ColumnDef, createColumnHelper } from "@tanstack/react-table";
+import { ColumnDef, createColumnHelper, FilterFn } from "@tanstack/react-table";
 import { ActionMenu, ActionMenuItem } from "@/src/components/ActionMenu";
-import { ACTIVO_INACTIVO_CFG, StatusBadge } from "@/src/components/StatusBadge";
-import { BanIcon, CheckCircleIcon, EditIcon, ViewIcon } from "@/src/components/Icons";
+import { ACTIVO_INACTIVO_CFG } from "@/src/components/StatusBadge";
+import { ColumnHeaderFilter, type ColumnFilterOption } from "@/src/components/ColumnHeaderFilter";
+import { BanIcon, CheckCircleIcon, ChevronRightIcon, EditIcon, ViewIcon } from "@/src/components/Icons";
 import type { CostCenter } from "../interfaces/cost-center.interface";
 
 const columnHelper = createColumnHelper<CostCenter>();
+
+const ACTIVO_FILTER_OPTIONS: ColumnFilterOption[] = [
+  { value: undefined, label: "Todos" },
+  { value: "true", label: "Activo", dotClassName: ACTIVO_INACTIVO_CFG.activo.dot },
+  { value: "false", label: "Inactivo", dotClassName: ACTIVO_INACTIVO_CFG.inactivo.dot },
+];
+
+const activoFilterFn: FilterFn<CostCenter> = (row, _columnId, filterValue) => {
+  if (filterValue === undefined) return true;
+  return String(row.original.activo) === filterValue;
+};
 
 /**
  * Columnas del catálogo de centros de costo.
@@ -32,17 +44,56 @@ export const getColumns = (
     // antiguos y `descripcion` es nullable de verdad en el modelo.
     columnHelper.accessor((row) => row.codigo ?? "", {
       id: "codigo",
-      header: "Código",
-      cell: (info) => (
-        <button
-          type="button"
-          onClick={() => onViewDetail(info.row.original)}
-          title="Ver detalle"
-          className="font-mono text-xs font-medium text-slate-600 dark:text-slate-300 hover:text-sky-600 dark:hover:text-sky-400 hover:underline cursor-pointer"
-        >
-          {info.getValue() || `#${info.row.original.id}`}
-        </button>
+      header: ({ column }) => (
+        <div className="flex items-center gap-1.5">
+          <span>Código</span>
+          <ColumnHeaderFilter column={column} options={ACTIVO_FILTER_OPTIONS} label="estatus" />
+        </div>
       ),
+      filterFn: activoFilterFn,
+      cell: (info) => {
+        const centro = info.row.original;
+        const menuItems: ActionMenuItem[] = [
+          {
+            label: "Ver detalle",
+            icon: ViewIcon,
+            onSelect: () => onViewDetail(centro),
+          },
+          { label: "Editar", icon: EditIcon, onSelect: () => onEdit(centro) },
+          {
+            // La etiqueta cambia con el estatus de la fila: una sola acción que
+            // recorre el ciclo de vida en los dos sentidos.
+            label: centro.activo ? "Dar de baja" : "Reactivar",
+            icon: centro.activo ? BanIcon : CheckCircleIcon,
+            onSelect: () => onToggleActivo(centro),
+          },
+        ];
+
+        const codigo = info.getValue() || `#${centro.id}`;
+        const statusCfg = centro.activo ? ACTIVO_INACTIVO_CFG.activo : ACTIVO_INACTIVO_CFG.inactivo;
+        return (
+          <div className="flex items-center gap-2">
+            <span className={`h-2.5 w-2.5 rounded-full shrink-0 ${statusCfg.dot}`} title={statusCfg.label} aria-hidden="true" />
+            <span className="sr-only">{statusCfg.label}</span>
+            <ActionMenu
+              items={menuItems}
+              ariaLabel={`Acciones del centro de costo ${codigo}`}
+              align="start"
+              trigger={
+                <button type="button" title="Ver acciones" className="group inline-flex items-center gap-1 cursor-pointer">
+                  <span className="font-mono text-[11px] font-semibold text-slate-700 dark:text-slate-200 group-hover:text-sky-600 dark:group-hover:text-sky-400">
+                    {codigo}
+                  </span>
+                  <ChevronRightIcon
+                    className="h-3.5 w-3.5 shrink-0 text-slate-400 dark:text-slate-500 group-hover:text-sky-500 dark:group-hover:text-sky-400 group-hover:translate-x-0.5 transition-all"
+                    aria-hidden="true"
+                  />
+                </button>
+              }
+            />
+          </div>
+        );
+      },
     }),
     columnHelper.accessor((row) => row.nombre ?? "", {
       id: "nombre",
@@ -66,44 +117,6 @@ export const getColumns = (
           {info.getValue() || "—"}
         </span>
       ),
-    }),
-    columnHelper.accessor("activo", {
-      header: "Estatus",
-      cell: (info) => (
-        <StatusBadge
-          status={info.getValue() ? "activo" : "inactivo"}
-          config={ACTIVO_INACTIVO_CFG}
-        />
-      ),
-    }),
-    columnHelper.display({
-      id: "actions",
-      header: "Acciones",
-      meta: { align: "center" },
-      cell: ({ row }) => {
-        const centro = row.original;
-        const menuItems: ActionMenuItem[] = [
-          {
-            label: "Ver detalle",
-            icon: ViewIcon,
-            onSelect: () => onViewDetail(centro),
-          },
-          { label: "Editar", icon: EditIcon, onSelect: () => onEdit(centro) },
-          {
-            // La etiqueta cambia con el estatus de la fila: una sola acción que
-            // recorre el ciclo de vida en los dos sentidos.
-            label: centro.activo ? "Dar de baja" : "Reactivar",
-            icon: centro.activo ? BanIcon : CheckCircleIcon,
-            onSelect: () => onToggleActivo(centro),
-          },
-        ];
-
-        return (
-          <div className="flex justify-center">
-            <ActionMenu items={menuItems} />
-          </div>
-        );
-      },
     }),
   ] as ColumnDef<CostCenter>[];
 

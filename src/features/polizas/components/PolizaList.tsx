@@ -11,7 +11,6 @@ import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { isInitialLoadError } from "@/src/utils/isInitialLoadError";
 import { useWorkspaceStore } from "@/src/features/workspace/store/workspace.store";
 import { useCompanyBranches } from "@/src/features/branches/hooks/useCompanyBranches";
-import { POLIZA_TIPOS } from "../interfaces/poliza.interface";
 import {
   POLIZA_DESCUADRADA_MESSAGE,
   POLIZA_SIN_IMPORTES_MESSAGE,
@@ -26,20 +25,6 @@ import { useCostCenters } from "@/src/features/cost-centers/hooks/useCostCenters
 import { useContabilizarPoliza } from "../hooks/useContabilizarPoliza";
 import { useCancelarPoliza } from "../hooks/useCancelarPoliza";
 import { useDeletePoliza } from "../hooks/useDeletePoliza";
-
-/**
- * Filtros de la tabla. `DataTable` filtra en MEMORIA comparando
- * `String(row[configId]) === value`, así que los valores son los del enum crudo
- * del backend. El endpoint SÍ acepta `?estatus=`, `?tipo=`, `?sucursal=` y más,
- * pero la tabla no tiene puente hacia parámetros de servidor (ver `getPolizas`).
- */
-const ESTATUS_FILTER = [
-  { value: "Borrador", label: "Borrador" },
-  { value: "Contabilizada", label: "Contabilizada" },
-  { value: "Cancelada", label: "Cancelada" },
-];
-
-const TIPO_FILTER = POLIZA_TIPOS.map((tipo) => ({ value: tipo, label: tipo }));
 
 /**
  * Candado de reenvío POR FILA para una acción confirmada (contabilizar,
@@ -256,10 +241,6 @@ export default function PolizaList() {
         data={polizas}
         baseDataCount={polizas.length}
         searchPlaceholder="Buscar por folio o concepto..."
-        filterConfig={[
-          { id: "estatus", label: "Estatus", options: ESTATUS_FILTER },
-          { id: "tipo", label: "Tipo", options: TIPO_FILTER },
-        ]}
         fillHeight
         onRefetch={refetch}
         isRefetching={isFetching}

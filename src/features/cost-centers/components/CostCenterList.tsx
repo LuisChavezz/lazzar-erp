@@ -15,21 +15,6 @@ import { getColumns } from "./CostCenterColumns";
 import { CostCenterDetailDialog } from "./CostCenterDetailDialog";
 import CostCenterForm from "./CostCenterForm";
 
-/**
- * Filtro de la tabla. `DataTable` filtra en MEMORIA comparando
- * `String(row[configId]) === value`, así que el booleano va como "true"/"false".
- * El backend acepta `?activo=`, pero la tabla no tiene puente hacia parámetros
- * del servidor —y además ese parámetro no sabe decir "todos": con cualquier
- * valor no verdadero devuelve solo los inactivos (ver `CostCenterQueryParams`)—.
- *
- * Es el único filtro del catálogo: el modelo no tiene `tipo` ni ningún otro
- * enum, a diferencia del plan de cuentas.
- */
-const ACTIVO_FILTER = [
-  { value: "true", label: "Activo" },
-  { value: "false", label: "Inactivo" },
-];
-
 export default function CostCenterList() {
   // Sin parámetros: el catálogo COMPLETO, con los dados de baja incluidos. Es
   // una entrada de caché distinta de la de la póliza, que sí filtra por
@@ -96,15 +81,13 @@ export default function CostCenterList() {
   // cuerpo, de modo que el toolbar —búsqueda, filtros, refrescar, columnas y el
   // botón de alta— sigue disponible durante la carga y ante un error.
   return (
-    <>
+    <div className="h-full flex flex-col min-h-0">
       <DataTable
         columns={columns}
         data={centrosCosto}
         baseDataCount={centrosCosto.length}
         searchPlaceholder="Buscar por código, nombre o descripción..."
-        filterConfig={[
-          { id: "activo", label: "Estatus", options: ACTIVO_FILTER },
-        ]}
+        fillHeight
         onRefetch={refetch}
         isRefetching={isFetching}
         emptyMessage="No hay centros de costo registrados."
@@ -199,6 +182,6 @@ export default function CostCenterList() {
           confirmColor={toggleCentro.activo ? "amber" : "green"}
         />
       )}
-    </>
+    </div>
   );
 }

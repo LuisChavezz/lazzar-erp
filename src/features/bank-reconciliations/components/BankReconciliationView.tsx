@@ -14,7 +14,6 @@ import { isInitialLoadError } from "@/src/utils/isInitialLoadError";
 import { isValidDateKey } from "@/src/utils/formatDate";
 import { useBankAccounts } from "@/src/features/bank-accounts/hooks/useBankAccounts";
 import { formatSaldo } from "@/src/features/bank-accounts/utils/bankAccountMoney";
-import { CONCILIACION_ESTATUS_FILTER } from "../constants/conciliacionEstatus";
 import {
   CONCILIACION_DESCUADRADA_MESSAGE,
   centavosAMoneda,
@@ -42,11 +41,12 @@ import PrepararConciliacionForm from "./PrepararConciliacionForm";
  *
  * ─── LOS FILTROS VIVEN FUERA DE `DataTable` ──────────────────────────────────
  *
- * Cuenta y periodo van al SERVIDOR, no al `filterConfig` de la tabla: el
- * backend resuelve el SOLAPAMIENTO de rangos —devuelve las conciliaciones cuyo
- * periodo se cruza con el pedido—, y `DataTable` solo sabe comparar el valor de
- * una columna contra un literal. El filtro de estatus sí se queda en la tabla,
- * en memoria, porque es una comparación directa.
+ * Cuenta y periodo van al SERVIDOR, no a un filtro de la tabla: el backend
+ * resuelve el SOLAPAMIENTO de rangos —devuelve las conciliaciones cuyo periodo
+ * se cruza con el pedido—, y `DataTable` solo sabe comparar el valor de una
+ * columna contra un literal. El filtro de estatus sí se queda en la tabla, en
+ * memoria, como ícono de encabezado (`ColumnHeaderFilter` en la columna
+ * "Cuenta"), porque es una comparación directa.
  *
  * La URL es la fuente de verdad (`?cuenta=&desde=&hasta=`), igual que el filtro
  * de almacén de `StockView`: el enlace es compartible, sobrevive al refresh y
@@ -223,9 +223,10 @@ export function BankReconciliationView() {
     openPinnedDetail(conciliacionEnDetalleDesdePreparar(resultado));
 
   return (
-    <>
-      {/* Filtros de SERVIDOR, fuera de la tabla. */}
-      <section className="mb-4 grid grid-cols-1 md:grid-cols-4 gap-4 bg-white dark:bg-zinc-900 rounded-2xl border border-slate-200 dark:border-white/5 p-5">
+    <div className="h-full flex flex-col min-h-0 space-y-4">
+      {/* Filtros de SERVIDOR, fuera de la tabla. `shrink-0`: solo la tabla
+          de abajo debe crecer. */}
+      <section className="shrink-0 grid grid-cols-1 md:grid-cols-4 gap-4 bg-white dark:bg-zinc-900 rounded-2xl border border-slate-200 dark:border-white/5 p-5">
         <div className="md:col-span-2">
           <FormSelect
             label="Cuenta bancaria"
@@ -267,16 +268,13 @@ export function BankReconciliationView() {
         />
       </section>
 
+      <div className="flex-1 min-h-120 flex flex-col">
       <DataTable
         columns={columns}
         data={conciliaciones}
         baseDataCount={conciliaciones.length}
         searchPlaceholder="Buscar por cuenta o periodo..."
-        // Solo el estatus se filtra en memoria; cuenta y periodo van al
-        // servidor (ver el encabezado de este archivo).
-        filterConfig={[
-          { id: "estatus", label: "Estatus", options: CONCILIACION_ESTATUS_FILTER },
-        ]}
+        fillHeight
         onRefetch={refetch}
         isRefetching={isFetching}
         emptyMessage={
@@ -332,6 +330,7 @@ export function BankReconciliationView() {
           </MainDialog>
         }
       />
+      </div>
 
       {detailConciliacion && (
         <BankReconciliationDetailDialog
@@ -412,10 +411,10 @@ export function BankReconciliationView() {
           importe; si no cargó, se avisa en vez de mostrar saldos con la moneda
           equivocada. */}
       {hasLoadedAccounts && activeAccounts.length === 0 && (
-        <p className="mt-4 text-xs text-amber-600 dark:text-amber-400">
+        <p className="shrink-0 text-xs text-amber-600 dark:text-amber-400">
           No hay cuentas bancarias activas: registra una antes de conciliar.
         </p>
       )}
-    </>
+    </div>
   );
 }

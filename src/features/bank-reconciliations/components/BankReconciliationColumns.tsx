@@ -1,7 +1,7 @@
-import { ColumnDef, createColumnHelper } from "@tanstack/react-table";
+import { ColumnDef, createColumnHelper, FilterFn } from "@tanstack/react-table";
 import { ActionMenu, ActionMenuItem } from "@/src/components/ActionMenu";
-import { StatusBadge } from "@/src/components/StatusBadge";
-import { BanIcon, CheckCircleIcon, ViewIcon } from "@/src/components/Icons";
+import { ColumnHeaderFilter, type ColumnFilterOption } from "@/src/components/ColumnHeaderFilter";
+import { BanIcon, CheckCircleIcon, ChevronRightIcon, ViewIcon } from "@/src/components/Icons";
 import { formatShortDate } from "@/src/utils/formatDate";
 import { formatSaldo } from "@/src/features/bank-accounts/utils/bankAccountMoney";
 import { CONCILIACION_ESTATUS_CONFIG } from "../constants/conciliacionEstatus";
@@ -13,6 +13,20 @@ import {
 import type { ConciliacionBancaria } from "../interfaces/bank-reconciliation.interface";
 
 const columnHelper = createColumnHelper<ConciliacionBancaria>();
+
+const ESTATUS_FILTER_OPTIONS: ColumnFilterOption[] = [
+  { value: undefined, label: "Todos" },
+  ...Object.entries(CONCILIACION_ESTATUS_CONFIG).map(([estatus, cfg]) => ({
+    value: estatus,
+    label: cfg.label ?? estatus,
+    dotClassName: cfg.dot,
+  })),
+];
+
+const estatusFilterFn: FilterFn<ConciliacionBancaria> = (row, _columnId, filterValue) => {
+  if (filterValue === undefined) return true;
+  return row.original.estatus === filterValue;
+};
 
 /**
  * Columnas del listado de conciliaciones bancarias.
@@ -44,17 +58,78 @@ export const getColumns = (
     // TODAS. `cuenta_bancaria_alias` es nullable.
     columnHelper.accessor((row) => row.cuenta_bancaria_alias ?? "", {
       id: "cuenta_bancaria_alias",
-      header: "Cuenta",
-      cell: (info) => (
-        <button
-          type="button"
-          onClick={() => onViewDetail(info.row.original)}
-          title="Ver detalle"
-          className="font-medium text-slate-600 dark:text-slate-300 hover:text-sky-600 dark:hover:text-sky-400 hover:underline cursor-pointer"
-        >
-          {info.getValue() || `#${info.row.original.cuenta_bancaria}`}
-        </button>
+      header: ({ column }) => (
+        <div className="flex items-center gap-1.5">
+          <span>Cuenta</span>
+          <ColumnHeaderFilter column={column} options={ESTATUS_FILTER_OPTIONS} label="estatus" />
+        </div>
       ),
+      filterFn: estatusFilterFn,
+      cell: (info) => {
+        const conciliacion = info.row.original;
+        const esBorrador = conciliacion.estatus === "Borrador";
+        const cuadra = conciliacionCuadra(
+          conciliacion.saldo_estado_cuenta,
+          conciliacion.saldo_libros,
+        );
+
+        const menuItems: ActionMenuItem[] = [
+          {
+            label: "Ver detalle",
+            icon: ViewIcon,
+            onSelect: () => onViewDetail(conciliacion),
+          },
+        ];
+
+        // Solo un `Borrador` se cierra o se cancela. `Cerrada` y `Cancelada` son
+        // terminales y quedan de solo consulta — cancelar una cerrada no
+        // revertiría los movimientos que ya marcó como `Conciliado`.
+        if (esBorrador) {
+          menuItems.push({
+            label: "Cerrar conciliación",
+            icon: CheckCircleIcon,
+            onSelect: () => onCerrar(conciliacion),
+            // El backend rechaza el cierre descuadrado; la acción se ofrece
+            // deshabilitada en vez de esconderla, para que se vea que existe y
+            // por qué no está disponible todavía.
+            disabled: !cuadra,
+          });
+          menuItems.push({
+            label: "Cancelar conciliación",
+            icon: BanIcon,
+            onSelect: () => onCancelar(conciliacion),
+          });
+        }
+
+        const cuenta = info.getValue() || `#${conciliacion.cuenta_bancaria}`;
+        const statusCfg = CONCILIACION_ESTATUS_CONFIG[conciliacion.estatus];
+        return (
+          <div className="flex items-center gap-2">
+            <span
+              className={`h-2.5 w-2.5 rounded-full shrink-0 ${statusCfg?.dot ?? "bg-slate-400"}`}
+              title={statusCfg?.label ?? conciliacion.estatus}
+              aria-hidden="true"
+            />
+            <span className="sr-only">{statusCfg?.label ?? conciliacion.estatus}</span>
+            <ActionMenu
+              items={menuItems}
+              ariaLabel={`Acciones de la conciliación de ${cuenta}`}
+              align="start"
+              trigger={
+                <button type="button" title="Ver acciones" className="group inline-flex items-center gap-1 cursor-pointer">
+                  <span className="text-[11px] font-semibold text-slate-700 dark:text-slate-200 group-hover:text-sky-600 dark:group-hover:text-sky-400">
+                    {cuenta}
+                  </span>
+                  <ChevronRightIcon
+                    className="h-3.5 w-3.5 shrink-0 text-slate-400 dark:text-slate-500 group-hover:text-sky-500 dark:group-hover:text-sky-400 group-hover:translate-x-0.5 transition-all"
+                    aria-hidden="true"
+                  />
+                </button>
+              }
+            />
+          </div>
+        );
+      },
     }),
     // El periodo se arma de dos campos, así que la columna es de función y su
     // valor ya es el texto que se busca y se ordena.
@@ -129,59 +204,6 @@ export const getColumns = (
         },
       },
     ),
-    columnHelper.accessor("estatus", {
-      header: "Estatus",
-      cell: (info) => (
-        <StatusBadge status={info.getValue()} config={CONCILIACION_ESTATUS_CONFIG} />
-      ),
-    }),
-    columnHelper.display({
-      id: "actions",
-      header: "Acciones",
-      meta: { align: "center" },
-      cell: ({ row }) => {
-        const conciliacion = row.original;
-        const esBorrador = conciliacion.estatus === "Borrador";
-        const cuadra = conciliacionCuadra(
-          conciliacion.saldo_estado_cuenta,
-          conciliacion.saldo_libros,
-        );
-
-        const menuItems: ActionMenuItem[] = [
-          {
-            label: "Ver detalle",
-            icon: ViewIcon,
-            onSelect: () => onViewDetail(conciliacion),
-          },
-        ];
-
-        // Solo un `Borrador` se cierra o se cancela. `Cerrada` y `Cancelada` son
-        // terminales y quedan de solo consulta — cancelar una cerrada no
-        // revertiría los movimientos que ya marcó como `Conciliado`.
-        if (esBorrador) {
-          menuItems.push({
-            label: "Cerrar conciliación",
-            icon: CheckCircleIcon,
-            onSelect: () => onCerrar(conciliacion),
-            // El backend rechaza el cierre descuadrado; la acción se ofrece
-            // deshabilitada en vez de esconderla, para que se vea que existe y
-            // por qué no está disponible todavía.
-            disabled: !cuadra,
-          });
-          menuItems.push({
-            label: "Cancelar conciliación",
-            icon: BanIcon,
-            onSelect: () => onCancelar(conciliacion),
-          });
-        }
-
-        return (
-          <div className="flex justify-center">
-            <ActionMenu items={menuItems} />
-          </div>
-        );
-      },
-    }),
   ] as ColumnDef<ConciliacionBancaria>[];
 
   return columns;

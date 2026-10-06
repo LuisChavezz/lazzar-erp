@@ -1,9 +1,10 @@
-import { ColumnDef, createColumnHelper } from "@tanstack/react-table";
+import { ColumnDef, createColumnHelper, FilterFn } from "@tanstack/react-table";
 import { ActionMenu, ActionMenuItem } from "@/src/components/ActionMenu";
-import { StatusBadge } from "@/src/components/StatusBadge";
+import { ColumnHeaderFilter, type ColumnFilterOption } from "@/src/components/ColumnHeaderFilter";
 import {
   BanIcon,
   CheckCircleIcon,
+  ChevronRightIcon,
   DeleteIcon,
   ViewIcon,
 } from "@/src/components/Icons";
@@ -13,6 +14,22 @@ import { NOTA_CREDITO_ESTATUS_CONFIG } from "../constants/creditNoteStatus";
 import type { NotaCredito } from "../interfaces/credit-note.interface";
 
 const columnHelper = createColumnHelper<NotaCredito>();
+
+/** Opciones del filtro de encabezado, con el mismo punto de color que la celda. */
+const ESTATUS_FILTER_OPTIONS: ColumnFilterOption[] = [
+  { value: undefined, label: "Todos" },
+  ...Object.entries(NOTA_CREDITO_ESTATUS_CONFIG).map(([estatus, cfg]) => ({
+    value: estatus,
+    label: cfg.label ?? estatus,
+    dotClassName: cfg.dot,
+  })),
+];
+
+/** Filtro EXACTO sobre `estatus` crudo — la celda ya no lo muestra como texto, solo como punto de color. */
+const estatusFilterFn: FilterFn<NotaCredito> = (row, _columnId, filterValue) => {
+  if (filterValue === undefined) return true;
+  return row.original.estatus === filterValue;
+};
 
 /**
  * Columnas del listado de notas de crédito.
@@ -34,19 +51,90 @@ export const getColumns = (
 ) => {
   const columns = [
     columnHelper.accessor("folio", {
-      header: "Folio",
-      cell: (info) => (
-        // Mismo criterio que el folio en el resto de las tablas: el identificador
-        // principal abre el detalle, con la misma llamada que la acción del menú.
-        <button
-          type="button"
-          onClick={() => onViewDetail(info.row.original.id)}
-          title="Ver detalle"
-          className="font-mono text-xs font-medium text-slate-600 dark:text-slate-300 hover:text-sky-600 dark:hover:text-sky-400 hover:underline cursor-pointer"
-        >
-          {info.getValue() || `#${info.row.original.id}`}
-        </button>
+      header: ({ column }) => (
+        <div className="flex items-center gap-1.5">
+          <span>Folio</span>
+          <ColumnHeaderFilter column={column} options={ESTATUS_FILTER_OPTIONS} label="estatus" />
+        </div>
       ),
+      filterFn: estatusFilterFn,
+      cell: (info) => {
+        const { id, estatus } = info.row.original;
+        const menuItems: ActionMenuItem[] = [
+          {
+            label: "Ver detalle",
+            icon: ViewIcon,
+            onSelect: () => onViewDetail(id),
+          },
+        ];
+
+        // Emitir y eliminar SOLO sobre borradores: son las dos salidas de un
+        // documento que todavía no tiene efecto contable. El backend impone lo
+        // mismo (un DELETE sobre una `Emitida` responde 400).
+        if (estatus === "Borrador") {
+          menuItems.push({
+            label: "Emitir nota",
+            icon: CheckCircleIcon,
+            onSelect: () => onEmitir(id),
+          });
+        }
+
+        // Cancelar sobre lo que aún puede cancelarse. Sobre una `Emitida`
+        // devuelve el importe a la cuenta por cobrar; sobre un `Borrador`
+        // simplemente lo archiva sin tocar saldos.
+        if (estatus !== "Cancelada") {
+          menuItems.push({
+            label: "Cancelar nota",
+            icon: BanIcon,
+            onSelect: () => onCancel(id),
+          });
+        }
+
+        if (estatus === "Borrador") {
+          menuItems.push({
+            label: "Eliminar borrador",
+            icon: DeleteIcon,
+            onSelect: () => onDelete(id),
+          });
+        }
+
+        const folio = info.getValue() || `#${id}`;
+        const statusCfg = NOTA_CREDITO_ESTATUS_CONFIG[estatus];
+        return (
+          // El folio ES el disparador del menú: un solo click en el dato
+          // principal reemplaza la columna de Acciones por separado. El
+          // estatus se reduce a un punto de color a su izquierda, igual que
+          // Pedidos/Cotizaciones — no es parte de la acción.
+          <div className="flex items-center gap-2">
+            <span
+              className={`h-2.5 w-2.5 rounded-full shrink-0 ${statusCfg?.dot ?? "bg-slate-400"}`}
+              title={statusCfg?.label ?? estatus}
+              aria-hidden="true"
+            />
+            <span className="sr-only">{statusCfg?.label ?? estatus}</span>
+            <ActionMenu
+              items={menuItems}
+              ariaLabel={`Acciones de la nota ${folio}`}
+              align="start"
+              trigger={
+                <button
+                  type="button"
+                  title="Ver acciones"
+                  className="group inline-flex items-center gap-1 cursor-pointer"
+                >
+                  <span className="font-mono text-[11px] font-semibold text-slate-700 dark:text-slate-200 group-hover:text-sky-600 dark:group-hover:text-sky-400">
+                    {folio}
+                  </span>
+                  <ChevronRightIcon
+                    className="h-3.5 w-3.5 shrink-0 text-slate-400 dark:text-slate-500 group-hover:text-sky-500 dark:group-hover:text-sky-400 group-hover:translate-x-0.5 transition-all"
+                    aria-hidden="true"
+                  />
+                </button>
+              }
+            />
+          </div>
+        );
+      },
     }),
     columnHelper.accessor("factura_folio", {
       header: "Factura",
@@ -100,63 +188,6 @@ export const getColumns = (
           {formatMoneyValue(info.getValue())}
         </div>
       ),
-    }),
-    columnHelper.accessor("estatus", {
-      header: "Estatus",
-      cell: (info) => (
-        <StatusBadge status={info.getValue()} config={NOTA_CREDITO_ESTATUS_CONFIG} />
-      ),
-    }),
-    columnHelper.display({
-      id: "actions",
-      header: "Acciones",
-      meta: { align: "center" },
-      cell: ({ row }) => {
-        const { id, estatus } = row.original;
-        const menuItems: ActionMenuItem[] = [
-          {
-            label: "Ver detalle",
-            icon: ViewIcon,
-            onSelect: () => onViewDetail(id),
-          },
-        ];
-
-        // Emitir y eliminar SOLO sobre borradores: son las dos salidas de un
-        // documento que todavía no tiene efecto contable. El backend impone lo
-        // mismo (un DELETE sobre una `Emitida` responde 400).
-        if (estatus === "Borrador") {
-          menuItems.push({
-            label: "Emitir nota",
-            icon: CheckCircleIcon,
-            onSelect: () => onEmitir(id),
-          });
-        }
-
-        // Cancelar sobre lo que aún puede cancelarse. Sobre una `Emitida`
-        // devuelve el importe a la cuenta por cobrar; sobre un `Borrador`
-        // simplemente lo archiva sin tocar saldos.
-        if (estatus !== "Cancelada") {
-          menuItems.push({
-            label: "Cancelar nota",
-            icon: BanIcon,
-            onSelect: () => onCancel(id),
-          });
-        }
-
-        if (estatus === "Borrador") {
-          menuItems.push({
-            label: "Eliminar borrador",
-            icon: DeleteIcon,
-            onSelect: () => onDelete(id),
-          });
-        }
-
-        return (
-          <div className="flex justify-center">
-            <ActionMenu items={menuItems} />
-          </div>
-        );
-      },
     }),
   ] as ColumnDef<NotaCredito>[];
 

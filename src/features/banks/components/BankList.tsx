@@ -12,17 +12,6 @@ import { Banco } from "../interfaces/bank.interface";
 import BankForm from "./BankForm";
 import { useBanks } from "../hooks/useBanks";
 
-/**
- * Filtro de estatus. `DataTable` filtra en MEMORIA comparando
- * `String(row[configId]) === value`, así que los valores son los del booleano
- * `activo` serializado ("true"/"false"), no etiquetas. El backend sí acepta
- * `?activo=`, pero la tabla no tiene puente hacia parámetros del servidor.
- */
-const ACTIVO_FILTER = [
-  { value: "true", label: "Activo" },
-  { value: "false", label: "Inactivo" },
-];
-
 export default function BankList() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedBank, setSelectedBank] = useState<Banco | null>(null);
@@ -56,7 +45,6 @@ export default function BankList() {
       data={banks}
       baseDataCount={banks.length}
       searchPlaceholder="Buscar banco por nombre, código o SWIFT..."
-      filterConfig={[{ id: "activo", label: "Estatus", options: ACTIVO_FILTER }]}
       fillHeight
       onRefetch={refetch}
       isRefetching={isFetching}
