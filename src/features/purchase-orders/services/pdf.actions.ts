@@ -11,6 +11,7 @@
  * pueda reutilizar el cache de `usePurchaseOrder` en vez de que esta función
  * siempre dispare su propio fetch.
  */
+import { isPurchaseOrderCancelled } from "../constants/purchaseOrderStatus";
 import type { PurchaseOrderDetail } from "../interfaces/purchase-order.interface";
 import { generatePurchaseOrderPdfBlob } from "./pdf/purchaseOrderPdfBlob";
 
@@ -25,8 +26,13 @@ export const downloadPurchaseOrderPdf = async (order: PurchaseOrderDetail): Prom
   const link = document.createElement("a");
   link.href = objectUrl;
   // El folio es más legible que el id para el nombre del archivo; si por algún
-  // motivo viene vacío, se cae al id para no generar "orden-compra-.pdf".
-  link.download = `orden-compra-${order.folio || order.id}.pdf`;
+  // motivo viene vacío, se cae al id para no generar "orden-compra-.pdf". Una
+  // orden cancelada lleva el sufijo `-cancelada` para distinguirla de una
+  // descarga previa de la misma orden cuando aún era válida. Solo aplica a la
+  // descarga: el adjunto del correo arma su propio nombre y nunca es de una
+  // cancelada.
+  const suffix = isPurchaseOrderCancelled(order.estatus) ? "-cancelada" : "";
+  link.download = `orden-compra-${order.folio || order.id}${suffix}.pdf`;
   link.click();
   URL.revokeObjectURL(objectUrl);
 };

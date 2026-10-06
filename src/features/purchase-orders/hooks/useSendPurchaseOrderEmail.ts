@@ -9,6 +9,7 @@ import {
   type SendEmailResult,
 } from "@/src/features/google/utils/emailSend.utils";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
+import { isPurchaseOrderAuthorizedOrComplete } from "../constants/purchaseOrderStatus";
 import { generatePurchaseOrderPdfBlob } from "../services/pdf/purchaseOrderPdfBlob";
 import { canSeeAmounts } from "../utils/purchaseOrderFinance";
 import { purchaseOrderQueryOptions } from "./usePurchaseOrder";
@@ -22,6 +23,10 @@ import { purchaseOrderQueryOptions } from "./usePurchaseOrder";
 const SIN_IMPORTES_MSG =
   "No tienes acceso a los importes de esta orden, así que no puede enviarse al proveedor.";
 
+/** Mensaje cuando el estatus real de la orden ya no es 3, 4 o 5 (ver la guarda). */
+const ESTATUS_CAMBIO_MSG =
+  "El estatus de esta orden cambió y ya no puede enviarse por correo. Se actualizó el listado.";
+
 // --- Hook ---
 
 /**
@@ -31,8 +36,9 @@ const SIN_IMPORTES_MSG =
  * via v1_api, garantizando que las cookies auth-jwt/auth-refresh-jwt del browser
  * viajen correctamente y el interceptor de refresh actúe ante un 401.
  *
- * 1. getPurchaseOrder()   — v1_api GET (vía el cache de `usePurchaseOrder`,
- *    reutilizado si ya está cacheado), cookies + interceptor de refresh ✓
+ * 1. getPurchaseOrder()   — v1_api GET (siempre fresco, con la llave de
+ *    `usePurchaseOrder`; ver la guarda de estatus), cookies + interceptor de
+ *    refresh ✓
  * 2. renderEmailContent() — API Route Next.js: valida `proveedor_correo` + sesión
  *    y renderiza HTML en Node.js. Su error tiene PRIORIDAD sobre un fallo de
  *    generación de PDF/adjunto no relacionado (ver comentario junto a
@@ -50,9 +56,25 @@ export const useSendPurchaseOrderEmail = () => {
   return useMutation<SendEmailResult, unknown, number>({
     mutationKey: ["purchase-orders", "send-email"],
     mutationFn: async (orderId: number): Promise<SendEmailResult> => {
-      // Reutiliza el cache de `usePurchaseOrder` (p. ej. si el usuario ya
-      // abrió el diálogo de detalle) en vez de re-consultar siempre.
-      const order = await queryClient.fetchQuery(purchaseOrderQueryOptions(orderId));
+      // A diferencia de "Descargar PDF", aquí NO se reutiliza el cache del
+      // detalle (`staleTime: 0` fuerza el GET): la guarda de estatus de abajo
+      // tiene que ver el estatus REAL, no uno cacheado hasta 15 min.
+      const order = await queryClient.fetchQuery({
+        ...purchaseOrderQueryOptions(orderId),
+        staleTime: 0,
+      });
+
+      // La fila del listado que habilitó "Enviar correo" puede estar
+      // desactualizada: si otro usuario canceló o editó la orden (regresa a
+      // pendiente), le llegaría al proveedor una orden que ya no está en firme
+      // —y, si está cancelada, con la leyenda "CANCELADA" en el adjunto—. Se
+      // corta aquí —el Route Handler no puede
+      // consultar al backend— y se refresca el listado para que la fila
+      // muestre su estatus real.
+      if (!isPurchaseOrderAuthorizedOrComplete(order.estatus)) {
+        queryClient.invalidateQueries({ queryKey: ["purchase-orders"] });
+        throw new Error(ESTATUS_CAMBIO_MSG);
+      }
 
       // El detalle ya viene filtrado por rol: si faltan los importes, no se
       // envía una orden sin precios al proveedor. Se corta ANTES de generar el

@@ -13,4 +13,8 @@ import { BASE_PDF_COLORS } from "./shared/BasePdfColors";
 
 export const PO_PDF_COLORS = {
   ...BASE_PDF_COLORS,
+  // Leyenda y marca de agua de una orden cancelada. Solo los usa la OC.
+  statusMark: "#b91c1c",
+  statusMarkBg: "#fef2f2",
+  statusMarkBorder: "#fecaca",
 } as const;
