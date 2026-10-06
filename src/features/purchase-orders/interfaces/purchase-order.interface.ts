@@ -69,9 +69,11 @@ export interface DocumentoLigado {
 export interface PurchaseOrder {
   id: number;
   /**
-   * Folio de la orden. `null` mientras el backend no lo asigna — verificado
-   * contra producción: 4 de 15 órdenes del listado lo traen nulo, todas en
-   * estatus 2 (pendiente a confirmar). Cualquier render debe llevar respaldo
+   * Folio de la orden. `null` mientras el backend no lo asigna. Suele ocurrir
+   * en estatus 2 (pendiente a confirmar), pero NO es exclusivo de ese estatus:
+   * en datos reales hay órdenes sin folio en 3 (autorizada, p. ej. la OC 160)
+   * y en 6 (cancelada), así que no debe asumirse que una orden confirmada o
+   * más avanzada siempre trae folio. Cualquier render debe llevar respaldo
    * (`?? "—"`, o `Orden #{id}` cuando es el título de la vista): sin él, un
    * folio nulo deja un `<button>` de folio SIN contenido, que colapsa a 0×0 px
    * y queda invisible e inclicable.

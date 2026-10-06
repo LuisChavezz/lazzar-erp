@@ -29,6 +29,75 @@ export const purchaseOrderPdfStyles = StyleSheet.create({
     color: C.white,
   },
 
+  /* ── Orden cancelada (estatus 6) — específico de OC ── */
+  // Marca de agua: capa `fixed` (se repite en cada página) y absoluta (fuera
+  // del flujo, no mueve ni pagina el contenido). Se pinta ENCIMA del contenido
+  // —las filas de la tabla tienen fondo opaco y la tapaban— con opacidad baja
+  // para que todo siga legible debajo.
+  watermarkLayer: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  watermarkText: {
+    fontSize: 44,
+    fontFamily: "Helvetica-Bold",
+    color: C.statusMark,
+    opacity: 0.1,
+    transform: "rotate(-35deg)",
+    textAlign: "center",
+  },
+  statusBanner: {
+    marginBottom: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: C.statusMarkBorder,
+    borderRadius: 4,
+    backgroundColor: C.statusMarkBg,
+  },
+  statusBannerTitle: {
+    fontSize: 11,
+    fontFamily: "Helvetica-Bold",
+    color: C.statusMark,
+  },
+  statusBannerReason: {
+    marginTop: 4,
+    fontSize: 9,
+    color: C.textPrimary,
+  },
+  statusBannerReasonLabel: {
+    fontFamily: "Helvetica-Bold",
+  },
+  /* ── Pie de página — específico de OC ── */
+  // El texto izquierdo (folio + proveedor [+ leyenda de cancelada]) se encoge
+  // y parte en líneas en vez de encimarse con "Página X de Y" cuando el nombre
+  // del proveedor es largo. Ese número de página es un `Text` con `render`
+  // (contenido dinámico) y react-pdf no conoce su ancho al hacer el layout,
+  // así que se le reserva uno FIJO —sin él, el texto izquierdo ocupaba todo el
+  // renglón y se encimaba—. No se toca `footerText` de la base: lo comparten
+  // cotizaciones y facturas.
+  footerTextShrink: {
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: 0,
+    marginRight: 12,
+  },
+  footerPageNumberFixed: {
+    flexShrink: 0,
+    // Holgura para "Página 999 de 999" a 7 pt.
+    width: 80,
+    textAlign: "right",
+  },
+  footerStatus: {
+    fontFamily: "Helvetica-Bold",
+    color: C.statusMark,
+  },
+
   /* ── Info general (2 columnas) — específico de OC ── */
   twoCol: {
     flexDirection: "row",

@@ -99,10 +99,12 @@ const FolioCell = ({
   // tiene correo capturado" y la acción se puede ocultar sin ambigüedad.
   const supplierHasNoEmail = !order.proveedor_correo;
 
-  // Solo se envía/descarga la orden una vez autorizada (o más avanzada): antes de
-  // eso todavía puede editarse/eliminarse, así que no debe salir un documento en
-  // firme. Cuando la condición no se cumple, la acción se OCULTA por completo
-  // (igual que Editar/Confirmar/Cancelar), no se muestra deshabilitada.
+  // Solo se ENVÍA la orden al proveedor una vez autorizada (o más avanzada):
+  // antes de eso todavía puede editarse/eliminarse, así que no debe salirle un
+  // documento en firme (el hook vuelve a comprobarlo con el estatus real).
+  // Cuando la condición no se cumple, la acción se OCULTA por completo (igual
+  // que Editar/Confirmar/Cancelar), no se muestra deshabilitada. "Descargar
+  // PDF", en cambio, está en todos los estatus (ver su item más abajo).
   const isAuthorizedOrBeyond = isPurchaseOrderAuthorizedOrComplete(order.estatus);
 
   // La visibilidad de importes NO se comprueba aquí, aunque correo/PDF/edición
@@ -117,11 +119,6 @@ const FolioCell = ({
 
   // "Enviar correo" requiere además un correo del proveedor al que enviar.
   const canSendEmail = isAuthorizedOrBeyond && !supplierHasNoEmail;
-
-  // "Descargar PDF" NO necesita correo del proveedor (es una acción local: el
-  // documento puede imprimirse o compartirse a mano), así que solo se condiciona
-  // a la autorización.
-  const canDownloadPdf = isAuthorizedOrBeyond;
 
   const menuItems: ActionMenuItem[] = [
     {
@@ -203,17 +200,21 @@ const FolioCell = ({
     });
   }
 
-  if (canDownloadPdf) {
-    menuItems.push({
-      label: isDownloadingPdf ? "Generando PDF..." : "Descargar PDF",
-      icon: DownloadIcon,
-      onSelect: () => downloadPdf(order.id),
-      // In-flight guard: evita doble descarga o solaparse con el envío.
-      // `keepOpenOnSelect` deja el menú abierto para ver el estado "Generando PDF...".
-      disabled: isDownloadingPdf || isSendingEmail,
-      keepOpenOnSelect: true,
-    });
-  }
+  // "Descargar PDF" está disponible en TODOS los estatus —sin condición— y no
+  // necesita correo del proveedor (es una acción local: el documento puede
+  // imprimirse o compartirse a mano). Solo la orden CANCELADA se marca dentro
+  // del documento (leyenda, motivo y marca de agua en `PurchaseOrderPdfDocument`)
+  // para que no se confunda con una orden válida; los demás estatus salen sin
+  // marca.
+  menuItems.push({
+    label: isDownloadingPdf ? "Generando PDF..." : "Descargar PDF",
+    icon: DownloadIcon,
+    onSelect: () => downloadPdf(order.id),
+    // In-flight guard: evita doble descarga o solaparse con el envío.
+    // `keepOpenOnSelect` deja el menú abierto para ver el estado "Generando PDF...".
+    disabled: isDownloadingPdf || isSendingEmail,
+    keepOpenOnSelect: true,
+  });
 
   return (
     // `whitespace-nowrap`: punto, folio, chevron y referencia en UNA línea (ver

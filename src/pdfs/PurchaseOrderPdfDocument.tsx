@@ -19,12 +19,28 @@
  * consulta en `PurchaseOrderDetailDialog` para uso interno. Si en el futuro se
  * requiere un documento de "pendiente por surtir", debe ser un documento
  * distinto, no este.
+ *
+ * ─── ORDEN CANCELADA ─────────────────────────────────────────────────────────
+ * El PDF se descarga en todos los estatus, y SOLO la cancelada se marca: lleva
+ * la leyenda "CANCELADA" (banner en la primera página + pie de cada página),
+ * su `motivo_cancelacion` y una marca de agua en cada página, para que no se
+ * confunda con una orden válida. Los demás estatus se renderizan sin ninguna
+ * marca. El correo al proveedor solo sale en 3/4/5 (`useSendPurchaseOrderEmail`),
+ * así que su adjunto nunca lleva la leyenda.
  */
 import { Document, Page, Text, View } from "@react-pdf/renderer";
+import { isPurchaseOrderCancelled } from "@/src/features/purchase-orders/constants/purchaseOrderStatus";
 import type { PurchaseOrderDetail } from "@/src/features/purchase-orders/interfaces/purchase-order.interface";
 import { formatMoneyValueOrDash, safeParseAmount } from "@/src/utils/formatCurrency";
 import { formatLocalDate } from "@/src/utils/formatDate";
 import { purchaseOrderPdfStyles as s } from "./PurchaseOrderPdfStyles";
+
+/**
+ * Texto FIJO de la leyenda/marca de agua de una orden cancelada. Decidido por
+ * negocio y deliberadamente independiente de la etiqueta de
+ * `PURCHASE_ORDER_ESTATUS_CFG` ("Cancelada").
+ */
+const CANCELLED_MARK = "CANCELADA";
 
 type PurchaseOrderPdfDocumentProps = {
   order: PurchaseOrderDetail;
@@ -32,6 +48,11 @@ type PurchaseOrderPdfDocumentProps = {
 
 export const PurchaseOrderPdfDocument = ({ order }: PurchaseOrderPdfDocumentProps) => {
   const detalles = order.detalles ?? [];
+  // `folio` es `null` hasta que la orden se confirma; mismo respaldo que el
+  // correo (`PurchaseOrderEmail`).
+  const folioLabel = order.folio ?? `#${order.id}`;
+  const statusMark = isPurchaseOrderCancelled(order.estatus) ? CANCELLED_MARK : null;
+  const motivoCancelacion = statusMark ? order.motivo_cancelacion?.trim() || null : null;
   // Importes en la MONEDA DE LA ORDEN, y "—" cuando el campo viene ausente:
   // el backend elimina los financieros de la respuesta según el rol de quien
   // consultó la orden, y este documento se genera a partir de esa respuesta.
@@ -54,10 +75,23 @@ export const PurchaseOrderPdfDocument = ({ order }: PurchaseOrderPdfDocumentProp
           </View>
           <View style={s.headerRight}>
             <View style={s.folioBadge}>
-              <Text style={s.folioText}>{order.folio}</Text>
+              <Text style={s.folioText}>{folioLabel}</Text>
             </View>
           </View>
         </View>
+
+        {/* ── Leyenda de orden cancelada ── */}
+        {statusMark ? (
+          <View style={s.statusBanner} wrap={false}>
+            <Text style={s.statusBannerTitle}>{statusMark}</Text>
+            {motivoCancelacion ? (
+              <Text style={s.statusBannerReason}>
+                <Text style={s.statusBannerReasonLabel}>Motivo: </Text>
+                {motivoCancelacion}
+              </Text>
+            ) : null}
+          </View>
+        ) : null}
 
         {/* ── Info general ── */}
         <View style={s.twoCol} wrap={false}>
@@ -179,13 +213,24 @@ export const PurchaseOrderPdfDocument = ({ order }: PurchaseOrderPdfDocumentProp
           </View>
         ) : null}
 
+        {/* ── Marca de agua (orden cancelada) — al final para quedar encima ── */}
+        {statusMark ? (
+          <View style={s.watermarkLayer} fixed>
+            <Text style={s.watermarkText}>{statusMark}</Text>
+          </View>
+        ) : null}
+
         {/* ── Pie de página ── */}
+        {/* El texto izquierdo se encoge (y parte en líneas) para que un nombre
+            de proveedor largo —más la leyenda, si es cancelada— no se encime
+            con la paginación. */}
         <View style={s.footer} fixed>
-          <Text style={s.footerText}>
-            Orden de compra {order.folio} — {order.proveedor_nombre || "-"}
+          <Text style={[s.footerText, s.footerTextShrink]}>
+            Orden de compra {folioLabel} — {order.proveedor_nombre || "-"}
+            {statusMark ? <Text style={s.footerStatus}> · {statusMark}</Text> : null}
           </Text>
           <Text
-            style={s.footerText}
+            style={[s.footerText, s.footerPageNumberFixed]}
             render={({ pageNumber, totalPages }) => `Página ${pageNumber} de ${totalPages}`}
           />
         </View>

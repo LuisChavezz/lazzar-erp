@@ -9,10 +9,11 @@ import { purchaseOrderQueryOptions } from "./usePurchaseOrder";
 
 /**
  * Mensaje cuando el rol del usuario no puede ver los importes de la orden. El
- * PDF es un documento en firme dirigido al proveedor: sin precios sería una
- * orden de compra rota, no un documento incompleto, así que la acción se
- * bloquea aquí —con el detalle YA filtrado por el backend— en vez de en el
- * listado, cuya fila no está filtrada.
+ * PDF es el documento de la orden de compra (el que puede compartirse con el
+ * proveedor; se descarga en cualquier estatus): sin precios sería una orden
+ * rota, no un documento incompleto, así que la acción se bloquea aquí —con el
+ * detalle YA filtrado por el backend— en vez de en el listado, cuya fila no
+ * está filtrada.
  */
 const SIN_IMPORTES_MSG =
   "No tienes acceso a los importes de esta orden, así que no puede generarse su PDF.";
@@ -25,9 +26,14 @@ export const useDownloadPurchaseOrderPdf = () => {
   return useMutation({
     mutationKey: downloadPurchaseOrderPdfMutationKey,
     mutationFn: async (orderId: number) => {
-      // Reutiliza el cache de `usePurchaseOrder` (p. ej. si el usuario ya
-      // abrió el diálogo de detalle) en vez de re-consultar siempre.
-      const order = await queryClient.fetchQuery(purchaseOrderQueryOptions(orderId));
+      // NO se reutiliza el cache del detalle (`staleTime: 0` fuerza el GET),
+      // igual que en el correo: el documento depende del `estatus` REAL —una
+      // orden cancelada debe salir con su marca CANCELADA aunque el detalle
+      // cacheado (hasta 15 min) diga todavía "autorizada".
+      const order = await queryClient.fetchQuery({
+        ...purchaseOrderQueryOptions(orderId),
+        staleTime: 0,
+      });
 
       // El detalle ya viene filtrado por rol: si faltan los importes, no se
       // genera un PDF sin precios. Se lanza para que `onError` lo muestre.
