@@ -362,6 +362,7 @@ export const appRouteGroups: AppRouteGroup[] = [
     showInHome: true,
     sections: [
       { key: "operation", label: "Operación" },
+      { key: "inventory", label: "Inventario" },
       { key: "master-data", label: "Maestros" },
     ],
     items: [
@@ -391,6 +392,19 @@ export const appRouteGroups: AppRouteGroup[] = [
         description: "Recepciones generadas a partir de órdenes de compra.",
         permission: "R-COMPRAS-RECEP",
         section: "operation",
+      },
+      // ── Inventario ──────────────────────────────────────────────────────────
+      {
+        key: "procurement-stock",
+        label: "Existencias",
+        path: "/procurement/stock",
+        icon: ExistenciasIcon,
+        description: "Consulta de existencias por almacén para planear el abastecimiento.",
+        // Sin código de sección propio en el catálogo: la ruta cae en la regla
+        // de módulo `/procurement` de `routePermissions` (R-COMPRAS), así que la
+        // hoja exige el mismo código para no ofrecer un enlace que rebote.
+        permission: "R-COMPRAS",
+        section: "inventory",
       },
       // ── Maestros ────────────────────────────────────────────────────────────
       {
