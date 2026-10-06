@@ -13,7 +13,6 @@ import { ConfirmDialog } from "@/src/components/ConfirmDialog";
 import { useRowActionLock } from "@/src/hooks/useRowActionLock";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { isInitialLoadError } from "@/src/utils/isInitialLoadError";
-import { FACTURA_PROVEEDOR_ESTATUS_FILTER } from "../constants/supplierInvoiceStatus";
 import {
   motivoBloqueoRegistro,
   toastIdBloqueoRegistro,
@@ -339,95 +338,95 @@ export default function SupplierInvoiceList() {
         downloadingIds,
       }}
     >
-      <div className="space-y-6">
-        <DataTable
-          columns={columns}
-          data={facturas}
-          baseDataCount={facturas.length}
-          searchPlaceholder="Buscar por folio..."
-          filterConfig={[
-            { id: "estatus", label: "Estatus", options: FACTURA_PROVEEDOR_ESTATUS_FILTER },
-          ]}
-          onRefetch={refetchIfSelected}
-          isRefetching={isFetching}
-          emptyMessage={
-            proveedorId > 0
-              ? "Este proveedor no tiene facturas registradas."
-              : "Selecciona un proveedor para ver sus facturas."
-          }
-          isLoading={isLoading}
-          isError={showError}
-          errorTitle="Error al cargar las facturas de proveedor"
-          errorMessage={extractErrorMessage(error, "No se pudo cargar la información.")}
-          onErrorRetry={refetchIfSelected}
-          loadingAriaLabel="Cargando facturas de proveedor"
-          getRowId={(row) => String(row.id)}
-          // Cambiar de proveedor o un alta nueva vuelven a la página 1.
-          paginationResetKey={`${proveedorId}-${facturas.length}`}
-          actionButton={
-            <div className="flex items-center gap-2">
-              <div className="w-64">
-                <FormSelect
-                  name="proveedor"
-                  aria-label="Proveedor"
-                  value={String(proveedorId)}
-                  onChange={(event) => setProveedorId(Number(event.target.value))}
-                  disabled={isLoadingSuppliers || isErrorSuppliers}
-                  className="py-2! text-xs! rounded-full!"
-                >
-                  <option value="0" disabled>
-                    {isLoadingSuppliers
-                      ? "Cargando proveedores..."
-                      : isErrorSuppliers
-                        ? "No se pudo cargar el catálogo de proveedores"
-                        : "Selecciona un proveedor..."}
-                  </option>
-                  {supplierOptions.map((option) => (
-                    <option
-                      key={option.value}
-                      value={option.value}
-                      className="bg-white dark:bg-zinc-900 text-slate-900 dark:text-white"
-                    >
-                      {option.label}
+      <div className="h-full flex flex-col min-h-0 space-y-6">
+        <div className="flex-1 min-h-0 flex flex-col">
+          <DataTable
+            columns={columns}
+            data={facturas}
+            baseDataCount={facturas.length}
+            searchPlaceholder="Buscar por folio..."
+            fillHeight
+            onRefetch={refetchIfSelected}
+            isRefetching={isFetching}
+            emptyMessage={
+              proveedorId > 0
+                ? "Este proveedor no tiene facturas registradas."
+                : "Selecciona un proveedor para ver sus facturas."
+            }
+            isLoading={isLoading}
+            isError={showError}
+            errorTitle="Error al cargar las facturas de proveedor"
+            errorMessage={extractErrorMessage(error, "No se pudo cargar la información.")}
+            onErrorRetry={refetchIfSelected}
+            loadingAriaLabel="Cargando facturas de proveedor"
+            getRowId={(row) => String(row.id)}
+            // Cambiar de proveedor o un alta nueva vuelven a la página 1.
+            paginationResetKey={`${proveedorId}-${facturas.length}`}
+            actionButton={
+              <div className="flex items-center gap-2">
+                <div className="w-64">
+                  <FormSelect
+                    name="proveedor"
+                    aria-label="Proveedor"
+                    value={String(proveedorId)}
+                    onChange={(event) => setProveedorId(Number(event.target.value))}
+                    disabled={isLoadingSuppliers || isErrorSuppliers}
+                    className="py-2! text-xs! rounded-full!"
+                  >
+                    <option value="0" disabled>
+                      {isLoadingSuppliers
+                        ? "Cargando proveedores..."
+                        : isErrorSuppliers
+                          ? "No se pudo cargar el catálogo de proveedores"
+                          : "Selecciona un proveedor..."}
                     </option>
-                  ))}
-                </FormSelect>
+                    {supplierOptions.map((option) => (
+                      <option
+                        key={option.value}
+                        value={option.value}
+                        className="bg-white dark:bg-zinc-900 text-slate-900 dark:text-white"
+                      >
+                        {option.label}
+                      </option>
+                    ))}
+                  </FormSelect>
+                </div>
+                <MainDialog
+                  title={
+                    <DialogHeader
+                      title="Nueva Factura de Proveedor"
+                      subtitle="Factura de mercancía recibida contra una orden de compra"
+                      statusColor="indigo"
+                    />
+                  }
+                  open={isFormOpen}
+                  onOpenChange={setIsFormOpen}
+                  maxWidth="1100px"
+                  trigger={
+                    <Button variant="primary" rounded="full" className="hover:scale-105 active:scale-95">
+                      + Nueva factura
+                    </Button>
+                  }
+                >
+                  {isFormOpen && (
+                    <SupplierInvoiceForm
+                      onSuccess={(factura) => {
+                        setIsFormOpen(false);
+                        // SOLO en el alta: el listado se filtra por proveedor, y una
+                        // factura de otro proveedor se guardaría sin verse, como si el
+                        // alta hubiera fallado. Si ya es el seleccionado, `setState`
+                        // con el mismo valor no cambia nada y basta la invalidación
+                        // de la mutación. Registrar, cancelar y editar no tocan el
+                        // filtro.
+                        setProveedorId(factura.proveedor);
+                      }}
+                    />
+                  )}
+                </MainDialog>
               </div>
-              <MainDialog
-                title={
-                  <DialogHeader
-                    title="Nueva Factura de Proveedor"
-                    subtitle="Factura de mercancía recibida contra una orden de compra"
-                    statusColor="indigo"
-                  />
-                }
-                open={isFormOpen}
-                onOpenChange={setIsFormOpen}
-                maxWidth="1100px"
-                trigger={
-                  <Button variant="primary" rounded="full" className="hover:scale-105 active:scale-95">
-                    + Nueva factura
-                  </Button>
-                }
-              >
-                {isFormOpen && (
-                  <SupplierInvoiceForm
-                    onSuccess={(factura) => {
-                      setIsFormOpen(false);
-                      // SOLO en el alta: el listado se filtra por proveedor, y una
-                      // factura de otro proveedor se guardaría sin verse, como si el
-                      // alta hubiera fallado. Si ya es el seleccionado, `setState`
-                      // con el mismo valor no cambia nada y basta la invalidación
-                      // de la mutación. Registrar, cancelar y editar no tocan el
-                      // filtro.
-                      setProveedorId(factura.proveedor);
-                    }}
-                  />
-                )}
-              </MainDialog>
-            </div>
-          }
-        />
+            }
+          />
+        </div>
 
         {detailFactura && (
           <SupplierInvoiceDetailDialog

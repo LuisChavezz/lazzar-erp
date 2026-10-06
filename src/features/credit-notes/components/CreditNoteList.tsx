@@ -22,19 +22,6 @@ import { useCancelNotaCredito } from "../hooks/useCancelNotaCredito";
 import { useDeleteNotaCredito } from "../hooks/useDeleteNotaCredito";
 
 /**
- * Filtros de la tabla. `DataTable` filtra en MEMORIA comparando
- * `String(row[configId]) === value`, así que los valores son los del enum crudo
- * del backend. El endpoint SÍ acepta `?estatus=`, `?cliente=`, `?factura=` y
- * más, pero la tabla no tiene puente hacia parámetros de servidor (ver
- * `getNotasCredito`).
- */
-const ESTATUS_FILTER = [
-  { value: "Borrador", label: "Borrador" },
-  { value: "Emitida", label: "Emitida" },
-  { value: "Cancelada", label: "Cancelada" },
-];
-
-/**
  * Candado de reenvío POR FILA para una acción confirmada (emitir, cancelar,
  * eliminar). Misma implementación que en `PolizaList`.
  *
@@ -231,7 +218,6 @@ export default function CreditNoteList() {
         data={notasCredito}
         baseDataCount={notasCredito.length}
         searchPlaceholder="Buscar por folio, factura, cliente o motivo..."
-        filterConfig={[{ id: "estatus", label: "Estatus", options: ESTATUS_FILTER }]}
         fillHeight
         onRefetch={refetch}
         isRefetching={isFetching}

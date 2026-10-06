@@ -7,7 +7,6 @@ import { ConfirmDialog } from "@/src/components/ConfirmDialog";
 import { useRowActionLock } from "@/src/hooks/useRowActionLock";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { isInitialLoadError } from "@/src/utils/isInitialLoadError";
-import { CXP_ESTATUS_CONFIG } from "../constants/cxpEstatus";
 import { useCuentasPorPagar } from "../hooks/useCuentasPorPagar";
 import { useDeleteCuentaPorPagar } from "../hooks/useDeleteCuentaPorPagar";
 import {
@@ -18,21 +17,9 @@ import {
   CXP_CONFLICT_FALLBACK_MESSAGE,
   parseCuentaPorPagarError,
 } from "../utils/parseCuentaPorPagarError";
-import type { CxPEstatus } from "../interfaces/accounts-payable.interface";
 import { getColumns } from "./AccountsPayableColumns";
 import { AccountsPayableDetailDialog } from "./AccountsPayableDetailDialog";
 import { RegisterAccountPayableDialog } from "./RegisterAccountPayableDialog";
-
-/**
- * Filtro de estatus. `DataTable` filtra en MEMORIA comparando
- * `String(row.estatus) === value`, así que los valores son los del enum crudo.
- * Se derivan de `CXP_ESTATUS_CONFIG` para que filtro y badge cubran siempre los
- * mismos cuatro valores — sin `Vencida`, que no es un estatus (la marca tiene su
- * propio filtro, "Solo vencidas").
- */
-const ESTATUS_FILTER = (Object.keys(CXP_ESTATUS_CONFIG) as CxPEstatus[]).map(
-  (value) => ({ value, label: value }),
-);
 
 export default function AccountsPayableList() {
   const router = useRouter();
@@ -155,7 +142,6 @@ export default function AccountsPayableList() {
         data={cuentasVisibles}
         baseDataCount={cuentasVisibles.length}
         searchPlaceholder="Buscar por proveedor o factura..."
-        filterConfig={[{ id: "estatus", label: "Estatus", options: ESTATUS_FILTER }]}
         fillHeight
         onRefetch={refetch}
         isRefetching={isFetching}

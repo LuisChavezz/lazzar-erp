@@ -30,12 +30,14 @@ export const InvoiceList = () => {
   const showError = isInitialLoadError(isError, hasLoaded);
 
   return (
-    <div className="space-y-6">
+    <div className="h-full flex flex-col min-h-0 space-y-6">
+      <div className="flex-1 min-h-0 flex flex-col">
       <DataTable
         columns={invoiceColumns}
         data={invoices}
         baseDataCount={invoices.length}
         searchPlaceholder="Buscar por folio, cliente o estatus..."
+        fillHeight
         onRefetch={refetch}
         isRefetching={isFetching}
         actionButton={
@@ -56,6 +58,7 @@ export const InvoiceList = () => {
         errorMessage={extractErrorMessage(error, "No se pudo cargar la información.")}
         loadingAriaLabel="Cargando facturas"
       />
+      </div>
 
       <CreateInvoiceDialog
         open={isCreateOpen}

@@ -8,7 +8,7 @@ import { BankReconciliationView } from "@/src/features/bank-reconciliations/comp
  */
 export default function BankReconciliationsPage() {
   return (
-    <div className="w-full">
+    <div className="w-full h-[calc(100dvh-13rem)] min-h-0">
       {/* `BankReconciliationView` lee la cuenta y el periodo desde la URL con
           `useSearchParams`, que en Next.js requiere un límite de Suspense en el
           árbol superior. */}

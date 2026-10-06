@@ -6,7 +6,7 @@ import CostCenterList from "@/src/features/cost-centers/components/CostCenterLis
  */
 export default function CostCentersPage() {
   return (
-    <div className="w-full">
+    <div className="w-full h-[calc(100dvh-13rem)] min-h-0">
       <CostCenterList />
     </div>
   );

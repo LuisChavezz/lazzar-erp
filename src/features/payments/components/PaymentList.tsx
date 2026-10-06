@@ -14,25 +14,6 @@ import PaymentForm from "./PaymentForm";
 import { usePagos } from "../hooks/usePagos";
 import { useCancelPago } from "../hooks/useCancelPago";
 
-/**
- * Filtros de la tabla. `DataTable` filtra en MEMORIA comparando
- * `String(row[configId]) === value`, así que los valores son los del enum crudo
- * del backend. El endpoint SÍ acepta `?estatus=` y `?metodo_pago=`, pero la
- * tabla no tiene puente hacia parámetros de servidor (ver `getPagos`).
- */
-const ESTATUS_FILTER = [
-  { value: "Aplicado", label: "Aplicado" },
-  { value: "Cancelado", label: "Cancelado" },
-  { value: "Borrador", label: "Borrador" },
-];
-
-const METODO_FILTER = [
-  { value: "Transferencia", label: "Transferencia" },
-  { value: "Efectivo", label: "Efectivo" },
-  { value: "Cheque", label: "Cheque" },
-  { value: "Tarjeta", label: "Tarjeta" },
-];
-
 export default function PaymentList() {
   const { pagos, hasLoaded, isLoading, isError, error, refetch, isFetching } = usePagos();
   const { mutate: cancelPago, isPending: isCancelling } = useCancelPago();
@@ -101,10 +82,6 @@ export default function PaymentList() {
         data={pagos}
         baseDataCount={pagos.length}
         searchPlaceholder="Buscar por proveedor, referencia o cuenta..."
-        filterConfig={[
-          { id: "estatus", label: "Estatus", options: ESTATUS_FILTER },
-          { id: "metodo_pago", label: "Método", options: METODO_FILTER },
-        ]}
         fillHeight
         onRefetch={refetch}
         isRefetching={isFetching}

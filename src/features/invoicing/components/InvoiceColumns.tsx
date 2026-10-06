@@ -1,23 +1,37 @@
 "use client";
 
-import { useState } from "react";
-import { ColumnDef } from "@tanstack/react-table";
+import { useState, type ReactNode } from "react";
+import { ColumnDef, FilterFn } from "@tanstack/react-table";
 import { Invoice } from "../interfaces/invoice.interface";
-import { DownloadIcon, EmailIcon, ViewIcon } from "../../../components/Icons";
+import { ChevronRightIcon, DownloadIcon, EmailIcon, ViewIcon } from "../../../components/Icons";
 import { MainDialog } from "../../../components/MainDialog";
 import { DialogHeader } from "../../../components/DialogHeader";
 import { InvoiceDetails } from "./InvoiceDetails";
 import { ActionMenu, ActionMenuItem } from "@/src/components/ActionMenu";
-import { StatusBadge } from "@/src/components/StatusBadge";
+import { ColumnHeaderFilter, type ColumnFilterOption } from "@/src/components/ColumnHeaderFilter";
 import { formatCurrency, safeParseAmount } from "@/src/utils/formatCurrency";
 import { formatLocalDate } from "@/src/utils/formatDate";
 import { INVOICE_STATUS_CONFIG, isInvoiceSendable } from "../constants/invoiceStatus";
 import { useDownloadInvoicePdf } from "../hooks/useDownloadInvoicePdf";
 import { useSendInvoiceEmail } from "../hooks/useSendInvoiceEmail";
 
+const ESTATUS_FILTER_OPTIONS: ColumnFilterOption[] = [
+  { value: undefined, label: "Todos" },
+  ...Object.entries(INVOICE_STATUS_CONFIG).map(([estatus, cfg]) => ({
+    value: estatus,
+    label: cfg.label ?? estatus,
+    dotClassName: cfg.dot,
+  })),
+];
+
+const estatusFilterFn: FilterFn<Invoice> = (row, _columnId, filterValue) => {
+  if (filterValue === undefined) return true;
+  return row.original.estatus === filterValue;
+};
+
 // ── Celda de acciones ─────────────────────────────────────────────────────────
 
-const ActionsCell = ({ invoice }: { invoice: Invoice }) => {
+const ActionsCell = ({ invoice, trigger }: { invoice: Invoice; trigger?: ReactNode }) => {
   const [isViewOpen, setIsViewOpen] = useState(false);
   const { mutate: sendEmail, isPending: isSendingEmail } = useSendInvoiceEmail();
   const { mutate: downloadPdf, isPending: isDownloadingPdf } = useDownloadInvoicePdf();
@@ -84,8 +98,16 @@ const ActionsCell = ({ invoice }: { invoice: Invoice }) => {
   });
 
   return (
-    <div className="flex justify-center">
-      <ActionMenu items={menuItems} ariaLabel={`Acciones de la factura ${invoice.folio}`} />
+    // El folio+estatus ES el disparador del menú cuando se pasa `trigger`
+    // (ver `InvoiceColumns`'s columna "Folio"): un solo click en el dato
+    // principal reemplaza la columna de Acciones por separado.
+    <>
+      <ActionMenu
+        items={menuItems}
+        ariaLabel={`Acciones de la factura ${invoice.folio}`}
+        align={trigger ? "start" : "end"}
+        trigger={trigger}
+      />
       <MainDialog
         open={isViewOpen}
         onOpenChange={setIsViewOpen}
@@ -100,7 +122,7 @@ const ActionsCell = ({ invoice }: { invoice: Invoice }) => {
       >
         <InvoiceDetails invoice={invoice} />
       </MainDialog>
-    </div>
+    </>
   );
 };
 
@@ -109,12 +131,41 @@ const ActionsCell = ({ invoice }: { invoice: Invoice }) => {
 export const invoiceColumns: ColumnDef<Invoice>[] = [
   {
     accessorKey: "folio",
-    header: "Folio",
-    cell: ({ row }) => (
-      <span className="font-mono font-semibold text-slate-700 dark:text-slate-200">
-        {row.getValue("folio")}
-      </span>
+    header: ({ column }) => (
+      <div className="flex items-center gap-1.5">
+        <span>Folio</span>
+        <ColumnHeaderFilter column={column} options={ESTATUS_FILTER_OPTIONS} label="estatus" />
+      </div>
     ),
+    filterFn: estatusFilterFn,
+    cell: ({ row }) => {
+      const invoice = row.original;
+      const statusCfg = INVOICE_STATUS_CONFIG[invoice.estatus];
+      return (
+        <div className="flex items-center gap-2">
+          <span
+            className={`h-2.5 w-2.5 rounded-full shrink-0 ${statusCfg?.dot ?? "bg-slate-400"}`}
+            title={statusCfg?.label ?? invoice.estatus}
+            aria-hidden="true"
+          />
+          <span className="sr-only">{statusCfg?.label ?? invoice.estatus}</span>
+          <ActionsCell
+            invoice={invoice}
+            trigger={
+              <button type="button" title="Ver acciones" className="group inline-flex items-center gap-1 cursor-pointer">
+                <span className="font-mono text-[11px] font-semibold text-slate-700 dark:text-slate-200 group-hover:text-sky-600 dark:group-hover:text-sky-400">
+                  {invoice.folio}
+                </span>
+                <ChevronRightIcon
+                  className="h-3.5 w-3.5 shrink-0 text-slate-400 dark:text-slate-500 group-hover:text-sky-500 dark:group-hover:text-sky-400 group-hover:translate-x-0.5 transition-all"
+                  aria-hidden="true"
+                />
+              </button>
+            }
+          />
+        </div>
+      );
+    },
   },
   {
     accessorKey: "cliente_nombre",
@@ -160,13 +211,6 @@ export const invoiceColumns: ColumnDef<Invoice>[] = [
     ),
   },
   {
-    accessorKey: "estatus",
-    header: "Estatus",
-    cell: ({ row }) => (
-      <StatusBadge status={row.original.estatus} config={INVOICE_STATUS_CONFIG} />
-    ),
-  },
-  {
     accessorKey: "moneda_nombre",
     header: "Moneda",
     cell: ({ row }) => (
@@ -174,11 +218,5 @@ export const invoiceColumns: ColumnDef<Invoice>[] = [
         {row.getValue("moneda_nombre")}
       </span>
     ),
-  },
-  {
-    id: "actions",
-    header: "Acciones",
-    meta: { align: "center" },
-    cell: ({ row }) => <ActionsCell invoice={row.original} />,
   },
 ];

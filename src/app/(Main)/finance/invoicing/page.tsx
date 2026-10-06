@@ -3,19 +3,12 @@ import { InvoiceList } from "@/src/features/invoicing/components/InvoiceList";
 
 export default function InvoicePage() {
   return (
-    <div className="w-full space-y-8">
-      {/* Header */}
-      <div>
-        <p className="text-slate-500 dark:text-slate-400 mt-1">
-          Gestión de facturación electrónica, clientes y cobranza.
-        </p>
+    <div className="w-full h-[calc(100dvh-13rem)] min-h-0 flex flex-col space-y-6">
+      <div className="shrink-0">
+        <InvoiceStats />
       </div>
 
-      {/* Stats */}
-      <InvoiceStats />
-
-      {/* Content */}
-      <div className="space-y-6">
+      <div className="flex-1 min-h-120 flex flex-col">
         <InvoiceList />
       </div>
     </div>

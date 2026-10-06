@@ -6,7 +6,7 @@ import SupplierInvoiceList from "@/src/features/supplier-invoices/components/Sup
  */
 export default function SupplierInvoicesPage() {
   return (
-    <div className="w-full">
+    <div className="w-full h-[calc(100dvh-13rem)] min-h-0">
       <SupplierInvoiceList />
     </div>
   );

@@ -1,14 +1,10 @@
-import { ColumnDef, createColumnHelper } from "@tanstack/react-table";
+import { ColumnDef, createColumnHelper, FilterFn } from "@tanstack/react-table";
 import { ActionMenu, type ActionMenuItem } from "@/src/components/ActionMenu";
-import { StatusBadge } from "@/src/components/StatusBadge";
-import { DeleteIcon, ExternalLinkIcon, ViewIcon } from "@/src/components/Icons";
+import { ColumnHeaderFilter, type ColumnFilterOption } from "@/src/components/ColumnHeaderFilter";
+import { ChevronRightIcon, DeleteIcon, ExternalLinkIcon, ViewIcon } from "@/src/components/Icons";
 import { formatMoneyValueOrDash } from "@/src/utils/formatCurrency";
 import { formatShortDate } from "@/src/utils/formatDate";
-import {
-  CXP_ESTATUS_CONFIG,
-  CXP_VENCIDA_BADGE_CONFIG,
-  CXP_VENCIDA_BADGE_KEY,
-} from "../constants/cxpEstatus";
+import { CXP_ESTATUS_CONFIG } from "../constants/cxpEstatus";
 import {
   canDeleteCuentaPorPagar,
   hasAppliedPayments,
@@ -18,6 +14,20 @@ import {
 import type { CuentaPorPagar } from "../interfaces/accounts-payable.interface";
 
 const columnHelper = createColumnHelper<CuentaPorPagar>();
+
+const ESTATUS_FILTER_OPTIONS: ColumnFilterOption[] = [
+  { value: undefined, label: "Todos" },
+  ...Object.entries(CXP_ESTATUS_CONFIG).map(([estatus, cfg]) => ({
+    value: estatus,
+    label: cfg.label ?? estatus,
+    dotClassName: cfg.dot,
+  })),
+];
+
+const estatusFilterFn: FilterFn<CuentaPorPagar> = (row, _columnId, filterValue) => {
+  if (filterValue === undefined) return true;
+  return row.original.estatus === filterValue;
+};
 
 interface AccountsPayableColumnsOptions {
   /** "Hoy" en la zona del backend, calculado UNA vez por la vista. */
@@ -52,17 +62,74 @@ export const getColumns = ({
 }: AccountsPayableColumnsOptions) =>
   [
     columnHelper.accessor("id", {
-      header: "CxP",
-      cell: (info) => (
-        <button
-          type="button"
-          onClick={() => onViewDetail(info.row.original.id)}
-          title="Ver detalle"
-          className="font-mono text-xs font-medium text-slate-600 dark:text-slate-300 hover:text-sky-600 dark:hover:text-sky-400 hover:underline cursor-pointer"
-        >
-          {`#${info.getValue()}`}
-        </button>
+      header: ({ column }) => (
+        <div className="flex items-center gap-1.5">
+          <span>CxP</span>
+          <ColumnHeaderFilter column={column} options={ESTATUS_FILTER_OPTIONS} label="estatus" />
+        </div>
       ),
+      filterFn: estatusFilterFn,
+      cell: (info) => {
+        const cuenta = info.row.original;
+        const menuItems: ActionMenuItem[] = [
+          {
+            label: "Ver detalle",
+            icon: ViewIcon,
+            onSelect: () => onViewDetail(cuenta.id),
+          },
+        ];
+
+        if (canDeleteCuentaPorPagar(cuenta)) {
+          menuItems.push({
+            label: "Eliminar cuenta",
+            icon: DeleteIcon,
+            onSelect: () => onDelete(cuenta.id),
+          });
+        } else if (hasAppliedPayments(cuenta)) {
+          // Eliminar queda OCULTO con pagos aplicados (el backend respondería
+          // 400); en su lugar se dice qué hacer y se lleva a Pagos. Una cuenta
+          // `Cancelada` sin pagos no recibe esta pista: no es el motivo.
+          menuItems.push({
+            label: "Cancela los pagos aplicados primero",
+            icon: ExternalLinkIcon,
+            onSelect: onGoToPayments,
+          });
+        }
+
+        // El punto de color refleja el estatus, salvo que la cuenta esté
+        // VENCIDA (derivado, no es un estatus propio — ver `cxpEstatus.ts`):
+        // esa marca manda sobre el color para que salte a la vista aunque
+        // siga siendo `Pendiente` o `Parcial`.
+        const vencida = isCuentaPorPagarVencida(cuenta, today);
+        const statusCfg = CXP_ESTATUS_CONFIG[cuenta.estatus];
+        const dotLabel = vencida ? "Vencida" : statusCfg?.label ?? cuenta.estatus;
+        return (
+          <div className="flex items-center gap-2">
+            <span
+              className={`h-2.5 w-2.5 rounded-full shrink-0 ${vencida ? "bg-red-500" : statusCfg?.dot ?? "bg-slate-400"}`}
+              title={dotLabel}
+              aria-hidden="true"
+            />
+            <span className="sr-only">{dotLabel}</span>
+            <ActionMenu
+              items={menuItems}
+              ariaLabel={`Acciones de la cuenta por pagar #${cuenta.id}`}
+              align="start"
+              trigger={
+                <button type="button" title="Ver acciones" className="group inline-flex items-center gap-1 cursor-pointer">
+                  <span className="font-mono text-[11px] font-semibold text-slate-700 dark:text-slate-200 group-hover:text-sky-600 dark:group-hover:text-sky-400">
+                    {`#${cuenta.id}`}
+                  </span>
+                  <ChevronRightIcon
+                    className="h-3.5 w-3.5 shrink-0 text-slate-400 dark:text-slate-500 group-hover:text-sky-500 dark:group-hover:text-sky-400 group-hover:translate-x-0.5 transition-all"
+                    aria-hidden="true"
+                  />
+                </button>
+              }
+            />
+          </div>
+        );
+      },
     }),
     columnHelper.accessor((row) => row.proveedor_nombre ?? "", {
       id: "proveedor_nombre",
@@ -140,62 +207,5 @@ export const getColumns = ({
           )}
         </div>
       ),
-    }),
-    columnHelper.accessor("estatus", {
-      header: "Estatus",
-      cell: (info) => (
-        <div className="flex flex-wrap items-center gap-1.5">
-          <StatusBadge status={info.getValue()} config={CXP_ESTATUS_CONFIG} />
-          {/* Marca DERIVADA, junto al estatus y nunca en su lugar: una cuenta
-              vencida sigue siendo `Pendiente` o `Parcial`. */}
-          {isCuentaPorPagarVencida(info.row.original, today) && (
-            <StatusBadge
-              status={CXP_VENCIDA_BADGE_KEY}
-              config={CXP_VENCIDA_BADGE_CONFIG}
-            />
-          )}
-        </div>
-      ),
-    }),
-    columnHelper.display({
-      id: "actions",
-      header: "Acciones",
-      meta: { align: "center" },
-      cell: ({ row }) => {
-        const cuenta = row.original;
-        const menuItems: ActionMenuItem[] = [
-          {
-            label: "Ver detalle",
-            icon: ViewIcon,
-            onSelect: () => onViewDetail(cuenta.id),
-          },
-        ];
-
-        if (canDeleteCuentaPorPagar(cuenta)) {
-          menuItems.push({
-            label: "Eliminar cuenta",
-            icon: DeleteIcon,
-            onSelect: () => onDelete(cuenta.id),
-          });
-        } else if (hasAppliedPayments(cuenta)) {
-          // Eliminar queda OCULTO con pagos aplicados (el backend respondería
-          // 400); en su lugar se dice qué hacer y se lleva a Pagos. Una cuenta
-          // `Cancelada` sin pagos no recibe esta pista: no es el motivo.
-          menuItems.push({
-            label: "Cancela los pagos aplicados primero",
-            icon: ExternalLinkIcon,
-            onSelect: onGoToPayments,
-          });
-        }
-
-        return (
-          <div className="flex justify-center">
-            <ActionMenu
-              items={menuItems}
-              ariaLabel={`Acciones de la cuenta por pagar #${cuenta.id}`}
-            />
-          </div>
-        );
-      },
     }),
   ] as ColumnDef<CuentaPorPagar>[];

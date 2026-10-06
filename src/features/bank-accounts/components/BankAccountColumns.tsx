@@ -1,14 +1,31 @@
-import { ColumnDef, createColumnHelper, Row } from "@tanstack/react-table";
-import { useState } from "react";
-import { EditIcon, BanIcon, CheckCircleIcon, ViewIcon } from "@/src/components/Icons";
+import { ColumnDef, createColumnHelper, FilterFn, Row } from "@tanstack/react-table";
+import { useState, type ReactNode } from "react";
+import { EditIcon, BanIcon, CheckCircleIcon, ChevronRightIcon, ViewIcon } from "@/src/components/Icons";
 import { ConfirmDialog } from "@/src/components/ConfirmDialog";
 import { ActionMenu, ActionMenuItem } from "@/src/components/ActionMenu";
-import { ACTIVO_INACTIVO_CFG, StatusBadge } from "@/src/components/StatusBadge";
+import { ACTIVO_INACTIVO_CFG } from "@/src/components/StatusBadge";
+import { ColumnHeaderFilter, type ColumnFilterOption } from "@/src/components/ColumnHeaderFilter";
 import { CuentaBancaria } from "../interfaces/bank-account.interface";
 import { useToggleBankAccountActivo } from "../hooks/useToggleBankAccountActivo";
 import { formatSaldo } from "../utils/bankAccountMoney";
 
 const columnHelper = createColumnHelper<CuentaBancaria>();
+
+const ACTIVO_FILTER_OPTIONS: ColumnFilterOption[] = [
+  { value: undefined, label: "Todos" },
+  { value: "true", label: "Activo", dotClassName: ACTIVO_INACTIVO_CFG.activo.dot },
+  { value: "false", label: "Inactivo", dotClassName: ACTIVO_INACTIVO_CFG.inactivo.dot },
+];
+
+const activoFilterFn: FilterFn<CuentaBancaria> = (row, _columnId, filterValue) => {
+  if (filterValue === undefined) return true;
+  return String(row.original.activo) === filterValue;
+};
+
+const bancoFilterFn: FilterFn<CuentaBancaria> = (row, _columnId, filterValue) => {
+  if (filterValue === undefined) return true;
+  return String(row.original.banco) === filterValue;
+};
 
 /**
  * Celda de acciones.
@@ -26,10 +43,12 @@ const ActionsCell = ({
   row,
   onEdit,
   onViewSummary,
+  trigger,
 }: {
   row: Row<CuentaBancaria>;
   onEdit: (cuenta: CuentaBancaria) => void;
   onViewSummary: (id: number) => void;
+  trigger: ReactNode;
 }) => {
   const { mutate: toggleActivo, isPending } = useToggleBankAccountActivo();
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
@@ -57,8 +76,8 @@ const ActionsCell = ({
   ];
 
   return (
-    <div className="flex justify-center">
-      <ActionMenu items={menuItems} />
+    <>
+      <ActionMenu items={menuItems} align="start" trigger={trigger} />
       <ConfirmDialog
         open={isConfirmOpen}
         onOpenChange={setIsConfirmOpen}
@@ -81,33 +100,64 @@ const ActionsCell = ({
         // `ConfirmDialog` usa la paleta de Radix: "green", no "emerald".
         confirmColor={activo ? "amber" : "green"}
       />
-    </div>
+    </>
   );
 };
 
 export const getColumns = (
   onEdit: (cuenta: CuentaBancaria) => void,
-  onViewSummary: (id: number) => void
+  onViewSummary: (id: number) => void,
+  // Opciones del filtro de encabezado de "Banco" — se omite (columna sin
+  // ícono de filtro) mientras no haya bancos cargados: ver `BankAccountList`.
+  bancoFilterOptions: ColumnFilterOption[] = [],
 ) => {
   const columns = [
     columnHelper.accessor("alias", {
-      header: "Alias",
-      // Mismo criterio que el folio en el resto de las tablas: el
-      // identificador principal abre el detalle, con la misma llamada que la
-      // acción "Ver resumen" del menú.
-      cell: (info) => (
-        <button
-          type="button"
-          onClick={() => onViewSummary(info.row.original.id)}
-          title="Ver resumen"
-          className="font-medium text-slate-600 dark:text-slate-300 hover:text-sky-600 dark:hover:text-sky-400 hover:underline cursor-pointer"
-        >
-          {info.getValue() || "—"}
-        </button>
+      header: ({ column }) => (
+        <div className="flex items-center gap-1.5">
+          <span>Alias</span>
+          <ColumnHeaderFilter column={column} options={ACTIVO_FILTER_OPTIONS} label="estatus" />
+        </div>
       ),
+      filterFn: activoFilterFn,
+      cell: (info) => {
+        const cuenta = info.row.original;
+        const statusCfg = cuenta.activo ? ACTIVO_INACTIVO_CFG.activo : ACTIVO_INACTIVO_CFG.inactivo;
+        return (
+          <div className="flex items-center gap-2">
+            <span className={`h-2.5 w-2.5 rounded-full shrink-0 ${statusCfg.dot}`} title={statusCfg.label} aria-hidden="true" />
+            <span className="sr-only">{statusCfg.label}</span>
+            <ActionsCell
+              row={info.row}
+              onEdit={onEdit}
+              onViewSummary={onViewSummary}
+              trigger={
+                <button type="button" title="Ver acciones" className="group inline-flex items-center gap-1 cursor-pointer">
+                  <span className="text-[11px] font-semibold text-slate-700 dark:text-slate-200 group-hover:text-sky-600 dark:group-hover:text-sky-400">
+                    {info.getValue() || "—"}
+                  </span>
+                  <ChevronRightIcon
+                    className="h-3.5 w-3.5 shrink-0 text-slate-400 dark:text-slate-500 group-hover:text-sky-500 dark:group-hover:text-sky-400 group-hover:translate-x-0.5 transition-all"
+                    aria-hidden="true"
+                  />
+                </button>
+              }
+            />
+          </div>
+        );
+      },
     }),
     columnHelper.accessor("banco_nombre", {
-      header: "Banco",
+      header: ({ column }) =>
+        bancoFilterOptions.length > 0 ? (
+          <div className="flex items-center gap-1.5">
+            <span>Banco</span>
+            <ColumnHeaderFilter column={column} options={bancoFilterOptions} label="banco" />
+          </div>
+        ) : (
+          "Banco"
+        ),
+      filterFn: bancoFilterFn,
       cell: (info) => (
         <span className="text-slate-500 dark:text-slate-400">{info.getValue() || "—"}</span>
       ),
@@ -141,23 +191,6 @@ export const getColumns = (
         <div className="tabular-nums font-semibold text-slate-800 dark:text-white">
           {formatSaldo(info.getValue(), info.row.original.moneda_codigo)}
         </div>
-      ),
-    }),
-    columnHelper.accessor("activo", {
-      header: "Estatus",
-      cell: (info) => (
-        <StatusBadge
-          status={info.getValue() ? "activo" : "inactivo"}
-          config={ACTIVO_INACTIVO_CFG}
-        />
-      ),
-    }),
-    columnHelper.display({
-      id: "actions",
-      header: "Acciones",
-      meta: { align: "center" },
-      cell: ({ row }) => (
-        <ActionsCell row={row} onEdit={onEdit} onViewSummary={onViewSummary} />
       ),
     }),
   ] as ColumnDef<CuentaBancaria>[];
