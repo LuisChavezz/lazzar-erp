@@ -9,7 +9,6 @@ import {
 } from "@/src/components/Icons";
 import { DataTable } from "@/src/components/DataTable";
 import { useHasLoadedQuery } from "@/src/hooks/useHasLoadedQuery";
-import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { isInitialLoadError } from "@/src/utils/isInitialLoadError";
 import KpiGrid, { type KpiItem } from "@/src/components/KpiGrid";
 import { useWarehouses } from "@/src/features/warehouses/hooks/useWarehouses";
@@ -130,7 +129,6 @@ export function StockView() {
     data: stockItems = [],
     isLoading,
     isError,
-    error,
     refetch,
     isFetching,
     isPlaceholderData,
@@ -251,7 +249,8 @@ export function StockView() {
             sort/búsqueda/filtros/columnas). Solo la paginación se reinicia
             a la página 1, vía `paginationResetKey`. `fillHeight`: el cuerpo
             llena el espacio restante del contenedor de altura acotada que
-            da `wms/stock/page.tsx`, en vez de reservar un alto fijo.
+            da la página que monta la vista (`wms/stock/page.tsx` y
+            `procurement/stock/page.tsx`), en vez de reservar un alto fijo.
             `min-h-120`: piso de la tabla cuando el filtro de almacén + los
             KPIs dejan poco espacio remanente. */}
         <div className="flex-1 min-h-120 flex flex-col">
@@ -273,7 +272,9 @@ export function StockView() {
             loadingAriaLabel="Cargando existencias"
             isError={showError}
             errorTitle="Error al cargar existencias"
-            errorMessage={extractErrorMessage(error, "No se pudo cargar la información.")}
+            // Texto fijo, sin derivarlo del error: `extractErrorMessage` caería en
+            // el `message` del `AxiosError` ("Request failed with status code …").
+            errorMessage="Ocurrió un problema al consultar las existencias del almacén. Intenta de nuevo en unos momentos."
             onErrorRetry={() => void refetch()}
           />
         </div>

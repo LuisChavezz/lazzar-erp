@@ -20,6 +20,10 @@ export const getStockItems = async (filters?: StockItemsFilters): Promise<StockI
   const params = new URLSearchParams();
   if (filters?.almacen_id) params.append("almacen_id", String(filters.almacen_id));
   if (filters?.producto_variante_id) params.append("producto_variante_id", String(filters.producto_variante_id));
+  // Sin `limit` el backend topa en silencio a 200 filas (ordenadas por
+  // `fecha_actualizacion` DESC): un almacén grande se vería incompleto sin
+  // aviso. `limit=all` quita el tope; un `limit` numérico se topa en 2000.
+  params.append("limit", "all");
 
   const query = params.toString();
   const url = `/inventarios/existencias/${query ? `?${query}` : ""}`;

@@ -22,7 +22,7 @@ export function StockEmptyState({ almacenId, onSelect }: StockEmptyStateProps) {
   // `data` solo se define tras una carga exitosa de almacenes: distingue
   // "cargó vacío" (mostrar aviso legítimo) de "falló la carga" (mostrar error
   // con reintento), siguiendo el mismo patrón `hasLoaded` de `useInvoices`.
-  const { data: warehouses, isError, error, refetch } = useWarehouses();
+  const { data: warehouses, isError, refetch } = useWarehouses();
   const hasLoaded = warehouses !== undefined;
   const hasNoWarehouses = hasLoaded && warehouses.length === 0;
 
@@ -31,7 +31,9 @@ export function StockEmptyState({ almacenId, onSelect }: StockEmptyStateProps) {
       <div className="space-y-3">
         <ErrorState
           title="No se pudieron cargar los almacenes"
-          message={(error as Error)?.message}
+          // Texto fijo: el `message` de un `AxiosError` sería "Request failed
+          // with status code …" (o "Network Error"), que no le dice nada al usuario.
+          message="Ocurrió un problema al consultar los almacenes. Intenta de nuevo en unos momentos."
         />
         <div className="flex justify-center">
           <button
