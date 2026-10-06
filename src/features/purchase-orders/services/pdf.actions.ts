@@ -14,6 +14,7 @@
 import { isPurchaseOrderCancelled } from "../constants/purchaseOrderStatus";
 import type { PurchaseOrderDetail } from "../interfaces/purchase-order.interface";
 import { generatePurchaseOrderPdfBlob } from "./pdf/purchaseOrderPdfBlob";
+import { downloadBlob } from "@/src/utils/downloadBlob";
 
 /**
  * Descarga el PDF de la orden de compra indicada directamente desde el cliente.
@@ -22,9 +23,6 @@ import { generatePurchaseOrderPdfBlob } from "./pdf/purchaseOrderPdfBlob";
 export const downloadPurchaseOrderPdf = async (order: PurchaseOrderDetail): Promise<void> => {
   const blob = await generatePurchaseOrderPdfBlob(order);
 
-  const objectUrl = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = objectUrl;
   // El folio es más legible que el id para el nombre del archivo; si por algún
   // motivo viene vacío, se cae al id para no generar "orden-compra-.pdf". Una
   // orden cancelada lleva el sufijo `-cancelada` para distinguirla de una
@@ -32,7 +30,5 @@ export const downloadPurchaseOrderPdf = async (order: PurchaseOrderDetail): Prom
   // descarga: el adjunto del correo arma su propio nombre y nunca es de una
   // cancelada.
   const suffix = isPurchaseOrderCancelled(order.estatus) ? "-cancelada" : "";
-  link.download = `orden-compra-${order.folio || order.id}${suffix}.pdf`;
-  link.click();
-  URL.revokeObjectURL(objectUrl);
+  downloadBlob(blob, `orden-compra-${order.folio || order.id}${suffix}.pdf`);
 };

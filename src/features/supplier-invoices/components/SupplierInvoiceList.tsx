@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState, type ChangeEvent } from "react";
 import { useIsMutating } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { DataTable } from "@/src/components/DataTable";
@@ -23,7 +23,18 @@ import type {
   FacturaProveedorEstatus,
 } from "../interfaces/supplier-invoice.interface";
 import { useSupplierInvoices } from "../hooks/useSupplierInvoices";
-import { useUpdateSupplierInvoice } from "../hooks/useUpdateSupplierInvoice";
+import {
+  updateSupplierInvoiceMutationKey,
+  useUpdateSupplierInvoice,
+} from "../hooks/useUpdateSupplierInvoice";
+import { useUploadSupplierInvoicePdf } from "../hooks/useUploadSupplierInvoicePdf";
+import { useDownloadSupplierInvoiceMergedPdf } from "../hooks/useDownloadSupplierInvoiceMergedPdf";
+import {
+  SupplierInvoiceRowActionsProvider,
+  usePendingSupplierInvoicePdfIds,
+} from "../hooks/useSupplierInvoiceRowActions";
+import { SUPPLIER_INVOICE_PDF_ACCEPT } from "../constants/supplierInvoicePdf";
+import { validateSupplierInvoicePdf } from "../utils/validateSupplierInvoicePdf";
 import { getColumns } from "./SupplierInvoiceColumns";
 import { SupplierInvoiceDetailDialog } from "./SupplierInvoiceDetailDialog";
 import SupplierInvoiceForm from "./SupplierInvoiceForm";
@@ -153,7 +164,90 @@ export default function SupplierInvoiceList() {
     setCancelTargetId(id);
   };
 
-  const columns = getColumns(handleViewDetail, handleEdit, handleRegistrar, handleCancel);
+  // ── PDF del proveedor y documento fusionado ────────────────────────────────
+  // Todo vive en la VISTA, no en la celda: el menú de fila y el detalle comparten
+  // el mismo selector de archivo, la misma confirmación de reemplazo y las mismas
+  // mutaciones, y una subida en curso sobrevive a que la celda se desmonte al
+  // ordenar o paginar. Sin restricción de estatus (el backend la permite en todos).
+  const { mutate: uploadPdf } = useUploadSupplierInvoicePdf();
+  const { mutate: downloadMergedPdf } = useDownloadSupplierInvoiceMergedPdf();
+  // UNA suscripción a la MutationCache para toda la vista; llega a cada menú por
+  // contexto y al detalle por props.
+  const { uploadingIds, downloadingIds } = usePendingSupplierInvoicePdfIds();
+  /** Factura con PDF cuyo reemplazo espera confirmación. */
+  const [replacePdfTargetId, setReplacePdfTargetId] = useState<number | null>(null);
+  /**
+   * Input de archivo oculto, uno para toda la vista (filas y detalle). Se ubica
+   * por `id` y no por ref: `openPdfPicker` lo llaman handlers que se arman
+   * durante el render, y el React Compiler rechaza que lean una ref.
+   */
+  const pdfInputId = useId();
+  /**
+   * Factura a la que va el archivo que se está eligiendo. Basta con estado: el
+   * diálogo nativo es asíncrono y la vista ya re-renderizó cuando llega `change`.
+   * Cancelar el diálogo lo deja puesto sin efecto; la siguiente apertura lo pisa.
+   */
+  const [pdfTargetId, setPdfTargetId] = useState<number | null>(null);
+
+  /**
+   * Abre el selector de archivo nativo. Debe llamarse SÍNCRONAMENTE dentro del
+   * gesto del usuario (clic en el menú, en el botón del detalle o en confirmar):
+   * fuera de él el navegador bloquea el `click()` del input.
+   */
+  const openPdfPicker = (id: number) => {
+    setPdfTargetId(id);
+    (document.getElementById(pdfInputId) as HTMLInputElement | null)?.click();
+  };
+
+  const handleAttachPdf = (id: number) => {
+    const factura = facturas.find((item) => item.id === id);
+    if (!factura) return;
+    if (uploadingIds.includes(id)) {
+      toast.error("Ya se está subiendo un PDF para esta factura. Espera a que termine.", {
+        id: `pdf-en-curso-${id}`,
+      });
+      return;
+    }
+    // Reemplazar no se puede deshacer (no hay borrado ni historial): se confirma
+    // nombrando el archivo actual antes de abrir el selector.
+    if (factura.tiene_pdf_adjunto) {
+      setReplacePdfTargetId(id);
+      return;
+    }
+    openPdfPicker(id);
+  };
+
+  const handlePdfFileChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    // Se vacía para que elegir el MISMO archivo otra vez vuelva a disparar `change`.
+    event.target.value = "";
+    const id = pdfTargetId;
+    setPdfTargetId(null);
+    if (!file || id === null) return;
+
+    // Fila VIVA al momento de subir: su `tiene_pdf_adjunto`, `estatus` y `oc`
+    // deciden el aviso y la invalidación.
+    const factura = facturas.find((item) => item.id === id);
+    if (!factura) {
+      toast.error("La factura ya no está disponible.");
+      return;
+    }
+    const motivo = validateSupplierInvoicePdf(file);
+    if (motivo) {
+      toast.error(motivo, { id: "pdf-factura-invalido", duration: 7000 });
+      return;
+    }
+    uploadPdf({ factura, file });
+  };
+
+  const handleDownloadMergedPdf = (id: number) => {
+    const factura = facturas.find((item) => item.id === id);
+    if (!factura || downloadingIds.includes(id)) return;
+    downloadMergedPdf(factura);
+  };
+
+  // Columnas estáticas: callbacks y "en vuelo" van por `SupplierInvoiceRowActionsProvider`.
+  const columns = getColumns();
 
   // El detalle se busca contra el arreglo COMPLETO (`facturas` llega sin filtrar;
   // el filtrado ocurre dentro de `DataTable`), así que sobrevive a que la fila
@@ -171,6 +265,9 @@ export default function SupplierInvoiceList() {
   const existe = (id: number) => facturas.some((f) => f.id === id);
   if (registrarTargetId !== null && !existe(registrarTargetId)) setRegistrarTargetId(null);
   if (cancelTargetId !== null && !existe(cancelTargetId)) setCancelTargetId(null);
+  if (replacePdfTargetId !== null && !existe(replacePdfTargetId)) setReplacePdfTargetId(null);
+  const replacePdfTarget =
+    replacePdfTargetId !== null ? facturas.find((f) => f.id === replacePdfTargetId) ?? null : null;
 
   // La EDICIÓN se cierra si, tras un refetch, su fila dejó de ser `Borrador` (otra
   // persona la registró o canceló) o ya no está. Su foto seguiría ofreciendo
@@ -179,7 +276,7 @@ export default function SupplierInvoiceList() {
   // vencimiento viejo—. Mismo ajuste en RENDER que los diálogos de arriba, contra
   // la fila VIVA; no se pide nada al servidor.
   //
-  // Mientras haya una mutación de ESTA factura en vuelo no se decide: el propio
+  // Mientras haya una EDICIÓN (PATCH) de ESTA factura en vuelo no se decide: el propio
   // "Registrar" de la edición refresca el listado antes de resolver (ver
   // `useUpdateSupplierInvoice`) y cierra el diálogo al terminar; cerrarlo aquí
   // antes avisaría de un cambio que hizo el mismo usuario.
@@ -187,6 +284,9 @@ export default function SupplierInvoiceList() {
     editTarget !== null ? facturas.find((f) => f.id === editTarget.id) ?? null : null;
   const editEnVuelo =
     useIsMutating({
+      // Por llave, no solo por `id`: las variables de la descarga del documento
+      // fusionado son la factura completa y también traen `id`.
+      mutationKey: [...updateSupplierInvoiceMutationKey],
       predicate: (mutation) =>
         editTarget !== null &&
         (mutation.state.variables as { id?: number } | undefined)?.id === editTarget.id,
@@ -227,160 +327,207 @@ export default function SupplierInvoiceList() {
   // `DataTable` se monta SIEMPRE: recibe `isLoading`/`isError` y alterna solo su
   // cuerpo, de modo que el toolbar sigue disponible durante la carga y ante un error.
   return (
-    <div className="space-y-6">
-      <DataTable
-        columns={columns}
-        data={facturas}
-        baseDataCount={facturas.length}
-        searchPlaceholder="Buscar por folio..."
-        filterConfig={[
-          { id: "estatus", label: "Estatus", options: FACTURA_PROVEEDOR_ESTATUS_FILTER },
-        ]}
-        onRefetch={refetchIfSelected}
-        isRefetching={isFetching}
-        emptyMessage={
-          proveedorId > 0
-            ? "Este proveedor no tiene facturas registradas."
-            : "Selecciona un proveedor para ver sus facturas."
-        }
-        isLoading={isLoading}
-        isError={showError}
-        errorTitle="Error al cargar las facturas de proveedor"
-        errorMessage={extractErrorMessage(error, "No se pudo cargar la información.")}
-        onErrorRetry={refetchIfSelected}
-        loadingAriaLabel="Cargando facturas de proveedor"
-        getRowId={(row) => String(row.id)}
-        // Cambiar de proveedor o un alta nueva vuelven a la página 1.
-        paginationResetKey={`${proveedorId}-${facturas.length}`}
-        actionButton={
-          <div className="flex items-center gap-2">
-            <div className="w-64">
-              <FormSelect
-                name="proveedor"
-                aria-label="Proveedor"
-                value={String(proveedorId)}
-                onChange={(event) => setProveedorId(Number(event.target.value))}
-                disabled={isLoadingSuppliers || isErrorSuppliers}
-                className="py-2! text-xs! rounded-full!"
-              >
-                <option value="0" disabled>
-                  {isLoadingSuppliers
-                    ? "Cargando proveedores..."
-                    : isErrorSuppliers
-                      ? "No se pudo cargar el catálogo de proveedores"
-                      : "Selecciona un proveedor..."}
-                </option>
-                {supplierOptions.map((option) => (
-                  <option
-                    key={option.value}
-                    value={option.value}
-                    className="bg-white dark:bg-zinc-900 text-slate-900 dark:text-white"
-                  >
-                    {option.label}
+    <SupplierInvoiceRowActionsProvider
+      value={{
+        onViewDetail: handleViewDetail,
+        onEdit: handleEdit,
+        onRegistrar: handleRegistrar,
+        onCancel: handleCancel,
+        onAttachPdf: handleAttachPdf,
+        onDownloadMergedPdf: handleDownloadMergedPdf,
+        uploadingIds,
+        downloadingIds,
+      }}
+    >
+      <div className="space-y-6">
+        <DataTable
+          columns={columns}
+          data={facturas}
+          baseDataCount={facturas.length}
+          searchPlaceholder="Buscar por folio..."
+          filterConfig={[
+            { id: "estatus", label: "Estatus", options: FACTURA_PROVEEDOR_ESTATUS_FILTER },
+          ]}
+          onRefetch={refetchIfSelected}
+          isRefetching={isFetching}
+          emptyMessage={
+            proveedorId > 0
+              ? "Este proveedor no tiene facturas registradas."
+              : "Selecciona un proveedor para ver sus facturas."
+          }
+          isLoading={isLoading}
+          isError={showError}
+          errorTitle="Error al cargar las facturas de proveedor"
+          errorMessage={extractErrorMessage(error, "No se pudo cargar la información.")}
+          onErrorRetry={refetchIfSelected}
+          loadingAriaLabel="Cargando facturas de proveedor"
+          getRowId={(row) => String(row.id)}
+          // Cambiar de proveedor o un alta nueva vuelven a la página 1.
+          paginationResetKey={`${proveedorId}-${facturas.length}`}
+          actionButton={
+            <div className="flex items-center gap-2">
+              <div className="w-64">
+                <FormSelect
+                  name="proveedor"
+                  aria-label="Proveedor"
+                  value={String(proveedorId)}
+                  onChange={(event) => setProveedorId(Number(event.target.value))}
+                  disabled={isLoadingSuppliers || isErrorSuppliers}
+                  className="py-2! text-xs! rounded-full!"
+                >
+                  <option value="0" disabled>
+                    {isLoadingSuppliers
+                      ? "Cargando proveedores..."
+                      : isErrorSuppliers
+                        ? "No se pudo cargar el catálogo de proveedores"
+                        : "Selecciona un proveedor..."}
                   </option>
-                ))}
-              </FormSelect>
+                  {supplierOptions.map((option) => (
+                    <option
+                      key={option.value}
+                      value={option.value}
+                      className="bg-white dark:bg-zinc-900 text-slate-900 dark:text-white"
+                    >
+                      {option.label}
+                    </option>
+                  ))}
+                </FormSelect>
+              </div>
+              <MainDialog
+                title={
+                  <DialogHeader
+                    title="Nueva Factura de Proveedor"
+                    subtitle="Factura de mercancía recibida contra una orden de compra"
+                    statusColor="indigo"
+                  />
+                }
+                open={isFormOpen}
+                onOpenChange={setIsFormOpen}
+                maxWidth="1100px"
+                trigger={
+                  <Button variant="primary" rounded="full" className="hover:scale-105 active:scale-95">
+                    + Nueva factura
+                  </Button>
+                }
+              >
+                {isFormOpen && (
+                  <SupplierInvoiceForm
+                    onSuccess={(factura) => {
+                      setIsFormOpen(false);
+                      // SOLO en el alta: el listado se filtra por proveedor, y una
+                      // factura de otro proveedor se guardaría sin verse, como si el
+                      // alta hubiera fallado. Si ya es el seleccionado, `setState`
+                      // con el mismo valor no cambia nada y basta la invalidación
+                      // de la mutación. Registrar, cancelar y editar no tocan el
+                      // filtro.
+                      setProveedorId(factura.proveedor);
+                    }}
+                  />
+                )}
+              </MainDialog>
             </div>
-            <MainDialog
-              title={
-                <DialogHeader
-                  title="Nueva Factura de Proveedor"
-                  subtitle="Factura de mercancía recibida contra una orden de compra"
-                  statusColor="indigo"
-                />
-              }
-              open={isFormOpen}
-              onOpenChange={setIsFormOpen}
-              maxWidth="1100px"
-              trigger={
-                <Button variant="primary" rounded="full" className="hover:scale-105 active:scale-95">
-                  + Nueva factura
-                </Button>
-              }
-            >
-              {isFormOpen && (
-                <SupplierInvoiceForm
-                  onSuccess={(factura) => {
-                    setIsFormOpen(false);
-                    // SOLO en el alta: el listado se filtra por proveedor, y una
-                    // factura de otro proveedor se guardaría sin verse, como si el
-                    // alta hubiera fallado. Si ya es el seleccionado, `setState`
-                    // con el mismo valor no cambia nada y basta la invalidación
-                    // de la mutación. Registrar, cancelar y editar no tocan el
-                    // filtro.
-                    setProveedorId(factura.proveedor);
-                  }}
-                />
-              )}
-            </MainDialog>
-          </div>
-        }
-      />
-
-      {detailFactura && (
-        <SupplierInvoiceDetailDialog
-          factura={detailFactura}
-          open={true}
-          onOpenChange={(open) => {
-            if (!open) setOpenDetailId(null);
-          }}
-        />
-      )}
-
-      {editTarget && (
-        <MainDialog
-          title={
-            <DialogHeader
-              title="Editar Factura de Proveedor"
-              subtitle={`Borrador ${editTarget.folio || `#${editTarget.id}`}: las partidas y los importes ya no se pueden cambiar`}
-              statusColor="indigo"
-            />
           }
-          open={true}
-          onOpenChange={(open) => {
-            if (!open) setEditTarget(null);
-          }}
-          maxWidth="760px"
-        >
-          <SupplierInvoiceEditForm factura={editTarget} onSuccess={() => setEditTarget(null)} />
-        </MainDialog>
-      )}
-
-      {registrarTargetId !== null && (
-        <ConfirmDialog
-          open={true}
-          onOpenChange={(open) => {
-            if (!open) setRegistrarTargetId(null);
-          }}
-          title="Registrar Factura de Proveedor"
-          description={`¿Deseas registrar la factura ${etiqueta(registrarTargetId)}? Se generará su cuenta por pagar (CxP) con el total de la factura y sus importes quedarán congelados: después ya no podrá cambiar el total, el proveedor ni la moneda, ni volver a borrador o cancelarse.`}
-          confirmText={
-            rowLock.isPending(registrarTargetId) ? "Registrando..." : "Registrar y generar CxP"
-          }
-          cancelText="Volver"
-          // `closeOnConfirm={false}`: si no, el diálogo se cierra al instante y la
-          // etiqueta de pendiente nunca se pinta. Lo cierra `runRowAction` al terminar.
-          closeOnConfirm={false}
-          onConfirm={() => runRowAction(registrarTargetId, "Registrada", setRegistrarTargetId)}
-          confirmColor="amber"
         />
-      )}
 
-      {cancelTargetId !== null && (
-        <ConfirmDialog
-          open={true}
-          onOpenChange={(open) => {
-            if (!open) setCancelTargetId(null);
-          }}
-          title="Cancelar Factura de Proveedor"
-          description={`¿Deseas cancelar el borrador ${etiqueta(cancelTargetId)}? No genera cuenta por pagar. La factura se conserva en el listado con estatus Cancelada y ya no admite cambios.`}
-          confirmText={rowLock.isPending(cancelTargetId) ? "Cancelando..." : "Cancelar factura"}
-          cancelText="Volver"
-          closeOnConfirm={false}
-          onConfirm={() => runRowAction(cancelTargetId, "Cancelada", setCancelTargetId)}
-          confirmColor="red"
+        {detailFactura && (
+          <SupplierInvoiceDetailDialog
+            factura={detailFactura}
+            pdfActions={{
+              onAttach: () => handleAttachPdf(detailFactura.id),
+              onDownloadMerged: () => handleDownloadMergedPdf(detailFactura.id),
+              isUploading: uploadingIds.includes(detailFactura.id),
+              isDownloading: downloadingIds.includes(detailFactura.id),
+            }}
+            open={true}
+            onOpenChange={(open) => {
+              if (!open) setOpenDetailId(null);
+            }}
+          />
+        )}
+
+        {editTarget && (
+          <MainDialog
+            title={
+              <DialogHeader
+                title="Editar Factura de Proveedor"
+                subtitle={`Borrador ${editTarget.folio || `#${editTarget.id}`}: las partidas y los importes ya no se pueden cambiar`}
+                statusColor="indigo"
+              />
+            }
+            open={true}
+            onOpenChange={(open) => {
+              if (!open) setEditTarget(null);
+            }}
+            maxWidth="760px"
+          >
+            <SupplierInvoiceEditForm factura={editTarget} onSuccess={() => setEditTarget(null)} />
+          </MainDialog>
+        )}
+
+        {registrarTargetId !== null && (
+          <ConfirmDialog
+            open={true}
+            onOpenChange={(open) => {
+              if (!open) setRegistrarTargetId(null);
+            }}
+            title="Registrar Factura de Proveedor"
+            description={`¿Deseas registrar la factura ${etiqueta(registrarTargetId)}? Se generará su cuenta por pagar (CxP) con el total de la factura y sus importes quedarán congelados: después ya no podrá cambiar el total, el proveedor ni la moneda, ni volver a borrador o cancelarse.`}
+            confirmText={
+              rowLock.isPending(registrarTargetId) ? "Registrando..." : "Registrar y generar CxP"
+            }
+            cancelText="Volver"
+            // `closeOnConfirm={false}`: si no, el diálogo se cierra al instante y la
+            // etiqueta de pendiente nunca se pinta. Lo cierra `runRowAction` al terminar.
+            closeOnConfirm={false}
+            onConfirm={() => runRowAction(registrarTargetId, "Registrada", setRegistrarTargetId)}
+            confirmColor="amber"
+          />
+        )}
+
+        {cancelTargetId !== null && (
+          <ConfirmDialog
+            open={true}
+            onOpenChange={(open) => {
+              if (!open) setCancelTargetId(null);
+            }}
+            title="Cancelar Factura de Proveedor"
+            description={`¿Deseas cancelar el borrador ${etiqueta(cancelTargetId)}? No genera cuenta por pagar. La factura se conserva en el listado con estatus Cancelada y ya no admite cambios.`}
+            confirmText={rowLock.isPending(cancelTargetId) ? "Cancelando..." : "Cancelar factura"}
+            cancelText="Volver"
+            closeOnConfirm={false}
+            onConfirm={() => runRowAction(cancelTargetId, "Cancelada", setCancelTargetId)}
+            confirmColor="red"
+          />
+        )}
+
+        {replacePdfTarget && (
+          <ConfirmDialog
+            open={true}
+            onOpenChange={(open) => {
+              if (!open) setReplacePdfTargetId(null);
+            }}
+            title="Reemplazar PDF de la factura"
+            description={`La factura ${etiqueta(replacePdfTarget.id)} ya tiene adjunto "${replacePdfTarget.pdf_adjunto_nombre || "un PDF"}". El archivo que elijas lo reemplazará y el actual no se podrá recuperar.`}
+            confirmText="Elegir nuevo PDF"
+            cancelText="Volver"
+            // El selector se abre DENTRO del clic de confirmar (gesto del usuario);
+            // el diálogo se cierra solo (`closeOnConfirm` por defecto).
+            onConfirm={() => openPdfPicker(replacePdfTarget.id)}
+            confirmColor="amber"
+          />
+        )}
+
+        {/* Selector de archivo oculto — uno para toda la vista (ver `openPdfPicker`). */}
+        <input
+          id={pdfInputId}
+          type="file"
+          accept={SUPPLIER_INVOICE_PDF_ACCEPT}
+          className="hidden"
+          onChange={handlePdfFileChange}
+          aria-hidden="true"
+          tabIndex={-1}
         />
-      )}
-    </div>
+      </div>
+    </SupplierInvoiceRowActionsProvider>
   );
 }

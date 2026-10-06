@@ -1,5 +1,7 @@
 import { v1_api } from "@/src/api/v1.api";
+import { readBlobErrorBody } from "@/src/utils/readBlobErrorBody";
 import type {
+  AdjuntarPdfFacturaProveedorResponse,
   CreateFacturaProveedorPayload,
   FacturaProveedor,
   FacturaProveedorQueryParams,
@@ -70,4 +72,58 @@ export const updateSupplierInvoice = async ({
     payload,
   );
   return data;
+};
+
+/**
+ * Adjunta (o REEMPLAZA: no hay borrado) el PDF del proveedor:
+ * `POST /finanzas/facturas-proveedor/{id}/adjuntar-pdf/`, multipart con el único
+ * campo `archivo`. Se permite en cualquier estatus, incluida `Cancelada`.
+ *
+ * `postForm` y no `post`: `v1_api` fija `Content-Type: application/json` por
+ * defecto, y con esa cabecera Axios serializa el `FormData` a JSON (el archivo
+ * se pierde). `postForm` pone `multipart/form-data` SOLO en esta petición, así
+ * que Axios deja pasar el `FormData` intacto; en el navegador el adaptador XHR
+ * borra entonces la cabecera (`resolveConfig`) para que la escriba el propio
+ * navegador CON el `boundary`. Sigue siendo `v1_api`: viaja con
+ * `withCredentials` y pasa por el interceptor de refresco ante un 401.
+ *
+ * Errores: 400 `{"archivo": "..."}` (falta, no es PDF, supera 10 MB). Ojo: Vercel
+ * corta el cuerpo en ~4.5 MB ANTES de Django y sin cabeceras CORS, así que un
+ * archivo grande llega aquí como error de red sin `response` — por eso la
+ * vista valida el tamaño antes de llamar (`validateSupplierInvoicePdf`).
+ */
+export const uploadSupplierInvoicePdf = async ({
+  id,
+  file,
+}: {
+  id: number;
+  file: File;
+}): Promise<AdjuntarPdfFacturaProveedorResponse> => {
+  const formData = new FormData();
+  formData.append("archivo", file);
+  const { data } = await v1_api.postForm<AdjuntarPdfFacturaProveedorResponse>(
+    `/finanzas/facturas-proveedor/${id}/adjuntar-pdf/`,
+    formData,
+  );
+  return data;
+};
+
+/**
+ * Documento fusionado OC + RC + factura del proveedor (en ese orden):
+ * `GET /finanzas/facturas-proveedor/{id}/pdf-fusionado/`, bytes `application/pdf`.
+ *
+ * Con `responseType: "blob"` el cuerpo de un ERROR también llega como `Blob`
+ * (p. ej. el 400 `{"pdf_adjunto": "..."}` cuando no hay PDF adjunto), así que se
+ * decodifica antes de propagarlo para que los parsers de DRF lo lean como JSON.
+ */
+export const getSupplierInvoiceMergedPdf = async (id: number): Promise<Blob> => {
+  try {
+    const { data } = await v1_api.get<Blob>(
+      `/finanzas/facturas-proveedor/${id}/pdf-fusionado/`,
+      { responseType: "blob" },
+    );
+    return data;
+  } catch (error) {
+    throw await readBlobErrorBody(error);
+  }
 };

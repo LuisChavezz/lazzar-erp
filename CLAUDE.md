@@ -58,7 +58,7 @@ Files named `*.server.ts` inside a feature's `services/` are server-only modules
 
 #### Mock-only modules
 
-Several feature modules are **UI-only prototypes with no backend**: they have a `mocks/` directory instead of `services/actions.ts` and generate data with `@faker-js/faker`. Currently: `accounting`, `accounts-payable`, `cedicor`, `expense-purchase-requests`, `pq-orders`, `purchase-order-reviews`, plus `locations` which mixes a real API with a mocked dashboard.
+Several feature modules are **UI-only prototypes with no backend**: they have a `mocks/` directory instead of `services/actions.ts` and generate data with `@faker-js/faker`. Currently: `cedicor`, `expense-purchase-requests`, `pq-orders`, `purchase-order-reviews`, plus `locations` which mixes a real API with a mocked dashboard. (`accounts-payable` was rebuilt against the real `/finanzas/cuentas-por-pagar/` API and is no longer a mock; the old `accounting` mock module no longer exists.)
 
 Mock files call `faker.seed(<fixed number>)` at module scope and pin a literal "today" (`const HOY = new Date("...")`). Both are required: the same fixtures are consumed by a Server Component (stats) and a Client Component (list), so unseeded/relative data would produce hydration mismatches. Keep the seed and the fixed date when editing a mock.
 

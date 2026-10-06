@@ -9,20 +9,41 @@ import {
   SectionTitle,
   textOrDash,
 } from "@/src/components/DetailDialogPrimitives";
-import { FacturaProveedorIcon } from "@/src/components/Icons";
+import { Button } from "@/src/components/Button";
+import {
+  DownloadIcon,
+  ExportPdfIcon,
+  FacturaProveedorIcon,
+  UploadIcon,
+} from "@/src/components/Icons";
 import { formatMoneyValueOrDash, formatQuantityValue } from "@/src/utils/formatCurrency";
 import { formatShortDate } from "@/src/utils/formatDate";
 import { FACTURA_PROVEEDOR_ESTATUS_CONFIG } from "../constants/supplierInvoiceStatus";
+import { MAX_SUPPLIER_INVOICE_PDF_LABEL } from "../constants/supplierInvoicePdf";
 import type { FacturaProveedor } from "../interfaces/supplier-invoice.interface";
+
+/**
+ * Acciones del PDF del proveedor. Las POSEE la vista (`SupplierInvoiceList`):
+ * el selector de archivo, la confirmación de reemplazo y las mutaciones son los
+ * mismos que usa el menú de fila.
+ */
+export interface SupplierInvoicePdfActions {
+  onAttach: () => void;
+  onDownloadMerged: () => void;
+  isUploading: boolean;
+  isDownloading: boolean;
+}
 
 interface SupplierInvoiceDetailDialogProps {
   /**
    * La factura ya cargada por el listado — SIN fetch propio. `GET` de lista y de
    * detalle comparten el mismo `FacturaProveedorSerializer` (el ViewSet declara
    * un único `serializer_class`, sin `get_serializer_class`), con
-   * `factura_proveedor_detalles` anidado en ambos.
+   * `factura_proveedor_detalles` anidado en ambos. Es la fila VIVA: tras adjuntar
+   * un PDF, el refetch del listado actualiza esta sección sin cerrar el diálogo.
    */
   factura: FacturaProveedor;
+  pdfActions: SupplierInvoicePdfActions;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
@@ -30,6 +51,73 @@ interface SupplierInvoiceDetailDialogProps {
 /** Fecha-calendario "YYYY-MM-DD"; `timeZone: "UTC"` evita pintar el día anterior. */
 const fecha = (value: string | null) =>
   value ? formatShortDate(value, { timeZone: "UTC" }) : "—";
+
+/**
+ * PDF de la factura del proveedor y el documento fusionado OC + RC + factura.
+ * Disponible en cualquier estatus, igual que en el backend.
+ */
+function SupplierInvoicePdfSection({
+  factura,
+  actions,
+}: {
+  factura: FacturaProveedor;
+  actions: SupplierInvoicePdfActions;
+}) {
+  const tienePdf = factura.tiene_pdf_adjunto;
+  const nombre = factura.pdf_adjunto_nombre || "PDF adjunto";
+
+  return (
+    <div>
+      <SectionTitle>PDF de la factura del proveedor</SectionTitle>
+      <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 rounded-xl border border-slate-200 dark:border-white/10">
+        {tienePdf ? (
+          <div className="flex items-center gap-2 min-w-0">
+            <ExportPdfIcon className="w-4 h-4 text-rose-500 shrink-0" aria-hidden="true" />
+            <span
+              className="text-sm font-medium text-slate-700 dark:text-slate-200 truncate"
+              title={nombre}
+            >
+              {nombre}
+            </span>
+          </div>
+        ) : (
+          <p className="text-xs italic text-slate-400 dark:text-slate-500">
+            Sin PDF adjunto. Adjunta el PDF del proveedor (máximo {MAX_SUPPLIER_INVOICE_PDF_LABEL})
+            para descargar el documento OC + RC + factura.
+          </p>
+        )}
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            type="button"
+            variant="secondary"
+            rounded="full"
+            leftIcon={<UploadIcon className="w-4 h-4" aria-hidden="true" />}
+            onClick={actions.onAttach}
+            disabled={actions.isUploading}
+          >
+            {actions.isUploading
+              ? "Subiendo PDF..."
+              : tienePdf
+                ? "Reemplazar PDF"
+                : "Adjuntar PDF"}
+          </Button>
+          {tienePdf && (
+            <Button
+              type="button"
+              variant="primary"
+              rounded="full"
+              leftIcon={<DownloadIcon className="w-4 h-4" aria-hidden="true" />}
+              onClick={actions.onDownloadMerged}
+              disabled={actions.isDownloading}
+            >
+              {actions.isDownloading ? "Generando documento..." : "Descargar OC + RC + factura"}
+            </Button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 /**
  * Detalle de solo lectura de una factura de proveedor.
@@ -41,6 +129,7 @@ const fecha = (value: string | null) =>
  */
 export function SupplierInvoiceDetailDialog({
   factura,
+  pdfActions,
   open,
   onOpenChange,
 }: SupplierInvoiceDetailDialogProps) {
@@ -100,6 +189,8 @@ export function SupplierInvoiceDetailDialog({
               ? "Borrador: todavía no genera cuenta por pagar."
               : "Factura cancelada: no genera cuenta por pagar."}
         </p>
+
+        <SupplierInvoicePdfSection factura={factura} actions={pdfActions} />
 
         {factura.observaciones && (
           <div>

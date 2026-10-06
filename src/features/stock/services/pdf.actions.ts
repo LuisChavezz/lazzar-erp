@@ -12,6 +12,7 @@ import type { StockMovementReportParams } from "../interfaces/stock-movement-rep
 import { getFullStockReport, getFullStockMovementReport } from "./actions";
 import { generateStockReportPdfBlob } from "./pdf/stockReportPdfBlob";
 import { generateStockMovementReportPdfBlob } from "./pdf/stockMovementReportPdfBlob";
+import { downloadBlob } from "@/src/utils/downloadBlob";
 
 export const exportStockReportPdf = async (
   params: Omit<StockReportParams, "page" | "page_size">,
@@ -19,12 +20,7 @@ export const exportStockReportPdf = async (
   const fullReport = await getFullStockReport(params);
   const blob = await generateStockReportPdfBlob(fullReport);
 
-  const objectUrl = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = objectUrl;
-  link.download = `reporte-inventario-${params.almacen_id}-${params.fecha_inicio}-${params.fecha_final}.pdf`;
-  link.click();
-  URL.revokeObjectURL(objectUrl);
+  downloadBlob(blob, `reporte-inventario-${params.almacen_id}-${params.fecha_inicio}-${params.fecha_final}.pdf`);
 };
 
 /**
@@ -41,10 +37,5 @@ export const exportStockMovementReportPdf = async (
   const blob = await generateStockMovementReportPdfBlob(fullReport);
 
   const almacenPart = params.almacen_id ?? "todos";
-  const objectUrl = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = objectUrl;
-  link.download = `reporte-movimientos-${params.tipo_movimiento}-${almacenPart}-${params.fecha_inicio}-${params.fecha_final}.pdf`;
-  link.click();
-  URL.revokeObjectURL(objectUrl);
+  downloadBlob(blob, `reporte-movimientos-${params.tipo_movimiento}-${almacenPart}-${params.fecha_inicio}-${params.fecha_final}.pdf`);
 };

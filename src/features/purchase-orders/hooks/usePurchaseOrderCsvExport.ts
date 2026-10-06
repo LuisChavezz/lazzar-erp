@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, type RefObject } from "react";
 import type { DataTableHandle, DataTableVisibleColumn } from "@/src/components/DataTable";
 import type { PurchaseOrder } from "../interfaces/purchase-order.interface";
 import { getPurchaseOrderColumnText } from "../utils/purchaseOrderExport";
+import { downloadBlob } from "@/src/utils/downloadBlob";
 
 const escapeCsv = (value: string) => {
   if (/[",\n]/.test(value)) {
@@ -53,15 +54,8 @@ export const usePurchaseOrderCsvExport = (
     const blob = new Blob([`﻿${csvContent}`], {
       type: "text/csv;charset=utf-8;",
     });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
     const today = new Date().toISOString().split("T")[0];
-    link.href = url;
-    link.download = `ordenes-compra-${today}.csv`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+    downloadBlob(blob, `ordenes-compra-${today}.csv`);
   }, [tableRef]);
 
   useEffect(() => {

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, type RefObject } from "react";
 import type { DataTableHandle, DataTableVisibleColumn } from "@/src/components/DataTable";
 import type { Supplier } from "../interfaces/supplier.interface";
 import { getSupplierColumnText } from "../utils/supplierExport";
+import { downloadBlob } from "@/src/utils/downloadBlob";
 
 /** Ancho relativo de cada columna en el PDF — Proveedor/Razón social llevan texto más largo. */
 const getColumnWeight = (column: DataTableVisibleColumn<Supplier>): number => {
@@ -237,15 +238,8 @@ export const useSupplierPdfExport = (
       exportColumns,
     );
     const blob = await renderer.pdf(pdfDocument).toBlob();
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
     const today = new Date().toISOString().split("T")[0];
-    link.href = url;
-    link.download = `proveedores-${today}.pdf`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+    downloadBlob(blob, `proveedores-${today}.pdf`);
   }, [tableRef]);
 
   useEffect(() => {
