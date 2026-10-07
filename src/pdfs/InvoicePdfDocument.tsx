@@ -31,6 +31,7 @@
 import { Document, Page, Text, View } from "@react-pdf/renderer";
 import type { Invoice } from "@/src/features/invoicing/interfaces/invoice.interface";
 import { buildInvoiceDocumentModel } from "@/src/features/invoicing/utils/invoiceDocumentModel";
+import { INVOICE_STATUS } from "@/src/features/invoicing/constants/invoiceStatus";
 import { invoicePdfStyles as s } from "./InvoicePdfStyles";
 
 type InvoicePdfDocumentProps = {
@@ -54,9 +55,13 @@ export const InvoicePdfDocument = ({ invoice }: InvoicePdfDocumentProps) => {
             <View style={s.folioBadge}>
               <Text style={s.folioText}>{model.folio}</Text>
             </View>
-            <View style={s.statusBadge}>
-              <Text style={s.statusText}>{model.statusLabel.toUpperCase()}</Text>
-            </View>
+            {/* Sin etiqueta en Borrador: esas facturas se mandan al cliente para
+                revisión y el documento no debe llevar marca de borrador. */}
+            {model.statusLabel !== INVOICE_STATUS.BORRADOR && (
+              <View style={s.statusBadge}>
+                <Text style={s.statusText}>{model.statusLabel.toUpperCase()}</Text>
+              </View>
+            )}
           </View>
         </View>
 
@@ -73,10 +78,12 @@ export const InvoicePdfDocument = ({ invoice }: InvoicePdfDocumentProps) => {
               <Text style={s.infoLabel}>Moneda</Text>
               <Text style={s.infoValue}>{model.currency || "-"}</Text>
             </View>
-            <View style={s.infoRow}>
-              <Text style={s.infoLabel}>Estatus</Text>
-              <Text style={s.infoValue}>{model.statusLabel}</Text>
-            </View>
+            {model.statusLabel !== INVOICE_STATUS.BORRADOR && (
+              <View style={s.infoRow}>
+                <Text style={s.infoLabel}>Estatus</Text>
+                <Text style={s.infoValue}>{model.statusLabel}</Text>
+              </View>
+            )}
           </View>
 
           {/* Factura */}
@@ -103,8 +110,10 @@ export const InvoicePdfDocument = ({ invoice }: InvoicePdfDocumentProps) => {
           {/* Encabezado de la tabla — se repite en cada página */}
           <View style={s.tableHeader} fixed>
             <Text style={[s.tableHeaderCell, s.colDescription]}>Descripción</Text>
+            <Text style={[s.tableHeaderCell, s.colTalla]}>Talla</Text>
             <Text style={[s.tableHeaderCell, s.colQty]}>Cantidad</Text>
             <Text style={[s.tableHeaderCell, s.colPrice]}>Precio u.</Text>
+            <Text style={[s.tableHeaderCell, s.colTax]}>IVA</Text>
             <Text style={[s.tableHeaderCell, s.colDiscount]}>Descuento</Text>
             <Text style={[s.tableHeaderCell, s.colAmount]}>Importe</Text>
           </View>
@@ -121,8 +130,10 @@ export const InvoicePdfDocument = ({ invoice }: InvoicePdfDocumentProps) => {
                 wrap={false}
               >
                 <Text style={[s.tableCellBold, s.colDescription]}>{line.descripcion}</Text>
+                <Text style={[s.tableCell, s.colTalla]}>{line.talla}</Text>
                 <Text style={[s.tableCell, s.colQty]}>{line.cantidad}</Text>
                 <Text style={[s.tableCell, s.colPrice]}>{line.precioUnitario}</Text>
+                <Text style={[s.tableCell, s.colTax]}>{line.tasaImpuesto}</Text>
                 <Text style={[s.tableCell, s.colDiscount]}>{line.descuento}</Text>
                 <Text style={[s.tableCellBold, s.colAmount]}>{line.importe}</Text>
               </View>

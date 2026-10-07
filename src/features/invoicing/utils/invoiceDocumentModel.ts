@@ -26,9 +26,25 @@ import {
 } from "@/src/utils/formatCurrency";
 import { formatLocalDate } from "@/src/utils/formatDate";
 
+/**
+ * Tasa de impuesto de un renglón ("16.00" → "16%"). "—" cuando falta: los
+ * renglones anteriores a la facturación por talla no la traen.
+ */
+export const formatTasaImpuesto = (value: string | null | undefined): string => {
+  if (value == null || value.trim() === "") return "—";
+  const tasa = Number(value);
+  return Number.isNaN(tasa)
+    ? "—"
+    : `${new Intl.NumberFormat("es-MX", { maximumFractionDigits: 2 }).format(tasa)}%`;
+};
+
 /** Un renglón de la factura, ya formateado para presentación. */
 export interface InvoiceDocumentLine {
   descripcion: string;
+  /** Talla facturada; "—" en renglones anteriores a la facturación por talla. */
+  talla: string;
+  /** Tasa de impuesto del renglón ("16%"); "—" si falta. */
+  tasaImpuesto: string;
   cantidad: string;
   precioUnitario: string;
   descuento: string;
@@ -76,6 +92,8 @@ export const buildInvoiceDocumentModel = (invoice: Invoice): InvoiceDocumentMode
     currency: invoice.moneda_nombre,
     lines: detalles.map((detalle) => ({
       descripcion: detalle.producto_nombre,
+      talla: detalle.talla_nombre || "—",
+      tasaImpuesto: formatTasaImpuesto(detalle.porcentaje_impuesto),
       cantidad: formatQuantityValue(detalle.cantidad),
       precioUnitario: money(detalle.precio_unitario),
       descuento: money(detalle.descuento),

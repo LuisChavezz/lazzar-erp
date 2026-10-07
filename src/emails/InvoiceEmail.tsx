@@ -3,6 +3,7 @@ import { Text } from "@react-email/components";
 import { BaseEmailLayout, EmailCard } from "@/src/emails/shared/BaseEmailLayout";
 import type { Invoice } from "@/src/features/invoicing/interfaces/invoice.interface";
 import { buildInvoiceDocumentModel } from "@/src/features/invoicing/utils/invoiceDocumentModel";
+import { INVOICE_STATUS } from "@/src/features/invoicing/constants/invoiceStatus";
 
 type InvoiceEmailProps = {
   invoice: Invoice;
@@ -48,10 +49,14 @@ export const InvoiceEmail = ({ invoice, correo }: InvoiceEmailProps) => {
                     <td className="py-2 pr-4 text-slate-500">Cliente</td>
                     <td className="py-2 font-medium text-slate-900">{model.customerName}</td>
                   </tr>
-                  <tr>
-                    <td className="py-2 pr-4 text-slate-500">Estatus</td>
-                    <td className="py-2 font-medium text-slate-900">{model.statusLabel}</td>
-                  </tr>
+                  {/* Un Borrador se manda al cliente para revisión: el correo no
+                      debe decir "Borrador" en ninguna parte. */}
+                  {model.statusLabel !== INVOICE_STATUS.BORRADOR && (
+                    <tr>
+                      <td className="py-2 pr-4 text-slate-500">Estatus</td>
+                      <td className="py-2 font-medium text-slate-900">{model.statusLabel}</td>
+                    </tr>
+                  )}
                   <tr>
                     <td className="py-2 pr-4 text-slate-500">Fecha de emisión</td>
                     <td className="py-2 font-medium text-slate-900">{model.fechaEmision}</td>
@@ -73,15 +78,17 @@ export const InvoiceEmail = ({ invoice, correo }: InvoiceEmailProps) => {
                 <thead>
                   <tr className="border-b border-slate-200 text-xs uppercase tracking-[0.16em] text-slate-500">
                     <th className="py-3 pr-3 font-semibold">Descripción</th>
+                    <th className="py-3 pr-3 font-semibold text-center">Talla</th>
                     <th className="py-3 pr-3 font-semibold text-right">Cantidad</th>
                     <th className="py-3 pr-3 font-semibold text-right">Precio u.</th>
+                    <th className="py-3 pr-3 font-semibold text-right">IVA</th>
                     <th className="py-3 font-semibold text-right">Importe</th>
                   </tr>
                 </thead>
                 <tbody>
                   {model.lines.length === 0 ? (
                     <tr>
-                      <td colSpan={4} className="py-4 text-center text-slate-400">
+                      <td colSpan={6} className="py-4 text-center text-slate-400">
                         Esta factura no tiene conceptos registrados.
                       </td>
                     </tr>
@@ -97,11 +104,17 @@ export const InvoiceEmail = ({ invoice, correo }: InvoiceEmailProps) => {
                                 {line.descripcion}
                               </Text>
                             </td>
+                            <td className="py-4 pr-3 text-center align-top text-slate-900">
+                              {line.talla}
+                            </td>
                             <td className="py-4 pr-3 text-right align-top text-slate-900">
                               {line.cantidad}
                             </td>
                             <td className="py-4 pr-3 text-right align-top text-slate-900">
                               {line.precioUnitario}
+                            </td>
+                            <td className="py-4 pr-3 text-right align-top text-slate-900">
+                              {line.tasaImpuesto}
                             </td>
                             <td className="py-4 text-right align-top font-semibold text-slate-900">
                               {line.importe}

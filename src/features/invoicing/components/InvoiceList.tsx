@@ -60,11 +60,7 @@ export const InvoiceList = () => {
       />
       </div>
 
-      <CreateInvoiceDialog
-        open={isCreateOpen}
-        onOpenChange={setIsCreateOpen}
-        onSuccess={() => setIsCreateOpen(false)}
-      />
+      <CreateInvoiceDialog open={isCreateOpen} onOpenChange={setIsCreateOpen} />
     </div>
   );
 };

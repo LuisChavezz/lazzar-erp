@@ -4,7 +4,7 @@
  * estándar de "errores de campo" de DRF). Ignora entradas vacías o no-string.
  *
  * Extraído de `parseStockTransferError` (stock-transfers), que ya lo resolvía
- * así; `useCreateInvoiceFromOrder` y `useCreateStockMovement` reimplementaban
+ * así; `useCreateStockMovement` (y el antiguo alta de facturas desde pedido) reimplementaban
  * una versión más simple (`Array.isArray(v) ? v[0] : v`, sin saltar entradas
  * vacías) del mismo problema.
  */

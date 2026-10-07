@@ -1,8 +1,11 @@
 import { v1_api } from "@/src/api/v1.api";
-import {
-  Invoice,
-  CreateInvoiceFromOrderBody,
-} from "../interfaces/invoice.interface";
+import { decimalToCents } from "@/src/features/orders/utils/orderAccounting";
+import { Invoice } from "../interfaces/invoice.interface";
+import type {
+  InvoiceOnboardingData,
+  InvoiceOnboardingPayload,
+} from "../interfaces/invoice-onboarding.interface";
+import { invoiceOnboardingResponseSchema } from "../schemas/invoice-onboarding.schema";
 
 export const getInvoices = async (): Promise<Invoice[]> => {
   const response = await v1_api.get<Invoice[]>("/finanzas/facturas/");
@@ -26,17 +29,45 @@ export const getInvoiceDetail = async (id: number): Promise<Invoice> => {
 };
 
 /**
- * Crea una factura a partir de un pedido. El servidor resuelve todo el detalle
- * desde el pedido y devuelve la `Factura` con la misma forma que el resto del
- * módulo. El error se deja propagar tal cual para que el hook distinga entre el
- * `400` (pedido ya facturado) y el `404` (pedido inexistente).
+ * Piezas por talla del pedido —pedidas, facturadas y pendientes— para armar una
+ * factura parcial (`GET /finanzas/facturas/onboarding/?pedido={id}`).
+ *
+ * Valida la respuesta y normaliza los strings numéricos AQUÍ, no en los
+ * componentes: el precio pasa a centavos enteros y la tasa de IVA a número.
+ * Una línea es facturable si tiene producto de catálogo y piezas pendientes.
+ * El `404` (pedido de otra empresa o inexistente) se deja propagar.
  */
-export const createInvoiceFromOrder = async (
-  body: CreateInvoiceFromOrderBody,
+export const getInvoiceOnboarding = async (
+  pedidoId: number,
+): Promise<InvoiceOnboardingData> => {
+  const { data } = await v1_api.get<unknown>("/finanzas/facturas/onboarding/", {
+    params: { pedido: pedidoId },
+  });
+  const parsed = invoiceOnboardingResponseSchema.parse(data);
+
+  return {
+    ...parsed,
+    porcentaje_impuesto: Number(parsed.porcentaje_impuesto),
+    tallas: parsed.tallas.map(({ precio_unitario, ...talla }) => ({
+      ...talla,
+      precio_unitario_centavos: decimalToCents(precio_unitario) ?? 0,
+      facturable: talla.producto !== null && talla.cantidad_pendiente > 0,
+    })),
+  };
+};
+
+/**
+ * Crea UNA factura parcial en estatus `Borrador` con las piezas indicadas
+ * (`POST /finanzas/facturas/onboarding/`, responde `200` con la factura
+ * completa). No genera CxC ni póliza. El error se deja propagar tal cual: los
+ * `400` traen el motivo bajo `factura_detalles` o `pedido`.
+ */
+export const createInvoiceFromOnboarding = async (
+  payload: InvoiceOnboardingPayload,
 ): Promise<Invoice> => {
   const { data } = await v1_api.post<Invoice>(
-    "/finanzas/facturas/desde-pedido/",
-    body,
+    "/finanzas/facturas/onboarding/",
+    payload,
   );
   return data;
 };
