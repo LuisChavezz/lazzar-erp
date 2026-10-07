@@ -38,7 +38,7 @@ export const invoiceEmailPayloadSchema = z.object({
   /**
    * El listado puede no hidratar los conceptos, así que se acepta ausente/`null`
    * y se normaliza a `[]` — mismo criterio defensivo que `?? []` en
-   * `buildInvoiceDocumentModel` e `InvoiceDetails`. Es deliberado que NO sea
+   * `buildInvoiceDocumentModel`. Es deliberado que NO sea
    * requerido: con esa forma, una factura sin conceptos hidratados degradaría
    * en la descarga del PDF (que renderiza la sección vacía) pero fallaría con
    * un 400 permanente en el envío. Ambas rutas consumen el mismo modelo, así

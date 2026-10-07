@@ -72,10 +72,15 @@ const E2E_EMAIL = process.env.E2E_EMAIL;
 const E2E_PASSWORD = process.env.E2E_PASSWORD;
 
 /**
- * Órdenes de producción que se abren por RUTA: listado del módulo (base de la
- * URL del detalle) y rótulo del enlace "Volver" de su página, fijo al listado.
+ * Entidades que se abren por RUTA sin `?from=` (órdenes de producción y
+ * factura): listado del módulo (base de la URL del detalle) y rótulo del enlace
+ * "Volver" de su página, que sin origen cae a ese listado.
  */
 const ORDENES_PRODUCCION: Record<string, { listado: string; volver: string }> = {
+  factura: {
+    listado: "/finance/invoicing",
+    volver: "Volver a Facturación",
+  },
   orden_bordado: {
     listado: "/manufacturing/embroidery",
     volver: "Volver a Órdenes de Bordado",
@@ -161,11 +166,10 @@ async function estadoBody(page: Page) {
 }
 
 /**
- * Estado de error y de carga de cada diálogo de detalle, copiados de sus
- * componentes: `InvoiceDetailByIdDialog` (`ErrorState` y el TEXTO visible del
- * `Loader`) y `QuoteDetails` (bloque rosa, y un esqueleto `role="status"` cuyo
- * nombre solo existe como `aria-label`, no como texto: por eso la carga se
- * localiza por rol y no con `getByText`).
+ * Estado de error y de carga del diálogo de detalle, copiados de su componente:
+ * `QuoteDetails` (bloque rosa, y un esqueleto `role="status"` cuyo nombre solo
+ * existe como `aria-label`, no como texto: por eso la carga se localiza por rol
+ * y no con `getByText`). La factura ya no es diálogo: tiene página propia.
  *
  * Regresión que se vigila: si al cerrar se suelta el id del diálogo mientras
  * Radix aún anima la salida, su consulta se apaga y el contenido cae al estado
@@ -176,10 +180,6 @@ const TEXTO_DETALLE: Record<
   string,
   { error: string; cargando: (dialogo: Locator) => Locator }
 > = {
-  factura: {
-    error: "No se pudo cargar la factura",
-    cargando: (dialogo) => dialogo.getByText("Cargando detalle de la factura..."),
-  },
   cotizacion: {
     error: "No se pudieron cargar los detalles del pedido.",
     cargando: (dialogo) => dialogo.getByRole("status", { name: "Cargando detalles del pedido" }),
@@ -239,9 +239,6 @@ test("Búsqueda global — paleta de comandos", async ({ page }) => {
   const dialogoCotizacion = page
     .getByRole("dialog")
     .filter({ hasText: "Detalle de Cotización" });
-  const dialogoFactura = page
-    .getByRole("dialog")
-    .filter({ hasText: "Detalles de Facturación" });
 
   /** Resultado del vigilante de destello de error por diálogo (`tipo` → apareció). */
   const destellos: Record<string, boolean> = {};
@@ -738,8 +735,8 @@ test("Búsqueda global — paleta de comandos", async ({ page }) => {
           : undefined;
         if (ordenProduccion) {
           // El backend solo manda estos grupos con el código de sección que
-          // exige la ruta (`R-PRODUCCION-OB/OR/CM`): un rebote al Home sería un
-          // desajuste.
+          // exige la ruta (`R-PRODUCCION-OB/OR/CM`, `R-CONTABILIDAD-FACTURACION`):
+          // un rebote al Home sería un desajuste.
           const { listado, volver } = ordenProduccion;
           await expect(paleta).toBeHidden({ timeout: 15_000 });
           await expect(page).toHaveURL(new RegExp(`${listado}/\\d+`), { timeout: 20_000 });
@@ -766,14 +763,14 @@ test("Búsqueda global — paleta de comandos", async ({ page }) => {
           return;
         }
 
-        // ── cotizacion / factura: NO son rutas, son diálogos ────────────────
+        // ── cotizacion: NO es ruta, es diálogo ──────────────────────────────
         // Aquí vive el riesgo de los dos diálogos de Radix apilados: la paleta
         // se cierra y, tras un respiro, se monta el detalle. Se comprueba que la
         // secuencia deja la página utilizable.
         await expect(paleta, "la paleta debe cerrarse antes de abrir el detalle").toBeHidden({
           timeout: 15_000,
         });
-        const dialogoDetalle = tipo === "factura" ? dialogoFactura : dialogoCotizacion;
+        const dialogoDetalle = dialogoCotizacion;
         await expect(page, `abrir "${tipo}" no debe navegar`).toHaveURL(/\/$/);
         await expect(dialogoDetalle).toBeVisible({ timeout: 20_000 });
 

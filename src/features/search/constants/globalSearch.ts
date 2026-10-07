@@ -9,6 +9,9 @@ import {
   SearchIcon,
   SliceIcon,
 } from "@/src/components/Icons";
+import { invoiceDetailHref } from "@/src/features/invoicing/constants/invoiceDetailOrigins";
+import type { PermissionContext } from "@/src/interfaces/permission-context.interface";
+import { canAccessRoute } from "@/src/utils/routeAccess";
 
 /**
  * Longitud mínima para disparar la petición. El servidor manda el valor real en
@@ -50,8 +53,7 @@ export const SEARCH_DEBOUNCE_MS = 350;
  */
 export type SearchApertura =
   | { modo: "ruta"; href: (id: number) => string }
-  | { modo: "dialogo-cotizacion" }
-  | { modo: "dialogo-factura" };
+  | { modo: "dialogo-cotizacion" };
 
 export const SEARCH_APERTURA: Record<string, SearchApertura> = {
   // Ruta neutra `/orders/[id]`, la misma a la que navegan los listados de
@@ -74,9 +76,10 @@ export const SEARCH_APERTURA: Record<string, SearchApertura> = {
   orden_bordado: { modo: "ruta", href: (id) => `/manufacturing/embroidery/${id}` },
   orden_reflejante: { modo: "ruta", href: (id) => `/manufacturing/reflective-orders/${id}` },
   orden_corte_manga: { modo: "ruta", href: (id) => `/manufacturing/corte-manga/${id}` },
-  // Sin ruta de detalle: `InvoiceDetailByIdDialog`, el mismo del pedido 360°,
-  // con la misma secuencia que la cotización.
-  factura: { modo: "dialogo-factura" },
+  // Página de detalle de factura, sin `?from=` (mismo criterio que las órdenes
+  // de producción): su "Volver" cae al listado de facturas, que exige el mismo
+  // código que la ruta.
+  factura: { modo: "ruta", href: (id) => invoiceDetailHref(id) },
 };
 
 /**
@@ -88,6 +91,21 @@ export const SEARCH_APERTURA: Record<string, SearchApertura> = {
  */
 export const getSearchApertura = (tipo: string): SearchApertura | null =>
   Object.hasOwn(SEARCH_APERTURA, tipo) ? SEARCH_APERTURA[tipo] : null;
+
+/**
+ * ¿El usuario puede abrir la apertura? Una RUTA se evalúa con la misma regla
+ * que el proxy (`canAccessRoute`, sin la query): el backend decide qué grupos
+ * manda, pero con sus propios códigos —y deja pasar a `is_admin_empresa`, que
+ * el frontend no conoce—, así que una fila recibida puede apuntar a una ruta
+ * que rebotaría al Home. Esa fila se pinta pero no se abre. Un diálogo no
+ * tiene regla de ruta: se abre como siempre.
+ */
+export const canOpenSearchApertura = (
+  apertura: SearchApertura,
+  id: number,
+  user?: PermissionContext | null,
+): boolean =>
+  apertura.modo !== "ruta" || canAccessRoute(apertura.href(id).split("?")[0], user);
 
 /**
  * Ícono por entidad. `cotizacion` usa el glifo de documento (`FileText`) y no el

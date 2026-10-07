@@ -60,6 +60,7 @@ export const useCancelNotaCredito = () => {
       Promise.all([
         queryClient.invalidateQueries({ queryKey: ["credit-notes"] }),
         queryClient.invalidateQueries({ queryKey: ["accounts-receivable"] }),
+        queryClient.invalidateQueries({ queryKey: ["credit-note-detail"] }),
       ]),
     onSuccess: () => {
       toast.success("Nota de crédito cancelada correctamente");

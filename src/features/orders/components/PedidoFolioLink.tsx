@@ -21,6 +21,11 @@ interface PedidoFolioLinkProps {
   className?: string;
   /** Adorno tras el folio (p. ej. el chevron de Ventas/Compras). */
   children?: ReactNode;
+  /**
+   * Parámetros extra que el origen necesita para su "Volver" (p. ej. `factura`
+   * del origen `invoice`). Opcional: sin él la URL es la de siempre.
+   */
+  query?: Record<string, string>;
 }
 
 /**
@@ -36,10 +41,12 @@ export function PedidoFolioLink({
   from,
   className = "font-mono text-sm text-slate-600 dark:text-slate-300",
   children,
+  query,
 }: PedidoFolioLinkProps) {
+  const search = new URLSearchParams({ from, ...query });
   return (
     <Link
-      href={`/orders/${pedidoId}?from=${from}`}
+      href={`/orders/${pedidoId}?${search.toString()}`}
       title="Ver detalle del pedido"
       className={`${className} hover:text-sky-600 dark:hover:text-sky-400 hover:underline transition-colors cursor-pointer`}
     >

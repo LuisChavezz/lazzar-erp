@@ -18,9 +18,9 @@ interface AccountsReceivableFacturaSectionProps {
 
 /**
  * Sección "Factura" del detalle de CxC: los datos de la factura anidada más sus
- * conceptos. Las columnas replican las de `InvoiceDetails` (la vista de detalle
- * del módulo de facturación), que rinde el mismo `InvoiceDetail`, para que un
- * concepto se lea igual en los dos módulos.
+ * conceptos, uno por renglón `InvoiceDetail` (producto, talla, cantidad,
+ * importes). La página de detalle de facturación (`/finance/invoicing/[id]`)
+ * agrupa esos mismos renglones por renglón del pedido a partir del desglose.
  */
 export const AccountsReceivableFacturaSection = ({
   factura,

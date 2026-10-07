@@ -22,10 +22,18 @@ export const PEDIDO_DETAIL_ORIGINS = [
   "production-orders",
   "purchase-orders",
   "customers",
+  "invoice",
   "home",
 ] as const;
 
 export type PedidoDetailOrigin = (typeof PEDIDO_DETAIL_ORIGINS)[number];
+
+/**
+ * Parámetros que acompañan al origen `invoice`: la factura a la que vuelve
+ * "Volver" y la hoja en que estaba. Se validan en `PedidoDetailContent`.
+ */
+export const INVOICE_ORIGIN_ID_PARAM = "factura";
+export const INVOICE_ORIGIN_SHEET_PARAM = "factura_sheet";
 
 /**
  * Estrecha el `?from=` crudo de la URL. Compara contra el arreglo (no contra

@@ -41,6 +41,7 @@ export function OrderProgressSheet({ pedido, onOpenDoc }: OrderProgressSheetProp
       <OrderPickingBySizeSection detalles={pedido.detalles} />
       <OrderPickingFoliosSection folios={folios} onOpenFolio={onOpenDoc} />
       <OrderDocumentsSection
+        pedidoId={pedido.id}
         documentos={pedido.documentos ?? []}
         foliosPicking={folios}
         onOpenDoc={onOpenDoc}
