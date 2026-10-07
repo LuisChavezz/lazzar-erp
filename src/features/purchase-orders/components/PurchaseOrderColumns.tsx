@@ -392,7 +392,7 @@ const exactFilterFn =
  * `CorteMangaOrderColumns` (navegación) y `AreaColumns` (edición).
  *
  * Contenido pedido por negocio: O.C. (folio + estatus + referencia, y el menú
- * de acciones de la fila, ver abajo), Proveedor, Fecha OC, Cantidad,
+ * de acciones de la fila, ver abajo), Proveedor, Fecha de generación, Cantidad,
  * Vencimiento, Progreso OC (surtido vs. solicitado, ver `ProgresoCell`). Los
  * importes (Total/Subtotal/Impuestos) y "Entrega estimada" salieron del
  * listado a propósito — siguen disponibles en el detalle de la orden.
@@ -484,7 +484,7 @@ export const getColumns = (
       ),
     }),
     columnHelper.accessor("fecha_oc", {
-      header: "Fecha OC",
+      header: "Fecha de generación",
       cell: (info) => (
         <span className="text-slate-600 dark:text-slate-300 tabular-nums">
           {formatLocalDate(info.getValue())}
