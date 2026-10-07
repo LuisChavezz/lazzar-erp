@@ -89,6 +89,18 @@ export function PurchaseOrderEditStepManager({
     refetchOnMount: "always",
   });
 
+  // Foto del detalle tomada UNA vez, en cuanto llega la lectura fresca. Siembra
+  // el encabezado (Step 1) y los renglones (Step 2) y es la `fecha_vencimiento`
+  // "guardada" contra la que compara la regla de fechas: un refetch posterior
+  // con el diálogo abierto (p. ej. una invalidación de `["purchase-orders"]`)
+  // no debe mover ni lo sembrado ni esa referencia a media edición. El diálogo
+  // desmonta su contenido al cerrarse, así que cada apertura toma una foto
+  // nueva, siempre después del `refetchOnMount: "always"`.
+  const [snapshot, setSnapshot] = useState<PurchaseOrderDetail | null>(null);
+  if (snapshot === null && isDetailFresh && detail) {
+    setSnapshot(detail);
+  }
+
   /** Step 1 validó el encabezado: lo guardamos y avanzamos a productos. */
   const handleStep1Success = useCallback(
     (nextHeader: PurchaseOrderEditHeader) => {
@@ -119,13 +131,13 @@ export function PurchaseOrderEditStepManager({
   // `sinAccesoImportes` abajo). El `?? ""` queda solo como salvaguarda de tipos.
   const initialItems = useMemo<PurchaseOrderDetalleItem[]>(
     () =>
-      (detail?.detalles ?? []).map((d) => ({
+      (snapshot?.detalles ?? []).map((d) => ({
         producto: d.producto_id,
         cantidad: d.cantidad,
         precio: d.precio ?? "",
         descripcion: d.descripcion,
       })),
-    [detail],
+    [snapshot],
   );
 
   // Hasta que la lectura fresca del detalle termina (con éxito o con error) se
@@ -159,7 +171,7 @@ export function PurchaseOrderEditStepManager({
     );
   }
 
-  if (!onboardingData || !detail) {
+  if (!onboardingData || !detail || !snapshot) {
     return null;
   }
 
@@ -209,13 +221,13 @@ export function PurchaseOrderEditStepManager({
         </div>
       )}
       <div>
-        {/* El encabezado se siembra del detalle FRESCO (`detail`), no de la fila
-            del listado (`initialData`): esa puede tener hasta 15 min de caché y,
-            si otro usuario/pestaña cambió la orden, guardar sin tocar los campos
-            revertiría sus cambios en silencio. */}
+        {/* El encabezado se siembra de la foto del detalle FRESCO (`snapshot`),
+            no de la fila del listado (`initialData`): esa puede tener hasta 15
+            min de caché y, si otro usuario/pestaña cambió la orden, guardar sin
+            tocar los campos revertiría sus cambios en silencio. */}
         {currentStep === "step-1" && (
           <PurchaseOrderEditStep1
-            initialData={detail}
+            initialData={snapshot}
             initialHeader={header ?? undefined}
             onboardingData={onboardingData}
             onSuccess={handleStep1Success}
