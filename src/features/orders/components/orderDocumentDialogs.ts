@@ -7,8 +7,8 @@ import { PickingDetailByIdDialog } from "@/src/features/picking/components/Picki
 import { PackingDetailByIdDialog } from "@/src/features/packing/components/PackingDetailByIdDialog";
 import { PurchaseOrderDetailDialog } from "@/src/features/purchase-orders/components/PurchaseOrderDetailDialog";
 import { QuoteDetailByIdDialog } from "@/src/features/quotes/components/QuoteDetailByIdDialog";
-import { InvoiceDetailByIdDialog } from "@/src/features/invoicing/components/InvoiceDetailByIdDialog";
 import { StockMovementDetailByIdDialog } from "@/src/features/stock-movements/components/StockMovementDetailByIdDialog";
+import { invoiceDetailHref, invoiceDetailPath } from "@/src/features/invoicing/constants/invoiceDetailOrigins";
 
 /**
  * Llave del registro que abre el detalle de un picking. La usan DOS tablas de
@@ -67,9 +67,7 @@ export const ORDER_DOCUMENT_DIALOGS: Record<string, DocDetailDialog> = {
   // Cotización: `QuoteDetails` es contenido self-fetching (no un diálogo);
   // `QuoteDetailByIdDialog` solo lo envuelve en un MainDialog (sin action/hook).
   cotizacion: QuoteDetailByIdDialog,
-  // Factura: `InvoiceDetails` es contenido parent-injected; el wrapper fetchea
-  // por id (detalle con `factura_detalles`), lo envuelve y maneja loading/error.
-  factura: InvoiceDetailByIdDialog,
+  // La factura NO está aquí: tiene página propia (ver `ORDER_DOCUMENT_ROUTES`).
   // Movimiento de inventario sí es self-fetching, pero con prop `movementId`
   // no-nullable; `StockMovementDetailByIdDialog` solo adapta la firma.
   movimiento_inventario: StockMovementDetailByIdDialog,
@@ -83,4 +81,31 @@ export const ORDER_DOCUMENT_DIALOGS: Record<string, DocDetailDialog> = {
  */
 export function hasOrderDocumentDialog(tipo: string): boolean {
   return Object.hasOwn(ORDER_DOCUMENT_DIALOGS, tipo);
+}
+
+/**
+ * Tipos de documento que se abren en su PÁGINA de detalle en vez de un diálogo.
+ * `path` es la ruta que evalúa el proxy (para ofrecer el enlace solo a quien
+ * puede abrirla); `href`, la URL con el origen para su "Volver".
+ *
+ * A diferencia de los diálogos de arriba —que la regla `/orders` deja abrir a
+ * cualquiera que vea el pedido, porque el backend no filtra ese detalle por
+ * permiso—, una página tiene su propia regla en `routePermissions` y el enlace
+ * respeta esa regla: sin permiso, el documento queda como texto.
+ */
+interface OrderDocumentRoute {
+  path: (docId: number) => string;
+  href: (docId: number, pedidoId: number) => string;
+}
+
+export const ORDER_DOCUMENT_ROUTES: Record<string, OrderDocumentRoute> = {
+  factura: {
+    path: invoiceDetailPath,
+    href: (docId, pedidoId) => invoiceDetailHref(docId, "order", { pedido: pedidoId }),
+  },
+};
+
+/** Ruta de detalle de `tipo`, o `null`. `Object.hasOwn` por el mismo motivo que arriba. */
+export function getOrderDocumentRoute(tipo: string): OrderDocumentRoute | null {
+  return Object.hasOwn(ORDER_DOCUMENT_ROUTES, tipo) ? ORDER_DOCUMENT_ROUTES[tipo] : null;
 }

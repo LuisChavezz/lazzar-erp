@@ -1,5 +1,6 @@
 import { PURCHASE_ORDER_STATUS } from "@/src/features/purchase-orders/constants/purchaseOrderStatus";
 import { isCompleteDateEntry } from "@/src/utils/formatDate";
+import { parsePositiveId } from "@/src/utils/parsePositiveId";
 import type { SupplierPurchaseOrderHistoryParams } from "../interfaces/supplier-purchase-order-history.interface";
 
 /**
@@ -27,16 +28,9 @@ export interface SupplierPurchaseOrderHistoryFilters {
 const VALID_ESTATUS: readonly number[] = Object.values(PURCHASE_ORDER_STATUS);
 
 
-/** Solo dígitos: `Number()` aceptaría "1e1", " 2", "0x3" o "2.0". */
-const parsePositiveInt = (value: string | null | undefined): number | null => {
-  if (!value || !/^\d+$/.test(value)) return null;
-  const parsed = Number(value);
-  return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : null;
-};
-
 /** Id de proveedor válido (entero positivo) o `null`. */
 export const parseSupplierId = (value: string | null | undefined): number | null =>
-  parsePositiveInt(value);
+  parsePositiveId(value);
 
 /**
  * Lee los filtros validando cada valor POR SEPARADO. `get` abstrae la fuente
@@ -50,14 +44,14 @@ export const parseSupplierId = (value: string | null | undefined): number | null
 export const readSupplierPurchaseOrderHistoryFilters = (
   get: (key: string) => string | null | undefined,
 ): SupplierPurchaseOrderHistoryFilters => {
-  const estatus = parsePositiveInt(get("estatus"));
+  const estatus = parsePositiveId(get("estatus"));
   const fechaInicio = get("fecha_inicio");
   const fechaFinal = get("fecha_final");
   return {
     estatus: estatus !== null && VALID_ESTATUS.includes(estatus) ? estatus : null,
     fecha_inicio: isCompleteDateEntry(fechaInicio) ? fechaInicio : null,
     fecha_final: isCompleteDateEntry(fechaFinal) ? fechaFinal : null,
-    page: parsePositiveInt(get("page")) ?? 1,
+    page: parsePositiveId(get("page")) ?? 1,
   };
 };
 

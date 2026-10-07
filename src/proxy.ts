@@ -2,7 +2,7 @@ import { withAuth, type NextRequestWithAuth } from "next-auth/middleware";
 import { getToken } from "next-auth/jwt";
 import { NextResponse, type NextRequest, type NextFetchEvent } from "next/server";
 import { hasAnyPermission } from "./utils/permissions";
-import { routePermissions } from "./constants/routePermissions";
+import { findRoutePermissionRule } from "./utils/routeAccess";
 import { authSecret } from "./lib/authSecret";
 
 /**
@@ -27,9 +27,10 @@ const authMiddleware = withAuth(
 
     const hasWorkspace = req.cookies.has("erp_workspace_id"); // Verificar si hay workspace seleccionado
     const isSelectBranchPage = pathname.startsWith("/select-branch"); // Verificar si es la página de selección de sucursal
-    const rule = routePermissions.find( // Encontrar la regla de permisos que coincida con la ruta actual
-      ({ prefix }) => pathname === prefix || pathname.startsWith(`${prefix}/`)
-    );
+    // Regla de permisos que coincide con la ruta actual. La búsqueda vive en
+    // `routeAccess` para que los enlaces de la app (`canAccessRoute`) apliquen
+    // exactamente la misma.
+    const rule = findRoutePermissionRule(pathname);
 
     // Redirigir a la página de selección de sucursal si no hay workspace y no es la página de selección
     if (!hasWorkspace && !isSelectBranchPage) {

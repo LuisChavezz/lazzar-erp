@@ -6,6 +6,8 @@ import type {
   InvoiceOnboardingPayload,
 } from "../interfaces/invoice-onboarding.interface";
 import { invoiceOnboardingResponseSchema } from "../schemas/invoice-onboarding.schema";
+import type { InvoiceDesglose } from "../interfaces/invoice-desglose.interface";
+import { invoiceDesgloseResponseSchema } from "../schemas/invoice-desglose.schema";
 
 export const getInvoices = async (): Promise<Invoice[]> => {
   const response = await v1_api.get<Invoice[]>("/finanzas/facturas/");
@@ -18,14 +20,26 @@ export const getInvoices = async (): Promise<Invoice[]> => {
  * `retrieve` devuelve el mismo `FacturaSerializer` que el listado (verificado en
  * `finanzas/api/views.py`: `FacturaViewSet` es un `ModelViewSet` con
  * `serializer_class` único y GET habilitado), pero con `factura_detalles`
- * hidratados — que el LISTADO puede no traer (ver la nota de `InvoiceDetails`).
- * Por eso los consumidores que solo tienen el id —la sección "Documentos
- * relacionados" del detalle de pedido, vía `useInvoiceDetail`— deben pedir el
+ * hidratados — que el LISTADO puede no traer. Por eso los consumidores que solo
+ * tienen el id —la página de detalle (para `activo` y las acciones de PDF y
+ * correo) y las notas de crédito, vía `useInvoiceDetail`— deben pedir el
  * detalle en vez de reutilizar una fila del listado.
  */
 export const getInvoiceDetail = async (id: number): Promise<Invoice> => {
   const response = await v1_api.get<Invoice>(`/finanzas/facturas/${id}/`);
   return response.data;
+};
+
+/**
+ * Factura completa para la página de detalle
+ * (`GET /finanzas/facturas/{id}/desglose/`): conceptos por renglón del pedido
+ * con sus tallas, avance del pedido, parcialidades, cobranza y notas de
+ * crédito. Valida la respuesta y convierte los importes a número AQUÍ. El
+ * `404` (otra empresa o inexistente) se deja propagar.
+ */
+export const getInvoiceDesglose = async (id: number): Promise<InvoiceDesglose> => {
+  const { data } = await v1_api.get<unknown>(`/finanzas/facturas/${id}/desglose/`);
+  return invoiceDesgloseResponseSchema.parse(data);
 };
 
 /**

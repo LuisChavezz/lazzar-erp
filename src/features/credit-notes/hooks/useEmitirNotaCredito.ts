@@ -50,6 +50,7 @@ export const useEmitirNotaCredito = () => {
       Promise.all([
         queryClient.invalidateQueries({ queryKey: ["credit-notes"] }),
         queryClient.invalidateQueries({ queryKey: ["accounts-receivable"] }),
+        queryClient.invalidateQueries({ queryKey: ["credit-note-detail"] }),
       ]),
   });
 };

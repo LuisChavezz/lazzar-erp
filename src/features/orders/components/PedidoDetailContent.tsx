@@ -17,9 +17,18 @@ import {
   isPedidoTerminal,
 } from "../constants/pedidoStatus";
 import {
+  INVOICE_ORIGIN_ID_PARAM,
+  INVOICE_ORIGIN_SHEET_PARAM,
   isPedidoDetailOrigin,
   type PedidoDetailOrigin,
 } from "../constants/pedidoDetailOrigins";
+import {
+  buildInvoiceDetailHref,
+  invoiceDetailPath,
+} from "@/src/features/invoicing/constants/invoiceDetailOrigins";
+import { parsePositiveId } from "@/src/utils/parsePositiveId";
+import { canAccessRoute } from "@/src/utils/routeAccess";
+import { resolveInvoiceDetailSheet } from "@/src/features/invoicing/constants/invoiceDetailSheets";
 import {
   buildOrderDetailSheetHref,
   resolveOrderDetailSheet,
@@ -103,6 +112,10 @@ const BACK_TARGETS: Record<PedidoDetailOrigin, { href: string; label: string }> 
   // (`CustomerResumenPedidos`) vuelve al listado de clientes. La tabla es estática,
   // así que no puede volver al cliente CONCRETO.
   customers: { href: "/sales/customers", label: "Volver a Clientes" },
+  // Quien llega desde el detalle de una factura con su id (`?factura=`) vuelve a
+  // ESA factura: el destino real lo arma `resolveBack` con el id validado. Esta
+  // entrada fija es el respaldo cuando el id falta o no es válido.
+  invoice: { href: "/finance/invoicing", label: "Volver a Facturación" },
   // Destino universal: el Home no exige ningún permiso de módulo, así que sirve
   // como salida para quien llega sin `?from=` (URL pegada, recarga, enlace
   // externo). También es válido como valor explícito de `?from=home`.
@@ -113,6 +126,36 @@ const BACK_TARGETS: Record<PedidoDetailOrigin, { href: string; label: string }> 
 // así que cualquier listado concreto (antes /operations/orders) rebotaría al
 // home a la mayoría de los usuarios que sí pueden ver esta pantalla.
 const DEFAULT_BACK = BACK_TARGETS.home;
+
+/**
+ * "Volver" final. El origen `invoice` vuelve a la factura de `?factura=` (y a
+ * su hoja de `?factura_sheet=`, validada contra la lista de hojas); nunca se
+ * copia la query a un `href`, solo primitivos validados. Sin id válido cae a su
+ * entrada fija de `BACK_TARGETS`. Si el usuario no puede abrir el detalle de
+ * factura (un enlace compartido a quien no tiene facturación), cae al destino
+ * por defecto, como sin origen: nunca a una ruta que el proxy rebotaría.
+ */
+function resolveBack(
+  from: string | undefined,
+  searchParams: OrderDetailSearchParams,
+  canOpen: (pathname: string) => boolean,
+): { href: string; label: string } {
+  if (!isPedidoDetailOrigin(from)) return DEFAULT_BACK;
+  if (from === "invoice") {
+    const facturaId = parsePositiveId(searchParams[INVOICE_ORIGIN_ID_PARAM]);
+    if (facturaId === null) {
+      return canOpen(BACK_TARGETS.invoice.href) ? BACK_TARGETS.invoice : DEFAULT_BACK;
+    }
+    if (!canOpen(invoiceDetailPath(facturaId))) return DEFAULT_BACK;
+    const rawSheet = searchParams[INVOICE_ORIGIN_SHEET_PARAM];
+    const sheet = resolveInvoiceDetailSheet(Array.isArray(rawSheet) ? rawSheet[0] : rawSheet);
+    return {
+      href: buildInvoiceDetailHref(facturaId, {}, sheet),
+      label: "Volver a la Factura",
+    };
+  }
+  return BACK_TARGETS[from];
+}
 
 /**
  * Regla del proxy que cubre /sales/quotes/{id}/edit, resuelta con la MISMA
@@ -204,7 +247,9 @@ export function PedidoDetailContent({
   // orígenes (no contra las llaves del objeto), así que `?from=constructor`
   // (o `toString`, `valueOf`) no resuelve a una función heredada de
   // `Object.prototype`. Faltante o desconocido → `DEFAULT_BACK`.
-  const back = isPedidoDetailOrigin(from) ? BACK_TARGETS[from] : DEFAULT_BACK;
+  const back = resolveBack(from, searchParams, (pathname) =>
+    canAccessRoute(pathname, session?.user),
+  );
 
   const BackLink = (
     <Link

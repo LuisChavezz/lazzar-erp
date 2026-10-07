@@ -2,16 +2,17 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { Dialog, VisuallyHidden } from "@radix-ui/themes";
 import { LoadingSpinnerIcon, SearchIcon } from "@/src/components/Icons";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { QuoteDetailByIdDialog } from "@/src/features/quotes/components/QuoteDetailByIdDialog";
-import { InvoiceDetailByIdDialog } from "@/src/features/invoicing/components/InvoiceDetailByIdDialog";
 import { useGlobalSearch } from "../hooks/useGlobalSearch";
 import { useGlobalSearchModal } from "../hooks/useGlobalSearchModal";
 import {
   SEARCH_MIN_NAME_LENGTH,
   SEARCH_MIN_QUERY_LENGTH,
+  canOpenSearchApertura,
   getSearchApertura,
   getSearchEntityIcon,
 } from "../constants/globalSearch";
@@ -40,22 +41,22 @@ const optionId = (index: number) => `global-search-option-${index}`;
 export function GlobalSearchPalette() {
   const { isOpen, close } = useGlobalSearchModal();
   const router = useRouter();
+  const { data: session } = useSession();
 
   const [query, setQuery] = useState("");
   const [activeIndex, setActiveIndex] = useState(0);
   /**
-   * Detalle de cotización / factura: el id y la apertura van en estados
-   * SEPARADOS. Al cerrar solo se baja `open`; el id se conserva durante la
-   * animación de salida, porque con `null` la consulta del diálogo se apaga y
-   * su contenido cae al estado de error ("No se pudo cargar…") mientras aún se
-   * ve desvaneciéndose. El id se libera en el `onCloseAutoFocus` del propio
+   * Detalle de cotización: el id y la apertura van en estados SEPARADOS. Al
+   * cerrar solo se baja `open`; el id se conserva durante la animación de
+   * salida, porque con `null` la consulta del diálogo se apaga y su contenido
+   * cae al estado de error ("No se pudo cargar…") mientras aún se ve
+   * desvaneciéndose. El id se libera en el `onCloseAutoFocus` del propio
    * diálogo, que corre ya desmontado.
    *
-   * Las refs son el espejo SÍNCRONO de cada `open`, para la guarda de ese
-   * cierre: si el mismo diálogo se reabre con otro id mientras el anterior aún
-   * se desvanece, su `onCloseAutoFocus` llega después y soltaría el id NUEVO.
-   * Se escriben en el mismo manejador que abre o cierra, sin depender de un
-   * render intermedio.
+   * La ref es el espejo SÍNCRONO de `open`, para la guarda de ese cierre: si el
+   * diálogo se reabre con otro id mientras el anterior aún se desvanece, su
+   * `onCloseAutoFocus` llega después y soltaría el id NUEVO. Se escribe en el
+   * mismo manejador que abre o cierra, sin depender de un render intermedio.
    */
   const [quoteId, setQuoteId] = useState<number | null>(null);
   const [isQuoteOpen, setIsQuoteOpen] = useState(false);
@@ -64,20 +65,11 @@ export function GlobalSearchPalette() {
     isQuoteOpenRef.current = open;
     setIsQuoteOpen(open);
   };
-  const [invoiceId, setInvoiceId] = useState<number | null>(null);
-  const [isInvoiceOpen, setIsInvoiceOpen] = useState(false);
-  const isInvoiceOpenRef = useRef(false);
-  const setInvoiceOpen = (open: boolean) => {
-    isInvoiceOpenRef.current = open;
-    setIsInvoiceOpen(open);
-  };
 
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
   /** Cotización elegida a la espera de que la paleta termine de cerrarse. */
   const pendingQuoteRef = useRef<number | null>(null);
-  /** Factura elegida a la espera de que la paleta termine de cerrarse. */
-  const pendingInvoiceRef = useRef<number | null>(null);
   /**
    * Última posición REAL del puntero. Al desplazarse la lista con el teclado, el
    * navegador vuelve a emitir eventos de ratón sobre la fila que queda bajo un
@@ -157,9 +149,10 @@ export function GlobalSearchPalette() {
   // ── Apertura del resultado ──────────────────────────────────────────────────
   const handleSelect = (result: GlobalSearchResult) => {
     const apertura = getSearchApertura(result.tipo);
-    // Entidad que el backend ya devuelve pero el frontend aún no sabe abrir: no
-    // se navega a ninguna parte ni se cierra la paleta.
-    if (!apertura) return;
+    // Entidad que el backend ya devuelve pero el frontend aún no sabe abrir, o
+    // ruta que el usuario no puede abrir: no se navega a ninguna parte ni se
+    // cierra la paleta.
+    if (!apertura || !canOpenSearchApertura(apertura, result.id, session?.user)) return;
 
     cerrarYLimpiar();
 
@@ -174,11 +167,6 @@ export function GlobalSearchPalette() {
         // self-fetching que usa el pedido 360°. Solo se ANOTA aquí; lo abre
         // `onCloseAutoFocus`, cuando la paleta ya se desmontó de verdad.
         pendingQuoteRef.current = result.id;
-        break;
-      case "dialogo-factura":
-        // Igual que la cotización: la factura no tiene ruta de detalle, y su
-        // diálogo self-fetching se abre en `onCloseAutoFocus`.
-        pendingInvoiceRef.current = result.id;
         break;
     }
   };
@@ -245,32 +233,23 @@ export function GlobalSearchPalette() {
             // El foco va al input y no al primer elemento enfocable que Radix
             // encuentre: en una paleta se escribe de inmediato.
             event.preventDefault();
-            // Al reabrir se descarta cualquier cotización o factura que quedara
-            // anotada: si el usuario vuelve a la paleta en vez de dejarla
-            // cerrarse, cambió de idea, y abrir el detalle después dejaría dos
-            // diálogos.
+            // Al reabrir se descarta cualquier cotización que quedara anotada:
+            // si el usuario vuelve a la paleta en vez de dejarla cerrarse,
+            // cambió de idea, y abrir el detalle después dejaría dos diálogos.
             pendingQuoteRef.current = null;
-            pendingInvoiceRef.current = null;
             inputRef.current?.focus();
           }}
           onCloseAutoFocus={() => {
             // Radix lanza esto al DESMONTAR el contenido, ya terminada la
             // animación de salida: es el punto exacto en que la paleta ha
             // dejado de existir y se puede montar el detalle de la cotización
-            // o de la factura sin que los dos diálogos solapen su bloqueo del
-            // `body`. Se secuencia sobre el evento real en vez de adivinar una
-            // espera. `handleSelect` solo anota una de las dos por selección.
+            // sin que los dos diálogos solapen su bloqueo del `body`. Se
+            // secuencia sobre el evento real en vez de adivinar una espera.
             const pendingQuote = pendingQuoteRef.current;
-            const pendingInvoice = pendingInvoiceRef.current;
             pendingQuoteRef.current = null;
-            pendingInvoiceRef.current = null;
             if (pendingQuote !== null) {
               setQuoteId(pendingQuote);
               setQuoteOpen(true);
-            }
-            if (pendingInvoice !== null) {
-              setInvoiceId(pendingInvoice);
-              setInvoiceOpen(true);
             }
           }}
         >
@@ -372,7 +351,13 @@ export function GlobalSearchPalette() {
                       const index = groupStarts[groupIndex] + rowIndex;
                       const Icon = getSearchEntityIcon(result.tipo);
                       const isActive = index === safeIndex;
-                      const canOpen = getSearchApertura(result.tipo) !== null;
+                      const apertura = getSearchApertura(result.tipo);
+                      // Sin apertura: el frontend aún no sabe abrir la
+                      // entidad. Con apertura pero sin acceso: la ruta
+                      // rebotaría al Home. En ambos casos la fila es texto.
+                      const canOpen =
+                        apertura !== null &&
+                        canOpenSearchApertura(apertura, result.id, session?.user);
 
                       return (
                         <button
@@ -423,12 +408,11 @@ export function GlobalSearchPalette() {
                             </span>
                           )}
 
-                          {/* Entidad que el backend ya devuelve pero el frontend
-                              todavía no sabe abrir: se dice, en vez de dejar que
-                              Enter no haga nada sin explicación. */}
+                          {/* Fila que no se abre: se dice por qué, en vez de
+                              dejar que Enter no haga nada sin explicación. */}
                           {!canOpen && (
                             <span className="shrink-0 rounded-full border border-slate-200 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-400 dark:border-white/10 dark:text-slate-500">
-                              No disponible
+                              {apertura === null ? "No disponible" : "Sin acceso"}
                             </span>
                           )}
                         </button>
@@ -482,19 +466,6 @@ export function GlobalSearchPalette() {
         onCloseAutoFocus={() => {
           // Guarda: un cierre tardío no suelta la cotización que ya se reabrió.
           if (!isQuoteOpenRef.current) setQuoteId(null);
-        }}
-      />
-
-      {/* La factura tampoco tiene ruta de detalle: mismo diálogo self-fetching
-          que su bloque en "Documentos relacionados" del pedido 360°, hermano
-          de la paleta como el de la cotización. */}
-      <InvoiceDetailByIdDialog
-        orderId={invoiceId}
-        open={isInvoiceOpen}
-        onOpenChange={setInvoiceOpen}
-        onCloseAutoFocus={() => {
-          // Guarda: un cierre tardío no suelta la factura que ya se reabrió.
-          if (!isInvoiceOpenRef.current) setInvoiceId(null);
         }}
       />
     </>

@@ -21,6 +21,17 @@ export const getNotasCredito = async (): Promise<NotaCredito[]> => {
 };
 
 /**
+ * UNA nota de crédito (`GET /finanzas/notas-credito/{id}/`), con el mismo
+ * `NotaCreditoSerializer` que el listado (líneas incluidas). Para quien solo
+ * tiene el id —la página de detalle de factura—; el listado sigue abriendo el
+ * detalle con su propia fila.
+ */
+export const getNotaCredito = async (id: number): Promise<NotaCredito> => {
+  const { data } = await v1_api.get<NotaCredito>(`/finanzas/notas-credito/${id}/`);
+  return data;
+};
+
+/**
  * Alta de una nota de crédito con sus líneas anidadas.
  *
  * El cuerpo NO lleva `empresa` (el modelo no tiene ese campo) ni `fecha_emision`

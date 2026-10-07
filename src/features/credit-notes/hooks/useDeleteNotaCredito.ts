@@ -69,7 +69,10 @@ export const useDeleteNotaCredito = () => {
       );
     },
     onSettled: () =>
-      queryClient.invalidateQueries({ queryKey: ["credit-notes"] }),
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["credit-notes"] }),
+        queryClient.invalidateQueries({ queryKey: ["credit-note-detail"] }),
+      ]),
     onSuccess: () => {
       toast.success("Borrador eliminado correctamente");
     },

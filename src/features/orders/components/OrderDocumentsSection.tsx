@@ -1,13 +1,20 @@
+import Link from "next/link";
+import { useSession } from "next-auth/react";
 import { EmptyLines, Section, textOrDash } from "@/src/components/DetailDialogPrimitives";
 import { formatShortDate } from "@/src/utils/formatDate";
+import { canAccessRoute } from "@/src/utils/routeAccess";
 import { ORIGIN_BADGE_CLASS } from "../constants/pedidoStatus";
 import type { PedidoDocumento, PedidoFolioPicking } from "../interfaces/order.interface";
 import {
+  getOrderDocumentRoute,
   hasOrderDocumentDialog,
   PACKING_DOC_TIPO,
   PICKING_DOC_TIPO,
   type OpenOrderDocument,
 } from "./orderDocumentDialogs";
+
+const DOC_LINK_CLASS =
+  "text-sky-600 dark:text-sky-400 hover:underline hover:text-sky-700 dark:hover:text-sky-300 cursor-pointer font-medium text-left transition-colors";
 
 /**
  * Tipos stub: sus `folio` y `fecha` son el PK crudo (`str(id)`), no datos
@@ -27,6 +34,23 @@ const DOC_LABEL_OVERRIDES: Record<string, string> = {
   [PICKING_DOC_TIPO]: "Surtido (WMS)",
   [PACKING_DOC_TIPO]: "Embarque (WMS)",
 };
+
+/**
+ * Fecha visible de un documento. El backend manda `isoformat()` del campo de
+ * fecha de cada tipo (`pedido_documentos_service`), así que la FORMA del valor
+ * dice si es fecha de calendario o datetime:
+ *  - "YYYY-MM-DD" (DateField): factura `fecha_emision`, orden de compra
+ *    `fecha_oc`. Se formatea en UTC; sin ella, `new Date("2026-10-07")` es
+ *    medianoche UTC y en México se pinta el día anterior.
+ *  - datetime con hora (DateTimeField): cotización y packing `created_at`,
+ *    órdenes de producción/bordado/reflejante/corte de manga y picking
+ *    `fecha_inicio`, movimiento `fecha_movimiento`. Se deja en la zona local.
+ */
+const DATE_ONLY_RE = /^\d{4}-\d{2}-\d{2}$/;
+const formatDocFecha = (fecha: string | null): string =>
+  fecha && DATE_ONLY_RE.test(fecha)
+    ? formatShortDate(fecha, { timeZone: "UTC" })
+    : formatShortDate(fecha);
 
 const docLabel = (doc: PedidoDocumento): string =>
   Object.hasOwn(DOC_LABEL_OVERRIDES, doc.tipo) ? DOC_LABEL_OVERRIDES[doc.tipo] : doc.label;
@@ -60,16 +84,24 @@ function DocEstatusBadge({ estatus }: { estatus: string }) {
  * Una entrada `picking` que no esté ahí (p. ej. si `folios_picking` excluye
  * algún estado que `documentos` sí lista) se conserva, para no perder rastro de
  * ningún documento.
+ *
+ * Los tipos con página propia (`ORDER_DOCUMENT_ROUTES`, hoy la factura)
+ * enlazan a ella solo si el usuario puede abrir esa ruta; si no, quedan como
+ * texto. Los tipos con diálogo lo abren como siempre.
  */
 export function OrderDocumentsSection({
+  pedidoId,
   documentos,
   foliosPicking,
   onOpenDoc,
 }: {
+  /** Pedido dueño de los documentos: el "Volver" de una página lo trae de regreso. */
+  pedidoId: number;
   documentos: PedidoDocumento[];
   foliosPicking: PedidoFolioPicking[];
   onOpenDoc: (doc: OpenOrderDocument) => void;
 }) {
+  const { data: session } = useSession();
   const folioIds = new Set(foliosPicking.map((folio) => folio.id));
   const visibles = documentos.filter(
     (doc) => !(doc.tipo === PICKING_DOC_TIPO && folioIds.has(doc.id)),
@@ -110,11 +142,16 @@ export function OrderDocumentsSection({
               {ordenados.map((doc) => {
                 const isStub = STUB_DOCUMENTO_TIPOS.has(doc.tipo);
                 const isMovimiento = doc.tipo === MOVIMIENTO_INVENTARIO_TIPO;
-                // Clicable solo si su tipo tiene un diálogo de detalle
-                // registrado; el resto queda como texto estático.
-                const isClickable = hasOrderDocumentDialog(doc.tipo);
+                // Página propia (si el usuario puede abrirla) o diálogo de
+                // detalle registrado; el resto queda como texto estático.
+                const route = getOrderDocumentRoute(doc.tipo);
+                const href =
+                  route && canAccessRoute(route.path(doc.id), session?.user)
+                    ? route.href(doc.id, pedidoId)
+                    : null;
+                const hasDialog = !route && hasOrderDocumentDialog(doc.tipo);
                 const folio = isStub || isMovimiento ? "—" : textOrDash(doc.folio);
-                const fecha = isStub ? "—" : formatShortDate(doc.fecha);
+                const fecha = isStub ? "—" : formatDocFecha(doc.fecha);
                 const showEstatus = !isStub && !isMovimiento && doc.estatus;
                 const label = docLabel(doc);
                 return (
@@ -123,11 +160,15 @@ export function OrderDocumentsSection({
                     className="border-t border-slate-100 dark:border-white/10 align-top"
                   >
                     <td className="px-3 py-2 text-slate-700 dark:text-slate-200">
-                      {isClickable ? (
+                      {href ? (
+                        <Link href={href} className={DOC_LINK_CLASS} title={`Ver detalle: ${label}`}>
+                          {label}
+                        </Link>
+                      ) : hasDialog ? (
                         <button
                           type="button"
                           onClick={() => onOpenDoc({ tipo: doc.tipo, id: doc.id })}
-                          className="text-sky-600 dark:text-sky-400 hover:underline hover:text-sky-700 dark:hover:text-sky-300 cursor-pointer font-medium text-left transition-colors"
+                          className={DOC_LINK_CLASS}
                           title={`Ver detalle: ${label}`}
                         >
                           {label}

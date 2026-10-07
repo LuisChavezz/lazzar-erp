@@ -79,8 +79,8 @@ export const buildInvoiceDocumentModel = (invoice: Invoice): InvoiceDocumentMode
   const money = (value: string | number): string =>
     formatCurrency(safeParseAmount(String(value)), { currency: invoice.moneda_nombre });
 
-  // El listado puede no hidratar los conceptos (mismo criterio defensivo que
-  // `InvoiceDetails`); `?? []` evita romper el render con un valor ausente.
+  // El listado puede no hidratar los conceptos; `?? []` evita romper el render
+  // con un valor ausente.
   const detalles = invoice.factura_detalles ?? [];
 
   return {

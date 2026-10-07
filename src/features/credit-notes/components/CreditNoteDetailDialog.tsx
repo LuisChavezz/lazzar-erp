@@ -41,11 +41,47 @@ interface CreditNoteDetailDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
+/** Título del diálogo: icono, rótulo y folio (o `#id`). */
+export function CreditNoteDialogTitle({ label }: { label: string }) {
+  return (
+    <div className="flex items-center gap-2.5 pr-8">
+      <NotaCreditoIcon className="w-5 h-5 text-violet-500 shrink-0" />
+      <div>
+        <p className="text-base font-semibold leading-tight text-slate-800 dark:text-slate-100">
+          Detalle de la Nota de Crédito
+        </p>
+        <p className="text-xs text-slate-500 dark:text-slate-400 font-mono font-normal mt-0.5">
+          {label}
+        </p>
+      </div>
+    </div>
+  );
+}
+
 export function CreditNoteDetailDialog({
   nota,
   open,
   onOpenChange,
 }: CreditNoteDetailDialogProps) {
+  return (
+    <MainDialog
+      open={open}
+      onOpenChange={onOpenChange}
+      maxWidth="900px"
+      showCloseButton={true}
+      title={<CreditNoteDialogTitle label={nota.folio || `#${nota.id}`} />}
+    >
+      <CreditNoteDetailBody nota={nota} />
+    </MainDialog>
+  );
+}
+
+/**
+ * Contenido del detalle (sin el marco del diálogo), para que el envoltorio por
+ * id (`CreditNoteDetailByIdDialog`) lo monte dentro de SU único `MainDialog`
+ * sin cambiar de diálogo al terminar de cargar.
+ */
+export function CreditNoteDetailBody({ nota }: { nota: NotaCredito }) {
   /**
    * La FACTURA sí necesita su propia consulta, por dos razones que se resuelven
    * de una sola vez:
@@ -94,25 +130,6 @@ export function CreditNoteDetailDialog({
     factura?.factura_detalles.find((detalle) => detalle.id === facturaDetalleId);
 
   return (
-    <MainDialog
-      open={open}
-      onOpenChange={onOpenChange}
-      maxWidth="900px"
-      showCloseButton={true}
-      title={
-        <div className="flex items-center gap-2.5 pr-8">
-          <NotaCreditoIcon className="w-5 h-5 text-violet-500 shrink-0" />
-          <div>
-            <p className="text-base font-semibold leading-tight text-slate-800 dark:text-slate-100">
-              Detalle de la Nota de Crédito
-            </p>
-            <p className="text-xs text-slate-500 dark:text-slate-400 font-mono font-normal mt-0.5">
-              {nota.folio || `#${nota.id}`}
-            </p>
-          </div>
-        </div>
-      }
-    >
       <div className="space-y-5">
         {/* Cabecera: sale del renglón que el listado ya cargó. */}
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-3 px-4 py-3 rounded-xl bg-slate-50 dark:bg-white/5 text-xs">
@@ -266,6 +283,5 @@ export function CreditNoteDetailDialog({
           )}
         </div>
       </div>
-    </MainDialog>
   );
 }
