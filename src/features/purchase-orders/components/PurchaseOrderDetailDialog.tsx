@@ -416,7 +416,7 @@ export function PurchaseOrderDetailDialog({
                   )}
                 </span>
               </InfoField>
-              <InfoField label="Fecha OC">
+              <InfoField label="Fecha de generación">
                 {formatLocalDate(purchaseOrder.fecha_oc)}
               </InfoField>
               <InfoField label="Entrega estimada">

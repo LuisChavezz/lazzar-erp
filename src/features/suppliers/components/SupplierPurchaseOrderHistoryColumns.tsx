@@ -45,7 +45,7 @@ export const getSupplierPurchaseOrderHistoryColumns = (
       ),
     }),
     columnHelper.accessor("fecha_oc", {
-      header: "Fecha OC",
+      header: "Fecha de generación",
       cell: (info) => (
         <span className="text-slate-600 dark:text-slate-300 tabular-nums">
           {formatLocalDate(info.getValue())}
