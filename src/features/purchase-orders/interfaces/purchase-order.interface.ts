@@ -265,6 +265,37 @@ export interface CancelPurchaseOrderParams {
   payload: CancelPurchaseOrderPayload;
 }
 
+/**
+ * Renglón tal como lo devuelve el PUT: el modelo plano del detalle (FKs como
+ * ids), distinto de {@link PurchaseOrderDetalle} del retrieve. Forma observada
+ * contra la respuesta real del backend.
+ */
+export interface UpdatePurchaseOrderResponseDetalle {
+  id: number;
+  descripcion: string;
+  cantidad: number;
+  precio: string;
+  descuento: string;
+  importe: string;
+  piezas: number;
+  orden_compra: number;
+  producto: number;
+  solicitud_compra_detalle: number | null;
+  requisicion_detalle: number | null;
+  sucursal: number;
+}
+
+/**
+ * Respuesta de `PUT /compras/ordenes/{pk}/`: la cabecera (misma forma que el
+ * listado) envuelta en `orden_compra` y los renglones recreados en `detalle`.
+ * NO es un {@link PurchaseOrder} plano. Hoy nadie la consume: tras el PUT la
+ * vista se refresca invalidando las queries.
+ */
+export interface UpdatePurchaseOrderResponse {
+  orden_compra: PurchaseOrder;
+  detalle: UpdatePurchaseOrderResponseDetalle[];
+}
+
 /** Parámetros para la acción de actualización de una orden de compra. */
 export interface UpdatePurchaseOrderParams {
   pk: number;

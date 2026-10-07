@@ -422,10 +422,10 @@ export function PurchaseOrderDetailDialog({
               <InfoField label="Entrega estimada">
                 {formatLocalDate(purchaseOrder.fecha_entrega_estimada)}
               </InfoField>
-              <InfoField label="Fecha autorización">
+              <InfoField label="Fecha de autorización">
                 {formatLocalDate(purchaseOrder.fecha_autorizacion)}
               </InfoField>
-              <InfoField label="Fecha vencimiento">
+              <InfoField label="Fecha de vencimiento">
                 {formatLocalDate(purchaseOrder.fecha_vencimiento)}
               </InfoField>
               {/* `total_piezas` NO es un campo financiero: llega siempre, sin
