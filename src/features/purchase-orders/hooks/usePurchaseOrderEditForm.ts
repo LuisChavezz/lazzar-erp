@@ -12,7 +12,11 @@ import {
 } from "../schemas/purchase-order-edit.schema";
 
 interface UsePurchaseOrderEditFormParams {
-  /** Orden existente que se está editando. Sus campos pre-pueblan el formulario. */
+  /**
+   * Orden existente que se está editando, leída FRESCA del detalle (no la fila
+   * del listado, que puede estar vieja). Sus campos pre-pueblan el formulario y
+   * su `fecha_vencimiento` es la "guardada" contra la que se compara la regla.
+   */
   initialData: PurchaseOrder;
   /**
    * Encabezado ya capturado en una visita previa al Step 1 (p. ej. tras pulsar

@@ -10,7 +10,7 @@ import { usePurchaseOrderEditForm } from "../hooks/usePurchaseOrderEditForm";
 import { formatShortDate, parseLocalDate } from "@/src/utils/formatDate";
 
 interface PurchaseOrderEditStep1Props {
-  /** Orden existente que se edita (pre-puebla el formulario). */
+  /** Orden existente que se edita, leída fresca del detalle (pre-puebla el formulario). */
   initialData: PurchaseOrder;
   /** Encabezado capturado previamente; preserva la edición al volver desde el Step 2. */
   initialHeader?: PurchaseOrderEditHeader;
