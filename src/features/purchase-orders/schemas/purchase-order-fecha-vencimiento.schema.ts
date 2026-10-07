@@ -13,13 +13,14 @@ export const FECHA_VENCIMIENTO_INVALIDA_MESSAGE = "La fecha de vencimiento no es
  *   edición viaja plano y en esa forma el backend asigna el campo SIN validarlo
  *   (una fecha mal formada responde 500), así que este schema es la única
  *   garantía de que solo salga un "yyyy-mm-dd" válido o `null`, nunca `""`.
- * - No anterior a `getMinDate()`. Comparación de strings "yyyy-mm-dd" (orden
- *   lexicográfico = cronológico), nunca vía `new Date(...)` sobre la fecha
- *   pelada, que la leería en UTC. Es una función para que el alta lea "hoy" al
- *   validar y no al cargar el módulo; `null` omite la regla.
+ * - No anterior a `getMinDate(value)`. Comparación de strings "yyyy-mm-dd"
+ *   (orden lexicográfico = cronológico), nunca vía `new Date(...)` sobre la
+ *   fecha pelada, que la leería en UTC. Es una función para que el alta lea
+ *   "hoy" al validar y no al cargar el módulo, y recibe el valor para que la
+ *   edición pueda omitir la regla sobre la fecha ya guardada; `null` la omite.
  */
 export const createFechaVencimientoSchema = (
-  getMinDate: () => string | null,
+  getMinDate: (value: string) => string | null,
   minMessage: string,
 ) =>
   z
@@ -31,7 +32,7 @@ export const createFechaVencimientoSchema = (
         ctx.addIssue({ code: "custom", message: FECHA_VENCIMIENTO_INVALIDA_MESSAGE });
         return;
       }
-      const minDate = getMinDate();
+      const minDate = getMinDate(value);
       if (minDate && value < minDate) {
         ctx.addIssue({ code: "custom", message: minMessage });
       }

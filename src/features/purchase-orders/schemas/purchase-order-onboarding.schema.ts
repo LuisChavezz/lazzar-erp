@@ -19,9 +19,14 @@ export const PurchaseOrderEncabezadosSchema = z.object({
     moneda: z
       .number({ message: "La moneda es requerida" })
       .min(1, "La moneda es requerida"),
-    // La orden nace hoy (fecha local del navegador): vencer antes no tiene sentido.
+    // Piso: hoy según la fecha LOCAL del navegador. OJO: el backend fija
+    // `fecha_oc` con el día en UTC (`timezone.now().date()`, bug conocido), así
+    // que una orden creada entre las 18:00 y las 24:00 de México nace con
+    // `fecha_oc` = mañana y un vencimiento "hoy" queda un día antes de su
+    // generación. La edición no bloquea ese caso (la regla no se aplica a la
+    // fecha ya guardada); la corrección de fondo va en el backend.
     fecha_vencimiento: createFechaVencimientoSchema(
-      getLocalTodayDate,
+      () => getLocalTodayDate(),
       "La fecha de vencimiento no puede ser anterior a hoy",
     ),
     referencia: z.string().min(1, "La referencia es requerida"),
