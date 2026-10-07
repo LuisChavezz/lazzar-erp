@@ -166,23 +166,25 @@ function Step1Form({ onboardingData, initialValues, onSuccess }: Step1FormProps)
           )}
         </form.Field>
 
-        {/* ── Fecha OC ─────────────────────────────────────────────────── */}
-        <form.Field name="orden_compra.fecha_oc">
+        {/* ── Fecha de vencimiento (opcional) ───────────────────────────
+            La fecha de generación (`fecha_oc`) no se captura: la fija el
+            servidor al crear la orden. */}
+        <form.Field name="orden_compra.fecha_vencimiento">
           {(field) => (
             <FormInput
-              label="Fecha de la orden"
+              label="Fecha de vencimiento"
               type="date"
               name={field.name}
               value={field.state.value}
               onChange={(event) => {
                 field.handleChange(event.target.value);
-                clearFieldErrors("orden_compra.fecha_oc");
+                clearFieldErrors("orden_compra.fecha_vencimiento");
               }}
               onBlur={() => {
                 field.handleBlur();
-                validateField("orden_compra.fecha_oc");
+                validateField("orden_compra.fecha_vencimiento");
               }}
-              error={getError("orden_compra.fecha_oc")}
+              error={getError("orden_compra.fecha_vencimiento")}
             />
           )}
         </form.Field>

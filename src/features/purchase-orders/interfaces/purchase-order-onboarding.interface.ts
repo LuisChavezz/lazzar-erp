@@ -51,13 +51,19 @@ export interface PurchaseOrderOnboardingData {
 
 // ─── Request body interfaces ────────────────────────────────────────────────
 
-/** Encabezados payload — sent in Step 1. */
+/**
+ * Encabezados payload — sent in Step 1.
+ *
+ * No lleva `fecha_oc`: el servidor la fija al crear la orden y descarta la que
+ * mande el cliente. `fecha_vencimiento` viaja como "yyyy-mm-dd" o `null` (sin
+ * fecha de vencimiento).
+ */
 export interface PurchaseOrderEncabezados {
   orden_compra: {
     sucursal: number;
     proveedor: number;
     moneda: number;
-    fecha_oc: string;
+    fecha_vencimiento: string | null;
     referencia: string;
     observaciones: string;
   };

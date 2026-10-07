@@ -5,18 +5,19 @@ import { FormSelect } from "@/src/components/FormSelect";
 import { FormSubmitButton } from "@/src/components/FormButtons";
 import type { PurchaseOrderOnboardingData } from "../interfaces/purchase-order-onboarding.interface";
 import type { PurchaseOrder } from "../interfaces/purchase-order.interface";
-import type { PurchaseOrderEditFormValues } from "../schemas/purchase-order-edit.schema";
+import type { PurchaseOrderEditHeader } from "../schemas/purchase-order-edit.schema";
 import { usePurchaseOrderEditForm } from "../hooks/usePurchaseOrderEditForm";
+import { formatShortDate, parseLocalDate } from "@/src/utils/formatDate";
 
 interface PurchaseOrderEditStep1Props {
   /** Orden existente que se edita (pre-puebla el formulario). */
   initialData: PurchaseOrder;
   /** Encabezado capturado previamente; preserva la edición al volver desde el Step 2. */
-  initialHeader?: PurchaseOrderEditFormValues;
+  initialHeader?: PurchaseOrderEditHeader;
   /** Datos de onboarding (catálogos) ya cargados por el step manager. */
   onboardingData: PurchaseOrderOnboardingData;
   /** Llamado con el encabezado validado al continuar al paso de productos. */
-  onSuccess: (header: PurchaseOrderEditFormValues) => void;
+  onSuccess: (header: PurchaseOrderEditHeader) => void;
 }
 
 /**
@@ -34,6 +35,7 @@ export function PurchaseOrderEditStep1({
 }: PurchaseOrderEditStep1Props) {
   const {
     form,
+    fechaGeneracion,
     handleFormSubmit,
     sucursalOptions,
     proveedorOptions,
@@ -127,23 +129,33 @@ export function PurchaseOrderEditStep1({
           )}
         </form.Field>
 
-        {/* ── Fecha OC ─────────────────────────────────────────────────── */}
-        <form.Field name="fecha_oc">
+        {/* ── Fecha de generación (solo lectura) ─────────────────────────
+            La fija el servidor al crear la orden y el PUT no la envía. */}
+        <FormInput
+          label="Fecha de generación"
+          name="fecha_oc"
+          value={formatShortDate(parseLocalDate(fechaGeneracion))}
+          readOnly
+          disabled
+        />
+
+        {/* ── Fecha de vencimiento (opcional) ───────────────────────────── */}
+        <form.Field name="fecha_vencimiento">
           {(field) => (
             <FormInput
-              label="Fecha de la orden"
+              label="Fecha de vencimiento"
               type="date"
               name={field.name}
               value={field.state.value}
               onChange={(event) => {
                 field.handleChange(event.target.value);
-                clearFieldErrors("fecha_oc");
+                clearFieldErrors("fecha_vencimiento");
               }}
               onBlur={() => {
                 field.handleBlur();
-                validateField("fecha_oc");
+                validateField("fecha_vencimiento");
               }}
-              error={getError("fecha_oc")}
+              error={getError("fecha_vencimiento")}
             />
           )}
         </form.Field>
