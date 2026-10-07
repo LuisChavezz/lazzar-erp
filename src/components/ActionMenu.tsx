@@ -5,6 +5,10 @@ import { DropdownMenu } from "@radix-ui/themes";
 import { useSession } from "next-auth/react";
 import { DotsVerticalIcon } from "./Icons";
 import { hasPermission } from "@/src/utils/permissions";
+import Link from "next/link";
+
+const ITEM_CLASS =
+  "flex items-center gap-2 px-3 py-2 text-xs text-slate-600 dark:text-slate-300 rounded-lg cursor-pointer! outline-none data-highlighted:bg-slate-50 dark:data-highlighted:bg-white/5 data-highlighted:text-sky-600 dark:data-highlighted:text-sky-400 data-disabled:opacity-50 data-disabled:cursor-not-allowed transition-colors ease-in-out";
 
 export type ActionMenuItem = {
   label: string;
@@ -15,6 +19,12 @@ export type ActionMenuItem = {
   visible?: boolean;
   /** Evita que Radix cierre el menú al seleccionar — usar en acciones async cuyo label refleja un estado pendiente. */
   keepOpenOnSelect?: boolean;
+  /**
+   * Opcional: el item ES un enlace (`<Link>` de Next vía `asChild`), así que
+   * clic medio y Ctrl+clic abren una pestaña nueva. Sin él, el item es el de
+   * siempre (`onSelect`).
+   */
+  href?: string;
 };
 
 interface ActionMenuProps {
@@ -75,6 +85,22 @@ export const ActionMenu = ({
       >
         {visibleItems.map((item, index) => {
           const Icon = item.icon;
+          if (item.href) {
+            return (
+              <DropdownMenu.Item
+                key={index}
+                asChild
+                onSelect={() => item.onSelect?.()}
+                disabled={item.disabled}
+                className={ITEM_CLASS}
+              >
+                <Link href={item.href}>
+                  <Icon className="w-4 h-4" aria-hidden="true" />
+                  <span>{item.label}</span>
+                </Link>
+              </DropdownMenu.Item>
+            );
+          }
           return (
             <DropdownMenu.Item
               key={index}
@@ -83,7 +109,7 @@ export const ActionMenu = ({
                 item.onSelect?.();
               }}
               disabled={item.disabled}
-              className="flex items-center gap-2 px-3 py-2 text-xs text-slate-600 dark:text-slate-300 rounded-lg cursor-pointer! outline-none data-highlighted:bg-slate-50 dark:data-highlighted:bg-white/5 data-highlighted:text-sky-600 dark:data-highlighted:text-sky-400 data-disabled:opacity-50 data-disabled:cursor-not-allowed transition-colors ease-in-out"
+              className={ITEM_CLASS}
             >
               <Icon className="w-4 h-4" aria-hidden="true" />
               <span>{item.label}</span>

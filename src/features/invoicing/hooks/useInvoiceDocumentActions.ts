@@ -7,9 +7,9 @@ import { useSendInvoiceEmail } from "./useSendInvoiceEmail";
 
 /**
  * Reglas de las acciones "Enviar correo" y "Descargar PDF" de UNA factura, en
- * un solo lugar: las usan el menú de la fila del listado (`InvoiceColumns`) y
- * la cabecera de la página de detalle, con el MISMO `Invoice` (fila o
- * retrieve) que alimenta el PDF y el correo.
+ * un solo lugar. Hoy las usa la cabecera de la página de detalle, con el
+ * `Invoice` del retrieve que alimenta el PDF y el correo (el menú del listado
+ * las retiró temporalmente: el listado ligero no trae los datos que piden).
  *
  * - Enviar correo solo existe en un estatus enviable (no Cancelada) y en una
  *   factura ACTIVA: no debe salir hacia el cliente un comprobante cancelado o
