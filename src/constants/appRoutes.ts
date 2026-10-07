@@ -363,7 +363,7 @@ export const appRouteGroups: AppRouteGroup[] = [
     sections: [
       { key: "operation", label: "Operación" },
       { key: "inventory", label: "Inventario" },
-      { key: "master-data", label: "Maestros" },
+      { key: "master-data", label: "Terceros" },
     ],
     items: [
       // ── Operación ───────────────────────────────────────────────────────────
@@ -576,7 +576,7 @@ export const appRouteGroups: AppRouteGroup[] = [
       { key: "payables", label: "Cuentas por Pagar" },
       { key: "treasury", label: "Tesorería" },
       { key: "accounting", label: "Contabilidad" },
-      { key: "master-data", label: "Maestros" },
+      { key: "master-data", label: "Terceros" },
     ],
     items: [
       // ── Cuentas por Cobrar ──────────────────────────────────────────────────
@@ -906,7 +906,7 @@ export const appRouteGroups: AppRouteGroup[] = [
     sections: [
       { key: "commercial-operations", label: "Operación Comercial" },
       { key: "tracking", label: "Seguimiento" },
-      { key: "master-data", label: "Maestros" },
+      { key: "master-data", label: "Terceros" },
       { key: "communication", label: "Comunicación" },
     ],
     items: [
