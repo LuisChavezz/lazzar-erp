@@ -1,11 +1,12 @@
 "use client";
 
-import KpiGrid, { KpiItem } from "@/src/components/KpiGrid";
+import { KpiCard, type KpiItem } from "@/src/components/KpiGrid";
 import {
   ErrorIcon,
   ListaPreciosIcon,
   FacturacionIcon,
   ClockIcon,
+  PencilSquareIcon,
 } from "../../../components/Icons";
 import { useInvoices } from "../hooks/useInvoices";
 import { Invoice } from "../interfaces/invoice.interface";
@@ -13,16 +14,15 @@ import { INVOICE_STATUS } from "../constants/invoiceStatus";
 import { formatCurrency, safeParseAmount } from "@/src/utils/formatCurrency";
 import { parseLocalDate } from "@/src/utils/formatDate";
 
-const isCancelled = (status: string) => status === INVOICE_STATUS.CANCELADA;
+/**
+ * Una factura está por cobrar solo si está EMITIDA: el Borrador aún no es un
+ * comprobante en firme (no genera CxC) y la cancelada no se cobra.
+ */
+const isReceivable = (invoice: Invoice) => invoice.estatus === INVOICE_STATUS.EMITIDA;
 
-/** Una factura sigue pendiente de cobro si no está pagada ni cancelada. */
-const isPending = (status: string) =>
-  status !== INVOICE_STATUS.PAGADA && status !== INVOICE_STATUS.CANCELADA;
-
-/** Está vencida si su estatus lo indica o venció y sigue pendiente de cobro. */
+/** Vencida = por cobrar y con `fecha_vencimiento` (fecha-calendario) ya pasada. */
 const isOverdue = (invoice: Invoice, today: Date) => {
-  if (invoice.estatus === INVOICE_STATUS.VENCIDA) return true;
-  if (!isPending(invoice.estatus)) return false;
+  if (!isReceivable(invoice)) return false;
   const dueDate = parseLocalDate(invoice.fecha_vencimiento);
   if (!dueDate) return false;
   return dueDate < today;
@@ -54,29 +54,30 @@ export const InvoiceStats = () => {
   // Una sola pasada: acumulamos importes por moneda (no tiene sentido sumar
   // monedas distintas en un mismo total) y conteos globales, que sí tienen
   // sentido agregados sin importar la moneda de cada factura. Las canceladas
-  // se excluyen de los importes y del conteo de emitidas.
+  // se excluyen de los importes; "Total facturado" incluye los borradores
+  // (sus piezas ya están apartadas), "Por cobrar" y "Vencido" no.
   const totalsByCurrency = new Map<string, CurrencyTotals>();
-  let emittedCount = 0;
   let invoicedCount = 0;
-  let pendingCount = 0;
+  let emittedCount = 0;
+  let draftCount = 0;
+  let receivableCount = 0;
   let overdueCount = 0;
 
   for (const invoice of invoices) {
     const amount = safeParseAmount(invoice.total);
-    const cancelled = isCancelled(invoice.estatus);
-    const pending = isPending(invoice.estatus);
+    const cancelled = invoice.estatus === INVOICE_STATUS.CANCELADA;
+    const receivable = isReceivable(invoice);
     const overdue = isOverdue(invoice, today);
 
-    if (!cancelled) {
-      emittedCount += 1;
-      invoicedCount += 1;
-    }
-    if (pending) pendingCount += 1;
+    if (!cancelled) invoicedCount += 1;
+    if (invoice.estatus === INVOICE_STATUS.EMITIDA) emittedCount += 1;
+    if (invoice.estatus === INVOICE_STATUS.BORRADOR) draftCount += 1;
+    if (receivable) receivableCount += 1;
     if (overdue) overdueCount += 1;
 
     const bucket = totalsByCurrency.get(invoice.moneda_nombre) ?? emptyTotals();
     if (!cancelled) bucket.invoiced += amount;
-    if (pending) bucket.receivable += amount;
+    if (receivable) bucket.receivable += amount;
     if (overdue) bucket.overdue += amount;
     totalsByCurrency.set(invoice.moneda_nombre, bucket);
   }
@@ -114,7 +115,7 @@ export const InvoiceStats = () => {
       icon: ClockIcon,
       iconBgClass: "bg-amber-50 dark:bg-amber-500/10",
       iconClass: "text-amber-500",
-      trendLabel: isLoading ? undefined : `${pendingCount} Pendientes`,
+      trendLabel: isLoading ? undefined : `${receivableCount} Pendientes`,
       status: "neutral",
     },
     {
@@ -135,7 +136,27 @@ export const InvoiceStats = () => {
       trendLabel: isLoading ? undefined : "Total",
       status: "positive",
     },
+    {
+      label: "Borradores",
+      value: isLoading ? ph : String(draftCount),
+      icon: PencilSquareIcon,
+      iconBgClass: "bg-slate-100 dark:bg-slate-500/10",
+      iconClass: "text-slate-500",
+      trendLabel: isLoading ? undefined : "Sin emitir",
+      status: "neutral",
+    },
   ];
 
-  return <KpiGrid items={items} />;
+  // Grilla propia (no `KpiGrid`, fija en 4 columnas) para que las CINCO
+  // tarjetas quepan en una fila en pantallas anchas.
+  return (
+    <div
+      className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 items-stretch gap-4"
+      role="list"
+    >
+      {items.map((item) => (
+        <KpiCard key={item.label} item={item} />
+      ))}
+    </div>
+  );
 };

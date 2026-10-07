@@ -1,35 +1,36 @@
 import type { StatusBadgeConfigEntry } from "@/src/components/StatusBadge";
+import type { InvoiceEstatus } from "../interfaces/invoice.interface";
 
 /**
- * Estatus posibles de una factura, tal como los devuelve el backend
- * (`estatus` en {@link import("../interfaces/invoice.interface").Invoice}).
- * Fuente única: tanto la columna de estatus (`InvoiceColumns`) como los KPIs
+ * Estatus posibles de una factura, tal como los devuelve el backend (enum
+ * completo `Factura.FacturaStatus`: Borrador | Emitida | Cancelada).
+ * Fuente única: la columna de estatus (`InvoiceColumns`), su filtro y los KPIs
  * (`InvoiceStats`) comparan contra estas constantes en vez de re-declarar los
- * literales — si el backend renombra un estatus, ambos dejan de reconocerlo
- * de forma visible (badge gris) en lugar de que los KPIs lo cuenten mal en
- * silencio.
+ * literales — si el backend renombra un estatus, dejan de reconocerlo de forma
+ * visible (badge gris) en lugar de que los KPIs lo cuenten mal en silencio.
+ *
+ * "Pagada" y "Vencida" NO son estatus de factura (lo son de la cuenta por
+ * cobrar); el vencimiento se deriva de `fecha_vencimiento` en los KPIs.
  */
 export const INVOICE_STATUS = {
+  BORRADOR: "Borrador",
   EMITIDA: "Emitida",
-  PAGADA: "Pagada",
-  VENCIDA: "Vencida",
   CANCELADA: "Cancelada",
-} as const;
+} as const satisfies Record<string, InvoiceEstatus>;
 
 export const INVOICE_STATUS_CONFIG: Record<string, StatusBadgeConfigEntry> = {
+  [INVOICE_STATUS.BORRADOR]: {
+    label: "Borrador",
+    cls: "bg-slate-100 text-slate-600 dark:bg-slate-500/15 dark:text-slate-300",
+    dot: "bg-slate-400",
+  },
   [INVOICE_STATUS.EMITIDA]: {
+    label: "Emitida",
     cls: "bg-sky-50 text-sky-700 dark:bg-sky-500/10 dark:text-sky-400",
     dot: "bg-sky-500",
   },
-  [INVOICE_STATUS.PAGADA]: {
-    cls: "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400",
-    dot: "bg-emerald-500",
-  },
-  [INVOICE_STATUS.VENCIDA]: {
-    cls: "bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400",
-    dot: "bg-amber-400",
-  },
   [INVOICE_STATUS.CANCELADA]: {
+    label: "Cancelada",
     cls: "bg-red-50 text-red-700 dark:bg-red-500/10 dark:text-red-400",
     dot: "bg-red-500",
   },
@@ -44,21 +45,18 @@ export const INVOICE_STATUS_CONFIG: Record<string, StatusBadgeConfigEntry> = {
  * rotula a sí mismo con su estatus), así que esa acción no consulta esta
  * compuerta — ver `InvoiceColumns`.
  *
- * A diferencia de una orden de compra —cuya compuerta de envío era "autorizada
- * o más avanzada" porque la OC arranca en un estado editable (Borrador) del que
- * no debe salir un documento en firme— una factura nace ya emitida: no existe
- * un estado previo tipo borrador. El único estado inválido para enviarla es
- * `Cancelada` (CFDI cancelado). Por eso la compuerta es "cualquier estatus
- * reconocido excepto Cancelada".
+ * `Borrador` SÍ es enviable, por decisión de negocio: las facturas por piezas
+ * nacen en Borrador (ningún endpoint las mueve de ahí) y se mandan al cliente
+ * para revisión, sin marca de borrador en el documento. El único estado
+ * inválido es `Cancelada`.
  *
  * Se declara como conjunto explícito (en vez de `estatus !== "Cancelada"`) para
  * que un estatus nuevo/desconocido del backend NO se trate como enviable por
  * defecto: ante la duda, un comprobante fiscal no debe salir hacia el cliente.
  */
 export const INVOICE_SENDABLE_STATUSES: readonly string[] = [
+  INVOICE_STATUS.BORRADOR,
   INVOICE_STATUS.EMITIDA,
-  INVOICE_STATUS.PAGADA,
-  INVOICE_STATUS.VENCIDA,
 ];
 
 /**

@@ -5,6 +5,7 @@ import { SearchableSelectList } from "@/src/components/SearchableSelectList";
 import { renderRadioIndicator } from "@/src/components/RadioIndicator";
 import { useOrders } from "@/src/features/orders/hooks/useOrders";
 import type { PedidoListItem } from "@/src/features/orders/interfaces/order.interface";
+import { PEDIDO_ESTATUS } from "@/src/features/orders/constants/pedidoStatus";
 import { isInitialLoadError } from "@/src/utils/isInitialLoadError";
 
 interface InvoiceOrderSelectorProps {
@@ -15,20 +16,37 @@ interface InvoiceOrderSelectorProps {
 }
 
 /**
+ * Estatus de pedido que NO se facturan: los previos a la autorización
+ * (Borrador, Por autorizar) y el cancelado. Lista de EXCLUSIÓN a propósito:
+ * cualquier estatus desde la autorización en adelante sigue facturable. El
+ * backend no valida el estatus del pedido al facturar.
+ */
+const NON_INVOICEABLE_STATUSES: readonly number[] = [
+  PEDIDO_ESTATUS.BORRADOR,
+  PEDIDO_ESTATUS.POR_AUTORIZAR,
+  PEDIDO_ESTATUS.CANCELADO,
+];
+
+const isInvoiceable = (order: PedidoListItem) =>
+  order.activo && !NON_INVOICEABLE_STATUSES.includes(order.estatus);
+
+/**
  * InvoiceOrderSelector
  *
- * Lista buscable de **selección única** de pedidos a facturar. No filtra por
- * estatus de facturación: `useOrders()` no expone si un pedido ya tiene factura,
- * así que un filtro cliente sería falso — la garantía de "no facturar dos veces"
- * recae en el `400` del servidor (que el diálogo notifica vía toast). Reutiliza
- * el patrón de lista buscable de `ProductionOrderStep1`, adaptado a selección
- * única (indicador circular tipo radio en vez de casilla).
+ * Lista buscable de **selección única** de pedidos a facturar (Paso 1 de
+ * "Nueva Factura"). Excluye en cliente los pedidos inactivos, los no
+ * autorizados aún y los cancelados (ver `NON_INVOICEABLE_STATUSES`). NO
+ * puede saber si a un pedido aún le quedan piezas por facturar: el listado no
+ * lo expone, así que eso lo dice el Paso 2 con el onboarding del pedido.
+ * Reutiliza el patrón de lista buscable de `ProductionOrderStep1`, adaptado a
+ * selección única (indicador circular tipo radio en vez de casilla).
  */
 export function InvoiceOrderSelector({
   selectedOrderId,
   onSelect,
 }: InvoiceOrderSelectorProps) {
-  const { orders, isLoading, isError, hasLoaded } = useOrders();
+  const { orders: allOrders, isLoading, isError, hasLoaded } = useOrders();
+  const orders = allOrders.filter(isInvoiceable);
 
   if (isLoading) {
     return (

@@ -1,6 +1,7 @@
 import { Invoice } from "../interfaces/invoice.interface";
 import { formatCurrency, safeParseAmount } from "@/src/utils/formatCurrency";
 import { formatLocalDate } from "@/src/utils/formatDate";
+import { formatTasaImpuesto } from "../utils/invoiceDocumentModel";
 
 // ── Campo de resumen ──────────────────────────────────────────────────────────
 
@@ -76,11 +77,13 @@ export const InvoiceDetails = ({ invoice }: { invoice: Invoice }) => {
               <thead>
                 <tr className="text-left text-xs uppercase text-slate-400">
                   <th className="px-4 py-2 font-semibold">Producto</th>
+                  <th className="px-4 py-2 font-semibold text-center">Talla</th>
                   <th className="px-4 py-2 font-semibold text-right">Cantidad</th>
                   <th className="px-4 py-2 font-semibold text-right">
                     Precio unitario
                   </th>
                   <th className="px-4 py-2 font-semibold text-right">Descuento</th>
+                  <th className="px-4 py-2 font-semibold text-right">Tasa IVA</th>
                   <th className="px-4 py-2 font-semibold text-right">Impuesto</th>
                   <th className="px-4 py-2 font-semibold text-right">Total</th>
                 </tr>
@@ -94,6 +97,9 @@ export const InvoiceDetails = ({ invoice }: { invoice: Invoice }) => {
                     <td className="px-4 py-2 text-slate-700 dark:text-slate-200">
                       {detail.producto_nombre}
                     </td>
+                    <td className="px-4 py-2 text-center text-slate-600 dark:text-slate-300">
+                      {detail.talla_nombre || "—"}
+                    </td>
                     <td className="px-4 py-2 text-right text-slate-600 dark:text-slate-300 tabular-nums">
                       {safeParseAmount(detail.cantidad).toLocaleString("es-MX")}
                     </td>
@@ -102,6 +108,9 @@ export const InvoiceDetails = ({ invoice }: { invoice: Invoice }) => {
                     </td>
                     <td className="px-4 py-2 text-right text-slate-600 dark:text-slate-300 tabular-nums">
                       {money(safeParseAmount(detail.descuento))}
+                    </td>
+                    <td className="px-4 py-2 text-right text-slate-600 dark:text-slate-300 tabular-nums">
+                      {formatTasaImpuesto(detail.porcentaje_impuesto)}
                     </td>
                     <td className="px-4 py-2 text-right text-slate-600 dark:text-slate-300 tabular-nums">
                       {money(safeParseAmount(detail.impuesto))}

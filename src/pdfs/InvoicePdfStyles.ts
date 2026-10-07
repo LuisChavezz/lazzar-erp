@@ -55,8 +55,10 @@ export const invoicePdfStyles = StyleSheet.create({
   },
 
   /* ── Tabla de conceptos — columnas específicas de factura ── */
-  colDescription: { flex: 4 },
-  colQty: { flex: 1.2, textAlign: "right" },
+  colDescription: { flex: 3.4 },
+  colTalla: { flex: 0.9, textAlign: "center" },
+  colQty: { flex: 1.1, textAlign: "right" },
+  colTax: { flex: 0.8, textAlign: "right" },
   colPrice: { flex: 1.5, textAlign: "right" },
   colDiscount: { flex: 1.5, textAlign: "right" },
   colAmount: { flex: 1.5, textAlign: "right" },

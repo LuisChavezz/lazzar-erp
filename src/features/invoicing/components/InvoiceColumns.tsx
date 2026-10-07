@@ -81,10 +81,13 @@ const ActionsCell = ({ invoice, trigger }: { invoice: Invoice; trigger?: ReactNo
   // "Descargar PDF" NO se condiciona al estatus, a diferencia de "Enviar
   // correo". Lo que la compuerta protege es que NO salga hacia el cliente un
   // comprobante cancelado presentado como vigente; consultarlo o archivarlo
-  // internamente no corre ese riesgo: el PDF se rotula a sí mismo con su
-  // `estatus` (ver `InvoicePdfDocument`), así que una factura cancelada se lee
-  // como cancelada. Si también se ocultara aquí, no quedaría ninguna forma en
-  // toda la app de obtener el documento de una factura cancelada.
+  // internamente no corre ese riesgo: el PDF de una Emitida o Cancelada se
+  // rotula con su `estatus` (ver `InvoicePdfDocument`), así que una factura
+  // cancelada se lee como cancelada. El Borrador es la excepción: su PDF NO
+  // muestra estatus (por decisión de negocio se manda al cliente para
+  // revisión), así que el documento descargado no indica que es borrador.
+  // Si la descarga también se ocultara aquí, no quedaría ninguna forma en toda
+  // la app de obtener el documento de una factura cancelada.
   //
   // Tampoco necesita correo del cliente: es una acción local (el documento
   // puede imprimirse o compartirse a mano).

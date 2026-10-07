@@ -11,6 +11,9 @@ import { z } from "zod";
  */
 const invoiceEmailDetalleSchema = z.object({
   producto_nombre: z.string(),
+  // Ausentes/`null` en renglones anteriores a la facturación por talla.
+  talla_nombre: z.string().nullish(),
+  porcentaje_impuesto: z.string().nullish(),
   cantidad: z.string(),
   precio_unitario: z.string(),
   descuento: z.string(),
@@ -24,7 +27,9 @@ export const invoiceEmailPayloadSchema = z.object({
   moneda_nombre: z.string(),
   estatus: z.string(),
   fecha_emision: z.string(),
-  fecha_vencimiento: z.string(),
+  // `null` en las facturas creadas por piezas (Borrador): sin esto, el envío
+  // de un Borrador fallaría con un 400 de payload malformado.
+  fecha_vencimiento: z.string().nullable(),
   subtotal: z.string(),
   descuento: z.string(),
   impuestos: z.string(),
