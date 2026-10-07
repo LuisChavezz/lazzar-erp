@@ -1,5 +1,13 @@
 import { z } from "zod";
+import { getLocalTodayDate } from "@/src/utils/formatDate";
+import { createFechaVencimientoSchema } from "./purchase-order-fecha-vencimiento.schema";
 
+/**
+ * Encabezado del alta (`POST /compras/ordenes/onboarding/`, anidado bajo
+ * `orden_compra`). `fecha_oc` ya no se captura: el servidor la fija con la
+ * fecha del día al crear la orden (es la "fecha de generación") y descarta
+ * cualquier valor que mande el cliente.
+ */
 export const PurchaseOrderEncabezadosSchema = z.object({
   orden_compra: z.object({
     sucursal: z
@@ -11,13 +19,22 @@ export const PurchaseOrderEncabezadosSchema = z.object({
     moneda: z
       .number({ message: "La moneda es requerida" })
       .min(1, "La moneda es requerida"),
-    fecha_oc: z.string().min(1, "La fecha es requerida"),
+    // La orden nace hoy (fecha local del navegador): vencer antes no tiene sentido.
+    fecha_vencimiento: createFechaVencimientoSchema(
+      getLocalTodayDate,
+      "La fecha de vencimiento no puede ser anterior a hoy",
+    ),
     referencia: z.string().min(1, "La referencia es requerida"),
     observaciones: z.string().default(""),
   }),
 });
 
-export type PurchaseOrderEncabezadosFormValues = z.infer<
+/**
+ * Valores del formulario (entrada del schema): `fecha_vencimiento` es el texto
+ * crudo del `<input type="date">` (`""` = sin fecha). La salida validada es
+ * `PurchaseOrderEncabezados`, con `null` en su lugar.
+ */
+export type PurchaseOrderEncabezadosFormValues = z.input<
   typeof PurchaseOrderEncabezadosSchema
 >;
 

@@ -32,26 +32,11 @@ export type Step1FieldPath =
   | "orden_compra.sucursal"
   | "orden_compra.proveedor"
   | "orden_compra.moneda"
-  | "orden_compra.fecha_oc"
+  | "orden_compra.fecha_vencimiento"
   | "orden_compra.referencia"
   | "orden_compra.observaciones";
 
 type Step1ErrorMap = Partial<Record<Step1FieldPath, string>>;
-
-/**
- * Fecha de hoy en formato `YYYY-MM-DD` según la zona horaria LOCAL.
- *
- * No se usa `toISOString()` porque convierte a UTC: en México (UTC-6) a partir
- * de las 18:00 locales devolvería la fecha de mañana y la orden nacería con un
- * día de más.
- */
-const getTodayDate = (): string => {
-  const now = new Date();
-  const y = now.getFullYear();
-  const m = String(now.getMonth() + 1).padStart(2, "0");
-  const d = String(now.getDate()).padStart(2, "0");
-  return `${y}-${m}-${d}`;
-};
 
 export function usePurchaseOrderStep1Form({
   onboardingData,
@@ -64,18 +49,27 @@ export function usePurchaseOrderStep1Form({
   // ── Default values ──────────────────────────────────────────────────────
   // Si ya hay un encabezado capturado (regreso desde el Step 2), se siembra
   // desde él para no perder lo capturado; en la primera visita, en blanco.
+  // `fecha_vencimiento` validada es `null` cuando no hay fecha; el input la
+  // necesita como `""`.
   const defaultValues = useMemo<PurchaseOrderEncabezadosFormValues>(
     () =>
-      initialValues ?? {
-        orden_compra: {
-          sucursal: 0,
-          proveedor: 0,
-          moneda: 0,
-          fecha_oc: getTodayDate(),
-          referencia: "",
-          observaciones: "",
-        },
-      },
+      initialValues
+        ? {
+            orden_compra: {
+              ...initialValues.orden_compra,
+              fecha_vencimiento: initialValues.orden_compra.fecha_vencimiento ?? "",
+            },
+          }
+        : {
+            orden_compra: {
+              sucursal: 0,
+              proveedor: 0,
+              moneda: 0,
+              fecha_vencimiento: "",
+              referencia: "",
+              observaciones: "",
+            },
+          },
     [initialValues],
   );
 

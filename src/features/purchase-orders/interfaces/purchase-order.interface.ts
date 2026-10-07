@@ -215,12 +215,14 @@ export interface PurchaseOrderDetail extends PurchaseOrder {
 /**
  * Campos editables del encabezado de la orden, derivados de {@link PurchaseOrder}
  * vía `Pick`. Se omiten los campos generados por el servidor (id, folio, estatus,
- * totales, fechas de auditoría, etc.).
+ * totales, fechas de auditoría, etc.), incluida `fecha_oc`: la fija el servidor
+ * al crear la orden y el PUT la ignora. `fecha_vencimiento` va siempre
+ * ("yyyy-mm-dd" o `null` para borrarla).
  */
 export type UpdatePurchaseOrderHeader = Pick<
   PurchaseOrder,
   | "referencia"
-  | "fecha_oc"
+  | "fecha_vencimiento"
   | "observaciones"
   | "sucursal"
   | "proveedor"

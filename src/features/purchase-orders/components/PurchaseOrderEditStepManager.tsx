@@ -34,7 +34,7 @@ import type {
   PurchaseOrder,
   PurchaseOrderDetail,
 } from "../interfaces/purchase-order.interface";
-import type { PurchaseOrderEditFormValues } from "../schemas/purchase-order-edit.schema";
+import type { PurchaseOrderEditHeader } from "../schemas/purchase-order-edit.schema";
 import {
   PURCHASE_ORDER_WIZARD_STEPS as STEPS,
   PURCHASE_ORDER_WIZARD_STEP_LABELS as STEP_LABELS,
@@ -59,7 +59,7 @@ export function PurchaseOrderEditStepManager({
   onClose,
 }: PurchaseOrderEditStepManagerProps) {
   const [currentStep, setCurrentStep] = useState<EditStep>(STEPS[0]);
-  const [header, setHeader] = useState<PurchaseOrderEditFormValues | null>(null);
+  const [header, setHeader] = useState<PurchaseOrderEditHeader | null>(null);
 
   // Catálogos (sucursales, monedas, proveedores, productos) para los pasos.
   const {
@@ -91,7 +91,7 @@ export function PurchaseOrderEditStepManager({
 
   /** Step 1 validó el encabezado: lo guardamos y avanzamos a productos. */
   const handleStep1Success = useCallback(
-    (nextHeader: PurchaseOrderEditFormValues) => {
+    (nextHeader: PurchaseOrderEditHeader) => {
       setHeader(nextHeader);
       setCurrentStep("step-2");
     },

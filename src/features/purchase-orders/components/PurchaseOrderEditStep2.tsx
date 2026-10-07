@@ -16,7 +16,7 @@ import type {
   PurchaseOrder,
   UpdatePurchaseOrderBody,
 } from "../interfaces/purchase-order.interface";
-import type { PurchaseOrderEditFormValues } from "../schemas/purchase-order-edit.schema";
+import type { PurchaseOrderEditHeader } from "../schemas/purchase-order-edit.schema";
 import { usePriceEntries } from "../hooks/usePriceEntries";
 import { useUpdatePurchaseOrder } from "../hooks/useUpdatePurchaseOrder";
 import { buildPurchaseOrderDetalle } from "../utils/buildPurchaseOrderDetalle";
@@ -36,7 +36,7 @@ interface PurchaseOrderEditStep2Props {
   /** Orden en edición — aporta el `pk` para el PUT. */
   initialData: PurchaseOrder;
   /** Encabezado capturado en el Step 1. */
-  header: PurchaseOrderEditFormValues;
+  header: PurchaseOrderEditHeader;
   /** Catálogos (incluye los productos disponibles). */
   onboardingData: PurchaseOrderOnboardingData;
   /** Renglones iniciales (producto, cantidad, precio, descripcion), sembrados desde los renglones existentes de la orden. */

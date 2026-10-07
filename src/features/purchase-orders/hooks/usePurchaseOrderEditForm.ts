@@ -6,8 +6,9 @@ import type { FormFieldError } from "@/src/utils/getFieldError";
 import type { PurchaseOrderOnboardingData } from "../interfaces/purchase-order-onboarding.interface";
 import type { PurchaseOrder } from "../interfaces/purchase-order.interface";
 import {
-  PurchaseOrderEditSchema,
+  createPurchaseOrderEditSchema,
   type PurchaseOrderEditFormValues,
+  type PurchaseOrderEditHeader,
 } from "../schemas/purchase-order-edit.schema";
 
 interface UsePurchaseOrderEditFormParams {
@@ -19,10 +20,10 @@ interface UsePurchaseOrderEditFormParams {
    * `initialData` para sembrar los valores por defecto, de modo que los cambios
    * del usuario sobreviven el viaje de ida y vuelta entre pasos.
    */
-  initialHeader?: PurchaseOrderEditFormValues;
+  initialHeader?: PurchaseOrderEditHeader;
   onboardingData: PurchaseOrderOnboardingData;
   /** Llamado cuando el formulario es válido. Recibe los campos del encabezado. */
-  onSuccess: (header: PurchaseOrderEditFormValues) => void;
+  onSuccess: (header: PurchaseOrderEditHeader) => void;
 }
 
 /**
@@ -33,7 +34,7 @@ export type EditFieldPath =
   | "sucursal"
   | "proveedor"
   | "moneda"
-  | "fecha_oc"
+  | "fecha_vencimiento"
   | "referencia"
   | "observaciones";
 
@@ -52,18 +53,31 @@ export function usePurchaseOrderEditForm({
   const [clientErrors, setClientErrors] = useState<EditErrorMap>({});
   const [serverErrors, setServerErrors] = useState<EditErrorMap>({});
 
+  // Fecha de generación de la orden (`fecha_oc`, solo lectura): piso de la
+  // fecha de vencimiento.
+  const fechaGeneracion = toDateInputValue(initialData.fecha_oc);
+  const schema = useMemo(
+    () => createPurchaseOrderEditSchema(fechaGeneracion),
+    [fechaGeneracion],
+  );
+
   // ── Default values ──────────────────────────────────────────────────────
   // Si ya hay un encabezado capturado (regreso desde el Step 2), se siembra
   // desde él para no perder los cambios; en la primera visita, desde la orden.
+  // `fecha_vencimiento` validada es `null` cuando no hay fecha; el input la
+  // necesita como `""`.
   const defaultValues = useMemo<PurchaseOrderEditFormValues>(() => {
     if (initialHeader) {
-      return initialHeader;
+      return {
+        ...initialHeader,
+        fecha_vencimiento: initialHeader.fecha_vencimiento ?? "",
+      };
     }
     return {
       sucursal: initialData.sucursal,
       proveedor: initialData.proveedor,
       moneda: initialData.moneda,
-      fecha_oc: toDateInputValue(initialData.fecha_oc),
+      fecha_vencimiento: toDateInputValue(initialData.fecha_vencimiento),
       referencia: initialData.referencia ?? "",
       observaciones: initialData.observaciones ?? "",
     };
@@ -155,7 +169,7 @@ export function usePurchaseOrderEditForm({
 
   const validateField = (path: EditFieldPath) => {
     const fullValues = form.state.values;
-    const parsed = PurchaseOrderEditSchema.safeParse(fullValues);
+    const parsed = schema.safeParse(fullValues);
 
     if (parsed.success) {
       setClientErrors((prev) => {
@@ -192,7 +206,7 @@ export function usePurchaseOrderEditForm({
     onSubmit: async ({ value }) => {
       setServerErrors({});
 
-      const parsed = PurchaseOrderEditSchema.safeParse(value);
+      const parsed = schema.safeParse(value);
       if (!parsed.success) {
         const nextErrors: EditErrorMap = {};
         parsed.error.issues.forEach((issue) => {
@@ -219,6 +233,7 @@ export function usePurchaseOrderEditForm({
 
   return {
     form,
+    fechaGeneracion,
     handleFormSubmit,
     sucursalOptions,
     proveedorOptions,
