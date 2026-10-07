@@ -9,6 +9,8 @@ import { ErrorState } from "@/src/components/ErrorState";
 import { StatusBadge } from "@/src/components/StatusBadge";
 import {
   EmptyLines,
+  HeaderStat,
+  HeaderStatRow,
   InfoField,
   InfoGrid,
   Section,
@@ -19,7 +21,7 @@ import {
   formatMoneyValueOrDash,
   formatQuantityValue,
 } from "@/src/utils/formatCurrency";
-import { formatLocalDate, formatShortDate } from "@/src/utils/formatDate";
+import { formatLocalDate, formatShortDate, parseLocalDate } from "@/src/utils/formatDate";
 import { RECEIPT_STATUS_CONFIG } from "@/src/features/receipts/constants/receiptStatus";
 import { ReceiptDetailByIdDialog } from "@/src/features/purchase-order-receipts/components/ReceiptDetailByIdDialog";
 import { StockMovementDetailByIdDialog } from "@/src/features/stock-movements/components/StockMovementDetailByIdDialog";
@@ -631,17 +633,18 @@ export function PurchaseOrderPageContent({
       <div className="sticky top-0 z-10 py-2 w-fit">{BackLink}</div>
 
       {/* ── 1. Cabecera ─────────────────────────────────────────────────── */}
-      {/* Documento, no tarjeta de dashboard: folio + estatus dominan a la
-          izquierda, y a la derecha solo lo que un usuario necesita SIN hacer
-          scroll — incluido el Gran total, que antes vivía hasta el fondo de
-          la página en su propia tarjeta ("Resumen financiero"). */}
-      <section className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 p-5 md:p-6">
-        <div className="flex flex-wrap items-start justify-between gap-6">
-          <div className="space-y-2 min-w-0">
+      {/* Cabecera en fila, mismo patrón que la orden de bordado: identidad a
+          la izquierda (`mr-auto`) y a la derecha solo lo que un usuario
+          necesita SIN hacer scroll — incluido el Gran total, que antes vivía
+          hasta el fondo de la página en su propia tarjeta ("Resumen
+          financiero"). Al angostarse, los datos bajan a su propia línea. */}
+      <section className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 px-5 py-3.5 md:px-6">
+        <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
+          <div className="mr-auto min-w-0">
             <div className="flex flex-wrap items-center gap-2.5">
               {/* El folio lo asigna el backend al crear; el respaldo cubre las
                   órdenes en borrador, que aún no lo tienen. */}
-              <h1 className="text-3xl font-bold text-slate-900 dark:text-white font-mono tracking-tight">
+              <h1 className="text-[22px] font-medium text-slate-900 dark:text-white font-mono min-w-0 truncate">
                 {data.folio || `Orden #${data.id}`}
               </h1>
               <StatusBadge
@@ -654,34 +657,34 @@ export function PurchaseOrderPageContent({
                 }}
               />
             </div>
-            <p className="text-base text-slate-600 dark:text-slate-300">
+            <p className="text-sm text-slate-600 dark:text-slate-300 truncate">
               {textOrDash(data.proveedor_nombre)}
             </p>
           </div>
-          <div className="grid grid-cols-2 gap-x-8 gap-y-3 text-xs shrink-0">
-            <InfoField label="Fecha OC">
-              <span className="tabular-nums">{formatLocalDate(data.fecha_oc)}</span>
-            </InfoField>
-            <InfoField label="Entrega estimada">
-              <span className="tabular-nums">
-                {formatLocalDate(data.fecha_entrega_estimada)}
-              </span>
-            </InfoField>
+
+          <HeaderStatRow>
+            {/* Ambas son `DateField` ("yyyy-mm-dd"): `parseLocalDate` antes de
+                `formatShortDate`, que con la fecha pelada la leería en UTC y
+                pintaría el día anterior en México. */}
+            <HeaderStat label="Fecha de generación">
+              {formatShortDate(parseLocalDate(data.fecha_oc))}
+            </HeaderStat>
+            <HeaderStat label="Fecha de vencimiento">
+              {formatShortDate(parseLocalDate(data.fecha_vencimiento))}
+            </HeaderStat>
             {/* `total_piezas` NO es un campo financiero: llega siempre, sin
                 importar el rol, así que se pinta fuera de cualquier condición. */}
-            <InfoField label="Total piezas">
-              <span className="tabular-nums font-semibold">
-                {formatQuantityValue(data.total_piezas)}
-              </span>
-            </InfoField>
+            <HeaderStat label="Total piezas" bold>
+              {formatQuantityValue(data.total_piezas)}
+            </HeaderStat>
             {showAmounts && (
-              <InfoField label="Gran total">
-                <span className="tabular-nums font-bold text-base text-sky-600 dark:text-sky-400">
+              <HeaderStat label="Gran total" bold>
+                <span className="text-sky-600 dark:text-sky-400">
                   {money(data.gran_total)}
                 </span>
-              </InfoField>
+              </HeaderStat>
             )}
-          </div>
+          </HeaderStatRow>
         </div>
       </section>
 
@@ -762,9 +765,12 @@ export function PurchaseOrderPageContent({
               {formatLocalDate(data.fecha_autorizacion)}
             </span>
           </InfoField>
-          <InfoField label="Fecha de vencimiento">
+          {/* Bajó de la cabecera: el backend no expone forma de fijarla (solo
+              el admin de Django), así que casi siempre llega vacía. La fecha
+              de vencimiento vive SOLO en la cabecera. */}
+          <InfoField label="Entrega estimada">
             <span className="tabular-nums">
-              {formatLocalDate(data.fecha_vencimiento)}
+              {formatLocalDate(data.fecha_entrega_estimada)}
             </span>
           </InfoField>
           <InfoField label="Observaciones" className="col-span-2 md:col-span-3">
