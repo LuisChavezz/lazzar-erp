@@ -1,16 +1,14 @@
 "use client";
 
-import Link from "next/link";
 import { ColumnDef, FilterFn } from "@tanstack/react-table";
 import { Invoice } from "../interfaces/invoice.interface";
-import { ChevronRightIcon, DownloadIcon, EmailIcon } from "../../../components/Icons";
+import { ChevronRightIcon, ViewIcon } from "../../../components/Icons";
 import { ActionMenu, ActionMenuItem } from "@/src/components/ActionMenu";
 import { ColumnHeaderFilter, type ColumnFilterOption } from "@/src/components/ColumnHeaderFilter";
 import { formatCurrency, safeParseAmount } from "@/src/utils/formatCurrency";
 import { formatLocalDate } from "@/src/utils/formatDate";
 import { INVOICE_STATUS_CONFIG } from "../constants/invoiceStatus";
 import { invoiceDetailHref } from "../constants/invoiceDetailOrigins";
-import { useInvoiceDocumentActions } from "../hooks/useInvoiceDocumentActions";
 
 const ESTATUS_FILTER_OPTIONS: ColumnFilterOption[] = [
   { value: undefined, label: "Todos" },
@@ -29,76 +27,59 @@ const estatusFilterFn: FilterFn<Invoice> = (row, _columnId, filterValue) => {
 // ── Celda de folio ────────────────────────────────────────────────────────────
 
 /**
- * Primera columna: punto de estatus, folio y menú de la fila (no hay columna
- * "Acciones" aparte, convención de los listados; ver `PurchaseOrderColumns`).
- * El folio es un `<Link>` real a la página de detalle (clic central abre
- * pestaña nueva), así que el menú NO repite "Ver Detalles": lo abre el chevron
- * y solo trae correo y PDF. Sin folio se muestra `#id`.
+ * Primera columna: punto de estatus y folio. El folio con su chevron es el
+ * disparador del menú de la fila (no hay columna "Acciones"), mismo patrón y
+ * markup que `PurchaseOrderColumns` / `OperationsOrderColumns`: un clic en
+ * cualquier parte abre el menú. "Ver detalles" va primero y es un ENLACE real
+ * (`href` de `ActionMenu`), así que Ctrl+clic o clic medio abren la página en
+ * otra pestaña. Sin folio se muestra `#id`, también en el `aria-label`.
+ *
+ * TEMPORAL: el menú solo trae "Ver detalles". El listado ligero del backend
+ * (PR #349) ya no manda `activo`, `correo_facturas` ni `factura_detalles`, de
+ * los que dependen la regla de correo y el PDF; ambas acciones siguen en la
+ * página de detalle, que usa el retrieve completo. Volverán aquí cuando el
+ * menú traiga el detalle al abrirse.
  */
 const FolioCell = ({ invoice }: { invoice: Invoice }) => {
-  // Reglas de correo y PDF compartidas con la página de detalle (ver el hook).
-  const actions = useInvoiceDocumentActions(invoice);
   const statusCfg = INVOICE_STATUS_CONFIG[invoice.estatus];
+  const statusLabel = statusCfg?.label ?? invoice.estatus;
   const invoiceLabel = invoice.folio || `#${invoice.id}`;
 
-  const menuItems: ActionMenuItem[] = [];
-
-  if (actions.canSendEmail) {
-    menuItems.push({
-      label: actions.isSendingEmail
-        ? "Enviando..."
-        : actions.hasNoRecipientEmail
-          ? "Enviar correo (sin correo)"
-          : "Enviar correo",
-      icon: EmailIcon,
-      onSelect: actions.sendEmail,
-      disabled: actions.emailDisabled,
-      // Deja el menú abierto para ver el estado "Enviando...".
-      keepOpenOnSelect: true,
-    });
-  }
-
-  menuItems.push({
-    label: actions.isDownloadingPdf ? "Generando PDF..." : "Descargar PDF",
-    icon: DownloadIcon,
-    onSelect: actions.downloadPdf,
-    disabled: actions.pdfDisabled,
-    keepOpenOnSelect: true,
-  });
+  const menuItems: ActionMenuItem[] = [
+    {
+      label: "Ver detalles",
+      icon: ViewIcon,
+      href: invoiceDetailHref(invoice.id, "invoicing"),
+    },
+  ];
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex items-center gap-2 min-w-0 overflow-hidden whitespace-nowrap">
+      {/* Indicador, fuera del botón: no es parte de la acción. */}
       <span
-        className={`h-2.5 w-2.5 rounded-full shrink-0 ${statusCfg?.dot ?? "bg-slate-400"}`}
-        title={statusCfg?.label ?? invoice.estatus}
-        aria-hidden="true"
+        className={`w-2 h-2 rounded-full shrink-0 ${statusCfg?.dot ?? "bg-slate-400"}`}
+        role="img"
+        aria-label={statusLabel}
+        title={statusLabel}
       />
-      <span className="sr-only">{statusCfg?.label ?? invoice.estatus}</span>
-      <span className="group inline-flex items-center gap-1">
-        <Link
-          href={invoiceDetailHref(invoice.id, "invoicing")}
-          title="Ver detalle"
-          className="font-mono text-[11px] font-semibold text-slate-700 dark:text-slate-200 hover:text-sky-600 dark:hover:text-sky-400 hover:underline cursor-pointer"
-        >
-          {invoiceLabel}
-        </Link>
-        {/* "Descargar PDF" siempre es visible: el menú nunca queda vacío. */}
-        <ActionMenu
-          items={menuItems}
-          ariaLabel={`Acciones de la factura ${invoiceLabel}`}
-          align="start"
-          trigger={
-            <button
-              type="button"
-              aria-label={`Ver acciones de la factura ${invoiceLabel}`}
-              title="Ver acciones"
-              className="inline-flex items-center rounded p-0.5 cursor-pointer text-slate-400 dark:text-slate-500 hover:text-sky-500 dark:hover:text-sky-400 hover:bg-slate-100 dark:hover:bg-white/10 transition-colors"
-            >
-              <ChevronRightIcon className="h-3.5 w-3.5" aria-hidden="true" />
-            </button>
-          }
-        />
-      </span>
+      <ActionMenu
+        items={menuItems}
+        ariaLabel={`Acciones de la factura ${invoiceLabel}`}
+        align="start"
+        trigger={
+          <button
+            type="button"
+            aria-label={`Ver acciones de la factura ${invoiceLabel}`}
+            className="group inline-flex items-center gap-1 font-mono font-bold text-slate-800 dark:text-white hover:text-sky-600 dark:hover:text-sky-400 hover:underline transition-colors cursor-pointer"
+          >
+            {invoiceLabel}
+            <ChevronRightIcon
+              className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500 group-hover:text-sky-500 dark:group-hover:text-sky-400 group-hover:translate-x-0.5 transition-all"
+              aria-hidden="true"
+            />
+          </button>
+        }
+      />
     </div>
   );
 };
