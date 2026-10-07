@@ -4,6 +4,7 @@ import {
   PurchaseOrder,
   PurchaseOrderDetail,
   UpdatePurchaseOrderParams,
+  UpdatePurchaseOrderResponse,
 } from "../interfaces/purchase-order.interface";
 import {
   PurchaseOrderOnboardingData,
@@ -63,8 +64,8 @@ export const cancelPurchaseOrder = async ({
 export const updatePurchaseOrder = async ({
   pk,
   body,
-}: UpdatePurchaseOrderParams): Promise<PurchaseOrder> => {
-  const response = await v1_api.put<PurchaseOrder>(
+}: UpdatePurchaseOrderParams): Promise<UpdatePurchaseOrderResponse> => {
+  const response = await v1_api.put<UpdatePurchaseOrderResponse>(
     `/compras/ordenes/${pk}/`,
     body,
   );
