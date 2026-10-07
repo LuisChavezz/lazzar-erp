@@ -23,9 +23,18 @@ import { createFechaVencimientoSchema } from "./purchase-order-fecha-vencimiento
  * hoy: una orden con vencimiento ya pasado debe poder seguir editándose. Si
  * `fechaGeneracion` no es un día válido, la regla se omite.
  *
+ * La regla solo se aplica cuando el valor CAMBIA respecto del guardado
+ * (`fechaVencimientoGuardada`): una orden que ya trae un vencimiento anterior a
+ * su generación (el desfase UTC del alta, el admin de Django, datos viejos) debe
+ * poder editarse sin obligar a tocar esa fecha. Cambiarla a otra fecha anterior
+ * sí se rechaza.
+ *
  * El tipo de salida (`z.output`) es asignable a `UpdatePurchaseOrderHeader`.
  */
-export const createPurchaseOrderEditSchema = (fechaGeneracion: string) => {
+export const createPurchaseOrderEditSchema = (
+  fechaGeneracion: string,
+  fechaVencimientoGuardada: string,
+) => {
   const minDate = isValidDateKey(fechaGeneracion) ? fechaGeneracion : null;
 
   return z.object({
@@ -39,7 +48,7 @@ export const createPurchaseOrderEditSchema = (fechaGeneracion: string) => {
       .number({ message: "La moneda es requerida" })
       .min(1, "La moneda es requerida"),
     fecha_vencimiento: createFechaVencimientoSchema(
-      () => minDate,
+      (value) => (value === fechaVencimientoGuardada ? null : minDate),
       `La fecha de vencimiento no puede ser anterior a la fecha de generación (${formatShortDate(parseLocalDate(minDate))})`,
     ),
     referencia: z.string().min(1, "La referencia es requerida"),

@@ -54,11 +54,11 @@ export function usePurchaseOrderEditForm({
   const [serverErrors, setServerErrors] = useState<EditErrorMap>({});
 
   // Fecha de generación de la orden (`fecha_oc`, solo lectura): piso de la
-  // fecha de vencimiento.
+  // fecha de vencimiento, que no se exige sobre la fecha ya guardada.
   const fechaGeneracion = toDateInputValue(initialData.fecha_oc);
-  const schema = useMemo(
-    () => createPurchaseOrderEditSchema(fechaGeneracion),
-    [fechaGeneracion],
+  const schema = createPurchaseOrderEditSchema(
+    fechaGeneracion,
+    toDateInputValue(initialData.fecha_vencimiento),
   );
 
   // ── Default values ──────────────────────────────────────────────────────
