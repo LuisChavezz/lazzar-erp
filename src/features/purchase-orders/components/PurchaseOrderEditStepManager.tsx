@@ -209,9 +209,13 @@ export function PurchaseOrderEditStepManager({
         </div>
       )}
       <div>
+        {/* El encabezado se siembra del detalle FRESCO (`detail`), no de la fila
+            del listado (`initialData`): esa puede tener hasta 15 min de caché y,
+            si otro usuario/pestaña cambió la orden, guardar sin tocar los campos
+            revertiría sus cambios en silencio. */}
         {currentStep === "step-1" && (
           <PurchaseOrderEditStep1
-            initialData={initialData}
+            initialData={detail}
             initialHeader={header ?? undefined}
             onboardingData={onboardingData}
             onSuccess={handleStep1Success}
