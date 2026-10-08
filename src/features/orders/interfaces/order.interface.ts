@@ -339,6 +339,13 @@ export interface PedidoDetalleLinea {
   producto_nombre?: string | null;
   /** Nombre libre de la línea de muestra. `null` en líneas de catálogo. */
   producto_nombre_externo?: string | null;
+  /**
+   * SKU base de la línea: `producto.codigo + color.codigo` (ej. `"6003703"`),
+   * prefijo común de los `tallas[].variante_sku`. Lo calcula el backend; `null`
+   * sin producto (muestras), sin color, o si alguno no tiene código. NO es
+   * contable. Nunca se deriva en el cliente recortando un `variante_sku`.
+   */
+  sku_base: string | null;
   color: number | null;
   color_nombre: string | null;
   /** Color en hex (ej. `"#000000"`) — se pinta como swatch junto al nombre. */

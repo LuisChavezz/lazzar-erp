@@ -95,7 +95,7 @@ export function OrderProductsSection({
           <thead className="bg-slate-50/95 dark:bg-zinc-900/95">
             <tr>
               <th className={`${TH} w-10 text-center`}>#</th>
-              <th className={`${TH} w-24`}>ID</th>
+              <th className={`${TH} w-24`}>SKU</th>
               <th className={`${TH} min-w-40`}>Descripción</th>
               <th className={`${TH} w-32`}>Color</th>
               <th className={`${TH} w-56`}>Tallas</th>
@@ -129,10 +129,12 @@ export function OrderProductsSection({
                       >
                         {muestraBadge.label}
                       </span>
-                    ) : (
-                      <span className="text-xs font-medium text-slate-700 dark:text-slate-200">
-                        {linea.producto ?? "—"}
+                    ) : linea.sku_base ? (
+                      <span className="text-xs font-mono font-medium text-slate-700 dark:text-slate-200 whitespace-nowrap">
+                        {linea.sku_base}
                       </span>
+                    ) : (
+                      <span className="text-xs text-slate-400 dark:text-slate-600">—</span>
                     )}
                   </td>
                   <td className="p-2 text-xs text-slate-600 dark:text-slate-300">
