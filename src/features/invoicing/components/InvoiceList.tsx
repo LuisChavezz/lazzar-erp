@@ -10,6 +10,10 @@ import { Button } from "@/src/components/Button";
 import { invoiceColumns } from "./InvoiceColumns";
 import { CreateInvoiceDialog } from "./CreateInvoiceDialog";
 import { useInvoices } from "../hooks/useInvoices";
+import {
+  InvoiceRowActionsProvider,
+  useInvoiceListDocumentActions,
+} from "../hooks/useInvoiceListDocumentActions";
 
 export const InvoiceList = () => {
   const { invoices, hasLoaded, isLoading, isError, error, refetch, isFetching } =
@@ -29,7 +33,11 @@ export const InvoiceList = () => {
   // usuario), incluso si el conjunto cargado estaba vacío.
   const showError = isInitialLoadError(isError, hasLoaded);
 
+  // PDF y correo del menú de cada fila: una sola instancia, por contexto.
+  const rowActions = useInvoiceListDocumentActions();
+
   return (
+    <InvoiceRowActionsProvider value={rowActions}>
     <div className="h-full flex flex-col min-h-0 space-y-6">
       <div className="flex-1 min-h-0 flex flex-col">
       <DataTable
@@ -62,5 +70,6 @@ export const InvoiceList = () => {
 
       <CreateInvoiceDialog open={isCreateOpen} onOpenChange={setIsCreateOpen} />
     </div>
+    </InvoiceRowActionsProvider>
   );
 };

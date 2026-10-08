@@ -9,7 +9,7 @@ import {
   PencilSquareIcon,
 } from "../../../components/Icons";
 import { useInvoices } from "../hooks/useInvoices";
-import { Invoice } from "../interfaces/invoice.interface";
+import type { InvoiceListRow } from "../interfaces/invoice.interface";
 import { INVOICE_STATUS } from "../constants/invoiceStatus";
 import { formatCurrency, safeParseAmount } from "@/src/utils/formatCurrency";
 import { parseLocalDate } from "@/src/utils/formatDate";
@@ -18,10 +18,10 @@ import { parseLocalDate } from "@/src/utils/formatDate";
  * Una factura está por cobrar solo si está EMITIDA: el Borrador aún no es un
  * comprobante en firme (no genera CxC) y la cancelada no se cobra.
  */
-const isReceivable = (invoice: Invoice) => invoice.estatus === INVOICE_STATUS.EMITIDA;
+const isReceivable = (invoice: InvoiceListRow) => invoice.estatus === INVOICE_STATUS.EMITIDA;
 
 /** Vencida = por cobrar y con `fecha_vencimiento` (fecha-calendario) ya pasada. */
-const isOverdue = (invoice: Invoice, today: Date) => {
+const isOverdue = (invoice: InvoiceListRow, today: Date) => {
   if (!isReceivable(invoice)) return false;
   const dueDate = parseLocalDate(invoice.fecha_vencimiento);
   if (!dueDate) return false;

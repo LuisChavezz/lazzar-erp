@@ -11,8 +11,8 @@ export const downloadInvoicePdfMutationKey = ["download-invoice-pdf"] as const;
 export const useDownloadInvoicePdf = () => {
   return useMutation({
     mutationKey: downloadInvoicePdfMutationKey,
-    // Recibe la factura completa (la fila ya trae `factura_detalles` y los
-    // totales), así que no se re-consulta el backend para descargar.
+    // Recibe la factura completa del retrieve (con `factura_detalles` y los
+    // totales); quien llama se encarga de consultarla.
     mutationFn: async (invoice: Invoice) => {
       await downloadInvoicePdf(invoice);
     },

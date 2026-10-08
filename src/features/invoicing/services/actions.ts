@@ -1,6 +1,6 @@
 import { v1_api } from "@/src/api/v1.api";
 import { decimalToCents } from "@/src/features/orders/utils/orderAccounting";
-import { Invoice } from "../interfaces/invoice.interface";
+import type { Invoice, InvoiceListRow } from "../interfaces/invoice.interface";
 import type {
   InvoiceOnboardingData,
   InvoiceOnboardingPayload,
@@ -9,21 +9,20 @@ import { invoiceOnboardingResponseSchema } from "../schemas/invoice-onboarding.s
 import type { InvoiceDesglose } from "../interfaces/invoice-desglose.interface";
 import { invoiceDesgloseResponseSchema } from "../schemas/invoice-desglose.schema";
 
-export const getInvoices = async (): Promise<Invoice[]> => {
-  const response = await v1_api.get<Invoice[]>("/finanzas/facturas/");
+export const getInvoices = async (): Promise<InvoiceListRow[]> => {
+  const response = await v1_api.get<InvoiceListRow[]>("/finanzas/facturas/");
   return response.data;
 };
 
 /**
  * Detalle de UNA factura (`GET /finanzas/facturas/{id}/`).
  *
- * `retrieve` devuelve el mismo `FacturaSerializer` que el listado (verificado en
- * `finanzas/api/views.py`: `FacturaViewSet` es un `ModelViewSet` con
- * `serializer_class` único y GET habilitado), pero con `factura_detalles`
- * hidratados — que el LISTADO puede no traer. Por eso los consumidores que solo
- * tienen el id —la página de detalle (para `activo` y las acciones de PDF y
- * correo) y las notas de crédito, vía `useInvoiceDetail`— deben pedir el
- * detalle en vez de reutilizar una fila del listado.
+ * El retrieve usa `FacturaSerializer` completo (`factura_detalles`, `activo`,
+ * `correo_facturas`); el listado usa `FacturaListSerializer`, ligero y SIN esos
+ * campos (ver `InvoiceListRow`). Por eso el PDF y el correo —en la página de
+ * detalle y en el menú del listado— y las notas de crédito, vía
+ * `useInvoiceDetail`, piden el retrieve en vez de reutilizar una fila del
+ * listado.
  */
 export const getInvoiceDetail = async (id: number): Promise<Invoice> => {
   const response = await v1_api.get<Invoice>(`/finanzas/facturas/${id}/`);

@@ -14,7 +14,8 @@ import type { CuentaPorCobrar } from "./accounts-receivable.interface";
 /**
  * Factura anidada dentro del detalle de CxC. Sus conceptos reutilizan
  * `InvoiceDetail`, el contrato ya establecido para un renglón de factura en el
- * módulo de facturación (`GET /finanzas/facturas/`): es el mismo serializer del
+ * módulo de facturación (retrieve `GET /finanzas/facturas/{id}/`; el listado
+ * ya no trae renglones): es el mismo serializer del
  * backend, así que duplicar la interfaz aquí solo la dejaría divergir.
  */
 export interface CuentaPorCobrarFactura {

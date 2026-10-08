@@ -1,14 +1,15 @@
 "use client";
 
 import { ColumnDef, FilterFn } from "@tanstack/react-table";
-import { Invoice } from "../interfaces/invoice.interface";
-import { ChevronRightIcon, ViewIcon } from "../../../components/Icons";
+import type { InvoiceListRow } from "../interfaces/invoice.interface";
+import { ChevronRightIcon, DownloadIcon, EmailIcon, ViewIcon } from "../../../components/Icons";
 import { ActionMenu, ActionMenuItem } from "@/src/components/ActionMenu";
 import { ColumnHeaderFilter, type ColumnFilterOption } from "@/src/components/ColumnHeaderFilter";
 import { formatCurrency, safeParseAmount } from "@/src/utils/formatCurrency";
 import { formatLocalDate } from "@/src/utils/formatDate";
-import { INVOICE_STATUS_CONFIG } from "../constants/invoiceStatus";
+import { INVOICE_STATUS_CONFIG, isInvoiceSendable } from "../constants/invoiceStatus";
 import { invoiceDetailHref } from "../constants/invoiceDetailOrigins";
+import { useInvoiceRowActionsContext } from "../hooks/useInvoiceListDocumentActions";
 
 const ESTATUS_FILTER_OPTIONS: ColumnFilterOption[] = [
   { value: undefined, label: "Todos" },
@@ -19,7 +20,7 @@ const ESTATUS_FILTER_OPTIONS: ColumnFilterOption[] = [
   })),
 ];
 
-const estatusFilterFn: FilterFn<Invoice> = (row, _columnId, filterValue) => {
+const estatusFilterFn: FilterFn<InvoiceListRow> = (row, _columnId, filterValue) => {
   if (filterValue === undefined) return true;
   return row.original.estatus === filterValue;
 };
@@ -33,23 +34,39 @@ const estatusFilterFn: FilterFn<Invoice> = (row, _columnId, filterValue) => {
  * cualquier parte abre el menú. "Ver detalles" va primero y es un ENLACE real
  * (`href` de `ActionMenu`), así que Ctrl+clic o clic medio abren la página en
  * otra pestaña. Sin folio se muestra `#id`, también en el `aria-label`.
+ * "Descargar PDF" y "Enviar correo" piden el retrieve al activarse; sus
+ * callbacks y el "en curso" llegan por `InvoiceRowActionsProvider` (ver
+ * `useInvoiceListDocumentActions`). Abrir el menú no hace ninguna petición.
  *
- * TEMPORAL: el menú solo trae "Ver detalles". El listado ligero del backend
- * (PR #349) ya no manda `activo`, `correo_facturas` ni `factura_detalles`, de
- * los que dependen la regla de correo y el PDF; ambas acciones siguen en la
- * página de detalle, que usa el retrieve completo. Volverán aquí cuando el
- * menú traiga el detalle al abrirse.
+ * "Enviar correo" se oculta si el estatus no es enviable o si la fila trae
+ * `activo === false`; mientras el listado no exponga `activo`, una eliminada
+ * se bloquea al activarse, contra el retrieve.
  */
-const FolioCell = ({ invoice }: { invoice: Invoice }) => {
+const FolioCell = ({ invoice }: { invoice: InvoiceListRow }) => {
   const statusCfg = INVOICE_STATUS_CONFIG[invoice.estatus];
   const statusLabel = statusCfg?.label ?? invoice.estatus;
   const invoiceLabel = invoice.folio || `#${invoice.id}`;
+  const { onDownloadPdf, onSendEmail, pendingIds } = useInvoiceRowActionsContext();
+  const pending = pendingIds.includes(invoice.id);
 
   const menuItems: ActionMenuItem[] = [
     {
       label: "Ver detalles",
       icon: ViewIcon,
       href: invoiceDetailHref(invoice.id, "invoicing"),
+    },
+    {
+      label: "Descargar PDF",
+      icon: DownloadIcon,
+      onSelect: () => onDownloadPdf(invoice.id),
+      disabled: pending,
+    },
+    {
+      label: "Enviar correo",
+      icon: EmailIcon,
+      onSelect: () => onSendEmail(invoice.id),
+      disabled: pending,
+      visible: invoice.activo !== false && isInvoiceSendable(invoice.estatus),
     },
   ];
 
@@ -86,7 +103,7 @@ const FolioCell = ({ invoice }: { invoice: Invoice }) => {
 
 // ── Columnas ──────────────────────────────────────────────────────────────────
 
-export const invoiceColumns: ColumnDef<Invoice>[] = [
+export const invoiceColumns: ColumnDef<InvoiceListRow>[] = [
   {
     accessorKey: "folio",
     header: ({ column }) => (

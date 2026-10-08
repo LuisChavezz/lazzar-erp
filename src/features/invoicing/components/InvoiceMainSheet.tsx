@@ -57,11 +57,7 @@ function InvoiceDocumentActions({ invoice }: { invoice: Invoice }) {
           variant="secondary"
           onClick={actions.sendEmail}
           disabled={actions.emailDisabled}
-          title={
-            actions.hasNoRecipientEmail
-              ? "Ni el pedido ni el cliente tienen correo de facturación."
-              : undefined
-          }
+          title={actions.noRecipientMessage}
         >
           <EmailIcon className="w-4 h-4" aria-hidden="true" />
           {actions.isSendingEmail
