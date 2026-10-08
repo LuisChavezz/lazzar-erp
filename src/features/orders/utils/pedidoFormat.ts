@@ -1,4 +1,5 @@
 import { formatShortDate, parseLocalDate } from "@/src/utils/formatDate";
+import { formatPercentageNumber } from "@/src/utils/percentage";
 
 /**
  * Rango de entrega estimado (`fecha_entrega_min`–`fecha_entrega_max`).
@@ -42,15 +43,13 @@ export function formatDiasRestantes(dias: number | null): string | null {
     : `vencido hace ${abs} ${unidad}`;
 }
 
-const PCT_FORMAT = new Intl.NumberFormat("es-MX", { maximumFractionDigits: 1 });
-
 /**
  * Porcentaje de avance del pedido con 1 decimal como máximo (es-MX, sin "%").
  * Es la resolución con que la trazabilidad entrega sus `pct`, y la que usa la
  * barra "Avance asignado" para que su cifra y la del paso "Asignado" se lean
  * igual.
  */
-export const formatPedidoPct = (value: number): string => PCT_FORMAT.format(value);
+export const formatPedidoPct = (value: number): string => formatPercentageNumber(value);
 
 /**
  * Varios pedidos traen "-" como OC (placeholder del backend, no una OC real):

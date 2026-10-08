@@ -32,3 +32,23 @@ export const clampPercentage = (value: number): number =>
 export const parsePercentageValue = (
   value: string | null | undefined,
 ): number => clampPercentage(safeParseAmount(value));
+
+const PERCENT_FORMATS = new Map<number, Intl.NumberFormat>();
+
+/**
+ * Porcentaje YA numérico (0–100) como texto es-MX, SIN el signo "%", con 1
+ * decimal como máximo. `minFractionDigits` fija cuántos decimales se muestran
+ * siempre: 0 (por defecto) da "25" / "25.5"; 1 da "25.0" / "25.5". Cada
+ * combinación se construye una sola vez.
+ */
+export const formatPercentageNumber = (value: number, minFractionDigits: 0 | 1 = 0): string => {
+  let format = PERCENT_FORMATS.get(minFractionDigits);
+  if (!format) {
+    format = new Intl.NumberFormat("es-MX", {
+      minimumFractionDigits: minFractionDigits,
+      maximumFractionDigits: 1,
+    });
+    PERCENT_FORMATS.set(minFractionDigits, format);
+  }
+  return format.format(value);
+};

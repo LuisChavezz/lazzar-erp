@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { useSession } from "next-auth/react";
 import { DataTable } from "@/src/components/DataTable";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
@@ -11,6 +12,8 @@ import { Button } from "@/src/components/Button";
 import { getProductionOrderColumns } from "./ProductionOrderColumns";
 import { CreateProductionOrderDialog } from "./CreateProductionOrderDialog";
 import { useProductionOrders } from "../hooks/useProductionOrders";
+import { productionOrderKpisQueryKey } from "../hooks/useProductionOrderKpis";
+import { ProductionOrderKpisSection } from "./ProductionOrderKpisSection";
 import { ProductionOrderCriticalPathDialog } from "@/src/features/production-order-critical-path/components/ProductionOrderCriticalPathDialog";
 import type { CriticalPathTarget } from "@/src/features/production-order-critical-path/interfaces/production-order-critical-path.interface";
 
@@ -54,42 +57,56 @@ export function ProductionOrderList() {
   // pantalla completa" si nunca cargó. Mismo patrón que `PurchaseOrderReceiptList`.
   const showError = isInitialLoadError(isError, hasLoaded);
 
+  // Los indicadores tienen consulta propia que ninguna mutación de OP
+  // invalida: el refresco de la tabla y el alta los refrescan también, para
+  // que tarjetas y tabla no muestren cifras de momentos distintos. Aquí y no
+  // en `useCreateProductionOrder`, que no sabe de esta pantalla.
+  const queryClient = useQueryClient();
+  const invalidateKpis = () =>
+    queryClient.invalidateQueries({ queryKey: productionOrderKpisQueryKey });
+
   return (
-    <div className="h-full flex flex-col min-h-0 space-y-5">
-      <div className="flex-1 min-h-0 flex flex-col">
-        <DataTable
-          columns={columns}
-          data={data ?? []}
-          baseDataCount={data?.length ?? 0}
-          searchPlaceholder="Buscar..."
-          fillHeight
-          isLoadingOverlay={isRefetching}
-          onRefetch={refetch}
-          isRefetching={isRefetching}
-          isLoading={isLoading}
-          isError={showError}
-          errorTitle="Error al cargar las órdenes de producción"
-          errorMessage={extractErrorMessage(error, "No se pudo cargar la información.")}
-          loadingAriaLabel="Cargando órdenes de producción"
-          actionButton={
-            canCreate ? (
-              <Button
-                variant="primary"
-                rounded="full"
-                onClick={() => setIsCreateOpen(true)}
-                className="hover:scale-105 active:scale-95"
-              >
-                + Nueva Orden
-              </Button>
-            ) : undefined
-          }
-        />
-      </div>
+    <div className="space-y-6">
+      {/* Indicadores con consulta PROPIA (no se derivan del listado): cargan y
+          fallan dentro de la sección, así que la tabla y su toolbar no
+          dependen de ellos. Sin gate de permiso: la ruta ya exige
+          `R-PRODUCCION-OP` (`routePermissions`), igual que `EmbroideryStats`. */}
+      <ProductionOrderKpisSection />
+
+      <DataTable
+        columns={columns}
+        data={data ?? []}
+        baseDataCount={data?.length ?? 0}
+        searchPlaceholder="Buscar..."
+        isLoadingOverlay={isRefetching}
+        onRefetch={() => Promise.all([refetch(), invalidateKpis()])}
+        isRefetching={isRefetching}
+        isLoading={isLoading}
+        isError={showError}
+        errorTitle="Error al cargar las órdenes de producción"
+        errorMessage={extractErrorMessage(error, "No se pudo cargar la información.")}
+        loadingAriaLabel="Cargando órdenes de producción"
+        actionButton={
+          canCreate ? (
+            <Button
+              variant="primary"
+              rounded="full"
+              onClick={() => setIsCreateOpen(true)}
+              className="hover:scale-105 active:scale-95"
+            >
+              + Nueva Orden
+            </Button>
+          ) : undefined
+        }
+      />
 
       <CreateProductionOrderDialog
         open={isCreateOpen}
         onOpenChange={setIsCreateOpen}
-        onSuccess={() => setIsCreateOpen(false)}
+        onSuccess={() => {
+          void invalidateKpis();
+          setIsCreateOpen(false);
+        }}
       />
 
       {/* Montado solo mientras está abierto: el GET de la ruta crítica CREA
