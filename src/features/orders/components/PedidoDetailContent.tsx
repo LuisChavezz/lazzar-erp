@@ -4,13 +4,21 @@ import Link from "next/link";
 import { useState } from "react";
 import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { ArrowLeftIcon, EditIcon, PedidosIcon, TrendingUpIcon } from "@/src/components/Icons";
+import {
+  ArrowLeftIcon,
+  EditIcon,
+  PedidosIcon,
+  RefreshIcon,
+  TrendingUpIcon,
+} from "@/src/components/Icons";
 import { Button } from "@/src/components/Button";
 import { hasAnyPermission, hasPermission } from "@/src/utils/permissions";
 import { routePermissions } from "@/src/constants/routePermissions";
 import { Loader } from "@/src/components/Loader";
 import { ErrorState } from "@/src/components/ErrorState";
-import { usePedidoDetail } from "../hooks/usePedidoDetail";
+import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
+import { isNotFoundError } from "@/src/utils/drfWriteErrors";
+import { usePedidoDetailPage } from "../hooks/usePedidoDetail";
 import {
   canEditPedidoMesaControl,
   canRecomprarPedido,
@@ -209,7 +217,8 @@ export function PedidoDetailContent({
   searchParams,
 }: PedidoDetailContentProps) {
   const numericId = Number(pedidoId);
-  const { data, isLoading, isError, error } = usePedidoDetail(numericId);
+  const { data, isLoading, isInitialError, isFetching, error, refetch } =
+    usePedidoDetailPage(numericId);
   const { data: session } = useSession();
   const pathname = usePathname();
   const sheet = resolveOrderDetailSheet(rawSheet);
@@ -276,23 +285,53 @@ export function PedidoDetailContent({
     );
   }
 
-  if (isLoading) {
+  // 404: el pedido no existe, es de otra empresa o se desactivó. Reintentar no
+  // cambiaría nada, así que no se ofrece (mismo criterio que el detalle de
+  // factura). Aplica también si el 404 llega en un refetch.
+  if (isNotFoundError(error)) {
     return (
       <div className="w-full space-y-6">
         <div>{BackLink}</div>
-        <Loader title="Cargando pedido" message="Obteniendo detalle del pedido..." />
+        <ErrorState
+          title="Pedido no encontrado"
+          message="El pedido no existe o no pertenece a tu empresa."
+        />
       </div>
     );
   }
 
-  if (isError || !data) {
+  // Solo la carga INICIAL fallida cambia la página por el error. Un refetch
+  // fallido con datos en caché (p. ej. la relectura tras guardar un editor de
+  // la cabecera) conserva la página y avisa por toast (`usePedidoDetailPage`).
+  if (isInitialError) {
     return (
       <div className="w-full space-y-6">
         <div>{BackLink}</div>
         <ErrorState
           title="Error al cargar el pedido"
-          message={(error as Error)?.message}
+          message={extractErrorMessage(error, "No se pudo cargar la información.")}
         />
+        <div className="flex justify-center">
+          <Button
+            type="button"
+            variant="secondary"
+            rounded="full"
+            onClick={() => void refetch()}
+            disabled={isFetching}
+          >
+            <RefreshIcon className="w-3.5 h-3.5" aria-hidden="true" />
+            {isFetching ? "Reintentando..." : "Reintentar"}
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  if (isLoading || !data) {
+    return (
+      <div className="w-full space-y-6">
+        <div>{BackLink}</div>
+        <Loader title="Cargando pedido" message="Obteniendo detalle del pedido..." />
       </div>
     );
   }
@@ -365,7 +404,11 @@ export function PedidoDetailContent({
           canEditHeader={canEditHeader}
         />
       ) : (
-        <OrderProgressSheet pedido={data} onOpenDoc={setOpenDoc} />
+        <OrderProgressSheet
+          pedido={data}
+          showAccounting={showAccounting}
+          onOpenDoc={setOpenDoc}
+        />
       )}
 
       {/* Detalle del documento (se monta solo al abrir; cada diálogo trae su

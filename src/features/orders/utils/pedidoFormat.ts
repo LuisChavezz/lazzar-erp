@@ -19,6 +19,40 @@ export function formatEntregaEstimada(min: string | null, max: string | null): s
 }
 
 /**
+ * Fecha-calendario `"YYYY-MM-DD"` (p. ej. `fecha_compromiso`) con el MISMO
+ * formato y la misma lectura local que cada extremo de `formatEntregaEstimada`.
+ * "—" sin valor.
+ */
+export function formatFechaCalendario(value: string | null): string {
+  const date = parseLocalDate(value);
+  return date ? formatShortDate(date) : "—";
+}
+
+/**
+ * Plazo que queda hasta la fecha compromiso, a partir de `dias_restantes` del
+ * backend (`compromiso - hoy`, NEGATIVO cuando ya venció). `null` sin dato.
+ */
+export function formatDiasRestantes(dias: number | null): string | null {
+  if (dias === null) return null;
+  if (dias === 0) return "vence hoy";
+  const abs = Math.abs(dias);
+  const unidad = abs === 1 ? "día" : "días";
+  return dias > 0
+    ? `${abs === 1 ? "falta" : "faltan"} ${abs} ${unidad}`
+    : `vencido hace ${abs} ${unidad}`;
+}
+
+const PCT_FORMAT = new Intl.NumberFormat("es-MX", { maximumFractionDigits: 1 });
+
+/**
+ * Porcentaje de avance del pedido con 1 decimal como máximo (es-MX, sin "%").
+ * Es la resolución con que la trazabilidad entrega sus `pct`, y la que usa la
+ * barra "Avance asignado" para que su cifra y la del paso "Asignado" se lean
+ * igual.
+ */
+export const formatPedidoPct = (value: number): string => PCT_FORMAT.format(value);
+
+/**
  * Varios pedidos traen "-" como OC (placeholder del backend, no una OC real):
  * solo se muestra el badge de OC cuando queda algo tras quitar guiones.
  */

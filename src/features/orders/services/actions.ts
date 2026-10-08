@@ -12,6 +12,7 @@ import type {
 import type { PedidoRecompraResponse } from "../interfaces/pedido-recompra.interface";
 import type { PedidoHeaderUpdate } from "../interfaces/pedido-update.interface";
 import type { OrderStockDetail } from "../interfaces/order-stock-detail.interface";
+import type { PedidoTrazabilidad } from "../interfaces/pedido-trazabilidad.interface";
 
 
 /** Filtros de query string aceptados por `GET /ventas/pedidos/`. */
@@ -35,6 +36,16 @@ export const getOrders = async (params?: OrdersQueryParams): Promise<PedidoListI
  */
 export const getPedidoDetail = async (id: number): Promise<PedidoDetail> => {
   const response = await v1_api.get<PedidoDetail>(`/ventas/pedidos/${id}/`);
+  return response.data;
+};
+
+/**
+ * Trazabilidad de UN pedido (`GET /ventas/pedidos/{id}/trazabilidad/`): pasos,
+ * avance y semáforo, calculados por el backend en cada lectura. Sin params ni
+ * paginación; un pedido que el usuario no ve responde 404.
+ */
+export const getPedidoTrazabilidad = async (id: number): Promise<PedidoTrazabilidad> => {
+  const response = await v1_api.get<PedidoTrazabilidad>(`/ventas/pedidos/${id}/trazabilidad/`);
   return response.data;
 };
 

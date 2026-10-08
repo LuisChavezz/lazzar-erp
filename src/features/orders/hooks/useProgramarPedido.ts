@@ -14,6 +14,7 @@ import { reflectiveOnboardingQueryKey } from "@/src/features/reflective-orders/h
 import { corteMangaOnboardingQueryKey } from "@/src/features/corte-manga/hooks/useCorteMangaOnboarding";
 import { programarPedido } from "../services/actions";
 import { pedidoDetailQueryKey } from "./usePedidoDetail";
+import { pedidoTrazabilidadQueryKey } from "./usePedidoTrazabilidad";
 import type {
   PedidoProgramarPayload,
   PedidoProgramarResponse,
@@ -80,6 +81,8 @@ export const useProgramarPedido = ({ onValidationError }: UseProgramarPedidoOpti
     mutationFn: ({ pedidoId, payload }) => programarPedido(pedidoId, payload),
     onSuccess: (_, { pedidoId }) => {
       queryClient.invalidateQueries({ queryKey: pedidoDetailQueryKey(pedidoId) });
+      // Paso "Programado" de la trazabilidad.
+      queryClient.invalidateQueries({ queryKey: pedidoTrazabilidadQueryKey(pedidoId) });
       queryClient.invalidateQueries({ queryKey: ["orders"] });
       // Los onboardings de OB/OR/OCM exponen `programado` por pedido
       // (`MesaControlProgramadoIndicator`): uno ya abierto debe reflejar la

@@ -1,27 +1,30 @@
 import { textOrDash } from "@/src/components/DetailDialogPrimitives";
-import { getPedidoEstatusConfig } from "../constants/pedidoStatus";
+import { getPedidoEstatusConfig, PEDIDO_ESTATUS } from "../constants/pedidoStatus";
 import type { PedidoDetail } from "../interfaces/order.interface";
 import { OrderDocumentsSection } from "./OrderDocumentsSection";
 import { OrderPickingBySizeSection } from "./OrderPickingBySizeSection";
 import { OrderPickingFoliosSection } from "./OrderPickingFoliosSection";
 import { OrderPickingProgressSection } from "./OrderPickingProgressSection";
 import { OrderBadge } from "./OrderSheetPrimitives";
+import { OrderTraceabilitySection } from "./OrderTraceabilitySection";
 import type { OpenOrderDocument } from "./orderDocumentDialogs";
 
 interface OrderProgressSheetProps {
   pedido: PedidoDetail;
+  /** `canSeeAccounting(pedido)`, calculado por la página. */
+  showAccounting: boolean;
   /** Abre un documento (o un folio de surtido) en su diálogo de detalle. */
   onOpenDoc: (doc: OpenOrderDocument) => void;
 }
 
 /**
- * Hoja 2, "Avances": el estado operativo del pedido — avance de surtido
- * general, surtido por línea y talla, folios de surtido y documentos
+ * Hoja 2, "Avances": el estado operativo del pedido — trazabilidad, avance de
+ * surtido general, surtido por línea y talla, folios de surtido y documentos
  * relacionados. Los diálogos de detalle NO viven aquí: los monta la página
  * (estado por encima de las hojas), para que cambiar de hoja nunca deje uno
  * huérfano ni abierto donde no corresponde.
  */
-export function OrderProgressSheet({ pedido, onOpenDoc }: OrderProgressSheetProps) {
+export function OrderProgressSheet({ pedido, showAccounting, onOpenDoc }: OrderProgressSheetProps) {
   const folios = pedido.folios_picking ?? [];
   return (
     <div className="space-y-6">
@@ -37,6 +40,14 @@ export function OrderProgressSheet({ pedido, onOpenDoc }: OrderProgressSheetProp
         </span>
       </div>
 
+      <OrderTraceabilitySection
+        pedidoId={pedido.id}
+        // Misma fuente que el badge de arriba (`pedido.estatus`), no el
+        // `estatus_label` del endpoint de trazabilidad.
+        isCancelled={pedido.estatus === PEDIDO_ESTATUS.CANCELADO}
+        showAccounting={showAccounting}
+        onOpenOrden={onOpenDoc}
+      />
       <OrderPickingProgressSection tracker={pedido.tracker_picking} />
       <OrderPickingBySizeSection detalles={pedido.detalles} />
       <OrderPickingFoliosSection folios={folios} onOpenFolio={onOpenDoc} />
