@@ -1,13 +1,11 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
-import KpiGrid, { type KpiItem } from "@/src/components/KpiGrid";
-import { LoadingSkeleton } from "@/src/components/LoadingSkeleton";
+import KpiGrid, { KpiGridSkeleton, type KpiCompactItem } from "@/src/components/KpiGrid";
 import { SectionErrorNotice } from "@/src/components/SectionErrorNotice";
-import { StatusBadge } from "@/src/components/StatusBadge";
+import { KpiStatusDot } from "@/src/components/KpiStatusDot";
 import {
   CheckCircleIcon,
-  ChevronRightIcon,
   ExclamationTriangleIcon,
   FactoryIcon,
   TrendingUpIcon,
@@ -20,6 +18,7 @@ import type {
   ProductionOrderOverdueKpi,
   ProductionOrderUntypedKpi,
 } from "../interfaces/production-order-kpis.interface";
+import { formatQuantityValue } from "@/src/utils/formatCurrency";
 import { formatKpiPct } from "../utils/productionOrderKpiFormat";
 import {
   ProductionOrderKpiDrillDownDialog,
@@ -29,7 +28,7 @@ import {
 const SECTION_TITLE = "Indicadores";
 
 /** Colores de una tarjeta sin semáforo o no disponible. */
-const MUTED_ICON = { iconClass: "text-slate-400", iconBgClass: "bg-slate-50 dark:bg-slate-500/10" };
+const MUTED_ICON = { iconClass: "text-slate-400" };
 
 /**
  * Botón del drill-down. Sin conteo a propósito: la lista llega cortada en 20
@@ -39,10 +38,13 @@ const MUTED_ICON = { iconClass: "text-slate-400", iconBgClass: "bg-slate-50 dark
  */
 function DrillDownButton({
   label,
+  ariaLabel,
   isEmpty,
   onClick,
 }: {
   label: string;
+  /** Nombre accesible cuando el texto visible, corto, no dice qué hace solo. */
+  ariaLabel?: string;
   isEmpty: boolean;
   onClick: () => void;
 }) {
@@ -51,15 +53,15 @@ function DrillDownButton({
       type="button"
       onClick={onClick}
       disabled={isEmpty}
-      className="inline-flex items-center gap-1 text-xs font-semibold text-sky-600 dark:text-sky-400 hover:text-sky-700 dark:hover:text-sky-300 cursor-pointer transition-colors disabled:cursor-not-allowed disabled:text-slate-400 dark:disabled:text-slate-500"
+      aria-label={ariaLabel}
+      className="text-xs font-semibold text-sky-600 dark:text-sky-400 hover:text-sky-700 dark:hover:text-sky-300 cursor-pointer transition-colors disabled:cursor-not-allowed disabled:text-slate-400 dark:disabled:text-slate-500"
     >
       {label}
-      <ChevronRightIcon className="w-3 h-3" aria-hidden="true" />
     </button>
   );
 }
 
-function onTimeCard(kpi: ProductionOrderOnTimeKpi, onDrillDown: () => void): KpiItem {
+function onTimeCard(kpi: ProductionOrderOnTimeKpi, onDrillDown: () => void): KpiCompactItem {
   const base = { label: "Cumplimiento a tiempo", icon: CheckCircleIcon };
   if (!kpi.disponible) {
     return {
@@ -70,29 +72,30 @@ function onTimeCard(kpi: ProductionOrderOnTimeKpi, onDrillDown: () => void): Kpi
     };
   }
   const semaforo = getKpiSemaforoConfig(kpi.semaforo);
+  const meta = `Meta ${formatKpiPct(kpi.meta)}`;
+  // "a tiempo/terminadas"; el histórico llega a 4 dígitos.
+  const counts =
+    kpi.ops_terminadas === 0
+      ? "Sin OPs terminadas"
+      : `${formatQuantityValue(kpi.ops_a_tiempo)}/${formatQuantityValue(kpi.ops_terminadas)}`;
   return {
     ...base,
     iconClass: semaforo.iconClass,
-    iconBgClass: semaforo.iconBgClass,
     // `pct: null` (sin OPs terminadas): guion, nunca un 0%.
     value: kpi.pct === null ? "—" : formatKpiPct(kpi.pct),
-    subLabel: `Meta ${formatKpiPct(kpi.meta)}`,
-    // Config de una sola llave: `StatusBadge` nunca indexa con un valor desconocido.
-    badge: <StatusBadge status={kpi.semaforo} config={{ [kpi.semaforo]: semaforo }} />,
+    // Punto + texto (variante compacta); la entrada ya viene resuelta con respaldo neutro.
+    badge: <KpiStatusDot status={kpi.semaforo} entry={semaforo} />,
     progress: kpi.pct ?? 0,
-    footer: (
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <span className="text-xs text-slate-500 dark:text-slate-400">
-          {kpi.ops_terminadas === 0
-            ? "Sin OPs terminadas"
-            : `${kpi.ops_a_tiempo} de ${kpi.ops_terminadas} OPs a tiempo`}
-        </span>
-        <DrillDownButton
-          label="Ver tardías"
-          isEmpty={kpi.drill_down_tardias.length === 0}
-          onClick={onDrillDown}
-        />
-      </div>
+    // Visible sin "a tiempo" (lo dice el título de la tarjeta); el `title` lo conserva.
+    detail: `${meta} · ${counts}`,
+    detailTitle: kpi.ops_terminadas === 0 ? `${meta} · ${counts}` : `${meta} · ${counts} a tiempo`,
+    action: (
+      <DrillDownButton
+        label="Tardías"
+        ariaLabel="Ver OPs tardías"
+        isEmpty={kpi.drill_down_tardias.length === 0}
+        onClick={onDrillDown}
+      />
     ),
   };
 }
@@ -105,8 +108,8 @@ function onTimeCard(kpi: ProductionOrderOnTimeKpi, onDrillDown: () => void): Kpi
  */
 function untypedCard(
   kpi: ProductionOrderUntypedKpi,
-  base: Pick<KpiItem, "label" | "icon">,
-): KpiItem {
+  base: Pick<KpiCompactItem, "label" | "icon">,
+): KpiCompactItem {
   if (!kpi.disponible) {
     return { ...base, ...MUTED_ICON, value: null, unavailableReason: kpi.motivo };
   }
@@ -114,12 +117,12 @@ function untypedCard(
     ...base,
     ...MUTED_ICON,
     value: "—",
-    subLabel: "Sin datos",
+    detail: "Sin datos",
     progress: 0,
   };
 }
 
-function overdueCard(kpi: ProductionOrderOverdueKpi, onDrillDown: () => void): KpiItem {
+function overdueCard(kpi: ProductionOrderOverdueKpi, onDrillDown: () => void): KpiCompactItem {
   const base = { label: "OPs atrasadas", icon: ExclamationTriangleIcon };
   if (!kpi.disponible) {
     return {
@@ -133,24 +136,21 @@ function overdueCard(kpi: ProductionOrderOverdueKpi, onDrillDown: () => void): K
   return {
     ...base,
     ...(hasOverdue
-      ? { iconClass: "text-red-500", iconBgClass: "bg-red-50 dark:bg-red-500/10" }
+      ? { iconClass: "text-red-500" }
       : MUTED_ICON),
     value: String(kpi.total),
-    subLabel: kpi.nota,
+    // La nota del backend es larga: va al popover ⓘ.
+    info: kpi.nota,
     // Un conteo sin meta: una barra llena se leería como 100%.
     hideProgress: true,
-    footer: (
-      <div className="flex justify-end">
-        <DrillDownButton label="Ver OPs" isEmpty={kpi.drill_down.length === 0} onClick={onDrillDown} />
-      </div>
-    ),
+    action: <DrillDownButton label="Ver OPs" isEmpty={kpi.drill_down.length === 0} onClick={onDrillDown} />,
   };
 }
 
 function buildCards(
   data: ProductionOrderKpis,
   openDrillDown: (kind: ProductionOrderKpiDrillDownKind) => void,
-): KpiItem[] {
+): KpiCompactItem[] {
   return [
     onTimeCard(data.cumplimiento_a_tiempo, () => openDrillDown("cumplimiento_a_tiempo")),
     untypedCard(data.avance_produccion, { label: "Avance de producción", icon: TrendingUpIcon }),
@@ -181,7 +181,7 @@ export function ProductionOrderKpisSection() {
 
   let body: ReactNode;
   if (data) {
-    body = <KpiGrid items={buildCards(data, openDrillDown)} />;
+    body = <KpiGrid compact items={buildCards(data, openDrillDown)} />;
   } else if (isInitialError) {
     body = (
       <SectionErrorNotice
@@ -192,17 +192,7 @@ export function ProductionOrderKpisSection() {
       />
     );
   } else {
-    body = (
-      <div
-        className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4"
-        aria-busy="true"
-        aria-label="Cargando indicadores"
-      >
-        {Array.from({ length: 4 }, (_, index) => (
-          <LoadingSkeleton key={index} className="h-40" />
-        ))}
-      </div>
-    );
+    body = <KpiGridSkeleton compact count={4} />;
   }
 
   return (
