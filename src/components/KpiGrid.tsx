@@ -76,6 +76,32 @@ export interface KpiCompactItem {
   footer?: never;
 }
 
+/** Colores de una tarjeta compacta sin semáforo o no disponible (se esparce en el item). */
+export const KPI_MUTED_ICON = { iconClass: "text-slate-400" } as const;
+
+/**
+ * Bloque de indicadores cuya forma DISPONIBLE aún no está en el contrato: solo
+ * se conoce la bandera (y el `motivo` cuando no está disponible).
+ */
+export type KpiUntypedBlock = { disponible: true } | { disponible: false; motivo: string };
+
+/**
+ * Tarjeta compacta de un bloque sin contrato disponible (p. ej. avance de
+ * producción, OTIF). No disponible → "No disponible" con el `motivo` en el ⓘ.
+ * Si el backend lo habilita, la tarjeta deja de decir "No disponible" sola,
+ * pero no se pinta ninguna cifra hasta integrarlo: "—" y "Sin datos", sin
+ * barra (una barra vacía se leería como 0%).
+ */
+export function buildUntypedKpiCard(
+  kpi: KpiUntypedBlock,
+  base: Pick<KpiCompactItem, "label" | "icon">,
+): KpiCompactItem {
+  if (!kpi.disponible) {
+    return { ...base, ...KPI_MUTED_ICON, value: null, unavailableReason: kpi.motivo };
+  }
+  return { ...base, ...KPI_MUTED_ICON, value: "—", detail: "Sin datos", hideProgress: true };
+}
+
 type KpiGridProps =
   | { items: KpiItem[]; compact?: false }
   /** Variante compacta (ver `KpiCompactCard`). */
