@@ -1,7 +1,13 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
-import KpiGrid, { KpiGridSkeleton, type KpiCompactItem } from "@/src/components/KpiGrid";
+import KpiGrid, {
+  buildUntypedKpiCard,
+  KPI_MUTED_ICON,
+  KpiGridSkeleton,
+  type KpiCompactItem,
+} from "@/src/components/KpiGrid";
+import { KpiDrillDownButton } from "@/src/components/KpiDrillDownButton";
 import { SectionErrorNotice } from "@/src/components/SectionErrorNotice";
 import { KpiStatusDot } from "@/src/components/KpiStatusDot";
 import {
@@ -16,7 +22,6 @@ import type {
   ProductionOrderKpis,
   ProductionOrderOnTimeKpi,
   ProductionOrderOverdueKpi,
-  ProductionOrderUntypedKpi,
 } from "../interfaces/production-order-kpis.interface";
 import { formatQuantityValue } from "@/src/utils/formatCurrency";
 import { formatKpiPct } from "../utils/productionOrderKpiFormat";
@@ -27,46 +32,12 @@ import {
 
 const SECTION_TITLE = "Indicadores";
 
-/** Colores de una tarjeta sin semáforo o no disponible. */
-const MUTED_ICON = { iconClass: "text-slate-400" };
-
-/**
- * Botón del drill-down. Sin conteo a propósito: la lista llega cortada en 20
- * filas y su largo contradiría la cifra de la tarjeta; el "Mostrando X de N"
- * va dentro del diálogo. Deshabilitado con la lista vacía (abriría un diálogo
- * sin filas). Un bloque no disponible no lo pinta.
- */
-function DrillDownButton({
-  label,
-  ariaLabel,
-  isEmpty,
-  onClick,
-}: {
-  label: string;
-  /** Nombre accesible cuando el texto visible, corto, no dice qué hace solo. */
-  ariaLabel?: string;
-  isEmpty: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={isEmpty}
-      aria-label={ariaLabel}
-      className="text-xs font-semibold text-sky-600 dark:text-sky-400 hover:text-sky-700 dark:hover:text-sky-300 cursor-pointer transition-colors disabled:cursor-not-allowed disabled:text-slate-400 dark:disabled:text-slate-500"
-    >
-      {label}
-    </button>
-  );
-}
-
 function onTimeCard(kpi: ProductionOrderOnTimeKpi, onDrillDown: () => void): KpiCompactItem {
   const base = { label: "Cumplimiento a tiempo", icon: CheckCircleIcon };
   if (!kpi.disponible) {
     return {
       ...base,
-      ...MUTED_ICON,
+      ...KPI_MUTED_ICON,
       value: null,
       unavailableReason: kpi.motivo,
     };
@@ -90,7 +61,7 @@ function onTimeCard(kpi: ProductionOrderOnTimeKpi, onDrillDown: () => void): Kpi
     detail: `${meta} · ${counts}`,
     detailTitle: kpi.ops_terminadas === 0 ? `${meta} · ${counts}` : `${meta} · ${counts} a tiempo`,
     action: (
-      <DrillDownButton
+      <KpiDrillDownButton
         label="Tardías"
         ariaLabel="Ver OPs tardías"
         isEmpty={kpi.drill_down_tardias.length === 0}
@@ -100,34 +71,12 @@ function onTimeCard(kpi: ProductionOrderOnTimeKpi, onDrillDown: () => void): Kpi
   };
 }
 
-/**
- * Avance y eficiencia: hoy siempre llegan no disponibles. Si el backend los
- * habilita, la tarjeta deja de decir "No disponible" sola, pero su forma
- * disponible aún no está en el contrato: no se pinta ninguna cifra hasta
- * integrarla.
- */
-function untypedCard(
-  kpi: ProductionOrderUntypedKpi,
-  base: Pick<KpiCompactItem, "label" | "icon">,
-): KpiCompactItem {
-  if (!kpi.disponible) {
-    return { ...base, ...MUTED_ICON, value: null, unavailableReason: kpi.motivo };
-  }
-  return {
-    ...base,
-    ...MUTED_ICON,
-    value: "—",
-    detail: "Sin datos",
-    progress: 0,
-  };
-}
-
 function overdueCard(kpi: ProductionOrderOverdueKpi, onDrillDown: () => void): KpiCompactItem {
   const base = { label: "OPs atrasadas", icon: ExclamationTriangleIcon };
   if (!kpi.disponible) {
     return {
       ...base,
-      ...MUTED_ICON,
+      ...KPI_MUTED_ICON,
       value: null,
       unavailableReason: kpi.motivo,
     };
@@ -137,13 +86,13 @@ function overdueCard(kpi: ProductionOrderOverdueKpi, onDrillDown: () => void): K
     ...base,
     ...(hasOverdue
       ? { iconClass: "text-red-500" }
-      : MUTED_ICON),
+      : KPI_MUTED_ICON),
     value: String(kpi.total),
     // La nota del backend es larga: va al popover ⓘ.
     info: kpi.nota,
     // Un conteo sin meta: una barra llena se leería como 100%.
     hideProgress: true,
-    action: <DrillDownButton label="Ver OPs" isEmpty={kpi.drill_down.length === 0} onClick={onDrillDown} />,
+    action: <KpiDrillDownButton label="Ver OPs" isEmpty={kpi.drill_down.length === 0} onClick={onDrillDown} />,
   };
 }
 
@@ -153,8 +102,9 @@ function buildCards(
 ): KpiCompactItem[] {
   return [
     onTimeCard(data.cumplimiento_a_tiempo, () => openDrillDown("cumplimiento_a_tiempo")),
-    untypedCard(data.avance_produccion, { label: "Avance de producción", icon: TrendingUpIcon }),
-    untypedCard(data.eficiencia_linea, { label: "Eficiencia de línea", icon: FactoryIcon }),
+    // Avance y eficiencia: hoy siempre llegan no disponibles (ver `buildUntypedKpiCard`).
+    buildUntypedKpiCard(data.avance_produccion, { label: "Avance de producción", icon: TrendingUpIcon }),
+    buildUntypedKpiCard(data.eficiencia_linea, { label: "Eficiencia de línea", icon: FactoryIcon }),
     overdueCard(data.ops_atrasadas, () => openDrillDown("ops_atrasadas")),
   ];
 }
@@ -186,7 +136,7 @@ export function ProductionOrderKpisSection() {
     body = (
       <SectionErrorNotice
         title="No se pudieron cargar los indicadores"
-        message="El listado de órdenes sigue disponible. Intenta de nuevo en unos momentos."
+        message="Intenta de nuevo en unos momentos."
         onRetry={() => void refetch()}
         isRetrying={isFetching}
       />

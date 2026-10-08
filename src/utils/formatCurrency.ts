@@ -22,6 +22,18 @@ export const formatCurrency = (
 };
 
 /**
+ * Opciones para un importe de moneda DESCONOCIDA: número con 2 decimales y sin
+ * símbolo. Se pasa como `options` a `formatMoneyValue`/`formatMoneyValueOrDash`
+ * cuando no hay moneda que afirmar — un "$" sobre un importe en otra moneda (o
+ * en varias mezcladas) diría algo falso.
+ */
+export const NO_CURRENCY_FORMAT: Intl.NumberFormatOptions = {
+  style: "decimal",
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+};
+
+/**
  * Convierte un string numérico de la API en número, devolviendo 0 cuando el
  * valor es nulo, vacío o no numérico. Usa `Number()` en vez de `parseFloat()`
  * porque este último parsea parcialmente strings como "1,234.50" (devuelve

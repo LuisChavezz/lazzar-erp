@@ -4,7 +4,7 @@ import type React from "react";
 import { createContext, useContext } from "react";
 import { useCurrencies } from "@/src/features/currency/hooks/useCurrencies";
 import type { Currency } from "@/src/features/currency/interfaces/currency.interface";
-import { formatMoneyValueOrDash } from "@/src/utils/formatCurrency";
+import { formatMoneyValueOrDash, NO_CURRENCY_FORMAT } from "@/src/utils/formatCurrency";
 
 /**
  * Moneda REAL del pedido para formatear sus importes.
@@ -39,13 +39,6 @@ export function OrderCurrencyProvider({
     <OrderCurrencyContext.Provider value={{ currency }}>{children}</OrderCurrencyContext.Provider>
   );
 }
-
-/** Sin moneda conocida: número con 2 decimales y sin símbolo. */
-const NO_CURRENCY_FORMAT: Intl.NumberFormatOptions = {
-  style: "decimal",
-  minimumFractionDigits: 2,
-  maximumFractionDigits: 2,
-};
 
 export function useOrderMoney() {
   const { currency } = useContext(OrderCurrencyContext);

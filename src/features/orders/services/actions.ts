@@ -13,6 +13,7 @@ import type { PedidoRecompraResponse } from "../interfaces/pedido-recompra.inter
 import type { PedidoHeaderUpdate } from "../interfaces/pedido-update.interface";
 import type { OrderStockDetail } from "../interfaces/order-stock-detail.interface";
 import type { PedidoTrazabilidad } from "../interfaces/pedido-trazabilidad.interface";
+import type { PedidoKpis } from "../interfaces/pedido-kpis.interface";
 
 
 /** Filtros de query string aceptados por `GET /ventas/pedidos/`. */
@@ -46,6 +47,16 @@ export const getPedidoDetail = async (id: number): Promise<PedidoDetail> => {
  */
 export const getPedidoTrazabilidad = async (id: number): Promise<PedidoTrazabilidad> => {
   const response = await v1_api.get<PedidoTrazabilidad>(`/ventas/pedidos/${id}/trazabilidad/`);
+  return response.data;
+};
+
+/**
+ * Indicadores de "Mis pedidos" (`GET /ventas/pedidos/kpis/`), calculados por el
+ * backend sobre los pedidos propios del usuario. Sin params: el endpoint no
+ * acepta ninguno.
+ */
+export const getPedidoKpis = async (): Promise<PedidoKpis> => {
+  const response = await v1_api.get<PedidoKpis>("/ventas/pedidos/kpis/");
   return response.data;
 };
 

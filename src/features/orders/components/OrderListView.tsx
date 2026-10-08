@@ -1,7 +1,7 @@
 'use client';
 
 import { useRef, useState } from 'react';
-import { useIsFetching, useQueryClient } from '@tanstack/react-query';
+import { useIsFetching, useQueryClient, type QueryKey } from '@tanstack/react-query';
 import {
   DataTable,
   type DataTableHandle,
@@ -61,6 +61,14 @@ interface OrderListViewProps {
    * este componente en un contenedor de altura acotada.
    */
   fillHeight?: boolean;
+  /**
+   * Llaves EXTRA que el botón de refrescar de la tabla invalida junto con la
+   * de la lista (p. ej. los indicadores que la página monta encima), para que
+   * tarjetas y tabla no muestren cifras de momentos distintos. Son llaves y no
+   * un callback porque la página que monta esta vista es de servidor. Sin ella
+   * el refresco solo toca la lista, como siempre.
+   */
+  extraRefetchQueryKeys?: readonly QueryKey[];
 }
 
 /**
@@ -73,6 +81,7 @@ export function OrderListView({
   params,
   variant = 'shared',
   fillHeight = false,
+  extraRefetchQueryKeys,
 }: OrderListViewProps) {
   const { orders, isLoading, isError, error, hasLoaded } = useOrders(params);
   // Solo un error SIN datos cargados sustituye las filas; un refetch fallido
@@ -86,6 +95,15 @@ export function OrderListView({
 
   const handleRefetch = () =>
     queryClient.invalidateQueries({ queryKey, exact: true });
+  // Solo el botón de refrescar arrastra las llaves extra; el "Reintentar" del
+  // error de la tabla sigue tocando únicamente la lista.
+  const handleToolbarRefetch = extraRefetchQueryKeys?.length
+    ? () =>
+        Promise.all([
+          handleRefetch(),
+          ...extraRefetchQueryKeys.map((key) => queryClient.invalidateQueries({ queryKey: key })),
+        ])
+    : handleRefetch;
 
   const isSales = variant === 'sales';
   const isProcurement = variant === 'procurement';
@@ -187,7 +205,7 @@ export function OrderListView({
       errorMessage={extractErrorMessage(error, 'No se pudo cargar la información.')}
       onErrorRetry={handleRefetch}
       loadingAriaLabel="Cargando pedidos"
-      onRefetch={handleRefetch}
+      onRefetch={handleToolbarRefetch}
       isRefetching={isRefetching}
       isLoadingOverlay={isRefetching}
     />
