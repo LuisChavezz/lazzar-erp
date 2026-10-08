@@ -258,9 +258,10 @@ export interface PedidoListItem {
   /** Etiqueta del backend; la UI usa `getPedidoClasificacionLabel`. */
   clasificacion_display: string | null;
   /**
-   * Fechas-calendario `"YYYY-MM-DD"` (sin hora), derivadas de `clasificacion`;
-   * `null` cuando no hay clasificación que las fije. Se formatean con
-   * `timeZone: "UTC"` para no pintar el día anterior en México.
+   * Fechas-calendario `"YYYY-MM-DD"` (sin hora): los días de la
+   * `clasificacion` contados desde `fecha_confirmacion` (sin ella, desde
+   * `created_at`); `null` cuando no hay clasificación que las fije. Se
+   * formatean con `timeZone: "UTC"` para no pintar el día anterior en México.
    */
   fecha_entrega_min: string | null;
   fecha_entrega_max: string | null;
@@ -495,12 +496,14 @@ export interface PedidoDetail extends Order {
    */
   destinos_aplicables?: string[];
   /**
-   * Rango de entrega estimado, derivado por el backend de `clasificacion`
-   * (solo lectura). Fechas-calendario `"YYYY-MM-DD"`, SIN hora: formatearlas
-   * con `parseLocalDate`/`formatLocalDate`, nunca con `new Date(value)`, que
-   * las lee como medianoche UTC y en México pinta el día anterior. `null`
-   * cuando `clasificacion` es `null`/`""`/`X`. Solo el DETALLE las trae; el
-   * listado no.
+   * Rango de entrega estimado (solo lectura): el backend suma los días de la
+   * `clasificacion` a `fecha_confirmacion` (sin ella, a `created_at`), así que
+   * editar cualquiera de los dos campos lo mueve. `fecha_entrega_max` es la
+   * `fecha_compromiso` de la trazabilidad. Fechas-calendario `"YYYY-MM-DD"`,
+   * SIN hora: formatearlas con `parseLocalDate`/`formatLocalDate`, nunca con
+   * `new Date(value)`, que las lee como medianoche UTC y en México pinta el día
+   * anterior. `null` cuando `clasificacion` es `null`/`""`/`X`. Solo el
+   * DETALLE las trae; el listado no.
    */
   fecha_entrega_min: string | null;
   fecha_entrega_max: string | null;

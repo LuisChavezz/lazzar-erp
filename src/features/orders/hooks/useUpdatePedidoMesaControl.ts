@@ -11,6 +11,7 @@ import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { firstDrfMessage } from "@/src/utils/firstDrfMessage";
 import type { PedidoMesaControlContexto } from "../interfaces/pedido-mesa-control-contexto.interface";
 import { updatePedidoMesaControl } from "../services/actions";
+import { pedidoTrazabilidadQueryKey } from "./usePedidoTrazabilidad";
 import type {
   PedidoMesaControlUpdate,
   PedidoMesaControlUpdateResponse,
@@ -115,6 +116,8 @@ export const useUpdatePedidoMesaControl = (
     mutationFn: ({ pedidoId, payload }) => updatePedidoMesaControl(pedidoId, payload),
     onSuccess: (_, { pedidoId, cotizacionId }) => {
       queryClient.invalidateQueries({ queryKey: ["pedido-detail", pedidoId] });
+      // Las líneas reescritas cambian las piezas de cada paso de la trazabilidad.
+      queryClient.invalidateQueries({ queryKey: pedidoTrazabilidadQueryKey(pedidoId) });
       queryClient.invalidateQueries({ queryKey: ["orders"] });
       // La cotización de origen también cambió en el servidor.
       queryClient.invalidateQueries({ queryKey: ["quotes"] });

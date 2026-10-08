@@ -1,8 +1,9 @@
 import { Section } from "@/src/components/DetailDialogPrimitives";
 import { MetricCard } from "@/src/components/ProgressPrimitives";
-import { formatExactQuantityValue, formatQuantityValue } from "@/src/utils/formatCurrency";
+import { formatExactQuantityValue } from "@/src/utils/formatCurrency";
 import { parsePercentageValue } from "@/src/utils/percentage";
 import type { PedidoTrackerPicking } from "../interfaces/order.interface";
+import { formatPedidoPct } from "../utils/pedidoFormat";
 
 // El tracker llega en la MISMA respuesta del detalle (no hay petición extra) y
 // NO es dato contable: son conteos de prendas, que el filtro por rol del
@@ -13,7 +14,9 @@ import type { PedidoTrackerPicking } from "../interfaces/order.interface";
 // `parsePercentageValue` (porcentajes) o `formatExactQuantityValue` (conteos),
 // nunca partiendo el string ni asumiendo decimales. Los conteos van a precisión
 // completa (`Decimal(4)`): redondear a 2 pintaría "0" para una cantidad chica
-// pero real. Los porcentajes sí van a 2 decimales.
+// pero real. Los porcentajes van a 1 decimal (`formatPedidoPct`): es la
+// resolución de la trazabilidad, cuyo paso "Asignado" mide lo mismo que "Avance
+// asignado" y debe leerse con la misma cifra. Las dos barras comparten formato.
 
 /** Tono de una barra: azul para lo ASIGNADO, verde para lo SURTIDO. */
 const TRACKER_TONES = {
@@ -41,7 +44,7 @@ function TrackerBar({
       <div className="flex items-center justify-between text-xs mb-1">
         <span className="text-slate-500 dark:text-slate-400">{label}</span>
         <span className="tabular-nums font-semibold text-slate-700 dark:text-slate-200">
-          {formatQuantityValue(pct)}%
+          {formatPedidoPct(pct)}%
         </span>
       </div>
       <div className="h-2 w-full rounded-full bg-slate-100 dark:bg-white/10 overflow-hidden">

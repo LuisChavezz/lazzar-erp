@@ -6,6 +6,8 @@ import { AxiosError } from "axios";
 import { firstDrfMessage } from "@/src/utils/firstDrfMessage";
 import { updatePedidoHeader } from "../services/actions";
 import type { PedidoHeaderUpdate } from "../interfaces/pedido-update.interface";
+import { pedidoDetailQueryKey } from "./usePedidoDetail";
+import { pedidoTrazabilidadQueryKey } from "./usePedidoTrazabilidad";
 
 /**
  * Claves del 400 que se muestran en el toast, en orden de prioridad. Mismo
@@ -64,13 +66,16 @@ type UpdatePedidoHeaderVariables = {
  *
  * NUNCA `setQueryData` con la respuesta: el PATCH devuelve el detalle SIN el
  * filtro contable del `GET`. Se invalida y se vuelve a leer, lo que además trae
- * `fecha_entrega_min`/`max`, que el backend recalcula desde `clasificacion`.
+ * `fecha_entrega_min`/`max`, que el backend recalcula con los días de la
+ * `clasificacion` contados desde `fecha_confirmacion` (sin ella, desde
+ * `created_at`): editar CUALQUIERA de los dos campos las mueve.
  *
- * La mutación sigue PENDIENTE hasta que termina esa relectura del detalle
- * (`onSuccess` devuelve su promesa): así el control no se re-habilita mostrando
- * el valor viejo durante los segundos que tarda el GET. Si la relectura falla,
- * `invalidateQueries` no lanza (resuelve igual) y el pendiente termina. El
- * listado (`["orders"]`) se invalida sin esperar: no se ve en esta pantalla.
+ * La mutación sigue PENDIENTE hasta que terminan las relecturas del detalle y
+ * de la trazabilidad (`onSuccess` devuelve su promesa): así el control no se
+ * re-habilita mostrando el valor viejo durante los segundos que tarda el GET.
+ * Si una relectura falla, `invalidateQueries` no lanza (resuelve igual) y el
+ * pendiente termina. El listado (`["orders"]`) se invalida sin esperar: no se
+ * ve en esta pantalla.
  *
  * Una instancia por CAMPO: cada una lleva su propio `isPending`, así que editar
  * la clasificación y luego la fecha muestra ambos en vuelo por separado.
@@ -87,7 +92,19 @@ export const useUpdatePedidoHeader = () => {
           : "Fecha de confirmación del pedido actualizada",
       );
       void queryClient.invalidateQueries({ queryKey: ["orders"] });
-      await queryClient.invalidateQueries({ queryKey: ["pedido-detail", pedidoId] });
+      // Ambas antes de soltar el pendiente: la fecha confirmada y la
+      // clasificación mueven la fecha compromiso, los días restantes y el
+      // semáforo de la trazabilidad (hoja de Avances). `refetchType: "all"`
+      // porque la trazabilidad vive en la OTRA hoja: desmontada, la
+      // invalidación por defecto solo la marcaría y el `await` no esperaría
+      // nada; al volver a Avances se pintaría unos segundos el semáforo viejo.
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: pedidoDetailQueryKey(pedidoId) }),
+        queryClient.invalidateQueries({
+          queryKey: pedidoTrazabilidadQueryKey(pedidoId),
+          refetchType: "all",
+        }),
+      ]);
     },
     onError: (error) => {
       let message: string | undefined;
