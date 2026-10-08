@@ -23,6 +23,22 @@ export interface KpiItem {
   progress?: number;
   actionLabel?: string;
   actionHref?: string;
+  /**
+   * Insignia propia junto al valor (p. ej. un semáforo que decide el backend
+   * con `StatusBadge`). Independiente de `trendLabel`, cuya flecha de
+   * tendencia no tiene sentido para un semáforo.
+   */
+  badge?: ReactNode;
+  /** Contenido libre al pie de la tarjeta (bajo la barra), p. ej. un botón. */
+  footer?: ReactNode;
+  /**
+   * La fuente del indicador dice que no está disponible: en vez de `value`,
+   * `trendLabel`, `badge` y la barra se pinta "No disponible" con este motivo.
+   * Ninguna cifra, ni siquiera un 0, para no afirmar un dato que no existe.
+   */
+  unavailableReason?: string;
+  /** Oculta la barra (p. ej. un conteo sin meta, donde "llena" no significa nada). */
+  hideProgress?: boolean;
 }
 
 interface KpiGridProps {
@@ -77,22 +93,37 @@ export function KpiCard({ item }: { item: KpiItem }) {
           <Icon className="w-5 h-5" aria-hidden="true" />
         </div>
       </div>
-      <div className="flex items-baseline gap-2 mb-2">
-        <h3 className={`text-2xl font-bold text-slate-800 dark:text-white tracking-tight font-mono truncate`}>
-          {item.value}
-        </h3>
-        {item.trendLabel ? (
-          <span
-            className={`flex items-center text-xs font-semibold ${badge.text} ${badge.bg} px-1.5 py-0.5 rounded`}
-          >
-            <KpiTrendIcon className="w-3 h-3 mr-0.5" negative={status === "negative"} />
-            {item.trendLabel}
-          </span>
-        ) : null}
-      </div>
-      <div className={`h-1 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden ${item.iconClass}`}>
-        <div className="h-full bg-current rounded-full" style={{ width: `${normalizedProgress}%` }} />
-      </div>
+      {item.unavailableReason !== undefined ? (
+        <div className="mb-2">
+          <h3 className="text-lg font-bold text-slate-400 dark:text-slate-500 tracking-tight">
+            No disponible
+          </h3>
+          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{item.unavailableReason}</p>
+        </div>
+      ) : (
+        <>
+          <div className="flex items-baseline gap-2 mb-2">
+            <h3 className={`text-2xl font-bold text-slate-800 dark:text-white tracking-tight font-mono truncate`}>
+              {item.value}
+            </h3>
+            {item.trendLabel ? (
+              <span
+                className={`flex items-center text-xs font-semibold ${badge.text} ${badge.bg} px-1.5 py-0.5 rounded`}
+              >
+                <KpiTrendIcon className="w-3 h-3 mr-0.5" negative={status === "negative"} />
+                {item.trendLabel}
+              </span>
+            ) : null}
+            {item.badge ? <span className="self-center">{item.badge}</span> : null}
+          </div>
+          {item.hideProgress ? null : (
+            <div className={`h-1 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden ${item.iconClass}`}>
+              <div className="h-full bg-current rounded-full" style={{ width: `${normalizedProgress}%` }} />
+            </div>
+          )}
+        </>
+      )}
+      {item.footer ? <div className="mt-3">{item.footer}</div> : null}
       {item.actionLabel && item.actionHref ? (
         <div className="mt-3">
           <Link

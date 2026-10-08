@@ -5,6 +5,7 @@ import {
   CreateProductionOrderResponse,
   ProductionOrderListItem,
 } from "@/src/features/production-orders/interfaces/production-order.interface";
+import type { ProductionOrderKpis } from "@/src/features/production-orders/interfaces/production-order-kpis.interface";
 
 
 export const getProductionOrderOnboarding = async (
@@ -29,5 +30,14 @@ export const createProductionOrderOnboarding = async (
 
 export const getProductionOrders = async (): Promise<ProductionOrderListItem[]> => {
   const response = await v1_api.get<ProductionOrderListItem[]>('/produccion/orden-produccion/');
+  return response.data;
+};
+
+/**
+ * Indicadores de OP. Sin parámetros a propósito: `meta_otd` se deja en el
+ * valor por defecto del backend y la UI usa el `meta` que devuelve.
+ */
+export const getProductionOrderKpis = async (): Promise<ProductionOrderKpis> => {
+  const response = await v1_api.get<ProductionOrderKpis>('/produccion/orden-produccion/kpis/');
   return response.data;
 };

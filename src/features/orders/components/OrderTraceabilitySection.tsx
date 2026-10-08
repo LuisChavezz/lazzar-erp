@@ -1,8 +1,8 @@
 import { useId, useState } from "react";
-import { Button } from "@/src/components/Button";
 import { HeaderStat, HeaderStatRow, Section } from "@/src/components/DetailDialogPrimitives";
-import { ChevronDownIcon, RefreshIcon, WarningFilledIcon } from "@/src/components/Icons";
+import { ChevronDownIcon, WarningFilledIcon } from "@/src/components/Icons";
 import { Loader } from "@/src/components/Loader";
+import { SectionErrorNotice } from "@/src/components/SectionErrorNotice";
 import { RowProgressBar } from "@/src/components/ProgressPrimitives";
 import { StatusBadge, type StatusBadgeConfigEntry } from "@/src/components/StatusBadge";
 import { formatQuantityValue } from "@/src/utils/formatCurrency";
@@ -268,30 +268,12 @@ export function OrderTraceabilitySection({
   if (isInitialError) {
     return (
       <Section title={SECTION_TITLE}>
-        <div
-          role="status"
-          className="flex flex-wrap items-start gap-3 rounded-2xl border border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 px-5 py-4"
-        >
-          <WarningFilledIcon className="w-5 h-5 shrink-0 text-amber-500 mt-0.5" aria-hidden="true" />
-          <div className="text-sm flex-1 min-w-0">
-            <p className="font-semibold text-amber-800 dark:text-amber-300">
-              No se pudo cargar la trazabilidad
-            </p>
-            <p className="text-amber-700 dark:text-amber-400/90">
-              El resto del pedido sigue disponible. Intenta de nuevo en unos momentos.
-            </p>
-          </div>
-          <Button
-            type="button"
-            variant="secondary"
-            rounded="full"
-            onClick={() => void refetch()}
-            disabled={isFetching}
-          >
-            <RefreshIcon className="w-3.5 h-3.5" aria-hidden="true" />
-            {isFetching ? "Reintentando..." : "Reintentar"}
-          </Button>
-        </div>
+        <SectionErrorNotice
+          title="No se pudo cargar la trazabilidad"
+          message="El resto del pedido sigue disponible. Intenta de nuevo en unos momentos."
+          onRetry={() => void refetch()}
+          isRetrying={isFetching}
+        />
       </Section>
     );
   }
