@@ -24,18 +24,25 @@ function OpFolioLink({ opId, folio }: { opId: number; folio: string }) {
   );
 }
 
+// Tope de filas que el backend devuelve en cada drill-down (sin paginación).
+const DRILL_DOWN_BACKEND_LIMIT = 20;
+
 /**
  * "Mostrando X de N" (descripción del diálogo): el backend corta cada lista en
  * 20 filas y no hay endpoint para el resto, así que no hay "ver todas".
+ *
+ * Tardías: el backend no expone su total (`ops_terminadas - ops_a_tiempo`
+ * incluye completadas sin fechas, que no son tardías), así que el total sale
+ * de las filas. Con la lista llena puede haber más, y no se afirma un total.
  */
 function getDescription(kind: ProductionOrderKpiDrillDownKind | null, data: ProductionOrderKpis | undefined): string {
   if (!kind || !data) return "Sin OPs para mostrar.";
   let shown = 0;
   let total = 0;
   if (kind === "cumplimiento_a_tiempo" && data.cumplimiento_a_tiempo.disponible) {
-    const kpi = data.cumplimiento_a_tiempo;
-    shown = kpi.drill_down_tardias.length;
-    total = kpi.ops_terminadas - kpi.ops_a_tiempo;
+    shown = data.cumplimiento_a_tiempo.drill_down_tardias.length;
+    if (shown >= DRILL_DOWN_BACKEND_LIMIT) return `Mostrando las ${DRILL_DOWN_BACKEND_LIMIT} más recientes`;
+    total = shown;
   } else if (kind === "ops_atrasadas" && data.ops_atrasadas.disponible) {
     shown = data.ops_atrasadas.drill_down.length;
     total = data.ops_atrasadas.total;

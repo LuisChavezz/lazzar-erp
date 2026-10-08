@@ -37,11 +37,15 @@ export interface ProductionOrderOnTimeAvailable {
   pct: number | null;
   meta: number;
   semaforo: ProductionOrderKpiSemaforo;
+  /** Todas las OPs en estatus Completado, tengan o no fechas. */
   ops_terminadas: number;
+  /** Completadas con `fecha_fin` y `fecha_entrega_estimada`, a tiempo. */
   ops_a_tiempo: number;
   /**
-   * OPs tardías, como MÁXIMO 20 y sin paginación. El total real es
-   * `ops_terminadas - ops_a_tiempo`.
+   * OPs tardías, como MÁXIMO 20 y sin paginación. El total de tardías NO es
+   * `ops_terminadas - ops_a_tiempo`: una completada sin alguna de las dos
+   * fechas cuenta como terminada pero no es ni a tiempo ni tardía, y el backend
+   * no expone ese total.
    */
   drill_down_tardias: ProductionOrderKpiLateOp[];
 }
