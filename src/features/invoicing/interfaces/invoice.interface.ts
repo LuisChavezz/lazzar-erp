@@ -36,9 +36,8 @@ export interface Invoice {
   moneda_nombre: string;
   cliente_nombre: string;
   /**
-   * Correo al que se dirige la factura, resuelto server-side y expuesto
-   * directamente por el serializer (mismo campo en el listado
-   * `GET /finanzas/facturas/` y en el detalle `GET /finanzas/facturas/{id}/`).
+   * Correo al que se dirige la factura, resuelto server-side. Solo lo trae el
+   * retrieve (`GET /finanzas/facturas/{id}/`); el listado no lo incluye.
    * Prioridad server-side: `pedido.correo_facturas` → `cliente.correo` → `null`.
    * Es `null` explícito (no cadena vacía) cuando no hay ninguna fuente de correo
    * disponible; validar presencia antes de habilitar el envío.
@@ -62,4 +61,41 @@ export interface Invoice {
   observaciones: string | null;
   created_at: string; // ISO date string
   updated_at: string; // ISO date string
+}
+
+/**
+ * Fila del listado ligero (`GET /finanzas/facturas/`, `FacturaListSerializer`):
+ * un serializer PROPIO, distinto del retrieve. No trae `factura_detalles` ni
+ * `correo_facturas` (el PDF y el correo piden el retrieve al activarse), ni
+ * `empresa`, `sucursal`, `serie_folio`, `descuento`, `observaciones` o las
+ * fechas de auditoría.
+ *
+ * `activo` es opcional: hoy no viene (el listado incluye eliminadas sin
+ * distinguirlas); cuando venga, el menú oculta "Enviar correo" en las
+ * eliminadas.
+ */
+export interface InvoiceListRow {
+  id: number;
+  folio: string | null;
+  estatus: InvoiceEstatus;
+  fecha_emision: string; // date string (yyyy-mm-dd)
+  /** Fecha-calendario "yyyy-mm-dd"; `null` en las facturas creadas por piezas. */
+  fecha_vencimiento: string | null;
+  pedido: number | null;
+  pedido_folio: string | null;
+  cliente: number;
+  cliente_nombre: string;
+  /** Vendedor de la cotización del pedido. */
+  vendedor: number | null;
+  vendedor_nombre: string | null;
+  /** Total de piezas facturadas. */
+  cantidad: number;
+  /** Precio por pieza sin IVA si todas comparten precio; `null` si varían o no hay renglones. */
+  precio_unitario: string | null;
+  subtotal: string; // numeric string
+  impuestos: string; // numeric string
+  total: string; // numeric string
+  moneda: number;
+  moneda_nombre: string;
+  activo?: boolean;
 }

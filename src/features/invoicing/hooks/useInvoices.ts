@@ -1,11 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
 import { useHasLoadedQuery } from "@/src/hooks/useHasLoadedQuery";
 import { getInvoices } from "../services/actions";
-import { Invoice } from "../interfaces/invoice.interface";
+import type { InvoiceListRow } from "../interfaces/invoice.interface";
 
 export const useInvoices = () => {
   const { data, isLoading, isError, errorUpdatedAt, error, refetch, isFetching } = useQuery<
-    Invoice[]
+    InvoiceListRow[]
   >({
     queryKey: ["invoices"],
     queryFn: getInvoices,
