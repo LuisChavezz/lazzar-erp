@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { FormInput } from "@/src/components/FormInput";
 import { FormSelect } from "@/src/components/FormSelect";
 import { FormTextarea } from "@/src/components/FormTextarea";
@@ -12,11 +13,20 @@ import { useProductivityForm } from "../hooks/useProductivityForm";
 interface ProductivityFormProps {
   onSuccess: () => void;
   recordToEdit?: Productivity | null;
+  /**
+   * Avisa al diálogo contenedor si hay un guardado en curso (guarda de red o
+   * escritura), para que no se pueda cerrar a medias.
+   */
+  onPendingChange?: (pending: boolean) => void;
 }
 
 const OPTION_CLASS = "bg-white dark:bg-zinc-900 text-slate-900 dark:text-white";
 
-export default function ProductivityForm({ onSuccess, recordToEdit }: ProductivityFormProps) {
+export default function ProductivityForm({
+  onSuccess,
+  recordToEdit,
+  onPendingChange,
+}: ProductivityFormProps) {
   const {
     form,
     formRef,
@@ -35,6 +45,12 @@ export default function ProductivityForm({ onSuccess, recordToEdit }: Productivi
     handleReset,
     handleFormSubmit,
   } = useProductivityForm({ onSuccess, recordToEdit });
+
+  // Sincroniza el "en curso" con el diálogo; al desmontarse lo libera.
+  useEffect(() => {
+    onPendingChange?.(isPending);
+  }, [isPending, onPendingChange]);
+  useEffect(() => () => onPendingChange?.(false), [onPendingChange]);
 
   // Un catálogo caído NO se pinta como catálogo vacío: "vacío" exige una carga
   // EXITOSA. Mismo criterio que evaluaciones.
