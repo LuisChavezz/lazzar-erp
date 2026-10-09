@@ -27,9 +27,15 @@ export type PurchaseOrderKpiAmountVisibility = "pending" | "visible" | "no-permi
  * `isLoading`/`isError`: en un refetch del listado —incluso uno fallido— se
  * conserva la última respuesta, así que el estado no parpadea.
  *
- * Cuando el backend aplique el filtro en `kpis`, la condición sobre el listado
- * sobra: basta con que el `monto` del bloque llegue (cada tarjeta ya lo
- * comprueba aparte). Entonces este helper se puede borrar.
+ * OJO: NO es exclusivo de esta pantalla. Los indicadores de Recepciones
+ * (`PurchaseOrderReceiptKpisSection`, `GET /compras/recepciones/kpis/`) lo usan
+ * con la misma señal, porque ese endpoint tiene la misma fuga de importes.
+ *
+ * Cuando el backend aplique el filtro de contabilidad en AMBOS endpoints
+ * (`/compras/ordenes/kpis/` y `/compras/recepciones/kpis/`), la condición sobre
+ * el listado sobra: basta con que el importe del bloque llegue (cada tarjeta ya
+ * lo comprueba aparte). Solo entonces este helper se puede borrar; si se
+ * corrige uno solo, el otro consumidor lo sigue necesitando.
  */
 export const getPurchaseOrderKpiAmountVisibility = ({
   orders,
