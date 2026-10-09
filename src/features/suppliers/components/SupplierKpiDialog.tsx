@@ -7,7 +7,7 @@ import { formatQuantityValue } from "@/src/utils/formatCurrency";
 import { formatKpiPct, plural } from "@/src/utils/kpiFormat";
 import type { SupplierKpiRow, SupplierKpis } from "../interfaces/supplier-kpis.interface";
 import { supplierDetailHref } from "../utils/supplierPurchaseOrderHistoryFilters";
-import { formatKpiDias } from "../utils/supplierKpis";
+import { formatKpiDias, rowsWithAgreedLeadTime } from "../utils/supplierKpis";
 
 /** Tarjetas con drill-down. "Scorecard general" no tiene (ver la sección). */
 export type SupplierKpiDialogKind = "entrega_a_tiempo" | "calidad" | "lead_time";
@@ -26,7 +26,8 @@ const byName = (a: SupplierKpiRow, b: SupplierKpiRow) => a.proveedor_nombre.loca
 function getRows(kind: SupplierKpiDialogKind, rows: SupplierKpiRow[]): SupplierKpiRow[] {
   switch (kind) {
     case "entrega_a_tiempo":
-      return rows
+      // Mismas filas que la tarjeta: solo proveedores con lead time pactado.
+      return rowsWithAgreedLeadTime(rows)
         .filter((row) => row.entrega_a_tiempo.pct !== null)
         .sort((a, b) => (a.entrega_a_tiempo.pct ?? 0) - (b.entrega_a_tiempo.pct ?? 0) || byName(a, b));
     case "calidad":

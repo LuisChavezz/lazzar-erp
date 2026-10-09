@@ -15,7 +15,7 @@ import {
   aggregateQuality,
   aggregateScorecard,
   formatKpiDias,
-  hasAgreedLeadTime,
+  rowsWithAgreedLeadTime,
 } from "../utils/supplierKpis";
 import { SupplierKpiDialog, type SupplierKpiDialogKind } from "./SupplierKpiDialog";
 
@@ -24,7 +24,7 @@ const SECTION_TITLE = "Indicadores";
 /** `proveedores: []`: sin actividad de proveedores (o usuario sin empresa). */
 const NO_ACTIVITY_REASON = "No hay actividad de proveedores para calcular este indicador.";
 
-/** Mientras ninguna fila trae lead time pactado (ver `hasAgreedLeadTime`). */
+/** Ningún proveedor trae lead time pactado (ver `rowsWithAgreedLeadTime`). */
 const NO_DUE_DATE_REASON =
   "Las órdenes de compra no tienen fecha de entrega estimada contra la cual medir la puntualidad.";
 
@@ -42,14 +42,21 @@ const unavailable = (base: Pick<KpiCompactItem, "label" | "icon">, motivo: strin
   unavailableReason: motivo,
 });
 
-/** Entrega a tiempo: recepciones a tiempo sobre recepciones. Sin meta: sin barra ni insignia. */
-function onTimeCard(rows: SupplierKpiRow[], onOpen: () => void): KpiCompactItem {
-  if (!hasAgreedLeadTime(rows)) return unavailable(LABELS.onTime, NO_DUE_DATE_REASON);
-  const { pct, aTiempo, total } = aggregateOnTimeDelivery(rows);
+/**
+ * Entrega a tiempo: recepciones a tiempo sobre recepciones, SOLO de los
+ * proveedores con lead time pactado (`withDueDate`). Sin meta: sin barra ni
+ * insignia.
+ */
+function onTimeCard(withDueDate: SupplierKpiRow[], onOpen: () => void): KpiCompactItem {
+  if (withDueDate.length === 0) return unavailable(LABELS.onTime, NO_DUE_DATE_REASON);
+  const { pct, aTiempo, total } = aggregateOnTimeDelivery(withDueDate);
   return {
     ...LABELS.onTime,
     ...(pct !== null ? { iconClass: "text-sky-500" } : KPI_MUTED_ICON),
     value: formatKpiPctOrDash(pct),
+    info:
+      "Solo cuentan los proveedores con fecha de entrega estimada en sus órdenes de compra; " +
+      "sus recepciones de OCs sin esa fecha cuentan como tardías.",
     hideProgress: true,
     detail: `${formatQuantityValue(aTiempo)} de ${formatQuantityValue(total)} ${plural(total, "recepción", "recepciones")} a tiempo`,
     action: <KpiDrillDownButton label="Por proveedor" ariaLabel="Ver entrega a tiempo por proveedor" isEmpty={total === 0} onClick={onOpen} />,
@@ -82,8 +89,8 @@ function qualityCard(rows: SupplierKpiRow[], onOpen: () => void): KpiCompactItem
  * sabe sobre qué recepciones lo promedia el backend, #388): el detalle dice
  * que no está disponible o remite al drill-down.
  */
-function leadTimeCard(rows: SupplierKpiRow[], onOpen: () => void): KpiCompactItem {
-  const { dias, recepciones, hasPactado } = aggregateLeadTime(rows);
+function leadTimeCard(rows: SupplierKpiRow[], hasPactado: boolean, onOpen: () => void): KpiCompactItem {
+  const { dias, recepciones } = aggregateLeadTime(rows);
   return {
     ...LABELS.leadTime,
     ...(dias !== null ? { iconClass: "text-violet-500" } : KPI_MUTED_ICON),
@@ -105,13 +112,16 @@ function leadTimeCard(rows: SupplierKpiRow[], onOpen: () => void): KpiCompactIte
  * y SIN drill-down: el puntaje se deriva de precios y aún no hay regla de
  * permisos para mostrarlo (backend #377).
  */
-function scorecardCard(rows: SupplierKpiRow[]): KpiCompactItem {
-  if (!hasAgreedLeadTime(rows)) return unavailable(LABELS.scorecard, NO_DUE_DATE_REASON);
-  const { enVerde, evaluados } = aggregateScorecard(rows);
+function scorecardCard(withDueDate: SupplierKpiRow[]): KpiCompactItem {
+  if (withDueDate.length === 0) return unavailable(LABELS.scorecard, NO_DUE_DATE_REASON);
+  const { enVerde, evaluados } = aggregateScorecard(withDueDate);
   return {
     ...LABELS.scorecard,
     ...(evaluados > 0 ? { iconClass: "text-emerald-500" } : KPI_MUTED_ICON),
     value: evaluados > 0 ? `${enVerde} de ${evaluados}` : "—",
+    info:
+      "En verde = puntaje de 80 o más. El puntaje promedia puntualidad, calidad, cumplimiento de " +
+      "cantidad y precio. Solo cuentan los proveedores con fecha de entrega estimada en sus órdenes de compra.",
     hideProgress: true,
     detail: evaluados > 0 ? "en verde" : "Sin proveedores evaluados",
   };
@@ -121,11 +131,14 @@ function buildCards(rows: SupplierKpiRow[], openDialog: (kind: SupplierKpiDialog
   if (rows.length === 0) {
     return Object.values(LABELS).map((base) => unavailable(base, NO_ACTIVITY_REASON));
   }
+  // Una sola vez por render: entrega a tiempo y scorecard usan solo estas
+  // filas, y el lead time solo necesita saber si hay alguna.
+  const withDueDate = rowsWithAgreedLeadTime(rows);
   return [
-    onTimeCard(rows, () => openDialog("entrega_a_tiempo")),
+    onTimeCard(withDueDate, () => openDialog("entrega_a_tiempo")),
     qualityCard(rows, () => openDialog("calidad")),
-    leadTimeCard(rows, () => openDialog("lead_time")),
-    scorecardCard(rows),
+    leadTimeCard(rows, withDueDate.length > 0, () => openDialog("lead_time")),
+    scorecardCard(withDueDate),
   ];
 }
 
