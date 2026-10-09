@@ -25,7 +25,14 @@ const DRILL_DOWN_BACKEND_LIMIT = 20;
  * Descripción del diálogo: el CONTEO de lo que se muestra. Sin filas solo da el
  * total; el "Sin … para mostrar" lo dice el cuerpo (`EmptyLines`).
  */
-function getDescription(kind: PurchaseOrderKpiDialogKind | null, data: PurchaseOrderKpis | undefined): string {
+function getDescription(
+  kind: PurchaseOrderKpiDialogKind | null,
+  data: PurchaseOrderKpis | undefined,
+  showAmounts: boolean,
+): string {
+  // Sin importes visibles no se describe el gasto: ni siquiera cuántas
+  // categorías hay (el cuerpo muestra un aviso neutro).
+  if (kind === "gasto_por_categoria" && !showAmounts) return "Importes no disponibles.";
   if (kind === "ocs_abiertas" && data?.ocs_abiertas.disponible) {
     const { total } = data.ocs_abiertas;
     return `${total} ${plural(total, "OC abierta", "OCs abiertas")} por estatus`;
@@ -174,14 +181,21 @@ export function PurchaseOrderKpiDialog({ open, kind, data, showAmounts, onClose 
         if (!open) onClose();
       }}
       title={kind ? TITLES[kind] : ""}
-      description={getDescription(kind, data)}
+      description={getDescription(kind, data, showAmounts)}
       maxWidth="640px"
     >
       {kind === "ocs_abiertas" && data && <OpenContent kpi={data.ocs_abiertas} showAmounts={showAmounts} />}
       {kind === "ocs_vencidas_sin_recibir" && data && <OverdueContent kpi={data.ocs_vencidas_sin_recibir} />}
-      {/* Sin importes visibles la tarjeta de gasto no ofrece el botón; la guarda
-          cubre un cambio de permiso con el diálogo abierto. */}
-      {kind === "gasto_por_categoria" && data && showAmounts && <SpendContent kpi={data.gasto_por_categoria} />}
+      {/* Sin importes visibles la tarjeta de gasto no ofrece el botón; esta rama
+          cubre que la visibilidad cambie con el diálogo abierto (un refetch del
+          listado): aviso neutro en vez de un cuerpo en blanco. */}
+      {kind === "gasto_por_categoria" &&
+        data &&
+        (showAmounts ? (
+          <SpendContent kpi={data.gasto_por_categoria} />
+        ) : (
+          <EmptyLines>No se pueden mostrar los importes del gasto por categoría.</EmptyLines>
+        ))}
     </MainDialog>
   );
 }
