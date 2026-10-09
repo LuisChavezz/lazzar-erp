@@ -1,17 +1,9 @@
 "use client";
 
-import { memo, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-import {
-  ComprasIcon,
-  ClockIcon,
-  CheckCircleIcon,
-  ErrorIcon,
-  ExportCsvIcon,
-  ExportPdfIcon,
-} from "@/src/components/Icons";
-import KpiGrid, { type KpiItem } from "@/src/components/KpiGrid";
+import { ExportCsvIcon, ExportPdfIcon } from "@/src/components/Icons";
 import {
   DataTable,
   type DataTableHandle,
@@ -31,78 +23,6 @@ import type { PurchaseOrder } from "../interfaces/purchase-order.interface";
 import { PurchaseOrderOnboardingStepManager } from "./PurchaseOrderOnboardingStepManager";
 import { PurchaseOrderEditDialog } from "./PurchaseOrderEditDialog";
 import { PurchaseOrderCancelDialog } from "./PurchaseOrderCancelDialog";
-import {
-  isPurchaseOrderAuthorizedOrComplete,
-  isPurchaseOrderCancelled,
-  isPurchaseOrderPending,
-} from "../constants/purchaseOrderStatus";
-
-// ─── KPIs ────────────────────────────────────────────────────────────────────
-
-const OrderStats = memo(function OrderStats({ items }: { items: PurchaseOrder[] }) {
-  // Las canceladas (estatus 6) siguen en el listado, pero ya no son órdenes
-  // "activas": se excluyen del total y se cuentan aparte en su propia tarjeta.
-  const total = items.filter((o) => !isPurchaseOrderCancelled(o.estatus)).length;
-
-  const pendientes = useMemo(
-    () => items.filter((o) => isPurchaseOrderPending(o.estatus)).length,
-    [items],
-  );
-
-  const autorizadas = useMemo(
-    () => items.filter((o) => isPurchaseOrderAuthorizedOrComplete(o.estatus)).length,
-    [items],
-  );
-
-  const canceladas = useMemo(
-    () => items.filter((o) => isPurchaseOrderCancelled(o.estatus)).length,
-    [items],
-  );
-
-  const kpis = useMemo<KpiItem[]>(
-    () => [
-      {
-        label: "Total Órdenes",
-        value: String(total),
-        icon: ComprasIcon,
-        iconBgClass: "bg-sky-50 dark:bg-sky-500/10",
-        iconClass: "text-sky-500",
-        trendLabel: "Activas",
-        status: "neutral",
-      },
-      {
-        label: "Pendientes",
-        value: String(pendientes),
-        icon: ClockIcon,
-        iconBgClass: "bg-amber-50 dark:bg-amber-500/10",
-        iconClass: "text-amber-500",
-        trendLabel: "Por autorizar",
-        status: "neutral",
-      },
-      {
-        label: "Autorizadas",
-        value: String(autorizadas),
-        icon: CheckCircleIcon,
-        iconBgClass: "bg-emerald-50 dark:bg-emerald-500/10",
-        iconClass: "text-emerald-500",
-        trendLabel: "Completadas o en curso",
-        status: "positive",
-      },
-      {
-        label: "Canceladas",
-        value: String(canceladas),
-        icon: ErrorIcon,
-        iconBgClass: "bg-red-50 dark:bg-red-500/10",
-        iconClass: "text-red-500",
-        trendLabel: "Total registradas",
-        status: "negative",
-      },
-    ],
-    [total, pendientes, autorizadas, canceladas],
-  );
-
-  return <KpiGrid items={kpis} />;
-});
 
 // ─── Vista principal ─────────────────────────────────────────────────────────
 
@@ -264,17 +184,11 @@ export function PurchaseOrderView() {
   );
 
   // Un único `return`: la tabla se monta SIEMPRE (maneja carga/error en su
-  // cuerpo, conservando su toolbar); los KPIs se ocultan durante la carga
-  // INICIAL (`isLoading`) y ante un error de carga (`isError`) —no hay datos
-  // que resumir—. `purchaseOrders` arranca en `[]`, así que sin este gate los
-  // KPIs mostrarían ceros ("Total Órdenes: 0", etc.). En un refetch en segundo
-  // plano (`isFetching`, con datos en caché) `isLoading`/`isError` son false y
-  // los KPIs siguen visibles con los datos previos.
+  // cuerpo, conservando su toolbar). Los indicadores ya no viven aquí: los
+  // monta la página encima de esta vista (`PurchaseOrderKpisSection`), con
+  // consulta propia al backend.
   return (
     <div className="space-y-6">
-      {/* ── KPIs ─────────────────────────────────────────────────────────── */}
-      {!isLoading && !isError && <OrderStats items={purchaseOrders} />}
-
       {/* ── Tabla de órdenes ──────────────────────────────────────────────── */}
       {table}
 
