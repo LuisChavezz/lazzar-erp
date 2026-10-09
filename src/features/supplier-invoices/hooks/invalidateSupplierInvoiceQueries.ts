@@ -1,6 +1,7 @@
 import type { QueryClient } from "@tanstack/react-query";
 import type { FacturaProveedor } from "../interfaces/supplier-invoice.interface";
 import { purchaseOrderReceiptKpisQueryKey } from "@/src/features/purchase-order-receipts/hooks/usePurchaseOrderReceiptKpis";
+import { supplierKpisQueryKey } from "@/src/features/suppliers/hooks/useSupplierKpis";
 
 /**
  * Invalidación compartida por TODAS las escrituras de facturas de proveedor
@@ -36,4 +37,7 @@ export const invalidateSupplierInvoiceQueries = (
     // "Diferencias de precio/costo" de Recepciones compara las partidas de las
     // facturas contra el precio de la OC: alta, edición y cancelación lo mueven.
     queryClient.invalidateQueries({ queryKey: purchaseOrderReceiptKpisQueryKey }),
+    // Los indicadores de proveedores también lo comparan (entra al scorecard),
+    // y su llave no cae bajo `["purchase-orders", oc]`.
+    queryClient.invalidateQueries({ queryKey: supplierKpisQueryKey }),
   ]);
