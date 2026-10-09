@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { updatePurchaseOrder } from "../services/actions";
 import { invalidateReceiptOrderOptions } from "../utils/invalidateReceiptOrderOptions";
+import { purchaseOrderReceiptKpisQueryKey } from "@/src/features/purchase-order-receipts/hooks/usePurchaseOrderReceiptKpis";
 import type { UpdatePurchaseOrderParams } from "../interfaces/purchase-order.interface";
 import { drfFieldMessage, firstDrfFieldMessage } from "@/src/utils/firstDrfFieldMessage";
 import toast from "react-hot-toast";
@@ -53,6 +54,8 @@ export const useUpdatePurchaseOrder = ({
       // pendiente: el selector de OC del alta de recepción no debe seguir
       // ofreciéndola desde su caché con los ids viejos.
       invalidateReceiptOrderOptions(queryClient);
+      // Regresar a pendiente la saca del cumplimiento de cantidad de Recepciones.
+      queryClient.invalidateQueries({ queryKey: purchaseOrderReceiptKpisQueryKey });
       toast.success("Orden de compra actualizada correctamente");
     },
     // Con éxito o con error: un rechazo significa que la fila en caché está

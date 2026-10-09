@@ -4,6 +4,7 @@ import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { drfFieldMessage, firstDrfFieldMessage } from "@/src/utils/firstDrfFieldMessage";
 import { cancelPurchaseOrder } from "../services/actions";
 import { invalidateReceiptOrderOptions } from "../utils/invalidateReceiptOrderOptions";
+import { purchaseOrderReceiptKpisQueryKey } from "@/src/features/purchase-order-receipts/hooks/usePurchaseOrderReceiptKpis";
 
 interface UseCancelPurchaseOrderOptions {
   /**
@@ -42,6 +43,8 @@ export const useCancelPurchaseOrder = ({ onReasonError }: UseCancelPurchaseOrder
       });
       // Una autorizada cancelada deja de ser recibible.
       invalidateReceiptOrderOptions(queryClient);
+      // Cancelar una autorizada la saca del cumplimiento de cantidad de Recepciones.
+      queryClient.invalidateQueries({ queryKey: purchaseOrderReceiptKpisQueryKey });
       toast.success("Orden de compra cancelada correctamente");
     },
     onSettled: () => {

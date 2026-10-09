@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { postPurchaseOrder } from "../services/actions";
+import { purchaseOrderReceiptKpisQueryKey } from "@/src/features/purchase-order-receipts/hooks/usePurchaseOrderReceiptKpis";
 import type { PurchaseOrderOnboardingPayload } from "../interfaces/purchase-order-onboarding.interface";
 import toast from "react-hot-toast";
 import { AxiosError } from "axios";
@@ -15,6 +16,8 @@ export const usePostPurchaseOrder = () => {
       queryClient.invalidateQueries({
         queryKey: ["purchase-order-onboarding"],
       });
+      // Indicadores de Recepciones: cuentan OCs y sus cantidades ordenadas.
+      queryClient.invalidateQueries({ queryKey: purchaseOrderReceiptKpisQueryKey });
     },
     onError: (error) => {
       if (error instanceof AxiosError) {
