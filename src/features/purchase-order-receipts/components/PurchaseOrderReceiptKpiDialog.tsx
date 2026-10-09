@@ -64,19 +64,17 @@ function FulfillmentContent({ kpi }: { kpi: PurchaseOrderReceiptKpis["cumplimien
       {kpi.drill_down.map((row) => (
         <tr key={row.oc_id}>
           <td className={TD_CLASS}>
-            {/* Sin folio, texto plano; con folio, enlace real al detalle de la
-                OC, cuyo "Volver" regresa a esta lista. */}
-            {row.folio ? (
-              <Link
-                href={purchaseOrderDetailHref(row.oc_id, "purchase-order-receipts")}
-                className={FOLIO_LINK_CLASS}
-                title="Ver detalle"
-              >
-                {row.folio}
-              </Link>
-            ) : (
-              <span className="font-mono">{`#${row.oc_id}`}</span>
-            )}
+            {/* Enlace real al detalle de la OC, cuyo "Volver" regresa a esta
+                lista. Sin folio sigue siendo clicable con `#id`, igual que los
+                indicadores de OC y `PedidoFolioLink`: el enlace solo necesita
+                `oc_id`. */}
+            <Link
+              href={purchaseOrderDetailHref(row.oc_id, "purchase-order-receipts")}
+              className={FOLIO_LINK_CLASS}
+              title="Ver detalle"
+            >
+              {row.folio || `#${row.oc_id}`}
+            </Link>
           </td>
           <td className={NUM_TD_CLASS}>{formatQuantityValue(row.cantidad_ordenada)}</td>
           <td className={NUM_TD_CLASS}>{formatQuantityValue(row.cantidad_recibida)}</td>
