@@ -11,8 +11,14 @@ import { SectionErrorNotice } from "@/src/components/SectionErrorNotice";
 import { CheckCircleIcon, ExclamationTriangleIcon, RecepcionesIcon, WalletIcon } from "@/src/components/Icons";
 import { usePurchaseOrders } from "@/src/features/purchase-orders/hooks/usePurchaseOrders";
 import { getPurchaseOrderKpiAmountVisibility } from "@/src/features/purchase-orders/utils/purchaseOrderKpis";
-import { formatMoneyValue, formatQuantityValue, NO_CURRENCY_FORMAT } from "@/src/utils/formatCurrency";
-import { formatKpiMonto, formatKpiPct, plural } from "@/src/utils/kpiFormat";
+import { formatQuantityValue } from "@/src/utils/formatCurrency";
+import {
+  formatKpiMonto,
+  formatKpiPct,
+  formatKpiPctOrDash,
+  formatKpiSignedMonto,
+  plural,
+} from "@/src/utils/kpiFormat";
 import { usePurchaseOrderReceiptKpis } from "../hooks/usePurchaseOrderReceiptKpis";
 import type {
   PurchaseOrderReceiptFulfillmentKpi,
@@ -28,12 +34,6 @@ import {
 
 const SECTION_TITLE = "Indicadores";
 
-/** `pct: null` (denominador 0): guion, nunca un 0%. Mismo criterio que OP. */
-const pctOrDash = (value: number | null): string => (value === null ? "—" : formatKpiPct(value));
-
-/** Diferencia con signo explícito ("+1,250.00" / "-80.00"), sin símbolo de moneda. */
-const formatSignedMonto = (value: number): string =>
-  formatMoneyValue(value, { ...NO_CURRENCY_FORMAT, signDisplay: "exceptZero" });
 
 const unavailable = (
   base: Pick<KpiCompactItem, "label" | "icon">,
@@ -48,7 +48,7 @@ function fulfillmentCard(kpi: PurchaseOrderReceiptFulfillmentKpi, onOpen: () => 
   return {
     ...base,
     ...(kpi.pct !== null ? { iconClass: "text-sky-500" } : KPI_MUTED_ICON),
-    value: pctOrDash(kpi.pct),
+    value: formatKpiPctOrDash(kpi.pct),
     info:
       "Cantidad recibida sobre la ordenada de las OCs Autorizada, Parcialmente recibida y Recibida. " +
       "Suma las cantidades de todos los productos sin distinguir unidad de medida, así que una OC con " +
@@ -73,7 +73,7 @@ function partialCard(kpi: PurchaseOrderReceiptPartialKpi): KpiCompactItem {
   return {
     ...base,
     ...(kpi.pct !== null ? { iconClass: "text-orange-500" } : KPI_MUTED_ICON),
-    value: pctOrDash(kpi.pct),
+    value: formatKpiPctOrDash(kpi.pct),
     hideProgress: true,
     detail: `${kpi.ocs_parciales} de ${kpi.ocs_recibidas_o_parciales} ${plural(
       kpi.ocs_recibidas_o_parciales,
@@ -103,14 +103,14 @@ function priceCard(kpi: PurchaseOrderReceiptPriceKpi, showAmounts: boolean, onOp
     return {
       ...common,
       ...(kpi.diferencia !== 0 ? { iconClass: "text-amber-500" } : {}),
-      value: formatSignedMonto(kpi.diferencia),
+      value: formatKpiSignedMonto(kpi.diferencia),
       // `pct: null` (nada pactado contra qué comparar): sin línea de detalle.
       detail: kpi.pct === null ? undefined : `${formatKpiPct(kpi.pct)} sobre lo pactado en la OC`,
     };
   }
   return {
     ...common,
-    value: pctOrDash(kpi.pct),
+    value: formatKpiPctOrDash(kpi.pct),
     detail: kpi.pct === null ? undefined : "Sobre lo pactado en la OC",
   };
 }

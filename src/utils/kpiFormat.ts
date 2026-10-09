@@ -15,8 +15,28 @@ import { formatPercentageNumber } from "@/src/utils/percentage";
  */
 export const formatKpiMonto = (value: number): string => formatMoneyValue(value, NO_CURRENCY_FORMAT);
 
+/**
+ * Importe con signo explícito ("+1,250.00" / "-80.00" / "0.00"), sin símbolo:
+ * para diferencias, donde el signo ES el dato.
+ */
+export const formatKpiSignedMonto = (value: number): string =>
+  formatMoneyValue(value, { ...NO_CURRENCY_FORMAT, signDisplay: "exceptZero" });
+
 /** Porcentaje del backend (0–100, 1 decimal) como "25.0%": siempre con su decimal. */
 export const formatKpiPct = (value: number): string => `${formatPercentageNumber(value, 1)}%`;
+
+/** Como `formatKpiPct`, pero `null` (denominador 0) → "—", nunca un 0%. */
+export const formatKpiPctOrDash = (value: number | null): string =>
+  value === null ? "—" : formatKpiPct(value);
+
+/**
+ * Porcentaje con signo explícito ("+3.0%" / "-1.5%" / "0.0%") para
+ * variaciones; `null` → "—".
+ */
+export const formatKpiSignedPctOrDash = (value: number | null): string => {
+  if (value === null) return "—";
+  return value > 0 ? `+${formatKpiPct(value)}` : formatKpiPct(value);
+};
 
 const DATE_FORMAT: Intl.DateTimeFormatOptions = { day: "2-digit", month: "2-digit", year: "numeric" };
 
