@@ -4,7 +4,7 @@ import Link from "next/link";
 import { MainDialog } from "@/src/components/MainDialog";
 import { EmptyLines, LineItemsTable, textOrDash } from "@/src/components/DetailDialogPrimitives";
 import { purchaseOrderDetailHref } from "@/src/features/purchase-orders/constants/purchaseOrderDetailOrigins";
-import { formatQuantityValue } from "@/src/utils/formatCurrency";
+import { formatMoneyValue, formatQuantityValue, NO_CURRENCY_FORMAT } from "@/src/utils/formatCurrency";
 import { formatKpiMonto, formatKpiPct, plural } from "@/src/utils/kpiFormat";
 import type { PurchaseOrderReceiptKpis } from "../interfaces/purchase-order-receipt-kpis.interface";
 
@@ -127,7 +127,12 @@ function PriceContent({
             <>
               <td className={NUM_TD_CLASS}>{montoOrDash(row.precio_unitario)}</td>
               <td className={NUM_TD_CLASS}>{montoOrDash(row.oc_detalle__precio)}</td>
-              <td className={NUM_TD_CLASS}>{montoOrDash(row.diferencia_linea)}</td>
+              {/* Con signo, igual que la tarjeta. */}
+              <td className={NUM_TD_CLASS}>
+                {row.diferencia_linea === undefined
+                  ? "—"
+                  : formatMoneyValue(row.diferencia_linea, { ...NO_CURRENCY_FORMAT, signDisplay: "exceptZero" })}
+              </td>
             </>
           )}
         </tr>
