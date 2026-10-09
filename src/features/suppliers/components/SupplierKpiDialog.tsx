@@ -8,6 +8,7 @@ import { formatKpiPct, plural } from "@/src/utils/kpiFormat";
 import type { SupplierKpiRow, SupplierKpis } from "../interfaces/supplier-kpis.interface";
 import { supplierDetailHref } from "../utils/supplierPurchaseOrderHistoryFilters";
 import { formatKpiDias, rowsWithAgreedLeadTime } from "../utils/supplierKpis";
+import { useSuppliers } from "../hooks/useSuppliers";
 
 /** Tarjetas con drill-down. "Scorecard general" no tiene (ver la sección). */
 export type SupplierKpiDialogKind = "entrega_a_tiempo" | "calidad" | "lead_time";
@@ -18,6 +19,11 @@ const NAME_LINK_CLASS =
 const TH_CLASS = "px-3 py-2 font-semibold";
 const TD_CLASS = "px-3 py-2 text-slate-600 dark:text-slate-300";
 const NUM_TD_CLASS = `${TD_CLASS} text-right tabular-nums whitespace-nowrap`;
+
+// Tope de filas del payload. El backend no avisa si recortó, así que con la
+// lista llena solo se puede decir que PUEDE haber más (mismo texto que los
+// indicadores de recepciones).
+const KPI_BACKEND_LIMIT = 50;
 
 // Las filas con la métrica de la tarjeta en `null` no aportan nada al
 // indicador: se excluyen. Orden: el peor primero; empates por nombre.
@@ -45,20 +51,27 @@ function getRows(kind: SupplierKpiDialogKind, rows: SupplierKpiRow[]): SupplierK
 }
 
 /**
- * Proveedor como enlace real a su detalle. Solo hay proveedores con actividad,
- * pero uno dado de baja después sigue apareciendo y su detalle responde 404.
+ * Proveedor como enlace real a su detalle, solo si está en el listado activo
+ * (`["suppliers"]`, el mismo que carga la tabla de esta página): el payload
+ * no filtra bajas, y el detalle de un proveedor dado de baja responde 404.
+ * Mientras el listado no ha cargado, el nombre va en texto plano.
  */
-function SupplierCell({ row }: { row: SupplierKpiRow }) {
+function SupplierCell({ row, linkable }: { row: SupplierKpiRow; linkable: boolean }) {
+  const name = row.proveedor_nombre || `#${row.proveedor_id}`;
   return (
     <td className={TD_CLASS}>
-      <Link href={supplierDetailHref(row.proveedor_id)} className={NAME_LINK_CLASS} title="Ver detalle">
-        {row.proveedor_nombre || `#${row.proveedor_id}`}
-      </Link>
+      {linkable ? (
+        <Link href={supplierDetailHref(row.proveedor_id)} className={NAME_LINK_CLASS} title="Ver detalle">
+          {name}
+        </Link>
+      ) : (
+        <span className="font-medium text-slate-700 dark:text-slate-200">{name}</span>
+      )}
     </td>
   );
 }
 
-function OnTimeTable({ rows }: { rows: SupplierKpiRow[] }) {
+function OnTimeTable({ rows, activeIds }: { rows: SupplierKpiRow[]; activeIds: Set<number> }) {
   return (
     <LineItemsTable
       head={
@@ -72,7 +85,7 @@ function OnTimeTable({ rows }: { rows: SupplierKpiRow[] }) {
     >
       {rows.map((row) => (
         <tr key={row.proveedor_id}>
-          <SupplierCell row={row} />
+          <SupplierCell row={row} linkable={activeIds.has(row.proveedor_id)} />
           <td className={NUM_TD_CLASS}>{formatQuantityValue(row.entrega_a_tiempo.recepciones_a_tiempo)}</td>
           <td className={NUM_TD_CLASS}>{formatQuantityValue(row.entrega_a_tiempo.recepciones_total)}</td>
           <td className={NUM_TD_CLASS}>{formatKpiPct(row.entrega_a_tiempo.pct ?? 0)}</td>
@@ -82,7 +95,7 @@ function OnTimeTable({ rows }: { rows: SupplierKpiRow[] }) {
   );
 }
 
-function QualityTable({ rows }: { rows: SupplierKpiRow[] }) {
+function QualityTable({ rows, activeIds }: { rows: SupplierKpiRow[]; activeIds: Set<number> }) {
   return (
     <LineItemsTable
       head={
@@ -96,7 +109,7 @@ function QualityTable({ rows }: { rows: SupplierKpiRow[] }) {
     >
       {rows.map((row) => (
         <tr key={row.proveedor_id}>
-          <SupplierCell row={row} />
+          <SupplierCell row={row} linkable={activeIds.has(row.proveedor_id)} />
           <td className={NUM_TD_CLASS}>{formatQuantityValue(row.calidad.cantidad_rechazada)}</td>
           <td className={NUM_TD_CLASS}>{formatQuantityValue(row.calidad.cantidad_inspeccionada)}</td>
           <td className={NUM_TD_CLASS}>{formatKpiPct(row.calidad.pct_rechazado ?? 0)}</td>
@@ -106,7 +119,7 @@ function QualityTable({ rows }: { rows: SupplierKpiRow[] }) {
   );
 }
 
-function LeadTimeTable({ rows }: { rows: SupplierKpiRow[] }) {
+function LeadTimeTable({ rows, activeIds }: { rows: SupplierKpiRow[]; activeIds: Set<number> }) {
   return (
     <LineItemsTable
       head={
@@ -119,7 +132,7 @@ function LeadTimeTable({ rows }: { rows: SupplierKpiRow[] }) {
     >
       {rows.map((row) => (
         <tr key={row.proveedor_id}>
-          <SupplierCell row={row} />
+          <SupplierCell row={row} linkable={activeIds.has(row.proveedor_id)} />
           <td className={NUM_TD_CLASS}>{formatKpiDias(row.lead_time.dias_promedio_real)}</td>
           <td className={NUM_TD_CLASS}>{formatKpiDias(row.lead_time.dias_promedio_pactado)}</td>
         </tr>
@@ -158,11 +171,16 @@ interface SupplierKpiDialogProps {
  * `diferencia_precio` ni `puntaje`, que se derivan de precios (backend #377).
  */
 export function SupplierKpiDialog({ open, kind, data, onClose }: SupplierKpiDialogProps) {
+  const { suppliers } = useSuppliers();
+  const activeIds = new Set(suppliers.map((supplier) => supplier.id));
   const rows = kind && data ? getRows(kind, data.proveedores) : [];
+  const shown = `${rows.length} ${plural(rows.length, "proveedor", "proveedores")}, el peor primero`;
   const description =
     rows.length === 0
       ? "Sin proveedores que mostrar"
-      : `${rows.length} ${plural(rows.length, "proveedor", "proveedores")}, el peor primero`;
+      : data && data.proveedores.length >= KPI_BACKEND_LIMIT
+        ? `Mostrando ${shown}; puede haber más`
+        : shown;
   return (
     <MainDialog
       open={open}
@@ -174,9 +192,9 @@ export function SupplierKpiDialog({ open, kind, data, onClose }: SupplierKpiDial
       maxWidth="760px"
     >
       {kind && rows.length === 0 && <EmptyLines>{EMPTY_TEXT[kind]}</EmptyLines>}
-      {kind === "entrega_a_tiempo" && rows.length > 0 && <OnTimeTable rows={rows} />}
-      {kind === "calidad" && rows.length > 0 && <QualityTable rows={rows} />}
-      {kind === "lead_time" && rows.length > 0 && <LeadTimeTable rows={rows} />}
+      {kind === "entrega_a_tiempo" && rows.length > 0 && <OnTimeTable rows={rows} activeIds={activeIds} />}
+      {kind === "calidad" && rows.length > 0 && <QualityTable rows={rows} activeIds={activeIds} />}
+      {kind === "lead_time" && rows.length > 0 && <LeadTimeTable rows={rows} activeIds={activeIds} />}
     </MainDialog>
   );
 }
