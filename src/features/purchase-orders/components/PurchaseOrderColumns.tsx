@@ -108,13 +108,12 @@ const FolioCell = ({
   const isAuthorizedOrBeyond = isPurchaseOrderAuthorizedOrComplete(order.estatus);
 
   // La visibilidad de importes NO se comprueba aquí, aunque correo/PDF/edición
-  // la necesiten: `order` es una fila del LISTADO, y el backend aplica su filtro
-  // de contabilidad SOLO en el retrieve (`compras/api/views.py`,
-  // `filtrar_campos_contabilidad_orden_compra` cuelga de `retrieve()`, no de
-  // `list()`), así que en el listado `gran_total` SIEMPRE viene presente. Un
-  // `order.gran_total !== undefined` aquí sería permanentemente `true` —código
-  // muerto que aparentaba proteger sin proteger—. La guarda real vive donde el
-  // detalle SÍ está filtrado: los hooks de correo/PDF (`canSeeAmounts` tras su
+  // la necesiten: la decisión se toma sobre el DETALLE recién consultado, no
+  // sobre esta fila del listado. El backend filtra los campos de contabilidad
+  // tanto en `list()` como en `retrieve()` (`compras/api/views.py`,
+  // `filtrar_campos_contabilidad_orden_compra`), así que la fila también llega
+  // sin `gran_total` para quien no tiene permiso; aun así la guarda vive donde
+  // se arma el documento: los hooks de correo/PDF (`canSeeAmounts` tras su
   // `fetchQuery`) y el wizard de edición (`PurchaseOrderEditStepManager`).
 
   // "Enviar correo" requiere además un correo del proveedor al que enviar.
