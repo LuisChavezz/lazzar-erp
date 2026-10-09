@@ -1,4 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { purchaseOrderKpisQueryKey } from "./usePurchaseOrderKpis";
 import { deletePurchaseOrder } from "../services/actions";
 import toast from "react-hot-toast";
 import { AxiosError } from "axios";
@@ -10,6 +11,8 @@ export const useDeletePurchaseOrder = () => {
     mutationFn: (pk: number) => deletePurchaseOrder(pk),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["purchase-orders"] });
+      // Cambia estatus o importes que cuentan los indicadores (llave aparte).
+      queryClient.invalidateQueries({ queryKey: purchaseOrderKpisQueryKey });
       toast.success("Orden de compra eliminada correctamente");
     },
     onError: (error) => {
