@@ -6,7 +6,7 @@ import { KpiDrillDownButton } from "@/src/components/KpiDrillDownButton";
 import { SectionErrorNotice } from "@/src/components/SectionErrorNotice";
 import { ClockIcon, EmbarquesIcon, ShieldCheckIcon, StarIcon } from "@/src/components/Icons";
 import { formatQuantityValue } from "@/src/utils/formatCurrency";
-import { formatKpiPctOrDash, plural } from "@/src/utils/kpiFormat";
+import { formatKpiDias, formatKpiPctOrDash, plural } from "@/src/utils/kpiFormat";
 import { useSupplierKpis } from "../hooks/useSupplierKpis";
 import type { SupplierKpiRow } from "../interfaces/supplier-kpis.interface";
 import {
@@ -14,7 +14,6 @@ import {
   aggregateOnTimeDelivery,
   aggregateQuality,
   aggregateScorecard,
-  formatKpiDias,
   rowsWithAgreedLeadTime,
 } from "../utils/supplierKpis";
 import { SupplierKpiDialog, type SupplierKpiDialogKind } from "./SupplierKpiDialog";
@@ -68,7 +67,8 @@ function qualityCard(rows: SupplierKpiRow[], onOpen: () => void): KpiCompactItem
   const { pct, rechazada, inspeccionada } = aggregateQuality(rows);
   return {
     ...LABELS.quality,
-    ...(pct !== null && pct > 0 ? { iconClass: "text-red-500" } : KPI_MUTED_ICON),
+    // Sin meta: color neutro (el rojo se leería como "fuera de meta").
+    ...(pct !== null ? { iconClass: "text-sky-500" } : KPI_MUTED_ICON),
     value: formatKpiPctOrDash(pct),
     info:
       "Porcentaje rechazado en las inspecciones de Calidad sobre lo inspeccionado. " +

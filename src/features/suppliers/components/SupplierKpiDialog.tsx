@@ -4,10 +4,10 @@ import Link from "next/link";
 import { MainDialog } from "@/src/components/MainDialog";
 import { EmptyLines, LineItemsTable } from "@/src/components/DetailDialogPrimitives";
 import { formatQuantityValue } from "@/src/utils/formatCurrency";
-import { formatKpiPct, plural } from "@/src/utils/kpiFormat";
+import { formatKpiDias, formatKpiPct, plural } from "@/src/utils/kpiFormat";
 import type { SupplierKpiRow, SupplierKpis } from "../interfaces/supplier-kpis.interface";
 import { supplierDetailHref } from "../utils/supplierPurchaseOrderHistoryFilters";
-import { formatKpiDias, rowsWithAgreedLeadTime } from "../utils/supplierKpis";
+import { rowsWithAgreedLeadTime } from "../utils/supplierKpis";
 import { useSuppliers } from "../hooks/useSuppliers";
 
 /** Tarjetas con drill-down. "Scorecard general" no tiene (ver la sección). */
