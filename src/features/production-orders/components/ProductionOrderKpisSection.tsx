@@ -24,7 +24,7 @@ import type {
   ProductionOrderOverdueKpi,
 } from "../interfaces/production-order-kpis.interface";
 import { formatQuantityValue } from "@/src/utils/formatCurrency";
-import { formatKpiPct } from "../utils/productionOrderKpiFormat";
+import { formatKpiPct } from "@/src/utils/kpiFormat";
 import {
   ProductionOrderKpiDrillDownDialog,
   type ProductionOrderKpiDrillDownKind,

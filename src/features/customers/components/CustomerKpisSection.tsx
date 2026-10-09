@@ -11,7 +11,7 @@ import { KpiDrillDownButton } from "@/src/components/KpiDrillDownButton";
 import { SectionErrorNotice } from "@/src/components/SectionErrorNotice";
 import { ClientesIcon, ReceiptIcon, TrendingUpIcon, WalletIcon } from "@/src/components/Icons";
 import { useCustomerKpis } from "../hooks/useCustomerKpis";
-import { formatKpiMonto, formatKpiPct, plural } from "../utils/customerKpiFormat";
+import { formatKpiMonto, formatKpiPct, plural } from "@/src/utils/kpiFormat";
 import type {
   CustomerActiveKpi,
   CustomerCarteraKpi,

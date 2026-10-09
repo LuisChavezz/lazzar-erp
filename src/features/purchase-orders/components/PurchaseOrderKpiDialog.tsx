@@ -7,7 +7,7 @@ import { StatusBadge } from "@/src/components/StatusBadge";
 import { purchaseOrderStatusEntry } from "../constants/purchaseOrderStatus";
 import { purchaseOrderDetailHref } from "../constants/purchaseOrderDetailOrigins";
 import type { PurchaseOrderKpis } from "../interfaces/purchase-order-kpis.interface";
-import { formatKpiDate, formatKpiMonto, plural } from "../utils/purchaseOrderKpis";
+import { formatKpiDate, formatKpiMonto, plural } from "@/src/utils/kpiFormat";
 
 /** Bloques con detalle: dos desgloses del propio payload y un drill-down. */
 export type PurchaseOrderKpiDialogKind = "ocs_abiertas" | "ocs_vencidas_sin_recibir" | "gasto_por_categoria";

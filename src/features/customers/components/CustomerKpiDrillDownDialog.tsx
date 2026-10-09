@@ -4,7 +4,7 @@ import Link from "next/link";
 import { MainDialog } from "@/src/components/MainDialog";
 import { EmptyLines, LineItemsTable } from "@/src/components/DetailDialogPrimitives";
 import type { CustomerKpis } from "../interfaces/customer-kpis.interface";
-import { formatKpiDate, formatKpiMonto, formatKpiPct, plural } from "../utils/customerKpiFormat";
+import { formatKpiDate, formatKpiMonto, formatKpiPct, plural } from "@/src/utils/kpiFormat";
 
 /** Bloques con drill-down (`clientes_activos` no lo tiene: el backend no dice cuáles). */
 export type CustomerKpiDrillDownKind = "ventas_por_cliente" | "cartera_antiguedad";
