@@ -4,8 +4,8 @@ import Link from "next/link";
 import { MainDialog } from "@/src/components/MainDialog";
 import { EmptyLines, LineItemsTable, textOrDash } from "@/src/components/DetailDialogPrimitives";
 import { purchaseOrderDetailHref } from "@/src/features/purchase-orders/constants/purchaseOrderDetailOrigins";
-import { formatMoneyValue, formatQuantityValue, NO_CURRENCY_FORMAT } from "@/src/utils/formatCurrency";
-import { formatKpiMonto, formatKpiPct, plural } from "@/src/utils/kpiFormat";
+import { formatMoneyValueOrDash, formatQuantityValue, NO_CURRENCY_FORMAT } from "@/src/utils/formatCurrency";
+import { formatKpiPctOrDash, formatKpiSignedMonto, plural } from "@/src/utils/kpiFormat";
 import type { PurchaseOrderReceiptKpis } from "../interfaces/purchase-order-receipt-kpis.interface";
 
 /** Bloques con drill-down (`recepciones_parciales` no lo tiene). */
@@ -22,11 +22,6 @@ const NUM_TD_CLASS = `${TD_CLASS} text-right tabular-nums whitespace-nowrap`;
 // la lista llena solo se puede decir que PUEDE haber más.
 const DRILL_DOWN_BACKEND_LIMIT = 20;
 
-const pctOrDash = (value: number | null): string => (value === null ? "—" : formatKpiPct(value));
-
-/** Importe opcional: ausente o `null` → "—" (nunca un 0.00 engañoso). */
-const montoOrDash = (value: number | null | undefined): string =>
-  value === null || value === undefined ? "—" : formatKpiMonto(value);
 
 /**
  * Descripción del diálogo: el CONTEO de lo que se muestra. Sin filas solo da el
@@ -85,7 +80,7 @@ function FulfillmentContent({ kpi }: { kpi: PurchaseOrderReceiptKpis["cumplimien
           </td>
           <td className={NUM_TD_CLASS}>{formatQuantityValue(row.cantidad_ordenada)}</td>
           <td className={NUM_TD_CLASS}>{formatQuantityValue(row.cantidad_recibida)}</td>
-          <td className={NUM_TD_CLASS}>{pctOrDash(row.pct)}</td>
+          <td className={NUM_TD_CLASS}>{formatKpiPctOrDash(row.pct)}</td>
         </tr>
       ))}
     </LineItemsTable>
@@ -125,13 +120,11 @@ function PriceContent({
           <td className={TD_CLASS}>{textOrDash(row.oc_detalle__producto__nombre)}</td>
           {showAmounts && (
             <>
-              <td className={NUM_TD_CLASS}>{montoOrDash(row.precio_unitario)}</td>
-              <td className={NUM_TD_CLASS}>{montoOrDash(row.oc_detalle__precio)}</td>
+              <td className={NUM_TD_CLASS}>{formatMoneyValueOrDash(row.precio_unitario, NO_CURRENCY_FORMAT)}</td>
+              <td className={NUM_TD_CLASS}>{formatMoneyValueOrDash(row.oc_detalle__precio, NO_CURRENCY_FORMAT)}</td>
               {/* Con signo, igual que la tarjeta. */}
               <td className={NUM_TD_CLASS}>
-                {row.diferencia_linea === undefined
-                  ? "—"
-                  : formatMoneyValue(row.diferencia_linea, { ...NO_CURRENCY_FORMAT, signDisplay: "exceptZero" })}
+                {row.diferencia_linea === undefined ? "—" : formatKpiSignedMonto(row.diferencia_linea)}
               </td>
             </>
           )}
@@ -170,7 +163,7 @@ function RejectedContent({
           <td className={TD_CLASS}>{textOrDash(row.recepcion_detalle__producto__nombre)}</td>
           <td className={NUM_TD_CLASS}>{formatQuantityValue(row.cantidad_rechazada)}</td>
           {/* `valor_linea` es `null` en recepciones de producción. */}
-          {showAmounts && <td className={NUM_TD_CLASS}>{montoOrDash(row.valor_linea)}</td>}
+          {showAmounts && <td className={NUM_TD_CLASS}>{formatMoneyValueOrDash(row.valor_linea, NO_CURRENCY_FORMAT)}</td>}
           <td className={TD_CLASS}>{textOrDash(row.motivo_rechazo)}</td>
         </tr>
       ))}
