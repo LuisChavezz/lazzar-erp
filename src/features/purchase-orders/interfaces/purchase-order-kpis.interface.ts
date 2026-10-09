@@ -2,8 +2,10 @@ import type { KpiUntypedBlock } from "@/src/components/KpiGrid";
 
 /**
  * `GET /compras/ordenes/kpis/` (EC-432): indicadores de órdenes de compra que
- * CALCULA el backend en cada lectura. Aquí no se recalcula nada; la UI pinta
- * los valores tal cual.
+ * CALCULA el backend en cada lectura. La UI pinta sus valores tal cual, con UNA
+ * excepción deliberada: el valor de la tarjeta "Gasto por categoría" es la suma
+ * en el cliente de `gasto_por_categoria.categorias[].monto`, porque el backend
+ * no expone ese total.
  *
  * Sin parámetros (cualquiera se ignora), todo el histórico, sin metas ni
  * semáforo. Cada bloque es una unión discriminada sobre `disponible`:
