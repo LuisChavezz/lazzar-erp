@@ -178,16 +178,51 @@ function rejectedCard(kpi: PurchaseOrderReceiptRejectedKpi, showAmounts: boolean
   };
 }
 
+/**
+ * Tarjeta en espera de la señal de importes (`pending`): título e icono, y un
+ * marcador de carga en el lugar del valor, sin acción ni detalle. Así nunca se
+ * pinta primero en un modo (porcentaje/cantidad) y luego cambia al otro
+ * (importe). El marcador va como `value` —`KpiCompactItem` admite un nodo en
+ * línea—, sin tocar `KpiGrid`.
+ */
+function pendingAmountCard(base: Pick<KpiCompactItem, "label" | "icon">): KpiCompactItem {
+  return {
+    ...base,
+    ...KPI_MUTED_ICON,
+    value: (
+      <span
+        role="status"
+        aria-label={`Cargando ${base.label}`}
+        className="inline-block h-6 w-28 align-middle rounded-md bg-slate-100 dark:bg-slate-800 animate-pulse"
+      />
+    ),
+    hideProgress: true,
+  };
+}
+
 function buildCards(
   data: PurchaseOrderReceiptKpis,
-  visibility: Exclude<PurchaseOrderKpiAmountVisibility, "pending">,
+  visibility: PurchaseOrderKpiAmountVisibility,
   openDialog: (kind: PurchaseOrderReceiptKpiDialogKind) => void,
 ): KpiCompactItem[] {
+  // Cumplimiento y parciales no tienen importes: se pintan en cuanto llegan los
+  // KPIs. Las otras dos esperan, cada una con su propio marcador, a que el
+  // listado de OC diga si se pueden ver importes. Un bloque no disponible no
+  // espera: no tiene nada que decidir.
+  const waits = visibility === "pending";
   return [
     fulfillmentCard(data.cumplimiento_cantidad, () => openDialog("cumplimiento_cantidad")),
     partialCard(data.recepciones_parciales),
-    priceCard(data.diferencia_precio, visibility, () => openDialog("diferencia_precio")),
-    rejectedCard(data.material_rechazado, visibility === "visible", () => openDialog("material_rechazado")),
+    waits && data.diferencia_precio.disponible
+      ? pendingAmountCard({ label: "Diferencias de precio/costo", icon: WalletIcon })
+      : priceCard(
+          data.diferencia_precio,
+          visibility === "pending" ? "undetermined" : visibility,
+          () => openDialog("diferencia_precio"),
+        ),
+    waits && data.material_rechazado.disponible
+      ? pendingAmountCard({ label: "Material rechazado", icon: ExclamationTriangleIcon })
+      : rejectedCard(data.material_rechazado, visibility === "visible", () => openDialog("material_rechazado")),
   ];
 }
 
@@ -201,8 +236,9 @@ function buildCards(
  * tabla de recepciones. Los importes siguen la MISMA regla que los indicadores
  * de OC (`getPurchaseOrderKpiAmountVisibility`, parche por el backend): el
  * listado de OC (`usePurchaseOrders`, misma llave y caché que en la página de
- * OC) se lee SOLO como señal de permiso, y mientras no responde la sección
- * sigue en skeleton. Porcentajes y cantidades se muestran siempre. Sin gate de
+ * OC) se lee SOLO como señal de permiso; mientras no responde, solo las dos
+ * tarjetas con importes esperan con su propio marcador. Porcentajes y
+ * cantidades se muestran siempre. Sin gate de
  * permiso: la ruta ya exige `R-COMPRAS-RECEP` (`routePermissions`).
  */
 export function PurchaseOrderReceiptKpisSection() {
@@ -225,10 +261,9 @@ export function PurchaseOrderReceiptKpisSection() {
   };
 
   let body: ReactNode;
-  // Con el listado de OC aún sin responder se sigue en skeleton (como en la
-  // primera carga de los KPIs): así no se pinta una tarjeta sin importes que
-  // luego los "aparece".
-  if (data && amountVisibility !== "pending") {
+  // Las tarjetas se pintan en cuanto llegan los KPIs; las que dependen de
+  // importes esperan aparte a la señal del listado de OC (ver `buildCards`).
+  if (data) {
     body = <KpiGrid compact items={buildCards(data, amountVisibility, openDialog)} />;
   } else if (isInitialError) {
     body = (
