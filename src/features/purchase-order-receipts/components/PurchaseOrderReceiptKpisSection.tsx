@@ -10,13 +10,16 @@ import { KpiDrillDownButton } from "@/src/components/KpiDrillDownButton";
 import { SectionErrorNotice } from "@/src/components/SectionErrorNotice";
 import { CheckCircleIcon, ExclamationTriangleIcon, RecepcionesIcon, WalletIcon } from "@/src/components/Icons";
 import { usePurchaseOrders } from "@/src/features/purchase-orders/hooks/usePurchaseOrders";
-import { getPurchaseOrderKpiAmountVisibility } from "@/src/features/purchase-orders/utils/purchaseOrderKpis";
+import {
+  getPurchaseOrderKpiAmountVisibility,
+  type PurchaseOrderKpiAmountVisibility,
+} from "@/src/features/purchase-orders/utils/purchaseOrderKpis";
 import { formatQuantityValue } from "@/src/utils/formatCurrency";
 import {
   formatKpiMonto,
-  formatKpiPct,
   formatKpiPctOrDash,
   formatKpiSignedMonto,
+  formatKpiSignedPctOrDash,
   plural,
 } from "@/src/utils/kpiFormat";
 import { usePurchaseOrderReceiptKpis } from "../hooks/usePurchaseOrderReceiptKpis";
@@ -84,10 +87,29 @@ function partialCard(kpi: PurchaseOrderReceiptPartialKpi): KpiCompactItem {
 }
 
 /**
- * Diferencias de precio/costo: la diferencia con signo si se pueden ver
- * importes; si no, solo el porcentaje (que no revela montos).
+ * Por qué una tarjeta muestra porcentaje o cantidad en lugar de importe (ver
+ * `getPurchaseOrderKpiAmountVisibility`). Mismo reparto que "Gasto por
+ * categoría" de los indicadores de OC: el motivo de permiso solo cuando es
+ * cierto.
  */
-function priceCard(kpi: PurchaseOrderReceiptPriceKpi, showAmounts: boolean, onOpen: () => void): KpiCompactItem {
+const HIDDEN_AMOUNTS_REASON: Record<Exclude<PurchaseOrderKpiAmountVisibility, "visible" | "pending">, string> = {
+  "no-permission": "No tienes permiso para ver los importes de compras.",
+  undetermined: "No se pudo verificar si puedes ver los importes de compras.",
+};
+
+/**
+ * Diferencias de precio/costo: la diferencia con signo si se pueden ver
+ * importes; si no, el porcentaje con signo (que no revela montos), con un ⓘ que
+ * dice por qué. Con `pct: null` (nada pactado contra qué comparar) muestra "—"
+ * en ambos modos: un "0.00" se leería como "sin diferencias". El icono se
+ * enciende con cualquier diferencia en ambos modos: la alerta no depende del
+ * permiso.
+ */
+function priceCard(
+  kpi: PurchaseOrderReceiptPriceKpi,
+  visibility: Exclude<PurchaseOrderKpiAmountVisibility, "pending">,
+  onOpen: () => void,
+): KpiCompactItem {
   const base = { label: "Diferencias de precio/costo", icon: WalletIcon };
   if (!kpi.disponible) return unavailable(base, kpi.motivo);
   const action = (
@@ -99,23 +121,38 @@ function priceCard(kpi: PurchaseOrderReceiptPriceKpi, showAmounts: boolean, onOp
     />
   );
   const common = { ...base, ...KPI_MUTED_ICON, hideProgress: true, action };
-  if (showAmounts && kpi.diferencia !== undefined) {
+  const showAmount = visibility === "visible" && kpi.diferencia !== undefined;
+  // Sin importe a la vista, el ⓘ dice por qué (un `diferencia` ausente con
+  // `visible` cuenta como no verificado).
+  const hiddenInfo = showAmount
+    ? {}
+    : { info: HIDDEN_AMOUNTS_REASON[visibility === "no-permission" ? "no-permission" : "undetermined"] };
+  if (kpi.pct === null) {
+    return { ...common, ...hiddenInfo, value: "—" };
+  }
+  const amber = { iconClass: "text-amber-500" };
+  if (showAmount && kpi.diferencia !== undefined) {
     return {
       ...common,
-      ...(kpi.diferencia !== 0 ? { iconClass: "text-amber-500" } : {}),
+      ...(kpi.diferencia !== 0 ? amber : {}),
       value: formatKpiSignedMonto(kpi.diferencia),
-      // `pct: null` (nada pactado contra qué comparar): sin línea de detalle.
-      detail: kpi.pct === null ? undefined : `${formatKpiPct(kpi.pct)} sobre lo pactado en la OC`,
+      detail: `${formatKpiSignedPctOrDash(kpi.pct)} sobre lo pactado en la OC`,
     };
   }
   return {
     ...common,
-    value: formatKpiPctOrDash(kpi.pct),
-    detail: kpi.pct === null ? undefined : "Sobre lo pactado en la OC",
+    ...hiddenInfo,
+    ...(kpi.pct !== 0 ? amber : {}),
+    value: formatKpiSignedPctOrDash(kpi.pct),
+    detail: "Sobre lo pactado en la OC",
   };
 }
 
-/** Material rechazado: cantidad, con su valor como detalle si se pueden ver importes. */
+/**
+ * Material rechazado: cantidad, con su valor como detalle si se pueden ver
+ * importes. Sin ellos, el ⓘ no menciona el valor (mismo criterio que "OCs
+ * abiertas" de los indicadores de OC).
+ */
 function rejectedCard(kpi: PurchaseOrderReceiptRejectedKpi, showAmounts: boolean, onOpen: () => void): KpiCompactItem {
   const base = { label: "Material rechazado", icon: ExclamationTriangleIcon };
   if (!kpi.disponible) return unavailable(base, kpi.motivo);
@@ -126,7 +163,8 @@ function rejectedCard(kpi: PurchaseOrderReceiptRejectedKpi, showAmounts: boolean
     value: formatQuantityValue(kpi.cantidad_rechazada),
     info:
       "Unidades rechazadas en la inspección de calidad de las recepciones, incluidas las de producción; " +
-      "no son devoluciones al proveedor. El valor solo incluye rechazos de recepciones de OC.",
+      "no son devoluciones al proveedor." +
+      (valor !== undefined ? " El valor solo incluye rechazos de recepciones de OC." : ""),
     hideProgress: true,
     detail: valor !== undefined ? `Valor ${formatKpiMonto(valor)}` : undefined,
     action: (
@@ -142,14 +180,14 @@ function rejectedCard(kpi: PurchaseOrderReceiptRejectedKpi, showAmounts: boolean
 
 function buildCards(
   data: PurchaseOrderReceiptKpis,
-  showAmounts: boolean,
+  visibility: Exclude<PurchaseOrderKpiAmountVisibility, "pending">,
   openDialog: (kind: PurchaseOrderReceiptKpiDialogKind) => void,
 ): KpiCompactItem[] {
   return [
     fulfillmentCard(data.cumplimiento_cantidad, () => openDialog("cumplimiento_cantidad")),
     partialCard(data.recepciones_parciales),
-    priceCard(data.diferencia_precio, showAmounts, () => openDialog("diferencia_precio")),
-    rejectedCard(data.material_rechazado, showAmounts, () => openDialog("material_rechazado")),
+    priceCard(data.diferencia_precio, visibility, () => openDialog("diferencia_precio")),
+    rejectedCard(data.material_rechazado, visibility === "visible", () => openDialog("material_rechazado")),
   ];
 }
 
@@ -191,7 +229,7 @@ export function PurchaseOrderReceiptKpisSection() {
   // primera carga de los KPIs): así no se pinta una tarjeta sin importes que
   // luego los "aparece".
   if (data && amountVisibility !== "pending") {
-    body = <KpiGrid compact items={buildCards(data, showAmounts, openDialog)} />;
+    body = <KpiGrid compact items={buildCards(data, amountVisibility, openDialog)} />;
   } else if (isInitialError) {
     body = (
       <SectionErrorNotice
