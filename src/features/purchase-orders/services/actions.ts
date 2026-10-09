@@ -1,4 +1,5 @@
 import { v1_api } from "@/src/api/v1.api";
+import type { PurchaseOrderKpis } from "../interfaces/purchase-order-kpis.interface";
 import {
   CancelPurchaseOrderParams,
   PurchaseOrder,
@@ -75,3 +76,12 @@ export const updatePurchaseOrder = async ({
 export const deletePurchaseOrder = async (pk: number): Promise<void> => {
   await v1_api.delete(`/compras/ordenes/${pk}/`);
 }
+
+/**
+ * Indicadores de órdenes de compra (`GET /compras/ordenes/kpis/`, EC-432),
+ * calculados por el backend. Sin params: el endpoint no acepta ninguno.
+ */
+export const getPurchaseOrderKpis = async (): Promise<PurchaseOrderKpis> => {
+  const response = await v1_api.get<PurchaseOrderKpis>("/compras/ordenes/kpis/");
+  return response.data;
+};
