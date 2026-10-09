@@ -1,4 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { supplierKpisQueryKey } from "./useSupplierKpis";
 import { deleteSupplier } from "../services/actions";
 import toast from "react-hot-toast";
 import { Supplier } from "../interfaces/supplier.interface";
@@ -42,6 +43,8 @@ export const useDeleteSupplier = () => {
       // Sin esto, volver al detalle mostraría la ficha cacheada del proveedor
       // ya desactivado. Solo la llave EXACTA: el listado `["suppliers"]` sigue.
       queryClient.removeQueries({ queryKey: ["suppliers", id], exact: true });
+      // El drill-down de indicadores muestra nombres y enlaza solo proveedores activos.
+      queryClient.invalidateQueries({ queryKey: supplierKpisQueryKey });
       toast.success("Proveedor desactivado correctamente");
     },
   });
