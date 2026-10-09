@@ -2,7 +2,7 @@ import { PurchaseOrderReceiptList } from "@/src/features/purchase-order-receipts
 
 export default function PurchaseOrderReceiptsPage() {
   return (
-    <div className="w-full h-[calc(100dvh-13rem)] min-h-0">
+    <div className="w-full space-y-6">
       <PurchaseOrderReceiptList />
     </div>
   );

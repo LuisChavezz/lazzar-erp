@@ -47,19 +47,16 @@ export const PurchaseOrderReceiptList = () => {
   usePurchaseOrderReceiptCsvExport(tableRef, visibleColumns);
   usePurchaseOrderReceiptPdfExport(tableRef, visibleColumns);
 
+  // Sin `fillHeight` ni contenedor de altura acotada: la página monta los
+  // indicadores ENCIMA de esta lista y hace scroll normal (mismo cambio que la
+  // lista de OP al recibir sus indicadores).
   return (
-    <div className="h-full flex flex-col min-h-0">
     <DataTable
       ref={tableRef}
       columns={columns}
       data={receipts}
       baseDataCount={receipts.length}
       searchPlaceholder="Buscar por folio, orden de compra o proveedor..."
-      // El cuerpo de la tabla llena su contenedor (que `page.tsx` acota a la
-      // altura del viewport) en vez de reservar un alto fijo sin importar
-      // cuántas filas haya — evita el scroll de página. Mismo criterio que
-      // `SupplierList`/`OrderListView` (variant procurement).
-      fillHeight
       onVisibleColumnsChange={setVisibleColumns}
       actionButton={
         <div className="flex items-center gap-2 shrink-0">
@@ -91,6 +88,5 @@ export const PurchaseOrderReceiptList = () => {
       errorMessage={extractErrorMessage(error, "No se pudo cargar la información.")}
       loadingAriaLabel="Cargando recepciones"
     />
-    </div>
   );
 };
