@@ -53,7 +53,7 @@ export function aggregateQuality(rows: SupplierKpiRow[]) {
  * peso. `dias: null` si no queda ninguna recepción.
  *
  * No agrega `dias_promedio_pactado`: no se sabe sobre qué recepciones lo
- * promedia el backend (#388). Solo informa si alguna fila lo trae.
+ * promedia el backend (#388).
  */
 export function aggregateLeadTime(rows: SupplierKpiRow[]) {
   const conReal = rows.filter((row) => row.lead_time.dias_promedio_real !== null);
@@ -65,7 +65,6 @@ export function aggregateLeadTime(rows: SupplierKpiRow[]) {
   return {
     dias: recepciones > 0 ? Math.round((ponderado / recepciones) * 10) / 10 : null,
     recepciones,
-    hasPactado: hasAgreedLeadTime(rows),
   };
 }
 
@@ -77,11 +76,11 @@ export function aggregateScorecard(rows: SupplierKpiRow[]) {
 }
 
 /**
- * ¿Alguna fila trae lead time pactado? Hoy ninguna OC tiene
- * `fecha_entrega_estimada` (#387/#388): sin ella el backend cuenta toda
- * recepción como tardía y arrastra el scorecard. Mientras sea `false`,
- * "Entrega a tiempo" y "Scorecard general" se muestran no disponibles; se
- * encienden solas en cuanto alguna fila lo traiga.
+ * Proveedores con lead time pactado, es decir, con alguna OC con
+ * `fecha_entrega_estimada`. Sin esa fecha el backend cuenta toda recepción
+ * como tardía y arrastra el scorecard (#387/#388), así que "Entrega a tiempo"
+ * y "Scorecard general" (y el drill-down de entrega) usan SOLO estas filas.
+ * Sin ninguna, ambas tarjetas quedan no disponibles.
  */
-export const hasAgreedLeadTime = (rows: SupplierKpiRow[]): boolean =>
-  rows.some((row) => row.lead_time.dias_promedio_pactado !== null);
+export const rowsWithAgreedLeadTime = (rows: SupplierKpiRow[]): SupplierKpiRow[] =>
+  rows.filter((row) => row.lead_time.dias_promedio_pactado !== null);
