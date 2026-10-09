@@ -18,8 +18,8 @@ import type {
   PurchaseOrderOverdueKpi,
   PurchaseOrderSpendKpi,
 } from "../interfaces/purchase-order-kpis.interface";
+import { formatKpiMonto } from "@/src/utils/kpiFormat";
 import {
-  formatKpiMonto,
   getPurchaseOrderKpiAmountVisibility,
   type PurchaseOrderKpiAmountVisibility,
 } from "../utils/purchaseOrderKpis";

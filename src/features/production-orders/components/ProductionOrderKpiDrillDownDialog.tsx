@@ -4,7 +4,7 @@ import Link from "next/link";
 import { MainDialog } from "@/src/components/MainDialog";
 import { EmptyLines, LineItemsTable } from "@/src/components/DetailDialogPrimitives";
 import type { ProductionOrderKpis } from "../interfaces/production-order-kpis.interface";
-import { formatKpiDate } from "../utils/productionOrderKpiFormat";
+import { formatKpiDate } from "@/src/utils/kpiFormat";
 
 /** Bloques con drill-down. */
 export type ProductionOrderKpiDrillDownKind = "cumplimiento_a_tiempo" | "ops_atrasadas";

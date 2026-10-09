@@ -1,5 +1,3 @@
-import { formatMoneyValue, NO_CURRENCY_FORMAT } from "@/src/utils/formatCurrency";
-import { parseLocalDate } from "@/src/utils/formatDate";
 import type { PurchaseOrder } from "../interfaces/purchase-order.interface";
 
 /**
@@ -46,23 +44,3 @@ export const getPurchaseOrderKpiAmountVisibility = ({
   if (orders.length === 0) return "undetermined";
   return orders.some((order) => order.gran_total !== undefined) ? "visible" : "no-permission";
 };
-
-/** Importe del backend sin símbolo: el payload no trae moneda y mezcla MXN y USD. */
-export const formatKpiMonto = (value: number): string => formatMoneyValue(value, NO_CURRENCY_FORMAT);
-
-const DATE_FORMAT: Intl.DateTimeFormatOptions = { day: "2-digit", month: "2-digit", year: "numeric" };
-
-/**
- * Fecha-calendario "YYYY-MM-DD" (`fecha_entrega_estimada`) como "06/10/2026",
- * mismo formato que los indicadores de OP y de clientes. Pasa por
- * `parseLocalDate`: con `new Date()` sería medianoche UTC y en México saldría
- * el día anterior. "—" sin valor o si no se puede leer.
- */
-export const formatKpiDate = (value: string | null): string => {
-  const date = parseLocalDate(value);
-  return date ? date.toLocaleDateString("es-MX", DATE_FORMAT) : "—";
-};
-
-/** "1 OC" / "3 OCs": la palabra según el conteo. */
-export const plural = (count: number, singular: string, pluralForm: string): string =>
-  count === 1 ? singular : pluralForm;
