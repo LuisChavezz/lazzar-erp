@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { updateCustomer } from "../services/actions";
+import { customerKpisQueryKey } from "./useCustomerKpis";
 import { CustomerCreate } from "../interfaces/customer.interface";
 import { CustomerFormValues } from "../schemas/customer.schema";
 import toast from "react-hot-toast";
@@ -23,6 +24,9 @@ export const useUpdateCustomer = (setError?: SetCustomerError) => {
       queryClient.invalidateQueries({ queryKey: ["customers"] });
       // `useCustomer` usa el id de la URL (string) en su queryKey.
       queryClient.invalidateQueries({ queryKey: ["customer", String(id)] });
+      // Los drill-downs de los indicadores muestran `cliente.nombre`; editarlo
+      // dejaría el nombre viejo en el top de ventas y en la cartera.
+      queryClient.invalidateQueries({ queryKey: customerKpisQueryKey });
       toast.success("Cliente actualizado correctamente");
     },
     onError: (error) => {
