@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   DataTable,
   type DataTableHandle,
@@ -18,8 +19,9 @@ import { usePurchaseOrderReceiptPdfExport } from "../hooks/usePurchaseOrderRecei
 import type { PurchaseOrderReceipt } from "../interfaces/purchase-order-receipt.interface";
 
 export const PurchaseOrderReceiptList = () => {
-  const { receipts, hasLoaded, isLoading, isError, error, refetch, isFetching } =
+  const { receipts, hasLoaded, isLoading, isError, error, isFetching } =
     usePurchaseOrderReceipts();
+  const queryClient = useQueryClient();
 
   // Un refetch fallido transitorio no debe descartar la tabla ya cargada;
   // solo se trata como error "de pantalla completa" si nunca cargó.
@@ -80,7 +82,10 @@ export const PurchaseOrderReceiptList = () => {
           </Button>
         </div>
       }
-      onRefetch={refetch}
+      // Invalida el PREFIJO y no solo el listado: refresca también los
+      // indicadores (`["purchase-order-receipts", "kpis"]`) que la página
+      // monta encima, para que tarjetas y tabla muestren el mismo momento.
+      onRefetch={() => queryClient.invalidateQueries({ queryKey: ["purchase-order-receipts"] })}
       isRefetching={isFetching}
       isLoading={isLoading}
       isError={showError}
