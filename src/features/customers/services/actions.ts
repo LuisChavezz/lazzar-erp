@@ -2,6 +2,17 @@ import axios from "axios";
 import { v1_api } from "@/src/api/v1.api";
 import { Customer, CustomerCreate, CustomerDetail, VerifyRfcResponse } from "../interfaces/customer.interface";
 import { CustomerAddress, CustomerAddressCreate } from "../interfaces/customer-address.interface";
+import type { CustomerKpis } from "../interfaces/customer-kpis.interface";
+
+/**
+ * Indicadores de clientes (`GET /terceros/clientes/kpis/`), calculados por el
+ * backend con un alcance que depende del rol. Sin params: el endpoint no
+ * acepta ninguno.
+ */
+export const getCustomerKpis = async (): Promise<CustomerKpis> => {
+  const response = await v1_api.get<CustomerKpis>("/terceros/clientes/kpis/");
+  return response.data;
+};
 
 
 export const getCustomers = async (): Promise<Customer[]> => {

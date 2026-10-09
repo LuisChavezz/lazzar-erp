@@ -128,7 +128,7 @@ export const CustomerList = () => {
   );
 
   return (
-    <div className="mt-12">
+    <>
       {/* Diálogo de creación/edición de dirección de cliente */}
       <MainDialog
         title={
@@ -248,6 +248,6 @@ export const CustomerList = () => {
           </div>
         }
       />
-    </div>
+    </>
   );
 };

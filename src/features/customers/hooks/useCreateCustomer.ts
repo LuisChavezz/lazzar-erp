@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createCustomer } from "../services/actions";
+import { customerKpisQueryKey } from "./useCustomerKpis";
 import { Customer, CustomerCreate } from "../interfaces/customer.interface";
 import toast from "react-hot-toast";
 import { AxiosError } from "axios";
@@ -25,6 +26,9 @@ export const useCreateCustomer = ({
     mutationFn: (payload: CustomerCreate) => createCustomer(payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["customers"] });
+      // El alta suma un cliente al total de "Clientes activos vs. inactivos" y
+      // el backend asigna al usuario como su vendedor (entra en su alcance).
+      queryClient.invalidateQueries({ queryKey: customerKpisQueryKey });
       if (invalidateOrderOnboarding) {
         queryClient.invalidateQueries({ queryKey: ["quote-onboarding"] });
       }
