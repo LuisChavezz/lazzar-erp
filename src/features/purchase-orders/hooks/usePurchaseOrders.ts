@@ -4,7 +4,7 @@ import { PurchaseOrder } from "../interfaces/purchase-order.interface";
 
 export const usePurchaseOrders = () => {
   const {
-    data: purchaseOrders = [],
+    data,
     isLoading,
     isError,
     error,
@@ -16,7 +16,13 @@ export const usePurchaseOrders = () => {
   });
 
   return {
-    purchaseOrders,
+    purchaseOrders: data ?? [],
+    /**
+     * `true` en cuanto hubo una respuesta exitosa, y se conserva durante los
+     * refetch (también si uno falla): distingue "aún no cargó" de "cargó
+     * vacío", que `purchaseOrders` (siempre un arreglo) no deja ver.
+     */
+    hasLoaded: data !== undefined,
     isLoading,
     isError,
     error,
