@@ -104,7 +104,8 @@ function priceCard(kpi: PurchaseOrderReceiptPriceKpi, showAmounts: boolean, onOp
       ...common,
       ...(kpi.diferencia !== 0 ? { iconClass: "text-amber-500" } : {}),
       value: formatSignedMonto(kpi.diferencia),
-      detail: `${pctOrDash(kpi.pct)} sobre lo pactado en la OC`,
+      // `pct: null` (nada pactado contra qué comparar): sin línea de detalle.
+      detail: kpi.pct === null ? undefined : `${formatKpiPct(kpi.pct)} sobre lo pactado en la OC`,
     };
   }
   return { ...common, value: pctOrDash(kpi.pct), detail: "Sobre lo pactado en la OC" };
