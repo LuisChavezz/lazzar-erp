@@ -1,5 +1,4 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { purchaseOrderKpisQueryKey } from "./usePurchaseOrderKpis";
 import toast from "react-hot-toast";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { drfFieldMessage, firstDrfFieldMessage } from "@/src/utils/firstDrfFieldMessage";
@@ -47,8 +46,6 @@ export const useCancelPurchaseOrder = ({ onReasonError }: UseCancelPurchaseOrder
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["purchase-orders"] });
-      // Cambia estatus o importes que cuentan los indicadores (llave aparte).
-      queryClient.invalidateQueries({ queryKey: purchaseOrderKpisQueryKey });
     },
     onError: (error) => {
       const reasonMessage = drfFieldMessage(error, "motivo_cancelacion");

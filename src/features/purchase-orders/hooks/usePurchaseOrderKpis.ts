@@ -4,12 +4,14 @@ import { getPurchaseOrderKpis } from "../services/actions";
 import type { PurchaseOrderKpis } from "../interfaces/purchase-order-kpis.interface";
 
 /**
- * Llave propia, FUERA del prefijo `["purchase-orders"]`: los indicadores no se
- * derivan del listado, así que no se refrescan solos con él. Las mutaciones de
- * OC que cambian estatus o importes (alta, edición, confirmar, cancelar y
- * eliminar) la invalidan explícitamente.
+ * Llave DENTRO del prefijo `["purchase-orders"]` (como el historial por
+ * proveedor, `["purchase-orders", "by-supplier", …]`): toda mutación que ya
+ * invalida ese prefijo —alta, edición, confirmar, cancelar, eliminar, enviar
+ * correo, recepciones e inspecciones de calidad— refresca también los
+ * indicadores, sin que cada una tenga que acordarse. No choca con el detalle
+ * `["purchase-orders", id]`: `id` es numérico.
  */
-export const purchaseOrderKpisQueryKey = ["purchase-order-kpis"] as const;
+export const purchaseOrderKpisQueryKey = ["purchase-orders", "kpis"] as const;
 
 /**
  * Indicadores de órdenes de compra (`GET /compras/ordenes/kpis/`).

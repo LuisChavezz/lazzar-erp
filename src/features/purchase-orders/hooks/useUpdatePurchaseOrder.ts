@@ -1,5 +1,4 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { purchaseOrderKpisQueryKey } from "./usePurchaseOrderKpis";
 import { updatePurchaseOrder } from "../services/actions";
 import { invalidateReceiptOrderOptions } from "../utils/invalidateReceiptOrderOptions";
 import type { UpdatePurchaseOrderParams } from "../interfaces/purchase-order.interface";
@@ -61,8 +60,6 @@ export const useUpdatePurchaseOrder = ({
     // ofreciendo Editar.
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["purchase-orders"] });
-      // Cambia estatus o importes que cuentan los indicadores (llave aparte).
-      queryClient.invalidateQueries({ queryKey: purchaseOrderKpisQueryKey });
     },
     onError: (error) => {
       if (error instanceof AxiosError) {
