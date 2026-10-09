@@ -10,6 +10,15 @@ import type { SupplierKpiRow } from "../interfaces/supplier-kpis.interface";
  * estos totales cubren solo esas filas.
  */
 
+const DIAS_FORMAT = new Intl.NumberFormat("es-MX", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+
+/**
+ * Días promedio con un decimal ("7.2 días"); `null` → "—". No había un formato
+ * de días en ninguna sección de indicadores.
+ */
+export const formatKpiDias = (value: number | null): string =>
+  value === null ? "—" : `${DIAS_FORMAT.format(value)} días`;
+
 /** Porcentaje 0–100 redondeado a 1 decimal, como los que manda el backend. */
 const pct = (numerador: number, denominador: number): number =>
   Math.round((numerador / denominador) * 1000) / 10;
