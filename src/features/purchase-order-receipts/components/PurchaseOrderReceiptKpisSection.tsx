@@ -108,7 +108,11 @@ function priceCard(kpi: PurchaseOrderReceiptPriceKpi, showAmounts: boolean, onOp
       detail: kpi.pct === null ? undefined : `${formatKpiPct(kpi.pct)} sobre lo pactado en la OC`,
     };
   }
-  return { ...common, value: pctOrDash(kpi.pct), detail: "Sobre lo pactado en la OC" };
+  return {
+    ...common,
+    value: pctOrDash(kpi.pct),
+    detail: kpi.pct === null ? undefined : "Sobre lo pactado en la OC",
+  };
 }
 
 /** Material rechazado: cantidad, con su valor como detalle si se pueden ver importes. */
