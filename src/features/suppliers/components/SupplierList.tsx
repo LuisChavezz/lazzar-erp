@@ -55,11 +55,11 @@ interface SupplierListProps {
    * Cuando es `true`, el cuerpo de la tabla LLENA su contenedor en vez de
    * reservar un alto fijo de 480px sin importar cuántas filas haya — evita
    * el scroll de página "vacío" que deja un catálogo corto como Proveedores.
-   * Requiere que el padre inmediato le dé una altura acotada (ver
-   * `procurement/suppliers/page.tsx`). Por defecto `false` (el
-   * comportamiento de siempre): Configuración monta este mismo componente
-   * SIN un contenedor de altura acotada, así que activarlo ahí colapsaría
-   * la tabla a 0px de alto.
+   * Requiere que el padre inmediato le dé una altura acotada. Hoy ningún
+   * punto de montaje lo activa: la página de Compras pone los indicadores
+   * encima de la lista y hace scroll normal, y Configuración monta este
+   * componente SIN un contenedor de altura acotada. Activarlo sin esa altura
+   * colapsaría la tabla a 0px de alto. Por defecto `false`.
    */
   fillHeight?: boolean;
 }

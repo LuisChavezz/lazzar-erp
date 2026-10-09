@@ -38,6 +38,12 @@ export const formatKpiSignedPctOrDash = (value: number | null): string => {
   return value > 0 ? `+${formatKpiPct(value)}` : formatKpiPct(value);
 };
 
+const DIAS_FORMAT = new Intl.NumberFormat("es-MX", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+
+/** Días promedio con un decimal ("7.2 días"); `null` → "—". */
+export const formatKpiDias = (value: number | null): string =>
+  value === null ? "—" : `${DIAS_FORMAT.format(value)} días`;
+
 const DATE_FORMAT: Intl.DateTimeFormatOptions = { day: "2-digit", month: "2-digit", year: "numeric" };
 
 /**
