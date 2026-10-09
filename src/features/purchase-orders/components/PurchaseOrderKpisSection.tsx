@@ -18,12 +18,20 @@ import type {
   PurchaseOrderOverdueKpi,
   PurchaseOrderSpendKpi,
 } from "../interfaces/purchase-order-kpis.interface";
-import { canShowPurchaseOrderKpiAmounts, formatKpiMonto } from "../utils/purchaseOrderKpis";
+import {
+  formatKpiMonto,
+  getPurchaseOrderKpiAmountVisibility,
+  type PurchaseOrderKpiAmountVisibility,
+} from "../utils/purchaseOrderKpis";
 import { PurchaseOrderKpiDialog, type PurchaseOrderKpiDialogKind } from "./PurchaseOrderKpiDialog";
 
 const SECTION_TITLE = "Indicadores";
 
-const NO_AMOUNTS_MOTIVO = "No tienes permiso para ver los importes de las órdenes de compra.";
+/** Motivo de "Gasto por categoría" cuando los importes se ocultan (ver `getPurchaseOrderKpiAmountVisibility`). */
+const HIDDEN_AMOUNTS_MOTIVO: Record<Exclude<PurchaseOrderKpiAmountVisibility, "visible" | "pending">, string> = {
+  "no-permission": "No tienes permiso para ver los importes de las órdenes de compra.",
+  undetermined: "No se pudo verificar si puedes ver los importes de las órdenes de compra.",
+};
 
 /**
  * OCs abiertas: conteo, con el monto como detalle solo si el usuario puede ver
@@ -89,14 +97,25 @@ function overdueCard(kpi: PurchaseOrderOverdueKpi, onOpen: () => void): KpiCompa
  * montos por categoría que trae el payload; el detalle, la categoría mayor
  * (el backend las ordena por `-monto`).
  */
-function spendCard(kpi: PurchaseOrderSpendKpi, showAmounts: boolean, onOpen: () => void): KpiCompactItem {
+function spendCard(
+  kpi: PurchaseOrderSpendKpi,
+  visibility: PurchaseOrderKpiAmountVisibility,
+  onOpen: () => void,
+): KpiCompactItem {
   const base = { label: "Gasto por categoría", icon: WalletIcon };
   if (!kpi.disponible) {
     return { ...base, ...KPI_MUTED_ICON, value: null, unavailableReason: kpi.motivo };
   }
-  const visible = showAmounts && kpi.categorias.every((row) => row.monto !== undefined);
-  if (!visible) {
-    return { ...base, ...KPI_MUTED_ICON, value: null, unavailableReason: NO_AMOUNTS_MOTIVO };
+  if (visibility !== "visible") {
+    // `pending` no llega aquí (la sección sigue en skeleton); por si acaso se
+    // trata como no verificado, nunca como falta de permiso.
+    const motivo = HIDDEN_AMOUNTS_MOTIVO[visibility === "no-permission" ? "no-permission" : "undetermined"];
+    return { ...base, ...KPI_MUTED_ICON, value: null, unavailableReason: motivo };
+  }
+  // Con importes visibles, un `monto` ausente en alguna categoría no se suma
+  // a medias: la tarjeta queda no verificada.
+  if (kpi.categorias.some((row) => row.monto === undefined)) {
+    return { ...base, ...KPI_MUTED_ICON, value: null, unavailableReason: HIDDEN_AMOUNTS_MOTIVO.undetermined };
   }
   const total = kpi.categorias.reduce((sum, row) => sum + (row.monto ?? 0), 0);
   const top = kpi.categorias[0];
@@ -122,15 +141,16 @@ function spendCard(kpi: PurchaseOrderSpendKpi, showAmounts: boolean, onOpen: () 
 
 function buildCards(
   data: PurchaseOrderKpis,
-  showAmounts: boolean,
+  visibility: PurchaseOrderKpiAmountVisibility,
   openDialog: (kind: PurchaseOrderKpiDialogKind) => void,
 ): KpiCompactItem[] {
+  const showAmounts = visibility === "visible";
   return [
     openCard(data.ocs_abiertas, showAmounts, () => openDialog("ocs_abiertas")),
     overdueCard(data.ocs_vencidas_sin_recibir, () => openDialog("ocs_vencidas_sin_recibir")),
     // Hoy siempre llega no disponible (ver `buildUntypedKpiCard`).
     buildUntypedKpiCard(data.ciclo_compra, { label: "Ciclo de compra", icon: ClockIcon }),
-    spendCard(data.gasto_por_categoria, showAmounts, () => openDialog("gasto_por_categoria")),
+    spendCard(data.gasto_por_categoria, visibility, () => openDialog("gasto_por_categoria")),
   ];
 }
 
@@ -143,17 +163,18 @@ function buildCards(
  * Tiene su propia consulta: carga y falla dentro de la sección sin tocar la
  * tabla de OCs. El listado (`usePurchaseOrders`, misma llave y caché que la
  * tabla) se lee SOLO como señal de permiso para importes (ver
- * `canShowPurchaseOrderKpiAmounts`, #373). Sin gate de permiso: la ruta ya
+ * `getPurchaseOrderKpiAmountVisibility`, #373). Sin gate de permiso: la ruta ya
  * exige `R-COMPRAS-OC` (`routePermissions`). Mismo patrón que `PedidoKpisSection`.
  */
 export function PurchaseOrderKpisSection() {
   const { data, isInitialError, isFetching, refetch } = usePurchaseOrderKpis();
-  const { purchaseOrders, isLoading: isListLoading, isError: isListError } = usePurchaseOrders();
-  const showAmounts = canShowPurchaseOrderKpiAmounts({
+  const { purchaseOrders, hasLoaded: isListLoaded, isError: isListError } = usePurchaseOrders();
+  const amountVisibility = getPurchaseOrderKpiAmountVisibility({
     orders: purchaseOrders,
-    isLoading: isListLoading,
+    hasLoaded: isListLoaded,
     isError: isListError,
   });
+  const showAmounts = amountVisibility === "visible";
 
   // `dialogKind` es el ÚLTIMO detalle abierto y no se limpia al cerrar: así el
   // diálogo conserva título y filas durante su animación de salida.
@@ -165,8 +186,11 @@ export function PurchaseOrderKpisSection() {
   };
 
   let body: ReactNode;
-  if (data) {
-    body = <KpiGrid compact items={buildCards(data, showAmounts, openDialog)} />;
+  // Con el listado aún sin responder se sigue en skeleton (como en la primera
+  // carga de los KPIs): así no se pinta una tarjeta sin importes que luego los
+  // "aparece", ni el motivo de permiso antes de saber si aplica.
+  if (data && amountVisibility !== "pending") {
+    body = <KpiGrid compact items={buildCards(data, amountVisibility, openDialog)} />;
   } else if (isInitialError) {
     body = (
       <SectionErrorNotice

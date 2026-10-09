@@ -156,7 +156,7 @@ interface PurchaseOrderKpiDialogProps {
    */
   kind: PurchaseOrderKpiDialogKind | null;
   data: PurchaseOrderKpis | undefined;
-  /** Ver `canShowPurchaseOrderKpiAmounts`. */
+  /** Ver `getPurchaseOrderKpiAmountVisibility`. */
   showAmounts: boolean;
   onClose: () => void;
 }
