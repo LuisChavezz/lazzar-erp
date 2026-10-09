@@ -1,4 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { purchaseOrderKpisQueryKey } from "./usePurchaseOrderKpis";
 import { postPurchaseOrder } from "../services/actions";
 import type { PurchaseOrderOnboardingPayload } from "../interfaces/purchase-order-onboarding.interface";
 import toast from "react-hot-toast";
@@ -12,6 +13,8 @@ export const usePostPurchaseOrder = () => {
       postPurchaseOrder(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["purchase-orders"] });
+      // Cambia estatus o importes que cuentan los indicadores (llave aparte).
+      queryClient.invalidateQueries({ queryKey: purchaseOrderKpisQueryKey });
       queryClient.invalidateQueries({
         queryKey: ["purchase-order-onboarding"],
       });
