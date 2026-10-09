@@ -4,6 +4,7 @@ import type {
   SupplierPurchaseOrderHistoryParams,
   SupplierPurchaseOrderHistoryResponse,
 } from "../interfaces/supplier-purchase-order-history.interface";
+import type { SupplierKpis } from "../interfaces/supplier-kpis.interface";
 
 
 export const getSuppliers = async (): Promise<Supplier[]> => {
@@ -29,6 +30,12 @@ export const getSupplierPurchaseOrderHistory = async (
     `/terceros/proveedores/${id}/historial-ordenes-compra/`,
     { params },
   );
+  return response.data;
+};
+
+/** Indicadores por proveedor (EC-436). Sin parámetros: el backend los ignora. */
+export const getSupplierKpis = async (): Promise<SupplierKpis> => {
+  const response = await v1_api.get<SupplierKpis>("/terceros/proveedores/kpis/");
   return response.data;
 };
 
