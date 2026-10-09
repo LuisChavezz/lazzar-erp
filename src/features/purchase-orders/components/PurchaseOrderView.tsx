@@ -28,7 +28,7 @@ import { PurchaseOrderCancelDialog } from "./PurchaseOrderCancelDialog";
 
 export function PurchaseOrderView() {
   const {
-    purchaseOrders = [],
+    purchaseOrders,
     isLoading,
     isError,
     error,
