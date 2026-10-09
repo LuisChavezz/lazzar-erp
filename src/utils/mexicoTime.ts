@@ -14,6 +14,8 @@
  * horario de verano, también reciben su offset correcto.
  */
 
+import { getQuincenaRange, quincenaOfDateKey, type Quincena } from "./quincena";
+
 export const MEXICO_TIME_ZONE = "America/Mexico_City";
 
 const DATE_KEY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
@@ -168,19 +170,18 @@ export const getMexicoTimeHHMM = (value: string | null | undefined): string => {
   return `${pad(wall.hour)}:${pad(wall.minute)}`;
 };
 
+/** Quincena en curso en México (año, mes, mitad), sin importar la zona del navegador. */
+export const getMexicoCurrentQuincena = (now: Date = new Date()): Quincena =>
+  quincenaOfDateKey(getMexicoTodayDate(now));
+
 /**
  * Quincena en curso en México: del 1 al 15, o del 16 al último día del mes.
  * Ambos extremos como "YYYY-MM-DD", listos para `fecha__gte`/`fecha__lte`.
+ * El corte vive en `quincena.ts` (`getQuincenaRange`), la única definición.
  */
 export const getMexicoFortnightRange = (
   now: Date = new Date()
 ): { desde: string; hasta: string } => {
-  const { year, month, day } = toWallClock(now);
-  const prefix = `${year}-${pad(month)}`;
-  if (day <= 15) {
-    return { desde: `${prefix}-01`, hasta: `${prefix}-15` };
-  }
-  // Día 0 del mes siguiente = último día de este mes.
-  const lastDay = new Date(Date.UTC(year, month, 0)).getUTCDate();
-  return { desde: `${prefix}-16`, hasta: `${prefix}-${pad(lastDay)}` };
+  const { periodo_inicio, periodo_fin } = getQuincenaRange(getMexicoCurrentQuincena(now));
+  return { desde: periodo_inicio, hasta: periodo_fin };
 };

@@ -76,6 +76,7 @@ const ROUTE_TITLES: Record<string, string> = {
   "/hr/calendars": "Calendarios",
   "/hr/vacations": "Vacaciones",
   "/hr/absences": "Permisos y Ausencias",
+  "/hr/payroll": "Nóminas",
   "/hr/attendance": "Asistencia",
   "/hr/incidents": "Incidencias",
   "/hr/trainings": "Capacitaciones",

@@ -55,6 +55,7 @@ import {
   FolderOpen,
   Gauge,
   GraduationCap,
+  HandCoins,
   Heart,
   HelpCircle,
   History,
@@ -199,6 +200,12 @@ export const ReopenIcon = (props: LucideProps) => <Undo2 {...props} />;
 export const VacationIcon = (props: LucideProps) => <TreePalm {...props} />;
 /** Calendario con una cruz. Para los permisos y ausencias de RH. */
 export const AbsenceIcon = (props: LucideProps) => <CalendarX2 {...props} />;
+/**
+ * Mano entregando monedas. Para las nóminas de RH. Glifo PROPIO y no
+ * `WalletIcon`, que ya es el de Cuentas Bancarias: lo que distingue a la nómina
+ * es el PAGO al empleado, no la cuenta.
+ */
+export const PayrollIcon = (props: LucideProps) => <HandCoins {...props} />;
 /** Persona con palomita. Para la asistencia (pase de lista) de RH. */
 export const AttendanceIcon = (props: LucideProps) => <UserCheck {...props} />;
 /** Flecha entrando. Para registrar la ENTRADA de una checada. */
