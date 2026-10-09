@@ -55,6 +55,8 @@ interface EstadoRequest {
 
 export default function ProductivityList() {
   const [isFormOpen, setIsFormOpen] = useState(false);
+  // Guardado del formulario en curso: bloquea cerrar su diálogo.
+  const [isFormBusy, setIsFormBusy] = useState(false);
   const [selectedRecord, setSelectedRecord] = useState<Productivity | null>(null);
   // Los diálogos de fila viven aquí y no en la celda: la celda se desmonta al
   // ordenar/paginar/filtrar, y confirmar o reabrir cambia `estado` —un
@@ -294,7 +296,12 @@ export default function ProductivityList() {
                 />
               }
               open={isFormOpen}
-              onOpenChange={setIsFormOpen}
+              onOpenChange={(open) => {
+                // No se cierra a media guarda o escritura (Esc, X ni "Cerrar"):
+                // el resultado —éxito o errores por campo— debe verse.
+                if (!open && isFormBusy) return;
+                setIsFormOpen(open);
+              }}
               maxWidth="1000px"
               trigger={
                 <Button
@@ -310,6 +317,7 @@ export default function ProductivityList() {
               <ProductivityForm
                 onSuccess={() => setIsFormOpen(false)}
                 recordToEdit={selectedRecord}
+                onPendingChange={setIsFormBusy}
               />
             </MainDialog>
           ) : null
