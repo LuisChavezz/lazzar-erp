@@ -143,8 +143,15 @@ export function SpecialOrderLines({
           key={line.id}
           className="rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 overflow-hidden"
         >
-          <div className="px-4 py-3 border-b border-slate-200 dark:border-white/10 flex flex-wrap items-center justify-between gap-3">
-            <div className="flex flex-wrap items-center gap-2 min-w-0">
+          {/* Fila SIN wrap: la descripción ocupa el espacio restante y parte su
+              texto en su propia columna; el grupo derecho no se encoge ni baja,
+              y se alinea arriba para quedar a la altura de la primera línea.
+              Bajo `sm` el grupo derecho (~240px) no deja columna útil para el
+              texto en una tarjeta de teléfono, así que ocupa su propia primera
+              fila, pegado a la derecha, y la descripción va debajo a todo el
+              ancho (`flex-col-reverse`: el orden del DOM no cambia). */}
+          <div className="px-4 py-3 border-b border-slate-200 dark:border-white/10 flex flex-col-reverse sm:flex-row sm:items-start sm:justify-between gap-3">
+            <div className="flex flex-wrap items-center gap-2 sm:flex-1 min-w-0">
               <span className="text-sm font-semibold text-slate-800 dark:text-slate-100 break-words">
                 {line.producto_nombre_externo || "—"}
               </span>
@@ -154,7 +161,7 @@ export function SpecialOrderLines({
                 </span>
               )}
             </div>
-            <div className="flex items-center gap-4 shrink-0">
+            <div className="flex items-center gap-4 shrink-0 self-end sm:self-auto">
               <LineSkuStatus
                 line={line}
                 canGenerateSkus={canGenerateSkus}
