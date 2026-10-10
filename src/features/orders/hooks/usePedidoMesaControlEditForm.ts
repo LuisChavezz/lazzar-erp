@@ -648,7 +648,12 @@ const buildDetalleFromItems = (
         producto_nombre_externo: item.producto_nombre_externo,
         precio_lista: precioLista,
         precio_unitario: precioUnitario,
-        color: null,
+        // Una muestra nace sin color y aquí no hay dónde elegirlo, pero el alta
+        // de SKU de producción (`special-orders`) se lo asigna a la línea. El
+        // UPSERT reescribe la fila entera, así que se devuelve el que se leyó
+        // (`colorId` viene de `linea.color`): un `null` fijo borraría el color
+        // del que depende el SKU. En una muestra nueva sigue yendo `null`.
+        color: item.colorId ?? null,
         direccion_envio_cliente: item.direccion_envio_cliente ?? null,
         tallas,
       };
