@@ -56,7 +56,7 @@ export function useEmployeeForm({ onSuccess, employeeToEdit }: UseEmployeeFormPa
   const {
     positions,
     isLoading: isLoadingPositions,
-    isError: isErrorPositions,
+    isInitialError: isErrorPositions,
   } = usePositions();
   const { shifts, isLoading: isLoadingShifts, isInitialError: isErrorShifts } = useShifts();
 
