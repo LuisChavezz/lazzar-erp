@@ -68,9 +68,14 @@ interface SpecialOrderLinesProps {
 }
 
 /**
- * Estado del alta de SKU de la línea. El alta es todo-o-nada, así que basta
- * UNA talla con `sku_produccion` para saber que la línea ya se dio de alta. Sin
- * tallas con cantidad no hay nada que generar (el backend lo rechazaría).
+ * Estado del alta de SKU de la línea, en tres casos:
+ *  - Ninguna talla tiene SKU: la acción de alta (si el usuario la ve y hay
+ *    tallas con cantidad; sin ellas el backend la rechazaría).
+ *  - Todas las tallas con cantidad tienen SKU: "SKU generados".
+ *  - Hay SKU pero alguna talla con cantidad no lo tiene: "SKU incompletos".
+ *    El alta es todo-o-nada, así que esto solo pasa si la talla se agregó (o
+ *    ganó cantidad) DESPUÉS del alta. No se ofrece la acción: el backend no
+ *    admite una segunda alta sobre la misma línea.
  */
 function LineSkuStatus({
   line,
@@ -81,7 +86,25 @@ function LineSkuStatus({
   canGenerateSkus: boolean;
   onGenerateSkus: (line: SpecialOrderLine) => void;
 }) {
+  const tallasConCantidad = line.tallas.filter((talla) => Number(talla.cantidad) > 0);
+
   if (line.tallas.some((talla) => Boolean(talla.sku_produccion))) {
+    const tallasSinSku = tallasConCantidad.filter((talla) => !talla.sku_produccion);
+
+    if (tallasSinSku.length > 0) {
+      const nombres = tallasSinSku.map((talla) => talla.talla_nombre || "—").join(", ");
+      return (
+        <div className="flex flex-col items-end gap-0.5">
+          <span className="inline-flex items-center rounded-full border border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 px-2.5 py-0.5 text-xs font-semibold text-amber-700 dark:text-amber-300">
+            SKU incompletos
+          </span>
+          <p className="text-[11px] text-amber-700 dark:text-amber-400 text-right">
+            Sin SKU ni lista de materiales: {nombres}
+          </p>
+        </div>
+      );
+    }
+
     return (
       <span className="inline-flex items-center rounded-full border border-emerald-200 dark:border-emerald-500/30 bg-emerald-50 dark:bg-emerald-500/10 px-2.5 py-0.5 text-xs font-semibold text-emerald-700 dark:text-emerald-300">
         SKU generados
@@ -89,8 +112,7 @@ function LineSkuStatus({
     );
   }
 
-  const hasTallasConCantidad = line.tallas.some((talla) => Number(talla.cantidad) > 0);
-  if (!canGenerateSkus || !hasTallasConCantidad) return null;
+  if (!canGenerateSkus || tallasConCantidad.length === 0) return null;
 
   return (
     <Button variant="primary" rounded="full" onClick={() => onGenerateSkus(line)}>
