@@ -22,11 +22,13 @@ export function StockEmptyState({ almacenId, onSelect }: StockEmptyStateProps) {
   // `data` solo se define tras una carga exitosa de almacenes: distingue
   // "cargó vacío" (mostrar aviso legítimo) de "falló la carga" (mostrar error
   // con reintento), siguiendo el mismo patrón `hasLoaded` de `useInvoices`.
-  const { data: warehouses, isError, refetch } = useWarehouses();
+  // `isInitialError` solo es `true` si NUNCA cargó: un refetch fallido conserva
+  // el selector y avisa por toast desde `useWarehouses`.
+  const { data: warehouses, isInitialError, refetch } = useWarehouses();
   const hasLoaded = warehouses !== undefined;
   const hasNoWarehouses = hasLoaded && warehouses.length === 0;
 
-  if (isError) {
+  if (isInitialError) {
     return (
       <div className="space-y-3">
         <ErrorState

@@ -18,7 +18,7 @@ export default function LocationList() {
   const {
     data: locationsData,
     isLoading,
-    isError,
+    isInitialError,
     error,
   } = useLocations();
   const { data: warehouses } = useWarehouses();
@@ -74,7 +74,7 @@ export default function LocationList() {
       data={rows}
       searchPlaceholder="Buscar ubicación..."
       isLoading={isLoading}
-      isError={isError}
+      isError={isInitialError}
       errorTitle="Error al cargar ubicaciones"
       errorMessage={extractErrorMessage(error, "No se pudo cargar la información.")}
       loadingAriaLabel="Cargando ubicaciones"

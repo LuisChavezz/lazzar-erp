@@ -15,7 +15,7 @@ import { useWorkspaceStore } from "../../workspace/store/workspace.store";
 export default function WarehouseList() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedWarehouse, setSelectedWarehouse] = useState<Warehouse | null>(null);
-  const { data: warehouses, isLoading, isError, error } = useWarehouses();
+  const { data: warehouses, isLoading, isInitialError, error } = useWarehouses();
   const availableBranches = useWorkspaceStore((state) => state.availableBranches);
   const { data: session } = useSession();
   // `hasPermission` ya cortocircuita para el rol admin, así que sustituye al
@@ -46,7 +46,7 @@ export default function WarehouseList() {
       data={warehouses ?? []}
       searchPlaceholder="Buscar almacén..."
       isLoading={isLoading}
-      isError={isError}
+      isError={isInitialError}
       errorTitle="Error al cargar almacenes"
       errorMessage={extractErrorMessage(error, "No se pudo cargar la información.")}
       loadingAriaLabel="Cargando almacenes"
