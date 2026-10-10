@@ -55,7 +55,9 @@ export interface ParsedSampleSkuOnboardingError {
  *  - `{"color": "..."}`: bajo el selector de color.
  *  - `{"materia_prima_detalle": [{}, {"cantidad": ["..."]}]}`: un objeto por
  *    renglón enviado (vacío si ese renglón es válido), o un arreglo de strings
- *    cuando el error es de la lista completa.
+ *    cuando el error es de la lista completa. Si lo enviado no es una lista,
+ *    DRF responde un OBJETO (`{"non_field_errors": ["..."]}`); también puede
+ *    llegar un string plano. Ambos van al aviso de diálogo.
  *
  * Función pura, sin React, como `parseEmbroideryOrderError`.
  */
@@ -101,6 +103,13 @@ export function parseSampleSkuOnboardingError(error: unknown): ParsedSampleSkuOn
             fieldErrors[path] ??= message;
           }
         });
+      } else if (key === "materia_prima_detalle" && value && typeof value === "object") {
+        // Error de la lista completa en forma de OBJETO (lo que responde DRF
+        // cuando lo enviado no es una lista): no hay renglón al que atribuirlo.
+        const listErrors = value as Record<string, unknown>;
+        formError ??=
+          firstDrfMessage(listErrors.non_field_errors) ??
+          Object.values(listErrors).map(firstDrfMessage).find(Boolean);
       } else {
         // `detail`, `non_field_errors`, `{ error }` o una llave que este
         // archivo no conoce: no se pierde, va al aviso de diálogo.
