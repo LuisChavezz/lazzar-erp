@@ -17,7 +17,7 @@ import { useCalendars } from "../hooks/useCalendars";
 export default function CalendarList() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedCalendar, setSelectedCalendar] = useState<Calendar | null>(null);
-  const { calendars, isLoading, isError, error } = useCalendars();
+  const { calendars, isLoading, isInitialError, error } = useCalendars();
   const { shifts } = useShifts();
   const { data: session } = useSession();
   // `hasPermission` ya cortocircuita para el rol "admin".
@@ -69,7 +69,7 @@ export default function CalendarList() {
       getRowId={(row) => String(row.id)}
       searchPlaceholder="Buscar día..."
       isLoading={isLoading}
-      isError={isError}
+      isError={isInitialError}
       errorTitle="Error al cargar el calendario"
       errorMessage={extractErrorMessage(error, "No se pudo cargar la información.")}
       loadingAriaLabel="Cargando calendario"

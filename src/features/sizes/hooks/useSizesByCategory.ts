@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useGuardedQuery } from "@/src/hooks/useGuardedQuery";
 import { getSizesByCategory } from "../services/actions";
 import { Size } from "../interfaces/size.interface";
 
@@ -16,23 +16,28 @@ interface UseSizesByCategoryParams {
  *
  * Llave bajo la raíz `["sizes"]` para que las invalidaciones del catálogo de
  * tallas también la alcancen, pero distinta de `["sizes"]` (catálogo completo).
+ *
+ * No expone el `isError` crudo: `isInitialError` solo es `true` si la consulta
+ * NUNCA cargó; un refetch fallido con datos en caché conserva lo cargado y
+ * avisa por toast (`useGuardedQuery`). `error` sigue la misma regla. Mismo
+ * contrato que `useProducts`.
  */
 export const useSizesByCategory = ({ categoriaProductoId, enabled }: UseSizesByCategoryParams) => {
-  const {
-    data: sizes = [],
-    isLoading,
-    isError,
-    error,
-  } = useQuery<Size[]>({
-    queryKey: ["sizes", "by-category", categoriaProductoId],
-    queryFn: () => getSizesByCategory(categoriaProductoId),
-    enabled,
-  });
+  const { data, isLoading, isInitialError, error } = useGuardedQuery<Size[]>(
+    {
+      queryKey: ["sizes", "by-category", categoriaProductoId],
+      queryFn: () => getSizesByCategory(categoriaProductoId),
+      enabled,
+    },
+    { toastId: "sizes-by-category-refetch-error" },
+  );
+
+  const sizes = data ?? [];
 
   return {
     sizes,
     isLoading,
-    isError,
+    isInitialError,
     error,
   };
 };

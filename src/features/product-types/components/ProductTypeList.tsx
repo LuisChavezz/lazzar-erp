@@ -14,7 +14,7 @@ import { useProductTypes } from "../hooks/useProductTypes";
 export default function ProductTypeList() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedProductType, setSelectedProductType] = useState<ProductType | null>(null);
-  const { productTypes, isLoading, isError, error } = useProductTypes();
+  const { productTypes, isLoading, isInitialError, error } = useProductTypes();
   const { data: session } = useSession();
   // `hasPermission` ya cortocircuita para el rol admin, así que sustituye al
   // chequeo manual que vivía aquí. El alta usa su propio código
@@ -47,7 +47,7 @@ export default function ProductTypeList() {
       data={productTypes}
       searchPlaceholder="Buscar tipo..."
       isLoading={isLoading}
-      isError={isError}
+      isError={isInitialError}
       errorTitle="Error al cargar tipos de producto"
       errorMessage={extractErrorMessage(error, "No se pudo cargar la información.")}
       loadingAriaLabel="Cargando tipos de producto"

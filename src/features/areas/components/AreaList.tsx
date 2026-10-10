@@ -17,7 +17,7 @@ import { useAreas } from "../hooks/useAreas";
 export default function AreaList() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedArea, setSelectedArea] = useState<Area | null>(null);
-  const { areas, isLoading, isError, error } = useAreas();
+  const { areas, isLoading, isInitialError, error } = useAreas();
   const { departments } = useDepartments();
   const { data: session } = useSession();
   // `hasPermission` ya cortocircuita para el rol "admin".
@@ -67,7 +67,7 @@ export default function AreaList() {
       data={rows}
       searchPlaceholder="Buscar área..."
       isLoading={isLoading}
-      isError={isError}
+      isError={isInitialError}
       errorTitle="Error al cargar áreas"
       errorMessage={extractErrorMessage(error, "No se pudo cargar la información.")}
       loadingAriaLabel="Cargando áreas"
