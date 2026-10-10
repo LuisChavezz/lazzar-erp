@@ -38,6 +38,7 @@ export default function ProductVariantForm({
     requiresTalla,
     sizeOptions,
     isLoadingSizes,
+    isErrorSizes,
     getError,
     clearFieldErrors,
     validateField,
@@ -174,9 +175,11 @@ export default function ProductVariantForm({
                           <option value="0" disabled>
                             {isLoadingSizes
                               ? "Cargando..."
-                              : sizeOptions.length === 0
-                                ? "Sin tallas para la categoría del producto"
-                                : "Seleccionar..."}
+                              : isErrorSizes
+                                ? "No se pudo cargar el catálogo de tallas"
+                                : sizeOptions.length === 0
+                                  ? "Sin tallas para la categoría del producto"
+                                  : "Seleccionar..."}
                           </option>
                           {sizeOptions.map((size) => (
                             <option

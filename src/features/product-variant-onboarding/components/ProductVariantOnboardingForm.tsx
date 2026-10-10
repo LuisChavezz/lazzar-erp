@@ -37,6 +37,7 @@ export default function ProductVariantOnboardingForm() {
     requiresTalla,
     sizeOptions,
     isLoadingSizes,
+    isErrorSizes,
     skuPreview,
     selectedProductHasCode,
     selectedProductId,
@@ -194,9 +195,11 @@ export default function ProductVariantOnboardingForm() {
                       <option value="0" disabled>
                         {isLoadingSizes
                           ? "Cargando..."
-                          : sizeOptions.length === 0
-                            ? "Sin tallas para la categoría del producto"
-                            : "Seleccionar..."}
+                          : isErrorSizes
+                            ? "No se pudo cargar el catálogo de tallas"
+                            : sizeOptions.length === 0
+                              ? "Sin tallas para la categoría del producto"
+                              : "Seleccionar..."}
                       </option>
                       {sizeOptions.map((size) => (
                         <option key={size.id} value={size.id} className={optionClassName}>

@@ -22,11 +22,17 @@ import { useQuotes } from "../hooks/useQuotes";
 import { approveOperationsQuoteMutationKey } from "../../operations/hooks/useApproveOperationsQuote";
 import { rejectOperationsQuoteMutationKey } from "../../operations/hooks/useRejectOperationsQuote";
 import { hasPermission } from "@/src/utils/permissions";
+import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { validateQuoteForReviewMutationKey } from "../hooks/useValidateQuoteForReview";
 
 export const QuoteList = () => {
   const { data: session, status: sessionStatus } = useSession();
-  const { quotes, isLoading: isOrdersLoading } = useQuotes();
+  const {
+    quotes,
+    isLoading: isOrdersLoading,
+    isInitialError: isErrorQuotes,
+    error: quotesError,
+  } = useQuotes();
   // Las filas a exportar se LEEN de la tabla al hacer clic (`getFilteredRows`),
   // no se espejean en estado: así el archivo siempre lleva los datos vigentes.
   const tableRef = useRef<DataTableHandle<Quote>>(null);
@@ -65,6 +71,9 @@ export const QuoteList = () => {
         searchPlaceholder="Filtra resultados de la tabla"
         onVisibleColumnsChange={setVisibleColumns}
         isLoading={isOrdersLoading}
+        isError={isErrorQuotes}
+        errorTitle="Error al cargar cotizaciones"
+        errorMessage={extractErrorMessage(quotesError, "No se pudo cargar la información.")}
         loadingAriaLabel="Cargando cotizaciones"
         isLoadingOverlay={isTableBusy}
         loadingTitle={

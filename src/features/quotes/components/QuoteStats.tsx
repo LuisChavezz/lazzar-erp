@@ -6,9 +6,11 @@ import { LoadingSkeleton } from "@/src/components/LoadingSkeleton";
 import { FacturacionIcon, OrdenesIcon, TrendingUpIcon } from "../../../components/Icons";
 import { formatCurrency } from "@/src/utils/formatCurrency";
 import { useQuotes } from "../hooks/useQuotes";
+import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
+import { ErrorState } from "@/src/components/ErrorState";
 
 export const QuoteStats = () => {
-  const { quotes, isLoading } = useQuotes();
+  const { quotes, isLoading, isInitialError: isErrorQuotes, error: quotesError } = useQuotes();
 
   const metrics = useMemo(() => {
     let totalOrdersAmount = 0;
@@ -80,6 +82,17 @@ export const QuoteStats = () => {
         <LoadingSkeleton className="h-32 rounded-xl" />
         <LoadingSkeleton className="h-32 rounded-xl" />
       </div>
+    );
+  }
+
+  // Solo si las cotizaciones nunca cargaron: sin esto las tarjetas mostraban
+  // ceros, igual que si no hubiera cotizaciones.
+  if (isErrorQuotes) {
+    return (
+      <ErrorState
+        title="Error al cargar las estadísticas de cotizaciones"
+        message={extractErrorMessage(quotesError, "No se pudo cargar la información.")}
+      />
     );
   }
 
