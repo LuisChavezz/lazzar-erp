@@ -22,8 +22,15 @@ const MAX_CANTIDAD = 9_999_999_999.99;
 
 const DECIMAL_FORMAT_MESSAGE = "Usa un número con máximo 2 decimales";
 
-/** Quita espacios y el punto colgante de una captura a medias (`"12."`). */
-const normalizeDecimal = (value: string): string => stripTrailingDecimalPoint(value.trim());
+/**
+ * Quita espacios y el punto colgante de una captura a medias (`"12."`), y
+ * antepone el cero a un decimal sin parte entera (`".5"` → `"0.5"`): es una
+ * forma normal de escribir medio metro, y `sanitizeDecimalInput` la deja pasar.
+ */
+const normalizeDecimal = (value: string): string => {
+  const trimmed = value.trim();
+  return stripTrailingDecimalPoint(trimmed.startsWith(".") ? `0${trimmed}` : trimmed);
+};
 
 const cantidadSchema = z
   .string()
