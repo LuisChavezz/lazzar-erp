@@ -234,7 +234,7 @@ export default function BomList({
 }: BomListProps) {
   const isEditing = mode === "edit";
   const queryKey = ["bom", productoVarianteId];
-  const { bom, isLoading, isError, error } = useBom(productoVarianteId);
+  const { bom, isLoading, isInitialError, error } = useBom(productoVarianteId);
   const { mutate: deleteMutate, isPending } = useDeleteBomDetalle(queryKey);
   const { units, isLoading: isLoadingUnits } = useUnitsOfMeasure();
   const { mutate: patchMutate, isPending: isSaving } =
@@ -262,7 +262,7 @@ export default function BomList({
     );
   }
 
-  if (isError) {
+  if (isInitialError) {
     return (
       <ErrorState
         title="Error al cargar la lista de materiales"

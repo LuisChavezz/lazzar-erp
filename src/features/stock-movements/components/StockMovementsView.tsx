@@ -123,7 +123,7 @@ export function StockMovementsView() {
   const {
     stockMovements = [],
     isLoading,
-    isError,
+    isInitialError: isError,
     error,
     refetch,
     isFetching,
