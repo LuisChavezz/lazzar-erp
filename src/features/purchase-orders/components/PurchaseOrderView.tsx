@@ -30,7 +30,7 @@ export function PurchaseOrderView() {
   const {
     purchaseOrders,
     isLoading,
-    isError,
+    isInitialError,
     error,
     refetch,
     isFetching,
@@ -176,7 +176,7 @@ export function PurchaseOrderView() {
       onRefetch={refetch}
       isRefetching={isFetching}
       isLoading={isLoading}
-      isError={isError}
+      isError={isInitialError}
       errorTitle="Error al cargar órdenes de compra"
       errorMessage={extractErrorMessage(error, "No se pudo cargar la información.")}
       loadingAriaLabel="Cargando órdenes de compra"

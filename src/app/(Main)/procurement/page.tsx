@@ -4,7 +4,7 @@ import { usePurchaseOrders } from "@/src/features/purchase-orders/hooks/usePurch
 import { PurchaseOrderDashboard } from "@/src/features/purchase-orders/components/PurchaseOrderDashboard";
 
 export default function ProcurementPage() {
-  const { purchaseOrders = [], isLoading, isError } = usePurchaseOrders();
+  const { purchaseOrders, isLoading, isInitialError } = usePurchaseOrders();
 
   if (isLoading) {
     return (
@@ -19,7 +19,9 @@ export default function ProcurementPage() {
     );
   }
 
-  if (isError) {
+  // Solo si el listado nunca cargó: un refetch fallido conserva el panel y
+  // avisa por toast desde `usePurchaseOrders`.
+  if (isInitialError) {
     return (
       <div className="px-1 pb-8">
         <div className="rounded-xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 p-6 text-center">

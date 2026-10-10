@@ -70,7 +70,7 @@ export default function SupplierList({
 }: SupplierListProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [supplierToEdit, setSupplierToEdit] = useState<Supplier | null>(null);
-  const { suppliers, isLoading, isError, error } = useSuppliers();
+  const { suppliers, isLoading, isInitialError, error } = useSuppliers();
   const { data: session } = useSession();
 
   // `hasPermission` ya cortocircuita para el rol "admin", así que no hace falta
@@ -181,7 +181,7 @@ export default function SupplierList({
           </div>
         }
         isLoading={isLoading}
-        isError={isError}
+        isError={isInitialError}
         errorTitle="Error al cargar proveedores"
         errorMessage={extractErrorMessage(error, "No se pudo cargar la información.")}
         loadingAriaLabel="Cargando proveedores"

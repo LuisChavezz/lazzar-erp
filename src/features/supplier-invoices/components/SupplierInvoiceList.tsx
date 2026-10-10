@@ -47,7 +47,11 @@ export default function SupplierInvoiceList() {
    * `useSupplierInvoices`).
    */
   const [proveedorId, setProveedorId] = useState(0);
-  const { suppliers, isLoading: isLoadingSuppliers, isError: isErrorSuppliers } = useSuppliers();
+  const {
+    suppliers,
+    isLoading: isLoadingSuppliers,
+    isInitialError: isErrorSuppliers,
+  } = useSuppliers();
   const supplierOptions = suppliers
     .map((supplier) => ({
       value: supplier.id,

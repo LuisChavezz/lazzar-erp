@@ -30,7 +30,7 @@ function PurchaseOrderSelectorContent({
   onConfirm: (oc: PurchaseOrder) => void;
   onCancel: () => void;
 }) {
-  const { purchaseOrders, isLoading, isError } = usePurchaseOrders();
+  const { purchaseOrders, isLoading, isInitialError } = usePurchaseOrders();
 
   // `GET /compras/ordenes/` es plano y no acepta filtros: se filtra en memoria.
   // Fuera las inactivas, las canceladas y las que no tienen proveedor (el FK es
@@ -49,7 +49,7 @@ function PurchaseOrderSelectorContent({
       statusColor="indigo"
       items={disponibles}
       isLoading={isLoading}
-      isError={isError}
+      isError={isInitialError}
       loadingTitle="Cargando órdenes de compra"
       loadingMessage="Obteniendo las órdenes de compra..."
       errorMessage="Error al cargar las órdenes de compra."

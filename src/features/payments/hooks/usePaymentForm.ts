@@ -44,7 +44,7 @@ export function usePaymentForm({ onSuccess }: { onSuccess?: () => void } = {}) {
   const {
     suppliers,
     isLoading: isLoadingSuppliers,
-    isError: isErrorSuppliers,
+    isInitialError: isErrorSuppliers,
   } = useSuppliers();
   const {
     bankAccounts,
@@ -63,14 +63,9 @@ export function usePaymentForm({ onSuccess }: { onSuccess?: () => void } = {}) {
   // la pantalla por la tarjeta de error, perdiéndolas sin vuelta atrás. Basta con
   // que cualquier mutación vecina invalide `["bank-accounts"]` y el refetch falle.
   // Mismo criterio `isError && !hasLoaded` que usa el resto de finanzas.
-  //
-  // `useSuppliers` no expone `hasLoaded`, y ensancharlo tocaría un hook de otro
-  // módulo: se usa como equivalente que la lista traiga elementos — si hay
-  // proveedores en mano, la carga inicial ya ocurrió; si viene vacía, el error es
-  // de carga inicial (y una lista legítimamente vacía cae en `missingItems`).
+  // Proveedores ya llega filtrado: `useSuppliers` expone `isInitialError`.
   const isErrorFormData =
-    (isErrorSuppliers && suppliers.length === 0) ||
-    (isErrorBankAccounts && !hasLoadedBankAccounts);
+    isErrorSuppliers || (isErrorBankAccounts && !hasLoadedBankAccounts);
 
   // ── Estado de UI ─────────────────────────────────────────────────────────
   // Errores indexados por ruta ("total_pagado", "pago_detalles.0.importe_aplicado").
