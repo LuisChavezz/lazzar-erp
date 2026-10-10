@@ -24,7 +24,7 @@ import { Customer } from "../interfaces/customer.interface";
 import { CustomerAddress } from "../interfaces/customer-address.interface";
 
 export const CustomerList = () => {
-  const { customers, isLoading, isError, error } = useCustomers();
+  const { customers, isLoading, isInitialError, error } = useCustomers();
   // Las filas a exportar se LEEN de la tabla al hacer clic (`getFilteredRows`),
   // no se espejean en estado: así el archivo siempre lleva los datos vigentes.
   const tableRef = useRef<DataTableHandle<Customer>>(null);
@@ -186,7 +186,7 @@ export const CustomerList = () => {
         data={customers}
         searchPlaceholder="Buscar por razón social, nombre, correo o teléfono..."
         isLoading={isLoading}
-        isError={isError}
+        isError={isInitialError}
         errorTitle="Error al cargar los clientes"
         errorMessage={extractErrorMessage(error, "No se pudo cargar la información.")}
         loadingAriaLabel="Cargando clientes"

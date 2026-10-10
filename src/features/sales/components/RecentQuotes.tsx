@@ -78,7 +78,7 @@ const getStatusIconConfig = (status: number) => {
 };
 
 export const RecentQuotes = () => {
-  const { quotes, isLoading, isError } = useQuotes();
+  const { quotes, isLoading, isInitialError: isError } = useQuotes();
   const [selectedQuoteId, setSelectedQuoteId] = useState<number | null>(null);
 
   const recentQuotes = useMemo(() => {
