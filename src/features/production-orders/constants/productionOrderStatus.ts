@@ -64,6 +64,17 @@ const STATUS_BY_CODE = {
 export const PRODUCTION_ORDER_STATUS_CONFIG: Record<string, StatusBadgeConfigEntry> =
   STATUS_BY_CODE;
 
+/**
+ * Estatus que CIERRAN la orden (Completado, Cancelado): el backend ya no acepta
+ * capturas sobre ella (p. ej. el PATCH de su ruta crítica responde 409). El
+ * `satisfies` ata la lista a los códigos de `STATUS_BY_CODE`: un código que no
+ * exista en el mapa no compila.
+ */
+const CLOSED_STATUS_CODES = [5, 7] as const satisfies readonly (keyof typeof STATUS_BY_CODE)[];
+
+export const isClosedProductionOrderStatus = (estatus: number): boolean =>
+  (CLOSED_STATUS_CODES as readonly number[]).includes(estatus);
+
 /** Badge neutro para estatus fuera de 1-7, rotulado con lo que mande el backend. */
 const NEUTRAL_STATUS_CFG: StatusBadgeConfigEntry = {
   cls: "bg-slate-100 text-slate-600 dark:bg-slate-500/10 dark:text-slate-400",

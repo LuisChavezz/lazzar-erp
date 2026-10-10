@@ -8,6 +8,8 @@ import { ErrorState } from "@/src/components/ErrorState";
 import { FormCancelButton, FormSecondaryButton } from "@/src/components/FormButtons";
 import { isNotFoundError } from "@/src/utils/drfWriteErrors";
 import { firstDrfFieldMessage } from "@/src/utils/firstDrfFieldMessage";
+import { isClosedProductionOrderStatus } from "@/src/features/production-orders/constants/productionOrderStatus";
+import { closedOpNotice } from "../constants/criticalPathChoices";
 import { CRITICAL_PATH_NOT_FOUND_MESSAGE } from "../hooks/criticalPathErrorMessages";
 import {
   isValidOpId,
@@ -19,7 +21,7 @@ import { formatCriticalPathDateTime } from "../utils/criticalPathFormat";
 import { CriticalPathForm } from "./CriticalPathForm";
 
 interface ProductionOrderCriticalPathDialogProps {
-  /** OP abierta. El folio viene de quien abre: la respuesta no lo trae. */
+  /** OP abierta. Folio y estatus vienen de quien abre: la respuesta no los trae. */
   target: CriticalPathTarget;
   onClose: () => void;
 }
@@ -27,9 +29,8 @@ interface ProductionOrderCriticalPathDialogProps {
 /**
  * Diálogo de la ruta crítica de UNA OP. Lo abren el listado (acción de fila) y
  * la página de detalle (botón); ambos lo montan SOLO mientras está abierto,
- * con `key` por OP, porque el GET crea el registro y porque cada apertura debe
- * esperar una lectura fresca (`isFetchedAfterMount`) antes de montar el
- * formulario.
+ * con `key` por OP, porque cada apertura debe esperar una lectura fresca
+ * (`isFetchedAfterMount`) antes de montar el formulario.
  *
  * El formulario se monta con `key` = el `updated_at` que tomó como base
  * (`formKey`), y se vuelve a montar —con valores frescos— cuando:
@@ -41,6 +42,13 @@ interface ProductionOrderCriticalPathDialogProps {
  * conserva, se avisa con una nota, y al guardar solo viajan los campos que
  * esta persona cambió (los que cambió la otra no se pisan).
  *
+ * Una OP Completada o Cancelada se abre en SOLO LECTURA (aviso + formulario
+ * deshabilitado y sin guardar): el backend rechaza su PATCH con 409. El estatus
+ * es la FOTO que tomó quien abre; si era viejo o la OP se cierra con el diálogo
+ * ya abierto, el 409 llega al guardar: su `msg` se muestra en el toast y el
+ * diálogo pasa a solo lectura hasta cerrarse (`closedByServer`), con un aviso
+ * que no afirma cuál de los dos estatus es.
+ *
  * Un refetch fallido tras una carga correcta no reemplaza el formulario: avisa
  * por toast (`isInitialError`). Un id que no es entero positivo se trata como
  * OP no encontrada sin pedir nada.
@@ -50,6 +58,13 @@ export function ProductionOrderCriticalPathDialog({
   onClose,
 }: ProductionOrderCriticalPathDialogProps) {
   const validId = isValidOpId(target.opId);
+  // El PATCH respondió 409 en esta apertura: manda sobre el estatus de la foto.
+  const [closedByServer, setClosedByServer] = useState(false);
+  const readOnlyNotice = closedByServer
+    ? closedOpNotice()
+    : isClosedProductionOrderStatus(target.estatusOp)
+      ? closedOpNotice(target.estatusOp)
+      : null;
   const { data, error, isInitialError, isFetchedAfterMount, isFetching, refetch } =
     useProductionOrderCriticalPath(target.opId);
   const isSaving = useIsMutating({ mutationKey: updateCriticalPathMutationKey }) > 0;
@@ -135,9 +150,11 @@ export function ProductionOrderCriticalPathDialog({
           key={formKey ?? data.updated_at}
           opId={target.opId}
           data={data}
+          readOnlyNotice={readOnlyNotice}
           onClose={() => handleOpenChange(false)}
           onDirtyChange={setIsDirty}
           onSaved={setFormKey}
+          onOpClosed={() => setClosedByServer(true)}
         />
       </>
     );

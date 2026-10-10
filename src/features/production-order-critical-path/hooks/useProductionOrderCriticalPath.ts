@@ -13,9 +13,9 @@ export const productionOrderCriticalPathKey = (opId: number) =>
 export const isValidOpId = (opId: number) => Number.isInteger(opId) && opId > 0;
 
 /**
- * Ruta crítica de UNA OP. El GET CREA el registro si no existe, así que el
- * hook solo se usa dentro del diálogo, que se MONTA al abrirse: nada de
- * prefetch ni polling.
+ * Ruta crítica de UNA OP. El hook solo se usa dentro del diálogo, que se MONTA
+ * al abrirse: nada más muestra estos datos, así que no hay prefetch ni polling
+ * (el GET no escribe; es una cuestión de no pedir lo que no se va a pintar).
  *
  * `refetchOnMount: "always"`: cada apertura trae el registro vigente aunque
  * haya uno en caché (otra persona pudo capturar mientras tanto); el diálogo

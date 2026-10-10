@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { isCalendarDateKey } from "@/src/utils/mexicoTime";
+import { isCompleteDateEntry } from "@/src/utils/formatDate";
 import { ESTATUS_PAQUETE_TECNICO_VALUES } from "../constants/criticalPathChoices";
 
 /**
@@ -10,10 +10,15 @@ import { ESTATUS_PAQUETE_TECNICO_VALUES } from "../constants/criticalPathChoices
 export const CANTIDAD_ENTERA_MESSAGE =
   "La cantidad debe ser un número entero de piezas, sin decimales ni negativos.";
 
-/** Fecha opcional: "" o una fecha "yyyy-mm-dd" real. */
+/**
+ * Fecha opcional: "" o una fecha "yyyy-mm-dd" real y COMPLETA. El piso de 1900
+ * de `isCompleteDateEntry` descarta los años a medio teclear que emite el
+ * `<input type="date">` ("0020-10-14"): el backend no valida estas fechas y los
+ * guardaría tal cual.
+ */
 const optionalDate = z
   .string()
-  .refine((value) => value === "" || isCalendarDateKey(value), "Fecha inválida");
+  .refine((value) => value === "" || isCompleteDateEntry(value), "Fecha inválida");
 
 /**
  * `cantidad_real_corte`: vacía, o un número ENTERO no negativo de piezas. El
@@ -38,6 +43,7 @@ const CriticalPathObject = z.object({
   comentarios_telas_avios: z.string(),
   kit_completo: z.boolean(),
   fecha_embarque_materia_prima: optionalDate,
+  fecha_llegada_centro_confeccion: optionalDate,
   fecha_trazo: optionalDate,
   fecha_real_corte: optionalDate,
   cantidad_real_corte: cantidadRealCorte,

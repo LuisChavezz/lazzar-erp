@@ -12,6 +12,7 @@ import {
   type CriticalPathValues,
 } from "../schemas/production-order-critical-path.schema";
 import { buildCriticalPathBody, toCriticalPathValues } from "../utils/criticalPathForm";
+import { isCriticalPathConflictError } from "./criticalPathErrorMessages";
 import { useUpdateProductionOrderCriticalPath } from "./useUpdateProductionOrderCriticalPath";
 
 type FieldErrors = Partial<Record<CriticalPathField, string>>;
@@ -20,10 +21,14 @@ interface UseCriticalPathFormParams {
   opId: number;
   /** Registro guardado: la base contra la que se decide qué cambió. */
   data: ProductionOrderCriticalPath;
+  /** OP Completada o Cancelada: el formulario solo se consulta, nunca envía. */
+  readOnly: boolean;
   /** Avisa si hay captura sin guardar (el diálogo no remonta mientras la haya). */
   onDirtyChange: (dirty: boolean) => void;
   /** Guardado con éxito: `updated_at` del registro que devolvió el PATCH. */
-  onSaved: (updatedAt: string) => void;
+  onSaved: (updatedAt: string | null) => void;
+  /** El PATCH respondió 409: la OP se cerró con el diálogo abierto. */
+  onOpClosed: () => void;
 }
 
 /**
@@ -40,14 +45,18 @@ interface UseCriticalPathFormParams {
 export function useCriticalPathForm({
   opId,
   data,
+  readOnly,
   onDirtyChange,
   onSaved,
+  onOpClosed,
 }: UseCriticalPathFormParams) {
   const [initialValues] = useState<CriticalPathValues>(() => toCriticalPathValues(data));
 
   // Una cantidad guardada con fracción ("120.50") se señala desde la apertura:
-  // no se redondea en silencio, y bloquea el guardado hasta corregirla.
+  // no se redondea en silencio, y bloquea el guardado hasta corregirla. En solo
+  // lectura no hay nada que corregir ni guardar: no se señala.
   const [clientErrors, setClientErrors] = useState<FieldErrors>(() => {
+    if (readOnly) return {};
     const parsed = CriticalPathFields.cantidad_real_corte.safeParse(
       initialValues.cantidad_real_corte
     );
@@ -101,6 +110,9 @@ export function useCriticalPathForm({
   const form = useForm({
     defaultValues: initialValues,
     onSubmit: async ({ value }) => {
+      // Solo lectura: el `fieldset` deshabilitado y el pie sin botón de guardar
+      // ya lo impiden; esto garantiza que ningún camino dispare el PATCH.
+      if (readOnly) return;
       setServerErrors({});
       if (!validateForm(value)) return;
 
@@ -111,9 +123,12 @@ export function useCriticalPathForm({
       try {
         const saved = await mutateAsync({ opId, body });
         onSaved(saved.updated_at);
-      } catch {
+      } catch (error) {
         // El toast ya lo dio el hook; los errores por campo quedan bajo su
-        // campo y el formulario conserva lo capturado para reintentar.
+        // campo y el formulario conserva lo capturado para reintentar. Salvo
+        // en un 409: la OP está cerrada y reintentar no sirve, así que el
+        // diálogo pasa a solo lectura.
+        if (isCriticalPathConflictError(error)) onOpClosed();
       }
     },
   });
