@@ -98,7 +98,7 @@ export function useVacationForm({ onSuccess, vacationToEdit }: UseVacationFormPa
     isInitialError: isErrorEmployees,
   } = useEmployees();
   // El turno del empleado da los días laborales de la sugerencia.
-  const { shifts, isLoading: isLoadingShifts, isError: isErrorShifts } = useShifts();
+  const { shifts, isLoading: isLoadingShifts, isInitialError: isErrorShifts } = useShifts();
   // El listado COMPLETO alimenta la regla de traslape (misma caché que la tabla).
   const { vacations, hasLoaded: hasLoadedVacations } = useVacations();
   const queryClient = useQueryClient();

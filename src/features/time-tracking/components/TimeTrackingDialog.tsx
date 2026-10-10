@@ -81,7 +81,7 @@ const describeSegment = (segment: TimeSegment) =>
 export function TimeTrackingDialog({ attendance, permissions, onClose }: TimeTrackingDialogProps) {
   const { segments, hasLoaded, isInitialError, error, refetch, isFetching } =
     useTimeSegments(attendance);
-  const { shifts, isLoading: isLoadingShifts, isError: isShiftsError } = useShifts();
+  const { shifts, isLoading: isLoadingShifts, isInitialError: isShiftsError } = useShifts();
   const {
     data: orders,
     hasLoaded: ordersLoaded,
