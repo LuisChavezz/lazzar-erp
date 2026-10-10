@@ -65,7 +65,7 @@ export function ProductionOrderStep1({
   onNext,
   onBack,
 }: ProductionOrderStep1Props) {
-  const { productVariants, isLoading, isError } = useProductVariants(true);
+  const { productVariants, isLoading, isInitialError } = useProductVariants(true);
 
   const [prioridad, setPrioridad] = useState<number>(
     initialData?.prioridad ?? 0,
@@ -101,7 +101,9 @@ export function ProductionOrderStep1({
   }
 
   // ── Error state ───────────────────────────────────────────────────────
-  if (isError) {
+  // Solo si el catálogo nunca cargó: un refetch fallido conserva la lista (y
+  // la selección) y avisa por toast desde `useProductVariants`.
+  if (isInitialError) {
     return (
       <p className="text-sm text-red-500 p-4">
         Error al cargar las variantes de producto.

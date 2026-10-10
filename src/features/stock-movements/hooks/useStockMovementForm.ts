@@ -27,7 +27,7 @@ export function useStockMovementForm({ onSuccess }: { onSuccess?: () => void } =
   // ─── Catálogos ──────────────────────────────────────────────────────────
   const { data: warehouses = [], isLoading: isLoadingWarehouses } = useWarehouses();
   const { data: locations = [], isLoading: isLoadingLocations } = useLocations();
-  const { productVariants = [], isLoading: isLoadingVariants } = useProductVariants();
+  const { productVariants, isLoading: isLoadingVariants } = useProductVariants();
 
   const isLoadingFormData = isLoadingWarehouses || isLoadingLocations || isLoadingVariants;
 
