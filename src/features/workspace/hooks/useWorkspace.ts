@@ -27,7 +27,14 @@ const setWorkspaceCookie = () => {
 export const useWorkspace = () => {
   const router = useRouter();
   const { data: session } = useSession();
-  const { companies, loading: companiesLoading } = useMyCompanies(); // Obtener las empresas del usuario
+  // `error` solo llega si las empresas NUNCA cargaron (ver `useMyCompanies`):
+  // un refetch fallido conserva la lista y avisa por toast.
+  const {
+    companies,
+    loading: companiesLoading,
+    error: companiesError,
+    refetch: refetchCompanies,
+  } = useMyCompanies(); // Obtener las empresas del usuario
   const setWorkspace = useWorkspaceStore((state) => state.setWorkspace);
   const setAvailableBranches = useWorkspaceStore((state) => state.setAvailableBranches);
   const [selectedCompanyId, setSelectedCompanyId] = useState<number | null>(null); // ID de la empresa seleccionada
@@ -116,6 +123,8 @@ export const useWorkspace = () => {
   return {
     companies,
     companiesLoading,
+    isErrorCompanies: companiesError !== null,
+    retryCompanies: () => void refetchCompanies(),
     selectedCompanyId,
     isLoading,
     availableBranches,

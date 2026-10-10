@@ -1,6 +1,7 @@
 "use client";
 
 import { Loader } from "@/src/components/Loader";
+import { ErrorDisplay } from "@/src/components/ui/ErrorDisplay";
 import { useWorkspace } from "../hooks/useWorkspace";
 import CompanyGrid from "./CompanyGrid";
 import BranchGrid from "./BranchGrid";
@@ -9,6 +10,8 @@ export default function WorkspaceSelector() {
   const {
     companies,
     companiesLoading,
+    isErrorCompanies,
+    retryCompanies,
     selectedCompanyId,
     isLoading,
     availableBranches,
@@ -54,12 +57,19 @@ export default function WorkspaceSelector() {
       </div>
 
       <div className="w-full grid grid-cols-1 relative">
-        <CompanyGrid
-          companies={companies}
-          selectedCompanyId={selectedCompanyId}
-          loading={companiesLoading}
-          onSelect={handleCompanySelect}
-        />
+        {/* Si las empresas nunca cargaron, un error con reintento en vez del
+            aviso de "sin empresas" de `CompanyGrid`, que queda solo para una
+            carga correcta que vino vacía. */}
+        {isErrorCompanies ? (
+          <ErrorDisplay title="No se pudieron cargar tus empresas." onRetry={retryCompanies} />
+        ) : (
+          <CompanyGrid
+            companies={companies}
+            selectedCompanyId={selectedCompanyId}
+            loading={companiesLoading}
+            onSelect={handleCompanySelect}
+          />
+        )}
 
         <BranchGrid
           branches={availableBranches}
