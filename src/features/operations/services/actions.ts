@@ -1,5 +1,8 @@
 import { v1_api } from "@/src/api/v1.api";
-import { OperationsQuote } from "../interfaces/operations-quote.interface";
+import {
+  OperationsQuote,
+  OperationsQuoteActionResponse,
+} from "../interfaces/operations-quote.interface";
 
 
 export const getOperationsQuotes = async (): Promise<OperationsQuote[]> => {
@@ -9,8 +12,8 @@ export const getOperationsQuotes = async (): Promise<OperationsQuote[]> => {
 
 export const approveOperationsQuote = async (
   id: number
-): Promise<OperationsQuote> => {
-  const response = await v1_api.post<OperationsQuote>(
+): Promise<OperationsQuoteActionResponse> => {
+  const response = await v1_api.post<OperationsQuoteActionResponse>(
     `/ventas/mesa-control/${id}/autorizar/`
   );
   return response.data;
@@ -18,8 +21,8 @@ export const approveOperationsQuote = async (
 
 export const rejectOperationsQuote = async (
   id: number
-): Promise<OperationsQuote> => {
-  const response = await v1_api.post<OperationsQuote>(
+): Promise<OperationsQuoteActionResponse> => {
+  const response = await v1_api.post<OperationsQuoteActionResponse>(
     `/ventas/mesa-control/${id}/rechazar/`
   );
   return response.data;
@@ -31,8 +34,8 @@ export const rejectOperationsQuote = async (
 // de este archivo. Confirmado correcto — no es una inconsistencia.
 export const acceptChangesOperationsQuote = async (
   id: number
-): Promise<OperationsQuote> => {
-  const response = await v1_api.post<OperationsQuote>(
+): Promise<OperationsQuoteActionResponse> => {
+  const response = await v1_api.post<OperationsQuoteActionResponse>(
     `/ventas/cotizaciones/${id}/aceptar-cambios/`
   );
   return response.data;
@@ -40,8 +43,8 @@ export const acceptChangesOperationsQuote = async (
 
 export const rejectChangesOperationsQuote = async (
   id: number
-): Promise<OperationsQuote> => {
-  const response = await v1_api.post<OperationsQuote>(
+): Promise<OperationsQuoteActionResponse> => {
+  const response = await v1_api.post<OperationsQuoteActionResponse>(
     `/ventas/cotizaciones/${id}/rechazar-cambios/`
   );
   return response.data;
