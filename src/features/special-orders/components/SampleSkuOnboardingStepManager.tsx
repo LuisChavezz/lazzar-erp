@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useStore } from "@tanstack/react-form";
 import { StepProgressBar } from "@/src/components/StepProgressBar";
 import type { SpecialOrderLine } from "../interfaces/special-order.interface";
 import { useSampleSkuOnboardingForm } from "../hooks/useSampleSkuOnboardingForm";
@@ -41,6 +42,14 @@ export function SampleSkuOnboardingStepManager({
     onColorRejected: () => setCurrentStep("select-materials"),
   });
 
+  // Suscripción al store y no `form.getFieldValue()` en el render: esa lectura
+  // no es reactiva y el React Compiler puede memoizarla sobre `form`, que es
+  // una referencia estable.
+  const materials = useStore(
+    onboarding.form.store,
+    (state) => state.values.materia_prima_detalle,
+  );
+
   const labels: Record<SampleSkuOnboardingStep, string> = {
     "select-materials": onboarding.requiresColor
       ? "Color y materiales"
@@ -56,9 +65,7 @@ export function SampleSkuOnboardingStepManager({
         <SampleSkuOnboardingStep1
           line={line}
           onboarding={onboarding}
-          initialSelectedIds={onboarding.form
-            .getFieldValue("materia_prima_detalle")
-            .map((row) => row.componente)}
+          initialSelectedIds={materials.map((row) => row.componente)}
           onNext={(componentIds) => {
             onboarding.setMaterials(componentIds);
             setCurrentStep("configure-materials");
