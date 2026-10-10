@@ -5,7 +5,7 @@ import { getColumns } from "./SatUnitCodeColumns";
 import { useSatUnitCodes } from "../hooks/useSatUnitCodes";
 
 export default function SatUnitCodeList() {
-  const { satUnitCodes, isLoading, isError, error } = useSatUnitCodes();
+  const { satUnitCodes, isLoading, isInitialError, error } = useSatUnitCodes();
 
   const columns = useMemo(() => getColumns(), []);
 
@@ -15,7 +15,7 @@ export default function SatUnitCodeList() {
       data={satUnitCodes}
       searchPlaceholder="Buscar clave..."
       isLoading={isLoading}
-      isError={isError}
+      isError={isInitialError}
       errorTitle="Error al cargar claves SAT"
       errorMessage={extractErrorMessage(error, "No se pudo cargar la información.")}
       loadingAriaLabel="Cargando claves SAT"

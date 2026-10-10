@@ -51,7 +51,7 @@ export function useEmployeeForm({ onSuccess, employeeToEdit }: UseEmployeeFormPa
   const {
     departments,
     isLoading: isLoadingDepartments,
-    isError: isErrorDepartments,
+    isInitialError: isErrorDepartments,
   } = useDepartments();
   const {
     positions,

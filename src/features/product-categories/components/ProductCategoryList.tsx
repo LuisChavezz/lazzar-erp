@@ -14,7 +14,7 @@ import { useProductCategories } from "../hooks/useProductCategories";
 export default function ProductCategoryList() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<ProductCategory | null>(null);
-  const { categories, isLoading, isError, error } = useProductCategories();
+  const { categories, isLoading, isInitialError, error } = useProductCategories();
   const { data: session } = useSession();
   // `hasPermission` ya cortocircuita para el rol admin, así que sustituye al
   // chequeo manual que vivía aquí. El alta usa su propio código
@@ -47,7 +47,7 @@ export default function ProductCategoryList() {
       data={categories}
       searchPlaceholder="Buscar categoría..."
       isLoading={isLoading}
-      isError={isError}
+      isError={isInitialError}
       errorTitle="Error al cargar categorías"
       errorMessage={extractErrorMessage(error, "No se pudo cargar la información.")}
       loadingAriaLabel="Cargando categorías"

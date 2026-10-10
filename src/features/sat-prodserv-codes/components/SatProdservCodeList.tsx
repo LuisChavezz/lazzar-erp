@@ -5,7 +5,7 @@ import { getColumns } from "./SatProdservCodeColumns";
 import { useSatProdServCodes } from "../hooks/useSatProdServCodes";
 
 export default function SatProdservCodeList() {
-  const { satProdservCodes, isLoading, isError, error } = useSatProdServCodes();
+  const { satProdservCodes, isLoading, isInitialError, error } = useSatProdServCodes();
 
   const columns = useMemo(() => getColumns(), []);
 
@@ -15,7 +15,7 @@ export default function SatProdservCodeList() {
       data={satProdservCodes}
       searchPlaceholder="Buscar clave..."
       isLoading={isLoading}
-      isError={isError}
+      isError={isInitialError}
       errorTitle="Error al cargar claves SAT"
       errorMessage={extractErrorMessage(error, "No se pudo cargar la información.")}
       loadingAriaLabel="Cargando claves SAT"

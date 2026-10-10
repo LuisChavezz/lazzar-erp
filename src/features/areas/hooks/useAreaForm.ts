@@ -25,7 +25,7 @@ export function useAreaForm({ onSuccess, areaToEdit }: UseAreaFormParams) {
   const {
     departments,
     isLoading: isLoadingDepartments,
-    isError: isErrorDepartments,
+    isInitialError: isErrorDepartments,
   } = useDepartments();
 
   // Conserva referencia al form para scroll superior suave al limpiar.

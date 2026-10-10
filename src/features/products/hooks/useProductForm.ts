@@ -58,22 +58,22 @@ export function useProductForm({ onSuccess, product }: UseProductFormParams) {
   const {
     categories,
     isLoading: isLoadingProductCategories,
-    isError: isProductCategoriesError,
+    isInitialError: isProductCategoriesError,
     error: productCategoriesError,
   } = useProductCategories();
   const { units, isLoading: isLoadingUnits, isInitialError: isUnitsError, error: unitsError } =
     useUnitsOfMeasure();
-  const { taxes, isLoading: isLoadingTaxes, isError: isTaxesError, error: taxesError } = useTaxes();
+  const { taxes, isLoading: isLoadingTaxes, isInitialError: isTaxesError, error: taxesError } = useTaxes();
   const {
     satProdservCodes,
     isLoading: isLoadingSatProdservCodes,
-    isError: isSatProdservCodesError,
+    isInitialError: isSatProdservCodesError,
     error: satProdservCodesError,
   } = useSatProdServCodes();
   const {
     satUnitCodes,
     isLoading: isLoadingSatUnitCodes,
-    isError: isSatUnitCodesError,
+    isInitialError: isSatUnitCodesError,
     error: satUnitCodesError,
   } = useSatUnitCodes();
   // Solo para MOSTRAR el nombre del tipo (la respuesta del producto trae el
