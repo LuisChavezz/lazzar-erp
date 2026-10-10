@@ -27,6 +27,7 @@ function StockMovementFormContent({ onClose }: { onClose: () => void }) {
     form,
     isPending,
     isLoadingFormData,
+    isErrorFormData,
     missingItems,
     warehouseOptions,
     activeLocations,
@@ -95,6 +96,23 @@ function StockMovementFormContent({ onClose }: { onClose: () => void }) {
         title="Cargando datos"
         message="Cargando almacenes, ubicaciones y productos..."
       />
+    );
+  }
+
+  // Si algún catálogo (almacenes/ubicaciones/variantes) NUNCA cargó, su lista
+  // vacía se confundiría con un catálogo legítimamente vacío: se muestra un
+  // error explícito, distinto de la pantalla de prerrequisitos. Mismo estado
+  // que `StockTransferForm`.
+  if (isErrorFormData) {
+    return (
+      <div className="rounded-xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 p-6 text-center">
+        <p className="text-sm font-semibold text-red-600 dark:text-red-400">
+          No se pudieron cargar los catálogos
+        </p>
+        <p className="text-xs text-red-500 dark:text-red-300 mt-1">
+          Revisa tu conexión e intenta abrir el diálogo de nuevo.
+        </p>
+      </div>
     );
   }
 

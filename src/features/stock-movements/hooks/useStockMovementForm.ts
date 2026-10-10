@@ -25,11 +25,29 @@ const movimientoTypeOptions: { value: string; label: string }[] = [
 
 export function useStockMovementForm({ onSuccess }: { onSuccess?: () => void } = {}) {
   // ─── Catálogos ──────────────────────────────────────────────────────────
-  const { data: warehouses = [], isLoading: isLoadingWarehouses } = useWarehouses();
-  const { data: locations = [], isLoading: isLoadingLocations } = useLocations();
-  const { productVariants, isLoading: isLoadingVariants } = useProductVariants();
+  const {
+    data: warehouses = [],
+    isLoading: isLoadingWarehouses,
+    isInitialError: isErrorWarehouses,
+  } = useWarehouses();
+  const {
+    data: locations = [],
+    isLoading: isLoadingLocations,
+    isInitialError: isErrorLocations,
+  } = useLocations();
+  const {
+    productVariants,
+    isLoading: isLoadingVariants,
+    isInitialError: isErrorVariants,
+  } = useProductVariants();
 
   const isLoadingFormData = isLoadingWarehouses || isLoadingLocations || isLoadingVariants;
+  // Si un catálogo NUNCA cargó, su lista vacía no es un catálogo vacío: se
+  // expone para que el diálogo muestre un error explícito en vez de la pantalla
+  // de prerrequisitos. Un refetch fallido con el catálogo ya cargado no cuenta
+  // (conserva el formulario y avisa por toast). Mismo criterio que
+  // `useStockTransferForm`.
+  const isErrorFormData = isErrorWarehouses || isErrorLocations || isErrorVariants;
 
   // ─── Estados de UI ──────────────────────────────────────────────────────
   const [errors, setErrors] = useState<Partial<Record<StockMovementField, string>>>({});
@@ -277,6 +295,7 @@ export function useStockMovementForm({ onSuccess }: { onSuccess?: () => void } =
     form,
     isPending,
     isLoadingFormData,
+    isErrorFormData,
     missingItems,
     warehouseOptions,
     activeLocations,
