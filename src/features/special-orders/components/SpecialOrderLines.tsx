@@ -1,5 +1,6 @@
 "use client";
 
+import { Button } from "@/src/components/Button";
 import { EmptyLines } from "@/src/components/DetailDialogPrimitives";
 import { TallaServiceChips } from "@/src/features/orders/components/TallaServiceChips";
 import { cleanText } from "@/src/utils/cleanText";
@@ -55,12 +56,60 @@ function TallaServices({
 const totalPiezas = (tallas: SpecialOrderTalla[]): number =>
   tallas.reduce((acc, talla) => (Number.isFinite(talla.cantidad) ? acc + talla.cantidad : acc), 0);
 
+interface SpecialOrderLinesProps {
+  detalles: SpecialOrderLine[];
+  /**
+   * El usuario puede ver la acción de alta de SKU. Es solo visibilidad: quién
+   * puede ejecutarla lo decide el backend (ver `SpecialOrderPageContent`).
+   */
+  canGenerateSkus: boolean;
+  /** Abre el alta de SKU + BOM de la línea. El diálogo lo tiene la página. */
+  onGenerateSkus: (line: SpecialOrderLine) => void;
+}
+
+/**
+ * Estado del alta de SKU de la línea. El alta es todo-o-nada, así que basta
+ * UNA talla con `sku_produccion` para saber que la línea ya se dio de alta. Sin
+ * tallas con cantidad no hay nada que generar (el backend lo rechazaría).
+ */
+function LineSkuStatus({
+  line,
+  canGenerateSkus,
+  onGenerateSkus,
+}: {
+  line: SpecialOrderLine;
+  canGenerateSkus: boolean;
+  onGenerateSkus: (line: SpecialOrderLine) => void;
+}) {
+  if (line.tallas.some((talla) => Boolean(talla.sku_produccion))) {
+    return (
+      <span className="inline-flex items-center rounded-full border border-emerald-200 dark:border-emerald-500/30 bg-emerald-50 dark:bg-emerald-500/10 px-2.5 py-0.5 text-xs font-semibold text-emerald-700 dark:text-emerald-300">
+        SKU generados
+      </span>
+    );
+  }
+
+  const hasTallasConCantidad = line.tallas.some((talla) => Number(talla.cantidad) > 0);
+  if (!canGenerateSkus || !hasTallasConCantidad) return null;
+
+  return (
+    <Button variant="primary" rounded="full" onClick={() => onGenerateSkus(line)}>
+      Generar SKU y BOM
+    </Button>
+  );
+}
+
 /**
  * Líneas de muestra del pedido: una tarjeta por línea (producto externo +
  * color · total de piezas) con su tabla de tallas. Patrón de `PedidoLineas`,
- * sin precios ni picking — este contrato no los trae.
+ * sin precios ni picking — este contrato no los trae. Cada talla muestra su SKU
+ * de producción y cada tarjeta, el estado del alta de SKU de la línea.
  */
-export function SpecialOrderLines({ detalles }: { detalles: SpecialOrderLine[] }) {
+export function SpecialOrderLines({
+  detalles,
+  canGenerateSkus,
+  onGenerateSkus,
+}: SpecialOrderLinesProps) {
   if (detalles.length === 0) {
     return <EmptyLines>Este pedido no tiene líneas de muestra.</EmptyLines>;
   }
@@ -83,13 +132,20 @@ export function SpecialOrderLines({ detalles }: { detalles: SpecialOrderLine[] }
                 </span>
               )}
             </div>
-            <div className="text-right shrink-0">
-              <p className="text-sm font-semibold tabular-nums text-slate-800 dark:text-white">
-                {formatQuantityValue(totalPiezas(line.tallas))} pzas
-              </p>
-              <p className="text-[11px] text-slate-400 dark:text-slate-500">
-                {line.tallas.length} talla{line.tallas.length === 1 ? "" : "s"}
-              </p>
+            <div className="flex items-center gap-4 shrink-0">
+              <LineSkuStatus
+                line={line}
+                canGenerateSkus={canGenerateSkus}
+                onGenerateSkus={onGenerateSkus}
+              />
+              <div className="text-right">
+                <p className="text-sm font-semibold tabular-nums text-slate-800 dark:text-white">
+                  {formatQuantityValue(totalPiezas(line.tallas))} pzas
+                </p>
+                <p className="text-[11px] text-slate-400 dark:text-slate-500">
+                  {line.tallas.length} talla{line.tallas.length === 1 ? "" : "s"}
+                </p>
+              </div>
             </div>
           </div>
 
@@ -106,6 +162,7 @@ export function SpecialOrderLines({ detalles }: { detalles: SpecialOrderLine[] }
                   <thead className="bg-slate-50 dark:bg-white/5">
                     <tr className="text-slate-500 dark:text-slate-400">
                       <th className="px-3 py-2 text-left font-semibold">Talla</th>
+                      <th className="px-3 py-2 text-left font-semibold">SKU</th>
                       <th className="px-3 py-2 text-left font-semibold">Servicios</th>
                       <th className="px-3 py-2 text-right font-semibold">Cantidad</th>
                     </tr>
@@ -118,6 +175,9 @@ export function SpecialOrderLines({ detalles }: { detalles: SpecialOrderLine[] }
                       >
                         <td className="px-3 py-2 whitespace-nowrap text-slate-700 dark:text-slate-200">
                           {talla.talla_nombre || "—"}
+                        </td>
+                        <td className="px-3 py-2 whitespace-nowrap font-mono text-slate-700 dark:text-slate-200">
+                          {talla.sku_produccion || "—"}
                         </td>
                         <td className="px-3 py-2">
                           <TallaServices talla={talla} line={line} />

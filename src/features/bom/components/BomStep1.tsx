@@ -12,6 +12,12 @@ interface BomStep1Props {
   onNext: (componentIds: number[]) => void;
   /** Closes the wizard (this is the first step — no previous step). */
   onBack: () => void;
+  /**
+   * Selección con la que arranca el paso. Opcional: sin ella arranca vacío,
+   * como siempre. La usa el alta de SKU de muestra (`special-orders`) para
+   * conservar lo elegido al regresar desde su Paso 2; solo se lee al montar.
+   */
+  initialSelectedIds?: readonly number[];
 }
 
 /**
@@ -22,11 +28,13 @@ interface BomStep1Props {
  * only — per-item configuration happens in Step 2. "Continuar" is enabled once
  * at least one product is selected.
  */
-export function BomStep1({ onNext, onBack }: BomStep1Props) {
+export function BomStep1({ onNext, onBack, initialSelectedIds }: BomStep1Props) {
   const { products, isLoading, isInitialError } = useProducts(2);
 
   const [search, setSearch] = useState("");
-  const [selectedIds, setSelectedIds] = useState<number[]>([]);
+  const [selectedIds, setSelectedIds] = useState<number[]>(() => [
+    ...(initialSelectedIds ?? []),
+  ]);
 
   const filteredProducts = useMemo(() => {
     const term = search.toLowerCase().trim();

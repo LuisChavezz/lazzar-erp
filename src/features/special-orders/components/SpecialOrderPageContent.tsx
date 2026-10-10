@@ -1,6 +1,8 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
+import { useSession } from "next-auth/react";
 import { ArrowLeftIcon } from "@/src/components/Icons";
 import { Loader } from "@/src/components/Loader";
 import { ErrorState } from "@/src/components/ErrorState";
@@ -8,7 +10,9 @@ import { InfoField, InfoGrid, Section } from "@/src/components/DetailDialogPrimi
 import { getPedidoClasificacionLabel } from "@/src/features/orders/constants/pedidoStatus";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { formatShortDate } from "@/src/utils/formatDate";
+import { hasPermission } from "@/src/utils/permissions";
 import { useSpecialOrderDetail } from "../hooks/useSpecialOrderDetail";
+import { SampleSkuOnboardingDialog } from "./SampleSkuOnboardingDialog";
 import { SpecialOrderLines } from "./SpecialOrderLines";
 
 // Destino fijo del "Volver": la ruta cuelga de `/manufacturing` y solo se
@@ -27,7 +31,8 @@ interface SpecialOrderPageContentProps {
 /**
  * Cuerpo de la página de detalle de un pedido especial: cabecera con los datos
  * del pedido y sus líneas de muestra con las tallas y servicios a fabricar.
- * Solo lectura; sin enlace al pedido completo.
+ * Sin enlace al pedido completo. La única escritura es el alta de SKU de
+ * producción + lista de materiales por línea (`SampleSkuOnboardingDialog`).
  */
 export function SpecialOrderPageContent({ orderId }: SpecialOrderPageContentProps) {
   const numericId = Number(orderId);
@@ -35,6 +40,18 @@ export function SpecialOrderPageContent({ orderId }: SpecialOrderPageContentProp
   const { data, isLoading, isError, error } = useSpecialOrderDetail(
     isValidId ? numericId : null,
   );
+
+  // Visibilidad del alta de SKU: admin de empresa / superusuario (`role ===
+  // "admin"`, que `hasPermission` cortocircuita) o cualquier usuario con
+  // `R-PRODUCCION`. Es UX, no la regla real: el backend exige además el
+  // DEPARTAMENTO Producción, que la sesión no trae, así que un usuario puede ver
+  // la acción y recibir el rechazo al enviar (el diálogo lo explica).
+  const { data: session } = useSession();
+  const canGenerateSkus = hasPermission("R-PRODUCCION", session?.user);
+
+  // Se guarda el id y no la línea: así el diálogo siempre lee la línea del
+  // detalle vigente, y se cierra solo si un refetch la deja de traer.
+  const [onboardingLineId, setOnboardingLineId] = useState<number | null>(null);
 
   const BackLink = (
     <Link
@@ -120,8 +137,18 @@ export function SpecialOrderPageContent({ orderId }: SpecialOrderPageContentProp
           Solo se muestran las líneas con producto fuera de catálogo. Las líneas de catálogo del
           mismo pedido no se listan aquí.
         </p>
-        <SpecialOrderLines detalles={data.detalles} />
+        <SpecialOrderLines
+          detalles={data.detalles}
+          canGenerateSkus={canGenerateSkus}
+          onGenerateSkus={(line) => setOnboardingLineId(line.id)}
+        />
       </Section>
+
+      <SampleSkuOnboardingDialog
+        pedidoId={data.id}
+        line={data.detalles.find((line) => line.id === onboardingLineId) ?? null}
+        onClose={() => setOnboardingLineId(null)}
+      />
     </div>
   );
 }
