@@ -36,6 +36,10 @@ export const useCreateSampleSkuOnboarding = (
     onSuccess: (variants) => {
       queryClient.invalidateQueries({ queryKey: ["special-order-detail", pedidoId] });
       queryClient.invalidateQueries({ queryKey: ["special-orders"] });
+      // El pedido especial ES el pedido de ventas (mismo id) y el alta escribe
+      // en su línea cuando le asigna color: el detalle que leen picking,
+      // programación y Mesa de Control también cambió.
+      queryClient.invalidateQueries({ queryKey: ["pedido-detail", pedidoId] });
       const total = variants.length;
       toast.success(
         total === 1
