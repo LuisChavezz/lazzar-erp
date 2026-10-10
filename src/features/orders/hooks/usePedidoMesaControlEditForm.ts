@@ -741,7 +741,7 @@ export function usePedidoMesaControlEditForm(pedidoId: number) {
   // campo que el backend nunca envía, y se queda con `[]`—, esta pantalla usa el
   // catálogo global real, como el alta. Sin él, el diálogo de tallas queda
   // inservible en cuanto un producto pierde sus variantes.
-  const { sizes, isLoading: isSizesLoading } = useSizes();
+  const { sizes, isLoading: isSizesLoading, isInitialError: isErrorSizes } = useSizes();
 
   /**
    * Detalle leído EN ESTE MONTAJE, nunca el de la caché. El formulario se
@@ -2022,6 +2022,7 @@ export function usePedidoMesaControlEditForm(pedidoId: number) {
     isCurrenciesLoading,
     isOnboardingLoading: isOnboardingLoading || isPedidoLoading || !hasFreshPedido,
     isSizesLoading,
+    isErrorSizes,
     showForm,
     /* Este flujo no tiene pantalla de éxito propia: al guardar se vuelve al
      * detalle 360° del pedido, que ya muestra el resultado real. */

@@ -156,6 +156,7 @@ export function QuoteFormContent({
   isCurrenciesLoading,
   isOnboardingLoading,
   isSizesLoading,
+  isErrorSizes,
   showForm,
   isCreationSuccessVisible,
   isRouteTransitioning,
@@ -240,8 +241,12 @@ export function QuoteFormContent({
    * validación cuando no hay tallas disponibles, así que no avisa nada y el
    * problema solo aparece al enviar, como un error de "Cantidad" que no explica
    * la causa. Se corta aquí, en el origen y con el motivo a la vista.
+   *
+   * `isErrorSizes` es la carga INICIAL fallida del catálogo (`useSizes` expone
+   * `isInitialError`): un refetch fallido conserva las tallas ya cargadas y no
+   * bloquea nada.
    */
-  const areSizesUnavailable = sizes.length === 0;
+  const areSizesUnavailable = isErrorSizes || sizes.length === 0;
 
   // Estado de carga del formulario. `isSizesLoading` entra porque sin él el
   // formulario se renderizaba con `sizes` todavía vacío y el bloqueo de arriba
@@ -1271,6 +1276,16 @@ export function QuoteFormContent({
             No se pudieron cargar las tallas del catálogo, así que no es posible
             capturar productos de muestra. Recarga la página para reintentarlo.
             Agregar productos de catálogo sigue disponible.
+          </p>
+        )}
+        {/* Sin captura de muestra el aviso de arriba no aplica, pero las tallas
+            del catálogo siguen haciendo falta para editar las de una partida
+            de muestra: si nunca cargaron, se dice aquí en vez de dejar esa
+            lista vacía sin explicación. */}
+        {!canAddMuestra && isErrorSizes && (
+          <p className="text-xs text-amber-600 dark:text-amber-400 font-medium mb-2">
+            No se pudieron cargar las tallas del catálogo. Recarga la página para
+            reintentarlo.
           </p>
         )}
         <div className="flex items-center justify-between mb-4">

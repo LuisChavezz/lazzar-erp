@@ -155,7 +155,7 @@ export function useQuoteForm() {
   // tallas y la partida se agregaba vacía sin aviso. Catálogo no depende de
   // ella —sus tallas salen de las variantes del onboarding—, así que esto solo
   // alarga la espera que el formulario ya hacía por las otras consultas.
-  const { sizes, isLoading: isSizesLoading } = useSizes();
+  const { sizes, isLoading: isSizesLoading, isInitialError: isErrorSizes } = useSizes();
   const { selectedCompany, selectedBranch } = useWorkspaceStore();
   const selectedCompanyId = selectedCompany?.id || 1; // Fallback
   const selectedBranchId = selectedBranch?.id || 1; // Fallback
@@ -1038,6 +1038,7 @@ export function useQuoteForm() {
     isCurrenciesLoading,
     isOnboardingLoading,
     isSizesLoading,
+    isErrorSizes,
     showForm,
     isCreationSuccessVisible,
     isRouteTransitioning,
