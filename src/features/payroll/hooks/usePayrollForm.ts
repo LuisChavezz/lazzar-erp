@@ -143,7 +143,7 @@ export function usePayrollForm({ onSuccess, payrollToEdit, defaultQuincena }: Us
   const {
     branches,
     isLoading: isLoadingBranches,
-    isError: isErrorBranches,
+    isInitialError: isErrorBranches,
   } = useCompanyBranches(selectedCompany.id);
   const {
     contracts,

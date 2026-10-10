@@ -66,7 +66,7 @@ export function usePolizaForm({ onSuccess }: { onSuccess?: () => void } = {}) {
   const {
     branches,
     isLoading: isLoadingBranches,
-    isError: isErrorBranches,
+    isInitialError: isErrorBranches,
   } = useCompanyBranches(selectedCompany.id);
   // Solo cuentas que admiten un asiento DIRECTO: el filtro va al servidor. Una
   // cuenta de agrupación (`acepta_movimientos=false`, las que solo suman a sus
@@ -95,10 +95,10 @@ export function usePolizaForm({ onSuccess }: { onSuccess?: () => void } = {}) {
   // Si CUALQUIER catálogo falla no se puede armar el formulario con selectores
   // válidos: una lista vacía por error de red se confundiría con un catálogo
   // legítimamente vacío y mandaría al usuario a "crear" datos que sí existen.
-  // Aquí todavía se combinan con OR los `isError` crudos, así que un refetch
-  // fallido de cualquiera de los tres también cambia el formulario por el
-  // error. `useStockTransferForm` ya juzga cada catálogo por su carga inicial;
-  // este formulario queda pendiente para una fase posterior de #164.
+  // Sucursales ya llega filtrado (`useCompanyBranches` expone
+  // `isInitialError`), pero cuentas y centros de costo siguen con su `isError`
+  // crudo: un refetch fallido de esos dos todavía cambia el formulario por el
+  // error. Pendiente en #239.
   const isErrorFormData = isErrorBranches || isErrorCuentas || isErrorCentros;
 
   /**

@@ -61,7 +61,7 @@ export function useProductForm({ onSuccess, product }: UseProductFormParams) {
     isError: isProductCategoriesError,
     error: productCategoriesError,
   } = useProductCategories();
-  const { units, isLoading: isLoadingUnits, isError: isUnitsError, error: unitsError } =
+  const { units, isLoading: isLoadingUnits, isInitialError: isUnitsError, error: unitsError } =
     useUnitsOfMeasure();
   const { taxes, isLoading: isLoadingTaxes, isError: isTaxesError, error: taxesError } = useTaxes();
   const {

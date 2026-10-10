@@ -30,7 +30,7 @@ export function useSerieFolioForm({ onSuccess, serieFolioToEdit }: UseSerieFolio
   const {
     branches,
     isLoading: isLoadingBranches,
-    isError: isErrorBranches,
+    isInitialError: isErrorBranches,
   } = useCompanyBranches(selectedCompany.id);
 
   // Determina si se está editando una serie existente.

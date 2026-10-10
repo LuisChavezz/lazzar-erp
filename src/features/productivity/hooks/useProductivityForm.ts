@@ -103,7 +103,7 @@ export function useProductivityForm({ onSuccess, recordToEdit }: UseProductivity
     isInitialError: isErrorEmployees,
   } = useEmployees();
   const { departments } = useDepartments();
-  const { units, isLoading: isLoadingUnits, isError: isErrorUnits } = useUnitsOfMeasure();
+  const { units, isLoading: isLoadingUnits, isInitialError: isErrorUnits } = useUnitsOfMeasure();
   const queryClient = useQueryClient();
 
   const empleadoOptions = buildEmployeeOptions(employees, recordToEdit?.empleado ?? null);

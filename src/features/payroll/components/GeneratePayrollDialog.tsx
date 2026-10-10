@@ -90,7 +90,7 @@ export function GeneratePayrollDialog({
 }: GeneratePayrollDialogProps) {
   const selectedCompany = useWorkspaceStore((state) => state.selectedCompany);
   const selectedBranch = useWorkspaceStore((state) => state.selectedBranch);
-  const { branches, isLoading: isLoadingBranches, isError: isErrorBranches } =
+  const { branches, isLoading: isLoadingBranches, isInitialError: isErrorBranches } =
     useCompanyBranches(selectedCompany.id);
 
   const [quincena, setQuincena] = useState<Quincena>(defaultQuincena);

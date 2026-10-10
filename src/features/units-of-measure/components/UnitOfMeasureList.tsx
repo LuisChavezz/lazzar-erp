@@ -5,7 +5,7 @@ import { getColumns } from "./UnitOfMeasureColumns";
 import { useUnitsOfMeasure } from "../hooks/useUnitsOfMeasure";
 
 export default function UnitOfMeasureList() {
-  const { units, isLoading, isError, error } = useUnitsOfMeasure();
+  const { units, isLoading, isInitialError, error } = useUnitsOfMeasure();
 
   const columns = useMemo(() => getColumns(), []);
 
@@ -15,7 +15,7 @@ export default function UnitOfMeasureList() {
       data={units}
       searchPlaceholder="Buscar unidad..."
       isLoading={isLoading}
-      isError={isError}
+      isError={isInitialError}
       errorTitle="Error al cargar unidades de medida"
       errorMessage={extractErrorMessage(error, "No se pudo cargar la información.")}
       loadingAriaLabel="Cargando unidades"

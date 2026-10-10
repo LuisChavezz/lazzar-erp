@@ -46,7 +46,7 @@ export function useEmployeeForm({ onSuccess, employeeToEdit }: UseEmployeeFormPa
   const {
     branches,
     isLoading: isLoadingBranches,
-    isError: isErrorBranches,
+    isInitialError: isErrorBranches,
   } = useCompanyBranches(companyId);
   const {
     departments,
