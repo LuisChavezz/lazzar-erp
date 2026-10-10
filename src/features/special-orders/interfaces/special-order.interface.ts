@@ -53,6 +53,12 @@ export interface SpecialOrderTalla {
   id: number;
   talla_nombre: string;
   cantidad: number;
+  /**
+   * SKU de producción ya generado para esta talla, o `null`. Solo refleja
+   * variantes de producción ACTIVAS. El alta es todo-o-nada por línea: o todas
+   * las tallas con cantidad lo traen, o ninguna.
+   */
+  sku_produccion: string | null;
   lleva_bordado: boolean;
   bordado_config: SpecialOrderBordadoConfig | null;
   lleva_reflejante: boolean;
@@ -71,8 +77,10 @@ export interface SpecialOrderTalla {
 
 /** Línea de muestra del pedido (`PedidoDetalleEspecialSerializer`). */
 export interface SpecialOrderLine {
+  /** Id del `PedidoDetalle`: es el `pedido_detalle_id` del alta de SKU. */
   id: number;
   producto_nombre_externo: string;
+  /** `null` cuando la línea no tiene color. El contrato NO expone el id del color. */
   color_nombre: string | null;
   tallas: SpecialOrderTalla[];
 }
@@ -87,4 +95,47 @@ export interface SpecialOrderLine {
  */
 export interface SpecialOrderDetail extends SpecialOrderListItem {
   detalles: SpecialOrderLine[];
+}
+
+/**
+ * Material del alta de SKU de muestra. Se captura UNA vez y el backend lo
+ * replica en la lista de materiales de cada talla.
+ */
+export interface SampleSkuOnboardingMaterial {
+  /** Id de `Producto` (materia prima, `tipo 2`) — no de variante. */
+  componente: number;
+  /** Decimal con 2 posiciones, por pieza. */
+  cantidad: string;
+  /** Id de unidad de medida. */
+  unidad: number;
+  /** Porcentaje con 2 posiciones. */
+  desperdicio: string;
+  obligatorio: boolean;
+}
+
+/**
+ * Cuerpo de `POST /produccion/pedidos-especiales/{id}/variante-onboarding/`.
+ *
+ * `color` solo se envía cuando la línea NO tiene color: el backend lo exige en
+ * ese caso y lo guarda en la línea. Si la línea ya tiene color solo acepta el
+ * mismo, y como el detalle no expone su id, se omite.
+ */
+export interface SampleSkuOnboardingPayload {
+  pedido_detalle_id: number;
+  color?: number;
+  materia_prima_detalle: SampleSkuOnboardingMaterial[];
+}
+
+/**
+ * Variante de producción creada (`VarianteProduccionSerializer`). La respuesta
+ * `201` es un ARREGLO plano con una por talla con cantidad; no trae el id del
+ * BOM.
+ */
+export interface SampleProductionVariant {
+  id: number;
+  sku: string;
+  nombre: string;
+  talla_nombre: string;
+  aplica_catalogo: boolean;
+  pedido_detalle: number;
 }

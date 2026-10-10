@@ -1,6 +1,8 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
+import { useSession } from "next-auth/react";
 import { ArrowLeftIcon } from "@/src/components/Icons";
 import { Loader } from "@/src/components/Loader";
 import { ErrorState } from "@/src/components/ErrorState";
@@ -8,7 +10,9 @@ import { InfoField, InfoGrid, Section } from "@/src/components/DetailDialogPrimi
 import { getPedidoClasificacionLabel } from "@/src/features/orders/constants/pedidoStatus";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { formatShortDate } from "@/src/utils/formatDate";
+import { hasPermission } from "@/src/utils/permissions";
 import { useSpecialOrderDetail } from "../hooks/useSpecialOrderDetail";
+import { SampleSkuOnboardingDialog } from "./SampleSkuOnboardingDialog";
 import { SpecialOrderLines } from "./SpecialOrderLines";
 
 // Destino fijo del "Volver": la ruta cuelga de `/manufacturing` y solo se
@@ -27,14 +31,34 @@ interface SpecialOrderPageContentProps {
 /**
  * Cuerpo de la página de detalle de un pedido especial: cabecera con los datos
  * del pedido y sus líneas de muestra con las tallas y servicios a fabricar.
- * Solo lectura; sin enlace al pedido completo.
+ * Sin enlace al pedido completo. La única escritura es el alta de SKU de
+ * producción + lista de materiales por línea (`SampleSkuOnboardingDialog`).
  */
 export function SpecialOrderPageContent({ orderId }: SpecialOrderPageContentProps) {
   const numericId = Number(orderId);
   const isValidId = Number.isInteger(numericId) && numericId > 0;
-  const { data, isLoading, isError, error } = useSpecialOrderDetail(
+  const { data, isLoading, isInitialError, error } = useSpecialOrderDetail(
     isValidId ? numericId : null,
   );
+
+  // Visibilidad del alta de SKU: admin de empresa / superusuario (`role ===
+  // "admin"`, que `hasPermission` cortocircuita) o cualquier usuario con
+  // `R-PRODUCCION`. Es UX, no la regla real: el backend exige además el
+  // DEPARTAMENTO Producción, que la sesión no trae, así que un usuario puede ver
+  // la acción y recibir el rechazo al enviar (el diálogo lo explica).
+  const { data: session } = useSession();
+  const canGenerateSkus = hasPermission("R-PRODUCCION", session?.user);
+
+  // Se guarda el id y no la línea: así el diálogo siempre lee la línea del
+  // detalle vigente. `open` va aparte del id a propósito: al cerrar, la línea
+  // sigue montada mientras el diálogo anima su salida y se suelta después
+  // (`onClosed`). `session` cambia en cada apertura para que el asistente
+  // arranque limpio aunque se reabra la misma línea.
+  const [onboarding, setOnboarding] = useState<{
+    lineId: number | null;
+    open: boolean;
+    session: number;
+  }>({ lineId: null, open: false, session: 0 });
 
   const BackLink = (
     <Link
@@ -72,8 +96,10 @@ export function SpecialOrderPageContent({ orderId }: SpecialOrderPageContentProp
   }
 
   // Un pedido sin líneas de muestra, de otra empresa o inexistente responde
-  // 404: el backend no los distingue.
-  if (isError || !data) {
+  // 404: el backend no los distingue. Solo cuenta la carga INICIAL: un refetch
+  // fallido con el detalle ya cargado conserva la página (y el asistente
+  // abierto) y avisa por toast (ver `useSpecialOrderDetail`).
+  if (isInitialError || !data) {
     return (
       <div className="w-full space-y-6">
         <div>{BackLink}</div>
@@ -120,8 +146,23 @@ export function SpecialOrderPageContent({ orderId }: SpecialOrderPageContentProp
           Solo se muestran las líneas con producto fuera de catálogo. Las líneas de catálogo del
           mismo pedido no se listan aquí.
         </p>
-        <SpecialOrderLines detalles={data.detalles} />
+        <SpecialOrderLines
+          detalles={data.detalles}
+          canGenerateSkus={canGenerateSkus}
+          onGenerateSkus={(line) =>
+            setOnboarding((prev) => ({ lineId: line.id, open: true, session: prev.session + 1 }))
+          }
+        />
       </Section>
+
+      <SampleSkuOnboardingDialog
+        pedidoId={data.id}
+        key={onboarding.session}
+        open={onboarding.open}
+        line={data.detalles.find((line) => line.id === onboarding.lineId) ?? null}
+        onClose={() => setOnboarding((prev) => ({ ...prev, open: false }))}
+        onClosed={() => setOnboarding((prev) => (prev.open ? prev : { ...prev, lineId: null }))}
+      />
     </div>
   );
 }

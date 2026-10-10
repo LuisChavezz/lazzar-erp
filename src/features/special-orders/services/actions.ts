@@ -1,5 +1,7 @@
 import { v1_api } from "@/src/api/v1.api";
 import type {
+  SampleProductionVariant,
+  SampleSkuOnboardingPayload,
   SpecialOrderDetail,
   SpecialOrderListItem,
 } from "../interfaces/special-order.interface";
@@ -28,6 +30,22 @@ export const getSpecialOrderDetail = async (
 ): Promise<SpecialOrderDetail> => {
   const response = await v1_api.get<SpecialOrderDetail>(
     `/produccion/pedidos-especiales/${id}/`,
+  );
+  return response.data;
+};
+
+/**
+ * Alta de SKU de producción + lista de materiales de UNA línea de muestra
+ * (`POST /produccion/pedidos-especiales/{id}/variante-onboarding/`). Crea una
+ * variante por talla con cantidad y responde `201` con el arreglo de variantes.
+ */
+export const createSampleSkuOnboarding = async (
+  pedidoId: number,
+  payload: SampleSkuOnboardingPayload,
+): Promise<SampleProductionVariant[]> => {
+  const response = await v1_api.post<SampleProductionVariant[]>(
+    `/produccion/pedidos-especiales/${pedidoId}/variante-onboarding/`,
+    payload,
   );
   return response.data;
 };
