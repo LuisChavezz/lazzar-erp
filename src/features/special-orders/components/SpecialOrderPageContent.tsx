@@ -37,7 +37,7 @@ interface SpecialOrderPageContentProps {
 export function SpecialOrderPageContent({ orderId }: SpecialOrderPageContentProps) {
   const numericId = Number(orderId);
   const isValidId = Number.isInteger(numericId) && numericId > 0;
-  const { data, isLoading, isError, error } = useSpecialOrderDetail(
+  const { data, isLoading, isInitialError, error } = useSpecialOrderDetail(
     isValidId ? numericId : null,
   );
 
@@ -89,8 +89,10 @@ export function SpecialOrderPageContent({ orderId }: SpecialOrderPageContentProp
   }
 
   // Un pedido sin líneas de muestra, de otra empresa o inexistente responde
-  // 404: el backend no los distingue.
-  if (isError || !data) {
+  // 404: el backend no los distingue. Solo cuenta la carga INICIAL: un refetch
+  // fallido con el detalle ya cargado conserva la página (y el asistente
+  // abierto) y avisa por toast (ver `useSpecialOrderDetail`).
+  if (isInitialError || !data) {
     return (
       <div className="w-full space-y-6">
         <div>{BackLink}</div>
