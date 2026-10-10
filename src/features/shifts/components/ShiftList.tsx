@@ -16,7 +16,7 @@ import { useShifts } from "../hooks/useShifts";
 export default function ShiftList() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedShift, setSelectedShift] = useState<Shift | null>(null);
-  const { shifts, isLoading, isError, error } = useShifts();
+  const { shifts, isLoading, isInitialError, error } = useShifts();
   const { data: session } = useSession();
   // `hasPermission` ya cortocircuita para el rol "admin".
   const canEditHr = hasPermission("E-RH", session?.user);
@@ -50,7 +50,7 @@ export default function ShiftList() {
       getRowId={(row) => String(row.id)}
       searchPlaceholder="Buscar turno..."
       isLoading={isLoading}
-      isError={isError}
+      isError={isInitialError}
       errorTitle="Error al cargar turnos"
       errorMessage={extractErrorMessage(error, "No se pudo cargar la información.")}
       loadingAriaLabel="Cargando turnos"

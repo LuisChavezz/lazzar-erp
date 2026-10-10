@@ -270,11 +270,12 @@ function StockTransferFormContent({ onClose }: { onClose: () => void }) {
     );
   }
 
-  // Si algún catálogo (almacenes/ubicaciones/productos/variantes) falló, NO se
-  // renderiza el formulario con selects vacíos —que se confundirían con catálogos
-  // legítimamente vacíos y mandarían al usuario a "crear" datos que sí existen—:
-  // se muestra un error explícito, distinto de la pantalla de prerrequisitos.
-  // Mismo patrón que `RegisterPendingInvoiceDialog` (CxC).
+  // Si algún catálogo (almacenes/ubicaciones/productos/variantes) NUNCA cargó,
+  // NO se renderiza el formulario con selects vacíos —que se confundirían con
+  // catálogos legítimamente vacíos y mandarían al usuario a "crear" datos que sí
+  // existen—: se muestra un error explícito, distinto de la pantalla de
+  // prerrequisitos. Un refetch fallido con el catálogo ya cargado NO llega aquí
+  // (ver `isErrorFormData`): el formulario sigue montado con lo capturado.
   if (isErrorFormData) {
     return (
       <div className="rounded-xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 p-6 text-center">

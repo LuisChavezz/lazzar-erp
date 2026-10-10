@@ -95,7 +95,10 @@ export function usePolizaForm({ onSuccess }: { onSuccess?: () => void } = {}) {
   // Si CUALQUIER catálogo falla no se puede armar el formulario con selectores
   // válidos: una lista vacía por error de red se confundiría con un catálogo
   // legítimamente vacío y mandaría al usuario a "crear" datos que sí existen.
-  // Mismo patrón que `useStockTransferForm`.
+  // Aquí todavía se combinan con OR los `isError` crudos, así que un refetch
+  // fallido de cualquiera de los tres también cambia el formulario por el
+  // error. `useStockTransferForm` ya juzga cada catálogo por su carga inicial;
+  // este formulario queda pendiente para una fase posterior de #164.
   const isErrorFormData = isErrorBranches || isErrorCuentas || isErrorCentros;
 
   /**

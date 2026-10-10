@@ -59,10 +59,10 @@ export function RollCallView({ fecha, today, showAll, setParams }: RollCallViewP
   const {
     employees,
     isLoading: isLoadingEmployees,
-    isError: isEmployeesError,
+    isInitialError: isEmployeesError,
     error: employeesError,
   } = useEmployees();
-  const { shifts, isLoading: isLoadingShifts, isError: isShiftsError } = useShifts();
+  const { shifts, isLoading: isLoadingShifts, isInitialError: isShiftsError } = useShifts();
   const {
     records,
     hasLoaded,
@@ -135,6 +135,10 @@ export function RollCallView({ fecha, today, showAll, setParams }: RollCallViewP
 
   const columns = getRollCallColumns(permissions);
 
+  // Las banderas son de carga INICIAL (`useAttendance`, `useEmployees` y
+  // `useShifts` exponen `isInitialError`): un refetch fallido de cualquiera
+  // conserva el pase de lista ya cargado —filas, filtro por día laboral y
+  // nombres de turno— y avisa por toast desde su hook.
   const showError = isInitialError || isEmployeesError;
 
   return (
@@ -208,7 +212,16 @@ export function RollCallView({ fecha, today, showAll, setParams }: RollCallViewP
         // estado sin que deje de ser la misma fila.
         getRowId={(row) => String(row.empleado)}
         searchPlaceholder="Buscar empleado..."
-        onRefetch={refetch}
+        // Refresca también los dos catálogos: tras un refetch fallido de
+        // empleados o turnos la tabla sigue en pantalla (sin "Reintentar"), y
+        // este botón es la única vía para volver a pedirlos sin salir.
+        onRefetch={async () => {
+          await Promise.all([
+            refetch(),
+            queryClient.refetchQueries({ queryKey: ["employees"], exact: true }),
+            queryClient.refetchQueries({ queryKey: ["shifts"], exact: true }),
+          ]);
+        }}
         isRefetching={isFetching}
         emptyMessage={`No hay empleados que pasar lista el ${formatLocalDate(fecha)}.`}
         isLoading={isLoading || isSwitchingDay || isLoadingEmployees || isLoadingShifts}

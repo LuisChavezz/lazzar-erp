@@ -41,12 +41,12 @@ export function useStockTransferForm({ onSuccess }: { onSuccess?: () => void } =
   const {
     data: warehouses = [],
     isLoading: isLoadingWarehouses,
-    isError: isErrorWarehouses,
+    isInitialError: isErrorWarehouses,
   } = useWarehouses();
   const {
     data: locations = [],
     isLoading: isLoadingLocations,
-    isError: isErrorLocations,
+    isInitialError: isErrorLocations,
   } = useLocations();
   const {
     products,
@@ -54,21 +54,20 @@ export function useStockTransferForm({ onSuccess }: { onSuccess?: () => void } =
     isInitialError: isErrorProducts,
   } = useProducts();
   const {
-    productVariants = [],
+    productVariants,
     isLoading: isLoadingVariants,
-    isError: isErrorVariants,
+    isInitialError: isErrorVariants,
   } = useProductVariants();
 
   const isLoadingFormData =
     isLoadingWarehouses || isLoadingLocations || isLoadingProducts || isLoadingVariants;
-  // Si un catálogo falla, no se puede armar el formulario con selects válidos:
-  // se expone para que el diálogo muestre un estado de error explícito
+  // Si un catálogo NUNCA cargó, no se puede armar el formulario con selects
+  // válidos: se expone para que el diálogo muestre un estado de error explícito
   // en vez de la pantalla de "faltan configuraciones" (una lista vacía por error
-  // de red se confundiría con un catálogo legítimamente vacío). Mismo patrón que
-  // `useRegisterPendingInvoiceForm` (CxC). Productos solo cuenta si NUNCA cargó
-  // (`useProducts` expone `isInitialError`; un refetch fallido conserva el
-  // formulario y avisa por toast); almacenes, ubicaciones y variantes usan su
-  // `isError` crudo, así que un refetch fallido de esos sí bloquea el formulario.
+  // de red se confundiría con un catálogo legítimamente vacío). Cada catálogo
+  // se juzga por SU carga inicial (los cuatro hooks exponen `isInitialError`):
+  // un refetch fallido de cualquiera conserva el formulario —y lo ya
+  // capturado— y avisa por toast desde su hook.
   const isErrorFormData =
     isErrorWarehouses || isErrorLocations || isErrorProducts || isErrorVariants;
 

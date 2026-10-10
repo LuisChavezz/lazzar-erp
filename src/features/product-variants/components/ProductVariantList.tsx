@@ -29,7 +29,7 @@ export default function ProductVariantList() {
   const {
     productVariants,
     isLoading: isLoadingVariants,
-    isError: isErrorVariants,
+    isInitialError: isErrorVariants,
     error: variantsError,
   } = useProductVariants();
   // Mismos tipos que el formulario (PT + COMPRAS, EC-249): con solo PT, el
@@ -74,9 +74,9 @@ export default function ProductVariantList() {
   );
   const isEditing = Boolean(selectedProductVariant?.id);
   const isLoading = isLoadingVariants || isLoadingProducts || isLoadingColors || isLoadingSizes;
-  // Productos, colores y tallas ya llegan filtrados: un refetch fallido de
-  // esos catálogos conserva la tabla (toast desde su hook) y su `error` es
-  // `null` salvo en una carga inicial fallida.
+  // Variantes, productos, colores y tallas ya llegan filtrados: un refetch
+  // fallido de cualquiera conserva la tabla (toast desde su hook) y su `error`
+  // es `null` salvo en una carga inicial fallida.
   const isError = isErrorVariants || isErrorProducts || isErrorColors || isErrorSizes;
   const error = variantsError || productsError || colorsError || sizesError;
 

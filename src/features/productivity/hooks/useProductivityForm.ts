@@ -100,7 +100,7 @@ export function useProductivityForm({ onSuccess, recordToEdit }: UseProductivity
   const {
     employees,
     isLoading: isLoadingEmployees,
-    isError: isErrorEmployees,
+    isInitialError: isErrorEmployees,
   } = useEmployees();
   const { departments } = useDepartments();
   const { units, isLoading: isLoadingUnits, isError: isErrorUnits } = useUnitsOfMeasure();

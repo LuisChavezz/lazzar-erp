@@ -46,7 +46,7 @@ export function useIncidentForm({ onSuccess, incidentToEdit }: UseIncidentFormPa
   const {
     employees,
     isLoading: isLoadingEmployees,
-    isError: isErrorEmployees,
+    isInitialError: isErrorEmployees,
   } = useEmployees();
 
   /**

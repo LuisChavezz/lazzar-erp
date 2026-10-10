@@ -47,7 +47,7 @@ export function useContractForm({ onSuccess, contractToEdit }: UseContractFormPa
   const {
     employees,
     isLoading: isLoadingEmployees,
-    isError: isErrorEmployees,
+    isInitialError: isErrorEmployees,
   } = useEmployees();
 
   /**
