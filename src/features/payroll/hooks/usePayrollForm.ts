@@ -143,17 +143,17 @@ export function usePayrollForm({ onSuccess, payrollToEdit, defaultQuincena }: Us
   const {
     branches,
     isLoading: isLoadingBranches,
-    isError: isErrorBranches,
+    isInitialError: isErrorBranches,
   } = useCompanyBranches(selectedCompany.id);
   const {
     contracts,
     isLoading: isLoadingContracts,
-    isError: isErrorContracts,
+    isInitialError: isErrorContracts,
   } = useContracts();
   const {
     positions,
     isLoading: isLoadingPositions,
-    isError: isErrorPositions,
+    isInitialError: isErrorPositions,
   } = usePositions();
 
   // El selector de empleado necesita empleados y sucursales; el prellenado

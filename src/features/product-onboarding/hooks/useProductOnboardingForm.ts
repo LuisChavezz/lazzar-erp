@@ -34,7 +34,7 @@ import { useCreateProductOnboarding } from "./useCreateProductOnboarding";
  * `createdProduct` para que la UI muestre el `codigo` que asignó el servidor.
  */
 export function useProductOnboardingForm() {
-  const { categories, isLoading: isLoadingCategories, isError: isCategoriesError, error: categoriesError } =
+  const { categories, isLoading: isLoadingCategories, isInitialError: isCategoriesError, error: categoriesError } =
     useProductCategories();
   const { productTypes, isLoading: isLoadingTypes, isError: isTypesError, error: typesError } =
     useProductTypes();

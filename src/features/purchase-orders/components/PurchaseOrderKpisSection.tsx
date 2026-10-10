@@ -168,7 +168,8 @@ function buildCards(
  */
 export function PurchaseOrderKpisSection() {
   const { data, isInitialError, isFetching, refetch } = usePurchaseOrderKpis();
-  const { purchaseOrders, hasLoaded: isListLoaded, isError: isListError } = usePurchaseOrders();
+  const { purchaseOrders, hasLoaded: isListLoaded, isInitialError: isListError } =
+    usePurchaseOrders();
   const amountVisibility = getPurchaseOrderKpiAmountVisibility({
     orders: purchaseOrders,
     hasLoaded: isListLoaded,

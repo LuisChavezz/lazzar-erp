@@ -5,7 +5,7 @@ import { getColumns } from "./TaxColumns";
 import { useTaxes } from "../hooks/useTaxes";
 
 export default function TaxList() {
-  const { taxes, isLoading, isError, error } = useTaxes();
+  const { taxes, isLoading, isInitialError, error } = useTaxes();
 
   const columns = useMemo(() => getColumns(), []);
 
@@ -15,7 +15,7 @@ export default function TaxList() {
       data={taxes}
       searchPlaceholder="Buscar impuesto..."
       isLoading={isLoading}
-      isError={isError}
+      isError={isInitialError}
       errorTitle="Error al cargar impuestos"
       errorMessage={extractErrorMessage(error, "No se pudo cargar la información.")}
       loadingAriaLabel="Cargando impuestos"

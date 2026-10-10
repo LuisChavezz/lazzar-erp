@@ -17,7 +17,7 @@ import { usePositions } from "../hooks/usePositions";
 export default function PositionList() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedPosition, setSelectedPosition] = useState<Position | null>(null);
-  const { positions, isLoading, isError, error } = usePositions();
+  const { positions, isLoading, isInitialError, error } = usePositions();
   const { areas } = useAreas();
   const { data: session } = useSession();
   // `hasPermission` ya cortocircuita para el rol "admin".
@@ -66,7 +66,7 @@ export default function PositionList() {
       data={rows}
       searchPlaceholder="Buscar puesto..."
       isLoading={isLoading}
-      isError={isError}
+      isError={isInitialError}
       errorTitle="Error al cargar puestos"
       errorMessage={extractErrorMessage(error, "No se pudo cargar la información.")}
       loadingAriaLabel="Cargando puestos"

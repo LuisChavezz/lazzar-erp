@@ -23,7 +23,7 @@ export default function ContractList() {
   // El diálogo de baja vive aquí y no en la celda: la celda se desmonta al
   // ordenar/paginar/filtrar y se llevaría el diálogo a media confirmación.
   const [contractToDeactivate, setContractToDeactivate] = useState<Contract | null>(null);
-  const { contracts, isLoading, isError, error } = useContracts();
+  const { contracts, isLoading, isInitialError, error } = useContracts();
   const { employees } = useEmployees();
   const {
     mutate: deleteContract,
@@ -93,7 +93,7 @@ export default function ContractList() {
         getRowId={(row) => String(row.id)}
         searchPlaceholder="Buscar contrato..."
         isLoading={isLoading}
-        isError={isError}
+        isError={isInitialError}
         errorTitle="Error al cargar contratos"
         errorMessage={extractErrorMessage(error, "No se pudo cargar la información.")}
         loadingAriaLabel="Cargando contratos"

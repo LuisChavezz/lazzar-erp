@@ -42,14 +42,14 @@ export function useAccountPayableForm({ onSuccess }: { onSuccess?: () => void } 
   const {
     suppliers,
     isLoading: isLoadingSuppliers,
-    isError: isErrorSuppliers,
+    isInitialError: isErrorSuppliers,
   } = useSuppliers();
 
   const isLoadingFormData = isLoadingSuppliers;
-  // Un refetch fallido CON proveedores en caché no debe tirar el formulario.
-  // `useSuppliers` no expone `hasLoaded`: mismo equivalente que `usePaymentForm`
-  // (si hay proveedores en mano, la carga inicial ya ocurrió).
-  const isErrorFormData = isErrorSuppliers && suppliers.length === 0;
+  // Solo cuenta la carga INICIAL (`useSuppliers` expone `isInitialError`): un
+  // refetch fallido con proveedores en caché no tira el formulario y avisa por
+  // toast desde el hook.
+  const isErrorFormData = isErrorSuppliers;
 
   const supplierOptions = suppliers.map((s) => ({ value: s.id, label: s.nombre }));
   const missingItems = supplierOptions.length === 0 ? ["Proveedores registrados"] : [];
