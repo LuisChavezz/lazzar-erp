@@ -20,6 +20,7 @@ export const DATE_FIELDS = [
   "fecha_real_surtido_telas",
   "fecha_real_surtido_avios",
   "fecha_embarque_materia_prima",
+  "fecha_llegada_centro_confeccion",
   "fecha_trazo",
   "fecha_real_corte",
 ] as const satisfies readonly (keyof CriticalPathWritableFields)[];
@@ -46,6 +47,7 @@ export const toCriticalPathValues = (data: ProductionOrderCriticalPath): Critica
   comentarios_telas_avios: data.comentarios_telas_avios ?? "",
   kit_completo: data.kit_completo,
   fecha_embarque_materia_prima: data.fecha_embarque_materia_prima ?? "",
+  fecha_llegada_centro_confeccion: data.fecha_llegada_centro_confeccion ?? "",
   fecha_trazo: data.fecha_trazo ?? "",
   fecha_real_corte: data.fecha_real_corte ?? "",
   cantidad_real_corte: toCantidadValue(data.cantidad_real_corte),

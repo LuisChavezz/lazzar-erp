@@ -7,8 +7,9 @@ import type {
 const criticalPathUrl = (opId: number) => `/produccion/orden-produccion/${opId}/ruta-critica/`;
 
 /**
- * OJO: CREA el registro vacío si la OP aún no tiene (`get_or_create`). Solo se
- * llama al abrir el diálogo. Una OP de otra empresa responde 404.
+ * Solo lectura: una OP sin captura responde los valores por defecto con
+ * `updated_at: null` (el renglón nace en el primer PATCH). Una OP de otra
+ * empresa responde 404.
  */
 export const getProductionOrderCriticalPath = async (
   opId: number

@@ -36,7 +36,7 @@ export function ProductionOrderList() {
   // "admin".
   const { data: session } = useSession();
   const canCreate = hasPermission("C-PRODUCCION-OP", session?.user);
-  // OP cuya ruta crítica está abierta. Se guarda la FOTO (id + folio) de la
+  // OP cuya ruta crítica está abierta. Se guarda la FOTO (id, folio y estatus) de la
   // apertura y no se resuelve contra el listado: la ruta crítica no depende de
   // la fila, así que un refetch del listado no debe cerrar el diálogo.
   const [criticalPathTarget, setCriticalPathTarget] = useState<CriticalPathTarget | null>(null);
@@ -44,7 +44,7 @@ export function ProductionOrderList() {
     () =>
       getProductionOrderColumns(
         (id) => router.push(`/manufacturing/production-orders/${id}`),
-        (row) => setCriticalPathTarget({ opId: row.op_id, folio: row.folio_op }),
+        (row) => setCriticalPathTarget({ opId: row.op_id, folio: row.folio_op, estatusOp: row.estatus_op }),
       ),
     [router],
   );
@@ -109,8 +109,8 @@ export function ProductionOrderList() {
         }}
       />
 
-      {/* Montado solo mientras está abierto: el GET de la ruta crítica CREA
-          el registro, y cada apertura pide una lectura fresca. */}
+      {/* Montado solo mientras está abierto: cada apertura pide una lectura
+          fresca de la ruta crítica. */}
       {criticalPathTarget && (
         <ProductionOrderCriticalPathDialog
           key={criticalPathTarget.opId}
