@@ -50,7 +50,7 @@ export function useRegisterPendingInvoiceForm({
   const {
     customers,
     isLoading: isLoadingCustomers,
-    isError: isErrorCustomers,
+    isInitialError: isErrorCustomers,
   } = useCustomers();
   const {
     data: currencies = [],
@@ -64,7 +64,10 @@ export function useRegisterPendingInvoiceForm({
   // Si cualquier catálogo falla, el formulario no puede armarse con selects
   // válidos: se expone para que el diálogo muestre un estado de error en vez de
   // renderizar el formulario con dropdowns vacíos (que se confundirían con
-  // catálogos legítimamente vacíos).
+  // catálogos legítimamente vacíos). Clientes ya llega filtrado (`useCustomers`
+  // expone `isInitialError`); monedas y pedidos siguen con su `isError` crudo,
+  // así que un refetch fallido de esos dos todavía cambia el formulario por el
+  // error. Pendiente en #239.
   const isErrorCatalogs =
     isErrorCustomers || isErrorCurrencies || isErrorOrders;
 

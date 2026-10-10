@@ -151,3 +151,19 @@ export interface OperationsQuote {
   oportunidad: number | null;
   moneda: number;
 }
+
+/**
+ * Respuesta de las cuatro acciones de mesa de control (`autorizar`, `rechazar`,
+ * `aceptar-cambios`, `rechazar-cambios`). NO es la fila del listado:
+ * `cotizacion` llega con `CotizacionSerializer` —el modelo plano, sin
+ * `estatus_label`, `cliente_nombre`, `pedido_id` ni lo demás que el listado
+ * deriva aparte—. Solo se tipa lo que se usa. `pedido` solo viene al autorizar,
+ * que es cuando nace.
+ */
+export interface OperationsQuoteActionResponse {
+  cotizacion: Pick<
+    OperationsQuote,
+    "id" | "estatus" | "autorizada_at" | "cambios_solicitados_at" | "updated_at"
+  >;
+  pedido?: { id: number; folio: string | null };
+}

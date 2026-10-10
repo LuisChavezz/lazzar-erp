@@ -78,7 +78,7 @@ const getStatusIconConfig = (status: number) => {
 };
 
 export const RecentQuotes = () => {
-  const { quotes, isLoading, isError } = useQuotes();
+  const { quotes, isLoading, isInitialError: isErrorQuotes } = useQuotes();
   const [selectedQuoteId, setSelectedQuoteId] = useState<number | null>(null);
 
   const recentQuotes = useMemo(() => {
@@ -117,20 +117,20 @@ export const RecentQuotes = () => {
           </>
         ) : null}
 
-        {!isLoading && !isError && recentQuotes.length === 0 ? (
+        {!isLoading && !isErrorQuotes && recentQuotes.length === 0 ? (
           <div className="rounded-lg border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 p-3 text-xs text-slate-500 dark:text-slate-400">
             No hay cotizaciones recientes.
           </div>
         ) : null}
 
-        {!isLoading && isError ? (
+        {!isLoading && isErrorQuotes ? (
           <div className="rounded-lg border border-rose-200 dark:border-rose-400/30 bg-rose-50 dark:bg-rose-500/10 p-3 text-xs text-rose-700 dark:text-rose-200">
             No se pudieron cargar las cotizaciones recientes.
           </div>
         ) : null}
 
         {!isLoading &&
-          !isError &&
+          !isErrorQuotes &&
           recentQuotes.map((quote: Quote) => {
             const statusClassName = getStatusStyles(quote);
             const icon = getStatusIconConfig(quote.estatus);

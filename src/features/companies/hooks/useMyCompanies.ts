@@ -1,19 +1,27 @@
-import { useQuery } from "@tanstack/react-query";
+import { useGuardedQuery } from "@/src/hooks/useGuardedQuery";
 import { getMyCompanies } from "@/src/features/companies/services/actions";
 
+/**
+ * No expone el `isError` crudo: `error` solo trae el mensaje si la consulta
+ * NUNCA cargó (`isInitialError`); un refetch fallido con datos en caché
+ * conserva las empresas y avisa por toast (`useGuardedQuery`). `refetch` es
+ * para el "Reintentar" de esa carga inicial fallida.
+ */
 export const useMyCompanies = () => {
-  const {
-    data: companies = [],
-    isLoading: loading,
-    isError,
-  } = useQuery({
-    queryKey: ["my-companies"],
-    queryFn: () => getMyCompanies(),
-  });
+  const { data, isLoading: loading, isInitialError, refetch } = useGuardedQuery(
+    {
+      queryKey: ["my-companies"],
+      queryFn: () => getMyCompanies(),
+    },
+    { toastId: "my-companies-refetch-error" },
+  );
+
+  const companies = data ?? [];
 
   return {
     companies,
     loading,
-    error: isError ? "No se pudieron cargar las empresas." : null,
+    error: isInitialError ? "No se pudieron cargar las empresas." : null,
+    refetch,
   };
 };

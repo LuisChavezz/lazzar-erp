@@ -36,7 +36,7 @@ import { useCreateProductOnboarding } from "./useCreateProductOnboarding";
 export function useProductOnboardingForm() {
   const { categories, isLoading: isLoadingCategories, isInitialError: isCategoriesError, error: categoriesError } =
     useProductCategories();
-  const { productTypes, isLoading: isLoadingTypes, isError: isTypesError, error: typesError } =
+  const { productTypes, isLoading: isLoadingTypes, isInitialError: isTypesError, error: typesError } =
     useProductTypes();
 
   const formRef = useRef<HTMLFormElement | null>(null);

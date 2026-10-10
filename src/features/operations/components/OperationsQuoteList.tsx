@@ -16,7 +16,7 @@ export const OperationsQuoteList = () => {
   const {
     operationsQuotes,
     isLoading,
-    isError,
+    isInitialError,
     error,
     refetch,
     isFetching,
@@ -51,7 +51,7 @@ export const OperationsQuoteList = () => {
         }
         loadingMessage="Estamos actualizando el estado de la cotización operativa."
         isLoading={isLoading}
-        isError={isError}
+        isError={isInitialError}
         errorTitle="Error al cargar cotizaciones operativas"
         errorMessage={extractErrorMessage(error, "No se pudo cargar la información.")}
         loadingAriaLabel="Cargando cotizaciones operativas"

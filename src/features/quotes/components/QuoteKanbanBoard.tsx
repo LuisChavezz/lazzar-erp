@@ -22,6 +22,8 @@ import { QuoteReviewValidationDialog } from "./QuoteReviewValidationDialog";
 import { QuoteRowActionDialogs } from "./QuoteRowActionDialogs";
 import { QuoteRowActionsProvider, useQuoteRowActions } from "../hooks/useQuoteRowActions";
 import { hasPermission } from "@/src/utils/permissions";
+import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
+import { ErrorState } from "@/src/components/ErrorState";
 
 // ─── Tipos locales ────────────────────────────────────────────────────────────
 type ColumnMap = Record<number, Quote[]>;
@@ -45,7 +47,12 @@ function buildColumnMap(quotes: Quote[]): ColumnMap {
 
 // ─── Componente ───────────────────────────────────────────────────────────────
 export function QuoteKanbanBoard() {
-  const { quotes, isLoading } = useQuotes();
+  const {
+    quotes,
+    isLoading,
+    isInitialError: isErrorQuotes,
+    error: quotesError,
+  } = useQuotes();
   const { data: session } = useSession();
 
   // ─── Mutación de envío a revisión ────────────────────────────────────────
@@ -265,6 +272,21 @@ export function QuoteKanbanBoard() {
             <LoadingSkeleton key={col.id} className="h-64 rounded-3xl" />
           ))}
         </div>
+      </div>
+    );
+  }
+
+  // ─── Carga inicial fallida ─────────────────────────────────────────────────
+  // Solo si las cotizaciones nunca cargaron: sin esto el tablero se pintaba con
+  // todas las columnas vacías, igual que si no hubiera cotizaciones. Un refetch
+  // fallido conserva las tarjetas y avisa por toast desde `useQuotes`.
+  if (isErrorQuotes) {
+    return (
+      <div className="mt-6">
+        <ErrorState
+          title="Error al cargar cotizaciones"
+          message={extractErrorMessage(quotesError, "No se pudo cargar la información.")}
+        />
       </div>
     );
   }

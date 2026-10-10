@@ -177,7 +177,7 @@ export function useQuoteEditForm(quoteId: number) {
   const { data: currencies, isLoading: isCurrenciesLoading } = useCurrencies();
   const { data: onboardingData, isLoading: isOnboardingLoading } = useQuoteOnboardingData();
   const { data: satInfo } = useSatInfo();
-  const { sizes, isLoading: isSizesLoading } = useSizes();
+  const { sizes, isLoading: isSizesLoading, isInitialError: isErrorSizes } = useSizes();
 
   // Consulta de la cotización a editar
   const {
@@ -1098,6 +1098,7 @@ export function useQuoteEditForm(quoteId: number) {
     isCurrenciesLoading,
     isOnboardingLoading: isOnboardingLoading || isQuoteLoading,
     isSizesLoading,
+    isErrorSizes,
     showForm,
     isCreationSuccessVisible: isEditSuccessVisible,
     isRouteTransitioning,

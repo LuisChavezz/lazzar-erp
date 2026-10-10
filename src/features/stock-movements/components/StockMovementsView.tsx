@@ -121,9 +121,9 @@ const MovementsStats = memo(function MovementsStats({ items }: { items: StockMov
 
 export function StockMovementsView() {
   const {
-    stockMovements = [],
+    stockMovements,
     isLoading,
-    isError,
+    isInitialError: isErrorStockMovements,
     error,
     refetch,
     isFetching,
@@ -151,7 +151,7 @@ export function StockMovementsView() {
       onRefetch={refetch}
       isRefetching={isFetching}
       isLoading={isLoading}
-      isError={isError}
+      isError={isErrorStockMovements}
       errorTitle="Error al cargar movimientos de inventario"
       errorMessage={extractErrorMessage(error, "No se pudo cargar la información.")}
       loadingAriaLabel="Cargando movimientos"
@@ -169,7 +169,7 @@ export function StockMovementsView() {
   return (
     <div className="space-y-6">
       {/* ── KPIs ─────────────────────────────────────────────────────────── */}
-      {!isLoading && !isError && <MovementsStats items={stockMovements} />}
+      {!isLoading && !isErrorStockMovements && <MovementsStats items={stockMovements} />}
 
       {/* ── Tabla de movimientos ─────────────────────────────────────────── */}
       {table}

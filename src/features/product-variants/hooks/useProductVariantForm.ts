@@ -307,7 +307,11 @@ export function useProductVariantForm({
   const requiresTalla = productRequiresTalla(selectedProduct);
   // `categoria_producto` es nullable en el modelo aunque la interfaz no lo
   // declare: sin categoría se piden todas las tallas.
-  const { sizes: sizeOptions, isLoading: isLoadingSizes } = useSizesByCategory({
+  const {
+    sizes: sizeOptions,
+    isLoading: isLoadingSizes,
+    isInitialError: isErrorSizes,
+  } = useSizesByCategory({
     categoriaProductoId: selectedProduct?.categoria_producto ?? null,
     enabled: requiresTalla,
   });
@@ -392,6 +396,7 @@ export function useProductVariantForm({
     requiresTalla,
     sizeOptions,
     isLoadingSizes,
+    isErrorSizes,
     getError,
     clearFieldErrors,
     validateField,
