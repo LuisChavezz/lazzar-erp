@@ -59,7 +59,7 @@ export function RollCallView({ fecha, today, showAll, setParams }: RollCallViewP
   const {
     employees,
     isLoading: isLoadingEmployees,
-    isError: isEmployeesError,
+    isInitialError: isEmployeesError,
     error: employeesError,
   } = useEmployees();
   const { shifts, isLoading: isLoadingShifts, isError: isShiftsError } = useShifts();
@@ -135,6 +135,9 @@ export function RollCallView({ fecha, today, showAll, setParams }: RollCallViewP
 
   const columns = getRollCallColumns(permissions);
 
+  // Las dos banderas son de carga INICIAL (`useAttendance` y `useEmployees`
+  // exponen `isInitialError`): un refetch fallido de cualquiera conserva el
+  // pase de lista ya cargado y avisa por toast desde su hook.
   const showError = isInitialError || isEmployeesError;
 
   return (

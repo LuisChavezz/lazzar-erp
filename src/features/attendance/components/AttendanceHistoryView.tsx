@@ -41,7 +41,11 @@ export function AttendanceHistoryView({ desde, hasta, setParams }: AttendanceHis
   const permissions = useAttendancePermissions();
   const pending = usePendingAttendanceTargets();
 
-  const { employees, isLoading: isLoadingEmployees, isError: isEmployeesError } = useEmployees();
+  const {
+    employees,
+    isLoading: isLoadingEmployees,
+    isInitialError: isEmployeesError,
+  } = useEmployees();
   const { shifts, isLoading: isLoadingShifts, isError: isShiftsError } = useShifts();
 
   // Mismo criterio que los inputs: una URL escrita a mano con "desde=0002-…"

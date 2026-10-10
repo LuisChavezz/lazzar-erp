@@ -95,7 +95,7 @@ export function useVacationForm({ onSuccess, vacationToEdit }: UseVacationFormPa
   const {
     employees,
     isLoading: isLoadingEmployees,
-    isError: isErrorEmployees,
+    isInitialError: isErrorEmployees,
   } = useEmployees();
   // El turno del empleado da los días laborales de la sugerencia.
   const { shifts, isLoading: isLoadingShifts, isError: isErrorShifts } = useShifts();

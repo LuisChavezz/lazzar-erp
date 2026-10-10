@@ -80,7 +80,7 @@ export function useAbsenceForm({ onSuccess, absenceToEdit }: UseAbsenceFormParam
   const {
     employees,
     isLoading: isLoadingEmployees,
-    isError: isErrorEmployees,
+    isInitialError: isErrorEmployees,
   } = useEmployees();
   // Listado en caché para el aviso TEMPRANO de traslape (en blur). La guarda
   // que decide es `preflightAbsenceWrite`, contra datos frescos del servidor.

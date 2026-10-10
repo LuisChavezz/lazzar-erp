@@ -138,7 +138,7 @@ export function usePayrollForm({ onSuccess, payrollToEdit, defaultQuincena }: Us
   const {
     employees,
     isLoading: isLoadingEmployees,
-    isError: isErrorEmployees,
+    isInitialError: isErrorEmployees,
   } = useEmployees();
   const {
     branches,

@@ -64,7 +64,7 @@ export function useTrainingForm({ onSuccess, trainingToEdit }: UseTrainingFormPa
   const {
     employees,
     isLoading: isLoadingEmployees,
-    isError: isErrorEmployees,
+    isInitialError: isErrorEmployees,
   } = useEmployees();
 
   /**

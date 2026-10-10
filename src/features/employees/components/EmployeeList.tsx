@@ -21,7 +21,7 @@ import { useEmployees } from "../hooks/useEmployees";
 export default function EmployeeList() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
-  const { employees, isLoading, isError, error } = useEmployees();
+  const { employees, isLoading, isInitialError, error } = useEmployees();
   const router = useRouter();
   const queryClient = useQueryClient();
 
@@ -106,7 +106,7 @@ export default function EmployeeList() {
       getRowId={(row) => String(row.id)}
       searchPlaceholder="Buscar empleado..."
       isLoading={isLoading}
-      isError={isError}
+      isError={isInitialError}
       errorTitle="Error al cargar empleados"
       errorMessage={extractErrorMessage(error, "No se pudo cargar la información.")}
       loadingAriaLabel="Cargando empleados"

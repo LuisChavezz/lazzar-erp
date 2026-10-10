@@ -82,7 +82,7 @@ export function useEvaluationForm({ onSuccess, evaluationToEdit }: UseEvaluation
   const {
     employees,
     isLoading: isLoadingEmployees,
-    isError: isErrorEmployees,
+    isInitialError: isErrorEmployees,
   } = useEmployees();
 
   const currentEmpleadoId = evaluationToEdit?.empleado ?? null;
