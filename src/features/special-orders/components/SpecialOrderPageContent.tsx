@@ -50,8 +50,15 @@ export function SpecialOrderPageContent({ orderId }: SpecialOrderPageContentProp
   const canGenerateSkus = hasPermission("R-PRODUCCION", session?.user);
 
   // Se guarda el id y no la línea: así el diálogo siempre lee la línea del
-  // detalle vigente, y se cierra solo si un refetch la deja de traer.
-  const [onboardingLineId, setOnboardingLineId] = useState<number | null>(null);
+  // detalle vigente. `open` va aparte del id a propósito: al cerrar, la línea
+  // sigue montada mientras el diálogo anima su salida y se suelta después
+  // (`onClosed`). `session` cambia en cada apertura para que el asistente
+  // arranque limpio aunque se reabra la misma línea.
+  const [onboarding, setOnboarding] = useState<{
+    lineId: number | null;
+    open: boolean;
+    session: number;
+  }>({ lineId: null, open: false, session: 0 });
 
   const BackLink = (
     <Link
@@ -142,14 +149,19 @@ export function SpecialOrderPageContent({ orderId }: SpecialOrderPageContentProp
         <SpecialOrderLines
           detalles={data.detalles}
           canGenerateSkus={canGenerateSkus}
-          onGenerateSkus={(line) => setOnboardingLineId(line.id)}
+          onGenerateSkus={(line) =>
+            setOnboarding((prev) => ({ lineId: line.id, open: true, session: prev.session + 1 }))
+          }
         />
       </Section>
 
       <SampleSkuOnboardingDialog
         pedidoId={data.id}
-        line={data.detalles.find((line) => line.id === onboardingLineId) ?? null}
-        onClose={() => setOnboardingLineId(null)}
+        key={onboarding.session}
+        open={onboarding.open}
+        line={data.detalles.find((line) => line.id === onboarding.lineId) ?? null}
+        onClose={() => setOnboarding((prev) => ({ ...prev, open: false }))}
+        onClosed={() => setOnboarding((prev) => (prev.open ? prev : { ...prev, lineId: null }))}
       />
     </div>
   );

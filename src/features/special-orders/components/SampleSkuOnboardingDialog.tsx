@@ -9,9 +9,15 @@ import { SampleSkuOnboardingStepManager } from "./SampleSkuOnboardingStepManager
 
 interface SampleSkuOnboardingDialogProps {
   pedidoId: number;
-  /** Línea de muestra a dar de alta; `null` = diálogo cerrado. */
+  open: boolean;
+  /**
+   * Línea de muestra a dar de alta. Sigue llegando mientras el diálogo anima
+   * su cierre, para que no se vea vacío; la página la suelta en `onClosed`.
+   */
   line: SpecialOrderLine | null;
   onClose: () => void;
+  /** El diálogo ya terminó de cerrarse (animación incluida). */
+  onClosed: () => void;
 }
 
 /**
@@ -19,14 +25,18 @@ interface SampleSkuOnboardingDialogProps {
  * muestra. Controlado: el estado lo tiene `SpecialOrderPageContent`, no la
  * tarjeta de la línea, que cambia de "Generar" a "SKU generados" al terminar.
  *
- * El asistente solo se monta con una línea, así que cada apertura arranca
- * limpia. Con el alta en curso el diálogo no se deja cerrar (X o Escape): la
- * petición seguiría viva sin nadie que muestre su resultado.
+ * Cada apertura arranca limpia porque la página le cambia la `key`. El `open`
+ * y la línea llegan por separado: al cerrar, el contenido se queda montado
+ * hasta que termina la animación de salida. Con el alta en curso el diálogo no
+ * se deja cerrar (X o Escape): la petición seguiría viva sin nadie que muestre
+ * su resultado.
  */
 export function SampleSkuOnboardingDialog({
   pedidoId,
+  open,
   line,
   onClose,
+  onClosed,
 }: SampleSkuOnboardingDialogProps) {
   const isSubmitting = useIsMutating({ mutationKey: SAMPLE_SKU_ONBOARDING_MUTATION_KEY }) > 0;
 
@@ -39,16 +49,17 @@ export function SampleSkuOnboardingDialog({
           statusColor="sky"
         />
       }
-      open={line !== null}
-      onOpenChange={(open) => {
-        if (!open && !isSubmitting) onClose();
+      // Sin línea (un refetch dejó de traerla) no hay nada que mostrar.
+      open={open && line !== null}
+      onOpenChange={(nextOpen) => {
+        if (!nextOpen && !isSubmitting) onClose();
       }}
+      onCloseAutoFocus={onClosed}
       maxWidth="640px"
       showCloseButton={false}
     >
       {line && (
         <SampleSkuOnboardingStepManager
-          key={line.id}
           pedidoId={pedidoId}
           line={line}
           onClose={onClose}
