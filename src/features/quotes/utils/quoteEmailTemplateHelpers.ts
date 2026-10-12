@@ -40,7 +40,14 @@ export const getQuoteDetailSizesSummary = (detail: QuoteById["detalles"][number]
   return sizes || "-";
 };
 
-/** Recopila los SKUs únicos del detalle para mostrarlo en la tabla del correo/PDF. */
+/**
+ * Recopila los SKUs únicos del detalle para mostrarlo en la tabla del correo/PDF.
+ *
+ * Lee SOLO `sku` (el de catálogo), a propósito: a diferencia de
+ * `QuoteDetailsProducts`, aquí no se cae a `sku_muestra` en las líneas de
+ * muestra. Ese es un código interno de Producción y estos documentos van al
+ * cliente.
+ */
 export const getQuoteDetailSkuSummary = (detail: QuoteById["detalles"][number]) => {
   const skus = [...new Set(detail.tallas.map((t) => t.sku).filter(Boolean))];
   return skus.length > 0 ? skus.join(", ") : "-";

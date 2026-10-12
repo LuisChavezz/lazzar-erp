@@ -135,6 +135,9 @@ export const buildQuotePdfModel = (quote: QuoteById): QuotePdfModel => {
     totalPieces: getQuoteTotalPieces(quote),
     shippingAddress: getQuoteShippingAddress(quote),
     detailRows,
+    // Solo el SKU de catálogo; sin respaldo a `sku_muestra` (código interno de
+    // Producción) porque el PDF va al cliente. Divergencia intencional con
+    // `QuoteDetailsProducts` — ver `getQuoteDetailSkuSummary`.
     skuSummaries: detailRows.map(({ detail }) => getQuoteDetailSkuSummary(detail)),
     computedSubtotal: getQuoteComputedSubtotal(detailRows),
     detailAddons: detailRows.map(({ detail }) => buildPdfDetailAddons(detail)),

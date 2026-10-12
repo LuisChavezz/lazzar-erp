@@ -103,8 +103,9 @@ export const updatePedidoHeader = async (
  *
  * Respuestas de rechazo: 400 si el pedido no tiene cotización ligada o si el
  * usuario no es mesa de control (superuser, `is_admin_empresa` o rol activo con
- * clave de departamento `MESACONTROL`); **409** con el cuerpo del contexto si el pedido tiene
- * documentos ligados (factura emitida, órdenes activas, picking, reservas).
+ * clave de departamento `MESACONTROL`); **409** con el cuerpo del contexto si
+ * el pedido tiene documentos ligados (factura emitida, órdenes activas,
+ * picking, reservas).
  */
 /**
  * Precheck de la edición estricta

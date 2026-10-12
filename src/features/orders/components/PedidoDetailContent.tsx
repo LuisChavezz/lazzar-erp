@@ -19,6 +19,7 @@ import { ErrorState } from "@/src/components/ErrorState";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { isNotFoundError } from "@/src/utils/drfWriteErrors";
 import { usePedidoDetailPage } from "../hooks/usePedidoDetail";
+import { useSampleSkuLinking } from "../hooks/useSampleSkuLinking";
 import {
   canEditPedidoMesaControl,
   canRecomprarPedido,
@@ -249,6 +250,13 @@ export function PedidoDetailContent({
   // guarda el ID y no la línea: el diálogo la lee del detalle vigente, así que
   // refleja cada relectura (p. ej. la que sigue a vincular una talla).
   const [sampleSkuLineId, setSampleSkuLineId] = useState<number | null>(null);
+  // La vinculación (corrida en curso, avance, resultados) vive AQUÍ y no en el
+  // diálogo: así el diálogo se puede cerrar —o la hoja cambiar— a media corrida
+  // sin perderla, y la celda SKU de la tabla ve el mismo avance.
+  const sampleSkuLinking = useSampleSkuLinking({
+    pedidoId: numericId,
+    cotizacionId: data?.cotizacion ?? null,
+  });
   // Al cambiar de hoja (botón, atrás/adelante del navegador) el documento
   // abierto se cierra en el mismo render: cada diálogo se abre desde UNA hoja
   // (los documentos, desde Avances; el SKU de muestra, desde Pedido) y no debe
@@ -428,6 +436,8 @@ export function PedidoDetailContent({
           showAccounting={showAccounting}
           canEditHeader={canEditHeader}
           onOpenSampleSkus={setSampleSkuLineId}
+          linkingSampleSkuLineId={sampleSkuLinking.runningLineaId}
+          linkedSampleSkus={sampleSkuLinking.linkedSkus}
         />
       ) : (
         <OrderProgressSheet
@@ -440,10 +450,13 @@ export function PedidoDetailContent({
       {/* SKU de muestra por talla de una línea (se monta solo al abrir). */}
       {sampleSkuLine && (
         <SampleSkuLinkDialog
-          pedidoId={data.id}
-          cotizacionId={data.cotizacion}
           linea={sampleSkuLine}
           canLink={canLinkSampleSkus}
+          run={sampleSkuLinking.bulkRuns[sampleSkuLine.id]}
+          runningLineaId={sampleSkuLinking.runningLineaId}
+          pendingTallaIds={sampleSkuLinking.pendingTallaIds}
+          onLinkOne={(tallaId) => sampleSkuLinking.linkOne(sampleSkuLine.id, tallaId)}
+          onLinkAll={(tallaIds) => sampleSkuLinking.linkAll(sampleSkuLine.id, tallaIds)}
           open={true}
           onOpenChange={(open) => {
             if (!open) setSampleSkuLineId(null);

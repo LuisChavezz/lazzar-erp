@@ -13,6 +13,10 @@ interface OrderMainSheetProps {
   canEditHeader: boolean;
   /** Abre el diálogo de SKU de muestra de una línea (lo monta la página). */
   onOpenSampleSkus: (lineaId: number) => void;
+  /** Línea con una corrida de "Vincular todas" en curso, o `null`. */
+  linkingSampleSkuLineId: number | null;
+  /** SKU recién vinculados (id de talla → SKU), aún no releídos del servidor. */
+  linkedSampleSkus: Readonly<Record<number, string>>;
 }
 
 /**
@@ -29,6 +33,8 @@ export function OrderMainSheet({
   showAccounting,
   canEditHeader,
   onOpenSampleSkus,
+  linkingSampleSkuLineId,
+  linkedSampleSkus,
 }: OrderMainSheetProps) {
   // Importe por línea: solo con datos contables y si concilia con el subtotal.
   const lineAmounts = showAccounting ? reconciledLineAmounts(pedido) : null;
@@ -45,6 +51,8 @@ export function OrderMainSheet({
         showAccounting={showAccounting}
         lineAmounts={lineAmounts}
         onOpenSampleSkus={onOpenSampleSkus}
+        linkingSampleSkuLineId={linkingSampleSkuLineId}
+        linkedSampleSkus={linkedSampleSkus}
       />
       <section className="grid grid-cols-1 lg:grid-cols-4 gap-6 items-start">
         <div className="lg:col-span-1">

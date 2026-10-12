@@ -3,6 +3,7 @@
 import { Button } from "@/src/components/Button";
 import { EmptyLines } from "@/src/components/DetailDialogPrimitives";
 import { TallaServiceChips } from "@/src/features/orders/components/TallaServiceChips";
+import { skuStatusPillClass } from "@/src/features/orders/constants/skuStatusPills";
 import { cleanText } from "@/src/utils/cleanText";
 import { formatQuantityValue } from "@/src/utils/formatCurrency";
 import type {
@@ -95,7 +96,7 @@ function LineSkuStatus({
       const nombres = tallasSinSku.map((talla) => talla.talla_nombre || "—").join(", ");
       return (
         <div className="flex flex-col items-end gap-0.5">
-          <span className="inline-flex items-center rounded-full border border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 px-2.5 py-0.5 text-xs font-semibold text-amber-700 dark:text-amber-300">
+          <span className={skuStatusPillClass("amber")}>
             SKU incompletos
           </span>
           <p className="text-[11px] text-amber-700 dark:text-amber-400 text-right">
@@ -106,7 +107,7 @@ function LineSkuStatus({
     }
 
     return (
-      <span className="inline-flex items-center rounded-full border border-emerald-200 dark:border-emerald-500/30 bg-emerald-50 dark:bg-emerald-500/10 px-2.5 py-0.5 text-xs font-semibold text-emerald-700 dark:text-emerald-300">
+      <span className={skuStatusPillClass("emerald")}>
         SKU generados
       </span>
     );

@@ -2,10 +2,10 @@
 
 import { useState } from "react";
 import {
-  useIsMutating,
   useMutation,
   useMutationState,
   useQueryClient,
+  type MutationFilters,
   type QueryClient,
 } from "@tanstack/react-query";
 import toast from "react-hot-toast";
@@ -15,6 +15,20 @@ import { vincularSkuMuestra } from "../services/actions";
 import type { VincularSkuMuestraResponse } from "../interfaces/pedido-sku-muestra.interface";
 import { pedidoDetailQueryKey } from "./usePedidoDetail";
 
+type LinkSampleSkuVariables = {
+  pedidoId: number;
+  cotizacionId: number | null;
+  tallaId: number;
+};
+
+type LinkSampleSkusBulkVariables = {
+  pedidoId: number;
+  cotizacionId: number | null;
+  /** Línea (`PedidoDetalle`) a la que pertenecen las tallas de la corrida. */
+  lineaId: number;
+  tallaIds: number[];
+};
+
 /**
  * Llaves de las dos mutaciones. Distintas y SIN prefijo común a propósito: el
  * filtro por `mutationKey` casa por prefijo, y una llave compartida haría que
@@ -23,22 +37,51 @@ import { pedidoDetailQueryKey } from "./usePedidoDetail";
 const linkSampleSkuMutationKey = ["pedido-sku-muestra-link"] as const;
 const linkSampleSkusBulkMutationKey = ["pedido-sku-muestra-link-bulk"] as const;
 
+/**
+ * Un filtro por tipo de mutación, compartido por la lectura reactiva
+ * (`useMutationState`) y la guarda síncrona (`queryClient.isMutating`), para que
+ * "en curso" signifique lo mismo en las dos.
+ */
+const singleLinkFilters = (pedidoId: number, tallaId?: number): MutationFilters => ({
+  mutationKey: linkSampleSkuMutationKey,
+  status: "pending",
+  predicate: (mutation) => {
+    const variables = mutation.state.variables as LinkSampleSkuVariables | undefined;
+    return (
+      variables?.pedidoId === pedidoId && (tallaId === undefined || variables.tallaId === tallaId)
+    );
+  },
+});
+
+const bulkLinkFilters = (pedidoId: number): MutationFilters => ({
+  mutationKey: linkSampleSkusBulkMutationKey,
+  status: "pending",
+  predicate: (mutation) =>
+    (mutation.state.variables as LinkSampleSkusBulkVariables | undefined)?.pedidoId === pedidoId,
+});
+
 const NOT_FOUND_ERROR = "El pedido no existe o no pertenece a tu empresa.";
-const FALLBACK_ERROR = "No se pudo vincular el SKU";
+const FALLBACK_ERROR = "No se pudo vincular el SKU.";
 
 interface LinkError {
   message: string;
-  /** 400 `{ permiso }`: el usuario no es mesa de control. */
-  isPermiso: boolean;
-  /** 400 `{ pedido_detalle_talla_id }`: la talla en pantalla ya no es la real. */
-  isStaleTalla: boolean;
+  /**
+   * A quién afecta el rechazo. `"talla"`: solo a esa talla (la que se ve en
+   * pantalla ya no es la real); una corrida masiva sigue con las demás.
+   * `"order"`: a cualquier talla del pedido; la corrida se detiene porque el
+   * resto fallaría por el mismo motivo.
+   */
+  scope: "talla" | "order";
 }
 
 /**
- * Mensaje de un rechazo del endpoint. Mismo criterio que `useUpdatePedidoHeader`:
- * no hay formulario donde marcar el error, así que todo va al toast, y nunca se
- * usa `extractErrorMessage` (ante un cuerpo desconocido devolvería el "Request
- * failed with status code…" de Axios).
+ * Clasifica un rechazo del endpoint. Mismo criterio de copy que
+ * `useUpdatePedidoHeader`: no hay formulario donde marcar el error, así que
+ * todo va al toast, y nunca se usa `extractErrorMessage` (ante un cuerpo
+ * desconocido devolvería el "Request failed with status code…" de Axios).
+ *
+ * SOLO es de la talla un 400 con la clave `pedido_detalle_talla_id` (no es de
+ * este pedido, o aún no tiene SKU de producción). Todo lo demás es del pedido:
  *
  * - `permiso`: HTTP 400 con el mensaje plano bajo la clave, no un 403. La regla
  *   real es del backend (`_require_mesa_control`): superuser, `is_admin_empresa`
@@ -46,25 +89,33 @@ interface LinkError {
  *   EXACTAMENTE `MESACONTROL` (un rol `MESACONTROLYVENTAS` se rechaza). La UI
  *   solo decide la visibilidad —`E-MESACONTROL-PEDIDOS` o rol "admin"—, así que
  *   quien vea la acción sin cumplir la regla recibe este 400.
- * - `pedido_detalle_talla_id`: la talla no es de este pedido o aún no tiene SKU
- *   de producción.
- * - `detail` / `error`: `APIException` de DRF y el `{ error }` de otras vistas.
+ * - 404: `get_object` acota por empresa; pedido ajeno, inexistente o de baja.
+ * - 401 / 403: sesión caducada o sin acceso.
+ * - Sin respuesta (red caída, petición abortada) y 5xx.
+ * - Cualquier otro cuerpo: `detail` / `error` si los trae.
  */
 const describeLinkError = (error: unknown): LinkError => {
-  const result: LinkError = { message: FALLBACK_ERROR, isPermiso: false, isStaleTalla: false };
-  if (!(error instanceof AxiosError)) return result;
+  const order = (message: string): LinkError => ({ message, scope: "order" });
+  if (!(error instanceof AxiosError)) return order(FALLBACK_ERROR);
 
-  const data = error.response?.data;
+  const response = error.response;
+  if (!response) return order("No hay conexión con el servidor.");
+
+  const { status, data } = response;
   const permiso = firstRejectionMessage(data, ["permiso"]);
-  if (permiso) return { message: permiso, isPermiso: true, isStaleTalla: false };
-  // `get_object` acota por empresa: un pedido ajeno o dado de baja responde 404.
-  if (error.response?.status === 404) return { ...result, message: NOT_FOUND_ERROR };
-  const talla = firstRejectionMessage(data, ["pedido_detalle_talla_id"]);
-  if (talla) return { message: talla, isPermiso: false, isStaleTalla: true };
-  return {
-    ...result,
-    message: firstRejectionMessage(data, ["detail", "non_field_errors", "error"]) ?? FALLBACK_ERROR,
-  };
+  if (permiso) return order(permiso);
+  if (status === 400) {
+    const talla = firstRejectionMessage(data, ["pedido_detalle_talla_id"]);
+    if (talla) return { message: talla, scope: "talla" };
+  }
+  if (status === 404) return order(NOT_FOUND_ERROR);
+  if (status === 401 || status === 403) {
+    return order("Tu sesión expiró o no tienes acceso a este pedido.");
+  }
+  if (status >= 500) return order("El servidor no pudo procesar la solicitud.");
+  return order(
+    firstRejectionMessage(data, ["detail", "non_field_errors", "error"]) ?? FALLBACK_ERROR,
+  );
 };
 
 /**
@@ -85,36 +136,42 @@ const refetchAfterLink = (
       : []),
   ]);
 
-type LinkSampleSkuVariables = {
-  pedidoId: number;
-  cotizacionId: number | null;
-  tallaId: number;
-};
-
-type LinkSampleSkusBulkVariables = {
-  pedidoId: number;
-  cotizacionId: number | null;
-  tallaIds: number[];
-};
+/**
+ * Corrida de "Vincular todas" de UNA línea: su avance mientras corre y su
+ * resultado después. Vive en la página (no en el diálogo), así que cerrar el
+ * diálogo o cambiar de hoja no la pierde.
+ */
+export interface SampleSkuBulkRun {
+  /** Tallas de la corrida. */
+  total: number;
+  /** Talla en curso; `null` mientras se relee el pedido y al terminar. */
+  currentTallaId: number | null;
+  /**
+   * Tallas vinculadas en ESTA corrida (id de talla → `sku_muestra` devuelto).
+   * Es la superposición sobre el detalle en caché (`withLinkedSampleSkus`) y se
+   * vacía cuando la relectura final trae el dato del servidor.
+   */
+  linkedSkus: Record<number, string>;
+  /**
+   * Motivo del rechazo de cada talla que falló. Dura hasta la siguiente corrida
+   * de la línea (o hasta que esa talla se vincula sola).
+   */
+  failures: Record<number, string>;
+  /** Motivo por el que la corrida se detuvo antes de terminar, o `null`. */
+  stopReason: string | null;
+  finished: boolean;
+}
 
 interface LinkSampleSkusBulkResult {
   linked: number;
-  /** Mensaje de rechazo por talla fallida (id de `PedidoDetalleTalla`). */
-  failures: Record<number, string>;
-  /** Mensaje del 400 `permiso` que detuvo la corrida, si lo hubo. */
-  permisoMessage: string | null;
+  failed: number;
+  stopReason: string | null;
 }
 
-export interface SampleSkuBulkProgress {
-  /** Tallas ya procesadas (vinculadas o fallidas). */
-  done: number;
-  total: number;
-  /** Talla en curso; `null` mientras se relee el pedido al terminar. */
-  currentTallaId: number | null;
-}
-
-const piezas = (n: number, singular: string, plural: string) =>
+const count = (n: number, singular: string, plural: string) =>
   `${n} ${n === 1 ? singular : plural}`;
+
+const asSentence = (text: string) => (/[.!?]$/.test(text) ? text : `${text}.`);
 
 interface UseSampleSkuLinkingOptions {
   pedidoId: number;
@@ -123,24 +180,33 @@ interface UseSampleSkuLinkingOptions {
 }
 
 /**
- * Vinculación del SKU de producción a las tallas de una línea de muestra, de
- * una en una (`linkOne`) o todas las pendientes en fila (`linkAll`).
+ * Vinculación del SKU de producción a las tallas de muestra de un pedido, de
+ * una en una (`linkOne`) o todas las pendientes de una línea en fila
+ * (`linkAll`). Se instancia en la PÁGINA del detalle, no en el diálogo: el
+ * diálogo se puede cerrar en cualquier momento y al reabrirlo ve la corrida tal
+ * como va.
  *
- * "En curso" vive en la `MutationCache`, no en el componente: sobrevive a que el
- * diálogo se cierre (p. ej. al cambiar de hoja) y se limpia solo al terminar.
- * Las dos mutaciones siguen PENDIENTES hasta que termina la relectura del
- * pedido, para que el control no se re-habilite mostrando el estado viejo.
+ * Dos fuentes, cada una con lo suyo:
  *
- * La corrida masiva es UNA mutación que recorre las tallas en secuencia: su
- * `mutationFn` nunca lanza (cada fallo se cuenta), así que relee e informa una
- * sola vez al final aunque el diálogo ya no esté montado. Se detiene en el
- * primer 400 `permiso` —el resto fallaría igual— y sigue ante cualquier otro
- * error de una talla.
+ * - "En curso" sale de la `MutationCache` (`runningLineaId`, `pendingTallaIds`):
+ *   es lo que de verdad se está ejecutando, y se limpia solo al terminar. Las
+ *   dos mutaciones siguen PENDIENTES hasta que termina la relectura del pedido,
+ *   para que un control no se re-habilite mostrando el estado viejo.
+ * - El avance y el resultado de cada corrida son estado de este hook
+ *   (`bulkRuns`, por línea).
+ *
+ * La corrida masiva es UNA mutación que recorre las tallas en secuencia, y solo
+ * puede haber una por pedido a la vez. Su `mutationFn` nunca lanza: una talla
+ * rechazada por un motivo propio se cuenta y se sigue; cualquier rechazo que
+ * afectaría a todas las restantes (ver `describeLinkError`) la detiene. Relee e
+ * informa una sola vez al final.
  */
 export function useSampleSkuLinking({ pedidoId, cotizacionId }: UseSampleSkuLinkingOptions) {
   const queryClient = useQueryClient();
-  const [bulkProgress, setBulkProgress] = useState<SampleSkuBulkProgress | null>(null);
-  const [bulkFailures, setBulkFailures] = useState<Record<number, string>>({});
+  const [bulkRuns, setBulkRuns] = useState<Record<number, SampleSkuBulkRun>>({});
+
+  const patchRun = (lineaId: number, patch: (run: SampleSkuBulkRun) => SampleSkuBulkRun) =>
+    setBulkRuns((runs) => (lineaId in runs ? { ...runs, [lineaId]: patch(runs[lineaId]) } : runs));
 
   const { mutate: mutateOne } = useMutation<
     VincularSkuMuestraResponse,
@@ -154,10 +220,10 @@ export function useSampleSkuLinking({ pedidoId, cotizacionId }: UseSampleSkuLink
       await refetchAfterLink(queryClient, variables.pedidoId, variables.cotizacionId);
     },
     onError: (error, variables) => {
-      const { message, isStaleTalla } = describeLinkError(error);
+      const { message, scope } = describeLinkError(error);
       toast.error(message);
       // La talla que se ve ya no es la real: se relee para corregir la fila.
-      if (isStaleTalla) {
+      if (scope === "talla") {
         void queryClient.invalidateQueries({ queryKey: pedidoDetailQueryKey(variables.pedidoId) });
       }
     },
@@ -169,122 +235,141 @@ export function useSampleSkuLinking({ pedidoId, cotizacionId }: UseSampleSkuLink
     LinkSampleSkusBulkVariables
   >({
     mutationKey: linkSampleSkusBulkMutationKey,
-    mutationFn: async (variables) => {
-      const result: LinkSampleSkusBulkResult = { linked: 0, failures: {}, permisoMessage: null };
-      const total = variables.tallaIds.length;
-      for (const [index, tallaId] of variables.tallaIds.entries()) {
-        setBulkProgress({ done: index, total, currentTallaId: tallaId });
+    // Sin conexión, el modo por defecto dejaría la corrida EN PAUSA (pendiente
+    // sin ejecutarse) hasta que vuelva la red. Así la petición se intenta, falla
+    // y la corrida se detiene con su motivo.
+    networkMode: "always",
+    onMutate: ({ lineaId, tallaIds }) =>
+      setBulkRuns((runs) => ({
+        ...runs,
+        [lineaId]: {
+          total: tallaIds.length,
+          currentTallaId: null,
+          linkedSkus: {},
+          failures: {},
+          stopReason: null,
+          finished: false,
+        },
+      })),
+    mutationFn: async ({ pedidoId: runPedidoId, lineaId, tallaIds }) => {
+      const result: LinkSampleSkusBulkResult = { linked: 0, failed: 0, stopReason: null };
+      for (const tallaId of tallaIds) {
+        patchRun(lineaId, (run) => ({ ...run, currentTallaId: tallaId }));
         try {
-          await vincularSkuMuestra(variables.pedidoId, tallaId);
+          const { sku_muestra } = await vincularSkuMuestra(runPedidoId, tallaId);
           result.linked += 1;
+          patchRun(lineaId, (run) => ({
+            ...run,
+            linkedSkus: { ...run.linkedSkus, [tallaId]: sku_muestra },
+          }));
         } catch (error) {
-          const { message, isPermiso } = describeLinkError(error);
-          if (isPermiso) {
-            result.permisoMessage = message;
+          const { message, scope } = describeLinkError(error);
+          if (scope === "order") {
+            result.stopReason = message;
+            patchRun(lineaId, (run) => ({ ...run, stopReason: message }));
             break;
           }
-          result.failures[tallaId] = message;
+          result.failed += 1;
+          patchRun(lineaId, (run) => ({
+            ...run,
+            failures: { ...run.failures, [tallaId]: message },
+          }));
         }
       }
       return result;
     },
     onSuccess: async (result, variables) => {
-      const failed = Object.keys(result.failures).length;
-      setBulkFailures(result.failures);
-      setBulkProgress({
-        done: result.linked + failed,
-        total: variables.tallaIds.length,
-        currentTallaId: null,
-      });
-      // Una sola relectura, también si todo falló: un rechazo por talla suele
+      const { lineaId, tallaIds } = variables;
+      patchRun(lineaId, (run) => ({ ...run, currentTallaId: null }));
+      // Una sola relectura, también si nada se vinculó: un rechazo suele
       // significar que lo que se ve en pantalla ya no es lo real.
       await refetchAfterLink(queryClient, variables.pedidoId, variables.cotizacionId);
+      // La superposición se retira cuando el servidor ya trae los SKU. Si la
+      // relectura falló, el detalle en caché sigue siendo el viejo y lo
+      // vinculado en esta corrida es lo más cierto que hay: se conserva.
+      const refetchFailed =
+        queryClient.getQueryState(pedidoDetailQueryKey(variables.pedidoId))?.status === "error";
+      patchRun(lineaId, (run) => ({
+        ...run,
+        finished: true,
+        linkedSkus: refetchFailed ? run.linkedSkus : {},
+      }));
 
-      const vinculadas = piezas(result.linked, "talla vinculada", "tallas vinculadas");
-      if (result.permisoMessage) {
+      const counts = [
+        count(result.linked, "talla vinculada", "tallas vinculadas"),
+        ...(result.failed > 0 ? [count(result.failed, "falló", "fallaron")] : []),
+      ].join(", ");
+      if (result.stopReason) {
+        const left = tallaIds.length - result.linked - result.failed;
         toast.error(
-          result.linked > 0 ? `${result.permisoMessage} (${vinculadas})` : result.permisoMessage,
+          `${counts}. Se detuvo: ${asSentence(result.stopReason)} ${count(
+            left,
+            "talla quedó sin procesar",
+            "tallas quedaron sin procesar",
+          )}.`,
         );
-      } else if (failed > 0) {
-        toast.error(`${vinculadas}, ${piezas(failed, "falló", "fallaron")}`);
+      } else if (result.failed > 0) {
+        toast.error(counts);
       } else {
-        toast.success(vinculadas);
+        toast.success(counts);
       }
     },
-    onSettled: () => setBulkProgress(null),
   });
 
   const pendingTallaIds = useMutationState({
-    filters: {
-      mutationKey: linkSampleSkuMutationKey,
-      status: "pending",
-      predicate: (mutation) =>
-        (mutation.state.variables as LinkSampleSkuVariables | undefined)?.pedidoId === pedidoId,
-    },
+    filters: singleLinkFilters(pedidoId),
     select: (mutation) => (mutation.state.variables as LinkSampleSkuVariables).tallaId,
   });
 
-  const isBulkOfThisPedido = (variables: unknown) =>
-    (variables as LinkSampleSkusBulkVariables | undefined)?.pedidoId === pedidoId;
+  // Una corrida por pedido a la vez: a lo sumo un elemento.
+  const [runningLineaId = null] = useMutationState({
+    filters: bulkLinkFilters(pedidoId),
+    select: (mutation) => (mutation.state.variables as LinkSampleSkusBulkVariables).lineaId,
+  });
 
-  const isBulkRunning =
-    useIsMutating({
-      mutationKey: linkSampleSkusBulkMutationKey,
-      predicate: (mutation) => isBulkOfThisPedido(mutation.state.variables),
-    }) > 0;
+  // Los valores reactivos de arriba llegan un render tarde: las guardas contra
+  // el doble disparo consultan la caché de forma síncrona (la mutación queda
+  // `pending` en el mismo tick en que se dispara), con los MISMOS filtros.
+  const isBulkInFlight = () => queryClient.isMutating(bulkLinkFilters(pedidoId)) > 0;
+  const isSingleInFlight = (tallaId?: number) =>
+    queryClient.isMutating(singleLinkFilters(pedidoId, tallaId)) > 0;
 
-  // `isBulkRunning` e `isPending` llegan un render tarde: las guardas contra el
-  // doble disparo consultan la caché de forma síncrona (la mutación queda
-  // `pending` en el mismo tick en que se dispara).
-  const bulkInFlight = () =>
-    queryClient.isMutating({
-      mutationKey: linkSampleSkusBulkMutationKey,
-      predicate: (mutation) => isBulkOfThisPedido(mutation.state.variables),
-    }) > 0;
-
-  const singlesInFlight = (tallaId?: number) =>
-    queryClient.isMutating({
-      mutationKey: linkSampleSkuMutationKey,
-      predicate: (mutation) => {
-        const variables = mutation.state.variables as LinkSampleSkuVariables | undefined;
-        return (
-          variables?.pedidoId === pedidoId &&
-          (tallaId === undefined || variables.tallaId === tallaId)
-        );
-      },
-    }) > 0;
-
-  const linkOne = (tallaId: number) => {
-    if (bulkInFlight() || singlesInFlight(tallaId)) return;
-    // El aviso de un fallo anterior de esta talla deja de ser vigente.
-    setBulkFailures((current) => {
-      if (!(tallaId in current)) return current;
-      const rest = { ...current };
-      delete rest[tallaId];
-      return rest;
+  const linkOne = (lineaId: number, tallaId: number) => {
+    if (isBulkInFlight() || isSingleInFlight(tallaId)) return;
+    // Lo que la última corrida dejó dicho de esta talla deja de ser vigente.
+    patchRun(lineaId, (run) => {
+      if (!(tallaId in run.failures) && !(tallaId in run.linkedSkus)) return run;
+      const failures = { ...run.failures };
+      const linkedSkus = { ...run.linkedSkus };
+      delete failures[tallaId];
+      delete linkedSkus[tallaId];
+      return { ...run, failures, linkedSkus };
     });
     mutateOne({ pedidoId, cotizacionId, tallaId });
   };
 
-  const linkAll = (tallaIds: number[]) => {
-    if (tallaIds.length === 0 || bulkInFlight() || singlesInFlight()) return;
-    setBulkFailures({});
-    mutateBulk({ pedidoId, cotizacionId, tallaIds });
+  const linkAll = (lineaId: number, tallaIds: number[]) => {
+    if (tallaIds.length === 0 || isBulkInFlight() || isSingleInFlight()) return;
+    mutateBulk({ pedidoId, cotizacionId, lineaId, tallaIds });
   };
+
+  const linkedSkus: Record<number, string> = {};
+  for (const run of Object.values(bulkRuns)) Object.assign(linkedSkus, run.linkedSkus);
 
   return {
     linkOne,
     linkAll,
     /** Tallas con una vinculación individual en curso. */
     pendingTallaIds,
-    isBulkRunning,
+    /** Línea con la corrida masiva en curso, o `null` si no hay ninguna. */
+    runningLineaId,
     /**
-     * Avance de la corrida masiva. Puede ser `null` con `isBulkRunning` en
-     * `true` si el diálogo se cerró y se reabrió a media corrida: el avance es
-     * estado de este hook, la corrida no.
+     * Última corrida de cada línea, por id de línea. Una línea puede estar en
+     * `runningLineaId` sin entrada aquí: pasa si la página se desmontó y se
+     * volvió a montar a media corrida (la corrida sigue; su avance no).
      */
-    bulkProgress,
-    /** Motivo del rechazo de cada talla que falló en la última corrida masiva. */
-    bulkFailures,
+    bulkRuns,
+    /** Superposición de todas las corridas: id de talla → SKU recién vinculado. */
+    linkedSkus,
   };
 }

@@ -8,8 +8,8 @@ import type { PedidoClasificacion } from "../constants/pedidoStatus";
  * `null`— el backend exige mesa de control (superuser, `is_admin_empresa` o un
  * rol activo de la empresa del usuario cuya clave de departamento sea
  * EXACTAMENTE `MESACONTROL`; `MESACONTROLYVENTAS` no cuenta) y rechaza la
- * petición ENTERA con 400 `{"permiso": "…"}`. Mandar solo lo editado evita que un campo arrastre
- * el rechazo del otro.
+ * petición ENTERA con 400 `{"permiso": "…"}`. Mandar solo lo editado evita que
+ * un campo arrastre el rechazo del otro.
  */
 export type PedidoHeaderUpdate =
   | { clasificacion: PedidoClasificacion | null }

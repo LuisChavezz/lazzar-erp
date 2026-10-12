@@ -9,6 +9,7 @@ import {
   lineProductName,
   lineSizesSummary,
   sampleSkuLineProgress,
+  withLinkedSampleSkus,
 } from "../utils/orderLines";
 import { useOrderMoney } from "./OrderCurrencyContext";
 import { OrderLineServiceCell } from "./OrderLineServiceCell";
@@ -57,6 +58,14 @@ interface OrderProductsSectionProps {
    * vigente.
    */
   onOpenSampleSkus: (lineaId: number) => void;
+  /** Línea con una corrida de "Vincular todas" en curso, o `null`. */
+  linkingSampleSkuLineId: number | null;
+  /**
+   * SKU recién vinculados (id de talla → SKU) que el detalle en caché todavía
+   * no trae; se superponen para que el avance de la celda suba durante la
+   * corrida (ver `withLinkedSampleSkus`).
+   */
+  linkedSampleSkus: Readonly<Record<number, string>>;
 }
 
 /**
@@ -64,31 +73,35 @@ interface OrderProductsSectionProps {
  * el avance de vinculación de sus tallas ("Muestra · 2/6": tallas con
  * `sku_muestra` sobre el total). Es un botón para TODOS los usuarios —el diálogo
  * que abre es de solo lectura sin permiso—; una línea sin tallas no tiene avance
- * que mostrar y queda en "Muestra".
+ * que mostrar y queda en "Muestra". Con una corrida de "Vincular todas" en curso
+ * en la línea dice "Vinculando" y late.
  */
 function SampleSkuIndicator({
   linea,
   badge,
+  isLinking,
   onOpen,
 }: {
   linea: PedidoDetalleLinea;
   badge: { label: string; className: string };
+  isLinking: boolean;
   onOpen: (lineaId: number) => void;
 }) {
   const { linked, total } = sampleSkuLineProgress(linea);
+  const label = isLinking ? "Vinculando" : badge.label;
   return (
     <button
       type="button"
       onClick={() => onOpen(linea.id)}
-      title="Ver SKU de muestra por talla"
+      title={isLinking ? "Vinculando SKU de muestra. Ver avance por talla" : "Ver SKU de muestra por talla"}
       aria-label={
         total > 0
-          ? `Muestra: ${linked} de ${total} tallas con SKU vinculado. Ver SKU de muestra por talla`
-          : "Muestra. Ver SKU de muestra por talla"
+          ? `${label}: ${linked} de ${total} tallas con SKU vinculado. Ver SKU de muestra por talla`
+          : `${label}. Ver SKU de muestra por talla`
       }
-      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium whitespace-nowrap cursor-pointer transition-shadow hover:ring-1 hover:ring-current focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-500 ${badge.className}`}
+      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium whitespace-nowrap cursor-pointer transition-shadow hover:ring-1 hover:ring-current focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-500 ${badge.className} ${isLinking ? "animate-pulse" : ""}`}
     >
-      {badge.label}
+      {label}
       {total > 0 && (
         <span className="tabular-nums">
           {" · "}
@@ -125,6 +138,8 @@ export function OrderProductsSection({
   showAccounting,
   lineAmounts,
   onOpenSampleSkus,
+  linkingSampleSkuLineId,
+  linkedSampleSkus,
 }: OrderProductsSectionProps) {
   const { formatMoney } = useOrderMoney();
   // Mismo badge que la tabla de captura de la cotización y que la columna
@@ -173,8 +188,9 @@ export function OrderProductsSection({
                   <td className="p-2">
                     {isSampleLine(linea) ? (
                       <SampleSkuIndicator
-                        linea={linea}
+                        linea={withLinkedSampleSkus(linea, linkedSampleSkus)}
                         badge={muestraBadge}
+                        isLinking={linkingSampleSkuLineId === linea.id}
                         onOpen={onOpenSampleSkus}
                       />
                     ) : linea.sku_base ? (

@@ -63,6 +63,27 @@ export function sampleSkuLineProgress(linea: Pick<PedidoDetalleLinea, "tallas">)
   };
 }
 
+/**
+ * La línea con los SKU recién vinculados puestos ENCIMA del detalle en caché
+ * (`linkedSkus`: id de talla → `sku_muestra` que devolvió el backend). Es la
+ * superposición local de una corrida de "Vincular todas": cada talla procesada
+ * se ve vinculada al instante, sin esperar la relectura final, que es la que
+ * trae el dato del servidor y deja esto sin efecto. Sin nada que superponer
+ * devuelve la MISMA línea.
+ */
+export function withLinkedSampleSkus(
+  linea: PedidoDetalleLinea,
+  linkedSkus: Readonly<Record<number, string>>,
+): PedidoDetalleLinea {
+  if (!linea.tallas.some((talla) => talla.id in linkedSkus)) return linea;
+  return {
+    ...linea,
+    tallas: linea.tallas.map((talla) =>
+      talla.id in linkedSkus ? { ...talla, sku_muestra: linkedSkus[talla.id] } : talla,
+    ),
+  };
+}
+
 /** Resumen de tallas como lo pinta la tabla de la cotización: "CH (5), M (3)". */
 export function lineSizesSummary(linea: PedidoDetalleLinea): string {
   if (linea.tallas.length === 0) return "—";
