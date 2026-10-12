@@ -171,10 +171,15 @@ export const QuoteDetailsProducts = ({ details }: QuoteDetailsProductsProps) => 
                       {detalle.tallas.map((talla) => (
                         <tr key={talla.id} className="border-t border-slate-100 dark:border-white/10">
                           <td className="px-3 py-2 font-mono text-xs text-slate-500 dark:text-slate-400">
-                            {/* Una talla de MUESTRA no tiene `sku` de catálogo:
-                                cae al SKU de producción que se le vinculó desde
-                                el pedido, si ya lo tiene. */}
-                            {talla.sku || (detalle.producto == null && talla.sku_muestra) || "-"}
+                            {/* En una línea de MUESTRA el `sku` del backend no
+                                es un SKU: llega armado con lo que haya (código
+                                de color + talla, o solo la talla: "80240",
+                                "CH") y nunca vacío, así que se IGNORA. Lo único
+                                real es el SKU de producción vinculado desde el
+                                pedido, si ya lo tiene. */}
+                            {detalle.producto == null
+                              ? talla.sku_muestra || "—"
+                              : talla.sku || "-"}
                           </td>
                           <td className="px-3 py-2 text-slate-700 dark:text-slate-200">{talla.talla_nombre}</td>
                           <td className="px-3 py-2 text-slate-700 dark:text-slate-200">{talla.cantidad}</td>

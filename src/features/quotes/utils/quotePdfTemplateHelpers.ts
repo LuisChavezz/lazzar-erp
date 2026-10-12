@@ -135,9 +135,10 @@ export const buildQuotePdfModel = (quote: QuoteById): QuotePdfModel => {
     totalPieces: getQuoteTotalPieces(quote),
     shippingAddress: getQuoteShippingAddress(quote),
     detailRows,
-    // Solo el SKU de catálogo; sin respaldo a `sku_muestra` (código interno de
-    // Producción) porque el PDF va al cliente. Divergencia intencional con
-    // `QuoteDetailsProducts` — ver `getQuoteDetailSkuSummary`.
+    // Solo el SKU de catálogo. Una línea de muestra sale con guion: su `sku`
+    // no es un SKU real y su `sku_muestra` es un código interno de Producción,
+    // que no se imprime en un PDF que va al cliente. Divergencia intencional
+    // con `QuoteDetailsProducts` — ver `getQuoteDetailSkuSummary`.
     skuSummaries: detailRows.map(({ detail }) => getQuoteDetailSkuSummary(detail)),
     computedSubtotal: getQuoteComputedSubtotal(detailRows),
     detailAddons: detailRows.map(({ detail }) => buildPdfDetailAddons(detail)),

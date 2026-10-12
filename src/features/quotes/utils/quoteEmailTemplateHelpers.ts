@@ -43,12 +43,19 @@ export const getQuoteDetailSizesSummary = (detail: QuoteById["detalles"][number]
 /**
  * Recopila los SKUs únicos del detalle para mostrarlo en la tabla del correo/PDF.
  *
- * Lee SOLO `sku` (el de catálogo), a propósito: a diferencia de
- * `QuoteDetailsProducts`, aquí no se cae a `sku_muestra` en las líneas de
- * muestra. Ese es un código interno de Producción y estos documentos van al
- * cliente.
+ * Una línea de MUESTRA (`producto == null`) no muestra SKU, por dos motivos:
+ *
+ * - Su `sku` NO es un SKU. El backend lo arma con lo que haya (código de color
+ *   + talla, o solo la talla: `"80240"`, `"CH"`) y nunca llega vacío, así que
+ *   se ignora en vez de imprimirlo como si fuera un código de producto.
+ * - Su `sku_muestra` sí es real, pero es un código interno de Producción y
+ *   estos documentos van al cliente. Por eso aquí NO se cae a él, a diferencia
+ *   de `QuoteDetailsProducts` (pantalla interna), que sí lo muestra.
+ *
+ * Devuelve el mismo guion que una línea de catálogo sin SKU.
  */
 export const getQuoteDetailSkuSummary = (detail: QuoteById["detalles"][number]) => {
+  if (detail.producto == null) return "-";
   const skus = [...new Set(detail.tallas.map((t) => t.sku).filter(Boolean))];
   return skus.length > 0 ? skus.join(", ") : "-";
 };
