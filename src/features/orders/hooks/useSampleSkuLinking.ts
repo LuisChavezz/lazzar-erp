@@ -11,6 +11,9 @@ import {
 import toast from "react-hot-toast";
 import { AxiosError } from "axios";
 import { firstRejectionMessage } from "@/src/utils/firstDrfMessage";
+import { plural } from "@/src/utils/kpiFormat";
+import type { PedidoDetail } from "../interfaces/order.interface";
+import { sampleSkuLineSummary } from "../utils/orderLines";
 import { vincularSkuMuestra } from "../services/actions";
 import type { VincularSkuMuestraResponse } from "../interfaces/pedido-sku-muestra.interface";
 import { pedidoDetailQueryKey } from "./usePedidoDetail";
@@ -18,6 +21,8 @@ import { pedidoDetailQueryKey } from "./usePedidoDetail";
 type LinkSampleSkuVariables = {
   pedidoId: number;
   cotizacionId: number | null;
+  /** Línea (`PedidoDetalle`) de la talla. */
+  lineaId: number;
   tallaId: number;
 };
 
@@ -102,6 +107,7 @@ interface LinkError {
  *   quien vea la acción sin cumplir la regla recibe este 400.
  * - 404: `get_object` acota por empresa; pedido ajeno, inexistente o de baja.
  * - 401 / 403: sesión caducada o sin acceso.
+ * - Tiempo de espera vencido (el tope propio de `vincularSkuMuestra`).
  * - Sin respuesta (red caída, petición abortada) y 5xx.
  * - Cualquier otro cuerpo: `detail` / `error` si los trae.
  */
@@ -109,6 +115,9 @@ const describeLinkError = (error: unknown): LinkError => {
   const order = (message: string): LinkError => ({ message, scope: "order" });
   if (!(error instanceof AxiosError)) return order(FALLBACK_ERROR);
 
+  if (error.code === AxiosError.ECONNABORTED || error.code === AxiosError.ETIMEDOUT) {
+    return order("El servidor tardó demasiado en responder.");
+  }
   const response = error.response;
   if (!response) return order("No hay conexión con el servidor.");
 
@@ -172,7 +181,11 @@ export interface SampleSkuBulkRun {
    * de la línea (o hasta que esa talla se vincula sola).
    */
   failures: Record<number, string>;
-  /** Motivo por el que la corrida se detuvo antes de terminar, o `null`. */
+  /**
+   * Motivo por el que la corrida se detuvo antes de terminar, o `null`. Se
+   * borra al empezar otra corrida que incluya la línea y cuando a la línea ya
+   * no le queda nada por vincular.
+   */
   stopReason: string | null;
   finished: boolean;
 }
@@ -192,9 +205,6 @@ interface LinkSampleSkusBulkResult {
   failed: number;
   stopReason: string | null;
 }
-
-const count = (n: number, singular: string, plural: string) =>
-  `${n} ${n === 1 ? singular : plural}`;
 
 const asSentence = (text: string) => (/[.!?]$/.test(text) ? text : `${text}.`);
 
@@ -246,6 +256,17 @@ export function useSampleSkuLinking({ pedidoId, cotizacionId }: UseSampleSkuLink
     onSuccess: async (data, variables) => {
       toast.success(`SKU ${data.sku_muestra} vinculado`);
       await refetchAfterLink(queryClient, variables.pedidoId, variables.cotizacionId);
+      // El aviso de paro de una corrida anterior deja de aplicar cuando a la
+      // línea ya no le queda nada por vincular (p. ej. tras vincular a mano, una
+      // por una, lo que la corrida no alcanzó).
+      const linea = queryClient
+        .getQueryData<PedidoDetail>(pedidoDetailQueryKey(variables.pedidoId))
+        ?.detalles.find((detalle) => detalle.id === variables.lineaId);
+      if (linea && sampleSkuLineSummary(linea).linkableIds.length === 0) {
+        patchRun(variables.lineaId, (run) =>
+          run.stopReason === null ? run : { ...run, stopReason: null },
+        );
+      }
     },
     onError: (error, variables) => {
       const { message, scope } = describeLinkError(error);
@@ -352,14 +373,16 @@ export function useSampleSkuLinking({ pedidoId, cotizacionId }: UseSampleSkuLink
       }
 
       const counts = [
-        count(result.linked, "talla vinculada", "tallas vinculadas"),
-        ...(result.failed > 0 ? [count(result.failed, "falló", "fallaron")] : []),
+        `${result.linked} ${plural(result.linked, "talla vinculada", "tallas vinculadas")}`,
+        ...(result.failed > 0
+          ? [`${result.failed} ${plural(result.failed, "falló", "fallaron")}`]
+          : []),
       ].join(", ");
       if (result.stopReason) {
         const total = lines.reduce((sum, line) => sum + line.tallaIds.length, 0);
         const left = total - result.linked - result.failed;
         toast.error(
-          `${counts}. Se detuvo: ${asSentence(result.stopReason)} ${count(
+          `${counts}. Se detuvo: ${asSentence(result.stopReason)} ${left} ${plural(
             left,
             "talla quedó sin procesar",
             "tallas quedaron sin procesar",
@@ -404,7 +427,7 @@ export function useSampleSkuLinking({ pedidoId, cotizacionId }: UseSampleSkuLink
       delete linkedSkus[tallaId];
       return { ...run, failures, linkedSkus };
     });
-    mutateOne({ pedidoId, cotizacionId, tallaId });
+    mutateOne({ pedidoId, cotizacionId, lineaId, tallaId });
   };
 
   const linkAll = (lines: SampleSkuRunLine[]) => {

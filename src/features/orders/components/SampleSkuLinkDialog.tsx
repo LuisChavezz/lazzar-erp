@@ -1,12 +1,14 @@
 "use client";
 
-import Link from "next/link";
+import { useState } from "react";
 import { Button } from "@/src/components/Button";
 import { EmptyLines, LineItemsTable } from "@/src/components/DetailDialogPrimitives";
 import { MainDialog } from "@/src/components/MainDialog";
 import { useSizes } from "@/src/features/sizes/hooks/useSizes";
+import { plural } from "@/src/utils/kpiFormat";
 import {
   SAMPLE_SKU_LINK_BLOCK_COPY,
+  sampleSkuRunLabel,
   type SampleSkuLinkBlock,
 } from "../constants/sampleSkuLinking";
 import { skuStatusPillClass, type SkuStatusPillTone } from "../constants/skuStatusPills";
@@ -23,7 +25,8 @@ import {
 /**
  * Presentación de cada estado. `hint` explica el estado: en "Revisar" es el
  * tooltip de la pastilla; en "Sin SKU" va escrito bajo ella, porque es la razón
- * de que la fila no tenga acción. `action` es la etiqueta de la acción cuando
+ * de que la fila no tenga acción (salvo cuando TODA la línea está sin SKU: ahí
+ * lo dice una sola vez el aviso de arriba). `action` es la etiqueta de la acción cuando
  * el estado admite vincular.
  */
 const STATE_CONFIG: Record<
@@ -62,11 +65,6 @@ interface SampleSkuLinkDialogProps {
    * solo lectura y lo dice.
    */
   block: SampleSkuLinkBlock | null;
-  /**
-   * Página del pedido en Producción, donde se generan los SKU; `null` si el
-   * usuario no puede abrirla (entonces el aviso va sin enlace).
-   */
-  specialOrderHref: string | null;
   /** Lo que la última corrida de "Vincular todas" hizo en ESTA línea, si la hubo. */
   run: SampleSkuBulkRun | undefined;
   /** Líneas de la corrida en curso en el pedido (puede no incluir esta). */
@@ -95,16 +93,30 @@ interface SampleSkuLinkDialogProps {
  * backend.
  *
  * Cuando NO se puede vincular, lo dice en el sitio: la talla sin SKU de
- * producción, bajo su estado; la línea entera sin SKU, con un aviso que lleva a
- * Producción; el pedido cerrado o la falta de permiso, con una nota. La columna
- * "Acción" solo existe si alguna fila tiene acción.
+ * producción, bajo su estado; la línea entera sin SKU, con un solo aviso
+ * arriba; el pedido cerrado o la falta de permiso, con una nota. La columna
+ * "Acción" solo existe si alguna fila tiene acción, y no cambia mientras una
+ * corrida pasa por la línea.
+ *
+ * Las filas van en el orden del catálogo de tallas y NO se pintan hasta tenerlo:
+ * nunca se reordenan bajo el cursor.
  *
  * No hay desvincular ni forma de elegir el SKU: el backend copia el suyo.
  */
+/**
+ * Pide el catálogo de tallas sin pintar nada. La página del pedido lo monta
+ * cuando el pedido tiene líneas de muestra, para que el diálogo lo encuentre en
+ * caché al abrirse. Es un componente y no una llamada al hook en la página
+ * porque la condición (¿hay muestras?) solo se conoce con el pedido ya cargado.
+ */
+export function SampleSkuSizeCatalogPrefetch() {
+  useSizes();
+  return null;
+}
+
 export function SampleSkuLinkDialog({
   linea,
   block,
-  specialOrderHref,
   run,
   runningLineaIds,
   runProgress,
@@ -116,12 +128,21 @@ export function SampleSkuLinkDialog({
 }: SampleSkuLinkDialogProps) {
   // Orden de las tallas: el del CATÁLOGO (`GET /catalogo/talla/`, que el
   // backend entrega en su orden canónico: XCH, CH, M, G…), no el de la
-  // respuesta del pedido, que es el de captura. Mientras el catálogo carga —o
-  // para una talla que ya no está en él (inactiva)— se conserva el orden del
-  // pedido, con las desconocidas al final.
-  const { sizes } = useSizes();
-  const catalogIndex = new Map(sizes.map((size, index) => [size.id, index]));
-  const rank = (tallaId: number) => catalogIndex.get(tallaId) ?? Number.MAX_SAFE_INTEGER;
+  // respuesta del pedido, que es el de captura. Una talla que ya no está en el
+  // catálogo (inactiva) va al final, en el orden del pedido.
+  //
+  // El orden se FIJA una vez por apertura, en cuanto el catálogo deja de
+  // cargar, y hasta entonces no hay filas: si se pintaran antes, saltarían al
+  // llegar la respuesta y un clic podría caer en otra talla. Si la carga falló,
+  // `sizes` viene vacío y queda fijado el orden del pedido; un reintento que
+  // llegue después ya no reordena (el diálogo se desmonta al cerrar, así que la
+  // siguiente apertura vuelve a decidir).
+  const { sizes, isLoading: isLoadingSizes } = useSizes();
+  const [catalogIndex, setCatalogIndex] = useState<Map<number, number> | null>(null);
+  if (catalogIndex === null && !isLoadingSizes) {
+    setCatalogIndex(new Map(sizes.map((size, index) => [size.id, index])));
+  }
+  const rank = (tallaId: number) => catalogIndex?.get(tallaId) ?? Number.MAX_SAFE_INTEGER;
 
   const isRunning = runningLineaIds.length > 0;
   const isRunningHere = runningLineaIds.includes(linea.id);
@@ -134,29 +155,23 @@ export function SampleSkuLinkDialog({
     .map((talla) => ({ talla, state: sampleSkuTallaState(talla) }))
     // `sort` es estable: las tallas de igual rango conservan su orden.
     .sort((a, b) => rank(a.talla.talla) - rank(b.talla.talla));
-  const { withSku, linked, linkableIds, withoutSku } = sampleSkuLineSummary(shownLinea);
+  const { status, withSku, linked, linkableIds, withoutSku } = sampleSkuLineSummary(shownLinea);
   const anySinglePending = pendingTallaIds.length > 0;
 
   const canLink = block === null;
   // ¿Alguna fila admite acción? Decide si existe la columna y si la nota de
   // bloqueo viene al caso (sin nada que vincular no hay nada que explicar).
   const hasActionableRows = rows.some((row) => STATE_CONFIG[row.state].action);
-  const showActions = canLink && hasActionableRows;
+  // Con una corrida pasando por la línea la columna se queda, aunque la
+  // superposición ya haya dejado todas las filas vinculadas: si no, la tabla
+  // perdería una columna a media corrida (y la recuperaría si una talla falla).
+  const showActions = canLink && (hasActionableRows || isRunningHere);
   // Línea sin NINGÚN SKU de producción: no es que falte vincular, es que
-  // Producción no los ha generado.
+  // Producción no los ha generado. Lo dice el aviso de arriba, una vez; las
+  // filas no lo repiten.
   const lineWithoutSkus = rows.length > 0 && rows.every((row) => row.state === "none");
-
-  // Texto de la corrida vista desde ESTA línea. Sin `run`/`runProgress` con la
-  // corrida en curso: la página se volvió a montar a media corrida y el avance
-  // se perdió (la corrida no).
-  const processedHere = run
-    ? Object.keys(run.linkedSkus).length + Object.keys(run.failures).length
-    : 0;
-  const runningLabel = runProgress?.refreshing
-    ? "Actualizando..."
-    : run && run.currentTallaId !== null
-      ? `Vinculando ${processedHere + 1} de ${run.total}...`
-      : "Vinculando...";
+  const isEmptyLine = status === "empty";
+  const runningLabel = sampleSkuRunLabel(runProgress);
 
   return (
     <MainDialog
@@ -167,7 +182,7 @@ export function SampleSkuLinkDialog({
       description={`${lineProductName(linea)}${linea.color_nombre ? ` · ${linea.color_nombre}` : ""}`}
       actionButtonClose={false}
       actionButton={
-        canLink && (linkableIds.length > 0 || isRunningHere) ? (
+        canLink && catalogIndex !== null && (linkableIds.length > 0 || isRunningHere) ? (
           <Button
             variant="primary"
             onClick={() => onLinkAll(linkableIds)}
@@ -180,36 +195,25 @@ export function SampleSkuLinkDialog({
     >
       <div className="space-y-3">
         <div className="space-y-1 text-xs" role="status" aria-live="polite">
-          {lineWithoutSkus ? (
+          {isEmptyLine ? null : lineWithoutSkus ? (
             <p className={NOTE}>
               Producción aún no genera los SKU de esta línea, así que todavía no hay nada que
               vincular.
-              {specialOrderHref && (
-                <>
-                  {" "}
-                  <Link
-                    href={specialOrderHref}
-                    className="font-semibold underline underline-offset-2 hover:text-amber-800 dark:hover:text-amber-300"
-                  >
-                    Ver el pedido en Producción
-                  </Link>
-                </>
-              )}
             </p>
           ) : (
             <p className="text-slate-500 dark:text-slate-400">
               <span className="tabular-nums">
                 {linked} de {withSku}
               </span>{" "}
-              {withSku === 1 ? "talla con SKU vinculada" : "tallas con SKU vinculadas"}
+              {plural(withSku, "talla con SKU vinculada", "tallas con SKU vinculadas")}
               {withoutSku > 0 &&
-                ` · ${withoutSku} ${withoutSku === 1 ? "talla" : "tallas"} sin SKU de producción`}
+                ` · ${withoutSku} ${plural(withoutSku, "talla", "tallas")} sin SKU de producción`}
               .
               {isRunningHere &&
                 ` ${runningLabel} Puedes cerrar esta ventana; la vinculación continúa.`}
             </p>
           )}
-          {!isRunningHere && run?.stopReason && (
+          {!isRunningHere && run?.stopReason && linkableIds.length > 0 && (
             <p className={NOTE}>
               La última vinculación se detuvo antes de terminar: {run.stopReason}
             </p>
@@ -225,8 +229,10 @@ export function SampleSkuLinkDialog({
           )}
         </div>
 
-        {rows.length === 0 ? (
-          <EmptyLines>Esta línea no tiene tallas.</EmptyLines>
+        {isEmptyLine ? (
+          <EmptyLines>Esta línea no tiene tallas capturadas.</EmptyLines>
+        ) : catalogIndex === null ? (
+          <EmptyLines>Cargando tallas...</EmptyLines>
         ) : (
           <LineItemsTable
             head={
@@ -262,7 +268,7 @@ export function SampleSkuLinkDialog({
                           {failure}
                         </p>
                       </>
-                    ) : state === "none" ? (
+                    ) : state === "none" && !lineWithoutSkus ? (
                       <>
                         <span className={skuStatusPillClass(config.tone)}>{config.label}</span>
                         <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">

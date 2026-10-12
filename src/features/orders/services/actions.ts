@@ -162,6 +162,15 @@ export const recomprarPedido = async (id: number): Promise<PedidoRecompraRespons
 };
 
 /**
+ * 30 s. La operación es una lectura y una escritura de una fila y responde en
+ * menos de un segundo; el margen cubre el arranque en frío del backend
+ * (serverless) y una renovación de sesión intercalada por el interceptor de
+ * `v1_api`, sin que el usuario espere minutos por una petición que ya no va a
+ * volver.
+ */
+const VINCULAR_SKU_MUESTRA_TIMEOUT_MS = 30_000;
+
+/**
  * Vincula a UNA talla de muestra el SKU de producción disponible
  * (`POST /ventas/pedidos/{id}/vincular-sku-muestra/`). Ver
  * `pedido-sku-muestra.interface.ts`.
@@ -170,6 +179,11 @@ export const recomprarPedido = async (id: number): Promise<PedidoRecompraRespons
  * `{ pedido_detalle_talla_id }` si la talla no es de este pedido o todavía no
  * tiene SKU de producción; 404 si el pedido no existe, es de otra empresa o
  * está dado de baja.
+ *
+ * Lleva su PROPIO tope de tiempo (`v1_api` no tiene uno global): las tallas se
+ * vinculan en fila, y una petición colgada dejaría la corrida —y con ella todas
+ * las acciones de vincular del pedido— en curso para siempre. Al vencer, Axios
+ * rechaza con `ECONNABORTED` y la corrida se detiene con su motivo.
  */
 export const vincularSkuMuestra = async (
   pedidoId: number,
@@ -179,6 +193,7 @@ export const vincularSkuMuestra = async (
   const response = await v1_api.post<VincularSkuMuestraResponse>(
     `/ventas/pedidos/${pedidoId}/vincular-sku-muestra/`,
     payload,
+    { timeout: VINCULAR_SKU_MUESTRA_TIMEOUT_MS },
   );
   return response.data;
 };

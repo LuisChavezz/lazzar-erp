@@ -14,7 +14,12 @@ import {
 } from "../utils/orderLines";
 import type { SampleSkuLinkBlock } from "../constants/sampleSkuLinking";
 import { skuStatusPillClass, type SkuStatusPillTone } from "../constants/skuStatusPills";
-import type { SampleSkuRunLine, SampleSkuRunProgress } from "../hooks/useSampleSkuLinking";
+import type {
+  SampleSkuBulkRun,
+  SampleSkuRunLine,
+  SampleSkuRunProgress,
+} from "../hooks/useSampleSkuLinking";
+import { plural } from "@/src/utils/kpiFormat";
 import { SampleSkuLinkBanner } from "./SampleSkuLinkBanner";
 import { useOrderMoney } from "./OrderCurrencyContext";
 import { OrderLineServiceCell } from "./OrderLineServiceCell";
@@ -79,6 +84,8 @@ export interface OrderSampleSkusProps {
   runningLineaIds: number[];
   /** Avance global de esa corrida. */
   runProgress: SampleSkuRunProgress | null;
+  /** Lo que la última corrida hizo en cada línea, por id de línea. */
+  bulkRuns: Readonly<Record<number, SampleSkuBulkRun>>;
   /**
    * SKU recién vinculados (id de talla → SKU) que el detalle en caché todavía
    * no trae; se superponen para que los indicadores avancen durante la corrida
@@ -93,14 +100,12 @@ export interface OrderSampleSkusProps {
 
 /** Presentación del indicador por estado de la línea. */
 const LINE_STATUS_TONE: Record<SampleSkuLineStatus, SkuStatusPillTone> = {
+  empty: "slate",
   review: "amber",
   linkable: "sky",
   linked: "emerald",
   none: "slate",
 };
-
-const plural = (n: number, singular: string, pluralForm: string) =>
-  `${n} ${n === 1 ? singular : pluralForm}`;
 
 /**
  * Indicador de una línea de MUESTRA en la columna SKU. Dice el estado de
@@ -111,7 +116,11 @@ const plural = (n: number, singular: string, pluralForm: string) =>
  * - "Por vincular · k": k tallas listas para vincular.
  * - "Vinculada n/m": de las m tallas con SKU de producción, n vinculadas (todas).
  * - "Sin SKU": Producción aún no genera SKU para ninguna talla.
+ * - "Sin tallas": la línea no tiene tallas capturadas.
  * - "Vinculando · n/m", latiendo: una corrida de "Vincular todas" la incluye.
+ *
+ * Todos los estados usan la MISMA pastilla (`skuStatusPillClass`): al entrar o
+ * salir de una corrida solo cambian el color y el latido, no el tamaño.
  *
  * Es un botón para TODOS los usuarios: abre el diálogo por talla, que sin
  * permiso es de solo lectura.
@@ -122,12 +131,13 @@ const plural = (n: number, singular: string, pluralForm: string) =>
  */
 function SampleSkuIndicator({
   linea,
-  badge,
+  kindLabel,
   isLinking,
   onOpen,
 }: {
   linea: PedidoDetalleLinea;
-  badge: { label: string; className: string };
+  /** Nombre del tipo de línea ("Muestra"), para el tooltip. */
+  kindLabel: string;
   isLinking: boolean;
   onOpen: (lineaId: number) => void;
 }) {
@@ -140,14 +150,18 @@ function SampleSkuIndicator({
         ? `Por vincular · ${linkableIds.length}`
         : status === "linked"
           ? `Vinculada ${linked}/${withSku}`
-          : "Sin SKU";
+          : status === "empty"
+            ? "Sin tallas"
+            : "Sin SKU";
   const tooltip = [
-    `Línea de ${badge.label.toLowerCase()}`,
-    withSku > 0
-      ? `${linked} de ${plural(withSku, "talla con SKU vinculada", "tallas con SKU vinculadas")}`
-      : "Producción aún no genera el SKU",
+    `Línea de ${kindLabel.toLowerCase()}`,
+    status === "empty"
+      ? "sin tallas capturadas"
+      : withSku > 0
+        ? `${linked} de ${withSku} ${plural(withSku, "talla con SKU vinculada", "tallas con SKU vinculadas")}`
+        : "Producción aún no genera el SKU",
     ...(withSku > 0 && withoutSku > 0
-      ? [`${plural(withoutSku, "talla", "tallas")} sin SKU de producción`]
+      ? [`${withoutSku} ${plural(withoutSku, "talla", "tallas")} sin SKU de producción`]
       : []),
     ...(isLinking ? ["vinculando"] : status === "review" ? ["hay tallas por revisar"] : []),
   ].join(" · ");
@@ -159,7 +173,7 @@ function SampleSkuIndicator({
       aria-label={`${label}. ${tooltip}. Ver detalle por talla`}
       className={`whitespace-nowrap tabular-nums cursor-pointer transition-shadow hover:ring-1 hover:ring-current focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-500 ${
         isLinking
-          ? `inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium animate-pulse ${badge.className}`
+          ? `${skuStatusPillClass("violet")} animate-pulse`
           : skuStatusPillClass(LINE_STATUS_TONE[status])
       }`}
     >
@@ -214,6 +228,17 @@ export function OrderProductsSection({
       ? [{ lineaId: linea.id, tallaIds: linkableIds, partida: index + 1 }]
       : [];
   });
+  // Lo que la última vinculación dejó sin resolver, SOLO sobre tallas que
+  // siguen listas para vincular: así el aviso desaparece solo cuando esas
+  // tallas se vinculan, y una corrida nueva lo reemplaza (reinicia `bulkRuns`).
+  const stopReason =
+    linkableLines.map((line) => sampleSkus.bulkRuns[line.lineaId]?.stopReason).find(Boolean) ??
+    null;
+  const rejected = linkableLines.reduce((sum, line) => {
+    const failures = sampleSkus.bulkRuns[line.lineaId]?.failures ?? {};
+    return sum + line.tallaIds.filter((tallaId) => tallaId in failures).length;
+  }, 0);
+  const outcome = stopReason !== null || rejected > 0 ? { stopReason, rejected } : null;
   const linkableCount = linkableLines.reduce((sum, line) => sum + line.tallaIds.length, 0);
   const isRunning = sampleSkus.runningLineaIds.length > 0;
   const columnCount = 9 + (showCambioTalla ? 1 : 0) + (showAccounting ? 1 : 0) + (showImporte ? 1 : 0);
@@ -227,6 +252,7 @@ export function OrderProductsSection({
           block={sampleSkus.block}
           isRunning={isRunning}
           runProgress={sampleSkus.runProgress}
+          outcome={outcome}
           hasPendingSingle={sampleSkus.hasPendingSingle}
           onLinkAll={() =>
             sampleSkus.onLinkAll(
@@ -272,7 +298,7 @@ export function OrderProductsSection({
                     {isSampleLine(linea) ? (
                       <SampleSkuIndicator
                         linea={linea}
-                        badge={muestraBadge}
+                        kindLabel={muestraBadge.label}
                         isLinking={sampleSkus.runningLineaIds.includes(linea.id)}
                         onOpen={sampleSkus.onOpen}
                       />

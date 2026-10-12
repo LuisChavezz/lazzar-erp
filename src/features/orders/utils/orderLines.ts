@@ -55,8 +55,11 @@ export function sampleSkuTallaState(talla: SampleSkuFields): SampleSkuTallaState
  * 2. `linkable`: alguna talla está lista para vincular.
  * 3. `linked`: hay tallas con SKU de producción y todas están vinculadas.
  * 4. `none`: ninguna talla tiene SKU de producción.
+ *
+ * Aparte, `empty`: la línea no tiene tallas capturadas. No es `none`: ahí no
+ * falta nada de Producción, falta la captura.
  */
-export type SampleSkuLineStatus = "review" | "linkable" | "linked" | "none";
+export type SampleSkuLineStatus = "empty" | "review" | "linkable" | "linked" | "none";
 
 export interface SampleSkuLineSummary {
   status: SampleSkuLineStatus;
@@ -91,13 +94,16 @@ export function sampleSkuLineSummary(
     if (state === "linkable") linkableIds.push(talla.id);
     if (state === "orphan" || state === "out_of_sync") needsReview = true;
   }
-  const status: SampleSkuLineStatus = needsReview
-    ? "review"
-    : linkableIds.length > 0
-      ? "linkable"
-      : withSku > 0
-        ? "linked"
-        : "none";
+  const status: SampleSkuLineStatus =
+    linea.tallas.length === 0
+      ? "empty"
+      : needsReview
+        ? "review"
+        : linkableIds.length > 0
+          ? "linkable"
+          : withSku > 0
+            ? "linked"
+            : "none";
   return { status, withSku, linked, linkableIds, withoutSku: linea.tallas.length - withSku };
 }
 

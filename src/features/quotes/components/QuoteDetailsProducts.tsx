@@ -178,7 +178,7 @@ export const QuoteDetailsProducts = ({ details }: QuoteDetailsProductsProps) => 
                                 real es el SKU de producción vinculado desde el
                                 pedido, si ya lo tiene. */}
                             {detalle.producto == null
-                              ? talla.sku_muestra || "—"
+                              ? talla.sku_muestra || "-"
                               : talla.sku || "-"}
                           </td>
                           <td className="px-3 py-2 text-slate-700 dark:text-slate-200">{talla.talla_nombre}</td>

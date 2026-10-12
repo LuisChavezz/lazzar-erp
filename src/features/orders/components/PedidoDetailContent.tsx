@@ -44,13 +44,13 @@ import {
   type OrderDetailSearchParams,
   type OrderDetailSheet,
 } from "../constants/orderDetailSheets";
-import { specialOrderPath, type SampleSkuLinkBlock } from "../constants/sampleSkuLinking";
+import type { SampleSkuLinkBlock } from "../constants/sampleSkuLinking";
 import { canSeeAccounting } from "../utils/orderAccounting";
 import { isSampleLine } from "../utils/orderLines";
 import { OrderMainSheet } from "./OrderMainSheet";
 import { OrderProgressSheet } from "./OrderProgressSheet";
 import { OrderRecompraAction } from "./OrderRecompraAction";
-import { SampleSkuLinkDialog } from "./SampleSkuLinkDialog";
+import { SampleSkuLinkDialog, SampleSkuSizeCatalogPrefetch } from "./SampleSkuLinkDialog";
 import {
   hasOrderDocumentDialog,
   ORDER_DOCUMENT_DIALOGS,
@@ -369,11 +369,6 @@ export function PedidoDetailContent({
     : canEditMesaControl
       ? null
       : "permission";
-  // Página de Producción donde se generan los SKU; solo se enlaza si el proxy
-  // dejaría entrar al usuario (si no, el enlace rebotaría al Home).
-  const specialOrderHref = canAccessRoute(specialOrderPath(data.id), session?.user)
-    ? specialOrderPath(data.id)
-    : null;
   // La línea se resuelve del detalle vigente. Si una relectura la quita (o deja
   // de ser muestra), el diálogo se cierra en este mismo render en vez de quedar
   // con un id que podría reabrirlo solo más adelante.
@@ -451,6 +446,7 @@ export function PedidoDetailContent({
             block: sampleSkuLinkBlock,
             runningLineaIds: sampleSkuLinking.runningLineaIds,
             runProgress: sampleSkuLinking.runProgress,
+            bulkRuns: sampleSkuLinking.bulkRuns,
             linkedSkus: sampleSkuLinking.linkedSkus,
             hasPendingSingle: sampleSkuLinking.pendingTallaIds.length > 0,
             onLinkAll: sampleSkuLinking.linkAll,
@@ -464,12 +460,16 @@ export function PedidoDetailContent({
         />
       )}
 
+      {/* El diálogo de SKU de muestra ordena sus filas con el catálogo de
+          tallas: se pide desde que carga el pedido (solo si tiene muestras)
+          para que esté listo al abrirlo. */}
+      {data.detalles.some(isSampleLine) && <SampleSkuSizeCatalogPrefetch />}
+
       {/* SKU de muestra por talla de una línea (se monta solo al abrir). */}
       {sampleSkuLine && (
         <SampleSkuLinkDialog
           linea={sampleSkuLine}
           block={sampleSkuLinkBlock}
-          specialOrderHref={specialOrderHref}
           run={sampleSkuLinking.bulkRuns[sampleSkuLine.id]}
           runningLineaIds={sampleSkuLinking.runningLineaIds}
           runProgress={sampleSkuLinking.runProgress}

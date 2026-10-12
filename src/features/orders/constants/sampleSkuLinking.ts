@@ -15,5 +15,15 @@ export const SAMPLE_SKU_LINK_BLOCK_COPY: Record<SampleSkuLinkBlock, string> = {
   permission: "Solo mesa de control puede vincular",
 };
 
-/** Página del pedido especial (Producción), donde se generan los SKU de muestra. */
-export const specialOrderPath = (pedidoId: number) => `/manufacturing/special-orders/${pedidoId}`;
+/**
+ * Texto del avance de la corrida de "Vincular todas", el mismo en el aviso del
+ * pedido y en el diálogo de una línea. `null`: hay corrida pero su avance se
+ * perdió (la página se volvió a montar a media corrida).
+ */
+export const sampleSkuRunLabel = (
+  progress: { processed: number; total: number; refreshing: boolean } | null,
+): string => {
+  if (!progress) return "Vinculando...";
+  if (progress.refreshing) return "Actualizando...";
+  return `Vinculando ${Math.min(progress.processed + 1, progress.total)} de ${progress.total}...`;
+};
