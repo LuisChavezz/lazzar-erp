@@ -11,11 +11,13 @@ const OPERATIONS_ORDERS_PATH = "/operations/orders";
  *
  * DIVERGENCIA CONSCIENTE con el backend: el endpoint
  * `POST /ventas/pedidos/{id}/editar-mesa-control/` NO valida este código.
- * `PedidoViewSet._require_mesa_control` exige pertenecer al ROL
- * `MESA-DE-CONTROL` (o ser superuser / admin de empresa). O sea que este permiso
- * gobierna la UI —esta ruta y los dos disparadores— y la frontera real de
- * seguridad es el rol, evaluado en Django en cada guardado. Quien tenga el
- * permiso pero no el rol llegará a la pantalla y recibirá un 403 al guardar.
+ * `PedidoViewSet._require_mesa_control` exige ser superuser, `is_admin_empresa`
+ * o tener un rol ACTIVO de la empresa del usuario cuya clave de departamento sea
+ * EXACTAMENTE `MESACONTROL` (un rol `MESACONTROLYVENTAS` se rechaza). O sea que
+ * este permiso gobierna la UI —esta ruta y los dos disparadores— y la frontera
+ * real de seguridad es esa regla, evaluada en Django en cada guardado. Quien
+ * tenga el permiso sin cumplirla llegará a la pantalla y recibirá un 400
+ * `{ permiso }` al guardar (400, no 403).
  */
 const EDIT_PEDIDO_PERMISSION = "E-MESACONTROL-PEDIDOS";
 

@@ -5,9 +5,10 @@ import type { PedidoClasificacion } from "../constants/pedidoStatus";
  *
  * UNA sola clave por petición, y el tipo lo impone: si el cuerpo CONTIENE
  * `clasificacion` o `fecha_confirmacion` —aunque sea sin cambio, aunque sea
- * `null`— el backend exige mesa de control (superuser, `is_admin_empresa` o rol
- * activo en el departamento `MESACONTROL`) y rechaza la petición ENTERA con
- * 400 `{"permiso": "…"}`. Mandar solo lo editado evita que un campo arrastre
+ * `null`— el backend exige mesa de control (superuser, `is_admin_empresa` o un
+ * rol activo de la empresa del usuario cuya clave de departamento sea
+ * EXACTAMENTE `MESACONTROL`; `MESACONTROLYVENTAS` no cuenta) y rechaza la
+ * petición ENTERA con 400 `{"permiso": "…"}`. Mandar solo lo editado evita que un campo arrastre
  * el rechazo del otro.
  */
 export type PedidoHeaderUpdate =

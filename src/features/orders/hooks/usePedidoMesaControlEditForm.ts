@@ -83,11 +83,12 @@ import type {
  *
  * PERMISOS — divergencia consciente: la pantalla se protege en el frontend con
  * `E-MESACONTROL-PEDIDOS` (guard de ruta + botones), pero el endpoint NO valida
- * ese código: `PedidoViewSet._require_mesa_control` exige pertenecer al ROL
- * `MESA-DE-CONTROL` (o ser superuser / admin de empresa). O sea que el permiso
- * del catálogo es consistencia de UI y la frontera real es el rol. Un usuario
- * con el permiso pero sin el rol llegará a la pantalla y recibirá un 403 al
- * guardar.
+ * ese código: `PedidoViewSet._require_mesa_control` exige ser superuser,
+ * `is_admin_empresa` o tener un rol activo de la empresa del usuario cuya clave
+ * de departamento sea EXACTAMENTE `MESACONTROL` (`MESACONTROLYVENTAS` se
+ * rechaza). O sea que el permiso del catálogo es consistencia de UI y la
+ * frontera real es esa regla. Un usuario con el permiso que no la cumpla
+ * llegará a la pantalla y recibirá un 400 `{ permiso }` al guardar.
  */
 
 // ─── Catálogos y constantes (mismos valores que los hooks de cotización) ──────
@@ -873,10 +874,11 @@ export function usePedidoMesaControlEditForm(pedidoId: number) {
    * La ausencia de `gran_total` es el detector: `PedidoSerializer` usa
    * `fields="__all__"`, así que la clave solo puede faltar por este filtro.
    *
-   * No es un caso teórico: el endpoint exige el rol `MESA-DE-CONTROL`, cuyo
-   * token normalizado es `MESADECONTROL`, y la lista que abre los campos
-   * contables (`TOKENS_ROL_VER_TODO`) contiene `MESACONTROL` — sin el "DE". Los
-   * dos permisos no están alineados en el backend.
+   * No es un caso teórico: son dos comprobaciones DISTINTAS del backend. Editar
+   * exige mesa de control (clave de departamento `MESACONTROL`, ver arriba) y
+   * ver los campos contables depende de `puede_ver_contabilidad`, que consulta
+   * su propia lista de claves de departamento. Nada garantiza que quien pasa la
+   * primera pase la segunda.
    */
   const pedidoAccountingHidden =
     Boolean(pedidoData) && pedidoData?.gran_total === undefined;

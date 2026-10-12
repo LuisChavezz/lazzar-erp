@@ -224,9 +224,11 @@ export function PedidoDetailContent({
   const { data: session } = useSession();
   const pathname = usePathname();
   const sheet = resolveOrderDetailSheet(rawSheet);
-  // Permiso del catálogo. OJO: el backend NO lo valida en el endpoint de
-  // edición —exige el ROL `MESA-DE-CONTROL`—, así que esto gobierna la UI y la
-  // frontera real es el rol. Ver `pedidoEditAccess.server.ts`.
+  // Permiso del catálogo. OJO: el backend NO lo valida en las acciones de mesa
+  // de control —exige superuser, `is_admin_empresa` o un rol activo cuya clave
+  // de departamento sea exactamente `MESACONTROL`—, así que esto solo gobierna
+  // la UI; un desajuste llega como el 400 `permiso` del backend. Ver
+  // `pedidoEditAccess.server.ts`.
   const canEditMesaControl = hasPermission("E-MESACONTROL-PEDIDOS", session?.user);
   // Recompra aterriza en /sales/quotes/{id}/edit, así que exige EXACTAMENTE lo
   // que exige esa ruta; si no, el usuario crearía la cotización y rebotaría

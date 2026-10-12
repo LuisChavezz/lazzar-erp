@@ -26,7 +26,9 @@ import type {
  *
  * - `permiso`: `_require_mesa_control` — "Acción disponible solo para mesa de
  *   control." Es el caso del usuario que tiene `E-MESACONTROL-PEDIDOS` pero no
- *   el ROL `MESA-DE-CONTROL`, que es lo que el backend valida de verdad.
+ *   cumple lo que el backend valida de verdad: ser superuser, `is_admin_empresa`
+ *   o tener un rol activo de su empresa cuya clave de departamento sea
+ *   EXACTAMENTE `MESACONTROL` (p. ej. `MESACONTROLYVENTAS` se rechaza).
  * - `pedido` / `cotizacion`: el pedido no tiene cotización ligada (o se
  *   borró), así que no hay nada que espejar.
  *
