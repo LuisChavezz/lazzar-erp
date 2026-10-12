@@ -8,6 +8,7 @@ import {
   isSampleLine,
   lineProductName,
   lineSizesSummary,
+  sampleSkuLineProgress,
 } from "../utils/orderLines";
 import { useOrderMoney } from "./OrderCurrencyContext";
 import { OrderLineServiceCell } from "./OrderLineServiceCell";
@@ -50,6 +51,52 @@ interface OrderProductsSectionProps {
    * pedido (ver `reconciledLineAmounts`).
    */
   lineAmounts: Record<number, number> | null;
+  /**
+   * Abre el diálogo de SKU de muestra de la línea. Se pasa el id y no la línea:
+   * el diálogo y su estado viven en la página, que la resuelve del detalle
+   * vigente.
+   */
+  onOpenSampleSkus: (lineaId: number) => void;
+}
+
+/**
+ * Indicador de una línea de MUESTRA en la columna SKU: el badge "Muestra" con
+ * el avance de vinculación de sus tallas ("Muestra · 2/6": tallas con
+ * `sku_muestra` sobre el total). Es un botón para TODOS los usuarios —el diálogo
+ * que abre es de solo lectura sin permiso—; una línea sin tallas no tiene avance
+ * que mostrar y queda en "Muestra".
+ */
+function SampleSkuIndicator({
+  linea,
+  badge,
+  onOpen,
+}: {
+  linea: PedidoDetalleLinea;
+  badge: { label: string; className: string };
+  onOpen: (lineaId: number) => void;
+}) {
+  const { linked, total } = sampleSkuLineProgress(linea);
+  return (
+    <button
+      type="button"
+      onClick={() => onOpen(linea.id)}
+      title="Ver SKU de muestra por talla"
+      aria-label={
+        total > 0
+          ? `Muestra: ${linked} de ${total} tallas con SKU vinculado. Ver SKU de muestra por talla`
+          : "Muestra. Ver SKU de muestra por talla"
+      }
+      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium whitespace-nowrap cursor-pointer transition-shadow hover:ring-1 hover:ring-current focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-500 ${badge.className}`}
+    >
+      {badge.label}
+      {total > 0 && (
+        <span className="tabular-nums">
+          {" · "}
+          {linked}/{total}
+        </span>
+      )}
+    </button>
+  );
 }
 
 /**
@@ -77,6 +124,7 @@ export function OrderProductsSection({
   detalles,
   showAccounting,
   lineAmounts,
+  onOpenSampleSkus,
 }: OrderProductsSectionProps) {
   const { formatMoney } = useOrderMoney();
   // Mismo badge que la tabla de captura de la cotización y que la columna
@@ -124,11 +172,11 @@ export function OrderProductsSection({
                   <td className="p-2 text-center text-xs text-slate-400 select-none">{index + 1}</td>
                   <td className="p-2">
                     {isSampleLine(linea) ? (
-                      <span
-                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${muestraBadge.className}`}
-                      >
-                        {muestraBadge.label}
-                      </span>
+                      <SampleSkuIndicator
+                        linea={linea}
+                        badge={muestraBadge}
+                        onOpen={onOpenSampleSkus}
+                      />
                     ) : linea.sku_base ? (
                       <span className="text-xs font-mono font-medium text-slate-700 dark:text-slate-200 whitespace-nowrap">
                         {linea.sku_base}

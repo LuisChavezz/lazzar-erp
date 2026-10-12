@@ -20,6 +20,49 @@ export function isSampleLine(linea: PedidoDetalleLinea): boolean {
   return Boolean(linea.producto_nombre_externo?.trim());
 }
 
+/**
+ * Estado del SKU de muestra de UNA talla, según el SKU que Producción tiene
+ * disponible (`sku_produccion`) y el ya vinculado (`sku_muestra`):
+ *
+ * - `none`: ninguno. Aún no hay SKU de producción; no se puede vincular.
+ * - `linkable`: hay SKU de producción y falta vincularlo.
+ * - `linked`: vinculado y coincide con el de producción.
+ * - `orphan`: vinculado, pero ya no hay SKU de producción visible para la talla
+ *   (la línea pasó a producto de catálogo, o la talla cambió). Nada que hacer.
+ * - `out_of_sync`: vinculado a un SKU distinto del que hoy tiene Producción.
+ *   Se puede volver a vincular.
+ */
+export type SampleSkuTallaState = "none" | "linkable" | "linked" | "orphan" | "out_of_sync";
+
+type SampleSkuFields = Pick<PedidoDetalleTalla, "sku_muestra" | "sku_produccion">;
+
+/** `undefined` (backend anterior al campo) y la cadena vacía cuentan como `null`. */
+const skuOrNull = (value: string | null | undefined): string | null => value?.trim() || null;
+
+export function sampleSkuTallaState(talla: SampleSkuFields): SampleSkuTallaState {
+  const produccion = skuOrNull(talla.sku_produccion);
+  const muestra = skuOrNull(talla.sku_muestra);
+  if (muestra === null) return produccion === null ? "none" : "linkable";
+  if (produccion === null) return "orphan";
+  return produccion === muestra ? "linked" : "out_of_sync";
+}
+
+/**
+ * Avance de vinculación de una línea de muestra: tallas con `sku_muestra` sobre
+ * todas las tallas de la línea. Cuenta las vinculadas aunque estén por revisar
+ * (`orphan`/`out_of_sync`): el indicador dice cuántas TIENEN SKU, no cuántas
+ * están al día.
+ */
+export function sampleSkuLineProgress(linea: Pick<PedidoDetalleLinea, "tallas">): {
+  linked: number;
+  total: number;
+} {
+  return {
+    linked: linea.tallas.filter((talla) => skuOrNull(talla.sku_muestra) !== null).length,
+    total: linea.tallas.length,
+  };
+}
+
 /** Resumen de tallas como lo pinta la tabla de la cotización: "CH (5), M (3)". */
 export function lineSizesSummary(linea: PedidoDetalleLinea): string {
   if (linea.tallas.length === 0) return "—";

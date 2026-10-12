@@ -44,9 +44,11 @@ import {
   type OrderDetailSheet,
 } from "../constants/orderDetailSheets";
 import { canSeeAccounting } from "../utils/orderAccounting";
+import { isSampleLine } from "../utils/orderLines";
 import { OrderMainSheet } from "./OrderMainSheet";
 import { OrderProgressSheet } from "./OrderProgressSheet";
 import { OrderRecompraAction } from "./OrderRecompraAction";
+import { SampleSkuLinkDialog } from "./SampleSkuLinkDialog";
 import {
   hasOrderDocumentDialog,
   ORDER_DOCUMENT_DIALOGS,
@@ -241,13 +243,19 @@ export function PedidoDetailContent({
   // Documento abierto (`null` = cerrado). Un solo estado para todos los tipos
   // navegables; el diálogo se resuelve del registro según `openDoc.tipo`.
   const [openDoc, setOpenDoc] = useState<OpenOrderDocument | null>(null);
+  // Línea de muestra cuyo diálogo de SKU está abierto (`null` = cerrado). Se
+  // guarda el ID y no la línea: el diálogo la lee del detalle vigente, así que
+  // refleja cada relectura (p. ej. la que sigue a vincular una talla).
+  const [sampleSkuLineId, setSampleSkuLineId] = useState<number | null>(null);
   // Al cambiar de hoja (botón, atrás/adelante del navegador) el documento
-  // abierto se cierra en el mismo render: los diálogos se abren desde la hoja
-  // de Avances y no deben quedarse colgados sobre la otra.
+  // abierto se cierra en el mismo render: cada diálogo se abre desde UNA hoja
+  // (los documentos, desde Avances; el SKU de muestra, desde Pedido) y no debe
+  // quedarse colgado sobre la otra.
   const [renderedSheet, setRenderedSheet] = useState<OrderDetailSheet>(sheet);
   if (renderedSheet !== sheet) {
     setRenderedSheet(sheet);
     setOpenDoc(null);
+    setSampleSkuLineId(null);
   }
   const OpenDocDialog =
     openDoc && hasOrderDocumentDialog(openDoc.tipo) ? ORDER_DOCUMENT_DIALOGS[openDoc.tipo] : null;
@@ -341,6 +349,21 @@ export function PedidoDetailContent({
   // Control y pedido no terminado. Independiente de `canEditPedidoMesaControl`,
   // que gobierna el botón Editar (guardado destructivo) con su propia regla.
   const canEditHeader = canEditMesaControl && !isPedidoTerminal(data.estatus);
+  // Vincular SKU de muestra: misma regla que la edición en línea de la
+  // cabecera. Solo gobierna las ACCIONES; el indicador y el diálogo se ven
+  // siempre, en solo lectura.
+  const canLinkSampleSkus = canEditHeader;
+  // La línea se resuelve del detalle vigente. Si una relectura la quita (o deja
+  // de ser muestra), el diálogo se cierra en este mismo render en vez de quedar
+  // con un id que podría reabrirlo solo más adelante.
+  const sampleSkuLine =
+    sampleSkuLineId === null
+      ? null
+      : (data.detalles.find((linea) => linea.id === sampleSkuLineId && isSampleLine(linea)) ??
+        null);
+  if (sampleSkuLineId !== null && sampleSkuLine === null) {
+    setSampleSkuLineId(null);
+  }
   // Cambio de hoja: enlace real que conserva `from` y el resto de la query.
   const sheetSwitch =
     sheet === "order"
@@ -402,12 +425,27 @@ export function PedidoDetailContent({
           pedido={data}
           showAccounting={showAccounting}
           canEditHeader={canEditHeader}
+          onOpenSampleSkus={setSampleSkuLineId}
         />
       ) : (
         <OrderProgressSheet
           pedido={data}
           showAccounting={showAccounting}
           onOpenDoc={setOpenDoc}
+        />
+      )}
+
+      {/* SKU de muestra por talla de una línea (se monta solo al abrir). */}
+      {sampleSkuLine && (
+        <SampleSkuLinkDialog
+          pedidoId={data.id}
+          cotizacionId={data.cotizacion}
+          linea={sampleSkuLine}
+          canLink={canLinkSampleSkus}
+          open={true}
+          onOpenChange={(open) => {
+            if (!open) setSampleSkuLineId(null);
+          }}
         />
       )}
 

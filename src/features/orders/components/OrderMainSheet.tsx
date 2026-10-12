@@ -11,6 +11,8 @@ interface OrderMainSheetProps {
   pedido: PedidoDetail;
   showAccounting: boolean;
   canEditHeader: boolean;
+  /** Abre el diálogo de SKU de muestra de una línea (lo monta la página). */
+  onOpenSampleSkus: (lineaId: number) => void;
 }
 
 /**
@@ -22,7 +24,12 @@ interface OrderMainSheetProps {
  * El catálogo de monedas solo se pide con datos contables: el proveedor que lo
  * carga se monta únicamente en ese caso (sin él no hay importes que formatear).
  */
-export function OrderMainSheet({ pedido, showAccounting, canEditHeader }: OrderMainSheetProps) {
+export function OrderMainSheet({
+  pedido,
+  showAccounting,
+  canEditHeader,
+  onOpenSampleSkus,
+}: OrderMainSheetProps) {
   // Importe por línea: solo con datos contables y si concilia con el subtotal.
   const lineAmounts = showAccounting ? reconciledLineAmounts(pedido) : null;
   const content = (
@@ -37,6 +44,7 @@ export function OrderMainSheet({ pedido, showAccounting, canEditHeader }: OrderM
         detalles={pedido.detalles}
         showAccounting={showAccounting}
         lineAmounts={lineAmounts}
+        onOpenSampleSkus={onOpenSampleSkus}
       />
       <section className="grid grid-cols-1 lg:grid-cols-4 gap-6 items-start">
         <div className="lg:col-span-1">

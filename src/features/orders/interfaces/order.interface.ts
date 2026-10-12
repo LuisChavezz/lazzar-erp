@@ -307,6 +307,23 @@ export interface PedidoDetalleTalla {
   // NO son contables — se pintan para todos los roles.
   cantidad_asignada_picking: string;
   cantidad_surtida_picking: string;
+  // ── SKU de muestra ───────────────────────────────────────────────────────
+  /**
+   * SKU de producción VINCULADO a esta talla (guardado). Solo lo escribe
+   * `POST /ventas/pedidos/{id}/vincular-sku-muestra/`; `null` mientras no se
+   * vincule y en las líneas de catálogo.
+   */
+  sku_muestra: string | null;
+  /**
+   * SKU que Producción tiene DISPONIBLE hoy para esta talla (solo lectura, no
+   * se guarda en el pedido). `null` si la línea no es de muestra, si no hay
+   * variante de producción activa o si su SKU está vacío.
+   *
+   * OPCIONAL por el mismo motivo que `tracker_picking`: el backend que lo
+   * expone es más nuevo que este frontend, así que una respuesta anterior llega
+   * sin la clave. Ausente se trata como `null` (ver `sampleSkuTallaState`).
+   */
+  sku_produccion?: string | null;
 }
 
 /**

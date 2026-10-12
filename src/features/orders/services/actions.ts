@@ -10,6 +10,10 @@ import type {
   PedidoProgramarResponse,
 } from "../interfaces/pedido-programacion.interface";
 import type { PedidoRecompraResponse } from "../interfaces/pedido-recompra.interface";
+import type {
+  VincularSkuMuestraPayload,
+  VincularSkuMuestraResponse,
+} from "../interfaces/pedido-sku-muestra.interface";
 import type { PedidoHeaderUpdate } from "../interfaces/pedido-update.interface";
 import type { OrderStockDetail } from "../interfaces/order-stock-detail.interface";
 import type { PedidoTrazabilidad } from "../interfaces/pedido-trazabilidad.interface";
@@ -151,6 +155,28 @@ export const programarPedido = async (
 export const recomprarPedido = async (id: number): Promise<PedidoRecompraResponse> => {
   const response = await v1_api.post<PedidoRecompraResponse>(
     `/ventas/pedidos/${id}/recomprar/`,
+  );
+  return response.data;
+};
+
+/**
+ * Vincula a UNA talla de muestra el SKU de producción disponible
+ * (`POST /ventas/pedidos/{id}/vincular-sku-muestra/`). Ver
+ * `pedido-sku-muestra.interface.ts`.
+ *
+ * 400 `{ permiso }` si el usuario no es mesa de control (400, no 403); 400
+ * `{ pedido_detalle_talla_id }` si la talla no es de este pedido o todavía no
+ * tiene SKU de producción; 404 si el pedido no existe, es de otra empresa o
+ * está dado de baja.
+ */
+export const vincularSkuMuestra = async (
+  pedidoId: number,
+  tallaId: number,
+): Promise<VincularSkuMuestraResponse> => {
+  const payload: VincularSkuMuestraPayload = { pedido_detalle_talla_id: tallaId };
+  const response = await v1_api.post<VincularSkuMuestraResponse>(
+    `/ventas/pedidos/${pedidoId}/vincular-sku-muestra/`,
+    payload,
   );
   return response.data;
 };

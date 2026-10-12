@@ -89,6 +89,12 @@ export interface QuoteById {
     tallas: {
       id: number;
       sku: string;
+      /**
+       * SKU de producción vinculado a la talla de una línea de MUESTRA (lo
+       * espeja el pedido al vincular; ver `vincular-sku-muestra`). Opcional:
+       * las respuestas anteriores al campo no lo traen.
+       */
+      sku_muestra?: string | null;
       talla_nombre: string;
       cantidad: number;
       precio_unitario: string;
