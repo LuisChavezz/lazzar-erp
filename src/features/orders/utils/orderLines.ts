@@ -70,8 +70,13 @@ export interface SampleSkuLineSummary {
    * que nunca lo reciben; contarlas dejaría la línea "incompleta" para siempre.
    */
   withSku: number;
-  /** De las `withSku`, las que ya tienen `sku_muestra`. */
+  /**
+   * De las `withSku`, las vinculadas Y al día (`linked`). Una talla por revisar
+   * no cuenta: tiene un SKU, pero no el que hoy da Producción.
+   */
   linked: number;
+  /** Tallas por revisar (`orphan` u `out_of_sync`). */
+  review: number;
   /** Ids de las tallas listas para vincular (`linkable`). */
   linkableIds: number[];
   /** Tallas sin SKU de producción. */
@@ -83,28 +88,50 @@ export function sampleSkuLineSummary(
 ): SampleSkuLineSummary {
   let withSku = 0;
   let linked = 0;
-  let needsReview = false;
+  let review = 0;
   const linkableIds: number[] = [];
   for (const talla of linea.tallas) {
     const state = sampleSkuTallaState(talla);
-    if (skuOrNull(talla.sku_produccion) !== null) {
-      withSku += 1;
-      if (state !== "linkable") linked += 1;
-    }
+    if (skuOrNull(talla.sku_produccion) !== null) withSku += 1;
+    if (state === "linked") linked += 1;
     if (state === "linkable") linkableIds.push(talla.id);
-    if (state === "orphan" || state === "out_of_sync") needsReview = true;
+    if (state === "orphan" || state === "out_of_sync") review += 1;
   }
   const status: SampleSkuLineStatus =
     linea.tallas.length === 0
       ? "empty"
-      : needsReview
+      : review > 0
         ? "review"
         : linkableIds.length > 0
           ? "linkable"
           : withSku > 0
             ? "linked"
             : "none";
-  return { status, withSku, linked, linkableIds, withoutSku: linea.tallas.length - withSku };
+  return {
+    status,
+    withSku,
+    linked,
+    review,
+    linkableIds,
+    withoutSku: linea.tallas.length - withSku,
+  };
+}
+
+/**
+ * Tallas de una línea en el orden del CATÁLOGO de tallas (`catalogSizeIds`: los
+ * ids de `GET /catalogo/talla/` tal como llegan, que es el orden canónico del
+ * backend: XCH, CH, M, G…). Es el orden en que el diálogo las lista y en el que
+ * una corrida las procesa, para que lo que se vincula primero sea lo que se ve
+ * primero. Una talla que no está en el catálogo (inactiva) va al final; sin
+ * catálogo (`[]`) se conserva el orden del pedido. Orden estable.
+ */
+export function sortTallasByCatalog<T extends Pick<PedidoDetalleTalla, "talla">>(
+  tallas: readonly T[],
+  catalogSizeIds: readonly number[],
+): T[] {
+  const index = new Map(catalogSizeIds.map((id, position) => [id, position]));
+  const rank = (talla: T) => index.get(talla.talla) ?? Number.MAX_SAFE_INTEGER;
+  return [...tallas].sort((a, b) => rank(a) - rank(b));
 }
 
 /**

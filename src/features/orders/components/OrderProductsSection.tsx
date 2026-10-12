@@ -1,5 +1,8 @@
 "use client";
 
+import { useQueryClient } from "@tanstack/react-query";
+import type { Size } from "@/src/features/sizes/interfaces/size.interface";
+
 import { getTipoPedidoConfig, TIPO_PEDIDO } from "../constants/pedidoStatus";
 import type { PedidoDetalleLinea } from "../interfaces/order.interface";
 import { centsToDecimalString, summarizeLinePrice } from "../utils/orderAccounting";
@@ -9,6 +12,7 @@ import {
   lineProductName,
   lineSizesSummary,
   sampleSkuLineSummary,
+  sortTallasByCatalog,
   withLinkedSampleSkus,
   type SampleSkuLineStatus,
 } from "../utils/orderLines";
@@ -119,8 +123,12 @@ const LINE_STATUS_TONE: Record<SampleSkuLineStatus, SkuStatusPillTone> = {
  * - "Sin tallas": la línea no tiene tallas capturadas.
  * - "Vinculando · n/m", latiendo: una corrida de "Vincular todas" la incluye.
  *
- * Todos los estados usan la MISMA pastilla (`skuStatusPillClass`): al entrar o
- * salir de una corrida solo cambian el color y el latido, no el tamaño.
+ * Todos los estados usan la MISMA pastilla (`skuStatusPillClass`) con un ancho
+ * mínimo común: al entrar o salir de una corrida solo cambian el texto, el
+ * color y el latido, y la columna SKU no se mueve. El mínimo (8.5rem = 136px)
+ * cubre los textos más largos realistas — "Vinculando · 11/11" mide ~131px y
+ * "Por vincular · 11" ~116px—; con conteos de tres cifras la pastilla crece,
+ * nunca parte el texto (`whitespace-nowrap`).
  *
  * Es un botón para TODOS los usuarios: abre el diálogo por talla, que sin
  * permiso es de solo lectura.
@@ -141,7 +149,8 @@ function SampleSkuIndicator({
   isLinking: boolean;
   onOpen: (lineaId: number) => void;
 }) {
-  const { status, withSku, linked, linkableIds, withoutSku } = sampleSkuLineSummary(linea);
+  const { status, withSku, linked, review, linkableIds, withoutSku } =
+    sampleSkuLineSummary(linea);
   const label = isLinking
     ? `Vinculando · ${linked}/${withSku}`
     : status === "review"
@@ -163,7 +172,8 @@ function SampleSkuIndicator({
     ...(withSku > 0 && withoutSku > 0
       ? [`${withoutSku} ${plural(withoutSku, "talla", "tallas")} sin SKU de producción`]
       : []),
-    ...(isLinking ? ["vinculando"] : status === "review" ? ["hay tallas por revisar"] : []),
+    ...(review > 0 ? [`${review} por revisar`] : []),
+    ...(isLinking ? ["vinculando"] : []),
   ].join(" · ");
   return (
     <button
@@ -171,7 +181,7 @@ function SampleSkuIndicator({
       onClick={() => onOpen(linea.id)}
       title={`${tooltip}. Ver detalle por talla`}
       aria-label={`${label}. ${tooltip}. Ver detalle por talla`}
-      className={`whitespace-nowrap tabular-nums cursor-pointer transition-shadow hover:ring-1 hover:ring-current focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-500 ${
+      className={`min-w-[8.5rem] justify-center whitespace-nowrap tabular-nums cursor-pointer transition-shadow hover:ring-1 hover:ring-current focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-500 ${
         isLinking
           ? `${skuStatusPillClass("violet")} animate-pulse`
           : skuStatusPillClass(LINE_STATUS_TONE[status])
@@ -210,6 +220,7 @@ export function OrderProductsSection({
   sampleSkus,
 }: OrderProductsSectionProps) {
   const { formatMoney } = useOrderMoney();
+  const queryClient = useQueryClient();
   // Mismo badge que la tabla de captura de la cotización y que la columna
   // "Tipo" del listado, para que todas las vistas nombren igual a la muestra.
   const muestraBadge = getTipoPedidoConfig(TIPO_PEDIDO.MUESTRA);
@@ -254,11 +265,28 @@ export function OrderProductsSection({
           runProgress={sampleSkus.runProgress}
           outcome={outcome}
           hasPendingSingle={sampleSkus.hasPendingSingle}
-          onLinkAll={() =>
+          onLinkAll={() => {
+            // La cola sigue lo que se ve: las partidas en el orden de la tabla
+            // (`linkableLines` ya lo trae) y, dentro de cada una, las tallas en
+            // el orden del catálogo, que es el del diálogo. El catálogo se lee
+            // de la caché AL PULSAR (la página lo pide al cargar un pedido con
+            // muestras); si aún no está, queda el orden del pedido.
+            const catalogSizeIds = (queryClient.getQueryData<Size[]>(["sizes"]) ?? []).map(
+              (size) => size.id,
+            );
             sampleSkus.onLinkAll(
-              linkableLines.map(({ lineaId, tallaIds }) => ({ lineaId, tallaIds })),
-            )
-          }
+              linkableLines.map(({ lineaId, tallaIds }) => {
+                const tallas = lineas.find((linea) => linea.id === lineaId)?.tallas ?? [];
+                return {
+                  lineaId,
+                  tallaIds: sortTallasByCatalog(
+                    tallas.filter((talla) => tallaIds.includes(talla.id)),
+                    catalogSizeIds,
+                  ).map((talla) => talla.id),
+                };
+              }),
+            );
+          }}
         />
       )}
       <div className="overflow-x-auto -mx-6 md:-mx-8 px-6 md:px-8 pb-2 border-b border-slate-200 dark:border-slate-800">

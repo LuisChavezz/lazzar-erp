@@ -18,6 +18,7 @@ import {
   lineProductName,
   sampleSkuLineSummary,
   sampleSkuTallaState,
+  sortTallasByCatalog,
   withLinkedSampleSkus,
   type SampleSkuTallaState,
 } from "../utils/orderLines";
@@ -138,11 +139,10 @@ export function SampleSkuLinkDialog({
   // llegue después ya no reordena (el diálogo se desmonta al cerrar, así que la
   // siguiente apertura vuelve a decidir).
   const { sizes, isLoading: isLoadingSizes } = useSizes();
-  const [catalogIndex, setCatalogIndex] = useState<Map<number, number> | null>(null);
-  if (catalogIndex === null && !isLoadingSizes) {
-    setCatalogIndex(new Map(sizes.map((size, index) => [size.id, index])));
+  const [catalogSizeIds, setCatalogSizeIds] = useState<number[] | null>(null);
+  if (catalogSizeIds === null && !isLoadingSizes) {
+    setCatalogSizeIds(sizes.map((size) => size.id));
   }
-  const rank = (tallaId: number) => catalogIndex?.get(tallaId) ?? Number.MAX_SAFE_INTEGER;
 
   const isRunning = runningLineaIds.length > 0;
   const isRunningHere = runningLineaIds.includes(linea.id);
@@ -151,11 +151,23 @@ export function SampleSkuLinkDialog({
   const isRunningElsewhere = isRunning && !isRunningHere;
 
   const shownLinea = withLinkedSampleSkus(linea, run?.linkedSkus ?? {});
-  const rows = shownLinea.tallas
-    .map((talla) => ({ talla, state: sampleSkuTallaState(talla) }))
-    // `sort` es estable: las tallas de igual rango conservan su orden.
-    .sort((a, b) => rank(a.talla.talla) - rank(b.talla.talla));
-  const { status, withSku, linked, linkableIds, withoutSku } = sampleSkuLineSummary(shownLinea);
+  const rows = sortTallasByCatalog(shownLinea.tallas, catalogSizeIds ?? []).map((talla) => ({
+    talla,
+    state: sampleSkuTallaState(talla),
+  }));
+  const { status, withSku, linked, review, withoutSku } = sampleSkuLineSummary(shownLinea);
+  // En el orden de las FILAS: "Vincular todas" procesa las tallas tal como se
+  // ven, de arriba abajo.
+  const linkableIds = rows.filter((row) => row.state === "linkable").map((row) => row.talla.id);
+  // Tallas que la última corrida dejó rechazadas, agrupadas por motivo, para
+  // nombrarlas arriba: la fila puede quedar fuera de la vista de la tabla. Una
+  // que ya quedó vinculada por otra vía deja de contar.
+  const rejectedByReason = new Map<string, string[]>();
+  for (const { talla, state } of rows) {
+    const reason = state === "linked" ? undefined : run?.failures[talla.id];
+    if (!reason) continue;
+    rejectedByReason.set(reason, [...(rejectedByReason.get(reason) ?? []), talla.talla_nombre]);
+  }
   const anySinglePending = pendingTallaIds.length > 0;
 
   const canLink = block === null;
@@ -182,7 +194,7 @@ export function SampleSkuLinkDialog({
       description={`${lineProductName(linea)}${linea.color_nombre ? ` · ${linea.color_nombre}` : ""}`}
       actionButtonClose={false}
       actionButton={
-        canLink && catalogIndex !== null && (linkableIds.length > 0 || isRunningHere) ? (
+        canLink && catalogSizeIds !== null && (linkableIds.length > 0 || isRunningHere) ? (
           <Button
             variant="primary"
             onClick={() => onLinkAll(linkableIds)}
@@ -206,6 +218,7 @@ export function SampleSkuLinkDialog({
                 {linked} de {withSku}
               </span>{" "}
               {plural(withSku, "talla con SKU vinculada", "tallas con SKU vinculadas")}
+              {review > 0 && ` · ${review} por revisar`}
               {withoutSku > 0 &&
                 ` · ${withoutSku} ${plural(withoutSku, "talla", "tallas")} sin SKU de producción`}
               .
@@ -218,6 +231,12 @@ export function SampleSkuLinkDialog({
               La última vinculación se detuvo antes de terminar: {run.stopReason}
             </p>
           )}
+          {[...rejectedByReason].map(([reason, tallas]) => (
+            <p key={reason} className="text-rose-600 dark:text-rose-400">
+              {tallas.join(", ")} {plural(tallas.length, "no se vinculó", "no se vincularon")}:{" "}
+              {reason}
+            </p>
+          ))}
           {block && hasActionableRows && (
             <p className={NOTE}>{SAMPLE_SKU_LINK_BLOCK_COPY[block]}.</p>
           )}
@@ -231,7 +250,7 @@ export function SampleSkuLinkDialog({
 
         {isEmptyLine ? (
           <EmptyLines>Esta línea no tiene tallas capturadas.</EmptyLines>
-        ) : catalogIndex === null ? (
+        ) : catalogSizeIds === null ? (
           <EmptyLines>Cargando tallas...</EmptyLines>
         ) : (
           <LineItemsTable
@@ -253,6 +272,10 @@ export function SampleSkuLinkDialog({
               // El fallo de la corrida deja de mostrarse si la talla ya quedó
               // vinculada por otra vía (una relectura lo trae así).
               const failure = state === "linked" ? undefined : run?.failures[talla.id];
+              // En una línea toda "Sin SKU" el motivo ya lo dice el aviso de
+              // arriba: la pastilla va sin tooltip, cursor de ayuda ni texto
+              // para lectores de pantalla, que lo repetirían en cada fila.
+              const hint = state === "none" ? undefined : config.hint;
               return (
                 <tr key={talla.id} className="align-top">
                   <td className="px-3 py-2 text-xs text-slate-700 dark:text-slate-200 whitespace-nowrap">
@@ -277,11 +300,11 @@ export function SampleSkuLinkDialog({
                       </>
                     ) : (
                       <span
-                        className={`${skuStatusPillClass(config.tone)} ${config.hint ? "cursor-help" : ""}`}
-                        title={config.hint}
+                        className={`${skuStatusPillClass(config.tone)} ${hint ? "cursor-help" : ""}`}
+                        title={hint}
                       >
                         {config.label}
-                        {config.hint && <span className="sr-only">: {config.hint}</span>}
+                        {hint && <span className="sr-only">: {hint}</span>}
                       </span>
                     )}
                   </td>
