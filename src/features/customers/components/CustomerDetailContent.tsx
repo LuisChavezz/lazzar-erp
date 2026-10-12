@@ -7,6 +7,8 @@ import { Loader } from "@/src/components/Loader";
 import { ErrorState } from "@/src/components/ErrorState";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { isInitialLoadError } from "@/src/utils/isInitialLoadError";
+import { CustomerCartera } from "./CustomerCartera";
+import { CustomerCredito } from "./CustomerCredito";
 import { CustomerResumenKpis, CustomerResumenKpisSkeleton } from "./CustomerResumenKpis";
 import { CustomerResumenPedidos } from "./CustomerResumenPedidos";
 import { useCustomer } from "../hooks/useCustomer";
@@ -69,23 +71,41 @@ export const CustomerDetailContent = ({ customerId }: CustomerDetailContentProps
   // nunca ceros ni "sin pedidos".
   const resumen = isPlaceholderData ? undefined : data.resumen_comercial;
 
+  // El crédito es dato del CLIENTE, no del resumen: viene también en la fila
+  // del listado, así que se pinta en los tres estados.
+  const credito = <CustomerCredito customer={data} />;
+
   let content: ReactNode;
   if (resumen) {
     content = (
       <>
         <CustomerResumenKpis resumen={resumen} />
+        {/* Crédito y antigüedad de saldos van juntos pero sin cruzarse: el
+            límite no tiene moneda y la cartera va por moneda. */}
+        <div className="space-y-6">
+          {credito}
+          <CustomerCartera cartera={resumen.cartera} />
+        </div>
         <CustomerResumenPedidos resumen={resumen} />
       </>
     );
   } else if (isPlaceholderData) {
-    content = <CustomerResumenKpisSkeleton />;
+    content = (
+      <>
+        <CustomerResumenKpisSkeleton />
+        {credito}
+      </>
+    );
   } else {
     // Respuesta real sin el bloque: no se inventan valores.
     content = (
-      <ErrorState
-        title="Resumen comercial no disponible"
-        message="El servidor no devolvió el resumen comercial de este cliente."
-      />
+      <>
+        <ErrorState
+          title="Resumen comercial no disponible"
+          message="El servidor no devolvió el resumen comercial de este cliente."
+        />
+        {credito}
+      </>
     );
   }
 
