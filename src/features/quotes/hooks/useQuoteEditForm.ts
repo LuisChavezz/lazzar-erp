@@ -462,6 +462,12 @@ export function useQuoteEditForm(quoteId: number) {
           return {
             producto: null,
             producto_nombre_externo: item.producto_nombre_externo,
+            // Se REENVÍA siempre que exista: el guardado borra y recrea el
+            // detalle, así que omitirla dejaría la categoría en NULL. Se omite
+            // solo si la muestra no tiene categoría (anteriores al campo).
+            ...(item.categoria_producto != null && {
+              categoria_producto: item.categoria_producto,
+            }),
             precio_unitario,
             tallas,
           };

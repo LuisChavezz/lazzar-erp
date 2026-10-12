@@ -6,6 +6,12 @@
  * elegir: se describe con texto libre y se captura su precio. El precio se pide
  * AQUÍ porque, a diferencia del catálogo, no hay `precio_base` del que partir.
  *
+ * Cada muestra lleva además su CATEGORÍA de producto, obligatoria y propia de
+ * la muestra (no compartida, a diferencia de los servicios). El catálogo se
+ * consulta aquí y no en el hook contenedor porque ese hook también sirve a la
+ * variante catálogo, que no lo necesita; la regla de "requerida" sí vive en el
+ * contenedor (`isDescribeValid`), junto a descripción y precio.
+ *
  * Admite N muestras por apertura, igual que catálogo admite N productos. Los
  * servicios (bordado, reflejante, corte de manga) son COMPARTIDOS por todas las
  * muestras de la apertura — mismo criterio que catálogo, donde se configuran una
@@ -13,9 +19,13 @@
  */
 import { memo } from "react";
 import { FormInput } from "@/src/components/FormInput";
+import { FormSelect } from "@/src/components/FormSelect";
 import { FormTextarea } from "@/src/components/FormTextarea";
 import { PlusIcon } from "@/src/components/Icons";
+import { useProductCategories } from "../../product-categories/hooks/useProductCategories";
 import type { MuestraDraft } from "../types";
+
+const optionClassName = "bg-white dark:bg-zinc-900 text-slate-900 dark:text-white";
 
 interface StepDescribeProps {
   drafts: MuestraDraft[];
@@ -47,6 +57,20 @@ export const StepDescribe = memo(function StepDescribe({
   hasSleevecut,
   onToggleSleevecut,
 }: StepDescribeProps) {
+  const {
+    categories,
+    isLoading: isLoadingCategories,
+    isInitialError: isErrorCategories,
+    refetch: refetchCategories,
+  } = useProductCategories();
+  const hasNoCategories =
+    !isLoadingCategories && !isErrorCategories && categories.length === 0;
+  const categoriaPlaceholder = isLoadingCategories
+    ? "Cargando categorías..."
+    : isErrorCategories
+      ? "Categorías no disponibles"
+      : "Seleccionar categoría...";
+
   return (
     <div className="space-y-4 mt-2">
       <div className="flex items-start justify-between gap-3">
@@ -70,12 +94,37 @@ export const StepDescribe = memo(function StepDescribe({
         </button>
       </div>
 
+      {/* La categoría es obligatoria: sin catálogo no se puede continuar, así
+          que se dice por qué en vez de dejar selects vacíos sin explicación. La
+          descripción y el precio siguen siendo capturables mientras tanto. */}
+      {isErrorCategories && (
+        <p role="alert" className="text-xs text-rose-600 dark:text-rose-400">
+          No se pudieron cargar las categorías de producto, necesarias para
+          agregar una muestra.{" "}
+          <button
+            type="button"
+            onClick={() => refetchCategories()}
+            className="font-semibold underline cursor-pointer"
+          >
+            Reintentar
+          </button>
+        </p>
+      )}
+      {hasNoCategories && (
+        <p role="alert" className="text-xs text-amber-600 dark:text-amber-400">
+          No hay categorías de producto registradas. Da de alta una en
+          Configuración para poder agregar muestras.
+        </p>
+      )}
+
       <div className="space-y-3 max-h-80 overflow-y-auto custom-scrollbar">
         {drafts.map((draft, index) => {
           const descripcionError =
             showErrors && !draft.descripcion.trim() ? "Requerido" : null;
           const precioError =
             showErrors && !(draft.precio > 0) ? "Debe ser positivo" : null;
+          const categoriaError =
+            showErrors && !(draft.categoria_producto > 0) ? "Requerido" : null;
 
           return (
             <div
@@ -115,28 +164,55 @@ export const StepDescribe = memo(function StepDescribe({
                 className="px-3! py-2! rounded-lg!"
               />
 
-              <div className="w-44">
-                <FormInput
-                  variant="compact"
-                  type="number"
-                  inputMode="decimal"
-                  min="0.01"
-                  step="0.01"
-                  name={`muestra-precio-${index}`}
-                  aria-label={`Precio unitario del producto de muestra ${index + 1}`}
-                  value={draft.precio}
-                  onChange={(event) => {
-                    const next = Number(event.target.value);
-                    onUpdateDraft(draft.id, {
-                      precio: Number.isNaN(next) ? 0 : next,
-                    });
-                  }}
-                  aria-invalid={Boolean(precioError)}
-                  error={precioError ? { message: precioError } : undefined}
-                  forceUppercase={false}
-                  leading="$"
-                  className="text-right"
-                />
+              <div className="flex flex-wrap items-start gap-3">
+                <div className="flex-1 min-w-48">
+                  <FormSelect
+                    name={`muestra-categoria-${index}`}
+                    aria-label={`Categoría del producto de muestra ${index + 1}`}
+                    value={draft.categoria_producto}
+                    onChange={(event) => {
+                      const next = Number(event.target.value);
+                      onUpdateDraft(draft.id, {
+                        categoria_producto: Number.isNaN(next) ? 0 : next,
+                      });
+                    }}
+                    aria-invalid={Boolean(categoriaError)}
+                    error={categoriaError ? { message: categoriaError } : undefined}
+                    className="px-3! py-2! rounded-lg!"
+                  >
+                    <option value="0" disabled>
+                      {categoriaPlaceholder}
+                    </option>
+                    {categories.map((category) => (
+                      <option key={category.id} value={category.id} className={optionClassName}>
+                        {category.nombre} ({category.codigo})
+                      </option>
+                    ))}
+                  </FormSelect>
+                </div>
+                <div className="w-44">
+                  <FormInput
+                    variant="compact"
+                    type="number"
+                    inputMode="decimal"
+                    min="0.01"
+                    step="0.01"
+                    name={`muestra-precio-${index}`}
+                    aria-label={`Precio unitario del producto de muestra ${index + 1}`}
+                    value={draft.precio}
+                    onChange={(event) => {
+                      const next = Number(event.target.value);
+                      onUpdateDraft(draft.id, {
+                        precio: Number.isNaN(next) ? 0 : next,
+                      });
+                    }}
+                    aria-invalid={Boolean(precioError)}
+                    error={precioError ? { message: precioError } : undefined}
+                    forceUppercase={false}
+                    leading="$"
+                    className="text-right"
+                  />
+                </div>
               </div>
             </div>
           );

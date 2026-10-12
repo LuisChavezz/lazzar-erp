@@ -382,6 +382,10 @@ export function useQuoteForm() {
           return {
             producto: null,
             producto_nombre_externo: item.producto_nombre_externo,
+            // Se omite si la muestra no tiene categoría (anteriores al campo).
+            ...(item.categoria_producto != null && {
+              categoria_producto: item.categoria_producto,
+            }),
             precio_unitario,
             tallas,
           };

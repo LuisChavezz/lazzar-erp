@@ -122,6 +122,9 @@ export const mapQuoteDetalleToItem = (
       tipo: "muestra",
       productoId: null,
       producto_nombre_externo: nombreExterno,
+      // Se rehidrata para poder REENVIARLA: el guardado borra y recrea el
+      // detalle, así que sin esto editar la cotización la dejaría en NULL.
+      categoria_producto: detalle.categoria_producto ?? null,
       descripcion: nombreExterno,
       ...camposComunes,
     };

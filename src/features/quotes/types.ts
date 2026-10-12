@@ -54,6 +54,12 @@ export interface MuestraDraft {
   id: number;
   descripcion: string;
   precio: number;
+  /**
+   * Id de la categoría de producto de ESTA muestra. `0` = sin seleccionar (el
+   * `<select>` no tiene valor vacío numérico), igual que en el alta rápida de
+   * producto. Nombre del API a propósito: viaja tal cual al item y al payload.
+   */
+  categoria_producto: number;
 }
 
 /**

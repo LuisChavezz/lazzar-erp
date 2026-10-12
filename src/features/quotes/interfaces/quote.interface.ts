@@ -154,6 +154,14 @@ export interface QuoteById {
     producto_nombre?: string | null;
     /** Nombre libre de la línea de muestra. `null` en líneas de catálogo. */
     producto_nombre_externo?: string | null;
+    /**
+     * Categoría de producto de una línea de MUESTRA (FK nullable). `null` en
+     * líneas de catálogo y en muestras anteriores al campo. OPCIONALES porque
+     * una respuesta en caché anterior al campo no las trae; el serializer
+     * declara el nombre con `default=None`, así que sí llega como `null`.
+     */
+    categoria_producto?: number | null;
+    categoria_producto_nombre?: string | null;
     color: number | null;
     color_nombre: string | null;
     color_codigo_hex: string | null;
@@ -326,6 +334,13 @@ export interface QuoteCreate {
 export interface QuoteMuestraDetail {
   producto: null;
   producto_nombre_externo: string;
+  /**
+   * Id de `CategoriaProducto`. Se OMITE cuando la muestra no tiene categoría
+   * (muestras anteriores al campo): el backend lo trata igual que `null`. Hay
+   * que reenviarlo en cada edición — el guardado borra y recrea el detalle, así
+   * que una muestra reenviada sin él queda con la categoría en NULL.
+   */
+  categoria_producto?: number;
   precio_unitario: string;
   /**
    * MISMA forma que las tallas de catálogo: una muestra sí lleva tallas (del

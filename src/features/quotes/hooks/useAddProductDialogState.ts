@@ -105,7 +105,7 @@ export function useAddProductDialogState({
   // `sizeQuantitiesPerProduct`, `sizeErrors`). Negativo para no poder colisionar
   // con un `producto.id` real; y se CORTA al ensamblar el item.
   const [muestraDrafts, setMuestraDrafts] = useState<MuestraDraft[]>(() => [
-    { id: MUESTRA_ROW_ID, descripcion: "", precio: 0 },
+    { id: MUESTRA_ROW_ID, descripcion: "", precio: 0, categoria_producto: 0 },
   ]);
   const nextMuestraIdRef = useRef(MUESTRA_ROW_ID - 1);
   const [describeSubmitAttempted, setDescribeSubmitAttempted] = useState(false);
@@ -141,12 +141,14 @@ export function useAddProductDialogState({
 
   const isDescribeValid =
     muestraDrafts.length > 0 &&
-    muestraDrafts.every((d) => d.descripcion.trim() && d.precio > 0);
+    muestraDrafts.every(
+      (d) => d.descripcion.trim() && d.precio > 0 && d.categoria_producto > 0
+    );
 
   const addMuestraDraft = useCallback(() => {
     setMuestraDrafts((prev) => [
       ...prev,
-      { id: nextMuestraIdRef.current--, descripcion: "", precio: 0 },
+      { id: nextMuestraIdRef.current--, descripcion: "", precio: 0, categoria_producto: 0 },
     ]);
   }, []);
 
@@ -299,7 +301,7 @@ export function useAddProductDialogState({
       setStep(initialStep);
       // Resetea al valor del item en edición, o false en modo creación
       setHasSleevecut(Boolean(initialItem?.lleva_corte_manga));
-      setMuestraDrafts([{ id: MUESTRA_ROW_ID, descripcion: "", precio: 0 }]);
+      setMuestraDrafts([{ id: MUESTRA_ROW_ID, descripcion: "", precio: 0, categoria_producto: 0 }]);
       nextMuestraIdRef.current = MUESTRA_ROW_ID - 1;
       setOpenMuestraRowIds(new Set([MUESTRA_ROW_ID]));
       setDescribeSubmitAttempted(false);
@@ -438,6 +440,8 @@ export function useAddProductDialogState({
           // para indexar los mapas del diálogo y no viaja al item ni al payload.
           productoId: null,
           producto_nombre_externo: nombre,
+          // Siempre > 0 aquí: `isDescribeValid` no deja salir del paso sin ella.
+          categoria_producto: draft.categoria_producto,
           descripcion: nombre,
           unidad: "PZA",
           cantidad: itemSizes.reduce((sum, size) => sum + size.cantidad, 0),

@@ -75,6 +75,18 @@ export const QuoteDetailsProducts = ({ details }: QuoteDetailsProductsProps) => 
                       {muestraBadge.label}
                     </span>
                   )}
+                  {/* Categoría de la muestra. Se pinta AQUÍ y no dentro de
+                      `getQuoteDetailProductName`, que también alimenta el PDF,
+                      el correo y la tabla de captura. Las muestras anteriores
+                      al campo no la traen y simplemente no muestran nada. */}
+                  {detalle.producto == null && detalle.categoria_producto_nombre && (
+                    <span
+                      title="Categoría de producto"
+                      className="inline-flex items-center rounded-full border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 px-2.5 py-0.5 text-xs font-medium text-slate-700 dark:text-slate-300 shadow-sm"
+                    >
+                      {detalle.categoria_producto_nombre}
+                    </span>
+                  )}
                   {detalle.color_nombre && detalle.color_codigo_hex && (
                     <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 px-2.5 py-0.5 text-xs font-medium text-slate-700 dark:text-slate-300 shadow-sm">
                       <span

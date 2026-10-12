@@ -193,6 +193,18 @@ export const quoteMuestraItemSchema = quoteItemBaseSchema
       .trim()
       .min(1, "Requerido")
       .max(350, "Máximo 350 caracteres"),
+    /**
+     * Categoría de producto de la muestra (id de `CategoriaProducto`). Nombre
+     * del API porque viaja de ida y vuelta sin traducción.
+     *
+     * `nullish` y SIN mínimo a propósito: las muestras guardadas antes de este
+     * campo se rehidratan con `null` y deben poder guardarse tal cual. La
+     * obligatoriedad vive solo en el paso de captura (`StepDescribe`), que es
+     * el único lugar donde nace una muestra nueva. Se declara aquí porque Zod
+     * estripa las claves no declaradas: sin esto se perdería antes de armar el
+     * payload, y el guardado —que borra y recrea el detalle— la dejaría en NULL.
+     */
+    categoria_producto: z.number().int().positive().nullish(),
   })
   .superRefine(refineEmbroidery);
 

@@ -9,7 +9,7 @@ import { ProductCategory } from "../interfaces/product-category.interface";
  * contrato que `useProducts`.
  */
 export const useProductCategories = () => {
-  const { data, isLoading, isInitialError, error } = useGuardedQuery<ProductCategory[]>(
+  const { data, isLoading, isInitialError, error, refetch } = useGuardedQuery<ProductCategory[]>(
     {
       queryKey: ["product-categories"],
       queryFn: getProductCategories,
@@ -24,5 +24,6 @@ export const useProductCategories = () => {
     isLoading,
     isInitialError,
     error,
+    refetch,
   };
 };
