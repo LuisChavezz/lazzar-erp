@@ -84,7 +84,9 @@ export const CustomerDetailContent = ({ customerId }: CustomerDetailContentProps
             límite no tiene moneda y la cartera va por moneda. */}
         <div className="space-y-6">
           {credito}
-          <CustomerCartera cartera={resumen.cartera} />
+          {/* `?? []`: el contrato lo da siempre, pero una respuesta sin el
+              campo debe caer en el estado vacío, no romper el detalle. */}
+          <CustomerCartera cartera={resumen.cartera ?? []} />
         </div>
         <CustomerResumenPedidos resumen={resumen} />
       </>

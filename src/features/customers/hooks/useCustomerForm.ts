@@ -55,7 +55,9 @@ export const emptyValues: CustomerFormValues = {
   sat_regimen_fiscal: 0,
   sat_uso_cfdi: 0,
   dias_credito: 0,
-  limite_credito: "0.00",
+  // Vacío y no "0.00": el placeholder ya muestra el cero y así no hay que
+  // borrar nada para capturar. Se envía como "0" (ver arriba).
+  limite_credito: "",
 };
 
 export function useCustomerForm({
