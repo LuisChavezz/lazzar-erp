@@ -71,43 +71,19 @@ export const CustomerDetailContent = ({ customerId }: CustomerDetailContentProps
   // nunca ceros ni "sin pedidos".
   const resumen = isPlaceholderData ? undefined : data.resumen_comercial;
 
-  // El crédito es dato del CLIENTE, no del resumen: viene también en la fila
-  // del listado, así que se pinta en los tres estados.
-  const credito = <CustomerCredito customer={data} />;
-
-  let content: ReactNode;
+  // Bloque de KPIs: datos, carga o error del resumen.
+  let kpis: ReactNode;
   if (resumen) {
-    content = (
-      <>
-        <CustomerResumenKpis resumen={resumen} />
-        {/* Crédito y antigüedad de saldos van juntos pero sin cruzarse: el
-            límite no tiene moneda y la cartera va por moneda. */}
-        <div className="space-y-6">
-          {credito}
-          {/* `?? []`: el contrato lo da siempre, pero una respuesta sin el
-              campo debe caer en el estado vacío, no romper el detalle. */}
-          <CustomerCartera cartera={resumen.cartera ?? []} />
-        </div>
-        <CustomerResumenPedidos resumen={resumen} />
-      </>
-    );
+    kpis = <CustomerResumenKpis resumen={resumen} />;
   } else if (isPlaceholderData) {
-    content = (
-      <>
-        <CustomerResumenKpisSkeleton />
-        {credito}
-      </>
-    );
+    kpis = <CustomerResumenKpisSkeleton />;
   } else {
     // Respuesta real sin el bloque: no se inventan valores.
-    content = (
-      <>
-        <ErrorState
-          title="Resumen comercial no disponible"
-          message="El servidor no devolvió el resumen comercial de este cliente."
-        />
-        {credito}
-      </>
+    kpis = (
+      <ErrorState
+        title="Resumen comercial no disponible"
+        message="El servidor no devolvió el resumen comercial de este cliente."
+      />
     );
   }
 
@@ -122,7 +98,25 @@ export const CustomerDetailContent = ({ customerId }: CustomerDetailContentProps
         </p>
       </div>
 
-      {content}
+      {kpis}
+
+      {/* Mismo espaciado entre todas las secciones (`CustomerResumenPedidos`
+          ya separa las suyas con `space-y-6`). El crédito es dato del CLIENTE,
+          no del resumen —viene también en la fila del listado—, así que se
+          pinta en los tres estados; cartera y pedidos, solo con el resumen. */}
+      <div className="space-y-6">
+        <CustomerCredito customer={data} />
+        {resumen && (
+          <>
+            {/* Crédito y antigüedad de saldos van juntos pero sin cruzarse: el
+                límite no tiene moneda y la cartera va por moneda.
+                `?? []`: el contrato da `cartera` siempre, pero una respuesta
+                sin el campo debe caer en el estado vacío, no romper. */}
+            <CustomerCartera cartera={resumen.cartera ?? []} />
+            <CustomerResumenPedidos resumen={resumen} />
+          </>
+        )}
+      </div>
     </div>
   );
 };
