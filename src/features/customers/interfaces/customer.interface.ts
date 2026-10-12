@@ -18,6 +18,16 @@ export interface Customer {
   activo: boolean;
   sat_regimen_fiscal: RegimenFiscal["id_sat_regimen_fiscal"];
   sat_uso_cfdi: UsoCfdi["id_sat_uso_cfdi"];
+  /**
+   * NO es informativo: una factura de venta registrada sin fecha de vencimiento
+   * vence (ella y su cuenta por cobrar) hoy + estos días.
+   */
+  dias_credito: number;
+  /**
+   * Decimal(14,2) como string. Solo informativo (nada en el backend lo lee) y
+   * SIN moneda: no se pinta con símbolo ni se opera contra la cartera.
+   */
+  limite_credito: string;
 }
 
 /**
@@ -44,6 +54,23 @@ export interface ResumenComercialMonto {
 }
 
 /**
+ * Antigüedad de saldos de UNA moneda (`resumen_comercial.cartera`). Excluye
+ * cuentas por cobrar canceladas y las de saldo cero. A diferencia del resto del
+ * resumen, aquí los importes llegan como STRING con 2 decimales.
+ */
+export interface CarteraMoneda {
+  /** Código ISO 4217 (p.ej. "MXN"). */
+  moneda: string;
+  saldo_total: string;
+  por_vencer: string;
+  vencido_1_30: string;
+  vencido_31_60: string;
+  vencido_61_90: string;
+  vencido_91_120: string;
+  vencido_mas_120: string;
+}
+
+/**
  * Bloque de solo lectura que `GET /terceros/clientes/{id}/` agrega al
  * `ClienteSerializer`. NO viene en el listado ni en la respuesta del PUT.
  */
@@ -61,6 +88,8 @@ export interface ResumenComercial {
   ultimo_pedido: ResumenComercialPedido | null;
   /** Hasta 5, del más reciente al más antiguo. */
   pedidos_recientes: ResumenComercialPedido[];
+  /** Una entrada por moneda; `[]` si el cliente no tiene saldo pendiente. */
+  cartera: CarteraMoneda[];
 }
 
 /**
@@ -86,6 +115,8 @@ export interface CustomerCreate {
   estado: string;
   sat_regimen_fiscal: RegimenFiscal["id_sat_regimen_fiscal"];
   sat_uso_cfdi: UsoCfdi["id_sat_uso_cfdi"];
+  dias_credito: number;
+  limite_credito: string;
 }
 
 export interface VerifyRfcResponse {

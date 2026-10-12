@@ -35,6 +35,8 @@ const normalizeOptionalCustomerFields = (
   ...values,
   telefono: values.telefono ?? "",
   correo: values.correo ?? "",
+  // Vacío = 0, igual que `dias_credito` (que el input ya convierte a 0).
+  limite_credito: values.limite_credito.trim() || "0",
 });
 
 // Estado base del formulario para modo creación.
@@ -52,6 +54,8 @@ export const emptyValues: CustomerFormValues = {
   estado: "",
   sat_regimen_fiscal: 0,
   sat_uso_cfdi: 0,
+  dias_credito: 0,
+  limite_credito: "0.00",
 };
 
 export function useCustomerForm({
@@ -98,6 +102,8 @@ export function useCustomerForm({
       estado: customerToEdit.estado,
       sat_regimen_fiscal: hasRegimen ? customerToEdit.sat_regimen_fiscal : 0,
       sat_uso_cfdi: hasUsoCfdi ? customerToEdit.sat_uso_cfdi : 0,
+      dias_credito: customerToEdit.dias_credito,
+      limite_credito: customerToEdit.limite_credito,
     };
   }, [customerToEdit, regimenesFiscales, usosCfdi]);
 
