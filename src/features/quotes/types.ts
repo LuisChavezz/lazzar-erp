@@ -62,6 +62,14 @@ export interface MuestraDraft {
   categoria_producto: number;
 }
 
+/** Borrador vacío de muestra: única fuente de sus valores iniciales. */
+export const createMuestraDraft = (id: number): MuestraDraft => ({
+  id,
+  descripcion: "",
+  precio: 0,
+  categoria_producto: 0,
+});
+
 /**
  * Producto del catálogo con sus variantes disponibles (tal como lo retorna el onboarding).
  */
@@ -138,6 +146,11 @@ export interface AddProductDialogProps {
   variant?: AddProductVariant;
   sizes: Size[];
   products: ProductWithColors[];
+  /**
+   * Empresa bajo la que se guarda el documento. La variante muestra ofrece solo
+   * las categorías de producto de esa empresa. Sin ella no se filtra.
+   */
+  companyId?: number;
 }
 
 /**

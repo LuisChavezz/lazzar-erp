@@ -118,13 +118,22 @@ export const mapQuoteDetalleToItem = (
 
   if (esMuestra) {
     const nombreExterno = detalle.producto_nombre_externo ?? "";
+    const categoriaProducto = detalle.categoria_producto;
     return {
       tipo: "muestra",
       productoId: null,
       producto_nombre_externo: nombreExterno,
       // Se rehidrata para poder REENVIARLA: el guardado borra y recrea el
       // detalle, así que sin esto editar la cotización la dejaría en NULL.
-      categoria_producto: detalle.categoria_producto ?? null,
+      // Ausente, `null` o no positivo ⇒ "sin categoría" (`null`): el schema solo
+      // acepta ids positivos, y un valor inválido aquí no tendría input donde
+      // corregirse.
+      categoria_producto:
+        typeof categoriaProducto === "number" &&
+        Number.isInteger(categoriaProducto) &&
+        categoriaProducto > 0
+          ? categoriaProducto
+          : null,
       descripcion: nombreExterno,
       ...camposComunes,
     };

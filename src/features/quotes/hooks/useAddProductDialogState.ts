@@ -18,6 +18,7 @@ import type { Size } from "../../sizes/interfaces/size.interface";
 import {
   MUESTRA_ROW_ID,
   POSITION_OPTIONS,
+  createMuestraDraft,
   type AddProductDialogProps,
   type CatalogRow,
   type MuestraDraft,
@@ -89,6 +90,7 @@ export function useAddProductDialogState({
   variant = "catalogo",
   sizes,
   products,
+  companyId,
 }: AddProductDialogProps) {
   const isEditing = Boolean(onUpdateItem && initialItem);
   const isMuestra = variant === "muestra";
@@ -105,10 +107,14 @@ export function useAddProductDialogState({
   // `sizeQuantitiesPerProduct`, `sizeErrors`). Negativo para no poder colisionar
   // con un `producto.id` real; y se CORTA al ensamblar el item.
   const [muestraDrafts, setMuestraDrafts] = useState<MuestraDraft[]>(() => [
-    { id: MUESTRA_ROW_ID, descripcion: "", precio: 0, categoria_producto: 0 },
+    createMuestraDraft(MUESTRA_ROW_ID),
   ]);
   const nextMuestraIdRef = useRef(MUESTRA_ROW_ID - 1);
   const [describeSubmitAttempted, setDescribeSubmitAttempted] = useState(false);
+  // Sube en cada intento fallido de salir del paso "describe": `StepDescribe`
+  // lo usa para llevar a la vista la primera muestra inválida. Un contador y no
+  // `describeSubmitAttempted`, que no cambia en un segundo clic consecutivo.
+  const [describeErrorSignal, setDescribeErrorSignal] = useState(0);
 
   /**
    * Acordeones ABIERTOS del paso de tallas, SOLO en la variante muestra.
@@ -148,7 +154,7 @@ export function useAddProductDialogState({
   const addMuestraDraft = useCallback(() => {
     setMuestraDrafts((prev) => [
       ...prev,
-      { id: nextMuestraIdRef.current--, descripcion: "", precio: 0, categoria_producto: 0 },
+      createMuestraDraft(nextMuestraIdRef.current--),
     ]);
   }, []);
 
@@ -301,7 +307,8 @@ export function useAddProductDialogState({
       setStep(initialStep);
       // Resetea al valor del item en edición, o false en modo creación
       setHasSleevecut(Boolean(initialItem?.lleva_corte_manga));
-      setMuestraDrafts([{ id: MUESTRA_ROW_ID, descripcion: "", precio: 0, categoria_producto: 0 }]);
+      setMuestraDrafts([createMuestraDraft(MUESTRA_ROW_ID)]);
+      setDescribeErrorSignal(0);
       nextMuestraIdRef.current = MUESTRA_ROW_ID - 1;
       setOpenMuestraRowIds(new Set([MUESTRA_ROW_ID]));
       setDescribeSubmitAttempted(false);
@@ -333,6 +340,7 @@ export function useAddProductDialogState({
     // descripción ni precio no se avanza.
     if (step === "describe" && !isDescribeValid) {
       setDescribeSubmitAttempted(true);
+      setDescribeErrorSignal((current) => current + 1);
       return;
     }
 
@@ -572,9 +580,10 @@ export function useAddProductDialogState({
     sizesState,
   ]);
 
-  const canProceed = isMuestra
-    ? isDescribeValid
-    : productSelection.selectedRowIds.size > 0;
+  // Muestra NO apaga el botón: un "Continuar" deshabilitado no dice qué falta
+  // ni en cuál de las N muestras. Se deja pulsable y `handleStepNext` es quien
+  // frena, revelando los errores. Catálogo conserva su regla de siempre.
+  const canProceed = isMuestra || productSelection.selectedRowIds.size > 0;
   const isFirstStep = step === orderedSteps[0];
   const isLastStep = step === "sizes";
   const reflectiveHasBlockingError =
@@ -607,6 +616,8 @@ export function useAddProductDialogState({
       onRemoveDraft: removeMuestraDraft,
       onUpdateDraft: updateMuestraDraft,
       showErrors: describeSubmitAttempted,
+      scrollToErrorSignal: describeErrorSignal,
+      companyId,
       hasEmbroidery: embroideryState.hasEmbroidery,
       onToggleEmbroidery: (next: boolean) => embroideryState.setHasEmbroidery(next),
       hasReflective: reflectiveState.hasReflective,

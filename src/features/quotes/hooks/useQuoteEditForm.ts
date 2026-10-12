@@ -37,6 +37,7 @@ import { isQuoteCrossRuleField, useQuoteCrossRules } from "./useQuoteCrossRules"
 import type { QuoteValidationIssue } from "../utils/quoteValidationErrors";
 import { canEditQuote } from "../utils/quoteStatusRules";
 import { mapQuoteDetalleToItem } from "../utils/mapQuoteDetalleToItem";
+import { buildMuestraDetalle } from "../utils/buildMuestraDetalle";
 import { scrollToFirstValidationError } from "../utils/scrollToFirstValidationError";
 import {
   getPathValue,
@@ -459,18 +460,7 @@ export function useQuoteEditForm(quoteId: number) {
         // `tipo` es SOLO DE FORMULARIO y no se copia al payload: se lee aquí
         // para decidir la forma de la partida y se queda fuera del objeto.
         if (item.tipo === "muestra") {
-          return {
-            producto: null,
-            producto_nombre_externo: item.producto_nombre_externo,
-            // Se REENVÍA siempre que exista: el guardado borra y recrea el
-            // detalle, así que omitirla dejaría la categoría en NULL. Se omite
-            // solo si la muestra no tiene categoría (anteriores al campo).
-            ...(item.categoria_producto != null && {
-              categoria_producto: item.categoria_producto,
-            }),
-            precio_unitario,
-            tallas,
-          };
+          return buildMuestraDetalle(item, tallas, precio_unitario);
         }
 
         return {
@@ -1074,6 +1064,9 @@ export function useQuoteEditForm(quoteId: number) {
      * QuoteEditForm (no por QuoteFormContent) para renderizar el estado de
      * error con reintento en lugar del formulario. */
     quoteLoadFailed,
+    /* Empresa bajo la que se guarda la cotización: acota las categorías que
+     * ofrece el alta de muestras (QuoteEditForm la pasa a QuoteFormContent). */
+    quoteCompanyId: quoteData?.empresa,
     isQuoteRetrying: isQuoteFetching,
     retryQuoteLoad: refetchQuote,
     /* Solo de lectura, para el badge de la cabecera (QuoteEditForm). No entra

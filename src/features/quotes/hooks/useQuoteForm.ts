@@ -35,6 +35,7 @@ import { TIPO_PEDIDO } from "../../orders/constants/pedidoStatus";
 import { IVA_TASA_FIJA } from "../constants/iva";
 import { useWorkspaceStore } from "../../workspace/store/workspace.store";
 import { useCreateQuote, type QuoteValidationIssue } from "./useCreateQuote";
+import { buildMuestraDetalle } from "../utils/buildMuestraDetalle";
 import { useQuoteOnboardingData } from "./useQuoteOnboardingData";
 import { isQuoteCrossRuleField, useQuoteCrossRules } from "./useQuoteCrossRules";
 import { useSatInfo } from "../../sat/hooks/useSatInfo";
@@ -379,16 +380,7 @@ export function useQuoteForm() {
         // `tipo` es SOLO DE FORMULARIO y no se copia al payload: se lee aquí
         // para decidir la forma de la partida y se queda fuera del objeto.
         if (item.tipo === "muestra") {
-          return {
-            producto: null,
-            producto_nombre_externo: item.producto_nombre_externo,
-            // Se omite si la muestra no tiene categoría (anteriores al campo).
-            ...(item.categoria_producto != null && {
-              categoria_producto: item.categoria_producto,
-            }),
-            precio_unitario,
-            tallas,
-          };
+          return buildMuestraDetalle(item, tallas, precio_unitario);
         }
 
         return {

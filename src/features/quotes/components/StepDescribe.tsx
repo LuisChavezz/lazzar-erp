@@ -17,7 +17,7 @@
  * muestras de la apertura — mismo criterio que catálogo, donde se configuran una
  * vez y se aplican a todas las filas seleccionadas.
  */
-import { memo } from "react";
+import { memo, useEffect, useRef } from "react";
 import { FormInput } from "@/src/components/FormInput";
 import { FormSelect } from "@/src/components/FormSelect";
 import { FormTextarea } from "@/src/components/FormTextarea";
@@ -36,6 +36,10 @@ interface StepDescribeProps {
     patch: Partial<Omit<MuestraDraft, "id">>
   ) => void;
   showErrors: boolean;
+  /** Sube en cada intento fallido de continuar; ver el efecto de scroll. */
+  scrollToErrorSignal: number;
+  /** Empresa del documento: solo se ofrecen sus categorías. Sin ella, todas. */
+  companyId?: number;
   hasEmbroidery: boolean;
   onToggleEmbroidery: (value: boolean) => void;
   hasReflective: boolean;
@@ -50,6 +54,8 @@ export const StepDescribe = memo(function StepDescribe({
   onRemoveDraft,
   onUpdateDraft,
   showErrors,
+  scrollToErrorSignal,
+  companyId,
   hasEmbroidery,
   onToggleEmbroidery,
   hasReflective,
@@ -58,11 +64,18 @@ export const StepDescribe = memo(function StepDescribe({
   onToggleSleevecut,
 }: StepDescribeProps) {
   const {
-    categories,
+    categories: allCategories,
     isLoading: isLoadingCategories,
     isInitialError: isErrorCategories,
     refetch: refetchCategories,
   } = useProductCategories();
+  // Alcance de UI, no validación: el endpoint devuelve a un superusuario las
+  // categorías de TODAS las empresas, y aquí solo tienen sentido las de la
+  // empresa bajo la que se guarda la cotización.
+  const categories =
+    companyId == null
+      ? allCategories
+      : allCategories.filter((category) => category.empresa === companyId);
   const hasNoCategories =
     !isLoadingCategories && !isErrorCategories && categories.length === 0;
   const categoriaPlaceholder = isLoadingCategories
@@ -70,6 +83,16 @@ export const StepDescribe = memo(function StepDescribe({
     : isErrorCategories
       ? "Categorías no disponibles"
       : "Seleccionar categoría...";
+
+  // La lista de muestras tiene scroll propio: al fallar "Continuar", la primera
+  // muestra inválida puede estar fuera de vista y sus errores no se verían.
+  const draftsListRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (scrollToErrorSignal === 0) return;
+    draftsListRef.current
+      ?.querySelector('[data-muestra-invalid="true"]')
+      ?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }, [scrollToErrorSignal]);
 
   return (
     <div className="space-y-4 mt-2">
@@ -112,12 +135,15 @@ export const StepDescribe = memo(function StepDescribe({
       )}
       {hasNoCategories && (
         <p role="alert" className="text-xs text-amber-600 dark:text-amber-400">
-          No hay categorías de producto registradas. Da de alta una en
-          Configuración para poder agregar muestras.
+          No tienes categorías de producto disponibles para agregar muestras.
+          Contacta a un administrador.
         </p>
       )}
 
-      <div className="space-y-3 max-h-80 overflow-y-auto custom-scrollbar">
+      <div
+        ref={draftsListRef}
+        className="space-y-3 max-h-80 overflow-y-auto custom-scrollbar"
+      >
         {drafts.map((draft, index) => {
           const descripcionError =
             showErrors && !draft.descripcion.trim() ? "Requerido" : null;
@@ -125,10 +151,16 @@ export const StepDescribe = memo(function StepDescribe({
             showErrors && !(draft.precio > 0) ? "Debe ser positivo" : null;
           const categoriaError =
             showErrors && !(draft.categoria_producto > 0) ? "Requerido" : null;
+          // Independiente de `showErrors`: marca el destino del scroll.
+          const isDraftInvalid =
+            !draft.descripcion.trim() ||
+            !(draft.precio > 0) ||
+            !(draft.categoria_producto > 0);
 
           return (
             <div
               key={draft.id}
+              data-muestra-invalid={isDraftInvalid}
               className="rounded-xl border border-slate-200 dark:border-white/10 p-3 space-y-3"
             >
               <div className="flex items-center justify-between">
@@ -178,7 +210,9 @@ export const StepDescribe = memo(function StepDescribe({
                     }}
                     aria-invalid={Boolean(categoriaError)}
                     error={categoriaError ? { message: categoriaError } : undefined}
-                    className="px-3! py-2! rounded-lg!"
+                    // `pl-3!` y no `px-3!`: el padding derecho (`pr-10`) es el
+                    // hueco que FormSelect reserva para el chevron.
+                    className="pl-3! py-2! rounded-lg!"
                   >
                     <option value="0" disabled>
                       {categoriaPlaceholder}

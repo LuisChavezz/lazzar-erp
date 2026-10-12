@@ -17,3 +17,25 @@ export function firstDrfMessage(value: unknown): string | undefined {
   }
   return undefined;
 }
+
+/**
+ * Primer mensaje de RECHAZO de un cuerpo 400: recorre `keys` en orden y
+ * devuelve el primero que `firstDrfMessage` sepa leer, o `undefined` si el
+ * cuerpo no es un objeto o ninguna clave trae un mensaje plano.
+ *
+ * Cada endpoint decide SUS claves (las que no corresponden a ningún campo del
+ * formulario y por eso van al toast); aquí solo vive el recorrido, que antes
+ * estaba copiado en cada hook de mutación.
+ */
+export function firstRejectionMessage(
+  data: unknown,
+  keys: readonly string[],
+): string | undefined {
+  if (!data || typeof data !== "object") return undefined;
+  const body = data as Record<string, unknown>;
+  for (const key of keys) {
+    const message = firstDrfMessage(body[key]);
+    if (message) return message;
+  }
+  return undefined;
+}

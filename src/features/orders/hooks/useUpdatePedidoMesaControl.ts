@@ -8,7 +8,7 @@ import {
   type QuoteValidationIssue,
 } from "@/src/features/quotes/utils/quoteValidationErrors";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
-import { firstDrfMessage } from "@/src/utils/firstDrfMessage";
+import { firstDrfMessage, firstRejectionMessage } from "@/src/utils/firstDrfMessage";
 import type { PedidoMesaControlContexto } from "../interfaces/pedido-mesa-control-contexto.interface";
 import { updatePedidoMesaControl } from "../services/actions";
 import { pedidoTrazabilidadQueryKey } from "./usePedidoTrazabilidad";
@@ -43,16 +43,13 @@ const REJECTION_KEYS = ["permiso", "cotizacion", "detail"] as const;
  * con el que DRF serializa cada valor.
  */
 const extractRejectionMessage = (data: unknown): string | undefined => {
+  const message = firstRejectionMessage(data, REJECTION_KEYS);
+  if (message) return message;
   if (!data || typeof data !== "object") return undefined;
-  const body = data as Record<string, unknown>;
-  for (const key of REJECTION_KEYS) {
-    const message = firstDrfMessage(body[key]);
-    if (message) return message;
-  }
   /* `pedido` es ambigua: la usa el rechazo por falta de cotización (string) y
    * también el bloque de errores de campo de la cabecera (objeto). Solo cuenta
    * como rechazo cuando trae un mensaje plano. */
-  return firstDrfMessage(body.pedido);
+  return firstDrfMessage((data as Record<string, unknown>).pedido);
 };
 
 type UpdatePedidoMesaControlVariables = {

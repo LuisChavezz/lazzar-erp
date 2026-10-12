@@ -8,7 +8,7 @@
  * formulario para que el mecanismo de scroll/focus pueda localizar el campo.
  */
 
-import { firstDrfMessage } from "@/src/utils/firstDrfMessage";
+import { firstRejectionMessage } from "@/src/utils/firstDrfMessage";
 
 // ─── Tipos ─────────────────────────────────────────────────────────────────────
 
@@ -129,24 +129,26 @@ export const extractQuoteValidationIssues = (
  *   color, categoría de producto o dirección inválidos). Llega como mensaje
  *   PLANO, sin índice de renglón, así que no hay input sobre el cual pintarlo.
  * - `detail` / `non_field_errors`: los genéricos de DRF.
+ *
+ * `detalle` NO está en la lista: se trata aparte porque solo cuenta como
+ * rechazo cuando es un string plano (ver `extractQuoteRejectionMessage`).
  */
-const QUOTE_REJECTION_KEYS = ["detalle", "detail", "non_field_errors"] as const;
+const QUOTE_REJECTION_KEYS = ["detail", "non_field_errors"] as const;
 
 /**
  * Primer mensaje de rechazo del cuerpo 400, o `undefined` si el 400 es solo de
  * validación de campos.
  *
- * `detalle` es ambigua: también es el bloque de errores POR RENGLÓN del
- * serializer (`detalle: [{ tallas: [...] }]`). `firstDrfMessage` solo devuelve
- * un `string` o el primer `string` de una lista, así que ese bloque —una lista
- * de objetos— cae en `undefined` y lo sigue pintando `onValidationError`.
+ * `detalle` es ambigua: además del rechazo plano, es la clave del campo lista
+ * del serializer, que llega como ARREGLO — de objetos por renglón
+ * (`detalle: [{ tallas: [...] }]`) o de strings cuando el error es de la lista
+ * entera (`detalle: ["Esta lista no puede estar vacía."]`). Esos son errores
+ * de campo y ya los reporta `extractQuoteValidationIssues`; al toast solo va
+ * el string plano.
  */
 export const extractQuoteRejectionMessage = (data: unknown): string | undefined => {
   if (!data || typeof data !== "object" || Array.isArray(data)) return undefined;
-  const body = data as Record<string, unknown>;
-  for (const key of QUOTE_REJECTION_KEYS) {
-    const message = firstDrfMessage(body[key]);
-    if (message) return message;
-  }
-  return undefined;
+  const { detalle } = data as Record<string, unknown>;
+  if (typeof detalle === "string" && detalle.length > 0) return detalle;
+  return firstRejectionMessage(data, QUOTE_REJECTION_KEYS);
 };

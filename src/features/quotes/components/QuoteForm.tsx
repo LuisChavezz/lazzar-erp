@@ -19,6 +19,7 @@ import { Loader } from "@/src/components/Loader";
 import { CustomerSearchDropdown } from "./CustomerSearchDropdown";
 import { DialogHeader } from "@/src/components/DialogHeader";
 import { useQuoteForm } from "../hooks/useQuoteForm";
+import { useWorkspaceStore } from "../../workspace/store/workspace.store";
 import { IVA_TASA_FIJA } from "../constants/iva";
 import { AddProductDialog } from "./AddProductDialog";
 import type { AddProductVariant } from "../types";
@@ -128,6 +129,12 @@ export type QuoteFormContentProps = QuoteFormHookResult & {
   removalBlockedExtraServicesCount?: number;
   /** Marca junto al título "Información Comercial" (p. ej. `RecompraBadge`). */
   headerBadge?: React.ReactNode;
+  /**
+   * Empresa bajo la que se guarda la cotización. El alta de muestras ofrece
+   * solo las categorías de producto de esa empresa. La pasan los wrappers que
+   * permiten capturar muestras; ausente ⇒ sin filtro.
+   */
+  muestraCompanyId?: number;
 };
 
 // Componente de contenido del formulario — reutilizable por creación y edición
@@ -215,6 +222,7 @@ export function QuoteFormContent({
   removalBlockedReason,
   removalBlockedExtraServicesCount = 0,
   headerBadge,
+  muestraCompanyId,
 }: QuoteFormContentProps) {
   /**
    * Una partida solo está protegida si EXISTE en el servidor. Las que el usuario
@@ -1382,6 +1390,7 @@ export function QuoteFormContent({
           variant={dialogVariant}
           sizes={sizes}
           products={products}
+          companyId={muestraCompanyId}
         />
 
         {/* Detalle de productos */}
@@ -2113,7 +2122,13 @@ export function QuoteFormContent({
 // Wrapper de creación — usa el hook de creación y renderiza el contenido compartido
 export default function QuoteForm() {
   const hookResult = useQuoteForm();
+  // Misma empresa con la que `useQuoteForm` arma el payload (`pedido.empresa`).
+  const selectedCompanyId = useWorkspaceStore((state) => state.selectedCompany?.id);
   return (
-    <QuoteFormContent {...hookResult} capabilities={QUOTE_FORM_CAPABILITIES.createQuote} />
+    <QuoteFormContent
+      {...hookResult}
+      capabilities={QUOTE_FORM_CAPABILITIES.createQuote}
+      muestraCompanyId={selectedCompanyId}
+    />
   );
 }

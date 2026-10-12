@@ -11,8 +11,14 @@ interface QuoteEditFormProps {
 // Componente de edición de cotización.
 // Delega toda la lógica a useQuoteEditForm y reutiliza QuoteFormContent para el JSX.
 export function QuoteEditForm({ quoteId }: QuoteEditFormProps) {
-  const { quoteLoadFailed, isQuoteRetrying, retryQuoteLoad, isRecompra, ...formProps } =
-    useQuoteEditForm(quoteId);
+  const {
+    quoteLoadFailed,
+    isQuoteRetrying,
+    retryQuoteLoad,
+    isRecompra,
+    quoteCompanyId,
+    ...formProps
+  } = useQuoteEditForm(quoteId);
 
   /* Fallo TÉCNICO al cargar la cotización (500, red, timeout — nunca 404/403,
    * que redirigen al listado desde el hook): estado terminal con reintento en
@@ -58,6 +64,7 @@ export function QuoteEditForm({ quoteId }: QuoteEditFormProps) {
       submitLabel="Guardar Cambios"
       headerBadge={isRecompra ? <RecompraBadge /> : undefined}
       capabilities={QUOTE_FORM_CAPABILITIES.editQuote}
+      muestraCompanyId={quoteCompanyId}
     />
   );
 }

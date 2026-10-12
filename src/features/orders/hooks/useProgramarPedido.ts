@@ -8,7 +8,7 @@ import {
   type QuoteValidationIssue,
 } from "@/src/features/quotes/utils/quoteValidationErrors";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
-import { firstDrfMessage } from "@/src/utils/firstDrfMessage";
+import { firstRejectionMessage } from "@/src/utils/firstDrfMessage";
 import { embroideryOnboardingQueryKey } from "@/src/features/embroidery/hooks/useEmbroideryOnboarding";
 import { reflectiveOnboardingQueryKey } from "@/src/features/reflective-orders/hooks/useReflectiveOnboarding";
 import { corteMangaOnboardingQueryKey } from "@/src/features/corte-manga/hooks/useCorteMangaOnboarding";
@@ -30,15 +30,8 @@ import type {
  */
 const REJECTION_KEYS = ["permiso", "detail"] as const;
 
-const extractRejectionMessage = (data: unknown): string | undefined => {
-  if (!data || typeof data !== "object") return undefined;
-  const body = data as Record<string, unknown>;
-  for (const key of REJECTION_KEYS) {
-    const message = firstDrfMessage(body[key]);
-    if (message) return message;
-  }
-  return undefined;
-};
+const extractRejectionMessage = (data: unknown): string | undefined =>
+  firstRejectionMessage(data, REJECTION_KEYS);
 
 /**
  * Errores de campo del 400. Reusa `extractQuoteValidationIssues` (el mismo

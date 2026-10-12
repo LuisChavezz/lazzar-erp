@@ -197,10 +197,12 @@ export const quoteMuestraItemSchema = quoteItemBaseSchema
      * Categoría de producto de la muestra (id de `CategoriaProducto`). Nombre
      * del API porque viaja de ida y vuelta sin traducción.
      *
-     * `nullish` y SIN mínimo a propósito: las muestras guardadas antes de este
-     * campo se rehidratan con `null` y deben poder guardarse tal cual. La
-     * obligatoriedad vive solo en el paso de captura (`StepDescribe`), que es
-     * el único lugar donde nace una muestra nueva. Se declara aquí porque Zod
+     * `nullish` a propósito: las muestras guardadas antes de este campo se
+     * rehidratan con `null` y deben poder guardarse tal cual. Cuando hay valor
+     * es un id positivo; `mapQuoteDetalleToItem` normaliza a `null` cualquier
+     * otra cosa al rehidratar, para que esta regla no pueda bloquear el envío
+     * en una ruta sin input en pantalla. La obligatoriedad vive solo en el paso
+     * de captura (`StepDescribe`), el único lugar donde nace una muestra nueva. Se declara aquí porque Zod
      * estripa las claves no declaradas: sin esto se perdería antes de armar el
      * payload, y el guardado —que borra y recrea el detalle— la dejaría en NULL.
      */
