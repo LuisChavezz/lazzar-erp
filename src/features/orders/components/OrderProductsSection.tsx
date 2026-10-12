@@ -8,9 +8,14 @@ import {
   isSampleLine,
   lineProductName,
   lineSizesSummary,
-  sampleSkuLineProgress,
+  sampleSkuLineSummary,
   withLinkedSampleSkus,
+  type SampleSkuLineStatus,
 } from "../utils/orderLines";
+import type { SampleSkuLinkBlock } from "../constants/sampleSkuLinking";
+import { skuStatusPillClass, type SkuStatusPillTone } from "../constants/skuStatusPills";
+import type { SampleSkuRunLine, SampleSkuRunProgress } from "../hooks/useSampleSkuLinking";
+import { SampleSkuLinkBanner } from "./SampleSkuLinkBanner";
 import { useOrderMoney } from "./OrderCurrencyContext";
 import { OrderLineServiceCell } from "./OrderLineServiceCell";
 import { SheetSection } from "./OrderSheetPrimitives";
@@ -52,29 +57,68 @@ interface OrderProductsSectionProps {
    * pedido (ver `reconciledLineAmounts`).
    */
   lineAmounts: Record<number, number> | null;
+  /** Vinculación de SKU de muestra (indicadores por línea y aviso del pedido). */
+  sampleSkus: OrderSampleSkusProps;
+}
+
+/**
+ * Lo que la sección necesita de la vinculación de SKU de muestra. El estado
+ * (corrida en curso, avance, superposición) vive en la página
+ * (`useSampleSkuLinking`); aquí solo se pinta.
+ */
+export interface OrderSampleSkusProps {
   /**
    * Abre el diálogo de SKU de muestra de la línea. Se pasa el id y no la línea:
    * el diálogo y su estado viven en la página, que la resuelve del detalle
    * vigente.
    */
-  onOpenSampleSkus: (lineaId: number) => void;
-  /** Línea con una corrida de "Vincular todas" en curso, o `null`. */
-  linkingSampleSkuLineId: number | null;
+  onOpen: (lineaId: number) => void;
+  /** Motivo por el que el usuario no ve las acciones, o `null` si las ve. */
+  block: SampleSkuLinkBlock | null;
+  /** Líneas de la corrida de "Vincular todas" en curso; vacío si no hay. */
+  runningLineaIds: number[];
+  /** Avance global de esa corrida. */
+  runProgress: SampleSkuRunProgress | null;
   /**
    * SKU recién vinculados (id de talla → SKU) que el detalle en caché todavía
-   * no trae; se superponen para que el avance de la celda suba durante la
-   * corrida (ver `withLinkedSampleSkus`).
+   * no trae; se superponen para que los indicadores avancen durante la corrida
+   * (ver `withLinkedSampleSkus`).
    */
-  linkedSampleSkus: Readonly<Record<number, string>>;
+  linkedSkus: Readonly<Record<number, string>>;
+  /** Hay una vinculación individual en curso. */
+  hasPendingSingle: boolean;
+  /** Lanza UNA corrida sobre las tallas indicadas de varias líneas. */
+  onLinkAll: (lines: SampleSkuRunLine[]) => void;
 }
 
+/** Presentación del indicador por estado de la línea. */
+const LINE_STATUS_TONE: Record<SampleSkuLineStatus, SkuStatusPillTone> = {
+  review: "amber",
+  linkable: "sky",
+  linked: "emerald",
+  none: "slate",
+};
+
+const plural = (n: number, singular: string, pluralForm: string) =>
+  `${n} ${n === 1 ? singular : pluralForm}`;
+
 /**
- * Indicador de una línea de MUESTRA en la columna SKU: el badge "Muestra" con
- * el avance de vinculación de sus tallas ("Muestra · 2/6": tallas con
- * `sku_muestra` sobre el total). Es un botón para TODOS los usuarios —el diálogo
- * que abre es de solo lectura sin permiso—; una línea sin tallas no tiene avance
- * que mostrar y queda en "Muestra". Con una corrida de "Vincular todas" en curso
- * en la línea dice "Vinculando" y late.
+ * Indicador de una línea de MUESTRA en la columna SKU. Dice el estado de
+ * vinculación de la línea (ver `sampleSkuLineSummary`), para saber qué hay que
+ * hacer sin abrirla:
+ *
+ * - "Revisar": alguna talla está por revisar.
+ * - "Por vincular · k": k tallas listas para vincular.
+ * - "Vinculada n/m": de las m tallas con SKU de producción, n vinculadas (todas).
+ * - "Sin SKU": Producción aún no genera SKU para ninguna talla.
+ * - "Vinculando · n/m", latiendo: una corrida de "Vincular todas" la incluye.
+ *
+ * Es un botón para TODOS los usuarios: abre el diálogo por talla, que sin
+ * permiso es de solo lectura.
+ *
+ * El texto va en UN solo nodo. El botón es `inline-flex`, y cada hijo de un
+ * contenedor flex es su propio bloque: partido en dos, el espacio que abre el
+ * segundo ("· 1/1") quedaba al inicio de su bloque y se colapsaba ("Muestra· 1/1").
  */
 function SampleSkuIndicator({
   linea,
@@ -87,27 +131,39 @@ function SampleSkuIndicator({
   isLinking: boolean;
   onOpen: (lineaId: number) => void;
 }) {
-  const { linked, total } = sampleSkuLineProgress(linea);
-  const label = isLinking ? "Vinculando" : badge.label;
+  const { status, withSku, linked, linkableIds, withoutSku } = sampleSkuLineSummary(linea);
+  const label = isLinking
+    ? `Vinculando · ${linked}/${withSku}`
+    : status === "review"
+      ? "Revisar"
+      : status === "linkable"
+        ? `Por vincular · ${linkableIds.length}`
+        : status === "linked"
+          ? `Vinculada ${linked}/${withSku}`
+          : "Sin SKU";
+  const tooltip = [
+    `Línea de ${badge.label.toLowerCase()}`,
+    withSku > 0
+      ? `${linked} de ${plural(withSku, "talla con SKU vinculada", "tallas con SKU vinculadas")}`
+      : "Producción aún no genera el SKU",
+    ...(withSku > 0 && withoutSku > 0
+      ? [`${plural(withoutSku, "talla", "tallas")} sin SKU de producción`]
+      : []),
+    ...(isLinking ? ["vinculando"] : status === "review" ? ["hay tallas por revisar"] : []),
+  ].join(" · ");
   return (
     <button
       type="button"
       onClick={() => onOpen(linea.id)}
-      title={isLinking ? "Vinculando SKU de muestra. Ver avance por talla" : "Ver SKU de muestra por talla"}
-      aria-label={
-        total > 0
-          ? `${label}: ${linked} de ${total} tallas con SKU vinculado. Ver SKU de muestra por talla`
-          : `${label}. Ver SKU de muestra por talla`
-      }
-      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium whitespace-nowrap cursor-pointer transition-shadow hover:ring-1 hover:ring-current focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-500 ${badge.className} ${isLinking ? "animate-pulse" : ""}`}
+      title={`${tooltip}. Ver detalle por talla`}
+      aria-label={`${label}. ${tooltip}. Ver detalle por talla`}
+      className={`whitespace-nowrap tabular-nums cursor-pointer transition-shadow hover:ring-1 hover:ring-current focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-500 ${
+        isLinking
+          ? `inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium animate-pulse ${badge.className}`
+          : skuStatusPillClass(LINE_STATUS_TONE[status])
+      }`}
     >
       {label}
-      {total > 0 && (
-        <span className="tabular-nums">
-          {" · "}
-          {linked}/{total}
-        </span>
-      )}
     </button>
   );
 }
@@ -137,9 +193,7 @@ export function OrderProductsSection({
   detalles,
   showAccounting,
   lineAmounts,
-  onOpenSampleSkus,
-  linkingSampleSkuLineId,
-  linkedSampleSkus,
+  sampleSkus,
 }: OrderProductsSectionProps) {
   const { formatMoney } = useOrderMoney();
   // Mismo badge que la tabla de captura de la cotización y que la columna
@@ -148,10 +202,39 @@ export function OrderProductsSection({
   const totalPiezas = detalles.reduce((sum, linea) => sum + (linea.cantidad_total ?? 0), 0);
   const showCambioTalla = anyLineHasService(detalles, "lleva_cambio_talla");
   const showImporte = showAccounting && lineAmounts !== null;
+  // Líneas con los SKU recién vinculados superpuestos, y lo que cada muestra
+  // tiene listo para vincular. `partida` es el número de la columna "#" (la
+  // posición en `detalles`), para que el aviso nombre las mismas partidas que
+  // se ven en la tabla.
+  const lineas = detalles.map((linea) => withLinkedSampleSkus(linea, sampleSkus.linkedSkus));
+  const linkableLines = lineas.flatMap((linea, index) => {
+    if (!isSampleLine(linea)) return [];
+    const { linkableIds } = sampleSkuLineSummary(linea);
+    return linkableIds.length > 0
+      ? [{ lineaId: linea.id, tallaIds: linkableIds, partida: index + 1 }]
+      : [];
+  });
+  const linkableCount = linkableLines.reduce((sum, line) => sum + line.tallaIds.length, 0);
+  const isRunning = sampleSkus.runningLineaIds.length > 0;
   const columnCount = 9 + (showCambioTalla ? 1 : 0) + (showAccounting ? 1 : 0) + (showImporte ? 1 : 0);
 
   return (
     <SheetSection title="Detalle de Productos">
+      {(linkableCount > 0 || isRunning) && (
+        <SampleSkuLinkBanner
+          linkableCount={linkableCount}
+          partidas={linkableLines.map((line) => line.partida)}
+          block={sampleSkus.block}
+          isRunning={isRunning}
+          runProgress={sampleSkus.runProgress}
+          hasPendingSingle={sampleSkus.hasPendingSingle}
+          onLinkAll={() =>
+            sampleSkus.onLinkAll(
+              linkableLines.map(({ lineaId, tallaIds }) => ({ lineaId, tallaIds })),
+            )
+          }
+        />
+      )}
       <div className="overflow-x-auto -mx-6 md:-mx-8 px-6 md:px-8 pb-2 border-b border-slate-200 dark:border-slate-800">
         <table className="w-full min-w-225 border-collapse text-left">
           <caption className="sr-only">Partidas del pedido</caption>
@@ -182,16 +265,16 @@ export function OrderProductsSection({
                 </td>
               </tr>
             ) : (
-              detalles.map((linea, index) => (
+              lineas.map((linea, index) => (
                 <tr key={linea.id} className="align-top">
                   <td className="p-2 text-center text-xs text-slate-400 select-none">{index + 1}</td>
                   <td className="p-2">
                     {isSampleLine(linea) ? (
                       <SampleSkuIndicator
-                        linea={withLinkedSampleSkus(linea, linkedSampleSkus)}
+                        linea={linea}
                         badge={muestraBadge}
-                        isLinking={linkingSampleSkuLineId === linea.id}
-                        onOpen={onOpenSampleSkus}
+                        isLinking={sampleSkus.runningLineaIds.includes(linea.id)}
+                        onOpen={sampleSkus.onOpen}
                       />
                     ) : linea.sku_base ? (
                       <span className="text-xs font-mono font-medium text-slate-700 dark:text-slate-200 whitespace-nowrap">

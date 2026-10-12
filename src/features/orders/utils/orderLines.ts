@@ -48,19 +48,57 @@ export function sampleSkuTallaState(talla: SampleSkuFields): SampleSkuTallaState
 }
 
 /**
- * Avance de vinculación de una línea de muestra: tallas con `sku_muestra` sobre
- * todas las tallas de la línea. Cuenta las vinculadas aunque estén por revisar
- * (`orphan`/`out_of_sync`): el indicador dice cuántas TIENEN SKU, no cuántas
- * están al día.
+ * Estado de vinculación de una LÍNEA de muestra, agregado de sus tallas. Gana
+ * el primero que aplica:
+ *
+ * 1. `review`: alguna talla está por revisar (`orphan` u `out_of_sync`).
+ * 2. `linkable`: alguna talla está lista para vincular.
+ * 3. `linked`: hay tallas con SKU de producción y todas están vinculadas.
+ * 4. `none`: ninguna talla tiene SKU de producción.
  */
-export function sampleSkuLineProgress(linea: Pick<PedidoDetalleLinea, "tallas">): {
+export type SampleSkuLineStatus = "review" | "linkable" | "linked" | "none";
+
+export interface SampleSkuLineSummary {
+  status: SampleSkuLineStatus;
+  /**
+   * Tallas con SKU de producción: el denominador del avance. Las que no lo
+   * tienen NO cuentan — Producción genera el SKU de toda la línea en una sola
+   * alta, salvo las tallas sin cantidad en ese momento y las agregadas después,
+   * que nunca lo reciben; contarlas dejaría la línea "incompleta" para siempre.
+   */
+  withSku: number;
+  /** De las `withSku`, las que ya tienen `sku_muestra`. */
   linked: number;
-  total: number;
-} {
-  return {
-    linked: linea.tallas.filter((talla) => skuOrNull(talla.sku_muestra) !== null).length,
-    total: linea.tallas.length,
-  };
+  /** Ids de las tallas listas para vincular (`linkable`). */
+  linkableIds: number[];
+  /** Tallas sin SKU de producción. */
+  withoutSku: number;
+}
+
+export function sampleSkuLineSummary(
+  linea: Pick<PedidoDetalleLinea, "tallas">,
+): SampleSkuLineSummary {
+  let withSku = 0;
+  let linked = 0;
+  let needsReview = false;
+  const linkableIds: number[] = [];
+  for (const talla of linea.tallas) {
+    const state = sampleSkuTallaState(talla);
+    if (skuOrNull(talla.sku_produccion) !== null) {
+      withSku += 1;
+      if (state !== "linkable") linked += 1;
+    }
+    if (state === "linkable") linkableIds.push(talla.id);
+    if (state === "orphan" || state === "out_of_sync") needsReview = true;
+  }
+  const status: SampleSkuLineStatus = needsReview
+    ? "review"
+    : linkableIds.length > 0
+      ? "linkable"
+      : withSku > 0
+        ? "linked"
+        : "none";
+  return { status, withSku, linked, linkableIds, withoutSku: linea.tallas.length - withSku };
 }
 
 /**

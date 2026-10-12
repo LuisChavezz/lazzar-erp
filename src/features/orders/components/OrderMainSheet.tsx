@@ -4,19 +4,15 @@ import { OrderChargesSection } from "./OrderChargesSection";
 import { OrderCommercialInfoSection } from "./OrderCommercialInfoSection";
 import { OrderCurrencyProvider } from "./OrderCurrencyContext";
 import { OrderNotesSection } from "./OrderNotesSection";
-import { OrderProductsSection } from "./OrderProductsSection";
+import { OrderProductsSection, type OrderSampleSkusProps } from "./OrderProductsSection";
 import { OrderShippingSection } from "./OrderShippingSection";
 
 interface OrderMainSheetProps {
   pedido: PedidoDetail;
   showAccounting: boolean;
   canEditHeader: boolean;
-  /** Abre el diálogo de SKU de muestra de una línea (lo monta la página). */
-  onOpenSampleSkus: (lineaId: number) => void;
-  /** Línea con una corrida de "Vincular todas" en curso, o `null`. */
-  linkingSampleSkuLineId: number | null;
-  /** SKU recién vinculados (id de talla → SKU), aún no releídos del servidor. */
-  linkedSampleSkus: Readonly<Record<number, string>>;
+  /** Vinculación de SKU de muestra; el estado y el diálogo viven en la página. */
+  sampleSkus: OrderSampleSkusProps;
 }
 
 /**
@@ -32,9 +28,7 @@ export function OrderMainSheet({
   pedido,
   showAccounting,
   canEditHeader,
-  onOpenSampleSkus,
-  linkingSampleSkuLineId,
-  linkedSampleSkus,
+  sampleSkus,
 }: OrderMainSheetProps) {
   // Importe por línea: solo con datos contables y si concilia con el subtotal.
   const lineAmounts = showAccounting ? reconciledLineAmounts(pedido) : null;
@@ -50,9 +44,7 @@ export function OrderMainSheet({
         detalles={pedido.detalles}
         showAccounting={showAccounting}
         lineAmounts={lineAmounts}
-        onOpenSampleSkus={onOpenSampleSkus}
-        linkingSampleSkuLineId={linkingSampleSkuLineId}
-        linkedSampleSkus={linkedSampleSkus}
+        sampleSkus={sampleSkus}
       />
       <section className="grid grid-cols-1 lg:grid-cols-4 gap-6 items-start">
         <div className="lg:col-span-1">

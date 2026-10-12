@@ -21,12 +21,21 @@ type LinkSampleSkuVariables = {
   tallaId: number;
 };
 
+/** Tallas a vincular de UNA línea (`PedidoDetalle`) dentro de una corrida. */
+export interface SampleSkuRunLine {
+  lineaId: number;
+  tallaIds: number[];
+}
+
 type LinkSampleSkusBulkVariables = {
   pedidoId: number;
   cotizacionId: number | null;
-  /** Línea (`PedidoDetalle`) a la que pertenecen las tallas de la corrida. */
-  lineaId: number;
-  tallaIds: number[];
+  /**
+   * Líneas de la corrida, en el orden en que se recorren. Una sola para el
+   * "Vincular todas" del diálogo de una línea; todas las que tienen tallas
+   * listas para el del pedido completo.
+   */
+  lines: SampleSkuRunLine[];
 };
 
 /**
@@ -59,6 +68,8 @@ const bulkLinkFilters = (pedidoId: number): MutationFilters => ({
   predicate: (mutation) =>
     (mutation.state.variables as LinkSampleSkusBulkVariables | undefined)?.pedidoId === pedidoId,
 });
+
+const NO_LINES: number[] = [];
 
 const NOT_FOUND_ERROR = "El pedido no existe o no pertenece a tu empresa.";
 const FALLBACK_ERROR = "No se pudo vincular el SKU.";
@@ -137,14 +148,18 @@ const refetchAfterLink = (
   ]);
 
 /**
- * Corrida de "Vincular todas" de UNA línea: su avance mientras corre y su
- * resultado después. Vive en la página (no en el diálogo), así que cerrar el
- * diálogo o cambiar de hoja no la pierde.
+ * Lo que la última corrida de "Vincular todas" hizo en UNA línea: su avance
+ * mientras corre y su resultado después. Una corrida del pedido completo deja
+ * una entrada por cada línea que recorre. Vive en la página (no en el diálogo),
+ * así que cerrar el diálogo o cambiar de hoja no la pierde.
  */
 export interface SampleSkuBulkRun {
-  /** Tallas de la corrida. */
+  /** Tallas de ESTA línea en la corrida. */
   total: number;
-  /** Talla en curso; `null` mientras se relee el pedido y al terminar. */
+  /**
+   * Talla en curso. `null` cuando la corrida no está en esta línea: aún no le
+   * toca, ya pasó por ella, se está releyendo el pedido o ya terminó.
+   */
   currentTallaId: number | null;
   /**
    * Tallas vinculadas en ESTA corrida (id de talla → `sku_muestra` devuelto).
@@ -160,6 +175,16 @@ export interface SampleSkuBulkRun {
   /** Motivo por el que la corrida se detuvo antes de terminar, o `null`. */
   stopReason: string | null;
   finished: boolean;
+}
+
+/** Avance global de la corrida en curso (todas sus líneas). */
+export interface SampleSkuRunProgress {
+  /** Tallas de la corrida. */
+  total: number;
+  /** Tallas ya procesadas (vinculadas o rechazadas). */
+  processed: number;
+  /** Ya no quedan tallas por procesar: se está releyendo el pedido. */
+  refreshing: boolean;
 }
 
 interface LinkSampleSkusBulkResult {
@@ -182,20 +207,22 @@ interface UseSampleSkuLinkingOptions {
 /**
  * Vinculación del SKU de producción a las tallas de muestra de un pedido, de
  * una en una (`linkOne`) o todas las pendientes de una línea en fila
- * (`linkAll`). Se instancia en la PÁGINA del detalle, no en el diálogo: el
+ * (`linkAll`, que recibe una línea o varias: la corrida del diálogo y la del
+ * pedido completo son la misma). Se instancia en la PÁGINA del detalle, no en el diálogo: el
  * diálogo se puede cerrar en cualquier momento y al reabrirlo ve la corrida tal
  * como va.
  *
  * Dos fuentes, cada una con lo suyo:
  *
- * - "En curso" sale de la `MutationCache` (`runningLineaId`, `pendingTallaIds`):
+ * - "En curso" sale de la `MutationCache` (`runningLineaIds`, `pendingTallaIds`):
  *   es lo que de verdad se está ejecutando, y se limpia solo al terminar. Las
  *   dos mutaciones siguen PENDIENTES hasta que termina la relectura del pedido,
  *   para que un control no se re-habilite mostrando el estado viejo.
  * - El avance y el resultado de cada corrida son estado de este hook
- *   (`bulkRuns`, por línea).
+ *   (`bulkRuns`, por línea, y `runProgress`, el global de la que está en curso).
  *
- * La corrida masiva es UNA mutación que recorre las tallas en secuencia, y solo
+ * La corrida masiva es UNA mutación que recorre las tallas en secuencia, línea
+ * por línea, y solo
  * puede haber una por pedido a la vez. Su `mutationFn` nunca lanza: una talla
  * rechazada por un motivo propio se cuenta y se sigue; cualquier rechazo que
  * afectaría a todas las restantes (ver `describeLinkError`) la detiene. Relee e
@@ -204,6 +231,7 @@ interface UseSampleSkuLinkingOptions {
 export function useSampleSkuLinking({ pedidoId, cotizacionId }: UseSampleSkuLinkingOptions) {
   const queryClient = useQueryClient();
   const [bulkRuns, setBulkRuns] = useState<Record<number, SampleSkuBulkRun>>({});
+  const [runProgress, setRunProgress] = useState<SampleSkuRunProgress | null>(null);
 
   const patchRun = (lineaId: number, patch: (run: SampleSkuBulkRun) => SampleSkuBulkRun) =>
     setBulkRuns((runs) => (lineaId in runs ? { ...runs, [lineaId]: patch(runs[lineaId]) } : runs));
@@ -239,48 +267,74 @@ export function useSampleSkuLinking({ pedidoId, cotizacionId }: UseSampleSkuLink
     // sin ejecutarse) hasta que vuelva la red. Así la petición se intenta, falla
     // y la corrida se detiene con su motivo.
     networkMode: "always",
-    onMutate: ({ lineaId, tallaIds }) =>
+    onMutate: ({ lines }) => {
+      setRunProgress({
+        total: lines.reduce((sum, line) => sum + line.tallaIds.length, 0),
+        processed: 0,
+        refreshing: false,
+      });
       setBulkRuns((runs) => ({
         ...runs,
-        [lineaId]: {
-          total: tallaIds.length,
-          currentTallaId: null,
-          linkedSkus: {},
-          failures: {},
-          stopReason: null,
-          finished: false,
-        },
-      })),
-    mutationFn: async ({ pedidoId: runPedidoId, lineaId, tallaIds }) => {
+        ...Object.fromEntries(
+          lines.map(({ lineaId, tallaIds }): [number, SampleSkuBulkRun] => [
+            lineaId,
+            {
+              total: tallaIds.length,
+              currentTallaId: null,
+              linkedSkus: {},
+              failures: {},
+              stopReason: null,
+              finished: false,
+            },
+          ]),
+        ),
+      }));
+    },
+    mutationFn: async ({ pedidoId: runPedidoId, lines }) => {
       const result: LinkSampleSkusBulkResult = { linked: 0, failed: 0, stopReason: null };
-      for (const tallaId of tallaIds) {
-        patchRun(lineaId, (run) => ({ ...run, currentTallaId: tallaId }));
-        try {
-          const { sku_muestra } = await vincularSkuMuestra(runPedidoId, tallaId);
-          result.linked += 1;
-          patchRun(lineaId, (run) => ({
-            ...run,
-            linkedSkus: { ...run.linkedSkus, [tallaId]: sku_muestra },
-          }));
-        } catch (error) {
-          const { message, scope } = describeLinkError(error);
-          if (scope === "order") {
-            result.stopReason = message;
-            patchRun(lineaId, (run) => ({ ...run, stopReason: message }));
-            break;
+      const tallaProcessed = () =>
+        setRunProgress((progress) =>
+          progress ? { ...progress, processed: progress.processed + 1 } : progress,
+        );
+      for (const [lineIndex, { lineaId, tallaIds }] of lines.entries()) {
+        for (const tallaId of tallaIds) {
+          patchRun(lineaId, (run) => ({ ...run, currentTallaId: tallaId }));
+          try {
+            const { sku_muestra } = await vincularSkuMuestra(runPedidoId, tallaId);
+            result.linked += 1;
+            patchRun(lineaId, (run) => ({
+              ...run,
+              linkedSkus: { ...run.linkedSkus, [tallaId]: sku_muestra },
+            }));
+          } catch (error) {
+            const { message, scope } = describeLinkError(error);
+            if (scope === "order") {
+              result.stopReason = message;
+              break;
+            }
+            result.failed += 1;
+            patchRun(lineaId, (run) => ({
+              ...run,
+              failures: { ...run.failures, [tallaId]: message },
+            }));
           }
-          result.failed += 1;
-          patchRun(lineaId, (run) => ({
-            ...run,
-            failures: { ...run.failures, [tallaId]: message },
-          }));
+          tallaProcessed();
+        }
+        patchRun(lineaId, (run) => ({ ...run, currentTallaId: null }));
+        if (result.stopReason) {
+          // El aviso de paro queda en esta línea y en las que ya no se alcanzaron.
+          const stopReason = result.stopReason;
+          for (const line of lines.slice(lineIndex)) {
+            patchRun(line.lineaId, (run) => ({ ...run, stopReason }));
+          }
+          break;
         }
       }
       return result;
     },
     onSuccess: async (result, variables) => {
-      const { lineaId, tallaIds } = variables;
-      patchRun(lineaId, (run) => ({ ...run, currentTallaId: null }));
+      const { lines } = variables;
+      setRunProgress((progress) => (progress ? { ...progress, refreshing: true } : progress));
       // Una sola relectura, también si nada se vinculó: un rechazo suele
       // significar que lo que se ve en pantalla ya no es lo real.
       await refetchAfterLink(queryClient, variables.pedidoId, variables.cotizacionId);
@@ -289,18 +343,21 @@ export function useSampleSkuLinking({ pedidoId, cotizacionId }: UseSampleSkuLink
       // vinculado en esta corrida es lo más cierto que hay: se conserva.
       const refetchFailed =
         queryClient.getQueryState(pedidoDetailQueryKey(variables.pedidoId))?.status === "error";
-      patchRun(lineaId, (run) => ({
-        ...run,
-        finished: true,
-        linkedSkus: refetchFailed ? run.linkedSkus : {},
-      }));
+      for (const { lineaId } of lines) {
+        patchRun(lineaId, (run) => ({
+          ...run,
+          finished: true,
+          linkedSkus: refetchFailed ? run.linkedSkus : {},
+        }));
+      }
 
       const counts = [
         count(result.linked, "talla vinculada", "tallas vinculadas"),
         ...(result.failed > 0 ? [count(result.failed, "falló", "fallaron")] : []),
       ].join(", ");
       if (result.stopReason) {
-        const left = tallaIds.length - result.linked - result.failed;
+        const total = lines.reduce((sum, line) => sum + line.tallaIds.length, 0);
+        const left = total - result.linked - result.failed;
         toast.error(
           `${counts}. Se detuvo: ${asSentence(result.stopReason)} ${count(
             left,
@@ -314,6 +371,7 @@ export function useSampleSkuLinking({ pedidoId, cotizacionId }: UseSampleSkuLink
         toast.success(counts);
       }
     },
+    onSettled: () => setRunProgress(null),
   });
 
   const pendingTallaIds = useMutationState({
@@ -321,10 +379,11 @@ export function useSampleSkuLinking({ pedidoId, cotizacionId }: UseSampleSkuLink
     select: (mutation) => (mutation.state.variables as LinkSampleSkuVariables).tallaId,
   });
 
-  // Una corrida por pedido a la vez: a lo sumo un elemento.
-  const [runningLineaId = null] = useMutationState({
+  // Una corrida por pedido a la vez: a lo sumo un elemento, con sus líneas.
+  const [runningLineaIds = NO_LINES] = useMutationState({
     filters: bulkLinkFilters(pedidoId),
-    select: (mutation) => (mutation.state.variables as LinkSampleSkusBulkVariables).lineaId,
+    select: (mutation) =>
+      (mutation.state.variables as LinkSampleSkusBulkVariables).lines.map((line) => line.lineaId),
   });
 
   // Los valores reactivos de arriba llegan un render tarde: las guardas contra
@@ -348,9 +407,10 @@ export function useSampleSkuLinking({ pedidoId, cotizacionId }: UseSampleSkuLink
     mutateOne({ pedidoId, cotizacionId, tallaId });
   };
 
-  const linkAll = (lineaId: number, tallaIds: number[]) => {
-    if (tallaIds.length === 0 || isBulkInFlight() || isSingleInFlight()) return;
-    mutateBulk({ pedidoId, cotizacionId, lineaId, tallaIds });
+  const linkAll = (lines: SampleSkuRunLine[]) => {
+    const withTallas = lines.filter((line) => line.tallaIds.length > 0);
+    if (withTallas.length === 0 || isBulkInFlight() || isSingleInFlight()) return;
+    mutateBulk({ pedidoId, cotizacionId, lines: withTallas });
   };
 
   const linkedSkus: Record<number, string> = {};
@@ -361,13 +421,15 @@ export function useSampleSkuLinking({ pedidoId, cotizacionId }: UseSampleSkuLink
     linkAll,
     /** Tallas con una vinculación individual en curso. */
     pendingTallaIds,
-    /** Línea con la corrida masiva en curso, o `null` si no hay ninguna. */
-    runningLineaId,
+    /** Líneas de la corrida masiva en curso; vacío si no hay ninguna. */
+    runningLineaIds,
     /**
-     * Última corrida de cada línea, por id de línea. Una línea puede estar en
-     * `runningLineaId` sin entrada aquí: pasa si la página se desmontó y se
-     * volvió a montar a media corrida (la corrida sigue; su avance no).
+     * Avance global de la corrida en curso. Puede ser `null` CON corrida en
+     * curso si la página se desmontó y se volvió a montar a media corrida (la
+     * corrida sigue; su avance no). Lo mismo aplica a `bulkRuns`.
      */
+    runProgress,
+    /** Lo que la última corrida hizo en cada línea, por id de línea. */
     bulkRuns,
     /** Superposición de todas las corridas: id de talla → SKU recién vinculado. */
     linkedSkus,

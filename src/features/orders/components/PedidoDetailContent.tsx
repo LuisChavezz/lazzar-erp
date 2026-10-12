@@ -44,6 +44,7 @@ import {
   type OrderDetailSearchParams,
   type OrderDetailSheet,
 } from "../constants/orderDetailSheets";
+import { specialOrderPath, type SampleSkuLinkBlock } from "../constants/sampleSkuLinking";
 import { canSeeAccounting } from "../utils/orderAccounting";
 import { isSampleLine } from "../utils/orderLines";
 import { OrderMainSheet } from "./OrderMainSheet";
@@ -360,9 +361,19 @@ export function PedidoDetailContent({
   // que gobierna el botón Editar (guardado destructivo) con su propia regla.
   const canEditHeader = canEditMesaControl && !isPedidoTerminal(data.estatus);
   // Vincular SKU de muestra: misma regla que la edición en línea de la
-  // cabecera. Solo gobierna las ACCIONES; el indicador y el diálogo se ven
-  // siempre, en solo lectura.
-  const canLinkSampleSkus = canEditHeader;
+  // cabecera (`canEditHeader`), partida en sus dos motivos para poder decirle
+  // al usuario cuál aplica. Solo gobierna las ACCIONES; los indicadores, el
+  // aviso y el diálogo se ven siempre, en solo lectura.
+  const sampleSkuLinkBlock: SampleSkuLinkBlock | null = isPedidoTerminal(data.estatus)
+    ? "closed"
+    : canEditMesaControl
+      ? null
+      : "permission";
+  // Página de Producción donde se generan los SKU; solo se enlaza si el proxy
+  // dejaría entrar al usuario (si no, el enlace rebotaría al Home).
+  const specialOrderHref = canAccessRoute(specialOrderPath(data.id), session?.user)
+    ? specialOrderPath(data.id)
+    : null;
   // La línea se resuelve del detalle vigente. Si una relectura la quita (o deja
   // de ser muestra), el diálogo se cierra en este mismo render en vez de quedar
   // con un id que podría reabrirlo solo más adelante.
@@ -435,9 +446,15 @@ export function PedidoDetailContent({
           pedido={data}
           showAccounting={showAccounting}
           canEditHeader={canEditHeader}
-          onOpenSampleSkus={setSampleSkuLineId}
-          linkingSampleSkuLineId={sampleSkuLinking.runningLineaId}
-          linkedSampleSkus={sampleSkuLinking.linkedSkus}
+          sampleSkus={{
+            onOpen: setSampleSkuLineId,
+            block: sampleSkuLinkBlock,
+            runningLineaIds: sampleSkuLinking.runningLineaIds,
+            runProgress: sampleSkuLinking.runProgress,
+            linkedSkus: sampleSkuLinking.linkedSkus,
+            hasPendingSingle: sampleSkuLinking.pendingTallaIds.length > 0,
+            onLinkAll: sampleSkuLinking.linkAll,
+          }}
         />
       ) : (
         <OrderProgressSheet
@@ -451,12 +468,16 @@ export function PedidoDetailContent({
       {sampleSkuLine && (
         <SampleSkuLinkDialog
           linea={sampleSkuLine}
-          canLink={canLinkSampleSkus}
+          block={sampleSkuLinkBlock}
+          specialOrderHref={specialOrderHref}
           run={sampleSkuLinking.bulkRuns[sampleSkuLine.id]}
-          runningLineaId={sampleSkuLinking.runningLineaId}
+          runningLineaIds={sampleSkuLinking.runningLineaIds}
+          runProgress={sampleSkuLinking.runProgress}
           pendingTallaIds={sampleSkuLinking.pendingTallaIds}
           onLinkOne={(tallaId) => sampleSkuLinking.linkOne(sampleSkuLine.id, tallaId)}
-          onLinkAll={(tallaIds) => sampleSkuLinking.linkAll(sampleSkuLine.id, tallaIds)}
+          onLinkAll={(tallaIds) =>
+            sampleSkuLinking.linkAll([{ lineaId: sampleSkuLine.id, tallaIds }])
+          }
           open={true}
           onOpenChange={(open) => {
             if (!open) setSampleSkuLineId(null);
