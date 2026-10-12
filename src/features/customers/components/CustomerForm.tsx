@@ -7,6 +7,7 @@ import { FormSelect } from "@/src/components/FormSelect";
 import { FormCancelButton, FormSubmitButton } from "@/src/components/FormButtons";
 import { ClientesIcon, TaxIcon, WalletIcon } from "@/src/components/Icons";
 import { Loader } from "@/src/components/Loader";
+import { sanitizeDecimalInput } from "@/src/utils/decimal";
 import { Customer } from "../interfaces/customer.interface";
 import { useCustomerForm } from "../hooks/useCustomerForm";
 import { useVerifyRfc } from "../hooks/useVerifyRfc";
@@ -16,9 +17,19 @@ interface CustomerFormProps {
   onCreated?: (customer: Customer) => void;
   customerToEdit?: Customer | null;
   invalidateOrderOnboarding?: boolean;
+  /**
+   * Muestra (y envía) la sección de Crédito. Solo la activa el formulario del
+   * módulo de clientes: las altas rápidas (cotización, accesos rápidos) no
+   * capturan condiciones de crédito.
+   */
+  showCreditFields?: boolean;
 }
 
 const RFC_MIN_LENGTH = 12;
+
+/** Solo dígitos, sin ceros a la izquierda (mismo saneado que las cantidades de bordado). */
+const sanitizeIntegerInput = (raw: string): string =>
+  raw.replace(/[^0-9]/g, "").replace(/^0+(?=\d)/, "");
 
 type RfcValidationTone = "success" | "error";
 
@@ -29,6 +40,7 @@ export default function CustomerForm({
   onCreated,
   customerToEdit,
   invalidateOrderOnboarding = false,
+  showCreditFields = false,
 }: CustomerFormProps) {
   const [isRfcVerified, setIsRfcVerified] = useState(false);
   const [verifiedRfc, setVerifiedRfc] = useState<string | null>(null);
@@ -57,6 +69,7 @@ export default function CustomerForm({
     customerToEdit,
     invalidateOrderOnboarding,
     isRfcVerified,
+    includeCredit: showCreditFields,
   });
 
   const rfcFeedbackClassName = useMemo(() => {
@@ -489,6 +502,7 @@ export default function CustomerForm({
           </div>
         </section>
 
+        {showCreditFields ? (
         <section className="bg-white dark:bg-zinc-900 rounded-3xl border border-slate-200 dark:border-white/5 shadow-sm dark:shadow-none overflow-hidden hover:shadow-lg transition-shadow duration-300 mb-8">
           <div className="px-8 py-5 border-b border-slate-100 dark:border-white/5 flex items-center gap-3 bg-slate-50/50 dark:bg-white/2">
             <div className="w-10 h-10 rounded-xl bg-sky-50 dark:bg-sky-500/10 flex items-center justify-center text-sky-600 dark:text-sky-400 shadow-sm">
@@ -503,22 +517,18 @@ export default function CustomerForm({
           </div>
           <div className="p-8">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              {/* Mismo manejo que `SupplierForm`: `dias_credito` viaja como
-                  número (0 se muestra vacío) y `limite_credito` como string
-                  decimal. */}
+              {/* Texto saneado, no `type="number"`: sin validación nativa que
+                  corte el envío antes que Zod (mismo patrón que los importes
+                  de `PaymentForm`). Vacío equivale a 0. */}
               <form.Field name="dias_credito">
                 {(field) => (
                   <div className="space-y-2">
                     <FormInput
                       name={field.name}
-                      type="number"
-                      min={0}
-                      step={1}
                       inputMode="numeric"
-                      value={field.state.value === 0 ? "" : field.state.value}
+                      value={field.state.value}
                       onChange={(event) => {
-                        const value = event.target.value;
-                        field.handleChange(value === "" ? 0 : Number(value));
+                        field.handleChange(sanitizeIntegerInput(event.target.value));
                         clearFieldErrors("dias_credito");
                       }}
                       onBlur={() => {
@@ -541,13 +551,10 @@ export default function CustomerForm({
                   <div className="space-y-2">
                     <FormInput
                       name={field.name}
-                      type="number"
-                      min={0}
-                      step="0.01"
                       inputMode="decimal"
                       value={field.state.value}
                       onChange={(event) => {
-                        field.handleChange(event.target.value);
+                        field.handleChange(sanitizeDecimalInput(event.target.value, 2));
                         clearFieldErrors("limite_credito");
                       }}
                       onBlur={() => {
@@ -567,6 +574,7 @@ export default function CustomerForm({
             </div>
           </div>
         </section>
+        ) : null}
 
         <div className="flex justify-end gap-3 pb-8">
           <FormCancelButton

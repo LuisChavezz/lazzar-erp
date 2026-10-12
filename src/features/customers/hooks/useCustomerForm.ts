@@ -4,7 +4,11 @@ import { useForm } from "@tanstack/react-form";
 import { useMemo, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import { scrollToFirstValidationError } from "@/src/utils/scrollToFirstValidationError";
-import { CustomerFormSchema, CustomerFormValues } from "../schemas/customer.schema";
+import {
+  CustomerFormSchema,
+  CustomerFormValues,
+  normalizeLimiteCredito,
+} from "../schemas/customer.schema";
 import { Customer, CustomerCreate } from "../interfaces/customer.interface";
 import { useCreateCustomer } from "./useCreateCustomer";
 import { useUpdateCustomer } from "./useUpdateCustomer";
@@ -17,6 +21,12 @@ interface UseCustomerFormParams {
   customerToEdit?: Customer | null;
   invalidateOrderOnboarding?: boolean;
   isRfcVerified?: boolean;
+  /**
+   * `true` solo en el formulario del módulo de clientes. Las altas rápidas
+   * (cotización, accesos rápidos) no capturan crédito y no lo envían: el
+   * backend lo deja en 0.
+   */
+  includeCredit?: boolean;
 }
 
 type CustomerFormField = keyof CustomerFormValues;
@@ -35,8 +45,16 @@ const normalizeOptionalCustomerFields = (
   ...values,
   telefono: values.telefono ?? "",
   correo: values.correo ?? "",
-  // Vacío = 0, igual que `dias_credito` (que el input ya convierte a 0).
-  limite_credito: values.limite_credito.trim() || "0",
+});
+
+type CreditPayload = Pick<CustomerCreate, "dias_credito" | "limite_credito">;
+
+// Vacío equivale a 0 en ambos campos.
+const toCreditPayload = (
+  values: Pick<CustomerFormValues, "dias_credito" | "limite_credito">
+): Required<CreditPayload> => ({
+  dias_credito: Number(values.dias_credito || 0),
+  limite_credito: normalizeLimiteCredito(values.limite_credito) || "0",
 });
 
 // Estado base del formulario para modo creación.
@@ -54,9 +72,9 @@ export const emptyValues: CustomerFormValues = {
   estado: "",
   sat_regimen_fiscal: 0,
   sat_uso_cfdi: 0,
-  dias_credito: 0,
-  // Vacío y no "0.00": el placeholder ya muestra el cero y así no hay que
-  // borrar nada para capturar. Se envía como "0" (ver arriba).
+  // Vacíos y no "0"/"0.00": el placeholder ya muestra el cero y así no hay que
+  // borrar nada para capturar. Se envían como 0 (ver `toCreditPayload`).
+  dias_credito: "",
   limite_credito: "",
 };
 
@@ -66,6 +84,7 @@ export function useCustomerForm({
   customerToEdit,
   invalidateOrderOnboarding = false,
   isRfcVerified = false,
+  includeCredit = false,
 }: UseCustomerFormParams) {
   // Contexto de empresa activa y catálogos SAT requeridos por el formulario.
   const selectedCompany = useWorkspaceStore((state) => state.selectedCompany);
@@ -104,7 +123,7 @@ export function useCustomerForm({
       estado: customerToEdit.estado,
       sat_regimen_fiscal: hasRegimen ? customerToEdit.sat_regimen_fiscal : 0,
       sat_uso_cfdi: hasUsoCfdi ? customerToEdit.sat_uso_cfdi : 0,
-      dias_credito: customerToEdit.dias_credito,
+      dias_credito: String(customerToEdit.dias_credito),
       limite_credito: customerToEdit.limite_credito,
     };
   }, [customerToEdit, regimenesFiscales, usosCfdi]);
@@ -221,16 +240,42 @@ export function useCustomerForm({
         return;
       }
 
+      // El crédito se arma aparte: `rest` nunca lo lleva.
+      const { dias_credito, limite_credito, ...rest } = normalizedValues;
+      const credit = toCreditPayload({ dias_credito, limite_credito });
+
       if (isEditing && customerToEdit) {
+        // Solo se manda el campo de crédito que el usuario CAMBIÓ: omitido, el
+        // PUT conserva lo guardado. La fila del listado con la que se hidrató
+        // el formulario puede llevar minutos en caché, y reenviarla revertiría
+        // un cambio de crédito hecho por otro usuario.
+        const changedCredit: CreditPayload = {};
+        if (includeCredit && credit.dias_credito !== customerToEdit.dias_credito) {
+          changedCredit.dias_credito = credit.dias_credito;
+        }
+        if (
+          includeCredit &&
+          Number(credit.limite_credito) !== Number(customerToEdit.limite_credito)
+        ) {
+          changedCredit.limite_credito = credit.limite_credito;
+        }
+
         const updatePayload: CustomerCreate = {
           empresa: customerToEdit.empresa ?? selectedCompany.id,
-          ...normalizedValues,
+          ...rest,
+          ...changedCredit,
         };
 
-        const updatedCustomer = await updateCustomer({
-          id: Number(customerToEdit.id),
-          ...updatePayload,
-        });
+        let updatedCustomer: Customer;
+        try {
+          updatedCustomer = await updateCustomer({
+            id: Number(customerToEdit.id),
+            ...updatePayload,
+          });
+        } catch {
+          // `useUpdateCustomer` ya avisó (toast + errores por campo).
+          return;
+        }
 
         if (!updatedCustomer) {
           return;
@@ -243,10 +288,17 @@ export function useCustomerForm({
 
       const createPayload: CustomerCreate = {
         empresa: selectedCompany.id,
-        ...normalizedValues,
+        ...rest,
+        ...(includeCredit ? credit : {}),
       };
 
-      const createdCustomer = await createCustomer(createPayload);
+      let createdCustomer: Customer;
+      try {
+        createdCustomer = await createCustomer(createPayload);
+      } catch {
+        // `useCreateCustomer` ya avisó (toast + errores por campo).
+        return;
+      }
 
       if (!createdCustomer) {
         return;

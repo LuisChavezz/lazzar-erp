@@ -115,8 +115,12 @@ export interface CustomerCreate {
   estado: string;
   sat_regimen_fiscal: RegimenFiscal["id_sat_regimen_fiscal"];
   sat_uso_cfdi: UsoCfdi["id_sat_uso_cfdi"];
-  dias_credito: number;
-  limite_credito: string;
+  /**
+   * Opcionales en POST y PUT: omitidos, el alta usa 0 y la edición CONSERVA el
+   * valor guardado. Por eso la edición solo los manda si el usuario los cambió.
+   */
+  dias_credito?: number;
+  limite_credito?: string;
 }
 
 export interface VerifyRfcResponse {

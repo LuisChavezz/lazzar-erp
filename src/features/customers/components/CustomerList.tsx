@@ -242,6 +242,7 @@ export const CustomerList = () => {
             >
               <CustomerForm
                 customerToEdit={customerToEdit}
+                showCreditFields
                 onSuccess={() => handleDialogOpenChange(false)}
               />
             </MainDialog>
