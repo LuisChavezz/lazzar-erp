@@ -83,7 +83,9 @@ function activeCard(kpi: CustomerActiveKpi): KpiCompactItem {
  * en el ⓘ (los tres montos no caben en la línea de la tarjeta).
  */
 function carteraCard(kpi: CustomerCarteraKpi, onDrillDown: () => void): KpiCompactItem {
-  const base = { label: "Saldo y antigüedad de cartera", icon: WalletIcon };
+  // "(todos los clientes)": es el agregado del listado, para no confundirlo con
+  // la antigüedad de saldos de UN cliente que muestra su detalle.
+  const base = { label: "Antigüedad de cartera (todos los clientes)", icon: WalletIcon };
   if (!kpi.disponible) {
     return { ...base, ...KPI_MUTED_ICON, value: null, unavailableReason: kpi.motivo };
   }
