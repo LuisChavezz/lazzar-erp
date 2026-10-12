@@ -8,6 +8,8 @@
  * formulario para que el mecanismo de scroll/focus pueda localizar el campo.
  */
 
+import { firstDrfMessage } from "@/src/utils/firstDrfMessage";
+
 // ─── Tipos ─────────────────────────────────────────────────────────────────────
 
 export interface QuoteValidationIssue {
@@ -112,4 +114,39 @@ export const extractQuoteValidationIssues = (
   }
 
   return [];
+};
+
+// ─── Mensaje de rechazo ────────────────────────────────────────────────────────
+
+/**
+ * Claves de RECHAZO del alta/edición de cotización
+ * (`POST /ventas/cotizaciones/onboarding/`): motivos que no corresponden a
+ * ningún campo del formulario y por eso van al toast. Mismo criterio que
+ * `useUpdatePedidoMesaControl`.
+ *
+ * - `detalle`: los `ValidationError({"detalle": "..."})` que levanta
+ *   `_save_cotizacion_detalle` al resolver las FK de un renglón (producto,
+ *   color, categoría de producto o dirección inválidos). Llega como mensaje
+ *   PLANO, sin índice de renglón, así que no hay input sobre el cual pintarlo.
+ * - `detail` / `non_field_errors`: los genéricos de DRF.
+ */
+const QUOTE_REJECTION_KEYS = ["detalle", "detail", "non_field_errors"] as const;
+
+/**
+ * Primer mensaje de rechazo del cuerpo 400, o `undefined` si el 400 es solo de
+ * validación de campos.
+ *
+ * `detalle` es ambigua: también es el bloque de errores POR RENGLÓN del
+ * serializer (`detalle: [{ tallas: [...] }]`). `firstDrfMessage` solo devuelve
+ * un `string` o el primer `string` de una lista, así que ese bloque —una lista
+ * de objetos— cae en `undefined` y lo sigue pintando `onValidationError`.
+ */
+export const extractQuoteRejectionMessage = (data: unknown): string | undefined => {
+  if (!data || typeof data !== "object" || Array.isArray(data)) return undefined;
+  const body = data as Record<string, unknown>;
+  for (const key of QUOTE_REJECTION_KEYS) {
+    const message = firstDrfMessage(body[key]);
+    if (message) return message;
+  }
+  return undefined;
 };

@@ -6,6 +6,7 @@ import { AxiosError } from "axios";
 import { createQuote } from "../services/actions";
 import type { QuoteCreate } from "../interfaces/quote.interface";
 import {
+  extractQuoteRejectionMessage,
   extractQuoteValidationIssues,
   type QuoteValidationIssue,
 } from "../utils/quoteValidationErrors";
@@ -26,6 +27,9 @@ export const useCreateQuote = ({ onValidationError }: UseCreateQuoteOptions = {}
       toast.success("Pedido registrado correctamente");
     },
     onError: (error) => {
+      // Motivo real del rechazo cuando el backend lo manda fuera de un campo
+      // (p. ej. "Categoría de producto inválida: 12"); si no hay, el genérico.
+      let message: string | undefined;
       if (error instanceof AxiosError) {
         const statusCode = error.response?.status;
         const data = error.response?.data;
@@ -35,9 +39,10 @@ export const useCreateQuote = ({ onValidationError }: UseCreateQuoteOptions = {}
           if (issues.length > 0) {
             onValidationError?.(issues);
           }
+          message = extractQuoteRejectionMessage(data);
         }
       }
-      toast.error("No se pudo registrar el pedido");
+      toast.error(message ?? "No se pudo registrar el pedido");
     },
   });
 };

@@ -6,6 +6,7 @@ import { AxiosError } from "axios";
 import { updateQuote } from "../services/actions";
 import type { QuoteCreate, QuoteById } from "../interfaces/quote.interface";
 import {
+  extractQuoteRejectionMessage,
   extractQuoteValidationIssues,
   type QuoteValidationIssue,
 } from "../utils/quoteValidationErrors";
@@ -33,6 +34,9 @@ export const useUpdateQuote = ({ onValidationError }: UseUpdateQuoteOptions = {}
       toast.success("Cotización actualizada correctamente");
     },
     onError: (error) => {
+      // Motivo real del rechazo cuando el backend lo manda fuera de un campo
+      // (p. ej. "Categoría de producto inválida: 12"); si no hay, el genérico.
+      let message: string | undefined;
       if (error instanceof AxiosError) {
         const statusCode = error.response?.status;
         const data = error.response?.data;
@@ -41,9 +45,10 @@ export const useUpdateQuote = ({ onValidationError }: UseUpdateQuoteOptions = {}
           if (issues.length > 0) {
             onValidationError?.(issues);
           }
+          message = extractQuoteRejectionMessage(data);
         }
       }
-      toast.error("No se pudo actualizar la cotización");
+      toast.error(message ?? "No se pudo actualizar la cotización");
     },
   });
 };
