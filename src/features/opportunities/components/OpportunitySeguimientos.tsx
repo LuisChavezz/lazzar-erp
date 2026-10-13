@@ -190,6 +190,7 @@ export const OpportunitySeguimientos = ({
             {" · próximo: "}
             <span className={proximoRecordatorio < today ? OVERDUE_CLS : undefined}>
               {formatShortDate(proximoRecordatorio, { timeZone: "UTC" })}
+              {proximoRecordatorio < today && " (vencido)"}
             </span>
           </>
         )}
