@@ -20,7 +20,6 @@ import {
 } from "@/src/components/DetailDialogPrimitives";
 import { CustomerCartera } from "@/src/features/customers/components/CustomerCartera";
 import { canLandOnQuoteEdit } from "@/src/features/quotes/utils/quoteEditRouteAccess";
-import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { formatCurrency, NO_CURRENCY_FORMAT, safeParseAmount } from "@/src/utils/formatCurrency";
 import { formatShortDate } from "@/src/utils/formatDate";
 import { ESTADO_OPORTUNIDAD_CFG, ETAPA_PERDIDA } from "../constants/opportunityChoices";
@@ -59,8 +58,7 @@ interface OpportunityDetailContentProps {
 export const OpportunityDetailContent = ({ opportunityId }: OpportunityDetailContentProps) => {
   const router = useRouter();
   const { data: session } = useSession();
-  const { data, isNotFound, isValidId, isInitialError, error } =
-    useOpportunityDetail(opportunityId);
+  const { data, isNotFound, isValidId, isInitialError } = useOpportunityDetail(opportunityId);
 
   // El formulario recibe una COPIA tomada al abrir, no `data.oportunidad` en
   // vivo: una relectura a media edición no debe cambiarle el registro base con
@@ -124,13 +122,15 @@ export const OpportunityDetailContent = ({ opportunityId }: OpportunityDetailCon
     );
   }
 
+  // Texto fijo: este GET no responde con un mensaje propio para el usuario, y
+  // el del cliente HTTP ("Request failed with status code 500") no le dice nada.
   if (isInitialError) {
     return (
       <div className="w-full space-y-6">
         {backLink}
         <ErrorState
           title="No se pudo cargar la oportunidad"
-          message={extractErrorMessage(error, "No se pudo obtener la información de la oportunidad.")}
+          message="Ocurrió un problema al consultar el servidor. Recarga la página para intentar de nuevo."
         />
       </div>
     );

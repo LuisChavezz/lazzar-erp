@@ -45,7 +45,7 @@ export const useOpportunityDetail = (opportunityId: string) => {
   const numericId = parsePositiveId(opportunityId);
   const isValidId = numericId !== null;
 
-  const { data, hasLoaded, isInitialError, isFetching, error } = useGuardedQuery<
+  const { data, hasLoaded, isInitialError, isFetching } = useGuardedQuery<
     OpportunityOnboarding | typeof OPPORTUNITY_GONE
   >(
     {
@@ -76,6 +76,5 @@ export const useOpportunityDetail = (opportunityId: string) => {
     hasLoaded,
     isInitialError,
     isFetching,
-    error,
   };
 };
