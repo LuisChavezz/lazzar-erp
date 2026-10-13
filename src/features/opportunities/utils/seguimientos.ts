@@ -49,10 +49,10 @@ export const getRecordatorioStatus = (fecha: string, today: string): Recordatori
  * Inicio de un texto libre, en un solo renglón (los saltos de línea se
  * aplanan) y con elipsis si se recorta. Corta por CARACTERES completos
  * (`Array.from`), no por unidades UTF-16: un `slice` directo puede partir un
- * emoji a la mitad.
+ * emoji a la mitad. Un texto ausente (`null`) cuenta como vacío.
  */
-export const previewText = (text: string, maxLength: number): string => {
-  const characters = Array.from(text.replace(/\s+/g, " ").trim());
+export const previewText = (text: string | null | undefined, maxLength: number): string => {
+  const characters = Array.from((text ?? "").replace(/\s+/g, " ").trim());
   if (characters.length <= maxLength) return characters.join("");
   return `${characters.slice(0, maxLength).join("").trimEnd()}…`;
 };

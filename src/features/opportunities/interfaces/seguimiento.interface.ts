@@ -11,6 +11,8 @@ import type { TipoSeguimiento } from "../constants/seguimientoChoices";
  * - `fecha_recordatorio` es una fecha-calendario (`YYYY-MM-DD`), sin hora.
  * - `completado_at` lo pone el backend al completar y lo limpia al reabrir.
  * - `created_at` y `completado_at` son timestamps con offset.
+ * - `detalle` es obligatorio al capturar, pero quien lo lee tolera que falte
+ *   (`previewText`): un registro creado por otra vía no debe tumbar la ficha.
  *
  * Los cuatro campos opcionales del final los añade un cambio del backend que
  * puede no estar desplegado: nada debe depender de que existan.
