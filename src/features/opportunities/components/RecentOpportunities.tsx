@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { Button } from "@/src/components/Button";
 import { ChevronRightIcon, TrendingUpIcon } from "@/src/components/Icons";
 import { LoadingSkeleton } from "@/src/components/LoadingSkeleton";
+import { SectionErrorNotice } from "@/src/components/SectionErrorNotice";
 import { safeParseAmount } from "@/src/utils/formatCurrency";
 import { formatShortDate } from "@/src/utils/formatDate";
 import { formatKpiMonto } from "@/src/utils/kpiFormat";
@@ -91,14 +91,13 @@ export const RecentOpportunities = () => {
       </div>
 
       {isInitialError ? (
-        <div role="alert" className="flex flex-col items-center gap-2 px-6 py-8 text-center">
-          <p className="text-sm text-red-600 dark:text-red-400">
-            No se pudieron cargar las oportunidades recientes.
-          </p>
-          <Button variant="secondary" onClick={() => refetch()} disabled={isFetching}>
-            {isFetching ? "Reintentando..." : "Reintentar"}
-          </Button>
-        </div>
+        <SectionErrorNotice
+          variant="inline"
+          className="px-6 py-8"
+          message="No se pudieron cargar las oportunidades recientes."
+          onRetry={() => refetch()}
+          isRetrying={isFetching}
+        />
       ) : opportunities === undefined ? (
         <div role="status" aria-label="Cargando oportunidades recientes" className="space-y-2 p-6">
           {Array.from({ length: RECENT_OPPORTUNITIES_LIMIT }).map((_, index) => (

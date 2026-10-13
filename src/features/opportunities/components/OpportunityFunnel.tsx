@@ -2,9 +2,9 @@
 
 import Link from "next/link";
 import { useId, useState, type ReactNode } from "react";
-import { Button } from "@/src/components/Button";
 import { ChevronDownIcon, ChevronRightIcon, FilterIcon } from "@/src/components/Icons";
 import { LoadingSkeleton } from "@/src/components/LoadingSkeleton";
+import { SectionErrorNotice } from "@/src/components/SectionErrorNotice";
 import { safeParseAmount } from "@/src/utils/formatCurrency";
 import { formatKpiMonto, plural } from "@/src/utils/kpiFormat";
 import {
@@ -246,12 +246,13 @@ export const OpportunityFunnel = ({ params, filter, compact = false }: Opportuni
       <div id={bodyId} className={bodyCls}>
 
       {isInitialError ? (
-        <div role="alert" className="flex flex-col items-center gap-2 px-1 py-3 text-center">
-          <p className="text-sm text-red-600 dark:text-red-400">No se pudo cargar el embudo.</p>
-          <Button variant="secondary" onClick={() => refetch()} disabled={isFetching}>
-            {isFetching ? "Reintentando..." : "Reintentar"}
-          </Button>
-        </div>
+        <SectionErrorNotice
+          variant="inline"
+          className="px-1 py-3"
+          message="No se pudo cargar el embudo."
+          onRetry={() => refetch()}
+          isRetrying={isFetching}
+        />
       ) : embudo === undefined ? (
         <div
           role="status"

@@ -6,6 +6,7 @@ import { ActionMenu, type ActionMenuItem } from "@/src/components/ActionMenu";
 import { ActivityTimeline, ActivityTimelineItem } from "@/src/components/ActivityTimeline";
 import { Button } from "@/src/components/Button";
 import { EmptyLines, Section, SectionTitle } from "@/src/components/DetailDialogPrimitives";
+import { SectionErrorNotice } from "@/src/components/SectionErrorNotice";
 import {
   CommentIcon,
   DeleteIcon,
@@ -223,14 +224,12 @@ export const OpportunitySeguimientos = ({
         </p>
       )}
       {isInitialError ? (
-        <div role="alert" className="flex flex-col items-center gap-2 px-1 py-4 text-center">
-          <p className="text-sm text-red-600 dark:text-red-400">
-            No se pudieron cargar los seguimientos.
-          </p>
-          <Button variant="secondary" onClick={() => refetch()} disabled={isFetching}>
-            {isFetching ? "Reintentando..." : "Reintentar"}
-          </Button>
-        </div>
+        <SectionErrorNotice
+          variant="inline"
+          message="No se pudieron cargar los seguimientos."
+          onRetry={() => refetch()}
+          isRetrying={isFetching}
+        />
       ) : seguimientos === undefined ? (
         <EmptyLines>Cargando seguimientos...</EmptyLines>
       ) : seguimientos.length === 0 ? (

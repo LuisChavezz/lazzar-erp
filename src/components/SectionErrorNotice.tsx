@@ -2,11 +2,20 @@ import { Button } from "./Button";
 import { RefreshIcon, WarningFilledIcon } from "./Icons";
 
 interface SectionErrorNoticeProps {
-  title: string;
+  /** Solo en la variante `notice`; la `inline` no lo muestra. */
+  title?: string;
   message: string;
   onRetry: () => void;
   /** Reintento en curso: deshabilita el botón y cambia su texto. */
   isRetrying: boolean;
+  /**
+   * `notice` (por defecto): el aviso ámbar con título. `inline`: el mensaje en
+   * rojo y centrado DENTRO de una tarjeta que ya tiene su propio título (el
+   * historial de seguimientos, el embudo, las oportunidades recientes).
+   */
+  variant?: "notice" | "inline";
+  /** Solo `inline`: el espaciado, que depende de la tarjeta que lo contiene. */
+  className?: string;
 }
 
 /**
@@ -15,8 +24,29 @@ interface SectionErrorNoticeProps {
  * pantalla sigue disponible, solo falta este bloque. Extraído de la
  * trazabilidad del pedido (`OrderTraceabilitySection`) sin cambiar su markup;
  * lo usan también los indicadores de OP (`ProductionOrderKpisSection`).
+ *
+ * La variante `inline` es el mismo aviso para una sección que es una tarjeta
+ * con título propio: sin marco ni título, y con `role="alert"`.
  */
-export function SectionErrorNotice({ title, message, onRetry, isRetrying }: SectionErrorNoticeProps) {
+export function SectionErrorNotice({
+  title,
+  message,
+  onRetry,
+  isRetrying,
+  variant = "notice",
+  className = "px-1 py-4",
+}: SectionErrorNoticeProps) {
+  if (variant === "inline") {
+    return (
+      <div role="alert" className={`flex flex-col items-center gap-2 text-center ${className}`}>
+        <p className="text-sm text-red-600 dark:text-red-400">{message}</p>
+        <Button variant="secondary" onClick={onRetry} disabled={isRetrying}>
+          {isRetrying ? "Reintentando..." : "Reintentar"}
+        </Button>
+      </div>
+    );
+  }
+
   return (
     <div
       role="status"
