@@ -56,9 +56,6 @@ export interface OpportunitySeguimientoActions {
 
 interface OpportunitySeguimientosProps {
   opportunity: Opportunity;
-  /** Cuenta de pendientes y fecha más próxima, calculadas por el backend (del detalle). */
-  pendientes: number;
-  proximoRecordatorio: string | null;
   actions: OpportunitySeguimientoActions;
 }
 
@@ -68,9 +65,11 @@ interface OpportunitySeguimientosProps {
  * acción; los diálogos y las mutaciones viven en `OpportunityDetailContent`.
  *
  * - **Datos**: la lista es una consulta propia con TODOS los seguimientos
- *   (`useOpportunitySeguimientos`); el resumen viene del detalle. La sección
- *   tiene su propia carga y su propio error, con reintento: un fallo aquí no
- *   tumba el resto de la ficha.
+ *   (`useOpportunitySeguimientos`), y el resumen de la cabecera (cuántos
+ *   pendientes y la fecha más próxima) se calcula de ESA lista: no pueden
+ *   contradecirse. La sección tiene su propia carga y su propio error, con
+ *   reintento —y sin resumen mientras tanto—: un fallo aquí no tumba el resto
+ *   de la ficha.
  * - **Orden**: primero lo pendiente, por fecha de recordatorio; después lo
  *   completado, de lo más nuevo a lo más viejo (`groupSeguimientos`).
  * - **Recordatorio** (solo en pendientes): vencido en rojo y con la palabra
@@ -89,8 +88,6 @@ interface OpportunitySeguimientosProps {
  */
 export const OpportunitySeguimientos = ({
   opportunity,
-  pendientes,
-  proximoRecordatorio,
   actions,
 }: OpportunitySeguimientosProps) => {
   const { seguimientos, isInitialError, isFetching, refetch } = useOpportunitySeguimientos(
@@ -104,6 +101,10 @@ export const OpportunitySeguimientos = ({
 
   const groups = groupSeguimientos(seguimientos ?? []);
   const isClosed = isOportunidadCerrada(opportunity.estado);
+  // Resumen, de la misma lista que se pinta. Los pendientes van por fecha y con
+  // los que no la tienen al final: la del primero es la más próxima.
+  const pendientes = groups.pendientes.length;
+  const proximoRecordatorio = groups.pendientes[0]?.fecha_recordatorio ?? null;
 
   const renderItem = (seguimiento: OpportunitySeguimiento) => {
     const Icon = TIPO_ICONS[seguimiento.tipo] ?? CommentIcon;
@@ -202,7 +203,7 @@ export const OpportunitySeguimientos = ({
       title="Seguimientos"
       action={
         <div className="flex flex-wrap items-center justify-end gap-3">
-          {!isClosed && (
+          {!isClosed && seguimientos !== undefined && (
             <span className="text-xs text-slate-500 dark:text-slate-400 tabular-nums">{summary}</span>
           )}
           <Button

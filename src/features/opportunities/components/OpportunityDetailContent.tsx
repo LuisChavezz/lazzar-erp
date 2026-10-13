@@ -352,8 +352,6 @@ function OpportunityDetailBody({
 
       <OpportunitySeguimientos
         opportunity={opportunity}
-        pendientes={data.pendientes ?? 0}
-        proximoRecordatorio={data.proximo_recordatorio ?? null}
         actions={seguimientoActions}
       />
 

@@ -1,6 +1,5 @@
 import type { CarteraMoneda } from "@/src/features/customers/interfaces/customer.interface";
 import type { Opportunity } from "./opportunity.interface";
-import type { OpportunitySeguimiento } from "./seguimiento.interface";
 
 /**
  * Cotización ligada a una oportunidad, con el pedido que nació de ella (si lo
@@ -19,28 +18,22 @@ export interface OpportunityCotizacion {
 }
 
 /**
- * Respuesta de `GET /ventas/oportunidades/{id}/onboarding/`: todo lo de la
- * pantalla de una oportunidad en una sola llamada.
+ * Respuesta de `GET /ventas/oportunidades/{id}/onboarding/`: lo que la
+ * pantalla de una oportunidad usa de ella.
  *
  * - `oportunidad` tiene la MISMA forma que la fila del listado.
  * - `cartera` usa las mismas llaves que `resumen_comercial.cartera` del
  *   cliente. Llega `[]` si la oportunidad no tiene cliente, si el cliente no
  *   debe nada O si el usuario no puede ver a ese cliente: el backend no los
  *   distingue.
- * - `seguimientos` trae como mucho los 50 más recientes, completados o no. La
- *   pantalla NO lo usa: el historial tiene su propia consulta
- *   (`useOpportunitySeguimientos`), que los trae todos.
- * - `pendientes` cuenta TODOS los seguimientos sin completar. OJO: el backend los
- *   cuenta también en una oportunidad `Perdida`, donde no deberían contar; la
- *   pantalla no muestra la cifra en ese estado.
- * - `proximo_recordatorio` es la fecha más próxima entre los pendientes
- *   (incluye las ya vencidas), o `null`.
+ * - La respuesta trae además `seguimientos` (solo los 50 más recientes),
+ *   `pendientes` y `proximo_recordatorio`. NO se tipan a propósito, para que
+ *   nada dependa de ellos: el historial tiene su propia consulta
+ *   (`useOpportunitySeguimientos`), que los trae todos, y el resumen se calcula
+ *   de esa lista.
  */
 export interface OpportunityOnboarding {
   oportunidad: Opportunity;
-  seguimientos: OpportunitySeguimiento[];
-  pendientes: number;
-  proximo_recordatorio: string | null;
   cotizaciones: OpportunityCotizacion[];
   cartera: CarteraMoneda[];
 }
