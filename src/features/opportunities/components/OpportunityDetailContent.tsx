@@ -6,10 +6,8 @@ import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { ArrowLeftIcon, DeleteIcon, EditIcon } from "@/src/components/Icons";
 import { Button } from "@/src/components/Button";
-import { DialogHeader } from "@/src/components/DialogHeader";
 import { ErrorState } from "@/src/components/ErrorState";
 import { Loader } from "@/src/components/Loader";
-import { MainDialog } from "@/src/components/MainDialog";
 import { StatusBadge } from "@/src/components/StatusBadge";
 import {
   InfoField,
@@ -29,7 +27,7 @@ import type { OpportunityOnboarding } from "../interfaces/opportunity-onboarding
 import { OpportunityCotizaciones } from "./OpportunityCotizaciones";
 import { OpportunityCotizarAction } from "./OpportunityCotizarAction";
 import { OpportunityDeleteDialog } from "./OpportunityDeleteDialog";
-import OpportunityForm from "./OpportunityForm";
+import { OpportunityFormDialog } from "./OpportunityFormDialog";
 
 const MUTED_CLS = "text-slate-400 dark:text-slate-500";
 
@@ -66,18 +64,12 @@ export const OpportunityDetailContent = ({ opportunityId }: OpportunityDetailCon
     enabled: !wasDeletedHere,
   });
 
-  // El formulario recibe una COPIA tomada al abrir, no `data.oportunidad` en
-  // vivo: una relectura a media edición no debe cambiarle el registro base con
-  // el que calcula qué campos cambiaron. `formSession` monta un formulario
-  // nuevo en cada apertura (ver `OpportunityList`).
   const [opportunityToEdit, setOpportunityToEdit] = useState<Opportunity | null>(null);
   const [isEditOpen, setIsEditOpen] = useState(false);
-  const [formSession, setFormSession] = useState(0);
   const [opportunityToDelete, setOpportunityToDelete] = useState<Opportunity | null>(null);
 
   const handleEdit = (opportunity: Opportunity) => {
     setOpportunityToEdit(opportunity);
-    setFormSession((current) => current + 1);
     setIsEditOpen(true);
   };
 
@@ -146,20 +138,11 @@ export const OpportunityDetailContent = ({ opportunityId }: OpportunityDetailCon
       {backLink}
       {content}
 
-      <MainDialog
-        title={
-          <DialogHeader title="Editar Oportunidad" subtitle="Edición de registro" statusColor="sky" />
-        }
+      <OpportunityFormDialog
         open={isEditOpen}
         onOpenChange={setIsEditOpen}
-        maxWidth="1000px"
-      >
-        <OpportunityForm
-          key={formSession}
-          onSuccess={() => setIsEditOpen(false)}
-          opportunityToEdit={opportunityToEdit}
-        />
-      </MainDialog>
+        opportunityToEdit={opportunityToEdit}
+      />
 
       <OpportunityDeleteDialog
         opportunity={opportunityToDelete}
