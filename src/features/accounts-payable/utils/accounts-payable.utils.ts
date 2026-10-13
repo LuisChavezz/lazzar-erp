@@ -1,38 +1,10 @@
 // Funciones puras de derivación para Cuentas por Pagar: la marca de vencida, las
 // reglas de borrado y el formato de importes por moneda. No consultan la hora por
-// su cuenta salvo `todayInBackendTimeZone`: la vista calcula "hoy" UNA vez y lo
-// comparte entre la tabla, el filtro "Solo vencidas" y el detalle.
+// su cuenta: la vista calcula "hoy" UNA vez (`getMexicoTodayDate`, el día del
+// backend) y lo comparte entre la tabla, el filtro "Solo vencidas" y el detalle.
 
 import { safeParseAmount } from "@/src/utils/formatCurrency";
 import type { CuentaPorPagar } from "../interfaces/accounts-payable.interface";
-
-/**
- * Zona horaria del backend (`TIME_ZONE` en los settings de nucleo-erp). El
- * filtro `?vencidas=true` compara contra `timezone.localdate()`, que es la fecha
- * calendario EN ESTA ZONA.
- */
-const BACKEND_TIME_ZONE = "America/Mexico_City";
-
-/**
- * Fecha calendario de hoy ("YYYY-MM-DD") en la zona horaria del backend.
- *
- * NO se usa `startOfTodayUTC` de CxC: la medianoche UTC llega a las 18:00 en
- * Ciudad de México, así que durante las últimas seis horas del día una cuenta
- * que vence HOY se marcaría vencida en pantalla mientras el backend todavía no la
- * considera así. Anclar "hoy" a la zona del backend hace que la marca y
- * `?vencidas=true` coincidan sin importar la zona del navegador.
- */
-export const todayInBackendTimeZone = (now: Date = new Date()): string => {
-  const parts = new Intl.DateTimeFormat("en-US", {
-    timeZone: BACKEND_TIME_ZONE,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).formatToParts(now);
-  const part = (type: Intl.DateTimeFormatPartTypes) =>
-    parts.find((p) => p.type === type)?.value ?? "";
-  return `${part("year")}-${part("month")}-${part("day")}`;
-};
 
 const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -49,7 +21,10 @@ const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
  *   3. conserva saldo (`saldo > 0`): una cuenta pagada no está vencida;
  *   4. no está `Cancelada`.
  *
- * `today` es "YYYY-MM-DD" (ver `todayInBackendTimeZone`). Dos fechas ISO del
+ * `today` es "YYYY-MM-DD" en la zona del backend (`getMexicoTodayDate`, de
+ * `src/utils/mexicoTime.ts`): el filtro `?vencidas=true` compara contra
+ * `timezone.localdate()`, así que la marca y el filtro coinciden sin importar
+ * la zona del navegador. Dos fechas ISO del
  * mismo formato se comparan exactas como strings, sin pasar por `Date` ni por
  * zonas horarias. Una `fecha_vencimiento` mal formada NO se marca vencida.
  *

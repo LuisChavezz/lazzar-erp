@@ -17,10 +17,10 @@ import {
   TasksIcon,
 } from "@/src/components/Icons";
 import { useCompanyAdminStatus } from "@/src/features/users/hooks/useIsCompanyAdmin";
+import { useBackendToday } from "@/src/hooks/useBackendToday";
 import { formatShortDate, formatShortDateTime } from "@/src/utils/formatDate";
 import { isOportunidadCerrada } from "../constants/opportunityChoices";
 import type { TipoSeguimiento } from "../constants/seguimientoChoices";
-import { useBackendToday } from "../hooks/useBackendToday";
 import { useOpportunitySeguimientos } from "../hooks/useOpportunitySeguimientos";
 import type { Opportunity } from "../interfaces/opportunity.interface";
 import type { OpportunitySeguimiento } from "../interfaces/seguimiento.interface";

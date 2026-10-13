@@ -7,12 +7,10 @@ import { ConfirmDialog } from "@/src/components/ConfirmDialog";
 import { useRowActionLock } from "@/src/hooks/useRowActionLock";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { isInitialLoadError } from "@/src/utils/isInitialLoadError";
+import { getMexicoTodayDate } from "@/src/utils/mexicoTime";
 import { useCuentasPorPagar } from "../hooks/useCuentasPorPagar";
 import { useDeleteCuentaPorPagar } from "../hooks/useDeleteCuentaPorPagar";
-import {
-  isCuentaPorPagarVencida,
-  todayInBackendTimeZone,
-} from "../utils/accounts-payable.utils";
+import { isCuentaPorPagarVencida } from "../utils/accounts-payable.utils";
 import {
   CXP_CONFLICT_FALLBACK_MESSAGE,
   parseCuentaPorPagarError,
@@ -74,7 +72,7 @@ export default function AccountsPayableList() {
 
   // "Hoy" se calcula UNA vez por render y lo comparten la tabla, el filtro "Solo
   // vencidas" y el detalle: los tres usan `isCuentaPorPagarVencida`.
-  const today = todayInBackendTimeZone();
+  const today = getMexicoTodayDate();
   const vencidas = cuentasPorPagar.filter((cuenta) =>
     isCuentaPorPagarVencida(cuenta, today),
   );
