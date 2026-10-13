@@ -12,8 +12,7 @@ import {
   TrendingUpIcon,
 } from "@/src/components/Icons";
 import { Button } from "@/src/components/Button";
-import { hasAnyPermission, hasPermission } from "@/src/utils/permissions";
-import { routePermissions } from "@/src/constants/routePermissions";
+import { hasPermission } from "@/src/utils/permissions";
 import { Loader } from "@/src/components/Loader";
 import { ErrorState } from "@/src/components/ErrorState";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
@@ -37,6 +36,7 @@ import {
 } from "@/src/features/invoicing/constants/invoiceDetailOrigins";
 import { parsePositiveId } from "@/src/utils/parsePositiveId";
 import { canAccessRoute } from "@/src/utils/routeAccess";
+import { canLandOnQuoteEdit } from "@/src/features/quotes/utils/quoteEditRouteAccess";
 import { resolveInvoiceDetailSheet } from "@/src/features/invoicing/constants/invoiceDetailSheets";
 import {
   buildOrderDetailSheetHref,
@@ -169,26 +169,6 @@ function resolveBack(
   return BACK_TARGETS[from];
 }
 
-/**
- * Regla del proxy que cubre /sales/quotes/{id}/edit, resuelta con la MISMA
- * búsqueda que `src/proxy.ts` (primera coincidencia de `prefix` exacto o
- * `prefix/`). El id es un ejemplo: la regla no depende de él. Si cambia el
- * mapa en `routePermissions`, esto lo sigue sin tocar este archivo.
- */
-const QUOTE_EDIT_SAMPLE_PATH = "/sales/quotes/0/edit";
-const QUOTE_EDIT_ROUTE_RULE = routePermissions.find(
-  ({ prefix }) =>
-    QUOTE_EDIT_SAMPLE_PATH === prefix || QUOTE_EDIT_SAMPLE_PATH.startsWith(`${prefix}/`),
-);
-
-function canAccessQuoteEditRoute(
-  user: Parameters<typeof hasPermission>[1],
-): boolean {
-  if (!QUOTE_EDIT_ROUTE_RULE) return true;
-  const { permission } = QUOTE_EDIT_ROUTE_RULE;
-  return hasAnyPermission(Array.isArray(permission) ? permission : [permission], user);
-}
-
 // ── Componente principal ─────────────────────────────────────────────────────
 
 interface PedidoDetailContentProps {
@@ -233,16 +213,10 @@ export function PedidoDetailContent({
   // `pedidoEditAccess.server.ts`.
   const canEditMesaControl = hasPermission("E-MESACONTROL-PEDIDOS", session?.user);
   // Recompra aterriza en /sales/quotes/{id}/edit, así que exige EXACTAMENTE lo
-  // que exige esa ruta; si no, el usuario crearía la cotización y rebotaría
-  // DESPUÉS, dejándola huérfana:
-  //   - la regla del proxy para esa ruta (hoy "/sales/quotes" →
-  //     R-CRM-COTIZACIONES), derivada de `routePermissions` en vez de repetir
-  //     el código;
-  //   - E-CRM-COTIZACIONES, el guard de la página (`quoteEditAccess.server`).
-  // No se pide `C-CRM-COTIZACIONES`: ningún rol lo tiene (tampoco "Ventas").
-  const canRecomprar =
-    canAccessQuoteEditRoute(session?.user) &&
-    hasPermission("E-CRM-COTIZACIONES", session?.user);
+  // que exige esa ruta (regla del proxy + guard de la página, ver
+  // `canLandOnQuoteEdit`); si no, el usuario crearía la cotización y rebotaría
+  // DESPUÉS, dejándola huérfana.
+  const canRecomprar = canLandOnQuoteEdit(session?.user);
 
   // Documento abierto (`null` = cerrado). Un solo estado para todos los tipos
   // navegables; el diálogo se resuelve del registro según `openDoc.tipo`.
