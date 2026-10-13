@@ -94,14 +94,17 @@ export function OpportunityClienteHeader({ column }: { column: OpportunityColumn
  * El filtro solo se pinta para quien puede ver oportunidades de otros
  * (`useIsCompanyAdmin`, que falla cerrado): a un vendedor el backend le
  * devuelve solo las suyas, así que el filtro no le serviría de nada.
+ *
+ * El catálogo de usuarios (`/usuarios/`, lento) lo pide el componente del
+ * filtro, que solo se monta para un administrador: un vendedor nunca lo carga.
  */
 export function OpportunityVendedorHeader({ column }: { column: OpportunityColumn }) {
   const canSeeOthers = useIsCompanyAdmin();
-  const { data: users, isLoading, isError } = useUsers();
+  return canSeeOthers ? <VendedorFilterHeader column={column} /> : <span>Vendedor</span>;
+}
 
-  if (!canSeeOthers) {
-    return <span>Vendedor</span>;
-  }
+function VendedorFilterHeader({ column }: { column: OpportunityColumn }) {
+  const { data: users, isLoading, isError } = useUsers();
 
   const options: ColumnFilterOption[] = [
     ALL_OPTION,

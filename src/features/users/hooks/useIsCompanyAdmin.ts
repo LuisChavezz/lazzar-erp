@@ -1,11 +1,9 @@
 import { useSession } from "next-auth/react";
-import { parsePositiveId } from "@/src/utils/parsePositiveId";
-import { useUsers } from "./useUsers";
 
 /**
- * - `admin` / `not-admin`: RESUELTO con el registro del propio usuario.
- * - `unknown`: aún no se sabe (el catálogo carga, falló, o el usuario no
- *   aparece en él).
+ * - `admin` / `not-admin`: RESUELTO con los datos de la sesión.
+ * - `unknown`: aún no se sabe — la sesión está cargando, o se creó antes de
+ *   que guardara estos campos (hasta que el usuario vuelva a iniciar sesión).
  */
 export type CompanyAdminStatus = "admin" | "not-admin" | "unknown";
 
@@ -18,29 +16,27 @@ export type CompanyAdminStatus = "admin" | "not-admin" | "unknown";
  * la sesión: ese rol también se concede a `is_staff`, que el backend NO trata
  * como administrador de empresa.
  *
- * La sesión no trae esos dos campos, así que se leen del registro del propio
- * usuario en el catálogo `/usuarios/` (el id de sesión es un string; el del
- * catálogo, un número).
+ * Los dos campos viajan en la sesión desde el inicio de sesión
+ * (`src/lib/auth.ts`), así que no hace falta ninguna petición.
  *
  * Distingue "resuelto que no" de "todavía no se sabe": quien deba ACTUAR sobre
  * un no (p. ej. quitar un filtro que el usuario no puede usar) solo lo hace
- * con `not-admin`, nunca con `unknown`.
+ * con `not-admin`, nunca con `unknown`. Una sesión sin los campos es `unknown`,
+ * no `not-admin`: a un administrador con un token anterior no se le trata como
+ * vendedor.
  */
 export const useCompanyAdminStatus = (): CompanyAdminStatus => {
   const { data: session } = useSession();
-  const { data: users } = useUsers();
+  const user = session?.user;
 
-  const sessionUserId = parsePositiveId(session?.user?.id);
-  if (!users || sessionUserId === null) return "unknown";
-
-  const currentUser = users.find((user) => user.id === sessionUserId);
-  if (!currentUser) return "unknown";
-  return currentUser.is_admin_empresa || currentUser.is_superuser ? "admin" : "not-admin";
+  if (typeof user?.is_admin_empresa !== "boolean" || typeof user.is_superuser !== "boolean") {
+    return "unknown";
+  }
+  return user.is_admin_empresa || user.is_superuser ? "admin" : "not-admin";
 };
 
 /**
- * Versión booleana, que FALLA CERRADO: `false` mientras el catálogo carga, si
- * falla o si el usuario no aparece en él. Quien la use para mostrar algo solo
- * lo muestra con la respuesta confirmada.
+ * Versión booleana, que FALLA CERRADO: `false` mientras no se sepa. Quien la
+ * use para mostrar algo solo lo muestra con la respuesta confirmada.
  */
 export const useIsCompanyAdmin = (): boolean => useCompanyAdminStatus() === "admin";

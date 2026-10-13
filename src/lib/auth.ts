@@ -56,7 +56,14 @@ export const authOptions: NextAuthOptions = {
             name: fullName,
             email: user.email,
             role: isAdminUser ? "admin" : "user",
-            permissions: user.permisos
+            permissions: user.permisos,
+            /* Los dos campos con los que el backend acota listados por
+             * usuario (p. ej. oportunidades). `role` los mezcla con `es_admin`
+             * (`is_staff`), así que no sirve para eso. Estrictamente booleanos:
+             * un valor ausente se queda `undefined` ("no se sabe"). */
+            is_admin_empresa:
+              typeof user.is_admin_empresa === "boolean" ? user.is_admin_empresa : undefined,
+            is_superuser: typeof user.is_superuser === "boolean" ? user.is_superuser : undefined,
           };
         } catch {
           /* Token inválido/caducado, backend caído o respuesta inesperada:
@@ -75,6 +82,8 @@ export const authOptions: NextAuthOptions = {
       if (user) {
         token.role = user.role;
         token.permissions = user.permissions;
+        token.is_admin_empresa = user.is_admin_empresa;
+        token.is_superuser = user.is_superuser;
         token.sub = user.id || token.sub;
       }
       return token;
@@ -84,6 +93,8 @@ export const authOptions: NextAuthOptions = {
         session.user.id = token.sub as string;
         session.user.role = token.role;
         session.user.permissions = token.permissions;
+        session.user.is_admin_empresa = token.is_admin_empresa;
+        session.user.is_superuser = token.is_superuser;
       }
       return session;
     },

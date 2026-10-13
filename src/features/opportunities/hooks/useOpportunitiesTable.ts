@@ -62,9 +62,9 @@ export const useOpportunitiesTable = () => {
   // activo sin control a la vista: se quita por la misma vía que cualquier
   // filtro (`setFilter`, que vuelve a la página 1 y conserva lo demás).
   //
-  // Solo con la respuesta RESUELTA (`not-admin`): mientras el catálogo de
-  // usuarios carga, o si falla, el parámetro se queda — a un administrador no
-  // se le debe quitar su filtro por un instante de carga.
+  // Solo con la respuesta RESUELTA (`not-admin`): mientras la sesión carga, o
+  // si es anterior a que guardara ese dato (`unknown`), el parámetro se queda —
+  // a un administrador no se le debe quitar su filtro por no saberlo aún.
   const adminStatus = useCompanyAdminStatus();
   const hasVendedorFilter = table.state.filters.vendedor !== undefined;
   const dropVendedorFilter = useEffectEvent(() => table.setFilter("vendedor", undefined));
