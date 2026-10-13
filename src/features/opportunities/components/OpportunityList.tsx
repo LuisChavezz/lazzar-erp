@@ -11,7 +11,10 @@ import { useOpportunitiesTable } from "../hooks/useOpportunitiesTable";
 import { OpportunityRowActionsProvider } from "../hooks/useOpportunityRowActions";
 import type { EstadoOportunidad } from "../constants/opportunityChoices";
 import type { Opportunity } from "../interfaces/opportunity.interface";
-import { serializeOpportunitiesListState } from "../utils/opportunityListQuery";
+import {
+  readCurrentOpportunitiesEstado,
+  serializeOpportunitiesListState,
+} from "../utils/opportunityListQuery";
 
 /**
  * Listado de oportunidades del CRM, en MODO SERVIDOR: filtros, búsqueda, orden
@@ -52,8 +55,11 @@ export default function OpportunityList() {
   const funnelParams = Object.fromEntries(
     Object.entries(table.criteria).filter(([key]) => key !== "estado" && key !== "ordering")
   );
+  // Aplicar o quitar se decide con la URL del momento del clic, no con el
+  // `activeEstado` de este render: dos clics seguidos en la misma barra deben
+  // aplicar y luego quitar.
   const handleToggleEstado = (estado: EstadoOportunidad) =>
-    table.setFilter("estado", estado === activeEstado ? undefined : estado);
+    table.setFilter("estado", estado === readCurrentOpportunitiesEstado() ? undefined : estado);
 
   return (
     <OpportunityRowActionsProvider

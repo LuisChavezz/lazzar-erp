@@ -45,6 +45,16 @@ export const readOpportunityListParam = (raw: string | string[] | undefined): st
   );
 };
 
+/**
+ * El `estado` filtrado según la URL del navegador EN ESTE MOMENTO, validado.
+ * Para decidir en un clic: el estado que da `useServerTable` es el del último
+ * render, y Next sincroniza `useSearchParams` un poco después de cada cambio.
+ */
+export const readCurrentOpportunitiesEstado = (): EstadoOportunidad | undefined => {
+  const query = new URLSearchParams(window.location.search);
+  return readServerTableState(opportunitiesTable, (key) => query.get(key)).filters.estado;
+};
+
 /** `listQuery` debe venir de una de las dos funciones de arriba. */
 export const opportunitiesListHref = (listQuery: string): string =>
   listQuery ? `${OPPORTUNITIES_LIST_PATH}?${listQuery}` : OPPORTUNITIES_LIST_PATH;
