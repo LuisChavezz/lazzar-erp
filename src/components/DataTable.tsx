@@ -43,7 +43,6 @@ import { ErrorState } from "./ErrorState";
 import { ErrorDisplay } from "./ui/ErrorDisplay";
 import { DropdownMenu } from "@radix-ui/themes";
 import {
-  CLIENT_TABLE_MODE,
   DataTableModeContext,
   SERVER_PAGINATION_TABLE_MODE,
   type DataTableModeContextValue,
@@ -696,8 +695,8 @@ export function DataTable<TData, TValue>({
         ? { mode: "server", filters: serverFilters }
         : isServerPaginated
         ? SERVER_PAGINATION_TABLE_MODE
-        : CLIENT_TABLE_MODE,
-    [isServerMode, isServerPaginated, serverFilters]
+        : { mode: "client", columnFilters },
+    [isServerMode, isServerPaginated, serverFilters, columnFilters]
   );
   // Buscador fijo de la izquierda: el de siempre en cliente (filtra en
   // memoria); en modo servidor, el mismo input controlado por `server.search`.

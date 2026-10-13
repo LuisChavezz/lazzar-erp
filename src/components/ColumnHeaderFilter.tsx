@@ -90,7 +90,11 @@ export function ColumnHeaderFilter<TData>({
   const activeValue =
     serverFilters !== undefined && serverFilterKey !== undefined
       ? serverFilters.values[serverFilterKey]
-      : (column.getFilterValue() as string | undefined);
+      : tableMode.mode === 'client' && tableMode.columnFilters !== undefined
+        ? (tableMode.columnFilters.find((filter) => filter.id === column.id)?.value as
+            | string
+            | undefined)
+        : (column.getFilterValue() as string | undefined);
   const applyValue = (value: string | undefined) => {
     if (serverFilters !== undefined && serverFilterKey !== undefined) {
       serverFilters.onChange(serverFilterKey, value);

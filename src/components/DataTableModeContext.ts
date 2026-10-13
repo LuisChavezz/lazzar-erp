@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext } from "react";
+import type { ColumnFiltersState } from "@tanstack/react-table";
 
 /**
  * Filtros de servidor que `DataTable` publica a sus encabezados cuando está en
@@ -18,6 +19,10 @@ export interface DataTableServerFilters {
  * En qué modo está la `DataTable` que envuelve a un encabezado:
  *
  * - `client` (por defecto, también FUERA de una tabla): todo en memoria.
+ *   `columnFilters` es el estado de filtros de columna de la tabla: el
+ *   encabezado lo lee de aquí porque `column.getFilterValue()` no es reactivo
+ *   (la `column` de TanStack conserva su identidad y el React Compiler cachea
+ *   la lectura por esa identidad).
  * - `server-pagination`: la prop obsoleta `serverPagination`. La tabla solo
  *   tiene la página actual, así que un filtro de encabezado filtraría esa
  *   página y nada más.
@@ -25,7 +30,7 @@ export interface DataTableServerFilters {
  *   resuelve el backend; `filters` es el estado de los filtros de encabezado.
  */
 export type DataTableModeContextValue =
-  | { mode: "client" }
+  | { mode: "client"; columnFilters?: ColumnFiltersState }
   | { mode: "server-pagination" }
   | { mode: "server"; filters: DataTableServerFilters | undefined };
 
