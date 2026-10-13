@@ -185,6 +185,7 @@ export function useQuoteEditForm(quoteId: number) {
     data: quoteData,
     isLoading: isQuoteLoading,
     isFetching: isQuoteFetching,
+    isFetchedAfterMount: isQuoteFetchedAfterMount,
     error: quoteError,
     refetch: refetchQuote,
   } = useQuote(quoteId);
@@ -198,10 +199,17 @@ export function useQuoteEditForm(quoteId: number) {
    * redirigen al listado igual que un estatus no editable, pero AVISANDO por
    * toast: quien llega por un enlace (p. ej. desde una oportunidad cuya
    * cotización creó otra persona) debe saber por qué no la ve. El redirect por
-   * estatus sigue siendo silencioso. */
+   * estatus sigue siendo silencioso.
+   *
+   * La denegación solo cuenta si la respondió una consulta de ESTE montaje
+   * (`isFetchedAfterMount`). Al volver a abrir el enlace, la caché puede traer
+   * el 404/403 de un intento anterior mientras la relectura apenas empieza: con
+   * ese error viejo no se avisa ni se redirige (se sigue cargando), porque el
+   * acceso pudo cambiar entretanto —p. ej. le transfirieron la cotización—. */
   const quoteErrorStatus =
     quoteError instanceof AxiosError ? quoteError.response?.status : undefined;
-  const quoteAccessDenied = quoteErrorStatus === 404 || quoteErrorStatus === 403;
+  const isQuoteAccessError = quoteErrorStatus === 404 || quoteErrorStatus === 403;
+  const quoteAccessDenied = isQuoteAccessError && isQuoteFetchedAfterMount;
   const shouldRedirectToQuotesList =
     (Boolean(quoteData) && !isEditableQuoteStatus) || quoteAccessDenied;
   /* Cualquier otro fallo de la consulta (500, error de red, timeout tras los
@@ -209,7 +217,7 @@ export function useQuoteEditForm(quoteId: number) {
    * QuoteEditForm muestra un estado de error con reintento en vez de dejar el
    * loader "Cargando formulario…" girando para siempre — misma distinción
    * denegación/fallo-técnico que aplica el guard del servidor. */
-  const quoteLoadFailed = Boolean(quoteError) && !quoteAccessDenied;
+  const quoteLoadFailed = Boolean(quoteError) && !isQuoteAccessError;
 
   const userName = session?.user?.name || "Usuario";
   const sellerName = userName;
