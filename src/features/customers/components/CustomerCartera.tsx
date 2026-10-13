@@ -27,6 +27,13 @@ const TD_CLASS = "px-3 py-2 whitespace-nowrap";
 interface CustomerCarteraProps {
   cartera: CarteraMoneda[];
   title?: string;
+  /**
+   * Texto con `cartera` vacía. Por defecto afirma que el cliente no debe nada,
+   * que es lo que significa un `[]` en el detalle del cliente. Donde un `[]`
+   * también puede significar "no puedes ver a este cliente" (la cartera del
+   * detalle de una oportunidad) se pasa uno neutro.
+   */
+  emptyMessage?: string;
 }
 
 /**
@@ -35,17 +42,19 @@ interface CustomerCarteraProps {
  *
  * Presentacional y SIN consulta propia: recibe el arreglo `cartera` tal cual lo
  * entrega el backend, para poder montarse en cualquier detalle que lo traiga
- * (hoy `resumen_comercial.cartera` del cliente). Los importes llegan como
+ * (`resumen_comercial.cartera` del cliente, `cartera` del detalle de una
+ * oportunidad). Los importes llegan como
  * string y solo se convierten para formatearlos; aquí no se suma ni se compara
  * nada, y las monedas nunca se mezclan.
  */
 export const CustomerCartera = ({
   cartera,
   title = "Antigüedad de saldos de este cliente",
+  emptyMessage = "Este cliente no tiene saldo pendiente.",
 }: CustomerCarteraProps) => (
   <Section title={title}>
     {cartera.length === 0 ? (
-      <EmptyLines>Este cliente no tiene saldo pendiente.</EmptyLines>
+      <EmptyLines>{emptyMessage}</EmptyLines>
     ) : (
       <LineItemsTable
         head={
