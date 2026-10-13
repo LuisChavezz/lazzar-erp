@@ -59,9 +59,10 @@ interface OpportunityDetailContentProps {
 }
 
 /**
- * Página de detalle de una oportunidad: sus datos, sus seguimientos, sus
- * cotizaciones (con su pedido) y la cartera de su cliente, todo de una sola
- * llamada (`useOpportunityDetail`).
+ * Página de detalle de una oportunidad: sus datos, sus cotizaciones (con su
+ * pedido) y la cartera de su cliente, de una sola llamada
+ * (`useOpportunityDetail`), y sus seguimientos, que tienen consulta propia
+ * (`useOpportunitySeguimientos`, dentro de `OpportunitySeguimientos`).
  *
  * Estados, como el detalle de proveedor: id inválido → error sin consultar;
  * 404 → "no disponible", también si llega en una relectura (la dio de baja otra

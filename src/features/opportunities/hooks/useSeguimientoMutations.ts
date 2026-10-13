@@ -24,13 +24,14 @@ import {
  * Mutaciones de los seguimientos de una oportunidad.
  *
  * Todas releen lo de oportunidades al terminar —bien o mal— invalidando el
- * prefijo `["opportunities"]`: el historial, la cuenta de `pendientes` y el
- * `proximo_recordatorio` salen de la MISMA respuesta del detalle, así que se
- * actualizan juntos. Sin escritura optimista: esas dos cifras las calcula el
- * backend, y adelantarlas en el cliente sería adivinarlas.
+ * prefijo `["opportunities"]`, del que cuelgan las DOS consultas de la ficha:
+ * el historial (`useOpportunitySeguimientos`, de donde sale también el resumen
+ * de pendientes) y el detalle de la oportunidad. Sin escritura optimista: en
+ * qué grupo y en qué orden queda un seguimiento se decide con lo que responde
+ * el backend.
  *
  * Devuelven la promesa de esa invalidación: la mutación sigue "pending" hasta
- * que el detalle se releyó, y quien la dispara (un diálogo, un renglón
+ * que ambas se releyeron, y quien la dispara (un diálogo, un renglón
  * bloqueado) se libera con la pantalla ya al día.
  *
  * Un 404 en editar, completar, reabrir o eliminar significa que otra persona
@@ -129,7 +130,7 @@ export const useSetSeguimientoCompletado = () => {
  * Ids de los seguimientos con un completar/reabrir EN CURSO, para bloquear su
  * renglón. Sale de la caché de mutaciones y no de un `isPending`: así cada
  * renglón se bloquea por separado aunque se marquen varios seguidos, y sigue
- * bloqueado hasta que el detalle se releyó.
+ * bloqueado hasta que el historial se releyó.
  */
 export const usePendingSeguimientoIds = (): number[] =>
   useMutationState({
