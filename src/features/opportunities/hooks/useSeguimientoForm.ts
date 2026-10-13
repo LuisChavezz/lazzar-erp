@@ -1,6 +1,7 @@
 "use client";
 
 import { useForm } from "@tanstack/react-form";
+import { useQueryClient } from "@tanstack/react-query";
 import { useRef, useState } from "react";
 import type { FormEvent } from "react";
 import toast from "react-hot-toast";
@@ -18,6 +19,7 @@ import {
   type SeguimientoFormValues,
 } from "../schemas/seguimiento.schema";
 import { isOpportunityRejectedError } from "./seguimientoErrorMessages";
+import { opportunityDetailKey } from "./useOpportunityDetail";
 import { useCreateSeguimiento, useUpdateSeguimiento } from "./useSeguimientoMutations";
 
 interface UseSeguimientoFormParams {
@@ -65,6 +67,7 @@ export function useSeguimientoForm({
   onSuccess,
 }: UseSeguimientoFormParams) {
   const isEditing = seguimientoToEdit !== null;
+  const queryClient = useQueryClient();
   // Envío en curso, síncrono (ver `onSubmit`).
   const submittingRef = useRef(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -143,11 +146,18 @@ export function useSeguimientoForm({
       //
       // Si el seguimiento ya no existe (otra persona lo eliminó), no hay nada
       // que reintentar: el diálogo se cierra y queda el historial, que la
-      // mutación ya refrescó. Lo mismo en un alta cuya OPORTUNIDAD ya no
-      // existe: la relectura deja la ficha en "no disponible".
+      // mutación ya refrescó.
+      //
+      // En un alta que el backend rechaza por la OPORTUNIDAD, el diálogo solo
+      // se cierra si la oportunidad de verdad ya no existe: la mutación releyó
+      // su detalle antes de rechazar (su `onSettled` espera la invalidación),
+      // así que basta mirar cómo quedó esa consulta. Con un 404 la ficha pasa
+      // a "no disponible"; con cualquier otro rechazo el diálogo sigue abierto
+      // con lo capturado y el aviso del backend.
       const isGone = seguimientoToEdit
         ? isNotFoundError(error)
-        : isOpportunityRejectedError(error);
+        : isOpportunityRejectedError(error) &&
+          isNotFoundError(queryClient.getQueryState(opportunityDetailKey(opportunityId))?.error);
       if (isGone) onSuccess();
     } finally {
       setIsSubmitting(false);

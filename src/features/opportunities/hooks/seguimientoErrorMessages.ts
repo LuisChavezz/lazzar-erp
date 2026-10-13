@@ -30,8 +30,9 @@ export const handleSeguimientoWriteError = (
 /**
  * ¿El alta se rechazó por la OPORTUNIDAD? El backend responde 400 con el error
  * en `oportunidad` ("Oportunidad no encontrada.") cuando se dio de baja —o dejó
- * de ser visible— mientras se capturaba el seguimiento. No es algo que el
- * usuario pueda corregir en el formulario: no hay nada que reintentar.
+ * de ser visible— mientras se capturaba el seguimiento. Por sí solo no prueba
+ * que la oportunidad ya no exista: quien lo use lo confirma con su detalle
+ * (ver `useSeguimientoForm`).
  */
 export const isOpportunityRejectedError = (error: unknown): boolean =>
   error instanceof AxiosError &&
