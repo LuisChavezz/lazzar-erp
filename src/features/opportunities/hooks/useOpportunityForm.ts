@@ -18,6 +18,7 @@ import {
   createOpportunityFormSchema,
   getMotivoPerdidaError,
   getTituloError,
+  IDENTIFICACION_ERROR_PATH,
   normalizeMontoEstimado,
   OpportunityFormFields,
   OpportunityFormValues,
@@ -128,6 +129,9 @@ export function useOpportunityForm({ onSuccess, opportunityToEdit }: UseOpportun
 
   const [clientErrors, setClientErrors] = useState<Partial<Record<OpportunityFormField, string>>>({});
   const [serverErrors, setServerErrors] = useState<Partial<Record<OpportunityFormField, string>>>({});
+  // Falta con qué identificar la oportunidad (título, cliente o contacto). No
+  // es de un campo: el formulario lo pinta como aviso junto a los tres.
+  const [identificationError, setIdentificationError] = useState<string | null>(null);
 
   const setServerFieldError = (field: OpportunityFormField, message: string) => {
     setServerErrors((prev) => ({ ...prev, [field]: message }));
@@ -139,6 +143,9 @@ export function useOpportunityForm({ onSuccess, opportunityToEdit }: UseOpportun
     useUpdateOpportunity(setServerFieldError);
 
   const clearFieldErrors = (field: OpportunityFormField) => {
+    if (field === "titulo" || field === "cliente" || field === "nombre_contacto") {
+      setIdentificationError(null);
+    }
     setClientErrors((prev) => {
       if (!(field in prev)) return prev;
       const next = { ...prev };
@@ -191,18 +198,28 @@ export function useOpportunityForm({ onSuccess, opportunityToEdit }: UseOpportun
     const parsed = createOpportunityFormSchema(ruleContext).safeParse(values);
     if (parsed.success) {
       setClientErrors({});
+      setIdentificationError(null);
       return { success: true as const, issuePaths: [] };
     }
 
     const nextErrors: Partial<Record<OpportunityFormField, string>> = {};
+    let nextIdentificationError: string | null = null;
     parsed.error.issues.forEach((issue) => {
+      if (issue.path[0] === IDENTIFICACION_ERROR_PATH) {
+        nextIdentificationError = issue.message;
+        return;
+      }
       const field = issue.path[0] as OpportunityFormField;
       if (!field || nextErrors[field]) return;
       nextErrors[field] = issue.message;
     });
 
     setClientErrors(nextErrors);
-    return { success: false as const, issuePaths: Object.keys(nextErrors) };
+    setIdentificationError(nextIdentificationError);
+    // El aviso de identificación se pinta junto al título: se lleva la vista ahí.
+    const issuePaths = Object.keys(nextErrors);
+    if (nextIdentificationError && !issuePaths.includes("titulo")) issuePaths.unshift("titulo");
+    return { success: false as const, issuePaths };
   };
 
   const getError = (field: OpportunityFormField) => {
@@ -328,6 +345,7 @@ export function useOpportunityForm({ onSuccess, opportunityToEdit }: UseOpportun
     setCustomerSearch(null);
     setClientErrors({});
     setServerErrors({});
+    setIdentificationError(null);
     setTimeout(() => {
       formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     }, 0);
@@ -350,6 +368,7 @@ export function useOpportunityForm({ onSuccess, opportunityToEdit }: UseOpportun
     isSelectedCustomerInactive,
     isLoadingCustomers,
     isErrorCustomers,
+    identificationError,
     setCustomerSearch,
     selectCustomer,
     clearCustomer,

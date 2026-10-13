@@ -80,6 +80,27 @@ export const getMotivoPerdidaError = (
     ? MOTIVO_PERDIDA_REQUERIDO_MESSAGE
     : null;
 
+export const IDENTIFICACION_REQUERIDA_MESSAGE =
+  "Captura al menos un título, un cliente o un nombre de contacto para identificar la oportunidad.";
+
+/**
+ * Pseudo-campo del error de identificación: no es un campo del formulario (el
+ * dato puede venir de cualquiera de los tres), así que el formulario lo pinta
+ * como aviso junto a ellos.
+ */
+export const IDENTIFICACION_ERROR_PATH = "identificacion";
+
+/**
+ * Una oportunidad sin título, sin cliente y sin contacto no se puede
+ * reconocer en el listado. El backend no lo exige; el formulario sí.
+ */
+export const getIdentificacionError = (
+  values: Pick<OpportunityFormValues, "titulo" | "cliente" | "nombre_contacto">
+): string | null =>
+  values.titulo.trim() === "" && values.cliente === null && values.nombre_contacto.trim() === ""
+    ? IDENTIFICACION_REQUERIDA_MESSAGE
+    : null;
+
 export const getTituloError = (
   values: Pick<OpportunityFormValues, "titulo">,
   context: OpportunityRuleContext
@@ -95,5 +116,13 @@ export const createOpportunityFormSchema = (context: OpportunityRuleContext) =>
     const tituloError = getTituloError(values, context);
     if (tituloError) {
       ctx.addIssue({ code: "custom", message: tituloError, path: ["titulo"] });
+    }
+    const identificacionError = getIdentificacionError(values);
+    if (identificacionError) {
+      ctx.addIssue({
+        code: "custom",
+        message: identificacionError,
+        path: [IDENTIFICACION_ERROR_PATH],
+      });
     }
   });

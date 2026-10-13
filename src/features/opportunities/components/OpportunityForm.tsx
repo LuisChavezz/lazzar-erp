@@ -43,6 +43,7 @@ export default function OpportunityForm({ onSuccess, opportunityToEdit }: Opport
     isSelectedCustomerInactive,
     isLoadingCustomers,
     isErrorCustomers,
+    identificationError,
     setCustomerSearch,
     selectCustomer,
     clearCustomer,
@@ -54,6 +55,14 @@ export default function OpportunityForm({ onSuccess, opportunityToEdit }: Opport
     handleReset,
     handleFormSubmit,
   } = useOpportunityForm({ onSuccess, opportunityToEdit });
+
+  // Falta título, cliente y contacto a la vez. Se pinta junto a los tres: bajo
+  // el título y al inicio de "Cliente y contacto".
+  const identificationNotice = identificationError ? (
+    <p role="alert" className={`${HINT_CLS} text-red-600 dark:text-red-400`}>
+      {identificationError}
+    </p>
+  ) : null;
 
   return (
     <form ref={formRef} onSubmit={handleFormSubmit} className="w-full" noValidate>
@@ -95,6 +104,7 @@ export default function OpportunityForm({ onSuccess, opportunityToEdit }: Opport
                     />
                   )}
                 </form.Field>
+                {identificationNotice}
               </div>
 
               {/* Sin símbolo de moneda: las oportunidades no tienen moneda. */}
@@ -239,6 +249,7 @@ export default function OpportunityForm({ onSuccess, opportunityToEdit }: Opport
           </div>
 
           <div className="p-8">
+            {identificationNotice && <div className="mb-6">{identificationNotice}</div>}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               {/*
                 Lo tecleado es solo una búsqueda: la selección cambia al elegir
