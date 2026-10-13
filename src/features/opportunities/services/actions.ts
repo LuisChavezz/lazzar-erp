@@ -5,6 +5,7 @@ import type {
   OpportunityListResponse,
   OpportunityPatch,
 } from "../interfaces/opportunity.interface";
+import type { OpportunityEmbudo } from "../interfaces/opportunity-embudo.interface";
 import type {
   OpportunityCotizarResponse,
   OpportunityOnboarding,
@@ -24,6 +25,17 @@ export const getOpportunities = async (
   params: Record<string, string | number>
 ): Promise<OpportunityListResponse> => {
   const { data } = await v1_api.get<OpportunityListResponse>("/ventas/oportunidades/", { params });
+  return data;
+};
+
+/**
+ * Embudo: cantidad y monto por estado. Acepta los filtros del listado
+ * (`cliente`, `vendedor`, `q`, `estado`) e ignora orden y paginación.
+ */
+export const getOpportunitiesEmbudo = async (
+  params: Record<string, string>
+): Promise<OpportunityEmbudo> => {
+  const { data } = await v1_api.get<OpportunityEmbudo>("/ventas/oportunidades/embudo/", { params });
   return data;
 };
 
