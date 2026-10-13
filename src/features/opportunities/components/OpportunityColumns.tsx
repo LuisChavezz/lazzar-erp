@@ -3,7 +3,7 @@ import { ActionMenu, ActionMenuItem } from "@/src/components/ActionMenu";
 import { ChevronRightIcon, DeleteIcon, EditIcon } from "@/src/components/Icons";
 import { StatusBadge } from "@/src/components/StatusBadge";
 import { formatCurrency, NO_CURRENCY_FORMAT, safeParseAmount } from "@/src/utils/formatCurrency";
-import { formatLocalDate, formatShortDate } from "@/src/utils/formatDate";
+import { formatShortDate } from "@/src/utils/formatDate";
 import { ESTADO_OPORTUNIDAD_CFG } from "../constants/opportunityChoices";
 import { useOpportunityRowActionsContext } from "../hooks/useOpportunityRowActions";
 import type { Opportunity } from "../interfaces/opportunity.interface";
@@ -131,13 +131,16 @@ export const opportunityColumns = [
     header: ({ column }) => <OpportunityEstadoHeader column={column} />,
     cell: (info) => <StatusBadge status={info.getValue()} config={ESTADO_OPORTUNIDAD_CFG} />,
   }),
+  // Mismo formato que "Creada" ("13 oct 2026", el de los listados de pedidos).
+  // `proximo_contacto` es una fecha-calendario sin hora: se lee en UTC para que
+  // no se corra un día en husos al oeste.
   columnHelper.accessor("proximo_contacto", {
     id: "proximo_contacto",
     header: "Próximo contacto",
     meta: { serverSort: "proximo_contacto" },
     cell: (info) => (
       <span className="text-slate-600 dark:text-slate-300 whitespace-nowrap tabular-nums">
-        {formatLocalDate(info.getValue())}
+        {formatShortDate(info.getValue(), { timeZone: "UTC" })}
       </span>
     ),
   }),
