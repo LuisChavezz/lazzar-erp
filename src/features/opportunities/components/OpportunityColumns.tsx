@@ -1,6 +1,6 @@
 import { ColumnDef, createColumnHelper } from "@tanstack/react-table";
 import { ActionMenu, ActionMenuItem } from "@/src/components/ActionMenu";
-import { DeleteIcon, EditIcon } from "@/src/components/Icons";
+import { ChevronRightIcon, DeleteIcon, EditIcon } from "@/src/components/Icons";
 import { StatusBadge } from "@/src/components/StatusBadge";
 import { formatCurrency, NO_CURRENCY_FORMAT, safeParseAmount } from "@/src/utils/formatCurrency";
 import { formatLocalDate, formatShortDate } from "@/src/utils/formatDate";
@@ -17,9 +17,15 @@ const columnHelper = createColumnHelper<Opportunity>();
 
 const MUTED_CLS = "text-slate-400 dark:text-slate-500";
 
-/** Menú de fila: solo presentacional, los diálogos viven en `OpportunityList`. */
-function OpportunityRowActionsMenu({ opportunity }: { opportunity: Opportunity }) {
+/**
+ * Título de la oportunidad como DISPARADOR del menú de fila ("Editar", "Dar de
+ * baja"), igual que el chip `#id` de Cotizaciones y el folio de Pedidos en Mesa
+ * de Control: sin columna "Acciones" aparte. Es solo presentacional — los
+ * callbacks llegan por contexto y los diálogos viven en `OpportunityList`.
+ */
+function OpportunityTitleActions({ opportunity }: { opportunity: Opportunity }) {
   const { onEdit, onDelete } = useOpportunityRowActionsContext();
+  const titulo = opportunity.titulo?.trim();
 
   const menuItems: ActionMenuItem[] = [
     { label: "Editar", icon: EditIcon, onSelect: () => onEdit(opportunity) },
@@ -27,9 +33,28 @@ function OpportunityRowActionsMenu({ opportunity }: { opportunity: Opportunity }
   ];
 
   return (
-    <div className="flex justify-center">
-      <ActionMenu items={menuItems} ariaLabel="Acciones de la oportunidad" />
-    </div>
+    <ActionMenu
+      items={menuItems}
+      ariaLabel="Acciones de la oportunidad"
+      align="start"
+      trigger={
+        <button
+          type="button"
+          aria-label={`Ver acciones de la oportunidad ${titulo || `#${opportunity.id}`}`}
+          className="group inline-flex max-w-full items-center gap-1.5 rounded-lg bg-sky-50 dark:bg-sky-500/10 px-2.5 py-1 text-left font-bold text-sky-700 dark:text-sky-400 hover:bg-sky-100 dark:hover:bg-sky-500/20 transition-colors cursor-pointer"
+        >
+          {titulo ? (
+            <span className="min-w-0 wrap-break-word">{titulo}</span>
+          ) : (
+            <span className="italic font-medium">Sin título</span>
+          )}
+          <ChevronRightIcon
+            className="w-3.5 h-3.5 shrink-0 group-hover:translate-x-0.5 transition-transform"
+            aria-hidden="true"
+          />
+        </button>
+      }
+    />
   );
 }
 
@@ -41,20 +66,15 @@ function OpportunityRowActionsMenu({ opportunity }: { opportunity: Opportunity }
  * - `meta.serverFilter` liga el filtro del encabezado con el parámetro del
  *   endpoint; no hay `filterFn` porque nada se filtra en memoria.
  * - No dependen de nada que cambie: los callbacks del menú llegan por contexto.
+ * - Sin columna "Acciones": el menú cuelga del título (ver
+ *   `OpportunityTitleActions`).
  */
 export const opportunityColumns = [
   columnHelper.accessor("titulo", {
     id: "titulo",
     header: "Oportunidad",
     meta: { serverSort: "titulo" },
-    cell: (info) => {
-      const titulo = info.getValue()?.trim();
-      return titulo ? (
-        <span className="font-medium text-slate-700 dark:text-slate-200">{titulo}</span>
-      ) : (
-        <span className={`italic ${MUTED_CLS}`}>Sin título</span>
-      );
-    },
+    cell: ({ row }) => <OpportunityTitleActions opportunity={row.original} />,
   }),
   // Cliente si lo hay; si no, el contacto capturado. `cliente_nombre` es el
   // nombre del cliente tal como lo manda el backend.
@@ -130,11 +150,5 @@ export const opportunityColumns = [
         {formatShortDate(info.getValue())}
       </span>
     ),
-  }),
-  columnHelper.display({
-    id: "actions",
-    header: "Acciones",
-    meta: { align: "center" },
-    cell: ({ row }) => <OpportunityRowActionsMenu opportunity={row.original} />,
   }),
 ] as ColumnDef<Opportunity>[];
