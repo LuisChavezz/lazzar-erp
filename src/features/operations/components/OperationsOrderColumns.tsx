@@ -103,7 +103,7 @@ const FolioCell = ({
           <button
             type="button"
             aria-label={`Ver acciones del pedido ${order.folio}`}
-            className="group inline-flex items-center gap-1 font-mono text-[13px] font-bold text-slate-800 dark:text-white hover:text-sky-600 dark:hover:text-sky-400 hover:underline transition-colors cursor-pointer"
+            className="group inline-flex items-center gap-1 font-mono text-[13px] font-bold text-slate-800 dark:text-white hover:text-sky-600 dark:hover:text-sky-400 hover:underline transition-colors cursor-pointer rounded-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
           >
             {order.folio || "—"}
             <ChevronRightIcon
