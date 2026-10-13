@@ -1,12 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { ArrowLeftIcon, DeleteIcon, EditIcon } from "@/src/components/Icons";
 import { Button } from "@/src/components/Button";
-import { ConfirmDialog } from "@/src/components/ConfirmDialog";
 import { DialogHeader } from "@/src/components/DialogHeader";
 import { ErrorState } from "@/src/components/ErrorState";
 import { Loader } from "@/src/components/Loader";
@@ -24,12 +23,12 @@ import { formatCurrency, NO_CURRENCY_FORMAT, safeParseAmount } from "@/src/utils
 import { formatShortDate } from "@/src/utils/formatDate";
 import { ESTADO_OPORTUNIDAD_CFG, ETAPA_PERDIDA } from "../constants/opportunityChoices";
 import { OPPORTUNITIES_LIST_PATH } from "../constants/opportunityRoutes";
-import { useDeleteOpportunity } from "../hooks/useDeleteOpportunity";
 import { useOpportunityDetail } from "../hooks/useOpportunityDetail";
 import type { Opportunity } from "../interfaces/opportunity.interface";
-import { describeOpportunity } from "../utils/describeOpportunity";
+import type { OpportunityOnboarding } from "../interfaces/opportunity-onboarding.interface";
 import { OpportunityCotizaciones } from "./OpportunityCotizaciones";
 import { OpportunityCotizarAction } from "./OpportunityCotizarAction";
+import { OpportunityDeleteDialog } from "./OpportunityDeleteDialog";
 import OpportunityForm from "./OpportunityForm";
 
 const MUTED_CLS = "text-slate-400 dark:text-slate-500";
@@ -47,18 +46,25 @@ interface OpportunityDetailContentProps {
  * pedido) y la cartera de su cliente, todo de una sola llamada
  * (`useOpportunityDetail`).
  *
- * Aquí el `estado` va en TEXTO (`StatusBadge`): en el listado es solo un punto
- * de color.
- *
  * Estados, como el detalle de proveedor: id inválido → error sin consultar;
  * 404 → "no disponible", también si llega en una relectura (la dio de baja otra
  * persona); error de carga INICIAL → `ErrorState`; un refetch fallido con datos
  * conserva la vista y avisa por toast.
+ *
+ * Los diálogos (editar, dar de baja) se montan FUERA de esos estados: así se
+ * cierran con su animación aunque la pantalla de detrás cambie de estado.
  */
 export const OpportunityDetailContent = ({ opportunityId }: OpportunityDetailContentProps) => {
   const router = useRouter();
-  const { data: session } = useSession();
-  const { data, isNotFound, isValidId, isInitialError } = useOpportunityDetail(opportunityId);
+
+  // `true` SOLO cuando la baja hecha desde esta página tuvo éxito (lo pone
+  // `onDeleted`). No se deduce de un 404: una baja que falla porque otra
+  // persona ya la había hecho es un "no disponible" normal. Con la baja hecha
+  // se deja de consultar el detalle, que ya se quitó de la caché.
+  const [wasDeletedHere, setWasDeletedHere] = useState(false);
+  const { data, isNotFound, isValidId, isInitialError } = useOpportunityDetail(opportunityId, {
+    enabled: !wasDeletedHere,
+  });
 
   // El formulario recibe una COPIA tomada al abrir, no `data.oportunidad` en
   // vivo: una relectura a media edición no debe cambiarle el registro base con
@@ -67,13 +73,18 @@ export const OpportunityDetailContent = ({ opportunityId }: OpportunityDetailCon
   const [opportunityToEdit, setOpportunityToEdit] = useState<Opportunity | null>(null);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [formSession, setFormSession] = useState(0);
-  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [opportunityToDelete, setOpportunityToDelete] = useState<Opportunity | null>(null);
 
-  const {
-    mutate: deleteOpportunity,
-    isPending: isDeleting,
-    isSuccess: isDeleted,
-  } = useDeleteOpportunity();
+  const handleEdit = (opportunity: Opportunity) => {
+    setOpportunityToEdit(opportunity);
+    setFormSession((current) => current + 1);
+    setIsEditOpen(true);
+  };
+
+  const handleDeleted = () => {
+    setWasDeletedHere(true);
+    router.replace(OPPORTUNITIES_LIST_PATH);
+  };
 
   const backLink = (
     <div className="sticky top-0 z-10 py-2 w-fit">
@@ -87,64 +98,92 @@ export const OpportunityDetailContent = ({ opportunityId }: OpportunityDetailCon
     </div>
   );
 
-  // Con id inválido la consulta está deshabilitada y nunca sale de `pending`:
-  // se resuelve ANTES de mirar la carga para no quedar atorado en el `Loader`.
+  let content: ReactNode;
   if (!isValidId) {
-    return (
-      <div className="w-full space-y-6">
-        {backLink}
-        <ErrorState
-          title="Oportunidad no válida"
-          message="El identificador de la oportunidad no es válido."
+    // Con id inválido la consulta está deshabilitada y nunca sale de `pending`:
+    // se resuelve ANTES de mirar la carga para no quedar atorado en el `Loader`.
+    content = (
+      <ErrorState
+        title="Oportunidad no válida"
+        message="El identificador de la oportunidad no es válido."
+      />
+    );
+  } else if (wasDeletedHere) {
+    // Ya se está saliendo al listado; "Volver" queda a la vista por si la
+    // navegación no llega a completarse.
+    content = <Loader title="Oportunidad dada de baja" message="Volviendo al listado..." />;
+  } else if (isNotFound) {
+    // Un 404 es definitivo aunque antes hubiera datos: la oportunidad ya no
+    // está disponible y mostrar su ficha (con sus acciones) sería mentir.
+    content = (
+      <ErrorState
+        title="Oportunidad no disponible"
+        message="La oportunidad no existe, se dio de baja o no tienes acceso a ella."
+      />
+    );
+  } else if (isInitialError) {
+    // Texto fijo: este GET no responde con un mensaje propio para el usuario, y
+    // el del cliente HTTP ("Request failed with status code 500") no le dice nada.
+    content = (
+      <ErrorState
+        title="No se pudo cargar la oportunidad"
+        message="Ocurrió un problema al consultar el servidor. Recarga la página para intentar de nuevo."
+      />
+    );
+  } else if (!data) {
+    // Sin datos: carga inicial en curso (id válido ⇒ consulta activa).
+    content = (
+      <Loader title="Cargando oportunidad" message="Obteniendo detalle de la oportunidad..." />
+    );
+  } else {
+    content = (
+      <OpportunityDetailBody data={data} onEdit={handleEdit} onDelete={setOpportunityToDelete} />
+    );
+  }
+
+  return (
+    <div className="w-full space-y-6">
+      {backLink}
+      {content}
+
+      <MainDialog
+        title={
+          <DialogHeader title="Editar Oportunidad" subtitle="Edición de registro" statusColor="sky" />
+        }
+        open={isEditOpen}
+        onOpenChange={setIsEditOpen}
+        maxWidth="1000px"
+      >
+        <OpportunityForm
+          key={formSession}
+          onSuccess={() => setIsEditOpen(false)}
+          opportunityToEdit={opportunityToEdit}
         />
-      </div>
-    );
-  }
+      </MainDialog>
 
-  // Baja hecha DESDE esta página: la consulta ya dice "no está" (la propia baja
-  // la marca), pero no es un "no disponible" que explicar — se está saliendo al
-  // listado.
-  if (isNotFound && (isDeleting || isDeleted)) {
-    return <Loader title="Oportunidad dada de baja" message="Volviendo al listado..." />;
-  }
+      <OpportunityDeleteDialog
+        opportunity={opportunityToDelete}
+        onClose={() => setOpportunityToDelete(null)}
+        onDeleted={handleDeleted}
+      />
+    </div>
+  );
+};
 
-  // Un 404 es definitivo aunque antes hubiera datos: la oportunidad ya no está
-  // disponible y mostrar su ficha (con sus acciones) sería mentir.
-  if (isNotFound) {
-    return (
-      <div className="w-full space-y-6">
-        {backLink}
-        <ErrorState
-          title="Oportunidad no disponible"
-          message="La oportunidad no existe, se dio de baja o no tienes acceso a ella."
-        />
-      </div>
-    );
-  }
+interface OpportunityDetailBodyProps {
+  data: OpportunityOnboarding;
+  onEdit: (opportunity: Opportunity) => void;
+  onDelete: (opportunity: Opportunity) => void;
+}
 
-  // Texto fijo: este GET no responde con un mensaje propio para el usuario, y
-  // el del cliente HTTP ("Request failed with status code 500") no le dice nada.
-  if (isInitialError) {
-    return (
-      <div className="w-full space-y-6">
-        {backLink}
-        <ErrorState
-          title="No se pudo cargar la oportunidad"
-          message="Ocurrió un problema al consultar el servidor. Recarga la página para intentar de nuevo."
-        />
-      </div>
-    );
-  }
-
-  // Sin datos: carga inicial en curso (id válido ⇒ consulta activa).
-  if (!data) {
-    return (
-      <div className="w-full space-y-6">
-        {backLink}
-        <Loader title="Cargando oportunidad" message="Obteniendo detalle de la oportunidad..." />
-      </div>
-    );
-  }
+/**
+ * La ficha ya cargada: cabecera con el `estado` en TEXTO (`StatusBadge`; en el
+ * listado es solo un punto de color) y las acciones, y las secciones de datos,
+ * cotizaciones y cartera. Presentacional: los diálogos viven en
+ * `OpportunityDetailContent`.
+ */
+function OpportunityDetailBody({ data, onEdit, onDelete }: OpportunityDetailBodyProps) {
+  const { data: session } = useSession();
 
   const opportunity = data.oportunidad;
   // `?? []`: el contrato da ambos arreglos siempre, pero una respuesta sin el
@@ -165,16 +204,8 @@ export const OpportunityDetailContent = ({ opportunityId }: OpportunityDetailCon
     !ESTADOS_CERRADOS.includes(opportunity.estado) &&
     canLandOnQuoteEdit(session?.user);
 
-  const handleEdit = () => {
-    setOpportunityToEdit(opportunity);
-    setFormSession((current) => current + 1);
-    setIsEditOpen(true);
-  };
-
   return (
-    <div className="w-full space-y-6">
-      {backLink}
-
+    <>
       {/* ── Cabecera ───────────────────────────────────────────────────── */}
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="space-y-1 min-w-0">
@@ -201,14 +232,14 @@ export const OpportunityDetailContent = ({ opportunityId }: OpportunityDetailCon
           <Button
             variant="secondary"
             leftIcon={<EditIcon className="w-4 h-4" aria-hidden="true" />}
-            onClick={handleEdit}
+            onClick={() => onEdit(opportunity)}
           >
             Editar
           </Button>
           <Button
             variant="secondary"
             leftIcon={<DeleteIcon className="w-4 h-4" aria-hidden="true" />}
-            onClick={() => setIsDeleteOpen(true)}
+            onClick={() => onDelete(opportunity)}
             className="text-rose-600! dark:text-rose-400!"
           >
             Dar de baja
@@ -267,47 +298,6 @@ export const OpportunityDetailContent = ({ opportunityId }: OpportunityDetailCon
           emptyMessage="Sin saldo pendiente para mostrar."
         />
       )}
-
-      <MainDialog
-        title={
-          <DialogHeader title="Editar Oportunidad" subtitle="Edición de registro" statusColor="sky" />
-        }
-        open={isEditOpen}
-        onOpenChange={setIsEditOpen}
-        maxWidth="1000px"
-      >
-        <OpportunityForm
-          key={formSession}
-          onSuccess={() => setIsEditOpen(false)}
-          opportunityToEdit={opportunityToEdit}
-        />
-      </MainDialog>
-
-      {/* Misma confirmación que el listado. Sin optimista: queda abierta y
-          bloqueada (`busy`) hasta que el servidor responde; con éxito se sale
-          al listado (la baja ya dejó el detalle marcado como "no está"). */}
-      {isDeleteOpen && (
-        <ConfirmDialog
-          open
-          onOpenChange={(open) => {
-            if (!open && !isDeleting) setIsDeleteOpen(false);
-          }}
-          title="Dar de Baja Oportunidad"
-          description={`¿Dar de baja la oportunidad ${describeOpportunity(
-            opportunity
-          )}? Dejará de aparecer en el listado y en el seguimiento comercial.`}
-          confirmText={isDeleting ? "Dando de baja…" : "Dar de baja"}
-          confirmColor="red"
-          closeOnConfirm={false}
-          busy={isDeleting}
-          onConfirm={() =>
-            deleteOpportunity(opportunity.id, {
-              onSuccess: () => router.replace(OPPORTUNITIES_LIST_PATH),
-              onError: () => setIsDeleteOpen(false),
-            })
-          }
-        />
-      )}
-    </div>
+    </>
   );
-};
+}
