@@ -49,6 +49,18 @@ export const stripTrailingDecimalPoint = (value: string): string =>
   /^\d+\.$/.test(value) ? value.slice(0, -1) : value;
 
 /**
+ * Forma canónica de un decimal CAPTURADO con `sanitizeDecimalInput`, la que se
+ * valida y se envía: sin espacios, sin punto colgante ("12." → "12") y con el
+ * cero inicial que ese saneado deja omitir (".5" → "0.5"). Vacío se queda
+ * vacío: cada formulario decide a qué equivale (normalmente 0).
+ *
+ * Compartida por los importes opcionales de clientes (`limite_credito`) y de
+ * oportunidades (`monto_estimado`).
+ */
+export const normalizeCapturedDecimal = (value: string): string =>
+  stripTrailingDecimalPoint(value.trim()).replace(/^\./, "0.");
+
+/**
  * Normaliza un decimal capturado a la forma que se envía al backend, o `null`
  * si el campo quedó vacío (opcional no capturado) o no sostiene un número.
  *

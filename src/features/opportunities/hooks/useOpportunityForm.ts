@@ -5,6 +5,7 @@ import { useRef, useState } from "react";
 import type { FormEvent } from "react";
 import toast from "react-hot-toast";
 import type { FormFieldError } from "@/src/utils/getFieldError";
+import { normalizeCapturedDecimal } from "@/src/utils/decimal";
 import { scrollToFirstValidationError } from "@/src/utils/scrollToFirstValidationError";
 import { useCustomers } from "@/src/features/customers/hooks/useCustomers";
 import { ETAPA_NUEVA, ETAPA_PERDIDA } from "../constants/opportunityChoices";
@@ -19,7 +20,6 @@ import {
   getMotivoPerdidaError,
   getTituloError,
   IDENTIFICACION_ERROR_PATH,
-  normalizeMontoEstimado,
   OpportunityFormFields,
   OpportunityFormValues,
 } from "../schemas/opportunity.schema";
@@ -82,7 +82,7 @@ const toWritePayload = (values: OpportunityFormValues): OpportunityWrite => ({
   telefono: values.telefono.trim(),
   correo: values.correo.trim(),
   titulo: values.titulo.trim(),
-  monto_estimado: normalizeMontoEstimado(values.monto_estimado) || "0",
+  monto_estimado: normalizeCapturedDecimal(values.monto_estimado) || "0",
   etapa: values.etapa,
   motivo_perdida: values.etapa === ETAPA_PERDIDA ? values.motivo_perdida.trim() : "",
   proximo_contacto: values.proximo_contacto || null,

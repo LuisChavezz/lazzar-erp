@@ -1,6 +1,8 @@
 import { z } from "zod";
 import { MONEY_REGEX } from "@/src/features/accounts-receivable/schemas/register-pending-invoice.schema";
+import { normalizeCapturedDecimal } from "@/src/utils/decimal";
 import { isCompleteDateEntry } from "@/src/utils/formatDate";
+import { optionalEmailSchema } from "@/src/utils/optionalEmailSchema";
 import {
   ETAPA_OPORTUNIDAD_VALUES,
   ETAPA_PERDIDA,
@@ -9,9 +11,6 @@ import {
 } from "../constants/opportunityChoices";
 
 const maxLengthMessage = (max: number) => `No puede tener más de ${max} caracteres`;
-
-/** Importe como se envía: sin espacios. `""` equivale a 0 (ver el formulario). */
-export const normalizeMontoEstimado = (value: string): string => value.trim();
 
 const OpportunityFormObject = z.object({
   // `null` = sin cliente: la oportunidad vive solo con los datos de contacto.
@@ -28,7 +27,7 @@ const OpportunityFormObject = z.object({
     .string()
     .trim()
     .max(OPORTUNIDAD_MAX_LENGTH.correo, maxLengthMessage(OPORTUNIDAD_MAX_LENGTH.correo))
-    .refine((value) => value === "" || z.string().email().safeParse(value).success, "Correo inválido"),
+    .pipe(optionalEmailSchema),
   titulo: z
     .string()
     .trim()
@@ -37,11 +36,11 @@ const OpportunityFormObject = z.object({
   monto_estimado: z
     .string()
     .refine((value) => {
-      const normalized = normalizeMontoEstimado(value);
+      const normalized = normalizeCapturedDecimal(value);
       return normalized === "" || MONEY_REGEX.test(normalized);
     }, "Debe ser un importe no negativo con hasta 2 decimales")
     .refine(
-      (value) => normalizeMontoEstimado(value).split(".")[0].length <= MONTO_ESTIMADO_MAX_ENTEROS,
+      (value) => normalizeCapturedDecimal(value).split(".")[0].length <= MONTO_ESTIMADO_MAX_ENTEROS,
       `No puede tener más de ${MONTO_ESTIMADO_MAX_ENTEROS} dígitos enteros`
     ),
   etapa: z.enum(ETAPA_OPORTUNIDAD_VALUES, { message: "La etapa es inválida" }),

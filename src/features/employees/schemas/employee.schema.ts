@@ -1,8 +1,6 @@
 import { z } from "zod";
+import { optionalEmailSchema } from "@/src/utils/optionalEmailSchema";
 import { ESTADO_CIVIL_VALUES, SEXO_VALUES } from "../constants/employeeChoices";
-
-// Misma forma que el correo opcional de clientes: válido o vacío.
-const optionalEmailSchema = z.union([z.string().email("Correo inválido"), z.literal("")]);
 
 /**
  * Campo opcional con formato fijo: la cadena vacía SIEMPRE pasa y el formato

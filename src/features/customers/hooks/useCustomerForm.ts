@@ -3,12 +3,9 @@
 import { useForm } from "@tanstack/react-form";
 import { useMemo, useRef, useState } from "react";
 import toast from "react-hot-toast";
+import { normalizeCapturedDecimal } from "@/src/utils/decimal";
 import { scrollToFirstValidationError } from "@/src/utils/scrollToFirstValidationError";
-import {
-  CustomerFormSchema,
-  CustomerFormValues,
-  normalizeLimiteCredito,
-} from "../schemas/customer.schema";
+import { CustomerFormSchema, CustomerFormValues } from "../schemas/customer.schema";
 import { Customer, CustomerCreate } from "../interfaces/customer.interface";
 import { useCreateCustomer } from "./useCreateCustomer";
 import { useUpdateCustomer } from "./useUpdateCustomer";
@@ -54,7 +51,7 @@ const toCreditPayload = (
   values: Pick<CustomerFormValues, "dias_credito" | "limite_credito">
 ): Required<CreditPayload> => ({
   dias_credito: Number(values.dias_credito || 0),
-  limite_credito: normalizeLimiteCredito(values.limite_credito) || "0",
+  limite_credito: normalizeCapturedDecimal(values.limite_credito) || "0",
 });
 
 // Estado base del formulario para modo creación.
