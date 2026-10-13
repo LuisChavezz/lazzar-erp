@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import type { ReactNode } from "react";
 import { DialogHeader } from "@/src/components/DialogHeader";
 import { MainDialog } from "@/src/components/MainDialog";
+import { useDialogSession } from "@/src/hooks/useDialogSession";
 import type { Opportunity } from "../interfaces/opportunity.interface";
 import OpportunityForm from "./OpportunityForm";
 
@@ -19,7 +20,7 @@ interface OpportunityFormDialogProps {
  * Diálogo de alta/edición de oportunidad, el mismo en el listado y en el
  * detalle.
  *
- * Cada APERTURA abre una sesión nueva:
+ * Cada APERTURA abre una sesión nueva (`useDialogSession`):
  * - monta un formulario NUEVO (`key`): no depende de que el diálogo anterior
  *   haya terminado de desmontarse (su animación de salida), así que "Nueva"
  *   nunca hereda lo capturado en la apertura previa;
@@ -34,14 +35,8 @@ export function OpportunityFormDialog({
   opportunityToEdit,
   trigger,
 }: OpportunityFormDialogProps) {
-  const [session, setSession] = useState({ id: 0, record: opportunityToEdit });
-  const [wasOpen, setWasOpen] = useState(open);
-  if (open !== wasOpen) {
-    setWasOpen(open);
-    if (open) setSession((current) => ({ id: current.id + 1, record: opportunityToEdit }));
-  }
-
-  const isEditing = session.record !== null;
+  const session = useDialogSession(open, opportunityToEdit);
+  const isEditing = session.snapshot !== null;
 
   return (
     <MainDialog
@@ -60,7 +55,7 @@ export function OpportunityFormDialog({
       <OpportunityForm
         key={session.id}
         onSuccess={() => onOpenChange(false)}
-        opportunityToEdit={session.record}
+        opportunityToEdit={session.snapshot}
       />
     </MainDialog>
   );

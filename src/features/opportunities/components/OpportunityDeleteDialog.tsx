@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
 import { ConfirmDialog } from "@/src/components/ConfirmDialog";
+import { useDialogSession } from "@/src/hooks/useDialogSession";
 import { useDeleteOpportunity } from "../hooks/useDeleteOpportunity";
 import type { Opportunity } from "../interfaces/opportunity.interface";
 import { describeOpportunity } from "../utils/describeOpportunity";
@@ -37,8 +37,7 @@ export function OpportunityDeleteDialog({
 
   // El texto sigue nombrando a la última oportunidad mientras el diálogo se
   // cierra, cuando `opportunity` ya es `null`.
-  const [shown, setShown] = useState(opportunity);
-  if (opportunity !== null && opportunity !== shown) setShown(opportunity);
+  const shown = useDialogSession(opportunity !== null, opportunity).snapshot;
 
   return (
     <ConfirmDialog

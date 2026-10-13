@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
 import { ConfirmDialog } from "@/src/components/ConfirmDialog";
+import { useDialogSession } from "@/src/hooks/useDialogSession";
 import { useDeleteSeguimiento } from "../hooks/useSeguimientoMutations";
 import type { OpportunitySeguimiento } from "../interfaces/seguimiento.interface";
 import { previewText } from "../utils/seguimientos";
@@ -43,8 +43,7 @@ export function OpportunitySeguimientoDeleteDialog({
 
   // El texto sigue nombrando al último seguimiento mientras el diálogo se
   // cierra, cuando `seguimiento` ya es `null`.
-  const [shown, setShown] = useState(seguimiento);
-  if (seguimiento !== null && seguimiento !== shown) setShown(seguimiento);
+  const shown = useDialogSession(seguimiento !== null, seguimiento).snapshot;
 
   return (
     <ConfirmDialog

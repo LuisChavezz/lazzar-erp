@@ -1,12 +1,12 @@
 "use client";
 
-import { useState } from "react";
 import { DialogHeader } from "@/src/components/DialogHeader";
 import { FormCancelButton, FormSubmitButton } from "@/src/components/FormButtons";
 import { FormInput } from "@/src/components/FormInput";
 import { FormSelect } from "@/src/components/FormSelect";
 import { FormTextarea } from "@/src/components/FormTextarea";
 import { MainDialog } from "@/src/components/MainDialog";
+import { useDialogSession } from "@/src/hooks/useDialogSession";
 import { isOportunidadCerrada } from "../constants/opportunityChoices";
 import { TIPO_SEGUIMIENTO_OPTIONS, type TipoSeguimiento } from "../constants/seguimientoChoices";
 import { useSeguimientoForm } from "../hooks/useSeguimientoForm";
@@ -151,7 +151,8 @@ interface OpportunitySeguimientoFormDialogProps {
 
 /**
  * Diálogo de alta/edición de un seguimiento. Mismo criterio que
- * `OpportunityFormDialog`: cada APERTURA monta un formulario nuevo (`key`) con
+ * `OpportunityFormDialog` (`useDialogSession`): cada APERTURA monta un
+ * formulario nuevo (`key`) con
  * una COPIA de la oportunidad y del seguimiento tal como estaban al abrir, para
  * que una relectura del detalle a media captura no le cambie la base con la que
  * calcula qué campos cambiaron.
@@ -162,16 +163,9 @@ export function OpportunitySeguimientoFormDialog({
   opportunity,
   seguimientoToEdit,
 }: OpportunitySeguimientoFormDialogProps) {
-  const [session, setSession] = useState({ id: 0, opportunity, record: seguimientoToEdit });
-  const [wasOpen, setWasOpen] = useState(open);
-  if (open !== wasOpen) {
-    setWasOpen(open);
-    if (open) {
-      setSession((current) => ({ id: current.id + 1, opportunity, record: seguimientoToEdit }));
-    }
-  }
-
-  const isEditing = session.record !== null;
+  const session = useDialogSession(open, { opportunity, seguimientoToEdit });
+  const opened = session.snapshot;
+  const isEditing = opened.seguimientoToEdit !== null;
 
   return (
     <MainDialog
@@ -186,11 +180,11 @@ export function OpportunitySeguimientoFormDialog({
       onOpenChange={onOpenChange}
       maxWidth="720px"
     >
-      {session.opportunity && (
+      {opened.opportunity && (
         <SeguimientoForm
           key={session.id}
-          opportunity={session.opportunity}
-          seguimientoToEdit={session.record}
+          opportunity={opened.opportunity}
+          seguimientoToEdit={opened.seguimientoToEdit}
           onSuccess={() => onOpenChange(false)}
         />
       )}
