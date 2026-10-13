@@ -36,9 +36,9 @@ export const groupSeguimientos = (
 export type RecordatorioStatus = "vencido" | "hoy" | "futuro";
 
 /**
- * Una fecha de recordatorio frente a HOY (`today`: el día local como
- * `YYYY-MM-DD`, ver `getLocalTodayDate`). Solo tiene sentido para un
- * seguimiento pendiente.
+ * Una fecha de recordatorio frente a HOY (`today`: el día del backend como
+ * `YYYY-MM-DD`, ver `useBackendToday`). Solo tiene sentido para un seguimiento
+ * pendiente.
  */
 export const getRecordatorioStatus = (fecha: string, today: string): RecordatorioStatus => {
   if (fecha < today) return "vencido";

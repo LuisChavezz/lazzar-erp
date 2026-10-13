@@ -17,9 +17,10 @@ import {
   TasksIcon,
 } from "@/src/components/Icons";
 import { useCompanyAdminStatus } from "@/src/features/users/hooks/useIsCompanyAdmin";
-import { formatShortDate, formatShortDateTime, getLocalTodayDate } from "@/src/utils/formatDate";
+import { formatShortDate, formatShortDateTime } from "@/src/utils/formatDate";
 import { ETAPA_PERDIDA } from "../constants/opportunityChoices";
 import type { TipoSeguimiento } from "../constants/seguimientoChoices";
+import { useBackendToday } from "../hooks/useBackendToday";
 import { useOpportunitySeguimientos } from "../hooks/useOpportunitySeguimientos";
 import type { Opportunity } from "../interfaces/opportunity.interface";
 import type { OpportunitySeguimiento } from "../interfaces/seguimiento.interface";
@@ -72,7 +73,8 @@ interface OpportunitySeguimientosProps {
  * - **Orden**: primero lo pendiente, por fecha de recordatorio; después lo
  *   completado, de lo más nuevo a lo más viejo (`groupSeguimientos`).
  * - **Recordatorio** (solo en pendientes): vencido en rojo y con la palabra
- *   "vencido" —no solo el color—; el de hoy, con la etiqueta "Hoy".
+ *   "vencido" —no solo el color—; el de hoy, con la etiqueta "Hoy". "Hoy" es
+ *   el día del backend, no el del navegador (`useBackendToday`).
  * - **Completar / reabrir**: la casilla, para CUALQUIERA que vea la
  *   oportunidad.
  * - **Editar / eliminar**: solo el autor o un administrador de empresa. Es una
@@ -93,7 +95,8 @@ export const OpportunitySeguimientos = ({
   const { data: session } = useSession();
   const currentUserId = session?.user?.id;
   const isCompanyAdmin = useCompanyAdminStatus() === "admin";
-  const today = getLocalTodayDate();
+  // El "hoy" del BACKEND, releído en cada render (ver `useBackendToday`).
+  const today = useBackendToday();
 
   const groups = groupSeguimientos(seguimientos ?? []);
   const showSummary = opportunity.estado !== ETAPA_PERDIDA;
