@@ -55,6 +55,13 @@ interface UseServerTableOptions<P extends ServerTableFilterParams, TResponse, TR
   disabledMessage?: string;
   /** Pausa de escritura antes de consultar la búsqueda. Por defecto 300 ms. */
   searchDebounceMs?: number;
+  /**
+   * `"always"` relee la lista cada vez que se monta, aunque esté en caché y
+   * dentro del `staleTime`: para una lista que convive con otra consulta que
+   * también se relee al montar (un resumen del mismo conjunto) y debe reflejar
+   * el mismo momento. Por defecto, el comportamiento del `QueryClient`.
+   */
+  refetchOnMount?: "always";
 }
 
 // Referencia estable para "sin filas": un `[]` nuevo por render haría creer a
@@ -116,6 +123,7 @@ export function useServerTable<P extends ServerTableFilterParams, TResponse, TRo
   enabled = true,
   disabledMessage = "Aún no se ha hecho la consulta.",
   searchDebounceMs = 300,
+  refetchOnMount,
 }: UseServerTableOptions<P, TResponse, TRow>) {
   const queryClient = useQueryClient();
   const pathname = usePathname();
@@ -272,6 +280,7 @@ export function useServerTable<P extends ServerTableFilterParams, TResponse, TRo
         }
       },
       enabled,
+      ...(refetchOnMount ? { refetchOnMount } : {}),
       // Un 4xx es determinista (un filtro que el backend rechaza): no se reintenta.
       retry: retryUnlessClientError,
       // Mientras llega la consulta nueva se conservan las filas anteriores,

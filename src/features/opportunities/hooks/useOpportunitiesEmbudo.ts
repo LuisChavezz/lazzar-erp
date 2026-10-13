@@ -19,7 +19,8 @@ const NO_PARAMS: OpportunityEmbudoParams = {};
  *   mutaciones de oportunidades: el embudo se relee con ellas sin que ninguna
  *   lo nombre.
  * - `refetchOnMount: "always"`: el estado cambia desde pantallas que no
- *   invalidan esta llave (autorizar una cotización la pasa a Ganada).
+ *   invalidan esta llave (autorizar una cotización la pasa a Ganada). El
+ *   listado sobre el que se monta hace lo mismo, para no quedar desfasados.
  * - Con filtros nuevos se conservan las cifras anteriores mientras llegan las
  *   nuevas (`isPlaceholderData`), para que las barras no parpadeen.
  *

@@ -55,6 +55,10 @@ export const useOpportunitiesTable = () => {
     adapter: opportunitiesAdapter,
     toastId: "opportunities-refetch-error",
     loadErrorMessage: "No se pudieron cargar las oportunidades.",
+    // Como el embudo que va encima (`useOpportunitiesEmbudo`): el `estado`
+    // cambia desde pantallas que no invalidan estas llaves, y la tabla y el
+    // embudo deben mostrar el mismo momento al volver a la página.
+    refetchOnMount: "always",
   });
 
   // Un vendedor no ve el filtro de vendedor (el backend solo le devuelve sus
