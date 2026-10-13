@@ -27,6 +27,7 @@ import {
 import {
   INVOICE_ORIGIN_ID_PARAM,
   INVOICE_ORIGIN_SHEET_PARAM,
+  OPPORTUNITY_ORIGIN_ID_PARAM,
   isPedidoDetailOrigin,
   type PedidoDetailOrigin,
 } from "../constants/pedidoDetailOrigins";
@@ -34,6 +35,10 @@ import {
   buildInvoiceDetailHref,
   invoiceDetailPath,
 } from "@/src/features/invoicing/constants/invoiceDetailOrigins";
+import {
+  OPPORTUNITIES_LIST_PATH,
+  opportunityDetailPath,
+} from "@/src/features/opportunities/constants/opportunityRoutes";
 import { parsePositiveId } from "@/src/utils/parsePositiveId";
 import { canAccessRoute } from "@/src/utils/routeAccess";
 import { canLandOnQuoteEdit } from "@/src/features/quotes/utils/quoteEditRouteAccess";
@@ -128,6 +133,10 @@ const BACK_TARGETS: Record<PedidoDetailOrigin, { href: string; label: string }> 
   // ESA factura: el destino real lo arma `resolveBack` con el id validado. Esta
   // entrada fija es el respaldo cuando el id falta o no es válido.
   invoice: { href: "/finance/invoicing", label: "Volver a Facturación" },
+  // Igual que `invoice`: quien llega desde las cotizaciones del detalle de una
+  // oportunidad con su id (`?oportunidad=`) vuelve a ESA oportunidad
+  // (`resolveBack`). Esta entrada fija es el respaldo sin id válido.
+  opportunities: { href: OPPORTUNITIES_LIST_PATH, label: "Volver a Oportunidades" },
   // Destino universal: el Home no exige ningún permiso de módulo, así que sirve
   // como salida para quien llega sin `?from=` (URL pegada, recarga, enlace
   // externo). También es válido como valor explícito de `?from=home`.
@@ -146,6 +155,8 @@ const DEFAULT_BACK = BACK_TARGETS.home;
  * entrada fija de `BACK_TARGETS`. Si el usuario no puede abrir el detalle de
  * factura (un enlace compartido a quien no tiene facturación), cae al destino
  * por defecto, como sin origen: nunca a una ruta que el proxy rebotaría.
+ *
+ * El origen `opportunities` sigue la misma regla con `?oportunidad=`.
  */
 function resolveBack(
   from: string | undefined,
@@ -165,6 +176,14 @@ function resolveBack(
       href: buildInvoiceDetailHref(facturaId, {}, sheet),
       label: "Volver a la Factura",
     };
+  }
+  if (from === "opportunities") {
+    const oportunidadId = parsePositiveId(searchParams[OPPORTUNITY_ORIGIN_ID_PARAM]);
+    if (oportunidadId === null) {
+      return canOpen(BACK_TARGETS.opportunities.href) ? BACK_TARGETS.opportunities : DEFAULT_BACK;
+    }
+    const href = opportunityDetailPath(oportunidadId);
+    return canOpen(href) ? { href, label: "Volver a la Oportunidad" } : DEFAULT_BACK;
   }
   return BACK_TARGETS[from];
 }

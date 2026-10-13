@@ -23,6 +23,7 @@ export const PEDIDO_DETAIL_ORIGINS = [
   "purchase-orders",
   "customers",
   "invoice",
+  "opportunities",
   "home",
 ] as const;
 
@@ -34,6 +35,12 @@ export type PedidoDetailOrigin = (typeof PEDIDO_DETAIL_ORIGINS)[number];
  */
 export const INVOICE_ORIGIN_ID_PARAM = "factura";
 export const INVOICE_ORIGIN_SHEET_PARAM = "factura_sheet";
+
+/**
+ * Parámetro que acompaña al origen `opportunities`: la oportunidad a la que
+ * vuelve "Volver". Se valida en `PedidoDetailContent`.
+ */
+export const OPPORTUNITY_ORIGIN_ID_PARAM = "oportunidad";
 
 /**
  * Estrecha el `?from=` crudo de la URL. Compara contra el arreglo (no contra
