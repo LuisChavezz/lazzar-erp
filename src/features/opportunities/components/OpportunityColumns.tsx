@@ -1,10 +1,11 @@
 import { ColumnDef, createColumnHelper } from "@tanstack/react-table";
 import { ActionMenu, ActionMenuItem } from "@/src/components/ActionMenu";
-import { ChevronRightIcon, DeleteIcon, EditIcon } from "@/src/components/Icons";
+import { ChevronRightIcon, DeleteIcon, EditIcon, ViewIcon } from "@/src/components/Icons";
 import { formatCurrency, NO_CURRENCY_FORMAT, safeParseAmount } from "@/src/utils/formatCurrency";
 import { formatShortDate } from "@/src/utils/formatDate";
 import type { StatusBadgeConfigEntry } from "@/src/components/StatusBadge";
 import { ESTADO_OPORTUNIDAD_CFG } from "../constants/opportunityChoices";
+import { opportunityDetailPath } from "../constants/opportunityRoutes";
 import { useOpportunityRowActionsContext } from "../hooks/useOpportunityRowActions";
 import type { Opportunity } from "../interfaces/opportunity.interface";
 import {
@@ -20,7 +21,7 @@ const MUTED_CLS = "text-slate-400 dark:text-slate-500";
 /**
  * Celda "Oportunidad", con el diseño del folio de Pedidos: punto de color del
  * ESTADO + título en negritas + flecha, sin fondo. El título es el DISPARADOR
- * del menú de fila ("Editar", "Dar de baja"), como el folio de Pedidos en Mesa
+ * del menú de fila ("Ver detalle", "Editar", "Dar de baja"), como el folio de Pedidos en Mesa
  * de Control (`OperationsOrderColumns`): no hay columna "Acciones" ni columna
  * "Estado" aparte.
  *
@@ -43,6 +44,9 @@ function OpportunityTitleActions({ opportunity }: { opportunity: Opportunity }) 
   const estadoLabel = estadoCfg?.label || opportunity.estado || "Sin estado";
 
   const menuItems: ActionMenuItem[] = [
+    // Enlace real (`href`): clic central y Ctrl+clic abren el detalle en otra
+    // pestaña. No pasa por el contexto de acciones: no abre ningún diálogo.
+    { label: "Ver detalle", icon: ViewIcon, href: opportunityDetailPath(opportunity.id) },
     { label: "Editar", icon: EditIcon, onSelect: () => onEdit(opportunity) },
     { label: "Dar de baja", icon: DeleteIcon, onSelect: () => onDelete(opportunity) },
   ];
