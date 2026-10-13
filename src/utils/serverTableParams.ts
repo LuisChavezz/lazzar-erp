@@ -82,6 +82,14 @@ export interface ServerTableDefinition<
      * backend; no hace falta que su campo esté en `fields`.
      */
     default: string;
+    /**
+     * Desempate fijo, en formato `ordering` (`"-id"`): se AÑADE al orden que
+     * se envía al backend (`"monto_estimado,-id"`) para que las filas con el
+     * mismo valor no cambien de sitio entre páginas. No se escribe en la URL
+     * ni hace falta que su campo esté en `fields`; se omite cuando el orden
+     * vigente ya es por ese campo.
+     */
+    tiebreaker?: string;
   };
   /** Opciones del selector "Filas". Por defecto 10/20/50/100. */
   pageSizes?: readonly number[];
@@ -274,10 +282,16 @@ export const toServerTableCriteria = <P extends ServerTableFilterParams>(
   state: ServerTableState<P>,
 ): Record<string, string> => {
   const ordering = effectiveServerTableOrdering(definition, state.ordering);
+  const tiebreaker = definition.ordering?.tiebreaker;
+  const orderingField = (value: string) => value.replace(/^-/, "");
+  const sentOrdering =
+    ordering !== null && tiebreaker && orderingField(ordering) !== orderingField(tiebreaker)
+      ? `${ordering},${tiebreaker}`
+      : ordering;
   return {
     ...serializeServerTableFilters(definition, state.filters),
     ...(definition.search && state.search !== "" ? { [definition.search.param]: state.search } : {}),
-    ...(ordering !== null ? { ordering } : {}),
+    ...(sentOrdering !== null ? { ordering: sentOrdering } : {}),
   };
 };
 
