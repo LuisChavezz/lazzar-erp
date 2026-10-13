@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import type { ReactNode } from "react";
+import { useId, useState, type ReactNode } from "react";
 import { Button } from "@/src/components/Button";
-import { ChevronRightIcon, FilterIcon } from "@/src/components/Icons";
+import { ChevronDownIcon, ChevronRightIcon, FilterIcon } from "@/src/components/Icons";
 import { LoadingSkeleton } from "@/src/components/LoadingSkeleton";
 import { safeParseAmount } from "@/src/utils/formatCurrency";
 import { formatKpiMonto, plural } from "@/src/utils/kpiFormat";
@@ -86,12 +86,26 @@ interface OpportunityFunnelProps {
  * - El nombre accesible de cada barra dice estado, cantidad y monto; la activa
  *   se marca con `aria-pressed`, un contorno y el texto "Filtro activo", no
  *   solo con color.
+ * - Encima del listado (sin `compact`), en pantallas angostas nace PLEGADO a
+ *   una línea —el total y, si lo hay, el estado filtrado— para no empujar la
+ *   tabla fuera de la vista; un botón con `aria-expanded` lo despliega. En
+ *   pantallas anchas siempre está desplegado y el botón no existe.
  * - Tiene su propia carga y su propio error con reintento: un fallo aquí no
  *   afecta a lo que tenga alrededor.
  */
 export const OpportunityFunnel = ({ params, filter, compact = false }: OpportunityFunnelProps) => {
   const { embudo, isInitialError, isFetching, isPlaceholderData, refetch } =
     useOpportunitiesEmbudo(params);
+
+  // Solo cuenta en pantallas angostas (ver las clases `lg:`); no se guarda.
+  const [isExpanded, setIsExpanded] = useState(false);
+  const bodyId = useId();
+  const isCollapsible = !compact;
+  // Un error se muestra siempre: plegado no se sabría que algo falló.
+  const bodyCls = isCollapsible && !isExpanded && !isInitialError ? "hidden lg:block" : undefined;
+  const activeLabel = filter?.activeEstado
+    ? getEstadoOportunidadCfg(filter.activeEstado).label
+    : null;
 
   const rows = buildFunnelRows(embudo?.estados ?? []);
   const maxCantidad = Math.max(...rows.map((row) => row.cantidad));
@@ -187,7 +201,11 @@ export const OpportunityFunnel = ({ params, filter, compact = false }: Opportuni
           : "rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 p-4 md:p-5"
       }
     >
-      <div className="mb-3 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+      <div
+        className={`flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 ${
+          bodyCls ? "lg:mb-3" : "mb-3"
+        }`}
+      >
         <h2 className="text-sm font-bold text-slate-800 dark:text-white">Embudo de oportunidades</h2>
         {embudo && (
           <p
@@ -201,9 +219,31 @@ export const OpportunityFunnel = ({ params, filter, compact = false }: Opportuni
             <span className="font-bold text-slate-800 dark:text-white">
               {formatKpiMonto(safeParseAmount(embudo.total.monto))}
             </span>
+            {bodyCls && activeLabel && (
+              <span className="lg:hidden">
+                {" · "}Filtro: <span className="font-semibold">{activeLabel}</span>
+              </span>
+            )}
           </p>
         )}
+        {isCollapsible && (
+          <button
+            type="button"
+            aria-expanded={isExpanded}
+            aria-controls={bodyId}
+            onClick={() => setIsExpanded((current) => !current)}
+            className="lg:hidden inline-flex items-center gap-1 text-xs font-medium text-sky-600 dark:text-sky-400 cursor-pointer rounded-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
+          >
+            {isExpanded ? "Ocultar embudo" : "Ver embudo"}
+            <ChevronDownIcon
+              className={`h-3.5 w-3.5 transition-transform ${isExpanded ? "rotate-180" : ""}`}
+              aria-hidden="true"
+            />
+          </button>
+        )}
       </div>
+
+      <div id={bodyId} className={bodyCls}>
 
       {isInitialError ? (
         <div role="alert" className="flex flex-col items-center gap-2 px-1 py-3 text-center">
@@ -237,6 +277,7 @@ export const OpportunityFunnel = ({ params, filter, compact = false }: Opportuni
           </p>
         </>
       )}
+      </div>
 
       {compact && (
         <div className="mt-auto pt-3">
