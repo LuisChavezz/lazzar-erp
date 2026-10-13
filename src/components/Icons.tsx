@@ -87,6 +87,7 @@ import {
   Palette,
   Pencil,
   PenSquare,
+  Phone,
   Plug,
   Plus,
   PlusCircle,
@@ -226,6 +227,7 @@ export const ColumnsSettingsIcon = (props: LucideProps) => <Columns3Cog {...prop
 export const InfoIcon = (props: LucideProps) => <Info {...props} />;
 export const SearchIcon = (props: LucideProps) => <Search {...props} />;
 export const EmailIcon = (props: LucideProps) => <Mail {...props} />;
+export const PhoneIcon = (props: LucideProps) => <Phone {...props} />;
 export const LockIcon = (props: LucideProps) => <Lock {...props} />;
 export const ArrowLeftIcon = (props: LucideProps) => <ArrowLeft {...props} />;
 export const SaveIcon = (props: LucideProps) => <Save {...props} />;
