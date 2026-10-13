@@ -41,7 +41,7 @@ const SEARCHABLE_MAX_VISIBLE = 50;
 const foldText = (text: string) =>
   text
     .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
+    .replace(/\p{Diacritic}/gu, '')
     .toLowerCase();
 
 const STATUS_LINE_CLS = 'px-3 py-2 text-xs text-slate-400 dark:text-slate-500';
@@ -131,13 +131,26 @@ export function ColumnHeaderFilter<TData>({
     if (isOpen && isSearchable) searchInputRef.current?.focus();
   }, [isOpen, isSearchable]);
 
-  // La opción resaltada con las flechas debe quedar a la vista.
+  // La opción resaltada (con las flechas, o sola al escribir) debe quedar a
+  // la vista.
   useEffect(() => {
-    if (activeIndex < 0) return;
     listRef.current
       ?.querySelector('[data-active="true"]')
       ?.scrollIntoView({ block: 'nearest' });
-  }, [activeIndex]);
+  }, [activeIndex, query]);
+
+  // Variante con buscador: mientras está abierto, el `<th>` que lo contiene
+  // deja de ser arrastrable. Firefox no deja colocar el cursor ni seleccionar
+  // texto con el ratón en un campo dentro de un ancestro `draggable`.
+  useEffect(() => {
+    if (!isOpen || !isSearchable) return;
+    const draggableAncestor = containerRef.current?.closest<HTMLElement>('[draggable="true"]');
+    if (!draggableAncestor) return;
+    draggableAncestor.draggable = false;
+    return () => {
+      draggableAncestor.draggable = true;
+    };
+  }, [isOpen, isSearchable]);
 
   if (tableMode.mode === 'server-pagination') return null;
   if (tableMode.mode === 'server' && serverFilters === undefined) return null;
@@ -148,6 +161,9 @@ export function ColumnHeaderFilter<TData>({
   let visibleOptions = options;
   let hiddenCount = 0;
   let hasNoMatches = false;
+  // Al escribir se resalta sola la primera coincidencia: Enter la elige sin
+  // pasar por las flechas.
+  let firstMatchIndex = -1;
   if (isSearchable) {
     const foldedQuery = foldText(query.trim());
     const allOption = options.find((opt) => opt.value === undefined);
@@ -167,7 +183,11 @@ export function ColumnHeaderFilter<TData>({
       ...(selectedOption ? [selectedOption] : []),
       ...capped,
     ];
+    if (foldedQuery !== '' && capped.length > 0) {
+      firstMatchIndex = visibleOptions.length - capped.length;
+    }
   }
+  const highlightedIndex = activeIndex >= 0 ? activeIndex : firstMatchIndex;
 
   const selectOption = (opt: ColumnFilterOption) => {
     applyValue(opt.value);
@@ -180,13 +200,13 @@ export function ColumnHeaderFilter<TData>({
       type="button"
       role="menuitemradio"
       aria-checked={activeValue === opt.value}
-      data-active={isSearchable && index === activeIndex ? 'true' : undefined}
+      data-active={isSearchable && index === highlightedIndex ? 'true' : undefined}
       onClick={() => selectOption(opt)}
       className={`flex items-center gap-2 w-full text-left px-3 py-2 text-xs transition-colors cursor-pointer hover:bg-slate-50 dark:hover:bg-white/5 ${
         activeValue === opt.value
           ? 'text-sky-600 dark:text-sky-400 font-semibold'
           : 'text-slate-600 dark:text-slate-300'
-      }${isSearchable && index === activeIndex ? ' bg-slate-50 dark:bg-white/5' : ''}`}
+      }${isSearchable && index === highlightedIndex ? ' bg-slate-50 dark:bg-white/5' : ''}`}
     >
       <span
         className={`h-1.5 w-1.5 rounded-full shrink-0 ${opt.dotClassName ?? ''}`}
@@ -210,7 +230,14 @@ export function ColumnHeaderFilter<TData>({
   );
 
   return (
-    <div className="relative" ref={containerRef}>
+    <div
+      className="relative"
+      ref={containerRef}
+      // El `<th>` que envuelve el encabezado ordena con Enter/Espacio (y
+      // cancela la tecla): sin esto, abrir el filtro o elegir una opción con el
+      // teclado reordenaría la columna, y un espacio en el buscador también.
+      onKeyDown={(event) => event.stopPropagation()}
+    >
       <button
         type="button"
         onClick={(event) => {
@@ -249,10 +276,8 @@ export function ColumnHeaderFilter<TData>({
           aria-label={`Filtrar por ${label}`}
           onClick={(event) => event.stopPropagation()}
           onMouseDown={(event) => event.stopPropagation()}
-          // El `<th>` que envuelve el encabezado ordena con Enter/Espacio y es
-          // arrastrable: sin esto, escribir un espacio en el buscador ordenaría
-          // la columna y seleccionar texto con el ratón la arrastraría.
-          onKeyDown={(event) => event.stopPropagation()}
+          // El `<th>` es arrastrable: que arrastrar dentro del menú no mueva
+          // la columna.
           onDragStart={(event) => {
             event.preventDefault();
             event.stopPropagation();
@@ -271,13 +296,13 @@ export function ColumnHeaderFilter<TData>({
               onKeyDown={(event) => {
                 if (event.key === 'ArrowDown') {
                   event.preventDefault();
-                  setActiveIndex((prev) => Math.min(visibleOptions.length - 1, prev + 1));
+                  setActiveIndex(Math.min(visibleOptions.length - 1, highlightedIndex + 1));
                 } else if (event.key === 'ArrowUp') {
                   event.preventDefault();
-                  setActiveIndex((prev) => Math.max(0, prev - 1));
+                  setActiveIndex(Math.max(0, highlightedIndex - 1));
                 } else if (event.key === 'Enter') {
                   event.preventDefault();
-                  const target = visibleOptions[activeIndex];
+                  const target = visibleOptions[highlightedIndex];
                   if (target) selectOption(target);
                 } else if (event.key === 'Escape') {
                   event.preventDefault();
