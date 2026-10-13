@@ -12,14 +12,7 @@ import { useDeleteOpportunity } from "../hooks/useDeleteOpportunity";
 import { useOpportunitiesTable } from "../hooks/useOpportunitiesTable";
 import { OpportunityRowActionsProvider } from "../hooks/useOpportunityRowActions";
 import type { Opportunity } from "../interfaces/opportunity.interface";
-
-/** Cómo nombrar una oportunidad en un texto: su título o, si no tiene, su contacto. */
-const describeOpportunity = (opportunity: Opportunity): string => {
-  const titulo = opportunity.titulo?.trim();
-  if (titulo) return `"${titulo}"`;
-  const quien = opportunity.cliente_nombre ?? opportunity.nombre_contacto?.trim();
-  return quien ? `de ${quien}` : `#${opportunity.id}`;
-};
+import { describeOpportunity } from "../utils/describeOpportunity";
 
 /**
  * Listado de oportunidades del CRM, en MODO SERVIDOR: filtros, búsqueda, orden
