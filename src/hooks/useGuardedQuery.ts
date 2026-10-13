@@ -1,9 +1,9 @@
 import { useEffect, useSyncExternalStore } from "react";
 import {
-  hashKey,
   useQuery,
   useQueryClient,
   type DefaultError,
+  type QueryCache,
   type QueryKey,
   type UseQueryOptions,
 } from "@tanstack/react-query";
@@ -43,7 +43,12 @@ interface GuardedQueryNotice<TError = DefaultError> {
  * instancia que se monta después (como `notifiedFailures` en
  * `useHasLoadedQuery`), y se lee con `useSyncExternalStore` porque es estado
  * mutable externo a React.
+ *
+ * Una entrada se borra cuando la consulta responde bien, y cuando TanStack la
+ * QUITA de su caché (`watchRemovedQueries`): sin consulta no hay datos viejos
+ * que proteger. El tope es solo una red de seguridad.
  */
+const MAX_DEFINITIVE_ERRORS = 100;
 const definitiveErrorAt = new Map<string, number>();
 const definitiveErrorListeners = new Set<() => void>();
 
@@ -56,9 +61,31 @@ const subscribeToDefinitiveErrors = (listener: () => void) => {
 
 const setDefinitiveErrorAt = (queryHash: string, at: number | undefined) => {
   if (definitiveErrorAt.get(queryHash) === at) return;
-  if (at === undefined) definitiveErrorAt.delete(queryHash);
-  else definitiveErrorAt.set(queryHash, at);
+  if (at === undefined) {
+    definitiveErrorAt.delete(queryHash);
+  } else {
+    // Se reinserta para que el orden del Map sea el de la última marca, y al
+    // pasar del tope se descarta la más vieja.
+    definitiveErrorAt.delete(queryHash);
+    definitiveErrorAt.set(queryHash, at);
+    if (definitiveErrorAt.size > MAX_DEFINITIVE_ERRORS) {
+      const oldest = definitiveErrorAt.keys().next().value;
+      if (oldest !== undefined) definitiveErrorAt.delete(oldest);
+    }
+  }
   definitiveErrorListeners.forEach((listener) => listener());
+};
+
+/** Cachés de TanStack ya vigiladas (una suscripción por `QueryClient`). */
+const watchedQueryCaches = new WeakSet<QueryCache>();
+
+/** Olvida la marca de cada consulta que TanStack quita de su caché. */
+const watchRemovedQueries = (queryCache: QueryCache) => {
+  if (watchedQueryCaches.has(queryCache)) return;
+  watchedQueryCaches.add(queryCache);
+  queryCache.subscribe((event) => {
+    if (event.type === "removed") setDefinitiveErrorAt(event.query.queryHash, undefined);
+  });
 };
 
 const NO_DEFINITIVE_ERROR = 0;
@@ -133,8 +160,10 @@ export const useGuardedQuery = <
   } = useQuery(guardedOptions);
 
   // Sin la opción no hay nada que recordar: `queryHash` vacío y la lectura
-  // devuelve siempre `NO_DEFINITIVE_ERROR`.
-  const queryHash = isDefinitiveError ? hashKey(options.queryKey) : "";
+  // devuelve siempre `NO_DEFINITIVE_ERROR`. El hash es el de la PROPIA consulta
+  // (respeta un `queryKeyHashFn`), el mismo con que TanStack la nombra al
+  // quitarla.
+  const queryHash = isDefinitiveError ? queryClient.defaultQueryOptions(options).queryHash : "";
   const rememberedAt = useSyncExternalStore(
     subscribeToDefinitiveErrors,
     () => definitiveErrorAt.get(queryHash) ?? NO_DEFINITIVE_ERROR,
@@ -150,13 +179,22 @@ export const useGuardedQuery = <
 
   useEffect(() => {
     if (queryHash === "") return;
+    watchRemovedQueries(queryClient.getQueryCache());
     if (isCurrentErrorDefinitive) {
       setDefinitiveErrorAt(queryHash, errorUpdatedAt);
     } else if (!isError || dataUpdatedAt >= rememberedAt) {
       // Una respuesta exitosa posterior levanta la marca.
       setDefinitiveErrorAt(queryHash, undefined);
     }
-  }, [queryHash, isCurrentErrorDefinitive, isError, errorUpdatedAt, dataUpdatedAt, rememberedAt]);
+  }, [
+    queryClient,
+    queryHash,
+    isCurrentErrorDefinitive,
+    isError,
+    errorUpdatedAt,
+    dataUpdatedAt,
+    rememberedAt,
+  ]);
 
   const guardedData = isDefinitive ? undefined : data;
 
