@@ -1,6 +1,8 @@
 "use client";
 
+import { useEffect, useEffectEvent } from "react";
 import { useServerTable } from "@/src/hooks/useServerTable";
+import { useCompanyAdminStatus } from "@/src/features/users/hooks/useIsCompanyAdmin";
 import { limitOffsetAdapter } from "@/src/utils/serverListAdapters";
 import { defineServerTable, enumParam, positiveIdParam } from "@/src/utils/serverTableParams";
 import { ESTADO_OPORTUNIDAD_VALUES } from "../constants/opportunityChoices";
@@ -45,8 +47,8 @@ export const opportunitiesTable = defineServerTable({
 const opportunitiesAdapter = limitOffsetAdapter<Opportunity>();
 
 /** Listado de oportunidades en modo servidor (estado en la URL). */
-export const useOpportunitiesTable = () =>
-  useServerTable<typeof opportunitiesTable.filters, OpportunityListResponse, Opportunity>({
+export const useOpportunitiesTable = () => {
+  const table = useServerTable<typeof opportunitiesTable.filters, OpportunityListResponse, Opportunity>({
     definition: opportunitiesTable,
     queryKey: OPPORTUNITIES_KEY,
     queryFn: getOpportunities,
@@ -54,3 +56,21 @@ export const useOpportunitiesTable = () =>
     toastId: "opportunities-refetch-error",
     loadErrorMessage: "No se pudieron cargar las oportunidades.",
   });
+
+  // Un vendedor no ve el filtro de vendedor (el backend solo le devuelve sus
+  // oportunidades). Si llega con `?vendedor=N` en la URL, el filtro quedaría
+  // activo sin control a la vista: se quita por la misma vía que cualquier
+  // filtro (`setFilter`, que vuelve a la página 1 y conserva lo demás).
+  //
+  // Solo con la respuesta RESUELTA (`not-admin`): mientras el catálogo de
+  // usuarios carga, o si falla, el parámetro se queda — a un administrador no
+  // se le debe quitar su filtro por un instante de carga.
+  const adminStatus = useCompanyAdminStatus();
+  const hasVendedorFilter = table.state.filters.vendedor !== undefined;
+  const dropVendedorFilter = useEffectEvent(() => table.setFilter("vendedor", undefined));
+  useEffect(() => {
+    if (adminStatus === "not-admin" && hasVendedorFilter) dropVendedorFilter();
+  }, [adminStatus, hasVendedorFilter]);
+
+  return table;
+};
