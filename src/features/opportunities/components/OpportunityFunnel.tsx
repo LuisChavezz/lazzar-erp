@@ -8,8 +8,9 @@ import { LoadingSkeleton } from "@/src/components/LoadingSkeleton";
 import { safeParseAmount } from "@/src/utils/formatCurrency";
 import { formatKpiMonto, plural } from "@/src/utils/kpiFormat";
 import {
-  ESTADO_OPORTUNIDAD_CFG,
+  ESTADO_OPORTUNIDAD_VALUES,
   ESTADO_PERDIDA,
+  getEstadoOportunidadCfg,
   type EstadoOportunidad,
 } from "../constants/opportunityChoices";
 import { OPPORTUNITIES_LIST_PATH } from "../constants/opportunityRoutes";
@@ -17,19 +18,30 @@ import {
   useOpportunitiesEmbudo,
   type OpportunityEmbudoParams,
 } from "../hooks/useOpportunitiesEmbudo";
+import type { OpportunityEmbudoEstado } from "../interfaces/opportunity-embudo.interface";
 import { opportunitiesListHrefForEstado } from "../utils/opportunityListQuery";
 
+const isKnownEstado = (estado: string): estado is EstadoOportunidad =>
+  (ESTADO_OPORTUNIDAD_VALUES as readonly string[]).includes(estado);
+
+/** El avance de una oportunidad, en el orden del catálogo y sin las perdidas. */
+const ESTADOS_DE_AVANCE = ESTADO_OPORTUNIDAD_VALUES.filter((estado) => estado !== ESTADO_PERDIDA);
+
 /**
- * Orden del embudo: el avance de una oportunidad y, al final y aparte, las
- * perdidas (no son una etapa más del avance).
+ * Barras del embudo, a partir de la RESPUESTA: el avance en el orden del
+ * catálogo; después, cualquier estado que el backend mande y el catálogo no
+ * conozca (cuenta en el total, así que debe verse); y al final y aparte, las
+ * perdidas, que no son una etapa más del avance.
  */
-const FUNNEL_ORDER: readonly EstadoOportunidad[] = [
-  "Nueva",
-  "Contactada",
-  "Cotizada",
-  "Ganada",
-  ESTADO_PERDIDA,
-];
+const buildFunnelRows = (estados: OpportunityEmbudoEstado[]) => {
+  const byEstado = new Map(estados.map((row) => [row.estado, row]));
+  const unknown = estados.map((row) => row.estado).filter((estado) => !isKnownEstado(estado));
+  return [...ESTADOS_DE_AVANCE, ...unknown, ESTADO_PERDIDA].map((estado) => ({
+    estado,
+    cantidad: byEstado.get(estado)?.cantidad ?? 0,
+    monto: safeParseAmount(byEstado.get(estado)?.monto),
+  }));
+};
 
 /** Ancho mínimo de una barra, para que un estado sin oportunidades se vea. */
 const MIN_BAR_WIDTH = "6px";
@@ -69,6 +81,8 @@ interface OpportunityFunnelProps {
  *   numeroso (ese llena el ancho). Un estado en cero conserva una barra mínima
  *   y sigue siendo interactivo.
  * - Los montos van sin símbolo: las oportunidades no registran moneda.
+ * - Un estado que el catálogo no conoce se pinta en gris y sin acción (no hay
+ *   filtro que aplicar ni listado al que enlazar).
  * - El nombre accesible de cada barra dice estado, cantidad y monto; la activa
  *   se marca con `aria-pressed`, un contorno y el texto "Filtro activo", no
  *   solo con color.
@@ -79,16 +93,11 @@ export const OpportunityFunnel = ({ params, filter, compact = false }: Opportuni
   const { embudo, isInitialError, isFetching, isPlaceholderData, refetch } =
     useOpportunitiesEmbudo(params);
 
-  const byEstado = new Map(embudo?.estados.map((row) => [row.estado, row]));
-  const rows = FUNNEL_ORDER.map((estado) => ({
-    estado,
-    cantidad: byEstado.get(estado)?.cantidad ?? 0,
-    monto: safeParseAmount(byEstado.get(estado)?.monto),
-  }));
+  const rows = buildFunnelRows(embudo?.estados ?? []);
   const maxCantidad = Math.max(...rows.map((row) => row.cantidad));
 
   const renderRow = ({ estado, cantidad, monto }: (typeof rows)[number]) => {
-    const cfg = ESTADO_OPORTUNIDAD_CFG[estado];
+    const cfg = getEstadoOportunidadCfg(estado);
     const isActive = filter?.activeEstado === estado;
     const pct = maxCantidad > 0 ? (cantidad / maxCantidad) * 100 : 0;
     const montoLabel = formatKpiMonto(monto);
@@ -133,7 +142,11 @@ export const OpportunityFunnel = ({ params, filter, compact = false }: Opportuni
 
     return (
       <li key={estado} className={separatorCls}>
-        {filter ? (
+        {!isKnownEstado(estado) ? (
+          <div role="group" aria-label={name} className="px-2 py-1.5">
+            {content}
+          </div>
+        ) : filter ? (
           <button
             type="button"
             aria-pressed={isActive}
@@ -199,7 +212,7 @@ export const OpportunityFunnel = ({ params, filter, compact = false }: Opportuni
           aria-label="Cargando embudo"
           className={compact ? "space-y-3" : "grid grid-cols-1 gap-3 lg:grid-cols-5"}
         >
-          {FUNNEL_ORDER.map((estado) => (
+          {ESTADO_OPORTUNIDAD_VALUES.map((estado) => (
             <LoadingSkeleton key={estado} className="h-14 rounded-lg" />
           ))}
         </div>
@@ -208,7 +221,8 @@ export const OpportunityFunnel = ({ params, filter, compact = false }: Opportuni
           <ul
             aria-busy={isPlaceholderData || undefined}
             className={`transition-opacity ${isPlaceholderData ? "opacity-60" : ""} ${
-              compact ? "space-y-2" : "grid grid-cols-1 gap-2 lg:grid-cols-5"
+              // Una fila de columnas iguales, tantas como barras haya.
+              compact ? "space-y-2" : "grid grid-cols-1 gap-2 lg:grid-flow-col lg:grid-cols-none lg:auto-cols-fr"
             }`}
           >
             {rows.map(renderRow)}

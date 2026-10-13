@@ -1,8 +1,11 @@
-import type { EstadoOportunidad } from "../constants/opportunityChoices";
-
 /** Un estado del embudo: cuántas oportunidades hay y cuánto suman. */
 export interface OpportunityEmbudoEstado {
-  estado: EstadoOportunidad;
+  /**
+   * Valor crudo del backend. Hoy son los cinco de `ESTADO_OPORTUNIDAD_VALUES`,
+   * pero se tipa como texto: un estado que el catálogo no conozca también se
+   * muestra (cuenta en `total`).
+   */
+  estado: string;
   cantidad: number;
   /** Suma de `monto_estimado`, decimal en texto ("109975.49"). Sin moneda. */
   monto: string;
