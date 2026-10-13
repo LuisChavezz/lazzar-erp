@@ -124,6 +124,11 @@ export interface DataTableServerMode {
    */
   search?: {
     value: string;
+    /**
+     * La búsqueda ya consultada (la que produjo las filas en pantalla). La usa
+     * el mensaje de "sin resultados"; si se omite, se toma `value`.
+     */
+    committedValue?: string;
     onChange: (value: string, commit?: "debounced" | "now") => void;
   };
   /**
@@ -147,6 +152,12 @@ export interface DataTableServerMode {
    * hasta que llegue la respuesta; el encabezado y sus filtros siguen usables.
    */
   isTransitioning?: boolean;
+  /**
+   * La consulta aún no se ha hecho (está deshabilitada, p. ej. falta un filtro
+   * obligatorio). Con este mensaje el cuerpo vacío no afirma "no hay
+   * elementos": lo muestra tal cual, sin acciones.
+   */
+  idleMessage?: string;
 }
 
 // ─── Alineación por columna ──────────────────────────────────────────────────
@@ -698,6 +709,31 @@ export function DataTable<TData, TValue>({
         : { mode: "client", columnFilters },
     [isServerMode, isServerPaginated, serverFilters, columnFilters]
   );
+  // Solo en desarrollo: una clave de `meta.serverSort` / `meta.serverFilter`
+  // que la lista no conoce se ignora (la columna no ordena, o su filtro no
+  // hace nada), así que se avisa por consola con la columna y la clave.
+  const serverMetaWarnings =
+    process.env.NODE_ENV !== "production" && isServerMode
+      ? table
+          .getAllLeafColumns()
+          .flatMap((column) => {
+            const { serverSort, serverFilter } = column.columnDef.meta ?? {};
+            return [
+              serverSort !== undefined && !serverSorting?.fields.includes(serverSort)
+                ? `columna "${column.id}": meta.serverSort "${serverSort}" no está en los campos de orden de la lista`
+                : null,
+              serverFilter !== undefined &&
+              serverFilters?.keys !== undefined &&
+              !serverFilters.keys.includes(serverFilter)
+                ? `columna "${column.id}": meta.serverFilter "${serverFilter}" no es un filtro de la lista`
+                : null,
+            ].filter((warning) => warning !== null);
+          })
+          .join("\n")
+      : "";
+  useEffect(() => {
+    if (serverMetaWarnings) console.warn(`[DataTable] ${serverMetaWarnings}`);
+  }, [serverMetaWarnings]);
   // Buscador fijo de la izquierda: el de siempre en cliente (filtra en
   // memoria); en modo servidor, el mismo input controlado por `server.search`.
   // Con la `serverPagination` obsoleta, o sin `server.search`, no hay buscador.
@@ -708,9 +744,13 @@ export function DataTable<TData, TValue>({
   // Estado vacío en modo servidor: "sin coincidencias" si la consulta lleva
   // criterios, "sin datos" si no. `data.length` no sirve para distinguirlos:
   // es solo la página.
-  const serverSearchTerm = serverSearch?.value.trim() ?? "";
+  // El término es el CONSULTADO, no lo que se está tecleando: el vacío habla
+  // de la respuesta que hay en pantalla.
+  const serverSearchTerm = (serverSearch?.committedValue ?? serverSearch?.value ?? "").trim();
   const serverEmptyMessage = !isServerMode
     ? ""
+    : server.idleMessage !== undefined
+    ? server.idleMessage
     : server.hasActiveCriteria
     ? serverSearchTerm.length > 0 && Object.keys(serverFilters?.values ?? {}).length === 0
       ? `No se encontraron resultados para ${serverSearchTerm}`
@@ -1647,7 +1687,7 @@ export function DataTable<TData, TValue>({
                       {isServerMode ? (
                         <>
                           <span>{serverEmptyMessage}</span>
-                          {server.hasActiveCriteria ? (
+                          {server.idleMessage !== undefined ? null : server.hasActiveCriteria ? (
                             <button
                               type="button"
                               onClick={server.onClearCriteria}

@@ -13,6 +13,11 @@ export interface DataTableServerFilters {
   values: Readonly<Record<string, string>>;
   /** `undefined` quita el filtro (opción "Todos"). */
   onChange: (key: string, value: string | undefined) => void;
+  /**
+   * Claves que la lista acepta. Solo sirve para avisar en desarrollo de un
+   * `meta.serverFilter` que no está entre ellas; si se omite, no se comprueba.
+   */
+  keys?: readonly string[];
 }
 
 /**

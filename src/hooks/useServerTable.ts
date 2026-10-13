@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useEffectEvent, useRef, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
-import { partialMatchKey, type QueryKey } from "@tanstack/react-query";
+import { hashKey, partialMatchKey, useQueryClient, type QueryKey } from "@tanstack/react-query";
 import type { DataTableServerMode } from "@/src/components/DataTable";
 import { useGuardedQuery } from "@/src/hooks/useGuardedQuery";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
@@ -47,6 +47,12 @@ interface UseServerTableOptions<P extends ServerTableFilterParams, TResponse, TR
   /** Mensaje del error de cuerpo cuando el backend no manda el suyo. */
   loadErrorMessage?: string;
   enabled?: boolean;
+  /**
+   * Texto del cuerpo de la tabla mientras la consulta está deshabilitada
+   * (`enabled: false`) y no hay nada que mostrar, p. ej. "Elige un almacén
+   * para consultar".
+   */
+  disabledMessage?: string;
   /** Pausa de escritura antes de consultar la búsqueda. Por defecto 300 ms. */
   searchDebounceMs?: number;
 }
@@ -54,6 +60,19 @@ interface UseServerTableOptions<P extends ServerTableFilterParams, TResponse, TR
 // Referencia estable para "sin filas": un `[]` nuevo por render haría creer a
 // la tabla que sus datos cambiaron.
 const NO_ROWS: never[] = [];
+
+/**
+ * Resultado de un REFETCH al que el backend respondió "esa página ya no
+ * existe" (el 404 de `?page=` tras borrar la última fila de la última página).
+ * Se guarda como dato, no como error, para que no caiga en el toast de "se
+ * muestran los datos anteriores": esos datos son justo los que ya no existen.
+ */
+const PAGE_GONE = { serverTablePageGone: true } as const;
+type PageGone = typeof PAGE_GONE;
+// Por propiedad y no por identidad: el structural sharing de TanStack Query
+// puede guardar una copia del objeto.
+const isPageGoneData = (data: unknown): data is PageGone =>
+  typeof data === "object" && data !== null && "serverTablePageGone" in data;
 
 /**
  * Estado de una lista en MODO SERVIDOR: lo lee de la URL, lo consulta y
@@ -95,8 +114,10 @@ export function useServerTable<P extends ServerTableFilterParams, TResponse, TRo
   refetchErrorMessage,
   loadErrorMessage = "No se pudo cargar la información.",
   enabled = true,
+  disabledMessage = "Aún no se ha hecho la consulta.",
   searchDebounceMs = 300,
 }: UseServerTableOptions<P, TResponse, TRow>) {
+  const queryClient = useQueryClient();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const state = readServerTableState(definition, (key) => searchParams.get(key));
@@ -223,10 +244,27 @@ export function useServerTable<P extends ServerTableFilterParams, TResponse, TRo
   const criteria = toServerTableCriteria(definition, state);
   const request: ServerTableRequest = { ...criteria, ...adapter.paginationParams(page) };
 
-  const query = useGuardedQuery<TResponse>(
+  const listKey = [...queryKey, "list", request];
+  const listKeyHash = hashKey(listKey);
+  const query = useGuardedQuery<TResponse | PageGone>(
     {
-      queryKey: [...queryKey, "list", request],
-      queryFn: () => queryFn(request),
+      queryKey: listKey,
+      queryFn: async () => {
+        try {
+          return await queryFn(request);
+        } catch (error) {
+          // Solo en un REFETCH (ya había datos de esta misma consulta): en la
+          // carga inicial el error sigue su camino y la tabla lo muestra.
+          if (
+            page.page > 1 &&
+            adapter.isOutOfRange?.(error) === true &&
+            queryClient.getQueryData(listKey) !== undefined
+          ) {
+            return PAGE_GONE;
+          }
+          throw error;
+        }
+      },
       enabled,
       // Un 4xx es determinista (un filtro que el backend rechaza): no se reintenta.
       retry: retryUnlessClientError,
@@ -236,7 +274,9 @@ export function useServerTable<P extends ServerTableFilterParams, TResponse, TRo
       // (ver `useConciliaciones`).
       placeholderData: enabled
         ? (previousData, previousQuery) =>
-            previousQuery !== undefined && partialMatchKey(previousQuery.queryKey, queryKey)
+            previousQuery !== undefined &&
+            !isPageGoneData(previousData) &&
+            partialMatchKey(previousQuery.queryKey, queryKey)
               ? previousData
               : undefined
         : undefined,
@@ -244,7 +284,8 @@ export function useServerTable<P extends ServerTableFilterParams, TResponse, TRo
     { toastId, errorMessage: refetchErrorMessage },
   );
 
-  const response = query.data;
+  const isPageGone = isPageGoneData(query.data);
+  const response = isPageGone ? undefined : (query.data as TResponse | undefined);
   const parsed = response === undefined ? undefined : adapter.parse(response, page);
   const rows: TRow[] = parsed?.rows ?? NO_ROWS;
   const total = parsed?.total;
@@ -252,8 +293,12 @@ export function useServerTable<P extends ServerTableFilterParams, TResponse, TRo
   // Página vacía con registros en la consulta: el conjunto se encogió (o la
   // URL traía una página que ya no existe). Se va a la última que sí existe.
   const lastPage = total === undefined ? undefined : Math.max(1, Math.ceil(total / state.pageSize));
-  const pageToClampTo =
-    query.hasLoaded &&
+  // Si lo que ya no existe es la página que se estaba viendo (refetch), se
+  // retrocede una: si tampoco existe, esa ya es una carga inicial y la tabla
+  // ofrece volver a la primera.
+  const pageToClampTo = isPageGone
+    ? state.page - 1
+    : query.hasLoaded &&
     !query.isPlaceholderData &&
     rows.length === 0 &&
     total !== undefined &&
@@ -262,18 +307,19 @@ export function useServerTable<P extends ServerTableFilterParams, TResponse, TRo
     state.page > lastPage
       ? lastPage
       : null;
+  // Misma escritura de URL que el paginador (`setPage`), leída al dispararse.
+  const goToPage = useEffectEvent(setPage);
   useEffect(() => {
-    if (pageToClampTo === null) return;
-    const currentQuery = new URLSearchParams(window.location.search);
-    const current = readServerTableState(definition, (key) => currentQuery.get(key));
-    if (current.page === pageToClampTo) return;
-    const qs = writeServerTableQuery(
-      definition,
-      { ...current, page: pageToClampTo },
-      currentQuery,
-    ).toString();
-    window.history.replaceState(null, "", qs ? `${pathname}?${qs}` : pathname);
-  }, [pageToClampTo, definition, pathname]);
+    if (pageToClampTo !== null) goToPage(pageToClampTo);
+  }, [pageToClampTo]);
+  // El marcador no debe quedarse en caché: al dejar esa página se descarta,
+  // para que volver a ella consulte de nuevo en vez de rebotar.
+  useEffect(() => {
+    if (!isPageGone) return;
+    return () => {
+      queryClient.removeQueries({ predicate: (cached) => cached.queryHash === listKeyHash });
+    };
+  }, [isPageGone, listKeyHash, queryClient]);
 
   // El backend dice que esa página no existe (p. ej. el 404 de `?page=`):
   // reintentar no sirve, lo que sirve es volver a la primera.
@@ -297,7 +343,9 @@ export function useServerTable<P extends ServerTableFilterParams, TResponse, TRo
       },
       pageSizeOptions: serverTablePageSizes(definition),
     },
-    search: definition.search ? { value: draft, onChange: handleSearchChange } : undefined,
+    search: definition.search
+      ? { value: draft, committedValue: state.search, onChange: handleSearchChange }
+      : undefined,
     sorting:
       definition.ordering && ordering !== null
         ? {
@@ -313,10 +361,12 @@ export function useServerTable<P extends ServerTableFilterParams, TResponse, TRo
     filters: {
       values: serializeServerTableFilters(definition, state.filters),
       onChange: handleFilterChange,
+      keys: Object.keys(definition.filters),
     },
     hasActiveCriteria,
     onClearCriteria: clear,
     isTransitioning: query.isPlaceholderData,
+    idleMessage: enabled ? undefined : disabledMessage,
   };
 
   return {
@@ -343,7 +393,8 @@ export function useServerTable<P extends ServerTableFilterParams, TResponse, TRo
     tableProps: {
       data: rows,
       server,
-      isLoading: query.isLoading,
+      // `isPageGone`: un instante, hasta que el efecto de arriba cambia de página.
+      isLoading: query.isLoading || isPageGone,
       isError: query.isInitialError,
       errorMessage: isOutOfRangeError
         ? "Esa página ya no existe con los filtros actuales."
@@ -351,9 +402,11 @@ export function useServerTable<P extends ServerTableFilterParams, TResponse, TRo
       onErrorRetry: isOutOfRangeError
         ? () => setPage(1)
         : () => {
-            void query.refetch();
+            if (enabled) void query.refetch();
           },
-      onRefetch: () => query.refetch(),
+      // `refetch()` consulta aunque `enabled` sea `false`: deshabilitada, la
+      // barra no ofrece "Actualizar datos".
+      onRefetch: enabled ? () => query.refetch() : undefined,
       isRefetching: query.isFetching,
     },
   };
