@@ -4,7 +4,10 @@ import { PedidosIcon } from "@/src/components/Icons";
 import { Button } from "@/src/components/Button";
 import { ConfirmDialog } from "@/src/components/ConfirmDialog";
 import { useCreateAndOpenQuote } from "@/src/features/quotes/hooks/useCreateAndOpenQuote";
-import { useCotizarOpportunity } from "../hooks/useCotizarOpportunity";
+import {
+  cotizarOpportunityMutationKey,
+  useCotizarOpportunity,
+} from "../hooks/useCotizarOpportunity";
 import type { Opportunity } from "../interfaces/opportunity.interface";
 
 interface OpportunityCotizarActionProps {
@@ -23,11 +26,15 @@ export function OpportunityCotizarAction({
   opportunity,
   cotizacionesCount,
 }: OpportunityCotizarActionProps) {
-  const { mutateAsync: cotizar, isPending: isCotizando } = useCotizarOpportunity();
-  const { triggerProps, confirmDialogProps } = useCreateAndOpenQuote({
+  const { mutateAsync: cotizar } = useCotizarOpportunity(opportunity.id);
+  const {
+    isCreating: isCotizando,
+    triggerProps,
+    confirmDialogProps,
+  } = useCreateAndOpenQuote({
+    mutationKey: cotizarOpportunityMutationKey(opportunity.id),
     create: async () =>
       (await cotizar({ id: opportunity.id, cliente: opportunity.cliente })).cotizacion_id,
-    isCreating: isCotizando,
   });
 
   const hasCotizaciones = cotizacionesCount > 0;

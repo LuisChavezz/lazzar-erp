@@ -4,7 +4,7 @@ import { CopyIcon } from "@/src/components/Icons";
 import { Button } from "@/src/components/Button";
 import { ConfirmDialog } from "@/src/components/ConfirmDialog";
 import { useCreateAndOpenQuote } from "@/src/features/quotes/hooks/useCreateAndOpenQuote";
-import { useRecomprarPedido } from "../hooks/useRecomprarPedido";
+import { recomprarPedidoMutationKey, useRecomprarPedido } from "../hooks/useRecomprarPedido";
 
 interface OrderRecompraActionProps {
   pedidoId: number;
@@ -21,10 +21,14 @@ interface OrderRecompraActionProps {
  * desmonta al cambiar de hoja.
  */
 export function OrderRecompraAction({ pedidoId, pedidoFolio }: OrderRecompraActionProps) {
-  const { mutateAsync: recomprar, isPending: isRecomprando } = useRecomprarPedido();
-  const { triggerProps, confirmDialogProps } = useCreateAndOpenQuote({
-    create: async () => (await recomprar(pedidoId)).cotizacion.id,
+  const { mutateAsync: recomprar } = useRecomprarPedido(pedidoId);
+  const {
     isCreating: isRecomprando,
+    triggerProps,
+    confirmDialogProps,
+  } = useCreateAndOpenQuote({
+    mutationKey: recomprarPedidoMutationKey(pedidoId),
+    create: async () => (await recomprar(pedidoId)).cotizacion.id,
   });
 
   return (

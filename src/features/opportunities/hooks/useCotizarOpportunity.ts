@@ -31,8 +31,9 @@ const cotizarErrorMessage = (error: unknown): string => {
 /**
  * "Cotizar": crea una cotización en Borrador ligada a la oportunidad.
  *
- * El endpoint NO es idempotente: la guarda contra el doble envío vive en quien
- * la dispara (`OpportunityCotizarAction`), no aquí.
+ * El endpoint NO es idempotente: la guarda contra el doble envío es de quien la
+ * dispara (`useCreateAndOpenQuote`), que usa la `mutationKey` por oportunidad
+ * como candado: por eso el hook recibe la oportunidad.
  *
  * Al terminar —bien o mal— se relee todo lo de oportunidades: con éxito el
  * `estado` pasa a `Cotizada` (listado y detalle); con un rechazo, el motivo
@@ -40,10 +41,14 @@ const cotizarErrorMessage = (error: unknown): string => {
  * debe reflejarlo. Con éxito además cambia lo que cuenta cotizaciones: su
  * listado y el resumen del cliente.
  */
-export const useCotizarOpportunity = () => {
+export const cotizarOpportunityMutationKey = (opportunityId: number) =>
+  ["cotizar-opportunity", opportunityId] as const;
+
+export const useCotizarOpportunity = (opportunityId: number) => {
   const queryClient = useQueryClient();
 
   return useMutation<OpportunityCotizarResponse, unknown, OpportunityCotizarVariables>({
+    mutationKey: cotizarOpportunityMutationKey(opportunityId),
     mutationFn: ({ id }) => cotizarOpportunity(id),
     onSuccess: (_data, { cliente }) => {
       queryClient.invalidateQueries({ queryKey: ["quotes"] });

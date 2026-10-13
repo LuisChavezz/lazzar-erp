@@ -11,14 +11,19 @@ import type { PedidoRecompraResponse } from "../interfaces/pedido-recompra.inter
  * Mutación de "Recompra". Invalida lo que cuenta cotizaciones (listado y
  * resumen del cliente); el pedido origen no cambia, así que no se toca.
  *
- * El endpoint NO es idempotente: la guarda contra el doble envío vive en quien
- * la dispara (`OrderRecompraAction`), no aquí.
+ * El endpoint NO es idempotente: la guarda contra el doble envío es de quien la
+ * dispara (`useCreateAndOpenQuote`), que usa la `mutationKey` por pedido como
+ * candado: por eso el hook recibe el pedido.
  */
-export const useRecomprarPedido = () => {
+export const recomprarPedidoMutationKey = (pedidoId: number) =>
+  ["recomprar-pedido", pedidoId] as const;
+
+export const useRecomprarPedido = (pedidoId: number) => {
   const queryClient = useQueryClient();
 
   return useMutation<PedidoRecompraResponse, unknown, number>({
-    mutationFn: (pedidoId) => recomprarPedido(pedidoId),
+    mutationKey: recomprarPedidoMutationKey(pedidoId),
+    mutationFn: (id) => recomprarPedido(id),
     onSuccess: ({ cotizacion }) => {
       queryClient.invalidateQueries({ queryKey: ["quotes"] });
       // El detalle del cliente trae `resumen_comercial.total_cotizaciones`.
