@@ -9,6 +9,11 @@ import type {
   OpportunityCotizarResponse,
   OpportunityOnboarding,
 } from "../interfaces/opportunity-onboarding.interface";
+import type {
+  OpportunitySeguimiento,
+  SeguimientoCreate,
+  SeguimientoPatch,
+} from "../interfaces/seguimiento.interface";
 
 /**
  * Listado paginado en el servidor (`limit`/`offset`). `params` llega ya
@@ -57,5 +62,45 @@ export const cotizarOpportunity = async (id: number): Promise<OpportunityCotizar
   const { data } = await v1_api.post<OpportunityCotizarResponse>(
     `/ventas/oportunidades/${id}/cotizar/`
   );
+  return data;
+};
+
+// ── Seguimientos ────────────────────────────────────────────────────────────
+
+const SEGUIMIENTOS_URL = "/ventas/oportunidad-seguimientos/";
+
+/** Alta de un seguimiento. El autor (`vendedor`) lo fija el backend. */
+export const createSeguimiento = async (
+  seguimiento: SeguimientoCreate
+): Promise<OpportunitySeguimiento> => {
+  const { data } = await v1_api.post<OpportunitySeguimiento>(SEGUIMIENTOS_URL, seguimiento);
+  return data;
+};
+
+/** PATCH: el endpoint no acepta PUT (405). */
+export const updateSeguimiento = async (
+  id: number,
+  changes: SeguimientoPatch
+): Promise<OpportunitySeguimiento> => {
+  const { data } = await v1_api.patch<OpportunitySeguimiento>(`${SEGUIMIENTOS_URL}${id}/`, changes);
+  return data;
+};
+
+/** Borrado FÍSICO (204): el seguimiento desaparece, no hay cómo recuperarlo. */
+export const deleteSeguimiento = async (id: number): Promise<void> => {
+  await v1_api.delete(`${SEGUIMIENTOS_URL}${id}/`);
+};
+
+/** Marca el seguimiento como completado y le pone `completado_at`. Idempotente. */
+export const completarSeguimiento = async (id: number): Promise<OpportunitySeguimiento> => {
+  const { data } = await v1_api.post<OpportunitySeguimiento>(`${SEGUIMIENTOS_URL}${id}/completar/`);
+  return data;
+};
+
+/** Reabre un seguimiento completado: el backend limpia `completado_at`. */
+export const reabrirSeguimiento = async (id: number): Promise<OpportunitySeguimiento> => {
+  const { data } = await v1_api.patch<OpportunitySeguimiento>(`${SEGUIMIENTOS_URL}${id}/`, {
+    completado: false,
+  });
   return data;
 };

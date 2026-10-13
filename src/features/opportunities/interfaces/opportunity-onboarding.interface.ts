@@ -1,5 +1,6 @@
 import type { CarteraMoneda } from "@/src/features/customers/interfaces/customer.interface";
 import type { Opportunity } from "./opportunity.interface";
+import type { OpportunitySeguimiento } from "./seguimiento.interface";
 
 /**
  * Cotización ligada a una oportunidad, con el pedido que nació de ella (si lo
@@ -26,13 +27,17 @@ export interface OpportunityCotizacion {
  *   cliente. Llega `[]` si la oportunidad no tiene cliente, si el cliente no
  *   debe nada O si el usuario no puede ver a ese cliente: el backend no los
  *   distingue.
- * - `seguimientos`, `pendientes` y `proximo_recordatorio` son de la agenda de
- *   seguimientos, que esta pantalla aún no muestra: se dejan sin tipar a detalle
- *   para no fijar una forma que nadie consume.
+ * - `seguimientos` trae como mucho los 50 más recientes
+ *   (`SEGUIMIENTOS_ONBOARDING_LIMIT`), del más nuevo al más viejo.
+ * - `pendientes` cuenta los seguimientos sin completar. OJO: el backend los
+ *   cuenta también en una oportunidad `Perdida`, donde no deberían contar; la
+ *   pantalla no muestra la cifra en ese estado.
+ * - `proximo_recordatorio` es la fecha más próxima entre los pendientes
+ *   (incluye las ya vencidas), o `null`.
  */
 export interface OpportunityOnboarding {
   oportunidad: Opportunity;
-  seguimientos: unknown[];
+  seguimientos: OpportunitySeguimiento[];
   pendientes: number;
   proximo_recordatorio: string | null;
   cotizaciones: OpportunityCotizacion[];
