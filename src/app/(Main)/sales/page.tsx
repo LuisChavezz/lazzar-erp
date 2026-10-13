@@ -1,7 +1,7 @@
 import { OpportunityFunnel } from "@/src/features/opportunities/components/OpportunityFunnel";
+import { RecentOpportunities } from "@/src/features/opportunities/components/RecentOpportunities";
 import { MonthlyGoal } from "@/src/features/sales/components/MonthlyGoal";
 import { QuickActions } from "@/src/features/sales/components/QuickActions";
-import { RecentOpportunities } from "@/src/features/sales/components/RecentOpportunities";
 import { RecentQuotes } from "@/src/features/sales/components/RecentQuotes";
 import { SalesKpiGrid } from "@/src/features/sales/components/SalesKpiGrid";
 import { GoogleUpcomingEvents } from "@/src/features/google/components/GoogleUpcomingEvents";
