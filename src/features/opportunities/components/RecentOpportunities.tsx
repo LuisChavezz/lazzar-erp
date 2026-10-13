@@ -4,11 +4,10 @@ import Link from "next/link";
 import { Button } from "@/src/components/Button";
 import { ChevronRightIcon, TrendingUpIcon } from "@/src/components/Icons";
 import { LoadingSkeleton } from "@/src/components/LoadingSkeleton";
-import type { StatusBadgeConfigEntry } from "@/src/components/StatusBadge";
 import { safeParseAmount } from "@/src/utils/formatCurrency";
 import { formatShortDate } from "@/src/utils/formatDate";
 import { formatKpiMonto } from "@/src/utils/kpiFormat";
-import { ESTADO_OPORTUNIDAD_CFG } from "../constants/opportunityChoices";
+import { getEstadoOportunidadCfg } from "../constants/opportunityChoices";
 import { OPPORTUNITIES_LIST_PATH, opportunityDetailPath } from "../constants/opportunityRoutes";
 import {
   RECENT_OPPORTUNITIES_LIMIT,
@@ -22,9 +21,7 @@ const TH_CLS = "px-6 py-3 font-semibold";
 
 function RecentOpportunityRow({ opportunity }: { opportunity: Opportunity }) {
   // `estado` es un valor del backend: uno fuera del catálogo cae al gris neutro.
-  const estadoCfg = (
-    ESTADO_OPORTUNIDAD_CFG as Record<string, StatusBadgeConfigEntry | undefined>
-  )[opportunity.estado];
+  const estadoCfg = getEstadoOportunidadCfg(opportunity.estado);
 
   return (
     <tr className="hover:bg-slate-50 dark:hover:bg-white/2 transition-colors">
@@ -43,10 +40,10 @@ function RecentOpportunityRow({ opportunity }: { opportunity: Opportunity }) {
       <td className="px-6 py-3">
         <span className="inline-flex items-center gap-2 text-slate-600 dark:text-slate-300">
           <span
-            className={`h-2 w-2 shrink-0 rounded-full ${estadoCfg?.dot ?? "bg-slate-400"}`}
+            className={`h-2 w-2 shrink-0 rounded-full ${estadoCfg.dot}`}
             aria-hidden="true"
           />
-          {estadoCfg?.label || opportunity.estado || "Sin estado"}
+          {estadoCfg.label}
         </span>
       </td>
       {/* Sin símbolo de moneda: las oportunidades no tienen moneda. */}

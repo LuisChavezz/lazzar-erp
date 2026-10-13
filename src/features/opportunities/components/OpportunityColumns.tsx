@@ -3,8 +3,7 @@ import { ActionMenu, ActionMenuItem } from "@/src/components/ActionMenu";
 import { ChevronRightIcon, DeleteIcon, EditIcon, ViewIcon } from "@/src/components/Icons";
 import { formatCurrency, NO_CURRENCY_FORMAT, safeParseAmount } from "@/src/utils/formatCurrency";
 import { formatShortDate } from "@/src/utils/formatDate";
-import type { StatusBadgeConfigEntry } from "@/src/components/StatusBadge";
-import { ESTADO_OPORTUNIDAD_CFG } from "../constants/opportunityChoices";
+import { getEstadoOportunidadCfg } from "../constants/opportunityChoices";
 import { useOpportunityRowActionsContext } from "../hooks/useOpportunityRowActions";
 import type { Opportunity } from "../interfaces/opportunity.interface";
 import { opportunityDetailHref } from "../utils/opportunityListQuery";
@@ -37,11 +36,9 @@ function OpportunityTitleActions({ opportunity }: { opportunity: Opportunity }) 
   const { listQuery, onEdit, onDelete } = useOpportunityRowActionsContext();
   const titulo = opportunity.titulo?.trim();
   // `estado` es un valor del backend: uno fuera del catálogo cae al gris neutro
-  // (como en `StatusBadge`) y se anuncia con su texto crudo; vacío, "Sin estado".
-  const estadoCfg = (
-    ESTADO_OPORTUNIDAD_CFG as Record<string, StatusBadgeConfigEntry | undefined>
-  )[opportunity.estado];
-  const estadoLabel = estadoCfg?.label || opportunity.estado || "Sin estado";
+  // y se anuncia con su texto crudo (`getEstadoOportunidadCfg`).
+  const estadoCfg = getEstadoOportunidadCfg(opportunity.estado);
+  const estadoLabel = estadoCfg.label;
 
   const menuItems: ActionMenuItem[] = [
     // Enlace real (`href`): clic central y Ctrl+clic abren el detalle en otra
@@ -58,7 +55,7 @@ function OpportunityTitleActions({ opportunity }: { opportunity: Opportunity }) 
   return (
     <div className="flex items-center gap-2 min-w-0">
       <span
-        className={`h-2.5 w-2.5 rounded-full shrink-0 ${estadoCfg?.dot ?? "bg-slate-400"}`}
+        className={`h-2.5 w-2.5 rounded-full shrink-0 ${estadoCfg.dot}`}
         role="img"
         aria-label={estadoLabel}
         title={estadoLabel}

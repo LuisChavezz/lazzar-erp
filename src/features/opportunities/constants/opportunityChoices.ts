@@ -78,6 +78,21 @@ export const ESTADO_OPORTUNIDAD_CFG: Record<EstadoOportunidad, StatusBadgeConfig
   },
 };
 
+/**
+ * Presentación de un `estado` TAL COMO LLEGA del backend, tolerante a uno que
+ * el catálogo no conozca: cae al gris neutro (como `StatusBadge`) con su texto
+ * crudo, o "Sin estado" si viene vacío. ÚNICO respaldo: lo usan el listado, las
+ * recientes y el embudo.
+ */
+export const getEstadoOportunidadCfg = (
+  estado: string | null | undefined
+): { label: string; dot: string } => {
+  const cfg = (ESTADO_OPORTUNIDAD_CFG as Record<string, StatusBadgeConfigEntry | undefined>)[
+    estado ?? ""
+  ];
+  return { label: cfg?.label || estado || "Sin estado", dot: cfg?.dot ?? "bg-slate-400" };
+};
+
 /** Topes de longitud del modelo. */
 export const OPORTUNIDAD_MAX_LENGTH = {
   titulo: 150,
