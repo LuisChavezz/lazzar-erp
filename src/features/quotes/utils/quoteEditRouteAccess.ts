@@ -6,10 +6,12 @@ import { canAccessRoute } from "@/src/utils/routeAccess";
 export const quoteEditPath = (quoteId: number) => `/sales/quotes/${quoteId}/edit`;
 
 /**
- * Código que exige el guard de la página (`quoteEditAccess.server`, que no se
- * puede importar desde el cliente: por eso el código se repite aquí).
+ * Código de edición de cotizaciones del catálogo de la tabla `permisos`: el que
+ * exige el guard de la página. ÚNICA definición: `quoteEditAccess.server` lo
+ * importa de aquí (este módulo sirve en cliente y en servidor; al revés no se
+ * puede), así que el guard y `canLandOnQuoteEdit` no pueden discrepar.
  */
-const EDIT_QUOTE_PERMISSION = "E-CRM-COTIZACIONES";
+export const EDIT_QUOTE_PERMISSION = "E-CRM-COTIZACIONES";
 
 /**
  * ¿El proxy dejaría entrar a `user` en la ruta de edición de cotizaciones? Se
@@ -17,7 +19,7 @@ const EDIT_QUOTE_PERMISSION = "E-CRM-COTIZACIONES";
  * sigue al mapa de `routePermissions` (hoy "/sales/quotes" →
  * R-CRM-COTIZACIONES). El id es un ejemplo: la regla no depende de él.
  */
-export const canAccessQuoteEditRoute = (user?: PermissionContext | null): boolean =>
+const canAccessQuoteEditRoute = (user?: PermissionContext | null): boolean =>
   canAccessRoute(quoteEditPath(0), user);
 
 /**

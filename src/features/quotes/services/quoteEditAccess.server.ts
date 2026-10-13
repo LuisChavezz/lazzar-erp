@@ -2,11 +2,9 @@ import { redirect } from "next/navigation";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/src/lib/auth";
 import { hasPermission } from "@/src/utils/permissions";
+import { EDIT_QUOTE_PERMISSION } from "../utils/quoteEditRouteAccess";
 
 const QUOTES_LIST_PATH = "/sales/quotes";
-
-/** Código de edición de cotizaciones del catálogo de la tabla `permisos`. */
-const EDIT_QUOTE_PERMISSION = "E-CRM-COTIZACIONES";
 
 /**
  * Guard de la ruta /sales/quotes/[id]/edit — alcance DELIBERADAMENTE acotado.
