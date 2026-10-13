@@ -16,7 +16,6 @@ import {
   textOrDash,
 } from "@/src/components/DetailDialogPrimitives";
 import { CustomerCartera } from "@/src/features/customers/components/CustomerCartera";
-import { useCustomers } from "@/src/features/customers/hooks/useCustomers";
 import { canLandOnQuoteEdit } from "@/src/features/quotes/utils/quoteEditRouteAccess";
 import { formatCurrency, NO_CURRENCY_FORMAT, safeParseAmount } from "@/src/utils/formatCurrency";
 import { formatShortDate } from "@/src/utils/formatDate";
@@ -193,25 +192,14 @@ function OpportunityDetailBody({ data, onEdit, onDelete }: OpportunityDetailBody
   const contacto = opportunity.nombre_contacto?.trim();
   const hasCliente = opportunity.cliente !== null;
 
-  // El cliente de la oportunidad debe estar entre los clientes ACTIVOS que este
-  // usuario ve: es el mismo catálogo con el que la edición de la cotización
-  // arma los datos de facturación, y con un cliente que no está ahí abriría en
-  // blanco. Mientras el catálogo carga, o si falla, `customers` viene vacío y
-  // "Cotizar" no se ofrece (falla cerrado). `Customer.id` está tipado `string`
-  // pero el backend lo manda como número: se compara como texto.
-  const { customers } = useCustomers();
-  const isClienteCotizable = customers.some(
-    (customer) => customer.activo && String(customer.id) === String(opportunity.cliente)
-  );
-
   // "Cotizar" crea una cotización CON el cliente de la oportunidad y navega a
-  // editarla: sin cliente (o con uno que el usuario no puede usar) no hay a
-  // quién cotizar, cerrada (Perdida/Ganada) ya no se cotiza, y sin acceso a la
-  // ruta de edición el usuario la crearía y rebotaría después, dejándola
-  // huérfana (mismo criterio que Recompra).
+  // editarla: sin cliente no hay a quién cotizar, cerrada (Perdida/Ganada) ya
+  // no se cotiza, y sin acceso a la ruta de edición el usuario la crearía y
+  // rebotaría después, dejándola huérfana (mismo criterio que Recompra). Que
+  // ESE cliente se pueda cotizar lo comprueba la propia acción al hacer clic,
+  // donde puede explicar por qué no (ver `OpportunityCotizarAction`).
   const canCotizar =
     hasCliente &&
-    isClienteCotizable &&
     !ESTADOS_CERRADOS.includes(opportunity.estado) &&
     canLandOnQuoteEdit(session?.user);
 
