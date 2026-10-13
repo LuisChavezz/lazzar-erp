@@ -55,6 +55,50 @@ export interface DataTableHandle<TData> {
   getFilteredRows: () => TData[];
 }
 
+/**
+ * Lo que expone `DataTable` por `ref` en MODO SERVIDOR. No tiene
+ * `getFilteredRows` a propósito: la tabla solo conoce la página actual, así que
+ * "todas las filas que pasan los filtros" no existe en el cliente. Una
+ * exportación debe pedir su propio conjunto al backend con los mismos
+ * criterios (`criteria` de `useServerTable`). Pasar a una tabla en modo
+ * servidor un `ref` tipado con `DataTableHandle` no compila.
+ */
+export interface DataTableServerHandle<TData> {
+  /** Las filas de la página que se está mostrando. */
+  getPageRows: () => TData[];
+}
+
+/** Opciones del selector "Filas" (cliente y servidor). */
+const PAGE_SIZE_OPTIONS: readonly number[] = [10, 20, 50, 100];
+
+/**
+ * Modo servidor de `DataTable` (prop `server`): el backend pagina y la tabla
+ * solo PINTA el estado que recibe y avisa de lo que el usuario pide. No guarda
+ * nada de esto: el dueño es el llamador (normalmente `useServerTable`, que lo
+ * sincroniza con la URL).
+ */
+export interface DataTableServerMode {
+  pagination: {
+    /** Página actual, 1-indexada. */
+    page: number;
+    pageSize: number;
+    /**
+     * Total de registros de la consulta (no de la página). `undefined` mientras
+     * no haya respuesta: el pie muestra 0 y una sola página.
+     */
+    total: number | undefined;
+    onPageChange: (page: number) => void;
+    onPageSizeChange: (pageSize: number) => void;
+    /** Opciones del selector "Filas". Por defecto 10/20/50/100. */
+    pageSizeOptions?: readonly number[];
+  };
+  /**
+   * Hay una consulta con otros parámetros en curso y `data` sigue siendo la
+   * página anterior. Bloquea el paginador hasta que llegue la respuesta.
+   */
+  isTransitioning?: boolean;
+}
+
 // ─── Alineación por columna ──────────────────────────────────────────────────
 // Declarada por la columna en `meta.align` (tipado en
 // `src/types/tanstack-table.d.ts`) y aplicada aquí: en el encabezado, al
@@ -110,7 +154,7 @@ export interface DataTableActiveFilter {
   value: string;
 }
 
-interface DataTableProps<TData, TValue> {
+interface DataTableOwnProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
   data: TData[];
   baseDataCount?: number;
@@ -216,6 +260,11 @@ interface DataTableProps<TData, TValue> {
    */
   getRowId?: (originalRow: TData, index: number) => string;
   /**
+   * @deprecated Usa el modo servidor (prop `server`, con `useServerTable`),
+   * que además de paginar resuelve en el backend la búsqueda, el orden y los
+   * filtros, y muestra el total. Esta prop se conserva sin cambios para sus
+   * consumidores actuales y no puede combinarse con `server`.
+   *
    * Paginación controlada por el servidor. Cuando se proporciona, la tabla NO
    * recorta `data` (el llamador ya pasó solo la página actual, p. ej.
    * `response.results`) y su pager se cablea a `onPageChange` en vez de a la
@@ -246,6 +295,44 @@ interface DataTableProps<TData, TValue> {
   fillHeight?: boolean;
 }
 
+/**
+ * Props que solo tienen sentido con los datos completos en el cliente (o con
+ * la `serverPagination` obsoleta). En modo servidor no se aceptan: el tipo las
+ * rechaza en vez de ignorarlas en silencio.
+ */
+type DataTableClientOnlyKeys =
+  | "serverPagination"
+  | "filterConfig"
+  | "onActiveFiltersChange"
+  | "paginationResetKey"
+  | "defaultPageSize"
+  | "baseDataCount"
+  | "searchAlwaysExpanded"
+  | "ref";
+
+/** Modo cliente (y `serverPagination`): exactamente las props de siempre. */
+type DataTableClientProps<TData, TValue> = DataTableOwnProps<TData, TValue> & {
+  server?: undefined;
+};
+
+/** Modo servidor: `server` obligatorio y su propio handle de `ref`. */
+type DataTableServerProps<TData, TValue> = Omit<
+  DataTableOwnProps<TData, TValue>,
+  DataTableClientOnlyKeys
+> & { [K in Exclude<DataTableClientOnlyKeys, "ref">]?: never } & {
+  /**
+   * Activa el modo servidor. Si se omite, la tabla se comporta exactamente
+   * como siempre (todo en memoria).
+   */
+  server: DataTableServerMode;
+  /** Ver `DataTableServerHandle`. */
+  ref?: Ref<DataTableServerHandle<TData>>;
+};
+
+type DataTableProps<TData, TValue> =
+  | DataTableClientProps<TData, TValue>
+  | DataTableServerProps<TData, TValue>;
+
 export function DataTable<TData, TValue>({
   columns,
   data,
@@ -272,6 +359,7 @@ export function DataTable<TData, TValue>({
   onErrorRetry,
   getRowId,
   serverPagination,
+  server,
   defaultPageSize = 20,
   density = "compact",
   framed = true,
@@ -472,7 +560,19 @@ export function DataTable<TData, TValue>({
   // recibidas en una sola "página" interna, para no recortar dos veces; el
   // sorting y la búsqueda siguen operando sobre la página vigente.
   const isServerPaginated = serverPagination !== undefined;
-  const effectivePagination = isServerPaginated
+  // ── Modo servidor (`server`) ──────────────────────────────────────────────
+  // Igual que arriba, `data` es solo la página actual, pero aquí TanStack lo
+  // sabe (`manualPagination` + `rowCount`): no recorta, y la página y el tamaño
+  // son los que dicta el llamador.
+  const isServerMode = server !== undefined;
+  // El pager lo controla el llamador (cualquiera de los dos modos de servidor).
+  const isServerPaged = isServerMode || isServerPaginated;
+  const effectivePagination = isServerMode
+    ? {
+        pageIndex: Math.max(0, server.pagination.page - 1),
+        pageSize: server.pagination.pageSize,
+      }
+    : isServerPaginated
     ? { pageIndex: 0, pageSize: Math.max(data.length, 1) }
     : pagination;
 
@@ -516,6 +616,11 @@ export function DataTable<TData, TValue>({
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
+    // Solo en modo servidor: sin `server` no se añade ninguna opción y la
+    // tabla queda configurada exactamente igual que antes.
+    ...(isServerMode
+      ? { manualPagination: true, rowCount: server.pagination.total ?? 0 }
+      : {}),
   });
 
   const visibleRows = table.getRowModel().rows;
@@ -528,18 +633,43 @@ export function DataTable<TData, TValue>({
   // lee del `table` (instancia estable) al invocar el getter, así siempre
   // refleja los datos y el estado vigentes.
   useImperativeHandle(
-    ref,
-    () => ({
-      getFilteredRows: () =>
-        table.getPrePaginationRowModel().rows.map((row) => row.original),
-    }),
-    [table]
+    // Cada modo tipa su propio handle (ver `DataTableProps`); aquí llega la
+    // unión de ambos.
+    ref as Ref<DataTableHandle<TData> | DataTableServerHandle<TData>> | undefined,
+    () =>
+      isServerMode
+        ? {
+            getPageRows: () => table.getRowModel().rows.map((row) => row.original),
+          }
+        : {
+            getFilteredRows: () =>
+              table.getPrePaginationRowModel().rows.map((row) => row.original),
+          },
+    [table, isServerMode]
   );
   const hasBaseData = baseDataCount !== undefined ? baseDataCount > 0 : data.length > 0;
-  const totalRows = table.getFilteredRowModel().rows.length;
-  const startRow = totalRows === 0 ? 0 : pagination.pageIndex * pagination.pageSize + 1;
-  const endRow = totalRows === 0 ? 0 : Math.min(totalRows, (pagination.pageIndex + 1) * pagination.pageSize);
-  const pageCount = isServerPaginated
+  // En modo servidor el pie habla del TOTAL de la consulta y de la posición de
+  // la página dentro de él; las filas que hay en memoria son solo esa página.
+  const totalRows = isServerMode
+    ? server.pagination.total ?? 0
+    : table.getFilteredRowModel().rows.length;
+  const startRow = isServerMode
+    ? data.length === 0
+      ? 0
+      : (Math.max(1, server.pagination.page) - 1) * server.pagination.pageSize + 1
+    : totalRows === 0
+    ? 0
+    : pagination.pageIndex * pagination.pageSize + 1;
+  const endRow = isServerMode
+    ? data.length === 0
+      ? 0
+      : startRow + data.length - 1
+    : totalRows === 0
+    ? 0
+    : Math.min(totalRows, (pagination.pageIndex + 1) * pagination.pageSize);
+  const pageCount = isServerMode
+    ? Math.max(1, Math.ceil(totalRows / Math.max(1, server.pagination.pageSize)))
+    : isServerPaginated
     ? Math.max(1, serverPagination.pageCount)
     : table.getPageCount();
   // Se acota al rango válido para nunca MOSTRAR un estado imposible (p. ej.
@@ -547,38 +677,43 @@ export function DataTable<TData, TValue>({
   // hace que "anterior/siguiente" partan de una base sensata. En cliente ya es
   // válida (no-op). NO se corrige el estado del consumidor por cuenta propia
   // (no se llama a `onPageChange` solo): eso sigue siendo su responsabilidad.
-  const currentPage = isServerPaginated
+  const currentPage = isServerMode
+    ? Math.min(Math.max(1, server.pagination.page), pageCount)
+    : isServerPaginated
     ? Math.min(Math.max(1, serverPagination.currentPage), pageCount)
     : pagination.pageIndex + 1;
 
   // El pager permanece visible en modo servidor aunque la página actual venga
   // vacía (p. ej. tras encogerse el conjunto), para no dejar al usuario sin
   // forma de volver a una página con datos. En cliente conserva el gate por datos.
-  const showPager = isServerPaginated || hasBaseData;
+  const showPager = isServerPaged || hasBaseData;
 
   // ── Controles del pager: en modo servidor delegan en `onPageChange`; en
   //    cliente, en la paginación interna de la tabla. ────────────────────────
-  const canPreviousPage = isServerPaginated
+  const canPreviousPage = isServerPaged
     ? currentPage > 1
     : table.getCanPreviousPage();
-  const canNextPage = isServerPaginated
+  const canNextPage = isServerPaged
     ? currentPage < pageCount
     : table.getCanNextPage();
-  const pagerBusy = isServerPaginated
+  const pagerBusy = isServerMode
+    ? Boolean(server.isTransitioning)
+    : isServerPaginated
     ? Boolean(serverPagination.isFetching)
     : false;
+  const requestServerPage = isServerMode
+    ? server.pagination.onPageChange
+    : isServerPaginated
+    ? serverPagination.onPageChange
+    : undefined;
   const goToPage = (targetPage: number) => {
-    if (isServerPaginated) serverPagination.onPageChange(targetPage);
+    if (requestServerPage) requestServerPage(targetPage);
     else table.setPageIndex(targetPage - 1);
   };
   const goToPreviousPage = () =>
-    isServerPaginated
-      ? serverPagination.onPageChange(currentPage - 1)
-      : table.previousPage();
+    requestServerPage ? requestServerPage(currentPage - 1) : table.previousPage();
   const goToNextPage = () =>
-    isServerPaginated
-      ? serverPagination.onPageChange(currentPage + 1)
-      : table.nextPage();
+    requestServerPage ? requestServerPage(currentPage + 1) : table.nextPage();
   const visibleColumnsSignature = useMemo(
     () => visibleColumns.map((column) => column.id).join("|"),
     [visibleColumns]
@@ -700,7 +835,7 @@ export function DataTable<TData, TValue>({
           // `justify-between` solo cuando el buscador fijo de la izquierda
           // existe; en modo servidor no se renderiza y un único hijo con
           // `between` quedaría pegado a la IZQUIERDA en vez de a la derecha.
-          (!isServerPaginated && searchAlwaysExpanded ? "justify-between" : "justify-end") +
+          (!isServerPaged && searchAlwaysExpanded ? "justify-between" : "justify-end") +
           " gap-4 shrink-0 " +
           (framed
             ? "p-4 border-b border-slate-100 dark:border-slate-800"
@@ -714,7 +849,7 @@ export function DataTable<TData, TValue>({
           — el resto del toolbar se agrupa aparte más abajo. El buscador
           colapsable (`searchAlwaysExpanded={false}`) sigue integrado con los
           íconos. */}
-      {!isServerPaginated && searchAlwaysExpanded && (
+      {!isServerPaged && searchAlwaysExpanded && (
         <div className="relative shrink-0 w-full lg:w-auto">
           <SearchIcon className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <input
@@ -749,7 +884,7 @@ export function DataTable<TData, TValue>({
                 consulta completa), haciendo creer que un registro de otra
                 página "no existe". Aún no hay búsqueda server-side para
                 estos reportes. */}
-            {!isServerPaginated && !searchAlwaysExpanded && (
+            {!isServerPaged && !searchAlwaysExpanded && (
             <div className="flex items-center gap-0">
               <button
                 type="button"
@@ -803,7 +938,7 @@ export function DataTable<TData, TValue>({
             )}
             {/* /búsqueda */}
 
-            {!isServerPaginated && filterConfig && filterConfig.length > 0 && (
+            {!isServerPaged && filterConfig && filterConfig.length > 0 && (
               <Button
                 variant="secondary"
                 size="icon"
@@ -911,7 +1046,7 @@ export function DataTable<TData, TValue>({
       </div>
 
       {/* ── Separator + Filters Container ───────────────────────────────────── */}
-      {!isServerPaginated && filterConfig && filterConfig.length > 0 && (
+      {!isServerPaged && filterConfig && filterConfig.length > 0 && (
         <div
           className="transition-all duration-300 ease-in-out shrink-0"
           style={{
@@ -1177,7 +1312,7 @@ export function DataTable<TData, TValue>({
                     // En modo servidor se desactiva el ordenamiento: solo
                     // ordenaría las filas de la página actual, dando un "top"
                     // parcial engañoso respecto al conjunto completo.
-                    const canSort = !isServerPaginated && header.column.getCanSort();
+                    const canSort = !isServerPaged && header.column.getCanSort();
                     // Columnas secundarias (p. ej. placeholders sin dato real
                     // todavía) pueden marcarse `meta: { hideOnMobile: true }`
                     // para no competir por espacio en pantallas angostas —
@@ -1373,17 +1508,27 @@ export function DataTable<TData, TValue>({
           </div>
           <div className="w-full sm:w-auto overflow-x-auto">
             <div className="flex items-center justify-end gap-3 min-w-max">
-            {/* Selector de filas por página: solo en modo cliente. En modo
-                servidor el `page_size` es fijo (lo define el llamador). */}
+            {/* Selector de filas por página: en cliente cambia la paginación
+                interna; en modo servidor (`server`) le pide el tamaño nuevo al
+                llamador. Con la `serverPagination` obsoleta no hay selector:
+                su `page_size` es fijo. */}
             {!isServerPaginated && (
               <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
                 <span>Filas</span>
                 <select
-                  value={pagination.pageSize}
-                  onChange={(e) => table.setPageSize(Number(e.target.value))}
+                  value={isServerMode ? server.pagination.pageSize : pagination.pageSize}
+                  onChange={(e) =>
+                    isServerMode
+                      ? server.pagination.onPageSizeChange(Number(e.target.value))
+                      : table.setPageSize(Number(e.target.value))
+                  }
+                  disabled={pagerBusy}
                   className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-zinc-900 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-sky-500/50 focus:border-sky-500"
                 >
-                  {[10, 20, 50, 100].map((size) => (
+                  {(isServerMode
+                    ? server.pagination.pageSizeOptions ?? PAGE_SIZE_OPTIONS
+                    : PAGE_SIZE_OPTIONS
+                  ).map((size) => (
                     <option
                       key={size}
                       value={size}
