@@ -1,9 +1,9 @@
+import { OpportunityFunnel } from "@/src/features/opportunities/components/OpportunityFunnel";
 import { MonthlyGoal } from "@/src/features/sales/components/MonthlyGoal";
 import { QuickActions } from "@/src/features/sales/components/QuickActions";
 import { RecentOpportunities } from "@/src/features/sales/components/RecentOpportunities";
 import { RecentQuotes } from "@/src/features/sales/components/RecentQuotes";
 import { SalesKpiGrid } from "@/src/features/sales/components/SalesKpiGrid";
-import { SalesPipeline } from "@/src/features/sales/components/SalesPipeline";
 import { GoogleUpcomingEvents } from "@/src/features/google/components/GoogleUpcomingEvents";
 
 export default function SalesPage() {
@@ -14,7 +14,7 @@ export default function SalesPage() {
         <div className="xl:col-span-2 space-y-6">
           <RecentOpportunities />
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <SalesPipeline />
+            <OpportunityFunnel compact />
             <RecentQuotes />
           </div>
         </div>

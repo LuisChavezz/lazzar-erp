@@ -165,9 +165,12 @@ export const OpportunityFunnel = ({ params, filter, compact = false }: Opportuni
   return (
     <section
       aria-label="Embudo de oportunidades"
-      className={`rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 p-4 md:p-5 ${
-        compact ? "flex h-full flex-col" : ""
-      }`}
+      // La versión de tarjeta viste como las demás tarjetas de la portada.
+      className={
+        compact
+          ? "flex h-full flex-col rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-black p-6 shadow-sm"
+          : "rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 p-4 md:p-5"
+      }
     >
       <div className="mb-3 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
         <h2 className="text-sm font-bold text-slate-800 dark:text-white">Embudo de oportunidades</h2>
