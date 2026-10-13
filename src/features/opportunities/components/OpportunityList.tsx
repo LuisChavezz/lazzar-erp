@@ -29,8 +29,9 @@ import {
  * Encima de la tabla va el EMBUDO (`OpportunityFunnel`), que resume el mismo
  * conjunto que se está listando: recibe los criterios de la tabla SIN `estado`
  * (para mostrar siempre la distribución completa) y sin orden ni paginación,
- * que no le afectan; `vendedor` solo viaja para un administrador de empresa
- * (a un vendedor ese filtro se le quita, ver `useOpportunitiesTable`). Sus barras aplican y quitan el filtro por estado con el
+ * que no le afectan; `vendedor` viaja salvo para un vendedor, con la MISMA
+ * regla con que la tabla le quita ese filtro (ver `useOpportunitiesTable`),
+ * para que el total del embudo sea siempre el de la tabla. Sus barras aplican y quitan el filtro por estado con el
  * mismo `setFilter` de la tabla (misma URL, vuelta a la página 1).
  */
 export default function OpportunityList() {
@@ -54,14 +55,14 @@ export default function OpportunityList() {
   };
 
   const activeEstado = table.state.filters.estado;
-  // `vendedor` solo con la sesión RESUELTA como administrador: a un vendedor
-  // el filtro se le va a quitar, y pedir el embudo con él sería una petición
-  // de más y un parpadeo de cifras.
-  const isCompanyAdmin = useCompanyAdminStatus() === "admin";
+  // `vendedor` no viaja con la sesión RESUELTA como no administrador: la tabla
+  // le va a quitar ese filtro, y pedir el embudo con él sería una petición de
+  // más. Con `admin` o `unknown` la tabla lo conserva, y el embudo también.
+  const dropsVendedor = useCompanyAdminStatus() === "not-admin";
   const funnelParams = Object.fromEntries(
     Object.entries(table.criteria).filter(
       ([key]) =>
-        key !== "estado" && key !== "ordering" && (key !== "vendedor" || isCompanyAdmin)
+        key !== "estado" && key !== "ordering" && (key !== "vendedor" || !dropsVendedor)
     )
   );
   // Aplicar o quitar se decide con la URL del momento del clic, no con el
