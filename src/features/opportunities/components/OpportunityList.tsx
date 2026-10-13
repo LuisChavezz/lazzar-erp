@@ -6,8 +6,10 @@ import { Button } from "@/src/components/Button";
 import { opportunityColumns } from "./OpportunityColumns";
 import { OpportunityDeleteDialog } from "./OpportunityDeleteDialog";
 import { OpportunityFormDialog } from "./OpportunityFormDialog";
+import { OpportunityFunnel } from "./OpportunityFunnel";
 import { useOpportunitiesTable } from "../hooks/useOpportunitiesTable";
 import { OpportunityRowActionsProvider } from "../hooks/useOpportunityRowActions";
+import type { EstadoOportunidad } from "../constants/opportunityChoices";
 import type { Opportunity } from "../interfaces/opportunity.interface";
 import { serializeOpportunitiesListState } from "../utils/opportunityListQuery";
 
@@ -19,6 +21,12 @@ import { serializeOpportunitiesListState } from "../utils/opportunityListQuery";
  *
  * El alcance lo decide el backend: un vendedor ve las suyas; un administrador
  * de empresa, las de toda la empresa.
+ *
+ * Encima de la tabla va el EMBUDO (`OpportunityFunnel`), que resume el mismo
+ * conjunto que se está listando: recibe los criterios de la tabla SIN `estado`
+ * (para mostrar siempre la distribución completa) y sin orden ni paginación,
+ * que no le afectan. Sus barras aplican y quitan el filtro por estado con el
+ * mismo `setFilter` de la tabla (misma URL, vuelta a la página 1).
  */
 export default function OpportunityList() {
   const table = useOpportunitiesTable();
@@ -40,6 +48,13 @@ export default function OpportunityList() {
     setIsFormOpen(true);
   };
 
+  const activeEstado = table.state.filters.estado;
+  const funnelParams = Object.fromEntries(
+    Object.entries(table.criteria).filter(([key]) => key !== "estado" && key !== "ordering")
+  );
+  const handleToggleEstado = (estado: EstadoOportunidad) =>
+    table.setFilter("estado", estado === activeEstado ? undefined : estado);
+
   return (
     <OpportunityRowActionsProvider
       value={{
@@ -48,6 +63,13 @@ export default function OpportunityList() {
         onDelete: setOpportunityToDelete,
       }}
     >
+      <div className="mb-4">
+        <OpportunityFunnel
+          params={funnelParams}
+          filter={{ activeEstado, onToggle: handleToggleEstado }}
+        />
+      </div>
+
       <DataTable
         columns={opportunityColumns}
         {...table.tableProps}
