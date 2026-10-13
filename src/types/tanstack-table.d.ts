@@ -34,5 +34,19 @@ declare module "@tanstack/react-table" {
      * estatus y columnas centradas a propósito, en `"center"`.
      */
     align?: "left" | "center" | "right";
+    /**
+     * SOLO modo servidor de `DataTable` (prop `server`); inerte en modo
+     * cliente. Campo de `ordering` del backend por el que ordena esta columna
+     * (sin signo: `"monto_estimado"`). La columna solo es ordenable si el campo
+     * está en la lista blanca de la tabla (`server.sorting.fields`).
+     */
+    serverSort?: string;
+    /**
+     * SOLO modo servidor de `DataTable`; inerte en modo cliente. Clave del
+     * filtro de servidor que controla el `ColumnHeaderFilter` de esta columna
+     * (el nombre del parámetro del endpoint, p. ej. `"estado"`). Sin ella, un
+     * `ColumnHeaderFilter` no se pinta en modo servidor.
+     */
+    serverFilter?: string;
   }
 }
