@@ -90,6 +90,19 @@ export const getMexicoTodayDate = (now: Date = new Date()): string =>
   wallClockDateKey(toWallClock(now));
 
 /**
+ * Milisegundos que faltan para la próxima medianoche de México (siempre > 0),
+ * para programar algo al cambio de día del backend. Se calcula con la hora de
+ * pared, así que un día con cambio de horario daría una hora de más o de menos:
+ * quien lo use debe volver a leer el día al despertar y reprogramar.
+ */
+export const msUntilNextMexicoDay = (now: Date = new Date()): number => {
+  const wall = toWallClock(now);
+  const elapsedMs =
+    ((wall.hour * 60 + wall.minute) * 60 + wall.second) * 1000 + now.getMilliseconds();
+  return 24 * 60 * MINUTE_MS - elapsedMs;
+};
+
+/**
  * Hora local de México con el formato que esperan las acciones del checador
  * (`hora` de `registrar_entrada/` y `registrar_salida/`): "YYYY-MM-DD HH:MM:SS".
  * Los segundos van en `00`: el `<input type="time">` captura minutos. `null`

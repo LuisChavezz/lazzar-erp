@@ -99,7 +99,7 @@ export const OpportunitySeguimientos = ({
   const { data: session } = useSession();
   const currentUserId = session?.user?.id;
   const isCompanyAdmin = useCompanyAdminStatus() === "admin";
-  // El "hoy" del BACKEND, releído en cada render (ver `useBackendToday`).
+  // El "hoy" del BACKEND; al cambiar el día la sección se repinta sola.
   const today = useBackendToday();
 
   const groups = groupSeguimientos(seguimientos ?? []);
