@@ -370,6 +370,7 @@ export function useOpportunityForm({ onSuccess, opportunityToEdit }: UseOpportun
     isLost,
     customerOptions,
     customerSearchValue,
+    selectedCustomerId: watchedCliente ?? undefined,
     isSelectedCustomerInactive,
     isLoadingCustomers,
     isErrorCustomers,

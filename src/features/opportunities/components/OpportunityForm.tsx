@@ -40,6 +40,7 @@ export default function OpportunityForm({ onSuccess, opportunityToEdit }: Opport
     isLost,
     customerOptions,
     customerSearchValue,
+    selectedCustomerId,
     isSelectedCustomerInactive,
     isLoadingCustomers,
     isErrorCustomers,
@@ -264,6 +265,7 @@ export default function OpportunityForm({ onSuccess, opportunityToEdit }: Opport
                   onValueChange={setCustomerSearch}
                   customers={customerOptions}
                   onSelect={selectCustomer}
+                  selectedId={selectedCustomerId}
                   clearOption={{ label: "Sin cliente", onSelect: clearCustomer }}
                   error={getError("cliente")}
                 />
