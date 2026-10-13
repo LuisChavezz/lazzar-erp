@@ -18,7 +18,7 @@ import {
 } from "@/src/components/Icons";
 import { useCompanyAdminStatus } from "@/src/features/users/hooks/useIsCompanyAdmin";
 import { formatShortDate, formatShortDateTime } from "@/src/utils/formatDate";
-import { ETAPA_PERDIDA } from "../constants/opportunityChoices";
+import { isOportunidadCerrada } from "../constants/opportunityChoices";
 import type { TipoSeguimiento } from "../constants/seguimientoChoices";
 import { useBackendToday } from "../hooks/useBackendToday";
 import { useOpportunitySeguimientos } from "../hooks/useOpportunitySeguimientos";
@@ -80,8 +80,11 @@ interface OpportunitySeguimientosProps {
  * - **Editar / eliminar**: solo el autor o un administrador de empresa. Es una
  *   regla de esta pantalla: el backend no la exige. Una sesión que aún no sabe
  *   si es administrador (`unknown`) cuenta como que no.
- * - **Resumen** ("N pendientes · próximo: fecha"): se oculta en una oportunidad
- *   `Perdida`, donde el backend cuenta pendientes que no deberían contar.
+ * - **Oportunidad cerrada** (`Perdida` o `Ganada`): sus recordatorios ya no
+ *   generan pendientes, y la sección lo dice en vez de contarlos: sin resumen
+ *   ("N pendientes · próximo: fecha"), sin cuenta en el grupo de pendientes y
+ *   sin "Hoy" ni vencidos en rojo. Lo pendiente se sigue listando y se puede
+ *   completar.
  */
 export const OpportunitySeguimientos = ({
   opportunity,
@@ -99,7 +102,7 @@ export const OpportunitySeguimientos = ({
   const today = useBackendToday();
 
   const groups = groupSeguimientos(seguimientos ?? []);
-  const showSummary = opportunity.estado !== ETAPA_PERDIDA;
+  const isClosed = isOportunidadCerrada(opportunity.estado);
 
   const renderItem = (seguimiento: OpportunitySeguimiento) => {
     const Icon = TIPO_ICONS[seguimiento.tipo] ?? CommentIcon;
@@ -107,7 +110,7 @@ export const OpportunitySeguimientos = ({
     const authorLabel = getSeguimientoAuthorLabel(seguimiento, currentUserId);
     const canManage = isCompanyAdmin || isSeguimientoAuthor(seguimiento, currentUserId);
     const recordatorioStatus =
-      !seguimiento.completado && seguimiento.fecha_recordatorio
+      !isClosed && !seguimiento.completado && seguimiento.fecha_recordatorio
         ? getRecordatorioStatus(seguimiento.fecha_recordatorio, today)
         : null;
 
@@ -196,7 +199,7 @@ export const OpportunitySeguimientos = ({
       title="Seguimientos"
       action={
         <div className="flex flex-wrap items-center justify-end gap-3">
-          {showSummary && (
+          {!isClosed && (
             <span className="text-xs text-slate-500 dark:text-slate-400 tabular-nums">{summary}</span>
           )}
           <Button
@@ -209,6 +212,11 @@ export const OpportunitySeguimientos = ({
         </div>
       }
     >
+      {isClosed && (
+        <p className="mb-4 text-xs text-slate-500 dark:text-slate-400">
+          Oportunidad cerrada: sus recordatorios ya no generan pendientes.
+        </p>
+      )}
       {isInitialError ? (
         <div role="alert" className="flex flex-col items-center gap-2 px-1 py-4 text-center">
           <p className="text-sm text-red-600 dark:text-red-400">
@@ -226,7 +234,9 @@ export const OpportunitySeguimientos = ({
         <div className="space-y-6">
           {groups.pendientes.length > 0 && (
             <div>
-              <SectionTitle>Pendientes ({groups.pendientes.length})</SectionTitle>
+              <SectionTitle>
+                {isClosed ? "Pendientes" : `Pendientes (${groups.pendientes.length})`}
+              </SectionTitle>
               <ActivityTimeline ariaLabel="Seguimientos pendientes">
                 {groups.pendientes.map(renderItem)}
               </ActivityTimeline>

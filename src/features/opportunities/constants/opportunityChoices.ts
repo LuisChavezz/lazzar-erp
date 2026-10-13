@@ -33,9 +33,18 @@ export type EstadoOportunidad = (typeof ESTADO_OPORTUNIDAD_VALUES)[number];
 
 /**
  * Estados en los que la oportunidad está CERRADA: ya no se cotiza y sus
- * seguimientos no generan recordatorios.
+ * seguimientos no generan recordatorios. ÚNICA definición: la usan "Cotizar",
+ * el formulario de seguimientos (fecha de recordatorio) y su historial (resumen
+ * y resaltados). Son valores del ESTADO calculado, no de la etapa capturable,
+ * aunque "Perdida" exista en ambos.
  */
-export const ESTADOS_OPORTUNIDAD_CERRADA: readonly EstadoOportunidad[] = ["Perdida", "Ganada"];
+export const ESTADO_PERDIDA: EstadoOportunidad = "Perdida";
+export const ESTADO_GANADA: EstadoOportunidad = "Ganada";
+
+export const ESTADOS_OPORTUNIDAD_CERRADA: readonly EstadoOportunidad[] = [
+  ESTADO_PERDIDA,
+  ESTADO_GANADA,
+];
 
 export const isOportunidadCerrada = (estado: string): boolean =>
   (ESTADOS_OPORTUNIDAD_CERRADA as readonly string[]).includes(estado);

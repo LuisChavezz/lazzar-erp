@@ -26,7 +26,6 @@ function SeguimientoForm({ opportunity, seguimientoToEdit, onSuccess }: Seguimie
   const isOpportunityClosed = isOportunidadCerrada(opportunity.estado);
   const {
     form,
-    formRef,
     isPending,
     isEditing,
     getError,
@@ -42,7 +41,7 @@ function SeguimientoForm({ opportunity, seguimientoToEdit, onSuccess }: Seguimie
   });
 
   return (
-    <form ref={formRef} onSubmit={handleFormSubmit} className="w-full" noValidate>
+    <form onSubmit={handleFormSubmit} className="w-full" noValidate>
       <fieldset disabled={isPending} className="group-disabled:opacity-50">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 px-1">
           <div className="group/field">

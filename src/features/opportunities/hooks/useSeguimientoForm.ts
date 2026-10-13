@@ -71,7 +71,6 @@ export function useSeguimientoForm({
   onSuccess,
 }: UseSeguimientoFormParams) {
   const isEditing = seguimientoToEdit !== null;
-  const formRef = useRef<HTMLFormElement | null>(null);
   // Envío en curso, síncrono (ver `onSubmit`).
   const submittingRef = useRef(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -193,7 +192,6 @@ export function useSeguimientoForm({
 
   return {
     form,
-    formRef,
     isPending: isCreating || isUpdating || isSubmitting,
     isEditing,
     getError,
