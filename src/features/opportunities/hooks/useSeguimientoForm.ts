@@ -17,6 +17,7 @@ import {
   SeguimientoFormSchema,
   type SeguimientoFormValues,
 } from "../schemas/seguimiento.schema";
+import { isOpportunityRejectedError } from "./seguimientoErrorMessages";
 import { useCreateSeguimiento, useUpdateSeguimiento } from "./useSeguimientoMutations";
 
 interface UseSeguimientoFormParams {
@@ -156,8 +157,12 @@ export function useSeguimientoForm({
       //
       // Si el seguimiento ya no existe (otra persona lo eliminó), no hay nada
       // que reintentar: el diálogo se cierra y queda el historial, que la
-      // mutación ya refrescó.
-      if (seguimientoToEdit && isNotFoundError(error)) onSuccess();
+      // mutación ya refrescó. Lo mismo en un alta cuya OPORTUNIDAD ya no
+      // existe: la relectura deja la ficha en "no disponible".
+      const isGone = seguimientoToEdit
+        ? isNotFoundError(error)
+        : isOpportunityRejectedError(error);
+      if (isGone) onSuccess();
     } finally {
       setIsSubmitting(false);
     }
