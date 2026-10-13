@@ -136,8 +136,16 @@ export interface DataTableServerMode {
    */
   filters?: DataTableServerFilters;
   /**
+   * La consulta lleva filtros o búsqueda. Distingue "no hay datos" de "no hay
+   * coincidencias" en el estado vacío y decide si se ofrece "Limpiar filtros".
+   */
+  hasActiveCriteria: boolean;
+  /** Quita filtros y búsqueda y vuelve a la página 1. */
+  onClearCriteria: () => void;
+  /**
    * Hay una consulta con otros parámetros en curso y `data` sigue siendo la
-   * página anterior. Bloquea el paginador hasta que llegue la respuesta.
+   * página anterior. Atenúa las filas (`aria-busy`) y bloquea el paginador
+   * hasta que llegue la respuesta; el encabezado y sus filtros siguen usables.
    */
   isTransitioning?: boolean;
 }
@@ -265,6 +273,12 @@ interface DataTableOwnProps<TData, TValue> {
   /** Mensaje del estado vacío dentro del cuerpo de la tabla (cuando no hay datos). */
   emptyMessage?: string;
   /**
+   * EN MODO SERVIDOR (`server`) carga y error se pintan DENTRO del cuerpo de
+   * la tabla, con el encabezado y sus filtros montados: si la consulta con un
+   * filtro nuevo falla, el usuario debe poder quitar ese filtro. El error
+   * ofrece "Reintentar" (`onErrorRetry`) y, con criterios activos o fuera de
+   * la página 1, "Limpiar filtros". Lo que sigue describe el modo cliente.
+   *
    * Estado de la consulta del llamador. El TOOLBAR (búsqueda/filtro/refrescar/
    * columnas + `actionButton`) siempre se renderiza como parte del armazón de la
    * tabla; solo el ÁREA DE DATOS alterna entre carga (`isLoading`), error
@@ -692,6 +706,19 @@ export function DataTable<TData, TValue>({
     ? serverSearch !== undefined
     : !isServerPaginated && searchAlwaysExpanded;
   const searchValue = serverSearch ? serverSearch.value : globalFilter ?? "";
+  // Estado vacío en modo servidor: "sin coincidencias" si la consulta lleva
+  // criterios, "sin datos" si no. `data.length` no sirve para distinguirlos:
+  // es solo la página.
+  const serverSearchTerm = serverSearch?.value.trim() ?? "";
+  const serverEmptyMessage = !isServerMode
+    ? ""
+    : server.hasActiveCriteria
+    ? serverSearchTerm.length > 0 && Object.keys(serverFilters?.values ?? {}).length === 0
+      ? `No se encontraron resultados para ${serverSearchTerm}`
+      : "No hay resultados con los filtros aplicados"
+    : server.pagination.page > 1
+    ? "Esta página ya no tiene registros"
+    : emptyMessage ?? "No hay elementos para mostrar";
 
   const visibleRows = table.getRowModel().rows;
   const visibleColumns = table.getVisibleLeafColumns();
@@ -1058,7 +1085,7 @@ export function DataTable<TData, TValue>({
                 <SyncIcon className={`w-4 h-4 shrink-0 ${isButtonRefetching ? "animate-spin" : ""}`} />
               </Button>
             )}
-            {hasBaseData && (
+            {(isServerMode || hasBaseData) && (
               <>
                 <div className="relative">
                   <Button
@@ -1325,7 +1352,7 @@ export function DataTable<TData, TValue>({
           consulta del llamador, para que su `actionButton` siga visible durante
           la carga y el error. El estado VACÍO se maneja dentro del `<tbody>`. */}
       <div className={fillHeight ? "flex-1 min-h-0 flex flex-col" : ""}>
-      {isError ? (
+      {!isServerMode && isError ? (
         <div className={framed ? "p-4" : ""}>
           {onErrorRetry ? (
             <ErrorDisplay
@@ -1340,7 +1367,7 @@ export function DataTable<TData, TValue>({
             />
           )}
         </div>
-      ) : isLoading ? (
+      ) : !isServerMode && isLoading ? (
         <div className={framed ? "p-4" : ""}>
           <div
             className="min-h-120"
@@ -1376,7 +1403,9 @@ export function DataTable<TData, TValue>({
                   // "sin resultados" recortaría el menú de `ColumnHeaderFilter`
                   // (solo se veían 2 de 6 opciones) justo cuando el usuario
                   // necesita cambiar el filtro. Solo colapsa sin datos base.
-                  visibleRows.length > 0 || isLoadingOverlay || hasBaseData
+                  // En modo servidor la altura es siempre fija: una página
+                  // vacía, la carga o el error no deben encoger el panel.
+                  isServerMode || visibleRows.length > 0 || isLoadingOverlay || hasBaseData
                 ? "h-120"
                 : ""
             } ${
@@ -1548,8 +1577,42 @@ export function DataTable<TData, TValue>({
                 </tr>
               ))}
             </thead>
-              <tbody className={`divide-y divide-slate-100 dark:divide-slate-800 ${bodyTextCls}`}>
-                {visibleRows.length > 0 ? (
+              <tbody
+                className={`divide-y divide-slate-100 dark:divide-slate-800 ${bodyTextCls}${
+                  isServerMode && server.isTransitioning ? " opacity-60 transition-opacity" : ""
+                }`}
+                aria-busy={isServerMode ? Boolean(server.isTransitioning) : undefined}
+              >
+                {/* Modo servidor: el error y la carga inicial van AQUÍ, bajo
+                    el encabezado, que sigue montado con sus filtros. */}
+                {isServerMode && isError ? (
+                  <tr>
+                    <td colSpan={visibleColumns.length || 1} className="p-4">
+                      <ErrorDisplay
+                        title={errorTitle ?? "Error al cargar los datos"}
+                        message={errorMessage}
+                        onRetry={onErrorRetry}
+                        secondaryAction={
+                          server.hasActiveCriteria || server.pagination.page > 1
+                            ? { label: "Limpiar filtros", onClick: server.onClearCriteria }
+                            : undefined
+                        }
+                      />
+                    </td>
+                  </tr>
+                ) : isServerMode && isLoading ? (
+                  <tr>
+                    <td colSpan={visibleColumns.length || 1} className="p-4">
+                      <div
+                        role="status"
+                        aria-live="polite"
+                        aria-label={loadingAriaLabel ?? "Cargando"}
+                      >
+                        <LoadingSkeleton className="h-96 rounded-2xl" />
+                      </div>
+                    </td>
+                  </tr>
+                ) : visibleRows.length > 0 ? (
                   visibleRows.map((row) => (
                     <tr
                       key={row.id}
@@ -1582,7 +1645,28 @@ export function DataTable<TData, TValue>({
                       colSpan={visibleColumns.length || 1}
                       className="px-6 py-6 text-center text-slate-500 dark:text-slate-400"
                     >
-                      {!hasBaseData
+                      {isServerMode ? (
+                        <>
+                          <span>{serverEmptyMessage}</span>
+                          {server.hasActiveCriteria ? (
+                            <button
+                              type="button"
+                              onClick={server.onClearCriteria}
+                              className="ml-2 font-medium text-sky-600 dark:text-sky-400 hover:underline cursor-pointer"
+                            >
+                              Limpiar filtros
+                            </button>
+                          ) : server.pagination.page > 1 ? (
+                            <button
+                              type="button"
+                              onClick={() => server.pagination.onPageChange(1)}
+                              className="ml-2 font-medium text-sky-600 dark:text-sky-400 hover:underline cursor-pointer"
+                            >
+                              Ir a la primera página
+                            </button>
+                          ) : null}
+                        </>
+                      ) : !hasBaseData
                         ? emptyMessage ?? "No hay elementos para mostrar"
                         : globalFilter.trim().length > 0
                         ? `No se encontraron resultados para ${globalFilter}`

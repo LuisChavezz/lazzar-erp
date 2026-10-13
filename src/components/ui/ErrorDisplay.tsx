@@ -11,6 +11,11 @@ interface ErrorDisplayProps {
   error?: Error;
   /** When provided, a retry button is rendered that calls this callback. */
   onRetry?: () => void;
+  /**
+   * Optional second action next to (or instead of) the retry button, e.g.
+   * "Limpiar filtros" when a filtered query fails. Omitted → markup unchanged.
+   */
+  secondaryAction?: { label: string; onClick: () => void };
 }
 
 /**
@@ -18,6 +23,7 @@ interface ErrorDisplayProps {
  *
  * - Extracts message from `error` if no explicit `message` is provided.
  * - Renders a retry button when `onRetry` is supplied.
+ * - Renders a second, outlined button when `secondaryAction` is supplied.
  * - Uses `role="alert"` for accessibility.
  */
 export function ErrorDisplay({
@@ -25,6 +31,7 @@ export function ErrorDisplay({
   message,
   error,
   onRetry,
+  secondaryAction,
 }: ErrorDisplayProps) {
   const displayMessage =
     message ?? error?.message ?? "Ocurrió un error inesperado.";
@@ -52,6 +59,17 @@ export function ErrorDisplay({
               className="mt-3 inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium text-red-700 dark:text-red-200 bg-red-100 dark:bg-red-500/20 hover:bg-red-200 dark:hover:bg-red-500/30 transition-colors cursor-pointer"
             >
               Reintentar
+            </button>
+          )}
+          {secondaryAction && (
+            <button
+              type="button"
+              onClick={secondaryAction.onClick}
+              className={`mt-3 ${
+                onRetry ? "ml-2 " : ""
+              }inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium text-red-700 dark:text-red-200 border border-red-300/70 dark:border-red-500/30 hover:bg-red-100 dark:hover:bg-red-500/20 transition-colors cursor-pointer`}
+            >
+              {secondaryAction.label}
             </button>
           )}
         </div>
