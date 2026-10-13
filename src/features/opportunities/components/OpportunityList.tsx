@@ -37,6 +37,10 @@ export default function OpportunityList() {
   // actual, y editar la etapa puede sacar la fila del filtro activo. Con el
   // registro guardado el diálogo sigue completo hasta que se cierra.
   const [isFormOpen, setIsFormOpen] = useState(false);
+  // Cada apertura monta un formulario NUEVO (`key`): no depende de que el
+  // diálogo anterior haya terminado de desmontarse (su animación de salida),
+  // así que "Nueva" nunca hereda lo capturado en la apertura previa.
+  const [formSession, setFormSession] = useState(0);
   const [opportunityToEdit, setOpportunityToEdit] = useState<Opportunity | null>(null);
   const [opportunityToDelete, setOpportunityToDelete] = useState<Opportunity | null>(null);
 
@@ -44,11 +48,13 @@ export default function OpportunityList() {
 
   const handleNew = () => {
     setOpportunityToEdit(null);
+    setFormSession((session) => session + 1);
     setIsFormOpen(true);
   };
 
   const handleEdit = (opportunity: Opportunity) => {
     setOpportunityToEdit(opportunity);
+    setFormSession((session) => session + 1);
     setIsFormOpen(true);
   };
 
@@ -87,7 +93,7 @@ export default function OpportunityList() {
             }
           >
             <OpportunityForm
-              key={opportunityToEdit?.id ?? "new"}
+              key={formSession}
               onSuccess={() => setIsFormOpen(false)}
               opportunityToEdit={opportunityToEdit}
             />
