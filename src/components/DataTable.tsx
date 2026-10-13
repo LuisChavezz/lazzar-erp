@@ -93,6 +93,22 @@ export interface DataTableServerMode {
     pageSizeOptions?: readonly number[];
   };
   /**
+   * Orden resuelto por el backend. Si se omite, ninguna columna es ordenable
+   * (ordenar en memoria solo reacomodaría la página actual).
+   *
+   * Una columna ordena si declara `meta.serverSort` con un campo de `fields`.
+   * La tabla no decide el siguiente orden: avisa con `onToggle` y pinta la
+   * flecha que corresponda a `value`.
+   */
+  sorting?: {
+    /** Orden EFECTIVO, en formato `ordering`: `"campo"` (asc) o `"-campo"` (desc). */
+    value: string;
+    /** Lista blanca de campos por los que el endpoint acepta ordenar. */
+    fields: readonly string[];
+    /** El usuario pulsó el encabezado de la columna que ordena por `field`. */
+    onToggle: (field: string) => void;
+  };
+  /**
    * Hay una consulta con otros parámetros en curso y `data` sigue siendo la
    * página anterior. Bloquea el paginador hasta que llegue la respuesta.
    */
@@ -619,9 +635,15 @@ export function DataTable<TData, TValue>({
     // Solo en modo servidor: sin `server` no se añade ninguna opción y la
     // tabla queda configurada exactamente igual que antes.
     ...(isServerMode
-      ? { manualPagination: true, rowCount: server.pagination.total ?? 0 }
+      ? {
+          manualPagination: true,
+          rowCount: server.pagination.total ?? 0,
+          // Las filas llegan ya ordenadas: TanStack no debe reordenar la página.
+          manualSorting: true,
+        }
       : {}),
   });
+  const serverSorting = isServerMode ? server.sorting : undefined;
 
   const visibleRows = table.getRowModel().rows;
   const visibleColumns = table.getVisibleLeafColumns();
@@ -1309,18 +1331,41 @@ export function DataTable<TData, TValue>({
                   className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-white/5 text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400"
                 >
                   {headerGroup.headers.map((header) => {
-                    // En modo servidor se desactiva el ordenamiento: solo
-                    // ordenaría las filas de la página actual, dando un "top"
-                    // parcial engañoso respecto al conjunto completo.
-                    const canSort = !isServerPaged && header.column.getCanSort();
                     // Columnas secundarias (p. ej. placeholders sin dato real
                     // todavía) pueden marcarse `meta: { hideOnMobile: true }`
                     // para no competir por espacio en pantallas angostas —
                     // siguen presentes desde `md` en adelante.
                     const columnMeta = header.column.columnDef.meta;
+                    // Modo servidor: la columna ordena por el campo de
+                    // `ordering` que declara en `meta.serverSort`, y solo si el
+                    // endpoint lo acepta (`sorting.fields`). No pasa por el
+                    // orden de TanStack: `getCanSort()` exige un accessor que
+                    // una columna de servidor no necesita, y el siguiente orden
+                    // lo decide el llamador.
+                    const serverSortField =
+                      serverSorting !== undefined &&
+                      columnMeta?.serverSort !== undefined &&
+                      serverSorting.fields.includes(columnMeta.serverSort)
+                        ? columnMeta.serverSort
+                        : undefined;
+                    // Con la `serverPagination` obsoleta se desactiva el
+                    // ordenamiento: solo ordenaría las filas de la página
+                    // actual, dando un "top" parcial engañoso respecto al
+                    // conjunto completo.
+                    const canSort = isServerMode
+                      ? serverSortField !== undefined
+                      : !isServerPaginated && header.column.getCanSort();
                     const hideOnMobileCls = columnMeta?.hideOnMobile ? "hidden md:table-cell" : "";
                     const headerAlignCls = HEADER_ALIGN_CLS[columnMeta?.align ?? "left"];
-                    const sorted = header.column.getIsSorted();
+                    const sorted = isServerMode
+                      ? serverSortField === undefined
+                        ? false
+                        : serverSorting?.value === serverSortField
+                        ? "asc"
+                        : serverSorting?.value === `-${serverSortField}`
+                        ? "desc"
+                        : false
+                      : header.column.getIsSorted();
                     const ariaSortValue =
                       sorted === "asc"
                         ? "ascending"
@@ -1329,6 +1374,10 @@ export function DataTable<TData, TValue>({
                         : "none";
                     const handleSortToggle = () => {
                       if (!canSort) return;
+                      if (isServerMode) {
+                        if (serverSortField !== undefined) serverSorting?.onToggle(serverSortField);
+                        return;
+                      }
                       header.column.toggleSorting();
                     };
 
@@ -1404,7 +1453,7 @@ export function DataTable<TData, TValue>({
                         {{
                           asc: <ChevronUpIcon className="w-3 h-3" />,
                           desc: <ChevronDownIcon className="w-3 h-3" />,
-                        }[header.column.getIsSorted() as string] ?? null}
+                        }[sorted as string] ?? null}
                       </div>
                       
                       {/* Column Resizer */}
