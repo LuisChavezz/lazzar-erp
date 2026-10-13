@@ -73,8 +73,8 @@ const toFormValues = (opportunity: Opportunity): OpportunityFormValues => ({
 /**
  * Valores del formulario → lo que se escribe. Campo por campo, a propósito:
  * `vendedor` y `estado` nunca viajan. Un importe vacío es 0. El motivo de
- * pérdida solo se conserva con la etapa `Perdida`: al reabrir una oportunidad
- * se limpia, porque el campo deja de verse.
+ * pérdida solo se captura con la etapa `Perdida` (en un ALTA con otra etapa va
+ * vacío; en una edición, ver `diffPayload`).
  */
 const toWritePayload = (values: OpportunityFormValues): OpportunityWrite => ({
   cliente: values.cliente,
@@ -96,10 +96,15 @@ const sameAmount = (a: string, b: string) => Number(a).toFixed(2) === Number(b).
  * Solo los campos que cambiaron respecto a como se ABRIÓ el registro. Lo que
  * no se tocó no viaja, así que no pisa lo que otra persona haya editado
  * entretanto.
+ *
+ * `motivo_perdida` solo viaja con la etapa `Perdida`, que es cuando se ve y se
+ * edita. Al sacar una oportunidad de `Perdida` NO se manda vacío: el backend
+ * conserva a propósito el motivo guardado.
  */
 const diffPayload = (original: OpportunityWrite, next: OpportunityWrite): OpportunityPatch => {
   const changes: OpportunityPatch = {};
   (Object.keys(next) as (keyof OpportunityWrite)[]).forEach((key) => {
+    if (key === "motivo_perdida" && next.etapa !== ETAPA_PERDIDA) return;
     const unchanged =
       key === "monto_estimado"
         ? sameAmount(original.monto_estimado, next.monto_estimado)
