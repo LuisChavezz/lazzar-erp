@@ -35,7 +35,10 @@ interface ActivityTimelineItemProps {
   actions?: ReactNode;
   /** Evento ya atendido o pasado: se pinta atenuado. */
   muted?: boolean;
-  /** Hay una operación en curso sobre el evento: se atenúa y no admite interacción. */
+  /**
+   * Hay una operación en curso sobre el evento: se atenúa y no admite
+   * interacción, ni con el ratón ni con el teclado (`inert`).
+   */
   busy?: boolean;
 }
 
@@ -51,8 +54,9 @@ export const ActivityTimelineItem = ({
 }: ActivityTimelineItemProps) => (
   <li
     aria-busy={busy || undefined}
+    inert={busy || undefined}
     className={`group/timeline-item relative flex gap-3 pb-5 last:pb-0 transition-opacity ${
-      busy ? "opacity-60 pointer-events-none" : ""
+      busy ? "opacity-60" : ""
     }`}
   >
     {/* La línea une este icono con el siguiente; el último evento no la lleva. */}
