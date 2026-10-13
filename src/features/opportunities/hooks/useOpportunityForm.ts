@@ -6,6 +6,7 @@ import type { FormEvent } from "react";
 import toast from "react-hot-toast";
 import type { FormFieldError } from "@/src/utils/getFieldError";
 import { normalizeCapturedDecimal } from "@/src/utils/decimal";
+import { isNotFoundError } from "@/src/utils/drfWriteErrors";
 import { scrollToFirstValidationError } from "@/src/utils/scrollToFirstValidationError";
 import { useCustomers } from "@/src/features/customers/hooks/useCustomers";
 import { ETAPA_NUEVA, ETAPA_PERDIDA } from "../constants/opportunityChoices";
@@ -147,10 +148,8 @@ export function useOpportunityForm({ onSuccess, opportunityToEdit }: UseOpportun
   const { mutateAsync: updateOpportunity, isPending: isUpdating } =
     useUpdateOpportunity(setServerFieldError);
 
-  const clearFieldErrors = (field: OpportunityFormField) => {
-    if (field === "titulo" || field === "cliente" || field === "nombre_contacto") {
-      setIdentificationError(null);
-    }
+  /** Quita los errores del propio campo (de cliente y de servidor). */
+  const clearOwnFieldErrors = (field: OpportunityFormField) => {
     setClientErrors((prev) => {
       if (!(field in prev)) return prev;
       const next = { ...prev };
@@ -163,6 +162,18 @@ export function useOpportunityForm({ onSuccess, opportunityToEdit }: UseOpportun
       delete next[field];
       return next;
     });
+  };
+
+  /**
+   * El campo cambió: se van sus errores y, si es uno de los tres que
+   * identifican la oportunidad, también el aviso de identificación (capturar
+   * cualquiera de ellos lo resuelve).
+   */
+  const clearFieldErrors = (field: OpportunityFormField) => {
+    if (field === "titulo" || field === "cliente" || field === "nombre_contacto") {
+      setIdentificationError(null);
+    }
+    clearOwnFieldErrors(field);
   };
 
   const setClientError = (field: OpportunityFormField, message: string) => {
@@ -261,9 +272,14 @@ export function useOpportunityForm({ onSuccess, opportunityToEdit }: UseOpportun
         await createOpportunity(createPayload);
       }
       onSuccess();
-    } catch {
+    } catch (error) {
       // El `onError` de la mutación ya avisó y pintó los errores por campo. Sin
       // este catch el rechazo de `mutateAsync` escaparía sin manejar.
+      //
+      // Si la oportunidad ya no existe (otra persona la dio de baja), no hay
+      // nada que reintentar: el diálogo se cierra y queda el listado, que la
+      // mutación ya refrescó.
+      if (opportunityToEdit && isNotFoundError(error)) onSuccess();
     } finally {
       setIsLoading(false);
     }
@@ -337,7 +353,9 @@ export function useOpportunityForm({ onSuccess, opportunityToEdit }: UseOpportun
   const clearCustomer = () => {
     form.setFieldValue("cliente", null);
     setCustomerSearch(null);
-    clearFieldErrors("cliente");
+    // QUITAR el cliente nunca resuelve la falta de identificación: ese aviso
+    // se queda.
+    clearOwnFieldErrors("cliente");
   };
 
   /** Al salir del buscador, lo tecleado sin elegir se descarta. */
