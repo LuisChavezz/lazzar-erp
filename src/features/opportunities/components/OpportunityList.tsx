@@ -8,6 +8,7 @@ import { OpportunityDeleteDialog } from "./OpportunityDeleteDialog";
 import { OpportunityFormDialog } from "./OpportunityFormDialog";
 import { OpportunityFunnel } from "./OpportunityFunnel";
 import { useOpportunitiesTable } from "../hooks/useOpportunitiesTable";
+import { useCompanyAdminStatus } from "@/src/features/users/hooks/useIsCompanyAdmin";
 import { OpportunityRowActionsProvider } from "../hooks/useOpportunityRowActions";
 import type { EstadoOportunidad } from "../constants/opportunityChoices";
 import type { Opportunity } from "../interfaces/opportunity.interface";
@@ -28,7 +29,8 @@ import {
  * Encima de la tabla va el EMBUDO (`OpportunityFunnel`), que resume el mismo
  * conjunto que se está listando: recibe los criterios de la tabla SIN `estado`
  * (para mostrar siempre la distribución completa) y sin orden ni paginación,
- * que no le afectan. Sus barras aplican y quitan el filtro por estado con el
+ * que no le afectan; `vendedor` solo viaja para un administrador de empresa
+ * (a un vendedor ese filtro se le quita, ver `useOpportunitiesTable`). Sus barras aplican y quitan el filtro por estado con el
  * mismo `setFilter` de la tabla (misma URL, vuelta a la página 1).
  */
 export default function OpportunityList() {
@@ -52,8 +54,15 @@ export default function OpportunityList() {
   };
 
   const activeEstado = table.state.filters.estado;
+  // `vendedor` solo con la sesión RESUELTA como administrador: a un vendedor
+  // el filtro se le va a quitar, y pedir el embudo con él sería una petición
+  // de más y un parpadeo de cifras.
+  const isCompanyAdmin = useCompanyAdminStatus() === "admin";
   const funnelParams = Object.fromEntries(
-    Object.entries(table.criteria).filter(([key]) => key !== "estado" && key !== "ordering")
+    Object.entries(table.criteria).filter(
+      ([key]) =>
+        key !== "estado" && key !== "ordering" && (key !== "vendedor" || isCompanyAdmin)
+    )
   );
   // Aplicar o quitar se decide con la URL del momento del clic, no con el
   // `activeEstado` de este render: dos clics seguidos en la misma barra deben
