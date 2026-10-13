@@ -5,6 +5,10 @@ import type {
   OpportunityListResponse,
   OpportunityPatch,
 } from "../interfaces/opportunity.interface";
+import type {
+  OpportunityCotizarResponse,
+  OpportunityOnboarding,
+} from "../interfaces/opportunity-onboarding.interface";
 
 /**
  * Listado paginado en el servidor (`limit`/`offset`). `params` llega ya
@@ -32,4 +36,26 @@ export const updateOpportunity = async (id: number, changes: OpportunityPatch): 
 /** Baja lógica: responde 204 y el registro deja de aparecer (su detalle da 404). */
 export const deleteOpportunity = async (id: number): Promise<void> => {
   await v1_api.delete(`/ventas/oportunidades/${id}/`);
+};
+
+/**
+ * Detalle de una oportunidad en una sola llamada: sus datos, sus cotizaciones
+ * (con su pedido) y la cartera del cliente. 404 si no existe o no es visible
+ * para el usuario.
+ */
+export const getOpportunityOnboarding = async (id: number): Promise<OpportunityOnboarding> => {
+  const { data } = await v1_api.get<OpportunityOnboarding>(`/ventas/oportunidades/${id}/onboarding/`);
+  return data;
+};
+
+/**
+ * Crea una cotización en Borrador ligada a la oportunidad (201). Sin cuerpo:
+ * empresa y cliente salen de la oportunidad y el vendedor es quien la ejecuta.
+ * NO es idempotente: cada llamada crea otra cotización.
+ */
+export const cotizarOpportunity = async (id: number): Promise<OpportunityCotizarResponse> => {
+  const { data } = await v1_api.post<OpportunityCotizarResponse>(
+    `/ventas/oportunidades/${id}/cotizar/`
+  );
+  return data;
 };
