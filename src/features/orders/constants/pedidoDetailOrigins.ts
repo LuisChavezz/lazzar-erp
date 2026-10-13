@@ -38,7 +38,9 @@ export const INVOICE_ORIGIN_SHEET_PARAM = "factura_sheet";
 
 /**
  * Parámetro que acompaña al origen `opportunities`: la oportunidad a la que
- * vuelve "Volver". Se valida en `PedidoDetailContent`.
+ * vuelve "Volver". Se valida en `PedidoDetailContent`. Puede venir además
+ * `lista` (`OPPORTUNITY_LIST_PARAM`, de oportunidades): el estado del listado
+ * del que se llegó a esa oportunidad, que se le devuelve al volver.
  */
 export const OPPORTUNITY_ORIGIN_ID_PARAM = "oportunidad";
 

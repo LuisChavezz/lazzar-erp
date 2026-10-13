@@ -37,8 +37,13 @@ import {
 } from "@/src/features/invoicing/constants/invoiceDetailOrigins";
 import {
   OPPORTUNITIES_LIST_PATH,
+  OPPORTUNITY_LIST_PARAM,
   opportunityDetailPath,
 } from "@/src/features/opportunities/constants/opportunityRoutes";
+import {
+  opportunityDetailHref,
+  readOpportunityListParam,
+} from "@/src/features/opportunities/utils/opportunityListQuery";
 import { parsePositiveId } from "@/src/utils/parsePositiveId";
 import { canAccessRoute } from "@/src/utils/routeAccess";
 import { canLandOnQuoteEdit } from "@/src/features/quotes/utils/quoteEditRouteAccess";
@@ -156,7 +161,9 @@ const DEFAULT_BACK = BACK_TARGETS.home;
  * factura (un enlace compartido a quien no tiene facturación), cae al destino
  * por defecto, como sin origen: nunca a una ruta que el proxy rebotaría.
  *
- * El origen `opportunities` sigue la misma regla con `?oportunidad=`.
+ * El origen `opportunities` sigue la misma regla con `?oportunidad=`, y
+ * devuelve al detalle el estado de SU listado (`?lista=`, validado con la
+ * definición de ese listado) para que desde ahí se pueda seguir volviendo.
  */
 function resolveBack(
   from: string | undefined,
@@ -182,8 +189,14 @@ function resolveBack(
     if (oportunidadId === null) {
       return canOpen(BACK_TARGETS.opportunities.href) ? BACK_TARGETS.opportunities : DEFAULT_BACK;
     }
-    const href = opportunityDetailPath(oportunidadId);
-    return canOpen(href) ? { href, label: "Volver a la Oportunidad" } : DEFAULT_BACK;
+    if (!canOpen(opportunityDetailPath(oportunidadId))) return DEFAULT_BACK;
+    return {
+      href: opportunityDetailHref(
+        oportunidadId,
+        readOpportunityListParam(searchParams[OPPORTUNITY_LIST_PARAM]),
+      ),
+      label: "Volver a la Oportunidad",
+    };
   }
   return BACK_TARGETS[from];
 }

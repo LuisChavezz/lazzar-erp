@@ -12,8 +12,9 @@ export const metadata: Metadata = {
  * acceso al REGISTRO lo decide el backend (404 si no es visible) y lo resuelve
  * `OpportunityDetailContent` en el cliente.
  *
- * La query de esta URL es el estado del listado del que se llegó (lo pone "Ver
- * detalle"): se pasa cruda y el detalle la valida para su "Volver".
+ * El parámetro `lista` de esta URL es el estado del listado del que se llegó
+ * (lo pone "Ver detalle"): la query se pasa cruda y el detalle lo valida para
+ * su "Volver".
  */
 export default async function OpportunityDetailPage({
   params,

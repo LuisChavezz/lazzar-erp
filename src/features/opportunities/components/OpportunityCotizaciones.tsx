@@ -13,6 +13,7 @@ import {
 import { canEditQuote } from "@/src/features/quotes/utils/quoteStatusRules";
 import { formatShortDate } from "@/src/utils/formatDate";
 import { canAccessRoute } from "@/src/utils/routeAccess";
+import { OPPORTUNITY_LIST_PARAM } from "../constants/opportunityRoutes";
 import type { OpportunityCotizacion } from "../interfaces/opportunity-onboarding.interface";
 
 const TH_CLASS = "px-3 py-2 font-medium whitespace-nowrap";
@@ -26,6 +27,11 @@ const FALLBACK_BADGE = "bg-slate-100 text-slate-600 dark:bg-slate-500/20 dark:te
 interface OpportunityCotizacionesProps {
   opportunityId: number;
   cotizaciones: OpportunityCotizacion[];
+  /**
+   * Estado validado del listado del que se llegó al detalle (`""` si no hay):
+   * se reenvía al pedido para que su "Volver" regrese a este detalle con él.
+   */
+  listQuery: string;
 }
 
 /**
@@ -42,12 +48,14 @@ interface OpportunityCotizacionesProps {
  *   respaldo para un estatus que el tablero no conozca.
  * - **Pedido**: los pedidos se ven por empresa, sin importar el vendedor, así
  *   que se enlaza siempre que el usuario pueda abrir `/orders`. El origen
- *   `opportunities` lleva el id para que "Volver" regrese a ESTA oportunidad.
+ *   `opportunities` lleva el id para que "Volver" regrese a ESTA oportunidad, y
+ *   el estado del listado para que desde aquí se siga pudiendo volver a él.
  * - **Fechas**: timestamps reales (llegan en UTC), en la zona del usuario.
  */
 export const OpportunityCotizaciones = ({
   opportunityId,
   cotizaciones,
+  listQuery,
 }: OpportunityCotizacionesProps) => {
   const { data: session } = useSession();
   const canOpenQuoteEdit = canLandOnQuoteEdit(session?.user);
@@ -83,7 +91,10 @@ export const OpportunityCotizaciones = ({
                   pedidoId={pedidoId}
                   folio={cotizacion.pedido_folio}
                   from="opportunities"
-                  query={{ [OPPORTUNITY_ORIGIN_ID_PARAM]: String(opportunityId) }}
+                  query={{
+                    [OPPORTUNITY_ORIGIN_ID_PARAM]: String(opportunityId),
+                    ...(listQuery ? { [OPPORTUNITY_LIST_PARAM]: listQuery } : {}),
+                  }}
                   className="font-semibold text-sky-600 dark:text-sky-400"
                 />
               );

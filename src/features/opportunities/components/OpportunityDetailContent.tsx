@@ -23,7 +23,8 @@ import { ESTADO_OPORTUNIDAD_CFG, ETAPA_PERDIDA } from "../constants/opportunityC
 import { useOpportunityDetail } from "../hooks/useOpportunityDetail";
 import type { Opportunity } from "../interfaces/opportunity.interface";
 import type { OpportunityOnboarding } from "../interfaces/opportunity-onboarding.interface";
-import { opportunitiesListHref, readOpportunitiesListQuery } from "../utils/opportunityListQuery";
+import { OPPORTUNITY_LIST_PARAM } from "../constants/opportunityRoutes";
+import { opportunitiesListHref, readOpportunityListParam } from "../utils/opportunityListQuery";
 import { OpportunityCotizaciones } from "./OpportunityCotizaciones";
 import { OpportunityCotizarAction } from "./OpportunityCotizarAction";
 import { OpportunityDeleteDialog } from "./OpportunityDeleteDialog";
@@ -38,9 +39,9 @@ interface OpportunityDetailContentProps {
   /** Id tal cual llega del segmento de ruta (texto libre). */
   opportunityId: string;
   /**
-   * Parámetros CRUDOS de la URL del detalle. Si se llegó desde el listado traen
-   * su estado (filtros, búsqueda, orden, página): se validan aquí y "Volver"
-   * regresa a ese mismo listado.
+   * Parámetros CRUDOS de la URL del detalle. Si se llegó desde el listado, su
+   * estado (filtros, búsqueda, orden, página) viene en `lista`: se valida aquí
+   * y "Volver" regresa a ese mismo listado.
    */
   searchParams: Record<string, string | string[] | undefined>;
 }
@@ -67,7 +68,8 @@ export const OpportunityDetailContent = ({
   searchParams,
 }: OpportunityDetailContentProps) => {
   const router = useRouter();
-  const listHref = opportunitiesListHref(readOpportunitiesListQuery(searchParams));
+  const listQuery = readOpportunityListParam(searchParams[OPPORTUNITY_LIST_PARAM]);
+  const listHref = opportunitiesListHref(listQuery);
 
   // `true` SOLO cuando la baja hecha desde esta página tuvo éxito (lo pone
   // `onDeleted`). No se deduce de un 404: una baja que falla porque otra
@@ -143,7 +145,12 @@ export const OpportunityDetailContent = ({
     );
   } else {
     content = (
-      <OpportunityDetailBody data={data} onEdit={handleEdit} onDelete={setOpportunityToDelete} />
+      <OpportunityDetailBody
+        data={data}
+        listQuery={listQuery}
+        onEdit={handleEdit}
+        onDelete={setOpportunityToDelete}
+      />
     );
   }
 
@@ -169,6 +176,8 @@ export const OpportunityDetailContent = ({
 
 interface OpportunityDetailBodyProps {
   data: OpportunityOnboarding;
+  /** Estado validado del listado de origen, para los enlaces que vuelven aquí. */
+  listQuery: string;
   onEdit: (opportunity: Opportunity) => void;
   onDelete: (opportunity: Opportunity) => void;
 }
@@ -179,7 +188,7 @@ interface OpportunityDetailBodyProps {
  * cotizaciones y cartera. Presentacional: los diálogos viven en
  * `OpportunityDetailContent`.
  */
-function OpportunityDetailBody({ data, onEdit, onDelete }: OpportunityDetailBodyProps) {
+function OpportunityDetailBody({ data, listQuery, onEdit, onDelete }: OpportunityDetailBodyProps) {
   const { data: session } = useSession();
 
   const opportunity = data.oportunidad;
@@ -285,7 +294,11 @@ function OpportunityDetailBody({ data, onEdit, onDelete }: OpportunityDetailBody
         </InfoGrid>
       </Section>
 
-      <OpportunityCotizaciones opportunityId={opportunity.id} cotizaciones={cotizaciones} />
+      <OpportunityCotizaciones
+        opportunityId={opportunity.id}
+        cotizaciones={cotizaciones}
+        listQuery={listQuery}
+      />
 
       {/* Solo con cliente. El texto vacío es NEUTRO: un `[]` también llega
           cuando el usuario no puede ver a ese cliente, así que no se afirma que
