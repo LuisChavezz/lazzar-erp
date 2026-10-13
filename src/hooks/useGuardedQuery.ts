@@ -1,17 +1,67 @@
+import { useEffect, useSyncExternalStore } from "react";
 import {
+  hashKey,
   useQuery,
+  useQueryClient,
   type DefaultError,
   type QueryKey,
   type UseQueryOptions,
 } from "@tanstack/react-query";
 import { useHasLoadedQuery } from "./useHasLoadedQuery";
 
-interface GuardedQueryNotice {
+interface GuardedQueryNotice<TError = DefaultError> {
   /** Único por hook consumidor — ver `useHasLoadedQuery`. */
   toastId: string;
   /** Texto del toast de refetch fallido; por defecto, el de `useHasLoadedQuery`. */
   errorMessage?: string;
+  /**
+   * OPCIONAL. Marca ciertos errores como DEFINITIVOS: la respuesta ya dijo todo
+   * lo que había que decir y reintentar o conservar lo anterior sería mentir.
+   * El caso típico es el 404 de un detalle (`isNotFoundError`): el registro no
+   * existe, se dio de baja o no es visible para el usuario.
+   *
+   * Con un error definitivo, la consulta:
+   * - no se reintenta;
+   * - no avisa por toast ni cuenta como error inicial: se expone aparte, en
+   *   `isDefinitiveError`;
+   * - NO conserva los datos anteriores (`data` es `undefined`), aunque el error
+   *   llegue en un refetch con datos ya cargados;
+   * - sigue siendo definitiva si el siguiente intento falla por otra cosa (un
+   *   500, la red): solo una respuesta exitosa la levanta.
+   *
+   * Sin esta opción el hook se comporta exactamente igual que siempre.
+   */
+  isDefinitiveError?: (error: TError) => boolean;
 }
+
+/**
+ * Momento (`errorUpdatedAt`) del último error definitivo visto por consulta
+ * (`queryHash`). Hace falta fuera de la caché de TanStack porque el estado de
+ * una consulta solo guarda su ÚLTIMO error: tras un 404 seguido de un 500, la
+ * consulta dice "500 con datos viejos" y, sin esta memoria, la pantalla
+ * resucitaría el registro. Vive a nivel de módulo para que también lo sepa una
+ * instancia que se monta después (como `notifiedFailures` en
+ * `useHasLoadedQuery`), y se lee con `useSyncExternalStore` porque es estado
+ * mutable externo a React.
+ */
+const definitiveErrorAt = new Map<string, number>();
+const definitiveErrorListeners = new Set<() => void>();
+
+const subscribeToDefinitiveErrors = (listener: () => void) => {
+  definitiveErrorListeners.add(listener);
+  return () => {
+    definitiveErrorListeners.delete(listener);
+  };
+};
+
+const setDefinitiveErrorAt = (queryHash: string, at: number | undefined) => {
+  if (definitiveErrorAt.get(queryHash) === at) return;
+  if (at === undefined) definitiveErrorAt.delete(queryHash);
+  else definitiveErrorAt.set(queryHash, at);
+  definitiveErrorListeners.forEach((listener) => listener());
+};
+
+const NO_DEFINITIVE_ERROR = 0;
 
 /**
  * `useQuery` + `useHasLoadedQuery` en una sola llamada, para los hooks que NO
@@ -30,9 +80,14 @@ interface GuardedQueryNotice {
  *   `placeholderData` (p. ej. `keepPreviousData`), `data` trae el placeholder
  *   de la llave anterior mientras llega la nueva: eso NO cuenta como cargado,
  *   e `isPlaceholderData` se expone para que el hook lo trate como carga.
+ * - `isDefinitiveError` solo puede ser `true` si se pasó la opción del mismo
+ *   nombre (ver `GuardedQueryNotice`); mientras lo es, `data` es `undefined`,
+ *   `hasLoaded` e `isInitialError` son `false` y no hay toast.
  *
  * Las opciones de `useQuery` pasan sin tocar (`enabled`, `select`,
- * `staleTime`, `placeholderData`…).
+ * `staleTime`, `placeholderData`…). Con `isDefinitiveError`, `retry` se
+ * envuelve para no reintentar esos errores; el resto de fallos conserva el
+ * `retry` recibido (o el del `QueryClient`).
  */
 export const useGuardedQuery = <
   TQueryFnData = unknown,
@@ -41,10 +96,33 @@ export const useGuardedQuery = <
   TQueryKey extends QueryKey = QueryKey,
 >(
   options: UseQueryOptions<TQueryFnData, TError, TData, TQueryKey>,
-  { toastId, errorMessage }: GuardedQueryNotice,
+  { toastId, errorMessage, isDefinitiveError }: GuardedQueryNotice<TError>,
 ) => {
+  const queryClient = useQueryClient();
+
+  const guardedOptions: UseQueryOptions<TQueryFnData, TError, TData, TQueryKey> =
+    isDefinitiveError
+      ? {
+          ...options,
+          retry: (failureCount, retryError) => {
+            if (isDefinitiveError(retryError)) return false;
+            // El `retry` que habría aplicado sin la opción: el recibido, el del
+            // `QueryClient` o el de TanStack (3).
+            const retry = options.retry ?? queryClient.getDefaultOptions().queries?.retry ?? 3;
+            if (typeof retry === "function") {
+              return (retry as (count: number, failure: TError) => boolean)(
+                failureCount,
+                retryError,
+              );
+            }
+            return typeof retry === "number" ? failureCount < retry : retry;
+          },
+        }
+      : options;
+
   const {
     data,
+    dataUpdatedAt,
     isLoading,
     isFetching,
     isPlaceholderData,
@@ -52,23 +130,52 @@ export const useGuardedQuery = <
     error,
     errorUpdatedAt,
     refetch,
-  } = useQuery(options);
+  } = useQuery(guardedOptions);
+
+  // Sin la opción no hay nada que recordar: `queryHash` vacío y la lectura
+  // devuelve siempre `NO_DEFINITIVE_ERROR`.
+  const queryHash = isDefinitiveError ? hashKey(options.queryKey) : "";
+  const rememberedAt = useSyncExternalStore(
+    subscribeToDefinitiveErrors,
+    () => definitiveErrorAt.get(queryHash) ?? NO_DEFINITIVE_ERROR,
+    () => NO_DEFINITIVE_ERROR,
+  );
+
+  const isCurrentErrorDefinitive =
+    isDefinitiveError !== undefined && isError && isDefinitiveError(error);
+  // Definitiva también si el error vigente es OTRO pero no ha habido una
+  // respuesta exitosa desde el último definitivo.
+  const isDefinitive =
+    isCurrentErrorDefinitive || (isError && rememberedAt > dataUpdatedAt);
+
+  useEffect(() => {
+    if (queryHash === "") return;
+    if (isCurrentErrorDefinitive) {
+      setDefinitiveErrorAt(queryHash, errorUpdatedAt);
+    } else if (!isError || dataUpdatedAt >= rememberedAt) {
+      // Una respuesta exitosa posterior levanta la marca.
+      setDefinitiveErrorAt(queryHash, undefined);
+    }
+  }, [queryHash, isCurrentErrorDefinitive, isError, errorUpdatedAt, dataUpdatedAt, rememberedAt]);
+
+  const guardedData = isDefinitive ? undefined : data;
 
   const { hasLoaded, isInitialError } = useHasLoadedQuery({
-    data: isPlaceholderData ? undefined : data,
-    isError,
+    data: isPlaceholderData ? undefined : guardedData,
+    isError: isError && !isDefinitive,
     errorUpdatedAt,
     toastId,
     errorMessage,
   });
 
   return {
-    data,
+    data: guardedData,
     hasLoaded,
     isLoading,
     isFetching,
     isPlaceholderData,
     isInitialError,
+    isDefinitiveError: isDefinitive,
     error: isInitialError ? error : null,
     refetch,
   };
