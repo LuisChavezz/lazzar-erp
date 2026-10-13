@@ -4,7 +4,7 @@ import { useForm, useStore } from "@tanstack/react-form";
 import { useRef, useState } from "react";
 import type { FormEvent } from "react";
 import toast from "react-hot-toast";
-import type { FormFieldError } from "@/src/utils/getFieldError";
+import { useFormFieldErrors } from "@/src/hooks/useFormFieldErrors";
 import { normalizeCapturedDecimal } from "@/src/utils/decimal";
 import { isNotFoundError } from "@/src/utils/drfWriteErrors";
 import { scrollToFirstValidationError } from "@/src/utils/scrollToFirstValidationError";
@@ -133,36 +133,25 @@ export function useOpportunityForm({ onSuccess, opportunityToEdit }: UseOpportun
   // Envío en curso, síncrono (ver `onSubmit`).
   const submittingRef = useRef(false);
 
-  const [clientErrors, setClientErrors] = useState<Partial<Record<OpportunityFormField, string>>>({});
-  const [serverErrors, setServerErrors] = useState<Partial<Record<OpportunityFormField, string>>>({});
+  // Errores por campo (de cliente y de servidor): ver `useFormFieldErrors`.
+  const {
+    getError,
+    setServerFieldError,
+    setClientFieldError: setClientError,
+    clearClientFieldError,
+    clearFieldErrors: clearOwnFieldErrors,
+    replaceClientErrors,
+    clearServerErrors,
+    clearAllErrors,
+  } = useFormFieldErrors<OpportunityFormField>();
   // Falta con qué identificar la oportunidad (título, cliente o contacto). No
   // es de un campo: el formulario lo pinta como aviso junto a los tres.
   const [identificationError, setIdentificationError] = useState<string | null>(null);
-
-  const setServerFieldError = (field: OpportunityFormField, message: string) => {
-    setServerErrors((prev) => ({ ...prev, [field]: message }));
-  };
 
   const { mutateAsync: createOpportunity, isPending: isCreating } =
     useCreateOpportunity(setServerFieldError);
   const { mutateAsync: updateOpportunity, isPending: isUpdating } =
     useUpdateOpportunity(setServerFieldError);
-
-  /** Quita los errores del propio campo (de cliente y de servidor). */
-  const clearOwnFieldErrors = (field: OpportunityFormField) => {
-    setClientErrors((prev) => {
-      if (!(field in prev)) return prev;
-      const next = { ...prev };
-      delete next[field];
-      return next;
-    });
-    setServerErrors((prev) => {
-      if (!(field in prev)) return prev;
-      const next = { ...prev };
-      delete next[field];
-      return next;
-    });
-  };
 
   /**
    * El campo cambió: se van sus errores y, si es uno de los tres que
@@ -174,10 +163,6 @@ export function useOpportunityForm({ onSuccess, opportunityToEdit }: UseOpportun
       setIdentificationError(null);
     }
     clearOwnFieldErrors(field);
-  };
-
-  const setClientError = (field: OpportunityFormField, message: string) => {
-    setClientErrors((prev) => (prev[field] === message ? prev : { ...prev, [field]: message }));
   };
 
   /** Regla que depende de otro campo o del registro en edición. */
@@ -201,19 +186,14 @@ export function useOpportunityForm({ onSuccess, opportunityToEdit }: UseOpportun
       setClientError(field, message);
       return false;
     }
-    setClientErrors((prev) => {
-      if (!(field in prev)) return prev;
-      const next = { ...prev };
-      delete next[field];
-      return next;
-    });
+    clearClientFieldError(field);
     return true;
   };
 
   const validateForm = (values: OpportunityFormValues) => {
     const parsed = createOpportunityFormSchema(ruleContext).safeParse(values);
     if (parsed.success) {
-      setClientErrors({});
+      replaceClientErrors({});
       setIdentificationError(null);
       return { success: true as const, issuePaths: [] };
     }
@@ -230,7 +210,7 @@ export function useOpportunityForm({ onSuccess, opportunityToEdit }: UseOpportun
       nextErrors[field] = issue.message;
     });
 
-    setClientErrors(nextErrors);
+    replaceClientErrors(nextErrors);
     setIdentificationError(nextIdentificationError);
     // El aviso de identificación se pinta junto al título: se lleva la vista ahí.
     const issuePaths = Object.keys(nextErrors);
@@ -238,14 +218,9 @@ export function useOpportunityForm({ onSuccess, opportunityToEdit }: UseOpportun
     return { success: false as const, issuePaths };
   };
 
-  const getError = (field: OpportunityFormField) => {
-    const message = serverErrors[field] ?? clientErrors[field];
-    return message ? ({ message } as FormFieldError) : undefined;
-  };
-
   /** El envío en sí, sin la guarda de doble envío (vive en `onSubmit`). */
   const submitOpportunity = async (value: OpportunityFormValues) => {
-    setServerErrors({});
+    clearServerErrors();
 
     const validationResult = validateForm(value);
     if (!validationResult.success) {
@@ -366,8 +341,7 @@ export function useOpportunityForm({ onSuccess, opportunityToEdit }: UseOpportun
   const handleReset = () => {
     form.reset(opportunityToEdit ? toFormValues(opportunityToEdit) : EMPTY_VALUES);
     setCustomerSearch(null);
-    setClientErrors({});
-    setServerErrors({});
+    clearAllErrors();
     setIdentificationError(null);
     setTimeout(() => {
       formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });

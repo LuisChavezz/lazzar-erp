@@ -4,7 +4,7 @@ import { useForm } from "@tanstack/react-form";
 import { useRef, useState } from "react";
 import type { FormEvent } from "react";
 import toast from "react-hot-toast";
-import type { FormFieldError } from "@/src/utils/getFieldError";
+import { useFormFieldErrors } from "@/src/hooks/useFormFieldErrors";
 import { isNotFoundError } from "@/src/utils/drfWriteErrors";
 import { TIPO_SEGUIMIENTO_DEFAULT } from "../constants/seguimientoChoices";
 import type {
@@ -47,13 +47,6 @@ const toFormValues = (seguimiento: OpportunitySeguimiento): SeguimientoFormValue
   fecha_recordatorio: seguimiento.fecha_recordatorio ?? "",
 });
 
-const withoutField = (errors: FieldErrors, field: SeguimientoFormField): FieldErrors => {
-  if (!(field in errors)) return errors;
-  const next = { ...errors };
-  delete next[field];
-  return next;
-};
-
 /**
  * Alta y edición de un seguimiento (mismo formulario).
  *
@@ -76,43 +69,36 @@ export function useSeguimientoForm({
   const submittingRef = useRef(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const [clientErrors, setClientErrors] = useState<FieldErrors>({});
-  const [serverErrors, setServerErrors] = useState<FieldErrors>({});
-
-  const setServerFieldError = (field: SeguimientoFormField, message: string) => {
-    setServerErrors((prev) => ({ ...prev, [field]: message }));
-  };
+  // Errores por campo (de cliente y de servidor): ver `useFormFieldErrors`.
+  const {
+    getError,
+    setServerFieldError,
+    setClientFieldError,
+    clearClientFieldError,
+    clearFieldErrors,
+    replaceClientErrors,
+    clearServerErrors,
+    clearAllErrors,
+  } = useFormFieldErrors<SeguimientoFormField>();
 
   const { mutateAsync: createSeguimiento, isPending: isCreating } =
     useCreateSeguimiento(setServerFieldError);
   const { mutateAsync: updateSeguimiento, isPending: isUpdating } =
     useUpdateSeguimiento(setServerFieldError);
 
-  /** El campo cambió: se van sus errores (de cliente y de servidor). */
-  const clearFieldErrors = (field: SeguimientoFormField) => {
-    setClientErrors((prev) => withoutField(prev, field));
-    setServerErrors((prev) => withoutField(prev, field));
-  };
-
   // Valida un solo campo en blur.
   const validateField = (field: SeguimientoFormField, value: string) => {
     const parsed = SeguimientoFormFields[field].safeParse(value);
     if (parsed.success) {
-      setClientErrors((prev) => withoutField(prev, field));
+      clearClientFieldError(field);
       return;
     }
-    const message = parsed.error.issues[0]?.message ?? "Valor inválido";
-    setClientErrors((prev) => (prev[field] === message ? prev : { ...prev, [field]: message }));
-  };
-
-  const getError = (field: SeguimientoFormField) => {
-    const message = serverErrors[field] ?? clientErrors[field];
-    return message ? ({ message } as FormFieldError) : undefined;
+    setClientFieldError(field, parsed.error.issues[0]?.message ?? "Valor inválido");
   };
 
   /** El envío en sí, sin la guarda de doble envío (vive en `onSubmit`). */
   const submitSeguimiento = async (value: SeguimientoFormValues) => {
-    setServerErrors({});
+    clearServerErrors();
 
     const parsed = SeguimientoFormSchema.safeParse(value);
     if (!parsed.success) {
@@ -121,10 +107,10 @@ export function useSeguimientoForm({
         const field = issue.path[0] as SeguimientoFormField;
         if (field && !nextErrors[field]) nextErrors[field] = issue.message;
       });
-      setClientErrors(nextErrors);
+      replaceClientErrors(nextErrors);
       return;
     }
-    setClientErrors({});
+    replaceClientErrors({});
 
     // `detalle` ya viene recortado por el schema.
     const { tipo, detalle } = parsed.data;
@@ -185,8 +171,7 @@ export function useSeguimientoForm({
 
   const handleReset = () => {
     form.reset(seguimientoToEdit ? toFormValues(seguimientoToEdit) : EMPTY_VALUES);
-    setClientErrors({});
-    setServerErrors({});
+    clearAllErrors();
   };
 
   const handleFormSubmit = (event: FormEvent<HTMLFormElement>) => {
