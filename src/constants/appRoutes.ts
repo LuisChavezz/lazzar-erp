@@ -54,6 +54,7 @@ import {
   PlanCuentasIcon,
   CentrosCostoIcon,
   ConciliacionIcon,
+  TrendingUpIcon,
 } from "../components/Icons";
 
 export interface AppRouteItem {
@@ -187,6 +188,16 @@ export const appRouteGroups: AppRouteGroup[] = [
         permission: "R-CRM-CLIENTES",
         parentPath: "/sales/customers",
         showInSidebar: false,
+      },
+      {
+        key: "sales-opportunities",
+        label: "Oportunidades",
+        path: "/sales/opportunities",
+        icon: TrendingUpIcon,
+        description: "Prospectos y negocios en curso, de la primera llamada a la cotización.",
+        // Sin código propio en el catálogo de permisos: el backend solo exige
+        // sesión y acota por vendedor. La cubre la regla "/sales" → R-CRM.
+        permission: "R-CRM",
       },
       {
         key: "sales-quotes",
