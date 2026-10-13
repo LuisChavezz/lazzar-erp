@@ -11,16 +11,22 @@ export const metadata: Metadata = {
  * catch-all `/sales` → `R-CRM` de `routePermissions`, igual que su listado. El
  * acceso al REGISTRO lo decide el backend (404 si no es visible) y lo resuelve
  * `OpportunityDetailContent` en el cliente.
+ *
+ * La query de esta URL es el estado del listado del que se llegó (lo pone "Ver
+ * detalle"): se pasa cruda y el detalle la valida para su "Volver".
  */
 export default async function OpportunityDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const { id } = await params;
+  const query = await searchParams;
   return (
     <div className="w-full space-y-6 pt-2">
-      <OpportunityDetailContent opportunityId={id} />
+      <OpportunityDetailContent opportunityId={id} searchParams={query} />
     </div>
   );
 }

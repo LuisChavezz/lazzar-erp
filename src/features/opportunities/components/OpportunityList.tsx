@@ -9,6 +9,7 @@ import { OpportunityFormDialog } from "./OpportunityFormDialog";
 import { useOpportunitiesTable } from "../hooks/useOpportunitiesTable";
 import { OpportunityRowActionsProvider } from "../hooks/useOpportunityRowActions";
 import type { Opportunity } from "../interfaces/opportunity.interface";
+import { serializeOpportunitiesListState } from "../utils/opportunityListQuery";
 
 /**
  * Listado de oportunidades del CRM, en MODO SERVIDOR: filtros, búsqueda, orden
@@ -40,7 +41,13 @@ export default function OpportunityList() {
   };
 
   return (
-    <OpportunityRowActionsProvider value={{ onEdit: handleEdit, onDelete: setOpportunityToDelete }}>
+    <OpportunityRowActionsProvider
+      value={{
+        listQuery: serializeOpportunitiesListState(table.state),
+        onEdit: handleEdit,
+        onDelete: setOpportunityToDelete,
+      }}
+    >
       <DataTable
         columns={opportunityColumns}
         {...table.tableProps}

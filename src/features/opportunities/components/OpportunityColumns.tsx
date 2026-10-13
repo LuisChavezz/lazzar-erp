@@ -5,9 +5,9 @@ import { formatCurrency, NO_CURRENCY_FORMAT, safeParseAmount } from "@/src/utils
 import { formatShortDate } from "@/src/utils/formatDate";
 import type { StatusBadgeConfigEntry } from "@/src/components/StatusBadge";
 import { ESTADO_OPORTUNIDAD_CFG } from "../constants/opportunityChoices";
-import { opportunityDetailPath } from "../constants/opportunityRoutes";
 import { useOpportunityRowActionsContext } from "../hooks/useOpportunityRowActions";
 import type { Opportunity } from "../interfaces/opportunity.interface";
+import { opportunityDetailHref } from "../utils/opportunityListQuery";
 import {
   OpportunityClienteHeader,
   OpportunityTituloHeader,
@@ -34,7 +34,7 @@ const MUTED_CLS = "text-slate-400 dark:text-slate-500";
  * en `OpportunityList`.
  */
 function OpportunityTitleActions({ opportunity }: { opportunity: Opportunity }) {
-  const { onEdit, onDelete } = useOpportunityRowActionsContext();
+  const { listQuery, onEdit, onDelete } = useOpportunityRowActionsContext();
   const titulo = opportunity.titulo?.trim();
   // `estado` es un valor del backend: uno fuera del catálogo cae al gris neutro
   // (como en `StatusBadge`) y se anuncia con su texto crudo; vacío, "Sin estado".
@@ -45,8 +45,12 @@ function OpportunityTitleActions({ opportunity }: { opportunity: Opportunity }) 
 
   const menuItems: ActionMenuItem[] = [
     // Enlace real (`href`): clic central y Ctrl+clic abren el detalle en otra
-    // pestaña. No pasa por el contexto de acciones: no abre ningún diálogo.
-    { label: "Ver detalle", icon: ViewIcon, href: opportunityDetailPath(opportunity.id) },
+    // pestaña. Lleva el estado del listado para que "Volver" regrese a él.
+    {
+      label: "Ver detalle",
+      icon: ViewIcon,
+      href: opportunityDetailHref(opportunity.id, listQuery),
+    },
     { label: "Editar", icon: EditIcon, onSelect: () => onEdit(opportunity) },
     { label: "Dar de baja", icon: DeleteIcon, onSelect: () => onDelete(opportunity) },
   ];

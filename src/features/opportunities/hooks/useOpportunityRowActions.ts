@@ -12,6 +12,12 @@ import type { Opportunity } from "../interfaces/opportunity.interface";
 // resolver su registro contra "el listado" si la fila sale de la vista.
 
 export interface OpportunityRowActionsContextValue {
+  /**
+   * Estado actual del listado como query VALIDADA (`serializeOpportunitiesListState`):
+   * "Ver detalle" la lleva en su URL para que "Volver" regrese al listado tal
+   * como estaba.
+   */
+  listQuery: string;
   onEdit: (opportunity: Opportunity) => void;
   onDelete: (opportunity: Opportunity) => void;
 }

@@ -21,10 +21,10 @@ import { canLandOnQuoteEdit } from "@/src/features/quotes/utils/quoteEditRouteAc
 import { formatCurrency, NO_CURRENCY_FORMAT, safeParseAmount } from "@/src/utils/formatCurrency";
 import { formatShortDate } from "@/src/utils/formatDate";
 import { ESTADO_OPORTUNIDAD_CFG, ETAPA_PERDIDA } from "../constants/opportunityChoices";
-import { OPPORTUNITIES_LIST_PATH } from "../constants/opportunityRoutes";
 import { useOpportunityDetail } from "../hooks/useOpportunityDetail";
 import type { Opportunity } from "../interfaces/opportunity.interface";
 import type { OpportunityOnboarding } from "../interfaces/opportunity-onboarding.interface";
+import { opportunitiesListHref, readOpportunitiesListQuery } from "../utils/opportunityListQuery";
 import { OpportunityCotizaciones } from "./OpportunityCotizaciones";
 import { OpportunityCotizarAction } from "./OpportunityCotizarAction";
 import { OpportunityDeleteDialog } from "./OpportunityDeleteDialog";
@@ -38,6 +38,12 @@ const ESTADOS_CERRADOS: readonly string[] = ["Perdida", "Ganada"];
 interface OpportunityDetailContentProps {
   /** Id tal cual llega del segmento de ruta (texto libre). */
   opportunityId: string;
+  /**
+   * Parámetros CRUDOS de la URL del detalle. Si se llegó desde el listado traen
+   * su estado (filtros, búsqueda, orden, página): se validan aquí y "Volver"
+   * regresa a ese mismo listado.
+   */
+  searchParams: Record<string, string | string[] | undefined>;
 }
 
 /**
@@ -50,11 +56,19 @@ interface OpportunityDetailContentProps {
  * persona); error de carga INICIAL → `ErrorState`; un refetch fallido con datos
  * conserva la vista y avisa por toast.
  *
+ * "Volver" —y la salida tras dar de baja— regresan al listado con los filtros,
+ * la búsqueda, el orden y la página con que se llegó (`opportunityListQuery`);
+ * una entrada directa a esta URL vuelve al listado sin filtros.
+ *
  * Los diálogos (editar, dar de baja) se montan FUERA de esos estados: así se
  * cierran con su animación aunque la pantalla de detrás cambie de estado.
  */
-export const OpportunityDetailContent = ({ opportunityId }: OpportunityDetailContentProps) => {
+export const OpportunityDetailContent = ({
+  opportunityId,
+  searchParams,
+}: OpportunityDetailContentProps) => {
   const router = useRouter();
+  const listHref = opportunitiesListHref(readOpportunitiesListQuery(searchParams));
 
   // `true` SOLO cuando la baja hecha desde esta página tuvo éxito (lo pone
   // `onDeleted`). No se deduce de un 404: una baja que falla porque otra
@@ -76,13 +90,13 @@ export const OpportunityDetailContent = ({ opportunityId }: OpportunityDetailCon
 
   const handleDeleted = () => {
     setWasDeletedHere(true);
-    router.replace(OPPORTUNITIES_LIST_PATH);
+    router.replace(listHref);
   };
 
   const backLink = (
     <div className="sticky top-0 z-10 py-2 w-fit">
       <Link
-        href={OPPORTUNITIES_LIST_PATH}
+        href={listHref}
         className="inline-flex items-center gap-2 text-slate-500 hover:text-sky-500 transition-colors px-4 py-2 rounded-full bg-slate-50 dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800"
       >
         <ArrowLeftIcon className="w-4 h-4" />
