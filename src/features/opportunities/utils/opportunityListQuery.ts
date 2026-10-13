@@ -3,6 +3,7 @@ import {
   writeServerTableQuery,
   type ServerTableState,
 } from "@/src/utils/serverTableParams";
+import type { EstadoOportunidad } from "../constants/opportunityChoices";
 import {
   OPPORTUNITIES_LIST_PATH,
   OPPORTUNITY_LIST_PARAM,
@@ -54,3 +55,11 @@ export const opportunityDetailHref = (id: number, listQuery: string): string => 
   if (!listQuery) return path;
   return `${path}?${new URLSearchParams({ [OPPORTUNITY_LIST_PARAM]: listQuery }).toString()}`;
 };
+
+/** El listado filtrado por un `estado`, sin nada más (página 1, orden por defecto). */
+export const opportunitiesListHrefForEstado = (estado: EstadoOportunidad): string =>
+  opportunitiesListHref(
+    serializeOpportunitiesListState(
+      readServerTableState(opportunitiesTable, (key) => (key === "estado" ? estado : null))
+    )
+  );
