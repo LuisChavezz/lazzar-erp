@@ -42,6 +42,13 @@ import { LoadingSkeleton } from "./LoadingSkeleton";
 import { ErrorState } from "./ErrorState";
 import { ErrorDisplay } from "./ui/ErrorDisplay";
 import { DropdownMenu } from "@radix-ui/themes";
+import {
+  CLIENT_TABLE_MODE,
+  DataTableModeContext,
+  SERVER_PAGINATION_TABLE_MODE,
+  type DataTableModeContextValue,
+  type DataTableServerFilters,
+} from "./DataTableModeContext";
 
 export type DataTableVisibleColumn<TData> = {
   id: string;
@@ -108,6 +115,26 @@ export interface DataTableServerMode {
     /** El usuario pulsó el encabezado de la columna que ordena por `field`. */
     onToggle: (field: string) => void;
   };
+  /**
+   * Búsqueda resuelta por el backend, en el buscador fijo de la barra. Si se
+   * omite no hay buscador (buscar en memoria solo vería la página actual).
+   *
+   * `value` es lo que el usuario lleva tecleado, al instante; la tabla NO
+   * aplica debounce: avisa en cada tecla y es el llamador quien decide cuándo
+   * consultar. `commit: "now"` (Enter o el botón de limpiar) pide hacerlo ya.
+   */
+  search?: {
+    value: string;
+    onChange: (value: string, commit?: "debounced" | "now") => void;
+  };
+  /**
+   * Filtros de encabezado resueltos por el backend. Los lee `ColumnHeaderFilter`
+   * (por contexto) en las columnas que declaran `meta.serverFilter`; el estado
+   * de filtros de columna de TanStack no participa (`manualFiltering`). Las
+   * opciones de cada filtro salen de un catálogo, nunca de las filas cargadas:
+   * la tabla solo tiene una página.
+   */
+  filters?: DataTableServerFilters;
   /**
    * Hay una consulta con otros parámetros en curso y `data` sigue siendo la
    * página anterior. Bloquea el paginador hasta que llegue la respuesta.
@@ -638,12 +665,33 @@ export function DataTable<TData, TValue>({
       ? {
           manualPagination: true,
           rowCount: server.pagination.total ?? 0,
-          // Las filas llegan ya ordenadas: TanStack no debe reordenar la página.
+          // Las filas llegan ya ordenadas y filtradas: TanStack no debe
+          // reordenar ni filtrar la página.
           manualSorting: true,
+          manualFiltering: true,
         }
       : {}),
   });
   const serverSorting = isServerMode ? server.sorting : undefined;
+  const serverSearch = isServerMode ? server.search : undefined;
+  const serverFilters = isServerMode ? server.filters : undefined;
+  // Lo que ven los encabezados (`ColumnHeaderFilter`) de esta tabla.
+  const tableMode = useMemo<DataTableModeContextValue>(
+    () =>
+      isServerMode
+        ? { mode: "server", filters: serverFilters }
+        : isServerPaginated
+        ? SERVER_PAGINATION_TABLE_MODE
+        : CLIENT_TABLE_MODE,
+    [isServerMode, isServerPaginated, serverFilters]
+  );
+  // Buscador fijo de la izquierda: el de siempre en cliente (filtra en
+  // memoria); en modo servidor, el mismo input controlado por `server.search`.
+  // Con la `serverPagination` obsoleta, o sin `server.search`, no hay buscador.
+  const showFixedSearch = isServerMode
+    ? serverSearch !== undefined
+    : !isServerPaginated && searchAlwaysExpanded;
+  const searchValue = serverSearch ? serverSearch.value : globalFilter ?? "";
 
   const visibleRows = table.getRowModel().rows;
   const visibleColumns = table.getVisibleLeafColumns();
@@ -844,6 +892,7 @@ export function DataTable<TData, TValue>({
   );
 
   return (
+    <DataTableModeContext.Provider value={tableMode}>
     <div
       className={
         (framed
@@ -857,7 +906,7 @@ export function DataTable<TData, TValue>({
           // `justify-between` solo cuando el buscador fijo de la izquierda
           // existe; en modo servidor no se renderiza y un único hijo con
           // `between` quedaría pegado a la IZQUIERDA en vez de a la derecha.
-          (!isServerPaged && searchAlwaysExpanded ? "justify-between" : "justify-end") +
+          (showFixedSearch ? "justify-between" : "justify-end") +
           " gap-4 shrink-0 " +
           (framed
             ? "p-4 border-b border-slate-100 dark:border-slate-800"
@@ -871,23 +920,37 @@ export function DataTable<TData, TValue>({
           — el resto del toolbar se agrupa aparte más abajo. El buscador
           colapsable (`searchAlwaysExpanded={false}`) sigue integrado con los
           íconos. */}
-      {!isServerPaged && searchAlwaysExpanded && (
+      {showFixedSearch && (
         <div className="relative shrink-0 w-full lg:w-auto">
           <SearchIcon className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <input
             ref={searchInputRef}
             id={searchInputId}
             type="search"
-            value={globalFilter ?? ""}
-            onChange={(e) => setGlobalFilter(e.target.value)}
+            value={searchValue}
+            onChange={(e) =>
+              serverSearch
+                ? serverSearch.onChange(e.target.value)
+                : setGlobalFilter(e.target.value)
+            }
+            // Solo modo servidor: Enter consulta ya, sin esperar el debounce.
+            onKeyDown={
+              serverSearch
+                ? (e) => {
+                    if (e.key === "Enter") serverSearch.onChange(e.currentTarget.value, "now");
+                  }
+                : undefined
+            }
             placeholder={searchPlaceholder}
             aria-label={searchPlaceholder}
             className="block w-full sm:w-72 py-1.5 pl-9 pr-9 text-sm leading-5 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 text-slate-900 dark:text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-sky-500/50 focus:border-sky-500 transition-shadow [&::-webkit-search-cancel-button]:hidden [-moz-appearance:textfield]"
           />
-          {globalFilter && (
+          {searchValue && (
             <button
               type="button"
-              onClick={() => setGlobalFilter("")}
+              onClick={() =>
+                serverSearch ? serverSearch.onChange("", "now") : setGlobalFilter("")
+              }
               className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 transition-colors"
               aria-label="Limpiar búsqueda"
             >
@@ -1638,5 +1701,6 @@ export function DataTable<TData, TValue>({
         </div>
       )}
     </div>
+    </DataTableModeContext.Provider>
   );
 }

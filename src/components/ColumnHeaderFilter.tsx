@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useContext, useEffect, useRef, useState } from 'react';
 import type { Column } from '@tanstack/react-table';
 import { FilterIcon } from './Icons';
+import { DataTableModeContext } from './DataTableModeContext';
 
 export interface ColumnFilterOption {
   /** `undefined` limpia el filtro de la columna (opción "Todos"). */
@@ -30,11 +31,31 @@ interface ColumnHeaderFilterProps<TData> {
  *
  * `stopPropagation` en cada click evita que dispare el toggle de orden del
  * `<th>` que envuelve todo el encabezado, o el drag-to-reorder de columnas.
+ *
+ * MODO SERVIDOR de `DataTable` (prop `server`): si la columna declara
+ * `meta.serverFilter`, el valor activo y el cambio NO pasan por TanStack sino
+ * por los filtros de servidor de la tabla (`DataTableModeContext`), con esa
+ * clave. La columna no necesita `filterFn` (nada se filtra en memoria) y las
+ * opciones deben venir de un catálogo, nunca de las filas cargadas.
  */
 export function ColumnHeaderFilter<TData>({ column, options, label }: ColumnHeaderFilterProps<TData>) {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
-  const activeValue = column.getFilterValue() as string | undefined;
+  const tableMode = useContext(DataTableModeContext);
+  const serverFilterKey = column.columnDef.meta?.serverFilter;
+  const serverFilters =
+    tableMode.mode === 'server' && serverFilterKey !== undefined ? tableMode.filters : undefined;
+  const activeValue =
+    serverFilters !== undefined && serverFilterKey !== undefined
+      ? serverFilters.values[serverFilterKey]
+      : (column.getFilterValue() as string | undefined);
+  const applyValue = (value: string | undefined) => {
+    if (serverFilters !== undefined && serverFilterKey !== undefined) {
+      serverFilters.onChange(serverFilterKey, value);
+      return;
+    }
+    column.setFilterValue(value);
+  };
 
   useEffect(() => {
     if (!isOpen) return;
@@ -83,7 +104,7 @@ export function ColumnHeaderFilter<TData>({ column, options, label }: ColumnHead
               role="menuitemradio"
               aria-checked={activeValue === opt.value}
               onClick={() => {
-                column.setFilterValue(opt.value);
+                applyValue(opt.value);
                 setIsOpen(false);
               }}
               className={`flex items-center gap-2 w-full text-left px-3 py-2 text-xs transition-colors cursor-pointer hover:bg-slate-50 dark:hover:bg-white/5 ${
