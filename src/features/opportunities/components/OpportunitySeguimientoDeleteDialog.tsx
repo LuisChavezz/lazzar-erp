@@ -4,21 +4,17 @@ import { useState } from "react";
 import { ConfirmDialog } from "@/src/components/ConfirmDialog";
 import { useDeleteSeguimiento } from "../hooks/useSeguimientoMutations";
 import type { OpportunitySeguimiento } from "../interfaces/seguimiento.interface";
+import { previewText } from "../utils/seguimientos";
 
 const DETALLE_PREVIEW_LENGTH = 60;
 
 /**
  * Cuál es el seguimiento, para que se sepa qué se va a borrar: su tipo y el
- * inicio de su detalle, en un solo renglón (los saltos de línea se aplanan).
+ * inicio de su detalle (`previewText`).
  */
 const describeSeguimiento = (seguimiento: OpportunitySeguimiento): string => {
-  const detalle = seguimiento.detalle.replace(/\s+/g, " ").trim();
-  if (!detalle) return seguimiento.tipo;
-  const preview =
-    detalle.length > DETALLE_PREVIEW_LENGTH
-      ? `${detalle.slice(0, DETALLE_PREVIEW_LENGTH).trimEnd()}…`
-      : detalle;
-  return `${seguimiento.tipo}: "${preview}"`;
+  const preview = previewText(seguimiento.detalle, DETALLE_PREVIEW_LENGTH);
+  return preview ? `${seguimiento.tipo}: "${preview}"` : seguimiento.tipo;
 };
 
 interface OpportunitySeguimientoDeleteDialogProps {

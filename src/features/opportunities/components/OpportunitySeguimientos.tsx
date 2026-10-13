@@ -27,6 +27,7 @@ import type { OpportunitySeguimiento } from "../interfaces/seguimiento.interface
 import {
   getRecordatorioStatus,
   getSeguimientoAuthorLabel,
+  getSeguimientoName,
   groupSeguimientos,
   isSeguimientoAuthor,
 } from "../utils/seguimientos";
@@ -107,6 +108,8 @@ export const OpportunitySeguimientos = ({
   const renderItem = (seguimiento: OpportunitySeguimiento) => {
     const Icon = TIPO_ICONS[seguimiento.tipo] ?? CommentIcon;
     const isBusy = actions.busyIds.includes(seguimiento.id);
+    // Tipo + inicio del detalle: dos llamadas no se anuncian igual.
+    const name = getSeguimientoName(seguimiento);
     const authorLabel = getSeguimientoAuthorLabel(seguimiento, currentUserId);
     const canManage = isCompanyAdmin || isSeguimientoAuthor(seguimiento, currentUserId);
     const recordatorioStatus =
@@ -133,11 +136,11 @@ export const OpportunitySeguimientos = ({
                 checked={seguimiento.completado}
                 disabled={isBusy}
                 onChange={(event) => actions.onSetCompletado(seguimiento, event.target.checked)}
-                aria-label={
-                  seguimiento.completado
-                    ? `Reabrir: ${seguimiento.tipo} completado`
-                    : `Marcar como completado: ${seguimiento.tipo}`
-                }
+                // El nombre EMPIEZA con el texto visible de la etiqueta (el
+                // tipo) y le añade el detalle; que esté completado lo dice el
+                // propio estado de la casilla.
+                aria-label={name}
+                title={seguimiento.completado ? "Reabrir" : "Marcar como completado"}
                 className="h-4 w-4 shrink-0 cursor-pointer rounded border-slate-300 accent-sky-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
               />
               <span>{seguimiento.tipo}</span>
@@ -151,7 +154,7 @@ export const OpportunitySeguimientos = ({
         }
         actions={
           canManage ? (
-            <ActionMenu items={menuItems} ariaLabel={`Acciones del seguimiento: ${seguimiento.tipo}`} />
+            <ActionMenu items={menuItems} ariaLabel={`Acciones del seguimiento ${name}`} />
           ) : undefined
         }
         meta={

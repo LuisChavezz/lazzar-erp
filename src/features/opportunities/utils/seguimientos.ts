@@ -46,6 +46,28 @@ export const getRecordatorioStatus = (fecha: string, today: string): Recordatori
 };
 
 /**
+ * Inicio de un texto libre, en un solo renglón (los saltos de línea se
+ * aplanan) y con elipsis si se recorta. Corta por CARACTERES completos
+ * (`Array.from`), no por unidades UTF-16: un `slice` directo puede partir un
+ * emoji a la mitad.
+ */
+export const previewText = (text: string, maxLength: number): string => {
+  const characters = Array.from(text.replace(/\s+/g, " ").trim());
+  if (characters.length <= maxLength) return characters.join("");
+  return `${characters.slice(0, maxLength).join("").trimEnd()}…`;
+};
+
+/**
+ * Nombre que distingue a un seguimiento de los demás de su tipo: el tipo y el
+ * inicio de su detalle ("Llamada: Quedó en confirmar tallas…"). Para los
+ * nombres accesibles de sus controles.
+ */
+export const getSeguimientoName = (seguimiento: OpportunitySeguimiento): string => {
+  const preview = previewText(seguimiento.detalle, 40);
+  return preview ? `${seguimiento.tipo}: ${preview}` : seguimiento.tipo;
+};
+
+/**
  * Cómo nombrar al autor: "Tú" si es el usuario de la sesión; si no, su nombre
  * cuando el backend lo manda (`vendedor_nombre` es opcional y puede venir
  * vacío); si no hay nombre, `null` y el autor no se muestra. No se consulta el
