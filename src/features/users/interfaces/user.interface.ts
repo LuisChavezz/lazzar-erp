@@ -17,6 +17,8 @@ export interface User {
   telefono: string;
   avatar_url: string | null;
   is_admin_empresa: boolean;
+  /** Superusuario de la plataforma: ve los datos de todas las empresas. */
+  is_superuser: boolean;
   date_joined: string;
   last_login: string | null;
   roles_ids: Role["id"][];
