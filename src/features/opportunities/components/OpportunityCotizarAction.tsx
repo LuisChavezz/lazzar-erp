@@ -57,6 +57,10 @@ export function OpportunityCotizarAction({
   });
 
   const [isCheckingCustomer, setIsCheckingCustomer] = useState(false);
+  // Los textos de la confirmación se fijan AL ABRIRLA. Con la cuenta en vivo,
+  // tras crear la primera cotización el detalle se relee y el diálogo —aún
+  // cerrándose— pasaba a preguntar "ya tiene 1; ¿crear otra?".
+  const [countAtOpen, setCountAtOpen] = useState(cotizacionesCount);
 
   const checkCustomerAndOpen = async () => {
     setIsCheckingCustomer(true);
@@ -75,6 +79,7 @@ export function OpportunityCotizarAction({
         return;
       }
       toast.dismiss(CUSTOMER_CHECK_TOAST_ID);
+      setCountAtOpen(cotizacionesCount);
       openConfirm();
     } catch (error) {
       console.error(error);
@@ -101,11 +106,11 @@ export function OpportunityCotizarAction({
     }
   };
 
-  const hasCotizaciones = cotizacionesCount > 0;
+  const hasCotizaciones = countAtOpen > 0;
   const paraQuien = opportunity.cliente_nombre ? ` para ${opportunity.cliente_nombre}` : "";
   const queSeCrea = `Se creará una cotización NUEVA en borrador${paraQuien}, ligada a esta oportunidad; podrás capturar sus productos antes de enviarla a revisión.`;
-  const yaTiene = `Esta oportunidad ya tiene ${cotizacionesCount} ${
-    cotizacionesCount === 1 ? "cotización" : "cotizaciones"
+  const yaTiene = `Esta oportunidad ya tiene ${countAtOpen} ${
+    countAtOpen === 1 ? "cotización" : "cotizaciones"
   }; ¿crear otra?`;
   const idleConfirmText = hasCotizaciones ? "Crear otra" : "Crear cotización";
 
