@@ -178,6 +178,8 @@ export const OpportunityFunnel = ({ params, filter, compact = false }: Opportuni
   return (
     <section
       aria-label="Embudo de oportunidades"
+      // Cifras de los filtros anteriores mientras llegan las nuevas.
+      aria-busy={isPlaceholderData || undefined}
       // La versión de tarjeta viste como las demás tarjetas de la portada.
       className={
         compact
@@ -188,7 +190,11 @@ export const OpportunityFunnel = ({ params, filter, compact = false }: Opportuni
       <div className="mb-3 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
         <h2 className="text-sm font-bold text-slate-800 dark:text-white">Embudo de oportunidades</h2>
         {embudo && (
-          <p className="text-xs text-slate-500 dark:text-slate-400 tabular-nums">
+          <p
+            className={`text-xs text-slate-500 dark:text-slate-400 tabular-nums transition-opacity ${
+              isPlaceholderData ? "opacity-60" : ""
+            }`}
+          >
             <span className="font-bold text-slate-800 dark:text-white">{embudo.total.cantidad}</span>{" "}
             {plural(embudo.total.cantidad, "oportunidad", "oportunidades")}
             {" · "}
@@ -219,7 +225,6 @@ export const OpportunityFunnel = ({ params, filter, compact = false }: Opportuni
       ) : (
         <>
           <ul
-            aria-busy={isPlaceholderData || undefined}
             className={`transition-opacity ${isPlaceholderData ? "opacity-60" : ""} ${
               // Una fila de columnas iguales, tantas como barras haya.
               compact ? "space-y-2" : "grid grid-cols-1 gap-2 lg:grid-flow-col lg:grid-cols-none lg:auto-cols-fr"
