@@ -3,12 +3,13 @@ import { ActionMenu, ActionMenuItem } from "@/src/components/ActionMenu";
 import { ChevronRightIcon, DeleteIcon, EditIcon } from "@/src/components/Icons";
 import { formatCurrency, NO_CURRENCY_FORMAT, safeParseAmount } from "@/src/utils/formatCurrency";
 import { formatShortDate } from "@/src/utils/formatDate";
+import type { StatusBadgeConfigEntry } from "@/src/components/StatusBadge";
 import { ESTADO_OPORTUNIDAD_CFG } from "../constants/opportunityChoices";
 import { useOpportunityRowActionsContext } from "../hooks/useOpportunityRowActions";
 import type { Opportunity } from "../interfaces/opportunity.interface";
 import {
   OpportunityClienteHeader,
-  OpportunityEstadoHeader,
+  OpportunityTituloHeader,
   OpportunityVendedorHeader,
 } from "./OpportunityHeaderFilters";
 
@@ -35,11 +36,11 @@ function OpportunityTitleActions({ opportunity }: { opportunity: Opportunity }) 
   const { onEdit, onDelete } = useOpportunityRowActionsContext();
   const titulo = opportunity.titulo?.trim();
   // `estado` es un valor del backend: uno fuera del catálogo cae al gris neutro
-  // y se anuncia con su texto crudo.
-  const estadoCfg = ESTADO_OPORTUNIDAD_CFG[opportunity.estado] as
-    | (typeof ESTADO_OPORTUNIDAD_CFG)[keyof typeof ESTADO_OPORTUNIDAD_CFG]
-    | undefined;
-  const estadoLabel = estadoCfg?.label ?? opportunity.estado ?? "Sin estado";
+  // (como en `StatusBadge`) y se anuncia con su texto crudo; vacío, "Sin estado".
+  const estadoCfg = (
+    ESTADO_OPORTUNIDAD_CFG as Record<string, StatusBadgeConfigEntry | undefined>
+  )[opportunity.estado];
+  const estadoLabel = estadoCfg?.label || opportunity.estado || "Sin estado";
 
   const menuItems: ActionMenuItem[] = [
     { label: "Editar", icon: EditIcon, onSelect: () => onEdit(opportunity) },
@@ -62,7 +63,7 @@ function OpportunityTitleActions({ opportunity }: { opportunity: Opportunity }) 
           <button
             type="button"
             aria-label={`Ver acciones de la oportunidad ${titulo || `#${opportunity.id}`}`}
-            className="group inline-flex min-w-0 items-center gap-1 text-left text-[13px] font-bold text-slate-800 dark:text-white hover:text-sky-600 dark:hover:text-sky-400 hover:underline transition-colors cursor-pointer"
+            className="group inline-flex min-w-0 items-center gap-1 text-left text-[13px] font-bold text-slate-800 dark:text-white hover:text-sky-600 dark:hover:text-sky-400 hover:underline transition-colors cursor-pointer rounded-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
           >
             {titulo ? (
               <span className="min-w-0 wrap-break-word">{titulo}</span>
@@ -98,7 +99,10 @@ export const opportunityColumns = [
     // Ordena por `titulo` y filtra por `estado`: el filtro vive en este
     // encabezado, como el de confirmación en el Folio de "Mis pedidos".
     meta: { label: "Oportunidad", serverSort: "titulo", serverFilter: "estado" },
-    header: ({ column }) => <OpportunityEstadoHeader column={column} />,
+    // Lleva el menú de fila, el estado y su filtro: ocultarla desde
+    // "Mostrar/Ocultar" dejaría la fila sin acciones y el filtro sin control.
+    enableHiding: false,
+    header: ({ column }) => <OpportunityTituloHeader column={column} />,
     cell: ({ row }) => <OpportunityTitleActions opportunity={row.original} />,
   }),
   // Cliente si lo hay; si no, el contacto capturado. `cliente_nombre` es el

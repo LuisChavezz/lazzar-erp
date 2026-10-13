@@ -42,9 +42,11 @@ const ESTADO_OPTIONS: ColumnFilterOption[] = [
 
 /**
  * Encabezado de la columna "Oportunidad": su etiqueta y el filtro de ESTADO
- * (la columna pinta el estado como punto de color, sin columna propia).
+ * (la columna pinta el estado como punto de color, sin columna propia). Cada
+ * opción del filtro lleva su punto (`dotClassName`), así que el menú sirve de
+ * LEYENDA de colores: es donde se lee qué estado es cada punto de la tabla.
  */
-export function OpportunityEstadoHeader({ column }: { column: OpportunityColumn }) {
+export function OpportunityTituloHeader({ column }: { column: OpportunityColumn }) {
   return (
     <div className="flex items-center gap-1.5">
       <span>Oportunidad</span>
