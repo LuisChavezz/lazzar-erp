@@ -6,7 +6,9 @@ import { formatShortDate } from "@/src/utils/formatDate";
 import { getEstadoOportunidadCfg } from "../constants/opportunityChoices";
 import { useOpportunityRowActionsContext } from "../hooks/useOpportunityRowActions";
 import type { Opportunity } from "../interfaces/opportunity.interface";
+import { getOpportunityName } from "../utils/describeOpportunity";
 import { opportunityDetailHref } from "../utils/opportunityListQuery";
+import { OpportunityName } from "./OpportunityName";
 import {
   OpportunityClienteHeader,
   OpportunityTituloHeader,
@@ -34,7 +36,6 @@ const MUTED_CLS = "text-slate-400 dark:text-slate-500";
  */
 function OpportunityTitleActions({ opportunity }: { opportunity: Opportunity }) {
   const { listQuery, onEdit, onDelete } = useOpportunityRowActionsContext();
-  const titulo = opportunity.titulo?.trim();
   // `estado` es un valor del backend: uno fuera del catálogo cae al gris neutro
   // y se anuncia con su texto crudo (`getEstadoOportunidadCfg`).
   const estadoCfg = getEstadoOportunidadCfg(opportunity.estado);
@@ -67,14 +68,13 @@ function OpportunityTitleActions({ opportunity }: { opportunity: Opportunity }) 
         trigger={
           <button
             type="button"
-            aria-label={`Ver acciones de la oportunidad ${titulo || `#${opportunity.id}`}`}
+            aria-label={`Ver acciones de la oportunidad ${getOpportunityName(opportunity)}`}
             className="group inline-flex min-w-0 items-center gap-1 text-left text-[13px] font-bold text-slate-800 dark:text-white hover:text-sky-600 dark:hover:text-sky-400 hover:underline transition-colors cursor-pointer rounded-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
           >
-            {titulo ? (
-              <span className="min-w-0 wrap-break-word">{titulo}</span>
-            ) : (
-              <span className={`italic font-medium ${MUTED_CLS}`}>Sin título</span>
-            )}
+            {/* Sin título, el nombre derivado va atenuado y en cursiva. */}
+            <span className="min-w-0 wrap-break-word">
+              <OpportunityName opportunity={opportunity} />
+            </span>
             <ChevronRightIcon
               className="w-3.5 h-3.5 shrink-0 text-slate-400 dark:text-slate-500 group-hover:text-sky-500 dark:group-hover:text-sky-400 group-hover:translate-x-0.5 transition-all"
               aria-hidden="true"

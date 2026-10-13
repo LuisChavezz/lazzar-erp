@@ -14,7 +14,7 @@ import {
   useRecentOpportunities,
 } from "../hooks/useRecentOpportunities";
 import type { Opportunity } from "../interfaces/opportunity.interface";
-import { getOpportunityName } from "../utils/describeOpportunity";
+import { OpportunityName } from "./OpportunityName";
 
 const MUTED_CLS = "text-slate-400 dark:text-slate-500";
 const TH_CLS = "px-6 py-3 font-semibold";
@@ -31,7 +31,7 @@ function RecentOpportunityRow({ opportunity }: { opportunity: Opportunity }) {
           title="Ver detalle"
           className="font-semibold text-slate-800 dark:text-white hover:text-sky-600 dark:hover:text-sky-400 hover:underline cursor-pointer rounded-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
         >
-          {getOpportunityName(opportunity)}
+          <OpportunityName opportunity={opportunity} />
         </Link>
       </td>
       <td className="px-6 py-3 text-slate-600 dark:text-slate-300">

@@ -5,6 +5,7 @@ import { DialogHeader } from "@/src/components/DialogHeader";
 import { MainDialog } from "@/src/components/MainDialog";
 import { useDialogSession } from "@/src/hooks/useDialogSession";
 import type { Opportunity } from "../interfaces/opportunity.interface";
+import { getOpportunityName } from "../utils/describeOpportunity";
 import OpportunityForm from "./OpportunityForm";
 
 interface OpportunityFormDialogProps {
@@ -43,7 +44,8 @@ export function OpportunityFormDialog({
       title={
         <DialogHeader
           title={isEditing ? "Editar Oportunidad" : "Nueva Oportunidad"}
-          subtitle={isEditing ? "Edición de registro" : "Registro Nuevo"}
+          // En edición dice CUÁL se edita, con la misma regla que el listado.
+          subtitle={session.snapshot ? getOpportunityName(session.snapshot) : "Registro Nuevo"}
           statusColor="sky"
         />
       }

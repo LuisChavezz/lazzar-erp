@@ -38,6 +38,7 @@ import { OpportunityCotizaciones } from "./OpportunityCotizaciones";
 import { OpportunityCotizarAction } from "./OpportunityCotizarAction";
 import { OpportunityDeleteDialog } from "./OpportunityDeleteDialog";
 import { OpportunityFormDialog } from "./OpportunityFormDialog";
+import { OpportunityName } from "./OpportunityName";
 import { OpportunitySeguimientoDeleteDialog } from "./OpportunitySeguimientoDeleteDialog";
 import { OpportunitySeguimientoFormDialog } from "./OpportunitySeguimientoFormDialog";
 import {
@@ -254,7 +255,6 @@ function OpportunityDetailBody({
   const cotizaciones = data.cotizaciones ?? [];
   const cartera = data.cartera ?? [];
 
-  const titulo = opportunity.titulo?.trim();
   const contacto = opportunity.nombre_contacto?.trim();
   const hasCliente = opportunity.cliente !== null;
 
@@ -276,7 +276,7 @@ function OpportunityDetailBody({
         <div className="space-y-1 min-w-0">
           <div className="flex flex-wrap items-center gap-2.5">
             <h1 className="text-2xl font-bold text-slate-900 dark:text-white wrap-break-word min-w-0">
-              {titulo || <span className={`italic font-medium ${MUTED_CLS}`}>Sin título</span>}
+              <OpportunityName opportunity={opportunity} />
             </h1>
             <StatusBadge status={opportunity.estado} config={ESTADO_OPORTUNIDAD_CFG} />
           </div>
