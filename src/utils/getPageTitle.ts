@@ -20,6 +20,7 @@ const ROUTE_TITLES: Record<string, string> = {
   "/sales/quotes": "Cotizaciones",
   "/sales/quotes/new": "Nueva Cotización",
   "/sales/customers": "Clientes",
+  "/sales/opportunities": "Oportunidades",
   "/sales/emails": "Correos",
   "/sales/calendar": "Calendario",
   "/procurement/orders": "Pedidos",
