@@ -128,6 +128,12 @@ export function useServerTable<P extends ServerTableFilterParams, TResponse, TRo
     const current = readServerTableState(definition, (key) => currentQuery.get(key));
     const next = update(current);
     if (next === current) return;
+    // Segunda guarda, por VALOR: un cambio que deja el estado igual (el mismo
+    // filtro, la misma búsqueda, el mismo orden o tamaño) no escribe la URL ni
+    // toca la página, aunque quien lo pidió haya armado un objeto nuevo.
+    const serialize = (state: ServerTableState<P>) =>
+      writeServerTableQuery(definition, state, new URLSearchParams()).toString();
+    if (serialize(next) === serialize(current)) return;
     const qs = writeServerTableQuery(definition, next, currentQuery).toString();
     window.history.replaceState(null, "", qs ? `${pathname}?${qs}` : pathname);
   };
