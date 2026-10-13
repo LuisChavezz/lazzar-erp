@@ -195,7 +195,10 @@ export function useQuoteEditForm(quoteId: number) {
    * servidor (quoteEditAccess.server) solo valida la forma del id, porque en
    * esta topología `auth-jwt` vive en el dominio del backend y nunca llega al
    * servidor de Next — solo el navegador tiene credenciales. Ambas denegaciones
-   * se tratan igual que un estatus no editable: redirect silencioso al listado. */
+   * redirigen al listado igual que un estatus no editable, pero AVISANDO por
+   * toast: quien llega por un enlace (p. ej. desde una oportunidad cuya
+   * cotización creó otra persona) debe saber por qué no la ve. El redirect por
+   * estatus sigue siendo silencioso. */
   const quoteErrorStatus =
     quoteError instanceof AxiosError ? quoteError.response?.status : undefined;
   const quoteAccessDenied = quoteErrorStatus === 404 || quoteErrorStatus === 403;
@@ -262,8 +265,12 @@ export function useQuoteEditForm(quoteId: number) {
   // Redirige inmediatamente si la cotización no es editable para evitar acceso directo por URL.
   useEffect(() => {
     if (!shouldRedirectToQuotesList) return;
+    // `id` fijo: el efecto puede correr dos veces (StrictMode) y debe avisar una.
+    if (quoteAccessDenied) {
+      toast.error("No tienes acceso a esta cotización", { id: "quote-edit-access-denied" });
+    }
     router.replace("/sales/quotes");
-  }, [shouldRedirectToQuotesList, router]);
+  }, [shouldRedirectToQuotesList, quoteAccessDenied, router]);
 
   // Inicializa el cliente seleccionado y los servicios extras una sola vez al cargar la cotización.
   // Hacerlo dentro del render provoca rerenders extra justo cuando el formulario intenta hidratarse.
