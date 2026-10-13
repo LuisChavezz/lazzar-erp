@@ -19,21 +19,33 @@ import { CustomerCartera } from "@/src/features/customers/components/CustomerCar
 import { canLandOnQuoteEdit } from "@/src/features/quotes/utils/quoteEditRouteAccess";
 import { formatCurrency, NO_CURRENCY_FORMAT, safeParseAmount } from "@/src/utils/formatCurrency";
 import { formatShortDate } from "@/src/utils/formatDate";
-import { ESTADO_OPORTUNIDAD_CFG, ETAPA_PERDIDA } from "../constants/opportunityChoices";
+import {
+  ESTADO_OPORTUNIDAD_CFG,
+  ETAPA_PERDIDA,
+  isOportunidadCerrada,
+} from "../constants/opportunityChoices";
 import { useOpportunityDetail } from "../hooks/useOpportunityDetail";
+import {
+  usePendingSeguimientoIds,
+  useSetSeguimientoCompletado,
+} from "../hooks/useSeguimientoMutations";
 import type { Opportunity } from "../interfaces/opportunity.interface";
 import type { OpportunityOnboarding } from "../interfaces/opportunity-onboarding.interface";
+import type { OpportunitySeguimiento } from "../interfaces/seguimiento.interface";
 import { OPPORTUNITY_LIST_PARAM } from "../constants/opportunityRoutes";
 import { opportunitiesListHref, readOpportunityListParam } from "../utils/opportunityListQuery";
 import { OpportunityCotizaciones } from "./OpportunityCotizaciones";
 import { OpportunityCotizarAction } from "./OpportunityCotizarAction";
 import { OpportunityDeleteDialog } from "./OpportunityDeleteDialog";
 import { OpportunityFormDialog } from "./OpportunityFormDialog";
+import { OpportunitySeguimientoDeleteDialog } from "./OpportunitySeguimientoDeleteDialog";
+import { OpportunitySeguimientoFormDialog } from "./OpportunitySeguimientoFormDialog";
+import {
+  OpportunitySeguimientos,
+  type OpportunitySeguimientoActions,
+} from "./OpportunitySeguimientos";
 
 const MUTED_CLS = "text-slate-400 dark:text-slate-500";
-
-/** Estados en los que ya no se cotiza: la oportunidad está cerrada. */
-const ESTADOS_CERRADOS: readonly string[] = ["Perdida", "Ganada"];
 
 interface OpportunityDetailContentProps {
   /** Id tal cual llega del segmento de ruta (texto libre). */
@@ -47,9 +59,9 @@ interface OpportunityDetailContentProps {
 }
 
 /**
- * Página de detalle de una oportunidad: sus datos, sus cotizaciones (con su
- * pedido) y la cartera de su cliente, todo de una sola llamada
- * (`useOpportunityDetail`).
+ * Página de detalle de una oportunidad: sus datos, sus seguimientos, sus
+ * cotizaciones (con su pedido) y la cartera de su cliente, todo de una sola
+ * llamada (`useOpportunityDetail`).
  *
  * Estados, como el detalle de proveedor: id inválido → error sin consultar;
  * 404 → "no disponible", también si llega en una relectura (la dio de baja otra
@@ -60,8 +72,10 @@ interface OpportunityDetailContentProps {
  * la búsqueda, el orden y la página con que se llegó (`opportunityListQuery`);
  * una entrada directa a esta URL vuelve al listado sin filtros.
  *
- * Los diálogos (editar, dar de baja) se montan FUERA de esos estados: así se
- * cierran con su animación aunque la pantalla de detrás cambie de estado.
+ * Los diálogos (editar y dar de baja la oportunidad; alta, edición y borrado
+ * de un seguimiento) se montan FUERA de esos estados: así se cierran con su
+ * animación aunque la pantalla de detrás cambie de estado. Guardan el REGISTRO
+ * sobre el que actúan, no su id.
  */
 export const OpportunityDetailContent = ({
   opportunityId,
@@ -87,6 +101,28 @@ export const OpportunityDetailContent = ({
   const handleEdit = (opportunity: Opportunity) => {
     setOpportunityToEdit(opportunity);
     setIsEditOpen(true);
+  };
+
+  // ── Seguimientos ────────────────────────────────────────────────────────
+  // El formulario se abre con la oportunidad y el seguimiento tal como están
+  // en ese momento (`seguimientoToEdit: null` = alta).
+  const [seguimientoForm, setSeguimientoForm] = useState<{
+    isOpen: boolean;
+    seguimientoToEdit: OpportunitySeguimiento | null;
+  }>({ isOpen: false, seguimientoToEdit: null });
+  const [seguimientoToDelete, setSeguimientoToDelete] = useState<OpportunitySeguimiento | null>(
+    null
+  );
+  const { mutate: setSeguimientoCompletado } = useSetSeguimientoCompletado();
+  const busySeguimientoIds = usePendingSeguimientoIds();
+
+  const seguimientoActions: OpportunitySeguimientoActions = {
+    onCreate: () => setSeguimientoForm({ isOpen: true, seguimientoToEdit: null }),
+    onEdit: (seguimiento) => setSeguimientoForm({ isOpen: true, seguimientoToEdit: seguimiento }),
+    onDelete: setSeguimientoToDelete,
+    onSetCompletado: (seguimiento, completado) =>
+      setSeguimientoCompletado({ id: seguimiento.id, completado }),
+    busyIds: busySeguimientoIds,
   };
 
   const handleDeleted = () => {
@@ -150,6 +186,7 @@ export const OpportunityDetailContent = ({
         listQuery={listQuery}
         onEdit={handleEdit}
         onDelete={setOpportunityToDelete}
+        seguimientoActions={seguimientoActions}
       />
     );
   }
@@ -170,6 +207,18 @@ export const OpportunityDetailContent = ({
         onClose={() => setOpportunityToDelete(null)}
         onDeleted={handleDeleted}
       />
+
+      <OpportunitySeguimientoFormDialog
+        open={seguimientoForm.isOpen}
+        onOpenChange={(isOpen) => setSeguimientoForm((current) => ({ ...current, isOpen }))}
+        opportunity={data?.oportunidad ?? null}
+        seguimientoToEdit={seguimientoForm.seguimientoToEdit}
+      />
+
+      <OpportunitySeguimientoDeleteDialog
+        seguimiento={seguimientoToDelete}
+        onClose={() => setSeguimientoToDelete(null)}
+      />
     </div>
   );
 };
@@ -180,15 +229,22 @@ interface OpportunityDetailBodyProps {
   listQuery: string;
   onEdit: (opportunity: Opportunity) => void;
   onDelete: (opportunity: Opportunity) => void;
+  seguimientoActions: OpportunitySeguimientoActions;
 }
 
 /**
  * La ficha ya cargada: cabecera con el `estado` en TEXTO (`StatusBadge`; en el
  * listado es solo un punto de color) y las acciones, y las secciones de datos,
- * cotizaciones y cartera. Presentacional: los diálogos viven en
+ * seguimientos, cotizaciones y cartera. Presentacional: los diálogos viven en
  * `OpportunityDetailContent`.
  */
-function OpportunityDetailBody({ data, listQuery, onEdit, onDelete }: OpportunityDetailBodyProps) {
+function OpportunityDetailBody({
+  data,
+  listQuery,
+  onEdit,
+  onDelete,
+  seguimientoActions,
+}: OpportunityDetailBodyProps) {
   const { data: session } = useSession();
 
   const opportunity = data.oportunidad;
@@ -209,7 +265,7 @@ function OpportunityDetailBody({ data, listQuery, onEdit, onDelete }: Opportunit
   // donde puede explicar por qué no (ver `OpportunityCotizarAction`).
   const canCotizar =
     hasCliente &&
-    !ESTADOS_CERRADOS.includes(opportunity.estado) &&
+    !isOportunidadCerrada(opportunity.estado) &&
     canLandOnQuoteEdit(session?.user);
 
   return (
@@ -293,6 +349,14 @@ function OpportunityDetailBody({ data, listQuery, onEdit, onDelete }: Opportunit
           </InfoField>
         </InfoGrid>
       </Section>
+
+      <OpportunitySeguimientos
+        opportunity={opportunity}
+        seguimientos={data.seguimientos ?? []}
+        pendientes={data.pendientes ?? 0}
+        proximoRecordatorio={data.proximo_recordatorio ?? null}
+        actions={seguimientoActions}
+      />
 
       <OpportunityCotizaciones
         opportunityId={opportunity.id}
