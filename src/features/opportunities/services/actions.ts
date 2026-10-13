@@ -69,6 +69,19 @@ export const cotizarOpportunity = async (id: number): Promise<OpportunityCotizar
 
 const SEGUIMIENTOS_URL = "/ventas/oportunidad-seguimientos/";
 
+/**
+ * Todos los seguimientos de una oportunidad, del más nuevo al más viejo. Sin
+ * `limit` el endpoint responde un arreglo plano, sin paginar.
+ */
+export const getOpportunitySeguimientos = async (
+  opportunityId: number
+): Promise<OpportunitySeguimiento[]> => {
+  const { data } = await v1_api.get<OpportunitySeguimiento[]>(SEGUIMIENTOS_URL, {
+    params: { oportunidad: opportunityId },
+  });
+  return data;
+};
+
 /** Alta de un seguimiento. El autor (`vendedor`) lo fija el backend. */
 export const createSeguimiento = async (
   seguimiento: SeguimientoCreate

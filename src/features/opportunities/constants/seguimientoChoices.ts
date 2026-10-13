@@ -11,9 +11,3 @@ export const TIPO_SEGUIMIENTO_DEFAULT: TipoSeguimiento = "Nota";
 
 export const TIPO_SEGUIMIENTO_OPTIONS: { value: TipoSeguimiento; label: string }[] =
   TIPO_SEGUIMIENTO_VALUES.map((value) => ({ value, label: value }));
-
-/**
- * `onboarding` devuelve como mucho este número de seguimientos (los más
- * recientes). Con ese número en pantalla se avisa que puede haber más.
- */
-export const SEGUIMIENTOS_ONBOARDING_LIMIT = 50;

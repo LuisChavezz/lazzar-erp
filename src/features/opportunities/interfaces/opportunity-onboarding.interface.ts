@@ -27,9 +27,10 @@ export interface OpportunityCotizacion {
  *   cliente. Llega `[]` si la oportunidad no tiene cliente, si el cliente no
  *   debe nada O si el usuario no puede ver a ese cliente: el backend no los
  *   distingue.
- * - `seguimientos` trae como mucho los 50 más recientes
- *   (`SEGUIMIENTOS_ONBOARDING_LIMIT`), del más nuevo al más viejo.
- * - `pendientes` cuenta los seguimientos sin completar. OJO: el backend los
+ * - `seguimientos` trae como mucho los 50 más recientes, completados o no. La
+ *   pantalla NO lo usa: el historial tiene su propia consulta
+ *   (`useOpportunitySeguimientos`), que los trae todos.
+ * - `pendientes` cuenta TODOS los seguimientos sin completar. OJO: el backend los
  *   cuenta también en una oportunidad `Perdida`, donde no deberían contar; la
  *   pantalla no muestra la cifra en ese estado.
  * - `proximo_recordatorio` es la fecha más próxima entre los pendientes

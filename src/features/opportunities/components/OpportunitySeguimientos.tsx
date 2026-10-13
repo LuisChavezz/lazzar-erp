@@ -19,10 +19,8 @@ import {
 import { useCompanyAdminStatus } from "@/src/features/users/hooks/useIsCompanyAdmin";
 import { formatShortDate, formatShortDateTime, getLocalTodayDate } from "@/src/utils/formatDate";
 import { ETAPA_PERDIDA } from "../constants/opportunityChoices";
-import {
-  SEGUIMIENTOS_ONBOARDING_LIMIT,
-  type TipoSeguimiento,
-} from "../constants/seguimientoChoices";
+import type { TipoSeguimiento } from "../constants/seguimientoChoices";
+import { useOpportunitySeguimientos } from "../hooks/useOpportunitySeguimientos";
 import type { Opportunity } from "../interfaces/opportunity.interface";
 import type { OpportunitySeguimiento } from "../interfaces/seguimiento.interface";
 import {
@@ -56,9 +54,7 @@ export interface OpportunitySeguimientoActions {
 
 interface OpportunitySeguimientosProps {
   opportunity: Opportunity;
-  /** Los seguimientos del detalle (`onboarding.seguimientos`: los 50 más recientes). */
-  seguimientos: OpportunitySeguimiento[];
-  /** Cuenta de pendientes y fecha más próxima, calculadas por el backend. */
+  /** Cuenta de pendientes y fecha más próxima, calculadas por el backend (del detalle). */
   pendientes: number;
   proximoRecordatorio: string | null;
   actions: OpportunitySeguimientoActions;
@@ -66,10 +62,13 @@ interface OpportunitySeguimientosProps {
 
 /**
  * Historial de seguimientos de la oportunidad (notas, llamadas, correos,
- * visitas, tareas), que es también su lista de pendientes. Presentacional:
- * recibe los seguimientos del detalle y avisa de cada acción; los diálogos y
- * las mutaciones viven en `OpportunityDetailContent`.
+ * visitas, tareas), que es también su lista de pendientes. Avisa de cada
+ * acción; los diálogos y las mutaciones viven en `OpportunityDetailContent`.
  *
+ * - **Datos**: la lista es una consulta propia con TODOS los seguimientos
+ *   (`useOpportunitySeguimientos`); el resumen viene del detalle. La sección
+ *   tiene su propia carga y su propio error, con reintento: un fallo aquí no
+ *   tumba el resto de la ficha.
  * - **Orden**: primero lo pendiente, por fecha de recordatorio; después lo
  *   completado, de lo más nuevo a lo más viejo (`groupSeguimientos`).
  * - **Recordatorio** (solo en pendientes): vencido en rojo y con la palabra
@@ -84,17 +83,19 @@ interface OpportunitySeguimientosProps {
  */
 export const OpportunitySeguimientos = ({
   opportunity,
-  seguimientos,
   pendientes,
   proximoRecordatorio,
   actions,
 }: OpportunitySeguimientosProps) => {
+  const { seguimientos, isInitialError, isFetching, refetch } = useOpportunitySeguimientos(
+    opportunity.id
+  );
   const { data: session } = useSession();
   const currentUserId = session?.user?.id;
   const isCompanyAdmin = useCompanyAdminStatus() === "admin";
   const today = getLocalTodayDate();
 
-  const groups = groupSeguimientos(seguimientos);
+  const groups = groupSeguimientos(seguimientos ?? []);
   const showSummary = opportunity.estado !== ETAPA_PERDIDA;
 
   const renderItem = (seguimiento: OpportunitySeguimiento) => {
@@ -205,7 +206,18 @@ export const OpportunitySeguimientos = ({
         </div>
       }
     >
-      {seguimientos.length === 0 ? (
+      {isInitialError ? (
+        <div role="alert" className="flex flex-col items-center gap-2 px-1 py-4 text-center">
+          <p className="text-sm text-red-600 dark:text-red-400">
+            No se pudieron cargar los seguimientos.
+          </p>
+          <Button variant="secondary" onClick={() => refetch()} disabled={isFetching}>
+            {isFetching ? "Reintentando..." : "Reintentar"}
+          </Button>
+        </div>
+      ) : seguimientos === undefined ? (
+        <EmptyLines>Cargando seguimientos...</EmptyLines>
+      ) : seguimientos.length === 0 ? (
         <EmptyLines>Sin seguimientos registrados.</EmptyLines>
       ) : (
         <div className="space-y-6">
@@ -224,11 +236,6 @@ export const OpportunitySeguimientos = ({
                 {groups.completados.map(renderItem)}
               </ActivityTimeline>
             </div>
-          )}
-          {seguimientos.length >= SEGUIMIENTOS_ONBOARDING_LIMIT && (
-            <p className="text-xs text-slate-500 dark:text-slate-400 italic">
-              Se muestran los {SEGUIMIENTOS_ONBOARDING_LIMIT} seguimientos más recientes.
-            </p>
           )}
         </div>
       )}

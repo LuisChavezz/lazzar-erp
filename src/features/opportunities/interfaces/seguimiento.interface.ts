@@ -3,8 +3,7 @@ import type { TipoSeguimiento } from "../constants/seguimientoChoices";
 /**
  * Seguimiento de una oportunidad (`/ventas/oportunidad-seguimientos/`): una
  * nota, llamada, correo, visita o tarea, con recordatorio opcional. Es el
- * mecanismo de pendientes del CRM. `onboarding` devuelve la MISMA forma en
- * `seguimientos`.
+ * mecanismo de pendientes del CRM.
  *
  * - `oportunidad` se fija al crear y no cambia.
  * - `vendedor` es el AUTOR: lo pone el backend con el usuario de la sesión; es
