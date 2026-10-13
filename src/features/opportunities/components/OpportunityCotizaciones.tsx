@@ -19,7 +19,7 @@ const TH_CLASS = "px-3 py-2 font-medium whitespace-nowrap";
 const TD_CLASS = "px-3 py-2 whitespace-nowrap";
 const MUTED_CLS = "text-slate-400 dark:text-slate-500";
 
-/** Mismos colores por estatus que el tablero de cotizaciones. */
+/** Mismos colores y NOMBRES por estatus que el tablero de cotizaciones. */
 const BADGE_BY_ESTATUS = new Map(KANBAN_COLUMNS.map((column) => [column.estatus, column]));
 const FALLBACK_BADGE = "bg-slate-100 text-slate-600 dark:bg-slate-500/20 dark:text-slate-300";
 
@@ -37,6 +37,9 @@ interface OpportunityCotizacionesProps {
  *   va como texto, porque la ruta de edición las rebotaría al listado. Aun con
  *   enlace, el backend puede negarla (la creó otra persona): esa ruta avisa por
  *   toast antes de redirigir.
+ * - **Estatus**: con el nombre que la app usa en Cotizaciones y Mesa de Control
+ *   ("Por Autorizar"), no el del backend ("EN REVISION"), que solo queda de
+ *   respaldo para un estatus que el tablero no conozca.
  * - **Pedido**: los pedidos se ven por empresa, sin importar el vendedor, así
  *   que se enlaza siempre que el usuario pueda abrir `/orders`. El origen
  *   `opportunities` lleva el id para que "Volver" regrese a ESTA oportunidad.
@@ -48,6 +51,8 @@ export const OpportunityCotizaciones = ({
 }: OpportunityCotizacionesProps) => {
   const { data: session } = useSession();
   const canOpenQuoteEdit = canLandOnQuoteEdit(session?.user);
+  // La regla de `/orders` no depende del id: se resuelve una vez.
+  const canOpenPedido = canAccessRoute("/orders", session?.user);
 
   return (
     <Section title={`Cotizaciones (${cotizaciones.length})`}>
@@ -67,12 +72,12 @@ export const OpportunityCotizaciones = ({
         >
           {cotizaciones.map((cotizacion) => {
             const badge = BADGE_BY_ESTATUS.get(cotizacion.estatus);
-            const estatusLabel = cotizacion.estatus_display || badge?.label || "Sin estatus";
+            const estatusLabel = badge?.label || cotizacion.estatus_display || "Sin estatus";
             const isEditable = canEditQuote(cotizacion.estatus);
             const pedidoId = cotizacion.pedido_id;
 
             let pedido = <span className={MUTED_CLS}>—</span>;
-            if (pedidoId !== null && canAccessRoute(`/orders/${pedidoId}`, session?.user)) {
+            if (pedidoId !== null && canOpenPedido) {
               pedido = (
                 <PedidoFolioLink
                   pedidoId={pedidoId}
