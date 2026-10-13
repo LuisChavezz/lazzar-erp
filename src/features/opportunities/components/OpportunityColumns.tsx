@@ -1,7 +1,6 @@
 import { ColumnDef, createColumnHelper } from "@tanstack/react-table";
 import { ActionMenu, ActionMenuItem } from "@/src/components/ActionMenu";
 import { ChevronRightIcon, DeleteIcon, EditIcon } from "@/src/components/Icons";
-import { StatusBadge } from "@/src/components/StatusBadge";
 import { formatCurrency, NO_CURRENCY_FORMAT, safeParseAmount } from "@/src/utils/formatCurrency";
 import { formatShortDate } from "@/src/utils/formatDate";
 import { ESTADO_OPORTUNIDAD_CFG } from "../constants/opportunityChoices";
@@ -18,14 +17,29 @@ const columnHelper = createColumnHelper<Opportunity>();
 const MUTED_CLS = "text-slate-400 dark:text-slate-500";
 
 /**
- * Título de la oportunidad como DISPARADOR del menú de fila ("Editar", "Dar de
- * baja"), igual que el chip `#id` de Cotizaciones y el folio de Pedidos en Mesa
- * de Control: sin columna "Acciones" aparte. Es solo presentacional — los
- * callbacks llegan por contexto y los diálogos viven en `OpportunityList`.
+ * Celda "Oportunidad", con el diseño del folio de Pedidos: punto de color del
+ * ESTADO + título en negritas + flecha, sin fondo. El título es el DISPARADOR
+ * del menú de fila ("Editar", "Dar de baja"), como el folio de Pedidos en Mesa
+ * de Control (`OperationsOrderColumns`): no hay columna "Acciones" ni columna
+ * "Estado" aparte.
+ *
+ * El estado no va solo en el color: el punto lleva `role="img"` con el nombre
+ * del estado como `aria-label` y `title` (mismo recurso que el punto de
+ * confirmación de "Mis pedidos"). El punto queda FUERA del botón: es
+ * indicador, no parte de la acción.
+ *
+ * Solo presentacional — los callbacks llegan por contexto y los diálogos viven
+ * en `OpportunityList`.
  */
 function OpportunityTitleActions({ opportunity }: { opportunity: Opportunity }) {
   const { onEdit, onDelete } = useOpportunityRowActionsContext();
   const titulo = opportunity.titulo?.trim();
+  // `estado` es un valor del backend: uno fuera del catálogo cae al gris neutro
+  // y se anuncia con su texto crudo.
+  const estadoCfg = ESTADO_OPORTUNIDAD_CFG[opportunity.estado] as
+    | (typeof ESTADO_OPORTUNIDAD_CFG)[keyof typeof ESTADO_OPORTUNIDAD_CFG]
+    | undefined;
+  const estadoLabel = estadoCfg?.label ?? opportunity.estado ?? "Sin estado";
 
   const menuItems: ActionMenuItem[] = [
     { label: "Editar", icon: EditIcon, onSelect: () => onEdit(opportunity) },
@@ -33,28 +47,36 @@ function OpportunityTitleActions({ opportunity }: { opportunity: Opportunity }) 
   ];
 
   return (
-    <ActionMenu
-      items={menuItems}
-      ariaLabel="Acciones de la oportunidad"
-      align="start"
-      trigger={
-        <button
-          type="button"
-          aria-label={`Ver acciones de la oportunidad ${titulo || `#${opportunity.id}`}`}
-          className="group inline-flex max-w-full items-center gap-1.5 rounded-lg bg-sky-50 dark:bg-sky-500/10 px-2.5 py-1 text-left font-bold text-sky-700 dark:text-sky-400 hover:bg-sky-100 dark:hover:bg-sky-500/20 transition-colors cursor-pointer"
-        >
-          {titulo ? (
-            <span className="min-w-0 wrap-break-word">{titulo}</span>
-          ) : (
-            <span className="italic font-medium">Sin título</span>
-          )}
-          <ChevronRightIcon
-            className="w-3.5 h-3.5 shrink-0 group-hover:translate-x-0.5 transition-transform"
-            aria-hidden="true"
-          />
-        </button>
-      }
-    />
+    <div className="flex items-center gap-2 min-w-0">
+      <span
+        className={`h-2.5 w-2.5 rounded-full shrink-0 ${estadoCfg?.dot ?? "bg-slate-400"}`}
+        role="img"
+        aria-label={estadoLabel}
+        title={estadoLabel}
+      />
+      <ActionMenu
+        items={menuItems}
+        ariaLabel="Acciones de la oportunidad"
+        align="start"
+        trigger={
+          <button
+            type="button"
+            aria-label={`Ver acciones de la oportunidad ${titulo || `#${opportunity.id}`}`}
+            className="group inline-flex min-w-0 items-center gap-1 text-left text-[13px] font-bold text-slate-800 dark:text-white hover:text-sky-600 dark:hover:text-sky-400 hover:underline transition-colors cursor-pointer"
+          >
+            {titulo ? (
+              <span className="min-w-0 wrap-break-word">{titulo}</span>
+            ) : (
+              <span className={`italic font-medium ${MUTED_CLS}`}>Sin título</span>
+            )}
+            <ChevronRightIcon
+              className="w-3.5 h-3.5 shrink-0 text-slate-400 dark:text-slate-500 group-hover:text-sky-500 dark:group-hover:text-sky-400 group-hover:translate-x-0.5 transition-all"
+              aria-hidden="true"
+            />
+          </button>
+        }
+      />
+    </div>
   );
 }
 
@@ -66,14 +88,17 @@ function OpportunityTitleActions({ opportunity }: { opportunity: Opportunity }) 
  * - `meta.serverFilter` liga el filtro del encabezado con el parámetro del
  *   endpoint; no hay `filterFn` porque nada se filtra en memoria.
  * - No dependen de nada que cambie: los callbacks del menú llegan por contexto.
- * - Sin columna "Acciones": el menú cuelga del título (ver
+ * - Sin columnas "Acciones" ni "Estado": el menú cuelga del título y el
+ *   estado es el punto de color de esa misma celda (ver
  *   `OpportunityTitleActions`).
  */
 export const opportunityColumns = [
   columnHelper.accessor("titulo", {
     id: "titulo",
-    header: "Oportunidad",
-    meta: { serverSort: "titulo" },
+    // Ordena por `titulo` y filtra por `estado`: el filtro vive en este
+    // encabezado, como el de confirmación en el Folio de "Mis pedidos".
+    meta: { label: "Oportunidad", serverSort: "titulo", serverFilter: "estado" },
+    header: ({ column }) => <OpportunityEstadoHeader column={column} />,
     cell: ({ row }) => <OpportunityTitleActions opportunity={row.original} />,
   }),
   // Cliente si lo hay; si no, el contacto capturado. `cliente_nombre` es el
@@ -124,12 +149,6 @@ export const opportunityColumns = [
         {formatCurrency(safeParseAmount(info.getValue()), NO_CURRENCY_FORMAT)}
       </span>
     ),
-  }),
-  columnHelper.accessor("estado", {
-    id: "estado",
-    meta: { label: "Estado", serverFilter: "estado" },
-    header: ({ column }) => <OpportunityEstadoHeader column={column} />,
-    cell: (info) => <StatusBadge status={info.getValue()} config={ESTADO_OPORTUNIDAD_CFG} />,
   }),
   // Mismo formato que "Creada" ("13 oct 2026", el de los listados de pedidos).
   // `proximo_contacto` es una fecha-calendario sin hora: se lee en UTC para que

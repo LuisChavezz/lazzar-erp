@@ -40,10 +40,14 @@ const ESTADO_OPTIONS: ColumnFilterOption[] = [
   })),
 ];
 
+/**
+ * Encabezado de la columna "Oportunidad": su etiqueta y el filtro de ESTADO
+ * (la columna pinta el estado como punto de color, sin columna propia).
+ */
 export function OpportunityEstadoHeader({ column }: { column: OpportunityColumn }) {
   return (
     <div className="flex items-center gap-1.5">
-      <span>Estado</span>
+      <span>Oportunidad</span>
       <ColumnHeaderFilter column={column} options={ESTADO_OPTIONS} label="estado" />
     </div>
   );
