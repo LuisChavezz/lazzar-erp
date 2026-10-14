@@ -23,17 +23,18 @@ import {
 } from "@/src/utils/formatCurrency";
 import { formatShortDate, formatShortDateTime } from "@/src/utils/formatDate";
 import {
+  isClosedProductionOrderStatus,
   PRODUCTION_ORDER_PRIORITY_CONFIG,
   productionOrderPriorityFallback,
   productionOrderStatusEntry,
 } from "../constants/productionOrderStatus";
 import { useProductionOrderOnboarding } from "../hooks/useProductionOrderOnboarding";
-import type {
-  ProductionOrderConsumo,
-  ProductionOrderOnboardingProducto,
-} from "../interfaces/production-order.interface";
+import type { ProductionOrderOnboardingProducto } from "../interfaces/production-order.interface";
 import { ProductionOrderCriticalPathDialog } from "@/src/features/production-order-critical-path/components/ProductionOrderCriticalPathDialog";
 import type { CriticalPathTarget } from "@/src/features/production-order-critical-path/interfaces/production-order-critical-path.interface";
+import { ProductionOrderConsumptionSection } from "@/src/features/production-order-consumption/components/ProductionOrderConsumptionSection";
+import { RecalculateConsumptionDialog } from "@/src/features/production-order-consumption/components/RecalculateConsumptionDialog";
+import { summarizeConsumption } from "@/src/features/production-order-consumption/utils/summarizeConsumption";
 
 // Destino del "Volver". Fijo —sin el mapa `?from=` de `PedidoDetailContent`—
 // porque esta ruta NO es neutra: cuelga de `/manufacturing`, exige
@@ -189,54 +190,6 @@ const ProductoCard = ({ producto }: { producto: ProductionOrderOnboardingProduct
   </div>
 );
 
-// ── Consumos ──────────────────────────────────────────────────────────────────
-
-/**
- * Un consumo de materiales registrado contra la orden.
- *
- * `cantidad` llega como STRING decimal del backend
- * (`DecimalField(max_digits=18, decimal_places=4)`), así que se formatea con
- * `formatExactQuantityValue` y no con `formatQuantityValue`: son 4 decimales de
- * material consumido, y truncarlos a 2 impediría cuadrar este renglón contra su
- * movimiento de inventario.
- */
-const ConsumoCard = ({ consumo }: { consumo: ProductionOrderConsumo }) => (
-  <div className="rounded-xl border border-slate-200 dark:border-white/10 p-4 space-y-3">
-    <h4 className="text-sm font-semibold text-slate-800 dark:text-slate-100">
-      Consumo #{consumo.consumo_produccion_id}
-    </h4>
-    {consumo.detalles.length === 0 ? (
-      <EmptyLines>Este consumo no tiene renglones registrados.</EmptyLines>
-    ) : (
-      <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-white/10">
-        <table className="min-w-full text-xs">
-          <thead className="bg-slate-50 dark:bg-white/5">
-            <tr className="text-slate-500 dark:text-slate-400">
-              <th className="px-3 py-2 text-left font-semibold">Producto</th>
-              <th className="px-3 py-2 text-right font-semibold">Cantidad</th>
-            </tr>
-          </thead>
-          <tbody>
-            {consumo.detalles.map((detalle, index) => (
-              <tr
-                key={index}
-                className="border-t border-slate-100 dark:border-white/10 hover:bg-slate-50 dark:hover:bg-white/5 transition-colors"
-              >
-                <td className="px-3 py-2 text-slate-700 dark:text-slate-200">
-                  {textOrDash(detalle.producto_nombre)}
-                </td>
-                <td className="px-3 py-2 text-right tabular-nums font-semibold text-slate-800 dark:text-white">
-                  {formatExactQuantityValue(detalle.cantidad)}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    )}
-  </div>
-);
-
 // ── Componente principal ─────────────────────────────────────────────────────
 
 interface ProductionOrderPageContentProps {
@@ -259,6 +212,10 @@ export function ProductionOrderPageContent({
   // el listado: un refetch de la OP con el diálogo abierto no debe cambiarle el
   // modo de solo lectura a media captura.
   const [criticalPathTarget, setCriticalPathTarget] = useState<CriticalPathTarget | null>(null);
+  // Diálogo de recálculo de consumos: su apertura es de la página, no de la
+  // sección. Se monta siempre (controlado) para conservar su contenido durante
+  // la animación de salida; los productos los copia él mismo al abrir.
+  const [isRecalculateOpen, setIsRecalculateOpen] = useState(false);
 
   const BackLink = (
     <Link
@@ -321,6 +278,9 @@ export function ProductionOrderPageContent({
       </div>
     );
   }
+
+  // Consumo por producto: lo comparten la sección y el selector del diálogo.
+  const consumptionProducts = summarizeConsumption(data.consumos);
 
   return (
     <div className="w-full space-y-6">
@@ -440,17 +400,20 @@ export function ProductionOrderPageContent({
       </Section>
 
       {/* ── 5. Consumos ──────────────────────────────────────────────────── */}
-      <Section title={`Consumos (${data.consumos.length})`}>
-        {data.consumos.length === 0 ? (
-          <EmptyLines>Esta orden no tiene consumos de material registrados.</EmptyLines>
-        ) : (
-          <div className="space-y-4">
-            {data.consumos.map((consumo) => (
-              <ConsumoCard key={consumo.consumo_produccion_id} consumo={consumo} />
-            ))}
-          </div>
-        )}
-      </Section>
+      <ProductionOrderConsumptionSection
+        consumos={data.consumos}
+        products={consumptionProducts}
+        isClosed={isClosedProductionOrderStatus(data.estatus_op)}
+        onRecalculate={() => setIsRecalculateOpen(true)}
+      />
+
+      <RecalculateConsumptionDialog
+        open={isRecalculateOpen}
+        onOpenChange={setIsRecalculateOpen}
+        opId={data.op_id}
+        folio={data.folio_op}
+        products={consumptionProducts}
+      />
 
       {criticalPathTarget && (
         <ProductionOrderCriticalPathDialog
