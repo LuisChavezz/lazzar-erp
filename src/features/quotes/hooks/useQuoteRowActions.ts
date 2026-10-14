@@ -53,7 +53,8 @@ export interface QuoteRowBusy {
 function usePendingQuoteIds(mutationKey: readonly unknown[]): number[] {
   return useMutationState({
     filters: { mutationKey: mutationKey as unknown[], status: "pending" },
-    // Las variables son el id o un objeto con `id` (rechazar lleva el motivo).
+    // Las variables son el id o un objeto con `id` (rechazar lleva el motivo;
+    // enviar a revisión, el comentario opcional).
     select: selectMutationRecordId,
   });
 }
@@ -161,7 +162,8 @@ export function useQuoteRowActions() {
     dialog,
     onClose: () => setDialog(null),
     onAuthorize: (quoteId: number) => approve.mutate(quoteId),
-    onSubmitForReview: (quoteId: number) => submitForReview.mutate(quoteId),
+    onSubmitForReview: (quoteId: number, comentario?: string) =>
+      submitForReview.mutate({ id: quoteId, comentario }),
     isAuthorizing: approve.isPending,
     isSubmittingForReview: submitForReview.isPending,
     reviewValidation: {

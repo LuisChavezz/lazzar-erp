@@ -7,6 +7,7 @@ import { DialogHeader } from "@/src/components/DialogHeader";
 import { ConfirmDialog } from "@/src/components/ConfirmDialog";
 import { QuoteDetailsLoadingSkeleton } from "./QuoteDetailsLoadingSkeleton";
 import { QuoteReviewValidationDialog } from "./QuoteReviewValidationDialog";
+import { QuoteSubmitForReviewDialog } from "./QuoteSubmitForReviewDialog";
 import { RejectQuoteDialog } from "../../operations/components/RejectQuoteDialog";
 import type { Quote } from "../interfaces/quote.interface";
 import type { QuoteRowActionDialogsState } from "../hooks/useQuoteRowActions";
@@ -119,16 +120,18 @@ export function QuoteRowActionDialogs({
       {dialog?.kind === "reject" && quote && canManageAuthorization && (
         <RejectQuoteDialog key={`reject-${quote.id}`} quote={quote} onClose={onClose} />
       )}
+      {/* El estatus que decide si se ofrece el comentario es el de la FOTO al
+          abrir, para que el diálogo no cambie de forma a media captura. */}
       {dialog?.kind === "submitForReview" && quote && (
-        <ConfirmDialog
+        <QuoteSubmitForReviewDialog
           key={`submit-${quote.id}`}
           open
           onOpenChange={handleOpenChange}
-          title="Enviar a revisión"
+          quoteId={quote.id}
+          estatus={dialog.quote.estatus}
           description={`Mientras la cotización #${quote.id} esté en revisión no podrá editarse. ¿Deseas continuar?`}
           confirmText={isSubmittingForReview ? "Enviando..." : "Enviar a revisión"}
-          confirmColor="blue"
-          onConfirm={() => onSubmitForReview(quote.id)}
+          onConfirm={(comentario) => onSubmitForReview(quote.id, comentario)}
         />
       )}
 

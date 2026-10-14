@@ -14,6 +14,7 @@ import {
 import { isQuoteRowBusy, useQuoteRowActionsContext } from "../hooks/useQuoteRowActions";
 import { Quote } from "../interfaces/quote.interface";
 import {
+  acceptsResendComment,
   canEditQuote,
   canManageQuoteAuthorization,
   isQuoteReviewableStatus,
@@ -68,7 +69,11 @@ export function QuoteCardActions({ quote, align = "end", trigger }: QuoteCardAct
       visible: canEdit,
     },
     {
-      label: isValidatingReview ? "Verificando..." : "Enviar a revisión",
+      label: isValidatingReview
+        ? "Verificando..."
+        : acceptsResendComment(quote.estatus)
+          ? "Reenviar a revisión"
+          : "Enviar a revisión",
       icon: PaperPlaneIcon,
       onSelect: () => onAction("submitForReview", quote),
       disabled: isSubmittingForReview || isValidatingReview,

@@ -139,10 +139,20 @@ export const updateQuote = async (cotizacion_id: number, quote: Partial<QuoteCre
   return response.data;
 };
 
-// ─── Envía la cotización a revisión (Borrador → Por Autorizar) ─────────────────
-export const submitQuoteForReview = async (id: number): Promise<QuoteSubmitForReviewResponse> => {
+// ─── Envía la cotización a revisión (Borrador/Rechazada → Por Autorizar) ──────
+/**
+ * `comentario` es OPCIONAL: el backend solo lo guarda (entrada `REENVIO` del
+ * historial) si la cotización está en estatus 4; desde 1 o 5 lo ignora. Por
+ * eso solo se manda cuando hay texto, y sin él la petición va sin cuerpo,
+ * exactamente como antes.
+ */
+export const submitQuoteForReview = async (
+  id: number,
+  comentario?: string
+): Promise<QuoteSubmitForReviewResponse> => {
   const response = await v1_api.post<QuoteSubmitForReviewResponse>(
-    `/ventas/cotizaciones/${id}/enviar-revision/`
+    `/ventas/cotizaciones/${id}/enviar-revision/`,
+    comentario ? { comentario } : undefined
   );
   return response.data;
 };

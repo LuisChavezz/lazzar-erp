@@ -11,7 +11,7 @@ import {
   getTipoPedidoConfig,
   TIPO_PEDIDO,
 } from "../../orders/constants/pedidoStatus";
-import { isMuestraQuote } from "../utils/quoteStatusRules";
+import { isMuestraQuote, isQuoteReviewableStatus } from "../utils/quoteStatusRules";
 
 // ─── Lookup estatus → configuración de columna ───────────────────────────────
 const CONFIG_BY_ESTATUS = Object.fromEntries(
@@ -177,11 +177,13 @@ export const QuoteKanbanCard = memo(function QuoteKanbanCard({
   isReturning = false,
   isInteractionDisabled = false,
 }: QuoteKanbanCardProps) {
+  const isDraggable = isQuoteReviewableStatus(quote.estatus);
   const { ref, isDragging } = useDraggable({
     id: String(quote.id),
     data: { quote },
-    // Solo las cotizaciones en Borrador (estatus 1) pueden arrastrarse
-    disabled: isOverlay || isPending || isInteractionDisabled || quote.estatus !== 1,
+    // Solo se arrastran las que pueden enviarse a revisión: Borrador (1) y
+    // Rechazada (4)
+    disabled: isOverlay || isPending || isInteractionDisabled || !isDraggable,
   });
 
   return (
@@ -195,7 +197,7 @@ export const QuoteKanbanCard = memo(function QuoteKanbanCard({
       }
       style={{
         opacity: isDragging ? 0.35 : 1,
-        cursor: isOverlay ? "grabbing" : quote.estatus === 1 ? "grab" : "default",
+        cursor: isOverlay ? "grabbing" : isDraggable ? "grab" : "default",
         transform: isDragging ? "scale(0.96)" : undefined,
         transition: isDragging ? "none" : "opacity 150ms ease, transform 150ms ease",
       }}

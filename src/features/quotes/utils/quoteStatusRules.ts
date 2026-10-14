@@ -3,7 +3,10 @@
 import { TIPO_PEDIDO } from "../../orders/constants/pedidoStatus";
 
 const EDITABLE_QUOTE_STATUSES = new Set([1, 3]);
-const REVIEWABLE_QUOTE_STATUSES = new Set([1]);
+// 4 (rechazada) vuelve a revisión directamente, con un comentario opcional
+// para mesa de control (ver `acceptsResendComment`).
+const REVIEWABLE_QUOTE_STATUSES = new Set([1, 4]);
+const REJECTED_QUOTE_STATUS = 4;
 const AUTHORIZABLE_QUOTE_STATUSES = new Set([2, 5]);
 const CHANGES_REQUESTED_QUOTE_STATUSES = new Set([5]);
 
@@ -27,6 +30,14 @@ export const isMuestraQuote = (
 export const isQuoteReviewableStatus = (
   status: number | null | undefined
 ): boolean => typeof status === "number" && REVIEWABLE_QUOTE_STATUSES.has(status);
+
+/**
+ * ¿El reenvío a revisión admite un comentario? Solo desde estatus 4: es el
+ * único caso en que `enviar-revision/` lo guarda (desde 1 o 5 lo ignora), así
+ * que solo ahí se ofrece el campo.
+ */
+export const acceptsResendComment = (status: number | null | undefined): boolean =>
+  status === REJECTED_QUOTE_STATUS;
 
 export const canManageQuoteAuthorization = (
   status: number | null | undefined

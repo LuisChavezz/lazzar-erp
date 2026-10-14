@@ -14,11 +14,13 @@ import { useQuoteReviewValidationFlow } from "../hooks/useQuoteReviewValidationF
 import { Quote } from "../interfaces/quote.interface";
 import { LoadingSkeleton } from "@/src/components/LoadingSkeleton";
 import { KanbanToolbar } from "@/src/components/KanbanToolbar";
-import { ConfirmDialog } from "@/src/components/ConfirmDialog";
+import { useDialogSession } from "@/src/hooks/useDialogSession";
 import { QuoteKanbanColumn } from "./QuoteKanbanColumn";
 import { KANBAN_COLUMNS, KanbanColumnConfig } from "../constants/kanbanColumns";
 import { QuoteKanbanCard } from "./QuoteKanbanCard";
 import { QuoteReviewValidationDialog } from "./QuoteReviewValidationDialog";
+import { QuoteSubmitForReviewDialog } from "./QuoteSubmitForReviewDialog";
+import { isQuoteReviewableStatus } from "../utils/quoteStatusRules";
 import { QuoteRowActionDialogs } from "./QuoteRowActionDialogs";
 import { QuoteRowActionsProvider, useQuoteRowActions } from "../hooks/useQuoteRowActions";
 import { hasPermission } from "@/src/utils/permissions";
@@ -83,6 +85,11 @@ export function QuoteKanbanBoard() {
   const [activeQuote, setActiveQuote] = useState<Quote | null>(null);
   const [pendingIds, setPendingIds] = useState<Set<number>>(new Set());
   const [pendingDrop, setPendingDrop] = useState<PendingDrop | null>(null);
+  // Copia del arrastre al abrir el diálogo: al confirmar o cancelar,
+  // `pendingDrop` pasa a null pero el diálogo sigue en pantalla durante su
+  // animación de salida, con el mismo texto y la misma forma (con o sin
+  // comentario).
+  const dropDialog = useDialogSession(!!pendingDrop, pendingDrop);
   const [returningId, setReturningId] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [, startTransition] = useTransition();
@@ -179,8 +186,9 @@ export function QuoteKanbanBoard() {
 
       if (!movedQuote || sourceColEstatus === undefined) return;
       if (sourceColEstatus === targetCol.estatus) return;
-      // Solo las cotizaciones en Borrador (estatus 1) pueden moverse
-      if (sourceColEstatus !== 1) return;
+      // Solo se mueven las que pueden enviarse a revisión: Borrador (1) y
+      // Rechazada (4). Desde 4 el diálogo ofrece el comentario opcional.
+      if (!isQuoteReviewableStatus(sourceColEstatus)) return;
 
       const validationStatus = await validateBeforeSendToReview(movedQuote.id);
       if (validationStatus !== "valid") {
@@ -201,7 +209,7 @@ export function QuoteKanbanBoard() {
   );
 
   // ─── Confirmar el arrastre: actualización optimista + mutación ────────────
-  const handleDropConfirm = useCallback(() => {
+  const handleDropConfirm = useCallback((comentario?: string) => {
     if (!pendingDrop) return;
     dropConfirmedRef.current = true;
 
@@ -221,7 +229,7 @@ export function QuoteKanbanBoard() {
     setPendingIds((prev) => new Set(prev).add(movedQuote.id));
     setPendingDrop(null);
 
-    submitQuoteForReviewMutation.mutate(movedQuote.id, {
+    submitQuoteForReviewMutation.mutate({ id: movedQuote.id, comentario }, {
       onSuccess: () => {
         setPendingIds((prev) => {
           const next = new Set(prev);
@@ -332,7 +340,7 @@ export function QuoteKanbanBoard() {
               totales
             </span>
           )}
-          {" "}— arrastra las cotizaciones en <strong>Borrador</strong> a <strong>Por Autorizar</strong> para enviar a revisión
+          {" "}— arrastra las cotizaciones en <strong>Borrador</strong> o <strong>Rechazada</strong> a <strong>Por Autorizar</strong> para enviar a revisión
         </p>
         {pendingIds.size > 0 && (
           <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-300 font-medium ml-auto flex items-center gap-1.5 animate-pulse">
@@ -384,21 +392,19 @@ export function QuoteKanbanBoard() {
       )}
       </div>
 
-      {/* Diálogo de confirmación para arrastre col-1 → col-2 */}
-      <ConfirmDialog
-        open={!!pendingDrop}
-        onOpenChange={handleDropDialogOpenChange}
-        title="Enviar a revisión"
-        description={
-          pendingDrop
-            ? `La cotización #${pendingDrop.quote.id} pasará a "${pendingDrop.targetLabel}". Mientras esté en ese estado no podrá editarse. ¿Deseas continuar?`
-            : ""
-        }
-        confirmText="Enviar a revisión"
-        cancelText="Cancelar"
-        confirmColor="blue"
-        onConfirm={handleDropConfirm}
-      />
+      {/* Diálogo de confirmación para arrastre col-1/col-4 → col-2. Desde 4
+          es el mismo diálogo de reenvío (con comentario) que el del menú. */}
+      {dropDialog.snapshot && (
+        <QuoteSubmitForReviewDialog
+          key={dropDialog.id}
+          open={!!pendingDrop}
+          onOpenChange={handleDropDialogOpenChange}
+          quoteId={dropDialog.snapshot.quote.id}
+          estatus={dropDialog.snapshot.sourceEstatus}
+          description={`La cotización #${dropDialog.snapshot.quote.id} pasará a "${dropDialog.snapshot.targetLabel}". Mientras esté en ese estado no podrá editarse. ¿Deseas continuar?`}
+          onConfirm={handleDropConfirm}
+        />
+      )}
       <QuoteReviewValidationDialog
         open={isReviewValidationDialogOpen}
         onOpenChange={setIsReviewValidationDialogOpen}
