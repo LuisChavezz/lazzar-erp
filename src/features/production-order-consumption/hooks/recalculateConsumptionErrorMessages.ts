@@ -53,15 +53,23 @@ export const handleRecalculateConsumptionError = (
     return drfFieldMessage(error, "msg") ?? NOT_FOUND_MESSAGE;
   }
 
+  // `handleDrfWriteError` solo avisa por el callback qué campos pintó; se
+  // cuenta aquí para saber si de verdad quedó algo bajo un campo.
+  let fieldErrorsShown = 0;
   const message = handleDrfWriteError(
     error,
     RECALCULATE_CONSUMPTION_FALLBACK,
     RECALCULATE_CONSUMPTION_FORM_FIELDS,
-    setFieldError,
+    (field, fieldMessage) => {
+      fieldErrorsShown += 1;
+      setFieldError(field, fieldMessage);
+    },
   );
 
-  // Si TODAS las llaves del 400 son campos del formulario, ya se pintaron bajo
-  // su campo y repetir el respaldo genérico arriba solo estorbaría.
+  // Si TODAS las llaves del 400 son campos del formulario y alguno se pintó
+  // bajo su campo, repetir el respaldo genérico arriba solo estorbaría. Si
+  // ninguno se pudo leer (p. ej. un error anidado `{productos: {"0": [...]}}`),
+  // el banner con el respaldo es lo único que avisa.
   const body = badRequestBody(error);
   const keys = body ? Object.keys(body) : [];
   const onlyFieldErrors =
@@ -70,5 +78,5 @@ export const handleRecalculateConsumptionError = (
       (RECALCULATE_CONSUMPTION_FORM_FIELDS as readonly string[]).includes(key),
     );
 
-  return onlyFieldErrors ? undefined : message;
+  return onlyFieldErrors && fieldErrorsShown > 0 ? undefined : message;
 };
