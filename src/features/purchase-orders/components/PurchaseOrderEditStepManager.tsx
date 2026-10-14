@@ -216,6 +216,11 @@ export function PurchaseOrderEditStepManager({
   // de envío al proveedor que permita condicionar la segunda frase.
   const isAuthorized = detail.estatus === PURCHASE_ORDER_STATUS.AUTORIZADA;
 
+  // Con folio, `tipo_compra` no puede cambiar (decide la serie del folio): se
+  // decide UNA vez, sobre la foto, para el select del Step 1 y el PUT del
+  // Step 2.
+  const isTipoCompraLocked = Boolean(snapshot.folio);
+
   return (
     <div className="w-full space-y-6">
       <StepProgressBar
@@ -242,6 +247,7 @@ export function PurchaseOrderEditStepManager({
             initialHeader={header ?? undefined}
             onboardingData={onboardingData}
             initialServerErrors={headerErrors}
+            isTipoCompraLocked={isTipoCompraLocked}
             onSuccess={handleStep1Success}
           />
         )}
@@ -257,7 +263,7 @@ export function PurchaseOrderEditStepManager({
             <PurchaseOrderEditStep2
               initialData={initialData}
               header={header}
-              isTipoCompraLocked={Boolean(snapshot.folio)}
+              isTipoCompraLocked={isTipoCompraLocked}
               onboardingData={onboardingData}
               initialItems={initialItems}
               onSuccess={handleStep2Success}

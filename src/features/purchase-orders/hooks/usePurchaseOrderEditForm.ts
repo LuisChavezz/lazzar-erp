@@ -1,8 +1,8 @@
 "use client";
 
 import { useForm } from "@tanstack/react-form";
-import { useMemo, useState, type FormEvent } from "react";
-import type { FormFieldError } from "@/src/utils/getFieldError";
+import { useMemo, type FormEvent } from "react";
+import { useFormFieldErrors } from "@/src/hooks/useFormFieldErrors";
 import type { PurchaseOrderOnboardingData } from "../interfaces/purchase-order-onboarding.interface";
 import type { PurchaseOrder } from "../interfaces/purchase-order.interface";
 import {
@@ -63,10 +63,14 @@ export function usePurchaseOrderEditForm({
   initialServerErrors,
   onSuccess,
 }: UsePurchaseOrderEditFormParams) {
-  const [clientErrors, setClientErrors] = useState<EditErrorMap>({});
-  const [serverErrors, setServerErrors] = useState<EditErrorMap>(
-    () => initialServerErrors ?? {},
-  );
+  const {
+    getError,
+    clearFieldErrors,
+    setClientFieldError,
+    clearClientFieldError,
+    replaceClientErrors,
+    clearServerErrors,
+  } = useFormFieldErrors<EditFieldPath>(initialServerErrors);
 
   // Fecha de generación de la orden (`fecha_oc`, solo lectura): piso de la
   // fecha de vencimiento, que no se exige sobre la fecha ya guardada.
@@ -153,26 +157,6 @@ export function usePurchaseOrderEditForm({
 
   // ── Helpers de error ────────────────────────────────────────────────────
 
-  const getError = (path: EditFieldPath): FormFieldError | undefined => {
-    const message = serverErrors[path] ?? clientErrors[path];
-    return message ? ({ message } as FormFieldError) : undefined;
-  };
-
-  const clearFieldErrors = (path: EditFieldPath) => {
-    setClientErrors((prev) => {
-      if (!(path in prev)) return prev;
-      const next = { ...prev };
-      delete next[path];
-      return next;
-    });
-    setServerErrors((prev) => {
-      if (!(path in prev)) return prev;
-      const next = { ...prev };
-      delete next[path];
-      return next;
-    });
-  };
-
   /** Coacciona el valor de un select/input a número para los campos numéricos. */
   const coerceNumeric = (path: EditFieldPath, raw: string): string | number => {
     const numericPaths: EditFieldPath[] = ["sucursal", "proveedor", "moneda"];
@@ -190,12 +174,7 @@ export function usePurchaseOrderEditForm({
     const parsed = schema.safeParse(fullValues);
 
     if (parsed.success) {
-      setClientErrors((prev) => {
-        if (!(path in prev)) return prev;
-        const next = { ...prev };
-        delete next[path];
-        return next;
-      });
+      clearClientFieldError(path);
       return true;
     }
 
@@ -204,16 +183,11 @@ export function usePurchaseOrderEditForm({
     );
 
     if (matchingIssue) {
-      setClientErrors((prev) => ({ ...prev, [path]: matchingIssue.message }));
+      setClientFieldError(path, matchingIssue.message);
       return false;
     }
 
-    setClientErrors((prev) => {
-      if (!(path in prev)) return prev;
-      const next = { ...prev };
-      delete next[path];
-      return next;
-    });
+    clearClientFieldError(path);
     return true;
   };
 
@@ -222,7 +196,7 @@ export function usePurchaseOrderEditForm({
   const form = useForm({
     defaultValues,
     onSubmit: async ({ value }) => {
-      setServerErrors({});
+      clearServerErrors();
 
       const parsed = schema.safeParse(value);
       if (!parsed.success) {
@@ -233,7 +207,7 @@ export function usePurchaseOrderEditForm({
             nextErrors[path] = issue.message;
           }
         });
-        setClientErrors(nextErrors);
+        replaceClientErrors(nextErrors);
         return;
       }
 

@@ -22,6 +22,12 @@ interface PurchaseOrderEditStep1Props {
   onboardingData: PurchaseOrderOnboardingData;
   /** Errores por campo con los que el backend rechazó el PUT (ver el step manager). */
   initialServerErrors?: PurchaseOrderHeaderFieldErrors;
+  /**
+   * La orden ya tiene folio: el tipo de compra decide la serie del folio y el
+   * backend rechaza cambiarlo, así que se bloquea (y el PUT lo omite). Lo
+   * decide el step manager, el mismo valor que recibe el Step 2.
+   */
+  isTipoCompraLocked: boolean;
   /** Llamado con el encabezado validado al continuar al paso de productos. */
   onSuccess: (header: PurchaseOrderEditHeader) => void;
 }
@@ -38,12 +44,9 @@ export function PurchaseOrderEditStep1({
   initialHeader,
   onboardingData,
   initialServerErrors,
+  isTipoCompraLocked,
   onSuccess,
 }: PurchaseOrderEditStep1Props) {
-  // El tipo de compra decide la serie del folio: con folio ya asignado el
-  // backend rechaza cambiarlo, así que se bloquea (y el PUT lo omite).
-  const isTipoCompraLocked = Boolean(initialData.folio);
-
   const {
     form,
     fechaGeneracion,

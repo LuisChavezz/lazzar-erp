@@ -1,8 +1,8 @@
 "use client";
 
 import { useForm } from "@tanstack/react-form";
-import { useMemo, useState, type FormEvent } from "react";
-import type { FormFieldError } from "@/src/utils/getFieldError";
+import { useMemo, type FormEvent } from "react";
+import { useFormFieldErrors } from "@/src/hooks/useFormFieldErrors";
 import type {
   PurchaseOrderEncabezados,
   PurchaseOrderOnboardingData,
@@ -53,16 +53,22 @@ export function usePurchaseOrderStep1Form({
   initialServerErrors,
   onSuccess,
 }: UsePurchaseOrderStep1FormParams) {
-  const [clientErrors, setClientErrors] = useState<Step1ErrorMap>({});
   // Los del backend llegan con el nombre plano del campo; aquí viven anidados.
-  const [serverErrors, setServerErrors] = useState<Step1ErrorMap>(() =>
-    Object.fromEntries(
-      Object.entries(initialServerErrors ?? {}).map(([field, message]) => [
-        `orden_compra.${field}`,
-        message,
-      ]),
-    ),
+  // El hook solo los lee al montar.
+  const initialStep1ServerErrors: Step1ErrorMap = Object.fromEntries(
+    Object.entries(initialServerErrors ?? {}).map(([field, message]) => [
+      `orden_compra.${field}`,
+      message,
+    ]),
   );
+  const {
+    getError,
+    clearFieldErrors,
+    setClientFieldError,
+    clearClientFieldError,
+    replaceClientErrors,
+    clearServerErrors,
+  } = useFormFieldErrors<Step1FieldPath>(initialStep1ServerErrors);
 
   // ── Default values ──────────────────────────────────────────────────────
   // Si ya hay un encabezado capturado (regreso desde el Step 2), se siembra
@@ -129,26 +135,6 @@ export function usePurchaseOrderStep1Form({
 
   // ── Error helpers ───────────────────────────────────────────────────────
 
-  const getError = (path: Step1FieldPath): FormFieldError | undefined => {
-    const message = serverErrors[path] ?? clientErrors[path];
-    return message ? ({ message } as FormFieldError) : undefined;
-  };
-
-  const clearFieldErrors = (path: Step1FieldPath) => {
-    setClientErrors((prev) => {
-      if (!(path in prev)) return prev;
-      const next = { ...prev };
-      delete next[path];
-      return next;
-    });
-    setServerErrors((prev) => {
-      if (!(path in prev)) return prev;
-      const next = { ...prev };
-      delete next[path];
-      return next;
-    });
-  };
-
   /** Coerces a select/input string to number for numeric fields. */
   const coerceNumeric = (
     path: Step1FieldPath,
@@ -173,12 +159,7 @@ export function usePurchaseOrderStep1Form({
     const parsed = PurchaseOrderEncabezadosSchema.safeParse(fullValues);
 
     if (parsed.success) {
-      setClientErrors((prev) => {
-        if (!(path in prev)) return prev;
-        const next = { ...prev };
-        delete next[path];
-        return next;
-      });
+      clearClientFieldError(path);
       return true;
     }
 
@@ -187,17 +168,12 @@ export function usePurchaseOrderStep1Form({
     );
 
     if (matchingIssue) {
-      setClientErrors((prev) => ({ ...prev, [path]: matchingIssue.message }));
+      setClientFieldError(path, matchingIssue.message);
       return false;
     }
 
     // No error for this field — clear it.
-    setClientErrors((prev) => {
-      if (!(path in prev)) return prev;
-      const next = { ...prev };
-      delete next[path];
-      return next;
-    });
+    clearClientFieldError(path);
     return true;
   };
 
@@ -206,7 +182,7 @@ export function usePurchaseOrderStep1Form({
   const form = useForm({
     defaultValues,
     onSubmit: async ({ value }) => {
-      setServerErrors({});
+      clearServerErrors();
 
       const parsed = PurchaseOrderEncabezadosSchema.safeParse(value);
       if (!parsed.success) {
@@ -217,7 +193,7 @@ export function usePurchaseOrderStep1Form({
             nextErrors[path] = issue.message;
           }
         });
-        setClientErrors(nextErrors);
+        replaceClientErrors(nextErrors);
         return;
       }
 

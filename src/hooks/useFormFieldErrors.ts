@@ -26,10 +26,16 @@ const withoutField = <F extends string>(errors: FieldErrors<F>, field: F): Field
  * `F` son los nombres de campo del formulario. Las reglas que no son de un
  * campo (un aviso que depende de varios) las lleva cada formulario por su
  * cuenta.
+ *
+ * `initialServerErrors` (opcional) siembra los de servidor al montar: para un
+ * formulario que se vuelve a montar con la respuesta de un envío que ocurrió
+ * en otro lado (p. ej. el paso siguiente de un wizard). Solo se lee al montar.
  */
-export function useFormFieldErrors<F extends string>() {
+export function useFormFieldErrors<F extends string>(initialServerErrors?: FieldErrors<F>) {
   const [clientErrors, setClientErrors] = useState<FieldErrors<F>>({});
-  const [serverErrors, setServerErrors] = useState<FieldErrors<F>>({});
+  const [serverErrors, setServerErrors] = useState<FieldErrors<F>>(
+    () => initialServerErrors ?? {},
+  );
 
   return {
     /** El error a mostrar bajo el campo (el de servidor gana), o `undefined`. */
