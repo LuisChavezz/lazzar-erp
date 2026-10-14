@@ -1,5 +1,6 @@
 import type { PurchaseOrderDetalleItem } from "./purchase-order-onboarding.interface";
 import type { ReceiptDetail } from "@/src/features/receipts/interfaces/receipt.interface";
+import type { TipoCompra } from "../constants/purchaseOrderTipoCompra";
 
 //
 // ─── Relaciones resueltas por el backend ────────────────────────────────────
@@ -22,9 +23,10 @@ export interface PedidoVinculado {
 /**
  * Tipo de compra de la orden. Decide la serie del folio al confirmarla
  * (`aceptar`): `MP` (materia prima, el default del backend) o `PT` (producto
- * terminado). Etiquetas en `constants/purchaseOrderTipoCompra.ts`.
+ * terminado). Se deriva del mapa de etiquetas de
+ * `constants/purchaseOrderTipoCompra.ts`, su fuente única.
  */
-export type TipoCompra = "MP" | "PT";
+export type { TipoCompra };
 
 /**
  * Tipos de documento que el backend puede ligar a una orden de compra.

@@ -36,15 +36,6 @@ import { TIPO_COMPRA_OPTIONS, tipoCompraLabel } from "../constants/purchaseOrder
 
 const columnHelper = createColumnHelper<PurchaseOrder>();
 
-/**
- * Opciones del filtro de "Tipo de compra": los dos valores del backend, fijos
- * (no deducidos de las filas como estatus/proveedor), para que el filtro se
- * ofrezca igual aunque hoy todas las órdenes sean de un solo tipo.
- */
-const TIPO_COMPRA_FILTER_OPTIONS: DataTableFilterOption[] = TIPO_COMPRA_OPTIONS.map(
-  ({ value, label }) => ({ value, label }),
-);
-
 // ── Celda O.C. (folio + menú de acciones) ─────────────────────────────────────
 
 /**
@@ -505,7 +496,10 @@ export const getColumns = (
         header: ({ column }) => (
           <ColumnFilterHeader
             label="Tipo de compra"
-            options={TIPO_COMPRA_FILTER_OPTIONS}
+            // Fijas (todos los valores del backend), no deducidas de las
+            // filas como estatus/proveedor: el filtro se ofrece igual aunque
+            // hoy todas las órdenes sean de un solo tipo.
+            options={TIPO_COMPRA_OPTIONS}
             column={column}
           />
         ),
