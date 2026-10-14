@@ -50,6 +50,17 @@ export const updateOpportunity = async (id: number, changes: OpportunityPatch): 
   return data;
 };
 
+/**
+ * Pasa la oportunidad a otro vendedor de la misma empresa (solo un
+ * administrador de empresa). Responde la oportunidad ya con su nuevo dueño.
+ */
+export const transferOpportunity = async (id: number, vendedor: number): Promise<Opportunity> => {
+  const { data } = await v1_api.post<Opportunity>(`/ventas/oportunidades/${id}/transferir/`, {
+    vendedor,
+  });
+  return data;
+};
+
 /** Baja lógica: responde 204 y el registro deja de aparecer (su detalle da 404). */
 export const deleteOpportunity = async (id: number): Promise<void> => {
   await v1_api.delete(`/ventas/oportunidades/${id}/`);
