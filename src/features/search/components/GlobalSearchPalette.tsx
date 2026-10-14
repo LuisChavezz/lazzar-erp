@@ -359,6 +359,11 @@ export function GlobalSearchPalette() {
                       const canOpen =
                         apertura !== null &&
                         canOpenSearchApertura(apertura, result.id, session?.user);
+                      // Oportunidad: el estado se pinta con su punto de color.
+                      const estadoOportunidad =
+                        result.estatus && result.tipo === "oportunidad"
+                          ? getEstadoOportunidadCfg(result.estatus)
+                          : null;
 
                       return (
                         <button
@@ -405,15 +410,13 @@ export function GlobalSearchPalette() {
                           )}
                           {/* Oportunidad: el estado con su punto de color, como
                               en el listado. El resto, la etiqueta genérica. */}
-                          {result.estatus && result.tipo === "oportunidad" ? (
+                          {estadoOportunidad ? (
                             <span className="inline-flex shrink-0 items-center gap-1.5 text-xs font-medium text-slate-600 dark:text-slate-300">
                               <span
-                                className={`h-2 w-2 shrink-0 rounded-full ${
-                                  getEstadoOportunidadCfg(result.estatus).dot
-                                }`}
+                                className={`h-2 w-2 shrink-0 rounded-full ${estadoOportunidad.dot}`}
                                 aria-hidden="true"
                               />
-                              {getEstadoOportunidadCfg(result.estatus).label}
+                              {estadoOportunidad.label}
                             </span>
                           ) : result.estatus && (
                             <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-500 dark:bg-white/10 dark:text-slate-300">
