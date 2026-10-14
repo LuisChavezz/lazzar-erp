@@ -50,12 +50,13 @@ const OperationsQuoteDetails = dynamic(
 
 const OPERATIONS_QUOTE_DIALOG_COLORS: Record<
   number,
-  "sky" | "emerald" | "amber" | "rose"
+  "sky" | "emerald" | "amber" | "rose" | "orange"
 > = {
   1: "amber",
   2: "sky",
   3: "emerald",
   4: "rose",
+  5: "orange",
 };
 
 const MAX_VISIBLE = 6;

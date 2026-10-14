@@ -19,6 +19,9 @@ export const getStatusStyles = (status: QuoteStatusLike) => {
     return "bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400";
   }
 
+  if (normalizedStatus === 5) { // Cambios solicitados (mismo naranja que su columna del tablero)
+    return "bg-orange-100 text-orange-700 dark:bg-orange-500/20 dark:text-orange-300";
+  }
   if (normalizedStatus === 4) { // Rechazado
     return "bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-300";
   }

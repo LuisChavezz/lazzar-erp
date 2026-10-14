@@ -27,11 +27,12 @@ const LazyQuoteDetails = dynamic(
   }
 );
 
-const statusDialogColors: Record<number, "sky" | "emerald" | "amber" | "rose"> = {
+const statusDialogColors: Record<number, "sky" | "emerald" | "amber" | "rose" | "orange"> = {
   1: "amber",
   2: "sky",
   3: "emerald",
   4: "rose",
+  5: "orange",
 };
 
 const parseOrderDate = (value?: string | null) => {

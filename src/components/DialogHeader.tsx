@@ -2,7 +2,7 @@
 interface DialogHeaderProps {
   title: string;
   subtitle: string;
-  statusColor?: "sky" | "emerald" | "amber" | "rose" | "indigo" | "violet";
+  statusColor?: "sky" | "emerald" | "amber" | "rose" | "indigo" | "violet" | "orange";
 }
 
 export const DialogHeader = ({ 
@@ -17,6 +17,7 @@ export const DialogHeader = ({
     rose: { bg: "bg-rose-500", ping: "bg-rose-400" },
     indigo: { bg: "bg-indigo-500", ping: "bg-indigo-400" },
     violet: { bg: "bg-violet-500", ping: "bg-violet-400" },
+    orange: { bg: "bg-orange-500", ping: "bg-orange-400" },
   } as const;
 
   const colors = colorMap[statusColor] || colorMap.sky;

@@ -25,11 +25,12 @@ const QuoteDetails = dynamic(
 );
 
 // ─── Colores del dialog de detalles por estatus ───────────────────────────────
-const statusDialogColors: Record<number, "sky" | "emerald" | "amber" | "rose"> = {
+const statusDialogColors: Record<number, "sky" | "emerald" | "amber" | "rose" | "orange"> = {
   1: "amber",
   2: "sky",
   3: "emerald",
   4: "rose",
+  5: "orange",
 };
 
 interface QuoteRowActionDialogsProps extends QuoteRowActionDialogsState {
