@@ -269,27 +269,35 @@ export function CriticalPathForm({
               {renderDate("fecha_real_corte", "Fecha real de corte")}
               <form.Field name="cantidad_real_corte">
                 {(field) => (
-                  <FormInput
-                    label="Cantidad real de corte (pzas)"
-                    // Texto y NO `type="number"`: ese input reporta "" ante
-                    // texto que no parsea ("12e") —y el PATCH borraba la
-                    // cantidad con `null`—, descarta la coma al pegar ("12,5"
-                    // → 125) y cambia con la rueda. Aquí lo tecleado se queda
-                    // tal cual y el schema lo rechaza si no es un entero.
-                    inputMode="numeric"
-                    placeholder="0"
-                    name={field.name}
-                    value={field.state.value}
-                    error={getError("cantidad_real_corte")}
-                    onChange={(event) => {
-                      field.handleChange(event.target.value);
-                      clearFieldErrors("cantidad_real_corte");
-                    }}
-                    onBlur={() => {
-                      field.handleBlur();
-                      validateField("cantidad_real_corte", form.state.values);
-                    }}
-                  />
+                  <div>
+                    <FormInput
+                      label="Cantidad real de corte (pzas)"
+                      // Texto y NO `type="number"`: ese input reporta "" ante
+                      // texto que no parsea ("12e") —y el PATCH borraba la
+                      // cantidad con `null`—, descarta la coma al pegar ("12,5"
+                      // → 125) y cambia con la rueda. Aquí lo tecleado se queda
+                      // tal cual y el schema lo rechaza si no es un entero.
+                      inputMode="numeric"
+                      placeholder="0"
+                      name={field.name}
+                      value={field.state.value}
+                      error={getError("cantidad_real_corte")}
+                      onChange={(event) => {
+                        field.handleChange(event.target.value);
+                        clearFieldErrors("cantidad_real_corte");
+                      }}
+                      onBlur={() => {
+                        field.handleBlur();
+                        validateField("cantidad_real_corte", form.state.values);
+                      }}
+                    />
+                    {/* El PATCH de la ruta crítica guarda la cantidad pero no
+                        toca consumos ni inventario; eso lo hace "Recalcular
+                        consumos" en el detalle de la OP. */}
+                    <p className="ml-1 mt-1 text-[11px] text-slate-400 dark:text-slate-500">
+                      Cambiar esta cantidad no recalcula consumos; hazlo desde el detalle de la OP.
+                    </p>
+                  </div>
                 )}
               </form.Field>
             </div>
