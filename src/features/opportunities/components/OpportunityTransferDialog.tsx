@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useId, useState, type FormEvent } from "react";
 import { DialogHeader } from "@/src/components/DialogHeader";
 import { FormCancelButton, FormSubmitButton } from "@/src/components/FormButtons";
 import { MainDialog } from "@/src/components/MainDialog";
@@ -59,6 +59,7 @@ function TransferForm({
   const { data: users, isLoading, isError, isFetching, refetch } = useUsers();
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [fieldError, setFieldError] = useState<string | null>(null);
+  const fieldErrorId = useId();
 
   // Solo usuarios ACTIVOS (el backend rechaza uno inactivo) y sin el dueño
   // actual, que no tiene a quién transferirse.
@@ -134,6 +135,9 @@ function TransferForm({
           filtrar, y enviar ejecutaría la transferencia sin confirmarla. */}
       <fieldset
         disabled={isPending}
+        // El rechazo del destinatario queda ligado al grupo del selector.
+        aria-invalid={fieldError ? true : undefined}
+        aria-describedby={fieldError ? fieldErrorId : undefined}
         className="space-y-2"
         onKeyDown={(event) => {
           if (event.key === "Enter" && event.target instanceof HTMLInputElement) {
@@ -186,7 +190,7 @@ function TransferForm({
           />
         )}
         {fieldError && (
-          <p role="alert" className="ml-1 text-xs text-red-600 dark:text-red-400">
+          <p id={fieldErrorId} role="alert" className="ml-1 text-xs text-red-600 dark:text-red-400">
             {fieldError}
           </p>
         )}
