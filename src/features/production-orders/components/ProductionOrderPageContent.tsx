@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import Link from "next/link";
 import { ArrowLeftIcon, RouteIcon } from "@/src/components/Icons";
 import { Button } from "@/src/components/Button";
@@ -217,6 +217,30 @@ export function ProductionOrderPageContent({
   // la animación de salida; los productos los copia él mismo al abrir.
   const [isRecalculateOpen, setIsRecalculateOpen] = useState(false);
 
+  // Consumo por producto: lo comparten la sección y el selector del diálogo.
+  // Un refetch fallido de v5 conserva `data`, así que sigue disponible aunque
+  // la página muestre su estado de error.
+  const consumptionProducts = data ? summarizeConsumption(data.consumos) : [];
+
+  // El diálogo de recálculo va FUERA de las ramas de carga/error/éxito, en la
+  // misma posición en todas (segundo hijo del fragmento de `withPageDialogs`):
+  // el recálculo invalida el detalle, y si ese refetch falla
+  // (`useProductionOrderOnboarding` expone el `isError` crudo) la página pasa a
+  // su estado de error. Montado dentro de la rama de éxito, eso lo desmontaba y
+  // se perdía la vista de resultado de una operación que ya movió inventario.
+  const withPageDialogs = (body: ReactNode) => (
+    <>
+      {body}
+      <RecalculateConsumptionDialog
+        open={isRecalculateOpen}
+        onOpenChange={setIsRecalculateOpen}
+        opId={numericId}
+        folio={data?.folio_op ?? ""}
+        products={consumptionProducts}
+      />
+    </>
+  );
+
   const BackLink = (
     <Link
       href={BACK.href}
@@ -234,31 +258,31 @@ export function ProductionOrderPageContent({
   // backend, Django lo coaccionaría al pk 1 y la página mostraría la orden 1
   // bajo una URL que dice otra cosa. "1e999" (→ Infinity) haría lo propio.
   if (!Number.isInteger(numericId) || numericId <= 0) {
-    return (
+    return withPageDialogs(
       <div className="w-full space-y-6">
         <div>{BackLink}</div>
         <ErrorState
           title="Orden no válida"
           message="El identificador de la orden de producción no es válido."
         />
-      </div>
+      </div>,
     );
   }
 
   if (isLoading) {
-    return (
+    return withPageDialogs(
       <div className="w-full space-y-6">
         <div>{BackLink}</div>
         <Loader
           title="Cargando orden de producción"
           message="Obteniendo el detalle de la orden..."
         />
-      </div>
+      </div>,
     );
   }
 
   if (isError || !data) {
-    return (
+    return withPageDialogs(
       <div className="w-full space-y-6">
         <div>{BackLink}</div>
         {/* El copy NO afirma "no tienes acceso", a diferencia de las páginas de
@@ -275,14 +299,11 @@ export function ProductionOrderPageContent({
             "La orden no existe o falló la conexión.",
           )}
         />
-      </div>
+      </div>,
     );
   }
 
-  // Consumo por producto: lo comparten la sección y el selector del diálogo.
-  const consumptionProducts = summarizeConsumption(data.consumos);
-
-  return (
+  return withPageDialogs(
     <div className="w-full space-y-6">
       {/* ── Barra superior con "Volver" ─────────────────────────────────── */}
       <div className="sticky top-0 z-10 py-2 w-fit">{BackLink}</div>
@@ -405,14 +426,6 @@ export function ProductionOrderPageContent({
         products={consumptionProducts}
         isClosed={isClosedProductionOrderStatus(data.estatus_op)}
         onRecalculate={() => setIsRecalculateOpen(true)}
-      />
-
-      <RecalculateConsumptionDialog
-        open={isRecalculateOpen}
-        onOpenChange={setIsRecalculateOpen}
-        opId={data.op_id}
-        folio={data.folio_op}
-        products={consumptionProducts}
       />
 
       {criticalPathTarget && (

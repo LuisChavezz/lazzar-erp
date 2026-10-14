@@ -185,6 +185,7 @@ function RecalculateConsumptionSteps({
     step,
     confirmedBody,
     result,
+    submittedProducts,
     formMessage,
     isPending,
     getError,
@@ -193,11 +194,12 @@ function RecalculateConsumptionSteps({
     handleFormSubmit,
     backToForm,
     confirm,
-  } = useRecalculateConsumptionForm({ opId, initialCantidad });
+  } = useRecalculateConsumptionForm({ opId, initialCantidad, products });
 
-  const productName = (producto: number) =>
-    products.find((product) => product.producto === producto)?.producto_nombre ??
+  const nameIn = (list: ProductConsumption[]) => (producto: number) =>
+    list.find((product) => product.producto === producto)?.producto_nombre ??
     productFallbackName(producto);
+  const productName = nameIn(products);
 
   return (
     <>
@@ -353,7 +355,7 @@ function RecalculateConsumptionSteps({
       {step === "result" && result && (
         <RecalculateConsumptionResult
           result={result}
-          productName={productName}
+          productName={nameIn(submittedProducts)}
           onClose={onClose}
         />
       )}

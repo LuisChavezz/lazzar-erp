@@ -14,6 +14,7 @@ import {
   type RecalculateConsumptionField,
   type RecalculateConsumptionValues,
 } from "../schemas/recalculate-consumption.schema";
+import type { ProductConsumption } from "../utils/summarizeConsumption";
 import { handleRecalculateConsumptionError } from "./recalculateConsumptionErrorMessages";
 import { useRecalculateProductionOrderConsumption } from "./useRecalculateProductionOrderConsumption";
 
@@ -24,6 +25,8 @@ interface UseRecalculateConsumptionFormParams {
   opId: number;
   /** `cantidad_real_corte` de la ruta crítica, ya como texto del input ("" si no hay). */
   initialCantidad: string;
+  /** Productos que ofrece el diálogo; se copian al enviar para rotular el resultado. */
+  products: ProductConsumption[];
 }
 
 /**
@@ -42,10 +45,15 @@ interface UseRecalculateConsumptionFormParams {
 export function useRecalculateConsumptionForm({
   opId,
   initialCantidad,
+  products,
 }: UseRecalculateConsumptionFormParams) {
   const [step, setStep] = useState<RecalculateConsumptionStep>("form");
   const [confirmedBody, setConfirmedBody] = useState<RecalculateConsumptionBody | null>(null);
   const [result, setResult] = useState<RecalculateConsumptionResponse | null>(null);
+  // Foto de los productos al ENVIAR: el resultado traduce `producto_id` a
+  // nombre con ella, sin depender de nada que la página pueda perder si su
+  // refetch del detalle falla justo después del recálculo.
+  const [submittedProducts, setSubmittedProducts] = useState<ProductConsumption[]>([]);
   const [formMessage, setFormMessage] = useState<string | undefined>(undefined);
   // Envío en curso, síncrono: `isPending` llega hasta el siguiente render y el
   // POST no es idempotente en efectos (mueve inventario).
@@ -126,6 +134,7 @@ export function useRecalculateConsumptionForm({
     submittingRef.current = true;
     clearServerErrors();
     setFormMessage(undefined);
+    setSubmittedProducts(products);
     try {
       const response = await mutateAsync(confirmedBody);
       setResult(response);
@@ -143,6 +152,7 @@ export function useRecalculateConsumptionForm({
     step,
     confirmedBody,
     result,
+    submittedProducts,
     formMessage,
     isPending,
     getError,
