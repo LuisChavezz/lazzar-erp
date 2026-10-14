@@ -1,4 +1,6 @@
+import { AxiosError } from "axios";
 import { drfActionErrorMessage, handleDrfWriteError } from "@/src/utils/drfWriteErrors";
+import { firstRejectionMessage } from "@/src/utils/firstDrfMessage";
 import type { OpportunityFormValues } from "../schemas/opportunity.schema";
 
 /**
@@ -45,6 +47,16 @@ export const OPPORTUNITY_GONE_MESSAGE = "La oportunidad ya no existe. Se actuali
  * listado que actualizar: el 404 también llega si dejó de ser visible.
  */
 export const OPPORTUNITY_GONE_DETAIL_MESSAGE = "La oportunidad ya no existe o no tienes acceso a ella.";
+
+/**
+ * Rechazo del DESTINATARIO de una transferencia (400 con `{"vendedor": …}`:
+ * inactivo, de otra empresa), o `undefined`. Se pinta bajo el selector, no
+ * como toast.
+ */
+export const transferVendedorRejection = (error: unknown): string | undefined =>
+  error instanceof AxiosError && error.response?.status === 400
+    ? firstRejectionMessage(error.response.data, ["vendedor"])
+    : undefined;
 
 /** Error de la baja: un 404 significa que ya no existe. */
 export const opportunityActionErrorMessage = (error: unknown, fallback: string): string =>

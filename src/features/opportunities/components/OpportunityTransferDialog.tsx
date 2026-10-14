@@ -1,8 +1,6 @@
 "use client";
 
-import { AxiosError } from "axios";
 import { useState, type FormEvent } from "react";
-import toast from "react-hot-toast";
 import { DialogHeader } from "@/src/components/DialogHeader";
 import { FormCancelButton, FormSubmitButton } from "@/src/components/FormButtons";
 import { MainDialog } from "@/src/components/MainDialog";
@@ -12,10 +10,9 @@ import { SectionErrorNotice } from "@/src/components/SectionErrorNotice";
 import { useUsers } from "@/src/features/users/hooks/useUsers";
 import { useDialogSession } from "@/src/hooks/useDialogSession";
 import { isNotFoundError } from "@/src/utils/drfWriteErrors";
-import { firstRejectionMessage } from "@/src/utils/firstDrfMessage";
 import {
   OPPORTUNITY_GONE_MESSAGE,
-  opportunityActionErrorMessage,
+  transferVendedorRejection,
 } from "../hooks/opportunityErrorMessages";
 import {
   useTransferOpportunity,
@@ -31,12 +28,6 @@ interface TransferOption {
   label: string;
   email: string;
 }
-
-/** Error de `transferir` que pertenece al selector (`{"vendedor": …}`), o `undefined`. */
-const vendedorRejection = (error: unknown): string | undefined =>
-  error instanceof AxiosError && error.response?.status === 400
-    ? firstRejectionMessage(error.response.data, ["vendedor"])
-    : undefined;
 
 interface TransferFormProps {
   opportunity: Opportunity;
@@ -104,30 +95,21 @@ function TransferForm({
     if (selectedId === null || isPending) return;
     setFieldError(null);
     onTransfer(
-      { id: opportunity.id, vendedor: selectedId },
+      { id: opportunity.id, vendedor: selectedId, goneMessage },
       {
         onSuccess: onClose,
+        // Los toasts los da el hook; aquí solo lo que depende del diálogo.
         onError: (error) => {
           // El destinatario no vale (inactivo, de otra empresa): se dice bajo
           // el selector y el diálogo sigue abierto para elegir otro.
-          const rejection = vendedorRejection(error);
+          const rejection = transferVendedorRejection(error);
           if (rejection) {
             setFieldError(rejection);
             return;
           }
           // Ya no existe (o dejó de ser visible): no hay nada que reintentar;
           // la relectura deja el detalle en "no disponible" o saca la fila.
-          if (isNotFoundError(error)) {
-            toast.error(goneMessage);
-            onClose();
-            return;
-          }
-          toast.error(
-            opportunityActionErrorMessage(
-              error,
-              "No se pudo transferir la oportunidad. Intenta de nuevo."
-            )
-          );
+          if (isNotFoundError(error)) onClose();
         },
       }
     );
