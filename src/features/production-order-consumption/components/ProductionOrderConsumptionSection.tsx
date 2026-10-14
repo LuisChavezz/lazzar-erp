@@ -13,8 +13,8 @@ import {
   type ProductConsumption,
 } from "../utils/summarizeConsumption";
 import {
-  formatConsumptionQuantity,
-  formatSignedConsumptionQuantity,
+  formatBackendQuantity,
+  formatSignedBackendQuantity,
 } from "../utils/formatConsumptionQuantity";
 
 interface ProductionOrderConsumptionSectionProps {
@@ -84,13 +84,13 @@ export function ProductionOrderConsumptionSection({
                   {product.producto_nombre}
                 </td>
                 <td className="px-3 py-2 text-right tabular-nums text-slate-600 dark:text-slate-300">
-                  {formatConsumptionQuantity(product.planned)}
+                  {formatBackendQuantity(product.planned)}
                 </td>
                 <td className="px-3 py-2 text-right tabular-nums text-slate-600 dark:text-slate-300">
-                  {formatSignedConsumptionQuantity(product.adjustments)}
+                  {formatSignedBackendQuantity(product.adjustments)}
                 </td>
                 <td className="px-3 py-2 text-right tabular-nums font-semibold text-slate-800 dark:text-white">
-                  {formatConsumptionQuantity(product.current)}
+                  {formatBackendQuantity(product.current)}
                 </td>
               </tr>
             ))}
@@ -162,8 +162,8 @@ function ConsumptionHistory({ consumos }: { consumos: ProductionOrderConsumo[] }
                       </td>
                       <td className="px-3 py-2 text-right tabular-nums text-slate-700 dark:text-slate-200">
                         {isOriginal
-                          ? formatConsumptionQuantity(detalle.cantidad)
-                          : formatSignedConsumptionQuantity(detalle.cantidad)}
+                          ? formatBackendQuantity(detalle.cantidad)
+                          : formatSignedBackendQuantity(detalle.cantidad)}
                       </td>
                     </tr>
                   ))}

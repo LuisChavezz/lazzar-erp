@@ -1,17 +1,26 @@
 import { formatExactQuantityValue } from "@/src/utils/formatCurrency";
-import { quantitySign } from "./consumptionQuantity";
+import { formatScaledQuantity, parseQuantity, quantitySign } from "./consumptionQuantity";
 
 /**
- * Cantidad de consumo para mostrar: 4 decimales de resolución
- * (`formatExactQuantityValue`, la misma de la habilitación y del inventario),
- * nunca redondeada a entero.
+ * Cantidad de consumo del backend para mostrar: se interpreta con
+ * `parseQuantity` (acepta más de 4 decimales y notación exponencial) y se
+ * pinta con `formatExactQuantityValue`, a 4 decimales de resolución. Lo que no
+ * se puede interpretar —o una cantidad ya marcada como no disponible (`null`)—
+ * se muestra "—", nunca "0": `formatExactQuantityValue` solo convertiría el
+ * texto malformado en un cero que parece real.
  */
-export const formatConsumptionQuantity = (value: string): string =>
-  formatExactQuantityValue(value);
+export const formatBackendQuantity = (raw: string | null): string => {
+  const value = parseQuantity(raw);
+  return value === null ? "—" : formatExactQuantityValue(formatScaledQuantity(value));
+};
 
 /**
- * Diferencia con signo explícito: "+10", "-2.5", "0". El signo se lee del
- * string (no de un `number`), así que un "-0.0001" no se pierde.
+ * Como `formatBackendQuantity` pero con signo explícito: "+10", "-2.5", "0".
+ * El signo se lee del valor interpretado (no de un `number`), así que un
+ * "-0.0001" no se pierde.
  */
-export const formatSignedConsumptionQuantity = (value: string): string =>
-  `${quantitySign(value) > 0 ? "+" : ""}${formatExactQuantityValue(value)}`;
+export const formatSignedBackendQuantity = (raw: string | null): string => {
+  const value = parseQuantity(raw);
+  if (value === null) return "—";
+  return `${quantitySign(value) > 0 ? "+" : ""}${formatExactQuantityValue(formatScaledQuantity(value))}`;
+};

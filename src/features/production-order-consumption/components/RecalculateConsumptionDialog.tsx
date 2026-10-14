@@ -26,8 +26,8 @@ import {
   type ProductConsumption,
 } from "../utils/summarizeConsumption";
 import {
-  formatConsumptionQuantity,
-  formatSignedConsumptionQuantity,
+  formatBackendQuantity,
+  formatSignedBackendQuantity,
 } from "../utils/formatConsumptionQuantity";
 
 interface RecalculateConsumptionDialogProps {
@@ -291,11 +291,11 @@ function RecalculateConsumptionSteps({
                           <span className="shrink-0 text-xs text-slate-500 dark:text-slate-400 tabular-nums text-right">
                             Planeado{" "}
                             <span className="font-medium text-slate-700 dark:text-slate-200">
-                              {formatConsumptionQuantity(product.planned)}
+                              {formatBackendQuantity(product.planned)}
                             </span>
                             {" · "}Actual{" "}
                             <span className="font-medium text-slate-700 dark:text-slate-200">
-                              {formatConsumptionQuantity(product.current)}
+                              {formatBackendQuantity(product.current)}
                             </span>
                           </span>
                         </label>
@@ -378,7 +378,7 @@ function RecalculateConsumptionResult({
   productName: (producto: number) => string;
   onClose: () => void;
 }) {
-  const cantidad = formatConsumptionQuantity(result.cantidad_real_corte);
+  const cantidad = formatBackendQuantity(result.cantidad_real_corte);
 
   return (
     <div className="space-y-4">
@@ -412,13 +412,13 @@ function RecalculateConsumptionResult({
                 {productName(cambio.producto_id)}
               </td>
               <td className="px-3 py-2 text-right tabular-nums text-slate-600 dark:text-slate-300">
-                {formatConsumptionQuantity(cambio.consumido_antes)}
+                {formatBackendQuantity(cambio.consumido_antes)}
               </td>
               <td className="px-3 py-2 text-right tabular-nums text-slate-600 dark:text-slate-300">
-                {formatConsumptionQuantity(cambio.consumido_despues)}
+                {formatBackendQuantity(cambio.consumido_despues)}
               </td>
               <td className="px-3 py-2 text-right tabular-nums font-semibold text-slate-800 dark:text-white">
-                {formatSignedConsumptionQuantity(cambio.delta)}
+                {formatSignedBackendQuantity(cambio.delta)}
               </td>
             </tr>
           ))}
