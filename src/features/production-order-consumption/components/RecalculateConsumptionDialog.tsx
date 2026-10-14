@@ -188,7 +188,7 @@ function RecalculateConsumptionSteps({
     formMessage,
     isPending,
     getError,
-    clearFieldErrors,
+    handleFieldEdited,
     validateField,
     handleFormSubmit,
     backToForm,
@@ -229,7 +229,7 @@ function RecalculateConsumptionSteps({
                     error={getError("cantidad_real_corte")}
                     onChange={(event) => {
                       field.handleChange(event.target.value);
-                      clearFieldErrors("cantidad_real_corte");
+                      handleFieldEdited("cantidad_real_corte");
                     }}
                     onBlur={() => {
                       field.handleBlur();
@@ -252,7 +252,7 @@ function RecalculateConsumptionSteps({
                   ? [...selected, producto]
                   : selected.filter((id) => id !== producto);
                 field.handleChange(next);
-                clearFieldErrors("productos");
+                handleFieldEdited("productos");
               };
               const fieldError = getError("productos");
               return (

@@ -104,6 +104,16 @@ export function useRecalculateConsumptionForm({
     void form.handleSubmit();
   };
 
+  /**
+   * El usuario editó un campo (cantidad o selección de productos): se van los
+   * errores de ese campo y también el banner del intento anterior, que ya no
+   * describe lo que hay capturado.
+   */
+  const handleFieldEdited = (field: RecalculateConsumptionField) => {
+    clearFieldErrors(field);
+    setFormMessage(undefined);
+  };
+
   /** "Volver" desde la confirmación: lo capturado sigue ahí. */
   const backToForm = () => {
     if (isPending) return;
@@ -136,7 +146,7 @@ export function useRecalculateConsumptionForm({
     formMessage,
     isPending,
     getError,
-    clearFieldErrors,
+    handleFieldEdited,
     validateField,
     handleFormSubmit,
     backToForm,
