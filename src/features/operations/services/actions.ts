@@ -35,15 +35,17 @@ export const rejectOperationsQuote = async (
   return response.data;
 };
 
-// Estos dos endpoints operan directamente sobre el recurso Cotizacion,
-// no sobre mesa-control, por eso usan /ventas/cotizaciones/{id}/... en
-// vez de /ventas/mesa-control/{id}/... como el resto de las funciones
-// de este archivo. Confirmado correcto — no es una inconsistencia.
+// Aceptar/rechazar cambios van por /ventas/mesa-control/{id}/..., como el
+// resto de este archivo. La acción es la misma en /ventas/cotizaciones/
+// (`MesaControlViewSet` la hereda) y ambas exigen mesa de control, pero ese
+// recurso acota a las cotizaciones del propio VENDEDOR para quien no es admin
+// de empresa: un usuario de mesa de control no admin recibía 404. El de
+// mesa-control acota por empresa y estatus [2, 5], que incluye el 5.
 export const acceptChangesOperationsQuote = async (
   id: number
 ): Promise<OperationsQuoteActionResponse> => {
   const response = await v1_api.post<OperationsQuoteActionResponse>(
-    `/ventas/cotizaciones/${id}/aceptar-cambios/`
+    `/ventas/mesa-control/${id}/aceptar-cambios/`
   );
   return response.data;
 };
@@ -52,7 +54,7 @@ export const rejectChangesOperationsQuote = async (
   id: number
 ): Promise<OperationsQuoteActionResponse> => {
   const response = await v1_api.post<OperationsQuoteActionResponse>(
-    `/ventas/cotizaciones/${id}/rechazar-cambios/`
+    `/ventas/mesa-control/${id}/rechazar-cambios/`
   );
   return response.data;
 };
