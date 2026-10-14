@@ -11,5 +11,6 @@ export const useAcceptChangesOperationsQuote = createOperationsQuoteMutation({
   mutationKey: acceptChangesOperationsQuoteMutationKey,
   mutationFn: acceptChangesOperationsQuote,
   successMessage: "Cambios aplicados correctamente",
-  errorMessage: "No se pudieron aplicar los cambios",
+  errorMessage: "No se pudieron aplicar los cambios de la cotización",
+  notFoundMessage: "La cotización ya no tiene cambios pendientes de revisar.",
 });

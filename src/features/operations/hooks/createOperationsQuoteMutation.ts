@@ -2,6 +2,7 @@
 
 import { useMutation, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
+import { drfActionErrorMessage } from "@/src/utils/drfWriteErrors";
 import { KANBAN_COLUMNS } from "@/src/features/quotes/constants/kanbanColumns";
 import {
   OperationsQuote,
@@ -13,7 +14,13 @@ interface CreateOperationsQuoteMutationParams {
   mutationKey: readonly unknown[];
   mutationFn: (operationsQuoteId: number) => Promise<OperationsQuoteActionResponse>;
   successMessage: string;
+  /** Respaldo cuando el error no trae un mensaje aprovechable (red, 5xx). */
   errorMessage: string;
+  /**
+   * 404: la cotización ya no está en el alcance de mesa de control (otra
+   * sesión la autorizó, la rechazó o la sacó de revisión).
+   */
+  notFoundMessage: string;
 }
 
 /**
@@ -61,6 +68,7 @@ export const createOperationsQuoteMutation = ({
   mutationFn,
   successMessage,
   errorMessage,
+  notFoundMessage,
 }: CreateOperationsQuoteMutationParams) => {
   return () => {
     const queryClient = useQueryClient();
@@ -72,8 +80,10 @@ export const createOperationsQuoteMutation = ({
         await applyOperationsQuoteActionResult(queryClient, response);
         toast.success(successMessage);
       },
-      onError: () => {
-        toast.error(errorMessage);
+      // El mensaje del backend (400 `cotizacion`/`permiso`, `detail`), igual
+      // que el rechazo; el texto fijo solo cuando no hay uno aprovechable.
+      onError: (error) => {
+        toast.error(drfActionErrorMessage(error, errorMessage, notFoundMessage));
       },
     });
   };

@@ -10,6 +10,7 @@ export const approveOperationsQuoteMutationKey = [
 export const useApproveOperationsQuote = createOperationsQuoteMutation({
   mutationKey: approveOperationsQuoteMutationKey,
   mutationFn: approveOperationsQuote,
-  successMessage: "Pedido autorizado correctamente",
-  errorMessage: "No se pudo autorizar el pedido",
+  successMessage: "Cotización autorizada correctamente",
+  errorMessage: "No se pudo autorizar la cotización",
+  notFoundMessage: "La cotización ya no está disponible para autorizar.",
 });

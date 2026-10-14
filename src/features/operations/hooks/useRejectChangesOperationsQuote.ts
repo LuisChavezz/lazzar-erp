@@ -11,5 +11,6 @@ export const useRejectChangesOperationsQuote = createOperationsQuoteMutation({
   mutationKey: rejectChangesOperationsQuoteMutationKey,
   mutationFn: rejectChangesOperationsQuote,
   successMessage: "Cambios rechazados correctamente",
-  errorMessage: "No se pudieron rechazar los cambios",
+  errorMessage: "No se pudieron rechazar los cambios de la cotización",
+  notFoundMessage: "La cotización ya no tiene cambios pendientes de revisar.",
 });
