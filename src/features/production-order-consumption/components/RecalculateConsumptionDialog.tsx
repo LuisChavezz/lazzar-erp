@@ -280,7 +280,6 @@ function RecalculateConsumptionSteps({
                           <input
                             type="checkbox"
                             name={field.name}
-                            value={product.producto}
                             checked={checked}
                             onChange={(event) => toggle(product.producto, event.target.checked)}
                             onBlur={field.handleBlur}
