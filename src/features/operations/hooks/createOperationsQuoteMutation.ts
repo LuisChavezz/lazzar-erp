@@ -82,8 +82,15 @@ export const createOperationsQuoteMutation = ({
       },
       // El mensaje del backend (400 `cotizacion`/`permiso`, `detail`), igual
       // que el rechazo; el texto fijo solo cuando no hay uno aprovechable.
-      onError: (error) => {
+      onError: (error, operationsQuoteId) => {
         toast.error(drfActionErrorMessage(error, errorMessage, notFoundMessage));
+        // Mismas invalidaciones que el rechazo en su error: un 400 de estatus
+        // o un 404 significan que lo pintado ya no es el estado real (otra
+        // sesión movió la cotización), y sin releer la fila seguiría
+        // ofreciendo la acción que acaba de fallar.
+        queryClient.invalidateQueries({ queryKey: operationsQuotesQueryKey });
+        queryClient.invalidateQueries({ queryKey: ["quotes"] });
+        queryClient.invalidateQueries({ queryKey: ["quote", operationsQuoteId] });
       },
     });
   };
