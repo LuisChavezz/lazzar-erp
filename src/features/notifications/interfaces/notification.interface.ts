@@ -17,9 +17,6 @@
  * la sesión.
  */
 
-/** `modulo` de las notificaciones de cotizaciones. */
-export const MODULO_VENTAS = "ventas";
-
 /*
   `tipo` que el frontend sabe abrir (ver `constants/notificationTargets.ts`).
   NO es el catálogo del backend: el modelo no tiene `choices`, y cualquier otro

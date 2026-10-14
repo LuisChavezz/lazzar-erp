@@ -1,7 +1,6 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { useSession } from "next-auth/react";
 import { MainDialog } from "@/src/components/MainDialog";
 import { SearchInput } from "@/src/components/SearchInput";
 import {
@@ -12,7 +11,6 @@ import {
 import type { Notificacion } from "../interfaces/notification.interface";
 import {
   resolveNotificationIconVariant,
-  resolveNotificationTarget,
 } from "../constants/notificationTargets";
 import type { NotificacionesListState } from "../hooks/useNotificaciones";
 import { formatRelativeTime } from "../utils/formatRelativeTime";
@@ -37,11 +35,16 @@ interface NotificationsDialogBodyProps {
   isMarkingAll: boolean;
   /**
    * Abre el destino de la notificación. El padre es quien decide CUÁNDO
-   * aplicarlo: este diálogo solo se cierra y le avisa, porque el destino de
-   * `cotizacion_en_revision` es otro diálogo y no pueden encadenarse en el
-   * mismo commit (ver `onCloseAutoFocus` en `Notifications`).
+   * aplicarlo: este diálogo solo se cierra y le avisa, porque un destino que
+   * es otro diálogo no puede encadenarse en el mismo commit (ver
+   * `pendingTargetRef` y `onCloseAutoFocus` en `Notifications`).
    */
   onActivate: (notificacion: Notificacion) => void;
+  /**
+   * ¿La fila abre algo? Lo decide el padre —la misma función que usa el
+   * dropdown— para que ambas superficies no puedan discrepar.
+   */
+  isActionable: (notificacion: Notificacion) => boolean;
 }
 
 interface NotificationsDialogProps extends NotificationsDialogBodyProps {
@@ -73,8 +76,8 @@ function NotificationsDialogBody({
   onMarkAllRead,
   isMarkingAll,
   onActivate,
+  isActionable,
 }: NotificationsDialogBodyProps) {
-  const { data: session } = useSession();
   const [search, setSearch] = useState("");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
 
@@ -202,8 +205,7 @@ function NotificationsDialogBody({
         {showList && (
           <div role="list" className="space-y-2">
             {filteredAndSorted.map((notificacion) => {
-              const isActionable =
-                resolveNotificationTarget(notificacion, session?.user) !== null;
+              const actionable = isActionable(notificacion);
 
               return (
                 <div
@@ -218,7 +220,7 @@ function NotificationsDialogBody({
                   />
                   <div className="flex-1 min-w-0 grid grid-cols-[1fr_auto] gap-2">
                     <div className="min-w-0">
-                      {isActionable ? (
+                      {actionable ? (
                         <button
                           type="button"
                           onClick={() => onActivate(notificacion)}

@@ -1,5 +1,9 @@
 import type { QuoteDetailSource } from "@/src/features/quotes/hooks/useQuote";
-import type { PedidoDetailOrigin } from "@/src/features/orders/constants/pedidoDetailOrigins";
+import {
+  pedidoDetailHref,
+  pedidoDetailPath,
+  type PedidoDetailOrigin,
+} from "@/src/features/orders/constants/pedidoDetailOrigins";
 import type { PermissionContext } from "@/src/interfaces/permission-context.interface";
 import { canAccessRoute } from "@/src/utils/routeAccess";
 import {
@@ -12,13 +16,15 @@ import {
 /**
  * Destino al que lleva una notificación al hacer clic.
  *
- * `quote-dialog` y no una ruta: `/sales/quotes/[id]` NO EXISTE (en disco solo
- * está `/sales/quotes/[id]/edit`), y el destinatario de
- * `cotizacion_en_revision` es rol MESA-DE-CONTROL, que no tiene
- * `R-CRM-COTIZACIONES` y sería rebotado por `proxy.ts` si se le mandara al
- * formulario de edición. El repo ya resolvió esto igual en
- * `search/components/GlobalSearchPalette.tsx`: la cotización se abre con el
- * diálogo self-fetching `QuoteDetailByIdDialog`.
+ * Una cotización se abre con `quote-dialog` y no con una ruta:
+ * `/sales/quotes/[id]` NO EXISTE (en disco solo está `/sales/quotes/[id]/edit`),
+ * y no todos los destinatarios podrían entrar a la edición —el rol
+ * MESA-DE-CONTROL, que recibe `cotizacion_en_revision`, no tiene
+ * `R-CRM-COTIZACIONES` y `proxy.ts` lo rebotaría—; además una cotización
+ * rechazada se consulta, no se edita, desde la campana. El repo ya resolvió
+ * esto igual en `search/components/GlobalSearchPalette.tsx`: el diálogo
+ * self-fetching `QuoteDetailByIdDialog`. `source` es por `tipo`, porque
+ * depende de quién recibe la notificación (ver el mapa de abajo).
  *
  * `route` lleva un `href` con query; su `pathname` es el que se evalúa contra
  * la regla del proxy (ver `resolveNotificationTarget`).
@@ -44,11 +50,11 @@ const readPositiveId = (data: unknown, key: string): number | null => {
 /** Origen del detalle 360° cuando se llega desde la campana. */
 const PEDIDO_DETAIL_FROM: PedidoDetailOrigin = "notifications";
 
-const pedidoDetailTarget = (pedidoId: number): NotificationTarget => {
-  const pathname = `/orders/${pedidoId}`;
-  const search = new URLSearchParams({ from: PEDIDO_DETAIL_FROM });
-  return { kind: "route", href: `${pathname}?${search.toString()}`, pathname };
-};
+const pedidoDetailTarget = (pedidoId: number): NotificationTarget => ({
+  kind: "route",
+  href: pedidoDetailHref(pedidoId, PEDIDO_DETAIL_FROM),
+  pathname: pedidoDetailPath(pedidoId),
+});
 
 type TargetResolver = (data: unknown) => NotificationTarget | null;
 

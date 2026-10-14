@@ -45,6 +45,19 @@ export const INVOICE_ORIGIN_SHEET_PARAM = "factura_sheet";
  */
 export const OPPORTUNITY_ORIGIN_ID_PARAM = "oportunidad";
 
+/** Ruta del detalle 360° del pedido, sin query (la que evalúa el proxy). */
+export const pedidoDetailPath = (pedidoId: number) => `/orders/${pedidoId}`;
+
+/**
+ * Enlace al detalle 360° con su origen tipado, más los parámetros extra que
+ * ese origen necesite para su "Volver" (p. ej. `factura` del origen `invoice`).
+ */
+export const pedidoDetailHref = (
+  pedidoId: number,
+  from: PedidoDetailOrigin,
+  query?: Record<string, string>,
+) => `${pedidoDetailPath(pedidoId)}?${new URLSearchParams({ from, ...query }).toString()}`;
+
 /**
  * Estrecha el `?from=` crudo de la URL. Compara contra el arreglo (no contra
  * las llaves de un objeto), así que `constructor`/`toString` no pasan.

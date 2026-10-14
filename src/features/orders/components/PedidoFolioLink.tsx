@@ -2,7 +2,7 @@
 
 import type { ReactNode } from "react";
 import Link from "next/link";
-import type { PedidoDetailOrigin } from "../constants/pedidoDetailOrigins";
+import { pedidoDetailHref, type PedidoDetailOrigin } from "../constants/pedidoDetailOrigins";
 
 interface PedidoFolioLinkProps {
   /** PK del pedido. Siempre presente en las filas que usan este enlace. */
@@ -43,10 +43,9 @@ export function PedidoFolioLink({
   children,
   query,
 }: PedidoFolioLinkProps) {
-  const search = new URLSearchParams({ from, ...query });
   return (
     <Link
-      href={`/orders/${pedidoId}?${search.toString()}`}
+      href={pedidoDetailHref(pedidoId, from, query)}
       title="Ver detalle del pedido"
       className={`${className} hover:text-sky-600 dark:hover:text-sky-400 hover:underline transition-colors cursor-pointer`}
     >

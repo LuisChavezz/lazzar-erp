@@ -145,8 +145,7 @@ const BACK_TARGETS: Record<PedidoDetailOrigin, { href: string; label: string }> 
   // Quien llega desde la campana (`cotizacion_autorizada`, que solo recibe el
   // VENDEDOR) vuelve a su listado de pedidos, donde está el que se acaba de
   // generar: la campana no tiene página propia a la que volver. Sin
-  // R-CRM-PEDIDOS cae al Home (`resolveBack`), nunca a una ruta que el proxy
-  // rebotaría.
+  // R-CRM-PEDIDOS cae al Home (`resolveBack`).
   notifications: { href: "/sales/orders", label: "Volver a Mis Pedidos" },
   // Destino universal: el Home no exige ningún permiso de módulo, así que sirve
   // como salida para quien llega sin `?from=` (URL pegada, recarga, enlace
@@ -204,10 +203,10 @@ function resolveBack(
       label: "Volver a la Oportunidad",
     };
   }
-  if (from === "notifications") {
-    return canOpen(BACK_TARGETS.notifications.href) ? BACK_TARGETS.notifications : DEFAULT_BACK;
-  }
-  return BACK_TARGETS[from];
+  // Cualquier destino fijo pasa por la misma regla que el proxy: sin acceso al
+  // módulo de origen, "Volver" lleva al Home en vez de a una ruta que rebota.
+  const target = BACK_TARGETS[from];
+  return canOpen(target.href) ? target : DEFAULT_BACK;
 }
 
 // ── Componente principal ─────────────────────────────────────────────────────

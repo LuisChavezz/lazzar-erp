@@ -67,10 +67,12 @@ export const Notifications = () => {
   const btnRef = useRef<HTMLButtonElement>(null);
 
   /**
-   * Destino pendiente de aplicar cuando la activación viene del modal: el
-   * destino de `cotizacion_en_revision` es otro diálogo y abrirlo en el mismo
-   * commit en que se cierra el modal deja a Radix con dos `Dialog.Root`
-   * solapados. Se aplica en `onCloseAutoFocus`, ya desmontado el modal.
+   * Destino pendiente de aplicar cuando la activación viene del modal. Se
+   * aplica en `onCloseAutoFocus`, ya desmontado el modal, sea cual sea el
+   * destino. Es imprescindible para TODO destino que sea un diálogo
+   * (`quote-dialog`: hoy `cotizacion_en_revision` y `cotizacion_rechazada`):
+   * abrirlo en el mismo commit en que se cierra el modal deja a Radix con dos
+   * `Dialog.Root` solapados.
    */
   const pendingTargetRef = useRef<NotificationTarget | null>(null);
 
@@ -152,6 +154,14 @@ export const Notifications = () => {
    * mutación: el optimista ya atenuó la fila, así que la navegación no tiene
    * por qué bloquearse contra la red.
    */
+  /**
+   * ÚNICA fuente de "¿esta fila abre algo?" para el dropdown y el modal: el
+   * destino depende de los permisos de la sesión (ver
+   * `resolveNotificationTarget`).
+   */
+  const isActionable = (notificacion: Notificacion) =>
+    resolveNotificationTarget(notificacion, session?.user) !== null;
+
   const markThenGo = (
     notificacion: Notificacion,
     apply: (target: NotificationTarget) => void,
@@ -200,6 +210,7 @@ export const Notifications = () => {
         onMarkAllRead={() => marcarTodas.mutate()}
         isMarkingAll={marcarTodas.isPending}
         onActivate={handleActivateFromDialog}
+        isActionable={isActionable}
         onCloseAutoFocus={handleDialogCloseAutoFocus}
       />
 
@@ -294,12 +305,12 @@ export const Notifications = () => {
                     <NotificationItem
                       notificacion={notificacion}
                       nowMs={dataUpdatedAt}
-                      isActionable={
-                        resolveNotificationTarget(notificacion, session?.user) !== null
-                      }
+                      isActionable={isActionable(notificacion)}
                       onActivate={() =>
                         handleActivateFromDropdown(notificacion)
                       }
+                      onMarkRead={() => marcarLeida.mutate(notificacion.id)}
+                      focusFallbackRef={listRef}
                     />
                   </div>
                 ))}
