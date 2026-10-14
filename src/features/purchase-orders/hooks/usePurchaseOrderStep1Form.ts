@@ -11,6 +11,8 @@ import {
   PurchaseOrderEncabezadosSchema,
   type PurchaseOrderEncabezadosFormValues,
 } from "../schemas/purchase-order-onboarding.schema";
+import { DEFAULT_TIPO_COMPRA } from "../constants/purchaseOrderTipoCompra";
+import type { PurchaseOrderHeaderFieldErrors } from "../utils/purchaseOrderHeaderErrors";
 
 interface UsePurchaseOrderStep1FormParams {
   onboardingData: PurchaseOrderOnboardingData;
@@ -20,6 +22,11 @@ interface UsePurchaseOrderStep1FormParams {
    * para que lo capturado sobreviva el viaje de ida y vuelta entre pasos.
    */
   initialValues?: PurchaseOrderEncabezados;
+  /**
+   * Errores por campo con los que el backend rechazó el alta (el POST ocurre
+   * en el Step 2, que regresa aquí para mostrarlos bajo su campo).
+   */
+  initialServerErrors?: PurchaseOrderHeaderFieldErrors;
   /** Called when the form is validated and submitted. Receives the captured encabezados data. */
   onSuccess: (data: PurchaseOrderEncabezados) => void;
 }
@@ -34,17 +41,28 @@ export type Step1FieldPath =
   | "orden_compra.moneda"
   | "orden_compra.fecha_vencimiento"
   | "orden_compra.referencia"
-  | "orden_compra.observaciones";
+  | "orden_compra.observaciones"
+  | "orden_compra.tipo_compra"
+  | "orden_compra.pedidos";
 
 type Step1ErrorMap = Partial<Record<Step1FieldPath, string>>;
 
 export function usePurchaseOrderStep1Form({
   onboardingData,
   initialValues,
+  initialServerErrors,
   onSuccess,
 }: UsePurchaseOrderStep1FormParams) {
   const [clientErrors, setClientErrors] = useState<Step1ErrorMap>({});
-  const [serverErrors, setServerErrors] = useState<Step1ErrorMap>({});
+  // Los del backend llegan con el nombre plano del campo; aquí viven anidados.
+  const [serverErrors, setServerErrors] = useState<Step1ErrorMap>(() =>
+    Object.fromEntries(
+      Object.entries(initialServerErrors ?? {}).map(([field, message]) => [
+        `orden_compra.${field}`,
+        message,
+      ]),
+    ),
+  );
 
   // ── Default values ──────────────────────────────────────────────────────
   // Si ya hay un encabezado capturado (regreso desde el Step 2), se siembra
@@ -68,6 +86,8 @@ export function usePurchaseOrderStep1Form({
               fecha_vencimiento: "",
               referencia: "",
               observaciones: "",
+              tipo_compra: DEFAULT_TIPO_COMPRA,
+              pedidos: [],
             },
           },
     [initialValues],

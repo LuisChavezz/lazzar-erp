@@ -8,6 +8,10 @@ import type { PurchaseOrder } from "../interfaces/purchase-order.interface";
 import type { PurchaseOrderEditHeader } from "../schemas/purchase-order-edit.schema";
 import { usePurchaseOrderEditForm } from "../hooks/usePurchaseOrderEditForm";
 import { formatShortDate, parseLocalDate } from "@/src/utils/formatDate";
+import { TIPO_COMPRA_OPTIONS } from "../constants/purchaseOrderTipoCompra";
+import type { TipoCompra } from "../interfaces/purchase-order.interface";
+import type { PurchaseOrderHeaderFieldErrors } from "../utils/purchaseOrderHeaderErrors";
+import { PurchaseOrderPedidosField } from "./PurchaseOrderPedidosField";
 
 interface PurchaseOrderEditStep1Props {
   /** Orden existente que se edita, leída fresca del detalle (pre-puebla el formulario). */
@@ -16,6 +20,8 @@ interface PurchaseOrderEditStep1Props {
   initialHeader?: PurchaseOrderEditHeader;
   /** Datos de onboarding (catálogos) ya cargados por el step manager. */
   onboardingData: PurchaseOrderOnboardingData;
+  /** Errores por campo con los que el backend rechazó el PUT (ver el step manager). */
+  initialServerErrors?: PurchaseOrderHeaderFieldErrors;
   /** Llamado con el encabezado validado al continuar al paso de productos. */
   onSuccess: (header: PurchaseOrderEditHeader) => void;
 }
@@ -31,8 +37,13 @@ export function PurchaseOrderEditStep1({
   initialData,
   initialHeader,
   onboardingData,
+  initialServerErrors,
   onSuccess,
 }: PurchaseOrderEditStep1Props) {
+  // El tipo de compra decide la serie del folio: con folio ya asignado el
+  // backend rechaza cambiarlo, así que se bloquea (y el PUT lo omite).
+  const isTipoCompraLocked = Boolean(initialData.folio);
+
   const {
     form,
     fechaGeneracion,
@@ -48,6 +59,7 @@ export function PurchaseOrderEditStep1({
     initialData,
     initialHeader,
     onboardingData,
+    initialServerErrors,
     onSuccess,
   });
 
@@ -129,6 +141,40 @@ export function PurchaseOrderEditStep1({
           )}
         </form.Field>
 
+        {/* ── Tipo de compra ───────────────────────────────────────────────
+            Bloqueado cuando la orden ya tiene folio (ver `isTipoCompraLocked`). */}
+        <form.Field name="tipo_compra">
+          {(field) => (
+            <div>
+              <FormSelect
+                label="Tipo de compra"
+                name={field.name}
+                value={field.state.value}
+                options={TIPO_COMPRA_OPTIONS}
+                disabled={isTipoCompraLocked}
+                aria-describedby={isTipoCompraLocked ? "tipo_compra-locked-hint" : undefined}
+                onChange={(event) => {
+                  field.handleChange(event.target.value as TipoCompra);
+                  clearFieldErrors("tipo_compra");
+                }}
+                onBlur={() => {
+                  field.handleBlur();
+                  validateField("tipo_compra");
+                }}
+                error={getError("tipo_compra")}
+              />
+              {isTipoCompraLocked && (
+                <p
+                  id="tipo_compra-locked-hint"
+                  className="ml-1 mt-1 text-xs text-slate-500 dark:text-slate-400"
+                >
+                  No se puede cambiar: la orden ya tiene folio y este depende del tipo de compra.
+                </p>
+              )}
+            </div>
+          )}
+        </form.Field>
+
         {/* ── Fecha de generación (solo lectura) ─────────────────────────
             La fija el servidor al crear la orden y el PUT no la envía. */}
         <FormInput
@@ -160,7 +206,7 @@ export function PurchaseOrderEditStep1({
           )}
         </form.Field>
 
-        {/* ── Referencia ───────────────────────────────────────────────── */}
+        {/* ── Referencia (opcional) ─────────────────────────────────────── */}
         <form.Field name="referencia">
           {(field) => (
             <FormInput
@@ -199,6 +245,23 @@ export function PurchaseOrderEditStep1({
                 validateField("observaciones");
               }}
               error={getError("observaciones")}
+            />
+          )}
+        </form.Field>
+
+        {/* ── Pedidos (opcional, varios) ───────────────────────────────────
+            `pedidos_vinculados` da el folio de los ya ligados que no estén
+            entre las opciones (cancelados o inactivos): siguen marcados. */}
+        <form.Field name="pedidos">
+          {(field) => (
+            <PurchaseOrderPedidosField
+              value={field.state.value ?? []}
+              linkedPedidos={initialData.pedidos_vinculados}
+              onChange={(ids) => {
+                field.handleChange(ids);
+                clearFieldErrors("pedidos");
+              }}
+              error={getError("pedidos")}
             />
           )}
         </form.Field>

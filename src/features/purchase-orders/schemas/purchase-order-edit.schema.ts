@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { formatShortDate, isValidDateKey, parseLocalDate } from "@/src/utils/formatDate";
 import { createFechaVencimientoSchema } from "./purchase-order-fecha-vencimiento.schema";
+import { pedidosSchema, referenciaSchema, tipoCompraSchema } from "./purchase-order-header-fields.schema";
 
 /**
  * Schema para el formulario de edición de una orden de compra.
@@ -51,8 +52,10 @@ export const createPurchaseOrderEditSchema = (
       (value) => (value === fechaVencimientoGuardada ? null : minDate),
       `La fecha de vencimiento no puede ser anterior a la fecha de generación (${formatShortDate(parseLocalDate(minDate))})`,
     ),
-    referencia: z.string().min(1, "La referencia es requerida"),
+    referencia: referenciaSchema,
     observaciones: z.string().default(""),
+    tipo_compra: tipoCompraSchema,
+    pedidos: pedidosSchema,
   });
 };
 

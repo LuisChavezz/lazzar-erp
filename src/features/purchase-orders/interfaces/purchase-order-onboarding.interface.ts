@@ -1,3 +1,8 @@
+import type {
+  TipoCompra,
+  UpdatePurchaseOrderResponse,
+} from "./purchase-order.interface";
+
 export interface PurchaseOrderOnboardingUser {
   id: number;
   email: string;
@@ -56,7 +61,9 @@ export interface PurchaseOrderOnboardingData {
  *
  * No lleva `fecha_oc`: el servidor la fija al crear la orden y descarta la que
  * mande el cliente. `fecha_vencimiento` viaja como "yyyy-mm-dd" o `null` (sin
- * fecha de vencimiento).
+ * fecha de vencimiento). `referencia` es opcional: `""` se guarda como `null`.
+ * `pedidos` son TODOS los pedidos a ligar (`[]` = ninguno); el campo legado
+ * `pedido` nunca se manda.
  */
 export interface PurchaseOrderEncabezados {
   orden_compra: {
@@ -66,6 +73,8 @@ export interface PurchaseOrderEncabezados {
     fecha_vencimiento: string | null;
     referencia: string;
     observaciones: string;
+    tipo_compra: TipoCompra;
+    pedidos: number[];
   };
 }
 
@@ -77,7 +86,11 @@ export interface PurchaseOrderDetalleItem {
   descripcion: string;
 }
 
-/** Detalles payload — sent in Step 2. */
+/**
+ * Detalles payload — sent in Step 2. NUNCA lleva campos de encabezado: el
+ * backend, por esta ruta (`orden_compra_id`), borra el folio y no valida el
+ * bloqueo de `tipo_compra`.
+ */
 export interface PurchaseOrderDetalles {
   orden_compra_id: number;
   detalle: PurchaseOrderDetalleItem[];
@@ -90,43 +103,9 @@ export type PurchaseOrderOnboardingPayload =
 
 // ─── Response interfaces ─────────────────────────────────────────────────
 
-/** The `orden_compra` object inside the POST response. */
-export interface PurchaseOrderOnboardingResponseOrdenCompra {
-  id: number;
-  folio: string | null;
-  referencia: string;
-  fecha_oc: string;
-  fecha_entrega_estimada: string | null;
-  fecha_autorizacion: string | null;
-  fecha_vencimiento: string | null;
-  estatus: number;
-  impuestos: string;
-  total: string;
-  tipo: string;
-  total_piezas: number;
-  subtotal: string;
-  descuento: string;
-  flete: string;
-  seguros: string;
-  porcentaje_iva: string;
-  total_iva: string;
-  gran_total: string;
-  a_cuenta: string;
-  observaciones: string | null;
-  activo: boolean;
-  created_at: string;
-  updated_at: string;
-  empresa: number;
-  sucursal: number;
-  proveedor: number;
-  solicitud_compra: number | null;
-  moneda: number;
-  usuario: number;
-  pedido: number | null;
-}
-
-/** Response returned by the POST /compras/ordenes/onboarding/ endpoint. */
-export interface PurchaseOrderOnboardingResponse {
-  orden_compra: PurchaseOrderOnboardingResponseOrdenCompra;
-  detalle: PurchaseOrderDetalleItem[];
-}
+/**
+ * Response returned by the POST /compras/ordenes/onboarding/ endpoint. El
+ * backend responde con la MISMA función que el PUT: la cabecera completa del
+ * serializer de órdenes (la del listado) y los renglones como modelo plano.
+ */
+export type PurchaseOrderOnboardingResponse = UpdatePurchaseOrderResponse;

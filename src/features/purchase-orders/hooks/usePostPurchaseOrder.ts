@@ -2,10 +2,25 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { postPurchaseOrder } from "../services/actions";
 import { purchaseOrderReceiptKpisQueryKey } from "@/src/features/purchase-order-receipts/hooks/usePurchaseOrderReceiptKpis";
 import type { PurchaseOrderOnboardingPayload } from "../interfaces/purchase-order-onboarding.interface";
+import {
+  readPurchaseOrderHeaderErrors,
+  type PurchaseOrderHeaderFieldErrors,
+} from "../utils/purchaseOrderHeaderErrors";
 import toast from "react-hot-toast";
-import { AxiosError } from "axios";
 
-export const usePostPurchaseOrder = () => {
+interface UsePostPurchaseOrderOptions {
+  /**
+   * Se llama (además del toast) cuando el backend rechaza campos del
+   * encabezado (`referencia`, `tipo_compra`, `pedidos`…), para que el llamador
+   * los muestre bajo su campo. Solo puede ocurrir en el POST del encabezado:
+   * el de los renglones (`orden_compra_id` + `detalle`) no lleva encabezado.
+   */
+  onHeaderFieldErrors?: (errors: PurchaseOrderHeaderFieldErrors) => void;
+}
+
+export const usePostPurchaseOrder = ({
+  onHeaderFieldErrors,
+}: UsePostPurchaseOrderOptions = {}) => {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -20,20 +35,14 @@ export const usePostPurchaseOrder = () => {
       queryClient.invalidateQueries({ queryKey: purchaseOrderReceiptKpisQueryKey });
     },
     onError: (error) => {
-      if (error instanceof AxiosError) {
-        const statusCode = error.response?.status;
-        const data = error.response?.data;
-
-        if (statusCode === 400 && data) {
-          const validationErrors = data as Record<string, string[]>;
-          const firstMessage = Object.values(validationErrors).flat()[0];
-          if (firstMessage) {
-            toast.error(firstMessage);
-            return;
-          }
-        }
+      const { fieldErrors, toastMessage } = readPurchaseOrderHeaderErrors(
+        error,
+        "Error al registrar la orden de compra",
+      );
+      toast.error(toastMessage);
+      if (Object.keys(fieldErrors).length > 0) {
+        onHeaderFieldErrors?.(fieldErrors);
       }
-      toast.error("Error al registrar la orden de compra");
     },
   });
 };

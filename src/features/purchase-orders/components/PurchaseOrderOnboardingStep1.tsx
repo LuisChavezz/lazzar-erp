@@ -6,13 +6,20 @@ import { FormSubmitButton } from "@/src/components/FormButtons";
 import type { PurchaseOrderEncabezados, PurchaseOrderOnboardingData } from "../interfaces/purchase-order-onboarding.interface";
 import { usePurchaseOrderOnboardingData } from "../hooks/usePurchaseOrderOnboardingData";
 import { usePurchaseOrderStep1Form } from "../hooks/usePurchaseOrderStep1Form";
+import { TIPO_COMPRA_OPTIONS } from "../constants/purchaseOrderTipoCompra";
+import type { TipoCompra } from "../interfaces/purchase-order.interface";
+import type { PurchaseOrderHeaderFieldErrors } from "../utils/purchaseOrderHeaderErrors";
+import { PurchaseOrderPedidosField } from "./PurchaseOrderPedidosField";
 
 export function PurchaseOrderOnboardingStep1({
   initialValues,
+  initialServerErrors,
   onSuccess,
 }: {
   /** Encabezado capturado previamente; preserva lo escrito al volver desde el Step 2. */
   initialValues?: PurchaseOrderEncabezados;
+  /** Errores por campo con los que el backend rechazó el alta (ver el step manager). */
+  initialServerErrors?: PurchaseOrderHeaderFieldErrors;
   onSuccess?: (data: PurchaseOrderEncabezados) => void;
 }) {
   const { onboardingData, isLoading, isError, error } =
@@ -54,6 +61,7 @@ export function PurchaseOrderOnboardingStep1({
     <Step1Form
       onboardingData={onboardingData}
       initialValues={initialValues}
+      initialServerErrors={initialServerErrors}
       onSuccess={onSuccess}
     />
   );
@@ -64,10 +72,16 @@ export function PurchaseOrderOnboardingStep1({
 interface Step1FormProps {
   onboardingData: PurchaseOrderOnboardingData;
   initialValues?: PurchaseOrderEncabezados;
+  initialServerErrors?: PurchaseOrderHeaderFieldErrors;
   onSuccess?: (data: PurchaseOrderEncabezados) => void;
 }
 
-function Step1Form({ onboardingData, initialValues, onSuccess }: Step1FormProps) {
+function Step1Form({
+  onboardingData,
+  initialValues,
+  initialServerErrors,
+  onSuccess,
+}: Step1FormProps) {
   const {
     form,
     isPending,
@@ -82,6 +96,7 @@ function Step1Form({ onboardingData, initialValues, onSuccess }: Step1FormProps)
   } = usePurchaseOrderStep1Form({
     onboardingData,
     initialValues,
+    initialServerErrors,
     onSuccess: onSuccess ?? (() => {}),
   });
 
@@ -166,6 +181,28 @@ function Step1Form({ onboardingData, initialValues, onSuccess }: Step1FormProps)
           )}
         </form.Field>
 
+        {/* ── Tipo de compra ───────────────────────────────────────────────
+            Decide la serie del folio al confirmar la orden. */}
+        <form.Field name="orden_compra.tipo_compra">
+          {(field) => (
+            <FormSelect
+              label="Tipo de compra"
+              name={field.name}
+              value={field.state.value}
+              options={TIPO_COMPRA_OPTIONS}
+              onChange={(event) => {
+                field.handleChange(event.target.value as TipoCompra);
+                clearFieldErrors("orden_compra.tipo_compra");
+              }}
+              onBlur={() => {
+                field.handleBlur();
+                validateField("orden_compra.tipo_compra");
+              }}
+              error={getError("orden_compra.tipo_compra")}
+            />
+          )}
+        </form.Field>
+
         {/* ── Fecha de vencimiento (opcional) ───────────────────────────
             La fecha de generación (`fecha_oc`) no se captura: la fija el
             servidor al crear la orden. */}
@@ -189,7 +226,7 @@ function Step1Form({ onboardingData, initialValues, onSuccess }: Step1FormProps)
           )}
         </form.Field>
 
-        {/* ── Referencia ───────────────────────────────────────────────── */}
+        {/* ── Referencia (opcional) ─────────────────────────────────────── */}
         <form.Field name="orden_compra.referencia">
           {(field) => (
             <FormInput
@@ -228,6 +265,20 @@ function Step1Form({ onboardingData, initialValues, onSuccess }: Step1FormProps)
                 validateField("orden_compra.observaciones");
               }}
               error={getError("orden_compra.observaciones")}
+            />
+          )}
+        </form.Field>
+
+        {/* ── Pedidos (opcional, varios) ───────────────────────────────── */}
+        <form.Field name="orden_compra.pedidos">
+          {(field) => (
+            <PurchaseOrderPedidosField
+              value={field.state.value ?? []}
+              onChange={(ids) => {
+                field.handleChange(ids);
+                clearFieldErrors("orden_compra.pedidos");
+              }}
+              error={getError("orden_compra.pedidos")}
             />
           )}
         </form.Field>

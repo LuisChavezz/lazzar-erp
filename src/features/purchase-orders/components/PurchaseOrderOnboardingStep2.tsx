@@ -15,6 +15,7 @@ import type {
 import { usePostPurchaseOrder } from "../hooks/usePostPurchaseOrder";
 import { usePriceEntries } from "../hooks/usePriceEntries";
 import { buildPurchaseOrderDetalle } from "../utils/buildPurchaseOrderDetalle";
+import type { PurchaseOrderHeaderFieldErrors } from "../utils/purchaseOrderHeaderErrors";
 
 /**
  * Concatena, en minúsculas, los campos contra los que filtra el buscador.
@@ -33,6 +34,11 @@ interface PurchaseOrderOnboardingStep2Props {
   onboardingData: PurchaseOrderOnboardingData | undefined;
   /** Called after the full order POST succeeds. This is the wizard's final step. */
   onSuccess?: () => void;
+  /**
+   * El backend rechazó campos del encabezado (400 por campo en el primer
+   * POST): el manager regresa al Step 1 para mostrarlos bajo su campo.
+   */
+  onHeaderFieldErrors: (errors: PurchaseOrderHeaderFieldErrors) => void;
   /** Vuelve al Step 1 (encabezado), conservando lo capturado. */
   onBack: () => void;
 }
@@ -41,6 +47,7 @@ export function PurchaseOrderOnboardingStep2({
   step1Data,
   onboardingData,
   onSuccess,
+  onHeaderFieldErrors,
   onBack,
 }: PurchaseOrderOnboardingStep2Props) {
   // Opt-out del React Compiler: `useVirtualizer` retorna funciones internas
@@ -51,7 +58,7 @@ export function PurchaseOrderOnboardingStep2({
   const [quantities, setQuantities] = useState<Record<number, number>>({});
   const { prices, setPrice, togglePrice, priceErrors, hasPriceErrors } =
     usePriceEntries(quantities);
-  const { mutateAsync: postDetalles, isPending } = usePostPurchaseOrder();
+  const { mutateAsync: postDetalles, isPending } = usePostPurchaseOrder({ onHeaderFieldErrors });
   // Encabezado ya creado por un intento previo cuyo segundo POST (detalles)
   // falló. Se conserva para reintentar solo ese POST en lugar de crear un
   // encabezado duplicado.

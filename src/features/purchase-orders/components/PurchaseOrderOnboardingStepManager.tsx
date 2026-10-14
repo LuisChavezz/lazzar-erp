@@ -11,6 +11,7 @@ import {
 import { usePurchaseOrderOnboardingData } from "../hooks/usePurchaseOrderOnboardingData";
 import { PurchaseOrderOnboardingStep1 } from "./PurchaseOrderOnboardingStep1";
 import { PurchaseOrderOnboardingStep2 } from "./PurchaseOrderOnboardingStep2";
+import type { PurchaseOrderHeaderFieldErrors } from "../utils/purchaseOrderHeaderErrors";
 
 interface PurchaseOrderOnboardingStepManagerProps {
   /** Called when the onboarding flow should close (e.g. after Step 2 succeeds). */
@@ -30,6 +31,9 @@ export function PurchaseOrderOnboardingStepManager({
   const [currentStep, setCurrentStep] = useState<OnboardingStep>(STEPS[0]);
   const [step1Data, setStep1Data] =
     useState<PurchaseOrderEncabezados | null>(null);
+  // Errores por campo con los que el backend rechazó el encabezado: el Step 1
+  // los muestra bajo su campo al volver a él.
+  const [headerErrors, setHeaderErrors] = useState<PurchaseOrderHeaderFieldErrors>({});
 
   const { onboardingData } = usePurchaseOrderOnboardingData();
 
@@ -37,6 +41,7 @@ export function PurchaseOrderOnboardingStepManager({
   const handleStep1Success = useCallback(
     (data: PurchaseOrderEncabezados) => {
       setStep1Data(data);
+      setHeaderErrors({});
       setCurrentStep("step-2");
     },
     [],
@@ -44,6 +49,12 @@ export function PurchaseOrderOnboardingStepManager({
 
   /** Called by Step 2 after a successful POST — the wizard's final step. */
   const handleStep2Success = () => onClose?.();
+
+  /** El POST del encabezado se rechazó por campos: se corrigen en el Step 1. */
+  const handleHeaderFieldErrors = (errors: PurchaseOrderHeaderFieldErrors) => {
+    setHeaderErrors(errors);
+    setCurrentStep("step-1");
+  };
 
   return (
     <div className="w-full space-y-6">
@@ -57,6 +68,7 @@ export function PurchaseOrderOnboardingStepManager({
         {currentStep === "step-1" && (
           <PurchaseOrderOnboardingStep1
             initialValues={step1Data ?? undefined}
+            initialServerErrors={headerErrors}
             onSuccess={handleStep1Success}
           />
         )}
@@ -74,6 +86,7 @@ export function PurchaseOrderOnboardingStepManager({
               step1Data={step1Data}
               onboardingData={onboardingData}
               onSuccess={handleStep2Success}
+              onHeaderFieldErrors={handleHeaderFieldErrors}
               onBack={() => setCurrentStep("step-1")}
             />
           </div>

@@ -20,6 +20,7 @@ import type { PurchaseOrderEditHeader } from "../schemas/purchase-order-edit.sch
 import { usePriceEntries } from "../hooks/usePriceEntries";
 import { useUpdatePurchaseOrder } from "../hooks/useUpdatePurchaseOrder";
 import { buildPurchaseOrderDetalle } from "../utils/buildPurchaseOrderDetalle";
+import type { PurchaseOrderHeaderFieldErrors } from "../utils/purchaseOrderHeaderErrors";
 
 /**
  * Concatena, en minúsculas, los campos contra los que filtra el buscador.
@@ -37,6 +38,11 @@ interface PurchaseOrderEditStep2Props {
   initialData: PurchaseOrder;
   /** Encabezado capturado en el Step 1. */
   header: PurchaseOrderEditHeader;
+  /**
+   * La orden ya tiene folio: `tipo_compra` NO viaja en el PUT (el backend
+   * rechaza cambiarlo y el Step 1 lo bloquea).
+   */
+  isTipoCompraLocked: boolean;
   /** Catálogos (incluye los productos disponibles). */
   onboardingData: PurchaseOrderOnboardingData;
   /** Renglones iniciales (producto, cantidad, precio, descripcion), sembrados desde los renglones existentes de la orden. */
@@ -49,6 +55,11 @@ interface PurchaseOrderEditStep2Props {
    * Ver `useUpdatePurchaseOrder`.
    */
   onOrderNoLongerEditable: () => void;
+  /**
+   * El backend rechazó campos del encabezado (400 por campo): el manager
+   * regresa al Step 1 para mostrarlos bajo su campo.
+   */
+  onHeaderFieldErrors: (errors: PurchaseOrderHeaderFieldErrors) => void;
   /** Vuelve al Step 1 (encabezado). */
   onBack: () => void;
 }
@@ -64,17 +75,22 @@ interface PurchaseOrderEditStep2Props {
 export function PurchaseOrderEditStep2({
   initialData,
   header,
+  isTipoCompraLocked,
   onboardingData,
   initialItems,
   onSuccess,
   onOrderNoLongerEditable,
+  onHeaderFieldErrors,
   onBack,
 }: PurchaseOrderEditStep2Props) {
   // Opt-out del React Compiler: `useVirtualizer` retorna funciones internas
   // que el compilador no puede memoizar de forma segura.
   "use no memo";
 
-  const { mutate: update, isPending } = useUpdatePurchaseOrder({ onOrderNoLongerEditable });
+  const { mutate: update, isPending } = useUpdatePurchaseOrder({
+    onOrderNoLongerEditable,
+    onHeaderFieldErrors,
+  });
   const [searchQuery, setSearchQuery] = useState("");
   const [quantities, setQuantities] = useState<Record<number, number>>(() =>
     Object.fromEntries(initialItems.map((i) => [i.producto, i.cantidad] as const)),
@@ -242,7 +258,12 @@ export function PurchaseOrderEditStep2({
     });
 
     // El PUT refleja la forma del alta: encabezado + renglones del detalle.
-    const body: UpdatePurchaseOrderBody = { ...header, detalles: detalle };
+    // `pedidos` va SIEMPRE (reemplaza la lista completa); `tipo_compra` solo
+    // sin folio. El campo legado `pedido` nunca se manda.
+    const { tipo_compra, ...headerWithoutTipo } = header;
+    const body: UpdatePurchaseOrderBody = isTipoCompraLocked
+      ? { ...headerWithoutTipo, detalles: detalle }
+      : { ...headerWithoutTipo, tipo_compra, detalles: detalle };
     update(
       { pk: initialData.id, body },
       { onSuccess: () => onSuccess() },

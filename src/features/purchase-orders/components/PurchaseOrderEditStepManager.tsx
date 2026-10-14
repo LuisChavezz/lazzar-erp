@@ -46,6 +46,7 @@ import { canSeeAmounts } from "../utils/purchaseOrderFinance";
 import { PURCHASE_ORDER_STATUS } from "../constants/purchaseOrderStatus";
 import { PurchaseOrderEditStep1 } from "./PurchaseOrderEditStep1";
 import { PurchaseOrderEditStep2 } from "./PurchaseOrderEditStep2";
+import type { PurchaseOrderHeaderFieldErrors } from "../utils/purchaseOrderHeaderErrors";
 
 interface PurchaseOrderEditStepManagerProps {
   /** Orden a editar. */
@@ -60,6 +61,9 @@ export function PurchaseOrderEditStepManager({
 }: PurchaseOrderEditStepManagerProps) {
   const [currentStep, setCurrentStep] = useState<EditStep>(STEPS[0]);
   const [header, setHeader] = useState<PurchaseOrderEditHeader | null>(null);
+  // Errores por campo con los que el backend rechazó el PUT: el Step 1 los
+  // muestra bajo su campo al volver a él.
+  const [headerErrors, setHeaderErrors] = useState<PurchaseOrderHeaderFieldErrors>({});
 
   // Catálogos (sucursales, monedas, proveedores, productos) para los pasos.
   const {
@@ -105,6 +109,7 @@ export function PurchaseOrderEditStepManager({
   const handleStep1Success = useCallback(
     (nextHeader: PurchaseOrderEditHeader) => {
       setHeader(nextHeader);
+      setHeaderErrors({});
       setCurrentStep("step-2");
     },
     [],
@@ -121,6 +126,12 @@ export function PurchaseOrderEditStepManager({
    * Cualquier otro error deja el diálogo abierto con los cambios.
    */
   const handleOrderNoLongerEditable = () => onClose?.();
+
+  /** El PUT se rechazó por campos del encabezado: se corrigen en el Step 1. */
+  const handleHeaderFieldErrors = (errors: PurchaseOrderHeaderFieldErrors) => {
+    setHeaderErrors(errors);
+    setCurrentStep("step-1");
+  };
 
   // Renglones iniciales del paso de productos: sembrados desde los renglones
   // existentes de la orden, conservando `precio` y `descripcion` reales (no
@@ -230,6 +241,7 @@ export function PurchaseOrderEditStepManager({
             initialData={snapshot}
             initialHeader={header ?? undefined}
             onboardingData={onboardingData}
+            initialServerErrors={headerErrors}
             onSuccess={handleStep1Success}
           />
         )}
@@ -245,10 +257,12 @@ export function PurchaseOrderEditStepManager({
             <PurchaseOrderEditStep2
               initialData={initialData}
               header={header}
+              isTipoCompraLocked={Boolean(snapshot.folio)}
               onboardingData={onboardingData}
               initialItems={initialItems}
               onSuccess={handleStep2Success}
               onOrderNoLongerEditable={handleOrderNoLongerEditable}
+              onHeaderFieldErrors={handleHeaderFieldErrors}
               onBack={() => setCurrentStep("step-1")}
             />
           </div>

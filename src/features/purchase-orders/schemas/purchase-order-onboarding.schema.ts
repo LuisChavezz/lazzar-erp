@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { getLocalTodayDate } from "@/src/utils/formatDate";
 import { createFechaVencimientoSchema } from "./purchase-order-fecha-vencimiento.schema";
+import { pedidosSchema, referenciaSchema, tipoCompraSchema } from "./purchase-order-header-fields.schema";
 
 /**
  * Encabezado del alta (`POST /compras/ordenes/onboarding/`, anidado bajo
@@ -29,8 +30,10 @@ export const PurchaseOrderEncabezadosSchema = z.object({
       () => getLocalTodayDate(),
       "La fecha de vencimiento no puede ser anterior a hoy",
     ),
-    referencia: z.string().min(1, "La referencia es requerida"),
+    referencia: referenciaSchema,
     observaciones: z.string().default(""),
+    tipo_compra: tipoCompraSchema,
+    pedidos: pedidosSchema,
   }),
 });
 

@@ -3,7 +3,11 @@ import { updatePurchaseOrder } from "../services/actions";
 import { invalidateReceiptOrderOptions } from "../utils/invalidateReceiptOrderOptions";
 import { purchaseOrderReceiptKpisQueryKey } from "@/src/features/purchase-order-receipts/hooks/usePurchaseOrderReceiptKpis";
 import type { UpdatePurchaseOrderParams } from "../interfaces/purchase-order.interface";
-import { drfFieldMessage, firstDrfFieldMessage } from "@/src/utils/firstDrfFieldMessage";
+import { drfFieldMessage } from "@/src/utils/firstDrfFieldMessage";
+import {
+  readPurchaseOrderHeaderErrors,
+  type PurchaseOrderHeaderFieldErrors,
+} from "../utils/purchaseOrderHeaderErrors";
 import toast from "react-hot-toast";
 import { AxiosError } from "axios";
 
@@ -36,10 +40,17 @@ interface UseUpdatePurchaseOrderOptions {
    * Mismo patrón de opción que `useCancelPurchaseOrder({ onReasonError })`.
    */
   onOrderNoLongerEditable?: () => void;
+  /**
+   * Se llama (además del toast) cuando el PUT se rechaza por campos del
+   * encabezado (`referencia`, `tipo_compra`, `pedidos`…), para que el llamador
+   * los muestre bajo su campo y deje corregirlos.
+   */
+  onHeaderFieldErrors?: (errors: PurchaseOrderHeaderFieldErrors) => void;
 }
 
 export const useUpdatePurchaseOrder = ({
   onOrderNoLongerEditable,
+  onHeaderFieldErrors,
 }: UseUpdatePurchaseOrderOptions = {}) => {
   const queryClient = useQueryClient();
 
@@ -91,14 +102,16 @@ export const useUpdatePurchaseOrder = ({
             onOrderNoLongerEditable?.();
             return;
           }
-          const firstMessage = firstDrfFieldMessage(error);
-          if (firstMessage) {
-            toast.error(firstMessage);
-            return;
-          }
         }
       }
-      toast.error("Error al actualizar la orden de compra");
+      const { fieldErrors, toastMessage } = readPurchaseOrderHeaderErrors(
+        error,
+        "Error al actualizar la orden de compra",
+      );
+      toast.error(toastMessage);
+      if (Object.keys(fieldErrors).length > 0) {
+        onHeaderFieldErrors?.(fieldErrors);
+      }
     },
   });
 };

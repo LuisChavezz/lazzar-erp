@@ -10,6 +10,7 @@ import {
   type PurchaseOrderEditFormValues,
   type PurchaseOrderEditHeader,
 } from "../schemas/purchase-order-edit.schema";
+import type { PurchaseOrderHeaderFieldErrors } from "../utils/purchaseOrderHeaderErrors";
 
 interface UsePurchaseOrderEditFormParams {
   /**
@@ -26,6 +27,11 @@ interface UsePurchaseOrderEditFormParams {
    */
   initialHeader?: PurchaseOrderEditHeader;
   onboardingData: PurchaseOrderOnboardingData;
+  /**
+   * Errores por campo con los que el backend rechazó el PUT (se envía en el
+   * Step 2, que regresa aquí para mostrarlos bajo su campo).
+   */
+  initialServerErrors?: PurchaseOrderHeaderFieldErrors;
   /** Llamado cuando el formulario es válido. Recibe los campos del encabezado. */
   onSuccess: (header: PurchaseOrderEditHeader) => void;
 }
@@ -40,7 +46,9 @@ export type EditFieldPath =
   | "moneda"
   | "fecha_vencimiento"
   | "referencia"
-  | "observaciones";
+  | "observaciones"
+  | "tipo_compra"
+  | "pedidos";
 
 type EditErrorMap = Partial<Record<EditFieldPath, string>>;
 
@@ -52,10 +60,13 @@ export function usePurchaseOrderEditForm({
   initialData,
   initialHeader,
   onboardingData,
+  initialServerErrors,
   onSuccess,
 }: UsePurchaseOrderEditFormParams) {
   const [clientErrors, setClientErrors] = useState<EditErrorMap>({});
-  const [serverErrors, setServerErrors] = useState<EditErrorMap>({});
+  const [serverErrors, setServerErrors] = useState<EditErrorMap>(
+    () => initialServerErrors ?? {},
+  );
 
   // Fecha de generación de la orden (`fecha_oc`, solo lectura): piso de la
   // fecha de vencimiento, que no se exige sobre la fecha ya guardada.
@@ -84,6 +95,9 @@ export function usePurchaseOrderEditForm({
       fecha_vencimiento: toDateInputValue(initialData.fecha_vencimiento),
       referencia: initialData.referencia ?? "",
       observaciones: initialData.observaciones ?? "",
+      tipo_compra: initialData.tipo_compra,
+      // Copia: el formulario no debe mutar el arreglo de la orden.
+      pedidos: [...initialData.pedidos],
     };
   }, [initialData, initialHeader]);
 

@@ -7,19 +7,24 @@ import type { ReceiptDetail } from "@/src/features/receipts/interfaces/receipt.i
 
 /**
  * Pedido de venta ligado a la orden de compra, ya resuelto por el backend
- * (mismo helper `armar_pedido_vinculado` que alimenta bordado, reflejante,
- * corte de manga y producción, por lo que la forma es idéntica a la de esos
- * módulos). Se declara con nombre —y no en línea como allá— porque aquí
- * convive con {@link DocumentoLigado} y la sección de documentos del detalle
- * los usa juntos.
+ * (`{ id, folio }`). Es la forma de cada elemento de `pedidos_vinculados` y
+ * también la de `pedido_vinculado` del detalle (mismo helper
+ * `armar_pedido_vinculado` que alimenta bordado, reflejante, corte de manga y
+ * producción).
  *
- * `null` cuando la orden no nace de un pedido (compra de abasto directa): el
- * FK `pedido` es `SET_NULL`.
+ * `folio` puede ser `null`: `Pedido.folio` es nullable.
  */
 export interface PedidoVinculado {
   id: number;
-  folio: string;
+  folio: string | null;
 }
+
+/**
+ * Tipo de compra de la orden. Decide la serie del folio al confirmarla
+ * (`aceptar`): `MP` (materia prima, el default del backend) o `PT` (producto
+ * terminado). Etiquetas en `constants/purchaseOrderTipoCompra.ts`.
+ */
+export type TipoCompra = "MP" | "PT";
 
 /**
  * Tipos de documento que el backend puede ligar a una orden de compra.
@@ -79,7 +84,11 @@ export interface PurchaseOrder {
    * y queda invisible e inclicable.
    */
   folio: string | null;
-  referencia: string;
+  /**
+   * Opcional en el alta y la edición: el backend guarda `""` como `null`, así
+   * que una orden sin referencia llega con `null`.
+   */
+  referencia: string | null;
   fecha_oc: string;
   fecha_entrega_estimada: string | null;
   fecha_autorizacion: string | null;
@@ -129,12 +138,25 @@ export interface PurchaseOrder {
    */
   moneda_simbolo: string | null;
   solicitud_compra: number | null;
-  pedido: number | null;
   /**
-   * Doblemente nullable: el FK `pedido` es `SET_NULL` (compra de abasto sin
-   * pedido madre) y `Pedido.folio` es a su vez nullable.
+   * FK LEGADO de un solo pedido. Una orden puede ligar VARIOS pedidos (ver
+   * `pedidos`); este campo solo refleja uno de ellos y no tiene por qué
+   * coincidir con `pedidos[0]`. No lo uses para mostrar los pedidos de la
+   * orden ni lo mandes al guardar: usa `pedidos` / `pedidos_vinculados`.
    */
+  pedido: number | null;
+  /** Folio del pedido LEGADO (`pedido`); doblemente nullable. Ver `pedido`. */
   pedido_folio: string | null;
+  /**
+   * Ids de TODOS los pedidos ligados a la orden (`[]` si ninguno). El backend
+   * NO garantiza su orden: no hay un pedido "principal".
+   */
+  pedidos: number[];
+  /** Los mismos pedidos que `pedidos`, ya con su folio. Mismo aviso de orden. */
+  pedidos_vinculados: PedidoVinculado[];
+  tipo_compra: TipoCompra;
+  /** Etiqueta del backend para `tipo_compra` ("Materia prima"/"Producto terminado"). */
+  tipo_compra_label: string;
 
   // ── Financieros — pueden faltar por rol, ver el bloque del docstring ──────
   subtotal?: string;
@@ -203,6 +225,10 @@ export interface PurchaseOrderDetail extends PurchaseOrder {
   detalles: PurchaseOrderDetalle[];
   /** Recepciones (parciales o totales) generadas contra esta orden; `[]` si no hay ninguna. */
   recepciones: PurchaseOrderReceipt[];
+  /**
+   * Solo el pedido del FK LEGADO (`pedido`), no todos los ligados: para
+   * mostrar los pedidos de la orden usa `pedidos_vinculados`.
+   */
   pedido_vinculado: PedidoVinculado | null;
   /** Documentos relacionados; `[]` cuando la orden no tiene ninguno. */
   documentos: DocumentoLigado[];
@@ -218,6 +244,11 @@ export interface PurchaseOrderDetail extends PurchaseOrder {
  * totales, fechas de auditoría, etc.), incluida `fecha_oc`: la fija el servidor
  * al crear la orden y el PUT la ignora. `fecha_vencimiento` va siempre
  * ("yyyy-mm-dd" o `null` para borrarla).
+ *
+ * - `pedidos` va SIEMPRE: reemplaza la lista completa (`[]` desliga todos,
+ *   incluido el FK legado). El campo legado `pedido` nunca se manda.
+ * - `tipo_compra` es opcional: se OMITE cuando la orden ya tiene folio (el
+ *   backend rechaza cambiarlo y el formulario lo bloquea).
  */
 export type UpdatePurchaseOrderHeader = Pick<
   PurchaseOrder,
@@ -227,7 +258,10 @@ export type UpdatePurchaseOrderHeader = Pick<
   | "sucursal"
   | "proveedor"
   | "moneda"
->;
+  | "pedidos"
+> & {
+  tipo_compra?: TipoCompra;
+};
 
 /**
  * Cuerpo de la petición `PUT /compras/ordenes/{pk}/`.
@@ -266,7 +300,8 @@ export interface CancelPurchaseOrderParams {
 }
 
 /**
- * Renglón tal como lo devuelve el PUT: el modelo plano del detalle (FKs como
+ * Renglón tal como lo devuelven el PUT y el POST de onboarding (ambos responden
+ * con la misma función del backend): el modelo plano del detalle (FKs como
  * ids), distinto de {@link PurchaseOrderDetalle} del retrieve. Forma observada
  * contra la respuesta real del backend.
  */
@@ -286,10 +321,11 @@ export interface UpdatePurchaseOrderResponseDetalle {
 }
 
 /**
- * Respuesta de `PUT /compras/ordenes/{pk}/`: la cabecera (misma forma que el
- * listado) envuelta en `orden_compra` y los renglones recreados en `detalle`.
- * NO es un {@link PurchaseOrder} plano. Hoy nadie la consume: tras el PUT la
- * vista se refresca invalidando las queries.
+ * Respuesta de `PUT /compras/ordenes/{pk}/` y de `POST
+ * /compras/ordenes/onboarding/` (la misma función del backend): la cabecera
+ * (misma forma que el listado) envuelta en `orden_compra` y los renglones en
+ * `detalle`. NO es un {@link PurchaseOrder} plano. Del PUT nadie la consume:
+ * tras guardar, la vista se refresca invalidando las queries.
  */
 export interface UpdatePurchaseOrderResponse {
   orden_compra: PurchaseOrder;
