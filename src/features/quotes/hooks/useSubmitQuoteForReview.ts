@@ -3,7 +3,7 @@
 import { AxiosError } from "axios";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
-import type { Quote } from "../interfaces/quote.interface";
+import type { QuoteSubmitForReviewResponse } from "../interfaces/quote.interface";
 import { submitQuoteForReview } from "../services/actions";
 
 export const submitQuoteForReviewMutationKey = ["submit-quote-for-review"] as const;
@@ -12,7 +12,7 @@ export const submitQuoteForReviewMutationKey = ["submit-quote-for-review"] as co
 export const useSubmitQuoteForReview = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<Quote, unknown, number>({
+  return useMutation<QuoteSubmitForReviewResponse, unknown, number>({
     mutationKey: submitQuoteForReviewMutationKey,
     mutationFn: (id: number) => submitQuoteForReview(id),
     onSuccess: () => {

@@ -1,6 +1,13 @@
 import { isAxiosError } from "axios";
 import { v1_api } from "@/src/api/v1.api";
-import { Quote, QuoteById, QuoteCreate, QuoteOnboardingData, QuoteQueryParams } from "../interfaces/quote.interface";
+import {
+  Quote,
+  QuoteById,
+  QuoteCreate,
+  QuoteOnboardingData,
+  QuoteQueryParams,
+  QuoteSubmitForReviewResponse,
+} from "../interfaces/quote.interface";
 
 
 export const getQuotes = async (params?: QuoteQueryParams): Promise<Quote[]> => {
@@ -104,7 +111,9 @@ export const updateQuote = async (cotizacion_id: number, quote: Partial<QuoteCre
 };
 
 // ─── Envía la cotización a revisión (Borrador → Por Autorizar) ─────────────────
-export const submitQuoteForReview = async (id: number): Promise<Quote> => {
-  const response = await v1_api.post<Quote>(`/ventas/cotizaciones/${id}/enviar-revision/`);
+export const submitQuoteForReview = async (id: number): Promise<QuoteSubmitForReviewResponse> => {
+  const response = await v1_api.post<QuoteSubmitForReviewResponse>(
+    `/ventas/cotizaciones/${id}/enviar-revision/`
+  );
   return response.data;
 };

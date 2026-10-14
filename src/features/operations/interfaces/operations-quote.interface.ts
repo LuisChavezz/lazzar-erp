@@ -159,11 +159,14 @@ export interface OperationsQuote {
  * `estatus_label`, `cliente_nombre`, `pedido_id` ni lo demás que el listado
  * deriva aparte—. Solo se tipa lo que se usa. `pedido` solo viene al autorizar,
  * que es cuando nace.
+ *
+ * `motivo_rechazo` va aparte del `Pick`: lo trae la cotización de la acción,
+ * pero NO la fila del listado, así que no se declara en `OperationsQuote`.
  */
 export interface OperationsQuoteActionResponse {
   cotizacion: Pick<
     OperationsQuote,
     "id" | "estatus" | "autorizada_at" | "cambios_solicitados_at" | "updated_at"
-  >;
+  > & { motivo_rechazo: string | null };
   pedido?: { id: number; folio: string | null };
 }

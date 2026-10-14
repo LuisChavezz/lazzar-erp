@@ -187,6 +187,13 @@ export interface QuoteById {
    * payload NUNCA manda este campo: no agregarlo a `QuoteCreate`.
    */
   recompra: boolean;
+  /**
+   * ÚLTIMO motivo de rechazo (solo lectura; lo escribe `rechazar/`). El backend
+   * NUNCA lo limpia en transiciones posteriores, así que puede seguir presente
+   * en estatus 1, 2 o 3: solo describe el estado actual cuando `estatus === 4`.
+   * El listado (`GET /ventas/cotizaciones/`) NO lo trae — no está en `Quote`.
+   */
+  motivo_rechazo: string | null;
   autorizada_at: string | null;
   cambios_solicitados_at: string | null;
   aprobado_snapshot: string | null;
@@ -249,6 +256,34 @@ export interface QuoteById {
     created_at: string;
     updated_at: string;
   }[];
+}
+
+/**
+ * Respuesta de `POST /ventas/cotizaciones/{id}/enviar-revision/`. `cotizacion`
+ * llega completa; solo se tipa lo que se usa.
+ */
+export interface QuoteSubmitForReviewResponse {
+  ok: true;
+  /** Etiqueta del nuevo estatus ("EN REVISION"), no su número. */
+  estatus: string;
+  cotizacion: Pick<QuoteById, "id" | "estatus" | "motivo_rechazo" | "updated_at">;
+}
+
+/** Tipo de entrada del historial de comentarios de una cotización. */
+export type QuoteComentarioTipo = "RECHAZO" | "REENVIO";
+
+/**
+ * Entrada de `GET /ventas/cotizaciones/{id}/comentarios/` (orden cronológico).
+ * `RECHAZO` lo crea `rechazar/`; `REENVIO`, `enviar-revision/` con comentario
+ * desde estatus 4.
+ */
+export interface QuoteComentario {
+  id: number;
+  tipo: QuoteComentarioTipo;
+  comentario: string;
+  autor: number;
+  autor_nombre: string | null;
+  created_at: string;
 }
 
 export interface QuoteCreate {
