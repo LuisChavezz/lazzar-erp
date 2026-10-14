@@ -12,6 +12,7 @@ import {
   textOrDash,
 } from "@/src/components/DetailDialogPrimitives";
 import { usePurchaseOrder } from "../hooks/usePurchaseOrder";
+import { tipoCompraLabel } from "../constants/purchaseOrderTipoCompra";
 import { PurchaseOrderReceiptDetailDialog } from "@/src/features/purchase-order-receipts/components/PurchaseOrderReceiptDetailDialog";
 import { RECEIPT_STATUS_CONFIG } from "@/src/features/receipts/constants/receiptStatus";
 import {
@@ -394,7 +395,14 @@ export function PurchaseOrderDetailDialog({
                   label={purchaseOrder.estatus_label}
                 />
               </InfoField>
+              {/* `tipo` ("ODC") y `tipo_compra` son campos DISTINTOS del
+                  backend: el primero es el tipo de documento; el segundo,
+                  materia prima o producto terminado (decide la serie del
+                  folio). */}
               <InfoField label="Tipo">{textOrDash(purchaseOrder.tipo)}</InfoField>
+              <InfoField label="Tipo de compra">
+                {tipoCompraLabel(purchaseOrder.tipo_compra, purchaseOrder.tipo_compra_label)}
+              </InfoField>
               <InfoField label="Proveedor">
                 {textOrDash(purchaseOrder.proveedor_nombre)}
               </InfoField>
@@ -406,15 +414,24 @@ export function PurchaseOrderDetailDialog({
               <InfoField label="Referencia">
                 {textOrDash(purchaseOrder.referencia)}
               </InfoField>
-              {/* Pedido como TEXTO y no como enlace: esto es un modal, navegar
-                  fuera cerraría el contexto desde el que se abrió (a menudo el
-                  propio detalle 360° del pedido al que apuntaría). */}
-              <InfoField label="Pedido">
-                <span className="font-mono">
-                  {textOrDash(
-                    purchaseOrder.pedido_vinculado?.folio ?? purchaseOrder.pedido_folio,
-                  )}
-                </span>
+              {/* Pedidos como TEXTO y no como enlaces: esto es un modal,
+                  navegar fuera cerraría el contexto desde el que se abrió (a
+                  menudo el propio detalle 360° de uno de esos pedidos). Todos
+                  los ligados (`pedidos_vinculados`), sin uno "principal" ni
+                  orden garantizado; no `pedido_vinculado`, que solo ve el FK
+                  legado. */}
+              <InfoField label="Pedidos">
+                {purchaseOrder.pedidos_vinculados.length === 0 ? (
+                  "—"
+                ) : (
+                  <ul className="space-y-0.5">
+                    {purchaseOrder.pedidos_vinculados.map((pedido) => (
+                      <li key={pedido.id} className="font-mono">
+                        {textOrDash(pedido.folio)}
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </InfoField>
               <InfoField label="Fecha de generación">
                 {formatLocalDate(purchaseOrder.fecha_oc)}

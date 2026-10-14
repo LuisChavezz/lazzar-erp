@@ -3,6 +3,7 @@
 import type React from "react";
 import { useState } from "react";
 import Link from "next/link";
+import { PedidoFolioLink } from "@/src/features/orders/components/PedidoFolioLink";
 import { ArrowLeftIcon } from "@/src/components/Icons";
 import { Loader } from "@/src/components/Loader";
 import { ErrorState } from "@/src/components/ErrorState";
@@ -31,6 +32,7 @@ import {
 } from "../constants/purchaseOrderStatus";
 import { canSeeAmounts, formatIvaPercent } from "../utils/purchaseOrderFinance";
 import { usePurchaseOrder } from "../hooks/usePurchaseOrder";
+import { tipoCompraLabel } from "../constants/purchaseOrderTipoCompra";
 import type {
   DocumentoLigado,
   PurchaseOrderDetail,
@@ -729,26 +731,38 @@ export function PurchaseOrderPageContent({
           <InfoField label="Correo del proveedor">
             <span className="break-all">{textOrDash(data.proveedor_correo)}</span>
           </InfoField>
+          {/* `tipo` ("ODC") y `tipo_compra` son campos DISTINTOS del backend:
+              el primero es el tipo de documento; el segundo, materia prima o
+              producto terminado (decide la serie del folio). */}
           <InfoField label="Tipo">{textOrDash(data.tipo)}</InfoField>
+          <InfoField label="Tipo de compra">
+            {tipoCompraLabel(data.tipo_compra, data.tipo_compra_label)}
+          </InfoField>
           <InfoField label="Referencia">{textOrDash(data.referencia)}</InfoField>
-          <InfoField label="Pedido">
-            {/* Se navega por `pedido_vinculado`, no por el par plano
-                `pedido`/`pedido_folio`: su presencia es la única señal de que
-                el pedido madre existe (la OC de abasto directo no tiene).
-                `/orders/[id]` es la ruta NEUTRA del detalle 360° (su regla en
-                `routePermissions` se cumple con CUALQUIERA de varios códigos,
-                entre ellos `R-COMPRAS-OC`), y `?from=purchase-orders` hace que su
-                "Volver" regrese a este módulo en vez de a Mesa de Control,
-                que un usuario solo-Compras no puede abrir. */}
-            {data.pedido_vinculado ? (
-              <Link
-                href={`/orders/${data.pedido_vinculado.id}?from=purchase-orders`}
-                className="font-mono text-sky-600 dark:text-sky-400 hover:underline hover:text-sky-700 dark:hover:text-sky-300 transition-colors"
-              >
-                {data.pedido_vinculado.folio}
-              </Link>
+          <InfoField label="Pedidos">
+            {/* TODOS los pedidos ligados (`pedidos_vinculados`), sin uno
+                "principal" ni orden garantizado; no `pedido_vinculado`, que
+                solo ve el FK legado. Cada folio enlaza a la ruta NEUTRA del
+                detalle 360° (`/orders/[id]`, su regla en `routePermissions`
+                se cumple con CUALQUIERA de varios códigos, entre ellos
+                `R-COMPRAS-OC`); `from=purchase-orders` hace que su "Volver"
+                regrese a este módulo y no a Mesa de Control, que un usuario
+                solo-Compras no puede abrir. */}
+            {data.pedidos_vinculados.length === 0 ? (
+              "—"
             ) : (
-              <span className="font-mono">{textOrDash(data.pedido_folio)}</span>
+              <ul className="space-y-0.5">
+                {data.pedidos_vinculados.map((pedido) => (
+                  <li key={pedido.id}>
+                    <PedidoFolioLink
+                      pedidoId={pedido.id}
+                      folio={pedido.folio}
+                      from="purchase-orders"
+                      className="font-mono text-sky-600 dark:text-sky-400"
+                    />
+                  </li>
+                ))}
+              </ul>
             )}
           </InfoField>
           {/* Empresa / sucursal / usuario con el NOMBRE ya resuelto que el
