@@ -18,6 +18,7 @@ import {
   isValidOpId,
   useProductionOrderCriticalPath,
 } from "@/src/features/production-order-critical-path/hooks/useProductionOrderCriticalPath";
+import { toCantidadValue } from "@/src/features/production-order-critical-path/utils/criticalPathForm";
 import { recalculateConsumptionMutationKey } from "../hooks/useRecalculateProductionOrderConsumption";
 import { useRecalculateConsumptionForm } from "../hooks/useRecalculateConsumptionForm";
 import type { RecalculateConsumptionResponse } from "../interfaces/production-order-consumption.interface";
@@ -93,15 +94,6 @@ interface RecalculateConsumptionContentProps {
 }
 
 /**
- * Cantidad guardada en la ruta crítica ("100.00", decimal(12,2)) como texto
- * del input ("100"). Solo se quitan ceros de la fracción: una fracción real
- * ("120.50") se muestra tal cual y la validación pide corregirla. Mismo
- * criterio que el formulario de la ruta crítica.
- */
-const toCantidadInput = (stored: string | null): string =>
-  stored === null ? "" : stored.replace(/\.0*$/, "");
-
-/**
  * Espera la lectura FRESCA de la ruta crítica (`isFetchedAfterMount`; el hook
  * la pide en cada montaje) para precargar `cantidad_real_corte`, y entonces
  * monta el formulario una sola vez: un refetch posterior no lo reinicia.
@@ -165,7 +157,9 @@ function RecalculateConsumptionContent({
     <RecalculateConsumptionSteps
       opId={opId}
       products={products}
-      initialCantidad={toCantidadInput(data.cantidad_real_corte)}
+      // "100.00" → "100", con la MISMA regla que el formulario de la ruta
+      // crítica: una fracción real ("120.50") se deja y la validación la pide.
+      initialCantidad={toCantidadValue(data.cantidad_real_corte)}
       onClose={onClose}
     />
   );

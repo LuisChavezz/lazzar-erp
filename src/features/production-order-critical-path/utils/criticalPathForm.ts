@@ -30,7 +30,7 @@ export const DATE_FIELDS = [
  * quitan ceros de la fracción: "120.50" se muestra TAL CUAL, sin redondear, y
  * la validación pide corregirlo antes de guardar.
  */
-const toCantidadValue = (stored: string | null): string =>
+export const toCantidadValue = (stored: string | null): string =>
   stored === null ? "" : stored.replace(/\.0*$/, "");
 
 /** Valores del formulario a partir del registro guardado (`null` → ""). */
