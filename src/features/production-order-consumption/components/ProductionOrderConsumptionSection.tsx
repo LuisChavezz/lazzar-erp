@@ -1,6 +1,7 @@
 "use client";
 
 import { Button } from "@/src/components/Button";
+import { StatusBadge, type StatusBadgeConfigEntry } from "@/src/components/StatusBadge";
 import {
   EmptyLines,
   LineItemsTable,
@@ -105,16 +106,19 @@ export function ProductionOrderConsumptionSection({
 
 // ── Historial ─────────────────────────────────────────────────────────────────
 
-const RECORD_BADGE = {
+/** Rótulo de cada registro del historial (`StatusBadge`, clave = tipo de registro). */
+const RECORD_BADGE_CFG: Record<"original" | "ajuste", StatusBadgeConfigEntry> = {
   original: {
     label: "Original",
-    cls: "bg-sky-50 text-sky-700 border-sky-200 dark:bg-sky-500/10 dark:text-sky-400 dark:border-sky-500/20",
+    cls: "bg-sky-50 text-sky-700 dark:bg-sky-500/10 dark:text-sky-400",
+    dot: "bg-sky-500",
   },
   ajuste: {
     label: "Ajuste",
-    cls: "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/20",
+    cls: "bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400",
+    dot: "bg-amber-500",
   },
-} as const;
+};
 
 /**
  * Registros de consumo en bruto, del más antiguo al más reciente, plegados por
@@ -131,18 +135,16 @@ function ConsumptionHistory({ consumos }: { consumos: ProductionOrderConsumo[] }
       </summary>
       <div className="space-y-4 border-t border-slate-100 dark:border-white/10 p-4">
         {records.map(({ record, isOriginal }) => {
-          const badge = isOriginal ? RECORD_BADGE.original : RECORD_BADGE.ajuste;
           return (
             <div key={record.consumo_produccion_id} className="space-y-2">
               <div className="flex items-center gap-2">
                 <h4 className="text-sm font-semibold text-slate-800 dark:text-slate-100">
                   Consumo #{record.consumo_produccion_id}
                 </h4>
-                <span
-                  className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium border ${badge.cls}`}
-                >
-                  {badge.label}
-                </span>
+                <StatusBadge
+                  status={isOriginal ? "original" : "ajuste"}
+                  config={RECORD_BADGE_CFG}
+                />
               </div>
               {record.detalles.length === 0 ? (
                 <EmptyLines>Este registro no tiene renglones.</EmptyLines>
