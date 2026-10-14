@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { useSession } from "next-auth/react";
 import { MainDialog } from "@/src/components/MainDialog";
 import { SearchInput } from "@/src/components/SearchInput";
 import {
@@ -73,6 +74,7 @@ function NotificationsDialogBody({
   isMarkingAll,
   onActivate,
 }: NotificationsDialogBodyProps) {
+  const { data: session } = useSession();
   const [search, setSearch] = useState("");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
 
@@ -201,7 +203,7 @@ function NotificationsDialogBody({
           <div role="list" className="space-y-2">
             {filteredAndSorted.map((notificacion) => {
               const isActionable =
-                resolveNotificationTarget(notificacion) !== null;
+                resolveNotificationTarget(notificacion, session?.user) !== null;
 
               return (
                 <div

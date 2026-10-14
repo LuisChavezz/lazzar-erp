@@ -142,6 +142,12 @@ const BACK_TARGETS: Record<PedidoDetailOrigin, { href: string; label: string }> 
   // oportunidad con su id (`?oportunidad=`) vuelve a ESA oportunidad
   // (`resolveBack`). Esta entrada fija es el respaldo sin id válido.
   opportunities: { href: OPPORTUNITIES_LIST_PATH, label: "Volver a Oportunidades" },
+  // Quien llega desde la campana (`cotizacion_autorizada`, que solo recibe el
+  // VENDEDOR) vuelve a su listado de pedidos, donde está el que se acaba de
+  // generar: la campana no tiene página propia a la que volver. Sin
+  // R-CRM-PEDIDOS cae al Home (`resolveBack`), nunca a una ruta que el proxy
+  // rebotaría.
+  notifications: { href: "/sales/orders", label: "Volver a Mis Pedidos" },
   // Destino universal: el Home no exige ningún permiso de módulo, así que sirve
   // como salida para quien llega sin `?from=` (URL pegada, recarga, enlace
   // externo). También es válido como valor explícito de `?from=home`.
@@ -197,6 +203,9 @@ function resolveBack(
       ),
       label: "Volver a la Oportunidad",
     };
+  }
+  if (from === "notifications") {
+    return canOpen(BACK_TARGETS.notifications.href) ? BACK_TARGETS.notifications : DEFAULT_BACK;
   }
   return BACK_TARGETS[from];
 }

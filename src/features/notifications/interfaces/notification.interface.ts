@@ -17,11 +17,29 @@
  * la sesión.
  */
 
-/** Nombre del único `modulo` que el backend emite hoy. */
+/** `modulo` de las notificaciones de cotizaciones. */
 export const MODULO_VENTAS = "ventas";
 
-/** Nombre del único `tipo` que el backend emite hoy. */
+/*
+  `tipo` que el frontend sabe abrir (ver `constants/notificationTargets.ts`).
+  NO es el catálogo del backend: el modelo no tiene `choices`, y cualquier otro
+  `tipo` se pinta igual, solo que sin destino.
+*/
+
+/** Cotización enviada a revisión. Destinatarios: rol MESA-DE-CONTROL. */
 export const TIPO_COTIZACION_EN_REVISION = "cotizacion_en_revision";
+
+/**
+ * Cotización autorizada por mesa de control. Destinatario: su vendedor.
+ * `data: { cotizacion_id, pedido_id, pedido_folio }` (`pedido_folio` nullable).
+ */
+export const TIPO_COTIZACION_AUTORIZADA = "cotizacion_autorizada";
+
+/**
+ * Cotización rechazada por mesa de control. Destinatario: su vendedor.
+ * `data: { cotizacion_id, motivo }`; el motivo también va en `mensaje`.
+ */
+export const TIPO_COTIZACION_RECHAZADA = "cotizacion_rechazada";
 
 export interface Notificacion {
   id: number;

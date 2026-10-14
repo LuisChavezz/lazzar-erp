@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { QuoteDetailByIdDialog } from "@/src/features/quotes/components/QuoteDetailByIdDialog";
 import { BellIcon } from "../../../components/Icons";
 import type { Notificacion } from "../interfaces/notification.interface";
@@ -31,6 +32,7 @@ const DROPDOWN_LIMIT = 5;
 
 export const Notifications = () => {
   const router = useRouter();
+  const { data: session } = useSession();
 
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -154,7 +156,7 @@ export const Notifications = () => {
     notificacion: Notificacion,
     apply: (target: NotificationTarget) => void,
   ) => {
-    const target = resolveNotificationTarget(notificacion);
+    const target = resolveNotificationTarget(notificacion, session?.user);
     if (!target) return; // `tipo` sin destino conocido: no navega.
 
     if (!notificacion.leido) marcarLeida.mutate(notificacion.id);
@@ -293,7 +295,7 @@ export const Notifications = () => {
                       notificacion={notificacion}
                       nowMs={dataUpdatedAt}
                       isActionable={
-                        resolveNotificationTarget(notificacion) !== null
+                        resolveNotificationTarget(notificacion, session?.user) !== null
                       }
                       onActivate={() =>
                         handleActivateFromDropdown(notificacion)

@@ -1,6 +1,11 @@
 import type { QuoteDetailSource } from "@/src/features/quotes/hooks/useQuote";
+import type { PedidoDetailOrigin } from "@/src/features/orders/constants/pedidoDetailOrigins";
+import type { PermissionContext } from "@/src/interfaces/permission-context.interface";
+import { canAccessRoute } from "@/src/utils/routeAccess";
 import {
+  TIPO_COTIZACION_AUTORIZADA,
   TIPO_COTIZACION_EN_REVISION,
+  TIPO_COTIZACION_RECHAZADA,
   type Notificacion,
 } from "../interfaces/notification.interface";
 
@@ -15,17 +20,34 @@ import {
  * `search/components/GlobalSearchPalette.tsx`: la cotización se abre con el
  * diálogo self-fetching `QuoteDetailByIdDialog`.
  *
- * `route` queda declarado para el primer `tipo` que sí tenga ruta propia.
+ * `route` lleva un `href` con query; su `pathname` es el que se evalúa contra
+ * la regla del proxy (ver `resolveNotificationTarget`).
  */
 export type NotificationTarget =
-  | { kind: "route"; href: string }
+  | { kind: "route"; href: string; pathname: string }
   | { kind: "quote-dialog"; quoteId: number; source: QuoteDetailSource };
 
-/** Lee una clave numérica de un `data` sin forma garantizada. */
-const readNumber = (data: unknown, key: string): number | null => {
+/**
+ * Lee un id (entero positivo) de un `data` sin forma garantizada. Cualquier
+ * otra cosa —clave ausente, `null`, texto, 0, negativo, decimal— es `null`, y
+ * con ella el destino entero: nunca se arma una URL ni se abre un diálogo con
+ * un id que no puede existir.
+ */
+const readPositiveId = (data: unknown, key: string): number | null => {
   if (typeof data !== "object" || data === null) return null;
   const value = (data as Record<string, unknown>)[key];
-  return typeof value === "number" && Number.isFinite(value) ? value : null;
+  return typeof value === "number" && Number.isSafeInteger(value) && value > 0
+    ? value
+    : null;
+};
+
+/** Origen del detalle 360° cuando se llega desde la campana. */
+const PEDIDO_DETAIL_FROM: PedidoDetailOrigin = "notifications";
+
+const pedidoDetailTarget = (pedidoId: number): NotificationTarget => {
+  const pathname = `/orders/${pedidoId}`;
+  const search = new URLSearchParams({ from: PEDIDO_DETAIL_FROM });
+  return { kind: "route", href: `${pathname}?${search.toString()}`, pathname };
 };
 
 type TargetResolver = (data: unknown) => NotificationTarget | null;
@@ -60,17 +82,54 @@ const NOTIFICATION_TARGETS: Record<string, TargetResolver> = {
     MESA-DE-CONTROL) la ve por esa ruta a cualquier estatus.
   */
   [TIPO_COTIZACION_EN_REVISION]: (data) => {
-    const quoteId = readNumber(data, "cotizacion_id");
+    const quoteId = readPositiveId(data, "cotizacion_id");
     return quoteId === null
       ? null
       : { kind: "quote-dialog", quoteId, source: "mesa-control" };
   },
+  /*
+    Destinatario: el VENDEDOR de la cotización (`crear_notificacion_usuario`
+    al autorizar). Lo útil es el pedido que nació de ella, no la cotización ya
+    cerrada. `/ventas/pedidos/{id}/` acota por empresa, no por vendedor, así
+    que el id basta; `pedido_folio` no hace falta para navegar.
+  */
+  [TIPO_COTIZACION_AUTORIZADA]: (data) => {
+    const pedidoId = readPositiveId(data, "pedido_id");
+    return pedidoId === null ? null : pedidoDetailTarget(pedidoId);
+  },
+  /*
+    Destinatario: el VENDEDOR. `"cotizaciones"` es el recurso que le responde a
+    él a cualquier estatus (filtra por `vendedor=user`); mesa-control solo
+    cubre 2 y 5 y aquí la cotización acaba de quedar en 4. El diálogo muestra
+    el `motivo_rechazo` completo, que la fila recorta a dos líneas.
+  */
+  [TIPO_COTIZACION_RECHAZADA]: (data) => {
+    const quoteId = readPositiveId(data, "cotizacion_id");
+    return quoteId === null
+      ? null
+      : { kind: "quote-dialog", quoteId, source: "cotizaciones" };
+  },
 };
 
+/**
+ * Destino de la notificación para `user`, o `null` si no es clicable.
+ *
+ * Una RUTA que el proxy rebotaría al Home (sin el permiso de su regla en
+ * `routePermissions`) también resuelve `null`: la fila se pinta pero no se
+ * abre, mismo criterio que `canOpenSearchApertura` del buscador global. Un
+ * diálogo no tiene regla de ruta: se abre como siempre.
+ */
 export const resolveNotificationTarget = (
   notificacion: Notificacion,
-): NotificationTarget | null =>
-  NOTIFICATION_TARGETS[notificacion.tipo]?.(notificacion.data) ?? null;
+  user?: PermissionContext | null,
+): NotificationTarget | null => {
+  const target =
+    NOTIFICATION_TARGETS[notificacion.tipo]?.(notificacion.data) ?? null;
+  if (target?.kind === "route" && !canAccessRoute(target.pathname, user)) {
+    return null;
+  }
+  return target;
+};
 
 /** Variantes visuales que ya soporta `NotificationIcon`. */
 export type NotificationIconVariant = "error" | "success" | "info";
@@ -82,6 +141,8 @@ export type NotificationIconVariant = "error" | "success" | "info";
  */
 const NOTIFICATION_ICON_VARIANTS: Record<string, NotificationIconVariant> = {
   [TIPO_COTIZACION_EN_REVISION]: "info",
+  [TIPO_COTIZACION_AUTORIZADA]: "success",
+  [TIPO_COTIZACION_RECHAZADA]: "error",
 };
 
 export const resolveNotificationIconVariant = (
