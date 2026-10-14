@@ -134,7 +134,17 @@ function TransferForm({
         </span>
       </p>
 
-      <fieldset disabled={isPending} className="space-y-2">
+      {/* Enter en el buscador NO envía el formulario: se escribe ahí para
+          filtrar, y enviar ejecutaría la transferencia sin confirmarla. */}
+      <fieldset
+        disabled={isPending}
+        className="space-y-2"
+        onKeyDown={(event) => {
+          if (event.key === "Enter" && event.target instanceof HTMLInputElement) {
+            event.preventDefault();
+          }
+        }}
+      >
         <legend className="mb-2 text-sm font-semibold text-slate-700 dark:text-slate-200">
           Nuevo vendedor
         </legend>
