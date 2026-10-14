@@ -62,9 +62,9 @@ interface OperationsQuoteActionDialogsProps {
   dialog: OperationsQuoteDialogState | null;
   onClose: () => void;
   /**
-   * Listado completo de la consulta: autorizar y aceptar/rechazar cambios
-   * conservan la guarda de estatus que tenían en la celda, evaluada sobre la
-   * fila VIVA (o sobre la foto si ya salió del listado).
+   * Listado completo de la consulta: solo para el color de estatus del
+   * encabezado de "Ver detalles" (fila viva, o la foto si ya salió). La
+   * elegibilidad de las acciones se evalúa sobre la foto, no aquí.
    */
   operationsQuotes: OperationsQuote[];
 }
@@ -86,8 +86,9 @@ function useIsMutatingQuote(mutationKey: readonly unknown[], quoteId: number | u
  * filtrar o cuando la acción saca la fila del listado, y se llevaba el diálogo.
  *
  * La copia del registro se toma al ABRIR (`useDialogSession`) y cada diálogo
- * queda montado con `open` controlado, así anima al cerrar. Mismo
- * comportamiento, textos y guardas que tenían en la celda.
+ * queda montado con `open` controlado, así anima al cerrar. Cerrar por
+ * cualquier vía (confirmar, cancelar, Esc) limpia `dialog`, así que la
+ * siguiente acción de fila siempre es una transición cerrado → abierto.
  */
 export function OperationsQuoteActionDialogs({
   dialog,
@@ -119,12 +120,14 @@ export function OperationsQuoteActionDialogs({
 
   if (!snapshot || !operationsQuote) return null;
 
+  // Elegibilidad SOLO sobre la foto tomada al abrir: un cambio de estatus en
+  // la fila viva no oculta el diálogo (lo dejaba con `dialog` sin limpiar y
+  // la siguiente acción de fila ya no abría nada). Si la cotización se movió
+  // por debajo, la respuesta de error del backend es la fuente de verdad.
+  const snapshotEstatus = snapshot.operationsQuote.estatus;
   const canAuthorizeOperationsQuote =
-    canManageOperationsQuoteAuthorization(operationsQuote.estatus) &&
-    operationsQuote.estatus === 2;
-  const canAcceptOperationsQuoteChanges = canAcceptOperationsQuoteChangesStatus(
-    operationsQuote.estatus
-  );
+    canManageOperationsQuoteAuthorization(snapshotEstatus) && snapshotEstatus === 2;
+  const canAcceptOperationsQuoteChanges = canAcceptOperationsQuoteChangesStatus(snapshotEstatus);
   const isOpen = (kind: OperationsQuoteRowAction) => dialog?.kind === kind;
   const handleOpenChange = (open: boolean) => {
     if (!open) onClose();
