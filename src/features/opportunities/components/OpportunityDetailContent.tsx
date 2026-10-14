@@ -25,6 +25,7 @@ import {
   ETAPA_PERDIDA,
   isOportunidadCerrada,
 } from "../constants/opportunityChoices";
+import { OPPORTUNITY_GONE_DETAIL_MESSAGE } from "../hooks/opportunityErrorMessages";
 import { useOpportunityDetail } from "../hooks/useOpportunityDetail";
 import {
   usePendingSeguimientoIds,
@@ -224,7 +225,7 @@ export const OpportunityDetailContent = ({
       <OpportunityTransferDialog
         opportunity={transfer?.opportunity ?? null}
         cotizacionesCount={transfer?.cotizacionesCount}
-        inDetail
+        goneMessage={OPPORTUNITY_GONE_DETAIL_MESSAGE}
         onClose={() => setTransfer(null)}
       />
 
