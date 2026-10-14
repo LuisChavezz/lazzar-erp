@@ -5,8 +5,7 @@ import { Button } from "@/src/components/Button";
 import { CommentIcon, PaperPlaneIcon, RejectIcon } from "@/src/components/Icons";
 import { LoadingSkeleton } from "@/src/components/LoadingSkeleton";
 import { formatShortDateTime } from "@/src/utils/formatDate";
-import { useQuoteComentarios } from "../hooks/useQuoteComentarios";
-import type { QuoteDetailSource } from "../services/actions";
+import type { useQuoteComentarios } from "../hooks/useQuoteComentarios";
 import type { QuoteComentarioTipo } from "../interfaces/quote.interface";
 
 const TIPO_CONFIG: Record<
@@ -21,18 +20,20 @@ const SECTION_CLASS =
   "rounded-xl border border-slate-200 dark:border-white/10 p-4 bg-white dark:bg-white/5";
 
 interface QuoteComentariosHistoryProps {
-  quoteId: number;
-  source?: QuoteDetailSource;
+  /**
+   * Resultado de `useQuoteComentarios`. La consulta la arranca `QuoteDetails`
+   * en su primer render, en paralelo con el detalle (no después de él).
+   */
+  query: ReturnType<typeof useQuoteComentarios>;
 }
 
 /**
- * Historial de rechazos y reenvíos a revisión de una cotización. Hace su
- * propia consulta y resuelve sus propios estados: si falla, solo esta sección
- * muestra el error; el resto del detalle sigue en pantalla.
+ * Historial de rechazos y reenvíos a revisión de una cotización. Resuelve sus
+ * propios estados de carga y error: si falla, solo esta sección muestra el
+ * error; el resto del detalle sigue en pantalla.
  */
-export function QuoteComentariosHistory({ quoteId, source }: QuoteComentariosHistoryProps) {
-  const { data, isLoading, isInitialError, isDefinitiveError, isFetching, refetch } =
-    useQuoteComentarios(quoteId, source);
+export function QuoteComentariosHistory({ query }: QuoteComentariosHistoryProps) {
+  const { data, isLoading, isInitialError, isDefinitiveError, isFetching, refetch } = query;
 
   const renderBody = () => {
     if (isLoading) {

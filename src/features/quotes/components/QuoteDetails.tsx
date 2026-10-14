@@ -4,6 +4,7 @@ import { RejectIcon } from "@/src/components/Icons";
 import { getStatusStyles } from "../utils/getStatusStyle";
 import { QuoteComentariosHistory } from "./QuoteComentariosHistory";
 import { useQuote, type QuoteDetailSource } from "../hooks/useQuote";
+import { useQuoteComentarios } from "../hooks/useQuoteComentarios";
 import { QuoteDetailsProducts } from "./QuoteDetailsProducts";
 import { RecompraBadge } from "./RecompraBadge";
 import {
@@ -26,6 +27,9 @@ interface QuoteDetailsProps {
 
 export const QuoteDetails = ({ quoteId, source }: QuoteDetailsProps) => {
   const { data: quote, isLoading, isError } = useQuote(quoteId, source);
+  // Arranca junto con el detalle, antes de los retornos de carga/error: si
+  // viviera dentro de la sección, esperaría a que el detalle respondiera.
+  const comentariosQuery = useQuoteComentarios(quoteId, source);
 
   if (isLoading) {
     return (
@@ -112,7 +116,7 @@ export const QuoteDetails = ({ quoteId, source }: QuoteDetailsProps) => {
         </div>
       )}
 
-      <QuoteComentariosHistory quoteId={quote.id} source={source} />
+      <QuoteComentariosHistory query={comentariosQuery} />
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
         <div className="rounded-xl border border-slate-200 dark:border-white/10 p-4 space-y-4 xl:col-span-2 bg-white dark:bg-white/5">
