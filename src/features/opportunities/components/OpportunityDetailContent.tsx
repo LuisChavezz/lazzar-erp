@@ -77,8 +77,8 @@ interface OpportunityDetailContentProps {
  * la búsqueda, el orden y la página con que se llegó (`opportunityListQuery`);
  * una entrada directa a esta URL vuelve al listado sin filtros.
  *
- * Los diálogos (editar y dar de baja la oportunidad; alta, edición y borrado
- * de un seguimiento) se montan FUERA de esos estados: así se cierran con su
+ * Los diálogos (editar, transferir y dar de baja la oportunidad; alta, edición
+ * y borrado de un seguimiento) se montan FUERA de esos estados: así se cierran con su
  * animación aunque la pantalla de detrás cambie de estado. Guardan el REGISTRO
  * sobre el que actúan, no su id.
  */
