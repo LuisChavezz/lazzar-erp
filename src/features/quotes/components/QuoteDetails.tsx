@@ -1,6 +1,8 @@
 "use client";
 
+import { RejectIcon } from "@/src/components/Icons";
 import { getStatusStyles } from "../utils/getStatusStyle";
+import { QuoteComentariosHistory } from "./QuoteComentariosHistory";
 import { useQuote, type QuoteDetailSource } from "../hooks/useQuote";
 import { QuoteDetailsProducts } from "./QuoteDetailsProducts";
 import { RecompraBadge } from "./RecompraBadge";
@@ -88,6 +90,29 @@ export const QuoteDetails = ({ quoteId, source }: QuoteDetailsProps) => {
           </p>
         </div>
       </div>
+
+      {/* Solo en estatus 4: el backend nunca limpia `motivo_rechazo`, así que
+          en cualquier otro estatus describiría un rechazo ya superado (el
+          historial de abajo conserva todos). */}
+      {quote.estatus === 4 && quote.motivo_rechazo?.trim() && (
+        <div
+          role="note"
+          aria-label="Motivo del rechazo"
+          className="flex gap-3 rounded-xl border border-rose-200 dark:border-rose-400/30 bg-rose-50 dark:bg-rose-500/10 p-4"
+        >
+          <RejectIcon className="w-5 h-5 shrink-0 text-rose-600 dark:text-rose-400" aria-hidden="true" />
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-rose-800 dark:text-rose-200">
+              Cotización rechazada por mesa de control
+            </p>
+            <p className="mt-1 text-sm text-rose-700 dark:text-rose-200 whitespace-pre-wrap wrap-break-word">
+              {quote.motivo_rechazo}
+            </p>
+          </div>
+        </div>
+      )}
+
+      <QuoteComentariosHistory quoteId={quote.id} source={source} />
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
         <div className="rounded-xl border border-slate-200 dark:border-white/10 p-4 space-y-4 xl:col-span-2 bg-white dark:bg-white/5">

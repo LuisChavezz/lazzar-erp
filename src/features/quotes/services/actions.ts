@@ -3,6 +3,7 @@ import { v1_api } from "@/src/api/v1.api";
 import {
   Quote,
   QuoteById,
+  QuoteComentario,
   QuoteCreate,
   QuoteOnboardingData,
   QuoteQueryParams,
@@ -78,17 +79,45 @@ const OTHER_QUOTE_DETAIL_SOURCE: Record<QuoteDetailSource, QuoteDetailSource> = 
  * este usuario represente—. El costo es una petición extra únicamente en la
  * ruta de fallo.
  */
-export const getQuoteDetailById = async (
+export const getQuoteDetailById = (
   id: number,
   source: QuoteDetailSource = "cotizaciones"
-): Promise<QuoteById> => {
+): Promise<QuoteById> => readWithSourceFallback(QUOTE_DETAIL_READERS, id, source);
+
+/** Pregunta primero a `source` y, solo ante un 404, al otro recurso. */
+async function readWithSourceFallback<T>(
+  readers: Record<QuoteDetailSource, (id: number) => Promise<T>>,
+  id: number,
+  source: QuoteDetailSource
+): Promise<T> {
   try {
-    return await QUOTE_DETAIL_READERS[source](id);
+    return await readers[source](id);
   } catch (error) {
     if (!isAxiosError(error) || error.response?.status !== 404) throw error;
-    return QUOTE_DETAIL_READERS[OTHER_QUOTE_DETAIL_SOURCE[source]](id);
+    return readers[OTHER_QUOTE_DETAIL_SOURCE[source]](id);
   }
+}
+
+const QUOTE_COMENTARIOS_READERS: Record<
+  QuoteDetailSource,
+  (id: number) => Promise<QuoteComentario[]>
+> = {
+  cotizaciones: async (id) =>
+    (await v1_api.get<QuoteComentario[]>(`/ventas/cotizaciones/${id}/comentarios/`)).data,
+  "mesa-control": async (id) =>
+    (await v1_api.get<QuoteComentario[]>(`/ventas/mesa-control/${id}/comentarios/`)).data,
 };
+
+/**
+ * Historial de rechazos y reenvíos, en orden cronológico. Mismos alcances que
+ * el detalle —`/mesa-control/{id}/comentarios/` solo responde en estatus 2 y 5;
+ * `/cotizaciones/{id}/comentarios/` filtra por vendedor—, así que usa el mismo
+ * respaldo ante un 404 que `getQuoteDetailById`.
+ */
+export const getQuoteComentarios = (
+  id: number,
+  source: QuoteDetailSource = "cotizaciones"
+): Promise<QuoteComentario[]> => readWithSourceFallback(QUOTE_COMENTARIOS_READERS, id, source);
 
 export const createQuote = async (quote: QuoteCreate): Promise<QuoteCreate> => {
   const response = await v1_api.post<QuoteCreate>("/ventas/cotizaciones/onboarding/", quote);
