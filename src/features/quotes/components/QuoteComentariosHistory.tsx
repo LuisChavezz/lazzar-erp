@@ -2,7 +2,7 @@
 
 import { ActivityTimeline, ActivityTimelineItem } from "@/src/components/ActivityTimeline";
 import { Button } from "@/src/components/Button";
-import { PaperPlaneIcon, RejectIcon } from "@/src/components/Icons";
+import { CommentIcon, PaperPlaneIcon, RejectIcon } from "@/src/components/Icons";
 import { LoadingSkeleton } from "@/src/components/LoadingSkeleton";
 import { formatShortDateTime } from "@/src/utils/formatDate";
 import { useQuoteComentarios } from "../hooks/useQuoteComentarios";
@@ -72,7 +72,12 @@ export function QuoteComentariosHistory({ quoteId, source }: QuoteComentariosHis
     return (
       <ActivityTimeline ariaLabel="Historial de rechazos y reenvíos">
         {data.map((entry) => {
-          const { label, Icon } = TIPO_CONFIG[entry.tipo] ?? TIPO_CONFIG.RECHAZO;
+          // Un `tipo` que el front aún no conoce se pinta neutro, con su valor
+          // crudo: nunca como "Rechazo", que diría algo que no pasó.
+          const { label, Icon } =
+            (TIPO_CONFIG as Partial<Record<string, (typeof TIPO_CONFIG)[QuoteComentarioTipo]>>)[
+              entry.tipo
+            ] ?? { label: entry.tipo, Icon: CommentIcon };
           return (
             <ActivityTimelineItem
               key={entry.id}
