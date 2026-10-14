@@ -70,6 +70,12 @@ function TransferForm({
       email: user.email,
     }))
     .sort((a, b) => a.label.localeCompare(b.label, "es"));
+  // El elegido va FIJO arriba y no lo oculta la búsqueda: "Transferir" nunca
+  // actúa sobre alguien que no se ve.
+  const selectedOption = options.find((option) => option.id === selectedId);
+  const listedOptions = selectedOption
+    ? [selectedOption, ...options.filter((option) => option !== selectedOption)]
+    : options;
 
   // Sin vendedor (registros de otros flujos) nadie deja de verla ni hay un
   // "vendedor anterior": el aviso solo dice quién pasa a tenerla.
@@ -151,10 +157,12 @@ function TransferForm({
           </p>
         ) : (
           <SearchableSelectList
-            items={options}
+            items={listedOptions}
             searchPlaceholder="Buscar usuario…"
             filterPredicate={(option, term) =>
-              option.label.toLowerCase().includes(term) || option.email.toLowerCase().includes(term)
+              option.id === selectedId ||
+              option.label.toLowerCase().includes(term) ||
+              option.email.toLowerCase().includes(term)
             }
             getKey={(option) => option.id}
             isSelected={(option) => option.id === selectedId}
