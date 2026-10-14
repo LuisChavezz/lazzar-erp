@@ -2,7 +2,7 @@
 
 import { useId } from "react";
 import { SearchableSelectList } from "@/src/components/SearchableSelectList";
-import { CheckIcon } from "@/src/components/Icons";
+import { renderCheckboxIndicator } from "@/src/components/CheckboxIndicator";
 import { useOrders } from "@/src/features/orders/hooks/useOrders";
 import { PEDIDO_ESTATUS } from "@/src/features/orders/constants/pedidoStatus";
 import type { FormFieldError } from "@/src/utils/getFieldError";
@@ -38,18 +38,6 @@ interface PedidoOption {
 
 const pedidoLabel = (option: Pick<PedidoOption, "id" | "folio">) =>
   option.folio?.trim() || `Pedido #${option.id}`;
-
-const renderCheckboxIndicator = (selected: boolean) => (
-  <span
-    className={`shrink-0 w-5 h-5 rounded-md border-2 flex items-center justify-center transition-colors ${
-      selected
-        ? "border-sky-500 bg-sky-500 text-white"
-        : "border-slate-300 dark:border-slate-600"
-    }`}
-  >
-    {selected && <CheckIcon className="w-3.5 h-3.5" />}
-  </span>
-);
 
 interface PurchaseOrderPedidosFieldProps {
   /** Ids seleccionados (el valor del formulario). */

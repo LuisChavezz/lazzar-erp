@@ -5,26 +5,7 @@ import { DialogHeader } from "@/src/components/DialogHeader";
 import { Loader } from "@/src/components/Loader";
 import { Button } from "@/src/components/Button";
 import { SearchableSelectList } from "@/src/components/SearchableSelectList";
-import { CheckIcon } from "@/src/components/Icons";
-
-/**
- * Indicador cuadrado tipo casilla (selección MÚLTIPLE), pareja del
- * `renderRadioIndicator` circular de `RadioIndicator.tsx`. Vive aquí y no allá
- * porque este es su único consumidor: la misma marca ya estaba escrita en línea
- * dentro de `ProductionOrderStep1`, y extraerla a `RadioIndicator.tsx` obligaría
- * a tocar un componente compartido para servir a esta pantalla.
- */
-const renderCheckboxIndicator = (selected: boolean) => (
-  <span
-    className={`shrink-0 w-5 h-5 rounded-md border-2 flex items-center justify-center transition-colors ${
-      selected
-        ? "border-sky-500 bg-sky-500 text-white"
-        : "border-slate-300 dark:border-slate-600"
-    }`}
-  >
-    {selected && <CheckIcon className="w-3.5 h-3.5" />}
-  </span>
-);
+import { renderCheckboxIndicator } from "@/src/components/CheckboxIndicator";
 
 interface MultiSelectPickerDialogContentProps<T> {
   title: string;

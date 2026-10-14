@@ -3,10 +3,11 @@
 import { useId, useState } from "react";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import { Loader } from "@/src/components/Loader";
-import { CheckIcon, XIcon } from "@/src/components/Icons";
+import { XIcon } from "@/src/components/Icons";
 import { FormSelect } from "@/src/components/FormSelect";
 import { FormTextarea } from "@/src/components/FormTextarea";
 import { SearchableSelectList } from "@/src/components/SearchableSelectList";
+import { renderCheckboxIndicator } from "@/src/components/CheckboxIndicator";
 import { useProductVariants } from "@/src/features/product-variants/hooks/useProductVariants";
 import type { ProductVariant } from "@/src/features/product-variants/interfaces/product-variant.interface";
 import {
@@ -224,18 +225,7 @@ export function ProductionOrderStep1({
         onSelect={(variant) => toggleVariant(variant.id)}
         emptyMessage="No hay variantes de producto disponibles."
         noResultsMessage="No se encontraron variantes"
-        renderIndicator={(selected) => (
-          // Check indicator
-          <span
-            className={`shrink-0 w-5 h-5 rounded-md border-2 flex items-center justify-center transition-colors ${
-              selected
-                ? "border-sky-500 bg-sky-500 text-white"
-                : "border-slate-300 dark:border-slate-600"
-            }`}
-          >
-            {selected && <CheckIcon className="w-3.5 h-3.5" />}
-          </span>
-        )}
+        renderIndicator={renderCheckboxIndicator}
         renderContent={(variant) => (
           <>
             <p className="text-sm font-semibold text-slate-800 dark:text-slate-100 truncate">
