@@ -2,7 +2,9 @@
 
 import { ColumnDef, FilterFn } from "@tanstack/react-table";
 import dynamic from "next/dynamic";
-import { useState } from "react";
+import { createContext, useContext, useState } from "react";
+import { useIsMutating } from "@tanstack/react-query";
+import { selectMutationRecordId } from "@/src/utils/mutationRecordId";
 import { ActionMenu, ActionMenuItem } from "@/src/components/ActionMenu";
 import { ColumnHeaderFilter, type ColumnFilterOption } from "@/src/components/ColumnHeaderFilter";
 import { ConfirmDialog } from "@/src/components/ConfirmDialog";
@@ -29,7 +31,7 @@ import { QuoteDetailsLoadingSkeleton } from "../../quotes/components/QuoteDetail
 import { useAcceptChangesOperationsQuote } from "../hooks/useAcceptChangesOperationsQuote";
 import { useApproveOperationsQuote } from "../hooks/useApproveOperationsQuote";
 import { useRejectChangesOperationsQuote } from "../hooks/useRejectChangesOperationsQuote";
-import { useRejectOperationsQuote } from "../hooks/useRejectOperationsQuote";
+import { rejectOperationsQuoteMutationKey } from "../hooks/useRejectOperationsQuote";
 import { OperationsQuote } from "../interfaces/operations-quote.interface";
 
 const OperationsQuoteDetails = dynamic(
@@ -78,24 +80,49 @@ const estatusFilterFn: FilterFn<OperationsQuote> = (row, _columnId, filterValue)
   return String(row.original.estatus) === filterValue;
 };
 
+// ─── Rechazo: lo posee la VISTA, no la celda ──────────────────────────────────
+// Rechazar saca la cotización del listado (mesa de control solo trae estatus 2
+// y 5): un diálogo dentro de la celda se desmontaría con ella a media
+// operación. La celda solo PIDE el rechazo; `OperationsQuoteList` monta el
+// diálogo. Va por contexto, no por la factoría de columnas, para que
+// `operationsQuoteColumns` siga siendo un arreglo estático.
+const OperationsQuoteRejectContext = createContext<
+  ((operationsQuote: OperationsQuote) => void) | null
+>(null);
+
+export const OperationsQuoteRejectProvider = OperationsQuoteRejectContext.Provider;
+
+function useRequestOperationsQuoteReject() {
+  const requestReject = useContext(OperationsQuoteRejectContext);
+  if (!requestReject) {
+    throw new Error(
+      "operationsQuoteColumns debe renderizarse dentro de un OperationsQuoteRejectProvider (ver OperationsQuoteList)."
+    );
+  }
+  return requestReject;
+}
+
 const OperationsQuoteIdCell = ({
   operationsQuote,
 }: {
   operationsQuote: OperationsQuote;
 }) => {
+  const requestReject = useRequestOperationsQuoteReject();
   const [isViewOpen, setIsViewOpen] = useState(false);
   const [isAuthorizeOpen, setIsAuthorizeOpen] = useState(false);
-  const [isRejectOpen, setIsRejectOpen] = useState(false);
   const [isAcceptChangesOpen, setIsAcceptChangesOpen] = useState(false);
   const [isRejectChangesOpen, setIsRejectChangesOpen] = useState(false);
   const {
     mutate: authorizeOperationsQuote,
     isPending: isAuthorizingOperationsQuote,
   } = useApproveOperationsQuote();
-  const {
-    mutate: rejectOperationsQuote,
-    isPending: isRejectingOperationsQuote,
-  } = useRejectOperationsQuote();
+  // El rechazo en curso de ESTA cotización, leído de la caché: la mutación
+  // vive en el diálogo de la vista, no en la celda.
+  const isRejectingOperationsQuote =
+    useIsMutating({
+      mutationKey: rejectOperationsQuoteMutationKey,
+      predicate: (mutation) => selectMutationRecordId(mutation) === operationsQuote.id,
+    }) > 0;
   const {
     mutate: acceptChangesOperationsQuote,
     isPending: isAcceptingChangesOperationsQuote,
@@ -119,7 +146,7 @@ const OperationsQuoteIdCell = ({
 
   const handleOpenRejectDialog = () => {
     if (!canAuthorizeOperationsQuote) return;
-    setIsRejectOpen(true);
+    requestReject(operationsQuote);
   };
 
   const handleOpenAcceptChangesDialog = () => {
@@ -135,11 +162,6 @@ const OperationsQuoteIdCell = ({
   const handleAuthorize = () => {
     if (!canAuthorizeOperationsQuote) return;
     authorizeOperationsQuote(operationsQuote.id);
-  };
-
-  const handleReject = () => {
-    if (!canAuthorizeOperationsQuote) return;
-    rejectOperationsQuote(operationsQuote.id);
   };
 
   const handleAcceptChanges = () => {
@@ -264,17 +286,6 @@ const OperationsQuoteIdCell = ({
         }
         confirmColor="blue"
         onConfirm={handleAuthorize}
-      />
-      <ConfirmDialog
-        open={isRejectOpen && canAuthorizeOperationsQuote}
-        onOpenChange={setIsRejectOpen}
-        title="Rechazar cotización operativa"
-        description={`¿Deseas rechazar la cotización #${operationsQuote.id}?`}
-        confirmText={
-          isRejectingOperationsQuote ? "Rechazando..." : "Rechazar"
-        }
-        confirmColor="red"
-        onConfirm={handleReject}
       />
       <ConfirmDialog
         open={isAcceptChangesOpen && canAcceptOperationsQuoteChanges}

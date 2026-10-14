@@ -7,10 +7,8 @@ import {
   approveOperationsQuoteMutationKey,
   useApproveOperationsQuote,
 } from "../../operations/hooks/useApproveOperationsQuote";
-import {
-  rejectOperationsQuoteMutationKey,
-  useRejectOperationsQuote,
-} from "../../operations/hooks/useRejectOperationsQuote";
+import { rejectOperationsQuoteMutationKey } from "../../operations/hooks/useRejectOperationsQuote";
+import { selectMutationRecordId } from "@/src/utils/mutationRecordId";
 import {
   sendQuoteEmailMutationKey,
   useGoogleSendEmail,
@@ -55,7 +53,8 @@ export interface QuoteRowBusy {
 function usePendingQuoteIds(mutationKey: readonly unknown[]): number[] {
   return useMutationState({
     filters: { mutationKey: mutationKey as unknown[], status: "pending" },
-    select: (mutation) => mutation.state.variables as number,
+    // Las variables son el id o un objeto con `id` (rechazar lleva el motivo).
+    select: selectMutationRecordId,
   });
 }
 
@@ -99,7 +98,8 @@ export function useQuoteRowActions() {
   const dialogTurnRef = useRef(0);
 
   const approve = useApproveOperationsQuote();
-  const reject = useRejectOperationsQuote();
+  // Rechazar no tiene mutación aquí: la posee `RejectQuoteDialog` (motivo
+  // obligatorio, errores bajo el campo). Su "en curso" se lee de la caché.
   const sendEmail = useGoogleSendEmail();
   const downloadPdf = useDownloadQuotePdf();
   const submitForReview = useSubmitQuoteForReview();
@@ -161,10 +161,8 @@ export function useQuoteRowActions() {
     dialog,
     onClose: () => setDialog(null),
     onAuthorize: (quoteId: number) => approve.mutate(quoteId),
-    onReject: (quoteId: number) => reject.mutate(quoteId),
     onSubmitForReview: (quoteId: number) => submitForReview.mutate(quoteId),
     isAuthorizing: approve.isPending,
-    isRejecting: reject.isPending,
     isSubmittingForReview: submitForReview.isPending,
     reviewValidation: {
       open: review.isReviewValidationDialogOpen,

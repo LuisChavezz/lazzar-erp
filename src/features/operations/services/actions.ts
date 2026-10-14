@@ -19,11 +19,18 @@ export const approveOperationsQuote = async (
   return response.data;
 };
 
+/**
+ * `comentario` es OBLIGATORIO en el backend (vacío o solo espacios → 400
+ * `{comentario}`) y queda como `motivo_rechazo` y como entrada `RECHAZO` del
+ * historial. El backend lo recorta; no tiene longitud máxima.
+ */
 export const rejectOperationsQuote = async (
-  id: number
+  id: number,
+  comentario: string
 ): Promise<OperationsQuoteActionResponse> => {
   const response = await v1_api.post<OperationsQuoteActionResponse>(
-    `/ventas/mesa-control/${id}/rechazar/`
+    `/ventas/mesa-control/${id}/rechazar/`,
+    { comentario }
   );
   return response.data;
 };

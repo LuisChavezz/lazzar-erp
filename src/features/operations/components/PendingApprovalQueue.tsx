@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useMutationState } from "@tanstack/react-query";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { formatCurrency } from "@/src/utils/formatCurrency";
@@ -19,7 +20,9 @@ import { ConfirmDialog } from "@/src/components/ConfirmDialog";
 import { MainDialog } from "@/src/components/MainDialog";
 import { DialogHeader } from "@/src/components/DialogHeader";
 import { useApproveOperationsQuote } from "@/src/features/operations/hooks/useApproveOperationsQuote";
-import { useRejectOperationsQuote } from "@/src/features/operations/hooks/useRejectOperationsQuote";
+import { rejectOperationsQuoteMutationKey } from "@/src/features/operations/hooks/useRejectOperationsQuote";
+import { RejectQuoteDialog } from "@/src/features/operations/components/RejectQuoteDialog";
+import { selectMutationRecordId } from "@/src/utils/mutationRecordId";
 import { useOperationsQuotes } from "@/src/features/operations/hooks/useOperationsQuotes";
 import type { OperationsQuote } from "@/src/features/operations/interfaces/operations-quote.interface";
 
@@ -60,7 +63,10 @@ const MAX_VISIBLE = 6;
 export const PendingApprovalQueue = () => {
   const { operationsQuotes, isLoading } = useOperationsQuotes();
   const approveOperationsQuote = useApproveOperationsQuote();
-  const rejectOperationsQuote = useRejectOperationsQuote();
+  const rejectingOperationsQuoteIds = useMutationState({
+    filters: { mutationKey: [...rejectOperationsQuoteMutationKey], status: "pending" },
+    select: selectMutationRecordId,
+  });
 
   const [processingOperationsQuoteIds, setProcessingOperationsQuoteIds] =
     useState<Set<number>>(new Set());
@@ -106,21 +112,17 @@ export const PendingApprovalQueue = () => {
     setPendingOperationsQuoteAction({ type, operationsQuote });
   };
 
-  const handleConfirm = () => {
-    if (!pendingOperationsQuoteAction) return;
+  // Solo AUTORIZAR pasa por aquí. Rechazar lo resuelve `RejectQuoteDialog`,
+  // que sigue abierto hasta que el backend responde (motivo obligatorio y su
+  // error bajo el campo); su "en curso" se lee de la caché de mutaciones.
+  const handleConfirmApprove = () => {
+    if (pendingOperationsQuoteAction?.type !== "approve") return;
 
-    const { type, operationsQuote } = pendingOperationsQuoteAction;
+    const { operationsQuote } = pendingOperationsQuoteAction;
     markProcessing(operationsQuote.id);
     setPendingOperationsQuoteAction(null);
 
-    if (type === "approve") {
-      approveOperationsQuote.mutate(operationsQuote.id, {
-        onSettled: () => unmarkProcessing(operationsQuote.id),
-      });
-      return;
-    }
-
-    rejectOperationsQuote.mutate(operationsQuote.id, {
+    approveOperationsQuote.mutate(operationsQuote.id, {
       onSettled: () => unmarkProcessing(operationsQuote.id),
     });
   };
@@ -187,9 +189,9 @@ export const PendingApprovalQueue = () => {
           ) : (
             <div className="divide-y divide-slate-100 dark:divide-white/6">
               {visibleOperationsQuotes.map((operationsQuote) => {
-                const isProcessing = processingOperationsQuoteIds.has(
-                  operationsQuote.id
-                );
+                const isProcessing =
+                  processingOperationsQuoteIds.has(operationsQuote.id) ||
+                  rejectingOperationsQuoteIds.includes(operationsQuote.id);
 
                 return (
                   <div
@@ -330,39 +332,32 @@ export const PendingApprovalQueue = () => {
       )}
 
       <ConfirmDialog
-        open={!!pendingOperationsQuoteAction}
+        open={pendingOperationsQuoteAction?.type === "approve"}
         onOpenChange={(open) => {
           if (!open) setPendingOperationsQuoteAction(null);
         }}
-        title={
-          pendingOperationsQuoteAction?.type === "approve"
-            ? "Autorizar cotización operativa"
-            : "Rechazar cotización operativa"
-        }
+        title="Autorizar cotización operativa"
         description={
           pendingOperationsQuoteAction
-            ? `¿Confirmas ${
-                pendingOperationsQuoteAction.type === "approve"
-                  ? "autorizar"
-                  : "rechazar"
-              } la cotización #${String(
+            ? `¿Confirmas autorizar la cotización #${String(
                 pendingOperationsQuoteAction.operationsQuote.id
               ).padStart(5, "0")} de ${
                 pendingOperationsQuoteAction.operationsQuote.cliente_nombre
               }?`
             : ""
         }
-        onConfirm={handleConfirm}
-        confirmText={
-          pendingOperationsQuoteAction?.type === "approve"
-            ? "Autorizar"
-            : "Rechazar"
-        }
+        onConfirm={handleConfirmApprove}
+        confirmText="Autorizar"
         cancelText="Cancelar"
-        confirmColor={
-          pendingOperationsQuoteAction?.type === "approve" ? "green" : "red"
-        }
+        confirmColor="green"
       />
+      {pendingOperationsQuoteAction?.type === "reject" && (
+        <RejectQuoteDialog
+          key={pendingOperationsQuoteAction.operationsQuote.id}
+          quote={pendingOperationsQuoteAction.operationsQuote}
+          onClose={() => setPendingOperationsQuoteAction(null)}
+        />
+      )}
     </>
   );
 };

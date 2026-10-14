@@ -7,6 +7,7 @@ import { DialogHeader } from "@/src/components/DialogHeader";
 import { ConfirmDialog } from "@/src/components/ConfirmDialog";
 import { QuoteDetailsLoadingSkeleton } from "./QuoteDetailsLoadingSkeleton";
 import { QuoteReviewValidationDialog } from "./QuoteReviewValidationDialog";
+import { RejectQuoteDialog } from "../../operations/components/RejectQuoteDialog";
 import type { Quote } from "../interfaces/quote.interface";
 import type { QuoteRowActionDialogsState } from "../hooks/useQuoteRowActions";
 import { canManageQuoteAuthorization } from "../utils/quoteStatusRules";
@@ -50,10 +51,8 @@ export function QuoteRowActionDialogs({
   dialog,
   onClose,
   onAuthorize,
-  onReject,
   onSubmitForReview,
   isAuthorizing,
-  isRejecting,
   isSubmittingForReview,
   reviewValidation,
 }: QuoteRowActionDialogsProps) {
@@ -115,19 +114,10 @@ export function QuoteRowActionDialogs({
           }}
         />
       )}
-      {dialog?.kind === "reject" && quote && (
-        <ConfirmDialog
-          key={`reject-${quote.id}`}
-          open={canManageAuthorization}
-          onOpenChange={handleOpenChange}
-          title="Rechazar pedido"
-          description={`¿Deseas rechazar el pedido #${quote.id}?`}
-          confirmText={isRejecting ? "Rechazando..." : "Rechazar"}
-          confirmColor="red"
-          onConfirm={() => {
-            if (canManageAuthorization) onReject(quote.id);
-          }}
-        />
+      {/* Se desmonta si el estatus deja de ser autorizable (mismo efecto
+          `authorizationLost`); tras rechazar con éxito se cierra solo. */}
+      {dialog?.kind === "reject" && quote && canManageAuthorization && (
+        <RejectQuoteDialog key={`reject-${quote.id}`} quote={quote} onClose={onClose} />
       )}
       {dialog?.kind === "submitForReview" && quote && (
         <ConfirmDialog
