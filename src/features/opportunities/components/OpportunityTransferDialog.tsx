@@ -81,15 +81,24 @@ function TransferForm({
     }))
     .sort((a, b) => a.label.localeCompare(b.label, "es"));
 
-  const previousOwner = opportunity.vendedor_nombre?.trim() || "Quien la tiene asignada";
+  // Sin vendedor (registros de otros flujos) nadie deja de verla ni hay un
+  // "vendedor anterior": el aviso solo dice quién pasa a tenerla.
+  const hasOwner = opportunity.vendedor !== null;
+  const previousOwner = opportunity.vendedor_nombre?.trim() || "El vendedor actual";
+  const ownerText = hasOwner
+    ? `${previousOwner} dejará de verla y de ver sus seguimientos, salvo que sea administrador.`
+    : "No tiene vendedor asignado: quien elijas pasará a ser su vendedor.";
+  const cotizacionesSuffix = hasOwner
+    ? "seguirán a nombre del vendedor anterior."
+    : "no cambian de dueño.";
   const cotizacionesText =
     cotizacionesCount === undefined
-      ? "Sus cotizaciones, si las tiene, seguirán a nombre del vendedor anterior."
+      ? `Sus cotizaciones, si las tiene, ${cotizacionesSuffix}`
       : cotizacionesCount === 0
         ? "No tiene cotizaciones."
         : cotizacionesCount === 1
-          ? "Su cotización seguirá a nombre del vendedor anterior."
-          : `Sus ${cotizacionesCount} cotizaciones seguirán a nombre del vendedor anterior.`;
+          ? `Su cotización ${hasOwner ? "seguirá a nombre del vendedor anterior." : "no cambia de dueño."}`
+          : `Sus ${cotizacionesCount} cotizaciones ${cotizacionesSuffix}`;
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -201,8 +210,7 @@ function TransferForm({
         <p>
           {/* Un administrador de empresa las sigue viendo todas: solo deja de
               verla quien no lo es. */}
-          {previousOwner} dejará de verla y de ver sus seguimientos, salvo que sea administrador.{" "}
-          {cotizacionesText}
+          {ownerText} {cotizacionesText}
         </p>
       </div>
 
