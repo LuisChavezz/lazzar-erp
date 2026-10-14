@@ -17,6 +17,7 @@ export interface RejectQuoteDialogTarget {
 }
 
 interface RejectQuoteDialogProps {
+  open: boolean;
   quote: RejectQuoteDialogTarget;
   onClose: () => void;
 }
@@ -28,8 +29,11 @@ interface RejectQuoteDialogProps {
  *
  * Lo monta SIEMPRE la vista, nunca la celda: al rechazar, la cotización sale
  * del listado de mesa de control (solo trae estatus 2 y 5) o de una vista
- * filtrada, y una celda se llevaría el diálogo a media operación. El dueño lo
- * monta con `key` por cotización para que el motivo no se arrastre a otra.
+ * filtrada, y una celda se llevaría el diálogo a media operación. El dueño le
+ * pasa la copia tomada al ABRIR (`useDialogSession`), lo deja montado con
+ * `open` controlado para que anime al cerrar y usa el `id` de la sesión como
+ * `key`, para que el motivo no se arrastre a otra apertura. No se re-verifica
+ * el estatus en el cliente: si cambió, el 400 `cotizacion` del backend manda.
  *
  * Mismo esqueleto que `VacationRejectDialog`. Errores:
  * - 400 `comentario`: queda abierto con el mensaje bajo el campo.
@@ -37,7 +41,7 @@ interface RejectQuoteDialogProps {
  *   avisa con el mensaje del backend.
  * - Red o 5xx: queda abierto con el motivo escrito (el hook avisa).
  */
-export function RejectQuoteDialog({ quote, onClose }: RejectQuoteDialogProps) {
+export function RejectQuoteDialog({ open, quote, onClose }: RejectQuoteDialogProps) {
   const [comentario, setComentario] = useState("");
   const [comentarioError, setComentarioError] = useState<string | null>(null);
   const { mutate, isPending } = useRejectOperationsQuote({ onReasonError: setComentarioError });
@@ -82,7 +86,7 @@ export function RejectQuoteDialog({ quote, onClose }: RejectQuoteDialogProps) {
 
   return (
     <MainDialog
-      open
+      open={open}
       onOpenChange={handleOpenChange}
       maxWidth="520px"
       showCloseButton={false}

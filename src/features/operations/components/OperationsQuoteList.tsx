@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useIsMutating } from "@tanstack/react-query";
 import { DataTable } from "@/src/components/DataTable";
+import { useDialogSession } from "@/src/hooks/useDialogSession";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import {
   approveOperationsQuoteMutationKey,
@@ -33,6 +34,7 @@ export const OperationsQuoteList = () => {
   // Cotización cuyo rechazo se pidió desde una celda. La foto vive aquí, no en
   // la fila: tras rechazar, la fila sale del listado y el diálogo sigue.
   const [rejectTarget, setRejectTarget] = useState<OperationsQuote | null>(null);
+  const rejectSession = useDialogSession(rejectTarget !== null, rejectTarget);
 
   return (
     // Altura acotada a la ventana (mismo cálculo que el resto de Mesa de
@@ -63,10 +65,11 @@ export const OperationsQuoteList = () => {
         errorMessage={extractErrorMessage(error, "No se pudo cargar la información.")}
         loadingAriaLabel="Cargando cotizaciones operativas"
       />
-      {rejectTarget && (
+      {rejectSession.snapshot && (
         <RejectQuoteDialog
-          key={rejectTarget.id}
-          quote={rejectTarget}
+          key={rejectSession.id}
+          open={rejectTarget !== null}
+          quote={rejectSession.snapshot}
           onClose={() => setRejectTarget(null)}
         />
       )}

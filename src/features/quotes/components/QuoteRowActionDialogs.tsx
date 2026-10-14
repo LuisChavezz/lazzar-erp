@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import dynamic from "next/dynamic";
 import { MainDialog } from "@/src/components/MainDialog";
+import { useDialogSession } from "@/src/hooks/useDialogSession";
 import { DialogHeader } from "@/src/components/DialogHeader";
 import { ConfirmDialog } from "@/src/components/ConfirmDialog";
 import { QuoteDetailsLoadingSkeleton } from "./QuoteDetailsLoadingSkeleton";
@@ -66,17 +67,24 @@ export function QuoteRowActionDialogs({
     if (!open) onClose();
   };
 
-  // Si el estatus deja de ser autorizable con el diálogo de autorizar/rechazar
+  // Si el estatus deja de ser autorizable con el diálogo de autorizar
   // abierto, `open` pasa a false y el diálogo se oculta — pero Radix no avisa
   // por `onOpenChange` de un cambio de la prop controlada, así que el estado
   // se limpia aquí. Sin esto quedaba vivo y, si un refetch posterior volvía a
   // hacer autorizable la cotización, el diálogo reaparecía sin que nadie lo
   // pidiera.
-  const authorizationLost =
-    (dialog?.kind === "authorize" || dialog?.kind === "reject") && !canManageAuthorization;
+  // Solo AUTORIZAR: el rechazo no se re-verifica en el cliente (ver abajo).
+  const authorizationLost = dialog?.kind === "authorize" && !canManageAuthorization;
   useEffect(() => {
     if (authorizationLost) onClose();
   }, [authorizationLost, onClose]);
+
+  // Rechazo: copia tomada al ABRIR (la fila del menú), no el registro vivo, y
+  // diálogo siempre montado con `open` controlado para que anime al cerrar.
+  // Si el estatus cambia mientras está abierto, el 400 `cotizacion` del
+  // backend es la fuente de verdad (el diálogo se cierra con su mensaje).
+  const isRejectOpen = dialog?.kind === "reject";
+  const rejectSession = useDialogSession(isRejectOpen, isRejectOpen ? dialog.quote : null);
 
   return (
     <>
@@ -116,10 +124,13 @@ export function QuoteRowActionDialogs({
           }}
         />
       )}
-      {/* Se desmonta si el estatus deja de ser autorizable (mismo efecto
-          `authorizationLost`); tras rechazar con éxito se cierra solo. */}
-      {dialog?.kind === "reject" && quote && canManageAuthorization && (
-        <RejectQuoteDialog key={`reject-${quote.id}`} quote={quote} onClose={onClose} />
+      {rejectSession.snapshot && (
+        <RejectQuoteDialog
+          key={rejectSession.id}
+          open={isRejectOpen}
+          quote={rejectSession.snapshot}
+          onClose={onClose}
+        />
       )}
       {/* El estatus que decide si se ofrece el comentario es el de la FOTO al
           abrir, para que el diálogo no cambie de forma a media captura. */}

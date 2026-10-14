@@ -23,6 +23,7 @@ import { useApproveOperationsQuote } from "@/src/features/operations/hooks/useAp
 import { rejectOperationsQuoteMutationKey } from "@/src/features/operations/hooks/useRejectOperationsQuote";
 import { RejectQuoteDialog } from "@/src/features/operations/components/RejectQuoteDialog";
 import { selectMutationRecordId } from "@/src/utils/mutationRecordId";
+import { useDialogSession } from "@/src/hooks/useDialogSession";
 import { useOperationsQuotes } from "@/src/features/operations/hooks/useOperationsQuotes";
 import type { OperationsQuote } from "@/src/features/operations/interfaces/operations-quote.interface";
 
@@ -78,6 +79,13 @@ export const PendingApprovalQueue = () => {
       type: "approve" | "reject";
       operationsQuote: OperationsQuote;
     } | null>(null);
+  // Rechazo: copia de la cotización tomada al abrir; el diálogo sigue montado
+  // (anima al cerrar) aunque la fila salga de la cola.
+  const isRejectOpen = pendingOperationsQuoteAction?.type === "reject";
+  const rejectSession = useDialogSession(
+    isRejectOpen,
+    isRejectOpen ? pendingOperationsQuoteAction.operationsQuote : null
+  );
 
   const pendingOperationsQuotes = useMemo(
     () =>
@@ -352,10 +360,11 @@ export const PendingApprovalQueue = () => {
         cancelText="Cancelar"
         confirmColor="green"
       />
-      {pendingOperationsQuoteAction?.type === "reject" && (
+      {rejectSession.snapshot && (
         <RejectQuoteDialog
-          key={pendingOperationsQuoteAction.operationsQuote.id}
-          quote={pendingOperationsQuoteAction.operationsQuote}
+          key={rejectSession.id}
+          open={isRejectOpen}
+          quote={rejectSession.snapshot}
           onClose={() => setPendingOperationsQuoteAction(null)}
         />
       )}
