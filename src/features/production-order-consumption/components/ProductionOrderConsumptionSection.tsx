@@ -65,37 +65,44 @@ export function ProductionOrderConsumptionSection({
         </span>
       }
     >
-      {products.length === 0 ? (
+      {/* El vacío es por REGISTROS, no por productos: un registro sin renglones
+          sigue existiendo y se ve en el historial (como lo mostraba la tarjeta
+          por registro que esta sección reemplazó). */}
+      {consumos.length === 0 ? (
         <EmptyLines>Esta orden no tiene consumos de material registrados.</EmptyLines>
       ) : (
         <div className="space-y-4">
-          <LineItemsTable
-            head={
-              <>
-                <th className="px-3 py-2 font-medium">Producto</th>
-                <th className="px-3 py-2 font-medium text-right">Planeado</th>
-                <th className="px-3 py-2 font-medium text-right">Ajustes</th>
-                <th className="px-3 py-2 font-medium text-right">Actual</th>
-              </>
-            }
-          >
-            {products.map((product) => (
-              <tr key={product.producto}>
-                <td className="px-3 py-2 text-slate-700 dark:text-slate-200">
-                  {product.producto_nombre}
-                </td>
-                <td className="px-3 py-2 text-right tabular-nums text-slate-600 dark:text-slate-300">
-                  {formatBackendQuantity(product.planned)}
-                </td>
-                <td className="px-3 py-2 text-right tabular-nums text-slate-600 dark:text-slate-300">
-                  {formatSignedBackendQuantity(product.adjustments)}
-                </td>
-                <td className="px-3 py-2 text-right tabular-nums font-semibold text-slate-800 dark:text-white">
-                  {formatBackendQuantity(product.current)}
-                </td>
-              </tr>
-            ))}
-          </LineItemsTable>
+          {products.length === 0 ? (
+            <EmptyLines>Los registros de consumo de esta orden no tienen renglones.</EmptyLines>
+          ) : (
+            <LineItemsTable
+              head={
+                <>
+                  <th className="px-3 py-2 font-medium">Producto</th>
+                  <th className="px-3 py-2 font-medium text-right">Planeado</th>
+                  <th className="px-3 py-2 font-medium text-right">Ajustes</th>
+                  <th className="px-3 py-2 font-medium text-right">Actual</th>
+                </>
+              }
+            >
+              {products.map((product) => (
+                <tr key={product.producto}>
+                  <td className="px-3 py-2 text-slate-700 dark:text-slate-200">
+                    {product.producto_nombre}
+                  </td>
+                  <td className="px-3 py-2 text-right tabular-nums text-slate-600 dark:text-slate-300">
+                    {formatBackendQuantity(product.planned)}
+                  </td>
+                  <td className="px-3 py-2 text-right tabular-nums text-slate-600 dark:text-slate-300">
+                    {formatSignedBackendQuantity(product.adjustments)}
+                  </td>
+                  <td className="px-3 py-2 text-right tabular-nums font-semibold text-slate-800 dark:text-white">
+                    {formatBackendQuantity(product.current)}
+                  </td>
+                </tr>
+              ))}
+            </LineItemsTable>
+          )}
 
           <ConsumptionHistory consumos={consumos} />
         </div>
@@ -147,7 +154,7 @@ function ConsumptionHistory({ consumos }: { consumos: ProductionOrderConsumo[] }
                 />
               </div>
               {record.detalles.length === 0 ? (
-                <EmptyLines>Este registro no tiene renglones.</EmptyLines>
+                <EmptyLines>Este consumo no tiene renglones registrados.</EmptyLines>
               ) : (
                 <LineItemsTable
                   head={
