@@ -86,18 +86,16 @@ function ResendCommentForm({
   onSubmit: (comentario?: string) => void;
 }) {
   const [comentario, setComentario] = useState("");
-  // Un solo envío por apertura: el diálogo se cierra al confirmar, pero
-  // mientras anima un segundo clic o Enter volvería a mandar el POST. La ref
-  // cambia al instante (dos eventos en el mismo tick); el estado deshabilita
-  // el botón. El formulario se monta de nuevo en cada apertura.
+  // Un solo envío por apertura: el diálogo se cierra al confirmar, pero un
+  // segundo clic o Enter en el mismo instante volvería a mandar el POST. La
+  // ref cambia al momento; no hace falta estado (el diálogo se cierra antes
+  // de que un "Enviando…" llegue a pintarse). Se monta de nuevo al abrir.
   const submittingRef = useRef(false);
-  const [isSubmitted, setIsSubmitted] = useState(false);
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (submittingRef.current) return;
     submittingRef.current = true;
-    setIsSubmitted(true);
     const trimmed = comentario.trim();
     onSubmit(trimmed || undefined);
   };
@@ -114,9 +112,7 @@ function ResendCommentForm({
       />
       <div className="flex justify-end gap-3 pt-1">
         <FormCancelButton label="Cancelar" onClick={onCancel} />
-        <FormSubmitButton isPending={isSubmitted} loadingLabel="Enviando…">
-          Reenviar a revisión
-        </FormSubmitButton>
+        <FormSubmitButton>Reenviar a revisión</FormSubmitButton>
       </div>
     </form>
   );
