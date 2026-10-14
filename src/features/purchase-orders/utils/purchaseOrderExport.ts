@@ -2,6 +2,7 @@ import type { DataTableVisibleColumn } from "@/src/components/DataTable";
 import { formatQuantityValue } from "@/src/utils/formatCurrency";
 import { formatLocalDate } from "@/src/utils/formatDate";
 import type { PurchaseOrder } from "../interfaces/purchase-order.interface";
+import { tipoCompraLabel } from "../constants/purchaseOrderTipoCompra";
 
 /**
  * Texto plano por columna para los reportes CSV y PDF del listado (los
@@ -23,6 +24,8 @@ export const getPurchaseOrderColumnText = (
       return [order.folio ?? `#${order.id}`, order.estatus_label, order.referencia || null]
         .filter(Boolean)
         .join(" · ");
+    case "tipo_compra":
+      return tipoCompraLabel(order.tipo_compra, order.tipo_compra_label);
     case "fecha_oc":
       return formatLocalDate(order.fecha_oc);
     case "fecha_vencimiento":

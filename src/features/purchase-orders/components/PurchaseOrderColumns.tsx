@@ -32,8 +32,18 @@ import {
   isPurchaseOrderUnconfirmed,
   purchaseOrderStatusEntry,
 } from "../constants/purchaseOrderStatus";
+import { TIPO_COMPRA_OPTIONS, tipoCompraLabel } from "../constants/purchaseOrderTipoCompra";
 
 const columnHelper = createColumnHelper<PurchaseOrder>();
+
+/**
+ * Opciones del filtro de "Tipo de compra": los dos valores del backend, fijos
+ * (no deducidos de las filas como estatus/proveedor), para que el filtro se
+ * ofrezca igual aunque hoy todas las órdenes sean de un solo tipo.
+ */
+const TIPO_COMPRA_FILTER_OPTIONS: DataTableFilterOption[] = TIPO_COMPRA_OPTIONS.map(
+  ({ value, label }) => ({ value, label }),
+);
 
 // ── Celda O.C. (folio + menú de acciones) ─────────────────────────────────────
 
@@ -391,7 +401,8 @@ const exactFilterFn =
  * `CorteMangaOrderColumns` (navegación) y `AreaColumns` (edición).
  *
  * Contenido pedido por negocio: O.C. (folio + estatus + referencia, y el menú
- * de acciones de la fila, ver abajo), Proveedor, Fecha de generación, Cantidad,
+ * de acciones de la fila, ver abajo), Proveedor, Tipo de compra, Fecha de
+ * generación, Cantidad,
  * Vencimiento, Progreso OC (surtido vs. solicitado, ver `ProgresoCell`). Los
  * importes (Total/Subtotal/Impuestos) y "Entrega estimada" salieron del
  * listado a propósito — siguen disponibles en el detalle de la orden.
@@ -482,6 +493,28 @@ export const getColumns = (
         </span>
       ),
     }),
+    // ── Tipo de compra ─────────────────────────────────────────────────────
+    // Se muestra la etiqueta del backend (`tipo_compra_label`) y es también lo
+    // que lee la búsqueda global; el filtro de encabezado compara el código
+    // crudo (`tipo_compra`), igual que estatus y proveedor.
+    columnHelper.accessor(
+      (row) => tipoCompraLabel(row.tipo_compra, row.tipo_compra_label),
+      {
+        id: "tipo_compra",
+        meta: { label: "Tipo de compra" },
+        header: ({ column }) => (
+          <ColumnFilterHeader
+            label="Tipo de compra"
+            options={TIPO_COMPRA_FILTER_OPTIONS}
+            column={column}
+          />
+        ),
+        filterFn: exactFilterFn((row) => row.tipo_compra),
+        cell: (info) => (
+          <span className="text-slate-700 dark:text-slate-200">{info.getValue()}</span>
+        ),
+      },
+    ),
     columnHelper.accessor("fecha_oc", {
       header: "Fecha de generación",
       cell: (info) => (
