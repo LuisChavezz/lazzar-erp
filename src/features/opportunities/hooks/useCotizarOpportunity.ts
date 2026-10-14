@@ -1,6 +1,7 @@
 "use client";
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { OPPORTUNITY_GONE_DETAIL_MESSAGE } from "./opportunityErrorMessages";
 import toast from "react-hot-toast";
 import { AxiosError } from "axios";
 import { isNotFoundError } from "@/src/utils/drfWriteErrors";
@@ -21,7 +22,7 @@ const REJECTION_KEYS = ["etapa", "sucursal", "detail", "non_field_errors"] as co
 
 const cotizarErrorMessage = (error: unknown): string => {
   const fallback = "No se pudo crear la cotización. Intenta de nuevo.";
-  if (isNotFoundError(error)) return "La oportunidad ya no existe o no tienes acceso a ella.";
+  if (isNotFoundError(error)) return OPPORTUNITY_GONE_DETAIL_MESSAGE;
   if (error instanceof AxiosError && error.response?.status === 400) {
     return firstRejectionMessage(error.response.data, REJECTION_KEYS) ?? fallback;
   }

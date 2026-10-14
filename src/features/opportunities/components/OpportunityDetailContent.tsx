@@ -224,6 +224,7 @@ export const OpportunityDetailContent = ({
       <OpportunityTransferDialog
         opportunity={transfer?.opportunity ?? null}
         cotizacionesCount={transfer?.cotizacionesCount}
+        inDetail
         onClose={() => setTransfer(null)}
       />
 

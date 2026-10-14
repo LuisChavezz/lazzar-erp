@@ -40,6 +40,12 @@ export const handleOpportunityWriteError = (
 /** Otra persona ya la dio de baja (404). */
 export const OPPORTUNITY_GONE_MESSAGE = "La oportunidad ya no existe. Se actualizó el listado.";
 
+/**
+ * La misma situación vista desde el DETALLE de la oportunidad, donde no hay
+ * listado que actualizar: el 404 también llega si dejó de ser visible.
+ */
+export const OPPORTUNITY_GONE_DETAIL_MESSAGE = "La oportunidad ya no existe o no tienes acceso a ella.";
+
 /** Error de la baja: un 404 significa que ya no existe. */
 export const opportunityActionErrorMessage = (error: unknown, fallback: string): string =>
   drfActionErrorMessage(error, fallback, OPPORTUNITY_GONE_MESSAGE);

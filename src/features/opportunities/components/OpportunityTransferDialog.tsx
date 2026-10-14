@@ -13,7 +13,11 @@ import { useUsers } from "@/src/features/users/hooks/useUsers";
 import { useDialogSession } from "@/src/hooks/useDialogSession";
 import { isNotFoundError } from "@/src/utils/drfWriteErrors";
 import { firstRejectionMessage } from "@/src/utils/firstDrfMessage";
-import { opportunityActionErrorMessage } from "../hooks/opportunityErrorMessages";
+import {
+  OPPORTUNITY_GONE_DETAIL_MESSAGE,
+  OPPORTUNITY_GONE_MESSAGE,
+  opportunityActionErrorMessage,
+} from "../hooks/opportunityErrorMessages";
 import {
   useTransferOpportunity,
   type TransferOpportunityVariables,
@@ -38,6 +42,7 @@ const vendedorRejection = (error: unknown): string | undefined =>
 interface TransferFormProps {
   opportunity: Opportunity;
   cotizacionesCount?: number;
+  goneMessage: string;
   isPending: boolean;
   onTransfer: (
     variables: TransferOpportunityVariables,
@@ -54,6 +59,7 @@ interface TransferFormProps {
 function TransferForm({
   opportunity,
   cotizacionesCount,
+  goneMessage,
   isPending,
   onTransfer,
   onClose,
@@ -101,15 +107,19 @@ function TransferForm({
             setFieldError(rejection);
             return;
           }
+          // Ya no existe (o dejó de ser visible): no hay nada que reintentar;
+          // la relectura deja el detalle en "no disponible" o saca la fila.
+          if (isNotFoundError(error)) {
+            toast.error(goneMessage);
+            onClose();
+            return;
+          }
           toast.error(
             opportunityActionErrorMessage(
               error,
               "No se pudo transferir la oportunidad. Intenta de nuevo."
             )
           );
-          // Ya no existe (o dejó de ser visible): no hay nada que reintentar;
-          // la relectura deja el detalle en "no disponible" o saca la fila.
-          if (isNotFoundError(error)) onClose();
         },
       }
     );
@@ -208,6 +218,11 @@ interface OpportunityTransferDialogProps {
    * no): el aviso dice el número. Sin ella el aviso es genérico.
    */
   cotizacionesCount?: number;
+  /**
+   * Se monta en el DETALLE: un 404 se avisa como tal ("ya no existe o no
+   * tienes acceso"), no como "se actualizó el listado".
+   */
+  inDetail?: boolean;
   /** Cierra el diálogo (quien lo monta pone `opportunity` en `null`). */
   onClose: () => void;
 }
@@ -231,6 +246,7 @@ interface OpportunityTransferDialogProps {
 export function OpportunityTransferDialog({
   opportunity,
   cotizacionesCount,
+  inDetail = false,
   onClose,
 }: OpportunityTransferDialogProps) {
   const { mutate: transfer, isPending } = useTransferOpportunity();
@@ -258,6 +274,7 @@ export function OpportunityTransferDialog({
           key={session.id}
           opportunity={opened.opportunity}
           cotizacionesCount={opened.cotizacionesCount}
+          goneMessage={inDetail ? OPPORTUNITY_GONE_DETAIL_MESSAGE : OPPORTUNITY_GONE_MESSAGE}
           isPending={isPending}
           onTransfer={transfer}
           onClose={onClose}
