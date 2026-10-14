@@ -7,6 +7,7 @@ import { opportunityColumns } from "./OpportunityColumns";
 import { OpportunityDeleteDialog } from "./OpportunityDeleteDialog";
 import { OpportunityFormDialog } from "./OpportunityFormDialog";
 import { OpportunityFunnel } from "./OpportunityFunnel";
+import { OpportunityTransferDialog } from "./OpportunityTransferDialog";
 import { useOpportunitiesTable } from "../hooks/useOpportunitiesTable";
 import { useCompanyAdminStatus } from "@/src/features/users/hooks/useIsCompanyAdmin";
 import { OpportunityRowActionsProvider } from "../hooks/useOpportunityRowActions";
@@ -43,6 +44,7 @@ export default function OpportunityList() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [opportunityToEdit, setOpportunityToEdit] = useState<Opportunity | null>(null);
   const [opportunityToDelete, setOpportunityToDelete] = useState<Opportunity | null>(null);
+  const [opportunityToTransfer, setOpportunityToTransfer] = useState<Opportunity | null>(null);
 
   const handleNew = () => {
     setOpportunityToEdit(null);
@@ -58,7 +60,8 @@ export default function OpportunityList() {
   // `vendedor` no viaja con la sesión RESUELTA como no administrador: la tabla
   // le va a quitar ese filtro, y pedir el embudo con él sería una petición de
   // más. Con `admin` o `unknown` la tabla lo conserva, y el embudo también.
-  const dropsVendedor = useCompanyAdminStatus() === "not-admin";
+  const adminStatus = useCompanyAdminStatus();
+  const dropsVendedor = adminStatus === "not-admin";
   const funnelParams = Object.fromEntries(
     Object.entries(table.criteria).filter(
       ([key]) =>
@@ -77,6 +80,8 @@ export default function OpportunityList() {
         listQuery: serializeOpportunitiesListState(table.state),
         onEdit: handleEdit,
         onDelete: setOpportunityToDelete,
+        // "Transferir" solo para un administrador de empresa RESUELTO.
+        onTransfer: adminStatus === "admin" ? setOpportunityToTransfer : undefined,
       }}
     >
       <div className="mb-4">
@@ -117,6 +122,12 @@ export default function OpportunityList() {
       <OpportunityDeleteDialog
         opportunity={opportunityToDelete}
         onClose={() => setOpportunityToDelete(null)}
+      />
+
+      {/* Sin `cotizacionesCount`: el listado no las trae y el aviso es genérico. */}
+      <OpportunityTransferDialog
+        opportunity={opportunityToTransfer}
+        onClose={() => setOpportunityToTransfer(null)}
       />
     </OpportunityRowActionsProvider>
   );

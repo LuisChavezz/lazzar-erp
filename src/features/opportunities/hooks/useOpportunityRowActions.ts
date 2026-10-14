@@ -20,6 +20,11 @@ export interface OpportunityRowActionsContextValue {
   listQuery: string;
   onEdit: (opportunity: Opportunity) => void;
   onDelete: (opportunity: Opportunity) => void;
+  /**
+   * "Transferir". Solo llega para un administrador de empresa (resuelto como
+   * tal); sin ella el menú no ofrece la acción.
+   */
+  onTransfer?: (opportunity: Opportunity) => void;
 }
 
 const OpportunityRowActionsContext = createContext<OpportunityRowActionsContextValue | null>(null);

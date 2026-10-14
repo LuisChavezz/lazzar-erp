@@ -1,6 +1,12 @@
 import { ColumnDef, createColumnHelper } from "@tanstack/react-table";
 import { ActionMenu, ActionMenuItem } from "@/src/components/ActionMenu";
-import { ChevronRightIcon, DeleteIcon, EditIcon, ViewIcon } from "@/src/components/Icons";
+import {
+  ChevronRightIcon,
+  DeleteIcon,
+  EditIcon,
+  TraspasosIcon,
+  ViewIcon,
+} from "@/src/components/Icons";
 import { formatCurrency, NO_CURRENCY_FORMAT, safeParseAmount } from "@/src/utils/formatCurrency";
 import { formatShortDate } from "@/src/utils/formatDate";
 import { getEstadoOportunidadCfg } from "../constants/opportunityChoices";
@@ -35,7 +41,7 @@ const MUTED_CLS = "text-slate-400 dark:text-slate-500";
  * en `OpportunityList`.
  */
 function OpportunityTitleActions({ opportunity }: { opportunity: Opportunity }) {
-  const { listQuery, onEdit, onDelete } = useOpportunityRowActionsContext();
+  const { listQuery, onEdit, onDelete, onTransfer } = useOpportunityRowActionsContext();
   // `estado` es un valor del backend: uno fuera del catálogo cae al gris neutro
   // y se anuncia con su texto crudo (`getEstadoOportunidadCfg`).
   const estadoCfg = getEstadoOportunidadCfg(opportunity.estado);
@@ -50,6 +56,9 @@ function OpportunityTitleActions({ opportunity }: { opportunity: Opportunity }) 
       href: opportunityDetailHref(opportunity.id, listQuery),
     },
     { label: "Editar", icon: EditIcon, onSelect: () => onEdit(opportunity) },
+    ...(onTransfer
+      ? [{ label: "Transferir", icon: TraspasosIcon, onSelect: () => onTransfer(opportunity) }]
+      : []),
     { label: "Dar de baja", icon: DeleteIcon, onSelect: () => onDelete(opportunity) },
   ];
 

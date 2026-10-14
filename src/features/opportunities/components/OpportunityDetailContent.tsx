@@ -4,7 +4,7 @@ import { useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { ArrowLeftIcon, DeleteIcon, EditIcon } from "@/src/components/Icons";
+import { ArrowLeftIcon, DeleteIcon, EditIcon, TraspasosIcon } from "@/src/components/Icons";
 import { Button } from "@/src/components/Button";
 import { ErrorState } from "@/src/components/ErrorState";
 import { Loader } from "@/src/components/Loader";
@@ -16,6 +16,7 @@ import {
   textOrDash,
 } from "@/src/components/DetailDialogPrimitives";
 import { CustomerCartera } from "@/src/features/customers/components/CustomerCartera";
+import { useCompanyAdminStatus } from "@/src/features/users/hooks/useIsCompanyAdmin";
 import { canLandOnQuoteEdit } from "@/src/features/quotes/utils/quoteEditRouteAccess";
 import { formatCurrency, NO_CURRENCY_FORMAT, safeParseAmount } from "@/src/utils/formatCurrency";
 import { formatShortDate } from "@/src/utils/formatDate";
@@ -38,6 +39,7 @@ import { OpportunityCotizaciones } from "./OpportunityCotizaciones";
 import { OpportunityCotizarAction } from "./OpportunityCotizarAction";
 import { OpportunityDeleteDialog } from "./OpportunityDeleteDialog";
 import { OpportunityFormDialog } from "./OpportunityFormDialog";
+import { OpportunityTransferDialog } from "./OpportunityTransferDialog";
 import { OpportunityName } from "./OpportunityName";
 import { OpportunitySeguimientoDeleteDialog } from "./OpportunitySeguimientoDeleteDialog";
 import { OpportunitySeguimientoFormDialog } from "./OpportunitySeguimientoFormDialog";
@@ -99,6 +101,12 @@ export const OpportunityDetailContent = ({
   const [opportunityToEdit, setOpportunityToEdit] = useState<Opportunity | null>(null);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [opportunityToDelete, setOpportunityToDelete] = useState<Opportunity | null>(null);
+  // "Transferir" (solo administrador de empresa): el registro y cuántas
+  // cotizaciones tiene, para que el aviso diga el número.
+  const [transfer, setTransfer] = useState<{
+    opportunity: Opportunity;
+    cotizacionesCount: number;
+  } | null>(null);
 
   const handleEdit = (opportunity: Opportunity) => {
     setOpportunityToEdit(opportunity);
@@ -188,6 +196,9 @@ export const OpportunityDetailContent = ({
         listQuery={listQuery}
         onEdit={handleEdit}
         onDelete={setOpportunityToDelete}
+        onTransfer={(opportunity, cotizacionesCount) =>
+          setTransfer({ opportunity, cotizacionesCount })
+        }
         seguimientoActions={seguimientoActions}
       />
     );
@@ -208,6 +219,12 @@ export const OpportunityDetailContent = ({
         opportunity={opportunityToDelete}
         onClose={() => setOpportunityToDelete(null)}
         onDeleted={handleDeleted}
+      />
+
+      <OpportunityTransferDialog
+        opportunity={transfer?.opportunity ?? null}
+        cotizacionesCount={transfer?.cotizacionesCount}
+        onClose={() => setTransfer(null)}
       />
 
       <OpportunitySeguimientoFormDialog
@@ -231,6 +248,7 @@ interface OpportunityDetailBodyProps {
   listQuery: string;
   onEdit: (opportunity: Opportunity) => void;
   onDelete: (opportunity: Opportunity) => void;
+  onTransfer: (opportunity: Opportunity, cotizacionesCount: number) => void;
   seguimientoActions: OpportunitySeguimientoActions;
 }
 
@@ -245,9 +263,12 @@ function OpportunityDetailBody({
   listQuery,
   onEdit,
   onDelete,
+  onTransfer,
   seguimientoActions,
 }: OpportunityDetailBodyProps) {
   const { data: session } = useSession();
+  // "Transferir" solo para un administrador de empresa RESUELTO.
+  const canTransfer = useCompanyAdminStatus() === "admin";
 
   const opportunity = data.oportunidad;
   // `?? []`: el contrato da ambos arreglos siempre, pero una respuesta sin el
@@ -301,6 +322,15 @@ function OpportunityDetailBody({
           >
             Editar
           </Button>
+          {canTransfer && (
+            <Button
+              variant="secondary"
+              leftIcon={<TraspasosIcon className="w-4 h-4" aria-hidden="true" />}
+              onClick={() => onTransfer(opportunity, cotizaciones.length)}
+            >
+              Transferir
+            </Button>
+          )}
           <Button
             variant="secondary"
             leftIcon={<DeleteIcon className="w-4 h-4" aria-hidden="true" />}
