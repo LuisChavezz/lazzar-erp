@@ -8,7 +8,9 @@ import {
   ScissorsIcon,
   SearchIcon,
   SliceIcon,
+  TrendingUpIcon,
 } from "@/src/components/Icons";
+import { opportunityDetailPath } from "@/src/features/opportunities/constants/opportunityRoutes";
 import { invoiceDetailHref } from "@/src/features/invoicing/constants/invoiceDetailOrigins";
 import type { PermissionContext } from "@/src/interfaces/permission-context.interface";
 import { canAccessRoute } from "@/src/utils/routeAccess";
@@ -80,6 +82,9 @@ export const SEARCH_APERTURA: Record<string, SearchApertura> = {
   // de producción): su "Volver" cae al listado de facturas, que exige el mismo
   // código que la ruta.
   factura: { modo: "ruta", href: (id) => invoiceDetailHref(id) },
+  // Página de detalle de la oportunidad, sin `?lista=`: su "Volver" cae al
+  // listado sin filtros, que exige el mismo código que la ruta (`R-CRM`).
+  oportunidad: { modo: "ruta", href: opportunityDetailPath },
 };
 
 /**
@@ -113,7 +118,8 @@ export const canOpenSearchApertura = (
  * dos grupos deben distinguirse de un vistazo. Por la misma razón `factura` usa
  * `Receipt` y no el `FileText` de su módulo (Facturación en el sidebar): ese
  * glifo ya es el de cotización aquí. `orden_bordado`, `orden_reflejante` y
- * `orden_corte_manga` usan el ícono de su módulo (tijeras, regla, rebanada).
+ * `orden_corte_manga` usan el ícono de su módulo (tijeras, regla, rebanada), y
+ * `oportunidad`, la tendencia de su tarjeta en la portada de Ventas.
  */
 const SEARCH_ENTITY_ICONS: Record<string, ComponentType<SVGProps<SVGSVGElement>>> = {
   pedido: PedidosIcon,
@@ -123,6 +129,8 @@ const SEARCH_ENTITY_ICONS: Record<string, ComponentType<SVGProps<SVGSVGElement>>
   orden_reflejante: RulerIcon,
   orden_corte_manga: SliceIcon,
   factura: ReceiptIcon,
+  // El de la tarjeta de oportunidades de la portada de Ventas.
+  oportunidad: TrendingUpIcon,
 };
 
 /** Ícono de la entidad, con la lupa como neutro para tipos aún desconocidos. */
