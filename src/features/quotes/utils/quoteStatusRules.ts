@@ -2,7 +2,10 @@
 
 import { TIPO_PEDIDO } from "../../orders/constants/pedidoStatus";
 
-const EDITABLE_QUOTE_STATUSES = new Set([1, 3]);
+// 4 (rechazada) se edita para corregir lo que pidió mesa de control. Guardar
+// por `onboarding/` la devuelve a 1 (Borrador) en el backend, y desde 1 el
+// reenvío ya no guarda comentario: es el contrato, no un fallo.
+const EDITABLE_QUOTE_STATUSES = new Set([1, 3, 4]);
 // 4 (rechazada) vuelve a revisión directamente, con un comentario opcional
 // para mesa de control (ver `acceptsResendComment`).
 const REVIEWABLE_QUOTE_STATUSES = new Set([1, 4]);
