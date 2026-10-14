@@ -1,14 +1,11 @@
 "use client";
 
 import { ColumnDef, FilterFn } from "@tanstack/react-table";
-import dynamic from "next/dynamic";
-import { createContext, useContext, useState } from "react";
+import { createContext, useContext } from "react";
 import { useIsMutating } from "@tanstack/react-query";
 import { selectMutationRecordId } from "@/src/utils/mutationRecordId";
 import { ActionMenu, ActionMenuItem } from "@/src/components/ActionMenu";
 import { ColumnHeaderFilter, type ColumnFilterOption } from "@/src/components/ColumnHeaderFilter";
-import { ConfirmDialog } from "@/src/components/ConfirmDialog";
-import { DialogHeader } from "@/src/components/DialogHeader";
 import {
   CheckCircleIcon,
   ChevronRightIcon,
@@ -16,7 +13,6 @@ import {
   SyncIcon,
   ViewIcon,
 } from "@/src/components/Icons";
-import { MainDialog } from "@/src/components/MainDialog";
 import { capitalize } from "@/src/utils/capitalize";
 import { formatCurrency } from "@/src/utils/formatCurrency";
 import {
@@ -27,36 +23,11 @@ import {
   formatQuoteDateTime as formatOperationsQuoteDateTime,
 } from "../../quotes/utils/quoteDetailsFormatters";
 import { KANBAN_COLUMNS } from "../../quotes/constants/kanbanColumns";
-import { QuoteDetailsLoadingSkeleton } from "../../quotes/components/QuoteDetailsLoadingSkeleton";
-import { useAcceptChangesOperationsQuote } from "../hooks/useAcceptChangesOperationsQuote";
-import { useApproveOperationsQuote } from "../hooks/useApproveOperationsQuote";
-import { useRejectChangesOperationsQuote } from "../hooks/useRejectChangesOperationsQuote";
+import { acceptChangesOperationsQuoteMutationKey } from "../hooks/useAcceptChangesOperationsQuote";
+import { approveOperationsQuoteMutationKey } from "../hooks/useApproveOperationsQuote";
+import { rejectChangesOperationsQuoteMutationKey } from "../hooks/useRejectChangesOperationsQuote";
 import { rejectOperationsQuoteMutationKey } from "../hooks/useRejectOperationsQuote";
 import { OperationsQuote } from "../interfaces/operations-quote.interface";
-
-const OperationsQuoteDetails = dynamic(
-  () =>
-    import("../../quotes/components/QuoteDetails").then(
-      (mod) => mod.QuoteDetails
-    ),
-  {
-    ssr: false,
-    loading: () => (
-      <QuoteDetailsLoadingSkeleton ariaLabel="Cargando detalle de cotización operativa" />
-    ),
-  }
-);
-
-const operationsQuoteStatusDialogColors: Record<
-  number,
-  "sky" | "emerald" | "amber" | "rose" | "orange"
-> = {
-  1: "amber",
-  2: "sky",
-  3: "emerald",
-  4: "rose",
-  5: "orange",
-};
 
 /**
  * Mismo mapeo estatus → color/label que el tablero Kanban de Cotizaciones
@@ -81,26 +52,47 @@ const estatusFilterFn: FilterFn<OperationsQuote> = (row, _columnId, filterValue)
   return String(row.original.estatus) === filterValue;
 };
 
-// ─── Rechazo: lo posee la VISTA, no la celda ──────────────────────────────────
-// Rechazar saca la cotización del listado (mesa de control solo trae estatus 2
-// y 5): un diálogo dentro de la celda se desmontaría con ella a media
-// operación. La celda solo PIDE el rechazo; `OperationsQuoteList` monta el
-// diálogo. Va por contexto, no por la factoría de columnas, para que
-// `operationsQuoteColumns` siga siendo un arreglo estático.
-const OperationsQuoteRejectContext = createContext<
-  ((operationsQuote: OperationsQuote) => void) | null
+// ─── Acciones de fila: los diálogos los posee la VISTA, no la celda ───────────
+// Una celda se desmonta al ordenar, paginar o filtrar, y autorizar o rechazar
+// saca la cotización del listado (mesa de control solo trae estatus 2 y 5): un
+// diálogo dentro de ella se perdería a media operación. La celda solo PIDE la
+// acción; `OperationsQuoteList` monta los diálogos
+// (`OperationsQuoteActionDialogs`). Va por contexto, no por la factoría de
+// columnas, para que `operationsQuoteColumns` siga siendo un arreglo estático.
+export type OperationsQuoteRowAction =
+  | "view"
+  | "authorize"
+  | "reject"
+  | "acceptChanges"
+  | "rejectChanges";
+
+const OperationsQuoteRowActionsContext = createContext<
+  ((action: OperationsQuoteRowAction, operationsQuote: OperationsQuote) => void) | null
 >(null);
 
-export const OperationsQuoteRejectProvider = OperationsQuoteRejectContext.Provider;
+export const OperationsQuoteRowActionsProvider = OperationsQuoteRowActionsContext.Provider;
 
-function useRequestOperationsQuoteReject() {
-  const requestReject = useContext(OperationsQuoteRejectContext);
-  if (!requestReject) {
+function useRequestOperationsQuoteAction() {
+  const requestAction = useContext(OperationsQuoteRowActionsContext);
+  if (!requestAction) {
     throw new Error(
-      "operationsQuoteColumns debe renderizarse dentro de un OperationsQuoteRejectProvider (ver OperationsQuoteList)."
+      "operationsQuoteColumns debe renderizarse dentro de un OperationsQuoteRowActionsProvider (ver OperationsQuoteList)."
     );
   }
-  return requestReject;
+  return requestAction;
+}
+
+/**
+ * ¿Hay una mutación `mutationKey` en curso sobre ESTA cotización? Se lee de la
+ * caché: las mutaciones viven en los diálogos de la vista, no en la celda.
+ */
+function useIsMutatingRow(mutationKey: readonly unknown[], quoteId: number) {
+  return (
+    useIsMutating({
+      mutationKey: [...mutationKey],
+      predicate: (mutation) => selectMutationRecordId(mutation) === quoteId,
+    }) > 0
+  );
 }
 
 const OperationsQuoteIdCell = ({
@@ -108,30 +100,23 @@ const OperationsQuoteIdCell = ({
 }: {
   operationsQuote: OperationsQuote;
 }) => {
-  const requestReject = useRequestOperationsQuoteReject();
-  const [isViewOpen, setIsViewOpen] = useState(false);
-  const [isAuthorizeOpen, setIsAuthorizeOpen] = useState(false);
-  const [isAcceptChangesOpen, setIsAcceptChangesOpen] = useState(false);
-  const [isRejectChangesOpen, setIsRejectChangesOpen] = useState(false);
-  const {
-    mutate: authorizeOperationsQuote,
-    isPending: isAuthorizingOperationsQuote,
-  } = useApproveOperationsQuote();
-  // El rechazo en curso de ESTA cotización, leído de la caché: la mutación
-  // vive en el diálogo de la vista, no en la celda.
-  const isRejectingOperationsQuote =
-    useIsMutating({
-      mutationKey: rejectOperationsQuoteMutationKey,
-      predicate: (mutation) => selectMutationRecordId(mutation) === operationsQuote.id,
-    }) > 0;
-  const {
-    mutate: acceptChangesOperationsQuote,
-    isPending: isAcceptingChangesOperationsQuote,
-  } = useAcceptChangesOperationsQuote();
-  const {
-    mutate: rejectChangesOperationsQuote,
-    isPending: isRejectingChangesOperationsQuote,
-  } = useRejectChangesOperationsQuote();
+  const requestAction = useRequestOperationsQuoteAction();
+  const isAuthorizingOperationsQuote = useIsMutatingRow(
+    approveOperationsQuoteMutationKey,
+    operationsQuote.id
+  );
+  const isRejectingOperationsQuote = useIsMutatingRow(
+    rejectOperationsQuoteMutationKey,
+    operationsQuote.id
+  );
+  const isAcceptingChangesOperationsQuote = useIsMutatingRow(
+    acceptChangesOperationsQuoteMutationKey,
+    operationsQuote.id
+  );
+  const isRejectingChangesOperationsQuote = useIsMutatingRow(
+    rejectChangesOperationsQuoteMutationKey,
+    operationsQuote.id
+  );
 
   const canAuthorizeOperationsQuote =
     canManageOperationsQuoteAuthorization(operationsQuote.estatus) &&
@@ -142,44 +127,29 @@ const OperationsQuoteIdCell = ({
 
   const handleOpenAuthorizeDialog = () => {
     if (!canAuthorizeOperationsQuote) return;
-    setIsAuthorizeOpen(true);
+    requestAction("authorize", operationsQuote);
   };
 
   const handleOpenRejectDialog = () => {
     if (!canAuthorizeOperationsQuote) return;
-    requestReject(operationsQuote);
+    requestAction("reject", operationsQuote);
   };
 
   const handleOpenAcceptChangesDialog = () => {
     if (!canAcceptOperationsQuoteChanges) return;
-    setIsAcceptChangesOpen(true);
+    requestAction("acceptChanges", operationsQuote);
   };
 
   const handleOpenRejectChangesDialog = () => {
     if (!canAcceptOperationsQuoteChanges) return;
-    setIsRejectChangesOpen(true);
-  };
-
-  const handleAuthorize = () => {
-    if (!canAuthorizeOperationsQuote) return;
-    authorizeOperationsQuote(operationsQuote.id);
-  };
-
-  const handleAcceptChanges = () => {
-    if (!canAcceptOperationsQuoteChanges) return;
-    acceptChangesOperationsQuote(operationsQuote.id);
-  };
-
-  const handleRejectChanges = () => {
-    if (!canAcceptOperationsQuoteChanges) return;
-    rejectChangesOperationsQuote(operationsQuote.id);
+    requestAction("rejectChanges", operationsQuote);
   };
 
   const items: ActionMenuItem[] = [
     {
       label: "Ver detalles",
       icon: ViewIcon,
-      onSelect: () => setIsViewOpen(true),
+      onSelect: () => requestAction("view", operationsQuote),
     },
     {
       // Aprobar/rechazar tienen códigos propios en el catálogo:
@@ -249,66 +219,6 @@ const OperationsQuoteIdCell = ({
             />
           </button>
         }
-      />
-
-      {isViewOpen && (
-        <MainDialog
-          open={isViewOpen}
-          onOpenChange={setIsViewOpen}
-          maxWidth="1000px"
-          title={
-            <DialogHeader
-              title={`Detalles de la cotización #${operationsQuote.id}`}
-              subtitle={
-                operationsQuote.cliente_nombre ||
-                operationsQuote.cliente_razon_social
-              }
-              statusColor={
-                operationsQuoteStatusDialogColors[operationsQuote.estatus] ??
-                "sky"
-              }
-            />
-          }
-        >
-          <OperationsQuoteDetails
-            quoteId={operationsQuote.id}
-            source="mesa-control"
-          />
-        </MainDialog>
-      )}
-
-      <ConfirmDialog
-        open={isAuthorizeOpen && canAuthorizeOperationsQuote}
-        onOpenChange={setIsAuthorizeOpen}
-        title="Autorizar cotización operativa"
-        description={`¿Deseas autorizar la cotización #${operationsQuote.id}?`}
-        confirmText={
-          isAuthorizingOperationsQuote ? "Autorizando..." : "Autorizar"
-        }
-        confirmColor="blue"
-        onConfirm={handleAuthorize}
-      />
-      <ConfirmDialog
-        open={isAcceptChangesOpen && canAcceptOperationsQuoteChanges}
-        onOpenChange={setIsAcceptChangesOpen}
-        title="Aceptar cambios de la cotización operativa"
-        description={`¿Deseas aceptar los cambios de la cotización #${operationsQuote.id}?`}
-        confirmText={
-          isAcceptingChangesOperationsQuote ? "Aplicando..." : "Aceptar cambios"
-        }
-        confirmColor="green"
-        onConfirm={handleAcceptChanges}
-      />
-      <ConfirmDialog
-        open={isRejectChangesOpen && canAcceptOperationsQuoteChanges}
-        onOpenChange={setIsRejectChangesOpen}
-        title="Rechazar cambios de la cotización operativa"
-        description={`¿Deseas rechazar los cambios de la cotización #${operationsQuote.id}?`}
-        confirmText={
-          isRejectingChangesOperationsQuote ? "Rechazando..." : "Rechazar cambios"
-        }
-        confirmColor="red"
-        onConfirm={handleRejectChanges}
       />
     </div>
   );

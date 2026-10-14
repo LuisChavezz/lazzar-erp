@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { useIsMutating } from "@tanstack/react-query";
 import { DataTable } from "@/src/components/DataTable";
-import { useDialogSession } from "@/src/hooks/useDialogSession";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import {
   approveOperationsQuoteMutationKey,
@@ -13,8 +12,15 @@ import {
 } from "../hooks/useRejectOperationsQuote";
 import { useOperationsQuotes } from "../hooks/useOperationsQuotes";
 import type { OperationsQuote } from "../interfaces/operations-quote.interface";
-import { operationsQuoteColumns, OperationsQuoteRejectProvider } from "./OperationsQuoteColumns";
-import { RejectQuoteDialog } from "./RejectQuoteDialog";
+import {
+  OperationsQuoteActionDialogs,
+  type OperationsQuoteDialogState,
+} from "./OperationsQuoteActionDialogs";
+import {
+  operationsQuoteColumns,
+  OperationsQuoteRowActionsProvider,
+  type OperationsQuoteRowAction,
+} from "./OperationsQuoteColumns";
 
 export const OperationsQuoteList = () => {
   const {
@@ -31,10 +37,12 @@ export const OperationsQuoteList = () => {
     useIsMutating({ mutationKey: rejectOperationsQuoteMutationKey }) > 0;
   const isUpdatingOperationsQuoteStatus =
     isAuthorizingOperationsQuote || isRejectingOperationsQuote;
-  // Cotización cuyo rechazo se pidió desde una celda. La foto vive aquí, no en
-  // la fila: tras rechazar, la fila sale del listado y el diálogo sigue.
-  const [rejectTarget, setRejectTarget] = useState<OperationsQuote | null>(null);
-  const rejectSession = useDialogSession(rejectTarget !== null, rejectTarget);
+  // Acción pedida desde una celda (ver, autorizar, rechazar, aceptar/rechazar
+  // cambios). El estado vive aquí, no en la fila: la acción puede sacar la fila
+  // del listado y el diálogo sigue.
+  const [dialog, setDialog] = useState<OperationsQuoteDialogState | null>(null);
+  const requestAction = (kind: OperationsQuoteRowAction, operationsQuote: OperationsQuote) =>
+    setDialog({ kind, operationsQuote });
 
   return (
     // Altura acotada a la ventana (mismo cálculo que el resto de Mesa de
@@ -42,7 +50,7 @@ export const OperationsQuoteList = () => {
     // `fillHeight` en `DataTable` para que la tabla scrollee INTERNAMENTE en
     // vez de empujar la página — esta pantalla no tiene tarjetas KPI arriba,
     // así que no hace falta acotar solo desde `md:`.
-    <OperationsQuoteRejectProvider value={setRejectTarget}>
+    <OperationsQuoteRowActionsProvider value={requestAction}>
     <div className="h-[calc(100dvh-128px)] min-h-[420px]">
       <DataTable
         columns={operationsQuoteColumns}
@@ -65,15 +73,12 @@ export const OperationsQuoteList = () => {
         errorMessage={extractErrorMessage(error, "No se pudo cargar la información.")}
         loadingAriaLabel="Cargando cotizaciones operativas"
       />
-      {rejectSession.snapshot && (
-        <RejectQuoteDialog
-          key={rejectSession.id}
-          open={rejectTarget !== null}
-          quote={rejectSession.snapshot}
-          onClose={() => setRejectTarget(null)}
-        />
-      )}
+      <OperationsQuoteActionDialogs
+        dialog={dialog}
+        onClose={() => setDialog(null)}
+        operationsQuotes={operationsQuotes}
+      />
     </div>
-    </OperationsQuoteRejectProvider>
+    </OperationsQuoteRowActionsProvider>
   );
 };
