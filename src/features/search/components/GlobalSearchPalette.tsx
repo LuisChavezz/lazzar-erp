@@ -6,6 +6,7 @@ import { useSession } from "next-auth/react";
 import { Dialog, VisuallyHidden } from "@radix-ui/themes";
 import { LoadingSpinnerIcon, SearchIcon } from "@/src/components/Icons";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
+import { getEstadoOportunidadCfg } from "@/src/features/opportunities/constants/opportunityChoices";
 import { QuoteDetailByIdDialog } from "@/src/features/quotes/components/QuoteDetailByIdDialog";
 import { useGlobalSearch } from "../hooks/useGlobalSearch";
 import { useGlobalSearchModal } from "../hooks/useGlobalSearchModal";
@@ -402,7 +403,19 @@ export function GlobalSearchPalette() {
                               {result.codigo}
                             </span>
                           )}
-                          {result.estatus && (
+                          {/* Oportunidad: el estado con su punto de color, como
+                              en el listado. El resto, la etiqueta genérica. */}
+                          {result.estatus && result.tipo === "oportunidad" ? (
+                            <span className="inline-flex shrink-0 items-center gap-1.5 text-xs font-medium text-slate-600 dark:text-slate-300">
+                              <span
+                                className={`h-2 w-2 shrink-0 rounded-full ${
+                                  getEstadoOportunidadCfg(result.estatus).dot
+                                }`}
+                                aria-hidden="true"
+                              />
+                              {getEstadoOportunidadCfg(result.estatus).label}
+                            </span>
+                          ) : result.estatus && (
                             <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-500 dark:bg-white/10 dark:text-slate-300">
                               {result.estatus}
                             </span>
