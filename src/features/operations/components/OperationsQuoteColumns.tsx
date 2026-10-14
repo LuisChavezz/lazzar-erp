@@ -2,8 +2,6 @@
 
 import { ColumnDef, FilterFn } from "@tanstack/react-table";
 import { createContext, useContext } from "react";
-import { useIsMutating } from "@tanstack/react-query";
-import { selectMutationRecordId } from "@/src/utils/mutationRecordId";
 import { ActionMenu, ActionMenuItem } from "@/src/components/ActionMenu";
 import { ColumnHeaderFilter, type ColumnFilterOption } from "@/src/components/ColumnHeaderFilter";
 import {
@@ -23,10 +21,6 @@ import {
   formatQuoteDateTime as formatOperationsQuoteDateTime,
 } from "../../quotes/utils/quoteDetailsFormatters";
 import { KANBAN_COLUMNS } from "../../quotes/constants/kanbanColumns";
-import { acceptChangesOperationsQuoteMutationKey } from "../hooks/useAcceptChangesOperationsQuote";
-import { approveOperationsQuoteMutationKey } from "../hooks/useApproveOperationsQuote";
-import { rejectChangesOperationsQuoteMutationKey } from "../hooks/useRejectChangesOperationsQuote";
-import { rejectOperationsQuoteMutationKey } from "../hooks/useRejectOperationsQuote";
 import { OperationsQuote } from "../interfaces/operations-quote.interface";
 
 /**
@@ -66,33 +60,34 @@ export type OperationsQuoteRowAction =
   | "acceptChanges"
   | "rejectChanges";
 
-const OperationsQuoteRowActionsContext = createContext<
-  ((action: OperationsQuoteRowAction, operationsQuote: OperationsQuote) => void) | null
->(null);
+/** Acciones con mutación propia (todas salvo "ver"). */
+export type OperationsQuoteMutatingAction = Exclude<OperationsQuoteRowAction, "view">;
+
+/**
+ * Ids de cotización con una acción EN CURSO, por acción. Los calcula UNA vez
+ * `OperationsQuoteList` (`useMutationState`) en vez de una suscripción a la
+ * caché de mutaciones por celda y por acción.
+ */
+export type OperationsQuoteRowBusy = Record<OperationsQuoteMutatingAction, number[]>;
+
+interface OperationsQuoteRowActionsContextValue {
+  requestAction: (action: OperationsQuoteRowAction, operationsQuote: OperationsQuote) => void;
+  busy: OperationsQuoteRowBusy;
+}
+
+const OperationsQuoteRowActionsContext =
+  createContext<OperationsQuoteRowActionsContextValue | null>(null);
 
 export const OperationsQuoteRowActionsProvider = OperationsQuoteRowActionsContext.Provider;
 
-function useRequestOperationsQuoteAction() {
-  const requestAction = useContext(OperationsQuoteRowActionsContext);
-  if (!requestAction) {
+function useOperationsQuoteRowActions() {
+  const value = useContext(OperationsQuoteRowActionsContext);
+  if (!value) {
     throw new Error(
       "operationsQuoteColumns debe renderizarse dentro de un OperationsQuoteRowActionsProvider (ver OperationsQuoteList)."
     );
   }
-  return requestAction;
-}
-
-/**
- * ¿Hay una mutación `mutationKey` en curso sobre ESTA cotización? Se lee de la
- * caché: las mutaciones viven en los diálogos de la vista, no en la celda.
- */
-function useIsMutatingRow(mutationKey: readonly unknown[], quoteId: number) {
-  return (
-    useIsMutating({
-      mutationKey: [...mutationKey],
-      predicate: (mutation) => selectMutationRecordId(mutation) === quoteId,
-    }) > 0
-  );
+  return value;
 }
 
 const OperationsQuoteIdCell = ({
@@ -100,23 +95,11 @@ const OperationsQuoteIdCell = ({
 }: {
   operationsQuote: OperationsQuote;
 }) => {
-  const requestAction = useRequestOperationsQuoteAction();
-  const isAuthorizingOperationsQuote = useIsMutatingRow(
-    approveOperationsQuoteMutationKey,
-    operationsQuote.id
-  );
-  const isRejectingOperationsQuote = useIsMutatingRow(
-    rejectOperationsQuoteMutationKey,
-    operationsQuote.id
-  );
-  const isAcceptingChangesOperationsQuote = useIsMutatingRow(
-    acceptChangesOperationsQuoteMutationKey,
-    operationsQuote.id
-  );
-  const isRejectingChangesOperationsQuote = useIsMutatingRow(
-    rejectChangesOperationsQuoteMutationKey,
-    operationsQuote.id
-  );
+  const { requestAction, busy } = useOperationsQuoteRowActions();
+  const isAuthorizingOperationsQuote = busy.authorize.includes(operationsQuote.id);
+  const isRejectingOperationsQuote = busy.reject.includes(operationsQuote.id);
+  const isAcceptingChangesOperationsQuote = busy.acceptChanges.includes(operationsQuote.id);
+  const isRejectingChangesOperationsQuote = busy.rejectChanges.includes(operationsQuote.id);
 
   const canAuthorizeOperationsQuote =
     canManageOperationsQuoteAuthorization(operationsQuote.estatus) &&

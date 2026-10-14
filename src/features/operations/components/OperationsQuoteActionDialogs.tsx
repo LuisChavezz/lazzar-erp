@@ -1,29 +1,18 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useIsMutating } from "@tanstack/react-query";
 import { ConfirmDialog } from "@/src/components/ConfirmDialog";
 import { DialogHeader } from "@/src/components/DialogHeader";
 import { MainDialog } from "@/src/components/MainDialog";
 import { useDialogSession } from "@/src/hooks/useDialogSession";
-import { selectMutationRecordId } from "@/src/utils/mutationRecordId";
 import {
   canAcceptQuoteChanges as canAcceptOperationsQuoteChangesStatus,
   canManageQuoteAuthorization as canManageOperationsQuoteAuthorization,
 } from "../../quotes/utils/quoteStatusRules";
 import { QuoteDetailsLoadingSkeleton } from "../../quotes/components/QuoteDetailsLoadingSkeleton";
-import {
-  acceptChangesOperationsQuoteMutationKey,
-  useAcceptChangesOperationsQuote,
-} from "../hooks/useAcceptChangesOperationsQuote";
-import {
-  approveOperationsQuoteMutationKey,
-  useApproveOperationsQuote,
-} from "../hooks/useApproveOperationsQuote";
-import {
-  rejectChangesOperationsQuoteMutationKey,
-  useRejectChangesOperationsQuote,
-} from "../hooks/useRejectChangesOperationsQuote";
+import { useAcceptChangesOperationsQuote } from "../hooks/useAcceptChangesOperationsQuote";
+import { useApproveOperationsQuote } from "../hooks/useApproveOperationsQuote";
+import { useRejectChangesOperationsQuote } from "../hooks/useRejectChangesOperationsQuote";
 import type { OperationsQuote } from "../interfaces/operations-quote.interface";
 import type { OperationsQuoteRowAction } from "./OperationsQuoteColumns";
 import { RejectQuoteDialog } from "./RejectQuoteDialog";
@@ -69,16 +58,6 @@ interface OperationsQuoteActionDialogsProps {
   operationsQuotes: OperationsQuote[];
 }
 
-/** ¿Hay una mutación `mutationKey` en curso sobre esta cotización? */
-function useIsMutatingQuote(mutationKey: readonly unknown[], quoteId: number | undefined) {
-  return (
-    useIsMutating({
-      mutationKey: [...mutationKey],
-      predicate: (mutation) => selectMutationRecordId(mutation) === quoteId,
-    }) > 0
-  );
-}
-
 /**
  * Diálogos de las acciones de fila de Mesa de Control (ver detalles,
  * autorizar, rechazar, aceptar/rechazar cambios), montados UNA vez en la vista
@@ -105,18 +84,9 @@ export function OperationsQuoteActionDialogs({
   const { mutate: authorizeOperationsQuote } = useApproveOperationsQuote();
   const { mutate: acceptChangesOperationsQuote } = useAcceptChangesOperationsQuote();
   const { mutate: rejectChangesOperationsQuote } = useRejectChangesOperationsQuote();
-  const isAuthorizingOperationsQuote = useIsMutatingQuote(
-    approveOperationsQuoteMutationKey,
-    operationsQuote?.id
-  );
-  const isAcceptingChangesOperationsQuote = useIsMutatingQuote(
-    acceptChangesOperationsQuoteMutationKey,
-    operationsQuote?.id
-  );
-  const isRejectingChangesOperationsQuote = useIsMutatingQuote(
-    rejectChangesOperationsQuoteMutationKey,
-    operationsQuote?.id
-  );
+  // Sin etiqueta de "en curso" en los diálogos: cierran al confirmar
+  // (`closeOnConfirm`), así que nunca se pintaría. La retroalimentación es el
+  // overlay de la tabla y el estado por fila (`OperationsQuoteList`).
 
   if (!snapshot || !operationsQuote) return null;
 
@@ -167,9 +137,7 @@ export function OperationsQuoteActionDialogs({
           onOpenChange={handleOpenChange}
           title="Autorizar cotización operativa"
           description={`¿Deseas autorizar la cotización #${id}?`}
-          confirmText={
-            isAuthorizingOperationsQuote ? "Autorizando..." : "Autorizar"
-          }
+          confirmText="Autorizar"
           confirmColor="blue"
           onConfirm={() => {
             if (!canAuthorizeOperationsQuote) return;
@@ -194,9 +162,7 @@ export function OperationsQuoteActionDialogs({
           onOpenChange={handleOpenChange}
           title="Aceptar cambios de la cotización operativa"
           description={`¿Deseas aceptar los cambios de la cotización #${id}?`}
-          confirmText={
-            isAcceptingChangesOperationsQuote ? "Aplicando..." : "Aceptar cambios"
-          }
+          confirmText="Aceptar cambios"
           confirmColor="green"
           onConfirm={() => {
             if (!canAcceptOperationsQuoteChanges) return;
@@ -212,9 +178,7 @@ export function OperationsQuoteActionDialogs({
           onOpenChange={handleOpenChange}
           title="Rechazar cambios de la cotización operativa"
           description={`¿Deseas rechazar los cambios de la cotización #${id}?`}
-          confirmText={
-            isRejectingChangesOperationsQuote ? "Rechazando..." : "Rechazar cambios"
-          }
+          confirmText="Rechazar cambios"
           confirmColor="red"
           onConfirm={() => {
             if (!canAcceptOperationsQuoteChanges) return;

@@ -1,15 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { useIsMutating } from "@tanstack/react-query";
+import { useMutationState } from "@tanstack/react-query";
 import { DataTable } from "@/src/components/DataTable";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
-import {
-  approveOperationsQuoteMutationKey,
-} from "../hooks/useApproveOperationsQuote";
-import {
-  rejectOperationsQuoteMutationKey,
-} from "../hooks/useRejectOperationsQuote";
+import { selectMutationRecordId } from "@/src/utils/mutationRecordId";
+import { acceptChangesOperationsQuoteMutationKey } from "../hooks/useAcceptChangesOperationsQuote";
+import { approveOperationsQuoteMutationKey } from "../hooks/useApproveOperationsQuote";
+import { rejectChangesOperationsQuoteMutationKey } from "../hooks/useRejectChangesOperationsQuote";
+import { rejectOperationsQuoteMutationKey } from "../hooks/useRejectOperationsQuote";
 import { useOperationsQuotes } from "../hooks/useOperationsQuotes";
 import type { OperationsQuote } from "../interfaces/operations-quote.interface";
 import {
@@ -20,7 +19,16 @@ import {
   operationsQuoteColumns,
   OperationsQuoteRowActionsProvider,
   type OperationsQuoteRowAction,
+  type OperationsQuoteRowBusy,
 } from "./OperationsQuoteColumns";
+
+/** Ids de cotización con una mutación `mutationKey` pendiente. */
+function usePendingQuoteIds(mutationKey: readonly unknown[]): number[] {
+  return useMutationState({
+    filters: { mutationKey: [...mutationKey], status: "pending" },
+    select: selectMutationRecordId,
+  });
+}
 
 export const OperationsQuoteList = () => {
   const {
@@ -31,10 +39,16 @@ export const OperationsQuoteList = () => {
     refetch,
     isFetching,
   } = useOperationsQuotes();
-  const isAuthorizingOperationsQuote =
-    useIsMutating({ mutationKey: approveOperationsQuoteMutationKey }) > 0;
-  const isRejectingOperationsQuote =
-    useIsMutating({ mutationKey: rejectOperationsQuoteMutationKey }) > 0;
+  // Trabajo en curso por fila, leído UNA vez de la caché de mutaciones (las
+  // mutaciones viven en los diálogos) y repartido a las celdas por contexto.
+  const busy: OperationsQuoteRowBusy = {
+    authorize: usePendingQuoteIds(approveOperationsQuoteMutationKey),
+    reject: usePendingQuoteIds(rejectOperationsQuoteMutationKey),
+    acceptChanges: usePendingQuoteIds(acceptChangesOperationsQuoteMutationKey),
+    rejectChanges: usePendingQuoteIds(rejectChangesOperationsQuoteMutationKey),
+  };
+  const isAuthorizingOperationsQuote = busy.authorize.length > 0;
+  const isRejectingOperationsQuote = busy.reject.length > 0;
   const isUpdatingOperationsQuoteStatus =
     isAuthorizingOperationsQuote || isRejectingOperationsQuote;
   // Acción pedida desde una celda (ver, autorizar, rechazar, aceptar/rechazar
@@ -50,7 +64,7 @@ export const OperationsQuoteList = () => {
     // `fillHeight` en `DataTable` para que la tabla scrollee INTERNAMENTE en
     // vez de empujar la página — esta pantalla no tiene tarjetas KPI arriba,
     // así que no hace falta acotar solo desde `md:`.
-    <OperationsQuoteRowActionsProvider value={requestAction}>
+    <OperationsQuoteRowActionsProvider value={{ requestAction, busy }}>
     <div className="h-[calc(100dvh-128px)] min-h-[420px]">
       <DataTable
         columns={operationsQuoteColumns}
