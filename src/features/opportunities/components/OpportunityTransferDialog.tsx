@@ -179,7 +179,10 @@ function TransferForm({
         className="rounded-xl border border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 px-4 py-3 text-sm text-amber-800 dark:text-amber-300"
       >
         <p>
-          {previousOwner} dejará de ver esta oportunidad y sus seguimientos. {cotizacionesText}
+          {/* Un administrador de empresa las sigue viendo todas: solo deja de
+              verla quien no lo es. */}
+          {previousOwner} dejará de verla y de ver sus seguimientos, salvo que sea administrador.{" "}
+          {cotizacionesText}
         </p>
       </div>
 
@@ -214,7 +217,8 @@ interface OpportunityTransferDialogProps {
  * listado y en el detalle; solo se ofrece a un administrador de empresa.
  *
  * - Avisa de los efectos: quien la tenía deja de verla junto con sus
- *   seguimientos, y sus cotizaciones siguen a nombre del vendedor anterior.
+ *   seguimientos (salvo que sea administrador de empresa), y sus cotizaciones
+ *   siguen a nombre del vendedor anterior.
  * - Queda abierto y bloqueado mientras la transferencia y la relectura están
  *   en curso (`useTransferOpportunity`); con éxito se cierra.
  * - Errores: un rechazo del destinatario (400 en `vendedor`) va bajo el
