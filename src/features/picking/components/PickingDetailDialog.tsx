@@ -1,11 +1,14 @@
 "use client";
 
+import { useState } from "react";
 import type { ComponentType, SVGProps } from "react";
+import { useSession } from "next-auth/react";
 import {
   ChevronRightIcon,
   ExclamationTriangleIcon,
   PedidosIcon,
   RouteIcon,
+  TraspasosIcon,
   WarehouseIcon,
 } from "@/src/components/Icons";
 import { MainDialog } from "@/src/components/MainDialog";
@@ -19,10 +22,13 @@ import {
 } from "@/src/components/DetailDialogPrimitives";
 import { formatExactQuantityValue } from "@/src/utils/formatCurrency";
 import { formatShortDate, formatShortTime } from "@/src/utils/formatDate";
+import { hasPermission } from "@/src/utils/permissions";
 import { PICKING_PRIORIDAD_CONFIG } from "../constants/pickingPrioridad";
 import { PICKING_STATUS_CONFIG } from "../constants/pickingStatus";
 import { PICKING_TIPO_LABELS } from "../constants/pickingTipo";
 import type { PickingDetalleLine, PickingRow } from "../interfaces/picking.interface";
+import { isPickingTrasladable } from "../utils/picking.utils";
+import { PickingTransferDialog } from "./PickingTransferDialog";
 
 /**
  * Colores del estatus de UNA LÍNEA (`PickingDetalleLine.estado`) — enum
@@ -181,8 +187,21 @@ export function PickingDetailDialog({ picking, open, onOpenChange }: PickingDeta
  * Cuerpo del detalle de picking, extraído para que el diálogo original y el
  * envoltorio por id (`PickingDetailByIdDialog`) compartan un ÚNICO `MainDialog`
  * y solo intercambien el contenido (loader → cuerpo), sin remontar el modal.
+ *
+ * Aquí vive también la acción "Trasladar a otro almacén", así que está en los
+ * dos lugares donde se abre el detalle (el listado de picking y el detalle del
+ * pedido). Se ofrece con `C-WMS-PICKING` (el mismo código que da de alta un
+ * surtido; `hasPermission` ya deja pasar al rol admin) y solo si el estatus es
+ * trasladable. Ambos dueños refrescan `picking` tras el traslado sin desmontar
+ * este cuerpo, de modo que el diálogo de traslado no se pierde a media
+ * operación.
  */
 export function PickingDetailContent({ picking }: { picking: PickingRow }) {
+  const { data: session } = useSession();
+  const [isTransferOpen, setIsTransferOpen] = useState(false);
+  const canTransfer =
+    hasPermission("C-WMS-PICKING", session?.user) && isPickingTrasladable(picking);
+
   return (
       <div className="space-y-5">
         {/* Resumen */}
@@ -237,9 +256,11 @@ export function PickingDetailContent({ picking }: { picking: PickingRow }) {
               </span>
             </InfoField>
           )}
+          {/* `whitespace-pre-line`: cada traslado añade su nota en una línea
+              nueva ("Trasladado de X a Y. …"). */}
           {picking.observaciones && (
             <InfoField label="Observaciones" className="col-span-2 sm:col-span-3">
-              {picking.observaciones}
+              <span className="whitespace-pre-line">{picking.observaciones}</span>
             </InfoField>
           )}
         </div>
@@ -250,37 +271,46 @@ export function PickingDetailContent({ picking }: { picking: PickingRow }) {
             llevar lo surtido —normalmente el almacén "APARTADOS", que el
             backend resuelve solo cuando el alta no lo especifica—. Sin
             rotularlos, dos nombres de almacén seguidos serían indistinguibles,
-            de ahí las etiquetas. Se omite el tramo del destino si el registro
-            no lo trae (pickings anteriores a la migración que lo introdujo).
+            de ahí las etiquetas.
 
-            La cadena con flechas se lee como un movimiento, y registrar el
-            picking NO mueve existencias (el backend solo guarda el documento:
-            sin transferencia, sin reserva). De ahí la aclaración al pie — es
-            más barata que quitar el destino, que sigue siendo dato real del
-            registro. */}
+            El tramo del destino se pinta SIEMPRE, con «Sin destino» cuando el
+            registro no lo trae: pasa con pickings anteriores a la migración que
+            lo introdujo y con los que se trasladaron a su propio destino (el
+            backend lo limpia). Ocultarlo haría parecer que nunca lo tuvo.
+
+            La cadena con flechas se lee como un movimiento, y ni registrar el
+            picking ni trasladarlo mueven existencias (el backend solo guarda el
+            documento: sin transferencia, sin reserva). De ahí la aclaración al
+            pie, visible siempre — haya destino o no. */}
         <div>
-          <SectionTitle>Pedido y Almacenes</SectionTitle>
+          <div className="flex items-center justify-between gap-3">
+            <SectionTitle>Pedido y Almacenes</SectionTitle>
+            {canTransfer && (
+              <button
+                type="button"
+                onClick={() => setIsTransferOpen(true)}
+                className="mb-2 inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold text-sky-600 hover:bg-sky-50 dark:text-sky-400 dark:hover:bg-sky-500/10 transition-colors"
+              >
+                <TraspasosIcon className="w-3.5 h-3.5" aria-hidden="true" />
+                Trasladar a otro almacén
+              </button>
+            )}
+          </div>
           <div className="flex items-center gap-3 px-4 py-3 rounded-xl border border-slate-100 dark:border-white/10">
             <ChainStep icon={PedidosIcon} label="Pedido" value={picking.pedido_folio} />
             <ChevronRightIcon className="w-4 h-4 text-sky-500 shrink-0" aria-hidden="true" />
             <ChainStep icon={WarehouseIcon} label="Origen" value={picking.almacen_nombre} />
-            {picking.almacen_destino_nombre && (
-              <>
-                <ChevronRightIcon className="w-4 h-4 text-sky-500 shrink-0" aria-hidden="true" />
-                <ChainStep
-                  icon={WarehouseIcon}
-                  label="Destino"
-                  value={picking.almacen_destino_nombre}
-                />
-              </>
-            )}
+            <ChevronRightIcon className="w-4 h-4 text-sky-500 shrink-0" aria-hidden="true" />
+            <ChainStep
+              icon={WarehouseIcon}
+              label="Destino"
+              value={picking.almacen_destino_nombre ?? "Sin destino"}
+            />
           </div>
-          {picking.almacen_destino_nombre && (
-            <p className="mt-1.5 px-1 text-[11px] text-slate-500 dark:text-slate-400">
-              El destino es informativo: el surtido solo queda documentado, no
-              traspasa existencias por sí mismo.
-            </p>
-          )}
+          <p className="mt-1.5 px-1 text-[11px] text-slate-500 dark:text-slate-400">
+            El surtido solo queda documentado: ni el destino ni un traslado de
+            almacén mueven existencias por sí mismos.
+          </p>
         </div>
 
         {/* Líneas */}
@@ -288,6 +318,17 @@ export function PickingDetailContent({ picking }: { picking: PickingRow }) {
           <SectionTitle>Líneas del surtido</SectionTitle>
           <LineasTable items={picking.picking_detalle} />
         </div>
+
+        {/* Montado también mientras está abierto aunque la acción deje de
+            ofrecerse (p. ej. un 400 `estado` refresca el surtido y ya no es
+            trasladable): así el usuario alcanza a leer el motivo del rechazo. */}
+        {(canTransfer || isTransferOpen) && (
+          <PickingTransferDialog
+            picking={picking}
+            open={isTransferOpen}
+            onOpenChange={setIsTransferOpen}
+          />
+        )}
       </div>
   );
 }

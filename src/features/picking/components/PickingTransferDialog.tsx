@@ -1,0 +1,246 @@
+"use client";
+
+import { useState } from "react";
+import { useIsMutating } from "@tanstack/react-query";
+import type { FormEvent } from "react";
+import { MainDialog } from "@/src/components/MainDialog";
+import { FormSelect } from "@/src/components/FormSelect";
+import { FormTextarea } from "@/src/components/FormTextarea";
+import { FormCancelButton, FormSubmitButton } from "@/src/components/FormButtons";
+import { useDialogSession } from "@/src/hooks/useDialogSession";
+import { useFormFieldErrors } from "@/src/hooks/useFormFieldErrors";
+import { useWarehouses } from "@/src/features/warehouses/hooks/useWarehouses";
+import type { Warehouse } from "@/src/features/warehouses/interfaces/warehouse.interface";
+import {
+  parseTransferPickingError,
+  useTransferPicking,
+  type TransferPickingField,
+} from "../hooks/useTransferPicking";
+import type { Picking, TransferPickingPayload } from "../interfaces/picking.interface";
+
+/**
+ * Almacenes que se ofrecen como nuevo almacén del surtido: de la MISMA empresa
+ * y sucursal que el picking (un almacén sin sucursal no se ofrece), activos y
+ * distintos del actual.
+ *
+ * `permite_salida` no se filtra porque `/inventarios/almacenes/` no lo expone:
+ * si el elegido no permite salidas, el 400 `almacen` del backend aparece bajo el
+ * selector.
+ */
+const getTargetWarehouses = (warehouses: Warehouse[], picking: Picking): Warehouse[] =>
+  warehouses
+    .filter(
+      (warehouse) =>
+        warehouse.empresa === picking.empresa &&
+        warehouse.sucursal === picking.sucursal &&
+        warehouse.estatus === "ACTIVO" &&
+        warehouse.id_almacen !== picking.almacen,
+    )
+    .sort((a, b) => a.nombre.localeCompare(b.nombre, "es"));
+
+const ErrorBanner = ({ message }: { message: string | null }) =>
+  message ? (
+    <p
+      role="alert"
+      className="rounded-xl border border-red-200 dark:border-red-500/20 bg-red-50/60 dark:bg-red-500/5 px-4 py-3 text-xs font-medium text-red-700 dark:text-red-400"
+    >
+      {message}
+    </p>
+  ) : null;
+
+interface PickingTransferFormProps {
+  /** El picking tal como estaba al ABRIR el diálogo (ver `useDialogSession`). */
+  picking: Picking;
+  onClose: () => void;
+}
+
+const PickingTransferForm = ({ picking, onClose }: PickingTransferFormProps) => {
+  const { data: warehouses, isLoading, isInitialError, refetch } = useWarehouses();
+  const transfer = useTransferPicking(picking.id);
+  const isPending = transfer.isPending;
+
+  const [almacenId, setAlmacenId] = useState(0);
+  const [observaciones, setObservaciones] = useState("");
+  const [message, setMessage] = useState<string | null>(null);
+  const {
+    getError,
+    setServerFieldError,
+    setClientFieldError,
+    clearFieldErrors,
+    clearServerErrors,
+  } = useFormFieldErrors<TransferPickingField>();
+
+  const targets = getTargetWarehouses(warehouses ?? [], picking);
+  // El almacén elegido se queda en la lista aunque un refetch del catálogo lo
+  // deje fuera del filtro (p. ej. lo desactivaron): si no, el selector mostraría
+  // otro valor que el que se enviaría.
+  const selected = warehouses?.find((warehouse) => warehouse.id_almacen === almacenId);
+  const options =
+    selected && !targets.includes(selected) ? [selected, ...targets] : targets;
+
+  const isDestino = almacenId > 0 && almacenId === picking.almacen_destino;
+
+  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (isPending) return;
+    if (almacenId <= 0) {
+      setClientFieldError("almacen", "Selecciona el almacén al que se traslada el surtido.");
+      return;
+    }
+    const payload: TransferPickingPayload = { almacen: almacenId };
+    const notas = observaciones.trim();
+    // El backend rechaza `observaciones: null`: vacío = no se manda.
+    if (notas.length > 0) payload.observaciones = notas;
+
+    clearServerErrors();
+    setMessage(null);
+    transfer.mutate(payload, {
+      onSuccess: onClose,
+      onError: (error) => setMessage(parseTransferPickingError(error, setServerFieldError)),
+    });
+  };
+
+  const renderAlmacenField = () => {
+    if (isInitialError) {
+      return (
+        <div
+          role="alert"
+          className="rounded-xl border border-red-200 dark:border-red-500/20 bg-red-50/60 dark:bg-red-500/5 px-4 py-3 text-xs font-medium text-red-700 dark:text-red-400 flex items-center justify-between gap-3"
+        >
+          <span>No se pudieron cargar los almacenes.</span>
+          <button
+            type="button"
+            onClick={() => void refetch()}
+            className="font-semibold underline underline-offset-2 hover:text-red-800 dark:hover:text-red-300"
+          >
+            Reintentar
+          </button>
+        </div>
+      );
+    }
+    if (!isLoading && options.length === 0) {
+      return (
+        <p className="rounded-xl border border-slate-200 dark:border-white/10 px-4 py-3 text-xs text-slate-500 dark:text-slate-400">
+          No hay otros almacenes activos en la sucursal de este surtido.
+        </p>
+      );
+    }
+    return (
+      <FormSelect
+        label="Nuevo almacén"
+        name="almacen"
+        value={almacenId}
+        disabled={isLoading}
+        error={getError("almacen")}
+        onChange={(event) => {
+          setAlmacenId(Number(event.target.value));
+          clearFieldErrors("almacen");
+        }}
+      >
+        <option value={0} disabled>
+          {isLoading ? "Cargando almacenes…" : "Selecciona un almacén"}
+        </option>
+        {options.map((warehouse) => (
+          <option key={warehouse.id_almacen} value={warehouse.id_almacen}>
+            {warehouse.nombre}
+          </option>
+        ))}
+      </FormSelect>
+    );
+  };
+
+  const canSubmit = !isLoading && !isInitialError && options.length > 0;
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4 py-1">
+      <div
+        role="note"
+        className="rounded-xl border border-sky-200 dark:border-sky-500/20 bg-sky-50/60 dark:bg-sky-500/5 px-4 py-3 text-xs leading-relaxed text-sky-800 dark:text-sky-300"
+      >
+        El traslado solo cambia el almacén en el que queda registrado el surtido.{" "}
+        <span className="font-semibold">No mueve ni aparta existencias</span> y no crea
+        ningún traspaso.
+      </div>
+
+      <ErrorBanner message={message} />
+
+      <div className="text-xs">
+        <span className="text-slate-400 dark:text-slate-500">Almacén actual</span>
+        <p className="font-semibold text-slate-700 dark:text-slate-200 mt-0.5">
+          {picking.almacen_nombre}
+        </p>
+      </div>
+
+      <fieldset disabled={isPending} className="space-y-4">
+        {renderAlmacenField()}
+
+        {isDestino && (
+          <p className="-mt-2 px-1 text-xs text-amber-700 dark:text-amber-400">
+            Es el almacén destino de este surtido: al trasladarlo, el surtido quedará sin
+            destino.
+          </p>
+        )}
+
+        <FormTextarea
+          label="Observaciones (opcional)"
+          name="observaciones"
+          placeholder="Motivo del traslado"
+          rows={2}
+          value={observaciones}
+          onChange={(event) => setObservaciones(event.target.value)}
+        />
+      </fieldset>
+
+      <div className="flex justify-end gap-3 pt-1">
+        <FormCancelButton label="Cancelar" onClick={onClose} disabled={isPending} />
+        <FormSubmitButton
+          isPending={isPending}
+          loadingLabel="Trasladando…"
+          disabled={isPending || !canSubmit}
+        >
+          Trasladar
+        </FormSubmitButton>
+      </div>
+    </form>
+  );
+};
+
+interface PickingTransferDialogProps {
+  picking: Picking;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}
+
+/**
+ * Traslada un picking a otro almacén (`POST /wms/pickings/{id}/trasladar/`).
+ * Se abre desde el detalle del surtido (`PickingDetailContent`), que decide si
+ * se ofrece (permiso `C-WMS-PICKING` y estatus trasladable).
+ *
+ * Mientras el POST está en vuelo el diálogo no se cierra: así no se pierde el
+ * error si el backend lo rechaza.
+ */
+export function PickingTransferDialog({ picking, open, onOpenChange }: PickingTransferDialogProps) {
+  const session = useDialogSession(open, picking);
+  // La mutación vive en el formulario; aquí se lee por su llave por registro.
+  const transferring = useIsMutating({ mutationKey: ["picking-transfer", picking.id] }) > 0;
+
+  return (
+    <MainDialog
+      open={open}
+      onOpenChange={(next) => {
+        if (!next && transferring) return;
+        onOpenChange(next);
+      }}
+      maxWidth="520px"
+      showCloseButton={false}
+      title="Trasladar a otro almacén"
+      description={`Surtido ${session.snapshot.folio}`}
+    >
+      <PickingTransferForm
+        key={session.id}
+        picking={session.snapshot}
+        onClose={() => onOpenChange(false)}
+      />
+    </MainDialog>
+  );
+}
