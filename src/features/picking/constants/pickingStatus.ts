@@ -45,3 +45,18 @@ export const PICKING_STATUS_CONFIG: Record<PickingEstado, StatusBadgeConfigEntry
     dot: "bg-rose-500",
   },
 };
+
+/**
+ * Estatus desde los que el backend permite trasladar un picking a otro almacén
+ * (`POST /wms/pickings/{id}/trasladar/`). Copia literal de
+ * `PickingService.ESTADOS_TRASLADABLES`: es una lista blanca, no "todo menos
+ * los terminales", así que un estatus nuevo en el enum NO queda trasladable
+ * hasta que el backend lo añada. Fuera de ella el `POST` responde 400 `estado`.
+ */
+export const PICKING_ESTADOS_TRASLADABLES: readonly PickingEstado[] = [
+  "Pendiente",
+  "Asignado",
+  "En proceso",
+  "Pausado",
+  "Parcial",
+];

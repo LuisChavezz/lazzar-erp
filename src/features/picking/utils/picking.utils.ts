@@ -2,11 +2,24 @@
 // sobre `Picking[]` ya cargado por `usePickings()` — sin fetch propio, mismo
 // espíritu que `computeCxcKpis` (accounts-receivable).
 
+import { PICKING_ESTADOS_TRASLADABLES } from "../constants/pickingStatus";
 import type {
   Picking,
   PickingPrioridad,
   PickingRow,
 } from "../interfaces/picking.interface";
+
+/**
+ * ¿El backend aceptaría trasladar este picking a otro almacén? Solo mira el
+ * `estado` (ver `PICKING_ESTADOS_TRASLADABLES`); el permiso del usuario lo
+ * decide quien ofrece la acción.
+ *
+ * No se reutiliza en `isPickingVencido`, aunque hoy excluyan los mismos dos
+ * estatus: ahí la regla es "no está en un estado terminal" (definida por el
+ * frontend) y aquí es la lista blanca del backend; si el enum crece, divergen.
+ */
+export const isPickingTrasladable = (picking: Pick<Picking, "estado">): boolean =>
+  PICKING_ESTADOS_TRASLADABLES.includes(picking.estado);
 
 /**
  * DEFINICIÓN ÚNICA DE "PICKING VENCIDO", compartida por la columna "Fecha

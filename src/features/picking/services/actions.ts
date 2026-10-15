@@ -1,5 +1,9 @@
 import { v1_api } from "@/src/api/v1.api";
-import type { CreatePickingPayload, Picking } from "../interfaces/picking.interface";
+import type {
+  CreatePickingPayload,
+  Picking,
+  TransferPickingPayload,
+} from "../interfaces/picking.interface";
 import type { PickingOnboardingData } from "../interfaces/picking-onboarding.interface";
 
 /**
@@ -76,5 +80,21 @@ export const getPickingOnboarding = async (
  */
 export const createPicking = async (data: CreatePickingPayload): Promise<Picking> => {
   const response = await v1_api.post<Picking>("/wms/pickings/", data);
+  return response.data;
+};
+
+/**
+ * Traslada un picking a otro almacén (`POST /wms/pickings/{id}/trasladar/`).
+ *
+ * Devuelve el `PickingSerializer` completo —la misma forma que el detalle—,
+ * con el `almacen` nuevo, `almacen_destino` en `null` si el nuevo almacén era
+ * el destino, la nota del traslado añadida a `observaciones` y en `null` las
+ * ubicaciones de línea que eran de otro almacén. El `estado` no cambia.
+ */
+export const transferPicking = async (
+  id: number,
+  data: TransferPickingPayload,
+): Promise<Picking> => {
+  const response = await v1_api.post<Picking>(`/wms/pickings/${id}/trasladar/`, data);
   return response.data;
 };

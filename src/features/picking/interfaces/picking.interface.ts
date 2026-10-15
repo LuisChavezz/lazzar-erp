@@ -156,9 +156,10 @@ export interface Picking {
    * (`resolver_apartados_obligatorio`), por eso en la práctica
    * `almacen_destino_nombre` casi siempre llega como `"APARTADOS"`.
    *
-   * Nullable en el modelo (`blank=True, null=True`) aunque el flujo actual
-   * siempre lo llene: los pickings anteriores a la migración `0011` podrían
-   * traerlo vacío.
+   * Nullable en el modelo (`blank=True, null=True`) y nulo en la práctica en
+   * dos casos: pickings anteriores a la migración `0011`, y pickings que se
+   * TRASLADARON a su propio almacén destino (`POST .../trasladar/` lo limpia
+   * porque lo surtido ya está ahí). Crear un picking sí lo exige.
    */
   almacen_destino: number | null;
   almacen_destino_nombre: string | null;
@@ -273,6 +274,21 @@ export interface CreatePickingDetalleLine {
  * modo de falla posible—, así que quedan deliberadamente fuera del contrato
  * del frontend (ver `ordenes_trabajo` arriba para el camino de reemplazo).
  */
+/**
+ * Cuerpo de `POST /wms/pickings/{id}/trasladar/`: cambia el almacén desde el que
+ * se surte el picking (`almacen`). Es documental, como el alta: no mueve ni
+ * aparta existencias y no crea traspasos.
+ *
+ * `observaciones` es un `CharField(required=False, allow_blank=True)`: un
+ * `null` es 400, así que se OMITE cuando está vacío. El backend la añade en una
+ * línea nueva de `Picking.observaciones` tras "Trasladado de X a Y.". Cualquier
+ * otro campo se descarta en silencio.
+ */
+export interface TransferPickingPayload {
+  almacen: number;
+  observaciones?: string;
+}
+
 export interface CreatePickingPayload {
   pedido: number;
   operador: number;
