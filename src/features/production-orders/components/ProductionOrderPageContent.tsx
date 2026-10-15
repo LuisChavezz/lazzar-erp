@@ -35,6 +35,9 @@ import type { CriticalPathTarget } from "@/src/features/production-order-critica
 import { ProductionOrderConsumptionSection } from "@/src/features/production-order-consumption/components/ProductionOrderConsumptionSection";
 import { RecalculateConsumptionDialog } from "@/src/features/production-order-consumption/components/RecalculateConsumptionDialog";
 import { summarizeConsumption } from "@/src/features/production-order-consumption/utils/summarizeConsumption";
+import { useProductionOrderStatusFlow } from "@/src/features/production-order-status/hooks/useProductionOrderStatusFlow";
+import { ProductionOrderStatusMenu } from "@/src/features/production-order-status/components/ProductionOrderStatusMenu";
+import { ProductionOrderStatusDialog } from "@/src/features/production-order-status/components/ProductionOrderStatusDialog";
 
 // Destino del "Volver". Fijo —sin el mapa `?from=` de `PedidoDetailContent`—
 // porque esta ruta NO es neutra: cuelga de `/manufacturing`, exige
@@ -216,6 +219,20 @@ export function ProductionOrderPageContent({
   // sección. Se monta siempre (controlado) para conservar su contenido durante
   // la animación de salida; los productos los copia él mismo al abrir.
   const [isRecalculateOpen, setIsRecalculateOpen] = useState(false);
+  // Cambio de estatus: el GET `estatus/` sale al cargar la página y el diálogo
+  // abierto es estado de AQUÍ (no del menú), por la misma razón que el de
+  // recálculo. Un 404, una OP terminal o un GET fallido solo dejan el menú sin
+  // opciones (oculto); nunca cambian lo que pinta la página.
+  const statusFlow = useProductionOrderStatusFlow(numericId);
+
+  const openCriticalPath = () => {
+    if (!data) return;
+    setCriticalPathTarget({
+      opId: data.op_id,
+      folio: data.folio_op,
+      estatusOp: data.estatus_op,
+    });
+  };
 
   // Consumo por producto: lo comparten la sección y el selector del diálogo.
   // Un refetch fallido de v5 conserva `data`, así que sigue disponible aunque
@@ -237,6 +254,11 @@ export function ProductionOrderPageContent({
         opId={numericId}
         folio={data?.folio_op ?? ""}
         products={consumptionProducts}
+      />
+      <ProductionOrderStatusDialog
+        flow={statusFlow}
+        folio={data?.folio_op || statusFlow.folio}
+        onOpenCriticalPath={openCriticalPath}
       />
     </>
   );
@@ -309,11 +331,11 @@ export function ProductionOrderPageContent({
       <div className="sticky top-0 z-10 py-2 w-fit">{BackLink}</div>
 
       {/* ── 1. Cabecera ─────────────────────────────────────────────────── */}
-      {/* Misma fila compacta que la cabecera de OB (`HeaderStatRow`). "Ruta
-          crítica" va DESPUÉS de la fila y no dentro: el `overflow-x-clip` de
-          `HeaderStatRow` solo recorta a sus propios hijos, así que el botón
-          nunca puede quedar oculto; en anchos estrechos el `flex-wrap` de
-          fuera lo baja a su propia línea. */}
+      {/* Misma fila compacta que la cabecera de OB (`HeaderStatRow`). "Cambiar
+          estatus" y "Ruta crítica" van DESPUÉS de la fila y no dentro: el `overflow-x-clip` de
+          `HeaderStatRow` solo recorta a sus propios hijos, así que los botones
+          nunca pueden quedar ocultos; en anchos estrechos el `flex-wrap` de
+          fuera los baja a su propia línea. */}
       <section className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 px-5 py-3.5 md:px-6">
         <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
           <h1 className="text-[22px] font-medium text-slate-900 dark:text-white font-mono mr-auto min-w-0 truncate">
@@ -332,19 +354,17 @@ export function ProductionOrderPageContent({
             </HeaderStat>
           </HeaderStatRow>
 
-          <Button
-            variant="secondary"
-            onClick={() =>
-              setCriticalPathTarget({
-                opId: data.op_id,
-                folio: data.folio_op,
-                estatusOp: data.estatus_op,
-              })
-            }
-          >
-            <RouteIcon className="w-4 h-4" aria-hidden="true" />
-            Ruta crítica
-          </Button>
+          <div className="flex flex-wrap items-center gap-3">
+            <ProductionOrderStatusMenu
+              options={statusFlow.options}
+              isPending={statusFlow.isPending}
+              onSelect={statusFlow.select}
+            />
+            <Button variant="secondary" onClick={openCriticalPath}>
+              <RouteIcon className="w-4 h-4" aria-hidden="true" />
+              Ruta crítica
+            </Button>
+          </div>
         </div>
       </section>
 
