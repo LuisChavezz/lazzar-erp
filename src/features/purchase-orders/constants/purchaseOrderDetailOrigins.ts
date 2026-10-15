@@ -5,6 +5,7 @@ import {
   toSupplierPurchaseOrderHistoryQuery,
   type SupplierPurchaseOrderHistoryFilters,
 } from "@/src/features/suppliers/utils/supplierPurchaseOrderHistoryFilters";
+import { supplierInvoicesHref } from "@/src/features/supplier-invoices/utils/supplierInvoicesListQuery";
 
 /**
  * Orígenes válidos del detalle de una orden de compra
@@ -48,8 +49,18 @@ export interface SupplierOriginContext {
 }
 
 /**
- * Llaves de la query del detalle que alimentan el "Volver" del origen
- * `supplier` (además de `from`). La página de servidor las lee y las pasa
+ * Contexto del origen `supplier-invoices`: el proveedor cuyas facturas se
+ * estaban listando, para que el "Volver" regrese con él ya elegido (el listado
+ * lo lee de `?proveedor=`).
+ */
+export interface SupplierInvoicesOriginContext {
+  proveedor: number;
+}
+
+/**
+ * Llaves de la query del detalle que alimentan el "Volver" de los orígenes
+ * `supplier` y `supplier-invoices` (además de `from`; este último solo usa
+ * `proveedor`). La página de servidor las lee y las pasa
  * CRUDAS; `resolvePurchaseOrderBack` las valida una por una.
  */
 export const SUPPLIER_ORIGIN_QUERY_KEYS = [
@@ -67,12 +78,12 @@ export type PurchaseOrderBackParams = Partial<
 /**
  * URL del detalle de una OC. `from` tipado con `PurchaseOrderDetailOrigin`: un
  * origen mal escrito no compila, en vez de caer en silencio al "Volver" por
- * defecto (misma intención que `PedidoFolioLink` con `PedidoDetailOrigin`). El
- * origen `supplier` EXIGE su contexto.
+ * defecto (misma intención que `PedidoFolioLink` con `PedidoDetailOrigin`). Los
+ * orígenes `supplier` y `supplier-invoices` EXIGEN su contexto.
  */
 export function purchaseOrderDetailHref(
   id: number,
-  from?: Exclude<PurchaseOrderDetailOrigin, "supplier">,
+  from?: Exclude<PurchaseOrderDetailOrigin, "supplier" | "supplier-invoices">,
 ): string;
 export function purchaseOrderDetailHref(
   id: number,
@@ -81,16 +92,23 @@ export function purchaseOrderDetailHref(
 ): string;
 export function purchaseOrderDetailHref(
   id: number,
+  from: "supplier-invoices",
+  context: SupplierInvoicesOriginContext,
+): string;
+export function purchaseOrderDetailHref(
+  id: number,
   from?: PurchaseOrderDetailOrigin,
-  context?: SupplierOriginContext,
+  context?: SupplierOriginContext | SupplierInvoicesOriginContext,
 ): string {
   const base = `/procurement/purchase-orders/${id}`;
   if (!from) return base;
-  if (from === "supplier" && context) {
+  if ((from === "supplier" || from === "supplier-invoices") && context) {
     const query = new URLSearchParams({ from, proveedor: String(context.proveedor) });
-    toSupplierPurchaseOrderHistoryQuery(context.filters).forEach((value, key) =>
-      query.set(key, value),
-    );
+    if ("filters" in context) {
+      toSupplierPurchaseOrderHistoryQuery(context.filters).forEach((value, key) =>
+        query.set(key, value),
+      );
+    }
     return `${base}?${query.toString()}`;
   }
   return `${base}?from=${from}`;
@@ -123,9 +141,14 @@ const BACK_TARGETS: Record<
     href: "/procurement/purchase-order-receipts",
     label: "Volver a Recepciones",
   },
-  "supplier-invoices": {
-    href: "/finance/supplier-invoices",
-    label: "Volver a Facturas de Proveedor",
+  "supplier-invoices": (params) => {
+    // Mismo validador que el origen `supplier`: un id inválido se descarta y se
+    // vuelve al listado sin proveedor elegido.
+    const supplierId = parseSupplierId(params.proveedor);
+    return {
+      href: supplierInvoicesHref(supplierId),
+      label: "Volver a Facturas de Proveedor",
+    };
   },
   supplier: (params) => {
     const supplierId = parseSupplierId(params.proveedor);

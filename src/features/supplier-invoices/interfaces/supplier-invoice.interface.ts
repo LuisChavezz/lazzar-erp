@@ -72,11 +72,11 @@ export interface FacturaProveedor {
   /** Calculado (`source="moneda.codigo_iso"`), solo lectura. */
   moneda_codigo: string | null;
   /**
-   * Calculado (`source="oc.folio"`), solo lectura (EC-466). `null` mientras la
-   * OC está en Borrador: el folio de la OC se asigna después.
+   * Folio de la OC, solo lectura (EC-466). `null` mientras la OC está en
+   * Borrador: el folio de la OC se asigna después.
    */
   oc_folio: string | null;
-  /** Calculado (`source="recepcion.folio"`), solo lectura (EC-466). Nunca nulo. */
+  /** Folio de la recepción, solo lectura (EC-466). Nunca nulo. */
   recepcion_folio: string;
   /**
    * Fecha "YYYY-MM-DD", nunca nula: `DateField(default=timezone.localdate)`

@@ -39,14 +39,19 @@ import { SupplierInvoiceDetailDialog } from "./SupplierInvoiceDetailDialog";
 import SupplierInvoiceForm from "./SupplierInvoiceForm";
 import SupplierInvoiceEditForm from "./SupplierInvoiceEditForm";
 
-export default function SupplierInvoiceList() {
+export default function SupplierInvoiceList({
+  initialProveedorId = 0,
+}: {
+  /** Proveedor preseleccionado al montar (`?proveedor=` ya validado por la página). */
+  initialProveedorId?: number;
+}) {
   /**
    * Proveedor cuyas facturas se listan (`0` = ninguno). Es la ENTRADA de la
    * pantalla: sin él no se consulta nada, porque el listado sin acotar bajaría
    * todos los renglones de todas las facturas de la empresa (ver
    * `useSupplierInvoices`).
    */
-  const [proveedorId, setProveedorId] = useState(0);
+  const [proveedorId, setProveedorId] = useState(initialProveedorId);
   const {
     suppliers,
     isLoading: isLoadingSuppliers,

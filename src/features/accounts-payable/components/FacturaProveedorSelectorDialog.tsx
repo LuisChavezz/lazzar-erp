@@ -22,6 +22,13 @@ interface FacturaProveedorSelectorDialogProps {
 }
 
 /**
+ * Folio de la recepción, o `""` si no llega. El tipo lo declara siempre
+ * presente (backend PR #465), pero un backend anterior no lo manda y este
+ * selector no debe romperse ni pintar `undefined` por eso.
+ */
+const recepcionFolioOf = (factura: FacturaProveedor): string => factura.recepcion_folio ?? "";
+
+/**
  * Contenido del selector — se monta solo mientras el diálogo está abierto, de
  * modo que las consultas corren bajo demanda. Mismo reparto que
  * `InvoiceSelectorDialog` y `CxpSelectorDialog`.
@@ -83,7 +90,7 @@ function FacturaProveedorSelectorContent({
         (factura.folio ?? "").toLowerCase().includes(term) ||
         String(factura.id).includes(term) ||
         ocFolioLabel(factura).toLowerCase().includes(term) ||
-        factura.recepcion_folio.toLowerCase().includes(term)
+        recepcionFolioOf(factura).toLowerCase().includes(term)
       }
       getKey={(factura) => factura.id}
       selectedKey={selectedFacturaId > 0 ? selectedFacturaId : null}
@@ -101,7 +108,7 @@ function FacturaProveedorSelectorContent({
             </p>
             {/* Contexto de origen (EC-466): folios de la OC y la recepción. */}
             <p className="text-xs text-slate-500 dark:text-slate-400 truncate font-mono">
-              {ocFolioLabel(factura)} · {factura.recepcion_folio}
+              {[ocFolioLabel(factura), recepcionFolioOf(factura)].filter(Boolean).join(" · ")}
             </p>
             <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
               {/* `timeZone: "UTC"`: fechas-calendario "YYYY-MM-DD". */}

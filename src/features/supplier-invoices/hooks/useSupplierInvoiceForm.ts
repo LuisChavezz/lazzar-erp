@@ -22,6 +22,7 @@ import {
 } from "../schemas/supplier-invoice.schema";
 import type { FacturaProveedor } from "../interfaces/supplier-invoice.interface";
 import { buildSupplierInvoicePayload } from "../utils/buildSupplierInvoicePayload";
+import { ocFolioLabel } from "../utils/supplierInvoiceLabels";
 import type { ParsedSupplierInvoiceError } from "../utils/parseSupplierInvoiceError";
 import {
   lineFromReceptionOption,
@@ -223,7 +224,8 @@ export function useSupplierInvoiceForm({
     // partidas capturadas y la tasa sin que nadie lo hubiera pedido.
     if (oc.id === form.state.values.oc) return;
     form.setFieldValue("oc", oc.id);
-    form.setFieldValue("oc_folio", oc.folio ?? `OC #${oc.id}`);
+    // Misma etiqueta que el listado, el detalle y el selector de CxP.
+    form.setFieldValue("oc_folio", ocFolioLabel({ oc: oc.id, oc_folio: oc.folio }));
     // `proveedor` es `SET_NULL` en la OC aunque el tipo lo declare `number`.
     form.setFieldValue("proveedor", oc.proveedor || 0);
     form.setFieldValue("proveedor_nombre", oc.proveedor_nombre ?? "");

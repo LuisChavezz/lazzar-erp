@@ -139,8 +139,14 @@ export function SupplierInvoiceDetailDialog({
   onOpenChange,
 }: SupplierInvoiceDetailDialogProps) {
   const { data: session } = useSession();
-  // Pathname sin query: es lo que evalúa `canAccessRoute` (misma regla que el proxy).
-  const ocHref = purchaseOrderDetailHref(factura.oc);
+  // Una sola URL de la OC: el enlace la usa tal cual y el permiso se evalúa sobre
+  // su pathname (`canAccessRoute` va sin query, misma regla que el proxy). El
+  // proveedor viaja para que el "Volver" regrese con él elegido; es el mismo que
+  // filtra el listado, así que se toma de la factura.
+  const ocHref = purchaseOrderDetailHref(factura.oc, "supplier-invoices", {
+    proveedor: factura.proveedor,
+  });
+  const canOpenOc = canAccessRoute(ocHref.split("?")[0], session?.user);
   const moneda = factura.moneda_codigo ? { currency: factura.moneda_codigo } : undefined;
   const money = (value: string) => formatMoneyValueOrDash(value, moneda);
 
@@ -168,9 +174,9 @@ export function SupplierInvoiceDetailDialog({
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-3 px-4 py-3 rounded-xl bg-slate-50 dark:bg-white/5 text-xs">
           <InfoField label="Proveedor">{textOrDash(factura.proveedor_nombre)}</InfoField>
           <InfoField label="Orden de compra">
-            {canAccessRoute(ocHref, session?.user) ? (
+            {canOpenOc ? (
               <Link
-                href={purchaseOrderDetailHref(factura.oc, "supplier-invoices")}
+                href={ocHref}
                 className="font-mono text-sky-600 dark:text-sky-400 hover:underline hover:text-sky-700 dark:hover:text-sky-300 transition-colors"
                 title="Ver orden de compra"
               >

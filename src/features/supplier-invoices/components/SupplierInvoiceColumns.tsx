@@ -182,6 +182,8 @@ export const getColumns = () => {
     columnHelper.accessor((row) => ocFolioLabel(row), {
       id: "oc_folio",
       header: "OC",
+      // Orden natural: `OC-1-207` antes que `OC-1-1000`.
+      sortingFn: "alphanumeric",
       meta: { hideOnMobile: true },
       cell: (info) => (
         <span className="whitespace-nowrap font-mono text-xs text-slate-600 dark:text-slate-300">
@@ -191,6 +193,7 @@ export const getColumns = () => {
     }),
     columnHelper.accessor("recepcion_folio", {
       header: "Recepción",
+      sortingFn: "alphanumeric",
       meta: { hideOnMobile: true },
       cell: (info) => (
         <span className="whitespace-nowrap font-mono text-xs text-slate-600 dark:text-slate-300">
