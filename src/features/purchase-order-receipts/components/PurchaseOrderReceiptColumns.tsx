@@ -11,6 +11,7 @@ import { PurchaseOrderReceiptDetailDialog } from "./PurchaseOrderReceiptDetailDi
 import { useSession } from "next-auth/react";
 import { hasPermission } from "@/src/utils/permissions";
 import { purchaseOrderDetailHref } from "@/src/features/purchase-orders/constants/purchaseOrderDetailOrigins";
+import { createTipoCompraColumn } from "@/src/features/receipts/components/TipoCompraColumn";
 import {
   getReceiptEstatusLabel,
   RECEIPT_STATUS_CONFIG,
@@ -162,6 +163,8 @@ export const createPurchaseOrderReceiptColumns = ({
     header: "Orden de Compra",
     cell: ({ row }) => <PurchaseOrderFolioCell receipt={row.original} />,
   },
+  // Columna compartida con la vista de WMS (ver `TipoCompraColumn.tsx`).
+  createTipoCompraColumn<PurchaseOrderReceipt>(),
   {
     accessorKey: "proveedor_nombre",
     meta: { label: "Proveedor" },

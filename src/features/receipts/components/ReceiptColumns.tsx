@@ -7,6 +7,7 @@ import { textOrDash } from "@/src/components/DetailDialogPrimitives";
 import { ReceiptDetailDialog } from "./ReceiptDetailDialog";
 import { ReceiptActionsCell } from "./ReceiptActionsCell";
 import { getReceiptEstatusLabel, RECEIPT_STATUS_CONFIG } from "../constants/receiptStatus";
+import { createTipoCompraColumn } from "./TipoCompraColumn";
 
 const columnHelper = createColumnHelper<Receipt>();
 
@@ -57,6 +58,8 @@ export const receiptColumns = [
       />
     ),
   }),
+  // Columna compartida con la vista de Compras (ver `TipoCompraColumn.tsx`).
+  createTipoCompraColumn<Receipt>(),
   // `accessorFn` que colapsa `null` a `""` — mismo bug de
   // `getColumnCanGlobalFilter`/`flatRows[0]` que ya documenta
   // `CorteMangaOrderColumns.tsx`. `id` explícito conserva la

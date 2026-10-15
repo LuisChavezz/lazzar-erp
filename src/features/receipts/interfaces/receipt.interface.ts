@@ -1,3 +1,5 @@
+import type { TipoCompra } from "@/src/features/purchase-orders/constants/purchaseOrderTipoCompra";
+
 export interface Receipt {
   id: number;
   folio: string;
@@ -25,6 +27,9 @@ export interface Receipt {
   almacen_nombre: string;
   proveedor_nombre: string | null;
   orden_compra_folio: string | null;
+  // Tipo de la orden de compra de origen: "MP" (OC, materia prima) o "PT"
+  // (O, producto terminado). null en recepciones de tipo OP.
+  orden_compra_tipo_compra: TipoCompra | null;
 }
 
 // ── Detalle de recepción ───────────────────────────────────────────────────────

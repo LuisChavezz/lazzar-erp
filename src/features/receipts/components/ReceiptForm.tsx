@@ -51,7 +51,7 @@ export default function ReceiptForm({
   const detalle: ReceiptOnboardingPurchaseOrderDetalle[] = order.detalle;
   const headerSubtitle =
     candidate.type === "compra"
-      ? `Orden: ${candidate.order.folio} — ${candidate.order.proveedor_nombre}`
+      ? `Orden: ${candidate.order.folio ?? "Sin folio"} — ${candidate.order.proveedor_nombre}`
       : `Orden: ${candidate.order.folio}`;
 
   return (

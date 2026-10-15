@@ -1,3 +1,5 @@
+import type { TipoCompra } from "@/src/features/purchase-orders/constants/purchaseOrderTipoCompra";
+
 export interface ReceiptOnboardingUser {
   id: number;
   email: string;
@@ -39,7 +41,7 @@ export interface ReceiptOnboardingPurchaseOrderDetalle {
   cantidad_ordenada: string;
   cantidad_recibida: string;
   cantidad_pendiente: string;
-  descripcion: string;
+  descripcion: string | null;
 }
 
 export interface ReceiptOnboardingProductionOrderDetalle
@@ -50,7 +52,11 @@ export interface ReceiptOnboardingProductionOrderDetalle
 // ─── Órdenes: cabecera ───────────────────────────────────────────────────────
 export interface ReceiptOnboardingPurchaseOrder {
   id: number;
-  folio: string;
+  // null mientras la orden no tiene folio asignado (el onboarding puede listarla).
+  folio: string | null;
+  // "MP" (OC, materia prima) o "PT" (O, producto terminado). Solo las órdenes
+  // de compra lo traen; las de producción no.
+  tipo_compra: TipoCompra;
   estatus: number;
   proveedor_id: number;
   proveedor_nombre: string;
