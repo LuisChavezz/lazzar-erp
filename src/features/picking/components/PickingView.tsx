@@ -1,11 +1,13 @@
 "use client";
 
+import { useState } from "react";
 import { useSession } from "next-auth/react";
 import { DataTable, type DataTableFilterConfig } from "@/src/components/DataTable";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { hasPermission } from "@/src/utils/permissions";
 import { isInitialLoadError } from "@/src/utils/isInitialLoadError";
-import { pickingColumns } from "./PickingColumns";
+import { getPickingColumns } from "./PickingColumns";
+import { PickingDetailDialog } from "./PickingDetailDialog";
 import { PickingForm } from "./PickingForm";
 import { PickingStats } from "./PickingStats";
 import {
@@ -33,8 +35,14 @@ const PRIORIDAD_FILTER_OPTIONS = PICKING_PRIORIDAD_ORDER.map((value) => ({
 /**
  * Vista de Picking: KPIs del listado (`PickingStats`) más el listado propio
  * (`GET /wms/pickings/`), con la captura de un nuevo picking
- * (`POST /wms/pickings/`, ver `PickingForm`) en el toolbar. Sin detalle de
- * fila más allá de "Ver Detalles" (ver `PickingColumns`).
+ * (`POST /wms/pickings/`, ver `PickingForm`) en el toolbar, y el detalle de
+ * cada fila ("Ver Detalles", ver `PickingColumns`).
+ *
+ * El diálogo de detalle lo monta ESTA vista, no la celda de acciones: guarda
+ * solo el id del surtido abierto y lo resuelve en cada render contra `rows`
+ * (la caché de `["pickings"]`). Así el diálogo sobrevive a ordenar, filtrar o
+ * paginar —que desmontan las celdas— y refleja el registro actualizado cuando
+ * la lista se refresca, p. ej. después de trasladarlo de almacén.
  *
  * `DataTable` se monta SIEMPRE (no se sustituye por un skeleton/ErrorState en
  * un ternario propio): recibe `isLoading`/`isError` y alterna internamente
@@ -86,6 +94,14 @@ export function PickingView() {
   // definición de "vencido" en caso de que la columna regrese más adelante.
   const rows = mapPickingsToRows(pickings, dataUpdatedAt);
 
+  const [detailPickingId, setDetailPickingId] = useState<number | null>(null);
+  // Si el surtido abierto deja de venir en la lista (p. ej. tras un refetch),
+  // el diálogo simplemente no se monta.
+  const detailPicking =
+    detailPickingId === null ? null : (rows.find((row) => row.id === detailPickingId) ?? null);
+
+  const columns = getPickingColumns({ onViewDetail: setDetailPickingId });
+
   const filterConfig: DataTableFilterConfig[] = [
     { id: "estado", label: "Estatus", options: ESTADO_FILTER_OPTIONS },
     { id: "prioridad", label: "Prioridad", options: PRIORIDAD_FILTER_OPTIONS },
@@ -114,7 +130,7 @@ export function PickingView() {
           visibles en viewports más cortos. */}
       <div className="flex-1 min-h-120 flex flex-col">
         <DataTable
-          columns={pickingColumns}
+          columns={columns}
           data={rows}
           searchPlaceholder="Buscar folio, pedido u operador..."
           filterConfig={filterConfig}
@@ -135,6 +151,16 @@ export function PickingView() {
           loadingAriaLabel="Cargando surtidos"
         />
       </div>
+
+      {detailPicking && (
+        <PickingDetailDialog
+          picking={detailPicking}
+          open={true}
+          onOpenChange={(open) => {
+            if (!open) setDetailPickingId(null);
+          }}
+        />
+      )}
     </div>
   );
 }
