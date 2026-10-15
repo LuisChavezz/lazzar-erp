@@ -17,9 +17,10 @@ export const CreateProductionOrderDetalleSchema = z.object({
  * Cuerpo completo para crear una orden de producción
  * (`POST /produccion/orden-produccion/onboarding/`).
  *
- * `estatus_op` viaja fijo en `1` (estatus inicial "creada"). `empresa` y
- * `sucursal` provienen del workspace activo. El detalle por variante
- * (cantidad, unidad y observaciones) se configura en el Paso 2.
+ * Sin `estatus_op`: es de solo lectura en el alta (la OP nace Pendiente) y se
+ * cambia con `POST .../estatus/`. `empresa` y `sucursal` provienen del
+ * workspace activo. El detalle por variante (cantidad, unidad y observaciones)
+ * se configura en el Paso 2.
  *
  * `pedido` es opcional: sin pedido el campo queda `undefined`. La clave SÍ
  * puede seguir presente en `parsed.data` (`pedido: undefined`); se omite del
@@ -29,7 +30,6 @@ export const CreateProductionOrderDetalleSchema = z.object({
 export const CreateProductionOrderFormSchema = z.object({
   empresa: z.number().int().positive("La empresa es requerida"),
   sucursal: z.number().int().positive("La sucursal es requerida"),
-  estatus_op: z.number().int().positive(),
   prioridad: z.number().int().positive("La prioridad es requerida"),
   observaciones: z.string(),
   pedido: z.number().int().positive().optional(),

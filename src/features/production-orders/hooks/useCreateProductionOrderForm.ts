@@ -64,10 +64,10 @@ function buildDetalle(
  * p. ej. `orden_produccion_detalle.0.unidad`) que consumen los primitivos de
  * formulario compartidos en el Paso 2.
  *
- * `empresa` / `sucursal` provienen del workspace activo; `estatus_op` viaja
- * fijo en `1`. La cabecera (prioridad, observaciones) y el detalle por variante
- * los inyecta el step manager al avanzar desde el Paso 1
- * (`setFieldValue` / {@link seedDetalle}).
+ * `empresa` / `sucursal` provienen del workspace activo. El estatus no se
+ * manda: el backend lo ignora en el alta y la OP nace Pendiente. La cabecera
+ * (prioridad, observaciones) y el detalle por variante los inyecta el step
+ * manager al avanzar desde el Paso 1 (`setFieldValue` / {@link seedDetalle}).
  */
 export function useCreateProductionOrderForm({
   prioridad,
@@ -93,7 +93,6 @@ export function useCreateProductionOrderForm({
     defaultValues: {
       empresa: selectedCompany.id ?? 0,
       sucursal: selectedBranch?.id ?? 0,
-      estatus_op: 1,
       prioridad,
       observaciones,
       orden_produccion_detalle: selectedVariantIds.map((id) =>

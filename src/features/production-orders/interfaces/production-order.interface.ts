@@ -113,7 +113,6 @@ export interface CreateProductionOrderDetalle {
 export interface CreateProductionOrderBody {
   empresa: number;
   sucursal: number;
-  estatus_op: number;
   prioridad: number;
   observaciones: string;
   pedido?: number;
