@@ -344,6 +344,12 @@ export function ProductionOrderStatusDialog({
 
   // Lo que se pinta: el estado vigente y, al cerrar, el último (animación de
   // salida). Ajuste en render, no en un efecto.
+  //
+  // Excepción deliberada a "la copia sale de `useDialogSession(open,
+  // snapshot)`": esa copia se toma SOLO al abrir, y aquí el contenido debe
+  // cambiar con el diálogo ya abierto (un 409 con `bloqueos` pasa la vista de
+  // motivo a la de requisitos en el mismo `MainDialog`, sin apilar otro). De
+  // `useDialogSession` solo se usa el `id` de cada apertura.
   const [lastDialog, setLastDialog] = useState(dialog);
   if (dialog && dialog !== lastDialog) setLastDialog(dialog);
   const shown = dialog ?? lastDialog;
