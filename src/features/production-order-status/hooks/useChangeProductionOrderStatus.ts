@@ -6,7 +6,7 @@ import { productionOrderKpisQueryKey } from "@/src/features/production-orders/ho
 import { productionOrderCriticalPathKey } from "@/src/features/production-order-critical-path/hooks/useProductionOrderCriticalPath";
 import { changeProductionOrderStatus } from "../services/actions";
 import type { ChangeProductionOrderStatusBody } from "../interfaces/production-order-status.interface";
-import { isStaleStatusError } from "./productionOrderStatusErrors";
+import { staleDataAfterStatusError } from "./productionOrderStatusErrors";
 import { productionOrderStatusKey } from "./useProductionOrderStatus";
 
 /**
@@ -20,8 +20,9 @@ import { productionOrderStatusKey } from "./useProductionOrderStatus";
  * - su ruta crítica (su modo de solo lectura depende del estatus);
  * - el propio `estatus/`, para traer las opciones nuevas.
  *
- * Un error que dice que la página está vieja (409 o 404, ver
- * `isStaleStatusError`) relee el estatus y el detalle. Los mensajes de error no
+ * Un error que dice que la página está vieja relee lo que quedó viejo (ver
+ * `staleDataAfterStatusError`): solo el estatus en un 409 con `bloqueos`; el
+ * estatus y el detalle en el otro 409 y en el 404. Los mensajes de error no
  * salen de aquí: los muestra quien llamó (`classifyChangeStatusError`), en su
  * diálogo o en un toast si se aplicó directo desde el menú.
  */
@@ -49,7 +50,12 @@ export const useChangeProductionOrderStatus = (opId: number) => {
     },
     onError: (error) => {
       console.error(error);
-      if (isStaleStatusError(error)) refreshStatusAndDetail();
+      const stale = staleDataAfterStatusError(error);
+      if (stale === "status") {
+        void queryClient.invalidateQueries({ queryKey: productionOrderStatusKey(opId) });
+      } else if (stale === "status-and-detail") {
+        refreshStatusAndDetail();
+      }
     },
   });
 };

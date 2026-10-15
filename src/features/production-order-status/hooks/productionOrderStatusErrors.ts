@@ -85,11 +85,17 @@ export const classifyChangeStatusError = (error: unknown): ChangeStatusErrorOutc
 };
 
 /**
- * ¿El error dice que lo que muestra la página ya no es vigente? Ambos 409 y el
- * 404: el estatus cambió, faltan requisitos que las opciones decían cumplidos,
- * o la OP dejó de ser visible. Quien lo recibe relee el estatus y el detalle.
+ * Qué relee quien recibe el error, o `null` si nada quedó viejo:
+ * - `"status"`: 409 con `bloqueos` (faltan requisitos que las opciones decían
+ *   cumplidos). El estatus no cambió, así que el detalle sigue vigente.
+ * - `"status-and-detail"`: 409 sin `bloqueos` (el estatus cambió) o 404 (la OP
+ *   dejó de ser visible).
  */
-export const isStaleStatusError = (error: unknown): boolean => {
+export const staleDataAfterStatusError = (
+  error: unknown,
+): "status" | "status-and-detail" | null => {
   const status = statusOf(error);
-  return status === 409 || status === 404;
+  if (status === 404) return "status-and-detail";
+  if (status !== 409) return null;
+  return Array.isArray(responseBody(error)?.bloqueos) ? "status" : "status-and-detail";
 };
