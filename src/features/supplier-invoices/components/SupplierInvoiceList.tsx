@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useId, useState, type ChangeEvent } from "react";
+import { useRouter } from "next/navigation";
 import { useIsMutating } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { DataTable } from "@/src/components/DataTable";
@@ -22,6 +23,7 @@ import type {
   FacturaProveedorEstatus,
 } from "../interfaces/supplier-invoice.interface";
 import { useSupplierInvoices } from "../hooks/useSupplierInvoices";
+import { supplierInvoicesHref } from "../utils/supplierInvoicesListQuery";
 import {
   updateSupplierInvoiceMutationKey,
   useUpdateSupplierInvoice,
@@ -52,6 +54,21 @@ export default function SupplierInvoiceList({
    * `useSupplierInvoices`).
    */
   const [proveedorId, setProveedorId] = useState(initialProveedorId);
+  const router = useRouter();
+  /**
+   * Cambia el proveedor y lo REFLEJA en `?proveedor=`, para que recargar no
+   * vuelva al que puso el "Volver" de la OC. El estado local manda; la URL solo
+   * lo copia (`replace`: sin entrada de historial por cada cambio, sin saltar el
+   * scroll). La página re-renderiza con otro `initialProveedorId`, pero
+   * `useState` lo ignora tras el montaje y nada usa ese valor como `key`. El
+   * selector no se puede vaciar (la opción `0` está deshabilitada), así que no
+   * hay caso de volver a la URL sin parámetro.
+   */
+  const selectProveedor = (id: number) => {
+    if (id === proveedorId) return;
+    setProveedorId(id);
+    router.replace(supplierInvoicesHref(id > 0 ? id : null), { scroll: false });
+  };
   const {
     suppliers,
     isLoading: isLoadingSuppliers,
@@ -378,7 +395,7 @@ export default function SupplierInvoiceList({
                     name="proveedor"
                     aria-label="Proveedor"
                     value={String(proveedorId)}
-                    onChange={(event) => setProveedorId(Number(event.target.value))}
+                    onChange={(event) => selectProveedor(Number(event.target.value))}
                     disabled={isLoadingSuppliers || isErrorSuppliers}
                     className="py-2! text-xs! rounded-full!"
                   >
@@ -423,11 +440,11 @@ export default function SupplierInvoiceList({
                         setIsFormOpen(false);
                         // SOLO en el alta: el listado se filtra por proveedor, y una
                         // factura de otro proveedor se guardaría sin verse, como si el
-                        // alta hubiera fallado. Si ya es el seleccionado, `setState`
-                        // con el mismo valor no cambia nada y basta la invalidación
-                        // de la mutación. Registrar, cancelar y editar no tocan el
+                        // alta hubiera fallado. Si ya es el seleccionado,
+                        // `selectProveedor` no hace nada y basta la invalidación de
+                        // la mutación. Registrar, cancelar y editar no tocan el
                         // filtro.
-                        setProveedorId(factura.proveedor);
+                        selectProveedor(factura.proveedor);
                       }}
                     />
                   )}
