@@ -143,10 +143,12 @@ Los módulos operativos, comerciales y financieros se organizan por **dominio de
   - Además, Ubicaciones (`/wms/locations`), oculta de la navegación. Los Movimientos de Inventario se administran desde **Configuración → Organización**.
 - **Compras y SCM** (`/procurement`), organizada en sub-grupos:
   - **Operación**: Pedidos (`/procurement/orders`), Órdenes de Compra (`/procurement/purchase-orders`) y Recepciones (`/procurement/purchase-order-receipts`).
+  - **Inventario**: Existencias (`/procurement/stock`).
   - **Maestros**: Proveedores (`/procurement/suppliers`).
   - Además, Revisión de Pedidos (`/procurement/order-reviews`), Solicitudes de Gastos (`/procurement/expense-requests`) y Pedidos P.Q. (`/procurement/pq-orders`).
 - **Manufactura (Producción)** (`/manufacturing`), organizada en sub-grupos:
   - **Operación**: Órdenes de Producción (`/manufacturing/production-orders`), Órdenes de Bordado (`/manufacturing/embroidery`), Órdenes de Reflejante (`/manufacturing/reflective-orders`), Órdenes de Corte de Manga (`/manufacturing/corte-manga`) y Pedidos Especiales (`/manufacturing/special-orders`).
+  - **Inventario**: Existencias (`/manufacturing/stock`).
   - **Catálogo**: Productos (`/manufacturing/products`) y Variantes (`/manufacturing/product-variants`).
   - Además, los flujos Cedicor de Nuevo Desarrollo y Producción, ocultos de la navegación.
 - **Finanzas y Contabilidad** (`/finance`), organizada en sub-grupos:

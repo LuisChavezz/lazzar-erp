@@ -249,8 +249,7 @@ export function StockView() {
             sort/búsqueda/filtros/columnas). Solo la paginación se reinicia
             a la página 1, vía `paginationResetKey`. `fillHeight`: el cuerpo
             llena el espacio restante del contenedor de altura acotada que
-            da la página que monta la vista (`wms/stock/page.tsx` y
-            `procurement/stock/page.tsx`), en vez de reservar un alto fijo.
+            da la página que monta la vista, en vez de reservar un alto fijo.
             `min-h-120`: piso de la tabla cuando el filtro de almacén + los
             KPIs dejan poco espacio remanente. */}
         <div className="flex-1 min-h-120 flex flex-col">

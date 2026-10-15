@@ -478,6 +478,7 @@ export const appRouteGroups: AppRouteGroup[] = [
     showInHome: true,
     sections: [
       { key: "operation", label: "Operación" },
+      { key: "inventory", label: "Inventario" },
       { key: "catalog", label: "Catálogo" },
     ],
     items: [
@@ -528,6 +529,19 @@ export const appRouteGroups: AppRouteGroup[] = [
         // `/manufacturing` de `routePermissions`.
         permission: "R-PRODUCCION",
         section: "operation",
+      },
+      // ── Inventario ──────────────────────────────────────────────────────────
+      {
+        key: "manufacturing-stock",
+        label: "Existencias",
+        path: "/manufacturing/stock",
+        icon: ExistenciasIcon,
+        description: "Consulta de existencias por almacén para planear la producción.",
+        // Sin código de sección propio en el catálogo: la ruta cae en la regla
+        // de módulo `/manufacturing` de `routePermissions` (R-PRODUCCION), así
+        // que la hoja exige el mismo código para no ofrecer un enlace que rebote.
+        permission: "R-PRODUCCION",
+        section: "inventory",
       },
       // ── Catálogo ────────────────────────────────────────────────────────────
       {
