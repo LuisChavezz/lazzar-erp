@@ -1,6 +1,7 @@
 /**
  * Contrato de `/finanzas/facturas-proveedor/` (`FacturaProveedorSerializer`,
- * `fields = "__all__"` más `proveedor_nombre` y `moneda_codigo` de solo lectura,
+ * `exclude = ["pdf_adjunto"]` más `proveedor_nombre`, `moneda_codigo`,
+ * `oc_folio`, `recepcion_folio` y `tiene_pdf_adjunto` de solo lectura,
  * y los renglones anidados `factura_proveedor_detalles`). Nombres de llaves EN
  * ESPAÑOL tal cual los devuelve el backend — no traducir.
  *
@@ -70,7 +71,18 @@ export interface FacturaProveedor {
   proveedor_nombre: string | null;
   /** Calculado (`source="moneda.codigo_iso"`), solo lectura. */
   moneda_codigo: string | null;
-  /** Fecha "YYYY-MM-DD". `auto_now_add` en el modelo, así que nunca es nula. */
+  /**
+   * Calculado (`source="oc.folio"`), solo lectura (EC-466). `null` mientras la
+   * OC está en Borrador: el folio de la OC se asigna después.
+   */
+  oc_folio: string | null;
+  /** Calculado (`source="recepcion.folio"`), solo lectura (EC-466). Nunca nulo. */
+  recepcion_folio: string;
+  /**
+   * Fecha "YYYY-MM-DD", nunca nula: `DateField(default=timezone.localdate)`
+   * NOT NULL. Opcional y editable en el serializer (si el alta no la envía, toma
+   * el día local de hoy); no admite `null`.
+   */
   fecha_emision: string;
   /**
    * Fecha "YYYY-MM-DD", o `null`. Es la que el backend copia a la CxP. Una
@@ -171,7 +183,7 @@ export interface CreateFacturaProveedorDetallePayload {
  * Tipo SEPARADO del de lectura: es la costura entre los valores del formulario y
  * lo que viaja al API (`buildSupplierInvoicePayload`).
  *
- * Omite `empresa` (la resuelve el servidor), `fecha_emision` (`auto_now_add`),
+ * Omite `empresa` (la resuelve el servidor), `fecha_emision` (su default es el día local de hoy),
  * `created_at`/`updated_at` (sus defaults son los correctos), `activo` y los
  * campos calculados.
  *

@@ -39,7 +39,7 @@ const optional = (raw: string, uppercase = false): string | null => {
  *  - `fecha_vencimiento` vacía viaja como `null`; `folio` en mayúsculas.
  *
  * Nunca incluye `empresa` (la resuelve el servidor), `fecha_emision`
- * (`auto_now_add`), `created_at`/`updated_at`, `activo`, los calculados
+ * (default del modelo: el día local de hoy), `created_at`/`updated_at`, `activo`, los calculados
  * (`proveedor_nombre`, `moneda_codigo`), el FK padre de cada renglón, ni los
  * campos que el formulario arrastra solo para la vista o para validar
  * (`oc_folio`, `recepcion_folio`, `tasa_iva`, `producto_nombre`,

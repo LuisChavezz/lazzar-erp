@@ -16,7 +16,11 @@ import {
  * vuelve al listado de órdenes de compra. Nunca se navega a una URL tomada de
  * la query: solo a destinos fijos o armados con primitivos validados.
  */
-export const PURCHASE_ORDER_DETAIL_ORIGINS = ["purchase-order-receipts", "supplier"] as const;
+export const PURCHASE_ORDER_DETAIL_ORIGINS = [
+  "purchase-order-receipts",
+  "supplier",
+  "supplier-invoices",
+] as const;
 
 export type PurchaseOrderDetailOrigin = (typeof PURCHASE_ORDER_DETAIL_ORIGINS)[number];
 
@@ -118,6 +122,10 @@ const BACK_TARGETS: Record<
   "purchase-order-receipts": {
     href: "/procurement/purchase-order-receipts",
     label: "Volver a Recepciones",
+  },
+  "supplier-invoices": {
+    href: "/finance/supplier-invoices",
+    label: "Volver a Facturas de Proveedor",
   },
   supplier: (params) => {
     const supplierId = parseSupplierId(params.proveedor);

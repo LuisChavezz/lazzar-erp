@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+import { useSession } from "next-auth/react";
 import { MainDialog } from "@/src/components/MainDialog";
 import { StatusBadge } from "@/src/components/StatusBadge";
 import {
@@ -18,6 +20,9 @@ import {
 } from "@/src/components/Icons";
 import { formatMoneyValueOrDash, formatQuantityValue } from "@/src/utils/formatCurrency";
 import { formatShortDate } from "@/src/utils/formatDate";
+import { canAccessRoute } from "@/src/utils/routeAccess";
+import { purchaseOrderDetailHref } from "@/src/features/purchase-orders/constants/purchaseOrderDetailOrigins";
+import { ocFolioLabel } from "../utils/supplierInvoiceLabels";
 import { FACTURA_PROVEEDOR_ESTATUS_CONFIG } from "../constants/supplierInvoiceStatus";
 import { MAX_SUPPLIER_INVOICE_PDF_LABEL } from "../constants/supplierInvoicePdf";
 import type { FacturaProveedor } from "../interfaces/supplier-invoice.interface";
@@ -122,10 +127,10 @@ function SupplierInvoicePdfSection({
 /**
  * Detalle de solo lectura de una factura de proveedor.
  *
- * LIMITACIÓN: el serializer solo expone ids para la OC, la recepción, el producto
- * y los detalles de cada renglón (no hay `oc_folio`, `recepcion_folio` ni
- * `producto_nombre`). Sin una consulta extra —que este diálogo no hace— se
- * muestran como `#id`.
+ * La OC y la recepción se muestran por su folio (`oc_folio`, `recepcion_folio`,
+ * EC-466); la OC enlaza a su detalle si el usuario puede abrirlo. Los renglones
+ * siguen exponiendo solo ids (no hay `producto_nombre`) y, sin una consulta
+ * extra —que este diálogo no hace—, se muestran como `#id`.
  */
 export function SupplierInvoiceDetailDialog({
   factura,
@@ -133,6 +138,9 @@ export function SupplierInvoiceDetailDialog({
   open,
   onOpenChange,
 }: SupplierInvoiceDetailDialogProps) {
+  const { data: session } = useSession();
+  // Pathname sin query: es lo que evalúa `canAccessRoute` (misma regla que el proxy).
+  const ocHref = purchaseOrderDetailHref(factura.oc);
   const moneda = factura.moneda_codigo ? { currency: factura.moneda_codigo } : undefined;
   const money = (value: string) => formatMoneyValueOrDash(value, moneda);
 
@@ -159,8 +167,23 @@ export function SupplierInvoiceDetailDialog({
       <div className="space-y-5">
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-3 px-4 py-3 rounded-xl bg-slate-50 dark:bg-white/5 text-xs">
           <InfoField label="Proveedor">{textOrDash(factura.proveedor_nombre)}</InfoField>
-          <InfoField label="Orden de compra">{`OC #${factura.oc}`}</InfoField>
-          <InfoField label="Recepción">{`#${factura.recepcion}`}</InfoField>
+          <InfoField label="Orden de compra">
+            {canAccessRoute(ocHref, session?.user) ? (
+              <Link
+                href={purchaseOrderDetailHref(factura.oc, "supplier-invoices")}
+                className="font-mono text-sky-600 dark:text-sky-400 hover:underline hover:text-sky-700 dark:hover:text-sky-300 transition-colors"
+                title="Ver orden de compra"
+              >
+                {ocFolioLabel(factura)}
+              </Link>
+            ) : (
+              <span className="font-mono">{ocFolioLabel(factura)}</span>
+            )}
+          </InfoField>
+          {/* Sin enlace: no existe una ruta de detalle de recepción. */}
+          <InfoField label="Recepción">
+            <span className="font-mono">{factura.recepcion_folio}</span>
+          </InfoField>
           <InfoField label="Estatus">
             <StatusBadge status={factura.estatus} config={FACTURA_PROVEEDOR_ESTATUS_CONFIG} />
           </InfoField>

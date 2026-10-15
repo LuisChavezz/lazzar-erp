@@ -348,7 +348,7 @@ export default function SupplierInvoiceList() {
             columns={columns}
             data={facturas}
             baseDataCount={facturas.length}
-            searchPlaceholder="Buscar por folio..."
+            searchPlaceholder="Buscar por folio, OC o recepción..."
             fillHeight
             onRefetch={refetchIfSelected}
             isRefetching={isFetching}

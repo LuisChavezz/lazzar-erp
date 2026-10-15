@@ -15,6 +15,7 @@ import { formatShortDate } from "@/src/utils/formatDate";
 import { FACTURA_PROVEEDOR_ESTATUS_CONFIG } from "../constants/supplierInvoiceStatus";
 import { motivoBloqueoRegistro } from "../schemas/supplier-invoice.schema";
 import type { FacturaProveedor } from "../interfaces/supplier-invoice.interface";
+import { ocFolioLabel } from "../utils/supplierInvoiceLabels";
 import { useSupplierInvoiceRowActionsContext } from "../hooks/useSupplierInvoiceRowActions";
 
 const columnHelper = createColumnHelper<FacturaProveedor>();
@@ -173,6 +174,27 @@ export const getColumns = () => {
       cell: (info) => (
         <span className="font-medium text-slate-600 dark:text-slate-300">
           {info.getValue() || "—"}
+        </span>
+      ),
+    }),
+    // Folios de la OC y la recepción (EC-466). Accessor de texto: entran en la
+    // búsqueda global. La OC en Borrador aún no tiene folio y cae a `OC #id`.
+    columnHelper.accessor((row) => ocFolioLabel(row), {
+      id: "oc_folio",
+      header: "OC",
+      meta: { hideOnMobile: true },
+      cell: (info) => (
+        <span className="whitespace-nowrap font-mono text-xs text-slate-600 dark:text-slate-300">
+          {info.getValue()}
+        </span>
+      ),
+    }),
+    columnHelper.accessor("recepcion_folio", {
+      header: "Recepción",
+      meta: { hideOnMobile: true },
+      cell: (info) => (
+        <span className="whitespace-nowrap font-mono text-xs text-slate-600 dark:text-slate-300">
+          {info.getValue()}
         </span>
       ),
     }),

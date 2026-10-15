@@ -7,6 +7,7 @@ import { formatShortDate } from "@/src/utils/formatDate";
 import { useFacturasProveedor } from "../hooks/useFacturasProveedor";
 import { useCuentasPorPagar } from "../hooks/useCuentasPorPagar";
 import { moneyFormatFor } from "../utils/accounts-payable.utils";
+import { ocFolioLabel } from "@/src/features/supplier-invoices/utils/supplierInvoiceLabels";
 import type { FacturaProveedor } from "../interfaces/factura-proveedor.interface";
 
 interface FacturaProveedorSelectorDialogProps {
@@ -77,10 +78,12 @@ function FacturaProveedorSelectorContent({
       loadingTitle="Cargando facturas"
       loadingMessage="Obteniendo las facturas registradas del proveedor..."
       errorMessage="Error al cargar las facturas del proveedor."
-      searchPlaceholder="Buscar por folio de factura..."
+      searchPlaceholder="Buscar por folio de factura, OC o recepción..."
       filterPredicate={(factura, term) =>
         (factura.folio ?? "").toLowerCase().includes(term) ||
-        String(factura.id).includes(term)
+        String(factura.id).includes(term) ||
+        ocFolioLabel(factura).toLowerCase().includes(term) ||
+        factura.recepcion_folio.toLowerCase().includes(term)
       }
       getKey={(factura) => factura.id}
       selectedKey={selectedFacturaId > 0 ? selectedFacturaId : null}
@@ -95,6 +98,10 @@ function FacturaProveedorSelectorContent({
           <div className="min-w-0">
             <p className="text-sm font-semibold text-slate-800 dark:text-slate-100 truncate">
               {factura.folio || `Factura #${factura.id}`}
+            </p>
+            {/* Contexto de origen (EC-466): folios de la OC y la recepción. */}
+            <p className="text-xs text-slate-500 dark:text-slate-400 truncate font-mono">
+              {ocFolioLabel(factura)} · {factura.recepcion_folio}
             </p>
             <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
               {/* `timeZone: "UTC"`: fechas-calendario "YYYY-MM-DD". */}
