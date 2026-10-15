@@ -199,7 +199,8 @@ interface BlockedContentProps {
   isPending: boolean;
   submit: Submit;
   onCancel: () => void;
-  onOpenCriticalPath: () => void;
+  /** Sin él (la página no puede abrir la ruta crítica) no se ofrece el botón. */
+  onOpenCriticalPath?: () => void;
 }
 
 /**
@@ -289,11 +290,13 @@ const BlockedContent = ({
       <ErrorBanner message={message} />
       <div className="flex flex-wrap justify-end gap-3 pt-1">
         <FormCancelButton label="Cerrar" onClick={onCancel} disabled={isPending} />
-        <FormSecondaryButton
-          label="Abrir ruta crítica"
-          onClick={onOpenCriticalPath}
-          disabled={isPending}
-        />
+        {onOpenCriticalPath && (
+          <FormSecondaryButton
+            label="Abrir ruta crítica"
+            onClick={onOpenCriticalPath}
+            disabled={isPending}
+          />
+        )}
         {state.sePuedeForzar && (
           <FormSubmitButton
             type="button"
@@ -315,8 +318,12 @@ interface ProductionOrderStatusDialogProps {
   flow: ProductionOrderStatusFlow;
   /** Folio de la OP para el título. */
   folio: string;
-  /** Abre el diálogo de ruta crítica de la página (no se duplica aquí). */
-  onOpenCriticalPath: () => void;
+  /**
+   * Abre el diálogo de ruta crítica de la página (no se duplica aquí).
+   * `undefined` cuando la página no puede montarlo (detalle sin cargar o en
+   * error): el diálogo de requisitos no ofrece entonces "Abrir ruta crítica".
+   */
+  onOpenCriticalPath?: () => void;
 }
 
 /**
@@ -404,10 +411,13 @@ export function ProductionOrderStatusDialog({
             isPending={isPending}
             submit={submit}
             onCancel={closeDialog}
-            onOpenCriticalPath={() => {
-              setOpenCriticalPathOnClose(true);
-              closeDialog();
-            }}
+            onOpenCriticalPath={
+              onOpenCriticalPath &&
+              (() => {
+                setOpenCriticalPathOnClose(true);
+                closeDialog();
+              })
+            }
           />
         );
     }
@@ -424,7 +434,7 @@ export function ProductionOrderStatusDialog({
       onCloseAutoFocus={() => {
         if (!openCriticalPathOnClose) return;
         setOpenCriticalPathOnClose(false);
-        onOpenCriticalPath();
+        onOpenCriticalPath?.();
       }}
     >
       {renderContent()}

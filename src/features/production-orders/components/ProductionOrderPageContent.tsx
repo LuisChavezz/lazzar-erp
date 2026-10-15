@@ -258,7 +258,10 @@ export function ProductionOrderPageContent({
       <ProductionOrderStatusDialog
         flow={statusFlow}
         folio={data?.folio_op || statusFlow.folio}
-        onOpenCriticalPath={openCriticalPath}
+        // El diálogo de ruta crítica solo se monta en la rama de éxito: con el
+        // detalle sin cargar o en error, "Abrir ruta crítica" no se ofrece en
+        // vez de no hacer nada.
+        onOpenCriticalPath={data && !isError ? openCriticalPath : undefined}
       />
     </>
   );
