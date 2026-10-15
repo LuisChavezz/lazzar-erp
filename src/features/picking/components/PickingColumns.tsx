@@ -48,10 +48,16 @@ export const getPickingColumns = ({ onViewDetail }: PickingColumnsCallbacks) =>
   [
     columnHelper.accessor("folio", {
       header: "Folio",
+      // Abre el mismo detalle que "Ver Detalles" del menú de acciones.
       cell: (info) => (
-        <span className="font-mono text-slate-700 dark:text-slate-200 font-semibold">
+        <button
+          type="button"
+          title="Ver detalle"
+          onClick={() => onViewDetail(info.row.original.id)}
+          className="font-mono text-slate-700 dark:text-slate-200 font-semibold hover:text-sky-600 dark:hover:text-sky-400 hover:underline cursor-pointer"
+        >
           {info.getValue()}
-        </span>
+        </button>
       ),
     }),
     columnHelper.accessor("pedido_folio", {
