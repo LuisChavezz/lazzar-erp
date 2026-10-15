@@ -3,6 +3,7 @@ import toast from "react-hot-toast";
 import { updateProductionOrderCriticalPath } from "../services/actions";
 import type { CriticalPathUpdateBody } from "../interfaces/production-order-critical-path.interface";
 import { productionOrderOnboardingKey } from "@/src/features/production-orders/hooks/useProductionOrderOnboarding";
+import { productionOrderStatusKey } from "@/src/features/production-order-status/hooks/useProductionOrderStatus";
 import { productionOrderCriticalPathKey } from "./useProductionOrderCriticalPath";
 import {
   handleCriticalPathWriteError,
@@ -40,6 +41,9 @@ export const useUpdateProductionOrderCriticalPath = (setFieldError?: SetCritical
       updateProductionOrderCriticalPath(opId, body),
     onSuccess: (data, { opId }) => {
       queryClient.setQueryData(productionOrderCriticalPathKey(opId), data);
+      // Los requisitos para pasar a "En producción" salen de esta captura: sin
+      // esto, el menú de estatus seguiría marcando "Requisitos pendientes".
+      void queryClient.invalidateQueries({ queryKey: productionOrderStatusKey(opId) });
       toast.success("Ruta crítica actualizada");
     },
     onError: (error, { opId }) => {
