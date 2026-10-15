@@ -197,7 +197,7 @@ export function InvoiceDetailPageContent({ invoiceId, query }: InvoiceDetailPage
       )}
 
       {sheet === "invoice" ? (
-        <InvoiceMainSheet data={data} invoice={invoice} canOpen={canOpen} />
+        <InvoiceMainSheet data={data} invoice={invoice} canOpen={canOpen} user={session?.user} />
       ) : (
         <InvoiceTrackingSheet data={data} query={query} canOpen={canOpen} />
       )}

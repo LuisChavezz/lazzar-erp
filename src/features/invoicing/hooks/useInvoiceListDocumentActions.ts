@@ -4,6 +4,7 @@ import { createContext, useContext } from "react";
 import { useMutation, useMutationState, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
+import type { InvoiceListRow } from "../interfaces/invoice.interface";
 import { getInvoiceEmailBlocker } from "../utils/invoiceEmailBlocker";
 import { invoiceRetrieveFreshOptions } from "./useInvoiceRetrieveFresh";
 import { useDownloadInvoicePdf } from "./useDownloadInvoicePdf";
@@ -32,6 +33,10 @@ export interface InvoiceRowActionsContextValue {
   onSendEmail: (id: number) => void;
   /** Ids de factura con una acción de PDF o correo en curso. */
   pendingIds: number[];
+  /** ¿Se ofrece "Cancelar factura" en esta fila? (`canCancelInvoice`). */
+  canCancel: (invoice: InvoiceListRow) => boolean;
+  /** Abre el diálogo de cancelación, que vive en `InvoiceList` (no en la celda). */
+  onCancel: (invoice: InvoiceListRow) => void;
 }
 
 const InvoiceRowActionsContext = createContext<InvoiceRowActionsContextValue | null>(null);
@@ -66,7 +71,7 @@ export function useInvoiceRowActionsContext(): InvoiceRowActionsContextValue {
  * misma fila se descarta consultando la caché de forma síncrona (la mutación
  * queda `pending` en el mismo tick en que se dispara).
  */
-export function useInvoiceListDocumentActions(): InvoiceRowActionsContextValue {
+export function useInvoiceListDocumentActions(): Omit<InvoiceRowActionsContextValue, "canCancel" | "onCancel"> {
   const queryClient = useQueryClient();
   const { mutateAsync: downloadPdf } = useDownloadInvoicePdf();
   const { mutateAsync: sendEmail } = useSendInvoiceEmail();

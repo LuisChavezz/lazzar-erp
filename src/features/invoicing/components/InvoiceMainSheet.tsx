@@ -1,6 +1,7 @@
 "use client";
 
-import { ClientesIcon, DownloadIcon, EmailIcon, FacturacionIcon } from "@/src/components/Icons";
+import { useState } from "react";
+import { BanIcon, ClientesIcon, DownloadIcon, EmailIcon, FacturacionIcon } from "@/src/components/Icons";
 import { Button } from "@/src/components/Button";
 import { StatusBadge } from "@/src/components/StatusBadge";
 import {
@@ -27,7 +28,10 @@ import type {
   InvoiceDesgloseSatKey,
 } from "../interfaces/invoice-desglose.interface";
 import { formatInvoiceDate } from "../utils/invoiceDetailFormat";
+import type { PermissionContext } from "@/src/interfaces/permission-context.interface";
+import { canCancelInvoice } from "../utils/invoiceCancellation";
 import { InvoiceConceptsSection } from "./InvoiceConceptsSection";
+import { InvoiceCancelDialog } from "./InvoiceCancelDialog";
 
 interface InvoiceMainSheetProps {
   data: InvoiceDesglose;
@@ -38,6 +42,8 @@ interface InvoiceMainSheetProps {
   invoice: Invoice | null;
   /** ¿El usuario puede abrir esta ruta? (regla del proxy). */
   canOpen: (pathname: string) => boolean;
+  /** Usuario de la sesión (permisos), para la regla de "Cancelar factura". */
+  user: PermissionContext | null | undefined;
 }
 
 const satKeyLabel = (key: InvoiceDesgloseSatKey | null): string =>
@@ -47,10 +53,17 @@ const satKeyLabel = (key: InvoiceDesgloseSatKey | null): string =>
  * Acciones del documento: las MISMAS reglas que el menú de la fila del
  * listado (`useInvoiceDocumentActions`), sobre el mismo `Invoice` del retrieve.
  */
-function InvoiceDocumentActions({ invoice }: { invoice: Invoice }) {
+function InvoiceDocumentActions({
+  invoice,
+  user,
+}: {
+  invoice: Invoice;
+  user: PermissionContext | null | undefined;
+}) {
   const actions = useInvoiceDocumentActions(invoice);
   return (
     <div className="flex flex-wrap items-center gap-2">
+      <InvoiceCancelAction invoice={invoice} canCancel={canCancelInvoice(invoice, user)} />
       {actions.canSendEmail && (
         <Button
           type="button"
@@ -81,11 +94,41 @@ function InvoiceDocumentActions({ invoice }: { invoice: Invoice }) {
 }
 
 /**
+ * "Cancelar factura": misma regla que el menú del listado (`canCancelInvoice`)
+ * sobre el retrieve, que es quien trae `activo`. Tras cancelar, el refetch del
+ * retrieve deja la factura en `Cancelada` y la acción desaparece sola.
+ */
+function InvoiceCancelAction({ invoice, canCancel }: { invoice: Invoice; canCancel: boolean }) {
+  const [isOpen, setIsOpen] = useState(false);
+
+  // Sin la acción no se monta el diálogo; si estaba abierto (la factura acaba
+  // de cancelarse) sigue montado hasta cerrarse.
+  if (!canCancel && !isOpen) return null;
+
+  return (
+    <>
+      {canCancel && (
+        <Button
+          type="button"
+          variant="secondary"
+          onClick={() => setIsOpen(true)}
+          className="text-rose-600! dark:text-rose-400!"
+        >
+          <BanIcon className="w-4 h-4" aria-hidden="true" />
+          Cancelar factura
+        </Button>
+      )}
+      <InvoiceCancelDialog invoice={invoice} open={isOpen} onOpenChange={setIsOpen} />
+    </>
+  );
+}
+
+/**
  * Hoja 1, "Factura": la factura en solo lectura. Cabecera (folio, estatus,
  * fechas, totales y acciones), emisor y receptor, pedido, conceptos e importes.
  * Todo sale del desglose; solo las acciones usan el retrieve.
  */
-export function InvoiceMainSheet({ data, invoice, canOpen }: InvoiceMainSheetProps) {
+export function InvoiceMainSheet({ data, invoice, canOpen, user }: InvoiceMainSheetProps) {
   const money = (value: number) => formatCurrency(value, { currency: data.moneda.codigo_iso });
   const { emisor, receptor, pedido, importes } = data;
 
@@ -118,7 +161,7 @@ export function InvoiceMainSheet({ data, invoice, canOpen }: InvoiceMainSheetPro
               </HeaderStat>
             </HeaderStatRow>
           </div>
-          {invoice && <InvoiceDocumentActions invoice={invoice} />}
+          {invoice && <InvoiceDocumentActions invoice={invoice} user={user} />}
         </div>
       </SheetSection>
 

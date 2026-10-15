@@ -2,7 +2,7 @@
 
 import { ColumnDef, FilterFn } from "@tanstack/react-table";
 import type { InvoiceListRow } from "../interfaces/invoice.interface";
-import { ChevronRightIcon, DownloadIcon, EmailIcon, ViewIcon } from "../../../components/Icons";
+import { BanIcon, ChevronRightIcon, DownloadIcon, EmailIcon, ViewIcon } from "../../../components/Icons";
 import { ActionMenu, ActionMenuItem } from "@/src/components/ActionMenu";
 import { ColumnHeaderFilter, type ColumnFilterOption } from "@/src/components/ColumnHeaderFilter";
 import { formatCurrency, safeParseAmount } from "@/src/utils/formatCurrency";
@@ -39,14 +39,20 @@ const estatusFilterFn: FilterFn<InvoiceListRow> = (row, _columnId, filterValue) 
  * `useInvoiceListDocumentActions`). Abrir el menú no hace ninguna petición.
  *
  * "Enviar correo" se oculta si el estatus no es enviable o si la fila trae
- * `activo === false`; mientras el listado no exponga `activo`, una eliminada
- * se bloquea al activarse, contra el retrieve.
+ * `activo === false` (el listado SÍ trae `activo`); además, al activarse se
+ * bloquea contra el retrieve fresco.
+ *
+ * "Cancelar factura" sigue la regla única `canCancelInvoice` (permiso +
+ * `activo === true` + Borrador o Emitida), que llega por contexto. Solo ABRE
+ * el diálogo, que vive en `InvoiceList`: si un filtro de estatus oculta la
+ * fila al quedar Cancelada, el diálogo no se desmonta.
  */
 const FolioCell = ({ invoice }: { invoice: InvoiceListRow }) => {
   const statusCfg = INVOICE_STATUS_CONFIG[invoice.estatus];
   const statusLabel = statusCfg?.label ?? invoice.estatus;
   const invoiceLabel = invoice.folio || `#${invoice.id}`;
-  const { onDownloadPdf, onSendEmail, pendingIds } = useInvoiceRowActionsContext();
+  const { onDownloadPdf, onSendEmail, pendingIds, canCancel, onCancel } =
+    useInvoiceRowActionsContext();
   const pending = pendingIds.includes(invoice.id);
 
   const menuItems: ActionMenuItem[] = [
@@ -67,6 +73,12 @@ const FolioCell = ({ invoice }: { invoice: InvoiceListRow }) => {
       onSelect: () => onSendEmail(invoice.id),
       disabled: pending,
       visible: invoice.activo !== false && isInvoiceSendable(invoice.estatus),
+    },
+    {
+      label: "Cancelar factura",
+      icon: BanIcon,
+      onSelect: () => onCancel(invoice),
+      visible: canCancel(invoice),
     },
   ];
 

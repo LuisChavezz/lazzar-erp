@@ -1,8 +1,10 @@
 /**
  * Estatus de una factura (`Factura.FacturaStatus` del backend). Enum COMPLETO:
  * la facturación por piezas crea la factura en `Borrador`; `Emitida` solo la
- * crea hoy `registrar-pendiente-cobro` (por monto); ningún endpoint mueve una
- * factura fuera de `Borrador` (el timbrado está desconectado).
+ * crea hoy `registrar-pendiente-cobro` (por monto). Ningún endpoint pasa una
+ * factura de `Borrador` a `Emitida` (el timbrado está desconectado); la única
+ * transición disponible es `POST /finanzas/facturas/{id}/cancelar/`, que lleva
+ * una `Borrador` o una `Emitida` a `Cancelada`.
  */
 export type InvoiceEstatus = "Borrador" | "Emitida" | "Cancelada";
 
@@ -70,9 +72,10 @@ export interface Invoice {
  * `empresa`, `sucursal`, `serie_folio`, `descuento`, `observaciones` o las
  * fechas de auditoría.
  *
- * `activo` es opcional: hoy no viene (el listado incluye eliminadas sin
- * distinguirlas); cuando venga, el menú oculta "Enviar correo" en las
- * eliminadas.
+ * `activo`: el listado incluye las eliminadas y las distingue con este campo
+ * (`FacturaListSerializer` lo expone). Sigue tipado opcional: quien lo use
+ * para ofrecer una acción irreversible debe exigir `activo === true`, nunca
+ * `!== false` (ver `isInvoiceCancellable`).
  */
 export interface InvoiceListRow {
   id: number;
@@ -98,4 +101,14 @@ export interface InvoiceListRow {
   moneda: number;
   moneda_nombre: string;
   activo?: boolean;
+}
+
+/**
+ * Respuesta de `POST /finanzas/facturas/{id}/cancelar/`: la factura completa
+ * (`FacturaSerializer`, como el retrieve) más la contrapóliza del día, `null`
+ * si no hubo (Borrador, ya cancelada o sin póliza). NO trae ningún dato de
+ * inventario: un 200 no dice si regresaron piezas a existencia.
+ */
+export interface InvoiceCancelResponse extends Invoice {
+  contrapoliza_id: number | null;
 }

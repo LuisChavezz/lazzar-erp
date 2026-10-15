@@ -9,6 +9,9 @@ import { isInitialLoadError } from "@/src/utils/isInitialLoadError";
 import { Button } from "@/src/components/Button";
 import { invoiceColumns } from "./InvoiceColumns";
 import { CreateInvoiceDialog } from "./CreateInvoiceDialog";
+import { InvoiceCancelDialog } from "./InvoiceCancelDialog";
+import { canCancelInvoice } from "../utils/invoiceCancellation";
+import type { InvoiceListRow } from "../interfaces/invoice.interface";
 import { useInvoices } from "../hooks/useInvoices";
 import {
   InvoiceRowActionsProvider,
@@ -27,6 +30,10 @@ export const InvoiceList = () => {
   const { data: session } = useSession();
   const canCreate = hasPermission("C-CONTABILIDAD-FACTURACION", session?.user);
 
+  // Factura a cancelar. El diálogo vive aquí y no en la celda: al quedar
+  // Cancelada, un filtro de estatus puede sacar la fila de la tabla.
+  const [invoiceToCancel, setInvoiceToCancel] = useState<InvoiceListRow | null>(null);
+
   // Solo se trata como error "de pantalla completa" cuando la consulta nunca
   // cargó con éxito; un error de refetch transitorio no debe descartar la
   // tabla ya cargada (perdiendo orden, paginación, búsqueda y filtros del
@@ -34,7 +41,12 @@ export const InvoiceList = () => {
   const showError = isInitialLoadError(isError, hasLoaded);
 
   // PDF y correo del menú de cada fila: una sola instancia, por contexto.
-  const rowActions = useInvoiceListDocumentActions();
+  const documentActions = useInvoiceListDocumentActions();
+  const rowActions = {
+    ...documentActions,
+    canCancel: (invoice: InvoiceListRow) => canCancelInvoice(invoice, session?.user),
+    onCancel: setInvoiceToCancel,
+  };
 
   return (
     <InvoiceRowActionsProvider value={rowActions}>
@@ -69,6 +81,13 @@ export const InvoiceList = () => {
       </div>
 
       <CreateInvoiceDialog open={isCreateOpen} onOpenChange={setIsCreateOpen} />
+      <InvoiceCancelDialog
+        invoice={invoiceToCancel}
+        open={invoiceToCancel !== null}
+        onOpenChange={(open) => {
+          if (!open) setInvoiceToCancel(null);
+        }}
+      />
     </div>
     </InvoiceRowActionsProvider>
   );

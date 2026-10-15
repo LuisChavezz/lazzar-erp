@@ -1,6 +1,10 @@
 import { v1_api } from "@/src/api/v1.api";
 import { decimalToCents } from "@/src/features/orders/utils/orderAccounting";
-import type { Invoice, InvoiceListRow } from "../interfaces/invoice.interface";
+import type {
+  Invoice,
+  InvoiceCancelResponse,
+  InvoiceListRow,
+} from "../interfaces/invoice.interface";
 import type {
   InvoiceOnboardingData,
   InvoiceOnboardingPayload,
@@ -81,6 +85,28 @@ export const createInvoiceFromOnboarding = async (
   const { data } = await v1_api.post<Invoice>(
     "/finanzas/facturas/onboarding/",
     payload,
+  );
+  return data;
+};
+
+/**
+ * Cancela una factura `Borrador` o `Emitida`
+ * (`POST /finanzas/facturas/{id}/cancelar/`, responde `200` con la factura
+ * completa y `contrapoliza_id`). `motivo` es opcional y solo se manda si trae
+ * texto: el backend lo agrega a `observaciones`. Cancelar una ya cancelada
+ * responde `200` sin efecto. El error se deja propagar (p. ej. el `400` bajo
+ * `estatus` si tiene notas de crédito emitidas).
+ */
+export const cancelInvoice = async ({
+  id,
+  motivo,
+}: {
+  id: number;
+  motivo?: string;
+}): Promise<InvoiceCancelResponse> => {
+  const { data } = await v1_api.post<InvoiceCancelResponse>(
+    `/finanzas/facturas/${id}/cancelar/`,
+    motivo ? { motivo } : {},
   );
   return data;
 };
