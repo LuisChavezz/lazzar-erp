@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import type { FormEvent, ReactNode } from "react";
 import { MainDialog } from "@/src/components/MainDialog";
+import { FormErrorBanner } from "@/src/components/FormErrorBanner";
 import { FormTextarea } from "@/src/components/FormTextarea";
 import {
   FormCancelButton,
@@ -24,17 +25,6 @@ type Submit = (
   label: string,
   handlers: ChangeStatusErrorHandlers,
 ) => void;
-
-/** Banner de error dentro del diálogo; mismo estilo que el de recálculo de consumos. */
-const ErrorBanner = ({ message }: { message: string | null }) =>
-  message ? (
-    <p
-      role="alert"
-      className="rounded-xl border border-red-200 dark:border-red-500/20 bg-red-50/60 dark:bg-red-500/5 px-4 py-3 text-xs font-medium text-red-700 dark:text-red-400"
-    >
-      {message}
-    </p>
-  ) : null;
 
 const Warning = ({ tone, children }: { tone: "amber" | "red"; children: ReactNode }) => (
   <div
@@ -113,7 +103,7 @@ const MotivoContent = ({ state, isPending, submit, onCancel }: MotivoContentProp
           </p>
         </Warning>
       )}
-      <ErrorBanner message={message} />
+      <FormErrorBanner message={message} />
       <FormTextarea
         label={isCancel ? "Motivo de la cancelación" : "Motivo de la detención"}
         name="motivo"
@@ -177,7 +167,7 @@ const CompleteContent = ({ state, isPending, submit, onCancel }: CompleteContent
           Además, una orden completada ya no admite recepciones ni el recálculo de consumos.
         </p>
       </Warning>
-      <ErrorBanner message={message} />
+      <FormErrorBanner message={message} />
       <div className="flex justify-end gap-3 pt-1">
         <FormCancelButton label="Volver" onClick={onCancel} disabled={isPending} />
         <FormSubmitButton
@@ -249,7 +239,7 @@ const BlockedContent = ({
             cambio queda registrado como forzado.
           </p>
         </Warning>
-        <ErrorBanner message={message} />
+        <FormErrorBanner message={message} />
         <div className="flex justify-end gap-3 pt-1">
           <FormCancelButton
             label="Volver"
@@ -287,7 +277,7 @@ const BlockedContent = ({
       <p className="ml-1 text-xs text-slate-500 dark:text-slate-400">
         Se capturan en la ruta crítica de la orden.
       </p>
-      <ErrorBanner message={message} />
+      <FormErrorBanner message={message} />
       <div className="flex flex-wrap justify-end gap-3 pt-1">
         <FormCancelButton label="Cerrar" onClick={onCancel} disabled={isPending} />
         {onOpenCriticalPath && (
