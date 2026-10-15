@@ -4,11 +4,14 @@ import { useState } from "react";
 import { useIsMutating } from "@tanstack/react-query";
 import type { FormEvent } from "react";
 import { MainDialog } from "@/src/components/MainDialog";
+import { FormErrorBanner } from "@/src/components/FormErrorBanner";
+import { SectionErrorNotice } from "@/src/components/SectionErrorNotice";
 import { FormSelect } from "@/src/components/FormSelect";
 import { FormTextarea } from "@/src/components/FormTextarea";
 import { FormCancelButton, FormSubmitButton } from "@/src/components/FormButtons";
 import { useDialogSession } from "@/src/hooks/useDialogSession";
 import { useFormFieldErrors } from "@/src/hooks/useFormFieldErrors";
+import { isNotFoundError } from "@/src/utils/drfWriteErrors";
 import { useWarehouses } from "@/src/features/warehouses/hooks/useWarehouses";
 import type { Warehouse } from "@/src/features/warehouses/interfaces/warehouse.interface";
 import {
@@ -38,16 +41,6 @@ const getTargetWarehouses = (warehouses: Warehouse[], picking: Picking): Warehou
     )
     .sort((a, b) => a.nombre.localeCompare(b.nombre, "es"));
 
-const ErrorBanner = ({ message }: { message: string | null }) =>
-  message ? (
-    <p
-      role="alert"
-      className="rounded-xl border border-red-200 dark:border-red-500/20 bg-red-50/60 dark:bg-red-500/5 px-4 py-3 text-xs font-medium text-red-700 dark:text-red-400"
-    >
-      {message}
-    </p>
-  ) : null;
-
 interface PickingTransferFormProps {
   /** El picking tal como estaba al ABRIR el diálogo (ver `useDialogSession`). */
   picking: Picking;
@@ -55,7 +48,7 @@ interface PickingTransferFormProps {
 }
 
 const PickingTransferForm = ({ picking, onClose }: PickingTransferFormProps) => {
-  const { data: warehouses, isLoading, isInitialError, refetch } = useWarehouses();
+  const { data: warehouses, isLoading, isFetching, isInitialError, refetch } = useWarehouses();
   const transfer = useTransferPicking(picking.id);
   const isPending = transfer.isPending;
 
@@ -96,26 +89,28 @@ const PickingTransferForm = ({ picking, onClose }: PickingTransferFormProps) => 
     setMessage(null);
     transfer.mutate(payload, {
       onSuccess: onClose,
-      onError: (error) => setMessage(parseTransferPickingError(error, setServerFieldError)),
+      onError: (error) => {
+        // 404: el surtido ya no existe; el hook lo avisa con un toast y el
+        // detalle que abrió este diálogo desaparece al refrescarse.
+        if (isNotFoundError(error)) {
+          onClose();
+          return;
+        }
+        setMessage(parseTransferPickingError(error, setServerFieldError));
+      },
     });
   };
 
   const renderAlmacenField = () => {
     if (isInitialError) {
       return (
-        <div
-          role="alert"
-          className="rounded-xl border border-red-200 dark:border-red-500/20 bg-red-50/60 dark:bg-red-500/5 px-4 py-3 text-xs font-medium text-red-700 dark:text-red-400 flex items-center justify-between gap-3"
-        >
-          <span>No se pudieron cargar los almacenes.</span>
-          <button
-            type="button"
-            onClick={() => void refetch()}
-            className="font-semibold underline underline-offset-2 hover:text-red-800 dark:hover:text-red-300"
-          >
-            Reintentar
-          </button>
-        </div>
+        <SectionErrorNotice
+          variant="inline"
+          className="px-1 py-2"
+          message="No se pudieron cargar los almacenes."
+          onRetry={() => void refetch()}
+          isRetrying={isFetching}
+        />
       );
     }
     if (!isLoading && options.length === 0) {
@@ -162,7 +157,7 @@ const PickingTransferForm = ({ picking, onClose }: PickingTransferFormProps) => 
         ningún traspaso.
       </div>
 
-      <ErrorBanner message={message} />
+      <FormErrorBanner message={message} />
 
       <div className="text-xs">
         <span className="text-slate-400 dark:text-slate-500">Almacén actual</span>

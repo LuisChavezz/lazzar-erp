@@ -192,9 +192,10 @@ export function PickingDetailDialog({ picking, open, onOpenChange }: PickingDeta
  * dos lugares donde se abre el detalle (el listado de picking y el detalle del
  * pedido). Se ofrece con `C-WMS-PICKING` (el mismo código que da de alta un
  * surtido; `hasPermission` ya deja pasar al rol admin) y solo si el estatus es
- * trasladable. Ambos dueños refrescan `picking` tras el traslado sin desmontar
- * este cuerpo, de modo que el diálogo de traslado no se pierde a media
- * operación.
+ * trasladable. Tras un traslado exitoso ambos dueños reciben el `picking`
+ * actualizado sin desmontar este cuerpo. Si el surtido deja de existir (404),
+ * este cuerpo SÍ desaparece al refrescarse —y con él el diálogo—, por eso ese
+ * error se avisa con un toast (ver `useTransferPicking`).
  */
 export function PickingDetailContent({ picking }: { picking: PickingRow }) {
   const { data: session } = useSession();
@@ -320,8 +321,9 @@ export function PickingDetailContent({ picking }: { picking: PickingRow }) {
         </div>
 
         {/* Montado también mientras está abierto aunque la acción deje de
-            ofrecerse (p. ej. un 400 `estado` refresca el surtido y ya no es
-            trasladable): así el usuario alcanza a leer el motivo del rechazo. */}
+            ofrecerse: un 400 `estado` refresca el surtido (que sigue existiendo
+            pero ya no es trasladable) y el motivo se lee en el banner del
+            diálogo. Un 404 no llega aquí: el cuerpo entero desaparece. */}
         {(canTransfer || isTransferOpen) && (
           <PickingTransferDialog
             picking={picking}

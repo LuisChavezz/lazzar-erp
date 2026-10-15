@@ -95,10 +95,14 @@ export function PickingView() {
   const rows = mapPickingsToRows(pickings, dataUpdatedAt);
 
   const [detailPickingId, setDetailPickingId] = useState<number | null>(null);
-  // Si el surtido abierto deja de venir en la lista (p. ej. tras un refetch),
-  // el diálogo simplemente no se monta.
   const detailPicking =
     detailPickingId === null ? null : (rows.find((row) => row.id === detailPickingId) ?? null);
+  // Si el surtido abierto deja de venir en la lista ya cargada (p. ej. un 404
+  // al trasladarlo refresca la lista y ya no está), se olvida su id: si no, el
+  // detalle se volvería a abrir solo si el surtido reapareciera más tarde.
+  if (detailPickingId !== null && hasLoaded && detailPicking === null) {
+    setDetailPickingId(null);
+  }
 
   const columns = getPickingColumns({ onViewDetail: setDetailPickingId });
 

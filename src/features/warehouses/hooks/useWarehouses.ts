@@ -12,7 +12,7 @@ import { Warehouse } from "../interfaces/warehouse.interface";
  * de "cargó vacío".
  */
 export const useWarehouses = () => {
-  const { data, isLoading, isInitialError, error, refetch } = useGuardedQuery<Warehouse[]>(
+  const { data, isLoading, isFetching, isInitialError, error, refetch } = useGuardedQuery<Warehouse[]>(
     {
       queryKey: ["warehouses"],
       queryFn: getWarehouses,
@@ -23,6 +23,7 @@ export const useWarehouses = () => {
   return {
     data,
     isLoading,
+    isFetching,
     isInitialError,
     error,
     refetch,
