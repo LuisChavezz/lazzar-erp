@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
+import { productionOrderOnboardingKey } from "@/src/features/production-orders/hooks/useProductionOrderOnboarding";
 import { productionOrderCriticalPathKey } from "@/src/features/production-order-critical-path/hooks/useProductionOrderCriticalPath";
 import { recalculateProductionOrderConsumption } from "../services/actions";
 import type { RecalculateConsumptionBody } from "../interfaces/production-order-consumption.interface";
@@ -8,9 +9,6 @@ import { isRecalculateOpStateError } from "./recalculateConsumptionErrorMessages
 /** El diálogo lo usa (`useIsMutating`) para no cerrarse a media petición. */
 export const recalculateConsumptionMutationKey = (opId: number) =>
   ["production-order-consumption-recalculate", opId] as const;
-
-/** Llave de `useProductionOrderOnboarding` (el hook no la exporta). */
-const onboardingKey = (opId: number) => ["production-order-onboarding", opId] as const;
 
 /**
  * Prefijos de existencias y movimientos: el recálculo saca o regresa material
@@ -52,7 +50,7 @@ export const useRecalculateProductionOrderConsumption = (opId: number) => {
     mutationFn: (body: RecalculateConsumptionBody) =>
       recalculateProductionOrderConsumption(opId, body),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: onboardingKey(opId) });
+      void queryClient.invalidateQueries({ queryKey: productionOrderOnboardingKey(opId) });
       void queryClient.invalidateQueries({ queryKey: productionOrderCriticalPathKey(opId) });
       STOCK_KEY_PREFIXES.forEach((queryKey) => {
         void queryClient.invalidateQueries({ queryKey });
@@ -62,7 +60,7 @@ export const useRecalculateProductionOrderConsumption = (opId: number) => {
     onError: (error) => {
       console.error(error);
       if (isRecalculateOpStateError(error)) {
-        void queryClient.invalidateQueries({ queryKey: onboardingKey(opId) });
+        void queryClient.invalidateQueries({ queryKey: productionOrderOnboardingKey(opId) });
       }
     },
   });

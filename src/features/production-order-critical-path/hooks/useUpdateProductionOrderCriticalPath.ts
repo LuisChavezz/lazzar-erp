@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { updateProductionOrderCriticalPath } from "../services/actions";
 import type { CriticalPathUpdateBody } from "../interfaces/production-order-critical-path.interface";
+import { productionOrderOnboardingKey } from "@/src/features/production-orders/hooks/useProductionOrderOnboarding";
 import { productionOrderCriticalPathKey } from "./useProductionOrderCriticalPath";
 import {
   handleCriticalPathWriteError,
@@ -45,7 +46,7 @@ export const useUpdateProductionOrderCriticalPath = (setFieldError?: SetCritical
       console.error(error);
       if (isCriticalPathConflictError(error)) {
         void queryClient.invalidateQueries({ queryKey: ["production-orders"] });
-        void queryClient.invalidateQueries({ queryKey: ["production-order-onboarding", opId] });
+        void queryClient.invalidateQueries({ queryKey: productionOrderOnboardingKey(opId) });
       }
       toast.error(
         handleCriticalPathWriteError(error, "No se pudo guardar la ruta crítica.", setFieldError)

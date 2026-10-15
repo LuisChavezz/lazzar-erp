@@ -1,15 +1,13 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { productionOrderStatusEntry } from "@/src/features/production-orders/constants/productionOrderStatus";
+import { productionOrderOnboardingKey } from "@/src/features/production-orders/hooks/useProductionOrderOnboarding";
 import { productionOrderKpisQueryKey } from "@/src/features/production-orders/hooks/useProductionOrderKpis";
 import { productionOrderCriticalPathKey } from "@/src/features/production-order-critical-path/hooks/useProductionOrderCriticalPath";
 import { changeProductionOrderStatus } from "../services/actions";
 import type { ChangeProductionOrderStatusBody } from "../interfaces/production-order-status.interface";
 import { isStaleStatusError } from "./productionOrderStatusErrors";
 import { productionOrderStatusKey } from "./useProductionOrderStatus";
-
-/** Llave de `useProductionOrderOnboarding` (el hook no la exporta). */
-const onboardingKey = (opId: number) => ["production-order-onboarding", opId] as const;
 
 /**
  * POST del cambio de estatus. Sin escritura optimista: los destinos siguientes
@@ -32,7 +30,7 @@ export const useChangeProductionOrderStatus = (opId: number) => {
 
   const refreshStatusAndDetail = () => {
     void queryClient.invalidateQueries({ queryKey: productionOrderStatusKey(opId) });
-    void queryClient.invalidateQueries({ queryKey: onboardingKey(opId) });
+    void queryClient.invalidateQueries({ queryKey: productionOrderOnboardingKey(opId) });
   };
 
   return useMutation({
