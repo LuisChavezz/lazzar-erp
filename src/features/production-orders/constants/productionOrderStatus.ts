@@ -75,6 +75,17 @@ const CLOSED_STATUS_CODES = [5, 7] as const satisfies readonly (keyof typeof STA
 export const isClosedProductionOrderStatus = (estatus: number): boolean =>
   (CLOSED_STATUS_CODES as readonly number[]).includes(estatus);
 
+/**
+ * Códigos con nombre para los estatus que la UI de cambio de estatus trata
+ * aparte. Mismo `satisfies` que `CLOSED_STATUS_CODES`: un código que no exista
+ * en `STATUS_BY_CODE` no compila.
+ */
+export const PRODUCTION_ORDER_STATUS_CODE = {
+  COMPLETED: 5,
+  STOPPED: 6,
+  CANCELLED: 7,
+} as const satisfies Record<string, keyof typeof STATUS_BY_CODE>;
+
 /** Badge neutro para estatus fuera de 1-7, rotulado con lo que mande el backend. */
 const NEUTRAL_STATUS_CFG: StatusBadgeConfigEntry = {
   cls: "bg-slate-100 text-slate-600 dark:bg-slate-500/10 dark:text-slate-400",

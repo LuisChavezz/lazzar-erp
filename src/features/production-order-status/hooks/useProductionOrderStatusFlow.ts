@@ -1,10 +1,9 @@
 import { useState } from "react";
 import toast from "react-hot-toast";
-import { productionOrderStatusEntry } from "@/src/features/production-orders/constants/productionOrderStatus";
 import {
-  MOTIVO_REQUIRED_STATUSES,
-  PRODUCTION_ORDER_STATUS_COMPLETED,
-} from "../constants/productionOrderStatusCodes";
+  PRODUCTION_ORDER_STATUS_CODE,
+  productionOrderStatusEntry,
+} from "@/src/features/production-orders/constants/productionOrderStatus";
 import type {
   ChangeProductionOrderStatusBody,
   ProductionOrderStatusOption,
@@ -40,6 +39,15 @@ export interface ChangeStatusErrorHandlers {
   /** Al terminar el POST, bien o mal (p. ej. para soltar un candado de envío). */
   onSettled?: () => void;
 }
+
+/**
+ * Destinos que piden motivo aunque la opción no lo marcara (`requiere_motivo`
+ * es la fuente; esto es la red por si el backend lo omitiera).
+ */
+const MOTIVO_REQUIRED_STATUSES: readonly number[] = [
+  PRODUCTION_ORDER_STATUS_CODE.STOPPED,
+  PRODUCTION_ORDER_STATUS_CODE.CANCELLED,
+];
 
 const optionLabel = (option: ProductionOrderStatusOption) =>
   productionOrderStatusEntry(option.estatus_op, option.etiqueta).label;
@@ -115,7 +123,7 @@ export const useProductionOrderStatusFlow = (opId: number) => {
         bloqueos: option.bloqueos,
         sePuedeForzar: option.se_puede_forzar,
       });
-    } else if (option.estatus_op === PRODUCTION_ORDER_STATUS_COMPLETED) {
+    } else if (option.estatus_op === PRODUCTION_ORDER_STATUS_CODE.COMPLETED) {
       setDialog({ kind: "complete", destino: option.estatus_op, label });
     } else if (option.requiere_motivo || MOTIVO_REQUIRED_STATUSES.includes(option.estatus_op)) {
       setDialog({ kind: "motivo", destino: option.estatus_op, label });

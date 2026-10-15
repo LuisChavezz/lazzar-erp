@@ -10,7 +10,7 @@ import {
   FormSubmitButton,
 } from "@/src/components/FormButtons";
 import { useDialogSession } from "@/src/hooks/useDialogSession";
-import { PRODUCTION_ORDER_STATUS_CANCELLED } from "../constants/productionOrderStatusCodes";
+import { PRODUCTION_ORDER_STATUS_CODE } from "@/src/features/production-orders/constants/productionOrderStatus";
 import type {
   ChangeStatusErrorHandlers,
   ProductionOrderStatusDialogState,
@@ -84,7 +84,7 @@ const MotivoContent = ({ state, isPending, submit, onCancel }: MotivoContentProp
   const [motivoError, setMotivoError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const withLock = useSubmitLock();
-  const isCancel = state.destino === PRODUCTION_ORDER_STATUS_CANCELLED;
+  const isCancel = state.destino === PRODUCTION_ORDER_STATUS_CODE.CANCELLED;
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -355,7 +355,7 @@ export function ProductionOrderStatusDialog({
     const subject = folio ? `orden ${folio}` : "orden";
     switch (shown.kind) {
       case "motivo":
-        return shown.destino === PRODUCTION_ORDER_STATUS_CANCELLED
+        return shown.destino === PRODUCTION_ORDER_STATUS_CODE.CANCELLED
           ? `Cancelar ${subject}`
           : `Detener ${subject}`;
       case "complete":
