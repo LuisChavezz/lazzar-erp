@@ -5,7 +5,10 @@ import { FormTextarea } from "@/src/components/FormTextarea";
 import { FormCancelButton, FormSubmitButton } from "@/src/components/FormButtons";
 import { usePurchaseOrderCriticalPathForm } from "../hooks/usePurchaseOrderCriticalPathForm";
 import type { PurchaseOrderCriticalPath } from "../interfaces/purchase-order-critical-path.interface";
-import { CRITICAL_PATH_COMENTARIOS_MAX } from "../schemas/purchase-order-critical-path.schema";
+import {
+  CRITICAL_PATH_COMENTARIOS_MAX,
+  comentariosLength,
+} from "../schemas/purchase-order-critical-path.schema";
 
 interface PurchaseOrderCriticalPathFormProps {
   ocId: number;
@@ -89,7 +92,7 @@ export function PurchaseOrderCriticalPathForm({
               />
               {!readOnly && (
                 <p className="ml-1 mt-1 text-[11px] text-slate-400 dark:text-slate-500 tabular-nums">
-                  {field.state.value.trim().length} / {CRITICAL_PATH_COMENTARIOS_MAX}
+                  {comentariosLength(field.state.value)} / {CRITICAL_PATH_COMENTARIOS_MAX}
                 </p>
               )}
             </div>

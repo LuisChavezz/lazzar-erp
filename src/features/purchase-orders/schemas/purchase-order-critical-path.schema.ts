@@ -9,6 +9,13 @@ import { isCompleteDateEntry } from "@/src/utils/formatDate";
 
 export const CRITICAL_PATH_COMENTARIOS_MAX = 2000;
 
+/**
+ * Largo del comentario como lo mide el backend: recortado y en code points
+ * (`max_length` de DRF cuenta caracteres de Python). `.length` de JS cuenta
+ * unidades UTF-16 y un emoji valdría 2.
+ */
+export const comentariosLength = (value: string): number => [...value.trim()].length;
+
 const ComentariosMaxMessage = `El comentario no puede exceder ${CRITICAL_PATH_COMENTARIOS_MAX} caracteres.`;
 
 const PurchaseOrderCriticalPathObject = z.object({
@@ -21,12 +28,12 @@ const PurchaseOrderCriticalPathObject = z.object({
     .string()
     .refine((value) => value === "" || isCompleteDateEntry(value), "Fecha inválida"),
   /**
-   * Se mide RECORTADO, igual que el backend (`CharField` de DRF recorta antes
-   * de validar `max_length`): los espacios sobrantes no cuentan.
+   * Se mide RECORTADO y en code points, igual que el backend (`CharField` de
+   * DRF recorta antes de validar `max_length`): ver `comentariosLength`.
    */
   comentarios: z
     .string()
-    .refine((value) => value.trim().length <= CRITICAL_PATH_COMENTARIOS_MAX, ComentariosMaxMessage),
+    .refine((value) => comentariosLength(value) <= CRITICAL_PATH_COMENTARIOS_MAX, ComentariosMaxMessage),
 });
 
 export const purchaseOrderCriticalPathSchema = PurchaseOrderCriticalPathObject;
