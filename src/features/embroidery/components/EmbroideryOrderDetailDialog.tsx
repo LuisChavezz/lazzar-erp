@@ -206,6 +206,12 @@ export function EmbroideryOrderDetailDialog({
 }: EmbroideryOrderDetailDialogProps) {
   const { data: order, isNotFound, isInitialError, error } = useEmbroideryOrderDetail(orderId);
   const hasFailed = isNotFound || isInitialError;
+  // Con un id nulo o inválido la consulta está APAGADA (ver
+  // `useEmbroideryOrderDetail`): no hay nada en vuelo, así que no se pinta el
+  // loader —p. ej. mientras el dueño limpia el id durante la animación de
+  // cierre—.
+  const isAwaitingOrder =
+    orderId !== null && orderId > 0 && !order && !hasFailed;
 
   // Porcentaje solo para mostrar; `cantidad_contratada` puede ser 0 (pedido sin
   // líneas de bordado vivas) y dividir daría "∞%".
@@ -238,7 +244,13 @@ export function EmbroideryOrderDetailDialog({
               Detalle de Orden de Bordado
             </p>
             <p className="text-xs text-slate-500 dark:text-slate-400 font-mono font-normal mt-0.5">
-              {order ? order.folio_bordado : hasFailed ? "Error al cargar" : "Cargando…"}
+              {order
+                ? order.folio_bordado
+                : hasFailed
+                  ? "Error al cargar"
+                  : isAwaitingOrder
+                    ? "Cargando…"
+                    : "—"}
             </p>
           </div>
         </div>
@@ -247,7 +259,7 @@ export function EmbroideryOrderDetailDialog({
       {/* El armazón del diálogo NO se sustituye por el loader ni por el error:
           se mantiene montado y solo cambia su contenido (mismo patrón que
           `StockTransferDetailDialog`). */}
-      {!order && !hasFailed && (
+      {isAwaitingOrder && (
         <Loader title="Cargando detalle de la orden..." className="py-16" />
       )}
 
