@@ -203,8 +203,11 @@ function buildCards(
 function SupplierKpisSectionContent() {
   const { data, isInitialError, isFetching, refetch } = useSupplierKpis();
   // Señal de permiso para importes, la misma de los indicadores de OC y de
-  // recepciones: solo la usa el Scorecard (su puntaje incluye precio).
-  const { purchaseOrders, hasLoaded: isListLoaded, isInitialError: isListError } = usePurchaseOrders();
+  // recepciones: solo la usa el Scorecard (su puntaje incluye precio). Sin
+  // toast de refetch fallido: esta pantalla no muestra OCs.
+  const { purchaseOrders, hasLoaded: isListLoaded, isInitialError: isListError } = usePurchaseOrders({
+    silentRefetchError: true,
+  });
   const amountVisibility = getPurchaseOrderKpiAmountVisibility({
     orders: purchaseOrders,
     hasLoaded: isListLoaded,

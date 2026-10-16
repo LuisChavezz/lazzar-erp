@@ -14,6 +14,8 @@ interface GuardedQueryNotice<TError = DefaultError> {
   toastId: string;
   /** Texto del toast de refetch fallido; por defecto, el de `useHasLoadedQuery`. */
   errorMessage?: string;
+  /** OPCIONAL. Sin toast de refetch fallido en esta instancia (ver `useHasLoadedQuery`). */
+  silent?: boolean;
   /**
    * OPCIONAL. Marca ciertos errores como DEFINITIVOS: la respuesta ya dijo todo
    * lo que había que decir y reintentar o conservar lo anterior sería mentir.
@@ -127,7 +129,7 @@ export const useGuardedQuery = <
   TQueryKey extends QueryKey = QueryKey,
 >(
   options: UseQueryOptions<TQueryFnData, TError, TData, TQueryKey>,
-  { toastId, errorMessage, isDefinitiveError }: GuardedQueryNotice<TError>,
+  { toastId, errorMessage, isDefinitiveError, silent }: GuardedQueryNotice<TError>,
 ) => {
   const queryClient = useQueryClient();
 
@@ -209,6 +211,7 @@ export const useGuardedQuery = <
     errorUpdatedAt,
     toastId,
     errorMessage,
+    silent,
   });
 
   return {

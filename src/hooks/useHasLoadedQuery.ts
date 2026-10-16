@@ -13,6 +13,13 @@ interface UseHasLoadedQueryOptions<T> {
   errorUpdatedAt: number;
   toastId: string;
   errorMessage?: string;
+  /**
+   * OPCIONAL. `true` = esta instancia NO avisa por toast un refetch fallido
+   * (ni lo marca como avisado: otra instancia con el mismo `toastId` sigue
+   * avisando). Para quien lee la consulta solo como señal, en una pantalla
+   * que no muestra esos datos. Sin la opción, igual que siempre.
+   */
+  silent?: boolean;
 }
 
 /** Fallos recordados por `toastId` (ver `notifiedFailures`). */
@@ -73,6 +80,7 @@ export const useHasLoadedQuery = <T>({
   errorUpdatedAt,
   toastId,
   errorMessage = "No se pudo actualizar la información. Mostrando datos anteriores.",
+  silent = false,
 }: UseHasLoadedQueryOptions<T>) => {
   const hasLoaded = data !== undefined;
   // Momento del montaje, fijado en la primera ejecución del efecto (no en el
@@ -92,11 +100,11 @@ export const useHasLoadedQuery = <T>({
       episodeCoveredRef.current = false;
       return;
     }
-    if (!hasLoaded || episodeCoveredRef.current) return;
+    if (silent || !hasLoaded || episodeCoveredRef.current) return;
     if (errorUpdatedAt <= mountedAtRef.current) return;
     episodeCoveredRef.current = true;
     if (markNotified(toastId, errorUpdatedAt)) toast.error(errorMessage, { id: toastId });
-  }, [isError, hasLoaded, errorUpdatedAt, errorMessage, toastId]);
+  }, [isError, hasLoaded, errorUpdatedAt, errorMessage, toastId, silent]);
 
   return { hasLoaded, isInitialError: isInitialLoadError(isError, hasLoaded) };
 };

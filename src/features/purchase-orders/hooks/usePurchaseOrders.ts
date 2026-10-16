@@ -7,15 +7,19 @@ import { PurchaseOrder } from "../interfaces/purchase-order.interface";
  * NUNCA cargó; un refetch fallido con datos en caché conserva lo cargado y
  * avisa por toast (`useGuardedQuery`). `error` sigue la misma regla. Mismo
  * contrato que `useProducts`.
+ *
+ * `silentRefetchError`: sin el toast de refetch fallido, para las pantallas que
+ * leen el listado solo como señal (p. ej. la visibilidad de importes en los
+ * indicadores de proveedores) y no muestran OCs. Misma llave y caché.
  */
-export const usePurchaseOrders = () => {
+export const usePurchaseOrders = ({ silentRefetchError = false }: { silentRefetchError?: boolean } = {}) => {
   const { data, hasLoaded, isLoading, isInitialError, error, refetch, isFetching } =
     useGuardedQuery<PurchaseOrder[]>(
       {
         queryKey: ["purchase-orders"],
         queryFn: getPurchaseOrders,
       },
-      { toastId: "purchase-orders-refetch-error" },
+      { toastId: "purchase-orders-refetch-error", silent: silentRefetchError },
     );
 
   return {
