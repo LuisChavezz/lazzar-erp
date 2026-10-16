@@ -7,7 +7,7 @@ import { KpiSectionErrorBoundary } from "@/src/components/KpiSectionErrorBoundar
 import { SectionErrorNotice } from "@/src/components/SectionErrorNotice";
 import { ClockIcon, EmbarquesIcon, ShieldCheckIcon, StarIcon } from "@/src/components/Icons";
 import { formatQuantityValue } from "@/src/utils/formatCurrency";
-import { formatKpiDias, formatKpiPctOrDash, plural } from "@/src/utils/kpiFormat";
+import { formatKpiDias, formatKpiPct, formatKpiPctOrDash, plural } from "@/src/utils/kpiFormat";
 import { usePurchaseOrders } from "@/src/features/purchase-orders/hooks/usePurchaseOrders";
 import { pendingAmountCard } from "@/src/features/purchase-orders/utils/kpiAmountCards";
 import {
@@ -56,18 +56,19 @@ const unavailable = (base: Pick<KpiCompactItem, "label" | "icon">, motivo: strin
  * fecha prometida, no disponible. Sin meta: sin barra ni insignia.
  */
 function onTimeCard(rows: SupplierKpiRow[], onOpen: () => void): KpiCompactItem {
-  const { pct, aTiempo, total } = aggregateOnTimeDelivery(rows);
-  if (total === 0) return unavailable(LABELS.onTime, NO_DUE_DATE_REASON);
+  const onTime = aggregateOnTimeDelivery(rows);
+  if (!onTime) return unavailable(LABELS.onTime, NO_DUE_DATE_REASON);
+  const { pct, aTiempo, total } = onTime;
   return {
     ...LABELS.onTime,
-    ...(pct !== null ? { iconClass: "text-sky-500" } : KPI_MUTED_ICON),
-    value: formatKpiPctOrDash(pct),
+    iconClass: "text-sky-500",
+    value: formatKpiPct(pct),
     info:
       "Recepciones que llegaron en o antes de la fecha de entrega estimada de su OC. " +
       "Las recepciones de OCs sin esa fecha no cuentan: no se puede saber si llegaron tarde.",
     hideProgress: true,
     detail: `${formatQuantityValue(aTiempo)} de ${formatQuantityValue(total)} ${plural(total, "recepción", "recepciones")} a tiempo`,
-    action: <KpiDrillDownButton label="Por proveedor" ariaLabel="Ver entrega a tiempo por proveedor" isEmpty={total === 0} onClick={onOpen} />,
+    action: <KpiDrillDownButton label="Por proveedor" ariaLabel="Ver entrega a tiempo por proveedor" isEmpty={false} onClick={onOpen} />,
   };
 }
 
