@@ -99,8 +99,10 @@ function qualityCard(rows: SupplierKpiRow[], onOpen: () => void): KpiCompactItem
  * recepciones, así que son comparables). Sin recepciones con fecha prometida,
  * el pactado no está disponible.
  */
-function leadTimeCard(rows: SupplierKpiRow[], hasPactado: boolean, onOpen: () => void): KpiCompactItem {
+function leadTimeCard(rows: SupplierKpiRow[], onOpen: () => void): KpiCompactItem {
   const { dias, diasPactado, recepciones } = aggregateLeadTime(rows);
+  // Real y pactado salen de las mismas recepciones medidas: hay pactado si hay alguna.
+  const hasPactado = recepciones > 0;
   return {
     ...LABELS.leadTime,
     ...(dias !== null ? { iconClass: "text-violet-500" } : KPI_MUTED_ICON),
@@ -169,11 +171,10 @@ function buildCards(
   if (rows.length === 0) {
     return Object.values(LABELS).map((base) => unavailable(base, NO_ACTIVITY_REASON));
   }
-  const hasPactado = rows.some((row) => row.lead_time.dias_promedio_pactado !== null);
   const cards = [
     onTimeCard(rows, () => openDialog("entrega_a_tiempo")),
     qualityCard(rows, () => openDialog("calidad")),
-    leadTimeCard(rows, hasPactado, () => openDialog("lead_time")),
+    leadTimeCard(rows, () => openDialog("lead_time")),
     scorecardCard(rows, visibility),
   ];
   // Con el ranking cortado, cada agregado lo dice en su ⓘ (las tarjetas no
