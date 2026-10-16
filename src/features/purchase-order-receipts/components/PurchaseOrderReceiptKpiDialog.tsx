@@ -4,8 +4,13 @@ import Link from "next/link";
 import { MainDialog } from "@/src/components/MainDialog";
 import { EmptyLines, LineItemsTable, textOrDash } from "@/src/components/DetailDialogPrimitives";
 import { purchaseOrderDetailHref } from "@/src/features/purchase-orders/constants/purchaseOrderDetailOrigins";
-import { formatMoneyValueOrDash, formatQuantityValue, NO_CURRENCY_FORMAT } from "@/src/utils/formatCurrency";
-import { formatKpiPctOrDash, formatKpiSignedMonto, plural } from "@/src/utils/kpiFormat";
+import { formatQuantityValue } from "@/src/utils/formatCurrency";
+import {
+  formatKpiCurrencyAmount,
+  formatKpiPctOrDash,
+  formatKpiSignedCurrencyAmount,
+  plural,
+} from "@/src/utils/kpiFormat";
 import type { PurchaseOrderReceiptKpis } from "../interfaces/purchase-order-receipt-kpis.interface";
 
 /** Bloques con drill-down (`recepciones_parciales` no lo tiene). */
@@ -18,34 +23,67 @@ const TH_CLASS = "px-3 py-2 font-semibold";
 const TD_CLASS = "px-3 py-2 text-slate-600 dark:text-slate-300";
 const NUM_TD_CLASS = `${TD_CLASS} text-right tabular-nums whitespace-nowrap`;
 
-// Tope de filas de cada drill-down. El backend no avisa si recortó, así que con
-// la lista llena solo se puede decir que PUEDE haber más.
-const DRILL_DOWN_BACKEND_LIMIT = 20;
-
+/** Clave de la unidad de medida; los productos sin unidad capturada van aparte. */
+const unitLabel = (unidad: string | null): string => unidad ?? "Sin unidad";
 
 /**
- * Descripción del diálogo: el CONTEO de lo que se muestra. Sin filas solo da el
- * aviso de "sin datos" (el cuerpo lo repite con `EmptyLines`, con otra frase).
+ * Descripción del diálogo: el CONTEO de lo que se muestra frente al total del
+ * backend (`drill_down_total`), y si la lista viene cortada
+ * (`drill_down_truncado`, tope de 20 filas sin "ver todas"). Sin filas solo da
+ * el aviso de "sin datos" (el cuerpo lo repite con `EmptyLines`, con otra
+ * frase).
  */
-function describeRows(count: number, singular: string, pluralForm: string): string {
-  if (count === 0) return `Sin ${pluralForm} que mostrar`;
-  const rows = `${count} ${plural(count, singular, pluralForm)}`;
-  return count >= DRILL_DOWN_BACKEND_LIMIT ? `Mostrando ${rows}; puede haber más` : `Mostrando ${rows}`;
+function describeRows(
+  shown: number,
+  total: number,
+  truncated: boolean,
+  singular: string,
+  pluralForm: string,
+  order: string,
+): string {
+  if (shown === 0) return `Sin ${pluralForm} que mostrar`;
+  const rows = `${total} ${plural(total, singular, pluralForm)}`;
+  return truncated ? `Mostrando ${shown} de ${rows}, ${order}` : `Mostrando ${shown} de ${rows}`;
 }
 
 function getDescription(kind: PurchaseOrderReceiptKpiDialogKind | null, data: PurchaseOrderReceiptKpis | undefined) {
   if (kind === "cumplimiento_cantidad" && data?.cumplimiento_cantidad.disponible) {
-    return describeRows(data.cumplimiento_cantidad.drill_down.length, "OC", "OCs");
+    const kpi = data.cumplimiento_cantidad;
+    return describeRows(
+      kpi.drill_down.length,
+      kpi.drill_down_total,
+      kpi.drill_down_truncado,
+      "OC pendiente por unidad",
+      "OCs pendientes por unidad",
+      "las de menor cumplimiento",
+    );
   }
   if (kind === "diferencia_precio" && data?.diferencia_precio.disponible) {
-    return describeRows(data.diferencia_precio.drill_down.length, "partida", "partidas");
+    const kpi = data.diferencia_precio;
+    return describeRows(
+      kpi.drill_down.length,
+      kpi.drill_down_total,
+      kpi.drill_down_truncado,
+      "partida",
+      "partidas",
+      "ordenadas por diferencia sin convertir monedas",
+    );
   }
   if (kind === "material_rechazado" && data?.material_rechazado.disponible) {
-    return describeRows(data.material_rechazado.drill_down.length, "renglón rechazado", "renglones rechazados");
+    const kpi = data.material_rechazado;
+    return describeRows(
+      kpi.drill_down.length,
+      kpi.drill_down_total,
+      kpi.drill_down_truncado,
+      "renglón rechazado",
+      "renglones rechazados",
+      "los de mayor cantidad sin distinguir unidad",
+    );
   }
   return "Indicador no disponible por ahora.";
 }
 
+/** OCs con algo pendiente: una fila por OC y unidad de medida (no se suman unidades). */
 function FulfillmentContent({ kpi }: { kpi: PurchaseOrderReceiptKpis["cumplimiento_cantidad"] }) {
   if (!kpi.disponible || kpi.drill_down.length === 0) {
     return <EmptyLines>No hay OCs para mostrar.</EmptyLines>;
@@ -55,6 +93,7 @@ function FulfillmentContent({ kpi }: { kpi: PurchaseOrderReceiptKpis["cumplimien
       head={
         <>
           <th className={TH_CLASS}>Folio OC</th>
+          <th className={TH_CLASS}>Unidad</th>
           <th className={`${TH_CLASS} text-right`}>Ordenada</th>
           <th className={`${TH_CLASS} text-right`}>Recibida</th>
           <th className={`${TH_CLASS} text-right`}>Cumplimiento</th>
@@ -62,7 +101,7 @@ function FulfillmentContent({ kpi }: { kpi: PurchaseOrderReceiptKpis["cumplimien
       }
     >
       {kpi.drill_down.map((row) => (
-        <tr key={row.oc_id}>
+        <tr key={`${row.oc_id}-${row.unidad_id ?? "sin-unidad"}`}>
           <td className={TD_CLASS}>
             {/* Enlace real al detalle de la OC, cuyo "Volver" regresa a esta
                 lista. Sin folio sigue siendo clicable con `#id`, igual que los
@@ -76,6 +115,7 @@ function FulfillmentContent({ kpi }: { kpi: PurchaseOrderReceiptKpis["cumplimien
               {row.folio || `#${row.oc_id}`}
             </Link>
           </td>
+          <td className={TD_CLASS}>{unitLabel(row.unidad)}</td>
           <td className={NUM_TD_CLASS}>{formatQuantityValue(row.cantidad_ordenada)}</td>
           <td className={NUM_TD_CLASS}>{formatQuantityValue(row.cantidad_recibida)}</td>
           <td className={NUM_TD_CLASS}>{formatKpiPctOrDash(row.pct)}</td>
@@ -101,6 +141,7 @@ function PriceContent({
         <>
           <th className={TH_CLASS}>Factura</th>
           <th className={TH_CLASS}>Producto</th>
+          <th className={TH_CLASS}>Moneda</th>
           {showAmounts && (
             <>
               <th className={`${TH_CLASS} text-right`}>Precio facturado</th>
@@ -114,16 +155,15 @@ function PriceContent({
       {kpi.drill_down.map((row) => (
         <tr key={row.id}>
           {/* Sin ruta de detalle de factura de proveedor: folio en texto. */}
-          <td className={`${TD_CLASS} font-mono`}>{textOrDash(row.factura_proveedor__folio)}</td>
-          <td className={TD_CLASS}>{textOrDash(row.oc_detalle__producto__nombre)}</td>
+          <td className={`${TD_CLASS} font-mono`}>{textOrDash(row.factura_folio)}</td>
+          <td className={TD_CLASS}>{textOrDash(row.producto)}</td>
+          <td className={TD_CLASS}>{row.moneda}</td>
           {showAmounts && (
             <>
-              <td className={NUM_TD_CLASS}>{formatMoneyValueOrDash(row.precio_unitario, NO_CURRENCY_FORMAT)}</td>
-              <td className={NUM_TD_CLASS}>{formatMoneyValueOrDash(row.oc_detalle__precio, NO_CURRENCY_FORMAT)}</td>
+              <td className={NUM_TD_CLASS}>{formatKpiCurrencyAmount(row.precio_facturado, row.moneda)}</td>
+              <td className={NUM_TD_CLASS}>{formatKpiCurrencyAmount(row.precio_pactado, row.moneda)}</td>
               {/* Con signo, igual que la tarjeta. */}
-              <td className={NUM_TD_CLASS}>
-                {row.diferencia_linea === undefined ? "—" : formatKpiSignedMonto(row.diferencia_linea)}
-              </td>
+              <td className={NUM_TD_CLASS}>{formatKpiSignedCurrencyAmount(row.diferencia_linea, row.moneda)}</td>
             </>
           )}
         </tr>
@@ -149,19 +189,32 @@ function RejectedContent({
           <th className={TH_CLASS}>Recepción</th>
           <th className={TH_CLASS}>Producto</th>
           <th className={`${TH_CLASS} text-right`}>Rechazado</th>
-          {showAmounts && <th className={`${TH_CLASS} text-right`}>Valor</th>}
+          <th className={TH_CLASS}>Unidad</th>
+          {showAmounts && (
+            <>
+              <th className={TH_CLASS}>Moneda</th>
+              <th className={`${TH_CLASS} text-right`}>Valor</th>
+            </>
+          )}
           <th className={TH_CLASS}>Motivo</th>
         </>
       }
     >
       {kpi.drill_down.map((row) => (
         <tr key={row.id}>
-          {/* Sin ruta de detalle de recepción por folio: texto. */}
-          <td className={`${TD_CLASS} font-mono`}>{textOrDash(row.recepcion_detalle__recepcion__folio)}</td>
-          <td className={TD_CLASS}>{textOrDash(row.recepcion_detalle__producto__nombre)}</td>
+          {/* Sin ruta de detalle de recepción: folio en texto. */}
+          <td className={`${TD_CLASS} font-mono`}>{textOrDash(row.recepcion_folio)}</td>
+          <td className={TD_CLASS}>{textOrDash(row.producto)}</td>
           <td className={NUM_TD_CLASS}>{formatQuantityValue(row.cantidad_rechazada)}</td>
-          {/* `valor_linea` es `null` en recepciones de producción. */}
-          {showAmounts && <td className={NUM_TD_CLASS}>{formatMoneyValueOrDash(row.valor_linea, NO_CURRENCY_FORMAT)}</td>}
+          <td className={TD_CLASS}>{unitLabel(row.unidad)}</td>
+          {showAmounts && (
+            <>
+              <td className={TD_CLASS}>{row.moneda}</td>
+              <td className={NUM_TD_CLASS}>
+                {row.valor_linea === undefined ? "—" : formatKpiCurrencyAmount(row.valor_linea, row.moneda)}
+              </td>
+            </>
+          )}
           <td className={TD_CLASS}>{textOrDash(row.motivo_rechazo)}</td>
         </tr>
       ))}
@@ -184,23 +237,26 @@ interface PurchaseOrderReceiptKpiDialogProps {
    */
   kind: PurchaseOrderReceiptKpiDialogKind | null;
   data: PurchaseOrderReceiptKpis | undefined;
-  /** Ver `getPurchaseOrderKpiAmountVisibility`: solo `visible` muestra importes. */
-  showAmounts: boolean;
+  /** Misma regla que su tarjeta (`resolveKpiAmountState`). */
+  showPriceAmounts: boolean;
+  /** Misma regla que su tarjeta (`resolveKpiAmountState`). */
+  showRejectedAmounts: boolean;
   onClose: () => void;
 }
 
 /**
  * Drill-down de un indicador de recepciones, armado con el payload ya cargado
  * (sin fetch propio). Lee siempre los datos ACTUALES de la consulta, así que un
- * refetch con el diálogo abierto se refleja sin reabrirlo. Sin importes
- * visibles se ocultan las columnas de dinero; cantidades y porcentajes siempre
- * se muestran.
+ * refetch con el diálogo abierto se refleja sin reabrirlo. Cada importe va en
+ * la moneda de SU fila; sin importes visibles se ocultan las columnas de
+ * dinero, y cantidades y porcentajes se muestran siempre.
  */
 export function PurchaseOrderReceiptKpiDialog({
   open,
   kind,
   data,
-  showAmounts,
+  showPriceAmounts,
+  showRejectedAmounts,
   onClose,
 }: PurchaseOrderReceiptKpiDialogProps) {
   return (
@@ -211,14 +267,14 @@ export function PurchaseOrderReceiptKpiDialog({
       }}
       title={kind ? TITLES[kind] : ""}
       description={getDescription(kind, data)}
-      maxWidth="760px"
+      maxWidth="820px"
     >
       {kind === "cumplimiento_cantidad" && data && <FulfillmentContent kpi={data.cumplimiento_cantidad} />}
       {kind === "diferencia_precio" && data && (
-        <PriceContent kpi={data.diferencia_precio} showAmounts={showAmounts} />
+        <PriceContent kpi={data.diferencia_precio} showAmounts={showPriceAmounts} />
       )}
       {kind === "material_rechazado" && data && (
-        <RejectedContent kpi={data.material_rechazado} showAmounts={showAmounts} />
+        <RejectedContent kpi={data.material_rechazado} showAmounts={showRejectedAmounts} />
       )}
     </MainDialog>
   );

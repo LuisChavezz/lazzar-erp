@@ -6,19 +6,22 @@ import KpiGrid, {
   KpiGridSkeleton,
   type KpiCompactItem,
 } from "@/src/components/KpiGrid";
+import { KpiMutedValue, KpiTaggedBlocks } from "@/src/components/KpiCurrency";
 import { KpiDrillDownButton } from "@/src/components/KpiDrillDownButton";
 import { SectionErrorNotice } from "@/src/components/SectionErrorNotice";
 import { CheckCircleIcon, ExclamationTriangleIcon, RecepcionesIcon, WalletIcon } from "@/src/components/Icons";
 import { usePurchaseOrders } from "@/src/features/purchase-orders/hooks/usePurchaseOrders";
 import {
   getPurchaseOrderKpiAmountVisibility,
+  resolveKpiAmountState,
+  type KpiHiddenAmountsReason,
   type PurchaseOrderKpiAmountVisibility,
 } from "@/src/features/purchase-orders/utils/purchaseOrderKpis";
 import { formatQuantityValue } from "@/src/utils/formatCurrency";
 import {
-  formatKpiMonto,
+  formatKpiCurrencyAmount,
   formatKpiPctOrDash,
-  formatKpiSignedMonto,
+  formatKpiSignedCurrencyAmount,
   formatKpiSignedPctOrDash,
   plural,
 } from "@/src/utils/kpiFormat";
@@ -37,27 +40,31 @@ import {
 
 const SECTION_TITLE = "Indicadores";
 
+const SEPARATE_CURRENCIES_NOTE = "Cada moneda va por separado: los importes de monedas distintas no se suman.";
+const SEPARATE_UNITS_NOTE = "Cada unidad de medida va por separado: no se suman cantidades de unidades distintas.";
+
+/** Clave de la unidad de medida; los productos sin unidad capturada van aparte. */
+const unitLabel = (unidad: string | null): string => unidad ?? "Sin unidad";
 
 const unavailable = (
   base: Pick<KpiCompactItem, "label" | "icon">,
   motivo: string,
 ): KpiCompactItem => ({ ...base, ...KPI_MUTED_ICON, value: null, unavailableReason: motivo });
 
-/** % de cumplimiento de cantidad: recibida sobre ordenada. Sin meta: sin barra ni insignia. */
+/**
+ * % de cumplimiento de cantidad: recibido neto sobre ordenado. Con varias
+ * unidades de medida el backend no da un total (no se suman metros con piezas):
+ * un bloque por unidad con su porcentaje. Sin meta: sin barra ni insignia.
+ */
 function fulfillmentCard(kpi: PurchaseOrderReceiptFulfillmentKpi, onOpen: () => void): KpiCompactItem {
   const base = { label: "% Cumplimiento de cantidad", icon: CheckCircleIcon };
   if (!kpi.disponible) return unavailable(base, kpi.motivo);
-  const counts = `${formatQuantityValue(kpi.cantidad_recibida)} de ${formatQuantityValue(kpi.cantidad_ordenada)}`;
-  return {
+  const common = {
     ...base,
-    ...(kpi.pct !== null ? { iconClass: "text-sky-500" } : KPI_MUTED_ICON),
-    value: formatKpiPctOrDash(kpi.pct),
     info:
       "Cantidad recibida sobre la ordenada de las OCs Autorizada, Parcialmente recibida y Recibida. " +
-      "Suma las cantidades de todos los productos sin distinguir unidad de medida, así que una OC con " +
-      "muchas unidades (p. ej. metros de tela) domina el resultado. Lo rechazado en calidad cuenta como recibido.",
+      `Lo rechazado en calidad no cuenta como recibido. ${SEPARATE_UNITS_NOTE}`,
     hideProgress: true,
-    detail: `${counts} recibidas`,
     action: (
       <KpiDrillDownButton
         label="Ver OCs"
@@ -66,6 +73,29 @@ function fulfillmentCard(kpi: PurchaseOrderReceiptFulfillmentKpi, onOpen: () => 
         onClick={onOpen}
       />
     ),
+  };
+  if (kpi.mezcla_unidades) {
+    return {
+      ...common,
+      ...(kpi.por_unidad.some((fila) => fila.pct !== null) ? { iconClass: "text-sky-500" } : KPI_MUTED_ICON),
+      value: (
+        <KpiTaggedBlocks
+          blocks={kpi.por_unidad.map((fila) => ({
+            key: String(fila.unidad_id ?? "sin-unidad"),
+            value: formatKpiPctOrDash(fila.pct),
+            tag: unitLabel(fila.unidad),
+            detail: `${formatQuantityValue(fila.cantidad_recibida)} de ${formatQuantityValue(fila.cantidad_ordenada)} recibidas`,
+          }))}
+        />
+      ),
+    };
+  }
+  const counts = `${formatQuantityValue(kpi.cantidad_recibida ?? 0)} de ${formatQuantityValue(kpi.cantidad_ordenada ?? 0)}`;
+  return {
+    ...common,
+    ...(kpi.pct !== null ? { iconClass: "text-sky-500" } : KPI_MUTED_ICON),
+    value: formatKpiPctOrDash(kpi.pct),
+    detail: `${counts} recibidas`,
   };
 }
 
@@ -86,24 +116,22 @@ function partialCard(kpi: PurchaseOrderReceiptPartialKpi): KpiCompactItem {
   };
 }
 
-/**
- * Por qué una tarjeta muestra porcentaje o cantidad en lugar de importe (ver
- * `getPurchaseOrderKpiAmountVisibility`). Mismo reparto que "Gasto por
- * categoría" de los indicadores de OC: el motivo de permiso solo cuando es
- * cierto.
- */
-const HIDDEN_AMOUNTS_REASON: Record<Exclude<PurchaseOrderKpiAmountVisibility, "visible" | "pending">, string> = {
+/** Por qué una tarjeta no muestra importes (ver `resolveKpiAmountState`). */
+const HIDDEN_AMOUNTS_REASON: Record<KpiHiddenAmountsReason, string> = {
   "no-permission": "No tienes permiso para ver los importes de compras.",
   undetermined: "No se pudo verificar si puedes ver los importes de compras.",
 };
 
 /**
- * Diferencias de precio/costo: la diferencia con signo si se pueden ver
- * importes; si no, el porcentaje con signo (que no revela montos), con un ⓘ que
- * dice por qué. Con `pct: null` (nada pactado contra qué comparar) muestra "—"
- * en ambos modos: un "0.00" se leería como "sin diferencias". El icono se
- * enciende con cualquier diferencia en ambos modos: la alerta no depende del
- * permiso.
+ * Diferencias de precio/costo: un bloque por moneda (la de la factura, que es
+ * la de su OC) con la diferencia con signo y su porcentaje. Sin importes a la
+ * vista, el porcentaje con signo por moneda (que no revela montos), con un ⓘ
+ * que dice por qué. Un `pct` `null` o ausente (nada pactado contra qué
+ * comparar) es "—", nunca "NaN%". El icono se enciende con cualquier
+ * diferencia en ambos modos: la alerta no depende del permiso.
+ *
+ * Sin permiso de contabilidad el backend manda el bloque no disponible con su
+ * motivo, así que no llega aquí.
  */
 function priceCard(
   kpi: PurchaseOrderReceiptPriceKpi,
@@ -120,53 +148,102 @@ function priceCard(
       onClick={onOpen}
     />
   );
+  const distinta = kpi.lineas_moneda_distinta;
+  const criterio = [
+    "Facturas de proveedor registradas contra el precio pactado en su OC, línea por línea.",
+    SEPARATE_CURRENCIES_NOTE,
+    distinta > 0
+      ? `${distinta} ${plural(distinta, "línea no se compara", "líneas no se comparan")} porque su factura está en una moneda distinta a la de su OC.`
+      : null,
+  ]
+    .filter(Boolean)
+    .join(" ");
   const common = { ...base, ...KPI_MUTED_ICON, hideProgress: true, action };
-  const showAmount = visibility === "visible" && kpi.diferencia !== undefined;
-  // Sin importe a la vista, el ⓘ dice por qué (un `diferencia` ausente con
-  // `visible` cuenta como no verificado).
-  const hiddenInfo = showAmount
-    ? {}
-    : { info: HIDDEN_AMOUNTS_REASON[visibility === "no-permission" ? "no-permission" : "undetermined"] };
-  if (kpi.pct === null) {
-    return { ...common, ...hiddenInfo, value: "—" };
+  if (kpi.por_moneda.length === 0) {
+    return { ...common, info: criterio, value: <KpiMutedValue>Sin partidas evaluadas</KpiMutedValue> };
   }
   const amber = { iconClass: "text-amber-500" };
-  if (showAmount && kpi.diferencia !== undefined) {
+  const amounts = resolveKpiAmountState(visibility, true);
+  if (amounts.show) {
     return {
       ...common,
-      ...(kpi.diferencia !== 0 ? amber : {}),
-      value: formatKpiSignedMonto(kpi.diferencia),
-      detail: `${formatKpiSignedPctOrDash(kpi.pct)} sobre lo pactado en la OC`,
+      ...(kpi.por_moneda.some((moneda) => moneda.diferencia !== 0) ? amber : {}),
+      info: criterio,
+      value: (
+        <KpiTaggedBlocks
+          blocks={kpi.por_moneda.map((moneda) => ({
+            key: moneda.moneda,
+            value: formatKpiSignedCurrencyAmount(moneda.diferencia, moneda.moneda),
+            tag: moneda.moneda,
+            detail: `${formatKpiSignedPctOrDash(moneda.pct ?? null)} sobre lo pactado en la OC`,
+          }))}
+        />
+      ),
     };
   }
   return {
     ...common,
-    ...hiddenInfo,
-    ...(kpi.pct !== 0 ? amber : {}),
-    value: formatKpiSignedPctOrDash(kpi.pct),
-    detail: "Sobre lo pactado en la OC",
+    ...(kpi.por_moneda.some((moneda) => (moneda.pct ?? 0) !== 0) ? amber : {}),
+    info: `${criterio} ${HIDDEN_AMOUNTS_REASON[amounts.reason]}`,
+    value: (
+      <KpiTaggedBlocks
+        blocks={kpi.por_moneda.map((moneda) => ({
+          key: moneda.moneda,
+          value: formatKpiSignedPctOrDash(moneda.pct ?? null),
+          tag: moneda.moneda,
+          detail: "Sobre lo pactado en la OC",
+        }))}
+      />
+    ),
   };
 }
 
 /**
- * Material rechazado: cantidad, con su valor como detalle si se pueden ver
- * importes. Sin ellos, el ⓘ no menciona el valor (mismo criterio que "OCs
- * abiertas" de los indicadores de OC).
+ * Material rechazado: cantidad por unidad de medida y, como detalle, su valor
+ * por moneda (la de la OC). Sin importes a la vista el detalle lo dice en lugar
+ * de desaparecer, y el ⓘ explica por qué.
  */
-function rejectedCard(kpi: PurchaseOrderReceiptRejectedKpi, showAmounts: boolean, onOpen: () => void): KpiCompactItem {
+function rejectedCard(
+  kpi: PurchaseOrderReceiptRejectedKpi,
+  visibility: Exclude<PurchaseOrderKpiAmountVisibility, "pending">,
+  onOpen: () => void,
+): KpiCompactItem {
   const base = { label: "Material rechazado", icon: ExclamationTriangleIcon };
   if (!kpi.disponible) return unavailable(base, kpi.motivo);
-  const valor = showAmounts && kpi.valor_rechazado !== undefined ? kpi.valor_rechazado : undefined;
+  const criterio =
+    "Unidades rechazadas por Calidad en las recepciones de OC; no son devoluciones al proveedor. " +
+    SEPARATE_UNITS_NOTE;
+  const hasRejects = kpi.por_unidad.some((fila) => fila.cantidad_rechazada > 0);
+  const amounts = resolveKpiAmountState(visibility, kpi.por_moneda !== undefined);
+  let info = criterio;
+  let detail: string | undefined;
+  if (hasRejects && amounts.show && kpi.por_moneda && kpi.por_moneda.length > 0) {
+    detail = `Valor ${kpi.por_moneda
+      .map((moneda) => `${formatKpiCurrencyAmount(moneda.valor_rechazado, moneda.moneda)} ${moneda.moneda}`)
+      .join(" · ")}`;
+    info = `${criterio} El valor es a precio pactado en la OC. ${SEPARATE_CURRENCIES_NOTE}`;
+  } else if (hasRejects && !amounts.show) {
+    detail = "Valor no visible";
+    info = `${criterio} ${HIDDEN_AMOUNTS_REASON[amounts.reason]}`;
+  }
   return {
     ...base,
-    ...(kpi.cantidad_rechazada > 0 ? { iconClass: "text-red-500" } : KPI_MUTED_ICON),
-    value: formatQuantityValue(kpi.cantidad_rechazada),
-    info:
-      "Unidades rechazadas en la inspección de calidad de las recepciones, incluidas las de producción; " +
-      "no son devoluciones al proveedor." +
-      (valor !== undefined ? " El valor solo incluye rechazos de recepciones de OC." : ""),
+    ...(hasRejects ? { iconClass: "text-red-500" } : KPI_MUTED_ICON),
+    value:
+      kpi.por_unidad.length === 0 ? (
+        "0"
+      ) : (
+        <KpiTaggedBlocks
+          blocks={kpi.por_unidad.map((fila) => ({
+            key: String(fila.unidad_id ?? "sin-unidad"),
+            value: formatQuantityValue(fila.cantidad_rechazada),
+            tag: unitLabel(fila.unidad),
+          }))}
+        />
+      ),
+    info,
     hideProgress: true,
-    detail: valor !== undefined ? `Valor ${formatKpiMonto(valor)}` : undefined,
+    ...(detail ? { detail } : {}),
     action: (
       <KpiDrillDownButton
         label="Ver rechazos"
@@ -222,7 +299,11 @@ function buildCards(
         ),
     waits && data.material_rechazado.disponible
       ? pendingAmountCard({ label: "Material rechazado", icon: ExclamationTriangleIcon })
-      : rejectedCard(data.material_rechazado, visibility === "visible", () => openDialog("material_rechazado")),
+      : rejectedCard(
+          data.material_rechazado,
+          visibility === "pending" ? "undetermined" : visibility,
+          () => openDialog("material_rechazado"),
+        ),
   ];
 }
 
@@ -250,7 +331,12 @@ export function PurchaseOrderReceiptKpisSection() {
     hasLoaded: isListLoaded,
     isError: isListError,
   });
-  const showAmounts = amountVisibility === "visible";
+  // Los drill-downs muestran importes con la misma regla que su tarjeta.
+  const showPriceAmounts = resolveKpiAmountState(amountVisibility, true).show;
+  const showRejectedAmounts = resolveKpiAmountState(
+    amountVisibility,
+    data?.material_rechazado.disponible === true && data.material_rechazado.por_moneda !== undefined,
+  ).show;
 
   // `dialogKind` es el ÚLTIMO detalle abierto y no se limpia al cerrar: así el
   // diálogo conserva título y filas durante su animación de salida.
@@ -286,7 +372,8 @@ export function PurchaseOrderReceiptKpisSection() {
         open={isDialogOpen}
         kind={dialogKind}
         data={data}
-        showAmounts={showAmounts}
+        showPriceAmounts={showPriceAmounts}
+        showRejectedAmounts={showRejectedAmounts}
         onClose={() => setIsDialogOpen(false)}
       />
     </section>
