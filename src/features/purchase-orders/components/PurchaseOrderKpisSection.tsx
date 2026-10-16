@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
+import { useIsFetching, useQueryClient } from "@tanstack/react-query";
 import KpiGrid, {
   buildUntypedKpiCard,
   KPI_MUTED_ICON,
@@ -9,9 +10,10 @@ import KpiGrid, {
 } from "@/src/components/KpiGrid";
 import { KpiCurrencyBlocks, KpiMutedValue } from "@/src/components/KpiCurrency";
 import { KpiDrillDownButton } from "@/src/components/KpiDrillDownButton";
+import { SectionErrorBoundary } from "@/src/components/SectionErrorBoundary";
 import { SectionErrorNotice } from "@/src/components/SectionErrorNotice";
 import { ClockIcon, ComprasIcon, ExclamationTriangleIcon, WalletIcon } from "@/src/components/Icons";
-import { usePurchaseOrderKpis } from "../hooks/usePurchaseOrderKpis";
+import { purchaseOrderKpisQueryKey, usePurchaseOrderKpis } from "../hooks/usePurchaseOrderKpis";
 import { usePurchaseOrders } from "../hooks/usePurchaseOrders";
 import type {
   PurchaseOrderKpis,
@@ -194,19 +196,7 @@ function buildCards(
   ];
 }
 
-/**
- * Indicadores de órdenes de compra (`GET /compras/ordenes/kpis/`, EC-432): OCs
- * abiertas, vencidas sin recibir, ciclo de compra y gasto por categoría, en ese
- * orden. Todo es el valor del backend; cada bloque decide solo por su
- * `disponible`.
- *
- * Tiene su propia consulta: carga y falla dentro de la sección sin tocar la
- * tabla de OCs. El listado (`usePurchaseOrders`, misma llave y caché que la
- * tabla) se lee SOLO como señal de permiso para importes (ver
- * `getPurchaseOrderKpiAmountVisibility`, #373). Sin gate de permiso: la ruta ya
- * exige `R-COMPRAS-OC` (`routePermissions`). Mismo patrón que `PedidoKpisSection`.
- */
-export function PurchaseOrderKpisSection() {
+function PurchaseOrderKpisSectionContent() {
   const { data, isInitialError, isFetching, refetch } = usePurchaseOrderKpis();
   const { purchaseOrders, hasLoaded: isListLoaded, isInitialError: isListError } =
     usePurchaseOrders();
@@ -254,7 +244,7 @@ export function PurchaseOrderKpisSection() {
   }
 
   return (
-    <section aria-label={SECTION_TITLE}>
+    <>
       {body}
       <PurchaseOrderKpiDialog
         open={isDialogOpen}
@@ -263,6 +253,52 @@ export function PurchaseOrderKpisSection() {
         showAmounts={showAmounts}
         onClose={() => setIsDialogOpen(false)}
       />
+    </>
+  );
+}
+
+/**
+ * Aviso del límite de error de la sección. "Reintentar" vuelve a PEDIR los
+ * indicadores antes de remontar: remontar con el mismo payload lanzaría igual.
+ */
+function PurchaseOrderKpisRenderError({ reset }: { reset: () => void }) {
+  const queryClient = useQueryClient();
+  const isFetching = useIsFetching({ queryKey: purchaseOrderKpisQueryKey }) > 0;
+  const retry = async () => {
+    await queryClient.refetchQueries({ queryKey: purchaseOrderKpisQueryKey });
+    reset();
+  };
+  return (
+    <SectionErrorNotice
+      title="No se pudieron mostrar los indicadores"
+      message="Ocurrió un error al mostrarlos. La tabla de OCs sigue disponible."
+      onRetry={() => void retry()}
+      isRetrying={isFetching}
+    />
+  );
+}
+
+/**
+ * Indicadores de órdenes de compra (`GET /compras/ordenes/kpis/`, EC-432): OCs
+ * abiertas, vencidas sin recibir, ciclo de compra y gasto por categoría, en ese
+ * orden. Todo es el valor del backend; cada bloque decide solo por su
+ * `disponible`.
+ *
+ * Tiene su propia consulta: carga y falla dentro de la sección sin tocar la
+ * tabla de OCs. El listado (`usePurchaseOrders`, misma llave y caché que la
+ * tabla) se lee SOLO como señal de permiso para importes (ver
+ * `getPurchaseOrderKpiAmountVisibility`). Sin gate de permiso: la ruta ya
+ * exige `R-COMPRAS-OC` (`routePermissions`). Mismo patrón que `PedidoKpisSection`.
+ *
+ * Tiene su propio límite de error: si el payload cambia de forma y el render
+ * lanza, se pinta un aviso aquí y la tabla de OCs sigue usable.
+ */
+export function PurchaseOrderKpisSection() {
+  return (
+    <section aria-label={SECTION_TITLE}>
+      <SectionErrorBoundary fallback={(reset) => <PurchaseOrderKpisRenderError reset={reset} />}>
+        <PurchaseOrderKpisSectionContent />
+      </SectionErrorBoundary>
     </section>
   );
 }
