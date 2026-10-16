@@ -4,7 +4,7 @@ import { type ColumnDef, type FilterFn, type SortingFn } from "@tanstack/react-t
 import { Popover } from "@radix-ui/themes";
 import { ColumnHeaderFilter, type ColumnFilterOption } from "@/src/components/ColumnHeaderFilter";
 import { formatShortDate } from "@/src/utils/formatDate";
-import { formatMoneyValueOrDash } from "@/src/utils/formatCurrency";
+import { formatOrderAmountOrDash } from "@/src/features/orders/utils/orderAmountFormat";
 import { formatPiezas } from "@/src/utils/formatWorkOrderProgramado";
 import { formatEntregaEstimada, hasMeaningfulOc } from "@/src/features/orders/utils/pedidoFormat";
 import { PedidoFolioLink } from "@/src/features/orders/components/PedidoFolioLink";
@@ -351,7 +351,7 @@ export function getScheduledOrderColumns(): ColumnDef<ScheduledParcialidadRow, u
       size: 180,
       cell: ({ row }) => (
         <span className="tabular-nums text-sm font-semibold text-slate-700 dark:text-slate-200">
-          {formatMoneyValueOrDash(row.original.subtotal)}
+          {formatOrderAmountOrDash(row.original.subtotal)}
         </span>
       ),
     },
