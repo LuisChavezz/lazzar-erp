@@ -81,7 +81,7 @@ export function EmbroideryOrderDetailContent({
   orderId,
 }: EmbroideryOrderDetailContentProps) {
   const numericId = Number(orderId);
-  const { data, isLoading, isError, error } = useEmbroideryOrderDetail(numericId);
+  const { data, isNotFound, isInitialError, error } = useEmbroideryOrderDetail(numericId);
   // Mutación de edición de la ficha (estatus + máquina). El hook invalida el
   // detalle en `onSuccess`, así que el re-fetch refleja el nuevo estado; solo
   // se dispara desde los controles editables de abajo, nunca en los estados de
@@ -119,22 +119,22 @@ export function EmbroideryOrderDetailContent({
     );
   }
 
-  if (isLoading) {
+  // Un 404 es DEFINITIVO aunque antes hubiera datos: el backend lo responde
+  // tanto para un id inexistente como para uno ajeno (su `get_queryset()`
+  // acotado por tenant no distingue los dos casos, por eso no hay 403).
+  if (isNotFound) {
     return (
       <div className="w-full space-y-6">
         <div>{BackLink}</div>
-        <Loader
-          title="Cargando orden de bordado"
-          message="Obteniendo el detalle de la orden..."
+        <ErrorState
+          title="Orden de bordado no disponible"
+          message="La orden no existe o no tienes acceso a ella."
         />
       </div>
     );
   }
 
-  // El caso "no existe o no tienes acceso" llega por aquí: el backend responde
-  // 404 y no 403, porque su `get_queryset()` acotado por tenant no distingue un
-  // id ajeno de uno inexistente.
-  if (isError || !data) {
+  if (isInitialError) {
     return (
       <div className="w-full space-y-6">
         <div>{BackLink}</div>
@@ -142,8 +142,21 @@ export function EmbroideryOrderDetailContent({
           title="No se pudo cargar la orden de bordado"
           message={extractErrorMessage(
             error,
-            "No existe, no tienes acceso a ella o falló la conexión.",
+            "Ocurrió un problema al consultar el servidor. Intenta de nuevo.",
           )}
+        />
+      </div>
+    );
+  }
+
+  // Sin datos ni error: carga inicial en curso (id válido ⇒ consulta activa).
+  if (!data) {
+    return (
+      <div className="w-full space-y-6">
+        <div>{BackLink}</div>
+        <Loader
+          title="Cargando orden de bordado"
+          message="Obteniendo el detalle de la orden..."
         />
       </div>
     );
@@ -387,6 +400,7 @@ export function EmbroideryOrderDetailContent({
       <EmbroideryAvancesHistory
         avances={data.avances}
         obId={data.id}
+        pedidoId={data.pedido_vinculado?.id ?? null}
         isTerminal={isTerminal}
         programado={data.resumen_avance.cantidad_programada}
         bordado={data.resumen_avance.cantidad_bordada_total}

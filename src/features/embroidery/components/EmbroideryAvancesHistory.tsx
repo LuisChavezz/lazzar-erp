@@ -20,6 +20,8 @@ import type { BordadoAvance } from "../interfaces/embroidery.interface";
 interface EmbroideryAvancesHistoryProps {
   avances: BordadoAvance[];
   obId: number;
+  /** Pedido madre de la OB (`pedido_vinculado.id`), o `null` si no tiene. */
+  pedidoId: number | null;
   /** Estatus terminal (Finalizado / Cancelado legacy): no se registran avances. */
   isTerminal: boolean;
   /** Piezas programadas en toda la OB — techo del diálogo de alta. */
@@ -39,13 +41,14 @@ interface EmbroideryAvancesHistoryProps {
 export function EmbroideryAvancesHistory({
   avances,
   obId,
+  pedidoId,
   isTerminal,
   programado,
   bordado,
 }: EmbroideryAvancesHistoryProps) {
   const [createOpen, setCreateOpen] = useState(false);
   const [avanceToDelete, setAvanceToDelete] = useState<BordadoAvance | null>(null);
-  const { mutate: deleteAvance, isPending: isDeleting } = useDeleteAvance(obId);
+  const { mutate: deleteAvance, isPending: isDeleting } = useDeleteAvance(obId, pedidoId);
 
   // Un avance es un registro de progreso de la ORDEN, no un documento propio:
   // tanto darlo de alta como borrarlo modifican la orden, así que ambas
@@ -149,6 +152,7 @@ export function EmbroideryAvancesHistory({
 
       <EmbroideryCreateAvanceDialog
         obId={obId}
+        pedidoId={pedidoId}
         programado={programado}
         bordado={bordado}
         open={createOpen}

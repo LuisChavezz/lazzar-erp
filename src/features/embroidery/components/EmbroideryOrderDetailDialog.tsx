@@ -204,7 +204,8 @@ export function EmbroideryOrderDetailDialog({
   open,
   onOpenChange,
 }: EmbroideryOrderDetailDialogProps) {
-  const { data: order, isLoading, isError, error } = useEmbroideryOrderDetail(orderId);
+  const { data: order, isNotFound, isInitialError, error } = useEmbroideryOrderDetail(orderId);
+  const hasFailed = isNotFound || isInitialError;
 
   // Porcentaje solo para mostrar; `cantidad_contratada` puede ser 0 (pedido sin
   // líneas de bordado vivas) y dividir daría "∞%".
@@ -237,7 +238,7 @@ export function EmbroideryOrderDetailDialog({
               Detalle de Orden de Bordado
             </p>
             <p className="text-xs text-slate-500 dark:text-slate-400 font-mono font-normal mt-0.5">
-              {order ? order.folio_bordado : isError ? "Error al cargar" : "Cargando…"}
+              {order ? order.folio_bordado : hasFailed ? "Error al cargar" : "Cargando…"}
             </p>
           </div>
         </div>
@@ -246,28 +247,31 @@ export function EmbroideryOrderDetailDialog({
       {/* El armazón del diálogo NO se sustituye por el loader ni por el error:
           se mantiene montado y solo cambia su contenido (mismo patrón que
           `StockTransferDetailDialog`). */}
-      {isLoading && (
+      {!order && !hasFailed && (
         <Loader title="Cargando detalle de la orden..." className="py-16" />
       )}
 
-      {/* `isError` sin `hasLoaded`: aquí no hay refetch en segundo plano que
-          proteger —la consulta se monta con el diálogo y muere con él, y nada
-          la invalida mientras está abierta—, así que un error siempre ES el de
-          la carga inicial. El caso "no existe o no tienes acceso" llega por
-          esta misma vía: el backend responde 404 y no 403, porque su
-          `get_queryset()` acotado por tenant no distingue un id ajeno de uno
-          inexistente. */}
-      {isError && (
+      {/* El 404 es DEFINITIVO: el backend lo responde para un id inexistente y
+          para uno ajeno (su `get_queryset()` acotado por tenant no distingue
+          los dos casos, por eso no hay 403). */}
+      {isNotFound && (
+        <ErrorState
+          title="Orden de bordado no disponible"
+          message="La orden no existe o no tienes acceso a ella."
+        />
+      )}
+
+      {isInitialError && (
         <ErrorState
           title="No se pudo cargar la orden de bordado"
           message={extractErrorMessage(
             error,
-            "No existe, no tienes acceso a ella o falló la conexión.",
+            "Ocurrió un problema al consultar el servidor. Intenta de nuevo.",
           )}
         />
       )}
 
-      {!isLoading && !isError && order && (
+      {order && (
         <div className="space-y-5">
           {/* Resumen */}
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-3 px-4 py-3 rounded-xl bg-slate-50 dark:bg-white/5 text-xs">
@@ -330,7 +334,7 @@ export function EmbroideryOrderDetailDialog({
 
           {/* Cobertura sobre el pedido. `order` ya está garantizado no-nulo en
               esta rama —el bloque completo vive dentro de
-              `!isLoading && !isError && order &&`—, así que no hace falta
+              `order &&`—, así que no hace falta
               ningún gate propio: el trío llega siempre con el resto del
               detalle, venga la orden de la tabla o del enlace del 409 de
               duplicado. */}
