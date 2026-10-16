@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { createEmbroideryOrder } from "../services/actions";
+import { EMBROIDERY_ORDER_DETAIL_KEY } from "./useEmbroideryOrderDetail";
 import {
   EMBROIDERY_ORDER_GENERIC_ERROR,
   parseEmbroideryOrderError,
@@ -61,7 +62,7 @@ export const useCreateEmbroideryOrder = (
       // Prefijo sin id: alcanza el detalle de CUALQUIER orden en caché, que es
       // justo lo que hace falta —la que cambia es la hermana, no la recién
       // creada—. Ver el bloque de arriba.
-      queryClient.invalidateQueries({ queryKey: ["embroidery-order-detail"] });
+      queryClient.invalidateQueries({ queryKey: EMBROIDERY_ORDER_DETAIL_KEY });
       toast.success(`Orden de bordado ${order.folio_bordado} creada correctamente`);
     },
     onError: (error) => {

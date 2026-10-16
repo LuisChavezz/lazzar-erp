@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { updateEmbroideryOrder } from "../services/actions";
+import { embroideryOrderDetailQueryKey } from "./useEmbroideryOrderDetail";
 import { parseEmbroideryUpdateError } from "../utils/parseEmbroideryUpdateError";
 import type { UpdateEmbroideryOrderPayload } from "../interfaces/embroidery.interface";
 
@@ -23,7 +24,7 @@ export const useUpdateEmbroideryOrder = (id: number) => {
     mutationFn: (data: Partial<UpdateEmbroideryOrderPayload>) =>
       updateEmbroideryOrder(id, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["embroidery-order-detail", id] });
+      queryClient.invalidateQueries({ queryKey: embroideryOrderDetailQueryKey(id) });
       queryClient.invalidateQueries({ queryKey: ["embroidery-orders"] });
       toast.success("Orden de bordado actualizada correctamente");
     },

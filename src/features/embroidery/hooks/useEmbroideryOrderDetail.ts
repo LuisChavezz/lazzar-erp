@@ -4,9 +4,15 @@ import { retryUnlessClientError } from "@/src/utils/retryUnlessClientError";
 import { getEmbroideryOrderDetail } from "../services/actions";
 import type { EmbroideryOrderDetail } from "../interfaces/embroidery.interface";
 
-/** Llave del detalle; la invalidan las mutaciones de la orden y de sus avances. */
+/**
+ * Prefijo de los detalles de OB: invalidarlo refresca el detalle de TODAS las
+ * órdenes (lo usa el alta, que cambia la cobertura de las hermanas).
+ */
+export const EMBROIDERY_ORDER_DETAIL_KEY = ["embroidery-order-detail"] as const;
+
+/** Llave del detalle de UNA orden; la invalidan su PATCH y sus avances. */
 export const embroideryOrderDetailQueryKey = (id: number | null) =>
-  ["embroidery-order-detail", id] as const;
+  [...EMBROIDERY_ORDER_DETAIL_KEY, id] as const;
 
 /**
  * Detalle de una orden de bordado (`GET /produccion/orden-bordado/{id}/`).
