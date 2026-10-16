@@ -367,8 +367,6 @@ export interface PedidoDetalleTallaDisplay {
  */
 export interface BordadoAvance {
   id: number;
-  /** OB a la que pertenece el avance. */
-  ob: number;
   fecha: string;
   usuario: number;
   usuario_nombre: string;
