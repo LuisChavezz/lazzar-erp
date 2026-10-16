@@ -38,13 +38,11 @@ import {
   PurchaseOrderReceiptKpiDialog,
   type PurchaseOrderReceiptKpiDialogKind,
 } from "./PurchaseOrderReceiptKpiDialog";
+import { unitLabel } from "../utils/receiptKpiFormat";
 
 const SECTION_TITLE = "Indicadores";
 
 const SEPARATE_UNITS_NOTE = "Cada unidad de medida va por separado: no se suman cantidades de unidades distintas.";
-
-/** Clave de la unidad de medida; los productos sin unidad capturada van aparte. */
-const unitLabel = (unidad: string | null): string => unidad ?? "Sin unidad";
 
 const unavailable = (
   base: Pick<KpiCompactItem, "label" | "icon">,

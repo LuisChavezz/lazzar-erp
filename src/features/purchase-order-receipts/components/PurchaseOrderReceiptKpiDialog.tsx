@@ -12,6 +12,7 @@ import {
   plural,
 } from "@/src/utils/kpiFormat";
 import type { PurchaseOrderReceiptKpis } from "../interfaces/purchase-order-receipt-kpis.interface";
+import { unitLabel } from "../utils/receiptKpiFormat";
 
 /** Bloques con drill-down (`recepciones_parciales` no lo tiene). */
 export type PurchaseOrderReceiptKpiDialogKind = "cumplimiento_cantidad" | "diferencia_precio" | "material_rechazado";
@@ -22,9 +23,6 @@ const FOLIO_LINK_CLASS =
 const TH_CLASS = "px-3 py-2 font-semibold";
 const TD_CLASS = "px-3 py-2 text-slate-600 dark:text-slate-300";
 const NUM_TD_CLASS = `${TD_CLASS} text-right tabular-nums whitespace-nowrap`;
-
-/** Clave de la unidad de medida; los productos sin unidad capturada van aparte. */
-const unitLabel = (unidad: string | null): string => unidad ?? "Sin unidad";
 
 /**
  * Descripción del diálogo: el CONTEO de lo que se muestra frente al total del
