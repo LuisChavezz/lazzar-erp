@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
+import { useIsFetching, useQueryClient } from "@tanstack/react-query";
 import KpiGrid, {
   KPI_MUTED_ICON,
   KpiGridSkeleton,
@@ -8,6 +9,7 @@ import KpiGrid, {
 } from "@/src/components/KpiGrid";
 import { KpiMutedValue, KpiTaggedBlocks } from "@/src/components/KpiCurrency";
 import { KpiDrillDownButton } from "@/src/components/KpiDrillDownButton";
+import { SectionErrorBoundary } from "@/src/components/SectionErrorBoundary";
 import { SectionErrorNotice } from "@/src/components/SectionErrorNotice";
 import { CheckCircleIcon, ExclamationTriangleIcon, RecepcionesIcon, WalletIcon } from "@/src/components/Icons";
 import { usePurchaseOrders } from "@/src/features/purchase-orders/hooks/usePurchaseOrders";
@@ -25,7 +27,7 @@ import {
   formatKpiSignedPctOrDash,
   plural,
 } from "@/src/utils/kpiFormat";
-import { usePurchaseOrderReceiptKpis } from "../hooks/usePurchaseOrderReceiptKpis";
+import { purchaseOrderReceiptKpisQueryKey, usePurchaseOrderReceiptKpis } from "../hooks/usePurchaseOrderReceiptKpis";
 import type {
   PurchaseOrderReceiptFulfillmentKpi,
   PurchaseOrderReceiptKpis,
@@ -307,22 +309,7 @@ function buildCards(
   ];
 }
 
-/**
- * Indicadores de recepciones de compra (`GET /compras/recepciones/kpis/`,
- * EC-434): cumplimiento de cantidad, recepciones parciales, diferencias de
- * precio y material rechazado, en ese orden. Todo es el valor del backend; cada
- * bloque decide solo por su `disponible`.
- *
- * Tiene su propia consulta: carga y falla dentro de la sección sin tocar la
- * tabla de recepciones. Los importes siguen la MISMA regla que los indicadores
- * de OC (`getPurchaseOrderKpiAmountVisibility`, parche por el backend): el
- * listado de OC (`usePurchaseOrders`, misma llave y caché que en la página de
- * OC) se lee SOLO como señal de permiso; mientras no responde, solo las dos
- * tarjetas con importes esperan con su propio marcador. Porcentajes y
- * cantidades se muestran siempre. Sin gate de
- * permiso: la ruta ya exige `R-COMPRAS-RECEP` (`routePermissions`).
- */
-export function PurchaseOrderReceiptKpisSection() {
+function PurchaseOrderReceiptKpisSectionContent() {
   const { data, isInitialError, isFetching, refetch } = usePurchaseOrderReceiptKpis();
   const { purchaseOrders, hasLoaded: isListLoaded, isInitialError: isListError } =
     usePurchaseOrders();
@@ -366,7 +353,7 @@ export function PurchaseOrderReceiptKpisSection() {
   }
 
   return (
-    <section aria-label={SECTION_TITLE}>
+    <>
       {body}
       <PurchaseOrderReceiptKpiDialog
         open={isDialogOpen}
@@ -376,6 +363,55 @@ export function PurchaseOrderReceiptKpisSection() {
         showRejectedAmounts={showRejectedAmounts}
         onClose={() => setIsDialogOpen(false)}
       />
+    </>
+  );
+}
+
+/**
+ * Aviso del límite de error de la sección. "Reintentar" vuelve a PEDIR los
+ * indicadores antes de remontar: remontar con el mismo payload lanzaría igual.
+ */
+function PurchaseOrderReceiptKpisRenderError({ reset }: { reset: () => void }) {
+  const queryClient = useQueryClient();
+  const isFetching = useIsFetching({ queryKey: purchaseOrderReceiptKpisQueryKey }) > 0;
+  const retry = async () => {
+    await queryClient.refetchQueries({ queryKey: purchaseOrderReceiptKpisQueryKey });
+    reset();
+  };
+  return (
+    <SectionErrorNotice
+      title="No se pudieron mostrar los indicadores"
+      message="Ocurrió un error al mostrarlos. La tabla de recepciones sigue disponible."
+      onRetry={() => void retry()}
+      isRetrying={isFetching}
+    />
+  );
+}
+
+/**
+ * Indicadores de recepciones de compra (`GET /compras/recepciones/kpis/`,
+ * EC-434): cumplimiento de cantidad, recepciones parciales, diferencias de
+ * precio y material rechazado, en ese orden. Todo es el valor del backend; cada
+ * bloque decide solo por su `disponible`.
+ *
+ * Tiene su propia consulta: carga y falla dentro de la sección sin tocar la
+ * tabla de recepciones. Los importes siguen la MISMA regla que los indicadores
+ * de OC (`getPurchaseOrderKpiAmountVisibility` + `resolveKpiAmountState`): el
+ * listado de OC (`usePurchaseOrders`, misma llave y caché que en la página de
+ * OC) se lee SOLO como señal de permiso; mientras no responde, solo las dos
+ * tarjetas con importes esperan con su propio marcador. Porcentajes y
+ * cantidades se muestran siempre. Sin gate de
+ * permiso: la ruta ya exige `R-COMPRAS-RECEP` (`routePermissions`).
+ *
+ * Tiene su propio límite de error: si el payload cambia de forma y el render
+ * lanza, se pinta un aviso aquí y la tabla de recepciones sigue usable.
+ */
+export function PurchaseOrderReceiptKpisSection() {
+  return (
+    <section aria-label={SECTION_TITLE}>
+      <SectionErrorBoundary fallback={(reset) => <PurchaseOrderReceiptKpisRenderError reset={reset} />}>
+        <PurchaseOrderReceiptKpisSectionContent />
+      </SectionErrorBoundary>
     </section>
   );
 }
