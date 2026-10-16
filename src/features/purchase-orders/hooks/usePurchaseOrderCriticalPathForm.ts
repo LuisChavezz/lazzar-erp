@@ -1,7 +1,7 @@
 "use client";
 
-import { useForm, useStore } from "@tanstack/react-form";
-import { useEffect, useRef, useState } from "react";
+import { useForm } from "@tanstack/react-form";
+import { useRef, useState } from "react";
 import type { FormEvent } from "react";
 import type { FormFieldError } from "@/src/utils/getFieldError";
 import type { PurchaseOrderCriticalPath } from "../interfaces/purchase-order-critical-path.interface";
@@ -25,10 +25,6 @@ interface UsePurchaseOrderCriticalPathFormParams {
   data: PurchaseOrderCriticalPath;
   /** OC Cancelada o usuario sin `E-COMPRAS-OC`: se consulta, nunca envía. */
   readOnly: boolean;
-  /** Avisa si hay captura sin guardar (el diálogo no remonta mientras la haya). */
-  onDirtyChange: (dirty: boolean) => void;
-  /** Guardado con éxito: `updated_at` del registro que devolvió el PATCH. */
-  onSaved: (updatedAt: string | null) => void;
 }
 
 /**
@@ -38,16 +34,15 @@ interface UsePurchaseOrderCriticalPathFormParams {
  * hook de mutación, y el PATCH lleva SOLO los campos que cambiaron. Sin el
  * manejo de 409 de la OP: el backend de la OC no bloquea por estatus.
  *
- * La base es el registro con que se montó el formulario. Tras guardar, el
- * diálogo vuelve a montarlo (`onSaved` → `key`), así que la nueva base es lo
+ * La base es el registro con que se montó el formulario. Tras guardar, la
+ * mutación escribe el registro devuelto en la caché y el diálogo vuelve a
+ * montar el formulario (`key` = `updated_at`), así que la nueva base es lo
  * recién guardado.
  */
 export function usePurchaseOrderCriticalPathForm({
   ocId,
   data,
   readOnly,
-  onDirtyChange,
-  onSaved,
 }: UsePurchaseOrderCriticalPathFormParams) {
   const [initialValues] = useState<PurchaseOrderCriticalPathValues>(() =>
     toPurchaseOrderCriticalPathValues(data),
@@ -115,8 +110,7 @@ export function usePurchaseOrderCriticalPathForm({
       if (Object.keys(body).length === 0) return;
 
       try {
-        const saved = await mutateAsync({ ocId, body });
-        onSaved(saved.updated_at);
+        await mutateAsync({ ocId, body });
       } catch {
         // El toast ya lo dio el hook; los errores por campo quedan bajo su
         // campo y el formulario conserva lo capturado para reintentar.
@@ -127,11 +121,6 @@ export function usePurchaseOrderCriticalPathForm({
   /** ¿Hay algo que guardar? Decide si el botón de guardar se habilita. */
   const hasChanges = (values: PurchaseOrderCriticalPathValues) =>
     Object.keys(buildPurchaseOrderCriticalPathBody(values, initialValues)).length > 0;
-
-  const isDirty = useStore(form.store, (state) => hasChanges(state.values));
-  useEffect(() => {
-    onDirtyChange(isDirty);
-  }, [isDirty, onDirtyChange]);
 
   const getError = (field: PurchaseOrderCriticalPathField): FormFieldError | undefined => {
     const message = serverErrors[field] ?? clientErrors[field];
