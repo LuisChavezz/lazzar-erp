@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
-import { useIsFetching, useQueryClient } from "@tanstack/react-query";
 import KpiGrid, {
   buildUntypedKpiCard,
   KPI_MUTED_ICON,
@@ -10,7 +9,7 @@ import KpiGrid, {
 } from "@/src/components/KpiGrid";
 import { KpiDrillDownButton } from "@/src/components/KpiDrillDownButton";
 import { KpiCurrencyBlocks, KpiMutedValue } from "@/src/components/KpiCurrency";
-import { SectionErrorBoundary } from "@/src/components/SectionErrorBoundary";
+import { KpiSectionErrorBoundary } from "@/src/components/KpiSectionErrorBoundary";
 import { SectionErrorNotice } from "@/src/components/SectionErrorNotice";
 import { ClientesIcon, ReceiptIcon, TrendingUpIcon, WalletIcon } from "@/src/components/Icons";
 import { customerKpisQueryKey, useCustomerKpis } from "../hooks/useCustomerKpis";
@@ -218,27 +217,6 @@ function CustomerKpisSectionContent() {
 }
 
 /**
- * Aviso del límite de error de la sección. "Reintentar" vuelve a PEDIR los
- * indicadores antes de remontar: remontar con el mismo payload lanzaría igual.
- */
-function CustomerKpisRenderError({ reset }: { reset: () => void }) {
-  const queryClient = useQueryClient();
-  const isFetching = useIsFetching({ queryKey: customerKpisQueryKey }) > 0;
-  const retry = async () => {
-    await queryClient.refetchQueries({ queryKey: customerKpisQueryKey });
-    reset();
-  };
-  return (
-    <SectionErrorNotice
-      title="No se pudieron mostrar los indicadores"
-      message="Ocurrió un error al mostrarlos. La lista de clientes sigue disponible."
-      onRetry={() => void retry()}
-      isRetrying={isFetching}
-    />
-  );
-}
-
-/**
  * Indicadores de clientes (`GET /terceros/clientes/kpis/`): ventas por cliente,
  * activos vs. inactivos, reclamos y devoluciones, y cartera vencida, en ese
  * orden. Todo es el valor del backend; aquí no se calcula ningún indicador ni
@@ -254,9 +232,12 @@ function CustomerKpisRenderError({ reset }: { reset: () => void }) {
 export function CustomerKpisSection() {
   return (
     <section aria-label={SECTION_TITLE}>
-      <SectionErrorBoundary fallback={(reset) => <CustomerKpisRenderError reset={reset} />}>
+      <KpiSectionErrorBoundary
+        queryKey={customerKpisQueryKey}
+        message="Ocurrió un error al mostrarlos. La lista de clientes sigue disponible."
+      >
         <CustomerKpisSectionContent />
-      </SectionErrorBoundary>
+      </KpiSectionErrorBoundary>
     </section>
   );
 }

@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
-import { useIsFetching, useQueryClient } from "@tanstack/react-query";
 import KpiGrid, {
   KPI_MUTED_ICON,
   KpiGridSkeleton,
@@ -9,7 +8,7 @@ import KpiGrid, {
 } from "@/src/components/KpiGrid";
 import { KpiMutedValue, KpiTaggedBlocks } from "@/src/components/KpiCurrency";
 import { KpiDrillDownButton } from "@/src/components/KpiDrillDownButton";
-import { SectionErrorBoundary } from "@/src/components/SectionErrorBoundary";
+import { KpiSectionErrorBoundary } from "@/src/components/KpiSectionErrorBoundary";
 import { SectionErrorNotice } from "@/src/components/SectionErrorNotice";
 import { CheckCircleIcon, ExclamationTriangleIcon, RecepcionesIcon, WalletIcon } from "@/src/components/Icons";
 import { usePurchaseOrders } from "@/src/features/purchase-orders/hooks/usePurchaseOrders";
@@ -368,27 +367,6 @@ function PurchaseOrderReceiptKpisSectionContent() {
 }
 
 /**
- * Aviso del límite de error de la sección. "Reintentar" vuelve a PEDIR los
- * indicadores antes de remontar: remontar con el mismo payload lanzaría igual.
- */
-function PurchaseOrderReceiptKpisRenderError({ reset }: { reset: () => void }) {
-  const queryClient = useQueryClient();
-  const isFetching = useIsFetching({ queryKey: purchaseOrderReceiptKpisQueryKey }) > 0;
-  const retry = async () => {
-    await queryClient.refetchQueries({ queryKey: purchaseOrderReceiptKpisQueryKey });
-    reset();
-  };
-  return (
-    <SectionErrorNotice
-      title="No se pudieron mostrar los indicadores"
-      message="Ocurrió un error al mostrarlos. La tabla de recepciones sigue disponible."
-      onRetry={() => void retry()}
-      isRetrying={isFetching}
-    />
-  );
-}
-
-/**
  * Indicadores de recepciones de compra (`GET /compras/recepciones/kpis/`,
  * EC-434): cumplimiento de cantidad, recepciones parciales, diferencias de
  * precio y material rechazado, en ese orden. Todo es el valor del backend; cada
@@ -409,9 +387,12 @@ function PurchaseOrderReceiptKpisRenderError({ reset }: { reset: () => void }) {
 export function PurchaseOrderReceiptKpisSection() {
   return (
     <section aria-label={SECTION_TITLE}>
-      <SectionErrorBoundary fallback={(reset) => <PurchaseOrderReceiptKpisRenderError reset={reset} />}>
+      <KpiSectionErrorBoundary
+        queryKey={purchaseOrderReceiptKpisQueryKey}
+        message="Ocurrió un error al mostrarlos. La tabla de recepciones sigue disponible."
+      >
         <PurchaseOrderReceiptKpisSectionContent />
-      </SectionErrorBoundary>
+      </KpiSectionErrorBoundary>
     </section>
   );
 }

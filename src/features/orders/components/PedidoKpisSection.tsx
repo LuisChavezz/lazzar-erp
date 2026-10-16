@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
-import { useIsFetching, useQueryClient } from "@tanstack/react-query";
 import KpiGrid, {
   buildUntypedKpiCard,
   KPI_MUTED_ICON,
@@ -10,7 +9,7 @@ import KpiGrid, {
 } from "@/src/components/KpiGrid";
 import { KpiCurrencyBlocks, KpiMutedValue } from "@/src/components/KpiCurrency";
 import { KpiDrillDownButton } from "@/src/components/KpiDrillDownButton";
-import { SectionErrorBoundary } from "@/src/components/SectionErrorBoundary";
+import { KpiSectionErrorBoundary } from "@/src/components/KpiSectionErrorBoundary";
 import { SectionErrorNotice } from "@/src/components/SectionErrorNotice";
 import {
   CheckCircleIcon,
@@ -109,27 +108,6 @@ function PedidoKpisSectionContent() {
 }
 
 /**
- * Aviso del límite de error de la sección. "Reintentar" vuelve a PEDIR los
- * indicadores antes de remontar: remontar con el mismo payload lanzaría igual.
- */
-function PedidoKpisRenderError({ reset }: { reset: () => void }) {
-  const queryClient = useQueryClient();
-  const isFetching = useIsFetching({ queryKey: PEDIDO_KPIS_QUERY_KEY }) > 0;
-  const retry = async () => {
-    await queryClient.refetchQueries({ queryKey: PEDIDO_KPIS_QUERY_KEY });
-    reset();
-  };
-  return (
-    <SectionErrorNotice
-      title="No se pudieron mostrar los indicadores"
-      message="Ocurrió un error al mostrarlos. La lista de pedidos sigue disponible."
-      onRetry={() => void retry()}
-      isRetrying={isFetching}
-    />
-  );
-}
-
-/**
  * Indicadores de "Mis pedidos" (`GET /ventas/pedidos/kpis/`): pedidos activos,
  * OTIF, lead time promedio y pedidos en riesgo, en ese orden. Todo es el valor
  * del backend; aquí no se calcula ningún indicador ni se suman importes de
@@ -144,9 +122,12 @@ function PedidoKpisRenderError({ reset }: { reset: () => void }) {
 export function PedidoKpisSection() {
   return (
     <section aria-label={SECTION_TITLE}>
-      <SectionErrorBoundary fallback={(reset) => <PedidoKpisRenderError reset={reset} />}>
+      <KpiSectionErrorBoundary
+        queryKey={PEDIDO_KPIS_QUERY_KEY}
+        message="Ocurrió un error al mostrarlos. La lista de pedidos sigue disponible."
+      >
         <PedidoKpisSectionContent />
-      </SectionErrorBoundary>
+      </KpiSectionErrorBoundary>
     </section>
   );
 }

@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
-import { useIsFetching, useQueryClient } from "@tanstack/react-query";
 import KpiGrid, {
   buildUntypedKpiCard,
   KPI_MUTED_ICON,
@@ -10,7 +9,7 @@ import KpiGrid, {
 } from "@/src/components/KpiGrid";
 import { KpiCurrencyBlocks, KpiMutedValue } from "@/src/components/KpiCurrency";
 import { KpiDrillDownButton } from "@/src/components/KpiDrillDownButton";
-import { SectionErrorBoundary } from "@/src/components/SectionErrorBoundary";
+import { KpiSectionErrorBoundary } from "@/src/components/KpiSectionErrorBoundary";
 import { SectionErrorNotice } from "@/src/components/SectionErrorNotice";
 import { ClockIcon, ComprasIcon, ExclamationTriangleIcon, WalletIcon } from "@/src/components/Icons";
 import { purchaseOrderKpisQueryKey, usePurchaseOrderKpis } from "../hooks/usePurchaseOrderKpis";
@@ -262,27 +261,6 @@ function PurchaseOrderKpisSectionContent() {
 }
 
 /**
- * Aviso del límite de error de la sección. "Reintentar" vuelve a PEDIR los
- * indicadores antes de remontar: remontar con el mismo payload lanzaría igual.
- */
-function PurchaseOrderKpisRenderError({ reset }: { reset: () => void }) {
-  const queryClient = useQueryClient();
-  const isFetching = useIsFetching({ queryKey: purchaseOrderKpisQueryKey }) > 0;
-  const retry = async () => {
-    await queryClient.refetchQueries({ queryKey: purchaseOrderKpisQueryKey });
-    reset();
-  };
-  return (
-    <SectionErrorNotice
-      title="No se pudieron mostrar los indicadores"
-      message="Ocurrió un error al mostrarlos. La tabla de OCs sigue disponible."
-      onRetry={() => void retry()}
-      isRetrying={isFetching}
-    />
-  );
-}
-
-/**
  * Indicadores de órdenes de compra (`GET /compras/ordenes/kpis/`, EC-432): OCs
  * abiertas, vencidas sin recibir, ciclo de compra y gasto por categoría, en ese
  * orden. Todo es el valor del backend; cada bloque decide solo por su
@@ -300,9 +278,12 @@ function PurchaseOrderKpisRenderError({ reset }: { reset: () => void }) {
 export function PurchaseOrderKpisSection() {
   return (
     <section aria-label={SECTION_TITLE}>
-      <SectionErrorBoundary fallback={(reset) => <PurchaseOrderKpisRenderError reset={reset} />}>
+      <KpiSectionErrorBoundary
+        queryKey={purchaseOrderKpisQueryKey}
+        message="Ocurrió un error al mostrarlos. La tabla de OCs sigue disponible."
+      >
         <PurchaseOrderKpisSectionContent />
-      </SectionErrorBoundary>
+      </KpiSectionErrorBoundary>
     </section>
   );
 }
