@@ -10,8 +10,9 @@ import { formatPercentageNumber } from "@/src/utils/percentage";
  */
 
 /**
- * Importe del backend sin símbolo: los payloads de KPIs no traen moneda y
- * suelen sumar varias, así que un "$" afirmaría pesos.
+ * Importe del backend sin símbolo, SOLO para payloads de KPIs que no traen
+ * moneda (o que suman varias): ahí un "$" afirmaría pesos. Los datos por moneda
+ * (`por_moneda[]`, filas con `moneda`) van con `formatKpiCurrencyAmount`.
  */
 export const formatKpiMonto = (value: number): string => formatMoneyValue(value, NO_CURRENCY_FORMAT);
 
