@@ -5,7 +5,8 @@ import {
   LineItemsTable,
   Section,
 } from "@/src/components/DetailDialogPrimitives";
-import { formatMoneyValue, safeParseAmount } from "@/src/utils/formatCurrency";
+import { safeParseAmount } from "@/src/utils/formatCurrency";
+import { formatKpiCurrencyAmount } from "@/src/utils/kpiFormat";
 import type { CarteraMoneda } from "../interfaces/customer.interface";
 
 type CarteraAmountKey = Exclude<keyof CarteraMoneda, "moneda">;
@@ -83,12 +84,9 @@ export const CustomerCartera = ({
                     : ""
                 }`}
               >
-                {/* `narrowSymbol`: es-MX pinta USD como "USD 1,234.00" y el
-                    código ya va en la primera columna. */}
-                {formatMoneyValue(row[column.key], {
-                  currency: row.moneda,
-                  currencyDisplay: "narrowSymbol",
-                })}
+                {/* Símbolo de su moneda (`formatKpiCurrencyAmount`); el código
+                    ya va en la primera columna. */}
+                {formatKpiCurrencyAmount(row[column.key], row.moneda)}
               </td>
             ))}
           </tr>

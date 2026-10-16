@@ -8,8 +8,8 @@ import {
   WalletIcon,
 } from "@/src/components/Icons";
 import { getPedidoEstatusConfig } from "@/src/features/orders/constants/pedidoStatus";
-import { formatMoneyValue } from "@/src/utils/formatCurrency";
 import { formatShortDate } from "@/src/utils/formatDate";
+import { formatKpiCurrencyAmount } from "@/src/utils/kpiFormat";
 import type { ResumenComercial } from "../interfaces/customer.interface";
 
 // Texto secundario para los KPIs sin dato (mismo tono que `EmptyLines`). Va en
@@ -54,13 +54,10 @@ export const CustomerResumenKpis = ({ resumen }: { resumen: ResumenComercial }) 
               key={monto.moneda}
               className="flex items-baseline justify-between gap-3 tabular-nums"
             >
-              {/* `narrowSymbol`: es-MX pinta USD como "USD 1,234.00" y el
-                  código ya va en la etiqueta de la derecha. */}
+              {/* Símbolo de su moneda (`formatKpiCurrencyAmount`); el código
+                  ya va en la etiqueta de la derecha. */}
               <span className="text-lg truncate">
-                {formatMoneyValue(monto.total, {
-                  currency: monto.moneda,
-                  currencyDisplay: "narrowSymbol",
-                })}
+                {formatKpiCurrencyAmount(monto.total, monto.moneda)}
               </span>
               <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 shrink-0">
                 {monto.moneda}

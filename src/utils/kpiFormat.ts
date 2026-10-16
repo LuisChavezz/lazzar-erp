@@ -22,7 +22,7 @@ export const formatKpiMonto = (value: number): string => formatMoneyValue(value,
  * `CustomerResumenKpis`). Un código que `Intl` no reconozca cae a número sin
  * símbolo (`formatCurrency`).
  */
-export const formatKpiCurrencyAmount = (value: number, moneda: string): string =>
+export const formatKpiCurrencyAmount = (value: string | number, moneda: string): string =>
   formatMoneyValue(value, { currency: moneda, currencyDisplay: "narrowSymbol" });
 
 /**
