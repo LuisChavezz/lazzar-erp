@@ -27,6 +27,13 @@ export const formatKpiCurrencyAmount = (value: string | number, moneda: string):
   formatMoneyValue(value, { currency: moneda, currencyDisplay: "narrowSymbol" });
 
 /**
+ * Como `formatKpiCurrencyAmount`, con signo explícito ("+$1,250.00" /
+ * "-$80.00" / "$0.00"): para diferencias por moneda, donde el signo ES el dato.
+ */
+export const formatKpiSignedCurrencyAmount = (value: string | number, moneda: string): string =>
+  formatMoneyValue(value, { currency: moneda, currencyDisplay: "narrowSymbol", signDisplay: "exceptZero" });
+
+/**
  * Importe con signo explícito ("+1,250.00" / "-80.00" / "0.00"), sin símbolo:
  * para diferencias, donde el signo ES el dato.
  */
