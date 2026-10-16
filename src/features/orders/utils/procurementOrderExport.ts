@@ -1,5 +1,5 @@
 import type { DataTableVisibleColumn } from "@/src/components/DataTable";
-import { formatMoneyValueOrDash } from "@/src/utils/formatCurrency";
+import { formatOrderAmountOrDash } from "./orderAmountFormat";
 import { formatLocalDate } from "@/src/utils/formatDate";
 import { getPedidoEstatusConfig } from "../constants/pedidoStatus";
 import type { PedidoListItem } from "../interfaces/order.interface";
@@ -29,7 +29,7 @@ export const getProcurementOrderColumnText = (
     case "fecha_confirmacion":
       return formatLocalDate(order.fecha_confirmacion);
     case "gran_total":
-      return formatMoneyValueOrDash(order.gran_total);
+      return formatOrderAmountOrDash(order.gran_total);
     default:
       return String((order as unknown as Record<string, unknown>)[column.id] ?? "");
   }
