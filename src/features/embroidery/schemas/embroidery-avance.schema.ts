@@ -5,30 +5,21 @@ import { z } from "zod";
  * (`POST /produccion/bordado-avances/`). Opera sobre los STRINGS de los inputs
  * y la conversión a número ocurre al enviar.
  *
- * Las reglas son de UX únicamente: el backend NO las impone
- * (`BordadoAvancesSerializer` usa `fields="__all__"` con `activo` como único
- * read-only, sin validadores de rango).
+ * El avance se captura POR OB (EC-491): no hay renglón (talla/SKU) que elegir.
  *
- *  - `orden_bordado_detalle`: renglón (talla/SKU) elegido. Opcional en el
- *    backend, pero la UX SIEMPRE lo exige, así que aquí es requerido.
- *  - `cantidad_bordada`: ENTERO > 0 (piezas bordadas en esta tanda). El modelo
- *    es un `FloatField` y el backend aceptaría decimales, pero no se borda
- *    media prenda: la restricción es de negocio, no de esquema.
+ * Las reglas son de UX únicamente: el backend solo exige `cantidad_bordada`
+ * ≥ 0 (float) y `puntadas_por_pieza` entero ≥ 0.
+ *
+ *  - `cantidad_bordada`: ENTERO > 0 (piezas bordadas en esta tanda). El backend
+ *    aceptaría decimales y 0, pero no se borda media prenda ni se registra una
+ *    tanda vacía: la restricción es de negocio, no de esquema.
  *  - `puntadas_por_pieza`: entero >= 0, las puntadas que lleva UNA prenda. El 0
  *    se admite A PROPÓSITO —puede no conocerse el ponchado al registrar la
  *    tanda—, por eso NO se exige > 0; en ese caso el backend deja
- *    `puntadas_total` en 0 en vez de calcularlo.
+ *    `puntadas_total` en 0.
  *  - `comentario`: opcional.
  */
 export const CreateAvanceFormSchema = z.object({
-  orden_bordado_detalle: z
-    .string()
-    .trim()
-    .min(1, "Selecciona una talla o SKU")
-    .refine(
-      (value) => Number.isInteger(Number(value)) && Number(value) > 0,
-      "Selecciona una talla o SKU",
-    ),
   cantidad_bordada: z
     .string()
     .trim()

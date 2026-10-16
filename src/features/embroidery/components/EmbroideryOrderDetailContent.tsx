@@ -409,8 +409,8 @@ export function EmbroideryOrderDetailContent({
         avances={data.avances}
         obId={data.id}
         isTerminal={isTerminal}
-        detalles={data.detalles}
-        porDetalle={data.resumen_avance.por_detalle}
+        programado={data.resumen_avance.cantidad_programada}
+        bordado={data.resumen_avance.cantidad_bordada_total}
       />
     </div>
   );

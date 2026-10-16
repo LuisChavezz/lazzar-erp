@@ -359,13 +359,16 @@ export interface PedidoDetalleTallaDisplay {
  * `usuario` NO se envía al crear un avance: el backend lo inyecta con el
  * usuario autenticado.
  *
- * `orden_bordado_detalle` es la línea (talla/SKU) contra la que se bordó. Es
- * NULLABLE: los avances antiguos (anteriores al seguimiento por talla) no lo
- * tienen, y se muestran como "sin asignar". `pedido_detalle_talla` lo
- * autovincula el backend a partir del renglón — el frontend NO lo envía.
+ * El avance se captura POR OB desde EC-491 (backend PR #501):
+ * `orden_bordado_detalle` y `pedido_detalle_talla` —y sus `_display`— son de
+ * SOLO LECTURA y llegan `null` en todo avance nuevo. Solo los avances del
+ * seguimiento por talla anterior los traen poblados; se conservan nullable
+ * porque el backend los sigue devolviendo, pero el frontend ya no los pinta.
  */
 export interface BordadoAvance {
   id: number;
+  /** OB a la que pertenece el avance. */
+  ob: number;
   fecha: string;
   usuario: number;
   usuario_nombre: string;
@@ -426,6 +429,12 @@ export interface ResumenOperador {
  * los identificadores en `null`; `cantidad_programada`/`puntadas_presupuesto`
  * llegan en 0 (no hay renglón que presupueste). Los demás nombres son nullable
  * por la misma razón que los display.
+ *
+ * Desde la captura por OB (EC-491) los avances nuevos caen en una fila sin
+ * renglón rotulada "Avance de la OB (sin talla)" y medida contra el
+ * `cantidad_programada` TOTAL de la orden. El backend sigue devolviendo este
+ * desglose, por eso se tipa, pero el frontend ya no lo pinta: el resumen usa
+ * solo los totales de `ResumenAvance`.
  */
 export interface ResumenAvancePorDetalle {
   orden_bordado_detalle_id: number | null;
@@ -790,22 +799,17 @@ export interface UpdateEmbroideryOrderPayload {
 
 /**
  * Cuerpo de `POST /produccion/bordado-avances/` — registra un avance contra la
- * orden `ob` y el renglón `orden_bordado_detalle` (talla/SKU).
+ * orden `ob` completa (captura por OB, EC-491).
  *
- * `orden_bordado_detalle` es opcional en el backend, pero la UX SIEMPRE exige
- * elegir un renglón, así que se declara requerido aquí. `usuario` y
- * `pedido_detalle_talla` NO se declaran: el backend inyecta el primero (usuario
- * autenticado) y autovincula el segundo a partir del renglón.
- *
- * Tampoco viajan las otras dos columnas de puntadas, por motivos opuestos:
- * `puntadas_total` lo CALCULA el backend (`por_pieza × cantidad`, pisando lo
- * que mande el cliente), y `puntadas_realizadas` —el contador manual de la
- * máquina— dejó de capturarse. Ambos siguen en `BordadoAvance`, que es la
- * lectura.
+ * Solo viaja lo que el backend persiste. `orden_bordado_detalle`,
+ * `pedido_detalle_talla`, `usuario` y `puntadas_total` son de solo lectura y se
+ * ignorarían en silencio: el backend inyecta el usuario autenticado y calcula
+ * `puntadas_total = round(puntadas_por_pieza × cantidad_bordada)`.
+ * `puntadas_realizadas` —el contador manual heredado— sigue siendo escribible,
+ * pero dejó de capturarse y no se envía.
  */
 export interface CreateAvancePayload {
   ob: number;
-  orden_bordado_detalle: number;
   cantidad_bordada: number;
   puntadas_por_pieza: number;
   comentario?: string;
