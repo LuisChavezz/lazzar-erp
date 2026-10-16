@@ -7,8 +7,8 @@ import type { SupplierKpiRow, SupplierKpis } from "../interfaces/supplier-kpis.i
  * backend.
  *
  * Ojo: el payload trae como máximo `filtros.limite` proveedores (50 por
- * defecto), los de mayor puntaje; con `truncado` estos totales cubren solo esas
- * filas (ver `getSupplierKpiTruncationNote`).
+ * defecto); con `truncado` estos totales cubren solo esas filas (ver
+ * `getSupplierKpiTruncationNote`).
  */
 
 /** Porcentaje 0–100 redondeado a 1 decimal, como los que manda el backend. */
@@ -74,13 +74,15 @@ export function aggregateScorecard(rows: SupplierKpiRow[]) {
 
 /**
  * Aviso de que el ranking llegó cortado (`truncado`): los agregados y los
- * desgloses cubren solo los proveedores de mayor puntaje que mandó el backend,
- * no los `total_proveedores`. `null` si llegaron todos.
+ * desgloses cubren solo los proveedores que mandó el backend, no los
+ * `total_proveedores`. `null` si llegaron todos. No dice con qué criterio se
+ * eligieron: el backend ordena por un puntaje que incluye precio, y eso no se
+ * revela a quien no puede ver importes.
  */
 export function getSupplierKpiTruncationNote(data: SupplierKpis): string | null {
   if (!data.truncado) return null;
   return (
-    `Calculado sobre los ${data.proveedores.length} proveedores de mayor puntaje ` +
-    `de ${data.total_proveedores} con actividad; el resto no entra.`
+    `Calculado sobre ${data.proveedores.length} de ${data.total_proveedores} proveedores ` +
+    "con actividad; el resto no entra."
   );
 }
