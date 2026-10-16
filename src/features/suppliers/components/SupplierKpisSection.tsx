@@ -8,12 +8,13 @@ import { ClockIcon, EmbarquesIcon, ShieldCheckIcon, StarIcon } from "@/src/compo
 import { formatQuantityValue } from "@/src/utils/formatCurrency";
 import { formatKpiDias, formatKpiPctOrDash, plural } from "@/src/utils/kpiFormat";
 import { useSupplierKpis } from "../hooks/useSupplierKpis";
-import type { SupplierKpiRow } from "../interfaces/supplier-kpis.interface";
+import type { SupplierKpiRow, SupplierKpis } from "../interfaces/supplier-kpis.interface";
 import {
   aggregateLeadTime,
   aggregateOnTimeDelivery,
   aggregateQuality,
   aggregateScorecard,
+  getSupplierKpiTruncationNote,
 } from "../utils/supplierKpis";
 import { SupplierKpiDialog, type SupplierKpiDialogKind } from "./SupplierKpiDialog";
 
@@ -128,17 +129,23 @@ function scorecardCard(rows: SupplierKpiRow[]): KpiCompactItem {
   };
 }
 
-function buildCards(rows: SupplierKpiRow[], openDialog: (kind: SupplierKpiDialogKind) => void): KpiCompactItem[] {
+function buildCards(data: SupplierKpis, openDialog: (kind: SupplierKpiDialogKind) => void): KpiCompactItem[] {
+  const rows = data.proveedores;
   if (rows.length === 0) {
     return Object.values(LABELS).map((base) => unavailable(base, NO_ACTIVITY_REASON));
   }
   const hasPactado = rows.some((row) => row.lead_time.dias_promedio_pactado !== null);
-  return [
+  const cards = [
     onTimeCard(rows, () => openDialog("entrega_a_tiempo")),
     qualityCard(rows, () => openDialog("calidad")),
     leadTimeCard(rows, hasPactado, () => openDialog("lead_time")),
     scorecardCard(rows),
   ];
+  // Con el ranking cortado, cada agregado lo dice en su ⓘ (las tarjetas no
+  // disponibles no agregan nada).
+  const truncationNote = getSupplierKpiTruncationNote(data);
+  if (!truncationNote) return cards;
+  return cards.map((card) => (card.info ? { ...card, info: `${card.info} ${truncationNote}` } : card));
 }
 
 /**
@@ -166,7 +173,7 @@ export function SupplierKpisSection() {
 
   let body: ReactNode;
   if (data) {
-    body = <KpiGrid compact items={buildCards(data.proveedores, openDialog)} />;
+    body = <KpiGrid compact items={buildCards(data, openDialog)} />;
   } else if (isInitialError) {
     body = (
       <SectionErrorNotice

@@ -1,4 +1,4 @@
-import type { SupplierKpiRow } from "../interfaces/supplier-kpis.interface";
+import type { SupplierKpiRow, SupplierKpis } from "../interfaces/supplier-kpis.interface";
 
 /**
  * Agregados de las tarjetas de indicadores de proveedores (EC-436). El backend
@@ -6,8 +6,9 @@ import type { SupplierKpiRow } from "../interfaces/supplier-kpis.interface";
  * promedian porcentajes). Funciones puras: no reinterpretan ninguna regla del
  * backend.
  *
- * Ojo: el payload trae como máximo 50 proveedores, así que con más actividad
- * estos totales cubren solo esas filas.
+ * Ojo: el payload trae como máximo `filtros.limite` proveedores (50 por
+ * defecto), los de mayor puntaje; con `truncado` estos totales cubren solo esas
+ * filas (ver `getSupplierKpiTruncationNote`).
  */
 
 /** Porcentaje 0–100 redondeado a 1 decimal, como los que manda el backend. */
@@ -69,4 +70,17 @@ export function aggregateScorecard(rows: SupplierKpiRow[]) {
   const evaluados = rows.filter((row) => row.scorecard.semaforo !== "sin_datos");
   const enVerde = evaluados.filter((row) => row.scorecard.semaforo === "verde").length;
   return { enVerde, evaluados: evaluados.length };
+}
+
+/**
+ * Aviso de que el ranking llegó cortado (`truncado`): los agregados y los
+ * desgloses cubren solo los proveedores de mayor puntaje que mandó el backend,
+ * no los `total_proveedores`. `null` si llegaron todos.
+ */
+export function getSupplierKpiTruncationNote(data: SupplierKpis): string | null {
+  if (!data.truncado) return null;
+  return (
+    `Calculado sobre los ${data.proveedores.length} proveedores de mayor puntaje ` +
+    `de ${data.total_proveedores} con actividad; el resto no entra.`
+  );
 }

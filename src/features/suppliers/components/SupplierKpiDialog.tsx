@@ -8,6 +8,7 @@ import { formatKpiDias, formatKpiPct, plural } from "@/src/utils/kpiFormat";
 import type { SupplierKpiRow, SupplierKpis } from "../interfaces/supplier-kpis.interface";
 import { supplierDetailHref } from "../utils/supplierPurchaseOrderHistoryFilters";
 import { useSuppliers } from "../hooks/useSuppliers";
+import { getSupplierKpiTruncationNote } from "../utils/supplierKpis";
 
 /** Tarjetas con drill-down. "Scorecard general" no tiene (ver la sección). */
 export type SupplierKpiDialogKind = "entrega_a_tiempo" | "calidad" | "lead_time";
@@ -18,11 +19,6 @@ const NAME_LINK_CLASS =
 const TH_CLASS = "px-3 py-2 font-semibold";
 const TD_CLASS = "px-3 py-2 text-slate-600 dark:text-slate-300";
 const NUM_TD_CLASS = `${TD_CLASS} text-right tabular-nums whitespace-nowrap`;
-
-// Tope de filas del payload. El backend no avisa si recortó, así que con la
-// lista llena solo se puede decir que PUEDE haber más (mismo texto que los
-// indicadores de recepciones).
-const KPI_BACKEND_LIMIT = 50;
 
 // Las filas con la métrica de la tarjeta en `null` no aportan nada al
 // indicador: se excluyen. Orden: el peor primero; empates por nombre.
@@ -174,12 +170,11 @@ export function SupplierKpiDialog({ open, kind, data, onClose }: SupplierKpiDial
   const activeIds = new Set(suppliers.map((supplier) => supplier.id));
   const rows = kind && data ? getRows(kind, data.proveedores) : [];
   const shown = `${rows.length} ${plural(rows.length, "proveedor", "proveedores")}, el peor primero`;
+  // Con el ranking cortado (`truncado`), el desglose cubre las mismas filas que
+  // la tarjeta: lo dice con `total_proveedores`.
+  const truncationNote = data ? getSupplierKpiTruncationNote(data) : null;
   const description =
-    rows.length === 0
-      ? "Sin proveedores que mostrar"
-      : data && data.proveedores.length >= KPI_BACKEND_LIMIT
-        ? `Mostrando ${shown}; puede haber más`
-        : shown;
+    rows.length === 0 ? "Sin proveedores que mostrar" : truncationNote ? `${shown}. ${truncationNote}` : shown;
   return (
     <MainDialog
       open={open}
