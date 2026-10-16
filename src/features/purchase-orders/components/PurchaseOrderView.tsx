@@ -23,6 +23,8 @@ import type { PurchaseOrder } from "../interfaces/purchase-order.interface";
 import { PurchaseOrderOnboardingStepManager } from "./PurchaseOrderOnboardingStepManager";
 import { PurchaseOrderEditDialog } from "./PurchaseOrderEditDialog";
 import { PurchaseOrderCancelDialog } from "./PurchaseOrderCancelDialog";
+import { PurchaseOrderCriticalPathDialog } from "./PurchaseOrderCriticalPathDialog";
+import type { PurchaseOrderCriticalPathTarget } from "../interfaces/purchase-order-critical-path.interface";
 
 // ─── Vista principal ─────────────────────────────────────────────────────────
 
@@ -60,6 +62,13 @@ export function PurchaseOrderView() {
   const [cancellingOrder, setCancellingOrder] = useState<PurchaseOrder | null>(null);
   const [isCancelOpen, setIsCancelOpen] = useState(false);
 
+  // ── Ruta crítica ──────────────────────────────────────────────────────────
+  // Mismo motivo: vive aquí y no en la celda. Guarda la FOTO de la fila
+  // (folio y estatus) al abrir: un refetch del listado con el diálogo abierto
+  // no le cambia el modo de solo lectura a media captura.
+  const [criticalPathTarget, setCriticalPathTarget] =
+    useState<PurchaseOrderCriticalPathTarget | null>(null);
+
   // ── Opciones de los filtros de encabezado ─────────────────────────────────
   // Alimentan los desplegables de O.C. (Estatus) y Proveedor dentro de
   // `getColumns` (ver `ColumnFilterHeader`); se recalculan solo cuando cambia
@@ -77,6 +86,8 @@ export function PurchaseOrderView() {
           setCancellingOrder(order);
           setIsCancelOpen(true);
         },
+        (order) =>
+          setCriticalPathTarget({ ocId: order.id, folio: order.folio, estatus: order.estatus }),
         statusOptions,
         supplierOptions,
       ),
@@ -210,6 +221,17 @@ export function PurchaseOrderView() {
         open={isCancelOpen}
         onOpenChange={setIsCancelOpen}
       />
+
+      {/* ── Ruta crítica ──────────────────────────────────────────────────── */}
+      {/* Montado SOLO mientras está abierto, con `key` por OC: cada apertura
+          espera su lectura fresca (ver `PurchaseOrderCriticalPathDialog`). */}
+      {criticalPathTarget && (
+        <PurchaseOrderCriticalPathDialog
+          key={criticalPathTarget.ocId}
+          target={criticalPathTarget}
+          onClose={() => setCriticalPathTarget(null)}
+        />
+      )}
     </div>
   );
 }

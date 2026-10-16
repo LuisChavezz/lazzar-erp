@@ -16,6 +16,7 @@ import {
   EditIcon,
   EmailIcon,
   FilterIcon,
+  RouteIcon,
   ViewIcon,
 } from "@/src/components/Icons";
 import { formatQuantityValue } from "@/src/utils/formatCurrency";
@@ -46,9 +47,9 @@ const columnHelper = createColumnHelper<PurchaseOrder>();
  * `OperationsOrderColumns` (texto tipo link con chevron; el punto y la
  * referencia van FUERA del botón, son indicadores, no parte de la acción).
  *
- * Navegación, edición y cancelación se DELEGAN a la vista (`onViewDetails` /
- * `onEdit` / `onCancel`): sus destinos —una página de detalle y dos diálogos
- * de formulario— deben sobrevivir a que la celda se desmonte al ordenar,
+ * Navegación, edición, cancelación y ruta crítica se DELEGAN a la vista
+ * (`onViewDetails` / `onEdit` / `onCancel` / `onCriticalPath`): sus destinos
+ * —una página de detalle y tres diálogos de formulario— deben sobrevivir a que la celda se desmonte al ordenar,
  * paginar o filtrar. Cancelar en particular CAMBIA el estatus de la fila, así
  * que el refetch puede sacarla de una vista filtrada con el diálogo abierto.
  *
@@ -62,11 +63,13 @@ const FolioCell = ({
   onViewDetails,
   onEdit,
   onCancel,
+  onCriticalPath,
 }: {
   order: PurchaseOrder;
   onViewDetails: (id: number) => void;
   onEdit: (order: PurchaseOrder) => void;
   onCancel: (order: PurchaseOrder) => void;
+  onCriticalPath: (order: PurchaseOrder) => void;
 }) => {
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
@@ -125,6 +128,14 @@ const FolioCell = ({
       label: "Ver Detalles",
       icon: ViewIcon,
       onSelect: () => onViewDetails(order.id),
+    },
+    {
+      // En TODOS los estatus y sin `permission`: quien ve la orden puede
+      // consultar su ruta crítica. El diálogo (de la vista) decide si es de
+      // solo lectura: OC Cancelada o sin `E-COMPRAS-OC`.
+      label: "Ruta crítica",
+      icon: RouteIcon,
+      onSelect: () => onCriticalPath(order),
     },
   ];
 
@@ -406,6 +417,7 @@ export const getColumns = (
   onViewDetails: (id: number) => void,
   onEdit: (order: PurchaseOrder) => void,
   onCancel: (order: PurchaseOrder) => void,
+  onCriticalPath: (order: PurchaseOrder) => void,
   statusOptions: DataTableFilterOption[],
   supplierOptions: DataTableFilterOption[],
 ) => {
@@ -458,6 +470,7 @@ export const getColumns = (
             onViewDetails={onViewDetails}
             onEdit={onEdit}
             onCancel={onCancel}
+            onCriticalPath={onCriticalPath}
           />
         ),
       },

@@ -4,7 +4,8 @@ import type React from "react";
 import { useState } from "react";
 import Link from "next/link";
 import { PedidoFolioLink } from "@/src/features/orders/components/PedidoFolioLink";
-import { ArrowLeftIcon } from "@/src/components/Icons";
+import { ArrowLeftIcon, RouteIcon } from "@/src/components/Icons";
+import { Button } from "@/src/components/Button";
 import { Loader } from "@/src/components/Loader";
 import { ErrorState } from "@/src/components/ErrorState";
 import { StatusBadge } from "@/src/components/StatusBadge";
@@ -32,6 +33,8 @@ import {
 } from "../constants/purchaseOrderStatus";
 import { canSeeAmounts, formatIvaPercent } from "../utils/purchaseOrderFinance";
 import { usePurchaseOrder } from "../hooks/usePurchaseOrder";
+import type { PurchaseOrderCriticalPathTarget } from "../interfaces/purchase-order-critical-path.interface";
+import { PurchaseOrderCriticalPathDialog } from "./PurchaseOrderCriticalPathDialog";
 import { tipoCompraLabel } from "../constants/purchaseOrderTipoCompra";
 import type {
   DocumentoLigado,
@@ -563,6 +566,12 @@ export function PurchaseOrderPageContent({
   const [openDoc, setOpenDoc] = useState<{ tipo: string; id: number } | null>(
     null,
   );
+  // Ruta crítica abierta (`null` = cerrada). Guarda la FOTO de folio y estatus
+  // al abrir: un refetch del detalle con el diálogo abierto no le cambia el
+  // modo de solo lectura a media captura. Antes de los returns tempranos.
+  const [criticalPathTarget, setCriticalPathTarget] =
+    useState<PurchaseOrderCriticalPathTarget | null>(null);
+
   // `Object.hasOwn` (no indexado directo) por el mismo motivo que `DocRow`:
   // `openDoc.tipo` viene de la URL de datos del backend.
   const OpenDocDialog =
@@ -687,6 +696,18 @@ export function PurchaseOrderPageContent({
               </HeaderStat>
             )}
           </HeaderStatRow>
+
+          {/* Disponible en todos los estatus: el diálogo decide si es de solo
+              lectura (OC Cancelada o sin `E-COMPRAS-OC`). */}
+          <Button
+            variant="secondary"
+            onClick={() =>
+              setCriticalPathTarget({ ocId: data.id, folio: data.folio, estatus: data.estatus })
+            }
+          >
+            <RouteIcon className="w-4 h-4" aria-hidden="true" />
+            Ruta crítica
+          </Button>
         </div>
       </section>
 
@@ -843,6 +864,13 @@ export function PurchaseOrderPageContent({
           onOpenChange={(open) => {
             if (!open) setOpenDoc(null);
           }}
+        />
+      )}
+
+      {criticalPathTarget && (
+        <PurchaseOrderCriticalPathDialog
+          target={criticalPathTarget}
+          onClose={() => setCriticalPathTarget(null)}
         />
       )}
     </div>
