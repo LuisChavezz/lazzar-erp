@@ -47,7 +47,7 @@ const NO_PERMISSION_NOTICE =
  *
  * Solo lectura —decisión de negocio, aplicada aquí en el cliente— cuando la
  * OC está Cancelada o el usuario no tiene `E-COMPRAS-OC`. El backend hoy solo
- * exige sesión para escribir (ver issue en nucleo-erp), así que esto es UX,
+ * exige sesión para escribir (DISTinTheHouse/nucleo-erp#526), así que esto es UX,
  * no una frontera de seguridad. El estatus es la FOTO que tomó quien abre.
  */
 export function PurchaseOrderCriticalPathDialog({
