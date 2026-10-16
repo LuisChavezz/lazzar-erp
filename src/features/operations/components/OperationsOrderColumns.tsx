@@ -12,7 +12,7 @@ import {
   EyeIcon,
   WarehouseIcon,
 } from "@/src/components/Icons";
-import { formatMoneyValueOrDash, NO_CURRENCY_FORMAT } from "@/src/utils/formatCurrency";
+import { formatOrderAmountOrDash } from "@/src/features/orders/utils/orderAmountFormat";
 import type { PedidoListItem } from "@/src/features/orders/interfaces/order.interface";
 import {
   canEditPedidoMesaControl,
@@ -205,9 +205,7 @@ export function buildOperationsOrderColumns(
       meta: { align: "right" },
       cell: ({ row }) => (
         <span className="tabular-nums text-sm font-semibold text-slate-700 dark:text-slate-200">
-          {/* Sin símbolo: la fila solo trae el id de `moneda`, no su código, y
-              un "$" afirmaría pesos en un pedido en otra moneda. */}
-          {formatMoneyValueOrDash(row.original.subtotal, NO_CURRENCY_FORMAT)}
+          {formatOrderAmountOrDash(row.original.subtotal)}
         </span>
       ),
     },

@@ -5,7 +5,7 @@ import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { ChevronRightIcon } from '@/src/components/Icons';
 import { ColumnHeaderFilter, type ColumnFilterOption } from '@/src/components/ColumnHeaderFilter';
-import { formatMoneyValueOrDash, NO_CURRENCY_FORMAT } from '@/src/utils/formatCurrency';
+import { formatOrderAmountOrDash } from '../utils/orderAmountFormat';
 import { parseLocalDate } from '@/src/utils/formatDate';
 import type { PedidoListItem } from '../interfaces/order.interface';
 import { PEDIDO_ESTATUS, PEDIDO_ESTATUS_CONFIG, getPedidoEstatusConfig } from '../constants/pedidoStatus';
@@ -176,9 +176,7 @@ export function createProcurementOrderColumns({
       size: 130,
       cell: ({ row }) => (
         <span className="tabular-nums text-[13px] font-semibold text-slate-700 dark:text-slate-200">
-          {/* Sin símbolo: la fila solo trae el id de `moneda`, no su código, y
-              un "$" afirmaría pesos en un pedido en otra moneda. */}
-          {formatMoneyValueOrDash(row.original.gran_total, NO_CURRENCY_FORMAT)}
+          {formatOrderAmountOrDash(row.original.gran_total)}
         </span>
       ),
     },
