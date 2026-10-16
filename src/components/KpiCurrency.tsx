@@ -7,6 +7,9 @@ import { formatKpiCurrencyAmount } from "@/src/utils/kpiFormat";
  * `<h3>` de `KpiGrid` y en celdas de tabla.
  */
 
+/** Frase del ⓘ de todo indicador por moneda: el criterio, igual en todas las pantallas. */
+export const SEPARATE_CURRENCIES_NOTE = "Cada moneda va por separado: los importes de monedas distintas no se suman.";
+
 /** Un bloque de `KpiCurrencyBlocks`: el importe de una moneda y, opcional, el detalle de ESA moneda. */
 export interface KpiCurrencyBlock {
   moneda: string;

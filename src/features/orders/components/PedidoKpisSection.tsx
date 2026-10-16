@@ -7,7 +7,7 @@ import KpiGrid, {
   KpiGridSkeleton,
   type KpiCompactItem,
 } from "@/src/components/KpiGrid";
-import { KpiCurrencyBlocks, KpiMutedValue } from "@/src/components/KpiCurrency";
+import { KpiCurrencyBlocks, KpiMutedValue, SEPARATE_CURRENCIES_NOTE } from "@/src/components/KpiCurrency";
 import { KpiDrillDownButton } from "@/src/components/KpiDrillDownButton";
 import { KpiSectionErrorBoundary } from "@/src/components/KpiSectionErrorBoundary";
 import { SectionErrorNotice } from "@/src/components/SectionErrorNotice";
@@ -50,7 +50,7 @@ function activeCard(kpi: PedidoActiveKpi, onDrillDown: () => void): KpiCompactIt
       blocks.length === 0 ? <KpiMutedValue>Sin pedidos activos</KpiMutedValue> : <KpiCurrencyBlocks blocks={blocks} />,
     info:
       "Pedidos autorizados o en proceso de tus cotizaciones; el valor es la suma de sus totales. " +
-      "Cada moneda va por separado: los importes de monedas distintas no se suman.",
+      SEPARATE_CURRENCIES_NOTE,
     hideProgress: true,
     ...(kpi.total > 0 ? { detail: `${kpi.total} ${plural(kpi.total, "pedido activo", "pedidos activos")}` } : {}),
     action: (

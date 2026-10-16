@@ -6,7 +6,7 @@ import KpiGrid, {
   KpiGridSkeleton,
   type KpiCompactItem,
 } from "@/src/components/KpiGrid";
-import { KpiMutedValue, KpiTaggedBlocks } from "@/src/components/KpiCurrency";
+import { KpiMutedValue, KpiTaggedBlocks, SEPARATE_CURRENCIES_NOTE } from "@/src/components/KpiCurrency";
 import { KpiDrillDownButton } from "@/src/components/KpiDrillDownButton";
 import { KpiSectionErrorBoundary } from "@/src/components/KpiSectionErrorBoundary";
 import { SectionErrorNotice } from "@/src/components/SectionErrorNotice";
@@ -41,7 +41,6 @@ import {
 
 const SECTION_TITLE = "Indicadores";
 
-const SEPARATE_CURRENCIES_NOTE = "Cada moneda va por separado: los importes de monedas distintas no se suman.";
 const SEPARATE_UNITS_NOTE = "Cada unidad de medida va por separado: no se suman cantidades de unidades distintas.";
 
 /** Clave de la unidad de medida; los productos sin unidad capturada van aparte. */

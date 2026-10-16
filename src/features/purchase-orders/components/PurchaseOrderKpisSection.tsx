@@ -7,7 +7,7 @@ import KpiGrid, {
   KpiGridSkeleton,
   type KpiCompactItem,
 } from "@/src/components/KpiGrid";
-import { KpiCurrencyBlocks, KpiMutedValue } from "@/src/components/KpiCurrency";
+import { KpiCurrencyBlocks, KpiMutedValue, SEPARATE_CURRENCIES_NOTE } from "@/src/components/KpiCurrency";
 import { KpiDrillDownButton } from "@/src/components/KpiDrillDownButton";
 import { KpiSectionErrorBoundary } from "@/src/components/KpiSectionErrorBoundary";
 import { SectionErrorNotice } from "@/src/components/SectionErrorNotice";
@@ -37,8 +37,6 @@ const HIDDEN_AMOUNTS_MOTIVO: Record<KpiHiddenAmountsReason, string> = {
   "no-permission": "No tienes permiso para ver los importes de las órdenes de compra.",
   undetermined: "No se pudo verificar si puedes ver los importes de las órdenes de compra.",
 };
-
-const SEPARATE_CURRENCIES_NOTE = "Cada moneda va por separado: los importes de monedas distintas no se suman.";
 
 /**
  * OCs abiertas: un bloque por moneda con su monto y, en el detalle, el conteo

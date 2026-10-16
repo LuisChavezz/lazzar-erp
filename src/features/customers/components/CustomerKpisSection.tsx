@@ -8,7 +8,7 @@ import KpiGrid, {
   type KpiCompactItem,
 } from "@/src/components/KpiGrid";
 import { KpiDrillDownButton } from "@/src/components/KpiDrillDownButton";
-import { KpiCurrencyBlocks, KpiMutedValue } from "@/src/components/KpiCurrency";
+import { KpiCurrencyBlocks, KpiMutedValue, SEPARATE_CURRENCIES_NOTE } from "@/src/components/KpiCurrency";
 import { KpiSectionErrorBoundary } from "@/src/components/KpiSectionErrorBoundary";
 import { SectionErrorNotice } from "@/src/components/SectionErrorNotice";
 import { ClientesIcon, ReceiptIcon, TrendingUpIcon, WalletIcon } from "@/src/components/Icons";
@@ -26,8 +26,6 @@ import {
 } from "./CustomerKpiDrillDownDialog";
 
 const SECTION_TITLE = "Indicadores";
-
-const SEPARATE_CURRENCIES_NOTE = "Cada moneda va por separado: los importes de monedas distintas no se suman.";
 
 /**
  * Ventas por cliente: un bloque por moneda con el total facturado, los clientes
