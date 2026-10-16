@@ -59,19 +59,14 @@ export function aggregateLeadTime(rows: SupplierKpiRow[]) {
   };
 }
 
-/** Scorecard: cuántos proveedores están en verde entre los que tienen semáforo. */
+/**
+ * Scorecard: cuántos proveedores están en verde entre los que tienen semáforo
+ * (`sin_datos` = ningún factor con dato). El backend promedia solo los
+ * factores con dato, así que un proveedor sin fechas prometidas ya no arrastra
+ * su puntaje por puntualidad: cuentan todos los evaluados.
+ */
 export function aggregateScorecard(rows: SupplierKpiRow[]) {
   const evaluados = rows.filter((row) => row.scorecard.semaforo !== "sin_datos");
   const enVerde = evaluados.filter((row) => row.scorecard.semaforo === "verde").length;
   return { enVerde, evaluados: evaluados.length };
 }
-
-/**
- * Proveedores con lead time pactado, es decir, con alguna OC con
- * `fecha_entrega_estimada`. Sin esa fecha el backend cuenta toda recepción
- * como tardía y arrastra el scorecard (#387/#388), así que "Entrega a tiempo"
- * y "Scorecard general" (y el drill-down de entrega) usan SOLO estas filas.
- * Sin ninguna, ambas tarjetas quedan no disponibles.
- */
-export const rowsWithAgreedLeadTime = (rows: SupplierKpiRow[]): SupplierKpiRow[] =>
-  rows.filter((row) => row.lead_time.dias_promedio_pactado !== null);

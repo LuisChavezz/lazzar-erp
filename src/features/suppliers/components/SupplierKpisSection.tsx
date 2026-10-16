@@ -14,7 +14,6 @@ import {
   aggregateOnTimeDelivery,
   aggregateQuality,
   aggregateScorecard,
-  rowsWithAgreedLeadTime,
 } from "../utils/supplierKpis";
 import { SupplierKpiDialog, type SupplierKpiDialogKind } from "./SupplierKpiDialog";
 
@@ -114,16 +113,16 @@ function leadTimeCard(rows: SupplierKpiRow[], hasPactado: boolean, onOpen: () =>
  * y SIN drill-down: el puntaje se deriva de precios y aún no hay regla de
  * permisos para mostrarlo (backend #377).
  */
-function scorecardCard(withDueDate: SupplierKpiRow[]): KpiCompactItem {
-  if (withDueDate.length === 0) return unavailable(LABELS.scorecard, NO_DUE_DATE_REASON);
-  const { enVerde, evaluados } = aggregateScorecard(withDueDate);
+function scorecardCard(rows: SupplierKpiRow[]): KpiCompactItem {
+  const { enVerde, evaluados } = aggregateScorecard(rows);
   return {
     ...LABELS.scorecard,
     ...(evaluados > 0 ? { iconClass: "text-emerald-500" } : KPI_MUTED_ICON),
     value: evaluados > 0 ? `${enVerde} de ${evaluados}` : "—",
     info:
-      "En verde = puntaje de 80 o más. El puntaje promedia puntualidad, calidad, cumplimiento de " +
-      "cantidad y precio. Solo cuentan los proveedores con fecha de entrega estimada en sus órdenes de compra.",
+      "En verde = puntaje de 80 o más. El puntaje promedia los factores con dato de cada proveedor: " +
+      "puntualidad, calidad, cumplimiento de cantidad y precio. Un factor sin dato (p. ej. puntualidad " +
+      "sin fechas de entrega estimada) no cuenta.",
     hideProgress: true,
     detail: evaluados > 0 ? "en verde" : "Sin proveedores evaluados",
   };
@@ -133,14 +132,12 @@ function buildCards(rows: SupplierKpiRow[], openDialog: (kind: SupplierKpiDialog
   if (rows.length === 0) {
     return Object.values(LABELS).map((base) => unavailable(base, NO_ACTIVITY_REASON));
   }
-  // El scorecard usa solo estas filas, y el lead time solo necesita saber si
-  // hay alguna.
-  const withDueDate = rowsWithAgreedLeadTime(rows);
+  const hasPactado = rows.some((row) => row.lead_time.dias_promedio_pactado !== null);
   return [
     onTimeCard(rows, () => openDialog("entrega_a_tiempo")),
     qualityCard(rows, () => openDialog("calidad")),
-    leadTimeCard(rows, withDueDate.length > 0, () => openDialog("lead_time")),
-    scorecardCard(withDueDate),
+    leadTimeCard(rows, hasPactado, () => openDialog("lead_time")),
+    scorecardCard(rows),
   ];
 }
 
