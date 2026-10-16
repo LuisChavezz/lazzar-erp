@@ -93,24 +93,26 @@ function qualityCard(rows: SupplierKpiRow[], onOpen: () => void): KpiCompactItem
 }
 
 /**
- * Lead time: el real ponderado por recepciones. El pactado NO se agrega (no se
- * sabe sobre qué recepciones lo promedia el backend, #388): el detalle dice
- * que no está disponible o remite al drill-down.
+ * Lead time: el real como valor y el pactado como detalle, los dos ponderados
+ * por las recepciones medidas (el backend promedia ambos sobre las mismas
+ * recepciones, así que son comparables). Sin recepciones con fecha prometida,
+ * el pactado no está disponible.
  */
 function leadTimeCard(rows: SupplierKpiRow[], hasPactado: boolean, onOpen: () => void): KpiCompactItem {
-  const { dias, recepciones } = aggregateLeadTime(rows);
+  const { dias, diasPactado, recepciones } = aggregateLeadTime(rows);
   return {
     ...LABELS.leadTime,
     ...(dias !== null ? { iconClass: "text-violet-500" } : KPI_MUTED_ICON),
     value: formatKpiDias(dias),
     info:
-      "Días desde la fecha de la OC hasta cada recepción, promediados por recepción. " +
-      "Solo cuentan las recepciones cuya OC tiene fecha de entrega estimada.",
+      "Real: días desde la fecha de la OC hasta cada recepción. Pactado: días desde la fecha de la OC " +
+      "hasta su fecha de entrega estimada. Ambos se promedian sobre las mismas recepciones: las de OCs " +
+      "con fecha de entrega estimada.",
     hideProgress: true,
-    detail: hasPactado ? "Pactado: ver por proveedor" : "Pactado no disponible",
+    detail: hasPactado ? `Pactado: ${formatKpiDias(diasPactado)}` : "Pactado no disponible",
     detailTitle: hasPactado
-      ? "El lead time pactado de cada proveedor está en el desglose por proveedor"
-      : "Lead time pactado no disponible: las órdenes de compra no tienen fecha de entrega estimada",
+      ? "Lead time pactado promedio, sobre las mismas recepciones que el real"
+      : "Lead time pactado no disponible: ninguna recepción es de una OC con fecha de entrega estimada",
     action: (
       <KpiDrillDownButton label="Por proveedor" ariaLabel="Ver lead time por proveedor" isEmpty={recepciones === 0} onClick={onOpen} />
     ),

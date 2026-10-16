@@ -41,21 +41,22 @@ export function aggregateQuality(rows: SupplierKpiRow[]) {
 }
 
 /**
- * Lead time real: promedio de `dias_promedio_real` ponderado por
- * `lead_time.recepciones_medidas`, las recepciones sobre las que el backend lo
- * promedió (las que tienen fecha prometida). Así da el mismo promedio por
- * recepción que el backend calcula por proveedor. Las filas sin recepciones
- * medidas (`dias_promedio_real: null`) no aportan. `dias: null` si no queda
- * ninguna recepción.
+ * Lead time real y pactado: promedios de `dias_promedio_real` y
+ * `dias_promedio_pactado` ponderados por `lead_time.recepciones_medidas`. El
+ * backend promedia AMBOS sobre esas mismas recepciones (las que tienen fecha
+ * prometida y fecha de OC), así que los dos globales son el mismo promedio por
+ * recepción y comparables entre sí. Las filas sin recepciones medidas (días en
+ * `null`) no aportan. `dias`/`diasPactado: null` si no queda ninguna recepción.
  */
 export function aggregateLeadTime(rows: SupplierKpiRow[]) {
   const recepciones = sum(rows, (row) => row.lead_time.recepciones_medidas);
-  const ponderado = sum(
-    rows,
-    (row) => (row.lead_time.dias_promedio_real ?? 0) * row.lead_time.recepciones_medidas,
-  );
+  const weighted = (pick: (row: SupplierKpiRow) => number | null) => {
+    const ponderado = sum(rows, (row) => (pick(row) ?? 0) * row.lead_time.recepciones_medidas);
+    return recepciones > 0 ? Math.round((ponderado / recepciones) * 10) / 10 : null;
+  };
   return {
-    dias: recepciones > 0 ? Math.round((ponderado / recepciones) * 10) / 10 : null,
+    dias: weighted((row) => row.lead_time.dias_promedio_real),
+    diasPactado: weighted((row) => row.lead_time.dias_promedio_pactado),
     recepciones,
   };
 }
