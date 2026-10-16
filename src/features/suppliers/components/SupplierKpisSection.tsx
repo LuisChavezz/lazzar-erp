@@ -95,7 +95,9 @@ function leadTimeCard(rows: SupplierKpiRow[], hasPactado: boolean, onOpen: () =>
     ...LABELS.leadTime,
     ...(dias !== null ? { iconClass: "text-violet-500" } : KPI_MUTED_ICON),
     value: formatKpiDias(dias),
-    info: "Días desde la fecha de la OC hasta cada recepción, promediados por recepción.",
+    info:
+      "Días desde la fecha de la OC hasta cada recepción, promediados por recepción. " +
+      "Solo cuentan las recepciones cuya OC tiene fecha de entrega estimada.",
     hideProgress: true,
     detail: hasPactado ? "Pactado: ver por proveedor" : "Pactado no disponible",
     detailTitle: hasPactado
