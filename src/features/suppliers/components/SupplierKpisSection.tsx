@@ -9,6 +9,7 @@ import { ClockIcon, EmbarquesIcon, ShieldCheckIcon, StarIcon } from "@/src/compo
 import { formatQuantityValue } from "@/src/utils/formatCurrency";
 import { formatKpiDias, formatKpiPctOrDash, plural } from "@/src/utils/kpiFormat";
 import { usePurchaseOrders } from "@/src/features/purchase-orders/hooks/usePurchaseOrders";
+import { pendingAmountCard } from "@/src/features/purchase-orders/utils/kpiAmountCards";
 import {
   getPurchaseOrderKpiAmountVisibility,
   resolveKpiAmountState,
@@ -130,26 +131,6 @@ const SCORECARD_HIDDEN_REASON: Record<KpiHiddenAmountsReason, string> = {
   undetermined:
     "El puntaje incluye la diferencia de precio y no se pudo verificar si puedes ver los importes de compras.",
 };
-
-/**
- * Tarjeta en espera de la señal de importes (`pending`): título e icono, y un
- * marcador de carga en el lugar del valor, sin detalle. Mismo marcador que las
- * tarjetas con importes de los indicadores de recepciones.
- */
-function pendingAmountCard(base: Pick<KpiCompactItem, "label" | "icon">): KpiCompactItem {
-  return {
-    ...base,
-    ...KPI_MUTED_ICON,
-    value: (
-      <span
-        role="status"
-        aria-label={`Cargando ${base.label}`}
-        className="inline-block h-6 w-28 align-middle rounded-md bg-slate-100 dark:bg-slate-800 animate-pulse"
-      />
-    ),
-    hideProgress: true,
-  };
-}
 
 /**
  * Scorecard: cuántos proveedores están en verde. Su puntaje se deriva también

@@ -12,6 +12,7 @@ import { KpiSectionErrorBoundary } from "@/src/components/KpiSectionErrorBoundar
 import { SectionErrorNotice } from "@/src/components/SectionErrorNotice";
 import { CheckCircleIcon, ExclamationTriangleIcon, RecepcionesIcon, WalletIcon } from "@/src/components/Icons";
 import { usePurchaseOrders } from "@/src/features/purchase-orders/hooks/usePurchaseOrders";
+import { pendingAmountCard } from "@/src/features/purchase-orders/utils/kpiAmountCards";
 import {
   getPurchaseOrderKpiAmountVisibility,
   resolveKpiAmountState,
@@ -250,28 +251,6 @@ function rejectedCard(
         onClick={onOpen}
       />
     ),
-  };
-}
-
-/**
- * Tarjeta en espera de la señal de importes (`pending`): título e icono, y un
- * marcador de carga en el lugar del valor, sin acción ni detalle. Así nunca se
- * pinta primero en un modo (porcentaje/cantidad) y luego cambia al otro
- * (importe). El marcador va como `value` —`KpiCompactItem` admite un nodo en
- * línea—, sin tocar `KpiGrid`.
- */
-function pendingAmountCard(base: Pick<KpiCompactItem, "label" | "icon">): KpiCompactItem {
-  return {
-    ...base,
-    ...KPI_MUTED_ICON,
-    value: (
-      <span
-        role="status"
-        aria-label={`Cargando ${base.label}`}
-        className="inline-block h-6 w-28 align-middle rounded-md bg-slate-100 dark:bg-slate-800 animate-pulse"
-      />
-    ),
-    hideProgress: true,
   };
 }
 
