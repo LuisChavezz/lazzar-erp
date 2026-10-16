@@ -20,7 +20,7 @@ import { SupplierKpiDialog, type SupplierKpiDialogKind } from "./SupplierKpiDial
 
 const SECTION_TITLE = "Indicadores";
 
-/** `proveedores: []`: sin actividad de proveedores (o usuario sin empresa). */
+/** `proveedores: []` con `disponible: true`: sin actividad de proveedores. */
 const NO_ACTIVITY_REASON = "No hay actividad de proveedores para calcular este indicador.";
 
 /** Ninguna recepción tiene fecha prometida contra la cual medir. */
@@ -130,6 +130,10 @@ function scorecardCard(rows: SupplierKpiRow[]): KpiCompactItem {
 }
 
 function buildCards(data: SupplierKpis, openDialog: (kind: SupplierKpiDialogKind) => void): KpiCompactItem[] {
+  // Sin empresa el backend lo dice a nivel raíz: las cuatro tarjetas con su motivo.
+  if (!data.disponible) {
+    return Object.values(LABELS).map((base) => unavailable(base, data.motivo));
+  }
   const rows = data.proveedores;
   if (rows.length === 0) {
     return Object.values(LABELS).map((base) => unavailable(base, NO_ACTIVITY_REASON));
