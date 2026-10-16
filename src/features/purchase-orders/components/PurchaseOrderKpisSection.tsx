@@ -25,6 +25,7 @@ import {
   getPurchaseOrderKpiAmountVisibility,
   groupPurchaseOrderKpiSpend,
   resolveKpiAmountState,
+  type KpiAmountState,
   type KpiHiddenAmountsReason,
   type PurchaseOrderKpiAmountVisibility,
 } from "../utils/purchaseOrderKpis";
@@ -45,20 +46,12 @@ const HIDDEN_AMOUNTS_MOTIVO: Record<KpiHiddenAmountsReason, string> = {
  * dice que los importes no se muestran, con el porqué en el ⓘ. Sin meta ni
  * semáforo: sin insignia y sin barra.
  */
-function openCard(
-  kpi: PurchaseOrderOpenKpi,
-  visibility: PurchaseOrderKpiAmountVisibility,
-  onOpen: () => void,
-): KpiCompactItem {
+function openCard(kpi: PurchaseOrderOpenKpi, amounts: KpiAmountState, onOpen: () => void): KpiCompactItem {
   const base = { label: "OCs abiertas", icon: ComprasIcon };
   if (!kpi.disponible) {
     return { ...base, ...KPI_MUTED_ICON, value: null, unavailableReason: kpi.motivo };
   }
   const criterio = "Cuenta las OCs en Borrador, Pendiente a confirmar, Autorizada y Parcialmente recibida.";
-  const amounts = resolveKpiAmountState(
-    visibility,
-    kpi.por_moneda.every((fila) => fila.monto !== undefined),
-  );
   const count = `${kpi.total} ${plural(kpi.total, "OC abierta", "OCs abiertas")}`;
   let value: ReactNode;
   let info: string;
@@ -186,10 +179,11 @@ function spendCard(
 function buildCards(
   data: PurchaseOrderKpis,
   visibility: PurchaseOrderKpiAmountVisibility,
+  openAmounts: KpiAmountState,
   openDialog: (kind: PurchaseOrderKpiDialogKind) => void,
 ): KpiCompactItem[] {
   return [
-    openCard(data.ocs_abiertas, visibility, () => openDialog("ocs_abiertas")),
+    openCard(data.ocs_abiertas, openAmounts, () => openDialog("ocs_abiertas")),
     overdueCard(data.ocs_vencidas_sin_recibir, () => openDialog("ocs_vencidas_sin_recibir")),
     // Hoy siempre llega no disponible (ver `buildUntypedKpiCard`).
     buildUntypedKpiCard(data.ciclo_compra, { label: "Ciclo de compra", icon: ClockIcon }),
@@ -206,15 +200,12 @@ function PurchaseOrderKpisSectionContent() {
     hasLoaded: isListLoaded,
     isError: isListError,
   });
-  // Los desgloses muestran importes con la misma regla que la tarjeta de OCs
-  // abiertas: el listado dice `visible` y el bloque los trae.
-  const showAmounts =
-    data?.ocs_abiertas.disponible === true
-      ? resolveKpiAmountState(
-          amountVisibility,
-          data.ocs_abiertas.por_moneda.every((fila) => fila.monto !== undefined),
-        ).show
-      : amountVisibility === "visible";
+  // Importes del bloque de OCs abiertas: el listado dice `visible` y el bloque
+  // los trae. Una sola regla para la tarjeta y su desglose por estatus.
+  const openAmounts = resolveKpiAmountState(
+    amountVisibility,
+    data?.ocs_abiertas.disponible !== true || data.ocs_abiertas.por_moneda.every((fila) => fila.monto !== undefined),
+  );
 
   // `dialogKind` es el ÚLTIMO detalle abierto y no se limpia al cerrar: así el
   // diálogo conserva título y filas durante su animación de salida.
@@ -230,7 +221,7 @@ function PurchaseOrderKpisSectionContent() {
   // carga de los KPIs): así no se pinta una tarjeta sin importes que luego los
   // "aparece", ni el motivo de permiso antes de saber si aplica.
   if (data && amountVisibility !== "pending") {
-    body = <KpiGrid compact items={buildCards(data, amountVisibility, openDialog)} />;
+    body = <KpiGrid compact items={buildCards(data, amountVisibility, openAmounts, openDialog)} />;
   } else if (isInitialError) {
     body = (
       <SectionErrorNotice
@@ -251,7 +242,7 @@ function PurchaseOrderKpisSectionContent() {
         open={isDialogOpen}
         kind={dialogKind}
         data={data}
-        showAmounts={showAmounts}
+        showAmounts={openAmounts.show}
         onClose={() => setIsDialogOpen(false)}
       />
     </>
