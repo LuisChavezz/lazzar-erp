@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
+import { useIsFetching, useQueryClient } from "@tanstack/react-query";
 import KpiGrid, {
   buildUntypedKpiCard,
   KPI_MUTED_ICON,
@@ -8,10 +9,12 @@ import KpiGrid, {
   type KpiCompactItem,
 } from "@/src/components/KpiGrid";
 import { KpiDrillDownButton } from "@/src/components/KpiDrillDownButton";
+import { SectionErrorBoundary } from "@/src/components/SectionErrorBoundary";
 import { SectionErrorNotice } from "@/src/components/SectionErrorNotice";
 import { ClientesIcon, ReceiptIcon, TrendingUpIcon, WalletIcon } from "@/src/components/Icons";
-import { useCustomerKpis } from "../hooks/useCustomerKpis";
-import { formatKpiMonto, formatKpiPct, plural } from "@/src/utils/kpiFormat";
+import { customerKpisQueryKey, useCustomerKpis } from "../hooks/useCustomerKpis";
+import { formatKpiPct, plural } from "@/src/utils/kpiFormat";
+import { formatKpiCurrencyAmount } from "../utils/customerKpiFormat";
 import type {
   CustomerActiveKpi,
   CustomerCarteraKpi,
@@ -25,33 +28,70 @@ import {
 
 const SECTION_TITLE = "Indicadores";
 
+const SEPARATE_CURRENCIES_NOTE = "Cada moneda va por separado: los importes de monedas distintas no se suman.";
+
+/** Valor vacío de una tarjeta (va dentro del `<h3>` de `KpiGrid`: contenido en línea). */
+function MutedValue({ children }: { children: string }) {
+  return <span className="text-sm font-normal text-slate-400 dark:text-slate-500 italic">{children}</span>;
+}
+
 /**
- * Ventas por cliente: total facturado, con la concentración del top. Sin meta
- * ni semáforo (el backend no los expone): sin insignia y sin barra.
+ * Un bloque por moneda dentro del valor de la tarjeta: importe con su símbolo y
+ * código, y debajo el detalle de ESA moneda. Va dentro del `<h3>` de `KpiGrid`,
+ * así que solo usa `<span>` (en `block`/`flex` para apilar).
+ */
+function CurrencyBlocks({ blocks }: { blocks: { moneda: string; monto: number; detail: string }[] }) {
+  return (
+    <span className="block space-y-1.5">
+      {blocks.map((block) => (
+        <span key={block.moneda} className="block">
+          <span className="flex items-baseline gap-2 tabular-nums">
+            <span className="text-lg">{formatKpiCurrencyAmount(block.monto, block.moneda)}</span>
+            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">{block.moneda}</span>
+          </span>
+          <span className="block text-xs font-normal tracking-normal text-slate-500 dark:text-slate-400">
+            {block.detail}
+          </span>
+        </span>
+      ))}
+    </span>
+  );
+}
+
+/**
+ * Ventas por cliente: un bloque por moneda con el total facturado, los clientes
+ * facturados y la concentración del top. Sin meta ni semáforo (el backend no
+ * los expone): sin insignia y sin barra.
  */
 function salesCard(kpi: CustomerSalesKpi, onDrillDown: () => void): KpiCompactItem {
   const base = { label: "Ventas por cliente", icon: TrendingUpIcon };
   if (!kpi.disponible) {
     return { ...base, ...KPI_MUTED_ICON, value: null, unavailableReason: kpi.motivo };
   }
-  const facturados = `${kpi.total_clientes_facturados} ${plural(kpi.total_clientes_facturados, "cliente facturado", "clientes facturados")}`;
-  // N real del top (hasta 5): su `pct_acumulado` es la concentración.
-  const last = kpi.top_clientes.at(-1);
-  const detail = last
-    ? `${facturados} · Top ${kpi.top_clientes.length}: ${formatKpiPct(last.pct_acumulado)}`
-    : facturados;
+  const blocks = kpi.por_moneda.map((moneda) => {
+    const facturados = `${moneda.total_clientes_facturados} ${plural(moneda.total_clientes_facturados, "cliente facturado", "clientes facturados")}`;
+    // N real del top (hasta 5): su `pct_acumulado` es la concentración en ESA moneda.
+    const last = moneda.top_clientes.at(-1);
+    return {
+      moneda: moneda.moneda,
+      monto: moneda.total_facturado,
+      detail: last ? `${facturados} · Top ${moneda.top_clientes.length}: ${formatKpiPct(last.pct_acumulado)}` : facturados,
+    };
+  });
+  const hasSales = kpi.por_moneda.some((moneda) => moneda.total_facturado > 0);
   return {
     ...base,
-    ...(kpi.total_facturado > 0 ? { iconClass: "text-sky-500" } : KPI_MUTED_ICON),
-    value: formatKpiMonto(kpi.total_facturado),
-    info: "Total facturado a los clientes que puedes ver; el detalle muestra los que más concentran la facturación. Los importes suman monedas sin distinguirlas.",
+    ...(hasSales ? { iconClass: "text-sky-500" } : KPI_MUTED_ICON),
+    value: blocks.length === 0 ? <MutedValue>Sin facturación</MutedValue> : <CurrencyBlocks blocks={blocks} />,
+    info:
+      "Facturas emitidas y vigentes (sin borradores ni canceladas) de los clientes que puedes ver; " +
+      `el detalle muestra los clientes que más concentran la facturación. ${SEPARATE_CURRENCIES_NOTE}`,
     hideProgress: true,
-    detail,
     action: (
       <KpiDrillDownButton
         label="Ver top"
         ariaLabel="Ver clientes con más facturación"
-        isEmpty={kpi.top_clientes.length === 0}
+        isEmpty={kpi.por_moneda.length === 0}
         onClick={onDrillDown}
       />
     ),
@@ -59,10 +99,11 @@ function salesCard(kpi: CustomerSalesKpi, onDrillDown: () => void): KpiCompactIt
 }
 
 /**
- * Clientes activos vs. inactivos. Sin drill-down: el backend no dice cuáles
- * son. `pct_activos` llega `null` sin clientes: entonces no se pinta porcentaje.
+ * Clientes activos vs. inactivos, con drill-down de ambas listas (el backend
+ * las manda cortadas en 20). `pct_activos` llega `null` sin clientes: entonces
+ * no se pinta porcentaje.
  */
-function activeCard(kpi: CustomerActiveKpi): KpiCompactItem {
+function activeCard(kpi: CustomerActiveKpi, onDrillDown: () => void): KpiCompactItem {
   const base = { label: "Clientes activos vs. inactivos", icon: ClientesIcon };
   if (!kpi.disponible) {
     return { ...base, ...KPI_MUTED_ICON, value: null, unavailableReason: kpi.motivo };
@@ -72,15 +113,26 @@ function activeCard(kpi: CustomerActiveKpi): KpiCompactItem {
     ...base,
     ...(kpi.activos > 0 ? { iconClass: "text-emerald-500" } : KPI_MUTED_ICON),
     value: String(kpi.activos),
-    info: `Un cliente está activo si tiene algún pedido en los últimos ${kpi.ventana_dias} días.`,
+    info:
+      "Un cliente está activo si tiene al menos un pedido Por autorizar, Autorizado o En proceso " +
+      `creado en los últimos ${kpi.ventana_dias} días; los borradores y los cancelados no cuentan.`,
     hideProgress: true,
     detail: kpi.pct_activos === null ? split : `${formatKpiPct(kpi.pct_activos)} ${split}`,
+    action: (
+      <KpiDrillDownButton
+        label="Ver clientes"
+        ariaLabel="Ver clientes activos e inactivos"
+        isEmpty={kpi.total === 0}
+        onClick={onDrillDown}
+      />
+    ),
   };
 }
 
 /**
- * Saldo vencido por antigüedad: conteo por tramo a la vista y monto por tramo
- * en el ⓘ (los tres montos no caben en la línea de la tarjeta).
+ * Saldo vencido por antigüedad: un bloque por moneda con su saldo y el conteo
+ * por tramo; los montos por tramo y el saldo sin fecha de vencimiento van en el
+ * ⓘ (no caben en la tarjeta). El conteo global sí cruza monedas.
  */
 function carteraCard(kpi: CustomerCarteraKpi, onDrillDown: () => void): KpiCompactItem {
   // "(general)": es el agregado del listado, para no confundirlo con la
@@ -91,24 +143,49 @@ function carteraCard(kpi: CustomerCarteraKpi, onDrillDown: () => void): KpiCompa
   if (!kpi.disponible) {
     return { ...base, ...KPI_MUTED_ICON, value: null, unavailableReason: kpi.motivo };
   }
-  const { buckets } = kpi;
-  const counts = `1–30: ${buckets["0_30"].total} · 31–60: ${buckets["31_60"].total} · 61+: ${buckets["60_mas"].total}`;
+  const blocks = kpi.por_moneda.map((moneda) => ({
+    moneda: moneda.moneda,
+    monto: moneda.saldo_total_vencido,
+    detail: `1–30: ${moneda.buckets["0_30"].total} · 31–60: ${moneda.buckets["31_60"].total} · 61+: ${moneda.buckets["60_mas"].total}`,
+  }));
+  const montosPorTramo = kpi.por_moneda.map(
+    ({ moneda, buckets }) =>
+      `${moneda}: 1 a 30 ${formatKpiCurrencyAmount(buckets["0_30"].monto, moneda)} · ` +
+      `31 a 60 ${formatKpiCurrencyAmount(buckets["31_60"].monto, moneda)} · ` +
+      `61 o más ${formatKpiCurrencyAmount(buckets["60_mas"].monto, moneda)}.`,
+  );
+  const sinVencimiento = kpi.sin_vencimiento.map(
+    ({ moneda, total, monto }) =>
+      `${moneda}: ${formatKpiCurrencyAmount(monto, moneda)} en ${total} ${plural(total, "cuenta", "cuentas")}`,
+  );
+  const cuentasSinVencimiento = kpi.sin_vencimiento.reduce((sum, fila) => sum + fila.total, 0);
+  const vencidas = `${kpi.total_cuentas_vencidas} ${plural(kpi.total_cuentas_vencidas, "cuenta vencida", "cuentas vencidas")}`;
+  const detail =
+    cuentasSinVencimiento > 0
+      ? `${vencidas} · ${cuentasSinVencimiento} sin fecha de vencimiento`
+      : vencidas;
+  const info = [
+    montosPorTramo.length > 0 ? `Saldo vencido por días de atraso — ${montosPorTramo.join(" ")}` : "Sin saldo vencido.",
+    sinVencimiento.length > 0
+      ? `Saldo sin fecha de vencimiento (no se cuenta como vencido) — ${sinVencimiento.join(" · ")}.`
+      : null,
+    "Sin cuentas de facturas canceladas o dadas de baja.",
+    SEPARATE_CURRENCIES_NOTE,
+  ]
+    .filter(Boolean)
+    .join(" ");
   return {
     ...base,
     ...(kpi.total_cuentas_vencidas > 0 ? { iconClass: "text-red-500" } : KPI_MUTED_ICON),
-    value: formatKpiMonto(kpi.saldo_total_vencido),
-    info:
-      `Saldo vencido por días de atraso — 1 a 30: ${formatKpiMonto(buckets["0_30"].monto)} · ` +
-      `31 a 60: ${formatKpiMonto(buckets["31_60"].monto)} · 61 o más: ${formatKpiMonto(buckets["60_mas"].monto)}. ` +
-      "Los importes suman monedas sin distinguirlas.",
+    value: blocks.length === 0 ? <MutedValue>Sin saldo vencido</MutedValue> : <CurrencyBlocks blocks={blocks} />,
+    info,
     hideProgress: true,
-    detail: counts,
-    detailTitle: `Cuentas vencidas por días de atraso — ${counts}`,
+    detail,
     action: (
       <KpiDrillDownButton
         label="Ver cuentas"
         ariaLabel="Ver cuentas por cobrar vencidas"
-        isEmpty={kpi.drill_down.length === 0}
+        isEmpty={kpi.drill_down.length === 0 && kpi.sin_vencimiento.length === 0}
         onClick={onDrillDown}
       />
     ),
@@ -121,24 +198,14 @@ function buildCards(
 ): KpiCompactItem[] {
   return [
     salesCard(data.ventas_por_cliente, () => openDrillDown("ventas_por_cliente")),
-    activeCard(data.clientes_activos),
+    activeCard(data.clientes_activos, () => openDrillDown("clientes_activos")),
     // Hoy siempre llega no disponible (ver `buildUntypedKpiCard`).
     buildUntypedKpiCard(data.reclamos_devoluciones, { label: "Tasa de reclamos o devoluciones", icon: ReceiptIcon }),
     carteraCard(data.cartera_antiguedad, () => openDrillDown("cartera_antiguedad")),
   ];
 }
 
-/**
- * Indicadores de clientes (`GET /terceros/clientes/kpis/`): ventas por cliente,
- * activos vs. inactivos, reclamos y devoluciones, y cartera vencida, en ese
- * orden. Todo es el valor del backend; aquí no se calcula ningún indicador.
- * Cada bloque decide solo por su `disponible`.
- *
- * Tiene su propia consulta: carga y falla dentro de la sección sin tocar la
- * lista de clientes. Sin gate de permiso: la ruta ya exige `R-CRM-CLIENTES`
- * (`routePermissions`). Mismo patrón que `PedidoKpisSection`.
- */
-export function CustomerKpisSection() {
+function CustomerKpisSectionContent() {
   const { data, isInitialError, isFetching, refetch } = useCustomerKpis();
   // `drillDownKind` es el ÚLTIMO drill-down abierto y no se limpia al cerrar:
   // así el diálogo conserva título y filas durante su animación de salida.
@@ -166,7 +233,7 @@ export function CustomerKpisSection() {
   }
 
   return (
-    <section aria-label={SECTION_TITLE}>
+    <>
       {body}
       <CustomerKpiDrillDownDialog
         open={isDrillDownOpen}
@@ -174,6 +241,50 @@ export function CustomerKpisSection() {
         data={data}
         onClose={() => setIsDrillDownOpen(false)}
       />
+    </>
+  );
+}
+
+/**
+ * Aviso del límite de error de la sección. "Reintentar" vuelve a PEDIR los
+ * indicadores antes de remontar: remontar con el mismo payload lanzaría igual.
+ */
+function CustomerKpisRenderError({ reset }: { reset: () => void }) {
+  const queryClient = useQueryClient();
+  const isFetching = useIsFetching({ queryKey: customerKpisQueryKey }) > 0;
+  const retry = async () => {
+    await queryClient.refetchQueries({ queryKey: customerKpisQueryKey });
+    reset();
+  };
+  return (
+    <SectionErrorNotice
+      title="No se pudieron mostrar los indicadores"
+      message="Ocurrió un error al mostrarlos. La lista de clientes sigue disponible."
+      onRetry={() => void retry()}
+      isRetrying={isFetching}
+    />
+  );
+}
+
+/**
+ * Indicadores de clientes (`GET /terceros/clientes/kpis/`): ventas por cliente,
+ * activos vs. inactivos, reclamos y devoluciones, y cartera vencida, en ese
+ * orden. Todo es el valor del backend; aquí no se calcula ningún indicador ni
+ * se suman importes de monedas distintas. Cada bloque decide solo por su
+ * `disponible`.
+ *
+ * Tiene su propia consulta (carga y falla dentro de la sección) y su propio
+ * límite de error: si el payload cambia de forma y el render lanza, se pinta un
+ * aviso aquí y la lista de clientes sigue usable. Sin gate de permiso: la ruta
+ * ya exige `R-CRM-CLIENTES` (`routePermissions`). Mismo patrón que
+ * `PedidoKpisSection`.
+ */
+export function CustomerKpisSection() {
+  return (
+    <section aria-label={SECTION_TITLE}>
+      <SectionErrorBoundary fallback={(reset) => <CustomerKpisRenderError reset={reset} />}>
+        <CustomerKpisSectionContent />
+      </SectionErrorBoundary>
     </section>
   );
 }
