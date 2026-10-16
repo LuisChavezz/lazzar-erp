@@ -1,5 +1,9 @@
 import { v1_api } from "@/src/api/v1.api";
 import type { PurchaseOrderKpis } from "../interfaces/purchase-order-kpis.interface";
+import type {
+  PurchaseOrderCriticalPath,
+  PurchaseOrderCriticalPathUpdateBody,
+} from "../interfaces/purchase-order-critical-path.interface";
 import {
   CancelPurchaseOrderParams,
   PurchaseOrder,
@@ -83,5 +87,28 @@ export const deletePurchaseOrder = async (pk: number): Promise<void> => {
  */
 export const getPurchaseOrderKpis = async (): Promise<PurchaseOrderKpis> => {
   const response = await v1_api.get<PurchaseOrderKpis>("/compras/ordenes/kpis/");
+  return response.data;
+};
+
+const criticalPathUrl = (ocId: number) => `/compras/ordenes/${ocId}/ruta-critica/`;
+
+/**
+ * Ruta crítica de una OC (EC-488). Solo lectura: una OC sin captura responde
+ * los campos en `null` con `updated_at: null`. Una OC de otra empresa,
+ * inactiva o inexistente responde 404.
+ */
+export const getPurchaseOrderCriticalPath = async (
+  ocId: number,
+): Promise<PurchaseOrderCriticalPath> => {
+  const response = await v1_api.get<PurchaseOrderCriticalPath>(criticalPathUrl(ocId));
+  return response.data;
+};
+
+/** PATCH parcial. Responde el registro completo (misma forma que el GET). */
+export const updatePurchaseOrderCriticalPath = async (
+  ocId: number,
+  body: PurchaseOrderCriticalPathUpdateBody,
+): Promise<PurchaseOrderCriticalPath> => {
+  const response = await v1_api.patch<PurchaseOrderCriticalPath>(criticalPathUrl(ocId), body);
   return response.data;
 };
