@@ -100,8 +100,8 @@ export function PurchaseOrderCriticalPathForm({
         </form.Field>
       </fieldset>
 
-      <form.Subscribe selector={(state) => state.values}>
-        {(values) => (
+      <form.Subscribe selector={(state) => hasChanges(state.values)}>
+        {(changed) => (
           <div className="flex justify-end gap-3 pt-4 mt-5 border-t border-slate-100 dark:border-white/10">
             <FormCancelButton label="Cerrar" onClick={onClose} disabled={isPending} />
             {/* Solo lectura: sin botón de guardar, no uno deshabilitado. */}
@@ -109,8 +109,8 @@ export function PurchaseOrderCriticalPathForm({
               <FormSubmitButton
                 isPending={isPending}
                 loadingLabel="Guardando…"
-                disabled={isPending || !hasChanges(values)}
-                title={hasChanges(values) ? undefined : "No hay cambios que guardar"}
+                disabled={isPending || !changed}
+                title={changed ? undefined : "No hay cambios que guardar"}
               >
                 Guardar cambios
               </FormSubmitButton>
