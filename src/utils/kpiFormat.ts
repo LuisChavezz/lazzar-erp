@@ -33,13 +33,6 @@ export const formatKpiCurrencyAmount = (value: string | number, moneda: string):
 export const formatKpiSignedCurrencyAmount = (value: string | number, moneda: string): string =>
   formatMoneyValue(value, { currency: moneda, currencyDisplay: "narrowSymbol", signDisplay: "exceptZero" });
 
-/**
- * Importe con signo explícito ("+1,250.00" / "-80.00" / "0.00"), sin símbolo:
- * para diferencias, donde el signo ES el dato.
- */
-export const formatKpiSignedMonto = (value: number): string =>
-  formatMoneyValue(value, { ...NO_CURRENCY_FORMAT, signDisplay: "exceptZero" });
-
 /** Porcentaje del backend (0–100, 1 decimal) como "25.0%": siempre con su decimal. */
 export const formatKpiPct = (value: number): string => `${formatPercentageNumber(value, 1)}%`;
 
