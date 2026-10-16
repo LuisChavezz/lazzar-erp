@@ -20,7 +20,7 @@ import type { BordadoAvance } from "../interfaces/embroidery.interface";
 interface EmbroideryAvancesHistoryProps {
   avances: BordadoAvance[];
   obId: number;
-  /** Estatus terminal (Finalizado/Cancelado): no se pueden registrar avances. */
+  /** Estatus terminal (Finalizado / Cancelado legacy): no se registran avances. */
   isTerminal: boolean;
   /** Piezas programadas en toda la OB — techo del diálogo de alta. */
   programado: number;
@@ -61,7 +61,7 @@ export function EmbroideryAvancesHistory({
       disabled={isTerminal}
       title={
         isTerminal
-          ? "No se pueden registrar avances en una orden completada o cancelada"
+          ? "No se pueden registrar avances en una orden Finalizada o Cancelada"
           : undefined
       }
       onClick={() => setCreateOpen(true)}
@@ -120,10 +120,12 @@ export function EmbroideryAvancesHistory({
                     {textOrDash(avance.comentario)}
                   </td>
                   {/* En un estatus terminal el icono NO se pinta (en vez de
-                      salir atenuado): la orden está cerrada y borrar un avance
-                      la dejaría por debajo del 100% sin forma de recomponerla
-                      —el alta ya está bloqueada—. Se oculta, no se inhabilita,
-                      para no ofrecer una acción que nunca va a proceder. */}
+                      salir atenuado): la orden está cerrada y el alta ya está
+                      bloqueada, así que un avance borrado no podría volver a
+                      registrarse. Es una regla del frontend —el backend no
+                      valida el estatus de la OB—, y Finalizado no implica que
+                      la orden esté al 100%. Se oculta, no se inhabilita, para
+                      no ofrecer una acción que la ficha no admite. */}
                   <td className="px-3 py-2 text-right">
                     {!isTerminal && canEditOb && (
                       <button

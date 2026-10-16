@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useSession } from "next-auth/react";
-import { ArrowLeftIcon, InfoIcon } from "@/src/components/Icons";
+import { ArrowLeftIcon } from "@/src/components/Icons";
 import { Loader } from "@/src/components/Loader";
 import { ErrorState } from "@/src/components/ErrorState";
 import { StatusBadge } from "@/src/components/StatusBadge";
@@ -367,23 +367,6 @@ export function EmbroideryOrderDetailContent({
               )}
             </div>
 
-            {/* Reparto aproximado — solo cuando el backend lo marca. Hoy es
-                `false` en toda la base, así que este aviso normalmente no
-                aparece; sin el gate sería un estado vacío permanente. */}
-            {data.reparto_por_talla_aproximado && (
-              <div
-                role="note"
-                className="mt-4 flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 dark:border-amber-800/60 dark:bg-amber-900/20 px-4 py-3"
-              >
-                <InfoIcon className="w-5 h-5 shrink-0 text-amber-600 dark:text-amber-400 mt-0.5" />
-                <p className="min-w-0 flex-1 text-xs text-amber-700 dark:text-amber-300">
-                  El pedido tiene piezas programadas sin talla identificable. El total
-                  por producto es exacto, pero el reparto <strong>por talla</strong> del
-                  resumen de avance es aproximado.
-                </p>
-              </div>
-            )}
-
             {/* Otras OB del mismo pedido — solo si las hay. */}
             {data.otras_ordenes_del_pedido.length > 0 && (
               <div className="mt-4 pt-4 border-t border-slate-100 dark:border-white/10">
@@ -398,11 +381,7 @@ export function EmbroideryOrderDetailContent({
       </div>
 
       {/* ── 4. Resumen de avance ────────────────────────────────────────── */}
-      <EmbroideryProgressSummary
-        resumenAvance={data.resumen_avance}
-        detalles={data.detalles}
-      />
-
+      <EmbroideryProgressSummary resumenAvance={data.resumen_avance} />
 
       {/* ── 5. Historial de avances ─────────────────────────────────────── */}
       <EmbroideryAvancesHistory
