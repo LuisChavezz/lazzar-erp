@@ -261,9 +261,16 @@ function SupplierKpisSectionContent() {
  * (`utils/supplierKpis.ts`) y cada drill-down es ese mismo ranking.
  *
  * Tiene su propia consulta: carga y falla dentro de la sección sin tocar la
- * tabla de proveedores. Sin gate de permiso: la ruta ya exige `R-COMPRAS-PROV`
- * (`routePermissions`). `diferencia_precio` y `puntaje` no se muestran en
- * ningún lado (backend #377).
+ * tabla de proveedores. La ruta ya exige `R-COMPRAS-PROV` (`routePermissions`).
+ *
+ * Gate de importes SOLO para el Scorecard: su `puntaje` incluye el factor de
+ * diferencia de precio, y el backend lo manda sin revisar el permiso de
+ * contabilidad. Por eso la sección lee el listado de OC (`usePurchaseOrders`,
+ * sin toast propio) como señal de permiso, con la misma regla que los
+ * indicadores de OC y de recepciones (`getPurchaseOrderKpiAmountVisibility` +
+ * `resolveKpiAmountState`): sin esa señal el Scorecard no se muestra. Quitar
+ * esa lectura lo expondría a quien no puede ver importes. `diferencia_precio`
+ * y `puntaje` no se muestran en ningún lado.
  *
  * Tiene su propio límite de error: si el payload cambia de forma y el render
  * lanza, se pinta un aviso aquí y la tabla de proveedores sigue usable.
