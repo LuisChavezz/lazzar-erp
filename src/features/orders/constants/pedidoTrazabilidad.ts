@@ -101,13 +101,17 @@ export const getTrazabilidadSemaforoConfig = (semaforo: string): StatusBadgeConf
     : TRAZABILIDAD_NEUTRAL_CONFIG;
 
 /**
- * Etiquetas propias de la UI que sustituyen el `label` del backend. Solo
- * `surtido`: el backend lo mide con lo ASIGNADO en picking (el mismo dato que la
- * barra "Avance asignado" de esta hoja), no con lo surtido, y en la misma
- * pantalla convive con "Avance surtido", que sí lo es.
+ * Etiquetas propias de la UI que sustituyen el `label` del backend:
+ * - `surtido`: el backend lo mide con lo ASIGNADO en picking (el mismo dato que
+ *   la barra "Avance asignado" de esta hoja), no con lo surtido, y en la misma
+ *   pantalla convive con "Avance surtido", que sí lo es.
+ * - `maquila`: la UI no muestra la palabra "maquila" (EC-462). Se muestra
+ *   "Confección" y no "Producción", que se confundiría con el proceso de
+ *   órdenes de producción. La clave `"maquila"` no cambia.
  */
 const PASO_LABEL_OVERRIDES: Partial<Record<TrazabilidadPasoClave, string>> = {
   surtido: "Asignado",
+  maquila: "Confección",
 };
 
 /** Etiqueta visible de un paso: la de la UI si existe, si no la del backend. */
