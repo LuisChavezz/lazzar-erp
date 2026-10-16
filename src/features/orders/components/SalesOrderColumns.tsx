@@ -5,7 +5,7 @@ import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { ChevronRightIcon } from '@/src/components/Icons';
 import { ColumnHeaderFilter } from '@/src/components/ColumnHeaderFilter';
-import { formatMoneyValueOrDash } from '@/src/utils/formatCurrency';
+import { formatMoneyValueOrDash, NO_CURRENCY_FORMAT } from '@/src/utils/formatCurrency';
 import type { PedidoListItem } from '../interfaces/order.interface';
 import { isOrderConfirmed } from './SharedOrderColumns';
 import { hasMeaningfulOc } from '../utils/pedidoFormat';
@@ -195,7 +195,9 @@ export function createSalesOrderColumns({
       size: 140,
       cell: ({ row }) => (
         <span className="tabular-nums text-[13px] font-semibold text-slate-700 dark:text-slate-200">
-          {formatMoneyValueOrDash(row.original.subtotal)}
+          {/* Sin símbolo: la fila solo trae el id de `moneda`, no su código, y
+              un "$" afirmaría pesos en un pedido en otra moneda. */}
+          {formatMoneyValueOrDash(row.original.subtotal, NO_CURRENCY_FORMAT)}
         </span>
       ),
     },

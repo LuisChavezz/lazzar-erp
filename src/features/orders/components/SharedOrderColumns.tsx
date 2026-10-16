@@ -4,7 +4,7 @@ import { type ColumnDef } from '@tanstack/react-table';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import type { DataTableFilterConfig } from '@/src/components/DataTable';
-import { formatMoneyValueOrDash } from '@/src/utils/formatCurrency';
+import { formatMoneyValueOrDash, NO_CURRENCY_FORMAT } from '@/src/utils/formatCurrency';
 import { parseLocalDate } from '@/src/utils/formatDate';
 import type { PedidoListItem } from '../interfaces/order.interface';
 import type { PedidoDetailOrigin } from '../constants/pedidoDetailOrigins';
@@ -131,7 +131,9 @@ export function createOrderColumns({
       meta: { align: "right" },
       cell: ({ row }) => (
         <span className="tabular-nums text-sm font-semibold text-slate-700 dark:text-slate-200">
-          {formatMoneyValueOrDash(row.original.gran_total)}
+          {/* Sin símbolo: la fila solo trae el id de `moneda`, no su código, y
+              un "$" afirmaría pesos en un pedido en otra moneda. */}
+          {formatMoneyValueOrDash(row.original.gran_total, NO_CURRENCY_FORMAT)}
         </span>
       ),
     },
