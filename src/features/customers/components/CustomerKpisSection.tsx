@@ -9,12 +9,12 @@ import KpiGrid, {
   type KpiCompactItem,
 } from "@/src/components/KpiGrid";
 import { KpiDrillDownButton } from "@/src/components/KpiDrillDownButton";
+import { KpiCurrencyBlocks, KpiMutedValue } from "@/src/components/KpiCurrency";
 import { SectionErrorBoundary } from "@/src/components/SectionErrorBoundary";
 import { SectionErrorNotice } from "@/src/components/SectionErrorNotice";
 import { ClientesIcon, ReceiptIcon, TrendingUpIcon, WalletIcon } from "@/src/components/Icons";
 import { customerKpisQueryKey, useCustomerKpis } from "../hooks/useCustomerKpis";
-import { formatKpiPct, plural } from "@/src/utils/kpiFormat";
-import { formatKpiCurrencyAmount } from "../utils/customerKpiFormat";
+import { formatKpiCurrencyAmount, formatKpiPct, plural } from "@/src/utils/kpiFormat";
 import type {
   CustomerActiveKpi,
   CustomerCarteraKpi,
@@ -29,34 +29,6 @@ import {
 const SECTION_TITLE = "Indicadores";
 
 const SEPARATE_CURRENCIES_NOTE = "Cada moneda va por separado: los importes de monedas distintas no se suman.";
-
-/** Valor vacío de una tarjeta (va dentro del `<h3>` de `KpiGrid`: contenido en línea). */
-function MutedValue({ children }: { children: string }) {
-  return <span className="text-sm font-normal text-slate-400 dark:text-slate-500 italic">{children}</span>;
-}
-
-/**
- * Un bloque por moneda dentro del valor de la tarjeta: importe con su símbolo y
- * código, y debajo el detalle de ESA moneda. Va dentro del `<h3>` de `KpiGrid`,
- * así que solo usa `<span>` (en `block`/`flex` para apilar).
- */
-function CurrencyBlocks({ blocks }: { blocks: { moneda: string; monto: number; detail: string }[] }) {
-  return (
-    <span className="block space-y-1.5">
-      {blocks.map((block) => (
-        <span key={block.moneda} className="block">
-          <span className="flex items-baseline gap-2 tabular-nums">
-            <span className="text-lg">{formatKpiCurrencyAmount(block.monto, block.moneda)}</span>
-            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">{block.moneda}</span>
-          </span>
-          <span className="block text-xs font-normal tracking-normal text-slate-500 dark:text-slate-400">
-            {block.detail}
-          </span>
-        </span>
-      ))}
-    </span>
-  );
-}
 
 /**
  * Ventas por cliente: un bloque por moneda con el total facturado, los clientes
@@ -82,7 +54,7 @@ function salesCard(kpi: CustomerSalesKpi, onDrillDown: () => void): KpiCompactIt
   return {
     ...base,
     ...(hasSales ? { iconClass: "text-sky-500" } : KPI_MUTED_ICON),
-    value: blocks.length === 0 ? <MutedValue>Sin facturación</MutedValue> : <CurrencyBlocks blocks={blocks} />,
+    value: blocks.length === 0 ? <KpiMutedValue>Sin facturación</KpiMutedValue> : <KpiCurrencyBlocks blocks={blocks} />,
     info:
       "Facturas emitidas y vigentes (sin borradores ni canceladas) de los clientes que puedes ver; " +
       `el detalle muestra los clientes que más concentran la facturación. ${SEPARATE_CURRENCIES_NOTE}`,
@@ -177,7 +149,7 @@ function carteraCard(kpi: CustomerCarteraKpi, onDrillDown: () => void): KpiCompa
   return {
     ...base,
     ...(kpi.total_cuentas_vencidas > 0 ? { iconClass: "text-red-500" } : KPI_MUTED_ICON),
-    value: blocks.length === 0 ? <MutedValue>Sin saldo vencido</MutedValue> : <CurrencyBlocks blocks={blocks} />,
+    value: blocks.length === 0 ? <KpiMutedValue>Sin saldo vencido</KpiMutedValue> : <KpiCurrencyBlocks blocks={blocks} />,
     info,
     hideProgress: true,
     detail,

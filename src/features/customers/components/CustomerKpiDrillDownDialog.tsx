@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { MainDialog } from "@/src/components/MainDialog";
 import { EmptyLines, LineItemsTable, SectionTitle } from "@/src/components/DetailDialogPrimitives";
+import { KpiCurrencyAmount } from "@/src/components/KpiCurrency";
 import type {
   CustomerActiveKpiAvailable,
   CustomerCarteraKpiAvailable,
@@ -10,8 +11,7 @@ import type {
   CustomerKpis,
   CustomerSalesKpiAvailable,
 } from "../interfaces/customer-kpis.interface";
-import { formatKpiDate, formatKpiPct, plural } from "@/src/utils/kpiFormat";
-import { formatKpiCurrencyAmount } from "../utils/customerKpiFormat";
+import { formatKpiCurrencyAmount, formatKpiDate, formatKpiPct, plural } from "@/src/utils/kpiFormat";
 
 /** Bloques con drill-down (todos los que el backend lista). */
 export type CustomerKpiDrillDownKind = "ventas_por_cliente" | "clientes_activos" | "cartera_antiguedad";
@@ -30,16 +30,6 @@ function ClienteLink({ clienteId, nombre }: { clienteId: number; nombre: string 
     <Link href={`/sales/customers/${clienteId}`} className={CLIENT_LINK_CLASS} title="Ver detalle del cliente">
       {nombre || `#${clienteId}`}
     </Link>
-  );
-}
-
-/** Importe con símbolo y código de su moneda (el código desambigua "$" entre MXN y USD). */
-function CurrencyAmount({ value, moneda }: { value: number; moneda: string }) {
-  return (
-    <>
-      {formatKpiCurrencyAmount(value, moneda)}{" "}
-      <span className="text-xs text-slate-400 dark:text-slate-500">{moneda}</span>
-    </>
   );
 }
 
@@ -226,7 +216,7 @@ function CarteraContent({ kpi }: { kpi: CustomerCarteraKpiAvailable }) {
                   {fila.total} {plural(fila.total, "cuenta", "cuentas")}
                 </span>
                 <span className="whitespace-nowrap">
-                  <CurrencyAmount value={fila.monto} moneda={fila.moneda} />
+                  <KpiCurrencyAmount value={fila.monto} moneda={fila.moneda} />
                 </span>
               </li>
             ))}

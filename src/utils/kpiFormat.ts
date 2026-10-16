@@ -16,6 +16,16 @@ import { formatPercentageNumber } from "@/src/utils/percentage";
 export const formatKpiMonto = (value: number): string => formatMoneyValue(value, NO_CURRENCY_FORMAT);
 
 /**
+ * Importe de un indicador con el símbolo de SU moneda (código ISO del payload,
+ * p. ej. `por_moneda[].moneda`). `narrowSymbol`: es-MX pinta USD como
+ * "USD 1,234.00", y la UI ya muestra el código aparte (mismo criterio que
+ * `CustomerResumenKpis`). Un código que `Intl` no reconozca cae a número sin
+ * símbolo (`formatCurrency`).
+ */
+export const formatKpiCurrencyAmount = (value: number, moneda: string): string =>
+  formatMoneyValue(value, { currency: moneda, currencyDisplay: "narrowSymbol" });
+
+/**
  * Importe con signo explícito ("+1,250.00" / "-80.00" / "0.00"), sin símbolo:
  * para diferencias, donde el signo ES el dato.
  */
