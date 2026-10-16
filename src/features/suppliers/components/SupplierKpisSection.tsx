@@ -3,11 +3,12 @@
 import { useState, type ReactNode } from "react";
 import KpiGrid, { KPI_MUTED_ICON, KpiGridSkeleton, type KpiCompactItem } from "@/src/components/KpiGrid";
 import { KpiDrillDownButton } from "@/src/components/KpiDrillDownButton";
+import { KpiSectionErrorBoundary } from "@/src/components/KpiSectionErrorBoundary";
 import { SectionErrorNotice } from "@/src/components/SectionErrorNotice";
 import { ClockIcon, EmbarquesIcon, ShieldCheckIcon, StarIcon } from "@/src/components/Icons";
 import { formatQuantityValue } from "@/src/utils/formatCurrency";
 import { formatKpiDias, formatKpiPctOrDash, plural } from "@/src/utils/kpiFormat";
-import { useSupplierKpis } from "../hooks/useSupplierKpis";
+import { supplierKpisQueryKey, useSupplierKpis } from "../hooks/useSupplierKpis";
 import type { SupplierKpiRow, SupplierKpis } from "../interfaces/supplier-kpis.interface";
 import {
   aggregateLeadTime,
@@ -152,18 +153,7 @@ function buildCards(data: SupplierKpis, openDialog: (kind: SupplierKpiDialogKind
   return cards.map((card) => (card.info ? { ...card, info: `${card.info} ${truncationNote}` } : card));
 }
 
-/**
- * Indicadores de proveedores (`GET /terceros/proveedores/kpis/`, EC-436):
- * entrega a tiempo, calidad, lead time y scorecard, en ese orden. El backend
- * manda un ranking por proveedor; las tarjetas suman sus conteos
- * (`utils/supplierKpis.ts`) y cada drill-down es ese mismo ranking.
- *
- * Tiene su propia consulta: carga y falla dentro de la sección sin tocar la
- * tabla de proveedores. Sin gate de permiso: la ruta ya exige `R-COMPRAS-PROV`
- * (`routePermissions`). `diferencia_precio` y `puntaje` no se muestran en
- * ningún lado (backend #377).
- */
-export function SupplierKpisSection() {
+function SupplierKpisSectionContent() {
   const { data, isInitialError, isFetching, refetch } = useSupplierKpis();
 
   // `dialogKind` es el ÚLTIMO detalle abierto y no se limpia al cerrar: así el
@@ -192,7 +182,7 @@ export function SupplierKpisSection() {
   }
 
   return (
-    <section aria-label={SECTION_TITLE}>
+    <>
       {body}
       <SupplierKpiDialog
         open={isDialogOpen}
@@ -200,6 +190,33 @@ export function SupplierKpisSection() {
         data={data}
         onClose={() => setIsDialogOpen(false)}
       />
+    </>
+  );
+}
+
+/**
+ * Indicadores de proveedores (`GET /terceros/proveedores/kpis/`, EC-436):
+ * entrega a tiempo, calidad, lead time y scorecard, en ese orden. El backend
+ * manda un ranking por proveedor; las tarjetas suman sus conteos
+ * (`utils/supplierKpis.ts`) y cada drill-down es ese mismo ranking.
+ *
+ * Tiene su propia consulta: carga y falla dentro de la sección sin tocar la
+ * tabla de proveedores. Sin gate de permiso: la ruta ya exige `R-COMPRAS-PROV`
+ * (`routePermissions`). `diferencia_precio` y `puntaje` no se muestran en
+ * ningún lado (backend #377).
+ *
+ * Tiene su propio límite de error: si el payload cambia de forma y el render
+ * lanza, se pinta un aviso aquí y la tabla de proveedores sigue usable.
+ */
+export function SupplierKpisSection() {
+  return (
+    <section aria-label={SECTION_TITLE}>
+      <KpiSectionErrorBoundary
+        queryKey={supplierKpisQueryKey}
+        message="Ocurrió un error al mostrarlos. La tabla de proveedores sigue disponible."
+      >
+        <SupplierKpisSectionContent />
+      </KpiSectionErrorBoundary>
     </section>
   );
 }
