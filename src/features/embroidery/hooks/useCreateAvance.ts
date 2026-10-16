@@ -2,45 +2,35 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { firstDrfFieldMessage } from "@/src/utils/firstDrfFieldMessage";
-import { pedidoTrazabilidadQueryKey } from "@/src/features/orders/hooks/usePedidoTrazabilidad";
 import { createAvance } from "../services/actions";
 import { embroideryOrderDetailQueryKey } from "./useEmbroideryOrderDetail";
-
-interface UseCreateAvanceOptions {
-  /** Pedido madre de la OB, o `null` si no tiene. */
-  pedidoId: number | null;
-}
 
 /**
  * Mutación de alta de un avance de bordado
  * (`POST /produccion/bordado-avances/`). La OB padre viaja en el payload
- * (`variables.ob`).
+ * (`variables.ob`), así que el hook no necesita un parámetro aparte.
  *
- * Invalida solo a quien LEE avances:
- *  - `["embroidery-order-detail", ob]` — `avances` y `resumen_avance` viven
- *    SOLO en el detalle; su re-fetch muestra el avance y el resumen
- *    recalculado.
- *  - `["pedido-trazabilidad", pedidoId]` — la trazabilidad del pedido suma
- *    `cantidad_bordada` de los avances activos de sus OB.
+ * Invalida `["embroidery-order-detail", ob]`: los `avances` y el
+ * `resumen_avance` viven SOLO en el detalle. La invalidación se DEVUELVE para
+ * que la mutación siga en `isPending` hasta que llegue el re-fetch: el tope del
+ * diálogo sale de `resumen_avance`, y sin esperar, reabrirlo antes de que
+ * llegara el detalle nuevo dejaría registrar contra el total viejo (el backend
+ * no impone el tope).
  *
- * El listado (`["embroidery-orders"]`) NO se invalida: no pinta ningún dato
- * derivado de los avances.
+ * No invalida el listado (no pinta datos de avance) ni la trazabilidad del
+ * pedido: ninguna pantalla que capture avances la tiene montada, y ella misma
+ * se re-consulta en cada montaje (`refetchOnMount: "always"`).
  */
-export const useCreateAvance = ({ pedidoId }: UseCreateAvanceOptions) => {
+export const useCreateAvance = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: createAvance,
     onSuccess: (_avance, variables) => {
-      queryClient.invalidateQueries({
+      toast.success("Avance registrado correctamente");
+      return queryClient.invalidateQueries({
         queryKey: embroideryOrderDetailQueryKey(variables.ob),
       });
-      if (pedidoId !== null) {
-        queryClient.invalidateQueries({
-          queryKey: pedidoTrazabilidadQueryKey(pedidoId),
-        });
-      }
-      toast.success("Avance registrado correctamente");
     },
     onError: (error) => {
       toast.error(

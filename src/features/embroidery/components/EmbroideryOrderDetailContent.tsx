@@ -400,7 +400,6 @@ export function EmbroideryOrderDetailContent({
       <EmbroideryAvancesHistory
         avances={data.avances}
         obId={data.id}
-        pedidoId={data.pedido_vinculado?.id ?? null}
         isTerminal={isTerminal}
         programado={data.resumen_avance.cantidad_programada}
         bordado={data.resumen_avance.cantidad_bordada_total}

@@ -18,8 +18,6 @@ type FieldErrors = Partial<Record<CreateAvanceFormField, string>>;
 interface EmbroideryCreateAvanceDialogProps {
   /** OB contra la que se registra el avance (va en el payload). */
   obId: number;
-  /** Pedido madre de la OB, para refrescar su trazabilidad. `null` sin pedido. */
-  pedidoId: number | null;
   /** Piezas programadas en TODA la OB (`resumen_avance.cantidad_programada`). */
   programado: number;
   /** Piezas ya bordadas en TODA la OB (`resumen_avance.cantidad_bordada_total`). */
@@ -41,7 +39,6 @@ interface EmbroideryCreateAvanceDialogProps {
  */
 export function EmbroideryCreateAvanceDialog({
   obId,
-  pedidoId,
   programado,
   bordado,
   open,
@@ -52,7 +49,7 @@ export function EmbroideryCreateAvanceDialog({
   const [comentario, setComentario] = useState("");
   const [errors, setErrors] = useState<FieldErrors>({});
 
-  const { mutate, isPending } = useCreateAvance({ pedidoId });
+  const { mutate, isPending } = useCreateAvance();
 
   const reset = () => {
     setCantidadBordada("");
