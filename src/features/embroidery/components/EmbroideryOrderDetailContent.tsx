@@ -17,6 +17,7 @@ import {
 } from "@/src/components/DetailDialogPrimitives";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { hasPermission } from "@/src/utils/permissions";
+import { parsePositiveId } from "@/src/utils/parsePositiveId";
 import { formatQuantityValue } from "@/src/utils/formatCurrency";
 import { formatShortDate, formatShortTime } from "@/src/utils/formatDate";
 import { EMBROIDERY_COVERAGE_CONFIG } from "../constants/embroideryStatus";
@@ -80,13 +81,16 @@ interface EmbroideryOrderDetailContentProps {
 export function EmbroideryOrderDetailContent({
   orderId,
 }: EmbroideryOrderDetailContentProps) {
-  const numericId = Number(orderId);
+  // Solo dígitos: `Number()` aceptaría "1.5" o "1e2" (que resolvería a la OB
+  // 100). Con `null` la consulta queda apagada y abajo se pinta "Orden no
+  // válida" sin pedir nada.
+  const numericId = parsePositiveId(orderId);
   const { data, isNotFound, isInitialError, error } = useEmbroideryOrderDetail(numericId);
   // Mutación de edición de la ficha (estatus + máquina). El hook invalida el
   // detalle en `onSuccess`, así que el re-fetch refleja el nuevo estado; solo
   // se dispara desde los controles editables de abajo, nunca en los estados de
   // carga/error (que retornan antes de renderizarlos).
-  const updateOrder = useUpdateEmbroideryOrder(numericId);
+  const updateOrder = useUpdateEmbroideryOrder(numericId ?? 0);
 
   // Permiso de edición de la ficha. Se resuelve AQUÍ y no más abajo junto a
   // `isTerminal` porque `useSession` es un hook: los estados de carga/error
@@ -107,7 +111,7 @@ export function EmbroideryOrderDetailContent({
 
   // Los tres estados de fallo repiten el "Volver": sin él la página quedaría
   // sin salida salvo por el botón atrás del navegador.
-  if (Number.isNaN(numericId) || numericId <= 0) {
+  if (numericId === null) {
     return (
       <div className="w-full space-y-6">
         <div>{BackLink}</div>
