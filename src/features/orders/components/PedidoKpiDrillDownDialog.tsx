@@ -2,7 +2,7 @@
 
 import { MainDialog } from "@/src/components/MainDialog";
 import { EmptyLines, LineItemsTable, textOrDash } from "@/src/components/DetailDialogPrimitives";
-import { formatMoneyValue, NO_CURRENCY_FORMAT } from "@/src/utils/formatCurrency";
+import { formatKpiCurrencyAmount, plural } from "@/src/utils/kpiFormat";
 import { getPedidoEstatusConfig } from "../constants/pedidoStatus";
 import type { PedidoActiveKpi } from "../interfaces/pedido-kpis.interface";
 import { OrderBadge } from "./OrderSheetPrimitives";
@@ -13,14 +13,19 @@ const TD_CLASS = "px-3 py-2 text-slate-600 dark:text-slate-300";
 
 /**
  * "Mostrando X de N" (descripción del diálogo). El backend corta la lista en 20
- * filas ordenadas por importe y no hay endpoint para el resto, así que no hay
- * "ver todos": con menos filas que `total` se dice que son las de mayor importe.
+ * filas y no hay endpoint para el resto, así que no hay "ver todos". Ordena por
+ * `gran_total` comparando el número sin convertir monedas: con la lista cortada
+ * se dice tal cual, para no afirmar que son "los de mayor importe".
  */
 function getDescription(kpi: PedidoActiveKpi | undefined): string {
   if (!kpi?.disponible || kpi.drill_down.length === 0) return "Sin pedidos activos para mostrar.";
   const shown = kpi.drill_down.length;
-  if (shown < kpi.total) return `Mostrando los ${shown} pedidos de mayor importe de ${kpi.total}`;
-  return `Mostrando ${shown} de ${kpi.total} pedido${kpi.total === 1 ? "" : "s"}`;
+  const total = kpi.drill_down_total;
+  const pedidos = `${total} ${plural(total, "pedido activo", "pedidos activos")}`;
+  if (kpi.drill_down_truncado) {
+    return `Mostrando ${shown} de ${pedidos}, ordenados por total sin convertir monedas`;
+  }
+  return `Mostrando ${shown} de ${pedidos}`;
 }
 
 interface PedidoKpiDrillDownDialogProps {
@@ -33,7 +38,7 @@ interface PedidoKpiDrillDownDialogProps {
 /**
  * Drill-down de "Pedidos activos": las filas que devolvió el backend, cada una
  * con enlace al detalle 360° (`?from=sales`, cuyo "Volver" regresa a Mis
- * pedidos). El importe va SIN símbolo: el payload no trae la moneda del pedido.
+ * pedidos). Cada importe va con el símbolo y el código de la moneda de SU pedido.
  */
 export function PedidoKpiDrillDownDialog({ open, kpi, onClose }: PedidoKpiDrillDownDialogProps) {
   const rows = kpi?.disponible ? kpi.drill_down : [];
@@ -56,6 +61,7 @@ export function PedidoKpiDrillDownDialog({ open, kpi, onClose }: PedidoKpiDrillD
               <th className={TH_CLASS}>Folio</th>
               <th className={TH_CLASS}>Cliente</th>
               <th className={TH_CLASS}>Estatus</th>
+              <th className={TH_CLASS}>Moneda</th>
               <th className={`${TH_CLASS} text-right`}>Total</th>
             </>
           }
@@ -75,8 +81,9 @@ export function PedidoKpiDrillDownDialog({ open, kpi, onClose }: PedidoKpiDrillD
                 {/* Mismo badge que el detalle 360° (`OrderProgressSheet`). */}
                 <OrderBadge config={getPedidoEstatusConfig(pedido.estatus)} />
               </td>
+              <td className={TD_CLASS}>{pedido.moneda}</td>
               <td className={`${TD_CLASS} text-right tabular-nums whitespace-nowrap`}>
-                {formatMoneyValue(pedido.gran_total, NO_CURRENCY_FORMAT)}
+                {formatKpiCurrencyAmount(pedido.gran_total, pedido.moneda)}
               </td>
             </tr>
           ))}

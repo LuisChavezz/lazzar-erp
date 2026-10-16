@@ -29,28 +29,38 @@ export interface PedidoKpiActiveOrder {
    * la de `getPedidoEstatusConfig(estatus)`, igual que el resto de pedidos.
    */
   estatus_label: string;
-  /**
-   * NÚMERO JSON (no string como en el listado), en la moneda del pedido, que
-   * el payload NO trae: se pinta sin símbolo.
-   */
+  /** NÚMERO JSON (no string como en el listado), en la moneda `moneda` del pedido. */
   gran_total: number;
   cliente_nombre: string | null;
+  /** Código ISO de la moneda del pedido ("MXN", "USD"…); catálogo abierto. */
+  moneda: string;
+}
+
+/**
+ * Pedidos activos de UNA moneda. `valor` es `Sum(gran_total)` de esos pedidos
+ * (número JSON); los de otra moneda van en su propia fila y nunca se suman.
+ */
+export interface PedidoActiveKpiCurrency {
+  moneda: string;
+  total: number;
+  valor: number;
 }
 
 export interface PedidoActiveKpiAvailable {
   disponible: true;
+  /** Conteo de pedidos activos de TODAS las monedas (suma de `por_moneda[].total`). */
   total: number;
+  /** Una fila por moneda, ordenada por código; vacía sin pedidos activos. */
+  por_moneda: PedidoActiveKpiCurrency[];
   /**
-   * `Sum(gran_total)` de los pedidos activos. Número JSON que SUMA monedas
-   * distintas sin convertir (defecto conocido del backend) y sin `moneda`: se
-   * pinta sin símbolo.
-   */
-  valor: number;
-  /**
-   * Como MÁXIMO 20 filas, ordenadas por `-gran_total, -id`, sin paginación; el
-   * total real es `total`.
+   * Como MÁXIMO 20 filas, ordenadas por `-gran_total, -id` sin convertir
+   * monedas, sin paginación.
    */
   drill_down: PedidoKpiActiveOrder[];
+  /** Total de pedidos del drill-down (igual a `total`). */
+  drill_down_total: number;
+  /** `true` si el backend cortó `drill_down` (hay más pedidos que filas). */
+  drill_down_truncado: boolean;
 }
 
 /**

@@ -7,11 +7,11 @@ import { formatKpiCurrencyAmount } from "@/src/utils/kpiFormat";
  * `<h3>` de `KpiGrid` y en celdas de tabla.
  */
 
-/** Un bloque de `KpiCurrencyBlocks`: el importe de una moneda y el detalle de ESA moneda. */
+/** Un bloque de `KpiCurrencyBlocks`: el importe de una moneda y, opcional, el detalle de ESA moneda. */
 export interface KpiCurrencyBlock {
   moneda: string;
   monto: number;
-  detail: string;
+  detail?: string;
 }
 
 /** Valor vacío de una tarjeta ("Sin facturación"): texto atenuado en línea. */
@@ -21,7 +21,7 @@ export function KpiMutedValue({ children }: { children: string }) {
 
 /**
  * Un bloque por moneda dentro del valor de una tarjeta: importe con su símbolo y
- * código, y debajo el detalle de esa moneda. Va dentro del `<h3>` de `KpiGrid`,
+ * código, y debajo (si lo hay) el detalle de esa moneda. Va dentro del `<h3>` de `KpiGrid`,
  * así que solo usa `<span>` (en `block`/`flex` para apilar).
  */
 export function KpiCurrencyBlocks({ blocks }: { blocks: KpiCurrencyBlock[] }) {
@@ -33,9 +33,11 @@ export function KpiCurrencyBlocks({ blocks }: { blocks: KpiCurrencyBlock[] }) {
             <span className="text-lg">{formatKpiCurrencyAmount(block.monto, block.moneda)}</span>
             <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">{block.moneda}</span>
           </span>
-          <span className="block text-xs font-normal tracking-normal text-slate-500 dark:text-slate-400">
-            {block.detail}
-          </span>
+          {block.detail ? (
+            <span className="block text-xs font-normal tracking-normal text-slate-500 dark:text-slate-400">
+              {block.detail}
+            </span>
+          ) : null}
         </span>
       ))}
     </span>
