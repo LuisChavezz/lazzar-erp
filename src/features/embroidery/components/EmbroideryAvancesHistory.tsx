@@ -54,16 +54,22 @@ export function EmbroideryAvancesHistory({
   const { data: session } = useSession();
   const canEditOb = hasPermission("E-PRODUCCION-OB", session?.user);
 
+  // Sin piezas programadas no hay contra qué medir un avance: el tope del
+  // diálogo sería 0 y solo abriría un formulario bloqueado. Regla del frontend,
+  // como la del estatus terminal.
+  const hasNothingProgrammed = programado <= 0;
+  const registerDisabledReason = isTerminal
+    ? "No se pueden registrar avances en una orden Finalizada o Cancelada"
+    : hasNothingProgrammed
+      ? "Esta orden no tiene piezas programadas, así que no hay avance que registrar"
+      : undefined;
+
   const registerButton = canEditOb ? (
     <Button
       variant="primary"
       leftIcon={<PlusIcon className="w-4 h-4" aria-hidden="true" />}
-      disabled={isTerminal}
-      title={
-        isTerminal
-          ? "No se pueden registrar avances en una orden Finalizada o Cancelada"
-          : undefined
-      }
+      disabled={registerDisabledReason !== undefined}
+      title={registerDisabledReason}
       onClick={() => setCreateOpen(true)}
     >
       Registrar avance

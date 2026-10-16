@@ -25,7 +25,10 @@ interface EmbroideryProgressSummaryProps {
 export function EmbroideryProgressSummary({
   resumenAvance,
 }: EmbroideryProgressSummaryProps) {
-  const pctWidth = clampPercentage(resumenAvance.porcentaje_avance);
+  // Sin piezas programadas no hay fracción que enunciar: el % se muestra como
+  // guion en vez de un "0%" que se leería como "nada bordado de algo".
+  const hasProgrammed = resumenAvance.cantidad_programada > 0;
+  const pctWidth = hasProgrammed ? clampPercentage(resumenAvance.porcentaje_avance) : 0;
 
   return (
     <Section title="Resumen de avance">
@@ -33,13 +36,14 @@ export function EmbroideryProgressSummary({
         label="Piezas bordadas"
         done={formatQuantityValue(resumenAvance.cantidad_bordada_total)}
         total={formatQuantityValue(resumenAvance.cantidad_programada)}
+        hint={hasProgrammed ? undefined : "La orden no tiene piezas programadas"}
       />
 
       <div className="mt-4">
         <div className="flex items-center justify-between text-xs mb-1">
           <span className="text-slate-500 dark:text-slate-400">Avance general</span>
           <span className="tabular-nums font-semibold text-slate-700 dark:text-slate-200">
-            {formatQuantityValue(resumenAvance.porcentaje_avance)}%
+            {hasProgrammed ? `${formatQuantityValue(resumenAvance.porcentaje_avance)}%` : "—"}
           </span>
         </div>
         <div className="h-2 w-full rounded-full bg-slate-100 dark:bg-white/10 overflow-hidden">
