@@ -44,8 +44,9 @@ const SEPARATE_CURRENCIES_NOTE = "Cada moneda va por separado: los importes de m
 /**
  * OCs abiertas: un bloque por moneda con su monto y, en el detalle, el conteo
  * de todas las monedas (un conteo sí se puede sumar; un importe no). Sin
- * importes a la vista el valor lo dice en lugar de desaparecer, y el ⓘ explica
- * por qué. Sin meta ni semáforo: sin insignia y sin barra.
+ * importes a la vista el valor es el conteo (que sí se puede ver) y el detalle
+ * dice que los importes no se muestran, con el porqué en el ⓘ. Sin meta ni
+ * semáforo: sin insignia y sin barra.
  */
 function openCard(
   kpi: PurchaseOrderOpenKpi,
@@ -61,8 +62,10 @@ function openCard(
     visibility,
     kpi.por_moneda.every((fila) => fila.monto !== undefined),
   );
+  const count = `${kpi.total} ${plural(kpi.total, "OC abierta", "OCs abiertas")}`;
   let value: ReactNode;
   let info: string;
+  let detail: string | undefined = kpi.total > 0 ? count : undefined;
   if (kpi.total === 0) {
     value = <KpiMutedValue>Sin OCs abiertas</KpiMutedValue>;
     info = criterio;
@@ -80,7 +83,8 @@ function openCard(
     );
     info = `${criterio} El monto es su total con IVA, de todo el histórico. ${SEPARATE_CURRENCIES_NOTE}`;
   } else {
-    value = <KpiMutedValue>Importes no visibles</KpiMutedValue>;
+    value = String(kpi.total);
+    detail = "Importes no visibles";
     info = `${criterio} ${HIDDEN_AMOUNTS_MOTIVO[amounts.reason]}`;
   }
   return {
@@ -89,7 +93,7 @@ function openCard(
     value,
     info,
     hideProgress: true,
-    ...(kpi.total > 0 ? { detail: `${kpi.total} ${plural(kpi.total, "OC abierta", "OCs abiertas")}` } : {}),
+    ...(detail ? { detail } : {}),
     action: (
       <KpiDrillDownButton
         label="Por estatus"
