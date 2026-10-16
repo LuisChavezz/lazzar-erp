@@ -2,12 +2,14 @@
 
 import Link from "next/link";
 import { MainDialog } from "@/src/components/MainDialog";
-import { EmptyLines, LineItemsTable } from "@/src/components/DetailDialogPrimitives";
+import { EmptyLines, LineItemsTable, SectionTitle } from "@/src/components/DetailDialogPrimitives";
+import { KpiCurrencyAmount } from "@/src/components/KpiCurrency";
 import { StatusBadge } from "@/src/components/StatusBadge";
 import { purchaseOrderStatusEntry } from "../constants/purchaseOrderStatus";
 import { purchaseOrderDetailHref } from "../constants/purchaseOrderDetailOrigins";
 import type { PurchaseOrderKpis } from "../interfaces/purchase-order-kpis.interface";
-import { formatKpiDate, formatKpiMonto, plural } from "@/src/utils/kpiFormat";
+import { formatKpiDate, plural } from "@/src/utils/kpiFormat";
+import { groupPurchaseOrderKpiSpend, groupPurchaseOrderKpiStatuses } from "../utils/purchaseOrderKpis";
 
 /** Bloques con detalle: dos desgloses del propio payload y un drill-down. */
 export type PurchaseOrderKpiDialogKind = "ocs_abiertas" | "ocs_vencidas_sin_recibir" | "gasto_por_categoria";
@@ -17,6 +19,7 @@ const FOLIO_LINK_CLASS =
 
 const TH_CLASS = "px-3 py-2 font-semibold";
 const TD_CLASS = "px-3 py-2 text-slate-600 dark:text-slate-300";
+const NOTE_CLASS = "mt-2 text-xs text-slate-500 dark:text-slate-400";
 
 // Tope de filas que el backend devuelve en el drill-down de vencidas (sin paginación).
 const DRILL_DOWN_BACKEND_LIMIT = 20;
@@ -48,18 +51,26 @@ function getDescription(
     return `Mostrando ${drill_down.length} de ${ocs}`;
   }
   if (kind === "gasto_por_categoria" && data?.gasto_por_categoria.disponible) {
-    const { length } = data.gasto_por_categoria.categorias;
-    return `${length} ${plural(length, "categoría", "categorías")}, de mayor a menor monto`;
+    const monedas = groupPurchaseOrderKpiSpend(data.gasto_por_categoria.categorias);
+    if (monedas.length === 1) {
+      const { length } = monedas[0].categorias;
+      return `${length} ${plural(length, "categoría", "categorías")}, de mayor a menor monto`;
+    }
+    return "Un ranking por moneda, de mayor a menor monto; los importes de monedas distintas no se suman.";
   }
   return "Indicador no disponible por ahora.";
 }
 
+/**
+ * OCs abiertas por estatus: una fila por estatus con el conteo de todas sus
+ * monedas y, si se ven importes, el monto de CADA moneda por separado (el
+ * backend manda una fila por estatus y moneda).
+ */
 function OpenContent({ kpi, showAmounts }: { kpi: PurchaseOrderKpis["ocs_abiertas"]; showAmounts: boolean }) {
   if (!kpi.disponible || kpi.por_estatus.length === 0) {
     return <EmptyLines>Sin OCs abiertas para mostrar.</EmptyLines>;
   }
-  // El backend no ordena `por_estatus`: se ordena por estatus (avance del ciclo).
-  const rows = [...kpi.por_estatus].sort((a, b) => a.estatus - b.estatus);
+  const groups = groupPurchaseOrderKpiStatuses(kpi.por_estatus);
   return (
     <LineItemsTable
       head={
@@ -70,18 +81,22 @@ function OpenContent({ kpi, showAmounts }: { kpi: PurchaseOrderKpis["ocs_abierta
         </>
       }
     >
-      {rows.map((row) => (
-        <tr key={row.estatus}>
+      {groups.map((group) => (
+        <tr key={group.estatus}>
           <td className={TD_CLASS}>
             <StatusBadge
-              status={String(row.estatus)}
-              config={{ [row.estatus]: purchaseOrderStatusEntry(row.estatus, row.estatus_label) }}
+              status={String(group.estatus)}
+              config={{ [group.estatus]: purchaseOrderStatusEntry(group.estatus, group.estatus_label) }}
             />
           </td>
-          <td className={`${TD_CLASS} text-right tabular-nums`}>{row.total}</td>
+          <td className={`${TD_CLASS} text-right tabular-nums`}>{group.total}</td>
           {showAmounts && (
             <td className={`${TD_CLASS} text-right tabular-nums whitespace-nowrap`}>
-              {row.monto === undefined ? "—" : formatKpiMonto(row.monto)}
+              {group.monedas.map((fila) => (
+                <span key={`${group.estatus}-${fila.moneda}`} className="block">
+                  {fila.monto === undefined ? "—" : <KpiCurrencyAmount value={fila.monto} moneda={fila.moneda} />}
+                </span>
+              ))}
             </td>
           )}
         </tr>
@@ -122,29 +137,41 @@ function OverdueContent({ kpi }: { kpi: PurchaseOrderKpis["ocs_vencidas_sin_reci
   );
 }
 
+/** Gasto por categoría: un ranking por moneda, cada uno con el total de SU moneda. */
 function SpendContent({ kpi }: { kpi: PurchaseOrderKpis["gasto_por_categoria"] }) {
   if (!kpi.disponible || kpi.categorias.length === 0) {
     return <EmptyLines>Sin gasto por categoría para mostrar.</EmptyLines>;
   }
+  const monedas = groupPurchaseOrderKpiSpend(kpi.categorias);
   return (
-    <LineItemsTable
-      head={
-        <>
-          <th className={TH_CLASS}>Categoría</th>
-          <th className={`${TH_CLASS} text-right`}>Monto</th>
-        </>
-      }
-    >
-      {/* En el orden del backend (`-monto`). */}
-      {kpi.categorias.map((row) => (
-        <tr key={row.categoria}>
-          <td className={TD_CLASS}>{row.categoria}</td>
-          <td className={`${TD_CLASS} text-right tabular-nums whitespace-nowrap`}>
-            {row.monto === undefined ? "—" : formatKpiMonto(row.monto)}
-          </td>
-        </tr>
+    <div className="space-y-5">
+      {monedas.map((moneda) => (
+        <section key={moneda.moneda} aria-label={`Gasto en ${moneda.moneda}`}>
+          {monedas.length > 1 && <SectionTitle>{moneda.moneda}</SectionTitle>}
+          <LineItemsTable
+            head={
+              <>
+                <th className={TH_CLASS}>Categoría</th>
+                <th className={`${TH_CLASS} text-right`}>Monto</th>
+              </>
+            }
+          >
+            {/* En el orden del backend (`-monto` dentro de la moneda). */}
+            {moneda.categorias.map((row) => (
+              <tr key={`${row.categoria}-${row.moneda}`}>
+                <td className={TD_CLASS}>{row.categoria}</td>
+                <td className={`${TD_CLASS} text-right tabular-nums whitespace-nowrap`}>
+                  <KpiCurrencyAmount value={row.monto} moneda={row.moneda} />
+                </td>
+              </tr>
+            ))}
+          </LineItemsTable>
+          <p className={NOTE_CLASS}>
+            Total en {moneda.moneda}: <KpiCurrencyAmount value={moneda.total} moneda={moneda.moneda} />
+          </p>
+        </section>
       ))}
-    </LineItemsTable>
+    </div>
   );
 }
 
