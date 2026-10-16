@@ -7,7 +7,6 @@ import { formatQuantityValue } from "@/src/utils/formatCurrency";
 import { formatKpiDias, formatKpiPct, plural } from "@/src/utils/kpiFormat";
 import type { SupplierKpiRow, SupplierKpis } from "../interfaces/supplier-kpis.interface";
 import { supplierDetailHref } from "../utils/supplierPurchaseOrderHistoryFilters";
-import { rowsWithAgreedLeadTime } from "../utils/supplierKpis";
 import { useSuppliers } from "../hooks/useSuppliers";
 
 /** Tarjetas con drill-down. "Scorecard general" no tiene (ver la sección). */
@@ -32,8 +31,8 @@ const byName = (a: SupplierKpiRow, b: SupplierKpiRow) => a.proveedor_nombre.loca
 function getRows(kind: SupplierKpiDialogKind, rows: SupplierKpiRow[]): SupplierKpiRow[] {
   switch (kind) {
     case "entrega_a_tiempo":
-      // Mismas filas que la tarjeta: solo proveedores con lead time pactado.
-      return rowsWithAgreedLeadTime(rows)
+      // `pct` es `null` sin recepciones con fecha prometida: no aportan.
+      return rows
         .filter((row) => row.entrega_a_tiempo.pct !== null)
         .sort((a, b) => (a.entrega_a_tiempo.pct ?? 0) - (b.entrega_a_tiempo.pct ?? 0) || byName(a, b));
     case "calidad":
@@ -78,7 +77,7 @@ function OnTimeTable({ rows, activeIds }: { rows: SupplierKpiRow[]; activeIds: S
         <>
           <th className={TH_CLASS}>Proveedor</th>
           <th className={`${TH_CLASS} text-right`}>A tiempo</th>
-          <th className={`${TH_CLASS} text-right`}>Recepciones</th>
+          <th className={`${TH_CLASS} text-right`}>Con fecha prometida</th>
           <th className={`${TH_CLASS} text-right`}>% a tiempo</th>
         </>
       }
@@ -87,7 +86,7 @@ function OnTimeTable({ rows, activeIds }: { rows: SupplierKpiRow[]; activeIds: S
         <tr key={row.proveedor_id}>
           <SupplierCell row={row} linkable={activeIds.has(row.proveedor_id)} />
           <td className={NUM_TD_CLASS}>{formatQuantityValue(row.entrega_a_tiempo.recepciones_a_tiempo)}</td>
-          <td className={NUM_TD_CLASS}>{formatQuantityValue(row.entrega_a_tiempo.recepciones_total)}</td>
+          <td className={NUM_TD_CLASS}>{formatQuantityValue(row.entrega_a_tiempo.recepciones_con_compromiso)}</td>
           <td className={NUM_TD_CLASS}>{formatKpiPct(row.entrega_a_tiempo.pct ?? 0)}</td>
         </tr>
       ))}

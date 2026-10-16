@@ -18,12 +18,14 @@ const sum = (rows: SupplierKpiRow[], pick: (row: SupplierKpiRow) => number): num
   rows.reduce((total, row) => total + pick(row), 0);
 
 /**
- * Entrega a tiempo: Σ recepciones a tiempo / Σ recepciones. `pct: null` sin
- * recepciones.
+ * Entrega a tiempo: Σ recepciones a tiempo / Σ recepciones con fecha prometida,
+ * igual que el `pct` que el backend da por proveedor. Las recepciones sin fecha
+ * prometida no cuentan (no se puede saber si llegaron tarde). `pct: null` si
+ * ninguna tiene fecha prometida.
  */
 export function aggregateOnTimeDelivery(rows: SupplierKpiRow[]) {
   const aTiempo = sum(rows, (row) => row.entrega_a_tiempo.recepciones_a_tiempo);
-  const total = sum(rows, (row) => row.entrega_a_tiempo.recepciones_total);
+  const total = sum(rows, (row) => row.entrega_a_tiempo.recepciones_con_compromiso);
   return { pct: total > 0 ? pct(aTiempo, total) : null, aTiempo, total };
 }
 
