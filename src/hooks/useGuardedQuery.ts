@@ -107,6 +107,10 @@ const NO_DEFINITIVE_ERROR = 0;
  *   `placeholderData` (p. ej. `keepPreviousData`), `data` trae el placeholder
  *   de la llave anterior mientras llega la nueva: eso NO cuenta como cargado,
  *   e `isPlaceholderData` se expone para que el hook lo trate como carga.
+ * - `isFetchedAfterMount` se pasa tal cual de `useQuery`: `true` cuando ESTA
+ *   instancia ya vio una respuesta (o un fallo) propia. Sirve a un diálogo que
+ *   debe esperar una lectura fresca aunque haya datos en caché (con
+ *   `refetchOnMount: "always"`).
  * - `isDefinitiveError` solo puede ser `true` si se pasó la opción del mismo
  *   nombre (ver `GuardedQueryNotice`); mientras lo es, `data` es `undefined`,
  *   `hasLoaded` e `isInitialError` son `false` y no hay toast.
@@ -152,6 +156,7 @@ export const useGuardedQuery = <
     dataUpdatedAt,
     isLoading,
     isFetching,
+    isFetchedAfterMount,
     isPlaceholderData,
     isError,
     error,
@@ -211,6 +216,7 @@ export const useGuardedQuery = <
     hasLoaded,
     isLoading,
     isFetching,
+    isFetchedAfterMount,
     isPlaceholderData,
     isInitialError,
     isDefinitiveError: isDefinitive,

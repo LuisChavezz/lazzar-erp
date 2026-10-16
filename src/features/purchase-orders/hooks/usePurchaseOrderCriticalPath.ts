@@ -10,15 +10,15 @@ export const purchaseOrderCriticalPathKey = (ocId: number) =>
 export const isValidPurchaseOrderId = (ocId: number) => Number.isInteger(ocId) && ocId > 0;
 
 /**
- * Ruta crítica de UNA OC. Solo la usa el diálogo, que se MONTA al abrirse
- * (desde el listado o el detalle): nada más muestra estos datos, así que no
- * hay prefetch ni polling.
+ * Ruta crítica de UNA OC. Solo la usa el contenido del diálogo, que se MONTA
+ * en cada apertura (desde el listado o el detalle): nada más muestra estos
+ * datos, así que no hay prefetch ni polling.
  *
- * `gcTime: 0`: al cerrar el diálogo la consulta sale de la caché, así que cada
- * apertura empieza sin datos y espera la lectura FRESCA (otra persona pudo
- * capturar mientras tanto) antes de montar el formulario: nunca toma como base
- * un valor viejo. Cumple el papel del `isFetchedAfterMount` del diálogo de OP,
- * que `useGuardedQuery` no expone.
+ * `refetchOnMount: "always"`: cada apertura trae el registro vigente aunque
+ * haya uno en caché (otra persona pudo capturar, o un PATCH respondió después
+ * de cerrar). El diálogo espera esa lectura (`isFetchedAfterMount`) antes de
+ * montar el formulario, para no tomar como base un valor viejo. Mismo
+ * mecanismo que la ruta crítica de OP.
  *
  * `refetchOnReconnect: false`: con el diálogo abierto no hay nada que ganar con
  * un refetch automático, y sí captura sin guardar que proteger.
@@ -27,13 +27,13 @@ export const isValidPurchaseOrderId = (ocId: number) => Number.isInteger(ocId) &
  * reintenta ni avisa por toast (`isDefinitiveError`). Un refetch fallido tras
  * una carga correcta conserva lo cargado y avisa por toast.
  */
-export const usePurchaseOrderCriticalPath = (ocId: number) => {
-  const query = useGuardedQuery<PurchaseOrderCriticalPath>(
+export const usePurchaseOrderCriticalPath = (ocId: number) =>
+  useGuardedQuery<PurchaseOrderCriticalPath>(
     {
       queryKey: purchaseOrderCriticalPathKey(ocId),
       queryFn: () => getPurchaseOrderCriticalPath(ocId),
       enabled: isValidPurchaseOrderId(ocId),
-      gcTime: 0,
+      refetchOnMount: "always",
       refetchOnReconnect: false,
     },
     {
@@ -41,13 +41,3 @@ export const usePurchaseOrderCriticalPath = (ocId: number) => {
       isDefinitiveError: isNotFoundError,
     },
   );
-
-  return {
-    data: query.data,
-    error: query.error,
-    isInitialError: query.isInitialError,
-    isDefinitiveError: query.isDefinitiveError,
-    isFetching: query.isFetching,
-    refetch: query.refetch,
-  };
-};

@@ -35,8 +35,9 @@ const NO_PERMISSION_NOTICE =
 /**
  * Diálogo de la ruta crítica de UNA OC (EC-488). Lo abren el listado (acción
  * de fila) y la página de detalle (botón); ambos lo montan SOLO mientras está
- * abierto, con `key` por OC, y la consulta usa `gcTime: 0`: cada apertura
- * espera una lectura fresca antes de montar el formulario.
+ * abierto, con `key` por OC, y cada apertura espera una lectura fresca
+ * (`refetchOnMount: "always"` + `isFetchedAfterMount`) antes de montar el
+ * formulario.
  *
  * Ciclo de vida copiado del diálogo de la OP
  * (`ProductionOrderCriticalPathDialog`): el formulario se monta con `key` =
@@ -63,7 +64,7 @@ export function PurchaseOrderCriticalPathDialog({
       ? null
       : NO_PERMISSION_NOTICE;
 
-  const { data, error, isInitialError, isDefinitiveError, isFetching, refetch } =
+  const { data, error, isInitialError, isDefinitiveError, isFetching, isFetchedAfterMount, refetch } =
     usePurchaseOrderCriticalPath(target.ocId);
   const isSaving =
     useIsMutating({ mutationKey: updatePurchaseOrderCriticalPathMutationKey(target.ocId) }) > 0;
@@ -103,7 +104,8 @@ export function PurchaseOrderCriticalPathDialog({
       );
     }
 
-    if (!data) {
+    // Espera la lectura de ESTA apertura aunque haya datos en caché.
+    if (!data || !isFetchedAfterMount) {
       return (
         <div className="space-y-4">
           <Loader
