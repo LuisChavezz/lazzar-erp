@@ -2,6 +2,7 @@
 
 import { useIsMutating } from "@tanstack/react-query";
 import { useSession } from "next-auth/react";
+import { useDialogSession } from "@/src/hooks/useDialogSession";
 import { MainDialog } from "@/src/components/MainDialog";
 import { Loader } from "@/src/components/Loader";
 import { ErrorState } from "@/src/components/ErrorState";
@@ -22,9 +23,13 @@ import type { PurchaseOrderCriticalPathTarget } from "../interfaces/purchase-ord
 import { PurchaseOrderCriticalPathForm } from "./PurchaseOrderCriticalPathForm";
 
 interface PurchaseOrderCriticalPathDialogProps {
-  /** OC abierta. Folio y estatus vienen de quien abre: la respuesta no los trae. */
-  target: PurchaseOrderCriticalPathTarget;
-  onClose: () => void;
+  /**
+   * OC a consultar, o `null` con el diálogo cerrado. Folio y estatus vienen de
+   * quien abre: la respuesta no los trae.
+   */
+  target: PurchaseOrderCriticalPathTarget | null;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
 }
 
 const CANCELLED_NOTICE =
@@ -33,9 +38,13 @@ const NO_PERMISSION_NOTICE =
   "No tienes permiso para editar la ruta crítica de órdenes de compra: solo se puede consultar.";
 
 /**
- * Diálogo de la ruta crítica de UNA OC (EC-488). Lo abren el listado (acción
- * de fila) y la página de detalle (botón); ambos lo montan SOLO mientras está
- * abierto, con `key` por OC, y cada apertura espera una lectura fresca
+ * Diálogo CONTROLADO de la ruta crítica de UNA OC (EC-488). Lo abren el
+ * listado (acción de fila) y la página de detalle (botón).
+ *
+ * `useDialogSession` toma la OC al ABRIR: el dueño puede poner `target` en
+ * `null` al cerrar y el contenido sigue en pantalla durante la animación de
+ * salida. El contenido se monta con `key` = `session.id`, así que cada
+ * apertura monta su propia consulta y espera una lectura fresca
  * (`refetchOnMount: "always"` + `isFetchedAfterMount`) antes de montar el
  * formulario.
  *
@@ -47,17 +56,65 @@ const NO_PERMISSION_NOTICE =
  * backend de la OC acepta la captura en todos los estatus.
  *
  * Solo lectura —decisión de negocio, aplicada aquí en el cliente— cuando la
- * OC está Cancelada o el usuario no tiene `E-COMPRAS-OC`. El backend hoy solo
- * exige sesión para escribir (DISTinTheHouse/nucleo-erp#526), así que esto es UX,
- * no una frontera de seguridad. El estatus es la FOTO que tomó quien abre.
+ * OC está Cancelada o el usuario no tiene `E-COMPRAS-OC`; mientras la sesión
+ * carga se muestra el estado de carga, nunca un "sin permiso" provisional. El
+ * backend hoy solo exige sesión para escribir (DISTinTheHouse/nucleo-erp#526),
+ * así que esto es UX, no una frontera de seguridad. El estatus es la FOTO que
+ * tomó quien abre.
  */
 export function PurchaseOrderCriticalPathDialog({
   target,
-  onClose,
+  open,
+  onOpenChange,
 }: PurchaseOrderCriticalPathDialogProps) {
+  const session = useDialogSession(open, target);
+  const snapshot = session.snapshot;
+  const isSaving =
+    useIsMutating({
+      mutationKey: updatePurchaseOrderCriticalPathMutationKey(snapshot?.ocId ?? 0),
+    }) > 0;
+
+  const handleOpenChange = (next: boolean) => {
+    // No se cierra a media petición: el resultado (éxito o error) debe verse.
+    if (!next && isSaving) return;
+    onOpenChange(next);
+  };
+
+  return (
+    <MainDialog
+      open={open}
+      onOpenChange={handleOpenChange}
+      maxWidth="560px"
+      showCloseButton={false}
+      title={
+        snapshot
+          ? `Ruta crítica · ${snapshot.folio || `Orden #${snapshot.ocId}`}`
+          : "Ruta crítica"
+      }
+      description="Seguimiento informativo: no modifica la orden, sus recepciones ni el inventario."
+    >
+      {snapshot && (
+        <CriticalPathDialogContent
+          key={session.id}
+          target={snapshot}
+          onClose={() => handleOpenChange(false)}
+        />
+      )}
+    </MainDialog>
+  );
+}
+
+/** Contenido de UNA apertura: su consulta nace y muere con ella. */
+function CriticalPathDialogContent({
+  target,
+  onClose,
+}: {
+  target: PurchaseOrderCriticalPathTarget;
+  onClose: () => void;
+}) {
   const validId = isValidPurchaseOrderId(target.ocId);
-  const { data: session } = useSession();
-  const canEdit = hasPermission("E-COMPRAS-OC", session?.user);
+  const { data: authSession, status: sessionStatus } = useSession();
+  const canEdit = hasPermission("E-COMPRAS-OC", authSession?.user);
   const readOnlyNotice = isPurchaseOrderCancelled(target.estatus)
     ? CANCELLED_NOTICE
     : canEdit
@@ -66,13 +123,6 @@ export function PurchaseOrderCriticalPathDialog({
 
   const { data, error, isInitialError, isDefinitiveError, isFetching, isFetchedAfterMount, refetch } =
     usePurchaseOrderCriticalPath(target.ocId);
-  const isSaving =
-    useIsMutating({ mutationKey: updatePurchaseOrderCriticalPathMutationKey(target.ocId) }) > 0;
-
-  const handleOpenChange = (next: boolean) => {
-    // No se cierra a media petición: el resultado (éxito o error) debe verse.
-    if (!next && !isSaving) onClose();
-  };
 
   const renderBody = () => {
     if (!validId || isDefinitiveError || isInitialError) {
@@ -104,8 +154,9 @@ export function PurchaseOrderCriticalPathDialog({
       );
     }
 
-    // Espera la lectura de ESTA apertura aunque haya datos en caché.
-    if (!data || !isFetchedAfterMount) {
+    // Espera la lectura de ESTA apertura aunque haya datos en caché, y la
+    // sesión: sin ella no se sabe si el usuario tiene `E-COMPRAS-OC`.
+    if (sessionStatus === "loading" || !data || !isFetchedAfterMount) {
       return (
         <div className="space-y-4">
           <Loader
@@ -133,22 +184,11 @@ export function PurchaseOrderCriticalPathDialog({
           ocId={target.ocId}
           data={data}
           readOnlyNotice={readOnlyNotice}
-          onClose={() => handleOpenChange(false)}
+          onClose={onClose}
         />
       </>
     );
   };
 
-  return (
-    <MainDialog
-      open
-      onOpenChange={handleOpenChange}
-      maxWidth="560px"
-      showCloseButton={false}
-      title={`Ruta crítica · ${target.folio || `Orden #${target.ocId}`}`}
-      description="Seguimiento informativo: no modifica la orden, sus recepciones ni el inventario."
-    >
-      {renderBody()}
-    </MainDialog>
-  );
+  return renderBody();
 }

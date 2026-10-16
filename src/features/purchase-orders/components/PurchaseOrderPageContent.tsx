@@ -867,12 +867,13 @@ export function PurchaseOrderPageContent({
         />
       )}
 
-      {criticalPathTarget && (
-        <PurchaseOrderCriticalPathDialog
-          target={criticalPathTarget}
-          onClose={() => setCriticalPathTarget(null)}
-        />
-      )}
+      <PurchaseOrderCriticalPathDialog
+        target={criticalPathTarget}
+        open={criticalPathTarget !== null}
+        onOpenChange={(open) => {
+          if (!open) setCriticalPathTarget(null);
+        }}
+      />
     </div>
   );
 }

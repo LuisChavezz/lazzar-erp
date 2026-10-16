@@ -223,15 +223,15 @@ export function PurchaseOrderView() {
       />
 
       {/* ── Ruta crítica ──────────────────────────────────────────────────── */}
-      {/* Montado SOLO mientras está abierto, con `key` por OC: cada apertura
-          espera su lectura fresca (ver `PurchaseOrderCriticalPathDialog`). */}
-      {criticalPathTarget && (
-        <PurchaseOrderCriticalPathDialog
-          key={criticalPathTarget.ocId}
-          target={criticalPathTarget}
-          onClose={() => setCriticalPathTarget(null)}
-        />
-      )}
+      {/* Controlado: conserva la OC (`useDialogSession`) mientras se anima su
+          cierre, y cada apertura espera su lectura fresca. */}
+      <PurchaseOrderCriticalPathDialog
+        target={criticalPathTarget}
+        open={criticalPathTarget !== null}
+        onOpenChange={(open) => {
+          if (!open) setCriticalPathTarget(null);
+        }}
+      />
     </div>
   );
 }
