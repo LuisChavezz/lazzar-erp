@@ -1,9 +1,15 @@
 "use client";
 
 import { DecimalQuantityInput } from "@/src/components/DecimalQuantityInput";
+import { textOrDash } from "@/src/components/DetailDialogPrimitives";
 import { LayersIcon } from "@/src/components/Icons";
+import { skuOrNull } from "@/src/features/orders/utils/orderLines";
 import { formatExactQuantityValue } from "@/src/utils/formatCurrency";
-import { embroideryLineProductoNombre } from "../hooks/useEmbroideryStep2Form";
+import {
+  embroideryLineProductoNombre,
+  hasNoCatalogProduct,
+  isEmbroideryRowEligible,
+} from "../hooks/useEmbroideryStep2Form";
 import type { EmbroideryOnboardingDetalle } from "../interfaces/embroidery.interface";
 import { EmbroideryLineLocationPopover } from "./EmbroideryLineLocationPopover";
 import { ServiceChips } from "./ServiceChips";
@@ -90,8 +96,28 @@ export function EmbroideryOrderLinesTable({
             const id = row.pedido_detalle_talla_id;
             const inputId = `embroidery-line-${id}`;
             const ceiling = ceilings.get(id) ?? 0;
+            // Dos motivos INDEPENDIENTES para apagar la fila: `agotada` (sin
+            // pendiente: "Ya programada") y `!eligible` (el backend no la
+            // acepta en una orden, ver `isEmbroideryRowEligible`).
             const agotada = ceiling <= 0;
+            const eligible = isEmbroideryRowEligible(row);
+            const blocked = agotada || !eligible;
             const checked = checkedIds.has(id);
+            // Una línea sin producto de catálogo ya lleva su SKU en el nombre
+            // (`embroideryLineProductoNombre`); repetirlo aquí sería ruido.
+            const sku = hasNoCatalogProduct(row) ? null : skuOrNull(row.sku);
+            const skuProscai = skuOrNull(row.sku_proscai);
+            // Clave AUSENTE (backend anterior al campo) → no se pinta; `null`
+            // (talla sin variante) → "—". El backend suma todos los almacenes
+            // de la EMPRESA, no solo la sucursal.
+            const existencias =
+              row.existencias === undefined
+                ? undefined
+                : textOrDash(
+                    row.existencias === null
+                      ? null
+                      : formatExactQuantityValue(row.existencias),
+                  );
             // TODAS las ubicaciones, no `ubicaciones[0]`. Este renglón se
             // quedaba con la primera "porque ninguna talla real trae más de
             // una": es falso. Entre las tallas CON bordado la distribución es
@@ -114,7 +140,7 @@ export function EmbroideryOrderLinesTable({
               <div
                 key={id}
                 className={`py-3 px-2 rounded-lg transition-colors ${
-                  agotada ? "opacity-60" : "hover:bg-slate-50 dark:hover:bg-white/5"
+                  blocked ? "opacity-60" : "hover:bg-slate-50 dark:hover:bg-white/5"
                 }`}
               >
                 <div className="flex items-start gap-3">
@@ -126,14 +152,14 @@ export function EmbroideryOrderLinesTable({
                 <label
                   htmlFor={inputId}
                   className={`flex min-w-0 flex-1 items-start gap-3 ${
-                    agotada ? "cursor-not-allowed" : "cursor-pointer"
+                    blocked ? "cursor-not-allowed" : "cursor-pointer"
                   }`}
                 >
                   <input
                     id={inputId}
                     type="checkbox"
                     checked={checked}
-                    disabled={agotada}
+                    disabled={blocked}
                     onChange={() => onToggleLine(id)}
                     className="mt-0.5 w-4 h-4 rounded border-slate-300 accent-sky-600 shrink-0 disabled:cursor-not-allowed"
                   />
@@ -166,6 +192,27 @@ export function EmbroideryOrderLinesTable({
                         </span>
                       )}
                     </div>
+                    {(sku || skuProscai) && (
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 break-words">
+                        {sku && (
+                          <>
+                            SKU:{" "}
+                            <span className="font-semibold text-slate-700 dark:text-slate-200">
+                              {sku}
+                            </span>
+                          </>
+                        )}
+                        {sku && skuProscai && " · "}
+                        {skuProscai && (
+                          <>
+                            SKU Proscai:{" "}
+                            <span className="font-semibold text-slate-700 dark:text-slate-200">
+                              {skuProscai}
+                            </span>
+                          </>
+                        )}
+                      </p>
+                    )}
                     <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 tabular-nums">
                       Pedida: {formatExactQuantityValue(row.cantidad_pedido)} · Programada:{" "}
                       {formatExactQuantityValue(row.cantidad_asignada)} ·{" "}
@@ -177,8 +224,44 @@ export function EmbroideryOrderLinesTable({
                         Pendiente: {formatExactQuantityValue(row.cantidad_pendiente)}
                       </span>
                     </p>
+                    {/* Existencia DENTRO de la columna del texto en pantallas
+                        angostas: como bloque aparte junto al stepper le
+                        quitaba casi todo el ancho al nombre. Desde `sm` vuelve
+                        a su columna propia (abajo). */}
+                    {existencias !== undefined && (
+                      <p
+                        className="sm:hidden text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 tabular-nums"
+                        title="Suma de todos los almacenes de la empresa"
+                      >
+                        Existencia empresa:{" "}
+                        <span className="font-semibold text-slate-700 dark:text-slate-200">
+                          {existencias}
+                        </span>
+                      </p>
+                    )}
+                    {/* Motivo VISIBLE, no solo un tooltip: sin él la casilla
+                        apagada de una línea con pendiente parece un error. */}
+                    {!eligible && (
+                      <p className="text-[11px] text-amber-700 dark:text-amber-300 mt-0.5">
+                        Sin producto de catálogo: no se puede incluir en una orden de bordado.
+                      </p>
+                    )}
                   </div>
                 </label>
+
+                {existencias !== undefined && (
+                  <div
+                    className="hidden sm:block shrink-0 text-right"
+                    title="Suma de todos los almacenes de la empresa"
+                  >
+                    <p className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">
+                      Existencia empresa
+                    </p>
+                    <p className="text-sm font-semibold text-slate-700 dark:text-slate-200 tabular-nums">
+                      {existencias}
+                    </p>
+                  </div>
+                )}
 
                 {/* `decimalPlaces={0}`: piezas enteras. El techo es el pendiente
                     de ESTA línea. Una línea desmarcada queda inerte Y VACÍA —el
@@ -188,7 +271,7 @@ export function EmbroideryOrderLinesTable({
                   value={quantities.get(id) ?? ""}
                   max={ceiling}
                   decimalPlaces={0}
-                  disabled={agotada || !checked}
+                  disabled={blocked || !checked}
                   onChange={(next) => onQuantityChange(id, next)}
                   label={`Piezas a bordar de ${embroideryLineProductoNombre(row)}`}
                 />

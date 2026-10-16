@@ -10,6 +10,7 @@ import type {
   EmbroideryOnboardingDetalle,
   EmbroideryOrderDetalleOverride,
 } from "../interfaces/embroidery.interface";
+import { skuOrNull } from "@/src/features/orders/utils/orderLines";
 import { buildEmbroideryOrderPayload } from "../utils/buildEmbroideryOrderPayload";
 import { useEmbroideryOnboarding } from "./useEmbroideryOnboarding";
 import {
@@ -25,10 +26,44 @@ interface UseEmbroideryStep2FormParams {
   onSuccess: () => void;
 }
 
-/** Nombre legible de la línea. `producto_nombre` es nullable en el contrato. */
+/**
+ * La línea no apunta a un producto de catálogo (`producto_id === null`). No se
+ * llama "muestra" a propósito: el criterio de muestra del proyecto es un
+ * `producto_nombre_externo` no vacío (`isSampleLine` en `orders/utils/orderLines.ts`),
+ * y este payload no trae ese campo.
+ */
+export const hasNoCatalogProduct = (row: EmbroideryOnboardingDetalle): boolean =>
+  row.producto_id === null;
+
+/**
+ * ¿Se puede incluir la línea en una orden? ÚNICO lugar de la regla: el POST
+ * rechaza con `400` toda talla sin producto de catálogo
+ * (`exigir_producto_en_tallas`, `produccion/services/common.py` en nucleo-erp;
+ * reportado como bug en nucleo-erp#516). Si el backend deja de rechazarlas,
+ * basta con quitar esta condición.
+ *
+ * Es independiente del techo: una línea no elegible puede seguir teniendo
+ * pendiente, y no por eso está "ya programada".
+ */
+export const isEmbroideryRowEligible = (row: EmbroideryOnboardingDetalle): boolean =>
+  !hasNoCatalogProduct(row);
+
+/**
+ * Nombre legible de la línea. `producto_nombre` es nullable en el contrato, y
+ * una línea sin producto de catálogo no trae id ni nombre externo: se rotula de
+ * forma neutra con su SKU (o, sin él, su id de talla) para que cada fila —y su
+ * `aria-label` y el popover— se distinga de las demás del mismo pedido.
+ */
 export const embroideryLineProductoNombre = (
   row: EmbroideryOnboardingDetalle,
-): string => row.producto_nombre ?? `Producto #${row.producto_id}`;
+): string => {
+  if (row.producto_nombre) return row.producto_nombre;
+  if (row.producto_id !== null) return `Producto #${row.producto_id}`;
+  const sku = skuOrNull(row.sku);
+  return sku
+    ? `Sin producto de catálogo · ${sku}`
+    : `Sin producto de catálogo · línea #${row.pedido_detalle_talla_id}`;
+};
 
 /**
  * Etiquetas de los campos del Paso 1 a los que el backend puede atribuir un
@@ -47,6 +82,9 @@ const STEP1_FIELD_LABELS: Record<string, string> = {
  * cualquier fraccionario (`PedidoDetalleTalla.cantidad` es un
  * `PositiveIntegerField`), así que un pendiente que llegara con decimales se
  * trunca hacia abajo — nunca hacia arriba, que propondría más de lo que hay.
+ *
+ * Solo dice cuánto queda PENDIENTE; si la línea se puede elegir lo decide
+ * `isEmbroideryRowEligible`.
  */
 const ceilingOf = (row: EmbroideryOnboardingDetalle): number =>
   Math.max(0, Math.floor(row.cantidad_pendiente));
@@ -133,13 +171,42 @@ export function useEmbroideryStep2Form({
   }, [rows]);
 
   /**
+   * Ids de las líneas que NO se pueden incluir en una orden (ver
+   * `isEmbroideryRowEligible`). Mismo motivo que `ceilings` para el `useMemo`:
+   * también es dependencia del efecto de reconciliación.
+   */
+  const ineligibleIds = useMemo(
+    () =>
+      new Set(
+        rows
+          .filter((row) => !isEmbroideryRowEligible(row))
+          .map((row) => row.pedido_detalle_talla_id),
+      ),
+    [rows],
+  );
+
+  /** ¿La línea se puede marcar? Con pendiente Y elegible. */
+  const isSelectable = (id: number): boolean =>
+    (ceilings.get(id) ?? 0) > 0 && !ineligibleIds.has(id);
+
+  /**
    * Líneas que aún se pueden programar (las demás salen deshabilitadas). Sin
    * `useMemo`: solo alimenta el render, así que el React Compiler lo memoiza
    * por su cuenta (ver CLAUDE.md, "React Compiler").
    */
   let availableRowsCount = 0;
-  for (const ceiling of ceilings.values()) {
-    if (ceiling > 0) availableRowsCount += 1;
+  for (const id of ceilings.keys()) {
+    if (isSelectable(id)) availableRowsCount += 1;
+  }
+
+  /**
+   * Líneas con pendiente que no se pueden elegir. No están "ya programadas":
+   * sin este conteo, un pedido cuyo único pendiente son líneas no elegibles se
+   * leería como cubierto al 100%.
+   */
+  let ineligiblePendingCount = 0;
+  for (const id of ineligibleIds) {
+    if ((ceilings.get(id) ?? 0) > 0) ineligiblePendingCount += 1;
   }
 
   /**
@@ -186,7 +253,7 @@ export function useEmbroideryStep2Form({
     const nextQuantities = new Map<number, string>();
     for (const row of rows) {
       const ceiling = ceilingOf(row);
-      if (ceiling <= 0) continue;
+      if (ceiling <= 0 || !isEmbroideryRowEligible(row)) continue;
       nextChecked.add(row.pedido_detalle_talla_id);
       nextQuantities.set(row.pedido_detalle_talla_id, String(ceiling));
     }
@@ -211,7 +278,7 @@ export function useEmbroideryStep2Form({
         if (!raw) continue;
         const captured = Number.parseInt(raw, 10);
         if (!Number.isFinite(captured)) continue;
-        if (ceiling <= 0) {
+        if (ceiling <= 0 || ineligibleIds.has(id)) {
           next.delete(id);
           changed = true;
         } else if (captured > ceiling) {
@@ -226,14 +293,14 @@ export function useEmbroideryStep2Form({
       let changed = false;
       const next = new Set(prev);
       for (const id of prev) {
-        if ((ceilings.get(id) ?? 0) <= 0) {
+        if ((ceilings.get(id) ?? 0) <= 0 || ineligibleIds.has(id)) {
           next.delete(id);
           changed = true;
         }
       }
       return changed ? next : prev;
     });
-  }, [ceilings]);
+  }, [ceilings, ineligibleIds]);
 
   /**
    * Limpia TODO lo que afirma algo sobre el último intento: el banner, su
@@ -248,8 +315,8 @@ export function useEmbroideryStep2Form({
   };
 
   const toggleLine = (pedidoDetalleTallaId: number) => {
+    if (!isSelectable(pedidoDetalleTallaId)) return;
     const ceiling = ceilings.get(pedidoDetalleTallaId) ?? 0;
-    if (ceiling <= 0) return;
 
     const wasChecked = checkedIds.has(pedidoDetalleTallaId);
     const next = new Set(checkedIds);
@@ -288,7 +355,7 @@ export function useEmbroideryStep2Form({
     const nextQuantities = new Map(quantities);
     for (const row of rows) {
       const ceiling = ceilingOf(row);
-      if (ceiling <= 0) continue;
+      if (ceiling <= 0 || !isEmbroideryRowEligible(row)) continue;
       nextChecked.add(row.pedido_detalle_talla_id);
       if (!nextQuantities.get(row.pedido_detalle_talla_id)) {
         nextQuantities.set(row.pedido_detalle_talla_id, String(ceiling));
@@ -379,8 +446,8 @@ export function useEmbroideryStep2Form({
       const id = row.pedido_detalle_talla_id;
       if (!checkedIds.has(id)) continue;
 
+      if (!isSelectable(id)) continue;
       const ceiling = ceilings.get(id) ?? 0;
-      if (ceiling <= 0) continue;
 
       const raw = quantities.get(id) ?? "";
       const cantidad = Number.parseInt(raw, 10);
@@ -458,6 +525,7 @@ export function useEmbroideryStep2Form({
     rows,
     ceilings,
     availableRowsCount,
+    ineligiblePendingCount,
     selectedCount,
     checkedIds,
     quantities,

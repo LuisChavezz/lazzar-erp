@@ -606,7 +606,12 @@ export interface EmbroideryOnboardingDetalle {
   /** Id de `PedidoDetalleTalla` — el que viaja en `detalles_override`. */
   pedido_detalle_talla_id: number;
   pedido_detalle_id: number;
-  producto_id: number;
+  /**
+   * `null` en una línea de MUESTRA (`PedidoDetalle.producto` es nullable). El
+   * backend la ofrece si ya tiene `sku_muestra`, pero el POST la rechaza con
+   * `400` (`exigir_producto_en_tallas`): la UI la muestra sin dejar elegirla.
+   */
+  producto_id: number | null;
   producto_nombre: string | null;
   talla_id: number | null;
   talla_nombre: string | null;
@@ -632,6 +637,23 @@ export interface EmbroideryOnboardingDetalle {
   tipos_servicio: string[];
   /** Las mismas técnicas ya rotuladas por el backend. Nunca ausente; `[]` normal. */
   tipos_servicio_display: TipoServicioDisplay[];
+  // ── SKU y existencias (solo bordado) ─────────────────────────────────────
+  // OPCIONALES: un backend anterior a nucleo-erp#484 no manda las claves.
+  // Ese mismo cambio oculta del onboarding las tallas sin variante ni
+  // `sku_muestra`, así que la UI no filtra nada por SKU por su cuenta.
+  /** `variante.sku`, o `sku_muestra` en una muestra sin variante. */
+  sku?: string | null;
+  /**
+   * `cod_proscai` de la VARIANTE; `null` si está vacío o no hay variante. Hoy
+   * casi siempre `null`: el dato poblado vive en el producto, no en la variante.
+   */
+  sku_proscai?: string | null;
+  /**
+   * Suma de `Existencia.cantidad` de la variante en TODOS los almacenes de la
+   * empresa del pedido (sin acotar por sucursal ni tipo de almacén). `0` sin
+   * filas; `null` cuando la talla no tiene variante (solo `sku_muestra`).
+   */
+  existencias?: number | null;
 }
 
 /**

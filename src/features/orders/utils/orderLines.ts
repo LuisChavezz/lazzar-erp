@@ -37,7 +37,7 @@ export type SampleSkuTallaState = "none" | "linkable" | "linked" | "orphan" | "o
 type SampleSkuFields = Pick<PedidoDetalleTalla, "sku_muestra" | "sku_produccion">;
 
 /** `undefined` (backend anterior al campo) y la cadena vacía cuentan como `null`. */
-const skuOrNull = (value: string | null | undefined): string | null => value?.trim() || null;
+export const skuOrNull = (value: string | null | undefined): string | null => value?.trim() || null;
 
 export function sampleSkuTallaState(talla: SampleSkuFields): SampleSkuTallaState {
   const produccion = skuOrNull(talla.sku_produccion);

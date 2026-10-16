@@ -43,6 +43,7 @@ export function EmbroideryOrderStep2({
     rows,
     ceilings,
     availableRowsCount,
+    ineligiblePendingCount,
     selectedCount,
     checkedIds,
     quantities,
@@ -95,8 +96,18 @@ export function EmbroideryOrderStep2({
    * El pedido desapareció del catálogo (otra orden lo cubrió al 100% mientras
    * este formulario estaba abierto: el backend excluye los pedidos sin ninguna
    * línea pendiente) o ya no queda nada por programar en él.
+   *
+   * Un pedido cuyo único pendiente son líneas NO elegibles no cae aquí: se
+   * muestra la tabla para que cada fila diga por qué no se puede elegir, con
+   * el aviso `sinElegibles` arriba.
    */
-  const sinPendiente = pedido === null || rows.length === 0 || availableRowsCount === 0;
+  const sinPendiente =
+    pedido === null ||
+    rows.length === 0 ||
+    (availableRowsCount === 0 && ineligiblePendingCount === 0);
+
+  /** Queda pendiente, pero nada de ello se puede incluir en una orden. */
+  const sinElegibles = !sinPendiente && availableRowsCount === 0;
 
   return (
     <form
@@ -271,17 +282,41 @@ export function EmbroideryOrderStep2({
             </div>
           </div>
         ) : (
-          <EmbroideryOrderLinesTable
-            rows={rows}
-            ceilings={ceilings}
-            checkedIds={checkedIds}
-            quantities={quantities}
-            availableRowsCount={availableRowsCount}
-            selectedCount={selectedCount}
-            onToggleLine={toggleLine}
-            onToggleAll={toggleAll}
-            onQuantityChange={setQuantity}
-          />
+          <>
+            {/* Aviso a nivel de formulario: la tabla sola (casillas apagadas y
+                botón inhabilitado) no dice que con este pedido no se puede
+                crear NINGUNA orden. */}
+            {sinElegibles && (
+              <div
+                role="status"
+                className="rounded-2xl border border-amber-200 dark:border-amber-800/60 bg-amber-50 dark:bg-amber-900/20 p-6 flex items-start gap-4"
+              >
+                <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-500/10 flex items-center justify-center text-amber-600 dark:text-amber-400 shrink-0">
+                  <InfoIcon className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-semibold text-amber-800 dark:text-amber-200">
+                    No se puede crear una orden de bordado para este pedido
+                  </h3>
+                  <p className="text-xs text-amber-700 dark:text-amber-300 mt-1">
+                    Lo que queda pendiente son líneas sin producto de catálogo, y el sistema no
+                    las acepta en una orden de bordado. Regresa para elegir otro pedido.
+                  </p>
+                </div>
+              </div>
+            )}
+            <EmbroideryOrderLinesTable
+              rows={rows}
+              ceilings={ceilings}
+              checkedIds={checkedIds}
+              quantities={quantities}
+              availableRowsCount={availableRowsCount}
+              selectedCount={selectedCount}
+              onToggleLine={toggleLine}
+              onToggleAll={toggleAll}
+              onQuantityChange={setQuantity}
+            />
+          </>
         )}
       </fieldset>
 
@@ -291,17 +326,21 @@ export function EmbroideryOrderStep2({
           Lo que CAMBIÓ es que ya no cubre por fuerza el pedido completo: lo
           que quede fuera puede programarse después en otra orden, así que el
           aviso lo dice en vez de dejar creer que esta es la única oportunidad. */}
-      <div
-        role="note"
-        className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 dark:border-amber-800/60 dark:bg-amber-900/20 px-4 py-3"
-      >
-        <ExclamationTriangleIcon className="w-5 h-5 shrink-0 text-amber-600 dark:text-amber-400 mt-0.5" />
-        <p className="min-w-0 flex-1 text-xs text-amber-700 dark:text-amber-300">
-          La orden se crea con estatus <strong>Sin trabajar</strong> y consume un folio de la
-          serie. Podrás cambiar su estatus y asignar máquina desde la ficha de la orden. Lo
-          que dejes fuera seguirá pendiente y podrá programarse en otra orden.
-        </p>
-      </div>
+      {/* Sin elegibles no hay orden que crear: describir cómo nacería
+          contradiría el aviso de arriba. */}
+      {!sinElegibles && (
+        <div
+          role="note"
+          className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 dark:border-amber-800/60 dark:bg-amber-900/20 px-4 py-3"
+        >
+          <ExclamationTriangleIcon className="w-5 h-5 shrink-0 text-amber-600 dark:text-amber-400 mt-0.5" />
+          <p className="min-w-0 flex-1 text-xs text-amber-700 dark:text-amber-300">
+            La orden se crea con estatus <strong>Sin trabajar</strong> y consume un folio de la
+            serie. Podrás cambiar su estatus y asignar máquina desde la ficha de la orden. Lo
+            que dejes fuera seguirá pendiente y podrá programarse en otra orden.
+          </p>
+        </div>
+      )}
 
       <div className="flex items-center justify-between gap-3 pt-1">
         <FormSecondaryButton label="Regresar" onClick={onBack} disabled={isPending} />
