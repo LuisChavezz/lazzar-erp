@@ -8,6 +8,13 @@ import { SectionErrorNotice } from "@/src/components/SectionErrorNotice";
 import { ClockIcon, EmbarquesIcon, ShieldCheckIcon, StarIcon } from "@/src/components/Icons";
 import { formatQuantityValue } from "@/src/utils/formatCurrency";
 import { formatKpiDias, formatKpiPctOrDash, plural } from "@/src/utils/kpiFormat";
+import { usePurchaseOrders } from "@/src/features/purchase-orders/hooks/usePurchaseOrders";
+import {
+  getPurchaseOrderKpiAmountVisibility,
+  resolveKpiAmountState,
+  type KpiHiddenAmountsReason,
+  type PurchaseOrderKpiAmountVisibility,
+} from "@/src/features/purchase-orders/utils/purchaseOrderKpis";
 import { supplierKpisQueryKey, useSupplierKpis } from "../hooks/useSupplierKpis";
 import type { SupplierKpiRow, SupplierKpis } from "../interfaces/supplier-kpis.interface";
 import {
@@ -111,11 +118,47 @@ function leadTimeCard(rows: SupplierKpiRow[], hasPactado: boolean, onOpen: () =>
 }
 
 /**
- * Scorecard: cuántos proveedores están en verde. Sin semáforo a nivel tarjeta
- * y SIN drill-down: el puntaje se deriva de precios y aún no hay regla de
- * permisos para mostrarlo (backend #377).
+ * Por qué el Scorecard no se muestra: su puntaje incluye el factor de precio,
+ * así que sigue la misma regla de importes que los indicadores de OC y de
+ * recepciones (`resolveKpiAmountState`).
  */
-function scorecardCard(rows: SupplierKpiRow[]): KpiCompactItem {
+const SCORECARD_HIDDEN_REASON: Record<KpiHiddenAmountsReason, string> = {
+  "no-permission":
+    "El puntaje incluye la diferencia de precio: se necesita permiso para ver los importes de compras.",
+  undetermined:
+    "El puntaje incluye la diferencia de precio y no se pudo verificar si puedes ver los importes de compras.",
+};
+
+/**
+ * Tarjeta en espera de la señal de importes (`pending`): título e icono, y un
+ * marcador de carga en el lugar del valor, sin detalle. Mismo marcador que las
+ * tarjetas con importes de los indicadores de recepciones.
+ */
+function pendingAmountCard(base: Pick<KpiCompactItem, "label" | "icon">): KpiCompactItem {
+  return {
+    ...base,
+    ...KPI_MUTED_ICON,
+    value: (
+      <span
+        role="status"
+        aria-label={`Cargando ${base.label}`}
+        className="inline-block h-6 w-28 align-middle rounded-md bg-slate-100 dark:bg-slate-800 animate-pulse"
+      />
+    ),
+    hideProgress: true,
+  };
+}
+
+/**
+ * Scorecard: cuántos proveedores están en verde. Su puntaje se deriva también
+ * de precios, así que solo se muestra con importes visibles (el listado de OC
+ * trae `gran_total`); mientras no se sabe, espera con su marcador. Sin
+ * semáforo a nivel tarjeta y SIN drill-down: el puntaje nunca se muestra.
+ */
+function scorecardCard(rows: SupplierKpiRow[], visibility: PurchaseOrderKpiAmountVisibility): KpiCompactItem {
+  if (visibility === "pending") return pendingAmountCard(LABELS.scorecard);
+  const amounts = resolveKpiAmountState(visibility, true);
+  if (!amounts.show) return unavailable(LABELS.scorecard, SCORECARD_HIDDEN_REASON[amounts.reason]);
   const { enVerde, evaluados } = aggregateScorecard(rows);
   return {
     ...LABELS.scorecard,
@@ -130,7 +173,11 @@ function scorecardCard(rows: SupplierKpiRow[]): KpiCompactItem {
   };
 }
 
-function buildCards(data: SupplierKpis, openDialog: (kind: SupplierKpiDialogKind) => void): KpiCompactItem[] {
+function buildCards(
+  data: SupplierKpis,
+  visibility: PurchaseOrderKpiAmountVisibility,
+  openDialog: (kind: SupplierKpiDialogKind) => void,
+): KpiCompactItem[] {
   // Sin empresa el backend lo dice a nivel raíz: las cuatro tarjetas con su motivo.
   if (!data.disponible) {
     return Object.values(LABELS).map((base) => unavailable(base, data.motivo));
@@ -144,7 +191,7 @@ function buildCards(data: SupplierKpis, openDialog: (kind: SupplierKpiDialogKind
     onTimeCard(rows, () => openDialog("entrega_a_tiempo")),
     qualityCard(rows, () => openDialog("calidad")),
     leadTimeCard(rows, hasPactado, () => openDialog("lead_time")),
-    scorecardCard(rows),
+    scorecardCard(rows, visibility),
   ];
   // Con el ranking cortado, cada agregado lo dice en su ⓘ (las tarjetas no
   // disponibles no agregan nada).
@@ -155,6 +202,14 @@ function buildCards(data: SupplierKpis, openDialog: (kind: SupplierKpiDialogKind
 
 function SupplierKpisSectionContent() {
   const { data, isInitialError, isFetching, refetch } = useSupplierKpis();
+  // Señal de permiso para importes, la misma de los indicadores de OC y de
+  // recepciones: solo la usa el Scorecard (su puntaje incluye precio).
+  const { purchaseOrders, hasLoaded: isListLoaded, isInitialError: isListError } = usePurchaseOrders();
+  const amountVisibility = getPurchaseOrderKpiAmountVisibility({
+    orders: purchaseOrders,
+    hasLoaded: isListLoaded,
+    isError: isListError,
+  });
 
   // `dialogKind` es el ÚLTIMO detalle abierto y no se limpia al cerrar: así el
   // diálogo conserva título y filas durante su animación de salida.
@@ -167,7 +222,7 @@ function SupplierKpisSectionContent() {
 
   let body: ReactNode;
   if (data) {
-    body = <KpiGrid compact items={buildCards(data, openDialog)} />;
+    body = <KpiGrid compact items={buildCards(data, amountVisibility, openDialog)} />;
   } else if (isInitialError) {
     body = (
       <SectionErrorNotice
