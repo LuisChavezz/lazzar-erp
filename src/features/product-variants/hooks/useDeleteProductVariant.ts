@@ -8,24 +8,26 @@ export const useDeleteProductVariant = () => {
 
   return useMutation({
     mutationFn: deleteProductVariant,
+    // Ninguna consulta usa la llave exacta `["product-variants"]`: los listados
+    // son `["product-variants", con_bom]`. Por eso todo va por prefijo.
     onMutate: async (id) => {
       await queryClient.cancelQueries({ queryKey: ["product-variants"] });
-      const previousVariants =
-        queryClient.getQueryData<ProductVariant[]>(["product-variants"]);
+      const previousVariants = queryClient.getQueriesData<ProductVariant[]>({
+        queryKey: ["product-variants"],
+      });
 
-      if (previousVariants) {
-        queryClient.setQueryData<ProductVariant[]>(
-          ["product-variants"],
-          (old) => (old ? old.filter((variant) => variant.id !== id) : [])
-        );
-      }
+      // Solo se filtran entradas que sean arreglos; devolver `undefined` deja
+      // intacta cualquier otra.
+      queryClient.setQueriesData<ProductVariant[]>({ queryKey: ["product-variants"] }, (old) =>
+        Array.isArray(old) ? old.filter((variant) => variant.id !== id) : undefined
+      );
 
       return { previousVariants };
     },
     onError: (err, id, context) => {
-      if (context?.previousVariants) {
-        queryClient.setQueryData(["product-variants"], context.previousVariants);
-      }
+      context?.previousVariants.forEach(([queryKey, data]) => {
+        queryClient.setQueryData(queryKey, data);
+      });
       console.error(err);
       toast.error("Error al eliminar la variante");
     },
