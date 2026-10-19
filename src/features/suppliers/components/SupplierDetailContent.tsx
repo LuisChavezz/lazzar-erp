@@ -14,7 +14,6 @@ import {
   textOrDash,
 } from "@/src/components/DetailDialogPrimitives";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
-import { isInitialLoadError } from "@/src/utils/isInitialLoadError";
 import { formatMoneyValueOrDash, formatQuantityValue } from "@/src/utils/formatCurrency";
 import { hasPermission } from "@/src/utils/permissions";
 import { useSatInfo } from "@/src/features/sat/hooks/useSatInfo";
@@ -53,13 +52,14 @@ interface SupplierDetailContentProps {
  *
  * Estados como el detalle de cliente: id inválido → error sin consultar; error
  * de carga INICIAL → `ErrorState` de página (un refetch fallido con datos
- * conserva la vista y avisa por toast); 404 → "no disponible" (no existe, es de
- * otra empresa o está desactivado). El historial maneja su propia carga y su
+ * conserva la vista y avisa por toast); 404/403 → "no disponible" (no existe,
+ * es de otra empresa, está desactivado o ya no hay acceso), también en una
+ * relectura. El historial maneja su propia carga y su
  * propio error: un fallo ahí nunca tumba la página.
  */
 export const SupplierDetailContent = ({ supplierId }: SupplierDetailContentProps) => {
   const { data: session } = useSession();
-  const { data, numericId, isError, isNotFound, error, isValidId, hasLoaded } =
+  const { data, numericId, isNotFound, isInitialError, error, isValidId } =
     useSupplier(supplierId);
   const { data: satInfo, isLoading: isSatLoading } = useSatInfo();
   const { data: currencies, isLoading: isCurrenciesLoading } = useCurrencies();
@@ -96,19 +96,27 @@ export const SupplierDetailContent = ({ supplierId }: SupplierDetailContentProps
     );
   }
 
-  // Un 404 gana aunque haya datos en caché: el proveedor ya no está disponible
-  // y mostrar su ficha (con "Editar") sería mentir.
-  if (isNotFound || isInitialLoadError(isError, hasLoaded)) {
+  // Un 404/403 gana aunque haya datos en caché: el proveedor ya no está
+  // disponible y mostrar su ficha (con "Editar") sería mentir.
+  if (isNotFound) {
+    return (
+      <div className="w-full space-y-6">
+        {backLink}
+        <ErrorState
+          title="Proveedor no disponible"
+          message="El proveedor no existe, está desactivado o no tienes acceso a él."
+        />
+      </div>
+    );
+  }
+
+  if (isInitialError) {
     return (
       <div className="w-full space-y-6">
         {backLink}
         <ErrorState
           title="No se pudo cargar el proveedor"
-          message={
-            isNotFound
-              ? "El proveedor no existe o ya no está disponible."
-              : extractErrorMessage(error, "No se pudo obtener la información del proveedor.")
-          }
+          message={extractErrorMessage(error, "No se pudo obtener la información del proveedor.")}
         />
       </div>
     );
