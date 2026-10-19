@@ -82,12 +82,15 @@ interface RfidLabelPrintStepProps {
  * Estrategia de fallo parcial: se DETIENE en la primera etiqueta que falla (no
  * tiene sentido seguir enviando a una impresora atascada). El registro se hace
  * igual, una sola vez: `status=EXITO` solo si TODAS se enviaron, `FALLIDO` en
- * cualquier otro caso, con el conteo real en `observaciones`. El `cantidad` y el
- * `etiquetas[]` que se registran son los del preview COMPLETO (N), porque el
- * backend exige `len(etiquetas) == cantidad`; los EPCs de las que sí salieron
- * quedan así en el registro, y como el backend marca todos los tags de un
- * evento no-EXITO en `PENDIENTE`, un fallo parcial deja el lote sin confirmar
- * para reconciliación humana.
+ * cualquier otro caso, con el conteo real en `observaciones`. Se registran SOLO
+ * los EPCs de las etiquetas que salieron (`registeredCount`): las confirmadas
+ * más, si la impresora no respondió a tiempo, la que quedó sin confirmar —pudo
+ * haberse impreso—. `cantidad` y `etiquetas[]` van recortados a ese número
+ * (el backend exige `len(etiquetas) == cantidad`, y el ZPL `i` lleva el EPC
+ * `i`, así que los primeros k EPCs son las primeras k etiquetas). Así no quedan
+ * registrados ni reservados EPCs de tags que nunca existieron. Como el backend
+ * marca todos los tags de un evento no-EXITO en `PENDIENTE`, un fallo parcial
+ * deja el lote sin confirmar para reconciliación humana.
  *
  * Si el REGISTRO falla después de imprimir, el payload impreso se conserva como
  * lote pendiente (`useRfidPrintSession`): "Reintentar registro" lo reenvía tal
@@ -193,6 +196,8 @@ export function RfidLabelPrintStep({
     device: BrowserPrintDevice,
     status: "EXITO" | "FALLIDO",
     observaciones: string | null,
+    /** Etiquetas cuyo EPC se registra (las primeras `registeredCount`). */
+    registeredCount: number,
   ): RfidRegisterPayload => {
     const target =
       snapshot.producto_variante !== null
@@ -201,7 +206,7 @@ export function RfidLabelPrintStep({
 
     return {
       ...target,
-      cantidad: snapshot.cantidad,
+      cantidad: registeredCount,
       rfid_mode: snapshot.rfid_mode,
       printer_name: device.name ?? null,
       printer_address: device.uid ?? null,
@@ -215,7 +220,7 @@ export function RfidLabelPrintStep({
       // que se envió a los tags. Sin RFID no hay EPC que persistir y el backend
       // ignora el arreglo de todos modos.
       etiquetas: snapshot.rfid_mode
-        ? snapshot.etiquetas.map((e) => ({
+        ? snapshot.etiquetas.slice(0, registeredCount).map((e) => ({
             epc: e.epc,
             barcode_value: e.barcode_value,
             serial: e.serial,
@@ -347,11 +352,16 @@ export function RfidLabelPrintStep({
 
     const allOk = sent === total;
     const status: "EXITO" | "FALLIDO" = allOk ? "EXITO" : "FALLIDO";
+    // Un timeout NO es un rechazo: el ZPL ya se entregó al agente y la etiqueta
+    // pudo salir, así que su EPC se registra con las confirmadas. Un error del
+    // SDK sí es un rechazo de esa etiqueta y no cuenta.
+    const timedOut = printError?.timedOut === true;
+    const registeredCount = sent + (timedOut ? 1 : 0);
     const observaciones = allOk
       ? null
       : `Impresión detenida: ${sent} de ${total} etiqueta(s) enviada(s).` +
-        (printError?.timedOut
-          ? " La impresora no confirmó la última etiqueta."
+        (timedOut
+          ? " La impresora no confirmó la última etiqueta; su EPC se registró igual, pero la impresión de esa etiqueta no está confirmada."
           : printError?.detail
             ? ` Error: ${printError.detail}`
             : printError
@@ -361,7 +371,7 @@ export function RfidLabelPrintStep({
     // ── Registro (una sola vez, con el resultado real) ─────────────────────
     await registerBatch(
       {
-        payload: buildPayload(snapshot, device, status, observaciones),
+        payload: buildPayload(snapshot, device, status, observaciones, registeredCount),
         sent,
         total,
         possiblyRegistered: false,
