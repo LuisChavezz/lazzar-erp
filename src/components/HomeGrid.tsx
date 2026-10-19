@@ -3,6 +3,8 @@
 
 import { useSession } from "next-auth/react";
 import { hasAnyPermission } from "@/src/utils/permissions";
+import { canAccessRoute } from "@/src/utils/routeAccess";
+import type { PermissionContext } from "@/src/interfaces/permission-context.interface";
 import { appRouteGroups, getGroupAccessPermissions } from "@/src/constants/appRoutes";
 import { homeCards } from "@/src/constants/homeCards";
 import TiltCard from "./TiltCard";
@@ -19,11 +21,29 @@ const cardAccessPermissions = (card: (typeof homeCards)[number]): string[] => {
   return group ? getGroupAccessPermissions(group) : [card.permission];
 };
 
+/**
+ * Destino de la tarjeta para `user`: la portada del módulo si puede abrirla y,
+ * si no (p. ej. solo `R-PRODUCCION-OP` sin `R-PRODUCCION`), la primera sección
+ * del menú que sí puede abrir. Sin esto, la tarjeta visible por permiso de
+ * sección mandaría a una ruta que el proxy rebota al Home. `null` si no hay
+ * ninguna abrible.
+ */
+const cardHref = (card: (typeof homeCards)[number], user: PermissionContext | undefined) => {
+  if (canAccessRoute(card.href, user)) return card.href;
+  const group = appRouteGroups.find((item) => item.modulePath === card.href);
+  return (
+    group?.items.find((item) => item.showInSidebar !== false && canAccessRoute(item.path, user))
+      ?.path ?? null
+  );
+};
+
 export const HomedGrid = () => {
   const { data: session, status } = useSession();
-  const visibleHomeCards = homeCards.filter((card) =>
-    hasAnyPermission(cardAccessPermissions(card), session?.user)
-  );
+  const visibleHomeCards = homeCards.flatMap((card) => {
+    if (!hasAnyPermission(cardAccessPermissions(card), session?.user)) return [];
+    const href = cardHref(card, session?.user);
+    return href ? [{ ...card, href }] : [];
+  });
   const skeletonCards = visibleHomeCards.length > 0 ? visibleHomeCards : homeCards;
 
   /**
