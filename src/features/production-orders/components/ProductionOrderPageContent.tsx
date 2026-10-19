@@ -29,7 +29,7 @@ import {
   productionOrderStatusEntry,
 } from "../constants/productionOrderStatus";
 import { useProductionOrderOnboarding } from "../hooks/useProductionOrderOnboarding";
-import { PedidoFolioLink } from "@/src/features/orders/components/PedidoFolioLink";
+import { PedidoVinculadoFolio } from "@/src/features/orders/components/PedidoVinculadoFolio";
 import type { ProductionOrderOnboardingProducto } from "../interfaces/production-order.interface";
 import { ProductionOrderCriticalPathDialog } from "@/src/features/production-order-critical-path/components/ProductionOrderCriticalPathDialog";
 import type { CriticalPathTarget } from "@/src/features/production-order-critical-path/interfaces/production-order-critical-path.interface";
@@ -330,9 +330,6 @@ export function ProductionOrderPageContent({
     );
   }
 
-  const pedidoId = data.pedido_vinculado?.id ?? data.pedido;
-  const pedidoFolio = data.pedido_vinculado?.folio ?? data.pedido_folio;
-
   return withPageDialogs(
     <div className="w-full space-y-6">
       {/* ── Barra superior con "Volver" ─────────────────────────────────── */}
@@ -382,22 +379,12 @@ export function ProductionOrderPageContent({
           <InfoGrid>
             <InfoField label="Pedido">
               {/* El pedido es OPCIONAL en el alta de esta orden, así que el guion
-                  es un estado normal. Con pedido, enlace a `/orders/[id]` como en
-                  OB/OR/OCM (su regla en `routePermissions` incluye
-                  `R-PRODUCCION-OP`), y `?from=production-orders` hace que su
-                  "Volver" regrese al listado de este módulo. `pedido_vinculado`
-                  es opcional en el tipo, de ahí el respaldo en el par plano
-                  `pedido`/`pedido_folio`. */}
-              {pedidoId ? (
-                <PedidoFolioLink
-                  pedidoId={pedidoId}
-                  folio={pedidoFolio}
-                  from="production-orders"
-                  className="font-mono text-sky-600 dark:text-sky-400"
-                />
-              ) : (
-                <span className="font-mono">{textOrDash(pedidoFolio)}</span>
-              )}
+                  es un estado normal. */}
+              <PedidoVinculadoFolio
+                pedidoVinculado={data.pedido_vinculado}
+                pedidoFolio={data.pedido_folio}
+                from="production-orders"
+              />
             </InfoField>
             {/* Estatus + Prioridad, el mismo par que las páginas hermanas
                 muestran en este bloque. Ambos salieron de la cabecera, así que
