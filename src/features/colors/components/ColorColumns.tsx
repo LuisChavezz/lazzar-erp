@@ -74,6 +74,14 @@ export const getColumns = (
         </span>
       ),
     }),
+    // Forma parte del SKU; a la vista (y en la búsqueda) para comprobar si un
+    // código ya está en uso antes de dar de alta otro.
+    columnHelper.accessor("codigo", {
+      header: "Código",
+      cell: (info) => (
+        <span className="text-slate-600 dark:text-slate-300">{info.getValue()}</span>
+      ),
+    }),
     columnHelper.accessor("codigo_hex", {
       header: "Código HEX",
       cell: (info) => (

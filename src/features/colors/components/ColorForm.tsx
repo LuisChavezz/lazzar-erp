@@ -2,6 +2,7 @@
 
 import "react-color-palette/css";
 
+import type { KeyboardEvent } from "react";
 import { ColorPicker, useColor, type IColor } from "react-color-palette";
 
 import { FormInput } from "../../../components/FormInput";
@@ -9,6 +10,7 @@ import { FormCancelButton, FormSubmitButton } from "../../../components/FormButt
 import { ColorsIcon } from "../../../components/Icons";
 import { Color } from "../interfaces/color.interface";
 import { useColorForm } from "../hooks/useColorForm";
+import { toFormHex, toPickerHex } from "../utils/colorHex";
 
 interface ColorFormProps {
   onSuccess: () => void;
@@ -22,22 +24,35 @@ interface ColorPickerFieldProps {
 }
 
 function ColorPickerField({ initialHex, onChange, disabled }: ColorPickerFieldProps) {
-  const [color, setColor] = useColor(`#${initialHex}`);
+  const [color, setColor] = useColor(toPickerHex(initialHex));
 
+  // El selector emite `#rrggbb`; el formulario lo guarda sin `#`.
   const handleChangeComplete = (newColor: IColor) => {
-    const hex = newColor.hex.replace("#", "").toUpperCase();
-    onChange(hex);
+    onChange(toFormHex(newColor.hex));
+  };
+
+  // El campo HEX del selector solo confirma el valor al perder el foco, y un
+  // Enter en él enviaría el formulario con el color anterior. Aquí Enter no
+  // envía: quita el foco, y ese blur es el que aplica el hex tecleado.
+  const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.key !== "Enter" || !(event.target instanceof HTMLInputElement)) {
+      return;
+    }
+    event.preventDefault();
+    event.target.blur();
   };
 
   return (
-    <ColorPicker
-      color={color}
-      onChange={setColor}
-      onChangeComplete={handleChangeComplete}
-      hideAlpha
-      hideInput={["rgb", "hsv"]}
-      disabled={disabled}
-    />
+    <div onKeyDown={handleKeyDown}>
+      <ColorPicker
+        color={color}
+        onChange={setColor}
+        onChangeComplete={handleChangeComplete}
+        hideAlpha
+        hideInput={["rgb", "hsv"]}
+        disabled={disabled}
+      />
+    </div>
   );
 }
 
@@ -48,6 +63,7 @@ export default function ColorForm({ onSuccess, colorToEdit }: ColorFormProps) {
     formKey,
     pickerKey,
     isPending,
+    isEditing,
     getError,
     clearFieldErrors,
     validateField,
@@ -99,6 +115,39 @@ export default function ColorForm({ onSuccess, colorToEdit }: ColorFormProps) {
                     />
                   )}
                 </form.Field>
+              </div>
+
+              <div className="group/field">
+                <form.Field name="codigo">
+                  {(field) => (
+                    <FormInput
+                      label="Código"
+                      placeholder="Ej. 100"
+                      forceUppercase
+                      maxLength={3}
+                      name={field.name}
+                      value={field.state.value}
+                      // Forma parte del SKU: en la edición no se cambia, para no
+                      // desfasar los SKU ya generados.
+                      readOnly={isEditing}
+                      disabled={isEditing}
+                      onChange={(event) => {
+                        field.handleChange(event.target.value);
+                        clearFieldErrors("codigo");
+                      }}
+                      onBlur={() => {
+                        field.handleBlur();
+                        validateField("codigo", field.state.value);
+                      }}
+                      error={getError("codigo")}
+                    />
+                  )}
+                </form.Field>
+                {isEditing && (
+                  <p className="mt-1 ml-1 text-xs text-slate-500">
+                    El código forma parte del SKU y no se puede cambiar.
+                  </p>
+                )}
               </div>
 
               <div className="group/field md:col-span-2">

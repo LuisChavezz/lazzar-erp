@@ -3,11 +3,12 @@
 import { useForm } from "@tanstack/react-form";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
-import type { FormFieldError } from "../../../utils/getFieldError";
+import { useFormFieldErrors } from "@/src/hooks/useFormFieldErrors";
 import { ColorFormSchema, ColorFormValues } from "../schemas/color.schema";
 import { useCreateColor } from "./useCreateColor";
 import { useUpdateColor } from "./useUpdateColor";
-import { Color } from "../interfaces/color.interface";
+import { Color, ColorCreate } from "../interfaces/color.interface";
+import { toApiHex, toFormHex } from "../utils/colorHex";
 
 interface UseColorFormParams {
   onSuccess: () => void;
@@ -16,6 +17,15 @@ interface UseColorFormParams {
 
 type ColorFormField = keyof ColorFormValues;
 
+/**
+ * Alta y edición de un color (mismo formulario).
+ *
+ * - `codigo` forma parte del SKU que genera el backend: se captura en el alta y
+ *   es de solo lectura en la edición, porque cambiarlo desfasaría los SKU ya
+ *   generados. La edición es un PUT (cuerpo completo), así que lo reenvía tal
+ *   como venía.
+ * - `codigo_hex` viaja siempre como `#RRGGBB` (ver `utils/colorHex.ts`).
+ */
 export function useColorForm({ onSuccess, colorToEdit }: UseColorFormParams) {
   // Determina modo creación/edición para mantener el flujo existente.
   const isEditing = Boolean(colorToEdit?.id);
@@ -23,17 +33,29 @@ export function useColorForm({ onSuccess, colorToEdit }: UseColorFormParams) {
   // Conserva referencia al form para scroll superior suave al limpiar.
   const formRef = useRef<HTMLFormElement | null>(null);
 
+  // Envío en curso, síncrono (ver `onSubmit`).
+  const submittingRef = useRef(false);
+
   // Mantiene estado local de envío para bloquear controles durante submit.
   const [isLoading, setIsLoading] = useState(false);
 
-  // Separa errores de validación cliente y servidor para cada campo.
-  const [clientErrors, setClientErrors] = useState<Partial<Record<ColorFormField, string>>>({});
-  const [serverErrors, setServerErrors] = useState<Partial<Record<ColorFormField, string>>>({});
+  // Errores por campo (de cliente y de servidor): ver `useFormFieldErrors`.
+  const {
+    getError,
+    setServerFieldError,
+    setClientFieldError,
+    clearClientFieldError,
+    clearFieldErrors,
+    replaceClientErrors,
+    clearServerErrors,
+    clearAllErrors,
+  } = useFormFieldErrors<ColorFormField>();
 
   // Define valores vacíos del formulario.
   const emptyValues = useMemo<ColorFormValues>(
     () => ({
       nombre: "",
+      codigo: "",
       codigo_hex: "FAFAFA",
     }),
     []
@@ -45,7 +67,8 @@ export function useColorForm({ onSuccess, colorToEdit }: UseColorFormParams) {
       colorToEdit
         ? {
             nombre: colorToEdit.nombre,
-            codigo_hex: colorToEdit.codigo_hex,
+            codigo: colorToEdit.codigo,
+            codigo_hex: toFormHex(colorToEdit.codigo_hex),
           }
         : emptyValues,
     [colorToEdit, emptyValues]
@@ -54,112 +77,74 @@ export function useColorForm({ onSuccess, colorToEdit }: UseColorFormParams) {
   // Clave para forzar remount del picker al resetear manualmente.
   const [resetCounter, setResetCounter] = useState(0);
 
-  // Recibe errores de mutaciones y los asigna al estado de servidor.
-  const setHookError = (field: ColorFormField, error: { message?: string }) => {
-    if (!error.message) {
-      return;
-    }
-    setServerErrors((prev) => ({ ...prev, [field]: error.message as string }));
-  };
-
-  const { mutateAsync: createColor, isPending: isCreating } = useCreateColor(setHookError);
-  const { mutateAsync: updateColor, isPending: isUpdating } = useUpdateColor(setHookError);
-
-  // Limpia errores del campo cuando cambia su valor.
-  const clearFieldErrors = (field: ColorFormField) => {
-    setClientErrors((prev) => {
-      if (!(field in prev)) {
-        return prev;
-      }
-      const next = { ...prev };
-      delete next[field];
-      return next;
-    });
-    setServerErrors((prev) => {
-      if (!(field in prev)) {
-        return prev;
-      }
-      const next = { ...prev };
-      delete next[field];
-      return next;
-    });
-  };
+  const { mutateAsync: createColor, isPending: isCreating } = useCreateColor(setServerFieldError);
+  const { mutateAsync: updateColor, isPending: isUpdating } = useUpdateColor(setServerFieldError);
 
   // Valida un solo campo en blur.
   const validateField = (field: ColorFormField, value: ColorFormValues[ColorFormField]) => {
-    const fieldSchema = ColorFormSchema.shape[field];
-    const parsed = fieldSchema.safeParse(value);
-
+    const parsed = ColorFormSchema.shape[field].safeParse(value);
     if (parsed.success) {
-      setClientErrors((prev) => {
-        if (!(field in prev)) {
-          return prev;
-        }
-        const next = { ...prev };
-        delete next[field];
-        return next;
+      clearClientFieldError(field);
+      return true;
+    }
+    setClientFieldError(field, parsed.error.issues[0]?.message ?? "Valor inválido");
+    return false;
+  };
+
+  /** El envío en sí, sin la guarda de doble envío (vive en `onSubmit`). */
+  const submitColor = async (value: ColorFormValues) => {
+    clearServerErrors();
+
+    const parsed = ColorFormSchema.safeParse(value);
+    if (!parsed.success) {
+      const nextErrors: Partial<Record<ColorFormField, string>> = {};
+      parsed.error.issues.forEach((issue) => {
+        const field = issue.path[0] as ColorFormField;
+        if (field && !nextErrors[field]) nextErrors[field] = issue.message;
       });
-      return true;
+      replaceClientErrors(nextErrors);
+      return;
     }
+    replaceClientErrors({});
 
-    const message = parsed.error.issues[0]?.message ?? "Valor inválido";
-    setClientErrors((prev) => ({ ...prev, [field]: message }));
-    return false;
-  };
+    setIsLoading(true);
+    try {
+      const payload: ColorCreate = {
+        nombre: parsed.data.nombre,
+        // En la edición el campo es de solo lectura: se reenvía el original.
+        codigo: isEditing && colorToEdit ? colorToEdit.codigo : parsed.data.codigo,
+        codigo_hex: toApiHex(parsed.data.codigo_hex),
+      };
 
-  // Valida todo el formulario antes de mutar.
-  const validateForm = (values: ColorFormValues) => {
-    const parsed = ColorFormSchema.safeParse(values);
-    if (parsed.success) {
-      setClientErrors({});
-      return true;
-    }
-
-    const nextErrors: Partial<Record<ColorFormField, string>> = {};
-    parsed.error.issues.forEach((issue) => {
-      const field = issue.path[0] as ColorFormField;
-      if (!field || nextErrors[field]) {
-        return;
+      if (isEditing && colorToEdit) {
+        await updateColor({ id: colorToEdit.id, ...payload });
+      } else {
+        await createColor(payload);
       }
-      nextErrors[field] = issue.message;
-    });
 
-    setClientErrors(nextErrors);
-    return false;
-  };
-
-  // Entrega error compatible con componentes visuales actuales.
-  const getError = (field: ColorFormField) => {
-    const message = serverErrors[field] ?? clientErrors[field];
-    return message ? ({ message } as FormFieldError) : undefined;
+      onSuccess();
+    } catch {
+      // El `onError` de la mutación ya avisó con el toast y pintó los errores
+      // por campo; el diálogo sigue abierto con lo capturado. Sin este catch
+      // el rechazo de `mutateAsync` escaparía sin manejar.
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   // Controla submit con la misma lógica original.
   const form = useForm({
     defaultValues: isEditing ? editValues : emptyValues,
     onSubmit: async ({ value }) => {
-      setServerErrors({});
-
-      if (!validateForm(value)) {
-        return;
-      }
-
-      setIsLoading(true);
+      // Guarda SÍNCRONA contra el doble envío en el mismo tick: `isPending`
+      // deshabilita el formulario hasta el siguiente render, y el alta no es
+      // idempotente (dos POST = dos colores).
+      if (submittingRef.current) return;
+      submittingRef.current = true;
       try {
-        const payload = {
-          nombre: value.nombre,
-          codigo_hex: value.codigo_hex.toUpperCase(),
-        };
-
-        if (isEditing && colorToEdit) {
-          await updateColor({ id: colorToEdit.id, ...payload });
-        } else {
-          await createColor(payload);
-        }
-
-        onSuccess();
+        await submitColor(value);
       } finally {
-        setIsLoading(false);
+        submittingRef.current = false;
       }
     },
   });
@@ -177,8 +162,7 @@ export function useColorForm({ onSuccess, colorToEdit }: UseColorFormParams) {
   const handleReset = () => {
     const nextValues = isEditing ? editValues : emptyValues;
     form.reset(nextValues);
-    setClientErrors({});
-    setServerErrors({});
+    clearAllErrors();
     setResetCounter((prev) => prev + 1);
     setTimeout(() => {
       formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
