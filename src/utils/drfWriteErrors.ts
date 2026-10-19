@@ -64,6 +64,14 @@ export const isNotFoundError = (error: unknown): boolean =>
   error instanceof AxiosError && error.response?.status === 404;
 
 /**
+ * ¿El error es un 404 o un 403 de la API? Para un detalle, ambos dicen lo
+ * mismo: el registro ya no existe o el usuario ya no puede verlo.
+ */
+export const isNotFoundOrForbiddenError = (error: unknown): boolean =>
+  error instanceof AxiosError &&
+  (error.response?.status === 404 || error.response?.status === 403);
+
+/**
  * Error de una acción sobre un registro (aprobar, rechazar, eliminar, checar).
  * Un 404 significa que otra persona ya lo borró (`notFoundMessage`); un
  * 400/403 trae su `detail` en español. Un 409 (conflicto: el borrado que
