@@ -31,6 +31,9 @@ import type {
  *  físicas. No es un límite del backend. */
 const MAX_CANTIDAD_UI = 100;
 
+const SUCURSAL_MISSING_MESSAGE =
+  "Tu usuario no tiene una sucursal asignada. Pide que se configure antes de imprimir.";
+
 type FlowPhase = "idle" | "printing" | "registering";
 
 interface RfidLabelPrintStepProps {
@@ -122,11 +125,19 @@ export function RfidLabelPrintStep({ selected, onBack, onSuccess }: RfidLabelPri
     preview.zpl_individual.length > 0 &&
     preview.cantidad === cantidad &&
     !previewFetching;
-  const canPrint = !isBusy && printerReady && previewReady;
+  // El preview devuelve `sucursal: null` exactamente cuando el registro (POST)
+  // va a responder 400 por sucursal: ambos resuelven la sucursal con el mismo
+  // `_resolve_context` del backend, que solo la exige al escribir. Se bloquea
+  // ANTES de imprimir para no producir etiquetas físicas que no se podrán
+  // registrar. Aplica también sin RFID: el POST exige la sucursal en ambos modos.
+  const sucursalMissing = preview !== null && preview.sucursal === null;
+  const canPrint = !isBusy && printerReady && previewReady && !sucursalMissing;
 
   const blockedReason = isBusy
     ? undefined
-    : !printerReady
+    : sucursalMissing
+      ? SUCURSAL_MISSING_MESSAGE
+      : !printerReady
       ? "Necesitas una impresora detectada por Browser Print."
       : preview === null || preview.zpl_individual.length === 0
         ? "Genera primero una vista previa válida."
@@ -174,6 +185,7 @@ export function RfidLabelPrintStep({ selected, onBack, onSuccess }: RfidLabelPri
     const snapshot = preview;
     const device = browserPrint.selectedDevice;
     if (!snapshot || !device || snapshot.zpl_individual.length === 0) return;
+    if (snapshot.sucursal === null) return;
 
     runningRef.current = true;
     setBanner(null);
@@ -395,6 +407,17 @@ export function RfidLabelPrintStep({ selected, onBack, onSuccess }: RfidLabelPri
         <SectionTitle>Impresión Zebra</SectionTitle>
         <BrowserPrintPicker browserPrint={browserPrint} disabled={isBusy} />
       </div>
+
+      {/* El motivo también va en el `title` del botón, pero un tooltip sobre un
+          botón deshabilitado casi no se descubre: se muestra a la vista. */}
+      {sucursalMissing && !isBusy && (
+        <p
+          role="alert"
+          className="rounded-xl border border-red-100 dark:border-red-500/20 bg-red-50 dark:bg-red-500/10 px-4 py-3 text-xs text-red-700 dark:text-red-300"
+        >
+          {SUCURSAL_MISSING_MESSAGE}
+        </p>
+      )}
 
       {banner && (
         <p className="rounded-xl border border-amber-200 dark:border-amber-500/25 bg-amber-50 dark:bg-amber-500/10 px-4 py-3 text-xs text-amber-800 dark:text-amber-300">
