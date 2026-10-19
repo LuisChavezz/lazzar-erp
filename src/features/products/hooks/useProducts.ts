@@ -15,7 +15,7 @@ import { Product } from "../interfaces/product.interface";
  * solo para todas las variantes de `tipo_id`, así que una invalidación de la
  * raíz que falle en varias llaves da un único toast.
  */
-export const useProducts = (tipo_id?: number | string | readonly number[]) => {
+export const useProducts = (tipo_id?: number | readonly number[]) => {
   const { data, isLoading, isInitialError, error } = useGuardedQuery<Product[]>(
     {
       queryKey: ["products", tipo_id],

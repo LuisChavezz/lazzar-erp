@@ -345,7 +345,8 @@ export const configCards: ConfigCardItem[] = [
     view: "bom",
     group: "Productos",
     adminOnly: true,
-    prefetchKey: ["products", "2"],
-    prefetchFn: () => getProducts("2"),
+    // Misma llave y parámetro que `BomList` (`useProducts(2)`: solo MP).
+    prefetchKey: ["products", 2],
+    prefetchFn: () => getProducts(2),
   },
 ];

@@ -9,7 +9,7 @@ import { Product, ProductUpdate } from "../interfaces/product.interface";
  * clave que el backend no lee (filtraría nada y devolvería todos los tipos).
  */
 export const getProducts = async (
-  tipo_id?: number | string | readonly number[],
+  tipo_id?: number | readonly number[],
 ): Promise<Product[]> => {
   const response = await v1_api.get<Product[]>("/catalogo/producto/", {
     params: {
