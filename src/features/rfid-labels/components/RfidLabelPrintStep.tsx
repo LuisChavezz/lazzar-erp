@@ -270,9 +270,7 @@ export function RfidLabelPrintStep({
         setBanner(message);
         toast.error(message);
       } else {
-        setBanner(
-          `Se enviaron ${sent} de ${total} etiqueta(s) a la impresora, pero no se pudo registrar la impresión: ${parsed.message} Los EPCs impresos se conservaron; reintenta el registro.`,
-        );
+        setBanner(pendingRegisterFailureBanner(batch, parsed.message));
         toast.error(parsed.message);
       }
       setPhase("idle");
@@ -310,6 +308,26 @@ export function RfidLabelPrintStep({
       `Registrada con fallo: ${sent} de ${total} impresas; ${registered} EPC(s) registrado(s)` +
         (timedOut ? ", 1 sin confirmar." : "."),
       { icon: "⚠️" },
+    );
+  };
+
+  /** Banner del lote pendiente tras un registro fallido. Con timeout no puede
+   *  decir solo "se enviaron 0" y a la vez "se conservaron EPCs impresos": la
+   *  etiqueta no confirmada pudo salir y su EPC es parte del lote. */
+  const pendingRegisterFailureBanner = (
+    { sent, total, timedOut }: PendingRfidRegistration,
+    errorMessage: string,
+  ) => {
+    if (!timedOut) {
+      return `Se enviaron ${sent} de ${total} etiqueta(s) a la impresora, pero no se pudo registrar la impresión: ${errorMessage} Los EPCs impresos se conservaron; reintenta el registro.`;
+    }
+    const confirmed =
+      sent > 0
+        ? `La impresora confirmó ${sent} de ${total} etiqueta(s) y no confirmó la siguiente`
+        : `La impresora no confirmó la primera de ${total} etiqueta(s)`;
+    return (
+      `${confirmed}, que pudo haberse impreso. No se pudo registrar la impresión: ${errorMessage}` +
+      ` Se conservaron los EPCs de ${sent + 1} etiqueta(s), incluido el de la no confirmada; reintenta el registro.`
     );
   };
 
