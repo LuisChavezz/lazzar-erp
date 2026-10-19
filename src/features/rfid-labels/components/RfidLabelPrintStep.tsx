@@ -304,7 +304,15 @@ export function RfidLabelPrintStep({
     // el diálogo abierto para corregir (atasco, etc.) y reintentar; el preview
     // ya se regeneró con EPCs frescos vía la invalidación del registro.
     setBanner(payload.observaciones ?? null);
-    toast(`Registrada con fallo: ${sent} de ${total} impresas.`, { icon: "⚠️" });
+    // `payload.cantidad` es lo que quedó registrado; si supera a `sent`, la
+    // diferencia (una) es la etiqueta que no se confirmó por timeout.
+    const registered = payload.cantidad;
+    const unconfirmed = registered - sent;
+    toast(
+      `Registrada con fallo: ${sent} de ${total} impresas; ${registered} EPC(s) registrado(s)` +
+        (unconfirmed > 0 ? `, ${unconfirmed} sin confirmar.` : "."),
+      { icon: "⚠️" },
+    );
   };
 
   const handlePrintAndRegister = async () => {
