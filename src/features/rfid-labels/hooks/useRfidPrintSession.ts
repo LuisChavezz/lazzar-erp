@@ -16,6 +16,11 @@ export interface PendingRfidRegistration {
   sent: number;
   /** Etiquetas del lote (`zpl_individual.length`). */
   total: number;
+  /** Algún intento anterior terminó con desenlace INCIERTO (sin respuesta o
+   *  5xx): el backend pudo haber hecho commit aunque el cliente viera un
+   *  fallo. Solo entonces un choque de EPC en el reintento puede significar
+   *  "ya quedó registrado". */
+  possiblyRegistered: boolean;
 }
 
 /**

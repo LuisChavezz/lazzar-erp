@@ -4,14 +4,15 @@ import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import { MainDialog } from "@/src/components/MainDialog";
 import { ConfirmDialog } from "@/src/components/ConfirmDialog";
+import { useDialogSession } from "@/src/hooks/useDialogSession";
 import { DialogHeader } from "@/src/components/DialogHeader";
 import { Button } from "@/src/components/Button";
 import { PrinterIcon } from "@/src/components/Icons";
 import { useRfidPrintSession } from "../hooks/useRfidPrintSession";
 import { RfidLabelCreateStepManager } from "./RfidLabelCreateStepManager";
 import {
-  DISCARD_PENDING_DESCRIPTION,
   DISCARD_PENDING_TITLE,
+  getDiscardPendingDescription,
 } from "../constants/rfidLabelDiscardCopy";
 
 /**
@@ -31,6 +32,13 @@ export const RfidLabelCreateDialog = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isDiscardConfirmOpen, setIsDiscardConfirmOpen] = useState(false);
   const session = useRfidPrintSession();
+  // Copia del "pudo haberse registrado" al abrir la confirmación: al descartar,
+  // `pending` pasa a `null` mientras la confirmación anima su salida, y sin la
+  // copia su texto cambiaría a la otra variante durante el cierre.
+  const discardConfirm = useDialogSession(
+    isDiscardConfirmOpen,
+    session.pending?.possiblyRegistered ?? false,
+  );
 
   // Cerrar la pestaña o recargar a media impresión, o con un lote impreso sin
   // registrar, perdería sus EPCs (el lote vive solo en memoria): el navegador
@@ -110,7 +118,7 @@ export const RfidLabelCreateDialog = () => {
         open={isDiscardConfirmOpen}
         onOpenChange={setIsDiscardConfirmOpen}
         title={DISCARD_PENDING_TITLE}
-        description={DISCARD_PENDING_DESCRIPTION}
+        description={getDiscardPendingDescription(discardConfirm.snapshot)}
         confirmText="Descartar y cerrar"
         onConfirm={handleConfirmDiscardAndClose}
       />

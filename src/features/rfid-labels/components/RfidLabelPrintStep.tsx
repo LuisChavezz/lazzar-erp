@@ -17,15 +17,19 @@ import { SectionTitle, InfoField, textOrDash } from "@/src/components/DetailDial
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { useBrowserPrintDevices, deviceLabel } from "../hooks/useBrowserPrintDevices";
 import { useRfidLabelOnboarding } from "../hooks/useRfidLabelOnboarding";
-import { useRegisterRfidLabel, parseRfidRegisterError } from "../hooks/useRegisterRfidLabel";
+import {
+  useRegisterRfidLabel,
+  parseRfidRegisterError,
+  isUncertainRegisterOutcome,
+} from "../hooks/useRegisterRfidLabel";
 import type {
   PendingRfidRegistration,
   RfidPrintSession,
 } from "../hooks/useRfidPrintSession";
 import { sendZplToDevice, type SendZplResult } from "../utils/sendZplToDevice";
 import {
-  DISCARD_PENDING_DESCRIPTION,
   DISCARD_PENDING_TITLE,
+  getDiscardPendingDescription,
 } from "../constants/rfidLabelDiscardCopy";
 import { BrowserPrintPicker } from "./BrowserPrintPicker";
 import { RfidLabelBarcodeGraphic } from "./RfidLabelBarcodeGraphic";
@@ -41,13 +45,19 @@ import type {
  *  físicas. No es un límite del backend. */
 const MAX_CANTIDAD_UI = 100;
 
-/** Un reintento del MISMO payload que choca por EPC no prueba que otro se los
- *  ganó: si el primer POST hizo commit y se perdió la respuesta, el reintento
- *  recibe el 400 "EPC ya registrado" del pre-chequeo del serializer. El listado
- *  `GET /wms/etiquetas-rfid/` no filtra por EPC, así que no se puede comprobar
- *  aquí: se pide revisar el historial y el lote se conserva. */
+/** Un reintento del MISMO payload que choca por EPC, cuando un intento anterior
+ *  quedó incierto: si aquel POST hizo commit y se perdió la respuesta, el
+ *  reintento recibe el 400 "EPC ya registrado" del pre-chequeo del serializer.
+ *  El listado `GET /wms/etiquetas-rfid/` no filtra por EPC, así que no se puede
+ *  comprobar aquí: se pide revisar el historial y el lote se conserva. */
 const RETRY_EPC_COLLISION_MESSAGE =
   "Es posible que estas etiquetas ya se hayan registrado. Revisa el historial antes de reintentar.";
+
+/** El mismo choque cuando TODOS los intentos anteriores fallaron de forma
+ *  definitiva (4xx): ningún POST de este lote pudo persistir, así que los EPCs
+ *  los tiene otro registro. */
+const EPC_TAKEN_MESSAGE =
+  "Estos EPCs ya están usados por otro registro: este lote no se registró. Descártalo para imprimir uno nuevo.";
 
 const SUCURSAL_MISSING_MESSAGE =
   "Tu usuario no tiene una sucursal asignada. Pide que se configure antes de imprimir.";
@@ -249,14 +259,22 @@ export function RfidLabelPrintStep({
         runningRef.current = false;
         return;
       }
-      setPending(batch);
+      // El estado "pudo haberse registrado" acumula: basta UN intento incierto.
+      setPending({
+        ...batch,
+        possiblyRegistered: batch.possiblyRegistered || isUncertainRegisterOutcome(err),
+      });
       if (isRetry && parsed.kind === "epc") {
         // El POST anterior pudo haber hecho commit aunque su respuesta se
         // perdiera: se refresca el historial para que ese registro aparezca
         // donde el mensaje manda a revisarlo.
         queryClient.invalidateQueries({ queryKey: ["etiquetas-rfid"] });
-        setBanner(RETRY_EPC_COLLISION_MESSAGE);
-        toast.error(RETRY_EPC_COLLISION_MESSAGE);
+        // Se decide con los intentos ANTERIORES: el choque de ahora es un 4xx.
+        const message = batch.possiblyRegistered
+          ? RETRY_EPC_COLLISION_MESSAGE
+          : EPC_TAKEN_MESSAGE;
+        setBanner(message);
+        toast.error(message);
       } else {
         setBanner(
           `Se enviaron ${sent} de ${total} etiqueta(s) a la impresora, pero no se pudo registrar la impresión: ${parsed.message} Los EPCs impresos se conservaron; reintenta el registro.`,
@@ -342,7 +360,12 @@ export function RfidLabelPrintStep({
 
     // ── Registro (una sola vez, con el resultado real) ─────────────────────
     await registerBatch(
-      { payload: buildPayload(snapshot, device, status, observaciones), sent, total },
+      {
+        payload: buildPayload(snapshot, device, status, observaciones),
+        sent,
+        total,
+        possiblyRegistered: false,
+      },
       false,
     );
   };
@@ -531,7 +554,7 @@ export function RfidLabelPrintStep({
           <>
             <ConfirmDialog
               title={DISCARD_PENDING_TITLE}
-              description={DISCARD_PENDING_DESCRIPTION}
+              description={getDiscardPendingDescription(pending.possiblyRegistered)}
               confirmText="Descartar"
               onConfirm={handleDiscardPending}
               trigger={

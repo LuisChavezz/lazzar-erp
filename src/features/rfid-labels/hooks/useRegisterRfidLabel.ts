@@ -82,6 +82,20 @@ export function parseRfidRegisterError(error: unknown): ParsedRfidRegisterError 
 }
 
 /**
+ * ¿El fallo del registro deja la duda de si el backend hizo commit? Sí cuando
+ * no hubo respuesta (red caída, timeout, petición abortada) o el servidor
+ * respondió 5xx —un proxy puede devolver 502/504 después de que la vista
+ * terminó—. Un 4xx es un rechazo definitivo: `store_impresion` corre en una
+ * transacción y la validación ocurre antes de escribir, así que no persistió
+ * nada. Un error que no es de Axios se trata como incierto por precaución.
+ */
+export function isUncertainRegisterOutcome(error: unknown): boolean {
+  if (!(error instanceof AxiosError)) return true;
+  const status = error.response?.status;
+  return status === undefined || status >= 500;
+}
+
+/**
  * Registra la impresión (`POST /onboarding/`). Al tener éxito invalida DOS
  * cachés:
  *
