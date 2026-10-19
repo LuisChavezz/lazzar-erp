@@ -371,7 +371,8 @@ export function RfidLabelPrintStep({
     // intento.
     if (registeredCount === 0) {
       setBanner(
-        `No se imprimió ninguna etiqueta y no se registró nada.${printError?.detail ? ` Error: ${printError.detail}` : ""} Revisa la impresora y vuelve a imprimir.`,
+        "No se imprimió ninguna etiqueta y no se registró nada. Revisa la impresora y vuelve a imprimir." +
+          (printError?.detail ? ` Error: ${printError.detail}` : ""),
       );
       toast.error("No se imprimió ninguna etiqueta.");
       refetchPreview();
