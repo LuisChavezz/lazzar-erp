@@ -169,12 +169,12 @@ export function RfidLabelPrintStep({
     : sucursalMissing
       ? SUCURSAL_MISSING_MESSAGE
       : !printerReady
-      ? "Necesitas una impresora detectada por Browser Print."
-      : preview === null || preview.zpl_individual.length === 0
-        ? "Genera primero una vista previa válida."
-        : !previewReady
-          ? "Espera a que la vista previa refleje la cantidad."
-          : undefined;
+        ? "Necesitas una impresora detectada por Browser Print."
+        : preview === null || preview.zpl_individual.length === 0
+          ? "Genera primero una vista previa válida."
+          : !previewReady
+            ? "Espera a que la vista previa refleje la cantidad."
+            : undefined;
 
   const buildPayload = (
     snapshot: RfidOnboardingPreview,
