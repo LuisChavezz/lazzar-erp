@@ -217,8 +217,9 @@ export function RfidLabelPrintStep({
    * terminar de imprimir) y "Reintentar registro", siempre con el MISMO objeto
    * `batch.payload`: nada se recalcula al reenviar.
    *
-   * Si el POST falla, el lote queda en `pending` —sus EPCs ya están
-   * codificados en tags físicos— y NO se regenera el preview: eso solo ocurre
+   * Si el POST falla con al menos una etiqueta enviada, el lote queda en
+   * `pending` —sus EPCs ya están codificados en tags físicos— y NO se
+   * regenera el preview: eso solo ocurre
    * al descartar el lote explícitamente. El backend registra dentro de una
    * transacción, así que un POST fallido no persiste nada y reenviar el mismo
    * payload es seguro.
@@ -234,6 +235,19 @@ export function RfidLabelPrintStep({
         return;
       }
       const parsed = parseRfidRegisterError(err);
+      // Sin ninguna etiqueta enviada no hay tags físicos que proteger: es un
+      // fallo simple. No se guarda lote pendiente y se pide un preview nuevo
+      // (EPCs frescos) para que el siguiente intento no choque con los de éste.
+      if (sent === 0) {
+        setBanner(
+          `No se imprimió ninguna etiqueta y tampoco se pudo registrar el intento: ${parsed.message} Puedes volver a imprimir.`,
+        );
+        toast.error(parsed.message);
+        refetchPreview();
+        setPhase("idle");
+        runningRef.current = false;
+        return;
+      }
       setPending(batch);
       if (isRetry && parsed.kind === "epc") {
         setBanner(RETRY_EPC_COLLISION_MESSAGE);
