@@ -304,8 +304,12 @@ export function RfidLabelPrintStep({
     setBanner(payload.observaciones ?? null);
     // Registradas = confirmadas + la que no se confirmó por timeout (si hubo).
     const registered = sent + (timedOut ? 1 : 0);
+    // Sin RFID no hay EPCs: se cuentan etiquetas registradas.
+    const registeredLabel = payload.rfid_mode
+      ? `${registered} EPC(s) registrado(s)`
+      : `${registered} etiqueta(s) registrada(s)`;
     toast(
-      `Registrada con fallo: ${sent} de ${total} impresas; ${registered} EPC(s) registrado(s)` +
+      `Registrada con fallo: ${sent} de ${total} impresas; ${registeredLabel}` +
         (timedOut ? ", 1 sin confirmar." : "."),
       { icon: "⚠️" },
     );
@@ -315,11 +319,17 @@ export function RfidLabelPrintStep({
    *  decir solo "se enviaron 0" y a la vez "se conservaron EPCs impresos": la
    *  etiqueta no confirmada pudo salir y su EPC es parte del lote. */
   const pendingRegisterFailureBanner = (
-    { sent, total, timedOut }: PendingRfidRegistration,
+    { payload, sent, total, timedOut }: PendingRfidRegistration,
     errorMessage: string,
   ) => {
+    // Sin RFID no hay EPCs: lo que se conserva es el registro de las etiquetas.
     if (!timedOut) {
-      return `Se enviaron ${sent} de ${total} etiqueta(s) a la impresora, pero no se pudo registrar la impresión: ${errorMessage} Los EPCs impresos se conservaron; reintenta el registro.`;
+      return (
+        `Se enviaron ${sent} de ${total} etiqueta(s) a la impresora, pero no se pudo registrar la impresión: ${errorMessage}` +
+        (payload.rfid_mode
+          ? " Los EPCs impresos se conservaron; reintenta el registro."
+          : " El registro se conservó; reintenta el registro.")
+      );
     }
     const confirmed =
       sent > 0
@@ -327,7 +337,9 @@ export function RfidLabelPrintStep({
         : `La impresora no confirmó la primera de ${total} etiqueta(s)`;
     return (
       `${confirmed}, que pudo haberse impreso. No se pudo registrar la impresión: ${errorMessage}` +
-      ` Se conservaron los EPCs de ${sent + 1} etiqueta(s), incluido el de la no confirmada; reintenta el registro.`
+      (payload.rfid_mode
+        ? ` Se conservaron los EPCs de ${sent + 1} etiqueta(s), incluido el de la no confirmada; reintenta el registro.`
+        : ` Se conservó el registro de ${sent + 1} etiqueta(s), incluida la no confirmada; reintenta el registro.`)
     );
   };
 
@@ -374,7 +386,9 @@ export function RfidLabelPrintStep({
       ? null
       : `Impresión detenida: ${sent} de ${total} etiqueta(s) enviada(s).` +
         (timedOut
-          ? " La impresora no confirmó la última etiqueta; su EPC se registró igual, pero la impresión de esa etiqueta no está confirmada."
+          ? snapshot.rfid_mode
+            ? " La impresora no confirmó la última etiqueta; su EPC se registró igual, pero la impresión de esa etiqueta no está confirmada."
+            : " La impresora no confirmó la última etiqueta; se registró igual, pero su impresión no está confirmada."
           : printError?.detail
             ? ` Error: ${printError.detail}`
             : printError
