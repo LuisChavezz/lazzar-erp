@@ -42,7 +42,11 @@ export const RfidLabelCreateDialog = () => {
       return;
     }
     if (session.phase !== "idle") {
-      toast("Espera a que termine la impresión y el registro.", { icon: "⏳" });
+      // `id` fijo: pulsar Esc/X varias veces reemplaza el aviso en vez de apilarlo.
+      toast("Espera a que termine la impresión y el registro.", {
+        id: "rfid-print-close-blocked",
+        icon: "⏳",
+      });
       return;
     }
     if (session.pending) {
