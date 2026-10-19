@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { ArrowLeftIcon } from "@/src/components/Icons";
 import { Loader } from "@/src/components/Loader";
 import { ErrorState } from "@/src/components/ErrorState";
-import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { CustomerCartera } from "./CustomerCartera";
 import { CustomerCredito } from "./CustomerCredito";
 import { CustomerResumenKpis, CustomerResumenKpisSkeleton } from "./CustomerResumenKpis";
@@ -18,7 +17,7 @@ interface CustomerDetailContentProps {
 
 export const CustomerDetailContent = ({ customerId }: CustomerDetailContentProps) => {
   const router = useRouter();
-  const { data, isPlaceholderData, isNotFound, isInitialError, error, isValidId } =
+  const { data, isPlaceholderData, isNotFound, isInitialError, isValidId } =
     useCustomer(customerId);
 
   const backButton = (
@@ -68,7 +67,7 @@ export const CustomerDetailContent = ({ customerId }: CustomerDetailContentProps
         {backButton}
         <ErrorState
           title="No se pudo cargar el cliente"
-          message={extractErrorMessage(error, "No existe, no tienes acceso a él o falló la conexión.")}
+          message="Ocurrió un problema al consultar el servidor. Recarga la página para intentar de nuevo."
         />
       </div>
     );

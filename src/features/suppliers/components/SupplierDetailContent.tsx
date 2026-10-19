@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
+import toast from "react-hot-toast";
 import { ArrowLeftIcon, EditIcon } from "@/src/components/Icons";
 import { Loader } from "@/src/components/Loader";
 import { ErrorState } from "@/src/components/ErrorState";
@@ -13,7 +14,6 @@ import {
   Section,
   textOrDash,
 } from "@/src/components/DetailDialogPrimitives";
-import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { formatMoneyValueOrDash, formatQuantityValue } from "@/src/utils/formatCurrency";
 import { hasPermission } from "@/src/utils/permissions";
 import { useSatInfo } from "@/src/features/sat/hooks/useSatInfo";
@@ -59,7 +59,7 @@ interface SupplierDetailContentProps {
  */
 export const SupplierDetailContent = ({ supplierId }: SupplierDetailContentProps) => {
   const { data: session } = useSession();
-  const { data, numericId, isNotFound, isInitialError, error, isValidId } =
+  const { data, numericId, isNotFound, isInitialError, isValidId } =
     useSupplier(supplierId);
   const { data: satInfo, isLoading: isSatLoading } = useSatInfo();
   const { data: currencies, isLoading: isCurrenciesLoading } = useCurrencies();
@@ -69,6 +69,22 @@ export const SupplierDetailContent = ({ supplierId }: SupplierDetailContentProps
   const canEdit = hasPermission("E-COMPRAS-PROV", session?.user);
   const canSeeHistory = hasPermission("R-COMPRAS-OC", session?.user);
   const [isEditOpen, setIsEditOpen] = useState(false);
+
+  // Si el proveedor deja de estar disponible con "Editar" abierto, la vista
+  // cambia a "no disponible" y el diálogo se desmonta: se cierra (durante el
+  // render, para que no reaparezca si el registro vuelve) y se avisa UNA vez
+  // que lo capturado no se guardó.
+  const [lostEditCount, setLostEditCount] = useState(0);
+  if (isNotFound && isEditOpen) {
+    setIsEditOpen(false);
+    setLostEditCount((count) => count + 1);
+  }
+  useEffect(() => {
+    if (lostEditCount === 0) return;
+    toast.error("El proveedor ya no está disponible; los cambios no se guardaron.", {
+      id: "supplier-edit-not-found",
+    });
+  }, [lostEditCount]);
 
   const backLink = (
     <div className="sticky top-0 z-10 py-2 w-fit">
@@ -116,7 +132,7 @@ export const SupplierDetailContent = ({ supplierId }: SupplierDetailContentProps
         {backLink}
         <ErrorState
           title="No se pudo cargar el proveedor"
-          message={extractErrorMessage(error, "No se pudo obtener la información del proveedor.")}
+          message="Ocurrió un problema al consultar el servidor. Recarga la página para intentar de nuevo."
         />
       </div>
     );
