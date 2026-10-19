@@ -1,6 +1,7 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useGuardedQuery } from "@/src/hooks/useGuardedQuery";
 import { isNotFoundOrForbiddenError } from "@/src/utils/drfWriteErrors";
+import { parsePositiveId } from "@/src/utils/parsePositiveId";
 import { retryUnlessClientError } from "@/src/utils/retryUnlessClientError";
 import { Customer, CustomerDetail } from "../interfaces/customer.interface";
 import { getCustomer } from "../services/actions";
@@ -27,7 +28,8 @@ import { getCustomer } from "../services/actions";
  * `isInitialError`; un refetch fallido con datos los conserva y avisa por toast.
  *
  * El id se compara como string: el backend lo manda como número aunque
- * `Customer.id` esté tipado `string`, y la queryKey usa el string de la URL.
+ * `Customer.id` esté tipado `string`. La queryKey usa el id ya normalizado
+ * (`String(numericId)`), la misma forma con que lo invalidan las mutaciones.
  *
  * `isValidId` es la ÚNICA validación del id: con un id inválido la query queda
  * deshabilitada (y `isPending` para siempre), así que la vista debe resolverlo
@@ -35,20 +37,21 @@ import { getCustomer } from "../services/actions";
  */
 export const useCustomer = (customerId: string) => {
   const queryClient = useQueryClient();
-  const numericCustomerId = Number(customerId);
-  const isValidId = Number.isFinite(numericCustomerId) && numericCustomerId > 0;
+  const numericId = parsePositiveId(customerId);
+  const isValidId = numericId !== null;
+  const customerKey = String(numericId);
 
   const { data, isPlaceholderData, isInitialError, isDefinitiveError, error } =
     useGuardedQuery<CustomerDetail>(
       {
-        queryKey: ["customer", customerId],
-        queryFn: () => getCustomer(numericCustomerId),
+        queryKey: ["customer", customerKey],
+        queryFn: () => getCustomer(numericId as number),
         enabled: isValidId,
         retry: retryUnlessClientError,
         placeholderData: () =>
           queryClient
             .getQueryData<Customer[]>(["customers"])
-            ?.find((item) => String(item.id) === customerId),
+            ?.find((item) => String(item.id) === customerKey),
       },
       {
         toastId: "customer-detail-refetch-error",
