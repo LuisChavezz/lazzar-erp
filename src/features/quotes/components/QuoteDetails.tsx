@@ -44,7 +44,7 @@ export const QuoteDetails = ({ quoteId, source }: QuoteDetailsProps) => {
   if (isError || !quote) {
     return (
       <div className="rounded-xl border border-rose-200 dark:border-rose-400/30 bg-rose-50 dark:bg-rose-500/10 p-4 text-sm text-rose-700 dark:text-rose-200">
-        No se pudieron cargar los detalles del pedido.
+        No se pudieron cargar los detalles de la cotización.
       </div>
     );
   }

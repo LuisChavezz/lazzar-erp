@@ -314,11 +314,10 @@ export function ProductionOrderPageContent({
         <div>{BackLink}</div>
         {/* El copy NO afirma "no tienes acceso", a diferencia de las páginas de
             OB/OR/OCM: el endpoint que alimenta esta página
-            (`onboarding?op_id=`) es una action `detail=False`, así que NO pasa
-            por el `get_queryset()` acotado por empresa y su
-            `get_formatted_op_detalle` consulta `filter(pk=op_id)` sin filtro de
-            tenant. Prometer un control de acceso que el backend no aplica sería
-            afirmar algo falso; el 404 aquí solo significa "no existe". */}
+            (`onboarding?op_id=`) acota por empresa pero NO por sucursal
+            (nucleo-erp#538), así que el 404 solo significa "no existe en tu
+            empresa". Prometer un control por sucursal que el backend no aplica
+            sería afirmar algo falso. */}
         <ErrorState
           title="No se pudo cargar la orden de producción"
           message={extractErrorMessage(
