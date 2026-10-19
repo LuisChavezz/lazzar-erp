@@ -6,6 +6,7 @@ import { useDebounce } from "@/src/hooks/useDebounce";
 import { Button } from "@/src/components/Button";
 import { FormInput } from "@/src/components/FormInput";
 import { FormToggle } from "@/src/components/FormToggle";
+import { ConfirmDialog } from "@/src/components/ConfirmDialog";
 import {
   ArrowLeftIcon,
   LoadingSpinnerIcon,
@@ -16,6 +17,10 @@ import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { useBrowserPrintDevices, deviceLabel } from "../hooks/useBrowserPrintDevices";
 import { useRfidLabelOnboarding } from "../hooks/useRfidLabelOnboarding";
 import { useRegisterRfidLabel, parseRfidRegisterError } from "../hooks/useRegisterRfidLabel";
+import {
+  useRfidPrintSession,
+  type PendingRfidRegistration,
+} from "../hooks/useRfidPrintSession";
 import { sendZplToDevice, type SendZplResult } from "../utils/sendZplToDevice";
 import { BrowserPrintPicker } from "./BrowserPrintPicker";
 import { RfidLabelBarcodeGraphic } from "./RfidLabelBarcodeGraphic";
@@ -31,10 +36,13 @@ import type {
  *  físicas. No es un límite del backend. */
 const MAX_CANTIDAD_UI = 100;
 
+/** Copia de la confirmación para descartar un lote impreso sin registrar. */
+export const DISCARD_PENDING_TITLE = "Descartar etiquetas sin registrar";
+export const DISCARD_PENDING_DESCRIPTION =
+  "Hay etiquetas impresas sin registrar. Si las descartas, sus EPCs se perderán.";
+
 const SUCURSAL_MISSING_MESSAGE =
   "Tu usuario no tiene una sucursal asignada. Pide que se configure antes de imprimir.";
-
-type FlowPhase = "idle" | "printing" | "registering";
 
 interface RfidLabelPrintStepProps {
   selected: RfidOnboardingResult;
@@ -59,11 +67,16 @@ interface RfidLabelPrintStepProps {
  * quedan así en el registro, y como el backend marca todos los tags de un
  * evento no-EXITO en `PENDIENTE`, un fallo parcial deja el lote sin confirmar
  * para reconciliación humana.
+ *
+ * Si el REGISTRO falla después de imprimir, el payload impreso se conserva como
+ * lote pendiente (`useRfidPrintSession`): "Reintentar registro" lo reenvía tal
+ * cual y no se pide un preview nuevo hasta que el usuario lo descarta con
+ * confirmación. Así los EPCs registrados son los codificados en los tags.
  */
 export function RfidLabelPrintStep({ selected, onBack, onSuccess }: RfidLabelPrintStepProps) {
   const [cantidad, setCantidad] = useState(1);
   const [rfidMode, setRfidMode] = useState(true);
-  const [phase, setPhase] = useState<FlowPhase>("idle");
+  const { phase, setPhase, pending, setPending } = useRfidPrintSession();
   const [progress, setProgress] = useState({ current: 0, total: 0 });
   const [banner, setBanner] = useState<string | null>(null);
 
@@ -115,6 +128,9 @@ export function RfidLabelPrintStep({ selected, onBack, onSuccess }: RfidLabelPri
   const printerReady =
     browserPrint.status === "detectado" && browserPrint.selectedDevice !== null;
   const isBusy = phase !== "idle";
+  // Con un lote pendiente no se cambia de producto, cantidad ni modo: lo único
+  // que procede es reintentar el registro o descartarlo explícitamente.
+  const isLocked = isBusy || pending !== null;
   // La vista previa está lista para imprimir cuando existe, tiene ZPLs, no está
   // recargando y —clave— refleja la cantidad ACTUAL. Sin `preview.cantidad ===
   // cantidad`, durante los 400ms de debounce el preview sigue siendo el de la
@@ -147,6 +163,7 @@ export function RfidLabelPrintStep({ selected, onBack, onSuccess }: RfidLabelPri
 
   const buildPayload = (
     snapshot: RfidOnboardingPreview,
+    device: BrowserPrintDevice,
     status: "EXITO" | "FALLIDO",
     observaciones: string | null,
   ): RfidRegisterPayload => {
@@ -159,8 +176,8 @@ export function RfidLabelPrintStep({ selected, onBack, onSuccess }: RfidLabelPri
       ...target,
       cantidad: snapshot.cantidad,
       rfid_mode: snapshot.rfid_mode,
-      printer_name: browserPrint.selectedDevice?.name ?? null,
-      printer_address: browserPrint.selectedDevice?.uid ?? null,
+      printer_name: device.name ?? null,
+      printer_address: device.uid ?? null,
       status,
       // Representativo: el ZPL de la primera etiqueta. Con `rfid_mode` apagado
       // todas son iguales; con él encendido cada una lleva su EPC, y la primera
@@ -180,8 +197,67 @@ export function RfidLabelPrintStep({ selected, onBack, onSuccess }: RfidLabelPri
     };
   };
 
+  /**
+   * Envía el registro y resuelve el desenlace. Lo usan la primera vez (al
+   * terminar de imprimir) y "Reintentar registro", siempre con el MISMO objeto
+   * `batch.payload`: nada se recalcula al reenviar.
+   *
+   * Si el POST falla, el lote queda en `pending` —sus EPCs ya están
+   * codificados en tags físicos— y NO se regenera el preview: eso solo ocurre
+   * al descartar el lote explícitamente. El backend registra dentro de una
+   * transacción, así que un POST fallido no persiste nada y reenviar el mismo
+   * payload es seguro.
+   */
+  const registerBatch = async (batch: PendingRfidRegistration, isRetry: boolean) => {
+    const { payload, sent, total } = batch;
+    setPhase("registering");
+    try {
+      await register.mutateAsync(payload);
+    } catch (err) {
+      if (!aliveRef.current) {
+        runningRef.current = false;
+        return;
+      }
+      const parsed = parseRfidRegisterError(err);
+      setPending(batch);
+      setBanner(
+        `Se enviaron ${sent} de ${total} etiqueta(s) a la impresora, pero no se pudo registrar la impresión: ${parsed.message} Los EPCs impresos se conservaron; reintenta el registro.`,
+      );
+      toast.error(parsed.message);
+      setPhase("idle");
+      runningRef.current = false;
+      return;
+    }
+
+    // Registrado: la invalidación de `useRegisterRfidLabel` regenera el
+    // preview con EPCs frescos para la siguiente impresión.
+    setPending(null);
+    if (!aliveRef.current) {
+      runningRef.current = false;
+      return;
+    }
+    runningRef.current = false;
+    setPhase("idle");
+
+    if (payload.status === "EXITO") {
+      toast.success(
+        isRetry
+          ? `Impresión registrada al reintentar: ${total} etiqueta(s).`
+          : `Impresión registrada: ${total} etiqueta(s).`,
+      );
+      onSuccess();
+      return;
+    }
+
+    // Fallo parcial: registrado como FALLIDO y visible en el historial. Se deja
+    // el diálogo abierto para corregir (atasco, etc.) y reintentar; el preview
+    // ya se regeneró con EPCs frescos vía la invalidación del registro.
+    setBanner(payload.observaciones ?? null);
+    toast(`Registrada con fallo: ${sent} de ${total} impresas.`, { icon: "⚠️" });
+  };
+
   const handlePrintAndRegister = async () => {
-    if (runningRef.current) return;
+    if (runningRef.current || pending) return;
     const snapshot = preview;
     const device = browserPrint.selectedDevice;
     if (!snapshot || !device || snapshot.zpl_individual.length === 0) return;
@@ -226,45 +302,26 @@ export function RfidLabelPrintStep({ selected, onBack, onSuccess }: RfidLabelPri
               : "");
 
     // ── Registro (una sola vez, con el resultado real) ─────────────────────
-    setPhase("registering");
-    try {
-      await register.mutateAsync(buildPayload(snapshot, status, observaciones));
-    } catch (err) {
-      if (!aliveRef.current) {
-        runningRef.current = false;
-        return;
-      }
-      const parsed = parseRfidRegisterError(err);
-      setBanner(
-        `Se enviaron ${sent} de ${total} etiqueta(s) a la impresora, pero no se pudo registrar la impresión: ${parsed.message}`,
-      );
-      toast.error(parsed.message);
-      // Los EPCs del preview quedaron potencialmente quemados (una carrera pudo
-      // ganarlos); regenerar antes de permitir otro intento.
-      refetchPreview();
-      setPhase("idle");
-      runningRef.current = false;
-      return;
-    }
+    await registerBatch(
+      { payload: buildPayload(snapshot, device, status, observaciones), sent, total },
+      false,
+    );
+  };
 
-    if (!aliveRef.current) {
-      runningRef.current = false;
-      return;
-    }
-    runningRef.current = false;
+  const handleRetryRegistration = async () => {
+    if (runningRef.current || !pending) return;
+    runningRef.current = true;
+    setBanner(null);
+    await registerBatch(pending, true);
+  };
 
-    if (allOk) {
-      toast.success(`Impresión registrada: ${total} etiqueta(s).`);
-      onSuccess();
-      return;
-    }
-
-    // Fallo parcial: registrado como FALLIDO y visible en el historial. Se deja
-    // el diálogo abierto para corregir (atasco, etc.) y reintentar; el preview
-    // ya se regeneró con EPCs frescos vía la invalidación del registro.
-    setBanner(observaciones);
-    toast(`Registrada con fallo: ${sent} de ${total} impresas.`, { icon: "⚠️" });
-    setPhase("idle");
+  /** Descarte confirmado: se pierden los EPCs del lote pendiente y solo
+   *  entonces se pide un preview nuevo (EPCs frescos). */
+  const handleDiscardPending = () => {
+    if (runningRef.current) return;
+    setPending(null);
+    setBanner(null);
+    refetchPreview();
   };
 
   const printButtonLabel =
@@ -293,7 +350,12 @@ export function RfidLabelPrintStep({ selected, onBack, onSuccess }: RfidLabelPri
             )}
           </p>
         </div>
-        <Button variant="ghost" onClick={onBack} disabled={isBusy}>
+        <Button
+          variant="ghost"
+          onClick={onBack}
+          disabled={isLocked}
+          title={pending ? "Registra o descarta primero las etiquetas impresas." : undefined}
+        >
           <ArrowLeftIcon className="w-4 h-4" aria-hidden="true" />
           Cambiar
         </Button>
@@ -307,7 +369,7 @@ export function RfidLabelPrintStep({ selected, onBack, onSuccess }: RfidLabelPri
           min={1}
           max={MAX_CANTIDAD_UI}
           value={cantidad}
-          disabled={isBusy}
+          disabled={isLocked}
           onChange={(event) => {
             const parsed = parseInt(event.target.value, 10);
             setCantidad(Number.isNaN(parsed) ? 1 : Math.min(Math.max(parsed, 1), MAX_CANTIDAD_UI));
@@ -317,7 +379,7 @@ export function RfidLabelPrintStep({ selected, onBack, onSuccess }: RfidLabelPri
           label="Modo RFID"
           description={rfidMode ? "Con EPC (RFID)" : "Solo visual (sin EPC)"}
           checked={rfidMode}
-          disabled={isBusy}
+          disabled={isLocked}
           onChange={(event) => setRfidMode(event.target.checked)}
         />
       </div>
@@ -410,7 +472,7 @@ export function RfidLabelPrintStep({ selected, onBack, onSuccess }: RfidLabelPri
 
       {/* El motivo también va en el `title` del botón, pero un tooltip sobre un
           botón deshabilitado casi no se descubre: se muestra a la vista. */}
-      {sucursalMissing && !isBusy && (
+      {sucursalMissing && !isLocked && (
         <p
           role="alert"
           className="rounded-xl border border-red-100 dark:border-red-500/20 bg-red-50 dark:bg-red-500/10 px-4 py-3 text-xs text-red-700 dark:text-red-300"
@@ -426,24 +488,52 @@ export function RfidLabelPrintStep({ selected, onBack, onSuccess }: RfidLabelPri
       )}
 
       <div className="flex items-center justify-end gap-3 pt-2 border-t border-slate-100 dark:border-white/10">
-        <Button
-          variant="primary"
-          onClick={handlePrintAndRegister}
-          disabled={!canPrint}
-          title={blockedReason}
-          leftIcon={
-            isBusy ? (
-              <LoadingSpinnerIcon className="w-4 h-4 animate-spin" aria-hidden="true" />
-            ) : (
-              <PrinterIcon className="w-4 h-4" aria-hidden="true" />
-            )
-          }
-        >
-          {printButtonLabel}
-        </Button>
+        {pending ? (
+          <>
+            <ConfirmDialog
+              title={DISCARD_PENDING_TITLE}
+              description={DISCARD_PENDING_DESCRIPTION}
+              confirmText="Descartar"
+              onConfirm={handleDiscardPending}
+              trigger={
+                <Button variant="ghost" disabled={isBusy}>
+                  Descartar e imprimir de nuevo
+                </Button>
+              }
+            />
+            <Button
+              variant="primary"
+              onClick={handleRetryRegistration}
+              disabled={isBusy}
+              leftIcon={
+                isBusy ? (
+                  <LoadingSpinnerIcon className="w-4 h-4 animate-spin" aria-hidden="true" />
+                ) : undefined
+              }
+            >
+              {isBusy ? "Registrando..." : "Reintentar registro"}
+            </Button>
+          </>
+        ) : (
+          <Button
+            variant="primary"
+            onClick={handlePrintAndRegister}
+            disabled={!canPrint}
+            title={blockedReason}
+            leftIcon={
+              isBusy ? (
+                <LoadingSpinnerIcon className="w-4 h-4 animate-spin" aria-hidden="true" />
+              ) : (
+                <PrinterIcon className="w-4 h-4" aria-hidden="true" />
+              )
+            }
+          >
+            {printButtonLabel}
+          </Button>
+        )}
       </div>
 
-      {printerReady && !isBusy && browserPrint.selectedDevice && (
+      {printerReady && !isLocked && browserPrint.selectedDevice && (
         <p className="text-[11px] text-right text-slate-400 dark:text-slate-500 -mt-3">
           Se enviará a {deviceLabel(browserPrint.selectedDevice)}
         </p>
