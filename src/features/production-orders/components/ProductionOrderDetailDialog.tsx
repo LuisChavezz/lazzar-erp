@@ -5,7 +5,11 @@ import { MainDialog } from "@/src/components/MainDialog";
 import { StatusBadge } from "@/src/components/StatusBadge";
 import { textOrDash } from "@/src/components/DetailDialogPrimitives";
 import { formatLocalDate } from "@/src/utils/formatDate";
-import { productionOrderStatusEntry } from "@/src/features/production-orders/constants/productionOrderStatus";
+import {
+  PRODUCTION_ORDER_PRIORITY_CONFIG,
+  productionOrderPriorityFallback,
+  productionOrderStatusEntry,
+} from "@/src/features/production-orders/constants/productionOrderStatus";
 import { useProductionOrderOnboarding } from "@/src/features/production-orders/hooks/useProductionOrderOnboarding";
 import type {
   ProductionOrderOnboardingHabilitacion,
@@ -221,10 +225,17 @@ export function ProductionOrderDetailDialog({
               />
             </InfoField>
             <InfoField label="Prioridad">
-              <span className="tabular-nums">{data.prioridad}</span>
+              {/* Misma escala que la página de detalle. `prioridad` es un entero
+                  libre en el backend (sin `choices`): 1-3 son la convención del
+                  alta y cualquier otro valor cae en el fallback rotulado. */}
+              <StatusBadge
+                status={String(data.prioridad)}
+                config={PRODUCTION_ORDER_PRIORITY_CONFIG}
+                defaultConfig={productionOrderPriorityFallback(data.prioridad)}
+              />
             </InfoField>
-            {/* Pedido opcional: "—" cuando la orden no tiene. Mismo criterio que
-                `ProductionOrderPageContent` (texto, sin enlace a `/orders`). */}
+            {/* Pedido opcional: "—" cuando la orden no tiene. Texto y no enlace:
+                este diálogo se abre desde el propio detalle del pedido. */}
             <InfoField label="Pedido">
               <span className="font-mono">
                 {textOrDash(data.pedido_vinculado?.folio ?? data.pedido_folio)}
