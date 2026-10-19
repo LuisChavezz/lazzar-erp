@@ -41,6 +41,14 @@ export const DISCARD_PENDING_TITLE = "Descartar etiquetas sin registrar";
 export const DISCARD_PENDING_DESCRIPTION =
   "Hay etiquetas impresas sin registrar. Si las descartas, sus EPCs se perderán.";
 
+/** Un reintento del MISMO payload que choca por EPC no prueba que otro se los
+ *  ganó: si el primer POST hizo commit y se perdió la respuesta, el reintento
+ *  recibe el 400 "EPC ya registrado" del pre-chequeo del serializer. El listado
+ *  `GET /wms/etiquetas-rfid/` no filtra por EPC, así que no se puede comprobar
+ *  aquí: se pide revisar el historial y el lote se conserva. */
+const RETRY_EPC_COLLISION_MESSAGE =
+  "Es posible que estas etiquetas ya se hayan registrado. Revisa el historial antes de reintentar.";
+
 const SUCURSAL_MISSING_MESSAGE =
   "Tu usuario no tiene una sucursal asignada. Pide que se configure antes de imprimir.";
 
@@ -220,10 +228,15 @@ export function RfidLabelPrintStep({ selected, onBack, onSuccess }: RfidLabelPri
       }
       const parsed = parseRfidRegisterError(err);
       setPending(batch);
-      setBanner(
-        `Se enviaron ${sent} de ${total} etiqueta(s) a la impresora, pero no se pudo registrar la impresión: ${parsed.message} Los EPCs impresos se conservaron; reintenta el registro.`,
-      );
-      toast.error(parsed.message);
+      if (isRetry && parsed.kind === "epc") {
+        setBanner(RETRY_EPC_COLLISION_MESSAGE);
+        toast.error(RETRY_EPC_COLLISION_MESSAGE);
+      } else {
+        setBanner(
+          `Se enviaron ${sent} de ${total} etiqueta(s) a la impresora, pero no se pudo registrar la impresión: ${parsed.message} Los EPCs impresos se conservaron; reintenta el registro.`,
+        );
+        toast.error(parsed.message);
+      }
       setPhase("idle");
       runningRef.current = false;
       return;
