@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import { MainDialog } from "@/src/components/MainDialog";
 import { ConfirmDialog } from "@/src/components/ConfirmDialog";
@@ -31,6 +31,23 @@ export const RfidLabelCreateDialog = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isDiscardConfirmOpen, setIsDiscardConfirmOpen] = useState(false);
   const session = useRfidPrintSession();
+
+  // Cerrar la pestaña o recargar a media impresión, o con un lote impreso sin
+  // registrar, perdería sus EPCs (el lote vive solo en memoria): el navegador
+  // pide confirmación mientras dure. Solo cubre la descarga del documento; la
+  // navegación interna no aplica porque el diálogo es modal (el resto de la
+  // página no recibe clics), y el botón "atrás" no dispara `beforeunload`.
+  const hasUnsavedPrint = session.phase !== "idle" || session.pending !== null;
+  useEffect(() => {
+    if (!hasUnsavedPrint) return;
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      // Navegadores que aún exigen `returnValue` para mostrar el aviso.
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [hasUnsavedPrint]);
 
   const handleOpenChange = (open: boolean) => {
     if (open) {
