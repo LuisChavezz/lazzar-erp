@@ -608,7 +608,10 @@ export function RfidLabelPrintStep({
           <>
             <ConfirmDialog
               title={DISCARD_PENDING_TITLE}
-              description={getDiscardPendingDescription(pending.possiblyRegistered)}
+              description={getDiscardPendingDescription({
+                possiblyRegistered: pending.possiblyRegistered,
+                rfidMode: pending.payload.rfid_mode,
+              })}
               confirmText="Descartar"
               onConfirm={handleDiscardPending}
               trigger={

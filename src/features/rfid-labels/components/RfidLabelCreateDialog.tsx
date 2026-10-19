@@ -32,13 +32,14 @@ export const RfidLabelCreateDialog = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isDiscardConfirmOpen, setIsDiscardConfirmOpen] = useState(false);
   const session = useRfidPrintSession();
-  // Copia del "pudo haberse registrado" al abrir la confirmación: al descartar,
-  // `pending` pasa a `null` mientras la confirmación anima su salida, y sin la
-  // copia su texto cambiaría a la otra variante durante el cierre.
-  const discardConfirm = useDialogSession(
-    isDiscardConfirmOpen,
-    session.pending?.possiblyRegistered ?? false,
-  );
+  // Copia de lo que elige el texto (¿pudo haberse registrado?, ¿con RFID?) al
+  // abrir la confirmación: al descartar, `pending` pasa a `null` mientras la
+  // confirmación anima su salida, y sin la copia su texto cambiaría a otra
+  // variante durante el cierre.
+  const discardConfirm = useDialogSession(isDiscardConfirmOpen, {
+    possiblyRegistered: session.pending?.possiblyRegistered ?? false,
+    rfidMode: session.pending?.payload.rfid_mode ?? true,
+  });
 
   // Cerrar la pestaña o recargar a media impresión, o con un lote impreso sin
   // registrar, perdería sus EPCs (el lote vive solo en memoria): el navegador
