@@ -48,6 +48,7 @@ export const routePermissions: Array<{
       "R-PRODUCCION-OB",
       "R-PRODUCCION-OR",
       "R-PRODUCCION-CM",
+      "R-PRODUCCION-OP",
       "R-COMPRAS-OC",
       "R-WMS-PICKING",
       "R-WMS-PACKING",
