@@ -23,6 +23,7 @@ import {
   reflectiveStatusEntry,
 } from "../constants/reflectiveOrderStatus";
 import { useReflectiveOrderDetail } from "../hooks/useReflectiveOrderDetail";
+import { PedidoVinculadoFolio } from "@/src/features/orders/components/PedidoVinculadoFolio";
 import { resolveReflectiveLineConfigs } from "../utils/resolveReflectiveLineConfigs";
 import {
   ReflectiveConfigCountBadge,
@@ -349,24 +350,11 @@ export function ReflectiveOrderDetailContent({
         <Section title="Información general">
           <InfoGrid>
             <InfoField label="Pedido">
-              {/* Se navega por `pedido_vinculado`, no por el par plano
-                  `pedido`/`pedido_folio`: su presencia es la única señal de que
-                  el pedido madre existe. Sin él queda el folio como texto.
-                  `/orders/[id]` es la ruta NEUTRA del detalle 360° (su regla en
-                  `routePermissions` se cumple con CUALQUIERA de varios códigos,
-                  entre ellos `R-PRODUCCION-OR`), y `?from=reflective` hace que su "Volver"
-                  regrese al listado de este módulo en vez de a Mesa de Control,
-                  que un usuario solo-Producción no puede abrir. */}
-              {data.pedido_vinculado ? (
-                <Link
-                  href={`/orders/${data.pedido_vinculado.id}?from=reflective`}
-                  className="font-mono text-sky-600 dark:text-sky-400 hover:underline hover:text-sky-700 dark:hover:text-sky-300 transition-colors"
-                >
-                  {data.pedido_vinculado.folio}
-                </Link>
-              ) : (
-                <span className="font-mono">{textOrDash(data.pedido_folio)}</span>
-              )}
+              <PedidoVinculadoFolio
+                pedidoVinculado={data.pedido_vinculado}
+                pedidoFolio={data.pedido_folio}
+                from="reflective"
+              />
             </InfoField>
             <InfoField label="Estatus">
               <StatusBadge
