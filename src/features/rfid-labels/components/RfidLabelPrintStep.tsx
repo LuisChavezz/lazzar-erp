@@ -234,9 +234,11 @@ export function RfidLabelPrintStep({
    * terminar de imprimir) y "Reintentar registro", siempre con el MISMO objeto
    * `batch.payload`: nada se recalcula al reenviar.
    *
-   * Si el POST falla con al menos una etiqueta enviada, el lote queda en
-   * `pending` —sus EPCs ya están codificados en tags físicos— y NO se
-   * regenera el preview: eso solo ocurre al descartar el lote explícitamente. El backend registra dentro de una
+   * Solo se llama con al menos un EPC que registrar (`registeredCount >= 1`;
+   * con 0 no hay POST). Si el POST falla, el lote queda en `pending` —sus EPCs
+   * ya pueden estar codificados en tags físicos, incluido el de una etiqueta
+   * que no se confirmó— y NO se regenera el preview: eso solo ocurre al
+   * descartar el lote explícitamente. El backend registra dentro de una
    * transacción, así que un POST fallido no persiste nada y reenviar el mismo
    * payload es seguro.
    */
@@ -251,19 +253,6 @@ export function RfidLabelPrintStep({
         return;
       }
       const parsed = parseRfidRegisterError(err);
-      // Sin ninguna etiqueta enviada no hay tags físicos que proteger: es un
-      // fallo simple. No se guarda lote pendiente y se pide un preview nuevo
-      // (EPCs frescos) para que el siguiente intento no choque con los de éste.
-      if (sent === 0) {
-        setBanner(
-          `No se imprimió ninguna etiqueta y tampoco se pudo registrar el intento: ${parsed.message} Puedes volver a imprimir.`,
-        );
-        toast.error(parsed.message);
-        refetchPreview();
-        setPhase("idle");
-        runningRef.current = false;
-        return;
-      }
       // El estado "pudo haberse registrado" acumula: basta UN intento incierto.
       setPending({
         ...batch,
@@ -367,6 +356,21 @@ export function RfidLabelPrintStep({
             : printError
               ? " Error al enviar a la impresora."
               : "");
+
+    // Sin ninguna etiqueta que pudiera haber salido no hay tags físicos ni EPCs
+    // que registrar (el backend además exige `cantidad >= 1`): no se hace POST,
+    // no queda lote pendiente y se pide un preview nuevo para el siguiente
+    // intento.
+    if (registeredCount === 0) {
+      setBanner(
+        `No se imprimió ninguna etiqueta y no se registró nada.${printError?.detail ? ` Error: ${printError.detail}` : ""} Revisa la impresora y vuelve a imprimir.`,
+      );
+      toast.error("No se imprimió ninguna etiqueta.");
+      refetchPreview();
+      setPhase("idle");
+      runningRef.current = false;
+      return;
+    }
 
     // ── Registro (una sola vez, con el resultado real) ─────────────────────
     await registerBatch(
