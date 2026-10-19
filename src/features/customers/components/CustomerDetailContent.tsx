@@ -6,7 +6,6 @@ import { ArrowLeftIcon } from "@/src/components/Icons";
 import { Loader } from "@/src/components/Loader";
 import { ErrorState } from "@/src/components/ErrorState";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
-import { isInitialLoadError } from "@/src/utils/isInitialLoadError";
 import { CustomerCartera } from "./CustomerCartera";
 import { CustomerCredito } from "./CustomerCredito";
 import { CustomerResumenKpis, CustomerResumenKpisSkeleton } from "./CustomerResumenKpis";
@@ -19,7 +18,7 @@ interface CustomerDetailContentProps {
 
 export const CustomerDetailContent = ({ customerId }: CustomerDetailContentProps) => {
   const router = useRouter();
-  const { data, isPlaceholderData, isError, error, isValidId, hasLoaded } =
+  const { data, isPlaceholderData, isNotFound, isInitialError, error, isValidId } =
     useCustomer(customerId);
 
   const backButton = (
@@ -46,10 +45,24 @@ export const CustomerDetailContent = ({ customerId }: CustomerDetailContentProps
     );
   }
 
+  // Un 404/403 gana aunque haya datos en caché: el cliente ya no existe o ya no
+  // es visible para el usuario, y mostrar su ficha sería mentir.
+  if (isNotFound) {
+    return (
+      <div className="w-full space-y-8">
+        {backButton}
+        <ErrorState
+          title="Cliente no disponible"
+          message="El cliente no existe, se dio de baja o no tienes acceso a él."
+        />
+      </div>
+    );
+  }
+
   // Error de pantalla completa SOLO si nunca hubo respuesta real. Un refetch
-  // fallido con datos ya cargados conserva la vista (y `useHasLoadedQuery`
-  // avisa por toast).
-  if (isInitialLoadError(isError, hasLoaded)) {
+  // fallido con datos ya cargados conserva la vista (y `useGuardedQuery` avisa
+  // por toast).
+  if (isInitialError) {
     return (
       <div className="w-full space-y-8">
         {backButton}
