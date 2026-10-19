@@ -1,7 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { BanIcon, ClientesIcon, DownloadIcon, EmailIcon, FacturacionIcon } from "@/src/components/Icons";
+import {
+  BanIcon,
+  ClientesIcon,
+  DownloadIcon,
+  EmailIcon,
+  FacturacionIcon,
+  ShieldCheckIcon,
+} from "@/src/components/Icons";
 import { Button } from "@/src/components/Button";
 import { StatusBadge } from "@/src/components/StatusBadge";
 import {
@@ -12,6 +19,7 @@ import {
   textOrDash,
 } from "@/src/components/DetailDialogPrimitives";
 import { formatCurrency } from "@/src/utils/formatCurrency";
+import { formatShortDateTime } from "@/src/utils/formatDate";
 import { PedidoFolioLink } from "@/src/features/orders/components/PedidoFolioLink";
 import { INVOICE_ORIGIN_ID_PARAM } from "@/src/features/orders/constants/pedidoDetailOrigins";
 import {
@@ -29,9 +37,19 @@ import type {
 } from "../interfaces/invoice-desglose.interface";
 import { formatInvoiceDate } from "../utils/invoiceDetailFormat";
 import type { PermissionContext } from "@/src/interfaces/permission-context.interface";
-import { canCancelInvoice } from "../utils/invoiceCancellation";
+import {
+  INVOICE_CANCEL_BLOCKED_BY_CFDI_MESSAGE,
+  canCancelInvoice,
+  isInvoiceCancelBlockedByCfdi,
+} from "../utils/invoiceCancellation";
+import {
+  INVOICE_STAMP_CURRENCY_MESSAGE,
+  canStampInvoice,
+  isInvoiceStampCurrencySupported,
+} from "../utils/invoiceStamping";
 import { InvoiceConceptsSection } from "./InvoiceConceptsSection";
 import { InvoiceCancelDialog } from "./InvoiceCancelDialog";
+import { InvoiceStampDialog } from "./InvoiceStampDialog";
 
 interface InvoiceMainSheetProps {
   data: InvoiceDesglose;
@@ -42,7 +60,7 @@ interface InvoiceMainSheetProps {
   invoice: Invoice | null;
   /** ¿El usuario puede abrir esta ruta? (regla del proxy). */
   canOpen: (pathname: string) => boolean;
-  /** Usuario de la sesión (permisos), para la regla de "Cancelar factura". */
+  /** Usuario de la sesión (permisos), para las reglas de "Cancelar factura" y "Timbrar". */
   user: PermissionContext | null | undefined;
 }
 
@@ -52,6 +70,9 @@ const satKeyLabel = (key: InvoiceDesgloseSatKey | null): string =>
 /**
  * Acciones del documento: las MISMAS reglas que el menú de la fila del
  * listado (`useInvoiceDocumentActions`), sobre el mismo `Invoice` del retrieve.
+ * "Timbrar" solo existe aquí, nunca en el menú del listado. Debajo de los
+ * botones va, en texto visible, el motivo de los que estén deshabilitados (el
+ * `title` de un botón deshabilitado no se muestra en todos los navegadores).
  */
 function InvoiceDocumentActions({
   invoice,
@@ -61,34 +82,62 @@ function InvoiceDocumentActions({
   user: PermissionContext | null | undefined;
 }) {
   const actions = useInvoiceDocumentActions(invoice);
+  const canCancel = canCancelInvoice(invoice, user);
+  const cancelBlocked = canCancel && isInvoiceCancelBlockedByCfdi(invoice);
+  const canStamp = canStampInvoice(invoice, user);
+  const stampCurrencyBlocked = canStamp && !isInvoiceStampCurrencySupported(invoice);
+  const cancelNoteId = `invoice-${invoice.id}-cancel-note`;
+  const stampNoteId = `invoice-${invoice.id}-stamp-note`;
+
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      <InvoiceCancelAction invoice={invoice} canCancel={canCancelInvoice(invoice, user)} />
-      {actions.canSendEmail && (
+    <div className="flex flex-col gap-2 lg:items-end">
+      <div className="flex flex-wrap items-center gap-2">
+        <InvoiceCancelAction
+          invoice={invoice}
+          canCancel={canCancel}
+          blockedNoteId={cancelBlocked ? cancelNoteId : undefined}
+        />
+        <InvoiceStampAction
+          invoice={invoice}
+          canStamp={canStamp}
+          blockedNoteId={stampCurrencyBlocked ? stampNoteId : undefined}
+        />
+        {actions.canSendEmail && (
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={actions.sendEmail}
+            disabled={actions.emailDisabled}
+            title={actions.noRecipientMessage}
+          >
+            <EmailIcon className="w-4 h-4" aria-hidden="true" />
+            {actions.isSendingEmail
+              ? "Enviando..."
+              : actions.hasNoRecipientEmail
+                ? "Enviar correo (sin correo)"
+                : "Enviar correo"}
+          </Button>
+        )}
         <Button
           type="button"
-          variant="secondary"
-          onClick={actions.sendEmail}
-          disabled={actions.emailDisabled}
-          title={actions.noRecipientMessage}
+          variant="primary"
+          onClick={actions.downloadPdf}
+          disabled={actions.pdfDisabled}
         >
-          <EmailIcon className="w-4 h-4" aria-hidden="true" />
-          {actions.isSendingEmail
-            ? "Enviando..."
-            : actions.hasNoRecipientEmail
-              ? "Enviar correo (sin correo)"
-              : "Enviar correo"}
+          <DownloadIcon className="w-4 h-4" aria-hidden="true" />
+          {actions.isDownloadingPdf ? "Generando PDF..." : "Descargar PDF"}
         </Button>
+      </div>
+      {cancelBlocked && (
+        <p id={cancelNoteId} className="text-xs text-slate-500 dark:text-slate-400 max-w-md lg:text-right">
+          {INVOICE_CANCEL_BLOCKED_BY_CFDI_MESSAGE}
+        </p>
       )}
-      <Button
-        type="button"
-        variant="primary"
-        onClick={actions.downloadPdf}
-        disabled={actions.pdfDisabled}
-      >
-        <DownloadIcon className="w-4 h-4" aria-hidden="true" />
-        {actions.isDownloadingPdf ? "Generando PDF..." : "Descargar PDF"}
-      </Button>
+      {stampCurrencyBlocked && (
+        <p id={stampNoteId} className="text-xs text-slate-500 dark:text-slate-400 max-w-md lg:text-right">
+          {INVOICE_STAMP_CURRENCY_MESSAGE}
+        </p>
+      )}
     </div>
   );
 }
@@ -96,9 +145,19 @@ function InvoiceDocumentActions({
 /**
  * "Cancelar factura": misma regla que el menú del listado (`canCancelInvoice`)
  * sobre el retrieve, que es quien trae `activo`. Tras cancelar, el refetch del
- * retrieve deja la factura en `Cancelada` y la acción desaparece sola.
+ * retrieve deja la factura en `Cancelada` y la acción desaparece sola. Con
+ * `blockedNoteId` (factura timbrada) se muestra deshabilitado y descrito por
+ * esa nota.
  */
-function InvoiceCancelAction({ invoice, canCancel }: { invoice: Invoice; canCancel: boolean }) {
+function InvoiceCancelAction({
+  invoice,
+  canCancel,
+  blockedNoteId,
+}: {
+  invoice: Invoice;
+  canCancel: boolean;
+  blockedNoteId?: string;
+}) {
   const [isOpen, setIsOpen] = useState(false);
 
   // Sin la acción no se monta el diálogo; si estaba abierto (la factura acaba
@@ -112,6 +171,8 @@ function InvoiceCancelAction({ invoice, canCancel }: { invoice: Invoice; canCanc
           type="button"
           variant="secondary"
           onClick={() => setIsOpen(true)}
+          disabled={blockedNoteId !== undefined}
+          aria-describedby={blockedNoteId}
           className="text-rose-600! dark:text-rose-400!"
         >
           <BanIcon className="w-4 h-4" aria-hidden="true" />
@@ -120,6 +181,61 @@ function InvoiceCancelAction({ invoice, canCancel }: { invoice: Invoice; canCanc
       )}
       <InvoiceCancelDialog invoice={invoice} open={isOpen} onOpenChange={setIsOpen} />
     </>
+  );
+}
+
+/**
+ * "Timbrar": solo con `E-FIN-FACTURAS` y una `Emitida` activa sin CFDI
+ * (`canStampInvoice`). Una factura en otra moneda lo muestra deshabilitado y
+ * descrito por `blockedNoteId`. Tras timbrar, el refetch del retrieve trae
+ * `cfdi_uuid` y la acción desaparece sola; el diálogo sigue montado hasta
+ * cerrarse.
+ */
+function InvoiceStampAction({
+  invoice,
+  canStamp,
+  blockedNoteId,
+}: {
+  invoice: Invoice;
+  canStamp: boolean;
+  blockedNoteId?: string;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+
+  if (!canStamp && !isOpen) return null;
+
+  return (
+    <>
+      {canStamp && (
+        <Button
+          type="button"
+          variant="secondary"
+          onClick={() => setIsOpen(true)}
+          disabled={blockedNoteId !== undefined}
+          aria-describedby={blockedNoteId}
+        >
+          <ShieldCheckIcon className="w-4 h-4" aria-hidden="true" />
+          Timbrar
+        </Button>
+      )}
+      <InvoiceStampDialog invoice={invoice} open={isOpen} onOpenChange={setIsOpen} />
+    </>
+  );
+}
+
+/**
+ * Folio fiscal del CFDI y fecha de timbrado. Salen del retrieve: el desglose
+ * no trae ningún campo de timbrado.
+ */
+function InvoiceCfdiStamp({ invoice }: { invoice: Invoice }) {
+  if (!invoice.cfdi_uuid) return null;
+  return (
+    <HeaderStatRow>
+      <HeaderStat label="Folio fiscal (UUID)">
+        <span className="font-mono break-all select-all">{invoice.cfdi_uuid}</span>
+      </HeaderStat>
+      <HeaderStat label="Fecha de timbrado">{formatShortDateTime(invoice.cfdi_fecha_timbrado)}</HeaderStat>
+    </HeaderStatRow>
   );
 }
 
@@ -160,6 +276,7 @@ export function InvoiceMainSheet({ data, invoice, canOpen, user }: InvoiceMainSh
                 <span className="tabular-nums">{money(importes.total)}</span>
               </HeaderStat>
             </HeaderStatRow>
+            {invoice && <InvoiceCfdiStamp invoice={invoice} />}
           </div>
           {invoice && <InvoiceDocumentActions invoice={invoice} user={user} />}
         </div>

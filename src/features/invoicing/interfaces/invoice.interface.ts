@@ -1,10 +1,14 @@
 /**
  * Estatus de una factura (`Factura.FacturaStatus` del backend). Enum COMPLETO:
- * la facturación por piezas crea la factura en `Borrador`; `Emitida` solo la
- * crea hoy `registrar-pendiente-cobro` (por monto). Ningún endpoint pasa una
- * factura de `Borrador` a `Emitida` (el timbrado está desconectado); la única
- * transición disponible es `POST /finanzas/facturas/{id}/cancelar/`, que lleva
- * una `Borrador` o una `Emitida` a `Cancelada`.
+ * la facturación por piezas crea la factura en `Borrador` y
+ * `registrar-pendiente-cobro` (por monto) la crea ya `Emitida`.
+ * `POST /finanzas/facturas/{id}/emitir/` pasa una `Borrador` a `Emitida` (crea
+ * su CxC y su póliza) y `POST /finanzas/facturas/{id}/cancelar/` lleva una
+ * `Borrador` o una `Emitida` a `Cancelada`.
+ *
+ * El timbrado del CFDI (`POST /finanzas/facturas/{id}/timbrar/`) NO es un
+ * estatus: no cambia `estatus`, solo llena `cfdi_uuid`, `facturama_id` y
+ * `cfdi_fecha_timbrado`.
  */
 export type InvoiceEstatus = "Borrador" | "Emitida" | "Cancelada";
 
@@ -63,6 +67,16 @@ export interface Invoice {
   observaciones: string | null;
   created_at: string; // ISO date string
   updated_at: string; // ISO date string
+  /**
+   * Folio fiscal del CFDI; `null` mientras no se timbre. Solo lo escribe
+   * `POST /finanzas/facturas/{id}/timbrar/` (solo lectura en la API). Cancelar
+   * la factura NO cancela el CFDI ante el SAT ni limpia este campo.
+   */
+  cfdi_uuid: string | null;
+  /** Id del CFDI en Facturama; `null` mientras no se timbre. */
+  facturama_id: string | null;
+  /** Fecha y hora del timbrado (ISO con zona); `null` mientras no se timbre. */
+  cfdi_fecha_timbrado: string | null;
 }
 
 /**
@@ -101,6 +115,12 @@ export interface InvoiceListRow {
   moneda: number;
   moneda_nombre: string;
   activo?: boolean;
+  /**
+   * Folio fiscal del CFDI; `null` mientras no se timbre. Es el ÚNICO campo de
+   * timbrado del listado (`facturama_id` y `cfdi_fecha_timbrado` solo vienen
+   * en el retrieve).
+   */
+  cfdi_uuid: string | null;
 }
 
 /**

@@ -10,6 +10,7 @@ import { formatLocalDate } from "@/src/utils/formatDate";
 import { INVOICE_STATUS_CONFIG, isInvoiceSendable } from "../constants/invoiceStatus";
 import { invoiceDetailHref } from "../constants/invoiceDetailOrigins";
 import { useInvoiceRowActionsContext } from "../hooks/useInvoiceListDocumentActions";
+import { isInvoiceCancelBlockedByCfdi } from "../utils/invoiceCancellation";
 
 const ESTATUS_FILTER_OPTIONS: ColumnFilterOption[] = [
   { value: undefined, label: "Todos" },
@@ -45,7 +46,11 @@ const estatusFilterFn: FilterFn<InvoiceListRow> = (row, _columnId, filterValue) 
  * "Cancelar factura" sigue la regla única `canCancelInvoice` (permiso +
  * `activo === true` + Borrador o Emitida), que llega por contexto. Solo ABRE
  * el diálogo, que vive en `InvoiceList`: si un filtro de estatus oculta la
- * fila al quedar Cancelada, el diálogo no se desmonta.
+ * fila al quedar Cancelada, el diálogo no se desmonta. Si la fila trae
+ * `cfdi_uuid` se muestra deshabilitado: cancelar en el ERP no cancela el CFDI
+ * ante el SAT (`isInvoiceCancelBlockedByCfdi`). El menú no tiene un campo de
+ * descripción, así que el motivo va en la etiqueta; el texto completo está en
+ * la cabecera del detalle.
  */
 const FolioCell = ({ invoice }: { invoice: InvoiceListRow }) => {
   const statusCfg = INVOICE_STATUS_CONFIG[invoice.estatus];
@@ -54,6 +59,7 @@ const FolioCell = ({ invoice }: { invoice: InvoiceListRow }) => {
   const { onDownloadPdf, onSendEmail, pendingIds, canCancel, onCancel } =
     useInvoiceRowActionsContext();
   const pending = pendingIds.includes(invoice.id);
+  const cancelBlockedByCfdi = isInvoiceCancelBlockedByCfdi(invoice);
 
   const menuItems: ActionMenuItem[] = [
     {
@@ -75,10 +81,13 @@ const FolioCell = ({ invoice }: { invoice: InvoiceListRow }) => {
       visible: invoice.activo !== false && isInvoiceSendable(invoice.estatus),
     },
     {
-      label: "Cancelar factura",
+      label: cancelBlockedByCfdi
+        ? "Cancelar factura (no disponible: CFDI timbrado)"
+        : "Cancelar factura",
       icon: BanIcon,
       onSelect: () => onCancel(invoice),
       visible: canCancel(invoice),
+      disabled: cancelBlockedByCfdi,
     },
   ];
 

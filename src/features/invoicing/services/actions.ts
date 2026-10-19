@@ -110,3 +110,18 @@ export const cancelInvoice = async ({
   );
   return data;
 };
+
+/**
+ * Timbra el CFDI de la factura ante el SAT vía Facturama
+ * (`POST /finanzas/facturas/{id}/timbrar/`). Acto fiscal IRREVERSIBLE. No lleva
+ * cuerpo (el backend no lee ninguno) y responde `200` con la factura completa
+ * (`FacturaSerializer`), ya con `cfdi_uuid`, `facturama_id` y
+ * `cfdi_fecha_timbrado`. No cambia `estatus`, CxC ni póliza. El error se deja
+ * propagar: los `400` traen el motivo bajo `cfdi` (ya timbrada, datos
+ * fiscales faltantes, rechazo o falla de Facturama) o bajo `estatus` (inactiva
+ * o cancelada), como string o como lista.
+ */
+export const stampInvoice = async (id: number): Promise<Invoice> => {
+  const { data } = await v1_api.post<Invoice>(`/finanzas/facturas/${id}/timbrar/`);
+  return data;
+};
