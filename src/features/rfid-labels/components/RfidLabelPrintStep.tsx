@@ -17,11 +17,15 @@ import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { useBrowserPrintDevices, deviceLabel } from "../hooks/useBrowserPrintDevices";
 import { useRfidLabelOnboarding } from "../hooks/useRfidLabelOnboarding";
 import { useRegisterRfidLabel, parseRfidRegisterError } from "../hooks/useRegisterRfidLabel";
-import {
-  useRfidPrintSession,
-  type PendingRfidRegistration,
+import type {
+  PendingRfidRegistration,
+  RfidPrintSession,
 } from "../hooks/useRfidPrintSession";
 import { sendZplToDevice, type SendZplResult } from "../utils/sendZplToDevice";
+import {
+  DISCARD_PENDING_DESCRIPTION,
+  DISCARD_PENDING_TITLE,
+} from "../constants/rfidLabelDiscardCopy";
 import { BrowserPrintPicker } from "./BrowserPrintPicker";
 import { RfidLabelBarcodeGraphic } from "./RfidLabelBarcodeGraphic";
 import { RfidLabelZplBlock } from "./RfidLabelZplBlock";
@@ -36,11 +40,6 @@ import type {
  *  físicas. No es un límite del backend. */
 const MAX_CANTIDAD_UI = 100;
 
-/** Copia de la confirmación para descartar un lote impreso sin registrar. */
-export const DISCARD_PENDING_TITLE = "Descartar etiquetas sin registrar";
-export const DISCARD_PENDING_DESCRIPTION =
-  "Hay etiquetas impresas sin registrar. Si las descartas, sus EPCs se perderán.";
-
 /** Un reintento del MISMO payload que choca por EPC no prueba que otro se los
  *  ganó: si el primer POST hizo commit y se perdió la respuesta, el reintento
  *  recibe el 400 "EPC ya registrado" del pre-chequeo del serializer. El listado
@@ -54,6 +53,9 @@ const SUCURSAL_MISSING_MESSAGE =
 
 interface RfidLabelPrintStepProps {
   selected: RfidOnboardingResult;
+  /** Fase y lote pendiente; viven en el diálogo para que pueda impedir el
+   *  cierre mientras se imprime/registra o hay un lote sin registrar. */
+  session: RfidPrintSession;
   onBack: () => void;
   onSuccess: () => void;
 }
@@ -81,10 +83,15 @@ interface RfidLabelPrintStepProps {
  * cual y no se pide un preview nuevo hasta que el usuario lo descarta con
  * confirmación. Así los EPCs registrados son los codificados en los tags.
  */
-export function RfidLabelPrintStep({ selected, onBack, onSuccess }: RfidLabelPrintStepProps) {
+export function RfidLabelPrintStep({
+  selected,
+  session,
+  onBack,
+  onSuccess,
+}: RfidLabelPrintStepProps) {
   const [cantidad, setCantidad] = useState(1);
   const [rfidMode, setRfidMode] = useState(true);
-  const { phase, setPhase, pending, setPending } = useRfidPrintSession();
+  const { phase, setPhase, pending, setPending } = session;
   const [progress, setProgress] = useState({ current: 0, total: 0 });
   const [banner, setBanner] = useState<string | null>(null);
 

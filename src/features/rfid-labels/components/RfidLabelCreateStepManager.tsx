@@ -10,10 +10,13 @@ import {
 import { RfidLabelSearchStep } from "./RfidLabelSearchStep";
 import { RfidLabelPrintStep } from "./RfidLabelPrintStep";
 import type { RfidOnboardingResult } from "../interfaces/rfid-onboarding.interface";
+import type { RfidPrintSession } from "../hooks/useRfidPrintSession";
 
 interface RfidLabelCreateStepManagerProps {
   /** Se llama cuando el flujo termina con éxito (impresión registrada). */
   onClose: () => void;
+  /** Estado de impresión que el diálogo necesita leer para guardar el cierre. */
+  session: RfidPrintSession;
 }
 
 /**
@@ -26,7 +29,7 @@ interface RfidLabelCreateStepManagerProps {
  *  - Paso 2 (`RfidLabelPrintStep`): configura cantidad/RFID, imprime el lote y
  *    registra; al terminar con éxito, cierra el diálogo.
  */
-export function RfidLabelCreateStepManager({ onClose }: RfidLabelCreateStepManagerProps) {
+export function RfidLabelCreateStepManager({ onClose, session }: RfidLabelCreateStepManagerProps) {
   const [currentStep, setCurrentStep] = useState<RfidLabelWizardStep>(
     RFID_LABEL_WIZARD_STEPS[0],
   );
@@ -58,6 +61,7 @@ export function RfidLabelCreateStepManager({ onClose }: RfidLabelCreateStepManag
         {currentStep === "imprimir" && selected && (
           <RfidLabelPrintStep
             selected={selected}
+            session={session}
             onBack={() => setCurrentStep("buscar")}
             onSuccess={onClose}
           />
