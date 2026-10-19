@@ -16,6 +16,11 @@ export interface PendingRfidRegistration {
   sent: number;
   /** Etiquetas del lote (`zpl_individual.length`). */
   total: number;
+  /** La impresión se detuvo porque la impresora no confirmó a tiempo la
+   *  etiqueta `sent + 1`: pudo haber salido, así que se registra sin
+   *  confirmar. Lo fija el bucle de impresión; banner, toast y `observaciones`
+   *  lo leen de aquí en vez de deducirlo del payload. */
+  timedOut: boolean;
   /** Algún intento anterior terminó con desenlace INCIERTO (sin respuesta o
    *  5xx): el backend pudo haber hecho commit aunque el cliente viera un
    *  fallo. Solo entonces un choque de EPC en el reintento puede significar

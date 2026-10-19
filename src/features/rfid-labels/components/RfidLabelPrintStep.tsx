@@ -243,7 +243,7 @@ export function RfidLabelPrintStep({
    * payload es seguro.
    */
   const registerBatch = async (batch: PendingRfidRegistration, isRetry: boolean) => {
-    const { payload, sent, total } = batch;
+    const { payload, sent, total, timedOut } = batch;
     setPhase("registering");
     try {
       await register.mutateAsync(payload);
@@ -304,13 +304,11 @@ export function RfidLabelPrintStep({
     // el diálogo abierto para corregir (atasco, etc.) y reintentar; el preview
     // ya se regeneró con EPCs frescos vía la invalidación del registro.
     setBanner(payload.observaciones ?? null);
-    // `payload.cantidad` es lo que quedó registrado; si supera a `sent`, la
-    // diferencia (una) es la etiqueta que no se confirmó por timeout.
-    const registered = payload.cantidad;
-    const unconfirmed = registered - sent;
+    // Registradas = confirmadas + la que no se confirmó por timeout (si hubo).
+    const registered = sent + (timedOut ? 1 : 0);
     toast(
       `Registrada con fallo: ${sent} de ${total} impresas; ${registered} EPC(s) registrado(s)` +
-        (unconfirmed > 0 ? `, ${unconfirmed} sin confirmar.` : "."),
+        (timedOut ? ", 1 sin confirmar." : "."),
       { icon: "⚠️" },
     );
   };
@@ -387,6 +385,7 @@ export function RfidLabelPrintStep({
         payload: buildPayload(snapshot, device, status, observaciones, registeredCount),
         sent,
         total,
+        timedOut,
         possiblyRegistered: false,
       },
       false,
