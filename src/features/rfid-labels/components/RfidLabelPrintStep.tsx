@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
+import { useQueryClient } from "@tanstack/react-query";
 import { useDebounce } from "@/src/hooks/useDebounce";
 import { Button } from "@/src/components/Button";
 import { FormInput } from "@/src/components/FormInput";
@@ -97,6 +98,7 @@ export function RfidLabelPrintStep({
 
   const browserPrint = useBrowserPrintDevices();
   const register = useRegisterRfidLabel();
+  const queryClient = useQueryClient();
 
   // Guardas de carrera (mismo patrón que el botón de reimpresión del historial):
   //  - `aliveRef`: no tocar estado ni registrar si el diálogo se desmontó a
@@ -219,8 +221,7 @@ export function RfidLabelPrintStep({
    *
    * Si el POST falla con al menos una etiqueta enviada, el lote queda en
    * `pending` —sus EPCs ya están codificados en tags físicos— y NO se
-   * regenera el preview: eso solo ocurre
-   * al descartar el lote explícitamente. El backend registra dentro de una
+   * regenera el preview: eso solo ocurre al descartar el lote explícitamente. El backend registra dentro de una
    * transacción, así que un POST fallido no persiste nada y reenviar el mismo
    * payload es seguro.
    */
@@ -250,6 +251,10 @@ export function RfidLabelPrintStep({
       }
       setPending(batch);
       if (isRetry && parsed.kind === "epc") {
+        // El POST anterior pudo haber hecho commit aunque su respuesta se
+        // perdiera: se refresca el historial para que ese registro aparezca
+        // donde el mensaje manda a revisarlo.
+        queryClient.invalidateQueries({ queryKey: ["etiquetas-rfid"] });
         setBanner(RETRY_EPC_COLLISION_MESSAGE);
         toast.error(RETRY_EPC_COLLISION_MESSAGE);
       } else {
