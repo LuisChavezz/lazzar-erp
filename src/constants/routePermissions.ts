@@ -122,6 +122,7 @@ export const routePermissions: Array<{
   // ── Finanzas y Contabilidad ───────────────────────────────────────────────
   { prefix: "/finance/invoicing", permission: "R-CONTABILIDAD-FACTURACION" },
   { prefix: "/finance/accounts-receivable", permission: "R-CONTABILIDAD-CXC" },
+  { prefix: "/finance/collections", permission: "R-CONTABILIDAD-CXC" },
   { prefix: "/finance/accounting-customers", permission: "R-CONTABILIDAD-CLIENTES" },
   { prefix: "/finance", permission: "R-CONTABILIDAD" },
 

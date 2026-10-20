@@ -623,6 +623,17 @@ export const appRouteGroups: AppRouteGroup[] = [
         section: "receivables",
       },
       {
+        // EC-542. Mismo código que CxC: un cobro se aplica contra cuentas por
+        // cobrar. El backend no tiene código propio para cobros.
+        key: "finance-collections",
+        label: "Cobros",
+        path: "/finance/collections",
+        icon: ReceiptIcon,
+        description: "Cobros de clientes aplicados contra cuentas por cobrar.",
+        permission: "R-CONTABILIDAD-CXC",
+        section: "receivables",
+      },
+      {
         key: "finance-credit-notes",
         label: "Notas de Crédito",
         path: "/finance/credit-notes",
