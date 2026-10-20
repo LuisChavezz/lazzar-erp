@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { emitirNotaCredito } from "../services/actions";
 import { parseNotaCreditoError } from "./useCreateNotaCredito";
+import { invalidatePedidoProgress } from "@/src/features/orders/hooks/invalidatePedidoProgress";
 
 /**
  * Emite una nota que estaba en borrador
@@ -32,6 +33,7 @@ export const useEmitirNotaCredito = () => {
   return useMutation({
     mutationFn: (id: number) => emitirNotaCredito(id),
     onSuccess: () => {
+      void invalidatePedidoProgress(queryClient);
       toast.success("Nota de crédito emitida correctamente");
     },
     onError: (error) => {

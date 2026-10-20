@@ -3,6 +3,7 @@ import toast from "react-hot-toast";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { cancelarNotaCredito } from "../services/actions";
 import type { NotaCredito } from "../interfaces/credit-note.interface";
+import { invalidatePedidoProgress } from "@/src/features/orders/hooks/invalidatePedidoProgress";
 
 /**
  * Cancela una nota de crédito
@@ -63,6 +64,7 @@ export const useCancelNotaCredito = () => {
         queryClient.invalidateQueries({ queryKey: ["credit-note-detail"] }),
       ]),
     onSuccess: () => {
+      void invalidatePedidoProgress(queryClient);
       toast.success("Nota de crédito cancelada correctamente");
     },
   });
