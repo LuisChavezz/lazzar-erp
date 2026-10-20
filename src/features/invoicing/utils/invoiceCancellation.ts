@@ -35,12 +35,20 @@ export const canCancelInvoice = (
 ): boolean => hasPermission(INVOICE_CANCEL_PERMISSION, user) && isInvoiceCancellable(invoice);
 
 /**
- * Explicación de "Cancelar factura" deshabilitado para una factura timbrada:
- * `cancelar/` solo cancela en el ERP, NO cancela el CFDI ante el SAT, así que
- * dejaría el comprobante fiscal vigente.
+ * Explicación de "Cancelar factura" deshabilitado para una factura timbrada.
+ * `cancelar/` ya cancela el CFDI ante el SAT (motivo 02), pero cancelar una
+ * timbrada desde el ERP queda fuera de este alcance (EC-526).
  */
 export const INVOICE_CANCEL_BLOCKED_BY_CFDI_MESSAGE =
   "Por ahora no se puede cancelar desde el ERP una factura timbrada.";
+
+/**
+ * Explicación de "Cancelar factura" deshabilitado con un timbrado sin
+ * confirmar (`cfdi_pendiente`): puede haber un CFDI vigente ante el SAT que
+ * `cancelar/` no cancelaría, porque la factura no tiene `cfdi_uuid`.
+ */
+export const INVOICE_CANCEL_BLOCKED_BY_PENDING_STAMP_MESSAGE =
+  "No se puede cancelar mientras el timbrado está pendiente de confirmación.";
 
 /**
  * ¿"Cancelar factura" está BLOQUEADO por el CFDI? Toda factura con
@@ -49,3 +57,19 @@ export const INVOICE_CANCEL_BLOCKED_BY_CFDI_MESSAGE =
  */
 export const isInvoiceCancelBlockedByCfdi = (invoice: { cfdi_uuid?: string | null }): boolean =>
   Boolean(invoice.cfdi_uuid);
+
+/**
+ * Motivo por el que "Cancelar factura" está BLOQUEADO, o `null` si no lo está:
+ * CFDI timbrado (`cfdi_uuid`) o timbrado sin confirmar (`cfdi_pendiente`).
+ * Fuente única para la cabecera del detalle, el menú del listado y el precheck
+ * de `useCancelInvoice`. El listado no trae `cfdi_pendiente`: ahí solo bloquea
+ * el `cfdi_uuid`, y el precheck con el retrieve fresco cubre el resto.
+ */
+export const getInvoiceCancelBlockReason = (invoice: {
+  cfdi_uuid?: string | null;
+  cfdi_pendiente?: boolean;
+}): string | null => {
+  if (isInvoiceCancelBlockedByCfdi(invoice)) return INVOICE_CANCEL_BLOCKED_BY_CFDI_MESSAGE;
+  if (invoice.cfdi_pendiente === true) return INVOICE_CANCEL_BLOCKED_BY_PENDING_STAMP_MESSAGE;
+  return null;
+};

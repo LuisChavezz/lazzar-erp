@@ -2,7 +2,12 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { stampInvoice } from "../services/actions";
 import type { Invoice } from "../interfaces/invoice.interface";
-import { isInvoiceStampable, stampInvoiceErrorMessage } from "../utils/invoiceStamping";
+import {
+  INVOICE_STAMP_PENDING_MESSAGE,
+  isInvoiceStampPending,
+  isInvoiceStampable,
+  stampInvoiceErrorMessage,
+} from "../utils/invoiceStamping";
 import {
   InvoicePrecheckError,
   fetchFreshInvoice,
@@ -16,7 +21,8 @@ export const stampInvoiceMutationKey = (invoiceId: number) =>
 
 /**
  * Resultado de timbrar. `not-stampable`: el retrieve previo encontró la
- * factura ya timbrada, o ya no `Emitida` y activa, y NO se hizo el POST.
+ * factura ya timbrada, con un timbrado pendiente de confirmación, o ya no
+ * `Emitida` y activa, y NO se hizo el POST.
  */
 export type StampInvoiceResult =
   | { outcome: "stamped"; invoice: Invoice }
@@ -29,8 +35,8 @@ export type StampInvoiceResult =
  * - Candado contra el doble envío: la mutación misma, con `mutationKey` POR
  *   FACTURA (`stampInvoiceMutationKey`, `useInvoiceMutationLock`).
  * - Antes del POST pide el retrieve FRESCO: si la factura ya trae `cfdi_uuid`
- *   (la timbró otra persona) o dejó de ser una `Emitida` activa, NO se hace el
- *   POST y se avisa.
+ *   (la timbró otra persona), `cfdi_pendiente` (timbrado sin confirmar) o dejó
+ *   de ser una `Emitida` activa, NO se hace el POST y se avisa.
  * - Al TERMINAR, con cualquier resultado, refresca solo el listado, el retrieve
  *   y el desglose de esa factura: el timbrado no toca estatus, CxC ni póliza.
  *
@@ -45,7 +51,7 @@ export const useStampInvoice = (invoiceId: number) => {
     mutationKey,
     mutationFn: async () => {
       const current = await fetchFreshInvoice(queryClient, invoiceId);
-      if (!isInvoiceStampable(current)) {
+      if (!isInvoiceStampable(current) || isInvoiceStampPending(current)) {
         return { outcome: "not-stampable", invoice: current };
       }
       const invoice = await stampInvoice(invoiceId);
@@ -57,7 +63,9 @@ export const useStampInvoice = (invoiceId: number) => {
         toast.error(
           invoice.cfdi_uuid
             ? `La factura ${label} ya estaba timbrada (UUID ${invoice.cfdi_uuid}).`
-            : `La factura ${label} ya no puede timbrarse.`,
+            : isInvoiceStampPending(invoice)
+              ? INVOICE_STAMP_PENDING_MESSAGE
+              : `La factura ${label} ya no puede timbrarse.`,
         );
         return;
       }

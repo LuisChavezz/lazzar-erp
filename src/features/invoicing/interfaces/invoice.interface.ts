@@ -70,13 +70,20 @@ export interface Invoice {
   /**
    * Folio fiscal del CFDI; `null` mientras no se timbre. Solo lo escribe
    * `POST /finanzas/facturas/{id}/timbrar/` (solo lectura en la API). Cancelar
-   * la factura NO cancela el CFDI ante el SAT ni limpia este campo.
+   * la factura cancela su CFDI ante el SAT (motivo 02) pero NO limpia este campo.
    */
   cfdi_uuid: string | null;
   /** Id del CFDI en Facturama; `null` mientras no se timbre. */
   facturama_id: string | null;
   /** Fecha y hora del timbrado (ISO con zona); `null` mientras no se timbre. */
   cfdi_fecha_timbrado: string | null;
+  /**
+   * Timbrado SIN CONFIRMAR: Facturama no confirmó el timbrado (timeout, red,
+   * 5xx o respuesta sin UUID) y pudo generarse un CFDI. Mientras siga en
+   * `true`, `timbrar/` lo rechaza; solo un administrador lo desmarca. Solo lo
+   * trae el retrieve (no el listado ni el desglose).
+   */
+  cfdi_pendiente: boolean;
 }
 
 /**

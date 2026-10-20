@@ -59,6 +59,23 @@ export const canStampInvoice = (
   user: PermissionContext | null | undefined,
 ): boolean => hasPermission(INVOICE_STAMP_PERMISSION, user) && isInvoiceStampable(invoice);
 
+/**
+ * ¿Hay un timbrado SIN CONFIRMAR? El backend marca `cfdi_pendiente` cuando
+ * Facturama no confirmó el timbrado (timeout, red, 5xx o respuesta sin UUID):
+ * puede existir un CFDI vigente ante el SAT aunque la factura no tenga
+ * `cfdi_uuid`. Mientras siga marcado, `timbrar/` lo rechaza y solo un
+ * administrador lo desmarca. Solo viene en el retrieve, no en el listado.
+ */
+export const isInvoiceStampPending = (invoice: { cfdi_pendiente?: boolean }): boolean =>
+  invoice.cfdi_pendiente === true;
+
+/** Explicación de "Timbrar" bloqueado mientras el timbrado está pendiente de confirmación. */
+export const INVOICE_STAMP_PENDING_MESSAGE =
+  "Timbrado pendiente de confirmación con Facturama. Contacta a un administrador para revisarlo.";
+
+/** Indicador de la cabecera, en el lugar del bloque del folio fiscal. */
+export const INVOICE_STAMP_PENDING_LABEL = "Timbrado pendiente de confirmación";
+
 /** ¿La moneda de la factura (`moneda_nombre`, el código ISO) se puede timbrar? */
 export const isInvoiceStampCurrencySupported = (invoice: { moneda_nombre: string | null }): boolean =>
   (invoice.moneda_nombre ?? "").trim().toUpperCase() === INVOICE_STAMP_CURRENCY;

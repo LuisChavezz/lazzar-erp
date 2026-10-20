@@ -36,17 +36,16 @@ import type {
 } from "../interfaces/invoice-desglose.interface";
 import { formatInvoiceDate } from "../utils/invoiceDetailFormat";
 import type { PermissionContext } from "@/src/interfaces/permission-context.interface";
-import {
-  INVOICE_CANCEL_BLOCKED_BY_CFDI_MESSAGE,
-  canCancelInvoice,
-  isInvoiceCancelBlockedByCfdi,
-} from "../utils/invoiceCancellation";
+import { canCancelInvoice, getInvoiceCancelBlockReason } from "../utils/invoiceCancellation";
 import {
   INVOICE_NON_FISCAL_PDF_LABEL,
   INVOICE_NON_FISCAL_PDF_MESSAGE,
   INVOICE_STAMP_CURRENCY_MESSAGE,
+  INVOICE_STAMP_PENDING_LABEL,
+  INVOICE_STAMP_PENDING_MESSAGE,
   canStampInvoice,
   isInvoiceStampCurrencySupported,
+  isInvoiceStampPending,
   isInvoiceStamped,
 } from "../utils/invoiceStamping";
 import { InvoiceConceptsSection } from "./InvoiceConceptsSection";
@@ -87,9 +86,16 @@ function InvoiceDocumentActions({
 }) {
   const actions = useInvoiceDocumentActions(invoice);
   const canCancel = canCancelInvoice(invoice, user);
-  const cancelBlocked = canCancel && isInvoiceCancelBlockedByCfdi(invoice);
+  const cancelBlockReason = canCancel ? getInvoiceCancelBlockReason(invoice) : null;
   const canStamp = canStampInvoice(invoice, user);
-  const stampCurrencyBlocked = canStamp && !isInvoiceStampCurrencySupported(invoice);
+  // Un timbrado sin confirmar manda sobre la moneda: es lo que hay que revisar primero.
+  const stampBlockReason = !canStamp
+    ? null
+    : isInvoiceStampPending(invoice)
+      ? INVOICE_STAMP_PENDING_MESSAGE
+      : !isInvoiceStampCurrencySupported(invoice)
+        ? INVOICE_STAMP_CURRENCY_MESSAGE
+        : null;
   const stamped = isInvoiceStamped(invoice);
   const cancelNoteId = `invoice-${invoice.id}-cancel-note`;
   const stampNoteId = `invoice-${invoice.id}-stamp-note`;
@@ -99,21 +105,23 @@ function InvoiceDocumentActions({
     <div className="flex flex-col gap-2 lg:items-end">
       <div className="flex flex-wrap items-center gap-2">
         {/* "Cancelar factura": misma regla que el menú del listado (`canCancelInvoice`)
-            sobre el retrieve, que es quien trae `activo`. Una factura timbrada lo
-            muestra bloqueado y descrito por su nota. */}
+            sobre el retrieve, que es quien trae `activo`. Una factura timbrada o con
+            el timbrado pendiente de confirmación lo muestra bloqueado y descrito
+            por su nota. */}
         <DocumentActionWithDialog
           offered={canCancel}
-          blockedNoteId={cancelBlocked ? cancelNoteId : undefined}
+          blockedNoteId={cancelBlockReason ? cancelNoteId : undefined}
           icon={BanIcon}
           label="Cancelar factura"
           className="text-rose-600! dark:text-rose-400!"
           renderDialog={(dialog) => <InvoiceCancelDialog invoice={invoice} {...dialog} />}
         />
         {/* "Timbrar": solo con `E-FIN-FACTURAS` y una `Emitida` activa sin CFDI
-            (`canStampInvoice`); en otra moneda, bloqueado y descrito por su nota. */}
+            (`canStampInvoice`); con el timbrado pendiente de confirmación o en otra
+            moneda, bloqueado y descrito por su nota. */}
         <DocumentActionWithDialog
           offered={canStamp}
-          blockedNoteId={stampCurrencyBlocked ? stampNoteId : undefined}
+          blockedNoteId={stampBlockReason ? stampNoteId : undefined}
           icon={ShieldCheckIcon}
           label="Timbrar"
           renderDialog={(dialog) => <InvoiceStampDialog invoice={invoice} {...dialog} />}
@@ -155,14 +163,14 @@ function InvoiceDocumentActions({
           {INVOICE_NON_FISCAL_PDF_MESSAGE}
         </p>
       )}
-      {cancelBlocked && (
+      {cancelBlockReason && (
         <p id={cancelNoteId} className="text-xs text-slate-500 dark:text-slate-400 max-w-md lg:text-right">
-          {INVOICE_CANCEL_BLOCKED_BY_CFDI_MESSAGE}
+          {cancelBlockReason}
         </p>
       )}
-      {stampCurrencyBlocked && (
+      {stampBlockReason && (
         <p id={stampNoteId} className="text-xs text-slate-500 dark:text-slate-400 max-w-md lg:text-right">
-          {INVOICE_STAMP_CURRENCY_MESSAGE}
+          {stampBlockReason}
         </p>
       )}
     </div>
@@ -170,11 +178,21 @@ function InvoiceDocumentActions({
 }
 
 /**
- * Folio fiscal del CFDI y fecha de timbrado. Salen del retrieve: el desglose
- * no trae ningún campo de timbrado.
+ * Folio fiscal del CFDI y fecha de timbrado o, sin UUID y con un timbrado sin
+ * confirmar (`cfdi_pendiente`), el indicador de pendiente en el mismo lugar.
+ * Salen del retrieve: el desglose no trae ningún campo de timbrado.
  */
 function InvoiceCfdiStamp({ invoice }: { invoice: Invoice }) {
-  if (!invoice.cfdi_uuid) return null;
+  if (!invoice.cfdi_uuid) {
+    if (!isInvoiceStampPending(invoice)) return null;
+    return (
+      <HeaderStatRow>
+        <HeaderStat label="Folio fiscal (UUID)">
+          <span className="text-amber-600 dark:text-amber-400 font-medium">{INVOICE_STAMP_PENDING_LABEL}</span>
+        </HeaderStat>
+      </HeaderStatRow>
+    );
+  }
   return (
     <HeaderStatRow>
       <HeaderStat label="Folio fiscal (UUID)">

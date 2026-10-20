@@ -10,10 +10,7 @@ import { formatLocalDate } from "@/src/utils/formatDate";
 import { INVOICE_STATUS_CONFIG, isInvoiceSendable } from "../constants/invoiceStatus";
 import { invoiceDetailHref } from "../constants/invoiceDetailOrigins";
 import { useInvoiceRowActionsContext } from "../hooks/useInvoiceListDocumentActions";
-import {
-  INVOICE_CANCEL_BLOCKED_BY_CFDI_MESSAGE,
-  isInvoiceCancelBlockedByCfdi,
-} from "../utils/invoiceCancellation";
+import { getInvoiceCancelBlockReason } from "../utils/invoiceCancellation";
 import {
   INVOICE_NON_FISCAL_PDF_LABEL,
   INVOICE_NON_FISCAL_PDF_MESSAGE,
@@ -55,9 +52,10 @@ const estatusFilterFn: FilterFn<InvoiceListRow> = (row, _columnId, filterValue) 
  * `activo === true` + Borrador o Emitida), que llega por contexto. Solo ABRE
  * el diálogo, que vive en `InvoiceList`: si un filtro de estatus oculta la
  * fila al quedar Cancelada, el diálogo no se desmonta. Si la fila trae
- * `cfdi_uuid` se muestra deshabilitado, con el motivo como `description`:
- * cancelar en el ERP no cancela el CFDI ante el SAT
- * (`isInvoiceCancelBlockedByCfdi`).
+ * `cfdi_uuid` se muestra deshabilitado, con el motivo como `description`
+ * (`getInvoiceCancelBlockReason`): cancelar una timbrada queda fuera de este
+ * alcance. El timbrado pendiente de confirmación no viene en el listado; lo
+ * frena el precheck al activarse.
  *
  * En una factura timbrada, "Descargar PDF" y "Enviar correo" se rotulan como
  * no fiscales: el PDF del ERP no es el CFDI (no lleva folio fiscal ni sello).
@@ -69,7 +67,9 @@ const FolioCell = ({ invoice }: { invoice: InvoiceListRow }) => {
   const { onDownloadPdf, onSendEmail, pendingIds, canCancel, onCancel } =
     useInvoiceRowActionsContext();
   const pending = pendingIds.includes(invoice.id);
-  const cancelBlockedByCfdi = isInvoiceCancelBlockedByCfdi(invoice);
+  // El listado no trae `cfdi_pendiente`: aquí solo bloquea `cfdi_uuid`; el
+  // precheck de `useCancelInvoice` (retrieve fresco) cubre el pendiente.
+  const cancelBlockReason = getInvoiceCancelBlockReason(invoice);
   const stamped = isInvoiceStamped(invoice);
 
   const menuItems: ActionMenuItem[] = [
@@ -95,11 +95,11 @@ const FolioCell = ({ invoice }: { invoice: InvoiceListRow }) => {
     },
     {
       label: "Cancelar factura",
-      description: cancelBlockedByCfdi ? INVOICE_CANCEL_BLOCKED_BY_CFDI_MESSAGE : undefined,
+      description: cancelBlockReason ?? undefined,
       icon: BanIcon,
       onSelect: () => onCancel(invoice),
       visible: canCancel(invoice),
-      disabled: cancelBlockedByCfdi,
+      disabled: cancelBlockReason !== null,
     },
   ];
 

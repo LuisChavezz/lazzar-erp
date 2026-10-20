@@ -8,11 +8,7 @@ import { firstDrfFieldMessage } from "@/src/utils/firstDrfFieldMessage";
 import { cancelInvoice } from "../services/actions";
 import type { Invoice } from "../interfaces/invoice.interface";
 import { INVOICE_STATUS } from "../constants/invoiceStatus";
-import {
-  INVOICE_CANCEL_BLOCKED_BY_CFDI_MESSAGE,
-  isInvoiceCancelBlockedByCfdi,
-  isInvoiceCancellable,
-} from "../utils/invoiceCancellation";
+import { getInvoiceCancelBlockReason, isInvoiceCancellable } from "../utils/invoiceCancellation";
 import { invoiceOnboardingQueryKey } from "./useInvoiceOnboarding";
 import {
   InvoicePrecheckError,
@@ -28,7 +24,7 @@ export const cancelInvoiceMutationKey = (invoiceId: number) =>
 /**
  * Resultado de cancelar. `not-cancellable`: el retrieve previo encontró la
  * factura ya `Cancelada` (u otra que dejó de ser cancelable, p. ej. eliminada
- * o ya timbrada) y NO se hizo el POST.
+ * o con el CFDI timbrado o pendiente de confirmación) y NO se hizo el POST.
  */
 export type CancelInvoiceResult =
   | { outcome: "cancelled"; invoice: Invoice }
@@ -45,8 +41,8 @@ export type CancelInvoiceResult =
  * Antes del POST pide el retrieve FRESCO: cancelar una ya cancelada responde
  * `200` sin efecto y sin guardar el motivo, y la respuesta no distingue ese
  * caso de una cancelación real. Si la factura ya no es cancelable no se hace
- * el POST y se avisa. Tampoco si ya trae `cfdi_uuid` (pudo timbrarse después
- * de cargar la vista): cancelar en el ERP no cancela el CFDI ante el SAT.
+ * el POST y se avisa. Tampoco si ya trae `cfdi_uuid` o `cfdi_pendiente` (pudo
+ * timbrarse después de cargar la vista; ver `getInvoiceCancelBlockReason`).
  *
  * Al TERMINAR, con cualquier resultado, refresca el listado, el retrieve y el
  * desglose de esa factura. Tras una cancelación real refresca además lo que
@@ -68,7 +64,7 @@ export const useCancelInvoice = (invoiceId: number) => {
     mutationKey,
     mutationFn: async ({ motivo }) => {
       const current = await fetchFreshInvoice(queryClient, invoiceId);
-      if (!isInvoiceCancellable(current) || isInvoiceCancelBlockedByCfdi(current)) {
+      if (!isInvoiceCancellable(current) || getInvoiceCancelBlockReason(current) !== null) {
         return { outcome: "not-cancellable", invoice: current };
       }
       const invoice = await cancelInvoice({ id: invoiceId, motivo });
@@ -80,9 +76,8 @@ export const useCancelInvoice = (invoiceId: number) => {
         toast.error(
           invoice.estatus === INVOICE_STATUS.CANCELADA
             ? `La factura ${label} ya estaba cancelada; no se registró el motivo.`
-            : isInvoiceCancelBlockedByCfdi(invoice)
-              ? INVOICE_CANCEL_BLOCKED_BY_CFDI_MESSAGE
-              : `La factura ${label} ya no puede cancelarse.`,
+            : (getInvoiceCancelBlockReason(invoice) ??
+              `La factura ${label} ya no puede cancelarse.`),
         );
         return;
       }
