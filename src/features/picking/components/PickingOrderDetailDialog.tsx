@@ -143,7 +143,9 @@ export function PickingOrderDetailDialog({
   open,
   onOpenChange,
 }: PickingOrderDetailDialogProps) {
-  const { data, isLoading, isError, error } = usePedidoDetail(order.id);
+  const { data, isLoading, isError, error } = usePedidoDetail(order.id, {
+    refetchOnMount: "always",
+  });
 
   return (
     <MainDialog
