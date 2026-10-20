@@ -25,7 +25,25 @@ export type ActionMenuItem = {
    * siempre (`onSelect`).
    */
   href?: string;
+  /**
+   * Opcional: texto secundario bajo la etiqueta, p. ej. el motivo de un item
+   * deshabilitado. Sin él, el item se pinta exactamente como antes.
+   */
+  description?: string;
 };
+
+/** Etiqueta del item y, si la trae, su descripción debajo. */
+const ItemText = ({ label, description }: { label: string; description?: string }) =>
+  description ? (
+    <span className="flex flex-col gap-0.5 min-w-0">
+      <span>{label}</span>
+      <span className="max-w-64 whitespace-normal text-[11px] leading-snug text-slate-400 dark:text-slate-500">
+        {description}
+      </span>
+    </span>
+  ) : (
+    <span>{label}</span>
+  );
 
 interface ActionMenuProps {
   items: ActionMenuItem[];
@@ -96,7 +114,7 @@ export const ActionMenu = ({
               >
                 <Link href={item.href}>
                   <Icon className="w-4 h-4" aria-hidden="true" />
-                  <span>{item.label}</span>
+                  <ItemText label={item.label} description={item.description} />
                 </Link>
               </DropdownMenu.Item>
             );
@@ -112,7 +130,7 @@ export const ActionMenu = ({
               className={ITEM_CLASS}
             >
               <Icon className="w-4 h-4" aria-hidden="true" />
-              <span>{item.label}</span>
+              <ItemText label={item.label} description={item.description} />
             </DropdownMenu.Item>
           );
         })}

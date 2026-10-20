@@ -1,4 +1,4 @@
-import { useIsMutating, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { ordersQueryKey } from "@/src/features/orders/hooks/useOrders";
 import { pedidoDetailQueryKey } from "@/src/features/orders/hooks/usePedidoDetail";
@@ -13,9 +13,13 @@ import {
   isInvoiceCancelBlockedByCfdi,
   isInvoiceCancellable,
 } from "../utils/invoiceCancellation";
-import { invoiceDesgloseQueryKey } from "./useInvoiceDesglose";
 import { invoiceOnboardingQueryKey } from "./useInvoiceOnboarding";
-import { invoiceRetrieveFreshOptions } from "./useInvoiceRetrieveFresh";
+import {
+  InvoicePrecheckError,
+  fetchFreshInvoice,
+  invalidateInvoiceBaseQueries,
+  useInvoiceMutationLock,
+} from "./invoiceActionMutation";
 
 /** Candado de la cancelación, ÚNICO por factura (ver `useCancelInvoice`). */
 export const cancelInvoiceMutationKey = (invoiceId: number) =>
@@ -30,17 +34,13 @@ export type CancelInvoiceResult =
   | { outcome: "cancelled"; invoice: Invoice }
   | { outcome: "not-cancellable"; invoice: Invoice };
 
-/** Motivo propio de un fallo antes del POST (el retrieve previo no respondió). */
-class CancelInvoicePrecheckError extends Error {}
-
 /**
  * Cancela UNA factura (`POST /finanzas/facturas/{id}/cancelar/`).
  *
  * Candado contra el doble envío: la mutación misma, con `mutationKey` POR
- * FACTURA (`cancelInvoiceMutationKey`), igual que `useCreateAndOpenQuote`.
- * `cancel` lo consulta de forma SÍNCRONA contra la caché de mutaciones
- * (`isPending` llega un render tarde), así que sobrevive a un remontaje y es el
- * mismo para el diálogo del listado y el del detalle.
+ * FACTURA (`cancelInvoiceMutationKey`), igual que `useCreateAndOpenQuote`
+ * (`useInvoiceMutationLock`): el mismo para el diálogo del listado y el del
+ * detalle.
  *
  * Antes del POST pide el retrieve FRESCO: cancelar una ya cancelada responde
  * `200` sin efecto y sin guardar el motivo, y la respuesta no distingue ese
@@ -62,19 +62,12 @@ class CancelInvoicePrecheckError extends Error {}
 export const useCancelInvoice = (invoiceId: number) => {
   const queryClient = useQueryClient();
   const mutationKey = cancelInvoiceMutationKey(invoiceId);
-  const isCancelling = useIsMutating({ mutationKey, exact: true }) > 0;
+  const { isRunning: isCancelling, isIdle } = useInvoiceMutationLock(mutationKey);
 
   const mutation = useMutation<CancelInvoiceResult, unknown, { motivo?: string }>({
     mutationKey,
     mutationFn: async ({ motivo }) => {
-      let current: Invoice;
-      try {
-        current = await queryClient.fetchQuery(invoiceRetrieveFreshOptions(invoiceId));
-      } catch (error) {
-        throw new CancelInvoicePrecheckError(
-          extractErrorMessage(error, "No se pudo consultar la factura."),
-        );
-      }
+      const current = await fetchFreshInvoice(queryClient, invoiceId);
       if (!isInvoiceCancellable(current) || isInvoiceCancelBlockedByCfdi(current)) {
         return { outcome: "not-cancellable", invoice: current };
       }
@@ -108,17 +101,13 @@ export const useCancelInvoice = (invoiceId: number) => {
     },
     onError: (error) => {
       toast.error(
-        error instanceof CancelInvoicePrecheckError
+        error instanceof InvoicePrecheckError
           ? error.message
           : (firstDrfFieldMessage(error) ??
               extractErrorMessage(error, "No se pudo cancelar la factura.")),
       );
     },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ["invoices"] });
-      queryClient.invalidateQueries({ queryKey: ["invoice-detail", invoiceId] });
-      queryClient.invalidateQueries({ queryKey: invoiceDesgloseQueryKey(invoiceId) });
-    },
+    onSettled: () => invalidateInvoiceBaseQueries(queryClient, invoiceId),
   });
 
   /**
@@ -126,7 +115,7 @@ export const useCancelInvoice = (invoiceId: number) => {
    * (consulta síncrona a la caché). `onSuccess` corre solo si terminó sin error.
    */
   const cancel = (motivo: string | undefined, options: { onSuccess?: () => void } = {}) => {
-    if (queryClient.isMutating({ mutationKey, exact: true }) > 0) return;
+    if (!isIdle()) return;
     mutation.mutate({ motivo }, { onSuccess: options.onSuccess });
   };
 

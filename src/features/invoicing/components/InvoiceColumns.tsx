@@ -10,7 +10,15 @@ import { formatLocalDate } from "@/src/utils/formatDate";
 import { INVOICE_STATUS_CONFIG, isInvoiceSendable } from "../constants/invoiceStatus";
 import { invoiceDetailHref } from "../constants/invoiceDetailOrigins";
 import { useInvoiceRowActionsContext } from "../hooks/useInvoiceListDocumentActions";
-import { isInvoiceCancelBlockedByCfdi } from "../utils/invoiceCancellation";
+import {
+  INVOICE_CANCEL_BLOCKED_BY_CFDI_MESSAGE,
+  isInvoiceCancelBlockedByCfdi,
+} from "../utils/invoiceCancellation";
+import {
+  INVOICE_NON_FISCAL_PDF_LABEL,
+  INVOICE_NON_FISCAL_PDF_MESSAGE,
+  isInvoiceStamped,
+} from "../utils/invoiceStamping";
 
 const ESTATUS_FILTER_OPTIONS: ColumnFilterOption[] = [
   { value: undefined, label: "Todos" },
@@ -47,10 +55,12 @@ const estatusFilterFn: FilterFn<InvoiceListRow> = (row, _columnId, filterValue) 
  * `activo === true` + Borrador o Emitida), que llega por contexto. Solo ABRE
  * el diálogo, que vive en `InvoiceList`: si un filtro de estatus oculta la
  * fila al quedar Cancelada, el diálogo no se desmonta. Si la fila trae
- * `cfdi_uuid` se muestra deshabilitado: cancelar en el ERP no cancela el CFDI
- * ante el SAT (`isInvoiceCancelBlockedByCfdi`). El menú no tiene un campo de
- * descripción, así que el motivo va en la etiqueta; el texto completo está en
- * la cabecera del detalle.
+ * `cfdi_uuid` se muestra deshabilitado, con el motivo como `description`:
+ * cancelar en el ERP no cancela el CFDI ante el SAT
+ * (`isInvoiceCancelBlockedByCfdi`).
+ *
+ * En una factura timbrada, "Descargar PDF" y "Enviar correo" se rotulan como
+ * no fiscales: el PDF del ERP no es el CFDI (no lleva folio fiscal ni sello).
  */
 const FolioCell = ({ invoice }: { invoice: InvoiceListRow }) => {
   const statusCfg = INVOICE_STATUS_CONFIG[invoice.estatus];
@@ -60,6 +70,7 @@ const FolioCell = ({ invoice }: { invoice: InvoiceListRow }) => {
     useInvoiceRowActionsContext();
   const pending = pendingIds.includes(invoice.id);
   const cancelBlockedByCfdi = isInvoiceCancelBlockedByCfdi(invoice);
+  const stamped = isInvoiceStamped(invoice);
 
   const menuItems: ActionMenuItem[] = [
     {
@@ -68,22 +79,23 @@ const FolioCell = ({ invoice }: { invoice: InvoiceListRow }) => {
       href: invoiceDetailHref(invoice.id, "invoicing"),
     },
     {
-      label: "Descargar PDF",
+      label: stamped ? INVOICE_NON_FISCAL_PDF_LABEL : "Descargar PDF",
+      description: stamped ? INVOICE_NON_FISCAL_PDF_MESSAGE : undefined,
       icon: DownloadIcon,
       onSelect: () => onDownloadPdf(invoice.id),
       disabled: pending,
     },
     {
       label: "Enviar correo",
+      description: stamped ? INVOICE_NON_FISCAL_PDF_MESSAGE : undefined,
       icon: EmailIcon,
       onSelect: () => onSendEmail(invoice.id),
       disabled: pending,
       visible: invoice.activo !== false && isInvoiceSendable(invoice.estatus),
     },
     {
-      label: cancelBlockedByCfdi
-        ? "Cancelar factura (no disponible: CFDI timbrado)"
-        : "Cancelar factura",
+      label: "Cancelar factura",
+      description: cancelBlockedByCfdi ? INVOICE_CANCEL_BLOCKED_BY_CFDI_MESSAGE : undefined,
       icon: BanIcon,
       onSelect: () => onCancel(invoice),
       visible: canCancel(invoice),

@@ -20,6 +20,21 @@ export const INVOICE_STAMP_CURRENCY = "MXN";
 export const INVOICE_STAMP_CURRENCY_MESSAGE =
   "Solo se pueden timbrar facturas en MXN: esta factura no puede timbrarse.";
 
+/** ¿La factura ya tiene CFDI timbrado? */
+export const isInvoiceStamped = (invoice: { cfdi_uuid?: string | null }): boolean =>
+  Boolean(invoice.cfdi_uuid);
+
+/**
+ * Aviso para "Descargar PDF" y "Enviar correo" de una factura timbrada: el PDF
+ * que genera el ERP no es la representación impresa del CFDI (no lleva folio
+ * fiscal ni sello). Se rotula; no se oculta.
+ */
+export const INVOICE_NON_FISCAL_PDF_MESSAGE =
+  "Este PDF no es el CFDI: no incluye folio fiscal ni sello digital.";
+
+/** Etiqueta de "Descargar PDF" para una factura timbrada. */
+export const INVOICE_NON_FISCAL_PDF_LABEL = "Descargar PDF (no fiscal)";
+
 /**
  * ¿Se ofrece "Timbrar" para esta factura? Solo una `Emitida` ACTIVA y aún sin
  * CFDI. Decisión de producto: aunque el backend también timbra un `Borrador`,

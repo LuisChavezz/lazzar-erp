@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import {
   BanIcon,
   ClientesIcon,
@@ -43,13 +42,17 @@ import {
   isInvoiceCancelBlockedByCfdi,
 } from "../utils/invoiceCancellation";
 import {
+  INVOICE_NON_FISCAL_PDF_LABEL,
+  INVOICE_NON_FISCAL_PDF_MESSAGE,
   INVOICE_STAMP_CURRENCY_MESSAGE,
   canStampInvoice,
   isInvoiceStampCurrencySupported,
+  isInvoiceStamped,
 } from "../utils/invoiceStamping";
 import { InvoiceConceptsSection } from "./InvoiceConceptsSection";
 import { InvoiceCancelDialog } from "./InvoiceCancelDialog";
 import { InvoiceStampDialog } from "./InvoiceStampDialog";
+import { DocumentActionWithDialog } from "./DocumentActionWithDialog";
 
 interface InvoiceMainSheetProps {
   data: InvoiceDesglose;
@@ -71,8 +74,9 @@ const satKeyLabel = (key: InvoiceDesgloseSatKey | null): string =>
  * Acciones del documento: las MISMAS reglas que el menú de la fila del
  * listado (`useInvoiceDocumentActions`), sobre el mismo `Invoice` del retrieve.
  * "Timbrar" solo existe aquí, nunca en el menú del listado. Debajo de los
- * botones va, en texto visible, el motivo de los que estén deshabilitados (el
- * `title` de un botón deshabilitado no se muestra en todos los navegadores).
+ * botones va, en texto visible, el motivo de los que estén bloqueados (el
+ * `title` de un botón deshabilitado no se muestra en todos los navegadores) y,
+ * en una factura timbrada, el aviso de que el PDF del ERP no es el CFDI.
  */
 function InvoiceDocumentActions({
   invoice,
@@ -86,21 +90,33 @@ function InvoiceDocumentActions({
   const cancelBlocked = canCancel && isInvoiceCancelBlockedByCfdi(invoice);
   const canStamp = canStampInvoice(invoice, user);
   const stampCurrencyBlocked = canStamp && !isInvoiceStampCurrencySupported(invoice);
+  const stamped = isInvoiceStamped(invoice);
   const cancelNoteId = `invoice-${invoice.id}-cancel-note`;
   const stampNoteId = `invoice-${invoice.id}-stamp-note`;
+  const nonFiscalNoteId = `invoice-${invoice.id}-non-fiscal-note`;
 
   return (
     <div className="flex flex-col gap-2 lg:items-end">
       <div className="flex flex-wrap items-center gap-2">
-        <InvoiceCancelAction
-          invoice={invoice}
-          canCancel={canCancel}
+        {/* "Cancelar factura": misma regla que el menú del listado (`canCancelInvoice`)
+            sobre el retrieve, que es quien trae `activo`. Una factura timbrada lo
+            muestra bloqueado y descrito por su nota. */}
+        <DocumentActionWithDialog
+          offered={canCancel}
           blockedNoteId={cancelBlocked ? cancelNoteId : undefined}
+          icon={BanIcon}
+          label="Cancelar factura"
+          className="text-rose-600! dark:text-rose-400!"
+          renderDialog={(dialog) => <InvoiceCancelDialog invoice={invoice} {...dialog} />}
         />
-        <InvoiceStampAction
-          invoice={invoice}
-          canStamp={canStamp}
+        {/* "Timbrar": solo con `E-FIN-FACTURAS` y una `Emitida` activa sin CFDI
+            (`canStampInvoice`); en otra moneda, bloqueado y descrito por su nota. */}
+        <DocumentActionWithDialog
+          offered={canStamp}
           blockedNoteId={stampCurrencyBlocked ? stampNoteId : undefined}
+          icon={ShieldCheckIcon}
+          label="Timbrar"
+          renderDialog={(dialog) => <InvoiceStampDialog invoice={invoice} {...dialog} />}
         />
         {actions.canSendEmail && (
           <Button
@@ -109,6 +125,7 @@ function InvoiceDocumentActions({
             onClick={actions.sendEmail}
             disabled={actions.emailDisabled}
             title={actions.noRecipientMessage}
+            aria-describedby={stamped ? nonFiscalNoteId : undefined}
           >
             <EmailIcon className="w-4 h-4" aria-hidden="true" />
             {actions.isSendingEmail
@@ -123,11 +140,21 @@ function InvoiceDocumentActions({
           variant="primary"
           onClick={actions.downloadPdf}
           disabled={actions.pdfDisabled}
+          aria-describedby={stamped ? nonFiscalNoteId : undefined}
         >
           <DownloadIcon className="w-4 h-4" aria-hidden="true" />
-          {actions.isDownloadingPdf ? "Generando PDF..." : "Descargar PDF"}
+          {actions.isDownloadingPdf
+            ? "Generando PDF..."
+            : stamped
+              ? INVOICE_NON_FISCAL_PDF_LABEL
+              : "Descargar PDF"}
         </Button>
       </div>
+      {stamped && (
+        <p id={nonFiscalNoteId} className="text-xs text-slate-500 dark:text-slate-400 max-w-md lg:text-right">
+          {INVOICE_NON_FISCAL_PDF_MESSAGE}
+        </p>
+      )}
       {cancelBlocked && (
         <p id={cancelNoteId} className="text-xs text-slate-500 dark:text-slate-400 max-w-md lg:text-right">
           {INVOICE_CANCEL_BLOCKED_BY_CFDI_MESSAGE}
@@ -139,87 +166,6 @@ function InvoiceDocumentActions({
         </p>
       )}
     </div>
-  );
-}
-
-/**
- * "Cancelar factura": misma regla que el menú del listado (`canCancelInvoice`)
- * sobre el retrieve, que es quien trae `activo`. Tras cancelar, el refetch del
- * retrieve deja la factura en `Cancelada` y la acción desaparece sola. Con
- * `blockedNoteId` (factura timbrada) se muestra deshabilitado y descrito por
- * esa nota.
- */
-function InvoiceCancelAction({
-  invoice,
-  canCancel,
-  blockedNoteId,
-}: {
-  invoice: Invoice;
-  canCancel: boolean;
-  blockedNoteId?: string;
-}) {
-  const [isOpen, setIsOpen] = useState(false);
-
-  // Sin la acción no se monta el diálogo; si estaba abierto (la factura acaba
-  // de cancelarse) sigue montado hasta cerrarse.
-  if (!canCancel && !isOpen) return null;
-
-  return (
-    <>
-      {canCancel && (
-        <Button
-          type="button"
-          variant="secondary"
-          onClick={() => setIsOpen(true)}
-          disabled={blockedNoteId !== undefined}
-          aria-describedby={blockedNoteId}
-          className="text-rose-600! dark:text-rose-400!"
-        >
-          <BanIcon className="w-4 h-4" aria-hidden="true" />
-          Cancelar factura
-        </Button>
-      )}
-      <InvoiceCancelDialog invoice={invoice} open={isOpen} onOpenChange={setIsOpen} />
-    </>
-  );
-}
-
-/**
- * "Timbrar": solo con `E-FIN-FACTURAS` y una `Emitida` activa sin CFDI
- * (`canStampInvoice`). Una factura en otra moneda lo muestra deshabilitado y
- * descrito por `blockedNoteId`. Tras timbrar, el refetch del retrieve trae
- * `cfdi_uuid` y la acción desaparece sola; el diálogo sigue montado hasta
- * cerrarse.
- */
-function InvoiceStampAction({
-  invoice,
-  canStamp,
-  blockedNoteId,
-}: {
-  invoice: Invoice;
-  canStamp: boolean;
-  blockedNoteId?: string;
-}) {
-  const [isOpen, setIsOpen] = useState(false);
-
-  if (!canStamp && !isOpen) return null;
-
-  return (
-    <>
-      {canStamp && (
-        <Button
-          type="button"
-          variant="secondary"
-          onClick={() => setIsOpen(true)}
-          disabled={blockedNoteId !== undefined}
-          aria-describedby={blockedNoteId}
-        >
-          <ShieldCheckIcon className="w-4 h-4" aria-hidden="true" />
-          Timbrar
-        </Button>
-      )}
-      <InvoiceStampDialog invoice={invoice} open={isOpen} onOpenChange={setIsOpen} />
-    </>
   );
 }
 
