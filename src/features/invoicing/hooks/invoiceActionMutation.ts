@@ -2,6 +2,7 @@ import { useIsMutating, useQueryClient } from "@tanstack/react-query";
 import type { QueryClient, QueryKey } from "@tanstack/react-query";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import type { Invoice } from "../interfaces/invoice.interface";
+import { getInvoiceDetail } from "../services/actions";
 import { invoiceDesgloseQueryKey } from "./useInvoiceDesglose";
 import { invoiceRetrieveFreshOptions } from "./useInvoiceRetrieveFresh";
 
@@ -15,25 +16,42 @@ import { invoiceRetrieveFreshOptions } from "./useInvoiceRetrieveFresh";
 export class InvoicePrecheckError extends Error {}
 
 /**
- * Retrieve FRESCO de la factura antes de la acción (misma llave y opciones que
- * la página de detalle, así que también la refresca). Si falla, lanza
- * `InvoicePrecheckError` con el motivo listo para el toast.
+ * Retrieve FRESCO de la factura antes de la acción. Llama al servicio
+ * directamente, sin `fetchQuery`: `fetchQuery` reutiliza un retrieve que ya
+ * esté en vuelo para `["invoice-detail", id]`, y ese pudo salir ANTES de que
+ * otra pestaña timbrara o cancelara, así que el precheck decidiría con datos
+ * viejos. Una petición propia siempre refleja el estado actual, y no aborta la
+ * consulta en vuelo de la página (lo que haría `cancelQueries`). El resultado
+ * se escribe en la caché de esa llave, así que la vista también queda al día.
+ * Si falla, lanza `InvoicePrecheckError` con el motivo listo para el toast.
  */
 export const fetchFreshInvoice = async (
   queryClient: QueryClient,
   invoiceId: number,
 ): Promise<Invoice> => {
+  let invoice: Invoice;
   try {
-    return await queryClient.fetchQuery(invoiceRetrieveFreshOptions(invoiceId));
+    invoice = await getInvoiceDetail(invoiceId);
   } catch (error) {
     throw new InvoicePrecheckError(extractErrorMessage(error, "No se pudo consultar la factura."));
   }
+  queryClient.setQueryData(invoiceRetrieveFreshOptions(invoiceId).queryKey, invoice);
+  return invoice;
 };
 
-/** Refresca lo que cualquier acción sobre la factura cambia: listado, retrieve y desglose. */
-export const invalidateInvoiceBaseQueries = (queryClient: QueryClient, invoiceId: number) => {
+/**
+ * Refresca lo que cualquier acción sobre la factura cambia: listado, retrieve y
+ * desglose. Con `sentRequest: false` (el precheck detuvo la acción y no hubo
+ * POST) el retrieve NO se vuelve a pedir: el precheck acaba de escribirlo en la
+ * caché. Ante un error (con o sin POST) va `true`: es más seguro releer.
+ */
+export const invalidateInvoiceBaseQueries = (
+  queryClient: QueryClient,
+  invoiceId: number,
+  { sentRequest = true }: { sentRequest?: boolean } = {},
+) => {
   queryClient.invalidateQueries({ queryKey: ["invoices"] });
-  queryClient.invalidateQueries({ queryKey: ["invoice-detail", invoiceId] });
+  if (sentRequest) queryClient.invalidateQueries({ queryKey: ["invoice-detail", invoiceId] });
   queryClient.invalidateQueries({ queryKey: invoiceDesgloseQueryKey(invoiceId) });
 };
 

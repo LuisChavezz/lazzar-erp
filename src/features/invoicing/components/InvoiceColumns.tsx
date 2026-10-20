@@ -14,7 +14,7 @@ import { getInvoiceCancelBlockReason } from "../utils/invoiceCancellation";
 import {
   INVOICE_NON_FISCAL_PDF_LABEL,
   INVOICE_NON_FISCAL_PDF_MESSAGE,
-  isInvoiceStamped,
+  isInvoicePdfNonFiscal,
 } from "../utils/invoiceStamping";
 
 const ESTATUS_FILTER_OPTIONS: ColumnFilterOption[] = [
@@ -70,7 +70,7 @@ const FolioCell = ({ invoice }: { invoice: InvoiceListRow }) => {
   // El listado no trae `cfdi_pendiente`: aquí solo bloquea `cfdi_uuid`; el
   // precheck de `useCancelInvoice` (retrieve fresco) cubre el pendiente.
   const cancelBlockReason = getInvoiceCancelBlockReason(invoice);
-  const stamped = isInvoiceStamped(invoice);
+  const nonFiscalPdf = isInvoicePdfNonFiscal(invoice);
 
   const menuItems: ActionMenuItem[] = [
     {
@@ -79,15 +79,15 @@ const FolioCell = ({ invoice }: { invoice: InvoiceListRow }) => {
       href: invoiceDetailHref(invoice.id, "invoicing"),
     },
     {
-      label: stamped ? INVOICE_NON_FISCAL_PDF_LABEL : "Descargar PDF",
-      description: stamped ? INVOICE_NON_FISCAL_PDF_MESSAGE : undefined,
+      label: nonFiscalPdf ? INVOICE_NON_FISCAL_PDF_LABEL : "Descargar PDF",
+      description: nonFiscalPdf ? INVOICE_NON_FISCAL_PDF_MESSAGE : undefined,
       icon: DownloadIcon,
       onSelect: () => onDownloadPdf(invoice.id),
       disabled: pending,
     },
     {
       label: "Enviar correo",
-      description: stamped ? INVOICE_NON_FISCAL_PDF_MESSAGE : undefined,
+      description: nonFiscalPdf ? INVOICE_NON_FISCAL_PDF_MESSAGE : undefined,
       icon: EmailIcon,
       onSelect: () => onSendEmail(invoice.id),
       disabled: pending,

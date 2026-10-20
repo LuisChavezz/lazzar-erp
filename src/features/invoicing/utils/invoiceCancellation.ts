@@ -2,6 +2,7 @@ import type { PermissionContext } from "@/src/interfaces/permission-context.inte
 import { hasPermission } from "@/src/utils/permissions";
 import { INVOICE_STATUS } from "../constants/invoiceStatus";
 import type { InvoiceEstatus } from "../interfaces/invoice.interface";
+import { isInvoiceStamped } from "./invoiceStamping";
 
 /**
  * Permiso que habilita "Cancelar factura". PROVISIONAL: el backend no exige
@@ -56,7 +57,7 @@ export const INVOICE_CANCEL_BLOCKED_BY_PENDING_STAMP_MESSAGE =
  * ofrece, se muestra deshabilitado con `INVOICE_CANCEL_BLOCKED_BY_CFDI_MESSAGE`.
  */
 export const isInvoiceCancelBlockedByCfdi = (invoice: { cfdi_uuid?: string | null }): boolean =>
-  Boolean(invoice.cfdi_uuid);
+  isInvoiceStamped(invoice);
 
 /**
  * Motivo por el que "Cancelar factura" está BLOQUEADO, o `null` si no lo está:

@@ -45,8 +45,8 @@ import {
   INVOICE_STAMP_PENDING_MESSAGE,
   canStampInvoice,
   isInvoiceStampCurrencySupported,
+  isInvoicePdfNonFiscal,
   isInvoiceStampPending,
-  isInvoiceStamped,
 } from "../utils/invoiceStamping";
 import { InvoiceConceptsSection } from "./InvoiceConceptsSection";
 import { InvoiceCancelDialog } from "./InvoiceCancelDialog";
@@ -96,7 +96,7 @@ function InvoiceDocumentActions({
       : !isInvoiceStampCurrencySupported(invoice)
         ? INVOICE_STAMP_CURRENCY_MESSAGE
         : null;
-  const stamped = isInvoiceStamped(invoice);
+  const nonFiscalPdf = isInvoicePdfNonFiscal(invoice);
   const cancelNoteId = `invoice-${invoice.id}-cancel-note`;
   const stampNoteId = `invoice-${invoice.id}-stamp-note`;
   const nonFiscalNoteId = `invoice-${invoice.id}-non-fiscal-note`;
@@ -133,7 +133,7 @@ function InvoiceDocumentActions({
             onClick={actions.sendEmail}
             disabled={actions.emailDisabled}
             title={actions.noRecipientMessage}
-            aria-describedby={stamped ? nonFiscalNoteId : undefined}
+            aria-describedby={nonFiscalPdf ? nonFiscalNoteId : undefined}
           >
             <EmailIcon className="w-4 h-4" aria-hidden="true" />
             {actions.isSendingEmail
@@ -148,17 +148,17 @@ function InvoiceDocumentActions({
           variant="primary"
           onClick={actions.downloadPdf}
           disabled={actions.pdfDisabled}
-          aria-describedby={stamped ? nonFiscalNoteId : undefined}
+          aria-describedby={nonFiscalPdf ? nonFiscalNoteId : undefined}
         >
           <DownloadIcon className="w-4 h-4" aria-hidden="true" />
           {actions.isDownloadingPdf
             ? "Generando PDF..."
-            : stamped
+            : nonFiscalPdf
               ? INVOICE_NON_FISCAL_PDF_LABEL
               : "Descargar PDF"}
         </Button>
       </div>
-      {stamped && (
+      {nonFiscalPdf && (
         <p id={nonFiscalNoteId} className="text-xs text-slate-500 dark:text-slate-400 max-w-md lg:text-right">
           {INVOICE_NON_FISCAL_PDF_MESSAGE}
         </p>
@@ -187,7 +187,7 @@ function InvoiceCfdiStamp({ invoice }: { invoice: Invoice }) {
     if (!isInvoiceStampPending(invoice)) return null;
     return (
       <HeaderStatRow>
-        <HeaderStat label="Folio fiscal (UUID)">
+        <HeaderStat label="Estado del CFDI">
           <span className="text-amber-600 dark:text-amber-400 font-medium">{INVOICE_STAMP_PENDING_LABEL}</span>
         </HeaderStat>
       </HeaderStatRow>

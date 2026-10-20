@@ -25,7 +25,19 @@ export const isInvoiceStamped = (invoice: { cfdi_uuid?: string | null }): boolea
   Boolean(invoice.cfdi_uuid);
 
 /**
- * Aviso para "Descargar PDF" y "Enviar correo" de una factura timbrada: el PDF
+ * ¿El PDF del ERP debe rotularse como no fiscal? Si la factura ya tiene CFDI
+ * (`cfdi_uuid`) o pudo tenerlo (`cfdi_pendiente`: timbrado sin confirmar), el
+ * PDF que genera el ERP no es el comprobante fiscal. Fuente única para la
+ * cabecera del detalle y el menú del listado (que no trae `cfdi_pendiente`).
+ */
+export const isInvoicePdfNonFiscal = (invoice: {
+  cfdi_uuid?: string | null;
+  cfdi_pendiente?: boolean;
+}): boolean => isInvoiceStamped(invoice) || invoice.cfdi_pendiente === true;
+
+/**
+ * Aviso para "Descargar PDF" y "Enviar correo" de una factura timbrada o con
+ * timbrado pendiente: el PDF
  * que genera el ERP no es la representación impresa del CFDI (no lleva folio
  * fiscal ni sello). Se rotula; no se oculta.
  */

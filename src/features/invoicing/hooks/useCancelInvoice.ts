@@ -102,7 +102,11 @@ export const useCancelInvoice = (invoiceId: number) => {
               extractErrorMessage(error, "No se pudo cancelar la factura.")),
       );
     },
-    onSettled: () => invalidateInvoiceBaseQueries(queryClient, invoiceId),
+    // Si el precheck detuvo la acción, el retrieve ya está fresco en la caché.
+    onSettled: (result) =>
+      invalidateInvoiceBaseQueries(queryClient, invoiceId, {
+        sentRequest: result?.outcome !== "not-cancellable",
+      }),
   });
 
   /**

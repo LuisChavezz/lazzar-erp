@@ -80,7 +80,11 @@ export const useStampInvoice = (invoiceId: number) => {
         error instanceof InvoicePrecheckError ? error.message : stampInvoiceErrorMessage(error),
       );
     },
-    onSettled: () => invalidateInvoiceBaseQueries(queryClient, invoiceId),
+    // Si el precheck detuvo la acción, el retrieve ya está fresco en la caché.
+    onSettled: (result) =>
+      invalidateInvoiceBaseQueries(queryClient, invoiceId, {
+        sentRequest: result?.outcome !== "not-stampable",
+      }),
   });
 
   /**
