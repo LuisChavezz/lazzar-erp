@@ -2,7 +2,7 @@ import { ColumnDef, createColumnHelper, FilterFn } from "@tanstack/react-table";
 import { ActionMenu, ActionMenuItem } from "@/src/components/ActionMenu";
 import { ColumnHeaderFilter, type ColumnFilterOption } from "@/src/components/ColumnHeaderFilter";
 import { StatusBadge } from "@/src/components/StatusBadge";
-import { ViewIcon } from "@/src/components/Icons";
+import { ChevronRightIcon, ViewIcon } from "@/src/components/Icons";
 import { formatShortDate } from "@/src/utils/formatDate";
 import {
   COBRO_ESTATUS_CONFIG,
@@ -45,15 +45,64 @@ interface CollectionColumnsCallbacks {
 }
 
 /**
+ * Primera columna: punto de estatus y `#id`. El `#id` con su chevron es el
+ * disparador del menú de la fila, mismo patrón y markup que `FolioCell` de
+ * `InvoiceColumns` (Facturación): un clic en cualquier parte abre el menú.
+ *
+ * Las acciones solo INVOCAN callbacks: los diálogos se montan en
+ * `CollectionList`, no aquí, porque una celda se desmonta al ordenar, filtrar o
+ * paginar. Cancelar (EC-544) y timbrar el REP (EC-527) se agregan como entradas
+ * de `menuItems` con su callback en `CollectionColumnsCallbacks`.
+ */
+const CobroIdCell = ({ cobro, onViewDetail }: { cobro: Cobro } & CollectionColumnsCallbacks) => {
+  const statusCfg = COBRO_ESTATUS_CONFIG[cobro.estatus];
+  const statusLabel = statusCfg?.label ?? cobro.estatus;
+  const cobroLabel = `#${cobro.id}`;
+
+  const menuItems: ActionMenuItem[] = [
+    { label: "Ver detalle", icon: ViewIcon, onSelect: () => onViewDetail(cobro.id) },
+  ];
+
+  return (
+    <div className="flex items-center gap-2 min-w-0 overflow-hidden whitespace-nowrap">
+      {/* Indicador, fuera del botón: no es parte de la acción. */}
+      <span
+        className={`w-2 h-2 rounded-full shrink-0 ${statusCfg?.dot ?? "bg-slate-400"}`}
+        role="img"
+        aria-label={statusLabel}
+        title={statusLabel}
+      />
+      <ActionMenu
+        items={menuItems}
+        ariaLabel={`Acciones del cobro ${cobroLabel}`}
+        align="start"
+        trigger={
+          <button
+            type="button"
+            aria-label={`Ver acciones del cobro ${cobroLabel}`}
+            className="group inline-flex items-center gap-1 font-mono font-bold text-slate-800 dark:text-white hover:text-sky-600 dark:hover:text-sky-400 hover:underline transition-colors cursor-pointer"
+          >
+            {cobroLabel}
+            <ChevronRightIcon
+              className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500 group-hover:text-sky-500 dark:group-hover:text-sky-400 group-hover:translate-x-0.5 transition-all"
+              aria-hidden="true"
+            />
+          </button>
+        }
+      />
+    </div>
+  );
+};
+
+/**
  * Columnas del listado de cobros.
  *
  * El cobro NO tiene folio propio en el contrato, así que el identificador
  * visible es el `id` (`#123`).
  *
- * Las acciones solo INVOCAN callbacks: los diálogos se montan en
- * `CollectionList`, no aquí, porque una celda se desmonta al ordenar, filtrar o
- * paginar. Cancelar (EC-544) y timbrar el REP (EC-527) se agregan como entradas
- * del menú de "Acciones" con su callback en `CollectionColumnsCallbacks`.
+ * Estatus y acciones van en la primera columna (no hay columnas "Estatus" ni
+ * "Acciones"), con el filtro de estatus en su encabezado: estándar de tablas de
+ * la app (ver `CobroIdCell`).
  *
  * Los campos nullable que participan en la búsqueda global se colapsan a `""`
  * en el accessor (ver la nota de `getColumnCanGlobalFilter` en `DataTable`).
@@ -61,18 +110,16 @@ interface CollectionColumnsCallbacks {
 export const getCollectionColumns = ({ onViewDetail }: CollectionColumnsCallbacks) =>
   [
     columnHelper.accessor("id", {
-      header: "Cobro",
-      size: 80,
-      cell: (info) => (
-        <button
-          type="button"
-          title="Ver detalle"
-          onClick={() => onViewDetail(info.getValue())}
-          className="font-mono text-xs font-semibold text-slate-700 dark:text-slate-200 hover:text-sky-600 dark:hover:text-sky-400 hover:underline cursor-pointer"
-        >
-          {`#${info.getValue()}`}
-        </button>
+      header: ({ column }) => (
+        <div className="flex items-center gap-1.5">
+          <span>Cobro</span>
+          <ColumnHeaderFilter column={column} options={ESTATUS_FILTER_OPTIONS} label="estatus" />
+        </div>
       ),
+      meta: { label: "Cobro" },
+      size: 110,
+      filterFn: estatusFilterFn,
+      cell: (info) => <CobroIdCell cobro={info.row.original} onViewDetail={onViewDetail} />,
     }),
     columnHelper.accessor("fecha_cobro", {
       header: "Fecha",
@@ -156,22 +203,6 @@ export const getCollectionColumns = ({ onViewDetail }: CollectionColumnsCallback
         </div>
       ),
     }),
-    columnHelper.accessor("estatus", {
-      header: ({ column }) => (
-        <div className="flex items-center gap-1.5">
-          <span>Estatus</span>
-          <ColumnHeaderFilter column={column} options={ESTATUS_FILTER_OPTIONS} label="estatus" />
-        </div>
-      ),
-      size: 110,
-      meta: { label: "Estatus", align: "center" },
-      filterFn: estatusFilterFn,
-      cell: (info) => (
-        <div className="flex justify-center">
-          <StatusBadge status={info.getValue()} config={COBRO_ESTATUS_CONFIG} />
-        </div>
-      ),
-    }),
     columnHelper.accessor((row) => (row.rep_uuid ? "Timbrado" : row.rep_pendiente ? "Pendiente" : ""), {
       id: "rep",
       header: "REP",
@@ -191,24 +222,6 @@ export const getCollectionColumns = ({ onViewDetail }: CollectionColumnsCallback
           >
             {value}
           </span>
-        );
-      },
-    }),
-    columnHelper.display({
-      id: "acciones",
-      header: "Acciones",
-      size: 80,
-      meta: { align: "center" },
-      enableHiding: false,
-      cell: (info) => {
-        const cobro = info.row.original;
-        const menuItems: ActionMenuItem[] = [
-          { label: "Ver detalle", icon: ViewIcon, onSelect: () => onViewDetail(cobro.id) },
-        ];
-        return (
-          <div className="flex items-center justify-center">
-            <ActionMenu items={menuItems} ariaLabel={`Acciones del cobro #${cobro.id}`} />
-          </div>
         );
       },
     }),
