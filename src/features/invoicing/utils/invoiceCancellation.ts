@@ -40,7 +40,7 @@ export const canCancelInvoice = (
  * dejaría el comprobante fiscal vigente.
  */
 export const INVOICE_CANCEL_BLOCKED_BY_CFDI_MESSAGE =
-  "No se puede cancelar: la factura ya está timbrada y la cancelación del CFDI ante el SAT aún no está disponible.";
+  "Por ahora no se puede cancelar desde el ERP una factura timbrada.";
 
 /**
  * ¿"Cancelar factura" está BLOQUEADO por el CFDI? Toda factura con
