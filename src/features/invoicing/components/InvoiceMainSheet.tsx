@@ -38,6 +38,8 @@ import type { PermissionContext } from "@/src/interfaces/permission-context.inte
 import {
   INVOICE_CFDI_CANCELLED_ERP_PENDING_MESSAGE,
   INVOICE_CFDI_CANCELLED_LABEL,
+  INVOICE_CFDI_VALID_AFTER_ERP_CANCEL_MESSAGE,
+  INVOICE_CFDI_VALID_LABEL,
   canCancelInvoice,
   getInvoiceCancelBlockReason,
   isInvoiceCfdiCancelled,
@@ -189,6 +191,8 @@ function InvoiceDocumentActions({
  * Con el CFDI cancelado ante el SAT (`cfdi_cancelado`) agrega su estado, y si
  * la factura sigue `Emitida` (falló la parte del ERP), la nota de que falta
  * cancelarla en el ERP; "Cancelar factura" sigue habilitado para completarlo.
+ * Una `Cancelada` con UUID y SIN `cfdi_cancelado` (cancelada antes de que
+ * `cancelar/` cancelara el CFDI) muestra que el CFDI sigue vigente, sin acción.
  * Salen del retrieve: el desglose no trae ningún campo de timbrado.
  */
 function InvoiceCfdiStamp({ invoice }: { invoice: Invoice }) {
@@ -208,7 +212,7 @@ function InvoiceCfdiStamp({ invoice }: { invoice: Invoice }) {
         <span className="font-mono break-all select-all">{invoice.cfdi_uuid}</span>
       </HeaderStat>
       <HeaderStat label="Fecha de timbrado">{formatShortDateTime(invoice.cfdi_fecha_timbrado)}</HeaderStat>
-      {isInvoiceCfdiCancelled(invoice) && (
+      {isInvoiceCfdiCancelled(invoice) ? (
         <HeaderStat label="Estado del CFDI">
           <span className="text-rose-600 dark:text-rose-400 font-medium">{INVOICE_CFDI_CANCELLED_LABEL}</span>
           {invoice.estatus === INVOICE_STATUS.EMITIDA && (
@@ -217,6 +221,15 @@ function InvoiceCfdiStamp({ invoice }: { invoice: Invoice }) {
             </span>
           )}
         </HeaderStat>
+      ) : (
+        invoice.estatus === INVOICE_STATUS.CANCELADA && (
+          <HeaderStat label="Estado del CFDI">
+            <span className="text-amber-600 dark:text-amber-400 font-medium">{INVOICE_CFDI_VALID_LABEL}</span>
+            <span className="block text-xs font-normal text-amber-600 dark:text-amber-400">
+              {INVOICE_CFDI_VALID_AFTER_ERP_CANCEL_MESSAGE}
+            </span>
+          </HeaderStat>
+        )
       )}
     </HeaderStatRow>
   );

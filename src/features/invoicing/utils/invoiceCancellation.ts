@@ -97,6 +97,17 @@ export const INVOICE_CFDI_CANCELLED_ERP_PENDING_MESSAGE =
   "La factura sigue Emitida: falta cancelarla en el ERP.";
 
 /**
+ * Estado del CFDI en la cabecera de una factura `Cancelada` con `cfdi_uuid` y
+ * SIN `cfdi_cancelado` (p. ej. cancelada antes de que `cancelar/` cancelara el
+ * CFDI ante el SAT): el CFDI sigue vigente y el ERP no ofrece cómo cancelarlo.
+ */
+export const INVOICE_CFDI_VALID_LABEL = "Vigente ante el SAT";
+
+/** Nota de la cabecera para ese caso. */
+export const INVOICE_CFDI_VALID_AFTER_ERP_CANCEL_MESSAGE =
+  "La factura se canceló en el ERP, pero su CFDI no se canceló ante el SAT.";
+
+/**
  * Mensaje de un fallo de `cancelar/`. El backend pone el motivo bajo `cfdi`
  * (el SAT o Facturama no cancelaron el CFDI, incluido el caso en que el
  * receptor debe aceptar) o bajo `estatus` (notas de crédito emitidas), como

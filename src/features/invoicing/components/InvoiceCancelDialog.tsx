@@ -5,9 +5,11 @@ import type { FormEvent } from "react";
 import { MainDialog } from "@/src/components/MainDialog";
 import { FormTextarea } from "@/src/components/FormTextarea";
 import { FormCancelButton, FormSubmitButton } from "@/src/components/FormButtons";
+import { FormErrorBanner } from "@/src/components/FormErrorBanner";
 import { useDialogSession } from "@/src/hooks/useDialogSession";
 import { useCancelInvoice } from "../hooks/useCancelInvoice";
 import { getInvoiceCancelCfdiNotice } from "../utils/invoiceCancellation";
+import { isInvoiceStamped } from "../utils/invoiceStamping";
 import {
   CancelInvoiceFormSchema,
   INVOICE_CANCEL_MOTIVO_MAX_LENGTH,
@@ -49,7 +51,10 @@ interface InvoiceCancelDialogProps {
  * En una factura timbrada avisa que `cancelar/` cancela primero el CFDI ante
  * el SAT (motivo 02, fijo) o, si el SAT ya lo canceló, que solo falta la parte
  * del ERP (`getInvoiceCancelCfdiNotice`). La nota interna NO va al SAT: el
- * backend solo la agrega a `observaciones`.
+ * backend solo la agrega a `observaciones`. Si la factura se timbró después de
+ * abrir el diálogo (sin ese aviso), `useCancelInvoice` no hace el POST: el
+ * formulario pasa a mostrar la factura fresca con el aviso del SAT y pide
+ * confirmar de nuevo.
  *
  * El texto NO promete que las piezas regresen a existencia: el backend solo
  * las reintegra al cancelar una `Emitida` con renglones, y la respuesta no
@@ -61,7 +66,6 @@ export function InvoiceCancelDialog({ invoice, open, onOpenChange }: InvoiceCanc
   const session = useDialogSession(open, invoice);
   const target = session.snapshot;
   const invoiceLabel = target ? target.folio || `#${target.id}` : "";
-  const cfdiNotice = target ? getInvoiceCancelCfdiNotice(target) : null;
 
   const { cancel, isCancelling } = useCancelInvoice(target?.id ?? 0);
 
@@ -83,14 +87,13 @@ export function InvoiceCancelDialog({ invoice, open, onOpenChange }: InvoiceCanc
       {target && (
         <InvoiceCancelForm
           key={session.id}
-          invoiceId={target.id}
-          cfdiNotice={cfdiNotice}
+          target={target}
           isPending={isCancelling}
           onClose={() => handleOpenChange(false)}
           // Cierre directo, sin pasar por `handleOpenChange`: al terminar, el
           // `isCancelling` capturado en este render todavía no se actualizó.
-          onSubmit={(motivo, onError) =>
-            cancel(motivo, { onSuccess: () => onOpenChange(false), onError })
+          onSubmit={(variables, callbacks) =>
+            cancel(variables, { onSuccess: () => onOpenChange(false), ...callbacks })
           }
         />
       )}
@@ -98,26 +101,44 @@ export function InvoiceCancelDialog({ invoice, open, onOpenChange }: InvoiceCanc
   );
 }
 
+/** Aviso cuando el precheck encontró la factura timbrada después de abrir el diálogo. */
+const STAMPED_SINCE_OPENED_MESSAGE =
+  "La factura se timbró después de abrir este diálogo. Revisa el aviso y confirma de nuevo.";
+
 interface InvoiceCancelFormProps {
-  invoiceId: number;
-  /** Aviso sobre el CFDI (`getInvoiceCancelCfdiNotice`), o `null` sin CFDI. */
-  cfdiNotice: string | null;
+  /** La factura como estaba al abrir el diálogo. */
+  target: InvoiceCancelTarget;
   isPending: boolean;
   onClose: () => void;
-  /** `onError` recibe el mensaje del fallo para mostrarlo dentro del diálogo. */
-  onSubmit: (motivo: string | undefined, onError: (message: string) => void) => void;
+  /**
+   * `shownStamped`: si el aviso mostrado ya era el de una factura timbrada.
+   * `onNeedsConfirmation` recibe la factura fresca y `onError` el mensaje del
+   * fallo, para mostrarlos dentro del diálogo.
+   */
+  onSubmit: (
+    variables: { motivo: string | undefined; shownStamped: boolean },
+    callbacks: {
+      onNeedsConfirmation: (invoice: InvoiceCancelTarget) => void;
+      onError: (message: string) => void;
+    },
+  ) => void;
 }
 
 /**
  * Contenido del diálogo; se monta nuevo en cada apertura (`key`), así que la
- * nota y el error arrancan vacíos. El campo sigue llamándose `motivo` porque
- * es el nombre del backend.
+ * nota, el error y la factura mostrada arrancan desde el `target` de esa
+ * apertura. `shown` es lo que el usuario ve: pasa a la factura fresca si se
+ * timbró después de abrir. El campo sigue llamándose `motivo` porque es el
+ * nombre del backend.
  */
-function InvoiceCancelForm({ invoiceId, cfdiNotice, isPending, onClose, onSubmit }: InvoiceCancelFormProps) {
+function InvoiceCancelForm({ target, isPending, onClose, onSubmit }: InvoiceCancelFormProps) {
+  const [shown, setShown] = useState(target);
   const [motivo, setMotivo] = useState("");
   const [motivoError, setMotivoError] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
-  const motivoId = `invoice-cancel-motivo-${invoiceId}`;
+  const [reconfirmNotice, setReconfirmNotice] = useState<string | null>(null);
+  const cfdiNotice = getInvoiceCancelCfdiNotice(shown);
+  const motivoId = `invoice-cancel-motivo-${shown.id}`;
   const motivoHelpId = `${motivoId}-help`;
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
@@ -128,11 +149,29 @@ function InvoiceCancelForm({ invoiceId, cfdiNotice, isPending, onClose, onSubmit
       return;
     }
     setSubmitError(null);
-    onSubmit(parsed.data.motivo || undefined, setSubmitError);
+    setReconfirmNotice(null);
+    onSubmit(
+      { motivo: parsed.data.motivo || undefined, shownStamped: isInvoiceStamped(shown) },
+      {
+        onNeedsConfirmation: (fresh) => {
+          setShown(fresh);
+          setReconfirmNotice(STAMPED_SINCE_OPENED_MESSAGE);
+        },
+        onError: setSubmitError,
+      },
+    );
   };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4 py-1">
+      {reconfirmNotice && (
+        <p
+          role="alert"
+          className="rounded-xl border border-amber-300 dark:border-amber-500/40 bg-amber-100 dark:bg-amber-500/15 px-4 py-3 text-sm font-medium text-amber-900 dark:text-amber-100"
+        >
+          {reconfirmNotice}
+        </p>
+      )}
       {cfdiNotice && (
         <p className="rounded-xl border border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 px-4 py-3 text-sm text-amber-800 dark:text-amber-200">
           {cfdiNotice}
@@ -158,14 +197,7 @@ function InvoiceCancelForm({ invoiceId, cfdiNotice, isPending, onClose, onSubmit
       <p id={motivoHelpId} className="-mt-2 ml-1 text-xs text-slate-500 dark:text-slate-400">
         Se guarda en las observaciones de la factura; no se envía al SAT.
       </p>
-      {submitError && (
-        <p
-          role="alert"
-          className="rounded-xl border border-red-200 dark:border-red-500/30 bg-red-50 dark:bg-red-500/10 px-4 py-3 text-sm text-red-700 dark:text-red-300"
-        >
-          {submitError}
-        </p>
-      )}
+      <FormErrorBanner message={submitError} />
       <div className="flex justify-end gap-3 pt-1">
         <FormCancelButton label="Volver" onClick={onClose} disabled={isPending} />
         <FormSubmitButton
