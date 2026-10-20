@@ -41,6 +41,11 @@ interface CollectionDetailDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
+/** Código de moneda junto a un importe, para que no haya que deducirlo de otra columna. */
+function CurrencyTag({ code }: { code: string }) {
+  return <span className="ml-1 text-[11px] font-medium text-slate-500 dark:text-slate-400">{code}</span>;
+}
+
 export function CollectionDetailDialog({ cobro, open, onOpenChange }: CollectionDetailDialogProps) {
   const { bankAccounts } = useBankAccounts();
   // Sin parámetros: la MISMA entrada de caché que la pantalla de CxC, y con las
@@ -87,7 +92,7 @@ export function CollectionDetailDialog({ cobro, open, onOpenChange }: Collection
           >
             <ExclamationTriangleIcon className="h-4 w-4 shrink-0 mt-0.5" aria-hidden="true" />
             <p>
-              {`La cuenta bancaria del cobro está en ${moneda}, pero hay facturas aplicadas en ${mismatched.join(", ")}. Los importes se muestran en ${moneda}, la moneda de la cuenta.`}
+              {`La cuenta bancaria del cobro está en ${moneda}, pero hay facturas aplicadas en ${mismatched.join(", ")}. Las líneas marcadas abajo muestran cada importe con su moneda: el importe aplicado va en ${moneda}, la moneda de la cuenta, y el saldo en la moneda de su factura.`}
             </p>
           </div>
         )}
@@ -182,24 +187,53 @@ export function CollectionDetailDialog({ cobro, open, onOpenChange }: Collection
               {cobro.cobro_detalles.map((linea) => {
                 const cxc = cxcIndex.get(linea.cxc);
                 const pending = !cxc && isLoadingCxc;
+                const lineMoneda = cxc?.moneda_codigo || null;
+                // Misma regla que `findMismatchedMonedas`: solo con ambas monedas
+                // conocidas. Una línea así lleva su marca y el código junto a cada
+                // importe; las que coinciden conservan su aspecto.
+                const isMismatch = moneda !== null && lineMoneda !== null && lineMoneda !== moneda;
                 return (
-                  <tr key={linea.id} className="hover:bg-slate-50 dark:hover:bg-white/5 transition-colors">
+                  <tr
+                    key={linea.id}
+                    className={`transition-colors ${
+                      isMismatch
+                        ? "bg-amber-50/70 hover:bg-amber-50 dark:bg-amber-500/10 dark:hover:bg-amber-500/15"
+                        : "hover:bg-slate-50 dark:hover:bg-white/5"
+                    }`}
+                  >
                     <td className="px-3 py-2 font-mono text-xs text-slate-700 dark:text-slate-200">
-                      {cxc?.factura_folio ? cxc.factura_folio : `CxC #${linea.cxc}`}
+                      <span className="inline-flex items-center gap-1.5">
+                        {isMismatch && (
+                          <ExclamationTriangleIcon
+                            className="h-3.5 w-3.5 shrink-0 text-amber-500"
+                            role="img"
+                            aria-label={`Factura en ${lineMoneda}, distinta de la moneda del cobro (${moneda})`}
+                          >
+                            <title>{`Factura en ${lineMoneda}, distinta de la moneda del cobro (${moneda})`}</title>
+                          </ExclamationTriangleIcon>
+                        )}
+                        {cxc?.factura_folio ? cxc.factura_folio : `CxC #${linea.cxc}`}
+                      </span>
                     </td>
                     <td className="px-3 py-2 text-xs text-slate-600 dark:text-slate-300">
                       {pending ? "…" : cxc?.moneda_codigo ?? "—"}
                     </td>
                     <td className="px-3 py-2 text-right tabular-nums text-slate-600 dark:text-slate-300">
                       {/* El saldo es de la CxC: va en la moneda de SU factura. */}
-                      {pending
-                        ? "…"
-                        : cxc
-                          ? formatCobroAmount(cxc.saldo, cxc.moneda_codigo || null)
-                          : "—"}
+                      {pending ? (
+                        "…"
+                      ) : cxc ? (
+                        <>
+                          {formatCobroAmount(cxc.saldo, lineMoneda)}
+                          {isMismatch && <CurrencyTag code={lineMoneda} />}
+                        </>
+                      ) : (
+                        "—"
+                      )}
                     </td>
                     <td className="px-3 py-2 text-right tabular-nums font-semibold text-slate-800 dark:text-white">
                       {money(linea.importe_aplicado)}
+                      {isMismatch && <CurrencyTag code={moneda} />}
                     </td>
                     <td className="px-3 py-2 text-slate-600 dark:text-slate-300">
                       {textOrDash(linea.observaciones)}
