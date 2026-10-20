@@ -42,6 +42,8 @@ export const useChangeProductionOrderStatus = (opId: number) => {
       void queryClient.invalidateQueries({ queryKey: ["production-orders"] });
       void queryClient.invalidateQueries({ queryKey: productionOrderKpisQueryKey });
       void queryClient.invalidateQueries({ queryKey: productionOrderCriticalPathKey(opId) });
+      void queryClient.invalidateQueries({ queryKey: ["pedido-detail"] });
+      void queryClient.invalidateQueries({ queryKey: ["pedido-trazabilidad"] });
       const { label } = productionOrderStatusEntry(
         response.estatus_op,
         response.estatus_op_display,

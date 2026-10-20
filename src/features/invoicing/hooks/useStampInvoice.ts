@@ -69,6 +69,8 @@ export const useStampInvoice = (invoiceId: number) => {
         );
         return;
       }
+      void queryClient.invalidateQueries({ queryKey: ["pedido-detail"] });
+      void queryClient.invalidateQueries({ queryKey: ["pedido-trazabilidad"] });
       toast.success(
         invoice.cfdi_uuid
           ? `Factura ${label} timbrada. UUID ${invoice.cfdi_uuid}`
