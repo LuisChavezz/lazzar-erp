@@ -62,6 +62,7 @@ export const getCollectionColumns = ({ onViewDetail }: CollectionColumnsCallback
   [
     columnHelper.accessor("id", {
       header: "Cobro",
+      size: 80,
       cell: (info) => (
         <button
           type="button"
@@ -75,6 +76,7 @@ export const getCollectionColumns = ({ onViewDetail }: CollectionColumnsCallback
     }),
     columnHelper.accessor("fecha_cobro", {
       header: "Fecha",
+      size: 100,
       cell: (info) => (
         // `timeZone: "UTC"`: fecha-calendario "YYYY-MM-DD" — sin esto un
         // navegador al oeste de Greenwich pinta el día anterior.
@@ -85,6 +87,7 @@ export const getCollectionColumns = ({ onViewDetail }: CollectionColumnsCallback
     }),
     columnHelper.accessor("cliente_nombre", {
       header: "Cliente",
+      size: 170,
       cell: (info) => (
         <span className="font-medium text-slate-600 dark:text-slate-300">
           {info.getValue() || "—"}
@@ -93,6 +96,7 @@ export const getCollectionColumns = ({ onViewDetail }: CollectionColumnsCallback
     }),
     columnHelper.accessor((row) => row.cuenta_bancaria_alias ?? "", {
       id: "cuenta_bancaria_alias",
+      size: 150,
       header: "Cuenta bancaria",
       cell: (info) => (
         <span className="text-slate-500 dark:text-slate-400">{info.getValue() || "—"}</span>
@@ -105,6 +109,7 @@ export const getCollectionColumns = ({ onViewDetail }: CollectionColumnsCallback
           <ColumnHeaderFilter column={column} options={METODO_FILTER_OPTIONS} label="método de pago" />
         </div>
       ),
+      size: 130,
       meta: { label: "Método" },
       filterFn: metodoFilterFn,
       cell: (info) => (
@@ -118,6 +123,7 @@ export const getCollectionColumns = ({ onViewDetail }: CollectionColumnsCallback
       {
         id: "referencia",
         header: "Referencia",
+        size: 150,
         cell: (info) => {
           const cobro = info.row.original;
           return (
@@ -137,6 +143,7 @@ export const getCollectionColumns = ({ onViewDetail }: CollectionColumnsCallback
     ),
     columnHelper.accessor("total_cobrado", {
       header: "Total",
+      size: 130,
       meta: { align: "right" },
       sortingFn: (a, b) =>
         Number(a.original.total_cobrado) - Number(b.original.total_cobrado),
@@ -156,6 +163,7 @@ export const getCollectionColumns = ({ onViewDetail }: CollectionColumnsCallback
           <ColumnHeaderFilter column={column} options={ESTATUS_FILTER_OPTIONS} label="estatus" />
         </div>
       ),
+      size: 110,
       meta: { label: "Estatus", align: "center" },
       filterFn: estatusFilterFn,
       cell: (info) => (
@@ -167,6 +175,7 @@ export const getCollectionColumns = ({ onViewDetail }: CollectionColumnsCallback
     columnHelper.accessor((row) => (row.rep_uuid ? "Timbrado" : row.rep_pendiente ? "Pendiente" : ""), {
       id: "rep",
       header: "REP",
+      size: 90,
       meta: { label: "REP", align: "center" },
       cell: (info) => {
         const value = info.getValue();
@@ -188,6 +197,7 @@ export const getCollectionColumns = ({ onViewDetail }: CollectionColumnsCallback
     columnHelper.display({
       id: "acciones",
       header: "Acciones",
+      size: 80,
       meta: { align: "center" },
       enableHiding: false,
       cell: (info) => {
