@@ -10,7 +10,6 @@ import { formatLocalDate } from "@/src/utils/formatDate";
 import { INVOICE_STATUS_CONFIG, isInvoiceSendable } from "../constants/invoiceStatus";
 import { invoiceDetailHref } from "../constants/invoiceDetailOrigins";
 import { useInvoiceRowActionsContext } from "../hooks/useInvoiceListDocumentActions";
-import { getInvoiceCancelBlockReason } from "../utils/invoiceCancellation";
 import {
   INVOICE_NON_FISCAL_PDF_LABEL,
   INVOICE_NON_FISCAL_PDF_MESSAGE,
@@ -51,11 +50,11 @@ const estatusFilterFn: FilterFn<InvoiceListRow> = (row, _columnId, filterValue) 
  * "Cancelar factura" sigue la regla única `canCancelInvoice` (permiso +
  * `activo === true` + Borrador o Emitida), que llega por contexto. Solo ABRE
  * el diálogo, que vive en `InvoiceList`: si un filtro de estatus oculta la
- * fila al quedar Cancelada, el diálogo no se desmonta. Si la fila trae
- * `cfdi_uuid` se muestra deshabilitado, con el motivo como `description`
- * (`getInvoiceCancelBlockReason`): cancelar una timbrada queda fuera de este
- * alcance. El timbrado pendiente de confirmación no viene en el listado; lo
- * frena el precheck al activarse.
+ * fila al quedar Cancelada, el diálogo no se desmonta. Una timbrada también
+ * se cancela (el diálogo avisa que primero va al SAT). Lo único que la
+ * bloquea es el timbrado pendiente de confirmación (`getInvoiceCancelBlockReason`),
+ * que no viene en el listado: aquí no se evalúa y lo frena el precheck de
+ * `useCancelInvoice` al confirmar.
  *
  * En una factura timbrada, "Descargar PDF" y "Enviar correo" se rotulan como
  * no fiscales: el PDF del ERP no es el CFDI (no lleva folio fiscal ni sello).
@@ -67,9 +66,6 @@ const FolioCell = ({ invoice }: { invoice: InvoiceListRow }) => {
   const { onDownloadPdf, onSendEmail, pendingIds, canCancel, onCancel } =
     useInvoiceRowActionsContext();
   const pending = pendingIds.includes(invoice.id);
-  // El listado no trae `cfdi_pendiente`: aquí solo bloquea `cfdi_uuid`; el
-  // precheck de `useCancelInvoice` (retrieve fresco) cubre el pendiente.
-  const cancelBlockReason = getInvoiceCancelBlockReason(invoice);
   const nonFiscalPdf = isInvoicePdfNonFiscal(invoice);
 
   const menuItems: ActionMenuItem[] = [
@@ -95,11 +91,9 @@ const FolioCell = ({ invoice }: { invoice: InvoiceListRow }) => {
     },
     {
       label: "Cancelar factura",
-      description: cancelBlockReason ?? undefined,
       icon: BanIcon,
       onSelect: () => onCancel(invoice),
       visible: canCancel(invoice),
-      disabled: cancelBlockReason !== null,
     },
   ];
 

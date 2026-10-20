@@ -84,6 +84,14 @@ export interface Invoice {
    * trae el retrieve (no el listado ni el desglose).
    */
   cfdi_pendiente: boolean;
+  /**
+   * CFDI ya cancelado ante el SAT. `cancelar/` lo guarda ANTES y aparte de la
+   * cancelación en el ERP: si esa parte falla, la factura sigue `Emitida` con
+   * este campo en `true` y reintentar solo completa la parte del ERP (no
+   * vuelve a llamar al SAT). Solo lo trae el retrieve (no el listado ni el
+   * desglose).
+   */
+  cfdi_cancelado: boolean;
 }
 
 /**

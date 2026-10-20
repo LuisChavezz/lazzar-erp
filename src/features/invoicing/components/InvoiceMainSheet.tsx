@@ -27,7 +27,6 @@ import {
   SheetPanel,
   SheetSection,
 } from "@/src/features/orders/components/OrderSheetPrimitives";
-import { INVOICE_STATUS_CONFIG } from "../constants/invoiceStatus";
 import { useInvoiceDocumentActions } from "../hooks/useInvoiceDocumentActions";
 import type { Invoice } from "../interfaces/invoice.interface";
 import type {
@@ -36,7 +35,14 @@ import type {
 } from "../interfaces/invoice-desglose.interface";
 import { formatInvoiceDate } from "../utils/invoiceDetailFormat";
 import type { PermissionContext } from "@/src/interfaces/permission-context.interface";
-import { canCancelInvoice, getInvoiceCancelBlockReason } from "../utils/invoiceCancellation";
+import {
+  INVOICE_CFDI_CANCELLED_ERP_PENDING_MESSAGE,
+  INVOICE_CFDI_CANCELLED_LABEL,
+  canCancelInvoice,
+  getInvoiceCancelBlockReason,
+  isInvoiceCfdiCancelled,
+} from "../utils/invoiceCancellation";
+import { INVOICE_STATUS, INVOICE_STATUS_CONFIG } from "../constants/invoiceStatus";
 import {
   INVOICE_NON_FISCAL_PDF_LABEL,
   INVOICE_NON_FISCAL_PDF_MESSAGE,
@@ -105,9 +111,9 @@ function InvoiceDocumentActions({
     <div className="flex flex-col gap-2 lg:items-end">
       <div className="flex flex-wrap items-center gap-2">
         {/* "Cancelar factura": misma regla que el menú del listado (`canCancelInvoice`)
-            sobre el retrieve, que es quien trae `activo`. Una factura timbrada o con
-            el timbrado pendiente de confirmación lo muestra bloqueado y descrito
-            por su nota. */}
+            sobre el retrieve, que es quien trae `activo`. Una timbrada se cancela (el
+            diálogo avisa que primero va al SAT); con el timbrado pendiente de
+            confirmación se muestra bloqueado y descrito por su nota. */}
         <DocumentActionWithDialog
           offered={canCancel}
           blockedNoteId={cancelBlockReason ? cancelNoteId : undefined}
@@ -180,6 +186,9 @@ function InvoiceDocumentActions({
 /**
  * Folio fiscal del CFDI y fecha de timbrado o, sin UUID y con un timbrado sin
  * confirmar (`cfdi_pendiente`), el indicador de pendiente en el mismo lugar.
+ * Con el CFDI cancelado ante el SAT (`cfdi_cancelado`) agrega su estado, y si
+ * la factura sigue `Emitida` (falló la parte del ERP), la nota de que falta
+ * cancelarla en el ERP; "Cancelar factura" sigue habilitado para completarlo.
  * Salen del retrieve: el desglose no trae ningún campo de timbrado.
  */
 function InvoiceCfdiStamp({ invoice }: { invoice: Invoice }) {
@@ -199,6 +208,16 @@ function InvoiceCfdiStamp({ invoice }: { invoice: Invoice }) {
         <span className="font-mono break-all select-all">{invoice.cfdi_uuid}</span>
       </HeaderStat>
       <HeaderStat label="Fecha de timbrado">{formatShortDateTime(invoice.cfdi_fecha_timbrado)}</HeaderStat>
+      {isInvoiceCfdiCancelled(invoice) && (
+        <HeaderStat label="Estado del CFDI">
+          <span className="text-rose-600 dark:text-rose-400 font-medium">{INVOICE_CFDI_CANCELLED_LABEL}</span>
+          {invoice.estatus === INVOICE_STATUS.EMITIDA && (
+            <span className="block text-xs font-normal text-amber-600 dark:text-amber-400">
+              {INVOICE_CFDI_CANCELLED_ERP_PENDING_MESSAGE}
+            </span>
+          )}
+        </HeaderStat>
+      )}
     </HeaderStatRow>
   );
 }
