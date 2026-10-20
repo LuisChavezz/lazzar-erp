@@ -8,7 +8,7 @@ import {
   SEPARATE_CURRENCIES_NOTE,
 } from "@/src/components/KpiCurrency";
 import { useBankAccounts } from "@/src/features/bank-accounts/hooks/useBankAccounts";
-import { formatKpiCurrencyAmount } from "@/src/utils/kpiFormat";
+import { formatKpiCurrencyAmount, formatKpiDate } from "@/src/utils/kpiFormat";
 import { useFinanceDashboard } from "../hooks/useFinanceDashboard";
 
 interface Moneda {
@@ -20,7 +20,15 @@ type Metric = "monto" | "cantidad";
 
 const PLACEHOLDER = "—";
 
-const PERIOD_NOTE = "Mes en curso hasta hoy (período por defecto del backend). Solo cuenta cobros aplicados.";
+/**
+ * Nota del período, leída de `periodo` en la respuesta (el backend lo resuelve:
+ * por defecto, del día 1 del mes en curso a hoy). Sin respuesta aún, no afirma
+ * ningún rango.
+ */
+const periodNote = (periodo: { fecha_inicio: string; fecha_fin: string } | undefined) =>
+  periodo
+    ? `Período del ${formatKpiDate(periodo.fecha_inicio)} al ${formatKpiDate(periodo.fecha_fin)}. Solo cuenta cobros aplicados.`
+    : "Solo cuenta cobros aplicados.";
 
 /**
  * Monedas distintas entre las cuentas bancarias de la empresa: el cobro se
@@ -80,6 +88,13 @@ function CurrencyBlocks({ monedas, metric }: { monedas: Moneda[]; metric: Metric
 export function CollectionStats() {
   const { bankAccounts, hasLoaded, isLoading, isError } = useBankAccounts();
   const monedas = distinctMonedas(bankAccounts);
+  // El período es el mismo para todas las monedas: se lee de la primera. Misma
+  // llave que su bloque, así que no es una petición extra.
+  const { dashboard: firstDashboard } = useFinanceDashboard(
+    { moneda_id: monedas[0]?.id ?? 0 },
+    { enabled: monedas.length > 0 },
+  );
+  const periodText = periodNote(firstDashboard?.periodo);
 
   const catalogUnavailable = isError && !hasLoaded;
 
@@ -96,7 +111,7 @@ export function CollectionStats() {
       value: valueFor("monto"),
       icon: CheckCircleIcon,
       ...(monedas.length > 0 ? { iconClass: "text-emerald-500" } : KPI_MUTED_ICON),
-      info: `${PERIOD_NOTE} ${SEPARATE_CURRENCIES_NOTE}`,
+      info: `${periodText} ${SEPARATE_CURRENCIES_NOTE}`,
       hideProgress: true,
     },
     {
@@ -104,7 +119,7 @@ export function CollectionStats() {
       value: valueFor("cantidad"),
       icon: ReceiptIcon,
       ...(monedas.length > 0 ? { iconClass: "text-sky-500" } : KPI_MUTED_ICON),
-      info: `${PERIOD_NOTE} El conteo va por la moneda de la cuenta bancaria de cada cobro.`,
+      info: `${periodText} El conteo va por la moneda de la cuenta bancaria de cada cobro.`,
       hideProgress: true,
     },
   ];

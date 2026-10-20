@@ -3,16 +3,17 @@ import { ActionMenu, ActionMenuItem } from "@/src/components/ActionMenu";
 import { ColumnHeaderFilter, type ColumnFilterOption } from "@/src/components/ColumnHeaderFilter";
 import { StatusBadge } from "@/src/components/StatusBadge";
 import { ChevronRightIcon, ViewIcon } from "@/src/components/Icons";
+import { safeParseAmount } from "@/src/utils/formatCurrency";
 import { formatShortDate } from "@/src/utils/formatDate";
 import {
   COBRO_ESTATUS_CONFIG,
   COBRO_METODO_PAGO_CONFIG,
   COBRO_REFERENCIA_LABELS,
 } from "../constants/collectionStatus";
-import type { Cobro } from "../interfaces/collection.interface";
+import type { CobroRow } from "../utils/collection.utils";
 import { CobroAmount } from "./CobroAmount";
 
-const columnHelper = createColumnHelper<Cobro>();
+const columnHelper = createColumnHelper<CobroRow>();
 
 // Opciones construidas desde los enums COMPLETOS: un valor nuevo del backend
 // obliga a tocar la config (typecheck) y aparece solo en el filtro.
@@ -34,10 +35,10 @@ const METODO_FILTER_OPTIONS: ColumnFilterOption[] = [
   })),
 ];
 
-const estatusFilterFn: FilterFn<Cobro> = (row, _columnId, filterValue) =>
+const estatusFilterFn: FilterFn<CobroRow> = (row, _columnId, filterValue) =>
   filterValue === undefined || row.original.estatus === filterValue;
 
-const metodoFilterFn: FilterFn<Cobro> = (row, _columnId, filterValue) =>
+const metodoFilterFn: FilterFn<CobroRow> = (row, _columnId, filterValue) =>
   filterValue === undefined || row.original.metodo_pago === filterValue;
 
 interface CollectionColumnsCallbacks {
@@ -54,7 +55,7 @@ interface CollectionColumnsCallbacks {
  * paginar. Cancelar (EC-544) y timbrar el REP (EC-527) se agregan como entradas
  * de `menuItems` con su callback en `CollectionColumnsCallbacks`.
  */
-const CobroIdCell = ({ cobro, onViewDetail }: { cobro: Cobro } & CollectionColumnsCallbacks) => {
+const CobroIdCell = ({ cobro, onViewDetail }: { cobro: CobroRow } & CollectionColumnsCallbacks) => {
   const statusCfg = COBRO_ESTATUS_CONFIG[cobro.estatus];
   const statusLabel = statusCfg?.label ?? cobro.estatus;
   const cobroLabel = `#${cobro.id}`;
@@ -80,6 +81,7 @@ const CobroIdCell = ({ cobro, onViewDetail }: { cobro: Cobro } & CollectionColum
           <button
             type="button"
             aria-label={`Ver acciones del cobro ${cobroLabel}`}
+            title="Ver detalle"
             className="group inline-flex items-center gap-1 font-mono font-bold text-slate-800 dark:text-white hover:text-sky-600 dark:hover:text-sky-400 hover:underline transition-colors cursor-pointer"
           >
             {cobroLabel}
@@ -193,13 +195,12 @@ export const getCollectionColumns = ({ onViewDetail }: CollectionColumnsCallback
       size: 130,
       meta: { align: "right" },
       sortingFn: (a, b) =>
-        Number(a.original.total_cobrado) - Number(b.original.total_cobrado),
+        safeParseAmount(a.original.total_cobrado) - safeParseAmount(b.original.total_cobrado),
       cell: (info) => (
         <div className="tabular-nums font-semibold text-slate-800 dark:text-white">
-          <CobroAmount
-            value={info.getValue()}
-            cuentaBancariaId={info.row.original.cuenta_bancaria}
-          />
+          <span className="whitespace-nowrap">
+            <CobroAmount value={info.getValue()} moneda={info.row.original.moneda} />
+          </span>
         </div>
       ),
     }),
@@ -225,4 +226,4 @@ export const getCollectionColumns = ({ onViewDetail }: CollectionColumnsCallback
         );
       },
     }),
-  ] as ColumnDef<Cobro>[];
+  ] as ColumnDef<CobroRow>[];

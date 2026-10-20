@@ -1,34 +1,24 @@
-"use client";
-
-import { useBankAccounts } from "@/src/features/bank-accounts/hooks/useBankAccounts";
-import { buildBankAccountIndex, formatCobroAmount, resolveCobroMoneda } from "../utils/collection.utils";
+import { KpiCurrencyAmount } from "@/src/components/KpiCurrency";
+import { safeParseAmount } from "@/src/utils/formatCurrency";
+import { formatCobroAmount } from "../utils/collection.utils";
 
 interface CobroAmountProps {
+  /** Decimal como string, tal cual lo devuelve el backend. */
   value: string;
-  cuentaBancariaId: number;
+  /** Código ISO de la moneda; `null` si no se pudo resolver. */
+  moneda: string | null;
+  /** `false` omite el código junto al importe (el símbolo se conserva). */
+  showCode?: boolean;
 }
 
 /**
- * Importe de un cobro en la moneda de su cuenta bancaria, con el código al lado.
- *
- * Lee el catálogo aquí (una sola consulta en caché para toda la tabla) en vez
- * de recibir la moneda por la factoría de columnas: un valor que cambia al
- * cargar el catálogo, pasado por `getCollectionColumns`, remontaría todas las
- * celdas. Sin cuenta resuelta, el importe va sin símbolo ni código.
+ * Importe de cobros: con su moneda conocida, `KpiCurrencyAmount` (símbolo y
+ * código, el mismo marcado que los indicadores); sin ella, el número sin
+ * símbolo ni código, en vez de adivinar una moneda.
  */
-export function CobroAmount({ value, cuentaBancariaId }: CobroAmountProps) {
-  const { bankAccounts } = useBankAccounts();
-  const moneda = resolveCobroMoneda(
-    { cuenta_bancaria: cuentaBancariaId },
-    buildBankAccountIndex(bankAccounts),
-  );
-
-  return (
-    <span className="whitespace-nowrap">
-      {formatCobroAmount(value, moneda)}
-      {moneda && (
-        <span className="ml-1 text-[11px] font-medium text-slate-400 dark:text-slate-500">{moneda}</span>
-      )}
-    </span>
-  );
+export function CobroAmount({ value, moneda, showCode = true }: CobroAmountProps) {
+  if (moneda !== null && showCode) {
+    return <KpiCurrencyAmount value={safeParseAmount(value)} moneda={moneda} />;
+  }
+  return <>{formatCobroAmount(value, moneda)}</>;
 }

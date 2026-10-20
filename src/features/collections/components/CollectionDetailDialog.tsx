@@ -12,42 +12,35 @@ import {
 } from "@/src/components/DetailDialogPrimitives";
 import { ExclamationTriangleIcon, ReceiptIcon } from "@/src/components/Icons";
 import { formatShortDate, formatShortDateTime } from "@/src/utils/formatDate";
-import { useBankAccounts } from "@/src/features/bank-accounts/hooks/useBankAccounts";
 import { useCuentasPorCobrar } from "@/src/features/accounts-receivable/hooks/useCuentasPorCobrar";
 import {
   COBRO_ESTATUS_CONFIG,
   COBRO_METODO_PAGO_CONFIG,
   COBRO_REFERENCIA_LABELS,
 } from "../constants/collectionStatus";
-import type { Cobro } from "../interfaces/collection.interface";
 import {
-  buildBankAccountIndex,
   buildCxcIndex,
   findMismatchedMonedas,
-  formatCobroAmount,
-  resolveCobroMoneda,
+  isLineMonedaMismatch,
+  type CobroRow,
 } from "../utils/collection.utils";
+import { CobroAmount } from "./CobroAmount";
 
 interface CollectionDetailDialogProps {
   /**
    * El cobro ya cargado por el listado — sin fetch propio: `GET
    * /finanzas/cobros/` y el retrieve comparten el mismo `CobroSerializer`, con
-   * `cobro_detalles` anidado en ambos. Lo que el renglón NO trae (folio de
-   * factura, moneda y saldo de cada CxC; moneda de la cuenta) se resuelve contra
-   * los listados de CxC y de cuentas bancarias, una consulta cada uno.
+   * `cobro_detalles` anidado en ambos. La moneda del cobro llega ya resuelta en
+   * la fila (`CobroRow.moneda`); lo que el renglón NO trae (folio de factura,
+   * moneda y saldo de cada CxC) se resuelve contra el listado de CxC, una sola
+   * consulta.
    */
-  cobro: Cobro;
+  cobro: CobroRow;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
-/** Código de moneda junto a un importe, para que no haya que deducirlo de otra columna. */
-function CurrencyTag({ code }: { code: string }) {
-  return <span className="ml-1 text-[11px] font-medium text-slate-500 dark:text-slate-400">{code}</span>;
-}
-
 export function CollectionDetailDialog({ cobro, open, onOpenChange }: CollectionDetailDialogProps) {
-  const { bankAccounts } = useBankAccounts();
   // Sin parámetros: la MISMA entrada de caché que la pantalla de CxC, y con las
   // `Pagada`/`Cancelada` incluidas (las líneas de cobros viejos apuntan ahí).
   const {
@@ -57,12 +50,10 @@ export function CollectionDetailDialog({ cobro, open, onOpenChange }: Collection
     hasLoaded: hasLoadedCxc,
   } = useCuentasPorCobrar();
 
-  const moneda = resolveCobroMoneda(cobro, buildBankAccountIndex(bankAccounts));
+  const { moneda } = cobro;
   const cxcIndex = buildCxcIndex(cuentas);
   const mismatched = findMismatchedMonedas(cobro, moneda, cxcIndex);
   const cxcUnavailable = isErrorCxc && !hasLoadedCxc;
-
-  const money = (value: string) => formatCobroAmount(value, moneda);
 
   return (
     <MainDialog
@@ -119,8 +110,7 @@ export function CollectionDetailDialog({ cobro, open, onOpenChange }: Collection
               </InfoField>
               <InfoField label="Total cobrado">
                 <span className="tabular-nums font-semibold">
-                  {money(cobro.total_cobrado)}
-                  {moneda && <span className="ml-1 text-[11px] text-slate-400">{moneda}</span>}
+                  <CobroAmount value={cobro.total_cobrado} moneda={moneda} />
                 </span>
               </InfoField>
               <InfoField label="Estatus">
@@ -188,16 +178,19 @@ export function CollectionDetailDialog({ cobro, open, onOpenChange }: Collection
                 const cxc = cxcIndex.get(linea.cxc);
                 const pending = !cxc && isLoadingCxc;
                 const lineMoneda = cxc?.moneda_codigo || null;
-                // Misma regla que `findMismatchedMonedas`: solo con ambas monedas
-                // conocidas. Una línea así lleva su marca y el código junto a cada
-                // importe; las que coinciden conservan su aspecto.
-                const isMismatch = moneda !== null && lineMoneda !== null && lineMoneda !== moneda;
+                // La misma regla que alimenta el aviso (`findMismatchedMonedas`).
+                // Una línea así lleva su marca y el código junto a cada importe;
+                // las que coinciden conservan su aspecto.
+                const isMismatch = isLineMonedaMismatch(moneda, cxc);
                 return (
                   <tr
                     key={linea.id}
                     className={`transition-colors ${
                       isMismatch
-                        ? "bg-amber-50/70 hover:bg-amber-50 dark:bg-amber-500/10 dark:hover:bg-amber-500/15"
+                        ? // Fondo + filete izquierdo (sombra interior: un `border-left` en
+                          // un `<tr>` no se pinta con bordes colapsados), visible
+                          // en claro y en oscuro.
+                          "bg-amber-100 hover:bg-amber-100/80 dark:bg-amber-500/20 dark:hover:bg-amber-500/25 shadow-[inset_3px_0_0_var(--color-amber-500)]"
                         : "hover:bg-slate-50 dark:hover:bg-white/5"
                     }`}
                   >
@@ -223,17 +216,13 @@ export function CollectionDetailDialog({ cobro, open, onOpenChange }: Collection
                       {pending ? (
                         "…"
                       ) : cxc ? (
-                        <>
-                          {formatCobroAmount(cxc.saldo, lineMoneda)}
-                          {isMismatch && <CurrencyTag code={lineMoneda} />}
-                        </>
+                        <CobroAmount value={cxc.saldo} moneda={lineMoneda} showCode={isMismatch} />
                       ) : (
                         "—"
                       )}
                     </td>
                     <td className="px-3 py-2 text-right tabular-nums font-semibold text-slate-800 dark:text-white">
-                      {money(linea.importe_aplicado)}
-                      {isMismatch && <CurrencyTag code={moneda} />}
+                      <CobroAmount value={linea.importe_aplicado} moneda={moneda} showCode={isMismatch} />
                     </td>
                     <td className="px-3 py-2 text-slate-600 dark:text-slate-300">
                       {textOrDash(linea.observaciones)}

@@ -1,7 +1,16 @@
 import type { CuentaBancaria } from "@/src/features/bank-accounts/interfaces/bank-account.interface";
 import type { CuentaPorCobrar } from "@/src/features/accounts-receivable/interfaces/accounts-receivable.interface";
 import { formatMoneyValue, NO_CURRENCY_FORMAT } from "@/src/utils/formatCurrency";
+import { formatKpiCurrencyAmount } from "@/src/utils/kpiFormat";
 import type { Cobro } from "../interfaces/collection.interface";
+
+/**
+ * Renglón del listado: el cobro tal cual más su moneda ya resuelta (la de su
+ * cuenta bancaria). Se calcula UNA vez al armar las filas, no en cada celda.
+ */
+export interface CobroRow extends Cobro {
+  moneda: string | null;
+}
 
 /**
  * Índice de CxC por id, armado UNA vez sobre el listado completo de
@@ -28,7 +37,26 @@ export const buildBankAccountIndex = (accounts: CuentaBancaria[]): Map<number, C
 export const resolveCobroMoneda = (
   cobro: Pick<Cobro, "cuenta_bancaria">,
   bankAccounts: Map<number, CuentaBancaria>,
-): string | null => bankAccounts.get(cobro.cuenta_bancaria)?.moneda_codigo ?? null;
+): string | null => bankAccounts.get(cobro.cuenta_bancaria)?.moneda_codigo || null;
+
+/** Mapea los cobros a filas de tabla con su moneda resuelta (ver `resolveCobroMoneda`). */
+export const mapCobrosToRows = (cobros: Cobro[], bankAccounts: CuentaBancaria[]): CobroRow[] => {
+  const index = buildBankAccountIndex(bankAccounts);
+  return cobros.map((cobro) => ({ ...cobro, moneda: resolveCobroMoneda(cobro, index) }));
+};
+
+/**
+ * ¿La línea está en otra moneda que el cobro? Solo con AMBAS monedas conocidas
+ * (un código vacío cuenta como desconocido). Regla única para el aviso del
+ * diálogo y la marca de cada línea.
+ */
+export const isLineMonedaMismatch = (
+  moneda: string | null,
+  cxc: Pick<CuentaPorCobrar, "moneda_codigo"> | undefined,
+): boolean => {
+  const lineMoneda = cxc?.moneda_codigo || null;
+  return moneda !== null && lineMoneda !== null && lineMoneda !== moneda;
+};
 
 /**
  * Monedas de las CxC aplicadas que NO coinciden con la del cobro. Solo cuenta
@@ -40,20 +68,17 @@ export const findMismatchedMonedas = (
   moneda: string | null,
   cxcIndex: Map<number, CuentaPorCobrar>,
 ): string[] => {
-  if (moneda === null) return [];
   const mismatched = new Set<string>();
   for (const linea of cobro.cobro_detalles) {
-    const lineMoneda = cxcIndex.get(linea.cxc)?.moneda_codigo;
-    if (lineMoneda && lineMoneda !== moneda) mismatched.add(lineMoneda);
+    const cxc = cxcIndex.get(linea.cxc);
+    if (cxc && isLineMonedaMismatch(moneda, cxc)) mismatched.add(cxc.moneda_codigo);
   }
   return [...mismatched];
 };
 
 /**
- * Importe con el símbolo de `moneda`, o sin símbolo si es `null`. `narrowSymbol`:
- * es-MX pinta USD como "USD 1,234.00", y la UI ya muestra el código aparte.
+ * Importe con el símbolo de `moneda` (`formatKpiCurrencyAmount`, el mismo formato
+ * que los indicadores), o sin símbolo si es `null`.
  */
 export const formatCobroAmount = (value: string, moneda: string | null): string =>
-  moneda === null
-    ? formatMoneyValue(value, NO_CURRENCY_FORMAT)
-    : formatMoneyValue(value, { currency: moneda, currencyDisplay: "narrowSymbol" });
+  moneda === null ? formatMoneyValue(value, NO_CURRENCY_FORMAT) : formatKpiCurrencyAmount(value, moneda);

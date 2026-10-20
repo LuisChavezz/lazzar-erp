@@ -5,10 +5,18 @@ import { DataTable } from "@/src/components/DataTable";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { getCollectionColumns } from "./CollectionColumns";
 import { CollectionDetailDialog } from "./CollectionDetailDialog";
+import { useBankAccounts } from "@/src/features/bank-accounts/hooks/useBankAccounts";
 import { useCobros } from "../hooks/useCobros";
+import { mapCobrosToRows } from "../utils/collection.utils";
 
 export function CollectionList() {
   const { cobros, isLoading, isFetching, isInitialError, error, refetch } = useCobros();
+  const { bankAccounts } = useBankAccounts();
+
+  // La moneda de cada cobro (la de su cuenta bancaria) se resuelve UNA vez aquí.
+  // Cuando el catálogo termina de cargar cambian los objetos de fila, no su
+  // identidad (`getRowId`), así que las celdas se actualizan sin remontarse.
+  const rows = mapCobrosToRows(cobros, bankAccounts);
 
   // Estado del diálogo en la VISTA, no en la celda: una celda se desmonta al
   // ordenar, filtrar o paginar, y el estatus del cobro (uno de los filtros)
@@ -22,7 +30,7 @@ export function CollectionList() {
   // comparten `CobroSerializer`, líneas incluidas. Al refrescarse la lista el
   // diálogo muestra la versión vigente del renglón.
   const detailCobro =
-    openDetailId !== null ? cobros.find((cobro) => cobro.id === openDetailId) ?? null : null;
+    openDetailId !== null ? rows.find((row) => row.id === openDetailId) ?? null : null;
 
   // El id no puede sobrevivir a la desaparición de su renglón: un refetch
   // posterior que lo devolviera reabriría el diálogo solo. Se ajusta en RENDER
@@ -40,7 +48,7 @@ export function CollectionList() {
     <>
       <DataTable
         columns={columns}
-        data={cobros}
+        data={rows}
         searchPlaceholder="Buscar por cliente, referencia o cuenta..."
         onRefetch={refetch}
         isRefetching={isFetching}

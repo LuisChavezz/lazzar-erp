@@ -14,12 +14,14 @@ import type {
  * un refetch fallido da un solo toast.
  *
  * Devuelve el `data` crudo: el consumidor distingue "aún no cargó" de "cargó".
+ * `enabled: false` cuando aún no hay moneda que pedir.
  */
-export const useFinanceDashboard = (params: FinanceDashboardParams) => {
+export const useFinanceDashboard = (params: FinanceDashboardParams, { enabled = true } = {}) => {
   const { data, isLoading, isInitialError } = useGuardedQuery<FinanceDashboard>(
     {
       queryKey: ["finance-dashboard", params],
       queryFn: () => getFinanceDashboard(params),
+      enabled,
     },
     { toastId: "finance-dashboard-refetch-error" },
   );
