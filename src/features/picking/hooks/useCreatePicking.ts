@@ -260,6 +260,15 @@ export const useCreatePicking = (onServerError?: (parsed: ParsedPickingError) =>
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["pickings"] });
       void invalidatePedidoProgress(queryClient);
+      // Crear el picking también genera una transferencia COMPLETADA del almacén
+      // origen al destino (`picking_service.py`): mueve existencias y deja un
+      // traspaso y un movimiento. Mismas llaves que `useCreateStockTransfer`,
+      // más las de existencias, que esa tampoco toca.
+      queryClient.invalidateQueries({ queryKey: ["transferencias"] });
+      queryClient.invalidateQueries({ queryKey: ["stockMovements"] });
+      queryClient.invalidateQueries({ queryKey: ["stock-items"] });
+      queryClient.invalidateQueries({ queryKey: ["stock-report"] });
+      queryClient.invalidateQueries({ queryKey: ["stock-movement-report"] });
       toast.success("Surtido registrado correctamente");
     },
     onError: (error) => {
