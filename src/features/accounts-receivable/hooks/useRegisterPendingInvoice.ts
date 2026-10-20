@@ -48,6 +48,8 @@ export const useRegisterPendingInvoice = (
       // (sibling `invoicing`).
       queryClient.invalidateQueries({ queryKey: ["accounts-receivable"] });
       queryClient.invalidateQueries({ queryKey: ["invoices"] });
+      queryClient.invalidateQueries({ queryKey: ["pedido-detail"] });
+      queryClient.invalidateQueries({ queryKey: ["pedido-trazabilidad"] });
       toast.success("Factura pendiente por cobrar registrada correctamente");
     },
     onError: (error) => {

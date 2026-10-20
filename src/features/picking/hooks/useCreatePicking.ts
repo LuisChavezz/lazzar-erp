@@ -258,6 +258,8 @@ export const useCreatePicking = (onServerError?: (parsed: ParsedPickingError) =>
     mutationFn: createPicking,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["pickings"] });
+      queryClient.invalidateQueries({ queryKey: ["pedido-detail"] });
+      queryClient.invalidateQueries({ queryKey: ["pedido-trazabilidad"] });
       toast.success("Surtido registrado correctamente");
     },
     onError: (error) => {

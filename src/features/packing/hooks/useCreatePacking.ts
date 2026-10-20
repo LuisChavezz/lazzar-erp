@@ -221,6 +221,8 @@ export const useCreatePacking = (onServerError?: (parsed: ParsedPackingError) =>
       // silencio, dejando el catálogo del Paso 1 servido de caché hasta 15min
       // (usa el `staleTime` global a propósito, ver el hook).
       queryClient.invalidateQueries({ queryKey: ["packing-onboarding"] });
+      queryClient.invalidateQueries({ queryKey: ["pedido-detail"] });
+      queryClient.invalidateQueries({ queryKey: ["pedido-trazabilidad"] });
       toast.success("Embarque registrado correctamente");
     },
     onError: (error) => {

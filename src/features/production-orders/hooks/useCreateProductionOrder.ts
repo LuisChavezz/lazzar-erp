@@ -21,6 +21,8 @@ export const useCreateProductionOrder = () => {
       createProductionOrderOnboarding(body),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["production-orders"] });
+      queryClient.invalidateQueries({ queryKey: ["pedido-detail"] });
+      queryClient.invalidateQueries({ queryKey: ["pedido-trazabilidad"] });
       toast.success("Orden de producción creada correctamente");
     },
     onError: (error) => {

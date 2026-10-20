@@ -63,6 +63,8 @@ export const useCreateEmbroideryOrder = (
       // justo lo que hace falta —la que cambia es la hermana, no la recién
       // creada—. Ver el bloque de arriba.
       queryClient.invalidateQueries({ queryKey: EMBROIDERY_ORDER_DETAIL_KEY });
+      queryClient.invalidateQueries({ queryKey: ["pedido-detail"] });
+      queryClient.invalidateQueries({ queryKey: ["pedido-trazabilidad"] });
       toast.success(`Orden de bordado ${order.folio_bordado} creada correctamente`);
     },
     onError: (error) => {

@@ -63,6 +63,8 @@ export const useCreateReflectiveOrder = (
       // justo lo que hace falta —la que cambia es la hermana, no la recién
       // creada—. Ver el bloque de arriba.
       queryClient.invalidateQueries({ queryKey: ["reflective-order-detail"] });
+      queryClient.invalidateQueries({ queryKey: ["pedido-detail"] });
+      queryClient.invalidateQueries({ queryKey: ["pedido-trazabilidad"] });
       toast.success(`Orden de reflejante ${order.folio_reflejante} creada correctamente`);
     },
     onError: (error) => {

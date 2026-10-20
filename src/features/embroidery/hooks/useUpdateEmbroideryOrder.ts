@@ -26,6 +26,8 @@ export const useUpdateEmbroideryOrder = (id: number) => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: embroideryOrderDetailQueryKey(id) });
       queryClient.invalidateQueries({ queryKey: ["embroidery-orders"] });
+      queryClient.invalidateQueries({ queryKey: ["pedido-detail"] });
+      queryClient.invalidateQueries({ queryKey: ["pedido-trazabilidad"] });
       toast.success("Orden de bordado actualizada correctamente");
     },
     // `parseEmbroideryUpdateError` y no `extractErrorMessage` a secas: este

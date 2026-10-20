@@ -198,6 +198,8 @@ export const useCreateShipping = (onServerError?: (parsed: ParsedShipmentError) 
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["shipments"] });
       queryClient.invalidateQueries({ queryKey: ["shipping-onboarding"] });
+      queryClient.invalidateQueries({ queryKey: ["pedido-detail"] });
+      queryClient.invalidateQueries({ queryKey: ["pedido-trazabilidad"] });
       toast.success("Envío registrado correctamente");
     },
     onError: (error) => {

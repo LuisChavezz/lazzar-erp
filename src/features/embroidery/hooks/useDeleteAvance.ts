@@ -22,6 +22,10 @@ export const useDeleteAvance = (obId: number) => {
     mutationFn: (avanceId: number) => deleteAvance(avanceId),
     onSuccess: () => {
       toast.success("Avance eliminado correctamente");
+      // Solo se espera el detalle de la OB (su `resumen_avance` es el tope del
+      // diálogo); el pedido se relee en segundo plano.
+      queryClient.invalidateQueries({ queryKey: ["pedido-detail"] });
+      queryClient.invalidateQueries({ queryKey: ["pedido-trazabilidad"] });
       return queryClient.invalidateQueries({
         queryKey: embroideryOrderDetailQueryKey(obId),
       });

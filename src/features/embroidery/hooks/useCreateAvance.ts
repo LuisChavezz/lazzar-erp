@@ -17,9 +17,11 @@ import { embroideryOrderDetailQueryKey } from "./useEmbroideryOrderDetail";
  * llegara el detalle nuevo dejaría registrar contra el total viejo (el backend
  * no impone el tope).
  *
- * No invalida el listado (no pinta datos de avance) ni la trazabilidad del
- * pedido: ninguna pantalla que capture avances la tiene montada, y ella misma
- * se re-consulta en cada montaje (`refetchOnMount: "always"`).
+ * No invalida el listado (no pinta datos de avance). SÍ invalida el detalle y
+ * la trazabilidad del pedido, por prefijo, como el resto de mutaciones que
+ * cambian su avance: una invalidación solo relee las consultas montadas, así
+ * que es barata, y mantiene la regla igual en todas las mutaciones en vez de
+ * depender de que cada consumidor relea al montarse.
  */
 export const useCreateAvance = () => {
   const queryClient = useQueryClient();
@@ -28,6 +30,10 @@ export const useCreateAvance = () => {
     mutationFn: createAvance,
     onSuccess: (_avance, variables) => {
       toast.success("Avance registrado correctamente");
+      // Solo se espera el detalle de la OB (su `resumen_avance` es el tope del
+      // diálogo); el pedido se relee en segundo plano.
+      queryClient.invalidateQueries({ queryKey: ["pedido-detail"] });
+      queryClient.invalidateQueries({ queryKey: ["pedido-trazabilidad"] });
       return queryClient.invalidateQueries({
         queryKey: embroideryOrderDetailQueryKey(variables.ob),
       });
