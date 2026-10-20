@@ -68,6 +68,8 @@ export const useCreateCorteMangaOrder = (
       if (parsed.duplicate) {
         queryClient.invalidateQueries({ queryKey: ["corte-manga-orders"] });
         queryClient.invalidateQueries({ queryKey: ["corte-manga-onboarding"] });
+        // La orden existente que confirma el 409 también cuenta en el pedido.
+        void invalidatePedidoProgress(queryClient);
       }
 
       const toastMessage =

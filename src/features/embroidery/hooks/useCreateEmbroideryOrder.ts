@@ -89,6 +89,8 @@ export const useCreateEmbroideryOrder = (
       // mismo rechazo — mismo tratamiento que el `staleData` de picking.
       if (parsed.excessLines) {
         queryClient.invalidateQueries({ queryKey: ["embroidery-onboarding"] });
+        // La otra OB que consumió el saldo también cambió la cobertura del pedido.
+        void invalidatePedidoProgress(queryClient);
       }
 
       // UNA sola frase, nunca `messages.join("\n")`: desde que el parser

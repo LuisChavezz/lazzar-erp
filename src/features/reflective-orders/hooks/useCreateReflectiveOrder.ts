@@ -81,6 +81,8 @@ export const useCreateReflectiveOrder = (
       // que ese enlace pueda resolver.
       if (parsed.duplicate) {
         queryClient.invalidateQueries({ queryKey: ["reflective-orders"] });
+        // La orden existente que confirma el 409 también cuenta en el pedido.
+        void invalidatePedidoProgress(queryClient);
       }
 
       // El 400 de exceso significa que el saldo por línea que se le ofreció al
