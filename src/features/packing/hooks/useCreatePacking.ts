@@ -3,6 +3,7 @@ import toast from "react-hot-toast";
 import { AxiosError } from "axios";
 import { firstDrfMessage } from "@/src/utils/firstDrfMessage";
 import { createPacking } from "../services/actions";
+import { invalidatePedidoProgress } from "@/src/features/orders/hooks/invalidatePedidoProgress";
 
 /**
  * Mensajes de "dato desactualizado": el pendiente por empacar cambió entre que
@@ -221,8 +222,7 @@ export const useCreatePacking = (onServerError?: (parsed: ParsedPackingError) =>
       // silencio, dejando el catálogo del Paso 1 servido de caché hasta 15min
       // (usa el `staleTime` global a propósito, ver el hook).
       queryClient.invalidateQueries({ queryKey: ["packing-onboarding"] });
-      queryClient.invalidateQueries({ queryKey: ["pedido-detail"] });
-      queryClient.invalidateQueries({ queryKey: ["pedido-trazabilidad"] });
+      void invalidatePedidoProgress(queryClient);
       toast.success("Embarque registrado correctamente");
     },
     onError: (error) => {

@@ -4,6 +4,7 @@ import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { firstDrfFieldMessage } from "@/src/utils/firstDrfFieldMessage";
 import { createAvance } from "../services/actions";
 import { embroideryOrderDetailQueryKey } from "./useEmbroideryOrderDetail";
+import { invalidatePedidoProgress } from "@/src/features/orders/hooks/invalidatePedidoProgress";
 
 /**
  * Mutación de alta de un avance de bordado
@@ -17,11 +18,8 @@ import { embroideryOrderDetailQueryKey } from "./useEmbroideryOrderDetail";
  * llegara el detalle nuevo dejaría registrar contra el total viejo (el backend
  * no impone el tope).
  *
- * No invalida el listado (no pinta datos de avance). SÍ invalida el detalle y
- * la trazabilidad del pedido, por prefijo, como el resto de mutaciones que
- * cambian su avance: una invalidación solo relee las consultas montadas, así
- * que es barata, y mantiene la regla igual en todas las mutaciones en vez de
- * depender de que cada consumidor relea al montarse.
+ * No invalida el listado (no pinta datos de avance). El pedido, con
+ * `invalidatePedidoProgress`, como toda mutación que cambia su avance.
  */
 export const useCreateAvance = () => {
   const queryClient = useQueryClient();
@@ -30,10 +28,9 @@ export const useCreateAvance = () => {
     mutationFn: createAvance,
     onSuccess: (_avance, variables) => {
       toast.success("Avance registrado correctamente");
-      // Solo se espera el detalle de la OB (su `resumen_avance` es el tope del
-      // diálogo); el pedido se relee en segundo plano.
-      queryClient.invalidateQueries({ queryKey: ["pedido-detail"] });
-      queryClient.invalidateQueries({ queryKey: ["pedido-trazabilidad"] });
+      // Se espera solo el detalle de la OB: su `resumen_avance` es el tope del
+      // diálogo. El pedido, sin esperar (ver `invalidatePedidoProgress`).
+      void invalidatePedidoProgress(queryClient);
       return queryClient.invalidateQueries({
         queryKey: embroideryOrderDetailQueryKey(variables.ob),
       });

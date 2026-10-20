@@ -4,6 +4,7 @@ import toast from "react-hot-toast";
 import { firstDrfFieldMessage } from "@/src/utils/firstDrfFieldMessage";
 import { deleteAvance } from "../services/actions";
 import { embroideryOrderDetailQueryKey } from "./useEmbroideryOrderDetail";
+import { invalidatePedidoProgress } from "@/src/features/orders/hooks/invalidatePedidoProgress";
 
 /**
  * Mutación de baja de un avance de bordado
@@ -22,10 +23,9 @@ export const useDeleteAvance = (obId: number) => {
     mutationFn: (avanceId: number) => deleteAvance(avanceId),
     onSuccess: () => {
       toast.success("Avance eliminado correctamente");
-      // Solo se espera el detalle de la OB (su `resumen_avance` es el tope del
-      // diálogo); el pedido se relee en segundo plano.
-      queryClient.invalidateQueries({ queryKey: ["pedido-detail"] });
-      queryClient.invalidateQueries({ queryKey: ["pedido-trazabilidad"] });
+      // Se espera solo el detalle de la OB: su `resumen_avance` es el tope del
+      // diálogo. El pedido, sin esperar (ver `invalidatePedidoProgress`).
+      void invalidatePedidoProgress(queryClient);
       return queryClient.invalidateQueries({
         queryKey: embroideryOrderDetailQueryKey(obId),
       });

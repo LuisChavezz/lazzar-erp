@@ -4,6 +4,7 @@ import { updateEmbroideryOrder } from "../services/actions";
 import { embroideryOrderDetailQueryKey } from "./useEmbroideryOrderDetail";
 import { parseEmbroideryUpdateError } from "../utils/parseEmbroideryUpdateError";
 import type { UpdateEmbroideryOrderPayload } from "../interfaces/embroidery.interface";
+import { invalidatePedidoProgress } from "@/src/features/orders/hooks/invalidatePedidoProgress";
 
 /**
  * Mutación de edición parcial de una orden de bordado
@@ -26,8 +27,7 @@ export const useUpdateEmbroideryOrder = (id: number) => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: embroideryOrderDetailQueryKey(id) });
       queryClient.invalidateQueries({ queryKey: ["embroidery-orders"] });
-      queryClient.invalidateQueries({ queryKey: ["pedido-detail"] });
-      queryClient.invalidateQueries({ queryKey: ["pedido-trazabilidad"] });
+      void invalidatePedidoProgress(queryClient);
       toast.success("Orden de bordado actualizada correctamente");
     },
     // `parseEmbroideryUpdateError` y no `extractErrorMessage` a secas: este

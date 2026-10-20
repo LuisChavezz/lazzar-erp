@@ -3,6 +3,7 @@ import toast from "react-hot-toast";
 import { AxiosError } from "axios";
 import { firstDrfMessage } from "@/src/utils/firstDrfMessage";
 import { createShipment } from "../services/actions";
+import { invalidatePedidoProgress } from "@/src/features/orders/hooks/invalidatePedidoProgress";
 
 /**
  * Mensajes de "dato desactualizado": la línea ya se despachó entre que se
@@ -198,8 +199,7 @@ export const useCreateShipping = (onServerError?: (parsed: ParsedShipmentError) 
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["shipments"] });
       queryClient.invalidateQueries({ queryKey: ["shipping-onboarding"] });
-      queryClient.invalidateQueries({ queryKey: ["pedido-detail"] });
-      queryClient.invalidateQueries({ queryKey: ["pedido-trazabilidad"] });
+      void invalidatePedidoProgress(queryClient);
       toast.success("Envío registrado correctamente");
     },
     onError: (error) => {

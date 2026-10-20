@@ -16,6 +16,7 @@ export {
   type ReflectiveOrderErrorField,
   type ReflectiveDuplicateExistingOrder,
 } from "../utils/parseReflectiveOrderError";
+import { invalidatePedidoProgress } from "@/src/features/orders/hooks/invalidatePedidoProgress";
 
 /**
  * Mutación de alta de orden de reflejante. `onServerError` recibe el error ya
@@ -63,8 +64,7 @@ export const useCreateReflectiveOrder = (
       // justo lo que hace falta —la que cambia es la hermana, no la recién
       // creada—. Ver el bloque de arriba.
       queryClient.invalidateQueries({ queryKey: ["reflective-order-detail"] });
-      queryClient.invalidateQueries({ queryKey: ["pedido-detail"] });
-      queryClient.invalidateQueries({ queryKey: ["pedido-trazabilidad"] });
+      void invalidatePedidoProgress(queryClient);
       toast.success(`Orden de reflejante ${order.folio_reflejante} creada correctamente`);
     },
     onError: (error) => {

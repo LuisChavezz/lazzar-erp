@@ -28,7 +28,10 @@ interface UsePedidoDetailOptions {
   refetchOnMount?: boolean | "always";
 }
 
-export const pedidoDetailQueryKey = (id: number) => ["pedido-detail", id] as const;
+/** Raíz de las llaves del detalle: invalidarla alcanza a TODOS los pedidos en caché. */
+export const PEDIDO_DETAIL_QUERY_ROOT = "pedido-detail";
+
+export const pedidoDetailQueryKey = (id: number) => [PEDIDO_DETAIL_QUERY_ROOT, id] as const;
 
 export const usePedidoDetail = (id: number, options: UsePedidoDetailOptions = {}) => {
   return useQuery<PedidoDetail>({

@@ -8,6 +8,7 @@ import { changeProductionOrderStatus } from "../services/actions";
 import type { ChangeProductionOrderStatusBody } from "../interfaces/production-order-status.interface";
 import { staleDataAfterStatusError } from "./productionOrderStatusErrors";
 import { productionOrderStatusKey } from "./useProductionOrderStatus";
+import { invalidatePedidoProgress } from "@/src/features/orders/hooks/invalidatePedidoProgress";
 
 /**
  * POST del cambio de estatus. Sin escritura optimista: los destinos siguientes
@@ -42,8 +43,7 @@ export const useChangeProductionOrderStatus = (opId: number) => {
       void queryClient.invalidateQueries({ queryKey: ["production-orders"] });
       void queryClient.invalidateQueries({ queryKey: productionOrderKpisQueryKey });
       void queryClient.invalidateQueries({ queryKey: productionOrderCriticalPathKey(opId) });
-      void queryClient.invalidateQueries({ queryKey: ["pedido-detail"] });
-      void queryClient.invalidateQueries({ queryKey: ["pedido-trazabilidad"] });
+      void invalidatePedidoProgress(queryClient);
       const { label } = productionOrderStatusEntry(
         response.estatus_op,
         response.estatus_op_display,

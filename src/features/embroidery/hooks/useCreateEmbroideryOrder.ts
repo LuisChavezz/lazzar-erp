@@ -17,6 +17,7 @@ export {
   type EmbroideryOrderErrorField,
   type EmbroideryDuplicateExistingOrder,
 } from "../utils/parseEmbroideryOrderError";
+import { invalidatePedidoProgress } from "@/src/features/orders/hooks/invalidatePedidoProgress";
 
 /**
  * Mutación de alta de orden de bordado. `onServerError` recibe el error ya
@@ -63,8 +64,7 @@ export const useCreateEmbroideryOrder = (
       // justo lo que hace falta —la que cambia es la hermana, no la recién
       // creada—. Ver el bloque de arriba.
       queryClient.invalidateQueries({ queryKey: EMBROIDERY_ORDER_DETAIL_KEY });
-      queryClient.invalidateQueries({ queryKey: ["pedido-detail"] });
-      queryClient.invalidateQueries({ queryKey: ["pedido-trazabilidad"] });
+      void invalidatePedidoProgress(queryClient);
       toast.success(`Orden de bordado ${order.folio_bordado} creada correctamente`);
     },
     onError: (error) => {

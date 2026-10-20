@@ -3,6 +3,7 @@ import { AxiosError } from "axios";
 import toast from "react-hot-toast";
 import { createProductionOrderOnboarding } from "@/src/features/production-orders/services/actions";
 import type { CreateProductionOrderBody } from "@/src/features/production-orders/interfaces/production-order.interface";
+import { invalidatePedidoProgress } from "@/src/features/orders/hooks/invalidatePedidoProgress";
 
 /**
  * useCreateProductionOrder
@@ -21,8 +22,7 @@ export const useCreateProductionOrder = () => {
       createProductionOrderOnboarding(body),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["production-orders"] });
-      queryClient.invalidateQueries({ queryKey: ["pedido-detail"] });
-      queryClient.invalidateQueries({ queryKey: ["pedido-trazabilidad"] });
+      void invalidatePedidoProgress(queryClient);
       toast.success("Orden de producción creada correctamente");
     },
     onError: (error) => {

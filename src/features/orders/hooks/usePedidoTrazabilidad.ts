@@ -3,13 +3,18 @@ import { useHasLoadedQuery } from "@/src/hooks/useHasLoadedQuery";
 import { getPedidoTrazabilidad } from "../services/actions";
 import type { PedidoTrazabilidad } from "../interfaces/pedido-trazabilidad.interface";
 
+/** Raíz de las llaves de la trazabilidad: invalidarla alcanza a TODOS los pedidos en caché. */
+export const PEDIDO_TRAZABILIDAD_QUERY_ROOT = "pedido-trazabilidad";
+
 /**
  * Llave con namespace propio, igual que `pedidoDetailQueryKey`: no cuelga de
  * `["orders"]` ni de `["pedido-detail"]`, así que cada mutación que cambia el
- * avance la invalida EXPLÍCITAMENTE (cabecera, edición de Mesa de Control,
- * programación y alta de factura).
+ * avance la invalida EXPLÍCITAMENTE: por id las del propio pedido (cabecera,
+ * edición de Mesa de Control, programación, factura) y por raíz las de otros
+ * módulos (`invalidatePedidoProgress`).
  */
-export const pedidoTrazabilidadQueryKey = (id: number) => ["pedido-trazabilidad", id] as const;
+export const pedidoTrazabilidadQueryKey = (id: number) =>
+  [PEDIDO_TRAZABILIDAD_QUERY_ROOT, id] as const;
 
 /**
  * Trazabilidad de un pedido (`GET /ventas/pedidos/{id}/trazabilidad/`).

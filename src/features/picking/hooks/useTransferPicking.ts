@@ -6,6 +6,7 @@ import { handleDrfWriteError, isNotFoundError } from "@/src/utils/drfWriteErrors
 import { firstDrfMessage } from "@/src/utils/firstDrfMessage";
 import { transferPicking } from "../services/actions";
 import type { Picking, TransferPickingPayload } from "../interfaces/picking.interface";
+import { invalidatePedidoProgress } from "@/src/features/orders/hooks/invalidatePedidoProgress";
 
 /** Único campo del formulario de traslado al que el backend atribuye errores. */
 export type TransferPickingField = "almacen";
@@ -84,7 +85,7 @@ export const useTransferPicking = (pickingId: number) => {
     void queryClient.invalidateQueries({ queryKey: ["pickings"] });
     void queryClient.invalidateQueries({ queryKey: ["picking-detail", pickingId] });
     // El pedido también lista sus folios de surtido.
-    void queryClient.invalidateQueries({ queryKey: ["pedido-detail"] });
+    void invalidatePedidoProgress(queryClient);
   };
 
   return useMutation({

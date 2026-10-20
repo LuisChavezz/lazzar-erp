@@ -16,6 +16,7 @@ export {
   type CorteMangaOrderErrorField,
   type CorteMangaDuplicateExistingOrder,
 } from "../utils/parseCorteMangaOrderError";
+import { invalidatePedidoProgress } from "@/src/features/orders/hooks/invalidatePedidoProgress";
 
 /**
  * Mutación de alta de orden de corte de manga. `onServerError` recibe el error
@@ -43,8 +44,7 @@ export const useCreateCorteMangaOrder = (
     onSuccess: (order) => {
       queryClient.invalidateQueries({ queryKey: ["corte-manga-orders"] });
       queryClient.invalidateQueries({ queryKey: ["corte-manga-onboarding"] });
-      queryClient.invalidateQueries({ queryKey: ["pedido-detail"] });
-      queryClient.invalidateQueries({ queryKey: ["pedido-trazabilidad"] });
+      void invalidatePedidoProgress(queryClient);
       toast.success(`Orden de corte de manga ${order.folio_ocm} creada correctamente`);
     },
     onError: (error) => {

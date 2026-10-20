@@ -3,6 +3,7 @@ import toast from "react-hot-toast";
 import { AxiosError } from "axios";
 import { firstDrfMessage } from "@/src/utils/firstDrfMessage";
 import { createPicking } from "../services/actions";
+import { invalidatePedidoProgress } from "@/src/features/orders/hooks/invalidatePedidoProgress";
 
 /** Campos del encabezado que el backend puede señalar en un `400`. */
 export type PickingFormErrorField =
@@ -258,8 +259,7 @@ export const useCreatePicking = (onServerError?: (parsed: ParsedPickingError) =>
     mutationFn: createPicking,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["pickings"] });
-      queryClient.invalidateQueries({ queryKey: ["pedido-detail"] });
-      queryClient.invalidateQueries({ queryKey: ["pedido-trazabilidad"] });
+      void invalidatePedidoProgress(queryClient);
       toast.success("Surtido registrado correctamente");
     },
     onError: (error) => {

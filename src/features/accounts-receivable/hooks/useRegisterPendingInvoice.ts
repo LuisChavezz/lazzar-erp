@@ -6,6 +6,7 @@ import {
   REGISTER_PENDING_INVOICE_FIELDS,
   type RegisterPendingInvoiceFormValues,
 } from "../schemas/register-pending-invoice.schema";
+import { invalidatePedidoProgress } from "@/src/features/orders/hooks/invalidatePedidoProgress";
 
 /**
  * Campos del formulario que pueden recibir un error de campo del backend.
@@ -48,8 +49,7 @@ export const useRegisterPendingInvoice = (
       // (sibling `invoicing`).
       queryClient.invalidateQueries({ queryKey: ["accounts-receivable"] });
       queryClient.invalidateQueries({ queryKey: ["invoices"] });
-      queryClient.invalidateQueries({ queryKey: ["pedido-detail"] });
-      queryClient.invalidateQueries({ queryKey: ["pedido-trazabilidad"] });
+      void invalidatePedidoProgress(queryClient);
       toast.success("Factura pendiente por cobrar registrada correctamente");
     },
     onError: (error) => {

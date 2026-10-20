@@ -14,6 +14,7 @@ import {
   invalidateInvoiceBaseQueries,
   useInvoiceMutationLock,
 } from "./invoiceActionMutation";
+import { invalidatePedidoProgress } from "@/src/features/orders/hooks/invalidatePedidoProgress";
 
 /** Candado del timbrado, ÚNICO por factura (ver `useStampInvoice`). */
 export const stampInvoiceMutationKey = (invoiceId: number) =>
@@ -69,8 +70,7 @@ export const useStampInvoice = (invoiceId: number) => {
         );
         return;
       }
-      void queryClient.invalidateQueries({ queryKey: ["pedido-detail"] });
-      void queryClient.invalidateQueries({ queryKey: ["pedido-trazabilidad"] });
+      void invalidatePedidoProgress(queryClient);
       toast.success(
         invoice.cfdi_uuid
           ? `Factura ${label} timbrada. UUID ${invoice.cfdi_uuid}`
