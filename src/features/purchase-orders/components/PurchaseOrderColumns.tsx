@@ -250,6 +250,7 @@ const FolioCell = ({
           <button
             type="button"
             aria-label={`Ver acciones de la orden ${orderLabel}`}
+            title="Ver detalle"
             className="group inline-flex items-center gap-1 font-mono font-bold text-slate-800 dark:text-white hover:text-sky-600 dark:hover:text-sky-400 hover:underline transition-colors cursor-pointer"
           >
             {orderLabel}
