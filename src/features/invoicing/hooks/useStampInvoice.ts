@@ -70,7 +70,6 @@ export const useStampInvoice = (invoiceId: number) => {
         );
         return;
       }
-      void invalidatePedidoProgress(queryClient);
       toast.success(
         invoice.cfdi_uuid
           ? `Factura ${label} timbrada. UUID ${invoice.cfdi_uuid}`
@@ -83,10 +82,13 @@ export const useStampInvoice = (invoiceId: number) => {
       );
     },
     // Si el precheck detuvo la acción, el retrieve ya está fresco en la caché.
-    onSettled: (result) =>
-      invalidateInvoiceBaseQueries(queryClient, invoiceId, {
-        sentRequest: result?.outcome !== "not-stampable",
-      }),
+    // El pedido se refresca con la MISMA condición, también ante un error: el
+    // PAC pudo timbrar aunque la respuesta se haya perdido.
+    onSettled: (result) => {
+      const sentRequest = result?.outcome !== "not-stampable";
+      if (sentRequest) void invalidatePedidoProgress(queryClient);
+      invalidateInvoiceBaseQueries(queryClient, invoiceId, { sentRequest });
+    },
   });
 
   /**
