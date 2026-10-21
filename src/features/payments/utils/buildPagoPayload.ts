@@ -1,8 +1,5 @@
-import {
-  centavosAMoneda,
-  sumImportesEnCentavos,
-  type PagoFormValues,
-} from "../schemas/payment.schema";
+import type { PagoFormValues } from "../schemas/payment.schema";
+import { centavosAMoneda, sumImportesEnCentavos } from "@/src/utils/sumImportesEnCentavos";
 import type {
   CreatePagoDetallePayload,
   CreatePagoPayload,

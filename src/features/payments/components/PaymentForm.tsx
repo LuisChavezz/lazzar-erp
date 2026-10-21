@@ -18,11 +18,8 @@ import {
 import { formatMoneyValueOrDash } from "@/src/utils/formatCurrency";
 import { sanitizeDecimalInput } from "@/src/utils/decimal";
 import { METODO_PAGO_OPTIONS } from "../constants/paymentStatus";
-import {
-  centavosAMoneda,
-  monedaDelPago,
-  sumImportesEnCentavos,
-} from "../schemas/payment.schema";
+import { monedaDelPago } from "../schemas/payment.schema";
+import { centavosAMoneda, sumImportesEnCentavos } from "@/src/utils/sumImportesEnCentavos";
 import { usePaymentForm } from "../hooks/usePaymentForm";
 import { CxpSelectorDialog } from "./CxpSelectorDialog";
 

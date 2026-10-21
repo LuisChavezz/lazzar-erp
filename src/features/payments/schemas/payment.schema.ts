@@ -157,30 +157,3 @@ export const createEmptyPagoForm = (): PagoFormValues => ({
   observaciones: "",
   pago_detalles: [],
 });
-
-/**
- * Suma de los importes capturados, en CENTAVOS enteros.
- *
- * Es la definición ÚNICA del total del pago: la usan por igual el indicador en
- * vivo de la vista y `buildPagoPayload` al armar `total_pagado`, de modo que lo
- * que el usuario ve y lo que viaja al API no puedan discrepar. Las líneas con
- * importe malformado se ignoran (su propio campo ya reporta el error).
- */
-export const sumImportesEnCentavos = (lines: PagoLineFormValues[]): number =>
-  lines.reduce(
-    (total, line) =>
-      MONEY_REGEX.test(line.importe_aplicado)
-        ? total + toCents(line.importe_aplicado)
-        : total,
-    0,
-  );
-
-/**
- * Centavos enteros → string decimal de 2 posiciones ("116000" → "1160.00").
- *
- * Pareja de `sumImportesEnCentavos` y, como ella, definición ÚNICA: el total que
- * se pinta en el formulario y el `total_pagado` que viaja al API salen de esta
- * misma función, así que no pueden discrepar ni siquiera si algún día cambia el
- * redondeo o la precisión.
- */
-export const centavosAMoneda = (cents: number): string => (cents / 100).toFixed(2);

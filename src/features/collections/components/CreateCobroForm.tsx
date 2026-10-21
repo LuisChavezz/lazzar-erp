@@ -9,7 +9,7 @@ import { FormCancelButton, FormSubmitButton } from "@/src/components/FormButtons
 import { Button } from "@/src/components/Button";
 import { Loader } from "@/src/components/Loader";
 import { DeleteIcon, InfoIcon, PlusIcon, ReceiptIcon, RejectIcon } from "@/src/components/Icons";
-import { centavosAMoneda } from "@/src/features/payments/schemas/payment.schema";
+import { centavosAMoneda, sumImportesEnCentavos } from "@/src/utils/sumImportesEnCentavos";
 import { ItemPickerButton } from "@/src/components/ItemPickerButton";
 import { MainDialog } from "@/src/components/MainDialog";
 import { SingleSelectPickerDialogContent } from "@/src/components/SingleSelectPickerDialogContent";
@@ -18,7 +18,6 @@ import { COBRO_REFERENCIA_LABELS } from "../constants/collectionStatus";
 import {
   COBRO_METODOS_PAGO,
   COBRO_REFERENCIAS,
-  sumCobroImportesEnCentavos,
   type CobroFormValues,
 } from "../schemas/createCobro.schema";
 import { customerLabel, useCreateCobroForm } from "../hooks/useCreateCobroForm";
@@ -68,7 +67,7 @@ export function CreateCobroForm({ onSuccess }: CreateCobroFormProps) {
 
   // Total DERIVADO de las líneas: la misma suma en centavos que viaja como
   // `total_cobrado`, en la moneda de la cuenta.
-  const total = centavosAMoneda(sumCobroImportesEnCentavos(lines));
+  const total = centavosAMoneda(sumImportesEnCentavos(lines));
 
   if (isLoadingFormData) {
     return <Loader className="py-12" title="Cargando datos" message="Cargando clientes y cuentas bancarias..." />;

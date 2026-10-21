@@ -1,5 +1,5 @@
 import { v1_api } from "@/src/api/v1.api";
-import { centavosAMoneda } from "@/src/features/payments/schemas/payment.schema";
+import { centavosAMoneda, sumImportesEnCentavos } from "@/src/utils/sumImportesEnCentavos";
 import { normalizeCapturedDecimal } from "@/src/utils/decimal";
 import type {
   Cobro,
@@ -9,7 +9,7 @@ import type {
   FinanceDashboard,
   FinanceDashboardParams,
 } from "../interfaces/collection.interface";
-import { sumCobroImportesEnCentavos, type CobroFormValues } from "../schemas/createCobro.schema";
+import type { CobroFormValues } from "../schemas/createCobro.schema";
 
 /**
  * Lista los cobros desde `GET /finanzas/cobros/`.
@@ -77,7 +77,7 @@ export function buildCobroPayload(values: CobroFormValues, estatus: CobroEstatus
     metodo_pago: values.metodo_pago,
     referencia: values.referencia,
     referencia_operacion: optional(values.referencia_operacion, true),
-    total_cobrado: centavosAMoneda(sumCobroImportesEnCentavos(values.cobro_detalles)),
+    total_cobrado: centavosAMoneda(sumImportesEnCentavos(values.cobro_detalles)),
     estatus,
     observaciones: optional(values.observaciones),
     cobro_detalles,

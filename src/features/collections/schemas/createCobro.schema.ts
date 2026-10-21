@@ -22,7 +22,7 @@ import type { CobroMetodoPago, CobroReferencia } from "../interfaces/collection.
  *    y aplicaría un importe USD 1:1 sobre una cuenta MXN.
  *
  * El cuadre `suma == total_cobrado` no se valida: `total_cobrado` es DERIVADO de
- * las líneas (ver `sumCobroImportesEnCentavos`), así que se cumple por
+ * las líneas (ver `sumImportesEnCentavos`), así que se cumple por
  * construcción.
  */
 
@@ -144,21 +144,3 @@ export const createEmptyCobroForm = (): CobroFormValues => ({
   observaciones: "",
   cobro_detalles: [],
 });
-
-/**
- * Suma de los importes capturados, en CENTAVOS enteros. Definición ÚNICA del
- * total del cobro: la usan el indicador en vivo y `buildCobroPayload`, así que lo
- * que se ve y lo que viaja no pueden discrepar. Los importes malformados se
- * ignoran (su campo ya reporta el error).
- *
- * Mismo cálculo que `sumImportesEnCentavos` de pagos, que está tipado a las
- * líneas de pago; esta versión acepta cualquier línea con `importe_aplicado` y
- * además normaliza la captura a medias ("12." cuenta como 12).
- */
-export const sumCobroImportesEnCentavos = (
-  lines: readonly Pick<CobroLineFormValues, "importe_aplicado">[],
-): number =>
-  lines.reduce((total, line) => {
-    const importe = normalizeCapturedDecimal(line.importe_aplicado);
-    return MONEY_REGEX.test(importe) ? total + toCents(importe) : total;
-  }, 0);
