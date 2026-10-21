@@ -1,11 +1,9 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { PrecheckError, toPrecheckError, useMutationLock } from "@/src/hooks/useMutationLock";
-import { getCuentasPorCobrar } from "@/src/features/accounts-receivable/services/actions";
-import type { CuentaPorCobrar } from "@/src/features/accounts-receivable/interfaces/accounts-receivable.interface";
+import { getCuentaPorCobrarDetail } from "@/src/features/accounts-receivable/services/actions";
 import { cancelCobro, getCobro } from "../services/actions";
 import type { Cobro } from "../interfaces/collection.interface";
-import { buildCxcIndex } from "../utils/collection.utils";
 import { cancelCobroErrorMessage, getCobroCancelBlockReason } from "../utils/cobroCancellation";
 import { isActionOutcomeUnknown } from "../utils/actionOutcome";
 import { invalidateCobroEffects, writeCobroToList } from "./cobroQueryCache";
@@ -19,11 +17,12 @@ export const cancelCobroMutationKey = (cobroId: number) => ["cancel-cobro", cobr
  *
  * - Candado contra el doble envío: la mutación misma, con `mutationKey` POR
  *   COBRO (`useMutationLock`).
- * - Antes del POST pide el cobro FRESCO y el listado FRESCO de CxC, y vuelve a
- *   evaluar `getCobroCancelBlockReason`: si mientras el diálogo estaba abierto
- *   el cobro ganó un REP, se canceló, o se canceló una de sus facturas, NO se
- *   hace el POST y se avisa con el motivo. Ambas lecturas se escriben en la
- *   caché, así que el detalle también queda al día.
+ * - Antes del POST pide el cobro FRESCO y, por id, la CxC FRESCA de cada una de
+ *   sus líneas, y vuelve a evaluar `getCobroCancelBlockReason`: si mientras el
+ *   diálogo estaba abierto el cobro ganó un REP, se canceló, o se canceló una de
+ *   sus facturas (o una CxC no se pudo consultar), NO se hace el POST y se avisa
+ *   con el motivo. El cobro se escribe en el listado; el listado de CxC se
+ *   invalida para que el detalle quede al día.
  * - Al terminar bien, escribe el cobro cancelado en el listado y refresca todo
  *   lo que la reversión mueve (`invalidateCobroEffects`, el mismo conjunto que
  *   registrar un cobro). Ante un error se relee el listado de cobros (un 400 por
@@ -39,16 +38,25 @@ export const useCancelCobro = (cobroId: number) => {
     mutationKey,
     mutationFn: async () => {
       let current: Cobro;
-      let cuentas: CuentaPorCobrar[];
       try {
-        [current, cuentas] = await Promise.all([getCobro(cobroId), getCuentasPorCobrar()]);
+        current = await getCobro(cobroId);
       } catch (error) {
         throw toPrecheckError(error, "No se pudo consultar el cobro.");
       }
       writeCobroToList(queryClient, current);
-      // La misma entrada de caché que lee el detalle (`useCuentasPorCobrar()`).
-      queryClient.setQueryData(["accounts-receivable", {}], cuentas);
-      const blockReason = getCobroCancelBlockReason(current, buildCxcIndex(cuentas));
+      // Solo las CxC de SUS líneas, en paralelo. Una que no responda (404 si es
+      // de otra empresa o no existe, red) queda fuera del índice y la cancelación
+      // se bloquea: no se puede saber si su factura está cancelada.
+      const cxcIds = [...new Set(current.cobro_detalles.map((linea) => linea.cxc))];
+      const settled = await Promise.allSettled(cxcIds.map((id) => getCuentaPorCobrarDetail(id)));
+      const cxcIndex = new Map(
+        settled.flatMap((result) => (result.status === "fulfilled" ? [[result.value.id, result.value] as const] : [])),
+      );
+      // No se escribe en la caché del listado de CxC (esta respuesta no es esa
+      // lista y una petición en vuelo podría pisarla): se invalida para que el
+      // detalle la relea.
+      void queryClient.invalidateQueries({ queryKey: ["accounts-receivable"] });
+      const blockReason = getCobroCancelBlockReason(current, cxcIndex);
       if (blockReason) throw new PrecheckError(blockReason);
       return cancelCobro(cobroId);
     },
