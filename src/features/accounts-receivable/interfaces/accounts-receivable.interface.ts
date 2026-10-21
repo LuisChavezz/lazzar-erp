@@ -6,15 +6,11 @@
 // atraso.
 
 /**
- * Estatus posibles de una cuenta por cobrar (valores exactos del backend).
- * `StatusBadge` degrada con un estilo por defecto si llegara un valor no listado.
+ * Estatus de una cuenta por cobrar: el enum COMPLETO del backend
+ * (`CuentaPorCobrar.EstatusCxC`). "Vencida" NO es un estatus: se deriva por
+ * fecha (`isCuentaVencida`), igual que el filtro `?vencidas=` del backend.
  */
-export type CxCEstatus =
-  | "Pendiente"
-  | "Parcial"
-  | "Pagada"
-  | "Cancelada"
-  | "Vencida";
+export type CxCEstatus = "Pendiente" | "Parcial" | "Pagada" | "Cancelada";
 
 /** Elemento de la respuesta de `GET /finanzas/cuentas-por-cobrar/`. */
 export interface CuentaPorCobrar {

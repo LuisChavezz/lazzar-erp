@@ -27,7 +27,6 @@ const ESTATUS_FILTER = [
   { value: "Parcial", label: "Parcial" },
   { value: "Pagada", label: "Pagada" },
   { value: "Cancelada", label: "Cancelada" },
-  { value: "Vencida", label: "Vencida" },
 ];
 
 export const AccountsReceivableList = () => {

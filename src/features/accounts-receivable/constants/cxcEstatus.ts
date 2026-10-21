@@ -38,9 +38,4 @@ export const CXC_ESTATUS_CONFIG: Record<CxCEstatus, StatusBadgeConfigEntry> = {
     cls: "bg-slate-50 text-slate-600 dark:bg-slate-500/10 dark:text-slate-400",
     dot: "bg-slate-400",
   },
-  Vencida: {
-    label: "Vencida",
-    cls: "bg-red-50 text-red-700 dark:bg-red-500/10 dark:text-red-400",
-    dot: "bg-red-500",
-  },
 };

@@ -64,17 +64,11 @@ export const diasVencido = (
  *      días"—; solo las de vencimiento FUTURO son "por vencer" (ver
  *      `porVencer30`). Una `fecha_vencimiento` inválida NO se marca vencida.
  *
- * Se deriva por FECHA en el cliente, NO por el `estatus` del backend. Motivos:
- *   • `estatus` es un enum de una sola dimensión: una cuenta no puede ser
- *     `Parcial` Y `Vencida` a la vez, así que una cuenta con abono parcial y ya
- *     vencida puede seguir leyéndose `Parcial`.
- *   • No hay garantía de que el backend marque `Vencida` en el instante en que
- *     `fecha_vencimiento` pasa (puede actualizarlo por lote/cron). Confiar en la
- *     fecha elimina el punto ciego de una cuenta ya vencida que el backend aún
- *     no marcó `Vencida` y que, de otro modo, desaparecería del KPI, la
- *     antigüedad y la alerta mientras sigue sumando a `totalPorCobrar`.
- * `estatus` se usa solo para descartar estados terminales (Pagada/Cancelada),
- * exactamente el rol que le queda bien.
+ * Se deriva por FECHA en el cliente porque el backend no tiene un estatus
+ * "Vencida": su enum es Pendiente/Parcial/Pagada/Cancelada y una cuenta vencida
+ * sigue leyéndose `Pendiente` o `Parcial`. Vencida solo existe como el filtro
+ * `?vencidas=` del backend, que también la calcula por fecha. `estatus` se usa
+ * solo para descartar estados terminales (Pagada/Cancelada).
  */
 export const isCuentaVencida = (
   cuenta: CuentaPorCobrar,
