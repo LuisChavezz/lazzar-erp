@@ -111,3 +111,30 @@ export interface FinanceDashboard {
     por_dia: Record<string, string>;
   };
 }
+
+/** Línea del cuerpo de alta: sin `id`, `cobro` ni `created_at` (los pone el backend). */
+export interface CreateCobroDetallePayload {
+  cxc: number;
+  /** Decimal con 2 posiciones, como string. */
+  importe_aplicado: string;
+  observaciones: string | null;
+}
+
+/**
+ * Cuerpo de `POST /finanzas/cobros/`. No lleva `empresa`, `activo` ni `rep_*`:
+ * el backend los ignora en silencio. `fecha_cobro` es opcional porque el campo
+ * no es nullable y el backend aplica su default (hoy) cuando la llave se omite.
+ */
+export interface CreateCobroPayload {
+  cliente: number;
+  cuenta_bancaria: number;
+  fecha_cobro?: string;
+  metodo_pago: CobroMetodoPago;
+  referencia: CobroReferencia;
+  referencia_operacion: string | null;
+  /** Decimal con 2 posiciones, derivado de las líneas. */
+  total_cobrado: string;
+  estatus: CobroEstatus;
+  observaciones: string | null;
+  cobro_detalles: CreateCobroDetallePayload[];
+}

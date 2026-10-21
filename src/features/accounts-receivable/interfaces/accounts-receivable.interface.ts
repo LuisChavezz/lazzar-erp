@@ -56,6 +56,8 @@ export interface CuentaPorCobrarQueryParams {
   saldo_pendiente?: boolean;
   /** `true` → solo cuentas vencidas con saldo pendiente. */
   vencidas?: boolean;
+  /** FK a `nucleo.Moneda`: solo cuentas cuya factura está en esa moneda (`factura__moneda_id`). */
+  moneda?: number;
 }
 
 /**
