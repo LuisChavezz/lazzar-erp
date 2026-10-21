@@ -2,7 +2,6 @@
 
 import { StatusBadge } from "@/src/components/StatusBadge";
 import { formatShortDate } from "@/src/utils/formatDate";
-import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { EmptyLines, LineItemsTable, SectionTitle } from "@/src/components/DetailDialogPrimitives";
 import { useCobros } from "@/src/features/collections/hooks/useCobros";
 import { useBankAccounts } from "@/src/features/bank-accounts/hooks/useBankAccounts";
@@ -44,7 +43,7 @@ const CobroRepState = ({ cobro }: { cobro: Cobro }) => {
  * Su carga y su error son propios: no bloquean el resto del detalle.
  */
 export const AccountsReceivableCobrosSection = ({ cuentaId }: { cuentaId: number }) => {
-  const { cobros, isLoading, isInitialError, error } = useCobros();
+  const { cobros, isLoading, isInitialError } = useCobros();
   const { bankAccounts } = useBankAccounts();
   const bankAccountIndex = buildBankAccountIndex(bankAccounts);
   const cobrosDeLaCuenta = getCxcCobros(cobros, cuentaId);
@@ -55,7 +54,7 @@ export const AccountsReceivableCobrosSection = ({ cuentaId }: { cuentaId: number
 
       {isInitialError ? (
         <p role="alert" className="text-xs text-red-600 dark:text-red-400">
-          {`No se pudieron cargar los cobros: ${extractErrorMessage(error, "intenta de nuevo más tarde.")}`}
+          No se pudieron cargar los cobros de la cuenta. Intenta de nuevo más tarde.
         </p>
       ) : isLoading ? (
         <p role="status" className="text-xs text-slate-500 dark:text-slate-400">
