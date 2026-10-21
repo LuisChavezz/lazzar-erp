@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { useForm, useStore } from "@tanstack/react-form";
-import type { FormFieldError } from "@/src/utils/getFieldError";
+import { useLineItemsFormErrors } from "@/src/hooks/useLineItemsFormErrors";
 import { useAccountingCustomers } from "@/src/features/accounting-customers/hooks/useAccountingCustomers";
 import type { AccountingCustomer } from "@/src/features/accounting-customers/interfaces/accounting-customer.interface";
 import { useBankAccounts } from "@/src/features/bank-accounts/hooks/useBankAccounts";
@@ -16,15 +16,7 @@ import {
 } from "../schemas/createCobro.schema";
 import { useCobrableCxcs } from "./useCobrableCxcs";
 import { buildCobroPayload } from "../services/actions";
-import { useCreateCobro, type ParsedCobroError } from "./useCreateCobro";
-
-const LINE_ERROR_PREFIX = "cobro_detalles";
-
-/**
- * Ruta de un CAMPO de una línea (`cobro_detalles.<i>.<campo>`): captura el índice
- * y el campo para limpiar también el error de LÍNEA (`._form`) de esa línea.
- */
-const LINE_FIELD_PATH_RE = new RegExp(`^${LINE_ERROR_PREFIX}\\.(\\d+)\\.(.+)$`);
+import { useCreateCobro } from "./useCreateCobro";
 
 /** Etiqueta de un cliente en el selector y en el campo una vez elegido. */
 export const customerLabel = (customer: Pick<AccountingCustomer, "razon_social" | "nombre">) =>
@@ -79,9 +71,22 @@ export function useCreateCobroForm({ onSuccess }: { onSuccess?: () => void } = {
   if (bankAccountOptions.length === 0) missingItems.push("Cuentas bancarias activas");
 
   // ── Estado de UI ──────────────────────────────────────────────────────────
-  // Errores por ruta ("total_cobrado", "cobro_detalles.0.importe_aplicado").
-  const [errors, setErrors] = useState<Record<string, string>>({});
-  const [serverBanner, setServerBanner] = useState<string | null>(null);
+  // Errores de cabecera y de línea, y el banner de "todo o nada" (helper
+  // compartido con el alta de pagos).
+  const {
+    getError,
+    clearError,
+    resetLineErrors,
+    applyValidationIssues,
+    applyServerError,
+    clearErrors,
+    serverBanner,
+    setServerBanner,
+  } = useLineItemsFormErrors({
+    linesKey: "cobro_detalles",
+    totalField: "total_cobrado",
+    bannerPrefix: "No se registró ningún cobro.",
+  });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Claves estables por línea, para que borrar una intermedia no reutilice el
@@ -89,56 +94,7 @@ export function useCreateCobroForm({ onSuccess }: { onSuccess?: () => void } = {
   const lineKeyCounter = useRef(0);
   const [lineKeys, setLineKeys] = useState<number[]>([]);
 
-  // ── Errores ───────────────────────────────────────────────────────────────
-  const getError = (path: string): FormFieldError | undefined =>
-    errors[path] ? { message: errors[path] } : undefined;
-
-  const clearError = (path: string) => {
-    setErrors((prev) => {
-      // Editar un campo de una línea limpia también el error de esa LÍNEA y el
-      // del TOTAL (el cuadre del backend llega en `total_cobrado`, que no tiene
-      // input propio que lo limpie).
-      const match = LINE_FIELD_PATH_RE.exec(path);
-      const keys = [
-        path,
-        match && match[2] !== "_form" ? `${LINE_ERROR_PREFIX}.${match[1]}._form` : null,
-        match ? "total_cobrado" : null,
-      ].filter((key): key is string => key !== null);
-      if (!keys.some((key) => key in prev)) return prev;
-      const next = { ...prev };
-      keys.forEach((key) => delete next[key]);
-      return next;
-    });
-  };
-
-  /** Descarta los errores de línea (y el banner): quitar líneas recorre índices. */
-  const resetLineErrors = () => {
-    setErrors((prev) =>
-      Object.fromEntries(Object.entries(prev).filter(([key]) => !key.startsWith(LINE_ERROR_PREFIX))),
-    );
-    setServerBanner(null);
-  };
-
-  const handleServerError = (parsed: ParsedCobroError) => {
-    const next: Record<string, string> = {};
-    Object.entries(parsed.fieldErrors).forEach(([field, message]) => {
-      if (message) next[field] = message;
-    });
-    Object.entries(parsed.lineErrors).forEach(([index, fields]) => {
-      Object.entries(fields).forEach(([field, message]) => {
-        next[`${LINE_ERROR_PREFIX}.${index}.${field}`] = message;
-      });
-    });
-    setErrors((prev) => ({ ...prev, ...next }));
-
-    const hasFieldOrLine =
-      Object.keys(parsed.fieldErrors).length > 0 || Object.keys(parsed.lineErrors).length > 0;
-    const detail = parsed.formError ?? (hasFieldOrLine ? "Revisa los campos marcados." : "Intenta de nuevo.");
-    // El alta es atómica: se dice explícitamente que NADA quedó registrado.
-    setServerBanner(`No se registró ningún cobro. ${detail}`);
-  };
-
-  const { mutateAsync: createCobroMutation, isPending: isCreating } = useCreateCobro(handleServerError);
+  const { mutateAsync: createCobroMutation, isPending: isCreating } = useCreateCobro(applyServerError);
 
   // ── Formulario ────────────────────────────────────────────────────────────
   const form = useForm({
@@ -150,15 +106,10 @@ export function useCreateCobroForm({ onSuccess }: { onSuccess?: () => void } = {
       // agregarse (ver `saldoFor`).
       const parsed = CobroFormSchema.safeParse(withFreshSaldos(value));
       if (!parsed.success) {
-        const nextErrors: Record<string, string> = {};
-        parsed.error.issues.forEach((issue) => {
-          const key = issue.path.join(".");
-          if (!nextErrors[key]) nextErrors[key] = issue.message;
-        });
-        setErrors(nextErrors);
+        applyValidationIssues(parsed.error.issues);
         return;
       }
-      setErrors({});
+      clearErrors();
       setIsSubmitting(true);
 
       try {
@@ -213,7 +164,7 @@ export function useCreateCobroForm({ onSuccess }: { onSuccess?: () => void } = {
     // Valores frescos en cada limpieza (no un objeto compartido).
     form.reset(createEmptyCobroForm());
     setLineKeys([]);
-    setErrors({});
+    clearErrors();
     setServerBanner(null);
   };
 

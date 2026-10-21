@@ -3,7 +3,7 @@
 import { useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { useForm } from "@tanstack/react-form";
-import type { FormFieldError } from "@/src/utils/getFieldError";
+import { useLineItemsFormErrors } from "@/src/hooks/useLineItemsFormErrors";
 import { useSuppliers } from "@/src/features/suppliers/hooks/useSuppliers";
 import { useBankAccounts } from "@/src/features/bank-accounts/hooks/useBankAccounts";
 import {
@@ -13,18 +13,8 @@ import {
   type PagoLineFormValues,
 } from "../schemas/payment.schema";
 import { buildPagoPayload } from "../utils/buildPagoPayload";
-import { useCreatePago, type ParsedPagoError } from "./useCreatePago";
+import { useCreatePago } from "./useCreatePago";
 import type { CuentaPorPagar } from "@/src/features/accounts-payable/interfaces/accounts-payable.interface";
-
-const LINE_ERROR_PREFIX = "pago_detalles";
-
-/**
- * Detecta la ruta de un CAMPO de una línea (`pago_detalles.<i>.<campo>`) y
- * captura su índice (grupo 1) y el nombre del campo (grupo 2), para derivar la
- * clave del error a nivel de línea (`pago_detalles.<i>._form`) de esa misma
- * línea. Mismo mecanismo que `useStockTransferForm`.
- */
-const LINE_FIELD_PATH_RE = new RegExp(`^${LINE_ERROR_PREFIX}\\.(\\d+)\\.(.+)$`);
 
 /** Siembra una línea a partir de la CxP elegida en el selector. */
 const lineFromCuentaPorPagar = (cuenta: CuentaPorPagar): PagoLineFormValues => ({
@@ -68,9 +58,22 @@ export function usePaymentForm({ onSuccess }: { onSuccess?: () => void } = {}) {
     isErrorSuppliers || (isErrorBankAccounts && !hasLoadedBankAccounts);
 
   // ── Estado de UI ─────────────────────────────────────────────────────────
-  // Errores indexados por ruta ("total_pagado", "pago_detalles.0.importe_aplicado").
-  const [errors, setErrors] = useState<Record<string, string>>({});
-  const [serverBanner, setServerBanner] = useState<string | null>(null);
+  // Errores de cabecera y de línea, y el banner de "todo o nada" (helper
+  // compartido con el alta de cobros).
+  const {
+    getError,
+    clearError,
+    resetLineErrors,
+    applyValidationIssues,
+    applyServerError,
+    clearErrors,
+    serverBanner,
+    setServerBanner,
+  } = useLineItemsFormErrors({
+    linesKey: "pago_detalles",
+    totalField: "total_pagado",
+    bannerPrefix: "No se registró ningún pago.",
+  });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Claves estables por línea, para que borrar una línea intermedia no reutilice
@@ -105,85 +108,8 @@ export function usePaymentForm({ onSuccess }: { onSuccess?: () => void } = {}) {
     return items;
   }, [supplierOptions.length, bankAccountOptions.length]);
 
-  // ── Helpers de errores ───────────────────────────────────────────────────
-  const getError = (path: string): FormFieldError | undefined =>
-    errors[path] ? { message: errors[path] } : undefined;
-
-  const clearError = (path: string) => {
-    setErrors((prev) => {
-      // Al limpiar el error de un CAMPO de una línea se limpia también el de
-      // LÍNEA (`_form`): si el usuario edita la línea la está corrigiendo, así
-      // que el aviso del backend deja de ser vigente.
-      const match = LINE_FIELD_PATH_RE.exec(path);
-      const lineFormKey =
-        match && match[2] !== "_form"
-          ? `${LINE_ERROR_PREFIX}.${match[1]}._form`
-          : null;
-      // ...y también el del TOTAL. El cuadre del backend llega en la llave
-      // `total_pagado`, que es un valor DERIVADO y por tanto no tiene input
-      // propio cuyo `onChange` pudiera limpiarlo: sin esto, el usuario corregía
-      // los importes, veía el total recalcularse y el mensaje "no cuadra" se
-      // quedaba pegado hasta el siguiente envío. Cualquier edición de línea
-      // cambia la suma, así que invalida el aviso.
-      const totalKey = match ? "total_pagado" : null;
-      const keys = [path, lineFormKey, totalKey].filter(
-        (key): key is string => key !== null,
-      );
-      if (!keys.some((key) => key in prev)) {
-        return prev;
-      }
-      const next = { ...prev };
-      keys.forEach((key) => delete next[key]);
-      return next;
-    });
-  };
-
-  /** Descarta TODOS los errores de línea (y el banner). Se usa al quitar o
-   *  reemplazar líneas, porque ambas operaciones recorren los índices. */
-  const resetLineErrors = () => {
-    setErrors((prev) => {
-      const next: Record<string, string> = {};
-      for (const [key, value] of Object.entries(prev)) {
-        if (!key.startsWith(LINE_ERROR_PREFIX)) next[key] = value;
-      }
-      return next;
-    });
-    setServerBanner(null);
-  };
-
-  // ── Reparto del error del backend ────────────────────────────────────────
-  const handleServerError = (parsed: ParsedPagoError) => {
-    const next: Record<string, string> = {};
-
-    (Object.keys(parsed.fieldErrors) as (keyof typeof parsed.fieldErrors)[]).forEach(
-      (field) => {
-        const message = parsed.fieldErrors[field];
-        if (message) next[field] = message;
-      },
-    );
-
-    Object.entries(parsed.lineErrors).forEach(([index, fields]) => {
-      Object.entries(fields).forEach(([field, message]) => {
-        next[`${LINE_ERROR_PREFIX}.${index}.${field}`] = message;
-      });
-    });
-
-    setErrors((prev) => ({ ...prev, ...next }));
-
-    const hasFieldOrLine =
-      Object.keys(parsed.fieldErrors).length > 0 ||
-      Object.keys(parsed.lineErrors).length > 0;
-    const detail =
-      parsed.formError ??
-      (hasFieldOrLine ? "Revisa los campos marcados." : "Intenta de nuevo.");
-    // El alta es atómica: se le dice al usuario explícitamente que NADA quedó
-    // registrado, para que no busque un pago a medias ni reintente creyendo que
-    // duplicará algo.
-    setServerBanner(`No se registró ningún pago. ${detail}`);
-  };
-
   const { mutateAsync: createPagoMutation, isPending: isCreating } =
-    useCreatePago(handleServerError);
+    useCreatePago(applyServerError);
 
   // ── Formulario ───────────────────────────────────────────────────────────
   const defaultValues = useMemo<PagoFormValues>(() => createEmptyPagoForm(), []);
@@ -195,15 +121,10 @@ export function usePaymentForm({ onSuccess }: { onSuccess?: () => void } = {}) {
 
       const parsed = PagoFormSchema.safeParse(value);
       if (!parsed.success) {
-        const nextErrors: Record<string, string> = {};
-        parsed.error.issues.forEach((issue) => {
-          const key = issue.path.join(".");
-          if (!nextErrors[key]) nextErrors[key] = issue.message;
-        });
-        setErrors(nextErrors);
+        applyValidationIssues(parsed.error.issues);
         return;
       }
-      setErrors({});
+      clearErrors();
 
       // El reenvío concurrente ya lo impide `form.handleSubmit()`, que se niega a
       // reentrar mientras hay un envío en vuelo; no hace falta un candado propio.
@@ -217,7 +138,7 @@ export function usePaymentForm({ onSuccess }: { onSuccess?: () => void } = {}) {
         // que el siguiente alta arrancara con las líneas del pago anterior.
         form.reset(createEmptyPagoForm());
         setLineKeys([]);
-        setErrors({});
+        clearErrors();
         setServerBanner(null);
         onSuccess?.();
       } catch {
@@ -280,7 +201,7 @@ export function usePaymentForm({ onSuccess }: { onSuccess?: () => void } = {}) {
   const handleReset = () => {
     form.reset(createEmptyPagoForm());
     setLineKeys([]);
-    setErrors({});
+    clearErrors();
     setServerBanner(null);
   };
 

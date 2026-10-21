@@ -1,8 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { AxiosError } from "axios";
-import { firstDrfMessage } from "@/src/utils/firstDrfMessage";
-import { isWholeArrayDrfError } from "@/src/utils/isWholeArrayDrfError";
+import { parseLineItemsDrfError, type ParsedLineItemsError } from "@/src/utils/parseLineItemsDrfError";
 import { invalidatePedidoProgress } from "@/src/features/orders/hooks/invalidatePedidoProgress";
 import { createCobro } from "../services/actions";
 import type { CreateCobroPayload } from "../interfaces/collection.interface";
@@ -51,139 +50,33 @@ const FORM_LEVEL_KEYS = [
 /** "La CxC 15 …" / "… de la CxC 15." / "CxC 15 no encontrada." → 15. */
 const CXC_ID_IN_MESSAGE_RE = /\bCxC (\d+)\b/;
 
-/**
- * Error de alta de cobro, normalizado para que el formulario lo pinte:
- *  - `formError`   → banner de "todo o nada";
- *  - `fieldErrors` → bajo un campo de cabecera (incluido `total_cobrado`);
- *  - `lineErrors`  → por línea, indexado por posición; `_form` guarda un error
- *                    de línea no atribuible a un campo.
- * `messages` es la lista plana para el toast.
- */
-export interface ParsedCobroError {
-  formError?: string;
-  fieldErrors: Partial<Record<CobroHeaderErrorField, string>>;
-  lineErrors: Record<number, Record<string, string>>;
-  messages: string[];
-}
+/** Error de alta de cobro normalizado (ver `ParsedLineItemsError`). */
+export type ParsedCobroError = ParsedLineItemsError<CobroHeaderErrorField>;
 
 /**
- * Normaliza el error de `POST /finanzas/cobros/`. Los valores pueden llegar como
- * `string` o `string[]` según dónde se lanzaron (serializer, servicio o
- * `perform_create`), y `cobro_detalles` en dos formas:
- *  - lista alineada por índice (`[{}, {"cxc": ["…"]}]`), del serializer;
- *  - lista de strings o string suelto, de los errores de negocio del servicio
- *    ("Importe 60 excede saldo 50 de la CxC 15."): hablan de UNA CxC por su id,
- *    así que se asignan a la línea con ese `cxc` y, si no se encuentra, al
- *    banner.
- * Un 409 por choque de bloqueos llega como lista de nivel superior.
+ * Normaliza el error de `POST /finanzas/cobros/` con el parser compartido de
+ * documentos con líneas. Lo propio de cobros:
+ *  - `cobro_detalles` hecho solo de strings son errores de NEGOCIO del servicio
+ *    ("Importe 60 excede saldo 50 de la CxC 15."), no de la primera línea:
+ *    hablan de UNA CxC por su id y se asignan a la línea con ese `cxc` (si no
+ *    se encuentra, al banner);
+ *  - `estatus`, `empresa` y los errores de póliza van al banner.
  *
- * `cxcIds` son los `cxc` enviados, en el orden de las líneas. Siempre devuelve
- * un objeto: ante un error inesperado deja un `formError` genérico.
+ * `cxcIds` son los `cxc` enviados, en el orden de las líneas.
  */
 export function parseCobroError(error: unknown, cxcIds: readonly number[]): ParsedCobroError {
-  const result: ParsedCobroError = { fieldErrors: {}, lineErrors: {}, messages: [] };
-
-  const pushLineError = (index: number, field: string, message: string) => {
-    if (!result.lineErrors[index]) result.lineErrors[index] = {};
-    result.lineErrors[index][field] = message;
-    result.messages.push(`Línea ${index + 1}: ${message}`);
-  };
-
-  const pushFormMessage = (message: string) => {
-    result.formError = result.formError ?? message;
-    result.messages.push(message);
-  };
-
-  /** Mensaje de negocio sobre una CxC: a su línea si el id la identifica. */
-  const pushCxcMessage = (message: string) => {
-    const match = CXC_ID_IN_MESSAGE_RE.exec(message);
-    const index = match ? cxcIds.indexOf(Number(match[1])) : -1;
-    if (index >= 0) {
-      pushLineError(index, "_form", message);
-    } else {
-      pushFormMessage(message);
-    }
-  };
-
-  if (!(error instanceof AxiosError)) {
-    result.formError = "Error al registrar el cobro.";
-    return result;
-  }
-
-  const data = error.response?.data;
-
-  if (typeof data === "string" && data.trim().length > 0) {
-    pushFormMessage(data);
-    return result;
-  }
-
-  // Lista de nivel superior: `raise ValidationError("…")` y el 409 de bloqueos.
-  if (Array.isArray(data)) {
-    data
-      .map((entry) => firstDrfMessage(entry))
-      .filter((message): message is string => Boolean(message))
-      .forEach(pushFormMessage);
-    if (!result.formError) result.formError = "Error al registrar el cobro.";
-    return result;
-  }
-
-  if (!data || typeof data !== "object") {
-    result.formError = error.message || "Error al registrar el cobro.";
-    return result;
-  }
-
-  const record = data as Record<string, unknown>;
-
-  for (const key of FORM_LEVEL_KEYS) {
-    const message = firstDrfMessage(record[key]);
-    if (message) pushFormMessage(message);
-  }
-
-  for (const field of HEADER_FIELDS) {
-    const message = firstDrfMessage(record[field]);
-    if (message) {
-      result.fieldErrors[field] = message;
-      result.messages.push(message);
-    }
-  }
-
-  const detalles = record.cobro_detalles;
-  if (typeof detalles === "string" && detalles.length > 0) {
-    pushCxcMessage(detalles);
-  } else if (Array.isArray(detalles)) {
-    if (isWholeArrayDrfError(detalles)) {
-      detalles
-        .filter((entry): entry is string => typeof entry === "string" && entry.length > 0)
-        .forEach(pushCxcMessage);
-    } else {
-      detalles.forEach((entry, index) => {
-        if (!entry || typeof entry !== "object") return;
-        Object.entries(entry as Record<string, unknown>).forEach(([lineField, lineValue]) => {
-          const message = firstDrfMessage(lineValue);
-          if (!message) return;
-          pushLineError(index, lineField === "non_field_errors" ? "_form" : lineField, message);
-        });
-      });
-    }
-  }
-
-  // Cualquier otra llave desconocida: al toast y, si no hubo nada más, al banner.
-  if (result.messages.length === 0) {
-    Object.entries(record).forEach(([key, value]) => {
-      if (key === "cobro_detalles") return;
-      const message = firstDrfMessage(value);
-      if (message) result.messages.push(message);
-    });
-  }
-  if (
-    !result.formError &&
-    Object.keys(result.fieldErrors).length === 0 &&
-    Object.keys(result.lineErrors).length === 0
-  ) {
-    result.formError = result.messages[0] ?? "Error de validación al registrar el cobro.";
-  }
-
-  return result;
+  return parseLineItemsDrfError(error, {
+    linesKey: "cobro_detalles",
+    headerFields: HEADER_FIELDS,
+    formLevelKeys: FORM_LEVEL_KEYS,
+    genericMessage: "Error al registrar el cobro.",
+    validationMessage: "Error de validación al registrar el cobro.",
+    wholeArrayStringsAreUnindexed: true,
+    resolveUnindexedLine: (message) => {
+      const match = CXC_ID_IN_MESSAGE_RE.exec(message);
+      return match ? cxcIds.indexOf(Number(match[1])) : -1;
+    },
+  });
 }
 
 /**
