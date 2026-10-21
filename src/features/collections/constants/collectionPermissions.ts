@@ -5,3 +5,10 @@
  * el backend; esta es de UX.
  */
 export const COBRO_CREATE_PERMISSION = "E-FIN-FACTURAS";
+
+/**
+ * Permiso para timbrar el REP de un cobro (`timbrar-rep/`). El backend lo exige
+ * en todo método que no sea de lectura de `CobroViewSet`, así que es el mismo
+ * código; sin él responde 403.
+ */
+export const COBRO_REP_STAMP_PERMISSION = "E-FIN-FACTURAS";

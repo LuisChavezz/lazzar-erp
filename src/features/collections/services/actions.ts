@@ -27,6 +27,27 @@ export const getCobros = async (): Promise<Cobro[]> => {
 };
 
 /**
+ * Retrieve de UN cobro (`GET /finanzas/cobros/{id}/`). Misma forma que cada
+ * elemento del listado (`CobroSerializer`). Un cobro inactivo o de otra empresa
+ * responde 404.
+ */
+export const getCobro = async (id: number): Promise<Cobro> => {
+  const { data } = await v1_api.get<Cobro>(`/finanzas/cobros/${id}/`);
+  return data;
+};
+
+/**
+ * Timbra el complemento de pago (REP) del cobro ante el SAT vía Facturama
+ * (`POST /finanzas/cobros/{id}/timbrar-rep/`). El endpoint no lee el cuerpo:
+ * va vacío. Responde el cobro completo con `rep_uuid` y demás `rep_*`; los
+ * errores de negocio llegan como `{ rep: [...] }` (ver `stampCobroRepErrorMessage`).
+ */
+export const stampCobroRep = async (id: number): Promise<Cobro> => {
+  const { data } = await v1_api.post<Cobro>(`/finanzas/cobros/${id}/timbrar-rep/`);
+  return data;
+};
+
+/**
  * Indicadores de finanzas: `GET /finanzas/dashboard/`, para el período por
  * defecto del backend (mes en curso hasta hoy) y UNA moneda.
  */
