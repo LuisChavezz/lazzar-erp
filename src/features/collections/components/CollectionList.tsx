@@ -1,10 +1,17 @@
 "use client";
 
 import { useState } from "react";
+import { useSession } from "next-auth/react";
 import { DataTable } from "@/src/components/DataTable";
+import { Button } from "@/src/components/Button";
+import { MainDialog } from "@/src/components/MainDialog";
+import { DialogHeader } from "@/src/components/DialogHeader";
+import { hasPermission } from "@/src/utils/permissions";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { getCollectionColumns } from "./CollectionColumns";
 import { CollectionDetailDialog } from "./CollectionDetailDialog";
+import { CreateCobroForm } from "./CreateCobroForm";
+import { COBRO_CREATE_PERMISSION } from "../constants/collectionPermissions";
 import { useBankAccounts } from "@/src/features/bank-accounts/hooks/useBankAccounts";
 import { useCobros } from "../hooks/useCobros";
 import { mapCobrosToRows } from "../utils/collection.utils";
@@ -12,6 +19,12 @@ import { mapCobrosToRows } from "../utils/collection.utils";
 export function CollectionList() {
   const { cobros, isLoading, isFetching, isInitialError, error, refetch } = useCobros();
   const { bankAccounts } = useBankAccounts();
+  // Ver la lista exige `R-CONTABILIDAD-CXC` (lo aplica `proxy.ts`); registrar un
+  // cobro exige además el permiso que valida el backend. `hasPermission` deja
+  // pasar a `role === "admin"`.
+  const { data: session } = useSession();
+  const canCreate = hasPermission(COBRO_CREATE_PERMISSION, session?.user);
+  const [isFormOpen, setIsFormOpen] = useState(false);
 
   // La moneda de cada cobro (la de su cuenta bancaria) se resuelve UNA vez aquí.
   // Cuando el catálogo termina de cargar cambian los objetos de fila, no su
@@ -41,9 +54,9 @@ export function CollectionList() {
   }
 
   // `DataTable` se monta SIEMPRE: recibe `isLoading`/`isError` y alterna solo su
-  // cuerpo, de modo que el toolbar (búsqueda, filtros, refrescar, columnas y,
-  // con EC-543, el botón de alta en `actionButton`) sigue disponible durante la
-  // carga y ante un error.
+  // cuerpo, de modo que el toolbar (búsqueda, filtros, refrescar, columnas y el
+  // botón "+ Nuevo cobro" en `actionButton`) sigue disponible durante la carga y
+  // ante un error.
   return (
     <>
       <DataTable
@@ -60,6 +73,34 @@ export function CollectionList() {
         onErrorRetry={refetch}
         loadingAriaLabel="Cargando cobros"
         getRowId={(row) => String(row.id)}
+        // Un alta nueva aparece tras invalidar; sin esto, quien esté en la
+        // página 2 no vería el cobro que acaba de registrar.
+        paginationResetKey={rows.length}
+        actionButton={
+          canCreate ? (
+            <MainDialog
+              title={
+                <DialogHeader
+                  title="Registrar Cobro"
+                  subtitle="Aplicación contra cuentas por cobrar"
+                  statusColor="emerald"
+                />
+              }
+              open={isFormOpen}
+              onOpenChange={setIsFormOpen}
+              maxWidth="1100px"
+              trigger={
+                <Button variant="primary" rounded="full" className="hover:scale-105 active:scale-95">
+                  + Nuevo cobro
+                </Button>
+              }
+            >
+              {/* Montado solo con el diálogo abierto: los catálogos se piden bajo
+                  demanda y cada alta arranca limpia. */}
+              {isFormOpen && <CreateCobroForm onSuccess={() => setIsFormOpen(false)} />}
+            </MainDialog>
+          ) : undefined
+        }
       />
 
       {detailCobro && (
