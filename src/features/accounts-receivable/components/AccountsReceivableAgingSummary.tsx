@@ -3,7 +3,7 @@ import { formatCurrency } from "@/src/utils/formatCurrency";
 import type { AgingBucket } from "../interfaces/accounts-receivable.interface";
 
 const BUCKET_STYLES: Record<string, { bar: string; chip: string; dot: string }> = {
-  "0-30": { bar: "bg-amber-400", chip: "text-amber-600 dark:text-amber-400", dot: "bg-amber-400" },
+  "1-30": { bar: "bg-amber-400", chip: "text-amber-600 dark:text-amber-400", dot: "bg-amber-400" },
   "31-60": { bar: "bg-orange-400", chip: "text-orange-600 dark:text-orange-400", dot: "bg-orange-400" },
   "61-90": { bar: "bg-red-400", chip: "text-red-600 dark:text-red-400", dot: "bg-red-400" },
   "90+": { bar: "bg-red-600", chip: "text-red-700 dark:text-red-500", dot: "bg-red-600" },

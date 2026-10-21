@@ -135,10 +135,8 @@ export const accountsReceivableColumns = [
     cell: (info) => {
       // Se muestran los días de atraso cuando la cuenta está vencida según la
       // definición única `esta_vencida` (misma que el KPI "Vencido" y la
-      // antigüedad). Una cuenta que vence HOY está vencida con `dias_vencido = 0`
-      // y muestra "0" (no "—"): "—" queda reservado para las genuinamente NO
-      // vencidas (Pagada, Cancelada o de vencimiento futuro), nunca para una
-      // vencida que también suma al KPI "Vencido".
+      // antigüedad): una vencida tiene al menos 1 día de atraso. "—" queda para
+      // las NO vencidas (Pagada, Cancelada, sin fecha o que vencen hoy o después).
       const dias = info.getValue();
       return info.row.original.esta_vencida ? (
         <span className="text-red-600 dark:text-red-400 font-semibold tabular-nums">{dias}</span>

@@ -1,8 +1,10 @@
 // Funciones puras de derivación para Cuentas por Cobrar: mapeo de filas, KPIs y
 // antigüedad de saldos. Operan sobre la respuesta del backend (`CuentaPorCobrar[]`)
-// y NO consultan `new Date()` por su cuenta: reciben `todayUTC` para que la vista
-// lo calcule UNA sola vez (con `startOfTodayUTC`) y lo comparta entre las tarjetas
-// KPI, la antigüedad y la tabla, evitando desfaces si el render cruza medianoche.
+// y NO consultan la hora por su cuenta: reciben `today` ("YYYY-MM-DD", el día del
+// backend en `America/Mexico_City`, de `useBackendToday`) para que la vista lo
+// calcule UNA sola vez y lo comparta entre las tarjetas KPI, la antigüedad y la
+// tabla. Es el mismo día con el que el backend resuelve `?vencidas=`
+// (`timezone.localdate()`), así que la marca y el filtro coinciden.
 
 import { safeParseAmount } from "@/src/utils/formatCurrency";
 import type {
@@ -13,40 +15,25 @@ import type {
 } from "../interfaces/accounts-receivable.interface";
 
 const DIA_MS = 86_400_000;
+const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 /**
- * Timestamp de la medianoche UTC del día calendario actual. Se usa como "hoy"
- * de referencia porque las fechas del backend (`fecha_vencimiento`,
- * `fecha_emision`) son strings `YYYY-MM-DD` que `Date.parse` interpreta como
- * medianoche UTC; anclar "hoy" al mismo marco hace que la resta de días sea
- * exacta e independiente de la zona horaria del navegador.
+ * Días con signo desde `today` hasta el vencimiento: `> 0` faltan por vencer,
+ * `= 0` vence hoy, `< 0` ya venció. Las dos son fechas-calendario `YYYY-MM-DD`
+ * que `Date.parse` lee como medianoche UTC, así que la resta es un entero exacto
+ * sin importar la zona del navegador. `null` ante una fecha ausente o inválida.
  */
-export const startOfTodayUTC = (): number => {
-  const now = new Date();
-  // Getters UTC (no locales): construimos la medianoche del día calendario UTC
-  // real, no la del día calendario LOCAL del navegador. Así dos usuarios en
-  // zonas distintas (p. ej. UTC+8 y UTC−8) obtienen el mismo "hoy" siempre que
-  // la fecha UTC coincida, cumpliendo la independencia de zona que promete el
-  // docstring (los `getFullYear`/`getMonth`/`getDate` locales la rompían).
-  return Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
-};
-
-/**
- * Días con signo desde hoy hasta el vencimiento: `> 0` faltan por vencer,
- * `= 0` vence hoy, `< 0` ya venció. Ambos extremos son medianoche UTC, así que
- * la división es un entero exacto. Devuelve 0 ante una fecha inválida.
- */
-const daysUntilDue = (fechaVencimiento: string, todayUTC: number): number => {
+const daysUntilDue = (fechaVencimiento: string | null, today: string): number | null => {
+  if (fechaVencimiento === null || !ISO_DATE_RE.test(fechaVencimiento)) return null;
   const venc = Date.parse(fechaVencimiento);
-  if (Number.isNaN(venc)) return 0;
-  return Math.round((venc - todayUTC) / DIA_MS);
+  const hoy = Date.parse(today);
+  if (Number.isNaN(venc) || Number.isNaN(hoy)) return null;
+  return Math.round((venc - hoy) / DIA_MS);
 };
 
-/** Días de atraso (`hoy − vencimiento`), acotado a 0 cuando aún no vence. */
-export const diasVencido = (
-  fechaVencimiento: string,
-  todayUTC: number,
-): number => Math.max(0, -daysUntilDue(fechaVencimiento, todayUTC));
+/** Días de atraso (`hoy − vencimiento`), acotado a 0 cuando aún no vence o no hay fecha. */
+export const diasVencido = (fechaVencimiento: string | null, today: string): number =>
+  Math.max(0, -(daysUntilDue(fechaVencimiento, today) ?? 0));
 
 /**
  * DEFINICIÓN ÚNICA DE "VENCIDA" — fuente de verdad compartida por TODAS las
@@ -58,11 +45,11 @@ export const diasVencido = (
  *   1. conserva saldo abierto (`saldo > 0`),
  *   2. no está `Pagada` ni `Cancelada` (estados terminales que ya no
  *      representan dinero por cobrar), y
- *   3. su fecha de vencimiento es HOY o ya pasó (`fecha_vencimiento <= hoy` en
- *      medianoche UTC). Una cuenta que vence HOY ya cuenta como vencida con 0
- *      días de atraso —de ahí que el primer rango de antigüedad sea "0–30
- *      días"—; solo las de vencimiento FUTURO son "por vencer" (ver
- *      `porVencer30`). Una `fecha_vencimiento` inválida NO se marca vencida.
+ *   3. su fecha de vencimiento es ANTERIOR a hoy (`fecha_vencimiento < hoy`).
+ *      Una cuenta que vence HOY todavía no está vencida: es "por vencer" (ver
+ *      `porVencer30`) y la antigüedad empieza en "1–30 días". Mismo criterio que
+ *      el filtro `?vencidas=` del backend (`fecha_vencimiento__lt=localdate()`)
+ *      y que CxP. Sin `fecha_vencimiento` o con una inválida NO es vencida.
  *
  * Se deriva por FECHA en el cliente porque el backend no tiene un estatus
  * "Vencida": su enum es Pendiente/Parcial/Pagada/Cancelada y una cuenta vencida
@@ -71,14 +58,13 @@ export const diasVencido = (
  * solo para descartar estados terminales (Pagada/Cancelada).
  */
 export const isCuentaVencida = (
-  cuenta: CuentaPorCobrar,
-  todayUTC: number,
+  cuenta: Pick<CuentaPorCobrar, "estatus" | "saldo" | "fecha_vencimiento">,
+  today: string,
 ): boolean => {
   if (cuenta.estatus === "Pagada" || cuenta.estatus === "Cancelada") return false;
   if (safeParseAmount(cuenta.saldo) <= 0) return false;
-  const venc = Date.parse(cuenta.fecha_vencimiento);
-  if (Number.isNaN(venc)) return false;
-  return venc <= todayUTC;
+  const dias = daysUntilDue(cuenta.fecha_vencimiento, today);
+  return dias !== null && dias < 0;
 };
 
 /** Folio de presentación derivado del `id` real (el backend no expone folio de CxC). */
@@ -88,33 +74,25 @@ export const formatFolioCxc = (id: number): string =>
 /** Enriquece una cuenta con los campos derivados que consume la tabla. */
 export const mapCuentaToRow = (
   cuenta: CuentaPorCobrar,
-  todayUTC: number,
+  today: string,
 ): CuentaPorCobrarRow => ({
   ...cuenta,
   folio_cxc: formatFolioCxc(cuenta.id),
-  dias_vencido: diasVencido(cuenta.fecha_vencimiento, todayUTC),
+  dias_vencido: diasVencido(cuenta.fecha_vencimiento, today),
   // Mismo criterio (`isCuentaVencida`) que alimenta KPIs, antigüedad y alerta,
   // de modo que la fila y los agregados nunca se contradicen.
-  esta_vencida: isCuentaVencida(cuenta, todayUTC),
+  esta_vencida: isCuentaVencida(cuenta, today),
 });
 
 /** Mapea toda la lista a filas de tabla contra un mismo "hoy". */
 export const mapCuentasToRows = (
   cuentas: CuentaPorCobrar[],
-  todayUTC: number,
-): CuentaPorCobrarRow[] => cuentas.map((c) => mapCuentaToRow(c, todayUTC));
+  today: string,
+): CuentaPorCobrarRow[] => cuentas.map((c) => mapCuentaToRow(c, today));
 
-/** ¿El timestamp ISO cae en el mismo mes/año UTC que la referencia "hoy"? */
-const esMismoMesUTC = (isoTimestamp: string, todayUTC: number): boolean => {
-  const paid = Date.parse(isoTimestamp);
-  if (Number.isNaN(paid)) return false;
-  const p = new Date(paid);
-  const t = new Date(todayUTC);
-  return (
-    p.getUTCFullYear() === t.getUTCFullYear() &&
-    p.getUTCMonth() === t.getUTCMonth()
-  );
-};
+/** ¿La fecha `YYYY-MM-DD` cae en el mismo mes y año que `today`? Compara el texto, sin zonas. */
+const esMismoMes = (fecha: string, today: string): boolean =>
+  ISO_DATE_RE.test(fecha) && fecha.slice(0, 7) === today.slice(0, 7);
 
 /**
  * Calcula los KPIs del encabezado.
@@ -126,11 +104,11 @@ const esMismoMesUTC = (isoTimestamp: string, todayUTC: number): boolean => {
  *   ÚNICA `isCuentaVencida` (por fecha, no por `estatus`; ver su docstring). Es
  *   el mismo criterio que usan la antigüedad, la alerta y la columna de la
  *   tabla, así que todos los indicadores de vencido concuerdan.
- * - `porVencer30`: saldo abierto (`saldo > 0`) cuyo vencimiento cae entre MAÑANA
- *   y los próximos 30 días (`1 <= dias <= 30`). Es el complemento sin traslape
- *   de lo vencido: como una cuenta que vence HOY (`dias = 0`) ya es vencida, se
- *   excluye de "por vencer" para no contarla dos veces. Requiere aritmética de
- *   fechas (no hay estatus ni parámetro del backend equivalente).
+ * - `porVencer30`: saldo abierto (`saldo > 0`) cuyo vencimiento cae entre HOY
+ *   y los próximos 30 días (`0 <= dias <= 30`). Es el complemento sin traslape
+ *   de lo vencido: una cuenta que vence HOY (`dias = 0`) todavía no es vencida,
+ *   así que cuenta aquí. Requiere aritmética de fechas (no hay estatus ni
+ *   parámetro del backend equivalente).
  * - `cobradoEsteMes`: APROXIMACIÓN. La respuesta no trae historial de pagos,
  *   solo `fecha_ultimo_pago`, `total` y `saldo`. Para las cuentas cuyo último
  *   pago cae en el mes en curso se toma `total − saldo` como proxy del monto
@@ -139,7 +117,7 @@ const esMismoMesUTC = (isoTimestamp: string, todayUTC: number): boolean => {
  */
 export const computeCxcKpis = (
   cuentas: CuentaPorCobrar[],
-  todayUTC: number,
+  today: string,
 ): CxCKpis => {
   let totalPorCobrar = 0;
   let totalVencido = 0;
@@ -151,18 +129,18 @@ export const computeCxcKpis = (
     const saldo = safeParseAmount(c.saldo);
     totalPorCobrar += saldo;
 
-    if (isCuentaVencida(c, todayUTC)) {
+    if (isCuentaVencida(c, today)) {
       totalVencido += saldo;
       cuentasVencidas += 1;
     }
 
     if (saldo > 0) {
-      // 1..30: excluye lo que vence HOY (dias = 0), que ya cuenta como vencido.
-      const dias = daysUntilDue(c.fecha_vencimiento, todayUTC);
-      if (dias >= 1 && dias <= 30) porVencer30 += saldo;
+      // 0..30: lo que vence HOY (dias = 0) aún no está vencido.
+      const dias = daysUntilDue(c.fecha_vencimiento, today);
+      if (dias !== null && dias >= 0 && dias <= 30) porVencer30 += saldo;
     }
 
-    if (c.fecha_ultimo_pago && esMismoMesUTC(c.fecha_ultimo_pago, todayUTC)) {
+    if (c.fecha_ultimo_pago && esMismoMes(c.fecha_ultimo_pago, today)) {
       const abonado = safeParseAmount(c.total) - saldo;
       if (abonado > 0) cobradoEsteMes += abonado;
     }
@@ -173,7 +151,7 @@ export const computeCxcKpis = (
 
 // Rangos de antigüedad (días de atraso). El último es abierto (91 → ∞).
 const AGING_DEFS: Array<{ key: string; label: string; min: number; max: number }> = [
-  { key: "0-30", label: "0–30 días", min: 0, max: 30 },
+  { key: "1-30", label: "1–30 días", min: 1, max: 30 },
   { key: "31-60", label: "31–60 días", min: 31, max: 60 },
   { key: "61-90", label: "61–90 días", min: 61, max: 90 },
   { key: "90+", label: "+90 días", min: 91, max: Infinity },
@@ -183,22 +161,21 @@ const AGING_DEFS: Array<{ key: string; label: string; min: number; max: number }
  * Distribuye el saldo vencido por antigüedad. El conjunto de "vencidas" usa la
  * MISMA definición `isCuentaVencida` que el KPI "Vencido" y la alerta, de modo
  * que el total de la antigüedad coincide EXACTAMENTE con `totalVencido`: toda
- * cuenta vencida tiene `diasVencido >= 0` (0 = vence hoy, que cae en el primer
- * rango "0–30") y los rangos cubren `[0, ∞)` sin huecos, así que cada cuenta
- * cae en exactamente uno. Cada cuenta se ubica según sus días de atraso
+ * cuenta vencida tiene `diasVencido >= 1` (vencer hoy aún no es vencida) y los
+ * rangos cubren `[1, ∞)` sin huecos, así que cada cuenta cae en exactamente uno. Cada cuenta se ubica según sus días de atraso
  * (`hoy − fecha_vencimiento`).
  */
 export const computeAgingBuckets = (
   cuentas: CuentaPorCobrar[],
-  todayUTC: number,
+  today: string,
 ): AgingBucket[] => {
-  const vencidas = cuentas.filter((c) => isCuentaVencida(c, todayUTC));
+  const vencidas = cuentas.filter((c) => isCuentaVencida(c, today));
 
   return AGING_DEFS.map(({ key, label, min, max }) => {
     let count = 0;
     let amount = 0;
     for (const c of vencidas) {
-      const dias = diasVencido(c.fecha_vencimiento, todayUTC);
+      const dias = diasVencido(c.fecha_vencimiento, today);
       if (dias >= min && dias <= max) {
         count += 1;
         amount += safeParseAmount(c.saldo);

@@ -7,13 +7,13 @@ import { ErrorState } from "@/src/components/ErrorState";
 import { StatusBadge } from "@/src/components/StatusBadge";
 import { formatCurrency, safeParseAmount } from "@/src/utils/formatCurrency";
 import { formatShortDate } from "@/src/utils/formatDate";
+import { useBackendToday } from "@/src/hooks/useBackendToday";
 import { CXC_ESTATUS_CONFIG } from "../constants/cxcEstatus";
 import { useCuentaPorCobrarDetail } from "../hooks/useCuentaPorCobrarDetail";
 import {
   diasVencido,
   formatFolioCxc,
   isCuentaVencida,
-  startOfTodayUTC,
 } from "../utils/accounts-receivable.utils";
 import { AccountsReceivableFacturaSection } from "./AccountsReceivableFacturaSection";
 import { AccountsReceivablePolizasSection } from "./AccountsReceivablePolizasSection";
@@ -46,7 +46,7 @@ export function AccountsReceivableDetailDialog({
   // leer `estatus === "Vencida"`— es lo que impide que el detalle contradiga a
   // la fila de la que se abrió: una cuenta vencida puede seguir llegando como
   // `Pendiente`/`Parcial`, porque `estatus` es un enum de una sola dimensión.
-  const today = startOfTodayUTC();
+  const today = useBackendToday();
   const estaVencida = cuenta ? isCuentaVencida(cuenta, today) : false;
   const diasDeAtraso = cuenta ? diasVencido(cuenta.fecha_vencimiento, today) : 0;
 
@@ -92,10 +92,7 @@ export function AccountsReceivableDetailDialog({
           {estaVencida && (
             <div className="rounded-xl border border-red-200 dark:border-red-800/50 bg-red-50 dark:bg-red-900/20 px-4 py-2.5 text-sm">
               <p className="text-red-700 dark:text-red-400">
-                Cuenta vencida{" "}
-                {diasDeAtraso === 0
-                  ? "hoy"
-                  : `hace ${diasDeAtraso} ${diasDeAtraso === 1 ? "día" : "días"}`}
+                Cuenta vencida hace {diasDeAtraso} {diasDeAtraso === 1 ? "día" : "días"}
                 , con un saldo de{" "}
                 <span className="font-semibold tabular-nums">
                   {formatCurrency(safeParseAmount(cuenta.saldo), { currency: cuenta.moneda_codigo })}

@@ -3,7 +3,8 @@
 import { CxcIcon, ClockIcon, ErrorIcon, CheckCircleIcon } from "@/src/components/Icons";
 import KpiGrid, { type KpiItem } from "@/src/components/KpiGrid";
 import { useCuentasPorCobrar } from "../hooks/useCuentasPorCobrar";
-import { computeCxcKpis, startOfTodayUTC } from "../utils/accounts-receivable.utils";
+import { computeCxcKpis } from "../utils/accounts-receivable.utils";
+import { useBackendToday } from "@/src/hooks/useBackendToday";
 
 // Formato compacto (sin centavos) para los valores grandes de las tarjetas KPI.
 const formatKpi = (value: number) =>
@@ -13,10 +14,11 @@ const formatKpi = (value: number) =>
     maximumFractionDigits: 0,
   }).format(value);
 
-// Etiqueta del mes en curso (p. ej. "Julio 2026"), derivada de "hoy" en UTC para
-// mantener el mismo marco que el resto de los cálculos de fecha.
-const formatMonthLabel = (todayUTC: number) => {
-  const label = new Date(todayUTC).toLocaleDateString("es-MX", {
+// Etiqueta del mes en curso (p. ej. "Julio 2026"), derivada de `today`
+// ("YYYY-MM-DD", el día del backend). Se lee como medianoche UTC y se formatea en
+// UTC para no cambiar de mes según la zona del navegador.
+const formatMonthLabel = (today: string) => {
+  const label = new Date(Date.parse(today)).toLocaleDateString("es-MX", {
     timeZone: "UTC",
     month: "long",
     year: "numeric",
@@ -38,7 +40,7 @@ export const AccountsReceivableStats = () => {
   const showPlaceholder = isLoading || (isError && !hasLoaded);
 
   // "Hoy" se calcula UNA sola vez y se pasa a los cálculos, evitando desfaces.
-  const today = startOfTodayUTC();
+  const today = useBackendToday();
   const kpis = computeCxcKpis(cuentas, today);
 
   const items: KpiItem[] = [

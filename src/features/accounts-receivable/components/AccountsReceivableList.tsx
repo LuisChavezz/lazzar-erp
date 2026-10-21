@@ -12,11 +12,11 @@ import { accountsReceivableColumns } from "./AccountsReceivableColumns";
 import { AccountsReceivableAgingSummary } from "./AccountsReceivableAgingSummary";
 import { RegisterPendingInvoiceDialog } from "./RegisterPendingInvoiceDialog";
 import { useCuentasPorCobrar } from "../hooks/useCuentasPorCobrar";
+import { useBackendToday } from "@/src/hooks/useBackendToday";
 import {
   computeAgingBuckets,
   computeCxcKpis,
   mapCuentasToRows,
-  startOfTodayUTC,
 } from "../utils/accounts-receivable.utils";
 
 // Valores exactos del estatus del backend. El filtro de la tabla es en cliente:
@@ -46,8 +46,9 @@ export const AccountsReceivableList = () => {
   // `InvoiceList`.
   const showError = isInitialLoadError(isError, hasLoaded);
 
-  // "Hoy" se calcula UNA sola vez y se comparte entre filas, KPIs y antigüedad.
-  const today = startOfTodayUTC();
+  // "Hoy" (el día del backend) se calcula UNA sola vez y se comparte entre filas,
+  // KPIs y antigüedad; vuelve a pintar al cambiar de día.
+  const today = useBackendToday();
   const rows = mapCuentasToRows(cuentas, today);
   const kpis = computeCxcKpis(cuentas, today);
   const agingBuckets = computeAgingBuckets(cuentas, today);
