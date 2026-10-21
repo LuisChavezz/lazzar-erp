@@ -31,6 +31,12 @@ interface SingleSelectPickerDialogContentProps<T> {
   /** Se invoca al pulsar "Confirmar selección" con el ítem tentativo elegido. */
   onConfirm: (item: T) => void;
   onCancel: () => void;
+  /**
+   * OPCIONAL (apagado por defecto): la selección tentativa queda fija arriba
+   * de la lista y visible aunque la búsqueda la excluya (ver
+   * `SearchableSelectList.pinSelected`, issue #262).
+   */
+  pinSelected?: boolean;
 }
 
 /**
@@ -66,6 +72,7 @@ export function SingleSelectPickerDialogContent<T>({
   renderContent,
   onConfirm,
   onCancel,
+  pinSelected = false,
 }: SingleSelectPickerDialogContentProps<T>) {
   // Selección tentativa: no se propaga al formulario hasta confirmar.
   const [tentativeKey, setTentativeKey] = useState<string | number | null>(selectedKey);
@@ -99,6 +106,7 @@ export function SingleSelectPickerDialogContent<T>({
           noResultsMessage={noResultsMessage}
           renderIndicator={renderRadioIndicator}
           renderContent={renderContent}
+          pinSelected={pinSelected}
         />
       )}
 

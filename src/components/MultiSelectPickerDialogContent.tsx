@@ -28,6 +28,12 @@ interface MultiSelectPickerDialogContentProps<T> {
   /** Se invoca al pulsar "Confirmar selección" con TODOS los ítems tentativos. */
   onConfirm: (items: T[]) => void;
   onCancel: () => void;
+  /**
+   * OPCIONAL (apagado por defecto): la selección tentativa queda fija arriba
+   * de la lista y visible aunque la búsqueda la excluya (ver
+   * `SearchableSelectList.pinSelected`, issue #262).
+   */
+  pinSelected?: boolean;
   /** Etiqueta del contador, en singular y plural (p. ej. "cuenta"/"cuentas"). */
   countLabel?: { singular: string; plural: string };
 }
@@ -67,6 +73,7 @@ export function MultiSelectPickerDialogContent<T>({
   renderContent,
   onConfirm,
   onCancel,
+  pinSelected = false,
   countLabel = { singular: "seleccionado", plural: "seleccionados" },
 }: MultiSelectPickerDialogContentProps<T>) {
   // Selección tentativa: no se propaga al llamador hasta confirmar. Arranca
@@ -136,6 +143,7 @@ export function MultiSelectPickerDialogContent<T>({
             noResultsMessage={noResultsMessage}
             renderIndicator={renderCheckboxIndicator}
             renderContent={renderContent}
+            pinSelected={pinSelected}
           />
         </div>
       )}

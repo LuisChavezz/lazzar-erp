@@ -19,6 +19,13 @@ interface SearchableSelectListProps<T> {
   emptyMessage: string;
   /** Mensaje cuando el filtro de búsqueda no encuentra resultados. */
   noResultsMessage: string;
+  /**
+   * OPCIONAL (apagado por defecto). Los ítems seleccionados (`isSelected`) se
+   * pintan PRIMERO y siguen visibles aunque la búsqueda los excluya, para que
+   * confirmar nunca aplique una selección que el usuario ya no ve (issue #262).
+   * Sin la prop la lista se comporta exactamente igual que siempre.
+   */
+  pinSelected?: boolean;
 }
 
 /**
@@ -39,14 +46,20 @@ export function SearchableSelectList<T>({
   renderContent,
   emptyMessage,
   noResultsMessage,
+  pinSelected = false,
 }: SearchableSelectListProps<T>) {
   const [search, setSearch] = useState("");
 
   const filteredItems = useMemo(() => {
     const term = search.toLowerCase().trim();
-    if (!term) return items;
-    return items.filter((item) => filterPredicate(item, term));
-  }, [items, search, filterPredicate]);
+    if (!pinSelected) {
+      if (!term) return items;
+      return items.filter((item) => filterPredicate(item, term));
+    }
+    const selected = items.filter((item) => isSelected(item));
+    const rest = items.filter((item) => !isSelected(item));
+    return [...selected, ...(term ? rest.filter((item) => filterPredicate(item, term)) : rest)];
+  }, [items, search, filterPredicate, pinSelected, isSelected]);
 
   return (
     <div className="flex flex-col gap-3">
