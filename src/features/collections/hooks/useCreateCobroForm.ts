@@ -1,0 +1,267 @@
+"use client";
+
+import { useRef, useState } from "react";
+import type { FormEvent } from "react";
+import { useForm } from "@tanstack/react-form";
+import type { FormFieldError } from "@/src/utils/getFieldError";
+import { useAccountingCustomers } from "@/src/features/accounting-customers/hooks/useAccountingCustomers";
+import type { AccountingCustomer } from "@/src/features/accounting-customers/interfaces/accounting-customer.interface";
+import { useBankAccounts } from "@/src/features/bank-accounts/hooks/useBankAccounts";
+import type { CuentaPorCobrar } from "@/src/features/accounts-receivable/interfaces/accounts-receivable.interface";
+import {
+  CobroFormSchema,
+  createEmptyCobroForm,
+  type CobroLineFormValues,
+} from "../schemas/createCobro.schema";
+import { buildCobroPayload } from "../services/actions";
+import { useCreateCobro, type ParsedCobroError } from "./useCreateCobro";
+
+const LINE_ERROR_PREFIX = "cobro_detalles";
+
+/**
+ * Ruta de un CAMPO de una línea (`cobro_detalles.<i>.<campo>`): captura el índice
+ * y el campo para limpiar también el error de LÍNEA (`._form`) de esa línea.
+ */
+const LINE_FIELD_PATH_RE = new RegExp(`^${LINE_ERROR_PREFIX}\\.(\\d+)\\.(.+)$`);
+
+/** Etiqueta de un cliente en el buscador y en el campo una vez elegido. */
+export const customerLabel = (customer: Pick<AccountingCustomer, "razon_social" | "nombre">) =>
+  customer.razon_social || customer.nombre;
+
+/** Siembra una línea a partir de la CxC elegida en el selector. */
+const lineFromCuentaPorCobrar = (cuenta: CuentaPorCobrar): CobroLineFormValues => ({
+  cxc: cuenta.id,
+  saldo: cuenta.saldo,
+  moneda_codigo: cuenta.moneda_codigo,
+  factura_folio: cuenta.factura_folio || `CxC #${cuenta.id}`,
+  // Arranca en el SALDO COMPLETO (el caso normal); editable para abonos parciales.
+  importe_aplicado: cuenta.saldo,
+  observaciones: "",
+});
+
+export function useCreateCobroForm({ onSuccess }: { onSuccess?: () => void } = {}) {
+  // ── Catálogos ─────────────────────────────────────────────────────────────
+  // Ninguno de los dos hooks está migrado a `useGuardedQuery`: exponen el
+  // `isError` crudo, así que aquí se reduce a "falló la PRIMERA carga". Un
+  // refetch fallido con datos en caché no debe tirar el formulario y las líneas
+  // ya capturadas.
+  const {
+    customers,
+    hasLoaded: hasLoadedCustomers,
+    isLoading: isLoadingCustomers,
+    isError: isErrorCustomers,
+  } = useAccountingCustomers();
+  const {
+    bankAccounts,
+    hasLoaded: hasLoadedBankAccounts,
+    isLoading: isLoadingBankAccounts,
+    isError: isErrorBankAccounts,
+  } = useBankAccounts();
+
+  const isLoadingFormData = isLoadingCustomers || isLoadingBankAccounts;
+  const isErrorFormData =
+    (isErrorCustomers && !hasLoadedCustomers) || (isErrorBankAccounts && !hasLoadedBankAccounts);
+
+  // `clientes-contabilidad/` ya devuelve solo activos; se filtra de nuevo por si acaso.
+  const activeCustomers = customers.filter((customer) => customer.activo);
+
+  // Solo cuentas ACTIVAS (el backend aceptaría una inactiva).
+  const activeBankAccounts = bankAccounts.filter((account) => account.activo);
+  const bankAccountOptions = activeBankAccounts.map((account) => ({
+    value: account.id,
+    label: [account.alias, account.banco_nombre, account.moneda_codigo].filter(Boolean).join(" · "),
+  }));
+
+  const missingItems: string[] = [];
+  if (activeCustomers.length === 0) missingItems.push("Clientes activos");
+  if (bankAccountOptions.length === 0) missingItems.push("Cuentas bancarias activas");
+
+  // ── Estado de UI ──────────────────────────────────────────────────────────
+  // Errores por ruta ("total_cobrado", "cobro_detalles.0.importe_aplicado").
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [serverBanner, setServerBanner] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  /** Texto del buscador de cliente (no es el cliente elegido: ver `cliente`). */
+  const [customerQuery, setCustomerQuery] = useState("");
+
+  // Claves estables por línea, para que borrar una intermedia no reutilice el
+  // estado local de otra.
+  const lineKeyCounter = useRef(0);
+  const [lineKeys, setLineKeys] = useState<number[]>([]);
+
+  // ── Errores ───────────────────────────────────────────────────────────────
+  const getError = (path: string): FormFieldError | undefined =>
+    errors[path] ? { message: errors[path] } : undefined;
+
+  const clearError = (path: string) => {
+    setErrors((prev) => {
+      // Editar un campo de una línea limpia también el error de esa LÍNEA y el
+      // del TOTAL (el cuadre del backend llega en `total_cobrado`, que no tiene
+      // input propio que lo limpie).
+      const match = LINE_FIELD_PATH_RE.exec(path);
+      const keys = [
+        path,
+        match && match[2] !== "_form" ? `${LINE_ERROR_PREFIX}.${match[1]}._form` : null,
+        match ? "total_cobrado" : null,
+      ].filter((key): key is string => key !== null);
+      if (!keys.some((key) => key in prev)) return prev;
+      const next = { ...prev };
+      keys.forEach((key) => delete next[key]);
+      return next;
+    });
+  };
+
+  /** Descarta los errores de línea (y el banner): quitar líneas recorre índices. */
+  const resetLineErrors = () => {
+    setErrors((prev) =>
+      Object.fromEntries(Object.entries(prev).filter(([key]) => !key.startsWith(LINE_ERROR_PREFIX))),
+    );
+    setServerBanner(null);
+  };
+
+  const handleServerError = (parsed: ParsedCobroError) => {
+    const next: Record<string, string> = {};
+    Object.entries(parsed.fieldErrors).forEach(([field, message]) => {
+      if (message) next[field] = message;
+    });
+    Object.entries(parsed.lineErrors).forEach(([index, fields]) => {
+      Object.entries(fields).forEach(([field, message]) => {
+        next[`${LINE_ERROR_PREFIX}.${index}.${field}`] = message;
+      });
+    });
+    setErrors((prev) => ({ ...prev, ...next }));
+
+    const hasFieldOrLine =
+      Object.keys(parsed.fieldErrors).length > 0 || Object.keys(parsed.lineErrors).length > 0;
+    const detail = parsed.formError ?? (hasFieldOrLine ? "Revisa los campos marcados." : "Intenta de nuevo.");
+    // El alta es atómica: se dice explícitamente que NADA quedó registrado.
+    setServerBanner(`No se registró ningún cobro. ${detail}`);
+  };
+
+  const { mutateAsync: createCobroMutation, isPending: isCreating } = useCreateCobro(handleServerError);
+
+  // ── Formulario ────────────────────────────────────────────────────────────
+  const form = useForm({
+    defaultValues: createEmptyCobroForm(),
+    onSubmit: async ({ value }) => {
+      setServerBanner(null);
+
+      const parsed = CobroFormSchema.safeParse(value);
+      if (!parsed.success) {
+        const nextErrors: Record<string, string> = {};
+        parsed.error.issues.forEach((issue) => {
+          const key = issue.path.join(".");
+          if (!nextErrors[key]) nextErrors[key] = issue.message;
+        });
+        setErrors(nextErrors);
+        return;
+      }
+      setErrors({});
+      setIsSubmitting(true);
+
+      try {
+        // Hoy el alta solo crea cobros aplicados; los borradores son EC-548.
+        await createCobroMutation(buildCobroPayload(parsed.data, "Aplicado"));
+        resetAll();
+        onSuccess?.();
+      } catch {
+        // Ya repartido en `handleServerError` y avisado por toast; se captura
+        // para que el rechazo no escape del `void form.handleSubmit()`.
+      } finally {
+        setIsSubmitting(false);
+      }
+    },
+  });
+
+  const isPending = isSubmitting || isCreating;
+
+  const resetAll = () => {
+    // Valores frescos en cada limpieza (no un objeto compartido).
+    form.reset(createEmptyCobroForm());
+    setLineKeys([]);
+    setErrors({});
+    setServerBanner(null);
+    setCustomerQuery("");
+  };
+
+  const clearLines = () => {
+    form.setFieldValue("cobro_detalles", []);
+    setLineKeys([]);
+    resetLineErrors();
+  };
+
+  // ── Líneas ────────────────────────────────────────────────────────────────
+  const addLines = (cuentas: CuentaPorCobrar[]) => {
+    if (cuentas.length === 0) return;
+    const newKeys = cuentas.map((cuenta) => {
+      form.pushFieldValue("cobro_detalles", lineFromCuentaPorCobrar(cuenta));
+      return lineKeyCounter.current++;
+    });
+    setLineKeys((prev) => [...prev, ...newKeys]);
+    // Agregar al final no recorre índices: los errores de línea siguen válidos.
+    clearError("cobro_detalles");
+  };
+
+  const removeLine = (index: number) => {
+    form.removeFieldValue("cobro_detalles", index);
+    setLineKeys((prev) => prev.filter((_, i) => i !== index));
+    resetLineErrors();
+  };
+
+  /**
+   * Cambiar de cliente VACÍA las líneas: el backend rechaza CxC de otro cliente,
+   * y las del anterior ya no aplican.
+   */
+  const handleClienteChange = (customer: AccountingCustomer | null) => {
+    const nextId = customer?.id ?? 0;
+    setCustomerQuery(customer ? customerLabel(customer) : "");
+    if (nextId === form.getFieldValue("cliente")) return;
+    form.setFieldValue("cliente", nextId);
+    clearLines();
+    clearError("cliente");
+  };
+
+  /**
+   * Cambiar de cuenta bancaria VACÍA las líneas: la cuenta fija la moneda del
+   * cobro, y las CxC elegidas eran de la moneda anterior.
+   */
+  const handleCuentaChange = (cuentaId: number) => {
+    if (cuentaId === form.getFieldValue("cuenta_bancaria")) return;
+    const account = activeBankAccounts.find((item) => item.id === cuentaId);
+    form.setFieldValue("cuenta_bancaria", cuentaId);
+    form.setFieldValue("moneda", account?.moneda_codigo || null);
+    clearLines();
+    clearError("cuenta_bancaria");
+  };
+
+  // ── Submit / reset ────────────────────────────────────────────────────────
+  const handleFormSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    void form.handleSubmit();
+  };
+
+  return {
+    form,
+    isPending,
+    isLoadingFormData,
+    isErrorFormData,
+    missingItems,
+    customers: activeCustomers,
+    customerQuery,
+    setCustomerQuery,
+    bankAccounts: activeBankAccounts,
+    bankAccountOptions,
+    lineKeys,
+    serverBanner,
+    dismissBanner: () => setServerBanner(null),
+    getError,
+    clearError,
+    addLines,
+    removeLine,
+    handleClienteChange,
+    handleCuentaChange,
+    handleFormSubmit,
+    handleReset: resetAll,
+  };
+}
