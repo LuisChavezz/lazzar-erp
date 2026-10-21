@@ -1,9 +1,8 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
-import { PrecheckError, toPrecheckError, useMutationLock } from "@/src/hooks/useMutationLock";
-import { getCobro, stampCobroRep } from "../services/actions";
+import { stampCobroRep } from "../services/actions";
 import type { Cobro } from "../interfaces/collection.interface";
-import { writeCobroToList } from "./cobroQueryCache";
+import { useCobroAction } from "./useCobroAction";
 import {
   COBRO_REP_PENDING_MESSAGE,
   isCobroRepPending,
@@ -25,7 +24,8 @@ export type StampCobroRepResult =
 
 /**
  * Timbra el REP de UN cobro (`POST /finanzas/cobros/{id}/timbrar-rep/`), un
- * acto fiscal irreversible. Mismo esquema que `useStampInvoice` (Facturación):
+ * acto fiscal irreversible. Mismo esquema que `useStampInvoice` (Facturación),
+ * sobre el esqueleto compartido `useCobroAction`:
  *
  * - Candado contra el doble envío: la mutación misma, con `mutationKey` POR
  *   COBRO (`useMutationLock`).
@@ -39,23 +39,13 @@ export type StampCobroRepResult =
  */
 export const useStampCobroRep = (cobroId: number) => {
   const queryClient = useQueryClient();
-  const mutationKey = stampCobroRepMutationKey(cobroId);
-  const { isRunning: isStamping, isIdle } = useMutationLock(mutationKey);
 
-  const mutation = useMutation<StampCobroRepResult, unknown, void>({
-    mutationKey,
-    mutationFn: async () => {
-      let current: Cobro;
-      try {
-        current = await getCobro(cobroId);
-      } catch (error) {
-        throw toPrecheckError(error, "No se pudo consultar el cobro.");
-      }
-      writeCobroToList(queryClient, current);
+  const { trigger: stamp, isRunning: isStamping } = useCobroAction<StampCobroRepResult>({
+    mutationKey: stampCobroRepMutationKey(cobroId),
+    cobroId,
+    run: async (current) => {
       if (!isCobroRepStampable(current)) return { outcome: "not-stampable", cobro: current };
-      const cobro = await stampCobroRep(cobroId);
-      writeCobroToList(queryClient, cobro);
-      return { outcome: "stamped", cobro };
+      return { outcome: "stamped", cobro: await stampCobroRep(cobroId) };
     },
     onSuccess: ({ outcome, cobro }) => {
       const label = `#${cobro.id}`;
@@ -73,22 +63,11 @@ export const useStampCobroRep = (cobroId: number) => {
         cobro.rep_uuid ? `REP del cobro ${label} timbrado. UUID ${cobro.rep_uuid}` : `REP del cobro ${label} timbrado`,
       );
     },
-    onError: (error) => {
-      toast.error(error instanceof PrecheckError ? error.message : stampCobroRepErrorMessage(error));
-    },
+    errorMessage: stampCobroRepErrorMessage,
     onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: ["cobros"] });
     },
   });
-
-  /**
-   * Dispara el timbrado salvo que ya haya uno en vuelo para ESTE cobro.
-   * `onSettled` corre al terminar, con cualquier resultado.
-   */
-  const stamp = (options: { onSettled?: () => void } = {}) => {
-    if (!isIdle()) return;
-    mutation.mutate(undefined, { onSettled: options.onSettled });
-  };
 
   return { stamp, isStamping };
 };

@@ -1,22 +1,21 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
-import { PrecheckError, toPrecheckError, useMutationLock } from "@/src/hooks/useMutationLock";
+import { PrecheckError } from "@/src/hooks/useMutationLock";
 import { getCuentaPorCobrarDetail } from "@/src/features/accounts-receivable/services/actions";
-import { cancelCobro, getCobro } from "../services/actions";
+import { cancelCobro } from "../services/actions";
 import type { Cobro } from "../interfaces/collection.interface";
 import { cancelCobroErrorMessage, getCobroCancelBlockReason } from "../utils/cobroCancellation";
-import { isActionOutcomeUnknown } from "../utils/actionOutcome";
-import { invalidateCobroEffects, writeCobroToList } from "./cobroQueryCache";
+import { invalidateCobroEffects } from "./cobroQueryCache";
+import { useCobroAction } from "./useCobroAction";
 
 /** Candado de la cancelación, ÚNICO por cobro (ver `useCancelCobro`). */
 export const cancelCobroMutationKey = (cobroId: number) => ["cancel-cobro", cobroId] as const;
 
 /**
- * Cancela UN cobro (`POST /finanzas/cobros/{id}/cancelar/`). Mismo esquema que
- * `useStampCobroRep` y la cancelación de facturas:
+ * Cancela UN cobro (`POST /finanzas/cobros/{id}/cancelar/`), sobre el esqueleto
+ * compartido `useCobroAction` (candado por cobro, cobro fresco, escritura en el
+ * listado):
  *
- * - Candado contra el doble envío: la mutación misma, con `mutationKey` POR
- *   COBRO (`useMutationLock`).
  * - Antes del POST pide el cobro FRESCO y, por id, la CxC FRESCA de cada una de
  *   sus líneas, y vuelve a evaluar `getCobroCancelBlockReason`: si mientras el
  *   diálogo estaba abierto el cobro ganó un REP, se canceló, o se canceló una de
@@ -31,19 +30,11 @@ export const cancelCobroMutationKey = (cobroId: number) => ["cancel-cobro", cobr
  */
 export const useCancelCobro = (cobroId: number) => {
   const queryClient = useQueryClient();
-  const mutationKey = cancelCobroMutationKey(cobroId);
-  const { isRunning: isCancelling, isIdle } = useMutationLock(mutationKey);
 
-  const mutation = useMutation<Cobro, unknown, void>({
-    mutationKey,
-    mutationFn: async () => {
-      let current: Cobro;
-      try {
-        current = await getCobro(cobroId);
-      } catch (error) {
-        throw toPrecheckError(error, "No se pudo consultar el cobro.");
-      }
-      writeCobroToList(queryClient, current);
+  const { trigger: cancel, isRunning: isCancelling } = useCobroAction<{ cobro: Cobro }>({
+    mutationKey: cancelCobroMutationKey(cobroId),
+    cobroId,
+    run: async (current) => {
       // Solo las CxC de SUS líneas, en paralelo. Una que no responda (404 si es
       // de otra empresa o no existe, red) queda fuera del índice y la cancelación
       // se bloquea: no se puede saber si su factura está cancelada.
@@ -58,30 +49,20 @@ export const useCancelCobro = (cobroId: number) => {
       void queryClient.invalidateQueries({ queryKey: ["accounts-receivable"] });
       const blockReason = getCobroCancelBlockReason(current, cxcIndex);
       if (blockReason) throw new PrecheckError(blockReason);
-      return cancelCobro(cobroId);
+      return { cobro: await cancelCobro(cobroId) };
     },
-    onSuccess: (cobro) => {
-      writeCobroToList(queryClient, cobro);
+    onSuccess: ({ cobro }) => {
       invalidateCobroEffects(queryClient);
       toast.success(`Cobro #${cobro.id} cancelado`);
     },
-    onError: (error) => {
+    errorMessage: cancelCobroErrorMessage,
+    onError: (outcomeUnknown) => {
       // POST enviado sin respuesta: la reversión pudo aplicarse, así que se
       // refresca TODO lo que mueve, no solo el listado de cobros.
-      if (isActionOutcomeUnknown(error)) invalidateCobroEffects(queryClient);
+      if (outcomeUnknown) invalidateCobroEffects(queryClient);
       else void queryClient.invalidateQueries({ queryKey: ["cobros"] });
-      toast.error(error instanceof PrecheckError ? error.message : cancelCobroErrorMessage(error));
     },
   });
-
-  /**
-   * Dispara la cancelación salvo que ya haya una en vuelo para ESTE cobro.
-   * `onSettled` corre al terminar, con cualquier resultado.
-   */
-  const cancel = (options: { onSettled?: () => void } = {}) => {
-    if (!isIdle()) return;
-    mutation.mutate(undefined, { onSettled: options.onSettled });
-  };
 
   return { cancel, isCancelling };
 };
