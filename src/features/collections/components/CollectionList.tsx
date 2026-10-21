@@ -11,7 +11,9 @@ import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { getCollectionColumns } from "./CollectionColumns";
 import { CollectionDetailDialog } from "./CollectionDetailDialog";
 import { CreateCobroForm } from "./CreateCobroForm";
-import { COBRO_CREATE_PERMISSION } from "../constants/collectionPermissions";
+import { CobroRepStampDialog } from "./CobroRepStampDialog";
+import { COBRO_CREATE_PERMISSION, COBRO_REP_STAMP_PERMISSION } from "../constants/collectionPermissions";
+import { canStampCobroRep } from "../utils/cobroRepStamping";
 import { useBankAccounts } from "@/src/features/bank-accounts/hooks/useBankAccounts";
 import { useCobros } from "../hooks/useCobros";
 import { mapCobrosToRows } from "../utils/collection.utils";
@@ -31,13 +33,25 @@ export function CollectionList() {
   // identidad (`getRowId`), así que las celdas se actualizan sin remontarse.
   const rows = mapCobrosToRows(cobros, bankAccounts);
 
-  // Estado del diálogo en la VISTA, no en la celda: una celda se desmonta al
+  // Estado de los diálogos en la VISTA, no en la celda: una celda se desmonta al
   // ordenar, filtrar o paginar, y el estatus del cobro (uno de los filtros)
-  // cambiará cuando lleguen cancelar y timbrar (EC-544, EC-527). Esos diálogos
-  // se agregarán aquí mismo, con su id objetivo junto a `openDetailId`.
+  // cambiará cuando llegue cancelar (EC-544); ese diálogo se agregará aquí
+  // mismo, con su id objetivo junto a los de abajo.
   const [openDetailId, setOpenDetailId] = useState<number | null>(null);
+  // Timbrar el REP: se abre desde el detalle o desde el menú de la fila. El id
+  // vive aquí y el diálogo toma su copia al abrir (`useDialogSession`), porque
+  // la fila se relee tras timbrar.
+  const [stampRepId, setStampRepId] = useState<number | null>(null);
 
-  const columns = getCollectionColumns({ onViewDetail: setOpenDetailId });
+  // El permiso es del usuario; si el cobro es timbrable lo decide cada fila
+  // (`canStampCobroRep`).
+  const canStampRep = hasPermission(COBRO_REP_STAMP_PERMISSION, session?.user);
+
+  const columns = getCollectionColumns({
+    onViewDetail: setOpenDetailId,
+    onStampRep: setStampRepId,
+    canStampRep,
+  });
 
   // El cobro abierto se busca en el arreglo ya cargado: listado y retrieve
   // comparten `CobroSerializer`, líneas incluidas. Al refrescarse la lista el
@@ -110,8 +124,21 @@ export function CollectionList() {
           onOpenChange={(open) => {
             if (!open) setOpenDetailId(null);
           }}
+          onStampRep={
+            canStampCobroRep(detailCobro, session?.user) ? () => setStampRepId(detailCobro.id) : undefined
+          }
         />
       )}
+
+      {/* Montado siempre: la copia de `useDialogSession` sobrevive a la
+          animación de cierre y a que la fila se relea o desaparezca. */}
+      <CobroRepStampDialog
+        cobro={stampRepId !== null ? { id: stampRepId } : null}
+        open={stampRepId !== null}
+        onOpenChange={(open) => {
+          if (!open) setStampRepId(null);
+        }}
+      />
     </>
   );
 }

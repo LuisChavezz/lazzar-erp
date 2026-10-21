@@ -10,7 +10,8 @@ import {
   SectionTitle,
   textOrDash,
 } from "@/src/components/DetailDialogPrimitives";
-import { ExclamationTriangleIcon, ReceiptIcon } from "@/src/components/Icons";
+import { Button } from "@/src/components/Button";
+import { ExclamationTriangleIcon, ReceiptIcon, ShieldCheckIcon } from "@/src/components/Icons";
 import { formatShortDate, formatShortDateTime } from "@/src/utils/formatDate";
 import { useCuentasPorCobrar } from "@/src/features/accounts-receivable/hooks/useCuentasPorCobrar";
 import {
@@ -24,6 +25,7 @@ import {
   isLineMonedaMismatch,
   type CobroRow,
 } from "../utils/collection.utils";
+import { COBRO_REP_PENDING_MESSAGE, isCobroRepPending } from "../utils/cobroRepStamping";
 import { CobroAmount } from "./CobroAmount";
 
 interface CollectionDetailDialogProps {
@@ -38,9 +40,11 @@ interface CollectionDetailDialogProps {
   cobro: CobroRow;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** Abre la confirmación de "Timbrar REP"; sin ella no se ofrece el botón. */
+  onStampRep?: () => void;
 }
 
-export function CollectionDetailDialog({ cobro, open, onOpenChange }: CollectionDetailDialogProps) {
+export function CollectionDetailDialog({ cobro, open, onOpenChange, onStampRep }: CollectionDetailDialogProps) {
   // Sin parámetros: la MISMA entrada de caché que la pantalla de CxC, y con las
   // `Pagada`/`Cancelada` incluidas (las líneas de cobros viejos apuntan ahí).
   const {
@@ -54,6 +58,9 @@ export function CollectionDetailDialog({ cobro, open, onOpenChange }: Collection
   const cxcIndex = buildCxcIndex(cuentas);
   const mismatched = findMismatchedMonedas(cobro, moneda, cxcIndex);
   const cxcUnavailable = isErrorCxc && !hasLoadedCxc;
+  // Timbrado sin confirmar: la nota sustituye al botón (el backend rechaza
+  // timbrar de nuevo mientras siga marcado).
+  const repPending = isCobroRepPending(cobro);
 
   return (
     <MainDialog
@@ -130,9 +137,27 @@ export function CollectionDetailDialog({ cobro, open, onOpenChange }: Collection
         )}
 
         {/* ── Complemento de pago (REP) ───────────────────────────────── */}
-        {/* Aquí se colgarán "Timbrar REP" (EC-527) y su descarga (EC-545). */}
         <div>
-          <SectionTitle>Complemento de pago (REP)</SectionTitle>
+          <div className="flex items-start justify-between gap-3">
+            <SectionTitle>Complemento de pago (REP)</SectionTitle>
+            {/* Solo con permiso y un cobro timbrable (`canStampCobroRep`, lo
+                decide `CollectionList`); el diálogo vive allá. */}
+            {onStampRep && (
+              <Button type="button" variant="primary" onClick={onStampRep} className="mb-2">
+                <ShieldCheckIcon className="w-4 h-4" aria-hidden="true" />
+                Timbrar REP
+              </Button>
+            )}
+          </div>
+          {repPending && (
+            <div
+              role="status"
+              className="mb-2 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300"
+            >
+              <ExclamationTriangleIcon className="h-4 w-4 shrink-0 mt-0.5" aria-hidden="true" />
+              <p>{COBRO_REP_PENDING_MESSAGE}</p>
+            </div>
+          )}
           <div className="px-4 py-3 rounded-xl bg-slate-50 dark:bg-white/5">
             <InfoGrid>
               <InfoField label="UUID">

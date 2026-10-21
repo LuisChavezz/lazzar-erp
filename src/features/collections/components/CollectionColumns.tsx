@@ -2,7 +2,7 @@ import { ColumnDef, createColumnHelper, FilterFn } from "@tanstack/react-table";
 import { ActionMenu, ActionMenuItem } from "@/src/components/ActionMenu";
 import { ColumnHeaderFilter, type ColumnFilterOption } from "@/src/components/ColumnHeaderFilter";
 import { StatusBadge } from "@/src/components/StatusBadge";
-import { ChevronRightIcon, ViewIcon } from "@/src/components/Icons";
+import { ChevronRightIcon, ShieldCheckIcon, ViewIcon } from "@/src/components/Icons";
 import { safeParseAmount } from "@/src/utils/formatCurrency";
 import { formatShortDate } from "@/src/utils/formatDate";
 import {
@@ -11,6 +11,7 @@ import {
   COBRO_REFERENCIA_LABELS,
 } from "../constants/collectionStatus";
 import type { CobroRow } from "../utils/collection.utils";
+import { isCobroRepStampable } from "../utils/cobroRepStamping";
 import { CobroAmount } from "./CobroAmount";
 
 const columnHelper = createColumnHelper<CobroRow>();
@@ -43,6 +44,9 @@ const metodoFilterFn: FilterFn<CobroRow> = (row, _columnId, filterValue) =>
 
 interface CollectionColumnsCallbacks {
   onViewDetail: (id: number) => void;
+  onStampRep: (id: number) => void;
+  /** El usuario tiene el permiso de timbrar (`E-FIN-FACTURAS`). */
+  canStampRep: boolean;
 }
 
 /**
@@ -52,16 +56,27 @@ interface CollectionColumnsCallbacks {
  *
  * Las acciones solo INVOCAN callbacks: los diálogos se montan en
  * `CollectionList`, no aquí, porque una celda se desmonta al ordenar, filtrar o
- * paginar. Cancelar (EC-544) y timbrar el REP (EC-527) se agregan como entradas
- * de `menuItems` con su callback en `CollectionColumnsCallbacks`.
+ * paginar. Cancelar (EC-544) se agregará como entrada de `menuItems` con su
+ * callback en `CollectionColumnsCallbacks`.
  */
-const CobroIdCell = ({ cobro, onViewDetail }: { cobro: CobroRow } & CollectionColumnsCallbacks) => {
+const CobroIdCell = ({
+  cobro,
+  onViewDetail,
+  onStampRep,
+  canStampRep,
+}: { cobro: CobroRow } & CollectionColumnsCallbacks) => {
   const statusCfg = COBRO_ESTATUS_CONFIG[cobro.estatus];
   const statusLabel = statusCfg?.label ?? cobro.estatus;
   const cobroLabel = `#${cobro.id}`;
 
   const menuItems: ActionMenuItem[] = [
     { label: "Ver detalle", icon: ViewIcon, onSelect: () => onViewDetail(cobro.id) },
+    {
+      label: "Timbrar REP",
+      icon: ShieldCheckIcon,
+      onSelect: () => onStampRep(cobro.id),
+      visible: canStampRep && isCobroRepStampable(cobro),
+    },
   ];
 
   return (
@@ -109,7 +124,7 @@ const CobroIdCell = ({ cobro, onViewDetail }: { cobro: CobroRow } & CollectionCo
  * Los campos nullable que participan en la búsqueda global se colapsan a `""`
  * en el accessor (ver la nota de `getColumnCanGlobalFilter` en `DataTable`).
  */
-export const getCollectionColumns = ({ onViewDetail }: CollectionColumnsCallbacks) =>
+export const getCollectionColumns = ({ onViewDetail, onStampRep, canStampRep }: CollectionColumnsCallbacks) =>
   [
     columnHelper.accessor("id", {
       header: ({ column }) => (
@@ -121,7 +136,14 @@ export const getCollectionColumns = ({ onViewDetail }: CollectionColumnsCallback
       meta: { label: "Cobro" },
       size: 110,
       filterFn: estatusFilterFn,
-      cell: (info) => <CobroIdCell cobro={info.row.original} onViewDetail={onViewDetail} />,
+      cell: (info) => (
+        <CobroIdCell
+          cobro={info.row.original}
+          onViewDetail={onViewDetail}
+          onStampRep={onStampRep}
+          canStampRep={canStampRep}
+        />
+      ),
     }),
     columnHelper.accessor("fecha_cobro", {
       header: "Fecha",
