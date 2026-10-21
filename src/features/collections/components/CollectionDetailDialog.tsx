@@ -51,10 +51,11 @@ interface CollectionDetailDialogProps {
    */
   onCancel?: () => void;
   /**
-   * `canDownloadCobroRep` para este cobro y usuario. Con el REP timbrado, `true`
-   * ofrece "Descargar PDF/XML" y `false` (sin `R-FIN-FACTURAMA`) muestra una nota.
+   * ¿El usuario tiene el permiso de descarga del REP (`R-FIN-FACTURAMA`)? Solo
+   * el permiso: con el REP timbrado, `true` ofrece "Descargar PDF/XML" y `false`
+   * muestra una nota.
    */
-  canDownloadRep?: boolean;
+  hasRepDownloadPermission?: boolean;
 }
 
 export function CollectionDetailDialog({
@@ -63,7 +64,7 @@ export function CollectionDetailDialog({
   onOpenChange,
   onStampRep,
   onCancel,
-  canDownloadRep = false,
+  hasRepDownloadPermission = false,
 }: CollectionDetailDialogProps) {
   // Sin parámetros: la MISMA entrada de caché que la pantalla de CxC, y con las
   // `Pagada`/`Cancelada` incluidas (las líneas de cobros viejos apuntan ahí).
@@ -201,7 +202,7 @@ export function CollectionDetailDialog({
             )}
           </div>
           {repHasFile &&
-            (canDownloadRep ? (
+            (hasRepDownloadPermission ? (
               <CobroRepDownloadButtons cobro={cobro} />
             ) : (
               <p className="mb-2 text-xs text-slate-500 dark:text-slate-400">{COBRO_REP_DOWNLOAD_FORBIDDEN_MESSAGE}</p>

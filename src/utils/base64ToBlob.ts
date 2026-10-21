@@ -1,6 +1,7 @@
 /**
- * Convierte un string base64 PURO (sin el prefijo `data:<mime>;base64,`) en un
- * `Blob` del tipo indicado. Es la operación inversa de `blobToBase64`.
+ * Convierte un string base64 PURO en un `Blob` del tipo indicado. NO acepta un
+ * data URL: el prefijo `data:<mime>;base64,` hace que `atob` lance. Por eso no
+ * es la inversa directa de `blobToBase64`, que sí devuelve el data URL completo.
  *
  * El `type` lo decide quien llama: no se deduce del contenido ni de lo que
  * declare el origen. Se toleran saltos de línea y espacios (base64 con cortes

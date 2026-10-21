@@ -5,6 +5,7 @@ import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { firstDrfFieldMessage } from "@/src/utils/firstDrfFieldMessage";
 import { COBRO_REP_DOWNLOAD_PERMISSION } from "../constants/collectionPermissions";
 import type { Cobro, CobroRepFileFormat } from "../interfaces/collection.interface";
+import { isActionOutcomeUnknown } from "./actionOutcome";
 
 type CobroRepFileState = Pick<Cobro, "rep_uuid" | "rep_facturama_id">;
 
@@ -16,11 +17,12 @@ type CobroRepFileState = Pick<Cobro, "rep_uuid" | "rep_facturama_id">;
 export const hasCobroRepFile = (cobro: CobroRepFileState): boolean =>
   Boolean(cobro.rep_uuid) && Boolean(cobro.rep_facturama_id);
 
-/** ¿Se ofrecen "Descargar PDF/XML" del REP a ESTE usuario para ESTE cobro? */
-export const canDownloadCobroRep = (
-  cobro: CobroRepFileState,
-  user: PermissionContext | null | undefined,
-): boolean => hasPermission(COBRO_REP_DOWNLOAD_PERMISSION, user) && hasCobroRepFile(cobro);
+/**
+ * ¿Tiene ESTE usuario el permiso de descarga del REP? Solo el permiso: que el
+ * cobro tenga archivo lo dice `hasCobroRepFile`.
+ */
+export const hasRepDownloadPermission = (user: PermissionContext | null | undefined): boolean =>
+  hasPermission(COBRO_REP_DOWNLOAD_PERMISSION, user);
 
 /** Nota en la sección del REP cuando está timbrado pero el usuario no puede descargarlo. */
 export const COBRO_REP_DOWNLOAD_FORBIDDEN_MESSAGE = "La descarga del REP requiere acceso a Facturama.";
@@ -46,13 +48,17 @@ export class CobroRepFileUnreadableError extends Error {
  * Mensaje de un fallo al descargar el REP, en este orden:
  *
  * 1. 403: el `detail` del backend ("No tienes acceso a Facturama.").
- * 2. 502: Facturama no respondió (timeout, red o 5xx).
- * 3. Otro estatus con el cuerpo del passthrough (`{ error: "FACTURAMA_…",
+ * 2. Sin respuesta del backend (red caída, CORS por un corte).
+ * 3. Timeout del cliente o 502/503/504 (`isActionOutcomeUnknown` como
+ *    clasificador): Facturama o la puerta de enlace no entregaron el archivo.
+ *    Leer es seguro, así que no se usa la redacción de "resultado desconocido"
+ *    de las acciones que escriben.
+ * 4. Otro estatus con el cuerpo del passthrough (`{ error: "FACTURAMA_…",
  *    message, details }`): Facturama rechazó la petición. `error` es un código y
  *    `message` un texto genérico en inglés del cliente del backend, así que no
  *    se muestran tal cual.
- * 4. El archivo llegó vacío o no es base64.
- * 5. Errores DRF (400 del serializer) y, al final, el extractor genérico.
+ * 5. El archivo llegó vacío o no es base64.
+ * 6. Errores DRF (400 del serializer) y, al final, el extractor genérico.
  */
 export const downloadCobroRepErrorMessage = (error: unknown): string => {
   if (error instanceof CobroRepFileUnreadableError) return error.message;
@@ -62,11 +68,12 @@ export const downloadCobroRepErrorMessage = (error: unknown): string => {
     if (status === 403) {
       return firstDrfFieldMessage(error) ?? "No tienes acceso a Facturama.";
     }
-    if (status === 502) return "Facturama no entregó el archivo. Intenta de nuevo más tarde.";
+    const isTimeout = error.code === "ECONNABORTED" || error.code === "ETIMEDOUT";
+    if (!error.response && !isTimeout) return "No se recibió respuesta del servidor. Intenta de nuevo.";
+    if (isActionOutcomeUnknown(error)) return "Facturama no entregó el archivo. Intenta de nuevo más tarde.";
     if (typeof data?.error === "string" && data.error.startsWith("FACTURAMA_")) {
       return `Facturama no entregó el archivo del REP (HTTP ${status}).`;
     }
-    if (!error.response) return "No se recibió respuesta del servidor. Intenta de nuevo.";
   }
   return firstDrfFieldMessage(error) ?? extractErrorMessage(error, "No se pudo descargar el REP.");
 };

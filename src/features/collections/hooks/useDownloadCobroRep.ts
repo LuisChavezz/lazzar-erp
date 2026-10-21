@@ -22,7 +22,7 @@ export const downloadCobroRepMutationKey = (cobroId: number, format: CobroRepFil
  * del navegador ya es la confirmación); solo avisa el error. La mutación con
  * `mutationKey` por cobro y formato es el candado contra el doble clic.
  *
- * Quien lo usa ya comprobó `canDownloadCobroRep`; sin `rep_uuid` y
+ * Quien lo usa ya comprobó `hasCobroRepFile` y el permiso; sin `rep_uuid` y
  * `rep_facturama_id` el disparador no hace nada.
  */
 export const useDownloadCobroRep = (
@@ -47,6 +47,7 @@ export const useDownloadCobroRep = (
       }
       downloadBlob(blob, cobroRepFileName(repUuid, format));
     },
+    // Sin `toast.success` a propósito (decisión de producto): la descarga del navegador ya confirma.
     onError: (error) => {
       toast.error(downloadCobroRepErrorMessage(error));
     },

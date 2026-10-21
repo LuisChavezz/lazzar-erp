@@ -33,7 +33,7 @@ function CobroRepDownloadButton({ cobro, format }: { cobro: CobroRepFileSource; 
 /**
  * "Descargar PDF" y "Descargar XML" del REP timbrado. Cada botón tiene su propio
  * candado y su propio estado de carga. Quien lo monta ya comprobó
- * `canDownloadCobroRep`.
+ * `hasCobroRepFile` y `hasRepDownloadPermission`.
  */
 export function CobroRepDownloadButtons({ cobro }: { cobro: CobroRepFileSource }) {
   return (

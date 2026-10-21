@@ -132,7 +132,9 @@ test("Cobros — descarga del REP (PDF, XML, 403 y 502)", async ({ page }) => {
   await runStep("Paso 1 · El REP timbrado ofrece Descargar PDF y Descargar XML", async () => {
     await page.goto(RUTA);
     expect(new URL(page.url()).pathname, `el proxy rebotó ${RUTA}`).toBe(RUTA);
-    await page.locator("tbody tr").first().getByTitle("Ver detalle").click();
+    // El `#id` de la fila abre su menú de acciones; el detalle sale de su opción.
+    await page.locator("tbody tr").first().getByRole("button", { name: /^Ver acciones del cobro/ }).click();
+    await page.getByRole("menuitem", { name: "Ver detalle" }).click();
     await expect(page.getByText(REP_UUID)).toBeVisible();
     await expect(botonPdf).toBeVisible();
     await expect(botonXml).toBeVisible();
