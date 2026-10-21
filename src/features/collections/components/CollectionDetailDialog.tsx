@@ -11,7 +11,7 @@ import {
   textOrDash,
 } from "@/src/components/DetailDialogPrimitives";
 import { Button } from "@/src/components/Button";
-import { ExclamationTriangleIcon, ReceiptIcon, ShieldCheckIcon } from "@/src/components/Icons";
+import { BanIcon, ExclamationTriangleIcon, ReceiptIcon, ShieldCheckIcon } from "@/src/components/Icons";
 import { formatShortDate, formatShortDateTime } from "@/src/utils/formatDate";
 import { useCuentasPorCobrar } from "@/src/features/accounts-receivable/hooks/useCuentasPorCobrar";
 import {
@@ -26,6 +26,7 @@ import {
   type CobroRow,
 } from "../utils/collection.utils";
 import { COBRO_REP_PENDING_MESSAGE, isCobroRepPending } from "../utils/cobroRepStamping";
+import { getCobroCancelBlockReason } from "../utils/cobroCancellation";
 import { CobroAmount } from "./CobroAmount";
 
 interface CollectionDetailDialogProps {
@@ -42,9 +43,20 @@ interface CollectionDetailDialogProps {
   onOpenChange: (open: boolean) => void;
   /** Abre la confirmación de "Timbrar REP"; sin ella no se ofrece el botón. */
   onStampRep?: () => void;
+  /**
+   * Abre la confirmación de "Cancelar cobro"; sin ella no se ofrece el botón
+   * (sin permiso o cobro ya `Cancelado`, ver `canOfferCobroCancel`).
+   */
+  onCancel?: () => void;
 }
 
-export function CollectionDetailDialog({ cobro, open, onOpenChange, onStampRep }: CollectionDetailDialogProps) {
+export function CollectionDetailDialog({
+  cobro,
+  open,
+  onOpenChange,
+  onStampRep,
+  onCancel,
+}: CollectionDetailDialogProps) {
   // Sin parámetros: la MISMA entrada de caché que la pantalla de CxC, y con las
   // `Pagada`/`Cancelada` incluidas (las líneas de cobros viejos apuntan ahí).
   const {
@@ -61,6 +73,13 @@ export function CollectionDetailDialog({ cobro, open, onOpenChange, onStampRep }
   // Timbrado sin confirmar: la nota sustituye al botón (el backend rechaza
   // timbrar de nuevo mientras siga marcado).
   const repPending = isCobroRepPending(cobro);
+  // "Cancelar cobro": mientras las CxC cargan se muestra deshabilitado; si no se
+  // pudieron cargar, se bloquea (no se puede saber si alguna factura se canceló).
+  const isCxcPending = isLoadingCxc && !hasLoadedCxc;
+  const cancelBlockReason = isCxcPending
+    ? null
+    : getCobroCancelBlockReason(cobro, hasLoadedCxc ? cxcIndex : null);
+  const cancelNoteId = `cobro-${cobro.id}-cancel-note`;
 
   return (
     <MainDialog
@@ -83,6 +102,27 @@ export function CollectionDetailDialog({ cobro, open, onOpenChange, onStampRep }
       }
     >
       <div className="space-y-5">
+        {onCancel && (
+          <div className="flex flex-col items-end gap-1.5">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={onCancel}
+              disabled={isCxcPending || cancelBlockReason !== null}
+              aria-describedby={isCxcPending || cancelBlockReason ? cancelNoteId : undefined}
+              className="text-rose-600! dark:text-rose-400!"
+            >
+              <BanIcon className="w-4 h-4" aria-hidden="true" />
+              Cancelar cobro
+            </Button>
+            {(isCxcPending || cancelBlockReason) && (
+              <p id={cancelNoteId} className="max-w-md text-right text-xs text-slate-500 dark:text-slate-400">
+                {isCxcPending ? "Consultando las cuentas por cobrar del cobro…" : cancelBlockReason}
+              </p>
+            )}
+          </div>
+        )}
+
         {mismatched.length > 0 && (
           <div
             role="alert"
