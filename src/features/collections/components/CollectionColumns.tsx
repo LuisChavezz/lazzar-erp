@@ -11,7 +11,7 @@ import {
   COBRO_REFERENCIA_LABELS,
 } from "../constants/collectionStatus";
 import type { CobroRow } from "../utils/collection.utils";
-import { isCobroRepStampable } from "../utils/cobroRepStamping";
+import { useCollectionRowActionsContext } from "../hooks/useCollectionRowActions";
 import { CobroAmount } from "./CobroAmount";
 
 const columnHelper = createColumnHelper<CobroRow>();
@@ -44,9 +44,6 @@ const metodoFilterFn: FilterFn<CobroRow> = (row, _columnId, filterValue) =>
 
 interface CollectionColumnsCallbacks {
   onViewDetail: (id: number) => void;
-  onStampRep: (id: number) => void;
-  /** El usuario tiene el permiso de timbrar (`E-FIN-FACTURAS`). */
-  canStampRep: boolean;
 }
 
 /**
@@ -56,15 +53,12 @@ interface CollectionColumnsCallbacks {
  *
  * Las acciones solo INVOCAN callbacks: los diálogos se montan en
  * `CollectionList`, no aquí, porque una celda se desmonta al ordenar, filtrar o
- * paginar. Cancelar (EC-544) se agregará como entrada de `menuItems` con su
- * callback en `CollectionColumnsCallbacks`.
+ * paginar. "Timbrar REP" llega por `CollectionRowActionsProvider` (depende de
+ * la sesión: pasarla por la factoría remontaría las celdas al resolverse).
+ * Cancelar (EC-544) se agregará como otra entrada de `menuItems`.
  */
-const CobroIdCell = ({
-  cobro,
-  onViewDetail,
-  onStampRep,
-  canStampRep,
-}: { cobro: CobroRow } & CollectionColumnsCallbacks) => {
+const CobroIdCell = ({ cobro, onViewDetail }: { cobro: CobroRow } & CollectionColumnsCallbacks) => {
+  const { canStampRep, onStampRep } = useCollectionRowActionsContext();
   const statusCfg = COBRO_ESTATUS_CONFIG[cobro.estatus];
   const statusLabel = statusCfg?.label ?? cobro.estatus;
   const cobroLabel = `#${cobro.id}`;
@@ -75,7 +69,7 @@ const CobroIdCell = ({
       label: "Timbrar REP",
       icon: ShieldCheckIcon,
       onSelect: () => onStampRep(cobro.id),
-      visible: canStampRep && isCobroRepStampable(cobro),
+      visible: canStampRep(cobro),
     },
   ];
 
@@ -124,7 +118,7 @@ const CobroIdCell = ({
  * Los campos nullable que participan en la búsqueda global se colapsan a `""`
  * en el accessor (ver la nota de `getColumnCanGlobalFilter` en `DataTable`).
  */
-export const getCollectionColumns = ({ onViewDetail, onStampRep, canStampRep }: CollectionColumnsCallbacks) =>
+export const getCollectionColumns = ({ onViewDetail }: CollectionColumnsCallbacks) =>
   [
     columnHelper.accessor("id", {
       header: ({ column }) => (
@@ -136,14 +130,7 @@ export const getCollectionColumns = ({ onViewDetail, onStampRep, canStampRep }: 
       meta: { label: "Cobro" },
       size: 110,
       filterFn: estatusFilterFn,
-      cell: (info) => (
-        <CobroIdCell
-          cobro={info.row.original}
-          onViewDetail={onViewDetail}
-          onStampRep={onStampRep}
-          canStampRep={canStampRep}
-        />
-      ),
+      cell: (info) => <CobroIdCell cobro={info.row.original} onViewDetail={onViewDetail} />,
     }),
     columnHelper.accessor("fecha_cobro", {
       header: "Fecha",

@@ -12,11 +12,12 @@ import { getCollectionColumns } from "./CollectionColumns";
 import { CollectionDetailDialog } from "./CollectionDetailDialog";
 import { CreateCobroForm } from "./CreateCobroForm";
 import { CobroRepStampDialog } from "./CobroRepStampDialog";
-import { COBRO_CREATE_PERMISSION, COBRO_REP_STAMP_PERMISSION } from "../constants/collectionPermissions";
+import { COBRO_CREATE_PERMISSION } from "../constants/collectionPermissions";
+import { CollectionRowActionsProvider } from "../hooks/useCollectionRowActions";
 import { canStampCobroRep } from "../utils/cobroRepStamping";
 import { useBankAccounts } from "@/src/features/bank-accounts/hooks/useBankAccounts";
 import { useCobros } from "../hooks/useCobros";
-import { mapCobrosToRows } from "../utils/collection.utils";
+import { mapCobrosToRows, type CobroRow } from "../utils/collection.utils";
 
 export function CollectionList() {
   const { cobros, isLoading, isFetching, isInitialError, error, refetch } = useCobros();
@@ -43,15 +44,14 @@ export function CollectionList() {
   // la fila se relee tras timbrar.
   const [stampRepId, setStampRepId] = useState<number | null>(null);
 
-  // El permiso es del usuario; si el cobro es timbrable lo decide cada fila
-  // (`canStampCobroRep`).
-  const canStampRep = hasPermission(COBRO_REP_STAMP_PERMISSION, session?.user);
+  const columns = getCollectionColumns({ onViewDetail: setOpenDetailId });
 
-  const columns = getCollectionColumns({
-    onViewDetail: setOpenDetailId,
+  // "Timbrar REP" depende de la sesión: va por contexto para que las columnas
+  // no cambien (y las celdas no se remonten) cuando la sesión se resuelve.
+  const rowActions = {
+    canStampRep: (cobro: CobroRow) => canStampCobroRep(cobro, session?.user),
     onStampRep: setStampRepId,
-    canStampRep,
-  });
+  };
 
   // El cobro abierto se busca en el arreglo ya cargado: listado y retrieve
   // comparten `CobroSerializer`, líneas incluidas. Al refrescarse la lista el
@@ -72,7 +72,7 @@ export function CollectionList() {
   // botón "+ Nuevo cobro" en `actionButton`) sigue disponible durante la carga y
   // ante un error.
   return (
-    <>
+    <CollectionRowActionsProvider value={rowActions}>
       <DataTable
         columns={columns}
         data={rows}
@@ -139,6 +139,6 @@ export function CollectionList() {
           if (!open) setStampRepId(null);
         }}
       />
-    </>
+    </CollectionRowActionsProvider>
   );
 }
