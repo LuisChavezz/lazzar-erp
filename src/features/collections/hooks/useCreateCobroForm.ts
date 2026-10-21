@@ -26,7 +26,7 @@ const LINE_ERROR_PREFIX = "cobro_detalles";
  */
 const LINE_FIELD_PATH_RE = new RegExp(`^${LINE_ERROR_PREFIX}\\.(\\d+)\\.(.+)$`);
 
-/** Etiqueta de un cliente en el buscador y en el campo una vez elegido. */
+/** Etiqueta de un cliente en el selector y en el campo una vez elegido. */
 export const customerLabel = (customer: Pick<AccountingCustomer, "razon_social" | "nombre">) =>
   customer.razon_social || customer.nombre;
 
@@ -83,8 +83,6 @@ export function useCreateCobroForm({ onSuccess }: { onSuccess?: () => void } = {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [serverBanner, setServerBanner] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  /** Texto del buscador de cliente (no es el cliente elegido: ver `cliente`). */
-  const [customerQuery, setCustomerQuery] = useState("");
 
   // Claves estables por línea, para que borrar una intermedia no reutilice el
   // estado local de otra.
@@ -217,7 +215,6 @@ export function useCreateCobroForm({ onSuccess }: { onSuccess?: () => void } = {
     setLineKeys([]);
     setErrors({});
     setServerBanner(null);
-    setCustomerQuery("");
   };
 
   const clearLines = () => {
@@ -250,7 +247,6 @@ export function useCreateCobroForm({ onSuccess }: { onSuccess?: () => void } = {
    */
   const handleClienteChange = (customer: AccountingCustomer | null) => {
     const nextId = customer?.id ?? 0;
-    setCustomerQuery(customer ? customerLabel(customer) : "");
     if (nextId === form.getFieldValue("cliente")) return;
     form.setFieldValue("cliente", nextId);
     clearLines();
@@ -284,8 +280,6 @@ export function useCreateCobroForm({ onSuccess }: { onSuccess?: () => void } = {
     isErrorFormData,
     missingItems,
     customers: activeCustomers,
-    customerQuery,
-    setCustomerQuery,
     bankAccounts: activeBankAccounts,
     bankAccountOptions,
     selectorMoneda,

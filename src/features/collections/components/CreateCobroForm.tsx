@@ -10,7 +10,9 @@ import { Button } from "@/src/components/Button";
 import { Loader } from "@/src/components/Loader";
 import { DeleteIcon, InfoIcon, PlusIcon, ReceiptIcon, RejectIcon } from "@/src/components/Icons";
 import { centavosAMoneda } from "@/src/features/payments/schemas/payment.schema";
-import { CustomerSearchDropdown } from "@/src/features/quotes/components/CustomerSearchDropdown";
+import { ItemPickerButton } from "@/src/components/ItemPickerButton";
+import { MainDialog } from "@/src/components/MainDialog";
+import { SingleSelectPickerDialogContent } from "@/src/components/SingleSelectPickerDialogContent";
 import { sanitizeDecimalInput } from "@/src/utils/decimal";
 import { COBRO_REFERENCIA_LABELS } from "../constants/collectionStatus";
 import {
@@ -37,8 +39,6 @@ export function CreateCobroForm({ onSuccess }: CreateCobroFormProps) {
     isErrorFormData,
     missingItems,
     customers,
-    customerQuery,
-    setCustomerQuery,
     bankAccountOptions,
     selectorMoneda,
     saldoFor,
@@ -56,6 +56,7 @@ export function CreateCobroForm({ onSuccess }: CreateCobroFormProps) {
   } = useCreateCobroForm({ onSuccess });
 
   const [isPickerOpen, setIsPickerOpen] = useState(false);
+  const [isCustomerPickerOpen, setIsCustomerPickerOpen] = useState(false);
 
   const cliente = useStore(form.store, (state) => state.values.cliente);
   const cuentaBancaria = useStore(form.store, (state) => state.values.cuenta_bancaria);
@@ -138,32 +139,16 @@ export function CreateCobroForm({ onSuccess }: CreateCobroFormProps) {
             </div>
 
             <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <CustomerSearchDropdown
-                  label="Cliente"
-                  placeholder="Buscar por razón social, nombre o correo..."
-                  value={customerQuery}
-                  onValueChange={setCustomerQuery}
-                  customers={customers}
-                  selectedId={selectedCustomer?.id}
-                  onSelect={(customer) => handleClienteChange(customer)}
-                  error={getError("cliente")}
-                />
-                {/* El cliente elegido queda siempre a la vista, aunque se edite la
-                    búsqueda: escribir no cambia la selección (y no vacía líneas). */}
-                <p className="mt-1.5 text-xs text-slate-500 dark:text-slate-400">
-                  {selectedCustomer ? (
-                    <>
-                      Cliente seleccionado:{" "}
-                      <span className="font-semibold text-slate-700 dark:text-slate-200">
-                        {customerLabel(selectedCustomer)}
-                      </span>
-                    </>
-                  ) : (
-                    "Ningún cliente seleccionado"
-                  )}
-                </p>
-              </div>
+              {/* Selector buscable de la app (mismo que los demás selectores
+                  apilados): el cliente elegido queda fijo arriba de la lista
+                  aunque la búsqueda lo excluya (#262). */}
+              <ItemPickerButton
+                label="Cliente"
+                placeholder="Seleccionar cliente..."
+                selectedLabel={selectedCustomer ? customerLabel(selectedCustomer) : null}
+                onClick={() => setIsCustomerPickerOpen(true)}
+                error={getError("cliente")}
+              />
 
               <FormSelect
                 label="Cuenta bancaria de destino"
@@ -432,7 +417,51 @@ export function CreateCobroForm({ onSuccess }: CreateCobroFormProps) {
         </fieldset>
       </form>
 
-      {/* Selector apilado encima del formulario, que sigue montado detrás. */}
+      {/* Selectores apilados encima del formulario, que sigue montado detrás. */}
+      <MainDialog
+        open={isCustomerPickerOpen}
+        onOpenChange={setIsCustomerPickerOpen}
+        title=""
+        maxWidth="640px"
+        showCloseButton={false}
+      >
+        {/* Se monta solo abierto: la selección tentativa arranca en el cliente vigente. */}
+        {isCustomerPickerOpen && (
+          <SingleSelectPickerDialogContent
+            title="Seleccionar Cliente"
+            subtitle="Cambiar de cliente vacía las cuentas por cobrar agregadas"
+            statusColor="emerald"
+            items={customers}
+            searchPlaceholder="Buscar por razón social, nombre, RFC o correo..."
+            filterPredicate={(customer, term) =>
+              `${customer.razon_social} ${customer.nombre} ${customer.rfc ?? ""} ${customer.correo ?? ""}`
+                .toLowerCase()
+                .includes(term)
+            }
+            getKey={(customer) => customer.id}
+            selectedKey={selectedCustomer?.id ?? null}
+            pinSelected
+            emptyMessage="No hay clientes activos."
+            noResultsMessage="No se encontraron clientes"
+            renderContent={(customer) => (
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-slate-800 dark:text-slate-100 truncate">
+                  {customerLabel(customer)}
+                </p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
+                  {[customer.nombre, customer.rfc].filter(Boolean).join(" · ")}
+                </p>
+              </div>
+            )}
+            onConfirm={(customer) => {
+              handleClienteChange(customer);
+              setIsCustomerPickerOpen(false);
+            }}
+            onCancel={() => setIsCustomerPickerOpen(false)}
+          />
+        )}
+      </MainDialog>
+
       {selectorMoneda && cliente > 0 && (
         <CxcSelectorDialog
           open={isPickerOpen}
