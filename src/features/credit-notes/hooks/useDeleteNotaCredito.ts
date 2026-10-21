@@ -3,6 +3,7 @@ import toast from "react-hot-toast";
 import { deleteNotaCredito } from "../services/actions";
 import { parseNotaCreditoError } from "./useCreateNotaCredito";
 import type { NotaCredito } from "../interfaces/credit-note.interface";
+import { invalidateCreditNoteQueries } from "./invalidateCreditNoteQueries";
 
 /**
  * Elimina FÍSICAMENTE una nota de crédito en borrador
@@ -21,8 +22,9 @@ import type { NotaCredito } from "../interfaces/credit-note.interface";
  * vuelo, instantánea, quitar la fila, revertir en `onError`, invalidar en
  * `onSettled`.
  *
- * No invalida `["accounts-receivable"]`: un borrador nunca modificó ningún
- * saldo, así que borrarlo tampoco lo hace.
+ * Un borrador nunca modificó ningún saldo, pero `onSettled` usa la misma
+ * invalidación que el resto (`invalidateCreditNoteQueries`): el desglose de la
+ * factura lista sus notas, y una regla única cuesta solo refetches de lo montado.
  *
  * El error se normaliza con `parseNotaCreditoError` —igual que en
  * `useEmitirNotaCredito`— y no con `extractErrorMessage`: el listado puede estar
@@ -68,11 +70,7 @@ export const useDeleteNotaCredito = () => {
           : "Error al eliminar la nota de crédito",
       );
     },
-    onSettled: () =>
-      Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["credit-notes"] }),
-        queryClient.invalidateQueries({ queryKey: ["credit-note-detail"] }),
-      ]),
+    onSettled: () => invalidateCreditNoteQueries(queryClient),
     onSuccess: () => {
       toast.success("Borrador eliminado correctamente");
     },

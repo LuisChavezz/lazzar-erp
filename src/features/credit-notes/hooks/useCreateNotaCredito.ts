@@ -3,6 +3,7 @@ import toast from "react-hot-toast";
 import { AxiosError } from "axios";
 import { firstDrfMessage } from "@/src/utils/firstDrfMessage";
 import { createNotaCredito } from "../services/actions";
+import { invalidateCreditNoteQueries } from "./invalidateCreditNoteQueries";
 
 /** Campos de cabecera que el backend puede señalar en un `400`. */
 export type NotaCreditoHeaderErrorField =
@@ -245,9 +246,10 @@ export function parseNotaCreditoError(error: unknown): ParsedNotaCreditoError {
  * normalizado para que el formulario lo reparta entre el banner de "todo o
  * nada", los campos de cabecera y las líneas.
  *
- * Invalida `["credit-notes"]` (el listado) y `["accounts-receivable"]` por
- * PREFIJO: una nota EMITIDA baja el saldo de la cuenta por cobrar de su factura
- * y puede marcarla `Pagada`, así que las listas de CxC cacheadas —incluida la
+ * Refresca en `onSettled` nota, factura, cuenta por cobrar y pedido
+ * (`invalidateCreditNoteQueries`): una nota EMITIDA baja el saldo de la cuenta
+ * por cobrar de su factura y puede marcarla `Pagada`, así que las listas de CxC
+ * cacheadas —incluida la
  * que alimenta el selector de facturas de este mismo formulario— quedan
  * obsoletas. Se invalida también en el alta de un borrador: cuesta un refetch y
  * evita razonar sobre cuál de los dos caminos tocó saldos.
@@ -260,8 +262,6 @@ export const useCreateNotaCredito = (
   return useMutation({
     mutationFn: createNotaCredito,
     onSuccess: (nota) => {
-      queryClient.invalidateQueries({ queryKey: ["credit-notes"] });
-      queryClient.invalidateQueries({ queryKey: ["accounts-receivable"] });
       toast.success(
         nota.estatus === "Emitida"
           ? "Nota de crédito emitida correctamente"
@@ -278,5 +278,8 @@ export const useCreateNotaCredito = (
           : parsed.formError ?? "Error al registrar la nota de crédito";
       toast.error(toastMessage);
     },
+    // También ante un error: emitir en el alta timbra antes de guardar, y un
+    // timeout del PAC pudo dejar algo hecho.
+    onSettled: () => invalidateCreditNoteQueries(queryClient),
   });
 };

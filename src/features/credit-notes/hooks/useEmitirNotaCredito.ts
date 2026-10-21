@@ -2,7 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { emitirNotaCredito } from "../services/actions";
 import { parseNotaCreditoError } from "./useCreateNotaCredito";
-import { invalidatePedidoProgress } from "@/src/features/orders/hooks/invalidatePedidoProgress";
+import { invalidateCreditNoteQueries } from "./invalidateCreditNoteQueries";
 
 /**
  * Emite una nota que estaba en borrador
@@ -24,8 +24,11 @@ import { invalidatePedidoProgress } from "@/src/features/orders/hooks/invalidate
  * sabe desenvolver, dejando al usuario con un "Request failed with status code
  * 400" en vez del motivo real.
  *
- * `onSettled` invalida también `["accounts-receivable"]`: emitir baja el saldo
- * de la cuenta por cobrar de la factura y puede marcarla `Pagada`.
+ * `onSettled` refresca nota, factura, cuenta por cobrar y pedido
+ * (`invalidateCreditNoteQueries`): emitir baja el saldo de la cuenta por cobrar
+ * de la factura, puede marcarla `Pagada` y, desde el PR #607, timbra el CFDI de
+ * egreso antes de guardar. Un rechazo del timbrado llega bajo `cfdi` y
+ * `parseNotaCreditoError` lo lee primero.
  */
 export const useEmitirNotaCredito = () => {
   const queryClient = useQueryClient();
@@ -33,7 +36,6 @@ export const useEmitirNotaCredito = () => {
   return useMutation({
     mutationFn: (id: number) => emitirNotaCredito(id),
     onSuccess: () => {
-      void invalidatePedidoProgress(queryClient);
       toast.success("Nota de crédito emitida correctamente");
     },
     onError: (error) => {
@@ -46,13 +48,10 @@ export const useEmitirNotaCredito = () => {
       toast.error(message);
     },
     // Se devuelve una promesa para que la mutación siga "pending" hasta que el
-    // refetch termine: así el listado nunca muestra un estado intermedio y el
-    // diálogo de confirmación (con `closeOnConfirm={false}`) puede cerrarse aquí.
-    onSettled: () =>
-      Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["credit-notes"] }),
-        queryClient.invalidateQueries({ queryKey: ["accounts-receivable"] }),
-        queryClient.invalidateQueries({ queryKey: ["credit-note-detail"] }),
-      ]),
+    // refetch de la nota termine: así el listado nunca muestra un estado
+    // intermedio y el diálogo de confirmación (con `closeOnConfirm={false}`)
+    // puede cerrarse aquí. También ante un error: emitir timbra, y un timeout del
+    // PAC pudo dejar algo hecho (`invalidateCreditNoteQueries`).
+    onSettled: () => invalidateCreditNoteQueries(queryClient),
   });
 };

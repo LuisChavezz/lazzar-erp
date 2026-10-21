@@ -3,7 +3,7 @@ import toast from "react-hot-toast";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { cancelarNotaCredito } from "../services/actions";
 import type { NotaCredito } from "../interfaces/credit-note.interface";
-import { invalidatePedidoProgress } from "@/src/features/orders/hooks/invalidatePedidoProgress";
+import { invalidateCreditNoteQueries } from "./invalidateCreditNoteQueries";
 
 /**
  * Cancela una nota de crédito
@@ -18,9 +18,9 @@ import { invalidatePedidoProgress } from "@/src/features/orders/hooks/invalidate
  * El registro NUNCA sale del listado: solo cambia su `estatus` a `Cancelada`,
  * por eso el optimista MARCA la fila en vez de filtrarla.
  *
- * `onSettled` invalida además `["accounts-receivable"]`: cancelar una nota
- * EMITIDA devuelve el importe acreditado al saldo de la cuenta por cobrar y
- * reajusta su estatus, así que las listas de CxC cacheadas quedan obsoletas.
+ * `onSettled` refresca nota, factura, cuenta por cobrar y pedido
+ * (`invalidateCreditNoteQueries`): cancelar una nota EMITIDA devuelve el
+ * importe acreditado al saldo de la cuenta por cobrar y reajusta su estatus.
  */
 export const useCancelNotaCredito = () => {
   const queryClient = useQueryClient();
@@ -55,16 +55,11 @@ export const useCancelNotaCredito = () => {
       toast.error(extractErrorMessage(err, "Error al cancelar la nota de crédito"));
     },
     // Se devuelve una promesa para que la mutación siga "pending" hasta que el
-    // refetch termine: así el listado nunca muestra un estado intermedio y el
-    // diálogo de confirmación (con `closeOnConfirm={false}`) puede cerrarse aquí.
-    onSettled: () =>
-      Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["credit-notes"] }),
-        queryClient.invalidateQueries({ queryKey: ["accounts-receivable"] }),
-        queryClient.invalidateQueries({ queryKey: ["credit-note-detail"] }),
-      ]),
+    // refetch de la nota termine: así el listado nunca muestra un estado
+    // intermedio y el diálogo de confirmación (con `closeOnConfirm={false}`)
+    // puede cerrarse aquí.
+    onSettled: () => invalidateCreditNoteQueries(queryClient),
     onSuccess: () => {
-      void invalidatePedidoProgress(queryClient);
       toast.success("Nota de crédito cancelada correctamente");
     },
   });
