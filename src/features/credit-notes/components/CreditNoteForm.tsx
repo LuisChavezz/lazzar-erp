@@ -22,6 +22,7 @@ import {
 import { useCreditNoteForm } from "../hooks/useCreditNoteForm";
 import { InvoiceSelectorDialog } from "./InvoiceSelectorDialog";
 import { InvoiceLinesSelectorDialog } from "./InvoiceLinesSelectorDialog";
+import { CREDIT_NOTE_EMIT_STAMP_WARNING } from "../utils/creditNoteStamping";
 
 interface CreditNoteFormProps {
   onSuccess: () => void;
@@ -448,6 +449,14 @@ export default function CreditNoteForm({ onSuccess }: CreditNoteFormProps) {
             </div>
           </section>
 
+          {/* El alta con "Emitir nota" no pasa por una confirmación: el aviso del
+              timbrado va visible junto a los botones, descrito por "Emitir nota". */}
+          <p
+            id="credit-note-emit-stamp-warning"
+            className="mb-3 text-xs text-amber-600 dark:text-amber-400 text-right"
+          >
+            {CREDIT_NOTE_EMIT_STAMP_WARNING}
+          </p>
           <div className="flex flex-wrap items-center justify-end gap-3 pb-4">
             <FormCancelButton onClick={handleReset} disabled={isPending} />
             {/* Dos salidas explícitas. Guardar como borrador NO toca la cuenta
@@ -466,6 +475,7 @@ export default function CreditNoteForm({ onSuccess }: CreditNoteFormProps) {
             <FormSubmitButton
               type="button"
               onClick={() => submitAs("Emitida")}
+              aria-describedby="credit-note-emit-stamp-warning"
               isPending={isPending && estatusIntent === "Emitida"}
               loadingLabel="Emitiendo..."
               className="bg-amber-600! hover:bg-amber-700! focus:ring-amber-500!"

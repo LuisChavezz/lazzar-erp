@@ -20,7 +20,10 @@ import { useNotasCredito } from "../hooks/useNotasCredito";
 import { useEmitirNotaCredito } from "../hooks/useEmitirNotaCredito";
 import { useCancelNotaCredito } from "../hooks/useCancelNotaCredito";
 import { useDeleteNotaCredito } from "../hooks/useDeleteNotaCredito";
-import { getCreditNoteCancelBlockReason } from "../utils/creditNoteStamping";
+import {
+  CREDIT_NOTE_EMIT_STAMP_WARNING,
+  getCreditNoteCancelBlockReason,
+} from "../utils/creditNoteStamping";
 
 /**
  * Candado de reenvío POR FILA para una acción confirmada (emitir, cancelar,
@@ -294,7 +297,7 @@ export default function CreditNoteList() {
             if (!open) setEmitTargetId(null);
           }}
           title="Emitir Nota de Crédito"
-          description={`¿Deseas emitir la nota ${etiqueta(emitTargetId)}? Su total se descontará del saldo por cobrar de la factura ligada y podrá marcarla como pagada. Después de emitirla ya no podrá eliminarse: solo cancelarse.`}
+          description={`¿Deseas emitir la nota ${etiqueta(emitTargetId)}? Su total se descontará del saldo por cobrar de la factura ligada y podrá marcarla como pagada. Después de emitirla ya no podrá eliminarse. ${CREDIT_NOTE_EMIT_STAMP_WARNING}`}
           confirmText={
             emitLock.isPending(emitTargetId) ? "Emitiendo..." : "Emitir nota"
           }
