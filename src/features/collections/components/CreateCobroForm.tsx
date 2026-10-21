@@ -39,8 +39,9 @@ export function CreateCobroForm({ onSuccess }: CreateCobroFormProps) {
     customers,
     customerQuery,
     setCustomerQuery,
-    bankAccounts,
     bankAccountOptions,
+    selectorMoneda,
+    saldoFor,
     lineKeys,
     serverBanner,
     dismissBanner,
@@ -62,9 +63,6 @@ export function CreateCobroForm({ onSuccess }: CreateCobroFormProps) {
   const lines = useStore(form.store, (state) => state.values.cobro_detalles);
 
   const selectedCustomer = customers.find((customer) => customer.id === cliente);
-  const selectedAccount = bankAccounts.find((account) => account.id === cuentaBancaria);
-  // El selector necesita la moneda como id (filtro de servidor) y como código.
-  const selectorMoneda = selectedAccount && moneda ? { id: selectedAccount.moneda, codigo: moneda } : null;
   const canPickLines = cliente > 0 && selectorMoneda !== null;
 
   // Total DERIVADO de las líneas: la misma suma en centavos que viaja como
@@ -344,7 +342,8 @@ export function CreateCobroForm({ onSuccess }: CreateCobroFormProps) {
                                     {line.factura_folio}
                                   </p>
                                   <p className="text-xs text-slate-500 dark:text-slate-400">
-                                    Saldo <CobroAmount value={line.saldo} moneda={line.moneda_codigo || null} />
+                                    {/* Saldo VIGENTE (se refresca tras un error de saldo). */}
+                                    Saldo <CobroAmount value={saldoFor(line)} moneda={line.moneda_codigo || null} />
                                   </p>
                                 </div>
                               </div>

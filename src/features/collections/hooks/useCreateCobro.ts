@@ -220,6 +220,19 @@ export const useCreateCobro = (onServerError?: (parsed: ParsedCobroError) => voi
         payload.cobro_detalles.map((line) => line.cxc),
       );
       onServerError?.(parsed);
+      // Un error de líneas o de saldo puede deberse a saldos que cambiaron por
+      // debajo (otro cobro sobre la misma CxC): se vuelven a pedir las CxC para
+      // que las líneas muestren y validen contra el saldo vigente.
+      const touchesLines =
+        Object.keys(parsed.lineErrors).length > 0 ||
+        parsed.messages.some((message) => /saldo/i.test(message)) ||
+        (error instanceof AxiosError &&
+          typeof error.response?.data === "object" &&
+          error.response?.data !== null &&
+          "cobro_detalles" in error.response.data);
+      if (touchesLines) {
+        queryClient.invalidateQueries({ queryKey: ["accounts-receivable"] });
+      }
       toast.error(
         parsed.messages.length > 0
           ? parsed.messages.join("\n")

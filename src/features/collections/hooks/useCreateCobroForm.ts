@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import type { FormEvent } from "react";
-import { useForm } from "@tanstack/react-form";
+import { useForm, useStore } from "@tanstack/react-form";
 import type { FormFieldError } from "@/src/utils/getFieldError";
 import { useAccountingCustomers } from "@/src/features/accounting-customers/hooks/useAccountingCustomers";
 import type { AccountingCustomer } from "@/src/features/accounting-customers/interfaces/accounting-customer.interface";
@@ -11,8 +11,10 @@ import type { CuentaPorCobrar } from "@/src/features/accounts-receivable/interfa
 import {
   CobroFormSchema,
   createEmptyCobroForm,
+  type CobroFormValues,
   type CobroLineFormValues,
 } from "../schemas/createCobro.schema";
+import { useCobrableCxcs } from "./useCobrableCxcs";
 import { buildCobroPayload } from "../services/actions";
 import { useCreateCobro, type ParsedCobroError } from "./useCreateCobro";
 
@@ -146,7 +148,9 @@ export function useCreateCobroForm({ onSuccess }: { onSuccess?: () => void } = {
     onSubmit: async ({ value }) => {
       setServerBanner(null);
 
-      const parsed = CobroFormSchema.safeParse(value);
+      // El techo de cada línea es su saldo VIGENTE, no el que traía al
+      // agregarse (ver `saldoFor`).
+      const parsed = CobroFormSchema.safeParse(withFreshSaldos(value));
       if (!parsed.success) {
         const nextErrors: Record<string, string> = {};
         parsed.error.issues.forEach((issue) => {
@@ -174,6 +178,38 @@ export function useCreateCobroForm({ onSuccess }: { onSuccess?: () => void } = {
   });
 
   const isPending = isSubmitting || isCreating;
+
+  // ── Saldos vigentes de las líneas ─────────────────────────────────────────
+  // Las líneas se siembran con el saldo que trajo el selector, pero ese saldo
+  // puede cambiar (otro cobro sobre la misma CxC). Esta consulta es la MISMA que
+  // la del selector y se refresca al montarse y tras cualquier error de saldo
+  // (`useCreateCobro` invalida las CxC): la línea muestra y valida contra el
+  // saldo vigente sin tocar el importe que el usuario tecleó.
+  const cliente = useStore(form.store, (state) => state.values.cliente);
+  const cuentaBancaria = useStore(form.store, (state) => state.values.cuenta_bancaria);
+  const moneda = useStore(form.store, (state) => state.values.moneda);
+  const selectedAccount = activeBankAccounts.find((account) => account.id === cuentaBancaria);
+  const selectorMoneda = selectedAccount && moneda ? { id: selectedAccount.moneda, codigo: moneda } : null;
+  const { byId: freshCxcs, hasLoaded: hasLoadedFreshCxcs } = useCobrableCxcs({
+    clienteId: cliente,
+    moneda: selectorMoneda,
+  });
+
+  /**
+   * Saldo vigente de la CxC de una línea. Si la consulta ya cargó y la CxC ya no
+   * aparece (`saldo_pendiente=true` solo trae saldos > 0), se liquidó: su saldo
+   * es 0. Mientras no carga, el saldo con que se agregó.
+   */
+  const saldoFor = (line: Pick<CobroLineFormValues, "cxc" | "saldo">): string => {
+    const fresh = freshCxcs.get(line.cxc);
+    if (fresh) return fresh.saldo;
+    return hasLoadedFreshCxcs ? "0.00" : line.saldo;
+  };
+
+  const withFreshSaldos = (values: CobroFormValues): CobroFormValues => ({
+    ...values,
+    cobro_detalles: values.cobro_detalles.map((line) => ({ ...line, saldo: saldoFor(line) })),
+  });
 
   const resetAll = () => {
     // Valores frescos en cada limpieza (no un objeto compartido).
@@ -252,6 +288,8 @@ export function useCreateCobroForm({ onSuccess }: { onSuccess?: () => void } = {
     setCustomerQuery,
     bankAccounts: activeBankAccounts,
     bankAccountOptions,
+    selectorMoneda,
+    saldoFor,
     lineKeys,
     serverBanner,
     dismissBanner: () => setServerBanner(null),
