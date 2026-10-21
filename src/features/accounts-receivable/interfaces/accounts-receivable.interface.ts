@@ -31,7 +31,7 @@ export interface CuentaPorCobrar {
   saldo: string;
   estatus: CxCEstatus;
   referencia: string;
-  /** Timestamp ISO del último pago, o `null` si aún no hay cobros. */
+  /** Fecha ISO `YYYY-MM-DD` del último pago (un `DateField`), o `null` si aún no hay cobros. */
   fecha_ultimo_pago: string | null;
   observaciones: string;
   created_at: string;

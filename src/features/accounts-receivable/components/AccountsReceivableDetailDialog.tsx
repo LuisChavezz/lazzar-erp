@@ -165,13 +165,10 @@ export function AccountsReceivableDetailDialog({
               </InfoField>
               <InfoField label="Último pago">
                 <span className="tabular-nums">
-                  {/* A diferencia de `fecha_emision`/`fecha_vencimiento` (fechas
-                      calendario `YYYY-MM-DD`), `fecha_ultimo_pago` es un TIMESTAMP
-                      real con hora — `timeZone: "UTC"` aquí desplazaría el día
-                      mostrado según la hora local del pago y del usuario (ver el
-                      contrato de `timeZone` en `formatShortDate`). Se omite a
-                      propósito para que el día se lea en la zona horaria local. */}
-                  {formatShortDate(cuenta.fecha_ultimo_pago)}
+                  {/* Fecha-calendario `YYYY-MM-DD` (un `DateField`), igual que
+                      `fecha_emision`/`fecha_vencimiento`: sin `timeZone: "UTC"`
+                      se pintaba en la zona local y en México salía un día antes. */}
+                  {formatShortDate(cuenta.fecha_ultimo_pago, { timeZone: "UTC" })}
                 </span>
               </InfoField>
             </div>
