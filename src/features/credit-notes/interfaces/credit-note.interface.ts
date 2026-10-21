@@ -94,6 +94,23 @@ export interface NotaCredito {
   observaciones: string | null;
   created_at: string | null;
   updated_at: string | null;
+  /**
+   * Folio fiscal del CFDI de egreso; `null` mientras no se timbre. Solo lectura
+   * en la API: lo escribe la emisión (desde el PR #607 el backend timbra ANTES
+   * de guardar una nota `Emitida`) o `POST /finanzas/notas-credito/{id}/timbrar/`.
+   * Viene en el listado y en el retrieve (mismo serializer).
+   */
+  cfdi_uuid: string | null;
+  /** Id del CFDI en Facturama; `null` mientras no se timbre. */
+  facturama_id: string | null;
+  /** Fecha y hora del timbrado (ISO con zona); `null` mientras no se timbre. */
+  cfdi_fecha_timbrado: string | null;
+  /**
+   * Timbrado SIN CONFIRMAR: Facturama no confirmó el timbrado de `timbrar/`
+   * (timeout, red, 5xx o respuesta sin UUID) y pudo generarse un CFDI. Mientras
+   * siga en `true`, `timbrar/` lo rechaza; solo un administrador lo desmarca.
+   */
+  cfdi_pendiente: boolean;
   /** Líneas anidadas. Puede venir vacío — el backend no exige ninguna. */
   nota_credito_detalles: NotaCreditoDetalle[];
 }
