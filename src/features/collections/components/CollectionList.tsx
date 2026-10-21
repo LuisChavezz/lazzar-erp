@@ -16,6 +16,7 @@ import { COBRO_CREATE_PERMISSION } from "../constants/collectionPermissions";
 import { CollectionRowActionsProvider } from "../hooks/useCollectionRowActions";
 import { canStampCobroRep } from "../utils/cobroRepStamping";
 import { canOfferCobroCancel } from "../utils/cobroCancellation";
+import { canDownloadCobroRep } from "../utils/cobroRepDownload";
 import { CollectionCancelDialog } from "./CollectionCancelDialog";
 import { useBankAccounts } from "@/src/features/bank-accounts/hooks/useBankAccounts";
 import { useCobros } from "../hooks/useCobros";
@@ -133,6 +134,7 @@ export function CollectionList() {
             canStampCobroRep(detailCobro, session?.user) ? () => setStampRepId(detailCobro.id) : undefined
           }
           onCancel={canOfferCobroCancel(detailCobro, session?.user) ? () => setCancelId(detailCobro.id) : undefined}
+          canDownloadRep={canDownloadCobroRep(detailCobro, session?.user)}
         />
       )}
 

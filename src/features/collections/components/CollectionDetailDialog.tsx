@@ -27,7 +27,9 @@ import {
 } from "../utils/collection.utils";
 import { COBRO_REP_PENDING_MESSAGE, isCobroRepPending } from "../utils/cobroRepStamping";
 import { getCobroCancelBlockReason } from "../utils/cobroCancellation";
+import { COBRO_REP_DOWNLOAD_FORBIDDEN_MESSAGE, hasCobroRepFile } from "../utils/cobroRepDownload";
 import { CobroAmount } from "./CobroAmount";
+import { CobroRepDownloadButtons } from "./CobroRepDownloadButtons";
 
 interface CollectionDetailDialogProps {
   /**
@@ -48,6 +50,11 @@ interface CollectionDetailDialogProps {
    * (sin permiso o cobro ya `Cancelado`, ver `canOfferCobroCancel`).
    */
   onCancel?: () => void;
+  /**
+   * `canDownloadCobroRep` para este cobro y usuario. Con el REP timbrado, `true`
+   * ofrece "Descargar PDF/XML" y `false` (sin `R-FIN-FACTURAMA`) muestra una nota.
+   */
+  canDownloadRep?: boolean;
 }
 
 export function CollectionDetailDialog({
@@ -56,6 +63,7 @@ export function CollectionDetailDialog({
   onOpenChange,
   onStampRep,
   onCancel,
+  canDownloadRep = false,
 }: CollectionDetailDialogProps) {
   // Sin parámetros: la MISMA entrada de caché que la pantalla de CxC, y con las
   // `Pagada`/`Cancelada` incluidas (las líneas de cobros viejos apuntan ahí).
@@ -73,6 +81,9 @@ export function CollectionDetailDialog({
   // Timbrado sin confirmar: la nota sustituye al botón (el backend rechaza
   // timbrar de nuevo mientras siga marcado).
   const repPending = isCobroRepPending(cobro);
+  // REP timbrado (UUID e id de Facturama): descargas con permiso, nota sin él.
+  // Excluye a "Timbrar REP", que exige un cobro sin `rep_uuid`.
+  const repHasFile = hasCobroRepFile(cobro);
   // "Cancelar cobro": mientras las CxC cargan se muestra deshabilitado; si no se
   // pudieron cargar, se bloquea (no se puede saber si alguna factura se canceló).
   const isCxcPending = isLoadingCxc && !hasLoadedCxc;
@@ -189,6 +200,12 @@ export function CollectionDetailDialog({
               </Button>
             )}
           </div>
+          {repHasFile &&
+            (canDownloadRep ? (
+              <CobroRepDownloadButtons cobro={cobro} />
+            ) : (
+              <p className="mb-2 text-xs text-slate-500 dark:text-slate-400">{COBRO_REP_DOWNLOAD_FORBIDDEN_MESSAGE}</p>
+            ))}
           {repPending && (
             <div
               role="status"
