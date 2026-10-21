@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { ColumnDef, createColumnHelper } from "@tanstack/react-table";
 import { ActionMenu, type ActionMenuItem } from "@/src/components/ActionMenu";
 import { ViewIcon } from "@/src/components/Icons";
@@ -9,16 +8,14 @@ import { formatMoneyValue } from "@/src/utils/formatCurrency";
 import { formatShortDate } from "@/src/utils/formatDate";
 import { textOrDash } from "@/src/components/DetailDialogPrimitives";
 import { CXC_ESTATUS_CONFIG } from "../constants/cxcEstatus";
-import { AccountsReceivableDetailDialog } from "./AccountsReceivableDetailDialog";
 import type {
   CuentaPorCobrarRow,
   CxCEstatus,
 } from "../interfaces/accounts-receivable.interface";
 
 // ── Badge de estatus ──────────────────────────────────────────────────────────
-// La config vive en `constants/cxcEstatus.ts` porque el diálogo de detalle la
-// comparte, y ese diálogo se importa desde aquí: tenerla en este archivo
-// cerraría un ciclo de imports entre ambos.
+// La config vive en `constants/cxcEstatus.ts` porque el diálogo de detalle
+// también la usa.
 
 const EstatusBadge = ({ estatus }: { estatus: CxCEstatus }) => (
   <StatusBadge status={estatus} config={CXC_ESTATUS_CONFIG} />
@@ -26,31 +23,27 @@ const EstatusBadge = ({ estatus }: { estatus: CxCEstatus }) => (
 
 // ── Acciones de fila ──────────────────────────────────────────────────────────
 
-const ActionsCell = ({ row }: { row: CuentaPorCobrarRow }) => {
-  const [isDetailOpen, setIsDetailOpen] = useState(false);
+interface AccountsReceivableColumnsCallbacks {
+  /** Abre el detalle de la cuenta. El diálogo vive en `AccountsReceivableList`. */
+  onViewDetail: (id: number) => void;
+}
 
+const ActionsCell = ({
+  row,
+  onViewDetail,
+}: { row: CuentaPorCobrarRow } & AccountsReceivableColumnsCallbacks) => {
   // "Registrar cobro" y "Ver factura" vivían aquí con `onSelect: () => {}`: se
   // ofrecían al usuario y no hacían nada. Se retiran hasta que exista la
   // funcionalidad — un menú que miente es peor que uno corto. Al reponerlas,
   // "Registrar cobro" solo aplica con saldo pendiente (estatus distinto de
   // "Pagada" y "Cancelada") y necesitará su código de permiso.
   const menuItems: ActionMenuItem[] = [
-    { label: "Ver detalle", icon: ViewIcon, onSelect: () => setIsDetailOpen(true) },
+    { label: "Ver detalle", icon: ViewIcon, onSelect: () => onViewDetail(row.id) },
   ];
 
   return (
     <div className="flex items-center justify-center">
       <ActionMenu items={menuItems} ariaLabel={`Acciones de ${row.folio_cxc}`} />
-      {/* Montaje condicional: el diálogo —y con él su `useCuentaPorCobrarDetail`—
-          no existe hasta abrirlo, así que renderizar la tabla no dispara ninguna
-          petición de detalle. Mismo patrón que `StockMovementsColumns`. */}
-      {isDetailOpen && (
-        <AccountsReceivableDetailDialog
-          cuentaId={row.id}
-          open={true}
-          onOpenChange={setIsDetailOpen}
-        />
-      )}
     </div>
   );
 };
@@ -59,7 +52,12 @@ const ActionsCell = ({ row }: { row: CuentaPorCobrarRow }) => {
 
 const columnHelper = createColumnHelper<CuentaPorCobrarRow>();
 
-export const accountsReceivableColumns = [
+/**
+ * Columnas del listado de CxC. El diálogo de detalle NO vive en una celda (las
+ * celdas se desmontan al ordenar, paginar o filtrar): `onViewDetail` lo abre en
+ * `AccountsReceivableList`.
+ */
+export const getAccountsReceivableColumns = ({ onViewDetail }: AccountsReceivableColumnsCallbacks) => [
   columnHelper.accessor("folio_cxc", {
     header: "Folio CxC",
     cell: (info) => (
@@ -150,6 +148,6 @@ export const accountsReceivableColumns = [
     id: "actions",
     header: "Acciones",
     meta: { align: "center" },
-    cell: ({ row }) => <ActionsCell row={row.original} />,
+    cell: ({ row }) => <ActionsCell row={row.original} onViewDetail={onViewDetail} />,
   }),
 ] as ColumnDef<CuentaPorCobrarRow>[];

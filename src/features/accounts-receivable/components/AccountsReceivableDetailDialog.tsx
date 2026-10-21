@@ -7,6 +7,7 @@ import { ErrorState } from "@/src/components/ErrorState";
 import { StatusBadge } from "@/src/components/StatusBadge";
 import { formatCurrency, safeParseAmount } from "@/src/utils/formatCurrency";
 import { formatShortDate } from "@/src/utils/formatDate";
+import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { useBackendToday } from "@/src/hooks/useBackendToday";
 import { CXC_ESTATUS_CONFIG } from "../constants/cxcEstatus";
 import { useCuentaPorCobrarDetail } from "../hooks/useCuentaPorCobrarDetail";
@@ -35,17 +36,17 @@ export function AccountsReceivableDetailDialog({
   open,
   onOpenChange,
 }: AccountsReceivableDetailDialogProps) {
-  const { data: cuenta, isLoading, isError, error } = useCuentaPorCobrarDetail(cuentaId);
+  const { data: cuenta, isNotFound, isInitialError, error } = useCuentaPorCobrarDetail(cuentaId);
+  const isAwaiting = !cuenta && !isNotFound && !isInitialError;
 
   // El folio de CxC se deriva del `id` (el backend no expone folio propio), así
   // que el encabezado puede mostrarlo desde el primer frame, sin esperar al GET.
   const folio = formatFolioCxc(cuentaId);
 
   // MISMA definición única de "vencida" que la tabla, los KPIs, la antigüedad y
-  // la alerta (`isCuentaVencida`, derivada por fecha). Reutilizarla —en vez de
-  // leer `estatus === "Vencida"`— es lo que impide que el detalle contradiga a
-  // la fila de la que se abrió: una cuenta vencida puede seguir llegando como
-  // `Pendiente`/`Parcial`, porque `estatus` es un enum de una sola dimensión.
+  // la alerta (`isCuentaVencida`, derivada por fecha): el backend no tiene un
+  // estatus "Vencida" y una cuenta vencida sigue llegando como
+  // `Pendiente`/`Parcial`. Así el detalle no contradice a la fila.
   const today = useBackendToday();
   const estaVencida = cuenta ? isCuentaVencida(cuenta, today) : false;
   const diasDeAtraso = cuenta ? diasVencido(cuenta.fecha_vencimiento, today) : 0;
@@ -71,20 +72,28 @@ export function AccountsReceivableDetailDialog({
       }
     >
       {/* ── Estado: cargando ──────────────────────────────────────────────── */}
-      {isLoading && (
+      {isAwaiting && (
         <Loader title="Cargando detalle de la cuenta por cobrar..." className="py-16" />
       )}
 
-      {/* ── Estado: error ─────────────────────────────────────────────────── */}
-      {isError && (
+      {/* ── Estado: no disponible (404 definitivo: inexistente o de otra empresa) ── */}
+      {isNotFound && (
         <ErrorState
-          title="Error al cargar el detalle de la cuenta por cobrar"
-          message={(error as Error)?.message}
+          title="Cuenta por cobrar no disponible"
+          message="La cuenta no existe o no tienes acceso a ella."
         />
       )}
 
-      {/* ── Estado: datos cargados ────────────────────────────────────────── */}
-      {!isLoading && !isError && cuenta && (
+      {/* ── Estado: error de carga inicial ────────────────────────────────── */}
+      {isInitialError && (
+        <ErrorState
+          title="Error al cargar el detalle de la cuenta por cobrar"
+          message={extractErrorMessage(error, "Ocurrió un problema al consultar el servidor. Intenta de nuevo.")}
+        />
+      )}
+
+      {/* ── Estado: datos cargados (un refetch fallido los conserva) ──────── */}
+      {cuenta && (
         <div className="space-y-5">
           {/* Aviso de vencimiento: derivado de `isCuentaVencida`, NO del
               `estatus` crudo, así que concuerda siempre con la fila, el KPI
@@ -129,10 +138,6 @@ export function AccountsReceivableDetailDialog({
             <InfoField label="Referencia">
               <span className="font-mono">{textOrDash(cuenta.referencia)}</span>
             </InfoField>
-            {/* El backend puede devolver `observaciones: null` en el detalle;
-                `useCuentaPorCobrarDetail` ya lo normalizó a "" (ver su `select`),
-                así que aquí solo queda el caso de cadena vacía, que `textOrDash`
-                cubre igual. */}
             <InfoField label="Observaciones" className="col-span-2 sm:col-span-3">
               {textOrDash(cuenta.observaciones)}
             </InfoField>

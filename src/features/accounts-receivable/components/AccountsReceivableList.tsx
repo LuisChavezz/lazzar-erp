@@ -8,7 +8,8 @@ import { hasPermission } from "@/src/utils/permissions";
 import { isInitialLoadError } from "@/src/utils/isInitialLoadError";
 import { WarningFilledIcon, RejectIcon } from "@/src/components/Icons";
 import { formatCurrency } from "@/src/utils/formatCurrency";
-import { accountsReceivableColumns } from "./AccountsReceivableColumns";
+import { getAccountsReceivableColumns } from "./AccountsReceivableColumns";
+import { AccountsReceivableDetailDialog } from "./AccountsReceivableDetailDialog";
 import { AccountsReceivableAgingSummary } from "./AccountsReceivableAgingSummary";
 import { RegisterPendingInvoiceDialog } from "./RegisterPendingInvoiceDialog";
 import { useCuentasPorCobrar } from "../hooks/useCuentasPorCobrar";
@@ -33,6 +34,10 @@ export const AccountsReceivableList = () => {
   const { cuentas, isLoading, isError, error, hasLoaded, refetch, isFetching } =
     useCuentasPorCobrar();
   const [bannerDismissed, setBannerDismissed] = useState(false);
+  // Detalle abierto, por id: el diálogo trae su propia cuenta, así que sigue
+  // abierto (y se refresca) aunque la fila salga del filtro o de la página.
+  const [openDetailId, setOpenDetailId] = useState<number | null>(null);
+  const columns = getAccountsReceivableColumns({ onViewDetail: setOpenDetailId });
 
   // Ver el listado exige `R-CONTABILIDAD-CXC` (ver `routePermissions`);
   // registrar una CxC exige además `C-CONTABILIDAD-CXC`. `hasPermission` ya
@@ -62,7 +67,7 @@ export const AccountsReceivableList = () => {
   // sigue disponible aunque el listado esté cargando o haya fallado.
   const table = (
     <DataTable
-      columns={accountsReceivableColumns}
+      columns={columns}
       data={rows}
       searchPlaceholder="Buscar folio, cliente o factura..."
       filterConfig={[{ id: "estatus", label: "Estatus", options: ESTATUS_FILTER }]}
@@ -118,6 +123,18 @@ export const AccountsReceivableList = () => {
 
       {/* Tabla principal: Cuentas por Cobrar (maneja carga/error en su cuerpo) */}
       {table}
+
+      {/* Montado solo al abrir: el diálogo —y su `useCuentaPorCobrarDetail`— no
+          existe hasta entonces, así que la tabla no dispara peticiones de detalle. */}
+      {openDetailId !== null && (
+        <AccountsReceivableDetailDialog
+          cuentaId={openDetailId}
+          open={true}
+          onOpenChange={(open) => {
+            if (!open) setOpenDetailId(null);
+          }}
+        />
+      )}
     </div>
   );
 };
