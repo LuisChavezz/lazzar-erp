@@ -8,27 +8,8 @@ import { useBankAccounts } from "@/src/features/bank-accounts/hooks/useBankAccou
 import { COBRO_ESTATUS_CONFIG } from "@/src/features/collections/constants/collectionStatus";
 import { CobroAmount } from "@/src/features/collections/components/CobroAmount";
 import { buildBankAccountIndex, resolveCobroMoneda } from "@/src/features/collections/utils/collection.utils";
-import { isCobroRepPending } from "@/src/features/collections/utils/cobroRepStamping";
-import type { Cobro } from "@/src/features/collections/interfaces/collection.interface";
+import { CobroRepState } from "@/src/features/collections/components/CobroRepState";
 import { getCxcCobros } from "../utils/cxcCobros";
-
-/** Estado del REP con la misma regla y el mismo texto que la columna REP de cobros. */
-const CobroRepState = ({ cobro }: { cobro: Cobro }) => {
-  if (cobro.rep_uuid) {
-    return <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400">Timbrado</span>;
-  }
-  if (isCobroRepPending(cobro)) {
-    return (
-      <span
-        className="text-xs font-medium text-amber-600 dark:text-amber-400"
-        title="Timbrado sin confirmar en Facturama"
-      >
-        Pendiente
-      </span>
-    );
-  }
-  return <span className="text-slate-400">—</span>;
-};
 
 /**
  * Sección "Cobros" del detalle de CxC, de solo lectura: los cobros aplicados o

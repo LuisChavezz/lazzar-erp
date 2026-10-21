@@ -13,6 +13,7 @@ import {
 import type { CobroRow } from "../utils/collection.utils";
 import { useCollectionRowActionsContext } from "../hooks/useCollectionRowActions";
 import { CobroAmount } from "./CobroAmount";
+import { CobroRepState, getCobroRepStateLabel } from "./CobroRepState";
 
 const columnHelper = createColumnHelper<CobroRow>();
 
@@ -213,26 +214,11 @@ export const getCollectionColumns = ({ onViewDetail }: CollectionColumnsCallback
         </div>
       ),
     }),
-    columnHelper.accessor((row) => (row.rep_uuid ? "Timbrado" : row.rep_pendiente ? "Pendiente" : ""), {
+    columnHelper.accessor((row) => getCobroRepStateLabel(row), {
       id: "rep",
       header: "REP",
       size: 90,
       meta: { label: "REP", align: "center" },
-      cell: (info) => {
-        const value = info.getValue();
-        if (!value) return <span className="text-slate-400">—</span>;
-        return (
-          <span
-            className={`text-xs font-medium ${
-              value === "Timbrado"
-                ? "text-emerald-600 dark:text-emerald-400"
-                : "text-amber-600 dark:text-amber-400"
-            }`}
-            title={value === "Pendiente" ? "Timbrado sin confirmar en Facturama" : undefined}
-          >
-            {value}
-          </span>
-        );
-      },
+      cell: (info) => <CobroRepState cobro={info.row.original} />,
     }),
   ] as ColumnDef<CobroRow>[];
