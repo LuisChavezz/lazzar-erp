@@ -1,6 +1,5 @@
-import { useIsMutating, useQueryClient } from "@tanstack/react-query";
-import type { QueryClient, QueryKey } from "@tanstack/react-query";
-import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
+import type { QueryClient } from "@tanstack/react-query";
+import { toPrecheckError } from "@/src/hooks/useMutationLock";
 import type { Invoice } from "../interfaces/invoice.interface";
 import { getInvoiceDetail } from "../services/actions";
 import { invoiceDesgloseQueryKey } from "./useInvoiceDesglose";
@@ -9,11 +8,10 @@ import { invoiceRetrieveFreshOptions } from "./useInvoiceRetrieveFresh";
 /**
  * Andamiaje común de las acciones irreversibles sobre UNA factura
  * (`useCancelInvoice`, `useStampInvoice`). Cada hook conserva sus propias
- * reglas de precheck, mensajes y endpoint; aquí solo vive lo que comparten.
+ * reglas de precheck, mensajes y endpoint; aquí solo vive lo que comparten. El
+ * candado contra el doble envío y el error del precheck son genéricos
+ * (`useMutationLock`, `PrecheckError` en `src/hooks/useMutationLock.ts`).
  */
-
-/** Fallo ANTES del POST: el retrieve previo no respondió. Su `message` va tal cual al toast. */
-export class InvoicePrecheckError extends Error {}
 
 /**
  * Retrieve FRESCO de la factura antes de la acción. Llama al servicio
@@ -23,7 +21,7 @@ export class InvoicePrecheckError extends Error {}
  * viejos. Una petición propia siempre refleja el estado actual, y no aborta la
  * consulta en vuelo de la página (lo que haría `cancelQueries`). El resultado
  * se escribe en la caché de esa llave, así que la vista también queda al día.
- * Si falla, lanza `InvoicePrecheckError` con el motivo listo para el toast.
+ * Si falla, lanza `PrecheckError` con el motivo listo para el toast.
  */
 export const fetchFreshInvoice = async (
   queryClient: QueryClient,
@@ -33,7 +31,7 @@ export const fetchFreshInvoice = async (
   try {
     invoice = await getInvoiceDetail(invoiceId);
   } catch (error) {
-    throw new InvoicePrecheckError(extractErrorMessage(error, "No se pudo consultar la factura."));
+    throw toPrecheckError(error, "No se pudo consultar la factura.");
   }
   queryClient.setQueryData(invoiceRetrieveFreshOptions(invoiceId).queryKey, invoice);
   return invoice;
@@ -53,17 +51,4 @@ export const invalidateInvoiceBaseQueries = (
   queryClient.invalidateQueries({ queryKey: ["invoices"] });
   if (sentRequest) queryClient.invalidateQueries({ queryKey: ["invoice-detail", invoiceId] });
   queryClient.invalidateQueries({ queryKey: invoiceDesgloseQueryKey(invoiceId) });
-};
-
-/**
- * Candado contra el doble envío: la mutación misma, con `mutationKey` POR
- * FACTURA. `isRunning` es para pintar (llega un render tarde); `isIdle()`
- * consulta la caché de mutaciones de forma SÍNCRONA, así que sobrevive a un
- * remontaje y es el mismo para todos los diálogos de esa factura.
- */
-export const useInvoiceMutationLock = (mutationKey: QueryKey) => {
-  const queryClient = useQueryClient();
-  const isRunning = useIsMutating({ mutationKey, exact: true }) > 0;
-  const isIdle = () => queryClient.isMutating({ mutationKey, exact: true }) === 0;
-  return { isRunning, isIdle };
 };

@@ -15,11 +15,10 @@ import {
 import { isInvoiceStamped } from "../utils/invoiceStamping";
 import { invoiceOnboardingQueryKey } from "./useInvoiceOnboarding";
 import {
-  InvoicePrecheckError,
   fetchFreshInvoice,
   invalidateInvoiceBaseQueries,
-  useInvoiceMutationLock,
 } from "./invoiceActionMutation";
+import { PrecheckError, useMutationLock } from "@/src/hooks/useMutationLock";
 
 /** Candado de la cancelación, ÚNICO por factura (ver `useCancelInvoice`). */
 export const cancelInvoiceMutationKey = (invoiceId: number) =>
@@ -56,14 +55,14 @@ const stampedSinceShown = (current: Invoice, shownStamped: boolean): boolean =>
 
 /** Mensaje de un fallo: el del precheck tal cual, o el del backend. */
 const errorMessageOf = (error: unknown): string =>
-  error instanceof InvoicePrecheckError ? error.message : cancelInvoiceErrorMessage(error);
+  error instanceof PrecheckError ? error.message : cancelInvoiceErrorMessage(error);
 
 /**
  * Cancela UNA factura (`POST /finanzas/facturas/{id}/cancelar/`).
  *
  * Candado contra el doble envío: la mutación misma, con `mutationKey` POR
  * FACTURA (`cancelInvoiceMutationKey`), igual que `useCreateAndOpenQuote`
- * (`useInvoiceMutationLock`): el mismo para el diálogo del listado y el del
+ * (`useMutationLock`): el mismo para el diálogo del listado y el del
  * detalle.
  *
  * Antes del POST pide el retrieve FRESCO: cancelar una ya cancelada responde
@@ -94,7 +93,7 @@ const errorMessageOf = (error: unknown): string =>
 export const useCancelInvoice = (invoiceId: number) => {
   const queryClient = useQueryClient();
   const mutationKey = cancelInvoiceMutationKey(invoiceId);
-  const { isRunning: isCancelling, isIdle } = useInvoiceMutationLock(mutationKey);
+  const { isRunning: isCancelling, isIdle } = useMutationLock(mutationKey);
 
   const mutation = useMutation<CancelInvoiceResult, unknown, CancelInvoiceVariables>({
     mutationKey,

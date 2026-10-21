@@ -9,11 +9,10 @@ import {
   stampInvoiceErrorMessage,
 } from "../utils/invoiceStamping";
 import {
-  InvoicePrecheckError,
   fetchFreshInvoice,
   invalidateInvoiceBaseQueries,
-  useInvoiceMutationLock,
 } from "./invoiceActionMutation";
+import { PrecheckError, useMutationLock } from "@/src/hooks/useMutationLock";
 import { invalidatePedidoProgress } from "@/src/features/orders/hooks/invalidatePedidoProgress";
 
 /** Candado del timbrado, ÚNICO por factura (ver `useStampInvoice`). */
@@ -34,7 +33,7 @@ export type StampInvoiceResult =
  * acto fiscal irreversible. Mismo esquema que `useCancelInvoice`:
  *
  * - Candado contra el doble envío: la mutación misma, con `mutationKey` POR
- *   FACTURA (`stampInvoiceMutationKey`, `useInvoiceMutationLock`).
+ *   FACTURA (`stampInvoiceMutationKey`, `useMutationLock`).
  * - Antes del POST pide el retrieve FRESCO: si la factura ya trae `cfdi_uuid`
  *   (la timbró otra persona), `cfdi_pendiente` (timbrado sin confirmar) o dejó
  *   de ser una `Emitida` activa, NO se hace el POST y se avisa.
@@ -46,7 +45,7 @@ export type StampInvoiceResult =
 export const useStampInvoice = (invoiceId: number) => {
   const queryClient = useQueryClient();
   const mutationKey = stampInvoiceMutationKey(invoiceId);
-  const { isRunning: isStamping, isIdle } = useInvoiceMutationLock(mutationKey);
+  const { isRunning: isStamping, isIdle } = useMutationLock(mutationKey);
 
   const mutation = useMutation<StampInvoiceResult, unknown, void>({
     mutationKey,
@@ -78,7 +77,7 @@ export const useStampInvoice = (invoiceId: number) => {
     },
     onError: (error) => {
       toast.error(
-        error instanceof InvoicePrecheckError ? error.message : stampInvoiceErrorMessage(error),
+        error instanceof PrecheckError ? error.message : stampInvoiceErrorMessage(error),
       );
     },
     // Si el precheck detuvo la acción, el retrieve ya está fresco en la caché.

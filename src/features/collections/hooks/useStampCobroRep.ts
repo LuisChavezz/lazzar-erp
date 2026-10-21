@@ -1,6 +1,6 @@
-import { useIsMutating, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
-import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
+import { PrecheckError, toPrecheckError, useMutationLock } from "@/src/hooks/useMutationLock";
 import { getCobro, stampCobroRep } from "../services/actions";
 import type { Cobro } from "../interfaces/collection.interface";
 import {
@@ -12,9 +12,6 @@ import {
 
 /** Candado del timbrado del REP, ÚNICO por cobro (ver `useStampCobroRep`). */
 export const stampCobroRepMutationKey = (cobroId: number) => ["stamp-cobro-rep", cobroId] as const;
-
-/** Fallo ANTES del POST: el retrieve previo no respondió. Su `message` va tal cual al toast. */
-class CobroRepPrecheckError extends Error {}
 
 /**
  * Resultado de timbrar. `not-stampable`: el retrieve previo encontró el cobro
@@ -30,7 +27,7 @@ export type StampCobroRepResult =
  * acto fiscal irreversible. Mismo esquema que `useStampInvoice` (Facturación):
  *
  * - Candado contra el doble envío: la mutación misma, con `mutationKey` POR
- *   COBRO; `isIdle()` consulta la caché de mutaciones de forma síncrona.
+ *   COBRO (`useMutationLock`).
  * - Antes del POST pide el retrieve FRESCO del cobro: si ya trae `rep_uuid`,
  *   `rep_pendiente` o dejó de ser un `Aplicado` activo, NO hace el POST.
  * - Al TERMINAR, con cualquier resultado, refresca el listado de cobros: un 400
@@ -40,8 +37,7 @@ export type StampCobroRepResult =
 export const useStampCobroRep = (cobroId: number) => {
   const queryClient = useQueryClient();
   const mutationKey = stampCobroRepMutationKey(cobroId);
-  const isStamping = useIsMutating({ mutationKey, exact: true }) > 0;
-  const isIdle = () => queryClient.isMutating({ mutationKey, exact: true }) === 0;
+  const { isRunning: isStamping, isIdle } = useMutationLock(mutationKey);
 
   const mutation = useMutation<StampCobroRepResult, unknown, void>({
     mutationKey,
@@ -50,7 +46,7 @@ export const useStampCobroRep = (cobroId: number) => {
       try {
         current = await getCobro(cobroId);
       } catch (error) {
-        throw new CobroRepPrecheckError(extractErrorMessage(error, "No se pudo consultar el cobro."));
+        throw toPrecheckError(error, "No se pudo consultar el cobro.");
       }
       if (!isCobroRepStampable(current)) return { outcome: "not-stampable", cobro: current };
       const cobro = await stampCobroRep(cobroId);
@@ -73,7 +69,7 @@ export const useStampCobroRep = (cobroId: number) => {
       );
     },
     onError: (error) => {
-      toast.error(error instanceof CobroRepPrecheckError ? error.message : stampCobroRepErrorMessage(error));
+      toast.error(error instanceof PrecheckError ? error.message : stampCobroRepErrorMessage(error));
     },
     onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: ["cobros"] });
