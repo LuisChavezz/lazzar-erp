@@ -5,6 +5,7 @@ import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { drfFieldMessage, firstDrfFieldMessage } from "@/src/utils/firstDrfFieldMessage";
 import { COBRO_CANCEL_PERMISSION } from "../constants/collectionPermissions";
 import type { Cobro, CobroEstatus } from "../interfaces/collection.interface";
+import { isActionOutcomeUnknown } from "./actionOutcome";
 
 /** Estatus desde los que se ofrece "Cancelar cobro". */
 const CANCELLABLE_STATUSES: readonly CobroEstatus[] = ["Aplicado", "Borrador"];
@@ -63,11 +64,21 @@ export const getCobroCancelBlockReason = (
 };
 
 /**
+ * Aviso cuando la petición de cancelar se cortó sin respuesta del backend
+ * (`isActionOutcomeUnknown`): pudo aplicarse. Reintentar es seguro: `cancelar/`
+ * sobre un cobro ya `Cancelado` responde 200 sin hacer nada.
+ */
+export const COBRO_CANCEL_UNCONFIRMED_MESSAGE =
+  "No se recibió respuesta del servidor: la cancelación pudo haberse aplicado. Actualiza los datos y, si el cobro sigue activo, vuelve a intentarlo.";
+
+/**
  * Mensaje de un fallo de `cancelar/`. El rechazo por REP llega bajo `rep` y se
- * muestra tal cual; un 403 trae `detail` (lo cubre `firstDrfFieldMessage`). Si no
- * viene ninguno (404, 500, red), cae en el extractor genérico.
+ * muestra tal cual; un corte sin respuesta avisa que pudo cancelarse; un 403
+ * trae `detail` (lo cubre `firstDrfFieldMessage`). El resto (404, 500) cae en el
+ * extractor genérico.
  */
 export const cancelCobroErrorMessage = (error: unknown): string =>
   drfFieldMessage(error, "rep") ??
+  (isActionOutcomeUnknown(error) ? COBRO_CANCEL_UNCONFIRMED_MESSAGE : undefined) ??
   firstDrfFieldMessage(error) ??
   extractErrorMessage(error, "No se pudo cancelar el cobro.");

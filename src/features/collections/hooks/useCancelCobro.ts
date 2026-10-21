@@ -7,6 +7,7 @@ import { cancelCobro, getCobro } from "../services/actions";
 import type { Cobro } from "../interfaces/collection.interface";
 import { buildCxcIndex } from "../utils/collection.utils";
 import { cancelCobroErrorMessage, getCobroCancelBlockReason } from "../utils/cobroCancellation";
+import { isActionOutcomeUnknown } from "../utils/actionOutcome";
 import { invalidateCobroEffects, writeCobroToList } from "./cobroQueryCache";
 
 /** Candado de la cancelación, ÚNICO por cobro (ver `useCancelCobro`). */
@@ -25,8 +26,9 @@ export const cancelCobroMutationKey = (cobroId: number) => ["cancel-cobro", cobr
  *   caché, así que el detalle también queda al día.
  * - Al terminar bien, escribe el cobro cancelado en el listado y refresca todo
  *   lo que la reversión mueve (`invalidateCobroEffects`, el mismo conjunto que
- *   registrar un cobro). Ante un error se relee el listado de cobros: un 400 por
- *   REP significa que su estado cambió.
+ *   registrar un cobro). Ante un error se relee el listado de cobros (un 400 por
+ *   REP significa que su estado cambió); si el POST se quedó sin respuesta
+ *   (`isActionOutcomeUnknown`), se refresca todo el conjunto.
  */
 export const useCancelCobro = (cobroId: number) => {
   const queryClient = useQueryClient();
@@ -56,7 +58,10 @@ export const useCancelCobro = (cobroId: number) => {
       toast.success(`Cobro #${cobro.id} cancelado`);
     },
     onError: (error) => {
-      void queryClient.invalidateQueries({ queryKey: ["cobros"] });
+      // POST enviado sin respuesta: la reversión pudo aplicarse, así que se
+      // refresca TODO lo que mueve, no solo el listado de cobros.
+      if (isActionOutcomeUnknown(error)) invalidateCobroEffects(queryClient);
+      else void queryClient.invalidateQueries({ queryKey: ["cobros"] });
       toast.error(error instanceof PrecheckError ? error.message : cancelCobroErrorMessage(error));
     },
   });
