@@ -4,7 +4,9 @@ import { normalizeCapturedDecimal } from "@/src/utils/decimal";
 import type {
   Cobro,
   CobroEstatus,
+  CobroRepFileFormat,
   CreateCobroDetallePayload,
+  FacturamaCfdiFile,
   CreateCobroPayload,
   FinanceDashboard,
   FinanceDashboardParams,
@@ -56,6 +58,23 @@ export const stampCobroRep = async (id: number): Promise<Cobro> => {
  */
 export const cancelCobro = async (id: number): Promise<Cobro> => {
   const { data } = await v1_api.post<Cobro>(`/finanzas/cobros/${id}/cancelar/`);
+  return data;
+};
+
+/**
+ * Archivo del REP timbrado (`GET /finanzas/facturama/cfdi/{formato}/issued/{id}/`),
+ * el passthrough de Facturama que exige `R-FIN-FACTURAMA` y la empresa dueña de
+ * la cuenta. `facturamaId` es el `rep_facturama_id` del cobro. No es binario:
+ * responde el objeto de Facturama tal cual, con el archivo en base64 en `Content`
+ * y sin nombre de archivo.
+ */
+export const getCobroRepFile = async (
+  facturamaId: string,
+  format: CobroRepFileFormat,
+): Promise<FacturamaCfdiFile> => {
+  const { data } = await v1_api.get<FacturamaCfdiFile>(
+    `/finanzas/facturama/cfdi/${format}/issued/${encodeURIComponent(facturamaId)}/`,
+  );
   return data;
 };
 

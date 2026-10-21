@@ -83,6 +83,20 @@ export interface Cobro {
   cobro_detalles: CobroDetalle[];
 }
 
+/** Formatos del REP que se descargan desde el detalle del cobro. */
+export type CobroRepFileFormat = "pdf" | "xml";
+
+/**
+ * Respuesta del passthrough `facturama/cfdi/{formato}/issued/{id}/`: el objeto
+ * de Facturama tal cual. Solo se declara lo que se lee; el valor exacto de
+ * `ContentType` no está confirmado y no se usa (el MIME sale del formato).
+ */
+export interface FacturamaCfdiFile {
+  /** Archivo en base64 puro. */
+  Content: string;
+  ContentType?: string;
+}
+
 /**
  * Parámetros de `GET /finanzas/dashboard/` que usa este módulo. Sin fechas el
  * backend toma el mes en curso hasta hoy; sin `moneda_id` SUMA todas las
