@@ -1,4 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import type { QueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { PrecheckError, toPrecheckError, useMutationLock } from "@/src/hooks/useMutationLock";
 import { getCobro, stampCobroRep } from "../services/actions";
@@ -12,6 +13,21 @@ import {
 
 /** Candado del timbrado del REP, ÚNICO por cobro (ver `useStampCobroRep`). */
 export const stampCobroRepMutationKey = (cobroId: number) => ["stamp-cobro-rep", cobroId] as const;
+
+/**
+ * Escribe el cobro VIGENTE en el listado en caché, reemplazando su fila por
+ * `id`. Hoy la única entrada bajo `["cobros"]` es el listado (`Cobro[]`,
+ * `useCobros`); cualquier otra forma se deja intacta. Así la fila deja de
+ * ofrecer "Timbrar REP" en cuanto se conoce su estado, aunque el refetch de
+ * `onSettled` tarde o falle.
+ */
+const writeCobroToList = (queryClient: QueryClient, cobro: Cobro) => {
+  queryClient.setQueriesData({ queryKey: ["cobros"] }, (current: unknown) =>
+    Array.isArray(current)
+      ? (current as Cobro[]).map((row) => (row.id === cobro.id ? cobro : row))
+      : current,
+  );
+};
 
 /**
  * Resultado de timbrar. `not-stampable`: el retrieve previo encontró el cobro
@@ -30,6 +46,8 @@ export type StampCobroRepResult =
  *   COBRO (`useMutationLock`).
  * - Antes del POST pide el retrieve FRESCO del cobro: si ya trae `rep_uuid`,
  *   `rep_pendiente` o dejó de ser un `Aplicado` activo, NO hace el POST.
+ * - El cobro del precheck y el de la respuesta 200 se escriben en el listado en
+ *   caché (`writeCobroToList`).
  * - Al TERMINAR, con cualquier resultado, refresca el listado de cobros: un 400
  *   por falla de Facturama también deja `rep_pendiente` guardado. El REP no
  *   toca saldos, banco ni póliza, así que no se invalida nada más.
@@ -48,8 +66,10 @@ export const useStampCobroRep = (cobroId: number) => {
       } catch (error) {
         throw toPrecheckError(error, "No se pudo consultar el cobro.");
       }
+      writeCobroToList(queryClient, current);
       if (!isCobroRepStampable(current)) return { outcome: "not-stampable", cobro: current };
       const cobro = await stampCobroRep(cobroId);
+      writeCobroToList(queryClient, cobro);
       return { outcome: "stamped", cobro };
     },
     onSuccess: ({ outcome, cobro }) => {
