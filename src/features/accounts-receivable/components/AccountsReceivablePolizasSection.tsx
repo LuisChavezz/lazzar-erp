@@ -37,7 +37,10 @@ const PolizaDetallesTable = ({
     return <EmptyLines>Esta póliza no tiene movimientos registrados.</EmptyLines>;
   }
 
-  const ordenados = [...detalles].sort((a, b) => a.orden - b.orden);
+  // `orden` puede llegar en `null`: esos renglones van al final, por `id`.
+  const ordenados = [...detalles].sort(
+    (a, b) => (a.orden ?? Infinity) - (b.orden ?? Infinity) || a.id - b.id,
+  );
 
   return (
     <LineItemsTable
@@ -109,7 +112,7 @@ const PolizaDetallesTable = ({
                 {observaciones !== "—" && (
                   <p
                     className="text-xs text-slate-400 dark:text-slate-500 truncate mt-0.5"
-                    title={detalle.observaciones}
+                    title={observaciones}
                   >
                     {observaciones}
                   </p>

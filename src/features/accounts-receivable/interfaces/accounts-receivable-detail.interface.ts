@@ -20,7 +20,8 @@ import type { CuentaPorCobrar } from "./accounts-receivable.interface";
  */
 export interface CuentaPorCobrarFactura {
   id: number;
-  folio: string;
+  /** `null` si la factura no tiene folio. */
+  folio: string | null;
   cliente_nombre: string;
   /**
    * Correo destino de la factura, resuelto server-side. Es `null` explícito
@@ -35,24 +36,27 @@ export interface CuentaPorCobrarFactura {
 /**
  * Movimiento (renglón) de una póliza contable: el asiento contra una cuenta
  * contable, con su importe en `cargo` o en `abono` (uno de los dos va en cero).
+ *
+ * La cuenta contable y el centro de costo son llaves `SET_NULL`: si se borran,
+ * el renglón queda sin ellas y sus campos llegan en `null`.
  */
 export interface CuentaPorCobrarPolizaDetalle {
   id: number;
-  cuenta_contable_id: number;
+  cuenta_contable_id: number | null;
   /** Código de la cuenta contable (p. ej. "105-01"). */
-  cuenta_contable_codigo: string;
+  cuenta_contable_codigo: string | null;
   /** Nombre de la cuenta contable (p. ej. "Clientes"). */
-  cuenta_contable_nombre: string;
-  centro_costo_id: number;
-  centro_costo_nombre: string;
+  cuenta_contable_nombre: string | null;
+  centro_costo_id: number | null;
+  centro_costo_nombre: string | null;
   /** Importe al debe (string decimal). */
   cargo: string;
   /** Importe al haber (string decimal). */
   abono: string;
-  referencia: string;
-  observaciones: string;
-  /** Orden de presentación del renglón dentro de la póliza (1-based). */
-  orden: number;
+  referencia: string | null;
+  observaciones: string | null;
+  /** Orden de presentación del renglón dentro de la póliza (1-based), o `null`. */
+  orden: number | null;
 }
 
 /** Póliza contable asociada a la cuenta por cobrar, con sus movimientos. */
@@ -74,12 +78,12 @@ export interface CuentaPorCobrarPoliza {
 }
 
 /**
- * Respuesta de `GET /finanzas/cuentas-por-cobrar/{id}/`: los 17 campos base del
+ * Respuesta de `GET /finanzas/cuentas-por-cobrar/{id}/`: los 18 campos base del
  * listado más los 3 exclusivos del detalle.
  *
  * Extiende `CuentaPorCobrar` (en vez de redeclarar los campos base) para que el
  * detalle sea asignable donde se espera una cuenta —en particular a
- * `isCuentaVencida(cuenta, todayUTC)`—, de modo que la vista de detalle derive
+ * `isCuentaVencida(cuenta, today)`—, de modo que la vista de detalle derive
  * "vencida" con la MISMA definición única que el listado, los KPIs y la
  * antigüedad, sin poder contradecirlos.
  */
@@ -94,30 +98,3 @@ export interface CuentaPorCobrarDetail extends CuentaPorCobrar {
   /** Pólizas contables asociadas. Puede venir vacío. */
   polizas: CuentaPorCobrarPoliza[];
 }
-
-/**
- * Forma CRUDA de `GET /finanzas/cuentas-por-cobrar/{id}/` tal como la entrega
- * el backend, antes de normalizar. A diferencia de `CuentaPorCobrarDetail`
- * —que hereda `observaciones: string` de `CuentaPorCobrar` para poder pasarse
- * tal cual a `isCuentaVencida(cuenta, todayUTC)`—, aquí `observaciones` SÍ
- * admite `null`: el backend lo confirma para el detalle (a diferencia del
- * listado, que nunca lo hace).
- *
- * Ensanchar `observaciones` directamente en `CuentaPorCobrarDetail` a
- * `string | null` NO es viable: además de romper el `extends` de
- * `CuentaPorCobrar` (TS2430), el objeto resultante deja de ser asignable al
- * parámetro `CuentaPorCobrar` de `isCuentaVencida` (TS2345) —el argumento ya
- * no cumple el tipo esperado, sin importar si se declara con `extends` o con
- * `Omit<...> & {...}`—. Por eso la normalización de `null` a `""` ocurre en
- * la frontera (`useCuentaPorCobrarDetail`, vía `select`): `actions.ts` tipa el
- * GET honestamente con ESTE tipo crudo (sigue devolviendo `response.data` tal
- * cual, sin transformarlo — solo cambia la anotación de tipo), y el hook
- * expone ya normalizado un `CuentaPorCobrarDetail` cuyo `observaciones: string`
- * es cierto en tiempo de ejecución, no solo en el tipo.
- */
-export type CuentaPorCobrarDetailResponse = Omit<
-  CuentaPorCobrarDetail,
-  "observaciones"
-> & {
-  observaciones: string | null;
-};

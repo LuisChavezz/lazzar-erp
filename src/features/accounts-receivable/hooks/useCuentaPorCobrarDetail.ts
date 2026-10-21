@@ -1,9 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { getCuentaPorCobrarDetail } from "../services/actions";
-import type {
-  CuentaPorCobrarDetail,
-  CuentaPorCobrarDetailResponse,
-} from "../interfaces/accounts-receivable-detail.interface";
+import type { CuentaPorCobrarDetail } from "../interfaces/accounts-receivable-detail.interface";
 
 /**
  * useCuentaPorCobrarDetail
@@ -23,18 +20,11 @@ import type {
  * (`useRegisterPendingInvoice`), y refrescar el detalle abierto no tiene nada
  * que ver con haber dado de alta OTRA cuenta. Namespace propio, mismo patrón que
  * `useReceiptDetail` (`["receipt-detail", id]`) y `useStockMovementDetail`.
- *
- * `select` normaliza `observaciones: null` (real en el detalle, ver
- * `CuentaPorCobrarDetailResponse`) a `""`, así que el resto de la app recibe un
- * `CuentaPorCobrarDetail` cuyo `observaciones: string` es cierto en tiempo de
- * ejecución —no solo en el tipo— y sigue siendo asignable tal cual a
- * `isCuentaVencida(cuenta, todayUTC)` sin necesitar ningún cambio ahí.
  */
 export const useCuentaPorCobrarDetail = (id: number) => {
-  return useQuery<CuentaPorCobrarDetailResponse, Error, CuentaPorCobrarDetail>({
+  return useQuery<CuentaPorCobrarDetail>({
     queryKey: ["accounts-receivable-detail", id],
     queryFn: () => getCuentaPorCobrarDetail(id),
     enabled: id > 0,
-    select: (raw) => ({ ...raw, observaciones: raw.observaciones ?? "" }),
   });
 };

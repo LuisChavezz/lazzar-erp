@@ -7,6 +7,7 @@ import { ViewIcon } from "@/src/components/Icons";
 import { StatusBadge } from "@/src/components/StatusBadge";
 import { formatMoneyValue } from "@/src/utils/formatCurrency";
 import { formatShortDate } from "@/src/utils/formatDate";
+import { textOrDash } from "@/src/components/DetailDialogPrimitives";
 import { CXC_ESTATUS_CONFIG } from "../constants/cxcEstatus";
 import { AccountsReceivableDetailDialog } from "./AccountsReceivableDetailDialog";
 import type {
@@ -77,7 +78,7 @@ export const accountsReceivableColumns = [
     header: "Factura",
     cell: (info) => (
       <span className="font-mono text-xs text-slate-500 dark:text-slate-400">
-        {info.getValue()}
+        {textOrDash(info.getValue())}
       </span>
     ),
   }),

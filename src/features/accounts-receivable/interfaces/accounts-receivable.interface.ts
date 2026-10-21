@@ -15,25 +15,28 @@ export type CxCEstatus = "Pendiente" | "Parcial" | "Pagada" | "Cancelada";
 /** Elemento de la respuesta de `GET /finanzas/cuentas-por-cobrar/`. */
 export interface CuentaPorCobrar {
   id: number;
+  /** `null` en cuentas viejas sin empresa propia (el backend las acota por la de su factura). */
+  empresa_id: number | null;
   cliente: number;
   cliente_nombre: string;
   factura_id: number;
-  factura_folio: string;
+  /** `null` si la factura no tiene folio. */
+  factura_folio: string | null;
   moneda_id: number;
   moneda_codigo: string;
   /** Fecha ISO `YYYY-MM-DD`. */
   fecha_emision: string;
-  /** Fecha ISO `YYYY-MM-DD`. */
-  fecha_vencimiento: string;
+  /** Fecha ISO `YYYY-MM-DD`, o `null` si la cuenta no tiene vencimiento. */
+  fecha_vencimiento: string | null;
   /** Importe total de la factura (string decimal). */
   total: string;
   /** Saldo pendiente por cobrar (string decimal). */
   saldo: string;
   estatus: CxCEstatus;
-  referencia: string;
+  referencia: string | null;
   /** Fecha ISO `YYYY-MM-DD` del último pago (un `DateField`), o `null` si aún no hay cobros. */
   fecha_ultimo_pago: string | null;
-  observaciones: string;
+  observaciones: string | null;
   created_at: string;
   updated_at: string;
 }

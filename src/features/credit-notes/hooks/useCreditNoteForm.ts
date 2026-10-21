@@ -213,7 +213,7 @@ export function useCreditNoteForm({ onSuccess }: { onSuccess?: () => void } = {}
     if (cuenta.factura_id === form.state.values.factura) return;
     form.setFieldValue("factura", cuenta.factura_id);
     form.setFieldValue("cliente", cuenta.cliente);
-    form.setFieldValue("factura_folio", cuenta.factura_folio);
+    form.setFieldValue("factura_folio", cuenta.factura_folio ?? "");
     form.setFieldValue("moneda_codigo", cuenta.moneda_codigo);
     form.setFieldValue("cxc_saldo", cuenta.saldo);
     form.setFieldValue("nota_credito_detalles", []);
