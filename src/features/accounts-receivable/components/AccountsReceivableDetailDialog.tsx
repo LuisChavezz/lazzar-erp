@@ -18,6 +18,7 @@ import {
 } from "../utils/accounts-receivable.utils";
 import { AccountsReceivableFacturaSection } from "./AccountsReceivableFacturaSection";
 import { AccountsReceivablePolizasSection } from "./AccountsReceivablePolizasSection";
+import { AccountsReceivableCobrosSection } from "./AccountsReceivableCobrosSection";
 import {
   InfoField,
   SectionTitle,
@@ -175,6 +176,9 @@ export function AccountsReceivableDetailDialog({
               </InfoField>
             </div>
           </div>
+
+          {/* Cobros aplicados a la cuenta (solo lectura) */}
+          <AccountsReceivableCobrosSection cuentaId={cuenta.id} />
 
           {/* Factura */}
           <AccountsReceivableFacturaSection
