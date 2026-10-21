@@ -106,3 +106,21 @@ export const cancelarNotaCredito = async (id: number): Promise<NotaCredito> => {
 export const deleteNotaCredito = async (id: number): Promise<void> => {
   await v1_api.delete(`/finanzas/notas-credito/${id}/`);
 };
+
+/**
+ * Timbra el CFDI de egreso de una nota `Emitida` sin timbre:
+ * `POST /finanzas/notas-credito/{id}/timbrar/`.
+ *
+ * El backend no lee el cuerpo (se manda `{}`, como sus tests). Responde 200 con
+ * la nota completa (`cfdi_uuid`, `cfdi_fecha_timbrado`…). No cambia estatus,
+ * saldos ni pólizas. Los rechazos llegan como 400 con la clave `cfdi` (ya
+ * timbrada, pendiente, factura sin timbrar, datos fiscales, Facturama) o
+ * `estatus` (no `Emitida`); un timeout deja la nota con `cfdi_pendiente`.
+ */
+export const timbrarNotaCredito = async (id: number): Promise<NotaCredito> => {
+  const { data } = await v1_api.post<NotaCredito>(
+    `/finanzas/notas-credito/${id}/timbrar/`,
+    {},
+  );
+  return data;
+};
