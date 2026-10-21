@@ -11,16 +11,27 @@ import {
   SectionTitle,
   textOrDash,
 } from "@/src/components/DetailDialogPrimitives";
-import { NotaCreditoIcon } from "@/src/components/Icons";
+import { NotaCreditoIcon, ShieldCheckIcon } from "@/src/components/Icons";
+import { useSession } from "next-auth/react";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import {
   formatMoneyValueOrDash,
   formatQuantityValue,
 } from "@/src/utils/formatCurrency";
-import { formatShortDate } from "@/src/utils/formatDate";
+import { formatShortDate, formatShortDateTime } from "@/src/utils/formatDate";
 import { useInvoiceDetail } from "@/src/features/invoicing/hooks/useInvoiceDetail";
+import { DocumentActionWithDialog } from "@/src/features/invoicing/components/DocumentActionWithDialog";
 import { NOTA_CREDITO_ESTATUS_CONFIG } from "../constants/creditNoteStatus";
 import type { NotaCredito } from "../interfaces/credit-note.interface";
+import {
+  CREDIT_NOTE_STAMP_PENDING_LABEL,
+  CREDIT_NOTE_STAMP_PENDING_MESSAGE,
+  canStampCreditNote,
+  getCreditNoteStampBlockReason,
+  isCreditNoteStampPending,
+  type RelatedInvoiceStampState,
+} from "../utils/creditNoteStamping";
+import { CreditNoteStampDialog } from "./CreditNoteStampDialog";
 
 /** Importe en crudo, con dos decimales y sin símbolo: para cuando la moneda del
  *  documento aún no se conoce (ver `money` más abajo). */
@@ -77,6 +88,79 @@ export function CreditNoteDetailDialog({
 }
 
 /**
+ * Timbre de la nota y su acción "Timbrar", compartidos por los dos diálogos de
+ * detalle (desde el listado y por id).
+ *
+ * - Con `cfdi_uuid`: folio fiscal y fecha de timbrado, como la cabecera de la
+ *   factura.
+ * - Con `cfdi_pendiente`: el indicador de pendiente en el mismo lugar.
+ * - "Timbrar" solo con `E-FIN-FACTURAS` y una `Emitida` sin CFDI ni timbrado
+ *   pendiente (`canStampCreditNote`). Bloqueado y descrito por su nota mientras
+ *   la factura relacionada carga, no se pudo consultar o no está timbrada
+ *   (`getCreditNoteStampBlockReason`): el backend la exige timbrada.
+ */
+function CreditNoteCfdiSection({
+  nota,
+  invoice,
+}: {
+  nota: NotaCredito;
+  invoice: RelatedInvoiceStampState;
+}) {
+  const { data: session } = useSession();
+  const canStamp = canStampCreditNote(nota, session?.user);
+  const stampBlockReason = canStamp ? getCreditNoteStampBlockReason(invoice) : null;
+  const pending = !nota.cfdi_uuid && isCreditNoteStampPending(nota);
+  const stampNoteId = `credit-note-${nota.id}-stamp-note`;
+
+  if (!nota.cfdi_uuid && !pending && !canStamp) return null;
+
+  return (
+    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 px-4 py-3 rounded-xl bg-slate-50 dark:bg-white/5 text-xs">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3 min-w-0">
+        {nota.cfdi_uuid ? (
+          <>
+            <InfoField label="Folio fiscal (UUID)">
+              <span className="font-mono break-all select-all">{nota.cfdi_uuid}</span>
+            </InfoField>
+            <InfoField label="Fecha de timbrado">
+              {formatShortDateTime(nota.cfdi_fecha_timbrado)}
+            </InfoField>
+          </>
+        ) : pending ? (
+          <InfoField label="Estado del CFDI">
+            <span className="text-amber-600 dark:text-amber-400 font-medium">
+              {CREDIT_NOTE_STAMP_PENDING_LABEL}
+            </span>
+            <span className="block text-[11px] font-normal text-slate-500 dark:text-slate-400">
+              {CREDIT_NOTE_STAMP_PENDING_MESSAGE}
+            </span>
+          </InfoField>
+        ) : (
+          <InfoField label="Estado del CFDI">Sin timbrar</InfoField>
+        )}
+      </div>
+      {/* Siempre montado: tras timbrar, `canStamp` pasa a `false` y
+          `DocumentActionWithDialog` retira el botón pero mantiene el diálogo
+          abierto hasta que se cierre (si se desmontara, se cerraría de golpe). */}
+      <div className="flex flex-col gap-2 sm:items-end shrink-0">
+        <DocumentActionWithDialog
+          offered={canStamp}
+          blockedNoteId={stampBlockReason ? stampNoteId : undefined}
+          icon={ShieldCheckIcon}
+          label="Timbrar"
+          renderDialog={(dialog) => <CreditNoteStampDialog nota={nota} {...dialog} />}
+        />
+        {stampBlockReason && (
+          <p id={stampNoteId} className="text-xs text-slate-500 dark:text-slate-400 max-w-xs sm:text-right">
+            {stampBlockReason}
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/**
  * Contenido del detalle (sin el marco del diálogo), para que el envoltorio por
  * id (`CreditNoteDetailByIdDialog`) lo monte dentro de SU único `MainDialog`
  * sin cambiar de diálogo al terminar de cargar.
@@ -105,6 +189,14 @@ export function CreditNoteDetailBody({ nota }: { nota: NotaCredito }) {
     isError,
     error,
   } = useInvoiceDetail(nota.factura);
+
+  // Timbre de la factura para la regla de "Timbrar". Con datos en caché se usan
+  // aunque un refetch haya fallado; sin datos, cargando o no disponible.
+  const invoiceStampState: RelatedInvoiceStampState = factura
+    ? { status: "loaded", folio: factura.folio, cfdiUuid: factura.cfdi_uuid }
+    : isLoading
+      ? { status: "loading" }
+      : { status: "unavailable" };
 
   const monedaFormato = factura?.moneda_nombre
     ? { currency: factura.moneda_nombre }
@@ -163,6 +255,8 @@ export function CreditNoteDetailBody({ nota }: { nota: NotaCredito }) {
             />
           </InfoField>
         </div>
+
+        <CreditNoteCfdiSection nota={nota} invoice={invoiceStampState} />
 
         {/* La moneda vive en la factura, no en la nota. Si la consulta ya
             terminó y aun así no se conoce —falló, o la factura no la expone—,
