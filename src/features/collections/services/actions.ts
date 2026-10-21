@@ -48,6 +48,18 @@ export const stampCobroRep = async (id: number): Promise<Cobro> => {
 };
 
 /**
+ * Cancela el cobro (`POST /finanzas/cobros/{id}/cancelar/`, sin cuerpo).
+ * Responde el cobro completo (`CobroSerializer`). Un `Aplicado` revierte saldos
+ * de CxC, banco y póliza; un `Borrador` solo cambia de estatus; uno ya
+ * `Cancelado` responde 200 sin hacer nada. Con REP (`rep_uuid` o
+ * `rep_pendiente`) responde 400 `{ rep: [...] }`.
+ */
+export const cancelCobro = async (id: number): Promise<Cobro> => {
+  const { data } = await v1_api.post<Cobro>(`/finanzas/cobros/${id}/cancelar/`);
+  return data;
+};
+
+/**
  * Indicadores de finanzas: `GET /finanzas/dashboard/`, para el período por
  * defecto del backend (mes en curso hasta hoy) y UNA moneda.
  */

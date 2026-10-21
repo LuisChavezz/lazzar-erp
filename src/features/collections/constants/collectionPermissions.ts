@@ -12,3 +12,9 @@ export const COBRO_CREATE_PERMISSION = "E-FIN-FACTURAS";
  * código; sin él responde 403.
  */
 export const COBRO_REP_STAMP_PERMISSION = "E-FIN-FACTURAS";
+
+/**
+ * Permiso para cancelar un cobro (`cancelar/`): el mismo código que exige
+ * `CobroViewSet` en todo método que no sea de lectura; sin él responde 403.
+ */
+export const COBRO_CANCEL_PERMISSION = "E-FIN-FACTURAS";
