@@ -123,9 +123,18 @@ export function parseNotaCreditoError(error: unknown): ParsedNotaCreditoError {
   const record = data as Record<string, unknown>;
 
   // ── Errores a nivel operación (todo o nada) ──────────────────────────────
+  // `cfdi` primero: desde que emitir timbra antes de guardar (y en
+  // `timbrar/`), el motivo del rechazo de Facturama o de los datos fiscales
+  // llega en esa llave. Se muestra tal cual, sin interpretar su texto. Le sigue
+  // `estatus` (campo de cabecera, más abajo) y luego el resto.
+  const cfdi = firstDrfMessage(record.cfdi);
+  if (cfdi) {
+    result.formError = cfdi;
+    result.messages.push(cfdi);
+  }
   const detail = firstDrfMessage(record.detail);
   if (detail) {
-    result.formError = detail;
+    result.formError = result.formError ?? detail;
     result.messages.push(detail);
   }
   const nonField = firstDrfMessage(record.non_field_errors);
