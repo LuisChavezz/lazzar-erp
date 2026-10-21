@@ -2,8 +2,8 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { AxiosError } from "axios";
 import { parseLineItemsDrfError, type ParsedLineItemsError } from "@/src/utils/parseLineItemsDrfError";
-import { invalidatePedidoProgress } from "@/src/features/orders/hooks/invalidatePedidoProgress";
 import { createCobro } from "../services/actions";
+import { invalidateCobroEffects } from "./cobroQueryCache";
 import type { CreateCobroPayload } from "../interfaces/collection.interface";
 
 /** Campos de cabecera que el backend puede señalar en un `400`. */
@@ -85,7 +85,7 @@ export function parseCobroError(error: unknown, cxcIds: readonly number[]): Pars
  * Al aplicarse, el cobro baja el saldo de cada CxC (y su estatus), sube el saldo
  * de la cuenta bancaria, crea un movimiento bancario, puede generar póliza y
  * mueve el `cobrado_pct` de la trazabilidad del pedido. Se invalida por PREFIJO
- * todo lo que muestra esos datos.
+ * todo lo que muestra esos datos (`invalidateCobroEffects`).
  */
 export const useCreateCobro = (onServerError?: (parsed: ParsedCobroError) => void) => {
   const queryClient = useQueryClient();
@@ -93,18 +93,7 @@ export const useCreateCobro = (onServerError?: (parsed: ParsedCobroError) => voi
   return useMutation({
     mutationFn: (payload: CreateCobroPayload) => createCobro(payload),
     onSuccess: () => {
-      [
-        ["cobros"],
-        ["finance-dashboard"],
-        ["accounts-receivable"],
-        ["accounts-receivable-detail"],
-        ["bank-accounts"],
-        ["bank-account-summary"],
-        ["polizas"],
-        ["invoice-desglose"],
-        ["customer"],
-      ].forEach((queryKey) => queryClient.invalidateQueries({ queryKey }));
-      invalidatePedidoProgress(queryClient);
+      invalidateCobroEffects(queryClient);
       toast.success("Cobro registrado correctamente");
     },
     onError: (error, payload) => {

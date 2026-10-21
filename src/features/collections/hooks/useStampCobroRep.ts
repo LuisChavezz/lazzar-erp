@@ -1,9 +1,9 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import type { QueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { PrecheckError, toPrecheckError, useMutationLock } from "@/src/hooks/useMutationLock";
 import { getCobro, stampCobroRep } from "../services/actions";
 import type { Cobro } from "../interfaces/collection.interface";
+import { writeCobroToList } from "./cobroQueryCache";
 import {
   COBRO_REP_PENDING_MESSAGE,
   isCobroRepPending,
@@ -13,21 +13,6 @@ import {
 
 /** Candado del timbrado del REP, ÚNICO por cobro (ver `useStampCobroRep`). */
 export const stampCobroRepMutationKey = (cobroId: number) => ["stamp-cobro-rep", cobroId] as const;
-
-/**
- * Escribe el cobro VIGENTE en el listado en caché, reemplazando su fila por
- * `id`. Hoy la única entrada bajo `["cobros"]` es el listado (`Cobro[]`,
- * `useCobros`); cualquier otra forma se deja intacta. Así la fila deja de
- * ofrecer "Timbrar REP" en cuanto se conoce su estado, aunque el refetch de
- * `onSettled` tarde o falle.
- */
-const writeCobroToList = (queryClient: QueryClient, cobro: Cobro) => {
-  queryClient.setQueriesData({ queryKey: ["cobros"] }, (current: unknown) =>
-    Array.isArray(current)
-      ? (current as Cobro[]).map((row) => (row.id === cobro.id ? cobro : row))
-      : current,
-  );
-};
 
 /**
  * Resultado de timbrar. `not-stampable`: el retrieve previo encontró el cobro
