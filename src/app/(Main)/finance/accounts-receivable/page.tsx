@@ -1,5 +1,4 @@
-import { AccountsReceivableStats } from "@/src/features/accounts-receivable/components/AccountsReceivableStats";
-import { AccountsReceivableList } from "@/src/features/accounts-receivable/components/AccountsReceivableList";
+import { AccountsReceivableView } from "@/src/features/accounts-receivable/components/AccountsReceivableView";
 
 export default function AccountsReceivablePage() {
   return (
@@ -10,11 +9,7 @@ export default function AccountsReceivablePage() {
         </p>
       </div>
 
-      <AccountsReceivableStats />
-
-      <div className="space-y-6">
-        <AccountsReceivableList />
-      </div>
+      <AccountsReceivableView />
     </div>
   );
 }

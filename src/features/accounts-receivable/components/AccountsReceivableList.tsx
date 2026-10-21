@@ -13,7 +13,6 @@ import { AccountsReceivableDetailDialog } from "./AccountsReceivableDetailDialog
 import { AccountsReceivableAgingSummary } from "./AccountsReceivableAgingSummary";
 import { RegisterPendingInvoiceDialog } from "./RegisterPendingInvoiceDialog";
 import { useCuentasPorCobrar } from "../hooks/useCuentasPorCobrar";
-import { useBackendToday } from "@/src/hooks/useBackendToday";
 import {
   computeAgingBuckets,
   computeCxcKpis,
@@ -30,7 +29,11 @@ const ESTATUS_FILTER = [
   { value: "Cancelada", label: "Cancelada" },
 ];
 
-export const AccountsReceivableList = () => {
+/**
+ * `today` es el día del backend ("YYYY-MM-DD") que calcula UNA vez
+ * `AccountsReceivableView` y comparte con los indicadores y el detalle.
+ */
+export const AccountsReceivableList = ({ today }: { today: string }) => {
   const { cuentas, isLoading, isError, error, hasLoaded, refetch, isFetching } =
     useCuentasPorCobrar();
   const [bannerDismissed, setBannerDismissed] = useState(false);
@@ -51,9 +54,6 @@ export const AccountsReceivableList = () => {
   // `InvoiceList`.
   const showError = isInitialLoadError(isError, hasLoaded);
 
-  // "Hoy" (el día del backend) se calcula UNA sola vez y se comparte entre filas,
-  // KPIs y antigüedad; vuelve a pintar al cambiar de día.
-  const today = useBackendToday();
   const rows = mapCuentasToRows(cuentas, today);
   const kpis = computeCxcKpis(cuentas, today);
   const agingBuckets = computeAgingBuckets(cuentas, today);
@@ -129,6 +129,7 @@ export const AccountsReceivableList = () => {
       {openDetailId !== null && (
         <AccountsReceivableDetailDialog
           cuentaId={openDetailId}
+          today={today}
           open={true}
           onOpenChange={(open) => {
             if (!open) setOpenDetailId(null);

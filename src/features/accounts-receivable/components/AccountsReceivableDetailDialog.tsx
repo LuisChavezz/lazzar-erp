@@ -32,6 +32,12 @@ interface AccountsReceivableDetailDialogProps {
   cuentaId: number;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /**
+   * HOY ("YYYY-MM-DD", el día del backend) de quien lo monta, para que el
+   * detalle y la lista no difieran. Sin él (p. ej. desde Facturación) el
+   * diálogo lo calcula con `useBackendToday`.
+   */
+  today?: string;
 }
 
 /**
@@ -41,11 +47,26 @@ interface AccountsReceivableDetailDialogProps {
  */
 const COBROS_PATH = "/finance/collections";
 
-export function AccountsReceivableDetailDialog({
+export function AccountsReceivableDetailDialog({ today, ...props }: AccountsReceivableDetailDialogProps) {
+  return today === undefined ? (
+    <DetailDialogWithOwnToday {...props} />
+  ) : (
+    <DetailDialogContent {...props} today={today} />
+  );
+}
+
+/** Entrada sin `today` (Facturación): lo calcula una sola vez aquí. */
+function DetailDialogWithOwnToday(props: Omit<AccountsReceivableDetailDialogProps, "today">) {
+  const today = useBackendToday();
+  return <DetailDialogContent {...props} today={today} />;
+}
+
+function DetailDialogContent({
   cuentaId,
   open,
   onOpenChange,
-}: AccountsReceivableDetailDialogProps) {
+  today,
+}: Omit<AccountsReceivableDetailDialogProps, "today"> & { today: string }) {
   const { data: cuenta, isNotFound, isInitialError, error } = useCuentaPorCobrarDetail(cuentaId);
   const isAwaiting = !cuenta && !isNotFound && !isInitialError;
   const { data: session } = useSession();
@@ -59,7 +80,6 @@ export function AccountsReceivableDetailDialog({
   // la alerta (`isCuentaVencida`, derivada por fecha): el backend no tiene un
   // estatus "Vencida" y una cuenta vencida sigue llegando como
   // `Pendiente`/`Parcial`. Así el detalle no contradice a la fila.
-  const today = useBackendToday();
   const estaVencida = cuenta ? isCuentaVencida(cuenta, today) : false;
   const diasDeAtraso = cuenta ? diasVencido(cuenta.fecha_vencimiento, today) : 0;
 

@@ -4,7 +4,6 @@ import { CxcIcon, ClockIcon, ErrorIcon, CheckCircleIcon } from "@/src/components
 import KpiGrid, { type KpiItem } from "@/src/components/KpiGrid";
 import { useCuentasPorCobrar } from "../hooks/useCuentasPorCobrar";
 import { computeCxcKpis } from "../utils/accounts-receivable.utils";
-import { useBackendToday } from "@/src/hooks/useBackendToday";
 
 // Formato compacto (sin centavos) para los valores grandes de las tarjetas KPI.
 const formatKpi = (value: number) =>
@@ -32,15 +31,14 @@ const formatMonthLabel = (today: string) => {
 // con no fabricar un "$0" falso.
 const PLACEHOLDER = "—";
 
-export const AccountsReceivableStats = () => {
+/** `today`: el día del backend que comparte `AccountsReceivableView` con la lista. */
+export const AccountsReceivableStats = ({ today }: { today: string }) => {
   const { cuentas, isLoading, isError, hasLoaded } = useCuentasPorCobrar();
 
   // Sin datos confiables (cargando o error de carga inicial) no se muestran
   // cifras: un "$0" se leería como un dato real. `computeCxcKpis([])` daría 0.
   const showPlaceholder = isLoading || (isError && !hasLoaded);
 
-  // "Hoy" se calcula UNA sola vez y se pasa a los cálculos, evitando desfaces.
-  const today = useBackendToday();
   const kpis = computeCxcKpis(cuentas, today);
 
   const items: KpiItem[] = [
