@@ -1,3 +1,4 @@
+import { isAxiosError } from "axios";
 import type { PermissionContext } from "@/src/interfaces/permission-context.interface";
 import { hasPermission } from "@/src/utils/permissions";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
@@ -39,12 +40,35 @@ export const COBRO_REP_PENDING_MESSAGE =
   "El timbrado del REP está pendiente de confirmación con Facturama. Soporte debe revisarlo antes de volver a timbrar.";
 
 /**
+ * Aviso cuando la petición de timbrado se cortó sin respuesta del backend: el
+ * servidor pudo llegar a timbrar ante el SAT sin alcanzar a guardarlo.
+ */
+export const COBRO_REP_UNCONFIRMED_MESSAGE =
+  "No se recibió respuesta del servidor: el REP pudo haberse timbrado ante el SAT. No vuelvas a intentarlo; consulta con soporte antes de timbrar de nuevo.";
+
+/** Estatus de una puerta de enlace que cortó la petición (no responde Django). */
+const GATEWAY_STATUSES = new Set([502, 503, 504]);
+
+/**
+ * ¿El POST se cortó sin una respuesta del backend? Sin respuesta (red caída,
+ * CORS por un corte), timeout del cliente o un 502/503/504 de la puerta de
+ * enlace: en todos el resultado del timbrado es desconocido.
+ */
+const isStampOutcomeUnknown = (error: unknown): boolean => {
+  if (!isAxiosError(error)) return false;
+  if (error.code === "ECONNABORTED" || error.code === "ETIMEDOUT") return true;
+  if (!error.response) return true;
+  return GATEWAY_STATUSES.has(error.response.status);
+};
+
+/**
  * Mensaje de un fallo de `timbrar-rep/`. Todo error de negocio llega bajo `rep`
- * (string o lista); un 403 trae `detail`. Si no viene ninguno (404, 500, red),
- * cae en el extractor genérico. El texto se muestra tal cual, sin interpretarlo.
+ * (string o lista) y se muestra tal cual, sin interpretarlo; un 403 trae
+ * `detail` (lo cubre `firstDrfFieldMessage`). Un corte sin respuesta avisa que
+ * el REP pudo timbrarse; el resto (404, 500) cae en el extractor genérico.
  */
 export const stampCobroRepErrorMessage = (error: unknown): string =>
   drfFieldMessage(error, "rep") ??
-  drfFieldMessage(error, "detail") ??
+  (isStampOutcomeUnknown(error) ? COBRO_REP_UNCONFIRMED_MESSAGE : undefined) ??
   firstDrfFieldMessage(error) ??
   extractErrorMessage(error, "No se pudo timbrar el REP.");
