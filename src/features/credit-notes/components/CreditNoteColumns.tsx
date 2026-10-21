@@ -12,6 +12,7 @@ import { formatMoneyValue } from "@/src/utils/formatCurrency";
 import { formatShortDate } from "@/src/utils/formatDate";
 import { NOTA_CREDITO_ESTATUS_CONFIG } from "../constants/creditNoteStatus";
 import type { NotaCredito } from "../interfaces/credit-note.interface";
+import { getCreditNoteCancelBlockReason } from "../utils/creditNoteStamping";
 
 const columnHelper = createColumnHelper<NotaCredito>();
 
@@ -59,7 +60,8 @@ export const getColumns = (
       ),
       filterFn: estatusFilterFn,
       cell: (info) => {
-        const { id, estatus } = info.row.original;
+        const nota = info.row.original;
+        const { id, estatus } = nota;
         const menuItems: ActionMenuItem[] = [
           {
             label: "Ver detalle",
@@ -81,12 +83,17 @@ export const getColumns = (
 
         // Cancelar sobre lo que aún puede cancelarse. Sobre una `Emitida`
         // devuelve el importe a la cuenta por cobrar; sobre un `Borrador`
-        // simplemente lo archiva sin tocar saldos.
+        // simplemente lo archiva sin tocar saldos. Con CFDI timbrado (o un
+        // timbrado pendiente) se muestra deshabilitado con su motivo: el backend
+        // no cancela el CFDI ante el SAT y lo dejaría vigente.
         if (estatus !== "Cancelada") {
+          const cancelBlockReason = getCreditNoteCancelBlockReason(nota);
           menuItems.push({
             label: "Cancelar nota",
             icon: BanIcon,
             onSelect: () => onCancel(id),
+            disabled: cancelBlockReason !== null,
+            description: cancelBlockReason ?? undefined,
           });
         }
 

@@ -20,6 +20,7 @@ import { useNotasCredito } from "../hooks/useNotasCredito";
 import { useEmitirNotaCredito } from "../hooks/useEmitirNotaCredito";
 import { useCancelNotaCredito } from "../hooks/useCancelNotaCredito";
 import { useDeleteNotaCredito } from "../hooks/useDeleteNotaCredito";
+import { getCreditNoteCancelBlockReason } from "../utils/creditNoteStamping";
 
 /**
  * Candado de reenvío POR FILA para una acción confirmada (emitir, cancelar,
@@ -149,7 +150,20 @@ export default function CreditNoteList() {
     },
     [notasCredito],
   );
-  const handleCancel = useCallback((id: number) => setCancelTargetId(id), []);
+  // El menú ya deshabilita "Cancelar nota" con CFDI timbrado o pendiente; se
+  // repite aquí por si la fila cambió entre pintar el menú y seleccionar.
+  const handleCancel = useCallback(
+    (id: number) => {
+      const nota = notasCredito.find((item) => item.id === id);
+      const blockReason = nota ? getCreditNoteCancelBlockReason(nota) : null;
+      if (blockReason) {
+        toast.error(blockReason);
+        return;
+      }
+      setCancelTargetId(id);
+    },
+    [notasCredito],
+  );
   const handleDelete = useCallback(
     (id: number) => {
       const nota = notasCredito.find((item) => item.id === id);
