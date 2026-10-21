@@ -1,5 +1,7 @@
 "use client";
 
+import { useSession } from "next-auth/react";
+import { hasPermission } from "@/src/utils/permissions";
 import { CxcIcon } from "@/src/components/Icons";
 import { MainDialog } from "@/src/components/MainDialog";
 import { Loader } from "@/src/components/Loader";
@@ -32,6 +34,13 @@ interface AccountsReceivableDetailDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
+/**
+ * Permiso de la pantalla de Cobros. El detalle también se abre desde
+ * Facturación (`InvoiceTrackingSheet`), cuya ruta no lo exige: sin él, la
+ * sección "Cobros" no se monta (y con ella no se piden los cobros).
+ */
+const COBROS_VIEW_PERMISSION = "R-CONTABILIDAD-CXC";
+
 export function AccountsReceivableDetailDialog({
   cuentaId,
   open,
@@ -39,6 +48,8 @@ export function AccountsReceivableDetailDialog({
 }: AccountsReceivableDetailDialogProps) {
   const { data: cuenta, isNotFound, isInitialError, error } = useCuentaPorCobrarDetail(cuentaId);
   const isAwaiting = !cuenta && !isNotFound && !isInitialError;
+  const { data: session } = useSession();
+  const canViewCobros = hasPermission(COBROS_VIEW_PERMISSION, session?.user);
 
   // El folio de CxC se deriva del `id` (el backend no expone folio propio), así
   // que el encabezado puede mostrarlo desde el primer frame, sin esperar al GET.
@@ -177,8 +188,8 @@ export function AccountsReceivableDetailDialog({
             </div>
           </div>
 
-          {/* Cobros aplicados a la cuenta (solo lectura) */}
-          <AccountsReceivableCobrosSection cuentaId={cuenta.id} />
+          {/* Cobros aplicados a la cuenta (solo lectura), solo con el permiso de Cobros */}
+          {canViewCobros && <AccountsReceivableCobrosSection cuentaId={cuenta.id} />}
 
           {/* Factura */}
           <AccountsReceivableFacturaSection
