@@ -50,6 +50,21 @@ export const stampCobroRep = async (id: number): Promise<Cobro> => {
 };
 
 /**
+ * Cancela el REP del cobro ante el SAT vía Facturama
+ * (`POST /finanzas/cobros/{id}/cancelar-rep/`). El endpoint no lee el cuerpo:
+ * va vacío, y el motivo SAT (02) lo fija el backend. Responde el cobro completo
+ * con `rep_uuid`, `rep_facturama_id` y `rep_fecha_timbrado` en null y
+ * `rep_pendiente` en false; no toca saldos, banco, póliza ni el `estatus` del
+ * cobro. Los errores llegan como `{ rep: [...] }` o, si el receptor debe
+ * aceptar la cancelación, como `{ cancelacion_pendiente: [...] }` (ver
+ * `cancelCobroRepErrorMessage`).
+ */
+export const cancelCobroRep = async (id: number): Promise<Cobro> => {
+  const { data } = await v1_api.post<Cobro>(`/finanzas/cobros/${id}/cancelar-rep/`);
+  return data;
+};
+
+/**
  * Cancela el cobro (`POST /finanzas/cobros/{id}/cancelar/`, sin cuerpo).
  * Responde el cobro completo (`CobroSerializer`). Un `Aplicado` revierte saldos
  * de CxC, banco y póliza; un `Borrador` solo cambia de estatus; uno ya
