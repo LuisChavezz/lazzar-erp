@@ -116,18 +116,23 @@ export function InvoiceCancelDialog({ invoice, open, onOpenChange }: InvoiceCanc
 const STAMPED_SINCE_OPENED_MESSAGE =
   "La factura se timbró después de abrir este diálogo. Revisa el aviso y confirma de nuevo.";
 
+/** Aviso cuando el precheck encontró la cancelación solicitada después de abrir el diálogo. */
+const REQUESTED_SINCE_OPENED_MESSAGE =
+  "La cancelación del CFDI se solicitó después de abrir este diálogo. Revisa el aviso y confirma de nuevo.";
+
 interface InvoiceCancelFormProps {
   /** La factura como estaba al abrir el diálogo. */
   target: InvoiceCancelTarget;
   isPending: boolean;
   onClose: () => void;
   /**
-   * `shownStamped`: si el aviso mostrado ya era el de una factura timbrada.
+   * `shownStamped` / `shownRequested`: si el aviso mostrado ya era el de una
+   * factura timbrada / con la cancelación ya solicitada.
    * `onNeedsConfirmation` recibe la factura fresca y `onError` el mensaje del
    * fallo, para mostrarlos dentro del diálogo.
    */
   onSubmit: (
-    variables: { motivo: string | undefined; shownStamped: boolean },
+    variables: { motivo: string | undefined; shownStamped: boolean; shownRequested: boolean },
     callbacks: {
       onNeedsConfirmation: (invoice: InvoiceCancelTarget) => void;
       onError: (message: string) => void;
@@ -139,7 +144,7 @@ interface InvoiceCancelFormProps {
  * Contenido del diálogo; se monta nuevo en cada apertura (`key`), así que la
  * nota, el error y la factura mostrada arrancan desde el `target` de esa
  * apertura. `shown` es lo que el usuario ve: pasa a la factura fresca si se
- * timbró después de abrir. El campo sigue llamándose `motivo` porque es el
+ * timbró, o su cancelación quedó solicitada, después de abrir. El campo sigue llamándose `motivo` porque es el
  * nombre del backend.
  */
 function InvoiceCancelForm({ target, isPending, onClose, onSubmit }: InvoiceCancelFormProps) {
@@ -163,11 +168,18 @@ function InvoiceCancelForm({ target, isPending, onClose, onSubmit }: InvoiceCanc
     setSubmitError(null);
     setReconfirmNotice(null);
     onSubmit(
-      { motivo: parsed.data.motivo || undefined, shownStamped: isInvoiceStamped(shown) },
+      {
+        motivo: parsed.data.motivo || undefined,
+        shownStamped: isInvoiceStamped(shown),
+        shownRequested: cancellationRequested,
+      },
       {
         onNeedsConfirmation: (fresh) => {
           setShown(fresh);
-          setReconfirmNotice(STAMPED_SINCE_OPENED_MESSAGE);
+          // Lo que cambió: si ya se mostraba timbrada, fue la solicitud.
+          setReconfirmNotice(
+            isInvoiceStamped(shown) ? REQUESTED_SINCE_OPENED_MESSAGE : STAMPED_SINCE_OPENED_MESSAGE,
+          );
         },
         onError: setSubmitError,
       },

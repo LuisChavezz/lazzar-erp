@@ -12,6 +12,7 @@ import {
   cancelInvoiceErrorMessage,
   getInvoiceCancelBlockReason,
   isInvoiceCancellable,
+  isInvoiceCfdiCancellationRequested,
   isInvoiceCfdiCancelled,
 } from "../utils/invoiceCancellation";
 import { isInvoiceStamped } from "../utils/invoiceStamping";
@@ -30,25 +31,28 @@ export const cancelInvoiceMutationKey = (invoiceId: number) =>
  * Resultado de cancelar. `not-cancellable`: el retrieve previo encontró la
  * factura ya `Cancelada` (u otra que dejó de ser cancelable, p. ej. eliminada
  * o con el timbrado pendiente de confirmación) y NO se hizo el POST.
- * `needs-confirmation`: la factura se timbró después de abrir el diálogo, que
- * no avisó del SAT; NO se hizo el POST y hay que volver a confirmar.
+ * `needs-confirmation`: después de abrir el diálogo la factura se timbró, o
+ * su cancelación quedó solicitada, y el diálogo no lo avisaba; NO se hizo el
+ * POST y hay que volver a confirmar con la factura fresca.
  * `requested`: el SAT dejó la cancelación pendiente de que el receptor la
  * acepte (`cancelacion_pendiente`). No es un éxito, pero tampoco un fallo: la
  * factura sigue en su `estatus`, el backend guardó
- * `cfdi_cancelacion_solicitada` y `message` es su texto tal cual. `invoice` es
- * el retrieve del precheck, ANTERIOR a ese cambio.
+ * `cfdi_cancelacion_solicitada` y `message` es su texto tal cual. No lleva la
+ * factura: la única a mano es la del precheck, anterior a ese cambio.
  */
 export type CancelInvoiceResult =
   | { outcome: "cancelled"; invoice: Invoice }
   | { outcome: "not-cancellable"; invoice: Invoice }
   | { outcome: "needs-confirmation"; invoice: Invoice }
-  | { outcome: "requested"; invoice: Invoice; message: string };
+  | { outcome: "requested"; message: string };
 
-/** Lo que manda el diálogo: la nota y si su aviso ya mencionaba el CFDI. */
+/** Lo que manda el diálogo: la nota y qué decía su aviso del CFDI. */
 interface CancelInvoiceVariables {
   motivo?: string;
   /** ¿El diálogo mostraba la factura timbrada (con el aviso del SAT)? */
   shownStamped: boolean;
+  /** ¿El diálogo mostraba la cancelación ya solicitada (con su aviso)? */
+  shownRequested: boolean;
 }
 
 /**
@@ -60,6 +64,14 @@ interface CancelInvoiceVariables {
  */
 const stampedSinceShown = (current: Invoice, shownStamped: boolean): boolean =>
   !shownStamped && isInvoiceStamped(current) && !isInvoiceCfdiCancelled(current);
+
+/**
+ * Lo mismo para la cancelación solicitada: si el retrieve fresco la trae y el
+ * diálogo no la mostraba, el usuario no vio que confirmar vuelve a consultar
+ * al SAT (`INVOICE_CANCEL_ALREADY_REQUESTED_MESSAGE`).
+ */
+const requestedSinceShown = (current: Invoice, shownRequested: boolean): boolean =>
+  !shownRequested && isInvoiceCfdiCancellationRequested(current);
 
 /** Mensaje de un fallo: el del precheck tal cual, o el del backend. */
 const errorMessageOf = (error: unknown): string =>
@@ -82,6 +94,8 @@ const errorMessageOf = (error: unknown): string =>
  * DESPUÉS de abrir el diálogo (que entonces no avisaba del SAT), tampoco hay
  * POST: el resultado `needs-confirmation` le pasa al diálogo la factura fresca
  * para que muestre el aviso y pida confirmar de nuevo (`stampedSinceShown`).
+ * Igual si su cancelación quedó solicitada después de abrirlo
+ * (`requestedSinceShown`).
  * Esa comparación vive aquí y no en `fetchFreshInvoice`, que es compartido con
  * el timbrado y solo trae y cachea el retrieve: qué vio el usuario es una
  * regla de la cancelación.
@@ -98,8 +112,8 @@ const errorMessageOf = (error: unknown): string =>
  * resultado `requested`, no un error, igual que `useCancelCobroRep`: aviso ⚠️
  * con el mensaje del backend y el diálogo se cierra (`onSuccess` de la
  * llamada). Ese `400` SÍ guardó `cfdi_cancelacion_solicitada`, así que se
- * releen el listado, el retrieve y el desglose; nada más cambia (ni CxC, ni
- * póliza, ni pedido).
+ * releen el listado y el retrieve; nada más cambia (ni desglose, que no trae
+ * campos del CFDI, ni CxC, ni póliza, ni pedido).
  *
  * Errores: el mensaje del backend tal cual (`cancelInvoiceErrorMessage`: el
  * `400` de `cfdi` cuando el SAT o Facturama no cancelaron el CFDI o no
@@ -114,19 +128,22 @@ export const useCancelInvoice = (invoiceId: number) => {
 
   const mutation = useMutation<CancelInvoiceResult, unknown, CancelInvoiceVariables>({
     mutationKey,
-    mutationFn: async ({ motivo, shownStamped }) => {
+    mutationFn: async ({ motivo, shownStamped, shownRequested }) => {
       const current = await fetchFreshInvoice(queryClient, invoiceId);
       if (!isInvoiceCancellable(current) || getInvoiceCancelBlockReason(current) !== null) {
         return { outcome: "not-cancellable", invoice: current };
       }
-      if (stampedSinceShown(current, shownStamped)) {
+      if (
+        stampedSinceShown(current, shownStamped) ||
+        requestedSinceShown(current, shownRequested)
+      ) {
         return { outcome: "needs-confirmation", invoice: current };
       }
       try {
         return { outcome: "cancelled", invoice: await cancelInvoice({ id: invoiceId, motivo }) };
       } catch (error) {
         const message = cancelacionPendienteMessage(error);
-        if (message) return { outcome: "requested", invoice: current, message };
+        if (message) return { outcome: "requested", message };
         throw error;
       }
     },
@@ -169,23 +186,31 @@ export const useCancelInvoice = (invoiceId: number) => {
       toast.error(errorMessageOf(error));
     },
     // Si el precheck detuvo la acción, el retrieve ya está fresco en la caché.
-    onSettled: (result) =>
+    onSettled: (result) => {
+      // Solo cambió `cfdi_cancelacion_solicitada`, que traen el listado y el retrieve.
+      if (result?.outcome === "requested") {
+        queryClient.invalidateQueries({ queryKey: ["invoices"] });
+        queryClient.invalidateQueries({ queryKey: ["invoice-detail", invoiceId] });
+        return;
+      }
       invalidateInvoiceBaseQueries(queryClient, invoiceId, {
-        sentRequest:
-          result === undefined || result.outcome === "cancelled" || result.outcome === "requested",
-      }),
+        sentRequest: result === undefined || result.outcome === "cancelled",
+      });
+    },
   });
 
   /**
    * Dispara la cancelación salvo que ya haya una en vuelo para ESTA factura
-   * (consulta síncrona a la caché). `shownStamped`: si el diálogo mostraba la
-   * factura timbrada. `onSuccess` corre solo si terminó sin error y sin pedir
-   * reconfirmación (incluida la cancelación solicitada, `requested`, que
-   * también cierra el diálogo); `onNeedsConfirmation` recibe la factura fresca cuando se
-   * timbró después de abrir el diálogo; `onError`, el mismo mensaje que el toast.
+   * (consulta síncrona a la caché). `shownStamped` / `shownRequested`: si el
+   * diálogo mostraba la factura timbrada / la cancelación ya solicitada.
+   * `onSuccess` corre solo si terminó sin error y sin pedir reconfirmación
+   * (incluida la cancelación solicitada, `requested`, que también cierra el
+   * diálogo); `onNeedsConfirmation` recibe la factura fresca cuando se timbró, o
+   * su cancelación quedó solicitada, después de abrirlo; `onError`, el mismo
+   * mensaje que el toast.
    */
   const cancel = (
-    { motivo, shownStamped }: CancelInvoiceVariables,
+    { motivo, shownStamped, shownRequested }: CancelInvoiceVariables,
     options: {
       onSuccess?: () => void;
       onNeedsConfirmation?: (invoice: Invoice) => void;
@@ -194,7 +219,7 @@ export const useCancelInvoice = (invoiceId: number) => {
   ) => {
     if (!isIdle()) return;
     mutation.mutate(
-      { motivo, shownStamped },
+      { motivo, shownStamped, shownRequested },
       {
         onSuccess: (result) =>
           result.outcome === "needs-confirmation"
