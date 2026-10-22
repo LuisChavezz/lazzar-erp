@@ -3,7 +3,7 @@ import type { PermissionContext } from "@/src/interfaces/permission-context.inte
 import { hasPermission } from "@/src/utils/permissions";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { drfFieldMessage, firstDrfFieldMessage } from "@/src/utils/firstDrfFieldMessage";
-import { INVOICE_STATUS } from "../constants/invoiceStatus";
+import { INVOICE_STATUS, isInvoiceSendable } from "../constants/invoiceStatus";
 import type { Invoice } from "../interfaces/invoice.interface";
 import { isInvoiceCfdiCancelled } from "./invoiceCancellation";
 import { isInvoiceStampPending, isInvoiceStamped } from "./invoiceStamping";
@@ -18,7 +18,7 @@ export const INVOICE_CFDI_EMAIL_PERMISSION = "R-CONTABILIDAD-FACTURACION";
 
 export type InvoiceCfdiEmailBlockReason =
   | "deleted"
-  | "cancelled"
+  | "not-sendable"
   | "cfdi-cancelled"
   | "stamp-pending"
   | "not-stamped";
@@ -36,7 +36,8 @@ export interface InvoiceCfdiEmailBlocker {
  *
  * - `deleted`: eliminada (`activo !== true`; desconocido cuenta como eliminada).
  *   La acción se OCULTA.
- * - `cancelled`: `estatus` Cancelada.
+ * - `not-sendable`: estatus no enviable (Cancelada, o uno desconocido; la
+ *   misma regla que "Enviar correo", `isInvoiceSendable`).
  * - `cfdi-cancelled`: CFDI cancelado ante el SAT (`cfdi_cancelado`).
  * - `stamp-pending`: timbrado sin confirmar (`cfdi_pendiente`).
  * - `not-stamped`: sin `cfdi_uuid`.
@@ -50,8 +51,14 @@ export function getInvoiceCfdiEmailBlocker(
   if (invoice.activo !== true) {
     return { reason: "deleted", message: "No se puede enviar el CFDI de una factura eliminada." };
   }
-  if (invoice.estatus === INVOICE_STATUS.CANCELADA) {
-    return { reason: "cancelled", message: "No se puede enviar el CFDI de una factura cancelada." };
+  if (!isInvoiceSendable(invoice.estatus)) {
+    return {
+      reason: "not-sendable",
+      message:
+        invoice.estatus === INVOICE_STATUS.CANCELADA
+          ? "No se puede enviar el CFDI de una factura cancelada."
+          : "No se puede enviar el CFDI de una factura en este estatus.",
+    };
   }
   if (isInvoiceCfdiCancelled(invoice)) {
     return {
