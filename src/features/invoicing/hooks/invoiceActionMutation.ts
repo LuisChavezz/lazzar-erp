@@ -1,5 +1,5 @@
 import type { QueryClient } from "@tanstack/react-query";
-import { toPrecheckError } from "@/src/hooks/useMutationLock";
+import { fetchFresh } from "@/src/hooks/useMutationLock";
 import type { Invoice } from "../interfaces/invoice.interface";
 import { getInvoiceDetail } from "../services/actions";
 import { invoiceDesgloseQueryKey } from "./useInvoiceDesglose";
@@ -14,28 +14,21 @@ import { invoiceRetrieveFreshOptions } from "./useInvoiceRetrieveFresh";
  */
 
 /**
- * Retrieve FRESCO de la factura antes de la acción. Llama al servicio
- * directamente, sin `fetchQuery`: `fetchQuery` reutiliza un retrieve que ya
- * esté en vuelo para `["invoice-detail", id]`, y ese pudo salir ANTES de que
- * otra pestaña timbrara o cancelara, así que el precheck decidiría con datos
- * viejos. Una petición propia siempre refleja el estado actual, y no aborta la
- * consulta en vuelo de la página (lo que haría `cancelQueries`). El resultado
- * se escribe en la caché de esa llave, así que la vista también queda al día.
- * Si falla, lanza `PrecheckError` con el motivo listo para el toast.
+ * Retrieve FRESCO de la factura antes de la acción (`fetchFresh`): una petición
+ * propia siempre refleja el estado actual y no aborta la consulta en vuelo de
+ * la página (lo que haría `cancelQueries`). Queda escrito en
+ * `["invoice-detail", id]`. Si falla, lanza `PrecheckError`.
  */
-export const fetchFreshInvoice = async (
+export const fetchFreshInvoice = (
   queryClient: QueryClient,
   invoiceId: number,
-): Promise<Invoice> => {
-  let invoice: Invoice;
-  try {
-    invoice = await getInvoiceDetail(invoiceId);
-  } catch (error) {
-    throw toPrecheckError(error, "No se pudo consultar la factura.");
-  }
-  queryClient.setQueryData(invoiceRetrieveFreshOptions(invoiceId).queryKey, invoice);
-  return invoice;
-};
+): Promise<Invoice> =>
+  fetchFresh(
+    queryClient,
+    invoiceRetrieveFreshOptions(invoiceId).queryKey,
+    () => getInvoiceDetail(invoiceId),
+    "No se pudo consultar la factura.",
+  );
 
 /**
  * Refresca lo que cualquier acción sobre la factura cambia: listado, retrieve y

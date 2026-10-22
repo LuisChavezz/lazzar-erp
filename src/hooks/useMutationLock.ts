@@ -1,5 +1,5 @@
 import { useIsMutating, useQueryClient } from "@tanstack/react-query";
-import type { QueryKey } from "@tanstack/react-query";
+import type { QueryClient, QueryKey } from "@tanstack/react-query";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { firstDrfFieldMessage } from "@/src/utils/firstDrfFieldMessage";
 
@@ -29,3 +29,28 @@ export class PrecheckError extends Error {}
  */
 export const toPrecheckError = (error: unknown, fallback: string): PrecheckError =>
   new PrecheckError(firstDrfFieldMessage(error) ?? extractErrorMessage(error, fallback));
+
+/**
+ * Retrieve FRESCO de un registro antes de una acción irreversible. Llama al
+ * `fetcher` directamente, sin `fetchQuery`: `fetchQuery` reutiliza una
+ * petición que ya esté en vuelo para esa llave, y esa pudo salir ANTES de que
+ * otra pestaña cambiara el registro, así que el precheck decidiría con datos
+ * viejos. El resultado se escribe en la caché de `queryKey`, así que la vista
+ * también queda al día. Si falla, lanza `PrecheckError` con el motivo listo
+ * para el toast.
+ */
+export const fetchFresh = async <T>(
+  queryClient: QueryClient,
+  queryKey: QueryKey,
+  fetcher: () => Promise<T>,
+  fallback: string,
+): Promise<T> => {
+  let data: T;
+  try {
+    data = await fetcher();
+  } catch (error) {
+    throw toPrecheckError(error, fallback);
+  }
+  queryClient.setQueryData(queryKey, data);
+  return data;
+};

@@ -1,14 +1,7 @@
 import type { PermissionContext } from "@/src/interfaces/permission-context.interface";
 import { hasPermission } from "@/src/utils/permissions";
+import { INVOICE_STAMP_PERMISSION } from "@/src/features/invoicing/utils/invoiceStamping";
 import type { NotaCredito } from "../interfaces/credit-note.interface";
-
-/**
- * Permiso que exige el backend en `POST /finanzas/notas-credito/{id}/timbrar/`
- * (sin él responde `403`). Es el mismo código que el timbrado de facturas
- * (`PERMISO_CANCELAR_FACTURA` en el ViewSet). La compuerta real sigue siendo el
- * backend; esta es de UX.
- */
-export const CREDIT_NOTE_STAMP_PERMISSION = "E-FIN-FACTURAS";
 
 /** ¿La nota ya tiene CFDI de egreso timbrado? */
 export const isCreditNoteStamped = (nota: Pick<NotaCredito, "cfdi_uuid">): boolean =>
@@ -34,11 +27,15 @@ export const isCreditNoteStampable = (
 ): boolean =>
   nota.estatus === "Emitida" && !isCreditNoteStamped(nota) && !isCreditNoteStampPending(nota);
 
-/** ¿Se ofrece "Timbrar" a ESTE usuario para ESTA nota? Permiso + `isCreditNoteStampable`. */
+/**
+ * ¿Se ofrece "Timbrar" a ESTE usuario para ESTA nota? `isCreditNoteStampable`
+ * más el permiso de `timbrar/`, que en el backend es el MISMO que el de la
+ * factura (`PERMISO_CANCELAR_FACTURA`, `E-FIN-FACTURAS`).
+ */
 export const canStampCreditNote = (
   nota: Parameters<typeof isCreditNoteStampable>[0],
   user: PermissionContext | null | undefined,
-): boolean => hasPermission(CREDIT_NOTE_STAMP_PERMISSION, user) && isCreditNoteStampable(nota);
+): boolean => hasPermission(INVOICE_STAMP_PERMISSION, user) && isCreditNoteStampable(nota);
 
 /** Estado de la factura relacionada, tal como lo conoce el detalle de la nota. */
 export type RelatedInvoiceStampState =

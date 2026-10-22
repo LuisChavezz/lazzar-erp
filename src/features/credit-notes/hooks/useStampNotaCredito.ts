@@ -1,8 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import type { QueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
-import { PrecheckError, toPrecheckError, useMutationLock } from "@/src/hooks/useMutationLock";
-import { getNotaCredito, timbrarNotaCredito } from "../services/actions";
+import { PrecheckError, useMutationLock } from "@/src/hooks/useMutationLock";
+import { timbrarNotaCredito } from "../services/actions";
 import type { NotaCredito } from "../interfaces/credit-note.interface";
 import {
   CREDIT_NOTE_STAMP_PENDING_MESSAGE,
@@ -11,6 +10,7 @@ import {
 } from "../utils/creditNoteStamping";
 import { parseNotaCreditoError } from "./useCreateNotaCredito";
 import { invalidateCreditNoteQueries } from "./invalidateCreditNoteQueries";
+import { fetchFreshNotaCredito } from "./fetchFreshNotaCredito";
 
 /** Candado del timbrado, ÚNICO por nota (ver `useStampNotaCredito`). */
 export const stampNotaCreditoMutationKey = (notaId: number) =>
@@ -24,26 +24,6 @@ export const stampNotaCreditoMutationKey = (notaId: number) =>
 export type StampNotaCreditoResult =
   | { outcome: "stamped"; nota: NotaCredito }
   | { outcome: "not-stampable"; nota: NotaCredito };
-
-/**
- * Retrieve FRESCO de la nota antes del POST. Petición propia y no `fetchQuery`:
- * una consulta en vuelo pudo salir antes de que otra pestaña timbrara. El
- * resultado se escribe en `["credit-note-detail", id]` para que el detalle por
- * id también quede al día.
- */
-const fetchFreshNotaCredito = async (
-  queryClient: QueryClient,
-  notaId: number,
-): Promise<NotaCredito> => {
-  let nota: NotaCredito;
-  try {
-    nota = await getNotaCredito(notaId);
-  } catch (error) {
-    throw toPrecheckError(error, "No se pudo consultar la nota de crédito.");
-  }
-  queryClient.setQueryData(["credit-note-detail", notaId], nota);
-  return nota;
-};
 
 /**
  * Timbra el CFDI de egreso de UNA nota (`POST /finanzas/notas-credito/{id}/timbrar/`),
