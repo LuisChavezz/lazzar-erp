@@ -32,6 +32,15 @@ export type ActionMenuItem = {
   description?: string;
 };
 
+/**
+ * Clases del item. Con `description` el item crece a su contenido: Radix Themes
+ * fija `height: var(--base-menu-item-height)` (32px) en `.rt-BaseMenuItem`, una
+ * regla sin capa que gana a las utilidades de Tailwind, así que se anula con
+ * `!`. Sin descripción queda exactamente como antes.
+ */
+const itemClassName = (description?: string) =>
+  description ? `${ITEM_CLASS} h-auto! min-h-8 py-1.5!` : ITEM_CLASS;
+
 /** Etiqueta del item y, si la trae, su descripción debajo. */
 const ItemText = ({ label, description }: { label: string; description?: string }) =>
   description ? (
@@ -110,7 +119,7 @@ export const ActionMenu = ({
                 asChild
                 onSelect={() => item.onSelect?.()}
                 disabled={item.disabled}
-                className={ITEM_CLASS}
+                className={itemClassName(item.description)}
               >
                 <Link href={item.href}>
                   <Icon className="w-4 h-4" aria-hidden="true" />
@@ -127,7 +136,7 @@ export const ActionMenu = ({
                 item.onSelect?.();
               }}
               disabled={item.disabled}
-              className={ITEM_CLASS}
+              className={itemClassName(item.description)}
             >
               <Icon className="w-4 h-4" aria-hidden="true" />
               <ItemText label={item.label} description={item.description} />
