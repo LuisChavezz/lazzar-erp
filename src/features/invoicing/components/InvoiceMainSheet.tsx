@@ -39,10 +39,13 @@ import type { PermissionContext } from "@/src/interfaces/permission-context.inte
 import {
   INVOICE_CFDI_CANCELLED_ERP_PENDING_MESSAGE,
   INVOICE_CFDI_CANCELLED_LABEL,
+  INVOICE_CFDI_CANCELLATION_REQUESTED_HINT,
+  INVOICE_CFDI_CANCELLATION_REQUESTED_LABEL,
   INVOICE_CFDI_VALID_AFTER_ERP_CANCEL_MESSAGE,
   INVOICE_CFDI_VALID_LABEL,
   canCancelInvoice,
   getInvoiceCancelBlockReason,
+  isInvoiceCfdiCancellationRequested,
   isInvoiceCfdiCancelled,
 } from "../utils/invoiceCancellation";
 import { INVOICE_STATUS, INVOICE_STATUS_CONFIG } from "../constants/invoiceStatus";
@@ -214,6 +217,9 @@ function InvoiceDocumentActions({
  * Con el CFDI cancelado ante el SAT (`cfdi_cancelado`) agrega su estado, y si
  * la factura sigue `Emitida` (falló la parte del ERP), la nota de que falta
  * cancelarla en el ERP; "Cancelar factura" sigue habilitado para completarlo.
+ * Con la cancelación solicitada y pendiente de que el receptor la acepte
+ * (`isInvoiceCfdiCancellationRequested`) muestra ese estado; "Cancelar
+ * factura" sigue disponible para volver a consultar al SAT.
  * Una `Cancelada` con UUID y SIN `cfdi_cancelado` (cancelada antes de que
  * `cancelar/` cancelara el CFDI) muestra que el CFDI sigue vigente, sin acción.
  * Salen del retrieve: el desglose no trae ningún campo de timbrado.
@@ -243,6 +249,15 @@ function InvoiceCfdiStamp({ invoice }: { invoice: Invoice }) {
               {INVOICE_CFDI_CANCELLED_ERP_PENDING_MESSAGE}
             </span>
           )}
+        </HeaderStat>
+      ) : isInvoiceCfdiCancellationRequested(invoice) ? (
+        <HeaderStat label="Estado del CFDI">
+          <span className="text-amber-600 dark:text-amber-400 font-medium">
+            {INVOICE_CFDI_CANCELLATION_REQUESTED_LABEL}
+          </span>
+          <span className="block text-xs font-normal text-amber-600 dark:text-amber-400">
+            {INVOICE_CFDI_CANCELLATION_REQUESTED_HINT}
+          </span>
         </HeaderStat>
       ) : (
         invoice.estatus === INVOICE_STATUS.CANCELADA && (

@@ -16,6 +16,11 @@ import {
   invoiceEmailLabel,
   isInvoicePdfNonFiscal,
 } from "../utils/invoiceStamping";
+import {
+  INVOICE_CFDI_CANCELLATION_REQUESTED_HINT,
+  INVOICE_CFDI_CANCELLATION_REQUESTED_LABEL,
+  isInvoiceCfdiCancellationRequested,
+} from "../utils/invoiceCancellation";
 
 const ESTATUS_FILTER_OPTIONS: ColumnFilterOption[] = [
   { value: undefined, label: "Todos" },
@@ -53,9 +58,12 @@ const estatusFilterFn: FilterFn<InvoiceListRow> = (row, _columnId, filterValue) 
  * el diálogo, que vive en `InvoiceList`: si un filtro de estatus oculta la
  * fila al quedar Cancelada, el diálogo no se desmonta. Una timbrada también
  * se cancela (el diálogo avisa que primero va al SAT). Lo único que la
- * bloquea es el timbrado pendiente de confirmación (`getInvoiceCancelBlockReason`),
- * que no viene en el listado: aquí no se evalúa y lo frena el precheck de
- * `useCancelInvoice` al confirmar.
+ * bloquea es el timbrado pendiente de confirmación (`getInvoiceCancelBlockReason`):
+ * aquí no se evalúa y lo frena el precheck de `useCancelInvoice` al confirmar.
+ *
+ * Con la cancelación del CFDI solicitada y pendiente de que el receptor la
+ * acepte (`isInvoiceCfdiCancellationRequested`), el folio lleva al lado el
+ * mismo rótulo que la cabecera del detalle, con su explicación en `title`.
  *
  * En una factura timbrada, "Descargar PDF" y "Enviar correo" se rotulan como
  * no fiscales: el PDF del ERP no es el CFDI (no lleva folio fiscal ni sello).
@@ -126,6 +134,14 @@ const FolioCell = ({ invoice }: { invoice: InvoiceListRow }) => {
           </button>
         }
       />
+      {isInvoiceCfdiCancellationRequested(invoice) && (
+        <span
+          className="truncate text-xs font-medium text-amber-600 dark:text-amber-400"
+          title={INVOICE_CFDI_CANCELLATION_REQUESTED_HINT}
+        >
+          {INVOICE_CFDI_CANCELLATION_REQUESTED_LABEL}
+        </span>
+      )}
     </div>
   );
 };
