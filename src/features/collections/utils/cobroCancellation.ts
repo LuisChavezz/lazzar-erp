@@ -6,6 +6,7 @@ import { drfFieldMessage, firstDrfFieldMessage } from "@/src/utils/firstDrfField
 import { COBRO_CANCEL_PERMISSION } from "../constants/collectionPermissions";
 import type { Cobro, CobroEstatus } from "../interfaces/collection.interface";
 import { isActionOutcomeUnknown } from "./actionOutcome";
+import { isCobroRepCancellable } from "./cobroRepCancellation";
 
 /** Estatus desde los que se ofrece "Cancelar cobro". */
 const CANCELLABLE_STATUSES: readonly CobroEstatus[] = ["Aplicado", "Borrador"];
@@ -13,7 +14,14 @@ const CANCELLABLE_STATUSES: readonly CobroEstatus[] = ["Aplicado", "Borrador"];
 export const COBRO_CANCEL_BLOCKED_BY_STATUS_MESSAGE = "Este cobro ya no se puede cancelar.";
 
 export const COBRO_CANCEL_BLOCKED_BY_REP_MESSAGE =
-  "El cobro tiene un REP timbrado: primero hay que cancelar el REP ante el SAT.";
+  "El cobro tiene un REP timbrado: primero cancélalo ante el SAT con “Cancelar REP”, en la sección Complemento de pago.";
+
+/**
+ * `rep_uuid` sin `rep_facturama_id`: el REP bloquea la cancelación, pero
+ * `cancelar-rep/` tampoco lo acepta, así que no se puede remitir a "Cancelar REP".
+ */
+export const COBRO_CANCEL_BLOCKED_BY_UNCANCELLABLE_REP_MESSAGE =
+  "El cobro tiene un REP timbrado que no se puede cancelar desde aquí: contacta a soporte antes de cancelar el cobro.";
 
 export const COBRO_CANCEL_BLOCKED_BY_PENDING_REP_MESSAGE =
   "El timbrado del REP de este cobro no está confirmado con Facturama: contacta a soporte antes de cancelarlo.";
@@ -39,7 +47,8 @@ export const canOfferCobroCancel = (
  * orden:
  *
  * 1. Estatus no cancelable (solo `Aplicado` y `Borrador`).
- * 2. `rep_uuid`: el REP quedaría vigente ante el SAT.
+ * 2. `rep_uuid`: el REP quedaría vigente ante el SAT. Si es cancelable
+ *    (`isCobroRepCancellable`) el mensaje remite a "Cancelar REP".
  * 3. `rep_pendiente`: un timbrado sin confirmar pudo dejar un REP vigente.
  * 4. Sin datos de CxC (`cxcIndex` en `null`) o una línea cuya CxC no aparece:
  *    no se puede saber si su factura está cancelada, así que se bloquea.
@@ -48,11 +57,15 @@ export const canOfferCobroCancel = (
  * El backend solo rechaza 2 y 3; 4 y 5 son decisión de la UI.
  */
 export const getCobroCancelBlockReason = (
-  cobro: Pick<Cobro, "estatus" | "rep_uuid" | "rep_pendiente" | "cobro_detalles">,
+  cobro: Pick<Cobro, "estatus" | "rep_uuid" | "rep_facturama_id" | "rep_pendiente" | "cobro_detalles">,
   cxcIndex: ReadonlyMap<number, Pick<CuentaPorCobrar, "estatus">> | null,
 ): string | null => {
   if (!CANCELLABLE_STATUSES.includes(cobro.estatus)) return COBRO_CANCEL_BLOCKED_BY_STATUS_MESSAGE;
-  if (cobro.rep_uuid) return COBRO_CANCEL_BLOCKED_BY_REP_MESSAGE;
+  if (cobro.rep_uuid) {
+    return isCobroRepCancellable(cobro)
+      ? COBRO_CANCEL_BLOCKED_BY_REP_MESSAGE
+      : COBRO_CANCEL_BLOCKED_BY_UNCANCELLABLE_REP_MESSAGE;
+  }
   if (cobro.rep_pendiente) return COBRO_CANCEL_BLOCKED_BY_PENDING_REP_MESSAGE;
   if (!cxcIndex) return COBRO_CANCEL_BLOCKED_BY_UNAVAILABLE_CXC_MESSAGE;
   const cuentas = cobro.cobro_detalles.map((linea) => cxcIndex.get(linea.cxc));
