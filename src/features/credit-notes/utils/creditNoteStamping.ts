@@ -1,6 +1,8 @@
 import type { PermissionContext } from "@/src/interfaces/permission-context.interface";
 import { hasPermission } from "@/src/utils/permissions";
 import { INVOICE_STAMP_PERMISSION } from "@/src/features/invoicing/utils/invoiceStamping";
+import { isInvoiceCfdiCancelled } from "@/src/features/invoicing/utils/invoiceCancellation";
+import { INVOICE_STATUS } from "@/src/features/invoicing/constants/invoiceStatus";
 import type { NotaCredito } from "../interfaces/credit-note.interface";
 
 /** ¿La nota ya tiene CFDI de egreso timbrado? */
@@ -36,6 +38,27 @@ export const canStampCreditNote = (
   nota: Parameters<typeof isCreditNoteStampable>[0],
   user: PermissionContext | null | undefined,
 ): boolean => hasPermission(INVOICE_STAMP_PERMISSION, user) && isCreditNoteStampable(nota);
+
+/**
+ * Motivo por el que NO se puede emitir ni timbrar una nota sobre esta factura,
+ * o `null`. Una factura `Cancelada`, o con su CFDI ya cancelado ante el SAT
+ * (`cfdi_cancelado`), no admite notas: el backend no lo valida (#614) y
+ * reabriría su CxC o relacionaría el egreso con un CFDI cancelado.
+ */
+export const getRelatedInvoiceCancelledReason = (invoice: {
+  folio: string | null;
+  estatus: string;
+  cfdi_cancelado?: boolean;
+}): string | null => {
+  const label = invoice.folio ? `La factura ${invoice.folio}` : "La factura relacionada";
+  if (invoice.estatus === INVOICE_STATUS.CANCELADA) {
+    return `${label} está cancelada: no admite notas de crédito.`;
+  }
+  if (isInvoiceCfdiCancelled(invoice)) {
+    return `${label} tiene su CFDI cancelado ante el SAT: no admite notas de crédito.`;
+  }
+  return null;
+};
 
 /** Estado de la factura relacionada, tal como lo conoce el detalle de la nota. */
 export type RelatedInvoiceStampState =

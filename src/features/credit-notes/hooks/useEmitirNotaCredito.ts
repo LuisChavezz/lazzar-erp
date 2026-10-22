@@ -7,6 +7,10 @@ import {
   CREDIT_NOTE_EMIT_UNCONFIRMED_MESSAGE,
   logUnexpectedError,
 } from "../utils/creditNoteErrors";
+import { getRelatedInvoiceCancelledReason } from "../utils/creditNoteStamping";
+import { PrecheckError } from "@/src/hooks/useMutationLock";
+import { fetchFreshInvoice } from "@/src/features/invoicing/hooks/invoiceActionMutation";
+import { fetchFreshNotaCredito } from "./fetchFreshNotaCredito";
 
 /**
  * Emite una nota que estaba en borrador
@@ -28,6 +32,11 @@ import {
  * sabe desenvolver, dejando al usuario con un "Request failed with status code
  * 400" en vez del motivo real.
  *
+ * Antes del PATCH pide la nota y su factura FRESCAS y se detiene con
+ * `PrecheckError`, sin PATCH, si la nota ya no es `Borrador` o la factura está
+ * `Cancelada` o con su CFDI cancelado (`getRelatedInvoiceCancelledReason`). El
+ * candado contra el doble envío es el de la fila en `CreditNoteList`.
+ *
  * `onSettled` refresca nota, factura, cuenta por cobrar y pedido
  * (`invalidateCreditNoteQueries`): emitir baja el saldo de la cuenta por cobrar
  * de la factura, puede marcarla `Pagada` y, desde el PR #607, timbra el CFDI de
@@ -38,12 +47,28 @@ export const useEmitirNotaCredito = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (id: number) => emitirNotaCredito(id),
+    mutationFn: async (id: number) => {
+      // Nota y factura FRESCAS antes del PATCH (`fetchFresh`, staleTime 0): la
+      // factura pudo cancelarse después de crear el borrador, y el backend
+      // emitiría igual y reabriría su CxC (#614).
+      const nota = await fetchFreshNotaCredito(queryClient, id);
+      if (nota.estatus !== "Borrador") {
+        throw new PrecheckError(`La nota ${nota.folio || `#${nota.id}`} ya no está en borrador.`);
+      }
+      const factura = await fetchFreshInvoice(queryClient, nota.factura);
+      const cancelledReason = getRelatedInvoiceCancelledReason(factura);
+      if (cancelledReason) throw new PrecheckError(cancelledReason);
+      return emitirNotaCredito(id);
+    },
     onSuccess: () => {
       toast.success("Nota de crédito emitida correctamente");
     },
     onError: (error) => {
       logUnexpectedError(error);
+      if (error instanceof PrecheckError) {
+        toast.error(error.message);
+        return;
+      }
       const parsed = parseNotaCreditoError(error);
       // Sin confirmación del backend la nota pudo emitirse y timbrarse.
       const message = parsed.unconfirmed
