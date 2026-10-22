@@ -34,7 +34,8 @@ import { fetchFreshNotaCredito } from "./fetchFreshNotaCredito";
  *
  * Antes del PATCH pide la nota y su factura FRESCAS y se detiene con
  * `PrecheckError`, sin PATCH, si la nota ya no es `Borrador` o la factura está
- * `Cancelada` o con su CFDI cancelado (`getRelatedInvoiceCancelledReason`). El
+ * `Cancelada`, con su CFDI cancelado o con su cancelación pendiente de aceptar
+ * (`getRelatedInvoiceCancelledReason`). El
  * candado contra el doble envío es el de la fila en `CreditNoteList`.
  *
  * `onSettled` refresca nota, factura, cuenta por cobrar y pedido
@@ -49,8 +50,8 @@ export const useEmitirNotaCredito = () => {
   return useMutation({
     mutationFn: async (id: number) => {
       // Nota y factura FRESCAS antes del PATCH (`fetchFresh`, staleTime 0): la
-      // factura pudo cancelarse después de crear el borrador, y el backend
-      // emitiría igual y reabriría su CxC (#614).
+      // factura pudo cancelarse después de crear el borrador; el backend la
+      // rechaza (#614) y así se avisa sin intentar el PATCH.
       const nota = await fetchFreshNotaCredito(queryClient, id);
       if (nota.estatus !== "Borrador") {
         throw new PrecheckError(`La nota ${nota.folio || `#${nota.id}`} ya no está en borrador.`);

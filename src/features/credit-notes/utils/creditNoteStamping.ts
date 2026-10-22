@@ -1,7 +1,10 @@
 import type { PermissionContext } from "@/src/interfaces/permission-context.interface";
 import { hasPermission } from "@/src/utils/permissions";
 import { INVOICE_STAMP_PERMISSION } from "@/src/features/invoicing/utils/invoiceStamping";
-import { isInvoiceCfdiCancelled } from "@/src/features/invoicing/utils/invoiceCancellation";
+import {
+  isInvoiceCfdiCancellationRequested,
+  isInvoiceCfdiCancelled,
+} from "@/src/features/invoicing/utils/invoiceCancellation";
 import { INVOICE_STATUS } from "@/src/features/invoicing/constants/invoiceStatus";
 import type { NotaCredito } from "../interfaces/credit-note.interface";
 
@@ -41,14 +44,17 @@ export const canStampCreditNote = (
 
 /**
  * Motivo por el que NO se puede emitir ni timbrar una nota sobre esta factura,
- * o `null`. Una factura `Cancelada`, o con su CFDI ya cancelado ante el SAT
- * (`cfdi_cancelado`), no admite notas: el backend no lo valida (#614) y
- * reabriría su CxC o relacionaría el egreso con un CFDI cancelado.
+ * o `null`. Una factura `Cancelada`, con su CFDI ya cancelado ante el SAT
+ * (`cfdi_cancelado`) o con su cancelación solicitada y pendiente de que el
+ * receptor la acepte (`cfdi_cancelacion_solicitada`), no admite notas: el
+ * backend las rechaza con `400` en `factura` (`validar_factura`, #614) y aquí
+ * se avisa antes de intentarlo.
  */
 export const getRelatedInvoiceCancelledReason = (invoice: {
   folio: string | null;
   estatus: string;
   cfdi_cancelado?: boolean;
+  cfdi_cancelacion_solicitada?: boolean;
 }): string | null => {
   const label = invoice.folio ? `La factura ${invoice.folio}` : "La factura relacionada";
   if (invoice.estatus === INVOICE_STATUS.CANCELADA) {
@@ -56,6 +62,9 @@ export const getRelatedInvoiceCancelledReason = (invoice: {
   }
   if (isInvoiceCfdiCancelled(invoice)) {
     return `${label} tiene su CFDI cancelado ante el SAT: no admite notas de crédito.`;
+  }
+  if (isInvoiceCfdiCancellationRequested(invoice)) {
+    return `${label} tiene la cancelación de su CFDI pendiente de que el receptor la acepte: no admite notas de crédito.`;
   }
   return null;
 };
@@ -71,6 +80,7 @@ export type RelatedInvoiceStampState =
         cfdi_uuid: string | null;
         estatus: string;
         cfdi_cancelado?: boolean;
+        cfdi_cancelacion_solicitada?: boolean;
       };
     };
 
@@ -78,9 +88,10 @@ export type RelatedInvoiceStampState =
  * Motivo por el que "Timbrar" se muestra BLOQUEADO, o `null` si se puede
  * timbrar. El backend exige que la factura relacionada ya esté timbrada (el
  * CFDI de egreso se relaciona con su UUID); mientras no se sepa —cargando o sin
- * poder consultarla— tampoco se ofrece la acción. Una factura cancelada, o con
- * su CFDI cancelado ante el SAT, se bloquea antes que nada
- * (`getRelatedInvoiceCancelledReason`): el backend timbraría igual (#614).
+ * poder consultarla— tampoco se ofrece la acción. Una factura cancelada, con
+ * su CFDI cancelado ante el SAT o con su cancelación pendiente de aceptar, se
+ * bloquea antes que nada (`getRelatedInvoiceCancelledReason`): el backend la
+ * rechazaría (#614).
  */
 export const getCreditNoteStampBlockReason = (invoice: RelatedInvoiceStampState): string | null => {
   if (invoice.status === "loading") return "Consultando si la factura relacionada está timbrada…";
