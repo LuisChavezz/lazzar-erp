@@ -17,6 +17,16 @@ type CobroRepCancelState = Pick<Cobro, "rep_uuid" | "rep_facturama_id">;
 export const isCobroRepCancellable = (cobro: CobroRepCancelState): boolean =>
   Boolean(cobro.rep_uuid) && Boolean(cobro.rep_facturama_id);
 
+/**
+ * Por qué NO se puede cancelar el REP de este cobro (`isCobroRepCancellable`
+ * en falso), según su estado: sin UUID ya no hay REP; con UUID pero sin id de
+ * Facturama, `cancelar-rep/` tampoco lo acepta y solo soporte lo resuelve.
+ */
+export const getCobroRepNotCancellableMessage = (cobro: Pick<Cobro, "id" | "rep_uuid">): string =>
+  cobro.rep_uuid
+    ? `El REP del cobro #${cobro.id} no tiene el id de Facturama y no se puede cancelar desde aquí: contacta a soporte.`
+    : `El cobro #${cobro.id} ya no tiene un REP timbrado que cancelar.`;
+
 /** ¿Se ofrece "Cancelar REP" a ESTE usuario para ESTE cobro? */
 export const canCancelCobroRep = (
   cobro: CobroRepCancelState,

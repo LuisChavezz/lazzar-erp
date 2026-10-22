@@ -5,6 +5,7 @@ import type { Cobro } from "../interfaces/collection.interface";
 import {
   cancelCobroRepErrorMessage,
   cancelCobroRepRequestedMessage,
+  getCobroRepNotCancellableMessage,
   isCobroRepCancellable,
 } from "../utils/cobroRepCancellation";
 import { useCobroAction } from "./useCobroAction";
@@ -55,16 +56,15 @@ export const useCancelCobroRep = (cobroId: number) => {
       }
     },
     onSuccess: (result) => {
-      const label = `#${result.cobro.id}`;
       if (result.outcome === "requested") {
         toast(result.message, { icon: "⚠️", duration: 8000 });
         return;
       }
       if (result.outcome === "not-cancellable") {
-        toast.error(`El cobro ${label} ya no tiene un REP timbrado que cancelar.`);
+        toast.error(getCobroRepNotCancellableMessage(result.cobro));
         return;
       }
-      toast.success(`REP del cobro ${label} cancelado ante el SAT`);
+      toast.success(`REP del cobro #${result.cobro.id} cancelado ante el SAT`);
     },
     errorMessage: cancelCobroRepErrorMessage,
     onSettled: () => {
