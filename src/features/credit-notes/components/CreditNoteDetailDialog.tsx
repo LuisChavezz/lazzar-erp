@@ -96,8 +96,8 @@ export function CreditNoteDetailDialog({
  * - Con `cfdi_pendiente`: el indicador de pendiente en el mismo lugar.
  * - "Timbrar" solo con `E-FIN-FACTURAS` y una `Emitida` sin CFDI ni timbrado
  *   pendiente (`canStampCreditNote`). Bloqueado y descrito por su nota mientras
- *   la factura relacionada carga, no se pudo consultar o no está timbrada
- *   (`getCreditNoteStampBlockReason`): el backend la exige timbrada.
+ *   la factura relacionada carga, no se pudo consultar, no está timbrada o está
+ *   cancelada (`getCreditNoteStampBlockReason`).
  */
 function CreditNoteCfdiSection({
   nota,
@@ -193,7 +193,7 @@ export function CreditNoteDetailBody({ nota }: { nota: NotaCredito }) {
   // Timbre de la factura para la regla de "Timbrar". Con datos en caché se usan
   // aunque un refetch haya fallado; sin datos, cargando o no disponible.
   const invoiceStampState: RelatedInvoiceStampState = factura
-    ? { status: "loaded", folio: factura.folio, cfdiUuid: factura.cfdi_uuid }
+    ? { status: "loaded", invoice: factura }
     : isLoading
       ? { status: "loading" }
       : { status: "unavailable" };

@@ -64,21 +64,34 @@ export const getRelatedInvoiceCancelledReason = (invoice: {
 export type RelatedInvoiceStampState =
   | { status: "loading" }
   | { status: "unavailable" }
-  | { status: "loaded"; folio: string | null; cfdiUuid: string | null };
+  | {
+      status: "loaded";
+      invoice: {
+        folio: string | null;
+        cfdi_uuid: string | null;
+        estatus: string;
+        cfdi_cancelado?: boolean;
+      };
+    };
 
 /**
  * Motivo por el que "Timbrar" se muestra BLOQUEADO, o `null` si se puede
  * timbrar. El backend exige que la factura relacionada ya esté timbrada (el
  * CFDI de egreso se relaciona con su UUID); mientras no se sepa —cargando o sin
- * poder consultarla— tampoco se ofrece la acción.
+ * poder consultarla— tampoco se ofrece la acción. Una factura cancelada, o con
+ * su CFDI cancelado ante el SAT, se bloquea antes que nada
+ * (`getRelatedInvoiceCancelledReason`): el backend timbraría igual (#614).
  */
 export const getCreditNoteStampBlockReason = (invoice: RelatedInvoiceStampState): string | null => {
   if (invoice.status === "loading") return "Consultando si la factura relacionada está timbrada…";
   if (invoice.status === "unavailable") {
     return "No se pudo consultar la factura relacionada: no se puede confirmar que esté timbrada.";
   }
-  if (!invoice.cfdiUuid) {
-    const label = invoice.folio ? `La factura ${invoice.folio}` : "La factura relacionada";
+  const cancelledReason = getRelatedInvoiceCancelledReason(invoice.invoice);
+  if (cancelledReason) return cancelledReason;
+  if (!invoice.invoice.cfdi_uuid) {
+    const { folio } = invoice.invoice;
+    const label = folio ? `La factura ${folio}` : "La factura relacionada";
     return `${label} no está timbrada. Timbra primero la factura para poder timbrar esta nota.`;
   }
   return null;
