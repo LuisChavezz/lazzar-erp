@@ -6,6 +6,7 @@ import {
   DownloadIcon,
   EmailIcon,
   FacturacionIcon,
+  PaperPlaneIcon,
   ShieldCheckIcon,
 } from "@/src/components/Icons";
 import { Button } from "@/src/components/Button";
@@ -60,6 +61,8 @@ import {
 import { InvoiceConceptsSection } from "./InvoiceConceptsSection";
 import { InvoiceCancelDialog } from "./InvoiceCancelDialog";
 import { InvoiceStampDialog } from "./InvoiceStampDialog";
+import { InvoiceCfdiEmailDialog } from "./InvoiceCfdiEmailDialog";
+import { getInvoiceCfdiEmailAvailability } from "../utils/invoiceCfdiEmail";
 import { DocumentActionWithDialog } from "./DocumentActionWithDialog";
 
 interface InvoiceMainSheetProps {
@@ -81,7 +84,7 @@ const satKeyLabel = (key: InvoiceDesgloseSatKey | null): string =>
 /**
  * Acciones del documento: las MISMAS reglas que el menú de la fila del
  * listado (`useInvoiceDocumentActions`), sobre el mismo `Invoice` del retrieve.
- * "Timbrar" solo existe aquí, nunca en el menú del listado. Debajo de los
+ * "Timbrar" y "Enviar CFDI" solo existen aquí, nunca en el menú del listado. Debajo de los
  * botones va, en texto visible, el motivo de los que estén bloqueados (el
  * `title` de un botón deshabilitado no se muestra en todos los navegadores) y,
  * en una factura timbrada, el aviso de que el PDF del ERP no es el CFDI.
@@ -105,9 +108,11 @@ function InvoiceDocumentActions({
       : !isInvoiceStampCurrencySupported(invoice)
         ? INVOICE_STAMP_CURRENCY_MESSAGE
         : null;
+  const cfdiEmail = getInvoiceCfdiEmailAvailability(invoice, user);
   const nonFiscalPdf = isInvoicePdfNonFiscal(invoice);
   const cancelNoteId = `invoice-${invoice.id}-cancel-note`;
   const stampNoteId = `invoice-${invoice.id}-stamp-note`;
+  const cfdiEmailNoteId = `invoice-${invoice.id}-cfdi-email-note`;
   const nonFiscalNoteId = `invoice-${invoice.id}-non-fiscal-note`;
 
   return (
@@ -134,6 +139,17 @@ function InvoiceDocumentActions({
           icon={ShieldCheckIcon}
           label="Timbrar"
           renderDialog={(dialog) => <InvoiceStampDialog invoice={invoice} {...dialog} />}
+        />
+        {/* "Enviar CFDI": el PDF y el XML oficiales. Mismo permiso que "Enviar correo";
+            oculto en una eliminada y bloqueado, con su nota, si está cancelada, con el
+            CFDI cancelado ante el SAT, con el timbrado pendiente o sin timbrar
+            (`getInvoiceCfdiEmailAvailability`). */}
+        <DocumentActionWithDialog
+          offered={cfdiEmail.state !== "hidden"}
+          blockedNoteId={cfdiEmail.state === "blocked" ? cfdiEmailNoteId : undefined}
+          icon={PaperPlaneIcon}
+          label="Enviar CFDI"
+          renderDialog={(dialog) => <InvoiceCfdiEmailDialog invoice={invoice} {...dialog} />}
         />
         {actions.canSendEmail && (
           <Button
@@ -184,6 +200,11 @@ function InvoiceDocumentActions({
       {stampBlockReason && (
         <p id={stampNoteId} className="text-xs text-slate-500 dark:text-slate-400 max-w-md lg:text-right">
           {stampBlockReason}
+        </p>
+      )}
+      {cfdiEmail.state === "blocked" && (
+        <p id={cfdiEmailNoteId} className="text-xs text-slate-500 dark:text-slate-400 max-w-md lg:text-right">
+          {cfdiEmail.message}
         </p>
       )}
     </div>
