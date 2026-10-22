@@ -23,11 +23,17 @@ import path from "node:path";
  * muestra la nota en lugar de los botones y los pasos de descarga fallan.
  *
  * Variables de entorno:
- *   BASE_URL  URL del frontend (default `http://localhost:3000`)
+ *   BASE_URL            URL del frontend (default `http://localhost:3000`)
+ *   E2E_STORAGE_STATE   Ruta a un `storageState` de Playwright con una sesión
+ *                       ya iniciada (cookies de NextAuth y del backend). Con
+ *                       ella no hay pausa de login y el spec corre solo.
  *
  * Ejecución (solo este archivo):
  *   npm run e2e -- tests/cobro-rep-download-e2e.spec.ts
  */
+
+const STORAGE_STATE = process.env.E2E_STORAGE_STATE;
+test.use({ storageState: STORAGE_STATE });
 
 const SHOTS = "tests/screenshots";
 const RUTA = "/finance/collections";
@@ -111,10 +117,14 @@ test("Cobros — descarga del REP (PDF, XML, 403 y 502)", async ({ page }) => {
 
   const botonPdf = page.getByRole("button", { name: "Descargar PDF" });
   const botonXml = page.getByRole("button", { name: "Descargar XML" });
-  const toast = (texto: string) => page.getByRole("status").filter({ hasText: texto });
+  // `includeHidden`: con el detalle abierto, el modal de Radix marca con
+  // `aria-hidden` todo lo que queda fuera de él, incluido el contenedor de los
+  // toasts; sin esto el rol no se encuentra aunque el toast se vea.
+  const toast = (texto: string) => page.getByRole("status", { includeHidden: true }).filter({ hasText: texto });
 
   // ── Paso 0: login manual ─────────────────────────────────────────────────
   await runStep("Paso 0 · Login manual (pausa)", async () => {
+    if (STORAGE_STATE) return; // Sesión ya guardada: no hay login que esperar.
     await page.goto("/auth/login");
     console.log(`
   ┌──────────────────────────────────────────────────────────────┐
