@@ -99,17 +99,21 @@ export const INVOICE_CANCEL_ERP_ONLY_MESSAGE =
   "El CFDI ya está cancelado ante el SAT; solo falta cancelar la factura en el ERP.";
 
 /**
- * Aviso del diálogo de cancelación según el CFDI, o `null` sin CFDI. Si a la
- * fila le faltara `cfdi_cancelado`, una timbrada muestra el de "primero el
- * SAT": el backend igual se salta el SAT si ya estaba cancelado.
+ * El ÚNICO aviso del diálogo de cancelación sobre el CFDI, o `null` sin CFDI:
+ * ya cancelado ante el SAT (solo falta el ERP), con la cancelación ya
+ * solicitada (confirmar vuelve a consultar al SAT) o vigente (primero el SAT).
+ * Si a la fila le faltara `cfdi_cancelado`, una timbrada muestra el de
+ * "primero el SAT": el backend igual se salta el SAT si ya estaba cancelado.
  */
 export const getInvoiceCancelCfdiNotice = (invoice: {
   cfdi_uuid?: string | null;
   cfdi_cancelado?: boolean;
+  cfdi_cancelacion_solicitada?: boolean;
 }): string | null => {
   if (!isInvoiceStamped(invoice)) return null;
-  return isInvoiceCfdiCancelled(invoice)
-    ? INVOICE_CANCEL_ERP_ONLY_MESSAGE
+  if (isInvoiceCfdiCancelled(invoice)) return INVOICE_CANCEL_ERP_ONLY_MESSAGE;
+  return isInvoiceCfdiCancellationRequested(invoice)
+    ? INVOICE_CANCEL_ALREADY_REQUESTED_MESSAGE
     : INVOICE_CANCEL_SAT_FIRST_MESSAGE;
 };
 

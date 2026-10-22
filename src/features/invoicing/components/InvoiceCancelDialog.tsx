@@ -9,7 +9,6 @@ import { FormErrorBanner } from "@/src/components/FormErrorBanner";
 import { useDialogSession } from "@/src/hooks/useDialogSession";
 import { useCancelInvoice } from "../hooks/useCancelInvoice";
 import {
-  INVOICE_CANCEL_ALREADY_REQUESTED_MESSAGE,
   getInvoiceCancelCfdiNotice,
   isInvoiceCfdiCancellationRequested,
 } from "../utils/invoiceCancellation";
@@ -63,7 +62,8 @@ interface InvoiceCancelDialogProps {
  * confirmar de nuevo.
  *
  * Si la cancelación del CFDI ya está solicitada y pendiente de que el receptor
- * la acepte, avisa además que confirmar vuelve a consultar al SAT. Si el SAT
+ * la acepte, ese aviso cambia por uno que dice que confirmar vuelve a
+ * consultar al SAT (también `getInvoiceCancelCfdiNotice`). Si el SAT
  * la deja otra vez pendiente, el diálogo se cierra con un aviso (resultado
  * `requested` de `useCancelInvoice`), igual que la primera vez.
  *
@@ -199,11 +199,6 @@ function InvoiceCancelForm({ target, isPending, onClose, onSubmit }: InvoiceCanc
       {cfdiNotice && (
         <p className="rounded-xl border border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 px-4 py-3 text-sm text-amber-800 dark:text-amber-200">
           {cfdiNotice}
-        </p>
-      )}
-      {cancellationRequested && (
-        <p className="rounded-xl border border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 px-4 py-3 text-sm text-amber-800 dark:text-amber-200">
-          {INVOICE_CANCEL_ALREADY_REQUESTED_MESSAGE}
         </p>
       )}
       <FormTextarea
