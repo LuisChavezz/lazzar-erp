@@ -8,6 +8,7 @@ import type { Invoice } from "../interfaces/invoice.interface";
 import { INVOICE_STATUS } from "../constants/invoiceStatus";
 import {
   cancelInvoiceErrorMessage,
+  cancelInvoiceRequestedMessage,
   getInvoiceCancelBlockReason,
   isInvoiceCancellable,
   isInvoiceCfdiCancelled,
@@ -30,11 +31,17 @@ export const cancelInvoiceMutationKey = (invoiceId: number) =>
  * o con el timbrado pendiente de confirmación) y NO se hizo el POST.
  * `needs-confirmation`: la factura se timbró después de abrir el diálogo, que
  * no avisó del SAT; NO se hizo el POST y hay que volver a confirmar.
+ * `requested`: el SAT dejó la cancelación pendiente de que el receptor la
+ * acepte (`cancelacion_pendiente`). No es un éxito, pero tampoco un fallo: la
+ * factura sigue en su `estatus`, el backend guardó
+ * `cfdi_cancelacion_solicitada` y `message` es su texto tal cual. `invoice` es
+ * el retrieve del precheck, ANTERIOR a ese cambio.
  */
 export type CancelInvoiceResult =
   | { outcome: "cancelled"; invoice: Invoice }
   | { outcome: "not-cancellable"; invoice: Invoice }
-  | { outcome: "needs-confirmation"; invoice: Invoice };
+  | { outcome: "needs-confirmation"; invoice: Invoice }
+  | { outcome: "requested"; invoice: Invoice; message: string };
 
 /** Lo que manda el diálogo: la nota y si su aviso ya mencionaba el CFDI. */
 interface CancelInvoiceVariables {
@@ -85,10 +92,19 @@ const errorMessageOf = (error: unknown): string =>
  * cancelada), las pólizas (contrapóliza de una Emitida) y los clientes de
  * contabilidad (saldo a favor por los cobros que se conservan).
  *
+ * Cancelación solicitada: un `400` con la llave `cancelacion_pendiente`
+ * (`cancelInvoiceRequestedMessage`, por la LLAVE, nunca por el texto) es el
+ * resultado `requested`, no un error, igual que `useCancelCobroRep`: aviso ⚠️
+ * con el mensaje del backend y el diálogo se cierra (`onSuccess` de la
+ * llamada). Ese `400` SÍ guardó `cfdi_cancelacion_solicitada`, así que se
+ * releen el listado, el retrieve y el desglose; nada más cambia (ni CxC, ni
+ * póliza, ni pedido).
+ *
  * Errores: el mensaje del backend tal cual (`cancelInvoiceErrorMessage`: el
- * `400` de `cfdi` cuando el SAT o Facturama no cancelaron el CFDI, o el de
- * `estatus` por notas de crédito), en un toast y en el `onError` de la llamada,
- * para que el diálogo lo muestre también. Ningún `400` guarda nada.
+ * `400` de `cfdi` cuando el SAT o Facturama no cancelaron el CFDI o no
+ * respondieron, o el de `estatus` por notas de crédito), en un toast y en el
+ * `onError` de la llamada, para que el diálogo lo muestre también. Esos `400`
+ * no guardan nada.
  */
 export const useCancelInvoice = (invoiceId: number) => {
   const queryClient = useQueryClient();
@@ -105,10 +121,20 @@ export const useCancelInvoice = (invoiceId: number) => {
       if (stampedSinceShown(current, shownStamped)) {
         return { outcome: "needs-confirmation", invoice: current };
       }
-      const invoice = await cancelInvoice({ id: invoiceId, motivo });
-      return { outcome: "cancelled", invoice };
+      try {
+        return { outcome: "cancelled", invoice: await cancelInvoice({ id: invoiceId, motivo }) };
+      } catch (error) {
+        const message = cancelInvoiceRequestedMessage(error);
+        if (message) return { outcome: "requested", invoice: current, message };
+        throw error;
+      }
     },
-    onSuccess: ({ outcome, invoice }) => {
+    onSuccess: (result) => {
+      if (result.outcome === "requested") {
+        toast(result.message, { icon: "⚠️", duration: 8000 });
+        return;
+      }
+      const { outcome, invoice } = result;
       const label = invoice.folio || `#${invoice.id}`;
       if (outcome === "not-cancellable") {
         toast.error(
@@ -144,7 +170,8 @@ export const useCancelInvoice = (invoiceId: number) => {
     // Si el precheck detuvo la acción, el retrieve ya está fresco en la caché.
     onSettled: (result) =>
       invalidateInvoiceBaseQueries(queryClient, invoiceId, {
-        sentRequest: result === undefined || result.outcome === "cancelled",
+        sentRequest:
+          result === undefined || result.outcome === "cancelled" || result.outcome === "requested",
       }),
   });
 
@@ -152,7 +179,8 @@ export const useCancelInvoice = (invoiceId: number) => {
    * Dispara la cancelación salvo que ya haya una en vuelo para ESTA factura
    * (consulta síncrona a la caché). `shownStamped`: si el diálogo mostraba la
    * factura timbrada. `onSuccess` corre solo si terminó sin error y sin pedir
-   * reconfirmación; `onNeedsConfirmation` recibe la factura fresca cuando se
+   * reconfirmación (incluida la cancelación solicitada, `requested`, que
+   * también cierra el diálogo); `onNeedsConfirmation` recibe la factura fresca cuando se
    * timbró después de abrir el diálogo; `onError`, el mismo mensaje que el toast.
    */
   const cancel = (
