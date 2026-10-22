@@ -1,5 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
+import { cancelacionPendienteMessage } from "@/src/utils/cancelacionPendienteMessage";
+import { toastWarning } from "@/src/utils/toastWarning";
 import { ordersQueryKey } from "@/src/features/orders/hooks/useOrders";
 import { pedidoDetailQueryKey } from "@/src/features/orders/hooks/usePedidoDetail";
 import { pedidoTrazabilidadQueryKey } from "@/src/features/orders/hooks/usePedidoTrazabilidad";
@@ -8,7 +10,6 @@ import type { Invoice } from "../interfaces/invoice.interface";
 import { INVOICE_STATUS } from "../constants/invoiceStatus";
 import {
   cancelInvoiceErrorMessage,
-  cancelInvoiceRequestedMessage,
   getInvoiceCancelBlockReason,
   isInvoiceCancellable,
   isInvoiceCfdiCancelled,
@@ -93,7 +94,7 @@ const errorMessageOf = (error: unknown): string =>
  * contabilidad (saldo a favor por los cobros que se conservan).
  *
  * Cancelación solicitada: un `400` con la llave `cancelacion_pendiente`
- * (`cancelInvoiceRequestedMessage`, por la LLAVE, nunca por el texto) es el
+ * (`cancelacionPendienteMessage`, por la LLAVE, nunca por el texto) es el
  * resultado `requested`, no un error, igual que `useCancelCobroRep`: aviso ⚠️
  * con el mensaje del backend y el diálogo se cierra (`onSuccess` de la
  * llamada). Ese `400` SÍ guardó `cfdi_cancelacion_solicitada`, así que se
@@ -124,14 +125,14 @@ export const useCancelInvoice = (invoiceId: number) => {
       try {
         return { outcome: "cancelled", invoice: await cancelInvoice({ id: invoiceId, motivo }) };
       } catch (error) {
-        const message = cancelInvoiceRequestedMessage(error);
+        const message = cancelacionPendienteMessage(error);
         if (message) return { outcome: "requested", invoice: current, message };
         throw error;
       }
     },
     onSuccess: (result) => {
       if (result.outcome === "requested") {
-        toast(result.message, { icon: "⚠️", duration: 8000 });
+        toastWarning(result.message);
         return;
       }
       const { outcome, invoice } = result;

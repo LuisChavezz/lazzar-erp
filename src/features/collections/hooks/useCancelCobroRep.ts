@@ -1,10 +1,11 @@
 import { useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
+import { cancelacionPendienteMessage } from "@/src/utils/cancelacionPendienteMessage";
+import { toastWarning } from "@/src/utils/toastWarning";
 import { cancelCobroRep } from "../services/actions";
 import type { Cobro } from "../interfaces/collection.interface";
 import {
   cancelCobroRepErrorMessage,
-  cancelCobroRepRequestedMessage,
   getCobroRepNotCancellableMessage,
   isCobroRepCancellable,
 } from "../utils/cobroRepCancellation";
@@ -50,14 +51,14 @@ export const useCancelCobroRep = (cobroId: number) => {
       try {
         return { outcome: "cancelled", cobro: await cancelCobroRep(cobroId) };
       } catch (error) {
-        const message = cancelCobroRepRequestedMessage(error);
+        const message = cancelacionPendienteMessage(error);
         if (message) return { outcome: "requested", cobro: current, message };
         throw error;
       }
     },
     onSuccess: (result) => {
       if (result.outcome === "requested") {
-        toast(result.message, { icon: "⚠️", duration: 8000 });
+        toastWarning(result.message);
         return;
       }
       if (result.outcome === "not-cancellable") {
