@@ -80,18 +80,26 @@ export interface Invoice {
   /**
    * Timbrado SIN CONFIRMAR: Facturama no confirmó el timbrado (timeout, red,
    * 5xx o respuesta sin UUID) y pudo generarse un CFDI. Mientras siga en
-   * `true`, `timbrar/` lo rechaza; solo un administrador lo desmarca. Solo lo
-   * trae el retrieve (no el listado ni el desglose).
+   * `true`, `timbrar/` lo rechaza; solo un administrador lo desmarca. Lo trae
+   * el retrieve y el listado (no el desglose).
    */
   cfdi_pendiente: boolean;
   /**
    * CFDI ya cancelado ante el SAT. `cancelar/` lo guarda ANTES y aparte de la
    * cancelación en el ERP: si esa parte falla, la factura sigue `Emitida` con
    * este campo en `true` y reintentar solo completa la parte del ERP (no
-   * vuelve a llamar al SAT). Solo lo trae el retrieve (no el listado ni el
+   * vuelve a llamar al SAT). Lo trae el retrieve y el listado (no el
    * desglose).
    */
   cfdi_cancelado: boolean;
+  /**
+   * Cancelación del CFDI SOLICITADA ante el SAT y pendiente de que el receptor
+   * la acepte. `cancelar/` lo guarda en su propia transacción cuando Facturama
+   * responde `requested`, aunque responda `400` (`cancelacion_pendiente`); la
+   * factura no cambia de `estatus`. Lo apaga un `canceled` posterior. Lo trae
+   * el retrieve y el listado (no el desglose).
+   */
+  cfdi_cancelacion_solicitada: boolean;
 }
 
 /**
@@ -131,11 +139,14 @@ export interface InvoiceListRow {
   moneda_nombre: string;
   activo?: boolean;
   /**
-   * Folio fiscal del CFDI; `null` mientras no se timbre. Es el ÚNICO campo de
-   * timbrado del listado (`facturama_id` y `cfdi_fecha_timbrado` solo vienen
-   * en el retrieve).
+   * Folio fiscal del CFDI; `null` mientras no se timbre. `facturama_id` y
+   * `cfdi_fecha_timbrado` solo vienen en el retrieve.
    */
   cfdi_uuid: string | null;
+  /** Mismos flags del CFDI que el retrieve (ver `Invoice`). */
+  cfdi_cancelacion_solicitada: boolean;
+  cfdi_cancelado: boolean;
+  cfdi_pendiente: boolean;
 }
 
 /**

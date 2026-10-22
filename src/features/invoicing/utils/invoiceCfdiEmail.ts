@@ -31,8 +31,7 @@ export interface InvoiceCfdiEmailBlocker {
 /**
  * Por qué NO se puede enviar el CFDI de una factura, o `null` si se puede.
  * Fuente única para la cabecera del detalle y el precheck de
- * `useSendInvoiceCfdi`, siempre sobre el retrieve (el listado no trae
- * `cfdi_pendiente` ni `cfdi_cancelado`). En orden:
+ * `useSendInvoiceCfdi`, siempre sobre el retrieve. En orden:
  *
  * - `deleted`: eliminada (`activo !== true`; desconocido cuenta como eliminada).
  *   La acción se OCULTA.

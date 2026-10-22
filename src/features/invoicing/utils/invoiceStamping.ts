@@ -28,7 +28,7 @@ export const isInvoiceStamped = (invoice: { cfdi_uuid?: string | null }): boolea
  * ¿El PDF del ERP debe rotularse como no fiscal? Si la factura ya tiene CFDI
  * (`cfdi_uuid`) o pudo tenerlo (`cfdi_pendiente`: timbrado sin confirmar), el
  * PDF que genera el ERP no es el comprobante fiscal. Fuente única para la
- * cabecera del detalle y el menú del listado (que no trae `cfdi_pendiente`).
+ * cabecera del detalle y el menú del listado.
  */
 export const isInvoicePdfNonFiscal = (invoice: {
   cfdi_uuid?: string | null;
@@ -94,7 +94,7 @@ export const canStampInvoice = (
  * Facturama no confirmó el timbrado (timeout, red, 5xx o respuesta sin UUID):
  * puede existir un CFDI vigente ante el SAT aunque la factura no tenga
  * `cfdi_uuid`. Mientras siga marcado, `timbrar/` lo rechaza y solo un
- * administrador lo desmarca. Solo viene en el retrieve, no en el listado.
+ * administrador lo desmarca. Viene en el retrieve y en el listado.
  */
 export const isInvoiceStampPending = (invoice: { cfdi_pendiente?: boolean }): boolean =>
   invoice.cfdi_pendiente === true;
