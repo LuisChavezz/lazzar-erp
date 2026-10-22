@@ -1,9 +1,9 @@
 "use client";
 
-import { ConfirmDialog } from "@/src/components/ConfirmDialog";
 import { useDialogSession } from "@/src/hooks/useDialogSession";
 import { useCancelCobro } from "../hooks/useCancelCobro";
 import type { Cobro } from "../interfaces/collection.interface";
+import { CobroActionConfirmDialog } from "./CobroActionConfirmDialog";
 
 /** Lo mínimo para cancelar y describir el cobro. */
 export type CollectionCancelTarget = Pick<Cobro, "id" | "estatus">;
@@ -24,8 +24,7 @@ interface CollectionCancelDialogProps {
  * El texto depende del estatus: un `Aplicado` revierte saldos de CxC, banco y
  * póliza; un `Borrador` nunca movió nada, así que no se promete reversión.
  *
- * Mientras la petición está en vuelo (`busy`) no se puede cerrar ni reenviar.
- * Se cierra al TERMINAR, con cualquier resultado; el toast dice qué pasó.
+ * El ciclo de cierre es el de `CobroActionConfirmDialog`.
  */
 export function CollectionCancelDialog({ cobro, open, onOpenChange }: CollectionCancelDialogProps) {
   const session = useDialogSession(open, cobro);
@@ -34,34 +33,22 @@ export function CollectionCancelDialog({ cobro, open, onOpenChange }: Collection
 
   const { cancel, isCancelling } = useCancelCobro(target?.id ?? 0);
 
-  const handleOpenChange = (next: boolean) => {
-    // No se cierra a media petición: el resultado debe verse.
-    if (!next && isCancelling) return;
-    onOpenChange(next);
-  };
-
   const description =
     target?.estatus === "Borrador"
       ? `El cobro ${cobroLabel} quedará como Cancelado. Es un borrador: no movió saldos, banco ni póliza, así que no hay nada que revertir. Esta acción no se puede deshacer.`
       : `El cobro ${cobroLabel} quedará como Cancelado: el saldo de sus cuentas por cobrar vuelve a quedar pendiente, se descuenta de la cuenta bancaria, su movimiento bancario se cancela y se genera la contrapóliza. Esta acción no se puede deshacer.`;
 
   return (
-    <ConfirmDialog
+    <CobroActionConfirmDialog
       open={open}
-      onOpenChange={handleOpenChange}
+      onOpenChange={onOpenChange}
       title="Cancelar cobro"
       description={description}
-      confirmText={isCancelling ? "Cancelando…" : "Cancelar cobro"}
-      cancelText="Volver"
+      confirmText="Cancelar cobro"
+      busyText="Cancelando…"
       confirmColor="red"
-      closeOnConfirm={false}
-      busy={isCancelling}
-      onConfirm={() => {
-        if (!target) return;
-        // Cierre directo, sin pasar por `handleOpenChange`: al terminar, el
-        // `isCancelling` capturado en este render todavía no se actualizó.
-        cancel({ onSettled: () => onOpenChange(false) });
-      }}
+      run={target ? cancel : null}
+      isRunning={isCancelling}
     />
   );
 }
