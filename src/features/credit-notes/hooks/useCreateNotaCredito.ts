@@ -263,13 +263,12 @@ export function parseNotaCreditoError(error: unknown): ParsedNotaCreditoError {
  * normalizado para que el formulario lo reparta entre el banner de "todo o
  * nada", los campos de cabecera y las líneas.
  *
- * Refresca en `onSettled` nota, factura, cuenta por cobrar y pedido
- * (`invalidateCreditNoteQueries`): una nota EMITIDA baja el saldo de la cuenta
- * por cobrar de su factura y puede marcarla `Pagada`, así que las listas de CxC
- * cacheadas —incluida la
- * que alimenta el selector de facturas de este mismo formulario— quedan
- * obsoletas. Se invalida también en el alta de un borrador: cuesta un refetch y
- * evita razonar sobre cuál de los dos caminos tocó saldos.
+ * Refresca en `onSettled` (`invalidateCreditNoteQueries`) según lo enviado: una
+ * nota EMITIDA baja el saldo de la cuenta por cobrar de su factura y puede
+ * marcarla `Pagada`, así que con ella se refrescan también la CxC —incluida la
+ * lista que alimenta el selector de facturas de este formulario—, la factura y
+ * el pedido (`balances`); un borrador solo cambia las notas de la factura
+ * (`document`).
  */
 export const useCreateNotaCredito = (
   onServerError?: (parsed: ParsedNotaCreditoError) => void,
@@ -297,6 +296,10 @@ export const useCreateNotaCredito = (
     },
     // También ante un error: emitir en el alta timbra antes de guardar, y un
     // timeout del PAC pudo dejar algo hecho.
-    onSettled: () => invalidateCreditNoteQueries(queryClient),
+    onSettled: (_nota, _error, payload) =>
+      invalidateCreditNoteQueries(
+        queryClient,
+        payload.estatus === "Emitida" ? "balances" : "document",
+      ),
   });
 };

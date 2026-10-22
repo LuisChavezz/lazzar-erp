@@ -78,7 +78,7 @@ export const useStampNotaCredito = (notaId: number) => {
     },
     // También ante un error: un timeout pudo dejar la nota `cfdi_pendiente`, y
     // el refetch lo muestra.
-    onSettled: () => invalidateCreditNoteQueries(queryClient),
+    onSettled: () => invalidateCreditNoteQueries(queryClient, "stamp"),
   });
 
   /**

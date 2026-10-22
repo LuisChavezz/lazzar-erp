@@ -84,7 +84,7 @@ export const useCancelNotaCredito = () => {
     // refetch de la nota termine: así el listado nunca muestra un estado
     // intermedio y el diálogo de confirmación (con `closeOnConfirm={false}`)
     // puede cerrarse aquí.
-    onSettled: () => invalidateCreditNoteQueries(queryClient),
+    onSettled: () => invalidateCreditNoteQueries(queryClient, "balances"),
     onSuccess: () => {
       toast.success("Nota de crédito cancelada correctamente");
     },

@@ -23,9 +23,9 @@ import { logUnexpectedError } from "../utils/creditNoteErrors";
  * vuelo, instantánea, quitar la fila, revertir en `onError`, invalidar en
  * `onSettled`.
  *
- * Un borrador nunca modificó ningún saldo, pero `onSettled` usa la misma
- * invalidación que el resto (`invalidateCreditNoteQueries`): el desglose de la
- * factura lista sus notas, y una regla única cuesta solo refetches de lo montado.
+ * Un borrador nunca modificó ningún saldo: `onSettled` refresca solo las notas
+ * y el desglose de la factura, que las lista (`invalidateCreditNoteQueries`,
+ * `document`).
  *
  * El error se normaliza con `parseNotaCreditoError` —igual que en
  * `useEmitirNotaCredito`— y no con `extractErrorMessage`: el listado puede estar
@@ -71,7 +71,7 @@ export const useDeleteNotaCredito = () => {
           : "Error al eliminar la nota de crédito",
       );
     },
-    onSettled: () => invalidateCreditNoteQueries(queryClient),
+    onSettled: () => invalidateCreditNoteQueries(queryClient, "document"),
     onSuccess: () => {
       toast.success("Borrador eliminado correctamente");
     },

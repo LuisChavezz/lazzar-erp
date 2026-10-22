@@ -83,6 +83,6 @@ export const useEmitirNotaCredito = () => {
     // intermedio y el diálogo de confirmación (con `closeOnConfirm={false}`)
     // puede cerrarse aquí. También ante un error: emitir timbra, y un timeout del
     // PAC pudo dejar algo hecho (`invalidateCreditNoteQueries`).
-    onSettled: () => invalidateCreditNoteQueries(queryClient),
+    onSettled: () => invalidateCreditNoteQueries(queryClient, "balances"),
   });
 };
