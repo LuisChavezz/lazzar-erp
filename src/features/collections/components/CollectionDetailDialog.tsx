@@ -46,6 +46,11 @@ interface CollectionDetailDialogProps {
   /** Abre la confirmación de "Timbrar REP"; sin ella no se ofrece el botón. */
   onStampRep?: () => void;
   /**
+   * Abre la confirmación de "Cancelar REP"; sin ella no se ofrece el botón
+   * (sin permiso o sin REP cancelable, ver `canCancelCobroRep`).
+   */
+  onCancelRep?: () => void;
+  /**
    * Abre la confirmación de "Cancelar cobro"; sin ella no se ofrece el botón
    * (sin permiso o cobro ya `Cancelado`, ver `canOfferCobroCancel`).
    */
@@ -63,6 +68,7 @@ export function CollectionDetailDialog({
   open,
   onOpenChange,
   onStampRep,
+  onCancelRep,
   onCancel,
   hasRepDownloadPermission = false,
 }: CollectionDetailDialogProps) {
@@ -198,6 +204,20 @@ export function CollectionDetailDialog({
               <Button type="button" variant="primary" onClick={onStampRep} className="mb-2">
                 <ShieldCheckIcon className="w-4 h-4" aria-hidden="true" />
                 Timbrar REP
+              </Button>
+            )}
+            {/* Con permiso y un REP cancelable (`canCancelCobroRep`, en
+                cualquier estatus del cobro); el diálogo vive en `CollectionList`.
+                No depende de `R-FIN-FACTURAMA`: la nota de abajo es solo de descargas. */}
+            {onCancelRep && (
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={onCancelRep}
+                className="mb-2 text-rose-600! dark:text-rose-400!"
+              >
+                <BanIcon className="w-4 h-4" aria-hidden="true" />
+                Cancelar REP
               </Button>
             )}
           </div>

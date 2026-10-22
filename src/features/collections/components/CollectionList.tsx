@@ -12,10 +12,12 @@ import { getCollectionColumns } from "./CollectionColumns";
 import { CollectionDetailDialog } from "./CollectionDetailDialog";
 import { CreateCobroForm } from "./CreateCobroForm";
 import { CobroRepStampDialog } from "./CobroRepStampDialog";
+import { CobroRepCancelDialog } from "./CobroRepCancelDialog";
 import { COBRO_CREATE_PERMISSION } from "../constants/collectionPermissions";
 import { CollectionRowActionsProvider } from "../hooks/useCollectionRowActions";
 import { canStampCobroRep } from "../utils/cobroRepStamping";
 import { canOfferCobroCancel } from "../utils/cobroCancellation";
+import { canCancelCobroRep } from "../utils/cobroRepCancellation";
 import { hasRepDownloadPermission } from "../utils/cobroRepDownload";
 import { CollectionCancelDialog } from "./CollectionCancelDialog";
 import { useBankAccounts } from "@/src/features/bank-accounts/hooks/useBankAccounts";
@@ -45,6 +47,10 @@ export function CollectionList() {
   // vive aquí y el diálogo toma su copia al abrir (`useDialogSession`), porque
   // la fila se relee tras timbrar.
   const [stampRepId, setStampRepId] = useState<number | null>(null);
+  // Cancelar el REP: solo desde el detalle. El diálogo toma su copia al abrir,
+  // porque la fila se relee sin `rep_uuid` tras cancelar.
+  const [cancelRepId, setCancelRepId] = useState<number | null>(null);
+  const cancelRepCobro = cancelRepId !== null ? rows.find((row) => row.id === cancelRepId) ?? null : null;
   // Cancelar: solo desde el detalle. El diálogo toma su copia al abrir, así que
   // sigue coherente aunque la fila pase a `Cancelado` y salga de un filtro.
   const [cancelId, setCancelId] = useState<number | null>(null);
@@ -133,6 +139,9 @@ export function CollectionList() {
           onStampRep={
             canStampCobroRep(detailCobro, session?.user) ? () => setStampRepId(detailCobro.id) : undefined
           }
+          onCancelRep={
+            canCancelCobroRep(detailCobro, session?.user) ? () => setCancelRepId(detailCobro.id) : undefined
+          }
           onCancel={canOfferCobroCancel(detailCobro, session?.user) ? () => setCancelId(detailCobro.id) : undefined}
           hasRepDownloadPermission={hasRepDownloadPermission(session?.user)}
         />
@@ -145,6 +154,14 @@ export function CollectionList() {
         open={stampRepId !== null}
         onOpenChange={(open) => {
           if (!open) setStampRepId(null);
+        }}
+      />
+
+      <CobroRepCancelDialog
+        cobro={cancelRepCobro}
+        open={cancelRepId !== null}
+        onOpenChange={(open) => {
+          if (!open) setCancelRepId(null);
         }}
       />
 
