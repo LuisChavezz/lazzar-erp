@@ -1,5 +1,6 @@
 "use client";
 
+import { useForm } from "@tanstack/react-form";
 import { useState } from "react";
 import type { FormEvent } from "react";
 import { MainDialog } from "@/src/components/MainDialog";
@@ -7,8 +8,13 @@ import { FormInput } from "@/src/components/FormInput";
 import { FormCancelButton, FormSubmitButton } from "@/src/components/FormButtons";
 import { FormErrorBanner } from "@/src/components/FormErrorBanner";
 import { useDialogSession } from "@/src/hooks/useDialogSession";
+import { useFormFieldErrors } from "@/src/hooks/useFormFieldErrors";
 import { useSendInvoiceCfdi } from "../hooks/useSendInvoiceCfdi";
-import { SendInvoiceCfdiFormSchema } from "../schemas/invoice-cfdi-email.schema";
+import {
+  SendInvoiceCfdiFormFields,
+  SendInvoiceCfdiFormSchema,
+  type SendInvoiceCfdiFormValues,
+} from "../schemas/invoice-cfdi-email.schema";
 import type { SendInvoiceCfdiFailure } from "../utils/invoiceCfdiEmail";
 
 /** Lo mínimo para enviar el CFDI, nombrar la factura y precargar el correo. */
@@ -83,46 +89,91 @@ interface InvoiceCfdiEmailFormProps {
   onSubmit: (email: string, callbacks: { onError: (failure: SendInvoiceCfdiFailure) => void }) => void;
 }
 
+type SendInvoiceCfdiFormField = keyof SendInvoiceCfdiFormValues;
+
 /**
  * Contenido del diálogo; se monta nuevo en cada apertura (`key`), así que el
- * correo arranca desde el `correo_facturas` de esa apertura.
+ * correo arranca desde el `correo_facturas` de esa apertura. Los errores del
+ * campo —los del schema y el `email` del backend— van bajo el campo
+ * (`useFormFieldErrors`); los demás fallos, en el banner.
  */
 function InvoiceCfdiEmailForm({ target, isPending, onClose, onSubmit }: InvoiceCfdiEmailFormProps) {
-  const [email, setEmail] = useState(target.correo_facturas ?? "");
-  const [emailError, setEmailError] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const {
+    getError,
+    setServerFieldError,
+    setClientFieldError,
+    clearClientFieldError,
+    clearFieldErrors,
+    replaceClientErrors,
+    clearServerErrors,
+  } = useFormFieldErrors<SendInvoiceCfdiFormField>();
   const emailId = `invoice-cfdi-email-${target.id}`;
   const emailHelpId = `${emailId}-help`;
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const parsed = SendInvoiceCfdiFormSchema.safeParse({ email });
-    if (!parsed.success) {
-      setEmailError(parsed.error.issues[0]?.message ?? "Correo inválido");
+  // Valida un solo campo en blur.
+  const validateField = (field: SendInvoiceCfdiFormField, value: string) => {
+    const parsed = SendInvoiceCfdiFormFields[field].safeParse(value);
+    if (parsed.success) {
+      clearClientFieldError(field);
       return;
     }
-    setSubmitError(null);
-    onSubmit(parsed.data.email, { onError: (failure) => setSubmitError(failure.message) });
+    setClientFieldError(field, parsed.error.issues[0]?.message ?? "Valor inválido");
+  };
+
+  const form = useForm({
+    defaultValues: { email: target.correo_facturas ?? "" } satisfies SendInvoiceCfdiFormValues,
+    // El doble envío lo corta el candado por factura de `useSendInvoiceCfdi`.
+    onSubmit: ({ value }) => {
+      clearServerErrors();
+      const parsed = SendInvoiceCfdiFormSchema.safeParse(value);
+      if (!parsed.success) {
+        replaceClientErrors({ email: parsed.error.issues[0]?.message ?? "Correo inválido" });
+        return;
+      }
+      replaceClientErrors({});
+      setSubmitError(null);
+      onSubmit(parsed.data.email, {
+        onError: (failure) => {
+          if (failure.emailError) setServerFieldError("email", failure.emailError);
+          else setSubmitError(failure.message);
+        },
+      });
+    },
+  });
+
+  const handleFormSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    void form.handleSubmit();
   };
 
   return (
-    <form onSubmit={handleSubmit} noValidate className="space-y-4 py-1">
-      <FormInput
-        id={emailId}
-        label="Correo de destino"
-        aria-describedby={emailHelpId}
-        name="email"
-        type="email"
-        autoComplete="email"
-        placeholder="correo@cliente.com"
-        value={email}
-        disabled={isPending}
-        error={emailError ? { message: emailError } : undefined}
-        onChange={(event) => {
-          setEmail(event.target.value);
-          if (emailError) setEmailError(null);
-        }}
-      />
+    <form onSubmit={handleFormSubmit} noValidate className="space-y-4 py-1">
+      <form.Field name="email">
+        {(field) => (
+          <FormInput
+            id={emailId}
+            label="Correo de destino"
+            aria-describedby={emailHelpId}
+            name={field.name}
+            type="email"
+            autoComplete="email"
+            placeholder="correo@cliente.com"
+            value={field.state.value}
+            disabled={isPending}
+            error={getError("email")}
+            onChange={(event) => {
+              field.handleChange(event.target.value);
+              clearFieldErrors("email");
+            }}
+            onBlur={() => {
+              field.handleBlur();
+              validateField("email", field.state.value);
+            }}
+          />
+        )}
+      </form.Field>
       <p id={emailHelpId} className="-mt-2 ml-1 text-xs text-slate-500 dark:text-slate-400">
         {target.correo_facturas
           ? "Precargado con el correo de facturación del pedido o del cliente. Una sola dirección."
