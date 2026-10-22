@@ -104,6 +104,10 @@ export const CREDIT_NOTE_STAMP_PENDING_MESSAGE =
 /** Indicador del detalle, en el lugar del folio fiscal. */
 export const CREDIT_NOTE_STAMP_PENDING_LABEL = "Timbrado pendiente de confirmación";
 
+/** Texto bajo el indicador: lo que sigue, sin repetir el rótulo. */
+export const CREDIT_NOTE_STAMP_PENDING_HINT =
+  "Facturama no lo confirmó. Contacta a un administrador para revisarlo.";
+
 /**
  * Motivo por el que "Cancelar nota" se muestra BLOQUEADO, o `null` si se
  * puede cancelar. El backend no cancela ante el SAT el CFDI de una nota:

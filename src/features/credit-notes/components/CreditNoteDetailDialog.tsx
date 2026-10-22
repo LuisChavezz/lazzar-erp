@@ -25,7 +25,7 @@ import { NOTA_CREDITO_ESTATUS_CONFIG } from "../constants/creditNoteStatus";
 import type { NotaCredito } from "../interfaces/credit-note.interface";
 import {
   CREDIT_NOTE_STAMP_PENDING_LABEL,
-  CREDIT_NOTE_STAMP_PENDING_MESSAGE,
+  CREDIT_NOTE_STAMP_PENDING_HINT,
   canStampCreditNote,
   getCreditNoteStampBlockReason,
   isCreditNoteStampPending,
@@ -112,10 +112,21 @@ function CreditNoteCfdiSection({
   const pending = !nota.cfdi_uuid && isCreditNoteStampPending(nota);
   const stampNoteId = `credit-note-${nota.id}-stamp-note`;
 
-  if (!nota.cfdi_uuid && !pending && !canStamp) return null;
+  // Sin timbre, sin pendiente y sin acción no hay nada que mostrar, pero la
+  // sección NO se desmonta: se oculta. Así `DocumentActionWithDialog` sigue
+  // montado y una confirmación abierta se cierra normal aunque la nota deje de
+  // ser timbrable (el precheck la encontró cancelada, p. ej.); el diálogo va en
+  // un portal y no lo afecta el `hidden`.
+  const hasContent = Boolean(nota.cfdi_uuid) || pending || canStamp;
 
   return (
-    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 px-4 py-3 rounded-xl bg-slate-50 dark:bg-white/5 text-xs">
+    <div
+      className={
+        hasContent
+          ? "flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 px-4 py-3 rounded-xl bg-slate-50 dark:bg-white/5 text-xs"
+          : "hidden"
+      }
+    >
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3 min-w-0">
         {nota.cfdi_uuid ? (
           <>
@@ -132,16 +143,16 @@ function CreditNoteCfdiSection({
               {CREDIT_NOTE_STAMP_PENDING_LABEL}
             </span>
             <span className="block text-[11px] font-normal text-slate-500 dark:text-slate-400">
-              {CREDIT_NOTE_STAMP_PENDING_MESSAGE}
+              {CREDIT_NOTE_STAMP_PENDING_HINT}
             </span>
           </InfoField>
         ) : (
           <InfoField label="Estado del CFDI">Sin timbrar</InfoField>
         )}
       </div>
-      {/* Siempre montado: tras timbrar, `canStamp` pasa a `false` y
+      {/* Siempre montado (ver `hasContent`): cuando `canStamp` pasa a `false`,
           `DocumentActionWithDialog` retira el botón pero mantiene el diálogo
-          abierto hasta que se cierre (si se desmontara, se cerraría de golpe). */}
+          abierto hasta que se cierre. */}
       <div className="flex flex-col gap-2 sm:items-end shrink-0">
         <DocumentActionWithDialog
           offered={canStamp}
