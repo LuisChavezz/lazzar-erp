@@ -3,6 +3,7 @@ import toast from "react-hot-toast";
 import { AxiosError } from "axios";
 import { firstDrfMessage } from "@/src/utils/firstDrfMessage";
 import { createNotaCredito } from "../services/actions";
+import { isUnconfirmedFailure } from "../utils/creditNoteErrors";
 import { invalidateCreditNoteQueries } from "./invalidateCreditNoteQueries";
 
 /** Campos de cabecera que el backend puede señalar en un `400`. */
@@ -27,13 +28,19 @@ export type NotaCreditoHeaderErrorField =
  *  - `lineErrors`  → error por línea, indexado por posición; la clave `_form`
  *                    guarda un error a nivel de línea no atribuible a un campo.
  * `messages` es la lista plana para el toast.
+ * `unconfirmed`: el backend no confirmó el resultado (sin respuesta o 5xx; ver
+ * `isUnconfirmedFailure`). NO se puede afirmar que no se guardó nada.
  */
 export interface ParsedNotaCreditoError {
   formError?: string;
+  unconfirmed?: boolean;
   fieldErrors: Partial<Record<NotaCreditoHeaderErrorField, string>>;
   lineErrors: Record<number, Record<string, string>>;
   messages: string[];
 }
+
+const UNCONFIRMED_MESSAGE =
+  "No se pudo confirmar el resultado: el servidor no respondió a tiempo. Revisa el listado antes de reintentar; si la nota iba a emitirse, pudo emitirse y timbrarse.";
 
 const HEADER_FIELDS: NotaCreditoHeaderErrorField[] = [
   "factura",
@@ -91,9 +98,19 @@ export function parseNotaCreditoError(error: unknown): ParsedNotaCreditoError {
     return result;
   }
 
+  // Sin respuesta o 5xx: el cuerpo (si lo hay) no es del backend —p. ej. la
+  // página de error de la plataforma— y nunca se muestra. Emitir timbra antes
+  // de guardar, así que tampoco se puede decir que no se guardó nada.
+  if (isUnconfirmedFailure(error)) {
+    result.unconfirmed = true;
+    result.formError = UNCONFIRMED_MESSAGE;
+    result.messages.push(UNCONFIRMED_MESSAGE);
+    return result;
+  }
+
   const data = error.response?.data;
 
-  // Respuesta en texto plano (p. ej. un 500 con string).
+  // Respuesta 4xx en texto plano.
   if (typeof data === "string" && data.trim().length > 0) {
     result.formError = data;
     result.messages.push(data);

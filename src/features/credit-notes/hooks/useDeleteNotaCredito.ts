@@ -4,6 +4,7 @@ import { deleteNotaCredito } from "../services/actions";
 import { parseNotaCreditoError } from "./useCreateNotaCredito";
 import type { NotaCredito } from "../interfaces/credit-note.interface";
 import { invalidateCreditNoteQueries } from "./invalidateCreditNoteQueries";
+import { logUnexpectedError } from "../utils/creditNoteErrors";
 
 /**
  * Elimina FÍSICAMENTE una nota de crédito en borrador
@@ -58,7 +59,7 @@ export const useDeleteNotaCredito = () => {
       if (context?.previousNotas) {
         queryClient.setQueryData(["credit-notes"], context.previousNotas);
       }
-      console.error(err);
+      logUnexpectedError(err);
       // Solo `messages` — no se cae a `parsed.formError`: cuando el parser no
       // extrae ningún mensaje, ese campo trae un genérico redactado para el ALTA
       // ("Error al registrar la nota de crédito") o el propio texto de axios, y

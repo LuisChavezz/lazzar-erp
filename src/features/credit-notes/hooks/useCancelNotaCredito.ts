@@ -4,6 +4,7 @@ import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { cancelarNotaCredito } from "../services/actions";
 import type { NotaCredito } from "../interfaces/credit-note.interface";
 import { invalidateCreditNoteQueries } from "./invalidateCreditNoteQueries";
+import { logUnexpectedError } from "../utils/creditNoteErrors";
 
 /**
  * Cancela una nota de crédito
@@ -51,7 +52,7 @@ export const useCancelNotaCredito = () => {
       if (context?.previousNotas) {
         queryClient.setQueryData(["credit-notes"], context.previousNotas);
       }
-      console.error(err);
+      logUnexpectedError(err);
       toast.error(extractErrorMessage(err, "Error al cancelar la nota de crédito"));
     },
     // Se devuelve una promesa para que la mutación siga "pending" hasta que el

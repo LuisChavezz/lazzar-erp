@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
-import { PrecheckError, useMutationLock } from "@/src/hooks/useMutationLock";
+import { useMutationLock } from "@/src/hooks/useMutationLock";
 import { timbrarNotaCredito } from "../services/actions";
 import type { NotaCredito } from "../interfaces/credit-note.interface";
 import {
@@ -8,7 +8,7 @@ import {
   isCreditNoteStampPending,
   isCreditNoteStampable,
 } from "../utils/creditNoteStamping";
-import { parseNotaCreditoError } from "./useCreateNotaCredito";
+import { logUnexpectedError, stampNotaCreditoErrorMessage } from "../utils/creditNoteErrors";
 import { invalidateCreditNoteQueries } from "./invalidateCreditNoteQueries";
 import { fetchFreshNotaCredito } from "./fetchFreshNotaCredito";
 
@@ -36,7 +36,8 @@ export type StampNotaCreditoResult =
  * - Al terminar, con cualquier resultado, `invalidateCreditNoteQueries`.
  *
  * Errores: toast con el mensaje del backend tal cual, `cfdi` → `estatus` →
- * genérico (`parseNotaCreditoError`).
+ * genérico (`stampNotaCreditoErrorMessage`); sin respuesta o 5xx, un aviso de
+ * timbrado sin confirmar en lugar del cuerpo.
  */
 export const useStampNotaCredito = (notaId: number) => {
   const queryClient = useQueryClient();
@@ -72,13 +73,11 @@ export const useStampNotaCredito = (notaId: number) => {
       );
     },
     onError: (error) => {
-      if (error instanceof PrecheckError) {
-        toast.error(error.message);
-        return;
-      }
-      const parsed = parseNotaCreditoError(error);
-      toast.error(parsed.messages[0] ?? "No se pudo timbrar la nota de crédito.");
+      logUnexpectedError(error);
+      toast.error(stampNotaCreditoErrorMessage(error));
     },
+    // También ante un error: un timeout pudo dejar la nota `cfdi_pendiente`, y
+    // el refetch lo muestra.
     onSettled: () => invalidateCreditNoteQueries(queryClient),
   });
 

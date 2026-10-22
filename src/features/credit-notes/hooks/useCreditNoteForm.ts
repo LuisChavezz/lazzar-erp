@@ -130,6 +130,12 @@ export function useCreditNoteForm({ onSuccess }: { onSuccess?: () => void } = {}
     const detail =
       parsed.formError ??
       (hasFieldOrLine ? "Revisa los campos marcados." : "Intenta de nuevo.");
+    // Sin confirmación del backend no se puede afirmar que no se guardó nada:
+    // el mensaje ya pide revisar el listado.
+    if (parsed.unconfirmed) {
+      setServerBanner(detail);
+      return;
+    }
     // El alta es atómica: se le dice al usuario explícitamente que NADA quedó
     // registrado, para que no busque una nota a medias ni reintente creyendo que
     // duplicará algo. Cuando la nota iba a emitirse, eso incluye el saldo de la

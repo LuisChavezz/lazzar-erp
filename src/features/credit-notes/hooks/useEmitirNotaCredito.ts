@@ -3,6 +3,10 @@ import toast from "react-hot-toast";
 import { emitirNotaCredito } from "../services/actions";
 import { parseNotaCreditoError } from "./useCreateNotaCredito";
 import { invalidateCreditNoteQueries } from "./invalidateCreditNoteQueries";
+import {
+  CREDIT_NOTE_EMIT_UNCONFIRMED_MESSAGE,
+  logUnexpectedError,
+} from "../utils/creditNoteErrors";
 
 /**
  * Emite una nota que estaba en borrador
@@ -39,12 +43,14 @@ export const useEmitirNotaCredito = () => {
       toast.success("Nota de crédito emitida correctamente");
     },
     onError: (error) => {
+      logUnexpectedError(error);
       const parsed = parseNotaCreditoError(error);
-      const message =
-        parsed.messages.length > 0
+      // Sin confirmación del backend la nota pudo emitirse y timbrarse.
+      const message = parsed.unconfirmed
+        ? CREDIT_NOTE_EMIT_UNCONFIRMED_MESSAGE
+        : parsed.messages.length > 0
           ? parsed.messages.join("\n")
           : parsed.formError ?? "Error al emitir la nota de crédito";
-      console.error(error);
       toast.error(message);
     },
     // Se devuelve una promesa para que la mutación siga "pending" hasta que el
