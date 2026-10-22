@@ -47,7 +47,6 @@ import {
 } from "../utils/invoiceCancellation";
 import { INVOICE_STATUS, INVOICE_STATUS_CONFIG } from "../constants/invoiceStatus";
 import {
-  INVOICE_NON_FISCAL_EMAIL_LABEL,
   INVOICE_NON_FISCAL_PDF_LABEL,
   INVOICE_NON_FISCAL_PDF_MESSAGE,
   INVOICE_STAMP_CURRENCY_MESSAGE,
@@ -57,6 +56,7 @@ import {
   isInvoiceStampCurrencySupported,
   isInvoicePdfNonFiscal,
   isInvoiceStampPending,
+  invoiceEmailLabel,
 } from "../utils/invoiceStamping";
 import { InvoiceConceptsSection } from "./InvoiceConceptsSection";
 import { InvoiceCancelDialog } from "./InvoiceCancelDialog";
@@ -163,13 +163,10 @@ function InvoiceDocumentActions({
             <EmailIcon className="w-4 h-4" aria-hidden="true" />
             {actions.isSendingEmail
               ? "Enviando..."
-              : actions.hasNoRecipientEmail
-                ? nonFiscalPdf
-                  ? "Enviar correo (no fiscal, sin correo)"
-                  : "Enviar correo (sin correo)"
-                : nonFiscalPdf
-                  ? INVOICE_NON_FISCAL_EMAIL_LABEL
-                  : "Enviar correo"}
+              : invoiceEmailLabel({
+                  nonFiscal: nonFiscalPdf,
+                  noRecipient: actions.hasNoRecipientEmail,
+                })}
           </Button>
         )}
         <Button

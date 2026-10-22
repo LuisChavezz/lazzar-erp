@@ -11,9 +11,9 @@ import { INVOICE_STATUS_CONFIG, isInvoiceSendable } from "../constants/invoiceSt
 import { invoiceDetailHref } from "../constants/invoiceDetailOrigins";
 import { useInvoiceRowActionsContext } from "../hooks/useInvoiceListDocumentActions";
 import {
-  INVOICE_NON_FISCAL_EMAIL_LABEL,
   INVOICE_NON_FISCAL_PDF_LABEL,
   INVOICE_NON_FISCAL_PDF_MESSAGE,
+  invoiceEmailLabel,
   isInvoicePdfNonFiscal,
 } from "../utils/invoiceStamping";
 
@@ -83,7 +83,7 @@ const FolioCell = ({ invoice }: { invoice: InvoiceListRow }) => {
       disabled: pending,
     },
     {
-      label: nonFiscalPdf ? INVOICE_NON_FISCAL_EMAIL_LABEL : "Enviar correo",
+      label: invoiceEmailLabel({ nonFiscal: nonFiscalPdf }),
       description: nonFiscalPdf ? INVOICE_NON_FISCAL_PDF_MESSAGE : undefined,
       icon: EmailIcon,
       onSelect: () => onSendEmail(invoice.id),

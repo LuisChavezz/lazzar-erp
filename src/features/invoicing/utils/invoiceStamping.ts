@@ -48,10 +48,22 @@ export const INVOICE_NON_FISCAL_PDF_MESSAGE =
 export const INVOICE_NON_FISCAL_PDF_LABEL = "Descargar PDF (no fiscal)";
 
 /**
- * Etiqueta de "Enviar correo" para una factura timbrada: adjunta el mismo PDF
- * del ERP. El CFDI oficial se manda con "Enviar CFDI".
+ * Etiqueta de "Enviar correo": fuente única para la cabecera del detalle y el
+ * menú del listado. En una factura timbrada (`nonFiscal`) se rotula "no
+ * fiscal": adjunta el mismo PDF del ERP, y el CFDI oficial se manda con
+ * "Enviar CFDI". `noRecipient` agrega "sin correo". Los calificativos van
+ * juntos en un solo paréntesis: "Enviar correo (no fiscal, sin correo)".
  */
-export const INVOICE_NON_FISCAL_EMAIL_LABEL = "Enviar correo (no fiscal)";
+export const invoiceEmailLabel = ({
+  nonFiscal,
+  noRecipient = false,
+}: {
+  nonFiscal: boolean;
+  noRecipient?: boolean;
+}): string => {
+  const qualifiers = [nonFiscal && "no fiscal", noRecipient && "sin correo"].filter(Boolean);
+  return qualifiers.length ? `Enviar correo (${qualifiers.join(", ")})` : "Enviar correo";
+};
 
 /**
  * ¿Se ofrece "Timbrar" para esta factura? Solo una `Emitida` ACTIVA y aún sin
