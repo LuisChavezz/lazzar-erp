@@ -51,8 +51,7 @@ export const INVOICE_CANCEL_BLOCKED_BY_PENDING_STAMP_MESSAGE =
  * Solo el timbrado sin confirmar (`cfdi_pendiente`) lo bloquea: una factura
  * timbrada SÍ se cancela (`cancelar/` cancela antes su CFDI ante el SAT).
  * Fuente única para la cabecera del detalle, el menú del listado y el precheck
- * de `useCancelInvoice`. El menú del listado no lo evalúa: lo frena el
- * precheck con el retrieve fresco.
+ * de `useCancelInvoice` (la fila del listado también trae `cfdi_pendiente`).
  */
 export const getInvoiceCancelBlockReason = (invoice: {
   cfdi_pendiente?: boolean;

@@ -19,6 +19,7 @@ import {
 import {
   INVOICE_CFDI_CANCELLATION_REQUESTED_HINT,
   INVOICE_CFDI_CANCELLATION_REQUESTED_LABEL,
+  getInvoiceCancelBlockReason,
   isInvoiceCfdiCancellationRequested,
 } from "../utils/invoiceCancellation";
 
@@ -58,8 +59,10 @@ const estatusFilterFn: FilterFn<InvoiceListRow> = (row, _columnId, filterValue) 
  * el diálogo, que vive en `InvoiceList`: si un filtro de estatus oculta la
  * fila al quedar Cancelada, el diálogo no se desmonta. Una timbrada también
  * se cancela (el diálogo avisa que primero va al SAT). Lo único que la
- * bloquea es el timbrado pendiente de confirmación (`getInvoiceCancelBlockReason`):
- * aquí no se evalúa y lo frena el precheck de `useCancelInvoice` al confirmar.
+ * bloquea es el timbrado pendiente de confirmación (`getInvoiceCancelBlockReason`,
+ * la misma regla que la cabecera del detalle): la fila trae `cfdi_pendiente`,
+ * así que el item se deshabilita con el motivo debajo. El precheck de
+ * `useCancelInvoice` lo vuelve a revisar con el retrieve fresco al confirmar.
  *
  * Con la cancelación del CFDI solicitada y pendiente de que el receptor la
  * acepte (`isInvoiceCfdiCancellationRequested`), el folio lleva al lado un
@@ -77,6 +80,7 @@ const FolioCell = ({ invoice }: { invoice: InvoiceListRow }) => {
     useInvoiceRowActionsContext();
   const pending = pendingIds.includes(invoice.id);
   const nonFiscalPdf = isInvoicePdfNonFiscal(invoice);
+  const cancelBlockReason = getInvoiceCancelBlockReason(invoice);
 
   const menuItems: ActionMenuItem[] = [
     {
@@ -104,6 +108,8 @@ const FolioCell = ({ invoice }: { invoice: InvoiceListRow }) => {
       icon: BanIcon,
       onSelect: () => onCancel(invoice),
       visible: canCancel(invoice),
+      disabled: cancelBlockReason !== null,
+      description: cancelBlockReason ?? undefined,
     },
   ];
 
