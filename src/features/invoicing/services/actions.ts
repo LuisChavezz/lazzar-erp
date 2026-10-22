@@ -3,6 +3,7 @@ import { decimalToCents } from "@/src/features/orders/utils/orderAccounting";
 import type {
   Invoice,
   InvoiceCancelResponse,
+  InvoiceCfdiEmailResponse,
   InvoiceListRow,
 } from "../interfaces/invoice.interface";
 import type {
@@ -123,5 +124,30 @@ export const cancelInvoice = async ({
  */
 export const stampInvoice = async (id: number): Promise<Invoice> => {
   const { data } = await v1_api.post<Invoice>(`/finanzas/facturas/${id}/timbrar/`);
+  return data;
+};
+
+/**
+ * Envía por correo el PDF y el XML OFICIALES del CFDI, que el backend descarga
+ * de Facturama (`POST /finanzas/facturas/{id}/enviar-cfdi/`). Siempre manda el
+ * `email` que el usuario confirmó en el diálogo: sin él, el backend usaría
+ * `correo_facturas` por su cuenta. Admite UNA sola dirección. Es síncrono (dos
+ * descargas de Facturama más el SMTP) y puede tardar cerca de un minuto; el
+ * cliente no tiene timeout que lo corte. Responde `200 { enviado_a }`. El error
+ * se deja propagar: los `400` traen el motivo bajo `cfdi` (sin CFDI, o
+ * Facturama no entregó un archivo) o bajo `email` (correo inválido); un fallo
+ * del SMTP llega como `500` sin cuerpo útil.
+ */
+export const sendInvoiceCfdi = async ({
+  id,
+  email,
+}: {
+  id: number;
+  email: string;
+}): Promise<InvoiceCfdiEmailResponse> => {
+  const { data } = await v1_api.post<InvoiceCfdiEmailResponse>(
+    `/finanzas/facturas/${id}/enviar-cfdi/`,
+    { email },
+  );
   return data;
 };

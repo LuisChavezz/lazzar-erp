@@ -147,3 +147,11 @@ export interface InvoiceListRow {
 export interface InvoiceCancelResponse extends Invoice {
   contrapoliza_id: number | null;
 }
+
+/**
+ * Respuesta de `POST /finanzas/facturas/{id}/enviar-cfdi/`: la dirección a la
+ * que el backend mandó el PDF y el XML oficiales del CFDI.
+ */
+export interface InvoiceCfdiEmailResponse {
+  enviado_a: string;
+}
