@@ -1,7 +1,11 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { sendInvoiceCfdi } from "../services/actions";
-import { getInvoiceCfdiEmailBlocker, sendInvoiceCfdiErrorMessage } from "../utils/invoiceCfdiEmail";
+import {
+  describeSendInvoiceCfdiError,
+  getInvoiceCfdiEmailBlocker,
+  type SendInvoiceCfdiFailure,
+} from "../utils/invoiceCfdiEmail";
 import { fetchFreshInvoice } from "./invoiceActionMutation";
 import { PrecheckError, useMutationLock } from "@/src/hooks/useMutationLock";
 
@@ -17,9 +21,11 @@ export type SendInvoiceCfdiResult =
   | { outcome: "sent"; enviadoA: string }
   | { outcome: "not-sendable"; message: string };
 
-/** Mensaje de un fallo: el del precheck tal cual, o el del backend. */
-const errorMessageOf = (error: unknown): string =>
-  error instanceof PrecheckError ? error.message : sendInvoiceCfdiErrorMessage(error);
+/** Fallo clasificado: el del precheck (no hubo POST) tal cual, o el del envío. */
+const failureOf = (error: unknown): SendInvoiceCfdiFailure =>
+  error instanceof PrecheckError
+    ? { outcome: "not-sent", message: error.message }
+    : describeSendInvoiceCfdiError(error);
 
 /**
  * Envía por correo el PDF y el XML oficiales del CFDI de UNA factura
@@ -35,8 +41,10 @@ const errorMessageOf = (error: unknown): string =>
  *   rechaza esos casos, así que este precheck es la única barrera.
  * - No invalida nada: enviar no cambia ningún dato.
  *
- * Errores: el mensaje del backend tal cual (`sendInvoiceCfdiErrorMessage`), en
- * un toast y en el `onError` de la llamada, para que el diálogo lo muestre.
+ * Errores: clasificados por `describeSendInvoiceCfdiError` en "no se envió"
+ * (motivo del backend tal cual) o "resultado desconocido" (el correo pudo
+ * salir), en un toast y en el `onError` de la llamada, para que el diálogo lo
+ * muestre.
  */
 export const useSendInvoiceCfdi = (invoiceId: number) => {
   const queryClient = useQueryClient();
@@ -60,24 +68,24 @@ export const useSendInvoiceCfdi = (invoiceId: number) => {
       toast.success(`CFDI enviado a ${result.enviadoA}`);
     },
     onError: (error) => {
-      toast.error(errorMessageOf(error));
+      toast.error(failureOf(error).message);
     },
   });
 
   /**
    * Dispara el envío salvo que ya haya uno en vuelo para ESTA factura (consulta
    * síncrona a la caché). `onSuccess` corre al terminar sin error (enviado o
-   * detenido por el precheck, que ya avisó); `onError`, con el mismo mensaje
-   * que el toast.
+   * detenido por el precheck, que ya avisó); `onError`, con el fallo
+   * clasificado (mismo mensaje que el toast).
    */
   const send = (
     email: string,
-    options: { onSuccess?: () => void; onError?: (message: string) => void } = {},
+    options: { onSuccess?: () => void; onError?: (failure: SendInvoiceCfdiFailure) => void } = {},
   ) => {
     if (!isIdle()) return;
     mutation.mutate(email, {
       onSuccess: () => options.onSuccess?.(),
-      onError: (error) => options.onError?.(errorMessageOf(error)),
+      onError: (error) => options.onError?.(failureOf(error)),
     });
   };
 

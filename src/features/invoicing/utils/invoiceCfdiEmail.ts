@@ -1,6 +1,7 @@
-import type { AxiosError } from "axios";
+import { isAxiosError } from "axios";
 import type { PermissionContext } from "@/src/interfaces/permission-context.interface";
 import { hasPermission } from "@/src/utils/permissions";
+import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { drfFieldMessage, firstDrfFieldMessage } from "@/src/utils/firstDrfFieldMessage";
 import { INVOICE_STATUS } from "../constants/invoiceStatus";
 import type { Invoice } from "../interfaces/invoice.interface";
@@ -93,21 +94,50 @@ export const getInvoiceCfdiEmailAvailability = (
   return { state: "blocked", message: blocker.message };
 };
 
-const SEND_INVOICE_CFDI_FALLBACK_MESSAGE =
-  "No se pudo enviar el CFDI por correo (falla del servidor o de la conexión). Intenta de nuevo.";
+const SEND_INVOICE_CFDI_NOT_SENT_MESSAGE =
+  "No se pudo enviar el CFDI por correo. Intenta de nuevo.";
+
+const SEND_INVOICE_CFDI_UNKNOWN_MESSAGE =
+  "No se recibió la confirmación del envío: el correo pudo haberse enviado. Confirma con el destinatario antes de reintentar.";
+
+/** Estados de pasarela: el backend pudo terminar el envío después del corte. */
+const GATEWAY_STATUSES: readonly number[] = [502, 503, 504];
 
 /**
- * Mensaje de un fallo de `enviar-cfdi/`. El backend pone el motivo bajo `cfdi`
- * (sin CFDI, o Facturama no entregó un archivo) o bajo `email` (correo
- * inválido), como string o como lista; se muestra tal cual. Después, el
- * `detail` de un 403/404 o el `{ error }` genérico del backend. Sin ninguno (el
- * `500` de un fallo del SMTP llega sin cuerpo útil, o la red) va el texto fijo
- * en español, no el `error.message` de Axios ("Request failed with status
- * code 500") en el que caería `extractErrorMessage`.
+ * Fallo de `enviar-cfdi/`. `not-sent`: el backend lo rechazó (`400`) o falló
+ * al enviar (`500`, p. ej. el SMTP), así que no salió nada. `unknown`: la
+ * respuesta no llegó (red, timeout) o la cortó la pasarela (`502`/`503`/`504`),
+ * y el correo pudo haber salido: reintentar a ciegas lo duplicaría.
+ * `emailError` es el mensaje del backend bajo `email`, para pintarlo bajo el
+ * campo.
  */
-export const sendInvoiceCfdiErrorMessage = (error: unknown): string =>
-  drfFieldMessage(error, "cfdi") ??
-  drfFieldMessage(error, "email") ??
-  firstDrfFieldMessage(error) ??
-  (error as AxiosError<{ error?: string }>)?.response?.data?.error ??
-  SEND_INVOICE_CFDI_FALLBACK_MESSAGE;
+export interface SendInvoiceCfdiFailure {
+  outcome: "not-sent" | "unknown";
+  message: string;
+  emailError?: string;
+}
+
+/**
+ * Clasifica un fallo de `enviar-cfdi/`. Con `not-sent` el motivo del backend
+ * va tal cual: bajo `cfdi` (sin CFDI, o Facturama no entregó un archivo) o
+ * bajo `email` (correo inválido), como string o como lista; después el
+ * `detail` de un 403/404 o el `{ error }` genérico; sin ninguno, el texto fijo.
+ */
+export const describeSendInvoiceCfdiError = (error: unknown): SendInvoiceCfdiFailure => {
+  if (isAxiosError(error)) {
+    const status = error.response?.status;
+    if (status === undefined || GATEWAY_STATUSES.includes(status)) {
+      return { outcome: "unknown", message: SEND_INVOICE_CFDI_UNKNOWN_MESSAGE };
+    }
+  }
+  const emailError = drfFieldMessage(error, "email");
+  return {
+    outcome: "not-sent",
+    message:
+      drfFieldMessage(error, "cfdi") ??
+      emailError ??
+      firstDrfFieldMessage(error) ??
+      extractErrorMessage(error, SEND_INVOICE_CFDI_NOT_SENT_MESSAGE),
+    emailError,
+  };
+};

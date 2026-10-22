@@ -9,6 +9,7 @@ import { FormErrorBanner } from "@/src/components/FormErrorBanner";
 import { useDialogSession } from "@/src/hooks/useDialogSession";
 import { useSendInvoiceCfdi } from "../hooks/useSendInvoiceCfdi";
 import { SendInvoiceCfdiFormSchema } from "../schemas/invoice-cfdi-email.schema";
+import type { SendInvoiceCfdiFailure } from "../utils/invoiceCfdiEmail";
 
 /** Lo mínimo para enviar el CFDI, nombrar la factura y precargar el correo. */
 export interface InvoiceCfdiEmailTarget {
@@ -78,8 +79,8 @@ interface InvoiceCfdiEmailFormProps {
   target: InvoiceCfdiEmailTarget;
   isPending: boolean;
   onClose: () => void;
-  /** `onError` recibe el mensaje del fallo, para mostrarlo dentro del diálogo. */
-  onSubmit: (email: string, callbacks: { onError: (message: string) => void }) => void;
+  /** `onError` recibe el fallo clasificado, para mostrarlo dentro del diálogo. */
+  onSubmit: (email: string, callbacks: { onError: (failure: SendInvoiceCfdiFailure) => void }) => void;
 }
 
 /**
@@ -101,7 +102,7 @@ function InvoiceCfdiEmailForm({ target, isPending, onClose, onSubmit }: InvoiceC
       return;
     }
     setSubmitError(null);
-    onSubmit(parsed.data.email, { onError: setSubmitError });
+    onSubmit(parsed.data.email, { onError: (failure) => setSubmitError(failure.message) });
   };
 
   return (
