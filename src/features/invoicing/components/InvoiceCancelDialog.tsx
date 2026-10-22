@@ -8,7 +8,11 @@ import { FormCancelButton, FormSubmitButton } from "@/src/components/FormButtons
 import { FormErrorBanner } from "@/src/components/FormErrorBanner";
 import { useDialogSession } from "@/src/hooks/useDialogSession";
 import { useCancelInvoice } from "../hooks/useCancelInvoice";
-import { getInvoiceCancelCfdiNotice } from "../utils/invoiceCancellation";
+import {
+  INVOICE_CANCEL_ALREADY_REQUESTED_MESSAGE,
+  getInvoiceCancelCfdiNotice,
+  isInvoiceCfdiCancellationRequested,
+} from "../utils/invoiceCancellation";
 import { isInvoiceStamped } from "../utils/invoiceStamping";
 import {
   CancelInvoiceFormSchema,
@@ -17,14 +21,16 @@ import {
 
 /**
  * Lo mínimo para cancelar y nombrar la factura y avisar de su CFDI; sirve
- * tanto la fila del listado como el retrieve. `cfdi_cancelado` solo viene en
- * el retrieve: sin él, una timbrada muestra el aviso de "primero el SAT".
+ * tanto la fila del listado como el retrieve (los dos traen los flags del
+ * CFDI). Sin `cfdi_cancelado`, una timbrada muestra el aviso de "primero el
+ * SAT".
  */
 export interface InvoiceCancelTarget {
   id: number;
   folio: string | null;
   cfdi_uuid: string | null;
   cfdi_cancelado?: boolean;
+  cfdi_cancelacion_solicitada?: boolean;
 }
 
 interface InvoiceCancelDialogProps {
@@ -55,6 +61,11 @@ interface InvoiceCancelDialogProps {
  * abrir el diálogo (sin ese aviso), `useCancelInvoice` no hace el POST: el
  * formulario pasa a mostrar la factura fresca con el aviso del SAT y pide
  * confirmar de nuevo.
+ *
+ * Si la cancelación del CFDI ya está solicitada y pendiente de que el receptor
+ * la acepte, avisa además que confirmar vuelve a consultar al SAT. Si el SAT
+ * la deja otra vez pendiente, el diálogo se cierra con un aviso (resultado
+ * `requested` de `useCancelInvoice`), igual que la primera vez.
  *
  * El texto NO promete que las piezas regresen a existencia: el backend solo
  * las reintegra al cancelar una `Emitida` con renglones, y la respuesta no
@@ -138,6 +149,7 @@ function InvoiceCancelForm({ target, isPending, onClose, onSubmit }: InvoiceCanc
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [reconfirmNotice, setReconfirmNotice] = useState<string | null>(null);
   const cfdiNotice = getInvoiceCancelCfdiNotice(shown);
+  const cancellationRequested = isInvoiceCfdiCancellationRequested(shown);
   const motivoId = `invoice-cancel-motivo-${shown.id}`;
   const motivoHelpId = `${motivoId}-help`;
 
@@ -175,6 +187,11 @@ function InvoiceCancelForm({ target, isPending, onClose, onSubmit }: InvoiceCanc
       {cfdiNotice && (
         <p className="rounded-xl border border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 px-4 py-3 text-sm text-amber-800 dark:text-amber-200">
           {cfdiNotice}
+        </p>
+      )}
+      {cancellationRequested && (
+        <p className="rounded-xl border border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 px-4 py-3 text-sm text-amber-800 dark:text-amber-200">
+          {INVOICE_CANCEL_ALREADY_REQUESTED_MESSAGE}
         </p>
       )}
       <FormTextarea
