@@ -1,6 +1,6 @@
+import type { AxiosError } from "axios";
 import type { PermissionContext } from "@/src/interfaces/permission-context.interface";
 import { hasPermission } from "@/src/utils/permissions";
-import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { drfFieldMessage, firstDrfFieldMessage } from "@/src/utils/firstDrfFieldMessage";
 import { INVOICE_STATUS } from "../constants/invoiceStatus";
 import type { Invoice } from "../interfaces/invoice.interface";
@@ -93,14 +93,21 @@ export const getInvoiceCfdiEmailAvailability = (
   return { state: "blocked", message: blocker.message };
 };
 
+const SEND_INVOICE_CFDI_FALLBACK_MESSAGE =
+  "No se pudo enviar el CFDI por correo (falla del servidor o de la conexión). Intenta de nuevo.";
+
 /**
  * Mensaje de un fallo de `enviar-cfdi/`. El backend pone el motivo bajo `cfdi`
  * (sin CFDI, o Facturama no entregó un archivo) o bajo `email` (correo
- * inválido), como string o como lista; se muestra tal cual. Sin ninguno (403,
- * 404, el `500` de un fallo del SMTP, red), cae en el extractor genérico.
+ * inválido), como string o como lista; se muestra tal cual. Después, el
+ * `detail` de un 403/404 o el `{ error }` genérico del backend. Sin ninguno (el
+ * `500` de un fallo del SMTP llega sin cuerpo útil, o la red) va el texto fijo
+ * en español, no el `error.message` de Axios ("Request failed with status
+ * code 500") en el que caería `extractErrorMessage`.
  */
 export const sendInvoiceCfdiErrorMessage = (error: unknown): string =>
   drfFieldMessage(error, "cfdi") ??
   drfFieldMessage(error, "email") ??
   firstDrfFieldMessage(error) ??
-  extractErrorMessage(error, "No se pudo enviar el CFDI por correo. Intenta de nuevo más tarde.");
+  (error as AxiosError<{ error?: string }>)?.response?.data?.error ??
+  SEND_INVOICE_CFDI_FALLBACK_MESSAGE;
