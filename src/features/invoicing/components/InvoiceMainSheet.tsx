@@ -218,8 +218,10 @@ function InvoiceDocumentActions({
  * la factura sigue `Emitida` (falló la parte del ERP), la nota de que falta
  * cancelarla en el ERP; "Cancelar factura" sigue habilitado para completarlo.
  * Con la cancelación solicitada y pendiente de que el receptor la acepte
- * (`isInvoiceCfdiCancellationRequested`) muestra ese estado; "Cancelar
- * factura" sigue disponible para volver a consultar al SAT.
+ * (`isInvoiceCfdiCancellationRequested`) muestra ese estado. En una `Emitida`,
+ * "Cancelar factura" vuelve a consultar al SAT; en una `Cancelada` el ERP no
+ * ofrece cómo reintentar, así que solo se agrega la nota de que su CFDI no se
+ * canceló ante el SAT.
  * Una `Cancelada` con UUID y SIN `cfdi_cancelado` (cancelada antes de que
  * `cancelar/` cancelara el CFDI) muestra que el CFDI sigue vigente, sin acción.
  * Salen del retrieve: el desglose no trae ningún campo de timbrado.
@@ -258,6 +260,11 @@ function InvoiceCfdiStamp({ invoice }: { invoice: Invoice }) {
           <span className="block text-xs font-normal text-amber-600 dark:text-amber-400">
             {INVOICE_CFDI_CANCELLATION_REQUESTED_HINT}
           </span>
+          {invoice.estatus === INVOICE_STATUS.CANCELADA && (
+            <span className="block text-xs font-normal text-amber-600 dark:text-amber-400">
+              {INVOICE_CFDI_VALID_AFTER_ERP_CANCEL_MESSAGE}
+            </span>
+          )}
         </HeaderStat>
       ) : (
         invoice.estatus === INVOICE_STATUS.CANCELADA && (
