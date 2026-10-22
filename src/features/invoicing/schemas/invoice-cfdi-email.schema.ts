@@ -11,7 +11,10 @@ export const SendInvoiceCfdiFormSchema = z.object({
     .string()
     .trim()
     .min(1, "Escribe el correo de destino.")
-    .email("Escribe un correo válido (una sola dirección)."),
+    .pipe(z.email("Escribe un correo válido (una sola dirección).")),
 });
+
+/** Validación por campo (en blur). */
+export const SendInvoiceCfdiFormFields = SendInvoiceCfdiFormSchema.shape;
 
 export type SendInvoiceCfdiFormValues = z.infer<typeof SendInvoiceCfdiFormSchema>;
