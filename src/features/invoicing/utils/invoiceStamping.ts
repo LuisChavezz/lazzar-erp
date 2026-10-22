@@ -48,6 +48,12 @@ export const INVOICE_NON_FISCAL_PDF_MESSAGE =
 export const INVOICE_NON_FISCAL_PDF_LABEL = "Descargar PDF (no fiscal)";
 
 /**
+ * Etiqueta de "Enviar correo" para una factura timbrada: adjunta el mismo PDF
+ * del ERP. El CFDI oficial se manda con "Enviar CFDI".
+ */
+export const INVOICE_NON_FISCAL_EMAIL_LABEL = "Enviar correo (no fiscal)";
+
+/**
  * ¿Se ofrece "Timbrar" para esta factura? Solo una `Emitida` ACTIVA y aún sin
  * CFDI. Decisión de producto: aunque el backend también timbra un `Borrador`,
  * aquí solo se ofrece para `Emitida`. `activo` desconocido (`undefined`) cuenta
