@@ -1,0 +1,76 @@
+import { useQueryClient } from "@tanstack/react-query";
+import toast from "react-hot-toast";
+import { cancelCobroRep } from "../services/actions";
+import type { Cobro } from "../interfaces/collection.interface";
+import {
+  cancelCobroRepErrorMessage,
+  cancelCobroRepRequestedMessage,
+  isCobroRepCancellable,
+} from "../utils/cobroRepCancellation";
+import { useCobroAction } from "./useCobroAction";
+
+/** Candado de la cancelación del REP, ÚNICO por cobro (ver `useCancelCobroRep`). */
+export const cancelCobroRepMutationKey = (cobroId: number) => ["cancel-cobro-rep", cobroId] as const;
+
+/**
+ * Resultado de cancelar el REP:
+ * - `cancelled`: el SAT lo canceló; `cobro` ya viene sin `rep_*`.
+ * - `not-cancellable`: el retrieve previo ya no traía un REP que cancelar y NO
+ *   se hizo el POST.
+ * - `requested`: el SAT dejó la cancelación pendiente de que el receptor la
+ *   acepte (`cancelacion_pendiente`). No es un éxito, pero tampoco un fallo: el
+ *   REP sigue vigente, el backend no guardó nada y `message` es su texto tal cual.
+ */
+export type CancelCobroRepResult =
+  | { outcome: "cancelled"; cobro: Cobro }
+  | { outcome: "not-cancellable"; cobro: Cobro }
+  | { outcome: "requested"; cobro: Cobro; message: string };
+
+/**
+ * Cancela el REP de UN cobro ante el SAT (`POST /finanzas/cobros/{id}/cancelar-rep/`),
+ * sobre el esqueleto compartido `useCobroAction` (candado por cobro, cobro
+ * fresco, escritura en el listado):
+ *
+ * - Antes del POST pide el retrieve FRESCO: si ya no tiene un REP cancelable
+ *   (`isCobroRepCancellable`), NO hace el POST.
+ * - Al TERMINAR, con cualquier resultado, relee `["cobros"]`: es la única caché
+ *   que pinta el REP (detalle y columna del listado de cobros, y la sección
+ *   "Cobros" del detalle de CxC, que lee el mismo listado). Cancelar el REP no
+ *   mueve saldos, banco ni póliza, así que no se invalida nada más.
+ */
+export const useCancelCobroRep = (cobroId: number) => {
+  const queryClient = useQueryClient();
+
+  const { trigger: cancelRep, isRunning: isCancellingRep } = useCobroAction<CancelCobroRepResult>({
+    mutationKey: cancelCobroRepMutationKey(cobroId),
+    cobroId,
+    run: async (current) => {
+      if (!isCobroRepCancellable(current)) return { outcome: "not-cancellable", cobro: current };
+      try {
+        return { outcome: "cancelled", cobro: await cancelCobroRep(cobroId) };
+      } catch (error) {
+        const message = cancelCobroRepRequestedMessage(error);
+        if (message) return { outcome: "requested", cobro: current, message };
+        throw error;
+      }
+    },
+    onSuccess: (result) => {
+      const label = `#${result.cobro.id}`;
+      if (result.outcome === "requested") {
+        toast(result.message, { icon: "⚠️", duration: 8000 });
+        return;
+      }
+      if (result.outcome === "not-cancellable") {
+        toast.error(`El cobro ${label} ya no tiene un REP timbrado que cancelar.`);
+        return;
+      }
+      toast.success(`REP del cobro ${label} cancelado ante el SAT`);
+    },
+    errorMessage: cancelCobroRepErrorMessage,
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: ["cobros"] });
+    },
+  });
+
+  return { cancelRep, isCancellingRep };
+};
