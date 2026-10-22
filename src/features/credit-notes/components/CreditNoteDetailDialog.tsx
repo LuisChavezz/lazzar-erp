@@ -19,7 +19,7 @@ import {
   formatQuantityValue,
 } from "@/src/utils/formatCurrency";
 import { formatShortDate, formatShortDateTime } from "@/src/utils/formatDate";
-import { useInvoiceDetail } from "@/src/features/invoicing/hooks/useInvoiceDetail";
+import { useInvoiceRetrieveFresh } from "@/src/features/invoicing/hooks/useInvoiceRetrieveFresh";
 import { DocumentActionWithDialog } from "@/src/features/invoicing/components/DocumentActionWithDialog";
 import { NOTA_CREDITO_ESTATUS_CONFIG } from "../constants/creditNoteStatus";
 import type { NotaCredito } from "../interfaces/credit-note.interface";
@@ -179,24 +179,32 @@ export function CreditNoteDetailBody({ nota }: { nota: NotaCredito }) {
    *     `codigo_iso` de la moneda de la factura— llega gratis con la misma
    *     consulta que ya hacía falta por (1).
    *
-   * `useInvoiceDetail` está compartido con el selector de conceptos del alta y
-   * usa la misma llave de caché, así que abrir el detalle de una nota que se
-   * acaba de crear no vuelve a pedir la factura.
+   *  3. La regla de "Timbrar" depende de su timbre y de si está cancelada.
+   *
+   * Por (3) se lee FRESCA en cada apertura (`useInvoiceRetrieveFresh`, staleTime
+   * 0): la factura pudo timbrarse o cancelarse en otra sesión, que no invalida
+   * esta caché. Misma llave que `useInvoiceDetail` (`["invoice-detail", id]`),
+   * así que mientras refresca se pinta la copia en caché.
    */
   const {
     data: factura,
     isLoading,
     isError,
     error,
-  } = useInvoiceDetail(nota.factura);
+    isFetching,
+    isFetchedAfterMount,
+  } = useInvoiceRetrieveFresh(nota.factura);
 
-  // Timbre de la factura para la regla de "Timbrar". Con datos en caché se usan
-  // aunque un refetch haya fallado; sin datos, cargando o no disponible.
-  const invoiceStampState: RelatedInvoiceStampState = factura
-    ? { status: "loaded", invoice: factura }
-    : isLoading
+  // Timbre de la factura para la regla de "Timbrar". La copia en caché NO
+  // decide mientras llega la lectura fresca de esta apertura (pudo cancelarse
+  // en otra sesión); si esa lectura falla, se usa la copia; sin datos, no
+  // disponible.
+  const invoiceStampState: RelatedInvoiceStampState =
+    isLoading || (isFetching && !isFetchedAfterMount)
       ? { status: "loading" }
-      : { status: "unavailable" };
+      : factura
+        ? { status: "loaded", invoice: factura }
+        : { status: "unavailable" };
 
   const monedaFormato = factura?.moneda_nombre
     ? { currency: factura.moneda_nombre }
