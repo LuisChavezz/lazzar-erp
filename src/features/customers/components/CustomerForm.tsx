@@ -30,13 +30,14 @@ interface CustomerFormProps {
 const RFC_MIN_LENGTH = 12;
 
 /**
- * Solo dígitos, sin ceros a la izquierda (mismo saneado que las cantidades de
- * bordado), pero conserva un `-` inicial: así el esquema rechaza el negativo
- * con su mensaje en vez de guardarlo con el signo volteado sin avisar.
+ * Solo dígitos y punto, sin ceros a la izquierda (mismo saneado que las
+ * cantidades de bordado), pero conserva un `-` inicial y el punto decimal: así
+ * el esquema rechaza el negativo o el decimal con su mensaje en vez de
+ * guardarlo cambiado sin avisar (`-1` → `1`, `1.5` → `15`).
  */
 const sanitizeIntegerInput = (raw: string): string => {
   const sign = /^\s*-/.test(raw) ? "-" : "";
-  return `${sign}${raw.replace(/[^0-9]/g, "").replace(/^0+(?=\d)/, "")}`;
+  return `${sign}${raw.replace(/[^0-9.]/g, "").replace(/^0+(?=\d)/, "")}`;
 };
 
 type RfcValidationTone = "success" | "error";
