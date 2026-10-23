@@ -3,6 +3,7 @@ import { MONEY_REGEX } from "@/src/features/accounts-receivable/schemas/register
 import { getCodigoPostalError } from "@/src/utils/codigoPostal";
 import { normalizeCapturedDecimal } from "@/src/utils/decimal";
 import { optionalEmailSchema } from "@/src/utils/optionalEmailSchema";
+import { telefonoSchema } from "@/src/utils/telefonoSchema";
 
 /**
  * Tope de negocio. El backend suma estos días a la fecha de hoy para el
@@ -17,7 +18,7 @@ const LIMITE_CREDITO_MAX_ENTEROS = 12;
 const CustomerFormObject = z.object({
   razon_social: z.string().min(1, "Requerido"),
   nombre: z.string().min(1, "Requerido"),
-  telefono: z.string().optional(),
+  telefono: telefonoSchema.optional(),
   correo: optionalEmailSchema.optional(),
   rfc: z.string().min(1, "Requerido"),
   direccion_fiscal: z.string().min(1, "Requerido"),

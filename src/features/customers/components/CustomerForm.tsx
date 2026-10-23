@@ -193,6 +193,7 @@ export default function CustomerForm({
                       field.handleBlur();
                       validateField("telefono", field.state.value);
                     }}
+                    type="tel"
                     label="Teléfono"
                     placeholder="Teléfono"
                     error={getError("telefono")}
