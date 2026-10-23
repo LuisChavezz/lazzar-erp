@@ -34,7 +34,7 @@ export const QuoteDetails = ({ quoteId, source }: QuoteDetailsProps) => {
   const comentariosQuery = useQuoteComentarios(quoteId, source);
   // La cotización solo trae la PK de la moneda; el código y el nombre salen
   // del catálogo (misma consulta que el formulario).
-  const { data: currencies } = useCurrencies();
+  const { data: currencies, isPending: isLoadingCurrencies } = useCurrencies();
 
   if (isLoading) {
     return (
@@ -59,11 +59,15 @@ export const QuoteDetails = ({ quoteId, source }: QuoteDetailsProps) => {
   // Mientras el catálogo carga o si la PK no aparece, "-" (nunca el id crudo).
   const currencyLabel = currency ? `${currency.codigo_iso} - ${currency.nombre}` : null;
   // Importes con el código de la moneda ("USD 140.48"): el "$" es igual en
-  // pesos y en dólares. Sin la moneda en el catálogo, el formato de siempre.
-  const formatAmount = (value?: string | number | null) =>
-    currency && value !== null && value !== undefined && value !== ""
-      ? formatQuoteAmount(Number(value) || 0, currency.codigo_iso)
-      : toCurrencyOrDash(value);
+  // pesos y en dólares. Mientras el catálogo carga, sin símbolo (un "$" sobre
+  // una cotización en dólares afirmaría pesos); si ya cargó y la moneda no
+  // aparece, el formato de siempre.
+  const formatAmount = (value?: string | number | null) => {
+    if (value === null || value === undefined || value === "") return toCurrencyOrDash(value);
+    if (currency) return formatQuoteAmount(Number(value) || 0, currency.codigo_iso);
+    if (isLoadingCurrencies) return formatQuoteAmount(Number(value) || 0, null);
+    return toCurrencyOrDash(value);
+  };
   const piezas = quote.detalles.reduce( // Sumar de todos los detalles
     (total, detalle) => total + detalle.tallas.reduce((sum, talla) => sum + (Number(talla.cantidad) || 0), 0),
     0
