@@ -14,7 +14,7 @@ import {
 import { EditIcon, EmbarquesIcon, PedidosIcon, PlusIcon } from "@/src/components/Icons";
 import { MainDialog } from "@/src/components/MainDialog";
 import { getFieldError } from "../../../utils/getFieldError";
-import { formatCurrency } from "../../../utils/formatCurrency";
+import { formatQuoteAmount } from "../utils/formatQuoteAmount";
 import { Loader } from "@/src/components/Loader";
 import { CustomerSearchDropdown } from "./CustomerSearchDropdown";
 import { DialogHeader } from "@/src/components/DialogHeader";
@@ -155,6 +155,7 @@ export function QuoteFormContent({
   regimenFiscalOptions,
   usoCfdiOptions,
   currencyOptions,
+  monedaCodigo,
   formasPagoOptions,
   metodosPagoOptions,
   sizes,
@@ -325,7 +326,7 @@ export function QuoteFormContent({
                 Total Cotización
               </p>
               <p className="text-2xl font-bold text-slate-800 dark:text-white font-mono">
-                {formatCurrency(granTotal)}
+                {formatQuoteAmount(granTotal, monedaCodigo)}
               </p>
             </div> */}
 
@@ -870,7 +871,7 @@ export function QuoteFormContent({
                   <FormInput
                     label="Especificar monto"
                     type="number"
-                    placeholder="$0.00"
+                    placeholder={formatQuoteAmount(0, monedaCodigo)}
                     className="text-right"
                     forceUppercase={false}
                     disabled={watchedCondicionPago !== "otra_cantidad"}
@@ -1660,31 +1661,38 @@ export function QuoteFormContent({
                       </td>
                       <td className="p-2">
                         <div className="space-y-1">
-                          <input
-                            type="number"
-                            aria-label="Precio unitario"
-                            min="0.01"
-                            step="0.01"
-                            value={precio}
-                            onChange={(event) => {
-                              const nextValue = Number(event.target.value);
-                              const nextPrecio = Number.isNaN(nextValue) ? 0 : nextValue;
-                              if (currentItem) {
-                                update(index, { ...currentItem, precio: nextPrecio });
-                              }
-                              clearFieldErrors(`items.${index}.precio`);
-                            }}
-                            onBlur={() => {
-                              if (currentItem) {
-                                update(index, { ...currentItem });
-                              }
-                            }}
-                            className={`w-24 bg-transparent border rounded px-2 py-0.5 text-xs text-right text-slate-600 dark:text-slate-300 focus:outline-none focus:ring-1 focus:ring-sky-500 ${
-                              precioError
-                                ? "border-rose-400 dark:border-rose-500 text-rose-600 dark:text-rose-400"
-                                : "border-slate-300 dark:border-slate-700"
-                            }`}
-                          />
+                          <div className="flex items-center justify-end gap-1">
+                            {monedaCodigo && (
+                              <span className="text-[10px] font-medium text-slate-400" aria-hidden="true">
+                                {monedaCodigo}
+                              </span>
+                            )}
+                            <input
+                              type="number"
+                              aria-label={monedaCodigo ? `Precio unitario en ${monedaCodigo}` : "Precio unitario"}
+                              min="0.01"
+                              step="0.01"
+                              value={precio}
+                              onChange={(event) => {
+                                const nextValue = Number(event.target.value);
+                                const nextPrecio = Number.isNaN(nextValue) ? 0 : nextValue;
+                                if (currentItem) {
+                                  update(index, { ...currentItem, precio: nextPrecio });
+                                }
+                                clearFieldErrors(`items.${index}.precio`);
+                              }}
+                              onBlur={() => {
+                                if (currentItem) {
+                                  update(index, { ...currentItem });
+                                }
+                              }}
+                              className={`w-24 bg-transparent border rounded px-2 py-0.5 text-xs text-right text-slate-600 dark:text-slate-300 focus:outline-none focus:ring-1 focus:ring-sky-500 ${
+                                precioError
+                                  ? "border-rose-400 dark:border-rose-500 text-rose-600 dark:text-rose-400"
+                                  : "border-slate-300 dark:border-slate-700"
+                              }`}
+                            />
+                          </div>
                           {precioError && (
                             <p className="text-[10px] text-rose-600 dark:text-rose-400 text-right">
                               {precioError.message}
@@ -1711,7 +1719,7 @@ export function QuoteFormContent({
                           <div
                             className={`text-xs text-right text-slate-600 dark:text-slate-300 ${importeError ? "text-rose-600 dark:text-rose-400" : ""}`}
                           >
-                            {calculatedImporte.toFixed(2)}
+                            {formatQuoteAmount(calculatedImporte, monedaCodigo)}
                           </div>
                           {importeError && (
                             <p className="text-[10px] text-rose-600 dark:text-rose-400 text-right">
@@ -1822,12 +1830,12 @@ export function QuoteFormContent({
                     {(field) => (
                       <div className="relative">
                         <span className="absolute left-2 top-1.5 text-xs text-slate-400">
-                          $
+                          {monedaCodigo ?? ""}
                         </span>
                         <input
                           type="number"
                           aria-label="Flete"
-                          className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-slate-800 rounded-lg pl-5 pr-2 py-1.5 text-sm text-right focus:outline-none focus:ring-1 focus:ring-sky-500"
+                          className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-slate-800 rounded-lg pl-11 pr-2 py-1.5 text-sm text-right focus:outline-none focus:ring-1 focus:ring-sky-500"
                           name={field.name}
                           value={field.state.value}
                           onChange={(event) => {
@@ -1852,12 +1860,12 @@ export function QuoteFormContent({
                     {(field) => (
                       <div className="relative">
                         <span className="absolute left-2 top-1.5 text-xs text-slate-400">
-                          $
+                          {monedaCodigo ?? ""}
                         </span>
                         <input
                           type="number"
                           aria-label="Seguros"
-                          className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-slate-800 rounded-lg pl-5 pr-2 py-1.5 text-sm text-right focus:outline-none focus:ring-1 focus:ring-sky-500"
+                          className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-slate-800 rounded-lg pl-11 pr-2 py-1.5 text-sm text-right focus:outline-none focus:ring-1 focus:ring-sky-500"
                           name={field.name}
                           value={field.state.value}
                           onChange={(event) => {
@@ -1882,12 +1890,12 @@ export function QuoteFormContent({
                     {(field) => (
                       <div className="relative">
                         <span className="absolute left-2 top-1.5 text-xs text-slate-400">
-                          $
+                          {monedaCodigo ?? ""}
                         </span>
                         <input
                           type="number"
                           aria-label="Anticipo"
-                          className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-slate-800 rounded-lg pl-5 pr-2 py-1.5 text-sm text-right focus:outline-none focus:ring-1 focus:ring-sky-500 text-rose-500 font-medium"
+                          className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-slate-800 rounded-lg pl-11 pr-2 py-1.5 text-sm text-right focus:outline-none focus:ring-1 focus:ring-sky-500 text-rose-500 font-medium"
                           name={field.name}
                           value={field.state.value}
                           onChange={(event) => {
@@ -1942,7 +1950,7 @@ export function QuoteFormContent({
                           forceUppercase
                         />
                       </div>
-                      <div className="shrink-0 w-24">
+                      <div className="shrink-0 w-28">
                         <FormInput
                           variant="compact"
                           type="number"
@@ -1969,8 +1977,8 @@ export function QuoteFormContent({
                           aria-invalid={Boolean(montoError)}
                           error={montoError}
                           forceUppercase={false}
-                          leading="$"
-                          className="text-right"
+                          leading={monedaCodigo ?? undefined}
+                          className={monedaCodigo ? "text-right pl-10!" : "text-right"}
                         />
                       </div>
                       <div className="shrink-0 w-16">
@@ -2051,19 +2059,19 @@ export function QuoteFormContent({
               <div className="flex justify-between items-center text-sm">
                 <span className="text-slate-500">Subtotal</span>
                 <span className="font-medium font-mono text-slate-700 dark:text-slate-200">
-                  {formatCurrency(subtotal)}
+                  {formatQuoteAmount(subtotal, monedaCodigo)}
                 </span>
               </div>
               <div className="flex justify-between items-center text-sm">
                 <span className="text-slate-500">Descuento Global</span>
                 <span className="font-medium font-mono text-rose-500">
-                  -{formatCurrency(descuentoTotal)}
+                  -{formatQuoteAmount(descuentoTotal, monedaCodigo)}
                 </span>
               </div>
               <div className="flex justify-between items-center text-sm">
                 <span className="text-slate-500">IEPS</span>
                 <span className="font-medium font-mono text-slate-700 dark:text-slate-200">
-                  $0.00
+                  {formatQuoteAmount(0, monedaCodigo)}
                 </span>
               </div>
               <div className="flex justify-between items-center text-sm">
@@ -2104,7 +2112,7 @@ export function QuoteFormContent({
                   </span>
                 </div>
                 <span className="font-medium font-mono text-slate-700 dark:text-slate-200">
-                  {formatCurrency(ivaAmount)}
+                  {formatQuoteAmount(ivaAmount, monedaCodigo)}
                 </span>
               </div>
               <div className="border-t border-slate-200 dark:border-slate-700 my-2 pt-2">
@@ -2113,13 +2121,13 @@ export function QuoteFormContent({
                     Gran Total
                   </span>
                   <span className="text-2xl font-bold font-mono text-sky-600 dark:text-sky-400">
-                    {formatCurrency(granTotal)}
+                    {formatQuoteAmount(granTotal, monedaCodigo)}
                   </span>
                 </div>
                 <div className="flex justify-between items-center mt-1">
                   <span className="text-xs text-slate-400">Saldo Pendiente</span>
                   <span className="text-sm font-medium font-mono text-slate-500">
-                    {formatCurrency(saldoPendiente)}
+                    {formatQuoteAmount(saldoPendiente, monedaCodigo)}
                   </span>
                 </div>
               </div>

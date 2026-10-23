@@ -1961,6 +1961,13 @@ export function usePedidoMesaControlEditForm(pedidoId: number) {
     [onboardingData?.catalogos.usos_cfdi],
   );
 
+  /**
+   * Código ISO de la moneda elegida (`moneda` es su id): todos los importes del
+   * formulario lo muestran (EC-563, CO-02). `null` mientras no hay una elegida.
+   */
+  const monedaCodigo =
+    (currencies ?? []).find((item) => item.id === Number(values.moneda))?.codigo_iso ?? null;
+
   const currencyOptions = useMemo(() => {
     const preferredCodes = ["MXN", "USD", "EUR"];
     const activeCurrencies = (currencies ?? []).filter((item) => item.activo);
@@ -2036,6 +2043,7 @@ export function usePedidoMesaControlEditForm(pedidoId: number) {
     regimenFiscalOptions,
     usoCfdiOptions,
     currencyOptions,
+    monedaCodigo,
     formasPagoOptions,
     metodosPagoOptions,
     sizes,
