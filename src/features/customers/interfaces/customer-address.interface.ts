@@ -29,7 +29,7 @@ export interface CustomerAddressCreate {
   estado_envio: string;
   referencias?: string;
   is_default?: boolean;
-  activo?: boolean; 
+  activo?: boolean;
   cliente: number;
-  empresa: number;
+  // Sin `empresa`: es de solo lectura y el backend la toma del cliente (EC-570).
 }
