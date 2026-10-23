@@ -10,6 +10,7 @@ import { buildGoogleEmailAttachment } from "../utils/googleEmailAttachment.utils
 import { renderEmailContent, type SendEmailResult } from "../utils/emailSend.utils";
 import type { GoogleEmailPayload } from "../interfaces/google.interface";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
+import { formatEmailRecipients, parseEmailRecipients } from "../utils/emailRecipients";
 
 /**
  * Correo de una cotización LISTO para confirmarse (EC-563, ME-07): lo que se
@@ -22,7 +23,12 @@ export interface PreparedQuoteEmail {
   id: number;
   /** Foto de la cotización con la que se renderizó el correo y se genera el PDF. */
   quote: QuoteById;
-  /** `null` si la cotización no tiene correo de facturación: no hay a quién enviar. */
+  /**
+   * Direcciones válidas de `correo_facturas`, en el orden capturado. Son las que
+   * muestra el diálogo y, unidas, el `to` que se envía.
+   */
+  recipients: string[];
+  /** `null` si no queda ninguna dirección válida: no hay a quién enviar. */
   content: GoogleEmailPayload | null;
   attachmentName: string;
 }
@@ -40,8 +46,11 @@ export const sendQuoteEmailMutationKey = ["google", "send-quote-email"] as const
  * 2. renderEmailContent() — API Route Next.js, valida sesión y renderiza el
  *    HTML en Node.js ✓
  *
- * Sin `correo_facturas` no se llama al Route Handler (respondería 422): el
- * diálogo de confirmación dice que no hay destinatario y no deja enviar.
+ * Los destinatarios se interpretan UNA vez aquí (`parseEmailRecipients`) y el
+ * `to` del correo se reemplaza por esa misma lista, así que se envía
+ * exactamente lo que el diálogo muestra. Sin ninguna dirección válida no se
+ * llama al Route Handler: el diálogo dice que no hay destinatario y no deja
+ * enviar.
  */
 export const usePrepareQuoteEmail = () =>
   useMutation<PreparedQuoteEmail, unknown, number>({
@@ -49,11 +58,13 @@ export const usePrepareQuoteEmail = () =>
     mutationFn: async (quoteId: number): Promise<PreparedQuoteEmail> => {
       const quote = await getQuoteById(quoteId);
       const attachmentName = `cotizacion-${quote.id}.pdf`;
-      if (!quote.correo_facturas?.trim()) {
-        return { id: quote.id, quote, content: null, attachmentName };
+      const recipients = parseEmailRecipients(quote.correo_facturas);
+      if (recipients.length === 0) {
+        return { id: quote.id, quote, recipients, content: null, attachmentName };
       }
-      const content = await renderEmailContent(`/api/quotes/${quote.id}/send-email`, { quote });
-      return { id: quote.id, quote, content, attachmentName };
+      const rendered = await renderEmailContent(`/api/quotes/${quote.id}/send-email`, { quote });
+      const content = { ...rendered, to: formatEmailRecipients(recipients) };
+      return { id: quote.id, quote, recipients, content, attachmentName };
     },
     onError: (error) => {
       toast.error(extractErrorMessage(error, "No se pudo preparar el correo de la cotizacion."));

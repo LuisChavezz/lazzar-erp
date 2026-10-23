@@ -182,6 +182,7 @@ export function QuoteFormContent({
   watchedDocRelacionado,
   watchedEnviarDomicilioFiscal,
   watchedUsarMismoTelefono,
+  watchedTelefonoPagos,
   watchedCondicionPago,
   hasCustomerSelected,
   subtotal,
@@ -976,6 +977,14 @@ export function QuoteFormContent({
                     name={field.name}
                     checked={Boolean(field.state.value)}
                     onChange={(event) => {
+                      // Al desmarcarla, los teléfonos de envío quedan editables
+                      // con lo último que mostraban (el de "Teléfono pagos").
+                      if (!event.target.checked) {
+                        form.setFieldValue("telefonoEnvio", watchedTelefonoPagos ?? "");
+                        form.setFieldValue("celularEnvio", watchedTelefonoPagos ?? "");
+                        clearFieldErrors("telefonoEnvio");
+                        clearFieldErrors("celularEnvio");
+                      }
                       field.handleChange(event.target.checked);
                     }}
                     onBlur={field.handleBlur}
@@ -1060,11 +1069,11 @@ export function QuoteFormContent({
                   placeholder="Teléfono"
                   type="tel"
                   forceUppercase={false}
-                  // Solo "Usar el mismo teléfono" lo bloquea (refleja "Teléfono
-                  // pagos", donde se muestra su error); el domicilio fiscal ya no.
+                  // Solo "Usar el mismo teléfono" lo bloquea: entonces muestra el de
+                  // "Teléfono pagos" (derivado, no copiado), donde vive su error.
                   disabled={Boolean(watchedUsarMismoTelefono)}
                   name={field.name}
-                  value={field.state.value}
+                  value={watchedUsarMismoTelefono ? (watchedTelefonoPagos ?? "") : field.state.value}
                   onChange={(event) => {
                     field.handleChange(event.target.value);
                     clearFieldErrors("telefonoEnvio");
@@ -1086,11 +1095,11 @@ export function QuoteFormContent({
                   placeholder="Celular"
                   type="tel"
                   forceUppercase={false}
-                  // Solo "Usar el mismo teléfono" lo bloquea (refleja "Teléfono
-                  // pagos", donde se muestra su error); el domicilio fiscal ya no.
+                  // Solo "Usar el mismo teléfono" lo bloquea: entonces muestra el de
+                  // "Teléfono pagos" (derivado, no copiado), donde vive su error.
                   disabled={Boolean(watchedUsarMismoTelefono)}
                   name={field.name}
-                  value={field.state.value}
+                  value={watchedUsarMismoTelefono ? (watchedTelefonoPagos ?? "") : field.state.value}
                   onChange={(event) => {
                     field.handleChange(event.target.value);
                     clearFieldErrors("celularEnvio");

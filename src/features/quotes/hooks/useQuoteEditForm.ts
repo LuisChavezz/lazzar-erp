@@ -43,6 +43,7 @@ import {
   useQuoteSubmitErrorSummary,
 } from "./useQuoteSubmitErrorSummary";
 import { nonNegativeAmount } from "../utils/quoteAmounts";
+import { withMirroredShippingPhones } from "../utils/shippingPhones";
 import type { QuoteValidationIssue } from "../utils/quoteValidationErrors";
 import { canEditQuote } from "../utils/quoteStatusRules";
 import { mapQuoteDetalleToItem } from "../utils/mapQuoteDetalleToItem";
@@ -351,8 +352,9 @@ export function useQuoteEditForm(quoteId: number) {
   const form = useForm({
     defaultValues: initialFormValues ?? emptyValues,
     onSubmit: async ({ value }) => {
+      // Con "Usar el mismo teléfono" se validan y envían los teléfonos derivados.
       const parsed = quoteSubmitSchema.safeParse({
-        ...value,
+        ...withMirroredShippingPhones(value),
         servicios_extras: extraServices,
       });
 
@@ -367,8 +369,8 @@ export function useQuoteEditForm(quoteId: number) {
           if (issue.path.length === 0) return;
           setErrorByPath(nextErrors, issue.path, issue.message);
         });
+        crossRules.markCrossRulesFired(submitIssues, nextErrors);
         setErrorTree(nextErrors);
-        crossRules.markCrossRulesFired(submitIssues);
         // Resumen de errores; al cerrarlo, la vista va al primer campo inválido.
         showErrorSummary(submitIssues);
         return;
@@ -670,19 +672,6 @@ export function useQuoteEditForm(quoteId: number) {
     });
   }, []);
 
-  // "Usar el mismo teléfono" (EC-563, T-021): mientras está marcada, el teléfono
-  // y el celular de envío reflejan "Teléfono pagos" y quedan deshabilitados. El
-  // error de formato vive en "Teléfono pagos", el único editable, así que los
-  // reflejos no conservan uno propio. Al desmarcarla, lo copiado queda editable.
-  useEffect(() => {
-    if (!values.usarMismoTelefono) return;
-    const telefono = values.telefono_pagos || "";
-    form.setFieldValue("telefonoEnvio", telefono);
-    form.setFieldValue("celularEnvio", telefono);
-    clearFieldErrors("telefonoEnvio");
-    clearFieldErrors("celularEnvio");
-  }, [clearFieldErrors, form, values.telefono_pagos, values.usarMismoTelefono]);
-
   const clienteSearchTerm = values.clienteBusqueda ?? "";
 
   const setClienteSearchTerm = (value: string) => {
@@ -700,7 +689,14 @@ export function useQuoteEditForm(quoteId: number) {
       return false;
     }
     if (parsed.success) {
-      clearFieldErrors(field);
+      // En un campo de regla cruzada el blur solo retira el error PROPIO de la
+      // regla: uno del servidor (el del anticipo trae el mismo texto) se queda
+      // hasta que se edite el campo, que lo limpia en su `onChange`.
+      if (isQuoteCrossRuleField(field)) {
+        crossRules.clearOwnCrossRuleError(field);
+      } else {
+        clearFieldErrors(field);
+      }
       return true;
     }
     setErrorTree((prev) => {
@@ -899,11 +895,8 @@ export function useQuoteEditForm(quoteId: number) {
     (address: CustomerAddress) => {
       form.setFieldValue("destinatario", address.destinatario ?? "");
       form.setFieldValue("empresaEnvio", address.empresa_envio ?? "");
-      // Con "Usar el mismo teléfono" los teléfonos de envío siguen a "Teléfono pagos".
-      if (!form.state.values.usarMismoTelefono) {
-        form.setFieldValue("telefonoEnvio", address.telefono_envio ?? "");
-        form.setFieldValue("celularEnvio", address.celular_envio ?? "");
-      }
+      form.setFieldValue("telefonoEnvio", address.telefono_envio ?? "");
+      form.setFieldValue("celularEnvio", address.celular_envio ?? "");
       form.setFieldValue("direccionEnvio", address.direccion_envio ?? "");
       form.setFieldValue("coloniaEnvio", address.colonia_envio ?? "");
       form.setFieldValue("codigoPostalEnvio", address.codigo_postal ?? "");
@@ -933,7 +926,16 @@ export function useQuoteEditForm(quoteId: number) {
       form.setFieldValue("codigoPostalFiscal", customer.codigo_postal ?? "");
       form.setFieldValue("ciudadFiscal", customer.ciudad ?? "");
       form.setFieldValue("estadoFiscal", customer.estado ?? "");
-      setSelectedCustomerId(Number(customer.id) || 0);
+      // Cambiar de un cliente a OTRO deja sin sentido los teléfonos de envío del
+      // anterior: se vacían, sin copiar el del nuevo (EC-563, T-021). Con "Usar el
+      // mismo teléfono" se siguen derivando de "Teléfono pagos". La hidratación de
+      // una cotización guardada no pasa por aquí, así que no los toca.
+      const nextCustomerId = Number(customer.id) || 0;
+      if (selectedCustomerId > 0 && selectedCustomerId !== nextCustomerId) {
+        form.setFieldValue("telefonoEnvio", "");
+        form.setFieldValue("celularEnvio", "");
+      }
+      setSelectedCustomerId(nextCustomerId);
       setCustomerSelectedFromSearch(fromSearch);
       form.setFieldValue("telefono_pagos", customer.telefono ?? "");
       form.setFieldValue("correo_facturas", customer.correo ?? "");
@@ -947,7 +949,7 @@ export function useQuoteEditForm(quoteId: number) {
       form.setFieldValue("estadoEnvio", customer.estado ?? "");
       clearFieldErrors("clienteBusqueda");
     },
-    [clearFieldErrors, form, onboardingData?.catalogos.regimenes_fiscales]
+    [clearFieldErrors, form, onboardingData?.catalogos.regimenes_fiscales, selectedCustomerId]
   );
 
   const handleCustomerCreated = (customer?: Customer) => {
@@ -1165,6 +1167,7 @@ export function useQuoteEditForm(quoteId: number) {
     watchedDocRelacionado,
     watchedEnviarDomicilioFiscal: values.enviarDomicilioFiscal,
     watchedUsarMismoTelefono: values.usarMismoTelefono,
+    watchedTelefonoPagos: values.telefono_pagos,
     watchedCondicionPago: values.condicionPago,
     hasCustomerSelected: selectedCustomerId !== 0,
     subtotal,

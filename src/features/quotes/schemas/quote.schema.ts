@@ -9,7 +9,7 @@ import { quoteItemSchema } from "./quote-item.schema";
 import { PEDIDO_CLASIFICACIONES } from "../../orders/constants/pedidoStatus";
 import { IVA_TASA_FIJA } from "../constants/iva";
 import { telefonoSchema } from "@/src/utils/telefonoSchema";
-import { MONTO_NEGATIVO_MESSAGE } from "../utils/quoteAmounts";
+import { MONTO_NEGATIVO_MESSAGE } from "../constants/montos";
 
 export { quoteItemSchema } from "./quote-item.schema";
 

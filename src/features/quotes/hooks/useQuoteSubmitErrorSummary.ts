@@ -15,7 +15,7 @@ export interface QuoteSubmitIssue {
   message: string;
 }
 
-/** Campos que reflejan `telefono_pagos` mientras "Usar el mismo teléfono" está marcada. */
+/** Campos que se derivan de `telefono_pagos` mientras "Usar el mismo teléfono" está marcada. */
 const MIRRORED_PHONE_FIELDS = new Set(["telefonoEnvio", "celularEnvio"]);
 
 /**
@@ -23,8 +23,9 @@ const MIRRORED_PHONE_FIELDS = new Set(["telefonoEnvio", "celularEnvio"]);
  * que el schema no conoce porque depende del total en vivo.
  *
  * Con "Usar el mismo teléfono" marcada se omiten los errores de los teléfonos
- * de envío: son copia de `telefono_pagos`, que ya trae el mismo error en un
- * campo editable, y listarlos señalaría campos deshabilitados.
+ * de envío: se validan con el valor derivado de `telefono_pagos`
+ * (`withMirroredShippingPhones`), que ya trae el mismo error en un campo
+ * editable, y listarlos señalaría campos deshabilitados.
  */
 export const collectQuoteSubmitIssues = (
   zodIssues: readonly { path: readonly PropertyKey[]; message: string }[],

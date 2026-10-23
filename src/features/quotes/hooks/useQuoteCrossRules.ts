@@ -69,6 +69,29 @@ const messageAt = (tree: ErrorNode, field: QuoteCrossRuleField) => {
 };
 
 /**
+ * `type` con el que una regla cruzada marca el error que ELLA puso. La marca
+ * viaja en el propio error —y no en un ref aparte— porque el árbol de errores
+ * se copia con `structuredClone` en cada `clearFieldErrors`/`validateField`: un
+ * ref de nodos perdería la identidad, y uno de campos quedaría desfasado cuando
+ * otro código borra o reemplaza el error.
+ */
+const CROSS_RULE_ERROR_TYPE = "regla-cruzada";
+
+const isOwnErrorAt = (tree: ErrorNode, field: QuoteCrossRuleField) => {
+  const node = tree[field];
+  return (
+    Boolean(node) &&
+    typeof node === "object" &&
+    (node as { type?: unknown }).type === CROSS_RULE_ERROR_TYPE
+  );
+};
+
+const ownError = (field: QuoteCrossRuleField) => ({
+  message: QUOTE_CROSS_RULES[field].message,
+  type: CROSS_RULE_ERROR_TYPE,
+});
+
+/**
  * Reevaluación de las reglas cruzadas del formulario de cotización/pedido.
  *
  * La comparten los TRES hooks que alimentan `QuoteFormContent` (alta y edición
@@ -88,9 +111,10 @@ const messageAt = (tree: ErrorNode, field: QuoteCrossRuleField) => {
  * guarda NO es "hubo un submit" —el error también nace del blur— ni "el error
  * está visible ahora". Mismo criterio que turnos, contratos y series.
  *
- * Solo se toca un error si es PROPIO (mismo mensaje que la regla): un error
- * del servidor en la misma ruta —lo mezcla `applyServerValidationIssues`— no
- * se pisa ni se borra desde aquí.
+ * Solo se toca un error si es PROPIO (marcado con `CROSS_RULE_ERROR_TYPE`): un
+ * error del servidor en la misma ruta —lo mezcla `applyServerValidationIssues`—
+ * no se pisa ni se borra desde aquí, aunque traiga el mismo texto (el del
+ * anticipo es idéntico al del backend a propósito).
  */
 const NOT_FIRED: Record<QuoteCrossRuleField, boolean> = {
   condicionPagoMonto: false,
@@ -107,19 +131,17 @@ export function useQuoteCrossRules(
   const firedRef = useRef<Record<QuoteCrossRuleField, boolean>>({ ...NOT_FIRED });
 
   const showOwnError = (field: QuoteCrossRuleField) => {
-    const { message } = QUOTE_CROSS_RULES[field];
     setErrorTree((prev) => {
       const current = messageAt(prev, field);
       // Ya está, o hay otro error (p. ej. del servidor) que no es nuestro.
       if (current !== undefined) return prev;
-      return { ...prev, [field]: { message } };
+      return { ...prev, [field]: ownError(field) };
     });
   };
 
   const clearOwnError = (field: QuoteCrossRuleField) => {
-    const { message } = QUOTE_CROSS_RULES[field];
     setErrorTree((prev) => {
-      if (messageAt(prev, field) !== message) return prev;
+      if (!isOwnErrorAt(prev, field)) return prev;
       const next = { ...prev };
       delete next[field];
       return next;
@@ -165,12 +187,27 @@ export function useQuoteCrossRules(
     }
   };
 
-  /** Submit fallido: marca como disparadas las reglas cuyo error trae el schema. */
-  const markCrossRulesFired = (issues: { path: PropertyKey[]; message: string }[]) => {
+  /**
+   * Submit fallido: marca como disparadas las reglas cuyo error trae el submit
+   * y, en `tree` (el árbol que el hook está por guardar), marca esos errores
+   * como propios para que la regla pueda retirarlos cuando deje de aplicar.
+   * Los issues del submit son todos del cliente (schema o `getAnticipoIssue`).
+   */
+  const markCrossRulesFired = (
+    issues: { path: PropertyKey[]; message: string }[],
+    tree?: ErrorNode,
+  ) => {
     issues.forEach((issue) => {
       const field = String(issue.path[0] ?? "");
-      if (isQuoteCrossRuleField(field) && issue.message === QUOTE_CROSS_RULES[field].message) {
+      if (
+        issue.path.length === 1 &&
+        isQuoteCrossRuleField(field) &&
+        issue.message === QUOTE_CROSS_RULES[field].message
+      ) {
         firedRef.current[field] = true;
+        if (tree && messageAt(tree, field) === issue.message) {
+          tree[field] = ownError(field);
+        }
       }
     });
   };
@@ -195,26 +232,29 @@ export function useQuoteCrossRules(
     markCrossRulesFired,
     resetCrossRules,
     getAnticipoIssue,
+    /** Retira el error de `field` solo si lo puso la regla (ver `CROSS_RULE_ERROR_TYPE`). */
+    clearOwnCrossRuleError: clearOwnError,
   };
 }
 
 /**
  * Anticipo ≤ total EN VIVO: una vez disparada la regla, un cambio del gran
  * total (partidas o cargos) reevalúa el error del anticipo sin esperar al
- * siguiente blur.
- *
- * Solo actúa cuando el total CAMBIA, no en cada render: el error del backend
- * para el anticipo trae el mismo texto que la regla, así que reevaluar sin que
- * nada haya cambiado lo tomaría por propio y lo borraría recién llegado.
+ * siguiente blur. Solo corre cuando el total CAMBIA: `crossRules` es un objeto
+ * nuevo en cada render, así que su callback se lee por ref y no es dependencia.
  */
 export function useRevalidateAnticipoOnTotalChange(
   crossRules: Pick<ReturnType<typeof useQuoteCrossRules>, "revalidateCrossRule">,
   granTotal: number,
 ) {
+  const revalidateRef = useRef(crossRules.revalidateCrossRule);
+  useEffect(() => {
+    revalidateRef.current = crossRules.revalidateCrossRule;
+  });
   const lastGranTotalRef = useRef(granTotal);
   useEffect(() => {
     if (lastGranTotalRef.current === granTotal) return;
     lastGranTotalRef.current = granTotal;
-    crossRules.revalidateCrossRule("granTotal", granTotal);
-  }, [crossRules, granTotal]);
+    revalidateRef.current("granTotal", granTotal);
+  }, [granTotal]);
 }

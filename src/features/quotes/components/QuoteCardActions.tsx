@@ -45,6 +45,7 @@ export function QuoteCardActions({ quote, align = "end", trigger }: QuoteCardAct
   const isAuthorizing = isQuoteRowBusy(busy, "authorize", quote.id);
   const isRejecting = isQuoteRowBusy(busy, "reject", quote.id);
   const isSendingEmail = isQuoteRowBusy(busy, "sendEmail", quote.id);
+  const isPreparingEmail = isQuoteRowBusy(busy, "prepareEmail", quote.id);
   const isDownloadingPdf = isQuoteRowBusy(busy, "downloadPdf", quote.id);
   const isSubmittingForReview = isQuoteRowBusy(busy, "submitForReview", quote.id);
   const isValidatingReview = isQuoteRowBusy(busy, "validateReview", quote.id);
@@ -80,17 +81,22 @@ export function QuoteCardActions({ quote, align = "end", trigger }: QuoteCardAct
       visible: isQuoteReviewableStatus(quote.estatus),
     },
     {
-      label: isSendingEmail ? "Enviando..." : "Enviar correo",
+      label: isPreparingEmail
+        ? "Preparando..."
+        : isSendingEmail
+          ? "Enviando..."
+          : "Enviar correo",
       icon: EmailIcon,
       onSelect: () => onAction("sendEmail", quote),
-      disabled: isSendingEmail || isAuthorizing || isRejecting || isDownloadingPdf,
+      disabled:
+        isPreparingEmail || isSendingEmail || isAuthorizing || isRejecting || isDownloadingPdf,
       keepOpenOnSelect: true,
     },
     {
       label: isDownloadingPdf ? "Generando PDF..." : "Descargar PDF",
       icon: DownloadIcon,
       onSelect: () => onAction("downloadPdf", quote),
-      disabled: isDownloadingPdf || isSendingEmail,
+      disabled: isDownloadingPdf || isPreparingEmail || isSendingEmail,
     },
     {
       // Autorizar/rechazar desde el tablero de Ventas es la misma capacidad de
@@ -100,7 +106,7 @@ export function QuoteCardActions({ quote, align = "end", trigger }: QuoteCardAct
       label: "Autorizar",
       icon: CheckCircleIcon,
       onSelect: () => onAction("authorize", quote),
-      disabled: isAuthorizing || isRejecting || isSendingEmail,
+      disabled: isAuthorizing || isRejecting || isPreparingEmail || isSendingEmail,
       permission: "A-MESACONTROL-COTI",
       visible: canManageAuthorization,
     },
@@ -108,7 +114,7 @@ export function QuoteCardActions({ quote, align = "end", trigger }: QuoteCardAct
       label: "Rechazar",
       icon: RejectIcon,
       onSelect: () => onAction("reject", quote),
-      disabled: isRejecting || isAuthorizing || isSendingEmail,
+      disabled: isRejecting || isAuthorizing || isPreparingEmail || isSendingEmail,
       permission: "D-MESACONTROL-COTI",
       visible: canManageAuthorization,
     },

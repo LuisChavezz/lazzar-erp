@@ -2,11 +2,11 @@
  * Reglas de los cargos de cotización/pedido (flete, seguros y anticipo),
  * con los mismos textos que el backend (EC-571).
  */
+import { decimalToCents } from "@/src/features/orders/utils/orderAccounting";
+import { ANTICIPO_MAYOR_AL_TOTAL_MESSAGE, MONTO_NEGATIVO_MESSAGE } from "../constants/montos";
+import { QUOTE_REVIEW_FIELD_LABELS } from "../schemas/quote-review.schema";
 
-/** Flete, seguros o anticipo negativos. */
-export const MONTO_NEGATIVO_MESSAGE = "Debe ser mayor o igual a 0";
-
-export const ANTICIPO_MAYOR_AL_TOTAL_MESSAGE = "El anticipo no puede ser mayor al total";
+export { ANTICIPO_MAYOR_AL_TOTAL_MESSAGE, MONTO_NEGATIVO_MESSAGE };
 
 /**
  * Lo que aporta un cargo capturado (flete, seguros, anticipo) a los totales EN
@@ -19,8 +19,13 @@ export const nonNegativeAmount = (value: unknown): number => {
   return Number.isFinite(amount) && amount > 0 ? amount : 0;
 };
 
-/** Centavos de un importe, para comparar sin ruido de punto flotante. */
-const toCents = (value: unknown) => Math.round((Number(value) || 0) * 100);
+/**
+ * Centavos de un importe —número del formulario o string de la API— para
+ * comparar sin ruido de punto flotante. Lo que no es un decimal cuenta 0, igual
+ * que `nonNegativeAmount`.
+ */
+const toCents = (value: unknown) =>
+  decimalToCents(typeof value === "number" || typeof value === "string" ? String(value) : null) ?? 0;
 
 /**
  * ¿El anticipo supera el total? Se compara a 2 decimales, la precisión con la
@@ -29,8 +34,6 @@ const toCents = (value: unknown) => Math.round((Number(value) || 0) * 100);
  */
 export const isAnticipoMayorAlTotal = (anticipo: unknown, granTotal: unknown) =>
   toCents(anticipo) > toCents(granTotal);
-
-const MONTO_LABELS = { anticipo: "Anticipo", flete: "Flete", seguros: "Seguros" } as const;
 
 /**
  * Primer error de los cargos GUARDADOS de un documento, o `null`. Mismas reglas
@@ -45,7 +48,7 @@ export const getSavedMontosError = (documento: {
 }): string | null => {
   for (const campo of ["anticipo", "flete", "seguros"] as const) {
     if ((Number(documento[campo]) || 0) < 0) {
-      return `${MONTO_LABELS[campo]}: ${MONTO_NEGATIVO_MESSAGE}`;
+      return `${QUOTE_REVIEW_FIELD_LABELS[campo]}: ${MONTO_NEGATIVO_MESSAGE}`;
     }
   }
   return isAnticipoMayorAlTotal(documento.anticipo, documento.gran_total)

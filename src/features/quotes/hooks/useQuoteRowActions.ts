@@ -38,10 +38,11 @@ export type QuoteRowAction =
  * solo esa) pinte "Enviando…"/"Generando PDF…" y deshabilite lo que
  * corresponde — el mismo alcance por fila que tenían los hooks cuando vivían
  * dentro de la celda. `validateReview` es la validación previa a "Enviar a
- * revisión" (etiqueta "Verificando…").
+ * revisión" (etiqueta "Verificando…") y `prepareEmail`, la preparación del
+ * correo antes de confirmarlo (etiqueta "Preparando…").
  */
 export interface QuoteRowBusy {
-  kind: QuoteRowAction | "validateReview";
+  kind: QuoteRowAction | "validateReview" | "prepareEmail";
   quoteId: number;
 }
 
@@ -165,8 +166,8 @@ export function useQuoteRowActions() {
   // `usePendingQuoteIds` para por qué se lee de la caché y no de la instancia.
   const authorizing = usePendingQuoteIds(approveOperationsQuoteMutationKey);
   const rejecting = usePendingQuoteIds(rejectOperationsQuoteMutationKey);
-  // Preparar y enviar se pintan igual en el menú ("Enviando…"): las dos son
-  // parte de la misma acción y deshabilitan repetirla.
+  // Preparar ("Preparando…") y enviar ("Enviando…", solo tras confirmar) se
+  // distinguen en el menú; las dos deshabilitan repetir la acción.
   const preparingEmail = usePendingQuoteIds(prepareQuoteEmailMutationKey);
   const sendingEmail = usePendingQuoteIds(sendQuoteEmailMutationKey);
   const downloadingPdf = usePendingQuoteIds(downloadQuotePdfMutationKey);
@@ -175,10 +176,8 @@ export function useQuoteRowActions() {
   const busy: QuoteRowBusy[] = [
     ...authorizing.map((quoteId) => ({ kind: "authorize" as const, quoteId })),
     ...rejecting.map((quoteId) => ({ kind: "reject" as const, quoteId })),
-    ...[...preparingEmail, ...sendingEmail].map((quoteId) => ({
-      kind: "sendEmail" as const,
-      quoteId,
-    })),
+    ...preparingEmail.map((quoteId) => ({ kind: "prepareEmail" as const, quoteId })),
+    ...sendingEmail.map((quoteId) => ({ kind: "sendEmail" as const, quoteId })),
     ...downloadingPdf.map((quoteId) => ({ kind: "downloadPdf" as const, quoteId })),
     ...submittingForReview.map((quoteId) => ({ kind: "submitForReview" as const, quoteId })),
     ...validatingReview.map((quoteId) => ({ kind: "validateReview" as const, quoteId })),

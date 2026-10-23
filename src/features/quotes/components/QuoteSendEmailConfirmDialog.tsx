@@ -23,21 +23,15 @@ interface QuoteSendEmailConfirmDialogProps {
   onConfirm: () => void;
 }
 
-/** `correo_facturas` puede traer varias direcciones separadas por coma o punto y coma. */
-const splitRecipients = (to: string) =>
-  to
-    .split(/[,;]/)
-    .map((address) => address.trim().toLowerCase())
-    .filter(Boolean);
-
 export function QuoteSendEmailConfirmDialog({
   open,
   onOpenChange,
   email,
   onConfirm,
 }: QuoteSendEmailConfirmDialogProps) {
-  const recipients = email.content ? splitRecipients(email.content.to) : [];
-  const hasRecipients = recipients.length > 0;
+  // La misma lista que se envía (`PreparedQuoteEmail.recipients`).
+  const { recipients } = email;
+  const hasRecipients = recipients.length > 0 && email.content !== null;
 
   return (
     <MainDialog
@@ -81,8 +75,8 @@ export function QuoteSendEmailConfirmDialog({
               </ul>
             ) : (
               <p className="text-rose-600 dark:text-rose-400">
-                El cliente no tiene correo de facturación registrado, así que no hay a quién
-                enviar la cotización.
+                La cotización no tiene un correo de facturación válido, así que no hay a
+                quién enviarla.
               </p>
             )}
           </dd>

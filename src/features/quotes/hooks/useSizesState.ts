@@ -21,12 +21,22 @@ export type SizeQuantitiesMap = Record<number, Record<number, string>>;
 
 export const SIZE_QUANTITY_ERROR = "Debe ser un número entero mayor o igual a 0";
 
+/** Tope de `PositiveIntegerField` (la cantidad por talla en el backend). */
+export const SIZE_QUANTITY_MAX = 2147483647;
+
+export const SIZE_QUANTITY_MAX_ERROR = `No puede ser mayor a ${SIZE_QUANTITY_MAX.toLocaleString("es-MX")}`;
+
 const SIZE_QUANTITY_REGEX = /^\d+$/;
 
-/** Error de una cantidad capturada, o `null`. Vacío equivale a 0. */
+/**
+ * Error de una cantidad capturada, o `null`. Vacío equivale a 0. El tope se
+ * revisa aquí porque el error del backend llegaría a una ruta sin input.
+ */
 export const getSizeQuantityError = (raw: string | undefined): string | null => {
   const value = (raw ?? "").trim();
-  return value === "" || SIZE_QUANTITY_REGEX.test(value) ? null : SIZE_QUANTITY_ERROR;
+  if (value === "") return null;
+  if (!SIZE_QUANTITY_REGEX.test(value)) return SIZE_QUANTITY_ERROR;
+  return Number(value) > SIZE_QUANTITY_MAX ? SIZE_QUANTITY_MAX_ERROR : null;
 };
 
 /** Valor numérico de una cantidad VÁLIDA; vacía o inválida cuenta 0. */
