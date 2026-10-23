@@ -1,5 +1,6 @@
 "use client";
 
+import toast from "react-hot-toast";
 import { FormInput } from "@/src/components/FormInput";
 import { useInlineDraft } from "@/src/hooks/useInlineDraft";
 import { parseLocalDate, toLocalDateKey, toLocalMidnightIso } from "@/src/utils/formatDate";
@@ -29,12 +30,19 @@ const toDateInputValue = (value: string | null): string | null => {
  * Fecha de confirmación editable en línea, en la cabecera del detalle.
  *
  * Misma mecánica que el campo de máquina de la orden de bordado
- * (`useInlineDraft`: guarda al salir solo si cambió, Enter confirma), con una
- * adaptación propia del `<input type="date">`: una fecha a medio teclear
- * reporta `value === ""`, igual que una vaciada a propósito. Al salir se mira
- * `validity.badInput`: si la fecha está incompleta se DESCARTA el borrador
- * (`revert`) en vez de guardarla como `null`, que borraría la confirmación.
- * Vaciarla de verdad (valor vacío sin `badInput`) sí manda `null`.
+ * (`useInlineDraft`: guarda al salir solo si cambió, Enter confirma), con dos
+ * adaptaciones propias del `<input type="date">`:
+ *
+ * - Una fecha a medio teclear reporta `value === ""`, igual que una vaciada a
+ *   propósito. Al salir se mira `validity.badInput`: si la fecha está
+ *   incompleta se DESCARTA el borrador (`revert`) en vez de guardarla como
+ *   `null`, que borraría la confirmación, y se AVISA: antes volvía al valor
+ *   anterior en silencio y parecía que el guardado se había perdido (EC-565,
+ *   ME-10). Vaciarla de verdad (valor vacío sin `badInput`) sí manda `null`.
+ * - Tab con la fecha completa confirma igual que Enter. Sin esto el primer Tab
+ *   no sale del input: Chrome y Firefox lo llevan al botón del calendario, que
+ *   vive DENTRO del input, así que no hay blur ni guardado. Con la fecha
+ *   incompleta Tab conserva su uso de siempre (pasar al siguiente segmento).
  */
 export function PedidoFechaConfirmacionField({
   value,
@@ -66,12 +74,15 @@ export function PedidoFechaConfirmacionField({
       onBlur={(event) => {
         if (event.currentTarget.validity.badInput) {
           revert();
+          toast.error("La fecha está incompleta; no se guardó.");
           return;
         }
         handleBlur();
       }}
       onKeyDown={(event) => {
-        if (event.key === "Enter") {
+        const commitsOnTab =
+          event.key === "Tab" && !event.shiftKey && event.currentTarget.value !== "";
+        if (event.key === "Enter" || commitsOnTab) {
           event.preventDefault();
           event.currentTarget.blur();
         }
