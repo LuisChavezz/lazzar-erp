@@ -28,18 +28,14 @@ import { PedidoFolioLink } from './PedidoFolioLink';
  * vía `columnFilters`; no depende de nada que `DataTable` tenga que
  * exponerle aparte.
  *
- * Piezas / Vendedor / Clasificación / C.P. son PLACEHOLDER a propósito,
- * pedidos explícitamente para previsualizar el layout final: `PedidoListItem`
- * (listado) no expone esos campos — solo el detalle los trae en parte
- * (`PedidoTrackerPicking.total_prendas_pedido`, `Order.clasificacion`,
- * `Order.codigo_postal`; "Vendedor" ni siquiera existe como campo propio hoy,
- * ver `order.interface.ts`). Su celda (`PendingDataCell`) no lee ningún dato
- * — es fija en TODAS las filas hasta que el backend sume esos campos al
- * listado. Ese día, reemplazar `PendingDataCell` por un `cell` normal con
- * `accessorKey`/`accessorFn` en cada una: traerlos por fila con un fetch de
- * detalle aparte (N+1) no vale la pena solo por estas columnas. Todas llevan
+ * Piezas y Vendedor leen `PedidoListItem.piezas`/`vendedor_nombre` (EC-571).
+ * Clasificación / C.P. siguen siendo PLACEHOLDER a propósito, pedidos
+ * explícitamente para previsualizar el layout final: su celda
+ * (`PendingDataCell`) no lee ningún dato — es fija en TODAS las filas hasta que
+ * se conecten (C.P. no viene en el listado; traerlo por fila con un fetch de
+ * detalle aparte, N+1, no vale la pena solo por la columna). Todas llevan
  * `meta: { hideOnMobile: true }` para no competir por espacio en pantallas
- * angostas mientras no tengan dato real.
+ * angostas.
  *
  * "Importe sin IVA" SÍ es dato real: `PedidoListItem.subtotal` — a
  * diferencia de `Order`, en el listado nunca es opcional (no pasa por el
@@ -155,7 +151,11 @@ export function createSalesOrderColumns({
       size: 90,
       enableSorting: false,
       meta: { align: "right", hideOnMobile: true },
-      cell: PendingDataCell,
+      cell: ({ row }) => (
+        <span className="text-[13px] tabular-nums text-slate-700 dark:text-slate-200">
+          {row.original.piezas}
+        </span>
+      ),
     },
     {
       id: 'vendedor',
@@ -163,7 +163,11 @@ export function createSalesOrderColumns({
       size: 150,
       enableSorting: false,
       meta: { hideOnMobile: true },
-      cell: PendingDataCell,
+      cell: ({ row }) => (
+        <span className="block text-[13px] text-slate-700 dark:text-slate-200 truncate max-w-37.5">
+          {row.original.vendedor_nombre || '—'}
+        </span>
+      ),
     },
     {
       id: 'created_at',

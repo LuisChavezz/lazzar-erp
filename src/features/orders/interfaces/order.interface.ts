@@ -267,6 +267,10 @@ export interface PedidoListItem {
   fecha_entrega_max: string | null;
   /** `null`, `{}` o `{ programaciones: [...] }` (ver `PedidoProgramacionConf`). */
   programacion_conf: PedidoProgramacionConf | null;
+  /** Piezas del pedido: todas las tallas, muestras incluidas; 0 sin tallas (EC-571). */
+  piezas: number;
+  /** Vendedor de la cotización de origen; `null` si el pedido no viene de una (EC-571). */
+  vendedor_nombre: string | null;
 }
 
 /**

@@ -158,7 +158,7 @@ export const getCustomerColumns = (
     // /ventas/clientes/`) todavía no expone la fecha de última compra. Fija
     // en "—" en todas las filas hasta que el backend la agregue; ese día,
     // reemplazar por un `cell` normal con `accessorKey`/`accessorFn`. Mismo
-    // patrón que "Piezas"/"Vendedor" en `SalesOrderColumns.tsx`.
+    // patrón que "Clasificación"/"C.P." en `SalesOrderColumns.tsx`.
     id: "ultima_compra",
     header: "Última Compra",
     enableSorting: false,

@@ -162,22 +162,27 @@ export function buildOperationsOrderColumns(
       ),
     },
     {
-      // PLACEHOLDER a propósito: `PedidoListItem` (listado de
-      // `GET /ventas/pedidos/`) no expone piezas — fija en "—" hasta que el
-      // backend la agregue, mismo patrón que "Última Compra" en
-      // `CustomerColumns.tsx`.
+      // Todas las tallas, muestras incluidas (EC-571).
       id: "piezas",
       header: "Piezas",
       meta: { align: "right" },
       enableSorting: false,
-      cell: () => <span className="text-slate-400 dark:text-slate-600">—</span>,
+      cell: ({ row }) => (
+        <span className="tabular-nums text-sm text-slate-600 dark:text-slate-300">
+          {row.original.piezas}
+        </span>
+      ),
     },
     {
-      // PLACEHOLDER: `PedidoListItem` no expone vendedor.
+      // Vendedor de la cotización de origen; `null` sin cotización (EC-571).
       id: "vendedor",
       header: "Vendedor",
       enableSorting: false,
-      cell: () => <span className="text-slate-400 dark:text-slate-600">—</span>,
+      cell: ({ row }) => (
+        <span className="block text-sm text-slate-600 dark:text-slate-300 truncate max-w-45">
+          {row.original.vendedor_nombre || "—"}
+        </span>
+      ),
     },
     {
       id: "created_at",
