@@ -24,6 +24,11 @@ interface UseCustomerFormParams {
   invalidateOrderOnboarding?: boolean;
   isRfcVerified?: boolean;
   /**
+   * El guardado rechazó el campo `rfc`: la verificación previa ya no vale y la
+   * vista debe soltar su estado verde para que se corrija el RFC.
+   */
+  onServerRfcError?: () => void;
+  /**
    * `true` solo en el formulario del módulo de clientes. Las altas rápidas
    * (cotización, accesos rápidos) no capturan crédito y no lo envían: el
    * backend lo deja en 0.
@@ -48,6 +53,9 @@ const normalizeOptionalCustomerFields = (
   telefono: values.telefono ?? "",
   correo: values.correo ?? "",
 });
+
+/** RFC como lo captura y lo guarda el backend: sin espacios y en mayúsculas. */
+export const normalizeRfc = (value: string) => value.trim().toUpperCase();
 
 type CreditPayload = Pick<CustomerCreate, "dias_credito" | "limite_credito">;
 
@@ -86,6 +94,7 @@ export function useCustomerForm({
   customerToEdit,
   invalidateOrderOnboarding = false,
   isRfcVerified = false,
+  onServerRfcError,
   includeCredit = false,
 }: UseCustomerFormParams) {
   // Contexto de empresa activa y catálogos SAT requeridos por el formulario.
@@ -136,6 +145,9 @@ export function useCustomerForm({
       return;
     }
     setServerErrors((prev) => ({ ...prev, [field]: error.message as string }));
+    if (field === "rfc") {
+      onServerRfcError?.();
+    }
   }) as never;
 
   const { mutateAsync: createCustomer, isPending: isCreating } = useCreateCustomer({
@@ -184,7 +196,11 @@ export function useCustomerForm({
       });
     }
 
-    if (!isRfcVerified) {
+    // El alta siempre exige verificar; la edición, solo si el RFC cambió: el
+    // guardado ya aceptó el que tiene.
+    const rfcChanged =
+      !isEditing || normalizeRfc(values.rfc) !== normalizeRfc(customerToEdit?.rfc ?? "");
+    if (rfcChanged && !isRfcVerified) {
       nextErrors.rfc = "Debes verificar el RFC antes de continuar";
       issuePaths.push("rfc");
     }

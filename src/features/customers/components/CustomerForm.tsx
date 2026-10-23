@@ -11,7 +11,7 @@ import { Loader } from "@/src/components/Loader";
 import { getCodigoPostalInputProps } from "@/src/utils/codigoPostal";
 import { sanitizeDecimalInput } from "@/src/utils/decimal";
 import { Customer } from "../interfaces/customer.interface";
-import { useCustomerForm } from "../hooks/useCustomerForm";
+import { normalizeRfc, useCustomerForm } from "../hooks/useCustomerForm";
 import { useVerifyRfc } from "../hooks/useVerifyRfc";
 
 interface CustomerFormProps {
@@ -35,7 +35,13 @@ const sanitizeIntegerInput = (raw: string): string =>
 
 type RfcValidationTone = "success" | "error";
 
-const normalizeRfc = (value: string) => value.trim().toUpperCase();
+// El backend dice exactamente qué revisó: formato y dígito verificador solo si
+// la empresa usa Facturama; si no, únicamente la longitud. Ninguno consulta el
+// estatus del RFC en el SAT, así que el mensaje no promete más que eso.
+const RFC_VERIFIED_MESSAGE = "Formato y dígito verificador correctos.";
+const RFC_ACCEPTED_WITHOUT_FORMAT_MESSAGE =
+  "RFC aceptado. Tu empresa no valida formato ni dígito verificador.";
+const RFC_VERIFY_FAILED_MESSAGE = "No se pudo validar el RFC en este momento. Intenta nuevamente.";
 
 export default function CustomerForm({
   onSuccess,
@@ -49,6 +55,14 @@ export default function CustomerForm({
   const [rfcValidationMessage, setRfcValidationMessage] = useState<string | null>(null);
   const [rfcValidationTone, setRfcValidationTone] = useState<RfcValidationTone | null>(null);
   const { verifyRfcAsync, isVerifyingRfc, resetVerifyRfc } = useVerifyRfc();
+
+  const handleResetRfcValidation = () => {
+    setIsRfcVerified(false);
+    setVerifiedRfc(null);
+    setRfcValidationMessage(null);
+    setRfcValidationTone(null);
+    resetVerifyRfc();
+  };
 
   // El custom hook concentra estado, validación Zod, submit y reset del formulario.
   const {
@@ -72,6 +86,9 @@ export default function CustomerForm({
     customerToEdit,
     invalidateOrderOnboarding,
     isRfcVerified,
+    // Si el guardado rechaza el RFC, se suelta el verde y se reactiva el input:
+    // el error del servidor queda debajo para corregirlo.
+    onServerRfcError: handleResetRfcValidation,
     includeCredit: showCreditFields,
   });
 
@@ -88,25 +105,41 @@ export default function CustomerForm({
     return "text-slate-500 dark:text-slate-400";
   }, [rfcValidationTone]);
 
-  const getInvalidRfcMessage = (status: {
-    FormatoCorrecto: boolean;
-    Activo: boolean;
-    Localizado: boolean;
-  }) => {
-    const reasons: string[] = [];
-    if (!status.FormatoCorrecto) reasons.push("formato incorrecto");
-    if (!status.Activo) reasons.push("RFC inactivo");
-    if (!status.Localizado) reasons.push("RFC no localizado");
-    if (reasons.length === 0) return "No fue posible validar el RFC.";
-    return `RFC inválido: ${reasons.join(", ")}.`;
-  };
+  const handleVerifyRfc = async (rfcToVerify: string) => {
+    const showVerifyFailed = (message: string) => {
+      setIsRfcVerified(false);
+      setVerifiedRfc(null);
+      setRfcValidationTone("error");
+      setRfcValidationMessage(message);
+    };
 
-  const handleResetRfcValidation = () => {
-    setIsRfcVerified(false);
-    setVerifiedRfc(null);
-    setRfcValidationMessage(null);
-    setRfcValidationTone(null);
-    resetVerifyRfc();
+    try {
+      const result = await verifyRfcAsync({
+        rfc: rfcToVerify,
+        // Al editar, la regla es la de la empresa de ESE cliente.
+        cliente: customerToEdit?.id ? Number(customerToEdit.id) : undefined,
+      });
+
+      // Si el RFC cambió mientras se verificaba, el resultado ya no le aplica.
+      if (normalizeRfc(form.state.values.rfc ?? "") !== rfcToVerify) {
+        return;
+      }
+
+      if (!result.valido) {
+        showVerifyFailed(result.error || RFC_VERIFY_FAILED_MESSAGE);
+        return;
+      }
+
+      setIsRfcVerified(true);
+      setVerifiedRfc(rfcToVerify);
+      setRfcValidationTone("success");
+      setRfcValidationMessage(
+        result.formato_verificado ? RFC_VERIFIED_MESSAGE : RFC_ACCEPTED_WITHOUT_FORMAT_MESSAGE
+      );
+      clearFieldErrors("rfc");
+    } catch {
+      showVerifyFailed(RFC_VERIFY_FAILED_MESSAGE);
+    }
   };
 
   if (isSatInfoLoading) {
@@ -284,37 +317,7 @@ export default function CustomerForm({
                               if (rfcToVerify.length < RFC_MIN_LENGTH) {
                                 return;
                               }
-
-                              try {
-                                const response = await verifyRfcAsync(rfcToVerify);
-                                const isValid =
-                                  response.FormatoCorrecto &&
-                                  response.Activo &&
-                                  response.Localizado;
-
-                                if (isValid) {
-                                  setIsRfcVerified(true);
-                                  setVerifiedRfc(rfcToVerify);
-                                  setRfcValidationTone("success");
-                                  setRfcValidationMessage(
-                                    "RFC validado correctamente ante el servicio fiscal. Puedes continuar."
-                                  );
-                                  clearFieldErrors("rfc");
-                                  return;
-                                }
-
-                                setIsRfcVerified(false);
-                                setVerifiedRfc(null);
-                                setRfcValidationTone("error");
-                                setRfcValidationMessage(getInvalidRfcMessage(response));
-                              } catch {
-                                setIsRfcVerified(false);
-                                setVerifiedRfc(null);
-                                setRfcValidationTone("error");
-                                setRfcValidationMessage(
-                                  "No se pudo validar el RFC en este momento. Intenta nuevamente."
-                                );
-                              }
+                              await handleVerifyRfc(rfcToVerify);
                             }}
                           >
                             {isVerifyingRfc ? "Verificando RFC..." : "Verificar RFC"}

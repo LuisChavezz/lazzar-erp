@@ -123,9 +123,39 @@ export interface CustomerCreate {
   limite_credito?: string;
 }
 
+/**
+ * Respuesta de Facturama (`/customers/status`). El flujo de clientes ya no la
+ * usa: sigue aquí porque la importa `verifyRfc.server.ts`, del Route Handler
+ * `/api/facturama/customers/status`, del que aún depende Proveedores.
+ */
 export interface VerifyRfcResponse {
   Rfc: string;
   FormatoCorrecto: boolean;
   Activo: boolean;
   Localizado: boolean;
+}
+
+/** Parámetros de `GET /terceros/clientes/verificar-rfc/`. */
+export interface VerifyCustomerRfcParams {
+  rfc: string;
+  /** Solo al editar: aplica la regla de la empresa de ESE cliente. */
+  cliente?: number;
+}
+
+/**
+ * Resultado de `GET /terceros/clientes/verificar-rfc/`: el mismo veredicto y el
+ * mismo mensaje que daría guardar ese RFC. No revisa duplicados ni el estatus
+ * en el SAT.
+ */
+export interface CustomerRfcVerification {
+  /** RFC normalizado (sin espacios, en mayúsculas). */
+  rfc: string;
+  valido: boolean;
+  /** Mensaje con el que el guardado rechazaría el campo `rfc`; `null` si es válido. */
+  error: string | null;
+  /**
+   * `true` si se revisaron formato y dígito verificador (la empresa usa
+   * Facturama); `false` si solo se revisó la longitud.
+   */
+  formato_verificado: boolean;
 }

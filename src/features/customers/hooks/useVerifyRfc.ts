@@ -1,12 +1,12 @@
 "use client";
 
 import { useMutation } from "@tanstack/react-query";
-import { verifyRfc } from "../services/actions";
-import { VerifyRfcResponse } from "../interfaces/customer.interface";
+import { verifyCustomerRfc } from "../services/actions";
+import { CustomerRfcVerification, VerifyCustomerRfcParams } from "../interfaces/customer.interface";
 
 export const useVerifyRfc = () => {
-  const mutation = useMutation<VerifyRfcResponse, unknown, string>({
-    mutationFn: (rfc: string) => verifyRfc(rfc),
+  const mutation = useMutation<CustomerRfcVerification, unknown, VerifyCustomerRfcParams>({
+    mutationFn: (params) => verifyCustomerRfc(params),
   });
 
   return {
