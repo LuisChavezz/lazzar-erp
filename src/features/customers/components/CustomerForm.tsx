@@ -1,12 +1,14 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useStore } from "@tanstack/react-form";
 import { Button } from "@/src/components/Button";
 import { FormInput } from "@/src/components/FormInput";
 import { FormSelect } from "@/src/components/FormSelect";
 import { FormCancelButton, FormSubmitButton } from "@/src/components/FormButtons";
 import { ClientesIcon, TaxIcon, WalletIcon } from "@/src/components/Icons";
 import { Loader } from "@/src/components/Loader";
+import { getCodigoPostalInputProps } from "@/src/utils/codigoPostal";
 import { sanitizeDecimalInput } from "@/src/utils/decimal";
 import { Customer } from "../interfaces/customer.interface";
 import { useCustomerForm } from "../hooks/useCustomerForm";
@@ -61,6 +63,7 @@ export default function CustomerForm({
     getError,
     clearFieldErrors,
     validateField,
+    revalidateCodigoPostal,
     handleReset,
     handleFormSubmit,
   } = useCustomerForm({
@@ -71,6 +74,9 @@ export default function CustomerForm({
     isRfcVerified,
     includeCredit: showCreditFields,
   });
+
+  // El RFC decide qué CP admite el input (el extranjero captura texto libre).
+  const currentRfc = useStore(form.store, (state) => state.values.rfc);
 
   const rfcFeedbackClassName = useMemo(() => {
     if (rfcValidationTone === "success") {
@@ -246,6 +252,7 @@ export default function CustomerForm({
                           const nextRfc = normalizeRfc(event.target.value);
                           field.handleChange(nextRfc);
                           clearFieldErrors("rfc");
+                          revalidateCodigoPostal();
                           resetVerifyRfc();
                           setRfcValidationMessage(null);
                           setRfcValidationTone(null);
@@ -443,6 +450,7 @@ export default function CustomerForm({
                 {(field) => (
                   <FormInput
                     name={field.name}
+                    {...getCodigoPostalInputProps(currentRfc)}
                     value={field.state.value}
                     onChange={(event) => {
                       field.handleChange(event.target.value);

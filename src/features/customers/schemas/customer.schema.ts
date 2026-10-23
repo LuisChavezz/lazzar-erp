@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { MONEY_REGEX } from "@/src/features/accounts-receivable/schemas/register-pending-invoice.schema";
+import { getCodigoPostalError } from "@/src/utils/codigoPostal";
 import { normalizeCapturedDecimal } from "@/src/utils/decimal";
 import { optionalEmailSchema } from "@/src/utils/optionalEmailSchema";
 
@@ -13,7 +14,7 @@ export const DIAS_CREDITO_MAX = 365;
 /** Decimal(14,2) del backend: 12 dígitos enteros como máximo. */
 const LIMITE_CREDITO_MAX_ENTEROS = 12;
 
-export const CustomerFormSchema = z.object({
+const CustomerFormObject = z.object({
   razon_social: z.string().min(1, "Requerido"),
   nombre: z.string().min(1, "Requerido"),
   telefono: z.string().optional(),
@@ -51,4 +52,22 @@ export const CustomerFormSchema = z.object({
     ),
 });
 
-export type CustomerFormValues = z.output<typeof CustomerFormSchema>;
+/** Esquema de cada campo, para validar en blur: el esquema completo ya no expone `.shape`. */
+export const CustomerFormFields = CustomerFormObject.shape;
+
+/**
+ * El CP depende del RFC capturado en el MISMO formulario: el extranjero
+ * (`XEXX010101000`) no exige los 5 dígitos, igual que el backend al guardar.
+ */
+export const getCustomerCodigoPostalError = (
+  values: Pick<CustomerFormValues, "codigo_postal" | "rfc">
+): string | null => getCodigoPostalError(values.codigo_postal, values.rfc);
+
+export const CustomerFormSchema = CustomerFormObject.superRefine((values, ctx) => {
+  const codigoPostalError = getCustomerCodigoPostalError(values);
+  if (codigoPostalError) {
+    ctx.addIssue({ code: "custom", message: codigoPostalError, path: ["codigo_postal"] });
+  }
+});
+
+export type CustomerFormValues = z.output<typeof CustomerFormObject>;

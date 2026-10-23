@@ -146,6 +146,7 @@ export const CustomerList = () => {
           <CustomerAddressForm
             key={addressToEdit?.id ?? "new"}
             customerId={Number(selectedCustomerForAddress.id)}
+            customerRfc={selectedCustomerForAddress.rfc}
             addressToEdit={addressToEdit}
             onSuccess={handleAddressFormSuccess}
           />

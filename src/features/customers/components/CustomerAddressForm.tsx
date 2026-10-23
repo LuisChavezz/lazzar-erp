@@ -4,11 +4,14 @@ import { FormInput } from "@/src/components/FormInput";
 import { FormToggle } from "@/src/components/FormToggle";
 import { FormCancelButton, FormSubmitButton } from "@/src/components/FormButtons";
 import { HomeIcon, MapPinIcon } from "@/src/components/Icons";
+import { getCodigoPostalInputProps } from "@/src/utils/codigoPostal";
 import { useCustomerAddressForm } from "../hooks/useCustomerAddressForm";
 import { CustomerAddress } from "../interfaces/customer-address.interface";
 
 interface CustomerAddressFormProps {
   customerId: number;
+  /** RFC guardado del cliente: decide la regla del CP (ver `useCustomerAddressForm`). */
+  customerRfc: string;
   /** Dirección a editar. Si se provee, el formulario opera en modo edición. */
   addressToEdit?: CustomerAddress | null;
   onSuccess?: () => void;
@@ -16,6 +19,7 @@ interface CustomerAddressFormProps {
 
 export default function CustomerAddressForm({
   customerId,
+  customerRfc,
   addressToEdit,
   onSuccess,
 }: CustomerAddressFormProps) {
@@ -29,7 +33,7 @@ export default function CustomerAddressForm({
     validateField,
     handleReset,
     handleFormSubmit,
-  } = useCustomerAddressForm({ customerId, addressToEdit, onSuccess });
+  } = useCustomerAddressForm({ customerId, customerRfc, addressToEdit, onSuccess });
 
   return (
     <form ref={formRef} onSubmit={handleFormSubmit} className="w-full">
@@ -211,6 +215,7 @@ export default function CustomerAddressForm({
                 <FormInput
                   label="Código Postal"
                   name="codigo_postal"
+                  {...getCodigoPostalInputProps(customerRfc)}
                   placeholder="00000"
                   value={field.state.value}
                   onChange={(e) => {

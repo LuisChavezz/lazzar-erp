@@ -5,7 +5,12 @@ import { useMemo, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import { normalizeCapturedDecimal } from "@/src/utils/decimal";
 import { scrollToFirstValidationError } from "@/src/utils/scrollToFirstValidationError";
-import { CustomerFormSchema, CustomerFormValues } from "../schemas/customer.schema";
+import {
+  CustomerFormFields,
+  CustomerFormSchema,
+  CustomerFormValues,
+  getCustomerCodigoPostalError,
+} from "../schemas/customer.schema";
 import { Customer, CustomerCreate } from "../interfaces/customer.interface";
 import { useCreateCustomer } from "./useCreateCustomer";
 import { useUpdateCustomer } from "./useUpdateCustomer";
@@ -159,26 +164,6 @@ export function useCustomerForm({
     });
   };
 
-  // Validación por campo (onBlur) usando el schema Zod.
-  const validateField = (field: CustomerFormField, value: CustomerFormValues[CustomerFormField]) => {
-    const fieldSchema = CustomerFormSchema.shape[field];
-    const parsed = fieldSchema.safeParse(value);
-    if (parsed.success) {
-      setClientErrors((prev) => {
-        if (!(field in prev)) {
-          return prev;
-        }
-        const next = { ...prev };
-        delete next[field];
-        return next;
-      });
-      return true;
-    }
-    const message = parsed.error.issues[0]?.message ?? "Valor inválido";
-    setClientErrors((prev) => ({ ...prev, [field]: message }));
-    return false;
-  };
-
   // Validación completa (onSubmit) con Zod para frenar envío inválido.
   const validateForm = (values: CustomerFormValues) => {
     const parsed = CustomerFormSchema.safeParse(values);
@@ -311,6 +296,52 @@ export function useCustomerForm({
 
   const isPending = isCreating || isUpdating;
 
+  // Error de un campo según su schema Zod y, para el CP, según el RFC que el
+  // formulario tiene en ese momento.
+  const getFieldMessage = (
+    field: CustomerFormField,
+    value: CustomerFormValues[CustomerFormField]
+  ): string | null => {
+    const parsed = CustomerFormFields[field].safeParse(value);
+    if (!parsed.success) {
+      return parsed.error.issues[0]?.message ?? "Valor inválido";
+    }
+    if (field === "codigo_postal") {
+      return getCustomerCodigoPostalError({ ...form.state.values, codigo_postal: String(value) });
+    }
+    return null;
+  };
+
+  // Validación por campo (onBlur).
+  const validateField = (field: CustomerFormField, value: CustomerFormValues[CustomerFormField]) => {
+    const message = getFieldMessage(field, value);
+    if (!message) {
+      setClientErrors((prev) => {
+        if (!(field in prev)) {
+          return prev;
+        }
+        const next = { ...prev };
+        delete next[field];
+        return next;
+      });
+      return true;
+    }
+    setClientErrors((prev) => ({ ...prev, [field]: message }));
+    return false;
+  };
+
+  // Cambiar el RFC puede volver válido (o inválido) el CP ya capturado: se
+  // revalida con el RFC nuevo. Un CP vacío se deja en paz para no adelantar el
+  // "Requerido" a quien aún no llega a ese campo.
+  const revalidateCodigoPostal = () => {
+    const codigoPostal = form.state.values.codigo_postal;
+    if (!codigoPostal) {
+      return;
+    }
+    clearFieldErrors("codigo_postal");
+    validateField("codigo_postal", codigoPostal);
+  };
+
   // Limpieza/restablecimiento manual:
   // - creación: vuelve a emptyValues
   // - edición: vuelve a los valores cargados del cliente (editValues)
@@ -359,6 +390,7 @@ export function useCustomerForm({
     getError,
     clearFieldErrors,
     validateField,
+    revalidateCodigoPostal,
     handleReset,
     handleTextChange,
     handleNumberChange,

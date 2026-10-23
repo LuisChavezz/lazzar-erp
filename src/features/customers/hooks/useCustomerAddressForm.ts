@@ -3,6 +3,7 @@
 import { useMemo, useRef, useState } from "react";
 import { useForm } from "@tanstack/react-form";
 import toast from "react-hot-toast";
+import { getCodigoPostalError } from "@/src/utils/codigoPostal";
 import { scrollToFirstValidationError } from "@/src/utils/scrollToFirstValidationError";
 import {
   CustomerAddressFormSchema,
@@ -17,6 +18,11 @@ type AddressFormField = keyof CustomerAddressFormValues;
 
 interface UseCustomerAddressFormParams {
   customerId: number;
+  /**
+   * RFC GUARDADO del cliente: el backend decide con él si el CP de la dirección
+   * debe tener 5 dígitos (el extranjero, `XEXX010101000`, queda exento).
+   */
+  customerRfc: string;
   /** Direccion a editar. Si se provee, el formulario opera en modo edicion. */
   addressToEdit?: CustomerAddress | null;
   onSuccess?: () => void;
@@ -39,6 +45,7 @@ const emptyValues: CustomerAddressFormValues = {
 
 export function useCustomerAddressForm({
   customerId,
+  customerRfc,
   addressToEdit,
   onSuccess,
 }: UseCustomerAddressFormParams) {
@@ -76,15 +83,21 @@ export function useCustomerAddressForm({
     defaultValues: initialValues,
     onSubmit: async ({ value }) => {
       const parsed = CustomerAddressFormSchema.safeParse(value);
-
+      const nextErrors: Partial<Record<AddressFormField, string>> = {};
       if (!parsed.success) {
-        const nextErrors: Partial<Record<AddressFormField, string>> = {};
         for (const issue of parsed.error.issues) {
           const field = issue.path[0] as AddressFormField;
           if (field && !nextErrors[field]) {
             nextErrors[field] = issue.message;
           }
         }
+      }
+      const codigoPostalError = getCodigoPostalError(value.codigo_postal, customerRfc);
+      if (codigoPostalError && !nextErrors.codigo_postal) {
+        nextErrors.codigo_postal = codigoPostalError;
+      }
+
+      if (!parsed.success || Object.keys(nextErrors).length > 0) {
         setClientErrors(nextErrors);
         scrollToFirstValidationError(formRef.current, Object.keys(nextErrors));
         return;
@@ -137,11 +150,16 @@ export function useCustomerAddressForm({
   ) => {
     const fieldSchema = CustomerAddressFormSchema.shape[field];
     const parsed = fieldSchema.safeParse(value);
-    if (parsed.success) {
+    let message: string | null = null;
+    if (!parsed.success) {
+      message = parsed.error.issues[0]?.message ?? "Valor invalido";
+    } else if (field === "codigo_postal") {
+      message = getCodigoPostalError(String(value), customerRfc);
+    }
+    if (!message) {
       clearFieldError(field);
       return true;
     }
-    const message = parsed.error.issues[0]?.message ?? "Valor invalido";
     setClientErrors((prev) => ({ ...prev, [field]: message }));
     return false;
   };
