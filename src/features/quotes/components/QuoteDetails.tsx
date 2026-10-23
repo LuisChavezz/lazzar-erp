@@ -7,6 +7,7 @@ import { QuoteComentariosHistory } from "./QuoteComentariosHistory";
 import { useQuote, type QuoteDetailSource } from "../hooks/useQuote";
 import { useQuoteComentarios } from "../hooks/useQuoteComentarios";
 import { QuoteDetailsProducts } from "./QuoteDetailsProducts";
+import { formatQuoteAmount } from "../utils/formatQuoteAmount";
 import { RecompraBadge } from "./RecompraBadge";
 import {
   formatQuoteDateTime,
@@ -57,6 +58,12 @@ export const QuoteDetails = ({ quoteId, source }: QuoteDetailsProps) => {
   const currency = currencies?.find((item) => item.id === quote.moneda);
   // Mientras el catálogo carga o si la PK no aparece, "-" (nunca el id crudo).
   const currencyLabel = currency ? `${currency.codigo_iso} - ${currency.nombre}` : null;
+  // Importes con el código de la moneda ("USD 140.48"): el "$" es igual en
+  // pesos y en dólares. Sin la moneda en el catálogo, el formato de siempre.
+  const formatAmount = (value?: string | number | null) =>
+    currency && value !== null && value !== undefined && value !== ""
+      ? formatQuoteAmount(Number(value) || 0, currency.codigo_iso)
+      : toCurrencyOrDash(value);
   const piezas = quote.detalles.reduce( // Sumar de todos los detalles
     (total, detalle) => total + detalle.tallas.reduce((sum, talla) => sum + (Number(talla.cantidad) || 0), 0),
     0
@@ -85,7 +92,7 @@ export const QuoteDetails = ({ quoteId, source }: QuoteDetailsProps) => {
         <div className="rounded-xl border border-slate-200 dark:border-white/10 p-4 bg-white dark:bg-white/5">
           <p className="text-xs uppercase text-slate-400 font-semibold">Total</p>
           <p className="text-sm font-semibold text-slate-800 dark:text-white mt-2">
-            {toCurrencyOrDash(quote.gran_total)}
+            {formatAmount(quote.gran_total)}
           </p>
         </div>
         <div className="rounded-xl border border-slate-200 dark:border-white/10 p-4 bg-white dark:bg-white/5">
@@ -204,7 +211,7 @@ export const QuoteDetails = ({ quoteId, source }: QuoteDetailsProps) => {
           <div>
             <p className="text-xs uppercase text-slate-400 font-semibold">Totales</p>
             <p className="text-sm font-semibold text-slate-800 dark:text-white">
-              {toCurrencyOrDash(quote.gran_total)}
+              {formatAmount(quote.gran_total)}
             </p>
           </div>
           <div className="grid grid-cols-1 gap-3">
@@ -223,7 +230,7 @@ export const QuoteDetails = ({ quoteId, source }: QuoteDetailsProps) => {
             <div>
               <p className="text-xs uppercase text-slate-400 font-semibold">Subtotal</p>
               <p className="text-sm text-slate-700 dark:text-slate-300">
-                {toCurrencyOrDash(quote.subtotal)}
+                {formatAmount(quote.subtotal)}
               </p>
             </div>
             <div>
@@ -232,14 +239,14 @@ export const QuoteDetails = ({ quoteId, source }: QuoteDetailsProps) => {
                 {toDisplayValue(quote.iva)}%
                 {/* Sin `importe_iva` (oculto o no enviado) queda solo la tasa. */}
                 {quote.importe_iva != null && quote.importe_iva !== "" && (
-                  <> · {toCurrencyOrDash(quote.importe_iva)}</>
+                  <> · {formatAmount(quote.importe_iva)}</>
                 )}
               </p>
             </div>
             <div>
               <p className="text-xs uppercase text-slate-400 font-semibold">Anticipo</p>
               <p className="text-sm text-slate-700 dark:text-slate-300">
-                {toCurrencyOrDash(quote.anticipo)}
+                {formatAmount(quote.anticipo)}
               </p>
             </div>
           </div>
@@ -260,7 +267,7 @@ export const QuoteDetails = ({ quoteId, source }: QuoteDetailsProps) => {
             ))}
           </div>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-3">
-            Monto: <span className="font-medium text-slate-700 dark:text-slate-300">{toCurrencyOrDash(quote.monto)}</span>
+            Monto: <span className="font-medium text-slate-700 dark:text-slate-300">{formatAmount(quote.monto)}</span>
           </p>
         </div>
       </div>
@@ -322,10 +329,10 @@ export const QuoteDetails = ({ quoteId, source }: QuoteDetailsProps) => {
                     <p className="text-slate-700 dark:text-slate-300 min-w-0 truncate">{servicio.nombre}</p>
                     <div className="flex items-center gap-2 shrink-0 text-right">
                       <span className="text-xs text-slate-400 dark:text-slate-500 whitespace-nowrap">
-                        {servicio.cantidad} × {toCurrencyOrDash(servicio.monto)}
+                        {servicio.cantidad} × {formatAmount(servicio.monto)}
                       </span>
                       <span className="font-semibold text-slate-800 dark:text-slate-100 whitespace-nowrap">
-                        {toCurrencyOrDash(total)}
+                        {formatAmount(total)}
                       </span>
                     </div>
                   </div>
@@ -340,7 +347,7 @@ export const QuoteDetails = ({ quoteId, source }: QuoteDetailsProps) => {
 
       <div className="rounded-xl border border-slate-200 dark:border-white/10 p-4 bg-white dark:bg-white/5">
         <p className="text-xs uppercase text-slate-400 font-semibold mb-3">Detalle de productos</p>
-        <QuoteDetailsProducts details={quote.detalles} />
+        <QuoteDetailsProducts details={quote.detalles} formatAmount={formatAmount} />
       </div>
     </div>
   );

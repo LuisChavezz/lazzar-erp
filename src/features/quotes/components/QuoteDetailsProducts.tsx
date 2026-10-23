@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { EyeIcon } from "@/src/components/Icons";
 import { QuoteById } from "../interfaces/quote.interface";
-import { getQuoteDetailProductName, toCurrencyOrDash } from "../utils/quoteDetailsFormatters";
+import { getQuoteDetailProductName } from "../utils/quoteDetailsFormatters";
 import {
   getTipoPedidoConfig,
   TIPO_PEDIDO,
@@ -19,9 +19,11 @@ interface ActiveView {
 
 interface QuoteDetailsProductsProps {
   details: QuoteById["detalles"];
+  /** Formato de importes en la moneda de la cotización (lo resuelve `QuoteDetails`). */
+  formatAmount: (value?: string | number | null) => string;
 }
 
-export const QuoteDetailsProducts = ({ details }: QuoteDetailsProductsProps) => {
+export const QuoteDetailsProducts = ({ details, formatAmount }: QuoteDetailsProductsProps) => {
   const [activeView, setActiveView] = useState<ActiveView | null>(null);
   // Misma fuente que el badge de la tabla de captura y el de la columna "Tipo"
   // del listado, para que las tres vistas nombren y coloreen igual.
@@ -100,7 +102,7 @@ export const QuoteDetailsProducts = ({ details }: QuoteDetailsProductsProps) => 
                 </div>
                 <div className="text-xs text-slate-500 dark:text-slate-400">
                   Subtotal línea:{" "}
-                  {toCurrencyOrDash(
+                  {formatAmount(
                     detalle.tallas.reduce(
                       (acc, talla) => acc + Number(talla.precio_unitario) * Number(talla.cantidad),
                       0
@@ -184,10 +186,10 @@ export const QuoteDetailsProducts = ({ details }: QuoteDetailsProductsProps) => 
                           <td className="px-3 py-2 text-slate-700 dark:text-slate-200">{talla.talla_nombre}</td>
                           <td className="px-3 py-2 text-slate-700 dark:text-slate-200">{talla.cantidad}</td>
                           <td className="px-3 py-2 text-slate-700 dark:text-slate-200">
-                            {toCurrencyOrDash(talla.precio_unitario)}
+                            {formatAmount(talla.precio_unitario)}
                           </td>
                           <td className="px-3 py-2 text-slate-700 dark:text-slate-200">
-                            {toCurrencyOrDash(Number(talla.precio_unitario) * Number(talla.cantidad))}
+                            {formatAmount(Number(talla.precio_unitario) * Number(talla.cantidad))}
                           </td>
                           <td className="px-3 py-2">
                             <span
