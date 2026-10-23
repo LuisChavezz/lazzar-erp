@@ -99,6 +99,8 @@ export interface OperationsQuote {
   pedido_folio: string | null;
   piezas: number;
   importe_sin_iva: number;
+  /** IVA en importe, texto con 2 decimales. Solo lectura (EC-571). */
+  importe_iva: string;
   estatus: number;
   autorizada_at: string | null;
   cambios_solicitados_at: string | null;

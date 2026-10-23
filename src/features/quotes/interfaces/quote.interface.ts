@@ -50,6 +50,8 @@ export interface Quote {
   uso_cfdi: string;
   gran_total: string;
   importe_sin_iva: string;
+  /** IVA en importe, texto con 2 decimales (`gran_total - importe_sin_iva`). Solo lectura (EC-571). */
+  importe_iva: string;
   piezas: number;
   autorizada_at: string | null;
   cambios_solicitados_at: string | null;
@@ -240,6 +242,12 @@ export interface QuoteById {
   ieps: string;
   iva: number;
   gran_total: string;
+  /**
+   * IVA en importe, texto con 2 decimales (`gran_total - importe_sin_iva`).
+   * Solo lectura (EC-571). Opcional: el detalle lo omite junto con
+   * `importe_sin_iva` cuando el backend oculta los campos contables.
+   */
+  importe_iva?: string;
   empresa: number;
   vendedor: number;
   sucursal: number;

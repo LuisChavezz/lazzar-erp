@@ -1,6 +1,7 @@
 "use client";
 
 import { RejectIcon } from "@/src/components/Icons";
+import { useCurrencies } from "@/src/features/currency/hooks/useCurrencies";
 import { getStatusStyles } from "../utils/getStatusStyle";
 import { QuoteComentariosHistory } from "./QuoteComentariosHistory";
 import { useQuote, type QuoteDetailSource } from "../hooks/useQuote";
@@ -30,6 +31,9 @@ export const QuoteDetails = ({ quoteId, source }: QuoteDetailsProps) => {
   // Arranca junto con el detalle, antes de los retornos de carga/error: si
   // viviera dentro de la sección, esperaría a que el detalle respondiera.
   const comentariosQuery = useQuoteComentarios(quoteId, source);
+  // La cotización solo trae la PK de la moneda; el código y el nombre salen
+  // del catálogo (misma consulta que el formulario).
+  const { data: currencies } = useCurrencies();
 
   if (isLoading) {
     return (
@@ -50,6 +54,9 @@ export const QuoteDetails = ({ quoteId, source }: QuoteDetailsProps) => {
   }
 
   const statusClassName = getStatusStyles(quote);
+  const currency = currencies?.find((item) => item.id === quote.moneda);
+  // Mientras el catálogo carga o si la PK no aparece, "-" (nunca el id crudo).
+  const currencyLabel = currency ? `${currency.codigo_iso} - ${currency.nombre}` : null;
   const piezas = quote.detalles.reduce( // Sumar de todos los detalles
     (total, detalle) => total + detalle.tallas.reduce((sum, talla) => sum + (Number(talla.cantidad) || 0), 0),
     0
@@ -185,9 +192,9 @@ export const QuoteDetails = ({ quoteId, source }: QuoteDetailsProps) => {
               </p>
             </div>
             <div>
-              <p className="text-xs uppercase text-slate-400 font-semibold">Moneda ID</p>
+              <p className="text-xs uppercase text-slate-400 font-semibold">Moneda</p>
               <p className="text-sm text-slate-700 dark:text-slate-300">
-                {toDisplayValue(quote.moneda)}
+                {toDisplayValue(currencyLabel)}
               </p>
             </div>
           </div>
@@ -223,6 +230,10 @@ export const QuoteDetails = ({ quoteId, source }: QuoteDetailsProps) => {
               <p className="text-xs uppercase text-slate-400 font-semibold">IVA</p>
               <p className="text-sm text-slate-700 dark:text-slate-300">
                 {toDisplayValue(quote.iva)}%
+                {/* Sin `importe_iva` (oculto o no enviado) queda solo la tasa. */}
+                {quote.importe_iva != null && quote.importe_iva !== "" && (
+                  <> · {toCurrencyOrDash(quote.importe_iva)}</>
+                )}
               </p>
             </div>
             <div>

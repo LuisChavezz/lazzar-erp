@@ -331,7 +331,7 @@ export const PendingApprovalQueue = () => {
           maxWidth="1000px"
           title={
             <DialogHeader
-              title={`Detalles del pedido #${activeOperationsQuote.id}`}
+              title={`Detalles de la cotización #${activeOperationsQuote.id}`}
               subtitle={
                 activeOperationsQuote.cliente_nombre ||
                 activeOperationsQuote.cliente_razon_social
