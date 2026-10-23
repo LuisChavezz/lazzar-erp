@@ -35,6 +35,7 @@ import { EditEmbroideryDialog } from "./EditEmbroideryDialog";
 import { EditReflectiveDialog } from "./EditReflectiveDialog";
 import { EditSizesDialog } from "./EditSizesDialog";
 import { QuoteCreationSuccessMessage } from "./QuoteCreationSuccessMessage";
+import { QuoteFormErrorSummaryDialog } from "./QuoteFormErrorSummaryDialog";
 
 const LazyCustomerForm = dynamic(
   () => import("../../customers/components/CustomerForm"),
@@ -156,6 +157,7 @@ export function QuoteFormContent({
   usoCfdiOptions,
   currencyOptions,
   monedaCodigo,
+  errorSummaryProps,
   formasPagoOptions,
   metodosPagoOptions,
   sizes,
@@ -1827,29 +1829,45 @@ export function QuoteFormContent({
                     Flete
                   </label>
                   <form.Field name="flete">
-                    {(field) => (
-                      <div className="relative">
-                        <span className="absolute left-2 top-1.5 text-xs text-slate-400">
-                          {monedaCodigo ?? ""}
-                        </span>
-                        <input
-                          type="number"
-                          aria-label="Flete"
-                          className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-slate-800 rounded-lg pl-11 pr-2 py-1.5 text-sm text-right focus:outline-none focus:ring-1 focus:ring-sky-500"
-                          name={field.name}
-                          value={field.state.value}
-                          onChange={(event) => {
-                            const nextValue = Number(event.target.value);
-                            field.handleChange(Number.isNaN(nextValue) ? 0 : nextValue);
-                            clearFieldErrors("flete");
-                          }}
-                          onBlur={() => {
-                            field.handleBlur();
-                            validateField("flete", field.state.value);
-                          }}
-                        />
-                      </div>
-                    )}
+                    {(field) => {
+                      const amountError = getFieldError(getError("flete"));
+                      return (
+                        <div>
+                          <div className="relative">
+                            <span className="absolute left-2 top-1.5 text-xs text-slate-400">
+                              {monedaCodigo ?? ""}
+                            </span>
+                            <input
+                              type="number"
+                              aria-label="Flete"
+                              aria-invalid={Boolean(amountError)}
+                              aria-describedby={amountError ? "flete-error" : undefined}
+                              className={`w-full bg-slate-50 dark:bg-black/20 border rounded-lg pl-11 pr-2 py-1.5 text-sm text-right focus:outline-none focus:ring-1 focus:ring-sky-500 ${
+                                amountError
+                                  ? "border-rose-400 dark:border-rose-500"
+                                  : "border-slate-200 dark:border-slate-800"
+                              }`}
+                              name={field.name}
+                              value={field.state.value}
+                              onChange={(event) => {
+                                const nextValue = Number(event.target.value);
+                                field.handleChange(Number.isNaN(nextValue) ? 0 : nextValue);
+                                clearFieldErrors("flete");
+                              }}
+                              onBlur={() => {
+                                field.handleBlur();
+                                validateField("flete", field.state.value);
+                              }}
+                            />
+                          </div>
+                          {amountError && (
+                            <p id="flete-error" className="mt-1 text-[10px] text-rose-600 dark:text-rose-400">
+                              {amountError.message}
+                            </p>
+                          )}
+                        </div>
+                      );
+                    }}
                   </form.Field>
                 </div>
                 <div className="space-y-1">
@@ -1857,29 +1875,45 @@ export function QuoteFormContent({
                     Seguros
                   </label>
                   <form.Field name="seguros">
-                    {(field) => (
-                      <div className="relative">
-                        <span className="absolute left-2 top-1.5 text-xs text-slate-400">
-                          {monedaCodigo ?? ""}
-                        </span>
-                        <input
-                          type="number"
-                          aria-label="Seguros"
-                          className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-slate-800 rounded-lg pl-11 pr-2 py-1.5 text-sm text-right focus:outline-none focus:ring-1 focus:ring-sky-500"
-                          name={field.name}
-                          value={field.state.value}
-                          onChange={(event) => {
-                            const nextValue = Number(event.target.value);
-                            field.handleChange(Number.isNaN(nextValue) ? 0 : nextValue);
-                            clearFieldErrors("seguros");
-                          }}
-                          onBlur={() => {
-                            field.handleBlur();
-                            validateField("seguros", field.state.value);
-                          }}
-                        />
-                      </div>
-                    )}
+                    {(field) => {
+                      const amountError = getFieldError(getError("seguros"));
+                      return (
+                        <div>
+                          <div className="relative">
+                            <span className="absolute left-2 top-1.5 text-xs text-slate-400">
+                              {monedaCodigo ?? ""}
+                            </span>
+                            <input
+                              type="number"
+                              aria-label="Seguros"
+                              aria-invalid={Boolean(amountError)}
+                              aria-describedby={amountError ? "seguros-error" : undefined}
+                              className={`w-full bg-slate-50 dark:bg-black/20 border rounded-lg pl-11 pr-2 py-1.5 text-sm text-right focus:outline-none focus:ring-1 focus:ring-sky-500 ${
+                                amountError
+                                  ? "border-rose-400 dark:border-rose-500"
+                                  : "border-slate-200 dark:border-slate-800"
+                              }`}
+                              name={field.name}
+                              value={field.state.value}
+                              onChange={(event) => {
+                                const nextValue = Number(event.target.value);
+                                field.handleChange(Number.isNaN(nextValue) ? 0 : nextValue);
+                                clearFieldErrors("seguros");
+                              }}
+                              onBlur={() => {
+                                field.handleBlur();
+                                validateField("seguros", field.state.value);
+                              }}
+                            />
+                          </div>
+                          {amountError && (
+                            <p id="seguros-error" className="mt-1 text-[10px] text-rose-600 dark:text-rose-400">
+                              {amountError.message}
+                            </p>
+                          )}
+                        </div>
+                      );
+                    }}
                   </form.Field>
                 </div>
                 <div className="space-y-1">
@@ -1887,29 +1921,45 @@ export function QuoteFormContent({
                     A cuenta (Anticipo)
                   </label>
                   <form.Field name="anticipo">
-                    {(field) => (
-                      <div className="relative">
-                        <span className="absolute left-2 top-1.5 text-xs text-slate-400">
-                          {monedaCodigo ?? ""}
-                        </span>
-                        <input
-                          type="number"
-                          aria-label="Anticipo"
-                          className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-slate-800 rounded-lg pl-11 pr-2 py-1.5 text-sm text-right focus:outline-none focus:ring-1 focus:ring-sky-500 text-rose-500 font-medium"
-                          name={field.name}
-                          value={field.state.value}
-                          onChange={(event) => {
-                            const nextValue = Number(event.target.value);
-                            field.handleChange(Number.isNaN(nextValue) ? 0 : nextValue);
-                            clearFieldErrors("anticipo");
-                          }}
-                          onBlur={() => {
-                            field.handleBlur();
-                            validateField("anticipo", field.state.value);
-                          }}
-                        />
-                      </div>
-                    )}
+                    {(field) => {
+                      const amountError = getFieldError(getError("anticipo"));
+                      return (
+                        <div>
+                          <div className="relative">
+                            <span className="absolute left-2 top-1.5 text-xs text-slate-400">
+                              {monedaCodigo ?? ""}
+                            </span>
+                            <input
+                              type="number"
+                              aria-label="Anticipo"
+                              aria-invalid={Boolean(amountError)}
+                              aria-describedby={amountError ? "anticipo-error" : undefined}
+                              className={`w-full bg-slate-50 dark:bg-black/20 border rounded-lg pl-11 pr-2 py-1.5 text-sm text-right focus:outline-none focus:ring-1 focus:ring-sky-500 text-rose-500 font-medium ${
+                                amountError
+                                  ? "border-rose-400 dark:border-rose-500"
+                                  : "border-slate-200 dark:border-slate-800"
+                              }`}
+                              name={field.name}
+                              value={field.state.value}
+                              onChange={(event) => {
+                                const nextValue = Number(event.target.value);
+                                field.handleChange(Number.isNaN(nextValue) ? 0 : nextValue);
+                                clearFieldErrors("anticipo");
+                              }}
+                              onBlur={() => {
+                                field.handleBlur();
+                                validateField("anticipo", field.state.value);
+                              }}
+                            />
+                          </div>
+                          {amountError && (
+                            <p id="anticipo-error" className="mt-1 text-[10px] text-rose-600 dark:text-rose-400">
+                              {amountError.message}
+                            </p>
+                          )}
+                        </div>
+                      );
+                    }}
                   </form.Field>
                 </div>
               </div>
@@ -2135,6 +2185,8 @@ export function QuoteFormContent({
           </div>
         </div>
       </section>
+
+      <QuoteFormErrorSummaryDialog {...errorSummaryProps} />
 
       <div className="flex justify-end gap-3 pb-8">
         <FormCancelButton

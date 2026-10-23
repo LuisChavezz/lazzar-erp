@@ -392,7 +392,7 @@ const mapValidationIssuesToErrors = (
   issues: QuoteReviewValidationIssue[]
 ): QuoteReviewValidationError[] => {
   return issues.map(({ path, message }) => ({
-    field: buildFieldLabel(path),
+    field: buildQuoteFieldLabel(path),
     message,
   }));
 };
@@ -433,7 +433,12 @@ const normalizeIssuePath = (
   });
 };
 
-const buildFieldLabel = (path: readonly (string | number)[]): string => {
+/**
+ * Etiqueta legible de la ruta de un error del formulario de cotización (ej.
+ * "Producto 2 - Cantidad"). La comparten esta validación y el resumen de
+ * errores del Guardar (`useQuoteSubmitErrorSummary`).
+ */
+export const buildQuoteFieldLabel = (path: readonly (string | number)[]): string => {
   const segments = path.map(String);
   if (segments.length === 0) {
     return "Validación";

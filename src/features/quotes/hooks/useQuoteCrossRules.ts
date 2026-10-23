@@ -1,20 +1,39 @@
 "use client";
 
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import type { Dispatch, SetStateAction } from "react";
 import type { QuoteFormValues } from "../schemas/quote.schema";
 import type { ErrorNode } from "../utils/quoteFormErrorTree";
 
+/** Mismo texto que el backend (EC-571). */
+export const ANTICIPO_MAYOR_AL_TOTAL_MESSAGE = "El anticipo no puede ser mayor al total";
+
+/** Centavos de un importe, para comparar sin ruido de punto flotante. */
+const toCents = (value: unknown) => Math.round((Number(value) || 0) * 100);
+
 /**
- * Las dos reglas CRUZADAS de `quoteFormSchema.superRefine`: obligatoriedades
- * condicionales donde un campo (el disparador) decide si otro (el que muestra
- * el error) es obligatorio.
+ * ¿El anticipo supera el total? Se compara a 2 decimales, la precisión con la
+ * que ambos viajan al backend. Lo usan la regla en vivo del formulario y la
+ * validación previa a revisión/autorización.
+ */
+export const isAnticipoMayorAlTotal = (anticipo: unknown, granTotal: unknown) =>
+  toCents(anticipo) > toCents(granTotal);
+
+/**
+ * Las reglas CRUZADAS del formulario: un valor (el disparador) decide si otro
+ * campo (el que muestra el error) es válido.
  *
- * Réplica de la condición del `superRefine` —mismo predicado y mismo mensaje—
- * para poder evaluarla fuera del submit. Si cambia una regla allá, cambia aquí.
- * No se deriva corriendo el schema completo porque el `superRefine` de un
- * objeto no garantiza ejecutarse cuando otros campos traen errores, y aquí se
- * necesita una respuesta determinista para UN campo.
+ * Las dos primeras son réplica de la condición de `quoteFormSchema.superRefine`
+ * —mismo predicado y mismo mensaje— para poder evaluarla fuera del submit. Si
+ * cambia una regla allá, cambia aquí. No se deriva corriendo el schema completo
+ * porque el `superRefine` de un objeto no garantiza ejecutarse cuando otros
+ * campos traen errores, y aquí se necesita una respuesta determinista para UN
+ * campo.
+ *
+ * `anticipo` (EC-563, CO-03) no está en el schema: su disparador es el GRAN
+ * TOTAL en vivo, un valor derivado que el schema no ve. Por eso cada hook lo
+ * entrega con `getGranTotal` y la regla también se agrega al submit
+ * (`getAnticipoIssue`).
  */
 const QUOTE_CROSS_RULES = {
   condicionPagoMonto: {
@@ -30,12 +49,21 @@ const QUOTE_CROSS_RULES = {
     isViolated: (values: Partial<QuoteFormValues>) =>
       Boolean(values.embarque_parcial) && !values.comentarios_parcialidad?.trim(),
   },
+  anticipo: {
+    trigger: "granTotal",
+    message: ANTICIPO_MAYOR_AL_TOTAL_MESSAGE,
+    isViolated: (values: Partial<QuoteFormValues>, granTotal: number) =>
+      isAnticipoMayorAlTotal(values.anticipo, granTotal),
+  },
 } as const;
 
 /** Campo que muestra el error de una regla cruzada. */
 export type QuoteCrossRuleField = keyof typeof QUOTE_CROSS_RULES;
 
-/** Campo que decide si la regla aplica: el select de condición o la casilla. */
+/**
+ * Lo que decide si la regla aplica: el select de condición, la casilla, o el
+ * gran total en vivo (`granTotal`, un valor derivado y no un campo).
+ */
 export type QuoteCrossRuleTrigger = (typeof QUOTE_CROSS_RULES)[QuoteCrossRuleField]["trigger"];
 
 const CROSS_RULE_FIELDS = Object.keys(QUOTE_CROSS_RULES) as QuoteCrossRuleField[];
@@ -77,14 +105,19 @@ const messageAt = (tree: ErrorNode, field: QuoteCrossRuleField) => {
  * del servidor en la misma ruta —lo mezcla `applyServerValidationIssues`— no
  * se pisa ni se borra desde aquí.
  */
+const NOT_FIRED: Record<QuoteCrossRuleField, boolean> = {
+  condicionPagoMonto: false,
+  comentarios_parcialidad: false,
+  anticipo: false,
+};
+
 export function useQuoteCrossRules(
   getValues: () => QuoteFormValues,
   setErrorTree: Dispatch<SetStateAction<ErrorNode>>,
+  /** Gran total EN VIVO, el mismo que pinta el formulario. */
+  getGranTotal: () => number,
 ) {
-  const firedRef = useRef<Record<QuoteCrossRuleField, boolean>>({
-    condicionPagoMonto: false,
-    comentarios_parcialidad: false,
-  });
+  const firedRef = useRef<Record<QuoteCrossRuleField, boolean>>({ ...NOT_FIRED });
 
   const showOwnError = (field: QuoteCrossRuleField) => {
     const { message } = QUOTE_CROSS_RULES[field];
@@ -113,7 +146,7 @@ export function useQuoteCrossRules(
    */
   const validateCrossRuleOnBlur = (field: QuoteCrossRuleField, value: unknown) => {
     const rule = QUOTE_CROSS_RULES[field];
-    if (!rule.isViolated({ ...getValues(), [field]: value })) {
+    if (!rule.isViolated({ ...getValues(), [field]: value }, getGranTotal())) {
       return false;
     }
     firedRef.current[field] = true;
@@ -122,16 +155,23 @@ export function useQuoteCrossRules(
   };
 
   /**
-   * Cambio del disparador (select de condición o casilla de embarque parcial).
-   * Recibe el valor NUEVO del disparador para no depender de cuándo el store
-   * refleja el `handleChange` recién hecho.
+   * Cambio del disparador (select de condición, casilla de embarque parcial o
+   * gran total). Recibe el valor NUEVO del disparador para no depender de
+   * cuándo el store refleja el `handleChange` recién hecho.
    */
   const revalidateCrossRule = (trigger: QuoteCrossRuleTrigger, triggerValue: unknown) => {
     const field = fieldForTrigger(trigger);
     if (!firedRef.current[field]) {
       return;
     }
-    if (QUOTE_CROSS_RULES[field].isViolated({ ...getValues(), [trigger]: triggerValue })) {
+    const isViolated =
+      trigger === "granTotal"
+        ? QUOTE_CROSS_RULES[field].isViolated(getValues(), Number(triggerValue))
+        : QUOTE_CROSS_RULES[field].isViolated(
+            { ...getValues(), [trigger]: triggerValue },
+            getGranTotal()
+          );
+    if (isViolated) {
       showOwnError(field);
     } else {
       clearOwnError(field);
@@ -148,10 +188,46 @@ export function useQuoteCrossRules(
     });
   };
 
+  /**
+   * Issue de la regla del anticipo para el submit, o `null`. El schema no la
+   * conoce (depende del total), así que el hook la suma a los issues de Zod.
+   */
+  const getAnticipoIssue = (values: Partial<QuoteFormValues>) =>
+    QUOTE_CROSS_RULES.anticipo.isViolated(values, getGranTotal())
+      ? { path: ["anticipo"], message: ANTICIPO_MAYOR_AL_TOTAL_MESSAGE }
+      : null;
+
   /** Todo reset del formulario vuelve las reglas a "no disparadas". */
   const resetCrossRules = () => {
-    firedRef.current = { condicionPagoMonto: false, comentarios_parcialidad: false };
+    firedRef.current = { ...NOT_FIRED };
   };
 
-  return { validateCrossRuleOnBlur, revalidateCrossRule, markCrossRulesFired, resetCrossRules };
+  return {
+    validateCrossRuleOnBlur,
+    revalidateCrossRule,
+    markCrossRulesFired,
+    resetCrossRules,
+    getAnticipoIssue,
+  };
+}
+
+/**
+ * Anticipo ≤ total EN VIVO: una vez disparada la regla, un cambio del gran
+ * total (partidas o cargos) reevalúa el error del anticipo sin esperar al
+ * siguiente blur.
+ *
+ * Solo actúa cuando el total CAMBIA, no en cada render: el error del backend
+ * para el anticipo trae el mismo texto que la regla, así que reevaluar sin que
+ * nada haya cambiado lo tomaría por propio y lo borraría recién llegado.
+ */
+export function useRevalidateAnticipoOnTotalChange(
+  crossRules: Pick<ReturnType<typeof useQuoteCrossRules>, "revalidateCrossRule">,
+  granTotal: number,
+) {
+  const lastGranTotalRef = useRef(granTotal);
+  useEffect(() => {
+    if (lastGranTotalRef.current === granTotal) return;
+    lastGranTotalRef.current = granTotal;
+    crossRules.revalidateCrossRule("granTotal", granTotal);
+  }, [crossRules, granTotal]);
 }

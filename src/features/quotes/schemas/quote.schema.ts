@@ -12,6 +12,9 @@ import { telefonoSchema } from "@/src/utils/telefonoSchema";
 
 export { quoteItemSchema } from "./quote-item.schema";
 
+/** Mismo texto que el backend para flete, seguros y anticipo (EC-571). */
+export const MONTO_NEGATIVO_MESSAGE = "Debe ser mayor o igual a 0";
+
 export const quoteFormSchema = z.object({
   clienteBusqueda: z.string().optional(),
   clienteNombre: z.string().optional(),
@@ -88,9 +91,11 @@ export const quoteFormSchema = z.object({
   }).optional(),
   docRelacionado: z.string().optional(),
   observaciones: z.string().optional(),
-  flete: z.coerce.number().min(0, "No puede ser negativo").optional(),
-  seguros: z.coerce.number().min(0, "No puede ser negativo").optional(),
-  anticipo: z.coerce.number().min(0, "No puede ser negativo").optional(),
+  // Mismo mensaje que el backend (EC-571). `anticipo <= gran total` no vive
+  // aquí: depende del total en vivo (ver `useQuoteCrossRules`).
+  flete: z.coerce.number().min(0, MONTO_NEGATIVO_MESSAGE).optional(),
+  seguros: z.coerce.number().min(0, MONTO_NEGATIVO_MESSAGE).optional(),
+  anticipo: z.coerce.number().min(0, MONTO_NEGATIVO_MESSAGE).optional(),
   /**
    * Fijo en `IVA_TASA_FIJA`: los formularios siempre lo hidratan en 16, así que
    * en ellos esta regla no puede fallar. Donde sí actúa es en la validación

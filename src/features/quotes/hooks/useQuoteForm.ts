@@ -37,7 +37,16 @@ import { useWorkspaceStore } from "../../workspace/store/workspace.store";
 import { useCreateQuote, type QuoteValidationIssue } from "./useCreateQuote";
 import { buildMuestraDetalle } from "../utils/buildMuestraDetalle";
 import { useQuoteOnboardingData } from "./useQuoteOnboardingData";
-import { isQuoteCrossRuleField, useQuoteCrossRules } from "./useQuoteCrossRules";
+import {
+  isQuoteCrossRuleField,
+  useQuoteCrossRules,
+  useRevalidateAnticipoOnTotalChange,
+} from "./useQuoteCrossRules";
+import {
+  collectQuoteSubmitIssues,
+  useQuoteSubmitErrorSummary,
+} from "./useQuoteSubmitErrorSummary";
+import { nonNegativeAmount } from "../utils/quoteAmounts";
 import { useSatInfo } from "../../sat/hooks/useSatInfo";
 import { useSizes } from "../../sizes/hooks/useSizes";
 
@@ -240,30 +249,25 @@ export function useQuoteForm() {
         ...value,
         servicios_extras: extraServices,
       });
-      if (!parsed.success) {
+      const submitIssues = collectQuoteSubmitIssues(
+        parsed.success ? [] : parsed.error.issues,
+        value,
+        crossRules.getAnticipoIssue(value),
+      );
+      if (submitIssues.length > 0) {
         const nextErrors: ErrorNode = {};
-        const issuePaths = parsed.error.issues
-          .map((issue) => issue.path.map((segment) => String(segment)).join("."))
-          .filter(Boolean);
-        parsed.error.issues.forEach((issue) => {
-          if (issue.path.length === 0) {
-            return;
-          }
-          setErrorByPath(nextErrors, issue.path as (string | number)[], issue.message);
+        submitIssues.forEach((issue) => {
+          if (issue.path.length === 0) return;
+          setErrorByPath(nextErrors, issue.path, issue.message);
         });
         setErrorTree(nextErrors);
-        crossRules.markCrossRulesFired(parsed.error.issues);
-        // Si hay errores, hace scroll al primer campo para acelerar corrección del usuario.
-        if (formRef.current) {
-          requestAnimationFrame(() => {
-            if (!formRef.current) {
-              return;
-            }
-            scrollToFirstValidationError(formRef.current, issuePaths);
-          });
-        }
+        crossRules.markCrossRulesFired(submitIssues);
+        // Resumen de errores; al cerrarlo, la vista va al primer campo inválido.
+        showErrorSummary(submitIssues);
         return;
       }
+      // Inalcanzable (un schema fallido siempre trae issues); estrecha el tipo.
+      if (!parsed.success) return;
 
       setErrorTree({});
 
@@ -486,7 +490,9 @@ export function useQuoteForm() {
 
   // Reglas cruzadas del schema (condición de pago → monto, embarque parcial →
   // comentarios): se reevalúan fuera del submit. Ver `useQuoteCrossRules`.
-  const crossRules = useQuoteCrossRules(() => form.state.values, setErrorTree);
+  // El gran total se lee en vivo para la regla del anticipo (EC-563, CO-03).
+  const crossRules = useQuoteCrossRules(() => form.state.values, setErrorTree, () => granTotal);
+  const { showErrorSummary, errorSummaryProps } = useQuoteSubmitErrorSummary(formRef);
 
   // Snapshot reactivo de valores del formulario para derivados y sincronizaciones.
   const values = useStore(form.baseStore, (state) => state.values);
@@ -658,8 +664,8 @@ export function useQuoteForm() {
       0
     );
     const extras =
-      (Number(values.flete) || 0) +
-      (Number(values.seguros) || 0) +
+      nonNegativeAmount(values.flete) +
+      nonNegativeAmount(values.seguros) +
       servicioEnvioTotal +
       programaBordadosTotal +
       bordadoPantalonesTotal +
@@ -669,7 +675,7 @@ export function useQuoteForm() {
     const nextIvaAmount = Number(((nextSubtotal + extras) * (IVA_TASA_FIJA / 100)).toFixed(2));
     const nextGranTotal = Number((nextSubtotal + extras + nextIvaAmount).toFixed(2));
     const nextSaldoPendiente = Number(
-      (nextGranTotal - (Number(values.anticipo) || 0)).toFixed(2)
+      (nextGranTotal - nonNegativeAmount(values.anticipo)).toFixed(2)
     );
 
     return {
@@ -696,6 +702,8 @@ export function useQuoteForm() {
     values.servicioEnvioActivo,
     extraServices,
   ]);
+
+  useRevalidateAnticipoOnTotalChange(crossRules, granTotal);
 
   const fields = useMemo(
     () =>
@@ -1049,6 +1057,7 @@ export function useQuoteForm() {
     usoCfdiOptions,
     currencyOptions,
     monedaCodigo,
+    errorSummaryProps,
     formasPagoOptions,
     metodosPagoOptions,
     sizes,
