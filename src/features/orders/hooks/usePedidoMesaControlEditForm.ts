@@ -431,6 +431,7 @@ const mapPedidoDetailToFormValues = (
     estadoEnvio: pedido.estado_envio || "",
     referenciasEnvio: pedido.referencias || "",
     enviarDomicilioFiscal: false,
+    usarMismoTelefono: false,
     embarcarConOtrosPedidos: false,
     embarque_parcial: Boolean(pedido.embarque_parcial),
     comentarios_parcialidad: pedido.comentarios_parcialidad || "",
@@ -1438,12 +1439,13 @@ export function usePedidoMesaControlEditForm(pedidoId: number) {
 
   const values = useStore(form.baseStore, (state) => state.values);
 
+  // Los teléfonos NO se copian (EC-563, T-021): el fiscal no trae teléfono de
+  // envío, y copiar "Teléfono pagos" solo se hace a petición con la casilla
+  // "Usar el mismo teléfono".
   useEffect(() => {
     if (!values.enviarDomicilioFiscal) return;
     form.setFieldValue("destinatario", values.clienteNombre || "");
     form.setFieldValue("empresaEnvio", values.razonSocial || "");
-    form.setFieldValue("telefonoEnvio", values.telefono_pagos || "");
-    form.setFieldValue("celularEnvio", values.telefono_pagos || "");
     form.setFieldValue("direccionEnvio", values.direccionFiscal || "");
     form.setFieldValue("coloniaEnvio", values.coloniaFiscal || "");
     form.setFieldValue("codigoPostalEnvio", values.codigoPostalFiscal || "");
@@ -1459,7 +1461,6 @@ export function usePedidoMesaControlEditForm(pedidoId: number) {
     values.enviarDomicilioFiscal,
     values.estadoFiscal,
     values.razonSocial,
-    values.telefono_pagos,
   ]);
 
   const watchedDocRelacionado = useMemo(
@@ -1491,6 +1492,19 @@ export function usePedidoMesaControlEditForm(pedidoId: number) {
       return next;
     });
   }, []);
+
+  // "Usar el mismo teléfono" (EC-563, T-021): mientras está marcada, el teléfono
+  // y el celular de envío reflejan "Teléfono pagos" y quedan deshabilitados. El
+  // error de formato vive en "Teléfono pagos", el único editable, así que los
+  // reflejos no conservan uno propio. Al desmarcarla, lo copiado queda editable.
+  useEffect(() => {
+    if (!values.usarMismoTelefono) return;
+    const telefono = values.telefono_pagos || "";
+    form.setFieldValue("telefonoEnvio", telefono);
+    form.setFieldValue("celularEnvio", telefono);
+    clearFieldErrors("telefonoEnvio");
+    clearFieldErrors("celularEnvio");
+  }, [clearFieldErrors, form, values.telefono_pagos, values.usarMismoTelefono]);
 
   const clienteSearchTerm = values.clienteBusqueda ?? "";
 
@@ -1763,8 +1777,11 @@ export function usePedidoMesaControlEditForm(pedidoId: number) {
     (address: CustomerAddress) => {
       form.setFieldValue("destinatario", address.destinatario ?? "");
       form.setFieldValue("empresaEnvio", address.empresa_envio ?? "");
-      form.setFieldValue("telefonoEnvio", address.telefono_envio ?? "");
-      form.setFieldValue("celularEnvio", address.celular_envio ?? "");
+      // Con "Usar el mismo teléfono" los teléfonos de envío siguen a "Teléfono pagos".
+      if (!form.state.values.usarMismoTelefono) {
+        form.setFieldValue("telefonoEnvio", address.telefono_envio ?? "");
+        form.setFieldValue("celularEnvio", address.celular_envio ?? "");
+      }
       form.setFieldValue("direccionEnvio", address.direccion_envio ?? "");
       form.setFieldValue("coloniaEnvio", address.colonia_envio ?? "");
       form.setFieldValue("codigoPostalEnvio", address.codigo_postal ?? "");
@@ -1809,8 +1826,6 @@ export function usePedidoMesaControlEditForm(pedidoId: number) {
       form.setFieldValue("enviarDomicilioFiscal", true);
       form.setFieldValue("destinatario", customer.nombre ?? "");
       form.setFieldValue("empresaEnvio", customer.razon_social ?? "");
-      form.setFieldValue("telefonoEnvio", customer.telefono ?? "");
-      form.setFieldValue("celularEnvio", customer.telefono ?? "");
       form.setFieldValue("direccionEnvio", customer.direccion_fiscal ?? "");
       form.setFieldValue("coloniaEnvio", customer.colonia ?? "");
       form.setFieldValue("codigoPostalEnvio", customer.codigo_postal ?? "");
@@ -2046,6 +2061,7 @@ export function usePedidoMesaControlEditForm(pedidoId: number) {
     watchedFecha: values.fecha,
     watchedDocRelacionado,
     watchedEnviarDomicilioFiscal: values.enviarDomicilioFiscal,
+    watchedUsarMismoTelefono: values.usarMismoTelefono,
     watchedCondicionPago: values.condicionPago,
     hasCustomerSelected: selectedCustomerId !== 0,
     subtotal,

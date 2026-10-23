@@ -8,6 +8,7 @@ import { z } from "zod";
 import { quoteItemSchema } from "./quote-item.schema";
 import { PEDIDO_CLASIFICACIONES } from "../../orders/constants/pedidoStatus";
 import { IVA_TASA_FIJA } from "../constants/iva";
+import { telefonoSchema } from "@/src/utils/telefonoSchema";
 
 export { quoteItemSchema } from "./quote-item.schema";
 
@@ -24,7 +25,8 @@ export const quoteFormSchema = z.object({
   estadoFiscal: z.string().optional(),
   persona_pagos: z.string().optional(),
   correo_facturas: z.string().refine((val) => !val || z.string().email().safeParse(val).success, { message: "Correo inválido" }).optional(),
-  telefono_pagos: z.string().optional(),
+  // Misma regla de teléfono que clientes y que el backend (EC-570).
+  telefono_pagos: telefonoSchema.optional(),
   oc: z.string().trim().optional(),
   forma_pago: z.string().optional(),
   metodo_pago: z.string().optional(),
@@ -53,8 +55,8 @@ export const quoteFormSchema = z.object({
   clasificacion: z.enum(PEDIDO_CLASIFICACIONES, { message: "Clasificación inválida" }).nullable().optional(),
   destinatario: z.string().optional(),
   empresaEnvio: z.string().optional(),
-  telefonoEnvio: z.string().optional(),
-  celularEnvio: z.string().optional(),
+  telefonoEnvio: telefonoSchema.optional(),
+  celularEnvio: telefonoSchema.optional(),
   direccionEnvio: z.string().optional(),
   coloniaEnvio: z.string().optional(),
   codigoPostalEnvio: z.string().optional(),
@@ -62,6 +64,11 @@ export const quoteFormSchema = z.object({
   estadoEnvio: z.string().optional(),
   referenciasEnvio: z.string().optional(),
   enviarDomicilioFiscal: z.boolean().optional(),
+  /**
+   * Solo de formulario, no se persiste: con la casilla marcada el teléfono y el
+   * celular de envío reflejan `telefono_pagos` (EC-563, T-021).
+   */
+  usarMismoTelefono: z.boolean().optional(),
   embarcarConOtrosPedidos: z.boolean().optional(),
   embarque_parcial: z.boolean().optional(),
   comentarios_parcialidad: z.string().optional(),

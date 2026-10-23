@@ -178,6 +178,7 @@ export function QuoteFormContent({
   watchedFecha,
   watchedDocRelacionado,
   watchedEnviarDomicilioFiscal,
+  watchedUsarMismoTelefono,
   watchedCondicionPago,
   hasCustomerSelected,
   subtotal,
@@ -719,6 +720,7 @@ export function QuoteFormContent({
                   <FormInput
                     label="Teléfono Pagos"
                     placeholder="Teléfono"
+                    type="tel"
                     forceUppercase={false}
                     name={field.name}
                     value={field.state.value}
@@ -962,6 +964,23 @@ export function QuoteFormContent({
                 </label>
               )}
             </form.Field>
+            <form.Field name="usarMismoTelefono">
+              {(field) => (
+                <label className="inline-flex items-center gap-2 text-xs font-medium cursor-pointer text-slate-600 dark:text-slate-300">
+                  <input
+                    type="checkbox"
+                    className="w-4 h-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
+                    name={field.name}
+                    checked={Boolean(field.state.value)}
+                    onChange={(event) => {
+                      field.handleChange(event.target.checked);
+                    }}
+                    onBlur={field.handleBlur}
+                  />
+                  Usar el mismo teléfono
+                </label>
+              )}
+            </form.Field>
             <form.Field name="embarcarConOtrosPedidos">
               {(field) => (
                 <label className="inline-flex items-center gap-2 text-xs font-medium cursor-pointer text-slate-600 dark:text-slate-300">
@@ -1036,8 +1055,11 @@ export function QuoteFormContent({
                 <FormInput
                   label="Teléfono"
                   placeholder="Teléfono"
+                  type="tel"
                   forceUppercase={false}
-                  disabled={Boolean(watchedEnviarDomicilioFiscal)}
+                  // Solo "Usar el mismo teléfono" lo bloquea (refleja "Teléfono
+                  // pagos", donde se muestra su error); el domicilio fiscal ya no.
+                  disabled={Boolean(watchedUsarMismoTelefono)}
                   name={field.name}
                   value={field.state.value}
                   onChange={(event) => {
@@ -1048,7 +1070,7 @@ export function QuoteFormContent({
                     field.handleBlur();
                     validateField("telefonoEnvio", field.state.value);
                   }}
-                  error={getError("telefonoEnvio")}
+                  error={watchedUsarMismoTelefono ? undefined : getError("telefonoEnvio")}
                 />
               )}
             </form.Field>
@@ -1059,8 +1081,11 @@ export function QuoteFormContent({
                 <FormInput
                   label="Celular"
                   placeholder="Celular"
+                  type="tel"
                   forceUppercase={false}
-                  disabled={Boolean(watchedEnviarDomicilioFiscal)}
+                  // Solo "Usar el mismo teléfono" lo bloquea (refleja "Teléfono
+                  // pagos", donde se muestra su error); el domicilio fiscal ya no.
+                  disabled={Boolean(watchedUsarMismoTelefono)}
                   name={field.name}
                   value={field.state.value}
                   onChange={(event) => {
@@ -1071,7 +1096,7 @@ export function QuoteFormContent({
                     field.handleBlur();
                     validateField("celularEnvio", field.state.value);
                   }}
-                  error={getError("celularEnvio")}
+                  error={watchedUsarMismoTelefono ? undefined : getError("celularEnvio")}
                 />
               )}
             </form.Field>
