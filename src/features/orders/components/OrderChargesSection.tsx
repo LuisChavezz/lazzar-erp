@@ -34,8 +34,9 @@ interface OrderChargesSectionProps {
  * servicios extra, sin montos.
  *
  * Los totales son EXACTAMENTE los del backend (`subtotal`, `descuento_global`,
- * `ieps`, `gran_total`): no se recalcula nada. El IVA va como tasa, igual que
- * antes, y no hay "Saldo pendiente": ambos serían cálculos de cliente.
+ * `ieps`, `gran_total`): no se recalcula nada. El IVA va como tasa y, si el
+ * backend lo envía, con su importe (`importe_iva`); no hay "Saldo pendiente":
+ * sería un cálculo de cliente.
  */
 export function OrderChargesSection({ pedido, showAccounting }: OrderChargesSectionProps) {
   const { formatMoney, currencyLabel } = useOrderMoney();
@@ -122,6 +123,7 @@ export function OrderChargesSection({ pedido, showAccounting }: OrderChargesSect
             <span className="text-slate-500">IVA</span>
             <span className="px-2 py-1 text-xs font-medium rounded-lg bg-slate-100 text-slate-600 dark:bg-white/10 dark:text-slate-300">
               {pedido.iva !== undefined ? `${pedido.iva}%` : "—"}
+              {pedido.importe_iva ? ` · ${formatMoney(pedido.importe_iva)}` : null}
             </span>
           </div>
           <div className="border-t border-slate-200 dark:border-slate-700 my-2 pt-2">

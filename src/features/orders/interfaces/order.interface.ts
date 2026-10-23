@@ -214,6 +214,8 @@ export interface Order {
   ieps?: string;
   /** Contable: porcentaje entero (p.ej. 16), NO un importe. */
   iva?: number;
+  /** Contable: IVA en importe, texto con 2 decimales (`gran_total - importe_sin_iva`, EC-571). */
+  importe_iva?: string;
   /** Contable. */
   gran_total?: string;
   // ── Metadatos ────────────────────────────────────────────────────────────
