@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useRef } from "react";
 import { useForm } from "@tanstack/react-form";
+import { useFormFieldErrors } from "@/src/hooks/useFormFieldErrors";
 import { getCodigoPostalError } from "@/src/utils/codigoPostal";
 import { scrollToFirstValidationError } from "@/src/utils/scrollToFirstValidationError";
 import {
@@ -49,21 +50,22 @@ export function useCustomerAddressForm({
 }: UseCustomerAddressFormParams) {
   const formRef = useRef<HTMLFormElement>(null);
 
-  const [clientErrors, setClientErrors] = useState<
-    Partial<Record<AddressFormField, string>>
-  >({});
-  const [serverErrors, setServerErrors] = useState<
-    Partial<Record<AddressFormField, string>>
-  >({});
+  // Errores por campo (de cliente y de servidor): ver `useFormFieldErrors`.
+  const {
+    getError,
+    setServerFieldError,
+    setClientFieldError,
+    clearClientFieldError,
+    clearFieldErrors,
+    replaceClientErrors,
+    clearServerErrors,
+    clearAllErrors,
+  } = useFormFieldErrors<AddressFormField>();
 
-  // Errores de campo que devuelve el backend, bajo su input (como en el cliente).
-  const setHookError = (field: AddressFormField, error: { message?: string }) => {
-    if (!error?.message) return;
-    setServerErrors((prev) => ({ ...prev, [field]: error.message as string }));
-  };
-
-  const { mutateAsync: createAddress, isPending: isCreating } = useCreateCustomerAddress(setHookError);
-  const { mutateAsync: updateAddress, isPending: isUpdating } = useUpdateCustomerAddress(setHookError);
+  const { mutateAsync: createAddress, isPending: isCreating } =
+    useCreateCustomerAddress(setServerFieldError);
+  const { mutateAsync: updateAddress, isPending: isUpdating } =
+    useUpdateCustomerAddress(setServerFieldError);
   const isPending = isCreating || isUpdating;
 
   // Valores iniciales: datos de la direccion en modo edicion, vacios en modo creacion.
@@ -88,7 +90,7 @@ export function useCustomerAddressForm({
   const form = useForm({
     defaultValues: initialValues,
     onSubmit: async ({ value }) => {
-      setServerErrors({});
+      clearServerErrors();
       const parsed = CustomerAddressFormSchema.safeParse(value);
       const nextErrors: Partial<Record<AddressFormField, string>> = {};
       if (!parsed.success) {
@@ -105,7 +107,7 @@ export function useCustomerAddressForm({
       }
 
       if (!parsed.success || Object.keys(nextErrors).length > 0) {
-        setClientErrors(nextErrors);
+        replaceClientErrors(nextErrors);
         scrollToFirstValidationError(formRef.current, Object.keys(nextErrors));
         return;
       }
@@ -128,39 +130,10 @@ export function useCustomerAddressForm({
       }
 
       form.reset();
-      setClientErrors({});
-      setServerErrors({});
+      clearAllErrors();
       onSuccess?.();
     },
   });
-
-  // Obtiene el error combinado (cliente + servidor) de un campo.
-  // El del servidor gana: es el veredicto del guardado.
-  const getError = (field: AddressFormField): { message?: string } | undefined => {
-    const msg = serverErrors[field] ?? clientErrors[field];
-    if (!msg) return undefined;
-    return { message: msg };
-  };
-
-  const clearClientError = (field: AddressFormField) => {
-    setClientErrors((prev) => {
-      if (!(field in prev)) return prev;
-      const next = { ...prev };
-      delete next[field];
-      return next;
-    });
-  };
-
-  // Limpia los errores (cliente y servidor) de un campo al editarlo.
-  const clearFieldError = (field: AddressFormField) => {
-    clearClientError(field);
-    setServerErrors((prev) => {
-      if (!(field in prev)) return prev;
-      const next = { ...prev };
-      delete next[field];
-      return next;
-    });
-  };
 
   // Valida un campo individual con Zod al perder el foco.
   const validateField = (
@@ -177,18 +150,17 @@ export function useCustomerAddressForm({
     }
     if (!message) {
       // Solo el error local: el del servidor se va cuando se edita el campo.
-      clearClientError(field);
+      clearClientFieldError(field);
       return true;
     }
-    setClientErrors((prev) => ({ ...prev, [field]: message }));
+    setClientFieldError(field, message);
     return false;
   };
 
   // Restablece el formulario: vuelve a initialValues (datos originales en edicion, vacio en creacion).
   const handleReset = () => {
     form.reset();
-    setClientErrors({});
-    setServerErrors({});
+    clearAllErrors();
   };
 
   const handleFormSubmit = (e: React.FormEvent<HTMLFormElement>) => {
@@ -203,7 +175,8 @@ export function useCustomerAddressForm({
     isPending,
     isEditing: Boolean(addressToEdit?.id),
     getError,
-    clearFieldError,
+    // Editar un campo quita sus errores, de cliente y de servidor.
+    clearFieldError: clearFieldErrors,
     validateField,
     handleReset,
     handleFormSubmit,

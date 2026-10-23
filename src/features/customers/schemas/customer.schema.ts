@@ -28,10 +28,11 @@ const CustomerFormObject = z.object({
   estado: z.string().min(1, "Requerido"),
   sat_regimen_fiscal: z.number().int().min(1, "Requerido"),
   sat_uso_cfdi: z.number().int().min(1, "Requerido"),
-  // Ambos se capturan como TEXTO saneado (ver `CustomerForm`) y vacío equivale
-  // a 0. El saneado conserva un `-` inicial para que estas reglas rechacen el
-  // negativo con su mensaje; el backend también lo rechaza (`dias_credito` es
-  // entero positivo hasta 365 y `limite_credito` tiene mínimo 0).
+  // Ambos se capturan como TEXTO (ver `CustomerForm`) y vacío equivale a 0. Los
+  // días llegan sin sanear y el límite conserva su `-` inicial, para que estas
+  // reglas rechacen con su mensaje lo que no cumple en vez de cambiarlo; el
+  // backend también rechaza negativos (`dias_credito` es entero positivo hasta
+  // 365 y `limite_credito` tiene mínimo 0).
   dias_credito: z
     .string()
     .refine(

@@ -16,3 +16,13 @@ export const CustomerAddressFormSchema = z.object({
 });
 
 export type CustomerAddressFormValues = z.output<typeof CustomerAddressFormSchema>;
+
+export type CustomerAddressFormField = keyof CustomerAddressFormValues;
+
+/**
+ * Campos que el formulario muestra: un error del backend en uno de ellos va bajo
+ * su input; uno en otra clave (`cliente`, `non_field_errors`) va al toast.
+ */
+export const CUSTOMER_ADDRESS_FORM_FIELDS = Object.keys(
+  CustomerAddressFormSchema.shape
+) as CustomerAddressFormField[];

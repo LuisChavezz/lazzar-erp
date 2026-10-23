@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useMemo, useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useSession } from "next-auth/react";
 import {
   DataTable,
@@ -17,6 +18,7 @@ import CustomerForm from "./CustomerForm";
 import CustomerAddressForm from "./CustomerAddressForm";
 import { CustomerAddressList } from "./CustomerAddressList";
 import { getCustomerColumns } from "./CustomerColumns";
+import { useCustomer } from "../hooks/useCustomer";
 import { useCustomers } from "../hooks/useCustomers";
 import { useCustomerCsvExport } from "../hooks/useCustomerCsvExport";
 import { useCustomerPdfExport } from "../hooks/useCustomerPdfExport";
@@ -51,6 +53,27 @@ export const CustomerList = () => {
 
   const isEditing = Boolean(customerToEdit?.id);
 
+  // La regla del CP de la dirección depende del RFC GUARDADO del cliente, y la
+  // fila del listado puede llevar hasta 15 min en caché: al abrir el diálogo se
+  // relee el cliente. Mientras llega (o si falla) se usa la fila; el formulario
+  // no se desmonta, y si el RFC cambió el backend igual lo marca bajo el campo.
+  const queryClient = useQueryClient();
+  const { data: freshCustomerForAddress } = useCustomer(
+    selectedCustomerForAddress ? String(selectedCustomerForAddress.id) : ""
+  );
+  const addressCustomerRfc = freshCustomerForAddress?.rfc ?? selectedCustomerForAddress?.rfc ?? "";
+
+  const openAddressFormFor = useCallback(
+    (customer: Customer | null) => {
+      // Fuerza la relectura aunque el detalle esté en caché y vigente.
+      if (customer) {
+        void queryClient.invalidateQueries({ queryKey: ["customer", String(Number(customer.id))] });
+      }
+      setSelectedCustomerForAddress(customer);
+    },
+    [queryClient]
+  );
+
   const handleEdit = useCallback((customer: Customer) => {
     setCustomerToEdit(customer);
     setIsCustomerDialogOpen(true);
@@ -69,9 +92,9 @@ export const CustomerList = () => {
   }, []);
 
   const handleAddAddress = useCallback((customer: Customer) => {
-    setSelectedCustomerForAddress(customer);
+    openAddressFormFor(customer);
     setIsAddressDialogOpen(true);
-  }, []);
+  }, [openAddressFormFor]);
 
   const handleAddressDialogOpenChange = useCallback((open: boolean) => {
     setIsAddressDialogOpen(open);
@@ -86,20 +109,20 @@ export const CustomerList = () => {
   const handleAddAddressFromList = useCallback(() => {
     setAddressToEdit(null);
     setReturnToListAfterAddress(true);
-    setSelectedCustomerForAddress(selectedCustomerForList);
+    openAddressFormFor(selectedCustomerForList);
     setIsAddressListDialogOpen(false);
     // Espera a que termine la animacion de cierre antes de abrir el formulario.
     setTimeout(() => setIsAddressDialogOpen(true), 150);
-  }, [selectedCustomerForList]);
+  }, [selectedCustomerForList, openAddressFormFor]);
 
   // Navega desde el listado al formulario en modo edicion.
   const handleEditAddressFromList = useCallback((address: CustomerAddress) => {
     setAddressToEdit(address);
     setReturnToListAfterAddress(true);
-    setSelectedCustomerForAddress(selectedCustomerForList);
+    openAddressFormFor(selectedCustomerForList);
     setIsAddressListDialogOpen(false);
     setTimeout(() => setIsAddressDialogOpen(true), 150);
-  }, [selectedCustomerForList]);
+  }, [selectedCustomerForList, openAddressFormFor]);
 
   // Callback de éxito del formulario: si vino del listado, reabre el listado.
   const handleAddressFormSuccess = useCallback(() => {
@@ -146,7 +169,7 @@ export const CustomerList = () => {
           <CustomerAddressForm
             key={addressToEdit?.id ?? "new"}
             customerId={Number(selectedCustomerForAddress.id)}
-            customerRfc={selectedCustomerForAddress.rfc}
+            customerRfc={addressCustomerRfc}
             addressToEdit={addressToEdit}
             onSuccess={handleAddressFormSuccess}
           />

@@ -2,22 +2,22 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { AxiosError } from "axios";
 import toast from "react-hot-toast";
 
-import { firstDrfMessage } from "@/src/utils/firstDrfMessage";
+import { handleDrfWriteError } from "@/src/utils/drfWriteErrors";
 import { updateCustomerAddress } from "../services/actions";
 import { CustomerAddressCreate } from "../interfaces/customer-address.interface";
-import { CustomerAddressFormValues } from "../schemas/customer-address.schema";
+import {
+  CUSTOMER_ADDRESS_FORM_FIELDS,
+  CustomerAddressFormField,
+} from "../schemas/customer-address.schema";
 
 interface UpdateAddressVariables {
   id: number;
   data: CustomerAddressCreate;
 }
 
-type SetAddressError = (
-  field: keyof CustomerAddressFormValues,
-  error: { type?: string; message?: string }
-) => void;
-
-export const useUpdateCustomerAddress = (setError?: SetAddressError) => {
+export const useUpdateCustomerAddress = (
+  setFieldError?: (field: CustomerAddressFormField, message: string) => void
+) => {
   const queryClient = useQueryClient();
 
   return useMutation<CustomerAddressCreate, unknown, UpdateAddressVariables>({
@@ -27,24 +27,14 @@ export const useUpdateCustomerAddress = (setError?: SetAddressError) => {
       toast.success("Dirección actualizada correctamente");
     },
     onError: (error) => {
-      // Errores de campo de DRF (`{"codigo_postal": ["..."]}`): cada uno bajo su input.
-      if (error instanceof AxiosError && setError && error.response?.status === 400) {
-        const data = error.response.data;
-        if (data && typeof data === "object") {
-          Object.entries(data as Record<string, unknown>).forEach(([key, value]) => {
-            const message = firstDrfMessage(value);
-            if (message) {
-              setError(key as keyof CustomerAddressFormValues, { type: "server", message });
-            }
-          });
-        }
-      }
-      const message =
+      const fallback =
         error instanceof AxiosError &&
         typeof error.response?.data?.detail === "string"
           ? error.response.data.detail
           : "No se pudo actualizar la dirección";
-      toast.error(message);
+      // Cada error de campo va bajo su input; el de una clave sin campo
+      // (`cliente`, `non_field_errors`) es el texto del toast.
+      toast.error(handleDrfWriteError(error, fallback, CUSTOMER_ADDRESS_FORM_FIELDS, setFieldError));
     },
   });
 };

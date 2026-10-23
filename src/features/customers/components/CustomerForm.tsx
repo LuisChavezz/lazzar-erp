@@ -29,17 +29,6 @@ interface CustomerFormProps {
 
 const RFC_MIN_LENGTH = 12;
 
-/**
- * Solo dígitos y punto, sin ceros a la izquierda (mismo saneado que las
- * cantidades de bordado), pero conserva un `-` inicial y el punto decimal: así
- * el esquema rechaza el negativo o el decimal con su mensaje en vez de
- * guardarlo cambiado sin avisar (`-1` → `1`, `1.5` → `15`).
- */
-const sanitizeIntegerInput = (raw: string): string => {
-  const sign = /^\s*-/.test(raw) ? "-" : "";
-  return `${sign}${raw.replace(/[^0-9.]/g, "").replace(/^0+(?=\d)/, "")}`;
-};
-
 type RfcValidationTone = "success" | "error";
 
 // El backend dice exactamente qué revisó: formato y dígito verificador solo si
@@ -536,7 +525,7 @@ export default function CustomerForm({
           </div>
           <div className="p-8">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              {/* Texto saneado, no `type="number"`: sin validación nativa que
+              {/* Texto, no `type="number"`: sin validación nativa que
                   corte el envío antes que Zod (mismo patrón que los importes
                   de `PaymentForm`). Vacío equivale a 0. */}
               <form.Field name="dias_credito">
@@ -547,7 +536,10 @@ export default function CustomerForm({
                       inputMode="numeric"
                       value={field.state.value}
                       onChange={(event) => {
-                        field.handleChange(sanitizeIntegerInput(event.target.value));
+                        // Sin saneado: lo tecleado llega tal cual al esquema, que
+                        // rechaza con su mensaje todo lo que no sea un entero de
+                        // 0 a 365 (`-1`, `1.5`, `1,5`...) en vez de cambiarlo.
+                        field.handleChange(event.target.value);
                         clearFieldErrors("dias_credito");
                       }}
                       onBlur={() => {
