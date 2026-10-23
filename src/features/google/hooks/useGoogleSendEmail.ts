@@ -4,59 +4,81 @@ import { useMutation } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { googleSendEmail } from "../services/actions";
 import { getQuoteById } from "@/src/features/quotes/services/actions";
+import type { QuoteById } from "@/src/features/quotes/interfaces/quote.interface";
 import { generateQuotePdfBlob } from "@/src/features/quotes/services/pdf/quotePdfBlob";
 import { buildGoogleEmailAttachment } from "../utils/googleEmailAttachment.utils";
 import { renderEmailContent, type SendEmailResult } from "../utils/emailSend.utils";
+import type { GoogleEmailPayload } from "../interfaces/google.interface";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 
-// --- Hook ---
+/**
+ * Correo de una cotización LISTO para confirmarse (EC-563, ME-07): lo que se
+ * va a enviar, tal como se enviará. Se arma ANTES de pedir confirmación para
+ * que el diálogo muestre destinatario, asunto y adjunto reales, y el envío
+ * usa exactamente este contenido.
+ */
+export interface PreparedQuoteEmail {
+  /** Id de la cotización: también lo lee `selectMutationRecordId` (en curso por fila). */
+  id: number;
+  /** Foto de la cotización con la que se renderizó el correo y se genera el PDF. */
+  quote: QuoteById;
+  /** `null` si la cotización no tiene correo de facturación: no hay a quién enviar. */
+  content: GoogleEmailPayload | null;
+  attachmentName: string;
+}
 
-/** Exportada para que `useQuoteRowActions` observe los envíos en curso por cotización. */
+// --- Hooks ---
+
+/** Exportadas para que `useQuoteRowActions` observe por cotización lo que está en curso. */
+export const prepareQuoteEmailMutationKey = ["google", "prepare-quote-email"] as const;
 export const sendQuoteEmailMutationKey = ["google", "send-quote-email"] as const;
 
-export const useGoogleSendEmail = () =>
-  useMutation<SendEmailResult, unknown, number>({
-    mutationKey: sendQuoteEmailMutationKey,
-    /**
-     * Flujo de tres pasos — todo el acceso al backend externo ocurre client-side
-     * via v1_api, garantizando que las cookies auth-jwt/auth-refresh-jwt del browser
-     * viajen correctamente y el interceptor de refresh actue ante un 401.
-     *
-     * 1. getQuoteById()     — v1_api GET, cookies + interceptor de refresh ✓
-     * 2. renderEmailContent() — API Route Next.js, valida correo_facturas/sesión y
-     *    renderiza HTML en Node.js. Su error tiene prioridad sobre un fallo de
-     *    generación de PDF no relacionado (ver comentario junto a
-     *    pdfBlobPromise más abajo). ✓
-     * 3. googleSendEmail()  — v1_api POST, cookies + interceptor de refresh ✓
-     *
-     * El PDF se genera con el MISMO generador que usa "Descargar PDF"
-     * (generateQuotePdfBlob) a partir del MISMO snapshot de la cotización, por lo
-     * que el adjunto es idéntico al documento descargable.
-     */
-    mutationFn: async (quoteId: number): Promise<SendEmailResult> => {
+/**
+ * Paso 1: obtiene la cotización y renderiza el correo, SIN enviarlo.
+ *
+ * 1. getQuoteById()      — v1_api GET, cookies + interceptor de refresh ✓
+ * 2. renderEmailContent() — API Route Next.js, valida sesión y renderiza el
+ *    HTML en Node.js ✓
+ *
+ * Sin `correo_facturas` no se llama al Route Handler (respondería 422): el
+ * diálogo de confirmación dice que no hay destinatario y no deja enviar.
+ */
+export const usePrepareQuoteEmail = () =>
+  useMutation<PreparedQuoteEmail, unknown, number>({
+    mutationKey: prepareQuoteEmailMutationKey,
+    mutationFn: async (quoteId: number): Promise<PreparedQuoteEmail> => {
       const quote = await getQuoteById(quoteId);
-
-      // Se dispara en paralelo con la validación de abajo (ambos solo dependen
-      // de `quote`), pero SIN esperarlo todavía: si `renderEmailContent` falla
-      // (correo_facturas/sesión), ese error debe ganar y mostrarse primero, no
-      // un error de generación de PDF no relacionado. El catch no-op evita un
-      // "unhandled rejection" si el PDF falla antes de llegar al await de
-      // `pdfBlobPromise` más abajo — no altera el valor con el que resuelve.
-      const pdfBlobPromise = generateQuotePdfBlob(quote);
-      pdfBlobPromise.catch(() => {});
-
-      // Valida (correo_facturas + sesión) y renderiza el HTML — su error tiene
-      // prioridad sobre un fallo de generación de PDF.
+      const attachmentName = `cotizacion-${quote.id}.pdf`;
+      if (!quote.correo_facturas?.trim()) {
+        return { id: quote.id, quote, content: null, attachmentName };
+      }
       const content = await renderEmailContent(`/api/quotes/${quote.id}/send-email`, { quote });
+      return { id: quote.id, quote, content, attachmentName };
+    },
+    onError: (error) => {
+      toast.error(extractErrorMessage(error, "No se pudo preparar el correo de la cotizacion."));
+    },
+  });
 
-      // Para este punto el PDF ya se generó (o está a punto de hacerlo) en
-      // paralelo con la llamada anterior, así que este await normalmente no
-      // agrega espera adicional.
-      const pdfBlob = await pdfBlobPromise;
+/**
+ * Paso 2, solo tras confirmar: genera el PDF y envía el correo preparado.
+ *
+ * El PDF se genera con el MISMO generador que usa "Descargar PDF"
+ * (generateQuotePdfBlob) a partir de la MISMA foto con la que se renderizó el
+ * correo, por lo que el adjunto es idéntico al documento descargable.
+ */
+export const useGoogleSendEmail = () =>
+  useMutation<SendEmailResult, unknown, PreparedQuoteEmail>({
+    mutationKey: sendQuoteEmailMutationKey,
+    mutationFn: async ({ quote, content, attachmentName }): Promise<SendEmailResult> => {
+      if (!content) {
+        throw new Error("El cliente no tiene correo de facturación registrado.");
+      }
 
+      const pdfBlob = await generateQuotePdfBlob(quote);
       const attachment = await buildGoogleEmailAttachment(
         pdfBlob,
-        `cotizacion-${quote.id}.pdf`,
+        attachmentName,
         "application/pdf",
         "El PDF de la cotización excede el límite de 25 MB permitido para adjuntos."
       );

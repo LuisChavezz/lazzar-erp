@@ -8,7 +8,7 @@ export type SendEmailResult = { recipient: string; subject: string };
  * Envía `body` al API Route Next.js indicado para que renderice el correo con
  * react-email en Node.js (sin llamadas al backend externo) y devuelve el
  * payload ya renderizado. Compartido por `useSendInvoiceEmail`,
- * `useSendPurchaseOrderEmail` y `useGoogleSendEmail` (cotizaciones) — solo
+ * `useSendPurchaseOrderEmail` y `usePrepareQuoteEmail` (cotizaciones) — solo
  * cambian la URL del Route Handler y la forma del body.
  */
 export const renderEmailContent = async <T = GoogleEmailPayload>(

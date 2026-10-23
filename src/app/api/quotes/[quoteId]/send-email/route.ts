@@ -1,7 +1,7 @@
 /**
  * API Route de renderizado de correo — responsabilidad unica: generar HTML.
  *
- * El cliente (useGoogleSendEmail) obtiene la cotizacion via v1_api (con cookies
+ * El cliente (usePrepareQuoteEmail) obtiene la cotizacion via v1_api (con cookies
  * y refresh interceptor), la envia en el body de este endpoint, y aqui solo se
  * ejecuta el renderizado server-side de QuoteEmail con react-email.
  *
@@ -21,7 +21,7 @@ export const runtime = "nodejs";
 export async function POST(request: Request) {
   // Sección de Cotizaciones — mismo permiso que protege /sales/quotes en el
   // proxy: el envío es de una cotización y su único disparador
-  // (`useGoogleSendEmail`) vive en esa pantalla.
+  // (`usePrepareQuoteEmail`) vive en esa pantalla.
   const authResult = await requireAuthenticatedSession("R-CRM-COTIZACIONES");
 
   if ("errorResponse" in authResult) {

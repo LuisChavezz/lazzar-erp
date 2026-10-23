@@ -10,8 +10,11 @@ import {
 import { rejectOperationsQuoteMutationKey } from "../../operations/hooks/useRejectOperationsQuote";
 import { selectMutationRecordId } from "@/src/utils/mutationRecordId";
 import {
+  prepareQuoteEmailMutationKey,
   sendQuoteEmailMutationKey,
   useGoogleSendEmail,
+  usePrepareQuoteEmail,
+  type PreparedQuoteEmail,
 } from "../../google/hooks/useGoogleSendEmail";
 import { downloadQuotePdfMutationKey, useDownloadQuotePdf } from "./useDownloadQuotePdf";
 import { submitQuoteForReviewMutationKey, useSubmitQuoteForReview } from "./useSubmitQuoteForReview";
@@ -60,10 +63,9 @@ function usePendingQuoteIds(mutationKey: readonly unknown[]): number[] {
 }
 
 /** Diálogos que abre el menú; el resto de acciones son inmediatas. */
-export type QuoteRowDialogKind = "view" | "authorize" | "reject" | "submitForReview";
+export type QuoteRowDialogKind = "view" | "authorize" | "reject" | "submitForReview" | "sendEmail";
 
-export interface QuoteRowDialogState {
-  kind: QuoteRowDialogKind;
+interface QuoteRowDialogBase {
   /**
    * Foto de la cotización al abrir. `QuoteRowActionDialogs` la usa solo como
    * respaldo si el registro ya no está en la consulta (p. ej. lo borraron);
@@ -71,6 +73,11 @@ export interface QuoteRowDialogState {
    */
   quote: Quote;
 }
+
+export type QuoteRowDialogState =
+  | (QuoteRowDialogBase & { kind: Exclude<QuoteRowDialogKind, "sendEmail"> })
+  /** Confirmación de "Enviar correo" con el correo ya preparado (EC-563, ME-07). */
+  | (QuoteRowDialogBase & { kind: "sendEmail"; email: PreparedQuoteEmail });
 
 /**
  * Dueño, a nivel de VISTA, de las acciones de fila de cotizaciones: las
@@ -95,12 +102,14 @@ export function useQuoteRowActions() {
   // revisión" abre el suyo solo tras validar en red; si mientras tanto el
   // usuario pidió otro diálogo (p. ej. "Ver detalles" de otra fila), el turno
   // ya no es el suyo y no debe reemplazar lo que el usuario abrió después.
-  // Correo/PDF/editar no abren diálogo y no cuentan.
+  // PDF y editar no abren diálogo y no cuentan; el correo abre su confirmación
+  // al terminar de prepararse, y también respeta el turno.
   const dialogTurnRef = useRef(0);
 
   const approve = useApproveOperationsQuote();
   // Rechazar no tiene mutación aquí: la posee `RejectQuoteDialog` (motivo
   // obligatorio, errores bajo el campo). Su "en curso" se lee de la caché.
+  const prepareEmail = usePrepareQuoteEmail();
   const sendEmail = useGoogleSendEmail();
   const downloadPdf = useDownloadQuotePdf();
   const submitForReview = useSubmitQuoteForReview();
@@ -115,9 +124,20 @@ export function useQuoteRowActions() {
       case "edit":
         router.push(`/sales/quotes/${quote.id}/edit`);
         return;
-      case "sendEmail":
-        sendEmail.mutate(quote.id);
+      case "sendEmail": {
+        // Se prepara (cotización + correo renderizado) y se pide confirmación
+        // con destinatario, asunto y adjunto; nada se envía hasta confirmar.
+        const turn = ++dialogTurnRef.current;
+        try {
+          const email = await prepareEmail.mutateAsync(quote.id);
+          if (turn === dialogTurnRef.current) {
+            setDialog({ kind: "sendEmail", quote, email });
+          }
+        } catch {
+          // El toast lo muestra la mutación.
+        }
         return;
+      }
       case "downloadPdf":
         downloadPdf.mutate(quote.id);
         return;
@@ -145,6 +165,9 @@ export function useQuoteRowActions() {
   // `usePendingQuoteIds` para por qué se lee de la caché y no de la instancia.
   const authorizing = usePendingQuoteIds(approveOperationsQuoteMutationKey);
   const rejecting = usePendingQuoteIds(rejectOperationsQuoteMutationKey);
+  // Preparar y enviar se pintan igual en el menú ("Enviando…"): las dos son
+  // parte de la misma acción y deshabilitan repetirla.
+  const preparingEmail = usePendingQuoteIds(prepareQuoteEmailMutationKey);
   const sendingEmail = usePendingQuoteIds(sendQuoteEmailMutationKey);
   const downloadingPdf = usePendingQuoteIds(downloadQuotePdfMutationKey);
   const submittingForReview = usePendingQuoteIds(submitQuoteForReviewMutationKey);
@@ -152,7 +175,10 @@ export function useQuoteRowActions() {
   const busy: QuoteRowBusy[] = [
     ...authorizing.map((quoteId) => ({ kind: "authorize" as const, quoteId })),
     ...rejecting.map((quoteId) => ({ kind: "reject" as const, quoteId })),
-    ...sendingEmail.map((quoteId) => ({ kind: "sendEmail" as const, quoteId })),
+    ...[...preparingEmail, ...sendingEmail].map((quoteId) => ({
+      kind: "sendEmail" as const,
+      quoteId,
+    })),
     ...downloadingPdf.map((quoteId) => ({ kind: "downloadPdf" as const, quoteId })),
     ...submittingForReview.map((quoteId) => ({ kind: "submitForReview" as const, quoteId })),
     ...validatingReview.map((quoteId) => ({ kind: "validateReview" as const, quoteId })),
@@ -164,6 +190,7 @@ export function useQuoteRowActions() {
     onAuthorize: (quoteId: number) => approve.mutate(quoteId),
     onSubmitForReview: (quoteId: number, comentario?: string) =>
       submitForReview.mutate({ id: quoteId, comentario }),
+    onSendEmail: (email: PreparedQuoteEmail) => sendEmail.mutate(email),
     isAuthorizing: approve.isPending,
     isSubmittingForReview: submitForReview.isPending,
     reviewValidation: {

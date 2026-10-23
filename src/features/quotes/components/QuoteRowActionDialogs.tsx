@@ -8,6 +8,7 @@ import { DialogHeader } from "@/src/components/DialogHeader";
 import { ConfirmDialog } from "@/src/components/ConfirmDialog";
 import { QuoteDetailsLoadingSkeleton } from "./QuoteDetailsLoadingSkeleton";
 import { QuoteReviewValidationDialog } from "./QuoteReviewValidationDialog";
+import { QuoteSendEmailConfirmDialog } from "./QuoteSendEmailConfirmDialog";
 import { QuoteSubmitForReviewDialog } from "./QuoteSubmitForReviewDialog";
 import { RejectQuoteDialog } from "../../operations/components/RejectQuoteDialog";
 import type { Quote } from "../interfaces/quote.interface";
@@ -55,6 +56,7 @@ export function QuoteRowActionDialogs({
   onClose,
   onAuthorize,
   onSubmitForReview,
+  onSendEmail,
   isAuthorizing,
   isSubmittingForReview,
   reviewValidation,
@@ -144,6 +146,18 @@ export function QuoteRowActionDialogs({
           description={`Mientras la cotización #${quote.id} esté en revisión no podrá editarse. ¿Deseas continuar?`}
           confirmText={isSubmittingForReview ? "Enviando..." : "Enviar a revisión"}
           onConfirm={(comentario) => onSubmitForReview(quote.id, comentario)}
+        />
+      )}
+
+      {/* El correo mostrado es la foto preparada al pedir el envío, y es
+          exactamente lo que se envía al confirmar. */}
+      {dialog?.kind === "sendEmail" && (
+        <QuoteSendEmailConfirmDialog
+          key={`send-email-${dialog.email.id}`}
+          open
+          onOpenChange={handleOpenChange}
+          email={dialog.email}
+          onConfirm={() => onSendEmail(dialog.email)}
         />
       )}
 
