@@ -5,14 +5,19 @@
  */
 import { memo } from "react";
 import { ChevronDownIcon } from "@/src/components/Icons";
+import {
+  getSizeQuantityError,
+  parseSizeQuantity,
+  type SizeQuantitiesMap,
+} from "../hooks/useSizesState";
 import type { CatalogRow } from "../types";
 import type { Size } from "../../sizes/interfaces/size.interface";
 
 interface StepSizesProps {
   selectedRows: CatalogRow[];
   sizesPerProduct: Record<number, Size[]>;
-  sizeQuantitiesPerProduct: Record<number, Record<number, number>>;
-  updateSizeQuantity: (productId: number, sizeId: number, value: number) => void;
+  sizeQuantitiesPerProduct: SizeQuantitiesMap;
+  updateSizeQuantity: (productId: number, sizeId: number, value: string) => void;
   openProductId: number | null;
   /**
    * Acordeón MULTI-abierto, opcional. Cuando se pasa, manda sobre
@@ -61,7 +66,10 @@ export const StepSizes = memo(function StepSizes({
           {selectedRows.map((row) => {
             const quantities = sizeQuantitiesPerProduct[row.id] ?? {};
             const sizesForProduct = sizesPerProduct[row.id] ?? [];
-            const totalQty = sizesForProduct.reduce((s, size) => s + (quantities[size.id] ?? 0), 0);
+            const totalQty = sizesForProduct.reduce(
+              (s, size) => s + parseSizeQuantity(quantities[size.id]),
+              0
+            );
             const isOpen = openProductIds
               ? openProductIds.has(row.id)
               : openProductId === row.id;
@@ -124,29 +132,54 @@ export const StepSizes = memo(function StepSizes({
                           </p>
                         ) : (
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            {sizesForProduct.map((size) => (
-                              <div
-                                key={size.id}
-                                className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 dark:border-white/10 bg-white/70 dark:bg-zinc-900/40 px-3 py-2"
-                              >
-                                <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">
-                                  {size.nombre}
-                                </span>
-                                <input
-                                  type="number"
-                                  min={0}
-                                  step={1}
-                                  inputMode="numeric"
-                                  placeholder="0"
-                                  value={quantities[size.id] ?? ""}
-                                  onChange={(event) =>
-                                    updateSizeQuantity(row.id, size.id, Number(event.target.value))
-                                  }
-                                  aria-label={`Cantidad talla ${size.nombre} para ${row.nombre}`}
-                                  className="w-20 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-zinc-900 px-2 py-1 text-right text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-sky-500"
-                                />
-                              </div>
-                            ))}
+                            {sizesForProduct.map((size) => {
+                              const quantityError = getSizeQuantityError(quantities[size.id]);
+                              const errorId = `size-qty-error-${row.id}-${size.id}`;
+                              return (
+                                <div
+                                  key={size.id}
+                                  className={`rounded-xl border bg-white/70 dark:bg-zinc-900/40 px-3 py-2 ${
+                                    quantityError
+                                      ? "border-rose-300 dark:border-rose-700"
+                                      : "border-slate-200 dark:border-white/10"
+                                  }`}
+                                >
+                                  <div className="flex items-center justify-between gap-3">
+                                    <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+                                      {size.nombre}
+                                    </span>
+                                    {/* Texto y no `type="number"`: así se conserva lo que se
+                                        tecleó (`1.5`) para rechazarlo con su mensaje, en vez
+                                        de que el navegador lo vacíe o se trunque a `1`. */}
+                                    <input
+                                      type="text"
+                                      inputMode="numeric"
+                                      placeholder="0"
+                                      value={quantities[size.id] ?? ""}
+                                      onChange={(event) =>
+                                        updateSizeQuantity(row.id, size.id, event.target.value)
+                                      }
+                                      aria-label={`Cantidad talla ${size.nombre} para ${row.nombre}`}
+                                      aria-invalid={Boolean(quantityError)}
+                                      aria-describedby={quantityError ? errorId : undefined}
+                                      className={`w-20 rounded-lg border bg-white dark:bg-zinc-900 px-2 py-1 text-right text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-sky-500 ${
+                                        quantityError
+                                          ? "border-rose-400 dark:border-rose-500"
+                                          : "border-slate-200 dark:border-slate-700"
+                                      }`}
+                                    />
+                                  </div>
+                                  {quantityError && (
+                                    <p
+                                      id={errorId}
+                                      className="mt-1 text-[10px] text-right text-rose-600 dark:text-rose-400"
+                                    >
+                                      {quantityError}
+                                    </p>
+                                  )}
+                                </div>
+                              );
+                            })}
                           </div>
                         )}
                         <div

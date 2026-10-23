@@ -2,14 +2,36 @@
  * useSizesState.ts
  * Hook responsable de manejar las cantidades por talla para los productos
  * seleccionados en el diálogo. Mantiene un mapa: productId => { sizeId => cantidad }.
- * - `updateSizeQuantity` normaliza y asigna cantidades.
- * - `validateSelectedRows` verifica que cada producto tenga al menos una talla > 0.
+ * - `updateSizeQuantity` guarda la cantidad TAL COMO SE CAPTURÓ (texto).
+ * - `validateSelectedRows` verifica que cada cantidad sea un entero ≥ 0 y que
+ *   cada producto tenga al menos una talla > 0.
  * - `getItemSizes` construye la lista de tallas para envío en el payload.
+ *
+ * La cantidad se guarda como texto y no como número para poder RECHAZAR lo que
+ * no es un entero: antes se truncaba con `Math.floor` al teclear, así que `1.5`
+ * se convertía en `1` sin aviso (EC-563, CO-01).
  */
 import { useCallback, useState } from "react";
 import type { Size } from "../../sizes/interfaces/size.interface";
 import { MUESTRA_ROW_ID } from "../types";
 import type { CatalogRow, QuoteItem } from "../types";
+
+/** Cantidades capturadas por producto: productId => { sizeId => texto }. */
+export type SizeQuantitiesMap = Record<number, Record<number, string>>;
+
+export const SIZE_QUANTITY_ERROR = "Debe ser un número entero mayor o igual a 0";
+
+const SIZE_QUANTITY_REGEX = /^\d+$/;
+
+/** Error de una cantidad capturada, o `null`. Vacío equivale a 0. */
+export const getSizeQuantityError = (raw: string | undefined): string | null => {
+  const value = (raw ?? "").trim();
+  return value === "" || SIZE_QUANTITY_REGEX.test(value) ? null : SIZE_QUANTITY_ERROR;
+};
+
+/** Valor numérico de una cantidad VÁLIDA; vacía o inválida cuenta 0. */
+export const parseSizeQuantity = (raw: string | undefined): number =>
+  getSizeQuantityError(raw) === null ? Number((raw ?? "").trim() || 0) : 0;
 
 /**
  * buildInitialSizeMap
@@ -25,18 +47,18 @@ import type { CatalogRow, QuoteItem } from "../types";
  * `0`/`undefined` siguen devolviendo `{}` como siempre. Una muestra rehidratada
  * en edición también llega con `productoId: null` y toma la rama sintética.
  */
-const buildInitialSizeMap = (
-  item?: QuoteItem | null
-): Record<number, Record<number, number>> => {
+const buildInitialSizeMap = (item?: QuoteItem | null): SizeQuantitiesMap => {
   if (!item?.tallas) return {};
 
   // `=== null` y no `??`: `undefined` debe seguir cayendo en `{}` como siempre.
   const key = item.productoId === null ? MUESTRA_ROW_ID : item.productoId;
   if (!key) return {};
 
-  const map: Record<number, number> = {};
+  // Sin truncar: la cantidad guardada se muestra tal cual y, si no fuera un
+  // entero, la validación lo dice en vez de corregirlo en silencio.
+  const map: Record<number, string> = {};
   item.tallas.forEach((talla) => {
-    map[talla.tallaId] = Math.max(0, Math.floor(Number(talla.cantidad) || 0));
+    map[talla.tallaId] = talla.cantidad == null ? "" : String(talla.cantidad);
   });
 
   return { [key]: map };
@@ -54,22 +76,18 @@ export interface UseSizesStateParams {
  * - `updateSizeQuantity`, `validateSelectedRows`, `getItemSizes`, `reset`.
  */
 export function useSizesState({ initialItem }: UseSizesStateParams) {
-  const [sizeQuantitiesPerProduct, setSizeQuantitiesPerProduct] = useState<
-    Record<number, Record<number, number>>
-  >(() => buildInitialSizeMap(initialItem));
+  const [sizeQuantitiesPerProduct, setSizeQuantitiesPerProduct] = useState<SizeQuantitiesMap>(
+    () => buildInitialSizeMap(initialItem)
+  );
   const [sizeErrors, setSizeErrors] = useState<Record<number, string>>({});
 
   const updateSizeQuantity = useCallback(
-    (productId: number, sizeId: number, value: number) => {
-      const normalized = Number.isFinite(value)
-        ? Math.max(0, Math.floor(value))
-        : 0;
-
+    (productId: number, sizeId: number, value: string) => {
       setSizeQuantitiesPerProduct((prev) => ({
         ...prev,
         [productId]: {
           ...(prev[productId] ?? {}),
-          [sizeId]: normalized,
+          [sizeId]: value,
         },
       }));
 
@@ -110,8 +128,13 @@ export function useSizesState({ initialItem }: UseSizesStateParams) {
       if (availableSizes !== undefined && availableSizes.length === 0) {
         continue;
       }
-      const quantities = sizeQuantitiesPerProduct[row.id] ?? {};
-      const total = Object.values(quantities).reduce((sum, qty) => sum + qty, 0);
+      const quantities = Object.values(sizeQuantitiesPerProduct[row.id] ?? {});
+      if (quantities.some((qty) => getSizeQuantityError(qty) !== null)) {
+        nextErrors[row.id] = "Cantidad inválida";
+        hasSizeErrors = true;
+        continue;
+      }
+      const total = quantities.reduce((sum, qty) => sum + parseSizeQuantity(qty), 0);
       if (total <= 0) {
         nextErrors[row.id] = "Sin tallas";
         hasSizeErrors = true;
@@ -125,7 +148,7 @@ export function useSizesState({ initialItem }: UseSizesStateParams) {
   const getItemSizes = useCallback((productId: number, sizes: Size[]) => {
     const quantities = sizeQuantitiesPerProduct[productId] ?? {};
     return sizes
-      .map((size) => ({ ...size, cantidad: quantities[size.id] ?? 0 }))
+      .map((size) => ({ ...size, cantidad: parseSizeQuantity(quantities[size.id]) }))
       .filter((size) => size.cantidad > 0);
   }, [sizeQuantitiesPerProduct]);
 
