@@ -212,8 +212,8 @@ export default function CustomerForm({
                       field.handleBlur();
                       validateField("nombre", field.state.value);
                     }}
-                    label="Nombre"
-                    placeholder="Nombre de cliente"
+                    label="Nombre de contacto"
+                    placeholder="Nombre de contacto"
                     forceUppercase
                     error={getError("nombre")}
                   />
