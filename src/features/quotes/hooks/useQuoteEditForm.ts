@@ -9,6 +9,7 @@ import type { FormEventHandler } from "react";
 import toast from "react-hot-toast";
 import type { Customer } from "../../customers/interfaces/customer.interface";
 import { useCurrencies } from "../../currency/hooks/useCurrencies";
+import { getCurrencyLabel } from "@/src/features/currency/utils/currencyLookup";
 import { useCustomerAddresses } from "../../customers/hooks/useCustomerAddresses";
 import type { CustomerAddress } from "../../customers/interfaces/customer-address.interface";
 import type { FormFieldError } from "../../../utils/getFieldError";
@@ -1085,7 +1086,7 @@ export function useQuoteEditForm(quoteId: number) {
       { value: 0, label: "Seleccionar..." },
       ...sortedCurrencies.map((item) => ({
         value: item.id,
-        label: `${item.codigo_iso} - ${item.nombre}`,
+        label: getCurrencyLabel(item),
       })),
     ];
   }, [currencies]);

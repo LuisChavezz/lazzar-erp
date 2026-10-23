@@ -4,6 +4,7 @@ import type React from "react";
 import { createContext, useContext } from "react";
 import { useCurrencies } from "@/src/features/currency/hooks/useCurrencies";
 import type { Currency } from "@/src/features/currency/interfaces/currency.interface";
+import { findCurrency, getCurrencyLabel } from "@/src/features/currency/utils/currencyLookup";
 import { formatMoneyValueOrDash, NO_CURRENCY_FORMAT } from "@/src/utils/formatCurrency";
 
 /**
@@ -34,7 +35,7 @@ export function OrderCurrencyProvider({
   children: React.ReactNode;
 }) {
   const { data: currencies } = useCurrencies();
-  const currency = currencies?.find((item) => item.id === monedaId) ?? null;
+  const currency = findCurrency(currencies, monedaId);
   return (
     <OrderCurrencyContext.Provider value={{ currency }}>{children}</OrderCurrencyContext.Provider>
   );
@@ -50,6 +51,6 @@ export function useOrderMoney() {
     formatMoney: (value: string | number | null | undefined) =>
       formatMoneyValueOrDash(value, options),
     /** "MXN - Peso mexicano", o `null` mientras no se conozca. */
-    currencyLabel: currency ? `${currency.codigo_iso} - ${currency.nombre}` : null,
+    currencyLabel: currency ? getCurrencyLabel(currency) : null,
   };
 }

@@ -2,6 +2,7 @@
 
 import { RejectIcon } from "@/src/components/Icons";
 import { useCurrencies } from "@/src/features/currency/hooks/useCurrencies";
+import { findCurrency, getCurrencyLabel } from "@/src/features/currency/utils/currencyLookup";
 import { getStatusStyles } from "../utils/getStatusStyle";
 import { QuoteComentariosHistory } from "./QuoteComentariosHistory";
 import { useQuote, type QuoteDetailSource } from "../hooks/useQuote";
@@ -12,7 +13,6 @@ import { RecompraBadge } from "./RecompraBadge";
 import {
   formatQuoteDateTime,
   getEnabledOptionLabels,
-  toCurrencyOrDash,
   toDisplayValue,
 } from "../utils/quoteDetailsFormatters";
 
@@ -34,11 +34,11 @@ export const QuoteDetails = ({ quoteId, source }: QuoteDetailsProps) => {
   const comentariosQuery = useQuoteComentarios(quoteId, source);
   // La cotización solo trae la PK de la moneda; el código y el nombre salen
   // del catálogo (misma consulta que el formulario).
-  const { data: currencies, isPending: isLoadingCurrencies } = useCurrencies();
+  const { data: currencies } = useCurrencies();
 
   if (isLoading) {
     return (
-      <div className="space-y-4" role="status" aria-live="polite" aria-label="Cargando detalles del pedido">
+      <div className="space-y-4" role="status" aria-live="polite" aria-label="Cargando detalles de la cotización">
         <div className="h-24 rounded-xl bg-slate-200/70 dark:bg-white/10 animate-pulse" />
         <div className="h-56 rounded-xl bg-slate-200/70 dark:bg-white/10 animate-pulse" />
         <div className="h-48 rounded-xl bg-slate-200/70 dark:bg-white/10 animate-pulse" />
@@ -55,19 +55,17 @@ export const QuoteDetails = ({ quoteId, source }: QuoteDetailsProps) => {
   }
 
   const statusClassName = getStatusStyles(quote);
-  const currency = currencies?.find((item) => item.id === quote.moneda);
+  const currency = findCurrency(currencies, quote.moneda);
   // Mientras el catálogo carga o si la PK no aparece, "-" (nunca el id crudo).
-  const currencyLabel = currency ? `${currency.codigo_iso} - ${currency.nombre}` : null;
+  const currencyLabel = currency ? getCurrencyLabel(currency) : null;
   // Importes con el código de la moneda ("USD 140.48"): el "$" es igual en
-  // pesos y en dólares. Mientras el catálogo carga, sin símbolo (un "$" sobre
-  // una cotización en dólares afirmaría pesos); si ya cargó y la moneda no
-  // aparece, el formato de siempre.
-  const formatAmount = (value?: string | number | null) => {
-    if (value === null || value === undefined || value === "") return toCurrencyOrDash(value);
-    if (currency) return formatQuoteAmount(Number(value) || 0, currency.codigo_iso);
-    if (isLoadingCurrencies) return formatQuoteAmount(Number(value) || 0, null);
-    return toCurrencyOrDash(value);
-  };
+  // pesos y en dólares. Sin código conocido (catálogo cargando, con error o sin
+  // esa moneda) van sin símbolo: nunca se asume pesos, igual que en el pedido
+  // (`OrderCurrencyContext`).
+  const formatAmount = (value?: string | number | null) =>
+    value === null || value === undefined || value === ""
+      ? "-"
+      : formatQuoteAmount(Number(value) || 0, currency?.codigo_iso ?? null);
   const piezas = quote.detalles.reduce( // Sumar de todos los detalles
     (total, detalle) => total + detalle.tallas.reduce((sum, talla) => sum + (Number(talla.cantidad) || 0), 0),
     0
@@ -242,7 +240,7 @@ export const QuoteDetails = ({ quoteId, source }: QuoteDetailsProps) => {
               <p className="text-sm text-slate-700 dark:text-slate-300">
                 {toDisplayValue(quote.iva)}%
                 {/* Sin `importe_iva` (oculto o no enviado) queda solo la tasa. */}
-                {quote.importe_iva != null && quote.importe_iva !== "" && (
+                {quote.importe_iva && (
                   <> · {formatAmount(quote.importe_iva)}</>
                 )}
               </p>

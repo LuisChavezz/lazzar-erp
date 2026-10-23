@@ -244,8 +244,9 @@ export interface QuoteById {
   gran_total: string;
   /**
    * IVA en importe, texto con 2 decimales (`gran_total - importe_sin_iva`).
-   * Solo lectura (EC-571). Opcional: el detalle lo omite junto con
-   * `importe_sin_iva` cuando el backend oculta los campos contables.
+   * Solo lectura (EC-571). El detalle de cotización siempre lo envía (el
+   * filtro contable del backend solo aplica a pedidos); es opcional solo por
+   * robustez ante una respuesta que no lo traiga.
    */
   importe_iva?: string;
   empresa: number;

@@ -12,6 +12,7 @@ import type { Customer } from "@/src/features/customers/interfaces/customer.inte
 import { useCustomerAddresses } from "@/src/features/customers/hooks/useCustomerAddresses";
 import type { CustomerAddress } from "@/src/features/customers/interfaces/customer-address.interface";
 import { useCurrencies } from "@/src/features/currency/hooks/useCurrencies";
+import { getCurrencyLabel } from "@/src/features/currency/utils/currencyLookup";
 import { useSatInfo } from "@/src/features/sat/hooks/useSatInfo";
 import type { RegimenFiscal as SatRegimenFiscal } from "@/src/features/sat/interfaces/sat-info.interface";
 import { useSizes } from "@/src/features/sizes/hooks/useSizes";
@@ -1995,7 +1996,7 @@ export function usePedidoMesaControlEditForm(pedidoId: number) {
       { value: 0, label: "Seleccionar..." },
       ...sortedCurrencies.map((item) => ({
         value: item.id,
-        label: `${item.codigo_iso} - ${item.nombre}`,
+        label: getCurrencyLabel(item),
       })),
     ];
   }, [currencies]);
