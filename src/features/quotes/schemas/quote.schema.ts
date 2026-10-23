@@ -9,11 +9,9 @@ import { quoteItemSchema } from "./quote-item.schema";
 import { PEDIDO_CLASIFICACIONES } from "../../orders/constants/pedidoStatus";
 import { IVA_TASA_FIJA } from "../constants/iva";
 import { telefonoSchema } from "@/src/utils/telefonoSchema";
+import { MONTO_NEGATIVO_MESSAGE } from "../utils/quoteAmounts";
 
 export { quoteItemSchema } from "./quote-item.schema";
-
-/** Mismo texto que el backend para flete, seguros y anticipo (EC-571). */
-export const MONTO_NEGATIVO_MESSAGE = "Debe ser mayor o igual a 0";
 
 export const quoteFormSchema = z.object({
   clienteBusqueda: z.string().optional(),

@@ -4,7 +4,9 @@ import { useMemo, useState } from "react";
 import { useMutationState } from "@tanstack/react-query";
 import dynamic from "next/dynamic";
 import Link from "next/link";
+import toast from "react-hot-toast";
 import { formatCurrency } from "@/src/utils/formatCurrency";
+import { getSavedMontosError } from "@/src/features/quotes/utils/quoteAmounts";
 import {
   formatQuoteDateTime as formatOperationsQuoteDateTime,
 } from "@/src/features/quotes/utils/quoteDetailsFormatters";
@@ -128,6 +130,14 @@ export const PendingApprovalQueue = () => {
     if (pendingOperationsQuoteAction?.type !== "approve") return;
 
     const { operationsQuote } = pendingOperationsQuoteAction;
+    // Mismas reglas de montos que el backend revisa al autorizar (EC-563,
+    // CO-03): se avisan aquí en vez de mandar una petición que va a rechazar.
+    const montosError = getSavedMontosError(operationsQuote);
+    if (montosError) {
+      setPendingOperationsQuoteAction(null);
+      toast.error(montosError);
+      return;
+    }
     markProcessing(operationsQuote.id);
     setPendingOperationsQuoteAction(null);
 

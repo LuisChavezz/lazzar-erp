@@ -18,6 +18,7 @@ import {
 } from "../schemas/quote-review.schema";
 import { mapQuoteDetalleToItem } from "./mapQuoteDetalleToItem";
 import { IVA_TASA_FIJA } from "../constants/iva";
+import { ANTICIPO_MAYOR_AL_TOTAL_MESSAGE, isAnticipoMayorAlTotal } from "./quoteAmounts";
 
 type OnboardingCustomer = QuoteOnboardingData["busqueda"]["clientes"][number];
 type QuoteReviewValidationInput = Omit<QuoteFormValues, "items" | "iva"> & {
@@ -68,10 +69,26 @@ export function validateQuoteForReview(
     schemaIssuePaths
   );
 
+  const montosIssues = getMontosValidationIssues(quote, schemaIssuePaths);
+
   return mapValidationIssuesToErrors(
-    dedupeValidationErrors([...schemaIssues, ...catalogIssues])
+    dedupeValidationErrors([...schemaIssues, ...catalogIssues, ...montosIssues])
   );
 }
+
+/**
+ * Anticipo ≤ gran total GUARDADO (EC-563, CO-03), la misma regla con la que el
+ * backend rechaza `enviar-revision/`. Los negativos de anticipo, flete y seguros
+ * ya los reporta el schema (`min(0)`); un anticipo negativo no se reporta además
+ * como mayor al total, igual que en el backend.
+ */
+const getMontosValidationIssues = (
+  quote: QuoteById,
+  schemaIssuePaths: ReadonlySet<string>
+): QuoteReviewValidationIssue[] =>
+  !schemaIssuePaths.has("anticipo") && isAnticipoMayorAlTotal(quote.anticipo, quote.gran_total)
+    ? [createValidationIssue(["anticipo"], ANTICIPO_MAYOR_AL_TOTAL_MESSAGE)]
+    : [];
 
 // ─── Proyección a valores de validación ───────────────────────────────────────
 

@@ -4,20 +4,7 @@ import { useEffect, useRef } from "react";
 import type { Dispatch, SetStateAction } from "react";
 import type { QuoteFormValues } from "../schemas/quote.schema";
 import type { ErrorNode } from "../utils/quoteFormErrorTree";
-
-/** Mismo texto que el backend (EC-571). */
-export const ANTICIPO_MAYOR_AL_TOTAL_MESSAGE = "El anticipo no puede ser mayor al total";
-
-/** Centavos de un importe, para comparar sin ruido de punto flotante. */
-const toCents = (value: unknown) => Math.round((Number(value) || 0) * 100);
-
-/**
- * ¿El anticipo supera el total? Se compara a 2 decimales, la precisión con la
- * que ambos viajan al backend. Lo usan la regla en vivo del formulario y la
- * validación previa a revisión/autorización.
- */
-export const isAnticipoMayorAlTotal = (anticipo: unknown, granTotal: unknown) =>
-  toCents(anticipo) > toCents(granTotal);
+import { ANTICIPO_MAYOR_AL_TOTAL_MESSAGE, isAnticipoMayorAlTotal } from "../utils/quoteAmounts";
 
 /**
  * Las reglas CRUZADAS del formulario: un valor (el disparador) decide si otro

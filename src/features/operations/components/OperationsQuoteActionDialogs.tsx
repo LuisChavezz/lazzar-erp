@@ -1,6 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import toast from "react-hot-toast";
 import { ConfirmDialog } from "@/src/components/ConfirmDialog";
 import { DialogHeader } from "@/src/components/DialogHeader";
 import { MainDialog } from "@/src/components/MainDialog";
@@ -10,6 +11,7 @@ import {
   canManageQuoteAuthorization as canManageOperationsQuoteAuthorization,
 } from "../../quotes/utils/quoteStatusRules";
 import { QuoteDetailsLoadingSkeleton } from "../../quotes/components/QuoteDetailsLoadingSkeleton";
+import { getSavedMontosError } from "../../quotes/utils/quoteAmounts";
 import { useAcceptChangesOperationsQuote } from "../hooks/useAcceptChangesOperationsQuote";
 import { useApproveOperationsQuote } from "../hooks/useApproveOperationsQuote";
 import { useRejectChangesOperationsQuote } from "../hooks/useRejectChangesOperationsQuote";
@@ -141,6 +143,14 @@ export function OperationsQuoteActionDialogs({
           confirmColor="blue"
           onConfirm={() => {
             if (!canAuthorizeOperationsQuote) return;
+            // Mismas reglas de montos que el backend revisa al autorizar
+            // (EC-563, CO-03): se avisan aquí en vez de mandar una petición
+            // que va a rechazar. Sobre la fila viva, la más reciente.
+            const montosError = getSavedMontosError(operationsQuote);
+            if (montosError) {
+              toast.error(montosError);
+              return;
+            }
             authorizeOperationsQuote(id);
           }}
         />
