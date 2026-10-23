@@ -14,19 +14,29 @@
  * decimales con precisiones distintas contra el mismo contrato (4 en
  * cantidades por línea, 3 en peso/volumen) — de ahí el parámetro `places` en
  * vez de un valor fijo.
+ *
+ * Por defecto el signo se descarta como cualquier otro carácter (`"-2"` →
+ * `"2"`). Con `keepLeadingMinus` se conserva un `-` inicial para que el esquema
+ * RECHACE el negativo con su mensaje en vez de aceptarlo con el signo volteado
+ * sin avisar; solo el `-` inicial: uno a media cifra se sigue descartando.
  */
-export function sanitizeDecimalInput(raw: string, places: number): string {
+export function sanitizeDecimalInput(
+  raw: string,
+  places: number,
+  { keepLeadingMinus = false }: { keepLeadingMinus?: boolean } = {}
+): string {
+  const sign = keepLeadingMinus && /^\s*-/.test(raw) ? "-" : "";
   const cleaned = raw.replace(/[^0-9.]/g, "");
   const firstDot = cleaned.indexOf(".");
-  if (firstDot === -1) return cleaned;
+  if (firstDot === -1) return `${sign}${cleaned}`;
 
   const intPart = cleaned.slice(0, firstDot);
   const fracPart = cleaned.slice(firstDot + 1).replace(/\./g, "").slice(0, places);
   // Sin parte entera NI decimal no hay número que sostener: "." no es
   // escritura parcial válida (a diferencia de "0." o "1."), y dejarlo pasar
   // termina en un 400 del backend al serializarlo como `Decimal(".")`.
-  if (intPart === "" && fracPart === "") return "";
-  return `${intPart}.${fracPart}`;
+  if (intPart === "" && fracPart === "") return sign;
+  return `${sign}${intPart}.${fracPart}`;
 }
 
 /**

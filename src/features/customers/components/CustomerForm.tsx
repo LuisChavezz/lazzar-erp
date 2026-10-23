@@ -29,9 +29,15 @@ interface CustomerFormProps {
 
 const RFC_MIN_LENGTH = 12;
 
-/** Solo dígitos, sin ceros a la izquierda (mismo saneado que las cantidades de bordado). */
-const sanitizeIntegerInput = (raw: string): string =>
-  raw.replace(/[^0-9]/g, "").replace(/^0+(?=\d)/, "");
+/**
+ * Solo dígitos, sin ceros a la izquierda (mismo saneado que las cantidades de
+ * bordado), pero conserva un `-` inicial: así el esquema rechaza el negativo
+ * con su mensaje en vez de guardarlo con el signo volteado sin avisar.
+ */
+const sanitizeIntegerInput = (raw: string): string => {
+  const sign = /^\s*-/.test(raw) ? "-" : "";
+  return `${sign}${raw.replace(/[^0-9]/g, "").replace(/^0+(?=\d)/, "")}`;
+};
 
 type RfcValidationTone = "success" | "error";
 
@@ -566,7 +572,9 @@ export default function CustomerForm({
                       inputMode="decimal"
                       value={field.state.value}
                       onChange={(event) => {
-                        field.handleChange(sanitizeDecimalInput(event.target.value, 2));
+                        field.handleChange(
+                          sanitizeDecimalInput(event.target.value, 2, { keepLeadingMinus: true })
+                        );
                         clearFieldErrors("limite_credito");
                       }}
                       onBlur={() => {
