@@ -54,8 +54,9 @@ export function PedidoClasificacionSelect({
       triggerClassName="text-slate-700 dark:text-slate-200 hover:text-sky-600 dark:hover:text-sky-400"
     >
       {/* Un código fuera del catálogo se muestra tal cual (con su "Desconocida"),
-          no como vacío: sigue guardado en el pedido. */}
-      {value ? getPedidoClasificacionLabel(value) : "—"}
+          no como vacío: sigue guardado en el pedido. Vacío: "Sin clasificación",
+          igual que las listas. */}
+      {getPedidoClasificacionLabel(value)}
     </InlineSelect>
   );
 }

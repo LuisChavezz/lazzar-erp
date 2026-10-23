@@ -33,6 +33,10 @@ interface OrderFechaConfirmacionFieldProps {
  *   (y salir de él sin cambios vuelve a lectura, por la ruta normal); si el
  *   usuario ya lo llevó a otro control, no se le roba: se vuelve a lectura.
  * - Escape, o salir del campo sin cambios → vuelve a lectura sin guardar.
+ *
+ * El foco: si sale con Tab (o a otro control) se queda donde el usuario lo
+ * llevó; si el editor lo suelta (Enter, Escape, clic en zona no enfocable)
+ * vuelve al lápiz. Que la VENTANA pierda el foco no cierra el editor.
  */
 
 /** El foco no está en ningún control: el editor lo soltó al guardar. */
@@ -134,8 +138,9 @@ export function OrderFechaConfirmacionField({
       }}
       // Se evalúa DESPUÉS del `onBlur` del input (el evento burbujea desde él):
       // si el editor no guardó, el valor no cambió y se vuelve a lectura.
-      onBlur={() => {
-        if (!savingRef.current && !cancelledRef.current) closeEditor(false);
+      onBlur={(event) => {
+        if (!document.hasFocus()) return;
+        if (!savingRef.current && !cancelledRef.current) closeEditor(event.relatedTarget === null);
       }}
     >
       <PedidoFechaConfirmacionField value={value} onSave={handleSave} isPending={isPending} />

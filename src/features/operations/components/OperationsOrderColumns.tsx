@@ -165,9 +165,11 @@ export function buildOperationsOrderColumns(
     {
       // Todas las tallas, muestras incluidas (EC-571).
       id: "piezas",
+      accessorKey: "piezas",
       header: "Piezas",
       meta: { align: "right" },
-      enableSorting: false,
+      sortingFn: "basic",
+      enableGlobalFilter: false,
       cell: ({ row }) => (
         <span className="tabular-nums text-sm text-slate-600 dark:text-slate-300">
           {row.original.piezas}
@@ -177,8 +179,11 @@ export function buildOperationsOrderColumns(
     {
       // Vendedor de la cotización de origen; `null` sin cotización (EC-571).
       id: "vendedor",
+      // Vacío → `undefined` para que `sortUndefined: "last"` lo deje al final.
+      accessorFn: (order) => order.vendedor_nombre || undefined,
       header: "Vendedor",
-      enableSorting: false,
+      sortUndefined: "last",
+      enableGlobalFilter: false,
       cell: ({ row }) => (
         <span className="block text-sm text-slate-600 dark:text-slate-300 truncate max-w-45">
           {row.original.vendedor_nombre || "—"}
@@ -199,15 +204,18 @@ export function buildOperationsOrderColumns(
       },
     },
     {
-      // Misma etiqueta que el detalle del pedido (`getPedidoClasificacionLabel`).
+      // Misma etiqueta que el detalle del pedido y que Programación
+      // (`getPedidoClasificacionLabel`). Ordena por código; sin clasificación, al final.
       id: "clasificacion",
+      accessorFn: (order) => order.clasificacion || undefined,
       header: "Clasificación",
-      enableSorting: false,
+      // Etiqueta más larga: "X - Solo para facturar", igual que en Programación.
+      size: 180,
+      sortUndefined: "last",
+      enableGlobalFilter: false,
       cell: ({ row }) => (
         <span className="text-sm text-slate-600 dark:text-slate-300 whitespace-nowrap">
-          {row.original.clasificacion
-            ? getPedidoClasificacionLabel(row.original.clasificacion)
-            : "—"}
+          {getPedidoClasificacionLabel(row.original.clasificacion)}
         </span>
       ),
     },

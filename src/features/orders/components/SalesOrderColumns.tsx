@@ -31,7 +31,8 @@ import { PedidoFolioLink } from './PedidoFolioLink';
  *
  * Piezas, Vendedor y Clasificación leen `PedidoListItem` (`piezas`,
  * `vendedor_nombre`, `clasificacion`; la clasificación con la misma etiqueta
- * que el detalle, `getPedidoClasificacionLabel`). C.P. sigue siendo PLACEHOLDER
+ * que el detalle, `getPedidoClasificacionLabel`) y se pueden ordenar. C.P. sigue
+ * siendo PLACEHOLDER
  * a propósito, pedido explícitamente para previsualizar el layout final: su
  * celda (`PendingDataCell`) no lee ningún dato — C.P. no viene en el listado y
  * traerlo por fila con un fetch de detalle aparte (N+1) no vale la pena solo
@@ -148,9 +149,11 @@ export function createSalesOrderColumns({
     },
     {
       id: 'piezas',
+      accessorKey: 'piezas',
       header: 'Piezas',
       size: 90,
-      enableSorting: false,
+      sortingFn: 'basic',
+      enableGlobalFilter: false,
       meta: { align: "right", hideOnMobile: true },
       cell: ({ row }) => (
         <span className="text-[13px] tabular-nums text-slate-700 dark:text-slate-200">
@@ -160,9 +163,12 @@ export function createSalesOrderColumns({
     },
     {
       id: 'vendedor',
+      // Vacío → `undefined` para que `sortUndefined: "last"` lo deje al final.
+      accessorFn: (order) => order.vendedor_nombre || undefined,
       header: 'Vendedor',
       size: 150,
-      enableSorting: false,
+      sortUndefined: 'last',
+      enableGlobalFilter: false,
       meta: { hideOnMobile: true },
       cell: ({ row }) => (
         <span className="block text-[13px] text-slate-700 dark:text-slate-200 truncate max-w-37.5">
@@ -186,15 +192,17 @@ export function createSalesOrderColumns({
     },
     {
       id: 'clasificacion',
+      // Ordena por código (A–F, X); sin clasificación, al final.
+      accessorFn: (order) => order.clasificacion || undefined,
       header: 'Clasificación',
-      size: 130,
-      enableSorting: false,
+      // Etiqueta más larga: "X - Solo para facturar", igual que en Programación.
+      size: 180,
+      sortUndefined: 'last',
+      enableGlobalFilter: false,
       meta: { hideOnMobile: true },
       cell: ({ row }) => (
         <span className="text-[13px] text-slate-700 dark:text-slate-200 whitespace-nowrap">
-          {row.original.clasificacion
-            ? getPedidoClasificacionLabel(row.original.clasificacion)
-            : '—'}
+          {getPedidoClasificacionLabel(row.original.clasificacion)}
         </span>
       ),
     },

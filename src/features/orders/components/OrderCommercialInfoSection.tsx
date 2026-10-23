@@ -134,10 +134,8 @@ export function OrderCommercialInfoSection({
                   }
                   isPending={updateClasificacion.isPending}
                 />
-              ) : pedido.clasificacion ? (
-                getPedidoClasificacionLabel(pedido.clasificacion)
               ) : (
-                "—"
+                getPedidoClasificacionLabel(pedido.clasificacion)
               )}
             </InfoField>
             <InfoField label="Fecha">{formatShortDate(pedido.created_at)}</InfoField>

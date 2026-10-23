@@ -1,5 +1,6 @@
 "use client";
 
+import { useRef } from "react";
 import toast from "react-hot-toast";
 import { FormInput } from "@/src/components/FormInput";
 import { useInlineDraft } from "@/src/hooks/useInlineDraft";
@@ -30,25 +31,31 @@ const toDateInputValue = (value: string | null): string | null => {
  * Fecha de confirmación editable en línea, en la cabecera del detalle.
  *
  * Misma mecánica que el campo de máquina de la orden de bordado
- * (`useInlineDraft`: guarda al salir solo si cambió, Enter confirma), con dos
+ * (`useInlineDraft`: guarda al salir solo si cambió, Enter confirma), con
  * adaptaciones propias del `<input type="date">`:
  *
  * - Una fecha a medio teclear reporta `value === ""`, igual que una vaciada a
- *   propósito. Al salir se mira `validity.badInput`: si la fecha está
- *   incompleta se DESCARTA el borrador (`revert`) en vez de guardarla como
- *   `null`, que borraría la confirmación, y se AVISA: antes volvía al valor
- *   anterior en silencio y parecía que el guardado se había perdido (EC-565,
- *   ME-10). Vaciarla de verdad (valor vacío sin `badInput`) sí manda `null`.
- * - Tab con la fecha completa confirma igual que Enter. Sin esto el primer Tab
- *   no sale del input: Chrome y Firefox lo llevan al botón del calendario, que
- *   vive DENTRO del input, así que no hay blur ni guardado. Con la fecha
- *   incompleta Tab conserva su uso de siempre (pasar al siguiente segmento).
+ *   propósito; lo que las distingue es `validity.badInput`. Si la fecha está
+ *   incompleta al salir se DESCARTA el borrador (`revert`) en vez de guardarla
+ *   como `null`, que borraría la confirmación, y se AVISA: antes volvía al
+ *   valor anterior en silencio y parecía que el guardado se había perdido
+ *   (EC-565, ME-10). Vaciarla de verdad (valor vacío sin `badInput`) sí manda
+ *   `null`. `badInput` se toma en cada tecla y no en el blur: Firefox lo
+ *   reporta en `false` DENTRO del blur aunque la fecha siga incompleta, y ahí
+ *   se habría mandado `null`. Por lo mismo, Tab y Enter lo toman al bajar la
+ *   tecla, antes de que el foco se mueva, y solo para encender la marca.
+ * - Tab es el nativo: recorre día, mes, año y el botón del calendario (que
+ *   viven DENTRO del input, sin blur) y solo al salir del input se guarda.
+ * - Un blur porque la VENTANA perdió el foco (Alt+Tab) no es salir del campo:
+ *   se ignora y lo tecleado sigue ahí al volver.
  */
 export function PedidoFechaConfirmacionField({
   value,
   onSave,
   isPending = false,
 }: PedidoFechaConfirmacionFieldProps) {
+  /** `validity.badInput` de la última interacción (ver arriba por qué no en el blur). */
+  const incompleteRef = useRef(false);
   const { draft, setDraft, handleBlur, revert } = useInlineDraft(
     toDateInputValue(value),
     // Se DEVUELVE lo que devuelva `onSave`: si es una promesa rechazada,
@@ -70,9 +77,18 @@ export function PedidoFechaConfirmacionField({
       disabled={isPending}
       aria-label="Fecha de confirmación"
       className="w-34 py-0.5!"
-      onChange={(event) => setDraft(event.target.value)}
+      onChange={(event) => {
+        incompleteRef.current = event.currentTarget.validity.badInput;
+        setDraft(event.target.value);
+      }}
+      onKeyUp={(event) => {
+        if (event.key === "Tab" || event.key === "Enter") return;
+        incompleteRef.current = event.currentTarget.validity.badInput;
+      }}
       onBlur={(event) => {
-        if (event.currentTarget.validity.badInput) {
+        if (!document.hasFocus()) return;
+        if (event.currentTarget.validity.badInput || incompleteRef.current) {
+          incompleteRef.current = false;
           revert();
           toast.error("La fecha está incompleta; no se guardó.");
           return;
@@ -80,9 +96,12 @@ export function PedidoFechaConfirmacionField({
         handleBlur();
       }}
       onKeyDown={(event) => {
-        const commitsOnTab =
-          event.key === "Tab" && !event.shiftKey && event.currentTarget.value !== "";
-        if (event.key === "Enter" || commitsOnTab) {
+        // Solo la encienden: con el foco ya en el botón del calendario Firefox
+        // también la reporta en `false`. La apagan las teclas que editan.
+        if (event.key === "Tab" || event.key === "Enter") {
+          incompleteRef.current ||= event.currentTarget.validity.badInput;
+        }
+        if (event.key === "Enter") {
           event.preventDefault();
           event.currentTarget.blur();
         }
