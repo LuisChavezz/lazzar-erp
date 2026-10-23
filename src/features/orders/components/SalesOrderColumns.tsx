@@ -10,6 +10,7 @@ import type { PedidoListItem } from '../interfaces/order.interface';
 import { isOrderConfirmed } from './SharedOrderColumns';
 import { hasMeaningfulOc } from '../utils/pedidoFormat';
 import type { PedidoDetailOrigin } from '../constants/pedidoDetailOrigins';
+import { getPedidoClasificacionLabel } from '../constants/pedidoStatus';
 import { PedidoFolioLink } from './PedidoFolioLink';
 
 /**
@@ -28,14 +29,14 @@ import { PedidoFolioLink } from './PedidoFolioLink';
  * vía `columnFilters`; no depende de nada que `DataTable` tenga que
  * exponerle aparte.
  *
- * Piezas y Vendedor leen `PedidoListItem.piezas`/`vendedor_nombre` (EC-571).
- * Clasificación / C.P. siguen siendo PLACEHOLDER a propósito, pedidos
- * explícitamente para previsualizar el layout final: su celda
- * (`PendingDataCell`) no lee ningún dato — es fija en TODAS las filas hasta que
- * se conecten (C.P. no viene en el listado; traerlo por fila con un fetch de
- * detalle aparte, N+1, no vale la pena solo por la columna). Todas llevan
- * `meta: { hideOnMobile: true }` para no competir por espacio en pantallas
- * angostas.
+ * Piezas, Vendedor y Clasificación leen `PedidoListItem` (`piezas`,
+ * `vendedor_nombre`, `clasificacion`; la clasificación con la misma etiqueta
+ * que el detalle, `getPedidoClasificacionLabel`). C.P. sigue siendo PLACEHOLDER
+ * a propósito, pedido explícitamente para previsualizar el layout final: su
+ * celda (`PendingDataCell`) no lee ningún dato — C.P. no viene en el listado y
+ * traerlo por fila con un fetch de detalle aparte (N+1) no vale la pena solo
+ * por la columna. Todas llevan `meta: { hideOnMobile: true }` para no competir
+ * por espacio en pantallas angostas.
  *
  * "Importe sin IVA" SÍ es dato real: `PedidoListItem.subtotal` — a
  * diferencia de `Order`, en el listado nunca es opcional (no pasa por el
@@ -189,7 +190,13 @@ export function createSalesOrderColumns({
       size: 130,
       enableSorting: false,
       meta: { hideOnMobile: true },
-      cell: PendingDataCell,
+      cell: ({ row }) => (
+        <span className="text-[13px] text-slate-700 dark:text-slate-200 whitespace-nowrap">
+          {row.original.clasificacion
+            ? getPedidoClasificacionLabel(row.original.clasificacion)
+            : '—'}
+        </span>
+      ),
     },
     {
       id: 'subtotal',

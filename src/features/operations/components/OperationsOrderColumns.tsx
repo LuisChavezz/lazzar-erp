@@ -16,6 +16,7 @@ import { formatOrderAmountOrDash } from "@/src/features/orders/utils/orderAmount
 import type { PedidoListItem } from "@/src/features/orders/interfaces/order.interface";
 import {
   canEditPedidoMesaControl,
+  getPedidoClasificacionLabel,
   PEDIDO_ESTATUS,
 } from "@/src/features/orders/constants/pedidoStatus";
 import { isOrderConfirmed } from "@/src/features/orders/components/SharedOrderColumns";
@@ -198,11 +199,17 @@ export function buildOperationsOrderColumns(
       },
     },
     {
-      // PLACEHOLDER: `PedidoListItem` no expone clasificación.
+      // Misma etiqueta que el detalle del pedido (`getPedidoClasificacionLabel`).
       id: "clasificacion",
       header: "Clasificación",
       enableSorting: false,
-      cell: () => <span className="text-slate-400 dark:text-slate-600">—</span>,
+      cell: ({ row }) => (
+        <span className="text-sm text-slate-600 dark:text-slate-300 whitespace-nowrap">
+          {row.original.clasificacion
+            ? getPedidoClasificacionLabel(row.original.clasificacion)
+            : "—"}
+        </span>
+      ),
     },
     {
       id: "importe_sin_iva",
