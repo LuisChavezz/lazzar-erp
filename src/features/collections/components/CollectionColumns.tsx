@@ -134,7 +134,8 @@ export const getCollectionColumns = ({ onViewDetail }: CollectionColumnsCallback
         </div>
       ),
       meta: { label: "Cobro" },
-      size: 110,
+      // Cabe un folio "COB-00000" con su chevron y el punto de estatus.
+      size: 130,
       filterFn: estatusFilterFn,
       cell: (info) => <CobroIdCell cobro={info.row.original} onViewDetail={onViewDetail} />,
     }),
