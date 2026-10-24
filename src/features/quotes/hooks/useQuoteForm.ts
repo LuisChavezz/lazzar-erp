@@ -49,7 +49,11 @@ import {
 } from "./useQuoteSubmitErrorSummary";
 import { nonNegativeAmount } from "../utils/quoteAmounts";
 import { withMirroredShippingPhones } from "../utils/shippingPhones";
-import { EMPTY_MATRIZ } from "../utils/processCompatibility";
+import {
+  buildProductCategoryMap,
+  EMPTY_MATRIZ,
+  getProcessCompatibilityIssues,
+} from "../utils/processCompatibility";
 import { useSatInfo } from "../../sat/hooks/useSatInfo";
 import { useSizes } from "../../sizes/hooks/useSizes";
 
@@ -257,6 +261,12 @@ export function useQuoteForm() {
         parsed.success ? [] : parsed.error.issues,
         value,
         crossRules.getAnticipoIssue(value),
+        // Procesos que la categoría de la partida no admite (CO-04 / CO-05).
+        getProcessCompatibilityIssues(
+          value.items ?? [],
+          onboardingData?.catalogos.matriz_compatibilidad ?? EMPTY_MATRIZ,
+          buildProductCategoryMap(onboardingData?.busqueda.productos ?? []),
+        ),
       );
       if (submitIssues.length > 0) {
         const nextErrors: ErrorNode = {};

@@ -19,6 +19,7 @@ import {
   admitsProcess,
   buildProductCategoryMap,
   getItemRules,
+  getLineProcessIssues,
   UNRESTRICTED_RULES,
 } from "../utils/processCompatibility";
 import { Loader } from "@/src/components/Loader";
@@ -1543,6 +1544,16 @@ export function QuoteFormContent({
                     ? getItemRules(currentItem, matrizCompatibilidad, productCategoryById)
                     : UNRESTRICTED_RULES;
                   const corteMangaAdmitido = admitsProcess(lineRules.corte_manga);
+                  // Lo que la partida ya lleva y su categoría no admite: se marca
+                  // aquí y bloquea el guardado (ver `getProcessCompatibilityIssues`).
+                  const processIssueByField = new Map(
+                    (currentItem ? getLineProcessIssues(currentItem, lineRules) : []).map(
+                      (issue) => [issue.field, issue.message]
+                    )
+                  );
+                  const bordadoIssue = processIssueByField.get("bordados");
+                  const reflejanteIssue = processIssueByField.get("reflejantes");
+                  const corteMangaIssue = processIssueByField.get("lleva_corte_manga");
                   const cantidad = Number(currentItem?.cantidad) || 0;
                   const precio = Number(currentItem?.precio) || 0;
                   const descuento = Number(currentItem?.descuento) || 0;
@@ -1641,7 +1652,9 @@ export function QuoteFormContent({
                       </td>
                       <td className="p-2">
                         <div className="flex items-center justify-center gap-1">
-                          <span className="text-xs text-slate-500 dark:text-slate-400">
+                          <span
+                            className={`text-xs ${bordadoIssue ? "text-rose-600 dark:text-rose-400" : "text-slate-500 dark:text-slate-400"}`}
+                          >
                             {bordadoLabel}
                           </span>
                           <button
@@ -1654,10 +1667,19 @@ export function QuoteFormContent({
                             <EditIcon className="w-3.5 h-3.5" aria-hidden="true" />
                           </button>
                         </div>
+                        {bordadoIssue && (
+                          <p className="mt-1 text-[10px] text-center text-rose-600 dark:text-rose-400">
+                            {bordadoIssue}
+                          </p>
+                        )}
                       </td>
                       <td className="p-2">
                         <div className="flex items-center justify-center gap-1">
-                          <span className="text-xs text-slate-500 dark:text-slate-400">{reflejanteLabel}</span>
+                          <span
+                            className={`text-xs ${reflejanteIssue ? "text-rose-600 dark:text-rose-400" : "text-slate-500 dark:text-slate-400"}`}
+                          >
+                            {reflejanteLabel}
+                          </span>
                           <button
                             type="button"
                             onClick={() => openReflectiveEdit(index)}
@@ -1668,6 +1690,11 @@ export function QuoteFormContent({
                             <EditIcon className="w-3.5 h-3.5" aria-hidden="true" />
                           </button>
                         </div>
+                        {reflejanteIssue && (
+                          <p className="mt-1 text-[10px] text-center text-rose-600 dark:text-rose-400">
+                            {reflejanteIssue}
+                          </p>
+                        )}
                       </td>
                       {/* Corte de manga: se alterna en línea sobre la partida, sin diálogo.
                           Es una bandera booleana suelta (no un objeto con especificaciones
@@ -1680,6 +1707,9 @@ export function QuoteFormContent({
                           {corteMangaAdmitido || llevaCorteManga ? (
                             <input
                               type="checkbox"
+                              // `name` con la ruta del error: el resumen del
+                              // Guardar lleva la vista hasta aquí.
+                              name={`items.${index}.lleva_corte_manga`}
                               className="w-4 h-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500 cursor-pointer"
                               checked={llevaCorteManga}
                               aria-label={`Corte de manga en la partida ${index + 1}`}
@@ -1701,6 +1731,11 @@ export function QuoteFormContent({
                             </span>
                           )}
                         </div>
+                        {corteMangaIssue && (
+                          <p className="mt-1 text-[10px] text-center text-rose-600 dark:text-rose-400">
+                            {corteMangaIssue}
+                          </p>
+                        )}
                       </td>
                       <td className="p-2">
                         <div className="space-y-1">

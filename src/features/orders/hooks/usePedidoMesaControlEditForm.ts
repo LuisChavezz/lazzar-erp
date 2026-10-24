@@ -41,7 +41,11 @@ import {
 } from "@/src/features/quotes/hooks/useQuoteSubmitErrorSummary";
 import { nonNegativeAmount } from "@/src/features/quotes/utils/quoteAmounts";
 import { withMirroredShippingPhones } from "@/src/features/quotes/utils/shippingPhones";
-import { EMPTY_MATRIZ } from "@/src/features/quotes/utils/processCompatibility";
+import {
+  buildProductCategoryMap,
+  EMPTY_MATRIZ,
+  getProcessCompatibilityIssues,
+} from "@/src/features/quotes/utils/processCompatibility";
 import { deriveTiposServicio } from "@/src/features/quotes/utils/deriveTiposServicio";
 import type { QuoteValidationIssue } from "@/src/features/quotes/utils/quoteValidationErrors";
 import { scrollToFirstValidationError } from "@/src/features/quotes/utils/scrollToFirstValidationError";
@@ -1242,6 +1246,12 @@ export function usePedidoMesaControlEditForm(pedidoId: number) {
         parsed.success ? [] : parsed.error.issues,
         value,
         crossRules.getAnticipoIssue(value),
+        // Procesos que la categoría de la partida no admite (CO-04 / CO-05).
+        getProcessCompatibilityIssues(
+          value.items ?? [],
+          onboardingData?.catalogos.matriz_compatibilidad ?? EMPTY_MATRIZ,
+          buildProductCategoryMap(onboardingData?.busqueda.productos ?? []),
+        ),
       );
       if (submitIssues.length > 0) {
         const nextErrors: ErrorNode = {};

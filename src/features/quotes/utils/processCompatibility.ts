@@ -198,6 +198,92 @@ export const getItemCategoryId = (
   return item.productoId ? productCategoryById.get(item.productoId) ?? null : null;
 };
 
+/** Campo de la partida donde vive cada proceso (ruta del error en el formulario). */
+export type LineProcessField = "lleva_corte_manga" | "bordados" | "reflejantes";
+
+/** Un proceso que la partida lleva y su categoría no admite. */
+export interface LineProcessIssue {
+  field: LineProcessField;
+  message: string;
+}
+
+const notAdmittedCodesMessage = (
+  proceso: "bordado" | "reflejante",
+  codes: string[],
+): string => {
+  if (codes.length === 1) return codeNotAdmittedMessage(proceso, codes[0], "partida");
+  const list = codes.map(normalizeCode).join(", ");
+  return proceso === "bordado"
+    ? `Esta prenda no admite bordado en las ubicaciones ${list}.`
+    : `Esta prenda no admite reflejante en ${list}.`;
+};
+
+/**
+ * Lo que la partida ya lleva y su categoría no admite (p. ej. una partida
+ * guardada antes de que se configurara la matriz). Nada se quita solo: se
+ * marca para que el usuario lo corrija, y bloquea el guardado.
+ */
+export const getLineProcessIssues = (
+  item: QuoteItem,
+  rules: ProcessRules,
+): LineProcessIssue[] => {
+  const issues: LineProcessIssue[] = [];
+
+  if (item.lleva_corte_manga && !admitsProcess(rules.corte_manga)) {
+    issues.push({
+      field: "lleva_corte_manga",
+      message: processNotAdmittedMessage("corte_manga", "partida"),
+    });
+  }
+
+  if (item.bordados?.activo) {
+    const codes = (item.bordados.especificaciones ?? [])
+      .map((spec) => spec.posicionCodigo)
+      .filter((code) => code && !admitsCode(rules.bordado, code));
+    if (!admitsProcess(rules.bordado)) {
+      issues.push({ field: "bordados", message: processNotAdmittedMessage("bordado", "partida") });
+    } else if (codes.length > 0) {
+      issues.push({ field: "bordados", message: notAdmittedCodesMessage("bordado", codes) });
+    }
+  }
+
+  if (item.reflejantes?.activo) {
+    const codes = [
+      ...new Set(
+        (item.reflejantes.especificaciones ?? [])
+          .map((spec) => spec.posicion)
+          .filter((code) => code && !admitsCode(rules.reflejante, code)),
+      ),
+    ];
+    if (!admitsProcess(rules.reflejante)) {
+      issues.push({
+        field: "reflejantes",
+        message: processNotAdmittedMessage("reflejante", "partida"),
+      });
+    } else if (codes.length > 0) {
+      issues.push({ field: "reflejantes", message: notAdmittedCodesMessage("reflejante", codes) });
+    }
+  }
+
+  return issues;
+};
+
+/**
+ * Los mismos avisos para todas las partidas, con la ruta del formulario
+ * (`items.N.<campo>`): se suman a los errores del Guardar en los tres flujos.
+ */
+export const getProcessCompatibilityIssues = (
+  items: readonly QuoteItem[],
+  matriz: MatrizCompatibilidad,
+  productCategoryById: ReadonlyMap<number, number>,
+): { path: (string | number)[]; message: string }[] =>
+  items.flatMap((item, index) =>
+    getLineProcessIssues(item, getItemRules(item, matriz, productCategoryById)).map((issue) => ({
+      path: ["items", index, issue.field],
+      message: issue.message,
+    })),
+  );
+
 /** Reglas de una partida. */
 export const getItemRules = (
   item: QuoteItem,

@@ -20,7 +20,8 @@ const MIRRORED_PHONE_FIELDS = new Set(["telefonoEnvio", "celularEnvio"]);
 
 /**
  * Junta los errores de un Guardar: los de Zod más el de la regla del anticipo,
- * que el schema no conoce porque depende del total en vivo.
+ * que el schema no conoce porque depende del total en vivo, y los de la matriz
+ * prenda/proceso (`processIssues`), que dependen del onboarding.
  *
  * Con "Usar el mismo teléfono" marcada se omiten los errores de los teléfonos
  * de envío: se validan con el valor derivado de `telefono_pagos`
@@ -31,6 +32,7 @@ export const collectQuoteSubmitIssues = (
   zodIssues: readonly { path: readonly PropertyKey[]; message: string }[],
   values: Pick<QuoteFormValues, "usarMismoTelefono">,
   anticipoIssue: QuoteSubmitIssue | null,
+  processIssues: readonly QuoteSubmitIssue[] = [],
 ): QuoteSubmitIssue[] => {
   const issues: QuoteSubmitIssue[] = zodIssues
     .map((issue) => ({
@@ -49,6 +51,7 @@ export const collectQuoteSubmitIssues = (
   if (anticipoIssue && !issues.some((issue) => issue.path[0] === "anticipo")) {
     issues.push(anticipoIssue);
   }
+  issues.push(...processIssues);
   return issues;
 };
 
