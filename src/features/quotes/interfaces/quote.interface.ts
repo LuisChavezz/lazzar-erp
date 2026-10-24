@@ -6,6 +6,7 @@ import { Company } from "../../companies/interfaces/company.interface";
 import { Currency } from "../../currency/interfaces/currency.interface";
 import { Product } from '../../products/interfaces/product.interface';
 import { Size } from '../../sizes/interfaces/size.interface';
+import type { MatrizCompatibilidad } from "../utils/processCompatibility";
 
 
 export type QuotePaymentCondition =
@@ -494,6 +495,11 @@ export interface QuoteOnboardingData {
      * (`GET /catalogo/talla/`) — ver `useQuoteForm`. NO leas esta clave.
      */
     tallas?: Size[]
+    /**
+     * Matriz prenda/proceso (EC-575): qué procesos y ubicaciones admite cada
+     * categoría de producto. Ver `utils/processCompatibility`.
+     */
+    matriz_compatibilidad: MatrizCompatibilidad;
   },
   busqueda: {
     clientes: {

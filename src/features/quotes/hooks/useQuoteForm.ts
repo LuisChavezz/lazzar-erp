@@ -49,6 +49,7 @@ import {
 } from "./useQuoteSubmitErrorSummary";
 import { nonNegativeAmount } from "../utils/quoteAmounts";
 import { withMirroredShippingPhones } from "../utils/shippingPhones";
+import { EMPTY_MATRIZ } from "../utils/processCompatibility";
 import { useSatInfo } from "../../sat/hooks/useSatInfo";
 import { useSizes } from "../../sizes/hooks/useSizes";
 
@@ -1065,6 +1066,8 @@ export function useQuoteForm() {
     metodosPagoOptions,
     sizes,
     products: onboardingData?.busqueda.productos ?? [],
+    // Matriz prenda/proceso: qué admite cada categoría (CO-04 / CO-05).
+    matrizCompatibilidad: onboardingData?.catalogos.matriz_compatibilidad ?? EMPTY_MATRIZ,
     isCustomersLoading,
     isCurrenciesLoading,
     isOnboardingLoading,

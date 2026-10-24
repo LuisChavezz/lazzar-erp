@@ -41,6 +41,7 @@ import {
 } from "@/src/features/quotes/hooks/useQuoteSubmitErrorSummary";
 import { nonNegativeAmount } from "@/src/features/quotes/utils/quoteAmounts";
 import { withMirroredShippingPhones } from "@/src/features/quotes/utils/shippingPhones";
+import { EMPTY_MATRIZ } from "@/src/features/quotes/utils/processCompatibility";
 import { deriveTiposServicio } from "@/src/features/quotes/utils/deriveTiposServicio";
 import type { QuoteValidationIssue } from "@/src/features/quotes/utils/quoteValidationErrors";
 import { scrollToFirstValidationError } from "@/src/features/quotes/utils/scrollToFirstValidationError";
@@ -2062,6 +2063,8 @@ export function usePedidoMesaControlEditForm(pedidoId: number) {
     metodosPagoOptions,
     sizes,
     products: onboardingData?.busqueda.productos ?? [],
+    // Matriz prenda/proceso: qué admite cada categoría (CO-04 / CO-05).
+    matrizCompatibilidad: onboardingData?.catalogos.matriz_compatibilidad ?? EMPTY_MATRIZ,
     isCustomersLoading,
     isCurrenciesLoading,
     isOnboardingLoading: isOnboardingLoading || isPedidoLoading || !hasFreshPedido,
