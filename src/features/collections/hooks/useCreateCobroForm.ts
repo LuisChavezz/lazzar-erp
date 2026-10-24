@@ -260,19 +260,22 @@ export function useCreateCobroForm({
   };
 
   /**
-   * Cambiar de cuenta bancaria VACÍA las líneas y el tipo de cambio: la cuenta
-   * fija la moneda del cobro, y las CxC elegidas eran de la moneda anterior.
+   * Cambiar a una cuenta de OTRA moneda vacía las líneas y el tipo de cambio: la
+   * cuenta fija la moneda del cobro, y las CxC elegidas y su tipo de cambio eran
+   * de la moneda anterior. Con la misma moneda (conocida) se conservan.
    */
   const handleCuentaChange = (cuentaId: number) => {
     if (cuentaId === form.getFieldValue("cuenta_bancaria")) return;
     const account = selectableBankAccounts.find((item) => item.id === cuentaId);
+    const previousMoneda = form.getFieldValue("moneda");
+    const nextMoneda = account?.moneda_codigo || null;
     form.setFieldValue("cuenta_bancaria", cuentaId);
-    form.setFieldValue("moneda", account?.moneda_codigo || null);
-    // El tipo de cambio es de la moneda anterior.
+    form.setFieldValue("moneda", nextMoneda);
+    clearError("cuenta_bancaria");
+    if (previousMoneda !== null && previousMoneda === nextMoneda) return;
     form.setFieldValue("tipo_cambio", "");
     clearError("tipo_cambio");
     clearLines();
-    clearError("cuenta_bancaria");
   };
 
   // ── Submit / reset ────────────────────────────────────────────────────────
