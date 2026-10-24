@@ -162,6 +162,11 @@ export function useSizesState({ initialItem }: UseSizesStateParams) {
       .filter((size) => size.cantidad > 0);
   }, [sizeQuantitiesPerProduct]);
 
+  /** Marca el error de una fila desde fuera (p. ej. el tope de reflejante, CO-06). */
+  const setSizeError = useCallback((productId: number, message: string) => {
+    setSizeErrors((prev) => ({ ...prev, [productId]: message }));
+  }, []);
+
   const reset = useCallback((item?: QuoteItem | null) => {
     setSizeQuantitiesPerProduct(buildInitialSizeMap(item));
     setSizeErrors({});
@@ -173,6 +178,7 @@ export function useSizesState({ initialItem }: UseSizesStateParams) {
     updateSizeQuantity,
     clearProductSizes,
     validateSelectedRows,
+    setSizeError,
     getItemSizes,
     reset,
   };

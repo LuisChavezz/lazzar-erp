@@ -17,6 +17,11 @@ import { isCustomEmbroideryPosition } from "../constants/embroideryPositions";
 import { embroiderySchema } from "./embroidery.schema";
 import { quoteItemSizeSchema } from "./quote-item-size.schema";
 import { reflectiveSchema } from "./reflective.schema";
+import {
+  exceedsReflectiveInventoryCap,
+  linePieces,
+  REFLEJANTE_INVENTARIO_MESSAGE,
+} from "../utils/reflectiveInventoryCap";
 
 /**
  * Campos comunes a las dos variantes. Se mantienen aquí una sola vez para que
@@ -167,13 +172,36 @@ const refineEmbroidery = (
   });
 };
 
+/**
+ * Reflejante «Del inventario»: máximo 50 piezas por partida (CO-06). El error
+ * va en `cantidad`, la columna de la tabla que muestra el total de piezas.
+ */
+const refineReflectiveInventoryCap = (
+  data: z.infer<typeof quoteItemBaseSchema>,
+  ctx: z.RefinementCtx
+) => {
+  if (exceedsReflectiveInventoryCap(data.reflejantes, linePieces(data))) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["cantidad"],
+      message: REFLEJANTE_INVENTARIO_MESSAGE,
+    });
+  }
+};
+
+/** Refinamientos comunes a las dos variantes. */
+const refineItem = (data: z.infer<typeof quoteItemBaseSchema>, ctx: z.RefinementCtx) => {
+  refineEmbroidery(data, ctx);
+  refineReflectiveInventoryCap(data, ctx);
+};
+
 /** Partida de CATÁLOGO: la forma que existía antes de la unión. */
 export const quoteCatalogoItemSchema = quoteItemBaseSchema
   .extend({
     tipo: z.literal("catalogo"),
     productoId: z.coerce.number().min(1, "Requerido"),
   })
-  .superRefine(refineEmbroidery);
+  .superRefine(refineItem);
 
 /**
  * Partida de MUESTRA: producto que aún no existe en el catálogo.
@@ -208,7 +236,7 @@ export const quoteMuestraItemSchema = quoteItemBaseSchema
      */
     categoria_producto: z.number().int().positive().nullish(),
   })
-  .superRefine(refineEmbroidery);
+  .superRefine(refineItem);
 
 export const quoteItemSchema = z.discriminatedUnion("tipo", [
   quoteCatalogoItemSchema,

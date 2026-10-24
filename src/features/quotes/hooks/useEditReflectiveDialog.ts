@@ -21,6 +21,11 @@ import { useCallback, useEffect, useMemo } from 'react';
 import type { QuoteItem } from '../types';
 import { useReflectiveState } from './useReflectiveState';
 import { buildLocationRule, type AllowedCodes } from '../utils/processCompatibility';
+import {
+  exceedsReflectiveInventoryCap,
+  linePieces,
+  REFLEJANTE_INVENTARIO_MESSAGE,
+} from '../utils/reflectiveInventoryCap';
 
 export interface UseEditReflectiveDialogOptions {
   /** Item actual de la partida a editar. */
@@ -59,6 +64,13 @@ export function useEditReflectiveDialog({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Reflejante «Del inventario»: máximo 50 piezas por partida (CO-06), contra
+  // las piezas actuales de la partida.
+  const inventoryCapError =
+    item && exceedsReflectiveInventoryCap(reflectiveState.buildPayload(), linePieces(item))
+      ? REFLEJANTE_INVENTARIO_MESSAGE
+      : null;
+
   /**
    * Valida la configuración de reflejante y, si es válida, construye el
    * payload y notifica al padre para que actualice el item.
@@ -70,13 +82,13 @@ export function useEditReflectiveDialog({
       // Marcar intento de submit para mostrar errores en StepReflective.
       reflectiveState.setSubmitAttempted(true);
 
-      if (reflectiveState.validation.hasError) return;
+      if (reflectiveState.validation.hasError || inventoryCapError) return;
 
       const reflejantes = reflectiveState.buildPayload();
       onSave({ ...item, reflejantes: reflejantes ?? item.reflejantes });
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [item, reflectiveState.validation.hasError]
+    [item, reflectiveState.validation.hasError, inventoryCapError]
   );
 
   /**
@@ -111,7 +123,7 @@ export function useEditReflectiveDialog({
       onRemoveConfig: reflectiveState.removeConfig,
       onUpdateConfig: reflectiveState.updateConfig,
       errorsByConfig: reflectiveState.validation.errorsByConfig,
-      generalError: null,
+      generalError: inventoryCapError,
       scrollToConfigId: reflectiveState.validation.firstErrorConfigId,
       showValidationErrors: reflectiveState.submitAttempted,
       observaciones: reflectiveState.observaciones,
@@ -126,6 +138,7 @@ export function useEditReflectiveDialog({
       reflectiveState.updateConfig,
       reflectiveState.validation.errorsByConfig,
       reflectiveState.validation.firstErrorConfigId,
+      inventoryCapError,
       reflectiveState.submitAttempted,
       reflectiveState.observaciones,
       reflectiveState.setObservaciones,

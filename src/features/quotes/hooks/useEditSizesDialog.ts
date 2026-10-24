@@ -26,6 +26,10 @@ import type { Size } from '../../sizes/interfaces/size.interface';
 import { MUESTRA_ROW_ID } from '../types';
 import type { CatalogRow, QuoteItem } from '../types';
 import { useSizesState } from './useSizesState';
+import {
+  exceedsReflectiveInventoryCap,
+  REFLEJANTE_INVENTARIO_MESSAGE,
+} from '../utils/reflectiveInventoryCap';
 
 export interface UseEditSizesDialogOptions {
   /** Partida cuyas tallas se van a editar. */
@@ -119,10 +123,16 @@ export function useEditSizesDialog({
       // Recalcular cantidad total para mantener coherencia con el sumatorio de tallas.
       const totalCantidad = tallas.reduce((sum, t) => sum + t.cantidad, 0);
 
+      // Reflejante «Del inventario»: máximo 50 piezas por partida (CO-06).
+      if (exceedsReflectiveInventoryCap(item.reflejantes, totalCantidad)) {
+        sizesState.setSizeError(selectedRow.id, REFLEJANTE_INVENTARIO_MESSAGE);
+        return;
+      }
+
       onSave({ ...item, tallas, cantidad: totalCantidad });
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [item, sizes, sizesState.validateSelectedRows, sizesState.getItemSizes, selectedRow]
+    [item, sizes, sizesState.validateSelectedRows, sizesState.getItemSizes, sizesState.setSizeError, selectedRow]
   );
 
   /**
