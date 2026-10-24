@@ -21,7 +21,9 @@ import { canCancelCobroRep } from "../utils/cobroRepCancellation";
 import { hasRepDownloadPermission } from "../utils/cobroRepDownload";
 import { CollectionCancelDialog } from "./CollectionCancelDialog";
 import { CobroDraftEditDialog } from "./CobroDraftEditDialog";
-import { canManageCobroDraft } from "../utils/cobroDraft";
+import { CobroDraftApplyDialog } from "./CobroDraftApplyDialog";
+import { CobroDraftDeleteDialog } from "./CobroDraftDeleteDialog";
+import { canManageCobroDraft, isDeletableCobroDraft } from "../utils/cobroDraft";
 import { useBankAccounts } from "@/src/features/bank-accounts/hooks/useBankAccounts";
 import { useCobros } from "../hooks/useCobros";
 import { mapCobrosToRows, type CobroRow } from "../utils/collection.utils";
@@ -61,6 +63,12 @@ export function CollectionList() {
   // y no la suelta aunque la fila se relea (o pase a `Aplicado`) mientras edita.
   const [editId, setEditId] = useState<number | null>(null);
   const editCobro = editId !== null ? rows.find((row) => row.id === editId) ?? null : null;
+  // Aplicar y eliminar un borrador: solo desde el detalle; cada diálogo toma su
+  // copia al abrir (la fila cambia de estatus o desaparece al terminar).
+  const [applyId, setApplyId] = useState<number | null>(null);
+  const applyCobro = applyId !== null ? rows.find((row) => row.id === applyId) ?? null : null;
+  const [deleteId, setDeleteId] = useState<number | null>(null);
+  const deleteCobro = deleteId !== null ? rows.find((row) => row.id === deleteId) ?? null : null;
 
   const columns = getCollectionColumns({ onViewDetail: setOpenDetailId });
 
@@ -148,8 +156,20 @@ export function CollectionList() {
           onCancelRep={
             canCancelCobroRep(detailCobro, session?.user) ? () => setCancelRepId(detailCobro.id) : undefined
           }
-          onCancel={canOfferCobroCancel(detailCobro, session?.user) ? () => setCancelId(detailCobro.id) : undefined}
+          // Un borrador sin folio se ELIMINA (no deja hueco en la serie); con
+          // folio, o aplicado, se cancela.
+          onCancel={
+            canOfferCobroCancel(detailCobro, session?.user) && !isDeletableCobroDraft(detailCobro)
+              ? () => setCancelId(detailCobro.id)
+              : undefined
+          }
           onEdit={canManageCobroDraft(detailCobro, session?.user) ? () => setEditId(detailCobro.id) : undefined}
+          onApply={canManageCobroDraft(detailCobro, session?.user) ? () => setApplyId(detailCobro.id) : undefined}
+          onDelete={
+            canManageCobroDraft(detailCobro, session?.user) && isDeletableCobroDraft(detailCobro)
+              ? () => setDeleteId(detailCobro.id)
+              : undefined
+          }
           hasRepDownloadPermission={hasRepDownloadPermission(session?.user)}
         />
       )}
@@ -177,6 +197,22 @@ export function CollectionList() {
         open={editId !== null}
         onOpenChange={(open) => {
           if (!open) setEditId(null);
+        }}
+      />
+
+      <CobroDraftApplyDialog
+        cobro={applyCobro}
+        open={applyId !== null}
+        onOpenChange={(open) => {
+          if (!open) setApplyId(null);
+        }}
+      />
+
+      <CobroDraftDeleteDialog
+        cobro={deleteCobro}
+        open={deleteId !== null}
+        onOpenChange={(open) => {
+          if (!open) setDeleteId(null);
         }}
       />
 

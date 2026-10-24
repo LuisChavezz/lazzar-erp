@@ -11,7 +11,15 @@ import {
   textOrDash,
 } from "@/src/components/DetailDialogPrimitives";
 import { Button } from "@/src/components/Button";
-import { BanIcon, EditIcon, ExclamationTriangleIcon, ReceiptIcon, ShieldCheckIcon } from "@/src/components/Icons";
+import {
+  BanIcon,
+  CheckCircleIcon,
+  DeleteIcon,
+  EditIcon,
+  ExclamationTriangleIcon,
+  ReceiptIcon,
+  ShieldCheckIcon,
+} from "@/src/components/Icons";
 import { formatShortDate, formatShortDateTime } from "@/src/utils/formatDate";
 import { useCuentasPorCobrar } from "@/src/features/accounts-receivable/hooks/useCuentasPorCobrar";
 import {
@@ -27,6 +35,7 @@ import {
 } from "../utils/collection.utils";
 import { COBRO_REP_PENDING_MESSAGE, isCobroRepPending } from "../utils/cobroRepStamping";
 import { getCobroCancelBlockReason } from "../utils/cobroCancellation";
+import { COBRO_DRAFT_APPLY_WITHOUT_LINES_MESSAGE } from "../utils/cobroDraft";
 import { COBRO_REP_DOWNLOAD_FORBIDDEN_MESSAGE, hasCobroRepFile } from "../utils/cobroRepDownload";
 import { CobroAmount } from "./CobroAmount";
 import { CobroRepDownloadButtons } from "./CobroRepDownloadButtons";
@@ -60,6 +69,13 @@ interface CollectionDetailDialogProps {
    * cobro que no es `Borrador`, ver `canManageCobroDraft`).
    */
   onEdit?: () => void;
+  /** Abre la confirmación de "Aplicar" el borrador (mismas condiciones que `onEdit`). */
+  onApply?: () => void;
+  /**
+   * Abre la confirmación de "Eliminar" el borrador: solo un `Borrador` SIN folio
+   * (`isDeletableCobroDraft`); con folio se ofrece "Cancelar cobro" (`onCancel`).
+   */
+  onDelete?: () => void;
   /**
    * ¿El usuario tiene el permiso de descarga del REP (`R-FIN-FACTURAMA`)? Solo
    * el permiso: con el REP timbrado, `true` ofrece "Descargar PDF/XML" y `false`
@@ -76,6 +92,8 @@ export function CollectionDetailDialog({
   onCancelRep,
   onCancel,
   onEdit,
+  onApply,
+  onDelete,
   hasRepDownloadPermission = false,
 }: CollectionDetailDialogProps) {
   // Sin parámetros: la MISMA entrada de caché que la pantalla de CxC, y con las
@@ -104,6 +122,9 @@ export function CollectionDetailDialog({
     ? null
     : getCobroCancelBlockReason(cobro, hasLoadedCxc ? cxcIndex : null);
   const cancelNoteId = `cobro-${cobro.id}-cancel-note`;
+  // Un borrador sin líneas se guarda, pero no se aplica: el backend pide al menos una.
+  const canApply = cobro.cobro_detalles.length > 0;
+  const applyNoteId = `cobro-${cobro.id}-apply-note`;
 
   return (
     <MainDialog
@@ -128,12 +149,44 @@ export function CollectionDetailDialog({
       <div className="space-y-5">
         {/* Acciones del borrador y "Cancelar cobro": solo aquí, no en el menú de
             la fila. Cada diálogo vive en `CollectionList`. */}
-        {onEdit && (
-          <div className="flex flex-wrap items-center justify-end gap-2">
-            <Button type="button" variant="secondary" onClick={onEdit}>
-              <EditIcon className="w-4 h-4" aria-hidden="true" />
-              Editar
-            </Button>
+        {(onEdit || onApply || onDelete) && (
+          <div className="flex flex-col items-end gap-1.5">
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              {onDelete && (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={onDelete}
+                  className="text-rose-600! dark:text-rose-400!"
+                >
+                  <DeleteIcon className="w-4 h-4" aria-hidden="true" />
+                  Eliminar
+                </Button>
+              )}
+              {onEdit && (
+                <Button type="button" variant="secondary" onClick={onEdit}>
+                  <EditIcon className="w-4 h-4" aria-hidden="true" />
+                  Editar
+                </Button>
+              )}
+              {onApply && (
+                <Button
+                  type="button"
+                  variant="primary"
+                  onClick={onApply}
+                  disabled={!canApply}
+                  aria-describedby={canApply ? undefined : applyNoteId}
+                >
+                  <CheckCircleIcon className="w-4 h-4" aria-hidden="true" />
+                  Aplicar
+                </Button>
+              )}
+            </div>
+            {onApply && !canApply && (
+              <p id={applyNoteId} className="max-w-md text-right text-xs text-slate-500 dark:text-slate-400">
+                {COBRO_DRAFT_APPLY_WITHOUT_LINES_MESSAGE}
+              </p>
+            )}
           </div>
         )}
 

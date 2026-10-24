@@ -186,3 +186,29 @@ export function buildCobroPayload(values: CobroFormValues, estatus: CobroEstatus
 
   return payload;
 }
+
+/**
+ * Cobro ya guardado → cuerpo del PATCH que lo guarda TAL COMO ESTÁ con otro
+ * `estatus` ("Aplicar" desde el detalle). Viaja completo, igual que desde el
+ * formulario: cabecera, todas sus líneas (el backend las reemplaza por las
+ * mismas) y `total_cobrado` derivado de ellas. `tipo_cambio` se omite: sin
+ * cambiar de cuenta bancaria el backend conserva el guardado.
+ */
+export function buildCobroPayloadFromCobro(cobro: Cobro, estatus: CobroEstatus): CreateCobroPayload {
+  return {
+    cliente: cobro.cliente,
+    cuenta_bancaria: cobro.cuenta_bancaria,
+    fecha_cobro: cobro.fecha_cobro,
+    metodo_pago: cobro.metodo_pago,
+    referencia: cobro.referencia,
+    referencia_operacion: cobro.referencia_operacion,
+    total_cobrado: centavosAMoneda(sumImportesEnCentavos(cobro.cobro_detalles)),
+    estatus,
+    observaciones: cobro.observaciones,
+    cobro_detalles: cobro.cobro_detalles.map((line) => ({
+      cxc: line.cxc,
+      importe_aplicado: line.importe_aplicado,
+      observaciones: line.observaciones,
+    })),
+  };
+}
