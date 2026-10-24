@@ -192,15 +192,18 @@ export function PackingWizardStep2({ step1, onBack, onSuccess }: PackingWizardSt
               label="Número de cajas"
               name="numero_cajas"
               type="number"
-              min={0}
+              // Sin `min`: la validación nativa frenaría el envío con su propio
+              // globo y el error del esquema nunca llegaría al banner.
               step={1}
               value={header.numero_cajas === 0 ? "" : header.numero_cajas}
               placeholder="0"
               onChange={(event) => {
+                // Un negativo se conserva para que el esquema lo rechace con un
+                // error al registrar, en vez de volverlo 0 sin avisar.
                 const parsed = Number.parseInt(event.target.value, 10);
                 setHeader((prev) => ({
                   ...prev,
-                  numero_cajas: Number.isNaN(parsed) || parsed < 0 ? 0 : parsed,
+                  numero_cajas: Number.isNaN(parsed) ? 0 : parsed,
                 }));
               }}
             />
@@ -214,7 +217,9 @@ export function PackingWizardStep2({ step1, onBack, onSuccess }: PackingWizardSt
               onChange={(event) =>
                 setHeader((prev) => ({
                   ...prev,
-                  peso_total: sanitizeDecimalInput(event.target.value, HEADER_DECIMAL_PLACES),
+                  peso_total: sanitizeDecimalInput(event.target.value, HEADER_DECIMAL_PLACES, {
+                    keepLeadingMinus: true,
+                  }),
                 }))
               }
             />
@@ -228,7 +233,9 @@ export function PackingWizardStep2({ step1, onBack, onSuccess }: PackingWizardSt
               onChange={(event) =>
                 setHeader((prev) => ({
                   ...prev,
-                  volumen_total: sanitizeDecimalInput(event.target.value, HEADER_DECIMAL_PLACES),
+                  volumen_total: sanitizeDecimalInput(event.target.value, HEADER_DECIMAL_PLACES, {
+                    keepLeadingMinus: true,
+                  }),
                 }))
               }
             />

@@ -43,6 +43,10 @@ export const PACKING_HEADER_DECIMAL_PLACES = 3;
  * paso en el ENVÍO — el saneo de un input es una comodidad de captura, no una
  * garantía de validez (un valor pegado, o un cambio futuro del sanitizer,
  * llegarían igual al POST sin esta comprobación).
+ *
+ * El input conserva un `-` inicial (`keepLeadingMinus`) para que un negativo
+ * se rechace aquí con un error en vez de convertirse en positivo en silencio;
+ * el backend no pone mínimo a estos campos, así que este es el único freno.
  */
 const headerDecimal = (label: string) =>
   z
@@ -51,10 +55,13 @@ const headerDecimal = (label: string) =>
       (value) =>
         value.trim() === "" || toSendableDecimal(value, PACKING_HEADER_DECIMAL_PLACES) !== null,
       { message: `${label} debe ser un número válido` },
-    );
+    )
+    .refine((value) => value.trim() === "" || !(Number(value) < 0), {
+      message: `${label} debe ser mayor o igual a 0`,
+    });
 
 export const PackingHeaderSchema = z.object({
-  numero_cajas: z.coerce.number().int().min(0, "El número de cajas debe ser 0 o mayor"),
+  numero_cajas: z.coerce.number().int().min(0, "El número de cajas debe ser mayor o igual a 0"),
   peso_total: headerDecimal("El peso total"),
   volumen_total: headerDecimal("El volumen total"),
   observaciones: z.string(),
