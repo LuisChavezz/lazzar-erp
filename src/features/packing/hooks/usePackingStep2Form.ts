@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type SetStateAction } from "react";
 import { safeParseAmount } from "@/src/utils/formatCurrency";
 import { usePackingOnboarding } from "./usePackingOnboarding";
 import { useCreatePacking, type ParsedPackingError } from "./useCreatePacking";
@@ -106,7 +106,7 @@ export function usePackingStep2Form({ pickingId, onSuccess }: UsePackingStep2For
   }, [rows, pendingRowsCount]);
 
   // ─── Encabezado propio de packing (numero_cajas/peso/volumen/observaciones) ─
-  const [header, setHeader] = useState<PackingHeaderValues>(createEmptyPackingHeaderValues);
+  const [header, setHeaderState] = useState<PackingHeaderValues>(createEmptyPackingHeaderValues);
 
   // ─── Estado de captura por línea ────────────────────────────────────────────
   // Mapas indexados por `picking_detalle` (string). "" = no empacar.
@@ -115,6 +115,13 @@ export function usePackingStep2Form({ pickingId, onSuccess }: UsePackingStep2For
   const [serverBanner, setServerBanner] = useState<string | null>(null);
   const [staleNotice, setStaleNotice] = useState<string | null>(null);
   const submitInFlight = useRef(false);
+
+  // Editar el encabezado quita el banner, igual que `setQuantity`: un error
+  // del encabezado (p. ej. un negativo) no debe quedarse tras corregirlo.
+  const setHeader = (update: SetStateAction<PackingHeaderValues>) => {
+    setHeaderState(update);
+    if (serverBanner) setServerBanner(null);
+  };
 
   const setQuantity = (pickingDetalleId: number, value: string) => {
     setQuantities((prev) => ({ ...prev, [String(pickingDetalleId)]: value }));

@@ -274,9 +274,12 @@ export function ShippingCreateForm({ onSuccess }: ShippingCreateFormProps) {
                 onChange={(event) => setGuia(event.target.value)}
                 // Enter aquí no registra: el envío es irreversible y no debe
                 // salir con una tecla al terminar de escribir la guía (mismo
-                // motivo por el que el selector vive fuera del formulario).
+                // motivo por el que el selector vive fuera del formulario). El
+                // Enter que confirma una composición (IME) sí se deja pasar.
                 onKeyDown={(event) => {
-                  if (event.key === "Enter") event.preventDefault();
+                  if (event.key === "Enter" && !event.nativeEvent.isComposing) {
+                    event.preventDefault();
+                  }
                 }}
               />
 

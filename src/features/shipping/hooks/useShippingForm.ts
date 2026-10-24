@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useShippingOnboarding } from "./useShippingOnboarding";
 import { useCreateShipping, type ParsedShipmentError } from "./useCreateShipping";
 import {
@@ -46,7 +46,19 @@ export function useShippingForm({ onSuccess }: UseShippingFormParams) {
 
   const embarque = selectedPackingId ? data?.embarque ?? null : null;
 
-  const availableRowsCount = rows.filter((row) => row.disponible_para_despacho).length;
+  // `useMemo` (no derivación suelta): es dependencia del efecto de
+  // reconciliación y debe cambiar solo cuando cambian `data` o el packing
+  // elegido —React Query hace structural sharing de `data`—, no en cada render.
+  const availableIds = useMemo(
+    () =>
+      new Set(
+        (selectedPackingId ? data?.despacho_detalle ?? [] : [])
+          .filter((row) => row.disponible_para_despacho)
+          .map((row) => row.packing_detalle),
+      ),
+    [data, selectedPackingId],
+  );
+  const availableRowsCount = availableIds.size;
   const alreadyShippedCount = rows.filter((row) => row.ya_despachado).length;
 
   // Sin embarque parcial y con el pedido ya despachable, el backend exige que
@@ -55,11 +67,7 @@ export function useShippingForm({ onSuccess }: UseShippingFormParams) {
   // aportaría nada.
   const allLinesRequired =
     embarque !== null && !embarque.embarque_parcial && embarque.despachable;
-  const effectiveCheckedIds = allLinesRequired
-    ? new Set(
-        rows.filter((row) => row.disponible_para_despacho).map((row) => row.packing_detalle),
-      )
-    : checkedIds;
+  const effectiveCheckedIds = allLinesRequired ? availableIds : checkedIds;
 
   // Reconciliación: cuando cambian las filas (típicamente tras el refetch por
   // dato desactualizado, o al cambiar de packing) se descartan los ids
@@ -67,24 +75,16 @@ export function useShippingForm({ onSuccess }: UseShippingFormParams) {
   // una línea despachada por otro operador seguiría contando para el botón y
   // viajaría en el POST. Equivalente al re-clamp de cantidades de packing.
   //
-  // Depende de `data`/`selectedPackingId`, NO de `rows`: `rows` se re-crea en
-  // cada render (es una expresión condicional), mientras que `data` conserva
-  // su referencia salvo que el contenido cambie de verdad —React Query hace
-  // structural sharing—, así que el efecto corre solo cuando hay algo nuevo
-  // que reconciliar.
+  // Depende de `availableIds`, memoizado sobre `data`/`selectedPackingId`, así
+  // que el efecto corre solo cuando hay algo nuevo que reconciliar.
   useEffect(() => {
-    const availableIds = new Set(
-      (selectedPackingId ? data?.despacho_detalle ?? [] : [])
-        .filter((row) => row.disponible_para_despacho)
-        .map((row) => row.packing_detalle),
-    );
     setCheckedIds((prev) => {
       if (prev.size === 0) return prev;
       const next = new Set<number>();
       for (const id of prev) if (availableIds.has(id)) next.add(id);
       return next.size === prev.size ? prev : next;
     });
-  }, [data, selectedPackingId]);
+  }, [availableIds]);
 
   // Volver a hacer clic en el packing YA elegido no hace nada: el selector no
   // alterna la selección, así que ese clic es accidental y borrar las casillas
@@ -93,6 +93,9 @@ export function useShippingForm({ onSuccess }: UseShippingFormParams) {
     if (packingId === selectedPackingId) return;
     setSelectedPackingId(packingId);
     setCheckedIds(new Set());
+    // La guía es de un embarque concreto: arrastrarla al siguiente lo
+    // registraría con una guía ajena y sin la confirmación de "sin guía".
+    setGuiaState("");
     setServerBanner(null);
     setStaleNotice(null);
   };
@@ -115,13 +118,7 @@ export function useShippingForm({ onSuccess }: UseShippingFormParams) {
 
   const toggleAll = (checked: boolean) => {
     if (allLinesRequired) return;
-    setCheckedIds(
-      checked
-        ? new Set(
-            rows.filter((row) => row.disponible_para_despacho).map((row) => row.packing_detalle),
-          )
-        : new Set(),
-    );
+    setCheckedIds(checked ? new Set(availableIds) : new Set());
     if (serverBanner) setServerBanner(null);
   };
 

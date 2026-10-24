@@ -108,7 +108,10 @@ export function PackingWizardStep2({ step1, onBack, onSuccess }: PackingWizardSt
   const noPending = rows.length === 0 || pendingRowsCount === 0;
 
   return (
+    // `noValidate`: la validación nativa (`step` del número de cajas, p. ej.)
+    // frenaría el envío con su propio globo; el esquema y el banner deciden.
     <form
+      noValidate
       onSubmit={(event) => {
         event.preventDefault();
         event.stopPropagation();
@@ -192,8 +195,6 @@ export function PackingWizardStep2({ step1, onBack, onSuccess }: PackingWizardSt
               label="Número de cajas"
               name="numero_cajas"
               type="number"
-              // Sin `min`: la validación nativa frenaría el envío con su propio
-              // globo y el error del esquema nunca llegaría al banner.
               step={1}
               value={header.numero_cajas === 0 ? "" : header.numero_cajas}
               placeholder="0"

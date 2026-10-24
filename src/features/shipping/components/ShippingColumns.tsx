@@ -4,6 +4,7 @@ import { useState } from "react";
 import { createColumnHelper, type ColumnDef } from "@tanstack/react-table";
 import { ViewIcon } from "@/src/components/Icons";
 import { ActionMenu, type ActionMenuItem } from "@/src/components/ActionMenu";
+import { textOrDash } from "@/src/components/DetailDialogPrimitives";
 import { PedidoFolioLink } from "@/src/features/orders/components/PedidoFolioLink";
 import { ShippingDetailDialog } from "./ShippingDetailDialog";
 import type { Shipment } from "../interfaces/shipping.interface";
@@ -88,7 +89,7 @@ export const shipmentColumns = [
     header: "Guía",
     cell: (info) => (
       <span className="text-sm text-slate-600 dark:text-slate-300">
-        {info.getValue() || "—"}
+        {textOrDash(info.getValue())}
       </span>
     ),
   }),
