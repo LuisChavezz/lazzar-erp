@@ -32,10 +32,13 @@ import { useReflectiveState } from "./useReflectiveState";
 import { useSizesState } from "./useSizesState";
 import {
   admitsProcess,
+  buildLocationRule,
   buildProductCategoryMap,
   EMPTY_MATRIZ,
   getCategoryRules,
   intersectRules,
+  processNotAdmittedMessage,
+  type RestrictionSubject,
 } from "../utils/processCompatibility";
 
 /**
@@ -211,21 +214,6 @@ export function useAddProductDialogState({
   const [hasSleevecut, setHasSleevecut] = useState(Boolean(initialItem?.lleva_corte_manga));
 
   const productSelection = useProductSelection({ products, initialItem });
-  const sizesState = useSizesState({ initialItem });
-  const embroideryState = useEmbroideryState(initialItem);
-  const reflectiveState = useReflectiveState(initialItem);
-  const colorsState = useColorsState(initialItem);
-
-  /**
-   * Filas efectivas del diálogo. En catálogo son las seleccionadas por el
-   * usuario; en muestra, la única fila sintética. Todo lo que abajo consumía
-   * `productSelection.selectedRows` pasa por aquí, para que ambas variantes
-   * compartan `sizesPerProduct`, tallas y cantidades sin ramificar en cada uso.
-   */
-  const effectiveSelectedRows = useMemo<CatalogRow[]>(
-    () => (isMuestra ? muestraRows : productSelection.selectedRows),
-    [isMuestra, muestraRows, productSelection.selectedRows]
-  );
 
   // ─── Matriz prenda/proceso (CO-04 / CO-05) ────────────────────────────────
   //
@@ -252,14 +240,37 @@ export function useAddProductDialogState({
       ),
     [matrizCompatibilidad, selectionCategoryIds]
   );
-  const isSingleSelection = selectionCategoryIds.length <= 1;
+  const restrictionSubject: RestrictionSubject =
+    selectionCategoryIds.length <= 1 ? "seleccion-una" : "seleccion-varias";
   const sleevecutAllowed = admitsProcess(selectionRules.corte_manga);
   // Lo que se aplica a las partidas: una casilla marcada antes de elegir un
   // producto que no lo admite no se arrastra.
   const effectiveSleevecut = hasSleevecut && sleevecutAllowed;
-  const sleevecutNotAllowedMessage = isSingleSelection
-    ? "La prenda seleccionada no admite corte de manga."
-    : "No todas las prendas seleccionadas admiten corte de manga.";
+  const sleevecutNotAllowedMessage = processNotAdmittedMessage("corte_manga", restrictionSubject);
+  const embroideryPositionRule = useMemo(
+    () => buildLocationRule("bordado", selectionRules.bordado, restrictionSubject),
+    [restrictionSubject, selectionRules.bordado]
+  );
+  const reflectivePositionRule = useMemo(
+    () => buildLocationRule("reflejante", selectionRules.reflejante, restrictionSubject),
+    [restrictionSubject, selectionRules.reflejante]
+  );
+
+  const sizesState = useSizesState({ initialItem });
+  const embroideryState = useEmbroideryState(initialItem, embroideryPositionRule);
+  const reflectiveState = useReflectiveState(initialItem, reflectivePositionRule);
+  const colorsState = useColorsState(initialItem);
+
+  /**
+   * Filas efectivas del diálogo. En catálogo son las seleccionadas por el
+   * usuario; en muestra, la única fila sintética. Todo lo que abajo consumía
+   * `productSelection.selectedRows` pasa por aquí, para que ambas variantes
+   * compartan `sizesPerProduct`, tallas y cantidades sin ramificar en cada uso.
+   */
+  const effectiveSelectedRows = useMemo<CatalogRow[]>(
+    () => (isMuestra ? muestraRows : productSelection.selectedRows),
+    [isMuestra, muestraRows, productSelection.selectedRows]
+  );
 
   // Mapa de productId → colores únicos, derivado de las variantes del producto
   const productColorsById = useMemo<Record<number, Color[]>>(() => {
@@ -699,6 +710,7 @@ export function useAddProductDialogState({
       specErrors: embroideryState.specErrors,
       positionOptions: POSITION_OPTIONS,
       positionMap: embroideryState.positionMap,
+      positionRule: embroideryPositionRule,
     },
     reflectiveStepProps: {
       configs: reflectiveState.configs,
@@ -713,6 +725,7 @@ export function useAddProductDialogState({
       scrollToConfigId: reflectiveErrorTargetId,
       observaciones: reflectiveState.observaciones,
       onObservacionesChange: (value: string) => reflectiveState.setObservaciones(value),
+      positionRule: reflectivePositionRule,
     },
     sizesStepProps: {
       selectedRows: effectiveSelectedRows,

@@ -1391,6 +1391,15 @@ export function QuoteFormContent({
           open={isEmbroideryEditOpen}
           onOpenChange={handleEmbroideryEditOpenChange}
           item={embroideryEditIndex !== null ? (watchedItems?.[embroideryEditIndex] ?? null) : null}
+          allowedPositions={
+            embroideryEditIndex !== null && watchedItems?.[embroideryEditIndex]
+              ? getItemRules(
+                  watchedItems[embroideryEditIndex],
+                  matrizCompatibilidad,
+                  productCategoryById
+                ).bordado
+              : null
+          }
           onSave={handleEmbroideryEditSave}
         />
 
@@ -1401,6 +1410,15 @@ export function QuoteFormContent({
           open={isReflectiveEditOpen}
           onOpenChange={handleReflectiveEditOpenChange}
           item={reflectiveEditIndex !== null ? (watchedItems?.[reflectiveEditIndex] ?? null) : null}
+          allowedPositions={
+            reflectiveEditIndex !== null && watchedItems?.[reflectiveEditIndex]
+              ? getItemRules(
+                  watchedItems[reflectiveEditIndex],
+                  matrizCompatibilidad,
+                  productCategoryById
+                ).reflejante
+              : null
+          }
           onSave={handleReflectiveEditSave}
         />
 

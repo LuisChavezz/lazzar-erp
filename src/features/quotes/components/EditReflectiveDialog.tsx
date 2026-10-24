@@ -21,6 +21,7 @@ import { Button } from '@/src/components/Button';
 import { MainDialog } from '@/src/components/MainDialog';
 import { EditIcon } from '@/src/components/Icons';
 import type { QuoteItem } from '../types';
+import type { AllowedCodes } from '../utils/processCompatibility';
 import { useEditReflectiveDialog } from '../hooks/useEditReflectiveDialog';
 import { StepReflective } from './StepReflective';
 
@@ -33,6 +34,11 @@ interface EditReflectiveDialogProps {
   item: QuoteItem | null;
   /** Callback invocado con el item actualizado al guardar. */
   onSave: (updatedItem: QuoteItem) => void;
+  /**
+   * Ubicaciones de reflejante que admite la categoría de la partida (matriz
+   * prenda/proceso, CO-05). `null` o ausente = sin restricción.
+   */
+  allowedPositions?: AllowedCodes;
 }
 
 /**
@@ -45,13 +51,14 @@ export function EditReflectiveDialog({
   onOpenChange,
   item,
   onSave,
+  allowedPositions,
 }: EditReflectiveDialogProps) {
   const {
     reflectiveStepProps,
     handleSave,
     handleOpenChange,
     handleRemoveReflective,
-  } = useEditReflectiveDialog({ item, onOpenChange });
+  } = useEditReflectiveDialog({ item, onOpenChange, allowedPositions });
 
   return (
     <MainDialog

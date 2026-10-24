@@ -16,6 +16,7 @@ import {
 } from "../constants/embroideryPositions";
 import type { EmbroiderySpecBooleanField, EmbroiderySpecErrorsById, EmbroiderySpecForm } from "../types";
 import { useFetchEmbroideryImages } from "../hooks/useFetchEmbroideryImages";
+import { admitsCode, type LocationRule } from "../utils/processCompatibility";
 import { EmbroideryImageSelector } from "./EmbroideryImageSelector";
 
 export type { EmbroiderySpecForm };
@@ -67,6 +68,11 @@ interface StepEmbroideryProps {
   specErrors: EmbroiderySpecErrorsById;
   positionOptions: { codigo: string; nombre: string }[];
   positionMap: Map<string, string>;
+  /**
+   * Ubicaciones que admite la prenda (o la selección) según la matriz
+   * prenda/proceso (CO-05). Sin ella se ofrecen todas.
+   */
+  positionRule?: LocationRule;
 }
 
 /**
@@ -86,7 +92,11 @@ export const StepEmbroidery = memo(function StepEmbroidery({
   specErrors,
   positionOptions,
   positionMap,
+  positionRule,
 }: StepEmbroideryProps) {
+  const admittedOptions = positionRule
+    ? positionOptions.filter((pos) => admitsCode(positionRule.allowed, pos.codigo))
+    : positionOptions;
   /**
    * IDs de especificaciones cuya imagen fue bloqueada via CARGA al servidor.
    * La selección desde galería NO bloquea — solo la subida de archivo.
@@ -211,14 +221,17 @@ export const StepEmbroidery = memo(function StepEmbroidery({
           <p className="text-xs font-bold uppercase tracking-wider text-slate-400">
             Especificaciones por ubicación
           </p>
-          <button
-            type="button"
-            onClick={onAddSpec}
-            className="inline-flex items-center gap-1 text-xs cursor-pointer font-semibold text-sky-600 hover:text-sky-700 transition-colors ease-in-out"
-            aria-label="Agregar especificación por ubicación"
-          >
-            + Agregar
-          </button>
+          {/* Sin ninguna ubicación admitida no hay nada que agregar. */}
+          {admittedOptions.length > 0 && (
+            <button
+              type="button"
+              onClick={onAddSpec}
+              className="inline-flex items-center gap-1 text-xs cursor-pointer font-semibold text-sky-600 hover:text-sky-700 transition-colors ease-in-out"
+              aria-label="Agregar especificación por ubicación"
+            >
+              + Agregar
+            </button>
+          )}
         </div>
         {embroideryError && (
           <p
@@ -230,9 +243,13 @@ export const StepEmbroidery = memo(function StepEmbroidery({
           </p>
         )}
         <div className="space-y-3">
-          {embroiderySpecs.length === 0 && (
+          {/* Sin ninguna ubicación admitida se dice siempre por qué, aunque ya
+              haya especificaciones (agregadas antes de cambiar la selección). */}
+          {(embroiderySpecs.length === 0 || admittedOptions.length === 0) && (
             <div className="rounded-2xl border border-dashed border-slate-200 dark:border-white/10 bg-slate-50/60 dark:bg-white/5 px-4 py-6 text-xs text-slate-500 dark:text-slate-300 text-center">
-              Aún no hay especificaciones por ubicación. Usa “Agregar” para crear la primera.
+              {admittedOptions.length > 0
+                ? "Aún no hay especificaciones por ubicación. Usa “Agregar” para crear la primera."
+                : positionRule?.notAdmittedMessage}
             </div>
           )}
           {embroiderySpecs.map((spec) => {
@@ -275,10 +292,23 @@ export const StepEmbroidery = memo(function StepEmbroidery({
                       }
                       options={[
                         { value: "", label: "Seleccionar..." },
-                        ...positionOptions.map((pos) => ({
+                        ...admittedOptions.map((pos) => ({
                           value: pos.codigo,
                           label: `[${pos.codigo}] ${pos.nombre}`,
                         })),
+                        // La ubicación ya elegida que la prenda no admite se
+                        // sigue viendo, para poder cambiarla o quitarla.
+                        ...(spec.posicionCodigo &&
+                        !admittedOptions.some((pos) => pos.codigo === spec.posicionCodigo)
+                          ? [
+                              {
+                                value: spec.posicionCodigo,
+                                label: `[${spec.posicionCodigo}] ${
+                                  positionMap.get(spec.posicionCodigo) ?? spec.posicionCodigo
+                                } (no admitida)`,
+                              },
+                            ]
+                          : []),
                       ]}
                     />
                     {specError.posicion && (

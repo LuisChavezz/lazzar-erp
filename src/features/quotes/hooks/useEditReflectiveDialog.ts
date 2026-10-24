@@ -20,12 +20,18 @@
 import { useCallback, useEffect, useMemo } from 'react';
 import type { QuoteItem } from '../types';
 import { useReflectiveState } from './useReflectiveState';
+import { buildLocationRule, type AllowedCodes } from '../utils/processCompatibility';
 
 export interface UseEditReflectiveDialogOptions {
   /** Item actual de la partida a editar. */
   item: QuoteItem | null;
   /** Callback invocado al cerrar el diálogo (abierto → cerrado). */
   onOpenChange: (open: boolean) => void;
+  /**
+   * Posiciones de reflejante que admite la categoría de la partida (matriz
+   * prenda/proceso, CO-05). `null` = sin restricción.
+   */
+  allowedPositions?: AllowedCodes;
 }
 
 /**
@@ -35,10 +41,15 @@ export interface UseEditReflectiveDialogOptions {
 export function useEditReflectiveDialog({
   item,
   onOpenChange,
+  allowedPositions = null,
 }: UseEditReflectiveDialogOptions) {
+  const positionRule = useMemo(
+    () => buildLocationRule('reflejante', allowedPositions, 'partida'),
+    [allowedPositions]
+  );
   // El `key` del componente EditReflectiveDialog cambia con el índice del item,
   // forzando el remount y la reinicialización limpia de useReflectiveState.
-  const reflectiveState = useReflectiveState(item);
+  const reflectiveState = useReflectiveState(item, positionRule);
 
   // Activa reflejante automáticamente al montar: el diálogo solo existe para
   // configurar reflejantes, independientemente del estado previo del item.
@@ -105,8 +116,10 @@ export function useEditReflectiveDialog({
       showValidationErrors: reflectiveState.submitAttempted,
       observaciones: reflectiveState.observaciones,
       onObservacionesChange: reflectiveState.setObservaciones,
+      positionRule,
     }),
     [
+      positionRule,
       reflectiveState.configs,
       reflectiveState.addConfig,
       reflectiveState.removeConfig,

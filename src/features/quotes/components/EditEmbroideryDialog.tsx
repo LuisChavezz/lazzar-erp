@@ -17,6 +17,7 @@ import { Button } from '@/src/components/Button';
 import { MainDialog } from '@/src/components/MainDialog';
 import { EditIcon } from '@/src/components/Icons';
 import type { QuoteItem } from '../types';
+import type { AllowedCodes } from '../utils/processCompatibility';
 import { useEditEmbroideryDialog } from '../hooks/useEditEmbroideryDialog';
 import { StepEmbroidery } from './StepEmbroidery';
 
@@ -29,6 +30,11 @@ interface EditEmbroideryDialogProps {
   item: QuoteItem | null;
   /** Callback invocado con el item actualizado al guardar. */
   onSave: (updatedItem: QuoteItem) => void;
+  /**
+   * Ubicaciones de bordado que admite la categoría de la partida (matriz
+   * prenda/proceso, CO-05). `null` o ausente = sin restricción.
+   */
+  allowedPositions?: AllowedCodes;
 }
 
 /**
@@ -46,9 +52,10 @@ export function EditEmbroideryDialog({
   onOpenChange,
   item,
   onSave,
+  allowedPositions,
 }: EditEmbroideryDialogProps) {
   const { embroideryStepProps, handleSave, handleOpenChange, handleRemoveEmbroidery } =
-    useEditEmbroideryDialog({ item, onOpenChange });
+    useEditEmbroideryDialog({ item, onOpenChange, allowedPositions });
 
   return (
     <MainDialog

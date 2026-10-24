@@ -19,6 +19,7 @@ import {
   type ReflectiveEditableField,
 } from "../utils/reflective-form";
 import { OPCION_OPTIONS, POSICION_OPTIONS, TIPO_CATEGORIES } from "../utils/reflective-labels";
+import { admitsCode, type LocationRule } from "../utils/processCompatibility";
 
 export {
   createReflectiveConfigForm,
@@ -45,6 +46,11 @@ export interface StepReflectiveProps {
   showValidationErrors?: boolean;
   observaciones: string;
   onObservacionesChange: (value: string) => void;
+  /**
+   * Posiciones que admite la prenda (o la selección) según la matriz
+   * prenda/proceso (CO-05). Sin ella se ofrecen todas.
+   */
+  positionRule?: LocationRule;
 }
 
 /**
@@ -64,6 +70,7 @@ export const StepReflective = memo(function StepReflective({
   showValidationErrors = false,
   observaciones,
   onObservacionesChange,
+  positionRule,
 }: StepReflectiveProps) {
   const [openImageByConfig, setOpenImageByConfig] = useState<Record<string, string | null>>({});
   const [openCatByConfig, setOpenCatByConfig] = useState<Record<string, string | null>>(() => {
@@ -196,6 +203,14 @@ export const StepReflective = memo(function StepReflective({
             configErrors.opcion || configErrors.posiciones || configErrors.tipo
           );
           const shouldShowError = hasConfigError && showValidationErrors;
+          // Se ofrecen las posiciones que admite la prenda; una ya elegida que
+          // no se admite se sigue viendo, marcada, para poder quitarla.
+          const visiblePositions = POSICION_OPTIONS.filter(
+            (pos) =>
+              !positionRule ||
+              admitsCode(positionRule.allowed, pos.value) ||
+              config.posiciones.includes(pos.value)
+          );
 
           return (
             <section
@@ -286,30 +301,42 @@ export const StepReflective = memo(function StepReflective({
                 <p className="text-xs font-bold uppercase tracking-wider text-slate-400">
                   Posición
                 </p>
-                <div
-                  className="flex flex-wrap gap-2"
-                  role="group"
-                  aria-label={`Posiciones del reflejante ${index + 1}`}
-                >
-                  {POSICION_OPTIONS.map((pos) => {
-                    const isSelected = config.posiciones.includes(pos.value);
-                    return (
-                      <button
-                        key={`${config.id}-${pos.value}`}
-                        type="button"
-                        onClick={() => togglePosicion(config, pos.value)}
-                        aria-pressed={isSelected}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all duration-150 cursor-pointer ${
-                          isSelected
-                            ? "bg-sky-500 border-sky-500 text-white shadow-sm"
-                            : "bg-white dark:bg-white/5 border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300 hover:border-sky-300 dark:hover:border-sky-500/40"
-                        }`}
-                      >
-                        {pos.label}
-                      </button>
-                    );
-                  })}
-                </div>
+                {visiblePositions.length === 0 ? (
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    {positionRule?.notAdmittedMessage}
+                  </p>
+                ) : (
+                  <div
+                    className="flex flex-wrap gap-2"
+                    role="group"
+                    aria-label={`Posiciones del reflejante ${index + 1}`}
+                  >
+                    {visiblePositions.map((pos) => {
+                      const isSelected = config.posiciones.includes(pos.value);
+                      const isNotAdmitted = Boolean(
+                        positionRule && !admitsCode(positionRule.allowed, pos.value)
+                      );
+                      return (
+                        <button
+                          key={`${config.id}-${pos.value}`}
+                          type="button"
+                          onClick={() => togglePosicion(config, pos.value)}
+                          aria-pressed={isSelected}
+                          title={isNotAdmitted ? positionRule?.codeMessage(pos.value) : undefined}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all duration-150 cursor-pointer ${
+                            isNotAdmitted
+                              ? "bg-rose-50 border-rose-300 text-rose-700 line-through dark:bg-rose-500/10 dark:border-rose-500/40 dark:text-rose-300"
+                              : isSelected
+                              ? "bg-sky-500 border-sky-500 text-white shadow-sm"
+                              : "bg-white dark:bg-white/5 border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300 hover:border-sky-300 dark:hover:border-sky-500/40"
+                          }`}
+                        >
+                          {pos.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
                 {shouldShowError && configErrors.posiciones && (
                   <p className="text-xs text-rose-600 dark:text-rose-400" role="alert">
                     {configErrors.posiciones}

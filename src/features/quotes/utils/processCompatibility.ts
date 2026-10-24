@@ -100,6 +100,68 @@ export const admitsProcess = (allowed: AllowedCodes): boolean =>
 export const admitsCode = (allowed: AllowedCodes, code: string): boolean =>
   allowed === null || allowed.has(normalizeCode(code));
 
+/**
+ * De quién se habla en los mensajes: una partida ya agregada, o la selección
+ * del diálogo de agregar productos (una prenda o varias a la vez).
+ */
+export type RestrictionSubject = "partida" | "seleccion-una" | "seleccion-varias";
+
+const PROCESO_LABEL: Record<ProcesoMatriz, string> = {
+  bordado: "bordado",
+  reflejante: "reflejante",
+  corte_manga: "corte de manga",
+};
+
+const codeLabel = (proceso: ProcesoMatriz, code: string) =>
+  proceso === "bordado" ? `la ubicación ${normalizeCode(code)}` : normalizeCode(code);
+
+/** El proceso no se admite en absoluto (`"Esta prenda no admite reflejante."`). */
+export const processNotAdmittedMessage = (
+  proceso: ProcesoMatriz,
+  subject: RestrictionSubject,
+): string => {
+  const label = PROCESO_LABEL[proceso];
+  if (subject === "partida") return `Esta prenda no admite ${label}.`;
+  if (subject === "seleccion-una") return `La prenda seleccionada no admite ${label}.`;
+  return proceso === "corte_manga"
+    ? "No todas las prendas seleccionadas admiten corte de manga."
+    : `Las categorías seleccionadas no comparten ubicaciones de ${label}.`;
+};
+
+/** El proceso no se admite en `code` (`"Esta prenda no admite reflejante en RODILLAS."`). */
+export const codeNotAdmittedMessage = (
+  proceso: ProcesoMatriz,
+  code: string,
+  subject: RestrictionSubject,
+): string => {
+  const label = `${PROCESO_LABEL[proceso]} en ${codeLabel(proceso, code)}`;
+  if (subject === "partida") return `Esta prenda no admite ${label}.`;
+  if (subject === "seleccion-una") return `La prenda seleccionada no admite ${label}.`;
+  return `No todas las prendas seleccionadas admiten ${label}.`;
+};
+
+/**
+ * Regla de ubicaciones que reciben los pasos de bordado y reflejante: qué
+ * ofrecer y cómo decir lo que no se admite.
+ */
+export interface LocationRule {
+  allowed: AllowedCodes;
+  /** Mensaje cuando el proceso no se admite en ninguna ubicación. */
+  notAdmittedMessage: string;
+  /** Mensaje para una ubicación concreta que no se admite. */
+  codeMessage: (code: string) => string;
+}
+
+export const buildLocationRule = (
+  proceso: Exclude<ProcesoMatriz, "corte_manga">,
+  allowed: AllowedCodes,
+  subject: RestrictionSubject,
+): LocationRule => ({
+  allowed,
+  notAdmittedMessage: processNotAdmittedMessage(proceso, subject),
+  codeMessage: (code) => codeNotAdmittedMessage(proceso, code, subject),
+});
+
 /** Producto del onboarding: solo lo que este módulo lee. */
 interface ProductWithCategory {
   id?: number;

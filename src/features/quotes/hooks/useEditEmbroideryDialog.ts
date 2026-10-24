@@ -19,12 +19,18 @@
 import { useCallback, useEffect, useMemo } from 'react';
 import { POSITION_OPTIONS, type QuoteItem } from '../types';
 import { useEmbroideryState } from './useEmbroideryState';
+import { buildLocationRule, type AllowedCodes } from '../utils/processCompatibility';
 
 export interface UseEditEmbroideryDialogOptions {
   /** Item actual de la partida a editar. */
   item: QuoteItem | null;
   /** Callback invocado al cerrar el diálogo (abierto → cerrado). */
   onOpenChange: (open: boolean) => void;
+  /**
+   * Ubicaciones de bordado que admite la categoría de la partida (matriz
+   * prenda/proceso, CO-05). `null` = sin restricción.
+   */
+  allowedPositions?: AllowedCodes;
 }
 
 /**
@@ -34,11 +40,16 @@ export interface UseEditEmbroideryDialogOptions {
 export function useEditEmbroideryDialog({
   item,
   onOpenChange,
+  allowedPositions = null,
 }: UseEditEmbroideryDialogOptions) {
+  const positionRule = useMemo(
+    () => buildLocationRule('bordado', allowedPositions, 'partida'),
+    [allowedPositions]
+  );
   // El `key` del componente EditEmbroideryDialog cambia con el índice del item,
   // por lo que `useEmbroideryState` se reinicializa automáticamente en cada
   // apertura con un item diferente (remount por key).
-  const embroideryState = useEmbroideryState(item);
+  const embroideryState = useEmbroideryState(item, positionRule);
 
   // Activar bordado automáticamente al montar el diálogo: su único propósito
   // es configurar especificaciones de bordado, independientemente de si el
@@ -110,8 +121,10 @@ export function useEditEmbroideryDialog({
       specErrors: embroideryState.specErrors,
       positionOptions: POSITION_OPTIONS,
       positionMap,
+      positionRule,
     }),
     [
+      positionRule,
       embroideryState.embroideryObservaciones,
       embroideryState.setEmbroideryObservaciones,
       embroideryState.embroiderySpecs,

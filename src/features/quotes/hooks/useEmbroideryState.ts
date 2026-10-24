@@ -20,6 +20,7 @@ import {
   type EmbroiderySpecForm,
   type QuoteItem,
 } from "../types";
+import { admitsCode, admitsProcess, type LocationRule } from "../utils/processCompatibility";
 
 /**
  * IMAGE_URL_EXTENSION_REGEX & isValidImageUrl
@@ -85,7 +86,14 @@ const buildInitialEmbroiderySpecs = (
  * Hook público que expone el estado y operaciones para trabajar bordados
  * dentro del flujo de agregar/editar productos.
  */
-export function useEmbroideryState(initialItem?: QuoteItem | null) {
+export function useEmbroideryState(
+  initialItem?: QuoteItem | null,
+  /**
+   * Ubicaciones que admite la prenda (o la selección) según la matriz
+   * prenda/proceso (CO-05). Sin ella no se restringe.
+   */
+  positionRule?: LocationRule
+) {
   const [hasEmbroidery, setHasEmbroidery] = useState(
     Boolean(initialItem?.bordados?.activo)
   );
@@ -231,7 +239,11 @@ export function useEmbroideryState(initialItem?: QuoteItem | null) {
     const usedPositions = new Set<string>();
 
     if (embroiderySpecs.length === 0) {
-      setEmbroideryError("Agrega al menos una especificación.");
+      setEmbroideryError(
+        positionRule && !admitsProcess(positionRule.allowed)
+          ? positionRule.notAdmittedMessage
+          : "Agrega al menos una especificación."
+      );
       return false;
     }
 
@@ -240,6 +252,9 @@ export function useEmbroideryState(initialItem?: QuoteItem | null) {
 
       if (!spec.posicionCodigo) {
         specError.posicion = "Requerido";
+      } else if (positionRule && !admitsCode(positionRule.allowed, spec.posicionCodigo)) {
+        // Se sigue viendo para poder quitarla, pero no se puede guardar.
+        specError.posicion = positionRule.codeMessage(spec.posicionCodigo);
       } else if (
         !isCustomEmbroideryPosition(spec.posicionCodigo) &&
         usedPositions.has(spec.posicionCodigo)
@@ -286,11 +301,20 @@ export function useEmbroideryState(initialItem?: QuoteItem | null) {
       }
     });
 
-    setSpecErrors(nextErrors);
-    setEmbroideryError(hasError ? "Completa las especificaciones." : null);
+    // El proceso no se admite en ninguna ubicación: se dice eso, no "completa".
+    const processNotAdmitted = Boolean(positionRule && !admitsProcess(positionRule.allowed));
 
-    return !hasError;
-  }, [embroiderySpecs, hasEmbroidery]);
+    setSpecErrors(nextErrors);
+    setEmbroideryError(
+      processNotAdmitted
+        ? positionRule?.notAdmittedMessage ?? null
+        : hasError
+          ? "Completa las especificaciones."
+          : null
+    );
+
+    return !hasError && !processNotAdmitted;
+  }, [embroiderySpecs, hasEmbroidery, positionRule]);
 
   const buildPayload = useCallback(() => {
     if (!hasEmbroidery) {

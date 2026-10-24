@@ -12,6 +12,7 @@ import {
   type ReflectiveConfigForm,
 } from "../utils/reflective-form";
 import type { QuoteItem } from "../types";
+import { admitsCode, admitsProcess, type LocationRule } from "../utils/processCompatibility";
 
 interface ReflectiveValidationResult {
   hasError: boolean;
@@ -62,7 +63,14 @@ const buildInitialReflectiveConfigs = (
  * Hook público que administra el estado de los reflejantes: creación,
  * edición, eliminación, validación y construcción del payload listo para enviar.
  */
-export function useReflectiveState(initialItem?: QuoteItem | null) {
+export function useReflectiveState(
+  initialItem?: QuoteItem | null,
+  /**
+   * Posiciones que admite la prenda (o la selección) según la matriz
+   * prenda/proceso (CO-05). Sin ella no se restringe.
+   */
+  positionRule?: LocationRule
+) {
   const [hasReflective, setHasReflective] = useState(
     Boolean(initialItem?.reflejantes?.activo)
   );
@@ -140,11 +148,23 @@ export function useReflectiveState(initialItem?: QuoteItem | null) {
       }
 
       if (config.posiciones.length === 0) {
-        setError(config.id, "posiciones", "Selecciona al menos una posición.");
+        setError(
+          config.id,
+          "posiciones",
+          positionRule && !admitsProcess(positionRule.allowed)
+            ? positionRule.notAdmittedMessage
+            : "Selecciona al menos una posición."
+        );
         return;
       }
 
       config.posiciones.forEach((posicion) => {
+        // Una posición que la prenda no admite se sigue viendo (para poder
+        // quitarla), pero no se puede guardar.
+        if (positionRule && !admitsCode(positionRule.allowed, posicion)) {
+          setError(config.id, "posiciones", positionRule.codeMessage(posicion));
+          return;
+        }
         const firstConfigId = firstByPosition.get(posicion);
         if (firstConfigId && firstConfigId !== config.id) {
           const duplicateMsg =
@@ -165,7 +185,7 @@ export function useReflectiveState(initialItem?: QuoteItem | null) {
       firstErrorConfigId,
       errorsByConfig,
     };
-  }, [configs, hasReflective]);
+  }, [configs, hasReflective, positionRule]);
 
   const buildPayload = useCallback(() => {
     if (!hasReflective) {
