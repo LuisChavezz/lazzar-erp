@@ -48,8 +48,8 @@ export const COBRO_DRAFT_INACTIVE_CLIENT_MESSAGE =
 /**
  * Valores con que el formulario edita un borrador. Folio de factura, moneda y
  * saldo de cada línea se resuelven contra el listado completo de CxC; una CxC
- * que no aparezca queda con saldo 0 (al aplicar, el formulario pide el saldo
- * vigente de todos modos). `moneda` es solo el respaldo mientras el catálogo de
+ * que no aparezca queda con saldo 0 y `moneda_codigo` vacío, y el schema de
+ * aplicar la señala como no encontrada. `moneda` es solo el respaldo mientras el catálogo de
  * cuentas no la resuelve: el formulario usa la de la cuenta elegida.
  */
 export const cobroToFormValues = (

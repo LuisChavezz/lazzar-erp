@@ -165,9 +165,21 @@ export const CobroFormSchema = z
       vistos.add(line.cxc);
     }
 
+    data.cobro_detalles.forEach((line, index) => {
+      // Línea de un borrador cuya CxC no vino en el listado (ver
+      // `cobroToFormValues`): sin moneda ni saldo no se puede aplicar.
+      if (!line.moneda_codigo) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "No se encontró la cuenta por cobrar de esta línea: quítala para aplicar el cobro",
+          path: ["cobro_detalles", index, "_form"],
+        });
+      }
+    });
+
     if (data.moneda) {
       data.cobro_detalles.forEach((line, index) => {
-        if (line.moneda_codigo !== data.moneda) {
+        if (line.moneda_codigo && line.moneda_codigo !== data.moneda) {
           ctx.addIssue({
             code: z.ZodIssueCode.custom,
             message: `La factura está en ${line.moneda_codigo}; la cuenta bancaria, en ${data.moneda}`,
