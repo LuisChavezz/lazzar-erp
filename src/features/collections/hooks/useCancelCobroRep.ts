@@ -9,6 +9,7 @@ import {
   getCobroRepNotCancellableMessage,
   isCobroRepCancellable,
 } from "../utils/cobroRepCancellation";
+import { cobroLabel } from "../utils/collection.utils";
 import { useCobroAction } from "./useCobroAction";
 
 /** Candado de la cancelación del REP, ÚNICO por cobro (ver `useCancelCobroRep`). */
@@ -65,7 +66,7 @@ export const useCancelCobroRep = (cobroId: number) => {
         toast.error(getCobroRepNotCancellableMessage(result.cobro));
         return;
       }
-      toast.success(`REP del cobro #${result.cobro.id} cancelado ante el SAT`);
+      toast.success(`REP del cobro ${cobroLabel(result.cobro)} cancelado ante el SAT`);
     },
     errorMessage: cancelCobroRepErrorMessage,
     onSettled: () => {

@@ -2,12 +2,12 @@
 
 import { useDialogSession } from "@/src/hooks/useDialogSession";
 import { useStampCobroRep } from "../hooks/useStampCobroRep";
+import type { Cobro } from "../interfaces/collection.interface";
+import { cobroLabel } from "../utils/collection.utils";
 import { CobroActionConfirmDialog } from "./CobroActionConfirmDialog";
 
 /** Lo mínimo para timbrar y nombrar el cobro. */
-export interface CobroRepStampTarget {
-  id: number;
-}
+export type CobroRepStampTarget = Pick<Cobro, "id" | "folio">;
 
 interface CobroRepStampDialogProps {
   cobro: CobroRepStampTarget | null;
@@ -29,7 +29,7 @@ interface CobroRepStampDialogProps {
 export function CobroRepStampDialog({ cobro, open, onOpenChange }: CobroRepStampDialogProps) {
   const session = useDialogSession(open, cobro);
   const target = session.snapshot;
-  const cobroLabel = target ? `#${target.id}` : "";
+  const label = target ? cobroLabel(target) : "";
 
   const { stamp, isStamping } = useStampCobroRep(target?.id ?? 0);
 
@@ -38,7 +38,7 @@ export function CobroRepStampDialog({ cobro, open, onOpenChange }: CobroRepStamp
       open={open}
       onOpenChange={onOpenChange}
       title="Timbrar REP"
-      description={`Se timbrará el complemento de pago (REP) del cobro ${cobroLabel} ante el SAT con Facturama. Es un timbrado real y no se puede deshacer desde aquí: una vez timbrado, el REP solo puede anularse cancelándolo ante el SAT.`}
+      description={`Se timbrará el complemento de pago (REP) del cobro ${label} ante el SAT con Facturama. Es un timbrado real y no se puede deshacer desde aquí: una vez timbrado, el REP solo puede anularse cancelándolo ante el SAT.`}
       confirmText="Timbrar REP"
       busyText="Timbrando…"
       confirmColor="blue"

@@ -51,6 +51,7 @@ export function CollectionList() {
   // vive aquí y el diálogo toma su copia al abrir (`useDialogSession`), porque
   // la fila se relee tras timbrar.
   const [stampRepId, setStampRepId] = useState<number | null>(null);
+  const stampRepCobro = stampRepId !== null ? rows.find((row) => row.id === stampRepId) ?? null : null;
   // Cancelar el REP: solo desde el detalle. El diálogo toma su copia al abrir,
   // porque la fila se relee sin `rep_uuid` tras cancelar.
   const [cancelRepId, setCancelRepId] = useState<number | null>(null);
@@ -177,7 +178,7 @@ export function CollectionList() {
       {/* Montado siempre: la copia de `useDialogSession` sobrevive a la
           animación de cierre y a que la fila se relea o desaparezca. */}
       <CobroRepStampDialog
-        cobro={stampRepId !== null ? { id: stampRepId } : null}
+        cobro={stampRepCobro}
         open={stampRepId !== null}
         onOpenChange={(open) => {
           if (!open) setStampRepId(null);

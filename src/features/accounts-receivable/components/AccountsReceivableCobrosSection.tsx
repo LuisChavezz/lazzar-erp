@@ -7,7 +7,11 @@ import { useCobros } from "@/src/features/collections/hooks/useCobros";
 import { useBankAccounts } from "@/src/features/bank-accounts/hooks/useBankAccounts";
 import { COBRO_ESTATUS_CONFIG } from "@/src/features/collections/constants/collectionStatus";
 import { CobroAmount } from "@/src/features/collections/components/CobroAmount";
-import { buildBankAccountIndex, resolveCobroMoneda } from "@/src/features/collections/utils/collection.utils";
+import {
+  buildBankAccountIndex,
+  cobroLabel,
+  resolveCobroMoneda,
+} from "@/src/features/collections/utils/collection.utils";
 import { CobroRepState } from "@/src/features/collections/components/CobroRepState";
 import { getCxcCobros } from "../utils/cxcCobros";
 
@@ -57,7 +61,7 @@ export const AccountsReceivableCobrosSection = ({ cuentaId }: { cuentaId: number
         >
           {cobrosDeLaCuenta.map(({ cobro, importe }) => (
             <tr key={cobro.id} className="hover:bg-slate-50 dark:hover:bg-white/5 transition-colors">
-              <td className="px-3 py-2 font-mono text-slate-700 dark:text-slate-200">{`#${cobro.id}`}</td>
+              <td className="px-3 py-2 font-mono text-slate-700 dark:text-slate-200">{cobroLabel(cobro)}</td>
               <td className="px-3 py-2 tabular-nums text-slate-600 dark:text-slate-300">
                 {formatShortDate(cobro.fecha_cobro, { timeZone: "UTC" })}
               </td>

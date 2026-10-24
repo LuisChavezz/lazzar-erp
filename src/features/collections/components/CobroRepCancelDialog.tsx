@@ -3,10 +3,11 @@
 import { useDialogSession } from "@/src/hooks/useDialogSession";
 import { useCancelCobroRep } from "../hooks/useCancelCobroRep";
 import type { Cobro } from "../interfaces/collection.interface";
+import { cobroLabel } from "../utils/collection.utils";
 import { CobroActionConfirmDialog } from "./CobroActionConfirmDialog";
 
 /** Lo mínimo para cancelar el REP y nombrarlo. */
-export type CobroRepCancelTarget = Pick<Cobro, "id" | "rep_uuid">;
+export type CobroRepCancelTarget = Pick<Cobro, "id" | "folio" | "rep_uuid">;
 
 interface CobroRepCancelDialogProps {
   cobro: CobroRepCancelTarget | null;
@@ -26,7 +27,7 @@ interface CobroRepCancelDialogProps {
 export function CobroRepCancelDialog({ cobro, open, onOpenChange }: CobroRepCancelDialogProps) {
   const session = useDialogSession(open, cobro);
   const target = session.snapshot;
-  const cobroLabel = target ? `#${target.id}` : "";
+  const label = target ? cobroLabel(target) : "";
   const uuidLabel = target?.rep_uuid ? ` (UUID ${target.rep_uuid})` : "";
 
   const { cancelRep, isCancellingRep } = useCancelCobroRep(target?.id ?? 0);
@@ -36,7 +37,7 @@ export function CobroRepCancelDialog({ cobro, open, onOpenChange }: CobroRepCanc
       open={open}
       onOpenChange={onOpenChange}
       title="Cancelar REP"
-      description={`Se cancelará ante el SAT, con Facturama, el complemento de pago (REP) del cobro ${cobroLabel}${uuidLabel} con motivo 02 (comprobante emitido con errores sin relación). El SAT puede pedir que el receptor acepte la cancelación: en ese caso el REP sigue vigente hasta que la acepte y habrá que volver a cancelarlo. El cobro no cambia: sus saldos, banco y póliza se quedan igual.`}
+      description={`Se cancelará ante el SAT, con Facturama, el complemento de pago (REP) del cobro ${label}${uuidLabel} con motivo 02 (comprobante emitido con errores sin relación). El SAT puede pedir que el receptor acepte la cancelación: en ese caso el REP sigue vigente hasta que la acepte y habrá que volver a cancelarlo. El cobro no cambia: sus saldos, banco y póliza se quedan igual.`}
       confirmText="Cancelar REP"
       busyText="Cancelando…"
       confirmColor="red"

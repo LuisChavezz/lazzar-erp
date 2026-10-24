@@ -3,10 +3,11 @@
 import { useDialogSession } from "@/src/hooks/useDialogSession";
 import { useCancelCobro } from "../hooks/useCancelCobro";
 import type { Cobro } from "../interfaces/collection.interface";
+import { cobroLabel } from "../utils/collection.utils";
 import { CobroActionConfirmDialog } from "./CobroActionConfirmDialog";
 
 /** Lo mínimo para cancelar y describir el cobro. */
-export type CollectionCancelTarget = Pick<Cobro, "id" | "estatus">;
+export type CollectionCancelTarget = Pick<Cobro, "id" | "folio" | "estatus">;
 
 interface CollectionCancelDialogProps {
   cobro: CollectionCancelTarget | null;
@@ -29,14 +30,14 @@ interface CollectionCancelDialogProps {
 export function CollectionCancelDialog({ cobro, open, onOpenChange }: CollectionCancelDialogProps) {
   const session = useDialogSession(open, cobro);
   const target = session.snapshot;
-  const cobroLabel = target ? `#${target.id}` : "";
+  const label = target ? cobroLabel(target) : "";
 
   const { cancel, isCancelling } = useCancelCobro(target?.id ?? 0);
 
   const description =
     target?.estatus === "Borrador"
-      ? `El cobro ${cobroLabel} quedará como Cancelado. Es un borrador: no movió saldos, banco ni póliza, así que no hay nada que revertir. Esta acción no se puede deshacer.`
-      : `El cobro ${cobroLabel} quedará como Cancelado: el saldo de sus cuentas por cobrar vuelve a quedar pendiente, se descuenta de la cuenta bancaria, su movimiento bancario se cancela y se genera la contrapóliza. Esta acción no se puede deshacer.`;
+      ? `El cobro ${label} quedará como Cancelado. Es un borrador: no movió saldos, banco ni póliza, así que no hay nada que revertir. Esta acción no se puede deshacer.`
+      : `El cobro ${label} quedará como Cancelado: el saldo de sus cuentas por cobrar vuelve a quedar pendiente, se descuenta de la cuenta bancaria, su movimiento bancario se cancela y se genera la contrapóliza. Esta acción no se puede deshacer.`;
 
   return (
     <CobroActionConfirmDialog

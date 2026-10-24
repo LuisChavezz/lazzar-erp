@@ -10,7 +10,7 @@ import {
   COBRO_METODO_PAGO_CONFIG,
   COBRO_REFERENCIA_LABELS,
 } from "../constants/collectionStatus";
-import type { CobroRow } from "../utils/collection.utils";
+import { cobroLabel, type CobroRow } from "../utils/collection.utils";
 import { useCollectionRowActionsContext } from "../hooks/useCollectionRowActions";
 import { CobroAmount } from "./CobroAmount";
 import { CobroRepState, getCobroRepStateLabel } from "./CobroRepState";
@@ -48,7 +48,8 @@ interface CollectionColumnsCallbacks {
 }
 
 /**
- * Primera columna: punto de estatus y `#id`. El `#id` con su chevron es el
+ * Primera columna: punto de estatus y el folio (`#id` sin folio, ver
+ * `cobroLabel`). El identificador con su chevron es el
  * disparador del menú de la fila, mismo patrón y markup que `FolioCell` de
  * `InvoiceColumns` (Facturación): un clic en cualquier parte abre el menú.
  *
@@ -62,7 +63,7 @@ const CobroIdCell = ({ cobro, onViewDetail }: { cobro: CobroRow } & CollectionCo
   const { canStampRep, onStampRep } = useCollectionRowActionsContext();
   const statusCfg = COBRO_ESTATUS_CONFIG[cobro.estatus];
   const statusLabel = statusCfg?.label ?? cobro.estatus;
-  const cobroLabel = `#${cobro.id}`;
+  const label = cobroLabel(cobro);
 
   const menuItems: ActionMenuItem[] = [
     { label: "Ver detalle", icon: ViewIcon, onSelect: () => onViewDetail(cobro.id) },
@@ -85,16 +86,16 @@ const CobroIdCell = ({ cobro, onViewDetail }: { cobro: CobroRow } & CollectionCo
       />
       <ActionMenu
         items={menuItems}
-        ariaLabel={`Acciones del cobro ${cobroLabel}`}
+        ariaLabel={`Acciones del cobro ${label}`}
         align="start"
         trigger={
           <button
             type="button"
-            aria-label={`Ver acciones del cobro ${cobroLabel}`}
+            aria-label={`Ver acciones del cobro ${label}`}
             title="Ver detalle"
             className="group inline-flex items-center gap-1 font-mono font-bold text-slate-800 dark:text-white hover:text-sky-600 dark:hover:text-sky-400 hover:underline transition-colors cursor-pointer"
           >
-            {cobroLabel}
+            {label}
             <ChevronRightIcon
               className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500 group-hover:text-sky-500 dark:group-hover:text-sky-400 group-hover:translate-x-0.5 transition-all"
               aria-hidden="true"
@@ -109,8 +110,8 @@ const CobroIdCell = ({ cobro, onViewDetail }: { cobro: CobroRow } & CollectionCo
 /**
  * Columnas del listado de cobros.
  *
- * El cobro NO tiene folio propio en el contrato, así que el identificador
- * visible es el `id` (`#123`).
+ * El identificador visible es el `folio` de la serie `COBROS`, o `#id` mientras
+ * no tenga (`cobroLabel`); la columna busca por ese texto y ordena por `id`.
  *
  * Estatus y acciones van en la primera columna (no hay columnas "Estatus" ni
  * "Acciones"), con el filtro de estatus en su encabezado: estándar de tablas de
@@ -121,7 +122,11 @@ const CobroIdCell = ({ cobro, onViewDetail }: { cobro: CobroRow } & CollectionCo
  */
 export const getCollectionColumns = ({ onViewDetail }: CollectionColumnsCallbacks) =>
   [
-    columnHelper.accessor("id", {
+    // Accessor de TEXTO para que la búsqueda global encuentre el folio; el orden
+    // sigue siendo por `id` (el folio es nulo en borradores sin líneas).
+    columnHelper.accessor((row) => cobroLabel(row), {
+      id: "id",
+      sortingFn: (a, b) => a.original.id - b.original.id,
       header: ({ column }) => (
         <div className="flex items-center gap-1.5">
           <span>Cobro</span>

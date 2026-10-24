@@ -5,6 +5,7 @@ import { getCuentaPorCobrarDetail } from "@/src/features/accounts-receivable/ser
 import { cancelCobro } from "../services/actions";
 import type { Cobro } from "../interfaces/collection.interface";
 import { cancelCobroErrorMessage, getCobroCancelBlockReason } from "../utils/cobroCancellation";
+import { cobroLabel } from "../utils/collection.utils";
 import { invalidateCobroEffects } from "./cobroQueryCache";
 import { useCobroAction } from "./useCobroAction";
 
@@ -53,7 +54,7 @@ export const useCancelCobro = (cobroId: number) => {
     },
     onSuccess: ({ cobro }) => {
       invalidateCobroEffects(queryClient);
-      toast.success(`Cobro #${cobro.id} cancelado`);
+      toast.success(`Cobro ${cobroLabel(cobro)} cancelado`);
     },
     errorMessage: cancelCobroErrorMessage,
     onError: (outcomeUnknown) => {

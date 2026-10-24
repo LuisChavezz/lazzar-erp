@@ -29,6 +29,7 @@ import {
 } from "../constants/collectionStatus";
 import {
   buildCxcIndex,
+  cobroLabel,
   findMismatchedMonedas,
   isLineMonedaMismatch,
   type CobroRow,
@@ -140,7 +141,7 @@ export function CollectionDetailDialog({
               Detalle del Cobro
             </p>
             <p className="text-xs text-slate-500 dark:text-slate-400 font-mono font-normal mt-0.5">
-              {`#${cobro.id}`}
+              {cobroLabel(cobro)}
             </p>
           </div>
         </div>

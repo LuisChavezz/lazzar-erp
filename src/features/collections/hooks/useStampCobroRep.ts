@@ -2,6 +2,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { stampCobroRep } from "../services/actions";
 import type { Cobro } from "../interfaces/collection.interface";
+import { cobroLabel } from "../utils/collection.utils";
 import { useCobroAction } from "./useCobroAction";
 import {
   COBRO_REP_PENDING_MESSAGE,
@@ -48,7 +49,7 @@ export const useStampCobroRep = (cobroId: number) => {
       return { outcome: "stamped", cobro: await stampCobroRep(cobroId) };
     },
     onSuccess: ({ outcome, cobro }) => {
-      const label = `#${cobro.id}`;
+      const label = cobroLabel(cobro);
       if (outcome === "not-stampable") {
         toast.error(
           cobro.rep_uuid
