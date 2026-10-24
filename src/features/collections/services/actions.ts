@@ -11,7 +11,7 @@ import type {
   FinanceDashboard,
   FinanceDashboardParams,
 } from "../interfaces/collection.interface";
-import type { CobroFormValues } from "../schemas/createCobro.schema";
+import { requiresTipoCambio, type CobroFormValues } from "../schemas/createCobro.schema";
 
 /**
  * Lista los cobros desde `GET /finanzas/cobros/`.
@@ -123,6 +123,8 @@ export const createCobro = async (payload: CreateCobroPayload): Promise<Cobro> =
  * - `fecha_cobro` se OMITE si va vacía (el campo no es nullable; el backend
  *   aplica su default); el resto de opcionales vacíos viajan como `null`.
  * - `referencia_operacion` va en mayúsculas (convención de finanzas).
+ * - `tipo_cambio` solo viaja fuera de MXN; en MXN el backend lo fija en 1 e
+ *   ignora lo que se mande.
  * - Nunca incluye `moneda` ni los datos que la línea arrastra solo para la vista
  *   (`saldo`, `moneda_codigo`, `factura_folio`).
  */
@@ -149,6 +151,10 @@ export function buildCobroPayload(values: CobroFormValues, estatus: CobroEstatus
     observaciones: optional(values.observaciones),
     cobro_detalles,
   };
+
+  if (requiresTipoCambio(values.moneda)) {
+    payload.tipo_cambio = normalizeCapturedDecimal(values.tipo_cambio);
+  }
 
   const fechaCobro = values.fecha_cobro.trim();
   if (fechaCobro.length > 0) payload.fecha_cobro = fechaCobro;

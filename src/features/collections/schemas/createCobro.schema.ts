@@ -28,6 +28,16 @@ import type { CobroMetodoPago, CobroReferencia } from "../interfaces/collection.
 
 const MONEY_MESSAGE = "Importe inválido (usa hasta 2 decimales)";
 
+/** Moneda en que el backend fija el tipo de cambio en 1 (y no lo pide). */
+export const COBRO_MONEDA_LOCAL = "MXN";
+
+/** `tipo_cambio` es `DecimalField(max_digits=18, decimal_places=6)`. */
+const TIPO_CAMBIO_REGEX = /^\d{1,12}(\.\d{1,6})?$/;
+
+/** ¿La moneda del cobro pide tipo de cambio? Solo una moneda conocida que no sea MXN. */
+export const requiresTipoCambio = (moneda: string | null): boolean =>
+  moneda !== null && moneda !== COBRO_MONEDA_LOCAL;
+
 export const COBRO_METODOS_PAGO = [
   "Transferencia",
   "Efectivo",
@@ -85,6 +95,11 @@ export const CobroFormSchema = z
     // `<input type="date">` entrega "" o "YYYY-MM-DD". Vacío es válido: el backend
     // aplica su default (hoy) cuando la llave se OMITE (ver `buildCobroPayload`).
     fecha_cobro: z.string(),
+    /**
+     * MXN por unidad de la moneda de la cuenta. Solo se valida y viaja fuera de
+     * MXN (ver `requiresTipoCambio`), donde el backend lo exige aun en borrador.
+     */
+    tipo_cambio: z.string(),
     metodo_pago: z.enum(COBRO_METODOS_PAGO),
     referencia: z.enum(COBRO_REFERENCIAS),
     referencia_operacion: z
@@ -101,6 +116,23 @@ export const CobroFormSchema = z
         message: "La cuenta bancaria no tiene moneda: elige otra",
         path: ["cuenta_bancaria"],
       });
+    }
+
+    if (requiresTipoCambio(data.moneda)) {
+      const tipoCambio = normalizeCapturedDecimal(data.tipo_cambio);
+      if (!tipoCambio) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `Indica el tipo de cambio (MXN por ${data.moneda})`,
+          path: ["tipo_cambio"],
+        });
+      } else if (!TIPO_CAMBIO_REGEX.test(tipoCambio) || Number(tipoCambio) <= 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Tipo de cambio inválido: debe ser mayor a 0, con hasta 6 decimales",
+          path: ["tipo_cambio"],
+        });
+      }
     }
 
     const vistos = new Set<number>();
@@ -138,6 +170,7 @@ export const createEmptyCobroForm = (): CobroFormValues => ({
   cuenta_bancaria: 0,
   moneda: null,
   fecha_cobro: "",
+  tipo_cambio: "",
   metodo_pago: "Transferencia",
   referencia: "SPEI",
   referencia_operacion: "",

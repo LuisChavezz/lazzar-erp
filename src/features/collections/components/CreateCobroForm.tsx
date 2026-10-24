@@ -18,6 +18,7 @@ import { COBRO_REFERENCIA_LABELS } from "../constants/collectionStatus";
 import {
   COBRO_METODOS_PAGO,
   COBRO_REFERENCIAS,
+  requiresTipoCambio,
   type CobroFormValues,
 } from "../schemas/createCobro.schema";
 import { customerLabel, useCreateCobroForm } from "../hooks/useCreateCobroForm";
@@ -165,6 +166,26 @@ export function CreateCobroForm({ onSuccess }: CreateCobroFormProps) {
                   </option>
                 ))}
               </FormSelect>
+
+              {/* Solo fuera de MXN: el backend lo exige y lo manda al REP. */}
+              {requiresTipoCambio(moneda) && (
+                <form.Field name="tipo_cambio">
+                  {(field) => (
+                    <FormInput
+                      label={`Tipo de cambio (MXN por ${moneda})`}
+                      inputMode="decimal"
+                      placeholder="0.000000"
+                      name={field.name}
+                      value={field.state.value}
+                      onChange={(event) => {
+                        field.handleChange(sanitizeDecimalInput(event.target.value, 6));
+                        clearError("tipo_cambio");
+                      }}
+                      error={getError("tipo_cambio")}
+                    />
+                  )}
+                </form.Field>
+              )}
 
               <form.Field name="fecha_cobro">
                 {(field) => (

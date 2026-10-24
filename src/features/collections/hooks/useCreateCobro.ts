@@ -11,6 +11,7 @@ export type CobroHeaderErrorField =
   | "cliente"
   | "cuenta_bancaria"
   | "fecha_cobro"
+  | "tipo_cambio"
   | "metodo_pago"
   | "referencia"
   | "referencia_operacion"
@@ -23,6 +24,7 @@ const HEADER_FIELDS: CobroHeaderErrorField[] = [
   "cliente",
   "cuenta_bancaria",
   "fecha_cobro",
+  "tipo_cambio",
   "metodo_pago",
   "referencia",
   "referencia_operacion",
