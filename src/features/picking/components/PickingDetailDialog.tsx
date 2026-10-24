@@ -1,6 +1,5 @@
 "use client";
 
-import { plural } from "@/src/utils/kpiFormat";
 import { useState } from "react";
 import type { ComponentType, SVGProps } from "react";
 import { useSession } from "next-auth/react";
@@ -24,6 +23,7 @@ import {
 import { formatExactQuantityValue } from "@/src/utils/formatCurrency";
 import { formatShortDate, formatShortTime } from "@/src/utils/formatDate";
 import { hasPermission } from "@/src/utils/permissions";
+import { plural } from "@/src/utils/plural";
 import { PICKING_PRIORIDAD_CONFIG } from "../constants/pickingPrioridad";
 import { PICKING_STATUS_CONFIG } from "../constants/pickingStatus";
 import { PICKING_TIPO_LABELS } from "../constants/pickingTipo";

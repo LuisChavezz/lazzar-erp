@@ -1,6 +1,5 @@
 "use client";
 
-import { plural } from "@/src/utils/kpiFormat";
 import type React from "react";
 import { useState } from "react";
 
@@ -19,6 +18,7 @@ import { formatQuoteAmount } from "../utils/formatQuoteAmount";
 import { Loader } from "@/src/components/Loader";
 import { CustomerSearchDropdown } from "./CustomerSearchDropdown";
 import { DialogHeader } from "@/src/components/DialogHeader";
+import { plural } from "@/src/utils/plural";
 import { useQuoteForm } from "../hooks/useQuoteForm";
 import { useWorkspaceStore } from "../../workspace/store/workspace.store";
 import { IVA_TASA_FIJA } from "../constants/iva";

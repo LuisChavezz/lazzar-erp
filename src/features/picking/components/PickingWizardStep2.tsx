@@ -1,6 +1,5 @@
 "use client";
 
-import { plural } from "@/src/utils/kpiFormat";
 import {
   FormSecondaryButton,
   FormSubmitButton,
@@ -14,6 +13,7 @@ import {
   LayersIcon,
 } from "@/src/components/Icons";
 import { formatExactQuantityValue } from "@/src/utils/formatCurrency";
+import { plural } from "@/src/utils/plural";
 import { tallaProductoNombre, usePickingStep2Form } from "../hooks/usePickingStep2Form";
 import type { PickingHeaderValues } from "../schemas/picking.schema";
 
@@ -175,7 +175,7 @@ export function PickingWizardStep2({
               {overAllocations.map((over) => (
                 <li key={over.stockKey} className="tabular-nums">
                   «{over.nombre}»: capturaste {over.solicitado}, pero solo hay{" "}
-                  {over.disponible} {plural(over.disponible, "disponible", "disponibles")} entre todas sus tallas.
+                  {over.disponible} {plural(over.disponible, "disponible", "disponibles")} para todas sus tallas.
                 </li>
               ))}
             </ul>

@@ -8,10 +8,10 @@
  * para que otras piezas del flujo (p. ej. hooks) puedan crear formularios
  * consistentes.
  */
-import { plural } from "@/src/utils/kpiFormat";
 import { memo, useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { CheckIcon, ChevronRightIcon, DeleteIcon, EyeIcon } from "@/src/components/Icons";
+import { plural } from "@/src/utils/plural";
 import {
   createReflectiveConfigForm,
   type ReflectiveConfigFieldErrors,

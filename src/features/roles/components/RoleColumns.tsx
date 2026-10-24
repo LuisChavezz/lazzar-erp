@@ -1,10 +1,10 @@
 "use client";
 
-import { plural } from "@/src/utils/kpiFormat";
 import { ColumnDef } from "@tanstack/react-table";
 import { useState } from "react";
 import { Role } from "../interfaces/role.interface";
 import { capitalize } from "@/src/utils/capitalize";
+import { plural } from "@/src/utils/plural";
 import { ActionMenu, ActionMenuItem } from "@/src/components/ActionMenu";
 import { MainDialog } from "@/src/components/MainDialog";
 import { DialogHeader } from "@/src/components/DialogHeader";

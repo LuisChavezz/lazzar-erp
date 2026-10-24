@@ -1,8 +1,8 @@
 "use client";
 
-import { plural } from "@/src/utils/kpiFormat";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { isInitialLoadError } from "@/src/utils/isInitialLoadError";
+import { plural } from "@/src/utils/plural";
 import {
   ReflectiveOrderDetallesOverrideSchema,
   type CreateReflectiveOrderFormValues,

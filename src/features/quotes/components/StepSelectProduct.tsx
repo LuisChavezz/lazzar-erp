@@ -6,11 +6,11 @@
  * - Expone la cuenta de seleccionados y toggles para servicios adicionales
  *   (bordado y reflejante).
  */
-import { plural } from "@/src/utils/kpiFormat";
 import { memo, useRef } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { FormInput } from "@/src/components/FormInput";
 import { RejectIcon } from "@/src/components/Icons";
+import { plural } from "@/src/utils/plural";
 import { AddProductsSelectableItem } from "./AddProductsSelectableItem";
 import type { CatalogRow } from "../types";
 
@@ -192,7 +192,7 @@ export const StepSelectProduct = memo(function StepSelectProduct({
               <RejectIcon className="w-4 h-4" aria-hidden="true" />
             </button>
             <span className="text-xs font-semibold text-sky-600 dark:text-sky-400" aria-live="polite">
-              {selectedCount} {selectedCount === 1 ? "producto seleccionado" : "productos seleccionados"}
+              {selectedCount} {plural(selectedCount, "producto seleccionado", "productos seleccionados")}
             </span>
           </div>
         )}

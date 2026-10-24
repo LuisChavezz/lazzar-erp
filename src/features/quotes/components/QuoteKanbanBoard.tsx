@@ -1,6 +1,5 @@
 "use client";
 
-import { plural } from "@/src/utils/kpiFormat";
 import { useState, useMemo, useTransition, useCallback, useRef, useEffect } from "react";
 import Link from "next/link";
 import { DragDropProvider, DragOverlay } from "@dnd-kit/react";
@@ -26,6 +25,7 @@ import { QuoteRowActionDialogs } from "./QuoteRowActionDialogs";
 import { QuoteRowActionsProvider, useQuoteRowActions } from "../hooks/useQuoteRowActions";
 import { hasPermission } from "@/src/utils/permissions";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
+import { plural } from "@/src/utils/plural";
 import { ErrorState } from "@/src/components/ErrorState";
 
 // ─── Tipos locales ────────────────────────────────────────────────────────────
@@ -331,7 +331,7 @@ export function QuoteKanbanBoard() {
           <span className="font-medium text-slate-700 dark:text-slate-300">
             {visibleTotal}
           </span>{" "}
-          {visibleTotal === 1 ? "cotización" : "cotizaciones"}
+          {plural(visibleTotal, "cotización", "cotizaciones")}
           {searchQuery && (
             <span className="text-slate-400 dark:text-slate-500">
               {" "}de{" "}
@@ -346,7 +346,7 @@ export function QuoteKanbanBoard() {
         {pendingIds.size > 0 && (
           <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-300 font-medium ml-auto flex items-center gap-1.5 animate-pulse">
             <span className="w-1.5 h-1.5 rounded-full bg-amber-500 dark:bg-amber-400" />
-            Guardando {pendingIds.size} {pendingIds.size === 1 ? "cambio" : "cambios"}…
+            Guardando {pendingIds.size} {plural(pendingIds.size, "cambio", "cambios")}…
           </span>
         )}
       </div>

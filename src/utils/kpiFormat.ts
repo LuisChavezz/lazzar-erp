@@ -72,6 +72,5 @@ export const formatKpiDate = (value: string | null): string => {
   return date ? date.toLocaleDateString("es-MX", DATE_FORMAT) : "—";
 };
 
-/** "1 OC" / "3 OCs": la palabra según el conteo. */
-export const plural = (count: number, singular: string, pluralForm: string): string =>
-  count === 1 ? singular : pluralForm;
+/** "1 OC" / "3 OCs": la palabra según el conteo. Vive en `@/src/utils/plural`. */
+export { plural } from "@/src/utils/plural";

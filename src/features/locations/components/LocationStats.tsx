@@ -1,9 +1,9 @@
 "use client";
 
-import { plural } from "@/src/utils/kpiFormat";
 import { useMemo } from "react";
 import KpiGrid, { type KpiItem } from "@/src/components/KpiGrid";
 import { WarehouseIcon, LayersIcon, RulerIcon } from "@/src/components/Icons";
+import { plural } from "@/src/utils/plural";
 import type { LocationDashboardStats } from "../types/location-dashboard.types";
 
 interface LocationStatsProps {

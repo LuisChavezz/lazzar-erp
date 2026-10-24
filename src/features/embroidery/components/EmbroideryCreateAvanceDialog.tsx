@@ -1,6 +1,5 @@
 "use client";
 
-import { plural } from "@/src/utils/kpiFormat";
 import { useState } from "react";
 import type { FormEvent } from "react";
 import { MainDialog } from "@/src/components/MainDialog";
@@ -8,6 +7,7 @@ import { FormInput } from "@/src/components/FormInput";
 import { FormTextarea } from "@/src/components/FormTextarea";
 import { FormCancelButton, FormSubmitButton } from "@/src/components/FormButtons";
 import { formatQuantityValue } from "@/src/utils/formatCurrency";
+import { pluralForQuantity } from "@/src/utils/plural";
 import { useCreateAvance } from "../hooks/useCreateAvance";
 import {
   CreateAvanceFormSchema,
@@ -139,7 +139,7 @@ export function EmbroideryCreateAvanceDialog({
     const cantidad = Number(parsed.data.cantidad_bordada);
     if (cantidad > remainingCap) {
       setErrors({
-        cantidad_bordada: `No puede exceder ${plural(remainingCap, "la", "las")} ${formatQuantityValue(remainingCap)} ${plural(remainingCap, "pieza restante", "piezas restantes")} de la orden`,
+        cantidad_bordada: `No puede exceder ${formatQuantityValue(remainingCap)} ${pluralForQuantity(remainingCap, "pieza restante", "piezas restantes")} de la orden`,
       });
       return;
     }
@@ -263,7 +263,7 @@ export function EmbroideryCreateAvanceDialog({
             Total:{" "}
             <strong className="text-slate-700 dark:text-slate-200">
               {puntadasTotalPreview !== null
-                ? `${formatQuantityValue(puntadasTotalPreview)} ${plural(puntadasTotalPreview, "puntada", "puntadas")}`
+                ? `${formatQuantityValue(puntadasTotalPreview)} ${pluralForQuantity(puntadasTotalPreview, "puntada", "puntadas")}`
                 : "—"}
             </strong>{" "}
             <span className="text-slate-400 dark:text-slate-500">

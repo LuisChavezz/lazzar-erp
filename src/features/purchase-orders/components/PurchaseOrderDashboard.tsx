@@ -1,6 +1,5 @@
 "use client";
 
-import { plural } from "@/src/utils/kpiFormat";
 import { useMemo } from "react";
 import type { PurchaseOrder } from "../interfaces/purchase-order.interface";
 import {
@@ -11,6 +10,7 @@ import {
 } from "@/src/components/Icons";
 import { formatMoneyValueOrDash, safeParseAmount } from "@/src/utils/formatCurrency";
 import { formatLocalDate } from "@/src/utils/formatDate";
+import { plural } from "@/src/utils/plural";
 import {
   isPurchaseOrderAuthorizedOrComplete,
   isPurchaseOrderCancelled,

@@ -1,6 +1,5 @@
 "use client";
 
-import { plural } from "@/src/utils/kpiFormat";
 import { InfoIcon, ScissorsIcon } from "@/src/components/Icons";
 import { MainDialog } from "@/src/components/MainDialog";
 import { ErrorState } from "@/src/components/ErrorState";
@@ -17,6 +16,7 @@ import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { resolveEmbroideryLineUbicaciones } from "../utils/resolveEmbroideryLineUbicaciones";
 import { formatQuantityValue } from "@/src/utils/formatCurrency";
 import { formatShortDate, formatShortTime } from "@/src/utils/formatDate";
+import { pluralForQuantity } from "@/src/utils/plural";
 import {
   EMBROIDERY_COVERAGE_CONFIG,
   EMBROIDERY_PRIORITY_CONFIG,
@@ -363,7 +363,7 @@ export function EmbroideryOrderDetailDialog({
                   {formatQuantityValue(order.cantidad_cubierta)}
                 </span>{" "}
                 de {formatQuantityValue(order.cantidad_contratada)}{" "}
-                {plural(Number(order.cantidad_contratada), "pieza contratada", "piezas contratadas")} por el pedido
+                {pluralForQuantity(order.cantidad_contratada, "pieza contratada", "piezas contratadas")} por el pedido
                 {porcentaje !== null && ` · ${porcentaje}%`}
               </span>
               {!order.cobertura_completa && (

@@ -1,8 +1,8 @@
 "use client";
 
-import { plural } from "@/src/utils/kpiFormat";
 import { useState, useMemo } from "react";
 import { useDroppable } from "@dnd-kit/react";
+import { plural } from "@/src/utils/plural";
 import { Quote } from "../interfaces/quote.interface";
 import { QuoteKanbanCard } from "./QuoteKanbanCard";
 import { ColumnPaginator } from "./ColumnPaginator";

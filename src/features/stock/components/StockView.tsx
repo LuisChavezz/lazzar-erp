@@ -1,6 +1,5 @@
 "use client";
 
-import { plural } from "@/src/utils/kpiFormat";
 import { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
@@ -11,6 +10,7 @@ import {
 import { DataTable } from "@/src/components/DataTable";
 import { useHasLoadedQuery } from "@/src/hooks/useHasLoadedQuery";
 import { isInitialLoadError } from "@/src/utils/isInitialLoadError";
+import { plural } from "@/src/utils/plural";
 import KpiGrid, { type KpiItem } from "@/src/components/KpiGrid";
 import { useWarehouses } from "@/src/features/warehouses/hooks/useWarehouses";
 import { useStockItems } from "../hooks/useStockItems";

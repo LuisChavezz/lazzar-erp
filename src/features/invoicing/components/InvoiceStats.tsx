@@ -1,6 +1,5 @@
 "use client";
 
-import { plural } from "@/src/utils/kpiFormat";
 import { KpiCard, type KpiItem } from "@/src/components/KpiGrid";
 import {
   ErrorIcon,
@@ -14,6 +13,7 @@ import type { InvoiceListRow } from "../interfaces/invoice.interface";
 import { INVOICE_STATUS } from "../constants/invoiceStatus";
 import { formatCurrency, safeParseAmount } from "@/src/utils/formatCurrency";
 import { parseLocalDate } from "@/src/utils/formatDate";
+import { plural } from "@/src/utils/plural";
 
 /**
  * Una factura está por cobrar solo si está EMITIDA: el Borrador aún no es un

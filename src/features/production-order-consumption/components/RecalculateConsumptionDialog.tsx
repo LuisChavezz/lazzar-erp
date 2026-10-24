@@ -1,6 +1,5 @@
 "use client";
 
-import { plural } from "@/src/utils/kpiFormat";
 import { useIsMutating } from "@tanstack/react-query";
 import { MainDialog } from "@/src/components/MainDialog";
 import { Loader } from "@/src/components/Loader";
@@ -15,6 +14,7 @@ import { EmptyLines, LineItemsTable } from "@/src/components/DetailDialogPrimiti
 import { useDialogSession } from "@/src/hooks/useDialogSession";
 import { isNotFoundError } from "@/src/utils/drfWriteErrors";
 import { firstDrfFieldMessage } from "@/src/utils/firstDrfFieldMessage";
+import { plural } from "@/src/utils/plural";
 import {
   isValidOpId,
   useProductionOrderCriticalPath,
@@ -325,7 +325,7 @@ function RecalculateConsumptionSteps({
             <p className="font-semibold">Esta acción mueve inventario.</p>
             <p className="text-xs leading-relaxed">
               Se recalculará el consumo de {confirmedBody.productos.length}{" "}
-              {confirmedBody.productos.length === 1 ? "producto" : "productos"} con{" "}
+              {plural(confirmedBody.productos.length, "producto", "productos")} con{" "}
               <span className="font-semibold tabular-nums">
                 {confirmedBody.cantidad_real_corte}
               </span>{" "}

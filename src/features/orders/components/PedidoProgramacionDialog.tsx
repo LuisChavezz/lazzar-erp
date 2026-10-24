@@ -1,6 +1,5 @@
 "use client";
 
-import { plural } from "@/src/utils/kpiFormat";
 import { AxiosError } from "axios";
 import { MainDialog } from "@/src/components/MainDialog";
 import { Loader } from "@/src/components/Loader";
@@ -11,6 +10,7 @@ import { FormTextarea } from "@/src/components/FormTextarea";
 import { FormCancelButton, FormSubmitButton } from "@/src/components/FormButtons";
 import { Button } from "@/src/components/Button";
 import { CalendarDaysIcon, DeleteIcon, PlusIcon } from "@/src/components/Icons";
+import { plural } from "@/src/utils/plural";
 import {
   getPedidoProgramacionDestinoLabel,
   isPedidoProgramacionDestino,
@@ -211,7 +211,7 @@ function PedidoProgramacionForm({ pedido, onClose }: PedidoProgramacionFormProps
           <span className="text-sm font-semibold tabular-nums">
             {totalParcialidades > 0 && (
               <span className="text-slate-700 dark:text-slate-200">
-                {totalParcialidades} {totalParcialidades === 1 ? "parcialidad" : "parcialidades"}
+                {totalParcialidades} {plural(totalParcialidades, "parcialidad", "parcialidades")}
                 <span className="mx-1.5 font-normal text-slate-400 dark:text-slate-500">·</span>
               </span>
             )}

@@ -1,10 +1,10 @@
 "use client";
 
-import { plural } from "@/src/utils/kpiFormat";
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { hasPermission } from "@/src/utils/permissions";
+import { plural } from "@/src/utils/plural";
 import { ModuleSectionsGrid } from "@/src/components/ModuleSectionsGrid";
 import {
   ProduccionIcon,

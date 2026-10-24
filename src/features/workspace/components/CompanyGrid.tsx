@@ -1,6 +1,6 @@
 import { BuildingIcon } from "@/src/components/Icons";
-import { plural } from "@/src/utils/kpiFormat";
 import { Company } from "@/src/features/companies/interfaces/company.interface";
+import { plural } from "@/src/utils/plural";
 
 interface CompanyGridProps {
   companies: Company[];

@@ -1,6 +1,5 @@
 "use client";
 
-import { plural } from "@/src/utils/kpiFormat";
 import { memo, useMemo } from "react";
 import { useSession } from "next-auth/react";
 import {
@@ -12,6 +11,7 @@ import {
 import { DataTable } from "@/src/components/DataTable";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { hasPermission } from "@/src/utils/permissions";
+import { plural } from "@/src/utils/plural";
 import KpiGrid, { type KpiItem } from "@/src/components/KpiGrid";
 import { useStockMovements } from "../hooks/useStockMovements";
 import { getStockMovementsColumns } from "./StockMovementsColumns";

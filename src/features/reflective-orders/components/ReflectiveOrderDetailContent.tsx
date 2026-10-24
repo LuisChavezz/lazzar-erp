@@ -1,6 +1,5 @@
 "use client";
 
-import { plural } from "@/src/utils/kpiFormat";
 import Link from "next/link";
 import { ArrowLeftIcon, InfoIcon } from "@/src/components/Icons";
 import { Loader } from "@/src/components/Loader";
@@ -17,6 +16,7 @@ import {
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { formatQuantityValue } from "@/src/utils/formatCurrency";
 import { formatShortDate, formatShortTime } from "@/src/utils/formatDate";
+import { pluralForQuantity } from "@/src/utils/plural";
 import {
   REFLECTIVE_ORDER_COVERAGE_CONFIG,
   REFLECTIVE_ORDER_PRIORITY_CONFIG,
@@ -410,7 +410,7 @@ export function ReflectiveOrderDetailContent({
               {formatQuantityValue(data.cantidad_cubierta)}
             </span>{" "}
             de {formatQuantityValue(data.cantidad_contratada)}{" "}
-            {plural(Number(data.cantidad_contratada), "pieza contratada", "piezas contratadas")} por
+            {pluralForQuantity(data.cantidad_contratada, "pieza contratada", "piezas contratadas")} por
             el pedido
             {porcentaje !== null && ` · ${porcentaje}%`}
           </span>
