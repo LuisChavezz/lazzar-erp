@@ -1,0 +1,63 @@
+import type { PermissionContext } from "@/src/interfaces/permission-context.interface";
+import type { CuentaPorCobrar } from "@/src/features/accounts-receivable/interfaces/accounts-receivable.interface";
+import { hasPermission } from "@/src/utils/permissions";
+import { COBRO_DRAFT_WRITE_PERMISSION } from "../constants/collectionPermissions";
+import type { Cobro } from "../interfaces/collection.interface";
+import { requiresTipoCambio, type CobroFormValues } from "../schemas/createCobro.schema";
+import type { CobroRow } from "./collection.utils";
+
+/**
+ * ¿Se ofrecen las acciones de borrador ("Editar", "Aplicar", "Eliminar") a ESTE
+ * usuario para ESTE cobro? Solo un `Borrador` activo, con el permiso que el
+ * backend exige en toda escritura de cobros. Editar un cobro aplicado queda
+ * fuera de alcance.
+ */
+export const canManageCobroDraft = (
+  cobro: Pick<Cobro, "estatus" | "activo">,
+  user: PermissionContext | null | undefined,
+): boolean => cobro.estatus === "Borrador" && cobro.activo && hasPermission(COBRO_DRAFT_WRITE_PERMISSION, user);
+
+/**
+ * ¿Se ELIMINA (DELETE) en vez de cancelarse? Un `Borrador` sin folio: borrarlo
+ * no deja hueco en la serie `COBROS`. Con folio se cancela, para conservar el
+ * consecutivo; el backend asigna folio al guardar las primeras líneas.
+ */
+export const isDeletableCobroDraft = (cobro: Pick<Cobro, "estatus" | "folio">): boolean =>
+  cobro.estatus === "Borrador" && !cobro.folio;
+
+export const COBRO_DRAFT_APPLY_WITHOUT_LINES_MESSAGE =
+  "Agrega al menos una cuenta por cobrar al borrador antes de aplicarlo.";
+
+export const COBRO_DRAFT_NOT_DRAFT_MESSAGE = "El cobro ya no está en borrador.";
+
+/**
+ * Valores con que el formulario edita un borrador. Folio de factura, moneda y
+ * saldo de cada línea se resuelven contra el listado completo de CxC; una CxC
+ * que no aparezca queda con saldo 0 (al aplicar, el formulario pide el saldo
+ * vigente de todos modos). El tipo de cambio solo se carga fuera de MXN.
+ */
+export const cobroToFormValues = (
+  cobro: CobroRow,
+  cxcIndex: ReadonlyMap<number, CuentaPorCobrar>,
+): CobroFormValues => ({
+  cliente: cobro.cliente,
+  cuenta_bancaria: cobro.cuenta_bancaria,
+  moneda: cobro.moneda_codigo,
+  fecha_cobro: cobro.fecha_cobro,
+  tipo_cambio: requiresTipoCambio(cobro.moneda_codigo) ? cobro.tipo_cambio : "",
+  metodo_pago: cobro.metodo_pago,
+  referencia: cobro.referencia,
+  referencia_operacion: cobro.referencia_operacion ?? "",
+  observaciones: cobro.observaciones ?? "",
+  cobro_detalles: cobro.cobro_detalles.map((linea) => {
+    const cxc = cxcIndex.get(linea.cxc);
+    return {
+      cxc: linea.cxc,
+      saldo: cxc?.saldo ?? "0.00",
+      moneda_codigo: cxc?.moneda_codigo ?? "",
+      factura_folio: cxc?.factura_folio || `CxC #${linea.cxc}`,
+      importe_aplicado: linea.importe_aplicado,
+      observaciones: linea.observaciones ?? "",
+    };
+  }),
+});

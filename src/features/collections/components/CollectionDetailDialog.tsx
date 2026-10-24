@@ -11,7 +11,7 @@ import {
   textOrDash,
 } from "@/src/components/DetailDialogPrimitives";
 import { Button } from "@/src/components/Button";
-import { BanIcon, ExclamationTriangleIcon, ReceiptIcon, ShieldCheckIcon } from "@/src/components/Icons";
+import { BanIcon, EditIcon, ExclamationTriangleIcon, ReceiptIcon, ShieldCheckIcon } from "@/src/components/Icons";
 import { formatShortDate, formatShortDateTime } from "@/src/utils/formatDate";
 import { useCuentasPorCobrar } from "@/src/features/accounts-receivable/hooks/useCuentasPorCobrar";
 import {
@@ -56,6 +56,11 @@ interface CollectionDetailDialogProps {
    */
   onCancel?: () => void;
   /**
+   * Abre la edición del borrador; sin ella no se ofrece el botón (sin permiso o
+   * cobro que no es `Borrador`, ver `canManageCobroDraft`).
+   */
+  onEdit?: () => void;
+  /**
    * ¿El usuario tiene el permiso de descarga del REP (`R-FIN-FACTURAMA`)? Solo
    * el permiso: con el REP timbrado, `true` ofrece "Descargar PDF/XML" y `false`
    * muestra una nota.
@@ -70,6 +75,7 @@ export function CollectionDetailDialog({
   onStampRep,
   onCancelRep,
   onCancel,
+  onEdit,
   hasRepDownloadPermission = false,
 }: CollectionDetailDialogProps) {
   // Sin parámetros: la MISMA entrada de caché que la pantalla de CxC, y con las
@@ -120,6 +126,17 @@ export function CollectionDetailDialog({
       }
     >
       <div className="space-y-5">
+        {/* Acciones del borrador y "Cancelar cobro": solo aquí, no en el menú de
+            la fila. Cada diálogo vive en `CollectionList`. */}
+        {onEdit && (
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <Button type="button" variant="secondary" onClick={onEdit}>
+              <EditIcon className="w-4 h-4" aria-hidden="true" />
+              Editar
+            </Button>
+          </div>
+        )}
+
         {onCancel && (
           <div className="flex flex-col items-end gap-1.5">
             <Button

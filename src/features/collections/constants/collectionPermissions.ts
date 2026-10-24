@@ -27,6 +27,13 @@ export const COBRO_REP_CANCEL_PERMISSION = "E-FIN-FACTURAS";
 export const COBRO_CANCEL_PERMISSION = "E-FIN-FACTURAS";
 
 /**
+ * Permiso para editar, aplicar o eliminar un cobro en `Borrador` (`PATCH` y
+ * `DELETE` de `/finanzas/cobros/{id}/`): el mismo código que exige
+ * `CobroViewSet` en todo método que no sea de lectura; sin él responde 403.
+ */
+export const COBRO_DRAFT_WRITE_PERMISSION = "E-FIN-FACTURAS";
+
+/**
  * Permiso para descargar el XML/PDF del REP: el del passthrough de Facturama
  * (`PuedeUsarFacturama`). El backend exige además que el usuario sea de la
  * empresa dueña de la cuenta, algo que el frontend no conoce, así que un admin

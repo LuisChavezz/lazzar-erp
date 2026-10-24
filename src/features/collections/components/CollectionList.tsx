@@ -20,6 +20,8 @@ import { canOfferCobroCancel } from "../utils/cobroCancellation";
 import { canCancelCobroRep } from "../utils/cobroRepCancellation";
 import { hasRepDownloadPermission } from "../utils/cobroRepDownload";
 import { CollectionCancelDialog } from "./CollectionCancelDialog";
+import { CobroDraftEditDialog } from "./CobroDraftEditDialog";
+import { canManageCobroDraft } from "../utils/cobroDraft";
 import { useBankAccounts } from "@/src/features/bank-accounts/hooks/useBankAccounts";
 import { useCobros } from "../hooks/useCobros";
 import { mapCobrosToRows, type CobroRow } from "../utils/collection.utils";
@@ -55,6 +57,10 @@ export function CollectionList() {
   // sigue coherente aunque la fila pase a `Cancelado` y salga de un filtro.
   const [cancelId, setCancelId] = useState<number | null>(null);
   const cancelCobro = cancelId !== null ? rows.find((row) => row.id === cancelId) ?? null : null;
+  // Editar un borrador: solo desde el detalle. El diálogo toma su copia al abrir
+  // y no la suelta aunque la fila se relea (o pase a `Aplicado`) mientras edita.
+  const [editId, setEditId] = useState<number | null>(null);
+  const editCobro = editId !== null ? rows.find((row) => row.id === editId) ?? null : null;
 
   const columns = getCollectionColumns({ onViewDetail: setOpenDetailId });
 
@@ -143,6 +149,7 @@ export function CollectionList() {
             canCancelCobroRep(detailCobro, session?.user) ? () => setCancelRepId(detailCobro.id) : undefined
           }
           onCancel={canOfferCobroCancel(detailCobro, session?.user) ? () => setCancelId(detailCobro.id) : undefined}
+          onEdit={canManageCobroDraft(detailCobro, session?.user) ? () => setEditId(detailCobro.id) : undefined}
           hasRepDownloadPermission={hasRepDownloadPermission(session?.user)}
         />
       )}
@@ -162,6 +169,14 @@ export function CollectionList() {
         open={cancelRepId !== null}
         onOpenChange={(open) => {
           if (!open) setCancelRepId(null);
+        }}
+      />
+
+      <CobroDraftEditDialog
+        cobro={editCobro}
+        open={editId !== null}
+        onOpenChange={(open) => {
+          if (!open) setEditId(null);
         }}
       />
 
