@@ -11,9 +11,10 @@ import type { MetodoPago } from "@/src/features/payments/interfaces/payment.inte
  * devuelve cobros con `activo=True` de la empresa del usuario, e INCLUYE los
  * `Cancelado`. Los decimales llegan como string ("1160.00").
  *
- * El cobro NO tiene moneda, folio ni sucursal propios: la moneda es la de su
- * cuenta bancaria (ver `resolveCobroMoneda`) y el identificador visible es el
- * `id`.
+ * La moneda del cobro es SIEMPRE la de su cuenta bancaria: `moneda` la fija el
+ * servidor (solo lectura) y el código ISO se resuelve contra el catálogo de
+ * cuentas (ver `resolveCobroMoneda`). El identificador visible es `folio`, o
+ * `#id` mientras no tenga (ver `cobroLabel`).
  */
 
 /** Estatus del modelo (`Cobro.Estatus`). Mismo enum que el del pago a proveedor. */
@@ -67,6 +68,22 @@ export interface Cobro {
   referencia_operacion: string | null;
   /** Decimal como string, 2 decimales. */
   total_cobrado: string;
+  /**
+   * FK a `nucleo.Moneda`, solo lectura: la de la cuenta bancaria. Nullable en
+   * el modelo (los cobros previos a EC-537 se rellenaron con la de su cuenta).
+   */
+  moneda: number | null;
+  /**
+   * MXN por unidad de la moneda del cobro, decimal de 6 como string. En MXN el
+   * servidor lo fija en "1.000000"; en otra moneda es obligatorio y > 0.
+   */
+  tipo_cambio: string;
+  /**
+   * Folio de la serie `COBROS` (p. ej. "COB-000001"), solo lectura. Se asigna la
+   * primera vez que el cobro guarda líneas, aunque siga en `Borrador`; `null`
+   * sin líneas o sin serie activa en la sucursal.
+   */
+  folio: string | null;
   estatus: CobroEstatus;
   observaciones: string | null;
   /** El listado solo trae `true`; se declara porque viaja en la respuesta. */
@@ -78,6 +95,12 @@ export interface Cobro {
   rep_fecha_timbrado: string | null;
   /** `true` mientras un timbrado del REP quedó sin confirmar en Facturama. */
   rep_pendiente: boolean;
+  /** `true` mientras la cancelación del REP espera la aceptación del receptor. */
+  rep_cancelacion_solicitada: boolean;
+  /** UUID del REP ya cancelado ante el SAT (trazabilidad); null si no hay. */
+  rep_cancelado_uuid: string | null;
+  /** Datetime de la cancelación del REP ante el SAT. */
+  rep_fecha_cancelacion: string | null;
   created_at: string;
   updated_at: string;
   cobro_detalles: CobroDetalle[];
@@ -135,9 +158,12 @@ export interface CreateCobroDetallePayload {
 }
 
 /**
- * Cuerpo de `POST /finanzas/cobros/`. No lleva `empresa`, `activo` ni `rep_*`:
- * el backend los ignora en silencio. `fecha_cobro` es opcional porque el campo
- * no es nullable y el backend aplica su default (hoy) cuando la llave se omite.
+ * Cuerpo de `POST /finanzas/cobros/` y de `PATCH /finanzas/cobros/{id}/` (en el
+ * PATCH de un borrador `cobro_detalles` REEMPLAZA todas las líneas). No lleva
+ * `empresa`, `activo`, `moneda`, `folio` ni `rep_*`: son de solo lectura y el
+ * backend los ignora en silencio. `fecha_cobro` es opcional porque el campo no
+ * es nullable y el backend aplica su default (hoy) cuando la llave se omite.
+ * `tipo_cambio` solo viaja fuera de MXN (en MXN el backend lo fija en 1).
  */
 export interface CreateCobroPayload {
   cliente: number;
@@ -148,6 +174,8 @@ export interface CreateCobroPayload {
   referencia_operacion: string | null;
   /** Decimal con 2 posiciones, derivado de las líneas. */
   total_cobrado: string;
+  /** Decimal con hasta 6 posiciones; solo fuera de MXN. */
+  tipo_cambio?: string;
   estatus: CobroEstatus;
   observaciones: string | null;
   cobro_detalles: CreateCobroDetallePayload[];

@@ -209,7 +209,7 @@ export const getCollectionColumns = ({ onViewDetail }: CollectionColumnsCallback
       cell: (info) => (
         <div className="tabular-nums font-semibold text-slate-800 dark:text-white">
           <span className="whitespace-nowrap">
-            <CobroAmount value={info.getValue()} moneda={info.row.original.moneda} />
+            <CobroAmount value={info.getValue()} moneda={info.row.original.moneda_codigo} />
           </span>
         </div>
       ),

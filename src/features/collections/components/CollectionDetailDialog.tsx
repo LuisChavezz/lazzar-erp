@@ -36,7 +36,7 @@ interface CollectionDetailDialogProps {
    * El cobro ya cargado por el listado — sin fetch propio: `GET
    * /finanzas/cobros/` y el retrieve comparten el mismo `CobroSerializer`, con
    * `cobro_detalles` anidado en ambos. La moneda del cobro llega ya resuelta en
-   * la fila (`CobroRow.moneda`); lo que el renglón NO trae (folio de factura,
+   * la fila (`CobroRow.moneda_codigo`); lo que el renglón NO trae (folio de factura,
    * moneda y saldo de cada CxC) se resuelve contra el listado de CxC, una sola
    * consulta.
    */
@@ -81,7 +81,7 @@ export function CollectionDetailDialog({
     hasLoaded: hasLoadedCxc,
   } = useCuentasPorCobrar();
 
-  const { moneda } = cobro;
+  const moneda = cobro.moneda_codigo;
   const cxcIndex = buildCxcIndex(cuentas);
   const mismatched = findMismatchedMonedas(cobro, moneda, cxcIndex);
   const cxcUnavailable = isErrorCxc && !hasLoadedCxc;

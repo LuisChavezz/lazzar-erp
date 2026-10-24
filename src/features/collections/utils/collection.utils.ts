@@ -5,11 +5,12 @@ import { formatKpiCurrencyAmount } from "@/src/utils/kpiFormat";
 import type { Cobro } from "../interfaces/collection.interface";
 
 /**
- * Renglón del listado: el cobro tal cual más su moneda ya resuelta (la de su
- * cuenta bancaria). Se calcula UNA vez al armar las filas, no en cada celda.
+ * Renglón del listado: el cobro tal cual más el CÓDIGO de su moneda ya resuelto
+ * (el de su cuenta bancaria; `moneda` del cobro es solo la FK). Se calcula UNA
+ * vez al armar las filas, no en cada celda.
  */
 export interface CobroRow extends Cobro {
-  moneda: string | null;
+  moneda_codigo: string | null;
 }
 
 /**
@@ -27,8 +28,9 @@ export const buildBankAccountIndex = (accounts: CuentaBancaria[]): Map<number, C
   new Map(accounts.map((account) => [account.id, account]));
 
 /**
- * Moneda del cobro: la de su cuenta bancaria. El cobro no tiene moneda propia y
- * el backend no obliga a que coincida con la de las facturas aplicadas.
+ * Código de la moneda del cobro: el de su cuenta bancaria (el backend fija
+ * `moneda` del cobro con la de la cuenta). Al aplicar, el backend exige que cada
+ * factura esté en esa moneda; los cobros previos a esa regla pueden mezclarlas.
  *
  * `null` si la cuenta no se puede resolver (catálogo sin cargar, o la cuenta no
  * viene en él) o no trae código: en ese caso el importe se muestra SIN símbolo
@@ -42,7 +44,7 @@ export const resolveCobroMoneda = (
 /** Mapea los cobros a filas de tabla con su moneda resuelta (ver `resolveCobroMoneda`). */
 export const mapCobrosToRows = (cobros: Cobro[], bankAccounts: CuentaBancaria[]): CobroRow[] => {
   const index = buildBankAccountIndex(bankAccounts);
-  return cobros.map((cobro) => ({ ...cobro, moneda: resolveCobroMoneda(cobro, index) }));
+  return cobros.map((cobro) => ({ ...cobro, moneda_codigo: resolveCobroMoneda(cobro, index) }));
 };
 
 /**
