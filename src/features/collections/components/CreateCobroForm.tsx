@@ -22,7 +22,7 @@ import {
   type CobroFormValues,
 } from "../schemas/createCobro.schema";
 import { customerLabel, useCreateCobroForm, type CobroDraftSeed } from "../hooks/useCreateCobroForm";
-import { COBRO_DRAFT_INACTIVE_ACCOUNT_MESSAGE } from "../utils/cobroDraft";
+import { COBRO_DRAFT_INACTIVE_ACCOUNT_MESSAGE, COBRO_DRAFT_INACTIVE_CLIENT_MESSAGE } from "../utils/cobroDraft";
 import { CobroAmount } from "./CobroAmount";
 import { CxcSelectorDialog } from "./CxcSelectorDialog";
 
@@ -46,6 +46,7 @@ export function CreateCobroForm({ onSuccess, draft, onCancel }: CreateCobroFormP
     submittingEstatus,
     isClienteLocked,
     isCuentaInactiva,
+    isClienteInactivo,
     isLoadingFormData,
     isErrorFormData,
     missingItems,
@@ -76,6 +77,12 @@ export function CreateCobroForm({ onSuccess, draft, onCancel }: CreateCobroFormP
   const lines = useStore(form.store, (state) => state.values.cobro_detalles);
 
   const selectedCustomer = customers.find((customer) => customer.id === cliente);
+  // Cliente o cuenta del borrador ya inactivos: el backend los rechazaría.
+  const isBlocked = isClienteInactivo || isCuentaInactiva;
+  const blockedNoteIds =
+    [isClienteInactivo && "cobro-cliente-inactivo-note", isCuentaInactiva && "cobro-cuenta-inactiva-note"]
+      .filter(Boolean)
+      .join(" ") || undefined;
   const canPickLines = cliente > 0 && selectorMoneda !== null;
 
   // Total DERIVADO de las líneas: la misma suma en centavos que viaja como
@@ -163,10 +170,16 @@ export function CreateCobroForm({ onSuccess, draft, onCancel }: CreateCobroFormP
                   error={getError("cliente")}
                   disabled={isClienteLocked}
                 />
-                {isClienteLocked && (
-                  <p className="mt-1.5 text-xs text-slate-500 dark:text-slate-400">
-                    Para cambiar de cliente, primero quita las cuentas por cobrar del borrador.
+                {isClienteInactivo ? (
+                  <p id="cobro-cliente-inactivo-note" className="mt-1.5 text-xs font-medium text-amber-700 dark:text-amber-400">
+                    {COBRO_DRAFT_INACTIVE_CLIENT_MESSAGE}
                   </p>
+                ) : (
+                  isClienteLocked && (
+                    <p className="mt-1.5 text-xs text-slate-500 dark:text-slate-400">
+                      Para cambiar de cliente, primero quita las cuentas por cobrar del borrador.
+                    </p>
+                  )
                 )}
               </div>
 
@@ -469,13 +482,13 @@ export function CreateCobroForm({ onSuccess, draft, onCancel }: CreateCobroFormP
                 submittingEstatus === "Borrador" ? "Guardando..." : isEdit ? "Guardar borrador" : "Guardar como borrador"
               }
               onClick={handleSaveDraft}
-              disabled={isPending || isCuentaInactiva}
-              aria-describedby={isCuentaInactiva ? "cobro-cuenta-inactiva-note" : undefined}
+              disabled={isPending || isBlocked}
+              aria-describedby={blockedNoteIds}
             />
             <FormSubmitButton
               isPending={isPending}
-              disabled={isCuentaInactiva}
-              aria-describedby={isCuentaInactiva ? "cobro-cuenta-inactiva-note" : undefined}
+              disabled={isBlocked}
+              aria-describedby={blockedNoteIds}
               loadingLabel={
                 submittingEstatus === "Borrador" ? (isEdit ? "Aplicar cobro" : "Registrar cobro") : isEdit ? "Aplicando..." : "Registrando..."
               }

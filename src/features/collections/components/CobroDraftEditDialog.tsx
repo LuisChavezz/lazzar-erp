@@ -85,6 +85,10 @@ function DraftLoader({ cobro, onDone }: { cobro: CobroRow; onDone: () => void })
  * cambiar si el listado de CxC se refresca mientras se edita.
  */
 function DraftForm({ cobro, cuentas, onDone }: { cobro: CobroRow; cuentas: CuentaPorCobrar[]; onDone: () => void }) {
-  const [seed] = useState(() => ({ id: cobro.id, values: cobroToFormValues(cobro, buildCxcIndex(cuentas)) }));
+  const [seed] = useState(() => ({
+    id: cobro.id,
+    values: cobroToFormValues(cobro, buildCxcIndex(cuentas)),
+    clienteNombre: cobro.cliente_nombre,
+  }));
   return <CreateCobroForm draft={seed} onSuccess={onDone} onCancel={onDone} />;
 }

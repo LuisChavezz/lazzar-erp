@@ -39,6 +39,13 @@ export const COBRO_DRAFT_INACTIVE_ACCOUNT_MESSAGE =
   "La cuenta bancaria de este borrador está inactiva: elige una cuenta activa para guardarlo o aplicarlo.";
 
 /**
+ * Borrador cuyo cliente se desactivó: el backend solo acepta clientes activos en
+ * `cliente`, y el cliente no cambia mientras el borrador tenga líneas.
+ */
+export const COBRO_DRAFT_INACTIVE_CLIENT_MESSAGE =
+  "El cliente de este borrador está inactivo: reactívalo o cancela el borrador.";
+
+/**
  * Valores con que el formulario edita un borrador. Folio de factura, moneda y
  * saldo de cada línea se resuelven contra el listado completo de CxC; una CxC
  * que no aparezca queda con saldo 0 (al aplicar, el formulario pide el saldo

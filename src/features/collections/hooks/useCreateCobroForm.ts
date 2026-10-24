@@ -19,6 +19,7 @@ import type { CobroEstatus } from "../interfaces/collection.interface";
 import { useCobrableCxcs } from "./useCobrableCxcs";
 import { buildCobroPayload } from "../services/actions";
 import { useSaveCobro } from "./useSaveCobro";
+import { COBRO_DRAFT_INACTIVE_ACCOUNT_MESSAGE, COBRO_DRAFT_INACTIVE_CLIENT_MESSAGE } from "../utils/cobroDraft";
 
 /** Etiqueta de un cliente en el selector y en el campo una vez elegido. */
 export const customerLabel = (customer: Pick<AccountingCustomer, "razon_social" | "nombre">) =>
@@ -31,6 +32,11 @@ export const customerLabel = (customer: Pick<AccountingCustomer, "razon_social" 
 export interface CobroDraftSeed {
   id: number;
   values: CobroFormValues;
+  /**
+   * Nombre del cliente del borrador (`cliente_nombre`): el catálogo solo trae
+   * clientes activos, así que si el suyo se desactivó es la única etiqueta.
+   */
+  clienteNombre: string;
 }
 
 /** Con qué estatus se envía: guardar borrador o registrar/aplicar. */
@@ -88,6 +94,28 @@ export function useCreateCobroForm({
   // `clientes-contabilidad/` ya devuelve solo activos; se filtra de nuevo por si acaso.
   const activeCustomers = customers.filter((customer) => customer.activo);
 
+  // Al editar, si el cliente del borrador no está entre los activos ya cargados,
+  // se desactivó (el endpoint solo devuelve activos de la empresa): se agrega a
+  // la lista marcado "(inactivo)" para no perder la selección; guardar o aplicar
+  // queda bloqueado (ver `isClienteInactivo`). Los demás inactivos siguen ocultos.
+  const draftClienteId = draft?.values.cliente;
+  const inactiveDraftCustomer: AccountingCustomer | null =
+    draft && draftClienteId && hasLoadedCustomers && !activeCustomers.some((c) => c.id === draftClienteId)
+      ? {
+          id: draftClienteId,
+          nombre: draft.clienteNombre,
+          razon_social: `${draft.clienteNombre} (inactivo)`,
+          rfc: "",
+          correo: "",
+          telefono: "",
+          ciudad: "",
+          estado: "",
+          activo: false,
+          celular: null,
+        }
+      : null;
+  const selectableCustomers = inactiveDraftCustomer ? [inactiveDraftCustomer, ...activeCustomers] : activeCustomers;
+
   // Solo cuentas ACTIVAS: el backend rechaza una inactiva en `cuenta_bancaria`.
   // Excepción: al editar un borrador, SU cuenta sigue en la lista aunque se haya
   // desactivado, marcada "(inactiva)", para no perder la selección ni sus líneas;
@@ -105,9 +133,11 @@ export function useCreateCobroForm({
       (account.activo ? "" : " (inactiva)"),
   }));
 
+  // Solo en el alta: un borrador ya trae su cliente y su cuenta, y debe poder
+  // abrirse (y mostrar por qué no se guarda) aunque ya no haya activos.
   const missingItems: string[] = [];
-  if (activeCustomers.length === 0) missingItems.push("Clientes activos");
-  if (activeBankAccounts.length === 0) missingItems.push("Cuentas bancarias activas");
+  if (!isEdit && activeCustomers.length === 0) missingItems.push("Clientes activos");
+  if (!isEdit && activeBankAccounts.length === 0) missingItems.push("Cuentas bancarias activas");
 
   // ── Estado de UI ──────────────────────────────────────────────────────────
   // Errores de cabecera y de línea, y el banner de "todo o nada" (helper
@@ -144,8 +174,19 @@ export function useCreateCobroForm({
     onSubmitMeta: { estatus: "Aplicado" } as CobroSubmitMeta,
     onSubmit: async ({ value, meta }) => {
       setServerBanner(null);
-      // Los botones ya están deshabilitados; esto cubre un envío por Enter.
-      if (bankAccounts.find((account) => account.id === value.cuenta_bancaria)?.activo === false) return;
+      // Los botones ya están deshabilitados; esto cubre un envío por Enter, con
+      // el mismo aviso como error del campo.
+      const blockers: { path: string[]; message: string }[] = [];
+      if (inactiveDraftCustomer && value.cliente === inactiveDraftCustomer.id) {
+        blockers.push({ path: ["cliente"], message: COBRO_DRAFT_INACTIVE_CLIENT_MESSAGE });
+      }
+      if (bankAccounts.find((account) => account.id === value.cuenta_bancaria)?.activo === false) {
+        blockers.push({ path: ["cuenta_bancaria"], message: COBRO_DRAFT_INACTIVE_ACCOUNT_MESSAGE });
+      }
+      if (blockers.length > 0) {
+        applyValidationIssues(blockers);
+        return;
+      }
 
       // El techo de cada línea es su saldo VIGENTE, no el que traía al
       // agregarse (ver `saldoFor`). Un borrador no lo valida: el saldo se
@@ -191,6 +232,9 @@ export function useCreateCobroForm({
   // La cuenta elegida es la del borrador y ya no está activa: el backend la
   // rechazaría al guardar o aplicar.
   const isCuentaInactiva = selectedAccount !== undefined && !selectedAccount.activo;
+  // El cliente elegido es el del borrador y ya no está activo (ver
+  // `inactiveDraftCustomer`): el backend lo rechazaría al guardar o aplicar.
+  const isClienteInactivo = inactiveDraftCustomer !== null && cliente === inactiveDraftCustomer.id;
   const selectorMoneda = selectedAccount && moneda ? { id: selectedAccount.moneda, codigo: moneda } : null;
   const { byId: freshCxcs, hasLoaded: hasLoadedFreshCxcs } = useCobrableCxcs({
     clienteId: cliente,
@@ -296,10 +340,11 @@ export function useCreateCobroForm({
     submittingEstatus,
     isClienteLocked,
     isCuentaInactiva,
+    isClienteInactivo,
     isLoadingFormData,
     isErrorFormData,
     missingItems,
-    customers: activeCustomers,
+    customers: selectableCustomers,
     bankAccounts: selectableBankAccounts,
     bankAccountOptions,
     selectorMoneda,
