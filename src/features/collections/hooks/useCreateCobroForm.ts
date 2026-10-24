@@ -9,18 +9,34 @@ import type { AccountingCustomer } from "@/src/features/accounting-customers/int
 import { useBankAccounts } from "@/src/features/bank-accounts/hooks/useBankAccounts";
 import type { CuentaPorCobrar } from "@/src/features/accounts-receivable/interfaces/accounts-receivable.interface";
 import {
+  CobroDraftFormSchema,
   CobroFormSchema,
   createEmptyCobroForm,
   type CobroFormValues,
   type CobroLineFormValues,
 } from "../schemas/createCobro.schema";
+import type { CobroEstatus } from "../interfaces/collection.interface";
 import { useCobrableCxcs } from "./useCobrableCxcs";
 import { buildCobroPayload } from "../services/actions";
-import { useCreateCobro } from "./useCreateCobro";
+import { useSaveCobro } from "./useSaveCobro";
 
 /** Etiqueta de un cliente en el selector y en el campo una vez elegido. */
 export const customerLabel = (customer: Pick<AccountingCustomer, "razon_social" | "nombre">) =>
   customer.razon_social || customer.nombre;
+
+/**
+ * Borrador a editar: su id y los valores con que arranca el formulario (ver
+ * `cobroToFormValues`). Sin él, el formulario es un alta.
+ */
+export interface CobroDraftSeed {
+  id: number;
+  values: CobroFormValues;
+}
+
+/** Con qué estatus se envía: guardar borrador o registrar/aplicar. */
+interface CobroSubmitMeta {
+  estatus: Extract<CobroEstatus, "Borrador" | "Aplicado">;
+}
 
 /** Siembra una línea a partir de la CxC elegida en el selector. */
 const lineFromCuentaPorCobrar = (cuenta: CuentaPorCobrar): CobroLineFormValues => ({
@@ -33,7 +49,20 @@ const lineFromCuentaPorCobrar = (cuenta: CuentaPorCobrar): CobroLineFormValues =
   observaciones: "",
 });
 
-export function useCreateCobroForm({ onSuccess }: { onSuccess?: () => void } = {}) {
+/**
+ * Formulario de cobros: alta (sin `draft`) o edición de un borrador (`draft`).
+ *
+ * Dos envíos, con su schema cada uno: "Guardar borrador" (`CobroDraftFormSchema`,
+ * cabecera mínima y líneas opcionales) y registrar/aplicar (`CobroFormSchema`,
+ * las reglas que el backend aplica en `aplicar_cobro`). En edición siempre viaja
+ * el cobro completo por PATCH (`updateCobro`), y el cliente queda bloqueado
+ * mientras haya líneas: cambiarlo exige quitarlas primero.
+ */
+export function useCreateCobroForm({
+  onSuccess,
+  draft,
+}: { onSuccess?: () => void; draft?: CobroDraftSeed } = {}) {
+  const isEdit = draft !== undefined;
   // ── Catálogos ─────────────────────────────────────────────────────────────
   // Ninguno de los dos hooks está migrado a `useGuardedQuery`: exponen el
   // `isError` crudo, así que aquí se reduce a "falló la PRIMERA carga". Un
@@ -85,48 +114,53 @@ export function useCreateCobroForm({ onSuccess }: { onSuccess?: () => void } = {
   } = useLineItemsFormErrors({
     linesKey: "cobro_detalles",
     totalField: "total_cobrado",
-    bannerPrefix: "No se registró ningún cobro.",
+    bannerPrefix: isEdit ? "No se guardó ningún cambio del cobro." : "No se registró ningún cobro.",
   });
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  // Envío en curso y cuál de los dos botones lo disparó (para su texto).
+  const [submittingEstatus, setSubmittingEstatus] = useState<CobroSubmitMeta["estatus"] | null>(null);
 
   // Claves estables por línea, para que borrar una intermedia no reutilice el
-  // estado local de otra.
-  const lineKeyCounter = useRef(0);
-  const [lineKeys, setLineKeys] = useState<number[]>([]);
+  // estado local de otra. Las líneas del borrador arrancan con las suyas.
+  const initialLineCount = draft?.values.cobro_detalles.length ?? 0;
+  const lineKeyCounter = useRef(initialLineCount);
+  const [lineKeys, setLineKeys] = useState<number[]>(() => Array.from({ length: initialLineCount }, (_, i) => i));
 
-  const { mutateAsync: createCobroMutation, isPending: isCreating } = useCreateCobro(applyServerError);
+  const { mutateAsync: saveCobroMutation, isPending: isSaving } = useSaveCobro(applyServerError);
 
   // ── Formulario ────────────────────────────────────────────────────────────
   const form = useForm({
-    defaultValues: createEmptyCobroForm(),
-    onSubmit: async ({ value }) => {
+    defaultValues: draft?.values ?? createEmptyCobroForm(),
+    // Enter y el botón principal registran/aplican; "Guardar borrador" pasa el suyo.
+    onSubmitMeta: { estatus: "Aplicado" } as CobroSubmitMeta,
+    onSubmit: async ({ value, meta }) => {
       setServerBanner(null);
 
       // El techo de cada línea es su saldo VIGENTE, no el que traía al
-      // agregarse (ver `saldoFor`).
-      const parsed = CobroFormSchema.safeParse(withFreshSaldos(value));
+      // agregarse (ver `saldoFor`). Un borrador no lo valida: el saldo se
+      // revisa al aplicar.
+      const schema = meta.estatus === "Borrador" ? CobroDraftFormSchema : CobroFormSchema;
+      const parsed = schema.safeParse(withFreshSaldos(value));
       if (!parsed.success) {
         applyValidationIssues(parsed.error.issues);
         return;
       }
       clearErrors();
-      setIsSubmitting(true);
+      setSubmittingEstatus(meta.estatus);
 
       try {
-        // Hoy el alta solo crea cobros aplicados; los borradores son EC-548.
-        await createCobroMutation(buildCobroPayload(parsed.data, "Aplicado"));
-        resetAll();
+        await saveCobroMutation({ payload: buildCobroPayload(parsed.data, meta.estatus), cobroId: draft?.id });
+        if (!isEdit) resetAll();
         onSuccess?.();
       } catch {
         // Ya repartido en `handleServerError` y avisado por toast; se captura
         // para que el rechazo no escape del `void form.handleSubmit()`.
       } finally {
-        setIsSubmitting(false);
+        setSubmittingEstatus(null);
       }
     },
   });
 
-  const isPending = isSubmitting || isCreating;
+  const isPending = submittingEstatus !== null || isSaving;
 
   // ── Saldos vigentes de las líneas ─────────────────────────────────────────
   // Las líneas se siembran con el saldo que trajo el selector, pero ese saldo
@@ -137,6 +171,10 @@ export function useCreateCobroForm({ onSuccess }: { onSuccess?: () => void } = {
   const cliente = useStore(form.store, (state) => state.values.cliente);
   const cuentaBancaria = useStore(form.store, (state) => state.values.cuenta_bancaria);
   const moneda = useStore(form.store, (state) => state.values.moneda);
+  const lineCount = useStore(form.store, (state) => state.values.cobro_detalles.length);
+  // En edición el cliente no cambia mientras haya líneas: el backend solo revisa
+  // el cliente de cada CxC al guardar líneas, y sus CxC ya son de este cliente.
+  const isClienteLocked = isEdit && lineCount > 0;
   const selectedAccount = activeBankAccounts.find((account) => account.id === cuentaBancaria);
   const selectorMoneda = selectedAccount && moneda ? { id: selectedAccount.moneda, codigo: moneda } : null;
   const { byId: freshCxcs, hasLoaded: hasLoadedFreshCxcs } = useCobrableCxcs({
@@ -194,9 +232,11 @@ export function useCreateCobroForm({ onSuccess }: { onSuccess?: () => void } = {
 
   /**
    * Cambiar de cliente VACÍA las líneas: el backend rechaza CxC de otro cliente,
-   * y las del anterior ya no aplican.
+   * y las del anterior ya no aplican. En edición, con líneas, no se permite (ver
+   * `isClienteLocked`).
    */
   const handleClienteChange = (customer: AccountingCustomer | null) => {
+    if (isClienteLocked) return;
     const nextId = customer?.id ?? 0;
     if (nextId === form.getFieldValue("cliente")) return;
     form.setFieldValue("cliente", nextId);
@@ -227,9 +267,16 @@ export function useCreateCobroForm({ onSuccess }: { onSuccess?: () => void } = {
     void form.handleSubmit();
   };
 
+  const handleSaveDraft = () => {
+    void form.handleSubmit({ estatus: "Borrador" });
+  };
+
   return {
     form,
+    isEdit,
     isPending,
+    submittingEstatus,
+    isClienteLocked,
     isLoadingFormData,
     isErrorFormData,
     missingItems,
@@ -248,6 +295,7 @@ export function useCreateCobroForm({ onSuccess }: { onSuccess?: () => void } = {
     handleClienteChange,
     handleCuentaChange,
     handleFormSubmit,
+    handleSaveDraft,
     handleReset: resetAll,
   };
 }

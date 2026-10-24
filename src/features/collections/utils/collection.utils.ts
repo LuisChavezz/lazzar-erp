@@ -23,6 +23,12 @@ export interface CobroRow extends Cobro {
 export const buildCxcIndex = (cuentas: CuentaPorCobrar[]): Map<number, CuentaPorCobrar> =>
   new Map(cuentas.map((cuenta) => [cuenta.id, cuenta]));
 
+/**
+ * Identificador visible del cobro: su `folio` de la serie `COBROS`, o `#id`
+ * mientras no tenga (borrador sin líneas, sucursal sin serie, cobros previos).
+ */
+export const cobroLabel = (cobro: Pick<Cobro, "id" | "folio">): string => cobro.folio || `#${cobro.id}`;
+
 /** Índice de cuentas bancarias por id, para resolver la moneda de cada cobro. */
 export const buildBankAccountIndex = (accounts: CuentaBancaria[]): Map<number, CuentaBancaria> =>
   new Map(accounts.map((account) => [account.id, account]));

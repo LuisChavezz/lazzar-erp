@@ -2,8 +2,9 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { AxiosError } from "axios";
 import { parseLineItemsDrfError, type ParsedLineItemsError } from "@/src/utils/parseLineItemsDrfError";
-import { createCobro } from "../services/actions";
-import { invalidateCobroEffects } from "./cobroQueryCache";
+import { createCobro, updateCobro } from "../services/actions";
+import { cobroLabel } from "../utils/collection.utils";
+import { invalidateCobroEffects, writeCobroToList } from "./cobroQueryCache";
 import type { CreateCobroPayload } from "../interfaces/collection.interface";
 
 /** Campos de cabecera que el backend puede señalar en un `400`. */
@@ -56,23 +57,31 @@ const CXC_ID_IN_MESSAGE_RE = /\bCxC (\d+)\b/;
 export type ParsedCobroError = ParsedLineItemsError<CobroHeaderErrorField>;
 
 /**
- * Normaliza el error de `POST /finanzas/cobros/` con el parser compartido de
- * documentos con líneas. Lo propio de cobros:
+ * Normaliza el error de `POST /finanzas/cobros/` o de `PATCH
+ * /finanzas/cobros/{id}/` con el parser compartido de documentos con líneas. Lo
+ * propio de cobros:
  *  - `cobro_detalles` hecho solo de strings son errores de NEGOCIO del servicio
  *    ("Importe 60 excede saldo 50 de la CxC 15."), no de la primera línea:
  *    hablan de UNA CxC por su id y se asignan a la línea con ese `cxc` (si no
- *    se encuentra, al banner);
+ *    se encuentra, al banner, como "Las líneas solo se editan mientras el cobro
+ *    es Borrador.");
  *  - `estatus`, `empresa` y los errores de póliza van al banner.
  *
- * `cxcIds` son los `cxc` enviados, en el orden de las líneas.
+ * `cxcIds` son los `cxc` enviados, en el orden de las líneas. `isUpdate` solo
+ * cambia el texto genérico.
  */
-export function parseCobroError(error: unknown, cxcIds: readonly number[]): ParsedCobroError {
+export function parseCobroError(
+  error: unknown,
+  cxcIds: readonly number[],
+  { isUpdate = false }: { isUpdate?: boolean } = {},
+): ParsedCobroError {
+  const verb = isUpdate ? "guardar" : "registrar";
   return parseLineItemsDrfError(error, {
     linesKey: "cobro_detalles",
     headerFields: HEADER_FIELDS,
     formLevelKeys: FORM_LEVEL_KEYS,
-    genericMessage: "Error al registrar el cobro.",
-    validationMessage: "Error de validación al registrar el cobro.",
+    genericMessage: `Error al ${verb} el cobro.`,
+    validationMessage: `Error de validación al ${verb} el cobro.`,
     wholeArrayStringsAreUnindexed: true,
     resolveUnindexedLine: (message) => {
       const match = CXC_ID_IN_MESSAGE_RE.exec(message);
@@ -81,29 +90,57 @@ export function parseCobroError(error: unknown, cxcIds: readonly number[]): Pars
   });
 }
 
+/** Guardado de un cobro: alta (`cobroId` ausente) o edición de un borrador. */
+interface SaveCobroVariables {
+  payload: CreateCobroPayload;
+  /** Borrador a editar (`PATCH`); sin él, alta (`POST`). */
+  cobroId?: number;
+}
+
 /**
- * Mutación de alta de cobro. `onServerError` recibe el error ya normalizado.
+ * Mutación de alta de cobro y de edición de un borrador. `onServerError` recibe
+ * el error ya normalizado.
  *
- * Al aplicarse, el cobro baja el saldo de cada CxC (y su estatus), sube el saldo
- * de la cuenta bancaria, crea un movimiento bancario, puede generar póliza y
- * mueve el `cobrado_pct` de la trazabilidad del pedido. Se invalida por PREFIJO
- * todo lo que muestra esos datos (`invalidateCobroEffects`).
+ * - Un `Borrador` (alta o edición) no mueve nada: solo cambia el listado de
+ *   cobros (y la sección "Cobros" del detalle de CxC, que lo lee del mismo
+ *   caché), así que solo se invalida `["cobros"]`.
+ * - Al aplicarse (alta `Aplicado` o PATCH con `estatus: "Aplicado"`), el cobro
+ *   baja el saldo de cada CxC (y su estatus), sube el saldo de la cuenta
+ *   bancaria, crea un movimiento bancario, puede generar póliza y mueve el
+ *   `cobrado_pct` de la trazabilidad del pedido. Se invalida por PREFIJO todo lo
+ *   que muestra esos datos (`invalidateCobroEffects`).
+ *
+ * La respuesta del PATCH se escribe en el listado antes del refetch, para que
+ * el detalle refleje el borrador vigente aunque el refetch tarde o falle. Tras
+ * un error de edición se relee el listado: un 400 puede deberse a que el cobro
+ * dejó de ser Borrador en otra pestaña.
  */
-export const useCreateCobro = (onServerError?: (parsed: ParsedCobroError) => void) => {
+export const useSaveCobro = (onServerError?: (parsed: ParsedCobroError) => void) => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (payload: CreateCobroPayload) => createCobro(payload),
-    onSuccess: () => {
-      invalidateCobroEffects(queryClient);
-      toast.success("Cobro registrado correctamente");
+    mutationFn: ({ payload, cobroId }: SaveCobroVariables) =>
+      cobroId === undefined ? createCobro(payload) : updateCobro(cobroId, payload),
+    onSuccess: (cobro, { cobroId }) => {
+      const label = cobroLabel(cobro);
+      if (cobroId !== undefined) writeCobroToList(queryClient, cobro);
+      if (cobro.estatus === "Aplicado") {
+        invalidateCobroEffects(queryClient);
+        toast.success(cobroId === undefined ? "Cobro registrado correctamente" : `Cobro ${label} aplicado`);
+      } else {
+        void queryClient.invalidateQueries({ queryKey: ["cobros"] });
+        toast.success(`Borrador ${label} guardado`);
+      }
     },
-    onError: (error, payload) => {
+    onError: (error, { payload, cobroId }) => {
+      const isUpdate = cobroId !== undefined;
       const parsed = parseCobroError(
         error,
         payload.cobro_detalles.map((line) => line.cxc),
+        { isUpdate },
       );
       onServerError?.(parsed);
+      if (isUpdate) void queryClient.invalidateQueries({ queryKey: ["cobros"] });
       // Un error de líneas o de saldo puede deberse a saldos que cambiaron por
       // debajo (otro cobro sobre la misma CxC): se vuelven a pedir las CxC para
       // que las líneas muestren y validen contra el saldo vigente.
@@ -120,7 +157,7 @@ export const useCreateCobro = (onServerError?: (parsed: ParsedCobroError) => voi
       toast.error(
         parsed.messages.length > 0
           ? parsed.messages.join("\n")
-          : parsed.formError ?? "Error al registrar el cobro",
+          : parsed.formError ?? `Error al ${isUpdate ? "guardar" : "registrar"} el cobro`,
       );
     },
   });

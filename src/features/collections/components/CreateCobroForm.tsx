@@ -5,7 +5,7 @@ import { useStore } from "@tanstack/react-form";
 import { FormInput } from "@/src/components/FormInput";
 import { FormSelect } from "@/src/components/FormSelect";
 import { FormTextarea } from "@/src/components/FormTextarea";
-import { FormCancelButton, FormSubmitButton } from "@/src/components/FormButtons";
+import { FormCancelButton, FormSecondaryButton, FormSubmitButton } from "@/src/components/FormButtons";
 import { Button } from "@/src/components/Button";
 import { Loader } from "@/src/components/Loader";
 import { DeleteIcon, InfoIcon, PlusIcon, ReceiptIcon, RejectIcon } from "@/src/components/Icons";
@@ -21,20 +21,29 @@ import {
   requiresTipoCambio,
   type CobroFormValues,
 } from "../schemas/createCobro.schema";
-import { customerLabel, useCreateCobroForm } from "../hooks/useCreateCobroForm";
+import { customerLabel, useCreateCobroForm, type CobroDraftSeed } from "../hooks/useCreateCobroForm";
 import { CobroAmount } from "./CobroAmount";
 import { CxcSelectorDialog } from "./CxcSelectorDialog";
 
 interface CreateCobroFormProps {
   onSuccess: () => void;
+  /**
+   * Borrador a editar (ver `CobroDraftEditDialog`). Sin él es un alta: "Cancelar"
+   * limpia el formulario; con él, cierra (`onCancel`).
+   */
+  draft?: CobroDraftSeed;
+  onCancel?: () => void;
 }
 
 const OPTION_CLS = "bg-white dark:bg-zinc-900 text-slate-900 dark:text-white";
 
-export function CreateCobroForm({ onSuccess }: CreateCobroFormProps) {
+export function CreateCobroForm({ onSuccess, draft, onCancel }: CreateCobroFormProps) {
   const {
     form,
+    isEdit,
     isPending,
+    submittingEstatus,
+    isClienteLocked,
     isLoadingFormData,
     isErrorFormData,
     missingItems,
@@ -52,8 +61,9 @@ export function CreateCobroForm({ onSuccess }: CreateCobroFormProps) {
     handleClienteChange,
     handleCuentaChange,
     handleFormSubmit,
+    handleSaveDraft,
     handleReset,
-  } = useCreateCobroForm({ onSuccess });
+  } = useCreateCobroForm({ onSuccess, draft });
 
   const [isPickerOpen, setIsPickerOpen] = useState(false);
   const [isCustomerPickerOpen, setIsCustomerPickerOpen] = useState(false);
@@ -142,13 +152,21 @@ export function CreateCobroForm({ onSuccess }: CreateCobroFormProps) {
               {/* Selector buscable de la app (mismo que los demás selectores
                   apilados): el cliente elegido queda fijo arriba de la lista
                   aunque la búsqueda lo excluya (#262). */}
-              <ItemPickerButton
-                label="Cliente"
-                placeholder="Seleccionar cliente..."
-                selectedLabel={selectedCustomer ? customerLabel(selectedCustomer) : null}
-                onClick={() => setIsCustomerPickerOpen(true)}
-                error={getError("cliente")}
-              />
+              <div>
+                <ItemPickerButton
+                  label="Cliente"
+                  placeholder="Seleccionar cliente..."
+                  selectedLabel={selectedCustomer ? customerLabel(selectedCustomer) : null}
+                  onClick={() => setIsCustomerPickerOpen(true)}
+                  error={getError("cliente")}
+                  disabled={isClienteLocked}
+                />
+                {isClienteLocked && (
+                  <p className="mt-1.5 text-xs text-slate-500 dark:text-slate-400">
+                    Para cambiar de cliente, primero quita las cuentas por cobrar del borrador.
+                  </p>
+                )}
+              </div>
 
               <FormSelect
                 label="Cuenta bancaria de destino"
@@ -428,10 +446,24 @@ export function CreateCobroForm({ onSuccess }: CreateCobroFormProps) {
             </div>
           </section>
 
-          <div className="flex items-center justify-end gap-3 pb-4">
-            <FormCancelButton onClick={handleReset} disabled={isPending} />
-            <FormSubmitButton isPending={isPending} loadingLabel="Registrando...">
-              Registrar cobro
+          {/* Guardar como borrador no mueve saldos ni exige líneas; registrar
+              (o aplicar, en edición) valida el cobro completo. */}
+          <div className="flex flex-wrap items-center justify-end gap-3 pb-4">
+            <FormCancelButton onClick={isEdit && onCancel ? onCancel : handleReset} disabled={isPending} />
+            <FormSecondaryButton
+              label={
+                submittingEstatus === "Borrador" ? "Guardando..." : isEdit ? "Guardar borrador" : "Guardar como borrador"
+              }
+              onClick={handleSaveDraft}
+              disabled={isPending}
+            />
+            <FormSubmitButton
+              isPending={isPending}
+              loadingLabel={
+                submittingEstatus === "Borrador" ? (isEdit ? "Aplicar cobro" : "Registrar cobro") : isEdit ? "Aplicando..." : "Registrando..."
+              }
+            >
+              {isEdit ? "Aplicar cobro" : "Registrar cobro"}
             </FormSubmitButton>
           </div>
         </fieldset>

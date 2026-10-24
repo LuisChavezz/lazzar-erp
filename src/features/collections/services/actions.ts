@@ -114,10 +114,35 @@ export const createCobro = async (payload: CreateCobroPayload): Promise<Cobro> =
 };
 
 /**
- * Valores del formulario → cuerpo exacto de `POST /finanzas/cobros/`.
+ * Guarda un cobro en `Borrador` (`PATCH /finanzas/cobros/{id}/`) y, con
+ * `estatus: "Aplicado"`, lo aplica en la MISMA llamada. Con `cobro_detalles`
+ * el backend REEMPLAZA todas las líneas (solo en Borrador; Aplicado o Cancelado
+ * responden 400), así que siempre viaja el cobro completo: cabecera, todas las
+ * líneas y `total_cobrado` derivado de ellas. Mandar el cliente sin sus líneas
+ * dejaría aplicar CxC de otro cliente: el backend solo revisa el cliente de cada
+ * CxC al guardar líneas. Responde el cobro completo.
+ */
+export const updateCobro = async (id: number, payload: CreateCobroPayload): Promise<Cobro> => {
+  const { data } = await v1_api.patch<Cobro>(`/finanzas/cobros/${id}/`, payload);
+  return data;
+};
+
+/**
+ * Elimina un cobro (`DELETE /finanzas/cobros/{id}/`, 204). Solo se ofrece para
+ * un `Borrador` SIN folio: sin movimientos bancarios el backend lo borra de
+ * verdad (un borrador nunca generó movimientos). Con folio se cancela, para no
+ * dejar un hueco en la serie.
+ */
+export const deleteCobro = async (id: number): Promise<void> => {
+  await v1_api.delete(`/finanzas/cobros/${id}/`);
+};
+
+/**
+ * Valores del formulario → cuerpo exacto de `POST /finanzas/cobros/` y de
+ * `PATCH /finanzas/cobros/{id}/` (ver `updateCobro`).
  *
- * - `estatus` llega por parámetro y viaja SIEMPRE explícito: hoy el alta solo
- *   manda `"Aplicado"`; los borradores (EC-548) reutilizarán esta función.
+ * - `estatus` llega por parámetro y viaja SIEMPRE explícito: `"Borrador"` al
+ *   guardar un borrador y `"Aplicado"` al registrar o aplicar.
  * - `total_cobrado` se DERIVA de las líneas en centavos enteros: el cuadre
  *   `|suma − total| <= 0.01` del backend se cumple por construcción.
  * - `fecha_cobro` se OMITE si va vacía (el campo no es nullable; el backend
