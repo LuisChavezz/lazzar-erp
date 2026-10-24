@@ -8,11 +8,10 @@
  *    (`pickings`), con `picking: null` y `packing_detalle: []`. El backend
  *    limita el catálogo a 50 resultados, SIN paginar ni filtrar por texto —
  *    por eso el selector del Paso 1 es un buscador en memoria
- *    (`SearchableSelectList`), no un `FormSelect` plano. El catálogo tampoco
- *    excluye los pickings YA completamente empacados: uno sin nada pendiente
- *    sigue apareciendo aquí (solo se descubre al elegirlo y ver
- *    `cantidad_pendiente_empacar: "0.0000"` en todas sus líneas — ver
- *    `PackingWizardStep2`).
+ *    (`SearchableSelectList`), no un `FormSelect` plano. El catálogo excluye
+ *    los pickings cuyo empacado vivo ya cubre todo lo asignado; aun así, un
+ *    picking puede quedarse sin pendiente entre que se carga el catálogo y se
+ *    elige (ver los avisos de `PackingWizardStep2`).
  *
  *  - CON `?picking={id}` → los mismos 50 candidatos MÁS `picking` (el
  *    elegido, con el mismo shape del catálogo MÁS `cliente`) y
@@ -63,11 +62,12 @@ export interface PackingOnboardingPickingDetail extends PackingOnboardingPicking
  * deshabilitadas en lugar de ocultarlas — mismo criterio que
  * `PickingOnboardingTalla`.
  *
- * OJO: el backend valida `cantidad_empacada` contra `cantidad_asignada`, NO
- * contra `cantidad_surtida` — es decir, es posible empacar más de lo que el
- * picking marcó como realmente surtido. Es una regla de negocio del backend,
- * no algo que el frontend deba restringir de más; `cantidad_surtida` se
- * muestra aquí solo como contexto informativo (ver `PackingWizardStep2`).
+ * Empacar CONFIRMA el surtido (EC-574): no hay un paso aparte para confirmarlo.
+ * El backend valida `cantidad_empacada` contra lo asignado menos lo ya
+ * empacado y, en la misma transacción, recalcula `cantidad_surtida` como lo
+ * empacado en packings vivos (y con ello el estado de la línea y del picking).
+ * Por eso `cantidad_surtida` es lo ya empacado de la línea, no un tope: una
+ * línea con surtida 0 se puede empacar hasta lo asignado.
  */
 export interface PackingOnboardingLine {
   picking_detalle: number;

@@ -58,10 +58,11 @@ export interface ShipmentOnboardingPackingDetail extends ShipmentOnboardingPacki
 /**
  * Envío candidato del pedido del packing elegido.
  *
- * Se tipa por completitud del contrato pero NINGÚN componente lo consume: hoy
- * no existe forma de crear un `Envio` fuera del admin de Django, así que este
- * arreglo llega casi siempre vacío y un selector de envío se leería como algo
- * roto en lugar de comunicar la limitación real. `Despacho.envio` es nullable
+ * Se tipa por completitud del contrato pero NINGÚN componente lo consume. Un
+ * `Envio` se puede crear por API (`POST /logistica/envios/`, con `pedido` y
+ * `transportista`), pero `Transportista` no tiene nombre ni endpoint de
+ * catálogo, así que no hay forma de elegirlo en la UI; el arreglo llega casi
+ * siempre vacío y un selector de envío se leería como algo roto. `Despacho.envio` es nullable
  * desde la migración `0010_alter_despacho_envio`, así que el POST simplemente
  * omite el campo (ver `CreateShipmentPayload`).
  *

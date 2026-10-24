@@ -33,8 +33,9 @@ interface ShippingCreateFormProps {
  * endpoint igual de pequeño.
  *
  * NO existe selector de envío, a propósito: `Despacho.envio` es nullable en el
- * backend pero hoy no hay forma de crear un `Envio` fuera del admin de Django,
- * así que el selector llegaría siempre vacío y se leería como algo roto. Y
+ * backend y un `Envio` se puede crear por API (`POST /logistica/envios/`),
+ * pero exige un `transportista` y `Transportista` no tiene nombre ni endpoint
+ * de catálogo, así que el selector no tendría nada que mostrar. Y
  * tampoco hay un flujo de "asociar envío después": `Despacho` no expone
  * `PATCH`/`PUT`, no hay endpoint detrás de ese botón. Lo que sí se hace es
  * DECIRLO — ver el aviso de permanencia junto al botón de registro.

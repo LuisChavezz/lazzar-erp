@@ -316,8 +316,8 @@ export function PackingWizardStep2({ step1, onBack, onSuccess }: PackingWizardSt
                               <span className="text-[11px] text-slate-500 dark:text-slate-400">{row.color_nombre}</span>
                             )}
                           </div>
-                          {/* `cantidad_surtida` se muestra solo como contexto informativo: el
-                              backend valida contra `cantidad_asignada`, no contra lo surtido —
+                          {/* `cantidad_surtida` es lo ya empacado de la línea (empacar confirma
+                              el surtido); el tope de captura es lo pendiente sobre lo asignado —
                               ver nota en `PackingOnboardingLine`. */}
                           <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 tabular-nums">
                             Asignada: {formatExactQuantityValue(row.cantidad_asignada)} · Surtida:{" "}

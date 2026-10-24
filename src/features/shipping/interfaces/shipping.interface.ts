@@ -88,9 +88,9 @@ export interface ShipmentDetalleLine {
  *
  * `envio`/`envio_transportista` son genuinamente `null` cuando el despacho se
  * registró sin envío — el camino que toma hoy todo despacho creado desde este
- * frontend, ya que `Envio` no tiene forma de crearse fuera del admin de
- * Django (ver `CreateShipmentPayload`). No es un hueco de datos a resolver,
- * es el estado real de la mayoría de los despachos.
+ * frontend, que no tiene forma de elegir un transportista (ver
+ * `CreateShipmentPayload`). No es un hueco de datos a resolver, es el estado
+ * real de la mayoría de los despachos.
  */
 export interface Shipment {
   id: number;
@@ -127,9 +127,10 @@ export interface CreateShipmentDetalleLine {
  * Cuerpo de `POST /wms/despachos/` (idéntico a `POST .../onboarding/`).
  *
  * `envio` NO forma parte de este tipo, a propósito. Es nullable en el backend
- * desde la migración `0010_alter_despacho_envio`, pero hoy no existe forma de
- * crear un `Envio` fuera del admin de Django, así que no hay nada que
- * seleccionar; se OMITE del body en vez de mandarse como `null` explícito
+ * desde la migración `0010_alter_despacho_envio`. Un `Envio` se puede crear
+ * por API (`POST /logistica/envios/`), pero exige un `transportista` y
+ * `Transportista` no tiene nombre ni endpoint de catálogo, así que no hay nada
+ * que elegir en la UI; se OMITE del body en vez de mandarse como `null` explícito
  * (ambas rutas son equivalentes para el backend, omitir es la más limpia).
  *
  * Consecuencia a tener presente: como tampoco existe `PATCH`/`PUT` sobre
