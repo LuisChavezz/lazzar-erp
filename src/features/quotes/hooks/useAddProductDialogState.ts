@@ -30,6 +30,13 @@ import { useEmbroideryState } from "./useEmbroideryState";
 import { useProductSelection } from "./useProductSelection";
 import { useReflectiveState } from "./useReflectiveState";
 import { useSizesState } from "./useSizesState";
+import {
+  admitsProcess,
+  buildProductCategoryMap,
+  EMPTY_MATRIZ,
+  getCategoryRules,
+  intersectRules,
+} from "../utils/processCompatibility";
 
 /**
  * Aplana la descripción de una muestra a UNA sola línea.
@@ -91,6 +98,7 @@ export function useAddProductDialogState({
   sizes,
   products,
   companyId,
+  matrizCompatibilidad = EMPTY_MATRIZ,
 }: AddProductDialogProps) {
   const isEditing = Boolean(onUpdateItem && initialItem);
   const isMuestra = variant === "muestra";
@@ -218,6 +226,40 @@ export function useAddProductDialogState({
     () => (isMuestra ? muestraRows : productSelection.selectedRows),
     [isMuestra, muestraRows, productSelection.selectedRows]
   );
+
+  // ─── Matriz prenda/proceso (CO-04 / CO-05) ────────────────────────────────
+  //
+  // Bordado, reflejante y corte de manga se configuran UNA vez para todo el
+  // lote, así que se ofrece lo que admiten TODAS las categorías seleccionadas
+  // (la intersección). Catálogo toma la categoría de su producto; cada muestra,
+  // la suya (`0` = aún sin elegir, no restringe).
+  const productCategoryById = useMemo(() => buildProductCategoryMap(products), [products]);
+  const selectionCategoryIds = useMemo(
+    () =>
+      isMuestra
+        ? muestraDrafts.map((draft) =>
+            draft.categoria_producto > 0 ? draft.categoria_producto : null
+          )
+        : productSelection.selectedRows.map(
+            (row) => productCategoryById.get(row.productoId) ?? null
+          ),
+    [isMuestra, muestraDrafts, productCategoryById, productSelection.selectedRows]
+  );
+  const selectionRules = useMemo(
+    () =>
+      intersectRules(
+        selectionCategoryIds.map((categoryId) => getCategoryRules(matrizCompatibilidad, categoryId))
+      ),
+    [matrizCompatibilidad, selectionCategoryIds]
+  );
+  const isSingleSelection = selectionCategoryIds.length <= 1;
+  const sleevecutAllowed = admitsProcess(selectionRules.corte_manga);
+  // Lo que se aplica a las partidas: una casilla marcada antes de elegir un
+  // producto que no lo admite no se arrastra.
+  const effectiveSleevecut = hasSleevecut && sleevecutAllowed;
+  const sleevecutNotAllowedMessage = isSingleSelection
+    ? "La prenda seleccionada no admite corte de manga."
+    : "No todas las prendas seleccionadas admiten corte de manga.";
 
   // Mapa de productId → colores únicos, derivado de las variantes del producto
   const productColorsById = useMemo<Record<number, Color[]>>(() => {
@@ -457,7 +499,7 @@ export function useAddProductDialogState({
           descuento: 0,
           importe: 0,
           availableSizes: sizesPerProduct[draft.id] ?? sizes,
-          lleva_corte_manga: hasSleevecut,
+          lleva_corte_manga: effectiveSleevecut,
           tallas: itemSizes.map((size) => ({
             tallaId: size.id,
             nombre: size.nombre,
@@ -505,7 +547,7 @@ export function useAddProductDialogState({
         colorNombre: resolvedColorEdit?.nombre ?? initialItem.colorNombre,
         colorHex: resolvedColorEdit?.codigo_hex ?? initialItem.colorHex,
         availableSizes: sizesPerProduct[row.id] ?? sizes,
-        lleva_corte_manga: hasSleevecut,
+        lleva_corte_manga: effectiveSleevecut,
         tallas: itemSizes.map((size) => ({
           tallaId: size.id,
           nombre: size.nombre,
@@ -539,7 +581,7 @@ export function useAddProductDialogState({
         colorNombre: resolvedColor?.nombre,
         colorHex: resolvedColor?.codigo_hex,
         availableSizes: sizesPerProduct[row.id] ?? sizes,
-        lleva_corte_manga: hasSleevecut,
+        lleva_corte_manga: effectiveSleevecut,
         tallas: itemSizes.map((size) => ({
           tallaId: size.id,
           nombre: size.nombre,
@@ -563,7 +605,7 @@ export function useAddProductDialogState({
     colorsState,
     embroideryState,
     handleOpenChange,
-    hasSleevecut,
+    effectiveSleevecut,
     initialItem,
     isEditing,
     effectiveSelectedRows,
@@ -624,6 +666,8 @@ export function useAddProductDialogState({
       onToggleReflective: (next: boolean) => reflectiveState.setHasReflective(next),
       hasSleevecut,
       onToggleSleevecut: setHasSleevecut,
+      sleevecutAllowed,
+      sleevecutNotAllowedMessage,
     },
     selectStepProps: {
       search: productSelection.search,
@@ -638,6 +682,8 @@ export function useAddProductDialogState({
       onToggleReflective: (next: boolean) => reflectiveState.setHasReflective(next),
       hasSleevecut,
       onToggleSleevecut: setHasSleevecut,
+      sleevecutAllowed,
+      sleevecutNotAllowedMessage,
       onClearSelection: productSelection.clearSelection,
     },
     embroideryStepProps: {

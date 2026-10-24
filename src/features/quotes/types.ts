@@ -12,6 +12,7 @@ import {
 } from "./constants/embroideryPositions";
 import type { QuoteOnboardingDataVariantProduct } from "./interfaces/quote.interface";
 import type { QuoteFormValues } from "./schemas/quote.schema";
+import type { MatrizCompatibilidad } from "./utils/processCompatibility";
 
 /**
  * `QuoteItem` — alias al tipo generado por el schema `quote.schema`.
@@ -151,6 +152,11 @@ export interface AddProductDialogProps {
    * las categorías de producto de esa empresa. Sin ella no se filtra.
    */
   companyId?: number;
+  /**
+   * Matriz prenda/proceso del onboarding (CO-04 / CO-05): el diálogo ofrece lo
+   * que admiten todas las categorías seleccionadas. Sin ella no se restringe.
+   */
+  matrizCompatibilidad?: MatrizCompatibilidad;
 }
 
 /**

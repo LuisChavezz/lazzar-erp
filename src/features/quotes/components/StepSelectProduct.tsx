@@ -12,6 +12,7 @@ import { FormInput } from "@/src/components/FormInput";
 import { RejectIcon } from "@/src/components/Icons";
 import { plural } from "@/src/utils/plural";
 import { AddProductsSelectableItem } from "./AddProductsSelectableItem";
+import { SleevecutCheckbox } from "./SleevecutCheckbox";
 import type { CatalogRow } from "../types";
 
 interface StepSelectProductProps {
@@ -27,6 +28,9 @@ interface StepSelectProductProps {
   onToggleReflective: (value: boolean) => void;
   hasSleevecut: boolean;
   onToggleSleevecut: (value: boolean) => void;
+  /** La selección admite corte de manga (matriz prenda/proceso, CO-04). */
+  sleevecutAllowed: boolean;
+  sleevecutNotAllowedMessage: string;
   onClearSelection: () => void;
 }
 
@@ -43,6 +47,8 @@ export const StepSelectProduct = memo(function StepSelectProduct({
   onToggleReflective,
   hasSleevecut,
   onToggleSleevecut,
+  sleevecutAllowed,
+  sleevecutNotAllowedMessage,
   onClearSelection,
 }: StepSelectProductProps) {
   // Opt-out del React Compiler: `useVirtualizer` retorna funciones internas
@@ -166,19 +172,13 @@ export const StepSelectProduct = memo(function StepSelectProduct({
             />
             Agregar Reflejante
           </label>
-          <label
-            className="flex items-center gap-2 text-xs font-semibold text-slate-600 dark:text-slate-300 cursor-pointer select-none"
-            htmlFor="select-product-corte-manga"
-          >
-            <input
-              id="select-product-corte-manga"
-              type="checkbox"
-              checked={hasSleevecut}
-              onChange={(event) => onToggleSleevecut(event.target.checked)}
-              className="w-4 h-4 rounded border-slate-300"
-            />
-            Corte de manga
-          </label>
+          <SleevecutCheckbox
+            id="select-product-corte-manga"
+            checked={hasSleevecut}
+            onChange={onToggleSleevecut}
+            allowed={sleevecutAllowed}
+            notAllowedMessage={sleevecutNotAllowedMessage}
+          />
         </div>
         {selectedCount > 0 && (
           <div className="flex items-center gap-2">

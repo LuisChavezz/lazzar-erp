@@ -15,6 +15,12 @@ import { EditIcon, EmbarquesIcon, PedidosIcon, PlusIcon } from "@/src/components
 import { MainDialog } from "@/src/components/MainDialog";
 import { getFieldError } from "../../../utils/getFieldError";
 import { formatQuoteAmount } from "../utils/formatQuoteAmount";
+import {
+  admitsProcess,
+  buildProductCategoryMap,
+  getItemRules,
+  UNRESTRICTED_RULES,
+} from "../utils/processCompatibility";
 import { Loader } from "@/src/components/Loader";
 import { CustomerSearchDropdown } from "./CustomerSearchDropdown";
 import { DialogHeader } from "@/src/components/DialogHeader";
@@ -163,6 +169,7 @@ export function QuoteFormContent({
   metodosPagoOptions,
   sizes,
   products,
+  matrizCompatibilidad,
   isCustomersLoading,
   isCurrenciesLoading,
   isOnboardingLoading,
@@ -230,6 +237,8 @@ export function QuoteFormContent({
   headerBadge,
   muestraCompanyId,
 }: QuoteFormContentProps) {
+  // Categoría de cada partida de catálogo, para la matriz prenda/proceso.
+  const productCategoryById = buildProductCategoryMap(products);
   /**
    * Una partida solo está protegida si EXISTE en el servidor. Las que el usuario
    * acaba de agregar (sin `pedido_detalle_id`) se pueden quitar aunque el flujo
@@ -1429,6 +1438,7 @@ export function QuoteFormContent({
           sizes={sizes}
           products={products}
           companyId={muestraCompanyId}
+          matrizCompatibilidad={matrizCompatibilidad}
         />
 
         {/* Detalle de productos */}
@@ -1510,6 +1520,11 @@ export function QuoteFormContent({
                   const bordadoLabel = currentItem?.bordados?.activo ? "Sí" : "No";
                   const reflejanteLabel = currentItem?.reflejantes?.activo ? "Sí" : "No";
                   const llevaCorteManga = Boolean(currentItem?.lleva_corte_manga);
+                  // Lo que admite la categoría de esta partida (CO-04 / CO-05).
+                  const lineRules = currentItem
+                    ? getItemRules(currentItem, matrizCompatibilidad, productCategoryById)
+                    : UNRESTRICTED_RULES;
+                  const corteMangaAdmitido = admitsProcess(lineRules.corte_manga);
                   const cantidad = Number(currentItem?.cantidad) || 0;
                   const precio = Number(currentItem?.precio) || 0;
                   const descuento = Number(currentItem?.descuento) || 0;
@@ -1641,20 +1656,32 @@ export function QuoteFormContent({
                           como bordado/reflejante), así que basta con reescribir el item. */}
                       <td className="p-2">
                         <div className="flex items-center justify-center">
-                          <input
-                            type="checkbox"
-                            className="w-4 h-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500 cursor-pointer"
-                            checked={llevaCorteManga}
-                            aria-label={`Corte de manga en la partida ${index + 1}`}
-                            title="Corte de manga"
-                            onChange={(event) => {
-                              if (!currentItem) return;
-                              update(index, {
-                                ...currentItem,
-                                lleva_corte_manga: event.target.checked,
-                              });
-                            }}
-                          />
+                          {/* Una prenda que no admite corte de manga no ofrece la
+                              casilla; si ya lo trae marcado, se sigue viendo para
+                              poder quitarlo. */}
+                          {corteMangaAdmitido || llevaCorteManga ? (
+                            <input
+                              type="checkbox"
+                              className="w-4 h-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500 cursor-pointer"
+                              checked={llevaCorteManga}
+                              aria-label={`Corte de manga en la partida ${index + 1}`}
+                              title="Corte de manga"
+                              onChange={(event) => {
+                                if (!currentItem) return;
+                                update(index, {
+                                  ...currentItem,
+                                  lleva_corte_manga: event.target.checked,
+                                });
+                              }}
+                            />
+                          ) : (
+                            <span
+                              className="text-xs text-slate-300 dark:text-slate-600"
+                              title="Esta prenda no admite corte de manga"
+                            >
+                              —
+                            </span>
+                          )}
                         </div>
                       </td>
                       <td className="p-2">

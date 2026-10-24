@@ -24,6 +24,7 @@ import { FormTextarea } from "@/src/components/FormTextarea";
 import { PlusIcon } from "@/src/components/Icons";
 import { useProductCategories } from "../../product-categories/hooks/useProductCategories";
 import type { MuestraDraft } from "../types";
+import { SleevecutCheckbox } from "./SleevecutCheckbox";
 
 const optionClassName = "bg-white dark:bg-zinc-900 text-slate-900 dark:text-white";
 
@@ -46,6 +47,9 @@ interface StepDescribeProps {
   onToggleReflective: (value: boolean) => void;
   hasSleevecut: boolean;
   onToggleSleevecut: (value: boolean) => void;
+  /** La selección admite corte de manga (matriz prenda/proceso, CO-04). */
+  sleevecutAllowed: boolean;
+  sleevecutNotAllowedMessage: string;
 }
 
 export const StepDescribe = memo(function StepDescribe({
@@ -62,6 +66,8 @@ export const StepDescribe = memo(function StepDescribe({
   onToggleReflective,
   hasSleevecut,
   onToggleSleevecut,
+  sleevecutAllowed,
+  sleevecutNotAllowedMessage,
 }: StepDescribeProps) {
   const {
     categories: allCategories,
@@ -284,19 +290,13 @@ export const StepDescribe = memo(function StepDescribe({
           />
           Agregar Reflejante
         </label>
-        <label
-          className="flex items-center gap-2 text-xs font-semibold text-slate-600 dark:text-slate-300 cursor-pointer select-none"
-          htmlFor="describe-corte-manga"
-        >
-          <input
-            id="describe-corte-manga"
-            type="checkbox"
-            checked={hasSleevecut}
-            onChange={(event) => onToggleSleevecut(event.target.checked)}
-            className="w-4 h-4 rounded border-slate-300"
-          />
-          Corte de manga
-        </label>
+        <SleevecutCheckbox
+          id="describe-corte-manga"
+          checked={hasSleevecut}
+          onChange={onToggleSleevecut}
+          allowed={sleevecutAllowed}
+          notAllowedMessage={sleevecutNotAllowedMessage}
+        />
       </div>
     </div>
   );
