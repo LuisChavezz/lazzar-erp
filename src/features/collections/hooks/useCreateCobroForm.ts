@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { useForm, useStore } from "@tanstack/react-form";
 import { useLineItemsFormErrors } from "@/src/hooks/useLineItemsFormErrors";
@@ -79,7 +79,25 @@ export function useCreateCobroForm({
     hasLoaded: hasLoadedCustomers,
     isLoading: isLoadingCustomers,
     isError: isErrorCustomers,
+    refetch: refetchCustomers,
   } = useAccountingCustomers();
+
+  // Al editar, el catálogo de clientes se vuelve a pedir al montar: el caché
+  // (15 min) puede no traer un cliente creado después en otra pestaña, y faltar
+  // en él es lo que marca al cliente del borrador como inactivo. Hasta que esa
+  // lectura fresca termine bien no se marca ni se bloquea nada por esa causa. El
+  // alta conserva el caché.
+  const [customersRefreshed, setCustomersRefreshed] = useState(!isEdit);
+  useEffect(() => {
+    if (!isEdit) return;
+    let cancelled = false;
+    void refetchCustomers().then((result) => {
+      if (!cancelled && result.isSuccess) setCustomersRefreshed(true);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [isEdit, refetchCustomers]);
   const {
     bankAccounts,
     hasLoaded: hasLoadedBankAccounts,
@@ -94,17 +112,19 @@ export function useCreateCobroForm({
   // `clientes-contabilidad/` ya devuelve solo activos; se filtra de nuevo por si acaso.
   const activeCustomers = customers.filter((customer) => customer.activo);
 
-  // Al editar, si el cliente del borrador no está entre los activos ya cargados,
-  // se desactivó (el endpoint solo devuelve activos de la empresa): se agrega a
-  // la lista marcado "(inactivo)" para no perder la selección; guardar o aplicar
-  // queda bloqueado (ver `isClienteInactivo`). Los demás inactivos siguen ocultos.
+  // Al editar, si el cliente del borrador no está entre los activos del catálogo
+  // FRESCO, se desactivó (el endpoint solo devuelve activos de la empresa): se
+  // agrega a la lista marcado "(inactivo)" para no perder la selección; guardar
+  // o aplicar queda bloqueado (ver `isClienteInactivo`). Mientras el catálogo se
+  // relee, si falta se muestra con su nombre, sin marcarlo ni bloquear. Los
+  // demás inactivos siguen ocultos.
   const draftClienteId = draft?.values.cliente;
-  const inactiveDraftCustomer: AccountingCustomer | null =
+  const missingDraftCustomer: AccountingCustomer | null =
     draft && draftClienteId && hasLoadedCustomers && !activeCustomers.some((c) => c.id === draftClienteId)
       ? {
           id: draftClienteId,
           nombre: draft.clienteNombre,
-          razon_social: `${draft.clienteNombre} (inactivo)`,
+          razon_social: customersRefreshed ? `${draft.clienteNombre} (inactivo)` : draft.clienteNombre,
           rfc: "",
           correo: "",
           telefono: "",
@@ -114,7 +134,8 @@ export function useCreateCobroForm({
           celular: null,
         }
       : null;
-  const selectableCustomers = inactiveDraftCustomer ? [inactiveDraftCustomer, ...activeCustomers] : activeCustomers;
+  const inactiveDraftCustomer = customersRefreshed ? missingDraftCustomer : null;
+  const selectableCustomers = missingDraftCustomer ? [missingDraftCustomer, ...activeCustomers] : activeCustomers;
 
   // Solo cuentas ACTIVAS: el backend rechaza una inactiva en `cuenta_bancaria`.
   // Excepción: al editar un borrador, SU cuenta sigue en la lista aunque se haya
