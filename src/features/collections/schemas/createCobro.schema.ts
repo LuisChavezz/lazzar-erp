@@ -4,22 +4,25 @@ import { normalizeCapturedDecimal } from "@/src/utils/decimal";
 import type { CobroMetodoPago, CobroReferencia } from "../interfaces/collection.interface";
 
 /**
- * Esquema del formulario de alta de cobros.
+ * Esquemas del formulario de cobros (alta y edición de borradores).
  *
- * Valida los VALORES DEL FORMULARIO, no el payload: cada línea arrastra datos de
+ * Validan los VALORES DEL FORMULARIO, no el payload: cada línea arrastra datos de
  * la CxC elegida (`saldo`, `moneda_codigo`, el folio) que no viajan al API pero
  * que la vista pinta y que los refines necesitan. El mapeo al cuerpo del API es
  * `buildCobroPayload` (`services/actions.ts`).
  *
- * Reglas espejo de las que aplica el backend, para ahorrar el 400 de ida y
- * vuelta (el 400 sigue siendo la autoridad): al menos una línea; cada importe
- * > 0 y <= el saldo de su CxC.
+ * Hay dos niveles, como en el backend:
  *
- * Reglas que el backend NO impone y por eso se afirman aquí:
- *  - sin CxC repetidas: el backend valida cada línea contra el saldo ORIGINAL,
- *    así que dos líneas sobre la misma CxC pasan y el cobro se sobre-aplica;
- *  - toda CxC en la moneda de la cuenta bancaria: el backend no compara monedas
- *    y aplicaría un importe USD 1:1 sobre una cuenta MXN.
+ * - `CobroDraftFormSchema` ("Guardar borrador"): un borrador no mueve saldos y
+ *   el backend no revisa sus líneas al guardarlo. Pide la cabecera que el modelo
+ *   exige (cliente y cuenta bancaria) y el tipo de cambio fuera de MXN; las
+ *   líneas son opcionales, pero cada una debe estar bien formada (importe > 0 con
+ *   hasta 2 decimales).
+ * - `CobroFormSchema` ("Registrar" / "Aplicar"): lo anterior más las reglas que
+ *   el backend aplica en `aplicar_cobro` —al menos una línea, cada importe <= el
+ *   saldo de su CxC, sin CxC repetidas y toda CxC en la moneda de la cuenta
+ *   bancaria—, para ahorrar el 400 de ida y vuelta (el 400 sigue siendo la
+ *   autoridad, p. ej. ante una factura cancelada mientras tanto).
  *
  * El cuadre `suma == total_cobrado` no se valida: `total_cobrado` es DERIVADO de
  * las líneas (ver `sumImportesEnCentavos`), así que se cumple por
@@ -51,90 +54,104 @@ export const COBRO_REFERENCIAS = [
   "Autorizacion TPV",
 ] as const satisfies readonly CobroReferencia[];
 
-/** Línea del cobro: una CxC y el importe que se le aplica. */
-export const CobroLineFormSchema = z
-  .object({
-    /** FK a la CuentaPorCobrar. Lo fija el selector, nunca el usuario. */
-    cxc: z.number().int().positive(),
-    /** Saldo de la CxC al elegirla: el TECHO del importe. */
-    saldo: z.string(),
-    /** Moneda de la factura de la CxC, para el candado contra la cuenta. */
-    moneda_codigo: z.string(),
-    /** Folio de la factura (o `CxC #id` de respaldo), solo para mostrar. */
-    factura_folio: z.string(),
-    importe_aplicado: z
-      .string()
-      .min(1, "El importe es requerido")
-      .refine((v) => MONEY_REGEX.test(normalizeCapturedDecimal(v)), MONEY_MESSAGE)
-      .refine((v) => Number(normalizeCapturedDecimal(v)) > 0, "El importe debe ser mayor a 0"),
-    observaciones: z.string(),
-  })
-  .superRefine((line, ctx) => {
-    // Con un importe malformado su propio campo ya reporta el error: comparar
-    // contra el saldo daría un segundo mensaje confuso.
-    const importe = normalizeCapturedDecimal(line.importe_aplicado);
-    if (!MONEY_REGEX.test(importe) || !MONEY_REGEX.test(line.saldo)) return;
-    if (toCents(importe) > toCents(line.saldo)) {
+/** Línea del cobro bien formada: una CxC y el importe que se le aplica. */
+const CobroLineBaseSchema = z.object({
+  /** FK a la CuentaPorCobrar. Lo fija el selector, nunca el usuario. */
+  cxc: z.number().int().positive(),
+  /** Saldo vigente de la CxC: el TECHO del importe al aplicar. */
+  saldo: z.string(),
+  /** Moneda de la factura de la CxC, para el candado contra la cuenta. */
+  moneda_codigo: z.string(),
+  /** Folio de la factura (o `CxC #id` de respaldo), solo para mostrar. */
+  factura_folio: z.string(),
+  importe_aplicado: z
+    .string()
+    .min(1, "El importe es requerido")
+    .refine((v) => MONEY_REGEX.test(normalizeCapturedDecimal(v)), MONEY_MESSAGE)
+    .refine((v) => Number(normalizeCapturedDecimal(v)) > 0, "El importe debe ser mayor a 0"),
+  observaciones: z.string(),
+});
+
+/** Línea lista para aplicarse: además, el importe no excede el saldo de su CxC. */
+export const CobroLineFormSchema = CobroLineBaseSchema.superRefine((line, ctx) => {
+  // Con un importe malformado su propio campo ya reporta el error: comparar
+  // contra el saldo daría un segundo mensaje confuso.
+  const importe = normalizeCapturedDecimal(line.importe_aplicado);
+  if (!MONEY_REGEX.test(importe) || !MONEY_REGEX.test(line.saldo)) return;
+  if (toCents(importe) > toCents(line.saldo)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "El importe no puede exceder el saldo de la cuenta por cobrar",
+      path: ["importe_aplicado"],
+    });
+  }
+});
+
+const cobroHeaderShape = {
+  cliente: z.number().int().positive("El cliente es requerido"),
+  cuenta_bancaria: z.number().int().positive("La cuenta bancaria es requerida"),
+  /**
+   * Moneda de la cuenta bancaria elegida (su `moneda_codigo`): la moneda del
+   * cobro. No viaja al API; la fija el formulario al elegir la cuenta.
+   */
+  moneda: z.string().nullable(),
+  // `<input type="date">` entrega "" o "YYYY-MM-DD". Vacío es válido: el backend
+  // aplica su default (hoy) cuando la llave se OMITE (ver `buildCobroPayload`).
+  fecha_cobro: z.string(),
+  /**
+   * MXN por unidad de la moneda de la cuenta. Solo se valida y viaja fuera de
+   * MXN (ver `requiresTipoCambio`), donde el backend lo exige aun en borrador.
+   */
+  tipo_cambio: z.string(),
+  metodo_pago: z.enum(COBRO_METODOS_PAGO),
+  referencia: z.enum(COBRO_REFERENCIAS),
+  referencia_operacion: z
+    .string()
+    .max(100, "La referencia de operación no puede exceder 100 caracteres"),
+  observaciones: z.string(),
+};
+
+type CobroHeaderValues = z.infer<z.ZodObject<typeof cobroHeaderShape>>;
+
+/** Reglas de cabecera comunes a guardar borrador y a aplicar. */
+const refineCobroHeader = (data: CobroHeaderValues, ctx: z.RefinementCtx) => {
+  if (data.cuenta_bancaria > 0 && !data.moneda) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "La cuenta bancaria no tiene moneda: elige otra",
+      path: ["cuenta_bancaria"],
+    });
+  }
+
+  if (requiresTipoCambio(data.moneda)) {
+    const tipoCambio = normalizeCapturedDecimal(data.tipo_cambio);
+    if (!tipoCambio) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: "El importe no puede exceder el saldo de la cuenta por cobrar",
-        path: ["importe_aplicado"],
+        message: `Indica el tipo de cambio (MXN por ${data.moneda})`,
+        path: ["tipo_cambio"],
+      });
+    } else if (!TIPO_CAMBIO_REGEX.test(tipoCambio) || Number(tipoCambio) <= 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Tipo de cambio inválido: debe ser mayor a 0, con hasta 6 decimales",
+        path: ["tipo_cambio"],
       });
     }
-  });
+  }
+};
 
+/** "Registrar cobro" / "Aplicar": el cobro completo, tal como lo aplicará el backend. */
 export const CobroFormSchema = z
   .object({
-    cliente: z.number().int().positive("El cliente es requerido"),
-    cuenta_bancaria: z.number().int().positive("La cuenta bancaria es requerida"),
-    /**
-     * Moneda de la cuenta bancaria elegida (su `moneda_codigo`): la moneda del
-     * cobro. No viaja al API; la fija el formulario al elegir la cuenta.
-     */
-    moneda: z.string().nullable(),
-    // `<input type="date">` entrega "" o "YYYY-MM-DD". Vacío es válido: el backend
-    // aplica su default (hoy) cuando la llave se OMITE (ver `buildCobroPayload`).
-    fecha_cobro: z.string(),
-    /**
-     * MXN por unidad de la moneda de la cuenta. Solo se valida y viaja fuera de
-     * MXN (ver `requiresTipoCambio`), donde el backend lo exige aun en borrador.
-     */
-    tipo_cambio: z.string(),
-    metodo_pago: z.enum(COBRO_METODOS_PAGO),
-    referencia: z.enum(COBRO_REFERENCIAS),
-    referencia_operacion: z
-      .string()
-      .max(100, "La referencia de operación no puede exceder 100 caracteres"),
-    observaciones: z.string(),
+    ...cobroHeaderShape,
     cobro_detalles: z.array(CobroLineFormSchema).min(1, "Agrega al menos una cuenta por cobrar"),
   })
   .superRefine((data, ctx) => {
-    // El filtrado del selector es una comodidad; las líneas se afirman aquí.
-    if (data.cuenta_bancaria > 0 && !data.moneda) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "La cuenta bancaria no tiene moneda: elige otra",
-        path: ["cuenta_bancaria"],
-      });
-    }
+    refineCobroHeader(data, ctx);
 
-    if (requiresTipoCambio(data.moneda)) {
-      const tipoCambio = normalizeCapturedDecimal(data.tipo_cambio);
-      if (!tipoCambio) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: `Indica el tipo de cambio (MXN por ${data.moneda})`,
-          path: ["tipo_cambio"],
-        });
-      } else if (!TIPO_CAMBIO_REGEX.test(tipoCambio) || Number(tipoCambio) <= 0) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: "Tipo de cambio inválido: debe ser mayor a 0, con hasta 6 decimales",
-          path: ["tipo_cambio"],
-        });
-      }
-    }
-
+    // El selector ya excluye las CxC elegidas; aquí se afirma igual, porque el
+    // backend rechaza la CxC repetida hasta aplicar.
     const vistos = new Set<number>();
     for (const line of data.cobro_detalles) {
       if (vistos.has(line.cxc)) {
@@ -160,6 +177,17 @@ export const CobroFormSchema = z
       });
     }
   });
+
+/**
+ * "Guardar borrador": solo la cabecera que el backend exige y líneas bien
+ * formadas, sin mínimo. Saldo, moneda y repetidas se revisan al aplicar.
+ */
+export const CobroDraftFormSchema = z
+  .object({
+    ...cobroHeaderShape,
+    cobro_detalles: z.array(CobroLineBaseSchema),
+  })
+  .superRefine(refineCobroHeader);
 
 export type CobroLineFormValues = z.infer<typeof CobroLineFormSchema>;
 export type CobroFormValues = z.infer<typeof CobroFormSchema>;
