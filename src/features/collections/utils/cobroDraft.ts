@@ -3,7 +3,7 @@ import type { CuentaPorCobrar } from "@/src/features/accounts-receivable/interfa
 import { hasPermission } from "@/src/utils/permissions";
 import { COBRO_DRAFT_WRITE_PERMISSION } from "../constants/collectionPermissions";
 import type { Cobro } from "../interfaces/collection.interface";
-import { requiresTipoCambio, type CobroFormValues } from "../schemas/createCobro.schema";
+import { COBRO_MONEDA_LOCAL, type CobroFormValues } from "../schemas/createCobro.schema";
 import type { CobroRow } from "./collection.utils";
 
 /**
@@ -49,7 +49,8 @@ export const COBRO_DRAFT_INACTIVE_CLIENT_MESSAGE =
  * Valores con que el formulario edita un borrador. Folio de factura, moneda y
  * saldo de cada línea se resuelven contra el listado completo de CxC; una CxC
  * que no aparezca queda con saldo 0 (al aplicar, el formulario pide el saldo
- * vigente de todos modos). El tipo de cambio solo se carga fuera de MXN.
+ * vigente de todos modos). `moneda` es solo el respaldo mientras el catálogo de
+ * cuentas no la resuelve: el formulario usa la de la cuenta elegida.
  */
 export const cobroToFormValues = (
   cobro: CobroRow,
@@ -59,7 +60,9 @@ export const cobroToFormValues = (
   cuenta_bancaria: cobro.cuenta_bancaria,
   moneda: cobro.moneda_codigo,
   fecha_cobro: cobro.fecha_cobro,
-  tipo_cambio: requiresTipoCambio(cobro.moneda_codigo) ? cobro.tipo_cambio : "",
+  // Siempre el guardado: el formulario decide con la moneda de la cuenta (ya
+  // resuelta) si lo muestra y lo envía; en MXN no viaja.
+  tipo_cambio: cobro.moneda_codigo === COBRO_MONEDA_LOCAL ? "" : cobro.tipo_cambio,
   metodo_pago: cobro.metodo_pago,
   referencia: cobro.referencia,
   referencia_operacion: cobro.referencia_operacion ?? "",

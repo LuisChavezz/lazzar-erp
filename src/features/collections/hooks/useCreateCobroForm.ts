@@ -139,6 +139,10 @@ export function useCreateCobroForm({
   if (!isEdit && activeCustomers.length === 0) missingItems.push("Clientes activos");
   if (!isEdit && activeBankAccounts.length === 0) missingItems.push("Cuentas bancarias activas");
 
+  /** Código de moneda de una cuenta del catálogo (`null` si no se resuelve). */
+  const monedaOf = (cuentaId: number): string | null =>
+    bankAccounts.find((account) => account.id === cuentaId)?.moneda_codigo || null;
+
   // ── Estado de UI ──────────────────────────────────────────────────────────
   // Errores de cabecera y de línea, y el banner de "todo o nada" (helper
   // compartido con el alta de pagos).
@@ -187,12 +191,15 @@ export function useCreateCobroForm({
         applyValidationIssues(blockers);
         return;
       }
+      // La moneda sale de la cuenta elegida; la sembrada solo cubre un catálogo
+      // que aún no la resolvía.
+      const current = { ...value, moneda: monedaOf(value.cuenta_bancaria) ?? value.moneda };
 
       // El techo de cada línea es su saldo VIGENTE, no el que traía al
       // agregarse (ver `saldoFor`). Un borrador no lo valida: el saldo se
       // revisa al aplicar.
       const schema = meta.estatus === "Borrador" ? CobroDraftFormSchema : CobroFormSchema;
-      const parsed = schema.safeParse(withFreshSaldos(value));
+      const parsed = schema.safeParse(withFreshSaldos(current));
       if (!parsed.success) {
         applyValidationIssues(parsed.error.issues);
         return;
@@ -223,7 +230,10 @@ export function useCreateCobroForm({
   // saldo vigente sin tocar el importe que el usuario tecleó.
   const cliente = useStore(form.store, (state) => state.values.cliente);
   const cuentaBancaria = useStore(form.store, (state) => state.values.cuenta_bancaria);
-  const moneda = useStore(form.store, (state) => state.values.moneda);
+  // Moneda EFECTIVA: la de la cuenta elegida en el catálogo; la del formulario
+  // solo mientras el catálogo no la resuelve (borrador abierto antes de cargar).
+  const formMoneda = useStore(form.store, (state) => state.values.moneda);
+  const moneda = monedaOf(cuentaBancaria) ?? formMoneda;
   const lineCount = useStore(form.store, (state) => state.values.cobro_detalles.length);
   // En edición el cliente no cambia mientras haya líneas: el backend solo revisa
   // el cliente de cada CxC al guardar líneas, y sus CxC ya son de este cliente.
@@ -311,7 +321,7 @@ export function useCreateCobroForm({
   const handleCuentaChange = (cuentaId: number) => {
     if (cuentaId === form.getFieldValue("cuenta_bancaria")) return;
     const account = selectableBankAccounts.find((item) => item.id === cuentaId);
-    const previousMoneda = form.getFieldValue("moneda");
+    const previousMoneda = monedaOf(form.getFieldValue("cuenta_bancaria")) ?? form.getFieldValue("moneda");
     const nextMoneda = account?.moneda_codigo || null;
     form.setFieldValue("cuenta_bancaria", cuentaId);
     form.setFieldValue("moneda", nextMoneda);
@@ -341,6 +351,7 @@ export function useCreateCobroForm({
     isClienteLocked,
     isCuentaInactiva,
     isClienteInactivo,
+    moneda,
     isLoadingFormData,
     isErrorFormData,
     missingItems,

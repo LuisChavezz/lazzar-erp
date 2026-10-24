@@ -47,6 +47,7 @@ export function CreateCobroForm({ onSuccess, draft, onCancel }: CreateCobroFormP
     isClienteLocked,
     isCuentaInactiva,
     isClienteInactivo,
+    moneda,
     isLoadingFormData,
     isErrorFormData,
     missingItems,
@@ -73,7 +74,6 @@ export function CreateCobroForm({ onSuccess, draft, onCancel }: CreateCobroFormP
 
   const cliente = useStore(form.store, (state) => state.values.cliente);
   const cuentaBancaria = useStore(form.store, (state) => state.values.cuenta_bancaria);
-  const moneda = useStore(form.store, (state) => state.values.moneda);
   const lines = useStore(form.store, (state) => state.values.cobro_detalles);
 
   const selectedCustomer = customers.find((customer) => customer.id === cliente);
