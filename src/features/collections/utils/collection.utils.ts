@@ -11,6 +11,12 @@ import type { Cobro } from "../interfaces/collection.interface";
  */
 export interface CobroRow extends Cobro {
   moneda_codigo: string | null;
+  /**
+   * ¿Su cuenta bancaria sigue activa? `null` si el catálogo no la trae (aún sin
+   * cargar). Un borrador con la cuenta desactivada no se puede aplicar: el
+   * backend solo acepta cuentas activas en `cuenta_bancaria`.
+   */
+  cuenta_bancaria_activa: boolean | null;
 }
 
 /**
@@ -50,7 +56,11 @@ export const resolveCobroMoneda = (
 /** Mapea los cobros a filas de tabla con su moneda resuelta (ver `resolveCobroMoneda`). */
 export const mapCobrosToRows = (cobros: Cobro[], bankAccounts: CuentaBancaria[]): CobroRow[] => {
   const index = buildBankAccountIndex(bankAccounts);
-  return cobros.map((cobro) => ({ ...cobro, moneda_codigo: resolveCobroMoneda(cobro, index) }));
+  return cobros.map((cobro) => ({
+    ...cobro,
+    moneda_codigo: resolveCobroMoneda(cobro, index),
+    cuenta_bancaria_activa: index.get(cobro.cuenta_bancaria)?.activo ?? null,
+  }));
 };
 
 /**

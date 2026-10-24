@@ -36,7 +36,10 @@ import {
 } from "../utils/collection.utils";
 import { COBRO_REP_PENDING_MESSAGE, isCobroRepPending } from "../utils/cobroRepStamping";
 import { getCobroCancelBlockReason } from "../utils/cobroCancellation";
-import { COBRO_DRAFT_APPLY_WITHOUT_LINES_MESSAGE } from "../utils/cobroDraft";
+import {
+  COBRO_DRAFT_APPLY_WITHOUT_LINES_MESSAGE,
+  COBRO_DRAFT_INACTIVE_ACCOUNT_MESSAGE,
+} from "../utils/cobroDraft";
 import { COBRO_REP_DOWNLOAD_FORBIDDEN_MESSAGE, hasCobroRepFile } from "../utils/cobroRepDownload";
 import { CobroAmount } from "./CobroAmount";
 import { CobroRepDownloadButtons } from "./CobroRepDownloadButtons";
@@ -123,8 +126,15 @@ export function CollectionDetailDialog({
     ? null
     : getCobroCancelBlockReason(cobro, hasLoadedCxc ? cxcIndex : null);
   const cancelNoteId = `cobro-${cobro.id}-cancel-note`;
-  // Un borrador sin líneas se guarda, pero no se aplica: el backend pide al menos una.
-  const canApply = cobro.cobro_detalles.length > 0;
+  // Un borrador sin líneas se guarda, pero no se aplica: el backend pide al menos
+  // una. Tampoco con su cuenta bancaria desactivada: el backend la rechaza.
+  const applyBlockReason =
+    cobro.cobro_detalles.length === 0
+      ? COBRO_DRAFT_APPLY_WITHOUT_LINES_MESSAGE
+      : cobro.cuenta_bancaria_activa === false
+        ? COBRO_DRAFT_INACTIVE_ACCOUNT_MESSAGE
+        : null;
+  const canApply = applyBlockReason === null;
   const applyNoteId = `cobro-${cobro.id}-apply-note`;
 
   return (
@@ -185,7 +195,7 @@ export function CollectionDetailDialog({
             </div>
             {onApply && !canApply && (
               <p id={applyNoteId} className="max-w-md text-right text-xs text-slate-500 dark:text-slate-400">
-                {COBRO_DRAFT_APPLY_WITHOUT_LINES_MESSAGE}
+                {applyBlockReason}
               </p>
             )}
           </div>

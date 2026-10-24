@@ -22,6 +22,7 @@ import {
   type CobroFormValues,
 } from "../schemas/createCobro.schema";
 import { customerLabel, useCreateCobroForm, type CobroDraftSeed } from "../hooks/useCreateCobroForm";
+import { COBRO_DRAFT_INACTIVE_ACCOUNT_MESSAGE } from "../utils/cobroDraft";
 import { CobroAmount } from "./CobroAmount";
 import { CxcSelectorDialog } from "./CxcSelectorDialog";
 
@@ -44,6 +45,7 @@ export function CreateCobroForm({ onSuccess, draft, onCancel }: CreateCobroFormP
     isPending,
     submittingEstatus,
     isClienteLocked,
+    isCuentaInactiva,
     isLoadingFormData,
     isErrorFormData,
     missingItems,
@@ -168,22 +170,29 @@ export function CreateCobroForm({ onSuccess, draft, onCancel }: CreateCobroFormP
                 )}
               </div>
 
-              <FormSelect
-                label="Cuenta bancaria de destino"
-                name="cuenta_bancaria"
-                value={String(cuentaBancaria)}
-                onChange={(event) => handleCuentaChange(Number(event.target.value))}
-                error={getError("cuenta_bancaria")}
-              >
-                <option value="0" disabled>
-                  Seleccionar...
-                </option>
-                {bankAccountOptions.map((option) => (
-                  <option key={option.value} value={option.value} className={OPTION_CLS}>
-                    {option.label}
+              <div>
+                <FormSelect
+                  label="Cuenta bancaria de destino"
+                  name="cuenta_bancaria"
+                  value={String(cuentaBancaria)}
+                  onChange={(event) => handleCuentaChange(Number(event.target.value))}
+                  error={getError("cuenta_bancaria")}
+                >
+                  <option value="0" disabled>
+                    Seleccionar...
                   </option>
-                ))}
-              </FormSelect>
+                  {bankAccountOptions.map((option) => (
+                    <option key={option.value} value={option.value} className={OPTION_CLS}>
+                      {option.label}
+                    </option>
+                  ))}
+                </FormSelect>
+                {isCuentaInactiva && (
+                  <p id="cobro-cuenta-inactiva-note" className="mt-1.5 text-xs font-medium text-amber-700 dark:text-amber-400">
+                    {COBRO_DRAFT_INACTIVE_ACCOUNT_MESSAGE}
+                  </p>
+                )}
+              </div>
 
               {/* Solo fuera de MXN: el backend lo exige y lo manda al REP. */}
               {requiresTipoCambio(moneda) && (
@@ -460,10 +469,13 @@ export function CreateCobroForm({ onSuccess, draft, onCancel }: CreateCobroFormP
                 submittingEstatus === "Borrador" ? "Guardando..." : isEdit ? "Guardar borrador" : "Guardar como borrador"
               }
               onClick={handleSaveDraft}
-              disabled={isPending}
+              disabled={isPending || isCuentaInactiva}
+              aria-describedby={isCuentaInactiva ? "cobro-cuenta-inactiva-note" : undefined}
             />
             <FormSubmitButton
               isPending={isPending}
+              disabled={isCuentaInactiva}
+              aria-describedby={isCuentaInactiva ? "cobro-cuenta-inactiva-note" : undefined}
               loadingLabel={
                 submittingEstatus === "Borrador" ? (isEdit ? "Aplicar cobro" : "Registrar cobro") : isEdit ? "Aplicando..." : "Registrando..."
               }

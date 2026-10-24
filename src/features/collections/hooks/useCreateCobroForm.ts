@@ -88,16 +88,26 @@ export function useCreateCobroForm({
   // `clientes-contabilidad/` ya devuelve solo activos; se filtra de nuevo por si acaso.
   const activeCustomers = customers.filter((customer) => customer.activo);
 
-  // Solo cuentas ACTIVAS (el backend aceptaría una inactiva).
+  // Solo cuentas ACTIVAS: el backend rechaza una inactiva en `cuenta_bancaria`.
+  // Excepción: al editar un borrador, SU cuenta sigue en la lista aunque se haya
+  // desactivado, marcada "(inactiva)", para no perder la selección ni sus líneas;
+  // guardar o aplicar queda bloqueado hasta elegir una activa (ver
+  // `isCuentaInactiva`). Las demás inactivas siguen ocultas.
+  const draftCuentaId = draft?.values.cuenta_bancaria;
   const activeBankAccounts = bankAccounts.filter((account) => account.activo);
-  const bankAccountOptions = activeBankAccounts.map((account) => ({
+  const selectableBankAccounts = bankAccounts.filter(
+    (account) => account.activo || (draftCuentaId !== undefined && account.id === draftCuentaId),
+  );
+  const bankAccountOptions = selectableBankAccounts.map((account) => ({
     value: account.id,
-    label: [account.alias, account.banco_nombre, account.moneda_codigo].filter(Boolean).join(" · "),
+    label:
+      [account.alias, account.banco_nombre, account.moneda_codigo].filter(Boolean).join(" · ") +
+      (account.activo ? "" : " (inactiva)"),
   }));
 
   const missingItems: string[] = [];
   if (activeCustomers.length === 0) missingItems.push("Clientes activos");
-  if (bankAccountOptions.length === 0) missingItems.push("Cuentas bancarias activas");
+  if (activeBankAccounts.length === 0) missingItems.push("Cuentas bancarias activas");
 
   // ── Estado de UI ──────────────────────────────────────────────────────────
   // Errores de cabecera y de línea, y el banner de "todo o nada" (helper
@@ -134,6 +144,8 @@ export function useCreateCobroForm({
     onSubmitMeta: { estatus: "Aplicado" } as CobroSubmitMeta,
     onSubmit: async ({ value, meta }) => {
       setServerBanner(null);
+      // Los botones ya están deshabilitados; esto cubre un envío por Enter.
+      if (bankAccounts.find((account) => account.id === value.cuenta_bancaria)?.activo === false) return;
 
       // El techo de cada línea es su saldo VIGENTE, no el que traía al
       // agregarse (ver `saldoFor`). Un borrador no lo valida: el saldo se
@@ -175,7 +187,10 @@ export function useCreateCobroForm({
   // En edición el cliente no cambia mientras haya líneas: el backend solo revisa
   // el cliente de cada CxC al guardar líneas, y sus CxC ya son de este cliente.
   const isClienteLocked = isEdit && lineCount > 0;
-  const selectedAccount = activeBankAccounts.find((account) => account.id === cuentaBancaria);
+  const selectedAccount = selectableBankAccounts.find((account) => account.id === cuentaBancaria);
+  // La cuenta elegida es la del borrador y ya no está activa: el backend la
+  // rechazaría al guardar o aplicar.
+  const isCuentaInactiva = selectedAccount !== undefined && !selectedAccount.activo;
   const selectorMoneda = selectedAccount && moneda ? { id: selectedAccount.moneda, codigo: moneda } : null;
   const { byId: freshCxcs, hasLoaded: hasLoadedFreshCxcs } = useCobrableCxcs({
     clienteId: cliente,
@@ -250,7 +265,7 @@ export function useCreateCobroForm({
    */
   const handleCuentaChange = (cuentaId: number) => {
     if (cuentaId === form.getFieldValue("cuenta_bancaria")) return;
-    const account = activeBankAccounts.find((item) => item.id === cuentaId);
+    const account = selectableBankAccounts.find((item) => item.id === cuentaId);
     form.setFieldValue("cuenta_bancaria", cuentaId);
     form.setFieldValue("moneda", account?.moneda_codigo || null);
     // El tipo de cambio es de la moneda anterior.
@@ -277,11 +292,12 @@ export function useCreateCobroForm({
     isPending,
     submittingEstatus,
     isClienteLocked,
+    isCuentaInactiva,
     isLoadingFormData,
     isErrorFormData,
     missingItems,
     customers: activeCustomers,
-    bankAccounts: activeBankAccounts,
+    bankAccounts: selectableBankAccounts,
     bankAccountOptions,
     selectorMoneda,
     saldoFor,
