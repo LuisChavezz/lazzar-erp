@@ -45,8 +45,9 @@ export const getShippingOnboarding = async (
 
 /**
  * Crea un despacho (`POST /wms/despachos/`, idéntico a
- * `POST .../onboarding/`). El body lleva únicamente el `packing` y las líneas
- * marcadas; `envio` se omite a propósito (ver `CreateShipmentPayload`).
+ * `POST .../onboarding/`). El body lleva el `packing`, las líneas marcadas y,
+ * si se capturó, la `guia`; `envio` se omite a propósito (ver
+ * `CreateShipmentPayload`).
  */
 export const createShipment = async (data: CreateShipmentPayload): Promise<Shipment> => {
   const response = await v1_api.post<Shipment>("/wms/despachos/", data);

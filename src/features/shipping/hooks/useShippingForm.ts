@@ -3,7 +3,10 @@
 import { useEffect, useRef, useState } from "react";
 import { useShippingOnboarding } from "./useShippingOnboarding";
 import { useCreateShipping, type ParsedShipmentError } from "./useCreateShipping";
-import { CreateShipmentPayloadSchema } from "../schemas/shipping.schema";
+import {
+  CreateShipmentPayloadSchema,
+  type CreateShipmentPayloadValues,
+} from "../schemas/shipping.schema";
 import type { CreateShipmentDetalleLine } from "../interfaces/shipping.interface";
 import type { ShipmentOnboardingLine } from "../interfaces/shipping-onboarding.interface";
 
@@ -25,6 +28,10 @@ export function useShippingForm({ onSuccess }: UseShippingFormParams) {
   const [checkedIds, setCheckedIds] = useState<Set<number>>(() => new Set());
   const [serverBanner, setServerBanner] = useState<string | null>(null);
   const [staleNotice, setStaleNotice] = useState<string | null>(null);
+  const [guia, setGuiaState] = useState("");
+  // Confirmación de "registrar sin guía": la guía no se puede agregar después
+  // (`Despacho` no tiene `PATCH`), así que un envío sin ella se confirma aparte.
+  const [confirmWithoutGuiaOpen, setConfirmWithoutGuiaOpen] = useState(false);
   const submitInFlight = useRef(false);
 
   // Onboarding con alcance al packing elegido (elegibilidad por línea, caché
@@ -88,6 +95,11 @@ export function useShippingForm({ onSuccess }: UseShippingFormParams) {
     setCheckedIds(new Set());
     setServerBanner(null);
     setStaleNotice(null);
+  };
+
+  const setGuia = (value: string) => {
+    setGuiaState(value);
+    if (serverBanner) setServerBanner(null);
   };
 
   const toggleLine = (packingDetalleId: number) => {
@@ -163,44 +175,73 @@ export function useShippingForm({ onSuccess }: UseShippingFormParams) {
     return lines;
   };
 
-  const handleSubmit = async () => {
-    setServerBanner(null);
-
+  /** Valida y arma el body; ante un problema deja el banner y devuelve `null`. */
+  const buildPayload = (): CreateShipmentPayloadValues | null => {
     if (!selectedPackingId) {
       setServerBanner("Selecciona un embarque para enviar.");
-      return;
+      return null;
     }
 
     const lines = buildLines();
     if (lines.length === 0) {
       setServerBanner("Marca al menos una línea para enviar.");
-      return;
+      return null;
     }
 
     // Se envía la SALIDA del parseo, no el objeto original: `z.object`
     // descarta claves desconocidas, así que el body queda garantizado a
-    // `packing` + `despacho_detalle` — `envio` no puede colarse (ver
-    // `CreateShipmentPayloadSchema`).
+    // `packing` + `despacho_detalle` + `guia` — `envio` no puede colarse (ver
+    // `CreateShipmentPayloadSchema`). Una guía vacía se omite.
+    const trimmedGuia = guia.trim();
     const parsed = CreateShipmentPayloadSchema.safeParse({
       packing: selectedPackingId,
       despacho_detalle: lines,
+      ...(trimmedGuia.length > 0 ? { guia: trimmedGuia } : {}),
     });
     if (!parsed.success) {
       setServerBanner(parsed.error.issues[0]?.message ?? "Revisa los datos del envío.");
-      return;
+      return null;
     }
+    return parsed.data;
+  };
 
+  const send = async (payload: CreateShipmentPayloadValues) => {
     if (submitInFlight.current) return;
     submitInFlight.current = true;
     try {
-      await createShipment(parsed.data);
+      await createShipment(payload);
       onSuccess();
     } catch {
       // El error ya se repartió en `handleServerError` (banner / aviso stale) y
-      // el toast lo emitió la mutación.
+      // el toast lo emitió la mutación. Se cierra la confirmación para que el
+      // banner quede a la vista.
+      setConfirmWithoutGuiaOpen(false);
     } finally {
       submitInFlight.current = false;
     }
+  };
+
+  const handleSubmit = async () => {
+    setServerBanner(null);
+    const payload = buildPayload();
+    if (!payload) return;
+    // Sin guía se pide confirmación: no se podrá agregar después.
+    if (!payload.guia) {
+      setConfirmWithoutGuiaOpen(true);
+      return;
+    }
+    await send(payload);
+  };
+
+  const confirmWithoutGuia = async () => {
+    // Se vuelve a armar: las líneas pudieron cambiar por un refetch mientras
+    // la confirmación estaba abierta.
+    const payload = buildPayload();
+    if (!payload) {
+      setConfirmWithoutGuiaOpen(false);
+      return;
+    }
+    await send(payload);
   };
 
   return {
@@ -225,6 +266,11 @@ export function useShippingForm({ onSuccess }: UseShippingFormParams) {
     dismissBanner: () => setServerBanner(null),
     staleNotice,
     dismissStaleNotice: () => setStaleNotice(null),
+    guia,
+    setGuia,
+    confirmWithoutGuiaOpen,
+    setConfirmWithoutGuiaOpen,
+    confirmWithoutGuia,
     isPending,
     handleSubmit,
   };

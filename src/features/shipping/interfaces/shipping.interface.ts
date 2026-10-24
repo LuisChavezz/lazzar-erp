@@ -135,7 +135,8 @@ export interface CreateShipmentDetalleLine {
  *
  * Consecuencia a tener presente: como tampoco existe `PATCH`/`PUT` sobre
  * `Despacho`, un despacho creado sin envío NO puede recibir uno después por
- * API. El formulario lo advierte de forma explícita antes de enviar (ver
+ * API, y lo mismo vale para `guia`. Por eso el formulario captura la guía
+ * aquí y, si va vacía, pide confirmación antes de registrar (ver
  * `ShippingCreateForm`).
  *
  * `empresa`/`sucursal`/`pedido`/`cliente` los deriva el backend del `packing`
@@ -143,5 +144,7 @@ export interface CreateShipmentDetalleLine {
  */
 export interface CreateShipmentPayload {
   packing: number;
+  /** Texto libre, hasta 100 caracteres; se omite cuando no se capturó. */
+  guia?: string;
   despacho_detalle: CreateShipmentDetalleLine[];
 }

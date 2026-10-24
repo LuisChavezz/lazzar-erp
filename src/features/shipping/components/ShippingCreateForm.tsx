@@ -1,6 +1,8 @@
 "use client";
 
+import { ConfirmDialog } from "@/src/components/ConfirmDialog";
 import { FormSubmitButton } from "@/src/components/FormButtons";
+import { FormInput } from "@/src/components/FormInput";
 import { Loader } from "@/src/components/Loader";
 import {
   ExclamationTriangleIcon,
@@ -11,6 +13,7 @@ import { shippingOnboardingErrorMessage } from "../hooks/useShippingOnboarding";
 import { useShippingForm } from "../hooks/useShippingForm";
 import { ShippingLinesTable } from "./ShippingLinesTable";
 import { ShippingPackingSelector } from "./ShippingPackingSelector";
+import { SHIPMENT_GUIA_MAX_LENGTH } from "../schemas/shipping.schema";
 
 interface ShippingCreateFormProps {
   /** Se invoca tras registrar el despacho correctamente (cierra el diálogo). */
@@ -22,10 +25,10 @@ interface ShippingCreateFormProps {
  *
  * Decisión de arquitectura (deliberadamente distinta de picking/packing, que
  * sí usan `StepProgressBar` + `...StepManager`): el contrato de
- * `POST /wms/despachos/` recibe únicamente `{ packing, despacho_detalle }`, y
- * `despacho_detalle` no lleva cantidad ni ningún otro dato por línea. No hay
- * encabezado que capturar —ni cajas, ni peso, ni fechas, ni observaciones—,
- * así que un "Paso 1" cuyo único contenido sería el selector de packing no
+ * `POST /wms/despachos/` recibe `{ packing, despacho_detalle, guia }`, y
+ * `despacho_detalle` no lleva cantidad ni ningún otro dato por línea. Del
+ * encabezado solo se captura la guía (opcional) —ni cajas, ni peso, ni fechas,
+ * ni observaciones—, así que un "Paso 1" cuyo único contenido sería el selector de packing no
  * agregaría ninguna decisión: solo una pantalla y un botón "Continuar" de más.
  * Con un solo paso, además, cambiar de packing es un clic en la lista (que
  * queda visible) en vez de un "Regresar". Mismo criterio —y mismo precedente—
@@ -38,7 +41,8 @@ interface ShippingCreateFormProps {
  * de catálogo, así que el selector no tendría nada que mostrar. Y
  * tampoco hay un flujo de "asociar envío después": `Despacho` no expone
  * `PATCH`/`PUT`, no hay endpoint detrás de ese botón. Lo que sí se hace es
- * DECIRLO — ver el aviso de permanencia junto al botón de registro.
+ * DECIRLO (aviso junto al botón de registro) y, como la guía tampoco se puede
+ * agregar después, pedir confirmación cuando el envío va sin ella.
  */
 export function ShippingCreateForm({ onSuccess }: ShippingCreateFormProps) {
   const {
@@ -63,6 +67,11 @@ export function ShippingCreateForm({ onSuccess }: ShippingCreateFormProps) {
     dismissBanner,
     staleNotice,
     dismissStaleNotice,
+    guia,
+    setGuia,
+    confirmWithoutGuiaOpen,
+    setConfirmWithoutGuiaOpen,
+    confirmWithoutGuia,
     isPending,
     handleSubmit,
   } = useShippingForm({ onSuccess });
@@ -248,40 +257,42 @@ export function ShippingCreateForm({ onSuccess }: ShippingCreateFormProps) {
             </p>
           )}
 
-          {/* ── Aviso de permanencia + botón de registro ──────────────────
-              El aviso va PEGADO al botón, no arriba del formulario: es un
-              punto de decisión único (se lee una vez, justo antes de
-              registrar), no un estado que convenga repetir mientras se
-              revisa la lista — arriba quedaría fuera de pantalla en cuanto
-              la tabla crece. Solo se muestra cuando la acción es realmente
-              alcanzable (hay líneas disponibles), para que no se lea como
-              ruido en un packing que no se puede despachar.
-
-              Tono informativo (ámbar), no de error (rojo): no se está
-              haciendo nada mal, es una consecuencia del registro que hay que
-              conocer antes de confirmarlo. */}
+          {/* ── Guía + aviso del transportista ────────────────────────────
+              Solo cuando la acción es alcanzable (hay líneas disponibles).
+              La guía no se puede agregar después (`Despacho` no tiene
+              `PATCH`): si va vacía, el registro pide confirmación aparte. */}
           {availableRowsCount > 0 && (
-            <div
-              role="note"
-              className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 dark:border-amber-800/60 dark:bg-amber-900/20 px-4 py-3"
-            >
-              <ExclamationTriangleIcon className="w-5 h-5 shrink-0 text-amber-600 dark:text-amber-400 mt-0.5" />
-              <div className="min-w-0 flex-1 space-y-1">
-                <p className="text-sm font-semibold text-amber-800 dark:text-amber-200">
-                  El registro del envío es definitivo
+            <>
+              <FormInput
+                label="Guía (opcional)"
+                name="guia"
+                placeholder="Número de guía del envío"
+                maxLength={SHIPMENT_GUIA_MAX_LENGTH}
+                forceUppercase
+                value={guia}
+                disabled={isPending}
+                onChange={(event) => setGuia(event.target.value)}
+                // Enter aquí no registra: el envío es irreversible y no debe
+                // salir con una tecla al terminar de escribir la guía (mismo
+                // motivo por el que el selector vive fuera del formulario).
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") event.preventDefault();
+                }}
+              />
+
+              {/* Tono informativo (ámbar), no de error: es una limitación del
+                  registro que conviene conocer antes de confirmarlo. */}
+              <div
+                role="note"
+                className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 dark:border-amber-800/60 dark:bg-amber-900/20 px-4 py-3"
+              >
+                <ExclamationTriangleIcon className="w-5 h-5 shrink-0 text-amber-600 dark:text-amber-400 mt-0.5" />
+                <p className="min-w-0 flex-1 text-xs text-amber-700 dark:text-amber-300">
+                  Por ahora no se puede capturar el transportista, y no podrá agregarse a este envío
+                  después.
                 </p>
-                <ul className="list-disc pl-4 space-y-1 text-xs text-amber-700 dark:text-amber-300">
-                  <li>
-                    Las líneas que marques quedan enviadas de forma permanente: el sistema no
-                    permite editarlas ni revertirlas después.
-                  </li>
-                  <li>
-                    El envío se registra sin guía ni transportista, y no es posible asociarlos
-                    más adelante, así que no quedará registro de a quién se entregó la mercancía.
-                  </li>
-                </ul>
               </div>
-            </div>
+            </>
           )}
 
           <div className="flex items-center justify-end gap-3 pt-1">
@@ -300,6 +311,18 @@ export function ShippingCreateForm({ onSuccess }: ShippingCreateFormProps) {
           </div>
         </form>
       )}
+
+      <ConfirmDialog
+        open={confirmWithoutGuiaOpen}
+        onOpenChange={setConfirmWithoutGuiaOpen}
+        title="¿Registrar el envío sin guía?"
+        description="Se registrará sin guía ni transportista y no podrás agregarlos después."
+        confirmText={isPending ? "Registrando..." : "Registrar sin guía"}
+        confirmColor="amber"
+        closeOnConfirm={false}
+        busy={isPending}
+        onConfirm={() => void confirmWithoutGuia()}
+      />
     </div>
   );
 }

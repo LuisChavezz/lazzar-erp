@@ -3,11 +3,11 @@ import { z } from "zod";
 /**
  * Esquemas de la captura de despacho.
  *
- * El endpoint es el más pequeño de toda la cadena WMS: no hay encabezado que
- * capturar (ni cajas, ni peso, ni fechas, ni observaciones) ni cantidad por
- * línea. Todo lo que el usuario decide es UN packing y CUÁLES de sus líneas
- * se despachan — de ahí que este archivo sea tan corto comparado con
- * `packing.schema.ts`.
+ * El endpoint es el más pequeño de toda la cadena WMS: del encabezado solo
+ * hay una guía opcional (ni cajas, ni peso, ni fechas, ni observaciones) y no
+ * hay cantidad por línea. Lo que el usuario decide es UN packing, CUÁLES de
+ * sus líneas se despachan y la guía — de ahí que este archivo sea tan corto
+ * comparado con `packing.schema.ts`.
  */
 
 /** Id de packing válido para el query param y para el body. `0` = sin elegir. */
@@ -25,8 +25,14 @@ export const CreateShipmentDetalleLineSchema = z.object({
   packing_detalle: z.number().int().min(1, "Línea de embarque inválida"),
 });
 
+/** `Despacho.guia` es `CharField(max_length=100, blank=True, default="")`. */
+export const SHIPMENT_GUIA_MAX_LENGTH = 100;
+
 /**
  * Body completo de `POST /wms/despachos/`.
+ *
+ * `guia` es opcional: un despacho sin guía se manda sin la clave (el backend
+ * guarda `""`). El formulario solo la incluye cuando trae texto.
  *
  * Dos garantías que este schema aporta y que no son decorativas:
  *
@@ -37,11 +43,15 @@ export const CreateShipmentDetalleLineSchema = z.object({
  *  2. `z.object` DESCARTA las claves desconocidas al parsear (comportamiento
  *     por defecto de Zod). Al enviar la SALIDA del parseo —y no el objeto
  *     original— queda estructuralmente garantizado que el body solo lleva
- *     `packing` y `despacho_detalle`: `envio` no puede colarse ni por
+ *     `packing`, `despacho_detalle` y `guia`: `envio` no puede colarse ni por
  *     accidente ni por un cambio futuro que lo agregue río arriba.
  */
 export const CreateShipmentPayloadSchema = z.object({
   packing: z.number().int().min(1, "Selecciona un embarque"),
+  guia: z
+    .string()
+    .max(SHIPMENT_GUIA_MAX_LENGTH, `La guía no puede tener más de ${SHIPMENT_GUIA_MAX_LENGTH} caracteres`)
+    .optional(),
   despacho_detalle: z
     .array(CreateShipmentDetalleLineSchema)
     .min(1, "Marca al menos una línea para enviar"),
