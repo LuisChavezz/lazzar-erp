@@ -16,13 +16,21 @@ const CATALOG_ERROR_FALLBACK = "Vuelve a intentarlo en un momento.";
 /**
  * Qué pedidos ofrece el selector, con las condiciones del
  * `GET /produccion/orden-bordado/onboarding/` (EC-566, ME-09): programados por
- * Mesa de Control a destino Bordado, con piezas por bordar sin asignar a otra
- * orden y con SKU — las líneas de muestra sin SKU no cuentan. Sin esto, un
- * pedido programado a otro destino (p. ej. Apartado) "desaparecía" sin
- * explicación.
+ * Mesa de Control a destino Bordado, con al menos una talla marcada para
+ * bordado y con piezas por bordar sin asignar a otra orden. Las líneas de
+ * MUESTRA sin SKU no cuentan para ese saldo (una línea de catálogo sin variante
+ * sí). Sin esto, un pedido programado a otro destino (p. ej. Apartado)
+ * "desaparecía" sin explicación.
+ *
+ * Frases sueltas para que la ayuda y el estado vacío armen cada uno su texto.
  */
-const PEDIDO_REQUIREMENTS =
-  "Solo aparecen pedidos que Mesa de Control programó a Bordado, con piezas pendientes de bordar y con SKU. Las muestras sin SKU no aparecen.";
+const REQUISITO_PROGRAMADO =
+  "Solo aparecen pedidos que Mesa de Control programó a Bordado y que tienen piezas pendientes de bordar.";
+const REQUISITO_TALLAS = "Deben tener al menos una talla marcada para bordado.";
+const REQUISITO_MUESTRAS = "Las muestras sin SKU no cuentan.";
+const REQUISITO_ALCANCE = "También deben estar activos y ser de tus sucursales.";
+
+const PEDIDO_HELP_ID = "embroidery-order-pedido-help";
 
 /**
  * Mensaje del panel de carga fallida del catálogo. El cuerpo del backend se
@@ -134,7 +142,7 @@ export function EmbroideryOrderStep1({
             No hay pedidos disponibles para bordado
           </h3>
           <p className="text-xs text-amber-700 dark:text-amber-300 mt-1">
-            {PEDIDO_REQUIREMENTS} También deben estar activos y ser de tus sucursales.
+            {[REQUISITO_PROGRAMADO, REQUISITO_TALLAS, REQUISITO_MUESTRAS, REQUISITO_ALCANCE].join(" ")}
           </p>
         </div>
       </div>
@@ -160,6 +168,7 @@ export function EmbroideryOrderStep1({
                   }}
                   onBlur={field.handleBlur}
                   error={getError("pedido")}
+                  aria-describedby={PEDIDO_HELP_ID}
                 >
                   <option value="0" disabled>
                     Seleccionar pedido...
@@ -174,7 +183,9 @@ export function EmbroideryOrderStep1({
                     </option>
                   ))}
                 </FormSelect>
-                <p className="ml-1 text-[11px] text-slate-500">{PEDIDO_REQUIREMENTS}</p>
+                <p id={PEDIDO_HELP_ID} className="ml-1 text-[11px] text-slate-500">
+                  {[REQUISITO_PROGRAMADO, REQUISITO_MUESTRAS].join(" ")}
+                </p>
                 <p className="ml-1 text-[11px] text-slate-500">
                   En el siguiente paso eliges qué prendas del pedido entran en esta orden y
                   con cuántas piezas cada una.
