@@ -23,11 +23,11 @@ function lineaProductoNombre(linea: ShipmentDetalleLine): string {
 
 /**
  * `envio`/`envio_transportista` en formato de texto. Mismo criterio y misma
- * copia EXACTA que `ShippingColumns.tsx` ("Sin guía"/"Sin transportista")
+ * copia EXACTA que `ShippingColumns.tsx` ("Sin envío"/"Sin transportista")
  * para que el listado y el detalle no digan cosas distintas del mismo dato.
  */
 function envioLabel(value: number | null): string {
-  return value !== null ? `Guía #${value}` : "Sin guía";
+  return value !== null ? `Envío #${value}` : "Sin envío";
 }
 function transportistaLabel(value: number | null): string {
   return value !== null ? `Transportista #${value}` : "Sin transportista";
@@ -121,7 +121,8 @@ export function ShippingDetailDialog({ shipment, open, onOpenChange }: ShippingD
           <InfoField label="Pedido">{textOrDash(shipment.pedido_folio)}</InfoField>
           <InfoField label="Cliente">{textOrDash(shipment.cliente_nombre)}</InfoField>
           <InfoField label="Sucursal">{textOrDash(shipment.sucursal_nombre)}</InfoField>
-          <InfoField label="Guía">{envioLabel(shipment.envio)}</InfoField>
+          <InfoField label="Guía">{textOrDash(shipment.guia)}</InfoField>
+          <InfoField label="Envío">{envioLabel(shipment.envio)}</InfoField>
           <InfoField label="Transportista">
             {transportistaLabel(shipment.envio_transportista)}
           </InfoField>

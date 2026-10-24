@@ -96,6 +96,8 @@ export interface Shipment {
   id: number;
   packing: number;
   envio: number | null;
+  /** Texto libre capturado al registrar; `""` cuando se registró sin guía. */
+  guia: string;
   packing_folio: string;
   packing_estado: string;
   pedido: number;

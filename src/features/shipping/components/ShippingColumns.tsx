@@ -82,15 +82,25 @@ export const shipmentColumns = [
       <span className="text-sm text-slate-600 dark:text-slate-300">{info.getValue()}</span>
     ),
   }),
+  // La guía capturada al registrar (`Despacho.guia`, texto libre; `""` cuando
+  // se registró sin ella).
+  columnHelper.accessor("guia", {
+    header: "Guía",
+    cell: (info) => (
+      <span className="text-sm text-slate-600 dark:text-slate-300">
+        {info.getValue() || "—"}
+      </span>
+    ),
+  }),
   // Mismo `accessorFn` que `pedido_folio` y por el mismo motivo (ver el bloque
   // de arriba), con un matiz propio de ser columna NUMÉRICA: lo buscable es el
-  // ID CRUDO (`3`), no la etiqueta renderizada (`"Guía #3"`). Por eso el
+  // ID CRUDO (`3`), no la etiqueta renderizada (`"Envío #3"`). Por eso el
   // accessor devuelve el id en texto y la celda sigue leyendo el valor sin
   // formatear de `row.original` para armar su etiqueta — el accessor cambia
   // qué participa en la búsqueda, no qué se ve.
   columnHelper.accessor((row) => (row.envio !== null ? String(row.envio) : ""), {
     id: "envio",
-    header: "Guía",
+    header: "Envío",
     // `envio` es genuinamente `null` cuando el despacho se registró sin
     // envío — el caso de casi todos los despachos creados desde este
     // frontend (ver `shipping.interface.ts`), no un dato faltante a resolver.
@@ -105,12 +115,12 @@ export const shipmentColumns = [
       const value = info.row.original.envio;
       return (
         <span className="text-sm tabular-nums text-slate-600 dark:text-slate-300">
-          {value !== null ? `Guía #${value}` : "Sin guía"}
+          {value !== null ? `Envío #${value}` : "Sin envío"}
         </span>
       );
     },
   }),
-  // Mismo criterio numérico que la columna "Guía", incluido el `sortingFn`
+  // Mismo criterio numérico que la columna "Envío", incluido el `sortingFn`
   // explícito (mismo motivo: evitar que TanStack caiga en comparación de texto).
   columnHelper.accessor(
     (row) => (row.envio_transportista !== null ? String(row.envio_transportista) : ""),
@@ -120,7 +130,7 @@ export const shipmentColumns = [
       // `envio_transportista_nombre` siempre viaja `null` (ver interfaz) — se
       // muestra el id crudo con una etiqueta clara en vez de una celda vacía.
       // `envio_transportista` en sí es `null` cuando no hay envío asociado,
-      // mismo criterio que la columna "Guía".
+      // mismo criterio que la columna "Envío".
       sortingFn: (rowA, rowB) =>
         (rowA.original.envio_transportista ?? -Infinity) -
         (rowB.original.envio_transportista ?? -Infinity),
