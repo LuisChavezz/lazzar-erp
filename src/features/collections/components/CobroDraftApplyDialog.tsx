@@ -32,8 +32,12 @@ export function CobroDraftApplyDialog({ cobro, open, onOpenChange }: CobroDraftA
   const { apply, isApplying } = useApplyCobroDraft(target?.id ?? 0);
 
   const lineCount = target?.cobro_detalles.length ?? 0;
+  // El código explícito: "$" solo no distingue MXN de USD.
+  const amount = target
+    ? [formatCobroAmount(target.total_cobrado, target.moneda_codigo), target.moneda_codigo].filter(Boolean).join(" ")
+    : "";
   const description = target
-    ? `El cobro ${cobroLabel(target)} se aplicará por ${formatCobroAmount(target.total_cobrado, target.moneda_codigo)} contra ${lineCount} ${plural(lineCount, "cuenta por cobrar", "cuentas por cobrar")}: baja su saldo, suma a la cuenta bancaria, registra el movimiento bancario y genera la póliza. Después ya no se podrá editar; para corregirlo habrá que cancelarlo.`
+    ? `El cobro ${cobroLabel(target)} se aplicará por ${amount} contra ${lineCount} ${plural(lineCount, "cuenta por cobrar", "cuentas por cobrar")}: baja su saldo, suma a la cuenta bancaria, registra el movimiento bancario y, con la contabilidad activa, genera la póliza. Después ya no se podrá editar; para corregirlo habrá que cancelarlo.`
     : "";
 
   return (

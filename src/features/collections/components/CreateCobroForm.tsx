@@ -449,7 +449,12 @@ export function CreateCobroForm({ onSuccess, draft, onCancel }: CreateCobroFormP
           {/* Guardar como borrador no mueve saldos ni exige líneas; registrar
               (o aplicar, en edición) valida el cobro completo. */}
           <div className="flex flex-wrap items-center justify-end gap-3 pb-4">
-            <FormCancelButton onClick={isEdit && onCancel ? onCancel : handleReset} disabled={isPending} />
+            {/* En edición cierra sin guardar; en el alta limpia el formulario. */}
+            <FormCancelButton
+              label={isEdit ? "Cancelar" : undefined}
+              onClick={isEdit && onCancel ? onCancel : handleReset}
+              disabled={isPending}
+            />
             <FormSecondaryButton
               label={
                 submittingEstatus === "Borrador" ? "Guardando..." : isEdit ? "Guardar borrador" : "Guardar como borrador"
