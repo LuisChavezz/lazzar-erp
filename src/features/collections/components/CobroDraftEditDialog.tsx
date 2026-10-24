@@ -30,12 +30,13 @@ interface CobroDraftEditDialogProps {
  *
  * Folio de factura, moneda y saldo de cada línea salen del listado completo de
  * CxC (la misma entrada de caché que el detalle): el formulario espera a que
- * cargue, porque sin él las líneas no tendrían contra qué validarse.
+ * cargue, porque sin él las líneas no tendrían contra qué validarse. Ese listado
+ * se pide solo con el diálogo ABIERTO (`DraftLoader`): `CollectionList` monta
+ * este componente siempre.
  */
 export function CobroDraftEditDialog({ cobro, open, onOpenChange }: CobroDraftEditDialogProps) {
   const session = useDialogSession(open, cobro);
   const draft = session.snapshot;
-  const { cuentas, hasLoaded, isError } = useCuentasPorCobrar();
 
   const close = () => onOpenChange(false);
 
@@ -52,26 +53,31 @@ export function CobroDraftEditDialog({ cobro, open, onOpenChange }: CobroDraftEd
       onOpenChange={onOpenChange}
       maxWidth="1100px"
     >
-      {open && draft && (
-        !hasLoaded ? (
-          isError ? (
-            <div className="rounded-xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 p-6 text-center">
-              <p className="text-sm font-semibold text-red-600 dark:text-red-400">
-                No se pudieron cargar las cuentas por cobrar
-              </p>
-              <p className="text-xs text-red-500 dark:text-red-300 mt-1">
-                Sin ellas no se pueden mostrar las líneas del borrador. Intenta abrirlo de nuevo.
-              </p>
-            </div>
-          ) : (
-            <Loader className="py-12" title="Cargando borrador" message="Cargando cuentas por cobrar..." />
-          )
-        ) : (
-          <DraftForm key={session.id} cobro={draft} cuentas={cuentas} onDone={close} />
-        )
-      )}
+      {open && draft && <DraftLoader key={session.id} cobro={draft} onDone={close} />}
     </MainDialog>
   );
+}
+
+/** Espera el listado de CxC (pedido solo aquí, con el diálogo abierto) y monta el formulario. */
+function DraftLoader({ cobro, onDone }: { cobro: CobroRow; onDone: () => void }) {
+  const { cuentas, hasLoaded, isError } = useCuentasPorCobrar();
+
+  if (!hasLoaded) {
+    return isError ? (
+      <div className="rounded-xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 p-6 text-center">
+        <p className="text-sm font-semibold text-red-600 dark:text-red-400">
+          No se pudieron cargar las cuentas por cobrar
+        </p>
+        <p className="text-xs text-red-500 dark:text-red-300 mt-1">
+          Sin ellas no se pueden mostrar las líneas del borrador. Intenta abrirlo de nuevo.
+        </p>
+      </div>
+    ) : (
+      <Loader className="py-12" title="Cargando borrador" message="Cargando cuentas por cobrar..." />
+    );
+  }
+
+  return <DraftForm cobro={cobro} cuentas={cuentas} onDone={onDone} />;
 }
 
 /**
