@@ -94,6 +94,11 @@ export function CollectionList() {
     setOpenDetailId(null);
   }
 
+  // Acciones de borrador del detalle: un borrador sin folio se ELIMINA (no deja
+  // hueco en la serie); con folio, o aplicado, se cancela.
+  const canManageDraft = detailCobro !== null && canManageCobroDraft(detailCobro, session?.user);
+  const isDeletableDraft = detailCobro !== null && isDeletableCobroDraft(detailCobro);
+
   // `DataTable` se monta SIEMPRE: recibe `isLoading`/`isError` y alterna solo su
   // cuerpo, de modo que el toolbar (búsqueda, filtros, refrescar, columnas y el
   // botón "+ Nuevo cobro" en `actionButton`) sigue disponible durante la carga y
@@ -157,20 +162,14 @@ export function CollectionList() {
           onCancelRep={
             canCancelCobroRep(detailCobro, session?.user) ? () => setCancelRepId(detailCobro.id) : undefined
           }
-          // Un borrador sin folio se ELIMINA (no deja hueco en la serie); con
-          // folio, o aplicado, se cancela.
           onCancel={
-            canOfferCobroCancel(detailCobro, session?.user) && !isDeletableCobroDraft(detailCobro)
+            canOfferCobroCancel(detailCobro, session?.user) && !isDeletableDraft
               ? () => setCancelId(detailCobro.id)
               : undefined
           }
-          onEdit={canManageCobroDraft(detailCobro, session?.user) ? () => setEditId(detailCobro.id) : undefined}
-          onApply={canManageCobroDraft(detailCobro, session?.user) ? () => setApplyId(detailCobro.id) : undefined}
-          onDelete={
-            canManageCobroDraft(detailCobro, session?.user) && isDeletableCobroDraft(detailCobro)
-              ? () => setDeleteId(detailCobro.id)
-              : undefined
-          }
+          onEdit={canManageDraft ? () => setEditId(detailCobro.id) : undefined}
+          onApply={canManageDraft ? () => setApplyId(detailCobro.id) : undefined}
+          onDelete={canManageDraft && isDeletableDraft ? () => setDeleteId(detailCobro.id) : undefined}
           hasRepDownloadPermission={hasRepDownloadPermission(session?.user)}
         />
       )}
