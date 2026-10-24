@@ -4,6 +4,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { AxiosError } from "axios";
 import {
+  extractProcessCompatibilityMessage,
   extractQuoteValidationIssues,
   type QuoteValidationIssue,
 } from "@/src/features/quotes/utils/quoteValidationErrors";
@@ -27,11 +28,14 @@ import type {
  * - `permiso`: `_require_mesa_control` — HTTP 400 con el mensaje plano bajo la
  *   clave, no un 403.
  * - `detail`: `APIException` genéricos de DRF.
+ *
+ * Además `compatibilidad_proceso` (matriz prenda/proceso): una lista que se
+ * muestra completa.
  */
 const REJECTION_KEYS = ["permiso", "detail"] as const;
 
 const extractRejectionMessage = (data: unknown): string | undefined =>
-  firstRejectionMessage(data, REJECTION_KEYS);
+  extractProcessCompatibilityMessage(data) ?? firstRejectionMessage(data, REJECTION_KEYS);
 
 /**
  * Errores de campo del 400. Reusa `extractQuoteValidationIssues` (el mismo

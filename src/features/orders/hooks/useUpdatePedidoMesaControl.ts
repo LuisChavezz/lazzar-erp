@@ -4,6 +4,8 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { AxiosError } from "axios";
 import {
+  extractPlainDetalleMessage,
+  extractProcessCompatibilityMessage,
   extractQuoteValidationIssues,
   type QuoteValidationIssue,
 } from "@/src/features/quotes/utils/quoteValidationErrors";
@@ -35,7 +37,9 @@ import type {
  * `detail` cubre los `APIException` genéricos de DRF, por si aparece otro.
  * NO se incluyen las claves de campo (`detalle`, `pedido.cliente`…): esas ya
  * las pinta `onValidationError` sobre el input correspondiente y repetirlas en
- * el toast sería ruido.
+ * el toast sería ruido. Sí son rechazo `compatibilidad_proceso` (matriz
+ * prenda/proceso, lista completa) y `detalle` cuando llega como mensaje plano
+ * (p. ej. el tope de reflejante «Del inventario»): no los pinta ningún campo.
  */
 const REJECTION_KEYS = ["permiso", "cotizacion", "detail"] as const;
 
@@ -45,7 +49,10 @@ const REJECTION_KEYS = ["permiso", "cotizacion", "detail"] as const;
  * con el que DRF serializa cada valor.
  */
 const extractRejectionMessage = (data: unknown): string | undefined => {
-  const message = firstRejectionMessage(data, REJECTION_KEYS);
+  const message =
+    extractProcessCompatibilityMessage(data) ??
+    extractPlainDetalleMessage(data) ??
+    firstRejectionMessage(data, REJECTION_KEYS);
   if (message) return message;
   if (!data || typeof data !== "object") return undefined;
   /* `pedido` es ambigua: la usa el rechazo por falta de cotización (string) y

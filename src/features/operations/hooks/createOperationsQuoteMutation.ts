@@ -2,7 +2,9 @@
 
 import { useMutation, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
+import { AxiosError } from "axios";
 import { drfActionErrorMessage } from "@/src/utils/drfWriteErrors";
+import { extractProcessCompatibilityMessage } from "@/src/features/quotes/utils/quoteValidationErrors";
 import { KANBAN_COLUMNS } from "@/src/features/quotes/constants/kanbanColumns";
 import {
   OperationsQuote,
@@ -83,7 +85,13 @@ export const createOperationsQuoteMutation = ({
       // El mensaje del backend (400 `cotizacion`/`permiso`, `detail`), igual
       // que el rechazo; el texto fijo solo cuando no hay uno aprovechable.
       onError: (error, operationsQuoteId) => {
-        toast.error(drfActionErrorMessage(error, errorMessage, notFoundMessage));
+        // `compatibilidad_proceso` (matriz prenda/proceso) trae una lista: se
+        // muestra completa, no solo el primer mensaje.
+        toast.error(
+          (error instanceof AxiosError
+            ? extractProcessCompatibilityMessage(error.response?.data)
+            : undefined) ?? drfActionErrorMessage(error, errorMessage, notFoundMessage)
+        );
         // Mismas invalidaciones que el rechazo en su error: un 400 de estatus
         // o un 404 significan que lo pintado ya no es el estado real (otra
         // sesión movió la cotización), y sin releer la fila seguiría
