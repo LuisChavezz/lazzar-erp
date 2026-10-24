@@ -1,5 +1,6 @@
 "use client";
 
+import { plural } from "@/src/utils/kpiFormat";
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
@@ -578,7 +579,8 @@ function DashboardContent({
             <div className="mb-4">
               <h2 className="text-sm font-bold text-slate-800 dark:text-white">Distribución por estatus</h2>
               <p className="text-xs text-slate-400 mt-0.5">
-                Órdenes de Producción — {fmt(opMetrics.all, opUnavailable)} totales
+                Órdenes de Producción — {fmt(opMetrics.all, opUnavailable)}{" "}
+                {plural(opUnavailable ? 0 : opMetrics.all, "total", "totales")}
               </p>
             </div>
             <div className="space-y-2.5">

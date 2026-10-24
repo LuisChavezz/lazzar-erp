@@ -1,5 +1,6 @@
 "use client";
 
+import { plural } from "@/src/utils/kpiFormat";
 import type React from "react";
 import { useState } from "react";
 
@@ -1764,7 +1765,9 @@ export function QuoteFormContent({
         </div>
 
         <div className="mt-2 pt-2 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs">
-          <div className="text-slate-400">{fields.length} partidas</div>
+          <div className="text-slate-400">
+            {fields.length} {plural(fields.length, "partida", "partidas")}
+          </div>
         </div>
       </section>
 

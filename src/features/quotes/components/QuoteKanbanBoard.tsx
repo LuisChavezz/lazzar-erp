@@ -1,5 +1,6 @@
 "use client";
 
+import { plural } from "@/src/utils/kpiFormat";
 import { useState, useMemo, useTransition, useCallback, useRef, useEffect } from "react";
 import Link from "next/link";
 import { DragDropProvider, DragOverlay } from "@dnd-kit/react";
@@ -337,7 +338,7 @@ export function QuoteKanbanBoard() {
               <span className="font-medium text-slate-600 dark:text-slate-400">
                 {quotes.length}
               </span>{" "}
-              totales
+              {plural(quotes.length, "total", "totales")}
             </span>
           )}
           {" "}— arrastra las cotizaciones en <strong>Borrador</strong> o <strong>Rechazada</strong> a <strong>Por Autorizar</strong> para enviar a revisión

@@ -1,5 +1,6 @@
 "use client";
 
+import { plural } from "@/src/utils/kpiFormat";
 import { useIsMutating } from "@tanstack/react-query";
 import { MainDialog } from "@/src/components/MainDialog";
 import { Loader } from "@/src/components/Loader";
@@ -328,7 +329,7 @@ function RecalculateConsumptionSteps({
               <span className="font-semibold tabular-nums">
                 {confirmedBody.cantidad_real_corte}
               </span>{" "}
-              piezas cortadas. Si el consumo sube se registra una salida de almacén;
+              {plural(confirmedBody.cantidad_real_corte, "pieza cortada", "piezas cortadas")}. Si el consumo sube se registra una salida de almacén;
               si baja, una entrada a la existencia de origen. No hay vista previa:
               verás el resultado al terminar.
             </p>
@@ -389,7 +390,7 @@ function RecalculateConsumptionResult({
       {result.cambios.length === 0 ? (
         <EmptyLines>
           Sin cambios: el consumo de los productos seleccionados ya correspondía a{" "}
-          {cantidad} piezas cortadas. No se movió inventario.
+          {cantidad} {plural(Number(cantidad), "pieza cortada", "piezas cortadas")}. No se movió inventario.
         </EmptyLines>
       ) : (
         <LineItemsTable

@@ -1,5 +1,6 @@
 "use client";
 
+import { plural } from "@/src/utils/kpiFormat";
 import { useMemo } from "react";
 import type { PurchaseOrder } from "../interfaces/purchase-order.interface";
 import {
@@ -254,7 +255,7 @@ export function PurchaseOrderDashboard({ orders }: PurchaseOrderDashboardProps) 
             </div>
             <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-semibold bg-orange-50 dark:bg-orange-500/10 text-orange-600 dark:text-orange-400">
               <span className="w-1.5 h-1.5 rounded-full bg-orange-400 animate-pulse" />
-              {stats.critical.length} activas
+              {stats.critical.length} {plural(stats.critical.length, "activa", "activas")}
             </span>
           </div>
           <div>

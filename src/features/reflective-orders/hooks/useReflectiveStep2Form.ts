@@ -1,5 +1,6 @@
 "use client";
 
+import { plural } from "@/src/utils/kpiFormat";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { isInitialLoadError } from "@/src/utils/isInitialLoadError";
 import {
@@ -407,7 +408,7 @@ export function useReflectiveStep2Form({
       // pendiente bajó tras un refetch con la cantidad anterior aún capturada.
       if (cantidad > ceiling) {
         over.push(
-          `«${nombre}»: capturaste ${cantidad}, pero solo quedan ${ceiling} pendientes.`,
+          `«${nombre}»: capturaste ${cantidad}, pero solo ${plural(ceiling, "queda", "quedan")} ${ceiling} ${plural(ceiling, "pendiente", "pendientes")}.`,
         );
         continue;
       }

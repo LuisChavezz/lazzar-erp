@@ -1,5 +1,6 @@
 "use client";
 
+import { plural } from "@/src/utils/kpiFormat";
 import { useState } from "react";
 import type { FormEvent } from "react";
 import { MainDialog } from "@/src/components/MainDialog";
@@ -138,7 +139,7 @@ export function EmbroideryCreateAvanceDialog({
     const cantidad = Number(parsed.data.cantidad_bordada);
     if (cantidad > remainingCap) {
       setErrors({
-        cantidad_bordada: `No puede exceder las ${formatQuantityValue(remainingCap)} piezas restantes de la orden`,
+        cantidad_bordada: `No puede exceder ${plural(remainingCap, "la", "las")} ${formatQuantityValue(remainingCap)} ${plural(remainingCap, "pieza restante", "piezas restantes")} de la orden`,
       });
       return;
     }
@@ -262,7 +263,7 @@ export function EmbroideryCreateAvanceDialog({
             Total:{" "}
             <strong className="text-slate-700 dark:text-slate-200">
               {puntadasTotalPreview !== null
-                ? `${formatQuantityValue(puntadasTotalPreview)} puntadas`
+                ? `${formatQuantityValue(puntadasTotalPreview)} ${plural(puntadasTotalPreview, "puntada", "puntadas")}`
                 : "—"}
             </strong>{" "}
             <span className="text-slate-400 dark:text-slate-500">

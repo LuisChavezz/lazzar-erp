@@ -1,5 +1,6 @@
 "use client";
 
+import { plural } from "@/src/utils/kpiFormat";
 import { useMemo } from "react";
 import KpiGrid, { type KpiItem } from "@/src/components/KpiGrid";
 import { WarehouseIcon, LayersIcon, RulerIcon } from "@/src/components/Icons";
@@ -18,10 +19,10 @@ export function LocationStats({ stats }: LocationStatsProps) {
         icon: WarehouseIcon,
         iconBgClass: "bg-sky-50 dark:bg-sky-500/10",
         iconClass: "text-sky-500",
-        trendLabel: `${stats.ubicacionesDisponibles} libres`,
+        trendLabel: `${stats.ubicacionesDisponibles} ${plural(stats.ubicacionesDisponibles, "libre", "libres")}`,
         status: stats.capacidadTotalPorcentaje >= 90 ? "negative" : "positive",
         progress: stats.capacidadTotalPorcentaje,
-        subLabel: `${stats.totalUbicaciones} ubicaciones`,
+        subLabel: `${stats.totalUbicaciones} ${plural(stats.totalUbicaciones, "ubicación", "ubicaciones")}`,
       },
       {
         label: "Ocupación Zona Rollos",
@@ -29,7 +30,7 @@ export function LocationStats({ stats }: LocationStatsProps) {
         icon: LayersIcon,
         iconBgClass: "bg-emerald-50 dark:bg-emerald-500/10",
         iconClass: "text-emerald-500",
-        trendLabel: `+${stats.ubicacionesCriticas} críticas`,
+        trendLabel: `+${stats.ubicacionesCriticas} ${plural(stats.ubicacionesCriticas, "crítica", "críticas")}`,
         status: stats.ocupacionRollosPorcentaje >= 90 ? "negative" : "positive",
         progress: stats.ocupacionRollosPorcentaje,
       },
@@ -39,7 +40,7 @@ export function LocationStats({ stats }: LocationStatsProps) {
         icon: RulerIcon,
         iconBgClass: "bg-violet-50 dark:bg-violet-500/10",
         iconClass: "text-violet-500",
-        trendLabel: `${stats.ubicacionesLlenas} llenas`,
+        trendLabel: `${stats.ubicacionesLlenas} ${plural(stats.ubicacionesLlenas, "llena", "llenas")}`,
         status: stats.ocupacionAviosPorcentaje >= 90 ? "negative" : "positive",
         progress: stats.ocupacionAviosPorcentaje,
       },

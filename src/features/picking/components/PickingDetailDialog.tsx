@@ -1,5 +1,6 @@
 "use client";
 
+import { plural } from "@/src/utils/kpiFormat";
 import { useState } from "react";
 import type { ComponentType, SVGProps } from "react";
 import { useSession } from "next-auth/react";
@@ -219,7 +220,8 @@ export function PickingDetailContent({ picking }: { picking: PickingRow }) {
           <InfoField label="Operador">{textOrDash(picking.operador_nombre)}</InfoField>
           <InfoField label="Avance">
             <span className="tabular-nums">
-              {picking.total_lineas_completas}/{picking.total_lineas} líneas
+              {picking.total_lineas_completas}/{picking.total_lineas}{" "}
+              {plural(picking.total_lineas, "línea", "líneas")}
             </span>
           </InfoField>
           {/* Mismo resaltado de vencido que la columna "Fecha Límite" de la

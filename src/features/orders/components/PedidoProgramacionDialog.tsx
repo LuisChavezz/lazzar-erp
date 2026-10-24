@@ -1,5 +1,6 @@
 "use client";
 
+import { plural } from "@/src/utils/kpiFormat";
 import { AxiosError } from "axios";
 import { MainDialog } from "@/src/components/MainDialog";
 import { Loader } from "@/src/components/Loader";
@@ -219,7 +220,7 @@ function PedidoProgramacionForm({ pedido, onClose }: PedidoProgramacionFormProps
                 excedeTotal ? "text-rose-600 dark:text-rose-400" : "text-slate-700 dark:text-slate-200"
               }
             >
-              {sumaProgramada} de {totalPiezas} piezas
+              {sumaProgramada} de {totalPiezas} {plural(totalPiezas, "pieza", "piezas")}
             </span>
           </span>
         </div>

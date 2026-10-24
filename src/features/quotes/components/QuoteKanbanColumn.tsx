@@ -1,5 +1,6 @@
 "use client";
 
+import { plural } from "@/src/utils/kpiFormat";
 import { useState, useMemo } from "react";
 import { useDroppable } from "@dnd-kit/react";
 import { Quote } from "../interfaces/quote.interface";
@@ -97,7 +98,7 @@ export function QuoteKanbanColumn({
             "ml-2 min-w-5.5 px-1.5 py-0.5 rounded-full text-[11px] font-bold text-center",
             config.badgeClass,
           ].join(" ")}
-          aria-label={`${quotes.length} cotizaciones`}
+          aria-label={`${quotes.length} ${plural(quotes.length, "cotización", "cotizaciones")}`}
         >
           {quotes.length}
         </span>

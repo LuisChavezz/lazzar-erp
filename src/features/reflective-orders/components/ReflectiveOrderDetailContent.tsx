@@ -1,5 +1,6 @@
 "use client";
 
+import { plural } from "@/src/utils/kpiFormat";
 import Link from "next/link";
 import { ArrowLeftIcon, InfoIcon } from "@/src/components/Icons";
 import { Loader } from "@/src/components/Loader";
@@ -408,7 +409,8 @@ export function ReflectiveOrderDetailContent({
             <span className="font-semibold">
               {formatQuantityValue(data.cantidad_cubierta)}
             </span>{" "}
-            de {formatQuantityValue(data.cantidad_contratada)} piezas contratadas por
+            de {formatQuantityValue(data.cantidad_contratada)}{" "}
+            {plural(Number(data.cantidad_contratada), "pieza contratada", "piezas contratadas")} por
             el pedido
             {porcentaje !== null && ` · ${porcentaje}%`}
           </span>

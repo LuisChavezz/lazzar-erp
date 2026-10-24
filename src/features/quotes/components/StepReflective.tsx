@@ -8,6 +8,7 @@
  * para que otras piezas del flujo (p. ej. hooks) puedan crear formularios
  * consistentes.
  */
+import { plural } from "@/src/utils/kpiFormat";
 import { memo, useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { CheckIcon, ChevronRightIcon, DeleteIcon, EyeIcon } from "@/src/components/Icons";
@@ -382,7 +383,8 @@ export const StepReflective = memo(function StepReflective({
                             </div>
                             {!isCatOpen && !hasCatSelection && (
                               <p className="text-[10px] text-slate-400 mt-0.5">
-                                {cat.opciones.length} opciones disponibles
+                                {cat.opciones.length}{" "}
+                                {plural(cat.opciones.length, "opción disponible", "opciones disponibles")}
                               </p>
                             )}
                           </div>

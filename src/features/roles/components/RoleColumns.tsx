@@ -1,5 +1,6 @@
 "use client";
 
+import { plural } from "@/src/utils/kpiFormat";
 import { ColumnDef } from "@tanstack/react-table";
 import { useState } from "react";
 import { Role } from "../interfaces/role.interface";
@@ -82,7 +83,8 @@ export const roleColumns: ColumnDef<Role>[] = [
     header: "Permisos",
     cell: ({ row }) => (
       <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-50 text-blue-700 dark:bg-blue-500/10 dark:text-blue-400">
-        {row.getValue("permisos_count")} permisos
+        {row.getValue("permisos_count")}{" "}
+        {plural(Number(row.getValue("permisos_count")), "permiso", "permisos")}
       </span>
     ),
   },

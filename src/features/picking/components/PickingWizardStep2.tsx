@@ -1,5 +1,6 @@
 "use client";
 
+import { plural } from "@/src/utils/kpiFormat";
 import {
   FormSecondaryButton,
   FormSubmitButton,
@@ -174,7 +175,7 @@ export function PickingWizardStep2({
               {overAllocations.map((over) => (
                 <li key={over.stockKey} className="tabular-nums">
                   «{over.nombre}»: capturaste {over.solicitado}, pero solo hay{" "}
-                  {over.disponible} disponibles entre todas sus tallas.
+                  {over.disponible} {plural(over.disponible, "disponible", "disponibles")} entre todas sus tallas.
                 </li>
               ))}
             </ul>

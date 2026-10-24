@@ -1,5 +1,6 @@
 "use client";
 
+import { plural } from "@/src/utils/kpiFormat";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { usePickingOnboarding } from "./usePickingOnboarding";
 import { useCreatePicking, type ParsedPickingError } from "./useCreatePicking";
@@ -426,7 +427,7 @@ export function usePickingStep2Form({ header, onSuccess }: UsePickingStep2FormPa
         overAllocations
           .map(
             (over) =>
-              `«${over.nombre}»: capturaste ${over.solicitado} pero solo hay ${over.disponible} disponibles, compartidos entre sus tallas.`,
+              `«${over.nombre}»: capturaste ${over.solicitado} pero solo hay ${over.disponible} ${plural(over.disponible, "disponible, compartido", "disponibles, compartidos")} entre sus tallas.`,
           )
           .join(" "),
       );

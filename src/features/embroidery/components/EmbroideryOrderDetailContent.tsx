@@ -1,5 +1,6 @@
 "use client";
 
+import { plural } from "@/src/utils/kpiFormat";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { ArrowLeftIcon } from "@/src/components/Icons";
@@ -361,7 +362,8 @@ export function EmbroideryOrderDetailContent({
                 <span className="font-semibold">
                   {formatQuantityValue(data.cantidad_cubierta)}
                 </span>{" "}
-                de {formatQuantityValue(data.cantidad_contratada)} piezas contratadas
+                de {formatQuantityValue(data.cantidad_contratada)}{" "}
+                {plural(Number(data.cantidad_contratada), "pieza contratada", "piezas contratadas")}{" "}
                 por el pedido
                 {porcentaje !== null && ` · ${porcentaje}%`}
               </span>

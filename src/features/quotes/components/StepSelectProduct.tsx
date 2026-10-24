@@ -6,6 +6,7 @@
  * - Expone la cuenta de seleccionados y toggles para servicios adicionales
  *   (bordado y reflejante).
  */
+import { plural } from "@/src/utils/kpiFormat";
 import { memo, useRef } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { FormInput } from "@/src/components/FormInput";
@@ -92,7 +93,8 @@ export const StepSelectProduct = memo(function StepSelectProduct({
         aria-label="Catálogo de productos"
       >
         <p className="sr-only" aria-live="polite">
-          {filteredRows.length} productos visibles
+          {filteredRows.length}{" "}
+          {plural(filteredRows.length, "producto visible", "productos visibles")}
         </p>
         {rows.length === 0 ? (
           <p className="text-sm text-slate-500 dark:text-slate-400">

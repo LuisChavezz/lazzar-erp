@@ -1,5 +1,6 @@
 "use client";
 
+import { plural } from "@/src/utils/kpiFormat";
 import { KpiCard, type KpiItem } from "@/src/components/KpiGrid";
 import {
   ErrorIcon,
@@ -106,7 +107,7 @@ export const InvoiceStats = () => {
       icon: ListaPreciosIcon,
       iconBgClass: "bg-blue-50 dark:bg-blue-500/10",
       iconClass: "text-blue-500",
-      trendLabel: isLoading ? undefined : `${invoicedCount} Facturas`,
+      trendLabel: isLoading ? undefined : `${invoicedCount} ${plural(invoicedCount, "Factura", "Facturas")}`,
       status: "positive",
     },
     {
@@ -115,7 +116,7 @@ export const InvoiceStats = () => {
       icon: ClockIcon,
       iconBgClass: "bg-amber-50 dark:bg-amber-500/10",
       iconClass: "text-amber-500",
-      trendLabel: isLoading ? undefined : `${receivableCount} Pendientes`,
+      trendLabel: isLoading ? undefined : `${receivableCount} ${plural(receivableCount, "Pendiente", "Pendientes")}`,
       status: "neutral",
     },
     {
@@ -124,7 +125,7 @@ export const InvoiceStats = () => {
       icon: ErrorIcon,
       iconBgClass: "bg-red-50 dark:bg-red-500/10",
       iconClass: "text-red-500",
-      trendLabel: isLoading ? undefined : `${overdueCount} Vencidas`,
+      trendLabel: isLoading ? undefined : `${overdueCount} ${plural(overdueCount, "Vencida", "Vencidas")}`,
       status: "negative",
     },
     {

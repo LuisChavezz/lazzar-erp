@@ -1,4 +1,5 @@
 import { BuildingIcon } from "@/src/components/Icons";
+import { plural } from "@/src/utils/kpiFormat";
 import { Company } from "@/src/features/companies/interfaces/company.interface";
 
 interface CompanyGridProps {
@@ -45,7 +46,8 @@ export default function CompanyGrid({
             </div>
             {company.sucursales && (
               <span className="text-xs font-medium px-2 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
-                {company.sucursales.length} Sucursales
+                {company.sucursales.length}{" "}
+                {plural(company.sucursales.length, "Sucursal", "Sucursales")}
               </span>
             )}
           </div>

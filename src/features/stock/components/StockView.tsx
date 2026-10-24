@@ -1,5 +1,6 @@
 "use client";
 
+import { plural } from "@/src/utils/kpiFormat";
 import { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
@@ -71,7 +72,7 @@ function StockStats({ items, maxStock }: { items: StockItem[]; maxStock: number 
       icon:        ProductVariantsIcon,
       iconBgClass: "bg-amber-50 dark:bg-amber-500/10",
       iconClass:   "text-amber-500",
-      trendLabel:  `${items.length} registros`,
+      trendLabel:  `${items.length} ${plural(items.length, "registro", "registros")}`,
       status:      "neutral",
       progress:    100,
     },

@@ -1,5 +1,6 @@
 "use client";
 
+import { plural } from "@/src/utils/kpiFormat";
 import { memo, useMemo } from "react";
 import { useSession } from "next-auth/react";
 import {
@@ -96,7 +97,7 @@ const MovementsStats = memo(function MovementsStats({ items }: { items: StockMov
         icon: InventariosIcon,
         iconBgClass: "bg-amber-50 dark:bg-amber-500/10",
         iconClass: "text-amber-500",
-        trendLabel: `${items.length} transacciones`,
+        trendLabel: `${items.length} ${plural(items.length, "transacción", "transacciones")}`,
         status: "neutral",
         progress: 100,
       },
