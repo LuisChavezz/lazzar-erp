@@ -4,6 +4,7 @@ import { AxiosError } from "axios";
 import { parseLineItemsDrfError, type ParsedLineItemsError } from "@/src/utils/parseLineItemsDrfError";
 import { createCobro, updateCobro } from "../services/actions";
 import { cobroLabel } from "../utils/collection.utils";
+import { COBRO_DRAFT_INACTIVE_ACCOUNT_MESSAGE, COBRO_DRAFT_INACTIVE_CLIENT_MESSAGE } from "../utils/cobroDraft";
 import { invalidateCobroEffects, writeCobroToList } from "./cobroQueryCache";
 import type { CreateCobroPayload } from "../interfaces/collection.interface";
 
@@ -50,6 +51,9 @@ const FORM_LEVEL_KEYS = [
   "poliza_detalles",
 ] as const;
 
+/** Mensaje de DRF para un FK fuera del queryset del campo (en español o inglés). */
+const DOES_NOT_EXIST_RE = /objeto no existe|does not exist/i;
+
 /** "La CxC 15 …" / "… de la CxC 15." / "CxC 15 no encontrada." → 15. */
 const CXC_ID_IN_MESSAGE_RE = /\bCxC (\d+)\b/;
 
@@ -67,6 +71,10 @@ export type ParsedCobroError = ParsedLineItemsError<CobroHeaderErrorField>;
  *    es Borrador.");
  *  - `estatus`, `empresa` y los errores de póliza van al banner.
  *
+ *  - un `cliente` o `cuenta_bancaria` que "no existe" (el serializer solo
+ *    acepta activos, así que un borrador cuyo cliente o cuenta se desactivó
+ *    llega así) se explica con el aviso de inactivo en vez del texto de DRF.
+ *
  * `cxcIds` son los `cxc` enviados, en el orden de las líneas. `isUpdate` solo
  * cambia el texto genérico.
  */
@@ -76,7 +84,7 @@ export function parseCobroError(
   { isUpdate = false }: { isUpdate?: boolean } = {},
 ): ParsedCobroError {
   const verb = isUpdate ? "guardar" : "registrar";
-  return parseLineItemsDrfError(error, {
+  const parsed = parseLineItemsDrfError(error, {
     linesKey: "cobro_detalles",
     headerFields: HEADER_FIELDS,
     formLevelKeys: FORM_LEVEL_KEYS,
@@ -88,6 +96,20 @@ export function parseCobroError(
       return match ? cxcIds.indexOf(Number(match[1])) : -1;
     },
   });
+
+  // "Clave primaria inválida - objeto no existe" de DRF: el FK ya no es elegible.
+  const inactiveMessages: Partial<Record<CobroHeaderErrorField, string>> = {
+    cliente: COBRO_DRAFT_INACTIVE_CLIENT_MESSAGE,
+    cuenta_bancaria: COBRO_DRAFT_INACTIVE_ACCOUNT_MESSAGE,
+  };
+  for (const [field, friendly] of Object.entries(inactiveMessages) as [CobroHeaderErrorField, string][]) {
+    const raw = parsed.fieldErrors[field];
+    if (raw && DOES_NOT_EXIST_RE.test(raw)) {
+      parsed.fieldErrors[field] = friendly;
+      parsed.messages = parsed.messages.map((message) => (message === raw ? friendly : message));
+    }
+  }
+  return parsed;
 }
 
 /** Guardado de un cobro: alta (`cobroId` ausente) o edición de un borrador. */

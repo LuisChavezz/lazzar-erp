@@ -18,7 +18,9 @@ export const COBRO_APPLY_UNCONFIRMED_MESSAGE =
 /**
  * Mensaje de un fallo al aplicar: los errores de negocio de `aplicar_cobro`
  * ("Importe 60 excede saldo 50 de la CxC 15.", factura cancelada, moneda) llegan
- * aquí, porque un borrador no se valida al guardarse.
+ * aquí, porque un borrador no se valida al guardarse. Un cliente o una cuenta
+ * que se desactivó (el botón no lo sabe si el catálogo no cargó o cambió con la
+ * confirmación abierta) sale con su aviso de inactivo (`parseCobroError`).
  */
 const applyCobroErrorMessage = (error: unknown): string => {
   if (isActionOutcomeUnknown(error)) return COBRO_APPLY_UNCONFIRMED_MESSAGE;
