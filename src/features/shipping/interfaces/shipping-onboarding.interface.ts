@@ -83,7 +83,9 @@ export interface ShipmentOnboardingEnvio {
  * NO hay aritmética de pendientes aquí (a diferencia de
  * `PackingOnboardingLine.cantidad_pendiente_empacar`): despachar es BINARIO
  * por línea. `ya_despachado` marca que la línea ya se consumió en un despacho
- * previo y `disponible_para_despacho` es su complemento (`!ya_despachado`).
+ * previo. `disponible_para_despacho` es `!ya_despachado` mientras el pedido
+ * sea despachable; si no lo es, llega en `false` en todas las líneas (ver
+ * `ShipmentOnboardingEmbarque`).
  * `cantidad_empacada` viaja solo como contexto informativo — no se captura ni
  * se envía cantidad alguna (el modelo `DespachoDetalle` no tiene ese campo).
  *
@@ -117,9 +119,33 @@ export interface ShipmentOnboardingLine {
 }
 
 /**
- * Respuesta completa del onboarding. `packing` solo viene poblado cuando se
- * llamó con `?packing={id}`; en el modo "solo catálogo" es `null` y
- * `despacho_detalle` es `[]`.
+ * Situación de embarque del PEDIDO del packing elegido (EC-574 / WM-02). Las
+ * piezas viajan como string decimal sin ceros de relleno (`"13"`), y excluyen
+ * muestras y líneas o packings cancelados.
+ *
+ * - `embarque_parcial: true`: cada despacho puede llevar las líneas que se
+ *   quieran; `despachable` siempre es `true`.
+ * - `embarque_parcial: false`: solo se despacha cuando todo lo pedido ya está
+ *   empacado (`despachable`); si no, `motivo` dice cuántas piezas faltan y
+ *   TODAS las líneas llegan con `disponible_para_despacho: false`. Cuando sí
+ *   es despachable, el despacho debe llevar todas las líneas vivas pendientes
+ *   del packing (el backend rechaza uno que deje alguna fuera).
+ *
+ * La única excepción es poner `embarque_parcial` en `true` en el pedido.
+ */
+export interface ShipmentOnboardingEmbarque {
+  embarque_parcial: boolean;
+  total_piezas_pedido: string;
+  piezas_empacadas: string;
+  piezas_por_empacar: string;
+  despachable: boolean;
+  motivo: string | null;
+}
+
+/**
+ * Respuesta completa del onboarding. `packing` y `embarque` solo vienen
+ * poblados cuando se llamó con `?packing={id}`; en el modo "solo catálogo"
+ * son `null` y `despacho_detalle` es `[]`.
  *
  * `despacho_detalle` aquí son las líneas CANDIDATAS (shape de lectura,
  * `ShipmentOnboardingLine`), no las líneas a enviar en el POST
@@ -133,4 +159,5 @@ export interface ShipmentOnboardingData {
   envios: ShipmentOnboardingEnvio[];
   packing: ShipmentOnboardingPackingDetail | null;
   despacho_detalle: ShipmentOnboardingLine[];
+  embarque: ShipmentOnboardingEmbarque | null;
 }

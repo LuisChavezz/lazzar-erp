@@ -37,8 +37,22 @@ export function useShippingForm({ onSuccess }: UseShippingFormParams) {
   const packing = data?.packing ?? null;
   const rows: ShipmentOnboardingLine[] = selectedPackingId ? data?.despacho_detalle ?? [] : [];
 
+  const embarque = selectedPackingId ? data?.embarque ?? null : null;
+
   const availableRowsCount = rows.filter((row) => row.disponible_para_despacho).length;
   const alreadyShippedCount = rows.filter((row) => row.ya_despachado).length;
+
+  // Sin embarque parcial y con el pedido ya despachable, el backend exige que
+  // el despacho lleve TODAS las líneas pendientes del packing. Se marcan solas
+  // y no se pueden quitar: dejar elegir solo para rebotar en el POST no
+  // aportaría nada.
+  const allLinesRequired =
+    embarque !== null && !embarque.embarque_parcial && embarque.despachable;
+  const effectiveCheckedIds = allLinesRequired
+    ? new Set(
+        rows.filter((row) => row.disponible_para_despacho).map((row) => row.packing_detalle),
+      )
+    : checkedIds;
 
   // Reconciliación: cuando cambian las filas (típicamente tras el refetch por
   // dato desactualizado, o al cambiar de packing) se descartan los ids
@@ -77,6 +91,7 @@ export function useShippingForm({ onSuccess }: UseShippingFormParams) {
   };
 
   const toggleLine = (packingDetalleId: number) => {
+    if (allLinesRequired) return;
     setCheckedIds((prev) => {
       const next = new Set(prev);
       if (next.has(packingDetalleId)) next.delete(packingDetalleId);
@@ -87,6 +102,7 @@ export function useShippingForm({ onSuccess }: UseShippingFormParams) {
   };
 
   const toggleAll = (checked: boolean) => {
+    if (allLinesRequired) return;
     setCheckedIds(
       checked
         ? new Set(
@@ -104,7 +120,7 @@ export function useShippingForm({ onSuccess }: UseShippingFormParams) {
   // `buildLines` —que sí recorre `rows`— devolvería menos (o nada), sin nada
   // visible que corregir. Mismo criterio que `usePackingStep2Form`.
   const selectedCount = rows.filter(
-    (row) => row.disponible_para_despacho && checkedIds.has(row.packing_detalle),
+    (row) => row.disponible_para_despacho && effectiveCheckedIds.has(row.packing_detalle),
   ).length;
 
   // ─── Reparto del error del backend ────────────────────────────────────────
@@ -139,7 +155,7 @@ export function useShippingForm({ onSuccess }: UseShippingFormParams) {
     const lines: CreateShipmentDetalleLine[] = [];
     for (const row of rows) {
       if (!row.disponible_para_despacho) continue;
-      if (!checkedIds.has(row.packing_detalle)) continue;
+      if (!effectiveCheckedIds.has(row.packing_detalle)) continue;
       if (seen.has(row.packing_detalle)) continue;
       seen.add(row.packing_detalle);
       lines.push({ packing_detalle: row.packing_detalle });
@@ -194,7 +210,9 @@ export function useShippingForm({ onSuccess }: UseShippingFormParams) {
     rows,
     availableRowsCount,
     alreadyShippedCount,
-    checkedIds,
+    embarque,
+    allLinesRequired,
+    checkedIds: effectiveCheckedIds,
     toggleLine,
     toggleAll,
     selectedCount,

@@ -48,6 +48,8 @@ export function ShippingCreateForm({ onSuccess }: ShippingCreateFormProps) {
     rows,
     availableRowsCount,
     alreadyShippedCount,
+    embarque,
+    allLinesRequired,
     checkedIds,
     toggleLine,
     toggleAll,
@@ -206,6 +208,17 @@ export function ShippingCreateForm({ onSuccess }: ShippingCreateFormProps) {
               title="Este embarque no tiene líneas registradas"
               subtitle="Elige otro embarque de la lista de arriba."
             />
+          ) : embarque !== null && !embarque.despachable ? (
+            // Va ANTES de "ya enviado": cuando el pedido no es despachable el
+            // backend manda todas las líneas como no disponibles, y sin esta
+            // rama se leería como un embarque que ya salió.
+            <InfoPanel
+              title="Este embarque todavía no se puede enviar"
+              subtitle={
+                embarque.motivo ??
+                "El pedido no permite embarque parcial y aún tiene piezas por empacar."
+              }
+            />
           ) : availableRowsCount === 0 ? (
             <InfoPanel
               title="Este embarque ya fue enviado por completo"
@@ -224,6 +237,7 @@ export function ShippingCreateForm({ onSuccess }: ShippingCreateFormProps) {
                 selectedCount={selectedCount}
                 onToggleLine={toggleLine}
                 onToggleAll={toggleAll}
+                locked={allLinesRequired}
               />
             </fieldset>
           )}

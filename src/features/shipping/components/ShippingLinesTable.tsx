@@ -12,6 +12,12 @@ interface ShippingLinesTableProps {
   selectedCount: number;
   onToggleLine: (packingDetalleId: number) => void;
   onToggleAll: (checked: boolean) => void;
+  /**
+   * El pedido no permite embarque parcial: todas las líneas disponibles van
+   * marcadas y no se pueden quitar (ver `allLinesRequired` en
+   * `useShippingForm`).
+   */
+  locked?: boolean;
 }
 
 /**
@@ -32,6 +38,7 @@ export function ShippingLinesTable({
   selectedCount,
   onToggleLine,
   onToggleAll,
+  locked = false,
 }: ShippingLinesTableProps) {
   const allAvailableChecked = availableRowsCount > 0 && selectedCount === availableRowsCount;
 
@@ -54,8 +61,14 @@ export function ShippingLinesTable({
                   selectedCount === 1 ? "" : "s"
                 }`}
           </p>
+          {locked && (
+            <p className="text-[11px] font-semibold text-amber-700 dark:text-amber-300 mt-0.5">
+              Este pedido no permite embarque parcial: el envío debe llevar todas las líneas del
+              embarque.
+            </p>
+          )}
         </div>
-        {availableRowsCount > 0 && (
+        {availableRowsCount > 0 && !locked && (
           <button
             type="button"
             onClick={() => onToggleAll(!allAvailableChecked)}
@@ -71,23 +84,27 @@ export function ShippingLinesTable({
           {rows.map((row) => {
             const inputId = `shipping-line-${row.packing_detalle}`;
             const checked = checkedIds.has(row.packing_detalle);
-            const disabled = !row.disponible_para_despacho;
+            const unavailable = !row.disponible_para_despacho;
 
             return (
               <label
                 key={row.packing_detalle}
                 htmlFor={inputId}
                 className={`flex items-start gap-3 py-3 px-2 rounded-lg transition-colors ${
-                  disabled
+                  unavailable
                     ? "opacity-60 cursor-not-allowed"
-                    : "cursor-pointer hover:bg-slate-50 dark:hover:bg-white/5"
+                    : locked
+                      ? "cursor-not-allowed"
+                      : "cursor-pointer hover:bg-slate-50 dark:hover:bg-white/5"
                 }`}
               >
+                {/* Bloqueada (`locked`) no es lo mismo que no disponible: va
+                    marcada y sin atenuar, porque sí sale en este envío. */}
                 <input
                   id={inputId}
                   type="checkbox"
                   checked={checked}
-                  disabled={disabled}
+                  disabled={unavailable || locked}
                   onChange={() => onToggleLine(row.packing_detalle)}
                   className="mt-0.5 w-4 h-4 rounded border-slate-300 accent-sky-600 shrink-0 disabled:cursor-not-allowed"
                 />
