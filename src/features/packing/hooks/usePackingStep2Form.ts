@@ -9,6 +9,7 @@ import {
   PACKING_HEADER_DECIMAL_PLACES,
   PACKING_MIN_CANTIDAD,
   PackingHeaderSchema,
+  type PackingHeaderData,
   type PackingHeaderValues,
 } from "../schemas/packing.schema";
 import { toSendableDecimal } from "@/src/utils/decimal";
@@ -60,7 +61,7 @@ function normalizeCantidad(raw: string, pendiente: number): string {
  */
 function buildPackingPayload(
   pickingId: number,
-  header: PackingHeaderValues,
+  header: PackingHeaderData,
   lines: CreatePackingDetalleLine[],
 ): CreatePackingPayload {
   const payload: CreatePackingPayload = {

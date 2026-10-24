@@ -194,19 +194,16 @@ export function PackingWizardStep2({ step1, onBack, onSuccess }: PackingWizardSt
             <FormInput
               label="Número de cajas"
               name="numero_cajas"
-              type="number"
-              step={1}
-              value={header.numero_cajas === 0 ? "" : header.numero_cajas}
+              // Texto sin sanear (como `dias_credito` en clientes): un decimal o
+              // un negativo se conservan para que el esquema los rechace con su
+              // mensaje al registrar, en vez de truncarlos sin avisar.
+              type="text"
+              inputMode="numeric"
+              value={header.numero_cajas}
               placeholder="0"
-              onChange={(event) => {
-                // Un negativo se conserva para que el esquema lo rechace con un
-                // error al registrar, en vez de volverlo 0 sin avisar.
-                const parsed = Number.parseInt(event.target.value, 10);
-                setHeader((prev) => ({
-                  ...prev,
-                  numero_cajas: Number.isNaN(parsed) ? 0 : parsed,
-                }));
-              }}
+              onChange={(event) =>
+                setHeader((prev) => ({ ...prev, numero_cajas: event.target.value }))
+              }
             />
             <FormInput
               label="Peso total (kg)"

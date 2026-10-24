@@ -60,17 +60,36 @@ const headerDecimal = (label: string) =>
       message: `${label} debe ser mayor o igual a 0`,
     });
 
+/**
+ * Número de cajas: se captura como TEXTO tal cual se teclea (sin truncar
+ * decimales ni quitar el signo) y esta regla rechaza lo que no sea un entero
+ * mayor o igual a 0 —mismo criterio que `dias_credito` en clientes—. Vacío
+ * equivale a 0. La salida ya es el entero que se envía.
+ */
+const numeroCajas = z
+  .string()
+  .refine((value) => value.trim() === "" || /^-?\d+$/.test(value.trim()), {
+    message: "El número de cajas debe ser un número entero",
+  })
+  .refine((value) => !/^-\d+$/.test(value.trim()), {
+    message: "El número de cajas debe ser mayor o igual a 0",
+  })
+  .transform((value) => (value.trim() === "" ? 0 : Number(value.trim())));
+
 export const PackingHeaderSchema = z.object({
-  numero_cajas: z.coerce.number().int().min(0, "El número de cajas debe ser mayor o igual a 0"),
+  numero_cajas: numeroCajas,
   peso_total: headerDecimal("El peso total"),
   volumen_total: headerDecimal("El volumen total"),
   observaciones: z.string(),
 });
-export type PackingHeaderValues = z.infer<typeof PackingHeaderSchema>;
+/** Lo capturado en el formulario (`numero_cajas` como texto). */
+export type PackingHeaderValues = z.input<typeof PackingHeaderSchema>;
+/** Lo ya validado, listo para armar el body (`numero_cajas` como entero). */
+export type PackingHeaderData = z.output<typeof PackingHeaderSchema>;
 
 /** Valores iniciales del encabezado del Paso 2 — sin cajas/peso/volumen capturados aún. */
 export const createEmptyPackingHeaderValues = (): PackingHeaderValues => ({
-  numero_cajas: 0,
+  numero_cajas: "",
   peso_total: "",
   volumen_total: "",
   observaciones: "",
