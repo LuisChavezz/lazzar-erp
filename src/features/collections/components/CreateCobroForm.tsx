@@ -170,10 +170,13 @@ export function CreateCobroForm({ onSuccess, draft, onCancel }: CreateCobroFormP
                   error={getError("cliente")}
                   disabled={isClienteLocked}
                 />
+                {/* La nota se omite cuando el mismo aviso ya está como error del campo. */}
                 {isClienteInactivo ? (
-                  <p id="cobro-cliente-inactivo-note" className="mt-1.5 text-xs font-medium text-amber-700 dark:text-amber-400">
-                    {COBRO_DRAFT_INACTIVE_CLIENT_MESSAGE}
-                  </p>
+                  !getError("cliente") && (
+                    <p id="cobro-cliente-inactivo-note" className="mt-1.5 text-xs font-medium text-amber-700 dark:text-amber-400">
+                      {COBRO_DRAFT_INACTIVE_CLIENT_MESSAGE}
+                    </p>
+                  )
                 ) : (
                   isClienteLocked && (
                     <p className="mt-1.5 text-xs text-slate-500 dark:text-slate-400">
@@ -200,7 +203,7 @@ export function CreateCobroForm({ onSuccess, draft, onCancel }: CreateCobroFormP
                     </option>
                   ))}
                 </FormSelect>
-                {isCuentaInactiva && (
+                {isCuentaInactiva && !getError("cuenta_bancaria") && (
                   <p id="cobro-cuenta-inactiva-note" className="mt-1.5 text-xs font-medium text-amber-700 dark:text-amber-400">
                     {COBRO_DRAFT_INACTIVE_ACCOUNT_MESSAGE}
                   </p>
