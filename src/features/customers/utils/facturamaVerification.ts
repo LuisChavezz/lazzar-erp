@@ -60,6 +60,10 @@ export const getFacturamaVerificationNotice = (
   return { label: FACTURAMA_SIN_VERIFICAR_LABEL, detail, text: `${FACTURAMA_SIN_VERIFICAR_LABEL}. ${detail}` };
 };
 
+/** Aviso del formulario: guardar sí se puede, pero así no se sube a Facturama. */
+export const getFacturamaFormWarning = (faltantes: readonly FacturamaFaltante[]): string =>
+  `Sin ${formatFacturamaFaltantes(faltantes)}, el cliente se guarda pero no se sube a Facturama hasta que lo completes.`;
+
 /**
  * Toast del guardado cuando el cliente que devolvió el backend no quedó en
  * Facturama; `null` si sí quedó o su empresa no lo usa (va el toast de éxito).

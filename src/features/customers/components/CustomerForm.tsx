@@ -7,13 +7,14 @@ import { FormInput } from "@/src/components/FormInput";
 import { FormSelect } from "@/src/components/FormSelect";
 import { FormCancelButton, FormSubmitButton } from "@/src/components/FormButtons";
 import { FormErrorBanner } from "@/src/components/FormErrorBanner";
-import { ClientesIcon, TaxIcon, WalletIcon } from "@/src/components/Icons";
+import { ClientesIcon, ExclamationTriangleIcon, TaxIcon, WalletIcon } from "@/src/components/Icons";
 import { Loader } from "@/src/components/Loader";
 import { getCodigoPostalInputProps } from "@/src/utils/codigoPostal";
 import { sanitizeDecimalInput } from "@/src/utils/decimal";
 import { Customer } from "../interfaces/customer.interface";
 import { normalizeRfc, useCustomerForm } from "../hooks/useCustomerForm";
 import { useVerifyRfc } from "../hooks/useVerifyRfc";
+import { getFacturamaFormWarning } from "../utils/facturamaVerification";
 
 interface CustomerFormProps {
   onSuccess?: () => void;
@@ -52,6 +53,11 @@ export default function CustomerForm({
   const [rfcValidationMessage, setRfcValidationMessage] = useState<string | null>(null);
   const [rfcValidationTone, setRfcValidationTone] = useState<RfcValidationTone | null>(null);
   const { verifyRfcAsync, isVerifyingRfc, resetVerifyRfc } = useVerifyRfc();
+  // Si la empresa del alta usa Facturama, según `verificar-rfc`: sin `cliente`
+  // revisa contra la empresa del usuario, la misma que el backend le asigna al
+  // guardar, y en un RFC válido `formato_verificado` es exactamente "esa empresa
+  // usa Facturama". No se suelta al cambiar el RFC: la empresa no depende de él.
+  const [rfcCompanyUsesFacturama, setRfcCompanyUsesFacturama] = useState<boolean | null>(null);
 
   const handleResetRfcValidation = () => {
     setIsRfcVerified(false);
@@ -92,6 +98,20 @@ export default function CustomerForm({
 
   // El RFC decide qué CP admite el input (el extranjero captura texto libre).
   const currentRfc = useStore(form.store, (state) => state.values.rfc);
+  const currentCorreo = useStore(form.store, (state) => state.values.correo ?? "");
+
+  // Al editar lo dice el propio cliente: `facturama_verificado` es `null` solo si
+  // SU empresa no usa Facturama (una fila sin el campo no dice nada). En el alta,
+  // lo que respondió `verificar-rfc`. Mientras no se sepa no se avisa.
+  const companyUsesFacturama = isEditing
+    ? customerToEdit?.facturama_verificado === undefined
+      ? null
+      : customerToEdit.facturama_verificado !== null
+    : rfcCompanyUsesFacturama;
+  // Solo el correo: los demás campos que Facturama exige los pide el esquema,
+  // así que el formulario no deja guardar sin ellos.
+  const facturamaWarning =
+    companyUsesFacturama === true && !currentCorreo.trim() ? getFacturamaFormWarning(["correo"]) : null;
 
   const rfcFeedbackClassName = useMemo(() => {
     if (rfcValidationTone === "success") {
@@ -130,6 +150,7 @@ export default function CustomerForm({
 
       setIsRfcVerified(true);
       setVerifiedRfc(rfcToVerify);
+      setRfcCompanyUsesFacturama(result.formato_verificado);
       setRfcValidationTone("success");
       setRfcValidationMessage(
         result.formato_verificado ? RFC_VERIFIED_MESSAGE : RFC_ACCEPTED_WITHOUT_FORMAT_MESSAGE
@@ -233,21 +254,29 @@ export default function CustomerForm({
               </form.Field>
               <form.Field name="correo">
                 {(field) => (
-                  <FormInput
-                    name={field.name}
-                    value={field.state.value}
-                    onChange={(event) => {
-                      field.handleChange(event.target.value);
-                      clearFieldErrors("correo");
-                    }}
-                    onBlur={() => {
-                      field.handleBlur();
-                      validateField("correo", field.state.value);
-                    }}
-                    label="Correo"
-                    placeholder="correo@empresa.com"
-                    error={getError("correo")}
-                  />
+                  <div>
+                    <FormInput
+                      name={field.name}
+                      value={field.state.value}
+                      onChange={(event) => {
+                        field.handleChange(event.target.value);
+                        clearFieldErrors("correo");
+                      }}
+                      onBlur={() => {
+                        field.handleBlur();
+                        validateField("correo", field.state.value);
+                      }}
+                      label="Correo"
+                      placeholder="correo@empresa.com"
+                      error={getError("correo")}
+                    />
+                    {facturamaWarning && (
+                      <p className="mt-2 flex items-start gap-1.5 text-xs text-amber-700 dark:text-amber-400">
+                        <ExclamationTriangleIcon className="w-3.5 h-3.5 shrink-0 mt-px" aria-hidden="true" />
+                        {facturamaWarning}
+                      </p>
+                    )}
+                  </div>
                 )}
               </form.Field>
             </div>
