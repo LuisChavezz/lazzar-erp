@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import {
   ArrowLeftIcon,
+  BanIcon,
   EditIcon,
   PedidosIcon,
   RefreshIcon,
@@ -23,6 +24,7 @@ import {
   canEditPedidoMesaControl,
   canRecomprarPedido,
   isPedidoTerminal,
+  PEDIDO_ESTATUS,
 } from "../constants/pedidoStatus";
 import {
   INVOICE_ORIGIN_ID_PARAM,
@@ -60,6 +62,7 @@ import { isSampleLine } from "../utils/orderLines";
 import { OrderMainSheet } from "./OrderMainSheet";
 import { OrderProgressSheet } from "./OrderProgressSheet";
 import { OrderRecompraAction } from "./OrderRecompraAction";
+import { PedidoCancelDialog, type PedidoCancelTarget } from "./PedidoCancelDialog";
 import { SampleSkuLinkDialog, SampleSkuSizeCatalogPrefetch } from "./SampleSkuLinkDialog";
 import {
   hasOrderDocumentDialog,
@@ -245,6 +248,7 @@ export function PedidoDetailContent({
     usePedidoDetailPage(numericId);
   const { data: session } = useSession();
   const pathname = usePathname();
+  const router = useRouter();
   const sheet = resolveOrderDetailSheet(rawSheet);
   // Permiso del catálogo. OJO: el backend NO lo valida en las acciones de mesa
   // de control —exige superuser, `is_admin_empresa` o un rol activo cuya clave
@@ -265,6 +269,8 @@ export function PedidoDetailContent({
   // guarda el ID y no la línea: el diálogo la lee del detalle vigente, así que
   // refleja cada relectura (p. ej. la que sigue a vincular una talla).
   const [sampleSkuLineId, setSampleSkuLineId] = useState<number | null>(null);
+  // Pedido cuyo diálogo de cancelación está abierto (`null` = cerrado).
+  const [cancelTarget, setCancelTarget] = useState<PedidoCancelTarget | null>(null);
   // La vinculación (corrida en curso, avance, resultados) vive AQUÍ y no en el
   // diálogo: así el diálogo se puede cerrar —o la hoja cambiar— a media corrida
   // sin perderla, y la celda SKU de la tabla ve el mismo avance.
@@ -447,6 +453,19 @@ export function PedidoDetailContent({
               </Link>
             </Button>
           )}
+          {/* Cancelar: mismo permiso que Editar. Un CANCELADO legado
+              (`activo = true`, de antes de `/cancelar/`) no lo ofrece. */}
+          {canEditMesaControl && data.estatus !== PEDIDO_ESTATUS.CANCELADO && (
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => setCancelTarget({ id: data.id, folio: data.folio })}
+              className="inline-flex items-center gap-2"
+            >
+              <BanIcon className="w-4 h-4" aria-hidden="true" />
+              Cancelar pedido
+            </Button>
+          )}
         </div>
       </div>
 
@@ -498,6 +517,17 @@ export function PedidoDetailContent({
           }}
         />
       )}
+
+      {/* Tras cancelar, el pedido ya no existe para el backend (su detalle
+          responde 404): se sale a "Volver". `replace` para que el botón Atrás
+          del navegador no regrese a él. Sus consultas salen de la caché cuando
+          esta página se desmonta (`useCancelPedido`), así que no se vuelven a
+          pedir mientras tanto. */}
+      <PedidoCancelDialog
+        pedido={cancelTarget}
+        onClose={() => setCancelTarget(null)}
+        onCancelled={() => router.replace(back.href)}
+      />
 
       {/* Detalle del documento (se monta solo al abrir; cada diálogo trae su
           propio detalle por id). El componente se resuelve del registro. */}
