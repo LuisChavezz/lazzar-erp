@@ -1,4 +1,7 @@
 import { z } from "zod";
+import { normalizeCapturedDecimal } from "@/src/utils/decimal";
+import { getTipoCambioError } from "@/src/utils/tipoCambio";
+import { requiresInvoiceTipoCambio } from "@/src/features/invoicing/utils/invoiceCurrency";
 
 /**
  * Esquema del formulario "Registrar Factura Pendiente por Cobrar"
@@ -51,27 +54,64 @@ const RegisterPendingInvoiceObject = z.object({
   descuento: optionalMoney,
   impuestos: optionalMoney,
   total: requiredMoney("El total es requerido"),
+  /**
+   * MXN por unidad de la moneda elegida. Solo se valida y viaja fuera de MXN
+   * (`requiresPendingInvoiceTipoCambio`): el backend lo exige ahí y, en MXN, lo
+   * valida aunque luego lo descarte, así que en MXN no se manda.
+   */
+  tipo_cambio: z.string(),
   referencia: z.string(),
   observaciones: z.string(),
 });
 
-export const RegisterPendingInvoiceSchema = RegisterPendingInvoiceObject.refine(
-  (data) => {
-    // Si algún monto no pasa el formato, deja que el error de campo se muestre
-    // primero — no se dispara un error de "total" espurio sobre valores NaN.
-    const values = [data.subtotal, data.descuento, data.impuestos, data.total];
-    if (values.some((v) => !MONEY_REGEX.test(v))) return true;
+/**
+ * ¿Hay que pedir el tipo de cambio? Solo con una moneda ya elegida
+ * (`codigoIso` de su catálogo; `null` = ninguna) y distinta de MXN, con la
+ * misma comparación que el backend (`moneda.codigo_iso` en mayúsculas).
+ */
+export const requiresPendingInvoiceTipoCambio = (codigoIso: string | null): boolean =>
+  codigoIso !== null && requiresInvoiceTipoCambio({ moneda_nombre: codigoIso });
 
-    const expected = toCents(data.subtotal) - toCents(data.descuento) + toCents(data.impuestos);
-    return expected === toCents(data.total);
-  },
-  {
-    message: "El total debe ser igual a subtotal − descuento + impuestos",
-    path: ["total"],
-  },
-);
+/**
+ * Esquema del envío. Además de los valores del formulario recibe
+ * `moneda_codigo` (el `codigo_iso` de la moneda elegida, o `null`), que no es
+ * un campo ni viaja al API: solo decide si se pide el tipo de cambio. La salida
+ * trae `tipo_cambio` ya normalizado para enviarse, o `null` cuando no se manda.
+ */
+export const RegisterPendingInvoiceSchema = RegisterPendingInvoiceObject.extend({
+  moneda_codigo: z.string().nullable(),
+})
+  .refine(
+    (data) => {
+      // Si algún monto no pasa el formato, deja que el error de campo se muestre
+      // primero — no se dispara un error de "total" espurio sobre valores NaN.
+      const values = [data.subtotal, data.descuento, data.impuestos, data.total];
+      if (values.some((v) => !MONEY_REGEX.test(v))) return true;
 
-export type RegisterPendingInvoiceFormValues = z.infer<typeof RegisterPendingInvoiceSchema>;
+      const expected = toCents(data.subtotal) - toCents(data.descuento) + toCents(data.impuestos);
+      return expected === toCents(data.total);
+    },
+    {
+      message: "El total debe ser igual a subtotal − descuento + impuestos",
+      path: ["total"],
+    },
+  )
+  .superRefine((data, ctx) => {
+    if (!requiresPendingInvoiceTipoCambio(data.moneda_codigo)) return;
+    const tipoCambioError = getTipoCambioError(data.tipo_cambio, data.moneda_codigo || "unidad");
+    if (tipoCambioError) {
+      ctx.addIssue({ code: "custom", message: tipoCambioError, path: ["tipo_cambio"] });
+    }
+  })
+  .transform(({ moneda_codigo, ...data }) => ({
+    ...data,
+    tipo_cambio: requiresPendingInvoiceTipoCambio(moneda_codigo)
+      ? normalizeCapturedDecimal(data.tipo_cambio)
+      : null,
+  }));
+
+export type RegisterPendingInvoiceFormValues = z.infer<typeof RegisterPendingInvoiceObject>;
+export type RegisterPendingInvoiceParsed = z.output<typeof RegisterPendingInvoiceSchema>;
 
 /**
  * Nombres de los campos del formulario, derivados del `shape` del propio

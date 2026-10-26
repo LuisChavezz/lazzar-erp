@@ -30,6 +30,7 @@ const DEFAULT_VALUES: RegisterPendingInvoiceFormValues = {
   descuento: "0.00",
   impuestos: "0.00",
   total: "",
+  tipo_cambio: "",
   referencia: "",
   observaciones: "",
 };
@@ -90,6 +91,13 @@ export function useRegisterPendingInvoiceForm({
         .map((c) => ({ value: c.id, label: `${c.codigo_iso} — ${c.nombre}` })),
     [currencies],
   );
+
+  /**
+   * `codigo_iso` de la moneda elegida (`null` sin moneda o si ya no está en el
+   * catálogo): decide si se pide el tipo de cambio y rotula los importes.
+   */
+  const getCurrencyCode = (moneda: number): string | null =>
+    moneda > 0 ? (currencies.find((c) => c.id === moneda)?.codigo_iso ?? null) : null;
 
   /**
    * Un pedido es seleccionable si está activo (mismo criterio de "no eliminado"
@@ -158,7 +166,10 @@ export function useRegisterPendingInvoiceForm({
 
   // ─── Validación ──────────────────────────────────────────────────────────
   const validateForm = (values: RegisterPendingInvoiceFormValues) => {
-    const parsed = RegisterPendingInvoiceSchema.safeParse(values);
+    const parsed = RegisterPendingInvoiceSchema.safeParse({
+      ...values,
+      moneda_codigo: getCurrencyCode(values.moneda),
+    });
     if (parsed.success) {
       setErrors({});
       return parsed.data;
@@ -201,6 +212,8 @@ export function useRegisterPendingInvoiceForm({
           descuento: parsed.descuento,
           impuestos: parsed.impuestos,
           total: parsed.total,
+          // Solo fuera de MXN: en MXN el backend lo validaría aunque lo descarte.
+          ...(parsed.tipo_cambio !== null ? { tipo_cambio: parsed.tipo_cambio } : {}),
           // Solo se incluyen cuando tienen valor: `folio` vacío deja que el
           // backend lo autogenere; los demás son opcionales.
           ...(folio ? { folio } : {}),
@@ -242,6 +255,7 @@ export function useRegisterPendingInvoiceForm({
     isErrorCatalogs,
     customerOptions,
     currencyOptions,
+    getCurrencyCode,
     getPedidoOptions,
     findPedido,
     getError,

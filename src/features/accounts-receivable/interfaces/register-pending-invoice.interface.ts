@@ -19,6 +19,12 @@ export interface RegisterPendingInvoiceBody {
   descuento: string;
   impuestos: string;
   total: string;
+  /**
+   * MXN por unidad de `moneda` (hasta 6 decimales, > 0). Obligatorio fuera de
+   * MXN (sin él: `400 {"tipo_cambio": [...]}`); en MXN se OMITE, porque el
+   * backend lo valida aunque después lo descarte.
+   */
+  tipo_cambio?: string;
   referencia?: string;
   observaciones?: string;
 }
@@ -36,6 +42,8 @@ export interface RegisterPendingInvoiceFactura {
   impuestos: string;
   total: string;
   fecha_vencimiento: string | null;
+  /** Lo capturado ("18.250000"), o `null` en MXN. No puede corregirse después. */
+  tipo_cambio: string | null;
 }
 
 /** Cuenta por Cobrar creada junto con la factura. */
