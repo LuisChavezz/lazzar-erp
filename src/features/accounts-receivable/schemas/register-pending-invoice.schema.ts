@@ -112,7 +112,6 @@ export const RegisterPendingInvoiceSchema = RegisterPendingInvoiceObject.extend(
   }));
 
 export type RegisterPendingInvoiceFormValues = z.infer<typeof RegisterPendingInvoiceObject>;
-export type RegisterPendingInvoiceParsed = z.output<typeof RegisterPendingInvoiceSchema>;
 
 /**
  * Nombres de los campos del formulario, derivados del `shape` del propio
