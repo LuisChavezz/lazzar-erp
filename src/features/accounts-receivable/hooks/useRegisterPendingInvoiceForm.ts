@@ -93,11 +93,15 @@ export function useRegisterPendingInvoiceForm({
   );
 
   /**
-   * `codigo_iso` de la moneda elegida (`null` sin moneda o si ya no está en el
-   * catálogo): decide si se pide el tipo de cambio y rotula los importes.
+   * `codigo_iso` de la moneda elegida (`null` sin moneda o si ya no está entre
+   * las activas, las mismas que ofrece `currencyOptions`): decide si se pide el
+   * tipo de cambio y rotula los importes. Elegida pero `null` es un error de
+   * `moneda` en el schema.
    */
   const getCurrencyCode = (moneda: number): string | null =>
-    moneda > 0 ? (currencies.find((c) => c.id === moneda)?.codigo_iso ?? null) : null;
+    moneda > 0
+      ? (currencies.find((c) => c.id === moneda && c.activo)?.codigo_iso ?? null)
+      : null;
 
   /**
    * Un pedido es seleccionable si está activo (mismo criterio de "no eliminado"

@@ -66,7 +66,9 @@ const RegisterPendingInvoiceObject = z.object({
 /**
  * Esquema del envío. Además de los valores del formulario recibe
  * `moneda_codigo` (el `codigo_iso` de la moneda elegida, o `null`), que no es
- * un campo ni viaja al API: solo decide si se pide el tipo de cambio. La salida
+ * un campo ni viaja al API: solo decide si se pide el tipo de cambio. Con una
+ * moneda elegida pero `null` (ya no está entre las activas del catálogo) el
+ * envío se bloquea en `moneda`: sin su código no se sabe si pedirlo. La salida
  * trae `tipo_cambio` ya normalizado para enviarse, o `null` cuando no se manda.
  */
 export const RegisterPendingInvoiceSchema = RegisterPendingInvoiceObject.extend({
@@ -88,6 +90,14 @@ export const RegisterPendingInvoiceSchema = RegisterPendingInvoiceObject.extend(
     },
   )
   .superRefine((data, ctx) => {
+    if (data.moneda > 0 && data.moneda_codigo === null) {
+      ctx.addIssue({
+        code: "custom",
+        message: "La moneda seleccionada ya no está disponible: elige otra",
+        path: ["moneda"],
+      });
+      return;
+    }
     if (!requiresTipoCambio(data.moneda_codigo)) return;
     const tipoCambioError = getTipoCambioError(data.tipo_cambio, data.moneda_codigo || "unidad");
     if (tipoCambioError) {
