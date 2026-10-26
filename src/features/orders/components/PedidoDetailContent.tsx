@@ -271,6 +271,9 @@ export function PedidoDetailContent({
   const [sampleSkuLineId, setSampleSkuLineId] = useState<number | null>(null);
   // Pedido cuyo diálogo de cancelación está abierto (`null` = cerrado).
   const [cancelTarget, setCancelTarget] = useState<PedidoCancelTarget | null>(null);
+  // Ya cancelado, a la espera de que termine la navegación de salida: la página
+  // deja de ofrecer acciones y hojas, que volverían a pedir el pedido (404).
+  const [cancelled, setCancelled] = useState(false);
   // La vinculación (corrida en curso, avance, resultados) vive AQUÍ y no en el
   // diálogo: así el diálogo se puede cerrar —o la hoja cambiar— a media corrida
   // sin perderla, y la celda SKU de la tabla ve el mismo avance.
@@ -312,6 +315,23 @@ export function PedidoDetailContent({
     </Link>
   );
 
+  // Tras cancelar, el pedido ya no existe para el backend (su detalle responde
+  // 404): se sale a "Volver". `replace` para que el botón Atrás del navegador no
+  // regrese a él. Va en TODAS las ramas de abajo: si un 404 llega a media
+  // cancelación y la página cambia de rama, el diálogo sigue montado y la
+  // navegación no se pierde. Las consultas del pedido salen de la caché cuando
+  // esta página se desmonta (`useCancelPedido`).
+  const cancelDialog = (
+    <PedidoCancelDialog
+      pedido={cancelTarget}
+      onClose={() => setCancelTarget(null)}
+      onCancelled={() => {
+        setCancelled(true);
+        router.replace(back.href);
+      }}
+    />
+  );
+
   if (Number.isNaN(numericId) || numericId <= 0) {
     return (
       <div className="w-full space-y-6">
@@ -320,6 +340,16 @@ export function PedidoDetailContent({
           title="Pedido no válido"
           message="El identificador del pedido no es válido."
         />
+      </div>
+    );
+  }
+
+  if (cancelled) {
+    return (
+      <div className="w-full space-y-6">
+        <div>{BackLink}</div>
+        <Loader title="Pedido cancelado" message="Volviendo..." />
+        {cancelDialog}
       </div>
     );
   }
@@ -335,6 +365,7 @@ export function PedidoDetailContent({
           title="Pedido no encontrado"
           message="El pedido no existe o no pertenece a tu empresa."
         />
+        {cancelDialog}
       </div>
     );
   }
@@ -362,6 +393,7 @@ export function PedidoDetailContent({
             {isFetching ? "Reintentando..." : "Reintentar"}
           </Button>
         </div>
+        {cancelDialog}
       </div>
     );
   }
@@ -371,6 +403,7 @@ export function PedidoDetailContent({
       <div className="w-full space-y-6">
         <div>{BackLink}</div>
         <Loader title="Cargando pedido" message="Obteniendo detalle del pedido..." />
+        {cancelDialog}
       </div>
     );
   }
@@ -518,16 +551,7 @@ export function PedidoDetailContent({
         />
       )}
 
-      {/* Tras cancelar, el pedido ya no existe para el backend (su detalle
-          responde 404): se sale a "Volver". `replace` para que el botón Atrás
-          del navegador no regrese a él. Sus consultas salen de la caché cuando
-          esta página se desmonta (`useCancelPedido`), así que no se vuelven a
-          pedir mientras tanto. */}
-      <PedidoCancelDialog
-        pedido={cancelTarget}
-        onClose={() => setCancelTarget(null)}
-        onCancelled={() => router.replace(back.href)}
-      />
+      {cancelDialog}
 
       {/* Detalle del documento (se monta solo al abrir; cada diálogo trae su
           propio detalle por id). El componente se resuelve del registro. */}
