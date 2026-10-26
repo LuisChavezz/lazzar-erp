@@ -1,6 +1,21 @@
 import { Company } from "../../companies/interfaces/company.interface";
 import { RegimenFiscal, UsoCfdi } from "../../sat/interfaces/sat-info.interface";
 
+/**
+ * Campos del ERP que Facturama exige para dar de alta al cliente, en el orden
+ * en que el backend los reporta (`terceros/facturama.py`, `faltantes()`).
+ * `razon_social` solo falta si también falta `nombre`.
+ */
+export const FACTURAMA_FALTANTES = [
+  "correo",
+  "rfc",
+  "razon_social",
+  "sat_regimen_fiscal",
+  "sat_uso_cfdi",
+  "codigo_postal",
+] as const;
+
+export type FacturamaFaltante = (typeof FACTURAMA_FALTANTES)[number];
 
 export interface Customer {
   id: string;
@@ -28,12 +43,23 @@ export interface Customer {
    * SIN moneda: no se pinta con símbolo ni se opera contra la cartera.
    */
   limite_credito: string;
+  /**
+   * Solo lectura (#659). `null`: la empresa DEL CLIENTE no usa Facturama.
+   * `true`: el cliente está en Facturama y no le falta nada. `false`: no se ha
+   * subido, falte algo (`facturama_faltantes`) o no (alta antigua o hecha por la
+   * herramienta de IA). Volver a guardarlo completo es lo único que lo sube.
+   */
+  facturama_verificado: boolean | null;
+  /** Lo que le falta para subirse a Facturama; `[]` cuando el verificado es `null`. */
+  facturama_faltantes: FacturamaFaltante[];
 }
 
 /**
  * Respuesta de `POST /terceros/clientes/`: el cliente más
  * `facturama_sincronizado`, `true` si quedó en el catálogo de clientes de
- * Facturama y `false` si la empresa no usa Facturama.
+ * Facturama y `false` si no se subió (la empresa no usa Facturama o al cliente
+ * le falta algo). Para el estado del cliente se lee `facturama_verificado`,
+ * que distingue ambos casos.
  */
 export interface CustomerCreateResponse extends Customer {
   facturama_sincronizado?: boolean;
