@@ -54,9 +54,17 @@ export interface QuoteReviewValidationError {
  * @returns Lista de errores de validación. Array vacío si la cotización es válida.
  */
 export function validateQuoteForReview(
-  quote: QuoteById,
+  savedQuote: QuoteById,
   onboardingData: QuoteOnboardingData
 ): QuoteReviewValidationError[] {
+  // Partidas en orden de `id`: así las numera el backend al revisar lo
+  // guardado («Partida N» del tope de reflejante, «Producto N»), y su retrieve
+  // no garantiza ese orden. Una sola copia ordenada para que `items` y
+  // `quote.detalles[i]` sigan alineados.
+  const quote: QuoteById = {
+    ...savedQuote,
+    detalles: [...(savedQuote.detalles ?? [])].sort((a, b) => a.id - b.id),
+  };
   const reviewInput = mapQuoteToReviewValidationInput(quote, onboardingData);
   const schemaIssues = getSchemaValidationIssues(reviewInput);
   const schemaIssuePaths = new Set(
