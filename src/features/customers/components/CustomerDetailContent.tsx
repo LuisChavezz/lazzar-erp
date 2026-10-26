@@ -84,6 +84,7 @@ export const CustomerDetailContent = ({ customerId }: CustomerDetailContentProps
   // nunca ceros ni "sin pedidos".
   const resumen = isPlaceholderData ? undefined : data.resumen_comercial;
   const facturamaNotice = getFacturamaVerificationNotice(data);
+  const subtitle = [data.razon_social, data.correo].filter(Boolean).join(" · ");
 
   // Bloque de KPIs: datos, carga o error del resumen.
   let kpis: ReactNode;
@@ -107,10 +108,9 @@ export const CustomerDetailContent = ({ customerId }: CustomerDetailContentProps
 
       <div className="space-y-2">
         <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{data.nombre}</h1>
-        {/* Sin correo (es opcional) no queda un "Razón · " colgando. */}
-        <p className="text-sm text-slate-500 dark:text-slate-400">
-          {[data.razon_social, data.correo].filter(Boolean).join(" · ")}
-        </p>
+        {/* Sin correo (es opcional) no queda un "Razón · " colgando, y sin
+            ninguno de los dos no queda una línea vacía. */}
+        {subtitle && <p className="text-sm text-slate-500 dark:text-slate-400">{subtitle}</p>}
         {/* Texto completo, no solo tooltip: aquí sí cabe decir qué falta. La
             fila del listado (placeholder) ya trae el flag, así que no parpadea. */}
         {facturamaNotice && (
