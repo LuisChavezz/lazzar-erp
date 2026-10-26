@@ -148,7 +148,7 @@ export const useSaveCobro = (onServerError?: (parsed: ParsedCobroError) => void)
       if (cobroId !== undefined) writeCobroToList(queryClient, cobro);
       if (cobro.estatus === "Aplicado") {
         invalidateCobroEffects(queryClient);
-        toast.success(cobroId === undefined ? "Cobro registrado correctamente" : `Cobro ${label} aplicado`);
+        toast.success(cobroId === undefined ? `Cobro ${label} registrado` : `Cobro ${label} aplicado`);
       } else {
         void queryClient.invalidateQueries({ queryKey: ["cobros"] });
         toast.success(`Borrador ${label} guardado`);
