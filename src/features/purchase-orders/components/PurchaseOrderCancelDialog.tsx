@@ -10,7 +10,6 @@ import { useFormFieldErrors } from "@/src/hooks/useFormFieldErrors";
 import { drfFieldMessage } from "@/src/utils/firstDrfFieldMessage";
 import { useCancelPurchaseOrder } from "../hooks/useCancelPurchaseOrder";
 import {
-  CancelPurchaseOrderFormFields,
   CancelPurchaseOrderFormSchema,
   type CancelPurchaseOrderFormValues,
 } from "../schemas/purchase-order-cancel.schema";
@@ -126,12 +125,6 @@ export function PurchaseOrderCancelDialog({
     onOpenChange(next);
   };
 
-  const validateMotivo = (value: string) => {
-    const parsed = CancelPurchaseOrderFormFields.motivo_cancelacion.safeParse(value);
-    if (parsed.success) clearClientFieldError("motivo_cancelacion");
-    else setClientFieldError("motivo_cancelacion", parsed.error.issues[0]?.message ?? "Motivo inválido");
-  };
-
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     event.stopPropagation();
@@ -162,10 +155,10 @@ export function PurchaseOrderCancelDialog({
                 field.handleChange(event.target.value);
                 clearFieldErrors("motivo_cancelacion");
               }}
-              onBlur={() => {
-                field.handleBlur();
-                validateMotivo(field.state.value);
-              }}
+              // Sin validación en blur: al cerrar, el textarea pierde el foco
+              // DESPUÉS del reset y pintaría "requerido" en la próxima apertura
+              // (el contenido no se vuelve a montar). Se valida al enviar.
+              onBlur={field.handleBlur}
             />
           )}
         </form.Field>
