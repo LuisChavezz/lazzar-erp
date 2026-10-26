@@ -12,4 +12,7 @@ export const CancelPurchaseOrderFormSchema = z.object({
     .min(1, "El motivo de cancelación es requerido."),
 });
 
+/** Schemas por campo, para la validación en blur. */
+export const CancelPurchaseOrderFormFields = CancelPurchaseOrderFormSchema.shape;
+
 export type CancelPurchaseOrderFormValues = z.infer<typeof CancelPurchaseOrderFormSchema>;

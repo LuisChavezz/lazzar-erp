@@ -24,8 +24,9 @@ interface VacationRejectDialogProps {
  * diálogo— se desmontaría a media operación. El padre lo monta con `key` por
  * solicitud, así que el borrador no se arrastra a otra.
  *
- * Mismo esqueleto que `PurchaseOrderCancelDialog`: input controlado +
- * `safeParse` al enviar y guarda síncrona contra el doble envío. Pensado para
+ * Input controlado + `safeParse` al enviar y guarda síncrona contra el doble
+ * envío (el esqueleto que tenía `PurchaseOrderCancelDialog` antes de pasar a
+ * TanStack Form). Pensado para
  * que `permisos-ausencias`, con el mismo flujo, lo tome como molde.
  */
 export function VacationRejectDialog({ vacation, onClose }: VacationRejectDialogProps) {
