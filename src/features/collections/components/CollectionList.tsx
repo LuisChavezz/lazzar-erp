@@ -108,7 +108,7 @@ export function CollectionList() {
       <DataTable
         columns={columns}
         data={rows}
-        searchPlaceholder="Buscar por cliente, referencia o cuenta..."
+        searchPlaceholder="Buscar por folio, cliente, referencia o cuenta..."
         onRefetch={refetch}
         isRefetching={isFetching}
         emptyMessage="No hay cobros registrados."
