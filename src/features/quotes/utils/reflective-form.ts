@@ -44,7 +44,9 @@ export const createReflectiveConfigForm = (
   initial?: Partial<Omit<ReflectiveConfigForm, "id">>
 ): ReflectiveConfigForm => ({
   id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
-  opcion: initial?.opcion ?? "catalogo",
+  // Sin opción preseleccionada (EC-577): «Del inventario» tiene tope de 50
+  // piezas por partida, así que el usuario la elige a conciencia.
+  opcion: initial?.opcion ?? "",
   posiciones: initial?.posiciones ?? [],
   tipo: initial?.tipo ?? "",
 });
