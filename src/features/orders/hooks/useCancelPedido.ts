@@ -16,6 +16,7 @@ import { orderStockDetailQueryKey } from "./useOrderStockDetail";
 import { pedidoDetailQueryKey } from "./usePedidoDetail";
 import { pedidoMesaControlContextoQueryKey } from "./usePedidoMesaControlContexto";
 import { pedidoTrazabilidadQueryKey } from "./usePedidoTrazabilidad";
+import { pedidoCancelSummary } from "../utils/pedidoCancelSummary";
 
 interface CancelPedidoVariables {
   /** Folio (o `#id`) para el toast. */
@@ -113,8 +114,8 @@ export const useCancelPedido = (pedidoId: number) => {
     mutationKey,
     mutationFn: ({ motivo }) => cancelPedido(pedidoId, { motivo }),
     onMutate: () => queryClient.cancelQueries({ predicate: isRecordQuery }),
-    onSuccess: async (_response, { label }) => {
-      toast.success(`Pedido ${label} cancelado`);
+    onSuccess: async (response, { label }) => {
+      toast.success(pedidoCancelSummary(response, label));
       await forgetPedido();
     },
     onError: async (error) => {
