@@ -7,6 +7,7 @@ import type {
   InventoryPipelineResultadoApi,
   InventoryPipelineRow,
 } from "../interfaces/inventory-pipeline.interface";
+import { INVENTORY_PIPELINE_QUERY_KEY } from "@/src/constants/stockQueryKeys";
 
 /**
  * Reporte de existencias, producción y compras (ver `getInventoryPipeline`),
@@ -26,8 +27,6 @@ import type {
  * tabla) de un refetch fallido con datos en caché (toast + conservar la
  * tabla). Mismo patrón que `useCorteMangaOrders`.
  */
-export const INVENTORY_PIPELINE_QUERY_KEY = ["inventory-pipeline"] as const;
-
 export const useInventoryPipeline = () => {
   const companyId = useWorkspaceStore((state) => state.selectedCompany.id);
 

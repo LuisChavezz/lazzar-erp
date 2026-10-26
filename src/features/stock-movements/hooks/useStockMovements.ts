@@ -1,8 +1,7 @@
 import { useGuardedQuery } from "@/src/hooks/useGuardedQuery";
 import { getStockMovements } from "../services/actions";
 import type { StockMovement } from "../interfaces/stock-movements.interface";
-
-export const STOCK_MOVEMENTS_QUERY_KEY = ["stockMovements"] as const;
+import { STOCK_MOVEMENTS_QUERY_KEY } from "@/src/constants/stockQueryKeys";
 
 /**
  * No expone el `isError` crudo: `isInitialError` solo es `true` si la consulta

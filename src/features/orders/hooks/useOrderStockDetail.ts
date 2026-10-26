@@ -3,13 +3,12 @@
 import { useQuery } from "@tanstack/react-query";
 import { OrderStockDetail } from "../interfaces/order-stock-detail.interface";
 import { getOrderStockDetail } from "../services/actions";
+import { ORDER_STOCK_DETAIL_QUERY_KEY } from "@/src/constants/stockQueryKeys";
 
 /**
  * Fuera del prefijo `["orders"]` a propósito: las invalidaciones de la lista
  * de pedidos no deben refrescar (ni poner en fetching) este detalle.
  */
-export const ORDER_STOCK_DETAIL_QUERY_KEY = ["order-stock-detail"] as const;
-
 export const orderStockDetailQueryKey = (orderId: number | null) =>
   [...ORDER_STOCK_DETAIL_QUERY_KEY, orderId] as const;
 

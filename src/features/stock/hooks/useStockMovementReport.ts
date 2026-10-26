@@ -4,6 +4,7 @@ import type {
   StockMovementReportParams,
   StockMovementReportResponse,
 } from "../interfaces/stock-movement-report.interface";
+import { STOCK_MOVEMENT_REPORT_QUERY_KEY } from "@/src/constants/stockQueryKeys";
 
 /**
  * Hook del reporte de movimientos por periodo (paginado en servidor). Espejo de
@@ -18,8 +19,6 @@ import type {
  * traídas no vuelve a consultar. `keepPreviousData` mantiene visible la página
  * anterior mientras llega la nueva, evitando el parpadeo a pantalla de carga.
  */
-export const STOCK_MOVEMENT_REPORT_QUERY_KEY = ["stock-movement-report"] as const;
-
 export const useStockMovementReport = (
   params: StockMovementReportParams | null,
 ) => {

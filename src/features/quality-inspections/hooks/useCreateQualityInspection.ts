@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
+import { invalidateStockQueries } from "@/src/features/stock/utils/invalidateStockQueries";
 import { createQualityInspection } from "../services/actions";
 import { QUALITY_INSPECTION_ONBOARDING_KEY } from "./useQualityInspectionOnboarding";
 import {
@@ -30,14 +31,9 @@ const AFFECTED_QUERY_KEYS: readonly (readonly string[])[] = [
   ["purchase-orders"],
   ["purchase-order-onboarding"],
   ["production-orders"],
-  // Existencias y movimientos de inventario (el onboarding de surtido expone
-  // `existencia_*`/`maximo_picking_permitido` por talla).
+  // El onboarding de surtido expone `existencia_*`/`maximo_picking_permitido`
+  // por talla. Las vistas de existencias van aparte (`invalidateStockQueries`).
   ["picking-onboarding"],
-  ["stock-items"],
-  ["stock-report"],
-  ["stock-movement-report"],
-  ["stockMovements"],
-  ["inventory-pipeline"],
 ];
 
 interface UseCreateQualityInspectionOptions {
@@ -59,6 +55,7 @@ export const useCreateQualityInspection = ({
       AFFECTED_QUERY_KEYS.forEach((queryKey) => {
         void queryClient.invalidateQueries({ queryKey });
       });
+      void invalidateStockQueries(queryClient);
       toast.success(
         `Inspección registrada: ${data.calidad_inspeccion.recepcion_folio} quedó cerrada`,
       );

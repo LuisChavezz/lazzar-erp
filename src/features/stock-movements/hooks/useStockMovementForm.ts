@@ -9,7 +9,7 @@ import { useWarehouses } from "@/src/features/warehouses/hooks/useWarehouses";
 import { useLocations } from "@/src/features/locations/hooks/useLocations";
 import { useProductVariants } from "@/src/features/product-variants/hooks/useProductVariants";
 import { getStockItems } from "@/src/features/stock/services/actions";
-import { STOCK_ITEMS_QUERY_KEY } from "@/src/features/stock/hooks/useStockItems";
+import { STOCK_ITEMS_QUERY_KEY } from "@/src/constants/stockQueryKeys";
 import { useCreateStockMovement, parseStockMovementPedidoError } from "./useCreateStockMovement";
 import {
   StockMovementFormSchema,

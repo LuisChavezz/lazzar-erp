@@ -4,6 +4,7 @@ import type {
   StockReportParams,
   StockReportResponse,
 } from "../interfaces/stock-report.interface";
+import { STOCK_REPORT_QUERY_KEY } from "@/src/constants/stockQueryKeys";
 
 /**
  * Hook del reporte de existencias por periodo (paginado en servidor).
@@ -17,8 +18,6 @@ import type {
  * visible la página anterior mientras llega la nueva, evitando el parpadeo a
  * pantalla de carga (misma convención que `useStockItems`).
  */
-export const STOCK_REPORT_QUERY_KEY = ["stock-report"] as const;
-
 export const useStockReport = (params: StockReportParams | null) => {
   return useQuery<StockReportResponse>({
     queryKey: [...STOCK_REPORT_QUERY_KEY, params],

@@ -7,6 +7,7 @@ import { getUsers } from "@/src/features/users/services/actions";
 import { getRoles } from "@/src/features/roles/services/actions";
 import { getWarehouses } from "@/src/features/warehouses/services/actions";
 import { getStockMovements } from "@/src/features/stock-movements/services/actions";
+import { STOCK_MOVEMENTS_QUERY_KEY } from "@/src/constants/stockQueryKeys";
 import { getTransferencias } from "@/src/features/stock-transfers/services/actions";
 import {
   BuildingIcon,
@@ -164,7 +165,7 @@ export const configCards: ConfigCardItem[] = [
     view: "stock-movements",
     group: "Organización",
     adminOnly: true,
-    prefetchKey: ["stockMovements"],
+    prefetchKey: [...STOCK_MOVEMENTS_QUERY_KEY],
     prefetchFn: getStockMovements,
   },
   {
