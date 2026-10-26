@@ -41,11 +41,14 @@ const isPedidoRecordQuery = (pedidoId: number) => {
   return (query: Query) => hashes.has(query.queryHash);
 };
 
+const PEDIDO_ALREADY_CANCELLED_MESSAGE =
+  "El pedido ya no está disponible; puede que ya se haya cancelado.";
+
 const cancelPedidoErrorMessage = (error: unknown): string =>
   drfActionErrorMessage(
     error,
     "No se pudo cancelar el pedido. Intenta de nuevo.",
-    "El pedido ya no está disponible; puede que ya se haya cancelado.",
+    PEDIDO_ALREADY_CANCELLED_MESSAGE,
   );
 
 /**
@@ -66,9 +69,17 @@ const cancelPedidoErrorMessage = (error: unknown): string =>
  * especiales. La mutación sigue "pending" hasta que los listados montados se
  * releen, así que el diálogo se cierra con la fila ya fuera.
  *
+ * Sus peticiones en vuelo se cancelan también ANTES del POST (`onMutate`): una
+ * lectura del detalle que respondiera 404 a media cancelación cambiaría la
+ * página por "Pedido no encontrado".
+ *
+ * Un 404 de `cancelar/` significa que el pedido ya no existe para el backend
+ * (otra sesión lo canceló): se trata como cancelado para ESTE registro (mismo
+ * desalojo e invalidaciones, y el `onSuccess` de la llamada, para salir del
+ * detalle), con un aviso en vez del toast de éxito.
+ *
  * Errores: el mensaje del backend tal cual (`pedido` con los documentos vivos,
- * `permiso`, `estatus`), en un toast. Esos 400 no cambian nada. Un 404 (otra
- * sesión ya lo canceló) relee los listados para que la fila desaparezca.
+ * `permiso`, `estatus`), en un toast. Esos 400 no cambian nada.
  */
 export const useCancelPedido = (pedidoId: number) => {
   const queryClient = useQueryClient();
@@ -76,42 +87,56 @@ export const useCancelPedido = (pedidoId: number) => {
   const { isRunning: isCancelling, isIdle } = useMutationLock(mutationKey);
   const isRecordQuery = isPedidoRecordQuery(pedidoId);
 
+  /** El pedido ya no existe: fuera sus consultas y releer lo que lo lista. */
+  const forgetPedido = async () => {
+    await queryClient.cancelQueries({ predicate: isRecordQuery });
+    dropQueriesWhenUnobserved(
+      queryClient,
+      queryClient.getQueryCache().findAll({ predicate: isRecordQuery }),
+    );
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ordersQueryKey() }),
+      queryClient.invalidateQueries({ queryKey: PEDIDO_KPIS_QUERY_KEY }),
+      queryClient.invalidateQueries({ queryKey: ["special-orders"] }),
+    ]);
+  };
+
   const mutation = useMutation<PedidoCancelResponse, unknown, string>({
     mutationKey,
     mutationFn: () => cancelPedido(pedidoId),
+    onMutate: () => queryClient.cancelQueries({ predicate: isRecordQuery }),
     onSuccess: async (_response, label) => {
-      await queryClient.cancelQueries({ predicate: isRecordQuery });
-      dropQueriesWhenUnobserved(
-        queryClient,
-        queryClient.getQueryCache().findAll({ predicate: isRecordQuery }),
-      );
       toast.success(`Pedido ${label} cancelado`);
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ordersQueryKey() }),
-        queryClient.invalidateQueries({ queryKey: PEDIDO_KPIS_QUERY_KEY }),
-        queryClient.invalidateQueries({ queryKey: ["special-orders"] }),
-      ]);
+      await forgetPedido();
     },
-    onError: (error) => {
-      toast.error(cancelPedidoErrorMessage(error));
+    onError: async (error) => {
       if (isNotFoundError(error)) {
-        queryClient.invalidateQueries({ queryKey: ordersQueryKey() });
+        toastWarning(PEDIDO_ALREADY_CANCELLED_MESSAGE);
+        await forgetPedido();
+        return;
       }
+      toast.error(cancelPedidoErrorMessage(error));
     },
   });
 
   /**
    * Dispara la cancelación salvo que ya haya una en vuelo para ESTE pedido
    * (consulta síncrona a la caché). `label` es el folio para el toast.
-   * `onSuccess` corre tras cancelar (y releer los listados); `onSettled`, con
-   * cualquier resultado.
+   * `onSuccess` corre tras cancelar (y releer los listados), también si el
+   * pedido ya estaba cancelado (404); `onSettled`, con cualquier resultado.
    */
   const cancel = (
     label: string,
     options: { onSuccess?: () => void; onSettled?: () => void } = {},
   ) => {
     if (!isIdle()) return;
-    mutation.mutate(label, options);
+    mutation.mutate(label, {
+      onSuccess: options.onSuccess,
+      onError: (error) => {
+        if (isNotFoundError(error)) options.onSuccess?.();
+      },
+      onSettled: options.onSettled,
+    });
   };
 
   return { cancel, isCancelling };
