@@ -240,6 +240,11 @@ export function QuoteFormContent({
 }: QuoteFormContentProps) {
   // Categoría de cada partida de catálogo, para la matriz prenda/proceso.
   const productCategoryById = buildProductCategoryMap(products);
+  /** Lo que admite la categoría de la partida `index` (CO-04 / CO-05). */
+  const rulesForIndex = (index: number | null) => {
+    const item = index !== null ? watchedItems?.[index] : undefined;
+    return item ? getItemRules(item, matrizCompatibilidad, productCategoryById) : UNRESTRICTED_RULES;
+  };
   /**
    * Una partida solo está protegida si EXISTE en el servidor. Las que el usuario
    * acaba de agregar (sin `pedido_detalle_id`) se pueden quitar aunque el flujo
@@ -1392,15 +1397,7 @@ export function QuoteFormContent({
           open={isEmbroideryEditOpen}
           onOpenChange={handleEmbroideryEditOpenChange}
           item={embroideryEditIndex !== null ? (watchedItems?.[embroideryEditIndex] ?? null) : null}
-          allowedPositions={
-            embroideryEditIndex !== null && watchedItems?.[embroideryEditIndex]
-              ? getItemRules(
-                  watchedItems[embroideryEditIndex],
-                  matrizCompatibilidad,
-                  productCategoryById
-                ).bordado
-              : null
-          }
+          allowedPositions={rulesForIndex(embroideryEditIndex).bordado}
           onSave={handleEmbroideryEditSave}
         />
 
@@ -1411,15 +1408,7 @@ export function QuoteFormContent({
           open={isReflectiveEditOpen}
           onOpenChange={handleReflectiveEditOpenChange}
           item={reflectiveEditIndex !== null ? (watchedItems?.[reflectiveEditIndex] ?? null) : null}
-          allowedPositions={
-            reflectiveEditIndex !== null && watchedItems?.[reflectiveEditIndex]
-              ? getItemRules(
-                  watchedItems[reflectiveEditIndex],
-                  matrizCompatibilidad,
-                  productCategoryById
-                ).reflejante
-              : null
-          }
+          allowedPositions={rulesForIndex(reflectiveEditIndex).reflejante}
           onSave={handleReflectiveEditSave}
         />
 
@@ -1540,9 +1529,7 @@ export function QuoteFormContent({
                   const reflejanteLabel = currentItem?.reflejantes?.activo ? "Sí" : "No";
                   const llevaCorteManga = Boolean(currentItem?.lleva_corte_manga);
                   // Lo que admite la categoría de esta partida (CO-04 / CO-05).
-                  const lineRules = currentItem
-                    ? getItemRules(currentItem, matrizCompatibilidad, productCategoryById)
-                    : UNRESTRICTED_RULES;
+                  const lineRules = rulesForIndex(index);
                   const corteMangaAdmitido = admitsProcess(lineRules.corte_manga);
                   // Lo que la partida ya lleva y su categoría no admite: se marca
                   // aquí y bloquea el guardado (ver `getProcessCompatibilityIssues`).

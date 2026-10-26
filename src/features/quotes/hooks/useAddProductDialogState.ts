@@ -225,39 +225,40 @@ export function useAddProductDialogState({
   // lote, así que se ofrece lo que admiten TODAS las categorías seleccionadas
   // (la intersección). Catálogo toma la categoría de su producto; cada muestra,
   // la suya (`0` = aún sin elegir, no restringe).
-  const productCategoryById = useMemo(() => buildProductCategoryMap(products), [products]);
-  const selectionCategoryIds = useMemo(
-    () =>
-      isMuestra
-        ? muestraDrafts.map((draft) =>
-            draft.categoria_producto > 0 ? draft.categoria_producto : null
-          )
-        : productSelection.selectedRows.map(
-            (row) => productCategoryById.get(row.productoId) ?? null
-          ),
-    [isMuestra, muestraDrafts, productCategoryById, productSelection.selectedRows]
+  const productCategoryById = buildProductCategoryMap(products);
+  const selectionCategoryIds = isMuestra
+    ? muestraDrafts.map((draft) => (draft.categoria_producto > 0 ? draft.categoria_producto : null))
+    : productSelection.selectedRows.map((row) => productCategoryById.get(row.productoId) ?? null);
+  const selectionRules = intersectRules(
+    selectionCategoryIds.map((categoryId) => getCategoryRules(matrizCompatibilidad, categoryId))
   );
-  const selectionRules = useMemo(
-    () =>
-      intersectRules(
-        selectionCategoryIds.map((categoryId) => getCategoryRules(matrizCompatibilidad, categoryId))
-      ),
-    [matrizCompatibilidad, selectionCategoryIds]
-  );
+  // Singular o plural según las CATEGORÍAS distintas que restringen (sin
+  // categoría no restringe), no según cuántos productos hay: dos pantalones
+  // son una sola categoría.
+  const restrictingCategoryCount = new Set(
+    selectionCategoryIds.filter((categoryId) => categoryId !== null)
+  ).size;
   const restrictionSubject: RestrictionSubject =
-    selectionCategoryIds.length <= 1 ? "seleccion-una" : "seleccion-varias";
+    restrictingCategoryCount <= 1 ? "seleccion-una" : "seleccion-varias";
   const sleevecutAllowed = admitsProcess(selectionRules.corte_manga);
-  // Lo que se aplica a las partidas: una casilla marcada antes de elegir un
-  // producto que no lo admite no se arrastra.
+  // Una casilla oculta no se arrastra: si la selección deja de admitir corte
+  // de manga, se desmarca, y al volver a admitirlo reaparece sin marcar. Se
+  // ajusta durante el render (patrón de React para derivar estado de props),
+  // sin un efecto.
+  if (!sleevecutAllowed && hasSleevecut) {
+    setHasSleevecut(false);
+  }
   const effectiveSleevecut = hasSleevecut && sleevecutAllowed;
   const sleevecutNotAllowedMessage = processNotAdmittedMessage("corte_manga", restrictionSubject);
-  const embroideryPositionRule = useMemo(
-    () => buildLocationRule("bordado", selectionRules.bordado, restrictionSubject),
-    [restrictionSubject, selectionRules.bordado]
+  const embroideryPositionRule = buildLocationRule(
+    "bordado",
+    selectionRules.bordado,
+    restrictionSubject
   );
-  const reflectivePositionRule = useMemo(
-    () => buildLocationRule("reflejante", selectionRules.reflejante, restrictionSubject),
-    [restrictionSubject, selectionRules.reflejante]
+  const reflectivePositionRule = buildLocationRule(
+    "reflejante",
+    selectionRules.reflejante,
+    restrictionSubject
   );
 
   const sizesState = useSizesState({ initialItem });

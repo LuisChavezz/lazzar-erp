@@ -48,10 +48,7 @@ export function useEditReflectiveDialog({
   onOpenChange,
   allowedPositions = null,
 }: UseEditReflectiveDialogOptions) {
-  const positionRule = useMemo(
-    () => buildLocationRule('reflejante', allowedPositions, 'partida'),
-    [allowedPositions]
-  );
+  const positionRule = buildLocationRule('reflejante', allowedPositions, 'partida');
   // El `key` del componente EditReflectiveDialog cambia con el índice del item,
   // forzando el remount y la reinicialización limpia de useReflectiveState.
   const reflectiveState = useReflectiveState(item, positionRule);

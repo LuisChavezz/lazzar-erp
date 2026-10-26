@@ -5,6 +5,11 @@ import type { RefObject } from "react";
 import type { QuoteFormValues } from "../schemas/quote.schema";
 import { scrollToFirstValidationError } from "../utils/scrollToFirstValidationError";
 import {
+  buildProductCategoryMap,
+  getProcessCompatibilityIssues,
+  type MatrizCompatibilidad,
+} from "../utils/processCompatibility";
+import {
   buildQuoteFieldLabel,
   type QuoteReviewValidationError,
 } from "../utils/validateQuoteForReview";
@@ -30,9 +35,12 @@ const MIRRORED_PHONE_FIELDS = new Set(["telefonoEnvio", "celularEnvio"]);
  */
 export const collectQuoteSubmitIssues = (
   zodIssues: readonly { path: readonly PropertyKey[]; message: string }[],
-  values: Pick<QuoteFormValues, "usarMismoTelefono">,
+  values: Pick<QuoteFormValues, "usarMismoTelefono" | "items">,
   anticipoIssue: QuoteSubmitIssue | null,
-  processIssues: readonly QuoteSubmitIssue[] = [],
+  processMatrix: {
+    matriz: MatrizCompatibilidad;
+    products: readonly { id?: number; categoria_producto?: number | null }[];
+  },
 ): QuoteSubmitIssue[] => {
   const issues: QuoteSubmitIssue[] = zodIssues
     .map((issue) => ({
@@ -51,7 +59,13 @@ export const collectQuoteSubmitIssues = (
   if (anticipoIssue && !issues.some((issue) => issue.path[0] === "anticipo")) {
     issues.push(anticipoIssue);
   }
-  issues.push(...processIssues);
+  issues.push(
+    ...getProcessCompatibilityIssues(
+      values.items ?? [],
+      processMatrix.matriz,
+      buildProductCategoryMap(processMatrix.products),
+    ),
+  );
   return issues;
 };
 

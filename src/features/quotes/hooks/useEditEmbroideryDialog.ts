@@ -42,10 +42,7 @@ export function useEditEmbroideryDialog({
   onOpenChange,
   allowedPositions = null,
 }: UseEditEmbroideryDialogOptions) {
-  const positionRule = useMemo(
-    () => buildLocationRule('bordado', allowedPositions, 'partida'),
-    [allowedPositions]
-  );
+  const positionRule = buildLocationRule('bordado', allowedPositions, 'partida');
   // El `key` del componente EditEmbroideryDialog cambia con el índice del item,
   // por lo que `useEmbroideryState` se reinicializa automáticamente en cada
   // apertura con un item diferente (remount por key).

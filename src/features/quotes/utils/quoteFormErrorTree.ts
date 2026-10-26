@@ -45,7 +45,14 @@ export const setErrorByPath = (
     }
 
     if (isLast) {
-      current[segment] = { message };
+      // Se FUSIONA con lo que ya hubiera en ese nodo: un error del nodo (p. ej.
+      // la matriz prenda/proceso en `items.N.bordados`) no debe borrar los de
+      // sus hijos (`items.N.bordados.especificaciones.M...`).
+      const existing = current[segment];
+      current[segment] =
+        existing && typeof existing === "object" && !Array.isArray(existing)
+          ? { ...(existing as ErrorNode), message: message as unknown as ErrorNode }
+          : { message };
       return;
     }
 

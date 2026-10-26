@@ -233,7 +233,9 @@ export const StepEmbroidery = memo(function StepEmbroidery({
             </button>
           )}
         </div>
-        {embroideryError && (
+        {/* Sin ubicaciones admitidas, el recuadro de abajo ya lo explica: no
+            se repite como error. */}
+        {embroideryError && admittedOptions.length > 0 && (
           <p
             className="text-xs text-rose-600 dark:text-rose-400"
             role="alert"

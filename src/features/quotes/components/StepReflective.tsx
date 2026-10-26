@@ -337,7 +337,9 @@ export const StepReflective = memo(function StepReflective({
                     })}
                   </div>
                 )}
-                {shouldShowError && configErrors.posiciones && (
+                {/* Sin posiciones que ofrecer, el texto de arriba ya lo explica:
+                    no se repite como error. */}
+                {shouldShowError && configErrors.posiciones && visiblePositions.length > 0 && (
                   <p className="text-xs text-rose-600 dark:text-rose-400" role="alert">
                     {configErrors.posiciones}
                   </p>
