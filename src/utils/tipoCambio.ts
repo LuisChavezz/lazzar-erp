@@ -7,6 +7,15 @@ import { normalizeCapturedDecimal } from "./decimal";
 export const LOCAL_CURRENCY = "MXN";
 
 /**
+ * ¿Esta moneda pide tipo de cambio? Toda moneda distinta de MXN, comparada como
+ * el backend (`codigo_iso` en mayúsculas); un código vacío cuenta como "no
+ * MXN". `null` = todavía no hay moneda (no elegida o desconocida): no se pide.
+ * Fuente única para cobros, emisión de facturas y facturas pendientes de cobro.
+ */
+export const requiresTipoCambio = (codigoIso: string | null): boolean =>
+  codigoIso !== null && codigoIso.trim().toUpperCase() !== LOCAL_CURRENCY;
+
+/**
  * `tipo_cambio` es `DecimalField(max_digits=18, decimal_places=6)` en cobros y
  * en facturas: hasta 12 enteros y 6 decimales.
  */

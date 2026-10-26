@@ -11,7 +11,8 @@ import type {
   FinanceDashboard,
   FinanceDashboardParams,
 } from "../interfaces/collection.interface";
-import { requiresTipoCambio, type CobroFormValues } from "../schemas/createCobro.schema";
+import { requiresTipoCambio } from "@/src/utils/tipoCambio";
+import type { CobroFormValues } from "../schemas/createCobro.schema";
 
 /**
  * Lista los cobros desde `GET /finanzas/cobros/`.

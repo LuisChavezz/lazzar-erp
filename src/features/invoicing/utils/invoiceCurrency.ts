@@ -1,4 +1,4 @@
-import { LOCAL_CURRENCY } from "@/src/utils/tipoCambio";
+import { requiresTipoCambio } from "@/src/utils/tipoCambio";
 
 /**
  * Código ISO de la moneda de la factura (`moneda_nombre` del retrieve y del
@@ -14,7 +14,7 @@ export const invoiceCurrencyCode = (invoice: { moneda_nombre: string | null }): 
  * `Factura.tipo_cambio_mxn()` usa 1 y el CFDI no lleva `CurrencyExchangeRate`.
  */
 export const requiresInvoiceTipoCambio = (invoice: { moneda_nombre: string | null }): boolean =>
-  invoiceCurrencyCode(invoice) !== LOCAL_CURRENCY;
+  requiresTipoCambio(invoiceCurrencyCode(invoice));
 
 /**
  * ¿Falta el tipo de cambio? Fuera de MXN y sin capturar: así no se puede emitir

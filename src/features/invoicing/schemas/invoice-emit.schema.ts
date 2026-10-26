@@ -1,7 +1,6 @@
 import { z } from "zod";
 import { normalizeCapturedDecimal } from "@/src/utils/decimal";
-import { getTipoCambioError } from "@/src/utils/tipoCambio";
-import { requiresInvoiceTipoCambio } from "../utils/invoiceCurrency";
+import { getTipoCambioError, requiresTipoCambio } from "@/src/utils/tipoCambio";
 
 /**
  * Formulario del diálogo "Emitir factura". `moneda` es el código ISO de la
@@ -16,14 +15,14 @@ export const EmitInvoiceFormSchema = z
     tipo_cambio: z.string(),
   })
   .superRefine((data, ctx) => {
-    if (!requiresInvoiceTipoCambio({ moneda_nombre: data.moneda })) return;
+    if (!requiresTipoCambio(data.moneda)) return;
     const tipoCambioError = getTipoCambioError(data.tipo_cambio, data.moneda || "unidad");
     if (tipoCambioError) {
       ctx.addIssue({ code: "custom", message: tipoCambioError, path: ["tipo_cambio"] });
     }
   })
   .transform((data) => ({
-    tipo_cambio: requiresInvoiceTipoCambio({ moneda_nombre: data.moneda })
+    tipo_cambio: requiresTipoCambio(data.moneda)
       ? normalizeCapturedDecimal(data.tipo_cambio)
       : null,
   }));

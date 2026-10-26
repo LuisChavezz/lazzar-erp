@@ -14,11 +14,11 @@ import { ItemPickerButton } from "@/src/components/ItemPickerButton";
 import { MainDialog } from "@/src/components/MainDialog";
 import { SingleSelectPickerDialogContent } from "@/src/components/SingleSelectPickerDialogContent";
 import { sanitizeDecimalInput } from "@/src/utils/decimal";
+import { requiresTipoCambio } from "@/src/utils/tipoCambio";
 import { COBRO_REFERENCIA_LABELS } from "../constants/collectionStatus";
 import {
   COBRO_METODOS_PAGO,
   COBRO_REFERENCIAS,
-  requiresTipoCambio,
   type CobroFormValues,
 } from "../schemas/createCobro.schema";
 import { customerLabel, useCreateCobroForm, type CobroDraftSeed } from "../hooks/useCreateCobroForm";

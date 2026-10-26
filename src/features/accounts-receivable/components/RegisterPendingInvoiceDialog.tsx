@@ -25,12 +25,9 @@ import { FormTextarea } from "@/src/components/FormTextarea";
 import { FormCancelButton, FormSubmitButton } from "@/src/components/FormButtons";
 import { formatCurrency, NO_CURRENCY_FORMAT } from "@/src/utils/formatCurrency";
 import { sanitizeDecimalInput } from "@/src/utils/decimal";
+import { requiresTipoCambio } from "@/src/utils/tipoCambio";
 import { useRegisterPendingInvoiceForm } from "../hooks/useRegisterPendingInvoiceForm";
-import {
-  MONEY_REGEX,
-  requiresPendingInvoiceTipoCambio,
-  toCents,
-} from "../schemas/register-pending-invoice.schema";
+import { MONEY_REGEX, toCents } from "../schemas/register-pending-invoice.schema";
 import type { PedidoListItem } from "@/src/features/orders/interfaces/order.interface";
 
 function RegisterPendingInvoiceForm({ onClose }: { onClose: () => void }) {
@@ -62,7 +59,7 @@ function RegisterPendingInvoiceForm({ onClose }: { onClose: () => void }) {
   // tipo de cambio. Sin moneda los importes no llevan prefijo: un "$" afirmaría
   // una moneda que aún no se eligió.
   const monedaCodigo = getCurrencyCode(monedaValue);
-  const needsTipoCambio = requiresPendingInvoiceTipoCambio(monedaCodigo);
+  const needsTipoCambio = requiresTipoCambio(monedaCodigo);
   const amountPrefix = monedaCodigo || undefined;
   const amountPrefixClass = amountPrefix ? "pl-10!" : undefined;
 

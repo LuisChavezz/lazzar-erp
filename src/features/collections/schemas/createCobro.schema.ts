@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { MONEY_REGEX, toCents } from "@/src/features/accounts-receivable/schemas/register-pending-invoice.schema";
 import { normalizeCapturedDecimal } from "@/src/utils/decimal";
-import { getTipoCambioError, LOCAL_CURRENCY } from "@/src/utils/tipoCambio";
+import { getTipoCambioError, LOCAL_CURRENCY, requiresTipoCambio } from "@/src/utils/tipoCambio";
 import type { CobroMetodoPago, CobroReferencia } from "../interfaces/collection.interface";
 
 /**
@@ -34,10 +34,6 @@ const MONEY_MESSAGE = "Importe inválido (usa hasta 2 decimales)";
 
 /** Moneda en que el backend fija el tipo de cambio en 1 (y no lo pide). */
 export const COBRO_MONEDA_LOCAL = LOCAL_CURRENCY;
-
-/** ¿La moneda del cobro pide tipo de cambio? Solo una moneda conocida que no sea MXN. */
-export const requiresTipoCambio = (moneda: string | null): boolean =>
-  moneda !== null && moneda !== COBRO_MONEDA_LOCAL;
 
 export const COBRO_METODOS_PAGO = [
   "Transferencia",

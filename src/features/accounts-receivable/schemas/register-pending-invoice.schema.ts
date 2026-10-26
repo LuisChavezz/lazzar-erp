@@ -1,7 +1,6 @@
 import { z } from "zod";
 import { normalizeCapturedDecimal } from "@/src/utils/decimal";
-import { getTipoCambioError } from "@/src/utils/tipoCambio";
-import { requiresInvoiceTipoCambio } from "@/src/features/invoicing/utils/invoiceCurrency";
+import { getTipoCambioError, requiresTipoCambio } from "@/src/utils/tipoCambio";
 
 /**
  * Esquema del formulario "Registrar Factura Pendiente por Cobrar"
@@ -56,21 +55,13 @@ const RegisterPendingInvoiceObject = z.object({
   total: requiredMoney("El total es requerido"),
   /**
    * MXN por unidad de la moneda elegida. Solo se valida y viaja fuera de MXN
-   * (`requiresPendingInvoiceTipoCambio`): el backend lo exige ahí y, en MXN, lo
+   * (`requiresTipoCambio`): el backend lo exige ahí y, en MXN, lo
    * valida aunque luego lo descarte, así que en MXN no se manda.
    */
   tipo_cambio: z.string(),
   referencia: z.string(),
   observaciones: z.string(),
 });
-
-/**
- * ¿Hay que pedir el tipo de cambio? Solo con una moneda ya elegida
- * (`codigoIso` de su catálogo; `null` = ninguna) y distinta de MXN, con la
- * misma comparación que el backend (`moneda.codigo_iso` en mayúsculas).
- */
-export const requiresPendingInvoiceTipoCambio = (codigoIso: string | null): boolean =>
-  codigoIso !== null && requiresInvoiceTipoCambio({ moneda_nombre: codigoIso });
 
 /**
  * Esquema del envío. Además de los valores del formulario recibe
@@ -97,7 +88,7 @@ export const RegisterPendingInvoiceSchema = RegisterPendingInvoiceObject.extend(
     },
   )
   .superRefine((data, ctx) => {
-    if (!requiresPendingInvoiceTipoCambio(data.moneda_codigo)) return;
+    if (!requiresTipoCambio(data.moneda_codigo)) return;
     const tipoCambioError = getTipoCambioError(data.tipo_cambio, data.moneda_codigo || "unidad");
     if (tipoCambioError) {
       ctx.addIssue({ code: "custom", message: tipoCambioError, path: ["tipo_cambio"] });
@@ -105,7 +96,7 @@ export const RegisterPendingInvoiceSchema = RegisterPendingInvoiceObject.extend(
   })
   .transform(({ moneda_codigo, ...data }) => ({
     ...data,
-    tipo_cambio: requiresPendingInvoiceTipoCambio(moneda_codigo)
+    tipo_cambio: requiresTipoCambio(moneda_codigo)
       ? normalizeCapturedDecimal(data.tipo_cambio)
       : null,
   }));
