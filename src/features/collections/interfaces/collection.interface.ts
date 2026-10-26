@@ -79,9 +79,10 @@ export interface Cobro {
    */
   tipo_cambio: string;
   /**
-   * Folio de la serie `COBROS` (p. ej. "COB-000001"), solo lectura. Se asigna la
-   * primera vez que el cobro guarda líneas, aunque siga en `Borrador`; `null`
-   * sin líneas o sin serie activa en la sucursal.
+   * Folio de la serie `COBROS` (p. ej. "COB-00016"), solo lectura. El backend lo
+   * asigna al aplicar el cobro y cancelarlo no lo cambia. `null` en `Borrador`,
+   * en cobros aplicados antes de que existiera el folio y cuando la sucursal no
+   * tiene serie `COBROS` activa.
    */
   folio: string | null;
   estatus: CobroEstatus;

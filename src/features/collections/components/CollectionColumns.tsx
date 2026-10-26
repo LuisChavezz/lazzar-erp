@@ -123,7 +123,7 @@ const CobroIdCell = ({ cobro, onViewDetail }: { cobro: CobroRow } & CollectionCo
 export const getCollectionColumns = ({ onViewDetail }: CollectionColumnsCallbacks) =>
   [
     // Accessor de TEXTO para que la búsqueda global encuentre el folio; el orden
-    // sigue siendo por `id` (el folio es nulo en borradores sin líneas).
+    // sigue siendo por `id` (el folio es nulo en borradores y en cobros sin serie).
     columnHelper.accessor((row) => cobroLabel(row), {
       id: "id",
       sortingFn: (a, b) => a.original.id - b.original.id,

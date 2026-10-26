@@ -26,9 +26,10 @@ const deleteCobroDraftErrorMessage = (error: unknown): string =>
  * Elimina UN borrador sin folio (`DELETE /finanzas/cobros/{id}/`), sobre el
  * esqueleto `useCobroAction` (candado por cobro, retrieve FRESCO antes):
  *
- * - Con el cobro fresco, si ya no es `Borrador` o ya tiene folio (otra pestaña
- *   le guardó líneas), NO hace el DELETE: con folio se cancela, para no dejar
- *   un hueco en la serie.
+ * - Con el cobro fresco, si ya no es `Borrador` o ya tiene folio, NO hace el
+ *   DELETE: con folio se cancela, para no dejar un hueco en la serie. El
+ *   backend ya no asigna folio a un borrador (lo hace al aplicar); la guarda
+ *   queda por defensa, para borradores anteriores a ese cambio.
  * - Al terminar bien quita la fila del listado en caché (el detalle se cierra
  *   solo al desaparecer su fila) y relee el listado. Un borrador no movió
  *   saldos, banco ni póliza: no hay nada más que refrescar.

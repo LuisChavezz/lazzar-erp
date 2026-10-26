@@ -20,7 +20,9 @@ export const canManageCobroDraft = (
 /**
  * ¿Se ELIMINA (DELETE) en vez de cancelarse? Un `Borrador` sin folio: borrarlo
  * no deja hueco en la serie `COBROS`. Con folio se cancela, para conservar el
- * consecutivo; el backend asigna folio al guardar las primeras líneas.
+ * consecutivo. El backend ya no produce borradores con folio (lo asigna al
+ * aplicar), pero la regla se conserva por defensa: un borrador de antes de ese
+ * cambio, o uno que vuelva a traer folio, se cancela en lugar de borrarse.
  */
 export const isDeletableCobroDraft = (cobro: Pick<Cobro, "estatus" | "folio">): boolean =>
   cobro.estatus === "Borrador" && !cobro.folio;

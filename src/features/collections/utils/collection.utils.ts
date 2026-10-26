@@ -31,7 +31,8 @@ export const buildCxcIndex = (cuentas: CuentaPorCobrar[]): Map<number, CuentaPor
 
 /**
  * Identificador visible del cobro: su `folio` de la serie `COBROS`, o `#id`
- * mientras no tenga (borrador sin líneas, sucursal sin serie, cobros previos).
+ * mientras no tenga (borrador, sucursal sin serie, cobros aplicados antes del
+ * folio).
  */
 export const cobroLabel = (cobro: Pick<Cobro, "id" | "folio">): string => cobro.folio || `#${cobro.id}`;
 
