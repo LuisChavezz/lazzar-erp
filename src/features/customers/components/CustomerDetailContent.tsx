@@ -116,7 +116,7 @@ export const CustomerDetailContent = ({ customerId }: CustomerDetailContentProps
         {facturamaNotice && (
           <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400">
             <ExclamationTriangleIcon className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
-            {facturamaNotice.text}
+            {facturamaNotice}
           </span>
         )}
       </div>

@@ -15,49 +15,36 @@ const FACTURAMA_FALTANTE_LABELS: Record<FacturamaFaltante, string> = {
   codigo_postal: "código postal",
 };
 
-export const FACTURAMA_SIN_VERIFICAR_LABEL = "Sin verificar en Facturama";
-export const FACTURAMA_PENDIENTE_LABEL = "Pendiente de subir a Facturama";
+const FACTURAMA_SIN_VERIFICAR_LABEL = "Sin verificar en Facturama";
+const FACTURAMA_PENDIENTE_LABEL = "Pendiente de subir a Facturama";
 const FACTURAMA_PENDIENTE_HINT = "guarda el cliente de nuevo";
 
 /**
  * "correo, código postal". Un campo que el backend agregue después y no esté en
  * el mapa se muestra con su nombre crudo en vez de perderse.
  */
-export const formatFacturamaFaltantes = (faltantes: readonly string[]): string =>
+const formatFacturamaFaltantes = (faltantes: readonly string[]): string =>
   faltantes
     .map((campo) => FACTURAMA_FALTANTE_LABELS[campo as FacturamaFaltante] ?? campo)
     .join(", ");
 
-export interface FacturamaVerificationNotice {
-  /** "Sin verificar en Facturama" o "Pendiente de subir a Facturama". */
-  label: string;
-  /** "Falta: correo" o "guarda el cliente de nuevo". */
-  detail: string;
-  /** Texto completo, para el tooltip y el chip. */
-  text: string;
-}
-
 /**
- * Aviso del cliente, o `null` si no hay nada que avisar (verificado, o su
- * empresa no usa Facturama). Un `false` sin faltantes es un cliente completo
- * que nunca se subió: guardarlo de nuevo lo sube.
+ * Aviso del cliente (texto completo, para el tooltip y el chip), o `null` si no
+ * hay nada que avisar (verificado, o su empresa no usa Facturama). Un `false`
+ * sin faltantes es un cliente completo que nunca se subió: guardarlo de nuevo
+ * lo sube.
  */
 export const getFacturamaVerificationNotice = (
   customer: Pick<Customer, "facturama_verificado" | "facturama_faltantes">
-): FacturamaVerificationNotice | null => {
+): string | null => {
   if (customer.facturama_verificado !== false) {
     return null;
   }
   const faltantes = customer.facturama_faltantes ?? [];
   if (faltantes.length === 0) {
-    return {
-      label: FACTURAMA_PENDIENTE_LABEL,
-      detail: FACTURAMA_PENDIENTE_HINT,
-      text: `${FACTURAMA_PENDIENTE_LABEL}; ${FACTURAMA_PENDIENTE_HINT}`,
-    };
+    return `${FACTURAMA_PENDIENTE_LABEL}; ${FACTURAMA_PENDIENTE_HINT}`;
   }
-  const detail = `Falta: ${formatFacturamaFaltantes(faltantes)}`;
-  return { label: FACTURAMA_SIN_VERIFICAR_LABEL, detail, text: `${FACTURAMA_SIN_VERIFICAR_LABEL}. ${detail}` };
+  return `${FACTURAMA_SIN_VERIFICAR_LABEL}. Falta: ${formatFacturamaFaltantes(faltantes)}`;
 };
 
 /** Aviso del formulario: guardar sí se puede, pero así no se sube a Facturama. */

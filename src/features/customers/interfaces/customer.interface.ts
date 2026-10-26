@@ -6,16 +6,13 @@ import { RegimenFiscal, UsoCfdi } from "../../sat/interfaces/sat-info.interface"
  * en que el backend los reporta (`terceros/facturama.py`, `faltantes()`).
  * `razon_social` solo falta si también falta `nombre`.
  */
-export const FACTURAMA_FALTANTES = [
-  "correo",
-  "rfc",
-  "razon_social",
-  "sat_regimen_fiscal",
-  "sat_uso_cfdi",
-  "codigo_postal",
-] as const;
-
-export type FacturamaFaltante = (typeof FACTURAMA_FALTANTES)[number];
+export type FacturamaFaltante =
+  | "correo"
+  | "rfc"
+  | "razon_social"
+  | "sat_regimen_fiscal"
+  | "sat_uso_cfdi"
+  | "codigo_postal";
 
 export interface Customer {
   id: string;

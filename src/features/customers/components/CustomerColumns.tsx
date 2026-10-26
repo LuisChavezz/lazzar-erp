@@ -114,8 +114,8 @@ const RazonSocialCell = ({
         <span
           className="inline-flex shrink-0 text-amber-600 dark:text-amber-400"
           role="img"
-          aria-label={facturamaNotice.text}
-          title={facturamaNotice.text}
+          aria-label={facturamaNotice}
+          title={facturamaNotice}
         >
           <ExclamationTriangleIcon className="w-3.5 h-3.5" aria-hidden="true" />
         </span>
