@@ -61,8 +61,5 @@ export const getFacturamaSaveWarning = (
   if (customer.facturama_verificado !== false) {
     return null;
   }
-  const faltantes = customer.facturama_faltantes ?? [];
-  return faltantes.length === 0
-    ? `Cliente guardado, pero no se subió a Facturama; ${FACTURAMA_PENDIENTE_HINT}`
-    : `Cliente guardado, pero no se subió a Facturama: falta ${formatFacturamaFaltantes(faltantes)}`;
+  return `Cliente guardado. ${getFacturamaVerificationNotice(customer)}`;
 };
