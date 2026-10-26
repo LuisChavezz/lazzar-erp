@@ -7,6 +7,7 @@ import { FormInput } from "@/src/components/FormInput";
 import { FormCancelButton, FormSubmitButton } from "@/src/components/FormButtons";
 import { FormErrorBanner } from "@/src/components/FormErrorBanner";
 import { useDialogSession } from "@/src/hooks/useDialogSession";
+import { useFormFieldErrors } from "@/src/hooks/useFormFieldErrors";
 import { sanitizeDecimalInput } from "@/src/utils/decimal";
 import { useEmitInvoice } from "../hooks/useEmitInvoice";
 import { EmitInvoiceFormSchema } from "../schemas/invoice-emit.schema";
@@ -117,7 +118,13 @@ function InvoiceEmitForm({ target, isPending, onClose, onSubmit }: InvoiceEmitFo
   const lockedByCfdi = isInvoiceTipoCambioLockedByCfdi(target);
   const needsTipoCambio = requiresInvoiceTipoCambio(target) && !lockedByCfdi;
   const [tipoCambio, setTipoCambio] = useState(() => tipoCambioInputValue(target.tipo_cambio));
-  const [tipoCambioError, setTipoCambioError] = useState<string | null>(null);
+  const {
+    getError,
+    setClientFieldError,
+    setServerFieldError,
+    clearFieldErrors,
+    clearServerErrors,
+  } = useFormFieldErrors<"tipo_cambio">();
   const [submitError, setSubmitError] = useState<string | null>(null);
   const tipoCambioId = `invoice-emit-tipo-cambio-${target.id}`;
   const tipoCambioHelpId = `${tipoCambioId}-help`;
@@ -130,12 +137,13 @@ function InvoiceEmitForm({ target, isPending, onClose, onSubmit }: InvoiceEmitFo
       tipo_cambio: tipoCambio,
     });
     if (!parsed.success) {
-      setTipoCambioError(parsed.error.issues[0]?.message ?? "Tipo de cambio inválido");
+      setClientFieldError("tipo_cambio", parsed.error.issues[0]?.message ?? "Tipo de cambio inválido");
       return;
     }
+    clearServerErrors();
     setSubmitError(null);
     onSubmit(parsed.data.tipo_cambio, {
-      onFieldError: setTipoCambioError,
+      onFieldError: (message) => setServerFieldError("tipo_cambio", message),
       onError: setSubmitError,
     });
   };
@@ -161,10 +169,10 @@ function InvoiceEmitForm({ target, isPending, onClose, onSubmit }: InvoiceEmitFo
             autoComplete="off"
             value={tipoCambio}
             disabled={isPending}
-            error={tipoCambioError ? { message: tipoCambioError } : undefined}
+            error={getError("tipo_cambio")}
             onChange={(event) => {
               setTipoCambio(sanitizeDecimalInput(event.target.value, 6));
-              if (tipoCambioError) setTipoCambioError(null);
+              clearFieldErrors("tipo_cambio");
             }}
           />
           <p id={tipoCambioHelpId} className="mt-1 ml-1 text-xs text-slate-500 dark:text-slate-400">
