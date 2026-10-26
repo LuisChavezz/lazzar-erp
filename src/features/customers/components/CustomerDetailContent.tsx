@@ -105,8 +105,9 @@ export const CustomerDetailContent = ({ customerId }: CustomerDetailContentProps
 
       <div className="space-y-2">
         <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{data.nombre}</h1>
+        {/* Sin correo (es opcional) no queda un "Razón · " colgando. */}
         <p className="text-sm text-slate-500 dark:text-slate-400">
-          {data.razon_social} · {data.correo}
+          {[data.razon_social, data.correo].filter(Boolean).join(" · ")}
         </p>
       </div>
 
