@@ -31,6 +31,15 @@ export interface Customer {
 }
 
 /**
+ * Respuesta de `POST /terceros/clientes/`: el cliente más
+ * `facturama_sincronizado`, `true` si quedó en el catálogo de clientes de
+ * Facturama y `false` si la empresa no usa Facturama.
+ */
+export interface CustomerCreateResponse extends Customer {
+  facturama_sincronizado?: boolean;
+}
+
+/**
  * Pedido resumido dentro de `resumen_comercial` (`pedidos_recientes` y
  * `ultimo_pedido`). Lo arma el backend con `.values()` fuera de un serializer:
  * `gran_total` llega como número JSON (no string decimal), `estatus` es el

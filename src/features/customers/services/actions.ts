@@ -2,6 +2,7 @@ import { v1_api } from "@/src/api/v1.api";
 import {
   Customer,
   CustomerCreate,
+  CustomerCreateResponse,
   CustomerDetail,
   CustomerRfcVerification,
   VerifyCustomerRfcParams,
@@ -30,8 +31,8 @@ export const getCustomer = async (id: number): Promise<CustomerDetail> => {
   return response.data;
 };
 
-export const createCustomer = async (customer: CustomerCreate): Promise<Customer> => {
-  const response = await v1_api.post<Customer>("/terceros/clientes/", customer);
+export const createCustomer = async (customer: CustomerCreate): Promise<CustomerCreateResponse> => {
+  const response = await v1_api.post<CustomerCreateResponse>("/terceros/clientes/", customer);
   return response.data;
 };
 
