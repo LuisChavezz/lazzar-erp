@@ -4,6 +4,7 @@ import type {
   Invoice,
   InvoiceCancelResponse,
   InvoiceCfdiEmailResponse,
+  InvoiceEmitResponse,
   InvoiceListRow,
 } from "../interfaces/invoice.interface";
 import type {
@@ -109,6 +110,39 @@ export const cancelInvoice = async ({
     `/finanzas/facturas/${id}/cancelar/`,
     motivo ? { motivo } : {},
   );
+  return data;
+};
+
+/**
+ * Edita una factura (`PATCH /finanzas/facturas/{id}/`, responde `200` con la
+ * factura completa). Por ahora solo `tipo_cambio`, que el backend acepta
+ * mientras la factura es `Borrador` (`> 0`, hasta 6 decimales); no debe
+ * mandarse en MXN, donde se guardaría sin efecto. El error se deja propagar:
+ * los `400` traen el motivo bajo `tipo_cambio` (inválido, o la factura ya no
+ * es `Borrador`) o bajo `estatus` (cancelada).
+ */
+export const patchInvoice = async ({
+  id,
+  tipo_cambio,
+}: {
+  id: number;
+  tipo_cambio: string;
+}): Promise<Invoice> => {
+  const { data } = await v1_api.patch<Invoice>(`/finanzas/facturas/${id}/`, { tipo_cambio });
+  return data;
+};
+
+/**
+ * Emite una factura `Borrador` (`POST /finanzas/facturas/{id}/emitir/`): pasa
+ * a `Emitida`, se fecha hoy, toma el vencimiento del crédito del cliente si no
+ * traía uno, y crea su cuenta por cobrar y su póliza. No lleva cuerpo. Exige
+ * `E-FIN-FACTURAS` (`403` sin él). El error se deja propagar: los `400` traen
+ * el motivo bajo `tipo_cambio` (fuera de MXN sin tipo de cambio), `estatus`
+ * (eliminada o ya no `Borrador`), `total` (en 0) o las llaves de la
+ * configuración contable de la póliza.
+ */
+export const emitInvoice = async (id: number): Promise<InvoiceEmitResponse> => {
+  const { data } = await v1_api.post<InvoiceEmitResponse>(`/finanzas/facturas/${id}/emitir/`);
   return data;
 };
 

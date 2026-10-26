@@ -3,8 +3,9 @@
  * la facturación por piezas crea la factura en `Borrador` y
  * `registrar-pendiente-cobro` (por monto) la crea ya `Emitida`.
  * `POST /finanzas/facturas/{id}/emitir/` pasa una `Borrador` a `Emitida` (crea
- * su CxC y su póliza) y `POST /finanzas/facturas/{id}/cancelar/` lleva una
- * `Borrador` o una `Emitida` a `Cancelada`.
+ * su CxC y su póliza; "Emitir factura" del detalle) y
+ * `POST /finanzas/facturas/{id}/cancelar/` lleva una `Borrador` o una
+ * `Emitida` a `Cancelada`.
  *
  * El timbrado del CFDI (`POST /finanzas/facturas/{id}/timbrar/`) NO es un
  * estatus: no cambia `estatus`, solo llena `cfdi_uuid`, `facturama_id` y
@@ -100,6 +101,40 @@ export interface Invoice {
    * el retrieve y el listado (no el desglose).
    */
   cfdi_cancelacion_solicitada: boolean;
+  /**
+   * Pesos por unidad de `moneda` (`DecimalField(18, 6)`, string con 6
+   * decimales: "18.250000"); `null` mientras no se capture. Solo lo trae el
+   * retrieve (ni el listado ni el desglose). En MXN el backend lo ignora (usa
+   * 1), así que solo se manda fuera de MXN. Se captura por
+   * `PATCH /finanzas/facturas/{id}/` mientras la factura es `Borrador`; fuera de
+   * MXN, `emitir/` y `timbrar/` lo exigen. Una factura ya emitida sin él (las de
+   * `registrar-pendiente-cobro` y las anteriores a EC-581) no puede corregirse
+   * por API: un PATCH que lo cambie responde `400`.
+   */
+  tipo_cambio: string | null;
+}
+
+/**
+ * Respuesta de `POST /finanzas/facturas/{id}/emitir/`: la factura ya `Emitida`
+ * (`FacturaSerializer`, como el retrieve), la cuenta por cobrar que creó
+ * (saldo = total, en la moneda de la factura) y su póliza, `null` si la
+ * empresa no contabiliza.
+ */
+export interface InvoiceEmitResponse {
+  factura: Invoice;
+  cuenta_por_cobrar: {
+    id: number;
+    estatus: string;
+    saldo: string;
+    referencia: string | null;
+    fecha_vencimiento: string | null;
+  };
+  poliza: {
+    id: number;
+    folio: string | null;
+    tipo: string;
+    estatus: string;
+  } | null;
 }
 
 /**
