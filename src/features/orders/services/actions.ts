@@ -10,7 +10,10 @@ import type {
   PedidoProgramarResponse,
 } from "../interfaces/pedido-programacion.interface";
 import type { PedidoRecompraResponse } from "../interfaces/pedido-recompra.interface";
-import type { PedidoCancelResponse } from "../interfaces/pedido-cancel.interface";
+import type {
+  PedidoCancelPayload,
+  PedidoCancelResponse,
+} from "../interfaces/pedido-cancel.interface";
 import type {
   VincularSkuMuestraPayload,
   VincularSkuMuestraResponse,
@@ -211,11 +214,18 @@ export const updatePedidoMesaControl = async (
 };
 
 /**
- * Cancela un pedido (`POST /ventas/pedidos/{id}/cancelar/`, sin cuerpo). Lo
- * deja CANCELADO y dado de baja (`activo = false`), así que desde ese momento
- * ya no se lista y su detalle responde 404. Ver `PedidoCancelResponse`.
+ * Cancela un pedido (`POST /ventas/pedidos/{id}/cancelar/`, con motivo
+ * obligatorio). Lo deja CANCELADO y dado de baja (`activo = false`), así que
+ * desde ese momento ya no se lista y su detalle responde 404; además devuelve
+ * su inventario y libera sus reservas. Ver `PedidoCancelResponse`.
  */
-export const cancelPedido = async (id: number): Promise<PedidoCancelResponse> => {
-  const response = await v1_api.post<PedidoCancelResponse>(`/ventas/pedidos/${id}/cancelar/`);
+export const cancelPedido = async (
+  id: number,
+  payload: PedidoCancelPayload,
+): Promise<PedidoCancelResponse> => {
+  const response = await v1_api.post<PedidoCancelResponse>(
+    `/ventas/pedidos/${id}/cancelar/`,
+    payload,
+  );
   return response.data;
 };

@@ -7,6 +7,7 @@ import { dropQueriesWhenUnobserved } from "@/src/hooks/dropQueriesWhenUnobserved
 import { useMutationLock } from "@/src/hooks/useMutationLock";
 import { toastWarning } from "@/src/utils/toastWarning";
 import { drfActionErrorMessage, isNotFoundError } from "@/src/utils/drfWriteErrors";
+import { drfFieldMessage } from "@/src/utils/firstDrfFieldMessage";
 import { cancelPedido } from "../services/actions";
 import type { PedidoCancelResponse } from "../interfaces/pedido-cancel.interface";
 import { PEDIDO_KPIS_QUERY_KEY } from "../constants/pedidoKpis";
@@ -15,6 +16,12 @@ import { orderStockDetailQueryKey } from "./useOrderStockDetail";
 import { pedidoDetailQueryKey } from "./usePedidoDetail";
 import { pedidoMesaControlContextoQueryKey } from "./usePedidoMesaControlContexto";
 import { pedidoTrazabilidadQueryKey } from "./usePedidoTrazabilidad";
+
+interface CancelPedidoVariables {
+  /** Folio (o `#id`) para el toast. */
+  label: string;
+  motivo: string;
+}
 
 /** Candado de la cancelación, ÚNICO por pedido (ver `useCancelPedido`). */
 export const cancelPedidoMutationKey = (pedidoId: number) =>
@@ -79,7 +86,8 @@ const cancelPedidoErrorMessage = (error: unknown): string =>
  * detalle), con un aviso en vez del toast de éxito.
  *
  * Errores: el mensaje del backend tal cual (`pedido` con los documentos vivos,
- * `permiso`, `estatus`), en un toast. Esos 400 no cambian nada.
+ * `permiso`, `estatus`), en un toast. El de `motivo` NO sale en toast: lo pinta
+ * el diálogo bajo su campo. Esos 400 no cambian nada.
  */
 export const useCancelPedido = (pedidoId: number) => {
   const queryClient = useQueryClient();
@@ -101,11 +109,11 @@ export const useCancelPedido = (pedidoId: number) => {
     ]);
   };
 
-  const mutation = useMutation<PedidoCancelResponse, unknown, string>({
+  const mutation = useMutation<PedidoCancelResponse, unknown, CancelPedidoVariables>({
     mutationKey,
-    mutationFn: () => cancelPedido(pedidoId),
+    mutationFn: ({ motivo }) => cancelPedido(pedidoId, { motivo }),
     onMutate: () => queryClient.cancelQueries({ predicate: isRecordQuery }),
-    onSuccess: async (_response, label) => {
+    onSuccess: async (_response, { label }) => {
       toast.success(`Pedido ${label} cancelado`);
       await forgetPedido();
     },
@@ -115,28 +123,35 @@ export const useCancelPedido = (pedidoId: number) => {
         await forgetPedido();
         return;
       }
+      if (drfFieldMessage(error, "motivo")) return;
       toast.error(cancelPedidoErrorMessage(error));
     },
   });
 
   /**
    * Dispara la cancelación salvo que ya haya una en vuelo para ESTE pedido
-   * (consulta síncrona a la caché). `label` es el folio para el toast.
-   * `onSuccess` corre tras cancelar (y releer los listados), también si el
-   * pedido ya estaba cancelado (404); `onSettled`, con cualquier resultado.
+   * (consulta síncrona a la caché). `label` es el folio para el toast y
+   * `motivo` va ya validado y recortado. `onSuccess` corre tras cancelar (y
+   * releer los listados), también si el pedido ya estaba cancelado (404);
+   * `onError`, con cualquier otro fallo (el toast ya salió, salvo el de
+   * `motivo`).
    */
   const cancel = (
     label: string,
-    options: { onSuccess?: () => void; onSettled?: () => void } = {},
+    motivo: string,
+    options: { onSuccess?: () => void; onError?: (error: unknown) => void } = {},
   ) => {
     if (!isIdle()) return;
-    mutation.mutate(label, {
-      onSuccess: options.onSuccess,
-      onError: (error) => {
-        if (isNotFoundError(error)) options.onSuccess?.();
+    mutation.mutate(
+      { label, motivo },
+      {
+        onSuccess: options.onSuccess,
+        onError: (error) => {
+          if (isNotFoundError(error)) options.onSuccess?.();
+          else options.onError?.(error);
+        },
       },
-      onSettled: options.onSettled,
-    });
+    );
   };
 
   return { cancel, isCancelling };
