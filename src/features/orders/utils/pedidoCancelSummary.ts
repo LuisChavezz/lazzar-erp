@@ -24,8 +24,9 @@ const piezasDevueltas = (inventarioDevuelto: unknown): number => {
 /**
  * Toast de éxito de "Cancelar pedido": "Pedido P-00083 cancelado · 1,510 piezas
  * devueltas, 1 reserva liberada". Cada parte se omite si es cero, y sin
- * ninguna queda solo "Pedido … cancelado". El folio sale de la respuesta y,
- * si viniera vacío, de `fallbackLabel` (el que mostró el diálogo).
+ * ninguna queda solo "Pedido … cancelado". El folio sale de la respuesta; si
+ * viniera vacío, del que mostró el diálogo, y sin ninguno, `#id`: siempre hay
+ * con qué nombrarlo.
  *
  * NUNCA lanza: corre en el `onSuccess` de una cancelación que ya ocurrió, así
  * que una respuesta incompleta (p. ej. de un backend sin los campos de
@@ -33,11 +34,12 @@ const piezasDevueltas = (inventarioDevuelto: unknown): number => {
  */
 export const pedidoCancelSummary = (
   response: Partial<PedidoCancelResponse> | null | undefined,
-  fallbackLabel: string,
+  pedido: { id: number; folio: string | null },
 ): string => {
   const data = response && typeof response === "object" ? response : {};
-  const folio = (typeof data.folio === "string" && data.folio) || fallbackLabel;
-  const head = folio ? `Pedido ${folio} cancelado` : "Pedido cancelado";
+  const label =
+    (typeof data.folio === "string" && data.folio) || pedido.folio || `#${pedido.id}`;
+  const head = `Pedido ${label} cancelado`;
   const piezas = piezasDevueltas(data.inventario_devuelto);
   const reservas =
     typeof data.reservas_liberadas === "number" && Number.isFinite(data.reservas_liberadas)

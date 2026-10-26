@@ -11,9 +11,8 @@ import { isDrfActionRejection } from "@/src/utils/drfWriteErrors";
 import { useCancelPedido } from "../hooks/useCancelPedido";
 import {
   PEDIDO_CANCEL_MOTIVO_MAX,
-  PedidoCancelFormFields,
   PedidoCancelFormSchema,
-  clampPedidoCancelMotivo,
+  fitPedidoCancelMotivo,
   pedidoCancelMotivoLength,
   type PedidoCancelFormValues,
 } from "../schemas/pedido-cancel.schema";
@@ -75,7 +74,7 @@ export function PedidoCancelDialog({ pedido, onClose, onCancelled }: PedidoCance
         isCancelling={isCancelling}
         onClose={onClose}
         onSubmit={(motivo, handlers) =>
-          cancel(label, motivo, {
+          cancel(session.snapshot?.folio ?? null, motivo, {
             onSuccess: () => {
               onCancelled?.();
               onClose();
@@ -132,12 +131,6 @@ function PedidoCancelForm({ isCancelling, onClose, onSubmit }: PedidoCancelFormP
     },
   });
 
-  const validateMotivo = (value: string) => {
-    const parsed = PedidoCancelFormFields.motivo.safeParse(value);
-    if (parsed.success) clearClientFieldError("motivo");
-    else setClientFieldError("motivo", parsed.error.issues[0]?.message ?? "Motivo inválido");
-  };
-
   const handleFormSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     event.stopPropagation();
@@ -150,7 +143,10 @@ function PedidoCancelForm({ isCancelling, onClose, onSubmit }: PedidoCancelFormP
         {(field) => (
           <div>
             {/* Sin `maxLength` nativo: cuenta otra cosa que el backend (ver
-                `PEDIDO_CANCEL_MOTIVO_MAX`); el tope lo pone `clampPedidoCancelMotivo`. */}
+                `PEDIDO_CANCEL_MOTIVO_MAX`); el tope lo pone `fitPedidoCancelMotivo`.
+                Sin validación en blur (como `PurchaseOrderCancelDialog`): al
+                pulsar "Volver" o al cerrar, pintaría "Indica el motivo…" con el
+                campo vacío. Se valida al enviar. */}
             <FormTextarea
               label="Motivo de cancelación"
               name={field.name}
@@ -161,13 +157,19 @@ function PedidoCancelForm({ isCancelling, onClose, onSubmit }: PedidoCancelFormP
               disabled={isCancelling}
               error={getError("motivo")}
               onChange={(event) => {
-                field.handleChange(clampPedidoCancelMotivo(event.target.value));
+                const textarea = event.currentTarget;
+                const fitted = fitPedidoCancelMotivo(field.state.value, textarea.value);
+                field.handleChange(fitted ? fitted.value : textarea.value);
                 clearFieldErrors("motivo");
+                // React reescribe el valor del textarea y el cursor salta al
+                // final: se devuelve al final de lo que sí entró.
+                if (fitted) {
+                  requestAnimationFrame(() =>
+                    textarea.setSelectionRange(fitted.caret, fitted.caret),
+                  );
+                }
               }}
-              onBlur={() => {
-                field.handleBlur();
-                validateMotivo(field.state.value);
-              }}
+              onBlur={field.handleBlur}
             />
             <p className="mt-1 text-right text-[11px] tabular-nums text-slate-400 dark:text-slate-500">
               {pedidoCancelMotivoLength(field.state.value)}/{PEDIDO_CANCEL_MOTIVO_MAX}

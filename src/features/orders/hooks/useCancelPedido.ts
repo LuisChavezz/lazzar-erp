@@ -20,11 +20,16 @@ import { pedidoTrazabilidadQueryKey } from "./usePedidoTrazabilidad";
 import { pedidoCancelSummary } from "../utils/pedidoCancelSummary";
 
 interface CancelPedidoVariables {
-  /** Folio (o `#id`) para el toast. */
-  label: string;
+  /** Folio que mostró quien llama, para el toast si la respuesta no lo trae. */
+  folio: string | null;
   motivo: string;
-  /** Quien llamó pinta el error de `motivo` bajo su campo: sin toast. */
-  handlesMotivoError: boolean;
+  /**
+   * Quien llama pinta el error de `motivo` bajo su campo: lo recibe aquí y no
+   * sale en toast. Sin él, ese error sale en toast como los demás.
+   */
+  onMotivoError?: (message: string) => void;
+  /** Cualquier otro fallo (no 404), después de su toast. */
+  onError?: (error: unknown) => void;
 }
 
 /** Candado de la cancelación, ÚNICO por pedido (ver `useCancelPedido`). */
@@ -77,8 +82,9 @@ const cancelPedidoErrorMessage = (error: unknown): string =>
  * volvería a pedir). Se invalidan las existencias (`invalidateStockQueries`), los listados
  * (`["orders"]` por prefijo: Mesa de Control, Programados, Mis pedidos y los
  * selectores de otros módulos), los indicadores de "Mis pedidos" y los pedidos
- * especiales. La mutación sigue "pending" hasta que los listados montados se
- * releen, así que el diálogo se cierra con la fila ya fuera.
+ * especiales. Nada de eso se espera: el toast sale en cuanto el POST responde
+ * y el diálogo se cierra sin aguardar a que los listados se relean (la fila
+ * sale cuando llega su relectura).
  *
  * Sus peticiones en vuelo se cancelan también ANTES del POST (`onMutate`): una
  * lectura del detalle que respondiera 404 a media cancelación cambiaría la
@@ -91,8 +97,8 @@ const cancelPedidoErrorMessage = (error: unknown): string =>
  *
  * Errores: el mensaje del backend tal cual (`pedido` con los documentos vivos,
  * `permiso`, `estatus`, `motivo`), en un toast. El de `motivo` no sale en
- * toast si quien llama lo pinta bajo su campo (`onMotivoError`). Esos 400 no
- * cambian nada.
+ * toast si quien llama lo pinta bajo su campo (`onMotivoError`): se decide
+ * SOLO en el `onError` de la mutación. Esos 400 no cambian nada.
  */
 export const useCancelPedido = (pedidoId: number) => {
   const queryClient = useQueryClient();
@@ -100,7 +106,11 @@ export const useCancelPedido = (pedidoId: number) => {
   const { isRunning: isCancelling, isIdle } = useMutationLock(mutationKey);
   const isRecordQuery = isPedidoRecordQuery(pedidoId);
 
-  /** El pedido ya no existe: fuera sus consultas y releer lo que lo lista. */
+  /**
+   * El pedido ya no existe: fuera sus consultas y releer lo que lo lista. Solo
+   * espera lo local (cancelar y sacar sus consultas); las relecturas corren
+   * sin `await`.
+   */
   const forgetPedido = async () => {
     await queryClient.cancelQueries({ predicate: isRecordQuery });
     dropQueriesWhenUnobserved(
@@ -109,48 +119,51 @@ export const useCancelPedido = (pedidoId: number) => {
     );
     // Inventario: la cancelación devuelve existencias (movimiento ENTRADA) y
     // libera reservas. Fuera las consultas de ESTE pedido (su "Revisar
-    // inventario" ya salió arriba y releerlo daría 404). Sin `await`: la
-    // mutación solo espera a los listados que sacan la fila.
+    // inventario" ya salió arriba y releerlo daría 404).
     void invalidateStockQueries(queryClient, { exclude: isRecordQuery });
-    await Promise.all([
-      queryClient.invalidateQueries({ queryKey: ordersQueryKey() }),
-      queryClient.invalidateQueries({ queryKey: PEDIDO_KPIS_QUERY_KEY }),
-      queryClient.invalidateQueries({ queryKey: ["special-orders"] }),
-    ]);
+    void queryClient.invalidateQueries({ queryKey: ordersQueryKey() });
+    void queryClient.invalidateQueries({ queryKey: PEDIDO_KPIS_QUERY_KEY });
+    void queryClient.invalidateQueries({ queryKey: ["special-orders"] });
   };
 
   const mutation = useMutation<PedidoCancelResponse, unknown, CancelPedidoVariables>({
     mutationKey,
     mutationFn: ({ motivo }) => cancelPedido(pedidoId, { motivo }),
     onMutate: () => queryClient.cancelQueries({ predicate: isRecordQuery }),
-    // La caché se limpia ANTES del toast: el pedido ya se canceló, así que la
-    // fila tiene que salir pase lo que pase (`pedidoCancelSummary` no lanza).
-    onSuccess: async (response, { label }) => {
-      await forgetPedido();
-      toast.success(pedidoCancelSummary(response, label));
+    // El toast sale en cuanto el POST responde; la limpieza corre en `finally`
+    // porque el pedido ya se canceló y su fila tiene que salir pase lo que pase.
+    onSuccess: async (response, { folio }) => {
+      try {
+        toast.success(pedidoCancelSummary(response, { id: pedidoId, folio }));
+      } finally {
+        await forgetPedido();
+      }
     },
-    onError: async (error, { handlesMotivoError }) => {
+    onError: async (error, { onMotivoError, onError }) => {
       if (isNotFoundError(error)) {
         toastWarning(PEDIDO_ALREADY_CANCELLED_MESSAGE);
         await forgetPedido();
         return;
       }
-      if (handlesMotivoError && drfFieldMessage(error, "motivo")) return;
+      const motivoMessage = onMotivoError ? drfFieldMessage(error, "motivo") : undefined;
+      if (onMotivoError && motivoMessage) {
+        onMotivoError(motivoMessage);
+        return;
+      }
       toast.error(cancelPedidoErrorMessage(error));
+      onError?.(error);
     },
   });
 
   /**
    * Dispara la cancelación salvo que ya haya una en vuelo para ESTE pedido
-   * (consulta síncrona a la caché). `label` es el folio para el toast y
-   * `motivo` va ya validado y recortado. `onSuccess` corre tras cancelar (y
-   * releer los listados), también si el pedido ya estaba cancelado (404).
-   * `onMotivoError` recibe el mensaje del backend sobre `motivo` (y entonces
-   * no hay toast); sin él, ese error sale en toast como los demás. `onError`,
-   * con cualquier otro fallo (su toast ya salió).
+   * (consulta síncrona a la caché). `folio` es el que se mostró, para el
+   * toast, y `motivo` va ya validado y recortado. `onSuccess` corre tras
+   * cancelar, también si el pedido ya estaba cancelado (404); los errores se
+   * reparten en el `onError` de la mutación (`onMotivoError`/`onError`).
    */
   const cancel = (
-    label: string,
+    folio: string | null,
     motivo: string,
     options: {
       onSuccess?: () => void;
@@ -161,17 +174,11 @@ export const useCancelPedido = (pedidoId: number) => {
     if (!isIdle()) return;
     const { onSuccess, onError, onMotivoError } = options;
     mutation.mutate(
-      { label, motivo, handlesMotivoError: onMotivoError !== undefined },
+      { folio, motivo, onMotivoError, onError },
       {
         onSuccess,
         onError: (error) => {
-          if (isNotFoundError(error)) {
-            onSuccess?.();
-            return;
-          }
-          const motivoMessage = onMotivoError ? drfFieldMessage(error, "motivo") : undefined;
-          if (motivoMessage) onMotivoError?.(motivoMessage);
-          else onError?.(error);
+          if (isNotFoundError(error)) onSuccess?.();
         },
       },
     );
