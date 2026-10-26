@@ -591,26 +591,24 @@ export default function CustomerForm({
         </section>
         ) : null}
 
-        {formError ? (
-          <div className="mb-4">
-            <FormErrorBanner message={formError} />
-          </div>
-        ) : null}
+        <div className="space-y-4 pb-8">
+          <FormErrorBanner message={formError} />
 
-        <div className="flex justify-end gap-3 pb-8">
-          <FormCancelButton
-            onClick={() => {
-              handleReset();
-              handleResetRfcValidation();
-            }}
-            disabled={isPending}
-          />
-          <FormSubmitButton
-            isPending={isPending}
-            loadingLabel={isEditing ? "Actualizando..." : "Guardando..."}
-          >
-            {isEditing ? "Actualizar Cliente" : "Registrar Cliente"}
-          </FormSubmitButton>
+          <div className="flex justify-end gap-3">
+            <FormCancelButton
+              onClick={() => {
+                handleReset();
+                handleResetRfcValidation();
+              }}
+              disabled={isPending}
+            />
+            <FormSubmitButton
+              isPending={isPending}
+              loadingLabel={isEditing ? "Actualizando..." : "Guardando..."}
+            >
+              {isEditing ? "Actualizar Cliente" : "Registrar Cliente"}
+            </FormSubmitButton>
+          </div>
         </div>
       </fieldset>
     </form>
