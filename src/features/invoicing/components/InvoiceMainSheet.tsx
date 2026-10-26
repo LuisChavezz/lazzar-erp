@@ -2,6 +2,7 @@
 
 import {
   BanIcon,
+  CheckCircleIcon,
   ClientesIcon,
   DownloadIcon,
   EmailIcon,
@@ -64,6 +65,8 @@ import {
 import { InvoiceConceptsSection } from "./InvoiceConceptsSection";
 import { InvoiceCancelDialog } from "./InvoiceCancelDialog";
 import { InvoiceStampDialog } from "./InvoiceStampDialog";
+import { InvoiceEmitDialog } from "./InvoiceEmitDialog";
+import { canEmitInvoice, getInvoiceEmitBlockReason } from "../utils/invoiceEmission";
 import { InvoiceCfdiEmailDialog } from "./InvoiceCfdiEmailDialog";
 import { getInvoiceCfdiEmailAvailability } from "../utils/invoiceCfdiEmail";
 import { DocumentActionWithDialog } from "./DocumentActionWithDialog";
@@ -77,7 +80,7 @@ interface InvoiceMainSheetProps {
   invoice: Invoice | null;
   /** ¿El usuario puede abrir esta ruta? (regla del proxy). */
   canOpen: (pathname: string) => boolean;
-  /** Usuario de la sesión (permisos), para las reglas de "Cancelar factura" y "Timbrar". */
+  /** Usuario de la sesión (permisos), para las reglas de "Emitir", "Cancelar factura" y "Timbrar". */
   user: PermissionContext | null | undefined;
 }
 
@@ -87,7 +90,9 @@ const satKeyLabel = (key: InvoiceDesgloseSatKey | null): string =>
 /**
  * Acciones del documento: las MISMAS reglas que el menú de la fila del
  * listado (`useInvoiceDocumentActions`), sobre el mismo `Invoice` del retrieve.
- * "Timbrar" y "Enviar CFDI" solo existen aquí, nunca en el menú del listado. Debajo de los
+ * "Emitir factura", "Timbrar" y "Enviar CFDI" solo existen aquí, nunca en el
+ * menú del listado ("Emitir" pide el tipo de cambio, que solo trae el
+ * retrieve). Debajo de los
  * botones va, en texto visible, el motivo de los que estén bloqueados (el
  * `title` de un botón deshabilitado no se muestra en todos los navegadores) y,
  * en una factura timbrada, el aviso de que el PDF del ERP no es el CFDI.
@@ -100,6 +105,8 @@ function InvoiceDocumentActions({
   user: PermissionContext | null | undefined;
 }) {
   const actions = useInvoiceDocumentActions(invoice);
+  const canEmit = canEmitInvoice(invoice, user);
+  const emitBlockReason = canEmit ? getInvoiceEmitBlockReason(invoice) : null;
   const canCancel = canCancelInvoice(invoice, user);
   const cancelBlockReason = canCancel ? getInvoiceCancelBlockReason(invoice) : null;
   const canStamp = canStampInvoice(invoice, user);
@@ -113,6 +120,7 @@ function InvoiceDocumentActions({
         : null;
   const cfdiEmail = getInvoiceCfdiEmailAvailability(invoice, user);
   const nonFiscalPdf = isInvoicePdfNonFiscal(invoice);
+  const emitNoteId = `invoice-${invoice.id}-emit-note`;
   const cancelNoteId = `invoice-${invoice.id}-cancel-note`;
   const stampNoteId = `invoice-${invoice.id}-stamp-note`;
   const cfdiEmailNoteId = `invoice-${invoice.id}-cfdi-email-note`;
@@ -121,6 +129,16 @@ function InvoiceDocumentActions({
   return (
     <div className="flex flex-col gap-2 lg:items-end">
       <div className="flex flex-wrap items-center gap-2">
+        {/* "Emitir factura": solo con `E-FIN-FACTURAS` y un `Borrador` activo
+            (`canEmitInvoice`); con total en 0, bloqueado y descrito por su nota.
+            Fuera de MXN el diálogo pide el tipo de cambio. */}
+        <DocumentActionWithDialog
+          offered={canEmit}
+          blockedNoteId={emitBlockReason ? emitNoteId : undefined}
+          icon={CheckCircleIcon}
+          label="Emitir factura"
+          renderDialog={(dialog) => <InvoiceEmitDialog invoice={invoice} {...dialog} />}
+        />
         {/* "Cancelar factura": misma regla que el menú del listado (`canCancelInvoice`)
             sobre el retrieve, que es quien trae `activo`. Una timbrada se cancela (el
             diálogo avisa que primero va al SAT); con el timbrado pendiente de
@@ -190,6 +208,11 @@ function InvoiceDocumentActions({
       {nonFiscalPdf && (
         <p id={nonFiscalNoteId} className="text-xs text-slate-500 dark:text-slate-400 max-w-md lg:text-right">
           {INVOICE_NON_FISCAL_PDF_MESSAGE}
+        </p>
+      )}
+      {emitBlockReason && (
+        <p id={emitNoteId} className="text-xs text-slate-500 dark:text-slate-400 max-w-md lg:text-right">
+          {emitBlockReason}
         </p>
       )}
       {cancelBlockReason && (
