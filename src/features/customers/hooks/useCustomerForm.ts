@@ -105,6 +105,9 @@ export function useCustomerForm({
 
   const [clientErrors, setClientErrors] = useState<Partial<Record<CustomerFormField, string>>>({});
   const [serverErrors, setServerErrors] = useState<Partial<Record<CustomerFormField, string>>>({});
+  // Rechazo del guardado que no es de ningún campo (p.ej. Facturama no aceptó el
+  // cliente): va en un banner junto a los botones.
+  const [formError, setFormError] = useState<string | null>(null);
 
   const regimenesFiscales = useMemo(() => satInfo?.regimenes_fiscales ?? [], [satInfo]);
   const usosCfdi = useMemo(() => satInfo?.usos_cfdi ?? [], [satInfo]);
@@ -152,9 +155,13 @@ export function useCustomerForm({
 
   const { mutateAsync: createCustomer, isPending: isCreating } = useCreateCustomer({
     setError: setHookError,
+    onFormError: setFormError,
     invalidateOrderOnboarding,
   });
-  const { mutateAsync: updateCustomer, isPending: isUpdating } = useUpdateCustomer(setHookError);
+  const { mutateAsync: updateCustomer, isPending: isUpdating } = useUpdateCustomer(
+    setHookError,
+    setFormError
+  );
 
   // Limpia errores locales de un campo específico.
   const clearFieldErrors = (field: CustomerFormField) => {
@@ -225,6 +232,7 @@ export function useCustomerForm({
     defaultValues: isEditing ? editValues : emptyValues,
     onSubmit: async ({ value }) => {
       setServerErrors({});
+      setFormError(null);
       const normalizedValues = normalizeOptionalCustomerFields(value);
 
       const validationResult = validateForm(normalizedValues);
@@ -271,7 +279,7 @@ export function useCustomerForm({
             ...updatePayload,
           });
         } catch {
-          // `useUpdateCustomer` ya avisó (toast + errores por campo).
+          // `useUpdateCustomer` ya avisó (toast, errores por campo y banner).
           return;
         }
 
@@ -294,7 +302,7 @@ export function useCustomerForm({
       try {
         createdCustomer = await createCustomer(createPayload);
       } catch {
-        // `useCreateCustomer` ya avisó (toast + errores por campo).
+        // `useCreateCustomer` ya avisó (toast, errores por campo y banner).
         return;
       }
 
@@ -365,6 +373,7 @@ export function useCustomerForm({
     form.reset(isEditing ? editValues : emptyValues);
     setClientErrors({});
     setServerErrors({});
+    setFormError(null);
     toast.success(isEditing ? "Cliente restablecido correctamente" : "Formulario limpiado correctamente");
     setTimeout(() => {
       formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -404,6 +413,7 @@ export function useCustomerForm({
     regimenesFiscales,
     usosCfdi,
     getError,
+    formError,
     clearFieldErrors,
     validateField,
     revalidateCodigoPostal,

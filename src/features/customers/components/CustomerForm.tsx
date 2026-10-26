@@ -6,6 +6,7 @@ import { Button } from "@/src/components/Button";
 import { FormInput } from "@/src/components/FormInput";
 import { FormSelect } from "@/src/components/FormSelect";
 import { FormCancelButton, FormSubmitButton } from "@/src/components/FormButtons";
+import { FormErrorBanner } from "@/src/components/FormErrorBanner";
 import { ClientesIcon, TaxIcon, WalletIcon } from "@/src/components/Icons";
 import { Loader } from "@/src/components/Loader";
 import { getCodigoPostalInputProps } from "@/src/utils/codigoPostal";
@@ -71,6 +72,7 @@ export default function CustomerForm({
     regimenesFiscales,
     usosCfdi,
     getError,
+    formError,
     clearFieldErrors,
     validateField,
     revalidateCodigoPostal,
@@ -587,6 +589,12 @@ export default function CustomerForm({
             </div>
           </div>
         </section>
+        ) : null}
+
+        {formError ? (
+          <div className="mb-4">
+            <FormErrorBanner message={formError} />
+          </div>
         ) : null}
 
         <div className="flex justify-end gap-3 pb-8">
