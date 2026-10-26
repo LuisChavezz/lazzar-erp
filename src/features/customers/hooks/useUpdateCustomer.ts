@@ -3,8 +3,7 @@ import { updateCustomer } from "../services/actions";
 import { customerKpisQueryKey } from "./useCustomerKpis";
 import { CustomerCreate } from "../interfaces/customer.interface";
 import toast from "react-hot-toast";
-import { toastWarning } from "@/src/utils/toastWarning";
-import { getFacturamaSaveWarning } from "../utils/facturamaVerification";
+import { toastCustomerSaved } from "./customerSaveToast";
 import {
   CustomerFormField,
   getCustomerFormFields,
@@ -40,13 +39,8 @@ export const useUpdateCustomer = ({
       // Los drill-downs de los indicadores muestran `cliente.nombre`; editarlo
       // dejaría el nombre viejo en el top de ventas y en la cartera.
       queryClient.invalidateQueries({ queryKey: customerKpisQueryKey });
-      // Lo que devolvió el backend, no lo capturado: completar el cliente lo sube.
-      const facturamaWarning = getFacturamaSaveWarning(customer);
-      if (facturamaWarning) {
-        toastWarning(facturamaWarning);
-      } else {
-        toast.success("Cliente actualizado correctamente");
-      }
+      // Completar el cliente lo sube a Facturama en este mismo guardado.
+      toastCustomerSaved(customer, "Cliente actualizado correctamente");
     },
     onError: (error) => {
       const formError = getCustomerWriteErrorMessage(error, formFields, setError);

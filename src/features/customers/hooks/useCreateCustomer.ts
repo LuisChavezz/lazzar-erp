@@ -3,8 +3,7 @@ import { createCustomer } from "../services/actions";
 import { customerKpisQueryKey } from "./useCustomerKpis";
 import { Customer, CustomerCreate } from "../interfaces/customer.interface";
 import toast from "react-hot-toast";
-import { toastWarning } from "@/src/utils/toastWarning";
-import { getFacturamaSaveWarning } from "../utils/facturamaVerification";
+import { toastCustomerSaved } from "./customerSaveToast";
 import {
   CustomerFormField,
   getCustomerFormFields,
@@ -39,13 +38,7 @@ export const useCreateCustomer = ({
       if (invalidateOrderOnboarding) {
         queryClient.invalidateQueries({ queryKey: ["quote-onboarding"] });
       }
-      // Lo que devolvió el backend, no lo capturado: él decide si quedó en Facturama.
-      const facturamaWarning = getFacturamaSaveWarning(customer);
-      if (facturamaWarning) {
-        toastWarning(facturamaWarning);
-      } else {
-        toast.success("Cliente registrado correctamente");
-      }
+      toastCustomerSaved(customer, "Cliente registrado correctamente");
     },
     onError: (error) => {
       const formError = getCustomerWriteErrorMessage(error, formFields, setError);
