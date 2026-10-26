@@ -159,15 +159,17 @@ function PedidoCancelForm({ isCancelling, onClose, onSubmit }: PedidoCancelFormP
               onChange={(event) => {
                 const textarea = event.currentTarget;
                 const fitted = fitPedidoCancelMotivo(field.state.value, textarea.value);
-                field.handleChange(fitted ? fitted.value : textarea.value);
-                clearFieldErrors("motivo");
-                // React reescribe el valor del textarea y el cursor salta al
-                // final: se devuelve al final de lo que sí entró.
+                // El recorte se escribe en el DOM ANTES de pasarlo al estado,
+                // con el cursor al final de lo que sí entró: así el valor del
+                // DOM ya coincide con el del estado, React no lo reescribe y
+                // el cursor no salta al final (mismo truco que `forceUppercase`
+                // en `FormTextarea`).
                 if (fitted) {
-                  requestAnimationFrame(() =>
-                    textarea.setSelectionRange(fitted.caret, fitted.caret),
-                  );
+                  textarea.value = fitted.value;
+                  textarea.setSelectionRange(fitted.caret, fitted.caret);
                 }
+                field.handleChange(textarea.value);
+                clearFieldErrors("motivo");
               }}
               onBlur={field.handleBlur}
             />
