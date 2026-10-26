@@ -23,9 +23,14 @@ import { FormInput } from "@/src/components/FormInput";
 import { FormSelect } from "@/src/components/FormSelect";
 import { FormTextarea } from "@/src/components/FormTextarea";
 import { FormCancelButton, FormSubmitButton } from "@/src/components/FormButtons";
-import { formatCurrency } from "@/src/utils/formatCurrency";
+import { formatCurrency, NO_CURRENCY_FORMAT } from "@/src/utils/formatCurrency";
+import { sanitizeDecimalInput } from "@/src/utils/decimal";
 import { useRegisterPendingInvoiceForm } from "../hooks/useRegisterPendingInvoiceForm";
-import { MONEY_REGEX, toCents } from "../schemas/register-pending-invoice.schema";
+import {
+  MONEY_REGEX,
+  requiresPendingInvoiceTipoCambio,
+  toCents,
+} from "../schemas/register-pending-invoice.schema";
 import type { PedidoListItem } from "@/src/features/orders/interfaces/order.interface";
 
 function RegisterPendingInvoiceForm({ onClose }: { onClose: () => void }) {
@@ -36,6 +41,7 @@ function RegisterPendingInvoiceForm({ onClose }: { onClose: () => void }) {
     isErrorCatalogs,
     customerOptions,
     currencyOptions,
+    getCurrencyCode,
     getPedidoOptions,
     findPedido,
     getError,
@@ -51,6 +57,14 @@ function RegisterPendingInvoiceForm({ onClose }: { onClose: () => void }) {
   const descuentoValue = useStore(form.store, (s) => s.values.descuento);
   const impuestosValue = useStore(form.store, (s) => s.values.impuestos);
   const totalValue = useStore(form.store, (s) => s.values.total);
+
+  // Moneda elegida: rotula los importes con su código y, fuera de MXN, pide el
+  // tipo de cambio. Sin moneda los importes no llevan prefijo: un "$" afirmaría
+  // una moneda que aún no se eligió.
+  const monedaCodigo = getCurrencyCode(monedaValue);
+  const needsTipoCambio = requiresPendingInvoiceTipoCambio(monedaCodigo);
+  const amountPrefix = monedaCodigo || undefined;
+  const amountPrefixClass = amountPrefix ? "pl-10!" : undefined;
 
   const pedidoOptions = getPedidoOptions(clienteValue, monedaValue);
   const pedidoDisabled = clienteValue < 1 || monedaValue < 1;
@@ -217,6 +231,9 @@ function RegisterPendingInvoiceForm({ onClose }: { onClose: () => void }) {
                   const next = Number(event.target.value);
                   field.handleChange(Number.isNaN(next) ? 0 : next);
                   clearFieldErrors("moneda");
+                  // El tipo de cambio es de la moneda anterior: se descarta.
+                  form.setFieldValue("tipo_cambio", "");
+                  clearFieldErrors("tipo_cambio");
                   // El pedido depende de la moneda: se resetea al cambiarla, junto
                   // con los montos que hubiera auto-llenado.
                   resetPedido();
@@ -227,6 +244,40 @@ function RegisterPendingInvoiceForm({ onClose }: { onClose: () => void }) {
             )}
           </form.Field>
         </div>
+
+        {/* ── Tipo de cambio (solo fuera de MXN) ───────────────────────── */}
+        {needsTipoCambio && (
+          <form.Field name="tipo_cambio">
+            {(field) => (
+              <div>
+                <FormInput
+                  id="register-pending-invoice-tipo-cambio"
+                  label={`Tipo de cambio (MXN por ${monedaCodigo || "unidad"}) *`}
+                  aria-describedby="register-pending-invoice-tipo-cambio-help"
+                  inputMode="decimal"
+                  placeholder="0.000000"
+                  autoComplete="off"
+                  name={field.name}
+                  value={field.state.value}
+                  onChange={(event) => {
+                    field.handleChange(sanitizeDecimalInput(event.target.value, 6));
+                    clearFieldErrors("tipo_cambio");
+                  }}
+                  onBlur={field.handleBlur}
+                  error={getError("tipo_cambio")}
+                />
+                <p
+                  id="register-pending-invoice-tipo-cambio-help"
+                  className="mt-1 ml-1 text-xs text-slate-500 dark:text-slate-400"
+                >
+                  Pesos por cada {monedaCodigo || "unidad"}. La factura se registra ya emitida
+                  y, si la empresa contabiliza, su póliza va en pesos; no podrá cambiarse
+                  después.
+                </p>
+              </div>
+            )}
+          </form.Field>
+        )}
 
         {/* ── Pedido (opcional, filtrado por cliente + moneda) ─────────── */}
         <form.Field name="pedido">
@@ -306,7 +357,8 @@ function RegisterPendingInvoiceForm({ onClose }: { onClose: () => void }) {
                 label="Subtotal *"
                 inputMode="decimal"
                 placeholder="0.00"
-                leading="$"
+                leading={amountPrefix}
+                className={amountPrefixClass}
                 name={field.name}
                 value={field.state.value}
                 onChange={(event) => {
@@ -325,7 +377,8 @@ function RegisterPendingInvoiceForm({ onClose }: { onClose: () => void }) {
                 label="Descuento"
                 inputMode="decimal"
                 placeholder="0.00"
-                leading="$"
+                leading={amountPrefix}
+                className={amountPrefixClass}
                 name={field.name}
                 value={field.state.value}
                 onChange={(event) => {
@@ -344,7 +397,8 @@ function RegisterPendingInvoiceForm({ onClose }: { onClose: () => void }) {
                 label="Impuestos"
                 inputMode="decimal"
                 placeholder="0.00"
-                leading="$"
+                leading={amountPrefix}
+                className={amountPrefixClass}
                 name={field.name}
                 value={field.state.value}
                 onChange={(event) => {
@@ -366,7 +420,8 @@ function RegisterPendingInvoiceForm({ onClose }: { onClose: () => void }) {
                 label="Total *"
                 inputMode="decimal"
                 placeholder="0.00"
-                leading="$"
+                leading={amountPrefix}
+                className={amountPrefixClass}
                 name={field.name}
                 value={field.state.value}
                 onChange={(event) => {
@@ -388,7 +443,11 @@ function RegisterPendingInvoiceForm({ onClose }: { onClose: () => void }) {
                     : "text-amber-600 dark:text-amber-400 font-medium"
                 }
               >
-                Total esperado: {formatCurrency(expectedTotalCents / 100)}
+                Total esperado:{" "}
+                {formatCurrency(
+                  expectedTotalCents / 100,
+                  monedaCodigo ? { currency: monedaCodigo } : NO_CURRENCY_FORMAT,
+                )}
               </span>
               {!totalMatches && expectedTotalSubmittable && (
                 <button
