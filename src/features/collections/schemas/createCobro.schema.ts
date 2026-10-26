@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { MONEY_REGEX, toCents } from "@/src/features/accounts-receivable/schemas/register-pending-invoice.schema";
 import { normalizeCapturedDecimal } from "@/src/utils/decimal";
+import { getTipoCambioError, LOCAL_CURRENCY } from "@/src/utils/tipoCambio";
 import type { CobroMetodoPago, CobroReferencia } from "../interfaces/collection.interface";
 
 /**
@@ -32,10 +33,7 @@ import type { CobroMetodoPago, CobroReferencia } from "../interfaces/collection.
 const MONEY_MESSAGE = "Importe inválido (usa hasta 2 decimales)";
 
 /** Moneda en que el backend fija el tipo de cambio en 1 (y no lo pide). */
-export const COBRO_MONEDA_LOCAL = "MXN";
-
-/** `tipo_cambio` es `DecimalField(max_digits=18, decimal_places=6)`. */
-const TIPO_CAMBIO_REGEX = /^\d{1,12}(\.\d{1,6})?$/;
+export const COBRO_MONEDA_LOCAL = LOCAL_CURRENCY;
 
 /** ¿La moneda del cobro pide tipo de cambio? Solo una moneda conocida que no sea MXN. */
 export const requiresTipoCambio = (moneda: string | null): boolean =>
@@ -124,17 +122,11 @@ const refineCobroHeader = (data: CobroHeaderValues, ctx: z.RefinementCtx) => {
   }
 
   if (requiresTipoCambio(data.moneda)) {
-    const tipoCambio = normalizeCapturedDecimal(data.tipo_cambio);
-    if (!tipoCambio) {
+    const tipoCambioError = getTipoCambioError(data.tipo_cambio, data.moneda ?? "");
+    if (tipoCambioError) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: `Indica el tipo de cambio (MXN por ${data.moneda})`,
-        path: ["tipo_cambio"],
-      });
-    } else if (!TIPO_CAMBIO_REGEX.test(tipoCambio) || Number(tipoCambio) <= 0) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "Tipo de cambio inválido: debe ser mayor a 0, con hasta 6 decimales",
+        message: tipoCambioError,
         path: ["tipo_cambio"],
       });
     }
