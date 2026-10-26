@@ -39,7 +39,7 @@ function RegisterPendingInvoiceForm({ onClose }: { onClose: () => void }) {
     getPedidoOptions,
     findPedido,
     getError,
-    clearFieldError,
+    clearFieldErrors,
     handleFormSubmit,
     handleReset,
   } = useRegisterPendingInvoiceForm({ onSuccess: onClose });
@@ -79,7 +79,7 @@ function RegisterPendingInvoiceForm({ onClose }: { onClose: () => void }) {
   const applyExpectedTotal = () => {
     if (expectedTotalCents === null || expectedTotalCents < 1) return;
     form.setFieldValue("total", (expectedTotalCents / 100).toFixed(2));
-    clearFieldError("total");
+    clearFieldErrors("total");
   };
 
   /** Vuelve subtotal/descuento/impuestos/total a su estado vacío (= DEFAULT_VALUES). */
@@ -88,10 +88,10 @@ function RegisterPendingInvoiceForm({ onClose }: { onClose: () => void }) {
     form.setFieldValue("descuento", "0.00");
     form.setFieldValue("impuestos", "0.00");
     form.setFieldValue("total", "");
-    clearFieldError("subtotal");
-    clearFieldError("descuento");
-    clearFieldError("impuestos");
-    clearFieldError("total");
+    clearFieldErrors("subtotal");
+    clearFieldErrors("descuento");
+    clearFieldErrors("impuestos");
+    clearFieldErrors("total");
   };
 
   /**
@@ -121,10 +121,10 @@ function RegisterPendingInvoiceForm({ onClose }: { onClose: () => void }) {
     form.setFieldValue("descuento", descuento);
     form.setFieldValue("impuestos", impuestos);
     form.setFieldValue("total", total);
-    clearFieldError("subtotal");
-    clearFieldError("descuento");
-    clearFieldError("impuestos");
-    clearFieldError("total");
+    clearFieldErrors("subtotal");
+    clearFieldErrors("descuento");
+    clearFieldErrors("impuestos");
+    clearFieldErrors("total");
   };
 
   // ── Acoplamiento pedido → importes (fuente única) ────────────────────────
@@ -192,7 +192,7 @@ function RegisterPendingInvoiceForm({ onClose }: { onClose: () => void }) {
                 onChange={(event) => {
                   const next = Number(event.target.value);
                   field.handleChange(Number.isNaN(next) ? 0 : next);
-                  clearFieldError("cliente");
+                  clearFieldErrors("cliente");
                   // El pedido depende del cliente: se resetea al cambiarlo, junto
                   // con los montos que hubiera auto-llenado.
                   resetPedido();
@@ -216,7 +216,7 @@ function RegisterPendingInvoiceForm({ onClose }: { onClose: () => void }) {
                 onChange={(event) => {
                   const next = Number(event.target.value);
                   field.handleChange(Number.isNaN(next) ? 0 : next);
-                  clearFieldError("moneda");
+                  clearFieldErrors("moneda");
                   // El pedido depende de la moneda: se resetea al cambiarla, junto
                   // con los montos que hubiera auto-llenado.
                   resetPedido();
@@ -251,7 +251,7 @@ function RegisterPendingInvoiceForm({ onClose }: { onClose: () => void }) {
                 const next = Number(event.target.value);
                 const pedidoId = Number.isNaN(next) ? 0 : next;
                 field.handleChange(pedidoId);
-                clearFieldError("pedido");
+                clearFieldErrors("pedido");
                 syncAmountsForPedido(pedidoId);
               }}
               onBlur={field.handleBlur}
@@ -272,7 +272,7 @@ function RegisterPendingInvoiceForm({ onClose }: { onClose: () => void }) {
                 value={field.state.value}
                 onChange={(event) => {
                   field.handleChange(event.target.value);
-                  clearFieldError("folio");
+                  clearFieldErrors("folio");
                 }}
                 onBlur={field.handleBlur}
                 error={getError("folio")}
@@ -289,7 +289,7 @@ function RegisterPendingInvoiceForm({ onClose }: { onClose: () => void }) {
                 value={field.state.value}
                 onChange={(event) => {
                   field.handleChange(event.target.value);
-                  clearFieldError("fecha_vencimiento");
+                  clearFieldErrors("fecha_vencimiento");
                 }}
                 onBlur={field.handleBlur}
                 error={getError("fecha_vencimiento")}
@@ -311,7 +311,7 @@ function RegisterPendingInvoiceForm({ onClose }: { onClose: () => void }) {
                 value={field.state.value}
                 onChange={(event) => {
                   field.handleChange(event.target.value);
-                  clearFieldError("subtotal");
+                  clearFieldErrors("subtotal");
                 }}
                 onBlur={field.handleBlur}
                 error={getError("subtotal")}
@@ -330,7 +330,7 @@ function RegisterPendingInvoiceForm({ onClose }: { onClose: () => void }) {
                 value={field.state.value}
                 onChange={(event) => {
                   field.handleChange(event.target.value);
-                  clearFieldError("descuento");
+                  clearFieldErrors("descuento");
                 }}
                 onBlur={field.handleBlur}
                 error={getError("descuento")}
@@ -349,7 +349,7 @@ function RegisterPendingInvoiceForm({ onClose }: { onClose: () => void }) {
                 value={field.state.value}
                 onChange={(event) => {
                   field.handleChange(event.target.value);
-                  clearFieldError("impuestos");
+                  clearFieldErrors("impuestos");
                 }}
                 onBlur={field.handleBlur}
                 error={getError("impuestos")}
@@ -371,7 +371,7 @@ function RegisterPendingInvoiceForm({ onClose }: { onClose: () => void }) {
                 value={field.state.value}
                 onChange={(event) => {
                   field.handleChange(event.target.value);
-                  clearFieldError("total");
+                  clearFieldErrors("total");
                 }}
                 onBlur={field.handleBlur}
                 error={getError("total")}
@@ -414,7 +414,7 @@ function RegisterPendingInvoiceForm({ onClose }: { onClose: () => void }) {
               value={field.state.value}
               onChange={(event) => {
                 field.handleChange(event.target.value);
-                clearFieldError("referencia");
+                clearFieldErrors("referencia");
               }}
               onBlur={field.handleBlur}
               error={getError("referencia")}
@@ -432,7 +432,7 @@ function RegisterPendingInvoiceForm({ onClose }: { onClose: () => void }) {
               value={field.state.value}
               onChange={(event) => {
                 field.handleChange(event.target.value);
-                clearFieldError("observaciones");
+                clearFieldErrors("observaciones");
               }}
               onBlur={field.handleBlur}
               error={getError("observaciones")}

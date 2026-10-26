@@ -23,7 +23,7 @@ const FORM_FIELDS: ReadonlySet<string> = new Set(REGISTER_PENDING_INVOICE_FIELDS
 
 type SetRegisterPendingInvoiceError = (
   field: RegisterPendingInvoiceField,
-  error: { type?: string; message?: string },
+  message: string,
 ) => void;
 
 /**
@@ -32,7 +32,8 @@ type SetRegisterPendingInvoiceError = (
  * Mutación para `POST /finanzas/facturas/registrar-pendiente-cobro/`. Sigue la
  * convención del proyecto (ver `useCreateStockMovement`): la invalidación de la
  * lista y el toast viven aquí, y los errores de campo del `400` se mapean al
- * formulario vía el callback `setError`. Los mensajes de llaves que no son
+ * formulario vía el callback `setError` (el `setServerFieldError` de
+ * `useFormFieldErrors`). Los mensajes de llaves que no son
  * campos (`empresa`, `sucursal`) solo alimentan el toast agregado.
  */
 export const useRegisterPendingInvoice = (
@@ -69,10 +70,7 @@ export const useRegisterPendingInvoice = (
             // Mapear al campo del formulario si corresponde; `empresa`/`sucursal`
             // no son campos y solo van al toast.
             if (setError && FORM_FIELDS.has(key)) {
-              setError(key as RegisterPendingInvoiceField, {
-                type: "server",
-                message,
-              });
+              setError(key as RegisterPendingInvoiceField, message);
             }
 
             messages.push(message);

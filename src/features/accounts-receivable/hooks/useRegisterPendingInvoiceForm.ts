@@ -1,9 +1,9 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useRef } from "react";
 import type { FormEvent } from "react";
 import { useForm } from "@tanstack/react-form";
-import type { FormFieldError } from "@/src/utils/getFieldError";
+import { useFormFieldErrors } from "@/src/hooks/useFormFieldErrors";
 import { useCustomers } from "@/src/features/customers/hooks/useCustomers";
 import { useCurrencies } from "@/src/features/currency/hooks/useCurrencies";
 import { useOrders } from "@/src/features/orders/hooks/useOrders";
@@ -39,10 +39,10 @@ const DEFAULT_VALUES: RegisterPendingInvoiceFormValues = {
  * useRegisterPendingInvoiceForm
  *
  * Lógica de TanStack Form para registrar una factura pendiente por cobrar.
- * Sigue el patrón de `useStockMovementForm`: estado local de `errors` con
- * `getError`/`clearFieldError`, validación Zod vía `safeParse` en el submit y un
- * `ref` anti doble-envío. Los errores de campo del `400` los mapea la mutación
- * al mismo estado `errors` a través de `setHookError`.
+ * Errores por campo con `useFormFieldErrors`: los de cliente salen de la
+ * validación Zod (`safeParse` en el submit) y los de servidor los pinta la
+ * mutación con `setServerFieldError` a partir de las llaves del `400`; al
+ * mostrarlos gana el de servidor. Un `ref` evita el doble envío.
  */
 export function useRegisterPendingInvoiceForm({
   onSuccess,
@@ -133,36 +133,17 @@ export function useRegisterPendingInvoiceForm({
     orders.find((o: PedidoListItem) => o.id === pedido && isSelectableOrder(o));
 
   // ─── Estado de errores ───────────────────────────────────────────────────
-  const [errors, setErrors] = useState<
-    Partial<Record<RegisterPendingInvoiceField, string>>
-  >({});
-
-  const getError = (
-    field: RegisterPendingInvoiceField,
-  ): FormFieldError | undefined => {
-    const message = errors[field];
-    return message ? { message } : undefined;
-  };
-
-  const clearFieldError = (field: RegisterPendingInvoiceField) => {
-    setErrors((prev) => {
-      if (!(field in prev)) return prev;
-      const next = { ...prev };
-      delete next[field];
-      return next;
-    });
-  };
-
-  const setHookError = (
-    field: RegisterPendingInvoiceField,
-    error: { message?: string },
-  ) => {
-    if (!error?.message) return;
-    setErrors((prev) => ({ ...prev, [field]: error.message }));
-  };
+  const {
+    getError,
+    setServerFieldError,
+    clearFieldErrors,
+    replaceClientErrors,
+    clearServerErrors,
+    clearAllErrors,
+  } = useFormFieldErrors<RegisterPendingInvoiceField>();
 
   const { mutateAsync: registerInvoice, isPending: isRegistering } =
-    useRegisterPendingInvoice(setHookError);
+    useRegisterPendingInvoice(setServerFieldError);
 
   // ─── Validación ──────────────────────────────────────────────────────────
   const validateForm = (values: RegisterPendingInvoiceFormValues) => {
@@ -171,7 +152,7 @@ export function useRegisterPendingInvoiceForm({
       moneda_codigo: getCurrencyCode(values.moneda),
     });
     if (parsed.success) {
-      setErrors({});
+      replaceClientErrors({});
       return parsed.data;
     }
 
@@ -181,7 +162,7 @@ export function useRegisterPendingInvoiceForm({
       if (!field || nextErrors[field]) return;
       nextErrors[field] = issue.message;
     });
-    setErrors(nextErrors);
+    replaceClientErrors(nextErrors);
     return null;
   };
 
@@ -191,6 +172,8 @@ export function useRegisterPendingInvoiceForm({
   const form = useForm({
     defaultValues: DEFAULT_VALUES,
     onSubmit: async ({ value }) => {
+      // Los errores del `400` anterior ya no aplican a este envío.
+      clearServerErrors();
       // `parsed` trae los montos normalizados (p. ej. descuento "" → "0.00").
       const parsed = validateForm(value);
       if (!parsed) return;
@@ -225,7 +208,7 @@ export function useRegisterPendingInvoiceForm({
         await registerInvoice(body);
 
         form.reset(DEFAULT_VALUES);
-        setErrors({});
+        clearAllErrors();
         onSuccess?.();
       } catch {
         // Los errores de campo/toast ya se manejaron en `onError` de la mutación.
@@ -245,7 +228,7 @@ export function useRegisterPendingInvoiceForm({
 
   const handleReset = () => {
     form.reset(DEFAULT_VALUES);
-    setErrors({});
+    clearAllErrors();
   };
 
   return {
@@ -259,7 +242,7 @@ export function useRegisterPendingInvoiceForm({
     getPedidoOptions,
     findPedido,
     getError,
-    clearFieldError,
+    clearFieldErrors,
     handleFormSubmit,
     handleReset,
   };
