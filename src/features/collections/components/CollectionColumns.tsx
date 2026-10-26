@@ -111,7 +111,7 @@ const CobroIdCell = ({ cobro, onViewDetail }: { cobro: CobroRow } & CollectionCo
  * Columnas del listado de cobros.
  *
  * El identificador visible es el `folio` de la serie `COBROS`, o `#id` mientras
- * no tenga (`cobroLabel`); la columna busca por ese texto y ordena por `id`.
+ * no tenga (`cobroLabel`); la columna busca por folio y por `#id`, y ordena por `id`.
  *
  * Estatus y acciones van en la primera columna (no hay columnas "Estatus" ni
  * "Acciones"), con el filtro de estatus en su encabezado: estándar de tablas de
@@ -122,9 +122,10 @@ const CobroIdCell = ({ cobro, onViewDetail }: { cobro: CobroRow } & CollectionCo
  */
 export const getCollectionColumns = ({ onViewDetail }: CollectionColumnsCallbacks) =>
   [
-    // Accessor de TEXTO para que la búsqueda global encuentre el folio; el orden
-    // sigue siendo por `id` (el folio es nulo en borradores y en cobros sin serie).
-    columnHelper.accessor((row) => cobroLabel(row), {
+    // Accessor de TEXTO para que la búsqueda global encuentre el folio y también
+    // `#id`, con el que el movimiento bancario y la póliza nombran al cobro. La
+    // celda muestra `cobroLabel` y el orden sigue siendo por `id`.
+    columnHelper.accessor((row) => `${row.folio ?? ""} #${row.id}`, {
       id: "id",
       sortingFn: (a, b) => a.original.id - b.original.id,
       header: ({ column }) => (
