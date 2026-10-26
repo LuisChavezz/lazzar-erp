@@ -36,6 +36,11 @@ interface EditSizesDialogProps {
   onOpenChange: (open: boolean) => void;
   /** Partida cuyas tallas se van a editar. */
   item: QuoteItem | null;
+  /**
+   * Posición 1-based de la partida en la cotización (`Partida N` del mensaje
+   * del tope de reflejante «Del inventario», igual que el backend).
+   */
+  partidaNumber: number;
   /** Catálogo completo de tallas disponibles. */
   sizes: Size[];
   /** Callback invocado con el item actualizado al guardar. */
@@ -51,11 +56,13 @@ export function EditSizesDialog({
   open,
   onOpenChange,
   item,
+  partidaNumber,
   sizes,
   onSave,
 }: EditSizesDialogProps) {
   const { sizesStepProps, handleSave, handleOpenChange } = useEditSizesDialog({
     item,
+    partidaNumber,
     sizes,
     onOpenChange,
   });

@@ -5,7 +5,7 @@
  *   (cliente, dirección, condiciones y `items`).
  */
 import { z } from "zod";
-import { quoteItemSchema } from "./quote-item.schema";
+import { quoteItemsSchema } from "./quote-item.schema";
 import { PEDIDO_CLASIFICACIONES } from "../../orders/constants/pedidoStatus";
 import { IVA_TASA_FIJA } from "../constants/iva";
 import { telefonoSchema } from "@/src/utils/telefonoSchema";
@@ -104,7 +104,7 @@ export const quoteFormSchema = z.object({
     message: `El IVA es fijo al ${IVA_TASA_FIJA}%. Edita y guarda la cotización para aplicarlo.`,
   }),
   moneda: z.coerce.number().optional(),
-  items: z.array(quoteItemSchema).optional(),
+  items: quoteItemsSchema.optional(),
 }).superRefine((data, ctx) => {
   if (data.condicionPago === "otra_cantidad" && (data.condicionPagoMonto == null || data.condicionPagoMonto <= 0)) {
     ctx.addIssue({

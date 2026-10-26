@@ -28,12 +28,17 @@ import type { CatalogRow, QuoteItem } from '../types';
 import { useSizesState } from './useSizesState';
 import {
   exceedsReflectiveInventoryCap,
-  REFLEJANTE_INVENTARIO_MESSAGE,
+  reflectiveInventoryCapMessage,
 } from '../utils/reflectiveInventoryCap';
 
 export interface UseEditSizesDialogOptions {
   /** Partida cuyas tallas se van a editar. */
   item: QuoteItem | null;
+  /**
+   * Posición 1-based de la partida en la cotización (`Partida N` del mensaje
+   * del tope de reflejante «Del inventario», igual que el backend).
+   */
+  partidaNumber: number;
   /** Catálogo completo de tallas disponibles. */
   sizes: Size[];
   /** Callback de apertura/cierre del diálogo. */
@@ -46,6 +51,7 @@ export interface UseEditSizesDialogOptions {
  */
 export function useEditSizesDialog({
   item,
+  partidaNumber,
   sizes,
   onOpenChange,
 }: UseEditSizesDialogOptions) {
@@ -125,14 +131,17 @@ export function useEditSizesDialog({
 
       // Reflejante «Del inventario»: máximo 50 piezas por partida (CO-06).
       if (exceedsReflectiveInventoryCap(item.reflejantes, totalCantidad)) {
-        sizesState.setSizeError(selectedRow.id, REFLEJANTE_INVENTARIO_MESSAGE);
+        sizesState.setSizeError(
+          selectedRow.id,
+          reflectiveInventoryCapMessage(partidaNumber, totalCantidad)
+        );
         return;
       }
 
       onSave({ ...item, tallas, cantidad: totalCantidad });
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [item, sizes, sizesState.validateSelectedRows, sizesState.getItemSizes, sizesState.setSizeError, selectedRow]
+    [item, partidaNumber, sizes, sizesState.validateSelectedRows, sizesState.getItemSizes, sizesState.setSizeError, selectedRow]
   );
 
   /**

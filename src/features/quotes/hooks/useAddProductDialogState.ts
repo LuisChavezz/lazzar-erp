@@ -32,7 +32,7 @@ import { useReflectiveState } from "./useReflectiveState";
 import { useSizesState } from "./useSizesState";
 import {
   exceedsReflectiveInventoryCap,
-  REFLEJANTE_INVENTARIO_MESSAGE,
+  reflectiveInventoryCapMessage,
 } from "../utils/reflectiveInventoryCap";
 import {
   admitsProcess,
@@ -106,6 +106,7 @@ export function useAddProductDialogState({
   products,
   companyId,
   matrizCompatibilidad = EMPTY_MATRIZ,
+  firstPartidaNumber,
 }: AddProductDialogProps) {
   const isEditing = Boolean(onUpdateItem && initialItem);
   const isMuestra = variant === "muestra";
@@ -491,19 +492,22 @@ export function useAddProductDialogState({
     const reflejantes = reflectiveState.buildPayload();
 
     // Reflejante «Del inventario»: máximo 50 piezas por partida (CO-06). Se
-    // marca en el acordeón de cada fila que se pasa y no se agrega nada.
-    const rowsOverCap = effectiveSelectedRows.filter((row) =>
-      exceedsReflectiveInventoryCap(
-        reflejantes,
-        sizesState
-          .getItemSizes(row.id, sizesPerProduct[row.id] ?? sizes)
-          .reduce((sum, size) => sum + size.cantidad, 0)
-      )
-    );
-    if (rowsOverCap.length > 0) {
-      for (const row of rowsOverCap) {
-        sizesState.setSizeError(row.id, REFLEJANTE_INVENTARIO_MESSAGE);
+    // marca en el acordeón de cada fila que se pasa y no se agrega nada. La
+    // fila k (0-based) será la partida `firstPartidaNumber + k`.
+    let anyOverCap = false;
+    effectiveSelectedRows.forEach((row, index) => {
+      const piezas = sizesState
+        .getItemSizes(row.id, sizesPerProduct[row.id] ?? sizes)
+        .reduce((sum, size) => sum + size.cantidad, 0);
+      if (exceedsReflectiveInventoryCap(reflejantes, piezas)) {
+        anyOverCap = true;
+        sizesState.setSizeError(
+          row.id,
+          reflectiveInventoryCapMessage(firstPartidaNumber + index, piezas)
+        );
       }
+    });
+    if (anyOverCap) {
       return;
     }
 
@@ -642,6 +646,7 @@ export function useAddProductDialogState({
     initialItem,
     isEditing,
     effectiveSelectedRows,
+    firstPartidaNumber,
     isMuestra,
     muestraDrafts,
     onAddItem,

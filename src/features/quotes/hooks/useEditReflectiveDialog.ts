@@ -24,12 +24,17 @@ import { buildLocationRule, type AllowedCodes } from '../utils/processCompatibil
 import {
   exceedsReflectiveInventoryCap,
   linePieces,
-  REFLEJANTE_INVENTARIO_MESSAGE,
+  reflectiveInventoryCapMessage,
 } from '../utils/reflectiveInventoryCap';
 
 export interface UseEditReflectiveDialogOptions {
   /** Item actual de la partida a editar. */
   item: QuoteItem | null;
+  /**
+   * Posición 1-based de la partida en la cotización (`Partida N` del mensaje
+   * del tope de reflejante «Del inventario», igual que el backend).
+   */
+  partidaNumber: number;
   /** Callback invocado al cerrar el diálogo (abierto → cerrado). */
   onOpenChange: (open: boolean) => void;
   /**
@@ -45,6 +50,7 @@ export interface UseEditReflectiveDialogOptions {
  */
 export function useEditReflectiveDialog({
   item,
+  partidaNumber,
   onOpenChange,
   allowedPositions = null,
 }: UseEditReflectiveDialogOptions) {
@@ -63,9 +69,10 @@ export function useEditReflectiveDialog({
 
   // Reflejante «Del inventario»: máximo 50 piezas por partida (CO-06), contra
   // las piezas actuales de la partida.
+  const piezas = item ? linePieces(item) : 0;
   const inventoryCapError =
-    item && exceedsReflectiveInventoryCap(reflectiveState.buildPayload(), linePieces(item))
-      ? REFLEJANTE_INVENTARIO_MESSAGE
+    item && exceedsReflectiveInventoryCap(reflectiveState.buildPayload(), piezas)
+      ? reflectiveInventoryCapMessage(partidaNumber, piezas)
       : null;
 
   /**

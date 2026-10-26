@@ -157,6 +157,13 @@ export interface AddProductDialogProps {
    * que admiten todas las categorías seleccionadas. Sin ella no se restringe.
    */
   matrizCompatibilidad?: MatrizCompatibilidad;
+  /**
+   * Posición 1-based que tendrá en la cotización la PRIMERA partida que arme el
+   * diálogo (`Partida N` del mensaje del tope de reflejante «Del inventario»,
+   * igual que el backend): la de la partida editada, o el total actual + 1 al
+   * agregar, porque las nuevas van al final y en el orden de la selección.
+   */
+  firstPartidaNumber: number;
 }
 
 /**

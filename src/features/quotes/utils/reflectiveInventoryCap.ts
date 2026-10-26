@@ -4,8 +4,14 @@
  *
  * Misma regla que el backend: una partida con reflejante en la que ALGUNA
  * especificación tiene `opcion: "catalogo"` no puede sumar más de 50 piezas
- * entre sus tallas. La comparten el schema de la partida (bloquea el Guardar en
- * los tres flujos) y los diálogos de agregar productos, tallas y reflejante.
+ * entre sus tallas. La comparten el schema de las partidas (bloquea el Guardar
+ * en los tres flujos y el envío a revisión) y los diálogos de agregar
+ * productos, tallas y reflejante.
+ *
+ * La partida se nombra por su posición en la cotización (`Partida N`, índice
+ * + 1), igual que el backend. Si el backend fusiona dos partidas idénticas al
+ * guardar (`_merge_detalle`), su N y su conteo pueden diferir del de aquí; ese
+ * caso lo cubre su 400 `detalle`, que ya se muestra en el toast.
  */
 import type { QuoteItem } from "../types";
 
@@ -15,7 +21,12 @@ export const REFLEJANTE_INVENTARIO_MAX_PIEZAS = 50;
 /** `opcion` de la especificación «Del inventario» (ver `OPCION_OPTIONS`). */
 const OPCION_INVENTARIO = "catalogo";
 
-export const REFLEJANTE_INVENTARIO_MESSAGE = `Con reflejante «Del inventario» la partida no puede pasar de ${REFLEJANTE_INVENTARIO_MAX_PIEZAS} piezas.`;
+/**
+ * Mismo texto que el 400 `detalle` del backend (EC-576). `partida` es la
+ * posición 1-based; `piezas`, el total de la partida.
+ */
+export const reflectiveInventoryCapMessage = (partida: number, piezas: number): string =>
+  `Partida ${partida}: el reflejante «Del inventario» admite máximo ${REFLEJANTE_INVENTARIO_MAX_PIEZAS} piezas y lleva ${piezas}. Cámbialo a «Fabricación especial» o reduce las piezas.`;
 
 type ReflectiveConfig = QuoteItem["reflejantes"];
 

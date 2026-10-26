@@ -32,6 +32,11 @@ interface EditReflectiveDialogProps {
   onOpenChange: (open: boolean) => void;
   /** Partida cuya configuración de reflejante se va a editar. */
   item: QuoteItem | null;
+  /**
+   * Posición 1-based de la partida en la cotización (`Partida N` del mensaje
+   * del tope de reflejante «Del inventario», igual que el backend).
+   */
+  partidaNumber: number;
   /** Callback invocado con el item actualizado al guardar. */
   onSave: (updatedItem: QuoteItem) => void;
   /**
@@ -50,6 +55,7 @@ export function EditReflectiveDialog({
   open,
   onOpenChange,
   item,
+  partidaNumber,
   onSave,
   allowedPositions,
 }: EditReflectiveDialogProps) {
@@ -58,7 +64,7 @@ export function EditReflectiveDialog({
     handleSave,
     handleOpenChange,
     handleRemoveReflective,
-  } = useEditReflectiveDialog({ item, onOpenChange, allowedPositions });
+  } = useEditReflectiveDialog({ item, partidaNumber, onOpenChange, allowedPositions });
 
   return (
     <MainDialog

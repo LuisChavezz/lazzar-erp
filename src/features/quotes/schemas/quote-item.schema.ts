@@ -20,7 +20,7 @@ import { reflectiveSchema } from "./reflective.schema";
 import {
   exceedsReflectiveInventoryCap,
   linePieces,
-  REFLEJANTE_INVENTARIO_MESSAGE,
+  reflectiveInventoryCapMessage,
 } from "../utils/reflectiveInventoryCap";
 
 /**
@@ -172,27 +172,9 @@ const refineEmbroidery = (
   });
 };
 
-/**
- * Reflejante «Del inventario»: máximo 50 piezas por partida (CO-06). El error
- * va en `cantidad`, la columna de la tabla que muestra el total de piezas.
- */
-const refineReflectiveInventoryCap = (
-  data: z.infer<typeof quoteItemBaseSchema>,
-  ctx: z.RefinementCtx
-) => {
-  if (exceedsReflectiveInventoryCap(data.reflejantes, linePieces(data))) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ["cantidad"],
-      message: REFLEJANTE_INVENTARIO_MESSAGE,
-    });
-  }
-};
-
 /** Refinamientos comunes a las dos variantes. */
 const refineItem = (data: z.infer<typeof quoteItemBaseSchema>, ctx: z.RefinementCtx) => {
   refineEmbroidery(data, ctx);
-  refineReflectiveInventoryCap(data, ctx);
 };
 
 /** Partida de CATÁLOGO: la forma que existía antes de la unión. */
@@ -242,6 +224,26 @@ export const quoteItemSchema = z.discriminatedUnion("tipo", [
   quoteCatalogoItemSchema,
   quoteMuestraItemSchema,
 ]);
+
+/**
+ * Las partidas de la cotización. Reflejante «Del inventario»: máximo 50 piezas
+ * por partida (CO-06, EC-577). Se revisa sobre el ARREGLO y no por partida
+ * porque el mensaje del backend nombra la partida por su posición (`Partida N`,
+ * índice + 1). El error va en `cantidad`, la columna de la tabla que muestra el
+ * total de piezas.
+ */
+export const quoteItemsSchema = z.array(quoteItemSchema).superRefine((items, ctx) => {
+  items.forEach((item, index) => {
+    const piezas = linePieces(item);
+    if (exceedsReflectiveInventoryCap(item.reflejantes, piezas)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: [index, "cantidad"],
+        message: reflectiveInventoryCapMessage(index + 1, piezas),
+      });
+    }
+  });
+});
 
 export type QuoteCatalogoItem = z.output<typeof quoteCatalogoItemSchema>;
 export type QuoteMuestraItem = z.output<typeof quoteMuestraItemSchema>;
