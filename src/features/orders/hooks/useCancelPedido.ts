@@ -49,6 +49,16 @@ const isPedidoRecordQuery = (pedidoId: number) => {
   return (query: Query) => hashes.has(query.queryHash);
 };
 
+/** Consultas de existencias que cambian cuando un pedido cancelado devuelve inventario. */
+const INVENTORY_QUERY_KEYS: QueryKey[] = [
+  ["stockMovements"],
+  ["stock-items"],
+  ["stock-report"],
+  ["stock-movement-report"],
+  ["inventory-pipeline"],
+  ["order-stock-detail"],
+];
+
 const PEDIDO_ALREADY_CANCELLED_MESSAGE =
   "El pedido ya no está disponible; puede que ya se haya cancelado.";
 
@@ -71,7 +81,7 @@ const cancelPedidoErrorMessage = (error: unknown): string =>
  * detalle responde 404. Por eso sus consultas propias (detalle, trazabilidad,
  * existencias, contexto de edición) se CANCELAN y se sacan de la caché en vez
  * de invalidarse (`dropQueriesWhenUnobserved`: un observador montado las
- * volvería a pedir). Se invalidan los listados
+ * volvería a pedir). Se invalidan las existencias (`INVENTORY_QUERY_KEYS`), los listados
  * (`["orders"]` por prefijo: Mesa de Control, Programados, Mis pedidos y los
  * selectores de otros módulos), los indicadores de "Mis pedidos" y los pedidos
  * especiales. La mutación sigue "pending" hasta que los listados montados se
@@ -103,6 +113,14 @@ export const useCancelPedido = (pedidoId: number) => {
       queryClient,
       queryClient.getQueryCache().findAll({ predicate: isRecordQuery }),
     );
+    // Inventario: la cancelación devuelve existencias (movimiento ENTRADA) y
+    // libera reservas. Mismas llaves que `useCreatePicking` más el pipeline y
+    // el "Revisar inventario" de los DEMÁS pedidos (por prefijo; el de este ya
+    // salió arriba y releerlo daría 404). Sin `await`: la mutación solo espera
+    // a los listados que sacan la fila.
+    for (const queryKey of INVENTORY_QUERY_KEYS) {
+      void queryClient.invalidateQueries({ queryKey, predicate: (query) => !isRecordQuery(query) });
+    }
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: ordersQueryKey() }),
       queryClient.invalidateQueries({ queryKey: PEDIDO_KPIS_QUERY_KEY }),
