@@ -1664,6 +1664,9 @@ export function usePedidoMesaControlEditForm(pedidoId: number) {
       "items",
       watchedItems.filter((_: QuoteItem, itemIndex: number) => itemIndex !== index),
     );
+    // Los errores de las partidas van por índice (`items.N.*`) y quitar una
+    // corre los índices: se limpian para que ninguno quede en otra fila.
+    clearFieldErrors("items");
   };
 
   const update = (index: number, item: QuoteItem) => {
