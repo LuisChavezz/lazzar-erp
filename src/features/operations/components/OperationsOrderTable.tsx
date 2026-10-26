@@ -24,6 +24,7 @@ export function OperationsOrderTable({
   onEditMesaControl,
   onProgramar,
   onReviewStock,
+  onCancel,
   onRefetch,
   isRefetching,
   isLoading,
@@ -39,8 +40,9 @@ export function OperationsOrderTable({
         onEditMesaControl,
         onProgramar,
         onReviewStock,
+        onCancel,
       }),
-    [onViewDetail, onEditMesaControl, onProgramar, onReviewStock],
+    [onViewDetail, onEditMesaControl, onProgramar, onReviewStock, onCancel],
   );
 
   return (

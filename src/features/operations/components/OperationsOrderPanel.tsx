@@ -17,6 +17,7 @@ import { ordersQueryKey, useOrders } from '@/src/features/orders/hooks/useOrders
 import type { PedidoListItem } from '@/src/features/orders/interfaces/order.interface';
 import { isOrderConfirmed } from './OperationsOrderColumns';
 import { PedidoProgramacionDialog } from '@/src/features/orders/components/PedidoProgramacionDialog';
+import { PedidoCancelDialog } from '@/src/features/orders/components/PedidoCancelDialog';
 import { OperationsOrderTable } from './OperationsOrderTable';
 import { OrderStockReviewDialog } from './OrderStockReviewDialog';
 
@@ -38,6 +39,10 @@ export function OperationsOrderPanel() {
   const [selectedOrderForSchedule, setSelectedOrderForSchedule] =
     useState<PedidoListItem | null>(null);
   const [selectedOrderForStock, setSelectedOrderForStock] =
+    useState<PedidoListItem | null>(null);
+  // Al cancelarse, la fila SALE del listado: por eso el diálogo vive aquí y se
+  // monta siempre (`PedidoCancelDialog` conserva su copia del pedido).
+  const [selectedOrderForCancel, setSelectedOrderForCancel] =
     useState<PedidoListItem | null>(null);
 
   // Navega al detalle 360° del pedido (ruta neutra); `?from=operations` para
@@ -133,6 +138,7 @@ export function OperationsOrderPanel() {
         onEditMesaControl={handleEditMesaControl}
         onProgramar={setSelectedOrderForSchedule}
         onReviewStock={setSelectedOrderForStock}
+        onCancel={setSelectedOrderForCancel}
         onRefetch={handleRefetch}
         isRefetching={isRefetching}
       />
@@ -164,6 +170,11 @@ export function OperationsOrderPanel() {
           createdAt={selectedOrderForStock.created_at}
         />
       )}
+
+      <PedidoCancelDialog
+        pedido={selectedOrderForCancel}
+        onClose={() => setSelectedOrderForCancel(null)}
+      />
     </div>
   );
 }

@@ -6,6 +6,7 @@ import { es } from "date-fns/locale";
 import { ActionMenu, type ActionMenuItem } from "@/src/components/ActionMenu";
 import { ColumnHeaderFilter, type ColumnFilterOption } from "@/src/components/ColumnHeaderFilter";
 import {
+  BanIcon,
   CalendarDaysIcon,
   ChevronRightIcon,
   EditIcon,
@@ -37,6 +38,7 @@ export interface OperationsOrderColumnCallbacks {
   onEditMesaControl: (order: PedidoListItem) => void;
   onProgramar: (order: PedidoListItem) => void;
   onReviewStock: (order: PedidoListItem) => void;
+  onCancel: (order: PedidoListItem) => void;
 }
 
 const CONFIRMATION_FILTER_OPTIONS: ColumnFilterOption[] = [
@@ -57,6 +59,7 @@ const FolioCell = ({
   onEditMesaControl,
   onProgramar,
   onReviewStock,
+  onCancel,
 }: {
   order: PedidoListItem;
 } & OperationsOrderColumnCallbacks) => {
@@ -84,6 +87,15 @@ const FolioCell = ({
       icon: WarehouseIcon,
       onSelect: () => onReviewStock(order),
       permission: "R-MESACONTROL-PEDIDOS",
+      visible: order.estatus !== PEDIDO_ESTATUS.CANCELADO,
+    },
+    // Un CANCELADO legado (`activo = true`, de antes de `/cancelar/`) sigue
+    // listándose, pero no hay nada que cancelar.
+    {
+      label: "Cancelar pedido",
+      icon: BanIcon,
+      onSelect: () => onCancel(order),
+      permission: "E-MESACONTROL-PEDIDOS",
       visible: order.estatus !== PEDIDO_ESTATUS.CANCELADO,
     },
   ];
