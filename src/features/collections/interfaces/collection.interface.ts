@@ -81,8 +81,9 @@ export interface Cobro {
   /**
    * Folio de la serie `COBROS` (p. ej. "COB-00016"), solo lectura. El backend lo
    * asigna al aplicar el cobro y cancelarlo no lo cambia. `null` en `Borrador`,
-   * en cobros aplicados antes de que existiera el folio y cuando la sucursal no
-   * tiene serie `COBROS` activa.
+   * en un borrador cancelado sin aplicar, en cobros registrados antes de que
+   * existiera el folio y cuando la sucursal no tiene serie `COBROS` activa. Esta
+   * es la lista de referencia de los casos sin folio.
    */
   folio: string | null;
   estatus: CobroEstatus;
