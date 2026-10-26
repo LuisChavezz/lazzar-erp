@@ -12,7 +12,7 @@ import { cancelPedido } from "../services/actions";
 import type { PedidoCancelResponse } from "../interfaces/pedido-cancel.interface";
 import { PEDIDO_KPIS_QUERY_KEY } from "../constants/pedidoKpis";
 import { ordersQueryKey } from "./useOrders";
-import { orderStockDetailQueryKey } from "./useOrderStockDetail";
+import { ORDER_STOCK_DETAIL_QUERY_KEY, orderStockDetailQueryKey } from "./useOrderStockDetail";
 import { pedidoDetailQueryKey } from "./usePedidoDetail";
 import { pedidoMesaControlContextoQueryKey } from "./usePedidoMesaControlContexto";
 import { pedidoTrazabilidadQueryKey } from "./usePedidoTrazabilidad";
@@ -22,6 +22,8 @@ interface CancelPedidoVariables {
   /** Folio (o `#id`) para el toast. */
   label: string;
   motivo: string;
+  /** Quien llamó pinta el error de `motivo` bajo su campo: sin toast. */
+  handlesMotivoError: boolean;
 }
 
 /** Candado de la cancelación, ÚNICO por pedido (ver `useCancelPedido`). */
@@ -56,7 +58,7 @@ const INVENTORY_QUERY_KEYS: QueryKey[] = [
   ["stock-report"],
   ["stock-movement-report"],
   ["inventory-pipeline"],
-  ["order-stock-detail"],
+  ORDER_STOCK_DETAIL_QUERY_KEY,
 ];
 
 const PEDIDO_ALREADY_CANCELLED_MESSAGE =
@@ -97,8 +99,9 @@ const cancelPedidoErrorMessage = (error: unknown): string =>
  * detalle), con un aviso en vez del toast de éxito.
  *
  * Errores: el mensaje del backend tal cual (`pedido` con los documentos vivos,
- * `permiso`, `estatus`), en un toast. El de `motivo` NO sale en toast: lo pinta
- * el diálogo bajo su campo. Esos 400 no cambian nada.
+ * `permiso`, `estatus`, `motivo`), en un toast. El de `motivo` no sale en
+ * toast si quien llama lo pinta bajo su campo (`onMotivoError`). Esos 400 no
+ * cambian nada.
  */
 export const useCancelPedido = (pedidoId: number) => {
   const queryClient = useQueryClient();
@@ -132,17 +135,19 @@ export const useCancelPedido = (pedidoId: number) => {
     mutationKey,
     mutationFn: ({ motivo }) => cancelPedido(pedidoId, { motivo }),
     onMutate: () => queryClient.cancelQueries({ predicate: isRecordQuery }),
+    // La caché se limpia ANTES del toast: el pedido ya se canceló, así que la
+    // fila tiene que salir pase lo que pase (`pedidoCancelSummary` no lanza).
     onSuccess: async (response, { label }) => {
-      toast.success(pedidoCancelSummary(response, label));
       await forgetPedido();
+      toast.success(pedidoCancelSummary(response, label));
     },
-    onError: async (error) => {
+    onError: async (error, { handlesMotivoError }) => {
       if (isNotFoundError(error)) {
         toastWarning(PEDIDO_ALREADY_CANCELLED_MESSAGE);
         await forgetPedido();
         return;
       }
-      if (drfFieldMessage(error, "motivo")) return;
+      if (handlesMotivoError && drfFieldMessage(error, "motivo")) return;
       toast.error(cancelPedidoErrorMessage(error));
     },
   });
@@ -151,23 +156,34 @@ export const useCancelPedido = (pedidoId: number) => {
    * Dispara la cancelación salvo que ya haya una en vuelo para ESTE pedido
    * (consulta síncrona a la caché). `label` es el folio para el toast y
    * `motivo` va ya validado y recortado. `onSuccess` corre tras cancelar (y
-   * releer los listados), también si el pedido ya estaba cancelado (404);
-   * `onError`, con cualquier otro fallo (el toast ya salió, salvo el de
-   * `motivo`).
+   * releer los listados), también si el pedido ya estaba cancelado (404).
+   * `onMotivoError` recibe el mensaje del backend sobre `motivo` (y entonces
+   * no hay toast); sin él, ese error sale en toast como los demás. `onError`,
+   * con cualquier otro fallo (su toast ya salió).
    */
   const cancel = (
     label: string,
     motivo: string,
-    options: { onSuccess?: () => void; onError?: (error: unknown) => void } = {},
+    options: {
+      onSuccess?: () => void;
+      onError?: (error: unknown) => void;
+      onMotivoError?: (message: string) => void;
+    } = {},
   ) => {
     if (!isIdle()) return;
+    const { onSuccess, onError, onMotivoError } = options;
     mutation.mutate(
-      { label, motivo },
+      { label, motivo, handlesMotivoError: onMotivoError !== undefined },
       {
-        onSuccess: options.onSuccess,
+        onSuccess,
         onError: (error) => {
-          if (isNotFoundError(error)) options.onSuccess?.();
-          else options.onError?.(error);
+          if (isNotFoundError(error)) {
+            onSuccess?.();
+            return;
+          }
+          const motivoMessage = onMotivoError ? drfFieldMessage(error, "motivo") : undefined;
+          if (motivoMessage) onMotivoError?.(motivoMessage);
+          else onError?.(error);
         },
       },
     );

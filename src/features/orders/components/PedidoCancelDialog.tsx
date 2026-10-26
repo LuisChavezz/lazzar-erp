@@ -1,16 +1,24 @@
 "use client";
 
-import { useState } from "react";
 import type { FormEvent } from "react";
-import { isAxiosError } from "axios";
+import { useForm } from "@tanstack/react-form";
 import { MainDialog } from "@/src/components/MainDialog";
 import { FormTextarea } from "@/src/components/FormTextarea";
 import { FormCancelButton, FormSubmitButton } from "@/src/components/FormButtons";
 import { useDialogSession } from "@/src/hooks/useDialogSession";
-import { drfFieldMessage } from "@/src/utils/firstDrfFieldMessage";
+import { useFormFieldErrors } from "@/src/hooks/useFormFieldErrors";
+import { isDrfActionRejection } from "@/src/utils/drfWriteErrors";
 import { useCancelPedido } from "../hooks/useCancelPedido";
-import { PEDIDO_CANCEL_MOTIVO_MAX, PedidoCancelFormSchema } from "../schemas/pedido-cancel.schema";
-import { countCodePoints } from "../schemas/pedido-programacion.schema";
+import {
+  PEDIDO_CANCEL_MOTIVO_MAX,
+  PedidoCancelFormFields,
+  PedidoCancelFormSchema,
+  clampPedidoCancelMotivo,
+  pedidoCancelMotivoLength,
+  type PedidoCancelFormValues,
+} from "../schemas/pedido-cancel.schema";
+
+type PedidoCancelFormField = keyof PedidoCancelFormValues;
 
 /** Lo que el diálogo necesita del pedido: sirve una fila del listado o el detalle. */
 export interface PedidoCancelTarget {
@@ -32,15 +40,16 @@ interface PedidoCancelDialogProps {
  * siempre y le pasa `pedido = null` para cerrarlo, así el diálogo sobrevive a
  * que la fila desaparezca del listado al cancelarse.
  *
- * Mismo esqueleto que `PurchaseOrderCancelDialog` (`MainDialog` + `FormTextarea`
- * + `safeParse` al enviar). El motivo va con `forceUppercase`, como el texto
+ * `MainDialog` + TanStack Form con el schema Zod y `useFormFieldErrors` (mismo
+ * patrón que `useSeguimientoForm`). El motivo va con `forceUppercase`, como el texto
  * libre del resto del pedido (comentarios de programación) y el motivo de
  * cancelación de facturas.
  *
  * No se cierra a media petición. Al terminar:
  * - éxito o 404 (ya estaba cancelado): se cierra;
  * - 400 de `motivo`: se queda abierto con el error bajo el campo;
- * - otro 400/403 (`permiso`, `pedido`): se cierra, el toast trae el motivo;
+ * - otro rechazo de negocio (`isDrfActionRejection`: `permiso`, `pedido`): se
+ *   cierra, el toast trae el motivo;
  * - red o 5xx: se queda abierto con el motivo escrito para reintentar.
  */
 export function PedidoCancelDialog({ pedido, onClose, onCancelled }: PedidoCancelDialogProps) {
@@ -72,6 +81,7 @@ export function PedidoCancelDialog({ pedido, onClose, onCancelled }: PedidoCance
               onClose();
             },
             onError: handlers.onError,
+            onMotivoError: handlers.onMotivoError,
           })
         }
       />
@@ -82,58 +92,89 @@ export function PedidoCancelDialog({ pedido, onClose, onCancelled }: PedidoCance
 interface PedidoCancelFormProps {
   isCancelling: boolean;
   onClose: () => void;
-  onSubmit: (motivo: string, handlers: { onError: (error: unknown) => void }) => void;
+  onSubmit: (
+    motivo: string,
+    handlers: { onError: (error: unknown) => void; onMotivoError: (message: string) => void },
+  ) => void;
 }
 
 /** Contenido del diálogo; se monta de nuevo en cada apertura (`key`), sin borrador previo. */
 function PedidoCancelForm({ isCancelling, onClose, onSubmit }: PedidoCancelFormProps) {
-  const [motivo, setMotivo] = useState("");
-  const [motivoError, setMotivoError] = useState<string | null>(null);
-  // Code points, igual que el schema y el backend.
-  const motivoLength = countCodePoints(motivo.trim());
+  // Errores de `motivo`, del schema y del backend: ver `useFormFieldErrors`.
+  const {
+    getError,
+    setServerFieldError,
+    setClientFieldError,
+    clearClientFieldError,
+    clearFieldErrors,
+    clearServerErrors,
+  } = useFormFieldErrors<PedidoCancelFormField>();
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const form = useForm({
+    defaultValues: { motivo: "" } satisfies PedidoCancelFormValues,
+    onSubmit: ({ value }) => {
+      clearServerErrors();
+      const parsed = PedidoCancelFormSchema.safeParse(value);
+      if (!parsed.success) {
+        setClientFieldError("motivo", parsed.error.issues[0]?.message ?? "Motivo inválido");
+        return;
+      }
+      clearClientFieldError("motivo");
+      onSubmit(parsed.data.motivo, {
+        onMotivoError: (message) => setServerFieldError("motivo", message),
+        // Un rechazo de negocio (`permiso`, `pedido`) no se arregla
+        // reintentando: se cierra y el toast trae el motivo. Red o 5xx: sigue
+        // abierto con lo escrito.
+        onError: (error) => {
+          if (isDrfActionRejection(error)) onClose();
+        },
+      });
+    },
+  });
+
+  const validateMotivo = (value: string) => {
+    const parsed = PedidoCancelFormFields.motivo.safeParse(value);
+    if (parsed.success) clearClientFieldError("motivo");
+    else setClientFieldError("motivo", parsed.error.issues[0]?.message ?? "Motivo inválido");
+  };
+
+  const handleFormSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const parsed = PedidoCancelFormSchema.safeParse({ motivo });
-    if (!parsed.success) {
-      setMotivoError(parsed.error.issues[0]?.message ?? "Motivo inválido");
-      return;
-    }
-    onSubmit(parsed.data.motivo, {
-      onError: (error) => {
-        const motivoMessage = drfFieldMessage(error, "motivo");
-        if (motivoMessage) {
-          setMotivoError(motivoMessage);
-          return;
-        }
-        const status = isAxiosError(error) ? error.response?.status : undefined;
-        if (status === 400 || status === 403) onClose();
-      },
-    });
+    event.stopPropagation();
+    void form.handleSubmit();
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4 py-1">
-      <div>
-        <FormTextarea
-          label="Motivo de cancelación"
-          name="motivo"
-          rows={3}
-          placeholder="Explica por qué se cancela el pedido"
-          value={motivo}
-          maxLength={PEDIDO_CANCEL_MOTIVO_MAX}
-          forceUppercase
-          disabled={isCancelling}
-          error={motivoError ? { message: motivoError } : undefined}
-          onChange={(event) => {
-            setMotivo(event.target.value);
-            if (motivoError) setMotivoError(null);
-          }}
-        />
-        <p className="mt-1 text-right text-[11px] tabular-nums text-slate-400 dark:text-slate-500">
-          {motivoLength}/{PEDIDO_CANCEL_MOTIVO_MAX}
-        </p>
-      </div>
+    <form onSubmit={handleFormSubmit} className="space-y-4 py-1">
+      <form.Field name="motivo">
+        {(field) => (
+          <div>
+            {/* Sin `maxLength` nativo: cuenta otra cosa que el backend (ver
+                `PEDIDO_CANCEL_MOTIVO_MAX`); el tope lo pone `clampPedidoCancelMotivo`. */}
+            <FormTextarea
+              label="Motivo de cancelación"
+              name={field.name}
+              rows={3}
+              placeholder="Explica por qué se cancela el pedido"
+              value={field.state.value}
+              forceUppercase
+              disabled={isCancelling}
+              error={getError("motivo")}
+              onChange={(event) => {
+                field.handleChange(clampPedidoCancelMotivo(event.target.value));
+                clearFieldErrors("motivo");
+              }}
+              onBlur={() => {
+                field.handleBlur();
+                validateMotivo(field.state.value);
+              }}
+            />
+            <p className="mt-1 text-right text-[11px] tabular-nums text-slate-400 dark:text-slate-500">
+              {pedidoCancelMotivoLength(field.state.value)}/{PEDIDO_CANCEL_MOTIVO_MAX}
+            </p>
+          </div>
+        )}
+      </form.Field>
       <div className="flex justify-end gap-3 pt-1">
         <FormCancelButton label="Volver" onClick={onClose} disabled={isCancelling} />
         <FormSubmitButton

@@ -72,6 +72,17 @@ export const isNotFoundOrForbiddenError = (error: unknown): boolean =>
   (error.response?.status === 404 || error.response?.status === 403);
 
 /**
+ * ¿El backend RECHAZÓ la acción por una regla de negocio (400, 403 o 409)?
+ * Son los mismos estados en los que `drfActionErrorMessage` muestra el mensaje
+ * del backend: reintentar igual no sirve, así que un diálogo de acción puede
+ * cerrarse. Red, 5xx y 404 no cuentan (el 404 se trata aparte).
+ */
+export const isDrfActionRejection = (error: unknown): boolean => {
+  const status = error instanceof AxiosError ? error.response?.status : undefined;
+  return status === 400 || status === 403 || status === 409;
+};
+
+/**
  * Error de una acción sobre un registro (aprobar, rechazar, eliminar, checar).
  * Un 404 significa que otra persona ya lo borró (`notFoundMessage`); un
  * 400/403 trae su `detail` en español. Un 409 (conflicto: el borrado que
@@ -87,15 +98,16 @@ export const drfActionErrorMessage = (
   if (isNotFoundError(error)) {
     return notFoundMessage;
   }
-  const status = error instanceof AxiosError ? error.response?.status : undefined;
+  if (!isDrfActionRejection(error)) {
+    return fallback;
+  }
+  const status = (error as AxiosError).response?.status;
   if (status === 400 || status === 403) {
     return firstDrfFieldMessage(error) ?? fallback;
   }
-  if (status === 409) {
-    const data = (error as AxiosError).response?.data;
-    const detail =
-      data && typeof data === "object" ? (data as Record<string, unknown>).detail : undefined;
-    return typeof detail === "string" && detail.trim() ? detail : fallback;
-  }
-  return fallback;
+  // 409
+  const data = (error as AxiosError).response?.data;
+  const detail =
+    data && typeof data === "object" ? (data as Record<string, unknown>).detail : undefined;
+  return typeof detail === "string" && detail.trim() ? detail : fallback;
 };

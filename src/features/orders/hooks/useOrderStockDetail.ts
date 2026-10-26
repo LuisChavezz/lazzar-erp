@@ -8,8 +8,10 @@ import { getOrderStockDetail } from "../services/actions";
  * Fuera del prefijo `["orders"]` a propósito: las invalidaciones de la lista
  * de pedidos no deben refrescar (ni poner en fetching) este detalle.
  */
+export const ORDER_STOCK_DETAIL_QUERY_KEY = ["order-stock-detail"] as const;
+
 export const orderStockDetailQueryKey = (orderId: number | null) =>
-  ["order-stock-detail", orderId] as const;
+  [...ORDER_STOCK_DETAIL_QUERY_KEY, orderId] as const;
 
 export const useOrderStockDetail = (orderId: number | null) => {
   const { data, isLoading, isError, error } = useQuery<OrderStockDetail[]>({
