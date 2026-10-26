@@ -1408,7 +1408,7 @@ export function QuoteFormContent({
           open={isReflectiveEditOpen}
           onOpenChange={handleReflectiveEditOpenChange}
           item={reflectiveEditIndex !== null ? (watchedItems?.[reflectiveEditIndex] ?? null) : null}
-          partidaNumber={(reflectiveEditIndex ?? 0) + 1}
+          itemIndex={reflectiveEditIndex}
           allowedPositions={rulesForIndex(reflectiveEditIndex).reflejante}
           onSave={handleReflectiveEditSave}
         />
@@ -1420,7 +1420,7 @@ export function QuoteFormContent({
           open={isSizesEditOpen}
           onOpenChange={handleSizesEditOpenChange}
           item={sizesEditIndex !== null ? (watchedItems?.[sizesEditIndex] ?? null) : null}
-          partidaNumber={(sizesEditIndex ?? 0) + 1}
+          itemIndex={sizesEditIndex}
           sizes={sizes}
           onSave={handleSizesEditSave}
         />

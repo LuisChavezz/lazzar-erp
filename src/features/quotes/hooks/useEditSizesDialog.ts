@@ -26,19 +26,17 @@ import type { Size } from '../../sizes/interfaces/size.interface';
 import { MUESTRA_ROW_ID } from '../types';
 import type { CatalogRow, QuoteItem } from '../types';
 import { useSizesState } from './useSizesState';
-import {
-  exceedsReflectiveInventoryCap,
-  reflectiveInventoryCapMessage,
-} from '../utils/reflectiveInventoryCap';
+import { reflectiveInventoryCapError } from '../utils/reflectiveInventoryCap';
 
 export interface UseEditSizesDialogOptions {
   /** Partida cuyas tallas se van a editar. */
   item: QuoteItem | null;
   /**
-   * Posición 1-based de la partida en la cotización (`Partida N` del mensaje
-   * del tope de reflejante «Del inventario», igual que el backend).
+   * Índice (0-based) de la partida en la cotización, `null` sin partida. Nombra
+   * la partida en el mensaje del tope de reflejante «Del inventario»
+   * (`Partida N`, índice + 1, igual que el backend).
    */
-  partidaNumber: number;
+  itemIndex: number | null;
   /** Catálogo completo de tallas disponibles. */
   sizes: Size[];
   /** Callback de apertura/cierre del diálogo. */
@@ -51,7 +49,7 @@ export interface UseEditSizesDialogOptions {
  */
 export function useEditSizesDialog({
   item,
-  partidaNumber,
+  itemIndex,
   sizes,
   onOpenChange,
 }: UseEditSizesDialogOptions) {
@@ -115,7 +113,7 @@ export function useEditSizesDialog({
    */
   const handleSave = useCallback(
     (onSave: (updatedItem: QuoteItem) => void) => {
-      if (!item || !selectedRow) return;
+      if (!item || itemIndex === null || !selectedRow) return;
 
       const isValid = sizesState.validateSelectedRows([selectedRow]);
       if (!isValid) return;
@@ -130,18 +128,16 @@ export function useEditSizesDialog({
       const totalCantidad = tallas.reduce((sum, t) => sum + t.cantidad, 0);
 
       // Reflejante «Del inventario»: máximo 50 piezas por partida (CO-06).
-      if (exceedsReflectiveInventoryCap(item.reflejantes, totalCantidad)) {
-        sizesState.setSizeError(
-          selectedRow.id,
-          reflectiveInventoryCapMessage(partidaNumber, totalCantidad)
-        );
+      const capError = reflectiveInventoryCapError(item.reflejantes, tallas, itemIndex + 1);
+      if (capError) {
+        sizesState.setSizeError(selectedRow.id, capError);
         return;
       }
 
       onSave({ ...item, tallas, cantidad: totalCantidad });
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [item, partidaNumber, sizes, sizesState.validateSelectedRows, sizesState.getItemSizes, sizesState.setSizeError, selectedRow]
+    [item, itemIndex, sizes, sizesState.validateSelectedRows, sizesState.getItemSizes, sizesState.setSizeError, selectedRow]
   );
 
   /**

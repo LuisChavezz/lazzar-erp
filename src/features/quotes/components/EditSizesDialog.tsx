@@ -26,7 +26,7 @@ import { MainDialog } from '@/src/components/MainDialog';
 import { EditIcon } from '@/src/components/Icons';
 import type { Size } from '../../sizes/interfaces/size.interface';
 import type { QuoteItem } from '../types';
-import { useEditSizesDialog } from '../hooks/useEditSizesDialog';
+import { useEditSizesDialog, type UseEditSizesDialogOptions } from '../hooks/useEditSizesDialog';
 import { StepSizes } from './StepSizes';
 
 interface EditSizesDialogProps {
@@ -36,11 +36,7 @@ interface EditSizesDialogProps {
   onOpenChange: (open: boolean) => void;
   /** Partida cuyas tallas se van a editar. */
   item: QuoteItem | null;
-  /**
-   * Posición 1-based de la partida en la cotización (`Partida N` del mensaje
-   * del tope de reflejante «Del inventario», igual que el backend).
-   */
-  partidaNumber: number;
+  itemIndex: UseEditSizesDialogOptions['itemIndex'];
   /** Catálogo completo de tallas disponibles. */
   sizes: Size[];
   /** Callback invocado con el item actualizado al guardar. */
@@ -56,13 +52,13 @@ export function EditSizesDialog({
   open,
   onOpenChange,
   item,
-  partidaNumber,
+  itemIndex,
   sizes,
   onSave,
 }: EditSizesDialogProps) {
   const { sizesStepProps, handleSave, handleOpenChange } = useEditSizesDialog({
     item,
-    partidaNumber,
+    itemIndex,
     sizes,
     onOpenChange,
   });

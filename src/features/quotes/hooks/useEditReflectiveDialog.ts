@@ -21,20 +21,17 @@ import { useCallback, useEffect, useMemo } from 'react';
 import type { QuoteItem } from '../types';
 import { useReflectiveState } from './useReflectiveState';
 import { buildLocationRule, type AllowedCodes } from '../utils/processCompatibility';
-import {
-  exceedsReflectiveInventoryCap,
-  linePieces,
-  reflectiveInventoryCapMessage,
-} from '../utils/reflectiveInventoryCap';
+import { reflectiveInventoryCapError } from '../utils/reflectiveInventoryCap';
 
 export interface UseEditReflectiveDialogOptions {
   /** Item actual de la partida a editar. */
   item: QuoteItem | null;
   /**
-   * Posición 1-based de la partida en la cotización (`Partida N` del mensaje
-   * del tope de reflejante «Del inventario», igual que el backend).
+   * Índice (0-based) de la partida en la cotización, `null` sin partida. Nombra
+   * la partida en el mensaje del tope de reflejante «Del inventario»
+   * (`Partida N`, índice + 1, igual que el backend).
    */
-  partidaNumber: number;
+  itemIndex: number | null;
   /** Callback invocado al cerrar el diálogo (abierto → cerrado). */
   onOpenChange: (open: boolean) => void;
   /**
@@ -50,7 +47,7 @@ export interface UseEditReflectiveDialogOptions {
  */
 export function useEditReflectiveDialog({
   item,
-  partidaNumber,
+  itemIndex,
   onOpenChange,
   allowedPositions = null,
 }: UseEditReflectiveDialogOptions) {
@@ -69,10 +66,9 @@ export function useEditReflectiveDialog({
 
   // Reflejante «Del inventario»: máximo 50 piezas por partida (CO-06), contra
   // las piezas actuales de la partida.
-  const piezas = item ? linePieces(item) : 0;
   const inventoryCapError =
-    item && exceedsReflectiveInventoryCap(reflectiveState.buildPayload(), piezas)
-      ? reflectiveInventoryCapMessage(partidaNumber, piezas)
+    item && itemIndex !== null
+      ? reflectiveInventoryCapError(reflectiveState.buildPayload(), item.tallas, itemIndex + 1)
       : null;
 
   /**

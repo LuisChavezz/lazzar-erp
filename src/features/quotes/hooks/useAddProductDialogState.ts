@@ -30,10 +30,7 @@ import { useEmbroideryState } from "./useEmbroideryState";
 import { useProductSelection } from "./useProductSelection";
 import { useReflectiveState } from "./useReflectiveState";
 import { useSizesState } from "./useSizesState";
-import {
-  exceedsReflectiveInventoryCap,
-  reflectiveInventoryCapMessage,
-} from "../utils/reflectiveInventoryCap";
+import { reflectiveInventoryCapError } from "../utils/reflectiveInventoryCap";
 import {
   admitsProcess,
   buildLocationRule,
@@ -492,19 +489,23 @@ export function useAddProductDialogState({
     const reflejantes = reflectiveState.buildPayload();
 
     // Reflejante «Del inventario»: máximo 50 piezas por partida (CO-06). Se
-    // marca en el acordeón de cada fila que se pasa y no se agrega nada. La
-    // fila k (0-based) será la partida `firstPartidaNumber + k`.
+    // marca en el acordeón de cada fila que se pasa y no se agrega nada. Se
+    // revisan las mismas filas que se guardan abajo: al editar (catálogo) solo
+    // la primera; la fila k (0-based) será la partida `firstPartidaNumber + k`.
+    const rowsToSave =
+      !isMuestra && isEditing && onUpdateItem && initialItem
+        ? productSelection.selectedRows.slice(0, 1)
+        : effectiveSelectedRows;
     let anyOverCap = false;
-    effectiveSelectedRows.forEach((row, index) => {
-      const piezas = sizesState
-        .getItemSizes(row.id, sizesPerProduct[row.id] ?? sizes)
-        .reduce((sum, size) => sum + size.cantidad, 0);
-      if (exceedsReflectiveInventoryCap(reflejantes, piezas)) {
+    rowsToSave.forEach((row, index) => {
+      const capError = reflectiveInventoryCapError(
+        reflejantes,
+        sizesState.getItemSizes(row.id, sizesPerProduct[row.id] ?? sizes),
+        firstPartidaNumber + index
+      );
+      if (capError) {
         anyOverCap = true;
-        sizesState.setSizeError(
-          row.id,
-          reflectiveInventoryCapMessage(firstPartidaNumber + index, piezas)
-        );
+        sizesState.setSizeError(row.id, capError);
       }
     });
     if (anyOverCap) {

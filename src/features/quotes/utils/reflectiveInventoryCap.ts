@@ -16,35 +16,43 @@
 import type { QuoteItem } from "../types";
 
 /** `MAX_PIEZAS_REFLEJANTE_INVENTARIO` del backend. */
-export const REFLEJANTE_INVENTARIO_MAX_PIEZAS = 50;
+const REFLEJANTE_INVENTARIO_MAX_PIEZAS = 50;
 
 /** `opcion` de la especificación «Del inventario» (ver `OPCION_OPTIONS`). */
 const OPCION_INVENTARIO = "catalogo";
 
 /**
- * Mismo texto que el 400 `detalle` del backend (EC-576). `partida` es la
- * posición 1-based; `piezas`, el total de la partida.
+ * ¿La partida lleva reflejante «Del inventario»? Tolera formas inválidas (el
+ * schema lo llama aunque otra validación de la partida haya fallado).
  */
-export const reflectiveInventoryCapMessage = (partida: number, piezas: number): string =>
-  `Partida ${partida}: el reflejante «Del inventario» admite máximo ${REFLEJANTE_INVENTARIO_MAX_PIEZAS} piezas y lleva ${piezas}. Cámbialo a «Fabricación especial» o reduce las piezas.`;
-
-type ReflectiveConfig = QuoteItem["reflejantes"];
-
-/** ¿La partida lleva reflejante «Del inventario»? */
-const usesInventoryReflective = (reflejantes: ReflectiveConfig): boolean =>
+const usesInventoryReflective = (reflejantes: QuoteItem["reflejantes"]): boolean =>
   Boolean(reflejantes?.activo) &&
-  (reflejantes?.especificaciones ?? []).some(
-    (spec) => spec.opcion.trim().toLowerCase() === OPCION_INVENTARIO,
+  Array.isArray(reflejantes?.especificaciones) &&
+  reflejantes.especificaciones.some(
+    (spec) =>
+      typeof spec?.opcion === "string" && spec.opcion.trim().toLowerCase() === OPCION_INVENTARIO,
   );
 
-/** ¿`piezas` excede el tope con este reflejante? */
-export const exceedsReflectiveInventoryCap = (
-  reflejantes: ReflectiveConfig,
-  piezas: number,
-): boolean => usesInventoryReflective(reflejantes) && piezas > REFLEJANTE_INVENTARIO_MAX_PIEZAS;
+/**
+ * Piezas de la partida: SOLO la suma de sus tallas, como el backend. Los tres
+ * mappers del payload arman las filas de talla únicamente desde `tallas`, así
+ * que una partida sin tallas no manda piezas aunque tenga `cantidad`.
+ */
+const linePieces = (tallas: readonly { cantidad: unknown }[] | null | undefined): number =>
+  Array.isArray(tallas) ? tallas.reduce((sum, talla) => sum + (Number(talla?.cantidad) || 0), 0) : 0;
 
-/** Piezas de la partida: la suma de sus tallas (o `cantidad` si no las trae). */
-export const linePieces = (item: Pick<QuoteItem, "tallas" | "cantidad">): number =>
-  item.tallas && item.tallas.length > 0
-    ? item.tallas.reduce((sum, talla) => sum + (Number(talla.cantidad) || 0), 0)
-    : Number(item.cantidad) || 0;
+/**
+ * Error del tope para UNA partida: el mismo texto que el 400 `detalle` del
+ * backend (EC-576), o `null` si no lo excede. `partida` es su posición 1-based
+ * en la cotización. Lo usan el schema de las partidas y los tres diálogos.
+ */
+export const reflectiveInventoryCapError = (
+  reflejantes: QuoteItem["reflejantes"],
+  tallas: readonly { cantidad: unknown }[] | null | undefined,
+  partida: number,
+): string | null => {
+  const piezas = linePieces(tallas);
+  return usesInventoryReflective(reflejantes) && piezas > REFLEJANTE_INVENTARIO_MAX_PIEZAS
+    ? `Partida ${partida}: el reflejante «Del inventario» admite máximo ${REFLEJANTE_INVENTARIO_MAX_PIEZAS} piezas y lleva ${piezas}. Cámbialo a «Fabricación especial» o reduce las piezas.`
+    : null;
+};
