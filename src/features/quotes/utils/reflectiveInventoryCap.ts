@@ -21,16 +21,11 @@ const REFLEJANTE_INVENTARIO_MAX_PIEZAS = 50;
 /** `opcion` de la especificación «Del inventario» (ver `OPCION_OPTIONS`). */
 const OPCION_INVENTARIO = "catalogo";
 
-/**
- * ¿La partida lleva reflejante «Del inventario»? Tolera formas inválidas (el
- * schema lo llama aunque otra validación de la partida haya fallado).
- */
+/** ¿La partida lleva reflejante «Del inventario»? */
 const usesInventoryReflective = (reflejantes: QuoteItem["reflejantes"]): boolean =>
   Boolean(reflejantes?.activo) &&
-  Array.isArray(reflejantes?.especificaciones) &&
-  reflejantes.especificaciones.some(
-    (spec) =>
-      typeof spec?.opcion === "string" && spec.opcion.trim().toLowerCase() === OPCION_INVENTARIO,
+  (reflejantes?.especificaciones ?? []).some(
+    (spec) => spec.opcion.trim().toLowerCase() === OPCION_INVENTARIO,
   );
 
 /**
@@ -38,8 +33,8 @@ const usesInventoryReflective = (reflejantes: QuoteItem["reflejantes"]): boolean
  * mappers del payload arman las filas de talla únicamente desde `tallas`, así
  * que una partida sin tallas no manda piezas aunque tenga `cantidad`.
  */
-const linePieces = (tallas: readonly { cantidad: unknown }[] | null | undefined): number =>
-  Array.isArray(tallas) ? tallas.reduce((sum, talla) => sum + (Number(talla?.cantidad) || 0), 0) : 0;
+const linePieces = (tallas: readonly { cantidad: number }[] | undefined): number =>
+  (tallas ?? []).reduce((sum, talla) => sum + (Number(talla.cantidad) || 0), 0);
 
 /**
  * Error del tope para UNA partida: el mismo texto que el 400 `detalle` del
@@ -48,7 +43,7 @@ const linePieces = (tallas: readonly { cantidad: unknown }[] | null | undefined)
  */
 export const reflectiveInventoryCapError = (
   reflejantes: QuoteItem["reflejantes"],
-  tallas: readonly { cantidad: unknown }[] | null | undefined,
+  tallas: readonly { cantidad: number }[] | undefined,
   partida: number,
 ): string | null => {
   const piezas = linePieces(tallas);

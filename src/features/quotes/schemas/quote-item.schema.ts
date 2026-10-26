@@ -227,31 +227,15 @@ export const quoteItemSchema = z.discriminatedUnion("tipo", [
  * porque el mensaje del backend nombra la partida por su posición (`Partida N`,
  * índice + 1). El error va en `cantidad`, la columna de la tabla que muestra el
  * total de piezas.
- *
- * `when: () => true`: Zod 4 omite por defecto las validaciones del arreglo si
- * ALGUNA partida trae un error que aborta (tipo o discriminante inválidos); así
- * el tope se sigue reportando en las demás. `superRefine` no acepta `when`,
- * por eso el `_check` del core. `reflectiveInventoryCapError` tolera partidas
- * con forma inválida.
  */
-export const quoteItemsSchema = z.array(quoteItemSchema).check(
-  z.core._check<z.output<typeof quoteItemSchema>[]>(
-    (payload) => {
-      payload.value.forEach((item, index) => {
-        const message = reflectiveInventoryCapError(item?.reflejantes, item?.tallas, index + 1);
-        if (message) {
-          payload.issues.push({
-            code: "custom",
-            path: [index, "cantidad"],
-            message,
-            input: payload.value,
-          });
-        }
-      });
-    },
-    { when: () => true }
-  )
-);
+export const quoteItemsSchema = z.array(quoteItemSchema).superRefine((items, ctx) => {
+  items.forEach((item, index) => {
+    const message = reflectiveInventoryCapError(item.reflejantes, item.tallas, index + 1);
+    if (message) {
+      ctx.addIssue({ code: "custom", path: [index, "cantidad"], message });
+    }
+  });
+});
 
 export type QuoteCatalogoItem = z.output<typeof quoteCatalogoItemSchema>;
 export type QuoteMuestraItem = z.output<typeof quoteMuestraItemSchema>;
