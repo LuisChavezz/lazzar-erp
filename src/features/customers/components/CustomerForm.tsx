@@ -254,29 +254,21 @@ export default function CustomerForm({
               </form.Field>
               <form.Field name="correo">
                 {(field) => (
-                  <div>
-                    <FormInput
-                      name={field.name}
-                      value={field.state.value}
-                      onChange={(event) => {
-                        field.handleChange(event.target.value);
-                        clearFieldErrors("correo");
-                      }}
-                      onBlur={() => {
-                        field.handleBlur();
-                        validateField("correo", field.state.value);
-                      }}
-                      label="Correo"
-                      placeholder="correo@empresa.com"
-                      error={getError("correo")}
-                    />
-                    {facturamaWarning && (
-                      <p className="mt-2 flex items-start gap-1.5 text-xs text-amber-700 dark:text-amber-400">
-                        <ExclamationTriangleIcon className="w-3.5 h-3.5 shrink-0 mt-px" aria-hidden="true" />
-                        {facturamaWarning}
-                      </p>
-                    )}
-                  </div>
+                  <FormInput
+                    name={field.name}
+                    value={field.state.value}
+                    onChange={(event) => {
+                      field.handleChange(event.target.value);
+                      clearFieldErrors("correo");
+                    }}
+                    onBlur={() => {
+                      field.handleBlur();
+                      validateField("correo", field.state.value);
+                    }}
+                    label="Correo"
+                    placeholder="correo@empresa.com"
+                    error={getError("correo")}
+                  />
                 )}
               </form.Field>
             </div>
@@ -621,6 +613,14 @@ export default function CustomerForm({
         ) : null}
 
         <div className="space-y-4 pb-8">
+          {/* Junto a los botones y no bajo Correo: en el alta aparece al verificar
+              el RFC, cuando Correo ya quedó arriba, fuera de la vista. */}
+          {facturamaWarning && (
+            <p className="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-medium text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300">
+              <ExclamationTriangleIcon className="h-4 w-4 shrink-0" aria-hidden="true" />
+              {facturamaWarning}
+            </p>
+          )}
           <FormErrorBanner message={formError} />
 
           <div className="flex justify-end gap-3">
