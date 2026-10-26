@@ -2,7 +2,7 @@
 
 import type { ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeftIcon } from "@/src/components/Icons";
+import { ArrowLeftIcon, ExclamationTriangleIcon } from "@/src/components/Icons";
 import { Loader } from "@/src/components/Loader";
 import { ErrorState } from "@/src/components/ErrorState";
 import { CustomerCartera } from "./CustomerCartera";
@@ -10,6 +10,7 @@ import { CustomerCredito } from "./CustomerCredito";
 import { CustomerResumenKpis, CustomerResumenKpisSkeleton } from "./CustomerResumenKpis";
 import { CustomerResumenPedidos } from "./CustomerResumenPedidos";
 import { useCustomer } from "../hooks/useCustomer";
+import { getFacturamaVerificationNotice } from "../utils/facturamaVerification";
 
 interface CustomerDetailContentProps {
   customerId: string;
@@ -82,6 +83,7 @@ export const CustomerDetailContent = ({ customerId }: CustomerDetailContentProps
   // muestra la fila del listado (placeholder) se pinta un estado de carga,
   // nunca ceros ni "sin pedidos".
   const resumen = isPlaceholderData ? undefined : data.resumen_comercial;
+  const facturamaNotice = getFacturamaVerificationNotice(data);
 
   // Bloque de KPIs: datos, carga o error del resumen.
   let kpis: ReactNode;
@@ -109,6 +111,14 @@ export const CustomerDetailContent = ({ customerId }: CustomerDetailContentProps
         <p className="text-sm text-slate-500 dark:text-slate-400">
           {[data.razon_social, data.correo].filter(Boolean).join(" · ")}
         </p>
+        {/* Texto completo, no solo tooltip: aquí sí cabe decir qué falta. La
+            fila del listado (placeholder) ya trae el flag, así que no parpadea. */}
+        {facturamaNotice && (
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400">
+            <ExclamationTriangleIcon className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+            {facturamaNotice.text}
+          </span>
+        )}
       </div>
 
       {kpis}
