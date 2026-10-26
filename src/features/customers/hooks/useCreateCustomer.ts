@@ -3,6 +3,8 @@ import { createCustomer } from "../services/actions";
 import { customerKpisQueryKey } from "./useCustomerKpis";
 import { Customer, CustomerCreate } from "../interfaces/customer.interface";
 import toast from "react-hot-toast";
+import { toastWarning } from "@/src/utils/toastWarning";
+import { getFacturamaSaveWarning } from "../utils/facturamaVerification";
 import {
   CustomerFormField,
   getCustomerFormFields,
@@ -29,7 +31,7 @@ export const useCreateCustomer = ({
 
   return useMutation<Customer, unknown, CustomerCreate>({
     mutationFn: (payload: CustomerCreate) => createCustomer(payload),
-    onSuccess: () => {
+    onSuccess: (customer) => {
       queryClient.invalidateQueries({ queryKey: ["customers"] });
       // El alta suma un cliente al total de "Clientes activos vs. inactivos" y
       // el backend asigna al usuario como su vendedor (entra en su alcance).
@@ -37,7 +39,13 @@ export const useCreateCustomer = ({
       if (invalidateOrderOnboarding) {
         queryClient.invalidateQueries({ queryKey: ["quote-onboarding"] });
       }
-      toast.success("Cliente registrado correctamente");
+      // Lo que devolvió el backend, no lo capturado: él decide si quedó en Facturama.
+      const facturamaWarning = getFacturamaSaveWarning(customer);
+      if (facturamaWarning) {
+        toastWarning(facturamaWarning);
+      } else {
+        toast.success("Cliente registrado correctamente");
+      }
     },
     onError: (error) => {
       const formError = getCustomerWriteErrorMessage(error, formFields, setError);
