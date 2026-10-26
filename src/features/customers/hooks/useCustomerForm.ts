@@ -14,6 +14,7 @@ import {
 import { Customer, CustomerCreate } from "../interfaces/customer.interface";
 import { useCreateCustomer } from "./useCreateCustomer";
 import { useUpdateCustomer } from "./useUpdateCustomer";
+import { getCustomerFormFields } from "./customerErrorMessages";
 import { useWorkspaceStore } from "../../workspace/store/workspace.store";
 import { useSatInfo } from "../../sat/hooks/useSatInfo";
 
@@ -143,25 +144,25 @@ export function useCustomerForm({
   }, [customerToEdit, regimenesFiscales, usosCfdi]);
 
   // Adaptador de errores del backend (hooks de mutación) hacia estado local de errores.
-  const setHookError = ((field: CustomerFormField, error: { message?: string }) => {
-    if (!error?.message) {
-      return;
-    }
-    setServerErrors((prev) => ({ ...prev, [field]: error.message as string }));
+  const setHookError = (field: CustomerFormField, message: string) => {
+    setServerErrors((prev) => ({ ...prev, [field]: message }));
     if (field === "rfc") {
       onServerRfcError?.();
     }
-  }) as never;
+  };
 
+  const formFields = getCustomerFormFields(includeCredit);
   const { mutateAsync: createCustomer, isPending: isCreating } = useCreateCustomer({
     setError: setHookError,
     onFormError: setFormError,
+    formFields,
     invalidateOrderOnboarding,
   });
-  const { mutateAsync: updateCustomer, isPending: isUpdating } = useUpdateCustomer(
-    setHookError,
-    setFormError
-  );
+  const { mutateAsync: updateCustomer, isPending: isUpdating } = useUpdateCustomer({
+    setError: setHookError,
+    onFormError: setFormError,
+    formFields,
+  });
 
   // Limpia errores locales de un campo específico.
   const clearFieldErrors = (field: CustomerFormField) => {

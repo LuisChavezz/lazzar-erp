@@ -3,17 +3,30 @@ import { updateCustomer } from "../services/actions";
 import { customerKpisQueryKey } from "./useCustomerKpis";
 import { CustomerCreate } from "../interfaces/customer.interface";
 import toast from "react-hot-toast";
-import { handleCustomerWriteError, SetCustomerError } from "../utils/customerWriteError";
+import {
+  CustomerFormField,
+  getCustomerFormFields,
+  getCustomerWriteErrorMessage,
+  SetCustomerFieldError,
+} from "./customerErrorMessages";
 
 interface UpdateCustomerPayload extends CustomerCreate {
   id: number;
 }
 
-export const useUpdateCustomer = (
-  setError?: SetCustomerError,
+interface UseUpdateCustomerOptions {
+  setError?: SetCustomerFieldError;
   /** Rechazo que no es de un campo (p.ej. Facturama), para el banner del formulario. */
-  onFormError?: (message: string) => void
-) => {
+  onFormError?: (message: string) => void;
+  /** Campos que pinta el formulario; un error de cualquier otro va a `onFormError`. */
+  formFields?: readonly CustomerFormField[];
+}
+
+export const useUpdateCustomer = ({
+  setError,
+  onFormError,
+  formFields = getCustomerFormFields(false),
+}: UseUpdateCustomerOptions = {}) => {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -28,7 +41,7 @@ export const useUpdateCustomer = (
       toast.success("Cliente actualizado correctamente");
     },
     onError: (error) => {
-      const formError = handleCustomerWriteError(error, setError);
+      const formError = getCustomerWriteErrorMessage(error, formFields, setError);
       if (formError) {
         onFormError?.(formError);
       }
