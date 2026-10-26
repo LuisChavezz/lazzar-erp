@@ -237,9 +237,15 @@ export const getLineProcessIssues = (
   }
 
   if (item.bordados?.activo) {
-    const codes = (item.bordados.especificaciones ?? [])
-      .map((spec) => spec.posicionCodigo)
-      .filter((code) => code && !admitsCode(rules.bordado, code));
+    // Sin repetidos (una ubicación duplicada se nombra una vez), en el orden
+    // en que aparecen; igual que en reflejante.
+    const codes = [
+      ...new Set(
+        (item.bordados.especificaciones ?? [])
+          .map((spec) => spec.posicionCodigo)
+          .filter((code) => code && !admitsCode(rules.bordado, code)),
+      ),
+    ];
     if (!admitsProcess(rules.bordado)) {
       issues.push({ field: "bordados", message: processNotAdmittedMessage("bordado", "partida") });
     } else if (codes.length > 0) {
