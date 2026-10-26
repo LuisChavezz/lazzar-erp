@@ -2,6 +2,10 @@ import { useQuery } from "@tanstack/react-query";
 import { getPedidoMesaControlContexto } from "../services/actions";
 import type { PedidoMesaControlContexto } from "../interfaces/pedido-mesa-control-contexto.interface";
 
+/** Llave del precheck de edición de UN pedido (`usePedidoMesaControlContexto`). */
+export const pedidoMesaControlContextoQueryKey = (id: number) =>
+  ["pedido-mesa-control-contexto", id] as const;
+
 /**
  * Precheck de la edición estricta de un pedido por Mesa de Control.
  *
@@ -16,7 +20,7 @@ import type { PedidoMesaControlContexto } from "../interfaces/pedido-mesa-contro
  */
 export const usePedidoMesaControlContexto = (id: number) => {
   return useQuery<PedidoMesaControlContexto>({
-    queryKey: ["pedido-mesa-control-contexto", id],
+    queryKey: pedidoMesaControlContextoQueryKey(id),
     queryFn: () => getPedidoMesaControlContexto(id),
     enabled: id > 0,
     staleTime: 0,

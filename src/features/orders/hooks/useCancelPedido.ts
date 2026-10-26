@@ -11,6 +11,7 @@ import { PEDIDO_KPIS_QUERY_KEY } from "../constants/pedidoKpis";
 import { ordersQueryKey } from "./useOrders";
 import { orderStockDetailQueryKey } from "./useOrderStockDetail";
 import { pedidoDetailQueryKey } from "./usePedidoDetail";
+import { pedidoMesaControlContextoQueryKey } from "./usePedidoMesaControlContexto";
 import { pedidoTrazabilidadQueryKey } from "./usePedidoTrazabilidad";
 
 /** Candado de la cancelación, ÚNICO por pedido (ver `useCancelPedido`). */
@@ -20,13 +21,12 @@ export const cancelPedidoMutationKey = (pedidoId: number) =>
 /**
  * Consultas de UN pedido que, tras cancelarlo, responderían 404: el backend lo
  * da de baja (`activo = false`) y ninguna de sus rutas de detalle lo encuentra.
- * La del contexto de edición repite la llave de `usePedidoMesaControlContexto`.
  */
 const pedidoRecordQueryKeys = (pedidoId: number): QueryKey[] => [
   pedidoDetailQueryKey(pedidoId),
   pedidoTrazabilidadQueryKey(pedidoId),
   orderStockDetailQueryKey(pedidoId),
-  ["pedido-mesa-control-contexto", pedidoId],
+  pedidoMesaControlContextoQueryKey(pedidoId),
 ];
 
 /**
