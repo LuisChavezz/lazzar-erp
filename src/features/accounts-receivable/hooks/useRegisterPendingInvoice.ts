@@ -7,6 +7,7 @@ import {
   type RegisterPendingInvoiceFormValues,
 } from "../schemas/register-pending-invoice.schema";
 import { invalidatePedidoProgress } from "@/src/features/orders/hooks/invalidatePedidoProgress";
+import { handleDrfWriteError } from "@/src/utils/drfWriteErrors";
 
 /**
  * Campos del formulario que pueden recibir un error de campo del backend.
@@ -15,11 +16,6 @@ import { invalidatePedidoProgress } from "@/src/features/orders/hooks/invalidate
  * muestran vía toast, nunca se mapean a un campo.
  */
 export type RegisterPendingInvoiceField = keyof RegisterPendingInvoiceFormValues;
-
-// Derivado del esquema (ver `REGISTER_PENDING_INVOICE_FIELDS`): agregar/quitar un
-// campo en el schema actualiza este set sin tocar aquí, evitando que la lista se
-// desincronice del formulario.
-const FORM_FIELDS: ReadonlySet<string> = new Set(REGISTER_PENDING_INVOICE_FIELDS);
 
 type SetRegisterPendingInvoiceError = (
   field: RegisterPendingInvoiceField,
@@ -31,10 +27,11 @@ type SetRegisterPendingInvoiceError = (
  *
  * Mutación para `POST /finanzas/facturas/registrar-pendiente-cobro/`. Sigue la
  * convención del proyecto (ver `useCreateStockMovement`): la invalidación de la
- * lista y el toast viven aquí, y los errores de campo del `400` se mapean al
- * formulario vía el callback `setError` (el `setServerFieldError` de
- * `useFormFieldErrors`). Los mensajes de llaves que no son
- * campos (`empresa`, `sucursal`) solo alimentan el toast agregado.
+ * lista y el toast viven aquí. Un `400` pasa por `handleDrfWriteError`: cada
+ * llave que es campo del formulario (`REGISTER_PENDING_INVOICE_FIELDS`,
+ * derivado del schema) se pinta bajo su campo con `setError` (el
+ * `setServerFieldError` de `useFormFieldErrors`), y el toast lleva el mensaje
+ * que no tiene campo (`empresa`, `sucursal`, `non_field_errors`, `detail`).
  */
 export const useRegisterPendingInvoice = (
   setError?: SetRegisterPendingInvoiceError,
@@ -59,27 +56,13 @@ export const useRegisterPendingInvoice = (
         const data = error.response?.data;
 
         if (statusCode === 400 && data && typeof data === "object") {
-          const messages: string[] = [];
-
-          Object.entries(data as Record<string, unknown>).forEach(([key, value]) => {
-            // El API puede devolver el mensaje como string plano o como array
-            // de strings (convención de errores de campo de DRF).
-            const message = Array.isArray(value) ? value[0] : value;
-            if (typeof message !== "string" || message.length === 0) return;
-
-            // Mapear al campo del formulario si corresponde; `empresa`/`sucursal`
-            // no son campos y solo van al toast.
-            if (setError && FORM_FIELDS.has(key)) {
-              setError(key as RegisterPendingInvoiceField, message);
-            }
-
-            messages.push(message);
-          });
-
           toast.error(
-            messages.length > 0
-              ? messages.join("\n")
-              : "Error de validación al registrar la factura",
+            handleDrfWriteError(
+              error,
+              "Error de validación al registrar la factura",
+              REGISTER_PENDING_INVOICE_FIELDS,
+              setError,
+            ),
           );
           return;
         }
