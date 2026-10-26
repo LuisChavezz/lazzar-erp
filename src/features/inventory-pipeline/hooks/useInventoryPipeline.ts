@@ -26,11 +26,13 @@ import type {
  * tabla) de un refetch fallido con datos en caché (toast + conservar la
  * tabla). Mismo patrón que `useCorteMangaOrders`.
  */
+export const INVENTORY_PIPELINE_QUERY_KEY = ["inventory-pipeline"] as const;
+
 export const useInventoryPipeline = () => {
   const companyId = useWorkspaceStore((state) => state.selectedCompany.id);
 
   const query = useQuery<InventoryPipelineResultadoApi[], Error, InventoryPipelineRow[]>({
-    queryKey: ["inventory-pipeline", companyId],
+    queryKey: [...INVENTORY_PIPELINE_QUERY_KEY, companyId],
     queryFn: () => getInventoryPipeline(companyId!),
     enabled: !!companyId,
     staleTime: 0,

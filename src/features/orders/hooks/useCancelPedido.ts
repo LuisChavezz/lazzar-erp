@@ -8,11 +8,12 @@ import { useMutationLock } from "@/src/hooks/useMutationLock";
 import { toastWarning } from "@/src/utils/toastWarning";
 import { drfActionErrorMessage, isNotFoundError } from "@/src/utils/drfWriteErrors";
 import { drfFieldMessage } from "@/src/utils/firstDrfFieldMessage";
+import { invalidateStockQueries } from "@/src/features/stock/utils/invalidateStockQueries";
 import { cancelPedido } from "../services/actions";
 import type { PedidoCancelResponse } from "../interfaces/pedido-cancel.interface";
 import { PEDIDO_KPIS_QUERY_KEY } from "../constants/pedidoKpis";
 import { ordersQueryKey } from "./useOrders";
-import { ORDER_STOCK_DETAIL_QUERY_KEY, orderStockDetailQueryKey } from "./useOrderStockDetail";
+import { orderStockDetailQueryKey } from "./useOrderStockDetail";
 import { pedidoDetailQueryKey } from "./usePedidoDetail";
 import { pedidoMesaControlContextoQueryKey } from "./usePedidoMesaControlContexto";
 import { pedidoTrazabilidadQueryKey } from "./usePedidoTrazabilidad";
@@ -51,16 +52,6 @@ const isPedidoRecordQuery = (pedidoId: number) => {
   return (query: Query) => hashes.has(query.queryHash);
 };
 
-/** Consultas de existencias que cambian cuando un pedido cancelado devuelve inventario. */
-const INVENTORY_QUERY_KEYS: QueryKey[] = [
-  ["stockMovements"],
-  ["stock-items"],
-  ["stock-report"],
-  ["stock-movement-report"],
-  ["inventory-pipeline"],
-  ORDER_STOCK_DETAIL_QUERY_KEY,
-];
-
 const PEDIDO_ALREADY_CANCELLED_MESSAGE =
   "El pedido ya no está disponible; puede que ya se haya cancelado.";
 
@@ -83,7 +74,7 @@ const cancelPedidoErrorMessage = (error: unknown): string =>
  * detalle responde 404. Por eso sus consultas propias (detalle, trazabilidad,
  * existencias, contexto de edición) se CANCELAN y se sacan de la caché en vez
  * de invalidarse (`dropQueriesWhenUnobserved`: un observador montado las
- * volvería a pedir). Se invalidan las existencias (`INVENTORY_QUERY_KEYS`), los listados
+ * volvería a pedir). Se invalidan las existencias (`invalidateStockQueries`), los listados
  * (`["orders"]` por prefijo: Mesa de Control, Programados, Mis pedidos y los
  * selectores de otros módulos), los indicadores de "Mis pedidos" y los pedidos
  * especiales. La mutación sigue "pending" hasta que los listados montados se
@@ -117,13 +108,10 @@ export const useCancelPedido = (pedidoId: number) => {
       queryClient.getQueryCache().findAll({ predicate: isRecordQuery }),
     );
     // Inventario: la cancelación devuelve existencias (movimiento ENTRADA) y
-    // libera reservas. Mismas llaves que `useCreatePicking` más el pipeline y
-    // el "Revisar inventario" de los DEMÁS pedidos (por prefijo; el de este ya
-    // salió arriba y releerlo daría 404). Sin `await`: la mutación solo espera
-    // a los listados que sacan la fila.
-    for (const queryKey of INVENTORY_QUERY_KEYS) {
-      void queryClient.invalidateQueries({ queryKey, predicate: (query) => !isRecordQuery(query) });
-    }
+    // libera reservas. Fuera las consultas de ESTE pedido (su "Revisar
+    // inventario" ya salió arriba y releerlo daría 404). Sin `await`: la
+    // mutación solo espera a los listados que sacan la fila.
+    void invalidateStockQueries(queryClient, { exclude: isRecordQuery });
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: ordersQueryKey() }),
       queryClient.invalidateQueries({ queryKey: PEDIDO_KPIS_QUERY_KEY }),

@@ -17,9 +17,11 @@ import type {
  * visible la página anterior mientras llega la nueva, evitando el parpadeo a
  * pantalla de carga (misma convención que `useStockItems`).
  */
+export const STOCK_REPORT_QUERY_KEY = ["stock-report"] as const;
+
 export const useStockReport = (params: StockReportParams | null) => {
   return useQuery<StockReportResponse>({
-    queryKey: ["stock-report", params],
+    queryKey: [...STOCK_REPORT_QUERY_KEY, params],
     queryFn: () => getStockReport(params as StockReportParams),
     enabled: params !== null,
     placeholderData: keepPreviousData,

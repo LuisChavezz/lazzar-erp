@@ -2,6 +2,8 @@ import { useGuardedQuery } from "@/src/hooks/useGuardedQuery";
 import { getStockMovements } from "../services/actions";
 import type { StockMovement } from "../interfaces/stock-movements.interface";
 
+export const STOCK_MOVEMENTS_QUERY_KEY = ["stockMovements"] as const;
+
 /**
  * No expone el `isError` crudo: `isInitialError` solo es `true` si la consulta
  * NUNCA cargó; un refetch fallido con datos en caché conserva lo cargado y
@@ -11,7 +13,7 @@ import type { StockMovement } from "../interfaces/stock-movements.interface";
 export const useStockMovements = () => {
   const { data, isLoading, isInitialError, error, refetch, isFetching } = useGuardedQuery<StockMovement[]>(
     {
-      queryKey: ["stockMovements"],
+      queryKey: STOCK_MOVEMENTS_QUERY_KEY,
       queryFn: getStockMovements,
     },
     { toastId: "stock-movements-refetch-error" },

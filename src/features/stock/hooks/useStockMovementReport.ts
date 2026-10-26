@@ -18,11 +18,13 @@ import type {
  * traídas no vuelve a consultar. `keepPreviousData` mantiene visible la página
  * anterior mientras llega la nueva, evitando el parpadeo a pantalla de carga.
  */
+export const STOCK_MOVEMENT_REPORT_QUERY_KEY = ["stock-movement-report"] as const;
+
 export const useStockMovementReport = (
   params: StockMovementReportParams | null,
 ) => {
   return useQuery<StockMovementReportResponse>({
-    queryKey: ["stock-movement-report", params],
+    queryKey: [...STOCK_MOVEMENT_REPORT_QUERY_KEY, params],
     queryFn: () => getStockMovementReport(params as StockMovementReportParams),
     enabled: params !== null,
     placeholderData: keepPreviousData,

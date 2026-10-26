@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
+import { invalidateStockQueries } from "@/src/features/stock/utils/invalidateStockQueries";
 import { AxiosError } from "axios";
 import { firstDrfMessage } from "@/src/utils/firstDrfMessage";
 import { createTransferencia } from "../services/actions";
@@ -201,10 +202,10 @@ export function parseStockTransferError(error: unknown): ParsedTransferError {
  * normalizado para que el formulario lo reparta entre el banner de "todo o
  * nada", los campos de cabecera y las líneas.
  *
- * Invalida tanto `["transferencias"]` (la lista propia del módulo, ver
- * `useTransferencias`) como la query general de movimientos
- * (`["stockMovements"]`), para que el `MovimientoInventario` resultante
- * también aparezca en el historial general si el usuario navega ahí después.
+ * Invalida `["transferencias"]` (la lista propia del módulo, ver
+ * `useTransferencias`) y toda vista de existencias (`invalidateStockQueries`):
+ * el traspaso mueve stock entre almacenes y su `MovimientoInventario` también
+ * aparece en el historial general.
  */
 export const useCreateStockTransfer = (
   onServerError?: (parsed: ParsedTransferError) => void,
@@ -215,7 +216,7 @@ export const useCreateStockTransfer = (
     mutationFn: createTransferencia,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["transferencias"] });
-      queryClient.invalidateQueries({ queryKey: ["stockMovements"] });
+      void invalidateStockQueries(queryClient);
       toast.success("Traspaso registrado correctamente");
     },
     onError: (error) => {

@@ -9,6 +9,7 @@ import { useWarehouses } from "@/src/features/warehouses/hooks/useWarehouses";
 import { useLocations } from "@/src/features/locations/hooks/useLocations";
 import { useProductVariants } from "@/src/features/product-variants/hooks/useProductVariants";
 import { getStockItems } from "@/src/features/stock/services/actions";
+import { STOCK_ITEMS_QUERY_KEY } from "@/src/features/stock/hooks/useStockItems";
 import { useCreateStockMovement, parseStockMovementPedidoError } from "./useCreateStockMovement";
 import {
   StockMovementFormSchema,
@@ -72,7 +73,7 @@ export function useStockMovementForm({ onSuccess }: { onSuccess?: () => void } =
   } | null>(null);
 
   const { data: stockCheckResult, isFetching: isCheckingStock } = useQuery({
-    queryKey: ["stock-items", "check", stockCheckParams],
+    queryKey: [...STOCK_ITEMS_QUERY_KEY, "check", stockCheckParams],
     queryFn: () => getStockItems(stockCheckParams ?? undefined),
     enabled: stockCheckParams !== null,
     staleTime: 0,

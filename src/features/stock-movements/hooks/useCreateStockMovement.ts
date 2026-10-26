@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
+import { invalidateStockQueries } from "@/src/features/stock/utils/invalidateStockQueries";
 import { AxiosError } from "axios";
 import { firstDrfMessage } from "@/src/utils/firstDrfMessage";
 import { createStockMovement, type CreateStockMovementPayload } from "../services/actions";
@@ -43,7 +44,8 @@ export const useCreateStockMovement = (setError?: SetStockMovementError) => {
   return useMutation({
     mutationFn: createStockMovement,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["stockMovements"] });
+      // Entrada, salida o ajuste: cambia existencias, no solo el historial.
+      void invalidateStockQueries(queryClient);
       toast.success("Movimiento de stock registrado correctamente");
     },
     onError: (error) => {

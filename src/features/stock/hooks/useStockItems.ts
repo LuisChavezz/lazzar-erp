@@ -2,12 +2,15 @@ import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { getStockItems, type StockItemsFilters } from "../services/actions";
 import { StockItem } from "../interfaces/stock.interface";
 
+/** Prefijo de las existencias por almacén (y del chequeo de `useStockMovementForm`). */
+export const STOCK_ITEMS_QUERY_KEY = ["stock-items"] as const;
+
 export const useStockItems = (
   filters?: StockItemsFilters,
   options?: { enabled?: boolean },
 ) => {
   return useQuery<StockItem[]>({
-    queryKey: ["stock-items", filters],
+    queryKey: [...STOCK_ITEMS_QUERY_KEY, filters],
     queryFn: () => getStockItems(filters),
     // Permite no consultar mientras no haya un almacén seleccionado.
     enabled: options?.enabled ?? true,
