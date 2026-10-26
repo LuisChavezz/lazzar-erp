@@ -13,7 +13,7 @@
  * contenido). Sigue el patrón de `CreateInvoiceDialog` / `StockMovementForm`.
  */
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import { useStore } from "@tanstack/react-form";
 import { MainDialog } from "@/src/components/MainDialog";
 import { DialogHeader } from "@/src/components/DialogHeader";
@@ -59,6 +59,8 @@ function RegisterPendingInvoiceForm({ onClose }: { onClose: () => void }) {
   // tipo de cambio. Sin moneda los importes no llevan prefijo: un "$" afirmaría
   // una moneda que aún no se eligió.
   const monedaCodigo = getCurrencyCode(monedaValue);
+  const tipoCambioId = useId();
+  const tipoCambioHelpId = `${tipoCambioId}-help`;
   const needsTipoCambio = requiresTipoCambio(monedaCodigo);
   const amountPrefix = monedaCodigo || undefined;
   const amountPrefixClass = amountPrefix ? "pl-10!" : undefined;
@@ -248,9 +250,9 @@ function RegisterPendingInvoiceForm({ onClose }: { onClose: () => void }) {
             {(field) => (
               <div>
                 <FormInput
-                  id="register-pending-invoice-tipo-cambio"
+                  id={tipoCambioId}
                   label={`Tipo de cambio (MXN por ${monedaCodigo || "unidad"}) *`}
-                  aria-describedby="register-pending-invoice-tipo-cambio-help"
+                  aria-describedby={tipoCambioHelpId}
                   inputMode="decimal"
                   placeholder="0.000000"
                   autoComplete="off"
@@ -264,7 +266,7 @@ function RegisterPendingInvoiceForm({ onClose }: { onClose: () => void }) {
                   error={getError("tipo_cambio")}
                 />
                 <p
-                  id="register-pending-invoice-tipo-cambio-help"
+                  id={tipoCambioHelpId}
                   className="mt-1 ml-1 text-xs text-slate-500 dark:text-slate-400"
                 >
                   Pesos por cada {monedaCodigo || "unidad"}. La factura se registra ya emitida
