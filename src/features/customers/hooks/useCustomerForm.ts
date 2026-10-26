@@ -164,8 +164,10 @@ export function useCustomerForm({
     formFields,
   });
 
-  // Limpia errores locales de un campo específico.
+  // Limpia errores locales de un campo específico. Editar cualquier campo
+  // también retira el banner: el rechazo que mostraba puede ya no aplicar.
   const clearFieldErrors = (field: CustomerFormField) => {
+    setFormError(null);
     setClientErrors((prev) => {
       if (!(field in prev)) {
         return prev;
