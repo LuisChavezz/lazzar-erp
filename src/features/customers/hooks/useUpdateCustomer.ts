@@ -2,20 +2,18 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { updateCustomer } from "../services/actions";
 import { customerKpisQueryKey } from "./useCustomerKpis";
 import { CustomerCreate } from "../interfaces/customer.interface";
-import { CustomerFormValues } from "../schemas/customer.schema";
 import toast from "react-hot-toast";
-import { AxiosError } from "axios";
+import { handleCustomerWriteError, SetCustomerError } from "../utils/customerWriteError";
 
 interface UpdateCustomerPayload extends CustomerCreate {
   id: number;
 }
 
-type SetCustomerError = (
-  field: keyof CustomerFormValues,
-  error: { type?: string; message?: string }
-) => void;
-
-export const useUpdateCustomer = (setError?: SetCustomerError) => {
+export const useUpdateCustomer = (
+  setError?: SetCustomerError,
+  /** Rechazo que no es de un campo (p.ej. Facturama), para el banner del formulario. */
+  onFormError?: (message: string) => void
+) => {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -30,27 +28,11 @@ export const useUpdateCustomer = (setError?: SetCustomerError) => {
       toast.success("Cliente actualizado correctamente");
     },
     onError: (error) => {
-      if (error instanceof AxiosError && setError) {
-        const statusCode = error.response?.status;
-        const data = error.response?.data;
-
-        if (statusCode === 400 && data) {
-          const validationErrors = data as Record<string, string[]>;
-
-          Object.keys(validationErrors).forEach((key) => {
-            const fieldKey = key as keyof CustomerFormValues;
-            const errorMessages = validationErrors[key];
-
-            if (Array.isArray(errorMessages) && errorMessages.length > 0) {
-              setError(fieldKey, {
-                type: "server",
-                message: errorMessages[0],
-              });
-            }
-          });
-        }
+      const formError = handleCustomerWriteError(error, setError);
+      if (formError) {
+        onFormError?.(formError);
       }
-      toast.error("No se pudo actualizar el cliente");
+      toast.error(formError ?? "No se pudo actualizar el cliente");
     },
   });
 };
