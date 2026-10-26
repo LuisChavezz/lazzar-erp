@@ -53,15 +53,20 @@ import { INVOICE_STATUS, INVOICE_STATUS_CONFIG } from "../constants/invoiceStatu
 import {
   INVOICE_NON_FISCAL_PDF_LABEL,
   INVOICE_NON_FISCAL_PDF_MESSAGE,
-  INVOICE_STAMP_CURRENCY_MESSAGE,
   INVOICE_STAMP_PENDING_LABEL,
   INVOICE_STAMP_PENDING_MESSAGE,
   canStampInvoice,
-  isInvoiceStampCurrencySupported,
   isInvoicePdfNonFiscal,
   isInvoiceStampPending,
   invoiceEmailLabel,
+  invoiceStampMissingTipoCambioMessage,
 } from "../utils/invoiceStamping";
+import {
+  formatInvoiceTipoCambio,
+  invoiceCurrencyCode,
+  isInvoiceTipoCambioMissing,
+  requiresInvoiceTipoCambio,
+} from "../utils/invoiceCurrency";
 import { InvoiceConceptsSection } from "./InvoiceConceptsSection";
 import { InvoiceCancelDialog } from "./InvoiceCancelDialog";
 import { InvoiceStampDialog } from "./InvoiceStampDialog";
@@ -110,13 +115,13 @@ function InvoiceDocumentActions({
   const canCancel = canCancelInvoice(invoice, user);
   const cancelBlockReason = canCancel ? getInvoiceCancelBlockReason(invoice) : null;
   const canStamp = canStampInvoice(invoice, user);
-  // Un timbrado sin confirmar manda sobre la moneda: es lo que hay que revisar primero.
+  // Un timbrado sin confirmar manda sobre el tipo de cambio: es lo que hay que revisar primero.
   const stampBlockReason = !canStamp
     ? null
     : isInvoiceStampPending(invoice)
       ? INVOICE_STAMP_PENDING_MESSAGE
-      : !isInvoiceStampCurrencySupported(invoice)
-        ? INVOICE_STAMP_CURRENCY_MESSAGE
+      : isInvoiceTipoCambioMissing(invoice)
+        ? invoiceStampMissingTipoCambioMessage(invoiceCurrencyCode(invoice))
         : null;
   const cfdiEmail = getInvoiceCfdiEmailAvailability(invoice, user);
   const nonFiscalPdf = isInvoicePdfNonFiscal(invoice);
@@ -152,8 +157,8 @@ function InvoiceDocumentActions({
           renderDialog={(dialog) => <InvoiceCancelDialog invoice={invoice} {...dialog} />}
         />
         {/* "Timbrar": solo con `E-FIN-FACTURAS` y una `Emitida` activa sin CFDI
-            (`canStampInvoice`); con el timbrado pendiente de confirmación o en otra
-            moneda, bloqueado y descrito por su nota. */}
+            (`canStampInvoice`); con el timbrado pendiente de confirmación o fuera de
+            MXN sin tipo de cambio, bloqueado y descrito por su nota. */}
         <DocumentActionWithDialog
           offered={canStamp}
           blockedNoteId={stampBlockReason ? stampNoteId : undefined}
@@ -231,6 +236,27 @@ function InvoiceDocumentActions({
         </p>
       )}
     </div>
+  );
+}
+
+/**
+ * Tipo de cambio, junto a la moneda, solo fuera de MXN (en MXN el backend usa
+ * 1 y no se muestra). De solo lectura: se captura al emitir. Sale del retrieve
+ * (el desglose no lo trae); sin capturar —un `Borrador` que aún no se emite, o
+ * una emitida sin él, que ya no puede corregirse— dice "Sin capturar".
+ */
+function InvoiceTipoCambioStat({ invoice }: { invoice: Invoice }) {
+  if (!requiresInvoiceTipoCambio(invoice)) return null;
+  return (
+    <HeaderStat label="Tipo de cambio">
+      {invoice.tipo_cambio === null ? (
+        <span className="text-slate-400 dark:text-slate-500">Sin capturar</span>
+      ) : (
+        <span className="tabular-nums">
+          {formatInvoiceTipoCambio(invoice.tipo_cambio)} MXN por {invoiceCurrencyCode(invoice)}
+        </span>
+      )}
+    </HeaderStat>
   );
 }
 
@@ -333,6 +359,7 @@ export function InvoiceMainSheet({ data, invoice, canOpen, user }: InvoiceMainSh
                 {data.fecha_vencimiento ? formatInvoiceDate(data.fecha_vencimiento) : "Sin vencimiento"}
               </HeaderStat>
               <HeaderStat label="Moneda">{data.moneda.codigo_iso}</HeaderStat>
+              {invoice && <InvoiceTipoCambioStat invoice={invoice} />}
               <HeaderStat label="Piezas">
                 <span className="tabular-nums">{importes.total_piezas} pzas</span>
               </HeaderStat>

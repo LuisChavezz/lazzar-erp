@@ -13,12 +13,14 @@ import type { InvoiceEstatus } from "../interfaces/invoice.interface";
  */
 export const INVOICE_STAMP_PERMISSION = "E-FIN-FACTURAS";
 
-/** Única moneda que el backend timbra hoy (la factura no guarda tipo de cambio). */
-export const INVOICE_STAMP_CURRENCY = "MXN";
-
-/** Explicación del botón deshabilitado cuando la moneda no es MXN. */
-export const INVOICE_STAMP_CURRENCY_MESSAGE =
-  "Solo se pueden timbrar facturas en MXN: esta factura no puede timbrarse.";
+/**
+ * Explicación de "Timbrar" bloqueado en una factura fuera de MXN sin tipo de
+ * cambio: el CFDI lo lleva (`CurrencyExchangeRate`) y `timbrar/` lo rechaza sin
+ * él. Una emitida ya no puede capturarlo (el backend no lo deja cambiar fuera
+ * de `Borrador`).
+ */
+export const invoiceStampMissingTipoCambioMessage = (moneda: string): string =>
+  `La factura está en ${moneda || "otra moneda"} y no tiene tipo de cambio capturado: no puede timbrarse.`;
 
 /** ¿La factura ya tiene CFDI timbrado? */
 export const isInvoiceStamped = (invoice: { cfdi_uuid?: string | null }): boolean =>
@@ -80,9 +82,9 @@ export const isInvoiceStampable = (invoice: {
 
 /**
  * ¿Se ofrece "Timbrar" a ESTE usuario para ESTA factura? Permiso del backend +
- * `isInvoiceStampable`. La moneda no entra aquí: una factura en otra moneda
- * muestra el botón deshabilitado con su explicación
- * (`isInvoiceStampCurrencySupported`).
+ * `isInvoiceStampable`. La moneda no entra aquí: una factura fuera de MXN sin
+ * tipo de cambio muestra el botón bloqueado con su explicación
+ * (`isInvoiceTipoCambioMissing`, `invoiceStampMissingTipoCambioMessage`).
  */
 export const canStampInvoice = (
   invoice: Parameters<typeof isInvoiceStampable>[0],
@@ -106,13 +108,10 @@ export const INVOICE_STAMP_PENDING_MESSAGE =
 /** Indicador de la cabecera, en el lugar del bloque del folio fiscal. */
 export const INVOICE_STAMP_PENDING_LABEL = "Timbrado pendiente de confirmación";
 
-/** ¿La moneda de la factura (`moneda_nombre`, el código ISO) se puede timbrar? */
-export const isInvoiceStampCurrencySupported = (invoice: { moneda_nombre: string | null }): boolean =>
-  (invoice.moneda_nombre ?? "").trim().toUpperCase() === INVOICE_STAMP_CURRENCY;
-
 /**
  * Mensaje de un fallo de `timbrar/`. El backend pone el motivo bajo `cfdi`
- * (ya timbrada, datos fiscales faltantes, rechazo o falla de Facturama) o bajo
+ * (ya timbrada, datos fiscales faltantes —incluido el tipo de cambio fuera de
+ * MXN, que NO llega bajo su propia llave—, rechazo o falla de Facturama) o bajo
  * `estatus` (inactiva o cancelada), como string o como lista; `drfFieldMessage`
  * lee las dos formas. Si no viene ninguno (403, 404, 500, red), cae en el
  * extractor genérico.
