@@ -7,8 +7,18 @@ import { invalidatePedidoProgress } from "@/src/features/orders/hooks/invalidate
 import { PrecheckError, useMutationLock } from "@/src/hooks/useMutationLock";
 import { emitInvoice, patchInvoice } from "../services/actions";
 import type { Invoice } from "../interfaces/invoice.interface";
-import { emitInvoiceErrorMessage, isInvoiceEmittable } from "../utils/invoiceEmission";
-import { isSameTipoCambio, requiresInvoiceTipoCambio } from "../utils/invoiceCurrency";
+import {
+  emitInvoiceErrorMessage,
+  invoiceStampedWithoutTipoCambioMessage,
+  isInvoiceEmittable,
+  isInvoiceTipoCambioLockedByCfdi,
+} from "../utils/invoiceEmission";
+import {
+  formatInvoiceTipoCambio,
+  invoiceCurrencyCode,
+  isSameTipoCambio,
+  requiresInvoiceTipoCambio,
+} from "../utils/invoiceCurrency";
 import {
   fetchFreshInvoice,
   invalidateInvoiceBaseQueries,
@@ -60,7 +70,10 @@ const isClientErrorResponse = (error: unknown): boolean => {
  * - Antes de escribir pide el retrieve FRESCO: si la factura ya no es un
  *   `Borrador` activo no se hace nada y se avisa.
  * - El PATCH solo va fuera de MXN y si el valor cambió: si el `Borrador` ya
- *   traía ese tipo de cambio se emite directo. Nunca se manda en MXN.
+ *   traía ese tipo de cambio se emite directo. Nunca se manda en MXN ni en una
+ *   factura ya timbrada (`isInvoiceTipoCambioLockedByCfdi`): ahí se emite con
+ *   el tipo de cambio del CFDI, y si no lo tiene, o si se timbró con otro
+ *   después de abrir el diálogo, no se hace nada y se avisa.
  * - Un `400` del PATCH puede venir de que otra sesión emitió o canceló la
  *   factura entre el retrieve previo y el PATCH (el backend lo rechaza bajo
  *   `tipo_cambio`). Por eso se relee la factura: si ya no es `Borrador`, el
@@ -92,6 +105,20 @@ export const useEmitInvoice = (invoiceId: number) => {
     mutationFn: async ({ tipoCambio, progress }) => {
       const current = await fetchFreshInvoice(queryClient, invoiceId);
       if (!isInvoiceEmittable(current)) return { outcome: "not-emittable", invoice: current };
+      // Timbrada fuera de MXN: su tipo de cambio es el del CFDI y no se cambia.
+      if (isInvoiceTipoCambioLockedByCfdi(current)) {
+        if (current.tipo_cambio === null) {
+          throw new PrecheckError(
+            invoiceStampedWithoutTipoCambioMessage(invoiceCurrencyCode(current)),
+          );
+        }
+        // Se timbró después de abrir el diálogo, con otro valor del capturado.
+        if (tipoCambio !== null && !isSameTipoCambio(tipoCambio, current.tipo_cambio)) {
+          throw new PrecheckError(
+            `La factura se timbró con un tipo de cambio de ${formatInvoiceTipoCambio(current.tipo_cambio)} MXN por ${invoiceCurrencyCode(current)}, que ya no puede cambiarse. Cierra este diálogo y vuelve a abrirlo para emitirla con ese tipo de cambio.`,
+          );
+        }
+      }
       if (
         tipoCambio !== null &&
         requiresInvoiceTipoCambio(current) &&

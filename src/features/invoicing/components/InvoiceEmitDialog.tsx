@@ -10,18 +10,28 @@ import { useDialogSession } from "@/src/hooks/useDialogSession";
 import { sanitizeDecimalInput } from "@/src/utils/decimal";
 import { useEmitInvoice } from "../hooks/useEmitInvoice";
 import { EmitInvoiceFormSchema } from "../schemas/invoice-emit.schema";
+import { LOCAL_CURRENCY } from "@/src/utils/tipoCambio";
 import {
+  formatInvoiceTipoCambio,
   invoiceCurrencyCode,
   requiresInvoiceTipoCambio,
   tipoCambioInputValue,
 } from "../utils/invoiceCurrency";
+import {
+  invoiceStampedWithoutTipoCambioMessage,
+  isInvoiceTipoCambioLockedByCfdi,
+} from "../utils/invoiceEmission";
 
-/** Lo mínimo para emitir y nombrar la factura y saber si pide tipo de cambio (el retrieve). */
+/**
+ * Lo mínimo para emitir y nombrar la factura y saber si pide tipo de cambio, o
+ * si ya lo fija su CFDI (el retrieve).
+ */
 export interface InvoiceEmitTarget {
   id: number;
   folio: string | null;
   moneda_nombre: string | null;
   tipo_cambio: string | null;
+  cfdi_uuid: string | null;
 }
 
 interface InvoiceEmitDialogProps {
@@ -34,7 +44,9 @@ interface InvoiceEmitDialogProps {
  * Diálogo de EMISIÓN de una factura `Borrador`
  * (`POST /finanzas/facturas/{id}/emitir/`). Fuera de MXN pide además el tipo
  * de cambio, que se guarda con un PATCH justo antes de emitir
- * (`useEmitInvoice`); en MXN solo confirma y no manda tipo de cambio.
+ * (`useEmitInvoice`); en MXN solo confirma y no manda tipo de cambio. Si la
+ * factura ya está timbrada, su tipo de cambio es el del CFDI: se muestra de
+ * solo lectura y no se manda.
  *
  * Lo monta el dueño de la vista (`InvoiceMainSheet`, vía
  * `DocumentActionWithDialog`), no el botón: al emitir, el refetch retira la
@@ -102,7 +114,8 @@ interface InvoiceEmitFormProps {
  */
 function InvoiceEmitForm({ target, isPending, onClose, onSubmit }: InvoiceEmitFormProps) {
   const moneda = invoiceCurrencyCode(target);
-  const needsTipoCambio = requiresInvoiceTipoCambio(target);
+  const lockedByCfdi = isInvoiceTipoCambioLockedByCfdi(target);
+  const needsTipoCambio = requiresInvoiceTipoCambio(target) && !lockedByCfdi;
   const [tipoCambio, setTipoCambio] = useState(() => tipoCambioInputValue(target.tipo_cambio));
   const [tipoCambioError, setTipoCambioError] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -111,7 +124,11 @@ function InvoiceEmitForm({ target, isPending, onClose, onSubmit }: InvoiceEmitFo
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const parsed = EmitInvoiceFormSchema.safeParse({ moneda, tipo_cambio: tipoCambio });
+    // Con el tipo de cambio fijado por el CFDI no se valida ni se manda nada.
+    const parsed = EmitInvoiceFormSchema.safeParse({
+      moneda: lockedByCfdi ? LOCAL_CURRENCY : moneda,
+      tipo_cambio: tipoCambio,
+    });
     if (!parsed.success) {
       setTipoCambioError(parsed.error.issues[0]?.message ?? "Tipo de cambio inválido");
       return;
@@ -125,6 +142,13 @@ function InvoiceEmitForm({ target, isPending, onClose, onSubmit }: InvoiceEmitFo
 
   return (
     <form onSubmit={handleSubmit} noValidate className="space-y-4 py-1">
+      {lockedByCfdi && (
+        <p className="rounded-xl border border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 px-4 py-3 text-sm text-amber-800 dark:text-amber-200">
+          {target.tipo_cambio === null
+            ? invoiceStampedWithoutTipoCambioMessage(moneda)
+            : `La factura ya está timbrada: se emitirá con el tipo de cambio de su CFDI, ${formatInvoiceTipoCambio(target.tipo_cambio)} MXN por ${moneda || "unidad"}, que no puede cambiarse.`}
+        </p>
+      )}
       {needsTipoCambio && (
         <div>
           <FormInput

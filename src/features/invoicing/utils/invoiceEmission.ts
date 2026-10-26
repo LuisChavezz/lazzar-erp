@@ -4,6 +4,8 @@ import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { firstDrfFieldMessage } from "@/src/utils/firstDrfFieldMessage";
 import { INVOICE_STATUS } from "../constants/invoiceStatus";
 import type { InvoiceEstatus } from "../interfaces/invoice.interface";
+import { invoiceCurrencyCode, requiresInvoiceTipoCambio } from "./invoiceCurrency";
+import { isInvoiceStamped } from "./invoiceStamping";
 
 /**
  * Permiso que exige el backend en `POST /finanzas/facturas/{id}/emitir/` (sin
@@ -30,12 +32,38 @@ export const canEmitInvoice = (
 ): boolean => hasPermission(INVOICE_EMIT_PERMISSION, user) && isInvoiceEmittable(invoice);
 
 /**
+ * ¿La factura ya tiene CFDI y está fuera de MXN? Entonces su tipo de cambio es
+ * el del CFDI y no se toca: el backend aún deja cambiarlo en `Borrador`
+ * (nucleo-erp#669), pero la póliza saldría con otro tipo de cambio que el CFDI.
+ */
+export const isInvoiceTipoCambioLockedByCfdi = (invoice: {
+  moneda_nombre: string | null;
+  cfdi_uuid: string | null;
+}): boolean => isInvoiceStamped(invoice) && requiresInvoiceTipoCambio(invoice);
+
+/** Explicación de "Emitir" bloqueado: timbrada fuera de MXN y sin tipo de cambio. */
+export const invoiceStampedWithoutTipoCambioMessage = (moneda: string): string =>
+  `La factura ya está timbrada y no tiene tipo de cambio: no puede emitirse, porque cualquier tipo de cambio que se capture para ${moneda || "su moneda"} contradiría su CFDI.`;
+
+/**
  * Motivo por el que "Emitir factura" se muestra bloqueado, o `null`. El
  * backend solo emite una factura con total mayor a 0 (la cuenta por cobrar
- * nace con saldo = total); el mensaje es el suyo.
+ * nace con saldo = total); el mensaje es el suyo. Tampoco se emite una
+ * timbrada fuera de MXN sin tipo de cambio: no hay uno que no contradiga su
+ * CFDI.
  */
-export const getInvoiceEmitBlockReason = (invoice: { total: string }): string | null =>
-  Number(invoice.total) > 0 ? null : "La factura debe tener un total mayor a 0 para emitirse.";
+export const getInvoiceEmitBlockReason = (invoice: {
+  total: string;
+  moneda_nombre: string | null;
+  tipo_cambio: string | null;
+  cfdi_uuid: string | null;
+}): string | null => {
+  if (!(Number(invoice.total) > 0)) return "La factura debe tener un total mayor a 0 para emitirse.";
+  if (isInvoiceTipoCambioLockedByCfdi(invoice) && invoice.tipo_cambio === null) {
+    return invoiceStampedWithoutTipoCambioMessage(invoiceCurrencyCode(invoice));
+  }
+  return null;
+};
 
 /**
  * Mensaje de un fallo de `emitir/` o del PATCH previo que no va bajo el campo
