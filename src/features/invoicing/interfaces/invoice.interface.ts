@@ -106,10 +106,11 @@ export interface Invoice {
    * decimales: "18.250000"); `null` mientras no se capture. Solo lo trae el
    * retrieve (ni el listado ni el desglose). En MXN el backend lo ignora (usa
    * 1), así que solo se manda fuera de MXN. Se captura por
-   * `PATCH /finanzas/facturas/{id}/` mientras la factura es `Borrador`; fuera de
-   * MXN, `emitir/` y `timbrar/` lo exigen. Una factura ya emitida sin él (las de
-   * `registrar-pendiente-cobro` y las anteriores a EC-581) no puede corregirse
-   * por API: un PATCH que lo cambie responde `400`.
+   * `PATCH /finanzas/facturas/{id}/` mientras la factura es `Borrador` y aún no
+   * se timbra; fuera de MXN, `emitir/` y `timbrar/` lo exigen y
+   * `registrar-pendiente-cobro` lo pide desde el alta (#668). Una factura ya
+   * emitida sin él (las anteriores a EC-581 o a #668) no puede corregirse por
+   * API: un PATCH que lo cambie responde `400`.
    */
   tipo_cambio: string | null;
 }

@@ -111,8 +111,9 @@ export const INVOICE_STAMP_PENDING_LABEL = "Timbrado pendiente de confirmación"
 /**
  * Mensaje de un fallo de `timbrar/`. El backend pone el motivo bajo `cfdi`
  * (ya timbrada, datos fiscales faltantes —incluido el tipo de cambio fuera de
- * MXN, que NO llega bajo su propia llave—, rechazo o falla de Facturama) o bajo
- * `estatus` (inactiva o cancelada), como string o como lista; `drfFieldMessage`
+ * MXN, que además llega repetido bajo `tipo_cambio` (#669); aquí basta el de
+ * `cfdi`, que lo resume—, rechazo o falla de Facturama) o bajo `estatus`
+ * (inactiva o cancelada), como string o como lista; `drfFieldMessage`
  * lee las dos formas. Si no viene ninguno (403, 404, 500, red), cae en el
  * extractor genérico.
  */
