@@ -79,7 +79,7 @@ export function InvoiceEmitDialog({ invoice, open, onOpenChange }: InvoiceEmitDi
       maxWidth="480px"
       showCloseButton={false}
       title="Emitir factura"
-      description={`La factura ${invoiceLabel} pasará a Emitida con fecha de hoy y se generarán su cuenta por cobrar por el total y su póliza contable. No podrá regresar a Borrador.`}
+      description={`La factura ${invoiceLabel} pasará a Emitida con fecha de hoy y se generará su cuenta por cobrar por el total, además de su póliza contable si la empresa contabiliza automáticamente. No podrá regresar a Borrador.`}
     >
       {target && (
         <InvoiceEmitForm
@@ -176,8 +176,8 @@ function InvoiceEmitForm({ target, isPending, onClose, onSubmit }: InvoiceEmitFo
             }}
           />
           <p id={tipoCambioHelpId} className="mt-1 ml-1 text-xs text-slate-500 dark:text-slate-400">
-            Pesos por cada {moneda || "unidad"}. Con él se registran la póliza en pesos y el CFDI;
-            ya no podrá cambiarse después de emitir.
+            Pesos por cada {moneda || "unidad"}. Lo llevan el CFDI y, si la empresa contabiliza,
+            la póliza en pesos; ya no podrá cambiarse después de emitir.
           </p>
         </div>
       )}

@@ -6,7 +6,7 @@ import { ordersQueryKey } from "@/src/features/orders/hooks/useOrders";
 import { invalidatePedidoProgress } from "@/src/features/orders/hooks/invalidatePedidoProgress";
 import { PrecheckError, useMutationLock } from "@/src/hooks/useMutationLock";
 import { emitInvoice, patchInvoice } from "../services/actions";
-import type { Invoice } from "../interfaces/invoice.interface";
+import type { Invoice, InvoiceEmitResponse } from "../interfaces/invoice.interface";
 import {
   emitInvoiceErrorMessage,
   invoiceStampedWithoutTipoCambioMessage,
@@ -34,7 +34,7 @@ export const emitInvoiceMutationKey = (invoiceId: number) =>
  * previo —sin PATCH ni POST— o al releerla tras un `400` del PATCH.
  */
 export type EmitInvoiceResult =
-  | { outcome: "emitted"; invoice: Invoice }
+  | { outcome: "emitted"; invoice: Invoice; poliza: InvoiceEmitResponse["poliza"] }
   | { outcome: "not-emittable"; invoice: Invoice };
 
 /**
@@ -138,16 +138,21 @@ export const useEmitInvoice = (invoiceId: number) => {
         progress.patched = true;
       }
       progress.emitSent = true;
-      const { factura } = await emitInvoice(invoiceId);
-      return { outcome: "emitted", invoice: factura };
+      const { factura, poliza } = await emitInvoice(invoiceId);
+      return { outcome: "emitted", invoice: factura, poliza };
     },
-    onSuccess: ({ outcome, invoice }) => {
-      const label = invoice.folio || `#${invoice.id}`;
-      if (outcome === "not-emittable") {
+    onSuccess: (result) => {
+      const label = result.invoice.folio || `#${result.invoice.id}`;
+      if (result.outcome === "not-emittable") {
         toast.error(`La factura ${label} ya no está en Borrador; no se emitió.`);
         return;
       }
-      toast.success(`Factura ${label} emitida: se generó su cuenta por cobrar.`);
+      // `poliza: null`: la empresa no contabiliza automáticamente; no se promete una.
+      toast.success(
+        result.poliza
+          ? `Factura ${label} emitida: se generaron su cuenta por cobrar y su póliza ${result.poliza.folio ?? `#${result.poliza.id}`}.`
+          : `Factura ${label} emitida: se generó su cuenta por cobrar (sin póliza: la empresa no contabiliza automáticamente).`,
+      );
     },
     onError: (error) => {
       if (drfFieldMessage(error, "tipo_cambio")) return;
