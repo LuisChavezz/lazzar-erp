@@ -59,7 +59,7 @@ export function PedidoCancelDialog({ pedido, onClose, onCancelled }: PedidoCance
       maxWidth="480px"
       showCloseButton={false}
       title="Cancelar pedido"
-      description={`Se cancelará el pedido ${label} y dejará de aparecer en los listados. Esta acción no se puede deshacer. No se puede cancelar mientras tenga documentos ligados activos (picking, empaque, facturas, órdenes de producción, bordado, reflejante o corte de manga); cancélalos primero.`}
+      description={`Se cancelará el pedido ${label} y dejará de aparecer en los listados: el inventario que se le descontó al autorizarlo vuelve a existencias y sus reservas activas se liberan. Esta acción no se puede deshacer. No se puede cancelar mientras tenga documentos ligados activos (picking, empaque, facturas, órdenes de producción, bordado, reflejante o corte de manga); cancélalos primero.`}
     >
       <PedidoCancelForm
         key={session.id}
