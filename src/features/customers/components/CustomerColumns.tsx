@@ -5,7 +5,15 @@ import { useRouter } from "next/navigation";
 import { Customer } from "../interfaces/customer.interface";
 import { ActionMenu, ActionMenuItem } from "@/src/components/ActionMenu";
 import { ColumnHeaderFilter, type ColumnFilterOption } from "@/src/components/ColumnHeaderFilter";
-import { ChevronRightIcon, DireccionesIcon, EditIcon, MapPinIcon, ViewIcon } from "../../../components/Icons";
+import {
+  ChevronRightIcon,
+  DireccionesIcon,
+  EditIcon,
+  ExclamationTriangleIcon,
+  MapPinIcon,
+  ViewIcon,
+} from "../../../components/Icons";
+import { getFacturamaVerificationNotice } from "../utils/facturamaVerification";
 
 /**
  * Mismo patrón que `QuoteColumns`/`SalesOrderColumns`: el filtro de estatus
@@ -72,6 +80,7 @@ const RazonSocialCell = ({
       permission: "E-CRM-CLIENTES",
     },
   ];
+  const facturamaNotice = getFacturamaVerificationNotice(customer);
 
   return (
     <div className="flex items-center gap-2">
@@ -99,6 +108,18 @@ const RazonSocialCell = ({
           </button>
         }
       />
+      {facturamaNotice && (
+        // Ícono y no texto, igual que la cancelación solicitada de `InvoiceColumns`:
+        // el texto completo (qué falta) va en el tooltip y en la cabecera del detalle.
+        <span
+          className="inline-flex shrink-0 text-amber-600 dark:text-amber-400"
+          role="img"
+          aria-label={facturamaNotice.text}
+          title={facturamaNotice.text}
+        >
+          <ExclamationTriangleIcon className="w-3.5 h-3.5" aria-hidden="true" />
+        </span>
+      )}
     </div>
   );
 };
