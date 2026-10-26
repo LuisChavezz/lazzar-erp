@@ -26,15 +26,6 @@ export const isInvoiceTipoCambioMissing = (invoice: {
 }): boolean => requiresInvoiceTipoCambio(invoice) && invoice.tipo_cambio === null;
 
 /**
- * Tipo de cambio para leer: el string de 6 decimales del backend ("18.250000")
- * sin los ceros que sobran, con al menos 2 decimales ("18.25", "17.123456").
- */
-export const formatInvoiceTipoCambio = (tipoCambio: string): string => {
-  const [integer, fraction = ""] = tipoCambio.trim().split(".");
-  return `${integer}.${fraction.replace(/0+$/, "").padEnd(2, "0")}`;
-};
-
-/**
  * Forma canónica de un decimal sin signo: sin ceros a la izquierda ni a la
  * derecha que sobren ("018.250000" → "18.25", "18.000000" → "18"). Compara
  * como texto, sin pasar por `Number`, para no perder los 18 dígitos del campo.
@@ -44,6 +35,16 @@ const canonicalDecimal = (value: string): string => {
   const trimmed = fraction.replace(/0+$/, "");
   const int = integer.replace(/^0+(?=\d)/, "") || "0";
   return trimmed ? `${int}.${trimmed}` : int;
+};
+
+/**
+ * Tipo de cambio para leer: el string de 6 decimales del backend ("18.250000")
+ * en su forma canónica, con al menos 2 decimales ("18.25", "18.00",
+ * "17.123456").
+ */
+export const formatInvoiceTipoCambio = (tipoCambio: string): string => {
+  const [integer, fraction = ""] = canonicalDecimal(tipoCambio).split(".");
+  return `${integer}.${fraction.padEnd(2, "0")}`;
 };
 
 /**
