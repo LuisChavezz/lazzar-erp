@@ -35,7 +35,16 @@ export interface DataTableServerFilters {
  *   resuelve el backend; `filters` es el estado de los filtros de encabezado.
  */
 export type DataTableModeContextValue =
-  | { mode: "client"; columnFilters?: ColumnFiltersState }
+  | {
+      mode: "client";
+      columnFilters?: ColumnFiltersState;
+      /**
+       * El encabezado avisa aquí la ETIQUETA del valor elegido en su filtro
+       * (`undefined` al quitarlo): `DataTable` solo conoce el valor crudo y la
+       * necesita para el chip de "Filtrado por" sobre la tabla.
+       */
+      reportFilterValueLabel?: (columnId: string, label: string | undefined) => void;
+    }
   | { mode: "server-pagination" }
   | { mode: "server"; filters: DataTableServerFilters | undefined };
 

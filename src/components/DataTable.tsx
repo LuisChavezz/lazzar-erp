@@ -446,6 +446,19 @@ export function DataTable<TData, TValue>({
   // pueblan, así que para los 69 consumidores que no lo usan esto es un
   // no-op idéntico a no tenerlo — lo consume `getFilteredRowModel` más abajo.
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
+  // Etiqueta legible del valor de cada filtro de columna activo, que reporta
+  // su `ColumnHeaderFilter` (la tabla solo conoce el valor crudo). Alimenta los
+  // chips "Filtrado por" de abajo del toolbar.
+  const [filterValueLabels, setFilterValueLabels] = useState<Record<string, string>>({});
+  const reportFilterValueLabel = useCallback((columnId: string, label: string | undefined) => {
+    setFilterValueLabels((prev) => {
+      if (prev[columnId] === label) return prev;
+      const next = { ...prev };
+      if (label === undefined) delete next[columnId];
+      else next[columnId] = label;
+      return next;
+    });
+  }, []);
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
     pageSize: defaultPageSize,
@@ -706,8 +719,8 @@ export function DataTable<TData, TValue>({
         ? { mode: "server", filters: serverFilters }
         : isServerPaginated
         ? SERVER_PAGINATION_TABLE_MODE
-        : { mode: "client", columnFilters },
-    [isServerMode, isServerPaginated, serverFilters, columnFilters]
+        : { mode: "client", columnFilters, reportFilterValueLabel },
+    [isServerMode, isServerPaginated, serverFilters, columnFilters, reportFilterValueLabel]
   );
   // Solo en desarrollo: una clave de `meta.serverSort` / `meta.serverFilter`
   // que la lista no conoce se ignora (la columna no ordena, o su filtro no
@@ -1384,6 +1397,57 @@ export function DataTable<TData, TValue>({
         </div>
       )}
 
+      {/* ── Filtros de columna activos (modo cliente) ───────────────────────────
+          Un chip por cada filtro de encabezado puesto, para que no se pierda
+          de vista qué está acotando la tabla aunque su columna quede fuera de
+          pantalla u oculta. La ✕ quita ese filtro; "Limpiar filtros", todos. */}
+      {!isServerMode && !isServerPaginated && columnFilters.length > 0 && (
+        <div
+          role="group"
+          aria-label="Filtros activos"
+          className={`flex flex-wrap items-center gap-2 shrink-0 ${
+            framed ? "px-4 py-2 border-b border-slate-100 dark:border-slate-800" : "mb-2"
+          }`}
+        >
+          <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
+            Filtrado por:
+          </span>
+          {columnFilters.map((filter) => {
+            const column = table.getColumn(filter.id);
+            const columnName = column ? getColumnLabel(column) : filter.id;
+            const valueLabel = filterValueLabels[filter.id];
+            return (
+              <span
+                key={filter.id}
+                className="inline-flex items-center gap-1.5 pl-2.5 pr-1 py-1 rounded-lg text-xs font-medium bg-sky-100 dark:bg-sky-500/20 text-sky-700 dark:text-sky-300 border border-sky-300 dark:border-sky-500/40"
+              >
+                <span className="text-[10px] font-semibold text-sky-500 dark:text-sky-400 uppercase tracking-wider">
+                  {columnName}{valueLabel ? ":" : ""}
+                </span>
+                {valueLabel && <span className="max-w-48 truncate">{valueLabel}</span>}
+                <button
+                  type="button"
+                  onClick={() =>
+                    setColumnFilters((prev) => prev.filter((f) => f.id !== filter.id))
+                  }
+                  className="rounded-full p-0.5 text-sky-500 hover:text-sky-700 hover:bg-sky-200/60 dark:hover:text-sky-200 dark:hover:bg-sky-500/30 transition-colors cursor-pointer"
+                  aria-label={`Quitar filtro ${columnName}`}
+                >
+                  <CloseIcon className="w-3 h-3" />
+                </button>
+              </span>
+            );
+          })}
+          <button
+            type="button"
+            onClick={() => setColumnFilters([])}
+            className="text-xs font-medium text-sky-600 dark:text-sky-400 hover:underline cursor-pointer"
+          >
+            Limpiar filtros
+          </button>
+        </div>
+      )}
+
       {/* ── Cuerpo: alterna entre error, carga y la tabla ──────────────────────
           El toolbar (búsqueda/filtro/refrescar/columnas + `actionButton`) y, en
           su caso, los chips de filtro ya se renderizaron ARRIBA de forma
@@ -1548,7 +1612,7 @@ export function DataTable<TData, TValue>({
                         canSort
                           ? "cursor-pointer select-none hover:text-slate-700 dark:hover:text-slate-300"
                           : ""
-                      } ${
+                      } has-[[data-filter-active]]:text-sky-600 dark:has-[[data-filter-active]]:text-sky-400 has-[[data-filter-active]]:bg-sky-50 dark:has-[[data-filter-active]]:bg-sky-950 ${
                         dragOverColumnId === header.column.id
                           ? "border-2 border-sky-500 bg-slate-100 dark:bg-white/10"
                           : ""

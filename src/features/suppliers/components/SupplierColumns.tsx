@@ -1,6 +1,9 @@
 import Link from "next/link";
 import { useIsMutating } from "@tanstack/react-query";
+import type { ReactNode } from "react";
 import { ColumnDef, createColumnHelper } from "@tanstack/react-table";
+import { ColumnHeaderFilter, type ColumnFilterOption } from "@/src/components/ColumnHeaderFilter";
+import { ALL_FILTER_OPTION, buildDistinctFilterOptions } from "@/src/utils/columnFilterOptions";
 import { EditIcon, DeleteIcon, ViewIcon } from "@/src/components/Icons";
 import { Supplier } from "../interfaces/supplier.interface";
 import { ActionMenu, ActionMenuItem } from "@/src/components/ActionMenu";
@@ -76,24 +79,108 @@ const ActionsCell = ({
   );
 };
 
+// ─── Filtros de encabezado ────────────────────────────────────────────────────
+// La lista completa vive en memoria (modo cliente), así que las opciones de
+// Proveedor y Razón social salen de sus filas (`buildSupplierFilterOptions`).
+// RFC y Contacto filtran por una característica del dato, con opciones fijas:
+// el tipo de persona (el RFC de una moral tiene 12 caracteres y el de una
+// física 13) y qué datos de contacto faltan.
+
+export interface SupplierFilterOptions {
+  proveedores: ColumnFilterOption[];
+  razonesSociales: ColumnFilterOption[];
+}
+
+export function buildSupplierFilterOptions(suppliers: Supplier[]): SupplierFilterOptions {
+  return {
+    proveedores: [
+      ALL_FILTER_OPTION,
+      ...buildDistinctFilterOptions(suppliers, (s) => s.id, (s) => `${s.codigo} — ${s.nombre}`),
+    ],
+    razonesSociales: [
+      ALL_FILTER_OPTION,
+      ...buildDistinctFilterOptions(suppliers, (s) => s.razon_social),
+    ],
+  };
+}
+
+const RFC_FILTER_OPTIONS: ColumnFilterOption[] = [
+  ALL_FILTER_OPTION,
+  { value: "moral", label: "Persona moral" },
+  { value: "fisica", label: "Persona física" },
+];
+
+const tipoPersona = (rfc: string | null | undefined) => {
+  const length = (rfc ?? "").trim().length;
+  return length === 12 ? "moral" : length === 13 ? "fisica" : undefined;
+};
+
+const CONTACTO_FILTER_OPTIONS: ColumnFilterOption[] = [
+  ALL_FILTER_OPTION,
+  { value: "con-correo", label: "Con correo" },
+  { value: "sin-correo", label: "Sin correo" },
+  { value: "sin-telefono", label: "Sin teléfono" },
+];
+
+const matchesContacto = (supplier: Supplier, filterValue: string | undefined) => {
+  const hasEmail = Boolean(supplier.email?.trim());
+  const hasPhone = Boolean(supplier.telefono?.trim());
+  switch (filterValue) {
+    case "con-correo":
+      return hasEmail;
+    case "sin-correo":
+      return !hasEmail;
+    case "sin-telefono":
+      return !hasPhone;
+    default:
+      return true;
+  }
+};
+
+function FilterHeader({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <div className="flex items-center gap-1.5">
+      <span>{title}</span>
+      {children}
+    </div>
+  );
+}
+
+const EMPTY_FILTER_OPTIONS: SupplierFilterOptions = {
+  proveedores: [ALL_FILTER_OPTION],
+  razonesSociales: [ALL_FILTER_OPTION],
+};
+
 // ─── Columnas de la tabla de proveedores ──────────────────────────────────────
 // Código+Nombre y Correo+Teléfono se consolidan en una sola columna cada uno
 // (Proveedor / Contacto) — mismo estándar visual que Órdenes de Compra/
 // Pedidos/Recepciones: un campo compacto (el código, ya era un pill) junto al
 // identificador primario, en vez de una columna aparte por cada dato
-// secundario. No hay un campo categórico real (estatus, tipo…) en el listado
-// para un filtro de encabezado tipo Excel, así que esta tabla no lleva uno —
-// sería fabricar una dimensión que el dato no tiene.
+// secundario. Cada columna lleva su filtro de encabezado (ver arriba).
 
 export const getSupplierColumns = (
   onEdit: (supplier: Supplier) => void,
   onViewDetail: (supplier: Supplier) => void,
   onDeactivate: (supplier: Supplier) => void,
-  permissions?: SupplierColumnPermissions
+  permissions?: SupplierColumnPermissions,
+  filterOptions: SupplierFilterOptions = EMPTY_FILTER_OPTIONS,
 ): ColumnDef<Supplier>[] => [
   columnHelper.accessor((row) => `${row.codigo} ${row.nombre}`.trim(), {
     id: "proveedor",
-    header: "Proveedor",
+    meta: { label: "Proveedor" },
+    header: ({ column }) => (
+      <FilterHeader title="Proveedor">
+        <ColumnHeaderFilter
+          column={column}
+          options={filterOptions.proveedores}
+          label="proveedor"
+          searchable={{ placeholder: "Buscar proveedor…" }}
+        />
+      </FilterHeader>
+    ),
+    // Por id: dos proveedores con el mismo nombre no se mezclan.
+    filterFn: (row, _columnId, filterValue) =>
+      !filterValue || String(row.original.id) === filterValue,
     cell: ({ row }) => (
       <div className="flex items-center gap-2 min-w-0">
         <span className="font-mono text-[11px] font-semibold text-sky-600 dark:text-sky-400 bg-sky-50 dark:bg-sky-500/10 px-1.5 py-0.5 rounded shrink-0">
@@ -121,7 +208,19 @@ export const getSupplierColumns = (
     ),
   }),
   columnHelper.accessor("razon_social", {
-    header: "Razón Social",
+    meta: { label: "Razón Social" },
+    header: ({ column }) => (
+      <FilterHeader title="Razón Social">
+        <ColumnHeaderFilter
+          column={column}
+          options={filterOptions.razonesSociales}
+          label="razón social"
+          searchable={{ placeholder: "Buscar razón social…" }}
+        />
+      </FilterHeader>
+    ),
+    filterFn: (row, _columnId, filterValue) =>
+      !filterValue || row.original.razon_social === filterValue,
     cell: (info) => (
       <span className="text-slate-600 dark:text-slate-300">
         {info.getValue() as string}
@@ -129,7 +228,14 @@ export const getSupplierColumns = (
     ),
   }),
   columnHelper.accessor("rfc", {
-    header: "RFC",
+    meta: { label: "RFC" },
+    header: ({ column }) => (
+      <FilterHeader title="RFC">
+        <ColumnHeaderFilter column={column} options={RFC_FILTER_OPTIONS} label="tipo de persona" />
+      </FilterHeader>
+    ),
+    filterFn: (row, _columnId, filterValue) =>
+      !filterValue || tipoPersona(row.original.rfc) === filterValue,
     cell: (info) => (
       <span className="font-mono text-sm text-slate-600 dark:text-slate-400">
         {info.getValue() as string}
@@ -138,7 +244,13 @@ export const getSupplierColumns = (
   }),
   columnHelper.accessor((row) => `${row.email} ${row.telefono}`.trim(), {
     id: "contacto",
-    header: "Contacto",
+    meta: { label: "Contacto" },
+    header: ({ column }) => (
+      <FilterHeader title="Contacto">
+        <ColumnHeaderFilter column={column} options={CONTACTO_FILTER_OPTIONS} label="datos de contacto" />
+      </FilterHeader>
+    ),
+    filterFn: (row, _columnId, filterValue) => matchesContacto(row.original, filterValue),
     cell: ({ row }) => (
       <div className="min-w-0">
         <p

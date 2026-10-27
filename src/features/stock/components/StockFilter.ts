@@ -1,39 +1,26 @@
-import { getStockStatus, type StockStatus } from "./StockColumns";
-import type { DataTableFilterConfig } from "@/src/components/DataTable";
+import { buildDistinctFilterOptions, buildMonthFilterOptions } from "@/src/utils/columnFilterOptions";
 import type { StockItem } from "../interfaces/stock.interface";
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
-
 /**
- * Enriquece los items de stock con una propiedad `estado` computada
- * para que el sistema de filtros de DataTable pueda filtrar por nivel de stock.
+ * Opciones de los filtros de encabezado de la tabla de existencias que salen
+ * de los datos (la lista del almacén elegido está completa en memoria). Estado
+ * y Existencias usan opciones fijas (ver `StockColumns.tsx`). El filtro de
+ * almacén vive aparte, en `WarehouseFilter` (`?almacen=<id>`).
  */
-export function enrichStockWithStatus(
-  items: StockItem[],
-  maxStock: number,
-): (StockItem & { estado: StockStatus })[] {
-  return items.map((item) => ({
-    ...item,
-    estado: getStockStatus(item.stock, maxStock),
-  }));
+export interface StockFilterOptions {
+  productos: { value: string; label: string }[];
+  tipos: { value: string; label: string }[];
+  colores: { value: string; label: string }[];
+  ubicaciones: { value: string; label: string }[];
+  meses: { value: string; label: string }[];
 }
 
-// ─── Factory de configuración de filtros ─────────────────────────────────────
-
-/**
- * Configuración de filtros para la tabla de existencias.
- * El filtro de almacén vive exclusivamente en `WarehouseFilter` (selector
- * requerido vía `?almacen=<id>`), por lo que no se expone aquí.
- */
-export const stockFilterConfig: DataTableFilterConfig[] = [
-  {
-    id: "estado",
-    label: "Estado",
-    options: [
-      { value: "full", label: "Óptimo" },
-      { value: "ok", label: "Normal" },
-      { value: "low", label: "Bajo" },
-      { value: "critical", label: "Crítico" },
-    ],
-  },
-];
+export function buildStockFilterOptions(items: StockItem[]): StockFilterOptions {
+  return {
+    productos: buildDistinctFilterOptions(items, (item) => item.producto_info.nombre),
+    tipos: buildDistinctFilterOptions(items, (item) => item.producto_info.tipo),
+    colores: buildDistinctFilterOptions(items, (item) => item.producto_info.color),
+    ubicaciones: buildDistinctFilterOptions(items, (item) => item.ubicacion_info?.nombre_completo),
+    meses: buildMonthFilterOptions(items.map((item) => item.fecha_actualizacion)),
+  };
+}

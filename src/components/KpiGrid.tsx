@@ -1,6 +1,7 @@
 import type { ComponentType, ReactNode, SVGProps } from "react";
 import Link from "next/link";
 import { KpiTrendIcon } from "./Icons";
+import { KpiCompactRail } from "./KpiCompactRail";
 import { KpiInfoPopover } from "./KpiInfoPopover";
 import { LoadingSkeleton } from "./LoadingSkeleton";
 import { clampPercentage } from "@/src/utils/percentage";
@@ -107,7 +108,10 @@ type KpiGridProps =
   /** Variante compacta (ver `KpiCompactCard`). */
   | { items: KpiCompactItem[]; compact: true };
 
-type KpiCardProps = { item: KpiItem; compact?: false } | { item: KpiCompactItem; compact: true };
+type KpiCardProps =
+  | { item: KpiItem; compact?: false }
+  /** `index`: posición en la grilla, para escalonar la entrada. */
+  | { item: KpiCompactItem; compact: true; index?: number };
 
 const statusStyles: Record<KpiStatus, { text: string; bg: string }> = {
   positive: { text: "text-emerald-500", bg: "bg-emerald-50 dark:bg-emerald-500/10" },
@@ -125,7 +129,7 @@ const statusStyles: Record<KpiStatus, { text: string; bg: string }> = {
  * así que su salida no cambia.
  */
 export function KpiCard(props: KpiCardProps) {
-  if (props.compact) return <KpiCompactCard item={props.item} />;
+  if (props.compact) return <KpiCompactCard item={props.item} index={props.index} />;
   const { item } = props;
   const status = item.status ?? "neutral";
   const badge = statusStyles[status];
@@ -196,7 +200,7 @@ export function KpiCard(props: KpiCardProps) {
  * con `detail` al lado (o solo `detail` con `hideProgress`). El texto largo va
  * en `info` y la acción en `action` (ver `KpiCompactItem`).
  */
-function KpiCompactCard({ item }: { item: KpiCompactItem }) {
+function KpiCompactCard({ item, index = 0 }: { item: KpiCompactItem; index?: number }) {
   const status = item.status ?? "neutral";
   const trend = statusStyles[status];
   const Icon = item.icon;
@@ -211,14 +215,22 @@ function KpiCompactCard({ item }: { item: KpiCompactItem }) {
   return (
     <div
       role="listitem"
-      className={`group relative rounded-xl bg-white dark:bg-black border border-slate-200 dark:border-white/10 px-4 py-3 shadow-sm hover:shadow-lg transition-all duration-300 ${KPI_COMPACT_CARD_HEIGHT_CLASS}`}
+      // Entrada escalonada (una tarjeta tras otra); sin animación con
+      // `prefers-reduced-motion` (ver `globals.css`).
+      style={{ animationDelay: `${index * 60}ms` }}
+      className={`animate-stock-reveal group relative overflow-hidden rounded-xl bg-white dark:bg-black border border-slate-200 dark:border-white/10 px-4 py-3 shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 ${KPI_COMPACT_CARD_HEIGHT_CLASS}`}
     >
+      {/* Acento del color del indicador: siempre visible (identifica la
+          tarjeta de un vistazo) y más intenso al pasar el cursor. */}
       <div
-        className={`absolute inset-x-0 top-0 h-1 bg-linear-to-r from-transparent via-current to-transparent opacity-0 group-hover:opacity-100 transition-opacity ${item.iconClass}`}
+        className={`absolute inset-x-0 top-0 h-0.5 bg-linear-to-r from-transparent via-current to-transparent opacity-50 group-hover:opacity-100 transition-opacity ${item.iconClass}`}
       />
-      <div className="flex items-center gap-1.5">
-        <Icon className={`w-3.5 h-3.5 shrink-0 ${item.iconClass}`} aria-hidden="true" />
-        <span className="flex-1 min-w-0 truncate text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-300">
+      <div className="flex items-center gap-2">
+        <span className={`relative grid place-items-center w-6 h-6 shrink-0 rounded-lg ${item.iconClass}`}>
+          <span className="absolute inset-0 rounded-lg bg-current opacity-10" aria-hidden="true" />
+          <Icon className="relative w-3.5 h-3.5" aria-hidden="true" />
+        </span>
+        <span className="flex-1 min-w-0 truncate text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
           {item.label}
         </span>
         {info ? <KpiInfoPopover label={item.label} text={info} /> : null}
@@ -288,8 +300,17 @@ const KPI_COMPACT_CONTAINER_CLASS = "@container";
 // línea "Meta 95.0% · 2 de 3 a tiempo" y el título más largo, sin partir ni recortar).
 // 2 columnas: 2×259 + 16 de gap = 534px → 34rem (544px).
 // 4 columnas: 4×259 + 3×16 = 1084px → 68.75rem (1100px, con margen).
+// Por debajo de 34rem no es rejilla sino carrusel horizontal con snap (una
+// sola fila; ver `KpiCompactRail`), con la barra de scroll oculta: los puntos
+// de abajo hacen de indicador.
 const KPI_COMPACT_GRID_CLASS =
-  "grid grid-cols-1 @min-[34rem]:grid-cols-2 @min-[68.75rem]:grid-cols-4 items-stretch gap-4";
+  "flex gap-3 overflow-x-auto snap-x snap-mandatory pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden " +
+  "@min-[34rem]:grid @min-[34rem]:grid-cols-2 @min-[34rem]:gap-4 @min-[34rem]:overflow-visible @min-[34rem]:pb-0 " +
+  "@min-[68.75rem]:grid-cols-4 items-stretch " +
+  // Ancho de cada tarjeta en el carrusel (la siguiente asoma); en rejilla, el
+  // de su celda. En el contenedor y no en la tarjeta: `KpiCard` también se
+  // monta suelta, fuera de esta grilla.
+  "*:w-[85%] *:shrink-0 *:snap-start @min-[34rem]:*:w-auto";
 
 const KPI_GRID_CLASS = "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 items-stretch gap-4";
 
@@ -300,11 +321,11 @@ export default function KpiGrid(props: KpiGridProps) {
   if (props.compact) {
     return (
       <div className={KPI_COMPACT_CONTAINER_CLASS}>
-        <div className={KPI_COMPACT_GRID_CLASS} role="list">
+        <KpiCompactRail className={KPI_COMPACT_GRID_CLASS} count={props.items.length}>
           {props.items.map((item, index) => (
-            <KpiCard key={`${item.label}-${index}`} item={item} compact />
+            <KpiCard key={`${item.label}-${index}`} item={item} index={index} compact />
           ))}
-        </div>
+        </KpiCompactRail>
       </div>
     );
   }
@@ -331,7 +352,10 @@ export function KpiGridSkeleton({
   label?: string;
 }) {
   const cells = Array.from({ length: count }, (_, index) => (
-    <LoadingSkeleton key={index} className={compact ? KPI_COMPACT_CARD_HEIGHT_CLASS : "h-40"} />
+    <LoadingSkeleton
+      key={index}
+      className={compact ? KPI_COMPACT_CARD_HEIGHT_CLASS : "h-40"}
+    />
   ));
   if (compact) {
     return (

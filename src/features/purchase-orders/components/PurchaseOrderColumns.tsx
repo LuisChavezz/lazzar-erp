@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useContext, useEffect, useState } from "react";
 import { ColumnDef, Column, createColumnHelper } from "@tanstack/react-table";
 import { DropdownMenu } from "@radix-ui/themes";
 import { ActionMenu, type ActionMenuItem } from "@/src/components/ActionMenu";
 import { ConfirmDialog } from "@/src/components/ConfirmDialog";
 import { textOrDash } from "@/src/components/DetailDialogPrimitives";
+import { DataTableModeContext } from "@/src/components/DataTableModeContext";
 import type { DataTableFilterOption } from "@/src/components/DataTable";
 import {
   CheckCircleIcon,
@@ -21,6 +22,11 @@ import {
 } from "@/src/components/Icons";
 import { formatQuantityValue } from "@/src/utils/formatCurrency";
 import { formatLocalDate } from "@/src/utils/formatDate";
+import {
+  matchesMonthFilter,
+  matchesRangeFilter,
+  type RangeFilterOption,
+} from "@/src/utils/columnFilterOptions";
 import { PurchaseOrder } from "../interfaces/purchase-order.interface";
 import { useConfirmPurchaseOrder } from "../hooks/useConfirmPurchaseOrder";
 import { useDeletePurchaseOrder } from "../hooks/useDeletePurchaseOrder";
@@ -330,7 +336,25 @@ const ColumnFilterHeader = ({
   options: DataTableFilterOption[];
   column: Column<PurchaseOrder, unknown>;
 }) => {
-  const activeValue = column.getFilterValue() as string | undefined;
+  // Del contexto de la tabla y no de `column.getFilterValue()`, que no es
+  // reactivo (ver `DataTableModeContext`): sin esto el ícono no reflejaba el
+  // filtro recién puesto o quitado.
+  const tableMode = useContext(DataTableModeContext);
+  const activeValue =
+    tableMode.mode === "client" && tableMode.columnFilters !== undefined
+      ? (tableMode.columnFilters.find((filter) => filter.id === column.id)?.value as
+          | string
+          | undefined)
+      : (column.getFilterValue() as string | undefined);
+  const activeLabel = activeValue
+    ? options.find((opt) => opt.value === activeValue)?.label
+    : undefined;
+  // Etiqueta para el chip "Filtrado por" de `DataTable`.
+  const reportFilterValueLabel =
+    tableMode.mode === "client" ? tableMode.reportFilterValueLabel : undefined;
+  useEffect(() => {
+    reportFilterValueLabel?.(column.id, activeLabel);
+  }, [reportFilterValueLabel, column.id, activeLabel]);
 
   return (
     <div className="flex items-center gap-1.5">
@@ -340,11 +364,15 @@ const ColumnFilterHeader = ({
           <button
             type="button"
             onClick={(e) => e.stopPropagation()}
-            aria-label={`Filtrar por ${label}`}
-            title={activeValue ? "Filtro activo" : `Filtrar por ${label}`}
+            aria-label={
+              activeLabel ? `Filtrar por ${label} (filtro activo: ${activeLabel})` : `Filtrar por ${label}`
+            }
+            title={activeLabel ? `Filtro activo: ${activeLabel}` : `Filtrar por ${label}`}
+            // Lo lee el `<th>` de `DataTable` para resaltar la columna filtrada.
+            data-filter-active={activeValue ? "" : undefined}
             className={`p-1 rounded cursor-pointer transition-colors ${
               activeValue
-                ? "text-sky-600 dark:text-sky-400 bg-sky-100 dark:bg-sky-500/20"
+                ? "text-white bg-sky-500"
                 : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
             }`}
           >
@@ -395,6 +423,18 @@ const exactFilterFn =
     return String(pick(row.original)) === filterValue;
   };
 
+/** Rangos del filtro de Cantidad (piezas solicitadas en la orden). */
+const CANTIDAD_RANGES: RangeFilterOption[] = [
+  { value: "1-10", label: "1 a 10 piezas", max: 11 },
+  { value: "11-100", label: "11 a 100 piezas", min: 11, max: 101 },
+  { value: "101-1000", label: "101 a 1,000 piezas", min: 101, max: 1001 },
+  { value: "mas-1000", label: "Más de 1,000 piezas", min: 1001 },
+];
+
+const CANTIDAD_FILTER_OPTIONS: DataTableFilterOption[] = CANTIDAD_RANGES.map(
+  ({ value, label }) => ({ value, label }),
+);
+
 /**
  * Columnas del listado de órdenes de compra (`GET /compras/ordenes/`).
  *
@@ -421,6 +461,8 @@ export const getColumns = (
   onCriticalPath: (order: PurchaseOrder) => void,
   statusOptions: DataTableFilterOption[],
   supplierOptions: DataTableFilterOption[],
+  fechaOcOptions: DataTableFilterOption[],
+  vencimientoOptions: DataTableFilterOption[],
 ) => {
   const columns = [
     // ── O.C. ───────────────────────────────────────────────────────────────
@@ -523,8 +565,15 @@ export const getColumns = (
         ),
       },
     ),
+    // Fechas y cantidad se filtran por MES y por RANGO (ver
+    // `columnFilterOptions.ts`); las opciones de mes salen del listado.
     columnHelper.accessor("fecha_oc", {
-      header: "Fecha de generación",
+      meta: { label: "Fecha de generación" },
+      header: ({ column }) => (
+        <ColumnFilterHeader label="Fecha de generación" options={fechaOcOptions} column={column} />
+      ),
+      filterFn: (row, _columnId, filterValue) =>
+        matchesMonthFilter(row.original.fecha_oc, filterValue),
       cell: (info) => (
         <span className="text-slate-600 dark:text-slate-300 tabular-nums">
           {formatLocalDate(info.getValue())}
@@ -534,8 +583,12 @@ export const getColumns = (
     // `total_piezas` SÍ llega siempre (no es un campo financiero filtrado por
     // rol, ver `PurchaseOrderPageContent`).
     columnHelper.accessor("total_piezas", {
-      header: "Cantidad",
-      meta: { align: "right" },
+      header: ({ column }) => (
+        <ColumnFilterHeader label="Cantidad" options={CANTIDAD_FILTER_OPTIONS} column={column} />
+      ),
+      meta: { align: "right", label: "Cantidad" },
+      filterFn: (row, _columnId, filterValue) =>
+        matchesRangeFilter(CANTIDAD_RANGES, row.original.total_piezas, filterValue),
       cell: (info) => (
         <span className="text-slate-700 dark:text-slate-200 tabular-nums">
           {formatQuantityValue(info.getValue())}
@@ -548,7 +601,12 @@ export const getColumns = (
     // el resto de fechas nullable de esta tabla.
     columnHelper.accessor((row) => row.fecha_vencimiento ?? "", {
       id: "fecha_vencimiento",
-      header: "Vencimiento",
+      meta: { label: "Vencimiento" },
+      header: ({ column }) => (
+        <ColumnFilterHeader label="Vencimiento" options={vencimientoOptions} column={column} />
+      ),
+      filterFn: (row, _columnId, filterValue) =>
+        matchesMonthFilter(row.original.fecha_vencimiento, filterValue),
       cell: (info) => (
         <span className="text-slate-600 dark:text-slate-300 tabular-nums">
           {/* `||` y no `??`: el valor ausente ya llega como "", no como null. */}

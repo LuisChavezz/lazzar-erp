@@ -47,6 +47,22 @@ export type Step1FieldPath =
 
 type Step1ErrorMap = Partial<Record<Step1FieldPath, string>>;
 
+/** Sucursal que una orden NUEVA trae preseleccionada (se compara sin acentos ni mayúsculas). */
+const DEFAULT_SUCURSAL_NOMBRE = "toneles";
+
+const foldText = (text: string) =>
+  text
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .trim()
+    .toLowerCase();
+
+/** Id de la sucursal por defecto, o `0` ("Seleccionar sucursal…") si el catálogo no la trae. */
+const findDefaultSucursalId = (onboardingData: PurchaseOrderOnboardingData): number =>
+  onboardingData.catalogos.sucursales.find(
+    (s) => foldText(s.nombre) === DEFAULT_SUCURSAL_NOMBRE,
+  )?.id_sucursal ?? 0;
+
 export function usePurchaseOrderStep1Form({
   onboardingData,
   initialValues,
@@ -72,7 +88,8 @@ export function usePurchaseOrderStep1Form({
 
   // ── Default values ──────────────────────────────────────────────────────
   // Si ya hay un encabezado capturado (regreso desde el Step 2), se siembra
-  // desde él para no perder lo capturado; en la primera visita, en blanco.
+  // desde él para no perder lo capturado; en la primera visita, en blanco
+  // salvo la sucursal, que arranca en Toneles (sigue siendo editable).
   // `fecha_vencimiento` validada es `null` cuando no hay fecha; el input la
   // necesita como `""`.
   const defaultValues = useMemo<PurchaseOrderEncabezadosFormValues>(
@@ -86,7 +103,7 @@ export function usePurchaseOrderStep1Form({
           }
         : {
             orden_compra: {
-              sucursal: 0,
+              sucursal: findDefaultSucursalId(onboardingData),
               proveedor: 0,
               moneda: 0,
               fecha_vencimiento: "",
@@ -96,7 +113,7 @@ export function usePurchaseOrderStep1Form({
               pedidos: [],
             },
           },
-    [initialValues],
+    [initialValues, onboardingData],
   );
 
   // ── Selector options derived from onboarding data ───────────────────────

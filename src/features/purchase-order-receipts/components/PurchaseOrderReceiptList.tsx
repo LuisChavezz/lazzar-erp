@@ -11,6 +11,7 @@ import { Button } from "@/src/components/Button";
 import { ExportCsvIcon, ExportPdfIcon } from "@/src/components/Icons";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { isInitialLoadError } from "@/src/utils/isInitialLoadError";
+import { buildDistinctFilterOptions, buildMonthFilterOptions } from "@/src/utils/columnFilterOptions";
 import { createPurchaseOrderReceiptColumns } from "./PurchaseOrderReceiptColumns";
 import { buildReceiptStatusOptions, buildReceiptSupplierOptions } from "./PurchaseOrderReceiptsFilter";
 import { usePurchaseOrderReceipts } from "../hooks/usePurchaseOrderReceipts";
@@ -32,9 +33,28 @@ export const PurchaseOrderReceiptList = () => {
   // `createPurchaseOrderReceiptColumns` (ver `ColumnHeaderFilter`).
   const statusOptions = useMemo(() => buildReceiptStatusOptions(receipts), [receipts]);
   const supplierOptions = useMemo(() => buildReceiptSupplierOptions(receipts), [receipts]);
+  const orderOptions = useMemo(
+    () => buildDistinctFilterOptions(receipts, (r) => r.orden_compra, (r) => r.orden_compra_folio),
+    [receipts],
+  );
+  const warehouseOptions = useMemo(
+    () => buildDistinctFilterOptions(receipts, (r) => r.almacen, (r) => r.almacen_nombre),
+    [receipts],
+  );
+  const monthOptions = useMemo(
+    () => buildMonthFilterOptions(receipts.map((r) => r.fecha_recepcion)),
+    [receipts],
+  );
   const columns = useMemo(
-    () => createPurchaseOrderReceiptColumns({ statusOptions, supplierOptions }),
-    [statusOptions, supplierOptions],
+    () =>
+      createPurchaseOrderReceiptColumns({
+        statusOptions,
+        supplierOptions,
+        orderOptions,
+        warehouseOptions,
+        monthOptions,
+      }),
+    [statusOptions, supplierOptions, orderOptions, warehouseOptions, monthOptions],
   );
 
   // ── Exportar (Excel/PDF) ──────────────────────────────────────────────────

@@ -30,7 +30,7 @@ export default function SupplierFormDialog({
     <MainDialog
       open={open}
       onOpenChange={onOpenChange}
-      maxWidth="1000px"
+      maxWidth="860px"
       title={
         <div className="flex items-center gap-4 pb-4 border-b border-slate-200 dark:border-white/10 mb-4">
           <div>

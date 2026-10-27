@@ -57,7 +57,7 @@ export function PurchaseOrderOnboardingStepManager({
   };
 
   return (
-    <div className="w-full space-y-6">
+    <div className="w-full space-y-4">
       <StepProgressBar
         steps={STEPS}
         currentStep={currentStep}

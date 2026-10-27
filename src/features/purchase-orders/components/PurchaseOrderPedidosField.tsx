@@ -140,7 +140,7 @@ export function PurchaseOrderPedidosField({
     getScrollElement: () => listRef.current,
     // Alto aproximado de un renglón (folio + cliente); `measureElement` lo
     // corrige con el real.
-    estimateSize: () => 62,
+    estimateSize: () => 54,
     overscan: 6,
     // Equivale al `space-y-1` de `SearchableSelectList`.
     gap: 4,
@@ -204,14 +204,14 @@ export function PurchaseOrderPedidosField({
           Cargando pedidos...
         </p>
       ) : (
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-2">
           <SearchInput
             value={search}
             onChange={setSearch}
             placeholder="Buscar pedido por folio o cliente..."
           />
 
-          <div ref={listRef} className="max-h-60 overflow-y-auto pr-1">
+          <div ref={listRef} className="max-h-48 overflow-y-auto pr-1">
             {options.length === 0 && selectedOptions.length === 0 ? (
               <p className="text-sm text-slate-400 text-center py-6">
                 No hay pedidos disponibles para ligar.
@@ -252,7 +252,7 @@ export function PurchaseOrderPedidosField({
                         type="button"
                         onClick={() => toggle(option)}
                         aria-pressed={selected}
-                        className={`w-full flex items-center gap-3 rounded-xl border px-4 py-3 text-left transition-all duration-150 cursor-pointer ${
+                        className={`w-full flex items-center gap-3 rounded-lg border px-3 py-2 text-left transition-all duration-150 cursor-pointer ${
                           selected
                             ? "border-sky-400 bg-sky-50 dark:border-sky-600 dark:bg-sky-900/20"
                             : "border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 hover:bg-slate-50 dark:hover:bg-white/10"

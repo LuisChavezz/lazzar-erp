@@ -17,7 +17,7 @@ import { useDeleteSupplier } from "../hooks/useDeleteSupplier";
 import SupplierFormDialog from "./SupplierFormDialog";
 import { useSuppliers } from "../hooks/useSuppliers";
 import { supplierDetailHref } from "../utils/supplierPurchaseOrderHistoryFilters";
-import { getSupplierColumns } from "./SupplierColumns";
+import { buildSupplierFilterOptions, getSupplierColumns } from "./SupplierColumns";
 import { useSupplierCsvExport } from "../hooks/useSupplierCsvExport";
 import { useSupplierPdfExport } from "../hooks/useSupplierPdfExport";
 import { Supplier } from "../interfaces/supplier.interface";
@@ -121,11 +121,13 @@ export default function SupplierList({
     setSupplierToEdit(null);
   }, []);
 
-  const columns = getSupplierColumns(handleEdit, handleViewDetail, setSupplierToDeactivate, {
-    canEdit,
-    canDelete,
-    canViewDetail,
-  });
+  const columns = getSupplierColumns(
+    handleEdit,
+    handleViewDetail,
+    setSupplierToDeactivate,
+    { canEdit, canDelete, canViewDetail },
+    buildSupplierFilterOptions(suppliers),
+  );
 
   // ── Exportar (Excel/PDF) ──────────────────────────────────────────────────
   // Exportan lo que el usuario está VIENDO: las filas se LEEN de la tabla al

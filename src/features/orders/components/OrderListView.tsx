@@ -22,7 +22,10 @@ import {
   sharedOrderFilterConfig,
 } from './SharedOrderColumns';
 import { createSalesOrderColumns } from './SalesOrderColumns';
-import { createProcurementOrderColumns } from './ProcurementOrderColumns';
+import {
+  buildProcurementOrderFilterOptions,
+  createProcurementOrderColumns,
+} from './ProcurementOrderColumns';
 import type { PedidoListItem } from '../interfaces/order.interface';
 
 interface OrderListViewProps {
@@ -116,7 +119,10 @@ export function OrderListView({
   const columns = isSales
     ? createSalesOrderColumns({ from })
     : isProcurement
-      ? createProcurementOrderColumns({ from })
+      ? createProcurementOrderColumns({
+          from,
+          filterOptions: buildProcurementOrderFilterOptions(orders),
+        })
       : createOrderColumns({ from });
   const enrichedOrders = enrichOrdersWithStatus(orders);
 

@@ -7,6 +7,12 @@ import { ChevronRightIcon } from '@/src/components/Icons';
 import { ColumnHeaderFilter, type ColumnFilterOption } from '@/src/components/ColumnHeaderFilter';
 import { formatOrderAmountOrDash } from '../utils/orderAmountFormat';
 import { parseLocalDate } from '@/src/utils/formatDate';
+import {
+  buildMonthFilterOptions,
+  matchesMonthFilter,
+  matchesRangeFilter,
+  type RangeFilterOption,
+} from '@/src/utils/columnFilterOptions';
 import type { PedidoListItem } from '../interfaces/order.interface';
 import { PEDIDO_ESTATUS, PEDIDO_ESTATUS_CONFIG, getPedidoEstatusConfig } from '../constants/pedidoStatus';
 import { hasMeaningfulOc } from '../utils/pedidoFormat';
@@ -37,6 +43,83 @@ import { PedidoFolioLink } from './PedidoFolioLink';
 export interface ProcurementOrderColumnsOptions {
   /** Llave `?from=` del detalle 360° que abre el folio. */
   from: PedidoDetailOrigin;
+  /**
+   * Opciones de los filtros de Cliente, Fecha y Fecha confirmada, que salen de
+   * la lista completa (`buildProcurementOrderFilterOptions`): la tabla es de
+   * modo cliente y tiene todos los pedidos en memoria.
+   */
+  filterOptions: ProcurementOrderFilterOptions;
+}
+
+export interface ProcurementOrderFilterOptions {
+  clientes: ColumnFilterOption[];
+  fechas: ColumnFilterOption[];
+  fechasConfirmacion: ColumnFilterOption[];
+}
+
+const ALL_OPTION: ColumnFilterOption = { value: undefined, label: 'Todos' };
+
+/**
+ * Opciones de los filtros de encabezado que dependen de los datos: un cliente
+ * por id (dos razones sociales iguales no se mezclan) y un mes por cada mes
+ * presente en las fechas.
+ */
+export function buildProcurementOrderFilterOptions(
+  orders: PedidoListItem[],
+): ProcurementOrderFilterOptions {
+  const clientes = new Map<number, string>();
+  for (const order of orders) {
+    const nombre = order.cliente_razon_social || order.cliente_nombre;
+    if (nombre && !clientes.has(order.cliente)) clientes.set(order.cliente, nombre);
+  }
+  return {
+    clientes: [
+      ALL_OPTION,
+      ...Array.from(clientes.entries())
+        .sort(([, a], [, b]) => a.localeCompare(b))
+        .map(([id, nombre]) => ({ value: String(id), label: nombre })),
+    ],
+    fechas: [ALL_OPTION, ...buildMonthFilterOptions(orders.map((order) => order.created_at))],
+    fechasConfirmacion: [
+      ALL_OPTION,
+      ...buildMonthFilterOptions(
+        orders.map((order) => order.fecha_confirmacion),
+        'Sin confirmar',
+      ),
+    ],
+  };
+}
+
+/**
+ * Rangos del filtro de Total. Sin símbolo de moneda, igual que la celda: la
+ * fila solo trae el id de `moneda` (ver `orderAmountFormat.ts`).
+ */
+const TOTAL_RANGES: RangeFilterOption[] = [
+  { value: 'cero', label: 'Sin importe (0.00)', max: 0.005 },
+  { value: 'hasta-10k', label: 'Hasta 10,000', min: 0.005, max: 10_000 },
+  { value: '10k-100k', label: '10,000 – 100,000', min: 10_000, max: 100_000 },
+  { value: 'mas-100k', label: 'Más de 100,000', min: 100_000 },
+];
+
+const TOTAL_FILTER_OPTIONS: ColumnFilterOption[] = [
+  ALL_OPTION,
+  ...TOTAL_RANGES.map(({ value, label }) => ({ value, label })),
+];
+
+/** Encabezado con su filtro, para no repetir el mismo marcado en cada columna. */
+function FilterHeader({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="flex items-center gap-1.5">
+      <span>{title}</span>
+      {children}
+    </div>
+  );
 }
 
 /** Punto de color por estatus — deriva de los mismos colores que ya usa `PEDIDO_ESTATUS_CONFIG.className`. */
@@ -65,6 +148,7 @@ const estatusFilterFn: FilterFn<PedidoListItem> = (row, _columnId, filterValue) 
 
 export function createProcurementOrderColumns({
   from,
+  filterOptions,
 }: ProcurementOrderColumnsOptions): ColumnDef<PedidoListItem, unknown>[] {
   return [
     {
@@ -117,7 +201,20 @@ export function createProcurementOrderColumns({
     {
       id: 'cliente',
       accessorKey: 'cliente_razon_social',
-      header: 'Cliente',
+      meta: { label: 'Cliente' },
+      header: ({ column }) => (
+        <FilterHeader title="Cliente">
+          <ColumnHeaderFilter
+            column={column}
+            options={filterOptions.clientes}
+            label="cliente"
+            searchable={{ placeholder: 'Buscar cliente…' }}
+          />
+        </FilterHeader>
+      ),
+      // Por id de cliente, no por el nombre que se muestra.
+      filterFn: (row, _columnId, filterValue) =>
+        !filterValue || String(row.original.cliente) === filterValue,
       size: 220,
       cell: ({ row }) => {
         const order = row.original;
@@ -139,8 +236,15 @@ export function createProcurementOrderColumns({
     {
       id: 'created_at',
       accessorKey: 'created_at',
-      header: 'Fecha',
-      size: 110,
+      meta: { label: 'Fecha' },
+      header: ({ column }) => (
+        <FilterHeader title="Fecha">
+          <ColumnHeaderFilter column={column} options={filterOptions.fechas} label="mes" />
+        </FilterHeader>
+      ),
+      filterFn: (row, _columnId, filterValue) =>
+        matchesMonthFilter(row.original.created_at, filterValue),
+      size: 120,
       cell: ({ row }) => {
         const createdAt = row.original.created_at;
         return (
@@ -157,8 +261,19 @@ export function createProcurementOrderColumns({
     {
       id: 'fecha_confirmacion',
       accessorFn: (order) => order.fecha_confirmacion ?? '',
-      header: 'Fecha confirmada',
-      size: 130,
+      meta: { label: 'Fecha confirmada' },
+      header: ({ column }) => (
+        <FilterHeader title="Fecha confirmada">
+          <ColumnHeaderFilter
+            column={column}
+            options={filterOptions.fechasConfirmacion}
+            label="mes de confirmación"
+          />
+        </FilterHeader>
+      ),
+      filterFn: (row, _columnId, filterValue) =>
+        matchesMonthFilter(row.original.fecha_confirmacion, filterValue),
+      size: 160,
       cell: ({ row }) => {
         const parsedDate = parseLocalDate(row.original.fecha_confirmacion);
         return (
@@ -171,8 +286,19 @@ export function createProcurementOrderColumns({
     {
       id: 'gran_total',
       accessorKey: 'gran_total',
-      header: 'Total',
-      meta: { align: "right" },
+      header: ({ column }) => (
+        <FilterHeader title="Total">
+          <ColumnHeaderFilter
+            column={column}
+            options={TOTAL_FILTER_OPTIONS}
+            label="rango de total"
+            menuAlign="end"
+          />
+        </FilterHeader>
+      ),
+      meta: { align: "right", label: 'Total' },
+      filterFn: (row, _columnId, filterValue) =>
+        matchesRangeFilter(TOTAL_RANGES, row.original.gran_total, filterValue),
       size: 130,
       cell: ({ row }) => (
         <span className="tabular-nums text-[13px] font-semibold text-slate-700 dark:text-slate-200">

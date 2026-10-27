@@ -7,6 +7,7 @@ import type { DataTableFilterOption } from "@/src/components/DataTable";
 import { ColumnHeaderFilter } from "@/src/components/ColumnHeaderFilter";
 import type { PurchaseOrderReceipt } from "../interfaces/purchase-order-receipt.interface";
 import { formatLocalDate } from "@/src/utils/formatDate";
+import { ALL_FILTER_OPTION, matchesMonthFilter } from "@/src/utils/columnFilterOptions";
 import { PurchaseOrderReceiptDetailDialog } from "./PurchaseOrderReceiptDetailDialog";
 import { useSession } from "next-auth/react";
 import { hasPermission } from "@/src/utils/permissions";
@@ -118,6 +119,10 @@ const FolioCell = ({ receipt }: { receipt: PurchaseOrderReceipt }) => {
 export interface CreatePurchaseOrderReceiptColumnsOptions {
   statusOptions: DataTableFilterOption[];
   supplierOptions: DataTableFilterOption[];
+  /** OC de origen (por id), almacén (por id) y mes de recepción. */
+  orderOptions: DataTableFilterOption[];
+  warehouseOptions: DataTableFilterOption[];
+  monthOptions: DataTableFilterOption[];
 }
 
 /**
@@ -134,6 +139,9 @@ export interface CreatePurchaseOrderReceiptColumnsOptions {
 export const createPurchaseOrderReceiptColumns = ({
   statusOptions,
   supplierOptions,
+  orderOptions,
+  warehouseOptions,
+  monthOptions,
 }: CreatePurchaseOrderReceiptColumnsOptions): ColumnDef<PurchaseOrderReceipt>[] => [
   // Folio+remisión+estatus concatenados en el `accessorFn` (con `?? ""` por el
   // mismo motivo de búsqueda global que el resto de columnas de listado
@@ -160,7 +168,19 @@ export const createPurchaseOrderReceiptColumns = ({
   },
   {
     accessorKey: "orden_compra_folio",
-    header: "Orden de Compra",
+    meta: { label: "Orden de Compra" },
+    header: ({ column }) => (
+      <div className="flex items-center gap-1.5">
+        <span>Orden de Compra</span>
+        <ColumnHeaderFilter
+          column={column}
+          options={[ALL_FILTER_OPTION, ...orderOptions]}
+          label="orden de compra"
+          searchable={{ placeholder: "Buscar folio de OC…" }}
+        />
+      </div>
+    ),
+    filterFn: exactFilterFn((row) => row.orden_compra),
     cell: ({ row }) => <PurchaseOrderFolioCell receipt={row.original} />,
   },
   // Columna compartida con la vista de WMS (ver `TipoCompraColumn.tsx`).
@@ -187,7 +207,18 @@ export const createPurchaseOrderReceiptColumns = ({
   },
   {
     accessorKey: "almacen_nombre",
-    header: "Almacén",
+    meta: { label: "Almacén" },
+    header: ({ column }) => (
+      <div className="flex items-center gap-1.5">
+        <span>Almacén</span>
+        <ColumnHeaderFilter
+          column={column}
+          options={[ALL_FILTER_OPTION, ...warehouseOptions]}
+          label="almacén"
+        />
+      </div>
+    ),
+    filterFn: exactFilterFn((row) => row.almacen),
     cell: ({ row }) => (
       <span className="text-slate-600 dark:text-slate-300">
         {row.original.almacen_nombre || "—"}
@@ -196,7 +227,19 @@ export const createPurchaseOrderReceiptColumns = ({
   },
   {
     accessorKey: "fecha_recepcion",
-    header: "Fecha de Recepción",
+    meta: { label: "Fecha de Recepción" },
+    header: ({ column }) => (
+      <div className="flex items-center gap-1.5">
+        <span>Fecha de Recepción</span>
+        <ColumnHeaderFilter
+          column={column}
+          options={[ALL_FILTER_OPTION, ...monthOptions]}
+          label="mes de recepción"
+        />
+      </div>
+    ),
+    filterFn: (row, _columnId, filterValue) =>
+      matchesMonthFilter(row.original.fecha_recepcion, filterValue),
     cell: ({ row }) => (
       <span className="tabular-nums text-slate-600 dark:text-slate-300">
         {formatLocalDate(row.original.fecha_recepcion)}

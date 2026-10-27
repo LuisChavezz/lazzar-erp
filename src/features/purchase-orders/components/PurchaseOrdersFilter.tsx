@@ -1,5 +1,6 @@
 import type { DataTableFilterOption } from "@/src/components/DataTable";
 import type { PurchaseOrder } from "../interfaces/purchase-order.interface";
+import { buildMonthFilterOptions } from "@/src/utils/columnFilterOptions";
 
 // ─── Opciones de filtro por columna ─────────────────────────────────────────
 //
@@ -49,4 +50,17 @@ export function buildSupplierOptions(
       value: String(id),
       label: nombre,
     }));
+}
+
+/** Un mes por cada mes presente en `fecha_oc` (la fecha de generación). */
+export function buildFechaOcOptions(orders: PurchaseOrder[]): DataTableFilterOption[] {
+  return buildMonthFilterOptions(orders.map((order) => order.fecha_oc));
+}
+
+/** Un mes por cada mes presente en `fecha_vencimiento`, más "Sin vencimiento" si alguna no la trae. */
+export function buildVencimientoOptions(orders: PurchaseOrder[]): DataTableFilterOption[] {
+  return buildMonthFilterOptions(
+    orders.map((order) => order.fecha_vencimiento),
+    "Sin vencimiento",
+  );
 }

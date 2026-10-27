@@ -32,6 +32,12 @@ interface ColumnHeaderFilterProps<TData> {
   isLoading?: boolean;
   /** El catálogo de opciones no se pudo cargar. */
   isError?: boolean;
+  /**
+   * Borde del ícono al que se alinea el menú. Por defecto `"start"` (abre hacia
+   * la derecha); `"end"` lo abre hacia la izquierda, para columnas pegadas al
+   * borde derecho de la tabla (importes), donde el menú se saldría del marco.
+   */
+  menuAlign?: 'start' | 'end';
 }
 
 /** Tope de coincidencias pintadas en la variante con buscador. */
@@ -76,6 +82,7 @@ export function ColumnHeaderFilter<TData>({
   searchable = false,
   isLoading = false,
   isError = false,
+  menuAlign = 'start',
 }: ColumnHeaderFilterProps<TData>) {
   const [isOpen, setIsOpen] = useState(false);
   const [query, setQuery] = useState('');
@@ -103,7 +110,21 @@ export function ColumnHeaderFilter<TData>({
     column.setFilterValue(value);
   };
 
+  const menuAlignCls = menuAlign === 'end' ? 'right-0' : 'left-0';
   const isSearchable = searchable !== false;
+
+  // Etiqueta del valor activo para el chip "Filtrado por" de `DataTable`
+  // (modo cliente). Sin opción que coincida (catálogo aún cargando) no se
+  // reporta nada y el chip muestra solo el nombre de la columna.
+  const reportFilterValueLabel =
+    tableMode.mode === 'client' ? tableMode.reportFilterValueLabel : undefined;
+  const activeLabel =
+    activeValue === undefined
+      ? undefined
+      : options.find((opt) => opt.value === activeValue)?.label;
+  useEffect(() => {
+    reportFilterValueLabel?.(column.id, activeLabel);
+  }, [reportFilterValueLabel, column.id, activeLabel]);
   const searchPlaceholder =
     (typeof searchable === 'object' ? searchable.placeholder : undefined) ?? 'Buscar…';
 
@@ -248,13 +269,18 @@ export function ColumnHeaderFilter<TData>({
         onMouseDown={(event) => event.stopPropagation()}
         className={`inline-flex items-center justify-center rounded p-0.5 transition-colors cursor-pointer ${
           activeValue !== undefined
-            ? 'text-sky-600 dark:text-sky-400'
+            ? 'text-white bg-sky-500 dark:bg-sky-500'
             : 'text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300'
         }`}
-        aria-label={`Filtrar por ${label}`}
+        aria-label={
+          activeLabel ? `Filtrar por ${label} (filtro activo: ${activeLabel})` : `Filtrar por ${label}`
+        }
+        // Lo lee el `<th>` de `DataTable` (`has-[[data-filter-active]]`) para
+        // resaltar la columna filtrada.
+        data-filter-active={activeValue !== undefined ? '' : undefined}
         aria-expanded={isOpen}
         aria-haspopup="menu"
-        title={`Filtrar por ${label}`}
+        title={activeLabel ? `Filtro activo: ${activeLabel}` : `Filtrar por ${label}`}
       >
         <FilterIcon className="w-3 h-3" />
       </button>
@@ -264,7 +290,7 @@ export function ColumnHeaderFilter<TData>({
           aria-label={`Filtrar por ${label}`}
           onClick={(event) => event.stopPropagation()}
           onMouseDown={(event) => event.stopPropagation()}
-          className="absolute left-0 top-full mt-1 w-44 max-h-64 overflow-y-auto rounded-xl border border-slate-100 dark:border-slate-800 bg-white dark:bg-zinc-900 shadow-xl z-30 normal-case font-normal tracking-normal"
+          className={`absolute ${menuAlignCls} top-full mt-1 w-44 max-h-64 overflow-y-auto rounded-xl border border-slate-100 dark:border-slate-800 bg-white dark:bg-zinc-900 shadow-xl z-30 normal-case font-normal tracking-normal`}
         >
           {optionButtons}
           {statusLines}
@@ -282,7 +308,7 @@ export function ColumnHeaderFilter<TData>({
             event.preventDefault();
             event.stopPropagation();
           }}
-          className="absolute left-0 top-full mt-1 w-64 overflow-hidden rounded-xl border border-slate-100 dark:border-slate-800 bg-white dark:bg-zinc-900 shadow-xl z-30 normal-case font-normal tracking-normal"
+          className={`absolute ${menuAlignCls} top-full mt-1 w-64 overflow-hidden rounded-xl border border-slate-100 dark:border-slate-800 bg-white dark:bg-zinc-900 shadow-xl z-30 normal-case font-normal tracking-normal`}
         >
           <div className="p-2 border-b border-slate-100 dark:border-slate-800">
             <input

@@ -18,7 +18,12 @@ import { usePurchaseOrders } from "../hooks/usePurchaseOrders";
 import { usePurchaseOrderCsvExport } from "../hooks/usePurchaseOrderCsvExport";
 import { usePurchaseOrderPdfExport } from "../hooks/usePurchaseOrderPdfExport";
 import { getColumns } from "./PurchaseOrderColumns";
-import { buildStatusOptions, buildSupplierOptions } from "./PurchaseOrdersFilter";
+import {
+  buildFechaOcOptions,
+  buildStatusOptions,
+  buildSupplierOptions,
+  buildVencimientoOptions,
+} from "./PurchaseOrdersFilter";
 import type { PurchaseOrder } from "../interfaces/purchase-order.interface";
 import { PurchaseOrderOnboardingStepManager } from "./PurchaseOrderOnboardingStepManager";
 import { PurchaseOrderEditDialog } from "./PurchaseOrderEditDialog";
@@ -75,6 +80,11 @@ export function PurchaseOrderView() {
   // el listado, no en cada render.
   const statusOptions = useMemo(() => buildStatusOptions(purchaseOrders), [purchaseOrders]);
   const supplierOptions = useMemo(() => buildSupplierOptions(purchaseOrders), [purchaseOrders]);
+  const fechaOcOptions = useMemo(() => buildFechaOcOptions(purchaseOrders), [purchaseOrders]);
+  const vencimientoOptions = useMemo(
+    () => buildVencimientoOptions(purchaseOrders),
+    [purchaseOrders],
+  );
 
   const columns = useMemo(
     () =>
@@ -90,8 +100,10 @@ export function PurchaseOrderView() {
           setCriticalPathTarget({ ocId: order.id, folio: order.folio, estatus: order.estatus }),
         statusOptions,
         supplierOptions,
+        fechaOcOptions,
+        vencimientoOptions,
       ),
-    [router, statusOptions, supplierOptions],
+    [router, statusOptions, supplierOptions, fechaOcOptions, vencimientoOptions],
   );
 
   // ── Exportar (Excel/PDF) ──────────────────────────────────────────────────
@@ -165,7 +177,7 @@ export function PurchaseOrderView() {
               }
               open={isDialogOpen}
               onOpenChange={setIsDialogOpen}
-              maxWidth="640px"
+              maxWidth="720px"
               showCloseButton={false}
               trigger={
                 <Button

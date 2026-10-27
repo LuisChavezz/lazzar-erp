@@ -22,7 +22,7 @@ import { SkuInfoDialog } from "./SkuInfoDialog";
 import { WarehouseFilter } from "./WarehouseFilter";
 import { StockEmptyState } from "./StockEmptyState";
 import type { StockItem } from "../interfaces/stock.interface";
-import { enrichStockWithStatus, stockFilterConfig } from "./StockFilter";
+import { buildStockFilterOptions } from "./StockFilter";
 
 
 
@@ -189,15 +189,12 @@ export function StockView() {
   );
 
   // ── Columnas con el maxStock calculado ───────────────────────────────────
+  // Filtros de encabezado (estilo Excel) en cada columna; sus opciones salen
+  // de las existencias del almacén elegido.
+  const filterOptions = useMemo(() => buildStockFilterOptions(stockItems), [stockItems]);
   const columns = useMemo(
-    () => getStockColumns(maxStock || undefined, () => setSkuInfoOpen(true)),
-    [maxStock],
-  );
-
-  // ── Datos enriquecidos con estado computado para filtros ─────────────────
-  const enrichedData = useMemo(
-    () => enrichStockWithStatus(stockItems, maxStock),
-    [stockItems, maxStock],
+    () => getStockColumns(maxStock || undefined, () => setSkuInfoOpen(true), filterOptions),
+    [maxStock, filterOptions],
   );
 
   // ── Estado vacío: sin almacén seleccionado no se consulta ni se muestran
@@ -256,9 +253,8 @@ export function StockView() {
         <div className="flex-1 min-h-120 flex flex-col">
           <DataTable
             columns={columns}
-            data={enrichedData}
+            data={stockItems}
             searchPlaceholder="Buscar por producto o SKU..."
-            filterConfig={stockFilterConfig}
             fillHeight
             onRefetch={async () => {
               await Promise.all([refetch(), refetchWarehouses()]);

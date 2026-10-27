@@ -11,6 +11,12 @@ import type { TipoCompra } from "../interfaces/purchase-order.interface";
 import type { PurchaseOrderHeaderFieldErrors } from "../utils/purchaseOrderHeaderErrors";
 import { PurchaseOrderPedidosField } from "./PurchaseOrderPedidosField";
 
+/**
+ * Campos más bajos que el default de `FormInput`/`FormSelect` (py-3): el
+ * encabezado son 8 campos cortos en dos columnas y debe caber sin scroll.
+ */
+const COMPACT_FIELD_CLS = "py-2!";
+
 export function PurchaseOrderOnboardingStep1({
   initialValues,
   initialServerErrors,
@@ -101,16 +107,17 @@ function Step1Form({
   });
 
   return (
-    <form onSubmit={handleFormSubmit} className="space-y-6">
+    <form onSubmit={handleFormSubmit} className="space-y-4">
       <fieldset
         disabled={isPending}
-        className={`space-y-6 transition-opacity duration-200 ${isPending ? "opacity-60" : ""}`}
+        className={`grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3 transition-opacity duration-200 ${isPending ? "opacity-60" : ""}`}
       >
         {/* ── Sucursal ─────────────────────────────────────────────────── */}
         <form.Field name="orden_compra.sucursal">
           {(field) => (
             <FormSelect
               label="Sucursal"
+              className={COMPACT_FIELD_CLS}
               name={field.name}
               value={field.state.value}
               options={sucursalOptions}
@@ -136,6 +143,7 @@ function Step1Form({
           {(field) => (
             <FormSelect
               label="Proveedor"
+              className={COMPACT_FIELD_CLS}
               name={field.name}
               value={field.state.value}
               options={proveedorOptions}
@@ -161,6 +169,7 @@ function Step1Form({
           {(field) => (
             <FormSelect
               label="Moneda"
+              className={COMPACT_FIELD_CLS}
               name={field.name}
               value={field.state.value}
               options={monedaOptions}
@@ -187,6 +196,7 @@ function Step1Form({
           {(field) => (
             <FormSelect
               label="Tipo de compra"
+              className={COMPACT_FIELD_CLS}
               name={field.name}
               value={field.state.value}
               options={TIPO_COMPRA_OPTIONS}
@@ -210,6 +220,7 @@ function Step1Form({
           {(field) => (
             <FormInput
               label="Fecha de vencimiento"
+              className={COMPACT_FIELD_CLS}
               type="date"
               name={field.name}
               value={field.state.value}
@@ -231,6 +242,7 @@ function Step1Form({
           {(field) => (
             <FormInput
               label="Referencia"
+              className={COMPACT_FIELD_CLS}
               placeholder="Compra inicial"
               forceUppercase
               name={field.name}
@@ -248,44 +260,49 @@ function Step1Form({
           )}
         </form.Field>
 
-        {/* ── Observaciones ────────────────────────────────────────────── */}
+        {/* ── Observaciones (ancho completo) ──────────────────────────── */}
         <form.Field name="orden_compra.observaciones">
           {(field) => (
-            <FormInput
-              label="Observaciones"
-              forceUppercase
-              name={field.name}
-              value={field.state.value}
-              onChange={(event) => {
-                field.handleChange(event.target.value);
-                clearFieldErrors("orden_compra.observaciones");
-              }}
-              onBlur={() => {
-                field.handleBlur();
-                validateField("orden_compra.observaciones");
-              }}
-              error={getError("orden_compra.observaciones")}
-            />
+            <div className="sm:col-span-2">
+              <FormInput
+                label="Observaciones"
+                className={COMPACT_FIELD_CLS}
+                forceUppercase
+                name={field.name}
+                value={field.state.value}
+                onChange={(event) => {
+                  field.handleChange(event.target.value);
+                  clearFieldErrors("orden_compra.observaciones");
+                }}
+                onBlur={() => {
+                  field.handleBlur();
+                  validateField("orden_compra.observaciones");
+                }}
+                error={getError("orden_compra.observaciones")}
+              />
+            </div>
           )}
         </form.Field>
 
-        {/* ── Pedidos (opcional, varios) ───────────────────────────────── */}
+        {/* ── Pedidos (opcional, varios; ancho completo) ──────────────── */}
         <form.Field name="orden_compra.pedidos">
           {(field) => (
-            <PurchaseOrderPedidosField
-              value={field.state.value ?? []}
-              onChange={(ids) => {
-                field.handleChange(ids);
-                clearFieldErrors("orden_compra.pedidos");
-              }}
-              error={getError("orden_compra.pedidos")}
-            />
+            <div className="sm:col-span-2">
+              <PurchaseOrderPedidosField
+                value={field.state.value ?? []}
+                onChange={(ids) => {
+                  field.handleChange(ids);
+                  clearFieldErrors("orden_compra.pedidos");
+                }}
+                error={getError("orden_compra.pedidos")}
+              />
+            </div>
           )}
         </form.Field>
       </fieldset>
 
       {/* ── Submit ─────────────────────────────────────────────────────── */}
-      <div className="flex justify-end pt-2">
+      <div className="flex justify-end">
         <FormSubmitButton isPending={isPending}>
           Guardar encabezado
         </FormSubmitButton>
