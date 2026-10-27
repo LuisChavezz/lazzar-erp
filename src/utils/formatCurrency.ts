@@ -14,10 +14,14 @@ export const formatCurrency = (
     // moneda (p.ej. "Peso Mexicano") en vez de un código ISO 4217 válido;
     // Intl.NumberFormat lanza en ese caso. Mostramos el número sin símbolo
     // de moneda en vez de romper el render; las opciones de decimales de quien
-    // llama se conservan.
+    // llama se conservan y, si no fijó ninguna, se usan 2 (como un importe).
     const rest: Intl.NumberFormatOptions = { ...merged };
     delete rest.currency;
     delete rest.style;
+    if (rest.minimumFractionDigits === undefined && rest.maximumFractionDigits === undefined) {
+      rest.minimumFractionDigits = 2;
+      rest.maximumFractionDigits = 2;
+    }
     return new Intl.NumberFormat("es-MX", rest).format(value);
   }
 };
