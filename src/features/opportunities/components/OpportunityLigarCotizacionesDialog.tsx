@@ -3,7 +3,7 @@
 import { useIsMutating } from "@tanstack/react-query";
 import { MainDialog } from "@/src/components/MainDialog";
 import { MultiSelectPickerDialogContent } from "@/src/components/MultiSelectPickerDialogContent";
-import { formatCurrency, NO_CURRENCY_FORMAT, safeParseAmount } from "@/src/utils/formatCurrency";
+import { formatMoneyValue, moneyFormatFor } from "@/src/utils/formatCurrency";
 import { formatShortDate } from "@/src/utils/formatDate";
 import { OPPORTUNITY_GONE_DETAIL_MESSAGE } from "../hooks/opportunityErrorMessages";
 import {
@@ -84,7 +84,7 @@ function LigarCotizacionesContent({
           <div className="shrink-0 text-right">
             <p className="text-[11px] text-slate-400 dark:text-slate-500">Total</p>
             <p className="text-sm font-bold tabular-nums text-slate-800 dark:text-white">
-              {formatCurrency(safeParseAmount(cotizacion.gran_total), NO_CURRENCY_FORMAT)}
+              {formatMoneyValue(cotizacion.gran_total, moneyFormatFor(cotizacion.moneda))}
             </p>
           </div>
         </div>

@@ -15,11 +15,13 @@ export interface OpportunityCotizacion {
   /** Estatus numérico de la cotización (1 Borrador … 5 Cambios solicitados). */
   estatus: number;
   estatus_display: string | null;
-  /**
-   * Total con impuestos, texto con 2 decimales ("11600.00"); nunca `null`. La
-   * fila NO trae la moneda de la cotización, así que se muestra sin símbolo.
-   */
+  /** Total con impuestos, texto con 2 decimales ("11600.00"); nunca `null`. */
   gran_total: string;
+  /**
+   * Código ISO de la moneda de la cotización ("MXN", "USD"…; cada empresa puede
+   * tener las suyas) o `null` si no tiene: entonces el total va sin símbolo.
+   */
+  moneda: string | null;
   created_at: string | null;
   autorizada_at: string | null;
   pedido_id: number | null;
@@ -57,8 +59,8 @@ export interface OpportunityCotizarResponse {
  * (que responde lo mismo, ya con lo ligado).
  *
  * - `ligadas`: las de la oportunidad que el usuario puede ver.
- * - `disponibles`: del mismo cliente y empresa, sin oportunidad y visibles para
- *   el usuario; las 100 más recientes, sin paginar. NO se filtran por estatus.
+ * - `disponibles`: del mismo cliente y empresa, sin oportunidad, SIN AUTORIZAR y
+ *   visibles para el usuario; las 100 más recientes, sin paginar.
  *   `[]` si la oportunidad no tiene cliente.
  */
 export interface OpportunityCotizacionesLinks {

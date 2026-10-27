@@ -12,7 +12,7 @@ import {
   quoteEditPath,
 } from "@/src/features/quotes/utils/quoteEditRouteAccess";
 import { canEditQuote } from "@/src/features/quotes/utils/quoteStatusRules";
-import { formatCurrency, NO_CURRENCY_FORMAT, safeParseAmount } from "@/src/utils/formatCurrency";
+import { formatMoneyValue, moneyFormatFor } from "@/src/utils/formatCurrency";
 import { formatShortDate } from "@/src/utils/formatDate";
 import { canAccessRoute } from "@/src/utils/routeAccess";
 import { OPPORTUNITY_LIST_PARAM } from "../constants/opportunityRoutes";
@@ -62,8 +62,8 @@ interface OpportunityCotizacionesProps {
  *   `opportunities` lleva el id para que "Volver" regrese a ESTA oportunidad, y
  *   el estado del listado para que desde aquí se siga pudiendo volver a él.
  * - **Fechas**: timestamps reales (llegan en UTC), en la zona del usuario.
- * - **Total**: `gran_total` SIN símbolo de moneda: la fila no trae la moneda de
- *   la cotización (igual que "Monto estimado" de la oportunidad).
+ * - **Total**: `gran_total` en la `moneda` de la cotización; sin moneda, sin
+ *   símbolo.
  * - **Quitar**: no en una autorizada (el backend responde 400: la oportunidad
  *   dejaría de estar Ganada). Las acciones solo abren diálogos; su estado vive
  *   en el detalle, no en el renglón, que se remonta con cada relectura.
@@ -172,7 +172,7 @@ export const OpportunityCotizaciones = ({
                 <td className={TD_CLASS}>{formatShortDate(cotizacion.autorizada_at)}</td>
                 <td className={TD_CLASS}>{pedido}</td>
                 <td className={`${TD_CLASS} text-right tabular-nums`}>
-                  {formatCurrency(safeParseAmount(cotizacion.gran_total), NO_CURRENCY_FORMAT)}
+                  {formatMoneyValue(cotizacion.gran_total, moneyFormatFor(cotizacion.moneda))}
                 </td>
                 <td className={`${TD_CLASS} text-center`}>
                   {isCotizacionAutorizada(cotizacion) ? (
