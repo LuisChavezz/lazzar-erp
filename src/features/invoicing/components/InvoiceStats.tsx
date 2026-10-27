@@ -12,6 +12,7 @@ import { useInvoices } from "../hooks/useInvoices";
 import type { InvoiceListRow } from "../interfaces/invoice.interface";
 import { INVOICE_STATUS } from "../constants/invoiceStatus";
 import { formatCurrency, safeParseAmount } from "@/src/utils/formatCurrency";
+import { formatInCurrency } from "@/src/utils/currencyTotals";
 import { parseLocalDate } from "@/src/utils/formatDate";
 import { plural } from "@/src/utils/plural";
 
@@ -87,7 +88,8 @@ export const InvoiceStats = () => {
 
   // Cada KPI monetario muestra un total por cada moneda presente en el
   // conjunto, separados por "·" — ninguna moneda queda oculta. Con una sola
-  // moneda esto se reduce a una sola línea, igual que antes.
+  // moneda esto se reduce a una sola línea, igual que antes. Sin facturas no
+  // hay moneda que afirmar: 0 sin símbolo (EC-600), no "$0".
   const money = (pick: (totals: CurrencyTotals) => number) =>
     currencyEntries.length > 0
       ? currencyEntries
@@ -95,7 +97,7 @@ export const InvoiceStats = () => {
             formatCurrency(pick(totals), { currency, maximumFractionDigits: 0 }),
           )
           .join(" · ")
-      : formatCurrency(0, { maximumFractionDigits: 0 });
+      : formatInCurrency(0, null, { maximumFractionDigits: 0 });
 
   // Mientras carga mostramos un marcador en lugar de ceros que parecerían reales.
   const ph = "—";
