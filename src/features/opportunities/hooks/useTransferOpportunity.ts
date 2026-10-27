@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
+import { PEDIDO_DETAIL_QUERY_ROOT } from "@/src/features/orders/hooks/usePedidoDetail";
 import { isNotFoundError } from "@/src/utils/drfWriteErrors";
 import { transferOpportunity } from "../services/actions";
 import {
@@ -19,6 +20,12 @@ export interface TransferOpportunityVariables {
    * salga aunque el diálogo ya se haya desmontado. No viaja al backend.
    */
   goneMessage?: string;
+  /**
+   * Ids de sus cotizaciones, si se saben (el detalle): se relee solo el
+   * detalle de esas. Sin ellos, todos los detalles en caché. No viaja al
+   * backend.
+   */
+  cotizacionIds?: number[];
 }
 
 /**
@@ -34,6 +41,11 @@ export interface TransferOpportunityVariables {
  * detalle, seguimientos, embudo y recientes reflejan al nuevo dueño. Devuelve
  * la promesa de esa invalidación, así que la mutación sigue "pending" (y el
  * diálogo bloqueado) hasta que la pantalla se releyó.
+ *
+ * Con ÉXITO, además: el backend pasa TODAS las cotizaciones de la oportunidad
+ * al nuevo dueño, y el vendedor de un pedido es el de su cotización, así que
+ * se releen también las cotizaciones (listado y detalles, sin esperar: no son
+ * de esta pantalla) y los pedidos. Si falla, nadie cambió de dueño.
  */
 export const useTransferOpportunity = () => {
   const queryClient = useQueryClient();
@@ -41,7 +53,15 @@ export const useTransferOpportunity = () => {
   return useMutation({
     mutationFn: ({ id, vendedor }: TransferOpportunityVariables) =>
       transferOpportunity(id, vendedor),
-    onSuccess: (opportunity) => {
+    onSuccess: (opportunity, { cotizacionIds }) => {
+      void queryClient.invalidateQueries({ queryKey: ["quotes"] });
+      if (cotizacionIds) {
+        cotizacionIds.forEach((id) => void queryClient.invalidateQueries({ queryKey: ["quote", id] }));
+      } else {
+        void queryClient.invalidateQueries({ queryKey: ["quote"] });
+      }
+      void queryClient.invalidateQueries({ queryKey: ["orders"] });
+      void queryClient.invalidateQueries({ queryKey: [PEDIDO_DETAIL_QUERY_ROOT] });
       toast.success(
         opportunity.vendedor_nombre
           ? `Oportunidad transferida a ${opportunity.vendedor_nombre}`

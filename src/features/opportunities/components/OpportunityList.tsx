@@ -124,7 +124,7 @@ export default function OpportunityList() {
         onClose={() => setOpportunityToDelete(null)}
       />
 
-      {/* Sin `cotizacionesCount`: el listado no las trae y el aviso es genérico. */}
+      {/* Sin `cotizaciones`: el listado no las trae y el aviso es genérico. */}
       <OpportunityTransferDialog
         opportunity={opportunityToTransfer}
         onClose={() => setOpportunityToTransfer(null)}

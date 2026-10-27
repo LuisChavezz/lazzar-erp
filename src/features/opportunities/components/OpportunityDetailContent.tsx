@@ -7,6 +7,7 @@ import { useSession } from "next-auth/react";
 import { ArrowLeftIcon, DeleteIcon, EditIcon, TraspasosIcon } from "@/src/components/Icons";
 import { Button } from "@/src/components/Button";
 import { ErrorState } from "@/src/components/ErrorState";
+import { SectionErrorNotice } from "@/src/components/SectionErrorNotice";
 import { Loader } from "@/src/components/Loader";
 import { StatusBadge } from "@/src/components/StatusBadge";
 import {
@@ -108,11 +109,11 @@ export const OpportunityDetailContent = ({
   const [opportunityToEdit, setOpportunityToEdit] = useState<Opportunity | null>(null);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [opportunityToDelete, setOpportunityToDelete] = useState<Opportunity | null>(null);
-  // "Transferir" (solo administrador de empresa): el registro y cuántas
-  // cotizaciones tiene, para que el aviso diga el número.
+  // "Transferir" (solo administrador de empresa): el registro y sus
+  // cotizaciones, para que el aviso diga cuántas pasan y si ya hay pedidos.
   const [transfer, setTransfer] = useState<{
     opportunity: Opportunity;
-    cotizacionesCount: number;
+    cotizaciones: OpportunityCotizacion[];
   } | null>(null);
 
   const handleEdit = (opportunity: Opportunity) => {
@@ -212,9 +213,7 @@ export const OpportunityDetailContent = ({
         listQuery={listQuery}
         onEdit={handleEdit}
         onDelete={setOpportunityToDelete}
-        onTransfer={(opportunity, cotizacionesCount) =>
-          setTransfer({ opportunity, cotizacionesCount })
-        }
+        onTransfer={(opportunity, cotizaciones) => setTransfer({ opportunity, cotizaciones })}
         seguimientoActions={seguimientoActions}
         onLigarCotizaciones={setLigarOpportunityId}
         onQuitarCotizacion={(opportunityId, cotizacion) =>
@@ -243,7 +242,7 @@ export const OpportunityDetailContent = ({
 
       <OpportunityTransferDialog
         opportunity={transfer?.opportunity ?? null}
-        cotizacionesCount={transfer?.cotizacionesCount}
+        cotizaciones={transfer?.cotizaciones}
         goneMessage={OPPORTUNITY_GONE_DETAIL_MESSAGE}
         onClose={() => setTransfer(null)}
       />
@@ -280,7 +279,7 @@ interface OpportunityDetailBodyProps {
   listQuery: string;
   onEdit: (opportunity: Opportunity) => void;
   onDelete: (opportunity: Opportunity) => void;
-  onTransfer: (opportunity: Opportunity, cotizacionesCount: number) => void;
+  onTransfer: (opportunity: Opportunity, cotizaciones: OpportunityCotizacion[]) => void;
   seguimientoActions: OpportunitySeguimientoActions;
   onLigarCotizaciones: (opportunityId: number) => void;
   onQuitarCotizacion: (opportunityId: number, cotizacion: OpportunityCotizacion) => void;
@@ -304,7 +303,8 @@ function OpportunityDetailBody({
 }: OpportunityDetailBodyProps) {
   const { data: session } = useSession();
   // "Transferir" solo para un administrador de empresa RESUELTO.
-  const canTransfer = useCompanyAdminStatus() === "admin";
+  const adminStatus = useCompanyAdminStatus();
+  const canTransfer = adminStatus === "admin";
 
   const opportunity = data.oportunidad;
   // `?? []`: el contrato da ambos arreglos siempre, pero una respuesta sin el
@@ -319,18 +319,22 @@ function OpportunityDetailBody({
   // "Ligar cotización" ofrece cotizaciones del cliente: sin cliente no hay
   // cuáles, y a una cerrada (Ganada o Perdida, el ESTADO calculado) el backend
   // no liga (400 en `etapa`): para vender más, otra oportunidad.
-  const canLigar = hasCliente && !isOportunidadCerrada(opportunity.estado);
+  // Sin vendedor tampoco (400 en `vendedor`): la cotización quedaría sin dueño.
+  // El backend revisa `etapa` ANTES que `vendedor`, así que en una cerrada
+  // manda el cierre y no se avisa de lo que falta para cotizar.
+  const isCerrada = isOportunidadCerrada(opportunity.estado);
+  const isSinVendedor = opportunity.vendedor === null;
+  const canLigar = hasCliente && !isCerrada && !isSinVendedor;
 
   // "Cotizar" crea una cotización CON el cliente de la oportunidad y navega a
   // editarla: sin cliente no hay a quién cotizar, cerrada (Perdida/Ganada) ya
-  // no se cotiza, y sin acceso a la ruta de edición el usuario la crearía y
-  // rebotaría después, dejándola huérfana (mismo criterio que Recompra). Que
-  // ESE cliente se pueda cotizar lo comprueba la propia acción al hacer clic,
-  // donde puede explicar por qué no (ver `OpportunityCotizarAction`).
+  // no se cotiza, sin vendedor tampoco, y sin acceso a la ruta de edición el
+  // usuario la crearía y rebotaría después, dejándola huérfana (mismo criterio
+  // que Recompra). Que ESE cliente se pueda cotizar lo comprueba la propia
+  // acción al hacer clic, donde puede explicar por qué no (ver
+  // `OpportunityCotizarAction`).
   const canCotizar =
-    hasCliente &&
-    !isOportunidadCerrada(opportunity.estado) &&
-    canLandOnQuoteEdit(session?.user);
+    hasCliente && !isCerrada && !isSinVendedor && canLandOnQuoteEdit(session?.user);
 
   return (
     <>
@@ -368,7 +372,7 @@ function OpportunityDetailBody({
             <Button
               variant="secondary"
               leftIcon={<TraspasosIcon className="w-4 h-4" aria-hidden="true" />}
-              onClick={() => onTransfer(opportunity, cotizaciones.length)}
+              onClick={() => onTransfer(opportunity, cotizaciones)}
             >
               Transferir
             </Button>
@@ -383,6 +387,34 @@ function OpportunityDetailBody({
           </Button>
         </div>
       </div>
+
+      {/* Una oportunidad sin vendedor solo la ven el administrador de empresa y
+          el superusuario (el vendedor ve las suyas): el "Transferir" del aviso
+          se oculta solo si el usuario NO es administrador, también con la
+          sesión en `unknown`. El backend lo vuelve a exigir al transferir. */}
+      {isSinVendedor && !isCerrada && (
+        <SectionErrorNotice
+          title={hasCliente ? "Oportunidad sin vendedor" : "Oportunidad sin vendedor ni cliente"}
+          message={
+            hasCliente
+              ? "Para cotizar o ligar cotizaciones, primero transfiérela a un vendedor."
+              : "Para cotizar o ligar cotizaciones necesita vendedor y cliente: transfiérela a un vendedor y asígnale un cliente con «Editar»."
+          }
+          action={
+            adminStatus !== "not-admin" && (
+              <Button
+                type="button"
+                variant="secondary"
+                rounded="full"
+                leftIcon={<TraspasosIcon className="w-4 h-4" aria-hidden="true" />}
+                onClick={() => onTransfer(opportunity, cotizaciones)}
+              >
+                Transferir
+              </Button>
+            )
+          }
+        />
+      )}
 
       {/* ── Datos de la oportunidad ────────────────────────────────────── */}
       <Section title="Datos de la oportunidad">

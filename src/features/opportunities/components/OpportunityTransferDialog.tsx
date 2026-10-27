@@ -19,6 +19,8 @@ import {
   type TransferOpportunityVariables,
 } from "../hooks/useTransferOpportunity";
 import type { Opportunity } from "../interfaces/opportunity.interface";
+import type { OpportunityCotizacion } from "../interfaces/opportunity-onboarding.interface";
+import { isCotizacionAutorizada } from "../utils/cotizacionEstatus";
 import { getOpportunityName } from "../utils/describeOpportunity";
 
 const MUTED_CLS = "text-slate-500 dark:text-slate-400";
@@ -31,7 +33,7 @@ interface TransferOption {
 
 interface TransferFormProps {
   opportunity: Opportunity;
-  cotizacionesCount?: number;
+  cotizaciones?: readonly OpportunityCotizacion[];
   goneMessage: string;
   isPending: boolean;
   onTransfer: (
@@ -41,6 +43,62 @@ interface TransferFormProps {
   onClose: () => void;
 }
 
+const plural = (count: number, singular: string, pluralForm: string) =>
+  `${count} ${count === 1 ? singular : pluralForm}`;
+
+/**
+ * Qué pasa con las cotizaciones al transferir. El backend pasa TODAS las de la
+ * oportunidad al nuevo dueño, sin mirar su estatus, y el vendedor de un pedido
+ * es el de su cotización: los pedidos que salieron de ellas también cambian de
+ * vendedor. `emphasis` resalta las autorizadas y los pedidos.
+ *
+ * Solo se cuentan COTIZACIONES. Los pedidos se mencionan sin número: el
+ * onboarding da solo el último pedido de cada cotización (puede tener más) y
+ * no descarta los dados de baja. Un pedido se detecta por `pedido_id`, no por
+ * estatus: no se supone que solo una autorizada lo tenga.
+ */
+const describeCotizacionesMove = (
+  cotizaciones: readonly OpportunityCotizacion[] | undefined,
+  /** Nombre del elegido; sin elegir aún, "el nuevo vendedor". */
+  destino: string | undefined
+): { text: string; emphasis: string | null } => {
+  const aDestino = destino ? `a ${destino}` : "al nuevo vendedor";
+  const aNombreDe = destino ? `a nombre de ${destino}` : "a nombre del nuevo vendedor";
+  const pedidosText = (deQuien: string) =>
+    `los pedidos que se generaron ${deQuien} también quedarán ${aNombreDe}.`;
+  if (cotizaciones === undefined) {
+    return {
+      text: `Todas sus cotizaciones, si las tiene, pasarán ${aDestino}, sin importar su estatus.`,
+      emphasis: `Si ya tiene pedidos, ${pedidosText("de sus cotizaciones")}`,
+    };
+  }
+  const total = cotizaciones.length;
+  if (total === 0) return { text: "No tiene cotizaciones.", emphasis: null };
+
+  const text =
+    total === 1
+      ? `Su cotización pasará ${aDestino}.`
+      : `Sus ${total} cotizaciones pasarán ${aDestino}, sin importar su estatus.`;
+  const autorizadas = cotizaciones.filter(isCotizacionAutorizada).length;
+  const hasPedidos = cotizaciones.some((cotizacion) => cotizacion.pedido_id !== null);
+  if (autorizadas === 0 && !hasPedidos) return { text, emphasis: null };
+
+  const autorizadasText =
+    autorizadas === 0
+      ? null
+      : total === 1
+        ? "Está autorizada"
+        : `Incluye ${plural(autorizadas, "cotización autorizada", "cotizaciones autorizadas")}`;
+  if (!hasPedidos) return { text, emphasis: `${autorizadasText}.` };
+  const pedidos = pedidosText(total === 1 ? "de ella" : "de sus cotizaciones");
+  return {
+    text,
+    emphasis: autorizadasText
+      ? `${autorizadasText}; ${pedidos}`
+      : `${pedidos.charAt(0).toUpperCase()}${pedidos.slice(1)}`,
+  };
+};
+
 /**
  * Selector del nuevo vendedor, aviso de efectos y confirmación. Se monta de
  * nuevo en cada apertura (`key`), así que la selección y el error empiezan
@@ -48,7 +106,7 @@ interface TransferFormProps {
  */
 function TransferForm({
   opportunity,
-  cotizacionesCount,
+  cotizaciones,
   goneMessage,
   isPending,
   onTransfer,
@@ -85,24 +143,22 @@ function TransferForm({
   const ownerText = hasOwner
     ? `${previousOwner} dejará de verla y de ver sus seguimientos, salvo que sea administrador.`
     : "No tiene vendedor asignado: quien elijas pasará a ser su vendedor.";
-  const cotizacionesSuffix = hasOwner
-    ? "seguirán a nombre del vendedor anterior."
-    : "no cambian de dueño.";
-  const cotizacionesText =
-    cotizacionesCount === undefined
-      ? `Sus cotizaciones, si las tiene, ${cotizacionesSuffix}`
-      : cotizacionesCount === 0
-        ? "No tiene cotizaciones."
-        : cotizacionesCount === 1
-          ? `Su cotización ${hasOwner ? "seguirá a nombre del vendedor anterior." : "no cambia de dueño."}`
-          : `Sus ${cotizacionesCount} cotizaciones ${cotizacionesSuffix}`;
+  const { text: cotizacionesText, emphasis: cotizacionesEmphasis } = describeCotizacionesMove(
+    cotizaciones,
+    selectedOption?.label
+  );
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (selectedId === null || isPending) return;
     setFieldError(null);
     onTransfer(
-      { id: opportunity.id, vendedor: selectedId, goneMessage },
+      {
+        id: opportunity.id,
+        vendedor: selectedId,
+        goneMessage,
+        cotizacionIds: cotizaciones?.map((cotizacion) => cotizacion.id),
+      },
       {
         onSuccess: onClose,
         // Los toasts los da el hook; aquí solo lo que depende del diálogo.
@@ -205,6 +261,7 @@ function TransferForm({
               verla quien no lo es. */}
           {ownerText} {cotizacionesText}
         </p>
+        {cotizacionesEmphasis && <p className="mt-2 font-semibold">{cotizacionesEmphasis}</p>}
       </div>
 
       <div className="flex justify-end gap-3 pb-2">
@@ -225,10 +282,12 @@ interface OpportunityTransferDialogProps {
   /** Oportunidad por transferir; `null` = cerrado. Se lee AL ABRIR. */
   opportunity: Opportunity | null;
   /**
-   * Cuántas cotizaciones tiene, si se sabe (el detalle la trae; el listado
-   * no): el aviso dice el número. Sin ella el aviso es genérico.
+   * Sus cotizaciones, si se saben (el detalle las trae; el listado no): el
+   * aviso dice cuántas son, cuántas autorizadas y si ya hay pedidos, y la
+   * transferencia relee solo el detalle de esas. Sin ellas el aviso es
+   * genérico.
    */
-  cotizacionesCount?: number;
+  cotizaciones?: readonly OpportunityCotizacion[];
   /**
    * Aviso de un 404 (la oportunidad ya no existe). Por defecto, el del
    * listado; el detalle pasa el suyo (`OPPORTUNITY_GONE_DETAIL_MESSAGE`).
@@ -243,8 +302,10 @@ interface OpportunityTransferDialogProps {
  * listado y en el detalle; solo se ofrece a un administrador de empresa.
  *
  * - Avisa de los efectos: quien la tenía deja de verla junto con sus
- *   seguimientos (salvo que sea administrador de empresa), y sus cotizaciones
- *   siguen a nombre del vendedor anterior.
+ *   seguimientos (salvo que sea administrador de empresa), y TODAS sus
+ *   cotizaciones pasan al nuevo vendedor, sin importar su estatus. El vendedor
+ *   de un pedido es el de su cotización, así que los pedidos que salieron de
+ *   ellas también pasan: con autorizadas o pedidos el aviso lo resalta.
  * - Queda abierto y bloqueado mientras la transferencia y la relectura están
  *   en curso (`useTransferOpportunity`); con éxito se cierra.
  * - Errores: un rechazo del destinatario (400 en `vendedor`) va bajo el
@@ -256,12 +317,12 @@ interface OpportunityTransferDialogProps {
  */
 export function OpportunityTransferDialog({
   opportunity,
-  cotizacionesCount,
+  cotizaciones,
   goneMessage = OPPORTUNITY_GONE_MESSAGE,
   onClose,
 }: OpportunityTransferDialogProps) {
   const { mutate: transfer, isPending } = useTransferOpportunity();
-  const session = useDialogSession(opportunity !== null, { opportunity, cotizacionesCount });
+  const session = useDialogSession(opportunity !== null, { opportunity, cotizaciones });
   const opened = session.snapshot;
 
   return (
@@ -284,7 +345,7 @@ export function OpportunityTransferDialog({
         <TransferForm
           key={session.id}
           opportunity={opened.opportunity}
-          cotizacionesCount={opened.cotizacionesCount}
+          cotizaciones={opened.cotizaciones}
           goneMessage={goneMessage}
           isPending={isPending}
           onTransfer={transfer}
