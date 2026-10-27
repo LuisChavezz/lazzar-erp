@@ -31,15 +31,14 @@ const formatBlockAmount = (
     : formatInCurrency(total, null, options);
 
 /**
- * Valor de una tarjeta con un importe por moneda.
- * - Una moneda: el importe solo, formateado con `options` en SU moneda (con
- *   MXN se ve exactamente igual que antes de EC-601).
- * - Varias: un bloque por moneda con su código (`KpiTaggedBlocks`), con los
- *   mismos decimales (`options`).
- * - Ninguna (conjunto vacío): 0 sin símbolo, porque no hay moneda que afirmar
- *   (EC-600).
- * Las monedas en cero se ocultan si otra tiene importe, y si todas dan cero
- * (con varias) queda un solo 0 sin símbolo (`visibleCurrencyEntries`).
+ * Valor de una tarjeta con un importe por moneda (qué se ve y si lleva código
+ * lo decide `visibleCurrencyEntries`):
+ * - Conjunto de una sola moneda: el importe solo, formateado con `options` en
+ *   SU moneda (con MXN se ve exactamente igual que antes de EC-601).
+ * - Conjunto de varias: un bloque por moneda a la vista con su código
+ *   (`KpiTaggedBlocks`), aunque las demás estén en cero y quede uno solo.
+ * - Nada a la vista (conjunto vacío, o varias monedas todas en cero): 0 sin
+ *   símbolo, porque no hay moneda que afirmar (EC-600).
  */
 export function CurrencyTotalsValue({
   totals: allTotals,
@@ -48,8 +47,8 @@ export function CurrencyTotalsValue({
   totals: CurrencyTotal[];
   options?: Intl.NumberFormatOptions;
 }) {
-  const totals = visibleCurrencyEntries(allTotals, (entry) => entry.total);
-  if (totals.length <= 1) {
+  const { visibles: totals, showCodes } = visibleCurrencyEntries(allTotals, (entry) => entry.total);
+  if (!showCodes || totals.length === 0) {
     const [only] = totals;
     return <>{formatInCurrency(only?.total ?? 0, only?.moneda ?? null, options)}</>;
   }
@@ -65,25 +64,29 @@ export function CurrencyTotalsValue({
 }
 
 /**
- * ¿`CurrencyTotalsValue` pintará varios bloques? Para apilar la insignia de la
- * tarjeta (`stackTrend`) solo cuando de verdad hay más de una moneda a la vista.
+ * ¿`CurrencyTotalsValue` pintará bloques con código? Para apilar la insignia de
+ * la tarjeta (`stackTrend`): un bloque con su código ya no cabe junto a ella,
+ * aunque sea uno solo.
  */
-export const showsSeveralCurrencies = (totals: CurrencyTotal[]): boolean =>
-  visibleCurrencyEntries(totals, (entry) => entry.total).length > 1;
+export const showsCurrencyCodes = (totals: CurrencyTotal[]): boolean => {
+  const { visibles, showCodes } = visibleCurrencyEntries(totals, (entry) => entry.total);
+  return showCodes && visibles.length > 0;
+};
 
 const LIST_FORMAT = new Intl.ListFormat("es", { style: "long", type: "conjunction" });
 
 /**
- * Los mismos totales en una frase ("$1,200.00 MXN y $300.00 USD"). Con una
- * sola moneda, el importe solo en su moneda, como antes. Mismo criterio que
- * `CurrencyTotalsValue` para las monedas en cero.
+ * Los mismos totales en una frase ("$1,200.00 MXN y $300.00 USD", o
+ * "$88,264.68 MXN" si el resto está en cero). Con un conjunto de una sola
+ * moneda, el importe solo en su moneda, como antes. Mismo criterio que
+ * `CurrencyTotalsValue` (`visibleCurrencyEntries`).
  */
 export const formatCurrencyTotalsInline = (
   allTotals: CurrencyTotal[],
   options?: Intl.NumberFormatOptions,
 ): string => {
-  const totals = visibleCurrencyEntries(allTotals, (entry) => entry.total);
-  if (totals.length <= 1) {
+  const { visibles: totals, showCodes } = visibleCurrencyEntries(allTotals, (entry) => entry.total);
+  if (!showCodes || totals.length === 0) {
     const [only] = totals;
     return formatInCurrency(only?.total ?? 0, only?.moneda ?? null, options);
   }

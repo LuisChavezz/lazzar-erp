@@ -91,7 +91,10 @@ export function PurchaseOrderDashboard({ orders }: PurchaseOrderDashboardProps) 
         .sort((a, b) => safeParseAmount(b.total) - safeParseAmount(a.total))
         .slice(0, 5),
     }));
-    const rankingsConImporte = visibleCurrencyEntries(rankings, (ranking) => ranking.suma);
+    const { visibles: rankingsConImporte, showCodes: topPorMoneda } = visibleCurrencyEntries(
+      rankings,
+      (ranking) => ranking.suma,
+    );
     const topByValue = rankingsConImporte.length > 0 ? rankingsConImporte : rankings;
 
     return {
@@ -105,6 +108,9 @@ export function PurchaseOrderDashboard({ orders }: PurchaseOrderDashboardProps) 
       enCurso: enCurso.length,
       critical,
       topByValue,
+      // Varias monedas en las órdenes: cada ranking lleva su código, aunque
+      // quede uno solo a la vista (`visibleCurrencyEntries`).
+      topPorMoneda,
     };
   }, [orders]);
 
@@ -320,7 +326,7 @@ export function PurchaseOrderDashboard({ orders }: PurchaseOrderDashboardProps) 
                 Top 5 por valor
               </h2>
               <p className="text-xs text-slate-400 mt-0.5">
-                {stats.topByValue.length > 1
+                {stats.topPorMoneda
                   ? "Órdenes de mayor importe, por moneda"
                   : "Órdenes de mayor importe"}
               </p>
@@ -330,7 +336,7 @@ export function PurchaseOrderDashboard({ orders }: PurchaseOrderDashboardProps) 
             {stats.topByValue.map((group) => (
               <div key={group.moneda ?? UNKNOWN_CURRENCY_TAG}>
                 {/* Con varias monedas, un ranking por moneda con su código. */}
-                {stats.topByValue.length > 1 && (
+                {stats.topPorMoneda && (
                   <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
                     {group.moneda ?? UNKNOWN_CURRENCY_TAG}
                   </p>

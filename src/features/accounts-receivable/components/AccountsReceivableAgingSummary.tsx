@@ -30,11 +30,12 @@ export const AccountsReceivableAgingSummary = ({
   groups: AgingByCurrency[];
   isLoading?: boolean;
 }) => {
-  const visibles = visibleCurrencyEntries(groups, (group) => group.total);
+  const { visibles, showCodes } = visibleCurrencyEntries(groups, (group) => group.total);
   const shown = visibles.length > 0 ? visibles : [EMPTY_GROUP];
-  const multi = shown.length > 1;
-  // Con varias monedas cada importe lleva el símbolo de la suya y el código
-  // va en el encabezado de su grupo (mismo criterio que `KpiCurrencyBlocks`).
+  // Con un conjunto de varias monedas cada grupo a la vista lleva su código en
+  // su encabezado —aunque quede uno solo— y cada importe el símbolo de la suya
+  // (mismo criterio que `KpiCurrencyBlocks`).
+  const multi = showCodes && visibles.length > 0;
   const formatAmount = (amount: number, moneda: string | null) =>
     multi && moneda ? formatKpiTaggedCurrencyAmount(amount, moneda) : formatInCurrency(amount, moneda);
 
@@ -60,7 +61,7 @@ export const AccountsReceivableAgingSummary = ({
         )}
       </div>
 
-      <div className={multi ? "space-y-6" : undefined}>
+      <div className={shown.length > 1 ? "space-y-6" : undefined}>
         {shown.map((group) => (
           <AgingGroup
             key={group.moneda ?? UNKNOWN_CURRENCY_TAG}

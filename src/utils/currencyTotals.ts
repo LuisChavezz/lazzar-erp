@@ -40,16 +40,28 @@ export const sortByMoneda = <T extends { moneda: string | null }>(entries: T[]):
 export const isZeroAmount = (amount: number): boolean => Math.round(amount * 100) === 0;
 
 /**
- * Qué monedas mostrar de un total por moneda: se ocultan las que dan cero
- * (`isZeroAmount`) cuando otra tiene importe. Si todas dan cero, se conserva la
- * única moneda (una sola moneda se ve como siempre) o, con varias o ninguna, no
- * queda ninguna: quien pinta muestra un solo 0 sin símbolo (EC-600). Lo usan
- * `CurrencyTotalsValue`, la antigüedad de CxC y el Top 5 de Compras.
+ * Qué monedas mostrar de un total por moneda, y si llevan su código.
+ *
+ * - `visibles`: se ocultan las que dan cero (`isZeroAmount`) cuando otra tiene
+ *   importe. Si todas dan cero, se conserva la única moneda (una sola moneda se
+ *   ve como siempre) o, con varias o ninguna, no queda ninguna: quien pinta
+ *   muestra un solo 0 sin símbolo (EC-600).
+ * - `showCodes`: se decide sobre el conjunto COMPLETO, antes de ocultar ceros.
+ *   Si el conjunto trae más de una moneda, lo que quede a la vista lleva su
+ *   código aunque sea una sola ("$118,315 MXN"); con una sola moneda, sin
+ *   código, igual que antes de EC-601.
+ *
+ * Única fuente de ambas decisiones: la usan `CurrencyTotalsValue`,
+ * `formatCurrencyTotalsInline`, la antigüedad de CxC y el Top 5 de Compras.
  */
-export const visibleCurrencyEntries = <T>(entries: T[], amountOf: (entry: T) => number): T[] => {
+export const visibleCurrencyEntries = <T>(
+  entries: T[],
+  amountOf: (entry: T) => number,
+): { visibles: T[]; showCodes: boolean } => {
+  const showCodes = entries.length > 1;
   const conImporte = entries.filter((entry) => !isZeroAmount(amountOf(entry)));
-  if (conImporte.length > 0) return conImporte;
-  return entries.length === 1 ? entries : [];
+  if (conImporte.length > 0) return { visibles: conImporte, showCodes };
+  return { visibles: entries.length === 1 ? entries : [], showCodes };
 };
 
 /** Suma importes de UNA misma moneda en centavos enteros. */

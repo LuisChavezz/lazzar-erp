@@ -2,7 +2,7 @@
 
 import { CxcIcon, ClockIcon, ErrorIcon, CheckCircleIcon } from "@/src/components/Icons";
 import KpiGrid, { type KpiItem } from "@/src/components/KpiGrid";
-import { CurrencyTotalsValue, showsSeveralCurrencies } from "@/src/components/CurrencyTotalsValue";
+import { CurrencyTotalsValue, showsCurrencyCodes } from "@/src/components/CurrencyTotalsValue";
 import type { CurrencyTotal } from "@/src/utils/currencyTotals";
 import { useCuentasPorCobrar } from "../hooks/useCuentasPorCobrar";
 import { computeCxcKpis } from "../utils/accounts-receivable.utils";
@@ -88,12 +88,12 @@ export const AccountsReceivableStats = ({ today }: { today: string }) => {
   // Con varias monedas el valor apila un bloque por moneda y la insignia, que
   // comparte su fila, recortaría los códigos: va debajo del valor, con su
   // color. Todos los indicadores listan las mismas monedas (`computeCxcKpis`).
-  // Cada tarjeta decide por las monedas que de verdad muestra
-  // (`showsSeveralCurrencies`: las que dan cero se ocultan).
+  // Cada tarjeta decide por sí misma: apila la insignia si su valor lleva
+  // código de moneda (`showsCurrencyCodes`).
   const porTarjeta = [kpis.totalPorCobrar, kpis.totalVencido, kpis.porVencer30, kpis.cobradoEsteMes];
   const shownItems = showPlaceholder
     ? items
-    : items.map((item, i) => (showsSeveralCurrencies(porTarjeta[i]) ? { ...item, stackTrend: true } : item));
+    : items.map((item, i) => (showsCurrencyCodes(porTarjeta[i]) ? { ...item, stackTrend: true } : item));
 
   return <KpiGrid items={shownItems} />;
 };

@@ -7,7 +7,7 @@ import {
   sumByCurrency,
   visibleCurrencyEntries,
 } from "@/src/utils/currencyTotals";
-import { formatCurrencyTotalsInline } from "@/src/components/CurrencyTotalsValue";
+import { formatCurrencyTotalsInline, showsCurrencyCodes } from "@/src/components/CurrencyTotalsValue";
 import { currencyHasOwnSymbol, moneyFormatFor, NO_CURRENCY_FORMAT } from "@/src/utils/formatCurrency";
 import { formatKpiTaggedCurrencyAmount, formatKpiTaggedSignedCurrencyAmount } from "@/src/utils/kpiFormat";
 import {
@@ -132,37 +132,62 @@ test.describe("currencyTotals", () => {
 
   test("visibleCurrencyEntries oculta las monedas en cero (en centavos) si otra tiene importe", () => {
     const amount = (e: { total: number }) => e.total;
+    const visibles = (entries: { moneda: string; total: number }[]) =>
+      visibleCurrencyEntries(entries, amount).visibles;
     // Mezcla con ceros: solo quedan las que tienen importe.
     expect(
-      visibleCurrencyEntries(
-        [
-          { moneda: "MXN", total: 118315 },
-          { moneda: "USD", total: 0 },
-          { moneda: "XTS", total: 0 },
-        ],
-        amount,
-      ),
+      visibles([
+        { moneda: "MXN", total: 118315 },
+        { moneda: "USD", total: 0 },
+        { moneda: "XTS", total: 0 },
+      ]),
     ).toEqual([{ moneda: "MXN", total: 118315 }]);
     // Todas en cero con varias monedas: ninguna (un solo 0 sin símbolo).
-    expect(visibleCurrencyEntries([{ moneda: "MXN", total: 0 }, { moneda: "USD", total: 0 }], amount)).toEqual([]);
+    expect(visibles([{ moneda: "MXN", total: 0 }, { moneda: "USD", total: 0 }])).toEqual([]);
     // Una sola moneda en cero se conserva (se ve como antes de EC-601).
-    expect(visibleCurrencyEntries([{ moneda: "MXN", total: 0 }], amount)).toEqual([{ moneda: "MXN", total: 0 }]);
+    expect(visibles([{ moneda: "MXN", total: 0 }])).toEqual([{ moneda: "MXN", total: 0 }]);
     // Conjunto vacío.
-    expect(visibleCurrencyEntries([], amount)).toEqual([]);
+    expect(visibles([])).toEqual([]);
     // Un importe diminuto no es cero aunque se vea "$0" sin decimales.
-    expect(
-      visibleCurrencyEntries([{ moneda: "MXN", total: 10 }, { moneda: "USD", total: 0.01 }], amount),
-    ).toEqual([{ moneda: "MXN", total: 10 }, { moneda: "USD", total: 0.01 }]);
+    expect(visibles([{ moneda: "MXN", total: 10 }, { moneda: "USD", total: 0.01 }])).toEqual([
+      { moneda: "MXN", total: 10 },
+      { moneda: "USD", total: 0.01 },
+    ]);
     // Menos de medio centavo sí cuenta como cero.
-    expect(visibleCurrencyEntries([{ moneda: "MXN", total: 10 }, { moneda: "USD", total: 0.004 }], amount)).toEqual([
+    expect(visibles([{ moneda: "MXN", total: 10 }, { moneda: "USD", total: 0.004 }])).toEqual([
       { moneda: "MXN", total: 10 },
     ]);
   });
 
+  test("showCodes se decide sobre el conjunto completo, antes de ocultar ceros", () => {
+    const amount = (e: { total: number }) => e.total;
+    expect(
+      visibleCurrencyEntries(
+        [
+          { moneda: "MXN", total: 5 },
+          { moneda: "USD", total: 0 },
+        ],
+        amount,
+      ),
+    ).toEqual({ visibles: [{ moneda: "MXN", total: 5 }], showCodes: true });
+    expect(visibleCurrencyEntries([{ moneda: "MXN", total: 5 }], amount).showCodes).toBe(false);
+    expect(visibleCurrencyEntries([], amount).showCodes).toBe(false);
+  });
+
+  test("showsCurrencyCodes: código con varias monedas aunque quede una a la vista", () => {
+    expect(showsCurrencyCodes([{ moneda: "MXN", total: 5 }, { moneda: "USD", total: 0 }])).toBe(true);
+    expect(showsCurrencyCodes([{ moneda: "MXN", total: 5 }])).toBe(false);
+    expect(showsCurrencyCodes([{ moneda: "MXN", total: 0 }, { moneda: "USD", total: 0 }])).toBe(false);
+    expect(showsCurrencyCodes([])).toBe(false);
+  });
+
   test("formatCurrencyTotalsInline aplica la misma regla de ceros", () => {
+    // Varias monedas en el conjunto: la que queda lleva su código.
     expect(
       plain(formatCurrencyTotalsInline([{ moneda: "MXN", total: 5 }, { moneda: "USD", total: 0 }])),
-    ).toBe("$5.00");
+    ).toBe("$5.00 MXN");
+    // Una sola moneda en el conjunto: sin código, como antes.
+    expect(plain(formatCurrencyTotalsInline([{ moneda: "MXN", total: 5 }]))).toBe("$5.00");
     expect(plain(formatCurrencyTotalsInline([{ moneda: "MXN", total: 0 }, { moneda: "USD", total: 0 }]))).toBe("0.00");
     expect(plain(formatCurrencyTotalsInline([{ moneda: "MXN", total: 0 }]))).toBe("$0.00");
     expect(
