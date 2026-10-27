@@ -13,7 +13,8 @@ export const formatCurrency = (
     // `currency` puede venir de un campo que en realidad es un nombre de
     // moneda (p.ej. "Peso Mexicano") en vez de un código ISO 4217 válido;
     // Intl.NumberFormat lanza en ese caso. Mostramos el número sin símbolo
-    // de moneda en vez de romper el render.
+    // de moneda en vez de romper el render; las opciones de decimales de quien
+    // llama se conservan.
     const rest: Intl.NumberFormatOptions = { ...merged };
     delete rest.currency;
     delete rest.style;
@@ -35,14 +36,19 @@ export const NO_CURRENCY_FORMAT: Intl.NumberFormatOptions = {
 
 /**
  * Opciones de formato para un importe en la moneda `monedaCodigo` (código ISO
- * del registro). Sin código, sin símbolo (`NO_CURRENCY_FORMAT`): caer al MXN por
- * defecto de `formatCurrency` pintaría un importe en USD con signo de pesos. Un
- * código que `Intl` no reconozca lo absorbe el `try/catch` de `formatCurrency`.
+ * del registro), SIEMPRE con 2 decimales: el backend manda los importes con 2, y
+ * los decimales ISO por defecto de `Intl` redondearían, p. ej., un JPY a enteros.
+ * Sin código, sin símbolo (`NO_CURRENCY_FORMAT`): caer al MXN por defecto de
+ * `formatCurrency` pintaría un importe en USD con signo de pesos. Un código que
+ * `Intl` no reconozca cae en el `catch` de `formatCurrency`: sin símbolo, pero
+ * con los mismos 2 decimales.
  */
 export const moneyFormatFor = (
   monedaCodigo: string | null,
 ): Intl.NumberFormatOptions =>
-  monedaCodigo ? { currency: monedaCodigo } : NO_CURRENCY_FORMAT;
+  monedaCodigo
+    ? { currency: monedaCodigo, minimumFractionDigits: 2, maximumFractionDigits: 2 }
+    : NO_CURRENCY_FORMAT;
 
 /**
  * Convierte un string numérico de la API en número, devolviendo 0 cuando el

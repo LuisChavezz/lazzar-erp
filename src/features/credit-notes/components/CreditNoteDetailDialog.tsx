@@ -17,6 +17,7 @@ import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import {
   formatMoneyValueOrDash,
   formatQuantityValue,
+  NO_CURRENCY_FORMAT,
 } from "@/src/utils/formatCurrency";
 import { formatShortDate, formatShortDateTime } from "@/src/utils/formatDate";
 import { useInvoiceRetrieveFresh } from "@/src/features/invoicing/hooks/useInvoiceRetrieveFresh";
@@ -32,14 +33,6 @@ import {
   type RelatedInvoiceStampState,
 } from "../utils/creditNoteStamping";
 import { CreditNoteStampDialog } from "./CreditNoteStampDialog";
-
-/** Importe en crudo, con dos decimales y sin símbolo: para cuando la moneda del
- *  documento aún no se conoce (ver `money` más abajo). */
-const IMPORTE_SIN_MONEDA: Intl.NumberFormatOptions = {
-  style: "decimal",
-  minimumFractionDigits: 2,
-  maximumFractionDigits: 2,
-};
 
 interface CreditNoteDetailDialogProps {
   /**
@@ -234,7 +227,7 @@ export function CreditNoteDetailBody({ nota }: { nota: NotaCredito }) {
    * así que el `currency: "MXN"` que ese helper mezcla queda ignorado.
    */
   const money = (value: string) =>
-    formatMoneyValueOrDash(value, monedaFormato ?? IMPORTE_SIN_MONEDA);
+    formatMoneyValueOrDash(value, monedaFormato ?? NO_CURRENCY_FORMAT);
 
   /** Concepto de la factura al que apunta una línea, si la factura ya cargó. */
   const conceptoDe = (facturaDetalleId: number) =>
