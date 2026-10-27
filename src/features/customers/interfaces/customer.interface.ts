@@ -4,7 +4,7 @@ import { RegimenFiscal, UsoCfdi } from "../../sat/interfaces/sat-info.interface"
 /**
  * Campos del ERP que Facturama exige para dar de alta al cliente, en el orden
  * en que el backend los reporta (`terceros/facturama.py`, `faltantes()`).
- * `razon_social` solo falta si también falta `nombre`.
+ * `razon_social` falta si está vacía, aunque haya `nombre` (#672).
  */
 export type FacturamaFaltante =
   | "correo"
@@ -43,8 +43,8 @@ export interface Customer {
   /**
    * Solo lectura (#659). `null`: la empresa DEL CLIENTE no usa Facturama.
    * `true`: el cliente está en Facturama y no le falta nada. `false`: no se ha
-   * subido, falte algo (`facturama_faltantes`) o no (alta antigua o hecha por la
-   * herramienta de IA). Volver a guardarlo completo es lo único que lo sube.
+   * subido, falte algo (`facturama_faltantes`) o no (cliente anterior a la
+   * sincronización). Volver a guardarlo completo es lo único que lo sube.
    */
   facturama_verificado: boolean | null;
   /** Lo que le falta para subirse a Facturama; `[]` cuando el verificado es `null`. */

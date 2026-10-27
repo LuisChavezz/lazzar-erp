@@ -18,7 +18,6 @@ const FACTURAMA_FALTANTE_LABELS: Record<FacturamaFaltante, string> = {
 const FACTURAMA_SIN_VERIFICAR_LABEL = "Sin verificar en Facturama";
 const FACTURAMA_PENDIENTE_LABEL = "Pendiente de subir a Facturama";
 const FACTURAMA_PENDIENTE_HINT = "guarda el cliente de nuevo";
-const FACTURAMA_ALTA_SIN_CONFIRMAR = "Cliente guardado, pero no se pudo confirmar su alta en Facturama.";
 
 /**
  * "correo, código postal". Un campo que el backend agregue después y no esté en
@@ -55,18 +54,15 @@ export const getFacturamaFormWarning = (faltantes: readonly FacturamaFaltante[])
 /**
  * Toast del guardado cuando el cliente que devolvió el backend no quedó en
  * Facturama; `null` si sí quedó o su empresa no lo usa (va el toast de éxito).
+ * Un guardado que responde 2xx sin quedar en Facturama siempre trae faltantes:
+ * completo, o el backend guarda su `Id` o rechaza con 400 `facturama` y no
+ * guarda nada (#675).
  */
 export const getFacturamaSaveWarning = (
   customer: Pick<Customer, "facturama_verificado" | "facturama_faltantes">
 ): string | null => {
   if (customer.facturama_verificado !== false) {
     return null;
-  }
-  // Recién guardado y sin faltantes solo pasa si el alta en Facturama respondió
-  // sin `Id`: puede que ya exista allá, y volver a guardar lo daría de alta otra
-  // vez (duplicado). Por eso aquí no se pide guardar de nuevo.
-  if ((customer.facturama_faltantes ?? []).length === 0) {
-    return FACTURAMA_ALTA_SIN_CONFIRMAR;
   }
   return `Cliente guardado. ${getFacturamaVerificationNotice(customer)}`;
 };
