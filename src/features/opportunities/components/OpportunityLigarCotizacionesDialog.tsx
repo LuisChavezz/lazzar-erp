@@ -43,9 +43,6 @@ function LigarCotizacionesContent({
 
   return (
     <MultiSelectPickerDialogContent<OpportunityCotizacion>
-      // La relectura tras un rechazo quita las que otra persona ligó: salen de
-      // la selección y el resto sigue marcado.
-      pruneSelectionToItems
       title="Ligar cotizaciones"
       subtitle="Cotizaciones del cliente que no están en ninguna oportunidad (las 100 más recientes). Las autorizadas no se ligan desde aquí."
       items={ligables}

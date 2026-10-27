@@ -44,14 +44,6 @@ interface MultiSelectPickerDialogContentProps<T> {
    */
   isConfirming?: boolean;
   confirmingText?: string;
-  /**
-   * OPCIONAL (apagado por defecto): cuando `items` cambia ya cargado (sin
-   * `isLoading`/`isError`), quita de la selección tentativa las claves que ya
-   * no están en la lista y conserva el resto. Para un catálogo que se relee
-   * con el selector abierto (p. ej. tras un rechazo del backend): sin esto el
-   * contador seguiría contando ítems que ya no se ven.
-   */
-  pruneSelectionToItems?: boolean;
 }
 
 /**
@@ -93,7 +85,6 @@ export function MultiSelectPickerDialogContent<T>({
   countLabel = { singular: "seleccionado", plural: "seleccionados" },
   isConfirming = false,
   confirmingText = "Guardando…",
-  pruneSelectionToItems = false,
 }: MultiSelectPickerDialogContentProps<T>) {
   // Selección tentativa: no se propaga al llamador hasta confirmar. Arranca
   // vacía —a diferencia del selector único, que siembra el valor ya vinculado—
@@ -103,22 +94,23 @@ export function MultiSelectPickerDialogContent<T>({
     () => new Set(),
   );
 
-  // Poda al cambiar `items` (ajuste de estado durante el render, sin efecto):
-  // solo con la lista ya cargada, para no vaciar la selección mientras un
-  // consumidor la sustituye por `[]` al cargar o fallar. Una relectura con los
-  // mismos ítems no quita nada. Se compara por CLAVES, no por referencia: un
-  // consumidor que filtra en cada render entrega un arreglo nuevo cada vez.
-  const itemKeys = items.map(getKey);
-  const itemsSignature = itemKeys.join("\u0000");
-  const [prunedFor, setPrunedFor] = useState(itemsSignature);
-  if (pruneSelectionToItems && itemsSignature !== prunedFor && !isLoading && !isError) {
-    setPrunedFor(itemsSignature);
-    const present = new Set(itemKeys);
-    const kept = [...tentativeKeys].filter((key) => present.has(key));
-    if (kept.length !== tentativeKeys.size) setTentativeKeys(new Set(kept));
-  }
+  // Lo que CUENTA como seleccionado: con la lista ya cargada, solo las claves
+  // que siguen en `items` (una relectura puede quitar un ítem ya marcado, p. ej.
+  // porque otra persona lo tomó); sin esto el contador lo seguiría contando y
+  // "Confirmar" quedaría habilitado sin nada que confirmar. `items` es la lista
+  // COMPLETA —la búsqueda filtra dentro de `SearchableSelectList`—, así que lo
+  // marcado y oculto por la búsqueda sigue contando. Es derivado: el conjunto
+  // tentativo no se poda, y un ítem que vuelve a la lista vuelve marcado. Con
+  // `isLoading`/`isError` la lista se sustituye (hay consumidores que pasan `[]`
+  // mientras refrescan) y se usa el conjunto tal cual. El React Compiler lo
+  // recalcula solo cuando cambian `items` o la selección, no en cada tecla.
+  const listedKeys = new Set(items.map(getKey));
+  const selectedKeys =
+    isLoading || isError
+      ? tentativeKeys
+      : new Set([...tentativeKeys].filter((key) => listedKeys.has(key)));
 
-  const selectedCount = tentativeKeys.size;
+  const selectedCount = selectedKeys.size;
   // También con `isLoading`/`isError`, igual que el selector único: ambas ramas
   // sustituyen la lista, pero el conjunto tentativo SOBREVIVE a que `items` se
   // vacíe o se quede viejo (p. ej. un consumidor que trata un refetch en segundo
