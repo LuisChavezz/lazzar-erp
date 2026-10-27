@@ -33,8 +33,9 @@ interface OpportunityCotizacionesProps {
    */
   listQuery: string;
   /**
-   * `false` oculta "Ligar cotización": la oportunidad está Perdida o no tiene
-   * cliente (el backend respondería 400 en `etapa` / `cliente`).
+   * `false` oculta "Ligar cotización": la oportunidad está cerrada (Ganada o
+   * Perdida) o no tiene cliente (el backend respondería 400 en `etapa` /
+   * `cliente`).
    */
   canLigar: boolean;
   /** Abre el selector de "Ligar cotización" (su estado vive en el detalle). */

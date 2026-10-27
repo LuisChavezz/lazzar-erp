@@ -317,9 +317,9 @@ function OpportunityDetailBody({
   const busyCotizacionIds = usePendingQuitarCotizacionIds(opportunity.id);
 
   // "Ligar cotización" ofrece cotizaciones del cliente: sin cliente no hay
-  // cuáles, y a una Perdida el backend no liga (400). Se mira la ETAPA, que es
-  // lo que valida el backend; una Ganada sí admite más cotizaciones.
-  const canLigar = hasCliente && opportunity.etapa !== ETAPA_PERDIDA;
+  // cuáles, y a una cerrada (Ganada o Perdida, el ESTADO calculado) el backend
+  // no liga (400 en `etapa`): para vender más, otra oportunidad.
+  const canLigar = hasCliente && !isOportunidadCerrada(opportunity.estado);
 
   // "Cotizar" crea una cotización CON el cliente de la oportunidad y navega a
   // editarla: sin cliente no hay a quién cotizar, cerrada (Perdida/Ganada) ya
