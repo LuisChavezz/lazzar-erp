@@ -88,14 +88,18 @@ export const InvoiceStats = () => {
     <CurrencyTotalsValue totals={totals} options={{ maximumFractionDigits: 0 }} />
   );
 
+  const invoicedTotals = invoiced.list();
+  const receivableTotals = receivable.list();
+  const overdueTotals = overdue.list();
+
   // Mientras carga mostramos un marcador en lugar de ceros que parecerían reales.
   const ph = "—";
 
   const items: KpiItem[] = [
     {
       label: "Total Facturado",
-      value: isLoading ? ph : money(invoiced.list()),
-      stackTrend: !isLoading && showsCurrencyCodes(invoiced.list()),
+      value: isLoading ? ph : money(invoicedTotals),
+      stackTrend: !isLoading && showsCurrencyCodes(invoicedTotals),
       icon: ListaPreciosIcon,
       iconBgClass: "bg-blue-50 dark:bg-blue-500/10",
       iconClass: "text-blue-500",
@@ -104,8 +108,8 @@ export const InvoiceStats = () => {
     },
     {
       label: "Por Cobrar",
-      value: isLoading ? ph : money(receivable.list()),
-      stackTrend: !isLoading && showsCurrencyCodes(receivable.list()),
+      value: isLoading ? ph : money(receivableTotals),
+      stackTrend: !isLoading && showsCurrencyCodes(receivableTotals),
       icon: ClockIcon,
       iconBgClass: "bg-amber-50 dark:bg-amber-500/10",
       iconClass: "text-amber-500",
@@ -114,8 +118,8 @@ export const InvoiceStats = () => {
     },
     {
       label: "Vencido",
-      value: isLoading ? ph : money(overdue.list()),
-      stackTrend: !isLoading && showsCurrencyCodes(overdue.list()),
+      value: isLoading ? ph : money(overdueTotals),
+      stackTrend: !isLoading && showsCurrencyCodes(overdueTotals),
       icon: ErrorIcon,
       iconBgClass: "bg-red-50 dark:bg-red-500/10",
       iconClass: "text-red-500",
