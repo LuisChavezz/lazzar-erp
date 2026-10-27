@@ -13,7 +13,8 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit --incremental false",
-    "e2e": "playwright test --headed"
+    "e2e": "playwright test --headed",
+    "test:unit": "playwright test --config playwright.unit.config.ts"
   },
   "dependencies": {
     "@dnd-kit/react": "^0.4.0",

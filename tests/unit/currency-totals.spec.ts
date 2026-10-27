@@ -17,9 +17,8 @@ import type { CuentaPorCobrar } from "@/src/features/accounts-receivable/interfa
 
 /**
  * Pruebas unitarias de EC-601 (totales por moneda). Funciones puras: no abren
- * navegador ni necesitan login, a diferencia del resto de `tests/`. Correr solo
- * este archivo:
- *   npx playwright test tests/currency-totals.unit.spec.ts
+ * navegador ni necesitan login, a diferencia de los E2E de `tests/`. Corren con
+ * `npm run test:unit` (`playwright.unit.config.ts`).
  */
 
 // Los formatos de `Intl` usan espacios duros: se normalizan para comparar.

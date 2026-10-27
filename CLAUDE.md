@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Commands
 
-The standard `npm run dev` / `build` / `lint` / `typecheck` scripts are defined in `package.json`. No test runner exists — there are no test files or testing frameworks in this project. `npm run lint` accepts paths (`npm run lint -- src/features/quotes`) to check a single feature.
+The standard `npm run dev` / `build` / `lint` / `typecheck` scripts are defined in `package.json`. Tests use the Playwright runner with two configs: `npm run test:unit` (`playwright.unit.config.ts`, `tests/unit/`) runs pure-function unit tests headless with no dev server or login; `npm run e2e` (`playwright.config.ts`, the rest of `tests/`, which ignores `tests/unit/`) runs the headed E2E specs that pause for a manual login. There is no other test framework; put new unit tests for pure helpers in `tests/unit/`. `npm run lint` accepts paths (`npm run lint -- src/features/quotes`) to check a single feature.
 
 Additional docs in the repo root: `README.md` (setup), `ARQUITECTURA.md` (folder/layout tour), `GUIA_DE_USUARIO.md` (functional walkthrough of each module). All three are in Spanish.
 

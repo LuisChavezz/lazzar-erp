@@ -17,6 +17,8 @@ import { defineConfig, devices } from "@playwright/test";
  */
 export default defineConfig({
   testDir: "./tests",
+  // Las unitarias tienen su propia config (`playwright.unit.config.ts`).
+  testIgnore: ["unit/**"],
   fullyParallel: false,
   workers: 1,
   retries: 0,
