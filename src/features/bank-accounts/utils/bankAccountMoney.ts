@@ -15,4 +15,4 @@ import { formatMoneyValue, moneyFormatFor } from "@/src/utils/formatCurrency";
 export const formatSaldo = (
   value: string | number,
   monedaCodigo: string | null | undefined,
-): string => formatMoneyValue(value, moneyFormatFor(monedaCodigo ?? null));
+): string => formatMoneyValue(value, moneyFormatFor(monedaCodigo));

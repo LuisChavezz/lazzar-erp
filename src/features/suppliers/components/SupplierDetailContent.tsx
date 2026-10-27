@@ -153,7 +153,7 @@ export const SupplierDetailContent = ({ supplierId }: SupplierDetailContentProps
   // defecto de `formatCurrency` mentiría sobre un proveedor en otra moneda.
   const limiteCredito = formatMoneyValueOrDash(
     data.limite_credito,
-    moneyFormatFor(currency?.codigo_iso ?? null),
+    moneyFormatFor(currency?.codigo_iso),
   );
 
   return (

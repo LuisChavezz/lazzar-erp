@@ -65,7 +65,7 @@ export default function PaymentForm({ onSuccess }: PaymentFormProps) {
   const monedaCodigo = monedaDelPago(lines);
   // Con `null`/`undefined` (sin líneas, o una CxP sin código) el total va sin
   // símbolo y con 2 decimales, en vez de fingir MXN.
-  const monedaFormato = moneyFormatFor(monedaCodigo ?? null);
+  const monedaFormato = moneyFormatFor(monedaCodigo);
   const selectedCxpIds = lines.map((line) => line.cxp);
 
   if (isLoadingFormData) {

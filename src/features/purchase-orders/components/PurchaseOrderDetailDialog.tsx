@@ -333,7 +333,7 @@ export function PurchaseOrderDetailDialog({
   const showAmounts = purchaseOrder ? canSeeAmounts(purchaseOrder) : false;
   const money = (value: string | undefined) =>
     // Solo se invoca dentro del bloque con `purchaseOrder` ya resuelto.
-    formatMoneyValueOrDash(value, moneyFormatFor(purchaseOrder?.moneda_codigo ?? null));
+    formatMoneyValueOrDash(value, moneyFormatFor(purchaseOrder?.moneda_codigo));
 
   return (
     <>

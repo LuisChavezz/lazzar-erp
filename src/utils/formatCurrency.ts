@@ -48,7 +48,7 @@ export const NO_CURRENCY_FORMAT: Intl.NumberFormatOptions = {
  * con los mismos 2 decimales.
  */
 export const moneyFormatFor = (
-  monedaCodigo: string | null,
+  monedaCodigo: string | null | undefined,
 ): Intl.NumberFormatOptions =>
   monedaCodigo
     ? { currency: monedaCodigo, minimumFractionDigits: 2, maximumFractionDigits: 2 }

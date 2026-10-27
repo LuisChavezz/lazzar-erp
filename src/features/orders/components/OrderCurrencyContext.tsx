@@ -43,7 +43,7 @@ export function OrderCurrencyProvider({
 
 export function useOrderMoney() {
   const { currency } = useContext(OrderCurrencyContext);
-  const options = moneyFormatFor(currency?.codigo_iso ?? null);
+  const options = moneyFormatFor(currency?.codigo_iso);
   return {
     /** Importe del backend formateado en la moneda del pedido; "—" si falta. */
     formatMoney: (value: string | number | null | undefined) =>

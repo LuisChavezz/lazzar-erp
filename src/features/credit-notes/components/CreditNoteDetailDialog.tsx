@@ -210,7 +210,7 @@ export function CreditNoteDetailBody({ nota }: { nota: NotaCredito }) {
         ? { status: "loaded", invoice: factura }
         : { status: "unavailable" };
 
-  const monedaFormato = moneyFormatFor(factura?.moneda_nombre ?? null);
+  const monedaFormato = moneyFormatFor(factura?.moneda_nombre);
 
   /**
    * Formatea un importe SIN comprometerse con una moneda que todavía no se
