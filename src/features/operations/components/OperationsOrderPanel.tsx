@@ -13,8 +13,9 @@ import {
 import { extractErrorMessage } from '@/src/utils/extractErrorMessage';
 import { isInitialLoadError } from '@/src/utils/isInitialLoadError';
 import { safeParseAmount } from '@/src/utils/formatCurrency';
-import { sumByCurrency } from '@/src/utils/currencyTotals';
-import { CurrencyTotalsValue } from '@/src/components/CurrencyTotalsValue';
+import { sortByMoneda, sumAmounts, type CurrencyTotal } from '@/src/utils/currencyTotals';
+import { CurrencyTotalsValue, UNKNOWN_CURRENCY_TAG } from '@/src/components/CurrencyTotalsValue';
+import type { Currency } from '@/src/features/currency/interfaces/currency.interface';
 import { useCurrencies } from '@/src/features/currency/hooks/useCurrencies';
 import { findCurrency } from '@/src/features/currency/utils/currencyLookup';
 import { ordersQueryKey, useOrders } from '@/src/features/orders/hooks/useOrders';
@@ -25,12 +26,46 @@ import { PedidoCancelDialog } from '@/src/features/orders/components/PedidoCance
 import { OperationsOrderTable } from './OperationsOrderTable';
 import { OrderStockReviewDialog } from './OrderStockReviewDialog';
 
+/**
+ * "Valor total" POR MONEDA (EC-601). Se agrupa por la PK de la moneda ANTES de
+ * resolver su código, así que dos monedas distintas nunca se suman aunque el
+ * catálogo no traiga alguna. Una PK sin código (catálogo con error, o que no la
+ * trae) se pinta sin símbolo (EC-600); si hay varias así, cada una lleva su PK
+ * en la etiqueta para no confundirlas.
+ */
+const valorTotalPorMoneda = (
+  orders: PedidoListItem[],
+  currencies: Currency[] | undefined,
+): CurrencyTotal[] => {
+  const porPk = new Map<number, number[]>();
+  for (const o of orders) {
+    const montos = porPk.get(o.moneda) ?? [];
+    montos.push(safeParseAmount(o.gran_total));
+    porPk.set(o.moneda, montos);
+  }
+  const entries = [...porPk]
+    .sort(([a], [b]) => a - b)
+    .map(([pk, montos]) => ({
+      pk,
+      moneda: findCurrency(currencies, pk)?.codigo_iso || null,
+      total: sumAmounts(montos),
+    }));
+  const sinCodigo = entries.filter((entry) => entry.moneda === null).length;
+  return sortByMoneda(
+    entries.map(({ pk, moneda, total }) =>
+      moneda === null && sinCodigo > 1
+        ? { moneda, total, etiqueta: `${UNKNOWN_CURRENCY_TAG} (${pk})` }
+        : { moneda, total },
+    ),
+  );
+};
+
 // Componente principal de la Mesa de Control de Pedidos.
 export function OperationsOrderPanel() {
   const { orders, isLoading, isError, error, hasLoaded } = useOrders();
   // El listado solo trae la PK de la moneda (`moneda`); el código ISO sale del
   // catálogo, con la misma caché (`["currencies"]`) que `OrderCurrencyProvider`.
-  const { data: currencies } = useCurrencies();
+  const { data: currencies, isLoading: isLoadingCurrencies } = useCurrencies();
   // Solo un error SIN datos cargados sustituye las filas; un refetch fallido
   // conserva tabla y KPIs y avisa por toast (ver `useOrders`).
   const showError = isInitialLoadError(isError, hasLoaded);
@@ -64,25 +99,18 @@ export function OperationsOrderPanel() {
 
   const counts = useMemo(() => {
     const confirmados = orders.filter(isOrderConfirmed).length;
-    // Un total POR MONEDA (EC-601). Sin catálogo (cargando o con error) no se
-    // agrupa: todas las PK caerían juntas en "sin moneda" y la cifra volvería a
-    // mezclar monedas. Una PK que el catálogo no trae —no debería pasar: el
-    // backend exige que la moneda del pedido sea de su empresa— se suma sin
-    // símbolo (EC-600), nunca como pesos.
-    const valorTotal = currencies
-      ? sumByCurrency(
-          orders,
-          (o) => findCurrency(currencies, o.moneda)?.codigo_iso || null,
-          (o) => safeParseAmount(o.gran_total),
-        )
-      : null;
+    // Mientras el catálogo carga, "—" en vez de importes sin símbolo que
+    // cambiarían al llegar. Si falla, cada PK sin símbolo (ver
+    // `valorTotalPorMoneda`): la tarjeta nunca se queda en "—".
+    const valorTotal =
+      isLoadingCurrencies && !currencies ? null : valorTotalPorMoneda(orders, currencies);
     return {
       total: orders.length,
       confirmados,
       porConfirmar: orders.length - confirmados,
       valorTotal,
     };
-  }, [orders, currencies]);
+  }, [orders, currencies, isLoadingCurrencies]);
 
   const kpis: KpiItem[] = useMemo(
     () => [

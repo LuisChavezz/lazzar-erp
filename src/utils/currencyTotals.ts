@@ -18,6 +18,11 @@ import { formatCurrency, moneyFormatFor } from "@/src/utils/formatCurrency";
 export interface CurrencyTotal {
   moneda: string | null;
   total: number;
+  /**
+   * Etiqueta propia de un total sin moneda conocida, para distinguir dos
+   * monedas desconocidas distintas (p. ej. dos PK que el catálogo no trae).
+   */
+  etiqueta?: string;
 }
 
 const compareMoneda = (a: string | null, b: string | null): number => {

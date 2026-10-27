@@ -12,6 +12,10 @@ import { currencyHasOwnSymbol } from "@/src/utils/formatCurrency";
 /** Etiqueta de un importe cuya moneda no se conoce (se pinta sin símbolo). */
 export const UNKNOWN_CURRENCY_TAG = "Sin moneda";
 
+/** Código de la moneda, o la etiqueta del total sin moneda conocida. */
+const tagOf = (entry: CurrencyTotal): string =>
+  entry.moneda ?? entry.etiqueta ?? UNKNOWN_CURRENCY_TAG;
+
 /**
  * Importe de un bloque, con los decimales que pidió quien llama: símbolo
  * estrecho de su moneda (`narrowSymbol`, como `formatKpiCurrencyAmount`; el
@@ -49,9 +53,9 @@ export function CurrencyTotalsValue({
   return (
     <KpiTaggedBlocks
       blocks={totals.map((entry) => ({
-        key: entry.moneda ?? UNKNOWN_CURRENCY_TAG,
+        key: tagOf(entry),
         value: formatBlockAmount(entry, options),
-        tag: entry.moneda ?? UNKNOWN_CURRENCY_TAG,
+        tag: tagOf(entry),
       }))}
     />
   );
@@ -72,6 +76,6 @@ export const formatCurrencyTotalsInline = (
     return formatInCurrency(only?.total ?? 0, only?.moneda ?? null, options);
   }
   return LIST_FORMAT.format(
-    totals.map((entry) => `${formatBlockAmount(entry, options)} ${entry.moneda ?? UNKNOWN_CURRENCY_TAG}`),
+    totals.map((entry) => `${formatBlockAmount(entry, options)} ${tagOf(entry)}`),
   );
 };
