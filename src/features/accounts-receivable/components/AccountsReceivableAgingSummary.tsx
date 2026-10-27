@@ -1,6 +1,6 @@
 import { LoadingSkeleton } from "@/src/components/LoadingSkeleton";
 import { UNKNOWN_CURRENCY_TAG } from "@/src/components/CurrencyTotalsValue";
-import { formatInCurrency } from "@/src/utils/currencyTotals";
+import { formatInCurrency, visibleCurrencyEntries } from "@/src/utils/currencyTotals";
 import { formatKpiTaggedCurrencyAmount } from "@/src/utils/kpiFormat";
 import type { AgingByCurrency } from "../interfaces/accounts-receivable.interface";
 import { emptyAgingBuckets } from "../utils/accounts-receivable.utils";
@@ -30,8 +30,8 @@ export const AccountsReceivableAgingSummary = ({
   groups: AgingByCurrency[];
   isLoading?: boolean;
 }) => {
-  const conVencido = groups.filter((group) => group.total > 0);
-  const shown = conVencido.length > 0 ? conVencido : groups.length === 1 ? groups : [EMPTY_GROUP];
+  const visibles = visibleCurrencyEntries(groups, (group) => group.total);
+  const shown = visibles.length > 0 ? visibles : [EMPTY_GROUP];
   const multi = shown.length > 1;
   // Con varias monedas cada importe lleva el símbolo de la suya y el código
   // va en el encabezado de su grupo (mismo criterio que `KpiCurrencyBlocks`).

@@ -36,6 +36,22 @@ const compareMoneda = (a: string | null, b: string | null): number => {
 export const sortByMoneda = <T extends { moneda: string | null }>(entries: T[]): T[] =>
   [...entries].sort((a, b) => compareMoneda(a.moneda, b.moneda));
 
+/** ¿El importe es cero en centavos enteros? (no en lo que se ve redondeado) */
+export const isZeroAmount = (amount: number): boolean => Math.round(amount * 100) === 0;
+
+/**
+ * Qué monedas mostrar de un total por moneda: se ocultan las que dan cero
+ * (`isZeroAmount`) cuando otra tiene importe. Si todas dan cero, se conserva la
+ * única moneda (una sola moneda se ve como siempre) o, con varias o ninguna, no
+ * queda ninguna: quien pinta muestra un solo 0 sin símbolo (EC-600). Lo usan
+ * `CurrencyTotalsValue`, la antigüedad de CxC y el Top 5 de Compras.
+ */
+export const visibleCurrencyEntries = <T>(entries: T[], amountOf: (entry: T) => number): T[] => {
+  const conImporte = entries.filter((entry) => !isZeroAmount(amountOf(entry)));
+  if (conImporte.length > 0) return conImporte;
+  return entries.length === 1 ? entries : [];
+};
+
 /** Suma importes de UNA misma moneda en centavos enteros. */
 export const sumAmounts = (amounts: readonly number[]): number =>
   amounts.reduce((cents, amount) => cents + Math.round(amount * 100), 0) / 100;

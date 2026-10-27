@@ -11,7 +11,7 @@ import {
 import { formatMoneyValueOrDash, safeParseAmount } from "@/src/utils/formatCurrency";
 import { formatLocalDate } from "@/src/utils/formatDate";
 import { plural } from "@/src/utils/plural";
-import { groupByCurrency, sumByCurrency } from "@/src/utils/currencyTotals";
+import { groupByCurrency, sumAmounts, sumByCurrency, visibleCurrencyEntries } from "@/src/utils/currencyTotals";
 import { formatCurrencyTotalsInline, UNKNOWN_CURRENCY_TAG } from "@/src/components/CurrencyTotalsValue";
 import {
   isPurchaseOrderAuthorizedOrComplete,
@@ -81,12 +81,18 @@ export function PurchaseOrderDashboard({ orders }: PurchaseOrderDashboardProps) 
     // Top 5 por valor total DENTRO de cada moneda (EC-601): un importe en USD
     // no se compara con uno en MXN. Mismo criterio que `totalValue` para el
     // ausente.
-    const topByValue = groupByCurrency(activas, monedaDe).map(({ moneda, items }) => ({
+    // Las monedas cuyas órdenes suman cero se ocultan si otra tiene importe
+    // (`visibleCurrencyEntries`); si todas dan cero —p. ej. el rol oculta
+    // `total`— se conservan todas, con su "—" por fila.
+    const rankings = groupByCurrency(activas, monedaDe).map(({ moneda, items }) => ({
       moneda,
+      suma: sumAmounts(items.map((o) => safeParseAmount(o.total))),
       orders: [...items]
         .sort((a, b) => safeParseAmount(b.total) - safeParseAmount(a.total))
         .slice(0, 5),
     }));
+    const rankingsConImporte = visibleCurrencyEntries(rankings, (ranking) => ranking.suma);
+    const topByValue = rankingsConImporte.length > 0 ? rankingsConImporte : rankings;
 
     return {
       total,

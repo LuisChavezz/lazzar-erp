@@ -59,8 +59,6 @@ export const AccountsReceivableList = ({ today }: { today: string }) => {
   const agingGroups = computeAgingBuckets(cuentas, today);
 
   const showBanner = !showError && !bannerDismissed && kpis.cuentasVencidas > 0;
-  // Solo las monedas con algo vencido: la frase habla de lo que se debe.
-  const totalVencido = kpis.totalVencido.filter((entry) => entry.total > 0);
 
   // Registrar una CxC pendiente (`RegisterPendingInvoiceDialog`, un `POST`
   // independiente del `GET` del listado) vive en el toolbar de `DataTable`
@@ -102,7 +100,7 @@ export const AccountsReceivableList = ({ today }: { today: string }) => {
               {kpis.cuentasVencidas === 1 ? "cuenta vencida" : "cuentas vencidas"} por un total
               de{" "}
               <span className="font-semibold tabular-nums">
-                {formatCurrencyTotalsInline(totalVencido)}
+                {formatCurrencyTotalsInline(kpis.totalVencido)}
               </span>
               .
             </p>

@@ -1,5 +1,5 @@
 import { KpiTaggedBlocks } from "@/src/components/KpiCurrency";
-import { formatInCurrency, type CurrencyTotal } from "@/src/utils/currencyTotals";
+import { formatInCurrency, visibleCurrencyEntries, type CurrencyTotal } from "@/src/utils/currencyTotals";
 import { currencyHasOwnSymbol } from "@/src/utils/formatCurrency";
 
 /**
@@ -38,14 +38,17 @@ const formatBlockAmount = (
  *   mismos decimales (`options`).
  * - Ninguna (conjunto vacío): 0 sin símbolo, porque no hay moneda que afirmar
  *   (EC-600).
+ * Las monedas en cero se ocultan si otra tiene importe, y si todas dan cero
+ * (con varias) queda un solo 0 sin símbolo (`visibleCurrencyEntries`).
  */
 export function CurrencyTotalsValue({
-  totals,
+  totals: allTotals,
   options,
 }: {
   totals: CurrencyTotal[];
   options?: Intl.NumberFormatOptions;
 }) {
+  const totals = visibleCurrencyEntries(allTotals, (entry) => entry.total);
   if (totals.length <= 1) {
     const [only] = totals;
     return <>{formatInCurrency(only?.total ?? 0, only?.moneda ?? null, options)}</>;
@@ -61,16 +64,25 @@ export function CurrencyTotalsValue({
   );
 }
 
+/**
+ * ¿`CurrencyTotalsValue` pintará varios bloques? Para apilar la insignia de la
+ * tarjeta (`stackTrend`) solo cuando de verdad hay más de una moneda a la vista.
+ */
+export const showsSeveralCurrencies = (totals: CurrencyTotal[]): boolean =>
+  visibleCurrencyEntries(totals, (entry) => entry.total).length > 1;
+
 const LIST_FORMAT = new Intl.ListFormat("es", { style: "long", type: "conjunction" });
 
 /**
  * Los mismos totales en una frase ("$1,200.00 MXN y $300.00 USD"). Con una
- * sola moneda, el importe solo en su moneda, como antes.
+ * sola moneda, el importe solo en su moneda, como antes. Mismo criterio que
+ * `CurrencyTotalsValue` para las monedas en cero.
  */
 export const formatCurrencyTotalsInline = (
-  totals: CurrencyTotal[],
+  allTotals: CurrencyTotal[],
   options?: Intl.NumberFormatOptions,
 ): string => {
+  const totals = visibleCurrencyEntries(allTotals, (entry) => entry.total);
   if (totals.length <= 1) {
     const [only] = totals;
     return formatInCurrency(only?.total ?? 0, only?.moneda ?? null, options);

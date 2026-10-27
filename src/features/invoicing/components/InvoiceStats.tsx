@@ -13,7 +13,7 @@ import type { InvoiceListRow } from "../interfaces/invoice.interface";
 import { INVOICE_STATUS } from "../constants/invoiceStatus";
 import { safeParseAmount } from "@/src/utils/formatCurrency";
 import { createCurrencyTotals, type CurrencyTotal } from "@/src/utils/currencyTotals";
-import { CurrencyTotalsValue } from "@/src/components/CurrencyTotalsValue";
+import { CurrencyTotalsValue, showsSeveralCurrencies } from "@/src/components/CurrencyTotalsValue";
 import { parseLocalDate } from "@/src/utils/formatDate";
 import { plural } from "@/src/utils/plural";
 
@@ -78,13 +78,12 @@ export const InvoiceStats = () => {
     overdue.add(moneda, isOverdueInvoice ? amount : 0);
   }
 
-  // Cada KPI monetario muestra un total por cada moneda presente en el
-  // conjunto — ninguna queda oculta —, un bloque por moneda con su código
-  // (`CurrencyTotalsValue`). Con una sola moneda, una sola cifra igual que
+  // Cada KPI monetario muestra un total por moneda, un bloque por moneda con
+  // su código (`CurrencyTotalsValue`, que oculta las que dan cero si otra
+  // tiene importe). Con una sola moneda, una sola cifra igual que
   // antes. Sin facturas no hay moneda que afirmar: 0 sin símbolo (EC-600).
-  // Con varias monedas la insignia va debajo de los bloques (`stackTrend`), que
-  // compartiendo fila se recortarían ("USD 7,…").
-  const multiCurrency = !isLoading && invoiced.list().length > 1;
+  // Con varias monedas a la vista la insignia va debajo de los bloques
+  // (`stackTrend`), que compartiendo fila se recortarían ("USD 7,…").
   const money = (totals: CurrencyTotal[]) => (
     <CurrencyTotalsValue totals={totals} options={{ maximumFractionDigits: 0 }} />
   );
@@ -96,7 +95,7 @@ export const InvoiceStats = () => {
     {
       label: "Total Facturado",
       value: isLoading ? ph : money(invoiced.list()),
-      stackTrend: multiCurrency,
+      stackTrend: !isLoading && showsSeveralCurrencies(invoiced.list()),
       icon: ListaPreciosIcon,
       iconBgClass: "bg-blue-50 dark:bg-blue-500/10",
       iconClass: "text-blue-500",
@@ -106,7 +105,7 @@ export const InvoiceStats = () => {
     {
       label: "Por Cobrar",
       value: isLoading ? ph : money(receivable.list()),
-      stackTrend: multiCurrency,
+      stackTrend: !isLoading && showsSeveralCurrencies(receivable.list()),
       icon: ClockIcon,
       iconBgClass: "bg-amber-50 dark:bg-amber-500/10",
       iconClass: "text-amber-500",
@@ -116,7 +115,7 @@ export const InvoiceStats = () => {
     {
       label: "Vencido",
       value: isLoading ? ph : money(overdue.list()),
-      stackTrend: multiCurrency,
+      stackTrend: !isLoading && showsSeveralCurrencies(overdue.list()),
       icon: ErrorIcon,
       iconBgClass: "bg-red-50 dark:bg-red-500/10",
       iconClass: "text-red-500",
