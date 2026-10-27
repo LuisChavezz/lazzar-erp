@@ -7,6 +7,7 @@ import type {
 } from "../interfaces/opportunity.interface";
 import type { OpportunityEmbudo } from "../interfaces/opportunity-embudo.interface";
 import type {
+  OpportunityCotizacionesLinks,
   OpportunityCotizarResponse,
   OpportunityOnboarding,
 } from "../interfaces/opportunity-onboarding.interface";
@@ -86,6 +87,43 @@ export const cotizarOpportunity = async (id: number): Promise<OpportunityCotizar
     `/ventas/oportunidades/${id}/cotizar/`
   );
   return data;
+};
+
+/** Cotizaciones `ligadas` a la oportunidad y las `disponibles` para ligar. */
+export const getOpportunityCotizaciones = async (
+  id: number
+): Promise<OpportunityCotizacionesLinks> => {
+  const { data } = await v1_api.get<OpportunityCotizacionesLinks>(
+    `/ventas/oportunidades/${id}/cotizaciones/`
+  );
+  return data;
+};
+
+/**
+ * Liga cotizaciones que ya existen (200, misma forma que el GET). Suma a las
+ * ya ligadas —no las reemplaza— y repetir una ya ligada no falla. Todo o nada:
+ * si alguna no se puede ligar, responde 400 y no liga ninguna.
+ */
+export const ligarOpportunityCotizaciones = async (
+  id: number,
+  cotizaciones: number[]
+): Promise<OpportunityCotizacionesLinks> => {
+  const { data } = await v1_api.post<OpportunityCotizacionesLinks>(
+    `/ventas/oportunidades/${id}/cotizaciones/`,
+    { cotizaciones }
+  );
+  return data;
+};
+
+/**
+ * Quita la cotización de la oportunidad (204): la cotización NO se borra, queda
+ * sin oportunidad. Una autorizada responde 400.
+ */
+export const quitarOpportunityCotizacion = async (
+  id: number,
+  cotizacionId: number
+): Promise<void> => {
+  await v1_api.delete(`/ventas/oportunidades/${id}/cotizaciones/${cotizacionId}/`);
 };
 
 // ── Seguimientos ────────────────────────────────────────────────────────────

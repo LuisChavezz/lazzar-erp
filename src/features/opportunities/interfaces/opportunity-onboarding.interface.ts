@@ -2,15 +2,24 @@ import type { CarteraMoneda } from "@/src/features/customers/interfaces/customer
 import type { Opportunity } from "./opportunity.interface";
 
 /**
- * Cotización ligada a una oportunidad, con el pedido que nació de ella (si lo
- * hay). `created_at` y `autorizada_at` llegan en UTC (`Z`); el resto de fechas
- * de la oportunidad, con el offset local.
+ * Cotización de la pantalla de una oportunidad, con el pedido que nació de ella
+ * (si lo hay). `created_at` y `autorizada_at` llegan en UTC (`Z`); el resto de
+ * fechas de la oportunidad, con el offset local.
+ *
+ * Es la MISMA fila en `onboarding.cotizaciones` y en `ligadas`/`disponibles`
+ * de `…/cotizaciones/`: el backend arma las tres con una sola función
+ * (`filas_cotizaciones`).
  */
 export interface OpportunityCotizacion {
   id: number;
   /** Estatus numérico de la cotización (1 Borrador … 5 Cambios solicitados). */
   estatus: number;
   estatus_display: string | null;
+  /**
+   * Total con impuestos, texto con 2 decimales ("11600.00"); nunca `null`. La
+   * fila NO trae la moneda de la cotización, así que se muestra sin símbolo.
+   */
+  gran_total: string;
   created_at: string | null;
   autorizada_at: string | null;
   pedido_id: number | null;
@@ -41,6 +50,20 @@ export interface OpportunityOnboarding {
 /** Respuesta de `POST /ventas/oportunidades/{id}/cotizar/` (201). */
 export interface OpportunityCotizarResponse {
   cotizacion_id: number;
+}
+
+/**
+ * Respuesta de `GET /ventas/oportunidades/{id}/cotizaciones/` y de su `POST`
+ * (que responde lo mismo, ya con lo ligado).
+ *
+ * - `ligadas`: las de la oportunidad que el usuario puede ver.
+ * - `disponibles`: del mismo cliente y empresa, sin oportunidad y visibles para
+ *   el usuario; las 100 más recientes, sin paginar. NO se filtran por estatus.
+ *   `[]` si la oportunidad no tiene cliente.
+ */
+export interface OpportunityCotizacionesLinks {
+  ligadas: OpportunityCotizacion[];
+  disponibles: OpportunityCotizacion[];
 }
 
 /** Lo que "Cotizar" necesita de la oportunidad. */
