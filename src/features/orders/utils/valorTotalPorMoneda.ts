@@ -1,7 +1,7 @@
 import { UNKNOWN_CURRENCY_TAG } from "@/src/components/CurrencyTotalsValue";
 import type { Currency } from "@/src/features/currency/interfaces/currency.interface";
 import { findCurrency } from "@/src/features/currency/utils/currencyLookup";
-import { sortByMoneda, sumAmounts, type CurrencyTotal } from "@/src/utils/currencyTotals";
+import { createCurrencyTotals, sumAmounts, type CurrencyTotal } from "@/src/utils/currencyTotals";
 import { safeParseAmount } from "@/src/utils/formatCurrency";
 import type { PedidoListItem } from "../interfaces/order.interface";
 
@@ -11,9 +11,12 @@ import type { PedidoListItem } from "../interfaces/order.interface";
  * código ISO sale del catálogo (`currencies`).
  *
  * Se agrupa por la PK ANTES de resolver su código, así que dos monedas
- * distintas nunca se suman aunque el catálogo no traiga alguna. Una PK sin
- * código (catálogo con error, o que no la trae) se pinta sin símbolo (EC-600);
- * si hay varias así, cada una lleva su PK en la etiqueta para no confundirlas.
+ * distintas nunca se suman aunque el catálogo no traiga alguna. Luego las PK
+ * que resuelven al MISMO código (una MXN global y una MXN propia de la empresa)
+ * se juntan en un solo total: mismo código, misma moneda, como agrupan CxC y
+ * Facturación. Una PK sin código (catálogo con error, o que no la trae) queda
+ * aparte y se pinta sin símbolo (EC-600); si hay varias así, cada una lleva su
+ * PK en la etiqueta para no confundirlas.
  */
 export const valorTotalPorMoneda = (
   orders: PedidoListItem[],
@@ -25,19 +28,19 @@ export const valorTotalPorMoneda = (
     montos.push(safeParseAmount(o.gran_total));
     porPk.set(o.moneda, montos);
   }
-  const entries = [...porPk]
-    .sort(([a], [b]) => a - b)
-    .map(([pk, montos]) => ({
-      pk,
-      moneda: findCurrency(currencies, pk)?.codigo_iso || null,
-      total: sumAmounts(montos),
-    }));
-  const sinCodigo = entries.filter((entry) => entry.moneda === null).length;
-  return sortByMoneda(
-    entries.map(({ pk, moneda, total }) =>
-      moneda === null && sinCodigo > 1
-        ? { moneda, total, etiqueta: `${UNKNOWN_CURRENCY_TAG} (${pk})` }
-        : { moneda, total },
+  const porCodigo = createCurrencyTotals();
+  const sinCodigo: { pk: number; total: number }[] = [];
+  for (const [pk, montos] of [...porPk].sort(([a], [b]) => a - b)) {
+    const codigo = findCurrency(currencies, pk)?.codigo_iso || null;
+    if (codigo) porCodigo.add(codigo, sumAmounts(montos));
+    else sinCodigo.push({ pk, total: sumAmounts(montos) });
+  }
+  return [
+    ...porCodigo.list(),
+    ...sinCodigo.map(({ pk, total }) =>
+      sinCodigo.length > 1
+        ? { moneda: null, total, etiqueta: `${UNKNOWN_CURRENCY_TAG} (${pk})` }
+        : { moneda: null, total },
     ),
-  );
+  ];
 };

@@ -45,6 +45,23 @@ test.describe("valorTotalPorMoneda", () => {
     ]);
   });
 
+  test("dos PK con el mismo código (MXN global y MXN de la empresa) dan un solo total", () => {
+    expect(
+      valorTotalPorMoneda([pedido(1, "100"), pedido(42, "50.50"), pedido(7, "1")], [...CATALOGO, moneda(42, "MXN")]),
+    ).toEqual([
+      { moneda: "MXN", total: 150.5 },
+      { moneda: "USD", total: 1 },
+    ]);
+  });
+
+  test("las PK sin código siguen aparte aunque haya otras resueltas", () => {
+    expect(valorTotalPorMoneda([pedido(1, "3"), pedido(98, "4"), pedido(99, "5")], CATALOGO)).toEqual([
+      { moneda: "MXN", total: 3 },
+      { moneda: null, total: 4, etiqueta: "Sin moneda (98)" },
+      { moneda: null, total: 5, etiqueta: "Sin moneda (99)" },
+    ]);
+  });
+
   test("sin pedidos no hay monedas", () => {
     expect(valorTotalPorMoneda([], CATALOGO)).toEqual([]);
   });
