@@ -2,27 +2,26 @@
 
 import Link from "next/link";
 import { useSession } from "next-auth/react";
+import { Button } from "@/src/components/Button";
 import { EmptyLines, LineItemsTable, Section } from "@/src/components/DetailDialogPrimitives";
+import { PlusIcon } from "@/src/components/Icons";
 import { PedidoFolioLink } from "@/src/features/orders/components/PedidoFolioLink";
 import { OPPORTUNITY_ORIGIN_ID_PARAM } from "@/src/features/orders/constants/pedidoDetailOrigins";
-import { KANBAN_COLUMNS } from "@/src/features/quotes/constants/kanbanColumns";
 import {
   canLandOnQuoteEdit,
   quoteEditPath,
 } from "@/src/features/quotes/utils/quoteEditRouteAccess";
 import { canEditQuote } from "@/src/features/quotes/utils/quoteStatusRules";
+import { formatCurrency, NO_CURRENCY_FORMAT, safeParseAmount } from "@/src/utils/formatCurrency";
 import { formatShortDate } from "@/src/utils/formatDate";
 import { canAccessRoute } from "@/src/utils/routeAccess";
 import { OPPORTUNITY_LIST_PARAM } from "../constants/opportunityRoutes";
 import type { OpportunityCotizacion } from "../interfaces/opportunity-onboarding.interface";
+import { cotizacionEstatusBadge, isCotizacionAutorizada } from "../utils/cotizacionEstatus";
 
 const TH_CLASS = "px-3 py-2 font-medium whitespace-nowrap";
 const TD_CLASS = "px-3 py-2 whitespace-nowrap";
 const MUTED_CLS = "text-slate-400 dark:text-slate-500";
-
-/** Mismos colores y NOMBRES por estatus que el tablero de cotizaciones. */
-const BADGE_BY_ESTATUS = new Map(KANBAN_COLUMNS.map((column) => [column.estatus, column]));
-const FALLBACK_BADGE = "bg-slate-100 text-slate-600 dark:bg-slate-500/20 dark:text-slate-300";
 
 interface OpportunityCotizacionesProps {
   opportunityId: number;
@@ -32,6 +31,17 @@ interface OpportunityCotizacionesProps {
    * se reenvía al pedido para que su "Volver" regrese a este detalle con él.
    */
   listQuery: string;
+  /**
+   * `false` oculta "Ligar cotización": la oportunidad está Perdida o no tiene
+   * cliente (el backend respondería 400 en `etapa` / `cliente`).
+   */
+  canLigar: boolean;
+  /** Abre el selector de "Ligar cotización" (su estado vive en el detalle). */
+  onLigar: () => void;
+  /** Abre la confirmación de "Quitar" para esa cotización. */
+  onQuitar: (cotizacion: OpportunityCotizacion) => void;
+  /** Ids con un "Quitar" en curso: su renglón queda bloqueado. */
+  busyIds: number[];
 }
 
 /**
@@ -51,11 +61,20 @@ interface OpportunityCotizacionesProps {
  *   `opportunities` lleva el id para que "Volver" regrese a ESTA oportunidad, y
  *   el estado del listado para que desde aquí se siga pudiendo volver a él.
  * - **Fechas**: timestamps reales (llegan en UTC), en la zona del usuario.
+ * - **Total**: `gran_total` SIN símbolo de moneda: la fila no trae la moneda de
+ *   la cotización (igual que "Monto estimado" de la oportunidad).
+ * - **Quitar**: no en una autorizada (el backend responde 400: la oportunidad
+ *   dejaría de estar Ganada). Las acciones solo abren diálogos; su estado vive
+ *   en el detalle, no en el renglón, que se remonta con cada relectura.
  */
 export const OpportunityCotizaciones = ({
   opportunityId,
   cotizaciones,
   listQuery,
+  canLigar,
+  onLigar,
+  onQuitar,
+  busyIds,
 }: OpportunityCotizacionesProps) => {
   const { data: session } = useSession();
   const canOpenQuoteEdit = canLandOnQuoteEdit(session?.user);
@@ -63,7 +82,20 @@ export const OpportunityCotizaciones = ({
   const canOpenPedido = canAccessRoute("/orders", session?.user);
 
   return (
-    <Section title={`Cotizaciones (${cotizaciones.length})`}>
+    <Section
+      title={`Cotizaciones (${cotizaciones.length})`}
+      action={
+        canLigar && (
+          <Button
+            variant="secondary"
+            leftIcon={<PlusIcon className="w-4 h-4" aria-hidden="true" />}
+            onClick={onLigar}
+          >
+            Ligar cotización
+          </Button>
+        )
+      }
+    >
       {cotizaciones.length === 0 ? (
         <EmptyLines>Esta oportunidad aún no tiene cotizaciones.</EmptyLines>
       ) : (
@@ -75,13 +107,15 @@ export const OpportunityCotizaciones = ({
               <th className={TH_CLASS}>Creada</th>
               <th className={TH_CLASS}>Autorizada</th>
               <th className={TH_CLASS}>Pedido</th>
+              <th className={`${TH_CLASS} text-right`}>Total</th>
+              <th className={`${TH_CLASS} text-center`}>Acciones</th>
             </>
           }
         >
           {cotizaciones.map((cotizacion) => {
-            const badge = BADGE_BY_ESTATUS.get(cotizacion.estatus);
-            const estatusLabel = badge?.label || cotizacion.estatus_display || "Sin estatus";
+            const badge = cotizacionEstatusBadge(cotizacion);
             const isEditable = canEditQuote(cotizacion.estatus);
+            const isBusy = busyIds.includes(cotizacion.id);
             const pedidoId = cotizacion.pedido_id;
 
             let pedido = <span className={MUTED_CLS}>—</span>;
@@ -105,7 +139,11 @@ export const OpportunityCotizaciones = ({
             }
 
             return (
-              <tr key={cotizacion.id} className="text-slate-700 dark:text-slate-200">
+              <tr
+                key={cotizacion.id}
+                aria-busy={isBusy || undefined}
+                className={`text-slate-700 dark:text-slate-200 ${isBusy ? "opacity-50" : ""}`}
+              >
                 <td className={`${TD_CLASS} font-semibold tabular-nums`}>
                   {isEditable && canOpenQuoteEdit ? (
                     <Link
@@ -129,16 +167,37 @@ export const OpportunityCotizaciones = ({
                 </td>
                 <td className={TD_CLASS}>
                   <span
-                    className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                      badge?.badgeClass ?? FALLBACK_BADGE
-                    }`}
+                    className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${badge.className}`}
                   >
-                    {estatusLabel}
+                    {badge.label}
                   </span>
                 </td>
                 <td className={TD_CLASS}>{formatShortDate(cotizacion.created_at)}</td>
                 <td className={TD_CLASS}>{formatShortDate(cotizacion.autorizada_at)}</td>
                 <td className={TD_CLASS}>{pedido}</td>
+                <td className={`${TD_CLASS} text-right tabular-nums`}>
+                  {formatCurrency(safeParseAmount(cotizacion.gran_total), NO_CURRENCY_FORMAT)}
+                </td>
+                <td className={`${TD_CLASS} text-center`}>
+                  {isCotizacionAutorizada(cotizacion) ? (
+                    <span
+                      className={MUTED_CLS}
+                      title="Una cotización autorizada no se quita de la oportunidad"
+                    >
+                      —
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => onQuitar(cotizacion)}
+                      disabled={isBusy}
+                      aria-label={`Quitar la cotización #${cotizacion.id} de la oportunidad`}
+                      className="text-xs font-medium text-rose-600 dark:text-rose-400 hover:underline disabled:cursor-not-allowed disabled:no-underline"
+                    >
+                      {isBusy ? "Quitando…" : "Quitar"}
+                    </button>
+                  )}
+                </td>
               </tr>
             );
           })}

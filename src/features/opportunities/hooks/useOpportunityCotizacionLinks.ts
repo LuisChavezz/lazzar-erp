@@ -86,11 +86,14 @@ const invalidateAfterLinkChange = (queryClient: ReturnType<typeof useQueryClient
  * se ligó ninguna, y la relectura deja las `disponibles` al día (p. ej. si otra
  * persona ligó alguna entretanto).
  */
+export const ligarCotizacionesMutationKey = (opportunityId: number) =>
+  ["ligar-opportunity-cotizaciones", opportunityId] as const;
+
 export const useLigarOpportunityCotizaciones = (opportunityId: number) => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationKey: ["ligar-opportunity-cotizaciones", opportunityId],
+    mutationKey: ligarCotizacionesMutationKey(opportunityId),
     mutationFn: (cotizaciones: number[]) => ligarOpportunityCotizaciones(opportunityId, cotizaciones),
     onSuccess: (_data, cotizaciones) => {
       toast.success(

@@ -1,0 +1,130 @@
+"use client";
+
+import { useIsMutating } from "@tanstack/react-query";
+import { MainDialog } from "@/src/components/MainDialog";
+import { MultiSelectPickerDialogContent } from "@/src/components/MultiSelectPickerDialogContent";
+import { formatCurrency, NO_CURRENCY_FORMAT, safeParseAmount } from "@/src/utils/formatCurrency";
+import { formatShortDate } from "@/src/utils/formatDate";
+import {
+  ligarCotizacionesMutationKey,
+  useLigarOpportunityCotizaciones,
+  useOpportunityCotizacionesLinks,
+} from "../hooks/useOpportunityCotizacionLinks";
+import type { OpportunityCotizacion } from "../interfaces/opportunity-onboarding.interface";
+import { cotizacionEstatusBadge, isCotizacionAutorizada } from "../utils/cotizacionEstatus";
+
+interface OpportunityLigarCotizacionesDialogProps {
+  /** Oportunidad a la que se ligan; `null` = cerrado. */
+  opportunityId: number | null;
+  onClose: () => void;
+}
+
+/**
+ * Contenido del selector, montado solo con el diálogo abierto: la consulta corre
+ * bajo demanda y la selección arranca vacía en cada apertura.
+ *
+ * Ofrece las `disponibles` MENOS las autorizadas: ligar una autorizada pasa la
+ * oportunidad a Ganada al instante y ya no se puede quitar (el DELETE responde
+ * 400). Las rechazadas sí se ofrecen.
+ *
+ * Queda abierto mientras se guarda y se cierra solo con éxito: con un rechazo
+ * (todo o nada) la selección sigue ahí y la relectura actualiza la lista.
+ */
+function LigarCotizacionesContent({
+  opportunityId,
+  onClose,
+}: {
+  opportunityId: number;
+  onClose: () => void;
+}) {
+  const { disponibles, isLoading, isInitialError } = useOpportunityCotizacionesLinks(opportunityId);
+  const { mutate: ligar, isPending } = useLigarOpportunityCotizaciones(opportunityId);
+  const ligables = disponibles.filter((cotizacion) => !isCotizacionAutorizada(cotizacion));
+
+  return (
+    <MultiSelectPickerDialogContent<OpportunityCotizacion>
+      title="Ligar cotizaciones"
+      subtitle="Cotizaciones del cliente que no están en ninguna oportunidad (las 100 más recientes). Las autorizadas no se ligan desde aquí."
+      items={ligables}
+      isLoading={isLoading}
+      isError={isInitialError}
+      loadingTitle="Cargando cotizaciones"
+      loadingMessage="Obteniendo las cotizaciones del cliente..."
+      errorMessage="Error al cargar las cotizaciones disponibles."
+      searchPlaceholder="Buscar por número o estatus..."
+      filterPredicate={(cotizacion, term) =>
+        `#${cotizacion.id}`.includes(term) ||
+        cotizacionEstatusBadge(cotizacion).label.toLowerCase().includes(term)
+      }
+      getKey={(cotizacion) => cotizacion.id}
+      emptyMessage="Este cliente no tiene cotizaciones que se puedan ligar a la oportunidad."
+      noResultsMessage="No se encontraron cotizaciones"
+      countLabel={{ singular: "cotización seleccionada", plural: "cotizaciones seleccionadas" }}
+      pinSelected
+      isConfirming={isPending}
+      confirmingText="Ligando…"
+      renderContent={(cotizacion) => {
+        const badge = cotizacionEstatusBadge(cotizacion);
+        return (
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-sm font-semibold tabular-nums text-slate-800 dark:text-slate-100">
+                Cotización #{cotizacion.id}
+              </p>
+              <p className="flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+                <span
+                  className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium ${badge.className}`}
+                >
+                  {badge.label}
+                </span>
+                <span>Creada {formatShortDate(cotizacion.created_at)}</span>
+              </p>
+            </div>
+            <div className="shrink-0 text-right">
+              <p className="text-[11px] text-slate-400 dark:text-slate-500">Total</p>
+              <p className="text-sm font-bold tabular-nums text-slate-800 dark:text-white">
+                {formatCurrency(safeParseAmount(cotizacion.gran_total), NO_CURRENCY_FORMAT)}
+              </p>
+            </div>
+          </div>
+        );
+      }}
+      onConfirm={(cotizaciones) =>
+        ligar(
+          cotizaciones.map((cotizacion) => cotizacion.id),
+          { onSuccess: onClose }
+        )
+      }
+      onCancel={onClose}
+    />
+  );
+}
+
+/**
+ * "Ligar cotización": selector MÚLTIPLE de cotizaciones ya hechas del cliente
+ * de la oportunidad. No se puede cerrar mientras guarda.
+ */
+export function OpportunityLigarCotizacionesDialog({
+  opportunityId,
+  onClose,
+}: OpportunityLigarCotizacionesDialogProps) {
+  const open = opportunityId !== null;
+  // Fuera del contenido, que es quien muta: Escape o un clic fuera no cierran
+  // mientras el POST sigue en curso.
+  const isLigando =
+    useIsMutating({ mutationKey: ligarCotizacionesMutationKey(opportunityId ?? 0) }) > 0;
+
+  return (
+    <MainDialog
+      open={open}
+      onOpenChange={(next) => {
+        if (!next && !isLigando) onClose();
+      }}
+      title=""
+      maxWidth="640px"
+      showCloseButton={false}
+    >
+      {open && <LigarCotizacionesContent opportunityId={opportunityId} onClose={onClose} />}
+    </MainDialog>
+  );
+}

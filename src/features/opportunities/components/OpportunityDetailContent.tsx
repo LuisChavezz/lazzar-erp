@@ -27,12 +27,16 @@ import {
 } from "../constants/opportunityChoices";
 import { OPPORTUNITY_GONE_DETAIL_MESSAGE } from "../hooks/opportunityErrorMessages";
 import { useOpportunityDetail } from "../hooks/useOpportunityDetail";
+import { usePendingQuitarCotizacionIds } from "../hooks/useOpportunityCotizacionLinks";
 import {
   usePendingSeguimientoIds,
   useSetSeguimientoCompletado,
 } from "../hooks/useSeguimientoMutations";
 import type { Opportunity } from "../interfaces/opportunity.interface";
-import type { OpportunityOnboarding } from "../interfaces/opportunity-onboarding.interface";
+import type {
+  OpportunityCotizacion,
+  OpportunityOnboarding,
+} from "../interfaces/opportunity-onboarding.interface";
 import type { OpportunitySeguimiento } from "../interfaces/seguimiento.interface";
 import { OPPORTUNITY_LIST_PARAM } from "../constants/opportunityRoutes";
 import { opportunitiesListHref, readOpportunityListParam } from "../utils/opportunityListQuery";
@@ -40,6 +44,8 @@ import { OpportunityCotizaciones } from "./OpportunityCotizaciones";
 import { OpportunityCotizarAction } from "./OpportunityCotizarAction";
 import { OpportunityDeleteDialog } from "./OpportunityDeleteDialog";
 import { OpportunityFormDialog } from "./OpportunityFormDialog";
+import { OpportunityLigarCotizacionesDialog } from "./OpportunityLigarCotizacionesDialog";
+import { OpportunityQuitarCotizacionDialog } from "./OpportunityQuitarCotizacionDialog";
 import { OpportunityTransferDialog } from "./OpportunityTransferDialog";
 import { OpportunityName } from "./OpportunityName";
 import { OpportunitySeguimientoDeleteDialog } from "./OpportunitySeguimientoDeleteDialog";
@@ -78,7 +84,7 @@ interface OpportunityDetailContentProps {
  * una entrada directa a esta URL vuelve al listado sin filtros.
  *
  * Los diálogos (editar, transferir y dar de baja la oportunidad; alta, edición
- * y borrado de un seguimiento) se montan FUERA de esos estados: así se cierran con su
+ * y borrado de un seguimiento; ligar y quitar cotizaciones) se montan FUERA de esos estados: así se cierran con su
  * animación aunque la pantalla de detrás cambie de estado. Guardan el REGISTRO
  * sobre el que actúan, no su id.
  */
@@ -135,6 +141,15 @@ export const OpportunityDetailContent = ({
       setSeguimientoCompletado({ id: seguimiento.id, completado }),
     busyIds: busySeguimientoIds,
   };
+
+  // ── Cotizaciones ligadas ────────────────────────────────────────────────
+  // Id de la oportunidad a la que se ligan (`null` = cerrado), y la cotización
+  // por quitar junto con su oportunidad.
+  const [ligarOpportunityId, setLigarOpportunityId] = useState<number | null>(null);
+  const [cotizacionToQuitar, setCotizacionToQuitar] = useState<{
+    opportunityId: number;
+    cotizacion: OpportunityCotizacion;
+  } | null>(null);
 
   const handleDeleted = () => {
     setWasDeletedHere(true);
@@ -201,6 +216,10 @@ export const OpportunityDetailContent = ({
           setTransfer({ opportunity, cotizacionesCount })
         }
         seguimientoActions={seguimientoActions}
+        onLigarCotizaciones={setLigarOpportunityId}
+        onQuitarCotizacion={(opportunityId, cotizacion) =>
+          setCotizacionToQuitar({ opportunityId, cotizacion })
+        }
       />
     );
   }
@@ -240,6 +259,17 @@ export const OpportunityDetailContent = ({
         seguimiento={seguimientoToDelete}
         onClose={() => setSeguimientoToDelete(null)}
       />
+
+      <OpportunityLigarCotizacionesDialog
+        opportunityId={ligarOpportunityId}
+        onClose={() => setLigarOpportunityId(null)}
+      />
+
+      <OpportunityQuitarCotizacionDialog
+        opportunityId={cotizacionToQuitar?.opportunityId ?? 0}
+        cotizacion={cotizacionToQuitar?.cotizacion ?? null}
+        onClose={() => setCotizacionToQuitar(null)}
+      />
     </div>
   );
 };
@@ -252,6 +282,8 @@ interface OpportunityDetailBodyProps {
   onDelete: (opportunity: Opportunity) => void;
   onTransfer: (opportunity: Opportunity, cotizacionesCount: number) => void;
   seguimientoActions: OpportunitySeguimientoActions;
+  onLigarCotizaciones: (opportunityId: number) => void;
+  onQuitarCotizacion: (opportunityId: number, cotizacion: OpportunityCotizacion) => void;
 }
 
 /**
@@ -267,6 +299,8 @@ function OpportunityDetailBody({
   onDelete,
   onTransfer,
   seguimientoActions,
+  onLigarCotizaciones,
+  onQuitarCotizacion,
 }: OpportunityDetailBodyProps) {
   const { data: session } = useSession();
   // "Transferir" solo para un administrador de empresa RESUELTO.
@@ -280,6 +314,12 @@ function OpportunityDetailBody({
 
   const contacto = opportunity.nombre_contacto?.trim();
   const hasCliente = opportunity.cliente !== null;
+  const busyCotizacionIds = usePendingQuitarCotizacionIds(opportunity.id);
+
+  // "Ligar cotización" ofrece cotizaciones del cliente: sin cliente no hay
+  // cuáles, y a una Perdida el backend no liga (400). Se mira la ETAPA, que es
+  // lo que valida el backend; una Ganada sí admite más cotizaciones.
+  const canLigar = hasCliente && opportunity.etapa !== ETAPA_PERDIDA;
 
   // "Cotizar" crea una cotización CON el cliente de la oportunidad y navega a
   // editarla: sin cliente no hay a quién cotizar, cerrada (Perdida/Ganada) ya
@@ -392,6 +432,10 @@ function OpportunityDetailBody({
         opportunityId={opportunity.id}
         cotizaciones={cotizaciones}
         listQuery={listQuery}
+        canLigar={canLigar}
+        onLigar={() => onLigarCotizaciones(opportunity.id)}
+        onQuitar={(cotizacion) => onQuitarCotizacion(opportunity.id, cotizacion)}
+        busyIds={busyCotizacionIds}
       />
 
       {/* Solo con cliente. El texto vacío es NEUTRO: un `[]` también llega
