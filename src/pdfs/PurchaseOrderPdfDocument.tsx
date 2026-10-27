@@ -31,7 +31,7 @@
 import { Document, Page, Text, View } from "@react-pdf/renderer";
 import { isPurchaseOrderCancelled } from "@/src/features/purchase-orders/constants/purchaseOrderStatus";
 import type { PurchaseOrderDetail } from "@/src/features/purchase-orders/interfaces/purchase-order.interface";
-import { formatMoneyValueOrDash, safeParseAmount } from "@/src/utils/formatCurrency";
+import { formatMoneyValueOrDash, moneyFormatFor, safeParseAmount } from "@/src/utils/formatCurrency";
 import { formatLocalDate } from "@/src/utils/formatDate";
 import { purchaseOrderPdfStyles as s } from "./PurchaseOrderPdfStyles";
 
@@ -57,7 +57,7 @@ export const PurchaseOrderPdfDocument = ({ order }: PurchaseOrderPdfDocumentProp
   // el backend elimina los financieros de la respuesta según el rol de quien
   // consultó la orden, y este documento se genera a partir de esa respuesta.
   const money = (value: string | number | null | undefined) =>
-    formatMoneyValueOrDash(value, { currency: order.moneda_codigo });
+    formatMoneyValueOrDash(value, moneyFormatFor(order.moneda_codigo));
   const descuento = safeParseAmount(order.descuento);
   const flete = safeParseAmount(order.flete);
   const seguros = safeParseAmount(order.seguros);

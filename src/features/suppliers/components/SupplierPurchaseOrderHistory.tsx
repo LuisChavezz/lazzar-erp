@@ -8,7 +8,7 @@ import { Section } from "@/src/components/DetailDialogPrimitives";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { isNotFoundError } from "@/src/utils/drfWriteErrors";
 import { isInitialLoadError } from "@/src/utils/isInitialLoadError";
-import { formatMoneyValueOrDash } from "@/src/utils/formatCurrency";
+import { formatMoneyValueOrDash, moneyFormatFor } from "@/src/utils/formatCurrency";
 import {
   PURCHASE_ORDER_STATUS,
   purchaseOrderStatusEntry,
@@ -196,7 +196,7 @@ export default function SupplierPurchaseOrderHistory({
                       key={monto.moneda}
                       className="text-lg font-semibold tabular-nums text-slate-900 dark:text-white"
                     >
-                      {formatMoneyValueOrDash(monto.total, { currency: monto.moneda })}
+                      {formatMoneyValueOrDash(monto.total, moneyFormatFor(monto.moneda))}
                     </li>
                   ))}
                 </ul>

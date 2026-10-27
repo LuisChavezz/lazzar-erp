@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { ColumnDef, createColumnHelper } from "@tanstack/react-table";
 import { StatusBadge } from "@/src/components/StatusBadge";
-import { formatMoneyValueOrDash } from "@/src/utils/formatCurrency";
+import { formatMoneyValueOrDash, moneyFormatFor } from "@/src/utils/formatCurrency";
 import { formatLocalDate } from "@/src/utils/formatDate";
 import { purchaseOrderStatusEntry } from "@/src/features/purchase-orders/constants/purchaseOrderStatus";
 import { purchaseOrderDetailHref } from "@/src/features/purchase-orders/constants/purchaseOrderDetailOrigins";
@@ -80,9 +80,10 @@ export const getSupplierPurchaseOrderHistoryColumns = (
       meta: { align: "right" },
       cell: ({ row }) => (
         <span className="text-slate-700 dark:text-slate-200 tabular-nums">
-          {formatMoneyValueOrDash(row.original.gran_total, {
-            currency: row.original.moneda_codigo,
-          })}
+          {formatMoneyValueOrDash(
+              row.original.gran_total,
+              moneyFormatFor(row.original.moneda_codigo),
+            )}
         </span>
       ),
     }),

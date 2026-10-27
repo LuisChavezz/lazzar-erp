@@ -18,6 +18,7 @@ import { RECEIPT_STATUS_CONFIG } from "@/src/features/receipts/constants/receipt
 import {
   formatMoneyValueOrDash,
   formatQuantityValue,
+  moneyFormatFor,
 } from "@/src/utils/formatCurrency";
 import { formatLocalDate } from "@/src/utils/formatDate";
 import {
@@ -84,7 +85,7 @@ const DetalleTable = ({
 
   const showAmounts = hasLineAmounts(detalles);
   const money = (value: string | undefined) =>
-    formatMoneyValueOrDash(value, { currency: monedaCodigo });
+    formatMoneyValueOrDash(value, moneyFormatFor(monedaCodigo));
 
   return (
     <LineItemsTable
@@ -331,12 +332,8 @@ export function PurchaseOrderDetailDialog({
 
   const showAmounts = purchaseOrder ? canSeeAmounts(purchaseOrder) : false;
   const money = (value: string | undefined) =>
-    formatMoneyValueOrDash(value, {
-      // Solo se invoca dentro del bloque con `purchaseOrder` ya resuelto; el
-      // respaldo está porque un `currency: undefined` ANULARÍA el default de
-      // `formatCurrency` al hacer spread, dejando los importes sin símbolo.
-      currency: purchaseOrder?.moneda_codigo ?? "MXN",
-    });
+    // Solo se invoca dentro del bloque con `purchaseOrder` ya resuelto.
+    formatMoneyValueOrDash(value, moneyFormatFor(purchaseOrder?.moneda_codigo ?? null));
 
   return (
     <>

@@ -14,7 +14,7 @@ import {
   Section,
   textOrDash,
 } from "@/src/components/DetailDialogPrimitives";
-import { formatMoneyValueOrDash, formatQuantityValue } from "@/src/utils/formatCurrency";
+import { formatMoneyValueOrDash, formatQuantityValue, moneyFormatFor } from "@/src/utils/formatCurrency";
 import { hasPermission } from "@/src/utils/permissions";
 import { useSatInfo } from "@/src/features/sat/hooks/useSatInfo";
 import { useCurrencies } from "@/src/features/currency/hooks/useCurrencies";
@@ -151,13 +151,10 @@ export const SupplierDetailContent = ({ supplierId }: SupplierDetailContentProps
   const currency = currencies?.find((item) => item.id === data.moneda);
   // Sin código ISO conocido se formatea como número plano: aplicar el MXN por
   // defecto de `formatCurrency` mentiría sobre un proveedor en otra moneda.
-  const limiteCredito = currency
-    ? formatMoneyValueOrDash(data.limite_credito, { currency: currency.codigo_iso })
-    : formatMoneyValueOrDash(data.limite_credito, {
-        style: "decimal",
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-      });
+  const limiteCredito = formatMoneyValueOrDash(
+    data.limite_credito,
+    moneyFormatFor(currency?.codigo_iso ?? null),
+  );
 
   return (
     <div className="w-full space-y-6">
