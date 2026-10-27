@@ -96,6 +96,14 @@ export const formatMoneyValueOrDash = (
 ): string => (value == null ? "—" : formatMoneyValue(value, options));
 
 /**
+ * Importe de moneda DESCONOCIDA (`NO_CURRENCY_FORMAT`): 2 decimales, sin símbolo, y
+ * "—" si el valor falta. Único punto de esa regla para quien no tiene código de
+ * moneda que pasar; con código, `formatMoneyValue(value, moneyFormatFor(codigo))`.
+ */
+export const formatAmountNoCurrency = (value: string | number | null | undefined): string =>
+  formatMoneyValueOrDash(value, NO_CURRENCY_FORMAT);
+
+/**
  * Formatea una CANTIDAD (no dinero) como número plano es-MX, hasta 2 decimales,
  * sin símbolo de moneda. Para campos de existencias que llegan como string
  * decimal del backend ("10.0000"). Comparte `safeParseAmount` con los importes.

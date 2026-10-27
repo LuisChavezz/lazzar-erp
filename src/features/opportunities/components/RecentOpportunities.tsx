@@ -4,9 +4,8 @@ import Link from "next/link";
 import { ChevronRightIcon, TrendingUpIcon } from "@/src/components/Icons";
 import { LoadingSkeleton } from "@/src/components/LoadingSkeleton";
 import { SectionErrorNotice } from "@/src/components/SectionErrorNotice";
-import { safeParseAmount } from "@/src/utils/formatCurrency";
+import { formatAmountNoCurrency, safeParseAmount } from "@/src/utils/formatCurrency";
 import { formatShortDate } from "@/src/utils/formatDate";
-import { formatKpiMonto } from "@/src/utils/kpiFormat";
 import { getEstadoOportunidadCfg } from "../constants/opportunityChoices";
 import { OPPORTUNITIES_LIST_PATH, opportunityDetailPath } from "../constants/opportunityRoutes";
 import {
@@ -48,7 +47,7 @@ function RecentOpportunityRow({ opportunity }: { opportunity: Opportunity }) {
       </td>
       {/* Sin símbolo de moneda: las oportunidades no tienen moneda. */}
       <td className="px-6 py-3 text-right font-medium tabular-nums text-slate-700 dark:text-slate-200">
-        {formatKpiMonto(safeParseAmount(opportunity.monto_estimado))}
+        {formatAmountNoCurrency(safeParseAmount(opportunity.monto_estimado))}
       </td>
       <td className="px-6 py-3 whitespace-nowrap text-slate-500 dark:text-slate-400">
         {formatShortDate(opportunity.created_at)}

@@ -5,8 +5,8 @@ import { useId, useState, type ReactNode } from "react";
 import { ChevronDownIcon, ChevronRightIcon, FilterIcon } from "@/src/components/Icons";
 import { LoadingSkeleton } from "@/src/components/LoadingSkeleton";
 import { SectionErrorNotice } from "@/src/components/SectionErrorNotice";
-import { safeParseAmount } from "@/src/utils/formatCurrency";
-import { formatKpiMonto, plural } from "@/src/utils/kpiFormat";
+import { formatAmountNoCurrency, safeParseAmount } from "@/src/utils/formatCurrency";
+import { plural } from "@/src/utils/kpiFormat";
 import {
   ESTADO_OPORTUNIDAD_VALUES,
   ESTADO_PERDIDA,
@@ -114,7 +114,7 @@ export const OpportunityFunnel = ({ params, filter, compact = false }: Opportuni
     const cfg = getEstadoOportunidadCfg(estado);
     const isActive = filter?.activeEstado === estado;
     const pct = maxCantidad > 0 ? (cantidad / maxCantidad) * 100 : 0;
-    const montoLabel = formatKpiMonto(monto);
+    const montoLabel = formatAmountNoCurrency(monto);
     const name = `${cfg.label}: ${cantidad} ${plural(cantidad, "oportunidad", "oportunidades")}, monto ${montoLabel}`;
 
     const content: ReactNode = (
@@ -217,7 +217,7 @@ export const OpportunityFunnel = ({ params, filter, compact = false }: Opportuni
             {plural(embudo.total.cantidad, "oportunidad", "oportunidades")}
             {" · "}
             <span className="font-bold text-slate-800 dark:text-white">
-              {formatKpiMonto(safeParseAmount(embudo.total.monto))}
+              {formatAmountNoCurrency(safeParseAmount(embudo.total.monto))}
             </span>
             {bodyCls && activeLabel && (
               <span className="lg:hidden">

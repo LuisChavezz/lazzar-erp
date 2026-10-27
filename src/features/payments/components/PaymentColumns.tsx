@@ -2,7 +2,7 @@ import { ColumnDef, createColumnHelper, FilterFn } from "@tanstack/react-table";
 import { ActionMenu, ActionMenuItem } from "@/src/components/ActionMenu";
 import { ColumnHeaderFilter, type ColumnFilterOption } from "@/src/components/ColumnHeaderFilter";
 import { BanIcon, ChevronRightIcon, ViewIcon } from "@/src/components/Icons";
-import { formatMoneyValue, NO_CURRENCY_FORMAT } from "@/src/utils/formatCurrency";
+import { formatAmountNoCurrency } from "@/src/utils/formatCurrency";
 import { formatShortDate } from "@/src/utils/formatDate";
 import { PAGO_ESTATUS_CONFIG } from "../constants/paymentStatus";
 import type { Pago } from "../interfaces/payment.interface";
@@ -162,7 +162,7 @@ export const getColumns = (
         // CxP aplicada, y el renglón no trae con qué resolverla. Se pinta sin
         // símbolo y con 2 decimales: un "$" afirmaría pesos.
         <div className="tabular-nums font-semibold text-slate-800 dark:text-white">
-          {formatMoneyValue(info.getValue(), NO_CURRENCY_FORMAT)}
+          {formatAmountNoCurrency(info.getValue())}
         </div>
       ),
     }),

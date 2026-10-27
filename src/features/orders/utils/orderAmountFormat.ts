@@ -1,4 +1,4 @@
-import { formatMoneyValueOrDash, NO_CURRENCY_FORMAT } from "@/src/utils/formatCurrency";
+import { formatAmountNoCurrency } from "@/src/utils/formatCurrency";
 
 /**
  * Importe de un pedido en listados y exportaciones (`subtotal`, `gran_total` de
@@ -10,4 +10,4 @@ import { formatMoneyValueOrDash, NO_CURRENCY_FORMAT } from "@/src/utils/formatCu
  * código, se cambia aquí y no en cada tabla.
  */
 export const formatOrderAmountOrDash = (value: string | number | null | undefined): string =>
-  formatMoneyValueOrDash(value, NO_CURRENCY_FORMAT);
+  formatAmountNoCurrency(value);

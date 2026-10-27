@@ -1,4 +1,4 @@
-import { formatMoneyValue, NO_CURRENCY_FORMAT } from "@/src/utils/formatCurrency";
+import { formatMoneyValue } from "@/src/utils/formatCurrency";
 import { parseLocalDate } from "@/src/utils/formatDate";
 import { formatPercentageNumber } from "@/src/utils/percentage";
 
@@ -8,13 +8,6 @@ import { formatPercentageNumber } from "@/src/utils/percentage";
  * igual en cualquier tarjeta y su drill-down. Antes vivía copiado en cada
  * módulo.
  */
-
-/**
- * Importe del backend sin símbolo, SOLO para payloads de KPIs que no traen
- * moneda (o que suman varias): ahí un "$" afirmaría pesos. Los datos por moneda
- * (`por_moneda[]`, filas con `moneda`) van con `formatKpiCurrencyAmount`.
- */
-export const formatKpiMonto = (value: number): string => formatMoneyValue(value, NO_CURRENCY_FORMAT);
 
 /**
  * Importe de un indicador con el símbolo de SU moneda (código ISO del payload,

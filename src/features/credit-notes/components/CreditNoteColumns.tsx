@@ -8,7 +8,7 @@ import {
   DeleteIcon,
   ViewIcon,
 } from "@/src/components/Icons";
-import { formatMoneyValue, NO_CURRENCY_FORMAT } from "@/src/utils/formatCurrency";
+import { formatAmountNoCurrency } from "@/src/utils/formatCurrency";
 import { formatShortDate } from "@/src/utils/formatDate";
 import { NOTA_CREDITO_ESTATUS_CONFIG } from "../constants/creditNoteStatus";
 import type { NotaCredito } from "../interfaces/credit-note.interface";
@@ -192,7 +192,7 @@ export const getColumns = (
         // obtiene `moneda_nombre`); esta columna no puede sin una consulta por
         // fila. Mismo caso que el `total_pagado` del listado de pagos.
         <div className="tabular-nums font-semibold text-slate-800 dark:text-white">
-          {formatMoneyValue(info.getValue(), NO_CURRENCY_FORMAT)}
+          {formatAmountNoCurrency(info.getValue())}
         </div>
       ),
     }),
