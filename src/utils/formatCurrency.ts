@@ -77,6 +77,11 @@ export const moneyFormatFor = (
  * tampoco tiene símbolo (`formatCurrency` ya lo pinta sin él).
  */
 export const currencyHasOwnSymbol = (monedaCodigo: string): boolean => {
+  // La respuesta es fija por código: se calcula una vez (construir un
+  // `Intl.NumberFormat` es caro y esto corre por cada bloque en cada render).
+  const cached = OWN_SYMBOL_CACHE.get(monedaCodigo);
+  if (cached !== undefined) return cached;
+  let hasOwn: boolean;
   try {
     const symbol = new Intl.NumberFormat("es-MX", {
       style: "currency",
@@ -85,11 +90,15 @@ export const currencyHasOwnSymbol = (monedaCodigo: string): boolean => {
     })
       .formatToParts(0)
       .find((part) => part.type === "currency")?.value;
-    return symbol !== undefined && symbol.toUpperCase() !== monedaCodigo.toUpperCase();
+    hasOwn = symbol !== undefined && symbol.toUpperCase() !== monedaCodigo.toUpperCase();
   } catch {
-    return false;
+    hasOwn = false;
   }
+  OWN_SYMBOL_CACHE.set(monedaCodigo, hasOwn);
+  return hasOwn;
 };
+
+const OWN_SYMBOL_CACHE = new Map<string, boolean>();
 
 /**
  * Convierte un string numérico de la API en número, devolviendo 0 cuando el
