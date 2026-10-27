@@ -203,8 +203,8 @@ export function PickingDetailContent({ picking }: { picking: PickingRow }) {
   const [isTransferOpen, setIsTransferOpen] = useState(false);
   const [transferenciaId, setTransferenciaId] = useState(0);
   const [isTransferenciaOpen, setIsTransferenciaOpen] = useState(false);
+  const transferenciaPickingId = picking.transferencia;
   const openTransferencia = (id: number) => {
-    if (id <= 0) return;
     setTransferenciaId(id);
     setIsTransferenciaOpen(true);
   };
@@ -307,11 +307,11 @@ export function PickingDetailContent({ picking }: { picking: PickingRow }) {
             <InfoStep icon={WarehouseIcon} label="Ubicación actual">
               {picking.almacen_actual_nombre}
             </InfoStep>
-            {picking.transferencia !== null && (
+            {transferenciaPickingId !== null && (
               <InfoStep icon={TraspasosIcon} label="Traspaso">
                 <button
                   type="button"
-                  onClick={() => openTransferencia(picking.transferencia ?? 0)}
+                  onClick={() => openTransferencia(transferenciaPickingId)}
                   className="font-mono hover:text-sky-600 dark:hover:text-sky-400 hover:underline cursor-pointer"
                   title="Ver detalle"
                 >
