@@ -60,11 +60,19 @@ export const useOpportunityCotizacionesLinks = (opportunityId: number) => {
   return { disponibles: data?.disponibles ?? [], isLoading, isInitialError };
 };
 
-const invalidateAfterLinkChange = (queryClient: ReturnType<typeof useQueryClient>) =>
+/**
+ * `cotizacionIds`: las cotizaciones cuyo `oportunidad` cambió. Su detalle se
+ * relee por id (`["quote", id]` cubre los dos orígenes de `useQuote`), no todos
+ * los detalles que haya en caché.
+ */
+const invalidateAfterLinkChange = (
+  queryClient: ReturnType<typeof useQueryClient>,
+  cotizacionIds: number[]
+) =>
   Promise.all([
     queryClient.invalidateQueries({ queryKey: OPPORTUNITIES_KEY }),
     queryClient.invalidateQueries({ queryKey: ["quotes"] }),
-    queryClient.invalidateQueries({ queryKey: ["quote"] }),
+    ...cotizacionIds.map((id) => queryClient.invalidateQueries({ queryKey: ["quote", id] })),
   ]);
 
 /**
@@ -98,7 +106,7 @@ export const useLigarOpportunityCotizaciones = (opportunityId: number) => {
         )
       );
     },
-    onSettled: () => invalidateAfterLinkChange(queryClient),
+    onSettled: (_data, _error, cotizaciones) => invalidateAfterLinkChange(queryClient, cotizaciones),
   });
 };
 
@@ -126,7 +134,8 @@ export const useQuitarOpportunityCotizacion = (opportunityId: number) => {
         )
       );
     },
-    onSettled: () => invalidateAfterLinkChange(queryClient),
+    onSettled: (_data, _error, cotizacionId) =>
+      invalidateAfterLinkChange(queryClient, [cotizacionId]),
   });
 };
 
