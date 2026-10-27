@@ -82,7 +82,8 @@ const isEstadoRejection = (error: unknown): boolean => {
  *   escribe en `["picking-detail", id]` —lo que pinta `PickingDetailByIdDialog`—
  *   y en su fila de `["pickings"]` —de la que lee el detalle abierto desde el
  *   listado—, para que ambos muestren la ubicación nueva sin esperar al refetch;
- * - se invalidan igual la lista, el detalle y la trazabilidad de los pedidos
+ * - la lista se marca vieja sin relectura inmediata (`refetchType: "none"`: la
+ *   fila ya trae la respuesta) y se invalidan el detalle y la trazabilidad de los pedidos
  *   (`folios_picking` trae la ubicación actual), el onboarding de empaque
  *   (hereda el `almacen_nombre` del picking) y, porque se movió inventario, los
  *   traspasos (`["transferencias"]`), toda vista de existencias y el onboarding
@@ -117,7 +118,9 @@ export const useTransferPicking = (pickingId: number) => {
       queryClient.setQueryData<Picking[]>(["pickings"], (list) =>
         list?.map((item) => (item.id === picking.id ? picking : item)),
       );
-      void queryClient.invalidateQueries({ queryKey: ["pickings"] });
+      // La fila ya tiene la respuesta (misma forma que el listado): se marca
+      // vieja sin volver a pedir el listado completo ahora.
+      void queryClient.invalidateQueries({ queryKey: ["pickings"], refetchType: "none" });
       void invalidatePedidoProgress(queryClient);
       void queryClient.invalidateQueries({ queryKey: ["packing-onboarding"] });
       void queryClient.invalidateQueries({ queryKey: ["picking-onboarding"] });
