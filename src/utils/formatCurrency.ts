@@ -46,13 +46,28 @@ export const NO_CURRENCY_FORMAT: Intl.NumberFormatOptions = {
  * `formatCurrency` pintaría un importe en USD con signo de pesos. Un código que
  * `Intl` no reconozca cae en el `catch` de `formatCurrency`: sin símbolo, pero
  * con los mismos 2 decimales.
+ *
+ * `overrides` (opcional) se aplica encima, con o sin moneda — p. ej.
+ * `{ maximumFractionDigits: 0 }` para las tarjetas compactas o
+ * `currencyDisplay` —; los decimales mínimos se acotan a los máximos pedidos.
+ * Sin `overrides` devuelve exactamente lo mismo que siempre.
  */
 export const moneyFormatFor = (
   monedaCodigo: string | null | undefined,
-): Intl.NumberFormatOptions =>
-  monedaCodigo
+  overrides?: Intl.NumberFormatOptions,
+): Intl.NumberFormatOptions => {
+  const base: Intl.NumberFormatOptions = monedaCodigo
     ? { currency: monedaCodigo, minimumFractionDigits: 2, maximumFractionDigits: 2 }
     : NO_CURRENCY_FORMAT;
+  if (!overrides) return base;
+  const maximumFractionDigits = overrides.maximumFractionDigits ?? 2;
+  return {
+    ...base,
+    ...overrides,
+    minimumFractionDigits: Math.min(overrides.minimumFractionDigits ?? 2, maximumFractionDigits),
+    maximumFractionDigits,
+  };
+};
 
 /**
  * Convierte un string numérico de la API en número, devolviendo 0 cuando el
