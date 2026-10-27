@@ -1,4 +1,5 @@
 import type { InvoiceOnboardingTalla } from "../interfaces/invoice-onboarding.interface";
+import { formatCurrency, NO_CURRENCY_FORMAT } from "@/src/utils/formatCurrency";
 
 export interface InvoiceEstimate {
   subtotalCentavos: number;
@@ -9,14 +10,11 @@ export interface InvoiceEstimate {
 }
 
 /**
- * Centavos → importe es-MX con 2 decimales y "$". Sin código de moneda: el
- * onboarding no dice en qué moneda está el pedido, así que no se presume MXN.
+ * Centavos → importe es-MX con 2 decimales y SIN símbolo (`NO_CURRENCY_FORMAT`):
+ * el onboarding no dice en qué moneda está el pedido, y un "$" afirmaría pesos.
  */
 export const formatCentavos = (centavos: number): string =>
-  `$${new Intl.NumberFormat("es-MX", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(centavos / 100)}`;
+  formatCurrency(centavos / 100, NO_CURRENCY_FORMAT);
 
 /** Redondeo a centavo entero, mitad hacia arriba (`ROUND_HALF_UP`, como el backend). */
 const roundHalfUpDiv = (numerator: number, denominator: number): number =>
