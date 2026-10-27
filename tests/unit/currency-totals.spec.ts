@@ -8,7 +8,7 @@ import {
   visibleCurrencyEntries,
 } from "@/src/utils/currencyTotals";
 import { formatCurrencyTotalsInline, showsCurrencyCodes } from "@/src/components/CurrencyTotalsValue";
-import { currencyHasOwnSymbol, moneyFormatFor, NO_CURRENCY_FORMAT } from "@/src/utils/formatCurrency";
+import { currencyHasOwnSymbol, formatCurrency, moneyFormatFor, NO_CURRENCY_FORMAT } from "@/src/utils/formatCurrency";
 import { formatKpiTaggedCurrencyAmount, formatKpiTaggedSignedCurrencyAmount } from "@/src/utils/kpiFormat";
 import {
   computeAgingBuckets,
@@ -203,6 +203,13 @@ test.describe("currencyTotals", () => {
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
     });
+    // Un mínimo mayor a 2 sube el máximo en vez de recortarse.
+    expect(moneyFormatFor("MXN", { minimumFractionDigits: 4 })).toEqual({
+      currency: "MXN",
+      minimumFractionDigits: 4,
+      maximumFractionDigits: 4,
+    });
+    expect(plain(formatCurrency(1, moneyFormatFor("MXN", { minimumFractionDigits: 4 })))).toBe("$1.0000");
   });
 });
 

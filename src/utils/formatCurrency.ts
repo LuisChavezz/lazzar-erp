@@ -49,7 +49,8 @@ export const NO_CURRENCY_FORMAT: Intl.NumberFormatOptions = {
  *
  * `overrides` (opcional) se aplica encima, con o sin moneda — p. ej.
  * `{ maximumFractionDigits: 0 }` para las tarjetas compactas o
- * `currencyDisplay` —; los decimales mínimos se acotan a los máximos pedidos.
+ * `currencyDisplay` —. Un mínimo sin máximo sube el máximo a ese mínimo; un
+ * máximo por debajo de 2 baja el mínimo a ese máximo.
  * Sin `overrides` devuelve exactamente lo mismo que siempre.
  */
 export const moneyFormatFor = (
@@ -60,7 +61,10 @@ export const moneyFormatFor = (
     ? { currency: monedaCodigo, minimumFractionDigits: 2, maximumFractionDigits: 2 }
     : NO_CURRENCY_FORMAT;
   if (!overrides) return base;
-  const maximumFractionDigits = overrides.maximumFractionDigits ?? 2;
+  // Un mínimo pedido por encima de 2 sube el máximo (no se recorta en silencio);
+  // un máximo pedido por debajo de 2 baja el mínimo.
+  const maximumFractionDigits =
+    overrides.maximumFractionDigits ?? Math.max(2, overrides.minimumFractionDigits ?? 2);
   return {
     ...base,
     ...overrides,
