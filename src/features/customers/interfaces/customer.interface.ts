@@ -43,8 +43,10 @@ export interface Customer {
   /**
    * Solo lectura (#659). `null`: la empresa DEL CLIENTE no usa Facturama.
    * `true`: el cliente está en Facturama y no le falta nada. `false`: no se ha
-   * subido, falte algo (`facturama_faltantes`) o no (cliente anterior a la
-   * sincronización). Volver a guardarlo completo es lo único que lo sube.
+   * subido, falte algo (`facturama_faltantes`) o no. Sin faltantes es un cliente
+   * heredado: anterior a la sincronización, o guardado sin `Id` antes de #675
+   * (puede que ya exista en Facturama). Volver a guardarlo completo es lo único
+   * que lo sube.
    */
   facturama_verificado: boolean | null;
   /** Lo que le falta para subirse a Facturama; `[]` cuando el verificado es `null`. */

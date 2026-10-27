@@ -55,14 +55,12 @@ export const getFacturamaFormWarning = (faltantes: readonly FacturamaFaltante[])
  * Toast del guardado cuando el cliente que devolvió el backend no quedó en
  * Facturama; `null` si sí quedó o su empresa no lo usa (va el toast de éxito).
  * Un guardado que responde 2xx sin quedar en Facturama siempre trae faltantes:
- * completo, o el backend guarda su `Id` o rechaza con 400 `facturama` y no
- * guarda nada (#675).
+ * si el cliente está completo, el backend guarda su `Id` o rechaza con 400
+ * `facturama` y no guarda nada (#675).
  */
 export const getFacturamaSaveWarning = (
   customer: Pick<Customer, "facturama_verificado" | "facturama_faltantes">
 ): string | null => {
-  if (customer.facturama_verificado !== false) {
-    return null;
-  }
-  return `Cliente guardado. ${getFacturamaVerificationNotice(customer)}`;
+  const notice = getFacturamaVerificationNotice(customer);
+  return notice ? `Cliente guardado. ${notice}` : null;
 };
