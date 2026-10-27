@@ -7,14 +7,19 @@
 // (`timezone.localdate()`), así que la marca y el filtro coinciden.
 
 import { safeParseAmount } from "@/src/utils/formatCurrency";
+import { createCurrencyTotals, groupByCurrency, sumAmounts } from "@/src/utils/currencyTotals";
 import type {
-  AgingBucket,
+  AgingByCurrency,
   CuentaPorCobrar,
   CuentaPorCobrarRow,
   CxCKpis,
 } from "../interfaces/accounts-receivable.interface";
 
 const DIA_MS = 86_400_000;
+
+/** Moneda de la cuenta para agrupar; `null` (sin símbolo) si llegara vacía. */
+const monedaDe = (cuenta: Pick<CuentaPorCobrar, "moneda_codigo">): string | null =>
+  cuenta.moneda_codigo || null;
 const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 /**
@@ -119,34 +124,46 @@ export const computeCxcKpis = (
   cuentas: CuentaPorCobrar[],
   today: string,
 ): CxCKpis => {
-  let totalPorCobrar = 0;
-  let totalVencido = 0;
-  let porVencer30 = 0;
-  let cobradoEsteMes = 0;
+  // Por moneda (EC-601): cada indicador registra la moneda de TODA cuenta (con
+  // 0 si no aporta), así que los cuatro listan las mismas monedas.
+  const totalPorCobrar = createCurrencyTotals();
+  const totalVencido = createCurrencyTotals();
+  const porVencer30 = createCurrencyTotals();
+  const cobradoEsteMes = createCurrencyTotals();
   let cuentasVencidas = 0;
 
   for (const c of cuentas) {
+    const moneda = monedaDe(c);
     const saldo = safeParseAmount(c.saldo);
-    totalPorCobrar += saldo;
+    totalPorCobrar.add(moneda, saldo);
+    totalVencido.add(moneda);
+    porVencer30.add(moneda);
+    cobradoEsteMes.add(moneda);
 
     if (isCuentaVencida(c, today)) {
-      totalVencido += saldo;
+      totalVencido.add(moneda, saldo);
       cuentasVencidas += 1;
     }
 
     if (saldo > 0) {
       // 0..30: lo que vence HOY (dias = 0) aún no está vencido.
       const dias = daysUntilDue(c.fecha_vencimiento, today);
-      if (dias !== null && dias >= 0 && dias <= 30) porVencer30 += saldo;
+      if (dias !== null && dias >= 0 && dias <= 30) porVencer30.add(moneda, saldo);
     }
 
     if (c.fecha_ultimo_pago && esMismoMes(c.fecha_ultimo_pago, today)) {
       const abonado = safeParseAmount(c.total) - saldo;
-      if (abonado > 0) cobradoEsteMes += abonado;
+      if (abonado > 0) cobradoEsteMes.add(moneda, abonado);
     }
   }
 
-  return { totalPorCobrar, totalVencido, porVencer30, cobradoEsteMes, cuentasVencidas };
+  return {
+    totalPorCobrar: totalPorCobrar.list(),
+    totalVencido: totalVencido.list(),
+    porVencer30: porVencer30.list(),
+    cobradoEsteMes: cobradoEsteMes.list(),
+    cuentasVencidas,
+  };
 };
 
 // Rangos de antigüedad (días de atraso). El último es abierto (91 → ∞).
@@ -158,29 +175,28 @@ const AGING_DEFS: Array<{ key: string; label: string; min: number; max: number }
 ];
 
 /**
- * Distribuye el saldo vencido por antigüedad. El conjunto de "vencidas" usa la
+ * Distribuye el saldo vencido por antigüedad, UNA distribución por moneda
+ * (EC-601) para cada moneda del conjunto —también las que no tienen nada
+ * vencido—, en el orden de `currencyTotals`. El conjunto de "vencidas" usa la
  * MISMA definición `isCuentaVencida` que el KPI "Vencido" y la alerta, de modo
- * que el total de la antigüedad coincide EXACTAMENTE con `totalVencido`: toda
+ * que el total de cada moneda coincide EXACTAMENTE con su `totalVencido`: toda
  * cuenta vencida tiene `diasVencido >= 1` (vencer hoy aún no es vencida) y los
- * rangos cubren `[1, ∞)` sin huecos, así que cada cuenta cae en exactamente uno. Cada cuenta se ubica según sus días de atraso
- * (`hoy − fecha_vencimiento`).
+ * rangos cubren `[1, ∞)` sin huecos, así que cada cuenta cae en exactamente
+ * uno. Cada cuenta se ubica según sus días de atraso (`hoy − fecha_vencimiento`).
  */
 export const computeAgingBuckets = (
   cuentas: CuentaPorCobrar[],
   today: string,
-): AgingBucket[] => {
-  const vencidas = cuentas.filter((c) => isCuentaVencida(c, today));
-
-  return AGING_DEFS.map(({ key, label, min, max }) => {
-    let count = 0;
-    let amount = 0;
-    for (const c of vencidas) {
-      const dias = diasVencido(c.fecha_vencimiento, today);
-      if (dias >= min && dias <= max) {
-        count += 1;
-        amount += safeParseAmount(c.saldo);
-      }
-    }
-    return { key, label, count, amount };
+): AgingByCurrency[] =>
+  groupByCurrency(cuentas, monedaDe).map(({ moneda, items }) => {
+    const vencidas = items.filter((c) => isCuentaVencida(c, today));
+    const buckets = AGING_DEFS.map(({ key, label, min, max }) => {
+      const enRango = vencidas.filter((c) => {
+        const dias = diasVencido(c.fecha_vencimiento, today);
+        return dias >= min && dias <= max;
+      });
+      const amount = sumAmounts(enRango.map((c) => safeParseAmount(c.saldo)));
+      return { key, label, count: enRango.length, amount };
+    });
+    return { moneda, total: sumAmounts(buckets.map((b) => b.amount)), buckets };
   });
-};

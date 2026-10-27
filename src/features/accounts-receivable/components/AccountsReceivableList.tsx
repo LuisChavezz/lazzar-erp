@@ -7,7 +7,7 @@ import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { hasPermission } from "@/src/utils/permissions";
 import { isInitialLoadError } from "@/src/utils/isInitialLoadError";
 import { WarningFilledIcon, RejectIcon } from "@/src/components/Icons";
-import { formatCurrency } from "@/src/utils/formatCurrency";
+import { formatCurrencyTotalsInline } from "@/src/components/CurrencyTotalsValue";
 import { getAccountsReceivableColumns } from "./AccountsReceivableColumns";
 import { AccountsReceivableDetailDialog } from "./AccountsReceivableDetailDialog";
 import { AccountsReceivableAgingSummary } from "./AccountsReceivableAgingSummary";
@@ -56,9 +56,11 @@ export const AccountsReceivableList = ({ today }: { today: string }) => {
 
   const rows = mapCuentasToRows(cuentas, today);
   const kpis = computeCxcKpis(cuentas, today);
-  const agingBuckets = computeAgingBuckets(cuentas, today);
+  const agingGroups = computeAgingBuckets(cuentas, today);
 
   const showBanner = !showError && !bannerDismissed && kpis.cuentasVencidas > 0;
+  // Solo las monedas con algo vencido: la frase habla de lo que se debe.
+  const totalVencido = kpis.totalVencido.filter((entry) => entry.total > 0);
 
   // Registrar una CxC pendiente (`RegisterPendingInvoiceDialog`, un `POST`
   // independiente del `GET` del listado) vive en el toolbar de `DataTable`
@@ -100,7 +102,7 @@ export const AccountsReceivableList = ({ today }: { today: string }) => {
               {kpis.cuentasVencidas === 1 ? "cuenta vencida" : "cuentas vencidas"} por un total
               de{" "}
               <span className="font-semibold tabular-nums">
-                {formatCurrency(kpis.totalVencido)}
+                {formatCurrencyTotalsInline(totalVencido)}
               </span>
               .
             </p>
@@ -118,7 +120,7 @@ export const AccountsReceivableList = ({ today }: { today: string }) => {
 
       {/* Antigüedad de saldos (oculta ante un error de carga inicial) */}
       {!showError && (
-        <AccountsReceivableAgingSummary buckets={agingBuckets} isLoading={isLoading} />
+        <AccountsReceivableAgingSummary groups={agingGroups} isLoading={isLoading} />
       )}
 
       {/* Tabla principal: Cuentas por Cobrar (maneja carga/error en su cuerpo) */}

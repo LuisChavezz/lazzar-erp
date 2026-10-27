@@ -1,6 +1,8 @@
 import { LoadingSkeleton } from "@/src/components/LoadingSkeleton";
-import { formatCurrency } from "@/src/utils/formatCurrency";
-import type { AgingBucket } from "../interfaces/accounts-receivable.interface";
+import { UNKNOWN_CURRENCY_TAG } from "@/src/components/CurrencyTotalsValue";
+import { formatInCurrency } from "@/src/utils/currencyTotals";
+import { formatKpiCurrencyAmount } from "@/src/utils/kpiFormat";
+import type { AgingByCurrency } from "../interfaces/accounts-receivable.interface";
 
 const BUCKET_STYLES: Record<string, { bar: string; chip: string; dot: string }> = {
   "1-30": { bar: "bg-amber-400", chip: "text-amber-600 dark:text-amber-400", dot: "bg-amber-400" },
@@ -9,14 +11,37 @@ const BUCKET_STYLES: Record<string, { bar: string; chip: string; dot: string }> 
   "90+": { bar: "bg-red-600", chip: "text-red-700 dark:text-red-500", dot: "bg-red-600" },
 };
 
+/** Sin cuentas no hay moneda que afirmar: rangos en 0, sin símbolo (EC-600). */
+const EMPTY_GROUP: AgingByCurrency = {
+  moneda: null,
+  total: 0,
+  buckets: [
+    { key: "1-30", label: "1–30 días", count: 0, amount: 0 },
+    { key: "31-60", label: "31–60 días", count: 0, amount: 0 },
+    { key: "61-90", label: "61–90 días", count: 0, amount: 0 },
+    { key: "90+", label: "+90 días", count: 0, amount: 0 },
+  ],
+};
+
+/**
+ * Antigüedad de saldos vencidos, UNA barra y un desglose por moneda (EC-601):
+ * los anchos y porcentajes son proporciones dentro de cada moneda, nunca sobre
+ * importes de monedas distintas. Con una sola moneda se ve igual que antes
+ * (total en el encabezado, sin código de moneda).
+ */
 export const AccountsReceivableAgingSummary = ({
-  buckets,
+  groups,
   isLoading = false,
 }: {
-  buckets: AgingBucket[];
+  groups: AgingByCurrency[];
   isLoading?: boolean;
 }) => {
-  const total = buckets.reduce((acc, b) => acc + b.amount, 0);
+  const multi = groups.length > 1;
+  const shown = groups.length > 0 ? groups : [EMPTY_GROUP];
+  // Con varias monedas cada importe lleva el símbolo de la suya y el código
+  // va en el encabezado de su grupo (mismo criterio que `KpiCurrencyBlocks`).
+  const formatAmount = (amount: number, moneda: string | null) =>
+    multi && moneda ? formatKpiCurrencyAmount(amount, moneda) : formatInCurrency(amount, moneda);
 
   return (
     <div className="rounded-xl bg-white dark:bg-black border border-slate-200 dark:border-white/10 p-5 shadow-sm">
@@ -26,17 +51,59 @@ export const AccountsReceivableAgingSummary = ({
             Antigüedad de saldos vencidos
           </h3>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-            Distribución del monto vencido por días de atraso
+            {multi
+              ? "Distribución del monto vencido por días de atraso, por moneda"
+              : "Distribución del monto vencido por días de atraso"}
           </p>
         </div>
-        {isLoading ? (
+        {multi ? null : isLoading ? (
           <LoadingSkeleton className="h-4 w-20 rounded" />
         ) : (
           <span className="text-sm font-bold text-red-600 dark:text-red-400 tabular-nums">
-            {formatCurrency(total)}
+            {formatAmount(shown[0].total, shown[0].moneda)}
           </span>
         )}
       </div>
+
+      <div className={multi ? "space-y-6" : undefined}>
+        {shown.map((group) => (
+          <AgingGroup
+            key={group.moneda ?? UNKNOWN_CURRENCY_TAG}
+            group={group}
+            isLoading={isLoading}
+            showHeader={multi}
+            formatAmount={(amount) => formatAmount(amount, group.moneda)}
+          />
+        ))}
+      </div>
+    </div>
+  );
+};
+
+function AgingGroup({
+  group,
+  isLoading,
+  showHeader,
+  formatAmount,
+}: {
+  group: AgingByCurrency;
+  isLoading: boolean;
+  showHeader: boolean;
+  formatAmount: (amount: number) => string;
+}) {
+  const { buckets, total } = group;
+  return (
+    <section aria-label={showHeader ? `Antigüedad en ${group.moneda ?? UNKNOWN_CURRENCY_TAG}` : undefined}>
+      {showHeader && (
+        <div className="flex items-baseline justify-between mb-2">
+          <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+            {group.moneda ?? UNKNOWN_CURRENCY_TAG}
+          </span>
+          <span className="text-sm font-bold text-red-600 dark:text-red-400 tabular-nums">
+            {formatAmount(total)}
+          </span>
+        </div>
+      )}
 
       {/* Barra segmentada */}
       {isLoading ? (
@@ -52,7 +119,7 @@ export const AccountsReceivableAgingSummary = ({
                   key={bucket.key}
                   className={`h-full ${BUCKET_STYLES[bucket.key].bar}`}
                   style={{ width: `${width}%` }}
-                  title={`${bucket.label}: ${formatCurrency(bucket.amount)}`}
+                  title={`${bucket.label}: ${formatAmount(bucket.amount)}`}
                 />
               );
             })
@@ -86,7 +153,7 @@ export const AccountsReceivableAgingSummary = ({
               ) : (
                 <>
                   <p className="text-base font-bold text-slate-800 dark:text-white tabular-nums mt-1.5">
-                    {formatCurrency(bucket.amount)}
+                    {formatAmount(bucket.amount)}
                   </p>
                   <p className={`text-[11px] font-medium mt-0.5 ${style.chip}`}>
                     {bucket.count} {bucket.count === 1 ? "cuenta" : "cuentas"} · {pct}%
@@ -97,6 +164,6 @@ export const AccountsReceivableAgingSummary = ({
           );
         })}
       </div>
-    </div>
+    </section>
   );
-};
+}

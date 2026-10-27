@@ -5,6 +5,8 @@
 // parsea con los helpers de `utils/` para calcular KPIs, antigüedad y días de
 // atraso.
 
+import type { CurrencyTotal } from "@/src/utils/currencyTotals";
+
 /**
  * Estatus de una cuenta por cobrar: el enum COMPLETO del backend
  * (`CuentaPorCobrar.EstatusCxC`). "Vencida" NO es un estatus: se deriva por
@@ -79,24 +81,37 @@ export interface CuentaPorCobrarRow extends CuentaPorCobrar {
   esta_vencida: boolean;
 }
 
-/** KPIs derivados que alimentan las tarjetas del encabezado. */
+/**
+ * KPIs derivados que alimentan las tarjetas del encabezado. Los importes van
+ * POR MONEDA (EC-601): cada uno lista TODAS las monedas del conjunto cargado,
+ * en el mismo orden (`currencyTotals`), con 0 en las que no aportan.
+ */
 export interface CxCKpis {
   /** Suma de `saldo` de todas las cuentas (las de saldo 0 no aportan). */
-  totalPorCobrar: number;
+  totalPorCobrar: CurrencyTotal[];
   /** Suma de `saldo` de las cuentas vencidas (ver `isCuentaVencida`). */
-  totalVencido: number;
+  totalVencido: CurrencyTotal[];
   /** Suma de `saldo` de las cuentas por vencer en los próximos 30 días. */
-  porVencer30: number;
+  porVencer30: CurrencyTotal[];
   /** Aproximación del cobrado en el mes en curso (ver `computeCxcKpis`). */
-  cobradoEsteMes: number;
-  /** Número de cuentas vencidas (ver `isCuentaVencida`). */
+  cobradoEsteMes: CurrencyTotal[];
+  /** Número de cuentas vencidas de todas las monedas (un conteo sí se suma). */
   cuentasVencidas: number;
 }
 
-/** Rango de antigüedad de saldos vencidos. */
+/** Rango de antigüedad de saldos vencidos (importe en la moneda de su grupo). */
 export interface AgingBucket {
   key: string;
   label: string;
   count: number;
   amount: number;
+}
+
+/** Antigüedad de saldos vencidos de UNA moneda: sus rangos y su total. */
+export interface AgingByCurrency {
+  /** Código ISO de la moneda (`moneda_codigo`); `null` si la cuenta no lo trae. */
+  moneda: string | null;
+  /** Suma de los rangos (= `totalVencido` de esa moneda). */
+  total: number;
+  buckets: AgingBucket[];
 }
