@@ -1,4 +1,5 @@
-import { useQuery } from "@tanstack/react-query";
+import { useGuardedQuery } from "@/src/hooks/useGuardedQuery";
+import { isNotFoundOrForbiddenError } from "@/src/utils/drfWriteErrors";
 import { getTransferenciaDetail } from "../services/actions";
 import type { TransferenciaDetail } from "../interfaces/stock-transfer.interface";
 
@@ -17,11 +18,27 @@ import type { TransferenciaDetail } from "../interfaces/stock-transfer.interface
  * invalida `useCreateStockTransfer` al registrar un traspaso NUEVO, algo que
  * no tiene relación con refrescar el detalle YA ABIERTO de otro traspaso.
  * Mismo razonamiento que `useCuentaPorCobrarDetail`.
+ *
+ * **El 403 y el 404 son DEFINITIVOS** (`isNotFoundOrForbiddenError`, como en
+ * `useSupplier`): no se reintentan ni conservan lo ya cargado, y se exponen
+ * como `isNotFound`. El detalle también se abre desde un picking, cuyo usuario
+ * puede no ver la TR (el listado de traspasos se acota por la sucursal de la
+ * TR). Un refetch fallido por otra causa conserva los datos y avisa por toast.
  */
 export const useTransferenciaDetail = (id: number) => {
-  return useQuery<TransferenciaDetail>({
-    queryKey: ["transferencia-detail", id],
-    queryFn: () => getTransferenciaDetail(id),
-    enabled: id > 0,
-  });
+  const { data, isLoading, isInitialError, isDefinitiveError, error } =
+    useGuardedQuery<TransferenciaDetail>(
+      {
+        queryKey: ["transferencia-detail", id],
+        queryFn: () => getTransferenciaDetail(id),
+        enabled: id > 0,
+      },
+      {
+        toastId: "transferencia-detail-refetch-error",
+        errorMessage: "No se pudo actualizar el traspaso. Mostrando datos anteriores.",
+        isDefinitiveError: isNotFoundOrForbiddenError,
+      },
+    );
+
+  return { data, isLoading, isInitialError, isNotFound: isDefinitiveError, error };
 };

@@ -11,7 +11,6 @@ import {
   LineItemsTable,
   SectionTitle,
 } from "@/src/components/DetailDialogPrimitives";
-import { isNotFoundOrForbiddenError } from "@/src/utils/drfWriteErrors";
 import { formatExactQuantityValue } from "@/src/utils/formatCurrency";
 import { formatShortDate, formatShortTime } from "@/src/utils/formatDate";
 import { TRANSFER_STATUS_CONFIG } from "../constants/transferStatus";
@@ -72,7 +71,8 @@ export function StockTransferDetailDialog({
   open,
   onOpenChange,
 }: StockTransferDetailDialogProps) {
-  const { data, isLoading, isError, error } = useTransferenciaDetail(transferId);
+  const { data, isLoading, isInitialError, isNotFound, error } =
+    useTransferenciaDetail(transferId);
 
   return (
     <MainDialog
@@ -88,7 +88,11 @@ export function StockTransferDetailDialog({
               Detalle de Traspaso
             </p>
             <p className="text-xs text-slate-500 dark:text-slate-400 font-mono font-normal mt-0.5">
-              {data ? data.folio : isError ? "Error al cargar" : "Cargando…"}
+              {data
+                ? data.folio
+                : isInitialError || isNotFound
+                  ? "Error al cargar"
+                  : "Cargando…"}
             </p>
           </div>
         </div>
@@ -98,22 +102,24 @@ export function StockTransferDetailDialog({
       {isLoading && <Loader title="Cargando detalle del traspaso..." className="py-16" />}
 
       {/* ── Estado: error ─────────────────────────────────────────────────── */}
-      {/* 403/404: el traspaso existe en otra sucursal o ya no es visible. Se
-          abre también desde el detalle de un picking, cuyo usuario puede no
-          tener acceso a la TR: el mensaje crudo de Axios no le diría nada. */}
-      {isError && (
+      {/* 403/404 (definitivos en `useTransferenciaDetail`): el traspaso es de
+          otra sucursal o ya no es visible. Se abre también desde el detalle de
+          un picking, cuyo usuario puede no tener acceso a la TR. */}
+      {isNotFound && (
         <ErrorState
           title="Error al cargar el detalle del traspaso"
-          message={
-            isNotFoundOrForbiddenError(error)
-              ? "No tienes acceso a este traspaso o ya no existe."
-              : (error as Error)?.message
-          }
+          message="No tienes acceso a este traspaso o ya no existe."
+        />
+      )}
+      {isInitialError && (
+        <ErrorState
+          title="Error al cargar el detalle del traspaso"
+          message={(error as Error)?.message}
         />
       )}
 
       {/* ── Estado: datos cargados ────────────────────────────────────────── */}
-      {!isLoading && !isError && data && (
+      {!isLoading && data && (
         <div className="space-y-5">
           {/* Resumen */}
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-3 px-4 py-3 rounded-xl bg-slate-50 dark:bg-white/5 text-xs">
