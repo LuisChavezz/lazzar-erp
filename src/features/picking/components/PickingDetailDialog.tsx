@@ -1,10 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import type { ComponentType, SVGProps } from "react";
+import type { ComponentType, ReactNode, SVGProps } from "react";
 import { useSession } from "next-auth/react";
 import {
-  ChevronRightIcon,
   ExclamationTriangleIcon,
   PedidosIcon,
   RouteIcon,
@@ -29,6 +28,7 @@ import { PICKING_STATUS_CONFIG } from "../constants/pickingStatus";
 import { PICKING_TIPO_LABELS } from "../constants/pickingTipo";
 import type { PickingDetalleLine, PickingRow } from "../interfaces/picking.interface";
 import { isPickingTrasladable } from "../utils/picking.utils";
+import { StockTransferDetailDialog } from "@/src/features/stock-transfers/components/StockTransferDetailDialog";
 import { PickingTransferDialog } from "./PickingTransferDialog";
 
 /**
@@ -122,18 +122,17 @@ const LineasTable = ({ items }: { items: PickingDetalleLine[] }) => {
 };
 
 /**
- * Un eslabón de la cadena "Pedido → Origen → Destino": ícono, rótulo y valor.
- * El rótulo existe porque origen y destino son ambos nombres de almacén y sin
- * él no habría forma de saber cuál es cuál.
+ * Un dato de la franja "Pedido · Ubicación actual · Traspaso": ícono, rótulo y
+ * valor (texto o, para el folio de la TR, el botón que abre su detalle).
  */
-const ChainStep = ({
+const InfoStep = ({
   icon: Icon,
   label,
-  value,
+  children,
 }: {
   icon: ComponentType<SVGProps<SVGSVGElement>>;
   label: string;
-  value: string;
+  children: ReactNode;
 }) => (
   <div className="flex items-center gap-2 flex-1 min-w-0">
     <Icon className="w-4 h-4 text-slate-400 shrink-0" aria-hidden="true" />
@@ -142,7 +141,7 @@ const ChainStep = ({
         {label}
       </p>
       <p className="text-sm font-semibold text-slate-700 dark:text-slate-200 truncate">
-        {value}
+        {children}
       </p>
     </div>
   </div>
@@ -201,6 +200,13 @@ export function PickingDetailDialog({ picking, open, onOpenChange }: PickingDeta
 export function PickingDetailContent({ picking }: { picking: PickingRow }) {
   const { data: session } = useSession();
   const [isTransferOpen, setIsTransferOpen] = useState(false);
+  const [transferenciaId, setTransferenciaId] = useState(0);
+  const [isTransferenciaOpen, setIsTransferenciaOpen] = useState(false);
+  const openTransferencia = (id: number) => {
+    if (id <= 0) return;
+    setTransferenciaId(id);
+    setIsTransferenciaOpen(true);
+  };
   const canTransfer =
     hasPermission("C-WMS-PICKING", session?.user) && isPickingTrasladable(picking);
 
@@ -268,26 +274,20 @@ export function PickingDetailContent({ picking }: { picking: PickingRow }) {
           )}
         </div>
 
-        {/* Pedido → almacén origen → almacén destino (apartados).
-            El destino es información distinta del origen y CONVIVE con él: el
-            origen es de donde se recolecta y el destino a dónde está PREVISTO
-            llevar lo surtido —normalmente el almacén "APARTADOS", que el
-            backend resuelve solo cuando el alta no lo especifica—. Sin
-            rotularlos, dos nombres de almacén seguidos serían indistinguibles,
-            de ahí las etiquetas.
+        {/* Pedido · ubicación actual · traspaso.
+            Crear el picking y cada traslado generan una transferencia (folio
+            TR) que MUEVE las existencias, así que lo que importa es dónde
+            están HOY las prendas: `almacen_actual`, resuelto por el backend.
+            Origen y destino no lo describen tras un traslado (`almacen` pasa a
+            ser el nuevo y `almacen_destino` queda en `null`).
 
-            El tramo del destino se pinta SIEMPRE, con «Sin destino» cuando el
-            registro no lo trae: pasa con pickings anteriores a la migración que
-            lo introdujo y con los que se trasladaron a su propio destino (el
-            backend lo limpia). Ocultarlo haría parecer que nunca lo tuvo.
-
-            La cadena con flechas se lee como un movimiento, y ni registrar el
-            picking ni trasladarlo mueven existencias (el backend solo guarda el
-            documento: sin transferencia, sin reserva). De ahí la aclaración al
-            pie, visible siempre — haya destino o no. */}
+            El folio es el de la TR que dejó las prendas ahí (la del alta o la
+            del último traslado) y abre su detalle en un diálogo encima de
+            este, sin navegar a /config (que exige R-CONFIGURACION). Sin TR
+            (`transferencia` nulo) no se pinta. */}
         <div>
           <div className="flex items-center justify-between gap-3">
-            <SectionTitle>Pedido y Almacenes</SectionTitle>
+            <SectionTitle>Pedido y Ubicación</SectionTitle>
             {canTransfer && (
               <button
                 type="button"
@@ -300,20 +300,25 @@ export function PickingDetailContent({ picking }: { picking: PickingRow }) {
             )}
           </div>
           <div className="flex items-center gap-3 px-4 py-3 rounded-xl border border-slate-100 dark:border-white/10">
-            <ChainStep icon={PedidosIcon} label="Pedido" value={picking.pedido_folio} />
-            <ChevronRightIcon className="w-4 h-4 text-sky-500 shrink-0" aria-hidden="true" />
-            <ChainStep icon={WarehouseIcon} label="Origen" value={picking.almacen_nombre} />
-            <ChevronRightIcon className="w-4 h-4 text-sky-500 shrink-0" aria-hidden="true" />
-            <ChainStep
-              icon={WarehouseIcon}
-              label="Destino"
-              value={picking.almacen_destino_nombre ?? "Sin destino"}
-            />
+            <InfoStep icon={PedidosIcon} label="Pedido">
+              {picking.pedido_folio}
+            </InfoStep>
+            <InfoStep icon={WarehouseIcon} label="Ubicación actual">
+              {picking.almacen_actual_nombre}
+            </InfoStep>
+            {picking.transferencia !== null && (
+              <InfoStep icon={TraspasosIcon} label="Traspaso">
+                <button
+                  type="button"
+                  onClick={() => openTransferencia(picking.transferencia ?? 0)}
+                  className="font-mono hover:text-sky-600 dark:hover:text-sky-400 hover:underline cursor-pointer"
+                  title="Ver detalle"
+                >
+                  {textOrDash(picking.transferencia_folio)}
+                </button>
+              </InfoStep>
+            )}
           </div>
-          <p className="mt-1.5 px-1 text-[11px] text-slate-500 dark:text-slate-400">
-            El surtido solo queda documentado: ni el destino ni un traslado de
-            almacén mueven existencias por sí mismos.
-          </p>
         </div>
 
         {/* Líneas */}
@@ -331,6 +336,16 @@ export function PickingDetailContent({ picking }: { picking: PickingRow }) {
             picking={picking}
             open={isTransferOpen}
             onOpenChange={setIsTransferOpen}
+          />
+        )}
+
+        {/* El id se guarda al abrir: un traslado cambia `picking.transferencia`
+            y el detalle abierto no debe saltar a otra TR. */}
+        {transferenciaId > 0 && (
+          <StockTransferDetailDialog
+            transferId={transferenciaId}
+            open={isTransferenciaOpen}
+            onOpenChange={setIsTransferenciaOpen}
           />
         )}
       </div>
