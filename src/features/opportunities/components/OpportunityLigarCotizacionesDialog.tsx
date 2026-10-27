@@ -43,6 +43,10 @@ function LigarCotizacionesContent({
 
   return (
     <MultiSelectPickerDialogContent<OpportunityCotizacion>
+      // Si la lista cambia (la relectura tras un rechazo quita las que otra
+      // persona ligó), la selección se reinicia: si no, el contador seguiría
+      // contando cotizaciones que ya no están a la vista.
+      key={ligables.map((cotizacion) => cotizacion.id).join(",")}
       title="Ligar cotizaciones"
       subtitle="Cotizaciones del cliente que no están en ninguna oportunidad (las 100 más recientes). Las autorizadas no se ligan desde aquí."
       items={ligables}
