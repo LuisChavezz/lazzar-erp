@@ -7,6 +7,7 @@ import { formatCurrency, NO_CURRENCY_FORMAT, safeParseAmount } from "@/src/utils
 import { formatShortDate } from "@/src/utils/formatDate";
 import { OPPORTUNITY_GONE_DETAIL_MESSAGE } from "../hooks/opportunityErrorMessages";
 import {
+  isLigarOportunidadRejection,
   ligarCotizacionesMutationKey,
   useLigarOpportunityCotizaciones,
   useOpportunityCotizacionesLinks,
@@ -28,7 +29,8 @@ interface OpportunityLigarCotizacionesDialogProps {
  * oportunidad a Ganada al instante y ya no se puede quitar (el DELETE responde
  * 400). Las rechazadas sí se ofrecen.
  *
- * Queda abierto mientras se guarda y se cierra solo con éxito: con un rechazo
+ * Queda abierto mientras se guarda y se cierra con éxito o cuando el rechazo es
+ * de la OPORTUNIDAD (`etapa`, `cliente`). Con un rechazo de las cotizaciones
  * (todo o nada) la selección sigue ahí y la relectura actualiza la lista.
  */
 function LigarCotizacionesContent({
@@ -96,7 +98,15 @@ function LigarCotizacionesContent({
       onConfirm={(cotizaciones) =>
         ligar(
           cotizaciones.map((cotizacion) => cotizacion.id),
-          { onSuccess: onClose }
+          {
+            onSuccess: onClose,
+            // La oportunidad ya no admite ligar (Perdida, sin cliente): el
+            // detalle ya se releyó y oculta el botón; seguir aquí solo
+            // permitiría repetir el mismo 400.
+            onError: (error) => {
+              if (isLigarOportunidadRejection(error)) onClose();
+            },
+          }
         )
       }
       onCancel={onClose}

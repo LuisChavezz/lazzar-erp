@@ -2,9 +2,11 @@
 
 import { useEffect } from "react";
 import { useMutation, useMutationState, useQueryClient } from "@tanstack/react-query";
+import { AxiosError } from "axios";
 import toast from "react-hot-toast";
 import { useGuardedQuery } from "@/src/hooks/useGuardedQuery";
 import { drfActionErrorMessage, isNotFoundError } from "@/src/utils/drfWriteErrors";
+import { firstRejectionMessage } from "@/src/utils/firstDrfMessage";
 import { retryUnlessClientError } from "@/src/utils/retryUnlessClientError";
 import type { OpportunityCotizacionesLinks } from "../interfaces/opportunity-onboarding.interface";
 import {
@@ -36,7 +38,17 @@ import { opportunityDetailKey } from "./useOpportunityDetail";
  * una autorizada)— y un 404 con `detail`; el helper muestra el primero.
  */
 
-export const opportunityCotizacionesKey = (opportunityId: number) =>
+/**
+ * ¿El POST de "Ligar" se rechazó por la OPORTUNIDAD y no por las cotizaciones?
+ * 400 con `etapa` (se marcó Perdida) o `cliente` (se le quitó): reintentar da el
+ * mismo 400, así que el selector se cierra. Con `cotizaciones` sigue abierto.
+ */
+export const isLigarOportunidadRejection = (error: unknown): boolean =>
+  error instanceof AxiosError &&
+  error.response?.status === 400 &&
+  firstRejectionMessage(error.response.data, ["etapa", "cliente"]) !== undefined;
+
+export const opportunityCotizacionesKey =(opportunityId: number) =>
   [...OPPORTUNITIES_KEY, "cotizaciones", opportunityId] as const;
 
 /**
