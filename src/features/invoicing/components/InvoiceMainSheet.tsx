@@ -19,7 +19,7 @@ import {
   InfoGrid,
   textOrDash,
 } from "@/src/components/DetailDialogPrimitives";
-import { formatCurrency } from "@/src/utils/formatCurrency";
+import { formatCurrency, moneyFormatFor } from "@/src/utils/formatCurrency";
 import { formatShortDateTime } from "@/src/utils/formatDate";
 import { PedidoFolioLink } from "@/src/features/orders/components/PedidoFolioLink";
 import { INVOICE_ORIGIN_ID_PARAM } from "@/src/features/orders/constants/pedidoDetailOrigins";
@@ -335,7 +335,7 @@ function InvoiceCfdiStamp({ invoice }: { invoice: Invoice }) {
  * Todo sale del desglose; solo las acciones usan el retrieve.
  */
 export function InvoiceMainSheet({ data, invoice, canOpen, user }: InvoiceMainSheetProps) {
-  const money = (value: number) => formatCurrency(value, { currency: data.moneda.codigo_iso });
+  const money = (value: number) => formatCurrency(value, moneyFormatFor(data.moneda.codigo_iso));
   const { emisor, receptor, pedido, importes } = data;
 
   return (
