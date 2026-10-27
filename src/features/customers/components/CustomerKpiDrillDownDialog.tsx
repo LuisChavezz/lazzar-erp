@@ -11,7 +11,7 @@ import type {
   CustomerKpis,
   CustomerSalesKpiAvailable,
 } from "../interfaces/customer-kpis.interface";
-import { formatKpiCurrencyAmount, formatKpiDate, formatKpiPct, plural } from "@/src/utils/kpiFormat";
+import { formatKpiCurrencyAmount, formatKpiDate, formatKpiPct, formatKpiTaggedCurrencyAmount, plural } from "@/src/utils/kpiFormat";
 
 /** Bloques con drill-down (todos los que el backend lista). */
 export type CustomerKpiDrillDownKind = "ventas_por_cliente" | "clientes_activos" | "cartera_antiguedad";
@@ -75,7 +75,7 @@ function SalesContent({ kpi }: { kpi: CustomerSalesKpiAvailable }) {
       {kpi.por_moneda.map((moneda) => (
         <section key={moneda.moneda} aria-label={`Facturación en ${moneda.moneda}`}>
           <SectionTitle>
-            {moneda.moneda} · Total {formatKpiCurrencyAmount(moneda.total_facturado, moneda.moneda)} ·{" "}
+            {moneda.moneda} · Total {formatKpiTaggedCurrencyAmount(moneda.total_facturado, moneda.moneda)} ·{" "}
             {moneda.total_clientes_facturados}{" "}
             {plural(moneda.total_clientes_facturados, "cliente", "clientes")}
           </SectionTitle>

@@ -1,4 +1,4 @@
-import { formatKpiCurrencyAmount } from "@/src/utils/kpiFormat";
+import { formatKpiTaggedCurrencyAmount } from "@/src/utils/kpiFormat";
 
 /**
  * Piezas de los indicadores que llegan POR MONEDA (`por_moneda[]` del backend):
@@ -70,7 +70,7 @@ export function KpiCurrencyBlocks({ blocks }: { blocks: KpiCurrencyBlock[] }) {
     <KpiTaggedBlocks
       blocks={blocks.map((block) => ({
         key: block.moneda,
-        value: formatKpiCurrencyAmount(block.monto, block.moneda),
+        value: formatKpiTaggedCurrencyAmount(block.monto, block.moneda),
         tag: block.moneda,
         detail: block.detail,
       }))}
@@ -82,7 +82,7 @@ export function KpiCurrencyBlocks({ blocks }: { blocks: KpiCurrencyBlock[] }) {
 export function KpiCurrencyAmount({ value, moneda }: { value: number; moneda: string }) {
   return (
     <>
-      {formatKpiCurrencyAmount(value, moneda)}{" "}
+      {formatKpiTaggedCurrencyAmount(value, moneda)}{" "}
       <span className="text-xs text-slate-400 dark:text-slate-500">{moneda}</span>
     </>
   );

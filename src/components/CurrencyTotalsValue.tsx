@@ -1,5 +1,6 @@
 import { KpiTaggedBlocks } from "@/src/components/KpiCurrency";
 import { formatInCurrency, type CurrencyTotal } from "@/src/utils/currencyTotals";
+import { currencyHasOwnSymbol } from "@/src/utils/formatCurrency";
 
 /**
  * Totales que el frontend suma POR MONEDA (EC-601, `currencyTotals`) dentro del
@@ -14,12 +15,16 @@ export const UNKNOWN_CURRENCY_TAG = "Sin moneda";
 /**
  * Importe de un bloque, con los decimales que pidió quien llama: símbolo
  * estrecho de su moneda (`narrowSymbol`, como `formatKpiCurrencyAmount`; el
- * código va aparte) o, sin moneda, sin símbolo.
+ * código va aparte). Sin moneda, o si la moneda no tiene símbolo propio y
+ * `Intl` repetiría el código (XTS, monedas privadas), sin símbolo.
  */
 const formatBlockAmount = (
   { moneda, total }: CurrencyTotal,
   options?: Intl.NumberFormatOptions,
-): string => formatInCurrency(total, moneda, { currencyDisplay: "narrowSymbol", ...options });
+): string =>
+  moneda && currencyHasOwnSymbol(moneda)
+    ? formatInCurrency(total, moneda, { currencyDisplay: "narrowSymbol", ...options })
+    : formatInCurrency(total, null, options);
 
 /**
  * Valor de una tarjeta con un importe por moneda.

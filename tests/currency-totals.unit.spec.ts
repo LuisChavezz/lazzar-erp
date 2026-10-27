@@ -7,6 +7,8 @@ import {
   sumByCurrency,
 } from "@/src/utils/currencyTotals";
 import { formatCurrencyTotalsInline } from "@/src/components/CurrencyTotalsValue";
+import { currencyHasOwnSymbol, moneyFormatFor, NO_CURRENCY_FORMAT } from "@/src/utils/formatCurrency";
+import { formatKpiTaggedCurrencyAmount, formatKpiTaggedSignedCurrencyAmount } from "@/src/utils/kpiFormat";
 import {
   computeAgingBuckets,
   computeCxcKpis,
@@ -107,6 +109,35 @@ test.describe("currencyTotals", () => {
       ),
     ).toBe("$1,500.00 MXN y $20.00 USD");
     expect(plain(formatCurrencyTotalsInline([]))).toBe("0.00");
+  });
+
+  test("una moneda sin símbolo propio no repite su código junto a la etiqueta", () => {
+    expect(currencyHasOwnSymbol("MXN")).toBe(true);
+    expect(currencyHasOwnSymbol("USD")).toBe(true);
+    expect(currencyHasOwnSymbol("XTS")).toBe(false);
+    expect(currencyHasOwnSymbol("QXA")).toBe(false);
+    expect(currencyHasOwnSymbol("no-es-iso")).toBe(false);
+    expect(plain(formatKpiTaggedCurrencyAmount(12, "XTS"))).toBe("12.00");
+    expect(plain(formatKpiTaggedCurrencyAmount(12, "USD"))).toBe("$12.00");
+    expect(plain(formatKpiTaggedSignedCurrencyAmount(-3, "QXA"))).toBe("-3.00");
+    expect(
+      plain(
+        formatCurrencyTotalsInline([
+          { moneda: "MXN", total: 10 },
+          { moneda: "XTS", total: 12 },
+        ]),
+      ),
+    ).toBe("$10.00 MXN y 12.00 XTS");
+  });
+
+  test("moneyFormatFor sin overrides no cambia", () => {
+    expect(moneyFormatFor("MXN")).toEqual({ currency: "MXN", minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    expect(moneyFormatFor(null)).toBe(NO_CURRENCY_FORMAT);
+    expect(moneyFormatFor("MXN", { maximumFractionDigits: 0 })).toEqual({
+      currency: "MXN",
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    });
   });
 });
 

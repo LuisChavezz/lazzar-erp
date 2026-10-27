@@ -1,4 +1,4 @@
-import { formatMoneyValue } from "@/src/utils/formatCurrency";
+import { currencyHasOwnSymbol, formatMoneyValue, NO_CURRENCY_FORMAT } from "@/src/utils/formatCurrency";
 import { parseLocalDate } from "@/src/utils/formatDate";
 import { formatPercentageNumber } from "@/src/utils/percentage";
 
@@ -25,6 +25,23 @@ export const formatKpiCurrencyAmount = (value: string | number, moneda: string):
  */
 export const formatKpiSignedCurrencyAmount = (value: string | number, moneda: string): string =>
   formatMoneyValue(value, { currency: moneda, currencyDisplay: "narrowSymbol", signDisplay: "exceptZero" });
+
+/**
+ * Como `formatKpiCurrencyAmount`, para donde la UI YA muestra el código al lado
+ * (bloques por moneda, "… USD"): si la moneda no tiene símbolo propio (XTS, una
+ * moneda privada), `Intl` imprimiría el código y saldría dos veces, así que el
+ * importe va sin símbolo (`currencyHasOwnSymbol`).
+ */
+export const formatKpiTaggedCurrencyAmount = (value: string | number, moneda: string): string =>
+  currencyHasOwnSymbol(moneda)
+    ? formatKpiCurrencyAmount(value, moneda)
+    : formatMoneyValue(value, NO_CURRENCY_FORMAT);
+
+/** Como `formatKpiSignedCurrencyAmount`, con el mismo criterio que `formatKpiTaggedCurrencyAmount`. */
+export const formatKpiTaggedSignedCurrencyAmount = (value: string | number, moneda: string): string =>
+  currencyHasOwnSymbol(moneda)
+    ? formatKpiSignedCurrencyAmount(value, moneda)
+    : formatMoneyValue(value, { ...NO_CURRENCY_FORMAT, signDisplay: "exceptZero" });
 
 /** Porcentaje del backend (0–100, 1 decimal) como "25.0%": siempre con su decimal. */
 export const formatKpiPct = (value: number): string => `${formatPercentageNumber(value, 1)}%`;

@@ -70,6 +70,28 @@ export const moneyFormatFor = (
 };
 
 /**
+ * ¿`Intl` tiene un símbolo propio para `monedaCodigo` (es-MX, `narrowSymbol`)?
+ * Para los códigos sin símbolo (XTS, monedas privadas como QXA) `Intl` imprime
+ * el propio código: donde la UI ya muestra el código al lado, el importe va sin
+ * símbolo para no repetirlo ("XTS 12 XTS"). Un código que `Intl` rechaza
+ * tampoco tiene símbolo (`formatCurrency` ya lo pinta sin él).
+ */
+export const currencyHasOwnSymbol = (monedaCodigo: string): boolean => {
+  try {
+    const symbol = new Intl.NumberFormat("es-MX", {
+      style: "currency",
+      currency: monedaCodigo,
+      currencyDisplay: "narrowSymbol",
+    })
+      .formatToParts(0)
+      .find((part) => part.type === "currency")?.value;
+    return symbol !== undefined && symbol.toUpperCase() !== monedaCodigo.toUpperCase();
+  } catch {
+    return false;
+  }
+};
+
+/**
  * Convierte un string numérico de la API en número, devolviendo 0 cuando el
  * valor es nulo, vacío o no numérico. Usa `Number()` en vez de `parseFloat()`
  * porque este último parsea parcialmente strings como "1,234.50" (devuelve

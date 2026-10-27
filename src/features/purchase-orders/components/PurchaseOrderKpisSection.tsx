@@ -20,7 +20,7 @@ import type {
   PurchaseOrderOverdueKpi,
   PurchaseOrderSpendKpi,
 } from "../interfaces/purchase-order-kpis.interface";
-import { formatKpiCurrencyAmount, plural } from "@/src/utils/kpiFormat";
+import { formatKpiTaggedCurrencyAmount, plural } from "@/src/utils/kpiFormat";
 import {
   getPurchaseOrderKpiAmountVisibility,
   groupPurchaseOrderKpiSpend,
@@ -155,7 +155,7 @@ function spendCard(
             return {
               moneda: moneda.moneda,
               monto: moneda.total,
-              detail: top ? `${top.categoria}: ${formatKpiCurrencyAmount(top.monto, moneda.moneda)}` : undefined,
+              detail: top ? `${top.categoria}: ${formatKpiTaggedCurrencyAmount(top.monto, moneda.moneda)}` : undefined,
             };
           })}
         />

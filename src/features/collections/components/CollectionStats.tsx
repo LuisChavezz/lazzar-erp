@@ -8,7 +8,7 @@ import {
   SEPARATE_CURRENCIES_NOTE,
 } from "@/src/components/KpiCurrency";
 import { useBankAccounts } from "@/src/features/bank-accounts/hooks/useBankAccounts";
-import { formatKpiCurrencyAmount, formatKpiDate } from "@/src/utils/kpiFormat";
+import { formatKpiDate, formatKpiTaggedCurrencyAmount } from "@/src/utils/kpiFormat";
 import { useFinanceDashboard } from "../hooks/useFinanceDashboard";
 
 interface Moneda {
@@ -60,7 +60,7 @@ function CurrencyBlock({ moneda, metric }: { moneda: Moneda; metric: Metric }) {
   if (isInitialError) value = "No disponible";
   else if (isLoading || !dashboard) value = PLACEHOLDER;
   else if (metric === "monto") {
-    value = formatKpiCurrencyAmount(dashboard.cobros_periodo.monto_total, moneda.codigo);
+    value = formatKpiTaggedCurrencyAmount(dashboard.cobros_periodo.monto_total, moneda.codigo);
   } else {
     value = String(dashboard.cobros_periodo.cantidad);
   }

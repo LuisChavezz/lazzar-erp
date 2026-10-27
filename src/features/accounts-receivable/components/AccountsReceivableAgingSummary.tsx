@@ -1,7 +1,7 @@
 import { LoadingSkeleton } from "@/src/components/LoadingSkeleton";
 import { UNKNOWN_CURRENCY_TAG } from "@/src/components/CurrencyTotalsValue";
 import { formatInCurrency } from "@/src/utils/currencyTotals";
-import { formatKpiCurrencyAmount } from "@/src/utils/kpiFormat";
+import { formatKpiTaggedCurrencyAmount } from "@/src/utils/kpiFormat";
 import type { AgingByCurrency } from "../interfaces/accounts-receivable.interface";
 
 const BUCKET_STYLES: Record<string, { bar: string; chip: string; dot: string }> = {
@@ -41,7 +41,7 @@ export const AccountsReceivableAgingSummary = ({
   // Con varias monedas cada importe lleva el símbolo de la suya y el código
   // va en el encabezado de su grupo (mismo criterio que `KpiCurrencyBlocks`).
   const formatAmount = (amount: number, moneda: string | null) =>
-    multi && moneda ? formatKpiCurrencyAmount(amount, moneda) : formatInCurrency(amount, moneda);
+    multi && moneda ? formatKpiTaggedCurrencyAmount(amount, moneda) : formatInCurrency(amount, moneda);
 
   return (
     <div className="rounded-xl bg-white dark:bg-black border border-slate-200 dark:border-white/10 p-5 shadow-sm">

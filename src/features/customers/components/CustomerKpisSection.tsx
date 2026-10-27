@@ -13,7 +13,7 @@ import { KpiSectionErrorBoundary } from "@/src/components/KpiSectionErrorBoundar
 import { SectionErrorNotice } from "@/src/components/SectionErrorNotice";
 import { ClientesIcon, ReceiptIcon, TrendingUpIcon, WalletIcon } from "@/src/components/Icons";
 import { customerKpisQueryKey, useCustomerKpis } from "../hooks/useCustomerKpis";
-import { formatKpiCurrencyAmount, formatKpiPct, plural } from "@/src/utils/kpiFormat";
+import { formatKpiPct, formatKpiTaggedCurrencyAmount, plural } from "@/src/utils/kpiFormat";
 import type {
   CustomerActiveKpi,
   CustomerCarteraKpi,
@@ -119,13 +119,13 @@ function carteraCard(kpi: CustomerCarteraKpi, onDrillDown: () => void): KpiCompa
   }));
   const montosPorTramo = kpi.por_moneda.map(
     ({ moneda, buckets }) =>
-      `${moneda}: 1 a 30 ${formatKpiCurrencyAmount(buckets["0_30"].monto, moneda)} · ` +
-      `31 a 60 ${formatKpiCurrencyAmount(buckets["31_60"].monto, moneda)} · ` +
-      `61 o más ${formatKpiCurrencyAmount(buckets["60_mas"].monto, moneda)}.`,
+      `${moneda}: 1 a 30 ${formatKpiTaggedCurrencyAmount(buckets["0_30"].monto, moneda)} · ` +
+      `31 a 60 ${formatKpiTaggedCurrencyAmount(buckets["31_60"].monto, moneda)} · ` +
+      `61 o más ${formatKpiTaggedCurrencyAmount(buckets["60_mas"].monto, moneda)}.`,
   );
   const sinVencimiento = kpi.sin_vencimiento.map(
     ({ moneda, total, monto }) =>
-      `${moneda}: ${formatKpiCurrencyAmount(monto, moneda)} en ${total} ${plural(total, "cuenta", "cuentas")}`,
+      `${moneda}: ${formatKpiTaggedCurrencyAmount(monto, moneda)} en ${total} ${plural(total, "cuenta", "cuentas")}`,
   );
   const cuentasSinVencimiento = kpi.sin_vencimiento.reduce((sum, fila) => sum + fila.total, 0);
   const vencidas = `${kpi.total_cuentas_vencidas} ${plural(kpi.total_cuentas_vencidas, "cuenta vencida", "cuentas vencidas")}`;

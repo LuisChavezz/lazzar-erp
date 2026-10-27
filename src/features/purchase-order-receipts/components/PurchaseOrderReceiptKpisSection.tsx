@@ -21,10 +21,10 @@ import {
 } from "@/src/features/purchase-orders/utils/purchaseOrderKpis";
 import { formatQuantityValue } from "@/src/utils/formatCurrency";
 import {
-  formatKpiCurrencyAmount,
   formatKpiPctOrDash,
-  formatKpiSignedCurrencyAmount,
   formatKpiSignedPctOrDash,
+  formatKpiTaggedCurrencyAmount,
+  formatKpiTaggedSignedCurrencyAmount,
   plural,
 } from "@/src/utils/kpiFormat";
 import { purchaseOrderReceiptKpisQueryKey, usePurchaseOrderReceiptKpis } from "../hooks/usePurchaseOrderReceiptKpis";
@@ -172,7 +172,7 @@ function priceCard(
         <KpiTaggedBlocks
           blocks={kpi.por_moneda.map((moneda) => ({
             key: moneda.moneda,
-            value: formatKpiSignedCurrencyAmount(moneda.diferencia, moneda.moneda),
+            value: formatKpiTaggedSignedCurrencyAmount(moneda.diferencia, moneda.moneda),
             tag: moneda.moneda,
             detail: `${formatKpiSignedPctOrDash(moneda.pct ?? null)} sobre lo pactado en la OC`,
           }))}
@@ -218,7 +218,7 @@ function rejectedCard(
   let detail: string | undefined;
   if (hasRejects && amounts.show && kpi.por_moneda && kpi.por_moneda.length > 0) {
     detail = `Valor ${kpi.por_moneda
-      .map((moneda) => `${formatKpiCurrencyAmount(moneda.valor_rechazado, moneda.moneda)} ${moneda.moneda}`)
+      .map((moneda) => `${formatKpiTaggedCurrencyAmount(moneda.valor_rechazado, moneda.moneda)} ${moneda.moneda}`)
       .join(" · ")}`;
     info = `${criterio} El valor es a precio pactado en la OC. ${SEPARATE_CURRENCIES_NOTE}`;
   } else if (hasRejects && !amounts.show) {
