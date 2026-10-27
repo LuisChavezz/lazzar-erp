@@ -14,6 +14,7 @@ import {
 } from "../hooks/useOpportunityCotizacionLinks";
 import type { OpportunityCotizacion } from "../interfaces/opportunity-onboarding.interface";
 import { cotizacionEstatusBadge, isCotizacionAutorizada } from "../utils/cotizacionEstatus";
+import { CotizacionEstatusBadge } from "./CotizacionEstatusBadge";
 
 interface OpportunityLigarCotizacionesDialogProps {
   /** Oportunidad a la que se ligan; `null` = cerrado. */
@@ -69,32 +70,25 @@ function LigarCotizacionesContent({
       pinSelected
       isConfirming={isPending}
       confirmingText="Ligando…"
-      renderContent={(cotizacion) => {
-        const badge = cotizacionEstatusBadge(cotizacion);
-        return (
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <p className="text-sm font-semibold tabular-nums text-slate-800 dark:text-slate-100">
-                Cotización #{cotizacion.id}
-              </p>
-              <p className="flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-                <span
-                  className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium ${badge.className}`}
-                >
-                  {badge.label}
-                </span>
-                <span>Creada {formatShortDate(cotizacion.created_at)}</span>
-              </p>
-            </div>
-            <div className="shrink-0 text-right">
-              <p className="text-[11px] text-slate-400 dark:text-slate-500">Total</p>
-              <p className="text-sm font-bold tabular-nums text-slate-800 dark:text-white">
-                {formatCurrency(safeParseAmount(cotizacion.gran_total), NO_CURRENCY_FORMAT)}
-              </p>
-            </div>
+      renderContent={(cotizacion) => (
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-sm font-semibold tabular-nums text-slate-800 dark:text-slate-100">
+              Cotización #{cotizacion.id}
+            </p>
+            <p className="flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+              <CotizacionEstatusBadge cotizacion={cotizacion} />
+              <span>Creada {formatShortDate(cotizacion.created_at)}</span>
+            </p>
           </div>
-        );
-      }}
+          <div className="shrink-0 text-right">
+            <p className="text-[11px] text-slate-400 dark:text-slate-500">Total</p>
+            <p className="text-sm font-bold tabular-nums text-slate-800 dark:text-white">
+              {formatCurrency(safeParseAmount(cotizacion.gran_total), NO_CURRENCY_FORMAT)}
+            </p>
+          </div>
+        </div>
+      )}
       onConfirm={(cotizaciones) =>
         ligar(
           cotizaciones.map((cotizacion) => cotizacion.id),

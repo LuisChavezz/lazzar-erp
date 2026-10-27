@@ -17,7 +17,8 @@ import { formatShortDate } from "@/src/utils/formatDate";
 import { canAccessRoute } from "@/src/utils/routeAccess";
 import { OPPORTUNITY_LIST_PARAM } from "../constants/opportunityRoutes";
 import type { OpportunityCotizacion } from "../interfaces/opportunity-onboarding.interface";
-import { cotizacionEstatusBadge, isCotizacionAutorizada } from "../utils/cotizacionEstatus";
+import { isCotizacionAutorizada } from "../utils/cotizacionEstatus";
+import { CotizacionEstatusBadge } from "./CotizacionEstatusBadge";
 
 const TH_CLASS = "px-3 py-2 font-medium whitespace-nowrap";
 const TD_CLASS = "px-3 py-2 whitespace-nowrap";
@@ -113,7 +114,6 @@ export const OpportunityCotizaciones = ({
           }
         >
           {cotizaciones.map((cotizacion) => {
-            const badge = cotizacionEstatusBadge(cotizacion);
             const isEditable = canEditQuote(cotizacion.estatus);
             const isBusy = busyIds.includes(cotizacion.id);
             const pedidoId = cotizacion.pedido_id;
@@ -166,11 +166,7 @@ export const OpportunityCotizaciones = ({
                   )}
                 </td>
                 <td className={TD_CLASS}>
-                  <span
-                    className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${badge.className}`}
-                  >
-                    {badge.label}
-                  </span>
+                  <CotizacionEstatusBadge cotizacion={cotizacion} />
                 </td>
                 <td className={TD_CLASS}>{formatShortDate(cotizacion.created_at)}</td>
                 <td className={TD_CLASS}>{formatShortDate(cotizacion.autorizada_at)}</td>
