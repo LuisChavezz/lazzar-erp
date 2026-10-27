@@ -23,12 +23,14 @@ import type { Picking, TransferPickingPayload } from "../interfaces/picking.inte
 
 /**
  * Almacenes que se ofrecen como nuevo almacén del surtido: de la MISMA empresa
- * y sucursal que el picking (un almacén sin sucursal no se ofrece), activos y
- * distintos del actual.
+ * y sucursal que el picking (un almacén sin sucursal no se ofrece), activos,
+ * que permitan entradas y distintos de donde están HOY las prendas.
  *
- * `permite_salida` no se filtra porque `/inventarios/almacenes/` no lo expone:
- * si el elegido no permite salidas, el 400 `almacen` del backend aparece bajo el
- * selector.
+ * "Hoy" es `almacen_actual` (lo resuelve el backend), no `almacen`: con TR y
+ * destino las prendas ya están en el destino, así que el origen sí es un
+ * almacén válido (devolverlas) y el destino daría 400 "ya está en ese almacén".
+ * Las mismas reglas las valida el backend; si el catálogo está desfasado, su
+ * 400 `almacen` aparece bajo el selector.
  */
 const getTargetWarehouses = (warehouses: Warehouse[], picking: Picking): Warehouse[] =>
   warehouses
@@ -37,7 +39,8 @@ const getTargetWarehouses = (warehouses: Warehouse[], picking: Picking): Warehou
         warehouse.empresa === picking.empresa &&
         warehouse.sucursal === picking.sucursal &&
         warehouse.estatus === "ACTIVO" &&
-        warehouse.id_almacen !== picking.almacen,
+        warehouse.permite_entrada === true &&
+        warehouse.id_almacen !== picking.almacen_actual,
     )
     .sort((a, b) => a.nombre.localeCompare(b.nombre, "es"));
 
@@ -71,8 +74,6 @@ const PickingTransferForm = ({ picking, onClose }: PickingTransferFormProps) => 
   const options =
     selected && !targets.includes(selected) ? [selected, ...targets] : targets;
 
-  const isDestino = almacenId > 0 && almacenId === picking.almacen_destino;
-
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (isPending) return;
@@ -91,7 +92,8 @@ const PickingTransferForm = ({ picking, onClose }: PickingTransferFormProps) => 
       onSuccess: onClose,
       onError: (error) => {
         // 404: el surtido ya no existe; el hook lo avisa con un toast y el
-        // detalle que abrió este diálogo desaparece al refrescarse.
+        // detalle que abrió este diálogo desaparece al refrescarse. El 403 sí
+        // se queda aquí: lo pinta el banner (`parseTransferPickingError`).
         if (isNotFoundError(error)) {
           onClose();
           return;
@@ -116,7 +118,8 @@ const PickingTransferForm = ({ picking, onClose }: PickingTransferFormProps) => 
     if (!isLoading && options.length === 0) {
       return (
         <p className="rounded-xl border border-slate-200 dark:border-white/10 px-4 py-3 text-xs text-slate-500 dark:text-slate-400">
-          No hay otros almacenes activos en la sucursal de este surtido.
+          No hay otros almacenes activos que permitan entradas en la sucursal de este
+          surtido.
         </p>
       );
     }
@@ -152,9 +155,9 @@ const PickingTransferForm = ({ picking, onClose }: PickingTransferFormProps) => 
         role="note"
         className="rounded-xl border border-sky-200 dark:border-sky-500/20 bg-sky-50/60 dark:bg-sky-500/5 px-4 py-3 text-xs leading-relaxed text-sky-800 dark:text-sky-300"
       >
-        El traslado solo cambia el almacén en el que queda registrado el surtido.{" "}
-        <span className="font-semibold">No mueve ni aparta existencias</span> y no crea
-        ningún traspaso.
+        El traslado <span className="font-semibold">mueve las existencias</span> de las
+        prendas del surtido del almacén actual al nuevo y genera un traspaso (folio TR).
+        Si en el almacén actual no hay existencia suficiente, no se mueve nada.
       </div>
 
       <FormErrorBanner message={message} />
@@ -162,19 +165,12 @@ const PickingTransferForm = ({ picking, onClose }: PickingTransferFormProps) => 
       <div className="text-xs">
         <span className="text-slate-400 dark:text-slate-500">Almacén actual</span>
         <p className="font-semibold text-slate-700 dark:text-slate-200 mt-0.5">
-          {picking.almacen_nombre}
+          {picking.almacen_actual_nombre}
         </p>
       </div>
 
       <fieldset disabled={isPending} className="space-y-4">
         {renderAlmacenField()}
-
-        {isDestino && (
-          <p className="-mt-2 px-1 text-xs text-amber-700 dark:text-amber-400">
-            Es el almacén destino de este surtido: al trasladarlo, el surtido quedará sin
-            destino.
-          </p>
-        )}
 
         <FormTextarea
           label="Observaciones (opcional)"
