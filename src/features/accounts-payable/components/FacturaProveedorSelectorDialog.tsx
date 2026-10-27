@@ -2,11 +2,10 @@
 
 import { MainDialog } from "@/src/components/MainDialog";
 import { SingleSelectPickerDialogContent } from "@/src/components/SingleSelectPickerDialogContent";
-import { formatMoneyValueOrDash } from "@/src/utils/formatCurrency";
+import { formatMoneyValueOrDash, moneyFormatFor } from "@/src/utils/formatCurrency";
 import { formatShortDate } from "@/src/utils/formatDate";
 import { useFacturasProveedor } from "../hooks/useFacturasProveedor";
 import { useCuentasPorPagar } from "../hooks/useCuentasPorPagar";
-import { moneyFormatFor } from "../utils/accounts-payable.utils";
 import { ocFolioLabel } from "@/src/features/supplier-invoices/utils/supplierInvoiceLabels";
 import type { FacturaProveedor } from "../interfaces/factura-proveedor.interface";
 

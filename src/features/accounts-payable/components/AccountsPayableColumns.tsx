@@ -2,14 +2,13 @@ import { ColumnDef, createColumnHelper, FilterFn } from "@tanstack/react-table";
 import { ActionMenu, type ActionMenuItem } from "@/src/components/ActionMenu";
 import { ColumnHeaderFilter, type ColumnFilterOption } from "@/src/components/ColumnHeaderFilter";
 import { ChevronRightIcon, DeleteIcon, ExternalLinkIcon, ViewIcon } from "@/src/components/Icons";
-import { formatMoneyValueOrDash } from "@/src/utils/formatCurrency";
+import { formatMoneyValueOrDash, moneyFormatFor } from "@/src/utils/formatCurrency";
 import { formatShortDate } from "@/src/utils/formatDate";
 import { CXP_ESTATUS_CONFIG } from "../constants/cxpEstatus";
 import {
   canDeleteCuentaPorPagar,
   hasAppliedPayments,
   isCuentaPorPagarVencida,
-  moneyFormatFor,
 } from "../utils/accounts-payable.utils";
 import type { CuentaPorPagar } from "../interfaces/accounts-payable.interface";
 

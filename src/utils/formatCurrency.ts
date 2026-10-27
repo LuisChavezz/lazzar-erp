@@ -34,6 +34,17 @@ export const NO_CURRENCY_FORMAT: Intl.NumberFormatOptions = {
 };
 
 /**
+ * Opciones de formato para un importe en la moneda `monedaCodigo` (código ISO
+ * del registro). Sin código, sin símbolo (`NO_CURRENCY_FORMAT`): caer al MXN por
+ * defecto de `formatCurrency` pintaría un importe en USD con signo de pesos. Un
+ * código que `Intl` no reconozca lo absorbe el `try/catch` de `formatCurrency`.
+ */
+export const moneyFormatFor = (
+  monedaCodigo: string | null,
+): Intl.NumberFormatOptions =>
+  monedaCodigo ? { currency: monedaCodigo } : NO_CURRENCY_FORMAT;
+
+/**
  * Convierte un string numérico de la API en número, devolviendo 0 cuando el
  * valor es nulo, vacío o no numérico. Usa `Number()` en vez de `parseFloat()`
  * porque este último parsea parcialmente strings como "1,234.50" (devuelve

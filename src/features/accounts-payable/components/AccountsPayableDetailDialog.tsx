@@ -10,7 +10,7 @@ import {
   textOrDash,
 } from "@/src/components/DetailDialogPrimitives";
 import { CxpIcon, InfoIcon } from "@/src/components/Icons";
-import { formatMoneyValueOrDash } from "@/src/utils/formatCurrency";
+import { formatMoneyValueOrDash, moneyFormatFor } from "@/src/utils/formatCurrency";
 import { formatShortDate } from "@/src/utils/formatDate";
 import {
   CXP_ESTATUS_CONFIG,
@@ -20,7 +20,6 @@ import {
 import {
   hasAppliedPayments,
   isCuentaPorPagarVencida,
-  moneyFormatFor,
 } from "../utils/accounts-payable.utils";
 import type { CuentaPorPagar } from "../interfaces/accounts-payable.interface";
 

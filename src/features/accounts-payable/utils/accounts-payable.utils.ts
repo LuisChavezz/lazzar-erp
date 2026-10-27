@@ -62,21 +62,3 @@ export const hasAppliedPayments = (
 export const canDeleteCuentaPorPagar = (
   cuenta: Pick<CuentaPorPagar, "total_pagado" | "estatus">,
 ): boolean => !hasAppliedPayments(cuenta) && cuenta.estatus !== "Cancelada";
-
-/** Importe con dos decimales y sin símbolo, para cuando no se conoce la moneda. */
-const IMPORTE_SIN_MONEDA: Intl.NumberFormatOptions = {
-  style: "decimal",
-  minimumFractionDigits: 2,
-  maximumFractionDigits: 2,
-};
-
-/**
- * Opciones de formato para un importe de la cuenta. Con código de moneda, en esa
- * moneda; sin él, sin símbolo: caer al MXN por defecto de `formatCurrency`
- * pintaría una factura en USD con signo de pesos (mismo criterio que
- * `CreditNoteDetailDialog`).
- */
-export const moneyFormatFor = (
-  monedaCodigo: string | null,
-): Intl.NumberFormatOptions =>
-  monedaCodigo ? { currency: monedaCodigo } : IMPORTE_SIN_MONEDA;
