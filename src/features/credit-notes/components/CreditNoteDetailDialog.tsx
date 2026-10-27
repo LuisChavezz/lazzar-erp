@@ -270,7 +270,7 @@ export function CreditNoteDetailBody({ nota }: { nota: NotaCredito }) {
             los importes quedan sin símbolo para siempre; se dice por qué, en
             lugar de dejar al usuario mirando números pelones. Durante la carga
             no se avisa nada: el estado es momentáneo. */}
-        {!isLoading && !monedaFormato && (
+        {!isLoading && !factura?.moneda_nombre && (
           <p className="text-xs text-amber-600 dark:text-amber-400 px-1">
             Importes sin símbolo de moneda: no se pudo determinar la moneda de la
             factura.
