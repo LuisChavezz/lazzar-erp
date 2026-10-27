@@ -41,10 +41,13 @@ export const AccountsReceivableStats = ({ today }: { today: string }) => {
 
   const kpis = computeCxcKpis(cuentas, today);
 
+  // Si el valor de una tarjeta lleva código de moneda (`showsCurrencyCodes`), su
+  // insignia va debajo (`stackTrend`): compartiendo fila recortaría los bloques.
   const items: KpiItem[] = [
     {
       label: "Total por Cobrar",
       value: showPlaceholder ? PLACEHOLDER : kpiValue(kpis.totalPorCobrar),
+      stackTrend: !showPlaceholder && showsCurrencyCodes(kpis.totalPorCobrar),
       icon: CxcIcon,
       iconBgClass: "bg-sky-50 dark:bg-sky-500/10",
       iconClass: "text-sky-500",
@@ -54,6 +57,7 @@ export const AccountsReceivableStats = ({ today }: { today: string }) => {
     {
       label: "Vencido",
       value: showPlaceholder ? PLACEHOLDER : kpiValue(kpis.totalVencido),
+      stackTrend: !showPlaceholder && showsCurrencyCodes(kpis.totalVencido),
       icon: ErrorIcon,
       iconBgClass: "bg-red-50 dark:bg-red-500/10",
       iconClass: "text-red-500",
@@ -65,6 +69,7 @@ export const AccountsReceivableStats = ({ today }: { today: string }) => {
     {
       label: "Por Vencer (30 días)",
       value: showPlaceholder ? PLACEHOLDER : kpiValue(kpis.porVencer30),
+      stackTrend: !showPlaceholder && showsCurrencyCodes(kpis.porVencer30),
       icon: ClockIcon,
       iconBgClass: "bg-amber-50 dark:bg-amber-500/10",
       iconClass: "text-amber-500",
@@ -77,6 +82,7 @@ export const AccountsReceivableStats = ({ today }: { today: string }) => {
       // `total − saldo` de las cuentas cuyo último pago cae en el mes en curso.
       subLabel: "Aprox. (último pago)",
       value: showPlaceholder ? PLACEHOLDER : kpiValue(kpis.cobradoEsteMes),
+      stackTrend: !showPlaceholder && showsCurrencyCodes(kpis.cobradoEsteMes),
       icon: CheckCircleIcon,
       iconBgClass: "bg-emerald-50 dark:bg-emerald-500/10",
       iconClass: "text-emerald-500",
@@ -85,15 +91,5 @@ export const AccountsReceivableStats = ({ today }: { today: string }) => {
     },
   ];
 
-  // Con varias monedas el valor apila un bloque por moneda y la insignia, que
-  // comparte su fila, recortaría los códigos: va debajo del valor, con su
-  // color. Todos los indicadores listan las mismas monedas (`computeCxcKpis`).
-  // Cada tarjeta decide por sí misma: apila la insignia si su valor lleva
-  // código de moneda (`showsCurrencyCodes`).
-  const porTarjeta = [kpis.totalPorCobrar, kpis.totalVencido, kpis.porVencer30, kpis.cobradoEsteMes];
-  const shownItems = showPlaceholder
-    ? items
-    : items.map((item, i) => (showsCurrencyCodes(porTarjeta[i]) ? { ...item, stackTrend: true } : item));
-
-  return <KpiGrid items={shownItems} />;
+  return <KpiGrid items={items} />;
 };
