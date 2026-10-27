@@ -9,6 +9,12 @@ export interface Warehouse {
   codigo: string;
   nombre: string;
   estatus: WarehouseStatus;
+  /**
+   * El almacén acepta entradas de inventario. De solo lectura en este endpoint
+   * (no se edita desde el catálogo); lo usa el selector del traslado de
+   * picking, porque el backend rechaza un almacén nuevo que no lo permita.
+   */
+  permite_entrada: boolean;
   created_at: string;
   updated_at: string;
 }
