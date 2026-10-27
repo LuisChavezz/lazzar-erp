@@ -6,6 +6,8 @@ import { FormSecondaryButton, FormSubmitButton } from "@/src/components/FormButt
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { isNotFoundError } from "@/src/utils/drfWriteErrors";
 import { formatCurrency, moneyFormatFor, safeParseAmount } from "@/src/utils/formatCurrency";
+import { useCurrencies } from "@/src/features/currency/hooks/useCurrencies";
+import { findCurrency } from "@/src/features/currency/utils/currencyLookup";
 import type { Invoice } from "../interfaces/invoice.interface";
 import { useInvoiceOnboardingStep2 } from "../hooks/useInvoiceOnboardingStep2";
 import { formatCentavos } from "../utils/invoiceEstimate";
@@ -13,6 +15,8 @@ import { InvoiceTallaLinesTable } from "./InvoiceTallaLinesTable";
 
 interface InvoiceOnboardingStep2Props {
   pedidoId: number;
+  /** PK de la moneda del pedido (`PedidoListItem.moneda`): la factura nace en ella. */
+  monedaId: number;
   onBack: () => void;
 }
 
@@ -24,9 +28,14 @@ interface InvoiceOnboardingStep2Props {
  * descuenta de lo pendiente que devuelve el onboarding. Tras crearla se muestran
  * el folio y los importes REALES de la respuesta (la estimación es solo guía).
  */
-export function InvoiceOnboardingStep2({ pedidoId, onBack }: InvoiceOnboardingStep2Props) {
+export function InvoiceOnboardingStep2({ pedidoId, monedaId, onBack }: InvoiceOnboardingStep2Props) {
   const step = useInvoiceOnboardingStep2(pedidoId);
   const { onboarding, data } = step;
+  // El GET del onboarding no trae la moneda; se resuelve la del pedido en el
+  // catálogo (en caché). Mientras carga o si no aparece, el estimado va sin
+  // símbolo en vez de suponer pesos.
+  const { data: currencies } = useCurrencies();
+  const monedaCodigo = findCurrency(currencies, monedaId)?.codigo_iso ?? null;
 
   if (step.createdInvoice) {
     return <InvoiceCreatedSummary invoice={step.createdInvoice} />;
@@ -85,6 +94,7 @@ export function InvoiceOnboardingStep2({ pedidoId, onBack }: InvoiceOnboardingSt
 
       <InvoiceTallaLinesTable
         tallas={step.tallas}
+        monedaCodigo={monedaCodigo}
         quantities={step.quantities}
         facturablesCount={step.facturablesCount}
         disabled={step.isPending || onboarding.isFetching}
@@ -104,9 +114,9 @@ export function InvoiceOnboardingStep2({ pedidoId, onBack }: InvoiceOnboardingSt
             </p>
           </div>
           <dl className="mt-2 grid grid-cols-3 gap-2 text-sm tabular-nums">
-            <EstimateField label="Subtotal" value={formatCentavos(step.estimate.subtotalCentavos)} />
-            <EstimateField label="IVA" value={formatCentavos(step.estimate.impuestoCentavos)} />
-            <EstimateField label="Total" value={formatCentavos(step.estimate.totalCentavos)} strong />
+            <EstimateField label="Subtotal" value={formatCentavos(step.estimate.subtotalCentavos, monedaCodigo)} />
+            <EstimateField label="IVA" value={formatCentavos(step.estimate.impuestoCentavos, monedaCodigo)} />
+            <EstimateField label="Total" value={formatCentavos(step.estimate.totalCentavos, monedaCodigo)} strong />
           </dl>
           <p className="mt-2 text-[11px] text-slate-400">
             Estimación con el precio sin IVA de cada talla; los importes definitivos los calcula

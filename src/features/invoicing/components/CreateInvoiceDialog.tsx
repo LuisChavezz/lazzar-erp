@@ -58,6 +58,9 @@ export function CreateInvoiceDialog({ open, onOpenChange }: CreateInvoiceDialogP
 function CreateInvoiceWizard() {
   const [currentStep, setCurrentStep] = useState<InvoiceWizardStep>(INVOICE_WIZARD_STEPS[0]);
   const [pedidoId, setPedidoId] = useState(0);
+  // Moneda del pedido elegido (PK): el onboarding no la expone y la factura nace
+  // en ella, así que el Paso 2 la usa para pintar el estimado.
+  const [monedaId, setMonedaId] = useState(0);
 
   return (
     <div className="flex flex-col gap-4">
@@ -71,7 +74,13 @@ function CreateInvoiceWizard() {
         <>
           {/* Selección de pedido sin <form>: Enter en la búsqueda no tiene
               envío implícito que prevenir. Avanzar no crea nada todavía. */}
-          <InvoiceOrderSelector selectedOrderId={pedidoId} onSelect={setPedidoId} />
+          <InvoiceOrderSelector
+            selectedOrderId={pedidoId}
+            onSelect={(order) => {
+              setPedidoId(order.id);
+              setMonedaId(order.moneda);
+            }}
+          />
           <div className="flex justify-end pt-2">
             <Button
               variant="primary"
@@ -90,6 +99,7 @@ function CreateInvoiceWizard() {
       {currentStep === "step-2" && (
         <InvoiceOnboardingStep2
           pedidoId={pedidoId}
+          monedaId={monedaId}
           onBack={() => setCurrentStep("step-1")}
         />
       )}

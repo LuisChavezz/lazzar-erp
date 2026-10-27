@@ -7,6 +7,8 @@ import { formatCentavos } from "../utils/invoiceEstimate";
 
 interface InvoiceTallaLinesTableProps {
   tallas: InvoiceOnboardingTalla[];
+  /** Código ISO de la moneda del pedido, para el precio unitario; `null` = sin símbolo. */
+  monedaCodigo: string | null;
   /** Piezas capturadas por `pedido_detalle_talla` ("" o ausente = no se factura). */
   quantities: Map<number, string>;
   facturablesCount: number;
@@ -33,6 +35,7 @@ interface InvoiceTallaLinesTableProps {
 export function InvoiceTallaLinesTable({
   tallas,
   quantities,
+  monedaCodigo,
   facturablesCount,
   disabled = false,
   onQuantityChange,
@@ -123,7 +126,7 @@ export function InvoiceTallaLinesTable({
                         Sin precio
                       </span>
                     ) : (
-                      <>P.U. {formatCentavos(talla.precio_unitario_centavos)} (sin IVA)</>
+                      <>P.U. {formatCentavos(talla.precio_unitario_centavos, monedaCodigo)} (sin IVA)</>
                     )}{" "}
                     · Pedida: {talla.cantidad_pedida} pzas · Facturada: {talla.cantidad_facturada} pzas ·{" "}
                     <span

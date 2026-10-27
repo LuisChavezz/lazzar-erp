@@ -12,7 +12,7 @@ interface InvoiceOrderSelectorProps {
   /** Id del pedido seleccionado (`0` = ninguno). */
   selectedOrderId: number;
   /** Selecciona un pedido. Selección única: reemplaza cualquier anterior. */
-  onSelect: (orderId: number) => void;
+  onSelect: (order: PedidoListItem) => void;
 }
 
 /**
@@ -75,7 +75,7 @@ export function InvoiceOrderSelector({
       }
       getKey={(order) => order.id}
       isSelected={(order) => order.id === selectedOrderId}
-      onSelect={(order) => onSelect(order.id)}
+      onSelect={onSelect}
       emptyMessage="No hay pedidos disponibles."
       noResultsMessage="No se encontraron pedidos"
       renderIndicator={renderRadioIndicator}
