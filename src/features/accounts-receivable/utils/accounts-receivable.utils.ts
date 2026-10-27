@@ -9,6 +9,7 @@
 import { safeParseAmount } from "@/src/utils/formatCurrency";
 import { createCurrencyTotals, groupByCurrency, sumAmounts } from "@/src/utils/currencyTotals";
 import type {
+  AgingBucket,
   AgingByCurrency,
   CuentaPorCobrar,
   CuentaPorCobrarRow,
@@ -173,6 +174,10 @@ const AGING_DEFS: Array<{ key: string; label: string; min: number; max: number }
   { key: "61-90", label: "61–90 días", min: 61, max: 90 },
   { key: "90+", label: "+90 días", min: 91, max: Infinity },
 ];
+
+/** Los rangos de antigüedad en 0, para una distribución sin cuentas. */
+export const emptyAgingBuckets = (): AgingBucket[] =>
+  AGING_DEFS.map(({ key, label }) => ({ key, label, count: 0, amount: 0 }));
 
 /**
  * Distribuye el saldo vencido por antigüedad, UNA distribución por moneda

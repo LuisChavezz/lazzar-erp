@@ -3,6 +3,7 @@ import { UNKNOWN_CURRENCY_TAG } from "@/src/components/CurrencyTotalsValue";
 import { formatInCurrency } from "@/src/utils/currencyTotals";
 import { formatKpiTaggedCurrencyAmount } from "@/src/utils/kpiFormat";
 import type { AgingByCurrency } from "../interfaces/accounts-receivable.interface";
+import { emptyAgingBuckets } from "../utils/accounts-receivable.utils";
 
 const BUCKET_STYLES: Record<string, { bar: string; chip: string; dot: string }> = {
   "1-30": { bar: "bg-amber-400", chip: "text-amber-600 dark:text-amber-400", dot: "bg-amber-400" },
@@ -12,22 +13,15 @@ const BUCKET_STYLES: Record<string, { bar: string; chip: string; dot: string }> 
 };
 
 /** Sin cuentas no hay moneda que afirmar: rangos en 0, sin símbolo (EC-600). */
-const EMPTY_GROUP: AgingByCurrency = {
-  moneda: null,
-  total: 0,
-  buckets: [
-    { key: "1-30", label: "1–30 días", count: 0, amount: 0 },
-    { key: "31-60", label: "31–60 días", count: 0, amount: 0 },
-    { key: "61-90", label: "61–90 días", count: 0, amount: 0 },
-    { key: "90+", label: "+90 días", count: 0, amount: 0 },
-  ],
-};
+const EMPTY_GROUP: AgingByCurrency = { moneda: null, total: 0, buckets: emptyAgingBuckets() };
 
 /**
  * Antigüedad de saldos vencidos, UNA barra y un desglose por moneda (EC-601):
  * los anchos y porcentajes son proporciones dentro de cada moneda, nunca sobre
- * importes de monedas distintas. Con una sola moneda se ve igual que antes
- * (total en el encabezado, sin código de moneda).
+ * importes de monedas distintas. Solo se muestran las monedas con algo vencido;
+ * si ninguna tiene, una sola distribución en 0 (la de la única moneda del
+ * conjunto, o sin símbolo si hay varias). Con una sola moneda se ve igual que
+ * antes (total en el encabezado, sin código de moneda).
  */
 export const AccountsReceivableAgingSummary = ({
   groups,
@@ -36,8 +30,9 @@ export const AccountsReceivableAgingSummary = ({
   groups: AgingByCurrency[];
   isLoading?: boolean;
 }) => {
-  const multi = groups.length > 1;
-  const shown = groups.length > 0 ? groups : [EMPTY_GROUP];
+  const conVencido = groups.filter((group) => group.total > 0);
+  const shown = conVencido.length > 0 ? conVencido : groups.length === 1 ? groups : [EMPTY_GROUP];
+  const multi = shown.length > 1;
   // Con varias monedas cada importe lleva el símbolo de la suya y el código
   // va en el encabezado de su grupo (mismo criterio que `KpiCurrencyBlocks`).
   const formatAmount = (amount: number, moneda: string | null) =>
