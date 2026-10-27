@@ -6,9 +6,8 @@ export const COTIZACION_ESTATUS_AUTORIZADA = 3;
 
 /**
  * Una autorizada no se quita de la oportunidad (el backend responde 400: la
- * oportunidad dejaría de estar Ganada), y tampoco se ofrece para ligar: el
- * backend lo permite, pero la liga sería irreversible y pasaría la oportunidad
- * a Ganada al instante.
+ * oportunidad dejaría de estar Ganada). Para ligar no hace falta mirarlo: el
+ * backend no las ofrece en `disponibles` y rechaza ligarlas.
  */
 export const isCotizacionAutorizada = (cotizacion: OpportunityCotizacion): boolean =>
   cotizacion.estatus === COTIZACION_ESTATUS_AUTORIZADA;

@@ -13,7 +13,7 @@ import {
   useOpportunityCotizacionesLinks,
 } from "../hooks/useOpportunityCotizacionLinks";
 import type { OpportunityCotizacion } from "../interfaces/opportunity-onboarding.interface";
-import { cotizacionEstatusBadge, isCotizacionAutorizada } from "../utils/cotizacionEstatus";
+import { cotizacionEstatusBadge } from "../utils/cotizacionEstatus";
 import { CotizacionEstatusBadge } from "./CotizacionEstatusBadge";
 
 interface OpportunityLigarCotizacionesDialogProps {
@@ -26,9 +26,8 @@ interface OpportunityLigarCotizacionesDialogProps {
  * Contenido del selector, montado solo con el diálogo abierto: la consulta corre
  * bajo demanda y la selección arranca vacía en cada apertura.
  *
- * Ofrece las `disponibles` MENOS las autorizadas: ligar una autorizada pasa la
- * oportunidad a Ganada al instante y ya no se puede quitar (el DELETE responde
- * 400). Las rechazadas sí se ofrecen.
+ * Ofrece las `disponibles` tal cual: el backend ya excluye las autorizadas (y
+ * rechaza ligarlas). Las rechazadas sí se ofrecen.
  *
  * Queda abierto mientras se guarda y se cierra con éxito o cuando el rechazo es
  * de la OPORTUNIDAD (`etapa`, `cliente`). Con un rechazo de las cotizaciones
@@ -44,13 +43,12 @@ function LigarCotizacionesContent({
   const { disponibles, isLoading, isInitialError, isNotFound } =
     useOpportunityCotizacionesLinks(opportunityId);
   const { mutate: ligar, isPending } = useLigarOpportunityCotizaciones(opportunityId);
-  const ligables = disponibles.filter((cotizacion) => !isCotizacionAutorizada(cotizacion));
 
   return (
     <MultiSelectPickerDialogContent<OpportunityCotizacion>
       title="Ligar cotizaciones"
-      subtitle="Cotizaciones del cliente que no están en ninguna oportunidad (las 100 más recientes). Las autorizadas no se ligan desde aquí."
-      items={ligables}
+      subtitle="Cotizaciones del cliente que no están en ninguna oportunidad (las 100 más recientes), sin las autorizadas."
+      items={disponibles}
       isLoading={isLoading}
       isError={isInitialError || isNotFound}
       loadingTitle="Cargando cotizaciones"
@@ -94,7 +92,7 @@ function LigarCotizacionesContent({
           cotizaciones.map((cotizacion) => cotizacion.id),
           {
             onSuccess: onClose,
-            // La oportunidad ya no admite ligar (Perdida, sin cliente): el
+            // La oportunidad ya no admite ligar (cerrada, sin cliente): el
             // detalle ya se releyó y oculta el botón; seguir aquí solo
             // permitiría repetir el mismo 400.
             onError: (error) => {
