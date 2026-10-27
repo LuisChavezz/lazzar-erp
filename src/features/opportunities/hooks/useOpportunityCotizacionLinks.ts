@@ -1,11 +1,9 @@
 "use client";
 
 import { useMutation, useMutationState, useQueryClient } from "@tanstack/react-query";
-import { AxiosError } from "axios";
 import toast from "react-hot-toast";
 import { useGuardedQuery } from "@/src/hooks/useGuardedQuery";
-import { isNotFoundError } from "@/src/utils/drfWriteErrors";
-import { firstRejectionMessage } from "@/src/utils/firstDrfMessage";
+import { drfActionErrorMessage } from "@/src/utils/drfWriteErrors";
 import { retryUnlessClientError } from "@/src/utils/retryUnlessClientError";
 import type { OpportunityCotizacionesLinks } from "../interfaces/opportunity-onboarding.interface";
 import {
@@ -29,24 +27,12 @@ import { OPPORTUNITIES_KEY } from "./useOpportunitiesTable";
  * hasta que la pantalla está al día.
  */
 
-/**
- * Rechazos de negocio, que llegan por campo y como texto plano:
- * `cotizaciones` (alguna no se puede ligar, lista vacía), `etapa` (oportunidad
- * Perdida), `cliente` (sin cliente), `cotizacion` (quitar una autorizada).
+/*
+ * Errores: `drfActionErrorMessage`. Los rechazos de negocio llegan por campo y
+ * como texto plano —`cotizaciones` (alguna no se puede ligar, lista vacía),
+ * `etapa` (oportunidad Perdida), `cliente` (sin cliente), `cotizacion` (quitar
+ * una autorizada)— y un 404 con `detail`; el helper muestra el primero.
  */
-const REJECTION_KEYS = ["cotizaciones", "etapa", "cliente", "cotizacion", "detail"] as const;
-
-const cotizacionLinkErrorMessage = (
-  error: unknown,
-  fallback: string,
-  notFoundMessage: string
-): string => {
-  if (isNotFoundError(error)) return notFoundMessage;
-  if (error instanceof AxiosError && error.response?.status === 400) {
-    return firstRejectionMessage(error.response.data, REJECTION_KEYS) ?? fallback;
-  }
-  return fallback;
-};
 
 export const opportunityCotizacionesKey = (opportunityId: number) =>
   [...OPPORTUNITIES_KEY, "cotizaciones", opportunityId] as const;
@@ -105,7 +91,7 @@ export const useLigarOpportunityCotizaciones = (opportunityId: number) => {
     onError: (error) => {
       console.error(error);
       toast.error(
-        cotizacionLinkErrorMessage(
+        drfActionErrorMessage(
           error,
           "No se pudieron ligar las cotizaciones. Intenta de nuevo.",
           OPPORTUNITY_GONE_DETAIL_MESSAGE
@@ -131,7 +117,7 @@ export const useQuitarOpportunityCotizacion = (opportunityId: number) => {
     onError: (error) => {
       console.error(error);
       toast.error(
-        cotizacionLinkErrorMessage(
+        drfActionErrorMessage(
           error,
           "No se pudo quitar la cotización. Intenta de nuevo.",
           // El 404 no distingue: la cotización ya no está ligada (o dejó de ser
