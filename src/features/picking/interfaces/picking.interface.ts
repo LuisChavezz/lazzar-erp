@@ -140,29 +140,42 @@ export interface Picking {
   pedido_folio: string;
   operador: number;
   operador_nombre: string;
-  /** Almacén ORIGEN: de donde se recolecta la mercancía. */
+  /**
+   * Almacén del picking. Al crearlo es el ORIGEN: de donde la transferencia
+   * del alta saca las prendas. Tras un traslado (`POST .../trasladar/`) pasa a
+   * ser el almacén NUEVO, donde ya están las prendas. Para saber dónde están
+   * hoy no se lee este campo sino `almacen_actual`.
+   */
   almacen: number;
   almacen_nombre: string;
   /**
-   * Almacén DESTINO del picking, distinto del origen y COEXISTE con él: a
-   * dónde está previsto llevar lo surtido (normalmente el de apartados).
+   * Almacén DESTINO elegido al crear el picking (normalmente el de apartados).
+   * Crear el picking genera una transferencia (`transferencia`, folio TR) del
+   * origen a este almacén que MUEVE las existencias, así que con TR las prendas
+   * ya están aquí.
    *
-   * Es DECLARATIVO: se persiste, pero crear el picking NO traspasa existencias
-   * hacia él. `PickingService.handle_store` solo registra el documento —no
-   * mueve inventario, no crea transferencias y no genera reservas—; el
-   * movimiento físico vive en flujos posteriores (Traspasos). Cuando el `POST`
-   * omite `almacen_destino`, el backend resuelve por nombre el almacén
-   * `"APARTADOS"` de la empresa/sucursal del pedido y lo guarda
-   * (`resolver_apartados_obligatorio`), por eso en la práctica
-   * `almacen_destino_nombre` casi siempre llega como `"APARTADOS"`.
-   *
-   * Nullable en el modelo (`blank=True, null=True`) y nulo en la práctica en
-   * dos casos: pickings anteriores a la migración `0011`, y pickings que se
-   * TRASLADARON a su propio almacén destino (`POST .../trasladar/` lo limpia
-   * porque lo surtido ya está ahí). Crear un picking sí lo exige.
+   * Nullable y nulo en la práctica en dos casos: pickings anteriores a la
+   * migración `0011`, y pickings trasladados (`POST .../trasladar/` siempre lo
+   * deja en `null`: las prendas quedan en `almacen`). Crear un picking sí lo
+   * exige.
    */
   almacen_destino: number | null;
   almacen_destino_nombre: string | null;
+  /**
+   * Dónde están HOY las prendas, resuelto por el backend (`Picking.almacen_actual`):
+   * `almacen_destino` si el picking tiene TR y destino; si no, `almacen`. Es el
+   * almacén del que sale el siguiente traslado, así que el selector lo excluye.
+   * Nunca nulo (`almacen` es NOT NULL). No se recalcula en el cliente.
+   */
+  almacen_actual: number;
+  almacen_actual_nombre: string;
+  /**
+   * Transferencia (folio TR) que dejó las prendas donde están: la del alta o la
+   * del último traslado. `null` en pickings creados sin TR y en un traslado sin
+   * líneas que mover (el backend no crea TR y la deja vacía).
+   */
+  transferencia: number | null;
+  transferencia_folio: string | null;
   oleada: number | null;
   oleada_nombre: string | null;
   zona_almacen: number | null;
@@ -198,7 +211,7 @@ export interface Picking {
    * picking. El backend las sigue anidando y prefetcheando en el listado y en
    * el detalle, pero SIEMPRE llega `[]` para cualquier picking NUEVO: crear un
    * picking ya no genera órdenes de trabajo (`PickingService.handle_store`
-   * solo registra el documento). Únicamente los pickings creados ANTES de ese
+   * crea el documento y su transferencia, nada más). Únicamente los pickings creados ANTES de ese
    * cambio traen filas reales aquí.
    *
    * Ningún componente lo consume hoy — a propósito: una sección de "órdenes

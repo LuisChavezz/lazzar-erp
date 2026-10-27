@@ -456,11 +456,21 @@ export interface PedidoFolioPicking {
   folio: string;
   estado: PickingEstado;
   created_at: string;
-  /** Almacén ORIGEN: de donde se recolecta. Ojo con el nombre — ver arriba. */
+  /**
+   * Almacén del picking (`Picking.almacen`): el ORIGEN al crearlo, el almacén
+   * nuevo tras un traslado. Ojo con el nombre — ver arriba.
+   */
   almacen_origen: number;
   almacen_origen_nombre: string;
   almacen_destino: number | null;
   almacen_destino_nombre: string | null;
+  /**
+   * Dónde están HOY las prendas de este folio, con la misma regla que
+   * `Picking.almacen_actual` (resuelta por el backend). Es lo que muestra la
+   * sección de folios: tras un traslado, origen y destino ya no lo describen.
+   */
+  almacen_actual: number;
+  almacen_actual_nombre: string;
   operador: number | null;
   operador_nombre: string | null;
   /** Líneas de ESTE folio, no del pedido. */
