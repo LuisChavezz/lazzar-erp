@@ -12,7 +12,11 @@ import {
 } from '@/src/components/Icons';
 import { extractErrorMessage } from '@/src/utils/extractErrorMessage';
 import { isInitialLoadError } from '@/src/utils/isInitialLoadError';
-import { formatCurrency, safeParseAmount } from '@/src/utils/formatCurrency';
+import { safeParseAmount } from '@/src/utils/formatCurrency';
+import { sumByCurrency } from '@/src/utils/currencyTotals';
+import { CurrencyTotalsValue } from '@/src/components/CurrencyTotalsValue';
+import { useCurrencies } from '@/src/features/currency/hooks/useCurrencies';
+import { findCurrency } from '@/src/features/currency/utils/currencyLookup';
 import { ordersQueryKey, useOrders } from '@/src/features/orders/hooks/useOrders';
 import type { PedidoListItem } from '@/src/features/orders/interfaces/order.interface';
 import { isOrderConfirmed } from './OperationsOrderColumns';
@@ -24,6 +28,9 @@ import { OrderStockReviewDialog } from './OrderStockReviewDialog';
 // Componente principal de la Mesa de Control de Pedidos.
 export function OperationsOrderPanel() {
   const { orders, isLoading, isError, error, hasLoaded } = useOrders();
+  // El listado solo trae la PK de la moneda (`moneda`); el código ISO sale del
+  // catálogo, con la misma caché (`["currencies"]`) que `OrderCurrencyProvider`.
+  const { data: currencies } = useCurrencies();
   // Solo un error SIN datos cargados sustituye las filas; un refetch fallido
   // conserva tabla y KPIs y avisa por toast (ver `useOrders`).
   const showError = isInitialLoadError(isError, hasLoaded);
@@ -57,14 +64,25 @@ export function OperationsOrderPanel() {
 
   const counts = useMemo(() => {
     const confirmados = orders.filter(isOrderConfirmed).length;
-    const valorTotal = orders.reduce((sum, o) => sum + safeParseAmount(o.gran_total), 0);
+    // Un total POR MONEDA (EC-601). Sin catálogo (cargando o con error) no se
+    // agrupa: todas las PK caerían juntas en "sin moneda" y la cifra volvería a
+    // mezclar monedas. Una PK que el catálogo no trae —no debería pasar: el
+    // backend exige que la moneda del pedido sea de su empresa— se suma sin
+    // símbolo (EC-600), nunca como pesos.
+    const valorTotal = currencies
+      ? sumByCurrency(
+          orders,
+          (o) => findCurrency(currencies, o.moneda)?.codigo_iso || null,
+          (o) => safeParseAmount(o.gran_total),
+        )
+      : null;
     return {
       total: orders.length,
       confirmados,
       porConfirmar: orders.length - confirmados,
       valorTotal,
     };
-  }, [orders]);
+  }, [orders, currencies]);
 
   const kpis: KpiItem[] = useMemo(
     () => [
@@ -100,7 +118,7 @@ export function OperationsOrderPanel() {
       },
       {
         label: 'Valor total',
-        value: formatCurrency(counts.valorTotal),
+        value: counts.valorTotal ? <CurrencyTotalsValue totals={counts.valorTotal} /> : '—',
         icon: ListaPreciosIcon,
         iconBgClass: 'bg-emerald-50 dark:bg-emerald-500/10',
         iconClass: 'text-emerald-500',
