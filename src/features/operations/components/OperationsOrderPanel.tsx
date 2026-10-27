@@ -12,12 +12,9 @@ import {
 } from '@/src/components/Icons';
 import { extractErrorMessage } from '@/src/utils/extractErrorMessage';
 import { isInitialLoadError } from '@/src/utils/isInitialLoadError';
-import { safeParseAmount } from '@/src/utils/formatCurrency';
-import { sortByMoneda, sumAmounts, type CurrencyTotal } from '@/src/utils/currencyTotals';
-import { CurrencyTotalsValue, UNKNOWN_CURRENCY_TAG } from '@/src/components/CurrencyTotalsValue';
-import type { Currency } from '@/src/features/currency/interfaces/currency.interface';
+import { CurrencyTotalsValue } from '@/src/components/CurrencyTotalsValue';
 import { useCurrencies } from '@/src/features/currency/hooks/useCurrencies';
-import { findCurrency } from '@/src/features/currency/utils/currencyLookup';
+import { valorTotalPorMoneda } from '@/src/features/orders/utils/valorTotalPorMoneda';
 import { ordersQueryKey, useOrders } from '@/src/features/orders/hooks/useOrders';
 import type { PedidoListItem } from '@/src/features/orders/interfaces/order.interface';
 import { isOrderConfirmed } from './OperationsOrderColumns';
@@ -25,40 +22,6 @@ import { PedidoProgramacionDialog } from '@/src/features/orders/components/Pedid
 import { PedidoCancelDialog } from '@/src/features/orders/components/PedidoCancelDialog';
 import { OperationsOrderTable } from './OperationsOrderTable';
 import { OrderStockReviewDialog } from './OrderStockReviewDialog';
-
-/**
- * "Valor total" POR MONEDA (EC-601). Se agrupa por la PK de la moneda ANTES de
- * resolver su código, así que dos monedas distintas nunca se suman aunque el
- * catálogo no traiga alguna. Una PK sin código (catálogo con error, o que no la
- * trae) se pinta sin símbolo (EC-600); si hay varias así, cada una lleva su PK
- * en la etiqueta para no confundirlas.
- */
-const valorTotalPorMoneda = (
-  orders: PedidoListItem[],
-  currencies: Currency[] | undefined,
-): CurrencyTotal[] => {
-  const porPk = new Map<number, number[]>();
-  for (const o of orders) {
-    const montos = porPk.get(o.moneda) ?? [];
-    montos.push(safeParseAmount(o.gran_total));
-    porPk.set(o.moneda, montos);
-  }
-  const entries = [...porPk]
-    .sort(([a], [b]) => a - b)
-    .map(([pk, montos]) => ({
-      pk,
-      moneda: findCurrency(currencies, pk)?.codigo_iso || null,
-      total: sumAmounts(montos),
-    }));
-  const sinCodigo = entries.filter((entry) => entry.moneda === null).length;
-  return sortByMoneda(
-    entries.map(({ pk, moneda, total }) =>
-      moneda === null && sinCodigo > 1
-        ? { moneda, total, etiqueta: `${UNKNOWN_CURRENCY_TAG} (${pk})` }
-        : { moneda, total },
-    ),
-  );
-};
 
 // Componente principal de la Mesa de Control de Pedidos.
 export function OperationsOrderPanel() {
