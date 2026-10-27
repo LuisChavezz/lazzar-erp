@@ -66,7 +66,7 @@ Mock files call `faker.seed(<fixed number>)` at module scope and pin a literal "
 
 **Fields accepted but silently ignored.** Several endpoints accept fields that the service layer discards (`fecha_fin` in corte-manga, `usuario_asignado` read-only, `estatus` on creation, `generar_orden_*` in picking) and still respond 200/201. Before sending a field, verify the real effect on the created/updated resource; the payload should only include what the backend actually persists — sending the rest falsely suggests the client controls that value.
 
-**Picking is documentation-only.** Creating a picking documents the allocation — it does not move inventory, create transfers, or generate reservations. Pickings are partial and repeatable per talla. The `generar_orden_bordado` / `_reflejante` / `_corte_manga` fields are accepted but no longer generate anything.
+**Picking moves inventory through a transfer (TR).** Creating a picking also creates a COMPLETADA transfer (folio TR) from `almacen` to `almacen_destino` that moves stock; it generates no reservations. Each `POST /wms/pickings/{id}/trasladar/` creates another TR from where the garments are now to the new warehouse, then leaves `almacen` = new, `almacen_destino` = `null`, `transferencia` = that TR. Where the garments are today is `almacen_actual` / `almacen_actual_nombre`, resolved by the backend — never recompute it client-side. After a picking mutation invalidate `["transferencias"]` and `invalidateStockQueries` too. Pickings are partial and repeatable per talla. The `generar_orden_bordado` / `_reflejante` / `_corte_manga` fields are accepted but no longer generate anything.
 
 ### API Clients (`src/api/`)
 
