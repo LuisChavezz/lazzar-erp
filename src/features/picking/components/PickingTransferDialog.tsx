@@ -205,7 +205,8 @@ interface PickingTransferDialogProps {
 /**
  * Traslada un picking a otro almacén (`POST /wms/pickings/{id}/trasladar/`).
  * Se abre desde el detalle del surtido (`PickingDetailContent`), que decide si
- * se ofrece (permiso `C-WMS-PICKING` y estatus trasladable).
+ * se ofrece (permiso `C-WMS-PICKING`, estatus trasladable y ninguna línea con
+ * `cantidad_surtida > 0`; ver `isPickingTrasladable`).
  *
  * Mientras el POST está en vuelo el diálogo no se cierra: así no se pierde el
  * error si el backend lo rechaza.

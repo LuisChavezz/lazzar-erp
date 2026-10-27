@@ -191,8 +191,9 @@ export function PickingDetailDialog({ picking, open, onOpenChange }: PickingDeta
  * Aquí vive también la acción "Trasladar a otro almacén", así que está en los
  * dos lugares donde se abre el detalle (el listado de picking y el detalle del
  * pedido). Se ofrece con `C-WMS-PICKING` (el mismo código que da de alta un
- * surtido; `hasPermission` ya deja pasar al rol admin) y solo si el estatus es
- * trasladable. Tras un traslado exitoso ambos dueños reciben el `picking`
+ * surtido; `hasPermission` ya deja pasar al rol admin) y solo si el picking es
+ * trasladable (`isPickingTrasladable`): estatus trasladable y ninguna línea con
+ * `cantidad_surtida > 0`. Tras un traslado exitoso ambos dueños reciben el `picking`
  * actualizado sin desmontar este cuerpo. Si el surtido deja de existir (404),
  * este cuerpo SÍ desaparece al refrescarse —y con él el diálogo—, por eso ese
  * error se avisa con un toast (ver `useTransferPicking`).
