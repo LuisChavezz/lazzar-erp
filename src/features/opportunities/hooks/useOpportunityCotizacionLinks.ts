@@ -23,8 +23,8 @@ import { OPPORTUNITIES_KEY } from "./useOpportunitiesTable";
  * calculado (Cotizada/Ganada) en el detalle, el listado y el embudo, y también
  * las `disponibles` de esta misma consulta, que cuelga del prefijo. Releen
  * además las cotizaciones, cuyo campo `oportunidad` cambió. Sin escritura
- * optimista: devuelven la promesa de la relectura, así que siguen "pending"
- * hasta que la pantalla está al día.
+ * optimista: en general devuelven la promesa de la relectura, así que siguen
+ * "pending" hasta que la pantalla está al día (ver la excepción de "Ligar").
  */
 
 /*
@@ -79,6 +79,12 @@ const invalidateAfterLinkChange = (
  * Liga varias cotizaciones de una vez. El POST es todo o nada: con un 400 no
  * se ligó ninguna, y la relectura deja las `disponibles` al día (p. ej. si otra
  * persona ligó alguna entretanto).
+ *
+ * Con ÉXITO la relectura NO se espera: el selector se cierra en cuanto el
+ * backend responde. Si se esperara, las `disponibles` releídas —ya sin las
+ * recién ligadas— se pintarían dentro del selector aún abierto (hasta el
+ * "no hay cotizaciones" si se ligaron todas), como si hubiera fallado. Con
+ * ERROR sí se espera: el selector sigue abierto y debe mostrar la lista fresca.
  */
 export const ligarCotizacionesMutationKey = (opportunityId: number) =>
   ["ligar-opportunity-cotizaciones", opportunityId] as const;
@@ -95,8 +101,9 @@ export const useLigarOpportunityCotizaciones = (opportunityId: number) => {
           ? "Cotización ligada a la oportunidad"
           : `${cotizaciones.length} cotizaciones ligadas a la oportunidad`
       );
+      void invalidateAfterLinkChange(queryClient, cotizaciones);
     },
-    onError: (error) => {
+    onError: (error, cotizaciones) => {
       console.error(error);
       toast.error(
         drfActionErrorMessage(
@@ -105,8 +112,8 @@ export const useLigarOpportunityCotizaciones = (opportunityId: number) => {
           OPPORTUNITY_GONE_DETAIL_MESSAGE
         )
       );
+      return invalidateAfterLinkChange(queryClient, cotizaciones);
     },
-    onSettled: (_data, _error, cotizaciones) => invalidateAfterLinkChange(queryClient, cotizaciones),
   });
 };
 
