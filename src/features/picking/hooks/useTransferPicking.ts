@@ -3,6 +3,7 @@ import toast from "react-hot-toast";
 import { AxiosError } from "axios";
 import { invalidateStockQueries } from "@/src/features/stock/utils/invalidateStockQueries";
 import { handleDrfWriteError, isNotFoundError } from "@/src/utils/drfWriteErrors";
+import { firstDrfFieldMessage } from "@/src/utils/firstDrfFieldMessage";
 import { firstDrfMessage } from "@/src/utils/firstDrfMessage";
 import { transferPicking } from "../services/actions";
 import type { Picking, TransferPickingPayload } from "../interfaces/picking.interface";
@@ -44,13 +45,12 @@ export function parseTransferPickingError(
   setFieldError: (field: TransferPickingField, message: string) => void,
 ): string | null {
   if (error instanceof AxiosError && error.response?.status === 403) {
-    const detail = (error.response.data as Record<string, unknown> | undefined)?.detail;
-    return firstDrfMessage(detail) ?? TRANSFER_FORBIDDEN_MESSAGE;
+    return firstDrfFieldMessage(error) ?? TRANSFER_FORBIDDEN_MESSAGE;
   }
   const data =
     error instanceof AxiosError && error.response?.status === 400 ? error.response.data : undefined;
   if (Array.isArray(data)) {
-    return firstDrfMessage(data) ?? TRANSFER_FALLBACK;
+    return firstDrfFieldMessage(error) ?? TRANSFER_FALLBACK;
   }
   if (data && typeof data === "object") {
     const keysWithMessage = Object.entries(data as Record<string, unknown>)
