@@ -10,16 +10,21 @@ import type {
 } from "../interfaces/picking.interface";
 
 /**
- * ¿El backend aceptaría trasladar este picking a otro almacén? Solo mira el
- * `estado` (ver `PICKING_ESTADOS_TRASLADABLES`); el permiso del usuario lo
+ * ¿El backend aceptaría trasladar este picking a otro almacén? Replica sus dos
+ * reglas sobre el registro: el `estado` está en `PICKING_ESTADOS_TRASLADABLES`
+ * y NINGUNA línea tiene `cantidad_surtida > 0` (lo surtido quedó atribuido a
+ * un almacén; el backend responde 400 `estado`). El permiso del usuario lo
  * decide quien ofrece la acción.
  *
  * No se reutiliza en `isPickingVencido`, aunque hoy excluyan los mismos dos
  * estatus: ahí la regla es "no está en un estado terminal" (definida por el
  * frontend) y aquí es la lista blanca del backend; si el enum crece, divergen.
  */
-export const isPickingTrasladable = (picking: Pick<Picking, "estado">): boolean =>
-  PICKING_ESTADOS_TRASLADABLES.includes(picking.estado);
+export const isPickingTrasladable = (
+  picking: Pick<Picking, "estado" | "picking_detalle">,
+): boolean =>
+  PICKING_ESTADOS_TRASLADABLES.includes(picking.estado) &&
+  !picking.picking_detalle.some((linea) => Number(linea.cantidad_surtida) > 0);
 
 /**
  * DEFINICIÓN ÚNICA DE "PICKING VENCIDO", compartida por la columna "Fecha
