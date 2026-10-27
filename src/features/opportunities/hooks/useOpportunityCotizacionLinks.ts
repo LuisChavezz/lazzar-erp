@@ -35,20 +35,20 @@ import { opportunityDetailKey } from "./useOpportunityDetail";
  * Errores: `drfActionErrorMessage`. Los rechazos de negocio llegan por campo y
  * como texto plano —`cotizaciones` (alguna no se puede ligar, otra persona la
  * cambió entretanto, lista vacía), `etapa` (oportunidad Ganada o Perdida),
- * `cliente` (sin cliente), `cotizacion` (quitar una autorizada)— y un 404 con
- * `detail`; el helper muestra el primero.
+ * `vendedor` (sin vendedor), `cliente` (sin cliente), `cotizacion` (quitar una
+ * autorizada)— y un 404 con `detail`; el helper muestra el primero.
  */
 
 /**
  * ¿El POST de "Ligar" se rechazó por la OPORTUNIDAD y no por las cotizaciones?
- * 400 con `etapa` (se ganó o se marcó Perdida) o `cliente` (se le quitó):
- * reintentar da el mismo 400, así que el selector se cierra. Con `cotizaciones`
- * sigue abierto.
+ * 400 con `etapa` (se ganó o se marcó Perdida), `vendedor` (no tiene) o
+ * `cliente` (se le quitó): reintentar da el mismo 400, así que el selector se
+ * cierra. Con `cotizaciones` sigue abierto.
  */
 export const isLigarOportunidadRejection = (error: unknown): boolean =>
   error instanceof AxiosError &&
   error.response?.status === 400 &&
-  firstRejectionMessage(error.response.data, ["etapa", "cliente"]) !== undefined;
+  firstRejectionMessage(error.response.data, ["etapa", "vendedor", "cliente"]) !== undefined;
 
 export const opportunityCotizacionesKey =(opportunityId: number) =>
   [...OPPORTUNITIES_KEY, "cotizaciones", opportunityId] as const;

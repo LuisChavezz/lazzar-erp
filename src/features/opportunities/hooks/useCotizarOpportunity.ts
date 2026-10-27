@@ -15,10 +15,13 @@ import { OPPORTUNITIES_KEY } from "./useOpportunitiesTable";
 
 /**
  * Rechazos de negocio del endpoint, que llegan por campo y no como
- * `{ error }`: `{"etapa": "No se cotiza una oportunidad perdida."}` y
- * `{"sucursal": "Tu sucursal no pertenece a la empresa de la oportunidad."}`.
+ * `{ error }`, en este orden: `{"etapa": "La oportunidad está ganada; para
+ * vender más, abre otra."}` (o "perdida"), `{"vendedor": "La oportunidad no
+ * tiene vendedor; transfiérela primero."}` y `{"sucursal": "Tu sucursal no
+ * pertenece a la empresa de la oportunidad."}`. El detalle ya oculta "Cotizar"
+ * en los dos primeros casos; llegan con datos viejos.
  */
-const REJECTION_KEYS = ["etapa", "sucursal", "detail", "non_field_errors"] as const;
+const REJECTION_KEYS = ["etapa", "vendedor", "sucursal", "detail", "non_field_errors"] as const;
 
 const cotizarErrorMessage = (error: unknown): string => {
   const fallback = "No se pudo crear la cotización. Intenta de nuevo.";
