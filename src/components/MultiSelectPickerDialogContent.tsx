@@ -44,6 +44,14 @@ interface MultiSelectPickerDialogContentProps<T> {
    */
   isConfirming?: boolean;
   confirmingText?: string;
+  /**
+   * OPCIONAL (apagado por defecto): cuando `items` cambia ya cargado (sin
+   * `isLoading`/`isError`), quita de la selección tentativa las claves que ya
+   * no están en la lista y conserva el resto. Para un catálogo que se relee
+   * con el selector abierto (p. ej. tras un rechazo del backend): sin esto el
+   * contador seguiría contando ítems que ya no se ven.
+   */
+  pruneSelectionToItems?: boolean;
 }
 
 /**
@@ -85,6 +93,7 @@ export function MultiSelectPickerDialogContent<T>({
   countLabel = { singular: "seleccionado", plural: "seleccionados" },
   isConfirming = false,
   confirmingText = "Guardando…",
+  pruneSelectionToItems = false,
 }: MultiSelectPickerDialogContentProps<T>) {
   // Selección tentativa: no se propaga al llamador hasta confirmar. Arranca
   // vacía —a diferencia del selector único, que siembra el valor ya vinculado—
@@ -93,6 +102,21 @@ export function MultiSelectPickerDialogContent<T>({
   const [tentativeKeys, setTentativeKeys] = useState<Set<string | number>>(
     () => new Set(),
   );
+
+  // Poda al cambiar `items` (ajuste de estado durante el render, sin efecto):
+  // solo con la lista ya cargada, para no vaciar la selección mientras un
+  // consumidor la sustituye por `[]` al cargar o fallar. Una relectura con los
+  // mismos ítems no quita nada. Se compara por CLAVES, no por referencia: un
+  // consumidor que filtra en cada render entrega un arreglo nuevo cada vez.
+  const itemKeys = items.map(getKey);
+  const itemsSignature = itemKeys.join("\u0000");
+  const [prunedFor, setPrunedFor] = useState(itemsSignature);
+  if (pruneSelectionToItems && itemsSignature !== prunedFor && !isLoading && !isError) {
+    setPrunedFor(itemsSignature);
+    const present = new Set(itemKeys);
+    const kept = [...tentativeKeys].filter((key) => present.has(key));
+    if (kept.length !== tentativeKeys.size) setTentativeKeys(new Set(kept));
+  }
 
   const selectedCount = tentativeKeys.size;
   // También con `isLoading`/`isError`, igual que el selector único: ambas ramas
