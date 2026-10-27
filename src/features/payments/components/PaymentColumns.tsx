@@ -2,7 +2,7 @@ import { ColumnDef, createColumnHelper, FilterFn } from "@tanstack/react-table";
 import { ActionMenu, ActionMenuItem } from "@/src/components/ActionMenu";
 import { ColumnHeaderFilter, type ColumnFilterOption } from "@/src/components/ColumnHeaderFilter";
 import { BanIcon, ChevronRightIcon, ViewIcon } from "@/src/components/Icons";
-import { formatMoneyValue } from "@/src/utils/formatCurrency";
+import { formatMoneyValue, NO_CURRENCY_FORMAT } from "@/src/utils/formatCurrency";
 import { formatShortDate } from "@/src/utils/formatDate";
 import { PAGO_ESTATUS_CONFIG } from "../constants/paymentStatus";
 import type { Pago } from "../interfaces/payment.interface";
@@ -159,10 +159,10 @@ export const getColumns = (
       meta: { align: "right" },
       cell: (info) => (
         // El pago no expone moneda propia: la divisa vive en la factura de cada
-        // CxP aplicada. Se formatea con el MXN por defecto de `formatCurrency`
-        // hasta que la fase 2 resuelva la moneda desde las líneas.
+        // CxP aplicada, y el renglón no trae con qué resolverla. Se pinta sin
+        // símbolo y con 2 decimales: un "$" afirmaría pesos.
         <div className="tabular-nums font-semibold text-slate-800 dark:text-white">
-          {formatMoneyValue(info.getValue())}
+          {formatMoneyValue(info.getValue(), NO_CURRENCY_FORMAT)}
         </div>
       ),
     }),

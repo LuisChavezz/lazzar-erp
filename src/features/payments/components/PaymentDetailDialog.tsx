@@ -13,7 +13,7 @@ import {
 } from "@/src/components/DetailDialogPrimitives";
 import { ReceiptIcon } from "@/src/components/Icons";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
-import { formatMoneyValueOrDash } from "@/src/utils/formatCurrency";
+import { formatMoneyValueOrDash, NO_CURRENCY_FORMAT } from "@/src/utils/formatCurrency";
 import { formatShortDate } from "@/src/utils/formatDate";
 import {
   MOVIMIENTO_ESTATUS_CONFIG,
@@ -45,10 +45,10 @@ export function PaymentDetailDialog({
 
   // El pago no expone moneda propia: la divisa es la de las CxP aplicadas, que
   // el alta obliga a ser una sola (candado de moneda en `CxpSelectorDialog`).
-  // Aquí no está disponible desde el renglón, así que los importes se muestran
-  // con el formato por defecto — la moneda concreta se ve en el detalle de cada
-  // CxP en su propio módulo.
-  const money = (value: string) => formatMoneyValueOrDash(value);
+  // Aquí no está disponible desde el renglón, así que los importes van sin
+  // símbolo y con 2 decimales (un "$" afirmaría pesos) — la moneda concreta se
+  // ve en el detalle de cada CxP en su propio módulo.
+  const money = (value: string) => formatMoneyValueOrDash(value, NO_CURRENCY_FORMAT);
 
   return (
     <MainDialog

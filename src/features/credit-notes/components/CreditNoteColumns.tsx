@@ -8,7 +8,7 @@ import {
   DeleteIcon,
   ViewIcon,
 } from "@/src/components/Icons";
-import { formatMoneyValue } from "@/src/utils/formatCurrency";
+import { formatMoneyValue, NO_CURRENCY_FORMAT } from "@/src/utils/formatCurrency";
 import { formatShortDate } from "@/src/utils/formatDate";
 import { NOTA_CREDITO_ESTATUS_CONFIG } from "../constants/creditNoteStatus";
 import type { NotaCredito } from "../interfaces/credit-note.interface";
@@ -187,12 +187,12 @@ export const getColumns = (
       cell: (info) => (
         // LIMITACIÓN CONOCIDA: `NotaCredito` no expone moneda propia ni el código
         // de la factura, y el renglón del listado no trae con qué resolverla, así
-        // que se formatea con el MXN por defecto de `formatCurrency`. El detalle
+        // que se pinta sin símbolo y con 2 decimales (un "$" afirmaría pesos). El detalle
         // SÍ la resuelve (pide la factura para nombrar sus conceptos y de paso
         // obtiene `moneda_nombre`); esta columna no puede sin una consulta por
         // fila. Mismo caso que el `total_pagado` del listado de pagos.
         <div className="tabular-nums font-semibold text-slate-800 dark:text-white">
-          {formatMoneyValue(info.getValue())}
+          {formatMoneyValue(info.getValue(), NO_CURRENCY_FORMAT)}
         </div>
       ),
     }),

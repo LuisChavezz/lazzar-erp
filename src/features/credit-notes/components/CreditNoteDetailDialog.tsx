@@ -178,8 +178,8 @@ export function CreditNoteDetailBody({ nota }: { nota: NotaCredito }) {
    *     #47" no le dice nada a nadie: el nombre del producto y lo que se facturó
    *     originalmente viven en `factura_detalles`.
    *  2. `NotaCredito` no tiene campo de moneda. Sin la factura, los importes
-   *     tendrían que pintarse con el MXN por defecto (como hace el listado, que
-   *     no puede permitirse una consulta por fila). Aquí `moneda_nombre` —el
+   *     tendrían que pintarse sin símbolo (como hace el listado, que no puede
+   *     permitirse una consulta por fila). Aquí `moneda_nombre` —el
    *     `codigo_iso` de la moneda de la factura— llega gratis con la misma
    *     consulta que ya hacía falta por (1).
    *
