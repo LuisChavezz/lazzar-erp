@@ -5,6 +5,7 @@ import { MainDialog } from "@/src/components/MainDialog";
 import { MultiSelectPickerDialogContent } from "@/src/components/MultiSelectPickerDialogContent";
 import { formatCurrency, NO_CURRENCY_FORMAT, safeParseAmount } from "@/src/utils/formatCurrency";
 import { formatShortDate } from "@/src/utils/formatDate";
+import { OPPORTUNITY_GONE_DETAIL_MESSAGE } from "../hooks/opportunityErrorMessages";
 import {
   ligarCotizacionesMutationKey,
   useLigarOpportunityCotizaciones,
@@ -37,7 +38,8 @@ function LigarCotizacionesContent({
   opportunityId: number;
   onClose: () => void;
 }) {
-  const { disponibles, isLoading, isInitialError } = useOpportunityCotizacionesLinks(opportunityId);
+  const { disponibles, isLoading, isInitialError, isNotFound } =
+    useOpportunityCotizacionesLinks(opportunityId);
   const { mutate: ligar, isPending } = useLigarOpportunityCotizaciones(opportunityId);
   const ligables = disponibles.filter((cotizacion) => !isCotizacionAutorizada(cotizacion));
 
@@ -47,10 +49,12 @@ function LigarCotizacionesContent({
       subtitle="Cotizaciones del cliente que no están en ninguna oportunidad (las 100 más recientes). Las autorizadas no se ligan desde aquí."
       items={ligables}
       isLoading={isLoading}
-      isError={isInitialError}
+      isError={isInitialError || isNotFound}
       loadingTitle="Cargando cotizaciones"
       loadingMessage="Obteniendo las cotizaciones del cliente..."
-      errorMessage="Error al cargar las cotizaciones disponibles."
+      errorMessage={
+        isNotFound ? OPPORTUNITY_GONE_DETAIL_MESSAGE : "Error al cargar las cotizaciones disponibles."
+      }
       searchPlaceholder="Buscar por número o estatus..."
       filterPredicate={(cotizacion, term) =>
         `#${cotizacion.id}`.includes(term) ||

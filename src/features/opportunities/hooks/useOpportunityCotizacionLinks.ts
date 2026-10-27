@@ -1,9 +1,10 @@
 "use client";
 
+import { useEffect } from "react";
 import { useMutation, useMutationState, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { useGuardedQuery } from "@/src/hooks/useGuardedQuery";
-import { drfActionErrorMessage } from "@/src/utils/drfWriteErrors";
+import { drfActionErrorMessage, isNotFoundError } from "@/src/utils/drfWriteErrors";
 import { retryUnlessClientError } from "@/src/utils/retryUnlessClientError";
 import type { OpportunityCotizacionesLinks } from "../interfaces/opportunity-onboarding.interface";
 import {
@@ -13,6 +14,7 @@ import {
 } from "../services/actions";
 import { OPPORTUNITY_GONE_DETAIL_MESSAGE } from "./opportunityErrorMessages";
 import { OPPORTUNITIES_KEY } from "./useOpportunitiesTable";
+import { opportunityDetailKey } from "./useOpportunityDetail";
 
 /**
  * Ligar cotizaciones que ya existen a una oportunidad y quitarlas
@@ -42,22 +44,41 @@ export const opportunityCotizacionesKey = (opportunityId: number) =>
  * cotización" SOLO mientras está abierto, y relee en cada apertura
  * (`refetchOnMount: "always"`): otra persona pudo ligar o crear cotizaciones
  * del cliente desde la última vez.
+ *
+ * **El 404 es DEFINITIVO**, como en el detalle (`useOpportunityDetail`): la
+ * oportunidad ya no existe o dejó de ser visible. No se reintenta ni avisa por
+ * toast, se expone como `isNotFound` y se relee el detalle de detrás, que pasa
+ * así a su "no disponible" sin esperar a su propia relectura.
  */
 export const useOpportunityCotizacionesLinks = (opportunityId: number) => {
-  const { data, isLoading, isInitialError } = useGuardedQuery<OpportunityCotizacionesLinks>(
-    {
-      queryKey: opportunityCotizacionesKey(opportunityId),
-      queryFn: () => getOpportunityCotizaciones(opportunityId),
-      retry: retryUnlessClientError,
-      refetchOnMount: "always",
-    },
-    {
-      toastId: "opportunity-cotizaciones-refetch-error",
-      errorMessage: "No se pudieron actualizar las cotizaciones disponibles.",
-    }
-  );
+  const queryClient = useQueryClient();
+  const { data, isLoading, isInitialError, isDefinitiveError } =
+    useGuardedQuery<OpportunityCotizacionesLinks>(
+      {
+        queryKey: opportunityCotizacionesKey(opportunityId),
+        queryFn: () => getOpportunityCotizaciones(opportunityId),
+        retry: retryUnlessClientError,
+        refetchOnMount: "always",
+      },
+      {
+        toastId: "opportunity-cotizaciones-refetch-error",
+        errorMessage: "No se pudieron actualizar las cotizaciones disponibles.",
+        isDefinitiveError: isNotFoundError,
+      }
+    );
 
-  return { disponibles: data?.disponibles ?? [], isLoading, isInitialError };
+  useEffect(() => {
+    if (isDefinitiveError) {
+      void queryClient.invalidateQueries({ queryKey: opportunityDetailKey(opportunityId) });
+    }
+  }, [isDefinitiveError, opportunityId, queryClient]);
+
+  return {
+    disponibles: data?.disponibles ?? [],
+    isLoading,
+    isInitialError,
+    isNotFound: isDefinitiveError,
+  };
 };
 
 /**
