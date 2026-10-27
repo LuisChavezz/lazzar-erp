@@ -20,6 +20,12 @@ export interface KpiItem {
   iconBgClass: string;
   iconClass: string;
   trendLabel?: string;
+  /**
+   * Pone la insignia (`trendLabel`) DEBAJO del valor en vez de a su lado. Para
+   * valores apilados (un bloque por moneda) que, compartiendo fila con la
+   * insignia, se recortarían. Sin él la tarjeta se ve como siempre.
+   */
+  stackTrend?: boolean;
   status?: KpiStatus;
   subLabel?: string;
   progress?: number;
@@ -70,6 +76,7 @@ export interface KpiCompactItem {
   /** Texto completo para el `title` del detalle cuando el visible es una versión corta. */
   detailTitle?: string;
   subLabel?: never;
+  stackTrend?: never;
   iconBgClass?: never;
   actionLabel?: never;
   actionHref?: never;
@@ -159,8 +166,8 @@ export function KpiCard(props: KpiCardProps) {
           <Icon className="w-5 h-5" aria-hidden="true" />
         </div>
       </div>
-      <div className="flex items-baseline gap-2 mb-2">
-        <h3 className={`text-2xl font-bold text-slate-800 dark:text-white tracking-tight font-mono truncate`}>
+      <div className={item.stackTrend ? "flex flex-col items-start gap-1.5 mb-2" : "flex items-baseline gap-2 mb-2"}>
+        <h3 className={`text-2xl font-bold text-slate-800 dark:text-white tracking-tight font-mono truncate${item.stackTrend ? " max-w-full" : ""}`}>
           {item.value}
         </h3>
         {item.trendLabel ? (

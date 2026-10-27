@@ -86,15 +86,10 @@ export const AccountsReceivableStats = ({ today }: { today: string }) => {
   ];
 
   // Con varias monedas el valor apila un bloque por moneda y la insignia, que
-  // comparte su fila, recortaría los códigos: su texto pasa bajo el título.
-  // Todos los indicadores listan las mismas monedas (`computeCxcKpis`).
+  // comparte su fila, recortaría los códigos: va debajo del valor, con su
+  // color. Todos los indicadores listan las mismas monedas (`computeCxcKpis`).
   const multiCurrency = !showPlaceholder && kpis.totalPorCobrar.length > 1;
-  const shownItems = multiCurrency
-    ? items.map(({ trendLabel, ...item }) => ({
-        ...item,
-        subLabel: [item.subLabel, trendLabel].filter(Boolean).join(" · "),
-      }))
-    : items;
+  const shownItems = multiCurrency ? items.map((item) => ({ ...item, stackTrend: true })) : items;
 
   return <KpiGrid items={shownItems} />;
 };
