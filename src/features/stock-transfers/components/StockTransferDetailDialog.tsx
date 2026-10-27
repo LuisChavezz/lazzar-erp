@@ -11,6 +11,7 @@ import {
   LineItemsTable,
   SectionTitle,
 } from "@/src/components/DetailDialogPrimitives";
+import { isNotFoundOrForbiddenError } from "@/src/utils/drfWriteErrors";
 import { formatExactQuantityValue } from "@/src/utils/formatCurrency";
 import { formatShortDate, formatShortTime } from "@/src/utils/formatDate";
 import { TRANSFER_STATUS_CONFIG } from "../constants/transferStatus";
@@ -97,10 +98,17 @@ export function StockTransferDetailDialog({
       {isLoading && <Loader title="Cargando detalle del traspaso..." className="py-16" />}
 
       {/* ── Estado: error ─────────────────────────────────────────────────── */}
+      {/* 403/404: el traspaso existe en otra sucursal o ya no es visible. Se
+          abre también desde el detalle de un picking, cuyo usuario puede no
+          tener acceso a la TR: el mensaje crudo de Axios no le diría nada. */}
       {isError && (
         <ErrorState
           title="Error al cargar el detalle del traspaso"
-          message={(error as Error)?.message}
+          message={
+            isNotFoundOrForbiddenError(error)
+              ? "No tienes acceso a este traspaso o ya no existe."
+              : (error as Error)?.message
+          }
         />
       )}
 
