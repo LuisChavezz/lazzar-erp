@@ -46,6 +46,10 @@ export function PurchaseOrderDashboard({ orders }: PurchaseOrderDashboardProps) 
     // Un total POR MONEDA (EC-601): el listado puede traer órdenes en MXN y en
     // USD, y sumarlas exigiría un tipo de cambio que el backend no expone aquí.
     const totalValue = sumByCurrency(activas, monedaDe, (o) => safeParseAmount(o.total));
+    // Sin permiso de contabilidad el backend QUITA la clave `total` de todas
+    // las filas (no la manda en 0): el valor no es cero sino no visible, así
+    // que se muestra "—" en vez de "$0".
+    const totalOculto = activas.length > 0 && activas.every((o) => o.total === undefined);
 
     const pendientes = orders.filter((o) => isPurchaseOrderPending(o.estatus)).length;
     const autorizadasOCompletadas = orders.filter((o) =>
@@ -87,6 +91,7 @@ export function PurchaseOrderDashboard({ orders }: PurchaseOrderDashboardProps) 
     return {
       total,
       totalValue,
+      totalOculto,
       pendientes,
       autorizadasOCompletadas,
       canceladas,
@@ -128,7 +133,9 @@ export function PurchaseOrderDashboard({ orders }: PurchaseOrderDashboardProps) 
             </span>
           </div>
           <p className="text-xs text-slate-500 dark:text-slate-400 tabular-nums mb-2">
-            {formatCurrencyTotalsInline(stats.totalValue, { maximumFractionDigits: 0 })}{" "}
+            {stats.totalOculto
+              ? "—"
+              : formatCurrencyTotalsInline(stats.totalValue, { maximumFractionDigits: 0 })}{" "}
             valor total
           </p>
           <div className="h-1 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden text-sky-500">
