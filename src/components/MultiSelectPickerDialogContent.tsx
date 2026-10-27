@@ -36,6 +36,14 @@ interface MultiSelectPickerDialogContentProps<T> {
   pinSelected?: boolean;
   /** Etiqueta del contador, en singular y plural (p. ej. "cuenta"/"cuentas"). */
   countLabel?: { singular: string; plural: string };
+  /**
+   * OPCIONAL: el llamador está guardando la selección (su `onConfirm` lanzó una
+   * petición y el diálogo sigue abierto hasta que responda). Bloquea ambos
+   * botones y cambia el texto de "Confirmar selección" por `confirmingText`.
+   * Sin él, el pie es el de siempre.
+   */
+  isConfirming?: boolean;
+  confirmingText?: string;
 }
 
 /**
@@ -75,6 +83,8 @@ export function MultiSelectPickerDialogContent<T>({
   onCancel,
   pinSelected = false,
   countLabel = { singular: "seleccionado", plural: "seleccionados" },
+  isConfirming = false,
+  confirmingText = "Guardando…",
 }: MultiSelectPickerDialogContentProps<T>) {
   // Selección tentativa: no se propaga al llamador hasta confirmar. Arranca
   // vacía —a diferencia del selector único, que siembra el valor ya vinculado—
@@ -91,7 +101,7 @@ export function MultiSelectPickerDialogContent<T>({
   // plano como carga). Sin esto, confirmar durante la carga no hace nada —
   // `handleConfirm` no encuentra los ítems— y confirmar tras un refetch fallido
   // propagaría las opciones VIEJAS.
-  const isConfirmDisabled = selectedCount === 0 || isLoading || isError;
+  const isConfirmDisabled = selectedCount === 0 || isLoading || isError || isConfirming;
 
   const toggle = (item: T) => {
     const key = getKey(item);
@@ -149,11 +159,11 @@ export function MultiSelectPickerDialogContent<T>({
       )}
 
       <div className="flex items-center justify-end gap-3 pt-5">
-        <Button variant="secondary" onClick={onCancel}>
+        <Button variant="secondary" onClick={onCancel} disabled={isConfirming}>
           Cancelar
         </Button>
         <Button variant="primary" onClick={handleConfirm} disabled={isConfirmDisabled}>
-          Confirmar selección
+          {isConfirming ? confirmingText : "Confirmar selección"}
         </Button>
       </div>
     </>
