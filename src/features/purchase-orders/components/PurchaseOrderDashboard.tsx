@@ -11,6 +11,8 @@ import {
 import { formatMoneyValueOrDash, safeParseAmount } from "@/src/utils/formatCurrency";
 import { formatLocalDate } from "@/src/utils/formatDate";
 import { plural } from "@/src/utils/plural";
+import { groupByCurrency, sumByCurrency } from "@/src/utils/currencyTotals";
+import { formatCurrencyTotalsInline, UNKNOWN_CURRENCY_TAG } from "@/src/components/CurrencyTotalsValue";
 import {
   isPurchaseOrderAuthorizedOrComplete,
   isPurchaseOrderCancelled,
@@ -18,6 +20,9 @@ import {
   isPurchaseOrderPartiallyReceived,
   isPurchaseOrderPending,
 } from "../constants/purchaseOrderStatus";
+
+/** Moneda de la orden para agrupar sus importes; `null` (sin símbolo) si llegara vacía. */
+const monedaDe = (order: PurchaseOrder): string | null => order.moneda_codigo || null;
 
 // ─── Componente principal ─────────────────────────────────────────────────────
 
@@ -38,10 +43,9 @@ export function PurchaseOrderDashboard({ orders }: PurchaseOrderDashboardProps) 
     // respuesta (filtro por rol), y `Number(undefined)` contaminaría la suma
     // entera con `NaN`. Un importe no visible cuenta como 0 en el agregado.
     //
-    // La suma mezcla monedas —el listado puede traer órdenes en MXN y en USD—
-    // y se rotula en la moneda por defecto. Es una aproximación heredada; un
-    // total correcto exigiría tipo de cambio, que el backend no expone aquí.
-    const totalValue = activas.reduce((s, o) => s + safeParseAmount(o.total), 0);
+    // Un total POR MONEDA (EC-601): el listado puede traer órdenes en MXN y en
+    // USD, y sumarlas exigiría un tipo de cambio que el backend no expone aquí.
+    const totalValue = sumByCurrency(activas, monedaDe, (o) => safeParseAmount(o.total));
 
     const pendientes = orders.filter((o) => isPurchaseOrderPending(o.estatus)).length;
     const autorizadasOCompletadas = orders.filter((o) =>
@@ -70,10 +74,15 @@ export function PurchaseOrderDashboard({ orders }: PurchaseOrderDashboardProps) 
       })
       .slice(0, 8);
 
-    // Top 5 por valor total — mismo criterio que `totalValue` para el ausente.
-    const topByValue = [...activas]
-      .sort((a, b) => safeParseAmount(b.total) - safeParseAmount(a.total))
-      .slice(0, 5);
+    // Top 5 por valor total DENTRO de cada moneda (EC-601): un importe en USD
+    // no se compara con uno en MXN. Mismo criterio que `totalValue` para el
+    // ausente.
+    const topByValue = groupByCurrency(activas, monedaDe).map(({ moneda, items }) => ({
+      moneda,
+      orders: [...items]
+        .sort((a, b) => safeParseAmount(b.total) - safeParseAmount(a.total))
+        .slice(0, 5),
+    }));
 
     return {
       total,
@@ -119,11 +128,7 @@ export function PurchaseOrderDashboard({ orders }: PurchaseOrderDashboardProps) 
             </span>
           </div>
           <p className="text-xs text-slate-500 dark:text-slate-400 tabular-nums mb-2">
-            {Number(stats.totalValue).toLocaleString("es-MX", {
-              style: "currency",
-              currency: "MXN",
-              maximumFractionDigits: 0,
-            })}{" "}
+            {formatCurrencyTotalsInline(stats.totalValue, { maximumFractionDigits: 0 })}{" "}
             valor total
           </p>
           <div className="h-1 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden text-sky-500">
@@ -302,53 +307,68 @@ export function PurchaseOrderDashboard({ orders }: PurchaseOrderDashboardProps) 
                 Top 5 por valor
               </h2>
               <p className="text-xs text-slate-400 mt-0.5">
-                Órdenes de mayor importe
+                {stats.topByValue.length > 1
+                  ? "Órdenes de mayor importe, por moneda"
+                  : "Órdenes de mayor importe"}
               </p>
             </div>
           </div>
-          <div className="space-y-1">
-            {stats.topByValue.map((order, idx) => {
-              // `|| 0` en el divisor: si el usuario no ve importes, todos los
-              // `total` son `undefined` → `safeParseAmount` los vuelve 0 y la
-              // división daría `NaN` en el ancho de la barra.
-              const maxValue = safeParseAmount(stats.topByValue[0]?.total);
-              const pct = maxValue > 0 ? (safeParseAmount(order.total) / maxValue) * 100 : 0;
+          <div className={stats.topByValue.length > 1 ? "space-y-4" : undefined}>
+            {stats.topByValue.map((group) => (
+              <div key={group.moneda ?? UNKNOWN_CURRENCY_TAG}>
+                {/* Con varias monedas, un ranking por moneda con su código. */}
+                {stats.topByValue.length > 1 && (
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+                    {group.moneda ?? UNKNOWN_CURRENCY_TAG}
+                  </p>
+                )}
+                <div className="space-y-1">
+                  {group.orders.map((order, idx) => {
+                    // `|| 0` en el divisor: si el usuario no ve importes, todos los
+                    // `total` son `undefined` → `safeParseAmount` los vuelve 0 y la
+                    // división daría `NaN` en el ancho de la barra. El máximo es el
+                    // de SU moneda: las barras no comparan monedas distintas.
+                    const maxValue = safeParseAmount(group.orders[0]?.total);
+                    const pct = maxValue > 0 ? (safeParseAmount(order.total) / maxValue) * 100 : 0;
 
-              return (
-                <div key={order.id} className="flex items-center gap-3 py-2">
-                  {/* Rank */}
-                  <span className="text-xs font-black text-slate-300 dark:text-slate-600 w-4 tabular-nums">
-                    {idx + 1}
-                  </span>
-                  {/* Info */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      {/* Mismo respaldo que el panel de arriba: el Top 5 SÍ
-                          puede incluir una orden todavía sin folio. */}
-                      <span className="text-xs font-semibold text-slate-700 dark:text-slate-200 font-mono">
-                        {order.folio ?? `#${order.id}`}
-                      </span>
-                    </div>
-                    <div className="h-1 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden text-slate-400">
-                      <div
-                        className="h-full bg-current rounded-full"
-                        style={{ width: `${pct}%` }}
-                      />
-                    </div>
-                    <p className="text-[10px] text-slate-400 mt-0.5 truncate">
-                      {order.proveedor_nombre ?? "—"}
-                    </p>
-                  </div>
-                  {/* Valor — en la moneda de LA ORDEN, y "—" si no es visible */}
-                  <span className="text-xs font-bold text-slate-700 dark:text-slate-200 tabular-nums shrink-0">
-                    {formatMoneyValueOrDash(order.total, {
-                      currency: order.moneda_codigo,
-                      maximumFractionDigits: 0,
-                    })}
-                  </span>
+                    return (
+                      <div key={order.id} className="flex items-center gap-3 py-2">
+                        {/* Rank */}
+                        <span className="text-xs font-black text-slate-300 dark:text-slate-600 w-4 tabular-nums">
+                          {idx + 1}
+                        </span>
+                        {/* Info */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            {/* Mismo respaldo que el panel de arriba: el Top 5 SÍ
+                                puede incluir una orden todavía sin folio. */}
+                            <span className="text-xs font-semibold text-slate-700 dark:text-slate-200 font-mono">
+                              {order.folio ?? `#${order.id}`}
+                            </span>
+                          </div>
+                          <div className="h-1 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden text-slate-400">
+                            <div
+                              className="h-full bg-current rounded-full"
+                              style={{ width: `${pct}%` }}
+                            />
+                          </div>
+                          <p className="text-[10px] text-slate-400 mt-0.5 truncate">
+                            {order.proveedor_nombre ?? "—"}
+                          </p>
+                        </div>
+                        {/* Valor — en la moneda de LA ORDEN, y "—" si no es visible */}
+                        <span className="text-xs font-bold text-slate-700 dark:text-slate-200 tabular-nums shrink-0">
+                          {formatMoneyValueOrDash(order.total, {
+                            currency: order.moneda_codigo,
+                            maximumFractionDigits: 0,
+                          })}
+                        </span>
+                      </div>
+                    );
+                  })}
                 </div>
-              );
-            })}
+              </div>
+            ))}
           </div>
         </div>
       </div>
