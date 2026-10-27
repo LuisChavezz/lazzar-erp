@@ -11,8 +11,9 @@ import {
 import { useInvoices } from "../hooks/useInvoices";
 import type { InvoiceListRow } from "../interfaces/invoice.interface";
 import { INVOICE_STATUS } from "../constants/invoiceStatus";
-import { formatCurrency, safeParseAmount } from "@/src/utils/formatCurrency";
-import { formatInCurrency } from "@/src/utils/currencyTotals";
+import { safeParseAmount } from "@/src/utils/formatCurrency";
+import { createCurrencyTotals, type CurrencyTotal } from "@/src/utils/currencyTotals";
+import { CurrencyTotalsValue } from "@/src/components/CurrencyTotalsValue";
 import { parseLocalDate } from "@/src/utils/formatDate";
 import { plural } from "@/src/utils/plural";
 
@@ -30,18 +31,6 @@ const isOverdue = (invoice: InvoiceListRow, today: Date) => {
   return dueDate < today;
 };
 
-type CurrencyTotals = {
-  invoiced: number;
-  receivable: number;
-  overdue: number;
-};
-
-const emptyTotals = (): CurrencyTotals => ({
-  invoiced: 0,
-  receivable: 0,
-  overdue: 0,
-});
-
 export const InvoiceStats = () => {
   const { invoices, hasLoaded, isLoading, isError } = useInvoices();
 
@@ -58,7 +47,12 @@ export const InvoiceStats = () => {
   // sentido agregados sin importar la moneda de cada factura. Las canceladas
   // se excluyen de los importes; "Total facturado" incluye los borradores
   // (sus piezas ya están apartadas), "Por cobrar" y "Vencido" no.
-  const totalsByCurrency = new Map<string, CurrencyTotals>();
+  // Cada indicador registra la moneda de TODA factura (con 0 si no aporta), así
+  // que los tres listan las mismas monedas, ordenadas por código
+  // (`currencyTotals`, igual que CxC).
+  const invoiced = createCurrencyTotals();
+  const receivable = createCurrencyTotals();
+  const overdue = createCurrencyTotals();
   let invoicedCount = 0;
   let emittedCount = 0;
   let draftCount = 0;
@@ -68,36 +62,32 @@ export const InvoiceStats = () => {
   for (const invoice of invoices) {
     const amount = safeParseAmount(invoice.total);
     const cancelled = invoice.estatus === INVOICE_STATUS.CANCELADA;
-    const receivable = isReceivable(invoice);
-    const overdue = isOverdue(invoice, today);
+    const isReceivableInvoice = isReceivable(invoice);
+    const isOverdueInvoice = isOverdue(invoice, today);
+    // `moneda_nombre` trae el código ISO (`moneda.codigo_iso`), pese al nombre.
+    const moneda = invoice.moneda_nombre || null;
 
     if (!cancelled) invoicedCount += 1;
     if (invoice.estatus === INVOICE_STATUS.EMITIDA) emittedCount += 1;
     if (invoice.estatus === INVOICE_STATUS.BORRADOR) draftCount += 1;
-    if (receivable) receivableCount += 1;
-    if (overdue) overdueCount += 1;
+    if (isReceivableInvoice) receivableCount += 1;
+    if (isOverdueInvoice) overdueCount += 1;
 
-    const bucket = totalsByCurrency.get(invoice.moneda_nombre) ?? emptyTotals();
-    if (!cancelled) bucket.invoiced += amount;
-    if (receivable) bucket.receivable += amount;
-    if (overdue) bucket.overdue += amount;
-    totalsByCurrency.set(invoice.moneda_nombre, bucket);
+    invoiced.add(moneda, cancelled ? 0 : amount);
+    receivable.add(moneda, isReceivableInvoice ? amount : 0);
+    overdue.add(moneda, isOverdueInvoice ? amount : 0);
   }
 
-  const currencyEntries = Array.from(totalsByCurrency.entries());
-
   // Cada KPI monetario muestra un total por cada moneda presente en el
-  // conjunto, separados por "·" — ninguna moneda queda oculta. Con una sola
-  // moneda esto se reduce a una sola línea, igual que antes. Sin facturas no
-  // hay moneda que afirmar: 0 sin símbolo (EC-600), no "$0".
-  const money = (pick: (totals: CurrencyTotals) => number) =>
-    currencyEntries.length > 0
-      ? currencyEntries
-          .map(([currency, totals]) =>
-            formatCurrency(pick(totals), { currency, maximumFractionDigits: 0 }),
-          )
-          .join(" · ")
-      : formatInCurrency(0, null, { maximumFractionDigits: 0 });
+  // conjunto — ninguna queda oculta —, un bloque por moneda con su código
+  // (`CurrencyTotalsValue`). Con una sola moneda, una sola cifra igual que
+  // antes. Sin facturas no hay moneda que afirmar: 0 sin símbolo (EC-600).
+  // Con varias monedas la insignia va debajo de los bloques (`stackTrend`), que
+  // compartiendo fila se recortarían ("USD 7,…").
+  const multiCurrency = !isLoading && invoiced.list().length > 1;
+  const money = (totals: CurrencyTotal[]) => (
+    <CurrencyTotalsValue totals={totals} options={{ maximumFractionDigits: 0 }} />
+  );
 
   // Mientras carga mostramos un marcador en lugar de ceros que parecerían reales.
   const ph = "—";
@@ -105,7 +95,8 @@ export const InvoiceStats = () => {
   const items: KpiItem[] = [
     {
       label: "Total Facturado",
-      value: isLoading ? ph : money((t) => t.invoiced),
+      value: isLoading ? ph : money(invoiced.list()),
+      stackTrend: multiCurrency,
       icon: ListaPreciosIcon,
       iconBgClass: "bg-blue-50 dark:bg-blue-500/10",
       iconClass: "text-blue-500",
@@ -114,7 +105,8 @@ export const InvoiceStats = () => {
     },
     {
       label: "Por Cobrar",
-      value: isLoading ? ph : money((t) => t.receivable),
+      value: isLoading ? ph : money(receivable.list()),
+      stackTrend: multiCurrency,
       icon: ClockIcon,
       iconBgClass: "bg-amber-50 dark:bg-amber-500/10",
       iconClass: "text-amber-500",
@@ -123,7 +115,8 @@ export const InvoiceStats = () => {
     },
     {
       label: "Vencido",
-      value: isLoading ? ph : money((t) => t.overdue),
+      value: isLoading ? ph : money(overdue.list()),
+      stackTrend: multiCurrency,
       icon: ErrorIcon,
       iconBgClass: "bg-red-50 dark:bg-red-500/10",
       iconClass: "text-red-500",
