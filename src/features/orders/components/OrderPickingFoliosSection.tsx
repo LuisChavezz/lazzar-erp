@@ -52,7 +52,7 @@ export function OrderPickingFoliosSection({
                 <th className="px-3 py-2 text-left font-semibold">Folio</th>
                 <th className="px-3 py-2 text-left font-semibold">Fecha</th>
                 <th className="px-3 py-2 text-left font-semibold">Estado</th>
-                <th className="px-3 py-2 text-left font-semibold">Origen → Destino</th>
+                <th className="px-3 py-2 text-left font-semibold">Ubicación actual</th>
                 <th className="px-3 py-2 text-left font-semibold">Operador</th>
                 {/* De ESTE folio, no del pedido — ver la nota del componente. */}
                 <th className="px-3 py-2 text-right font-semibold">Líneas</th>
@@ -86,11 +86,12 @@ export function OrderPickingFoliosSection({
                         es el mismo enum del mismo modelo. */}
                     <StatusBadge status={folio.estado} config={PICKING_STATUS_CONFIG} />
                   </td>
-                  <td className="px-3 py-2 text-slate-600 dark:text-slate-300">
-                    <span className="whitespace-nowrap">{textOrDash(folio.almacen_origen_nombre)}</span>
-                    <span className="mx-1.5 text-slate-300 dark:text-slate-600">→</span>
-                    {/* `almacen_destino_nombre` es nullable en el esquema. */}
-                    <span className="whitespace-nowrap">{textOrDash(folio.almacen_destino_nombre)}</span>
+                  {/* Dónde están HOY las prendas (lo resuelve el backend):
+                      tras un traslado, origen y destino ya no lo describen. El
+                      folio de la TR no viaja en `folios_picking`; se ve en el
+                      detalle del surtido. */}
+                  <td className="px-3 py-2 text-slate-600 dark:text-slate-300 whitespace-nowrap">
+                    {textOrDash(folio.almacen_actual_nombre)}
                   </td>
                   <td className="px-3 py-2 text-slate-600 dark:text-slate-300">
                     {textOrDash(folio.operador_nombre)}
