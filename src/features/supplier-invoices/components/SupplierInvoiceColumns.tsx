@@ -10,7 +10,7 @@ import {
   UploadIcon,
   ViewIcon,
 } from "@/src/components/Icons";
-import { formatMoneyValue } from "@/src/utils/formatCurrency";
+import { formatMoneyValue, moneyFormatFor } from "@/src/utils/formatCurrency";
 import { formatShortDate } from "@/src/utils/formatDate";
 import { FACTURA_PROVEEDOR_ESTATUS_CONFIG } from "../constants/supplierInvoiceStatus";
 import { motivoBloqueoRegistro } from "../schemas/supplier-invoice.schema";
@@ -226,7 +226,7 @@ export const getColumns = () => {
         return (
           // En la moneda de la factura: el serializer expone `moneda_codigo`.
           <div className="tabular-nums font-semibold text-slate-800 dark:text-white">
-            {formatMoneyValue(info.getValue(), codigo ? { currency: codigo } : undefined)}
+            {formatMoneyValue(info.getValue(), moneyFormatFor(codigo))}
           </div>
         );
       },

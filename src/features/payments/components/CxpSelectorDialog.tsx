@@ -2,7 +2,7 @@
 
 import { MainDialog } from "@/src/components/MainDialog";
 import { MultiSelectPickerDialogContent } from "@/src/components/MultiSelectPickerDialogContent";
-import { formatMoneyValueOrDash } from "@/src/utils/formatCurrency";
+import { formatMoneyValueOrDash, moneyFormatFor } from "@/src/utils/formatCurrency";
 import { formatShortDate } from "@/src/utils/formatDate";
 import { useCuentasPorPagar } from "../hooks/useCuentasPorPagar";
 import type { CuentaPorPagar } from "@/src/features/accounts-payable/interfaces/accounts-payable.interface";
@@ -136,11 +136,11 @@ function CxpSelectorContent({
           <div className="shrink-0 text-right">
             <p className="text-[11px] text-slate-400 dark:text-slate-500">Saldo</p>
             <p className="text-sm font-bold tabular-nums text-slate-800 dark:text-white">
-              {/* El importe se formatea en la moneda de la FACTURA, no en el MXN
-                  por defecto: una CxP puede venir en otra divisa. */}
+              {/* El importe se formatea en la moneda de la FACTURA (una CxP puede
+                  venir en otra divisa); sin ella, sin símbolo. */}
               {formatMoneyValueOrDash(
                 cuenta.saldo,
-                cuenta.moneda_codigo ? { currency: cuenta.moneda_codigo } : undefined,
+                moneyFormatFor(cuenta.moneda_codigo),
               )}
             </p>
           </div>

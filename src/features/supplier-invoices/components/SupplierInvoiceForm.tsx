@@ -17,6 +17,7 @@ import {
 import {
   formatExactQuantityValue,
   formatMoneyValueOrDash,
+  moneyFormatFor,
 } from "@/src/utils/formatCurrency";
 import { sanitizeDecimalInput } from "@/src/utils/decimal";
 import {
@@ -84,7 +85,7 @@ export default function SupplierInvoiceForm({ onSuccess }: SupplierInvoiceFormPr
   const lines = useStore(form.store, (state) => state.values.factura_proveedor_detalles);
   const objetivo = useStore(form.store, (state) => state.values.estatus_objetivo);
 
-  const moneda = monedaCodigo ? { currency: monedaCodigo } : undefined;
+  const moneda = moneyFormatFor(monedaCodigo);
   const money = (cents: number) => formatMoneyValueOrDash(centavosAMoneda(cents), moneda);
 
   // Totales DERIVADOS con la misma función que `buildSupplierInvoicePayload`: lo

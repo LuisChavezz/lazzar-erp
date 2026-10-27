@@ -13,7 +13,7 @@ import {
   RejectIcon,
   DeleteIcon,
 } from "@/src/components/Icons";
-import { formatMoneyValueOrDash, formatQuantityValue } from "@/src/utils/formatCurrency";
+import { formatMoneyValueOrDash, formatQuantityValue, moneyFormatFor } from "@/src/utils/formatCurrency";
 import { sanitizeDecimalInput } from "@/src/utils/decimal";
 import {
   centavosAMoneda,
@@ -67,7 +67,7 @@ export default function CreditNoteForm({ onSuccess }: CreditNoteFormProps) {
   // así que sirve para poner la etiqueta de pendiente en el botón correcto.
   const estatusIntent = useStore(form.store, (state) => state.values.estatus);
 
-  const monedaFormato = monedaCodigo ? { currency: monedaCodigo } : undefined;
+  const monedaFormato = moneyFormatFor(monedaCodigo);
   const selectedDetalleIds = lines.map((line) => line.factura_detalle);
 
   // Suma de los conceptos desglosados. Es SOLO INFORMATIVA: no alimenta ningún

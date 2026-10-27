@@ -2,7 +2,7 @@
 
 import { MainDialog } from "@/src/components/MainDialog";
 import { MultiSelectPickerDialogContent } from "@/src/components/MultiSelectPickerDialogContent";
-import { formatExactQuantityValue, formatMoneyValueOrDash } from "@/src/utils/formatCurrency";
+import { formatExactQuantityValue, formatMoneyValueOrDash, moneyFormatFor } from "@/src/utils/formatCurrency";
 import { usePurchaseOrder } from "@/src/features/purchase-orders/hooks/usePurchaseOrder";
 import { unitsToQty } from "../schemas/supplier-invoice.schema";
 import {
@@ -77,7 +77,7 @@ function ReceptionLinesSelectorContent({
     (option) => !alreadySelectedIds.includes(option.recepcionDetalle.id),
   );
 
-  const moneda = monedaCodigo ? { currency: monedaCodigo } : undefined;
+  const moneda = moneyFormatFor(monedaCodigo);
 
   const avisos: string[] = [];
   if (opciones.agotadas > 0) {

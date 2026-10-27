@@ -5,7 +5,7 @@ import { FormInput } from "@/src/components/FormInput";
 import { FormTextarea } from "@/src/components/FormTextarea";
 import { FormSubmitButton } from "@/src/components/FormButtons";
 import { ExclamationTriangleIcon, RejectIcon } from "@/src/components/Icons";
-import { formatMoneyValueOrDash } from "@/src/utils/formatCurrency";
+import { formatMoneyValueOrDash, moneyFormatFor } from "@/src/utils/formatCurrency";
 import type { FacturaProveedor } from "../interfaces/supplier-invoice.interface";
 import { useSupplierInvoiceEditForm } from "../hooks/useSupplierInvoiceEditForm";
 
@@ -48,7 +48,7 @@ export default function SupplierInvoiceEditForm({
     );
   }
 
-  const moneda = factura.moneda_codigo ? { currency: factura.moneda_codigo } : undefined;
+  const moneda = moneyFormatFor(factura.moneda_codigo);
 
   return (
     <form ref={formRef} onSubmit={handleFormSubmit} className="w-full">

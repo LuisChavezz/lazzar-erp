@@ -2,7 +2,7 @@
 
 import { MainDialog } from "@/src/components/MainDialog";
 import { MultiSelectPickerDialogContent } from "@/src/components/MultiSelectPickerDialogContent";
-import { formatMoneyValueOrDash, formatQuantityValue } from "@/src/utils/formatCurrency";
+import { formatMoneyValueOrDash, formatQuantityValue, moneyFormatFor } from "@/src/utils/formatCurrency";
 import { useInvoiceDetail } from "@/src/features/invoicing/hooks/useInvoiceDetail";
 import type { InvoiceDetail } from "@/src/features/invoicing/interfaces/invoice.interface";
 
@@ -53,7 +53,7 @@ function InvoiceLinesSelectorContent({
 }) {
   const { data: factura, isLoading, isError } = useInvoiceDetail(facturaId);
 
-  const monedaFormato = monedaCodigo ? { currency: monedaCodigo } : undefined;
+  const monedaFormato = moneyFormatFor(monedaCodigo);
 
   const disponibles = (factura?.factura_detalles ?? []).filter(
     (detalle) => !alreadySelectedIds.includes(detalle.id),

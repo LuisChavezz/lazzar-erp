@@ -15,7 +15,7 @@ import {
   RejectIcon,
   DeleteIcon,
 } from "@/src/components/Icons";
-import { formatMoneyValueOrDash } from "@/src/utils/formatCurrency";
+import { formatMoneyValueOrDash, moneyFormatFor } from "@/src/utils/formatCurrency";
 import { sanitizeDecimalInput } from "@/src/utils/decimal";
 import { METODO_PAGO_OPTIONS } from "../constants/paymentStatus";
 import { monedaDelPago } from "../schemas/payment.schema";
@@ -63,10 +63,9 @@ export default function PaymentForm({ onSuccess }: PaymentFormProps) {
   // ver `monedaDelPago`, que es la definición única que comparten esta vista, el
   // filtro del selector y el `superRefine` del schema.
   const monedaCodigo = monedaDelPago(lines);
-  // Para formatear solo sirve un código ISO real; con `null`/`undefined` se cae al
-  // formato sin símbolo en vez de fingir MXN.
-  const monedaFormato =
-    typeof monedaCodigo === "string" ? { currency: monedaCodigo } : undefined;
+  // Con `null`/`undefined` (sin líneas, o una CxP sin código) el total va sin
+  // símbolo y con 2 decimales, en vez de fingir MXN.
+  const monedaFormato = moneyFormatFor(monedaCodigo ?? null);
   const selectedCxpIds = lines.map((line) => line.cxp);
 
   if (isLoadingFormData) {
@@ -380,9 +379,7 @@ export default function PaymentForm({ onSuccess }: PaymentFormProps) {
                                     Saldo{" "}
                                     {formatMoneyValueOrDash(
                                       line.saldo,
-                                      line.moneda_codigo
-                                        ? { currency: line.moneda_codigo }
-                                        : undefined,
+                                      moneyFormatFor(line.moneda_codigo),
                                     )}
                                   </p>
                                 </div>
