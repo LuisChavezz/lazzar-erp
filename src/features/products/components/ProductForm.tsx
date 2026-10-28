@@ -6,6 +6,7 @@ import { FormTextarea } from "../../../components/FormTextarea";
 import { FormCancelButton, FormSubmitButton } from "../../../components/FormButtons";
 import { InfoIcon, ProductIcon, SettingsIcon } from "../../../components/Icons";
 import { ErrorState } from "../../../components/ErrorState";
+import { READ_ONLY_INPUT_CLS } from "../../../constants/formStyles";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import MissingPrerequisites from "./MissingPrerequisites";
 import { Product } from "../interfaces/product.interface";
@@ -105,7 +106,7 @@ export default function ProductForm({ onSuccess, product }: ProductFormProps) {
                 value={productTypeLabel}
                 readOnly
                 tabIndex={-1}
-                className="cursor-not-allowed bg-slate-100 text-slate-500 dark:bg-zinc-800 dark:text-slate-400 focus:bg-slate-100 dark:focus:bg-zinc-800 focus:ring-0 focus:border-slate-200 dark:focus:border-zinc-700"
+                className={READ_ONLY_INPUT_CLS}
               />
 
               <form.Field name="categoria_producto">

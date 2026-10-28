@@ -6,6 +6,7 @@ import { FormInput } from "../../../components/FormInput";
 import { FormSelect } from "../../../components/FormSelect";
 import { FormCancelButton, FormSubmitButton } from "../../../components/FormButtons";
 import { Loader } from "../../../components/Loader";
+import { READ_ONLY_INPUT_CLS } from "../../../constants/formStyles";
 import { Supplier } from "../interfaces/supplier.interface";
 import { useSupplierForm } from "../hooks/useSupplierForm";
 import { useVerifyRfc } from "../../facturama/hooks/useVerifyRfc";
@@ -164,25 +165,15 @@ export default function SupplierForm({ onSuccess, supplierToEdit }: SupplierForm
                 editarlo. Solo lectura y sin `name`: no entra en el formulario
                 ni en el scroll a errores. */}
             <div>
-              {isEditMode && supplierToEdit ? (
-                <FormInput
-                  id="proveedor-codigo"
-                  label="Código"
-                  value={supplierToEdit.codigo}
-                  readOnly
-                  tabIndex={-1}
-                  className={`${COMPACT_FIELD_CLS} cursor-not-allowed bg-slate-100 text-slate-500 dark:bg-zinc-800 dark:text-slate-400 focus:bg-slate-100 dark:focus:bg-zinc-800 focus:ring-0 focus:border-slate-200 dark:focus:border-zinc-700`}
-                />
-              ) : (
-                <div>
-                  <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider ml-1 mb-1">
-                    Código
-                  </p>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 ml-1 py-2">
-                    Se asigna automáticamente al guardar
-                  </p>
-                </div>
-              )}
+              <FormInput
+                id="proveedor-codigo"
+                label="Código"
+                value={supplierToEdit?.codigo ?? ""}
+                placeholder="Se asigna automáticamente al guardar"
+                readOnly
+                tabIndex={-1}
+                className={`${COMPACT_FIELD_CLS} ${READ_ONLY_INPUT_CLS}`}
+              />
             </div>
             <div className="md:col-span-2">
               <form.Field name="razon_social">
