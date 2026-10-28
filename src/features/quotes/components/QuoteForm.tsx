@@ -29,6 +29,9 @@ import { DialogHeader } from "@/src/components/DialogHeader";
 import { plural } from "@/src/utils/plural";
 import { useQuoteForm } from "../hooks/useQuoteForm";
 import { useWorkspaceStore } from "../../workspace/store/workspace.store";
+import { useValidWorkspaceBranchId } from "../../workspace/hooks/useValidWorkspaceBranchId";
+import { SectionErrorNotice } from "@/src/components/SectionErrorNotice";
+import { getQuoteSinSucursalMessage } from "../utils/quoteSucursal";
 import { IVA_TASA_FIJA } from "../constants/iva";
 import { AddProductDialog } from "./AddProductDialog";
 import type { AddProductVariant } from "../types";
@@ -140,6 +143,11 @@ export type QuoteFormContentProps = QuoteFormHookResult & {
   /** Marca junto al título "Información Comercial" (p. ej. `RecompraBadge`). */
   headerBadge?: React.ReactNode;
   /**
+   * Aviso persistente arriba del formulario (p. ej. el alta sin sucursal en el
+   * workspace). Lo pasa el wrapper; ausente ⇒ nada.
+   */
+  topNotice?: React.ReactNode;
+  /**
    * Empresa bajo la que se guarda la cotización. El alta de muestras ofrece
    * solo las categorías de producto de esa empresa. La pasan los wrappers que
    * permiten capturar muestras; ausente ⇒ sin filtro.
@@ -237,6 +245,7 @@ export function QuoteFormContent({
   removalBlockedReason,
   removalBlockedExtraServicesCount = 0,
   headerBadge,
+  topNotice,
   muestraCompanyId,
 }: QuoteFormContentProps) {
   // Categoría de cada partida de catálogo, para la matriz prenda/proceso.
@@ -319,6 +328,7 @@ export function QuoteFormContent({
       noValidate
       className={`space-y-6 ${routeTransitionClass}`}
     >
+      {topNotice}
       <section className="relative overflow-hidden bg-white dark:bg-zinc-900 rounded-3xl p-6 md:p-8 border border-slate-200 dark:border-white/5 shadow-sm dark:shadow-none">
         <div className="absolute top-0 right-0 w-96 h-96 bg-sky-500/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none" />
         <div className="absolute bottom-0 left-0 w-64 h-64 bg-sky-500/5 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2 pointer-events-none" />
@@ -2294,11 +2304,22 @@ export default function QuoteForm() {
   const hookResult = useQuoteForm();
   // Misma empresa con la que `useQuoteForm` arma el payload (`pedido.empresa`).
   const selectedCompanyId = useWorkspaceStore((state) => state.selectedCompany?.id);
+  // Sin sucursal válida el guardado se bloquea (`useQuoteForm`); se avisa desde
+  // el principio y no solo al pulsar Guardar. Misma consulta en caché que el hook.
+  const workspaceBranch = useValidWorkspaceBranchId();
+  const sinSucursalNotice =
+    workspaceBranch.branchId === null && !workspaceBranch.isLoading ? (
+      <SectionErrorNotice
+        title="No se puede guardar sin sucursal"
+        message={getQuoteSinSucursalMessage(workspaceBranch.isError)}
+      />
+    ) : null;
   return (
     <QuoteFormContent
       {...hookResult}
       capabilities={QUOTE_FORM_CAPABILITIES.createQuote}
       muestraCompanyId={selectedCompanyId}
+      topNotice={sinSucursalNotice}
     />
   );
 }
