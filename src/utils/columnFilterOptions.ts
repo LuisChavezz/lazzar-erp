@@ -1,6 +1,7 @@
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { parseLocalDate } from "./formatDate";
+import type { ColumnFilterOption } from "@/src/components/ColumnHeaderFilter";
 
 /**
  * Opciones y comparadores para los filtros de encabezado (estilo Excel) de
@@ -106,4 +107,53 @@ export function buildDistinctFilterOptions<T>(
   return Array.from(options, ([value, label]) => ({ value, label })).sort((a, b) =>
     a.label.localeCompare(b.label, "es"),
   );
+}
+
+/** Entrada de un catálogo de estatus/enum del front, en cualquiera de sus formas con objeto. */
+export interface FilterOptionConfigEntry {
+  label?: string;
+  /** Clase del punto de color (`StatusBadgeConfigEntry.dot`). */
+  dot?: string;
+}
+
+/**
+ * Opciones de filtro a partir de un catálogo del front indexado por el código
+ * crudo (`Record<code, { label?, dot? }>`): una por llave, en el orden de las
+ * llaves, con su etiqueta (o el código, si no trae) y su punto de color. Los
+ * catálogos que ya son arreglos `{ value, label }[]` se pasan tal cual, sin
+ * este helper.
+ */
+export function optionsFromConfig<K extends PropertyKey>(
+  config: Record<K, FilterOptionConfigEntry>,
+): ColumnFilterOption[] {
+  return Object.entries(config as Record<string, FilterOptionConfigEntry>).map(([value, cfg]) => ({
+    value,
+    label: cfg.label ?? value,
+    dotClassName: cfg.dot,
+  }));
+}
+
+/**
+ * Opciones de una columna con catálogo conocido (spec `options` de
+ * `withHeaderFilters`): "Todos", luego `options` en su orden y al final, sin
+ * repetir, cada valor de las filas que el catálogo no cubre, rotulado con el
+ * valor crudo. Así todo valor que puede quedar activo tiene opción y la ficha
+ * del filtro siempre tiene etiqueta. Filas sin valor se omiten.
+ */
+export function buildCatalogFilterOptions<T>(
+  rows: T[],
+  getValue: (row: T) => string | number | null | undefined,
+  options: ColumnFilterOption[],
+): ColumnFilterOption[] {
+  const known = new Set(options.map((option) => option.value));
+  const extra: ColumnFilterOption[] = [];
+  for (const row of rows) {
+    const value = getValue(row);
+    if (value === null || value === undefined || value === "") continue;
+    const key = String(value);
+    if (known.has(key)) continue;
+    known.add(key);
+    extra.push({ value: key, label: key });
+  }
+  return [ALL_FILTER_OPTION, ...options, ...extra];
 }
