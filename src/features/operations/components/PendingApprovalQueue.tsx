@@ -5,9 +5,9 @@ import { useMutationState } from "@tanstack/react-query";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import toast from "react-hot-toast";
-import { formatQuoteAmount } from "@/src/features/quotes/utils/formatQuoteAmount";
 import { getSavedMontosError } from "@/src/features/quotes/utils/quoteAmounts";
 import {
+  formatQuoteAmountOrDash,
   formatQuoteDateTime as formatOperationsQuoteDateTime,
 } from "@/src/features/quotes/utils/quoteDetailsFormatters";
 import {
@@ -262,7 +262,7 @@ export const PendingApprovalQueue = () => {
 
                     <div className="text-right shrink-0">
                       <p className="text-sm font-bold font-mono text-slate-700 dark:text-slate-200">
-                        {formatQuoteAmount(Number(operationsQuote.gran_total) || 0, operationsQuote.moneda_codigo)}
+                        {formatQuoteAmountOrDash(operationsQuote.gran_total, operationsQuote.moneda_codigo)}
                       </p>
                       {operationsQuote.piezas != null && (
                         <p className="text-[11px] text-slate-400 dark:text-slate-500">

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, type RefObject } from "react";
 import { format, parseISO, isValid } from "date-fns";
 import { es } from "date-fns/locale";
 import { Quote } from "../interfaces/quote.interface";
-import { formatQuoteAmount } from "../utils/formatQuoteAmount";
+import { formatQuoteAmountOrDash } from "@/src/features/quotes/utils/quoteDetailsFormatters";
 import { formatQuoteExportTotal, QUOTE_EXPORT_TOTAL_FIELD } from "../utils/quoteExportTotals";
 import { type DataTableHandle, DataTableVisibleColumn } from "@/src/components/DataTable";
 import { downloadBlob } from "@/src/utils/downloadBlob";
@@ -62,7 +62,10 @@ const isRightAlignedColumn = (column: DataTableVisibleColumn<Quote>): boolean =>
 const formatValue = (value: unknown, column: DataTableVisibleColumn<Quote>, quote: Quote): string => {
   if (value === null || value === undefined || value === "") return "—";
   if (isCurrencyColumn(column)) {
-    return formatQuoteAmount(Number(value) || 0, quote.moneda_codigo);
+    return formatQuoteAmountOrDash(
+      typeof value === "number" || typeof value === "string" ? value : null,
+      quote.moneda_codigo,
+    );
   }
   if (isDateColumn(column)) {
     try {

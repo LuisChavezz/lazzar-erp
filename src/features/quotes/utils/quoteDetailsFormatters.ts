@@ -43,9 +43,9 @@ export const toDisplayValue = (value?: string | number | null) => {
 };
 
 /**
- * Formateador de importes de UN documento de cotización (PDF y correo), creado
- * una vez por documento con el código ISO de su moneda. Formatea igual que las
- * pantallas de cotización (`formatQuoteAmount`: "USD 1,227.00", "MXN 1,227.00";
+ * Importe de cotización en la moneda `monedaCodigo`: lo usan las filas de los
+ * listados (Ventas y Mesa de Control), sus exportaciones y los documentos.
+ * Formatea igual que las pantallas de cotización (`formatQuoteAmount`: "USD 1,227.00", "MXN 1,227.00";
  * sin código, sin símbolo — nunca MXN por defecto).
  *
  * Un importe ausente o malformado ("", `null`, "1,000.00", `NaN`) se pinta "-",
@@ -53,13 +53,23 @@ export const toDisplayValue = (value?: string | number | null) => {
  * `Number()`, la misma regla de `safeParseAmount` (rechaza el string completo en
  * vez de leerlo a medias como `parseFloat`), pero sin su respaldo a 0.
  */
+export const formatQuoteAmountOrDash = (
+  value: string | number | null | undefined,
+  monedaCodigo: string | null,
+): string => {
+  if (value === null || value === undefined || value === "") return "-";
+  const amount = Number(value);
+  return Number.isFinite(amount) ? formatQuoteAmount(amount, monedaCodigo) : "-";
+};
+
+/**
+ * `formatQuoteAmountOrDash` con la moneda fija: un formateador por documento
+ * (PDF y correo de la cotización).
+ */
 export const createQuoteAmountFormatter =
   (monedaCodigo: string | null) =>
-  (value: string | number | null | undefined): string => {
-    if (value === null || value === undefined || value === "") return "-";
-    const amount = Number(value);
-    return Number.isFinite(amount) ? formatQuoteAmount(amount, monedaCodigo) : "-";
-  };
+  (value: string | number | null | undefined): string =>
+    formatQuoteAmountOrDash(value, monedaCodigo);
 
 /**
  * Nombre a mostrar de una partida de cotización.

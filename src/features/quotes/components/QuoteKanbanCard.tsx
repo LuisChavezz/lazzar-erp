@@ -3,8 +3,7 @@
 import { memo } from "react";
 import { useDraggable } from "@dnd-kit/react";
 import { Quote } from "../interfaces/quote.interface";
-import { formatQuoteAmount } from "@/src/features/quotes/utils/formatQuoteAmount";
-import { formatQuoteDateTime } from "../utils/quoteDetailsFormatters";
+import { formatQuoteDateTime, formatQuoteAmountOrDash } from "../utils/quoteDetailsFormatters";
 import { QuoteCardActions } from "./QuoteCardActions";
 import { KANBAN_COLUMNS, KanbanColumnConfig } from "../constants/kanbanColumns";
 import {
@@ -53,7 +52,7 @@ const CardContent = memo(function CardContent({
   const isMuestra = isMuestraQuote(quote.tipo_pedido);
   const muestraBadge = getTipoPedidoConfig(TIPO_PEDIDO.MUESTRA);
 
-  const gran_total = formatQuoteAmount(Number(quote.gran_total) || 0, quote.moneda_codigo);
+  const gran_total = formatQuoteAmountOrDash(quote.gran_total, quote.moneda_codigo);
   const fecha = formatQuoteDateTime(quote.created_at, "d MMM yyyy");
 
   return (

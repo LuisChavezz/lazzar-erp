@@ -24,7 +24,7 @@ import {
   ViewIcon,
 } from "@/src/components/Icons";
 import { capitalize } from "@/src/utils/capitalize";
-import { formatQuoteAmount } from "@/src/features/quotes/utils/formatQuoteAmount";
+import { formatQuoteAmountOrDash } from "@/src/features/quotes/utils/quoteDetailsFormatters";
 import {
   canAcceptQuoteChanges as canAcceptOperationsQuoteChangesStatus,
   canManageQuoteAuthorization as canManageOperationsQuoteAuthorization,
@@ -379,7 +379,7 @@ export const getOperationsQuoteColumns = (
       matchesRangeFilter(IMPORTE_RANGES, row.original.importe_sin_iva, filterValue),
     cell: ({ row }) => (
       <span className="text-slate-500 dark:text-slate-400">
-        {formatQuoteAmount(Number(row.original.importe_sin_iva) || 0, row.original.moneda_codigo)}
+        {formatQuoteAmountOrDash(row.original.importe_sin_iva, row.original.moneda_codigo)}
       </span>
     ),
   },
