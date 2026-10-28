@@ -2,7 +2,7 @@
  * Builder del modelo que consume QuotePdfDocument.
  * Centraliza calculos y transformaciones para que el componente sea puramente presentacional.
  */
-import { formatCurrency } from "@/src/utils/formatCurrency";
+import { formatCurrency, moneyFormatFor } from "@/src/utils/formatCurrency";
 import type { QuoteById } from "../interfaces/quote.interface";
 import {
   buildQuoteEmailDetailRows,
@@ -125,8 +125,17 @@ export type QuotePdfModel = {
   formatMoney: (amount: number) => string;
 };
 
-/** Arma el modelo completo listo para ser consumido por QuotePdfDocument. */
-export const buildQuotePdfModel = (quote: QuoteById): QuotePdfModel => {
+/**
+ * Arma el modelo completo listo para ser consumido por QuotePdfDocument.
+ *
+ * `monedaCodigo` es el código ISO de la moneda de la cotización
+ * (`resolveQuoteMonedaCodigo`); con `null` los importes van sin símbolo, nunca
+ * en MXN.
+ */
+export const buildQuotePdfModel = (
+  quote: QuoteById,
+  monedaCodigo: string | null,
+): QuotePdfModel => {
   const detailRows = buildQuoteEmailDetailRows(quote);
 
   return {
@@ -142,6 +151,6 @@ export const buildQuotePdfModel = (quote: QuoteById): QuotePdfModel => {
     skuSummaries: detailRows.map(({ detail }) => getQuoteDetailSkuSummary(detail)),
     computedSubtotal: getQuoteComputedSubtotal(detailRows),
     detailAddons: detailRows.map(({ detail }) => buildPdfDetailAddons(detail)),
-    formatMoney: (amount) => formatCurrency(amount),
+    formatMoney: (amount) => formatCurrency(amount, moneyFormatFor(monedaCodigo)),
   };
 };
