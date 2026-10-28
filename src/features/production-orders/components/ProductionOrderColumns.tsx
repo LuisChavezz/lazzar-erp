@@ -2,6 +2,7 @@
 
 import { createColumnHelper, type ColumnDef } from "@tanstack/react-table";
 import type { HeaderFilterSpec } from "@/src/components/withHeaderFilters";
+import { optionsFromConfig } from "@/src/utils/columnFilterOptions";
 import type { ProductionOrderListItem } from "../interfaces/production-order.interface";
 import { FolioActionMenu } from "@/src/components/FolioActionMenu";
 import type { ActionMenuItem } from "@/src/components/ActionMenu";
@@ -9,6 +10,7 @@ import { RouteIcon, ViewIcon } from "@/src/components/Icons";
 import { StatusBadge } from "@/src/components/StatusBadge";
 import {
   PRODUCTION_ORDER_PRIORITY_CONFIG,
+  PRODUCTION_ORDER_STATUS_CONFIG,
   productionOrderPriorityFallback,
   productionOrderStatusEntry,
 } from "../constants/productionOrderStatus";
@@ -180,16 +182,12 @@ export function getProductionOrderColumns(
  */
 export const PRODUCTION_ORDER_HEADER_FILTERS: Partial<Record<string, HeaderFilterSpec<ProductionOrderListItem>>> = {
   folio_op: {
-    type: "distinct",
+    type: "options",
     filterLabel: "estatus",
     get: (r) => r.estatus_op,
-    label: (r) => productionOrderStatusEntry(r.estatus_op, r.estatus_op_display).label,
+    options: optionsFromConfig(PRODUCTION_ORDER_STATUS_CONFIG),
   },
-  prioridad: {
-    type: "distinct",
-    get: (r) => r.prioridad,
-    label: (r) => PRODUCTION_ORDER_PRIORITY_CONFIG[String(r.prioridad)]?.label ?? String(r.prioridad),
-  },
+  prioridad: { type: "options", get: (r) => r.prioridad, options: optionsFromConfig(PRODUCTION_ORDER_PRIORITY_CONFIG) },
   fecha_inicio: { type: "month", get: (r) => r.fecha_inicio },
   fecha_fin: { type: "month", get: (r) => r.fecha_fin, emptyLabel: "Sin fecha fin" },
   activo: { type: "boolean", get: (r) => r.activo, yes: "Activas", no: "Inactivas" },

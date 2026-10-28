@@ -5,10 +5,14 @@ import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { FolioActionMenu } from "@/src/components/FolioActionMenu";
 import { ViewIcon } from "@/src/components/Icons";
-import { getPedidoClasificacionLabel } from "@/src/features/orders/constants/pedidoStatus";
+import {
+  getPedidoClasificacionLabel,
+  PEDIDO_CLASIFICACION_CONFIG,
+} from "@/src/features/orders/constants/pedidoStatus";
 import { parseLocalDate } from "@/src/utils/formatDate";
 import type { SpecialOrderRow } from "../utils/specialOrderFilters";
 import type { HeaderFilterSpec } from "@/src/components/withHeaderFilters";
+import { optionsFromConfig } from "@/src/utils/columnFilterOptions";
 
 export interface SpecialOrderColumnCallbacks {
   /** Navega a la página de detalle del pedido especial. */
@@ -105,10 +109,6 @@ export const getSpecialOrderColumns = ({
  */
 export const SPECIAL_ORDER_HEADER_FILTERS: Partial<Record<string, HeaderFilterSpec<SpecialOrderRow>>> = {
   cliente_nombre: { type: "distinct", get: (r) => r.cliente_nombre, searchable: true },
-  clasificacion: {
-    type: "distinct",
-    get: (r) => r.clasificacion,
-    label: (r) => getPedidoClasificacionLabel(r.clasificacion),
-  },
+  clasificacion: { type: "options", get: (r) => r.clasificacion, options: optionsFromConfig(PEDIDO_CLASIFICACION_CONFIG) },
   fecha_confirmacion: { type: "month", get: (r) => r.fecha_confirmacion, emptyLabel: "Sin confirmar" },
 };

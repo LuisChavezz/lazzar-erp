@@ -11,10 +11,12 @@ import { formatShortDate } from "@/src/utils/formatDate";
 import { PedidoFolioLink } from "@/src/features/orders/components/PedidoFolioLink";
 import {
   EMBROIDERY_COVERAGE_CONFIG,
+  EMBROIDERY_STATUS_CONFIG,
   embroideryStatusEntry,
 } from "../constants/embroideryStatus";
 import type { EmbroideryOrder } from "../interfaces/embroidery.interface";
 import type { HeaderFilterSpec } from "@/src/components/withHeaderFilters";
+import { optionsFromConfig } from "@/src/utils/columnFilterOptions";
 
 const columnHelper = createColumnHelper<EmbroideryOrder>();
 
@@ -194,7 +196,12 @@ export const getEmbroideryOrderColumns = (onViewDetails: (id: number) => void) =
  * Las opciones salen del listado completo (la tabla es de modo cliente).
  */
 export const EMBROIDERYORDER_HEADER_FILTERS: Partial<Record<string, HeaderFilterSpec<EmbroideryOrder>>> = {
-  folio_bordado: { type: "distinct", filterLabel: "estatus", get: (r) => r.estatus_bordado, label: (r) => r.estatus_bordado_display },
+  folio_bordado: {
+    type: "options",
+    filterLabel: "estatus",
+    get: (r) => r.estatus_bordado,
+    options: optionsFromConfig(EMBROIDERY_STATUS_CONFIG),
+  },
   pedido_folio: { type: "presence", get: (r) => r.pedido_folio, con: "Con pedido", sin: "Sin pedido" },
   cobertura: { type: "boolean", get: (r) => r.cobertura_completa, yes: "Cobertura completa", no: "Cobertura parcial" },
   usuario_nombre: { type: "distinct", get: (r) => r.usuario_nombre },

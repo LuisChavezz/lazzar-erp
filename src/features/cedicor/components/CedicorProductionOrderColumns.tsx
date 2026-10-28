@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { createColumnHelper, type ColumnDef } from "@tanstack/react-table";
 import type { HeaderFilterSpec } from "@/src/components/withHeaderFilters";
+import { optionsFromConfig } from "@/src/utils/columnFilterOptions";
 import { CedicorProductionOrderTimelineDialog } from "./CedicorProductionOrderTimelineDialog";
 import type {
   ProductionOrder,
@@ -338,13 +339,6 @@ export function getCedicorProductionOrderColumns(): ColumnDef<ProductionOrder>[]
   ] as ColumnDef<ProductionOrder>[];
 }
 
-const MATERIALES_LABELS: Record<string, string> = {
-  sin_verificar: "Sin verificar",
-  disponible: "Disponible",
-  faltante: "Faltante",
-  parcial: "Parcial",
-};
-
 /**
  * Filtros de encabezado (estilo Excel) de esta tabla, para `withHeaderFilters`.
  * Las opciones salen del listado completo (la tabla es de modo cliente).
@@ -360,9 +354,9 @@ export const CEDICOR_PRODUCTION_ORDER_HEADER_FILTERS: Partial<Record<string, Hea
   ] },
   paso_actual: { type: "distinct", get: (r) => r.paso_actual, label: (r) => `Paso ${r.paso_actual}` },
   verificacion_materiales: {
-    type: "distinct",
+    type: "options",
     get: (r) => r.verificacion_materiales,
-    label: (r) => MATERIALES_LABELS[r.verificacion_materiales] ?? r.verificacion_materiales,
+    options: optionsFromConfig(VERIFICACION_CFG),
   },
   responsable_actual: { type: "distinct", get: (r) => r.responsable_actual },
   fecha_estimada_entrega: { type: "month", get: (r) => r.fecha_estimada_entrega },

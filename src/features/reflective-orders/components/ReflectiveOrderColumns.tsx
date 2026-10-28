@@ -11,11 +11,13 @@ import { PedidoFolioLink } from "@/src/features/orders/components/PedidoFolioLin
 import {
   REFLECTIVE_ORDER_COVERAGE_CONFIG,
   REFLECTIVE_ORDER_PRIORITY_CONFIG,
+  REFLECTIVE_ORDER_STATUS_CONFIG,
   reflectiveOrderPriorityFallback,
   reflectiveStatusEntry,
 } from "../constants/reflectiveOrderStatus";
 import type { ReflectiveOrder } from "../interfaces/reflective-order.interface";
 import type { HeaderFilterSpec } from "@/src/components/withHeaderFilters";
+import { optionsFromConfig } from "@/src/utils/columnFilterOptions";
 
 const columnHelper = createColumnHelper<ReflectiveOrder>();
 
@@ -246,12 +248,13 @@ export const getReflectiveOrderColumns = (onViewDetails: (id: number) => void) =
  * Las opciones salen del listado completo (la tabla es de modo cliente).
  */
 export const REFLECTIVEORDER_HEADER_FILTERS: Partial<Record<string, HeaderFilterSpec<ReflectiveOrder>>> = {
-  folio_reflejante: { type: "distinct", filterLabel: "estatus", get: (r) => r.estatus_reflejante, label: (r) => r.estatus_reflejante_display },
-  prioridad: {
-    type: "distinct",
-    get: (r) => r.prioridad,
-    label: (r) => REFLECTIVE_ORDER_PRIORITY_CONFIG[String(r.prioridad)]?.label ?? String(r.prioridad),
+  folio_reflejante: {
+    type: "options",
+    filterLabel: "estatus",
+    get: (r) => r.estatus_reflejante,
+    options: optionsFromConfig(REFLECTIVE_ORDER_STATUS_CONFIG),
   },
+  prioridad: { type: "options", get: (r) => r.prioridad, options: optionsFromConfig(REFLECTIVE_ORDER_PRIORITY_CONFIG) },
   pedido_folio: { type: "presence", get: (r) => r.pedido_folio, con: "Con pedido", sin: "Sin pedido" },
   cobertura: { type: "boolean", get: (r) => r.cobertura_completa, yes: "Cobertura completa", no: "Cobertura parcial" },
   usuario_nombre: { type: "distinct", get: (r) => r.usuario_nombre },

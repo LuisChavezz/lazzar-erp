@@ -10,11 +10,13 @@ import { formatShortDate } from "@/src/utils/formatDate";
 import { PedidoFolioLink } from "@/src/features/orders/components/PedidoFolioLink";
 import {
   CORTE_MANGA_ORDER_PRIORITY_CONFIG,
+  CORTE_MANGA_ORDER_STATUS_CONFIG,
   corteMangaOrderPriorityFallback,
   corteMangaStatusEntry,
 } from "../constants/corteMangaOrderStatus";
 import type { CorteMangaOrder } from "../interfaces/corte-manga-order.interface";
 import type { HeaderFilterSpec } from "@/src/components/withHeaderFilters";
+import { optionsFromConfig } from "@/src/utils/columnFilterOptions";
 
 const columnHelper = createColumnHelper<CorteMangaOrder>();
 
@@ -237,12 +239,13 @@ export const getCorteMangaOrderColumns = (onViewDetails: (id: number) => void) =
  * Las opciones salen del listado completo (la tabla es de modo cliente).
  */
 export const CORTEMANGAORDER_HEADER_FILTERS: Partial<Record<string, HeaderFilterSpec<CorteMangaOrder>>> = {
-  folio_ocm: { type: "distinct", filterLabel: "estatus", get: (r) => r.estatus_corte, label: (r) => corteMangaStatusEntry(r.estatus_corte, r.estatus_corte_display).label },
-  prioridad: {
-    type: "distinct",
-    get: (r) => r.prioridad,
-    label: (r) => CORTE_MANGA_ORDER_PRIORITY_CONFIG[String(r.prioridad)]?.label ?? String(r.prioridad),
+  folio_ocm: {
+    type: "options",
+    filterLabel: "estatus",
+    get: (r) => r.estatus_corte,
+    options: optionsFromConfig(CORTE_MANGA_ORDER_STATUS_CONFIG),
   },
+  prioridad: { type: "options", get: (r) => r.prioridad, options: optionsFromConfig(CORTE_MANGA_ORDER_PRIORITY_CONFIG) },
   pedido_folio: { type: "presence", get: (r) => r.pedido_folio, con: "Con pedido", sin: "Sin pedido" },
   usuario_nombre: { type: "distinct", get: (r) => r.usuario_nombre },
   fecha_inicio: { type: "month", get: (r) => r.fecha_inicio },
