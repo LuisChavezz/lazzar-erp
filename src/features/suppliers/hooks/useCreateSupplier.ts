@@ -21,9 +21,11 @@ export const useCreateSupplier = ({ setError }: UseCreateSupplierOptions = {}) =
 
   return useMutation<Supplier, unknown, SupplierCreate>({
     mutationFn: (payload: SupplierCreate) => createSupplier(payload),
-    onSuccess: () => {
+    onSuccess: (supplier) => {
       queryClient.invalidateQueries({ queryKey: ["suppliers"] });
-      toast.success("Proveedor registrado correctamente");
+      // El código lo asigna el backend; la respuesta del POST es la única
+      // forma de conocerlo.
+      toast.success(`Proveedor registrado con código ${supplier.codigo}`);
     },
     onError: (error) => {
       if (error instanceof AxiosError && setError) {
