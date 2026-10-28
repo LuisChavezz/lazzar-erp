@@ -11,6 +11,7 @@ import {
   PurchaseOrderEncabezadosSchema,
   type PurchaseOrderEncabezadosFormValues,
 } from "../schemas/purchase-order-onboarding.schema";
+import { useValidWorkspaceBranchId } from "@/src/features/workspace/hooks/useValidWorkspaceBranchId";
 import { DEFAULT_TIPO_COMPRA } from "../constants/purchaseOrderTipoCompra";
 import type { PurchaseOrderHeaderFieldErrors } from "../utils/purchaseOrderHeaderErrors";
 
@@ -47,21 +48,18 @@ export type Step1FieldPath =
 
 type Step1ErrorMap = Partial<Record<Step1FieldPath, string>>;
 
-/** Sucursal que una orden NUEVA trae preseleccionada (se compara sin acentos ni mayúsculas). */
-const DEFAULT_SUCURSAL_NOMBRE = "toneles";
-
-const foldText = (text: string) =>
-  text
-    .normalize("NFD")
-    .replace(/\p{Diacritic}/gu, "")
-    .trim()
-    .toLowerCase();
-
-/** Id de la sucursal por defecto, o `0` ("Seleccionar sucursal…") si el catálogo no la trae. */
-const findDefaultSucursalId = (onboardingData: PurchaseOrderOnboardingData): number =>
-  onboardingData.catalogos.sucursales.find(
-    (s) => foldText(s.nombre) === DEFAULT_SUCURSAL_NOMBRE,
-  )?.id_sucursal ?? 0;
+/**
+ * Sucursal que una orden NUEVA trae preseleccionada: la del workspace, si el
+ * catálogo la trae, o `0` ("Seleccionar sucursal…"). El catálogo sale de la
+ * empresa del usuario en el backend, no de la del workspace, así que la
+ * sucursal del workspace puede no estar en él.
+ */
+const findDefaultSucursalId = (
+  onboardingData: PurchaseOrderOnboardingData,
+  workspaceBranchId: number | null,
+): number =>
+  onboardingData.catalogos.sucursales.find((s) => s.id_sucursal === workspaceBranchId)
+    ?.id_sucursal ?? 0;
 
 export function usePurchaseOrderStep1Form({
   onboardingData,
@@ -89,9 +87,14 @@ export function usePurchaseOrderStep1Form({
   // ── Default values ──────────────────────────────────────────────────────
   // Si ya hay un encabezado capturado (regreso desde el Step 2), se siembra
   // desde él para no perder lo capturado; en la primera visita, en blanco
-  // salvo la sucursal, que arranca en Toneles (sigue siendo editable).
+  // salvo la sucursal, que arranca en la del workspace (sigue siendo
+  // editable). Sin sucursal válida queda vacía y el schema no deja avanzar
+  // hasta elegir una. Si la lista de sucursales termina de cargar después de
+  // montar, `useForm` re-siembra los valores mientras el formulario no se haya
+  // tocado, y nunca pisa lo que el usuario ya eligió.
   // `fecha_vencimiento` validada es `null` cuando no hay fecha; el input la
   // necesita como `""`.
+  const { branchId: workspaceBranchId } = useValidWorkspaceBranchId();
   const defaultValues = useMemo<PurchaseOrderEncabezadosFormValues>(
     () =>
       initialValues
@@ -103,7 +106,7 @@ export function usePurchaseOrderStep1Form({
           }
         : {
             orden_compra: {
-              sucursal: findDefaultSucursalId(onboardingData),
+              sucursal: findDefaultSucursalId(onboardingData, workspaceBranchId),
               proveedor: 0,
               moneda: 0,
               fecha_vencimiento: "",
@@ -113,7 +116,7 @@ export function usePurchaseOrderStep1Form({
               pedidos: [],
             },
           },
-    [initialValues, onboardingData],
+    [initialValues, onboardingData, workspaceBranchId],
   );
 
   // ── Selector options derived from onboarding data ───────────────────────
