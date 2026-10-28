@@ -22,9 +22,8 @@ export interface PedidoCancelInventarioDevuelto {
 /**
  * Respuesta 200 de `POST /ventas/pedidos/{id}/cancelar/`.
  *
- * En una sola transacción el backend devuelve al inventario lo que el pedido
- * descontó al autorizar (un movimiento ENTRADA), libera sus reservas ACTIVA y
- * deja `estatus = 5` y `activo = false`: el pedido deja de listarse y su
+ * En una sola transacción el backend deja `estatus = 5` y `activo = false`:
+ * el pedido deja de listarse y su
  * detalle (`GET /ventas/pedidos/{id}/`) responde 404 desde ese momento.
  *
  * Rechazos, todos 400 y sin ningún cambio: `{"motivo": "…"}` si falta,
@@ -41,7 +40,7 @@ export interface PedidoCancelResponse {
   activo: false;
   /** El motivo tal como quedó guardado (recortado). */
   motivo: string;
-  /** Vacío si el pedido nunca descontó inventario. */
+  /** Lo que el backend reporta como devuelto; lo resume `pedidoCancelSummary`. */
   inventario_devuelto: PedidoCancelInventarioDevuelto[];
   /** Cuántas reservas ACTIVA pasaron a LIBERADA. */
   reservas_liberadas: number;

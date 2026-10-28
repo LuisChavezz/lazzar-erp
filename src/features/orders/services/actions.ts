@@ -216,8 +216,8 @@ export const updatePedidoMesaControl = async (
 /**
  * Cancela un pedido (`POST /ventas/pedidos/{id}/cancelar/`, con motivo
  * obligatorio). Lo deja CANCELADO y dado de baja (`activo = false`), así que
- * desde ese momento ya no se lista y su detalle responde 404; además devuelve
- * su inventario y libera sus reservas. Ver `PedidoCancelResponse`.
+ * desde ese momento ya no se lista y su detalle responde 404. Ver
+ * `PedidoCancelResponse`.
  */
 export const cancelPedido = async (
   id: number,
