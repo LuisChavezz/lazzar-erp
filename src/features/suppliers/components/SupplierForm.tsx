@@ -160,28 +160,30 @@ export default function SupplierForm({ onSuccess, supplierToEdit }: SupplierForm
                   />
                 )}
               </form.Field></div>
+            {/* El backend genera el código (consecutivo por empresa) y no deja
+                editarlo. Solo lectura y sin `name`: no entra en el formulario
+                ni en el scroll a errores. */}
             <div>
-              <form.Field name="codigo">
-                {(field) => (
-                  <FormInput
-                    label="Código"
-                    className={COMPACT_FIELD_CLS}
-                    placeholder="PROV-2026-001"
-                    forceUppercase
-                    name={field.name}
-                    value={field.state.value}
-                    onChange={(event) => {
-                      field.handleChange(event.target.value);
-                      clearFieldErrors("codigo");
-                    }}
-                    onBlur={() => {
-                      field.handleBlur();
-                      validateField("codigo", field.state.value);
-                    }}
-                    error={getError("codigo")}
-                  />
-                )}
-              </form.Field></div>
+              {isEditMode && supplierToEdit ? (
+                <FormInput
+                  id="proveedor-codigo"
+                  label="Código"
+                  value={supplierToEdit.codigo}
+                  readOnly
+                  tabIndex={-1}
+                  className={`${COMPACT_FIELD_CLS} cursor-not-allowed bg-slate-100 text-slate-500 dark:bg-zinc-800 dark:text-slate-400 focus:bg-slate-100 dark:focus:bg-zinc-800 focus:ring-0 focus:border-slate-200 dark:focus:border-zinc-700`}
+                />
+              ) : (
+                <div>
+                  <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider ml-1 mb-1">
+                    Código
+                  </p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 ml-1 py-2">
+                    Se asigna automáticamente al guardar
+                  </p>
+                </div>
+              )}
+            </div>
             <div className="md:col-span-2">
               <form.Field name="razon_social">
                 {(field) => (

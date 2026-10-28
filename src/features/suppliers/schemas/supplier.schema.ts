@@ -2,7 +2,6 @@ import { z } from "zod";
 
 export const SupplierFormSchema = z.object({
   // ── Campos requeridos ──────────────────────────────────────────────────
-  codigo: z.string().min(1, "El código es requerido"),
   nombre: z.string().min(1, "El nombre es requerido"),
   razon_social: z.string().min(1, "La razón social es requerida"),
   rfc: z.string().min(1, "El RFC es requerido"),

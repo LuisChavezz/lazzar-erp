@@ -135,7 +135,6 @@ export function useSupplierForm({ onSuccess, supplierToEdit, isRfcVerified = fal
   // ── Valores por defecto (modo creación) ─────────────────────────────────
   const emptyValues = useMemo<SupplierFormValues>(
     () => ({
-      codigo: "",
       nombre: "",
       razon_social: "",
       rfc: "",
@@ -178,7 +177,6 @@ export function useSupplierForm({ onSuccess, supplierToEdit, isRfcVerified = fal
     );
 
     return {
-      codigo: supplierToEdit.codigo,
       nombre: supplierToEdit.nombre,
       razon_social: supplierToEdit.razon_social,
       rfc: supplierToEdit.rfc,
@@ -318,9 +316,9 @@ export function useSupplierForm({ onSuccess, supplierToEdit, isRfcVerified = fal
 
       // 3. Construye el payload base con tipado explícito. Sin "empresa": la
       //    edición la omite (el backend conserva la guardada) y solo el alta
-      //    la añade, desde el workspace activo y no desde el formulario.
+      //    la añade, desde el workspace activo y no desde el formulario. Sin
+      //    "codigo": lo genera el backend y no se puede editar.
       const payload = {
-        codigo: value.codigo,
         nombre: value.nombre,
         razon_social: value.razon_social,
         rfc: value.rfc,

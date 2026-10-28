@@ -24,9 +24,12 @@ export interface Supplier {
   moneda: Currency["id"];
 }
 
+/**
+ * Cuerpo del POST. Sin `codigo`: el backend lo genera (`PROV00001`, consecutivo
+ * por empresa) y lo ignora si se envía, también en el PUT.
+ */
 export interface SupplierCreate {
   empresa: Company["id"];
-  codigo: string;
   nombre: string;
   razon_social: string;
   rfc: string;
