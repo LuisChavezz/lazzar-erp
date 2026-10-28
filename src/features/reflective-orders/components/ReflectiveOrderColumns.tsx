@@ -11,7 +11,6 @@ import { PedidoFolioLink } from "@/src/features/orders/components/PedidoFolioLin
 import {
   REFLECTIVE_ORDER_COVERAGE_CONFIG,
   REFLECTIVE_ORDER_PRIORITY_CONFIG,
-  REFLECTIVE_ORDER_STATUS_CONFIG,
   reflectiveOrderPriorityFallback,
   reflectiveStatusEntry,
 } from "../constants/reflectiveOrderStatus";
@@ -245,16 +244,17 @@ export const getReflectiveOrderColumns = (onViewDetails: (id: number) => void) =
 
 /**
  * Filtros de encabezado (estilo Excel) de esta tabla, para `withHeaderFilters`.
- * Las opciones salen del listado completo (la tabla es de modo cliente).
+ * Las opciones salen del listado completo (la tabla es de modo cliente),
+ * salvo las columnas `options`: ahí salen del catálogo del front, más los
+ * valores de las filas que el catálogo no cubre.
  */
 export const REFLECTIVEORDER_HEADER_FILTERS: Partial<Record<string, HeaderFilterSpec<ReflectiveOrder>>> = {
-  folio_reflejante: {
+  prioridad: {
     type: "options",
-    filterLabel: "estatus",
-    get: (r) => r.estatus_reflejante,
-    options: optionsFromConfig(REFLECTIVE_ORDER_STATUS_CONFIG),
+    get: (r) => r.prioridad,
+    options: optionsFromConfig(REFLECTIVE_ORDER_PRIORITY_CONFIG),
+    label: (r) => reflectiveOrderPriorityFallback(r.prioridad).label,
   },
-  prioridad: { type: "options", get: (r) => r.prioridad, options: optionsFromConfig(REFLECTIVE_ORDER_PRIORITY_CONFIG) },
   pedido_folio: { type: "presence", get: (r) => r.pedido_folio, con: "Con pedido", sin: "Sin pedido" },
   cobertura: { type: "boolean", get: (r) => r.cobertura_completa, yes: "Cobertura completa", no: "Cobertura parcial" },
   usuario_nombre: { type: "distinct", get: (r) => r.usuario_nombre },

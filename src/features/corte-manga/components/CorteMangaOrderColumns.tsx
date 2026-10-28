@@ -10,7 +10,6 @@ import { formatShortDate } from "@/src/utils/formatDate";
 import { PedidoFolioLink } from "@/src/features/orders/components/PedidoFolioLink";
 import {
   CORTE_MANGA_ORDER_PRIORITY_CONFIG,
-  CORTE_MANGA_ORDER_STATUS_CONFIG,
   corteMangaOrderPriorityFallback,
   corteMangaStatusEntry,
 } from "../constants/corteMangaOrderStatus";
@@ -236,16 +235,17 @@ export const getCorteMangaOrderColumns = (onViewDetails: (id: number) => void) =
 
 /**
  * Filtros de encabezado (estilo Excel) de esta tabla, para `withHeaderFilters`.
- * Las opciones salen del listado completo (la tabla es de modo cliente).
+ * Las opciones salen del listado completo (la tabla es de modo cliente),
+ * salvo las columnas `options`: ahí salen del catálogo del front, más los
+ * valores de las filas que el catálogo no cubre.
  */
 export const CORTEMANGAORDER_HEADER_FILTERS: Partial<Record<string, HeaderFilterSpec<CorteMangaOrder>>> = {
-  folio_ocm: {
+  prioridad: {
     type: "options",
-    filterLabel: "estatus",
-    get: (r) => r.estatus_corte,
-    options: optionsFromConfig(CORTE_MANGA_ORDER_STATUS_CONFIG),
+    get: (r) => r.prioridad,
+    options: optionsFromConfig(CORTE_MANGA_ORDER_PRIORITY_CONFIG),
+    label: (r) => corteMangaOrderPriorityFallback(r.prioridad).label,
   },
-  prioridad: { type: "options", get: (r) => r.prioridad, options: optionsFromConfig(CORTE_MANGA_ORDER_PRIORITY_CONFIG) },
   pedido_folio: { type: "presence", get: (r) => r.pedido_folio, con: "Con pedido", sin: "Sin pedido" },
   usuario_nombre: { type: "distinct", get: (r) => r.usuario_nombre },
   fecha_inicio: { type: "month", get: (r) => r.fecha_inicio },

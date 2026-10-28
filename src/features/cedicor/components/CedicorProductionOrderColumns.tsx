@@ -341,7 +341,9 @@ export function getCedicorProductionOrderColumns(): ColumnDef<ProductionOrder>[]
 
 /**
  * Filtros de encabezado (estilo Excel) de esta tabla, para `withHeaderFilters`.
- * Las opciones salen del listado completo (la tabla es de modo cliente).
+ * Las opciones salen del listado completo (la tabla es de modo cliente),
+ * salvo las columnas `options`: ahí salen del catálogo del front, más los
+ * valores de las filas que el catálogo no cubre.
  */
 export const CEDICOR_PRODUCTION_ORDER_HEADER_FILTERS: Partial<Record<string, HeaderFilterSpec<ProductionOrder>>> = {
   cliente: { type: "distinct", get: (r) => r.cliente, searchable: true },
