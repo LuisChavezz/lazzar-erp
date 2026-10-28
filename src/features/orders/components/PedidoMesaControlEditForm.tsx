@@ -5,6 +5,8 @@ import {
   QUOTE_FORM_CAPABILITIES,
   QuoteFormContent,
 } from "@/src/features/quotes/components/QuoteForm";
+import { useCurrencies } from "@/src/features/currency/hooks/useCurrencies";
+import { findCurrency } from "@/src/features/currency/utils/currencyLookup";
 import { formatCurrency, formatMoneyValueOrDash } from "@/src/utils/formatCurrency";
 import { usePedidoMesaControlEditForm } from "../hooks/usePedidoMesaControlEditForm";
 import { PedidoMesaControlBloqueos } from "./PedidoMesaControlBloqueos";
@@ -40,6 +42,9 @@ export function PedidoMesaControlEditForm({ pedidoId }: PedidoMesaControlEditFor
     serviciosExtrasBase,
     ...formProps
   } = usePedidoMesaControlEditForm(pedidoId);
+  // Catálogo de monedas (misma caché que el formulario) para la moneda guardada
+  // del pedido en el aviso de gran total.
+  const { data: currencies } = useCurrencies();
 
   const salidas = (
     <>
@@ -283,6 +288,17 @@ export function PedidoMesaControlEditForm({ pedidoId }: PedidoMesaControlEditFor
     Number.isFinite(storedGranTotal) &&
     Math.abs(storedGranTotal - formProps.granTotal) >= 0.01;
 
+  /* Cada gran total en SU moneda (EC-606): lo guardado en la del pedido
+   * (`pedido.moneda`, resuelta con el catálogo, misma caché que el formulario)
+   * y lo que se guardará en la elegida en el formulario. Si difieren, los dos
+   * llevan su código: "$" solo no distingue MXN de USD. Sin moneda conocida,
+   * sin símbolo. */
+  const storedMonedaCodigo = pedido
+    ? (findCurrency(currencies, pedido.moneda)?.codigo_iso ?? null)
+    : null;
+  const monedasDifieren = storedMonedaCodigo !== formProps.monedaCodigo;
+  const granTotalDisplay = monedasDifieren ? { currencyDisplay: "code" as const } : undefined;
+
   return (
     <div className="w-full space-y-4">
       {/* Avisos que antes vivían en el diálogo de confirmación. Se pintan
@@ -341,11 +357,11 @@ export function PedidoMesaControlEditForm({ pedidoId }: PedidoMesaControlEditFor
           <p className="text-xs text-slate-600 dark:text-slate-300">
             Guardado hoy:{" "}
             <span className="font-mono font-semibold">
-              {formatMoneyValueOrDash(pedido.gran_total)}
+              {formatMoneyValueOrDash(pedido.gran_total, storedMonedaCodigo, granTotalDisplay)}
             </span>{" "}
             → se guardará:{" "}
             <span className="font-mono font-semibold">
-              {formatCurrency(formProps.granTotal)}
+              {formatCurrency(formProps.granTotal, formProps.monedaCodigo, granTotalDisplay)}
             </span>
           </p>
           <p className="text-[11px] text-slate-500 dark:text-slate-400">
