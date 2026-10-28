@@ -71,7 +71,7 @@ export function StockReportSummary({ summary }: StockReportSummaryProps) {
     },
     {
       label: "Costo Total",
-      value: formatMoneyValue(summary.costo_total_existencia_final),
+      value: formatMoneyValue(summary.costo_total_existencia_final, null),
       icon: ListaPreciosIcon,
       iconBgClass: "bg-blue-50 dark:bg-blue-500/10",
       iconClass: "text-blue-500",

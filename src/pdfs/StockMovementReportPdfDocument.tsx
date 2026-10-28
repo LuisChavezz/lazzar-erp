@@ -183,7 +183,7 @@ export const StockMovementReportPdfDocument = ({
                   {formatQuantityValue(row.cantidad)}
                 </Text>
                 <Text style={[s.tableCell, s.colCosto]}>
-                  {formatMoneyValue(row.costo_total)}
+                  {formatMoneyValue(row.costo_total, null)}
                 </Text>
                 <Text style={[s.tableCell, s.colUsuario]}>
                   {row.usuario_nombre || "—"}

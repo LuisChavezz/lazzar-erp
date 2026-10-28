@@ -143,7 +143,7 @@ export const stockMovementReportColumns: ColumnDef<StockMovementReportRow>[] = [
     meta: { align: "right", label: "Costo Total" },
     cell: ({ row }) => (
       <div className="font-semibold tabular-nums text-slate-700 dark:text-slate-200">
-        {formatMoneyValue(row.original.costo_total)}
+        {formatMoneyValue(row.original.costo_total, null)}
       </div>
     ),
   },

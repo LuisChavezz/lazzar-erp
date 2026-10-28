@@ -15,7 +15,7 @@
 import { Document, Page, Text, View } from "@react-pdf/renderer";
 import type { StockReportResponse } from "@/src/features/stock/interfaces/stock-report.interface";
 import {
-  formatMoneyValue as money,
+  formatMoneyValue,
   formatQuantityValue,
 } from "@/src/utils/formatCurrency";
 import { formatLocalDate } from "@/src/utils/formatDate";
@@ -106,7 +106,7 @@ export const StockReportPdfDocument = ({ report }: StockReportPdfDocumentProps) 
           <View style={s.summaryCell}>
             <Text style={s.summaryLabel}>COSTO TOTAL</Text>
             <Text style={s.summaryValue}>
-              {money(resumen.costo_total_existencia_final)}
+              {formatMoneyValue(resumen.costo_total_existencia_final, null)}
             </Text>
           </View>
         </View>
@@ -154,10 +154,10 @@ export const StockReportPdfDocument = ({ report }: StockReportPdfDocumentProps) 
                 <Text style={[s.tableCell, s.colNum]}>{formatQuantityValue(row.salidas)}</Text>
                 <Text style={[s.tableCellBold, s.colNum]}>{formatQuantityValue(row.existencia_final)}</Text>
                 <Text style={[s.tableCell, s.colMoney]}>
-                  {money(row.costo_unitario_final)}
+                  {formatMoneyValue(row.costo_unitario_final, null)}
                 </Text>
                 <Text style={[s.tableCellBold, s.colMoney]}>
-                  {money(row.costo_existencia_final)}
+                  {formatMoneyValue(row.costo_existencia_final, null)}
                 </Text>
               </View>
             ))

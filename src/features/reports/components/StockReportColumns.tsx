@@ -42,6 +42,8 @@ const quantityColumn = (
   ),
 });
 
+// Costos sin símbolo: `costo_unitario` no tiene moneda ni se convierte desde la
+// moneda de la OC (EC-606).
 const currencyColumn = (
   key: NumericKey,
   header: string,
@@ -52,7 +54,7 @@ const currencyColumn = (
   sortingFn: numericSortingFn(key),
   cell: ({ row }) => (
     <div className="font-semibold tabular-nums text-slate-700 dark:text-slate-200">
-      {formatMoneyValue(row.original[key])}
+      {formatMoneyValue(row.original[key], null)}
     </div>
   ),
 });
