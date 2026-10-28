@@ -117,9 +117,9 @@ export const useCancelPedido = (pedidoId: number) => {
       queryClient,
       queryClient.getQueryCache().findAll({ predicate: isRecordQuery }),
     );
-    // Inventario: la cancelación devuelve existencias (movimiento ENTRADA) y
-    // libera reservas. Fuera las consultas de ESTE pedido (su "Revisar
-    // inventario" ya salió arriba y releerlo daría 404).
+    // Inventario: un pedido autorizado antes del #704 del backend aún puede
+    // devolver existencias al cancelarse. Fuera las consultas de ESTE pedido
+    // (su "Revisar inventario" ya salió arriba y releerlo daría 404).
     void invalidateStockQueries(queryClient, { exclude: isRecordQuery });
     void queryClient.invalidateQueries({ queryKey: ordersQueryKey() });
     void queryClient.invalidateQueries({ queryKey: PEDIDO_KPIS_QUERY_KEY });
