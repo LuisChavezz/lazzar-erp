@@ -7,7 +7,8 @@ export interface Role {
   codigo: string;
   nombre: string;
   descripcion: string;
-  clave_departamento: string;
+  /** `null` si el backend no la tiene ni la pudo inferir del nombre o el código. */
+  clave_departamento: string | null;
   is_system: boolean;
   estatus: string; // Ej. "activo"
   created_at: string;
