@@ -1,4 +1,5 @@
 import { ColumnDef, createColumnHelper, Row } from "@tanstack/react-table";
+import { formatMoneyValue } from "@/src/utils/formatCurrency";
 import type { HeaderFilterSpec } from "@/src/components/withHeaderFilters";
 import { EditIcon, DeleteIcon } from "../../../components/Icons";
 import { Product } from "../interfaces/product.interface";
@@ -145,14 +146,12 @@ export const getColumns = (
     columnHelper.accessor("precio_base", {
       header: "Precio",
       meta: { align: "right" },
-      cell: ({ row }) => {
-        const value = row.original.precio_base;
-        const formatted = new Intl.NumberFormat("es-MX", {
-          style: "currency",
-          currency: "MXN",
-        }).format(parseFloat(value));
-        return <span className="text-slate-600 dark:text-slate-300 font-medium">{formatted}</span>;
-      },
+      // Sin símbolo: `precio_base` no declara moneda (EC-606).
+      cell: ({ row }) => (
+        <span className="text-slate-600 dark:text-slate-300 font-medium">
+          {formatMoneyValue(row.original.precio_base, null)}
+        </span>
+      ),
     }),
   ] as ColumnDef<ProductRow>[];
 
