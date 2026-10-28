@@ -1,7 +1,7 @@
 "use client";
 
 import { useForm } from "@tanstack/react-form";
-import { useMemo, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, type FormEvent } from "react";
 import { useFormFieldErrors } from "@/src/hooks/useFormFieldErrors";
 import type {
   PurchaseOrderEncabezados,
@@ -90,8 +90,7 @@ export function usePurchaseOrderStep1Form({
   // salvo la sucursal, que arranca en la del workspace (sigue siendo
   // editable). Sin sucursal válida queda vacía y el schema no deja avanzar
   // hasta elegir una. Si la lista de sucursales termina de cargar después de
-  // montar, `useForm` re-siembra los valores mientras el formulario no se haya
-  // tocado, y nunca pisa lo que el usuario ya eligió.
+  // montar, la coloca el efecto de más abajo.
   // `fecha_vencimiento` validada es `null` cuando no hay fecha; el input la
   // necesita como `""`.
   const { branchId: workspaceBranchId } = useValidWorkspaceBranchId();
@@ -221,6 +220,28 @@ export function usePurchaseOrderStep1Form({
       onSuccess(parsed.data);
     },
   });
+
+  // ── Sucursal del workspace que llega tarde ─────────────────────────────
+  // Si la lista de sucursales resuelve después de montar y el usuario ya tocó
+  // otros campos, `useForm` no re-siembra los valores por defecto. Se coloca la
+  // sucursal del workspace solo si el campo sigue en `0` (nadie eligió una):
+  // nunca pisa una elección del usuario ni lo capturado antes de "Volver".
+  // Una sola vez por sucursal: si el usuario vuelve a "Seleccionar sucursal…"
+  // a propósito, no se le impone otra vez.
+  const lateDefaultSucursalId = initialValues
+    ? 0
+    : findDefaultSucursalId(onboardingData, workspaceBranchId);
+  const appliedDefaultSucursalIdRef = useRef(0);
+  useEffect(() => {
+    if (!lateDefaultSucursalId) return;
+    if (appliedDefaultSucursalIdRef.current === lateDefaultSucursalId) return;
+    appliedDefaultSucursalIdRef.current = lateDefaultSucursalId;
+    if (form.getFieldValue("orden_compra.sucursal") !== 0) return;
+    form.setFieldValue("orden_compra.sucursal", lateDefaultSucursalId, {
+      dontUpdateMeta: true,
+    });
+    clearClientFieldError("orden_compra.sucursal");
+  }, [lateDefaultSucursalId, form, clearClientFieldError]);
 
   // ── Form submit handler ────────────────────────────────────────────────
 
