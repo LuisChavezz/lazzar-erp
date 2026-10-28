@@ -1,4 +1,4 @@
-import { formatCurrency, NO_CURRENCY_FORMAT } from "@/src/utils/formatCurrency";
+import { formatCurrency, moneyFormatFor } from "@/src/utils/formatCurrency";
 
 /**
  * Importe del formulario de cotización/pedido con el CÓDIGO de su moneda
@@ -7,8 +7,10 @@ import { formatCurrency, NO_CURRENCY_FORMAT } from "@/src/utils/formatCurrency";
  *
  * Sin código (la moneda aún no está elegida o no está en el catálogo) el
  * importe va sin símbolo: un "$" afirmaría una moneda que no se conoce.
+ *
+ * Siempre con 2 decimales (`moneyFormatFor`): el backend manda los importes con
+ * 2, y los decimales ISO por defecto de `Intl` redondearían un JPY a enteros o
+ * darían 3 a un KWD, distinto del total por moneda de la exportación.
  */
 export const formatQuoteAmount = (value: number, monedaCodigo: string | null): string =>
-  monedaCodigo
-    ? formatCurrency(value, { currency: monedaCodigo, currencyDisplay: "code" })
-    : formatCurrency(value, NO_CURRENCY_FORMAT);
+  formatCurrency(value, moneyFormatFor(monedaCodigo, { currencyDisplay: "code" }));
