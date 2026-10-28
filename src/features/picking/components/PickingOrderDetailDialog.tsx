@@ -20,7 +20,11 @@ import {
   getUsoCfdiLabel,
 } from "@/src/features/orders/constants/satCatalogs";
 import { usePedidoDetail } from "@/src/features/orders/hooks/usePedidoDetail";
-import type { PedidoDetalleLinea } from "@/src/features/orders/interfaces/order.interface";
+import type {
+  PedidoDetail,
+  PedidoDetalleLinea,
+} from "@/src/features/orders/interfaces/order.interface";
+import { canSeeAccounting } from "@/src/features/orders/utils/orderAccounting";
 
 /**
  * Líneas del pedido, agrupadas por producto + color con sus tallas anidadas.
@@ -45,6 +49,17 @@ import type { PedidoDetalleLinea } from "@/src/features/orders/interfaces/order.
 function Importe({ value }: { value: string | number | null | undefined }) {
   const { formatMoney } = useOrderMoney();
   return <>{formatMoney(value)}</>;
+}
+
+/**
+ * Monta `OrderCurrencyProvider` SOLO si el usuario ve los importes del pedido
+ * (`canSeeAccounting`, el mismo criterio que el detalle 360°): así el catálogo
+ * de monedas no se pide cuando el backend quitó los importes por permisos
+ * (contrato de `OrderCurrencyContext`). Sin él, cada `Importe` sale como "—".
+ */
+function PedidoMoneyScope({ pedido, children }: { pedido: PedidoDetail; children: React.ReactNode }) {
+  if (!canSeeAccounting(pedido)) return <>{children}</>;
+  return <OrderCurrencyProvider monedaId={pedido.moneda}>{children}</OrderCurrencyProvider>;
 }
 
 function PedidoLineas({ detalles }: { detalles: PedidoDetalleLinea[] }) {
@@ -186,7 +201,7 @@ export function PickingOrderDetailDialog({
 
       {/* ── Estado: datos cargados ───────────────────────────────────────── */}
       {!isLoading && !isError && data && (
-        <OrderCurrencyProvider monedaId={data.moneda}>
+        <PedidoMoneyScope pedido={data}>
           <div className="space-y-5">
             {/* Resumen */}
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-3 px-4 py-3 rounded-xl bg-slate-50 dark:bg-white/5 text-xs">
@@ -221,7 +236,7 @@ export function PickingOrderDetailDialog({
               <PedidoLineas detalles={data.detalles} />
             </div>
           </div>
-        </OrderCurrencyProvider>
+        </PedidoMoneyScope>
       )}
     </MainDialog>
   );
