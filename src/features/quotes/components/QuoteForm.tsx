@@ -6,6 +6,7 @@ import { useState } from "react";
 import dynamic from "next/dynamic";
 import { FormInput } from "@/src/components/FormInput";
 import { FormSelect } from "@/src/components/FormSelect";
+import { READ_ONLY_INPUT_CLS } from "@/src/constants/formStyles";
 import {
   FormCancelButton,
   FormSecondaryButton,
@@ -428,7 +429,7 @@ export function QuoteFormContent({
                     forceUppercase={false}
                     readOnly
                     tabIndex={-1}
-                    className="cursor-not-allowed bg-slate-100 text-slate-500 dark:bg-zinc-800 dark:text-slate-400 focus:bg-slate-100 dark:focus:bg-zinc-800 focus:ring-0 focus:border-slate-200 dark:focus:border-zinc-700"
+                    className={READ_ONLY_INPUT_CLS}
                     name={field.name}
                     value={field.state.value}
                     onChange={(event) => {

@@ -6,6 +6,7 @@ import { FormSelect } from "../../../components/FormSelect";
 import { FormCancelButton, FormSubmitButton } from "../../../components/FormButtons";
 import { ItemPickerButton } from "../../../components/ItemPickerButton";
 import { InfoIcon, ProductVariantsIcon, SettingsIcon } from "../../../components/Icons";
+import { READ_ONLY_INPUT_CLS } from "../../../constants/formStyles";
 import MissingPrerequisites from "../../products/components/MissingPrerequisites";
 import { ProductSelectorDialog } from "../../products/components/ProductSelectorDialog";
 import { ProductVariant } from "../interfaces/product-variant.interface";
@@ -241,7 +242,7 @@ export default function ProductVariantForm({
                     placeholder={selectedCompany?.nombre_comercial || selectedCompany?.razon_social || "Empresa activa"}
                   readOnly
                   tabIndex={-1}
-                  className="cursor-not-allowed bg-slate-100 text-slate-500 dark:bg-zinc-800 dark:text-slate-400 focus:bg-slate-100 dark:focus:bg-zinc-800 focus:ring-0 focus:border-slate-200 dark:focus:border-zinc-700"
+                  className={READ_ONLY_INPUT_CLS}
                 />
               </div>
             </div>
