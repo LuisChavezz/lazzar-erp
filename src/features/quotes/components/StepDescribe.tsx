@@ -50,6 +50,11 @@ interface StepDescribeProps {
   /** La selección admite corte de manga (matriz prenda/proceso, CO-04). */
   sleevecutAllowed: boolean;
   sleevecutNotAllowedMessage: string;
+  /**
+   * Código ISO de la moneda elegida en la cotización: los precios de los pasos
+   * se muestran en ella (EC-606). `null` sin moneda elegida: sin símbolo.
+   */
+  monedaCodigo: string | null;
 }
 
 export const StepDescribe = memo(function StepDescribe({
@@ -68,6 +73,7 @@ export const StepDescribe = memo(function StepDescribe({
   onToggleSleevecut,
   sleevecutAllowed,
   sleevecutNotAllowedMessage,
+  monedaCodigo,
 }: StepDescribeProps) {
   const {
     categories: allCategories,
@@ -249,7 +255,7 @@ export const StepDescribe = memo(function StepDescribe({
                     aria-invalid={Boolean(precioError)}
                     error={precioError ? { message: precioError } : undefined}
                     forceUppercase={false}
-                    leading="$"
+                    leading={monedaCodigo ?? undefined}
                     className="text-right"
                   />
                 </div>

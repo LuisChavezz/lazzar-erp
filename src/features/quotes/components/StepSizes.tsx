@@ -12,6 +12,7 @@ import {
 } from "../hooks/useSizesState";
 import type { CatalogRow } from "../types";
 import type { Size } from "../../sizes/interfaces/size.interface";
+import { formatQuoteAmount } from "../utils/formatQuoteAmount";
 
 interface StepSizesProps {
   selectedRows: CatalogRow[];
@@ -32,6 +33,11 @@ interface StepSizesProps {
   openProductIds?: ReadonlySet<number>;
   onToggleProduct: (id: number) => void;
   sizeErrors: Record<number, string>;
+  /**
+   * Código ISO de la moneda elegida en la cotización: los precios de los pasos
+   * se muestran en ella (EC-606). `null` sin moneda elegida: sin símbolo.
+   */
+  monedaCodigo: string | null;
 }
 
 export const StepSizes = memo(function StepSizes({
@@ -43,6 +49,7 @@ export const StepSizes = memo(function StepSizes({
   openProductIds,
   onToggleProduct,
   sizeErrors,
+  monedaCodigo,
 }: StepSizesProps) {
   return (
     <div className="space-y-3 mt-2">
@@ -96,7 +103,7 @@ export const StepSizes = memo(function StepSizes({
                       {row.nombre}
                     </p>
                     <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                      ${row.precio.toFixed(2)} / pza
+                      {formatQuoteAmount(row.precio, monedaCodigo)} / pza
                     </p>
                   </div>
                   <div className="flex items-center gap-2 shrink-0 ml-2">

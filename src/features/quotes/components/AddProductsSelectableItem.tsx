@@ -7,12 +7,18 @@
  */
 import { CheckCircleIcon } from "@/src/components/Icons";
 import type { CatalogRow } from "../types";
+import { formatQuoteAmount } from "../utils/formatQuoteAmount";
 
 interface AddProductsSelectableItemProps {
   row: CatalogRow;
   isSelected: boolean;
   isAlreadyAdded: boolean;
   onToggle: (row: CatalogRow) => void;
+  /**
+   * Código ISO de la moneda elegida en la cotización: los precios de los pasos
+   * se muestran en ella (EC-606). `null` sin moneda elegida: sin símbolo.
+   */
+  monedaCodigo: string | null;
 }
 
 /**
@@ -25,6 +31,7 @@ export function AddProductsSelectableItem({
   isSelected,
   isAlreadyAdded,
   onToggle,
+  monedaCodigo,
 }: AddProductsSelectableItemProps) {
   return (
     <button
@@ -75,7 +82,7 @@ export function AddProductsSelectableItem({
             </span>
           )}
           <span className="text-[11px] text-slate-400 whitespace-nowrap">
-            Precio: ${row.precio.toFixed(2)}
+            Precio: {formatQuoteAmount(row.precio, monedaCodigo)}
           </span>
         </div>
       </div>

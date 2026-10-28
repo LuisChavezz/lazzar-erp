@@ -104,6 +104,7 @@ export function useAddProductDialogState({
   companyId,
   matrizCompatibilidad = EMPTY_MATRIZ,
   firstPartidaNumber,
+  monedaCodigo,
 }: AddProductDialogProps) {
   const isEditing = Boolean(onUpdateItem && initialItem);
   const isMuestra = variant === "muestra";
@@ -707,6 +708,7 @@ export function useAddProductDialogState({
       onToggleSleevecut: setHasSleevecut,
       sleevecutAllowed,
       sleevecutNotAllowedMessage,
+      monedaCodigo,
     },
     selectStepProps: {
       search: productSelection.search,
@@ -724,6 +726,7 @@ export function useAddProductDialogState({
       sleevecutAllowed,
       sleevecutNotAllowedMessage,
       onClearSelection: productSelection.clearSelection,
+      monedaCodigo,
     },
     embroideryStepProps: {
       embroideryObservaciones: embroideryState.embroideryObservaciones,
@@ -766,6 +769,7 @@ export function useAddProductDialogState({
       openProductIds: isMuestra ? openMuestraRowIds : undefined,
       onToggleProduct: isMuestra ? toggleMuestraRow : productSelection.toggleProduct,
       sizeErrors: sizesState.sizeErrors,
+      monedaCodigo,
     },
     colorsStepProps: {
       selectedRows: productSelection.selectedRows,

@@ -32,6 +32,11 @@ interface StepSelectProductProps {
   sleevecutAllowed: boolean;
   sleevecutNotAllowedMessage: string;
   onClearSelection: () => void;
+  /**
+   * Código ISO de la moneda elegida en la cotización: los precios de los pasos
+   * se muestran en ella (EC-606). `null` sin moneda elegida: sin símbolo.
+   */
+  monedaCodigo: string | null;
 }
 
 export const StepSelectProduct = memo(function StepSelectProduct({
@@ -50,6 +55,7 @@ export const StepSelectProduct = memo(function StepSelectProduct({
   sleevecutAllowed,
   sleevecutNotAllowedMessage,
   onClearSelection,
+  monedaCodigo,
 }: StepSelectProductProps) {
   // Opt-out del React Compiler: `useVirtualizer` retorna funciones internas
   // que el compilador no puede memoizar de forma segura. `memo()` manual sigue
@@ -137,6 +143,7 @@ export const StepSelectProduct = memo(function StepSelectProduct({
                   isSelected={selectedRowIds.has(filteredRows[virtualItem.index].id)}
                   isAlreadyAdded={false}
                   onToggle={onToggleRow}
+                  monedaCodigo={monedaCodigo}
                 />
               </div>
             ))}

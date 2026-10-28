@@ -41,6 +41,11 @@ interface EditSizesDialogProps {
   sizes: Size[];
   /** Callback invocado con el item actualizado al guardar. */
   onSave: (updatedItem: QuoteItem) => void;
+  /**
+   * Código ISO de la moneda elegida en la cotización: los precios de los pasos
+   * se muestran en ella (EC-606). `null` sin moneda elegida: sin símbolo.
+   */
+  monedaCodigo: string | null;
 }
 
 /**
@@ -55,6 +60,7 @@ export function EditSizesDialog({
   itemIndex,
   sizes,
   onSave,
+  monedaCodigo,
 }: EditSizesDialogProps) {
   const { sizesStepProps, handleSave, handleOpenChange } = useEditSizesDialog({
     item,
@@ -97,7 +103,7 @@ export function EditSizesDialog({
         </div>
       }
     >
-      <StepSizes {...sizesStepProps} />
+      <StepSizes {...sizesStepProps} monedaCodigo={monedaCodigo} />
     </MainDialog>
   );
 }

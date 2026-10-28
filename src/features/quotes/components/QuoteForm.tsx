@@ -1424,10 +1424,12 @@ export function QuoteFormContent({
           itemIndex={sizesEditIndex}
           sizes={sizes}
           onSave={handleSizesEditSave}
+          monedaCodigo={monedaCodigo}
         />
 
         <AddProductDialog
           key={`${editIndex ?? "new"}-${dialogVariant}`}
+          monedaCodigo={monedaCodigo}
           open={isAddProductsOpen}
           onOpenChange={(nextOpen) => {
             if (!nextOpen) {

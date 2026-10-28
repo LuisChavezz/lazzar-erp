@@ -164,6 +164,11 @@ export interface AddProductDialogProps {
    * agregar, porque las nuevas van al final y en el orden de la selección.
    */
   firstPartidaNumber: number;
+  /**
+   * Código ISO de la moneda elegida en la cotización: los precios de los pasos
+   * se muestran en ella (EC-606). `null` sin moneda elegida: sin símbolo.
+   */
+  monedaCodigo: string | null;
 }
 
 /**
