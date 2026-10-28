@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef, type RefObject } from "react";
 import { Quote } from "../interfaces/quote.interface";
-import { formatQuoteAmountOrDash } from "@/src/features/quotes/utils/quoteDetailsFormatters";
 import { type DataTableHandle, DataTableVisibleColumn } from "@/src/components/DataTable";
 import { downloadBlob } from "@/src/utils/downloadBlob";
 
@@ -38,7 +37,7 @@ const getColumnValue = (
 
 // Mismo criterio que `useQuotePdfExport`: se detecta por la CLAVE del campo
 // (`accessorKey`, o `id` a falta de ella), no por la etiqueta del encabezado
-// — así "Importe sin IVA" sale formateado y renombrar una columna no rompe
+// — así "Importe sin IVA" sale como importe y renombrar una columna no rompe
 // la exportación en silencio.
 const CURRENCY_FIELD_KEYS = new Set([
   "gran_total",
@@ -55,25 +54,50 @@ const isCurrencyColumn = (column: DataTableVisibleColumn<Quote>) => {
   return key.startsWith("totals.") || CURRENCY_FIELD_KEYS.has(key);
 };
 
-// Un importe va en la moneda de SU cotización (`moneda_codigo`), como en la
-// tabla; sin moneda, sin símbolo (EC-618).
-const formatValue = (value: unknown, column: DataTableVisibleColumn<Quote>, quote: Quote) => {
+/** Encabezado de la columna con el código de moneda de cada cotización. */
+export const QUOTE_CSV_CURRENCY_HEADER = "Moneda";
+
+/**
+ * Importe como NÚMERO plano ("1227.00": sin símbolo, sin separador de miles,
+ * punto decimal, 2 decimales) para que una hoja de cálculo lo sume (EC-618).
+ * La moneda va en su propia columna. Vacío si falta o no es número.
+ */
+const formatAmountCell = (value: unknown): string => {
+  if (typeof value !== "number" && typeof value !== "string") return "";
+  if (value === "") return "";
+  const amount = Number(value);
+  return Number.isFinite(amount) ? amount.toFixed(2) : "";
+};
+
+const formatValue = (value: unknown, column: DataTableVisibleColumn<Quote>) => {
   if (value === null || value === undefined) return "";
-  if (isCurrencyColumn(column)) {
-    return formatQuoteAmountOrDash(
-      typeof value === "number" || typeof value === "string" ? value : null,
-      quote.moneda_codigo,
-    );
-  }
+  if (isCurrencyColumn(column)) return formatAmountCell(value);
   return String(value);
 };
 
-const buildCsv = (quotes: Quote[], columns: DataTableVisibleColumn<Quote>[]) => {
+type CsvColumn = { header: string; value: (quote: Quote, index: number) => string };
+
+/**
+ * CSV de las cotizaciones con las columnas visibles. Los importes van como
+ * número y, junto a ellos (tras la última columna de importe, o al final si
+ * no hay ninguna), una columna "Moneda" con el `moneda_codigo` de la fila
+ * (vacía sin moneda): importes de monedas distintas no se distinguen solo por
+ * el número.
+ */
+export const buildQuotesCsv = (quotes: Quote[], columns: DataTableVisibleColumn<Quote>[]) => {
   const exportColumns = columns.filter((column) => column.id !== "actions");
-  const headers = exportColumns.map((column) => column.header);
-  const rows = quotes.map((quote, index) =>
-    exportColumns.map((column) => formatValue(getColumnValue(quote, column, index), column, quote))
-  );
+  const csvColumns: CsvColumn[] = exportColumns.map((column) => ({
+    header: column.header,
+    value: (quote, index) => formatValue(getColumnValue(quote, column, index), column),
+  }));
+  const lastAmountIndex = exportColumns.findLastIndex(isCurrencyColumn);
+  csvColumns.splice(lastAmountIndex >= 0 ? lastAmountIndex + 1 : csvColumns.length, 0, {
+    header: QUOTE_CSV_CURRENCY_HEADER,
+    value: (quote) => quote.moneda_codigo ?? "",
+  });
+
+  const headers = csvColumns.map((column) => column.header);
+  const rows = quotes.map((quote, index) => csvColumns.map((column) => column.value(quote, index)));
 
   return [headers, ...rows]
     .map((row) => row.map(escapeCsv).join(","))
@@ -100,7 +124,7 @@ export const useQuoteCsvExport = (
   const exportToCsv = useCallback(() => {
     const exportColumns = columnsRef.current.filter((column) => column.id !== "actions");
     if (exportColumns.length === 0) return;
-    const csvContent = buildCsv(tableRef.current?.getFilteredRows() ?? [], exportColumns);
+    const csvContent = buildQuotesCsv(tableRef.current?.getFilteredRows() ?? [], exportColumns);
     const blob = new Blob([`\uFEFF${csvContent}`], {
       type: "text/csv;charset=utf-8;",
     });
