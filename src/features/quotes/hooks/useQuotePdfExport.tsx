@@ -3,6 +3,7 @@ import { format, parseISO, isValid } from "date-fns";
 import { es } from "date-fns/locale";
 import { Quote } from "../interfaces/quote.interface";
 import { formatCurrency } from "@/src/utils/formatCurrency";
+import { formatQuoteAmount } from "../utils/formatQuoteAmount";
 import { type DataTableHandle, DataTableVisibleColumn } from "@/src/components/DataTable";
 import { downloadBlob } from "@/src/utils/downloadBlob";
 
@@ -56,10 +57,12 @@ const isRightAlignedColumn = (column: DataTableVisibleColumn<Quote>): boolean =>
   return key === "piezas" || isCurrencyColumn(column);
 };
 
-const formatValue = (value: unknown, column: DataTableVisibleColumn<Quote>): string => {
+// Un importe va en la moneda de SU cotización (`moneda_codigo`), como en la
+// tabla; sin moneda, sin símbolo (EC-618).
+const formatValue = (value: unknown, column: DataTableVisibleColumn<Quote>, quote: Quote): string => {
   if (value === null || value === undefined || value === "") return "—";
   if (isCurrencyColumn(column)) {
-    return formatCurrency(Number(value) || 0);
+    return formatQuoteAmount(Number(value) || 0, quote.moneda_codigo);
   }
   if (isDateColumn(column)) {
     try {
@@ -296,7 +299,7 @@ const createQuotesPdfDocument = (
                     isCurrencyColumn(column) ? styles.cellCurrency : {},
                   ]}
                 >
-                  {formatValue(getColumnValue(quote, column, rowIndex), column)}
+                  {formatValue(getColumnValue(quote, column, rowIndex), column, quote)}
                 </Text>
               ))}
             </View>

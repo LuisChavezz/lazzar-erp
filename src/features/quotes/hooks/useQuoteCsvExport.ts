@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, type RefObject } from "react";
 import { Quote } from "../interfaces/quote.interface";
-import { formatCurrency } from "@/src/utils/formatCurrency";
+import { formatQuoteAmount } from "../utils/formatQuoteAmount";
 import { type DataTableHandle, DataTableVisibleColumn } from "@/src/components/DataTable";
 import { downloadBlob } from "@/src/utils/downloadBlob";
 
@@ -55,10 +55,12 @@ const isCurrencyColumn = (column: DataTableVisibleColumn<Quote>) => {
   return key.startsWith("totals.") || CURRENCY_FIELD_KEYS.has(key);
 };
 
-const formatValue = (value: unknown, column: DataTableVisibleColumn<Quote>) => {
+// Un importe va en la moneda de SU cotización (`moneda_codigo`), como en la
+// tabla; sin moneda, sin símbolo (EC-618).
+const formatValue = (value: unknown, column: DataTableVisibleColumn<Quote>, quote: Quote) => {
   if (value === null || value === undefined) return "";
   if (isCurrencyColumn(column)) {
-    return formatCurrency(Number(value) || 0);
+    return formatQuoteAmount(Number(value) || 0, quote.moneda_codigo);
   }
   return String(value);
 };
@@ -67,7 +69,7 @@ const buildCsv = (quotes: Quote[], columns: DataTableVisibleColumn<Quote>[]) => 
   const exportColumns = columns.filter((column) => column.id !== "actions");
   const headers = exportColumns.map((column) => column.header);
   const rows = quotes.map((quote, index) =>
-    exportColumns.map((column) => formatValue(getColumnValue(quote, column, index), column))
+    exportColumns.map((column) => formatValue(getColumnValue(quote, column, index), column, quote))
   );
 
   return [headers, ...rows]
