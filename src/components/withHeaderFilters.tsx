@@ -4,6 +4,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { FilterHeader, type ColumnFilterOption } from "./ColumnHeaderFilter";
 import {
   ALL_FILTER_OPTION,
+  buildCatalogFilterOptions,
   buildDistinctFilterOptions,
   buildMonthFilterOptions,
   matchesMonthFilter,
@@ -31,6 +32,20 @@ export type HeaderFilterSpec<T> =
        */
       filterLabel?: string;
     }
+  /**
+   * Un valor por opción, tomado de un catálogo del front (estatus, prioridad,
+   * clasificación): todas las opciones del catálogo en su orden, aunque ninguna
+   * fila las tenga, más al final los valores de las filas que el catálogo no
+   * cubre. Compara como `distinct`, contra el valor crudo.
+   */
+  | {
+      type: "options";
+      get: (row: T) => string | number | null | undefined;
+      /** Opciones del catálogo (`optionsFromConfig`, o un arreglo `{ value, label }[]`). */
+      options: ColumnFilterOption[];
+      /** Como en `distinct`: qué se filtra, cuando no es la columna misma. */
+      filterLabel?: string;
+    }
   /** Un mes por opción, del más reciente al más antiguo. */
   | { type: "month"; get: (row: T) => string | null | undefined; emptyLabel?: string }
   /** Rangos fijos de cantidad o importe. */
@@ -47,6 +62,8 @@ function buildOptions<T>(spec: HeaderFilterSpec<T>, rows: T[]): ColumnFilterOpti
   switch (spec.type) {
     case "distinct":
       return [ALL_FILTER_OPTION, ...buildDistinctFilterOptions(rows, spec.get, spec.label)];
+    case "options":
+      return buildCatalogFilterOptions(rows, spec.get, spec.options);
     case "month":
       return [ALL_FILTER_OPTION, ...buildMonthFilterOptions(rows.map(spec.get), spec.emptyLabel)];
     case "range":
@@ -62,6 +79,7 @@ function matches<T>(spec: HeaderFilterSpec<T>, row: T, filterValue: string | und
   if (!filterValue) return true;
   switch (spec.type) {
     case "distinct":
+    case "options":
       return String(spec.get(row) ?? "") === filterValue;
     case "month":
       return matchesMonthFilter(spec.get(row), filterValue);
@@ -109,7 +127,7 @@ export function withHeaderFilters<T>(
           title={title}
           column={tableColumn}
           options={options}
-          label={(spec.type === "distinct" && spec.filterLabel) || title.toLowerCase()}
+          label={((spec.type === "distinct" || spec.type === "options") && spec.filterLabel) || title.toLowerCase()}
           searchable={spec.type === "distinct" && spec.searchable ? { placeholder: `Buscar ${title.toLowerCase()}…` } : false}
           menuAlign={column.meta?.align === "right" ? "end" : "start"}
         />
