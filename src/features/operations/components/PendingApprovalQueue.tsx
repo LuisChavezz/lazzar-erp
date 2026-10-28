@@ -149,7 +149,7 @@ export const PendingApprovalQueue = () => {
   return (
     <>
       <section
-        className="bg-white dark:bg-black border border-slate-200 dark:border-white/10 rounded-xl shadow-sm overflow-hidden flex flex-col h-full min-h-136"
+        className="bg-white dark:bg-black border border-slate-200 dark:border-white/10 rounded-xl shadow-sm overflow-hidden flex flex-col"
         aria-label="Cola de cotizaciones operativas pendientes de autorización"
       >
         <div className="px-6 py-5 border-b border-slate-100 dark:border-white/10 flex items-center justify-between bg-slate-50/50 dark:bg-white/2 shrink-0">
@@ -186,7 +186,7 @@ export const PendingApprovalQueue = () => {
           ) : null}
         </div>
 
-        <div className="flex-1 min-h-112">
+        <div className="max-h-128 overflow-y-auto">
           {isLoading ? (
             <div className="p-4 space-y-3">
               {Array.from({ length: MAX_VISIBLE }).map((_, index) => (
@@ -194,7 +194,7 @@ export const PendingApprovalQueue = () => {
               ))}
             </div>
           ) : visibleOperationsQuotes.length === 0 ? (
-            <div className="flex h-full min-h-112 flex-col items-center justify-center py-14 gap-3">
+            <div className="flex flex-col items-center justify-center py-10 gap-3">
               <div className="p-3 rounded-full bg-emerald-50 dark:bg-emerald-500/10">
                 <InboxIcon className="w-6 h-6 text-emerald-500" />
               </div>
@@ -237,7 +237,7 @@ export const PendingApprovalQueue = () => {
                   >
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-0.5">
-                        <span className="text-[10px] font-bold tracking-widest text-slate-400 dark:text-slate-500 uppercase">
+                        <span className="text-[11px] font-bold font-mono tracking-wider text-sky-600 dark:text-sky-400">
                           #{String(operationsQuote.id).padStart(5, "0")}
                         </span>
                         <span className="text-[10px] text-slate-300 dark:text-slate-600">
@@ -272,7 +272,7 @@ export const PendingApprovalQueue = () => {
                     </div>
 
                     <div
-                      className="flex items-center gap-1 shrink-0"
+                      className="flex items-center gap-1.5 shrink-0"
                       onClick={(event) => event.stopPropagation()}
                     >
                       {isProcessing ? (
@@ -285,9 +285,10 @@ export const PendingApprovalQueue = () => {
                             onClick={() =>
                               handleRequestAction("approve", operationsQuote)
                             }
-                            className="p-1.5 rounded-lg text-slate-300 dark:text-slate-600 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 dark:hover:text-emerald-400 transition-all cursor-pointer"
+                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-emerald-200 dark:border-emerald-500/30 text-xs font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 transition-colors cursor-pointer"
                           >
-                            <CheckCircleIcon className="w-5 h-5" />
+                            <CheckCircleIcon className="w-4 h-4" aria-hidden="true" />
+                            <span className="hidden sm:inline">Autorizar</span>
                           </button>
                           <button
                             type="button"
@@ -295,9 +296,10 @@ export const PendingApprovalQueue = () => {
                             onClick={() =>
                               handleRequestAction("reject", operationsQuote)
                             }
-                            className="p-1.5 rounded-lg text-slate-300 dark:text-slate-600 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-500/10 dark:hover:text-rose-400 transition-all cursor-pointer"
+                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-rose-200 dark:border-rose-500/30 text-xs font-semibold text-rose-700 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-colors cursor-pointer"
                           >
-                            <RejectIcon className="w-5 h-5" />
+                            <RejectIcon className="w-4 h-4" aria-hidden="true" />
+                            <span className="hidden sm:inline">Rechazar</span>
                           </button>
                         </>
                       )}

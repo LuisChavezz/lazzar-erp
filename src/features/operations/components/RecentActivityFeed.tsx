@@ -48,7 +48,7 @@ export const RecentActivityFeed = () => {
 
   return (
     <section
-      className="bg-white dark:bg-black border border-slate-200 dark:border-white/10 rounded-xl shadow-sm overflow-hidden flex flex-col min-h-104"
+      className="bg-white dark:bg-black border border-slate-200 dark:border-white/10 rounded-xl shadow-sm overflow-hidden flex flex-col"
       aria-label="Actividad reciente de cotizaciones operativas"
     >
       {/* ── Encabezado ──────────────────────────────────────────────────── */}

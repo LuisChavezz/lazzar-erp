@@ -2,7 +2,20 @@
 
 import { type ColumnDef, type FilterFn, type SortingFn } from "@tanstack/react-table";
 import { Popover } from "@radix-ui/themes";
-import { ColumnHeaderFilter, type ColumnFilterOption } from "@/src/components/ColumnHeaderFilter";
+import {
+  ColumnHeaderFilter,
+  FilterHeader,
+  type ColumnFilterOption,
+} from "@/src/components/ColumnHeaderFilter";
+import { ChevronRightIcon } from "@/src/components/Icons";
+import {
+  ALL_FILTER_OPTION,
+  buildDistinctFilterOptions,
+  buildMonthFilterOptions,
+  matchesMonthFilter,
+  matchesRangeFilter,
+  type RangeFilterOption,
+} from "@/src/utils/columnFilterOptions";
 import { formatShortDate } from "@/src/utils/formatDate";
 import { formatOrderAmountOrDash } from "@/src/features/orders/utils/orderAmountFormat";
 import { formatPiezas } from "@/src/utils/formatWorkOrderProgramado";
@@ -11,6 +24,7 @@ import { PedidoFolioLink } from "@/src/features/orders/components/PedidoFolioLin
 import {
   getPedidoClasificacionLabel,
   getPedidoEstatusConfig,
+  PEDIDO_ESTATUS_CONFIG,
 } from "@/src/features/orders/constants/pedidoStatus";
 import {
   getPedidoProgramacionDestinoLabel,
@@ -121,29 +135,136 @@ const folioSortingFn: SortingFn<ScheduledParcialidadRow> = (rowA, rowB) => {
 
 const DASH = <span className="text-slate-400 dark:text-slate-600">—</span>;
 
-export function getScheduledOrderColumns(): ColumnDef<ScheduledParcialidadRow, unknown>[] {
+// ─── Filtros de encabezado ────────────────────────────────────────────────────
+// Toda la lista está en memoria: las opciones de cliente, clasificación y los
+// meses salen de las filas (`buildScheduledOrderFilterOptions`); cantidad e
+// importe usan rangos fijos. El estatus del pedido ya no tiene columna propia:
+// va junto al folio y se filtra desde su encabezado.
+
+const ESTATUS_FILTER_OPTIONS: ColumnFilterOption[] = [
+  ALL_FILTER_OPTION,
+  ...Object.entries(PEDIDO_ESTATUS_CONFIG).map(([value, cfg]) => ({ value, label: cfg.label })),
+];
+
+const PARCIALIDAD_FILTER_OPTIONS: ColumnFilterOption[] = [
+  ALL_FILTER_OPTION,
+  { value: "unica", label: "Entrega única" },
+  { value: "varias", label: "Varias parcialidades" },
+];
+
+const COMENTARIOS_FILTER_OPTIONS: ColumnFilterOption[] = [
+  ALL_FILTER_OPTION,
+  { value: "con", label: "Con comentario" },
+  { value: "sin", label: "Sin comentario" },
+];
+
+const CANTIDAD_RANGES: RangeFilterOption[] = [
+  { value: "1-50", label: "1 a 50 piezas", max: 51 },
+  { value: "51-500", label: "51 a 500 piezas", min: 51, max: 501 },
+  { value: "mas-500", label: "Más de 500 piezas", min: 501 },
+];
+
+const IMPORTE_RANGES: RangeFilterOption[] = [
+  { value: "hasta-10k", label: "Hasta 10,000", max: 10_000 },
+  { value: "10k-100k", label: "10,000 – 100,000", min: 10_000, max: 100_000 },
+  { value: "mas-100k", label: "Más de 100,000", min: 100_000 },
+];
+
+const rangeOptions = (ranges: RangeFilterOption[]): ColumnFilterOption[] => [
+  ALL_FILTER_OPTION,
+  ...ranges.map(({ value, label }) => ({ value, label })),
+];
+
+export interface ScheduledOrderFilterOptions {
+  clientes: ColumnFilterOption[];
+  clasificaciones: ColumnFilterOption[];
+  mesesEntrega: ColumnFilterOption[];
+  mesesProgramacion: ColumnFilterOption[];
+  meses: ColumnFilterOption[];
+}
+
+export function buildScheduledOrderFilterOptions(
+  rows: ScheduledParcialidadRow[],
+): ScheduledOrderFilterOptions {
+  return {
+    clientes: [
+      ALL_FILTER_OPTION,
+      ...buildDistinctFilterOptions(rows, (r) => r.cliente_razon_social),
+    ],
+    clasificaciones: [
+      ALL_FILTER_OPTION,
+      ...buildDistinctFilterOptions(
+        rows,
+        (r) => r.clasificacion,
+        (r) => getPedidoClasificacionLabel(r.clasificacion),
+      ),
+    ],
+    mesesEntrega: [
+      ALL_FILTER_OPTION,
+      ...buildMonthFilterOptions(rows.map((r) => r.fecha_entrega_min), "Sin fecha de entrega"),
+    ],
+    mesesProgramacion: [
+      ALL_FILTER_OPTION,
+      ...buildMonthFilterOptions(rows.map((r) => r.ultimaProgramacion?.fecha), "Sin guardar"),
+    ],
+    meses: [ALL_FILTER_OPTION, ...buildMonthFilterOptions(rows.map((r) => r.created_at))],
+  };
+}
+
+const EMPTY_FILTER_OPTIONS: ScheduledOrderFilterOptions = {
+  clientes: [ALL_FILTER_OPTION],
+  clasificaciones: [ALL_FILTER_OPTION],
+  mesesEntrega: [ALL_FILTER_OPTION],
+  mesesProgramacion: [ALL_FILTER_OPTION],
+  meses: [ALL_FILTER_OPTION],
+};
+
+export function getScheduledOrderColumns(
+  filterOptions: ScheduledOrderFilterOptions = EMPTY_FILTER_OPTIONS,
+): ColumnDef<ScheduledParcialidadRow, unknown>[] {
   return [
     {
       id: "folio",
-      header: "Folio",
+      header: ({ column }) => (
+        <FilterHeader
+          title="Folio"
+          column={column}
+          options={ESTATUS_FILTER_OPTIONS}
+          label="estatus del pedido"
+        />
+      ),
       meta: { label: "Folio" },
+      filterFn: (row, _columnId, filterValue) =>
+        !filterValue || String(row.original.estatus) === filterValue,
       // Folio + OC: alimenta la búsqueda global con ambos (la OC no tiene
       // columna propia). El orden NO usa esa cadena: `folioSortingFn` compara
       // solo el folio.
       accessorFn: (row) =>
         [row.folio ?? "", hasMeaningfulOc(row.oc) ? row.oc : ""].join(" ").trim(),
       sortingFn: folioSortingFn,
-      size: 190,
+      size: 230,
       cell: ({ row }) => {
         const parcialidad = row.original;
+        // Estatus del pedido junto al folio (antes tenía columna propia).
+        const estatus = getPedidoEstatusConfig(parcialidad.estatus);
         return (
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-1.5 flex-wrap">
             <PedidoFolioLink
               pedidoId={parcialidad.pedidoId}
               folio={parcialidad.folio}
               from="scheduled-orders"
-              className="font-mono text-[13px] font-bold text-slate-800 dark:text-white"
-            />
+              className="group inline-flex items-center gap-1 font-mono text-[13px] font-bold text-slate-800 dark:text-white"
+            >
+              <ChevronRightIcon
+                className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500 group-hover:text-sky-500 dark:group-hover:text-sky-400 group-hover:translate-x-0.5 transition-all"
+                aria-hidden="true"
+              />
+            </PedidoFolioLink>
+            <span
+              className={`inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-semibold leading-none whitespace-nowrap ${estatus.className}`}
+            >
+              {estatus.label}
+            </span>
             {hasMeaningfulOc(parcialidad.oc) && (
               <span
                 className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 dark:bg-white/10 text-slate-500 dark:text-slate-400 font-mono"
@@ -158,14 +279,26 @@ export function getScheduledOrderColumns(): ColumnDef<ScheduledParcialidadRow, u
     },
     {
       id: "parcialidad",
-      header: "Parcialidad",
+      header: ({ column }) => (
+        <FilterHeader
+          title="Parcialidad"
+          column={column}
+          options={PARCIALIDAD_FILTER_OPTIONS}
+          label="parcialidades"
+        />
+      ),
+      filterFn: (row, _columnId, filterValue) =>
+        !filterValue ||
+        (filterValue === "unica"
+          ? row.original.totalParcialidades === 1
+          : row.original.totalParcialidades > 1),
       accessorFn: (row) => row.indice,
       // Sin orden propio: ordenar por índice mezclaría las "1 de N" de todos
       // los pedidos. Ordenar por Folio ya deja cada pedido junto y en orden.
       enableSorting: false,
       enableGlobalFilter: false,
-      meta: { align: "center" },
-      size: 120,
+      meta: { align: "center", label: "Parcialidad" },
+      size: 140,
       cell: ({ row }) => (
         <span className="text-sm tabular-nums text-slate-600 dark:text-slate-300 whitespace-nowrap">
           {row.original.indice + 1} de {row.original.totalParcialidades}
@@ -194,13 +327,22 @@ export function getScheduledOrderColumns(): ColumnDef<ScheduledParcialidadRow, u
     },
     {
       id: "cantidad",
-      header: "Cantidad",
+      header: ({ column }) => (
+        <FilterHeader
+          title="Cantidad"
+          column={column}
+          options={rangeOptions(CANTIDAD_RANGES)}
+          label="rango de cantidad"
+        />
+      ),
+      filterFn: (row, _columnId, filterValue) =>
+        matchesRangeFilter(CANTIDAD_RANGES, getCantidadValue(row.original.cantidad), filterValue),
       accessorFn: (row) => getCantidadValue(row.cantidad),
       sortingFn: "basic",
       sortUndefined: "last",
       enableGlobalFilter: false,
-      meta: { align: "right" },
-      size: 120,
+      meta: { align: "right", label: "Cantidad" },
+      size: 130,
       cell: ({ row }) => {
         const cantidad = getCantidadValue(row.original.cantidad);
         return cantidad === undefined ? (
@@ -214,7 +356,17 @@ export function getScheduledOrderColumns(): ColumnDef<ScheduledParcialidadRow, u
     },
     {
       id: "comentarios",
-      header: "Comentarios",
+      meta: { label: "Comentarios" },
+      header: ({ column }) => (
+        <FilterHeader
+          title="Comentarios"
+          column={column}
+          options={COMENTARIOS_FILTER_OPTIONS}
+          label="comentarios"
+        />
+      ),
+      filterFn: (row, _columnId, filterValue) =>
+        !filterValue || (filterValue === "con") === Boolean(getComentarios(row.original)),
       accessorKey: "comentarios",
       enableSorting: false,
       size: 240,
@@ -235,7 +387,19 @@ export function getScheduledOrderColumns(): ColumnDef<ScheduledParcialidadRow, u
       // global por el tipo de su valor en la PRIMERA fila, y un `null` ahí la
       // dejaría fuera para todas.
       accessorFn: (row) => row.cliente_razon_social ?? "",
-      header: "Razón social",
+      meta: { label: "Razón social" },
+      size: 220,
+      header: ({ column }) => (
+        <FilterHeader
+          title="Razón social"
+          column={column}
+          options={filterOptions.clientes}
+          label="razón social"
+          searchable={{ placeholder: "Buscar cliente…" }}
+        />
+      ),
+      filterFn: (row, _columnId, filterValue) =>
+        !filterValue || row.original.cliente_razon_social === filterValue,
       cell: ({ row }) => (
         <span className="block text-sm text-slate-600 dark:text-slate-300 truncate max-w-55">
           {row.original.cliente_razon_social || "—"}
@@ -243,25 +407,18 @@ export function getScheduledOrderColumns(): ColumnDef<ScheduledParcialidadRow, u
       ),
     },
     {
-      id: "estatus",
-      accessorKey: "estatus",
-      header: "Estatus",
-      enableGlobalFilter: false,
-      meta: { align: "center" },
-      cell: ({ row }) => {
-        const { label, className } = getPedidoEstatusConfig(row.original.estatus);
-        return (
-          <span
-            className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium whitespace-nowrap ${className}`}
-          >
-            {label}
-          </span>
-        );
-      },
-    },
-    {
       id: "entrega",
-      header: "Entrega",
+      meta: { label: "Entrega" },
+      header: ({ column }) => (
+        <FilterHeader
+          title="Entrega"
+          column={column}
+          options={filterOptions.mesesEntrega}
+          label="mes de entrega"
+        />
+      ),
+      filterFn: (row, _columnId, filterValue) =>
+        matchesMonthFilter(row.original.fecha_entrega_min, filterValue),
       accessorKey: "fecha_entrega_min",
       enableGlobalFilter: false,
       // `DataTable` es `table-fixed` y la celda no recorta: sin `size` (150 por
@@ -280,7 +437,17 @@ export function getScheduledOrderColumns(): ColumnDef<ScheduledParcialidadRow, u
     {
       id: "clasificacion",
       accessorKey: "clasificacion",
-      header: "Clasificación",
+      meta: { label: "Clasificación" },
+      header: ({ column }) => (
+        <FilterHeader
+          title="Clasificación"
+          column={column}
+          options={filterOptions.clasificaciones}
+          label="clasificación"
+        />
+      ),
+      filterFn: (row, _columnId, filterValue) =>
+        !filterValue || row.original.clasificacion === filterValue,
       enableGlobalFilter: false,
       // Etiqueta más larga: "X - Solo para facturar" (~136px) + 32 de padding.
       size: 180,
@@ -294,11 +461,18 @@ export function getScheduledOrderColumns(): ColumnDef<ScheduledParcialidadRow, u
       id: "ultima_programacion",
       // Dato del PEDIDO, no de la parcialidad: el backend re-sella fecha y
       // usuario en todos los renglones en cada guardado.
-      header: () => (
-        <span title="Último guardado de la programación completa del pedido; aplica a todas sus parcialidades.">
-          Programación guardada
-        </span>
+      // Último guardado de la programación completa del pedido; aplica a
+      // todas sus parcialidades.
+      header: ({ column }) => (
+        <FilterHeader
+          title="Programación guardada"
+          column={column}
+          options={filterOptions.mesesProgramacion}
+          label="mes de programación"
+        />
       ),
+      filterFn: (row, _columnId, filterValue) =>
+        matchesMonthFilter(row.original.ultimaProgramacion?.fecha, filterValue),
       meta: { label: "Programación guardada" },
       // Instante en ms (orden cronológico real, sin depender del offset del
       // ISO); sin fecha válida → `undefined`, que `sortUndefined: "last"`
@@ -329,7 +503,12 @@ export function getScheduledOrderColumns(): ColumnDef<ScheduledParcialidadRow, u
     {
       id: "created_at",
       accessorKey: "created_at",
-      header: "Fecha",
+      meta: { label: "Fecha" },
+      header: ({ column }) => (
+        <FilterHeader title="Fecha" column={column} options={filterOptions.meses} label="mes" />
+      ),
+      filterFn: (row, _columnId, filterValue) =>
+        matchesMonthFilter(row.original.created_at, filterValue),
       enableGlobalFilter: false,
       cell: ({ row }) => (
         <span className="text-sm text-slate-500 dark:text-slate-400 whitespace-nowrap">
@@ -341,11 +520,18 @@ export function getScheduledOrderColumns(): ColumnDef<ScheduledParcialidadRow, u
       id: "importe_sin_iva",
       accessorKey: "subtotal",
       // Subtotal del PEDIDO completo (sin IVA), no de la parcialidad.
-      header: () => (
-        <span title="Importe sin IVA del pedido completo; se repite en cada parcialidad.">
-          Importe del pedido
-        </span>
+      // Importe sin IVA del pedido completo; se repite en cada parcialidad.
+      header: ({ column }) => (
+        <FilterHeader
+          title="Importe del pedido"
+          column={column}
+          options={rangeOptions(IMPORTE_RANGES)}
+          label="rango de importe"
+          menuAlign="end"
+        />
       ),
+      filterFn: (row, _columnId, filterValue) =>
+        matchesRangeFilter(IMPORTE_RANGES, row.original.subtotal, filterValue),
       enableGlobalFilter: false,
       meta: { align: "right", label: "Importe del pedido" },
       size: 180,

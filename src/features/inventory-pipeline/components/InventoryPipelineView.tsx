@@ -2,9 +2,32 @@
 
 import { useState } from "react";
 import { DataTable } from "@/src/components/DataTable";
+import { QuickFilterChips } from "@/src/components/QuickFilterChips";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { isInitialLoadError } from "@/src/utils/isInitialLoadError";
-import { getInventoryPipelineColumns } from "./InventoryPipelineColumns";
+import {
+  buildInventoryPipelineFilterOptions,
+  getInventoryPipelineColumns,
+} from "./InventoryPipelineColumns";
+import type { InventoryPipelineRow } from "../interfaces/inventory-pipeline.interface";
+
+/**
+ * Atajos de un clic sobre la tabla para las preguntas más comunes al planear.
+ * Filtran el arreglo que recibe `DataTable` (en memoria; el reporte llega
+ * completo) y se combinan con la búsqueda y los filtros de encabezado.
+ */
+const QUICK_FILTERS: {
+  key: string;
+  label: string;
+  dotClassName: string;
+  matches: (row: InventoryPipelineRow) => boolean;
+}[] = [
+  { key: "todos", label: "Todos", dotClassName: "bg-slate-400", matches: () => true },
+  { key: "con-existencia", label: "Con existencia", dotClassName: "bg-emerald-500", matches: (r) => r.disponible > 0 },
+  { key: "sin-existencia", label: "Sin existencia", dotClassName: "bg-rose-500", matches: (r) => r.disponible <= 0 },
+  { key: "en-produccion", label: "En producción", dotClassName: "bg-indigo-500", matches: (r) => r.enOp > 0 },
+  { key: "con-compras", label: "Con compras pendientes", dotClassName: "bg-amber-500", matches: (r) => r.comprasPendientes > 0 },
+];
 import { InventoryPipelineDetailDialog } from "./InventoryPipelineDetailDialog";
 import { useInventoryPipeline } from "../hooks/useInventoryPipeline";
 
@@ -30,11 +53,17 @@ export function InventoryPipelineView() {
   const { rows, isLoading, isError, error, hasLoaded, refetch, isFetching } =
     useInventoryPipeline();
   const [openProductoId, setOpenProductoId] = useState<number | null>(null);
+  const [quickFilterKey, setQuickFilterKey] = useState("todos");
+  const quickFilter = QUICK_FILTERS.find((f) => f.key === quickFilterKey) ?? QUICK_FILTERS[0];
+  const visibleRows = rows.filter(quickFilter.matches);
 
   // Error de pantalla completa solo si nunca cargó; un refetch fallido con
   // datos en caché conserva la tabla y avisa por toast (`useHasLoadedQuery`).
   const showError = isInitialLoadError(isError, hasLoaded);
-  const columns = getInventoryPipelineColumns(setOpenProductoId);
+  const columns = getInventoryPipelineColumns(
+    setOpenProductoId,
+    buildInventoryPipelineFilterOptions(rows),
+  );
 
   const openRow =
     openProductoId !== null ? rows.find((row) => row.productoId === openProductoId) : undefined;
@@ -47,12 +76,28 @@ export function InventoryPipelineView() {
     setOpenProductoId(null);
   }
 
+  // Altura acotada a la ventana (mismo cálculo que el resto de Mesa de
+  // Control) + `fillHeight`: la tabla aprovecha toda la pantalla y scrollea
+  // por dentro, en vez de quedarse a media altura.
   return (
-    <div className="space-y-6">
+    <div className="h-[calc(100dvh-128px)] min-h-[480px] flex flex-col gap-3">
+      <QuickFilterChips
+        label="Atajos de filtro"
+        value={quickFilterKey}
+        onChange={setQuickFilterKey}
+        chips={QUICK_FILTERS.map((filter) => ({
+          key: filter.key,
+          label: filter.label,
+          dotClassName: filter.dotClassName,
+          count: hasLoaded ? rows.filter(filter.matches).length : undefined,
+        }))}
+      />
       <DataTable
         columns={columns}
-        data={rows}
-        searchPlaceholder="Buscar por código o descripción..."
+        data={visibleRows}
+        baseDataCount={rows.length}
+        fillHeight
+        searchPlaceholder="Buscar código o producto…"
         getRowId={(row) => String(row.productoId)}
         onRefetch={refetch}
         isRefetching={isFetching}

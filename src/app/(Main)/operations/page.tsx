@@ -39,10 +39,15 @@ export default function OperationsPage() {
       </section>
 
       {/* Fila principal — cola + panel lateral */}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 items-start">
         {/* Cola de autorización (prioridad máxima) */}
-        <div className="xl:col-span-2">
+        {/* y, debajo, la actividad reciente: así la columna ancha no deja un
+            hueco junto al panel lateral. */}
+        <div className="xl:col-span-2 space-y-6">
           <PendingApprovalQueue />
+          <section aria-label="Actividad reciente">
+            <RecentActivityFeed />
+          </section>
         </div>
 
         {/* Panel lateral */}
@@ -51,11 +56,6 @@ export default function OperationsPage() {
           <OperationsQuotesStatusBreakdown />
         </div>
       </div>
-
-      {/* Feed de actividad reciente */}
-      <section aria-label="Actividad reciente">
-        <RecentActivityFeed />
-      </section>
     </main>
   );
 }

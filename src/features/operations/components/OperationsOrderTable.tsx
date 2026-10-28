@@ -5,6 +5,7 @@ import { DataTable } from '@/src/components/DataTable';
 import type { PedidoListItem } from '@/src/features/orders/interfaces/order.interface';
 import {
   buildOperationsOrderColumns,
+  buildOperationsOrderFilterOptions,
   type OperationsOrderColumnCallbacks,
 } from './OperationsOrderColumns';
 
@@ -35,14 +36,11 @@ export function OperationsOrderTable({
   // en cada render del componente padre.
   const columns = useMemo(
     () =>
-      buildOperationsOrderColumns({
-        onViewDetail,
-        onEditMesaControl,
-        onProgramar,
-        onReviewStock,
-        onCancel,
-      }),
-    [onViewDetail, onEditMesaControl, onProgramar, onReviewStock, onCancel],
+      buildOperationsOrderColumns(
+        { onViewDetail, onEditMesaControl, onProgramar, onReviewStock, onCancel },
+        buildOperationsOrderFilterOptions(orders),
+      ),
+    [onViewDetail, onEditMesaControl, onProgramar, onReviewStock, onCancel, orders],
   );
 
   return (

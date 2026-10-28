@@ -3,7 +3,19 @@
 import { ColumnDef, FilterFn } from "@tanstack/react-table";
 import { createContext, useContext } from "react";
 import { ActionMenu, ActionMenuItem } from "@/src/components/ActionMenu";
-import { ColumnHeaderFilter, type ColumnFilterOption } from "@/src/components/ColumnHeaderFilter";
+import {
+  ColumnHeaderFilter,
+  FilterHeader,
+  type ColumnFilterOption,
+} from "@/src/components/ColumnHeaderFilter";
+import {
+  ALL_FILTER_OPTION,
+  buildDistinctFilterOptions,
+  buildMonthFilterOptions,
+  matchesMonthFilter,
+  matchesRangeFilter,
+  type RangeFilterOption,
+} from "@/src/utils/columnFilterOptions";
 import {
   CheckCircleIcon,
   ChevronRightIcon,
@@ -44,6 +56,60 @@ const ESTATUS_FILTER_OPTIONS: ColumnFilterOption[] = [
 const estatusFilterFn: FilterFn<OperationsQuote> = (row, _columnId, filterValue) => {
   if (filterValue === undefined) return true;
   return String(row.original.estatus) === filterValue;
+};
+
+// ─── Filtros de encabezado de las demás columnas ──────────────────────────────
+// La lista completa vive en memoria, así que las opciones de razón social,
+// mes y C.P. salen de sus filas (`buildOperationsQuoteFilterOptions`); piezas
+// e importe usan rangos fijos.
+
+export interface OperationsQuoteFilterOptions {
+  razonesSociales: ColumnFilterOption[];
+  meses: ColumnFilterOption[];
+  codigosPostales: ColumnFilterOption[];
+}
+
+export function buildOperationsQuoteFilterOptions(
+  quotes: OperationsQuote[],
+): OperationsQuoteFilterOptions {
+  return {
+    razonesSociales: [
+      ALL_FILTER_OPTION,
+      ...buildDistinctFilterOptions(
+        quotes,
+        (q) => q.cliente_razon_social,
+        (q) => capitalize(q.cliente_razon_social),
+      ),
+    ],
+    meses: [ALL_FILTER_OPTION, ...buildMonthFilterOptions(quotes.map((q) => q.created_at))],
+    codigosPostales: [
+      ALL_FILTER_OPTION,
+      ...buildDistinctFilterOptions(quotes, (q) => q.codigo_postal),
+    ],
+  };
+}
+
+const PIEZAS_RANGES: RangeFilterOption[] = [
+  { value: "1-50", label: "1 a 50 piezas", max: 51 },
+  { value: "51-500", label: "51 a 500 piezas", min: 51, max: 501 },
+  { value: "mas-500", label: "Más de 500 piezas", min: 501 },
+];
+
+const IMPORTE_RANGES: RangeFilterOption[] = [
+  { value: "hasta-10k", label: "Hasta $10,000", max: 10_000 },
+  { value: "10k-100k", label: "$10,000 – $100,000", min: 10_000, max: 100_000 },
+  { value: "mas-100k", label: "Más de $100,000", min: 100_000 },
+];
+
+const rangeOptions = (ranges: RangeFilterOption[]): ColumnFilterOption[] => [
+  ALL_FILTER_OPTION,
+  ...ranges.map(({ value, label }) => ({ value, label })),
+];
+
+const EMPTY_FILTER_OPTIONS: OperationsQuoteFilterOptions = {
+  razonesSociales: [ALL_FILTER_OPTION],
+  meses: [ALL_FILTER_OPTION],
+  codigosPostales: [ALL_FILTER_OPTION],
 };
 
 // ─── Acciones de fila: los diálogos los posee la VISTA, no la celda ───────────
@@ -207,7 +273,14 @@ const OperationsQuoteIdCell = ({
   );
 };
 
-export const operationsQuoteColumns: ColumnDef<OperationsQuote>[] = [
+/**
+ * Columnas del listado de Mesa de Control. Fábrica (y no un arreglo estático)
+ * porque los filtros de encabezado necesitan opciones construidas con TODO el
+ * listado; las acciones de fila siguen yendo por contexto.
+ */
+export const getOperationsQuoteColumns = (
+  filterOptions: OperationsQuoteFilterOptions = EMPTY_FILTER_OPTIONS,
+): ColumnDef<OperationsQuote>[] => [
   {
     id: "id",
     accessorFn: (operationsQuote) =>
@@ -227,7 +300,18 @@ export const operationsQuoteColumns: ColumnDef<OperationsQuote>[] = [
   },
   {
     accessorKey: "cliente_razon_social",
-    header: "Razón social",
+    meta: { label: "Razón social" },
+    header: ({ column }) => (
+      <FilterHeader
+        title="Razón social"
+        column={column}
+        options={filterOptions.razonesSociales}
+        label="razón social"
+        searchable={{ placeholder: "Buscar razón social…" }}
+      />
+    ),
+    filterFn: (row, _columnId, filterValue) =>
+      !filterValue || row.original.cliente_razon_social === filterValue,
     cell: ({ row }) => (
       <span className="text-slate-600 dark:text-slate-300">
         {capitalize(row.original.cliente_razon_social)}
@@ -236,9 +320,18 @@ export const operationsQuoteColumns: ColumnDef<OperationsQuote>[] = [
   },
   {
     accessorKey: "piezas",
-    header: "Piezas",
-    meta: { align: "right" },
-    size: 80,
+    header: ({ column }) => (
+      <FilterHeader
+        title="Piezas"
+        column={column}
+        options={rangeOptions(PIEZAS_RANGES)}
+        label="rango de piezas"
+      />
+    ),
+    meta: { align: "right", label: "Piezas" },
+    filterFn: (row, _columnId, filterValue) =>
+      matchesRangeFilter(PIEZAS_RANGES, row.original.piezas, filterValue),
+    size: 110,
     cell: ({ row }) => (
       <span className="text-slate-500 dark:text-slate-400">
         {row.original.piezas}
@@ -247,7 +340,12 @@ export const operationsQuoteColumns: ColumnDef<OperationsQuote>[] = [
   },
   {
     accessorKey: "created_at",
-    header: "Fecha",
+    meta: { label: "Fecha" },
+    header: ({ column }) => (
+      <FilterHeader title="Fecha" column={column} options={filterOptions.meses} label="mes" />
+    ),
+    filterFn: (row, _columnId, filterValue) =>
+      matchesMonthFilter(row.original.created_at, filterValue),
     cell: ({ row }) => (
       <span className="text-slate-600 dark:text-slate-300">
         {formatOperationsQuoteDateTime(
@@ -268,8 +366,17 @@ export const operationsQuoteColumns: ColumnDef<OperationsQuote>[] = [
   },
   {
     accessorKey: "importe_sin_iva",
-    header: "Importe sin IVA",
-    meta: { align: "right" },
+    header: ({ column }) => (
+      <FilterHeader
+        title="Importe sin IVA"
+        column={column}
+        options={rangeOptions(IMPORTE_RANGES)}
+        label="rango de importe"
+      />
+    ),
+    meta: { align: "right", label: "Importe sin IVA" },
+    filterFn: (row, _columnId, filterValue) =>
+      matchesRangeFilter(IMPORTE_RANGES, row.original.importe_sin_iva, filterValue),
     cell: ({ row }) => (
       <span className="text-slate-500 dark:text-slate-400">
         {formatCurrency(Number(row.original.importe_sin_iva) || 0)}
@@ -281,7 +388,19 @@ export const operationsQuoteColumns: ColumnDef<OperationsQuote>[] = [
     // fila sacaría la columna de la búsqueda global en todas las filas.
     id: "codigo_postal",
     accessorFn: (operationsQuote) => operationsQuote.codigo_postal ?? "",
-    header: "C.P.",
+    meta: { label: "C.P." },
+    header: ({ column }) => (
+      <FilterHeader
+        title="C.P."
+        column={column}
+        options={filterOptions.codigosPostales}
+        label="código postal"
+        searchable={{ placeholder: "Buscar C.P.…" }}
+        menuAlign="end"
+      />
+    ),
+    filterFn: (row, _columnId, filterValue) =>
+      !filterValue || row.original.codigo_postal === filterValue,
     cell: ({ row }) => (
       <span className="text-slate-500 dark:text-slate-400">
         {row.original.codigo_postal || "—"}

@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useIsFetching, useQueryClient } from '@tanstack/react-query';
-import KpiGrid, { type KpiItem } from '@/src/components/KpiGrid';
+import KpiGrid, { type KpiCompactItem } from '@/src/components/KpiGrid';
 import {
   CheckCircleIcon,
   ClockIcon,
@@ -75,51 +75,46 @@ export function OperationsOrderPanel() {
     };
   }, [orders, currencies, isLoadingCurrencies]);
 
-  const kpis: KpiItem[] = useMemo(
-    () => [
-      {
-        label: 'Total pedidos',
-        value: counts.total.toString(),
-        icon: PedidosIcon,
-        iconBgClass: 'bg-slate-100 dark:bg-white/10',
-        iconClass: 'text-slate-500',
-        subLabel: 'En mesa de control',
-        status: 'neutral',
-        progress: 100,
-      },
-      {
-        label: 'Por confirmar',
-        value: counts.porConfirmar.toString(),
-        icon: ClockIcon,
-        iconBgClass: 'bg-amber-50 dark:bg-amber-500/10',
-        iconClass: 'text-amber-500',
-        subLabel: 'Fecha pendiente',
-        status: 'neutral',
-        progress: counts.total ? Math.round((counts.porConfirmar / counts.total) * 100) : 0,
-      },
-      {
-        label: 'Confirmados',
-        value: counts.confirmados.toString(),
-        icon: CheckCircleIcon,
-        iconBgClass: 'bg-cyan-50 dark:bg-cyan-500/10',
-        iconClass: 'text-cyan-500',
-        subLabel: 'Con fecha confirmada',
-        status: 'positive',
-        progress: counts.total ? Math.round((counts.confirmados / counts.total) * 100) : 0,
-      },
-      {
-        label: 'Valor total',
-        value: counts.valorTotal ? <CurrencyTotalsValue totals={counts.valorTotal} /> : '—',
-        icon: ListaPreciosIcon,
-        iconBgClass: 'bg-emerald-50 dark:bg-emerald-500/10',
-        iconClass: 'text-emerald-500',
-        subLabel: 'Suma de pedidos',
-        status: 'positive',
-        progress: 100,
-      },
-    ],
-    [counts],
-  );
+  // Porcentaje del total, para que cada tarjeta diga cuánto pesa sin hacer cuentas.
+  const pctOfTotal = (n: number) => (counts.total ? Math.round((n / counts.total) * 100) : 0);
+
+  // Variante compacta de `KpiGrid`: mismo lenguaje que el resto de listados con
+  // indicadores, y en móvil un carrusel de una fila en vez de 4 tarjetas
+  // apiladas encima de la tabla.
+  const kpis: KpiCompactItem[] = [
+    {
+      label: 'Total pedidos',
+      value: counts.total.toString(),
+      icon: PedidosIcon,
+      iconClass: 'text-sky-500',
+      detail: 'En mesa de control',
+      hideProgress: true,
+    },
+    {
+      label: 'Por confirmar',
+      value: counts.porConfirmar.toString(),
+      icon: ClockIcon,
+      iconClass: 'text-amber-500',
+      progress: pctOfTotal(counts.porConfirmar),
+      detail: `${pctOfTotal(counts.porConfirmar)}% del total · fecha pendiente`,
+    },
+    {
+      label: 'Confirmados',
+      value: counts.confirmados.toString(),
+      icon: CheckCircleIcon,
+      iconClass: 'text-cyan-500',
+      progress: pctOfTotal(counts.confirmados),
+      detail: `${pctOfTotal(counts.confirmados)}% del total · con fecha`,
+    },
+    {
+      label: 'Valor total',
+      value: counts.valorTotal ? <CurrencyTotalsValue totals={counts.valorTotal} /> : '—',
+      icon: ListaPreciosIcon,
+      iconClass: 'text-emerald-500',
+      hideProgress: true,
+      info: 'Suma de los pedidos por moneda; cada moneda se muestra por separado.',
+    },
+  ];
 
   // Solo la clave de este panel: las variantes con filtros no se marcan stale.
   const handleRefetch = () =>
@@ -136,7 +131,7 @@ export function OperationsOrderPanel() {
           leerían como reales—, igual que `EmbroideryStats` en su vista. La
           tabla NO se gatea: se monta siempre y alterna solo su área de datos,
           de modo que el toolbar sigue visible durante la carga y el error. */}
-      {!isLoading && !showError && <KpiGrid items={kpis} />}
+      {!isLoading && !showError && <KpiGrid compact items={kpis} />}
 
       <OperationsOrderTable
         orders={orders}

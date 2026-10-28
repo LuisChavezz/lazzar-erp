@@ -49,6 +49,8 @@ export const OperationsKpiGrid = () => {
       subLabel: "Registradas en el sistema",
       status: "neutral",
       progress: 100,
+      actionLabel: "Ver cotizaciones",
+      actionHref: "/operations/quotes",
     },
     {
       label: "Por Autorizar",
@@ -59,8 +61,8 @@ export const OperationsKpiGrid = () => {
       subLabel: "Requieren atención",
       status: stats.pending > 0 ? "neutral" : "positive",
       progress: stats.total > 0 ? Math.round((stats.pending / stats.total) * 100) : 0,
-      // actionLabel: "Revisar",
-      // actionHref: "/operations/quotes",
+      actionLabel: "Revisar",
+      actionHref: "/operations/quotes",
     },
     {
       label: "Autorizadas",
@@ -70,6 +72,8 @@ export const OperationsKpiGrid = () => {
       iconClass: "text-emerald-500",
       subLabel: "Pedidos confirmados",
       status: "positive",
+      actionLabel: "Ver pedidos",
+      actionHref: "/operations/orders",
       progress: stats.total > 0 ? Math.round((stats.approved / stats.total) * 100) : 0,
     },
     {

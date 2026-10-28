@@ -16,7 +16,8 @@ import {
   type OperationsQuoteDialogState,
 } from "./OperationsQuoteActionDialogs";
 import {
-  operationsQuoteColumns,
+  buildOperationsQuoteFilterOptions,
+  getOperationsQuoteColumns,
   OperationsQuoteRowActionsProvider,
   type OperationsQuoteRowAction,
   type OperationsQuoteRowBusy,
@@ -67,7 +68,7 @@ export const OperationsQuoteList = () => {
     <OperationsQuoteRowActionsProvider value={{ requestAction, busy }}>
     <div className="h-[calc(100dvh-128px)] min-h-[420px]">
       <DataTable
-        columns={operationsQuoteColumns}
+        columns={getOperationsQuoteColumns(buildOperationsQuoteFilterOptions(operationsQuotes))}
         data={operationsQuotes}
         baseDataCount={operationsQuotes.length}
         searchPlaceholder="Buscar cotización operativa..."

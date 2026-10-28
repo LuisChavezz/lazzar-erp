@@ -4,7 +4,19 @@ import { type ColumnDef, type FilterFn } from "@tanstack/react-table";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { ActionMenu, type ActionMenuItem } from "@/src/components/ActionMenu";
-import { ColumnHeaderFilter, type ColumnFilterOption } from "@/src/components/ColumnHeaderFilter";
+import {
+  ColumnHeaderFilter,
+  FilterHeader,
+  type ColumnFilterOption,
+} from "@/src/components/ColumnHeaderFilter";
+import {
+  ALL_FILTER_OPTION,
+  buildDistinctFilterOptions,
+  buildMonthFilterOptions,
+  matchesMonthFilter,
+  matchesRangeFilter,
+  type RangeFilterOption,
+} from "@/src/utils/columnFilterOptions";
 import {
   BanIcon,
   CalendarDaysIcon,
@@ -46,6 +58,67 @@ const CONFIRMATION_FILTER_OPTIONS: ColumnFilterOption[] = [
   { value: "por_confirmar", label: "Por confirmar", dotClassName: "bg-amber-500" },
   { value: "confirmado", label: "Confirmado", dotClassName: "bg-cyan-500" },
 ];
+
+// ─── Filtros de encabezado de las demás columnas ──────────────────────────────
+// La lista completa vive en memoria: las opciones de cliente, vendedor, mes y
+// clasificación salen de sus filas; piezas e importe usan rangos fijos. El
+// importe va sin símbolo, igual que la celda (la fila solo trae el id de
+// moneda, ver `orderAmountFormat.ts`).
+
+export interface OperationsOrderFilterOptions {
+  clientes: ColumnFilterOption[];
+  vendedores: ColumnFilterOption[];
+  meses: ColumnFilterOption[];
+  clasificaciones: ColumnFilterOption[];
+}
+
+export function buildOperationsOrderFilterOptions(
+  orders: PedidoListItem[],
+): OperationsOrderFilterOptions {
+  return {
+    clientes: [
+      ALL_FILTER_OPTION,
+      ...buildDistinctFilterOptions(orders, (o) => o.cliente, (o) => o.cliente_razon_social),
+    ],
+    vendedores: [
+      ALL_FILTER_OPTION,
+      ...buildDistinctFilterOptions(orders, (o) => o.vendedor_nombre),
+    ],
+    meses: [ALL_FILTER_OPTION, ...buildMonthFilterOptions(orders.map((o) => o.created_at))],
+    clasificaciones: [
+      ALL_FILTER_OPTION,
+      ...buildDistinctFilterOptions(
+        orders,
+        (o) => o.clasificacion,
+        (o) => getPedidoClasificacionLabel(o.clasificacion),
+      ),
+    ],
+  };
+}
+
+const PIEZAS_RANGES: RangeFilterOption[] = [
+  { value: "1-50", label: "1 a 50 piezas", max: 51 },
+  { value: "51-500", label: "51 a 500 piezas", min: 51, max: 501 },
+  { value: "mas-500", label: "Más de 500 piezas", min: 501 },
+];
+
+const IMPORTE_RANGES: RangeFilterOption[] = [
+  { value: "hasta-10k", label: "Hasta 10,000", max: 10_000 },
+  { value: "10k-100k", label: "10,000 – 100,000", min: 10_000, max: 100_000 },
+  { value: "mas-100k", label: "Más de 100,000", min: 100_000 },
+];
+
+const rangeOptions = (ranges: RangeFilterOption[]): ColumnFilterOption[] => [
+  ALL_FILTER_OPTION,
+  ...ranges.map(({ value, label }) => ({ value, label })),
+];
+
+const EMPTY_FILTER_OPTIONS: OperationsOrderFilterOptions = {
+  clientes: [ALL_FILTER_OPTION],
+  vendedores: [ALL_FILTER_OPTION],
+  meses: [ALL_FILTER_OPTION],
+  clasificaciones: [ALL_FILTER_OPTION],
+};
 
 const confirmationFilterFn: FilterFn<PedidoListItem> = (row, _columnId, filterValue) => {
   if (!filterValue) return true;
@@ -140,7 +213,8 @@ const FolioCell = ({
 };
 
 export function buildOperationsOrderColumns(
-  callbacks: OperationsOrderColumnCallbacks
+  callbacks: OperationsOrderColumnCallbacks,
+  filterOptions: OperationsOrderFilterOptions = EMPTY_FILTER_OPTIONS,
 ): ColumnDef<PedidoListItem, unknown>[] {
   return [
     {
@@ -167,9 +241,25 @@ export function buildOperationsOrderColumns(
     {
       id: "razon_social",
       accessorKey: "cliente_razon_social",
-      header: "Razón social",
+      size: 240,
+      meta: { label: "Razón social" },
+      header: ({ column }) => (
+        <FilterHeader
+          title="Razón social"
+          column={column}
+          options={filterOptions.clientes}
+          label="razón social"
+          searchable={{ placeholder: "Buscar cliente…" }}
+        />
+      ),
+      // Por id de cliente: dos razones sociales iguales no se mezclan.
+      filterFn: (row, _columnId, filterValue) =>
+        !filterValue || String(row.original.cliente) === filterValue,
       cell: ({ row }) => (
-        <span className="block text-sm text-slate-600 dark:text-slate-300 truncate max-w-55">
+        <span
+          className="block text-sm text-slate-600 dark:text-slate-300 truncate"
+          title={row.original.cliente_razon_social ?? undefined}
+        >
           {row.original.cliente_razon_social || "—"}
         </span>
       ),
@@ -178,8 +268,17 @@ export function buildOperationsOrderColumns(
       // Todas las tallas, muestras incluidas (EC-571).
       id: "piezas",
       accessorKey: "piezas",
-      header: "Piezas",
-      meta: { align: "right" },
+      header: ({ column }) => (
+        <FilterHeader
+          title="Piezas"
+          column={column}
+          options={rangeOptions(PIEZAS_RANGES)}
+          label="rango de piezas"
+        />
+      ),
+      meta: { align: "right", label: "Piezas" },
+      filterFn: (row, _columnId, filterValue) =>
+        matchesRangeFilter(PIEZAS_RANGES, row.original.piezas, filterValue),
       sortingFn: "basic",
       enableGlobalFilter: false,
       cell: ({ row }) => (
@@ -193,7 +292,18 @@ export function buildOperationsOrderColumns(
       id: "vendedor",
       // Vacío → `undefined` para que `sortUndefined: "last"` lo deje al final.
       accessorFn: (order) => order.vendedor_nombre || undefined,
-      header: "Vendedor",
+      meta: { label: "Vendedor" },
+      header: ({ column }) => (
+        <FilterHeader
+          title="Vendedor"
+          column={column}
+          options={filterOptions.vendedores}
+          label="vendedor"
+          searchable={{ placeholder: "Buscar vendedor…" }}
+        />
+      ),
+      filterFn: (row, _columnId, filterValue) =>
+        !filterValue || row.original.vendedor_nombre === filterValue,
       sortUndefined: "last",
       enableGlobalFilter: false,
       cell: ({ row }) => (
@@ -205,7 +315,12 @@ export function buildOperationsOrderColumns(
     {
       id: "created_at",
       accessorKey: "created_at",
-      header: "Fecha",
+      meta: { label: "Fecha" },
+      header: ({ column }) => (
+        <FilterHeader title="Fecha" column={column} options={filterOptions.meses} label="mes" />
+      ),
+      filterFn: (row, _columnId, filterValue) =>
+        matchesMonthFilter(row.original.created_at, filterValue),
       cell: ({ row }) => {
         const createdAt = row.original.created_at;
         return (
@@ -220,7 +335,17 @@ export function buildOperationsOrderColumns(
       // (`getPedidoClasificacionLabel`). Ordena por código; sin clasificación, al final.
       id: "clasificacion",
       accessorFn: (order) => order.clasificacion || undefined,
-      header: "Clasificación",
+      meta: { label: "Clasificación" },
+      header: ({ column }) => (
+        <FilterHeader
+          title="Clasificación"
+          column={column}
+          options={filterOptions.clasificaciones}
+          label="clasificación"
+        />
+      ),
+      filterFn: (row, _columnId, filterValue) =>
+        !filterValue || row.original.clasificacion === filterValue,
       // Etiqueta más larga: "X - Solo para facturar", igual que en Programación.
       size: 180,
       sortUndefined: "last",
@@ -234,8 +359,18 @@ export function buildOperationsOrderColumns(
     {
       id: "importe_sin_iva",
       accessorKey: "subtotal",
-      header: "Importe sin IVA",
-      meta: { align: "right" },
+      header: ({ column }) => (
+        <FilterHeader
+          title="Importe sin IVA"
+          column={column}
+          options={rangeOptions(IMPORTE_RANGES)}
+          label="rango de importe"
+          menuAlign="end"
+        />
+      ),
+      meta: { align: "right", label: "Importe sin IVA" },
+      filterFn: (row, _columnId, filterValue) =>
+        matchesRangeFilter(IMPORTE_RANGES, row.original.subtotal, filterValue),
       cell: ({ row }) => (
         <span className="tabular-nums text-sm font-semibold text-slate-700 dark:text-slate-200">
           {formatOrderAmountOrDash(row.original.subtotal)}

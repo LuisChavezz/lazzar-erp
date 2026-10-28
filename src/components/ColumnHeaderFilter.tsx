@@ -350,3 +350,19 @@ export function ColumnHeaderFilter<TData>({
     </div>
   );
 }
+
+/**
+ * Encabezado "título + embudo" para una columna con `ColumnHeaderFilter`. Es
+ * el marcado que repetía cada tabla; los props del filtro se pasan tal cual.
+ */
+export function FilterHeader<TData>({
+  title,
+  ...filterProps
+}: ColumnHeaderFilterProps<TData> & { title: string }) {
+  return (
+    <div className="flex items-center gap-1.5">
+      <span>{title}</span>
+      <ColumnHeaderFilter {...filterProps} />
+    </div>
+  );
+}

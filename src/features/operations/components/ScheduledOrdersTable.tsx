@@ -2,7 +2,10 @@
 
 import { DataTable } from '@/src/components/DataTable';
 import type { ScheduledParcialidadRow } from '../interfaces/scheduled-parcialidad.interface';
-import { getScheduledOrderColumns } from './ScheduledOrderColumns';
+import {
+  buildScheduledOrderFilterOptions,
+  getScheduledOrderColumns,
+} from './ScheduledOrderColumns';
 
 interface ScheduledOrdersTableProps {
   parcialidades: ScheduledParcialidadRow[];
@@ -23,7 +26,7 @@ export function ScheduledOrdersTable({
   isError,
   errorMessage,
 }: ScheduledOrdersTableProps) {
-  const columns = getScheduledOrderColumns();
+  const columns = getScheduledOrderColumns(buildScheduledOrderFilterOptions(parcialidades));
 
   return (
     <DataTable

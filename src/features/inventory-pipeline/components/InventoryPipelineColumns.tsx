@@ -3,6 +3,8 @@
 import { type ColumnDef, createColumnHelper } from "@tanstack/react-table";
 import { ActionMenu, type ActionMenuItem } from "@/src/components/ActionMenu";
 import { ChevronRightIcon, ViewIcon } from "@/src/components/Icons";
+import { FilterHeader, type ColumnFilterOption } from "@/src/components/ColumnHeaderFilter";
+import { ALL_FILTER_OPTION, buildDistinctFilterOptions } from "@/src/utils/columnFilterOptions";
 import { formatExactQuantityValue } from "@/src/utils/formatCurrency";
 import type { InventoryPipelineRow } from "../interfaces/inventory-pipeline.interface";
 
@@ -47,6 +49,31 @@ const CodigoCell = ({
   );
 };
 
+// ─── Filtros de encabezado ────────────────────────────────────────────────────
+// Las cantidades se filtran por "con / sin" (mayor que cero o cero): es lo que
+// se pregunta al planear ("¿hay existencia?", "¿hay algo en producción?"). La
+// descripción, por producto, con buscador.
+
+/** Opciones "con / sin" de una columna de cantidad. */
+const presenceOptions = (con: string, sin: string): ColumnFilterOption[] => [
+  ALL_FILTER_OPTION,
+  { value: "con", label: con },
+  { value: "sin", label: sin },
+];
+
+const presenceFilter =
+  (pick: (row: InventoryPipelineRow) => number) =>
+  (row: { original: InventoryPipelineRow }, _columnId: string, filterValue: string | undefined) =>
+    !filterValue || (filterValue === "con") === pick(row.original) > 0;
+
+export function buildInventoryPipelineFilterOptions(
+  rows: InventoryPipelineRow[],
+): { descripciones: ColumnFilterOption[] } {
+  return {
+    descripciones: [ALL_FILTER_OPTION, ...buildDistinctFilterOptions(rows, (r) => r.descripcion)],
+  };
+}
+
 const QuantityCell = ({ value }: { value: number }) => (
   <span className="text-sm tabular-nums text-slate-700 dark:text-slate-200">
     {formatExactQuantityValue(value)}
@@ -69,16 +96,32 @@ const QuantityCell = ({ value }: { value: number }) => (
  * Las cantidades son `number` (el mapper las parsea) para que ordenen por
  * valor; el formato se aplica aquí con `formatExactQuantityValue`.
  */
-export const getInventoryPipelineColumns = (onViewDetails: (productoId: number) => void) => [
+export const getInventoryPipelineColumns = (
+  onViewDetails: (productoId: number) => void,
+  filterOptions: { descripciones: ColumnFilterOption[] } = { descripciones: [ALL_FILTER_OPTION] },
+) => [
   columnHelper.accessor("codigo", {
     header: "Código",
+    size: 130,
     cell: ({ row }) => <CodigoCell row={row.original} onViewDetails={onViewDetails} />,
   }),
   columnHelper.accessor("descripcion", {
-    header: "Descripción",
+    meta: { label: "Descripción" },
+    size: 300,
+    header: ({ column }) => (
+      <FilterHeader
+        title="Descripción"
+        column={column}
+        options={filterOptions.descripciones}
+        label="producto"
+        searchable={{ placeholder: "Buscar producto…" }}
+      />
+    ),
+    filterFn: (row, _columnId, filterValue) =>
+      !filterValue || row.original.descripcion === filterValue,
     cell: (info) => (
       <span
-        className="block max-w-80 truncate text-sm text-slate-600 dark:text-slate-300"
+        className="block truncate text-sm font-medium text-slate-700 dark:text-slate-200"
         title={info.getValue() || undefined}
       >
         {info.getValue() || "—"}
@@ -86,21 +129,48 @@ export const getInventoryPipelineColumns = (onViewDetails: (productoId: number) 
     ),
   }),
   columnHelper.accessor("disponible", {
-    header: "Disponible",
+    size: 120,
+    header: ({ column }) => (
+      <FilterHeader
+        title="Disponible"
+        column={column}
+        options={presenceOptions("Con existencia", "Sin existencia")}
+        label="existencia"
+      />
+    ),
+    filterFn: presenceFilter((r) => r.disponible),
     enableGlobalFilter: false,
-    meta: { align: "right" },
+    meta: { align: "right", label: "Disponible" },
     cell: (info) => <QuantityCell value={info.getValue()} />,
   }),
   columnHelper.accessor("enOp", {
-    header: "En OP",
+    size: 120,
+    header: ({ column }) => (
+      <FilterHeader
+        title="En OP"
+        column={column}
+        options={presenceOptions("En producción", "Sin producción")}
+        label="producción"
+      />
+    ),
+    filterFn: presenceFilter((r) => r.enOp),
     enableGlobalFilter: false,
-    meta: { align: "right" },
+    meta: { align: "right", label: "En OP" },
     cell: (info) => <QuantityCell value={info.getValue()} />,
   }),
   columnHelper.accessor("total", {
-    header: "Total",
+    size: 120,
+    header: ({ column }) => (
+      <FilterHeader
+        title="Total"
+        column={column}
+        options={presenceOptions("Con total", "En cero")}
+        label="total"
+      />
+    ),
+    filterFn: presenceFilter((r) => r.total),
     enableGlobalFilter: false,
-    meta: { align: "right" },
+    meta: { align: "right", label: "Total" },
     cell: (info) => (
       <span className="text-sm tabular-nums font-semibold text-slate-800 dark:text-white">
         {formatExactQuantityValue(info.getValue())}
@@ -108,21 +178,49 @@ export const getInventoryPipelineColumns = (onViewDetails: (productoId: number) 
     ),
   }),
   columnHelper.accessor("comprasPendientes", {
-    header: "Compras pendientes",
+    size: 150,
+    header: ({ column }) => (
+      <FilterHeader
+        title="Compras pendientes"
+        column={column}
+        options={presenceOptions("Con compras", "Sin compras")}
+        label="compras pendientes"
+      />
+    ),
+    filterFn: presenceFilter((r) => r.comprasPendientes),
     enableGlobalFilter: false,
-    meta: { align: "right" },
+    meta: { align: "right", label: "Compras pendientes" },
     cell: (info) => <QuantityCell value={info.getValue()} />,
   }),
   columnHelper.accessor("opCount", {
-    header: "OP abiertas",
+    size: 120,
+    header: ({ column }) => (
+      <FilterHeader
+        title="OP abiertas"
+        column={column}
+        options={presenceOptions("Con OP", "Sin OP")}
+        label="órdenes de producción"
+      />
+    ),
+    filterFn: presenceFilter((r) => r.opCount),
     enableGlobalFilter: false,
-    meta: { align: "right" },
+    meta: { align: "right", label: "OP abiertas" },
     cell: (info) => <QuantityCell value={info.getValue()} />,
   }),
   columnHelper.accessor("ocCount", {
-    header: "OC abiertas",
+    size: 120,
+    header: ({ column }) => (
+      <FilterHeader
+        title="OC abiertas"
+        column={column}
+        options={presenceOptions("Con OC", "Sin OC")}
+        label="órdenes de compra"
+        menuAlign="end"
+      />
+    ),
+    filterFn: presenceFilter((r) => r.ocCount),
     enableGlobalFilter: false,
-    meta: { align: "right" },
+    meta: { align: "right", label: "OC abiertas" },
     cell: (info) => <QuantityCell value={info.getValue()} />,
   }),
 ] as ColumnDef<InventoryPipelineRow>[];
