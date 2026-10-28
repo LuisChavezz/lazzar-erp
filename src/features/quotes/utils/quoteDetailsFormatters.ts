@@ -1,7 +1,7 @@
 import { format, isValid, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
 import { normalizeDate } from "@/src/utils/normalizeDate";
-import { formatCurrency } from "@/src/utils/formatCurrency";
+import { formatCurrency, moneyFormatFor } from "@/src/utils/formatCurrency";
 
 // Estandariza valores de fecha provenientes del backend para mejorar el parseo.
 // 1) Limpia espacios, 2) reemplaza " " por "T", 3) recorta milisegundos extra,
@@ -43,10 +43,14 @@ export const toDisplayValue = (value?: string | number | null) => {
 };
 
 // Formatea montos monetarios y protege la vista frente a datos vacíos.
-// Si no hay monto, devuelve "-", si existe, delega el formato al helper global.
-export const toCurrencyOrDash = (value?: string | number | null) => {
+// Si no hay monto, devuelve "-", si existe, lo formatea en la moneda `monedaCodigo`
+// (código ISO de la cotización); con `null`, sin símbolo — nunca en MXN por defecto.
+export const toCurrencyOrDash = (
+  value: string | number | null | undefined,
+  monedaCodigo: string | null,
+) => {
   if (value === null || value === undefined || value === "") return "-";
-  return formatCurrency(Number(value) || 0);
+  return formatCurrency(Number(value) || 0, moneyFormatFor(monedaCodigo));
 };
 
 /**

@@ -22,9 +22,12 @@ export const buildQuoteEmailSubject = (quote: QuoteById) =>
 /**
  * Renderiza la plantilla React Email a HTML y genera su equivalente en texto plano.
  * Esto permite compatibilidad con clientes de correo que prefieren texto sin formato.
+ *
+ * `monedaCodigo` llega del cliente (este servidor no puede consultar el
+ * catálogo de monedas); `null` pinta los importes sin símbolo.
  */
-export const buildQuoteEmailContent = async (quote: QuoteById) => {
-  const html = await render(createElement(QuoteEmail, { quote }));
+export const buildQuoteEmailContent = async (quote: QuoteById, monedaCodigo: string | null) => {
+  const html = await render(createElement(QuoteEmail, { quote, monedaCodigo }));
 
   return {
     html,

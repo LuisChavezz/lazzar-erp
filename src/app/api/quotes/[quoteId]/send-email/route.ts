@@ -3,7 +3,9 @@
  *
  * El cliente (usePrepareQuoteEmail) obtiene la cotizacion via v1_api (con cookies
  * y refresh interceptor), la envia en el body de este endpoint, y aqui solo se
- * ejecuta el renderizado server-side de QuoteEmail con react-email.
+ * ejecuta el renderizado server-side de QuoteEmail con react-email. El código de
+ * la moneda (`moneda_codigo`) también llega en el body: el retrieve solo trae
+ * `moneda` como id y aquí no se puede consultar el catálogo.
  *
  * No realiza ninguna llamada al backend externo, por lo que no depende de las
  * cookies auth-jwt / auth-refresh-jwt que solo el browser puede enviar a ese dominio.
@@ -14,6 +16,7 @@ import {
   buildQuoteEmailContent,
   buildQuoteEmailSubject,
 } from "@/src/features/quotes/services/email/quoteEmailContent.server";
+import { quoteEmailMonedaCodigoSchema } from "@/src/features/quotes/schemas/quote-email-payload.schema";
 import type { QuoteById } from "@/src/features/quotes/interfaces/quote.interface";
 
 export const runtime = "nodejs";
@@ -36,6 +39,17 @@ export async function POST(request: Request) {
 
   const quote = parsedBody.value as QuoteById;
 
+  const parsedMonedaCodigo = quoteEmailMonedaCodigoSchema.safeParse(parsedBody.body.moneda_codigo);
+
+  if (!parsedMonedaCodigo.success) {
+    return NextResponse.json(
+      { error: "El código de moneda de la cotización es inválido." },
+      { status: 400 }
+    );
+  }
+
+  const monedaCodigo = parsedMonedaCodigo.data ?? null;
+
   if (!quote.correo_facturas) {
     return NextResponse.json(
       { error: "El cliente no tiene correo de facturación registrado." },
@@ -46,7 +60,7 @@ export async function POST(request: Request) {
   try {
     // Unica responsabilidad: renderizar el template con react-email en Node.js.
     const subject = buildQuoteEmailSubject(quote);
-    const { html, text } = await buildQuoteEmailContent(quote);
+    const { html, text } = await buildQuoteEmailContent(quote, monedaCodigo);
 
     return NextResponse.json({
       to: quote.correo_facturas,

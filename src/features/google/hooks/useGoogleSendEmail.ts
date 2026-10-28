@@ -71,7 +71,10 @@ export const usePrepareQuoteEmail = () => {
       if (recipients.length === 0) {
         return { id: quote.id, quote, monedaCodigo, recipients, content: null, attachmentName };
       }
-      const rendered = await renderEmailContent(`/api/quotes/${quote.id}/send-email`, { quote });
+      const rendered = await renderEmailContent(`/api/quotes/${quote.id}/send-email`, {
+        quote,
+        moneda_codigo: monedaCodigo,
+      });
       const content = { ...rendered, to: formatEmailRecipients(recipients) };
       return { id: quote.id, quote, monedaCodigo, recipients, content, attachmentName };
     },

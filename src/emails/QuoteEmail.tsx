@@ -13,9 +13,11 @@ import { OPCION_LABEL, POSICION_LABEL, TIPO_LABEL } from "@/src/features/quotes/
 
 type QuoteEmailProps = {
   quote: QuoteById;
+  /** Código ISO de la moneda de la cotización; `null` pinta los importes sin símbolo. */
+  monedaCodigo: string | null;
 };
 
-export const QuoteEmail = ({ quote }: QuoteEmailProps) => {
+export const QuoteEmail = ({ quote, monedaCodigo }: QuoteEmailProps) => {
   const { customerName, totalPieces, shippingAddress, detailRows, computedSubtotal, detailAddons } =
     buildQuoteEmailTemplateModel(quote);
 
@@ -96,10 +98,10 @@ export const QuoteEmail = ({ quote }: QuoteEmailProps) => {
                         </td>
                         <td className="py-4 pr-3 text-right align-top text-slate-900">{quantity}</td>
                         <td className="py-4 pr-3 text-right align-top text-slate-900">
-                          {toCurrencyOrDash(detail.precio_unitario)}
+                          {toCurrencyOrDash(detail.precio_unitario, monedaCodigo)}
                         </td>
                         <td className="py-4 text-right align-top font-semibold text-slate-900">
-                          {toCurrencyOrDash(lineSubtotal)}
+                          {toCurrencyOrDash(lineSubtotal, monedaCodigo)}
                         </td>
                       </tr>
   
@@ -262,7 +264,7 @@ export const QuoteEmail = ({ quote }: QuoteEmailProps) => {
                 <tr>
                   <td className="py-2 pr-4 text-slate-500">Subtotal</td>
                   <td className="py-2 text-right font-medium text-slate-900">
-                    {toCurrencyOrDash(computedSubtotal)}
+                    {toCurrencyOrDash(computedSubtotal, monedaCodigo)}
                   </td>
                 </tr>
                 <tr>
@@ -272,13 +274,13 @@ export const QuoteEmail = ({ quote }: QuoteEmailProps) => {
                 <tr>
                   <td className="py-2 pr-4 text-slate-500">Anticipo</td>
                   <td className="py-2 text-right font-medium text-slate-900">
-                    {toCurrencyOrDash(quote.anticipo)}
+                    {toCurrencyOrDash(quote.anticipo, monedaCodigo)}
                   </td>
                 </tr>
                 <tr>
                   <td className="py-2 pr-4 text-slate-500">Total</td>
                   <td className="py-2 text-right text-lg font-semibold text-slate-950">
-                    {toCurrencyOrDash(quote.gran_total)}
+                    {toCurrencyOrDash(quote.gran_total, monedaCodigo)}
                   </td>
                 </tr>
               </tbody>
