@@ -3,7 +3,10 @@ import toast from "react-hot-toast";
 import { AxiosError } from "axios";
 import { firstDrfMessage } from "@/src/utils/firstDrfMessage";
 import { createNotaCredito } from "../services/actions";
-import { isUnconfirmedFailure } from "../utils/creditNoteErrors";
+import {
+  creditNoteCreateStampFailedMessage,
+  isUnconfirmedFailure,
+} from "../utils/creditNoteErrors";
 import { invalidateCreditNoteQueries } from "./invalidateCreditNoteQueries";
 
 /** Campos de cabecera que el backend puede señalar en un `400`. */
@@ -30,10 +33,14 @@ export type NotaCreditoHeaderErrorField =
  * `messages` es la lista plana para el toast.
  * `unconfirmed`: el backend no confirmó el resultado (sin respuesta o 5xx; ver
  * `isUnconfirmedFailure`). NO se puede afirmar que no se guardó nada.
+ * `stampFailed`: el `400` trae `cfdi`, el timbrado falló. Emitir guarda y aplica
+ * la nota ANTES de timbrarla, así que tampoco se puede afirmar que no se guardó
+ * nada; `formError` es entonces el motivo del backend, sin más.
  */
 export interface ParsedNotaCreditoError {
   formError?: string;
   unconfirmed?: boolean;
+  stampFailed?: boolean;
   fieldErrors: Partial<Record<NotaCreditoHeaderErrorField, string>>;
   lineErrors: Record<number, Record<string, string>>;
   messages: string[];
@@ -61,9 +68,11 @@ const HEADER_FIELDS: NotaCreditoHeaderErrorField[] = [
  * validación del array `nota_credito_detalles` en cualquiera de cuatro formas
  * —string suelto; lista alineada por índice con `{}`/`{campo:[msg]}`; dict con
  * `non_field_errors`; dict con claves numéricas por índice— y se cubren todas
- * porque la operación es ATÓMICA (`@transaction.atomic` en `perform_create`): un
- * solo error significa que NO se creó nada — ni cabecera huérfana, ni saldo de
- * CxC tocado.
+ * porque el guardado es ATÓMICO (`transaction.atomic` en `perform_create`): un
+ * error de validación significa que NO se creó nada — ni cabecera huérfana, ni
+ * saldo de CxC tocado. La excepción es `cfdi`: el timbrado de una nota `Emitida`
+ * corre DESPUÉS de ese guardado, así que su fallo llega con la nota ya escrita
+ * (`stampFailed`).
  *
  * ─── LA DIFERENCIA CON PAGOS: `factura_detalle` ───────────────────────────
  *
@@ -99,8 +108,8 @@ export function parseNotaCreditoError(error: unknown): ParsedNotaCreditoError {
   }
 
   // Sin respuesta o 5xx: el cuerpo (si lo hay) no es del backend —p. ej. la
-  // página de error de la plataforma— y nunca se muestra. Emitir timbra antes
-  // de guardar, así que tampoco se puede decir que no se guardó nada.
+  // página de error de la plataforma— y nunca se muestra. Emitir guarda la nota
+  // y luego timbra, así que tampoco se puede decir que no se guardó nada.
   if (isUnconfirmedFailure(error)) {
     result.unconfirmed = true;
     result.formError = UNCONFIRMED_MESSAGE;
@@ -141,12 +150,14 @@ export function parseNotaCreditoError(error: unknown): ParsedNotaCreditoError {
   const record = data as Record<string, unknown>;
 
   // ── Errores a nivel operación (todo o nada) ──────────────────────────────
-  // `cfdi` primero: desde que emitir timbra antes de guardar (y en
-  // `timbrar/`), el motivo del rechazo de Facturama o de los datos fiscales
-  // llega en esa llave. Se muestra tal cual, sin interpretar su texto. Le sigue
-  // `estatus` (campo de cabecera, más abajo) y luego el resto.
+  // `cfdi` primero: al emitir (y en `timbrar/`), el motivo del rechazo de
+  // Facturama o de los datos fiscales llega en esa llave. Se muestra tal cual,
+  // sin interpretar su texto: el mismo `cfdi` cubre resultados distintos (nota
+  // cancelada, emitida sin CFDI, timbrado pendiente) y el texto no es contrato.
+  // Le sigue `estatus` (campo de cabecera, más abajo) y luego el resto.
   const cfdi = firstDrfMessage(record.cfdi);
   if (cfdi) {
+    result.stampFailed = true;
     result.formError = cfdi;
     result.messages.push(cfdi);
   }
@@ -288,14 +299,15 @@ export const useCreateNotaCredito = (
       const parsed = parseNotaCreditoError(error);
       onServerError?.(parsed);
 
-      const toastMessage =
-        parsed.messages.length > 0
+      const toastMessage = parsed.stampFailed
+        ? creditNoteCreateStampFailedMessage(parsed.formError ?? "")
+        : parsed.messages.length > 0
           ? parsed.messages.join("\n")
           : parsed.formError ?? "Error al registrar la nota de crédito";
       toast.error(toastMessage);
     },
-    // También ante un error: emitir en el alta timbra antes de guardar, y un
-    // timeout del PAC pudo dejar algo hecho.
+    // También ante un error: un alta emitida guarda la nota antes de timbrarla,
+    // así que un fallo del timbrado (o un timeout) pudo dejarla en el listado.
     onSettled: (_nota, _error, payload) =>
       invalidateCreditNoteQueries(
         queryClient,

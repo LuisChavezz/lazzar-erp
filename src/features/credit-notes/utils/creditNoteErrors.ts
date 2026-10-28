@@ -40,6 +40,15 @@ export const CREDIT_NOTE_EMIT_UNCONFIRMED_MESSAGE =
   "No se pudo confirmar la emisión: el servidor no respondió a tiempo. Revisa el listado antes de reintentar; la nota pudo emitirse y timbrarse.";
 
 /**
+ * Alta `Emitida` cuyo timbrado falló (`400` con `cfdi`). El backend guarda y
+ * aplica la nota ANTES de timbrarla, así que el fallo no dice qué quedó: según
+ * el caso la nota queda cancelada, emitida sin CFDI o con el timbrado pendiente.
+ * No se afirma ninguno: se pide revisar el listado en vez de recapturarla.
+ */
+export const creditNoteCreateStampFailedMessage = (detail: string): string =>
+  `Falló el timbrado, pero la nota pudo quedar registrada: cancelada, emitida sin CFDI o con el timbrado pendiente de confirmación. Revisa el listado antes de capturarla de nuevo. Motivo: ${detail}`;
+
+/**
  * Mensaje de un fallo de `timbrar/`, igual que `stampInvoiceErrorMessage`: el
  * motivo del backend tal cual bajo `cfdi` o `estatus`, luego cualquier campo, y
  * al final el extractor genérico. Un fallo sin confirmar no muestra el cuerpo.
