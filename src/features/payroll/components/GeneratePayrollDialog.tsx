@@ -16,6 +16,7 @@ import {
 } from "@/src/utils/quincena";
 import { useCompanyBranches } from "@/src/features/branches/hooks/useCompanyBranches";
 import { useWorkspaceStore } from "@/src/features/workspace/store/workspace.store";
+import { useValidWorkspaceBranchId } from "@/src/features/workspace/hooks/useValidWorkspaceBranchId";
 import { getEmployees } from "@/src/features/employees/services/actions";
 import { getEmployeeFullName } from "@/src/features/employees/utils/employeeName";
 import type { Employee } from "@/src/features/employees/interfaces/employee.interface";
@@ -89,15 +90,14 @@ export function GeneratePayrollDialog({
   onGenerated,
 }: GeneratePayrollDialogProps) {
   const selectedCompany = useWorkspaceStore((state) => state.selectedCompany);
-  const selectedBranch = useWorkspaceStore((state) => state.selectedBranch);
   const { branches, isLoading: isLoadingBranches, isInitialError: isErrorBranches } =
     useCompanyBranches(selectedCompany.id);
+  const { branchId: workspaceBranchId } = useValidWorkspaceBranchId();
 
   const [quincena, setQuincena] = useState<Quincena>(defaultQuincena);
   // La del workspace por defecto, si el usuario la tiene entre sus sucursales.
   const [sucursal, setSucursal] = useState<number>(0);
-  const sucursalValue =
-    sucursal || (branches.some((branch) => branch.id === selectedBranch?.id) ? (selectedBranch?.id ?? 0) : 0);
+  const sucursalValue = sucursal || (workspaceBranchId ?? 0);
   const [message, setMessage] = useState<string | null>(null);
   const [isChecking, setIsChecking] = useState(false);
   const submittingRef = useRef(false);
