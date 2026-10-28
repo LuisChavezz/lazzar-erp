@@ -1262,6 +1262,9 @@ export function usePedidoMesaControlEditForm(pedidoId: number) {
       }
       // Inalcanzable (un schema fallido siempre trae issues); estrecha el tipo.
       if (!parsed.success) return;
+      // Inalcanzable también: el formulario solo se monta con el pedido ya
+      // hidratado (`initialFormValues`); estrecha el tipo para `sucursal`.
+      if (!pedidoData) return;
 
       if (!requireSelectedCustomer()) return;
       if (!requireResolvableRegimenFiscal(parsed.data.regimenFiscal)) return;
@@ -1309,8 +1312,10 @@ export function usePedidoMesaControlEditForm(pedidoId: number) {
       const payload: PedidoMesaControlUpdate = {
         pedido: {
           // `empresa`, `estatus`, `activo`, `cotizacion`, folios y timestamps NO
-          // viajan: el serializer de cabecera los excluye.
-          sucursal: pedidoData?.sucursal ?? 1,
+          // viajan: el serializer de cabecera los excluye. `sucursal` sí es
+          // obligatoria y viaja tal cual: `Pedido.sucursal` no admite null, así
+          // que el detalle siempre la trae.
+          sucursal: pedidoData.sucursal,
           cliente: selectedCustomerId,
           moneda: parsed.data.moneda || 1,
           persona_pagos: parsed.data.persona_pagos ?? "",
