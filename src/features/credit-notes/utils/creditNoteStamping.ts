@@ -139,8 +139,11 @@ export const getCreditNoteCancelBlockReason = (
 };
 
 /**
- * Aviso de la emisión: desde el PR #607 el backend timbra el CFDI de egreso
- * ANTES de guardar la nota `Emitida`, y si el timbrado falla no guarda nada.
+ * Aviso de la emisión. El backend guarda la nota `Emitida`, la aplica a la
+ * cuenta por cobrar y DESPUÉS intenta timbrar su CFDI de egreso. Si el timbrado
+ * falla, la nota puede quedar cancelada, emitida sin CFDI o con el timbrado
+ * pendiente; sobre una factura sin timbrar se emite sin CFDI. Los resultados se
+ * enuncian como posibles ("puede"), sin atarse a cuál ocurre en cada caso.
  */
 export const CREDIT_NOTE_EMIT_STAMP_WARNING =
-  "Al emitirla se timbrará su CFDI de egreso ante el SAT. Es un acto fiscal irreversible: una vez timbrado, el CFDI no puede cancelarse desde el ERP. Si el timbrado falla, la nota no se emite.";
+  "Al emitirla se intentará timbrar su CFDI de egreso ante el SAT. Es un acto fiscal irreversible: una vez timbrado, el CFDI no puede cancelarse desde el ERP. Si el timbrado falla, la nota puede quedar cancelada, emitida sin CFDI o con el timbrado pendiente de confirmación. Si la factura aún no está timbrada, la nota puede emitirse sin CFDI y timbrarse después con \"Timbrar\".";
