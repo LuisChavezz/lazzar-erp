@@ -1,5 +1,9 @@
 import { expect, test } from "@playwright/test";
-import { formatQuoteExportTotal, getQuoteExportTotals } from "@/src/features/quotes/utils/quoteExportTotals";
+import {
+  buildQuoteTotalRowCells,
+  formatQuoteExportTotal,
+  getQuoteExportTotals,
+} from "@/src/features/quotes/utils/quoteExportTotals";
 
 /**
  * Pruebas unitarias de EC-618: total por moneda de la exportación de
@@ -59,5 +63,15 @@ test.describe("total de la exportación de cotizaciones", () => {
   test("sin filas: 0 sin símbolo", () => {
     expect(getQuoteExportTotals([])).toEqual([]);
     expect(plain(formatQuoteExportTotal([]))).toBe("0.00");
+  });
+});
+
+test.describe("fila TOTAL del PDF", () => {
+  test("\"Total\" en la primera celda y el total bajo la columna de importe", () => {
+    expect(buildQuoteTotalRowCells(4, 2, "$10.00")).toEqual(["Total", "", "$10.00", ""]);
+  });
+
+  test("con el importe en la primera columna, etiqueta e importe en la misma celda", () => {
+    expect(buildQuoteTotalRowCells(3, 0, "$10.00")).toEqual(["Total $10.00", "", ""]);
   });
 });

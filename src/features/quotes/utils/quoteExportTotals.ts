@@ -28,3 +28,19 @@ export const getQuoteExportTotals = (
 export const formatQuoteExportTotal = (
   quotes: readonly Pick<Quote, "importe_sin_iva" | "moneda_codigo">[],
 ): string => formatCurrencyTotalsInline(getQuoteExportTotals(quotes));
+
+/**
+ * Textos de la fila TOTAL del PDF, una celda por columna: el total bajo la
+ * columna de importe (`totalColumnIndex`) y "Total" en la primera. Si el
+ * importe ES la primera columna (el usuario puede reordenarlas), etiqueta e
+ * importe van en esa misma celda, para que la fila nunca quede sin etiqueta.
+ */
+export const buildQuoteTotalRowCells = (
+  columnCount: number,
+  totalColumnIndex: number,
+  total: string,
+): string[] =>
+  Array.from({ length: columnCount }, (_, i) => {
+    if (i === totalColumnIndex) return i === 0 ? `Total ${total}` : total;
+    return i === 0 ? "Total" : "";
+  });

@@ -3,7 +3,11 @@ import { format, parseISO, isValid } from "date-fns";
 import { es } from "date-fns/locale";
 import { Quote } from "../interfaces/quote.interface";
 import { formatQuoteAmountOrDash } from "@/src/features/quotes/utils/quoteDetailsFormatters";
-import { formatQuoteExportTotal, QUOTE_EXPORT_TOTAL_FIELD } from "../utils/quoteExportTotals";
+import {
+  buildQuoteTotalRowCells,
+  formatQuoteExportTotal,
+  QUOTE_EXPORT_TOTAL_FIELD,
+} from "../utils/quoteExportTotals";
 import { type DataTableHandle, DataTableVisibleColumn } from "@/src/components/DataTable";
 import { downloadBlob } from "@/src/utils/downloadBlob";
 
@@ -238,6 +242,7 @@ const createQuotesPdfDocument = (
   const grandTotalColIndex = columns.findIndex(
     (col) => (col.accessorKey ?? col.id) === QUOTE_EXPORT_TOTAL_FIELD
   );
+  const totalRowCells = buildQuoteTotalRowCells(columns.length, grandTotalColIndex, grandTotal);
 
   return (
     <Document>
@@ -308,7 +313,8 @@ const createQuotesPdfDocument = (
             </View>
           ))}
 
-          {/* Fila de totales: una celda por columna, el total bajo la de importe */}
+          {/* Fila de totales: una celda por columna, el total bajo la de importe
+              y siempre con su etiqueta (`buildQuoteTotalRowCells`) */}
           {grandTotalColIndex >= 0 && (
             <View style={styles.totalRow}>
               {columns.map((col, i) => (
@@ -319,7 +325,7 @@ const createQuotesPdfDocument = (
                     { width: columnWidths[i] },
                   ]}
                 >
-                  {i === grandTotalColIndex ? grandTotal : i === 0 ? "Total" : ""}
+                  {totalRowCells[i]}
                 </Text>
               ))}
             </View>
