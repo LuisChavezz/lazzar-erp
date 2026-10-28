@@ -7,6 +7,7 @@ import {
 } from "@/src/features/quotes/components/QuoteForm";
 import { useCurrencies } from "@/src/features/currency/hooks/useCurrencies";
 import { findCurrency } from "@/src/features/currency/utils/currencyLookup";
+import { granTotalChangeCurrency } from "../utils/granTotalChangeCurrency";
 import { formatCurrency, formatMoneyValueOrDash } from "@/src/utils/formatCurrency";
 import { usePedidoMesaControlEditForm } from "../hooks/usePedidoMesaControlEditForm";
 import { PedidoMesaControlBloqueos } from "./PedidoMesaControlBloqueos";
@@ -290,14 +291,12 @@ export function PedidoMesaControlEditForm({ pedidoId }: PedidoMesaControlEditFor
 
   /* Cada gran total en SU moneda (EC-606): lo guardado en la del pedido
    * (`pedido.moneda`, resuelta con el catálogo, misma caché que el formulario)
-   * y lo que se guardará en la elegida en el formulario. Si difieren, los dos
-   * llevan su código: "$" solo no distingue MXN de USD. Sin moneda conocida,
-   * sin símbolo. */
-  const storedMonedaCodigo = pedido
-    ? (findCurrency(currencies, pedido.moneda)?.codigo_iso ?? null)
-    : null;
-  const monedasDifieren = storedMonedaCodigo !== formProps.monedaCodigo;
-  const granTotalDisplay = monedasDifieren ? { currencyDisplay: "code" as const } : undefined;
+   * y lo que se guardará en la elegida en el formulario. Las reglas (códigos,
+   * símbolo o sin símbolo) viven en `granTotalChangeCurrency`. */
+  const granTotalCurrency = granTotalChangeCurrency(
+    pedido ? (findCurrency(currencies, pedido.moneda)?.codigo_iso ?? null) : null,
+    formProps.monedaCodigo,
+  );
 
   return (
     <div className="w-full space-y-4">
@@ -357,11 +356,19 @@ export function PedidoMesaControlEditForm({ pedidoId }: PedidoMesaControlEditFor
           <p className="text-xs text-slate-600 dark:text-slate-300">
             Guardado hoy:{" "}
             <span className="font-mono font-semibold">
-              {formatMoneyValueOrDash(pedido.gran_total, storedMonedaCodigo, granTotalDisplay)}
+              {formatMoneyValueOrDash(
+                pedido.gran_total,
+                granTotalCurrency.savedCodigo,
+                granTotalCurrency.overrides,
+              )}
             </span>{" "}
             → se guardará:{" "}
             <span className="font-mono font-semibold">
-              {formatCurrency(formProps.granTotal, formProps.monedaCodigo, granTotalDisplay)}
+              {formatCurrency(
+                formProps.granTotal,
+                granTotalCurrency.nextCodigo,
+                granTotalCurrency.overrides,
+              )}
             </span>
           </p>
           <p className="text-[11px] text-slate-500 dark:text-slate-400">
