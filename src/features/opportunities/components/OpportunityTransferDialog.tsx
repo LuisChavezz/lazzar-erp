@@ -7,8 +7,6 @@ import { MainDialog } from "@/src/components/MainDialog";
 import { renderRadioIndicator } from "@/src/components/RadioIndicator";
 import { SearchableSelectList } from "@/src/components/SearchableSelectList";
 import { SectionErrorNotice } from "@/src/components/SectionErrorNotice";
-import { useRoles } from "@/src/features/roles/hooks/useRoles";
-import { useUsers } from "@/src/features/users/hooks/useUsers";
 import { useDialogSession } from "@/src/hooks/useDialogSession";
 import { isNotFoundError } from "@/src/utils/drfWriteErrors";
 import {
@@ -19,11 +17,11 @@ import {
   useTransferOpportunity,
   type TransferOpportunityVariables,
 } from "../hooks/useTransferOpportunity";
+import { useTransferCandidates } from "../hooks/useTransferCandidates";
 import type { Opportunity } from "../interfaces/opportunity.interface";
 import type { OpportunityCotizacion } from "../interfaces/opportunity-onboarding.interface";
 import { isCotizacionAutorizada } from "../utils/cotizacionEstatus";
 import { getOpportunityName } from "../utils/describeOpportunity";
-import { isTransferCandidate } from "../utils/transferCandidates";
 
 const MUTED_CLS = "text-slate-500 dark:text-slate-400";
 
@@ -114,29 +112,15 @@ function TransferForm({
   onTransfer,
   onClose,
 }: TransferFormProps) {
-  // Mismo catálogo que el filtro de vendedor del listado; su carga y su error
-  // se resuelven aquí dentro (sin migrar `useUsers`, ver #239). Los roles
-  // dicen quién es de Ventas: hasta tener ambos no se lista a nadie.
-  const usersQuery = useUsers();
-  const rolesQuery = useRoles();
-  const users = usersQuery.data;
-  const roles = rolesQuery.data;
-  const isLoading = usersQuery.isLoading || rolesQuery.isLoading;
-  const isError = (usersQuery.isError && !users) || (rolesQuery.isError && !roles);
-  const isFetching = usersQuery.isFetching || rolesQuery.isFetching;
-  const refetch = () => {
-    if (usersQuery.isError) void usersQuery.refetch();
-    if (rolesQuery.isError) void rolesQuery.refetch();
-  };
+  // Usuarios activos de Ventas; su carga y su error se resuelven aquí dentro.
+  const { candidates, isLoading, isInitialError, isFetching, refetch } = useTransferCandidates();
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [fieldError, setFieldError] = useState<string | null>(null);
   const fieldErrorId = useId();
 
-  // Solo usuarios activos de Ventas (ver `isTransferCandidate`) y sin el
-  // dueño actual, que no tiene a quién transferirse.
-  const rolesById = new Map((roles ?? []).map((role) => [role.id, role]));
-  const options: TransferOption[] = (users && roles ? users : [])
-    .filter((user) => isTransferCandidate(user, rolesById) && user.id !== opportunity.vendedor)
+  // Sin el dueño actual, que no tiene a quién transferirse.
+  const options: TransferOption[] = candidates
+    .filter((user) => user.id !== opportunity.vendedor)
     .map((user) => ({
       id: user.id,
       label: user.nombre_completo?.trim() || user.email || user.username,
@@ -219,10 +203,10 @@ function TransferForm({
         <legend className="mb-2 text-sm font-semibold text-slate-700 dark:text-slate-200">
           Nuevo vendedor
         </legend>
-        {isError ? (
+        {isInitialError ? (
           <SectionErrorNotice
             variant="inline"
-            message="No se pudieron cargar los usuarios."
+            message="No se pudieron cargar los usuarios y roles para elegir al nuevo vendedor."
             onRetry={() => refetch()}
             isRetrying={isFetching}
           />
