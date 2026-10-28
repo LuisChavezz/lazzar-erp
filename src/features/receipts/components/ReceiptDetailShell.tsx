@@ -30,61 +30,66 @@ const formatCantidad = (value: string): string => {
 
 // ── Sub-componentes ────────────────────────────────────────────────────────────
 
-const InfoField = ({
-  label,
-  children,
-  className = "",
-}: {
-  label: string;
-  children: React.ReactNode;
-  className?: string;
-}) => (
-  <div className={className}>
-    <span className="text-slate-400 dark:text-slate-500">{label}</span>
-    <div className="font-medium text-slate-700 dark:text-slate-200 mt-0.5">{children}</div>
+/** Dato del encabezado como mosaico: etiqueta pequeña arriba, valor legible abajo. */
+const InfoTile = ({ label, children }: { label: string; children: React.ReactNode }) => (
+  <div className="min-w-0 rounded-xl border border-slate-100 dark:border-white/10 bg-white dark:bg-white/5 px-3 py-2.5">
+    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+      {label}
+    </p>
+    <div
+      className="mt-1 truncate text-sm font-semibold text-slate-800 dark:text-slate-100"
+      title={typeof children === "string" ? children : undefined}
+    >
+      {children}
+    </div>
   </div>
 );
 
-const DetalleTable = ({ detalles }: { detalles: ReceiptDetailLine[] }) => {
+/** Lote / serie de una línea como mini-pill; se omite si la línea no lo trae. */
+const LinePill = ({ label, value }: { label: string; value: string | null | undefined }) =>
+  value ? (
+    <span className="inline-flex items-center gap-1 rounded-md bg-slate-100 dark:bg-white/10 px-1.5 py-0.5 text-[10px] font-medium text-slate-600 dark:text-slate-300">
+      <span className="text-slate-400 dark:text-slate-500">{label}</span>
+      <span className="font-mono">{value}</span>
+    </span>
+  ) : null;
+
+const DetalleList = ({ detalles }: { detalles: ReceiptDetailLine[] }) => {
   if (detalles.length === 0) {
     return (
-      <p className="text-sm text-slate-400 dark:text-slate-500 italic px-1 py-4 text-center">
+      <p className="rounded-xl border border-dashed border-slate-200 dark:border-white/10 px-4 py-6 text-center text-sm text-slate-400 dark:text-slate-500">
         Esta recepción no tiene líneas de detalle.
       </p>
     );
   }
 
   return (
-    <div className="max-h-72 overflow-y-auto rounded-xl border border-slate-100 dark:border-white/10">
-      <table className="w-full text-sm">
-        <thead className="sticky top-0 bg-slate-50 dark:bg-zinc-800/90 backdrop-blur">
-          <tr className="text-left text-xs text-slate-500 dark:text-slate-400">
-            <th className="px-3 py-2 font-medium">Producto</th>
-            <th className="px-3 py-2 font-medium text-right">Cant. Recibida</th>
-            <th className="px-3 py-2 font-medium">Lote</th>
-            <th className="px-3 py-2 font-medium">Serie</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-slate-100 dark:divide-white/5">
-          {detalles.map((linea) => (
-            <tr key={linea.id} className="hover:bg-slate-50 dark:hover:bg-white/5 transition-colors">
-              <td className="px-3 py-2 text-slate-700 dark:text-slate-200">
-                {linea.producto_nombre}
-              </td>
-              <td className="px-3 py-2 text-right tabular-nums font-semibold text-slate-800 dark:text-white">
-                {formatCantidad(linea.cantidad_recibida)}
-              </td>
-              <td className="px-3 py-2 text-slate-600 dark:text-slate-300">
-                {linea.lote || "—"}
-              </td>
-              <td className="px-3 py-2 text-slate-600 dark:text-slate-300">
-                {linea.serie || "—"}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+    <ul className="max-h-80 overflow-y-auto rounded-xl border border-slate-100 dark:border-white/10 divide-y divide-slate-100 dark:divide-white/5">
+      {detalles.map((linea) => (
+        <li
+          key={linea.id}
+          className="flex items-center gap-3 px-3 py-2.5 hover:bg-slate-50 dark:hover:bg-white/5 transition-colors"
+        >
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-medium text-slate-800 dark:text-slate-100" title={linea.producto_nombre}>
+              {linea.producto_nombre}
+            </p>
+            {(linea.lote || linea.serie) && (
+              <div className="mt-1 flex flex-wrap gap-1">
+                <LinePill label="Lote" value={linea.lote} />
+                <LinePill label="Serie" value={linea.serie} />
+              </div>
+            )}
+          </div>
+          <div className="shrink-0 text-right">
+            <p className="text-base font-bold tabular-nums text-slate-900 dark:text-white">
+              {formatCantidad(linea.cantidad_recibida)}
+            </p>
+            <p className="text-[10px] text-slate-400 dark:text-slate-500">recibidas</p>
+          </div>
+        </li>
+      ))}
+    </ul>
   );
 };
 
@@ -98,36 +103,50 @@ export function ReceiptDetailShell({
   const showRemisionFacturaSection =
     showRemisionFactura && (receipt.remision !== null || receipt.factura_referencia !== null);
 
+  // Resumen de lo recibido: cuántas líneas y cuántas piezas en total.
+  const totalRecibido = receipt.detalles.reduce((sum, linea) => {
+    const cantidad = parseFloat(linea.cantidad_recibida);
+    return Number.isNaN(cantidad) ? sum : sum + cantidad;
+  }, 0);
+  const lineas = receipt.detalles.length;
+
   return (
-    <div className="space-y-5">
-      {/* Información general */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-3 px-4 py-3 rounded-xl bg-slate-50 dark:bg-white/5 text-xs">
-        <InfoField label="Estatus">
-          <StatusBadge status={receipt.estatus_label} config={RECEIPT_STATUS_CONFIG} />
-        </InfoField>
-        {headerFields.map((field) => (
-          <InfoField key={field.label} label={field.label}>
-            {field.value}
-          </InfoField>
-        ))}
+    <div className="space-y-4">
+      {/* Resumen: estatus y totales de un vistazo */}
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-xl bg-sky-50 dark:bg-sky-500/10 border border-sky-100 dark:border-sky-500/20 px-4 py-3">
+        <StatusBadge status={receipt.estatus_label} config={RECEIPT_STATUS_CONFIG} />
+        <div className="flex items-baseline gap-1.5">
+          <span className="text-2xl font-bold tabular-nums text-slate-900 dark:text-white">
+            {totalRecibido.toLocaleString("es-MX")}
+          </span>
+          <span className="text-xs text-slate-600 dark:text-slate-300">piezas recibidas</span>
+        </div>
+        <span className="text-xs text-slate-500 dark:text-slate-400 sm:ml-auto">
+          {lineas} {lineas === 1 ? "producto" : "productos"}
+        </span>
       </div>
 
-      {/* Remisión / Factura de referencia (opcional) */}
-      {showRemisionFacturaSection && (
-        <div className="grid grid-cols-2 gap-x-4 gap-y-3 px-4 py-3 rounded-xl border border-slate-100 dark:border-white/10 text-xs">
-          <InfoField label="Remisión">{receipt.remision || "—"}</InfoField>
-          <InfoField label="Factura de referencia">
-            {receipt.factura_referencia || "—"}
-          </InfoField>
-        </div>
-      )}
+      {/* Información general (+ remisión / factura en OC) */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+        {headerFields.map((field) => (
+          <InfoTile key={field.label} label={field.label}>
+            {field.value}
+          </InfoTile>
+        ))}
+        {showRemisionFacturaSection && (
+          <>
+            <InfoTile label="Remisión">{receipt.remision || "—"}</InfoTile>
+            <InfoTile label="Factura de referencia">{receipt.factura_referencia || "—"}</InfoTile>
+          </>
+        )}
+      </div>
 
       {/* Líneas de detalle */}
       <div>
-        <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-2">
+        <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">
           Productos recibidos
         </h3>
-        <DetalleTable detalles={receipt.detalles} />
+        <DetalleList detalles={receipt.detalles} />
       </div>
     </div>
   );

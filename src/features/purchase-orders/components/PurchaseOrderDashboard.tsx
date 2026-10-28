@@ -1,11 +1,13 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, type ComponentType, type ReactNode, type SVGProps } from "react";
+import Link from "next/link";
 import type { PurchaseOrder } from "../interfaces/purchase-order.interface";
 import {
   ComprasIcon,
   ClockIcon,
   CheckCircleIcon,
+  ChevronRightIcon,
   EmbarquesIcon,
 } from "@/src/components/Icons";
 import { formatMoneyValueOrDash, safeParseAmount } from "@/src/utils/formatCurrency";
@@ -23,6 +25,104 @@ import {
 
 /** Moneda de la orden para agrupar sus importes; `null` (sin símbolo) si llegara vacía. */
 const monedaDe = (order: PurchaseOrder): string | null => order.moneda_codigo || null;
+
+/** Detalle de una OC (la ruta exige `R-COMPRAS-OC`, el mismo permiso que da este listado). */
+const orderHref = (id: number) => `/procurement/purchase-orders/${id}`;
+
+// ─── Tarjeta de indicador ────────────────────────────────────────────────────
+
+interface KpiTileProps {
+  label: string;
+  icon: ComponentType<SVGProps<SVGSVGElement>>;
+  /** Clases de color del acento: `text-*` para ícono/barra y `bg-*` suave para la insignia. */
+  accentText: string;
+  accentSoftBg: string;
+  value: ReactNode;
+  detail: ReactNode;
+  /** 0–100; sin él no se pinta barra. */
+  progress?: number;
+}
+
+/**
+ * Una sola definición para las cuatro tarjetas (antes eran cuatro copias del
+ * mismo marcado). En móvil el padding y los tamaños bajan para que dos
+ * tarjetas por fila quepan sin desbordarse.
+ */
+function KpiTile({ label, icon: Icon, accentText, accentSoftBg, value, detail, progress }: KpiTileProps) {
+  return (
+    <div
+      role="listitem"
+      className="group relative overflow-hidden rounded-xl bg-white dark:bg-black border border-slate-200 dark:border-white/10 p-3.5 sm:p-5 shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300"
+    >
+      <div
+        className={`absolute inset-x-0 top-0 h-0.5 bg-linear-to-r from-transparent via-current to-transparent opacity-50 group-hover:opacity-100 transition-opacity ${accentText}`}
+      />
+      <div className="flex items-start justify-between gap-2 mb-2 sm:mb-3">
+        <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
+          {label}
+        </span>
+        <span className={`grid place-items-center w-8 h-8 shrink-0 rounded-lg ${accentSoftBg} ${accentText}`}>
+          <Icon className="w-4 h-4" aria-hidden="true" />
+        </span>
+      </div>
+      <div className="mb-1.5">{value}</div>
+      <div className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 leading-snug mb-2">
+        {detail}
+      </div>
+      {progress !== undefined && (
+        <div className={`h-1 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden ${accentText}`}>
+          <div className="h-full bg-current rounded-full" style={{ width: `${progress}%` }} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+const BIG_NUMBER_CLS = "text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white tracking-tight tabular-nums";
+
+// ─── Panel con lista ─────────────────────────────────────────────────────────
+
+function Panel({
+  title,
+  subtitle,
+  aside,
+  children,
+}: {
+  title: string;
+  subtitle: string;
+  aside?: ReactNode;
+  children: ReactNode;
+}) {
+  return (
+    <section className="rounded-xl bg-white dark:bg-black border border-slate-200 dark:border-white/10 shadow-sm">
+      <div className="flex items-start justify-between gap-3 px-4 sm:px-5 pt-4 pb-3 border-b border-slate-100 dark:border-white/5">
+        <div className="min-w-0">
+          <h2 className="text-sm font-bold text-slate-800 dark:text-white">{title}</h2>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{subtitle}</p>
+        </div>
+        {aside}
+      </div>
+      <div className="p-2">{children}</div>
+    </section>
+  );
+}
+
+/** Renglón que abre el detalle de la OC: toda la fila es el enlace, con ">" al final. */
+function OrderRow({ order, children }: { order: PurchaseOrder; children: ReactNode }) {
+  return (
+    <Link
+      href={orderHref(order.id)}
+      title="Ver detalle"
+      className="group flex items-center gap-3 rounded-lg px-3 py-2.5 hover:bg-slate-50 dark:hover:bg-white/5 transition-colors"
+    >
+      {children}
+      <ChevronRightIcon
+        className="w-4 h-4 shrink-0 text-slate-300 dark:text-slate-600 group-hover:text-sky-500 group-hover:translate-x-0.5 transition-all"
+        aria-hidden="true"
+      />
+    </Link>
+  );
+}
 
 // ─── Componente principal ─────────────────────────────────────────────────────
 
@@ -115,281 +215,175 @@ export function PurchaseOrderDashboard({ orders }: PurchaseOrderDashboardProps) 
   }, [orders]);
 
   const enAutorizacion = stats.borradores + stats.pendientes;
+  const pctOf = (n: number) => (stats.total > 0 ? (n / stats.total) * 100 : 0);
 
   return (
-    <div className="space-y-6">
-
+    <div className="space-y-4 sm:space-y-6">
       {/* ── KPIs principales ─────────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4" role="list">
-
-        {/* Total OC */}
-        <div
-          role="listitem"
-          className="group relative rounded-xl bg-white dark:bg-black border border-slate-200 dark:border-white/10 p-5 shadow-sm hover:shadow-lg transition-all duration-300"
-        >
-          <div className="absolute inset-x-0 top-0 h-0.5 rounded-t-xl bg-linear-to-r from-transparent via-sky-500 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-          <div className="flex justify-between items-start mb-4">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-300">
-              Total OC
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4" role="list">
+        <KpiTile
+          label="Órdenes activas"
+          icon={ComprasIcon}
+          accentText="text-sky-500"
+          accentSoftBg="bg-sky-50 dark:bg-sky-500/10"
+          value={<span className={BIG_NUMBER_CLS}>{stats.total}</span>}
+          detail={
+            <span className="tabular-nums">
+              {stats.totalOculto
+                ? "—"
+                : formatCurrencyTotalsInline(stats.totalValue, { maximumFractionDigits: 0 })}{" "}
+              valor total
             </span>
-            <div className="p-2 rounded-lg bg-sky-50 dark:bg-sky-500/10 text-sky-500 shadow-[0_0_15px_rgba(15,23,42,0.08)]">
-              <ComprasIcon className="w-5 h-5" aria-hidden="true" />
-            </div>
-          </div>
-          <div className="flex items-baseline gap-2 mb-2">
-            <h3 className="text-2xl font-bold text-slate-800 dark:text-white tracking-tight font-mono">
-              {stats.total}
-            </h3>
-            <span className="text-xs font-semibold text-sky-500 bg-sky-50 dark:bg-sky-500/10 px-1.5 py-0.5 rounded">
-              Activas
-            </span>
-          </div>
-          <p className="text-xs text-slate-500 dark:text-slate-400 tabular-nums mb-2">
-            {stats.totalOculto
-              ? "—"
-              : formatCurrencyTotalsInline(stats.totalValue, { maximumFractionDigits: 0 })}{" "}
-            valor total
-          </p>
-          <div className="h-1 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden text-sky-500">
-            <div className="h-full bg-current rounded-full" style={{ width: "100%" }} />
-          </div>
-        </div>
-
-        {/* En curso: autorizadas con recepción parcial */}
-        <div
-          role="listitem"
-          className="group relative rounded-xl bg-white dark:bg-black border border-slate-200 dark:border-white/10 p-5 shadow-sm hover:shadow-lg transition-all duration-300"
-        >
-          <div className="absolute inset-x-0 top-0 h-0.5 rounded-t-xl bg-linear-to-r from-transparent via-indigo-500 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-          <div className="flex justify-between items-start mb-4">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-300">
-              En curso
-            </span>
-            <div className="p-2 rounded-lg bg-indigo-50 dark:bg-indigo-500/10 text-indigo-500 shadow-[0_0_15px_rgba(15,23,42,0.08)]">
-              <EmbarquesIcon className="w-5 h-5" aria-hidden="true" />
-            </div>
-          </div>
-          <div className="flex items-baseline gap-2 mb-2">
-            <h3 className="text-2xl font-bold text-slate-800 dark:text-white tracking-tight font-mono">
-              {stats.enCurso}
-            </h3>
-            <span className="text-xs font-semibold text-indigo-500 bg-indigo-50 dark:bg-indigo-500/10 px-1.5 py-0.5 rounded">
-              Parcialmente recibidas
-            </span>
-          </div>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mb-2">
-            Órdenes con recepción parcial registrada
-          </p>
-          <div className="h-1 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden text-indigo-500">
-            <div
-              className="h-full bg-current rounded-full"
-              style={{ width: `${stats.total > 0 ? (stats.enCurso / stats.total) * 100 : 0}%` }}
-            />
-          </div>
-        </div>
-
-        {/* Por autorizar */}
-        <div
-          role="listitem"
-          className="group relative rounded-xl bg-white dark:bg-black border border-slate-200 dark:border-white/10 p-5 shadow-sm hover:shadow-lg transition-all duration-300"
-        >
-          <div className="absolute inset-x-0 top-0 h-0.5 rounded-t-xl bg-linear-to-r from-transparent via-amber-400 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-          <div className="flex justify-between items-start mb-4">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-300">
-              Por autorizar
-            </span>
-            <div className="p-2 rounded-lg bg-amber-50 dark:bg-amber-500/10 text-amber-500 shadow-[0_0_15px_rgba(15,23,42,0.08)]">
-              <ClockIcon className="w-5 h-5" aria-hidden="true" />
-            </div>
-          </div>
-          <div className="flex items-baseline gap-2 mb-2">
-            <h3 className="text-2xl font-bold text-slate-800 dark:text-white tracking-tight font-mono">
-              {enAutorizacion}
-            </h3>
-            <span className="text-xs font-semibold text-amber-500 bg-amber-50 dark:bg-amber-500/10 px-1.5 py-0.5 rounded">
-              Pendiente
-            </span>
-          </div>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mb-2">
-            Borrador + pendiente de autorización
-          </p>
-          <div className="h-1 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden text-amber-400">
-            <div
-              className="h-full bg-current rounded-full"
-              style={{ width: `${stats.total > 0 ? (enAutorizacion / stats.total) * 100 : 0}%` }}
-            />
-          </div>
-        </div>
-
-        {/* Cierre: completadas / canceladas */}
-        <div
-          role="listitem"
-          className="group relative rounded-xl bg-white dark:bg-black border border-slate-200 dark:border-white/10 p-5 shadow-sm hover:shadow-lg transition-all duration-300"
-        >
-          <div className="absolute inset-x-0 top-0 h-0.5 rounded-t-xl bg-linear-to-r from-transparent via-emerald-500 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-          <div className="flex justify-between items-start mb-4">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-300">
-              Cierre
-            </span>
-            <div className="p-2 rounded-lg bg-emerald-50 dark:bg-emerald-500/10 text-emerald-500 shadow-[0_0_15px_rgba(15,23,42,0.08)]">
-              <CheckCircleIcon className="w-5 h-5" aria-hidden="true" />
-            </div>
-          </div>
-          <div className="flex items-end gap-4 mb-2">
-            <div>
-              <span className="text-2xl font-bold text-slate-800 dark:text-white tracking-tight font-mono">
-                {stats.autorizadasOCompletadas}
-              </span>
-              <p className="text-[10px] font-bold text-emerald-500 uppercase tracking-wide mt-0.5">
-                Autorizadas / Completadas
-              </p>
-            </div>
-            <div className="w-px h-8 bg-slate-200 dark:bg-white/10 mb-1" />
-            <div>
-              <span className="text-2xl font-bold text-red-500 dark:text-red-400 tracking-tight font-mono">
+          }
+          progress={100}
+        />
+        <KpiTile
+          label="En curso"
+          icon={EmbarquesIcon}
+          accentText="text-indigo-500"
+          accentSoftBg="bg-indigo-50 dark:bg-indigo-500/10"
+          value={<span className={BIG_NUMBER_CLS}>{stats.enCurso}</span>}
+          detail="Con recepción parcial registrada"
+          progress={pctOf(stats.enCurso)}
+        />
+        <KpiTile
+          label="Por autorizar"
+          icon={ClockIcon}
+          accentText="text-amber-500"
+          accentSoftBg="bg-amber-50 dark:bg-amber-500/10"
+          value={<span className={BIG_NUMBER_CLS}>{enAutorizacion}</span>}
+          detail="Borrador o pendiente de autorización"
+          progress={pctOf(enAutorizacion)}
+        />
+        <KpiTile
+          label="Cierre"
+          icon={CheckCircleIcon}
+          accentText="text-emerald-500"
+          accentSoftBg="bg-emerald-50 dark:bg-emerald-500/10"
+          value={
+            // `flex-wrap`: en móvil, si las dos cifras no caben lado a lado,
+            // la de canceladas baja en vez de salirse de la tarjeta.
+            <div className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
+              <span className={BIG_NUMBER_CLS}>{stats.autorizadasOCompletadas}</span>
+              <span className="text-lg sm:text-xl font-bold text-red-500 dark:text-red-400 tabular-nums">
                 {stats.canceladas}
+                <span className="ml-1 text-[10px] font-semibold uppercase tracking-wide">
+                  canceladas
+                </span>
               </span>
-              <p className="text-[10px] font-bold text-red-400 uppercase tracking-wide mt-0.5">
-                Canceladas
-              </p>
             </div>
-          </div>
-          <div className="h-1 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden text-emerald-500">
-            <div
-              className="h-full bg-current rounded-full"
-              style={{ width: `${stats.total > 0 ? (stats.autorizadasOCompletadas / stats.total) * 100 : 0}%` }}
-            />
-          </div>
-        </div>
+          }
+          detail="Autorizadas o completadas"
+          progress={pctOf(stats.autorizadasOCompletadas)}
+        />
       </div>
 
       {/* ── Grid inferior ─────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
-
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 items-start">
         {/* Órdenes en curso (recepción parcial), por fecha de entrega estimada */}
-        <div className="rounded-xl bg-white dark:bg-black border border-slate-200 dark:border-white/10 p-5 shadow-sm">
-          <div className="flex items-center justify-between mb-3">
-            <div>
-              <h2 className="text-sm font-bold text-slate-800 dark:text-white">
-                Órdenes en curso
-              </h2>
-              <p className="text-xs text-slate-400 mt-0.5">
-                Con recepción parcial, por entrega estimada
-              </p>
-            </div>
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-semibold bg-orange-50 dark:bg-orange-500/10 text-orange-600 dark:text-orange-400">
-              <span className="w-1.5 h-1.5 rounded-full bg-orange-400 animate-pulse" />
+        <Panel
+          title="Órdenes en curso"
+          subtitle="Con recepción parcial, por entrega estimada"
+          aside={
+            <span className="inline-flex shrink-0 items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-orange-50 dark:bg-orange-500/10 text-orange-600 dark:text-orange-400">
+              <span className="w-1.5 h-1.5 rounded-full bg-orange-400" aria-hidden="true" />
               {stats.critical.length} {plural(stats.critical.length, "activa", "activas")}
             </span>
-          </div>
-          <div>
-            {stats.critical.length > 0 ? (
-              stats.critical.map((order) => (
-                <div
-                  key={order.id}
-                  className="flex items-center gap-3 py-2.5 border-b border-slate-100 dark:border-white/5 last:border-0"
-                >
-                  <div className="flex-1 min-w-0">
-                    {/* `folio` es nullable mientras el backend no lo asigna;
-                        sin respaldo la fila quedaba sin identificador visible. */}
-                    <p className="text-xs font-semibold text-slate-700 dark:text-slate-200 font-mono">
-                      {order.folio ?? `#${order.id}`}
-                    </p>
-                    <p className="text-[11px] text-slate-400 truncate">
-                      {order.proveedor_nombre ?? "—"}
+          }
+        >
+          {stats.critical.length > 0 ? (
+            stats.critical.map((order) => (
+              <OrderRow key={order.id} order={order}>
+                <div className="flex-1 min-w-0">
+                  {/* `folio` es nullable mientras el backend no lo asigna;
+                      sin respaldo la fila quedaba sin identificador visible. */}
+                  <p className="text-sm font-semibold text-slate-800 dark:text-slate-100 font-mono group-hover:text-sky-600 dark:group-hover:text-sky-400">
+                    {order.folio ?? `#${order.id}`}
+                  </p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
+                    {order.proveedor_nombre ?? "—"}
+                  </p>
+                </div>
+                {order.fecha_entrega_estimada && (
+                  <div className="text-right shrink-0">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">ETA</p>
+                    <p className="text-xs font-semibold text-slate-600 dark:text-slate-300 tabular-nums">
+                      {formatLocalDate(order.fecha_entrega_estimada)}
                     </p>
                   </div>
-
-                  {order.fecha_entrega_estimada && (
-                    <div className="text-right shrink-0">
-                      <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">ETA</p>
-                      <p className="text-xs font-semibold text-slate-600 dark:text-slate-300 tabular-nums">
-                        {formatLocalDate(order.fecha_entrega_estimada)}
-                      </p>
-                    </div>
-                  )}
-                </div>
-              ))
-            ) : (
-              <p className="text-sm text-slate-400 text-center py-6">
-                Sin órdenes con recepción parcial
-              </p>
-            )}
-          </div>
-        </div>
-
-        {/* Top 5 por valor */}
-        <div className="rounded-xl bg-white dark:bg-black border border-slate-200 dark:border-white/10 p-5 shadow-sm">
-          <div className="flex items-center justify-between mb-3">
-            <div>
-              <h2 className="text-sm font-bold text-slate-800 dark:text-white">
-                Top 5 por valor
-              </h2>
-              <p className="text-xs text-slate-400 mt-0.5">
-                {stats.topPorMoneda
-                  ? "Órdenes de mayor importe, por moneda"
-                  : "Órdenes de mayor importe"}
-              </p>
-            </div>
-          </div>
-          <div className={stats.topByValue.length > 1 ? "space-y-4" : undefined}>
-            {stats.topByValue.map((group) => (
-              <div key={group.moneda ?? UNKNOWN_CURRENCY_TAG}>
-                {/* Con varias monedas, un ranking por moneda con su código. */}
-                {stats.topPorMoneda && (
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
-                    {group.moneda ?? UNKNOWN_CURRENCY_TAG}
-                  </p>
                 )}
-                <div className="space-y-1">
-                  {group.orders.map((order, idx) => {
-                    // `|| 0` en el divisor: si el usuario no ve importes, todos los
-                    // `total` son `undefined` → `safeParseAmount` los vuelve 0 y la
-                    // división daría `NaN` en el ancho de la barra. El máximo es el
-                    // de SU moneda: las barras no comparan monedas distintas.
-                    const maxValue = safeParseAmount(group.orders[0]?.total);
-                    const pct = maxValue > 0 ? (safeParseAmount(order.total) / maxValue) * 100 : 0;
+              </OrderRow>
+            ))
+          ) : (
+            <p className="text-sm text-slate-500 dark:text-slate-400 text-center py-6">
+              Sin órdenes con recepción parcial
+            </p>
+          )}
+        </Panel>
 
-                    return (
-                      <div key={order.id} className="flex items-center gap-3 py-2">
-                        {/* Rank */}
-                        <span className="text-xs font-black text-slate-300 dark:text-slate-600 w-4 tabular-nums">
-                          {idx + 1}
-                        </span>
-                        {/* Info */}
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1">
-                            {/* Mismo respaldo que el panel de arriba: el Top 5 SÍ
-                                puede incluir una orden todavía sin folio. */}
-                            <span className="text-xs font-semibold text-slate-700 dark:text-slate-200 font-mono">
-                              {order.folio ?? `#${order.id}`}
-                            </span>
+        {/* Top 5 por valor: un ranking por moneda (EC-601) */}
+        <Panel
+          title="Top 5 por valor"
+          subtitle={
+            stats.topPorMoneda
+              ? "Órdenes activas de mayor importe, por moneda"
+              : "Órdenes activas de mayor importe"
+          }
+        >
+          {stats.topByValue.length > 0 ? (
+            <div className={stats.topByValue.length > 1 ? "space-y-3" : undefined}>
+              {stats.topByValue.map((group) => {
+                // El máximo es el de SU moneda: las barras no comparan monedas
+                // distintas. `> 0`: si el rol oculta `total`, todo vale 0.
+                const maxValue = safeParseAmount(group.orders[0]?.total);
+                return (
+                  <div key={group.moneda ?? UNKNOWN_CURRENCY_TAG}>
+                    {stats.topPorMoneda && (
+                      <p className="px-3 pt-1 text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                        {group.moneda ?? UNKNOWN_CURRENCY_TAG}
+                      </p>
+                    )}
+                    {group.orders.map((order, idx) => {
+                      const pct = maxValue > 0 ? (safeParseAmount(order.total) / maxValue) * 100 : 0;
+                      return (
+                        <OrderRow key={order.id} order={order}>
+                          <span className="grid place-items-center w-6 h-6 shrink-0 rounded-full bg-slate-100 dark:bg-white/10 text-[11px] font-bold text-slate-500 dark:text-slate-300 tabular-nums">
+                            {idx + 1}
+                          </span>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-baseline justify-between gap-2">
+                              {/* El Top 5 SÍ puede incluir una orden todavía sin folio. */}
+                              <span className="text-sm font-semibold text-slate-800 dark:text-slate-100 font-mono group-hover:text-sky-600 dark:group-hover:text-sky-400">
+                                {order.folio ?? `#${order.id}`}
+                              </span>
+                              {/* En la moneda de LA ORDEN, y "—" si no es visible */}
+                              <span className="text-sm font-bold text-slate-800 dark:text-slate-100 tabular-nums shrink-0">
+                                {formatMoneyValueOrDash(order.total, {
+                                  currency: order.moneda_codigo,
+                                  maximumFractionDigits: 0,
+                                })}
+                              </span>
+                            </div>
+                            <div className="mt-1 h-1 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden text-sky-500/70">
+                              <div className="h-full bg-current rounded-full" style={{ width: `${pct}%` }} />
+                            </div>
+                            <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 truncate">
+                              {order.proveedor_nombre ?? "—"}
+                            </p>
                           </div>
-                          <div className="h-1 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden text-slate-400">
-                            <div
-                              className="h-full bg-current rounded-full"
-                              style={{ width: `${pct}%` }}
-                            />
-                          </div>
-                          <p className="text-[10px] text-slate-400 mt-0.5 truncate">
-                            {order.proveedor_nombre ?? "—"}
-                          </p>
-                        </div>
-                        {/* Valor — en la moneda de LA ORDEN, y "—" si no es visible */}
-                        <span className="text-xs font-bold text-slate-700 dark:text-slate-200 tabular-nums shrink-0">
-                          {formatMoneyValueOrDash(order.total, {
-                            currency: order.moneda_codigo,
-                            maximumFractionDigits: 0,
-                          })}
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+                        </OrderRow>
+                      );
+                    })}
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="text-sm text-slate-500 dark:text-slate-400 text-center py-6">
+              Sin órdenes activas
+            </p>
+          )}
+        </Panel>
       </div>
     </div>
   );

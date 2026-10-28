@@ -48,11 +48,13 @@ export function PurchaseOrderReceiptDetailDialog({
     <MainDialog
       open={open}
       onOpenChange={onOpenChange}
-      maxWidth="760px"
+      maxWidth="680px"
       showCloseButton={true}
       title={
         <div className="flex items-center gap-2.5 pr-8">
-          <PackageCheckIcon className="w-5 h-5 text-sky-500 shrink-0" />
+          <span className="grid place-items-center w-9 h-9 rounded-xl bg-sky-100 dark:bg-sky-500/15 text-sky-600 dark:text-sky-400 shrink-0">
+            <PackageCheckIcon className="w-5 h-5" />
+          </span>
           <div>
             <p className="text-base font-semibold leading-tight text-slate-800 dark:text-slate-100">
               Detalle de Recepción

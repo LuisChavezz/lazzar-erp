@@ -2,6 +2,7 @@
 
 import { usePurchaseOrders } from "@/src/features/purchase-orders/hooks/usePurchaseOrders";
 import { PurchaseOrderDashboard } from "@/src/features/purchase-orders/components/PurchaseOrderDashboard";
+import { ProcurementQuickLinks } from "@/src/features/purchase-orders/components/ProcurementQuickLinks";
 
 export default function ProcurementPage() {
   const { purchaseOrders, isLoading, isInitialError } = usePurchaseOrders();
@@ -33,16 +34,11 @@ export default function ProcurementPage() {
     );
   }
 
+  // Sin `<h1>` propio: el encabezado global ya titula la página ("Compras y
+  // SCM"), y repetirlo empujaba el contenido hacia abajo.
   return (
-    <div className="px-1 pb-8">
-      <div className="mb-6">
-        <h1 className="text-xl font-black text-slate-800 dark:text-white tracking-tight">
-          Compras
-        </h1>
-        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-          Resumen del ciclo de vida de órdenes de compra e importaciones
-        </p>
-      </div>
+    <div className="px-1 pb-8 space-y-4 sm:space-y-6">
+      <ProcurementQuickLinks />
       <PurchaseOrderDashboard orders={purchaseOrders} />
     </div>
   );

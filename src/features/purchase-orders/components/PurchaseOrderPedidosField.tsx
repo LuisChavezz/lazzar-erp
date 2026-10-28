@@ -176,7 +176,8 @@ export function PurchaseOrderPedidosField({
           id={labelId}
           className="text-[11px] font-bold text-slate-400 uppercase tracking-wider"
         >
-          Pedidos
+          Pedidos{" "}
+          <span className="normal-case font-medium tracking-normal">(opcional)</span>
         </span>
         <span className={`text-xs ${MUTED_CLS}`}>
           {count === 0
