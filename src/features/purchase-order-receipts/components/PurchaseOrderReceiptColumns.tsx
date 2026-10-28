@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
+import { ChevronRightIcon } from "@/src/components/Icons";
 import type { DataTableFilterOption } from "@/src/components/DataTable";
 import { ColumnHeaderFilter } from "@/src/components/ColumnHeaderFilter";
 import type { PurchaseOrderReceipt } from "../interfaces/purchase-order-receipt.interface";
@@ -84,10 +85,14 @@ const FolioCell = ({ receipt }: { receipt: PurchaseOrderReceipt }) => {
         <button
           type="button"
           onClick={() => setIsDetailOpen(true)}
-          className="font-mono text-slate-700 dark:text-slate-200 font-semibold hover:text-sky-600 dark:hover:text-sky-400 hover:underline transition-colors cursor-pointer"
+          className="group inline-flex items-center gap-1 font-mono text-slate-700 dark:text-slate-200 font-semibold hover:text-sky-600 dark:hover:text-sky-400 hover:underline transition-colors cursor-pointer"
           title="Ver detalle"
         >
           {receipt.folio || "—"}
+          <ChevronRightIcon
+            className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500 group-hover:text-sky-500 dark:group-hover:text-sky-400 group-hover:translate-x-0.5 transition-all"
+            aria-hidden="true"
+          />
         </button>
         <div className="flex flex-wrap items-center gap-1">
           <span

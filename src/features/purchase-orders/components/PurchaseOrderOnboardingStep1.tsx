@@ -201,8 +201,15 @@ function Step1Form({
               value={field.state.value}
               options={TIPO_COMPRA_OPTIONS}
               onChange={(event) => {
-                field.handleChange(event.target.value as TipoCompra);
+                const nextTipo = event.target.value as TipoCompra;
+                field.handleChange(nextTipo);
                 clearFieldErrors("orden_compra.tipo_compra");
+                // Solo el producto terminado se liga a pedidos: al cambiar a
+                // materia prima se sueltan los ya elegidos para no enviarlos.
+                if (nextTipo !== "PT") {
+                  form.setFieldValue("orden_compra.pedidos", []);
+                  clearFieldErrors("orden_compra.pedidos");
+                }
               }}
               onBlur={() => {
                 field.handleBlur();
@@ -284,21 +291,29 @@ function Step1Form({
           )}
         </form.Field>
 
-        {/* ── Pedidos (opcional, varios; ancho completo) ──────────────── */}
-        <form.Field name="orden_compra.pedidos">
-          {(field) => (
-            <div className="sm:col-span-2">
-              <PurchaseOrderPedidosField
-                value={field.state.value ?? []}
-                onChange={(ids) => {
-                  field.handleChange(ids);
-                  clearFieldErrors("orden_compra.pedidos");
-                }}
-                error={getError("orden_compra.pedidos")}
-              />
-            </div>
-          )}
-        </form.Field>
+        {/* ── Pedidos (opcional, varios; ancho completo) ──────────────────
+            Solo con producto terminado: la materia prima no se liga a un
+            pedido. */}
+        <form.Subscribe selector={(state) => state.values.orden_compra.tipo_compra === "PT"}>
+          {(isProductoTerminado) =>
+            isProductoTerminado ? (
+              <form.Field name="orden_compra.pedidos">
+                {(field) => (
+                  <div className="sm:col-span-2">
+                    <PurchaseOrderPedidosField
+                      value={field.state.value ?? []}
+                      onChange={(ids) => {
+                        field.handleChange(ids);
+                        clearFieldErrors("orden_compra.pedidos");
+                      }}
+                      error={getError("orden_compra.pedidos")}
+                    />
+                  </div>
+                )}
+              </form.Field>
+            ) : null
+          }
+        </form.Subscribe>
       </fieldset>
 
       {/* ── Submit ─────────────────────────────────────────────────────── */}
