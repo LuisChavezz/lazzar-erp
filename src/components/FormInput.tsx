@@ -15,6 +15,12 @@ export const FormInput = forwardRef<HTMLInputElement, FormInputProps>(
     const inputId =
       props.id ?? (typeof props.name === "string" ? props.name : undefined);
 
+    // Hueco a la izquierda para `leading` en la variante compacta: un solo
+    // carácter ("$") cabe en `pl-5`; un código de moneda ("USD", EC-606) necesita
+    // `pl-10` para que los dígitos nunca queden debajo.
+    const compactLeadingPadding =
+      typeof leading === "string" && leading.length > 1 ? "pl-10 pr-2" : "pl-5 pr-2";
+
     const baseInputStyles = "w-full outline-none transition-all placeholder-slate-400 disabled:opacity-50 disabled:cursor-not-allowed";
     
     const variants = {
@@ -85,7 +91,7 @@ export const FormInput = forwardRef<HTMLInputElement, FormInputProps>(
             className={`
               ${baseInputStyles}
               ${variants[variant]}
-              ${variant === "compact" ? (leading ? "pl-5 pr-2" : "px-2") : ""}
+              ${variant === "compact" ? (leading ? compactLeadingPadding : "px-2") : ""}
               ${forceUppercase ? "uppercase placeholder:normal-case" : ""}
               ${className}
             `}

@@ -2113,7 +2113,7 @@ export function QuoteFormContent({
                           error={montoError}
                           forceUppercase={false}
                           leading={monedaCodigo ?? undefined}
-                          className={monedaCodigo ? "text-right pl-10!" : "text-right"}
+                          className="text-right"
                         />
                       </div>
                       <div className="shrink-0 w-16">
