@@ -138,6 +138,31 @@ export const InfoGrid = ({ children }: { children: React.ReactNode }) => (
   </div>
 );
 
+/**
+ * Dato del encabezado como mosaico: etiqueta pequeña arriba, valor legible
+ * abajo, en su propia tarjeta. Primitiva distinta de `InfoField` (texto plano
+ * dentro de `InfoGrid`): para encabezados de pocos datos que deben resaltar.
+ * Un valor de texto que no cabe se trunca y se lee completo en el `title`.
+ */
+export const InfoTile = ({ label, children }: { label: string; children: React.ReactNode }) => (
+  <div className="min-w-0 rounded-xl border border-slate-100 dark:border-white/10 bg-white dark:bg-white/5 px-3 py-2.5">
+    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+      {label}
+    </p>
+    <div
+      className="mt-1 truncate text-sm font-semibold text-slate-800 dark:text-slate-100"
+      title={typeof children === "string" ? children : undefined}
+    >
+      {children}
+    </div>
+  </div>
+);
+
+/** Rejilla de `InfoTile`. */
+export const InfoTileGrid = ({ children }: { children: React.ReactNode }) => (
+  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">{children}</div>
+);
+
 /** Estado vacío de una tabla de líneas (mismo tono en todas las secciones). */
 export const EmptyLines = ({ children }: { children: React.ReactNode }) => (
   <p className="text-sm text-slate-400 dark:text-slate-500 italic px-1 py-4 text-center">

@@ -2,6 +2,7 @@
 
 import type { ReceiptDetail, ReceiptDetailLine } from "../interfaces/receipt.interface";
 import { StatusBadge } from "@/src/components/StatusBadge";
+import { InfoTile, InfoTileGrid } from "@/src/components/DetailDialogPrimitives";
 import { RECEIPT_STATUS_CONFIG } from "../constants/receiptStatus";
 
 // ── Shell presentacional compartido del detalle de recepción ──────────────────
@@ -29,21 +30,6 @@ const formatCantidad = (value: string): string => {
 };
 
 // ── Sub-componentes ────────────────────────────────────────────────────────────
-
-/** Dato del encabezado como mosaico: etiqueta pequeña arriba, valor legible abajo. */
-const InfoTile = ({ label, children }: { label: string; children: React.ReactNode }) => (
-  <div className="min-w-0 rounded-xl border border-slate-100 dark:border-white/10 bg-white dark:bg-white/5 px-3 py-2.5">
-    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-      {label}
-    </p>
-    <div
-      className="mt-1 truncate text-sm font-semibold text-slate-800 dark:text-slate-100"
-      title={typeof children === "string" ? children : undefined}
-    >
-      {children}
-    </div>
-  </div>
-);
 
 /** Lote / serie de una línea como mini-pill; se omite si la línea no lo trae. */
 const LinePill = ({ label, value }: { label: string; value: string | null | undefined }) =>
@@ -127,7 +113,7 @@ export function ReceiptDetailShell({
       </div>
 
       {/* Información general (+ remisión / factura en OC) */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+      <InfoTileGrid>
         {headerFields.map((field) => (
           <InfoTile key={field.label} label={field.label}>
             {field.value}
@@ -139,7 +125,7 @@ export function ReceiptDetailShell({
             <InfoTile label="Factura de referencia">{receipt.factura_referencia || "—"}</InfoTile>
           </>
         )}
-      </div>
+      </InfoTileGrid>
 
       {/* Líneas de detalle */}
       <div>
