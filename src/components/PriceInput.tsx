@@ -9,6 +9,8 @@
  *  - onChange: called with the sanitised price after each keystroke
  *  - error: validation message to show below the input, if any
  *  - label: aria-label for the input (default "Precio")
+ *  - monedaCodigo: ISO code of the document's currency, shown as the prefix;
+ *    `null` shows no prefix (never a "$" that would assert pesos, EC-606)
  */
 
 "use client";
@@ -18,6 +20,7 @@ interface PriceInputProps {
   onChange: (next: string) => void;
   error?: string;
   label?: string;
+  monedaCodigo: string | null;
 }
 
 /** Sanitiza el input de precio: solo dígitos y un único punto decimal. */
@@ -31,11 +34,14 @@ export function PriceInput({
   onChange,
   error,
   label = "Precio",
+  monedaCodigo,
 }: PriceInputProps) {
   return (
     <div className="flex flex-col items-end gap-0.5">
       <div className="flex items-center gap-1">
-        <span className="text-xs text-slate-400 dark:text-slate-500">$</span>
+        {monedaCodigo && (
+          <span className="text-xs text-slate-400 dark:text-slate-500">{monedaCodigo}</span>
+        )}
         <input
           type="text"
           inputMode="decimal"

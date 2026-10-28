@@ -21,6 +21,7 @@ import { usePriceEntries } from "../hooks/usePriceEntries";
 import { useUpdatePurchaseOrder } from "../hooks/useUpdatePurchaseOrder";
 import { buildPurchaseOrderDetalle } from "../utils/buildPurchaseOrderDetalle";
 import type { PurchaseOrderHeaderFieldErrors } from "../utils/purchaseOrderHeaderErrors";
+import { formatMoneyValue } from "@/src/utils/formatCurrency";
 
 /**
  * Concatena, en minúsculas, los campos contra los que filtra el buscador.
@@ -86,6 +87,11 @@ export function PurchaseOrderEditStep2({
   // Opt-out del React Compiler: `useVirtualizer` retorna funciones internas
   // que el compilador no puede memoizar de forma segura.
   "use no memo";
+
+  // Código de la moneda elegida en el encabezado: prefijo de los precios
+  // capturados (EC-606); sin moneda resuelta, sin prefijo.
+  const monedaCodigo =
+    onboardingData.catalogos.monedas.find((moneda) => moneda.id === header.moneda)?.codigo_iso ?? null;
 
   const { mutate: update, isPending } = useUpdatePurchaseOrder({
     onOrderNoLongerEditable,
@@ -402,6 +408,7 @@ export function PurchaseOrderEditStep2({
                         value={prices[product.id] ?? ""}
                         onChange={(next) => setPrice(product.id, next)}
                         error={priceErrors[product.id]}
+                        monedaCodigo={monedaCodigo}
                         label={`Precio de ${product.nombre}`}
                       />
                     </div>
@@ -409,7 +416,8 @@ export function PurchaseOrderEditStep2({
 
                   {!selected && (
                     <span className="shrink-0 text-xs font-bold text-slate-600 dark:text-slate-300">
-                      ${Number(product.precio_base).toFixed(2)}
+                      {/* Sin símbolo: `precio_base` no declara moneda (EC-606). */}
+                      {formatMoneyValue(product.precio_base, null)}
                     </span>
                   )}
                 </div>
