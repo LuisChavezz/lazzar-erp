@@ -13,7 +13,8 @@ import { useColors } from "../../colors/hooks/useColors";
 import { useSizes } from "../../sizes/hooks/useSizes";
 import ProductVariantOnboardingForm from "../../product-variant-onboarding/components/ProductVariantOnboardingForm";
 import { useProductVariants } from "../hooks/useProductVariants";
-import { getColumns } from "./ProductVariantColumns";
+import { getColumns, getProductVariantHeaderFilters } from "./ProductVariantColumns";
+import { withHeaderFilters } from "@/src/components/withHeaderFilters";
 
 /**
  * Variantes del módulo de Producción (`/manufacturing/product-variants`):
@@ -58,7 +59,11 @@ export function ProductionVariantsView() {
     colors: new Map(colors.map((color) => [color.id, color.nombre])),
     sizes: new Map(sizes.map((size) => [size.id, size.nombre])),
   };
-  const columns = getColumns(() => {}, { canEdit: false, canDelete: false }, lookups);
+  const columns = withHeaderFilters(
+    getColumns(() => {}, { canEdit: false, canDelete: false }, lookups),
+    productVariants,
+    getProductVariantHeaderFilters(lookups),
+  );
 
   const isLoading = isLoadingVariants || isLoadingProducts || isLoadingColors || isLoadingSizes;
   // Variantes, productos, colores y tallas ya llegan filtrados: un refetch

@@ -10,6 +10,8 @@ import {
   ProduccionIcon,
   FactoryIcon,
   ScissorsIcon,
+  SliceIcon,
+  RulerIcon,
   CheckCircleIcon,
   ErrorIcon,
   ExclamationTriangleIcon,
@@ -17,6 +19,8 @@ import {
   ChevronRightIcon,
 } from "@/src/components/Icons";
 import { useEmbroideryOrders } from "@/src/features/embroidery/hooks/useEmbroideryOrders";
+import { useCorteMangaOrders } from "@/src/features/corte-manga/hooks/useCorteMangaOrders";
+import { useReflectiveOrders } from "@/src/features/reflective-orders/hooks/useReflectiveOrders";
 import type { EmbroideryOrder } from "@/src/features/embroidery/interfaces/embroidery.interface";
 import { useProductionOrders } from "@/src/features/production-orders/hooks/useProductionOrders";
 import type { ProductionOrderListItem } from "@/src/features/production-orders/interfaces/production-order.interface";
@@ -42,6 +46,7 @@ function KpiCard({
   progress,
   badge,
   badgeCls,
+  href,
 }: {
   label: string;
   value: number | string;
@@ -53,43 +58,61 @@ function KpiCard({
   progress?: number;
   badge?: string;
   badgeCls?: string;
+  /** Lista a la que lleva la tarjeta; toda la tarjeta es el enlace. */
+  href?: string;
 }) {
   const pct = typeof progress === "number" ? Math.max(0, Math.min(100, progress)) : 100;
+  const Wrapper = href ? Link : "div";
 
+  // Diseño compacto en una fila: insignia del ícono a la izquierda y, a su
+  // lado, la cifra grande con su etiqueta; el detalle y el porcentaje abajo.
+  // Antes la etiqueta y el ícono iban en una fila propia y el valor en otra,
+  // lo que dejaba la tarjeta alta y con mucho aire vacío.
   return (
-    <div className="group relative rounded-xl bg-white dark:bg-black border border-slate-200 dark:border-white/10 p-5 shadow-sm hover:shadow-lg transition-all duration-300">
-      {/* Línea de acento superior */}
+    <Wrapper
+      href={href as string}
+      className="group relative block overflow-hidden rounded-xl bg-white dark:bg-black border border-slate-200 dark:border-white/10 px-4 py-3.5 shadow-sm hover:shadow-lg hover:-translate-y-0.5 hover:border-slate-300 dark:hover:border-white/20 transition-all duration-300"
+    >
+      {/* Acento del color del indicador: siempre visible, más intenso al pasar el cursor */}
       <div
-        className={`absolute inset-x-0 top-0 h-0.5 rounded-t-xl bg-linear-to-r from-transparent via-current to-transparent opacity-0 group-hover:opacity-100 transition-opacity ${accentColor}`}
+        className={`absolute inset-x-0 top-0 h-0.5 bg-linear-to-r from-transparent via-current to-transparent opacity-50 group-hover:opacity-100 transition-opacity ${accentColor}`}
       />
-      {/* Encabezado: label + ícono */}
-      <div className="flex justify-between items-start mb-4">
-        <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-300">
-          {label}
-        </span>
-        <div className={`p-2 rounded-lg ${iconBg} ${iconText} shadow-[0_0_15px_rgba(15,23,42,0.08)]`}>
+      <div className="flex items-center gap-3">
+        <div className={`grid place-items-center w-11 h-11 shrink-0 rounded-xl ${iconBg} ${iconText}`}>
           <Icon className="w-5 h-5" aria-hidden="true" />
         </div>
-      </div>
-      {/* Valor + badge */}
-      <div className="flex items-baseline gap-2 mb-2">
-        <h3 className="text-2xl font-bold text-slate-800 dark:text-white tracking-tight font-mono">
-          {value}
-        </h3>
-        {badge && (
-          <span className={`text-xs font-semibold px-1.5 py-0.5 rounded ${badgeCls}`}>
-            {badge}
-          </span>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+            {label}
+          </p>
+          <div className="flex items-baseline gap-2">
+            <h3 className="text-2xl font-bold leading-tight text-slate-900 dark:text-white tracking-tight tabular-nums">
+              {value}
+            </h3>
+            {badge && (
+              <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${badgeCls}`}>
+                {badge}
+              </span>
+            )}
+          </div>
+        </div>
+        {href && (
+          <ChevronRightIcon
+            className="w-4 h-4 shrink-0 text-slate-300 dark:text-slate-600 group-hover:text-sky-500 group-hover:translate-x-0.5 transition-all"
+            aria-hidden="true"
+          />
         )}
       </div>
-      {sub && (
-        <p className="text-xs text-slate-500 dark:text-slate-400 mb-2">{sub}</p>
-      )}
-      {/* Barra de progreso */}
-      <div className={`h-1 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden ${accentColor}`}>
-        <div className="h-full bg-current rounded-full transition-all duration-700" style={{ width: `${pct}%` }} />
+      <div className="mt-3 flex items-center gap-2">
+        <div className={`h-1 flex-1 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden ${accentColor}`}>
+          <div className="h-full bg-current rounded-full transition-all duration-700" style={{ width: `${pct}%` }} />
+        </div>
+        <span className="shrink-0 text-[11px] text-slate-500 dark:text-slate-400 tabular-nums">
+          {sub ? `${sub} · ` : ""}
+          {Math.round(pct)}%
+        </span>
       </div>
-    </div>
+    </Wrapper>
   );
 }
 
@@ -192,15 +215,23 @@ function OrderRow({ order }: { order: ProductionOrderListItem }) {
   const status = productionOrderStatusEntry(order.estatus_op, order.estatus_op_display);
 
   return (
-    <div className="flex items-center gap-3 py-2.5 border-b border-slate-100 dark:border-white/5 last:border-0">
+    <Link
+      href={`/manufacturing/production-orders/${order.op_id}`}
+      title="Ver detalle"
+      className="group flex items-center gap-3 -mx-2 px-2 py-2.5 rounded-lg border-b border-slate-100 dark:border-white/5 last:border-0 hover:bg-slate-50 dark:hover:bg-white/5 transition-colors"
+    >
       <span className={`w-2 h-2 rounded-full shrink-0 ${status.dot}`} aria-hidden="true" />
-      <p className="flex-1 min-w-0 text-xs font-semibold text-slate-700 dark:text-slate-200 font-mono truncate">
+      <p className="flex-1 min-w-0 text-xs font-semibold text-slate-700 dark:text-slate-200 font-mono truncate group-hover:text-sky-600 dark:group-hover:text-sky-400">
         {order.folio_op}
       </p>
       <span className={`shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded ${status.cls}`}>
         {status.label}
       </span>
-    </div>
+      <ChevronRightIcon
+        className="w-3.5 h-3.5 shrink-0 text-slate-300 dark:text-slate-600 group-hover:text-sky-500 group-hover:translate-x-0.5 transition-all"
+        aria-hidden="true"
+      />
+    </Link>
   );
 }
 
@@ -335,6 +366,57 @@ function WithEmbroideryOrders({
   return children({ data: orders, isUnavailable: !hasLoaded });
 }
 
+/**
+ * Cifras de un módulo cuyos estatus siguen el esquema 1-7 compartido por Corte
+ * de Manga y Reflejante: 1-4 activas, 5 completada, 6 detenida (alerta) y 7
+ * cancelada, que no cuenta en el total — mismo criterio que OP y OB.
+ */
+const statusModuleCounts = (estatuses: number[]) => {
+  const vigentes = estatuses.filter((estatus) => estatus !== 7);
+  return {
+    total: vigentes.length,
+    activas: vigentes.filter((estatus) => estatus >= 1 && estatus <= 4).length,
+    completas: vigentes.filter((estatus) => estatus === 5).length,
+    alertas: vigentes.filter((estatus) => estatus === 6).length,
+  };
+};
+
+/**
+ * Tarjeta de Órdenes de Corte de Manga. Consulta su propio listado y solo se
+ * monta con `R-PRODUCCION-CM`. Hoy el backend siempre manda estatus 1
+ * (Pendiente), así que lo normal es ver todas como activas.
+ */
+function CorteMangaModuleCard() {
+  const { orders, hasLoaded } = useCorteMangaOrders();
+  return (
+    <ModuleCard
+      href="/manufacturing/corte-manga"
+      icon={SliceIcon}
+      iconBg="bg-amber-50 dark:bg-amber-500/10"
+      iconText="text-amber-500"
+      title="Órdenes de Corte de Manga"
+      {...statusModuleCounts(orders.map((o) => o.estatus_corte))}
+      isUnavailable={!hasLoaded}
+    />
+  );
+}
+
+/** Tarjeta de Órdenes de Reflejante, con `R-PRODUCCION-OR`. Mismo esquema de estatus. */
+function ReflectiveModuleCard() {
+  const { orders, hasLoaded } = useReflectiveOrders();
+  return (
+    <ModuleCard
+      href="/manufacturing/reflective-orders"
+      icon={RulerIcon}
+      iconBg="bg-emerald-50 dark:bg-emerald-500/10"
+      iconText="text-emerald-500"
+      title="Órdenes de Reflejante"
+      {...statusModuleCounts(orders.map((o) => o.estatus_reflejante))}
+      isUnavailable={!hasLoaded}
+    />
+  );
+}
+
 // ── Componente principal ──────────────────────────────────────────────────────
 
 /**
@@ -380,6 +462,9 @@ function DashboardContent({
   op?: ListState<ProductionOrderListItem>;
   ob?: ListState<EmbroideryOrder>;
 }) {
+  const { data: session } = useSession();
+  const canViewCorteManga = hasPermission("R-PRODUCCION-CM", session?.user);
+  const canViewReflective = hasPermission("R-PRODUCCION-OR", session?.user);
   const opMetrics: ProductionOrderMetrics | null = op ? getProductionOrderMetrics(op.data) : null;
   const obMetrics: EmbroideryOrderMetrics | null = ob ? getEmbroideryOrderMetrics(ob.data) : null;
   const opUnavailable = op?.isUnavailable ?? false;
@@ -422,6 +507,7 @@ function DashboardContent({
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <KpiCard
             label="OPs Activas"
+            href="/manufacturing/production-orders"
             value={fmt(opMetrics.active, opUnavailable)}
             sub="Órdenes en curso"
             icon={ProduccionIcon}
@@ -434,6 +520,7 @@ function DashboardContent({
           />
           <KpiCard
             label="En Producción"
+            href="/manufacturing/production-orders"
             value={fmt(opMetrics.inProduction, opUnavailable)}
             sub="Órdenes en piso"
             icon={FactoryIcon}
@@ -444,6 +531,7 @@ function DashboardContent({
           />
           <KpiCard
             label="Alertas"
+            href="/manufacturing/production-orders"
             value={fmt(opMetrics.stopped.length, opUnavailable)}
             sub="detenidas"
             icon={ExclamationTriangleIcon}
@@ -454,6 +542,7 @@ function DashboardContent({
           />
           <KpiCard
             label="Completadas"
+            href="/manufacturing/production-orders"
             value={fmt(opMetrics.completed, opUnavailable)}
             icon={CheckCircleIcon}
             iconBg="bg-emerald-50 dark:bg-emerald-500/10"
@@ -470,11 +559,14 @@ function DashboardContent({
 
         {/* Módulos de producción */}
         <div className={`space-y-4 ${opMetrics ? "xl:col-span-2" : ""}`}>
-          <div>
-            <h2 className="text-sm font-bold text-slate-800 dark:text-white">Módulos de producción</h2>
-            <p className="text-xs text-slate-400 mt-0.5">Estado general por área de manufactura</p>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div
+            // Tres tarjetas, en una fila; dos o cuatro, en pares (2x2).
+            className={`grid grid-cols-1 sm:grid-cols-2 gap-4 ${
+              [opMetrics, obMetrics, canViewCorteManga, canViewReflective].filter(Boolean).length === 3
+                ? "lg:grid-cols-3"
+                : ""
+            }`}
+          >
             {opMetrics && (
               <ModuleCard
                 href="/manufacturing/production-orders"
@@ -503,7 +595,76 @@ function DashboardContent({
                 isUnavailable={obUnavailable}
               />
             )}
+            {canViewCorteManga && <CorteMangaModuleCard />}
+            {canViewReflective && <ReflectiveModuleCard />}
           </div>
+          {/* Estatus y prioridad bajo los módulos (antes en una fila aparte):
+              así la columna ancha no deja un hueco junto al panel derecho. */}
+          {opMetrics && (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
+            {/* Distribución por estatus */}
+            <div className="rounded-xl bg-white dark:bg-black border border-slate-200 dark:border-white/10 p-5 shadow-sm">
+              <div className="mb-4">
+                <h2 className="text-sm font-bold text-slate-800 dark:text-white">Distribución por estatus</h2>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  Órdenes de Producción — {fmt(opMetrics.all, opUnavailable)}{" "}
+                  {plural(opUnavailable ? 0 : opMetrics.all, "total", "totales")}
+                </p>
+              </div>
+              <div className="space-y-2.5">
+                {!opUnavailable &&
+                  opMetrics.byStatus.map((item) => {
+                    const status = productionOrderStatusEntry(item.estatus, item.display);
+                    return (
+                      <DistBar
+                        key={item.estatus}
+                        label={status.label}
+                        count={item.count}
+                        total={opMetrics.all}
+                        dotCls={status.dot}
+                        labelCls={status.cls}
+                      />
+                    );
+                  })}
+              </div>
+            </div>
+  
+            {/* Distribución por prioridad + totales consolidados */}
+            <div className="rounded-xl bg-white dark:bg-black border border-slate-200 dark:border-white/10 p-5 shadow-sm">
+              <div className="mb-4">
+                <h2 className="text-sm font-bold text-slate-800 dark:text-white">Prioridad de órdenes</h2>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Clasificación de Órdenes de Producción por urgencia</p>
+              </div>
+              <div className="space-y-4">
+                <PriorityRow
+                  label="Alta prioridad"
+                  count={opMetrics.byPriority.high}
+                  total={opMetrics.all}
+                  dotCls="bg-red-500"
+                  valueCls="text-red-600 dark:text-red-400"
+                  isUnavailable={opUnavailable}
+                />
+                <PriorityRow
+                  label="Media prioridad"
+                  count={opMetrics.byPriority.medium}
+                  total={opMetrics.all}
+                  dotCls="bg-amber-500"
+                  valueCls="text-amber-600 dark:text-amber-400"
+                  isUnavailable={opUnavailable}
+                />
+                <PriorityRow
+                  label="Baja prioridad"
+                  count={opMetrics.byPriority.low}
+                  total={opMetrics.all}
+                  dotCls="bg-slate-400"
+                  valueCls="text-slate-500 dark:text-slate-400"
+                  isUnavailable={opUnavailable}
+                />
+              </div>
+              <div className="mt-6 pt-4 border-t border-slate-100 dark:border-white/5">{totals}</div>
+            </div>
+              </div>
+          )}
           {/* Sin OP no existe la tarjeta de prioridad que los aloja: los
               totales van aquí, bajo las tarjetas de módulo. */}
           {!opMetrics && (
@@ -524,7 +685,7 @@ function DashboardContent({
                   <ErrorIcon className="w-4 h-4 text-red-500 shrink-0" />
                   <div>
                     <h3 className="text-sm font-bold text-slate-800 dark:text-white">Órdenes en alerta</h3>
-                    <p className="text-[11px] text-slate-400">Órdenes detenidas</p>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400">Órdenes detenidas</p>
                   </div>
                 </div>
                 <div>
@@ -547,7 +708,7 @@ function DashboardContent({
               <div className="flex items-center justify-between mb-3">
                 <div>
                   <h3 className="text-sm font-bold text-slate-800 dark:text-white">Últimas órdenes</h3>
-                  <p className="text-[11px] text-slate-400">Más recientes por fecha de inicio</p>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400">Más recientes por fecha de inicio</p>
                 </div>
                 <TrendingUpIcon className="w-4 h-4 text-slate-300 dark:text-slate-600" />
               </div>
@@ -570,73 +731,6 @@ function DashboardContent({
         )}
       </div>
 
-      {/* ── Sección inferior (OP) ────────────────────────────────────────── */}
-      {opMetrics && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-
-          {/* Distribución por estatus */}
-          <div className="rounded-xl bg-white dark:bg-black border border-slate-200 dark:border-white/10 p-5 shadow-sm">
-            <div className="mb-4">
-              <h2 className="text-sm font-bold text-slate-800 dark:text-white">Distribución por estatus</h2>
-              <p className="text-xs text-slate-400 mt-0.5">
-                Órdenes de Producción — {fmt(opMetrics.all, opUnavailable)}{" "}
-                {plural(opUnavailable ? 0 : opMetrics.all, "total", "totales")}
-              </p>
-            </div>
-            <div className="space-y-2.5">
-              {!opUnavailable &&
-                opMetrics.byStatus.map((item) => {
-                  const status = productionOrderStatusEntry(item.estatus, item.display);
-                  return (
-                    <DistBar
-                      key={item.estatus}
-                      label={status.label}
-                      count={item.count}
-                      total={opMetrics.all}
-                      dotCls={status.dot}
-                      labelCls={status.cls}
-                    />
-                  );
-                })}
-            </div>
-          </div>
-
-          {/* Distribución por prioridad + totales consolidados */}
-          <div className="rounded-xl bg-white dark:bg-black border border-slate-200 dark:border-white/10 p-5 shadow-sm">
-            <div className="mb-4">
-              <h2 className="text-sm font-bold text-slate-800 dark:text-white">Prioridad de órdenes</h2>
-              <p className="text-xs text-slate-400 mt-0.5">Clasificación de Órdenes de Producción por urgencia</p>
-            </div>
-            <div className="space-y-4">
-              <PriorityRow
-                label="Alta prioridad"
-                count={opMetrics.byPriority.high}
-                total={opMetrics.all}
-                dotCls="bg-red-500"
-                valueCls="text-red-600 dark:text-red-400"
-                isUnavailable={opUnavailable}
-              />
-              <PriorityRow
-                label="Media prioridad"
-                count={opMetrics.byPriority.medium}
-                total={opMetrics.all}
-                dotCls="bg-amber-500"
-                valueCls="text-amber-600 dark:text-amber-400"
-                isUnavailable={opUnavailable}
-              />
-              <PriorityRow
-                label="Baja prioridad"
-                count={opMetrics.byPriority.low}
-                total={opMetrics.all}
-                dotCls="bg-slate-400"
-                valueCls="text-slate-500 dark:text-slate-400"
-                isUnavailable={opUnavailable}
-              />
-            </div>
-            <div className="mt-6 pt-4 border-t border-slate-100 dark:border-white/5">{totals}</div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

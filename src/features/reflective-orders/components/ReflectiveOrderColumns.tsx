@@ -14,6 +14,7 @@ import {
   reflectiveStatusEntry,
 } from "../constants/reflectiveOrderStatus";
 import type { ReflectiveOrder } from "../interfaces/reflective-order.interface";
+import type { HeaderFilterSpec } from "@/src/components/withHeaderFilters";
 
 const columnHelper = createColumnHelper<ReflectiveOrder>();
 
@@ -260,3 +261,21 @@ export const getReflectiveOrderColumns = (onViewDetails: (id: number) => void) =
     cell: ({ row }) => <ActionsCell order={row.original} onViewDetails={onViewDetails} />,
   }),
 ] as ColumnDef<ReflectiveOrder>[];
+
+/**
+ * Filtros de encabezado (estilo Excel) de esta tabla, para `withHeaderFilters`.
+ * Las opciones salen del listado completo (la tabla es de modo cliente).
+ */
+export const REFLECTIVEORDER_HEADER_FILTERS: Partial<Record<string, HeaderFilterSpec<ReflectiveOrder>>> = {
+  estatus_reflejante: { type: "distinct", get: (r) => r.estatus_reflejante, label: (r) => r.estatus_reflejante_display },
+  prioridad: {
+    type: "distinct",
+    get: (r) => r.prioridad,
+    label: (r) => REFLECTIVE_ORDER_PRIORITY_CONFIG[String(r.prioridad)]?.label ?? String(r.prioridad),
+  },
+  pedido_folio: { type: "presence", get: (r) => r.pedido_folio, con: "Con pedido", sin: "Sin pedido" },
+  cobertura: { type: "boolean", get: (r) => r.cobertura_completa, yes: "Cobertura completa", no: "Cobertura parcial" },
+  usuario_nombre: { type: "distinct", get: (r) => r.usuario_nombre },
+  fecha_inicio: { type: "month", get: (r) => r.fecha_inicio },
+  observaciones: { type: "presence", get: (r) => r.observaciones, con: "Con observaciones", sin: "Sin observaciones" },
+};

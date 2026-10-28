@@ -2,7 +2,11 @@
 
 import { useMemo, useState } from "react";
 import { DataTable } from "@/src/components/DataTable";
-import { getCedicorProductionOrderColumns } from "./CedicorProductionOrderColumns";
+import {
+  CEDICOR_PRODUCTION_ORDER_HEADER_FILTERS,
+  getCedicorProductionOrderColumns,
+} from "./CedicorProductionOrderColumns";
+import { withHeaderFilters } from "@/src/components/withHeaderFilters";
 import { MOCK_CEDICOR_PRODUCTION_ORDERS } from "../mocks/cedicor-production-order.mock";
 import {
   PRODUCTION_ORDER_STEPS,
@@ -82,7 +86,11 @@ export function CedicorProductionOrderList() {
 
       {/* ── Tabla principal ───────────────────────────────────────────── */}
       <DataTable
-        columns={columns}
+        columns={withHeaderFilters(
+          columns,
+          MOCK_CEDICOR_PRODUCTION_ORDERS,
+          CEDICOR_PRODUCTION_ORDER_HEADER_FILTERS,
+        )}
         data={ordenesFiltradas}
         baseDataCount={MOCK_CEDICOR_PRODUCTION_ORDERS.length}
         searchPlaceholder="Buscar folio, cliente, producto…"

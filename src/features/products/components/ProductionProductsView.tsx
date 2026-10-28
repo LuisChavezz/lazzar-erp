@@ -7,7 +7,8 @@ import { hasPermission } from "@/src/utils/permissions";
 import { useProductCategories } from "../../product-categories/hooks/useProductCategories";
 import ProductOnboardingDialog from "../../product-onboarding/components/ProductOnboardingDialog";
 import { useProducts } from "../hooks/useProducts";
-import { getColumns, type ProductRow } from "./ProductColumns";
+import { getColumns, PRODUCT_HEADER_FILTERS, type ProductRow } from "./ProductColumns";
+import { withHeaderFilters } from "@/src/components/withHeaderFilters";
 
 // Sin acciones por fila: esta vista solo lista y da de alta. La edición y la
 // baja siguen viviendo en Configuración (`ProductList`).
@@ -49,7 +50,7 @@ export function ProductionProductsView() {
   return (
     <div className="h-full flex flex-col min-h-0">
       <DataTable
-        columns={READ_ONLY_COLUMNS}
+        columns={withHeaderFilters(READ_ONLY_COLUMNS, rows, PRODUCT_HEADER_FILTERS)}
         data={rows}
         searchPlaceholder="Buscar producto..."
         getRowId={(row) => String(row.id)}

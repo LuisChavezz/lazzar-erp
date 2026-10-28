@@ -1,6 +1,7 @@
 "use client";
 
 import { createColumnHelper, type ColumnDef } from "@tanstack/react-table";
+import type { HeaderFilterSpec } from "@/src/components/withHeaderFilters";
 import type { ProductionOrderListItem } from "../interfaces/production-order.interface";
 import { ActionMenu } from "@/src/components/ActionMenu";
 import type { ActionMenuItem } from "@/src/components/ActionMenu";
@@ -211,3 +212,23 @@ export function getProductionOrderColumns(
     }),
   ] as ColumnDef<ProductionOrderListItem, unknown>[];
 }
+
+/**
+ * Filtros de encabezado (estilo Excel) de esta tabla, para `withHeaderFilters`.
+ * Las opciones salen del listado completo (la tabla es de modo cliente).
+ */
+export const PRODUCTION_ORDER_HEADER_FILTERS: Partial<Record<string, HeaderFilterSpec<ProductionOrderListItem>>> = {
+  estatus_op: {
+    type: "distinct",
+    get: (r) => r.estatus_op,
+    label: (r) => productionOrderStatusEntry(r.estatus_op, r.estatus_op_display).label,
+  },
+  prioridad: {
+    type: "distinct",
+    get: (r) => r.prioridad,
+    label: (r) => PRODUCTION_ORDER_PRIORITY_CONFIG[String(r.prioridad)]?.label ?? String(r.prioridad),
+  },
+  fecha_inicio: { type: "month", get: (r) => r.fecha_inicio },
+  fecha_fin: { type: "month", get: (r) => r.fecha_fin, emptyLabel: "Sin fecha fin" },
+  activo: { type: "boolean", get: (r) => r.activo, yes: "Activas", no: "Inactivas" },
+};

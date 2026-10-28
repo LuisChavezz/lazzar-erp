@@ -8,6 +8,7 @@ import { ViewIcon } from "@/src/components/Icons";
 import { getPedidoClasificacionLabel } from "@/src/features/orders/constants/pedidoStatus";
 import { parseLocalDate } from "@/src/utils/formatDate";
 import type { SpecialOrderRow } from "../utils/specialOrderFilters";
+import type { HeaderFilterSpec } from "@/src/components/withHeaderFilters";
 
 export interface SpecialOrderColumnCallbacks {
   /** Navega a la página de detalle del pedido especial. */
@@ -115,3 +116,17 @@ export const getSpecialOrderColumns = ({
     },
   },
 ];
+
+/**
+ * Filtros de encabezado (estilo Excel) de esta tabla, para `withHeaderFilters`.
+ * Las opciones salen del listado completo (la tabla es de modo cliente).
+ */
+export const SPECIAL_ORDER_HEADER_FILTERS: Partial<Record<string, HeaderFilterSpec<SpecialOrderRow>>> = {
+  cliente_nombre: { type: "distinct", get: (r) => r.cliente_nombre, searchable: true },
+  clasificacion: {
+    type: "distinct",
+    get: (r) => r.clasificacion,
+    label: (r) => getPedidoClasificacionLabel(r.clasificacion),
+  },
+  fecha_confirmacion: { type: "month", get: (r) => r.fecha_confirmacion, emptyLabel: "Sin confirmar" },
+};

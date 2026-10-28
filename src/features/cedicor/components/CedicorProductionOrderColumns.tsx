@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { createColumnHelper, type ColumnDef } from "@tanstack/react-table";
+import type { HeaderFilterSpec } from "@/src/components/withHeaderFilters";
 import { CedicorProductionOrderTimelineDialog } from "./CedicorProductionOrderTimelineDialog";
 import type {
   ProductionOrder,
@@ -336,3 +337,33 @@ export function getCedicorProductionOrderColumns(): ColumnDef<ProductionOrder>[]
     }),
   ] as ColumnDef<ProductionOrder>[];
 }
+
+const MATERIALES_LABELS: Record<string, string> = {
+  sin_verificar: "Sin verificar",
+  disponible: "Disponible",
+  faltante: "Faltante",
+  parcial: "Parcial",
+};
+
+/**
+ * Filtros de encabezado (estilo Excel) de esta tabla, para `withHeaderFilters`.
+ * Las opciones salen del listado completo (la tabla es de modo cliente).
+ */
+export const CEDICOR_PRODUCTION_ORDER_HEADER_FILTERS: Partial<Record<string, HeaderFilterSpec<ProductionOrder>>> = {
+  cliente: { type: "distinct", get: (r) => r.cliente, searchable: true },
+  nombre_producto: { type: "distinct", get: (r) => r.nombre_producto, searchable: true },
+  fecha_creacion: { type: "month", get: (r) => r.fecha_creacion },
+  cantidad_total: { type: "range", get: (r) => r.cantidad_total, ranges: [
+    { value: "hasta-500", label: "Hasta 500 piezas", max: 501 },
+    { value: "501-2000", label: "501 a 2,000 piezas", min: 501, max: 2001 },
+    { value: "mas-2000", label: "Más de 2,000 piezas", min: 2001 },
+  ] },
+  paso_actual: { type: "distinct", get: (r) => r.paso_actual, label: (r) => `Paso ${r.paso_actual}` },
+  verificacion_materiales: {
+    type: "distinct",
+    get: (r) => r.verificacion_materiales,
+    label: (r) => MATERIALES_LABELS[r.verificacion_materiales] ?? r.verificacion_materiales,
+  },
+  responsable_actual: { type: "distinct", get: (r) => r.responsable_actual },
+  fecha_estimada_entrega: { type: "month", get: (r) => r.fecha_estimada_entrega },
+};

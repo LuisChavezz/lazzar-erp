@@ -8,6 +8,7 @@ import {
   PencilSquareIcon,
 } from "../../../components/Icons";
 import { ProductVariant } from "../interfaces/product-variant.interface";
+import type { HeaderFilterSpec } from "@/src/components/withHeaderFilters";
 import { ConfirmDialog } from "../../../components/ConfirmDialog";
 import { MainDialog } from "../../../components/MainDialog";
 import { DialogHeader } from "../../../components/DialogHeader";
@@ -243,3 +244,23 @@ export const getColumns = (
 
   return columns;
 };
+
+/**
+ * Filtros de encabezado (estilo Excel) de esta tabla, para `withHeaderFilters`.
+ * Las opciones salen del listado completo (la tabla es de modo cliente).
+ */
+export const getProductVariantHeaderFilters = (lookups: {
+  products: Map<number, string>;
+  colors: Map<number, string>;
+  sizes: Map<number, string>;
+}): Partial<Record<string, HeaderFilterSpec<ProductVariant>>> => ({
+  activo: { type: "boolean", get: (r) => r.activo, yes: "Activas", no: "Inactivas" },
+  producto: { type: "distinct", get: (r) => r.producto, label: (r) => lookups.products.get(r.producto), searchable: true },
+  color: { type: "distinct", get: (r) => r.color, label: (r) => lookups.colors.get(r.color), searchable: true },
+  talla: { type: "distinct", get: (r) => r.talla, label: (r) => (r.talla === null ? null : lookups.sizes.get(r.talla)) },
+  precio_base: { type: "range", get: (r) => r.precio_base, ranges: [
+    { value: "hasta-100", label: "Hasta $100", max: 100 },
+    { value: "100-500", label: "$100 – $500", min: 100, max: 500 },
+    { value: "mas-500", label: "Más de $500", min: 500 },
+  ] },
+});

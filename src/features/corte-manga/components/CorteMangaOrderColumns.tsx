@@ -13,6 +13,7 @@ import {
   corteMangaStatusEntry,
 } from "../constants/corteMangaOrderStatus";
 import type { CorteMangaOrder } from "../interfaces/corte-manga-order.interface";
+import type { HeaderFilterSpec } from "@/src/components/withHeaderFilters";
 
 const columnHelper = createColumnHelper<CorteMangaOrder>();
 
@@ -251,3 +252,21 @@ export const getCorteMangaOrderColumns = (onViewDetails: (id: number) => void) =
     cell: ({ row }) => <ActionsCell order={row.original} onViewDetails={onViewDetails} />,
   }),
 ] as ColumnDef<CorteMangaOrder>[];
+
+/**
+ * Filtros de encabezado (estilo Excel) de esta tabla, para `withHeaderFilters`.
+ * Las opciones salen del listado completo (la tabla es de modo cliente).
+ */
+export const CORTEMANGAORDER_HEADER_FILTERS: Partial<Record<string, HeaderFilterSpec<CorteMangaOrder>>> = {
+  estatus_corte: { type: "distinct", get: (r) => r.estatus_corte, label: (r) => corteMangaStatusEntry(r.estatus_corte, r.estatus_corte_display).label },
+  prioridad: {
+    type: "distinct",
+    get: (r) => r.prioridad,
+    label: (r) => CORTE_MANGA_ORDER_PRIORITY_CONFIG[String(r.prioridad)]?.label ?? String(r.prioridad),
+  },
+  pedido_folio: { type: "presence", get: (r) => r.pedido_folio, con: "Con pedido", sin: "Sin pedido" },
+  usuario_nombre: { type: "distinct", get: (r) => r.usuario_nombre },
+  fecha_inicio: { type: "month", get: (r) => r.fecha_inicio },
+  observaciones: { type: "presence", get: (r) => r.observaciones, con: "Con observaciones", sin: "Sin observaciones" },
+  sucursal_nombre: { type: "distinct", get: (r) => r.sucursal_nombre },
+};

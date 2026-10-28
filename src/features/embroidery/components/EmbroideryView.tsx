@@ -3,31 +3,22 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { DataTable, type DataTableFilterConfig } from "@/src/components/DataTable";
+import { DataTable } from "@/src/components/DataTable";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { hasPermission } from "@/src/utils/permissions";
 import { isInitialLoadError } from "@/src/utils/isInitialLoadError";
-import { getEmbroideryOrderColumns } from "./EmbroideryOrderColumns";
+import {
+  EMBROIDERYORDER_HEADER_FILTERS,
+  getEmbroideryOrderColumns,
+} from "./EmbroideryOrderColumns";
+import { withHeaderFilters } from "@/src/components/withHeaderFilters";
 import { EmbroideryOrderDetailDialog } from "./EmbroideryOrderDetailDialog";
 import { EmbroideryOrderForm } from "./EmbroideryOrderForm";
 import { EmbroideryStats } from "./EmbroideryStats";
-import { EMBROIDERY_STATUS_CONFIG } from "../constants/embroideryStatus";
 import { useEmbroideryOrders } from "../hooks/useEmbroideryOrders";
 
-// Opciones del filtro derivadas del MISMO catálogo que pinta los badges, de modo
-// que ningún estatus pueda existir en la tabla sin existir en el filtro (ni al
-// revés): el catálogo cubre los 8 valores del enum del backend, no solo los que
-// hoy traen datos. `DataTable` compara `String(fila[id]) === value`, así que el
-// `id` es el campo CRUDO de la fila (`estatus_bordado`, no el id de la columna)
-// y los `value` son los enteros del backend en string. Mismo patrón que
-// `PickingView`.
-const ESTATUS_FILTER_OPTIONS = Object.entries(EMBROIDERY_STATUS_CONFIG).map(
-  ([value, cfg]) => ({ value, label: cfg.label ?? value }),
-);
-
-const EMBROIDERY_FILTER_CONFIG: DataTableFilterConfig[] = [
-  { id: "estatus_bordado", label: "Estatus", options: ESTATUS_FILTER_OPTIONS },
-];
+// El estatus se filtra desde el encabezado de su columna
+// (`EMBROIDERYORDER_HEADER_FILTERS`), igual que el resto de Producción.
 
 /**
  * Vista de Órdenes de Bordado: KPIs del listado (`EmbroideryStats`) más el
@@ -92,10 +83,9 @@ export function EmbroideryView() {
       {!isLoading && !showError && <EmbroideryStats items={orders} />}
 
       <DataTable
-        columns={columns}
+        columns={withHeaderFilters(columns, orders, EMBROIDERYORDER_HEADER_FILTERS)}
         data={orders}
         searchPlaceholder="Buscar folio, pedido u observaciones..."
-        filterConfig={EMBROIDERY_FILTER_CONFIG}
         getRowId={(row) => String(row.id)}
         onRefetch={refetch}
         isRefetching={isFetching}

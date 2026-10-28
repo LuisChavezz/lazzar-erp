@@ -7,7 +7,11 @@ import { DataTable } from "@/src/components/DataTable";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { hasPermission } from "@/src/utils/permissions";
 import { isInitialLoadError } from "@/src/utils/isInitialLoadError";
-import { getCorteMangaOrderColumns } from "./CorteMangaOrderColumns";
+import {
+  CORTEMANGAORDER_HEADER_FILTERS,
+  getCorteMangaOrderColumns,
+} from "./CorteMangaOrderColumns";
+import { withHeaderFilters } from "@/src/components/withHeaderFilters";
 import { CorteMangaOrderDetailDialog } from "./CorteMangaOrderDetailDialog";
 import { CorteMangaOrderForm } from "./CorteMangaOrderForm";
 import { CorteMangaOrderStats } from "./CorteMangaOrderStats";
@@ -104,7 +108,7 @@ export function CorteMangaOrdersView() {
       {!isLoading && !showError && <CorteMangaOrderStats items={orders} />}
 
       <DataTable
-        columns={columns}
+        columns={withHeaderFilters(columns, orders, CORTEMANGAORDER_HEADER_FILTERS)}
         data={orders}
         searchPlaceholder="Buscar folio, pedido, sucursal, operador u observaciones..."
         getRowId={(row) => String(row.id)}

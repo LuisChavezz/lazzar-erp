@@ -7,7 +7,11 @@ import { DataTable } from "@/src/components/DataTable";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { hasPermission } from "@/src/utils/permissions";
 import { isInitialLoadError } from "@/src/utils/isInitialLoadError";
-import { getReflectiveOrderColumns } from "./ReflectiveOrderColumns";
+import {
+  getReflectiveOrderColumns,
+  REFLECTIVEORDER_HEADER_FILTERS,
+} from "./ReflectiveOrderColumns";
+import { withHeaderFilters } from "@/src/components/withHeaderFilters";
 import { ReflectiveOrderDetailDialog } from "./ReflectiveOrderDetailDialog";
 import { ReflectiveOrderForm } from "./ReflectiveOrderForm";
 import { ReflectiveOrderStats } from "./ReflectiveOrderStats";
@@ -98,7 +102,7 @@ export function ReflectiveOrdersView() {
       {!isLoading && !showError && <ReflectiveOrderStats items={orders} />}
 
       <DataTable
-        columns={columns}
+        columns={withHeaderFilters(columns, orders, REFLECTIVEORDER_HEADER_FILTERS)}
         data={orders}
         searchPlaceholder="Buscar folio, pedido, operador u observaciones..."
         getRowId={(row) => String(row.id)}

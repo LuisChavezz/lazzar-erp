@@ -9,7 +9,11 @@ import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { hasPermission } from "@/src/utils/permissions";
 import { isInitialLoadError } from "@/src/utils/isInitialLoadError";
 import { Button } from "@/src/components/Button";
-import { getProductionOrderColumns } from "./ProductionOrderColumns";
+import {
+  getProductionOrderColumns,
+  PRODUCTION_ORDER_HEADER_FILTERS,
+} from "./ProductionOrderColumns";
+import { withHeaderFilters } from "@/src/components/withHeaderFilters";
 import { CreateProductionOrderDialog } from "./CreateProductionOrderDialog";
 import { useProductionOrders } from "../hooks/useProductionOrders";
 import { productionOrderKpisQueryKey } from "../hooks/useProductionOrderKpis";
@@ -74,7 +78,7 @@ export function ProductionOrderList() {
       <ProductionOrderKpisSection />
 
       <DataTable
-        columns={columns}
+        columns={withHeaderFilters(columns, data ?? [], PRODUCTION_ORDER_HEADER_FILTERS)}
         data={data ?? []}
         baseDataCount={data?.length ?? 0}
         searchPlaceholder="Buscar..."

@@ -2,7 +2,11 @@
 
 import { useMemo, useState } from "react";
 import { DataTable } from "@/src/components/DataTable";
-import { getCedicorNewDevelopmentColumns } from "./CedicorNewDevelopmentColumns";
+import {
+  CEDICOR_NEW_DEVELOPMENT_HEADER_FILTERS,
+  getCedicorNewDevelopmentColumns,
+} from "./CedicorNewDevelopmentColumns";
+import { withHeaderFilters } from "@/src/components/withHeaderFilters";
 import { MOCK_CEDICOR_NEW_DEVELOPMENT } from "../mocks/cedicor-new-development.mock";
 import {
   FLOW_STEPS,
@@ -82,7 +86,11 @@ export function CedicorNewDevelopmentList() {
 
       {/* ── Tabla principal ───────────────────────────────────────────── */}
       <DataTable
-        columns={columns}
+        columns={withHeaderFilters(
+          columns,
+          MOCK_CEDICOR_NEW_DEVELOPMENT,
+          CEDICOR_NEW_DEVELOPMENT_HEADER_FILTERS,
+        )}
         data={ordenesFiltradas}
         baseDataCount={MOCK_CEDICOR_NEW_DEVELOPMENT.length}
         searchPlaceholder="Buscar folio, cliente, producto…"

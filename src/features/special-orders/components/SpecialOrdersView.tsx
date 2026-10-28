@@ -5,8 +5,8 @@ import { DataTable } from "@/src/components/DataTable";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { isInitialLoadError } from "@/src/utils/isInitialLoadError";
 import { useSpecialOrders } from "../hooks/useSpecialOrders";
-import { SPECIAL_ORDER_FILTER_CONFIG } from "../utils/specialOrderFilters";
-import { getSpecialOrderColumns } from "./SpecialOrderColumns";
+import { getSpecialOrderColumns, SPECIAL_ORDER_HEADER_FILTERS } from "./SpecialOrderColumns";
+import { withHeaderFilters } from "@/src/components/withHeaderFilters";
 
 /**
  * Vista de "Pedidos especiales" (solo lectura): pedidos con al menos una línea
@@ -33,11 +33,10 @@ export function SpecialOrdersView() {
   return (
     <div className="h-full flex flex-col min-h-0">
       <DataTable
-        columns={columns}
+        columns={withHeaderFilters(columns, orders, SPECIAL_ORDER_HEADER_FILTERS)}
         data={orders}
         getRowId={(row) => String(row.id)}
         searchPlaceholder="Buscar por folio o cliente..."
-        filterConfig={SPECIAL_ORDER_FILTER_CONFIG}
         fillHeight
         onRefetch={refetch}
         isRefetching={isFetching}

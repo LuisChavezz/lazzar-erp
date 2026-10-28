@@ -1,4 +1,5 @@
 import { ColumnDef, createColumnHelper, Row } from "@tanstack/react-table";
+import type { HeaderFilterSpec } from "@/src/components/withHeaderFilters";
 import { EditIcon, DeleteIcon } from "../../../components/Icons";
 import { Product } from "../interfaces/product.interface";
 import { ConfirmDialog } from "../../../components/ConfirmDialog";
@@ -174,4 +175,24 @@ export const getColumns = (
   }
 
   return columns;
+};
+
+/**
+ * Filtros de encabezado (estilo Excel) de esta tabla, para `withHeaderFilters`.
+ * Las opciones salen del listado completo (la tabla es de modo cliente).
+ */
+export const PRODUCT_HEADER_FILTERS: Partial<Record<string, HeaderFilterSpec<ProductRow>>> = {
+  activo: { type: "boolean", get: (r) => r.activo, yes: "Activos", no: "Inactivos" },
+  nombre: { type: "distinct", get: (r) => r.nombre, searchable: true },
+  cod_proscai: { type: "presence", get: (r) => r.cod_proscai, con: "Con código Proscai", sin: "Sin código Proscai" },
+  categoria_producto: { type: "distinct", get: (r) => r.categoria_producto, label: (r) => r.categoria_nombre },
+  precio_base: {
+    type: "range",
+    get: (r) => r.precio_base,
+    ranges: [
+      { value: "hasta-100", label: "Hasta $100", max: 100 },
+      { value: "100-500", label: "$100 – $500", min: 100, max: 500 },
+      { value: "mas-500", label: "Más de $500", min: 500 },
+    ],
+  },
 };

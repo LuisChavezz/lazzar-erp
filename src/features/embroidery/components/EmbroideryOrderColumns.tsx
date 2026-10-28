@@ -13,6 +13,7 @@ import {
   embroideryStatusEntry,
 } from "../constants/embroideryStatus";
 import type { EmbroideryOrder } from "../interfaces/embroidery.interface";
+import type { HeaderFilterSpec } from "@/src/components/withHeaderFilters";
 
 const columnHelper = createColumnHelper<EmbroideryOrder>();
 
@@ -208,3 +209,16 @@ export const getEmbroideryOrderColumns = (onViewDetails: (id: number) => void) =
     cell: ({ row }) => <ActionsCell order={row.original} onViewDetails={onViewDetails} />,
   }),
 ] as ColumnDef<EmbroideryOrder>[];
+
+/**
+ * Filtros de encabezado (estilo Excel) de esta tabla, para `withHeaderFilters`.
+ * Las opciones salen del listado completo (la tabla es de modo cliente).
+ */
+export const EMBROIDERYORDER_HEADER_FILTERS: Partial<Record<string, HeaderFilterSpec<EmbroideryOrder>>> = {
+  estatus_bordado: { type: "distinct", get: (r) => r.estatus_bordado, label: (r) => r.estatus_bordado_display },
+  pedido_folio: { type: "presence", get: (r) => r.pedido_folio, con: "Con pedido", sin: "Sin pedido" },
+  cobertura: { type: "boolean", get: (r) => r.cobertura_completa, yes: "Cobertura completa", no: "Cobertura parcial" },
+  usuario_nombre: { type: "distinct", get: (r) => r.usuario_nombre },
+  fecha_inicio: { type: "month", get: (r) => r.fecha_inicio },
+  observaciones: { type: "presence", get: (r) => r.observaciones, con: "Con observaciones", sin: "Sin observaciones" },
+};
