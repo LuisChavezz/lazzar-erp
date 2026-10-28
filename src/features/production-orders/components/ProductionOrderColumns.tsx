@@ -178,7 +178,9 @@ export function getProductionOrderColumns(
 
 /**
  * Filtros de encabezado (estilo Excel) de esta tabla, para `withHeaderFilters`.
- * Las opciones salen del listado completo (la tabla es de modo cliente).
+ * Las opciones salen del listado completo (la tabla es de modo cliente),
+ * salvo las columnas `options`: ahí salen del catálogo del front, más los
+ * valores de las filas que el catálogo no cubre.
  */
 export const PRODUCTION_ORDER_HEADER_FILTERS: Partial<Record<string, HeaderFilterSpec<ProductionOrderListItem>>> = {
   folio_op: {
@@ -186,8 +188,14 @@ export const PRODUCTION_ORDER_HEADER_FILTERS: Partial<Record<string, HeaderFilte
     filterLabel: "estatus",
     get: (r) => r.estatus_op,
     options: optionsFromConfig(PRODUCTION_ORDER_STATUS_CONFIG),
+    label: (r) => productionOrderStatusEntry(r.estatus_op, r.estatus_op_display).label,
   },
-  prioridad: { type: "options", get: (r) => r.prioridad, options: optionsFromConfig(PRODUCTION_ORDER_PRIORITY_CONFIG) },
+  prioridad: {
+    type: "options",
+    get: (r) => r.prioridad,
+    options: optionsFromConfig(PRODUCTION_ORDER_PRIORITY_CONFIG),
+    label: (r) => productionOrderPriorityFallback(r.prioridad).label,
+  },
   fecha_inicio: { type: "month", get: (r) => r.fecha_inicio },
   fecha_fin: { type: "month", get: (r) => r.fecha_fin, emptyLabel: "Sin fecha fin" },
   activo: { type: "boolean", get: (r) => r.activo, yes: "Activas", no: "Inactivas" },

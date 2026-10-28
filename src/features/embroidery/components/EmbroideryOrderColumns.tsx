@@ -193,7 +193,9 @@ export const getEmbroideryOrderColumns = (onViewDetails: (id: number) => void) =
 
 /**
  * Filtros de encabezado (estilo Excel) de esta tabla, para `withHeaderFilters`.
- * Las opciones salen del listado completo (la tabla es de modo cliente).
+ * Las opciones salen del listado completo (la tabla es de modo cliente),
+ * salvo las columnas `options`: ahí salen del catálogo del front, más los
+ * valores de las filas que el catálogo no cubre.
  */
 export const EMBROIDERYORDER_HEADER_FILTERS: Partial<Record<string, HeaderFilterSpec<EmbroideryOrder>>> = {
   folio_bordado: {
@@ -201,6 +203,7 @@ export const EMBROIDERYORDER_HEADER_FILTERS: Partial<Record<string, HeaderFilter
     filterLabel: "estatus",
     get: (r) => r.estatus_bordado,
     options: optionsFromConfig(EMBROIDERY_STATUS_CONFIG),
+    label: (r) => embroideryStatusEntry(r.estatus_bordado, r.estatus_bordado_display).label,
   },
   pedido_folio: { type: "presence", get: (r) => r.pedido_folio, con: "Con pedido", sin: "Sin pedido" },
   cobertura: { type: "boolean", get: (r) => r.cobertura_completa, yes: "Cobertura completa", no: "Cobertura parcial" },

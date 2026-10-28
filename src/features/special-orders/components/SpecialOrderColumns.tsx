@@ -105,10 +105,17 @@ export const getSpecialOrderColumns = ({
 
 /**
  * Filtros de encabezado (estilo Excel) de esta tabla, para `withHeaderFilters`.
- * Las opciones salen del listado completo (la tabla es de modo cliente).
+ * Las opciones salen del listado completo (la tabla es de modo cliente),
+ * salvo las columnas `options`: ahí salen del catálogo del front, más los
+ * valores de las filas que el catálogo no cubre.
  */
 export const SPECIAL_ORDER_HEADER_FILTERS: Partial<Record<string, HeaderFilterSpec<SpecialOrderRow>>> = {
   cliente_nombre: { type: "distinct", get: (r) => r.cliente_nombre, searchable: true },
-  clasificacion: { type: "options", get: (r) => r.clasificacion, options: optionsFromConfig(PEDIDO_CLASIFICACION_CONFIG) },
+  clasificacion: {
+    type: "options",
+    get: (r) => r.clasificacion,
+    options: optionsFromConfig(PEDIDO_CLASIFICACION_CONFIG),
+    label: (r) => getPedidoClasificacionLabel(r.clasificacion),
+  },
   fecha_confirmacion: { type: "month", get: (r) => r.fecha_confirmacion, emptyLabel: "Sin confirmar" },
 };
