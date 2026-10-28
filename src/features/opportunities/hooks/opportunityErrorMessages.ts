@@ -50,8 +50,9 @@ export const OPPORTUNITY_GONE_DETAIL_MESSAGE = "La oportunidad ya no existe o no
 
 /**
  * Rechazo del DESTINATARIO de una transferencia (400 con `{"vendedor": …}`:
- * inactivo, de otra empresa), o `undefined`. Se pinta bajo el selector, no
- * como toast.
+ * no encontrado en la empresa de la oportunidad, inactivo, o "El usuario no
+ * es del departamento de Ventas."), o `undefined`. Se pinta bajo el selector,
+ * no como toast.
  */
 export const transferVendedorRejection = (error: unknown): string | undefined =>
   error instanceof AxiosError && error.response?.status === 400

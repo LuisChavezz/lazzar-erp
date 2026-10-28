@@ -7,6 +7,7 @@ import { MainDialog } from "@/src/components/MainDialog";
 import { renderRadioIndicator } from "@/src/components/RadioIndicator";
 import { SearchableSelectList } from "@/src/components/SearchableSelectList";
 import { SectionErrorNotice } from "@/src/components/SectionErrorNotice";
+import { useRoles } from "@/src/features/roles/hooks/useRoles";
 import { useUsers } from "@/src/features/users/hooks/useUsers";
 import { useDialogSession } from "@/src/hooks/useDialogSession";
 import { isNotFoundError } from "@/src/utils/drfWriteErrors";
@@ -22,6 +23,7 @@ import type { Opportunity } from "../interfaces/opportunity.interface";
 import type { OpportunityCotizacion } from "../interfaces/opportunity-onboarding.interface";
 import { isCotizacionAutorizada } from "../utils/cotizacionEstatus";
 import { getOpportunityName } from "../utils/describeOpportunity";
+import { isTransferCandidate } from "../utils/transferCandidates";
 
 const MUTED_CLS = "text-slate-500 dark:text-slate-400";
 
@@ -113,16 +115,28 @@ function TransferForm({
   onClose,
 }: TransferFormProps) {
   // Mismo catálogo que el filtro de vendedor del listado; su carga y su error
-  // se resuelven aquí dentro (sin migrar `useUsers`, ver #239).
-  const { data: users, isLoading, isError, isFetching, refetch } = useUsers();
+  // se resuelven aquí dentro (sin migrar `useUsers`, ver #239). Los roles
+  // dicen quién es de Ventas: hasta tener ambos no se lista a nadie.
+  const usersQuery = useUsers();
+  const rolesQuery = useRoles();
+  const users = usersQuery.data;
+  const roles = rolesQuery.data;
+  const isLoading = usersQuery.isLoading || rolesQuery.isLoading;
+  const isError = (usersQuery.isError && !users) || (rolesQuery.isError && !roles);
+  const isFetching = usersQuery.isFetching || rolesQuery.isFetching;
+  const refetch = () => {
+    if (usersQuery.isError) void usersQuery.refetch();
+    if (rolesQuery.isError) void rolesQuery.refetch();
+  };
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [fieldError, setFieldError] = useState<string | null>(null);
   const fieldErrorId = useId();
 
-  // Solo usuarios ACTIVOS (el backend rechaza uno inactivo) y sin el dueño
-  // actual, que no tiene a quién transferirse.
-  const options: TransferOption[] = (users ?? [])
-    .filter((user) => user.is_active && user.id !== opportunity.vendedor)
+  // Solo usuarios activos de Ventas (ver `isTransferCandidate`) y sin el
+  // dueño actual, que no tiene a quién transferirse.
+  const rolesById = new Map((roles ?? []).map((role) => [role.id, role]));
+  const options: TransferOption[] = (users && roles ? users : [])
+    .filter((user) => isTransferCandidate(user, rolesById) && user.id !== opportunity.vendedor)
     .map((user) => ({
       id: user.id,
       label: user.nombre_completo?.trim() || user.email || user.username,
@@ -163,7 +177,8 @@ function TransferForm({
         onSuccess: onClose,
         // Los toasts los da el hook; aquí solo lo que depende del diálogo.
         onError: (error) => {
-          // El destinatario no vale (inactivo, de otra empresa): se dice bajo
+          // El destinatario no vale (no encontrado en la empresa de la
+          // oportunidad, inactivo o sin departamento de Ventas): se dice bajo
           // el selector y el diálogo sigue abierto para elegir otro.
           const rejection = transferVendedorRejection(error);
           if (rejection) {
@@ -204,7 +219,7 @@ function TransferForm({
         <legend className="mb-2 text-sm font-semibold text-slate-700 dark:text-slate-200">
           Nuevo vendedor
         </legend>
-        {isError && !users ? (
+        {isError ? (
           <SectionErrorNotice
             variant="inline"
             message="No se pudieron cargar los usuarios."
@@ -241,7 +256,7 @@ function TransferForm({
                 )}
               </>
             )}
-            emptyMessage="No hay otros usuarios activos a quien transferirla."
+            emptyMessage="No hay otros usuarios activos de Ventas a quien transferirla."
             noResultsMessage="Ningún usuario coincide con la búsqueda."
           />
         )}
