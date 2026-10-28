@@ -49,6 +49,13 @@ export const creditNoteCreateStampFailedMessage = (detail: string): string =>
   `Falló el timbrado, pero la nota pudo quedar registrada: cancelada, emitida sin CFDI o con el timbrado pendiente de confirmación. Revisa el listado antes de capturarla de nuevo. Motivo: ${detail}`;
 
 /**
+ * Emisión de un borrador cuyo timbrado falló (`400` con `cfdi`): igual que en el
+ * alta, la emisión ya pudo aplicarse, y el borrador pudo quedar cancelado.
+ */
+export const creditNoteEmitStampFailedMessage = (detail: string): string =>
+  `Falló el timbrado de la nota. El borrador pudo quedar cancelado, emitido sin CFDI o con el timbrado pendiente de confirmación: revisa el listado antes de volver a intentarlo. Motivo: ${detail}`;
+
+/**
  * Mensaje de un fallo de `timbrar/`, igual que `stampInvoiceErrorMessage`: el
  * motivo del backend tal cual bajo `cfdi` o `estatus`, luego cualquier campo, y
  * al final el extractor genérico. Un fallo sin confirmar no muestra el cuerpo.

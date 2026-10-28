@@ -5,6 +5,7 @@ import { parseNotaCreditoError } from "./useCreateNotaCredito";
 import { invalidateCreditNoteQueries } from "./invalidateCreditNoteQueries";
 import {
   CREDIT_NOTE_EMIT_UNCONFIRMED_MESSAGE,
+  creditNoteEmitStampFailedMessage,
   logUnexpectedError,
 } from "../utils/creditNoteErrors";
 import { getRelatedInvoiceCancelledReason } from "../utils/creditNoteStamping";
@@ -72,9 +73,13 @@ export const useEmitirNotaCredito = () => {
       }
       const parsed = parseNotaCreditoError(error);
       // Sin confirmación del backend la nota pudo emitirse y timbrarse.
+      // Con `cfdi` el timbrado falló DESPUÉS de emitir: el motivo del backend va
+      // con el aviso de que el borrador pudo quedar cancelado o emitido.
       const message = parsed.unconfirmed
         ? CREDIT_NOTE_EMIT_UNCONFIRMED_MESSAGE
-        : parsed.messages.length > 0
+        : parsed.stampFailed
+          ? creditNoteEmitStampFailedMessage(parsed.formError ?? "")
+          : parsed.messages.length > 0
           ? parsed.messages.join("\n")
           : parsed.formError ?? "Error al emitir la nota de crédito";
       toast.error(message);
