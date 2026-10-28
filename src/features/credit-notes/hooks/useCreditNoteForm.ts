@@ -17,6 +17,7 @@ import {
   useCreateNotaCredito,
   type ParsedNotaCreditoError,
 } from "./useCreateNotaCredito";
+import { creditNoteCreateStampFailedMessage } from "../utils/creditNoteErrors";
 
 const LINE_ERROR_PREFIX = "nota_credito_detalles";
 
@@ -60,6 +61,15 @@ export function useCreditNoteForm({ onSuccess }: { onSuccess?: () => void } = {}
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [serverBanner, setServerBanner] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  /**
+   * El timbrado de un alta `Emitida` falló (`400` con `cfdi`) y la nota pudo
+   * quedar registrada. Bloquea el formulario para siempre: reenviar lo mismo
+   * crearía OTRA nota y volvería a rebajar el saldo de la cuenta por cobrar. El
+   * formulario sigue a la vista para cotejarlo con el listado, y la única salida
+   * es cerrar el diálogo, que lo desmonta (`CreditNoteList` lo monta solo
+   * mientras está abierto): una nota nueva arranca de un formulario limpio.
+   */
+  const [isLockedAfterStampFailure, setIsLockedAfterStampFailure] = useState(false);
 
   // Claves estables por línea, para que borrar una línea intermedia no reutilice
   // el estado local de otra. Arranca vacío: las líneas las siembra el selector.
@@ -136,10 +146,18 @@ export function useCreditNoteForm({ onSuccess }: { onSuccess?: () => void } = {}
       setServerBanner(detail);
       return;
     }
-    // El alta es atómica: se le dice al usuario explícitamente que NADA quedó
-    // registrado, para que no busque una nota a medias ni reintente creyendo que
-    // duplicará algo. Cuando la nota iba a emitirse, eso incluye el saldo de la
-    // cuenta por cobrar, que tampoco se movió.
+    // El timbrado corre DESPUÉS de guardar y aplicar la nota: no se dice qué
+    // quedó, se pide revisar el listado y se bloquea el reenvío.
+    if (parsed.stampFailed) {
+      setServerBanner(creditNoteCreateStampFailedMessage(detail));
+      setIsLockedAfterStampFailure(true);
+      return;
+    }
+    // Sin `cfdi` el error es de validación y el guardado es atómico: se le dice
+    // al usuario explícitamente que NADA quedó registrado, para que no busque
+    // una nota a medias ni reintente creyendo que duplicará algo. Cuando la nota
+    // iba a emitirse, eso incluye el saldo de la cuenta por cobrar, que tampoco
+    // se movió.
     setServerBanner(`No se registró ninguna nota de crédito. ${detail}`);
   };
 
@@ -155,6 +173,9 @@ export function useCreditNoteForm({ onSuccess }: { onSuccess?: () => void } = {}
   const form = useForm({
     defaultValues,
     onSubmit: async ({ value }) => {
+      // El `fieldset` bloqueado ya deshabilita los botones; esto cubre cualquier
+      // otro disparo del envío.
+      if (isLockedAfterStampFailure) return;
       setServerBanner(null);
 
       const parsed = NotaCreditoFormSchema.safeParse(value);
@@ -295,6 +316,7 @@ export function useCreditNoteForm({ onSuccess }: { onSuccess?: () => void } = {}
   return {
     form,
     isPending,
+    isLockedAfterStampFailure,
     lineKeys,
     serverBanner,
     dismissBanner: () => setServerBanner(null),

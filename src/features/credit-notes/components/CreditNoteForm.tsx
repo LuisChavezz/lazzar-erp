@@ -41,6 +41,7 @@ export default function CreditNoteForm({ onSuccess }: CreditNoteFormProps) {
   const {
     form,
     isPending,
+    isLockedAfterStampFailure,
     lineKeys,
     serverBanner,
     dismissBanner,
@@ -79,11 +80,22 @@ export default function CreditNoteForm({ onSuccess }: CreditNoteFormProps) {
   return (
     <>
       <form onSubmit={handleFormSubmit} className="w-full">
-        <fieldset disabled={isPending}>
-          {/* Banner de "todo o nada": el alta es atómica, así que ante un error
-              del backend NADA quedó registrado — ni el documento, ni el saldo de
-              la cuenta por cobrar si la nota iba a emitirse. */}
-          {serverBanner && (
+        {/* Bloqueado tras un fallo del timbrado: todo queda de solo lectura y la
+            salida es el "Cerrar" del diálogo (ver `isLockedAfterStampFailure`). */}
+        <fieldset disabled={isPending || isLockedAfterStampFailure}>
+          {/* Banner del error del backend. Un error de validación no dejó nada
+              registrado (el guardado es atómico); un fallo del timbrado sí pudo
+              dejar la nota, y entonces el aviso es ámbar y no se descarta. */}
+          {serverBanner && isLockedAfterStampFailure && (
+            <div
+              role="alert"
+              className="mb-6 flex items-start gap-3 rounded-xl border border-amber-200 dark:border-amber-800/50 bg-amber-50 dark:bg-amber-900/20 px-4 py-3"
+            >
+              <InfoIcon className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" aria-hidden="true" />
+              <p className="flex-1 text-sm text-amber-800 dark:text-amber-300">{serverBanner}</p>
+            </div>
+          )}
+          {serverBanner && !isLockedAfterStampFailure && (
             <div className="mb-6 flex items-start gap-3 rounded-xl border border-red-200 dark:border-red-800/50 bg-red-50 dark:bg-red-900/20 px-4 py-3">
               <InfoIcon className="w-5 h-5 text-red-500 shrink-0 mt-0.5" aria-hidden="true" />
               <p className="flex-1 text-sm text-red-700 dark:text-red-300">{serverBanner}</p>
@@ -448,40 +460,48 @@ export default function CreditNoteForm({ onSuccess }: CreditNoteFormProps) {
             </div>
           </section>
 
-          {/* El alta con "Emitir nota" no pasa por una confirmación: el aviso del
-              timbrado va visible junto a los botones, descrito por "Emitir nota". */}
-          <p
-            id="credit-note-emit-stamp-warning"
-            className="mb-3 text-xs text-amber-600 dark:text-amber-400 text-right"
-          >
-            {CREDIT_NOTE_EMIT_STAMP_WARNING}
-          </p>
-          <div className="flex flex-wrap items-center justify-end gap-3 pb-4">
-            <FormCancelButton onClick={handleReset} disabled={isPending} />
-            {/* Dos salidas explícitas. Guardar como borrador NO toca la cuenta
-                por cobrar; emitir aplica el crédito de inmediato. El `fieldset`
-                de arriba deshabilita ambos mientras hay un envío en vuelo, así
-                que la etiqueta de pendiente solo hace falta en el que se pulsó. */}
-            <FormSubmitButton
-              type="button"
-              onClick={() => submitAs("Borrador")}
-              isPending={isPending && estatusIntent === "Borrador"}
-              loadingLabel="Guardando..."
-              className="bg-slate-600! hover:bg-slate-700! focus:ring-slate-500!"
-            >
-              Guardar borrador
-            </FormSubmitButton>
-            <FormSubmitButton
-              type="button"
-              onClick={() => submitAs("Emitida")}
-              aria-describedby="credit-note-emit-stamp-warning"
-              isPending={isPending && estatusIntent === "Emitida"}
-              loadingLabel="Emitiendo..."
-              className="bg-amber-600! hover:bg-amber-700! focus:ring-amber-500!"
-            >
-              Emitir nota
-            </FormSubmitButton>
-          </div>
+          {isLockedAfterStampFailure ? (
+            <p className="pb-4 text-sm text-slate-500 dark:text-slate-400 text-right">
+              Este formulario ya no puede enviarse. Ciérralo y revisa el listado.
+            </p>
+          ) : (
+            <>
+              {/* El alta con "Emitir nota" no pasa por una confirmación: el aviso del
+                  timbrado va visible junto a los botones, descrito por "Emitir nota". */}
+              <p
+                id="credit-note-emit-stamp-warning"
+                className="mb-3 text-xs text-amber-600 dark:text-amber-400 text-right"
+              >
+                {CREDIT_NOTE_EMIT_STAMP_WARNING}
+              </p>
+              <div className="flex flex-wrap items-center justify-end gap-3 pb-4">
+                <FormCancelButton onClick={handleReset} disabled={isPending} />
+                {/* Dos salidas explícitas. Guardar como borrador NO toca la cuenta
+                    por cobrar; emitir aplica el crédito de inmediato. El `fieldset`
+                    de arriba deshabilita ambos mientras hay un envío en vuelo, así
+                    que la etiqueta de pendiente solo hace falta en el que se pulsó. */}
+                <FormSubmitButton
+                  type="button"
+                  onClick={() => submitAs("Borrador")}
+                  isPending={isPending && estatusIntent === "Borrador"}
+                  loadingLabel="Guardando..."
+                  className="bg-slate-600! hover:bg-slate-700! focus:ring-slate-500!"
+                >
+                  Guardar borrador
+                </FormSubmitButton>
+                <FormSubmitButton
+                  type="button"
+                  onClick={() => submitAs("Emitida")}
+                  aria-describedby="credit-note-emit-stamp-warning"
+                  isPending={isPending && estatusIntent === "Emitida"}
+                  loadingLabel="Emitiendo..."
+                  className="bg-amber-600! hover:bg-amber-700! focus:ring-amber-500!"
+                >
+                  Emitir nota
+                </FormSubmitButton>
+              </div>
+            </>
+          )}
         </fieldset>
       </form>
 
