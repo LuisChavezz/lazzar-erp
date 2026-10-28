@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 import type { DataTableVisibleColumn } from "@/src/components/DataTable";
 import type { Quote } from "@/src/features/quotes/interfaces/quote.interface";
 import { buildQuotesCsv } from "@/src/features/quotes/hooks/useQuoteCsvExport";
+import { compareQuoteAmounts } from "@/src/features/quotes/utils/quoteAmountSorting";
 import {
   buildQuoteCurrencyFilterOptions,
   matchesQuoteCurrencyFilter,
@@ -86,5 +87,30 @@ test.describe("filtro de moneda de Mesa de Control", () => {
     expect(matchesQuoteCurrencyFilter("MXN", "USD")).toBe(false);
     expect(matchesQuoteCurrencyFilter(null, SIN_MONEDA_FILTER_VALUE)).toBe(true);
     expect(matchesQuoteCurrencyFilter("MXN", SIN_MONEDA_FILTER_VALUE)).toBe(false);
+  });
+});
+
+test.describe("orden por importe", () => {
+  const sorted = (rows: { moneda_codigo: string | null; importe_sin_iva: number }[]) =>
+    [...rows].sort(compareQuoteAmounts).map((r) => `${r.moneda_codigo ?? "-"} ${r.importe_sin_iva}`);
+
+  test("agrupa por moneda (sin moneda al final) y ordena el importe dentro de cada una", () => {
+    expect(
+      sorted([
+        { moneda_codigo: "USD", importe_sin_iva: 9000 },
+        { moneda_codigo: null, importe_sin_iva: 5 },
+        { moneda_codigo: "MXN", importe_sin_iva: 86281 },
+        { moneda_codigo: "MXN", importe_sin_iva: 100 },
+        { moneda_codigo: "USD", importe_sin_iva: 10 },
+      ]),
+    ).toEqual(["MXN 100", "MXN 86281", "USD 10", "USD 9000", "- 5"]);
+  });
+
+  test("con una sola moneda, el mismo orden numérico de siempre", () => {
+    const amounts = [409, 86281, 0, 1939.5, 24912];
+    const rows = amounts.map((importe_sin_iva) => ({ moneda_codigo: "MXN", importe_sin_iva }));
+    expect([...rows].sort(compareQuoteAmounts).map((r) => r.importe_sin_iva)).toEqual(
+      [...amounts].sort((a, b) => a - b),
+    );
   });
 });

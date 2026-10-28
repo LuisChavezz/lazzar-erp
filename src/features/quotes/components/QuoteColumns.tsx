@@ -3,6 +3,7 @@
 import { ColumnDef, FilterFn } from "@tanstack/react-table";
 import { Quote } from "../interfaces/quote.interface";
 import { formatQuoteDateTime, formatQuoteAmountOrDash } from "../utils/quoteDetailsFormatters";
+import { quoteAmountSortingFn } from "@/src/features/quotes/utils/quoteAmountSorting";
 import { capitalize } from "@/src/utils/capitalize";
 import { ChevronRightIcon } from "@/src/components/Icons";
 import { ColumnHeaderFilter, type ColumnFilterOption } from "@/src/components/ColumnHeaderFilter";
@@ -147,6 +148,8 @@ export const quoteColumns: ColumnDef<Quote>[] = [
     accessorKey: "importe_sin_iva",
     header: "Importe sin IVA",
     meta: { align: "right" },
+    // Agrupa por moneda y ordena el importe dentro de cada una (EC-618).
+    sortingFn: quoteAmountSortingFn,
     cell: ({ row }) => (
       <span className="text-slate-500 dark:text-slate-400">
         {formatQuoteAmountOrDash(row.original.importe_sin_iva, row.original.moneda_codigo)}

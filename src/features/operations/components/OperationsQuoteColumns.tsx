@@ -29,6 +29,7 @@ import {
   matchesQuoteCurrencyFilter,
 } from "@/src/features/quotes/utils/quoteCurrencyFilter";
 import { formatQuoteAmountOrDash } from "@/src/features/quotes/utils/quoteDetailsFormatters";
+import { quoteAmountSortingFn } from "@/src/features/quotes/utils/quoteAmountSorting";
 import {
   canAcceptQuoteChanges as canAcceptOperationsQuoteChangesStatus,
   canManageQuoteAuthorization as canManageOperationsQuoteAuthorization,
@@ -385,6 +386,8 @@ export const getOperationsQuoteColumns = (
       />
     ),
     meta: { align: "right", label: "Importe sin IVA" },
+    // Agrupa por moneda y ordena el importe dentro de cada una (EC-618).
+    sortingFn: quoteAmountSortingFn,
     filterFn: (row, _columnId, filterValue) =>
       matchesRangeFilter(IMPORTE_RANGES, row.original.importe_sin_iva, filterValue),
     cell: ({ row }) => (
