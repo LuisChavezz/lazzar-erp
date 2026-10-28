@@ -18,8 +18,13 @@ export const useCreateSupplier = ({ setError }: UseCreateSupplierOptions = {}) =
     onSuccess: (supplier) => {
       queryClient.invalidateQueries({ queryKey: ["suppliers"] });
       // El código lo asigna el backend; la respuesta del POST es la única
-      // forma de conocerlo.
-      toast.success(`Proveedor registrado con código ${supplier.codigo}`);
+      // forma de conocerlo. Sin él (un backend previo al cambio), el texto
+      // genérico.
+      toast.success(
+        supplier.codigo
+          ? `Proveedor registrado con código ${supplier.codigo}`
+          : "Proveedor registrado correctamente"
+      );
     },
     onError: (error) => {
       toast.error(handleSupplierWriteError(error, "No se pudo registrar el proveedor", setError));
