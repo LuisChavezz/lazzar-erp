@@ -11,6 +11,10 @@ export const resolveQuoteSucursal = (
   workspaceBranchId: number | null,
 ): number | null => recordSucursal || workspaceBranchId || null;
 
+/** Guardado bloqueado porque la lista de sucursales todavía se está cargando. */
+export const QUOTE_SUCURSAL_LOADING_MESSAGE =
+  "Aún se están cargando tus sucursales. Intenta guardar de nuevo en un momento.";
+
 /**
  * Por qué se bloqueó el guardado. Si la lista de sucursales no cargó, el
  * usuario puede sí tener una sucursal válida: pedirle que la elija lo
