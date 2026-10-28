@@ -2,20 +2,17 @@
 
 import { useState, type ReactNode } from "react";
 import Link from "next/link";
-import { ArrowLeftIcon, RouteIcon } from "@/src/components/Icons";
+import { ArrowLeftIcon, ProduccionIcon, ProductIcon, RouteIcon } from "@/src/components/Icons";
 import { Button } from "@/src/components/Button";
 import { Loader } from "@/src/components/Loader";
 import { ErrorState } from "@/src/components/ErrorState";
 import { SI_NO_CFG, StatusBadge } from "@/src/components/StatusBadge";
+import { EmptyLines, InfoField, InfoGrid, textOrDash } from "@/src/components/DetailDialogPrimitives";
 import {
-  EmptyLines,
-  HeaderStat,
-  HeaderStatRow,
-  InfoField,
-  InfoGrid,
-  Section,
-  textOrDash,
-} from "@/src/components/DetailDialogPrimitives";
+  OrderChip,
+  SheetPanel,
+  SheetSection,
+} from "@/src/features/orders/components/OrderSheetPrimitives";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import {
   formatExactQuantityValue,
@@ -83,7 +80,7 @@ const TallasTable = ({
   }
 
   return (
-    <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-white/10">
+    <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-zinc-900">
       <table className="min-w-full text-xs">
         <thead className="bg-slate-50 dark:bg-white/5">
           <tr className="text-slate-500 dark:text-slate-400">
@@ -122,7 +119,7 @@ const HabilitacionTable = ({
   }
 
   return (
-    <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-white/10">
+    <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-zinc-900">
       <table className="min-w-full text-xs">
         <thead className="bg-slate-50 dark:bg-white/5">
           <tr className="text-slate-500 dark:text-slate-400">
@@ -164,35 +161,38 @@ const HabilitacionTable = ({
   );
 };
 
-/** Tarjeta de un producto de la orden: cantidades por talla + materiales. */
+/**
+ * Un producto de la orden como panel gris de la hoja (mismo lenguaje que el
+ * detalle del pedido): nombre y total arriba; debajo, cantidades por talla y
+ * habilitación lado a lado en pantallas anchas.
+ */
 const ProductoCard = ({ producto }: { producto: ProductionOrderOnboardingProducto }) => (
-  <div className="rounded-xl border border-slate-200 dark:border-white/10 p-4 space-y-4">
-    <div className="flex items-center justify-between gap-3">
-      <h4 className="text-sm font-semibold text-slate-800 dark:text-slate-100">
-        {producto.nombre}
-      </h4>
-      <span className="text-xs text-slate-500 dark:text-slate-400 shrink-0">
-        Total:{" "}
-        <span className="font-semibold tabular-nums text-slate-800 dark:text-white">
+  <SheetPanel className="p-5!">
+    <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+      <h3 className="text-sm font-semibold text-slate-900 dark:text-white">{producto.nombre}</h3>
+      <OrderChip>
+        <span className="tabular-nums font-semibold text-slate-800 dark:text-white mr-1">
           {formatQuantityValue(producto.cantidades.total)}
         </span>
-      </span>
+        piezas
+      </OrderChip>
     </div>
 
-    <div className="space-y-2">
-      <h5 className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-        Cantidades por talla
-      </h5>
-      <TallasTable tallas={producto.cantidades.tallas} />
+    <div className="grid grid-cols-1 xl:grid-cols-5 gap-4">
+      <div className="space-y-2 xl:col-span-2">
+        <h4 className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+          Cantidades por talla
+        </h4>
+        <TallasTable tallas={producto.cantidades.tallas} />
+      </div>
+      <div className="space-y-2 xl:col-span-3">
+        <h4 className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+          Habilitación
+        </h4>
+        <HabilitacionTable habilitacion={producto.habilitacion} />
+      </div>
     </div>
-
-    <div className="space-y-2">
-      <h5 className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-        Habilitación
-      </h5>
-      <HabilitacionTable habilitacion={producto.habilitacion} />
-    </div>
-  </div>
+  </SheetPanel>
 );
 
 // ── Componente principal ─────────────────────────────────────────────────────
@@ -329,109 +329,112 @@ export function ProductionOrderPageContent({
     );
   }
 
+  const totalPiezas = data.productos.reduce(
+    (sum, producto) => sum + (Number(producto.cantidades.total) || 0),
+    0,
+  );
+
+  // Mismo lenguaje visual que el detalle del pedido ("hoja impresa"): barra
+  // fija con "Volver" y las acciones, y secciones blancas con paneles grises.
   return withPageDialogs(
     <div className="w-full space-y-6">
-      {/* ── Barra superior con "Volver" ─────────────────────────────────── */}
-      <div className="sticky top-0 z-10 py-2 w-fit">{BackLink}</div>
-
-      {/* ── 1. Cabecera ─────────────────────────────────────────────────── */}
-      {/* Misma fila compacta que la cabecera de OB (`HeaderStatRow`). "Cambiar
-          estatus" y "Ruta crítica" van DESPUÉS de la fila y no dentro: el `overflow-x-clip` de
-          `HeaderStatRow` solo recorta a sus propios hijos, así que los botones
-          nunca pueden quedar ocultos; en anchos estrechos el `flex-wrap` de
-          fuera los baja a su propia línea. */}
-      <section className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 px-5 py-3.5 md:px-6">
-        <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
-          <h1 className="text-[22px] font-medium text-slate-900 dark:text-white font-mono mr-auto min-w-0 truncate">
-            {data.folio_op || `Orden #${data.op_id}`}
-          </h1>
-
-          <HeaderStatRow>
-            <HeaderStat label="Alta">
-              <DateWithTimeTitle value={data.fecha_inicio} />
-            </HeaderStat>
-            <HeaderStat label="Fin">
-              <DateWithTimeTitle value={data.fecha_fin} />
-            </HeaderStat>
-            <HeaderStat label="Cierre solicitado">
-              <StatusBadge status={String(data.cerrar_orden)} config={SI_NO_CFG} />
-            </HeaderStat>
-          </HeaderStatRow>
-
-          <div className="flex flex-wrap items-center gap-3">
-            <ProductionOrderStatusMenu
-              options={statusFlow.options}
-              isPending={statusFlow.isPending}
-              onSelect={statusFlow.select}
-            />
-            <Button variant="secondary" onClick={openCriticalPath}>
-              <RouteIcon className="w-4 h-4" aria-hidden="true" />
-              Ruta crítica
-            </Button>
-          </div>
+      {/* ── Barra superior fija: Volver + acciones ──────────────────────── */}
+      <div className="sticky top-3 z-10 flex flex-wrap items-center justify-between gap-3 rounded-3xl border border-slate-200 dark:border-white/5 bg-white/90 dark:bg-zinc-900/90 backdrop-blur-md shadow-sm dark:shadow-none px-6 md:px-8 py-3">
+        {BackLink}
+        <div className="flex flex-wrap items-center gap-2">
+          <ProductionOrderStatusMenu
+            options={statusFlow.options}
+            isPending={statusFlow.isPending}
+            onSelect={statusFlow.select}
+          />
+          <Button variant="secondary" onClick={openCriticalPath}>
+            <RouteIcon className="w-4 h-4" aria-hidden="true" />
+            Ruta crítica
+          </Button>
         </div>
-      </section>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* ── 2. Información general ────────────────────────────────────── */}
-        <Section title="Información general">
-          <InfoGrid>
-            <InfoField label="Pedido">
-              {/* El pedido es OPCIONAL en el alta de esta orden, así que el guion
-                  es un estado normal. */}
-              <PedidoVinculadoFolio
-                pedidoVinculado={data.pedido_vinculado}
-                pedidoFolio={data.pedido_folio}
-                from="production-orders"
-              />
-            </InfoField>
-            {/* Estatus + Prioridad, el mismo par que las páginas hermanas
-                muestran en este bloque. Ambos salieron de la cabecera, así que
-                aquí no se duplican. */}
-            <InfoField label="Estatus">
-              <StatusBadge
-                status={String(data.estatus_op)}
-                config={{
-                  [data.estatus_op]: productionOrderStatusEntry(
-                    data.estatus_op,
-                    data.estatus_op_display,
-                  ),
-                }}
-              />
-            </InfoField>
-            <InfoField label="Prioridad">
-              <StatusBadge
-                status={String(data.prioridad)}
-                config={PRODUCTION_ORDER_PRIORITY_CONFIG}
-                defaultConfig={productionOrderPriorityFallback(data.prioridad)}
-              />
-            </InfoField>
-            {/* `activo` es el flag de baja lógica y el listado le dedica una
-                columna propia: sin él, una orden dada de baja se leería aquí
-                idéntica a una vigente. */}
-            <InfoField label="Activo">
-              <StatusBadge status={String(data.activo)} config={SI_NO_CFG} />
-            </InfoField>
-            <InfoField label="Observaciones" className="col-span-2 md:col-span-3">
-              {textOrDash(data.observaciones)}
-            </InfoField>
-          </InfoGrid>
-        </Section>
-
-        {/* ── 3. Origen ─────────────────────────────────────────────────── */}
-        <Section title="Origen">
-          <InfoGrid>
-            <InfoField label="Empresa">{textOrDash(data.empresa_nombre)}</InfoField>
-            <InfoField label="Sucursal">{textOrDash(data.sucursal_nombre)}</InfoField>
-            <InfoField label="Operador asignado">
-              {textOrDash(data.usuario_nombre)}
-            </InfoField>
-          </InfoGrid>
-        </Section>
       </div>
 
-      {/* ── 4. Productos ─────────────────────────────────────────────────── */}
-      <Section title={`Productos (${data.productos.length})`}>
+      {/* ── 1. La orden ─────────────────────────────────────────────────── */}
+      <SheetSection
+        icon={<ProduccionIcon className="w-5 h-5" />}
+        title="Orden de Producción"
+        subtitle="Datos de la orden, su origen y su seguimiento."
+        badges={
+          <>
+            <StatusBadge
+              status={String(data.estatus_op)}
+              config={{ [data.estatus_op]: productionOrderStatusEntry(data.estatus_op, data.estatus_op_display) }}
+            />
+            <StatusBadge
+              status={String(data.prioridad)}
+              config={PRODUCTION_ORDER_PRIORITY_CONFIG}
+              defaultConfig={productionOrderPriorityFallback(data.prioridad)}
+            />
+            {/* `activo` es la baja lógica: sin él, una orden dada de baja se
+                leería idéntica a una vigente. */}
+            {!data.activo && <OrderChip>Inactiva</OrderChip>}
+          </>
+        }
+      >
+        <div className="flex flex-col xl:flex-row gap-6">
+          <SheetPanel title="Orden" className="shrink-0 w-full xl:w-80">
+            {/* El folio es el único <h1> de la página. */}
+            <h1 className="text-3xl font-bold text-slate-900 dark:text-white font-mono mb-6 break-all">
+              {data.folio_op || `Orden #${data.op_id}`}
+            </h1>
+            <div className="space-y-4 text-xs">
+              <InfoField label="Alta">
+                <DateWithTimeTitle value={data.fecha_inicio} />
+              </InfoField>
+              <InfoField label="Fin">
+                <DateWithTimeTitle value={data.fecha_fin} />
+              </InfoField>
+              <InfoField label="Cierre solicitado">
+                <StatusBadge status={String(data.cerrar_orden)} config={SI_NO_CFG} />
+              </InfoField>
+              <InfoField label="Activa">
+                <StatusBadge status={String(data.activo)} config={SI_NO_CFG} />
+              </InfoField>
+            </div>
+          </SheetPanel>
+
+          <SheetPanel title="Origen y seguimiento" className="flex-1 self-start w-full">
+            <InfoGrid>
+              <InfoField label="Pedido">
+                {/* El pedido es OPCIONAL en el alta: el guion es un estado normal. */}
+                <PedidoVinculadoFolio
+                  pedidoVinculado={data.pedido_vinculado}
+                  pedidoFolio={data.pedido_folio}
+                  from="production-orders"
+                />
+              </InfoField>
+              <InfoField label="Operador asignado">{textOrDash(data.usuario_nombre)}</InfoField>
+              <InfoField label="Empresa">{textOrDash(data.empresa_nombre)}</InfoField>
+              <InfoField label="Sucursal">{textOrDash(data.sucursal_nombre)}</InfoField>
+              <InfoField label="Observaciones" className="col-span-2 md:col-span-3">
+                {textOrDash(data.observaciones)}
+              </InfoField>
+            </InfoGrid>
+          </SheetPanel>
+        </div>
+      </SheetSection>
+
+      {/* ── 2. Productos ────────────────────────────────────────────────── */}
+      <SheetSection
+        icon={<ProductIcon className="w-5 h-5" />}
+        title="Productos"
+        subtitle="Cantidades por talla y materiales de habilitación de cada producto."
+        badges={
+          <>
+            <OrderChip>
+              {data.productos.length} {data.productos.length === 1 ? "producto" : "productos"}
+            </OrderChip>
+            <OrderChip>
+              {formatQuantityValue(totalPiezas)} {totalPiezas === 1 ? "pieza" : "piezas"}
+            </OrderChip>
+          </>
+        }
+      >
         {data.productos.length === 0 ? (
           <EmptyLines>Esta orden no tiene productos registrados.</EmptyLines>
         ) : (
@@ -441,7 +444,7 @@ export function ProductionOrderPageContent({
             ))}
           </div>
         )}
-      </Section>
+      </SheetSection>
 
       {/* ── 5. Consumos ──────────────────────────────────────────────────── */}
       <ProductionOrderConsumptionSection

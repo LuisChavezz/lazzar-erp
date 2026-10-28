@@ -36,12 +36,15 @@ export function SheetSection({
   title,
   subtitle,
   badges,
+  action,
   children,
 }: {
   icon?: React.ReactNode;
   title: string;
   subtitle?: string;
   badges?: React.ReactNode;
+  /** Acción a la derecha del encabezado (p. ej. un botón). Opcional. */
+  action?: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
@@ -52,7 +55,7 @@ export function SheetSection({
             {icon}
           </div>
         )}
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <h2 className="font-display font-semibold text-slate-900 dark:text-white text-lg">
               {title}
@@ -63,6 +66,7 @@ export function SheetSection({
             <p className="text-xs text-slate-500 dark:text-slate-400">{subtitle}</p>
           )}
         </div>
+        {action && <div className="shrink-0">{action}</div>}
       </div>
       {children}
     </section>

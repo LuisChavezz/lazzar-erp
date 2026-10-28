@@ -1,4 +1,9 @@
+import type { Metadata } from "next";
 import { ProductionOrderPageContent } from "@/src/features/production-orders/components/ProductionOrderPageContent";
+
+export const metadata: Metadata = {
+  title: "Orden de Producción | Producción | ERP",
+};
 
 /**
  * Detalle de una orden de producción —

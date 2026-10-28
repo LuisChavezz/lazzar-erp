@@ -2,11 +2,9 @@
 
 import { Button } from "@/src/components/Button";
 import { StatusBadge, type StatusBadgeConfigEntry } from "@/src/components/StatusBadge";
-import {
-  EmptyLines,
-  LineItemsTable,
-  Section,
-} from "@/src/components/DetailDialogPrimitives";
+import { EmptyLines, LineItemsTable } from "@/src/components/DetailDialogPrimitives";
+import { LayersIcon } from "@/src/components/Icons";
+import { OrderChip, SheetSection } from "@/src/features/orders/components/OrderSheetPrimitives";
 import type { ProductionOrderConsumo } from "@/src/features/production-orders/interfaces/production-order.interface";
 import {
   labelConsumptionRecords,
@@ -53,8 +51,17 @@ export function ProductionOrderConsumptionSection({
       : undefined;
 
   return (
-    <Section
-      title={`Consumos (${products.length})`}
+    // Sección de "hoja" (mismo lenguaje que el detalle del pedido y el resto
+    // del detalle de OP).
+    <SheetSection
+      icon={<LayersIcon className="w-5 h-5" />}
+      title="Consumos"
+      subtitle="Material planeado, ajustes y consumo actual por producto."
+      badges={
+        <OrderChip>
+          {products.length} {products.length === 1 ? "producto" : "productos"}
+        </OrderChip>
+      }
       action={
         // El `title` va en un envoltorio: un botón deshabilitado no muestra
         // su propio tooltip en todos los navegadores.
@@ -107,7 +114,7 @@ export function ProductionOrderConsumptionSection({
           <ConsumptionHistory consumos={consumos} />
         </div>
       )}
-    </Section>
+    </SheetSection>
   );
 }
 

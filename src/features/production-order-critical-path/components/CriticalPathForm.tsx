@@ -4,7 +4,7 @@ import { FormInput } from "@/src/components/FormInput";
 import { FormSelect } from "@/src/components/FormSelect";
 import { FormTextarea } from "@/src/components/FormTextarea";
 import { FormCancelButton, FormSubmitButton } from "@/src/components/FormButtons";
-import { SectionTitle } from "@/src/components/DetailDialogPrimitives";
+import { CheckCircleIcon } from "@/src/components/Icons";
 import {
   ESTATUS_PAQUETE_TECNICO_OPTIONS,
   EXISTENCE_FIELDS,
@@ -24,6 +24,99 @@ type DateField = (typeof DATE_FIELDS)[number];
 type BooleanField = {
   [K in CriticalPathField]: CriticalPathValues[K] extends boolean ? K : never;
 }[CriticalPathField];
+
+/**
+ * Etapas de la ruta crítica, en el orden del backend, con el dato GUARDADO que
+ * marca cada una como cumplida. Solo alimentan el resumen de avance y el
+ * encabezado de cada sección: no cambian qué se captura ni qué se envía.
+ */
+const STAGES = [
+  { key: "desarrollo", title: "Desarrollo de producto", isDone: (d: ProductionOrderCriticalPath) => Boolean(d.fecha_liberacion_paquete_tecnico) },
+  { key: "telas", title: "Telas y avíos", isDone: (d: ProductionOrderCriticalPath) => Boolean(d.kit_completo) },
+  { key: "trazo", title: "Trazo", isDone: (d: ProductionOrderCriticalPath) => Boolean(d.fecha_trazo) },
+  { key: "corte", title: "Corte", isDone: (d: ProductionOrderCriticalPath) => Boolean(d.fecha_real_corte) },
+  { key: "produccion", title: "Producción", isDone: (d: ProductionOrderCriticalPath) => Boolean(d.corte_recibido) },
+] as const;
+
+type StageKey = (typeof STAGES)[number]["key"];
+
+const stageId = (key: StageKey) => `ruta-critica-${key}`;
+
+/** Encabezado de una etapa: número (o palomita si ya se cumplió) y nombre. */
+function StageHeader({ index, title, done }: { index: number; title: string; done: boolean }) {
+  return (
+    <div className="flex items-center gap-2.5 mb-3">
+      <span
+        className={`grid place-items-center w-6 h-6 shrink-0 rounded-full text-[11px] font-bold ${
+          done
+            ? "bg-emerald-500 text-white"
+            : "bg-slate-100 text-slate-500 dark:bg-white/10 dark:text-slate-300"
+        }`}
+        aria-hidden="true"
+      >
+        {done ? <CheckCircleIcon className="w-3.5 h-3.5" /> : index + 1}
+      </span>
+      <h3 className="text-sm font-semibold text-slate-800 dark:text-white">{title}</h3>
+      {done && (
+        <span className="rounded-full bg-emerald-50 dark:bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 dark:text-emerald-400">
+          Completada
+        </span>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Resumen de avance sobre el formulario: cuántas etapas están cumplidas (según
+ * lo guardado) y un paso por etapa. Cada paso lleva a su sección.
+ */
+function StageProgress({ data }: { data: ProductionOrderCriticalPath }) {
+  const done = STAGES.filter((stage) => stage.isDone(data)).length;
+  const pct = Math.round((done / STAGES.length) * 100);
+  return (
+    <div className="mb-4 rounded-2xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 px-4 py-3">
+      <div className="flex items-center justify-between gap-3 mb-2">
+        <p className="text-xs font-semibold text-slate-700 dark:text-slate-200">
+          Avance de la ruta crítica
+        </p>
+        <p className="text-xs tabular-nums text-slate-500 dark:text-slate-400">
+          <span className="font-bold text-slate-800 dark:text-white">{done}</span> de{" "}
+          {STAGES.length} etapas · {pct}%
+        </p>
+      </div>
+      <div className="h-1.5 w-full rounded-full bg-slate-200 dark:bg-white/10 overflow-hidden mb-3">
+        <div
+          className="h-full rounded-full bg-emerald-500 transition-all duration-500"
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+      <ol className="grid grid-cols-5 gap-1.5">
+        {STAGES.map((stage, index) => {
+          const isDone = stage.isDone(data);
+          return (
+            <li key={stage.key}>
+              <button
+                type="button"
+                onClick={() =>
+                  document.getElementById(stageId(stage.key))?.scrollIntoView({ behavior: "smooth", block: "start" })
+                }
+                className={`w-full rounded-lg px-1.5 py-1.5 text-center transition-colors cursor-pointer ${
+                  isDone
+                    ? "bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-500/10 dark:text-emerald-400"
+                    : "bg-white text-slate-500 hover:bg-slate-100 dark:bg-black/20 dark:text-slate-400 dark:hover:bg-white/10"
+                }`}
+                title={`Ir a ${stage.title}`}
+              >
+                <span className="block text-[10px] font-bold">{isDone ? "✓" : index + 1}</span>
+                <span className="block truncate text-[10px] font-medium leading-tight">{stage.title}</span>
+              </button>
+            </li>
+          );
+        })}
+      </ol>
+    </div>
+  );
+}
 
 interface CriticalPathFormProps {
   opId: number;
@@ -72,7 +165,7 @@ export function CriticalPathForm({
         <FormInput
           label={label}
           type="date"
-          className="dark:scheme-dark"
+          className="dark:scheme-dark py-2!"
           name={field.name}
           value={field.state.value}
           error={getError(name)}
@@ -103,7 +196,7 @@ export function CriticalPathForm({
     <form.Field key={name} name={name}>
       {(field) => (
         <div>
-          <label className="flex items-center gap-3 p-3 rounded-xl border border-slate-200 dark:border-white/10 hover:border-sky-500 dark:hover:border-sky-500 cursor-pointer transition-colors bg-slate-50/50 dark:bg-white/5 has-disabled:cursor-not-allowed has-disabled:opacity-60 has-disabled:hover:border-slate-200 dark:has-disabled:hover:border-white/10">
+          <label className="flex items-center gap-3 px-3 py-2 rounded-xl border border-slate-200 dark:border-white/10 hover:border-sky-500 dark:hover:border-sky-500 cursor-pointer transition-colors bg-slate-50/50 dark:bg-white/5 has-disabled:cursor-not-allowed has-disabled:opacity-60 has-disabled:hover:border-slate-200 dark:has-disabled:hover:border-white/10">
             <input
               type="checkbox"
               name={field.name}
@@ -130,13 +223,14 @@ export function CriticalPathForm({
     // `noValidate`: todas las reglas las muestra Zod con su mensaje, nunca el
     // globo nativo del navegador.
     <form onSubmit={handleFormSubmit} noValidate>
+      <StageProgress data={data} />
       {/* Solo esta región hace scroll; el pie queda siempre visible. El diálogo
           de Radix no tiene altura máxima (el scroll es del overlay), así que un
           pie `sticky` no tendría contra qué pegarse: la altura se acota aquí.
           El `calc` descuenta título, descripción, "Última actualización", pie
           y márgenes del diálogo. El aviso de solo lectura va DENTRO de la
           región, no encima: así no suma altura que el `calc` no descuenta. */}
-      <div className="max-h-[calc(100dvh-19rem)] min-h-32 overflow-y-auto -mx-1 px-1 py-1">
+      <div className="max-h-[calc(100dvh-25rem)] min-h-32 overflow-y-auto -mx-1 px-1 py-1">
         {readOnlyNotice && (
           <p
             role="status"
@@ -145,16 +239,17 @@ export function CriticalPathForm({
             {readOnlyNotice}
           </p>
         )}
-        <fieldset disabled={isPending || readOnly} className="space-y-5">
+        <fieldset disabled={isPending || readOnly} className="space-y-4">
           {/* ── Desarrollo de producto ─────────────────────────────────── */}
-          <section>
-            <SectionTitle>Desarrollo de producto</SectionTitle>
+          <section id={stageId("desarrollo")} className="scroll-mt-2">
+            <StageHeader index={0} title="Desarrollo de producto" done={STAGES[0].isDone(data)} />
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {renderDate("fecha_liberacion_paquete_tecnico", "Liberación del paquete técnico")}
               <form.Field name="estatus_paquete_tecnico">
                 {(field) => (
                   <FormSelect
                     label="Estatus del paquete técnico"
+                    className="py-2!"
                     name={field.name}
                     value={field.state.value}
                     error={getError("estatus_paquete_tecnico")}
@@ -177,8 +272,8 @@ export function CriticalPathForm({
           </section>
 
           {/* ── Telas y avíos ──────────────────────────────────────────── */}
-          <section className="border-t border-slate-100 dark:border-white/10 pt-5">
-            <SectionTitle>Telas y avíos</SectionTitle>
+          <section id={stageId("telas")} className="scroll-mt-2 border-t border-slate-100 dark:border-white/10 pt-4">
+            <StageHeader index={1} title="Telas y avíos" done={STAGES[1].isDone(data)} />
             <div className="space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {EXISTENCE_FIELDS.map(({ field, stamp, label }) =>
@@ -238,7 +333,7 @@ export function CriticalPathForm({
                   <FormTextarea
                     label="Comentarios de telas y avíos"
                     name={field.name}
-                    rows={3}
+                    rows={2}
                     forceUppercase
                     placeholder="Notas sobre telas y avíos (opcional)"
                     value={field.state.value}
@@ -255,16 +350,16 @@ export function CriticalPathForm({
           </section>
 
           {/* ── Trazo ─────────────────────────────────────────────────── */}
-          <section className="border-t border-slate-100 dark:border-white/10 pt-5">
-            <SectionTitle>Trazo</SectionTitle>
+          <section id={stageId("trazo")} className="scroll-mt-2 border-t border-slate-100 dark:border-white/10 pt-4">
+            <StageHeader index={2} title="Trazo" done={STAGES[2].isDone(data)} />
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {renderDate("fecha_trazo", "Fecha de trazo")}
             </div>
           </section>
 
           {/* ── Corte ─────────────────────────────────────────────────── */}
-          <section className="border-t border-slate-100 dark:border-white/10 pt-5">
-            <SectionTitle>Corte</SectionTitle>
+          <section id={stageId("corte")} className="scroll-mt-2 border-t border-slate-100 dark:border-white/10 pt-4">
+            <StageHeader index={3} title="Corte" done={STAGES[3].isDone(data)} />
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {renderDate("fecha_real_corte", "Fecha real de corte")}
               <form.Field name="cantidad_real_corte">
@@ -272,6 +367,7 @@ export function CriticalPathForm({
                   <div>
                     <FormInput
                       label="Cantidad real de corte (pzas)"
+                      className="py-2!"
                       // Texto y NO `type="number"`: ese input reporta "" ante
                       // texto que no parsea ("12e") —y el PATCH borraba la
                       // cantidad con `null`—, descarta la coma al pegar ("12,5"
@@ -304,8 +400,8 @@ export function CriticalPathForm({
           </section>
 
           {/* ── Producción ────────────────────────────────────────────── */}
-          <section className="border-t border-slate-100 dark:border-white/10 pt-5">
-            <SectionTitle>Producción</SectionTitle>
+          <section id={stageId("produccion")} className="scroll-mt-2 border-t border-slate-100 dark:border-white/10 pt-4">
+            <StageHeader index={4} title="Producción" done={STAGES[4].isDone(data)} />
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {renderCheckbox("corte_recibido", "Corte recibido")}
             </div>

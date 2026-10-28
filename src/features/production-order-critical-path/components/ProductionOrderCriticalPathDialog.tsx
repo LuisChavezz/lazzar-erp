@@ -164,7 +164,7 @@ export function ProductionOrderCriticalPathDialog({
     <MainDialog
       open
       onOpenChange={handleOpenChange}
-      maxWidth="760px"
+      maxWidth="820px"
       showCloseButton={false}
       title={`Ruta crítica · ${target.folio || `OP #${target.opId}`}`}
       description="Seguimiento por subproceso de la orden de producción."
