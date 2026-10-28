@@ -3,7 +3,7 @@ import { EditIcon, BanIcon } from "@/src/components/Icons";
 import { ActionMenu, ActionMenuItem } from "@/src/components/ActionMenu";
 import { ACTIVO_INACTIVO_CFG, StatusBadge } from "@/src/components/StatusBadge";
 import { formatLocalDate } from "@/src/utils/formatDate";
-import { formatMoneyValueOrDash } from "@/src/utils/formatCurrency";
+import { formatMxn } from "@/src/utils/formatCurrency";
 import { Contract } from "../interfaces/contract.interface";
 import {
   ESTADO_CONTRATO_CFG,
@@ -107,7 +107,7 @@ export const getColumns = (
         Number(rowA.original.salario) - Number(rowB.original.salario),
       cell: (info) => (
         <span className="text-slate-600 dark:text-slate-300 font-medium tabular-nums">
-          {formatMoneyValueOrDash(info.getValue())}
+          {formatMxn(info.getValue())}
         </span>
       ),
     }),

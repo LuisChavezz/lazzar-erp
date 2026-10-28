@@ -1,4 +1,3 @@
-import { formatCurrency } from "./formatCurrency";
 
 /**
  * Dinero en CENTAVOS ENTEROS. La API serializa los decimales como string
@@ -34,9 +33,3 @@ export const centsToMoney = (cents: number): string => {
   const fraction = String(absolute % 100).padStart(2, "0");
   return `${cents < 0 && absolute !== 0 ? "-" : ""}${whole}.${fraction}`;
 };
-
-/** Centavos enteros → importe es-MX en pesos para mostrar ("$1,234.50"). */
-export const formatCents = (cents: number): string =>
-  // `Number` de un decimal de 2 posiciones da el double más cercano y `Intl`
-  // lo redondea a 2 decimales: el texto mostrado es exacto.
-  formatCurrency(Number(centsToMoney(cents)));

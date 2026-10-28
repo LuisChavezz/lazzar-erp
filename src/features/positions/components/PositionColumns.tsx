@@ -4,7 +4,7 @@ import { EditIcon, BanIcon } from "@/src/components/Icons";
 import { ConfirmDialog } from "@/src/components/ConfirmDialog";
 import { ActionMenu, ActionMenuItem } from "@/src/components/ActionMenu";
 import { ACTIVO_INACTIVO_CFG, StatusBadge } from "@/src/components/StatusBadge";
-import { formatMoneyValueOrDash } from "@/src/utils/formatCurrency";
+import { formatMxn } from "@/src/utils/formatCurrency";
 import { Position } from "../interfaces/position.interface";
 import { useDeletePosition } from "../hooks/useDeletePosition";
 
@@ -116,7 +116,7 @@ export const getColumns = (
       meta: { align: "right" },
       cell: (info) => (
         <span className="text-slate-600 dark:text-slate-300 font-medium tabular-nums">
-          {formatMoneyValueOrDash(info.getValue())}
+          {formatMxn(info.getValue())}
         </span>
       ),
     }),

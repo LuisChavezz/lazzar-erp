@@ -13,7 +13,8 @@ import {
   XIcon,
 } from "@/src/components/Icons";
 import { sanitizeDecimalInput } from "@/src/utils/decimal";
-import { formatCents } from "@/src/utils/moneyCents";
+import { centsToMoney } from "@/src/utils/moneyCents";
+import { formatMxn } from "@/src/utils/formatCurrency";
 import { formatQuincena, parseQuincenaKey, type Quincena } from "@/src/utils/quincena";
 import { getEmployeeFullName } from "@/src/features/employees/utils/employeeName";
 import type { Payroll } from "../interfaces/payroll.interface";
@@ -448,7 +449,7 @@ export default function PayrollForm({
                   Percepciones
                 </dt>
                 <dd className="text-sm sm:text-base font-bold tabular-nums text-slate-800 dark:text-white">
-                  {formatCents(totals.percepciones)}
+                  {formatMxn(centsToMoney(totals.percepciones))}
                 </dd>
               </div>
               <div>
@@ -456,7 +457,7 @@ export default function PayrollForm({
                   Deducciones
                 </dt>
                 <dd className="text-sm sm:text-base font-bold tabular-nums text-slate-800 dark:text-white">
-                  {formatCents(totals.deducciones)}
+                  {formatMxn(centsToMoney(totals.deducciones))}
                 </dd>
               </div>
               <div>
@@ -470,7 +471,7 @@ export default function PayrollForm({
                       : "text-emerald-600 dark:text-emerald-400"
                   }`}
                 >
-                  {formatCents(totals.neto)}
+                  {formatMxn(centsToMoney(totals.neto))}
                 </dd>
               </div>
             </dl>

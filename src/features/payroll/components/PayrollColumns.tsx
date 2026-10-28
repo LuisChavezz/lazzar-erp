@@ -3,7 +3,8 @@ import { CheckCircleIcon, EditIcon, ViewIcon, XIcon } from "@/src/components/Ico
 import { ActionMenu, ActionMenuItem } from "@/src/components/ActionMenu";
 import { StatusBadge } from "@/src/components/StatusBadge";
 import { formatLocalDate, formatLocalDateRange } from "@/src/utils/formatDate";
-import { formatCents, moneyToCents } from "@/src/utils/moneyCents";
+import { centsToMoney, moneyToCents } from "@/src/utils/moneyCents";
+import { formatMxn } from "@/src/utils/formatCurrency";
 import { formatQuincena, quincenaFromRange } from "@/src/utils/quincena";
 import type { Payroll } from "../interfaces/payroll.interface";
 import {
@@ -37,10 +38,13 @@ export const formatPayrollPeriod = (payroll: Pick<Payroll, "periodo_inicio" | "p
       });
 };
 
-/** Importe de la API en pesos, o "—" si falta o no es un decimal. */
+/**
+ * Importe de la API en pesos (`formatMxn`: la nómina se paga en moneda de curso
+ * legal, LFT art. 101), o "—" si falta o no es un decimal.
+ */
 export const formatMoneyOrDash = (value: string | null | undefined): string => {
   const cents = moneyToCents(value);
-  return cents === null ? "—" : formatCents(cents);
+  return cents === null ? "—" : formatMxn(centsToMoney(cents));
 };
 
 const columnHelper = createColumnHelper<PayrollRow>();
