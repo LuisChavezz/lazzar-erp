@@ -30,7 +30,11 @@ import { TIPO_PEDIDO } from "../../orders/constants/pedidoStatus";
 import { IVA_TASA_FIJA } from "../constants/iva";
 import { useQuoteOnboardingData } from "./useQuoteOnboardingData";
 import { useValidWorkspaceBranchId } from "../../workspace/hooks/useValidWorkspaceBranchId";
-import { getQuoteSinSucursalMessage, resolveQuoteSucursal } from "../utils/quoteSucursal";
+import {
+  getQuoteSinSucursalMessage,
+  QUOTE_SUCURSAL_LOADING_MESSAGE,
+  resolveQuoteSucursal,
+} from "../utils/quoteSucursal";
 import { useSatInfo } from "../../sat/hooks/useSatInfo";
 import { useSizes } from "../../sizes/hooks/useSizes";
 import { useQuote } from "./useQuote";
@@ -195,7 +199,8 @@ export function useQuoteEditForm(quoteId: number) {
   const { data: satInfo } = useSatInfo();
   const { sizes, isLoading: isSizesLoading, isInitialError: isErrorSizes } = useSizes();
   // Respaldo de la sucursal solo para una cotización que no la trae (ver
-  // `resolveQuoteSucursal`). Su carga entra en el gate del formulario.
+  // `resolveQuoteSucursal`). Su carga solo entra en el gate del formulario en
+  // ese caso: con la sucursal propia, la lista no se usa y no se espera.
   const {
     branchId: workspaceBranchId,
     isLoading: isWorkspaceBranchLoading,
@@ -394,6 +399,10 @@ export function useQuoteEditForm(quoteId: number) {
       // Inalcanzable (un schema fallido siempre trae issues); estrecha el tipo.
       if (!parsed.success) return;
 
+      if (!quoteData?.sucursal && isWorkspaceBranchLoading) {
+        toast.error(QUOTE_SUCURSAL_LOADING_MESSAGE, { id: "quote-sin-sucursal" });
+        return;
+      }
       const sucursal = resolveQuoteSucursal(quoteData?.sucursal, workspaceBranchId);
       if (sucursal === null) {
         toast.error(getQuoteSinSucursalMessage(isWorkspaceBranchError), {
@@ -1178,7 +1187,10 @@ export function useQuoteEditForm(quoteId: number) {
     matrizCompatibilidad: onboardingData?.catalogos.matriz_compatibilidad ?? EMPTY_MATRIZ,
     isCustomersLoading,
     isCurrenciesLoading,
-    isOnboardingLoading: isOnboardingLoading || isQuoteLoading || isWorkspaceBranchLoading,
+    isOnboardingLoading:
+      isOnboardingLoading ||
+      isQuoteLoading ||
+      (Boolean(quoteData) && !quoteData?.sucursal && isWorkspaceBranchLoading),
     isSizesLoading,
     isErrorSizes,
     showForm,
