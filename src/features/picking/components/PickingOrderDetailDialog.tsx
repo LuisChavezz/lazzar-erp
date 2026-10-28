@@ -10,7 +10,10 @@ import {
   SectionTitle,
   textOrDash,
 } from "@/src/components/DetailDialogPrimitives";
-import { formatMoneyValueOrDash } from "@/src/utils/formatCurrency";
+import {
+  OrderCurrencyProvider,
+  useOrderMoney,
+} from "@/src/features/orders/components/OrderCurrencyContext";
 import {
   getFormaPagoLabel,
   getMetodoPagoLabel,
@@ -34,6 +37,16 @@ import type { PedidoDetalleLinea } from "@/src/features/orders/interfaces/order.
  * surtido) — misma convención que `QuoteDetailsProducts`, que tampoco lo
  * pinta; los costos solo se exhiben en los reportes de valuación.
  */
+/**
+ * Importe del pedido en SU moneda (`pedido.moneda`, resuelta con el catálogo
+ * por `OrderCurrencyProvider`, como en el detalle 360°); sin símbolo mientras
+ * el catálogo carga o si no la trae. "—" si el backend no manda el importe.
+ */
+function Importe({ value }: { value: string | number | null | undefined }) {
+  const { formatMoney } = useOrderMoney();
+  return <>{formatMoney(value)}</>;
+}
+
 function PedidoLineas({ detalles }: { detalles: PedidoDetalleLinea[] }) {
   if (detalles.length === 0) {
     return <EmptyLines>Este pedido no tiene líneas de producto.</EmptyLines>;
@@ -67,8 +80,8 @@ function PedidoLineas({ detalles }: { detalles: PedidoDetalleLinea[] }) {
                 )}
               </div>
               <div className="text-xs text-slate-500 dark:text-slate-400">
-                Precio unitario: {formatMoneyValueOrDash(linea.precio_unitario)} · Subtotal:{" "}
-                {formatMoneyValueOrDash(linea.subtotal_linea)}
+                Precio unitario: <Importe value={linea.precio_unitario} /> · Subtotal:{" "}
+                <Importe value={linea.subtotal_linea} />
               </div>
             </div>
             <div className="text-right shrink-0">
@@ -173,38 +186,42 @@ export function PickingOrderDetailDialog({
 
       {/* ── Estado: datos cargados ───────────────────────────────────────── */}
       {!isLoading && !isError && data && (
-        <div className="space-y-5">
-          {/* Resumen */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-3 px-4 py-3 rounded-xl bg-slate-50 dark:bg-white/5 text-xs">
-            <InfoField label="Cliente" className="col-span-2 sm:col-span-1">
-              <span className="block truncate">{textOrDash(data.cliente_nombre)}</span>
-            </InfoField>
-            <InfoField label="Forma de pago">{getFormaPagoLabel(data.forma_pago)}</InfoField>
-            <InfoField label="Método de pago">{getMetodoPagoLabel(data.metodo_pago)}</InfoField>
-            <InfoField label="Uso CFDI">{getUsoCfdiLabel(data.uso_cfdi)}</InfoField>
-            <InfoField label="Destinatario">{textOrDash(data.destinatario)}</InfoField>
-            <InfoField label="Ciudad envío">{textOrDash(data.ciudad_envio)}</InfoField>
-            <InfoField label="Flete">
-              <span className="tabular-nums">{formatMoneyValueOrDash(data.flete)}</span>
-            </InfoField>
-            <InfoField label="Gran total" className="col-span-2 sm:col-span-2">
-              <span className="tabular-nums font-semibold">
-                {formatMoneyValueOrDash(data.gran_total)}
-              </span>
-            </InfoField>
-            {data.observaciones && (
-              <InfoField label="Observaciones" className="col-span-2 sm:col-span-3">
-                {data.observaciones}
+        <OrderCurrencyProvider monedaId={data.moneda}>
+          <div className="space-y-5">
+            {/* Resumen */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-3 px-4 py-3 rounded-xl bg-slate-50 dark:bg-white/5 text-xs">
+              <InfoField label="Cliente" className="col-span-2 sm:col-span-1">
+                <span className="block truncate">{textOrDash(data.cliente_nombre)}</span>
               </InfoField>
-            )}
-          </div>
+              <InfoField label="Forma de pago">{getFormaPagoLabel(data.forma_pago)}</InfoField>
+              <InfoField label="Método de pago">{getMetodoPagoLabel(data.metodo_pago)}</InfoField>
+              <InfoField label="Uso CFDI">{getUsoCfdiLabel(data.uso_cfdi)}</InfoField>
+              <InfoField label="Destinatario">{textOrDash(data.destinatario)}</InfoField>
+              <InfoField label="Ciudad envío">{textOrDash(data.ciudad_envio)}</InfoField>
+              <InfoField label="Flete">
+                <span className="tabular-nums">
+                  <Importe value={data.flete} />
+                </span>
+              </InfoField>
+              <InfoField label="Gran total" className="col-span-2 sm:col-span-2">
+                <span className="tabular-nums font-semibold">
+                  <Importe value={data.gran_total} />
+                </span>
+              </InfoField>
+              {data.observaciones && (
+                <InfoField label="Observaciones" className="col-span-2 sm:col-span-3">
+                  {data.observaciones}
+                </InfoField>
+              )}
+            </div>
 
-          {/* Líneas producto + color + tallas */}
-          <div>
-            <SectionTitle>Detalle de productos</SectionTitle>
-            <PedidoLineas detalles={data.detalles} />
+            {/* Líneas producto + color + tallas */}
+            <div>
+              <SectionTitle>Detalle de productos</SectionTitle>
+              <PedidoLineas detalles={data.detalles} />
+            </div>
           </div>
-        </div>
+        </OrderCurrencyProvider>
       )}
     </MainDialog>
   );
