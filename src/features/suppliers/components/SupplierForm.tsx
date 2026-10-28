@@ -169,7 +169,7 @@ export default function SupplierForm({ onSuccess, supplierToEdit }: SupplierForm
                 id="proveedor-codigo"
                 label="Código"
                 value={supplierToEdit?.codigo ?? ""}
-                placeholder="Se asigna automáticamente al guardar"
+                placeholder="Se asigna al guardar"
                 readOnly
                 tabIndex={-1}
                 className={`${COMPACT_FIELD_CLS} ${READ_ONLY_INPUT_CLS}`}
