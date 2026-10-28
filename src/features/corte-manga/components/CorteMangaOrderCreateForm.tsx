@@ -179,7 +179,7 @@ export function CorteMangaOrderCreateForm({
   }
 
   return (
-    <form onSubmit={handleFormSubmit} className="w-full space-y-5">
+    <form onSubmit={handleFormSubmit} className="w-full space-y-4">
       {/* ── Bloque de duplicado (409) ─────────────────────────────────────
           Ámbar informativo, NO rojo de validación: no es un error de captura
           del usuario, es un estado de negocio ("ya existe una OCM con el 100%
@@ -263,15 +263,16 @@ export function CorteMangaOrderCreateForm({
         </div>
       )}
 
-      <fieldset disabled={isPending} className="space-y-5">
+      <fieldset disabled={isPending} className="space-y-4">
         {/* ── Pedido ─────────────────────────────────────────────────────── */}
         <form.Field name="pedido">
           {(field) => {
             const selected = pedidoOptions.find((option) => option.value === field.state.value);
             return (
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 <FormSelect
                   label="Pedido"
+                  className="py-2!"
                   name={field.name}
                   // Si un refetch sacó al pedido elegido del catálogo (p. ej. tras
                   // el 409 de duplicado), un `<select>` controlado con un valor
@@ -317,11 +318,14 @@ export function CorteMangaOrderCreateForm({
           }}
         </form.Field>
 
+        {/* Prioridad y operador lado a lado: son datos cortos. */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-start">
         {/* ── Prioridad ──────────────────────────────────────────────────── */}
         <form.Field name="prioridad">
           {(field) => (
             <FormSelect
               label="Prioridad"
+              className="py-2!"
               name={field.name}
               options={PRIORIDAD_OPTIONS}
               value={field.state.value}
@@ -340,16 +344,17 @@ export function CorteMangaOrderCreateForm({
           <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider ml-1 mb-1 block">
             Operador asignado
           </span>
-          <div className="flex items-center gap-2 rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 px-4 py-3">
+          <div className="flex items-center gap-2 rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 px-3 py-2">
             <UserIcon className="w-4 h-4 shrink-0 text-slate-400" />
             <span className="text-sm font-medium text-slate-700 dark:text-slate-200 truncate">
               {operadorAsignado}
             </span>
           </div>
           <p className="text-[11px] text-slate-500 mt-1 ml-1">
-            La orden se asigna siempre a quien la crea; no es posible asignarla a otro
-            usuario.
+            Se asigna a quien crea la orden.
           </p>
+        </div>
+
         </div>
 
         {/* ── Observaciones ──────────────────────────────────────────────────

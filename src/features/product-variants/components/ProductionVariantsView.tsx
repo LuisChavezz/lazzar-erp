@@ -100,7 +100,7 @@ export function ProductionVariantsView() {
             }
             open={isOnboardingOpen}
             onOpenChange={setIsOnboardingOpen}
-            maxWidth="720px"
+            maxWidth="640px"
             trigger={
               <Button
                 variant="primary"

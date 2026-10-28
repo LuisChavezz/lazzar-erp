@@ -28,7 +28,7 @@ export default function ProductOnboardingDialog() {
       }
       open={isOpen}
       onOpenChange={setIsOpen}
-      maxWidth="720px"
+      maxWidth="640px"
       trigger={
         <Button
           variant="primary"

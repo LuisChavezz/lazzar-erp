@@ -36,7 +36,7 @@ export function CreateProductionOrderDialog({
       }
       open={open}
       onOpenChange={onOpenChange}
-      maxWidth="640px"
+      maxWidth="720px"
       showCloseButton={true}
     >
       <ProductionOrderStepManager

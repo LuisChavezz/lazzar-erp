@@ -25,6 +25,11 @@ export type HeaderFilterSpec<T> =
       label?: (row: T) => string | null | undefined;
       /** Con buscador, para catálogos largos. */
       searchable?: boolean;
+      /**
+       * Qué se filtra, para el `aria-label`/`title` del embudo, cuando no es la
+       * columna misma (p. ej. el folio que filtra por estatus).
+       */
+      filterLabel?: string;
     }
   /** Un mes por opción, del más reciente al más antiguo. */
   | { type: "month"; get: (row: T) => string | null | undefined; emptyLabel?: string }
@@ -104,7 +109,7 @@ export function withHeaderFilters<T>(
           title={title}
           column={tableColumn}
           options={options}
-          label={title.toLowerCase()}
+          label={(spec.type === "distinct" && spec.filterLabel) || title.toLowerCase()}
           searchable={spec.type === "distinct" && spec.searchable ? { placeholder: `Buscar ${title.toLowerCase()}…` } : false}
           menuAlign={column.meta?.align === "right" ? "end" : "start"}
         />

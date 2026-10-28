@@ -3,7 +3,8 @@
 import { createColumnHelper, type ColumnDef } from "@tanstack/react-table";
 import { StatusBadge } from "@/src/components/StatusBadge";
 import { textOrDash } from "@/src/components/DetailDialogPrimitives";
-import { ActionMenu, type ActionMenuItem } from "@/src/components/ActionMenu";
+import { type ActionMenuItem } from "@/src/components/ActionMenu";
+import { FolioActionMenu } from "@/src/components/FolioActionMenu";
 import { ViewIcon } from "@/src/components/Icons";
 import { formatQuantityValue } from "@/src/utils/formatCurrency";
 import { formatShortDate } from "@/src/utils/formatDate";
@@ -17,7 +18,7 @@ import type { HeaderFilterSpec } from "@/src/components/withHeaderFilters";
 
 const columnHelper = createColumnHelper<EmbroideryOrder>();
 
-const ActionsCell = ({
+const FolioCell = ({
   order,
   onViewDetails,
 }: {
@@ -37,9 +38,16 @@ const ActionsCell = ({
     { label: "Ver Detalles", icon: ViewIcon, onSelect: () => onViewDetails(order.id) },
   ];
   return (
-    <div className="flex items-center justify-center">
-      <ActionMenu items={menuItems} ariaLabel={`Acciones de ${order.folio_bordado}`} />
-    </div>
+    <FolioActionMenu
+      folio={order.folio_bordado}
+      items={menuItems}
+      status={
+        <StatusBadge
+          status={String(order.estatus_bordado)}
+          config={{ [order.estatus_bordado]: embroideryStatusEntry(order.estatus_bordado, order.estatus_bordado_display) }}
+        />
+      }
+    />
   );
 };
 
@@ -81,21 +89,12 @@ export const getEmbroideryOrderColumns = (onViewDetails: (id: number) => void) =
       </span>
     ),
   }),
+  // El folio es el menú de acciones de la fila (con ">") y lleva el estatus a
+  // su lado: sin columnas aparte de "Estatus" ni "Acciones".
   columnHelper.accessor("folio_bordado", {
     header: "Folio",
-    // Folio clickeable: navega al detalle con el MISMO callback que la acción
-    // "Ver Detalles" (recibe `id`, la PK de esta orden). Mismo patrón que el
-    // folio del listado de pedidos (`SharedOrderColumns`).
-    cell: ({ row }) => (
-      <button
-        type="button"
-        onClick={() => onViewDetails(row.original.id)}
-        className="font-mono text-slate-700 dark:text-slate-200 font-semibold hover:text-sky-600 dark:hover:text-sky-400 hover:underline transition-colors cursor-pointer"
-        title="Ver detalle"
-      >
-        {row.original.folio_bordado}
-      </button>
-    ),
+    size: 180,
+    cell: ({ row }) => <FolioCell order={row.original} onViewDetails={onViewDetails} />,
   }),
   // `accessorFn` que colapsa `null` a `""` — mismo bug de
   // `getColumnCanGlobalFilter`/`flatRows[0]` que ya documenta
@@ -120,20 +119,6 @@ export const getEmbroideryOrderColumns = (onViewDetails: (id: number) => void) =
         pedidoId={info.row.original.pedido}
         folio={info.getValue()}
         from="embroidery"
-      />
-    ),
-  }),
-  columnHelper.accessor("estatus_bordado", {
-    header: "Estatus",
-    cell: ({ row }) => (
-      <StatusBadge
-        status={String(row.original.estatus_bordado)}
-        config={{
-          [row.original.estatus_bordado]: embroideryStatusEntry(
-            row.original.estatus_bordado,
-            row.original.estatus_bordado_display,
-          ),
-        }}
       />
     ),
   }),
@@ -202,12 +187,6 @@ export const getEmbroideryOrderColumns = (onViewDetails: (id: number) => void) =
       </span>
     ),
   }),
-  columnHelper.display({
-    id: "acciones",
-    header: "Acciones",
-    meta: { align: "center" },
-    cell: ({ row }) => <ActionsCell order={row.original} onViewDetails={onViewDetails} />,
-  }),
 ] as ColumnDef<EmbroideryOrder>[];
 
 /**
@@ -215,7 +194,7 @@ export const getEmbroideryOrderColumns = (onViewDetails: (id: number) => void) =
  * Las opciones salen del listado completo (la tabla es de modo cliente).
  */
 export const EMBROIDERYORDER_HEADER_FILTERS: Partial<Record<string, HeaderFilterSpec<EmbroideryOrder>>> = {
-  estatus_bordado: { type: "distinct", get: (r) => r.estatus_bordado, label: (r) => r.estatus_bordado_display },
+  folio_bordado: { type: "distinct", filterLabel: "estatus", get: (r) => r.estatus_bordado, label: (r) => r.estatus_bordado_display },
   pedido_folio: { type: "presence", get: (r) => r.pedido_folio, con: "Con pedido", sin: "Sin pedido" },
   cobertura: { type: "boolean", get: (r) => r.cobertura_completa, yes: "Cobertura completa", no: "Cobertura parcial" },
   usuario_nombre: { type: "distinct", get: (r) => r.usuario_nombre },

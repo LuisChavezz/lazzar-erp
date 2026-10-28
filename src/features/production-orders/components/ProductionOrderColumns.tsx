@@ -3,7 +3,7 @@
 import { createColumnHelper, type ColumnDef } from "@tanstack/react-table";
 import type { HeaderFilterSpec } from "@/src/components/withHeaderFilters";
 import type { ProductionOrderListItem } from "../interfaces/production-order.interface";
-import { ActionMenu } from "@/src/components/ActionMenu";
+import { FolioActionMenu } from "@/src/components/FolioActionMenu";
 import type { ActionMenuItem } from "@/src/components/ActionMenu";
 import { RouteIcon, ViewIcon } from "@/src/components/Icons";
 import { StatusBadge } from "@/src/components/StatusBadge";
@@ -15,7 +15,7 @@ import {
 
 const columnHelper = createColumnHelper<ProductionOrderListItem>();
 
-const ActionsCell = ({
+const FolioCell = ({
   row,
   onViewDetails,
   onOpenCriticalPath,
@@ -38,12 +38,16 @@ const ActionsCell = ({
   ];
 
   return (
-    <div className="flex justify-center">
-      <ActionMenu
-        items={menuItems}
-        ariaLabel={`Acciones de la orden ${row.folio_op}`}
-      />
-    </div>
+    <FolioActionMenu
+      folio={row.folio_op}
+      items={menuItems}
+      status={
+        <StatusBadge
+          status={String(row.estatus_op)}
+          config={{ [row.estatus_op]: productionOrderStatusEntry(row.estatus_op, row.estatus_op_display) }}
+        />
+      }
+    />
   );
 };
 
@@ -66,45 +70,16 @@ export function getProductionOrderColumns(
   onOpenCriticalPath: (row: ProductionOrderListItem) => void,
 ): ColumnDef<ProductionOrderListItem, unknown>[] {
   return [
-    // Folio OP
+    // Folio OP: es el menú de acciones de la fila (con ">") y lleva el estatus
+    // a su lado; sin columnas aparte de "Estatus" ni "Acciones".
     columnHelper.accessor('folio_op', {
       header: 'Folio OP',
-      size: 130,
-      // Folio clickeable: navega al detalle con el MISMO callback que la acción
-      // "Ver detalle" (recibe `op_id`, la PK de esta orden). Mismo patrón que el
-      // folio del listado de pedidos (`SharedOrderColumns`).
+      size: 180,
       cell: ({ row }) => (
-        <button
-          type="button"
-          onClick={() => onViewDetails(row.original.op_id)}
-          className="font-mono text-xs font-semibold text-slate-700 dark:text-slate-200 hover:text-sky-600 dark:hover:text-sky-400 hover:underline transition-colors cursor-pointer whitespace-nowrap"
-          title="Ver detalle"
-        >
-          {row.original.folio_op}
-        </button>
-      ),
-    }),
-
-    // Estatus
-    //
-    // Se accede por `estatus_op_display` (la etiqueta que resuelve el backend)
-    // para que la búsqueda y el orden trabajen sobre el texto que el usuario
-    // ve, no sobre el entero; el color del badge sí sale del entero
-    // `estatus_op`. `id` explícito conserva la visibilidad/orden de columna que
-    // ya tenga guardada `DataTable`.
-    columnHelper.accessor((row) => row.estatus_op_display ?? '', {
-      id: 'estatus_op',
-      header: 'Estatus',
-      size: 130,
-      cell: ({ row }) => (
-        <StatusBadge
-          status={String(row.original.estatus_op)}
-          config={{
-            [row.original.estatus_op]: productionOrderStatusEntry(
-              row.original.estatus_op,
-              row.original.estatus_op_display,
-            ),
-          }}
+        <FolioCell
+          row={row.original}
+          onViewDetails={onViewDetails}
+          onOpenCriticalPath={onOpenCriticalPath}
         />
       ),
     }),
@@ -196,20 +171,6 @@ export function getProductionOrderColumns(
       },
     }),
 
-    // Acciones
-    columnHelper.display({
-      id: 'acciones',
-      header: "Acciones",
-      meta: { align: "center" },
-      size: 90,
-      cell: ({ row }) => (
-        <ActionsCell
-          row={row.original}
-          onViewDetails={onViewDetails}
-          onOpenCriticalPath={onOpenCriticalPath}
-        />
-      ),
-    }),
   ] as ColumnDef<ProductionOrderListItem, unknown>[];
 }
 
@@ -218,8 +179,9 @@ export function getProductionOrderColumns(
  * Las opciones salen del listado completo (la tabla es de modo cliente).
  */
 export const PRODUCTION_ORDER_HEADER_FILTERS: Partial<Record<string, HeaderFilterSpec<ProductionOrderListItem>>> = {
-  estatus_op: {
+  folio_op: {
     type: "distinct",
+    filterLabel: "estatus",
     get: (r) => r.estatus_op,
     label: (r) => productionOrderStatusEntry(r.estatus_op, r.estatus_op_display).label,
   },

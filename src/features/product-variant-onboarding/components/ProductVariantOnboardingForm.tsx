@@ -7,7 +7,7 @@ import { FormCancelButton, FormSubmitButton } from "@/src/components/FormButtons
 import { Button } from "@/src/components/Button";
 import { ErrorState } from "@/src/components/ErrorState";
 import { ItemPickerButton } from "@/src/components/ItemPickerButton";
-import { CheckCircleIcon, ProductVariantsIcon } from "@/src/components/Icons";
+import { CheckCircleIcon } from "@/src/components/Icons";
 import { sanitizeDecimalInput } from "@/src/utils/decimal";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import MissingPrerequisites from "../../products/components/MissingPrerequisites";
@@ -111,23 +111,13 @@ export default function ProductVariantOnboardingForm() {
     <>
       <form ref={formRef} onSubmit={handleFormSubmit} className="w-full">
         <fieldset disabled={isPending}>
-          <section className="bg-white dark:bg-zinc-900 rounded-3xl border border-slate-200 dark:border-white/5 overflow-hidden mb-8">
-            <div className="px-8 py-5 border-b border-slate-100 dark:border-white/5 flex items-center gap-3 bg-slate-50/50 dark:bg-white/2">
-              <div className="w-10 h-10 rounded-xl bg-sky-50 dark:bg-sky-500/10 flex items-center justify-center text-sky-600 dark:text-sky-400">
-                <ProductVariantsIcon className="w-5 h-5" />
-              </div>
-              <div>
-                <h3 className="font-display font-semibold text-slate-900 dark:text-white text-lg">
-                  Alta rápida de variante
-                </h3>
-                <p className="text-xs text-slate-500">
-                  El SKU se genera automáticamente a partir del producto, color y talla
-                </p>
-              </div>
-            </div>
-
-            <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-8">
-              <div className="md:col-span-2">
+          {/* Sin tarjeta ni encabezado propio: el título ya lo da el diálogo. */}
+          <p className="mb-3 text-xs text-slate-500 dark:text-slate-400">
+            El SKU se genera automáticamente a partir del producto, color y talla.
+          </p>
+          <div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-x-3 gap-y-3">
+              <div className="sm:col-span-3">
                 <form.Field name="producto">
                   {(field) => (
                     <ItemPickerButton
@@ -146,6 +136,7 @@ export default function ProductVariantOnboardingForm() {
                 {(field) => (
                   <FormSelect
                     label="Color"
+                    className="py-2!"
                     name={field.name}
                     value={field.state.value}
                     onChange={(event) => {
@@ -179,6 +170,7 @@ export default function ProductVariantOnboardingForm() {
                   {(field) => (
                     <FormSelect
                       label="Talla"
+                      className="py-2!"
                       name={field.name}
                       value={field.state.value}
                       onChange={(event) => {
@@ -215,6 +207,7 @@ export default function ProductVariantOnboardingForm() {
                 {(field) => (
                   <FormInput
                     label="Precio Base"
+                    className="py-2!"
                     inputMode="decimal"
                     placeholder="0.00"
                     name={field.name}
@@ -232,35 +225,36 @@ export default function ProductVariantOnboardingForm() {
                 )}
               </form.Field>
 
-              <div className="md:col-span-2 rounded-2xl border border-dashed border-slate-300 dark:border-white/10 bg-slate-50/60 dark:bg-white/5 px-5 py-4">
-                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+              {/* SKU estimado en una línea compacta. */}
+              <div className="sm:col-span-3 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl border border-dashed border-slate-300 dark:border-white/10 bg-slate-50/60 dark:bg-white/5 px-3 py-2">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
                   SKU estimado
                 </p>
                 <p
-                  className="font-mono text-lg font-semibold text-slate-700 dark:text-slate-200 break-all"
+                  className="font-mono text-sm font-semibold text-slate-800 dark:text-slate-100 break-all"
                   data-testid="variant-onboarding-sku-preview"
                 >
                   {skuPreview ?? "—"}
                 </p>
-                <p className="text-xs text-slate-500 mt-1">
+                <p className="basis-full text-[11px] text-slate-500">
                   {selectedProductId > 0 && !selectedProductHasCode
                     ? "El producto no tiene código; el servidor no podrá generar el SKU."
                     : "Informativo: el SKU definitivo lo asigna el servidor al registrar."}
                 </p>
               </div>
             </div>
-          </section>
+          </div>
 
           {generalError ? (
             <div
               role="alert"
-              className="mb-6 rounded-2xl border border-red-300/70 dark:border-red-500/20 bg-red-50 dark:bg-red-500/10 px-5 py-3 text-sm text-red-700 dark:text-red-200"
+              className="mt-4 rounded-2xl border border-red-300/70 dark:border-red-500/20 bg-red-50 dark:bg-red-500/10 px-5 py-3 text-sm text-red-700 dark:text-red-200"
             >
               {generalError}
             </div>
           ) : null}
 
-          <div className="flex flex-col gap-3 pb-2 sm:flex-row sm:items-center sm:justify-end">
+          <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
             <FormCancelButton onClick={handleReset} disabled={isPending} />
             <FormSubmitButton isPending={isPending} loadingLabel="Guardando...">
               Registrar Variante

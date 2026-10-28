@@ -121,11 +121,13 @@ export function ProductionOrderStep1({
   };
 
   return (
-    <div className="flex flex-col gap-4">
-      {/* Prioridad */}
+    <div className="flex flex-col gap-3">
+      {/* Prioridad y pedido en una fila: son los dos datos de la orden. */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-start">
       <FormSelect
         label="Prioridad"
         name="prioridad"
+        className="py-2!"
         value={prioridad}
         onChange={(event) => setPrioridad(toNumber(event.target.value))}
       >
@@ -143,18 +145,8 @@ export function ProductionOrderStep1({
         ))}
       </FormSelect>
 
-      {/* Observaciones generales */}
-      <FormTextarea
-        label="Observaciones generales"
-        name="observaciones"
-        placeholder="Notas para toda la orden de producción (opcional)"
-        rows={2}
-        value={observaciones}
-        onChange={(event) => setObservaciones(event.target.value)}
-      />
-
       {/* Pedido relacionado — selección opcional vía diálogo apilado */}
-      <div>
+      <div className="sm:col-span-2">
         <label
           id={pedidoLabelId}
           className="text-[11px] font-bold text-slate-400 uppercase tracking-wider ml-1 mb-1 block"
@@ -163,7 +155,7 @@ export function ProductionOrderStep1({
         </label>
 
         {pedido ? (
-          <div className="flex items-center justify-between gap-3 rounded-xl border border-sky-200 bg-sky-50 dark:border-sky-700/60 dark:bg-sky-900/20 px-4 py-3">
+          <div className="flex items-center justify-between gap-3 rounded-xl border border-sky-200 bg-sky-50 dark:border-sky-700/60 dark:bg-sky-900/20 px-3 py-1.5">
             <div className="min-w-0">
               <p className="text-sm font-semibold text-slate-800 dark:text-slate-100 truncate">
                 {pedido.label}
@@ -198,19 +190,40 @@ export function ProductionOrderStep1({
             type="button"
             onClick={() => setIsPedidoSelectorOpen(true)}
             aria-describedby={pedidoLabelId}
-            className="w-full rounded-xl border border-dashed border-slate-300 dark:border-white/15 px-4 py-3 text-sm font-medium text-slate-600 dark:text-slate-300 hover:border-sky-400 hover:text-sky-700 dark:hover:border-sky-600 dark:hover:text-sky-300 cursor-pointer transition-colors"
+            className="w-full rounded-xl border border-dashed border-slate-300 dark:border-white/15 px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-300 hover:border-sky-400 hover:text-sky-700 dark:hover:border-sky-600 dark:hover:text-sky-300 cursor-pointer transition-colors"
           >
             + Relacionar a un pedido
           </button>
         )}
       </div>
 
-      {/* Selected count */}
-      <p className="text-xs text-slate-500 font-medium">
-        {selectedCount === 0
-          ? "Ninguna variante seleccionada"
-          : `${selectedCount} variante${selectedCount === 1 ? "" : "s"} seleccionada${selectedCount === 1 ? "" : "s"}`}
-      </p>
+      </div>
+
+      {/* Observaciones generales (opcionales) en una línea */}
+      <FormTextarea
+        label="Observaciones generales"
+        name="observaciones"
+        placeholder="Notas para toda la orden de producción (opcional)"
+        rows={1}
+        value={observaciones}
+        onChange={(event) => setObservaciones(event.target.value)}
+      />
+
+      {/* Productos: encabezado con el conteo de seleccionados */}
+      <div className="flex items-baseline justify-between gap-3 border-t border-slate-100 dark:border-white/10 pt-3">
+        <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider ml-1">
+          Productos
+        </span>
+        <span
+          className={`text-xs font-semibold ${
+            selectedCount > 0 ? "text-sky-600 dark:text-sky-400" : "text-slate-500"
+          }`}
+        >
+          {selectedCount === 0
+            ? "Ninguna variante seleccionada"
+            : `${selectedCount} variante${selectedCount === 1 ? "" : "s"} seleccionada${selectedCount === 1 ? "" : "s"}`}
+        </span>
+      </div>
 
       {/* Search + scrollable multi-select list */}
       <SearchableSelectList<ProductVariant>
@@ -239,7 +252,7 @@ export function ProductionOrderStep1({
       />
 
       {/* Action bar */}
-      <div className="flex items-center justify-between border-t border-slate-200 dark:border-white/10 pt-4">
+      <div className="flex items-center justify-between border-t border-slate-200 dark:border-white/10 pt-3">
         <button
           type="button"
           onClick={onBack}

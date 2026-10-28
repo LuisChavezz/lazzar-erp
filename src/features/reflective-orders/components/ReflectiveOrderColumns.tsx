@@ -2,7 +2,8 @@
 
 import { type ColumnDef, createColumnHelper } from "@tanstack/react-table";
 import { StatusBadge } from "@/src/components/StatusBadge";
-import { ActionMenu, type ActionMenuItem } from "@/src/components/ActionMenu";
+import { type ActionMenuItem } from "@/src/components/ActionMenu";
+import { FolioActionMenu } from "@/src/components/FolioActionMenu";
 import { ViewIcon } from "@/src/components/Icons";
 import { formatQuantityValue } from "@/src/utils/formatCurrency";
 import { formatShortDate } from "@/src/utils/formatDate";
@@ -18,7 +19,7 @@ import type { HeaderFilterSpec } from "@/src/components/withHeaderFilters";
 
 const columnHelper = createColumnHelper<ReflectiveOrder>();
 
-const ActionsCell = ({
+const FolioCell = ({
   order,
   onViewDetails,
 }: {
@@ -29,9 +30,16 @@ const ActionsCell = ({
     { label: "Ver Detalles", icon: ViewIcon, onSelect: () => onViewDetails(order.id) },
   ];
   return (
-    <div className="flex items-center justify-center">
-      <ActionMenu items={menuItems} ariaLabel={`Acciones de ${order.folio_reflejante}`} />
-    </div>
+    <FolioActionMenu
+      folio={order.folio_reflejante}
+      items={menuItems}
+      status={
+        <StatusBadge
+          status={String(order.estatus_reflejante)}
+          config={{ [order.estatus_reflejante]: reflectiveStatusEntry(order.estatus_reflejante, order.estatus_reflejante_display) }}
+        />
+      }
+    />
   );
 };
 
@@ -66,21 +74,12 @@ const ActionsCell = ({
  * `string | null`).
  */
 export const getReflectiveOrderColumns = (onViewDetails: (id: number) => void) => [
+  // El folio es el menú de acciones de la fila (con ">") y lleva el estatus a
+  // su lado: sin columnas aparte de "Estatus" ni "Acciones".
   columnHelper.accessor("folio_reflejante", {
     header: "Folio",
-    // Folio clickeable: navega al detalle con el MISMO callback que la acción
-    // "Ver Detalles" (recibe `id`, la PK de esta orden). Mismo patrón que el
-    // folio del listado de pedidos (`SharedOrderColumns`).
-    cell: ({ row }) => (
-      <button
-        type="button"
-        onClick={() => onViewDetails(row.original.id)}
-        className="font-mono text-slate-700 dark:text-slate-200 font-semibold hover:text-sky-600 dark:hover:text-sky-400 hover:underline transition-colors cursor-pointer"
-        title="Ver detalle"
-      >
-        {row.original.folio_reflejante}
-      </button>
-    ),
+    size: 180,
+    cell: ({ row }) => <FolioCell order={row.original} onViewDetails={onViewDetails} />,
   }),
   // `accessorFn` que colapsa `null` a `""`, en vez de `accessor("pedido_folio")`,
   // POR LA BÚSQUEDA GLOBAL — no por estética. `DataTable` no configura
@@ -115,20 +114,6 @@ export const getReflectiveOrderColumns = (onViewDetails: (id: number) => void) =
         pedidoId={info.row.original.pedido}
         folio={info.getValue()}
         from="reflective"
-      />
-    ),
-  }),
-  columnHelper.accessor("estatus_reflejante", {
-    header: "Estatus",
-    cell: ({ row }) => (
-      <StatusBadge
-        status={String(row.original.estatus_reflejante)}
-        config={{
-          [row.original.estatus_reflejante]: reflectiveStatusEntry(
-            row.original.estatus_reflejante,
-            row.original.estatus_reflejante_display,
-          ),
-        }}
       />
     ),
   }),
@@ -254,12 +239,6 @@ export const getReflectiveOrderColumns = (onViewDetails: (id: number) => void) =
       </span>
     ),
   }),
-  columnHelper.display({
-    id: "acciones",
-    header: "Acciones",
-    meta: { align: "center" },
-    cell: ({ row }) => <ActionsCell order={row.original} onViewDetails={onViewDetails} />,
-  }),
 ] as ColumnDef<ReflectiveOrder>[];
 
 /**
@@ -267,7 +246,7 @@ export const getReflectiveOrderColumns = (onViewDetails: (id: number) => void) =
  * Las opciones salen del listado completo (la tabla es de modo cliente).
  */
 export const REFLECTIVEORDER_HEADER_FILTERS: Partial<Record<string, HeaderFilterSpec<ReflectiveOrder>>> = {
-  estatus_reflejante: { type: "distinct", get: (r) => r.estatus_reflejante, label: (r) => r.estatus_reflejante_display },
+  folio_reflejante: { type: "distinct", filterLabel: "estatus", get: (r) => r.estatus_reflejante, label: (r) => r.estatus_reflejante_display },
   prioridad: {
     type: "distinct",
     get: (r) => r.prioridad,

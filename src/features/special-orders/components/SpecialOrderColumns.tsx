@@ -3,7 +3,7 @@
 import { type ColumnDef } from "@tanstack/react-table";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import { ActionMenu, type ActionMenuItem } from "@/src/components/ActionMenu";
+import { FolioActionMenu } from "@/src/components/FolioActionMenu";
 import { ViewIcon } from "@/src/components/Icons";
 import { getPedidoClasificacionLabel } from "@/src/features/orders/constants/pedidoStatus";
 import { parseLocalDate } from "@/src/utils/formatDate";
@@ -35,15 +35,16 @@ export const getSpecialOrderColumns = ({
     // `Pedido #id` cuando `folio` es nulo: así la búsqueda encuentra lo que se ve.
     accessorFn: (order) => order.folio || `Pedido #${order.id}`,
     header: "Folio",
+    // El folio es el menú de acciones de la fila (con ">"): sin columna aparte
+    // de "Acciones", igual que el resto de los listados de Producción.
+    size: 180,
     cell: (info) => (
-      <button
-        type="button"
-        onClick={() => onViewDetail(info.row.original.id)}
-        className="font-mono text-slate-700 dark:text-slate-200 font-semibold hover:text-sky-600 dark:hover:text-sky-400 hover:underline transition-colors cursor-pointer"
-        title="Ver detalle"
-      >
-        {info.getValue<string>()}
-      </button>
+      <FolioActionMenu
+        folio={info.getValue<string>()}
+        items={[
+          { label: "Ver detalle", icon: ViewIcon, onSelect: () => onViewDetail(info.row.original.id) },
+        ]}
+      />
     ),
   },
   {
@@ -93,25 +94,6 @@ export const getSpecialOrderColumns = ({
         <span className="text-sm text-slate-500 dark:text-slate-400 whitespace-nowrap">
           {parsedDate ? format(parsedDate, "d MMM yyyy", { locale: es }) : "—"}
         </span>
-      );
-    },
-  },
-  {
-    id: "acciones",
-    header: "Acciones",
-    enableSorting: false,
-    meta: { align: "center" },
-    cell: ({ row }) => {
-      const items: ActionMenuItem[] = [
-        { label: "Ver detalle", icon: ViewIcon, onSelect: () => onViewDetail(row.original.id) },
-      ];
-      return (
-        <div className="flex items-center justify-center">
-          <ActionMenu
-            items={items}
-            ariaLabel={`Acciones de ${row.original.folio || `pedido ${row.original.id}`}`}
-          />
-        </div>
       );
     },
   },

@@ -5,7 +5,7 @@ import { FormSelect } from "@/src/components/FormSelect";
 import { FormCancelButton, FormSubmitButton } from "@/src/components/FormButtons";
 import { Button } from "@/src/components/Button";
 import { ErrorState } from "@/src/components/ErrorState";
-import { CheckCircleIcon, ProductIcon } from "@/src/components/Icons";
+import { CheckCircleIcon } from "@/src/components/Icons";
 import { sanitizeDecimalInput } from "@/src/utils/decimal";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import MissingPrerequisites from "../../products/components/MissingPrerequisites";
@@ -97,23 +97,14 @@ export default function ProductOnboardingForm() {
   return (
     <form ref={formRef} onSubmit={handleFormSubmit} className="w-full">
       <fieldset disabled={isPending}>
-        <section className="bg-white dark:bg-zinc-900 rounded-3xl border border-slate-200 dark:border-white/5 overflow-hidden mb-8">
-          <div className="px-8 py-5 border-b border-slate-100 dark:border-white/5 flex items-center gap-3 bg-slate-50/50 dark:bg-white/2">
-            <div className="w-10 h-10 rounded-xl bg-sky-50 dark:bg-sky-500/10 flex items-center justify-center text-sky-600 dark:text-sky-400">
-              <ProductIcon className="w-5 h-5" />
-            </div>
-            <div>
-              <h3 className="font-display font-semibold text-slate-900 dark:text-white text-lg">
-                Alta rápida de producto
-              </h3>
-              <p className="text-xs text-slate-500">
-                El código se genera automáticamente a partir de la categoría
-              </p>
-            </div>
-          </div>
-
-          <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-8">
-            <div className="md:col-span-2">
+        {/* Sin tarjeta ni encabezado propio: el título ya lo da el diálogo.
+            El aviso del código queda como una línea de ayuda. */}
+        <p className="mb-3 text-xs text-slate-500 dark:text-slate-400">
+          El código se genera automáticamente a partir de la categoría.
+        </p>
+        <div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-x-3 gap-y-3">
+            <div className="sm:col-span-3">
               <form.Field name="nombre">
                 {(field) => (
                   <FormInput
@@ -121,8 +112,7 @@ export default function ProductOnboardingForm() {
                     placeholder="Ej. Playera básica"
                     forceUppercase
                     maxLength={100}
-                    variant="ghost"
-                    className="text-2xl font-bold"
+                    className="py-2!"
                     name={field.name}
                     value={field.state.value}
                     onChange={(event) => {
@@ -143,6 +133,7 @@ export default function ProductOnboardingForm() {
               {(field) => (
                 <FormSelect
                   label="Tipo"
+                  className="py-2!"
                   name={field.name}
                   value={field.state.value}
                   onChange={(event) => {
@@ -172,6 +163,7 @@ export default function ProductOnboardingForm() {
               {(field) => (
                 <FormSelect
                   label="Categoría"
+                  className="py-2!"
                   name={field.name}
                   value={field.state.value}
                   onChange={(event) => {
@@ -201,6 +193,7 @@ export default function ProductOnboardingForm() {
               {(field) => (
                 <FormInput
                   label="Precio Base"
+                  className="py-2!"
                   inputMode="decimal"
                   placeholder="0.00"
                   name={field.name}
@@ -218,9 +211,9 @@ export default function ProductOnboardingForm() {
               )}
             </form.Field>
           </div>
-        </section>
+        </div>
 
-        <div className="flex flex-col gap-3 pb-2 sm:flex-row sm:items-center sm:justify-end">
+        <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
           <FormCancelButton onClick={handleReset} disabled={isPending} />
           <FormSubmitButton isPending={isPending} loadingLabel="Guardando...">
             Registrar Producto
