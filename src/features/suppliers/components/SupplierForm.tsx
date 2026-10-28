@@ -6,6 +6,7 @@ import { FormInput } from "../../../components/FormInput";
 import { FormSelect } from "../../../components/FormSelect";
 import { FormCancelButton, FormSubmitButton } from "../../../components/FormButtons";
 import { Loader } from "../../../components/Loader";
+import { FormSection } from "../../../components/FormSection";
 import { COMPACT_FIELD_CLS, READ_ONLY_INPUT_CLS } from "../../../constants/formStyles";
 import { Supplier } from "../interfaces/supplier.interface";
 import { useSupplierForm } from "../hooks/useSupplierForm";
@@ -17,27 +18,6 @@ interface SupplierFormProps {
 }
 
 const RFC_MIN_LENGTH = 12;
-
-/** Grupo de campos con un encabezado ligero (sin tarjeta), para ordenar el alta sin recargarla. */
-function FormSection({
-  title,
-  description,
-  children,
-}: {
-  title: string;
-  description: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <section className="space-y-3">
-      <div className="flex items-baseline gap-2 border-b border-slate-100 dark:border-white/10 pb-1.5">
-        <h3 className="text-sm font-semibold text-slate-800 dark:text-white">{title}</h3>
-        <p className="text-xs text-slate-500 dark:text-slate-400">{description}</p>
-      </div>
-      {children}
-    </section>
-  );
-}
 
 type RfcValidationTone = "success" | "error";
 
