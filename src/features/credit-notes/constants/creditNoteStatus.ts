@@ -7,7 +7,8 @@ import type { NotaCreditoEstatus } from "../interfaces/credit-note.interface";
  *
  * Los tres son alcanzables desde esta pantalla, a diferencia de pagos: el alta
  * ofrece `Borrador` y `Emitida`, y `Cancelada` la produce la acción
- * `/cancelar/`.
+ * `/cancelar/` o el backend mismo cuando Facturama rechaza el timbrado al
+ * emitir (revierte la nota ya aplicada).
  *
  * `Emitida` va en ámbar y no en verde a propósito: no es un estado "todo bien"
  * sino el único con efecto contable —descontó saldo de una cuenta por cobrar—,

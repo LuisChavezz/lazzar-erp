@@ -23,9 +23,10 @@ export const isCreditNoteStampPending = (nota: Pick<NotaCredito, "cfdi_pendiente
 
 /**
  * ¿Se ofrece "Timbrar" para esta nota? Solo una `Emitida` sin CFDI y sin
- * timbrado pendiente. Desde el PR #607 emitir ya timbra antes de guardar, así
- * que esto es el camino de recuperación para las `Emitida` que quedaron sin
- * timbre. Un `Borrador` no se ofrece: se timbra al emitirlo.
+ * timbrado pendiente. Emitir ya intenta timbrar, así que esto es el camino de
+ * recuperación para las `Emitida` que quedaron sin timbre (p. ej. emitidas
+ * sobre una factura que aún no estaba timbrada). Un `Borrador` no se ofrece: se
+ * timbra al emitirlo.
  */
 export const isCreditNoteStampable = (
   nota: Pick<NotaCredito, "estatus" | "cfdi_uuid" | "cfdi_pendiente">,
