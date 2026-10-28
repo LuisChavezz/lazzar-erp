@@ -1,6 +1,5 @@
 import { expect, test } from "@playwright/test";
 import {
-  ALL_FILTER_OPTION,
   buildCatalogFilterOptions,
   optionsFromConfig,
 } from "@/src/utils/columnFilterOptions";
@@ -45,14 +44,13 @@ test.describe("buildCatalogFilterOptions", () => {
   ];
   const get = (row: { prioridad: number | null }) => row.prioridad;
 
-  test("'Todos' va primero y el catálogo sigue en su orden, aunque no haya filas", () => {
-    expect(buildCatalogFilterOptions([], get, catalog)).toEqual([ALL_FILTER_OPTION, ...catalog]);
+  test("el catálogo va en su orden, aunque no haya filas, y sin 'Todos'", () => {
+    expect(buildCatalogFilterOptions([], get, catalog)).toEqual(catalog);
   });
 
   test("los valores de las filas fuera del catálogo se agregan al final, sin repetir", () => {
     const rows = [{ prioridad: 5 }, { prioridad: 1 }, { prioridad: 4 }, { prioridad: 5 }, { prioridad: 2 }];
     expect(buildCatalogFilterOptions(rows, get, catalog)).toEqual([
-      ALL_FILTER_OPTION,
       ...catalog,
       { value: "5", label: "5" },
       { value: "4", label: "4" },
@@ -61,7 +59,26 @@ test.describe("buildCatalogFilterOptions", () => {
 
   test("las filas sin valor no agregan opción", () => {
     const rows = [{ prioridad: null }, { prioridad: 1 }];
-    expect(buildCatalogFilterOptions(rows, get, catalog)).toEqual([ALL_FILTER_OPTION, ...catalog]);
+    expect(buildCatalogFilterOptions(rows, get, catalog)).toEqual(catalog);
+  });
+
+  test("`getLabel` rotula solo los valores fuera del catálogo, con la primera fila", () => {
+    const rows = [{ prioridad: 4 }, { prioridad: 1 }, { prioridad: 4 }];
+    let calls = 0;
+    const label = (row: { prioridad: number | null }) => `Prioridad ${row.prioridad} #${++calls}`;
+    expect(buildCatalogFilterOptions(rows, get, catalog, label)).toEqual([
+      ...catalog,
+      { value: "4", label: "Prioridad 4 #1" },
+    ]);
+  });
+
+  test("sin etiqueta útil de `getLabel`, el valor crudo", () => {
+    const rows = [{ prioridad: 4 }, { prioridad: 5 }];
+    const label = (row: { prioridad: number | null }) => (row.prioridad === 4 ? "  " : null);
+    expect(buildCatalogFilterOptions(rows, get, catalog, label).slice(catalog.length)).toEqual([
+      { value: "4", label: "4" },
+      { value: "5", label: "5" },
+    ]);
   });
 
   test("un valor del catálogo presente en las filas no se duplica", () => {

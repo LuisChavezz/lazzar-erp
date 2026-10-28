@@ -43,6 +43,12 @@ export type HeaderFilterSpec<T> =
       get: (row: T) => string | number | null | undefined;
       /** Opciones del catálogo (`optionsFromConfig`, o un arreglo `{ value, label }[]`). */
       options: ColumnFilterOption[];
+      /**
+       * Etiqueta de los valores de las filas que el catálogo NO cubre (la de la
+       * primera fila con ese valor); sin ella, el valor crudo. No toca las
+       * opciones del catálogo.
+       */
+      label?: (row: T) => string | null | undefined;
       /** Como en `distinct`: qué se filtra, cuando no es la columna misma. */
       filterLabel?: string;
     }
@@ -63,7 +69,7 @@ function buildOptions<T>(spec: HeaderFilterSpec<T>, rows: T[]): ColumnFilterOpti
     case "distinct":
       return [ALL_FILTER_OPTION, ...buildDistinctFilterOptions(rows, spec.get, spec.label)];
     case "options":
-      return buildCatalogFilterOptions(rows, spec.get, spec.options);
+      return [ALL_FILTER_OPTION, ...buildCatalogFilterOptions(rows, spec.get, spec.options, spec.label)];
     case "month":
       return [ALL_FILTER_OPTION, ...buildMonthFilterOptions(rows.map(spec.get), spec.emptyLabel)];
     case "range":

@@ -143,15 +143,17 @@ export function optionsFromConfig<K extends PropertyKey>(
 
 /**
  * Opciones de una columna con catálogo conocido (spec `options` de
- * `withHeaderFilters`): "Todos", luego `options` en su orden y al final, sin
- * repetir, cada valor de las filas que el catálogo no cubre, rotulado con el
- * valor crudo. Así todo valor que puede quedar activo tiene opción y la ficha
+ * `withHeaderFilters`): `options` en su orden y al final, sin repetir, cada
+ * valor de las filas que el catálogo no cubre, rotulado con `getLabel` de la
+ * primera fila que lo trae (o con el valor crudo, sin `getLabel` o si no da
+ * etiqueta). Así todo valor que puede quedar activo tiene opción y la ficha
  * del filtro siempre tiene etiqueta. Filas sin valor se omiten.
  */
 export function buildCatalogFilterOptions<T>(
   rows: T[],
   getValue: (row: T) => string | number | null | undefined,
   options: ColumnFilterOption[],
+  getLabel?: (row: T) => string | null | undefined,
 ): ColumnFilterOption[] {
   const known = new Set(options.map((option) => option.value));
   const extra: ColumnFilterOption[] = [];
@@ -161,7 +163,7 @@ export function buildCatalogFilterOptions<T>(
     const key = String(value);
     if (known.has(key)) continue;
     known.add(key);
-    extra.push({ value: key, label: key });
+    extra.push({ value: key, label: getLabel?.(row)?.trim() || key });
   }
-  return [ALL_FILTER_OPTION, ...options, ...extra];
+  return [...options, ...extra];
 }
