@@ -2,8 +2,8 @@ import { useCallback, useEffect, useRef, type RefObject } from "react";
 import { format, parseISO, isValid } from "date-fns";
 import { es } from "date-fns/locale";
 import { Quote } from "../interfaces/quote.interface";
-import { formatCurrency } from "@/src/utils/formatCurrency";
 import { formatQuoteAmount } from "../utils/formatQuoteAmount";
+import { formatQuoteExportTotal, QUOTE_EXPORT_TOTAL_FIELD } from "../utils/quoteExportTotals";
 import { type DataTableHandle, DataTableVisibleColumn } from "@/src/components/DataTable";
 import { downloadBlob } from "@/src/utils/downloadBlob";
 
@@ -99,7 +99,8 @@ const createQuotesPdfDocument = (
     (col) => `${((getColumnWeight(col) / totalWeight) * 100).toFixed(1)}%`
   );
 
-  const grandTotal = quotes.reduce((sum, q) => sum + (Number(q.gran_total) || 0), 0);
+  // Total por moneda de la columna visible de importe (EC-618).
+  const grandTotal = formatQuoteExportTotal(quotes);
 
   const styles = StyleSheet.create({
     page: {
@@ -200,7 +201,6 @@ const createQuotesPdfDocument = (
       fontWeight: "bold",
       color: "#0f172a",
       paddingHorizontal: 5,
-      flexGrow: 1,
     },
     totalValue: {
       fontSize: 9,
@@ -233,7 +233,7 @@ const createQuotesPdfDocument = (
   });
 
   const grandTotalColIndex = columns.findIndex(
-    (col) => (col.accessorKey ?? col.id) === "gran_total"
+    (col) => (col.accessorKey ?? col.id) === QUOTE_EXPORT_TOTAL_FIELD
   );
 
   return (
@@ -256,7 +256,7 @@ const createQuotesPdfDocument = (
             </View>
             <View style={styles.metaRow}>
               <Text style={styles.metaLabel}>Total general:</Text>
-              <Text style={styles.metaValue}>{formatCurrency(grandTotal)}</Text>
+              <Text style={styles.metaValue}>{grandTotal}</Text>
             </View>
           </View>
         </View>
@@ -305,21 +305,18 @@ const createQuotesPdfDocument = (
             </View>
           ))}
 
-          {/* Fila de totales */}
+          {/* Fila de totales: una celda por columna, el total bajo la de importe */}
           {grandTotalColIndex >= 0 && (
             <View style={styles.totalRow}>
-              <Text style={[styles.totalLabel, { width: columnWidths.slice(0, grandTotalColIndex).join("") }]}>
-                Total
-              </Text>
               {columns.map((col, i) => (
                 <Text
                   key={`total-${col.id}`}
                   style={[
-                    styles.totalValue,
+                    i === grandTotalColIndex ? styles.totalValue : styles.totalLabel,
                     { width: columnWidths[i] },
                   ]}
                 >
-                  {i === grandTotalColIndex ? formatCurrency(grandTotal) : ""}
+                  {i === grandTotalColIndex ? grandTotal : i === 0 ? "Total" : ""}
                 </Text>
               ))}
             </View>
