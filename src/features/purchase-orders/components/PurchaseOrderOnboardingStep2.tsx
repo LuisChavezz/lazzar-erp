@@ -17,6 +17,7 @@ import { usePriceEntries } from "../hooks/usePriceEntries";
 import { buildPurchaseOrderDetalle } from "../utils/buildPurchaseOrderDetalle";
 import type { PurchaseOrderHeaderFieldErrors } from "../utils/purchaseOrderHeaderErrors";
 import { formatMoneyValue } from "@/src/utils/formatCurrency";
+import { onboardingMonedaCodigo } from "../utils/onboardingMonedaCodigo";
 
 /**
  * Concatena, en minúsculas, los campos contra los que filtra el buscador.
@@ -57,8 +58,7 @@ export function PurchaseOrderOnboardingStep2({
 
   // Código de la moneda elegida en el encabezado: prefijo de los precios
   // capturados (EC-606); sin moneda resuelta, sin prefijo.
-  const monedaCodigo =
-    onboardingData?.catalogos.monedas.find((moneda) => moneda.id === step1Data.orden_compra.moneda)?.codigo_iso ?? null;
+  const monedaCodigo = onboardingMonedaCodigo(onboardingData, step1Data.orden_compra.moneda);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [quantities, setQuantities] = useState<Record<number, number>>({});

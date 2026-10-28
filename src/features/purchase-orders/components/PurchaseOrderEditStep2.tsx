@@ -22,6 +22,7 @@ import { useUpdatePurchaseOrder } from "../hooks/useUpdatePurchaseOrder";
 import { buildPurchaseOrderDetalle } from "../utils/buildPurchaseOrderDetalle";
 import type { PurchaseOrderHeaderFieldErrors } from "../utils/purchaseOrderHeaderErrors";
 import { formatMoneyValue } from "@/src/utils/formatCurrency";
+import { onboardingMonedaCodigo } from "../utils/onboardingMonedaCodigo";
 
 /**
  * Concatena, en minúsculas, los campos contra los que filtra el buscador.
@@ -90,8 +91,7 @@ export function PurchaseOrderEditStep2({
 
   // Código de la moneda elegida en el encabezado: prefijo de los precios
   // capturados (EC-606); sin moneda resuelta, sin prefijo.
-  const monedaCodigo =
-    onboardingData.catalogos.monedas.find((moneda) => moneda.id === header.moneda)?.codigo_iso ?? null;
+  const monedaCodigo = onboardingMonedaCodigo(onboardingData, header.moneda);
 
   const { mutate: update, isPending } = useUpdatePurchaseOrder({
     onOrderNoLongerEditable,
