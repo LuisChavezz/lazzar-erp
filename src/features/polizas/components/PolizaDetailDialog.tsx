@@ -10,7 +10,7 @@ import {
   textOrDash,
 } from "@/src/components/DetailDialogPrimitives";
 import { ContabilidadIcon } from "@/src/components/Icons";
-import { safeParseAmount } from "@/src/utils/formatCurrency";
+import { formatMoneyValue, safeParseAmount } from "@/src/utils/formatCurrency";
 import { formatShortDate } from "@/src/utils/formatDate";
 import {
   POLIZA_ESTATUS_CONFIG,
@@ -52,11 +52,7 @@ interface PolizaDetailDialogProps {
  * Importe SIN símbolo de moneda: `Poliza` no declara ninguna y no hay de dónde
  * derivarla (ver el encabezado de `poliza.interface.ts`).
  */
-const importe = (value: string): string =>
-  new Intl.NumberFormat("es-MX", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(safeParseAmount(value));
+const importe = (value: string): string => formatMoneyValue(value, null);
 
 export function PolizaDetailDialog({
   poliza,

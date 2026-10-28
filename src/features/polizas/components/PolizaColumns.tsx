@@ -8,7 +8,7 @@ import {
   DeleteIcon,
   ViewIcon,
 } from "@/src/components/Icons";
-import { safeParseAmount } from "@/src/utils/formatCurrency";
+import { formatMoneyValue } from "@/src/utils/formatCurrency";
 import { formatShortDate } from "@/src/utils/formatDate";
 import {
   POLIZA_ESTATUS_CONFIG,
@@ -54,15 +54,10 @@ const tipoFilterFn: FilterFn<Poliza> = (row, _columnId, filterValue) => {
  * Importe de la tabla, SIN símbolo de moneda.
  *
  * `Poliza` no declara moneda ni tiene desde dónde derivarla (ver el encabezado
- * de `poliza.interface.ts`), así que `formatMoneyValue` pintaría su MXN por
- * defecto y afirmaría una divisa que el documento no tiene. Se muestra el número
- * con dos decimales y separadores es-MX, que es lo que el dato realmente dice.
+ * de `poliza.interface.ts`): moneda `null`, el número con dos decimales y
+ * separadores es-MX, que es lo que el dato realmente dice.
  */
-const importe = (value: string): string =>
-  new Intl.NumberFormat("es-MX", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(safeParseAmount(value));
+const importe = (value: string): string => formatMoneyValue(value, null);
 
 /**
  * Columnas del listado de pólizas.
