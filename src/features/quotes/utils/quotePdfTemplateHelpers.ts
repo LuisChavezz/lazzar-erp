@@ -2,7 +2,6 @@
  * Builder del modelo que consume QuotePdfDocument.
  * Centraliza calculos y transformaciones para que el componente sea puramente presentacional.
  */
-import { formatCurrency, moneyFormatFor } from "@/src/utils/formatCurrency";
 import type { QuoteById } from "../interfaces/quote.interface";
 import {
   buildQuoteEmailDetailRows,
@@ -12,7 +11,7 @@ import {
   getQuoteShippingAddress,
 } from "./quoteEmailTemplateHelpers";
 import type { QuoteEmailDetailRow } from "./quoteEmailTemplateHelpers";
-import { formatQuoteDateTime } from "./quoteDetailsFormatters";
+import { createQuoteAmountFormatter, formatQuoteDateTime } from "./quoteDetailsFormatters";
 
 // ---------------------------------------------------------------------------
 // Tipos de addons por detalle (bordados, reflejantes, corte de manga)
@@ -122,7 +121,8 @@ export type QuotePdfModel = {
   computedSubtotal: number;
   /** Addons por índice, alineado con detailRows. */
   detailAddons: PdfDetailAddons[];
-  formatMoney: (amount: number) => string;
+  /** Importe en la moneda de la cotización ("USD 1,227.00"); "-" si falta o es malformado. */
+  formatMoney: (amount: string | number | null | undefined) => string;
 };
 
 /**
@@ -151,6 +151,6 @@ export const buildQuotePdfModel = (
     skuSummaries: detailRows.map(({ detail }) => getQuoteDetailSkuSummary(detail)),
     computedSubtotal: getQuoteComputedSubtotal(detailRows),
     detailAddons: detailRows.map(({ detail }) => buildPdfDetailAddons(detail)),
-    formatMoney: (amount) => formatCurrency(amount, moneyFormatFor(monedaCodigo)),
+    formatMoney: createQuoteAmountFormatter(monedaCodigo),
   };
 };

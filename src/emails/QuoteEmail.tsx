@@ -3,9 +3,9 @@ import { Img, Text } from "@react-email/components";
 import { BaseEmailLayout, EmailCard } from "@/src/emails/shared/BaseEmailLayout";
 import type { QuoteById } from "@/src/features/quotes/interfaces/quote.interface";
 import {
+  createQuoteAmountFormatter,
   formatQuoteDateTime,
   getQuoteDetailProductName,
-  toCurrencyOrDash,
   toDisplayValue,
 } from "@/src/features/quotes/utils/quoteDetailsFormatters";
 import { buildQuoteEmailTemplateModel, getQuoteDetailSkuSummary } from "@/src/features/quotes/utils/quoteEmailTemplateHelpers";
@@ -20,6 +20,8 @@ type QuoteEmailProps = {
 export const QuoteEmail = ({ quote, monedaCodigo }: QuoteEmailProps) => {
   const { customerName, totalPieces, shippingAddress, detailRows, computedSubtotal, detailAddons } =
     buildQuoteEmailTemplateModel(quote);
+  // Un formateador por correo: todos los importes en la moneda de la cotización.
+  const formatMoney = createQuoteAmountFormatter(monedaCodigo);
 
   return (
     <BaseEmailLayout
@@ -98,10 +100,10 @@ export const QuoteEmail = ({ quote, monedaCodigo }: QuoteEmailProps) => {
                         </td>
                         <td className="py-4 pr-3 text-right align-top text-slate-900">{quantity}</td>
                         <td className="py-4 pr-3 text-right align-top text-slate-900">
-                          {toCurrencyOrDash(detail.precio_unitario, monedaCodigo)}
+                          {formatMoney(detail.precio_unitario)}
                         </td>
                         <td className="py-4 text-right align-top font-semibold text-slate-900">
-                          {toCurrencyOrDash(lineSubtotal, monedaCodigo)}
+                          {formatMoney(lineSubtotal)}
                         </td>
                       </tr>
   
@@ -264,7 +266,7 @@ export const QuoteEmail = ({ quote, monedaCodigo }: QuoteEmailProps) => {
                 <tr>
                   <td className="py-2 pr-4 text-slate-500">Subtotal</td>
                   <td className="py-2 text-right font-medium text-slate-900">
-                    {toCurrencyOrDash(computedSubtotal, monedaCodigo)}
+                    {formatMoney(computedSubtotal)}
                   </td>
                 </tr>
                 <tr>
@@ -274,13 +276,13 @@ export const QuoteEmail = ({ quote, monedaCodigo }: QuoteEmailProps) => {
                 <tr>
                   <td className="py-2 pr-4 text-slate-500">Anticipo</td>
                   <td className="py-2 text-right font-medium text-slate-900">
-                    {toCurrencyOrDash(quote.anticipo, monedaCodigo)}
+                    {formatMoney(quote.anticipo)}
                   </td>
                 </tr>
                 <tr>
                   <td className="py-2 pr-4 text-slate-500">Total</td>
                   <td className="py-2 text-right text-lg font-semibold text-slate-950">
-                    {toCurrencyOrDash(quote.gran_total, monedaCodigo)}
+                    {formatMoney(quote.gran_total)}
                   </td>
                 </tr>
               </tbody>

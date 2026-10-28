@@ -1,7 +1,7 @@
 import { format, isValid, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
 import { normalizeDate } from "@/src/utils/normalizeDate";
-import { formatCurrency, moneyFormatFor } from "@/src/utils/formatCurrency";
+import { formatQuoteAmount } from "./formatQuoteAmount";
 
 // Estandariza valores de fecha provenientes del backend para mejorar el parseo.
 // 1) Limpia espacios, 2) reemplaza " " por "T", 3) recorta milisegundos extra,
@@ -42,16 +42,24 @@ export const toDisplayValue = (value?: string | number | null) => {
   return String(value);
 };
 
-// Formatea montos monetarios y protege la vista frente a datos vacíos.
-// Si no hay monto, devuelve "-", si existe, lo formatea en la moneda `monedaCodigo`
-// (código ISO de la cotización); con `null`, sin símbolo — nunca en MXN por defecto.
-export const toCurrencyOrDash = (
-  value: string | number | null | undefined,
-  monedaCodigo: string | null,
-) => {
-  if (value === null || value === undefined || value === "") return "-";
-  return formatCurrency(Number(value) || 0, moneyFormatFor(monedaCodigo));
-};
+/**
+ * Formateador de importes de UN documento de cotización (PDF y correo), creado
+ * una vez por documento con el código ISO de su moneda. Formatea igual que las
+ * pantallas de cotización (`formatQuoteAmount`: "USD 1,227.00", "MXN 1,227.00";
+ * sin código, sin símbolo — nunca MXN por defecto).
+ *
+ * Un importe ausente o malformado ("", `null`, "1,000.00", `NaN`) se pinta "-",
+ * no "0.00": un cero afirmaría un importe que el dato no dice. Se parsea con
+ * `Number()`, la misma regla de `safeParseAmount` (rechaza el string completo en
+ * vez de leerlo a medias como `parseFloat`), pero sin su respaldo a 0.
+ */
+export const createQuoteAmountFormatter =
+  (monedaCodigo: string | null) =>
+  (value: string | number | null | undefined): string => {
+    if (value === null || value === undefined || value === "") return "-";
+    const amount = Number(value);
+    return Number.isFinite(amount) ? formatQuoteAmount(amount, monedaCodigo) : "-";
+  };
 
 /**
  * Nombre a mostrar de una partida de cotización.

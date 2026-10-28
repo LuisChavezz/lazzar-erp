@@ -126,7 +126,7 @@ export const QuotePdfDocument = ({ quote, model }: QuotePdfDocumentProps) => {
                   <Text style={[s.tableCell, s.colSizes]}>{model.skuSummaries[i]}</Text>
                   <Text style={[s.tableCell, s.colQty]}>{quantity}</Text>
                   <Text style={[s.tableCell, s.colPrice]}>
-                    {model.formatMoney(Number(detail.precio_unitario))}
+                    {model.formatMoney(detail.precio_unitario)}
                   </Text>
                   <Text style={[s.tableCellBold, s.colSubtotal]}>
                     {model.formatMoney(lineSubtotal)}
@@ -275,14 +275,14 @@ export const QuotePdfDocument = ({ quote, model }: QuotePdfDocumentProps) => {
               <View style={s.totalsRow}>
                 <Text style={s.totalsLabel}>Anticipo</Text>
                 <Text style={s.totalsValue}>
-                  {model.formatMoney(Number(quote.anticipo))}
+                  {model.formatMoney(quote.anticipo)}
                 </Text>
               </View>
             )}
             <View style={s.totalsRowFinal}>
               <Text style={s.totalsFinalLabel}>TOTAL</Text>
               <Text style={s.totalsFinalValue}>
-                {model.formatMoney(Number(quote.gran_total))}
+                {model.formatMoney(quote.gran_total)}
               </Text>
             </View>
           </View>
