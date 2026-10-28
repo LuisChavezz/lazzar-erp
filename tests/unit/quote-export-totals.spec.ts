@@ -1,8 +1,10 @@
 import { expect, test } from "@playwright/test";
+import { quoteColumns } from "@/src/features/quotes/components/QuoteColumns";
 import {
   buildQuoteTotalRowCells,
   formatQuoteExportTotal,
   getQuoteExportTotals,
+  QUOTE_EXPORT_TOTAL_FIELD,
 } from "@/src/features/quotes/utils/quoteExportTotals";
 
 /**
@@ -67,6 +69,15 @@ test.describe("total de la exportación de cotizaciones", () => {
 });
 
 test.describe("fila TOTAL del PDF", () => {
+  test("el campo del total es la columna de importe de la tabla de cotizaciones", () => {
+    // Si alguien renombra o cambia esa columna, la fila TOTAL desaparecería en
+    // silencio (le pasó al buscar `gran_total`, que la tabla no tiene).
+    const amountColumn = quoteColumns.find(
+      (column) => "accessorKey" in column && column.accessorKey === QUOTE_EXPORT_TOTAL_FIELD,
+    );
+    expect(amountColumn).toBeDefined();
+  });
+
   test("\"Total\" en la primera celda y el total bajo la columna de importe", () => {
     expect(buildQuoteTotalRowCells(4, 2, "$10.00")).toEqual(["Total", "", "$10.00", ""]);
   });
